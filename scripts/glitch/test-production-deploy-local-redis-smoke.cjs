@@ -192,7 +192,7 @@ ok(
 ok(
   deployWorkflow.includes("uses: ./.github/actions/cached-yarn-install") &&
     deployWorkflow.includes("uses: ./.github/actions/cached-lfs-pull") &&
-    deployWorkflow.includes("timeout-minutes: 45") &&
+    deployWorkflow.includes("timeout-minutes: 20") &&
     deployWorkflow.includes(
       "token: ${{ secrets.BIOMES_DEPENDENCY_GITHUB_TOKEN }}"
     ) &&
@@ -251,11 +251,29 @@ ok(
     cachedYarnAction.includes("continue-on-error: true") &&
     cachedYarnAction.includes("Save node_modules cache") &&
     cachedYarnAction.includes("Validate restored node_modules cache") &&
+    cachedYarnAction.includes("Remove unusable node_modules tree") &&
+    cachedYarnAction.includes("run: rm -rf node_modules") &&
+    cachedYarnAction.includes("node-modules-v2-") &&
+    deployWorkflow.includes('PUPPETEER_SKIP_DOWNLOAD: "1"') &&
+    deployWorkflow.includes('ELECTRON_SKIP_BINARY_DOWNLOAD: "1"') &&
+    cachedYarnAction.includes(
+      "hashFiles('./yarn.lock', './package.json', './.github/actions/cached-yarn-install/action.yml')"
+    ) &&
+    !cachedYarnAction.includes("restore-keys:") &&
     cachedYarnAction.includes(
       "steps.node_modules-validation.outputs.valid != 'true'"
     ) &&
     !cachedYarnAction.includes("yarn-cache"),
-  "shared Yarn install action skips install on validated node_modules cache hits"
+  "shared Yarn install action only reuses exact validated dependency trees, cleans misses, and skips unpackaged browser binaries"
+);
+ok(
+  packageJson.dependencies["uWebSockets.js"] ===
+    "https://github.com/uNetworking/uWebSockets.js/archive/refs/tags/v20.31.0.tar.gz" &&
+    cachedYarnAction.includes("hashFiles('./yarn.lock', './package.json'") &&
+    !fs
+      .readFileSync(path.join(root, "yarn.lock"), "utf8")
+      .includes("uNetworking/uWebSockets.js.git"),
+  "dependency install downloads the pinned uWebSockets release without cloning its multi-gigabyte Git history"
 );
 ok(
   cachedLfsAction.includes("actions/cache/restore@v5") &&

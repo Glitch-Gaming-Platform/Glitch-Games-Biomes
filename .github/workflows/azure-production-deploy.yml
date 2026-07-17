@@ -25,6 +25,12 @@ env:
   HUSKY_SKIP_HOOKS: "1"
   HUSKY_SKIP_INSTALL: "1"
   NEXT_TELEMETRY_DISABLED: "1"
+  # Production packaging excludes Chrome and the development-only Electron
+  # application bundle. Their installers otherwise download hundreds of MB
+  # that are never copied into the game-server image.
+  PUPPETEER_SKIP_DOWNLOAD: "1"
+  PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: "1"
+  ELECTRON_SKIP_BINARY_DOWNLOAD: "1"
   AZURE_CORE_OUTPUT: none
   PROD_ORIGIN: https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io
   ACR_NAME: GlitchGames
@@ -96,7 +102,7 @@ jobs:
 
       - name: Install dependencies
         uses: ./.github/actions/cached-yarn-install
-        timeout-minutes: 45
+        timeout-minutes: 20
         with:
           token: ${{ secrets.BIOMES_DEPENDENCY_GITHUB_TOKEN }}
 

@@ -36,16 +36,17 @@ runs:
         echo "node_version=$(node --version)" >> "$GITHUB_OUTPUT"
 
     # node_modules is intentionally cached for this repo because a cold install
-    # is much slower than verifying a restored tree. The exact Node version is
-    # in the key so native packages are not reused across Node upgrades.
+    # is much slower than verifying a restored tree. Only restore an exact
+    # dependency graph: Yarn 1 can hang while rebuilding native packages when it
+    # is asked to reconcile a fallback node_modules tree from another graph.
+    # Include this action in the key so install/cache policy changes invalidate
+    # previously produced trees as well.
     - name: Restore node_modules cache
       uses: actions/cache/restore@v5
       id: node_modules-cache
       with:
         path: ./node_modules
-        key: ${{ runner.os }}-${{ steps.dependency-cache.outputs.node_version }}-node-modules-${{ hashFiles('./yarn.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-${{ steps.dependency-cache.outputs.node_version }}-node-modules-
+        key: ${{ runner.os }}-${{ steps.dependency-cache.outputs.node_version }}-node-modules-v2-${{ hashFiles('./yarn.lock', './package.json', './.github/actions/cached-yarn-install/action.yml') }}
 
     - name: Validate restored node_modules cache
       id: node_modules-validation
@@ -94,6 +95,11 @@ runs:
           echo "valid=false" >> "$GITHUB_OUTPUT"
         fi
 
+    - name: Remove unusable node_modules tree
+      if: steps.node_modules-validation.outputs.valid != 'true'
+      run: rm -rf node_modules
+      shell: bash
+
     - name: Install dependencies
       if: steps.node_modules-validation.outputs.valid != 'true'
       run: yarn install --production=false --frozen-lockfile --non-interactive
@@ -114,4 +120,4 @@ runs:
       uses: actions/cache/save@v5
       with:
         path: ./node_modules
-        key: ${{ runner.os }}-${{ steps.dependency-cache.outputs.node_version }}-node-modules-${{ hashFiles('./yarn.lock') }}
+        key: ${{ runner.os }}-${{ steps.dependency-cache.outputs.node_version }}-node-modules-v2-${{ hashFiles('./yarn.lock', './package.json', './.github/actions/cached-yarn-install/action.yml') }}

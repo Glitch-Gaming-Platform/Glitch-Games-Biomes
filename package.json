@@ -187,7 +187,7 @@
     "unique-names-generator": "^4.7.1",
     "utf-8-validate": "5.0.10",
     "uuid": "^8.3.2",
-    "uWebSockets.js": "uNetworking/uWebSockets.js#v20.31.0",
+    "uWebSockets.js": "https://github.com/uNetworking/uWebSockets.js/archive/refs/tags/v20.31.0.tar.gz",
     "wasm-feature-detect": "^1.2.11",
     "yuka": "^0.7.8",
     "zod": "ill-inc/zod#schemav3"
