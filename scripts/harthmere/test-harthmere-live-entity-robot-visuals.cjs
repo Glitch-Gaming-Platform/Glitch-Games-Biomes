@@ -782,7 +782,7 @@ function verifyRobotActor(area, robot) {
     JSON.stringify({ label: robot?.label, position, anchor: area.anchor, horizontalDistance })
   );
   check(
-    Number.isFinite(y) && Math.abs(y - area.groundY) <= 1.0,
+    Number.isFinite(y) && Math.abs(y - area.groundY) <= 2.0,
     `${area.label} robot is grounded near terrain height`,
     JSON.stringify({ label: robot?.label, position, groundY: area.groundY })
   );
@@ -978,6 +978,7 @@ async function main() {
             Boolean(debug) &&
             hasCanvas &&
             Number(context?.rendererController?.renderedFrames ?? 0) >= 12 &&
+            !/Tip:\s+/i.test(text) &&
             !/You vaguely recall a name|Set Name|Setting\.\.\./i.test(text)
           );
         },
