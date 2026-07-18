@@ -110,6 +110,7 @@ import {
 } from "../tutorial/tutorialMissionMap";
 import { abilityVisibleInBiomesLibraryForTest } from "./abilityLibraryVisibility";
 import {
+  harthmereHotbarCarriedCounts,
   mergeInventoryAndHotbarForBiomesBackpackForTest,
   mergeHarthmereHotbarOverlaySlots,
   mergeMirroredBiomesBackpackUiItemsForTest,
@@ -2843,22 +2844,8 @@ export function useBiomesUILiveAdapters({
     // Real carried count for a quick-slot item: live-mode server count when
     // present, else the local backpack quantity (hotbar slots are shortcuts,
     // not stacks of their own — showing `1` for a stack of 7 was wrong).
-    const liveItems = inventoryLootState?.actor?.items;
-    const liveMaterialItems =
-      inventoryLootState?.materialStorage?.items ??
-      inventoryLootState?.materialStorage ??
-      {};
-    const liveCountsForHotbarItem = (itemId: string) => {
-      const backpack = Math.max(
-        0,
-        Math.trunc(Number(liveItems?.[itemId] ?? 0))
-      );
-      const materialStorage = Math.max(
-        0,
-        Math.trunc(Number(liveMaterialItems?.[itemId] ?? 0))
-      );
-      return { backpack, materialStorage, total: backpack + materialStorage };
-    };
+    const liveCountsForHotbarItem = (itemId: string) =>
+      harthmereHotbarCarriedCounts(inventoryLootState, itemId);
     const carriedCountForHotbarItem = (itemId: string) => {
       const liveCount = liveCountsForHotbarItem(itemId).total;
       if (liveCount > 0) {

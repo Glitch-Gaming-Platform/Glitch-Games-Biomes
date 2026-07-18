@@ -485,6 +485,35 @@ check(
     bridge.includes("isHarthmereCloudSaveStorageKey(key)")
 );
 check(
+  "cloud snapshots exclude bridge status, local install, and session identity keys",
+  includesAll(bridge, [
+    "HARTHMERE_GLITCH_VOLATILE_SAVE_KEYS",
+    "BRIDGE_STATE_KEY",
+    "LOCAL_INSTALL_ID_KEY",
+    "HARTHMERE_GLITCH_IDENTITY_KEY",
+    "HARTHMERE_GLITCH_VOLATILE_SAVE_KEYS.has(key)",
+  ])
+);
+check(
+  "cloud saves fingerprint durable state and skip unchanged automatic writes",
+  includesAll(bridge, [
+    "function cloudSaveContentFingerprint",
+    "lastSavedContentFingerprint",
+    'reason !== "manual"',
+    "contentFingerprint === this.lastSavedContentFingerprint",
+    "this.lastSavedContentFingerprint = contentFingerprint",
+  ])
+);
+check(
+  "state-change cloud saves have a minimum write interval",
+  includesAll(bridge, [
+    "STATE_CHANGE_AUTOSAVE_MIN_INTERVAL_MS",
+    "lastSuccessfulCloudSaveAt",
+    "nextAllowedSaveAt",
+    "delayMs",
+  ])
+);
+check(
   "snapshot type stores localStorage key/value dictionary",
   bridge.includes("localStorage: Record<string, string>")
 );

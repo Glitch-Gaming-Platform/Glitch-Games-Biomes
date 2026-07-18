@@ -40,6 +40,23 @@ export function mergeInventoryAndHotbarForBiomesBackpackForTest(
   return merged;
 }
 
+export function harthmereHotbarCarriedCounts(
+  inventoryLootState: any,
+  itemId: string
+) {
+  const liveItems = inventoryLootState?.actor?.items;
+  const liveMaterialItems =
+    inventoryLootState?.materialStorage?.items ??
+    inventoryLootState?.materialStorage ??
+    {};
+  const backpack = Math.max(0, Math.trunc(Number(liveItems?.[itemId] ?? 0)));
+  const materialStorage = Math.max(
+    0,
+    Math.trunc(Number(liveMaterialItems?.[itemId] ?? 0))
+  );
+  return { backpack, materialStorage, total: backpack + materialStorage };
+}
+
 function canonicalBiomesMirrorItemId(itemId: unknown) {
   const match = /^(?:b:)?([0-9]+)$/.exec(String(itemId ?? ""));
   return match ? match[1] : String(itemId ?? "");

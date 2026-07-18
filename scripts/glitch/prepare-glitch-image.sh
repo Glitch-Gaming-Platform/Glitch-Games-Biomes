@@ -9,15 +9,17 @@ export SKIP_MISSING_ASSET_CHECK="${SKIP_MISSING_ASSET_CHECK:-true}"
 export BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN="${BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN:-0}"
 export BIOMES_FORCE_LOCAL_DEV_TOWN="${BIOMES_FORCE_LOCAL_DEV_TOWN:-0}"
 export BIOMES_START_IN_HARTHMERE="${BIOMES_START_IN_HARTHMERE:-0}"
-VENV_DIR="${BIOMES_VENV_DIR:-/app/.venv}"
-export PATH="$VENV_DIR/bin:/app/node_modules/.bin:$PATH"
+WORKSPACE_VENV="$PWD/.venv"
+VENV_DIR="${BIOMES_VENV_DIR:-$WORKSPACE_VENV}"
+export PATH="$VENV_DIR/bin:$PWD/node_modules/.bin:$PATH"
 export VIRTUAL_ENV="$VENV_DIR"
 export YARN_IGNORE_SCRIPTS=1
 export npm_config_ignore_scripts=true
 
-# In Docker we keep the cached venv outside /app so COPY . . cannot overwrite it
-# with a host/macOS .venv. Biomes still expects /app/.venv, so link it back.
-if [ "$VENV_DIR" != "/app/.venv" ]; then
+# In Docker we keep the cached venv outside the workspace so COPY . . cannot
+# overwrite it with a host/macOS .venv. Biomes still expects a workspace .venv,
+# so link it back. Local builds use their existing workspace venv unchanged.
+if [ "$VENV_DIR" != "$WORKSPACE_VENV" ]; then
   rm -rf .venv
   ln -sfn "$VENV_DIR" .venv
 fi

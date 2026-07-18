@@ -8,13 +8,120 @@ import assert from "assert";
 // fighting incoming sync deltas. The pure merge must never overwrite a real
 // ECS item.
 
-import { mergeHarthmereHotbarOverlaySlots } from "@/client/components/biomes_ui/adapters/inventoryAdapterHelpers";
+import {
+  harthmereHotbarCarriedCounts,
+  mergeHarthmereHotbarOverlaySlots,
+} from "@/client/components/biomes_ui/adapters/inventoryAdapterHelpers";
+import {
+  getHarthmereWorldLootDrops,
+  publishHarthmereWorldLootDrops,
+  resetHarthmereWorldLootDropsForTest,
+} from "@/client/components/challenges/harthmereLootDropWorldState";
+import {
+  createHarthmereInventoryLootClientSnapshotFromBackend,
+  defaultHarthmereLiveModeBackendState,
+  reduceHarthmereLiveModeBackendState,
+} from "@/shared/harthmere/live_mode_backend";
+import { registerHarthmereItemDefinition } from "@/shared/harthmere/mmo_inventory_authority";
+import type { HarthmereLiveModeAuthorityEnvelope } from "@/shared/harthmere/live_mode_readiness";
 
-type Slot = { label: string };
+type Slot = { label: string; count?: number };
 
 const ecsItem = (label: string): Slot => ({ label });
 
 describe("HARTHMERE_HOTBAR_OVERLAY_NO_CLOBBER", () => {
+  beforeEach(() => resetHarthmereWorldLootDropsForTest());
+
+  it("keeps a Muckwad voxel stack in inventory, decrements one throw, and publishes it into the world", () => {
+    const actorId = "muckwad-hotbar-player";
+    const itemId = "muckwad_voxel_block";
+    const nowMs = 1_700_000_000_000;
+    const throwPosition = { x: 512, y: 54, z: -152 };
+    registerHarthmereItemDefinition({
+      itemId,
+      displayName: "Muckwad Voxel Block",
+      maxStackSize: 999,
+      baseValue: 1,
+      binding: "none",
+      isQuestItem: false,
+      isCurrency: false,
+      isConsumable: false,
+      isCraftingMaterial: false,
+      isSpellTome: false,
+      levelRequirement: 1,
+      classRestriction: [],
+      stats: { weight: 1 },
+      tradeable: true,
+      category: "block",
+      objectMetadata: { objectKind: "material", physicalForm: "block" },
+    });
+
+    const beforeState = defaultHarthmereLiveModeBackendState(actorId, nowMs);
+    beforeState.inventory.items[itemId] = 4;
+    const beforeSnapshot =
+      createHarthmereInventoryLootClientSnapshotFromBackend(beforeState);
+    const beforeCounts = harthmereHotbarCarriedCounts(beforeSnapshot, itemId);
+    const beforeHotbar = mergeHarthmereHotbarOverlaySlots<Slot>([], new Set(), [
+      {
+        index: 0,
+        itemAndCount: { label: "Muckwad", count: beforeCounts.total },
+      },
+    ]);
+
+    assert.equal(beforeSnapshot.actor?.items[itemId], 4);
+    assert.deepEqual(beforeCounts, {
+      backpack: 4,
+      materialStorage: 0,
+      total: 4,
+    });
+    assert.deepEqual(beforeHotbar.slots[0], { label: "Muckwad", count: 4 });
+
+    const envelope: HarthmereLiveModeAuthorityEnvelope = {
+      requestId: "throw-muckwad-1",
+      idempotencyKey: "throw-muckwad-1",
+      actorId,
+      actionKind: "request_inventory_item_action",
+      subsystem: "inventory",
+      source: "client_request",
+      serverReceivedAtMs: nowMs,
+      serverTick: 1,
+      actorEntityVersion: 1,
+      zoneId: "the_grove",
+      payload: {
+        operation: "drop_item",
+        itemId,
+        count: 1,
+        position: throwPosition,
+      },
+      clientClaims: {},
+    };
+    const thrown = reduceHarthmereLiveModeBackendState(
+      beforeState,
+      envelope,
+      nowMs
+    );
+    const afterSnapshot = createHarthmereInventoryLootClientSnapshotFromBackend(
+      thrown.state
+    );
+    const afterCounts = harthmereHotbarCarriedCounts(afterSnapshot, itemId);
+
+    assert.deepEqual(thrown.summary.warnings, []);
+    assert.equal(afterSnapshot.actor?.items[itemId], 3);
+    assert.equal(afterCounts.total, 3);
+    assert.equal(afterSnapshot.availableLootDrops.length, 1);
+    assert.deepEqual(afterSnapshot.availableLootDrops[0].itemStacks, {
+      [itemId]: 1,
+    });
+    assert.deepEqual(
+      afterSnapshot.availableLootDrops[0].position,
+      throwPosition
+    );
+
+    publishHarthmereWorldLootDrops(afterSnapshot.availableLootDrops, nowMs);
+    assert.equal(getHarthmereWorldLootDrops().length, 1);
+    assert.deepEqual(getHarthmereWorldLootDrops()[0].position, throwPosition);
+  });
+
   it("places overlay entries into empty slots", () => {
     const { slots, nextOverlaySlots } = mergeHarthmereHotbarOverlaySlots<Slot>(
       [undefined, undefined, undefined],

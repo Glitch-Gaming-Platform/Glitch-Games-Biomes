@@ -2,7 +2,7 @@
 /// <reference types="node" />
 import assert from "assert";
 import { build } from "esbuild";
-import { existsSync } from "fs";
+import { existsSync, statSync } from "fs";
 import { mkdtemp, readFile, rm, writeFile } from "fs/promises";
 import { tmpdir } from "os";
 import path from "path";
@@ -67,7 +67,6 @@ import { HARTHMERE_BUSINESS_INVENTORY_LOOT_UPDATED_EVENT } from "@/client/compon
 function resolveRepoAliasForEsbuild(importPath: string) {
   const basePath = path.join(process.cwd(), "src", importPath.slice(2));
   for (const candidate of [
-    basePath,
     `${basePath}.ts`,
     `${basePath}.tsx`,
     `${basePath}.js`,
@@ -75,8 +74,9 @@ function resolveRepoAliasForEsbuild(importPath: string) {
     path.join(basePath, "index.ts"),
     path.join(basePath, "index.tsx"),
     path.join(basePath, "index.js"),
+    basePath,
   ]) {
-    if (existsSync(candidate)) {
+    if (existsSync(candidate) && statSync(candidate).isFile()) {
       return candidate;
     }
   }
@@ -309,7 +309,10 @@ describe("Harthmere in-world business interface live adapter", () => {
       };
     }) as any;
     const state = await fetchHarthmereBusinessEconomyState(fetchImpl);
-    assert.equal(calls[0].url, "/api/harthmere/live_mode_economy_state");
+    assert.equal(
+      new URL(calls[0].url, "https://test.local").pathname,
+      "/api/harthmere/live_mode_economy_state"
+    );
     assert.equal(calls[0].init.method, "GET");
     assert.equal(calls[0].init.credentials, "same-origin");
     assert.equal(
@@ -332,7 +335,10 @@ describe("Harthmere in-world business interface live adapter", () => {
       { businessId: "business_food", itemId: "worker_meal", count: 2 },
       { fetchImpl, requestId: "fixed_business_request" }
     );
-    assert.equal(calls[0].url, "/api/harthmere/live_mode");
+    assert.equal(
+      new URL(calls[0].url, "https://test.local").pathname,
+      "/api/harthmere/live_mode"
+    );
     assert.equal(calls[0].init.method, "POST");
     const envelope = JSON.parse(calls[0].init.body);
     assert.equal(envelope.requestId, "fixed_business_request");
@@ -431,7 +437,10 @@ describe("Harthmere in-world business interface live adapter", () => {
 
     assert.equal(calls.length, HARTHMERE_BUSINESS_TYPE_ORDER.length * 2);
     for (const { url, init } of calls) {
-      assert.equal(url, "/api/harthmere/live_mode");
+      assert.equal(
+        new URL(url, "https://test.local").pathname,
+        "/api/harthmere/live_mode"
+      );
       const envelope = JSON.parse(init.body);
       assert.equal(envelope.actionKind, "request_economy_mutation");
       assert.equal(envelope.subsystem, "economy");
@@ -2494,8 +2503,8 @@ describe("Harthmere in-world business interface current screens", () => {
         initialTab: "shopfront",
       })
     );
-    assert.ok(customerHtml.includes("Purchase quantity"));
-    assert.ok(customerHtml.includes('aria-label="Buy Worker Meal x6"'));
+    assert.ok(customerHtml.includes('aria-label="Quantity for Worker Meal"'));
+    assert.ok(customerHtml.includes('aria-label="Buy Worker Meal"'));
 
     const statusHtml = renderToStaticMarkup(
       React.createElement(HarthmereBusinessInterfacePanel, {

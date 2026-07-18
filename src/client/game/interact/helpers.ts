@@ -309,11 +309,19 @@ function emitHarthmereNativeTerrainBlockPlaced(input: {
     at: Date.now(),
   };
 
-  window.dispatchEvent(
-    new CustomEvent(HARTHMERE_NATIVE_TERRAIN_BLOCK_PLACED_EVENT, {
-      detail,
-    })
-  );
+  const CustomEventConstructor =
+    typeof window.CustomEvent === "function"
+      ? window.CustomEvent
+      : typeof globalThis.CustomEvent === "function"
+      ? globalThis.CustomEvent
+      : undefined;
+  if (CustomEventConstructor) {
+    window.dispatchEvent(
+      new CustomEventConstructor(HARTHMERE_NATIVE_TERRAIN_BLOCK_PLACED_EVENT, {
+        detail,
+      })
+    );
+  }
 
   const win = window as typeof window & {
     __harthmereNativeTerrainBlockPlacedDebug?: unknown[];

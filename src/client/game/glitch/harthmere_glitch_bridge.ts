@@ -1,5 +1,6 @@
 import type { ClientContext } from "@/client/game/context";
 import {
+  HARTHMERE_GLITCH_IDENTITY_KEY,
   HARTHMERE_GLITCH_IDENTITY_CHANGED_EVENT,
   HARTHMERE_GLITCH_SESSION_DISCONNECTED_EVENT,
   type HarthmereGlitchIdentity,
@@ -153,7 +154,8 @@ const SESSION_CHANNEL_NAME = "biomes:harthmere-glitch-session";
 const CLOUD_SAVE_SLOT_INDEX = 0;
 const AUTOSAVE_INTERVAL_MS = 60_000;
 const STATE_CHANGE_AUTOSAVE_DELAY_MS = 1_500;
-const PROGRESSION_INTERVAL_MS = 30_000;
+const STATE_CHANGE_AUTOSAVE_MIN_INTERVAL_MS = 15_000;
+const PROGRESSION_INTERVAL_MS = 60_000;
 const SESSION_HEARTBEAT_INTERVAL_MS = 15_000;
 const GLITCH_INSTALL_HEARTBEAT_INTERVAL_MS = 60_000;
 const AEGIS_BRIDGE_SCRIPT_URL = "https://api.glitch.fun/js/aegis-bridge.js";
@@ -162,6 +164,11 @@ const HARTHMERE_GLITCH_BEHAVIOR_MAX_BATCH = 25;
 const HARTHMERE_GLITCH_BEHAVIOR_THROTTLE_MS = 12_000;
 const HARTHMERE_GLITCH_BEHAVIOR_SCHEMA =
   "harthmere-glitch-funnel-schema" as const;
+const HARTHMERE_GLITCH_VOLATILE_SAVE_KEYS = new Set<string>([
+  BRIDGE_STATE_KEY,
+  LOCAL_INSTALL_ID_KEY,
+  HARTHMERE_GLITCH_IDENTITY_KEY,
+]);
 
 export const HARTHMERE_GLITCH_STANDARD_FUNNEL_EVENTS = [
   { step_key: "game_boot", action_key: "start" },
@@ -551,12 +558,21 @@ function sumQuantities(rows: any[]) {
 }
 
 function isHarthmereCloudSaveStorageKey(key: string) {
+  if (HARTHMERE_GLITCH_VOLATILE_SAVE_KEYS.has(key)) return false;
   return (
     key.startsWith(HARTHMERE_STORAGE_PREFIX) ||
     (HARTHMERE_GLITCH_REQUIRED_SAVE_KEYS as readonly string[]).includes(key) ||
     HARTHMERE_GLITCH_REQUIRED_SAVE_KEY_PREFIXES.some((prefix) =>
       key.startsWith(prefix)
     )
+  );
+}
+
+export function cloudSaveContentFingerprint(storage: Record<string, string>) {
+  return JSON.stringify(
+    Object.entries(storage)
+      .filter(([key]) => isHarthmereCloudSaveStorageKey(key))
+      .sort(([left], [right]) => left.localeCompare(right))
   );
 }
 
@@ -1197,6 +1213,8 @@ class HarthmereGlitchBridgeController {
   // with stale base_version values and triggering 409 Conflict storms.
   private saveInFlight?: Promise<void>;
   private savePending = false;
+  private lastSavedContentFingerprint?: string;
+  private lastSuccessfulCloudSaveAt = 0;
   private cloudSaveConflictPaused = false;
   private readonly previousActiveUserScope = isBrowser()
     ? window.localStorage.getItem(ACTIVE_USER_SCOPE_KEY) ?? undefined
@@ -1478,12 +1496,18 @@ class HarthmereGlitchBridgeController {
     if (this.stateChangeSaveTimer) {
       window.clearTimeout(this.stateChangeSaveTimer);
     }
+    const nextAllowedSaveAt =
+      this.lastSuccessfulCloudSaveAt + STATE_CHANGE_AUTOSAVE_MIN_INTERVAL_MS;
+    const delayMs = Math.max(
+      STATE_CHANGE_AUTOSAVE_DELAY_MS,
+      nextAllowedSaveAt - Date.now()
+    );
     this.stateChangeSaveTimer = window.setTimeout(() => {
       this.stateChangeSaveTimer = undefined;
       void this.saveNow("state_changed").catch((error) =>
         this.recordError(error)
       );
-    }, STATE_CHANGE_AUTOSAVE_DELAY_MS);
+    }, delayMs);
   };
 
   private readonly visibilityHandler = () => {
@@ -1873,6 +1897,16 @@ class HarthmereGlitchBridgeController {
       return;
     }
     const snapshot = createSnapshot(this.config, playtimeSeconds);
+    const contentFingerprint = cloudSaveContentFingerprint(
+      snapshot.localStorage
+    );
+    if (
+      reason !== "manual" &&
+      contentFingerprint === this.lastSavedContentFingerprint
+    ) {
+      writeStatus({ playtimeSeconds });
+      return;
+    }
     let response: any;
     try {
       response = await requestGlitch<any>("storeSave", {
@@ -1913,6 +1947,8 @@ class HarthmereGlitchBridgeController {
         playtimeSeconds,
       });
     }
+    this.lastSavedContentFingerprint = contentFingerprint;
+    this.lastSuccessfulCloudSaveAt = Date.now();
   }
 
   async submitProgression(reason = "manual") {
@@ -1931,7 +1967,6 @@ class HarthmereGlitchBridgeController {
     if (reason !== "manual" && deltaSeconds <= 0) return;
     if (this.progressionInFlight) return;
     this.progressionInFlight = true;
-    this.lastProgressionFlushAt = now;
 
     const snapshot = createSnapshot(this.config, this.currentPlaytimeSeconds());
     const payload = progressionPayloadFromSnapshot(snapshot, deltaSeconds);
@@ -1950,6 +1985,7 @@ class HarthmereGlitchBridgeController {
         lastProgressionAt: new Date().toISOString(),
         playtimeSeconds: this.currentPlaytimeSeconds(),
       });
+      this.lastProgressionFlushAt = now;
     } catch (error) {
       // Glitch dashboard stat/leaderboard configuration can lag behind the
       // deployed game. That should not reject startup or freeze the client

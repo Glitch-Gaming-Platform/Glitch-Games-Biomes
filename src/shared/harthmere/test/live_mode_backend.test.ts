@@ -5130,6 +5130,59 @@ describe("reduceHarthmereLiveModeBackendState — loot and inventory mutation", 
     assert.ok(summary.touchedModels.includes("container_transfer"));
   });
 
+  it("takes an entire container when duplicate non-stackable equipment must overflow", function () {
+    const before = freshState();
+    before.inventory.items.baker_apron = 1;
+
+    const { state, summary } = applyOne(before, "request_container_transfer", {
+      items: {
+        baker_apron: 1,
+        field_trousers: 1,
+        cloth_scrap: 4,
+      },
+    });
+
+    assert.equal(state.inventory.items.baker_apron, 1);
+    assert.equal(state.inventory.items.field_trousers, 1);
+    assert.equal(
+      (state.inventory.items.cloth_scrap ?? 0) +
+        (state.banking.materialStorage.cloth_scrap ?? 0),
+      4
+    );
+    assert.deepEqual(state.inventory.overflow, [
+      {
+        itemId: "baker_apron",
+        count: 1,
+        reason: "container_sent_to_overflow",
+      },
+    ]);
+    assert.ok(
+      summary.warnings.includes("container_sent_to_overflow:baker_apron")
+    );
+    assert.ok(summary.touchedModels.includes("container_transfer"));
+    assert.ok(summary.touchedModels.includes("inventory_overflow"));
+  });
+
+  it("keeps container transfer atomic when an invalid row follows staged overflow", function () {
+    const before = freshState();
+    before.inventory.items.baker_apron = 1;
+
+    const { state, summary } = applyOne(before, "request_container_transfer", {
+      items: {
+        baker_apron: 1,
+        definitely_not_an_item: 1,
+      },
+    });
+
+    assert.equal(state.inventory.items.baker_apron, 1);
+    assert.deepEqual(state.inventory.overflow, []);
+    assert.ok(
+      summary.warnings.includes(
+        "container_transfer_rejected:unknown_item_id:definitely_not_an_item"
+      )
+    );
+  });
+
   it("rejects a malformed container transfer without partially granting valid rows", function () {
     const { state, summary } = applyOne(
       freshState(),
@@ -7369,7 +7422,7 @@ describe("reduceHarthmereLiveModeBackendState — farming", function () {
       animalId: "deer_001",
     });
     assert.equal(first.state.inventory.items.raw_meat, 2);
-    assert.equal(first.state.combat.lootClaims.deer_001, NOW_MS);
+    assert.equal(first.state.combat.lootClaims["wild_spawn:deer_001"], NOW_MS);
 
     const duplicate = applyOne(first.state, "request_farming_action", {
       operation: "hunt_animal",
@@ -7390,7 +7443,10 @@ describe("reduceHarthmereLiveModeBackendState — farming", function () {
       itemId: "wild_berries",
     });
     assert.equal(first.state.inventory.items.wild_berries, 1);
-    assert.equal(first.state.combat.lootClaims.berries_001, NOW_MS);
+    assert.equal(
+      first.state.combat.lootClaims["wild_spawn:berries_001"],
+      NOW_MS
+    );
 
     const duplicate = applyOne(first.state, "request_farming_action", {
       operation: "forage_food",

@@ -2,7 +2,7 @@
 
 import assert from "assert";
 import { build } from "esbuild";
-import { existsSync } from "fs";
+import { existsSync, statSync } from "fs";
 import { mkdtemp, readFile, rm, writeFile } from "fs/promises";
 import { tmpdir } from "os";
 import path from "path";
@@ -98,14 +98,14 @@ describe("live entity helper quest marker browser flow", () => {
     const resolveRepoAlias = (specifier: string) => {
       const base = path.join(process.cwd(), "src", specifier.slice(2));
       for (const candidate of [
-        base,
         `${base}.ts`,
         `${base}.tsx`,
         `${base}.js`,
         path.join(base, "index.ts"),
         path.join(base, "index.tsx"),
+        base,
       ]) {
-        if (existsSync(candidate)) {
+        if (existsSync(candidate) && statSync(candidate).isFile()) {
           return candidate;
         }
       }

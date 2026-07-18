@@ -10128,17 +10128,24 @@ export function reduceHarthmereLiveModeBackendState(
       }
 
       let working = buildInventorySnapshot();
+      const overflow: Array<{
+        itemId: string;
+        count: number;
+        reason: string;
+      }> = [];
       let rejection: string | undefined;
       for (const item of requestedItems) {
         const parsedBiomesItemId = safeParseBiomesId(item.itemId);
+        const existingDefinition = getHarthmereItemDefinition(item.itemId);
         if (
-          !getHarthmereItemDefinition(item.itemId) &&
+          !existingDefinition &&
           !(parsedBiomesItemId && anItem(parsedBiomesItemId))
         ) {
           rejection = `unknown_item_id:${item.itemId}`;
           break;
         }
         ensureLiveModeItemDefinition(item.itemId, working);
+        const definition = getHarthmereItemDefinition(item.itemId);
         const result = reduceHarthmereInventoryMutation(
           {
             requestId: `${envelope.requestId}:${item.itemId}`,
@@ -10157,8 +10164,63 @@ export function reduceHarthmereLiveModeBackendState(
           }
         );
         if (!result.ok) {
-          rejection = result.errors.join(",") || "inventory_rejected";
-          break;
+          const canOverflow = result.errors.every(
+            (error) =>
+              error === "inventory_full" || error === "stack_size_exceeded"
+          );
+          if (!canOverflow) {
+            rejection = result.errors.join(",") || "inventory_rejected";
+            break;
+          }
+
+          const availableStackSpace = Math.max(
+            0,
+            (definition?.maxStackSize ?? 0) - (working.items[item.itemId] ?? 0)
+          );
+          let inventoryCount = Math.min(item.count, availableStackSpace);
+          if (inventoryCount > 0) {
+            const partialResult = reduceHarthmereInventoryMutation(
+              {
+                requestId: `${envelope.requestId}:${item.itemId}:partial`,
+                actorId: envelope.actorId,
+                kind: "pickup_item",
+                nowMs,
+                itemId: item.itemId,
+                count: inventoryCount,
+              },
+              {
+                snapshot: working,
+                playerLevel:
+                  next.classMagic.skills["character_level"]?.level ?? 1,
+                playerSkills: next.classMagic.skills,
+                playerClassId: next.classMagic.classId ?? "warrior",
+                reputation: next.law.reputation,
+              }
+            );
+            if (partialResult.ok) {
+              working = applyHarthmereInventoryMutationResult(
+                working,
+                partialResult
+              );
+            } else if (
+              partialResult.errors.every((error) => error === "inventory_full")
+            ) {
+              inventoryCount = 0;
+            } else {
+              rejection =
+                partialResult.errors.join(",") || "inventory_rejected";
+              break;
+            }
+          }
+          const overflowCount = item.count - inventoryCount;
+          if (overflowCount > 0) {
+            overflow.push({
+              itemId: item.itemId,
+              count: overflowCount,
+              reason: "container_sent_to_overflow",
+            });
+          }
+          continue;
         }
         working = applyHarthmereInventoryMutationResult(working, result);
       }
@@ -10175,6 +10237,13 @@ export function reduceHarthmereLiveModeBackendState(
       next.inventory.consumableCooldowns = working.consumableCooldowns;
       next.banking.materialStorage =
         working.materialStorage ?? next.banking.materialStorage;
+      if (overflow.length > 0) {
+        next.inventory.overflow.push(...overflow);
+        for (const entry of overflow) {
+          warnings.push(`${entry.reason}:${entry.itemId}`);
+        }
+        touchedModels.add("inventory_overflow");
+      }
       ensureInventoryLootActorSynced();
       syncInventoryLootActorToLiveInventory();
       next.combat.lootClaims[envelope.requestId] = nowMs;

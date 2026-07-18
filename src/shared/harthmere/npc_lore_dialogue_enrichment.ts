@@ -23,8 +23,12 @@ export function harthmereNpcLoreTextIsPlaceholder(text: unknown): boolean {
   const value = text.trim();
   return (
     value.length < 24 ||
-    /^(?:that's all for now|thats all for now|i'?m busy|whats up|what's up|hello|hi|hey|okay|ok|bye|goodbye)[.!?]*$/i.test(value) ||
-    /\b(?:todo|tbd|lorem ipsum|placeholder|test placeholder|dev\/test|meta placeholder|production-ready hook|testable gameplay reason|Where the bible defined only)\b/i.test(value) ||
+    /^(?:that's all for now|thats all for now|i'?m busy|whats up|what's up|hello|hi|hey|okay|ok|bye|goodbye)[.!?]*$/i.test(
+      value
+    ) ||
+    /\b(?:todo|tbd|lorem ipsum|placeholder|test placeholder|dev\/test|meta placeholder|production-ready hook|testable gameplay reason|Where the bible defined only)\b/i.test(
+      value
+    ) ||
     // (dialogue fix D-2, 2026-07-14): also treat the dev/scaffolding creature
     // notes and the two dominant name-swapped skeletons as placeholders so a
     // regeneration pass rewrites them instead of preserving the clones.
@@ -42,7 +46,10 @@ function npcName(npc: HarthmereNpcLoreLike) {
 }
 
 function shortRole(npc: HarthmereNpcLoreLike) {
-  return String(npc.role ?? npc.category ?? npc.kind ?? "resident").replaceAll("_", " ");
+  return String(npc.role ?? npc.category ?? npc.kind ?? "resident").replaceAll(
+    "_",
+    " "
+  );
 }
 
 export function buildHarthmereBackstory(npc: HarthmereNpcLoreLike): string {
@@ -50,13 +57,26 @@ export function buildHarthmereBackstory(npc: HarthmereNpcLoreLike): string {
   const role = shortRole(npc);
   const district = npc.district ?? "Harthmere";
   const faction = npc.faction ?? "the town";
-  if (npc.kind === "animal" || /wolf|boar|bear|deer|duck|cow|sheep|horse|rabbit|stag|goose|cat|dog/i.test(`${npc.id} ${role}`)) {
+  if (
+    npc.kind === "animal" ||
+    /wolf|boar|bear|deer|duck|cow|sheep|horse|rabbit|stag|goose|cat|dog/i.test(
+      `${npc.id} ${role}`
+    )
+  ) {
     return `${name} is part of the working edge around ${district}, where farms, roads, hunters, and hungry wilds all press against Harthmere law. Their presence matters because hides, meat, warning signs, and damaged fences all feed the town's fragile balance between food, safety, and debt.`;
   }
-  if (/undead|risen|wraith|dead|bell|wyrm|root|muck|spider|treant|monster/i.test(`${npc.id} ${role} ${faction}`)) {
+  if (
+    /undead|risen|wraith|dead|bell|wyrm|root|muck|spider|treant|monster/i.test(
+      `${npc.id} ${role} ${faction}`
+    )
+  ) {
     return `${name} is tied to the old Harthmere wound: bells under stone, wet grave paths, and the things the town buried instead of solving. People in ${district} speak of them carefully because every encounter carries a little of the town's history back into the present.`;
   }
-  if (/bandit|smuggler|outlaw|thief|fence|knife/i.test(`${npc.id} ${role} ${faction}`)) {
+  if (
+    /bandit|smuggler|outlaw|thief|fence|knife/i.test(
+      `${npc.id} ${role} ${faction}`
+    )
+  ) {
     return `${name} survives in the illegal economy around ${district}, where road tolls, river crates, debt, and fear make honest work harder to keep. They are not random trouble; they are what happens when Harthmere's laws, hunger, and opportunity stop lining up.`;
   }
   return `${name} works as a ${role} in ${district}, bound to ${faction} and to the daily pressure of Harthmere's markets, chapel, roads, docks, and old bell secrets. Their story belongs to the town's lore: duty, debt, rumor, and survival all meet in the work they do.`;
@@ -96,9 +116,49 @@ function isHostileLoreNpc(npc: HarthmereNpcLoreLike): boolean {
   );
 }
 
+export function buildNaturalNpcDialogueOpeners(
+  npc: HarthmereNpcLoreLike
+): readonly string[] {
+  const name = npcName(npc);
+  const role = shortRole(npc);
+  const here = npc.district ?? npc.homeArea ?? "Harthmere";
+  return [
+    `I am ${name}. If you need something in ${here}, ask it plainly.`,
+    `Name's ${name}. You look new to ${here}, so mind where you step.`,
+    `They call me ${name}. Tell me what brought you through ${here}.`,
+    `${name}, if you need it — you're new to ${here}, aren't you?`,
+    `You can call me ${name}. Most people around ${here} already do.`,
+    `${name}. I keep an eye on the ${role} work and the trouble around ${here}.`,
+    `If we have not met, I am ${name}. What are you looking for in ${here}?`,
+    `Around here, people know me as ${name}. I suppose you should too.`,
+    `Before we trade stories, the name is ${name}. Yours can wait a moment.`,
+    `I answer to ${name}. In ${here}, that usually means someone needs a hand.`,
+    `The name is ${name}. I have seen enough of ${here} to know when someone is lost.`,
+    `You're looking at ${name}, ${role} by trade and a careful listener by habit.`,
+    `Folks in ${here} know me as ${name}. What have they told you so far?`,
+    `${name}, at your service — provided the service makes sense in ${here}.`,
+    `If you're lost, start with my name: ${name}. Then tell me where you meant to be.`,
+    `I was wondering when a new face would find me. I'm ${name}.`,
+    `Easy there. I'm ${name}, and rushing through ${here} rarely ends well.`,
+    `Welcome to ${here}. I'm ${name}; the place is friendlier once you learn its edges.`,
+    `A new face in ${here}? I'm ${name}. Let us see whether you came for work or answers.`,
+    `I don't recognize you, which means introductions are due. I'm ${name}.`,
+    `You've found ${name}. Whether that helps depends on what you need from ${here}.`,
+    `Keep your voice steady and call me ${name}. People listen closely in ${here}.`,
+    `Travelers usually ask for directions first. Ask for ${name} instead; I know ${here}.`,
+    `If trouble sent you, you've reached ${name}. If not, we may still have business.`,
+    `If work sent you, ask for ${name}. I know what ${here} needs and what it pays.`,
+    `Take a breath. I'm ${name}, and nothing useful in ${here} begins with panic.`,
+    `You're standing in ${here}, speaking with ${name}. That is a fair place to begin.`,
+    `No ceremony needed — I'm ${name}. Say what happened and leave out the performance.`,
+    `Let's save time: I'm ${name}, and I know the ${role} side of ${here}.`,
+    `We can start with names. Mine is ${name}; after that, tell me what brought you here.`,
+  ];
+}
+
 export function buildNaturalNpcDialogue(
   npc: HarthmereNpcLoreLike,
-  loreKind: "harthmere" | "biomes_economy",
+  loreKind: "harthmere" | "biomes_economy"
 ): Record<string, string> {
   const name = npcName(npc);
   const role = shortRole(npc);
@@ -126,12 +186,7 @@ export function buildNaturalNpcDialogue(
     };
   }
 
-  const openers = [
-    `I am ${name}.`,
-    `Name's ${name}.`,
-    `They call me ${name}.`,
-    `${name}, if you need it — you're new to ${here}, aren't you?`,
-  ];
+  const openers = buildNaturalNpcDialogueOpeners(npc);
   const services = [
     `If this is about work, say what you can carry, fix, prove, or protect; ${here} has no patience for pretty promises.`,
     `Bring goods, tools, food, or a little time and there's a fair trade to make around ${here}.`,
@@ -165,7 +220,11 @@ export function buildNaturalNpcDialogue(
     };
   }
   return {
-    greeting: `${enrichmentPick(openers, key, "b_greet")} I keep the ${role} work moving around ${here}.`,
+    greeting: `${enrichmentPick(
+      openers,
+      key,
+      "b_greet"
+    )} I keep the ${role} work moving around ${here}.`,
     service: enrichmentPick(services, key, "b_serv"),
     rumor: enrichmentPick(rumors, key, "b_rumor"),
     questOffer: enrichmentPick(quests, key, "b_quest"),
@@ -175,7 +234,7 @@ export function buildNaturalNpcDialogue(
 
 export function enrichNpcLoreDialogue<T extends HarthmereNpcLoreLike>(
   npc: T,
-  loreKind: "harthmere" | "biomes_economy",
+  loreKind: "harthmere" | "biomes_economy"
 ): T {
   const backstory =
     loreKind === "harthmere"
@@ -183,13 +242,22 @@ export function enrichNpcLoreDialogue<T extends HarthmereNpcLoreLike>(
       : buildBiomesEconomyBackstory(npc);
   const dialogue = buildNaturalNpcDialogue(npc, loreKind);
   const next: any = { ...npc };
-  if ("bibleBackstory" in next && harthmereNpcLoreTextIsPlaceholder(next.bibleBackstory)) {
+  if (
+    "bibleBackstory" in next &&
+    harthmereNpcLoreTextIsPlaceholder(next.bibleBackstory)
+  ) {
     next.bibleBackstory = backstory;
   }
-  if ("background" in next && harthmereNpcLoreTextIsPlaceholder(next.background)) {
+  if (
+    "background" in next &&
+    harthmereNpcLoreTextIsPlaceholder(next.background)
+  ) {
     next.background = backstory;
   }
-  if (!next.dialogue || Object.values(next.dialogue).some(harthmereNpcLoreTextIsPlaceholder)) {
+  if (
+    !next.dialogue ||
+    Object.values(next.dialogue).some(harthmereNpcLoreTextIsPlaceholder)
+  ) {
     next.dialogue = { ...dialogue, ...(next.dialogue ?? {}) };
     for (const [key, value] of Object.entries(next.dialogue)) {
       if (harthmereNpcLoreTextIsPlaceholder(value)) {

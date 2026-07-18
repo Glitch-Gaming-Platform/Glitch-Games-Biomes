@@ -398,9 +398,11 @@ describe("Harthmere universal jobs board live adapter", () => {
       globalAny.CustomEvent = oldCustomEvent;
     }
 
-    assert.equal(events.length, 1);
-    assert.equal(events[0].type, HARTHMERE_JOBS_BOARD_STATE_UPDATED_EVENT);
-    assert.equal(events[0].detail.jobsBoardState.actorId, "player_a");
+    const stateEvents = events.filter(
+      (event) => event.type === HARTHMERE_JOBS_BOARD_STATE_UPDATED_EVENT
+    );
+    assert.equal(stateEvents.length, 1);
+    assert.equal(stateEvents[0].detail.jobsBoardState.actorId, "player_a");
   });
 
   it("emits live inventory sync when a jobs board mutation grants items or gold", async () => {
