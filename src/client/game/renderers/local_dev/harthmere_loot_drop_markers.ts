@@ -71,7 +71,10 @@ export function createHarthmereLootDropMesh(
 
   const glow = new THREE.Mesh(
     new THREE.BoxGeometry(0.2, 0.2, 0.2),
-    material(0xffe8a6, 0.9)
+    // Keep the whole marker in the opaque scene. A translucent child makes
+    // addToScenes classify one root as both `three` and `translucent`, which
+    // production logs as a mixed-scene mesh and can skip the drop marker.
+    material(0xffe8a6)
   );
   glow.name = "Loot drop glow";
   glow.position.set(0, 0.75, 0);

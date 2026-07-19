@@ -33,6 +33,7 @@ import {
   SNAPSHOT_COMPLETE_PORT_STATE_KEY,
   SNAPSHOT_PHOTO_PROOFS_KEY,
   writeSnapshotCompletePortState,
+  snapshotCompletePortDurableStateFingerprintForTest,
   snapshotPlayerScopedStorageKey,
 } from "@/client/components/challenges/LocalDevSnapshotCompletePort";
 import React, { useEffect, useMemo, useState } from "react";
@@ -269,51 +270,6 @@ function mutationFromEvent(
   return undefined;
 }
 
-function mutationsFromStateDelta(state: any): SnapshotProgressMutation[] {
-  const at = Date.now();
-  const mutations: SnapshotProgressMutation[] = [];
-  for (const completedMissionId of state.completedMissionIds ?? []) {
-    mutations.push({
-      kind: "complete_mission",
-      missionId: completedMissionId,
-      occurredAtMs: at,
-    });
-  }
-  for (const completedStepId of state.completedStepIds ?? []) {
-    mutations.push({
-      kind: "complete_step",
-      stepId: completedStepId,
-      missionId: state.activeMissionId,
-      occurredAtMs: at,
-    });
-  }
-  for (const rewardId of state.grantedRewardIds ?? []) {
-    const reward = SNAPSHOT_STRUCTURED_REWARDS.find(
-      (entry) => entry.id === rewardId
-    );
-    mutations.push({
-      kind: "grant_reward",
-      rewardId,
-      missionId: reward?.questId,
-      itemSymbols: reward
-        ? [...reward.items, ...reward.recipes, ...reward.codex]
-        : [],
-      audioCue: reward?.audioCue ?? SNAPSHOT_AUDIO_CUES.reward,
-      occurredAtMs: at,
-    });
-  }
-  for (const markerId of state.clearedMuckIds ?? []) {
-    mutations.push({ kind: "clear_muck", markerId, occurredAtMs: at });
-  }
-  for (const proofId of state.photoProofIds ?? []) {
-    mutations.push({ kind: "photo_proof", proofId, occurredAtMs: at });
-  }
-  for (const catchId of state.fishingCatchIds ?? []) {
-    mutations.push({ kind: "fishing_catch", catchId, occurredAtMs: at });
-  }
-  return mutations;
-}
-
 function compactMutations(mutations: SnapshotProgressMutation[]) {
   const seen = new Set<string>();
   const compacted: SnapshotProgressMutation[] = [];
@@ -341,6 +297,12 @@ function snapshotProgressMutationKey(mutation: SnapshotProgressMutation) {
 
 let snapshotProgressInFlight: Promise<SnapshotBackendSyncResult> | undefined;
 let snapshotProgressFollowupRequested = false;
+let snapshotProgressInFlightStateFingerprint: string | undefined;
+let snapshotProgressInFlightMutationKeys = new Set<string>();
+
+function snapshotProgressStateFingerprint(state: any) {
+  return snapshotCompletePortDurableStateFingerprintForTest(state);
+}
 
 async function postSnapshotProgressOnce(input: {
   mutation?: SnapshotProgressMutation;
@@ -353,7 +315,6 @@ async function postSnapshotProgressOnce(input: {
   const mutations = compactMutations([
     ...capturedPendingMutations,
     ...(input.mutation ? [input.mutation] : []),
-    ...mutationsFromStateDelta(state),
   ]);
 
   if (mode === "local_dev" && !snapshotBackendIdentity().installId) {
@@ -436,15 +397,48 @@ async function postSnapshotProgress(input: {
   state?: any;
   reason: string;
 }): Promise<SnapshotBackendSyncResult> {
+  const state = input.state ?? readSnapshotCompletePortState();
+  const stateFingerprint = snapshotProgressStateFingerprint(state);
+  const pendingKeys = new Set(
+    pendingMutations().map(snapshotProgressMutationKey)
+  );
+  if (input.mutation) {
+    pendingKeys.add(snapshotProgressMutationKey(input.mutation));
+  }
   if (snapshotProgressInFlight) {
-    snapshotProgressFollowupRequested = true;
+    snapshotProgressFollowupRequested ||=
+      stateFingerprint !== snapshotProgressInFlightStateFingerprint ||
+      [...pendingKeys].some(
+        (key) => !snapshotProgressInFlightMutationKeys.has(key)
+      );
     return snapshotProgressInFlight;
   }
-  snapshotProgressInFlight = postSnapshotProgressOnce(input).finally(() => {
+  snapshotProgressInFlightStateFingerprint = stateFingerprint;
+  snapshotProgressInFlightMutationKeys = pendingKeys;
+  snapshotProgressInFlight = postSnapshotProgressOnce({
+    ...input,
+    state,
+  }).finally(() => {
+    const completedFingerprint = snapshotProgressInFlightStateFingerprint;
+    const completedMutationKeys = snapshotProgressInFlightMutationKeys;
     snapshotProgressInFlight = undefined;
+    snapshotProgressInFlightStateFingerprint = undefined;
+    snapshotProgressInFlightMutationKeys = new Set<string>();
     if (snapshotProgressFollowupRequested) {
       snapshotProgressFollowupRequested = false;
-      void postSnapshotProgress({ reason: "coalesced_followup" });
+      const nextState = readSnapshotCompletePortState();
+      const nextPendingKeys = pendingMutations().map(
+        snapshotProgressMutationKey
+      );
+      const hasNewDurableWork =
+        snapshotProgressStateFingerprint(nextState) !== completedFingerprint ||
+        nextPendingKeys.some((key) => !completedMutationKeys.has(key));
+      if (hasNewDurableWork) {
+        void postSnapshotProgress({
+          reason: "coalesced_followup",
+          state: nextState,
+        });
+      }
     }
   });
   return snapshotProgressInFlight;

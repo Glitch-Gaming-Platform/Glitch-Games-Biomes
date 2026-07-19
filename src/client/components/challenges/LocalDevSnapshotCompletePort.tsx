@@ -275,15 +275,37 @@ export function readSnapshotCompletePortState(): SnapshotCompletePortState {
   }
 }
 
+export function snapshotCompletePortDurableStateFingerprintForTest(
+  state: SnapshotCompletePortState
+) {
+  const { updatedAt: _updatedAt, ...durableState } = normalizeState(state);
+  return JSON.stringify(durableState);
+}
+
 export function writeSnapshotCompletePortState(
   state: SnapshotCompletePortState
 ) {
   if (!isBrowser()) {
-    return;
+    return false;
+  }
+  const existingRaw = snapshotLocalGetItem(SNAPSHOT_COMPLETE_PORT_STATE_KEY);
+  if (existingRaw) {
+    try {
+      const existing = normalizeState(JSON.parse(existingRaw));
+      if (
+        snapshotCompletePortDurableStateFingerprintForTest(existing) ===
+        snapshotCompletePortDurableStateFingerprintForTest(state)
+      ) {
+        return false;
+      }
+    } catch {
+      // Replace malformed legacy state below.
+    }
   }
   const next = normalizeState({ ...state, updatedAt: Date.now() });
   snapshotLocalSetItem(SNAPSHOT_COMPLETE_PORT_STATE_KEY, JSON.stringify(next));
   window.dispatchEvent(new Event(SNAPSHOT_COMPLETE_PORT_EVENT));
+  return true;
 }
 
 function appendAudioCue(state: SnapshotCompletePortState, cue: string) {

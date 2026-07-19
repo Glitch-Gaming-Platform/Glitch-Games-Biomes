@@ -641,6 +641,7 @@ interface HarthmereLiveFetchCacheEntry {
 const globalForHarthmereLiveFetchCache = globalThis as typeof globalThis & {
   __harthmereLiveFetchCache?: Map<string, HarthmereLiveFetchCacheEntry>;
   __harthmereLiveMutationLocks?: Map<string, Promise<unknown>>;
+  __harthmereLiveMutationQueues?: Map<string, Promise<void>>;
 };
 
 function harthmereLiveFetchCache() {
@@ -686,6 +687,40 @@ export function runHarthmereLiveMutationOnce<T>(
 
 export function resetHarthmereLiveMutationLocksForTest() {
   harthmereLiveMutationLocks().clear();
+  globalForHarthmereLiveFetchCache.__harthmereLiveMutationQueues?.clear();
+}
+
+function harthmereLiveMutationQueues() {
+  return (globalForHarthmereLiveFetchCache.__harthmereLiveMutationQueues ??=
+    new Map<string, Promise<void>>());
+}
+
+// Ordered state-changing actions for one actor must reach the server in the
+// same order the player performed them. In particular, crate -> equip -> quest
+// and inventory debit -> world drop cannot safely race one another and then
+// depend on HTTP completion order. The server remains authoritative; this
+// queue only prevents avoidable same-browser contention and timeout retries.
+export function runHarthmereLiveMutationSerially<T>(
+  scope: string,
+  operation: () => Promise<T>
+): Promise<T> {
+  const queues = harthmereLiveMutationQueues();
+  const previous = queues.get(scope);
+  // Preserve the old call-site contract: the first mutation starts during the
+  // current turn (several UI tests and loading indicators observe that), while
+  // later mutations wait for its settled tail.
+  const result = previous
+    ? previous.catch(() => {}).then(operation)
+    : operation();
+  const tail = result.then(
+    () => {},
+    () => {}
+  );
+  queues.set(scope, tail);
+  void tail.finally(() => {
+    if (queues.get(scope) === tail) queues.delete(scope);
+  });
+  return result;
 }
 
 export function coalescedHarthmereLiveFetch(

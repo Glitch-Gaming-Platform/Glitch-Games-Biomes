@@ -62,6 +62,10 @@ import {
   type HarthmereLiveModeActorStateAdoption,
 } from "@/server/harthmere/live_mode_actor_resolution";
 import { shouldAdoptHarthmereInstallOrphan } from "@/shared/harthmere/live_mode_actor_identity";
+import {
+  acquireHarthmereActorStateLock,
+  type HarthmereActorStateLock,
+} from "@/server/harthmere/live_mode_actor_state_authority";
 
 const HARTHMERE_LIVE_MODE_SERVER_ROUTE =
   "HARTHMERE_LIVE_MODE_SERVER_ROUTE" as const;
@@ -658,13 +662,143 @@ function slimHarthmereLiveModeIdempotencyResponse(
       response.backendMutation
     ),
     snapshotMode: "changed",
-    includedSnapshots: [],
-    invalidatedSnapshots: [...HARTHMERE_LIVE_MODE_MUTATION_SNAPSHOT_KEYS],
+    // Keep the list, but not the large snapshot bodies. A timed-out client can
+    // retry the same idempotency key and the server will rehydrate these fields
+    // from the current authoritative actor document instead of returning an
+    // unusable empty replay.
+    includedSnapshots: [...(response.includedSnapshots ?? [])],
+    invalidatedSnapshots: [...(response.invalidatedSnapshots ?? [])],
   };
   for (const field of HARTHMERE_LIVE_MODE_RESPONSE_SNAPSHOT_FIELDS) {
     delete slim[field];
   }
   return slim;
+}
+
+function isHarthmereLiveModeMutationSnapshotKey(
+  value: string
+): value is HarthmereLiveModeMutationSnapshotKey {
+  return (
+    HARTHMERE_LIVE_MODE_MUTATION_SNAPSHOT_KEYS as readonly string[]
+  ).includes(value);
+}
+
+async function hydrateHarthmereLiveModeIdempotencyReplay(input: {
+  redisPrimary: any;
+  envelope: HarthmereLiveModeAuthorityEnvelope;
+  response: LiveModeResponse;
+}) {
+  const now = Date.now();
+  const playerStateKey = harthmereLiveModePlayerStateKey(
+    input.response.actorId
+  );
+  const sharedWorldStateKey = harthmereLiveModeSharedWorldStateKey();
+  const { rawState, rawSharedState } =
+    await readHarthmerePlayerAndSharedStateStrings(
+      input.redisPrimary,
+      playerStateKey,
+      sharedWorldStateKey
+    );
+  const state = parseHarthmereLiveModeBackendState(
+    rawState,
+    input.response.actorId,
+    now
+  );
+  mergeHarthmereLiveModeSharedWorldStateIntoBackend(
+    state,
+    parseHarthmereLiveModeSharedWorldState(rawSharedState, now),
+    now
+  );
+
+  const storedIncludedSnapshots = (
+    input.response.includedSnapshots ?? []
+  ).filter(isHarthmereLiveModeMutationSnapshotKey);
+  const includedSnapshots = storedIncludedSnapshots.length
+    ? storedIncludedSnapshots
+    : harthmereLiveModeMutationSnapshotKeys({
+        actionKind:
+          input.response.backendMutation?.actionKind ??
+          input.response.mutationPlan?.actionKind ??
+          input.envelope.actionKind,
+        subsystem:
+          input.response.backendMutation?.subsystem ?? input.envelope.subsystem,
+        touchedModels: input.response.backendMutation?.touchedModels ?? [],
+      });
+  const includedSnapshotSet = new Set(includedSnapshots);
+  const hydrated: LiveModeResponse = {
+    ...input.response,
+    duplicate: true,
+    replayed: true,
+    snapshotMode: "changed",
+    includedSnapshots,
+    invalidatedSnapshots: HARTHMERE_LIVE_MODE_MUTATION_SNAPSHOT_KEYS.filter(
+      (snapshot) => !includedSnapshotSet.has(snapshot)
+    ),
+  };
+
+  if (includedSnapshotSet.has("buildingState")) {
+    hydrated.buildingState =
+      createHarthmereLiveModeBuildingClientSnapshot(state);
+  }
+  if (includedSnapshotSet.has("bankingState")) {
+    hydrated.bankingState = createHarthmereLiveModeBankingClientSnapshot(state);
+  }
+  if (includedSnapshotSet.has("guildState")) {
+    hydrated.guildState =
+      createHarthmereLiveModeGuildClientSnapshotFromBackend(state);
+  }
+  if (includedSnapshotSet.has("economyState")) {
+    hydrated.economyState =
+      createHarthmereProductionEconomyClientSnapshotFromBackend(state);
+  }
+  if (includedSnapshotSet.has("jobsBoardState")) {
+    hydrated.jobsBoardState =
+      createHarthmereJobsBoardClientSnapshotFromBackend(state);
+  }
+  if (includedSnapshotSet.has("dailyState")) {
+    hydrated.dailyState = createHarthmereCareLoopClientSnapshotFromBackend(
+      state,
+      now
+    );
+  }
+  if (includedSnapshotSet.has("farmingFoodState")) {
+    hydrated.farmingFoodState =
+      createHarthmereLiveModeFarmingFoodClientSnapshot(state);
+  }
+  if (includedSnapshotSet.has("craftingState")) {
+    const stationId =
+      typeof input.envelope.payload.stationId === "string"
+        ? input.envelope.payload.stationId
+        : typeof input.envelope.payload.stationId === "number"
+        ? String(Math.trunc(input.envelope.payload.stationId))
+        : undefined;
+    const stationType =
+      typeof input.envelope.payload.stationType === "string"
+        ? input.envelope.payload.stationType
+        : undefined;
+    hydrated.craftingState =
+      createHarthmereCraftingStationClientSnapshotFromBackend(
+        state,
+        stationId,
+        stationType,
+        now
+      );
+  }
+  if (includedSnapshotSet.has("inventoryLootState")) {
+    hydrated.inventoryLootState =
+      createHarthmereInventoryLootClientSnapshotFromBackend(state);
+  }
+  if (includedSnapshotSet.has("combatState")) {
+    hydrated.combatState = createHarthmereLiveEntityCombatClientSnapshot(state);
+  }
+  if (includedSnapshotSet.has("playerStatusState")) {
+    hydrated.playerStatusState =
+      createHarthmereLiveModePlayerStatusClientSnapshot(state);
+  }
+  if (includedSnapshotSet.has("questState")) {
+    hydrated.questState = createHarthmereLiveModeQuestClientSnapshot(state);
+  }
+  return slimLiveModeResponseForClient(hydrated);
 }
 
 function liveModeEventStreamKey() {
@@ -1865,14 +1999,18 @@ export async function persistHarthmereLiveModeResponse(
   const redis = await liveModeRedis();
   const playerStateKey = harthmereLiveModePlayerStateKey(response.actorId);
   const sharedWorldStateKey = harthmereLiveModeSharedWorldStateKey();
-  if (
+  const readOnlyQuestOperation =
     envelope.actionKind === "request_quest_state_update" &&
-    envelope.subsystem === "quest" &&
-    envelope.payload?.operation === "bible_quest_read"
+    envelope.subsystem === "quest"
+      ? String(envelope.payload?.operation ?? "")
+      : undefined;
+  if (
+    readOnlyQuestOperation === "bible_quest_read" ||
+    readOnlyQuestOperation === "live_entity_helper_read_state"
   ) {
-    // Compatibility path for clients deployed before bible reads moved to the
-    // dedicated GET endpoint. This is a projection read: no WATCH, reducer,
-    // ledger append, idempotency write, or actor/shared-state rewrite.
+    // Compatibility path for clients deployed before these reads moved away
+    // from the mutation endpoint. They are projections: no actor lock, WATCH,
+    // reducer, ledger append, idempotency write, or state rewrite.
     const now = Date.now();
     const { rawState, rawSharedState } =
       await readHarthmerePlayerAndSharedStateStrings(
@@ -1890,16 +2028,41 @@ export async function persistHarthmereLiveModeResponse(
       parseHarthmereLiveModeSharedWorldState(rawSharedState, now),
       now
     );
+    const includedSnapshots: HarthmereLiveModeMutationSnapshotKey[] =
+      readOnlyQuestOperation === "live_entity_helper_read_state"
+        ? ["questState", "inventoryLootState", "buildingState"]
+        : ["questState"];
+    const includedSnapshotSet = new Set(includedSnapshots);
     return {
       ...response,
       persisted: false,
       snapshotMode: "changed",
-      includedSnapshots: ["questState"],
+      includedSnapshots,
       invalidatedSnapshots: HARTHMERE_LIVE_MODE_MUTATION_SNAPSHOT_KEYS.filter(
-        (snapshot) => snapshot !== "questState"
+        (snapshot) => !includedSnapshotSet.has(snapshot)
       ),
+      ...(includedSnapshotSet.has("inventoryLootState")
+        ? {
+            inventoryLootState:
+              createHarthmereInventoryLootClientSnapshotFromBackend(state),
+          }
+        : {}),
+      ...(includedSnapshotSet.has("buildingState")
+        ? {
+            buildingState: createHarthmereLiveModeBuildingClientSnapshot(state),
+          }
+        : {}),
       questState: createHarthmereLiveModeQuestClientSnapshot(state),
     };
+  }
+
+  const previousBeforeActorLock = await redis.primary.get(key);
+  if (previousBeforeActorLock) {
+    return hydrateHarthmereLiveModeIdempotencyReplay({
+      redisPrimary: redis.primary,
+      envelope,
+      response: JSON.parse(previousBeforeActorLock) as LiveModeResponse,
+    });
   }
   const stateAdoption = normalizeHarthmereLiveModeActorStateAdoption({
     actorId: response.actorId,
@@ -1907,6 +2070,25 @@ export async function persistHarthmereLiveModeResponse(
     stateAdoption: deps.stateAdoption,
   });
   const adoptionSourceStateKey = stateAdoption?.fromStateKey;
+  const actorLock: HarthmereActorStateLock =
+    await acquireHarthmereActorStateLock(
+      redis.primary as any,
+      response.actorId,
+      {
+        waitMs: 25_000,
+        ttlMs: 45_000,
+        retryMs: 20,
+      }
+    );
+  if (!actorLock.acquired) {
+    throw new Error("Harthmere live-mode actor authority lock timed out");
+  }
+  let actorLockReleased = false;
+  const releaseActorLock = async () => {
+    if (actorLockReleased) return;
+    actorLockReleased = true;
+    await actorLock.release();
+  };
   // Dedicated per-request connection: WATCH is per-connection, so sharing one
   // connection across concurrent requests silently disables optimistic
   // concurrency (see acquireHarthmereLiveModeTxClient).
@@ -1914,6 +2096,7 @@ export async function persistHarthmereLiveModeResponse(
     await acquireHarthmereLiveModeTxClient(redis.primary);
   const supportsWatch = typeof (txPrimary as any).watch === "function";
   if (!supportsWatch) {
+    await releaseActorLock();
     await releaseTxPrimary();
     throw new Error(
       "Harthmere live-mode Redis client must support WATCH for transactional persistence"
@@ -1931,11 +2114,11 @@ export async function persistHarthmereLiveModeResponse(
       const previous = await txPrimary.get(key);
       mark("idempotency_get_ms", stageStartedAt);
       if (previous) {
-        return {
-          ...(JSON.parse(previous) as LiveModeResponse),
-          duplicate: true,
-          replayed: true,
-        };
+        return hydrateHarthmereLiveModeIdempotencyReplay({
+          redisPrimary: txPrimary,
+          envelope,
+          response: JSON.parse(previous) as LiveModeResponse,
+        });
       }
 
       // HARTHMERE_LIVE_MODE_SCOPED_WATCH (audit fix, 2026-07-13): previously
@@ -1966,11 +2149,11 @@ export async function persistHarthmereLiveModeResponse(
       mark("watched_idempotency_get_ms", stageStartedAt);
       if (watchedPrevious) {
         await redisUnwatchIfSupported(txPrimary);
-        return {
-          ...(JSON.parse(watchedPrevious) as LiveModeResponse),
-          duplicate: true,
-          replayed: true,
-        };
+        return hydrateHarthmereLiveModeIdempotencyReplay({
+          redisPrimary: txPrimary,
+          envelope,
+          response: JSON.parse(watchedPrevious) as LiveModeResponse,
+        });
       }
 
       stageStartedAt = Date.now();
@@ -2048,11 +2231,11 @@ export async function persistHarthmereLiveModeResponse(
         const secondPrevious = await txPrimary.get(key);
         if (secondPrevious) {
           await redisUnwatchIfSupported(txPrimary);
-          return {
-            ...(JSON.parse(secondPrevious) as LiveModeResponse),
-            duplicate: true,
-            replayed: true,
-          };
+          return hydrateHarthmereLiveModeIdempotencyReplay({
+            redisPrimary: txPrimary,
+            envelope,
+            response: JSON.parse(secondPrevious) as LiveModeResponse,
+          });
         }
         stageStartedAt = Date.now();
         ({ rawState, rawSharedState } =
@@ -2300,6 +2483,10 @@ export async function persistHarthmereLiveModeResponse(
       if (supportsWatch && txResult === null) {
         continue;
       }
+      // The authoritative actor document and its idempotency marker are now
+      // committed. Release before ECS/materialization work so unrelated player
+      // actions are never held behind external side effects.
+      await releaseActorLock();
 
       // Materialize server-approved building plans after the state/idempotency
       // commit succeeds. This keeps ECS side effects downstream of durable state.
@@ -2425,6 +2612,7 @@ export async function persistHarthmereLiveModeResponse(
           subsystem: envelope.subsystem,
           attempt,
           persistMs,
+          actorLockWaitMs: actorLock.waitedMs,
           timings: attemptTimings,
           includedSnapshots,
           eventCount: persistedResponse.events.length,
@@ -2442,11 +2630,13 @@ export async function persistHarthmereLiveModeResponse(
       subsystem: envelope.subsystem,
       persistMs: Date.now() - persistStartedAt,
       timings: lastAttemptTimings,
+      actorLockWaitMs: actorLock.waitedMs,
     });
     throw new Error(
       "Harthmere live-mode Redis transaction conflicted too many times"
     );
   } finally {
+    await releaseActorLock();
     await releaseTxPrimary();
   }
 }

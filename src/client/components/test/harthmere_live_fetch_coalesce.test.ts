@@ -8,6 +8,7 @@ import {
   resetHarthmereLiveFetchCache,
   resetHarthmereLiveMutationLocksForTest,
   runHarthmereLiveMutationOnce,
+  runHarthmereLiveMutationSerially,
   resetHarthmereLiveInstallIdForTest,
 } from "@/client/components/harthmere_live_fetch";
 
@@ -89,6 +90,44 @@ describe("harthmere live fetch coalescing", () => {
       "unequipped"
     );
     assert.equal(calls, 2);
+  });
+
+  it("serializes crate, equipment, and drop mutations in player action order", async () => {
+    const firstGate = deferred<void>();
+    const order: string[] = [];
+    const first = runHarthmereLiveMutationSerially(
+      "inventory-equipment",
+      async () => {
+        order.push("crate:start");
+        await firstGate.promise;
+        order.push("crate:end");
+        return "crate";
+      }
+    );
+    const second = runHarthmereLiveMutationSerially(
+      "inventory-equipment",
+      async () => {
+        order.push("equip");
+        return "equip";
+      }
+    );
+    const third = runHarthmereLiveMutationSerially(
+      "inventory-equipment",
+      async () => {
+        order.push("drop");
+        return "drop";
+      }
+    );
+
+    await Promise.resolve();
+    assert.deepEqual(order, ["crate:start"]);
+    firstGate.resolve();
+    assert.deepEqual(await Promise.all([first, second, third]), [
+      "crate",
+      "equip",
+      "drop",
+    ]);
+    assert.deepEqual(order, ["crate:start", "crate:end", "equip", "drop"]);
   });
   afterEach(() => {
     if (originalWindow === undefined) {

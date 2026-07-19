@@ -32,8 +32,8 @@ import { completeHarthmereDailyTaskSoon } from "@/client/components/challenges/h
 import {
   defaultHarthmereLiveFetch,
   fetchHarthmereLiveWithTimeout,
-  prepareHarthmereLiveFetchRequest,
   runHarthmereLiveMutationOnce,
+  runHarthmereLiveMutationSerially,
 } from "@/client/components/harthmere_live_fetch";
 import {
   healHarthmerePlayer,
@@ -2429,63 +2429,60 @@ function submitHarthmereInventoryMutationToLiveMode(
     operation === "grant" && /^b:\d+$/.test(itemId)
       ? { [itemId]: count }
       : undefined;
-  const requestId = `harthmere_local_inventory_${operation}_${Date.now()}_${Math.random()
-    .toString(36)
-    .slice(2)}`;
-  const prepared = prepareHarthmereLiveFetchRequest(
-    "/api/harthmere/live_mode",
-    {
-      method: "POST",
-      credentials: "same-origin",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        requestId,
-        idempotencyKey: requestId,
-        actionKind:
-          operation === "grant"
-            ? "request_loot_roll"
-            : "request_inventory_item_action",
-        subsystem: "inventory",
-        actorEntityVersion: 1,
-        zoneId: "harthmere",
-        payload:
-          operation === "grant"
-            ? {
-                itemId,
-                count,
-                ...(directVoxelItemDeltas
-                  ? { itemDeltas: directVoxelItemDeltas }
-                  : {}),
-                source: reason,
-              }
-            : {
-                operation: "destroy_item",
-                itemId,
-                count,
-                source: reason,
-              },
-        includeSnapshots: [
-          "inventoryLootState",
-          "farmingFoodState",
-          "buildingState",
-          "playerStatusState",
-        ],
-        clientClaims: {
-          source: `local_harthmere_inventory_${operation}`,
-          reason,
-        },
-      }),
-    }
-  );
-  return window
-    .fetch(prepared.input, prepared.init)
-    .then(parseHarthmereLiveMutationResponse)
-    .then((body) => {
-      if (body) {
-        dispatchHarthmereLiveInventorySync(body);
+  return runHarthmereLiveMutationSerially("inventory-equipment", async () => {
+    const requestId = `harthmere_local_inventory_${operation}_${Date.now()}_${Math.random()
+      .toString(36)
+      .slice(2)}`;
+    const response = await fetchHarthmereLiveWithTimeout(
+      window.fetch.bind(window),
+      "/api/harthmere/live_mode",
+      {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          requestId,
+          idempotencyKey: requestId,
+          actionKind:
+            operation === "grant"
+              ? "request_loot_roll"
+              : "request_inventory_item_action",
+          subsystem: "inventory",
+          actorEntityVersion: 1,
+          zoneId: "harthmere",
+          payload:
+            operation === "grant"
+              ? {
+                  itemId,
+                  count,
+                  ...(directVoxelItemDeltas
+                    ? { itemDeltas: directVoxelItemDeltas }
+                    : {}),
+                  source: reason,
+                }
+              : {
+                  operation: "destroy_item",
+                  itemId,
+                  count,
+                  source: reason,
+                },
+          includeSnapshots: [
+            "inventoryLootState",
+            "farmingFoodState",
+            "buildingState",
+            "playerStatusState",
+          ],
+          clientClaims: {
+            source: `local_harthmere_inventory_${operation}`,
+            reason,
+          },
+        }),
       }
-      return body;
-    });
+    );
+    const body = await parseHarthmereLiveMutationResponse(response);
+    if (body) dispatchHarthmereLiveInventorySync(body);
+    return body;
+  });
 }
 
 export function submitHarthmereInventoryGrantToLiveModeForTest(
@@ -2515,9 +2512,8 @@ export function submitHarthmereContainerTransferToLiveModeForTest(
     itemRecord[itemId] = (itemRecord[itemId] ?? 0) + quantity;
   }
   if (Object.keys(itemRecord).length === 0) return undefined;
-  return runHarthmereLiveMutationOnce(
-    `container-transfer:${transferKey}`,
-    async () => {
+  return runHarthmereLiveMutationOnce(`container-transfer:${transferKey}`, () =>
+    runHarthmereLiveMutationSerially("inventory-equipment", async () => {
       const requestId = `harthmere_container_transfer_${Date.now()}_${Math.random()
         .toString(36)
         .slice(2)}`;
@@ -2551,7 +2547,7 @@ export function submitHarthmereContainerTransferToLiveModeForTest(
       const body = await parseHarthmereLiveMutationResponse(response);
       if (body) dispatchHarthmereLiveInventorySync(body);
       return body;
-    }
+    })
   );
 }
 
@@ -2560,8 +2556,8 @@ export function submitHarthmereContainerTransferToLiveModeForTest(
 // granting them. Uses `request_inventory_item_action` with operation
 // "destroy_item" — the client-authorized removal path (request_inventory_mutation
 // requires server authority and would be rejected). Routes through the same
-// prepareHarthmereLiveFetchRequest wrapper so it carries the sticky install id
-// and lands on the SAME actor the reads use.
+// shared live fetch wrapper so it carries the sticky install id and lands on
+// the SAME actor the reads use.
 export function submitHarthmereInventorySpendToLiveModeForTest(
   itemId: string,
   quantity = 1,

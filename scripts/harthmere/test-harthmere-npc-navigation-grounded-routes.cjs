@@ -119,8 +119,12 @@ report.check("renderer declares current NPC navigation fix", assetsSrc.includes(
 report.check("renderer uses swept NPC body collision, not endpoint-only collision", assetsSrc.includes("sweepHarthmereNpcCollisionObstacle") && assetsSrc.includes("HARTHMERE_NPC_BODY_SWEEP_STEP_METERS") && assetsSrc.includes("HARTHMERE_NPC_BODY_SAMPLE_OFFSETS"));
 report.check("NPC root Y is grounded instead of bobbing/floating the whole actor", assetsSrc.includes("harthmereNpcGroundedY") && !/position\.y\s*=\s*\n\s*instance\.base\[1\]\s*\+\s*Math\.sin\(this\.elapsed \* 2\)/.test(assetsSrc));
 report.check("repulsion cannot push NPCs into walls after route collision resolves", /findHarthmereNpcBodyCollisionObstacle\(resolvedX, resolvedZ\)[\s\S]{0,180}resolvedX = resolved\.position\[0\]/.test(assetsSrc));
-report.check("moving NPC LOD follows current object position so walkers do not disappear away from spawn", /const isRuntimeLife = isHarthmereRuntimeLifePlacement\(instance\.placement\);[\s\S]{0,520}const lodX = isRuntimeLife[\s\S]{0,120}instance\.object\.position\.x[\s\S]{0,220}const lodZ = isRuntimeLife[\s\S]{0,120}instance\.object\.position\.z/.test(assetsSrc));
-report.check("runtime life actors stay visible at close range instead of prop LOD hiding their bodies", /const isRuntimeLife = isHarthmereRuntimeLifePlacement\(instance\.placement\);[\s\S]{0,620}const show =[\s\S]{0,160}isRuntimeLife \|\| !origin[\s\S]{0,80}\? true/.test(assetsSrc));
+report.check("moving NPC LOD follows current object position so walkers do not disappear away from spawn", /const isRuntimeLife = isHarthmereRuntimeLifePlacement\(instance\.placement\);[\s\S]{0,900}const lodX = isRuntimeLife[\s\S]{0,120}instance\.object\.position\.x[\s\S]{0,220}const lodZ = isRuntimeLife[\s\S]{0,120}instance\.object\.position\.z/.test(assetsSrc));
+report.check(
+  "runtime life actors stay visible at close range without bypassing bounded actor LOD",
+  /const isRuntimeLife = isHarthmereRuntimeLifePlacement\(instance\.placement\);[\s\S]{0,760}const visibilityTier: HarthmereLodTier = isRuntimeLife[\s\S]{0,180}\? "near"[\s\S]{0,80}: "district"[\s\S]{0,900}shouldShowHarthmerePlacementAtDistanceSq\([\s\S]{0,80}visibilityTier/.test(assetsSrc) &&
+    !/const show =[\s\S]{0,160}isRuntimeLife \|\| !origin[\s\S]{0,80}\? true/.test(assetsSrc)
+);
 report.check("static NPCs without idle clips do not walk in place", assetsSrc.includes("allowMovingFallback = true") && assetsSrc.includes("canUseMovingClipAsDefault") && assetsSrc.includes("Boolean(placement.wander || placement.bob || placement.spin)"));
 report.check("renderer route anchors exist", Boolean(rendererAnchors));
 report.check("shared and renderer route anchors stay in sync", JSON.stringify(rendererAnchors) === JSON.stringify(sharedAnchors));

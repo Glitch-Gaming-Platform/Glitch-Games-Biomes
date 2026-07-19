@@ -114,10 +114,31 @@ class FakeRedisPrimary {
     };
   }
 
-  async set(key: string, value: string) {
-    this.txOps.push(["direct_set", key]);
+  async set(key: string, value: string, ...args: unknown[]) {
+    if (args.includes("NX") && this.store.has(key)) {
+      return null;
+    }
+    if (!key.includes(":actor_lock:")) {
+      this.txOps.push(["direct_set", key]);
+    }
     this.store.set(key, value);
     return "OK";
+  }
+
+  async eval(
+    _script: string,
+    _numberOfKeys: number,
+    key: string,
+    expected: string,
+    replacement?: string
+  ) {
+    if (this.store.get(key) !== expected) return 0;
+    if (replacement === undefined) {
+      this.store.delete(key);
+    } else {
+      this.store.set(key, replacement);
+    }
+    return 1;
   }
 
   async xadd() {
@@ -524,7 +545,20 @@ describe("live_mode API Redis persistence", () => {
       const storedIdempotency = JSON.parse(
         redisPrimary.store.get(idempotencyKey) ?? "{}"
       );
-      assert.deepEqual(storedIdempotency.includedSnapshots, []);
+      assert.deepEqual(storedIdempotency.includedSnapshots, [
+        "buildingState",
+        "bankingState",
+        "guildState",
+        "economyState",
+        "jobsBoardState",
+        "dailyState",
+        "farmingFoodState",
+        "craftingState",
+        "inventoryLootState",
+        "combatState",
+        "playerStatusState",
+        "questState",
+      ]);
       assert.equal(storedIdempotency.buildingState, undefined);
       assert.equal(storedIdempotency.economyState, undefined);
       assert.equal(storedIdempotency.farmingFoodState, undefined);
@@ -567,8 +601,10 @@ describe("live_mode API Redis persistence", () => {
       });
       assert.equal(replay.duplicate, true);
       assert.equal(replay.replayed, true);
-      assert.deepEqual(replay.includedSnapshots, []);
-      assert.equal(replay.playerStatusState, undefined);
+      assert.ok(replay.includedSnapshots?.includes("inventoryLootState"));
+      assert.ok(replay.includedSnapshots?.includes("playerStatusState"));
+      assert.ok(replay.inventoryLootState);
+      assert.ok(replay.playerStatusState);
     }));
 
   // HARTHMERE_LIVE_MODE_SCOPED_WATCH (audit fix, 2026-07-13): a mutation that
@@ -699,11 +735,7 @@ describe("live_mode API Redis persistence", () => {
 
     const playerKey = harthmereLiveModePlayerStateKey(ACTOR);
     const sharedWorldKey = harthmereLiveModeSharedWorldStateKey();
-    assert.deepEqual(persisted.backendMutation?.touchedModels?.sort(), [
-      "building_state",
-      "inventory_items",
-      "quest_state",
-    ]);
+    assert.equal(persisted.persisted, false);
     assert.ok(persisted.questState, "read response should include questState");
     assert.ok(
       persisted.inventoryLootState,
@@ -725,15 +757,8 @@ describe("live_mode API Redis persistence", () => {
     );
     assert.equal(redisPrimary.store.get(playerKey), undefined);
     assert.equal(redisPrimary.store.get(sharedWorldKey), undefined);
-    assert.ok(
-      redisPrimary.txOps.some(
-        (op) =>
-          op[0] === "set" &&
-          op[1] ===
-            "harthmere:live_mode:current:idempotency:player_live_api_persist_001:live-api-persist-helper-read"
-      ),
-      "read response should still write idempotency inside the transaction"
-    );
+    assert.deepEqual(redisPrimary.watched, []);
+    assert.deepEqual(redisPrimary.txOps, []);
   });
 
   it("serves legacy bible reads without entering transactional persistence", async () => {
@@ -1232,12 +1257,18 @@ describe("live_mode API Redis persistence", () => {
     const acceptReplay = await persistEnvelope(env);
     assert.equal(acceptReplay.duplicate, true);
     assert.equal(acceptReplay.replayed, true);
-    assert.deepEqual(acceptReplay.includedSnapshots, []);
-    assert.equal(acceptReplay.jobsBoardState, undefined);
-    assert.equal(acceptReplay.questState, undefined);
-    assert.equal(acceptReplay.inventoryLootState, undefined);
-    assert.equal(acceptReplay.playerStatusState, undefined);
-    assert.equal(acceptReplay.buildingState, undefined);
+    assert.deepEqual(acceptReplay.includedSnapshots?.sort(), [
+      "buildingState",
+      "inventoryLootState",
+      "jobsBoardState",
+      "playerStatusState",
+      "questState",
+    ]);
+    assert.ok(acceptReplay.jobsBoardState);
+    assert.ok(acceptReplay.questState);
+    assert.ok(acceptReplay.inventoryLootState);
+    assert.ok(acceptReplay.playerStatusState);
+    assert.ok(acceptReplay.buildingState);
 
     let rawActor = redisPrimary.store.get(
       harthmereLiveModePlayerStateKey(ACTOR)

@@ -3,6 +3,7 @@ import { useClientContext } from "@/client/components/contexts/ClientContextReac
 import {
   defaultHarthmereLiveFetch,
   runHarthmereLiveMutationOnce,
+  runHarthmereLiveMutationSerially,
 } from "@/client/components/harthmere_live_fetch";
 import { addToast } from "@/client/components/toast/helpers";
 import {
@@ -1698,48 +1699,50 @@ async function submitEquipmentLiveModeAction(
   const mutationKey = `equipment:${slot}:${itemId ?? "empty"}:${
     instanceId ?? "stack"
   }`;
-  return runHarthmereLiveMutationOnce(mutationKey, async () => {
-    const requestId = `biomes_ui_equipment_${slot}_${Date.now()}_${Math.random()
-      .toString(36)
-      .slice(2)}`;
-    const response = await defaultHarthmereLiveFetch(
-      "/api/harthmere/live_mode",
-      {
-        method: "POST",
-        credentials: "same-origin",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          requestId,
-          idempotencyKey: requestId,
-          actionKind: "request_equipment_change",
-          subsystem: "equipment",
-          actorEntityVersion: 1,
-          zoneId: "the_grove",
-          payload: { itemId, slot, instanceId },
-          clientClaims,
-          includeSnapshots: [
-            "inventoryLootState",
-            "questState",
-            "playerStatusState",
-          ],
-        }),
-      }
-    );
-    const body = await response.json();
-    if (!response.ok || body?.ok === false) {
-      throw new Error(
-        Array.isArray(body?.validation?.errors)
-          ? body.validation.errors.join(",")
-          : `equipment_failed:${slot}`
+  return runHarthmereLiveMutationOnce(mutationKey, () =>
+    runHarthmereLiveMutationSerially("inventory-equipment", async () => {
+      const requestId = `biomes_ui_equipment_${slot}_${Date.now()}_${Math.random()
+        .toString(36)
+        .slice(2)}`;
+      const response = await defaultHarthmereLiveFetch(
+        "/api/harthmere/live_mode",
+        {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            requestId,
+            idempotencyKey: requestId,
+            actionKind: "request_equipment_change",
+            subsystem: "equipment",
+            actorEntityVersion: 1,
+            zoneId: "the_grove",
+            payload: { itemId, slot, instanceId },
+            clientClaims,
+            includeSnapshots: [
+              "inventoryLootState",
+              "questState",
+              "playerStatusState",
+            ],
+          }),
+        }
       );
-    }
-    const equipment = body?.inventoryLootState?.actor?.equipment;
-    const equippedItemId = equipment?.[slot];
-    if (!equipment || (itemId ? equippedItemId !== itemId : equippedItemId)) {
-      throw new Error(`equipment_state_mismatch:${slot}`);
-    }
-    return body;
-  });
+      const body = await response.json();
+      if (!response.ok || body?.ok === false) {
+        throw new Error(
+          Array.isArray(body?.validation?.errors)
+            ? body.validation.errors.join(",")
+            : `equipment_failed:${slot}`
+        );
+      }
+      const equipment = body?.inventoryLootState?.actor?.equipment;
+      const equippedItemId = equipment?.[slot];
+      if (!equipment || (itemId ? equippedItemId !== itemId : equippedItemId)) {
+        throw new Error(`equipment_state_mismatch:${slot}`);
+      }
+      return body;
+    })
+  );
 }
 
 async function submitInventoryItemLiveModeAction(
@@ -1758,43 +1761,45 @@ async function submitInventoryItemLiveModeAction(
   const mutationKey = `inventory:${operation}:${payload.itemId}:${
     payload.sourceSlot ?? "any"
   }`;
-  return runHarthmereLiveMutationOnce(mutationKey, async () => {
-    const requestId = `biomes_ui_inventory_${operation}_${Date.now()}_${Math.random()
-      .toString(36)
-      .slice(2)}`;
-    const response = await defaultHarthmereLiveFetch(
-      "/api/harthmere/live_mode",
-      {
-        method: "POST",
-        credentials: "same-origin",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          requestId,
-          idempotencyKey: requestId,
-          actionKind: "request_inventory_item_action",
-          subsystem: "inventory",
-          actorEntityVersion: 1,
-          zoneId: "the_grove",
-          payload: { operation, ...payload },
-          clientClaims: {},
-          includeSnapshots: [
-            "inventoryLootState",
-            "playerStatusState",
-            "questState",
-          ],
-        }),
-      }
-    );
-    const body = await response.json();
-    if (!response.ok || body?.ok === false) {
-      throw new Error(
-        Array.isArray(body?.validation?.errors)
-          ? body.validation.errors.join(",")
-          : `inventory_item_failed:${operation}`
+  return runHarthmereLiveMutationOnce(mutationKey, () =>
+    runHarthmereLiveMutationSerially("inventory-equipment", async () => {
+      const requestId = `biomes_ui_inventory_${operation}_${Date.now()}_${Math.random()
+        .toString(36)
+        .slice(2)}`;
+      const response = await defaultHarthmereLiveFetch(
+        "/api/harthmere/live_mode",
+        {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            requestId,
+            idempotencyKey: requestId,
+            actionKind: "request_inventory_item_action",
+            subsystem: "inventory",
+            actorEntityVersion: 1,
+            zoneId: "the_grove",
+            payload: { operation, ...payload },
+            clientClaims: {},
+            includeSnapshots: [
+              "inventoryLootState",
+              "playerStatusState",
+              "questState",
+            ],
+          }),
+        }
       );
-    }
-    return body;
-  });
+      const body = await response.json();
+      if (!response.ok || body?.ok === false) {
+        throw new Error(
+          Array.isArray(body?.validation?.errors)
+            ? body.validation.errors.join(",")
+            : `inventory_item_failed:${operation}`
+        );
+      }
+      return body;
+    })
+  );
 }
 
 // Building System UI state is hydrated from /api/harthmere/live_mode via

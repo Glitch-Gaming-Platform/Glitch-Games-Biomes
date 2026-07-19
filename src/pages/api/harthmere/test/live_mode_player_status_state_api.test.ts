@@ -144,6 +144,68 @@ describe("live_mode_player_status_state API route integration", () => {
     assert.equal(snapshot.backendAuthority.staminaPersisted, true);
   });
 
+  it("never overwrites a crate/equipment mutation that wins during a status tick", async () => {
+    const stateKey = harthmereLiveModePlayerStateKey(ACTOR);
+    const backend = defaultHarthmereLiveModeBackendState(ACTOR, NOW_MS);
+    backend.combat.resources.stamina = 108;
+    backend.combat.maxResources.stamina = 108;
+    backend.combat.lastStaminaTickMs = NOW_MS - 10_000;
+    backend.updatedAtMs = NOW_MS - 10_000;
+    const store = new Map<string, string>([
+      [stateKey, JSON.stringify(backend)],
+    ]);
+    let injectedMutation = false;
+    const redis = {
+      primary: {
+        get: async (key: string) => store.get(key) ?? null,
+        set: async (key: string, value: string, ...args: unknown[]) => {
+          if (args.includes("NX") && store.has(key)) return null;
+          store.set(key, value);
+          return "OK";
+        },
+        eval: async (
+          _script: string,
+          _numberOfKeys: number,
+          key: string,
+          expected: string,
+          replacement?: string
+        ) => {
+          if (
+            replacement !== undefined &&
+            key === stateKey &&
+            !injectedMutation
+          ) {
+            injectedMutation = true;
+            const newer = JSON.parse(store.get(stateKey) ?? "{}") as any;
+            newer.updatedAtMs = NOW_MS + 1;
+            newer.inventory.items.field_trousers = 1;
+            newer.inventory.items.cloth_scrap = 4;
+            newer.inventory.equipment.legs = "field_trousers";
+            store.set(stateKey, JSON.stringify(newer));
+          }
+          if (store.get(key) !== expected) return 0;
+          if (replacement === undefined) store.delete(key);
+          else store.set(key, replacement);
+          return 1;
+        },
+      },
+    };
+
+    const snapshot = await readHarthmereLiveModePlayerStatusStateForActor({
+      redis,
+      actorId: ACTOR,
+      nowMs: NOW_MS,
+      gameplayActive: true,
+    });
+    const persisted = JSON.parse(store.get(stateKey) ?? "{}");
+
+    assert.equal(snapshot.backendAuthority.compareAndSetConflict, true);
+    assert.equal(snapshot.backendAuthority.staminaPersisted, false);
+    assert.equal(persisted.inventory.items.field_trousers, 1);
+    assert.equal(persisted.inventory.items.cloth_scrap, 4);
+    assert.equal(persisted.inventory.equipment.legs, "field_trousers");
+  });
+
   it("does not let a stale status poll restore older health, mana, stamina, or reputation", () => {
     const statusWrite = defaultHarthmereLiveModeBackendState(ACTOR, NOW_MS);
     statusWrite.updatedAtMs = NOW_MS + 5_000;
@@ -422,8 +484,8 @@ describe("live_mode_player_status_state API route integration", () => {
     assert.equal(persisted.combat.deathState, "alive");
     assert.equal(persisted.combat.deadFromStaminaAtMs, undefined);
     assert.equal(
-      Object.values(persisted.combat.deathRecords ?? {}).some(
-        (record: any) => String(record.cause).includes("stamina")
+      Object.values(persisted.combat.deathRecords ?? {}).some((record: any) =>
+        String(record.cause).includes("stamina")
       ),
       false
     );

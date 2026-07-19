@@ -160,7 +160,7 @@ export function harthmereFallbackNpcDialogText(input: {
   // (dialogue fix D-1/D-3/D-4, 2026-07-14): build a per-NPC line from three
   // INDEPENDENT hash streams — an opener that names the NPC, a grounded
   // observation that names their district when known, and a closing bit of
-  // voice. With 8 x 8 x 8 combinations (name/district substituted) nearby NPCs
+  // voice. With 30 x 8 x 8 combinations (name/district substituted) nearby NPCs
   // no longer share a byte-for-byte script.
   const here = district ?? "Harthmere";
   const openers = [
@@ -172,6 +172,28 @@ export function harthmereFallbackNpcDialogText(input: {
     `I'm ${name} — you're not from ${here}, are you?`,
     `${name}. New face.`,
     `I keep to my work here. ${name}.`,
+    `You can call me ${name}.`,
+    `Around ${here}, folks know me as ${name}.`,
+    `If introductions matter, mine is ${name}.`,
+    `Start with ${name}; we can sort the rest after.`,
+    `The name is ${name}. What brings you through ${here}?`,
+    `I answer to ${name}, especially when there is work to do.`,
+    `You've got ${name}. Say what you need plainly.`,
+    `Most days I am just ${name}, keeping ${here} moving.`,
+    `Before you ask: ${name}.`,
+    `New around ${here}? I'm ${name}.`,
+    `People send questions my way. The name is ${name}.`,
+    `${name} here. Keep it brief and honest.`,
+    `If work brought you, ask for ${name}.`,
+    `I was wondering when you'd find ${name}.`,
+    `No ceremony needed — ${name}.`,
+    `Take a breath. I'm ${name}.`,
+    `You're speaking with ${name}, for better or worse.`,
+    `Call me ${name}; everyone else in ${here} does.`,
+    `I know these streets. I'm ${name}.`,
+    `If trouble sent you, it found ${name}.`,
+    `Let's save time: ${name}.`,
+    `Names first. Mine is ${name}.`,
   ];
   const observations = [
     `${here} runs on small habits: count what you take, name what you owe, leave the next traveler a fair chance.`,

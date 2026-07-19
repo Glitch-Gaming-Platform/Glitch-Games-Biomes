@@ -4,6 +4,11 @@ import { readHarthmereRedisStrings } from "@/server/harthmere/live_mode_state_re
 import { resolveHarthmereLiveModeActorId } from "@/server/harthmere/live_mode_actor_resolution";
 import { disableHarthmereLiveModeHttpCaching } from "@/server/harthmere/live_mode_http_cache";
 import {
+  acquireHarthmereActorStateLock,
+  compareAndSetHarthmereActorState,
+  type HarthmereActorStateAuthorityRedis,
+} from "@/server/harthmere/live_mode_actor_state_authority";
+import {
   createHarthmereLiveModePlayerStatusClientSnapshot,
   harthmereLiveModePlayerStateKey,
   parseHarthmereLiveModeBackendState,
@@ -165,129 +170,180 @@ export function shouldPersistHarthmerePlayerStatusStaminaTick(input: {
   );
 }
 
-export async function readHarthmereLiveModePlayerStatusStateForActor(input: {
+export async function readHarthmereLiveModePlayerStatusStateForActor<
+  TPrimary extends {
+    get: (key: string) => Promise<string | null>;
+    mget?: (...keys: string[]) => Promise<Array<string | null>>;
+  }
+>(input: {
   redis: {
-    primary: {
-      get: (key: string) => Promise<string | null>;
-      set?: (key: string, value: string) => Promise<unknown>;
-      mget?: (...keys: string[]) => Promise<Array<string | null>>;
-    };
+    primary: TPrimary;
   };
   actorId: string;
   nowMs: number;
   gameplayActive?: boolean;
 }) {
   const stateKey = harthmereLiveModePlayerStateKey(input.actorId);
-  const [rawState] = await readHarthmereRedisStrings(input.redis.primary, [
-    stateKey,
-  ]);
-  const rawStateNeedsZeroHpDeathPersistence =
-    rawHarthmereStatusStateHasZeroHpAlive(rawState);
-  const state = parseHarthmereLiveModeBackendState(
-    rawState,
-    input.actorId,
-    input.nowMs
-  );
-  const hasBackendRuntimeState = rawState !== null;
-  const previousStamina = Number(state.combat.resources?.stamina ?? 0);
-  const previousDeadFromStaminaAtMs = Number.isFinite(
-    Number(state.combat.deadFromStaminaAtMs)
-  )
-    ? Number(state.combat.deadFromStaminaAtMs)
-    : undefined;
-  const previousUpdatedAtMs = state.updatedAtMs;
-  const statusReadRepair = { changed: false };
-  const zeroHpDeathRepair = repairZeroHpAliveDeathForStatusRead(state, {
-    nowMs: input.nowMs,
-  });
-  const playableZeroRepair = repairStalePlayableZeroStaminaForStatusRead(
-    state,
-    { nowMs: input.nowMs }
-  );
-  // Auto-revive a stamina-only death once stamina has regenerated, so the player
-  // is not permanently stuck dead (and the client stops looping death_transition
-  // -> respawn). Runs before the stamina tick so the revived hp is authoritative.
-  const staminaRecoveredRevive =
-    reviveStaleStaminaDeathWhenStaminaRecoveredForStatusRead(state, {
+  const primary = input.redis.primary as TPrimary & {
+    set?: (...args: any[]) => Promise<unknown>;
+    eval?: (...args: any[]) => Promise<unknown>;
+  };
+  const canPersist = typeof primary.set === "function";
+  const actorLock = canPersist
+    ? await acquireHarthmereActorStateLock(
+        primary as HarthmereActorStateAuthorityRedis,
+        input.actorId,
+        {
+          // HUD polling must never queue behind a gameplay mutation. If the
+          // actor is busy, return the latest durable projection immediately and
+          // let the next poll advance stamina.
+          waitMs: 75,
+          ttlMs: 10_000,
+          retryMs: 10,
+        }
+      )
+    : {
+        acquired: true,
+        supported: false,
+        waitedMs: 0,
+        release: async () => {},
+      };
+
+  if (!actorLock.acquired) {
+    const [rawState] = await readHarthmereRedisStrings(primary, [stateKey]);
+    const state = parseHarthmereLiveModeBackendState(
+      rawState,
+      input.actorId,
+      input.nowMs
+    );
+    return {
+      ...createHarthmereLiveModePlayerStatusClientSnapshot(state),
+      backendAuthority: {
+        source: "harthmere-live-mode-redis",
+        role: "backend-runtime-cache",
+        persisted: rawState !== null,
+        readOnlyProjection: true,
+        actorLockWaitMs: actorLock.waitedMs,
+        repairedForSnapshot: false,
+        repairedZeroHpDeath: false,
+        repairedPlayableZeroStamina: false,
+        revivedStaminaDeathOnRecovery: false,
+        staminaPersisted: false,
+      },
+    };
+  }
+
+  try {
+    // The actor lock is the single-writer authority shared with live_mode POST
+    // mutations. Read only after acquiring it so every field starts from the
+    // newest inventory/equipment/quest/drop document.
+    const [rawState] = await readHarthmereRedisStrings(primary, [stateKey]);
+    const rawStateNeedsZeroHpDeathPersistence =
+      rawHarthmereStatusStateHasZeroHpAlive(rawState);
+    const state = parseHarthmereLiveModeBackendState(
+      rawState,
+      input.actorId,
+      input.nowMs
+    );
+    const hasBackendRuntimeState = rawState !== null;
+    const previousStamina = Number(state.combat.resources?.stamina ?? 0);
+    const previousDeadFromStaminaAtMs = Number.isFinite(
+      Number(state.combat.deadFromStaminaAtMs)
+    )
+      ? Number(state.combat.deadFromStaminaAtMs)
+      : undefined;
+    const previousUpdatedAtMs = state.updatedAtMs;
+    const statusReadRepair = { changed: false };
+    const zeroHpDeathRepair = repairZeroHpAliveDeathForStatusRead(state, {
       nowMs: input.nowMs,
     });
-  const backfillWindowReset =
-    resetOfflineStaminaBackfillWindowForActiveStatusRead(state, {
+    const playableZeroRepair = repairStalePlayableZeroStaminaForStatusRead(
+      state,
+      { nowMs: input.nowMs }
+    );
+    const staminaRecoveredRevive =
+      reviveStaleStaminaDeathWhenStaminaRecoveredForStatusRead(state, {
+        nowMs: input.nowMs,
+      });
+    const backfillWindowReset =
+      resetOfflineStaminaBackfillWindowForActiveStatusRead(state, {
+        nowMs: input.nowMs,
+        gameplayActive: input.gameplayActive === true,
+      });
+    const staminaTick = tickHarthmereLiveModeStaminaForGameplay(state, {
       nowMs: input.nowMs,
       gameplayActive: input.gameplayActive === true,
+      allowDeathFromStamina: true,
     });
-  const staminaTick = tickHarthmereLiveModeStaminaForGameplay(state, {
-    nowMs: input.nowMs,
-    gameplayActive: input.gameplayActive === true,
-    allowDeathFromStamina: true,
-  });
-  const nextStamina = Number(state.combat.resources?.stamina ?? 0);
-  const shouldPersist =
-    hasBackendRuntimeState &&
-    typeof input.redis.primary.set === "function" &&
-    (statusReadRepair.changed ||
-      rawStateNeedsZeroHpDeathPersistence ||
-      zeroHpDeathRepair.changed ||
-      playableZeroRepair.changed ||
-      staminaRecoveredRevive.changed ||
-      backfillWindowReset.changed ||
-      shouldPersistHarthmerePlayerStatusStaminaTick({
-        changed: staminaTick.changed,
-        deathTriggered: staminaTick.deathTriggered,
-        previousDeadFromStaminaAtMs,
-        nextDeadFromStaminaAtMs: Number.isFinite(
-          Number(state.combat.deadFromStaminaAtMs)
-        )
-          ? Number(state.combat.deadFromStaminaAtMs)
-          : undefined,
-        previousStamina,
-        nextStamina,
-        previousUpdatedAtMs,
-        nowMs: input.nowMs,
-      }));
-  let statusSnapshotState = state;
-  if (shouldPersist) {
-    // Status polling is the only reader with enough cadence to make stamina feel
-    // alive in the HUD. Keep the write narrowly scoped to this actor key and
-    // throttle it so normal polling does not contend with reducer transactions.
-    state.updatedAtMs = input.nowMs;
-    const latestRawStateForStatusWrite =
-      typeof input.redis.primary.get === "function"
-        ? await input.redis.primary.get(stateKey)
-        : rawState;
-    statusSnapshotState = mergeFreshHarthmerePlayerStatusReadStateForTest({
-      state,
-      latestRawState: latestRawStateForStatusWrite,
-      actorId: input.actorId,
-      nowMs: input.nowMs,
-      rawUpdatedAtMs: previousUpdatedAtMs,
-      allowHealthWrite:
+    const nextStamina = Number(state.combat.resources?.stamina ?? 0);
+    const shouldPersist =
+      hasBackendRuntimeState &&
+      canPersist &&
+      (statusReadRepair.changed ||
         rawStateNeedsZeroHpDeathPersistence ||
         zeroHpDeathRepair.changed ||
         playableZeroRepair.changed ||
         staminaRecoveredRevive.changed ||
-        staminaTick.deathTriggered,
-    });
-    await input.redis.primary.set!(
-      stateKey,
-      JSON.stringify(statusSnapshotState)
-    );
+        backfillWindowReset.changed ||
+        shouldPersistHarthmerePlayerStatusStaminaTick({
+          changed: staminaTick.changed,
+          deathTriggered: staminaTick.deathTriggered,
+          previousDeadFromStaminaAtMs,
+          nextDeadFromStaminaAtMs: Number.isFinite(
+            Number(state.combat.deadFromStaminaAtMs)
+          )
+            ? Number(state.combat.deadFromStaminaAtMs)
+            : undefined,
+          previousStamina,
+          nextStamina,
+          previousUpdatedAtMs,
+          nowMs: input.nowMs,
+        }));
+    let statusSnapshotState = state;
+    let staminaPersisted = false;
+    let compareAndSetConflict = false;
+    if (shouldPersist && rawState !== null) {
+      state.updatedAtMs = input.nowMs;
+      staminaPersisted = await compareAndSetHarthmereActorState(
+        primary as HarthmereActorStateAuthorityRedis,
+        stateKey,
+        rawState,
+        JSON.stringify(state)
+      );
+      if (!staminaPersisted) {
+        // An old rolling-deploy replica may not honor the new actor lock. CAS
+        // still guarantees this status poll cannot overwrite its newer
+        // inventory/equipment/drop state.
+        compareAndSetConflict = true;
+        const latestRawState = await primary.get(stateKey);
+        statusSnapshotState = parseHarthmereLiveModeBackendState(
+          latestRawState,
+          input.actorId,
+          input.nowMs
+        );
+      }
+    }
+    return {
+      ...createHarthmereLiveModePlayerStatusClientSnapshot(statusSnapshotState),
+      backendAuthority: {
+        source: "harthmere-live-mode-redis",
+        role: "backend-runtime-cache",
+        persisted: hasBackendRuntimeState,
+        readOnlyProjection: false,
+        actorLockSupported: actorLock.supported,
+        actorLockWaitMs: actorLock.waitedMs,
+        compareAndSetConflict,
+        repairedForSnapshot: statusReadRepair.changed,
+        repairedZeroHpDeath:
+          rawStateNeedsZeroHpDeathPersistence || zeroHpDeathRepair.changed,
+        repairedPlayableZeroStamina: playableZeroRepair.changed,
+        revivedStaminaDeathOnRecovery: staminaRecoveredRevive.changed,
+        staminaPersisted,
+      },
+    };
+  } finally {
+    await actorLock.release();
   }
-  return {
-    ...createHarthmereLiveModePlayerStatusClientSnapshot(statusSnapshotState),
-    backendAuthority: {
-      source: "harthmere-live-mode-redis",
-      role: "backend-runtime-cache",
-      persisted: hasBackendRuntimeState,
-      readOnlyProjection: false,
-      repairedForSnapshot: statusReadRepair.changed,
-      repairedZeroHpDeath:
-        rawStateNeedsZeroHpDeathPersistence || zeroHpDeathRepair.changed,
-      repairedPlayableZeroStamina: playableZeroRepair.changed,
-      revivedStaminaDeathOnRecovery: staminaRecoveredRevive.changed,
-      staminaPersisted: shouldPersist,
-    },
-  };
 }
 
 function rawHarthmereStatusStateHasZeroHpAlive(rawState: string | null) {
@@ -380,8 +436,7 @@ function harthmereDeathRecordLooksStaminaCaused(
     .replace(/[_-]+/g, " ");
   const normalizedDeathId = deathId.toLowerCase().replace(/[_-]+/g, " ");
   return (
-    /\bstamina\b/.test(normalizedCause) ||
-    /\bstamina\b/.test(normalizedDeathId)
+    /\bstamina\b/.test(normalizedCause) || /\bstamina\b/.test(normalizedDeathId)
   );
 }
 

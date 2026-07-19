@@ -5,6 +5,7 @@ import type { Renderer } from "@/client/game/renderers/renderer_controller";
 import type { Scenes } from "@/client/game/renderers/scenes";
 import { addToScenes } from "@/client/game/renderers/scenes";
 import { canLocalDevLiveEntityRobotMoveForArea } from "@/client/components/challenges/LocalDevLiveEntityRobotEnergyState";
+import { shouldRenderHarthmereRuntimeAssets } from "@/client/game/renderers/local_dev/harthmere_runtime_mode";
 // HARTHMERE_NPC_WANDER_REGROUNDING (audit fix, 2026-07-13): shared tri-state
 // terrain probe + edit-invalidated column cache so wandering NPCs follow the
 // real slope instead of staying frozen at spawn Y.
@@ -9607,18 +9608,6 @@ if (typeof window !== "undefined") {
     HARTHMERE_RESIDENT_HOME_ASSIGNMENT_SUMMARY;
 }
 
-function shouldRenderHarthmereAssets() {
-  if (typeof window === "undefined") {
-    return false;
-  }
-  const host = window.location.hostname;
-  return (
-    host === "localhost" ||
-    host === "127.0.0.1" ||
-    window.localStorage.getItem("biomes.harthmereAssets") === "1"
-  );
-}
-
 function prepareLoadedObject(object: THREE.Object3D) {
   object.updateMatrixWorld(true);
   const box = new THREE.Box3().setFromObject(object);
@@ -12469,13 +12458,13 @@ private harthmerePlayerSword?: THREE.Group;
     this.root.add(this.townWalkDebugOverlay);
     this.installDebugBridge();
     debugHarthmereRenderer("renderer.constructor", {
-      shouldRender: shouldRenderHarthmereAssets(),
+      shouldRender: shouldRenderHarthmereRuntimeAssets(),
       host: typeof window !== "undefined" ? window.location.hostname : "server",
     });
     if (typeof window !== "undefined") {
       window.addEventListener(HARTHMERE_COMBAT_EFFECT_EVENT, this.onCombatEffect);
     }
-    if (shouldRenderHarthmereAssets()) {
+    if (shouldRenderHarthmereRuntimeAssets()) {
       void this.loadAll();
     }
   }
@@ -12485,7 +12474,8 @@ private harthmerePlayerSword?: THREE.Group;
       return;
     }
     this.elapsed += Math.min(dt, 0.05);
-    this.updateHarthmerePlacementLod(dt);
+    const camera: THREE.Camera | undefined = (scenes as { three?: { camera?: THREE.Camera } }).three?.camera;
+    this.updateHarthmerePlacementLod(dt, camera);
     // HARTHMERE_POLISH_FAR_NPC_THROTTLE / current survey response.
     // Cheap visibility + distance gate. We sample the player camera position
     // through THREE.PerspectiveCamera convention via the renderer scene
@@ -12494,7 +12484,6 @@ private harthmerePlayerSword?: THREE.Group;
     // intentionally throttled so dense towns no longer pin the frame loop.
     this.harthmerePolishFrameCounter = (this.harthmerePolishFrameCounter ?? 0) + 1;
     const polishFrame = this.harthmerePolishFrameCounter;
-    const camera: THREE.Camera | undefined = (scenes as { three?: { camera?: THREE.Camera } }).three?.camera;
     const camX = camera?.position.x ?? 0;
     const camZ = camera?.position.z ?? 0;
     const hasCamera = Boolean(camera);
@@ -12778,7 +12767,7 @@ private harthmerePlayerSword?: THREE.Group;
     });
   }
 
-  private harthmereLodOrigin(): [number, number] | undefined {
+  private harthmereLodOrigin(camera?: THREE.Camera): [number, number] | undefined {
     if (typeof window === "undefined") {
       return undefined;
     }
@@ -12788,20 +12777,23 @@ private harthmerePlayerSword?: THREE.Group;
       };
     }).__harthmereForwardArcRuntime;
     const position = runtime?.position;
-    if (!position || !Number.isFinite(position[0]) || !Number.isFinite(position[2])) {
-      return undefined;
+    if (position && Number.isFinite(position[0]) && Number.isFinite(position[2])) {
+      return [position[0], position[2]];
     }
-    return [position[0], position[2]];
+    if (camera && Number.isFinite(camera.position.x) && Number.isFinite(camera.position.z)) {
+      return [camera.position.x, camera.position.z];
+    }
+    return undefined;
   }
 
-  private updateHarthmerePlacementLod(dt: number) {
+  private updateHarthmerePlacementLod(dt: number, camera?: THREE.Camera) {
     this.harthmerePlacementLodUpdateIn -= dt;
     if (this.harthmerePlacementLodUpdateIn > 0) {
       return;
     }
     this.harthmerePlacementLodUpdateIn = 0.5;
 
-    const origin = this.harthmereLodOrigin();
+    const origin = this.harthmereLodOrigin(camera);
     let visible = 0;
     let hidden = 0;
     const byTier: Record<string, { visible: number; hidden: number }> = {};
@@ -12838,6 +12830,15 @@ private harthmerePlayerSword?: THREE.Group;
     for (const instance of this.placementInstances) {
       const tier = instance.lodTier;
       const isRuntimeLife = isHarthmereRuntimeLifePlacement(instance.placement);
+      // Living actors must never inherit tiny/interior prop visibility, but
+      // they also cannot bypass LOD entirely: that made every creature in the
+      // world render at once when the runtime origin was unavailable. Town
+      // actors use the district range; explicitly-near/wild actors use near.
+      const visibilityTier: HarthmereLodTier = isRuntimeLife
+        ? tier === "near"
+          ? "near"
+          : "district"
+        : tier;
       byTier[tier] ??= { visible: 0, hidden: 0 };
       const groupedShow = instance.structuralGroupKey
         ? structuralVisibility.get(instance.structuralGroupKey)
@@ -12849,11 +12850,11 @@ private harthmerePlayerSword?: THREE.Group;
         ? instance.object.position.z
         : instance.placement.at[2];
       const show =
-        isRuntimeLife || !origin
+        !origin
           ? true
           : groupedShow ??
             shouldShowHarthmerePlacementAtDistanceSq(
-              tier,
+              visibilityTier,
               distanceSq2d(origin[0], origin[1], lodX, lodZ),
             );
       instance.object.visible = show;
@@ -16812,7 +16813,14 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
         performanceProfile: harthmereRuntimePerformanceProfile(),
       };
     }
+    const placementBatchSize = 24;
+    let placementsStarted = 0;
     for (const authoredPlacement of runtimePlacements) {
+      if (placementsStarted > 0 && placementsStarted % placementBatchSize === 0) {
+        this.ready = true;
+        await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
+      }
+      placementsStarted += 1;
       if (authoredPlacement.robotProtectionAreaId) {
         continue;
       }

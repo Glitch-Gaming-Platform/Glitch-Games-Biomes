@@ -2,7 +2,10 @@ import type {
   LiveEntityHelperQuestEntityContext,
   LiveEntityHelperQuestInstance,
 } from "@/shared/harthmere/live_entity_helper_quests";
-import { fetchHarthmereLiveWithTimeout } from "@/client/components/harthmere_live_fetch";
+import {
+  fetchHarthmereLiveWithTimeout,
+  runHarthmereLiveMutationOnce,
+} from "@/client/components/harthmere_live_fetch";
 import {
   liveEntityRobotDefaultRobotIdForArea,
   liveEntityRobotProtectionAreaForPosition,
@@ -196,9 +199,7 @@ async function submitLiveEntityHelperLiveModeAction(
     {
       method: "POST",
       credentials: "same-origin",
-      headers: harthmereLiveEntityHelperLiveModeHeaders(
-        options.locationSearch
-      ),
+      headers: harthmereLiveEntityHelperLiveModeHeaders(options.locationSearch),
       body: JSON.stringify({
         requestId,
         idempotencyKey: requestId,
@@ -236,12 +237,16 @@ export async function readLiveEntityHelperQuestLiveModeState(
     locationSearch?: string;
   } = {}
 ) {
-  return submitLiveEntityHelperLiveModeAction(
-    { operation: "live_entity_helper_read_state" },
-    {
-      ...options,
-      targetId: "live_entity_helper_state",
-    }
+  return runHarthmereLiveMutationOnce(
+    `live-entity-helper-read:${options.locationSearch ?? "current"}`,
+    () =>
+      submitLiveEntityHelperLiveModeAction(
+        { operation: "live_entity_helper_read_state" },
+        {
+          ...options,
+          targetId: "live_entity_helper_state",
+        }
+      )
   );
 }
 

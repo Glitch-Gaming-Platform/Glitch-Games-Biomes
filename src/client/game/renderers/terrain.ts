@@ -47,6 +47,8 @@ import type {
 import { Cval } from "@/shared/util/cvals";
 import type { Optional } from "@/shared/util/type_helpers";
 import type { VoxelooModule } from "@/shared/wasm/types";
+import { HARTHMERE_PERF_AND_PLACEMENT_PREWARM } from "@/shared/harthmere/town_production_polish";
+import { shouldRenderHarthmereRuntimeAssets } from "@/client/game/renderers/local_dev/harthmere_runtime_mode";
 import type {
   FrustumSharder,
   VisibilitySharder,
@@ -135,6 +137,10 @@ export class TerrainRenderer implements Renderer {
   name = "terrain";
   time: number = 0;
   sharder: FrustumSharder;
+  private harthmerePrewarmOrigin?: Vec3;
+  private harthmerePrewarmQueue: ShardId[] = [];
+  private harthmerePrewarmInFlight = 0;
+  private harthmerePrewarmLastPlanAt = 0;
 
   constructor(
     private readonly resources: ClientResources,
@@ -153,6 +159,7 @@ export class TerrainRenderer implements Renderer {
     const env = this.resources.get("/camera/environment");
     const sky = this.resources.get("/scene/sky_params");
     const enableWaterReflection = settings.postprocesses.waterReflection;
+    this.updateHarthmereTerrainPrewarm(camera.pos());
 
     // The reosurce limiter throttles how often resource generation occurs as a
     // side effect of fetching resources from the cache. Internally, the limiter
@@ -412,6 +419,67 @@ export class TerrainRenderer implements Renderer {
     }
     for (const waterMesh of waterMeshes) {
       addToScene(scenes.water, waterMesh);
+    }
+  }
+
+  private updateHarthmereTerrainPrewarm(position: ReadonlyVec3) {
+    if (!shouldRenderHarthmereRuntimeAssets()) return;
+    const config = HARTHMERE_PERF_AND_PLACEMENT_PREWARM;
+    const now = performance.now();
+    const previous = this.harthmerePrewarmOrigin;
+    const movedFarEnough =
+      !previous ||
+      distSq(previous, position) >= config.teleportPrewarmThresholdMeters ** 2;
+    if (movedFarEnough && now - this.harthmerePrewarmLastPlanAt >= 1_000) {
+      this.harthmerePrewarmLastPlanAt = now;
+      const queued = new Set<ShardId>();
+      const radius = config.ringRadiusMeters;
+      const stride = config.probeStrideMeters;
+      for (let dx = -radius; dx <= radius; dx += stride) {
+        for (let dz = -radius; dz <= radius; dz += stride) {
+          if (dx * dx + dz * dz > radius * radius) continue;
+          const shard = voxelShard(
+            position[0] + dx,
+            position[1],
+            position[2] + dz
+          );
+          if (this.resources.get("/ecs/terrain", shard)) {
+            queued.add(shard);
+          }
+        }
+      }
+      const planned = [...queued]
+        .sort(
+          (a, b) =>
+            distSq(shardCenter(a), position) - distSq(shardCenter(b), position)
+        )
+        .slice(0, config.maxProbesPerPrewarm);
+      if (planned.length > 0) {
+        this.harthmerePrewarmOrigin = [...position] as Vec3;
+        this.harthmerePrewarmQueue = planned;
+      }
+    }
+
+    while (
+      this.harthmerePrewarmInFlight < 2 &&
+      this.harthmerePrewarmQueue.length > 0
+    ) {
+      const shard = this.harthmerePrewarmQueue.shift()!;
+      if (
+        this.resources.cached("/terrain/occluder", shard) &&
+        this.resources.cached("/terrain/combined_mesh", shard)
+      ) {
+        continue;
+      }
+      this.harthmerePrewarmInFlight += 1;
+      void Promise.all([
+        this.resources.get("/terrain/occluder", shard),
+        this.resources.get("/terrain/combined_mesh", shard),
+      ])
+        .catch(() => {})
+        .finally(() => {
+          this.harthmerePrewarmInFlight -= 1;
+        });
     }
   }
 

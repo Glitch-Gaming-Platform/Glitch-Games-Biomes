@@ -5130,6 +5130,43 @@ describe("reduceHarthmereLiveModeBackendState — loot and inventory mutation", 
     assert.ok(summary.touchedModels.includes("container_transfer"));
   });
 
+  it("advances clothing quests from crate collection through top and bottoms equip", function () {
+    const questId = "road_ready_not_fancy";
+    let result = applyOne(freshState(), "request_quest_state_update", {
+      questId,
+      source: "snapshot_grove",
+      stepId: `${questId}:1:inventory_change`,
+      progress: 2,
+    });
+    result = applyOne(result.state, "request_container_transfer", {
+      items: { baker_apron: 1, field_trousers: 1, cloth_scrap: 4 },
+    });
+    assert.equal(result.state.inventory.items.baker_apron, 1);
+    assert.equal(result.state.inventory.items.field_trousers, 1);
+
+    result = applyOne(result.state, "request_equipment_change", {
+      itemId: "baker_apron",
+      slot: "chest",
+    });
+    assert.equal(result.state.inventory.equipment.chest, "baker_apron");
+    assert.equal(result.state.quests.active[questId]?.progress, 3);
+    assert.equal(
+      result.state.quests.active[questId]?.stepId,
+      `${questId}:2:inventory_change`
+    );
+
+    result = applyOne(result.state, "request_equipment_change", {
+      itemId: "field_trousers",
+      slot: "legs",
+    });
+    assert.equal(result.state.inventory.equipment.legs, "field_trousers");
+    assert.equal(result.state.quests.active[questId]?.progress, 4);
+    assert.equal(
+      result.state.quests.active[questId]?.stepId,
+      `${questId}:3:interact`
+    );
+  });
+
   it("takes an entire container when duplicate non-stackable equipment must overflow", function () {
     const before = freshState();
     before.inventory.items.baker_apron = 1;
@@ -5352,6 +5389,43 @@ describe("reduceHarthmereLiveModeBackendState — loot and inventory mutation", 
       !summary.warnings.includes("inventory_item_rejected:unknown_item_id")
     );
     assert.ok(summary.touchedModels.includes("inventory_items"));
+  });
+
+  it("keeps a hotbar voxel backed by inventory and turns one thrown unit into a world drop", function () {
+    const grassBlockItemId = `b:${BikkieIds.grass}`;
+    let result = applyOne(freshState(), "request_loot_roll", {
+      itemId: grassBlockItemId,
+      count: 3,
+      source: "Mined Muckward Block",
+    });
+    let snapshot = createHarthmereInventoryLootClientSnapshotFromBackend(
+      result.state
+    );
+    assert.equal(snapshot.actor?.items[grassBlockItemId], 3);
+
+    result = applyOne(result.state, "request_inventory_item_action", {
+      operation: "drop_item",
+      itemId: grassBlockItemId,
+      count: 1,
+      sourceSlot: "hotbar_1",
+      position: { x: 232.44, y: 67, z: -80.83 },
+    });
+    snapshot = createHarthmereInventoryLootClientSnapshotFromBackend(
+      result.state
+    );
+
+    assert.equal(snapshot.actor?.items[grassBlockItemId], 2);
+    assert.equal(snapshot.availableLootDrops.length, 1);
+    assert.equal(
+      snapshot.availableLootDrops[0].itemStacks[grassBlockItemId],
+      1
+    );
+    assert.deepEqual(snapshot.availableLootDrops[0].position, {
+      x: 232.44,
+      y: 67,
+      z: -80.83,
+    });
+    assert.ok(result.summary.touchedModels.includes("inventory_loot_drops"));
   });
 
   it("uses server-authored item effects and learns spell tomes exactly once", function () {
