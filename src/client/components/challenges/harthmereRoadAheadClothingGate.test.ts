@@ -5,6 +5,8 @@
 // state can express progress.
 import assert from "assert";
 
+process.env.NEXT_PUBLIC_BIOMES_ENABLE_SYNTHETIC_ROAD_AHEAD = "1";
+
 import {
   ROAD_AHEAD_CLOTHING_STEP_ID,
   ROAD_AHEAD_CLOTHING_STOCK_PRECEDING_STEP_ID,

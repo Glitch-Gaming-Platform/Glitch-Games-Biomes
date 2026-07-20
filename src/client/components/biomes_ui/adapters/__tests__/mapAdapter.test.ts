@@ -15,6 +15,10 @@ import { buildBiomesUIMapAdapterForTest } from "../mapLiveAdapter";
 import { HARTHMERE_BUSINESS_OUTPOSTS } from "@/shared/harthmere/business_customer_simulator";
 import { NUX_PAIRED_STEPS } from "@/client/util/nux/state_machines";
 
+// This suite exercises the retired synthetic bridge explicitly. Production
+// leaves this unset and reads the native ECS Road Ahead quest instead.
+process.env.NEXT_PUBLIC_BIOMES_ENABLE_SYNTHETIC_ROAD_AHEAD = "1";
+
 // The adapter module reads window globals; mock window first.
 const globalAny = global as any;
 if (typeof globalAny.window === "undefined") {
@@ -597,6 +601,65 @@ describe("biomes_ui map adapter (V141)", () => {
     assert.equal(board?.active, true);
     const jackie = markers.find((marker) => marker.id === "jackie");
     assert.equal(jackie?.active, true);
+  });
+
+  it("projects the original Road Ahead directly from native ECS challenge progress", () => {
+    installFixture({
+      acceptedQuestIds: [],
+      activeObjectiveIndex: 0,
+      completedQuestIds: [],
+    });
+    const nativeBundle = {
+      challengeDeps: [],
+      biscuit: {
+        id: 6193612340426932,
+        displayName: "The Road Ahead",
+      },
+      state: "in_progress",
+      progress: {
+        id: 1,
+        payload: { kind: "seq" },
+        progressString: "",
+        progressPercentage: 0.1,
+        children: [
+          {
+            id: 3960245896803219,
+            payload: { kind: "challengeClaimRewards" },
+            progressString: "Talk to Jackie",
+            progressPercentage: 1,
+          },
+          {
+            id: 166072605041642,
+            payload: { kind: "approachPosition" },
+            progressString: "Meet Billy",
+            progressPercentage: 0,
+          },
+        ],
+      },
+    } as any;
+
+    const adapter = buildBiomesUIMapAdapterForTest(
+      1,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      [nativeBundle]
+    );
+    assert.equal(adapter.getMissionTitle(), "The Road Ahead");
+    assert.deepEqual(
+      adapter.getMissionSteps().map((step) => [step.objective, step.done]),
+      [
+        ["Talk to Jackie", true],
+        ["Meet Billy", false],
+      ]
+    );
+    const quest = adapter
+      .getTrackableQuests()
+      .find((entry) => entry.questId === "6193612340426932");
+    assert.equal(quest?.status, "active");
+    assert.equal(quest?.objective, "Meet Billy");
   });
 
   it("projects the Road Ahead bridge mission into the real BiomesUI quest list", () => {

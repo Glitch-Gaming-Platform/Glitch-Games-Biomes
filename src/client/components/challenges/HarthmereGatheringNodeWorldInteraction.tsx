@@ -9,8 +9,11 @@ import { useClientContext } from "@/client/components/contexts/ClientContextReac
 import { harthmereJobsBoardPlayerPosition } from "@/client/components/harthmere_jobs_board/harthmereJobsBoardPosition";
 import { installHarthmereJobsBoardStyles } from "@/client/components/harthmere_jobs_board/HarthmereJobsBoardStyles";
 import {
+  harthmereGatheringErrorMessage,
+  submitHarthmereGatheringNode,
+} from "@/client/components/challenges/harthmereGatheringLiveAuthority";
+import {
   nearestHarthmereGatheringNodePrompt,
-  performHarthmereGather,
   type HarthmereGatheringNodePrompt,
 } from "@/client/components/challenges/LocalDevHarthmereGatheringSystem";
 
@@ -49,6 +52,7 @@ export function HarthmereGatheringNodeWorldInteraction({
   const [feedback, setFeedback] = React.useState<
     { message: string; ok: boolean } | undefined
   >();
+  const [pending, setPending] = React.useState(false);
   const feedbackTimer = React.useRef<ReturnType<typeof setTimeout>>();
 
   const playerPosition = harthmereJobsBoardPlayerPosition(localPlayer, camera);
@@ -70,15 +74,18 @@ export function HarthmereGatheringNodeWorldInteraction({
     );
   }, []);
 
-  const harvest = React.useCallback(() => {
-    if (!prompt) return;
-    const result = performHarthmereGather(prompt.id);
-    showFeedback(
-      result.message ??
-        (result.ok ? `Harvested ${prompt.name}.` : "Cannot harvest here."),
-      result.ok
-    );
-  }, [prompt, showFeedback]);
+  const harvest = React.useCallback(async () => {
+    if (!prompt || pending) return;
+    setPending(true);
+    try {
+      await submitHarthmereGatheringNode(prompt.id);
+      showFeedback(`Harvested ${prompt.name}.`, true);
+    } catch (error) {
+      showFeedback(harthmereGatheringErrorMessage(error, prompt.name), false);
+    } finally {
+      setPending(false);
+    }
+  }, [pending, prompt, showFeedback]);
 
   React.useEffect(() => {
     return () => {
@@ -100,7 +107,7 @@ export function HarthmereGatheringNodeWorldInteraction({
       ) {
         return;
       }
-      if (event.code === "KeyF") {
+      if (event.code === "KeyF" && !pending) {
         event.preventDefault();
         event.stopPropagation();
         event.stopImmediatePropagation();
@@ -109,7 +116,7 @@ export function HarthmereGatheringNodeWorldInteraction({
     };
     window.addEventListener("keydown", handler, true);
     return () => window.removeEventListener("keydown", handler, true);
-  }, [prompt, harvest, promptBlocked]);
+  }, [prompt, harvest, pending, promptBlocked]);
 
   if (!prompt || promptBlocked) {
     return null;
@@ -123,6 +130,7 @@ export function HarthmereGatheringNodeWorldInteraction({
   return (
     <button
       type="button"
+      disabled={pending}
       className="harthmere-jobs-prompt harthmere-gathering-node-prompt"
       onClick={(event) => {
         event.preventDefault();
@@ -144,7 +152,9 @@ export function HarthmereGatheringNodeWorldInteraction({
         </span>
       </span>
       <span className="harthmere-gathering-node-prompt__body">
-        <span className="harthmere-gathering-node-prompt__verb">Harvest</span>
+        <span className="harthmere-gathering-node-prompt__verb">
+          {pending ? "Harvesting…" : "Harvest"}
+        </span>
         <strong>{prompt.name}</strong>
         <small
           className={`harthmere-gathering-node-prompt__detail harthmere-gathering-node-prompt__detail--${detailState}`}

@@ -12,10 +12,12 @@ import {
   createHarthmereLiveModePlayerStatusClientSnapshot,
   harthmereLiveModePlayerStateKey,
   parseHarthmereLiveModeBackendState,
+  stringifyHarthmereLiveModePlayerPersistenceState,
   tickHarthmereLiveModeStaminaForGameplay,
   type HarthmereLiveModeBackendState,
 } from "@/shared/harthmere/live_mode_backend";
 import { z } from "zod";
+import { nativeBiomesEcsAuthorityEnabled } from "@/shared/harthmere/native_road_ahead_contract";
 
 const zJsonRecord = z.record(z.unknown());
 const DEFAULT_PLAYER_STATUS_STAMINA_WRITE_THROTTLE_MS = 5_000;
@@ -182,6 +184,12 @@ export async function readHarthmereLiveModePlayerStatusStateForActor<
   actorId: string;
   nowMs: number;
   gameplayActive?: boolean;
+  /**
+   * Native ECS health/stamina is pushed over world sync. In that mode this
+   * endpoint is a compatibility projection only and a GET must never acquire a
+   * writer lock, tick stamina, or persist a death transition.
+   */
+  readOnlyProjection?: boolean;
 }) {
   const stateKey = harthmereLiveModePlayerStateKey(input.actorId);
   const primary = input.redis.primary as TPrimary & {
@@ -189,6 +197,29 @@ export async function readHarthmereLiveModePlayerStatusStateForActor<
     eval?: (...args: any[]) => Promise<unknown>;
   };
   const canPersist = typeof primary.set === "function";
+  if (input.readOnlyProjection) {
+    const [rawState] = await readHarthmereRedisStrings(primary, [stateKey]);
+    const state = parseHarthmereLiveModeBackendState(
+      rawState,
+      input.actorId,
+      input.nowMs
+    );
+    return {
+      ...createHarthmereLiveModePlayerStatusClientSnapshot(state),
+      backendAuthority: {
+        source: "harthmere-live-mode-redis",
+        role: "backend-runtime-cache",
+        persisted: rawState !== null,
+        readOnlyProjection: true,
+        actorLockWaitMs: 0,
+        repairedForSnapshot: false,
+        repairedZeroHpDeath: false,
+        repairedPlayableZeroStamina: false,
+        revivedStaminaDeathOnRecovery: false,
+        staminaPersisted: false,
+      },
+    };
+  }
   const actorLock = canPersist
     ? await acquireHarthmereActorStateLock(
         primary as HarthmereActorStateAuthorityRedis,
@@ -308,7 +339,7 @@ export async function readHarthmereLiveModePlayerStatusStateForActor<
         primary as HarthmereActorStateAuthorityRedis,
         stateKey,
         rawState,
-        JSON.stringify(state)
+        stringifyHarthmereLiveModePlayerPersistenceState(state)
       );
       if (!staminaPersisted) {
         // An old rolling-deploy replica may not honor the new actor lock. CAS
@@ -564,6 +595,7 @@ export default biomesApiHandler(
         actorId,
         nowMs: Date.now(),
         gameplayActive: playerStatusGameplayActive({ unsafeRequest }),
+        readOnlyProjection: nativeBiomesEcsAuthorityEnabled(),
       }),
     };
   }

@@ -4,9 +4,12 @@ import {
   buildingSystemMaterializationWorldPositionForTest,
   combatActorPositionFromInstallLiveModeBody,
   harthmereLiveModeMutationSnapshotKeys,
+  harthmereMutationMayChangeSharedWorldForTest,
   jobsBoardPositionFromLiveModeBody,
   liveModeActorIdentityFromRequest,
+  markBuildingMaterializationPlansAppliedForTest,
   materializeBuildingSystemMaterializationPlansToTerrain,
+  nativeEcsOwnsHarthmereLiveModeActionForTest,
   persistHarthmereLiveModeResponse,
   preserveFreshHarthmereLiveModeStatusChannelsForTest,
   publishBuildingSystemMaterializationPlansToEcs,
@@ -23,6 +26,7 @@ import {
   createHarthmereLiveModeSharedWorldState,
   harthmereLiveModePlayerStateKey,
   harthmereLiveModeSharedWorldStateKey,
+  mergeHarthmereLiveModeSharedWorldStateIntoBackend,
   parseHarthmereLiveModeBackendState,
   defaultHarthmereLiveModeBackendState,
   parseHarthmereLiveModeSharedWorldState,
@@ -34,6 +38,7 @@ import {
   type HarthmereLiveModeAuthorityEnvelope,
 } from "@/shared/harthmere/live_mode_readiness";
 import { loadBlockWrapper } from "@/shared/wasm/biomes";
+import { harthmereJobsBoardQuestMarkerRuntimePositionForId } from "@/shared/harthmere/jobs_board_quest_marker_positions";
 
 const ACTOR = "player_live_api_persist_001";
 const NOW_MS = 1_700_400_000_000;
@@ -146,6 +151,26 @@ class FakeRedisPrimary {
   }
 }
 
+function readMergedPersistedState(
+  redis: FakeRedisPrimary,
+  actorId: string = ACTOR
+) {
+  const actor = parseHarthmereLiveModeBackendState(
+    redis.store.get(harthmereLiveModePlayerStateKey(actorId)),
+    actorId,
+    NOW_MS
+  );
+  const shared = parseHarthmereLiveModeSharedWorldState(
+    redis.store.get(harthmereLiveModeSharedWorldStateKey()),
+    NOW_MS
+  );
+  return mergeHarthmereLiveModeSharedWorldStateIntoBackend(
+    actor,
+    shared,
+    NOW_MS
+  );
+}
+
 function envelope(): HarthmereLiveModeAuthorityEnvelope {
   return {
     requestId: "live-api-persist-req-1",
@@ -232,6 +257,63 @@ function gameplayMutationWarnings(warnings: string[] | undefined) {
 }
 
 describe("live_mode API Redis persistence", () => {
+  it("keeps authenticated combat, death, AI, and respawn on native ECS", () => {
+    for (const action of [
+      "request_attack",
+      "request_ability_cast",
+      "request_death_transition",
+      "request_environment_damage",
+      "request_revive",
+      "request_respawn",
+      "request_npc_ai_tick",
+      "request_boss_tick",
+    ] as const) {
+      assert.equal(nativeEcsOwnsHarthmereLiveModeActionForTest(action), true);
+    }
+    assert.equal(
+      nativeEcsOwnsHarthmereLiveModeActionForTest(
+        "request_jobs_board_mutation"
+      ),
+      false
+    );
+  });
+
+  it("serializes positioned drops but skips genuinely actor-only mutations", function () {
+    const sharedWorldStateKey = harthmereLiveModeSharedWorldStateKey();
+    assert.equal(
+      harthmereMutationMayChangeSharedWorldForTest({
+        sharedWorldStateKey,
+        sharedStateKeys: [
+          "harthmere:live_mode:current:loot_drop:drop_actor_only",
+        ],
+        touchedModels: ["inventory_items", "inventory_loot_drops"],
+      }),
+      true
+    );
+    assert.equal(
+      harthmereMutationMayChangeSharedWorldForTest({
+        sharedWorldStateKey,
+        touchedModels: ["equipment_slots"],
+      }),
+      false
+    );
+    assert.equal(
+      harthmereMutationMayChangeSharedWorldForTest({
+        sharedWorldStateKey,
+        sharedStateKeys: ["harthmere:jobs_board:job:repair_road"],
+        touchedModels: ["jobs_board_quest_todo"],
+      }),
+      true
+    );
+    assert.equal(
+      harthmereMutationMayChangeSharedWorldForTest({
+        sharedWorldStateKey,
+        touchedModels: ["robot_protection"],
+      }),
+      true
+    );
+  });
+
   it("uses Glitch install ids as live-mode actors when Biomes auth is absent", () => {
     assert.deepEqual(
       liveModeActorIdentityFromRequest({
@@ -1095,14 +1177,7 @@ describe("live_mode API Redis persistence", () => {
       });
 
       assert.ok((persisted.economyState as any).businesses.shared_shop);
-      const rawActor = redisPrimary.store.get(
-        harthmereLiveModePlayerStateKey(ACTOR)
-      );
-      const actorState = parseHarthmereLiveModeBackendState(
-        rawActor,
-        ACTOR,
-        NOW_MS
-      );
+      const actorState = readMergedPersistedState(redisPrimary);
       assert.ok(actorState.economy.production.businesses.shared_shop);
     }));
 
@@ -1270,14 +1345,7 @@ describe("live_mode API Redis persistence", () => {
     assert.ok(acceptReplay.playerStatusState);
     assert.ok(acceptReplay.buildingState);
 
-    let rawActor = redisPrimary.store.get(
-      harthmereLiveModePlayerStateKey(ACTOR)
-    );
-    let persistedActorState = parseHarthmereLiveModeBackendState(
-      rawActor,
-      ACTOR,
-      NOW_MS
-    );
+    let persistedActorState = readMergedPersistedState(redisPrimary);
     assert.deepEqual(
       persistedActorState.quests.active[`jobs_board:${todo.todoId}`],
       { stepId: "job_accept_chain", progress: 0 }
@@ -1292,6 +1360,13 @@ describe("live_mode API Redis persistence", () => {
     questEnv.source = "client_request";
     questEnv.targetId = todo.todoId;
     questEnv.zoneId = "harthmere_grove";
+    const questMarker =
+      harthmereJobsBoardQuestMarkerRuntimePositionForId("muckwad_patch")!;
+    questEnv.serverActorPosition = {
+      x: questMarker.position[0],
+      y: questMarker.position[1],
+      z: questMarker.position[2],
+    };
     questEnv.payload = {
       questId: `jobs_board:${todo.todoId}`,
       completed: true,
@@ -1303,12 +1378,7 @@ describe("live_mode API Redis persistence", () => {
       gameplayMutationWarnings(questPersisted.backendMutation?.warnings),
       []
     );
-    rawActor = redisPrimary.store.get(harthmereLiveModePlayerStateKey(ACTOR));
-    persistedActorState = parseHarthmereLiveModeBackendState(
-      rawActor,
-      ACTOR,
-      NOW_MS
-    );
+    persistedActorState = readMergedPersistedState(redisPrimary);
     assert.equal(
       persistedActorState.quests.active[`jobs_board:${todo.todoId}`],
       undefined
@@ -1350,12 +1420,7 @@ describe("live_mode API Redis persistence", () => {
       gameplayMutationWarnings(turnInPersisted.backendMutation?.warnings),
       []
     );
-    rawActor = redisPrimary.store.get(harthmereLiveModePlayerStateKey(ACTOR));
-    persistedActorState = parseHarthmereLiveModeBackendState(
-      rawActor,
-      ACTOR,
-      NOW_MS
-    );
+    persistedActorState = readMergedPersistedState(redisPrimary);
     assert.equal(
       persistedActorState.inventory.gold,
       1200,
@@ -1446,14 +1511,7 @@ describe("live_mode API Redis persistence", () => {
       ),
       "accept should persist and activate jobs that were seeded by a read-only board snapshot"
     );
-    const rawActor = redisPrimary.store.get(
-      harthmereLiveModePlayerStateKey(ACTOR)
-    );
-    const persistedActorState = parseHarthmereLiveModeBackendState(
-      rawActor,
-      ACTOR,
-      NOW_MS
-    );
+    const persistedActorState = readMergedPersistedState(redisPrimary);
     assert.equal(
       persistedActorState.jobsBoard.postings.harthmere_auto_1.status,
       "active"
@@ -1754,12 +1812,96 @@ describe("live_mode API Redis persistence", () => {
     const terrain = world.table.get(terrainId);
     assert.ok(terrain?.shard_diff);
     const diff = new voxeloo.SparseBlock_U32();
+    const placer = new voxeloo.SparseBlock_U32();
     try {
       loadBlockWrapper(voxeloo, diff, terrain.shard_diff);
+      loadBlockWrapper(voxeloo, placer, terrain.shard_placer);
       assert.equal(diff.get(...blockPos(...worldPosition)), floorEdit.value);
+      assert.equal(placer.get(...blockPos(...worldPosition)), 1);
     } finally {
       diff.delete();
+      placer.delete();
     }
+  });
+
+  it("refuses to overwrite a concurrently occupied terrain value", async () => {
+    const world = new InMemoryWorld();
+    const worldApi = ShimWorldApi.createForWorld(world);
+    const plan =
+      HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS.outpost_refinery_ashline
+        .materializationPlan;
+    const floorEdit = plan.edits.find((edit) => edit.label === "floor")!;
+    const worldPosition = buildingSystemMaterializationWorldPositionForTest(
+      plan,
+      floorEdit.position
+    );
+    const terrainId = createEmptyTerrainShard(
+      world,
+      shardAlign(...worldPosition)
+    );
+    const askApi = {
+      scanForExport: async function* () {
+        yield [
+          7,
+          fakeTerrainEntityForPosition(terrainId, worldPosition),
+        ] as any;
+      },
+    };
+    await materializeBuildingSystemMaterializationPlansToTerrain({
+      askApi,
+      userId: 1 as any,
+      worldApi,
+      plans: [{ ...plan, edits: [floorEdit] }],
+    });
+
+    await assert.rejects(
+      materializeBuildingSystemMaterializationPlansToTerrain({
+        askApi,
+        userId: 2 as any,
+        worldApi,
+        plans: [
+          {
+            ...plan,
+            actorId: "2",
+            edits: [{ ...floorEdit, value: (floorEdit.value + 1) as any }],
+          },
+        ],
+      }),
+      /would overwrite terrain/
+    );
+  });
+
+  it("acknowledges a structure only after successful ECS materialization", async () => {
+    const redis = new FakeRedisPrimary();
+    const state = defaultHarthmereLiveModeBackendState(ACTOR, NOW_MS);
+    const plan =
+      HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS.outpost_refinery_ashline
+        .materializationPlan;
+    state.building.placedStructures[plan.requestId] = {
+      ...state.building.placedStructures[plan.requestId],
+      materializedInEcs: false,
+    };
+    const sharedKey = harthmereLiveModeSharedWorldStateKey();
+    redis.store.set(
+      sharedKey,
+      JSON.stringify(createHarthmereLiveModeSharedWorldState(state, NOW_MS))
+    );
+
+    const count = await markBuildingMaterializationPlansAppliedForTest({
+      redisPrimary: redis as any,
+      sharedWorldStateKey: sharedKey,
+      plans: [plan],
+      nowMs: NOW_MS + 1,
+    });
+    assert.equal(count, 1);
+    const shared = parseHarthmereLiveModeSharedWorldState(
+      redis.store.get(sharedKey),
+      NOW_MS + 1
+    );
+    assert.equal(
+      shared?.building.placedStructures[plan.requestId].materializedInEcs,
+      true
+    );
   });
 
   it("publishes outpost voxel materialization for install actors without Biomes auth", async () => {

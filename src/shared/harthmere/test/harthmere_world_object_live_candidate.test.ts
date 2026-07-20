@@ -20,6 +20,8 @@ import {
 } from "@/shared/harthmere/harthmere_world_object_inspectable";
 import assert from "assert";
 
+process.env.NEXT_PUBLIC_BIOMES_ENABLE_SYNTHETIC_ROAD_AHEAD = "1";
+
 describe("harthmere live world-object inspect candidates (current)", () => {
   const facingPlusX: readonly [number, number, number] = [1, 0, 0];
 

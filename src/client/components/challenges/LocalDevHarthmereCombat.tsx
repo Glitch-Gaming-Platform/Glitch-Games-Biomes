@@ -41,6 +41,7 @@ import { useClientContext } from "@/client/components/contexts/ClientContextReac
 import { isPlayer } from "@/shared/game/players";
 import { fallDamageForBlocks, FEET_PER_BLOCK } from "@/shared/game/fall_damage";
 import { HARTHMERE_VOXEL_INTERACTION_ATTACK_REACH_UNITS } from "@/shared/harthmere/combat_reach";
+import { nativeBiomesEcsAuthorityEnabled } from "@/shared/harthmere/native_road_ahead_contract";
 import {
   HARTHMERE_BIOMES_ECS_HEALTH_UPDATED_EVENT,
   createHarthmereBiomesEcsHealth,
@@ -1077,7 +1078,7 @@ export function applyHarthmerePvpDamageFromRemotePlayer(input: {
 // the player physics script drain the visible combat HP.
 export function useHarthmereFallDamageBridge() {
   useEffect(() => {
-    if (typeof window === "undefined") {
+    if (typeof window === "undefined" || nativeBiomesEcsAuthorityEnabled()) {
       return;
     }
     const handler = (event: Event) => {
@@ -1097,7 +1098,7 @@ export function useHarthmereFallDamageBridge() {
 
 export function useHarthmereDrowningDamageBridge() {
   useEffect(() => {
-    if (typeof window === "undefined") {
+    if (typeof window === "undefined" || nativeBiomesEcsAuthorityEnabled()) {
       return;
     }
     const handler = (event: Event) => {
@@ -1131,6 +1132,12 @@ export function useHarthmerePvpIncomingDamageBridge() {
   const health = reactResources.use("/ecs/c/health", userId);
   const processedRef = useRef<number | undefined>(undefined);
   useEffect(() => {
+    if (nativeBiomesEcsAuthorityEnabled()) {
+      // Native UpdatePlayerHealthEvent state is already streamed by ECS. A
+      // second local HP mirror made the HUD lag and could independently kill the
+      // player after the authoritative health component had recovered.
+      return;
+    }
     if (!health) {
       return;
     }
@@ -1947,6 +1954,11 @@ export function readHarthmereCombatState(): HarthmereCombatState {
 
 function dispatchHarthmereCombatVitalsToBiomesUi(state: HarthmereCombatState) {
   if (!isBrowser()) {
+    return;
+  }
+  if (nativeBiomesEcsAuthorityEnabled()) {
+    // Native health is already synchronized by UpdatePlayerHealthEvent. A
+    // local combat projection here would reintroduce a second HUD/death source.
     return;
   }
   const ecsHealth = createHarthmereBiomesEcsHealth({
@@ -4130,7 +4142,7 @@ export function tickHarthmereRealtimeCombatAI(source = "combat_ai") {
 
 export function useHarthmereRealtimeCombatAI() {
   useEffect(() => {
-    if (!isBrowser()) {
+    if (!isBrowser() || nativeBiomesEcsAuthorityEnabled()) {
       return;
     }
     const diagWin = window as typeof window & {
@@ -4197,7 +4209,7 @@ export function useHarthmereAmbientThreats() {
   const localPlayer = reactResources.use("/scene/local_player");
 
   useEffect(() => {
-    if (typeof window === "undefined") {
+    if (typeof window === "undefined" || nativeBiomesEcsAuthorityEnabled()) {
       return;
     }
 
@@ -6380,7 +6392,10 @@ interface HarthmereNativeNpcAttackContactDetail {
 }
 
 function installHarthmereNativeNpcAttackDamageBridge() {
-  if (!isBrowser()) {
+  if (!isBrowser() || nativeBiomesEcsAuthorityEnabled()) {
+    // `handleAttackInteraction` already publishes UpdateNpcHealthEvent. The
+    // legacy bridge applied the same contact to localStorage/Redis a second
+    // time, causing duplicate retaliation and a different HP value per player.
     return;
   }
 

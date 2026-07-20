@@ -2,6 +2,8 @@
 /// <reference types="node" />
 
 import assert from "assert";
+
+process.env.NEXT_PUBLIC_BIOMES_ENABLE_SYNTHETIC_ROAD_AHEAD = "1";
 import {
   HARTHMERE_DIALOGUE_LIVE_MODE_RESPONSE_EVENT,
   harthmereDialogueLiveModeHeaders,
@@ -63,10 +65,7 @@ describe("live-entity helper dialog context", () => {
     ];
 
     for (const objectLabel of objectLabels) {
-      assert.equal(
-        isHarthmereNonLivingDialogueObjectLabel(objectLabel),
-        true
-      );
+      assert.equal(isHarthmereNonLivingDialogueObjectLabel(objectLabel), true);
       assert.equal(
         getLiveEntityHelperQuestForEntity(
           contextForLiveEntityHelperQuest({

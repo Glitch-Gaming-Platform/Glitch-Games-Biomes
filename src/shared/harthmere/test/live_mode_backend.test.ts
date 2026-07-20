@@ -8,6 +8,7 @@
 
 import assert from "assert";
 import { BikkieIds } from "@/shared/bikkie/ids";
+import { NATIVE_ROAD_AHEAD_MUCKWAD_ITEM_ID } from "@/shared/harthmere/native_road_ahead_contract";
 import {
   createHarthmereInventoryLootClientSnapshotFromBackend,
   defaultHarthmereLiveModeBackendState,
@@ -18,10 +19,12 @@ import {
   harthmereLiveModeSharedStateKey,
   HARTHMERE_LIVE_MODE_BACKEND_VERSION,
   createHarthmereLiveModeSharedWorldState,
+  createHarthmereLiveModePlayerPersistenceState,
   createHarthmereLiveModePlayerStatusClientSnapshot,
   createHarthmereLiveModeQuestClientSnapshot,
   mergeHarthmereLiveModeSharedWorldStateIntoBackend,
   parseHarthmereLiveModeSharedWorldState,
+  stringifyHarthmereLiveModePlayerPersistenceState,
   createHarthmereServerMuckCombatEntitySnapshots,
   harthmereNormalizeSeededCombatEntitySnapshots,
   repairHarthmereStatusReadStaminaDeath,
@@ -67,7 +70,10 @@ import {
   HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID,
   HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS,
 } from "@/shared/harthmere/mmo_jobs_board_authority";
-import { harthmereJobsBoardQuestMarkerPositionForId } from "@/shared/harthmere/jobs_board_quest_marker_positions";
+import {
+  harthmereJobsBoardQuestMarkerPositionForId,
+  harthmereJobsBoardQuestMarkerRuntimePositionForId,
+} from "@/shared/harthmere/jobs_board_quest_marker_positions";
 import { resolveHarthmereProductionMarkerPosition } from "@/shared/harthmere/production_terrain_placement_map";
 import {
   HARTHMERE_JOBS_BOARD_ELITE_MUCKER_BOUNTY_MARKER_ID,
@@ -231,7 +237,60 @@ function applyOne(
   payload: Record<string, unknown> = {},
   envelopeOverrides: Partial<HarthmereLiveModeAuthorityEnvelope> = {}
 ) {
-  const env = makeEnvelope(actionKind, payload, envelopeOverrides);
+  const resolvedOverrides = { ...envelopeOverrides };
+  if (
+    !Object.prototype.hasOwnProperty.call(
+      envelopeOverrides,
+      "serverActorPosition"
+    )
+  ) {
+    const dropId =
+      actionKind === "request_loot_claim" && typeof payload.dropId === "string"
+        ? payload.dropId
+        : undefined;
+    const dropPosition = dropId
+      ? state.inventoryLoot.lootDrops[dropId]?.position
+      : undefined;
+    const jobsBoardQuestTodoId =
+      actionKind === "request_quest_state_update" &&
+      payload.completed === true &&
+      typeof payload.questId === "string" &&
+      payload.questId.startsWith("jobs_board:")
+        ? payload.questId.slice("jobs_board:".length)
+        : undefined;
+    const jobsBoardQuestTodo = jobsBoardQuestTodoId
+      ? state.jobsBoard.todos[jobsBoardQuestTodoId]
+      : undefined;
+    const jobId =
+      actionKind === "request_jobs_board_mutation" &&
+      payload.operation === "complete_job_quest" &&
+      typeof payload.jobId === "string"
+        ? payload.jobId
+        : jobsBoardQuestTodo?.jobId;
+    const job = jobId ? state.jobsBoard.postings[jobId] : undefined;
+    const todo =
+      jobsBoardQuestTodo ??
+      (jobId
+        ? Object.values(state.jobsBoard.todos).find(
+            (entry) => entry.jobId === jobId && entry.actorId === state.actorId
+          )
+        : undefined);
+    const marker = job
+      ? harthmereJobsBoardQuestMarkerRuntimePositionForId(
+          todo?.mapMarkerId ?? job.mapMarkerId ?? todo?.targetId ?? job.targetId
+        )
+      : undefined;
+    resolvedOverrides.serverActorPosition = dropPosition
+      ? { ...dropPosition }
+      : marker
+      ? {
+          x: marker.position[0],
+          y: marker.position[1],
+          z: marker.position[2],
+        }
+      : undefined;
+  }
+  const env = makeEnvelope(actionKind, payload, resolvedOverrides);
   return reduceHarthmereLiveModeBackendState(state, env, NOW_MS);
 }
 
@@ -849,6 +908,58 @@ describe("parseHarthmereLiveModeBackendState", function () {
     assert.equal(actorState.law.standing.city_guard.legal, 150);
     assert.equal(actorState.law.detentionUntilMs.city_guard, undefined);
     assert.equal(actorState.law.crimeRecords[0].id, "shared_crime_1");
+  });
+
+  it("persists only actor-owned state and reconstructs the merged gameplay view", function () {
+    const state = freshState();
+    state.inventory.gold = 321;
+    state.inventory.items.muckwad = 4;
+    state.inventory.equipment.hat = "b:wearable_hat";
+    state.building.ownedPlots.push("actor_plot");
+    state.law.fines.city_guard = 12;
+    state.quests.active.actor_quest = { stepId: "collect", progress: 2 };
+
+    const shared = createHarthmereLiveModeSharedWorldState(state, NOW_MS);
+    const compactObject = createHarthmereLiveModePlayerPersistenceState(state);
+    const compactJson = stringifyHarthmereLiveModePlayerPersistenceState(state);
+    const fullJson = JSON.stringify(state);
+
+    assert.equal(compactObject.jobsBoard, undefined);
+    assert.equal(compactObject.questInvites, undefined);
+    assert.equal(compactObject.robotProtection, undefined);
+    assert.equal((compactObject.economy as any).production, undefined);
+    assert.equal((compactObject.economy as any).auctionListings, undefined);
+    assert.deepEqual(Object.keys(compactObject.building as object).sort(), [
+      "inWorldMarkers",
+      "ownedPlots",
+    ]);
+    assert.equal(compactObject.homeDecoration, undefined);
+    assert.equal(compactObject.placeableWorld, undefined);
+    assert.equal(compactObject.property, undefined);
+    assert.ok(
+      compactJson.length < fullJson.length / 10,
+      `expected compact player state (${compactJson.length}) to be at least 10x smaller than merged state (${fullJson.length})`
+    );
+
+    const rehydrated = mergeHarthmereLiveModeSharedWorldStateIntoBackend(
+      parseHarthmereLiveModeBackendState(compactJson, ACTOR, NOW_MS),
+      parseHarthmereLiveModeSharedWorldState(JSON.stringify(shared), NOW_MS),
+      NOW_MS
+    );
+    assert.equal(rehydrated.inventory.gold, 321);
+    assert.equal(rehydrated.inventory.items.muckwad, 4);
+    assert.equal(rehydrated.inventory.equipment.hat, "b:wearable_hat");
+    assert.ok(rehydrated.building.ownedPlots.includes("actor_plot"));
+    assert.equal(rehydrated.law.fines.city_guard, 12);
+    assert.equal(rehydrated.quests.active.actor_quest.progress, 2);
+    assert.equal(
+      Object.keys(rehydrated.economy.production.businesses).length,
+      Object.keys(state.economy.production.businesses).length
+    );
+    assert.equal(
+      Object.keys(rehydrated.building.placedStructures).length,
+      Object.keys(state.building.placedStructures).length
+    );
   });
 
   it("allows business customer sessions only from real in-world business proximity", function () {
@@ -4274,6 +4385,7 @@ describe("reduceHarthmereLiveModeBackendState — combat target authority", func
           {
             requestId: "claim_expired_live_entity_loot",
             idempotencyKey: "claim_expired_live_entity_loot_key",
+            serverActorPosition: state.inventoryLoot.lootDrops[dropId].position,
           }
         ),
         expiredAt
@@ -5364,12 +5476,32 @@ describe("reduceHarthmereLiveModeBackendState — loot and inventory mutation", 
       itemId: "iron_ore",
       count: 1,
       sourceSlot: "material_storage",
+      position: { x: 10, y: 64, z: 10 },
     });
 
     assert.strictEqual(state.banking.materialStorage.iron_ore, 2);
     assert.strictEqual(state.inventory.items.iron_ore ?? 0, 0);
     assert.ok(summary.touchedModels.includes("material_storage"));
     assert.ok(summary.touchedModels.includes("player_status"));
+    assert.ok(summary.touchedModels.includes("inventory_loot_drops"));
+  });
+
+  it("rejects a throw without a world position before debiting inventory", function () {
+    const s = freshState();
+    s.banking.materialStorage = { iron_ore: 3 };
+
+    const { state, summary } = applyOne(s, "request_inventory_item_action", {
+      operation: "drop_item",
+      itemId: "iron_ore",
+      count: 1,
+      sourceSlot: "material_storage",
+    });
+
+    assert.strictEqual(state.banking.materialStorage.iron_ore, 3);
+    assert.ok(
+      summary.warnings.includes("inventory_item_rejected:missing_drop_position")
+    );
+    assert.ok(!summary.touchedModels.includes("inventory_items"));
   });
 
   it("request_inventory_item_action destroys raw voxel blocks from carried inventory", function () {
@@ -5392,20 +5524,38 @@ describe("reduceHarthmereLiveModeBackendState — loot and inventory mutation", 
   });
 
   it("keeps a hotbar voxel backed by inventory and turns one thrown unit into a world drop", function () {
-    const grassBlockItemId = `b:${BikkieIds.grass}`;
+    const muckwadBlockItemId = `b:${NATIVE_ROAD_AHEAD_MUCKWAD_ITEM_ID}`;
+    registerHarthmereItemDefinition({
+      itemId: muckwadBlockItemId,
+      displayName: "Muckwad",
+      maxStackSize: 999,
+      baseValue: 1,
+      binding: "none",
+      isQuestItem: false,
+      isCurrency: false,
+      isConsumable: false,
+      isCraftingMaterial: false,
+      isSpellTome: false,
+      levelRequirement: 1,
+      classRestriction: [],
+      stats: { weight: 1 },
+      tradeable: true,
+      category: "block",
+      objectMetadata: { objectKind: "material", physicalForm: "block" },
+    });
     let result = applyOne(freshState(), "request_loot_roll", {
-      itemId: grassBlockItemId,
+      itemId: muckwadBlockItemId,
       count: 3,
-      source: "Mined Muckward Block",
+      source: "Mined Muckwad Block",
     });
     let snapshot = createHarthmereInventoryLootClientSnapshotFromBackend(
       result.state
     );
-    assert.equal(snapshot.actor?.items[grassBlockItemId], 3);
+    assert.equal(snapshot.actor?.items[muckwadBlockItemId], 3);
 
     result = applyOne(result.state, "request_inventory_item_action", {
       operation: "drop_item",
-      itemId: grassBlockItemId,
+      itemId: muckwadBlockItemId,
       count: 1,
       sourceSlot: "hotbar_1",
       position: { x: 232.44, y: 67, z: -80.83 },
@@ -5414,10 +5564,10 @@ describe("reduceHarthmereLiveModeBackendState — loot and inventory mutation", 
       result.state
     );
 
-    assert.equal(snapshot.actor?.items[grassBlockItemId], 2);
+    assert.equal(snapshot.actor?.items[muckwadBlockItemId], 2);
     assert.equal(snapshot.availableLootDrops.length, 1);
     assert.equal(
-      snapshot.availableLootDrops[0].itemStacks[grassBlockItemId],
+      snapshot.availableLootDrops[0].itemStacks[muckwadBlockItemId],
       1
     );
     assert.deepEqual(snapshot.availableLootDrops[0].position, {
@@ -7137,7 +7287,7 @@ describe("reduceHarthmereLiveModeBackendState — farming", function () {
     assert.equal(harvested.state.farming.harvests.farm_plot_002, readyAt);
   });
 
-  it("bridges native Biomes F-harvests into Cloud Save inventory for every harvestable seed", function () {
+  it("rejects the retired Cloud Save bridge for every native Biomes harvestable seed", function () {
     this.timeout(60_000);
     const harvestableSeeds = Object.values(HARTHMERE_SEED_DEFINITIONS).filter(
       (seed) =>
@@ -7166,113 +7316,112 @@ describe("reduceHarthmereLiveModeBackendState — farming", function () {
         plantStatus: "fully_grown",
         farmingKind: "plant",
       });
-      assert.deepEqual(
-        result.summary.warnings.filter((warning) =>
-          warning.startsWith("farming_rejected:")
+      assert.ok(
+        result.summary.warnings.includes(
+          "farming_rejected:native_ecs_harvest_required"
         ),
-        [],
         seed.displayName
       );
-      assert.equal(
-        result.state.inventory.items[seed.yieldItemId],
-        seed.yieldCount,
-        seed.displayName
-      );
-      assert.equal(result.state.farming.harvests[plantId], NOW_MS);
-      assert.equal(
-        result.state.combat.lootClaims[`native_plant_harvest:${plantId}`],
-        NOW_MS
-      );
-      assert.ok(result.summary.touchedModels.includes("inventory_items"));
-      assert.ok(result.summary.touchedModels.includes("loot_claims"));
+      assert.equal(result.state.inventory.items[seed.yieldItemId] ?? 0, 0);
+      assert.equal(result.state.farming.harvests[plantId], undefined);
     }
   });
 
   it("rejects duplicate, immature, unknown, and tree native plant harvests without mutating inventory", function () {
-    const raspberrySeed =
-      HARTHMERE_SEED_DEFINITIONS[String(BikkieIds.raspberrySeed)];
-    assert.ok(raspberrySeed);
-    const first = applyOne(freshState(), "request_farming_action", {
-      operation: "native_plant_harvest",
-      plantId: "native_raspberry_001",
-      seedItemId: raspberrySeed.seedItemId,
-      plantStatus: "fully_grown",
-      farmingKind: "plant",
-    });
-    assert.equal(
-      first.state.inventory.items[raspberrySeed.yieldItemId],
-      raspberrySeed.yieldCount
-    );
+    const previous = process.env.NEXT_PUBLIC_BIOMES_NATIVE_ECS_AUTHORITY;
+    process.env.NEXT_PUBLIC_BIOMES_NATIVE_ECS_AUTHORITY = "0";
+    try {
+      const raspberrySeed =
+        HARTHMERE_SEED_DEFINITIONS[String(BikkieIds.raspberrySeed)];
+      assert.ok(raspberrySeed);
+      const first = applyOne(freshState(), "request_farming_action", {
+        operation: "native_plant_harvest",
+        plantId: "native_raspberry_001",
+        seedItemId: raspberrySeed.seedItemId,
+        plantStatus: "fully_grown",
+        farmingKind: "plant",
+      });
+      assert.equal(
+        first.state.inventory.items[raspberrySeed.yieldItemId],
+        raspberrySeed.yieldCount
+      );
 
-    const duplicate = applyOne(first.state, "request_farming_action", {
-      operation: "native_plant_harvest",
-      plantId: "native_raspberry_001",
-      seedItemId: raspberrySeed.seedItemId,
-      plantStatus: "fully_grown",
-      farmingKind: "plant",
-    });
-    assert.ok(
-      duplicate.summary.warnings.includes(
-        "farming_rejected:plant_already_harvested"
-      )
-    );
-    assert.equal(
-      duplicate.state.inventory.items[raspberrySeed.yieldItemId],
-      raspberrySeed.yieldCount
-    );
+      const duplicate = applyOne(first.state, "request_farming_action", {
+        operation: "native_plant_harvest",
+        plantId: "native_raspberry_001",
+        seedItemId: raspberrySeed.seedItemId,
+        plantStatus: "fully_grown",
+        farmingKind: "plant",
+      });
+      assert.ok(
+        duplicate.summary.warnings.includes(
+          "farming_rejected:plant_already_harvested"
+        )
+      );
+      assert.equal(
+        duplicate.state.inventory.items[raspberrySeed.yieldItemId],
+        raspberrySeed.yieldCount
+      );
 
-    const immature = applyOne(freshState(), "request_farming_action", {
-      operation: "native_plant_harvest",
-      plantId: "native_raspberry_immature",
-      seedItemId: raspberrySeed.seedItemId,
-      plantStatus: "growing",
-      farmingKind: "plant",
-    });
-    assert.ok(
-      immature.summary.warnings.includes("farming_rejected:plant_not_ready")
-    );
-    assert.equal(
-      immature.state.inventory.items[raspberrySeed.yieldItemId] ?? 0,
-      0
-    );
+      const immature = applyOne(freshState(), "request_farming_action", {
+        operation: "native_plant_harvest",
+        plantId: "native_raspberry_immature",
+        seedItemId: raspberrySeed.seedItemId,
+        plantStatus: "growing",
+        farmingKind: "plant",
+      });
+      assert.ok(
+        immature.summary.warnings.includes("farming_rejected:plant_not_ready")
+      );
+      assert.equal(
+        immature.state.inventory.items[raspberrySeed.yieldItemId] ?? 0,
+        0
+      );
 
-    const unknown = applyOne(freshState(), "request_farming_action", {
-      operation: "native_plant_harvest",
-      plantId: "native_unknown_001",
-      seedItemId: "missing_seed",
-      plantStatus: "fully_grown",
-      farmingKind: "plant",
-    });
-    assert.ok(
-      unknown.summary.warnings.includes("farming_rejected:unknown_seed")
-    );
+      const unknown = applyOne(freshState(), "request_farming_action", {
+        operation: "native_plant_harvest",
+        plantId: "native_unknown_001",
+        seedItemId: "missing_seed",
+        plantStatus: "fully_grown",
+        farmingKind: "plant",
+      });
+      assert.ok(
+        unknown.summary.warnings.includes("farming_rejected:unknown_seed")
+      );
 
-    const treeSeed = Object.values(HARTHMERE_SEED_DEFINITIONS).find((seed) =>
-      /\btree\b|\b(oak|birch|rubber|sakura)\b/i.test(
-        [
-          seed.displayName,
-          seed.cropDisplayName,
-          seed.cropItemId,
-          seed.metadata?.category,
-        ]
-          .filter(Boolean)
-          .join(" ")
-      )
-    );
-    assert.ok(treeSeed);
-    const tree = applyOne(freshState(), "request_farming_action", {
-      operation: "native_plant_harvest",
-      plantId: "native_tree_001",
-      seedItemId: treeSeed.seedItemId,
-      plantStatus: "fully_grown",
-      farmingKind: "tree",
-    });
-    assert.ok(
-      tree.summary.warnings.includes(
-        "farming_rejected:tree_harvest_not_supported"
-      )
-    );
-    assert.equal(tree.state.inventory.items[treeSeed.yieldItemId] ?? 0, 0);
+      const treeSeed = Object.values(HARTHMERE_SEED_DEFINITIONS).find((seed) =>
+        /\btree\b|\b(oak|birch|rubber|sakura)\b/i.test(
+          [
+            seed.displayName,
+            seed.cropDisplayName,
+            seed.cropItemId,
+            seed.metadata?.category,
+          ]
+            .filter(Boolean)
+            .join(" ")
+        )
+      );
+      assert.ok(treeSeed);
+      const tree = applyOne(freshState(), "request_farming_action", {
+        operation: "native_plant_harvest",
+        plantId: "native_tree_001",
+        seedItemId: treeSeed.seedItemId,
+        plantStatus: "fully_grown",
+        farmingKind: "tree",
+      });
+      assert.ok(
+        tree.summary.warnings.includes(
+          "farming_rejected:tree_harvest_not_supported"
+        )
+      );
+      assert.equal(tree.state.inventory.items[treeSeed.yieldItemId] ?? 0, 0);
+    } finally {
+      if (previous === undefined) {
+        delete process.env.NEXT_PUBLIC_BIOMES_NATIVE_ECS_AUTHORITY;
+      } else {
+        process.env.NEXT_PUBLIC_BIOMES_NATIVE_ECS_AUTHORITY = previous;
+      }
+    }
   });
 
   it("mines Exotic Matter deposits once and replenishes them on the server clock", function () {
@@ -9581,6 +9730,7 @@ describe("reduceHarthmereLiveModeBackendState — physical jobs board and live t
   it("jobs-board quest completion forwards used tool action evidence", function () {
     let s = freshState();
     s.banking.materialStorage.softwood_log = 3;
+    s.inventory.equipment.main_hand = "repair_mallet";
     s.jobsBoard.postings.job_repair_tool_action = {
       jobId: "job_repair_tool_action",
       boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
@@ -10213,7 +10363,11 @@ describe("reduceHarthmereLiveModeBackendState — physical jobs board and live t
       {
         subsystem: "jobs",
         targetId: HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID,
-        serverActorPosition: { x: 1046, y: 65, z: -202 },
+        serverActorPosition: {
+          x: genericMarker.position[0],
+          y: genericMarker.position[1],
+          z: genericMarker.position[2],
+        },
       }
     );
 

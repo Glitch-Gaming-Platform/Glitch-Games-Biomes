@@ -145,7 +145,11 @@ describe("foraging economy fixes (F-A/F-B/F-C/F-D/F-E)", () => {
     const state = defaultHarthmereLiveModeBackendState(ACTOR, NOW);
     const first = reduceHarthmereLiveModeBackendState(
       state,
-      farmEnv({ operation: "gather_seed", seedItemId: "seed_wheat", source: "world" }),
+      farmEnv({
+        operation: "gather_seed",
+        seedItemId: "seed_wheat",
+        source: "world",
+      }),
       NOW
     );
     assert.equal(first.summary.warnings.length, 0);
@@ -154,7 +158,11 @@ describe("foraging economy fixes (F-A/F-B/F-C/F-D/F-E)", () => {
     // Immediate re-gather is on cooldown.
     const second = reduceHarthmereLiveModeBackendState(
       first.state,
-      farmEnv({ operation: "gather_seed", seedItemId: "seed_wheat", source: "world" }),
+      farmEnv({
+        operation: "gather_seed",
+        seedItemId: "seed_wheat",
+        source: "world",
+      }),
       NOW + 1_000
     );
     assert.ok(
@@ -166,7 +174,11 @@ describe("foraging economy fixes (F-A/F-B/F-C/F-D/F-E)", () => {
     // After the cooldown elapses, gathering works again.
     const third = reduceHarthmereLiveModeBackendState(
       second.state,
-      farmEnv({ operation: "gather_seed", seedItemId: "seed_wheat", source: "world" }),
+      farmEnv({
+        operation: "gather_seed",
+        seedItemId: "seed_wheat",
+        source: "world",
+      }),
       NOW + HARTHMERE_GATHER_SEED_COOLDOWN_MS + 1
     );
     assert.equal(third.summary.warnings.length, 0);
@@ -217,16 +229,14 @@ describe("foraging economy fixes (F-A/F-B/F-C/F-D/F-E)", () => {
     assert.equal(afterReject.state.inventory.items.wild_berries, 1);
   });
 
-  // F-B: the live-mode farming grant authority gate is deployment-scoped.
-  it("F-B: live-mode farming grant is authoritative only in the Harthmere deployment", () => {
-    // Plain biomes deployment: ECS keeps its drop.
+  // F-B: the old deployment switch is retained only for compatibility and can
+  // no longer move crop ownership out of native ECS.
+  it("F-B: native ECS farming remains authoritative in every deployment", () => {
     assert.equal(harthmereLiveModeFarmingGrantIsAuthoritative({}), false);
-    // Harthmere Glitch deployment: live-mode is the sole grant.
     assert.equal(
       harthmereLiveModeFarmingGrantIsAuthoritative({ GLITCH_RUNTIME: "1" }),
-      true
+      false
     );
-    // Explicit overrides win in both directions.
     assert.equal(
       harthmereLiveModeFarmingGrantIsAuthoritative({
         GLITCH_RUNTIME: "1",
@@ -238,7 +248,7 @@ describe("foraging economy fixes (F-A/F-B/F-C/F-D/F-E)", () => {
       harthmereLiveModeFarmingGrantIsAuthoritative({
         HARTHMERE_LIVE_MODE_FARMING_AUTHORITATIVE: "1",
       }),
-      true
+      false
     );
   });
 });

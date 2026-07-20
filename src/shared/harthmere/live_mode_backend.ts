@@ -7,6 +7,11 @@ import { fallDamageForBlocks } from "@/shared/game/fall_damage";
 import { anItem } from "@/shared/game/item";
 import { BikkieIds } from "@/shared/bikkie/ids";
 import { safeParseBiomesId } from "@/shared/ids";
+import { nativeBiomesEcsAuthorityEnabled } from "./native_road_ahead_contract";
+import {
+  harthmereGatheringAuthorityNode,
+  resolveHarthmereGatheringAuthorityAttempt,
+} from "./gathering_node_authority";
 import {
   reduceHarthmereInventoryMutation,
   applyHarthmereInventoryMutationResult,
@@ -14,6 +19,8 @@ import {
   getHarthmereCraftingRecipe,
   getHarthmereCraftingStation,
   getHarthmereCraftingTool,
+  harthmereCleanupToolGate,
+  harthmereRepairToolGate,
   normalizeHarthmereCraftingStationId,
   registerHarthmereItemDefinition,
   type HarthmereCraftingOutcome,
@@ -39,6 +46,7 @@ import {
 } from "./home_decoration_authority";
 import {
   defaultHarthmerePlaceableWorldState,
+  getHarthmerePlaceableDecorSpec,
   normalizeHarthmerePlaceableWorldState,
   reduceHarthmerePlaceableWorldMutation,
   type HarthmerePlaceableWorldOperation,
@@ -203,6 +211,7 @@ import {
   reduceHarthmereInventoryLootMutation,
   type HarthmereInventoryLootItemDefinition,
   type HarthmereInventoryLootDrop,
+  type HarthmereInventoryLootItemInstance,
   type HarthmereInventoryLootState,
 } from "./mmo_inventory_loot_authority";
 import {
@@ -1134,9 +1143,12 @@ export interface HarthmereLiveModeBackendState {
         use?: string;
         voxelEditCount?: number;
         materializedInEcs?: boolean;
+        ownerActorId?: string;
       }
     >;
     ownedPlots: string[];
+    /** Shared ownership ledger; `ownedPlots` is this actor's read projection. */
+    plotOwners: Record<string, string>;
     /** Server-generated muck-area claims. These make buildable land unbounded by the authored demo plots. */
     customPlots: Record<string, BuildingSystemPlotDefinition>;
     safeZones: Record<
@@ -1406,11 +1418,27 @@ export interface HarthmereLiveModeSharedLawState {
 
 export interface HarthmereLiveModeSharedWorldState {
   version: typeof HARTHMERE_LIVE_MODE_BACKEND_VERSION;
+  /**
+   * Version 2 makes properties, decorations, placeables, and positioned drops
+   * authoritative in this record. Older records are merged once for migration;
+   * version-2 records replace actor copies so deleted world objects stay gone.
+   */
+  sharedAuthoritySchemaVersion: number;
   worldId: typeof HARTHMERE_LIVE_MODE_SHARED_WORLD_ID;
   updatedAtMs: number;
   economyProduction: HarthmereProductionEconomyState;
   jobsBoard: HarthmereJobsBoardState;
+  /**
+   * Positioned custom-item drops that do not yet have Bikkie ids. Native items
+   * use ECS GrabBags; this shared compatibility slice prevents one private copy
+   * of a custom drop per actor while those remaining items are migrated.
+   */
+  inventoryLootWorld: HarthmereLiveModeSharedInventoryLootWorldState;
   building: HarthmereLiveModeSharedBuildingState;
+  /** Property decorations are physical world state, not private actor UI state. */
+  homeDecoration: HarthmereHomeDecorationState;
+  /** Free-world placeables must be visible and collide consistently for everyone. */
+  placeableWorld: HarthmerePlaceableWorldState;
   law: HarthmereLiveModeSharedLawState;
   guild: HarthmereLiveModeGuildState;
   robotProtection: LiveEntityRobotEnergyState;
@@ -1420,11 +1448,21 @@ export interface HarthmereLiveModeSharedWorldState {
   // the same bush/animal is not an independent per-account scratch-off; expires
   // via the 12h respawn window on read (see wildSpawnActiveClaimAtMs).
   wildSpawnClaims: Record<string, number>;
+  /** Absolute respawn timestamps for server-authored gathering nodes. */
+  gatheringNodeRespawnAtMs: Record<string, number>;
   questInvites: HarthmereLiveModeQuestInviteState;
   /** Shared auction marketplace so a buyer can see and settle another player's listing. */
   auctionListings: Record<string, HarthmereAuctionListing>;
   /** Sale proceeds owed to sellers (sellerId -> queued payouts), collected on the seller's sync. */
   auctionSellerPayouts: Record<string, HarthmereAuctionSellerPayout[]>;
+}
+
+export interface HarthmereLiveModeSharedInventoryLootWorldState {
+  lootDrops: Record<string, HarthmereInventoryLootDrop>;
+  dropItemInstances: Record<string, HarthmereInventoryLootItemInstance>;
+  usedPickupTokens: Record<string, number>;
+  nextDropNumber: number;
+  nextInstanceNumber: number;
 }
 
 export interface HarthmereLiveModeSharedBuildingState {
@@ -1435,10 +1473,42 @@ export interface HarthmereLiveModeSharedBuildingState {
   materializationPlans: HarthmereLiveModeBackendState["building"]["materializationPlans"];
   storageContainers: HarthmereLiveModeBackendState["building"]["storageContainers"];
   doorLocks: HarthmereLiveModeBackendState["building"]["doorLocks"];
+  /** A plot has exactly one owner across every actor and server replica. */
+  plotOwners: Record<string, string>;
+  /** Construction is world state; sharing it prevents overlapping projects. */
+  activeProjects: HarthmereLiveModeBackendState["building"]["activeProjects"];
+  /** Completed properties remain global so transfers are visible to the recipient. */
+  propertyRecords: Record<string, BuildingSystemPropertyRecord>;
+  propertyBuildingProgress: Record<string, number>;
+}
+
+function normalizeHarthmereLiveModeSharedInventoryLootWorldState(
+  raw: unknown
+): HarthmereLiveModeSharedInventoryLootWorldState {
+  const value = raw && typeof raw === "object" ? (raw as any) : {};
+  const normalized = normalizeHarthmereInventoryLootState({
+    lootDrops: value.lootDrops,
+    itemInstances: value.dropItemInstances,
+    usedPickupTokens: value.usedPickupTokens,
+    nextDropNumber: value.nextDropNumber,
+    nextInstanceNumber: value.nextInstanceNumber,
+  });
+  return {
+    lootDrops: normalized.lootDrops,
+    dropItemInstances: Object.fromEntries(
+      Object.entries(normalized.itemInstances).filter(
+        ([, instance]) => instance.location === "loot_drop"
+      )
+    ),
+    usedPickupTokens: normalized.usedPickupTokens,
+    nextDropNumber: normalized.nextDropNumber,
+    nextInstanceNumber: normalized.nextInstanceNumber,
+  };
 }
 
 function normalizeHarthmereLiveModeSharedBuildingState(
-  raw: unknown
+  raw: unknown,
+  nowMs: number
 ): HarthmereLiveModeSharedBuildingState {
   const value = raw && typeof raw === "object" ? (raw as any) : {};
   return {
@@ -1449,6 +1519,22 @@ function normalizeHarthmereLiveModeSharedBuildingState(
     materializationPlans: { ...(value.materializationPlans ?? {}) },
     storageContainers: { ...(value.storageContainers ?? {}) },
     doorLocks: { ...(value.doorLocks ?? {}) },
+    plotOwners: { ...(value.plotOwners ?? {}) },
+    activeProjects: { ...(value.activeProjects ?? {}) },
+    propertyRecords: Object.fromEntries(
+      Object.entries(
+        (value.propertyRecords ?? {}) as Record<string, unknown>
+      ).map(([propertyId, property]) => [
+        propertyId,
+        normalizeBuildingSystemPropertyRecord({
+          propertyId,
+          raw: property,
+          ownerId: String((property as any)?.ownerId ?? ""),
+          nowMs,
+        }),
+      ])
+    ),
+    propertyBuildingProgress: { ...(value.propertyBuildingProgress ?? {}) },
   };
 }
 
@@ -4972,6 +5058,28 @@ function liveExoticMatterDepositStateFromClaims(
 // ---------------------------------------------------------------------------
 const HARTHMERE_WILD_SPAWN_CLAIM_PREFIX = "wild_spawn:";
 export const HARTHMERE_WILD_SPAWN_RESPAWN_MS = HARTHMERE_HALF_DAY_MS;
+const HARTHMERE_GATHERING_NODE_RESPAWN_PREFIX = "gathering_node_respawn:";
+
+function gatheringNodeRespawnKey(nodeId: string) {
+  return `${HARTHMERE_GATHERING_NODE_RESPAWN_PREFIX}${nodeId}`;
+}
+
+function normalizeGatheringNodeRespawnAtMs(raw: unknown) {
+  const value =
+    raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  return Object.fromEntries(
+    Object.entries(value)
+      .filter(
+        ([key, respawnAtMs]) =>
+          key.startsWith(HARTHMERE_GATHERING_NODE_RESPAWN_PREFIX) &&
+          Number.isFinite(Number(respawnAtMs))
+      )
+      .map(([key, respawnAtMs]) => [
+        key,
+        Math.max(0, Math.trunc(Number(respawnAtMs))),
+      ])
+  );
+}
 
 // (foraging fix F-C, 2026-07-14): gather_seed authored no depletion/cooldown, so
 // resubmitting it produced unlimited free seeds (and downstream farming XP). Gate
@@ -5318,6 +5426,44 @@ function buildingSystemPlotBoundsFromState(
   return (
     buildingSystemPlotFromState(state, plotId)?.bounds ??
     (plotId ? buildingSystemPlotBoundsById(plotId) : undefined)
+  );
+}
+
+const HARTHMERE_WORLD_PLACEMENT_INTERACTION_RADIUS = 8;
+
+/**
+ * Free-world placeables may use open terrain, but they may not overlap another
+ * actor's claimed plot. The shared plot-owner ledger is the authorization
+ * source; client-supplied ownership or visibility claims are never consulted.
+ */
+function worldPlacementOverlapsForeignPlot(input: {
+  state: HarthmereLiveModeBackendState;
+  actorId: string;
+  position: { x: number; z: number };
+  footprint: { width: number; depth: number };
+  rotationDegrees: number;
+}) {
+  const rotated = input.rotationDegrees === 90 || input.rotationDegrees === 270;
+  const width = rotated ? input.footprint.depth : input.footprint.width;
+  const depth = rotated ? input.footprint.width : input.footprint.depth;
+  const objectBounds = {
+    xMin: input.position.x,
+    xMax: input.position.x + width,
+    zMin: input.position.z,
+    zMax: input.position.z + depth,
+  };
+  return Object.entries(input.state.building.plotOwners).some(
+    ([plotId, ownerActorId]) => {
+      if (ownerActorId === input.actorId) return false;
+      const bounds = buildingSystemPlotBoundsFromState(input.state, plotId);
+      return Boolean(
+        bounds &&
+          objectBounds.xMin <= bounds.xMax &&
+          objectBounds.xMax >= bounds.xMin &&
+          objectBounds.zMin <= bounds.zMax &&
+          objectBounds.zMax >= bounds.zMin
+      );
+    }
   );
 }
 
@@ -5991,6 +6137,7 @@ export function defaultHarthmereLiveModeBackendState(
     building: {
       placedStructures: businessOutpostBuildingState.placedStructures,
       ownedPlots: [],
+      plotOwners: {},
       customPlots: {},
       safeZones: businessOutpostBuildingState.safeZones,
       activeProjects: {},
@@ -6112,6 +6259,94 @@ export function defaultHarthmereLiveModeBackendState(
   ensurePlayerOwnedBusinessOwnerNpcMarkers(state, nowMs);
   syncLiveEntityRobotProtectionToBuilding(state, nowMs);
   return state;
+}
+
+/**
+ * Storage format for the actor-owned half of the live-mode state.
+ *
+ * The reducer intentionally receives one merged view because many gameplay
+ * operations need player and world data at the same time. That merged view is
+ * not, however, the correct Redis ownership boundary. Production economy,
+ * placed world structures, containers, jobs, guilds, auctions, robot state,
+ * and quest invitations already live in the shared-world record. Persisting
+ * them again for every player made a single actor record roughly 33 MB and
+ * forced every button press to parse and rewrite the world twice.
+ *
+ * Keep this serializer shallow: its job is to omit shared-owned branches, not
+ * to clone the state. `JSON.stringify` performs the only traversal. This also
+ * means a legacy full record is migrated to the compact form on its next
+ * successful mutation without an offline migration or a second authority.
+ */
+export const HARTHMERE_LIVE_MODE_PLAYER_STATE_STORAGE_VERSION = 4;
+
+export function createHarthmereLiveModePlayerPersistenceState(
+  state: HarthmereLiveModeBackendState
+): Record<string, unknown> {
+  const playerState: Record<string, unknown> = { ...state };
+
+  delete playerState.jobsBoard;
+  delete playerState.questInvites;
+  delete playerState.robotProtection;
+  delete playerState.homeDecoration;
+  delete playerState.placeableWorld;
+  // Property records and construction progress are shared physical-world
+  // state. Keeping actor copies here made transfers invisible to recipients.
+  delete playerState.property;
+
+  // Guild membership is derivable from the shared guild roster. Retaining the
+  // small local membership projection protects rolling deployments where the
+  // shared roster and actor write may briefly be observed at different times.
+  playerState.guild = {
+    guildId: state.guild.guildId,
+    memberGuildId: state.guild.memberGuildId,
+    role: state.guild.role,
+  };
+
+  const playerEconomy: Record<string, unknown> = { ...state.economy };
+  delete playerEconomy.production;
+  delete playerEconomy.auctionListings;
+  delete playerEconomy.auctionSellerPayouts;
+  playerState.economy = playerEconomy;
+
+  // `building` mixes ownership. Plot membership belongs to the actor as a
+  // projection; the owner ledger and active projects belong to the shared
+  // world. Jobs-board objective markers are the exception: they are
+  // deliberately excluded from the public marker projection because another
+  // player must not see this actor's private objective, so retain those here.
+  playerState.building = {
+    ownedPlots: [...state.building.ownedPlots],
+    inWorldMarkers: Object.fromEntries(
+      Object.entries(state.building.inWorldMarkers).filter(([markerId]) =>
+        isHarthmereActorJobMarkerId(markerId)
+      )
+    ),
+  };
+
+  // Positioned world drops and pickup tokens are shared. Keep only item
+  // instances already transferred into this actor's inventory in the actor
+  // record, otherwise a stale player blob can resurrect a claimed drop.
+  playerState.inventoryLoot = {
+    ...state.inventoryLoot,
+    lootDrops: {},
+    usedPickupTokens: {},
+    itemInstances: Object.fromEntries(
+      Object.entries(state.inventoryLoot.itemInstances).filter(
+        ([, instance]) => instance.location !== "loot_drop"
+      )
+    ),
+    nextDropNumber: 1,
+    nextInstanceNumber: 1,
+  };
+
+  playerState.playerStateStorageVersion =
+    HARTHMERE_LIVE_MODE_PLAYER_STATE_STORAGE_VERSION;
+  return playerState;
+}
+
+export function stringifyHarthmereLiveModePlayerPersistenceState(
+  state: HarthmereLiveModeBackendState
+) {
+  return JSON.stringify(createHarthmereLiveModePlayerPersistenceState(state));
 }
 
 export function parseHarthmereLiveModeBackendState(
@@ -6364,6 +6599,10 @@ export function parseHarthmereLiveModeBackendState(
             ...(((parsed.building as any)?.ownedPlots ?? []) as string[]),
           ]),
         ],
+        plotOwners: {
+          ...defaults.building.plotOwners,
+          ...((parsed.building as any)?.plotOwners ?? {}),
+        },
         customPlots: {
           ...defaults.building.customPlots,
           ...((parsed.building as any)?.customPlots ?? {}),
@@ -6498,13 +6737,40 @@ export function createHarthmereLiveModeSharedWorldState(
 ): HarthmereLiveModeSharedWorldState {
   return {
     version: HARTHMERE_LIVE_MODE_BACKEND_VERSION,
+    sharedAuthoritySchemaVersion: 2,
     worldId: HARTHMERE_LIVE_MODE_SHARED_WORLD_ID,
     updatedAtMs: nowMs,
     economyProduction: normalizeHarthmereProductionEconomyState(
       state.economy.production
     ),
     jobsBoard: normalizeHarthmereJobsBoardState(state.jobsBoard, nowMs),
-    building: normalizeHarthmereLiveModeSharedBuildingState(state.building),
+    inventoryLootWorld: {
+      lootDrops: { ...state.inventoryLoot.lootDrops },
+      dropItemInstances: Object.fromEntries(
+        Object.entries(state.inventoryLoot.itemInstances).filter(
+          ([, instance]) => instance.location === "loot_drop"
+        )
+      ),
+      usedPickupTokens: { ...state.inventoryLoot.usedPickupTokens },
+      nextDropNumber: state.inventoryLoot.nextDropNumber,
+      nextInstanceNumber: state.inventoryLoot.nextInstanceNumber,
+    },
+    building: normalizeHarthmereLiveModeSharedBuildingState(
+      {
+        ...state.building,
+        plotOwners: {
+          ...Object.fromEntries(
+            state.building.ownedPlots.map((plotId) => [plotId, state.actorId])
+          ),
+          ...state.building.plotOwners,
+        },
+        propertyRecords: state.property.owned,
+        propertyBuildingProgress: state.property.buildingProgress,
+      },
+      nowMs
+    ),
+    homeDecoration: normalizeHarthmereHomeDecorationState(state.homeDecoration),
+    placeableWorld: normalizeHarthmerePlaceableWorldState(state.placeableWorld),
     law: createSharedLawStateFromBackend(state),
     guild: normalizeHarthmereLiveModeGuildState(state.guild, nowMs),
     robotProtection: normalizeLiveEntityRobotEnergyState(
@@ -6517,6 +6783,9 @@ export function createHarthmereLiveModeSharedWorldState(
     // (foraging fix F-E, 2026-07-14): project wild-spawn depletion into the
     // shared world so every player sees the same depleted/respawned bushes.
     wildSpawnClaims: normalizeWildSpawnClaims(state.combat.lootClaims),
+    gatheringNodeRespawnAtMs: normalizeGatheringNodeRespawnAtMs(
+      state.combat.lootClaims
+    ),
     questInvites: normalizeHarthmereQuestInviteState(state.questInvites, nowMs),
     auctionListings: { ...state.economy.auctionListings },
     auctionSellerPayouts: normalizeAuctionSellerPayouts(
@@ -6537,6 +6806,10 @@ export function parseHarthmereLiveModeSharedWorldState(
     const law = (parsed as any).law ?? {};
     return {
       version: HARTHMERE_LIVE_MODE_BACKEND_VERSION,
+      sharedAuthoritySchemaVersion: Math.max(
+        0,
+        Math.trunc(Number((parsed as any).sharedAuthoritySchemaVersion) || 0)
+      ),
       worldId: HARTHMERE_LIVE_MODE_SHARED_WORLD_ID,
       updatedAtMs: Math.max(
         0,
@@ -6549,8 +6822,19 @@ export function parseHarthmereLiveModeSharedWorldState(
         (parsed as any).jobsBoard,
         nowMs
       ),
+      inventoryLootWorld:
+        normalizeHarthmereLiveModeSharedInventoryLootWorldState(
+          (parsed as any).inventoryLootWorld
+        ),
       building: normalizeHarthmereLiveModeSharedBuildingState(
-        (parsed as any).building
+        (parsed as any).building,
+        nowMs
+      ),
+      homeDecoration: normalizeHarthmereHomeDecorationState(
+        (parsed as any).homeDecoration
+      ),
+      placeableWorld: normalizeHarthmerePlaceableWorldState(
+        (parsed as any).placeableWorld
       ),
       robotProtection: normalizeLiveEntityRobotEnergyState(
         (parsed as any).robotProtection,
@@ -6591,6 +6875,9 @@ export function parseHarthmereLiveModeSharedWorldState(
       wildSpawnClaims: normalizeWildSpawnClaims(
         (parsed as any).wildSpawnClaims
       ),
+      gatheringNodeRespawnAtMs: normalizeGatheringNodeRespawnAtMs(
+        (parsed as any).gatheringNodeRespawnAtMs
+      ),
       questInvites: normalizeHarthmereQuestInviteState(
         (parsed as any).questInvites,
         nowMs
@@ -6611,11 +6898,44 @@ export function mergeHarthmereLiveModeSharedWorldStateIntoBackend(
   nowMs: number
 ) {
   if (!shared) return state;
+  const sharedWorldObjectsAreAuthoritative =
+    shared.sharedAuthoritySchemaVersion >= 2;
   state.economy.production = normalizeHarthmereProductionEconomyState(
     shared.economyProduction
   );
   ensureHarthmereBusinessOutpostEconomyRecords(state.economy.production, nowMs);
   state.jobsBoard = normalizeHarthmereJobsBoardState(shared.jobsBoard, nowMs);
+  const sharedLoot = normalizeHarthmereLiveModeSharedInventoryLootWorldState(
+    shared.inventoryLootWorld
+  );
+  state.inventoryLoot.lootDrops = sharedWorldObjectsAreAuthoritative
+    ? { ...sharedLoot.lootDrops }
+    : {
+        ...state.inventoryLoot.lootDrops,
+        ...sharedLoot.lootDrops,
+      };
+  state.inventoryLoot.usedPickupTokens = {
+    ...state.inventoryLoot.usedPickupTokens,
+    ...sharedLoot.usedPickupTokens,
+  };
+  state.inventoryLoot.itemInstances = {
+    ...Object.fromEntries(
+      Object.entries(state.inventoryLoot.itemInstances).filter(
+        ([, instance]) =>
+          !sharedWorldObjectsAreAuthoritative ||
+          instance.location !== "loot_drop"
+      )
+    ),
+    ...sharedLoot.dropItemInstances,
+  };
+  state.inventoryLoot.nextDropNumber = Math.max(
+    state.inventoryLoot.nextDropNumber,
+    sharedLoot.nextDropNumber
+  );
+  state.inventoryLoot.nextInstanceNumber = Math.max(
+    state.inventoryLoot.nextInstanceNumber,
+    sharedLoot.nextInstanceNumber
+  );
   state.questInvites = normalizeHarthmereQuestInviteState(
     shared.questInvites,
     nowMs
@@ -6655,7 +6975,8 @@ export function mergeHarthmereLiveModeSharedWorldStateIntoBackend(
     }
   }
   const sharedBuilding = normalizeHarthmereLiveModeSharedBuildingState(
-    shared.building
+    shared.building,
+    nowMs
   );
   const businessOutpostBuildingState =
     defaultHarthmereBusinessOutpostBuildingState(nowMs);
@@ -6674,6 +6995,17 @@ export function mergeHarthmereLiveModeSharedWorldStateIntoBackend(
       ...state.building.safeZones,
       ...sharedBuilding.safeZones,
       ...businessOutpostBuildingState.safeZones,
+    },
+    plotOwners: {
+      ...Object.fromEntries(
+        state.building.ownedPlots.map((plotId) => [plotId, state.actorId])
+      ),
+      ...state.building.plotOwners,
+      ...sharedBuilding.plotOwners,
+    },
+    activeProjects: {
+      ...state.building.activeProjects,
+      ...sharedBuilding.activeProjects,
     },
     inWorldMarkers: {
       ...state.building.inWorldMarkers,
@@ -6694,6 +7026,66 @@ export function mergeHarthmereLiveModeSharedWorldStateIntoBackend(
       ...sharedBuilding.doorLocks,
     },
   };
+  state.building.ownedPlots = Object.entries(state.building.plotOwners)
+    .filter(([, ownerActorId]) => ownerActorId === state.actorId)
+    .map(([plotId]) => plotId);
+  // Legacy actor records may contain properties from before the shared-world
+  // migration. Merge those once, then let the shared record own all future
+  // mutations so transfers and decoration collisions are globally coherent.
+  state.property = {
+    owned: sharedWorldObjectsAreAuthoritative
+      ? { ...sharedBuilding.propertyRecords }
+      : {
+          ...state.property.owned,
+          ...sharedBuilding.propertyRecords,
+        },
+    buildingProgress: sharedWorldObjectsAreAuthoritative
+      ? { ...sharedBuilding.propertyBuildingProgress }
+      : {
+          ...state.property.buildingProgress,
+          ...sharedBuilding.propertyBuildingProgress,
+        },
+  };
+  state.homeDecoration = normalizeHarthmereHomeDecorationState(
+    sharedWorldObjectsAreAuthoritative
+      ? shared.homeDecoration
+      : {
+          ...state.homeDecoration,
+          ...shared.homeDecoration,
+          placed: {
+            ...state.homeDecoration.placed,
+            ...shared.homeDecoration.placed,
+          },
+          appliedRequestIds: {
+            ...state.homeDecoration.appliedRequestIds,
+            ...shared.homeDecoration.appliedRequestIds,
+          },
+          nextDecorationNumber: Math.max(
+            state.homeDecoration.nextDecorationNumber,
+            shared.homeDecoration.nextDecorationNumber
+          ),
+        }
+  );
+  state.placeableWorld = normalizeHarthmerePlaceableWorldState(
+    sharedWorldObjectsAreAuthoritative
+      ? shared.placeableWorld
+      : {
+          ...state.placeableWorld,
+          ...shared.placeableWorld,
+          placed: {
+            ...state.placeableWorld.placed,
+            ...shared.placeableWorld.placed,
+          },
+          appliedRequestIds: {
+            ...state.placeableWorld.appliedRequestIds,
+            ...shared.placeableWorld.appliedRequestIds,
+          },
+          nextObjectNumber: Math.max(
+            state.placeableWorld.nextObjectNumber,
+            shared.placeableWorld.nextObjectNumber
+          ),
+        }
+  );
   state.robotProtection = normalizeLiveEntityRobotEnergyState(
     shared.robotProtection,
     nowMs
@@ -6719,6 +7111,17 @@ export function mergeHarthmereLiveModeSharedWorldStateIntoBackend(
     state.combat.lootClaims[claimKey] = Math.max(
       state.combat.lootClaims[claimKey] ?? 0,
       claimedAtMs
+    );
+  }
+  const sharedGatheringNodeRespawns = normalizeGatheringNodeRespawnAtMs(
+    shared.gatheringNodeRespawnAtMs
+  );
+  for (const [claimKey, respawnAtMs] of Object.entries(
+    sharedGatheringNodeRespawns
+  )) {
+    state.combat.lootClaims[claimKey] = Math.max(
+      state.combat.lootClaims[claimKey] ?? 0,
+      respawnAtMs
     );
   }
   syncLiveEntityRobotProtectionToBuilding(state, nowMs);
@@ -7291,7 +7694,11 @@ export function createHarthmereLiveModeBuildingClientSnapshot(
       .map((entry) => entry.plotId)
       .filter((plotId): plotId is string => typeof plotId === "string"),
     placedStructures: state.building.placedStructures,
-    completedProperties: state.property.owned,
+    completedProperties: Object.fromEntries(
+      Object.entries(state.property.owned).filter(
+        ([, property]) => property.ownerId === state.actorId
+      )
+    ),
     buildingProgress: state.property.buildingProgress,
     homeDecoration: state.homeDecoration,
     placeableWorld: state.placeableWorld,
@@ -7375,6 +7782,13 @@ export function reduceHarthmereLiveModeBackendState(
 
   ensureBuildingSystemStructureDefinitions();
   ensureHarthmereLiveModeCombatCatalogue();
+  // Rolling-upgrade compatibility: old actor blobs and several server-side
+  // callers only carried the per-actor `ownedPlots` projection. Repair the
+  // shared owner ledger before enforcing it, but never overwrite an owner that
+  // is already present from shared world state.
+  for (const plotId of next.building.ownedPlots) {
+    next.building.plotOwners[plotId] ??= envelope.actorId;
+  }
   ensureHarthmereProductionCraftingCatalogue();
   ensureHarthmereProductionVendorCatalog();
   ensureCombatResourcePools(next);
@@ -9735,6 +10149,15 @@ export function reduceHarthmereLiveModeBackendState(
       const itemActionDefinition = itemActionItemId
         ? getHarthmereItemDefinition(itemActionItemId)
         : undefined;
+      const requestedDropPosition =
+        kind === "drop_item"
+          ? payloadWorldPosition(envelope, "position")
+          : undefined;
+      if (kind === "drop_item" && !requestedDropPosition) {
+        warnings.push("inventory_item_rejected:missing_drop_position");
+        touchedModels.add("inventory_rejection");
+        break;
+      }
       const reviveHealthPercent = Math.max(
         0,
         Number(itemActionDefinition?.stats.reviveHealthPercent ?? 0) || 0
@@ -9841,8 +10264,7 @@ export function reduceHarthmereLiveModeBackendState(
         // from the throw location; the drop lives in SHARED state so every
         // player sees and can salvage it.
         if (kind === "drop_item" && itemActionItemId) {
-          const dropPosition = payloadWorldPosition(envelope, "position");
-          if (dropPosition) {
+          if (requestedDropPosition) {
             ensureInventoryLootActorSynced();
             const throwDropDef =
               inventoryLootDefinitionFromLiveItem(itemActionItemId);
@@ -9859,7 +10281,7 @@ export function reduceHarthmereLiveModeBackendState(
                     nowMs,
                     itemId: itemActionItemId,
                     count: invReq.count ?? 1,
-                    position: dropPosition,
+                    position: requestedDropPosition,
                   }
                 )
               : undefined;
@@ -9869,9 +10291,25 @@ export function reduceHarthmereLiveModeBackendState(
                 harthmereLiveModeSharedStateKey("loot_drop", worldDrop.dropId)
               );
             } else {
-              // The debit still happened (identical to the old behaviour);
-              // surface why no drop appeared so the client can toast it.
-              warnings.push("drop_item_world_drop_skipped:undroppable_item");
+              // Debit and world-drop creation are one atomic throw. Keeping the
+              // debit here made Muckwad counts decrease without placing a
+              // salvageable object in the world. Restore the pre-action
+              // inventory and report a rejection so clients retain the stack.
+              next.inventory.items = { ...snapshot.items };
+              next.inventory.gold = snapshot.gold;
+              next.inventory.escrow = snapshot.escrow;
+              next.inventory.equipment = { ...snapshot.equipment };
+              next.inventory.consumableCooldowns = {
+                ...snapshot.consumableCooldowns,
+              };
+              next.banking.materialStorage = {
+                ...(snapshot.materialStorage ?? {}),
+              };
+              touchedModels.delete("inventory_items");
+              touchedModels.delete("player_status");
+              touchedModels.delete("material_storage");
+              touchedModels.add("inventory_rejection");
+              warnings.push("inventory_item_rejected:world_drop_unavailable");
             }
           }
         }
@@ -10275,6 +10713,25 @@ export function reduceHarthmereLiveModeBackendState(
         const drop = next.inventoryLoot.lootDrops[inventoryLootDropId];
         if (!drop) {
           warnings.push("loot_rejected:unknown_drop_id");
+          touchedModels.add("loot_rejection");
+          break;
+        }
+        const actorPosition = actorWorldPositionFromAuthority(envelope);
+        if (!actorPosition) {
+          warnings.push("loot_rejected:actor_position_unverified");
+          touchedModels.add("loot_rejection");
+          break;
+        }
+        if (!drop.position) {
+          warnings.push("loot_rejected:drop_position_missing");
+          touchedModels.add("loot_rejection");
+          break;
+        }
+        // Custom string-id drops are a compatibility layer until every item is
+        // a native Bikkie GrabBag. Match the native pickup radius and validate
+        // against the server-read player position, never the browser claim.
+        if (distanceSq3(actorPosition, drop.position) > 25) {
+          warnings.push("loot_rejected:pickup_distance_too_large");
           touchedModels.add("loot_rejection");
           break;
         }
@@ -11602,6 +12059,14 @@ export function reduceHarthmereLiveModeBackendState(
         payloadString(envelope, "boardId") ??
         HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID;
       const actorPosition = actorWorldPositionFromAuthority(envelope);
+      const authoritativeEquippedToolActions = [
+        ...(harthmereRepairToolGate({ equipment: next.inventory.equipment }).ok
+          ? ["repair"]
+          : []),
+        ...(harthmereCleanupToolGate({ equipment: next.inventory.equipment }).ok
+          ? ["cleanup"]
+          : []),
+      ];
       const board = next.jobsBoard.boards[boardId];
       const nearbyBoardId =
         actorPosition && board
@@ -11636,6 +12101,7 @@ export function reduceHarthmereLiveModeBackendState(
             actorCollectibles: next.collections.discovered,
             actorGuildId: next.guild.memberGuildId,
             actorPosition,
+            authoritativeEquippedToolActions,
             nearbyBoardId,
             economy: next.economy.production,
           }
@@ -11662,6 +12128,7 @@ export function reduceHarthmereLiveModeBackendState(
           actorCollectibles: next.collections.discovered,
           actorGuildId: next.guild.memberGuildId,
           actorPosition,
+          authoritativeEquippedToolActions,
           nearbyBoardId,
           economy: next.economy.production,
           canManageBusinessJobs: (business: any) =>
@@ -12636,6 +13103,19 @@ export function reduceHarthmereLiveModeBackendState(
                 actorMaterialStorageItems: next.banking.materialStorage,
                 actorCollectibles: next.collections.discovered,
                 actorGuildId: next.guild.memberGuildId,
+                actorPosition: actorWorldPositionFromAuthority(envelope),
+                authoritativeEquippedToolActions: [
+                  ...(harthmereRepairToolGate({
+                    equipment: next.inventory.equipment,
+                  }).ok
+                    ? ["repair"]
+                    : []),
+                  ...(harthmereCleanupToolGate({
+                    equipment: next.inventory.equipment,
+                  }).ok
+                    ? ["cleanup"]
+                    : []),
+                ],
                 economy: next.economy.production,
               }
             );
@@ -12887,6 +13367,18 @@ export function reduceHarthmereLiveModeBackendState(
           touchedModels.add("terrain_materialization");
           sharedStateKeys.add(harthmereLiveModeSharedWorldStateKey());
         }
+        // A Redis commit can outlive a transient ECS/materializer outage. Retry
+        // only unapplied solid-building plans; this is idempotent terrain work
+        // and does not charge the actor or recreate the construction project.
+        for (const plan of Object.values(next.building.materializationPlans)) {
+          if (!plan.materializesSolidVoxelBuilding) continue;
+          const structureId = plan.projectId ?? plan.requestId;
+          const structure = next.building.placedStructures[structureId];
+          if (structure && structure.materializedInEcs !== true) {
+            buildingMaterializationPlans.push(plan);
+            touchedModels.add("building_materialization_retry");
+          }
+        }
         break;
       }
 
@@ -12966,7 +13458,16 @@ export function reduceHarthmereLiveModeBackendState(
           touchedModels.add("building_rejection");
           break;
         }
-        if (next.building.ownedPlots.includes(plot.plotId)) {
+        const existingPlotOwner = next.building.plotOwners[plot.plotId];
+        if (existingPlotOwner && existingPlotOwner !== envelope.actorId) {
+          warnings.push("plot_claim_rejected:plot_owned_by_another_actor");
+          touchedModels.add("building_rejection");
+          break;
+        }
+        if (
+          existingPlotOwner === envelope.actorId ||
+          next.building.ownedPlots.includes(plot.plotId)
+        ) {
           // Idempotent success: clients can lose the original response when the
           // browser queues/aborts a request, so a retry for an already-owned plot
           // must return the current land state instead of blocking progression.
@@ -13018,6 +13519,10 @@ export function reduceHarthmereLiveModeBackendState(
               touchedModels.add("terrain_materialization");
             }
           }
+          next.building.plotOwners[plot.plotId] = envelope.actorId;
+          if (!next.building.ownedPlots.includes(plot.plotId)) {
+            next.building.ownedPlots.push(plot.plotId);
+          }
           touchedModels.add("owned_plots");
           break;
         }
@@ -13032,7 +13537,11 @@ export function reduceHarthmereLiveModeBackendState(
         ) {
           break;
         }
-        const claimPlot = toHarthmerePlotDefinition(plot, "", true);
+        const claimPlot = toHarthmerePlotDefinition(
+          plot,
+          next.building.plotOwners[plot.plotId] ?? "",
+          true
+        );
         const claim = validateHarthmerePlotClaim(
           {
             requestId: envelope.requestId,
@@ -13055,9 +13564,13 @@ export function reduceHarthmereLiveModeBackendState(
         }
 
         next.inventory.gold = Math.max(0, next.inventory.gold - claim.goldCost);
-        if (!next.building.ownedPlots.includes(plot.plotId)) {
+        if (
+          next.building.plotOwners[plot.plotId] !== envelope.actorId ||
+          !next.building.ownedPlots.includes(plot.plotId)
+        ) {
           next.building.ownedPlots.push(plot.plotId);
         }
+        next.building.plotOwners[plot.plotId] = envelope.actorId;
         const claimMiraMapMarker = createBuildingSystemMiraMapMarker(nowMs);
         next.building.inWorldMarkers[claimMiraMapMarker.markerId] =
           claimMiraMapMarker;
@@ -13309,7 +13822,10 @@ export function reduceHarthmereLiveModeBackendState(
         if (rejectBlueprintItemPayload("building_project_rejected")) {
           break;
         }
-        if (!next.building.ownedPlots.includes(plot.plotId)) {
+        if (
+          next.building.plotOwners[plot.plotId] !== envelope.actorId ||
+          !next.building.ownedPlots.includes(plot.plotId)
+        ) {
           warnings.push("building_project_rejected:plot_not_owned_by_actor");
           touchedModels.add("building_rejection");
           break;
@@ -13337,8 +13853,15 @@ export function reduceHarthmereLiveModeBackendState(
           buildingProjectIdForPlot(plot.plotId);
         const existingProject = next.building.activeProjects[projectId];
         if (existingProject && existingProject.status !== "cancelled") {
-          warnings.push("building_project_idempotent:project_already_exists");
-          touchedModels.add("building_project");
+          if (existingProject.actorId !== envelope.actorId) {
+            warnings.push(
+              "building_project_rejected:project_owned_by_another_actor"
+            );
+            touchedModels.add("building_rejection");
+          } else {
+            warnings.push("building_project_idempotent:project_already_exists");
+            touchedModels.add("building_project");
+          }
           break;
         }
         if (next.property.owned[propertyId]) {
@@ -13478,6 +14001,13 @@ export function reduceHarthmereLiveModeBackendState(
         const project = next.building.activeProjects[projectId];
         if (!project || project.status !== "active") {
           warnings.push("building_stage_rejected:active_project_not_found");
+          touchedModels.add("building_rejection");
+          break;
+        }
+        if (project.actorId !== envelope.actorId) {
+          warnings.push(
+            "building_stage_rejected:project_owned_by_another_actor"
+          );
           touchedModels.add("building_rejection");
           break;
         }
@@ -13702,7 +14232,10 @@ export function reduceHarthmereLiveModeBackendState(
               blueprintId: projectBlueprint.blueprintId,
               use: projectBlueprint.use,
               voxelEditCount: project.completedStages.length,
-              materializedInEcs: true,
+              // The API marks this true only after the ECS/world operation
+              // succeeds. A committed Redis record is not proof of a house.
+              materializedInEcs: false,
+              ownerActorId: envelope.actorId,
             };
             touchedModels.add("property_building");
             touchedModels.add("placed_structures");
@@ -13740,7 +14273,10 @@ export function reduceHarthmereLiveModeBackendState(
         if (rejectBlueprintItemPayload("building_rejected")) {
           break;
         }
-        if (!next.building.ownedPlots.includes(plot.plotId)) {
+        if (
+          next.building.plotOwners[plot.plotId] !== envelope.actorId ||
+          !next.building.ownedPlots.includes(plot.plotId)
+        ) {
           warnings.push("building_rejected:plot_not_owned_by_actor");
           touchedModels.add("building_rejection");
           break;
@@ -13858,7 +14394,10 @@ export function reduceHarthmereLiveModeBackendState(
           blueprintId: blueprint.blueprintId,
           use: blueprint.use,
           voxelEditCount: plan.edits.length,
-          materializedInEcs: true,
+          // Persist pending first; the post-commit materializer acknowledges
+          // success back into the shared world record.
+          materializedInEcs: false,
+          ownerActorId: envelope.actorId,
         };
         next.building.materializationPlans[envelope.requestId] = plan;
         if (plan.safeZone) {
@@ -14436,6 +14975,11 @@ export function reduceHarthmereLiveModeBackendState(
           next.building.ownedPlots = next.building.ownedPlots.filter(
             (id) => id !== propertyPlot.plotId
           );
+          if (
+            next.building.plotOwners[propertyPlot.plotId] === envelope.actorId
+          ) {
+            delete next.building.plotOwners[propertyPlot.plotId];
+          }
           delete next.building.customPlots[propertyPlot.plotId];
           for (const [structureId, structure] of Object.entries(
             next.building.placedStructures
@@ -14534,6 +15078,23 @@ export function reduceHarthmereLiveModeBackendState(
             break;
           }
           property.ownerId = newOwnerId;
+          next.building.plotOwners[property.plotId] = newOwnerId;
+          next.building.ownedPlots = next.building.ownedPlots.filter(
+            (plotId) => plotId !== property.plotId
+          );
+          for (const structure of Object.values(
+            next.building.placedStructures
+          )) {
+            if (structure.plotId === property.plotId) {
+              structure.ownerActorId = newOwnerId;
+            }
+          }
+          for (const decoration of Object.values(next.homeDecoration.placed)) {
+            if (decoration.propertyId === property.propertyId) {
+              decoration.ownerId = newOwnerId;
+              decoration.updatedAtMs = nowMs;
+            }
+          }
           property.listedForSale = false;
           property.salePriceGold = undefined;
           if (
@@ -14999,10 +15560,10 @@ export function reduceHarthmereLiveModeBackendState(
       break;
     }
     case "request_world_placement": {
-      // Free-world placement: place/move/remove a crafted or bought placeable
-      // anywhere on the terrain. No property-ownership gate (a player may build
-      // on open land or land owned by someone else). Only world bounds and
-      // object-vs-object overlap are enforced by the reducer.
+      // Free-world placement supports open terrain, but remains a short-range,
+      // server-positioned world mutation and cannot overlap another actor's
+      // claimed plot. The reducer still owns inventory, object ownership,
+      // idempotency, world bounds, and object-vs-object collision checks.
       const operation = payloadString(envelope, "operation") as
         | HarthmerePlaceableWorldOperation
         | undefined;
@@ -15012,6 +15573,84 @@ export function reduceHarthmereLiveModeBackendState(
         break;
       }
       const positionPayload = payloadRecord(envelope, "position");
+      const requestedPosition = {
+        x:
+          typeof positionPayload?.x === "number"
+            ? positionPayload.x
+            : payloadNumber(envelope, "x"),
+        y:
+          typeof positionPayload?.y === "number"
+            ? positionPayload.y
+            : payloadNumber(envelope, "y"),
+        z:
+          typeof positionPayload?.z === "number"
+            ? positionPayload.z
+            : payloadNumber(envelope, "z"),
+      };
+      const objectId = payloadString(envelope, "objectId");
+      const existingObject = objectId
+        ? next.placeableWorld.placed[objectId]
+        : undefined;
+      const interactionPosition =
+        operation === "remove_object"
+          ? existingObject?.position
+          : Number.isFinite(requestedPosition.x) &&
+            Number.isFinite(requestedPosition.y) &&
+            Number.isFinite(requestedPosition.z)
+          ? {
+              x: Number(requestedPosition.x),
+              y: Number(requestedPosition.y),
+              z: Number(requestedPosition.z),
+            }
+          : undefined;
+      const actorPosition = actorWorldPositionFromAuthority(envelope);
+      if (!actorPosition) {
+        warnings.push("world_placement_rejected:actor_position_unverified");
+        touchedModels.add("world_placement_rejection");
+        break;
+      }
+      if (interactionPosition) {
+        const dx = actorPosition.x - interactionPosition.x;
+        const dy = actorPosition.y - interactionPosition.y;
+        const dz = actorPosition.z - interactionPosition.z;
+        if (
+          dx * dx + dy * dy + dz * dz >
+          HARTHMERE_WORLD_PLACEMENT_INTERACTION_RADIUS ** 2
+        ) {
+          warnings.push("world_placement_rejected:target_out_of_range");
+          touchedModels.add("world_placement_rejection");
+          break;
+        }
+      }
+      if (operation !== "remove_object" && interactionPosition) {
+        const itemId =
+          operation === "move_object"
+            ? existingObject?.itemId
+            : payloadStringOrNumber(envelope, "itemId");
+        const footprint =
+          existingObject?.footprint ??
+          (itemId
+            ? getHarthmerePlaceableDecorSpec(itemId)?.footprint
+            : undefined);
+        const rotationDegrees =
+          payloadNumber(envelope, "rotationDegrees") ??
+          existingObject?.rotationDegrees ??
+          0;
+        if (
+          footprint &&
+          worldPlacementOverlapsForeignPlot({
+            state: next,
+            actorId: envelope.actorId,
+            position: interactionPosition,
+            footprint,
+            rotationDegrees,
+          })
+        ) {
+          warnings.push("world_placement_rejected:foreign_plot_overlap");
+          touchedModels.add("world_placement_rejection");
+          break;
+        }
+      }
       const result = reduceHarthmerePlaceableWorldMutation(
         next.placeableWorld,
         {
@@ -15019,21 +15658,8 @@ export function reduceHarthmereLiveModeBackendState(
           actorId: envelope.actorId,
           operation,
           itemId: payloadStringOrNumber(envelope, "itemId"),
-          objectId: payloadString(envelope, "objectId"),
-          position: {
-            x:
-              typeof positionPayload?.x === "number"
-                ? positionPayload.x
-                : payloadNumber(envelope, "x"),
-            y:
-              typeof positionPayload?.y === "number"
-                ? positionPayload.y
-                : payloadNumber(envelope, "y"),
-            z:
-              typeof positionPayload?.z === "number"
-                ? positionPayload.z
-                : payloadNumber(envelope, "z"),
-          },
+          objectId,
+          position: requestedPosition,
           rotationDegrees: payloadNumber(envelope, "rotationDegrees"),
           nowMs,
         },
@@ -15468,7 +16094,88 @@ export function reduceHarthmereLiveModeBackendState(
           | ReturnType<typeof collectHarthmereLivestockProduct>
           | undefined;
 
-        if (operation === "native_plant_harvest") {
+        if (operation === "gather_node") {
+          const nodeId =
+            payloadString(envelope, "nodeId") ?? envelope.targetId ?? "";
+          const respawnKey = gatheringNodeRespawnKey(nodeId);
+          const respawnAtMs = Number(next.combat.lootClaims[respawnKey] ?? 0);
+          if (respawnAtMs > nowMs) {
+            warnings.push(`gathering_rejected:node_depleted:${respawnAtMs}`);
+            touchedModels.add("farming_rejection");
+            break;
+          }
+          const gatheringNode = harthmereGatheringAuthorityNode(nodeId);
+          const authorityAttempt = resolveHarthmereGatheringAuthorityAttempt({
+            nodeId,
+            actorPosition: actorWorldPositionFromAuthority(envelope),
+            equippedItemIds: Object.values(next.inventory.equipment),
+            professionLevel:
+              (gatheringNode &&
+                next.classMagic.skills[gatheringNode.profession]?.level) ??
+              1,
+            nowMs,
+            randomSeed: envelope.requestId,
+          });
+          if (!authorityAttempt.ok) {
+            warnings.push(`gathering_rejected:${authorityAttempt.reason}`);
+            touchedModels.add("farming_rejection");
+            break;
+          }
+          const professionLevel =
+            next.classMagic.skills[authorityAttempt.node.profession]?.level ??
+            1;
+          if (professionLevel < authorityAttempt.node.requiredSkill) {
+            warnings.push(
+              `gathering_rejected:profession_level_too_low:${authorityAttempt.node.profession}:${authorityAttempt.node.requiredSkill}`
+            );
+            touchedModels.add("farming_rejection");
+            break;
+          }
+          if (
+            wouldStacksExceedCarryWeight(
+              next.inventory.items,
+              authorityAttempt.itemDeltas
+            )
+          ) {
+            pushCarryWeightRejection(warnings, touchedModels, "gathering");
+            break;
+          }
+          for (const [itemId, count] of Object.entries(
+            authorityAttempt.itemDeltas
+          )) {
+            ensureLiveModeItemDefinition(itemId, buildInventorySnapshot());
+            recordDelta(next.inventory.items, itemId, count);
+            advanceSnapshotGroveQuestsFromAuthoritativeEvent("collect", {
+              itemId,
+              itemName: getHarthmereItemDefinition(itemId)?.displayName,
+            });
+          }
+          next.combat.lootClaims[respawnKey] = authorityAttempt.respawnAtMs;
+          const skillProgress = upsertSkill(
+            next.classMagic.skills,
+            authorityAttempt.node.profession,
+            Math.max(5, authorityAttempt.node.requiredSkill * 8)
+          );
+          if (skillProgress.warning) warnings.push(skillProgress.warning);
+          if (authorityAttempt.illegal) {
+            warnings.push(
+              `gathering_illegal:${authorityAttempt.node.ownership}`
+            );
+          }
+          touchedModels.add("inventory_items");
+          touchedModels.add("gathering_nodes");
+          touchedModels.add("loot_claims");
+          touchedModels.add("skill_xp");
+          sharedStateKeys.add(
+            harthmereLiveModeSharedStateKey("gathering_node", nodeId)
+          );
+          break;
+        } else if (operation === "native_plant_harvest") {
+          if (nativeBiomesEcsAuthorityEnabled()) {
+            warnings.push("farming_rejected:native_ecs_harvest_required");
+            touchedModels.add("farming_rejection");
+            break;
+          }
           const plantId =
             payloadStringOrNumber(envelope, "plantId") ??
             envelope.targetId ??

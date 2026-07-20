@@ -46,7 +46,9 @@ function isGlitchRuntimeForWeb() {
 }
 
 function createGlitchNoopDiscordBot() {
-  log.info("GLITCH_WEB_NOOP_DISCORD_BOT: Discord disabled for Glitch/local runtime.");
+  log.info(
+    "GLITCH_WEB_NOOP_DISCORD_BOT: Discord disabled for Glitch/local runtime."
+  );
 
   const noop = async () => undefined;
 
@@ -76,9 +78,7 @@ function traceWebRegistryBind<C extends WebServerContext, T>(
     log.info(`GLITCH_WEB_BIND_START ${name}`);
 
     const interval = setInterval(() => {
-      log.warn(
-        `GLITCH_WEB_BIND_WAITING ${name} ${Date.now() - started}ms`
-      );
+      log.warn(`GLITCH_WEB_BIND_WAITING ${name} ${Date.now() - started}ms`);
     }, 5000);
 
     try {
@@ -93,7 +93,6 @@ function traceWebRegistryBind<C extends WebServerContext, T>(
     }
   };
 }
-
 
 function installGlitchSameOriginOobProxy(context: WebServerContext) {
   if (
@@ -137,7 +136,6 @@ async function registerAssetServer<C extends WebServerContext>(
     return new AssetExportsServerImpl(bakery.binaries, workerPoolSize);
   };
 
-
   if (
     process.env.GLITCH_PLAYER_MESH_MODE === "local" ||
     process.env.GLITCH_FORCE_LOCAL_ASSET_EXPORTS === "1"
@@ -171,10 +169,20 @@ export async function webServerContext(signal?: AbortSignal) {
     .install(sharedServerContext)
     .bind("app", traceWebRegistryBind("app", registerApp))
     .bind("askApi", traceWebRegistryBind("askApi", registerAskApi))
-    .bind("assetExportsServer", traceWebRegistryBind("assetExportsServer", registerAssetServer))
+    .bind(
+      "assetExportsServer",
+      traceWebRegistryBind("assetExportsServer", registerAssetServer)
+    )
     .bind("bakery", traceWebRegistryBind("bakery", registerBakery))
-    .bind("bigQuery", async (loader) => isGlitchRuntimeForWeb() ? undefined as any : registerBigQueryClient(loader as any))
-    .bind("cameraClient", traceWebRegistryBind("cameraClient", async () => createCameraClient()))
+    .bind("bigQuery", async (loader) =>
+      isGlitchRuntimeForWeb()
+        ? (undefined as any)
+        : registerBigQueryClient(loader as any)
+    )
+    .bind(
+      "cameraClient",
+      traceWebRegistryBind("cameraClient", async () => createCameraClient())
+    )
     .bind("chatApi", traceWebRegistryBind("chatApi", registerChatApi))
     .bind("config", traceWebRegistryBind("config", registerWebServerConfig))
     .bind(
@@ -186,22 +194,48 @@ export async function webServerContext(signal?: AbortSignal) {
       )
     )
     .bind("firehose", traceWebRegistryBind("firehose", registerFirehose))
-    .bind("idGenerator", traceWebRegistryBind("idGenerator", registerIdGenerator))
+    .bind(
+      "idGenerator",
+      traceWebRegistryBind("idGenerator", registerIdGenerator)
+    )
     .bind("serverMods", traceWebRegistryBind("serverMods", registerServerMods))
     .bind("logicApi", traceWebRegistryBind("logicApi", registerLogicApi))
-    .bind("serverCache", traceWebRegistryBind("serverCache", registerCacheClient))
-    .bind("serverTaskProcessor", async (loader) => isGlitchRuntimeForWeb() ? undefined as any : registerServerTaskProcessor(loader as any))
-    .bind("sessionStore", traceWebRegistryBind("sessionStore", registerSessionStore))
-    .bind("sourceMapCache", traceWebRegistryBind("sourceMapCache", async () => new SourceMapCache()))
-    .bind("twitchBot", async (loader) => isGlitchRuntimeForWeb() ? undefined as any : registerTwitchBot(loader as any))
-    .bind("worldApi", traceWebRegistryBind("worldApi", registerWorldApi({ signal })))
-    .bind("voxeloo", traceWebRegistryBind("voxeloo", async () => loadVoxeloo()))
+    .bind(
+      "serverCache",
+      traceWebRegistryBind("serverCache", registerCacheClient)
+    )
+    .bind("serverTaskProcessor", async (loader) =>
+      isGlitchRuntimeForWeb()
+        ? (undefined as any)
+        : registerServerTaskProcessor(loader as any)
+    )
+    .bind(
+      "sessionStore",
+      traceWebRegistryBind("sessionStore", registerSessionStore)
+    )
+    .bind(
+      "sourceMapCache",
+      traceWebRegistryBind("sourceMapCache", async () => new SourceMapCache())
+    )
+    .bind("twitchBot", async (loader) =>
+      isGlitchRuntimeForWeb()
+        ? (undefined as any)
+        : registerTwitchBot(loader as any)
+    )
+    .bind(
+      "worldApi",
+      traceWebRegistryBind("worldApi", registerWorldApi({ signal }))
+    )
+    .bind(
+      "voxeloo",
+      traceWebRegistryBind("voxeloo", async () => loadVoxeloo())
+    )
     .build();
 }
 
 void runServer("web", webServerContext, async (context) => {
   const harthmereRobotEnergyScheduler =
-    startHarthmereLiveModeRobotEnergyScheduler();
+    startHarthmereLiveModeRobotEnergyScheduler({ worldApi: context.worldApi });
   installGlitchSameOriginOobProxy(context);
   installGlitchSameOriginSyncWebSocketProxy(context.app.http);
   await context.app.start(context);

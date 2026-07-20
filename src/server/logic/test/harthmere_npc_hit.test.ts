@@ -15,13 +15,12 @@ import { generateTestId } from "@/shared/test_helpers";
 import type { BiomesId } from "@/shared/ids";
 import type { VoxelooModule } from "@/shared/wasm/types";
 import assert from "assert";
+import { harthmereGroundedMuckMonsterSeedsInTerritory } from "@/shared/harthmere/live_entity_production_seed";
+import { harthmereSharedLiveCreatureRespawnRegistry } from "@/shared/harthmere/live_creature_respawn_registry";
 
-// Backend half of the "attacks don't hit muckers" fix. The client change widens
-// the *detection* reach so the entity under the crosshair is published as a melee
-// target out to voxel-break reach. This test pins the server contract that makes
-// that sufficient: the updateNpcHealthEvent handler applies the client-published
-// damage to a live NPC and has NO attacker-distance / reach gate of its own. So a
-// hit detected at 8 units lands exactly like a point-blank hit.
+// Native NPC health is the one combat authority for Harthmere seeds. The handler
+// also verifies melee reach so a voxel interaction or forged client event cannot
+// damage an NPC from outside combat range.
 describe("Harthmere mucker hit (updateNpcHealthEvent)", () => {
   let voxeloo!: VoxelooModule;
   before(async () => {
@@ -84,7 +83,7 @@ describe("Harthmere mucker hit (updateNpcHealthEvent)", () => {
     assert.equal(mucker?.health?.hp, 91);
   });
 
-  it("ignores vanilla attack damage for Harthmere live-mode managed seeds", async () => {
+  it("applies native attack damage to Harthmere seeded NPCs", async () => {
     const attacker = (
       await addGameUser(logic.world, generateTestId(), {
         position: [0, 0, 0],
@@ -107,17 +106,16 @@ describe("Harthmere mucker hit (updateNpcHealthEvent)", () => {
     );
 
     const [, mucker] = logic.world.table.getWithVersion(managedMuckerId);
-    assert.equal(mucker?.health?.hp, 100);
+    assert.equal(mucker?.health?.hp, 10);
   });
 
-  it("lands the same hit when the target is detected far out (no server reach gate)", async () => {
+  it("rejects a remote client-published melee hit", async () => {
     const attacker = (
       await addGameUser(logic.world, generateTestId(), {
         position: [0, 0, 0],
       })
     ).id;
-    // ~8 units away -- inside voxel-break reach (8.78), far outside the old 3.5
-    // melee cone. The server still applies it.
+    // A voxel can be interacted with at this distance, but a melee target cannot.
     const muckerId = spawnMucker([8, 0, 0]);
 
     await logic.publish(
@@ -132,7 +130,7 @@ describe("Harthmere mucker hit (updateNpcHealthEvent)", () => {
     );
 
     const [, mucker] = logic.world.table.getWithVersion(muckerId);
-    assert.equal(mucker?.health?.hp, 75);
+    assert.equal(mucker?.health?.hp, 100);
   });
 
   it("does not drive health below the kill threshold prematurely (sanity)", async () => {
@@ -156,5 +154,31 @@ describe("Harthmere mucker hit (updateNpcHealthEvent)", () => {
 
     const [, mucker] = logic.world.table.getWithVersion(muckerId);
     assert.equal(mucker?.health?.hp, 90);
+  });
+
+  it("schedules fixed-id Harthmere creatures for delayed native respawn", async () => {
+    const attacker = (
+      await addGameUser(logic.world, generateTestId(), {
+        position: [0, 0, 0],
+      })
+    ).id;
+    const seedId = harthmereGroundedMuckMonsterSeedsInTerritory()[0].entityId;
+    const registry = harthmereSharedLiveCreatureRespawnRegistry();
+    registry.clear(seedId);
+    spawnMucker([2, 0, 0], seedId);
+
+    await logic.publish(
+      new GameEvent(
+        attacker,
+        new UpdateNpcHealthEvent({
+          id: seedId,
+          hp: -100,
+          damageSource: { kind: "attack", attacker, dir: [1, 0, 0] },
+        })
+      )
+    );
+
+    assert.ok((registry.respawnAt(seedId) ?? 0) > Date.now());
+    registry.clear(seedId);
   });
 });

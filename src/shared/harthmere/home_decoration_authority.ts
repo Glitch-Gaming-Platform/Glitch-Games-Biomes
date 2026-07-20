@@ -222,9 +222,10 @@ function guidePlacementForDecorationKind(
   return {
     version: HARTHMERE_HOME_DECORATION_GUIDE_PLACEMENT_VERSION,
     constructionRulesVersion: BUILDING_SYSTEM_GUIDE_CONSTRUCTION_RULES_VERSION,
-    support: kind === "garden"
-      ? "garden_soil"
-      : placementTags.includes("business")
+    support:
+      kind === "garden"
+        ? "garden_soil"
+        : placementTags.includes("business")
         ? "counter"
         : "floor",
     snap: "voxel_floor_grid",
@@ -510,7 +511,9 @@ function hasRequestedPosition(
 ) {
   return (
     position !== undefined &&
-    (position.x !== undefined || position.y !== undefined || position.z !== undefined)
+    (position.x !== undefined ||
+      position.y !== undefined ||
+      position.z !== undefined)
   );
 }
 
@@ -519,7 +522,11 @@ function rotatedDecorationFootprint(
   rotationDegrees: 0 | 90 | 180 | 270
 ) {
   return rotationDegrees === 90 || rotationDegrees === 270
-    ? { width: footprint.depth, depth: footprint.width, height: footprint.height }
+    ? {
+        width: footprint.depth,
+        depth: footprint.width,
+        height: footprint.height,
+      }
     : footprint;
 }
 
@@ -550,10 +557,12 @@ function rectsOverlap(
 }
 
 function guideDecorationGridForProperty(
-  property: Pick<
-    BuildingSystemPropertyRecord,
-    "plotId" | "blueprintId" | "origin" | "rotationDegrees"
-  > | undefined
+  property:
+    | Pick<
+        BuildingSystemPropertyRecord,
+        "plotId" | "blueprintId" | "origin" | "rotationDegrees"
+      >
+    | undefined
 ) {
   if (!property?.plotId || !property?.blueprintId) return undefined;
   const plot = buildingSystemPlotById(property.plotId);
@@ -571,7 +580,10 @@ function guideDecorationGridForProperty(
     depth: Math.max(1, guide.footprint.depth - 2),
     doorX: Math.max(
       0,
-      Math.min(Math.max(0, guide.footprint.width - 3), guide.doorX - guide.x0 - 1)
+      Math.min(
+        Math.max(0, guide.footprint.width - 3),
+        guide.doorX - guide.x0 - 1
+      )
     ),
     aisleDepth: Math.max(
       1,
@@ -598,7 +610,10 @@ function defaultGuideDecorationPosition(input: {
   if (input.definition.kind === "business_counter") {
     return { x: Math.floor(maxX / 2), y: 0, z: maxZ };
   }
-  if (input.definition.kind === "crafting_station" || input.definition.kind === "utility") {
+  if (
+    input.definition.kind === "crafting_station" ||
+    input.definition.kind === "utility"
+  ) {
     return { x: maxX, y: 0, z: maxZ };
   }
   if (input.definition.kind === "storage") {
@@ -669,7 +684,9 @@ export function validateHarthmereHomeDecorationGuidePlacement(input: {
       ) {
         continue;
       }
-      const existingDefinition = getHarthmereHomeDecorationDefinition(record.itemId);
+      const existingDefinition = getHarthmereHomeDecorationDefinition(
+        record.itemId
+      );
       if (!existingDefinition) continue;
       const existingRect = decorationRect({
         position: record.position,
@@ -710,7 +727,8 @@ function homeDecorationTerrainValue(
   if (definition.kind === "comfort") {
     return BUILDING_SYSTEM_TERRAIN_BLOCKS.oakLumber;
   }
-  const stationId = definition.functionalEffects.craftingStationId ?? definition.itemId;
+  const stationId =
+    definition.functionalEffects.craftingStationId ?? definition.itemId;
   if (stationId === HARTHMERE_CRAFTING_STATIONS.kitchen) {
     return BUILDING_SYSTEM_TERRAIN_BLOCKS.stoneBrick;
   }
@@ -743,10 +761,7 @@ function homeDecorationWorldVoxels(input: {
     "plotId" | "blueprintId" | "origin" | "rotationDegrees"
   >;
   definition: HarthmereHomeDecorationDefinition;
-  record: Pick<
-    HarthmereHomeDecorationRecord,
-    "position" | "rotationDegrees"
-  >;
+  record: Pick<HarthmereHomeDecorationRecord, "position" | "rotationDegrees">;
 }) {
   const plot = buildingSystemPlotById(input.property.plotId);
   const blueprint = buildingSystemBlueprintById(input.property.blueprintId);
@@ -803,7 +818,9 @@ export function createHarthmereHomeDecorationMaterializationPlan(input: {
     : homeDecorationVoxelLabel(input.definition);
   return {
     version: BUILDING_SYSTEM_VERSION,
-    requestId: `${input.requestId}:${input.record.decorationId}:${input.cleanup ? "cleanup" : "materialize"}`,
+    requestId: `${input.requestId}:${input.record.decorationId}:${
+      input.cleanup ? "cleanup" : "materialize"
+    }`,
     actorId: input.actorId,
     plotId: input.property.plotId,
     propertyId: input.property.propertyId,
@@ -815,6 +832,9 @@ export function createHarthmereHomeDecorationMaterializationPlan(input: {
       kind: "editEvent" as const,
       position,
       value,
+      expectedValue: input.cleanup
+        ? homeDecorationTerrainValue(input.definition)
+        : undefined,
       label,
     })),
     materializesSolidVoxelBuilding: false,
@@ -943,8 +963,7 @@ function ok(
 export function recomputeHarthmereHomeDecorationSummaries(
   state: HarthmereHomeDecorationState
 ) {
-  const summaries: Record<string, HarthmereHomeDecorationPropertySummary> =
-    {};
+  const summaries: Record<string, HarthmereHomeDecorationPropertySummary> = {};
   for (const record of Object.values(state.placed)) {
     const definition = getHarthmereHomeDecorationDefinition(record.itemId);
     if (!definition) continue;
@@ -1057,7 +1076,10 @@ export function reduceHarthmereHomeDecorationMutation(
         rotationDegrees,
       });
       if (!guidePlacement.ok) {
-        return fail(state, guidePlacement.errors[0] ?? "invalid_decoration_position");
+        return fail(
+          state,
+          guidePlacement.errors[0] ?? "invalid_decoration_position"
+        );
       }
       const decorationId = nextDecorationId(state, propertyId);
       state.placed[decorationId] = {
@@ -1076,14 +1098,15 @@ export function reduceHarthmereHomeDecorationMutation(
           definition.kind !== "utility" ||
           !!definition.functionalEffects.powerMegawatts,
       };
-      const materializationPlan = createHarthmereHomeDecorationMaterializationPlan({
-        requestId: request.requestId,
-        actorId: request.actorId,
-        property,
-        definition,
-        record: state.placed[decorationId],
-        operation: "place_decoration",
-      });
+      const materializationPlan =
+        createHarthmereHomeDecorationMaterializationPlan({
+          requestId: request.requestId,
+          actorId: request.actorId,
+          property,
+          definition,
+          record: state.placed[decorationId],
+          operation: "place_decoration",
+        });
       addItemDelta(itemDeltas, itemId, -1);
       recomputeHarthmereHomeDecorationSummaries(state);
       return ok(state, request, itemDeltas, touchedModels, {
@@ -1125,7 +1148,10 @@ export function reduceHarthmereHomeDecorationMutation(
         ignoreDecorationId: decorationId,
       });
       if (!guidePlacement.ok) {
-        return fail(state, guidePlacement.errors[0] ?? "invalid_decoration_position");
+        return fail(
+          state,
+          guidePlacement.errors[0] ?? "invalid_decoration_position"
+        );
       }
       record.position = nextPosition;
       record.rotationDegrees = nextRotationDegrees;
@@ -1140,14 +1166,15 @@ export function reduceHarthmereHomeDecorationMutation(
         operation: "move_decoration",
         cleanup: true,
       });
-      const materializationPlan = createHarthmereHomeDecorationMaterializationPlan({
-        requestId: request.requestId,
-        actorId: request.actorId,
-        property,
-        definition,
-        record,
-        operation: "move_decoration",
-      });
+      const materializationPlan =
+        createHarthmereHomeDecorationMaterializationPlan({
+          requestId: request.requestId,
+          actorId: request.actorId,
+          property,
+          definition,
+          record,
+          operation: "move_decoration",
+        });
       return ok(state, request, itemDeltas, touchedModels, {
         materializationPlans: [
           ...(cleanupPlan ? [cleanupPlan] : []),

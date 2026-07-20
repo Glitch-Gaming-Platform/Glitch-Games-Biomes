@@ -1,7 +1,5 @@
-// (foraging fix F-B, 2026-07-14): proves the gaia growth ticker suppresses the
-// ECS yield-drop for a fully-grown harvest ONLY when the Harthmere live-mode
-// deployment is authoritative (so live-mode is the single grant), and keeps the
-// normal biomes drop otherwise.
+// Native ECS always owns crop yield. Deployment flags must never suppress the
+// plant container's GrabBag or move the grant into an HTTP/Redis side channel.
 import { FarmingGrowthPlantTicker } from "@/server/gaia/simulations/farming/plant_growth_ticker";
 import { generateTestId } from "@/shared/test_helpers";
 import assert from "assert";
@@ -43,7 +41,7 @@ function makeTickerHarness() {
   return { ticker, context, cleared, entitiesToCreate };
 }
 
-describe("Harthmere harvest drop suppression (F-B)", () => {
+describe("native harvest drop authority", () => {
   afterEach(() => {
     delete process.env.HARTHMERE_LIVE_MODE_FARMING_AUTHORITATIVE;
     delete process.env.GLITCH_RUNTIME;
@@ -60,19 +58,15 @@ describe("Harthmere harvest drop suppression (F-B)", () => {
     assert.equal(cleared.value, false);
   });
 
-  it("suppresses the drop and clears the container when Harthmere live-mode is authoritative", () => {
+  it("ignores the retired live-mode override and still creates the native drop", () => {
     process.env.HARTHMERE_LIVE_MODE_FARMING_AUTHORITATIVE = "1";
     const { ticker, context, cleared, entitiesToCreate } = makeTickerHarness();
     (ticker as any).destroy(context, true);
     assert.equal(
       entitiesToCreate.length,
-      0,
-      "Harthmere harvest must not double-grant via an ECS drop"
+      1,
+      "Harthmere harvest must preserve the ECS GrabBag"
     );
-    assert.equal(
-      cleared.value,
-      true,
-      "the plant container should be cleared so no stale yield lingers"
-    );
+    assert.equal(cleared.value, false);
   });
 });

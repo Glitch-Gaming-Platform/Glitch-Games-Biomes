@@ -1,6 +1,6 @@
 // (foraging fix F-B, 2026-07-14)
 // -----------------------------------------------------------------------------
-// Native-plant harvest double-grant reconciliation.
+// Retired native-plant harvest double-grant reconciliation.
 //
 // A Harthmere player harvesting a biomes-native farmed plant used to be credited
 // TWICE for the same crop:
@@ -10,10 +10,9 @@
 //   2. the live-mode path — the `native_plant_harvest` op granting the crop's
 //      yield straight into the live-mode inventory.
 //
-// In Harthmere the live-mode inventory is authoritative: the ECS inventory is a
-// PROJECTION of it (see createHarthmereBiomesEcsInventory in
-// harthmere_biomes_ecs_bridge.ts). So the live-mode grant is the correct single
-// source of truth, and the ECS gaia yield-drop is the spurious duplicate.
+// Native ECS inventory and native plant container drops are now authoritative.
+// This module remains as a compatibility seam for older callers, but it must
+// never suppress a Gaia drop or enable the retired HTTP harvest grant.
 //
 // This mirrors the combat reconciliation precedent, where the ECS npcHealth
 // handler yields to the live-mode combat reducer for Harthmere-managed entities
@@ -29,7 +28,7 @@
 // -----------------------------------------------------------------------------
 
 export const HARTHMERE_LIVE_MODE_FARMING_AUTHORITY_VERSION =
-  "harthmere-live-mode-farming-authority-2026-07-14" as const;
+  "native-ecs-farming-authority-2026-07-19" as const;
 
 export type HarthmereFarmingAuthorityEnv = {
   /** Set to "1" in Harthmere Glitch deployments. */
@@ -53,13 +52,6 @@ export type HarthmereFarmingAuthorityEnv = {
 export function harthmereLiveModeFarmingGrantIsAuthoritative(
   env: HarthmereFarmingAuthorityEnv = process.env as HarthmereFarmingAuthorityEnv
 ): boolean {
-  // Explicit override wins in both directions.
-  if (env.HARTHMERE_LIVE_MODE_FARMING_AUTHORITATIVE === "0") {
-    return false;
-  }
-  if (env.HARTHMERE_LIVE_MODE_FARMING_AUTHORITATIVE === "1") {
-    return true;
-  }
-  // Otherwise follow the live-mode deployment signal.
-  return env.GLITCH_RUNTIME === "1";
+  void env;
+  return false;
 }

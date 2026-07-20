@@ -62,6 +62,7 @@ import {
 } from "@/client/components/challenges/LocalDevHarthmereQuestEconomySystem";
 import { HARTHMERE_JOBS_BOARD_OPEN_EVENT } from "@/client/components/challenges/harthmereEvents";
 import type { BiomesId } from "@/shared/ids";
+import { nativeBiomesEcsAuthorityEnabled } from "@/shared/harthmere/native_road_ahead_contract";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 const LOCAL_DEV_NPC_ID_BASE = 8_810_000_000_010_000;
@@ -705,6 +706,11 @@ function harthmereAvailableQuestIdsForBiomesEcs(state: HarthmereQuestState) {
 }
 
 function dispatchHarthmereQuestBiomesEcsProjection(state: HarthmereQuestState) {
+  if (nativeBiomesEcsAuthorityEnabled()) {
+    // String-keyed local quests remain adapter data. Fabricating numeric ECS
+    // challenge ids would split progress from the native trigger-state map.
+    return;
+  }
   window.dispatchEvent(
     new CustomEvent(HARTHMERE_BIOMES_ECS_CHALLENGES_UPDATED_EVENT, {
       detail: createHarthmereBiomesEcsChallenges({

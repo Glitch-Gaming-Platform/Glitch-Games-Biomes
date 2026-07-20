@@ -5,7 +5,6 @@ import {
   traceNpcMetadataCursorHits,
 } from "@/client/game/resources/melee_attack_region";
 import { BikkieIds } from "@/shared/bikkie/ids";
-import { HARTHMERE_VOXEL_INTERACTION_ATTACK_REACH_UNITS } from "@/shared/harthmere/combat_reach";
 import type { BiomesId } from "@/shared/ids";
 import assert from "assert";
 
@@ -66,16 +65,12 @@ describe("harthmere melee attack entity filtering", () => {
   });
 });
 
-// Root-cause regression: a left click breaks a voxel out to
-// building.changeRadius (~8.78), but the melee cone that fed attackableEntities
-// only reached combat.meleeAttackRegion.far (3.5). So a click landed the block
-// break on a mucker 4-8 units away without ever counting it as a melee target --
-// "the blocks break but they will not be hit." We now also feed the entity under
-// the crosshair into the attack set, out to the same voxel-break reach.
-describe("crosshair melee target inclusion (HARTHMERE_VOXEL_REACH_ATTACK)", () => {
+// The cursor fallback helps visible NPCs without collideable metadata, but it
+// must remain inside combat melee reach instead of inheriting voxel-edit reach.
+describe("crosshair melee target inclusion", () => {
   const PLAYER_ID = 1 as BiomesId;
   const MUCKER_ID = 42 as BiomesId;
-  const REACH = HARTHMERE_VOXEL_INTERACTION_ATTACK_REACH_UNITS;
+  const REACH = 3.5;
   const base = {
     hasEntityHit: true,
     distance: REACH - 0.5,
@@ -86,12 +81,11 @@ describe("crosshair melee target inclusion (HARTHMERE_VOXEL_REACH_ATTACK)", () =
     canAttack: true,
   };
 
-  it("adds an aimed, attackable creature anywhere within voxel-break reach", () => {
+  it("adds an aimed, attackable creature within melee reach", () => {
     assert.equal(shouldAddCrosshairMeleeTarget(base), true);
-    // ...including distances the old 3.5-unit melee cone always missed.
     assert.equal(
       shouldAddCrosshairMeleeTarget({ ...base, distance: 7.0 }),
-      true
+      false
     );
   });
 
@@ -155,12 +149,9 @@ describe("Harthmere NPC metadata cursor ray fallback", () => {
 
   it("ray-tests positioned NPCs even when they are not in CollideableSelector", () => {
     const table = { scan: () => [npc] } as any;
-    const hits = traceNpcMetadataCursorHits(
-      table,
-      [0, 1, 0],
-      [0, 0, 1],
-      { maxDistance: 8 }
-    );
+    const hits = traceNpcMetadataCursorHits(table, [0, 1, 0], [0, 0, 1], {
+      maxDistance: 8,
+    });
 
     assert.equal(hits.length, 1);
     assert.equal(hits[0].entity.id, npc.id);
@@ -188,12 +179,9 @@ describe("Harthmere NPC metadata cursor ray fallback", () => {
 
   it("does not manufacture a hit when the ray misses the NPC box", () => {
     const table = { scan: () => [npc] } as any;
-    const hits = traceNpcMetadataCursorHits(
-      table,
-      [4, 1, 0],
-      [0, 0, 1],
-      { maxDistance: 8 }
-    );
+    const hits = traceNpcMetadataCursorHits(table, [4, 1, 0], [0, 0, 1], {
+      maxDistance: 8,
+    });
 
     assert.deepEqual(hits, []);
   });

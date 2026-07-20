@@ -16,8 +16,6 @@ import {
   harthmereLocalEquipmentBikkieWearables,
 } from "@/shared/harthmere/harthmere_bikkie_wearables";
 import {
-  HARTHMERE_BIOMES_ECS_INVENTORY_UPDATED_EVENT,
-  HARTHMERE_GOLD_ECS_CURRENCY_ID,
   harthmereItemIdToBiomesEcsItemAndCount,
   harthmereItemIdToBiomesId,
 } from "@/shared/harthmere/harthmere_biomes_ecs_bridge";
@@ -284,32 +282,15 @@ describe("Harthmere inventory BiomesUI presentation and actions", () => {
     assert.equal(state.hotbar.slot_1, undefined);
   });
 
-  it("publishes the canonical Biomes ECS inventory projection on writes", () => {
+  it("does not project local inventory writes into native ECS authority", () => {
     grantHarthmereItem("iron_ore", 2, "ecs projection test");
-    const event = dispatchedEvents.find(
-      (entry) => entry.type === HARTHMERE_BIOMES_ECS_INVENTORY_UPDATED_EVENT
-    );
-
-    assert.ok(event);
     assert.equal(
-      event.detail.component.currencies.get(
-        String(HARTHMERE_GOLD_ECS_CURRENCY_ID)
-      )?.count,
-      75n
-    );
-    assert.equal(
-      event.detail.warnings.some(
-        (warning: { id?: string }) => warning.id === "iron_ore"
+      dispatchedEvents.some((entry) =>
+        String(entry.type).includes("harthmere-biomes-ecs-inventory")
       ),
       false
     );
-    assert.ok(
-      event.detail.component.items.some(
-        (itemAndCount: { item?: { id?: unknown }; count?: unknown }) =>
-          itemAndCount.item?.id === BikkieIds.goldOre &&
-          itemAndCount.count === 2n
-      )
-    );
+    assert.equal(harthmereInventoryCountByItemId("iron_ore"), 2);
   });
 
   it("mirrors local collection grants to live inventory snapshots for BiomesUI", async () => {
@@ -322,6 +303,11 @@ describe("Harthmere inventory BiomesUI presentation and actions", () => {
       return {
         ok: true,
         json: async () => ({
+          backendMutation: {
+            applied: true,
+            warnings: [],
+            touchedModels: ["inventory_items"],
+          },
           inventoryLootState: {
             actor: { gold: 75, items: {}, instanceIds: [] },
             materialStorage: { items: { iron_ore: 2 } },

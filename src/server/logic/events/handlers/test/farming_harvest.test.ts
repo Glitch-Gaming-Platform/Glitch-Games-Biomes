@@ -26,9 +26,16 @@ function fakeHarvestPlant({
   const plant = {
     id: generateTestId(),
     position: () => ({ v: position }),
+    staleOk: () => ({ position: () => ({ v: position }) }),
     mutableFarmingPlantComponent: () => component,
   };
   return { component, plant };
+}
+
+function fakeHarvestPlayer(position: [number, number, number] = [1, 2, 3]) {
+  return {
+    staleOk: () => ({ position: () => ({ v: position }) }),
+  };
 }
 
 describe("harvestPlantEventHandler", () => {
@@ -54,7 +61,7 @@ describe("harvestPlantEventHandler", () => {
     harvestPlantEventHandler.apply(
       {
         plant,
-        acl: { can: () => true },
+        player: fakeHarvestPlayer(),
       } as any,
       new HarvestPlantEvent({
         id: generateTestId(),
@@ -74,7 +81,7 @@ describe("harvestPlantEventHandler", () => {
     harvestPlantEventHandler.apply(
       {
         plant,
-        acl: { can: () => false },
+        player: fakeHarvestPlayer(),
       } as any,
       new HarvestPlantEvent({
         id: playerId,
@@ -95,6 +102,7 @@ describe("harvestPlantEventHandler", () => {
     harvestPlantEventHandler.apply(
       {
         plant,
+        player: fakeHarvestPlayer(),
       } as any,
       new HarvestPlantEvent({
         id: harvesterId,
@@ -117,7 +125,7 @@ describe("harvestPlantEventHandler", () => {
       harvestPlantEventHandler.apply(
         {
           plant: setup.plant,
-          acl: { can: () => true },
+          player: fakeHarvestPlayer(),
         } as any,
         new HarvestPlantEvent({
           id: generateTestId(),
@@ -128,6 +136,24 @@ describe("harvestPlantEventHandler", () => {
       );
       assert.equal(setup.component.player_actions.length, 0);
     }
+  });
+
+  it("rejects a fully grown crop when the player is outside pickup range", () => {
+    const { component, plant } = fakeHarvestPlant();
+    harvestPlantEventHandler.apply(
+      {
+        plant,
+        player: fakeHarvestPlayer([100, 2, 100]),
+      } as any,
+      new HarvestPlantEvent({
+        id: generateTestId(),
+        plant_id: plant.id,
+        position: [1, 2, 3],
+      }),
+      {} as any
+    );
+
+    assert.equal(component.player_actions.length, 0);
   });
 });
 

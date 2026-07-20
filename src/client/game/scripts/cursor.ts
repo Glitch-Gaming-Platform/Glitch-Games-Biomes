@@ -157,20 +157,13 @@ export class CursorScript implements Script {
 
     // HARTHMERE_VOXEL_REACH_ATTACK:
     // The native melee cone (combat.meleeAttackRegion.far = 3.5) is far shorter
-    // than the world-interaction voxel break/change reach
-    // (building.changeRadius = 8.78). Because a left click is shared between
-    // "break the block" and "attack", aiming at a mucker/animal/player that is
-    // 4-8 units away landed the block break but never registered the creature as
-    // a melee target -- the reported "blocks break but they don't get hit" bug.
-    // Treat whatever the crosshair ray is actually pointing at as an attackable
-    // target out to the same reach used to break blocks, so the same swing that
-    // breaks the block also damages the thing it is aimed at. This rides the
-    // proven native handleAttackInteraction -> Update{Npc,Player}HealthEvent path
-    // (server-authoritative) and covers players, NPCs (muckers/hexes/muxes) and
-    // animals uniformly.
+    // The crosshair fallback exists for visible NPCs that are missing a
+    // collideable entry, but it must obey melee reach. Coupling it to the much
+    // longer voxel-edit radius made a block break/throw also damage an NPC up to
+    // ~8.8 blocks away and could trigger retaliation from outside combat range.
     if (entityHit && entityHit.kind === "entity") {
       const reach =
-        this.resources.get("/tweaks").building.changeRadius +
+        this.resources.get("/tweaks").combat.meleeAttackRegion.far +
         this.resources.get("/player/modifiers").reach.increase;
       const target = entityHit.entity;
       const ruleSet = this.resources.get("/ruleset/current");

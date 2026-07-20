@@ -15,8 +15,8 @@ you can adopt it per-feature.
    manipulation, exotic matter, time-displaced threats. The chrome should
    sell that.
 3. **The tutorial needs to highlight UI elements.** Today, the mission
-   system tells the player *what* to do but the UI has no way to point
-   to the *where*. A central highlight registry fixes this.
+   system tells the player _what_ to do but the UI has no way to point
+   to the _where_. A central highlight registry fixes this.
 4. **All systems need a home.** Abilities, Skills, Classes, Land, Loot,
    Guilds, Banking — most of these have backend code in
    `LocalDevHarthmere*System.tsx` files, but no unified surface.
@@ -27,45 +27,43 @@ Every tab below is a real, themed surface in this module. Production
 tabs are fed by Harthmere adapters; unfinished domains expose typed
 adapter props so callers can wire real state before enabling them.
 
-| Tab          | UI id              | Shortcut | Adapter wires to                                  |
-|--------------|--------------------|----------|---------------------------------------------------|
-| Today        | `tab.daily`        | **R**    | daily care-loop state + reward claims             |
-| Inventory    | `tab.inventory`    | **I**    | `useHarthmereInventoryState()`                    |
-| Abilities    | `tab.abilities`    | **B**    | `useHarthmereClassSkillState()` (abilities slice) |
-| Skills       | `tab.skills`       | **K**    | `useHarthmereClassSkillState()` (skills slice)    |
-| Classes      | `tab.classes`      | **Y**    | `chooseHarthmereClass()` / class definitions      |
-| Land         | `tab.land`         | **L**    | scaffold — Biome plot model TBD                   |
-| Loot         | `tab.loot`         | **O**    | recent inventory log entries                      |
-| Guilds       | `tab.guilds`       | **G**    | `useHarthmereGuildState()`                        |
-| Banking      | `tab.banking`      | **P**    | `inventory.bank` + currency totals                |
-| Map & Quests | `tab.map`          | **M**    | mission state + live map marker adapter           |
-| Collections  | `tab.collections`  | **C**    | existing `CollectionsScreen` data                 |
-| Inbox        | `tab.inbox`        | **V**    | existing inbox notifications resource             |
-| Options      | `tab.options`      | **,**    | local options + shortcut rebinder                 |
+| Tab          | UI id             | Shortcut | Adapter wires to                                  |
+| ------------ | ----------------- | -------- | ------------------------------------------------- |
+| Today        | `tab.daily`       | **R**    | daily care-loop state + reward claims             |
+| Inventory    | `tab.inventory`   | **I**    | `useHarthmereInventoryState()`                    |
+| Abilities    | `tab.abilities`   | **B**    | `useHarthmereClassSkillState()` (abilities slice) |
+| Skills       | `tab.skills`      | **K**    | `useHarthmereClassSkillState()` (skills slice)    |
+| Classes      | `tab.classes`     | **Y**    | `chooseHarthmereClass()` / class definitions      |
+| Land         | `tab.land`        | **L**    | scaffold — Biome plot model TBD                   |
+| Loot         | `tab.loot`        | **O**    | recent inventory log entries                      |
+| Guilds       | `tab.guilds`      | **G**    | `useHarthmereGuildState()`                        |
+| Banking      | `tab.banking`     | **P**    | `inventory.bank` + currency totals                |
+| Map & Quests | `tab.map`         | **M**    | mission state + live map marker adapter           |
+| Collections  | `tab.collections` | **C**    | existing `CollectionsScreen` data                 |
+| Inbox        | `tab.inbox`       | **V**    | existing inbox notifications resource             |
+| Options      | `tab.options`     | **,**    | local options + shortcut rebinder                 |
 
 Hotbar slots 1..9 keep their existing shortcuts; the `BiomesHotbar` is a
 visual replacement that delegates `onSelect`/`onUse`/`onDrop` to whatever
 hotbar machinery is wired up by the host (i.e. the existing
 `/hotbar/index` resource + `InventoryChangeSelectionEvent`).
 
-Harthmere live-mode items have an extra visual bridge. The live backend stores
-gameplay ids such as `baker_apron`, `field_trousers`, `woodsman_axe`, and
-`rough_stone`; those ids are not always native Biomes ECS item ids. The BiomesUI
-live adapter maps known Harthmere ids to Bikkie ids through
-`harthmere_biomes_ecs_bridge.ts` before writing visual state:
+Native visual state is never written by a BiomesUI adapter:
 
-- live equipment from `inventoryLootState.actor.equipment` is projected into
-  `/ecs/c/wearing`, then `/scene/player/mesh` is invalidated so clothing appears
-  on the body,
-- Harthmere hotbar shortcuts are projected into `/ecs/c/inventory.hotbar`, then
-  `/hotbar/selection` is invalidated so selected tools/items can appear in hand,
-- unknown Harthmere ids stay in the authoritative Harthmere inventory surface
-  and produce ECS projection warnings instead of inventing fake render items.
+- Equipment publishes native inventory swap events and waits for
+  `/ecs/c/wearing` to arrive over world sync. Player meshes consume the complete
+  native assignment directly.
+- Hotbar movement publishes native inventory events and reads
+  `/ecs/c/inventory.hotbar`. The inventory tab may display a hotbar-owned stack,
+  but it does not clone that stack into the backpack component.
+- Harthmere-only string items such as `baker_apron` remain supplemental UI rows
+  until they have real Bikkie ids. `harthmere_biomes_ecs_bridge.ts` is
+  compatibility/test conversion code, not permission to mutate synchronized
+  resources.
 
-When adding new Harthmere equipment, tools, materials, or quest items that should
-be visible on the avatar or in hand, add the visual mapping and a regression in
-`harthmereInventoryBiomesUIActions.test.ts` or
-`harthmere_biomes_ecs_bridge.test.ts`.
+When adding an item that must participate in native equipment, hotbar, or quest
+triggers, publish a real Bikkie item id and use the native inventory event path.
+Do not add a client projection into `/ecs/c/inventory` or `/ecs/c/wearing`.
 
 ## Architecture
 
@@ -97,15 +95,20 @@ Every interactive element has a `data-ui-id` attribute drawn from
 `uniqueIds.ts`. Tutorial steps, quest hints, and admin tools call
 
 ```ts
-requestHighlight({ uniqueId: "tab.inventory", style: "pulse", caption: "Open inventory" });
+requestHighlight({
+  uniqueId: "tab.inventory",
+  style: "pulse",
+  caption: "Open inventory",
+});
 ```
 
 and the element blinks. If the element isn't mounted yet, the request is
 queued and delivered as soon as it registers — no race conditions.
 
 Styles:
+
 - `pulse` — cyan glow (default)
-- `ring`  — amber outline (warning / "go here")
+- `ring` — amber outline (warning / "go here")
 - `arrow` — bobbing arrow above the element
 - `shimmer` — diagonal sweep (exotic-matter feel)
 
@@ -117,7 +120,7 @@ correct cues via `cuesForStep(target, trigger)`. For example, the
 
 - `tab.inventory` (pulse — "Open inventory")
 - `inventory.slot.chest` (ring — "Equip a top")
-- `inventory.slot.legs`  (ring — "Equip bottoms")
+- `inventory.slot.legs` (ring — "Equip bottoms")
 
 The mapping lives in `tutorial/tutorialMissionMap.ts` and is verified
 end-to-end by `scripts/harthmere/check-biomes-ui-tutorial-runtime.cjs`
@@ -180,13 +183,13 @@ the old pause menu, simply stop rendering it.
 
 These test layers can be run independently while iterating:
 
-| Script | What it verifies |
-|---|---|
-| `node scripts/harthmere/check-biomes-ui-tutorial-targets.cjs` | Static audit — file presence, UI id declarations, tab descriptors, default shortcuts, Highlightable usage in every tab |
-| `node scripts/harthmere/check-biomes-ui-highlight-registry.cjs` | Runtime — register/unregister, queued delivery, multi-target fan-out, clear, subscribe, error isolation |
-| `node scripts/harthmere/check-biomes-ui-tutorial-runtime.cjs` | Runtime — every live mission step has cues, all cue ids are well-formed, captions fit |
-| `node scripts/harthmere/check-biomes-ui-tabs-smoke.cjs` | Runtime — every tab renders via `renderToStaticMarkup` AND emits the expected `data-ui-id` attributes |
-| `src/client/components/biomes_ui/__tests__/*.test.ts` | Mocha + assert (run via the existing test runner) |
+| Script                                                          | What it verifies                                                                                                       |
+| --------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `node scripts/harthmere/check-biomes-ui-tutorial-targets.cjs`   | Static audit — file presence, UI id declarations, tab descriptors, default shortcuts, Highlightable usage in every tab |
+| `node scripts/harthmere/check-biomes-ui-highlight-registry.cjs` | Runtime — register/unregister, queued delivery, multi-target fan-out, clear, subscribe, error isolation                |
+| `node scripts/harthmere/check-biomes-ui-tutorial-runtime.cjs`   | Runtime — every live mission step has cues, all cue ids are well-formed, captions fit                                  |
+| `node scripts/harthmere/check-biomes-ui-tabs-smoke.cjs`         | Runtime — every tab renders via `renderToStaticMarkup` AND emits the expected `data-ui-id` attributes                  |
+| `src/client/components/biomes_ui/__tests__/*.test.ts`           | Mocha + assert (run via the existing test runner)                                                                      |
 
 The Today tab is the default BiomesUI tab. It reads the daily care-loop
 snapshot from `/api/harthmere/live_mode_daily_state`, lets the player

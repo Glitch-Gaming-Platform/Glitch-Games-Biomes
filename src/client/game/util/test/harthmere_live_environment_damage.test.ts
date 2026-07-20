@@ -65,6 +65,7 @@ describe("Harthmere live environment damage client", () => {
     await submitHarthmereFallDamageLiveMode(20, {
       fetchImpl,
       requestIdPrefix: "test_fall",
+      forceLegacyAuthority: true,
     });
 
     assert.equal(calls.length, 1);
@@ -126,6 +127,7 @@ describe("Harthmere live environment damage client", () => {
     await submitHarthmereDrowningDamageLiveMode(5, {
       fetchImpl,
       requestIdPrefix: "test_drown",
+      forceLegacyAuthority: true,
     });
 
     assert.equal(calls.length, 1);
@@ -144,5 +146,29 @@ describe("Harthmere live environment damage client", () => {
         detail: { combat: { hp: 9, maxHp: 100 } },
       },
     ]);
+  });
+
+  it("does not mirror native ECS damage into Redis or the optimistic HUD", async () => {
+    const dispatched: unknown[] = [];
+    let calls = 0;
+    (globalThis as any).window = {
+      location: { search: "" },
+      dispatchEvent: (event: unknown) => dispatched.push(event),
+    };
+    const fetchImpl = (async () => {
+      calls += 1;
+      throw new Error("native damage must not issue a live-mode request");
+    }) as any;
+
+    assert.equal(
+      await submitHarthmereFallDamageLiveMode(20, { fetchImpl }),
+      undefined
+    );
+    assert.equal(
+      await submitHarthmereDrowningDamageLiveMode(5, { fetchImpl }),
+      undefined
+    );
+    assert.equal(calls, 0);
+    assert.deepEqual(dispatched, []);
   });
 });

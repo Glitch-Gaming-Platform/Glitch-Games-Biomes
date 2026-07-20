@@ -61,8 +61,7 @@ const HARTHMERE_PRACTICE_OBJECT_RE =
   /\b(practice|dumm(?:y|ies)|rings?|ropes?|firefl(?:y|ies)|flags?|stakes?|stretch|spots?)\b/i;
 const HARTHMERE_OUTFIT_OBJECT_RE =
   /\b(mirrors?|wardrobes?|outfits?|clothing|clothes|garments?)\b/i;
-const HARTHMERE_PHOTO_OBJECT_RE =
-  /\b(selfie|photo|camera|overlooks?|cove)\b/i;
+const HARTHMERE_PHOTO_OBJECT_RE = /\b(selfie|photo|camera|overlooks?|cove)\b/i;
 
 function objectInteraction(
   kind: HarthmereObjectInteractionKind,
@@ -102,11 +101,7 @@ const HARTHMERE_AUTHORED_OBJECT_INTERACTIONS: ReadonlyMap<
       "Open Container",
       "Opened"
     ),
-    "broken safe-zone fence": objectInteraction(
-      "repair",
-      "Repair",
-      "Repaired"
-    ),
+    "broken safe-zone fence": objectInteraction("repair", "Repair", "Repaired"),
     "building practice spot": objectInteraction(
       "practice",
       "Practice",
@@ -164,11 +159,7 @@ const HARTHMERE_AUTHORED_OBJECT_INTERACTIONS: ReadonlyMap<
       "Open Container",
       "Opened"
     ),
-    "fountain dim corner": objectInteraction(
-      "inspect",
-      "Inspect",
-      "Inspected"
-    ),
+    "fountain dim corner": objectInteraction("inspect", "Inspect", "Inspected"),
     "fountain food satchel": objectInteraction(
       "open_container",
       "Open Container",
@@ -305,11 +296,7 @@ const HARTHMERE_AUTHORED_OBJECT_INTERACTIONS: ReadonlyMap<
       "Opened"
     ),
     "practice land ledger": objectInteraction("read", "Read", "Read"),
-    "practice scratch post": objectInteraction(
-      "repair",
-      "Repair",
-      "Repaired"
-    ),
+    "practice scratch post": objectInteraction("repair", "Repair", "Repaired"),
     "ready check fireflies": objectInteraction(
       "practice",
       "Practice",
@@ -336,11 +323,7 @@ const HARTHMERE_AUTHORED_OBJECT_INTERACTIONS: ReadonlyMap<
       "Inspect",
       "Inspected"
     ),
-    "selfie overlook": objectInteraction(
-      "take_photo",
-      "Take Photo",
-      "Framed"
-    ),
+    "selfie overlook": objectInteraction("take_photo", "Take Photo", "Framed"),
     "shutter cove photo marker": objectInteraction(
       "take_photo",
       "Take Photo",

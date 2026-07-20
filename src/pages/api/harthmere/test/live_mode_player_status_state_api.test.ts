@@ -79,6 +79,43 @@ describe("live_mode_player_status_state API route integration", () => {
     assert.equal(snapshot.standing.likeability, 0);
   });
 
+  it("keeps native-ECS status reads projection-only even at zero stamina", async () => {
+    const backend = defaultHarthmereLiveModeBackendState(ACTOR, NOW_MS);
+    backend.combat.hp = 100;
+    backend.combat.deathState = "alive";
+    backend.combat.resources.stamina = 0;
+    backend.combat.lastStaminaTickMs = NOW_MS - 60_000;
+    const original = JSON.stringify(backend);
+    let writes = 0;
+    const redis = {
+      primary: {
+        get: async () => original,
+        set: async () => {
+          writes += 1;
+          return "OK";
+        },
+        eval: async () => {
+          writes += 1;
+          return 1;
+        },
+      },
+    };
+
+    const snapshot = await readHarthmereLiveModePlayerStatusStateForActor({
+      redis,
+      actorId: ACTOR,
+      nowMs: NOW_MS,
+      gameplayActive: true,
+      readOnlyProjection: true,
+    });
+
+    assert.equal(writes, 0);
+    assert.equal(snapshot.combat.hp, 100);
+    assert.equal(snapshot.combat.deathState, "alive");
+    assert.equal(snapshot.backendAuthority.readOnlyProjection, true);
+    assert.equal(snapshot.backendAuthority.staminaPersisted, false);
+  });
+
   it("repairs stale active stamina backfill before draining", async () => {
     const backend = defaultHarthmereLiveModeBackendState(ACTOR, NOW_MS);
     backend.combat.resources.stamina = 108;

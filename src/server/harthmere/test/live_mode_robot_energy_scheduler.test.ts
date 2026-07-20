@@ -12,6 +12,7 @@ import {
 import {
   readOrSeedHarthmereLiveModeRobotProtectionSharedState,
   runHarthmereLiveModeRobotEnergySchedulerTick,
+  syncHarthmereRobotEnergyStateToEcs,
 } from "../live_mode_robot_energy_scheduler";
 import {
   createHarthmereServerMuckCombatEntitySnapshots,
@@ -41,6 +42,8 @@ import {
 } from "@/shared/harthmere/grove_race_minigame_seed";
 import { BikkieIds } from "@/shared/bikkie/ids";
 import { muckMonsterAreaForPosition } from "@/shared/harthmere/muck_monster_aggression_ai";
+import { InMemoryWorld } from "@/server/shared/world/shim/in_memory_world";
+import { ShimWorldApi } from "@/server/shared/world/shim/api";
 
 const NOW_MS = 1_700_600_000_000;
 
@@ -210,6 +213,35 @@ describe("Harthmere live entity production seeds", () => {
       ]),
     });
     assert.equal(proposed[0].kind, "update");
+  });
+
+  it("syncs scheduled robot energy into native ECS robot components", async () => {
+    const world = new InMemoryWorld();
+    world.writeableTable.apply(
+      buildHarthmereLiveEntityProductionSeedChanges({
+        tick: world.table.tick,
+        nowSeconds: NOW_MS / 1000,
+        existingIds: new Set(),
+      })
+    );
+    const state = defaultHarthmereLiveModeBackendState(
+      "robot-ecs-sync",
+      NOW_MS
+    ).robotProtection;
+    const seed = HARTHMERE_LIVE_ENTITY_ROBOT_SENTINEL_SEEDS[0];
+    state.robots[seed.robotId].energy = 37;
+    state.robots[seed.robotId].status = "low";
+
+    const synced = await syncHarthmereRobotEnergyStateToEcs({
+      worldApi: ShimWorldApi.createForWorld(world),
+      robotProtection: state,
+      nowMs: NOW_MS + 1_000,
+    });
+    assert.ok(synced.includes(seed.robotId));
+    assert.equal(
+      world.table.get(seed.entityId)?.robot_component?.internal_battery_charge,
+      37
+    );
   });
 });
 

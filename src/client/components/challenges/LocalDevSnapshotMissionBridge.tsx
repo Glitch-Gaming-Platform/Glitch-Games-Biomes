@@ -23,6 +23,7 @@ import type { BiomesId } from "@/shared/ids";
 import type { ReadonlyVec3, Vec3 } from "@/shared/math/types";
 import { snapshotGroveLandmarkById } from "@/shared/harthmere/snapshot_grove_content";
 import { HARTHMERE_CRAFTING_TOOLS } from "@/shared/harthmere/mmo_crafting_catalogue";
+import { nativeRoadAheadEcsAuthorityEnabled } from "@/shared/harthmere/native_road_ahead_contract";
 import {
   SNAPSHOT_ROAD_AHEAD_MISSION,
   SNAPSHOT_ROAD_AHEAD_MISSION_ID,
@@ -755,6 +756,13 @@ export function snapshotRoadAheadMissionStepsForBiomesUI(
   state: SnapshotMissionState = readSnapshotMissionState(),
   challengeStepHints?: Iterable<SnapshotRoadAheadChallengeStepHint>
 ) {
+  // The May 16 snapshot already supplies this quest through the native ECS
+  // challenge resource.  Returning the synthetic projection at the same time
+  // creates a second tracker with different step meanings, so production UI
+  // must consume the native QuestBundle instead (mapLiveAdapter does that).
+  if (nativeRoadAheadEcsAuthorityEnabled()) {
+    return [];
+  }
   const {
     mission,
     state: uiState,
@@ -790,6 +798,9 @@ export function snapshotRoadAheadTrackableQuestsForBiomesUI(
   state: SnapshotMissionState = readSnapshotMissionState(),
   challengeStepHints?: Iterable<SnapshotRoadAheadChallengeStepHint>
 ) {
+  if (nativeRoadAheadEcsAuthorityEnabled()) {
+    return [];
+  }
   const {
     mission,
     state: uiState,
@@ -822,6 +833,9 @@ export function firstActiveSnapshotRoadAheadQuestTitleForBiomesUI(
   state: SnapshotMissionState = readSnapshotMissionState(),
   challengeStepHints?: Iterable<SnapshotRoadAheadChallengeStepHint>
 ) {
+  if (nativeRoadAheadEcsAuthorityEnabled()) {
+    return undefined;
+  }
   const uiState = snapshotRoadAheadStateForBiomesUI(state, challengeStepHints);
   return uiState.accepted && !isMissionCompleted(uiState)
     ? firstSnapshotMission().title
@@ -1106,9 +1120,10 @@ function shouldEventCompleteStep(
         !isFloraId(event.terrainId)
       );
     case "place_voxel":
-      return (
-        event.kind === "place_voxel" || event.kind === "block_inventory_throw"
-      );
+      // Native Biomes treats placement and throwing as different inventory
+      // operations.  A thrown block creates a loose ECS item and must never be
+      // accepted as proof that terrain was placed.
+      return event.kind === "place_voxel";
     case "running_jump":
       return event.kind === "jump" && event.running;
     case "photo":
@@ -1184,7 +1199,7 @@ export function snapshotRoadAheadHasLocalMuckClearingToolForTest() {
   return readSnapshotRoadAheadLocalHarthmereMuckClearingTool();
 }
 
-export const SnapshotMissionRuntimeController: React.FunctionComponent<{}> =
+const LegacySnapshotMissionRuntimeController: React.FunctionComponent<{}> =
   () => {
     const { gardenHose, mapManager, reactResources, resources, userId } =
       useClientContext();
@@ -1334,6 +1349,16 @@ export const SnapshotMissionRuntimeController: React.FunctionComponent<{}> =
     return null;
   };
 
+export const SnapshotMissionRuntimeController: React.FunctionComponent<{}> =
+  () => {
+    // Default to the original server-authored quest.  The legacy controller is
+    // available only behind an explicit diagnostic flag because it publishes
+    // synthetic challenge events and writes a separate local quest store.
+    return nativeRoadAheadEcsAuthorityEnabled() ? null : (
+      <LegacySnapshotMissionRuntimeController />
+    );
+  };
+
 function useSnapshotMissionState() {
   const [state, setState] = useState<SnapshotMissionState>(() =>
     readSnapshotMissionState()
@@ -1379,6 +1404,9 @@ export function useSnapshotMissionDialog(
   }, []);
 
   return useMemo(() => {
+    if (nativeRoadAheadEcsAuthorityEnabled()) {
+      return undefined;
+    }
     if (talkingToNPCId !== JACKIE_ID) {
       return undefined;
     }

@@ -100,7 +100,11 @@ export const DialogButton: React.FunctionComponent<
 }) => {
   const context = useClientContext();
   return (
-    // We purposely don't pass through 'disabled' here, otherwise mouse events won't fire
+    // Keep the guarded click handler instead of the native `disabled` attribute:
+    // several dialogs still rely on receiving the event wrapper so they can
+    // suppress propagation consistently. `aria-disabled` exposes the same
+    // state to accessibility tools and browser tests while the handler below
+    // remains the single behavioral gate.
     <button
       className={dialogButtonClassName(
         disabled,
@@ -110,6 +114,7 @@ export const DialogButton: React.FunctionComponent<
         extraClassNames
       )}
       type="button"
+      aria-disabled={disabled || undefined}
       onClick={(e) => {
         if (!disabled) {
           if (!dontPreventDefault) {

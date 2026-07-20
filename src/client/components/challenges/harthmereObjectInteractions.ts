@@ -8,10 +8,11 @@ import {
   harthmereCookingStationId,
   openHarthmereCookingStation,
 } from "@/client/components/harthmere_cooking/harthmereCookingStations";
+import { harthmereGatheringNodeIdForObjectLabel } from "@/client/components/challenges/LocalDevHarthmereGatheringSystem";
 import {
-  harthmereGatheringNodeIdForObjectLabel,
-  performHarthmereGather,
-} from "@/client/components/challenges/LocalDevHarthmereGatheringSystem";
+  harthmereGatheringErrorMessage,
+  submitHarthmereGatheringNode,
+} from "@/client/components/challenges/harthmereGatheringLiveAuthority";
 import {
   HARTHMERE_JOBS_BOARD_OPEN_EVENT,
   HARTHMERE_WANTED_BOARD_OPEN_EVENT,
@@ -443,17 +444,28 @@ export function performHarthmereObjectInteraction(input: {
   if (input.interaction.kind === "gather") {
     const nodeId = harthmereGatheringNodeIdForObjectLabel(input.label);
     if (nodeId) {
-      const result = performHarthmereGather(nodeId);
-      addToast(input.resources, {
-        kind: "basic",
-        id: `harthmere-gather:${nodeId}`,
-        message:
-          result.message ??
-          harthmereObjectInteractionToastMessage({
-            label: input.label,
-            interaction: input.interaction,
-          }),
-      });
+      fireAndForget(
+        submitHarthmereGatheringNode(nodeId).then(
+          () =>
+            addToast(input.resources, {
+              kind: "basic",
+              id: `harthmere-gather:${nodeId}`,
+              message: harthmereObjectInteractionToastMessage({
+                label: input.label,
+                interaction: input.interaction,
+              }),
+            }),
+          (error) =>
+            addToast(input.resources, {
+              kind: "basic",
+              id: `harthmere-gather-rejected:${nodeId}`,
+              message: harthmereGatheringErrorMessage(
+                error,
+                input.label ?? "this resource"
+              ),
+            })
+        )
+      );
       return;
     }
   }

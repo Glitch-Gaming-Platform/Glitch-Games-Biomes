@@ -427,7 +427,7 @@ const TalkToNpcWithRewards: React.FunctionComponent<{
       if (disabled) {
         return;
       }
-      completeStep(chosenRewardIndex);
+      return completeStep(chosenRewardIndex);
     },
   };
 
@@ -524,7 +524,7 @@ const TalkToNpcWithTakeItems: React.FunctionComponent<{
         return;
       }
 
-      completeStep();
+      return completeStep();
     },
   };
 

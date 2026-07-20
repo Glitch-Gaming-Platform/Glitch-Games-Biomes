@@ -23,7 +23,14 @@ export function harthmereEquipmentSlotToBikkieWearableSlot(
 ): BiomesId | undefined {
   switch (slot) {
     case "head":
+    case "hat":
       return BikkieIds.hat;
+    case "hair":
+      return BikkieIds.hair;
+    case "face":
+      return BikkieIds.face;
+    case "ears":
+      return BikkieIds.ears;
     case "chest":
       return BikkieIds.top;
     case "legs":
@@ -33,6 +40,7 @@ export function harthmereEquipmentSlotToBikkieWearableSlot(
     case "hands":
       return BikkieIds.hands;
     case "back":
+    case "outerwear":
       return BikkieIds.outerwear;
     case "neck":
       return BikkieIds.neck;

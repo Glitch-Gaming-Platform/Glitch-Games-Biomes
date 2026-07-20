@@ -4,6 +4,7 @@ import {
 } from "@/client/components/biomes_ui/adapters/playerStatusAdapter";
 import { fetchHarthmereLiveWithTimeout } from "@/client/components/harthmere_live_fetch";
 import { fallDamageForBlocks } from "@/shared/game/fall_damage";
+import { nativeBiomesEcsAuthorityEnabled } from "@/shared/harthmere/native_road_ahead_contract";
 
 export function harthmereLiveModeEnvironmentDamageUrl(search?: string) {
   const rawSearch =
@@ -59,10 +60,21 @@ export async function submitHarthmereFallDamageLiveMode(
     fetchImpl?: typeof fetch;
     locationSearch?: string;
     requestIdPrefix?: string;
+    forceLegacyAuthority?: boolean;
   } = {}
 ) {
   const blocks = Number(fallBlocks);
   if (!Number.isFinite(blocks) || blocks <= 0) {
+    return undefined;
+  }
+  if (
+    nativeBiomesEcsAuthorityEnabled() &&
+    options.forceLegacyAuthority !== true
+  ) {
+    // `PlayerScript.applyHpChange` has already published the authoritative ECS
+    // UpdatePlayerHealthEvent. Posting the same landing to live-mode Redis used
+    // to apply a second damage/death authority and a second optimistic HUD
+    // delta. Keep this path solely for explicit legacy/offline diagnostics.
     return undefined;
   }
   const fetchImpl = options.fetchImpl ?? fetch;
@@ -114,10 +126,20 @@ export async function submitHarthmereDrowningDamageLiveMode(
     fetchImpl?: typeof fetch;
     locationSearch?: string;
     requestIdPrefix?: string;
+    forceLegacyAuthority?: boolean;
   } = {}
 ) {
   const amount = Number(damage);
   if (!Number.isFinite(amount) || amount <= 0) {
+    return undefined;
+  }
+  if (
+    nativeBiomesEcsAuthorityEnabled() &&
+    options.forceLegacyAuthority !== true
+  ) {
+    // Drowning is already an ECS health event in PlayerScript. A Redis mirror
+    // here can arrive later, overwrite fresher health, and kill the player a
+    // second time, so native mode deliberately performs no HTTP mutation.
     return undefined;
   }
   const fetchImpl = options.fetchImpl ?? fetch;

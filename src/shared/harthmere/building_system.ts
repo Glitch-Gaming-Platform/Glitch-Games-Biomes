@@ -683,6 +683,12 @@ export interface BuildingSystemVoxelEditSpec {
   kind: "editEvent";
   position: [number, number, number];
   value: BiomesId;
+  /**
+   * Required current terrain value for destructive edits. The direct ECS
+   * materializer refuses to clear a voxel that another system/player changed
+   * after this plan was authored.
+   */
+  expectedValue?: BiomesId;
   label:
     | "foundation"
     | "floor"
@@ -4694,7 +4700,12 @@ function replaceVoxelEdits(
   value: BiomesId,
   label: BuildingSystemVoxelEditSpec["label"]
 ): BuildingSystemVoxelEditSpec[] {
-  return edits.map((edit) => ({ ...edit, value, label }));
+  return edits.map((edit) => ({
+    ...edit,
+    expectedValue: edit.value,
+    value,
+    label,
+  }));
 }
 
 export function createBuildingSystemDemolitionMaterializationPlan(input: {
@@ -4749,18 +4760,21 @@ export function createBuildingSystemRepairDamageMaterializationPlan(input: {
     kind: "editEvent",
     position: [x0, y0 + 1, z0],
     value: BUILDING_BLOCKS.air,
+    expectedValue: BUILDING_BLOCKS.wall,
     label: "repair_damage",
   });
   edits.push({
     kind: "editEvent",
     position: [x1 - 1, y0 + 1, z1 - 1],
     value: BUILDING_BLOCKS.air,
+    expectedValue: BUILDING_BLOCKS.wall,
     label: "repair_damage",
   });
   edits.push({
     kind: "editEvent",
     position: [x0 + 1, roofY, z0 + 1],
     value: BUILDING_BLOCKS.air,
+    expectedValue: BUILDING_BLOCKS.roof,
     label: "repair_damage",
   });
   return {

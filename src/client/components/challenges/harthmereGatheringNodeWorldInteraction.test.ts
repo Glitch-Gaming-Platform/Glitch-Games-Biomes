@@ -47,6 +47,8 @@ import {
 
 // The first authored mining node — a stable anchor for the geometry assertions.
 const IRON_VEIN_ID = "harthmere_north_iron_vein";
+const previousNativeAuthority =
+  process.env.NEXT_PUBLIC_BIOMES_NATIVE_ECS_AUTHORITY;
 
 function ironVein() {
   const target = HARTHMERE_GATHERING_NODE_WORLD_TARGETS.find(
@@ -58,11 +60,22 @@ function ironVein() {
 
 describe("harthmere gathering node world interaction", () => {
   beforeEach(() => {
+    // These tests exercise the explicitly retained offline/local simulator.
+    process.env.NEXT_PUBLIC_BIOMES_NATIVE_ECS_AUTHORITY = "0";
     // Re-point the global window at this file's mock. When several browser-shim
     // test files run in one mocha process they each clobber globalThis.window;
     // re-asserting here keeps the module's localStorage reads on our own store.
     (globalThis as unknown as { window: unknown }).window = windowMock;
     localStorageMock.clear();
+  });
+
+  after(() => {
+    if (previousNativeAuthority === undefined) {
+      delete process.env.NEXT_PUBLIC_BIOMES_NATIVE_ECS_AUTHORITY;
+    } else {
+      process.env.NEXT_PUBLIC_BIOMES_NATIVE_ECS_AUTHORITY =
+        previousNativeAuthority;
+    }
   });
 
   it("offers the nearest node only inside interaction range", () => {

@@ -123,7 +123,10 @@ describe("TalkDialogModalStep rendered voice conversation flow", () => {
                           actions: [
                             {
                               name: "Pick this",
-                              onPerformed: () => window.__choices.push("Pick this"),
+                              onPerformed: async () => {
+                                await new Promise((resolve) => window.setTimeout(resolve, 120));
+                                window.__choices.push("Pick this");
+                              },
                             },
                           ],
                         },
@@ -626,6 +629,20 @@ describe("TalkDialogModalStep rendered voice conversation flow", () => {
       );
 
       await page.getByText("Pick this").click();
+      const pendingActionButton = page.getByRole("button", {
+        name: "Working…",
+      });
+      await pendingActionButton.waitFor({ timeout: 10_000 });
+      assert.equal(
+        await pendingActionButton.isDisabled(),
+        true,
+        "quest actions must stay disabled while the authoritative event is pending"
+      );
+      assert.equal(
+        await page.evaluate(() => window.__closedCount),
+        0,
+        "the dialog must remain visible until the authoritative action resolves"
+      );
       await page.waitForFunction(() => window.__closedCount === 1);
       assert.deepEqual(await page.evaluate(() => window.__choices), [
         "Pick this",

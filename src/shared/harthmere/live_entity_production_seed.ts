@@ -695,6 +695,17 @@ export function harthmereActiveLiveEntityProductionSeedIds(): BiomesId[] {
   ];
 }
 
+export function harthmereRespawningLiveCreatureSeedIds(): BiomesId[] {
+  return [
+    ...harthmereGroundedMuckMonsterSeedsInTerritory().map(
+      (seed) => seed.entityId
+    ),
+    ...harthmereGroundedLivestockSeedsInTerritory().map(
+      (seed) => seed.entityId
+    ),
+  ];
+}
+
 export const HARTHMERE_LIVE_ENTITY_PRODUCTION_SEEDS = [
   ...HARTHMERE_LIVE_ENTITY_ROBOT_SENTINEL_SEEDS,
   ...HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS,

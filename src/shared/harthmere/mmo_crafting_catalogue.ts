@@ -357,10 +357,30 @@ const TOOLS: HarthmereCraftingToolDefinition[] = [
     durabilityMax: 3600000,
     repairPower: 12,
   },
+  // Legacy/live-mode aliases are still present in vendor stock and saved
+  // equipment. Register them as real tool definitions so the server does not
+  // tell a player to buy a Repair Mallet and then reject that exact equipped
+  // item at quest completion.
+  {
+    itemId: "repair_mallet",
+    displayName: "Repair Mallet",
+    action: "repair",
+    tier: 1,
+    durabilityMax: 150000,
+    repairPower: 1,
+  },
   // HARTHMERE_CLEANUP_TOOLS: convert muck voxels back to dirt (and plant
   // seeds for gardening). cleanupPower = muck voxels cleared per use.
   {
     itemId: HARTHMERE_CRAFTING_TOOLS.muckRake,
+    displayName: "Muck Rake",
+    action: "cleanup",
+    tier: 1,
+    durabilityMax: 150000,
+    cleanupPower: 1,
+  },
+  {
+    itemId: "muck_rake",
     displayName: "Muck Rake",
     action: "cleanup",
     tier: 1,

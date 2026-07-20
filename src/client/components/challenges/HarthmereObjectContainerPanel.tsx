@@ -21,6 +21,8 @@ import {
   clearHarthmereContainerOpenRequest,
   HARTHMERE_OBJECT_CONTAINER_CHANGED_EVENT,
   HARTHMERE_OBJECT_CONTAINER_OPEN_EVENT,
+  HARTHMERE_OBJECT_CONTAINER_TRANSFER_EVENT,
+  isHarthmereContainerTransferPending,
   putIntoHarthmereContainer,
   readHarthmereContainerOpenRequest,
   readHarthmereContainer,
@@ -145,10 +147,7 @@ function useContainerRecord(
     }
     const refresh = () => setRecord(readHarthmereContainer(key));
     refresh();
-    window.addEventListener(
-      HARTHMERE_OBJECT_CONTAINER_CHANGED_EVENT,
-      refresh
-    );
+    window.addEventListener(HARTHMERE_OBJECT_CONTAINER_CHANGED_EVENT, refresh);
     window.addEventListener("storage", refresh);
     return () => {
       window.removeEventListener(
@@ -170,8 +169,9 @@ export const HarthmereObjectContainerPanel: React.FunctionComponent<{}> =
     const inventory = useHarthmereInventoryState();
     const record = useContainerRecord(request?.key);
     const pointerLockManager = usePointerLockManager();
-    const shouldReturnPointerLock =
-      useRef<PointerLockUnlockWhileOpenReturnRef>({ current: false });
+    const shouldReturnPointerLock = useRef<PointerLockUnlockWhileOpenReturnRef>(
+      { current: false }
+    );
 
     const [focus, setFocus] = useState<HarthmereContainerFocus | undefined>(
       undefined
@@ -179,6 +179,20 @@ export const HarthmereObjectContainerPanel: React.FunctionComponent<{}> =
     const [dragOverSide, setDragOverSide] = useState<
       HarthmereContainerSide | undefined
     >(undefined);
+    const [, setTransferRevision] = useState(0);
+
+    useEffect(() => {
+      const refresh = () => setTransferRevision((value) => value + 1);
+      window.addEventListener(
+        HARTHMERE_OBJECT_CONTAINER_TRANSFER_EVENT,
+        refresh
+      );
+      return () =>
+        window.removeEventListener(
+          HARTHMERE_OBJECT_CONTAINER_TRANSFER_EVENT,
+          refresh
+        );
+    }, []);
 
     useEffect(() => {
       installBiomesUITheme();
@@ -224,17 +238,13 @@ export const HarthmereObjectContainerPanel: React.FunctionComponent<{}> =
       };
       const storageHandler = (event: StorageEvent) => {
         if (
-          event.key ===
-          "biomes.localDev.harthmere.objectContainerOpenRequest"
+          event.key === "biomes.localDev.harthmere.objectContainerOpenRequest"
         ) {
           openRequest();
         }
       };
       clearHarthmereContainerOpenRequest();
-      window.addEventListener(
-        HARTHMERE_OBJECT_CONTAINER_OPEN_EVENT,
-        handler
-      );
+      window.addEventListener(HARTHMERE_OBJECT_CONTAINER_OPEN_EVENT, handler);
       window.addEventListener("storage", storageHandler);
       return () => {
         window.removeEventListener(
@@ -398,6 +408,7 @@ export const HarthmereObjectContainerPanel: React.FunctionComponent<{}> =
     if (!request || typeof window === "undefined") {
       return null;
     }
+    const transferPending = isHarthmereContainerTransferPending(request.key);
 
     const dropZoneProps = (targetSide: HarthmereContainerSide) => ({
       onDragEnter: (event: React.DragEvent) => {
@@ -429,6 +440,7 @@ export const HarthmereObjectContainerPanel: React.FunctionComponent<{}> =
     const panel = (
       <div
         data-harthmere-object-container-panel="true"
+        aria-busy={transferPending}
         data-pointer-lock-policy="unlock-while-open"
         className="biomes-ui-container-backdrop"
         style={{ zIndex: 2147483000 }}
@@ -475,10 +487,10 @@ export const HarthmereObjectContainerPanel: React.FunctionComponent<{}> =
                 <button
                   type="button"
                   className="biomes-ui-action-button"
-                  disabled={!containerItems.length}
+                  disabled={!containerItems.length || transferPending}
                   onClick={() => takeAllFromHarthmereContainer(request.key)}
                 >
-                  Take All
+                  {transferPending ? "Taking…" : "Take All"}
                 </button>
               </div>
               <div
@@ -508,6 +520,7 @@ export const HarthmereObjectContainerPanel: React.FunctionComponent<{}> =
                       <button
                         type="button"
                         className="biomes-ui-action-button"
+                        disabled={transferPending}
                         onClick={() =>
                           takeFromHarthmereContainer(
                             request.key,
@@ -522,6 +535,7 @@ export const HarthmereObjectContainerPanel: React.FunctionComponent<{}> =
                         <button
                           type="button"
                           className="biomes-ui-action-button"
+                          disabled={transferPending}
                           onClick={() =>
                             takeFromHarthmereContainer(
                               request.key,
@@ -572,12 +586,9 @@ export const HarthmereObjectContainerPanel: React.FunctionComponent<{}> =
                       <button
                         type="button"
                         className="biomes-ui-action-button"
+                        disabled={transferPending}
                         onClick={() =>
-                          putIntoHarthmereContainer(
-                            request.key,
-                            item.itemId,
-                            1
-                          )
+                          putIntoHarthmereContainer(request.key, item.itemId, 1)
                         }
                       >
                         Store
@@ -586,6 +597,7 @@ export const HarthmereObjectContainerPanel: React.FunctionComponent<{}> =
                         <button
                           type="button"
                           className="biomes-ui-action-button"
+                          disabled={transferPending}
                           onClick={() =>
                             putIntoHarthmereContainer(
                               request.key,

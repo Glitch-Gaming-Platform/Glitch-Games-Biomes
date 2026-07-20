@@ -60,6 +60,7 @@ export const HARTHMERE_JOBS_BOARD_HARTHMERE_MARKER_ID =
 export const HARTHMERE_JOBS_BOARD_HARTHMERE_DISPLAY_NAME =
   "Harthmere Town Jobs Board" as const;
 export const HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS = 3.25;
+export const HARTHMERE_JOBS_BOARD_FIELD_COMPLETION_RADIUS = 8;
 export const HARTHMERE_JOBS_BOARD_MAX_ACTIVE_POSTINGS_PER_ISSUER = 12;
 export const HARTHMERE_JOBS_BOARD_MAX_ACTIVE_ACCEPTED_PER_SEEKER = 6;
 export const HARTHMERE_JOBS_BOARD_MIN_REWARD_GOLD = 5;
@@ -420,6 +421,8 @@ export interface HarthmereJobsBoardMutationContext {
   actorTownIds?: string[];
   nearbyBoardId?: string;
   actorPosition?: { x: number; y: number; z: number };
+  /** Tool actions proven by server-owned equipped inventory state. */
+  authoritativeEquippedToolActions?: string[];
   economy?: HarthmereProductionEconomyState;
   allowNpcJobPosting?: boolean;
   canManageGuildJobs?: (guildId: string) => boolean;
@@ -1163,6 +1166,34 @@ function createJobPosting(
     (request.rewardCollectibleIds ?? []).length !== rewardCollectibleIds.length
   )
     return reject(result, "jobs_board_rejected:invalid_reward_collectible");
+  const requiresFieldWork =
+    request.requiresFieldWork === true ||
+    [
+      "delivery",
+      "repair",
+      "cleanup",
+      "hunt",
+      "escort",
+      "medical",
+      "exploration",
+      "construction",
+      "security",
+    ].includes(kind);
+  const firstMarker =
+    request.mapMarkerId ??
+    template?.mapMarkerId ??
+    requirements.find((req) => req.mapMarkerId)?.mapMarkerId ??
+    requirements.find((req) => req.targetId)?.targetId;
+  const targetId =
+    request.targetId ??
+    template?.targetId ??
+    requirements.find((req) => req.targetId)?.targetId;
+  if (
+    requiresFieldWork &&
+    !harthmereJobsBoardQuestMarkerRuntimePositionForId(firstMarker ?? targetId)
+  ) {
+    return reject(result, "jobs_board_rejected:field_marker_unresolvable");
+  }
   const flags: string[] = [];
   if (hasSuspiciousText(`${title} ${description}`))
     flags.push("suspicious_text");
@@ -1188,15 +1219,6 @@ function createJobPosting(
   );
   if (result.warnings.length) return;
   const jobId = `harthmere_job_${result.next.nextJobNumber++}`;
-  const firstMarker =
-    request.mapMarkerId ??
-    template?.mapMarkerId ??
-    requirements.find((req) => req.mapMarkerId)?.mapMarkerId ??
-    requirements.find((req) => req.targetId)?.targetId;
-  const targetId =
-    request.targetId ??
-    template?.targetId ??
-    requirements.find((req) => req.targetId)?.targetId;
   result.next.postings[jobId] = {
     jobId,
     boardId: board.boardId,
@@ -1220,19 +1242,7 @@ function createJobPosting(
     createdAtMs: request.nowMs,
     deadlineAtMs,
     failurePenaltyGold: Math.round(rewardGold * 0.1),
-    requiresFieldWork:
-      request.requiresFieldWork === true ||
-      [
-        "delivery",
-        "repair",
-        "cleanup",
-        "hunt",
-        "escort",
-        "medical",
-        "exploration",
-        "construction",
-        "security",
-      ].includes(kind),
+    requiresFieldWork,
     mapMarkerId: firstMarker,
     targetId,
     abuseFlags: flags,
@@ -1488,7 +1498,10 @@ function pickupDeliveryParcel(
   );
   if (!todo) return reject(result, "jobs_board_rejected:quest_todo_required");
   if (todo.status !== "active") {
-    return reject(result, `jobs_board_rejected:quest_not_active:${todo.status}`);
+    return reject(
+      result,
+      `jobs_board_rejected:quest_not_active:${todo.status}`
+    );
   }
   if (job.deadlineAtMs <= request.nowMs) {
     job.status = "expired";
@@ -1554,34 +1567,34 @@ function completeJobQuest(
   if (!todo) return reject(result, "jobs_board_rejected:quest_todo_required");
   if (todo.status === "completed")
     return reject(result, "jobs_board_rejected:quest_already_completed");
-  if (todo.status !== "active") {
-    if (["cancelled", "failed", "expired"].includes(todo.status)) {
-      todo.status = "active";
-      todo.boardId = job.boardId;
-      todo.title = job.title;
-      todo.todoText = job.requiresFieldWork
-        ? `Go to the marked location and complete: ${job.title}`
-        : `Complete board job: ${job.title}`;
-      todo.kind = job.kind;
-      todo.mapMarkerId = job.mapMarkerId ?? job.targetId;
-      todo.targetId = job.targetId;
-      todo.townId = job.townId;
-      todo.regionId = job.regionId;
-      todo.dueAtMs = job.deadlineAtMs;
-      todo.questBoardTodo = true;
-      result.touched.add("jobs_board_quest_todo");
-      result.shared.add(sharedTodoKey(todo.todoId));
-    } else {
-      return reject(
-        result,
-        `jobs_board_rejected:quest_not_active:${todo.status}`
-      );
-    }
-  }
+  if (todo.status !== "active")
+    return reject(
+      result,
+      `jobs_board_rejected:quest_not_active:${todo.status}`
+    );
   if (job.deadlineAtMs <= request.nowMs) {
     job.status = "expired";
     todo.status = "expired";
     return reject(result, "jobs_board_rejected:job_expired");
+  }
+  if (job.requiresFieldWork) {
+    const marker = harthmereJobsBoardQuestMarkerRuntimePositionForId(
+      todo.mapMarkerId ?? job.mapMarkerId ?? todo.targetId ?? job.targetId
+    );
+    if (!context.actorPosition || !marker) {
+      return reject(result, "jobs_board_rejected:field_position_unverified");
+    }
+    const markerPosition = {
+      x: marker.position[0],
+      y: marker.position[1],
+      z: marker.position[2],
+    };
+    if (
+      distance(context.actorPosition, markerPosition) >
+      HARTHMERE_JOBS_BOARD_FIELD_COMPLETION_RADIUS
+    ) {
+      return reject(result, "jobs_board_rejected:field_target_out_of_range");
+    }
   }
   const serviceRequirements = job.requirements.filter(
     (req) => !req.itemId && (req.targetId || req.serviceKind)
@@ -1605,7 +1618,10 @@ function completeJobQuest(
   for (const req of job.requirements) {
     if (
       req.requiredToolAction &&
-      request.usedToolAction !== req.requiredToolAction
+      (request.usedToolAction !== req.requiredToolAction ||
+        !context.authoritativeEquippedToolActions?.includes(
+          req.requiredToolAction
+        ))
     ) {
       return reject(
         result,
@@ -2879,10 +2895,7 @@ function randomRepeatableDeliveryPickupMarker(input: {
     return undefined;
   }
   return candidates[
-    Math.min(
-      candidates.length - 1,
-      Math.floor(input.rng() * candidates.length)
-    )
+    Math.min(candidates.length - 1, Math.floor(input.rng() * candidates.length))
   ];
 }
 
@@ -2903,10 +2916,7 @@ function randomRepeatableDeliveryDropoff(input: {
     return undefined;
   }
   return candidates[
-    Math.min(
-      candidates.length - 1,
-      Math.floor(input.rng() * candidates.length)
-    )
+    Math.min(candidates.length - 1, Math.floor(input.rng() * candidates.length))
   ];
 }
 
@@ -3188,7 +3198,9 @@ function economyAutoSeedProductionBusinessJobs(
     businessOrderSeed =
       (businessOrderSeed * 31 + businessOrderSeedKey.charCodeAt(i)) | 0;
   }
-  const businessOrderRng = autoSeedRng((request.nowMs ^ businessOrderSeed) >>> 0);
+  const businessOrderRng = autoSeedRng(
+    (request.nowMs ^ businessOrderSeed) >>> 0
+  );
   const businessRotationIndex = businessCandidates.length
     ? (autoSeedRotationBucket(request.nowMs) + (businessOrderSeed >>> 0)) %
       businessCandidates.length
@@ -3414,8 +3426,7 @@ function economyAutoSeedJobs(
         (!openTemplateIds.has(template.templateId) ||
           openTemplateIds.size >= templates.length)
     );
-    const shouldPrimeExotic =
-      shouldPrimeExoticMatterMining && produced === 0;
+    const shouldPrimeExotic = shouldPrimeExoticMatterMining && produced === 0;
     const shouldPrimeRepeatablePlacement =
       !shouldPrimeExotic &&
       produced < repeatablePlacementLimit &&
@@ -3439,16 +3450,15 @@ function economyAutoSeedJobs(
       (template) =>
         !openKinds.has(template.kind) && !usedKinds.has(template.kind)
     );
-    const templatePool =
-      shouldPrimeRepeatablePlacement
-        ? distinctTemplatePool.length > 0
-          ? distinctTemplatePool
-          : baseTemplatePool
-        : diverseKindPool.length > 0
-        ? diverseKindPool
-        : distinctTemplatePool.length > 0
+    const templatePool = shouldPrimeRepeatablePlacement
+      ? distinctTemplatePool.length > 0
         ? distinctTemplatePool
-        : baseTemplatePool;
+        : baseTemplatePool
+      : diverseKindPool.length > 0
+      ? diverseKindPool
+      : distinctTemplatePool.length > 0
+      ? distinctTemplatePool
+      : baseTemplatePool;
     const template = shouldPrimeRepeatablePlacement
       ? templatePool[0]
       : templatePool[Math.floor(rng() * templatePool.length)];

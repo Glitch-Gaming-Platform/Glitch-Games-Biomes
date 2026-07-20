@@ -27,7 +27,7 @@ function freshState(nowMs = NOW_MS): HarthmereLiveModeBackendState {
 function makeEnvelope(
   actionKind: HarthmereLiveModeActionKind,
   payload: Record<string, unknown> = {},
-  overrides: Partial<HarthmereLiveModeAuthorityEnvelope> = {},
+  overrides: Partial<HarthmereLiveModeAuthorityEnvelope> = {}
 ): HarthmereLiveModeAuthorityEnvelope {
   seq += 1;
   return {
@@ -50,7 +50,7 @@ function makeEnvelope(
 function applyOne(
   state: HarthmereLiveModeBackendState,
   payload: Record<string, unknown>,
-  overrides: Partial<HarthmereLiveModeAuthorityEnvelope> = {},
+  overrides: Partial<HarthmereLiveModeAuthorityEnvelope> = {}
 ) {
   return applyAction(state, "request_jobs_board_mutation", payload, overrides);
 }
@@ -59,12 +59,12 @@ function applyAction(
   state: HarthmereLiveModeBackendState,
   actionKind: HarthmereLiveModeActionKind,
   payload: Record<string, unknown>,
-  overrides: Partial<HarthmereLiveModeAuthorityEnvelope> = {},
+  overrides: Partial<HarthmereLiveModeAuthorityEnvelope> = {}
 ) {
   return reduceHarthmereLiveModeBackendState(
     state,
     makeEnvelope(actionKind, payload, overrides),
-    NOW_MS,
+    NOW_MS
   );
 }
 
@@ -77,7 +77,14 @@ function addOpenJob(state: HarthmereLiveModeBackendState) {
     title: "Client accept regression",
     description: "A focused job for the live accept path.",
     kind: "repair",
-    requirements: [{ serviceKind: "repair", serviceUnits: 1, targetId: "fence_1", mapMarkerId: "fence_marker" }],
+    requirements: [
+      {
+        serviceKind: "repair",
+        serviceUnits: 1,
+        targetId: "fence_1",
+        mapMarkerId: "fence_marker",
+      },
+    ],
     rewardGold: 45,
     escrowGold: 45,
     reputationDelta: 1,
@@ -104,9 +111,11 @@ describe("live-mode jobs board accept/proximity current", () => {
         boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
         interactionTargetId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
       },
-      { targetId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID },
+      { targetId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID }
     );
-    assert.ok(summary.warnings.includes("jobs_board_rejected:must_be_at_jobs_board"));
+    assert.ok(
+      summary.warnings.includes("jobs_board_rejected:must_be_at_jobs_board")
+    );
   });
 
   it("accepts jobs from a normal client request when the server attaches the actor position", () => {
@@ -121,10 +130,16 @@ describe("live-mode jobs board accept/proximity current", () => {
       },
       {
         targetId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
-        serverActorPosition: { x: 501.99486179104775, y: 70, z: -132.00350672753194 },
-      },
+        serverActorPosition: {
+          x: 501.99486179104775,
+          y: 70,
+          z: -132.00350672753194,
+        },
+      }
     );
-    assert.ok(!summary.warnings.includes("jobs_board_rejected:must_be_at_jobs_board"));
+    assert.ok(
+      !summary.warnings.includes("jobs_board_rejected:must_be_at_jobs_board")
+    );
     assert.equal(next.jobsBoard.postings.job_client_accept.status, "active");
     assert.equal(Object.values(next.jobsBoard.todos)[0]?.actorId, ACTOR);
   });
@@ -149,9 +164,11 @@ describe("live-mode jobs board accept/proximity current", () => {
           y: 70,
           z: -132.00350672753194,
         },
-      },
+      }
     );
-    assert.ok(summary.warnings.includes("jobs_board_rejected:must_be_at_jobs_board"));
+    assert.ok(
+      summary.warnings.includes("jobs_board_rejected:must_be_at_jobs_board")
+    );
   });
 
   it("requires a completed jobs-board quest before live-mode turn-in can pay rewards", () => {
@@ -165,7 +182,14 @@ describe("live-mode jobs board accept/proximity current", () => {
       title: "Patch the fixture",
       description: "Bring repair parts to the marked fixture.",
       kind: "repair",
-      requirements: [{ itemId: "repair_part", count: 2, targetId: "fixture_1", mapMarkerId: "fixture_marker" }],
+      requirements: [
+        {
+          itemId: "repair_part",
+          count: 2,
+          targetId: "fixture_1",
+          mapMarkerId: "fixture_marker",
+        },
+      ],
       rewardGold: 45,
       escrowGold: 45,
       reputationDelta: 1,
@@ -175,7 +199,7 @@ describe("live-mode jobs board accept/proximity current", () => {
       createdAtMs: NOW_MS,
       deadlineAtMs: NOW_MS + 86_400_000,
       failurePenaltyGold: 0,
-      requiresFieldWork: true,
+      requiresFieldWork: false,
       mapMarkerId: "fixture_marker",
       targetId: "fixture_1",
       abuseFlags: [],
@@ -191,10 +215,16 @@ describe("live-mode jobs board accept/proximity current", () => {
       },
       {
         targetId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
-        serverActorPosition: { x: 501.99486179104775, y: 70, z: -132.00350672753194 },
-      },
+        serverActorPosition: {
+          x: 501.99486179104775,
+          y: 70,
+          z: -132.00350672753194,
+        },
+      }
     );
-    const todo = Object.values(accepted.state.jobsBoard.todos).find((entry) => entry.jobId === "job_item_turn_in");
+    const todo = Object.values(accepted.state.jobsBoard.todos).find(
+      (entry) => entry.jobId === "job_item_turn_in"
+    );
     assert.ok(todo, "accepting the job should create a quest todo");
 
     const earlyTurnIn = applyOne(
@@ -206,10 +236,18 @@ describe("live-mode jobs board accept/proximity current", () => {
       },
       {
         targetId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
-        serverActorPosition: { x: 501.99486179104775, y: 70, z: -132.00350672753194 },
-      },
+        serverActorPosition: {
+          x: 501.99486179104775,
+          y: 70,
+          z: -132.00350672753194,
+        },
+      }
     );
-    assert.ok(earlyTurnIn.summary.warnings.includes("jobs_board_rejected:quest_not_completed"));
+    assert.ok(
+      earlyTurnIn.summary.warnings.includes(
+        "jobs_board_rejected:quest_not_completed"
+      )
+    );
     assert.equal(earlyTurnIn.state.inventory.gold, state.inventory.gold);
 
     const missingProof = applyAction(
@@ -220,10 +258,17 @@ describe("live-mode jobs board accept/proximity current", () => {
         completed: true,
         completedTargetId: "fixture_1",
       },
-      { subsystem: "quest" },
+      { subsystem: "quest" }
     );
-    assert.ok(missingProof.summary.warnings.some((warning) => warning.includes("missing_completion_item:repair_part")));
-    assert.equal(missingProof.state.jobsBoard.todos[todo!.todoId].status, "active");
+    assert.ok(
+      missingProof.summary.warnings.some((warning) =>
+        warning.includes("missing_completion_item:repair_part")
+      )
+    );
+    assert.equal(
+      missingProof.state.jobsBoard.todos[todo!.todoId].status,
+      "active"
+    );
 
     accepted.state.inventory.items.repair_part = 2;
     const questDone = applyAction(
@@ -235,10 +280,13 @@ describe("live-mode jobs board accept/proximity current", () => {
         completedTargetId: "fixture_1",
         completionItemDeltas: { repair_part: -2 },
       },
-      { subsystem: "quest" },
+      { subsystem: "quest" }
     );
     assert.equal(questDone.state.inventory.items.repair_part ?? 0, 0);
-    assert.equal(questDone.state.jobsBoard.todos[todo!.todoId].status, "completed");
+    assert.equal(
+      questDone.state.jobsBoard.todos[todo!.todoId].status,
+      "completed"
+    );
     assert.ok(questDone.state.quests.completed[`jobs_board:${todo!.todoId}`]);
 
     const paid = applyOne(
@@ -250,10 +298,17 @@ describe("live-mode jobs board accept/proximity current", () => {
       },
       {
         targetId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
-        serverActorPosition: { x: 501.99486179104775, y: 70, z: -132.00350672753194 },
-      },
+        serverActorPosition: {
+          x: 501.99486179104775,
+          y: 70,
+          z: -132.00350672753194,
+        },
+      }
     );
-    assert.equal(paid.state.jobsBoard.postings.job_item_turn_in.status, "completed");
+    assert.equal(
+      paid.state.jobsBoard.postings.job_item_turn_in.status,
+      "completed"
+    );
     assert.equal(paid.state.inventory.gold, state.inventory.gold + 45);
   });
 });

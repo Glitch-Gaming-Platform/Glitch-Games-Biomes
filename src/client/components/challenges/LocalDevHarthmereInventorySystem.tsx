@@ -49,6 +49,7 @@ import {
   createHarthmereBiomesEcsInventory,
 } from "@/shared/harthmere/harthmere_biomes_ecs_bridge";
 import { HARTHMERE_LOCAL_DEV_ITEM_USE_EVENT } from "@/shared/harthmere/snapshot_grove_trigger_contract";
+import { nativeBiomesEcsAuthorityEnabled } from "@/shared/harthmere/native_road_ahead_contract";
 import { resolveAssetUrlUntyped } from "@/galois/interface/asset_paths";
 import { safeGetTerrainName } from "@/shared/asset_defs/terrain";
 import { terrainIdToBlock } from "@/shared/bikkie/terrain";
@@ -2295,7 +2296,9 @@ function inventoryEvent(state?: HarthmereInventoryState) {
   if (isBrowser()) {
     window.dispatchEvent(new Event(HARTHMERE_INVENTORY_EVENT));
     if (state) {
-      dispatchHarthmereInventoryBiomesEcsProjection(state);
+      if (!nativeBiomesEcsAuthorityEnabled()) {
+        dispatchHarthmereInventoryBiomesEcsProjection(state);
+      }
       window.dispatchEvent(
         new CustomEvent("biomes:live-mode-wallet-updated", {
           detail: { gold: Math.max(0, Math.floor(state.wallet.gold ?? 0)) },
@@ -2410,6 +2413,39 @@ async function parseHarthmereLiveMutationResponse(response: Response) {
   return body;
 }
 
+/**
+ * The live-mode route returns HTTP 200 for a transaction that was parsed and
+ * persisted even when the requested gameplay mutation was rejected.  Callers
+ * must therefore verify the authoritative write model, not merely `body.ok`,
+ * before removing an item from a crate or applying another local projection.
+ */
+export function assertHarthmereLiveMutationAppliedForTest(
+  body: any,
+  requiredTouchedModel: string,
+  rejectionPrefix: string
+) {
+  const mutation = body?.backendMutation;
+  const warnings: string[] = Array.isArray(mutation?.warnings)
+    ? mutation.warnings.map(String)
+    : [];
+  const touchedModels: string[] = Array.isArray(mutation?.touchedModels)
+    ? mutation.touchedModels.map(String)
+    : [];
+  const rejection = warnings.find((warning) =>
+    warning.startsWith(rejectionPrefix)
+  );
+  if (
+    mutation?.applied !== true ||
+    rejection ||
+    !touchedModels.includes(requiredTouchedModel)
+  ) {
+    throw new Error(
+      rejection ?? `harthmere_live_mutation_not_applied:${requiredTouchedModel}`
+    );
+  }
+  return body;
+}
+
 function submitHarthmereInventoryMutationToLiveMode(
   operation: "grant" | "spend",
   itemId: string,
@@ -2480,6 +2516,11 @@ function submitHarthmereInventoryMutationToLiveMode(
       }
     );
     const body = await parseHarthmereLiveMutationResponse(response);
+    assertHarthmereLiveMutationAppliedForTest(
+      body,
+      "inventory_items",
+      operation === "grant" ? "loot_rejected:" : "inventory_item_rejected:"
+    );
     if (body) dispatchHarthmereLiveInventorySync(body);
     return body;
   });
@@ -2545,6 +2586,11 @@ export function submitHarthmereContainerTransferToLiveModeForTest(
         }
       );
       const body = await parseHarthmereLiveMutationResponse(response);
+      assertHarthmereLiveMutationAppliedForTest(
+        body,
+        "container_transfer",
+        "container_transfer_rejected:"
+      );
       if (body) dispatchHarthmereLiveInventorySync(body);
       return body;
     })

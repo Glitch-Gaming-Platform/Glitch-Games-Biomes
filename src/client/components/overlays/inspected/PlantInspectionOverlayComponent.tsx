@@ -2,7 +2,6 @@ import { useClientContext } from "@/client/components/contexts/ClientContextReac
 import { ProgressBar } from "@/client/components/HealthBarHUD";
 import type { InspectShortcuts } from "@/client/components/overlays/inspected/CursorInspectionOverlayComponent";
 import { CursorInspectionComponent } from "@/client/components/overlays/inspected/CursorInspectionOverlayComponent";
-import { submitHarthmereNativePlantHarvestToLiveMode } from "@/client/components/overlays/inspected/nativePlantHarvestLiveModeBridge";
 import { plantInspectionCanHarvest } from "@/client/components/overlays/inspected/plantInspectionShortcuts";
 import { addToast } from "@/client/components/toast/helpers";
 import type { PlantInspectOverlay } from "@/client/game/resources/overlays";
@@ -108,87 +107,44 @@ export const PlantInspectionOverlayComponent: React.FunctionComponent<{
         const plantId = String(overlay.entityId);
         if (harvestInFlightRef.current.has(plantId)) return;
         harvestInFlightRef.current.add(plantId);
-        // HARTHMERE_HARVEST_INSTANT_FEEDBACK (2026-07-06): the live-mode grant
-        // can take 10-30s server-side. The player must SEE the harvest happen
-        // immediately, so:
-        // 1. Publish the ECS terrain harvest NOW — the crop turns back into a
-        //    reusable empty plot right away (this used to wait for the
-        //    live-mode response, so the plant appeared untouched for ~30s and
-        //    players re-harvested it).
+        // Harvest is one native ECS operation. Gaia converts the plant's actual
+        // container yield into a native GrabBag, so crossbreeding/rare output,
+        // pickup range, inventory capacity, and collect quest triggers cannot
+        // diverge from a separate HTTP grant.
         fireAndForget(
-          events.publish(
-            new HarvestPlantEvent({
-              id: userId,
-              plant_id: overlay.entityId,
-              position: overlay.pos,
-            })
-          )
-        );
-        // 2. Acknowledge the pickup NOW. The authoritative "+N <item> added to
-        //    your backpack" toast follows when the live inventory updates.
-        try {
-          addToast(resources, {
-            kind: "basic",
-            id: `harthmere-native-harvest:${plantId}`,
-            message: `Harvested ${name ?? "plant"}.`,
-          });
-        } catch {
-          // Feedback must never block the harvest itself.
-        }
-        // 3. Grant the item through live mode in the background.
-        fireAndForget(
-          (async () => {
-            try {
-              if (plant?.seed) {
-                const body = await submitHarthmereNativePlantHarvestToLiveMode({
-                  plantId: overlay.entityId,
-                  seedItemId: plant.seed,
-                  plantStatus: plant.status,
-                  farmingKind: plantBiscuit?.farming?.kind,
-                  plantLabel: name,
-                  position: overlay.pos,
-                });
-                // Audit fix (2026-07-14, F-2): the server can reject the
-                // harvest AFTER the optimistic "Harvested …" toast above
-                // (tree harvests are intentionally unsupported; a plant can
-                // already be claimed or not fully grown). Previously those
-                // rejections were silent, so the player saw "Harvested"
-                // with no item — a reported "missing items" pattern. Surface
-                // a corrective, human-readable reason instead.
-                const warnings: string[] = Array.isArray(
-                  body?.backendMutation?.warnings
-                )
-                  ? body.backendMutation.warnings.map(String)
-                  : [];
-                const rejection = warnings.find((warning) =>
-                  warning.startsWith("farming_rejected")
-                );
-                if (rejection) {
-                  const reason = rejection.includes("tree_harvest_not_supported")
-                    ? `${name ?? "This tree"} can't be harvested by hand — trees are chopped, not picked.`
-                    : rejection.includes("plant_already_harvested")
-                    ? `${name ?? "This plant"} was already harvested.`
-                    : rejection.includes("plant_not_ready")
-                    ? `${name ?? "This plant"} isn't fully grown yet.`
-                    : `Couldn't harvest ${name ?? "this plant"}.`;
+          events
+            .publish(
+              new HarvestPlantEvent({
+                id: userId,
+                plant_id: overlay.entityId,
+                position: overlay.pos,
+              })
+            )
+            .then(
+              () => {
+                try {
                   addToast(resources, {
                     kind: "basic",
-                    id: `harthmere-native-harvest-rejected:${plantId}`,
-                    message: reason,
+                    id: `harthmere-native-harvest:${plantId}`,
+                    message: `Harvested ${
+                      name ?? "plant"
+                    }. Pick up the crop drop.`,
                   });
+                } finally {
+                  harvestInFlightRef.current.delete(plantId);
                 }
-              }
-            } finally {
-              const clearInFlight = () => {
+              },
+              () => {
                 harvestInFlightRef.current.delete(plantId);
-              };
-              if (typeof window !== "undefined") {
-                window.setTimeout(clearInFlight, 750);
-              } else {
-                clearInFlight();
+                addToast(resources, {
+                  kind: "basic",
+                  id: `harthmere-native-harvest-rejected:${plantId}`,
+                  message: `Couldn't harvest ${
+                    name ?? "this plant"
+                  }. Move closer and try again.`,
+                });
               }
-            }
-          })()
+            )
         );
       },
     });

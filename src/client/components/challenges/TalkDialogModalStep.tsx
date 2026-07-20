@@ -31,6 +31,7 @@ import {
   harthmereVoiceProfileForActor,
 } from "@/shared/harthmere/npc_voice_profiles";
 import type { BiomesId } from "@/shared/ids";
+import { log } from "@/shared/logging";
 import { relevantBiscuitForEntityId } from "@/shared/npc/bikkie";
 import { AnimatePresence, motion } from "framer-motion";
 import type { PropsWithChildren, ReactNode } from "react";
@@ -53,7 +54,7 @@ export interface TalkDialogStepAction {
   type?: DialogButtonType;
   tooltip?: string;
   disabled?: boolean;
-  onPerformed: () => void;
+  onPerformed: () => unknown;
   icon?: { view?: ReactNode; src?: string; text?: string };
   followUpText?: string;
   closeAfterPerformed?: boolean;
@@ -170,6 +171,7 @@ export const GenericTalkDialogModalStep: React.FunctionComponent<
   const [dialogIndex, setDialogIndex] = useState(0);
   const [shouldFinishTyping, setShouldFinishTyping] = useState(false);
   const [actionFollowUp, setActionFollowUp] = useState<TalkDialogInfo>();
+  const [pendingActionIndex, setPendingActionIndex] = useState<number>();
   const [voiceInputState, setVoiceInputState] =
     useState<NpcSpeechButtonState>("idle");
   const [microphoneInputEnabled] = useTypedStorageItem(
@@ -247,6 +249,7 @@ export const GenericTalkDialogModalStep: React.FunctionComponent<
   useEffect(() => {
     setDialogIndex(0);
     setActionFollowUp(undefined);
+    setPendingActionIndex(undefined);
   }, [entityId]);
 
   // If the dialog array shrinks beneath the current position (e.g. the
@@ -276,6 +279,9 @@ export const GenericTalkDialogModalStep: React.FunctionComponent<
 
   useEffect(() => {
     const advance = () => {
+      if (pendingActionIndex !== undefined) {
+        return;
+      }
       const decision = talkDialogAdvanceDecisionForTest({
         typingComplete,
         hasChoiceActions,
@@ -308,6 +314,7 @@ export const GenericTalkDialogModalStep: React.FunctionComponent<
     dialog,
     voiceInputState,
     voiceInput,
+    pendingActionIndex,
   ]);
 
   const chatVoices = reactResources.get("/tweaks").chatVoices;
@@ -409,6 +416,7 @@ export const GenericTalkDialogModalStep: React.FunctionComponent<
                   } gap-1`}
                 >
                   {actions.map((e, i) => {
+                    const actionPending = pendingActionIndex !== undefined;
                     return (
                       <Tooltipped
                         wrapperExtraClass="w-full max-w-[60%] mx-auto"
@@ -417,27 +425,43 @@ export const GenericTalkDialogModalStep: React.FunctionComponent<
                       >
                         <DialogButton
                           size="xl"
-                          disabled={e.disabled}
+                          disabled={e.disabled || actionPending}
                           type={e.type ?? undefined}
                           glow={e.type === "primary"}
                           extraClassNames={`items-center flex flex-row
                             ${!e.tooltip ? "w-full max-w-[60%] mx-auto" : ""}
                           `}
-                          onClick={() => {
-                            e.onPerformed();
-                            if (e.closeAfterPerformed) {
-                              onClose?.();
-                              return;
-                            }
-                            if (e.followUpText) {
-                              setActionFollowUp({ text: e.followUpText });
-                            } else {
-                              goNext();
+                          onClick={async () => {
+                            if (pendingActionIndex !== undefined) return;
+                            setPendingActionIndex(i);
+                            try {
+                              await e.onPerformed();
+                              if (e.closeAfterPerformed) {
+                                onClose?.();
+                                return;
+                              }
+                              if (e.followUpText) {
+                                setActionFollowUp({ text: e.followUpText });
+                              } else {
+                                goNext();
+                              }
+                            } catch (error) {
+                              // Keep the dialog open and re-enable the action so
+                              // a transient socket/server failure is retryable.
+                              log.warn("NPC dialog action did not complete", {
+                                error,
+                                entityId,
+                                action: e.name,
+                              });
+                            } finally {
+                              setPendingActionIndex(undefined);
                             }
                           }}
                         >
                           {e.icon?.view && <>{e.icon.view}</>}
-                          <div className="flex-1">{e.name}</div>
+                          <div className="flex-1">
+                            {pendingActionIndex === i ? "Working…" : e.name}
+                          </div>
                         </DialogButton>
                       </Tooltipped>
                     );

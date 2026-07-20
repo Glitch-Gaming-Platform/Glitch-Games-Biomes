@@ -56,6 +56,14 @@ import {
   harthmerePurchasablePlotMapLandmarksFromBuildingState,
   type HarthmerePropertyMapBuildingState,
 } from "./propertyMapMarkers";
+import type { QuestBundle } from "@/client/game/resources/challenges";
+import {
+  activeNativeQuest,
+  nativeQuestMapMarkers,
+  nativeQuestMissionSteps,
+  nativeQuestTrackableQuests,
+} from "./nativeQuestMapAdapter";
+import { legacySyntheticRoadAheadEnabled } from "@/shared/harthmere/native_road_ahead_contract";
 
 function readSnapshotGroveApi(): any | undefined {
   if (typeof window === "undefined") return undefined;
@@ -185,8 +193,10 @@ export function buildBiomesUIMapAdapter(
   jobsBoardState?: unknown,
   liveQuestState?: unknown,
   buildingState?: HarthmerePropertyMapBuildingState,
-  roadAheadChallengeStepHints?: Iterable<unknown>
+  roadAheadChallengeStepHints?: Iterable<unknown>,
+  nativeQuestBundles?: readonly QuestBundle[]
 ) {
+  const includeSyntheticRoadAhead = legacySyntheticRoadAheadEnabled();
   const NormalizeWorldXZ = (
     worldX: number,
     worldZ: number,
@@ -380,14 +390,17 @@ export function buildBiomesUIMapAdapter(
         state,
         liveQuestState
       );
-      const roadAheadQuest = snapshotRoadAheadTrackableQuestsForBiomesUI(
-        readSnapshotMissionState(),
-        roadAheadChallengeStepHints
-      )[0];
-      const activeRoadAheadMarkerId =
-        roadAheadQuest?.status === "active"
-          ? roadAheadQuest.firstMarkerId
+      const syntheticRoadAheadQuest = includeSyntheticRoadAhead
+        ? snapshotRoadAheadTrackableQuestsForBiomesUI(
+            readSnapshotMissionState(),
+            roadAheadChallengeStepHints
+          )[0]
+        : undefined;
+      const activeSyntheticRoadAheadMarkerId =
+        syntheticRoadAheadQuest?.status === "active"
+          ? syntheticRoadAheadQuest.firstMarkerId
           : undefined;
+      const nativeMarkers = nativeQuestMapMarkers(nativeQuestBundles);
       const activeMarkerIds: string[] = Array.isArray(activeQuest?.markerIds)
         ? activeQuest.markerIds
         : [];
@@ -411,7 +424,19 @@ export function buildBiomesUIMapAdapter(
         ? normalizeMarkerId(activeObjectiveMarker)
         : undefined;
       const visibleLandmarks = VisibleMapLandmarks(landmarks);
-      const bounds = ComputeBounds(visibleLandmarks);
+      // Native position navigation aids participate in the same bounds as
+      // authored landmarks. Otherwise an objective outside the Grove's local
+      // bounds is clamped to the map edge and appears to point at the wrong
+      // location.
+      const nativeMarkerLandmarks = nativeMarkers.flatMap((marker) =>
+        marker.worldPosition
+          ? [{ id: marker.id, position: marker.worldPosition }]
+          : []
+      );
+      const bounds = ComputeBounds([
+        ...visibleLandmarks,
+        ...nativeMarkerLandmarks,
+      ]);
       const result: any[] = [];
 
       for (const landmark of visibleLandmarks) {
@@ -430,9 +455,9 @@ export function buildBiomesUIMapAdapter(
         const isCurrentObjective =
           activeObjectiveMarker === landmark.id ||
           normalizedActiveObjectiveMarker === markerId;
-        const isRoadAheadObjective =
-          activeRoadAheadMarkerId !== undefined &&
-          markerId === activeRoadAheadMarkerId;
+        const isSyntheticRoadAheadObjective =
+          activeSyntheticRoadAheadMarkerId !== undefined &&
+          markerId === activeSyntheticRoadAheadMarkerId;
         const isAcceptedJobMarker =
           landmark?.active === true && kind === "objective";
         const isLiveEntityHelperMarker =
@@ -443,7 +468,7 @@ export function buildBiomesUIMapAdapter(
           landmark?.source === BIOMES_UI_SHARED_QUEST_MARKER_SOURCE;
         const isActiveQuestMarker =
           isCurrentObjective ||
-          isRoadAheadObjective ||
+          isSyntheticRoadAheadObjective ||
           isInActiveChain ||
           isAcceptedJobMarker ||
           isLiveEntityHelperMarker ||
@@ -455,7 +480,7 @@ export function buildBiomesUIMapAdapter(
           y,
           kind:
             isCurrentObjective ||
-            isRoadAheadObjective ||
+            isSyntheticRoadAheadObjective ||
             isAcceptedJobMarker ||
             isLiveEntityHelperMarker ||
             isSharedQuestMarker
@@ -473,7 +498,7 @@ export function buildBiomesUIMapAdapter(
             ? String(landmark.description ?? "Shared quest target.")
             : isAcceptedJobMarker
             ? String(landmark.description ?? "Accepted jobs board task.")
-            : isRoadAheadObjective
+            : isSyntheticRoadAheadObjective
             ? "Current Road Ahead objective - head here to advance the route."
             : isCurrentObjective
             ? "Current objective - head here to advance the active quest."
@@ -483,6 +508,18 @@ export function buildBiomesUIMapAdapter(
                 landmark.description ??
                   `${landmark.area ?? "Grove"} - ${landmark.kind ?? "landmark"}`
               ),
+        });
+      }
+      for (const marker of nativeMarkers) {
+        const pos = marker.worldPosition;
+        if (!pos || result.some((candidate) => candidate.id === marker.id)) {
+          continue;
+        }
+        const normalized = NormalizeWorldXZ(pos[0], pos[2], bounds);
+        result.push({
+          ...marker,
+          x: normalized.x,
+          y: normalized.y,
         });
       }
       if (!result.some((marker) => marker.id === "mira_grove_land_steward")) {
@@ -512,6 +549,7 @@ export function buildBiomesUIMapAdapter(
       return result;
     },
     getMissionTitle: () => {
+      const nativeQuest = activeNativeQuest(nativeQuestBundles);
       const api = readSnapshotGroveApi();
       const state = api?.readState?.();
       const quests = Array.isArray(api?.quests) ? api.quests : [];
@@ -525,20 +563,27 @@ export function buildBiomesUIMapAdapter(
         liveQuestState
       );
       return String(
-        activeQuest?.title ??
-          firstActiveJobsBoardQuestTitleForBiomesUI(jobsBoardState) ??
-          firstActiveSnapshotRoadAheadQuestTitleForBiomesUI(
-            readSnapshotMissionState(),
-            roadAheadChallengeStepHints
-          ) ??
-          firstActiveLiveEntityHelperQuestTitleForBiomesUI(
-            liveEntityHelperState
-          ) ??
-          firstActiveSharedQuestTitleForBiomesUI(liveQuestState) ??
-          "Current Mission"
+        nativeQuest
+          ? nativeQuest.biscuit.displayName ?? "Current Mission"
+          : activeQuest?.title ??
+              firstActiveJobsBoardQuestTitleForBiomesUI(jobsBoardState) ??
+              (includeSyntheticRoadAhead
+                ? firstActiveSnapshotRoadAheadQuestTitleForBiomesUI(
+                    readSnapshotMissionState(),
+                    roadAheadChallengeStepHints
+                  )
+                : undefined) ??
+              firstActiveLiveEntityHelperQuestTitleForBiomesUI(
+                liveEntityHelperState
+              ) ??
+              firstActiveSharedQuestTitleForBiomesUI(liveQuestState) ??
+              "Current Mission"
       );
     },
     getMissionSteps: () => {
+      const nativeSteps = nativeQuestMissionSteps(
+        activeNativeQuest(nativeQuestBundles)
+      );
       const api = readSnapshotGroveApi();
       const state = api?.readState?.();
       const quests = Array.isArray(api?.quests) ? api.quests : [];
@@ -578,12 +623,15 @@ export function buildBiomesUIMapAdapter(
         liveQuestState
       );
       const allSteps = [
+        ...nativeSteps,
         ...authoredSteps,
         ...activeJobsBoardMissionStepsForBiomesUI(jobsBoardState),
-        ...snapshotRoadAheadMissionStepsForBiomesUI(
-          readSnapshotMissionState(),
-          roadAheadChallengeStepHints
-        ),
+        ...(includeSyntheticRoadAhead
+          ? snapshotRoadAheadMissionStepsForBiomesUI(
+              readSnapshotMissionState(),
+              roadAheadChallengeStepHints
+            )
+          : []),
         ...activeLiveEntityHelperMissionStepsForBiomesUI(
           liveEntityHelperState,
           { isReadyToTurnIn: liveEntityHelperQuestRecordReadyToTurnIn }
@@ -678,10 +726,13 @@ export function buildBiomesUIMapAdapter(
           Date.now(),
           harthmereJobToolOwnedState()
         ),
-        ...snapshotRoadAheadTrackableQuestsForBiomesUI(
-          readSnapshotMissionState(),
-          roadAheadChallengeStepHints
-        ),
+        ...(includeSyntheticRoadAhead
+          ? snapshotRoadAheadTrackableQuestsForBiomesUI(
+              readSnapshotMissionState(),
+              roadAheadChallengeStepHints
+            )
+          : []),
+        ...nativeQuestTrackableQuests(nativeQuestBundles),
         ...liveEntityHelperTrackableQuestsForBiomesUI(
           mergeLiveEntityHelperQuestStatesForBiomesUI(
             readLiveEntityHelperQuestState(),
@@ -720,6 +771,9 @@ export function buildBiomesUIMapAdapter(
       // set so a merely-hidden objective marker is not treated as stale.
       const visibleMarkerIds = MapLandmarks().map((landmark: any) =>
         String(landmark?.id ?? "")
+      );
+      visibleMarkerIds.push(
+        ...nativeQuestMapMarkers(nativeQuestBundles).map((marker) => marker.id)
       );
       if (shouldClearStaleActiveMapPin({ pin, visibleMarkerIds })) {
         writeActiveBiomesUIMapPin(undefined);

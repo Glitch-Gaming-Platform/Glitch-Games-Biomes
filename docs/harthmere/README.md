@@ -5,6 +5,12 @@ Keep source folders for runtime code and tests; put gameplay/reference documents
 
 ## Current runbooks
 
+- `NATIVE_ECS_RESTORATION_2026-07-19.md` - July production bug restoration,
+  native authority decisions, regression coverage, and post-deploy acceptance
+  checklist.
+- `NATIVE_ECS_WORLD_SYSTEMS_IMPLEMENTATION_2026-07-20.md` - implemented jobs,
+  loot, gathering/farming, living-entity, robot, property/decor, and terrain
+  materialization authority repairs, migration rules, and deployment checks.
 - `HARTHMERE_TDD_BOOT_AND_TOWN_TESTS.md` - local boot, testing, placement, and town TDD rules.
 - `PERFORMANCE_AND_PLACEMENT.md` - runtime placement and performance guidance.
 - `HARTHMERE_PRODUCTION_TERRAIN_PLACEMENT_MAP.md` - terrain placement map generation and resolver rules.
@@ -40,14 +46,20 @@ to seed a throwaway actor to complete the run, seed only that throwaway actor's
 material storage and document the reason in the test notes. Do not treat seeded
 material state as proof that normal loot/vendor acquisition works.
 
-Equipment visuals have two authority layers. The production backend stores
-Harthmere item ids such as `baker_apron` and `field_trousers` in
-`inventoryLootState.actor.equipment`; the frontend must project those ids to real
-Biomes wearable ids and write them into `/ecs/c/wearing` so the player mesh and
-player-like NPC mesh can render the clothing. Hotbar visuals follow the same
-pattern: Harthmere hotbar shortcuts must be projected into `/ecs/c/inventory`
-`hotbar` entries so the selected item renders in hand. Backend equipment success
-alone is not enough to prove body/hand visuals.
+Native equipment has one authority: `/ecs/c/wearing`. BiomesUI publishes native
+inventory swap events and the world-sync socket invalidates the player mesh.
+The mesh is generated directly from the full wearing assignment, so top,
+bottoms, hat, hair, outerwear, face, ears, neck, feet, and hands can coexist.
+Harthmere-only string equipment remains supplemental adapter data and must not
+overwrite native slots. Native hotbar stacks likewise stay in
+`/ecs/c/inventory.hotbar`; BiomesUI lists them in the backpack view for count
+visibility without cloning or projecting the stack.
+
+Native quest reward objects (including the Road Ahead Clothing Crate and
+Billy's Toolbag) must stay in the quest-giver dialog path. Their buttons publish
+`CompleteQuestStepAtEntityEvent`, wait while the event is in flight, and grant
+the exact Bikkie item ids authored in the challenge. Generic Harthmere container
+handling is only for non-native crates.
 
 Containers must preserve the distinction between hidden quest helpers and visible
 world objects. Hidden/inactive quest containers must not show an `F` prompt and

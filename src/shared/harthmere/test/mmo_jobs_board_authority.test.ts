@@ -26,7 +26,10 @@ import {
   HARTHMERE_JOBS_BOARD_BUSINESS_TEMPLATES,
   isKnownHarthmereJobsBoardExecutableItemId,
 } from "../jobs_board_business_templates";
-import { harthmereJobsBoardQuestMarkerPositionForId } from "../jobs_board_quest_marker_positions";
+import {
+  harthmereJobsBoardQuestMarkerPositionForId,
+  harthmereJobsBoardQuestMarkerRuntimePositionForId,
+} from "../jobs_board_quest_marker_positions";
 
 const NOW = 1_800_000_000_000;
 
@@ -48,6 +51,17 @@ function mutate(
   ctx: Partial<HarthmereJobsBoardMutationContext> = {},
   actorId = "player_a"
 ) {
+  const jobId = typeof payload.jobId === "string" ? payload.jobId : undefined;
+  const posting = jobId ? state.postings[jobId] : undefined;
+  const marker =
+    operation === "complete_job_quest" && posting?.requiresFieldWork
+      ? harthmereJobsBoardQuestMarkerRuntimePositionForId(
+          posting.mapMarkerId ??
+            posting.requirements.find((requirement) => requirement.mapMarkerId)
+              ?.mapMarkerId ??
+            ""
+        )
+      : undefined;
   return reduceHarthmereJobsBoardMutation(
     state,
     {
@@ -58,7 +72,18 @@ function mutate(
       boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
       ...payload,
     } as any,
-    context(ctx)
+    context({
+      ...(marker
+        ? {
+            actorPosition: {
+              x: marker.position[0],
+              y: marker.position[1],
+              z: marker.position[2],
+            },
+          }
+        : {}),
+      ...ctx,
+    })
   );
 }
 
@@ -73,12 +98,14 @@ function postPayload(extra: Record<string, unknown> = {}) {
         count: 2,
         targetId: "pump_1",
         targetName: "Inn pump",
-        mapMarkerId: "pump_marker",
+        mapMarkerId: "old_grove_road_post",
       },
     ],
     rewardGold: 120,
     deadlineAtMs: NOW + 7 * 24 * 60 * 60 * 1000,
     requiresFieldWork: true,
+    mapMarkerId: "old_grove_road_post",
+    targetId: "pump_1",
     ...extra,
   };
 }
@@ -192,7 +219,7 @@ describe("mmo_jobs_board_authority — posting, accepting, quest todos, and comp
     const todo = Object.values(accepted.jobsBoard.todos)[0];
     assert.equal(todo.actorId, "seeker");
     assert.equal(todo.questBoardTodo, true);
-    assert.equal(todo.mapMarkerId, "pump_marker");
+    assert.equal(todo.mapMarkerId, "old_grove_road_post");
 
     const earlyTurnIn = mutate(
       accepted.jobsBoard,
@@ -941,7 +968,7 @@ describe("mmo_jobs_board_authority — repair-tool completion gate (HARTHMERE_RE
     );
   });
 
-  it("completes a repair job when the repair tool was used (usedToolAction matches)", () => {
+  it("does not trust a client-reported tool action without equipped-tool evidence", () => {
     const posted = mutate(
       defaultHarthmereJobsBoardState(NOW),
       "create_job_posting",
@@ -964,11 +991,105 @@ describe("mmo_jobs_board_authority — repair-tool completion gate (HARTHMERE_RE
       { actorInventoryItems: { repair_part: 1 } },
       "seeker"
     );
+    assert.ok(
+      result.warnings.includes(
+        "jobs_board_rejected:missing_required_tool:repair"
+      )
+    );
+  });
+
+  it("completes a repair job when the repair tool was used (usedToolAction matches)", () => {
+    const posted = mutate(
+      defaultHarthmereJobsBoardState(NOW),
+      "create_job_posting",
+      repairPostPayload(),
+      {},
+      "poster"
+    );
+    const jobId = Object.keys(posted.jobsBoard.postings)[0];
+    const accepted = mutate(
+      posted.jobsBoard,
+      "accept_job",
+      { jobId },
+      {},
+      "seeker"
+    );
+    const result = mutate(
+      accepted.jobsBoard,
+      "complete_job_quest",
+      { jobId, usedToolAction: "repair" },
+      {
+        actorInventoryItems: { repair_part: 1 },
+        authoritativeEquippedToolActions: ["repair"],
+      },
+      "seeker"
+    );
     assert.equal(result.warnings.length, 0, JSON.stringify(result.warnings));
     const todo = Object.values(result.jobsBoard.todos).find(
       (t) => t.jobId === jobId
     );
     assert.equal(todo?.status, "completed");
+  });
+});
+
+describe("mmo_jobs_board_authority — field target proximity", () => {
+  it("rejects a field posting whose world marker cannot be resolved", () => {
+    const result = mutate(
+      defaultHarthmereJobsBoardState(NOW),
+      "create_job_posting",
+      postPayload({ mapMarkerId: "client_only_unknown_marker" }),
+      {},
+      "poster"
+    );
+    assert.ok(
+      result.warnings.includes("jobs_board_rejected:field_marker_unresolvable")
+    );
+    assert.equal(result.inventoryGoldDelta, 0);
+    assert.equal(Object.keys(result.jobsBoard.postings).length, 0);
+  });
+
+  it("requires a verified position at the authored field marker", () => {
+    const posted = mutate(
+      defaultHarthmereJobsBoardState(NOW),
+      "create_job_posting",
+      postPayload(),
+      {},
+      "poster"
+    );
+    const jobId = Object.keys(posted.jobsBoard.postings)[0];
+    const accepted = mutate(
+      posted.jobsBoard,
+      "accept_job",
+      { jobId },
+      {},
+      "seeker"
+    );
+    const unverified = mutate(
+      accepted.jobsBoard,
+      "complete_job_quest",
+      { jobId, completedTargetId: "pump_1" },
+      { actorPosition: undefined, actorInventoryItems: { repair_part: 2 } },
+      "seeker"
+    );
+    assert.ok(
+      unverified.warnings.includes(
+        "jobs_board_rejected:field_position_unverified"
+      )
+    );
+
+    const remote = mutate(
+      accepted.jobsBoard,
+      "complete_job_quest",
+      { jobId, completedTargetId: "pump_1" },
+      {
+        actorPosition: { x: 100_000, y: 100_000, z: 100_000 },
+        actorInventoryItems: { repair_part: 2 },
+      },
+      "seeker"
+    );
+    assert.ok(
+      remote.warnings.includes("jobs_board_rejected:field_target_out_of_range")
+    );
   });
 });
 
@@ -1114,7 +1235,7 @@ describe("mmo_jobs_board_authority — accept timer + failure (HARTHMERE_JOB_ACC
     );
   });
 
-  it("revives a stale inactive todo when the accepted job is still active", () => {
+  it("does not resurrect a cancelled todo when the accepted job is still active", () => {
     const posted = mutate(
       defaultHarthmereJobsBoardState(NOW),
       "create_job_posting",
@@ -1148,12 +1269,13 @@ describe("mmo_jobs_board_authority — accept timer + failure (HARTHMERE_JOB_ACC
       "seeker"
     );
 
-    assert.equal(
-      questDone.warnings.length,
-      0,
+    assert.ok(
+      questDone.warnings.includes(
+        "jobs_board_rejected:quest_not_active:cancelled"
+      ),
       JSON.stringify(questDone.warnings)
     );
-    assert.equal(questDone.jobsBoard.todos[todo!.todoId].status, "completed");
+    assert.equal(questDone.jobsBoard.todos[todo!.todoId].status, "cancelled");
   });
 
   it("does not complete an escort quest until the companion has arrived", () => {

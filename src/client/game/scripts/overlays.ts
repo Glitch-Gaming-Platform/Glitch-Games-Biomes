@@ -67,7 +67,10 @@ import { isHarthmereCombatCreatureNpcType } from "@/client/components/challenges
 import { getNpcBehavior, idToNpcType, isNpcTypeId } from "@/shared/npc/bikkie";
 import { displayUsername } from "@/shared/util/helpers";
 import type { VoxelooModule } from "@/shared/wasm/types";
-import { SNAPSHOT_LIVE_NPC_GROUNDING_VERSION, snapshotGroundLiveNpcPosition } from "@/shared/harthmere/snapshot_live_debug";
+import {
+  SNAPSHOT_LIVE_NPC_GROUNDING_VERSION,
+  snapshotGroundLiveNpcPosition,
+} from "@/shared/harthmere/snapshot_live_debug";
 import {
   SNAPSHOT_GROVE_LANDMARKS,
   type SnapshotGroveLandmark,
@@ -85,6 +88,11 @@ import {
   type HarthmereWorldObjectCandidate,
 } from "@/shared/harthmere/harthmere_world_object_inspectable";
 import {
+  isNativeRoadAheadQuestObjectLabel,
+  nativeBiomesEcsAuthorityEnabled,
+  nativeRoadAheadEcsAuthorityEnabled,
+} from "@/shared/harthmere/native_road_ahead_contract";
+import {
   HARTHMERE_CRAFTING_TABLE_PROMPT_RADIUS,
   selectNearestHarthmereCraftingTable,
   type HarthmereCraftingTableCandidate,
@@ -95,7 +103,6 @@ import { isEqual } from "lodash";
 import { Vector3 } from "three";
 
 const PLAYER_PROJECTION_OFFSET: Vec3 = [0, 0.35, 0];
-
 
 // SNAPSHOT_OVERLAY_ENTITY_SIZE_COMPAT_VERSION
 // Legacy snapshot quest-giver / NPC-like entities can have a position and label
@@ -117,13 +124,16 @@ function getOverlayEntitySizeCompat(entity: ReadonlyEntity): ReadonlyVec3 {
   }
   if (!snapshotOverlayMissingSizeLogged.has(entity.id)) {
     snapshotOverlayMissingSizeLogged.add(entity.id);
-    log.warn("SNAPSHOT_OVERLAY_ENTITY_SIZE_COMPAT missing entity size; using human overlay fallback", {
-      entityId: entity.id,
-      label: entity.label?.text,
-      hasNpcMetadata: Boolean(entity.npc_metadata),
-      hasQuestGiver: Boolean(entity.quest_giver),
-      version: SNAPSHOT_OVERLAY_ENTITY_SIZE_COMPAT_VERSION,
-    });
+    log.warn(
+      "SNAPSHOT_OVERLAY_ENTITY_SIZE_COMPAT missing entity size; using human overlay fallback",
+      {
+        entityId: entity.id,
+        label: entity.label?.text,
+        hasNpcMetadata: Boolean(entity.npc_metadata),
+        hasQuestGiver: Boolean(entity.quest_giver),
+        version: SNAPSHOT_OVERLAY_ENTITY_SIZE_COMPAT_VERSION,
+      }
+    );
   }
   return [1, 2, 1];
 }
@@ -296,8 +306,7 @@ function harthmereVisibleStaticWorldObjectInspectCandidates(): HarthmereWorldObj
   );
 }
 
-const HARTHMERE_ECS_NPC_COMBAT_REGISTRY =
-  "harthmere-ecs-npc-combat-registry";
+const HARTHMERE_ECS_NPC_COMBAT_REGISTRY = "harthmere-ecs-npc-combat-registry";
 const HARTHMERE_ECS_NPC_COMBAT_REGISTRY_SCAN_RADIUS = Math.max(
   64,
   MAX_NPC_OVERLAY_DIST * 4
@@ -373,7 +382,9 @@ function harthmereEcsNpcCombatRegistryText(
   displayName: string | undefined,
   typeId: unknown
 ) {
-  return `${label ?? ""} ${displayName ?? ""} ${String(typeId ?? "")}`.toLowerCase();
+  return `${label ?? ""} ${displayName ?? ""} ${String(
+    typeId ?? ""
+  )}`.toLowerCase();
 }
 
 function harthmereEcsNpcCombatRegistrySpeciesFromText(
@@ -382,7 +393,11 @@ function harthmereEcsNpcCombatRegistrySpeciesFromText(
   if (/undead|zombie|corpse|gravewood|drowned|dead/.test(text)) {
     return "undead";
   }
-  if (/seedy|seedling|muck|muckling|mucker|muckernot|animal|wolf|bear|boar|deer|snake|rat|fox|cat|dog|hound|horse|cow|goat|sheep|frog|crow|raven|pigeon|chicken|bunny|rabbit|pig|monster|creature|wyrm/.test(text)) {
+  if (
+    /seedy|seedling|muck|muckling|mucker|muckernot|animal|wolf|bear|boar|deer|snake|rat|fox|cat|dog|hound|horse|cow|goat|sheep|frog|crow|raven|pigeon|chicken|bunny|rabbit|pig|monster|creature|wyrm/.test(
+      text
+    )
+  ) {
     return "animal";
   }
   return "human";
@@ -398,10 +413,16 @@ function harthmereEcsNpcCombatRegistryBehaviorFromText(
   if (/dummy|training/.test(text)) {
     return "training_dummy";
   }
-  if (/guard|watch|sentry|patrol|peacekeeper|sergeant|quartermaster/.test(text)) {
+  if (
+    /guard|watch|sentry|patrol|peacekeeper|sergeant|quartermaster/.test(text)
+  ) {
     return "guard";
   }
-  if (/seedy|seedling|muck|muckling|mucker|muckernot|hex|hexer|bandit|outlaw|thief|ambusher|trapper|smuggler|undead|zombie|corpse|drowned|gravewood|wolf|bear|boar|snake|rat|enemy|monster|creature|wyrm/.test(text)) {
+  if (
+    /seedy|seedling|muck|muckling|mucker|muckernot|hex|hexer|bandit|outlaw|thief|ambusher|trapper|smuggler|undead|zombie|corpse|drowned|gravewood|wolf|bear|boar|snake|rat|enemy|monster|creature|wyrm/.test(
+      text
+    )
+  ) {
     return "hostile";
   }
   if (/merchant|vendor|banker|supplier|clerk|registrar|auction/.test(text)) {
@@ -501,7 +522,9 @@ function harthmereEcsNpcCombatBridgeText(
   displayName: string | undefined,
   typeId: unknown
 ) {
-  return `${label ?? ""} ${displayName ?? ""} ${String(typeId ?? "")}`.toLowerCase();
+  return `${label ?? ""} ${displayName ?? ""} ${String(
+    typeId ?? ""
+  )}`.toLowerCase();
 }
 
 function harthmereEcsNpcCombatSpeciesFromText(
@@ -510,7 +533,11 @@ function harthmereEcsNpcCombatSpeciesFromText(
   if (/undead|zombie|corpse|gravewood|drowned|dead/.test(text)) {
     return "undead";
   }
-  if (/muck|muckling|mucker|animal|wolf|bear|boar|deer|snake|rat|fox|cat|dog|hound|horse|cow|goat|sheep|frog|crow|raven|pigeon|chicken|bunny|rabbit|pig|monster|creature|wyrm/.test(text)) {
+  if (
+    /muck|muckling|mucker|animal|wolf|bear|boar|deer|snake|rat|fox|cat|dog|hound|horse|cow|goat|sheep|frog|crow|raven|pigeon|chicken|bunny|rabbit|pig|monster|creature|wyrm/.test(
+      text
+    )
+  ) {
     return "animal";
   }
   return "human";
@@ -526,10 +553,16 @@ function harthmereEcsNpcCombatBehaviorFromText(
   if (/dummy|training/.test(text)) {
     return "training_dummy";
   }
-  if (/guard|watch|sentry|patrol|peacekeeper|sergeant|quartermaster/.test(text)) {
+  if (
+    /guard|watch|sentry|patrol|peacekeeper|sergeant|quartermaster/.test(text)
+  ) {
     return "guard";
   }
-  if (/muck|muckling|mucker|seed|seedy|hex|hexer|bandit|outlaw|thief|ambusher|trapper|smuggler|undead|zombie|corpse|drowned|gravewood|wolf|bear|boar|snake|rat|enemy|monster|creature|wyrm/.test(text)) {
+  if (
+    /muck|muckling|mucker|seed|seedy|hex|hexer|bandit|outlaw|thief|ambusher|trapper|smuggler|undead|zombie|corpse|drowned|gravewood|wolf|bear|boar|snake|rat|enemy|monster|creature|wyrm/.test(
+      text
+    )
+  ) {
     return "hostile";
   }
   if (/merchant|vendor|banker|supplier|clerk|registrar|auction/.test(text)) {
@@ -587,7 +620,6 @@ function publishHarthmereEcsNpcCombatActorSnapshot(
     at: Date.now(),
   };
 }
-
 
 export class OverlayScript implements Script {
   readonly name = "overlay";
@@ -787,7 +819,6 @@ export class OverlayScript implements Script {
     }
   }
 
-
   private publishHarthmereEcsNpcCombatRegistry() {
     const localPlayer = this.resources.get("/scene/local_player");
     const actors: Record<string, HarthmereEcsNpcCombatActorRegistryEntry> = {};
@@ -817,7 +848,10 @@ export class OverlayScript implements Script {
           ? becomeTheNPC
           : undefined;
       const npc = this.resources.cached("/scene/npc/render_state", entity.id);
-      const rawNpcPos = motionOverrides?.position ?? npc?.smoothedPosition() ?? entity.position?.v;
+      const rawNpcPos =
+        motionOverrides?.position ??
+        npc?.smoothedPosition() ??
+        entity.position?.v;
       const npcPos = rawNpcPos
         ? snapshotGroundLiveNpcPosition(rawNpcPos, entity.label?.text)
         : undefined;
@@ -904,7 +938,10 @@ export class OverlayScript implements Script {
   applyNpcNameOverlays(overlayMap: OverlayMap, projectionMap: ProjectionMap) {
     const camera = this.resources.get("/scene/camera");
     const localPlayer = this.resources.get("/scene/local_player");
-    const ecsNpcCombatActorBridge: Record<string, HarthmereEcsNpcCombatActorBridgeEntry> = {};
+    const ecsNpcCombatActorBridge: Record<
+      string,
+      HarthmereEcsNpcCombatActorBridgeEntry
+    > = {};
 
     for (const entity of this.table.scan(
       NpcMetadataSelector.query.spatial.inSphere({
@@ -1137,14 +1174,19 @@ export class OverlayScript implements Script {
     const camera = this.resources.get("/scene/camera");
 
     const rawNpcPos = entity.position?.v;
-    const npcPos = rawNpcPos ? snapshotGroundLiveNpcPosition(rawNpcPos, entity.label?.text) : undefined;
+    const npcPos = rawNpcPos
+      ? snapshotGroundLiveNpcPosition(rawNpcPos, entity.label?.text)
+      : undefined;
     void SNAPSHOT_LIVE_NPC_GROUNDING_VERSION;
     if (!npcPos) {
-      log.warn("SNAPSHOT_OVERLAY_ENTITY_SIZE_COMPAT missing entity position; skipping overlay", {
-        entityId: entity.id,
-        label: entity.label?.text,
-        version: SNAPSHOT_OVERLAY_ENTITY_SIZE_COMPAT_VERSION,
-      });
+      log.warn(
+        "SNAPSHOT_OVERLAY_ENTITY_SIZE_COMPAT missing entity position; skipping overlay",
+        {
+          entityId: entity.id,
+          label: entity.label?.text,
+          version: SNAPSHOT_OVERLAY_ENTITY_SIZE_COMPAT_VERSION,
+        }
+      );
       return;
     }
     const npcSize = getOverlayEntitySizeCompat(entity);
@@ -1195,7 +1237,10 @@ export class OverlayScript implements Script {
     if (hit?.kind === "entity") {
       const entity = hit.entity;
       const maxInspectDistance = entity.npc_metadata
-        ? Math.max(changeRadius(this.resources), HARTHMERE_NPC_TALK_INSPECT_RADIUS)
+        ? Math.max(
+            changeRadius(this.resources),
+            HARTHMERE_NPC_TALK_INSPECT_RADIUS
+          )
         : changeRadius(this.resources);
       if (hit.distance > maxInspectDistance) {
         return (
@@ -1339,6 +1384,17 @@ export class OverlayScript implements Script {
   // is the same gate the object-interaction semantics use, so the prompt only
   // appears for objects the resolver knows how to act on.
   private isHarthmereWorldObjectEntity(entity: ReadonlyEntity): boolean {
+    if (
+      nativeBiomesEcsAuthorityEnabled() &&
+      (Boolean(entity.quest_giver) ||
+        isNativeRoadAheadQuestObjectLabel(entity.label?.text))
+    ) {
+      // Native quest-giver entities must remain in the ECS inspection/dialog
+      // path for every quest, not just Road Ahead. Reclassifying one as a
+      // generic Harthmere crate bypasses CompleteQuestStepAtEntityEvent, exact
+      // item grants, item-taking validation, and the challenge trigger tree.
+      return false;
+    }
     return isHarthmereInspectableWorldObject({
       label: entity.label?.text,
       entityDescription: entity.entity_description?.text,
@@ -1601,7 +1657,11 @@ export class OverlayScript implements Script {
         number
       ],
       candidates: [
-        ...harthmereVisibleStaticWorldObjectInspectCandidates(),
+        ...harthmereVisibleStaticWorldObjectInspectCandidates().filter(
+          (candidate) =>
+            !nativeRoadAheadEcsAuthorityEnabled() ||
+            !isNativeRoadAheadQuestObjectLabel(candidate.label)
+        ),
         ...liveCandidates,
       ],
     });
@@ -1628,7 +1688,11 @@ export class OverlayScript implements Script {
     const localPlayer = this.resources.get("/scene/local_player");
     const becomeTheNPC = this.resources.get("/scene/npc/become_npc");
     let best:
-      | { score: number; entity: ReadonlyEntity; npcType: ReturnType<typeof idToNpcType> }
+      | {
+          score: number;
+          entity: ReadonlyEntity;
+          npcType: ReturnType<typeof idToNpcType>;
+        }
       | undefined;
 
     for (const entity of this.table.scan(
@@ -1656,7 +1720,9 @@ export class OverlayScript implements Script {
           : undefined;
       const npc = this.resources.cached("/scene/npc/render_state", entity.id);
       const npcPosition =
-        motionOverrides?.position ?? npc?.smoothedPosition() ?? entity.position?.v;
+        motionOverrides?.position ??
+        npc?.smoothedPosition() ??
+        entity.position?.v;
       if (!npcPosition) {
         continue;
       }

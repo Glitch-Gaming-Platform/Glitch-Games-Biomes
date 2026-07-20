@@ -226,24 +226,17 @@ async function makePlayerMesh(
 ) {
   const wearing = deps.get("/ecs/c/wearing", id);
   const appearance = deps.get("/ecs/c/appearance_component", id);
-  const cosmetics = harthmereLiveHumanMeshCosmetics(
-    id,
-    wearing?.items,
-    appearance?.appearance,
-    { includeLocalHarthmereWearables: userId === id }
-  );
-
+  // data-snapshot-2026-05-16 generated player meshes directly from the ECS
+  // Wearing assignment. Do not merge localStorage equipment or synthesized
+  // fallbacks here: doing so can overwrite one native slot with another, which
+  // is why a player wearing both the quest T-Shirt and Jeans only saw one piece.
   const mesh = await makeAnimatedMesh(
     deps,
     userId !== id,
-    cosmetics.wearables,
-    cosmetics.appearance,
+    wearing?.items,
+    appearance?.appearance,
     id
   );
-  if (cosmetics.usedFallback) {
-    mesh.three.userData.harthmereLiveHumanCosmeticsFallback =
-      cosmetics.userData;
-  }
   return mesh;
 }
 
@@ -268,13 +261,7 @@ async function updatePlayerMesh(
   const { id } = resolvedPromise;
   const wearing = deps.get("/ecs/c/wearing", id);
   const appearance = deps.get("/ecs/c/appearance_component", id);
-  const cosmetics = harthmereLiveHumanMeshCosmetics(
-    id,
-    wearing?.items,
-    appearance?.appearance,
-    { includeLocalHarthmereWearables: userId === id }
-  );
-  const url = playerMeshUrlForId(id, cosmetics.wearables, cosmetics.appearance);
+  const url = playerMeshUrlForId(id, wearing?.items, appearance?.appearance);
   const isLocalPlayer = userId === id;
   // Only consider tweaks to be out-of-date for the local player to avoid
   // performing the deep comparison for all players' changes.
@@ -290,14 +277,10 @@ async function updatePlayerMesh(
     const ret = await makeAnimatedMesh(
       deps,
       !isLocalPlayer,
-      cosmetics.wearables,
-      cosmetics.appearance,
+      wearing?.items,
+      appearance?.appearance,
       id
     );
-    if (cosmetics.usedFallback) {
-      ret.three.userData.harthmereLiveHumanCosmeticsFallback =
-        cosmetics.userData;
-    }
     Object.assign(resolvedPromise, ret);
   }
 }
@@ -5492,8 +5475,7 @@ export async function makePlayerLikeAppearanceMesh(
 // Actual players and snapshot town/merchant NPCs should both use that endpoint
 // so Bikkie wearables, head_id, skin, hair, and eye palettes render like the
 // original voxel player assets instead of Harthmere-only NPC/body variants.
-const SNAPSHOT_RICH_NPC_APPEARANCE_VERSION =
-  "snapshot-rich-npc-appearance";
+const SNAPSHOT_RICH_NPC_APPEARANCE_VERSION = "snapshot-rich-npc-appearance";
 const HARTHMERE_LOCAL_INVENTORY_STATE_KEY =
   "biomes.localDev.harthmere.inventoryState";
 
@@ -5524,9 +5506,7 @@ function snapshotRichNpcHasUsefulWearables(
   return !!wearables && Array.from(wearables.values()).some(Boolean);
 }
 
-function snapshotRichNpcFallbackAppearance(
-  id: BiomesId
-): ReadonlyAppearance {
+function snapshotRichNpcFallbackAppearance(id: BiomesId): ReadonlyAppearance {
   return {
     skin_color_id: snapshotRichNpcPick(
       [

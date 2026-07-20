@@ -88,7 +88,6 @@ import { blockPos, voxelShard } from "@/shared/game/shard";
 import { getCameraDirection, setPosition } from "@/shared/game/spatial";
 import { blockIsEmpty } from "@/shared/game/terrain_helper";
 import { invalidateHarthmereGroundedColumnsNear } from "@/client/game/util/harthmere_entity_grounding";
-import { isHarthmereLiveModeManagedCombatEntity } from "@/shared/harthmere/visible_combat_target";
 import type { BiomesId } from "@/shared/ids";
 import {
   aabbIterator,
@@ -389,8 +388,10 @@ export function handleAttackInteraction(
           })
         )
       );
-    } else if (!isHarthmereLiveModeManagedCombatEntity(entity.id)) {
-      // Send an attack event to the server.
+    } else {
+      // Send every NPC hit through the native health handler. Harthmere seeded
+      // NPCs are real ECS entities; excluding them created a private Redis HP
+      // authority and prevented native death, loot, and npcKilled triggers.
       fireAndForget(
         deps.events.publish(
           new UpdateNpcHealthEvent({ id: entity.id, hp: -damage, damageSource })

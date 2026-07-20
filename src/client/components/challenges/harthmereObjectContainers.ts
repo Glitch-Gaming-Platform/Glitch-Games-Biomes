@@ -11,6 +11,10 @@ import { completeHarthmereDailyTaskSoon } from "@/client/components/challenges/h
 import { dispatchHarthmereWorldObjectInteractionEvent } from "@/client/components/challenges/harthmereObjectInteractions";
 import { harthmereUserScopedStorageKey } from "@/client/components/challenges/LocalDevHarthmereUserScope";
 import { harthmereLocalStorage } from "@/client/util/storage";
+import {
+  isNativeRoadAheadQuestObjectLabel,
+  nativeRoadAheadEcsAuthorityEnabled,
+} from "@/shared/harthmere/native_road_ahead_contract";
 import type { BiomesId } from "@/shared/ids";
 
 export const HARTHMERE_OBJECT_CONTAINER_OPENED_EVENT =
@@ -21,6 +25,8 @@ export const HARTHMERE_OBJECT_CONTAINER_OPENED_EVENT =
 // out or stored in). The container panel subscribes to re-render.
 export const HARTHMERE_OBJECT_CONTAINER_CHANGED_EVENT =
   "biomes:harthmere-object-container-changed";
+export const HARTHMERE_OBJECT_CONTAINER_TRANSFER_EVENT =
+  "biomes:harthmere-object-container-transfer";
 
 // Fired when the player presses the container interaction; the mounted
 // container panel listens and opens the take/store interface.
@@ -34,6 +40,34 @@ const HARTHMERE_OBJECT_CONTAINER_OPEN_REQUEST_KEY =
   "biomes.localDev.harthmere.objectContainerOpenRequest";
 
 const pendingContainerTransfers = new Set<string>();
+
+function setHarthmereContainerTransferPending(key: string, pending: boolean) {
+  if (pending) pendingContainerTransfers.add(key);
+  else pendingContainerTransfers.delete(key);
+  if (isBrowser()) {
+    window.dispatchEvent(
+      new CustomEvent(HARTHMERE_OBJECT_CONTAINER_TRANSFER_EVENT, {
+        detail: { key, pending },
+      })
+    );
+  }
+}
+
+export function isHarthmereContainerTransferPending(
+  containerKey: string,
+  itemId?: string
+): boolean {
+  if (itemId) {
+    return (
+      pendingContainerTransfers.has(`${containerKey}:take:${itemId}`) ||
+      pendingContainerTransfers.has(`${containerKey}:put:${itemId}`)
+    );
+  }
+  for (const key of pendingContainerTransfers) {
+    if (key.startsWith(`${containerKey}:`)) return true;
+  }
+  return false;
+}
 
 export interface HarthmereObjectContainerLoot {
   itemId: string;
@@ -499,11 +533,11 @@ export function takeFromHarthmereContainer(
     commit();
     return accepted;
   }
-  pendingContainerTransfers.add(transferKey);
+  setHarthmereContainerTransferPending(transferKey, true);
   void mutation
     .then(commit)
     .catch(() => undefined)
-    .finally(() => pendingContainerTransfers.delete(transferKey));
+    .finally(() => setHarthmereContainerTransferPending(transferKey, false));
   return accepted;
 }
 
@@ -568,7 +602,7 @@ export function takeAllFromHarthmereContainer(key: string): number {
     return moved;
   }
 
-  pendingContainerTransfers.add(transferKey);
+  setHarthmereContainerTransferPending(transferKey, true);
   void mutation
     .then(() => {
       const store = readContainerStore();
@@ -589,7 +623,7 @@ export function takeAllFromHarthmereContainer(key: string): number {
       writeContainerStore(store);
     })
     .catch(() => undefined)
-    .finally(() => pendingContainerTransfers.delete(transferKey));
+    .finally(() => setHarthmereContainerTransferPending(transferKey, false));
   return total;
 }
 
@@ -626,11 +660,11 @@ export function putIntoHarthmereContainer(
     commitHarthmereContainerPut(key, itemId, amount, record.label);
     return amount;
   }
-  pendingContainerTransfers.add(transferKey);
+  setHarthmereContainerTransferPending(transferKey, true);
   void mutation
     .then(() => commitHarthmereContainerPut(key, itemId, amount, record.label))
     .catch(() => undefined)
-    .finally(() => pendingContainerTransfers.delete(transferKey));
+    .finally(() => setHarthmereContainerTransferPending(transferKey, false));
   return amount;
 }
 
@@ -679,6 +713,16 @@ export function openHarthmereObjectContainer({
   resources?: unknown;
 }) {
   const displayLabel = label?.trim() || "Container";
+  if (
+    nativeRoadAheadEcsAuthorityEnabled() &&
+    isNativeRoadAheadQuestObjectLabel(displayLabel)
+  ) {
+    // Native quest objects are not loot containers. Their quest-giver dialog
+    // performs the ECS grant atomically and records the exact trigger progress;
+    // opening a second localStorage container created duplicate/wrong items and
+    // left The Road Ahead permanently waiting for its native collection step.
+    return;
+  }
   const record = getOrSeedHarthmereContainer(entityId, displayLabel);
 
   const labelText = displayLabel.toLowerCase();

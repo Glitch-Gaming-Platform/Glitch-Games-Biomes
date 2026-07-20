@@ -3,6 +3,7 @@ import {
   makeEventHandler,
   newIds,
 } from "@/server/logic/events/core";
+import { staleOkDistance } from "@/server/logic/events/handlers/distance";
 import type { QueriedEntity } from "@/server/logic/events/query";
 import { q } from "@/server/logic/events/query";
 import { PlayerInventoryEditor } from "@/server/logic/inventory/player_inventory_editor";
@@ -349,8 +350,9 @@ export const harvestPlantEventHandler = makeEventHandler("harvestPlantEvent", {
   mergeKey: (event) => event.id,
   involves: (event) => ({
     plant: q.id(event.plant_id).with("farming_plant_component", "position"),
+    player: q.id(event.id).with("position"),
   }),
-  apply({ plant }, event) {
+  apply({ plant, player }, event) {
     const position = plant.position()?.v;
     if (!position || !equals(position, event.position)) {
       return;
@@ -362,11 +364,14 @@ export const harvestPlantEventHandler = makeEventHandler("harvestPlantEvent", {
     if (isTreeSeed(plantComponent.seed)) {
       return;
     }
-    // Harvest is not demolition: once a non-tree crop is fully grown and the
-    // client shows the Harvest shortcut, any player may collect it. ACL destroy
-    // checks still apply to planting, terrain edits, admin destruction, and tree
-    // handling above, but blocking a ripe food crop here left the F prompt
-    // visible while the action silently failed for non-planters.
+    // The client can name any plant id. Re-read both entities and enforce the
+    // same server-side interaction distance used for world pickups, with a
+    // small movement buffer for network latency. Ownership remains communal
+    // for ripe non-tree crops, matching the original snapshot, but harvesting
+    // from elsewhere in the world is never valid.
+    if (staleOkDistance(plant, player) > CONFIG.gameDropPickupDistance + 1) {
+      return;
+    }
 
     plantComponent.player_actions.push({
       kind: "harvest",

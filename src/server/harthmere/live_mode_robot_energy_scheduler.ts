@@ -13,6 +13,9 @@ import {
 } from "@/shared/harthmere/live_entity_robot_energy_protection";
 import type { HarthmereLiveModeAuthorityEnvelope } from "@/shared/harthmere/live_mode_readiness";
 import { log } from "@/shared/logging";
+import type { WorldApi } from "@/server/shared/world/api";
+import { RobotComponent } from "@/shared/ecs/gen/components";
+import { HARTHMERE_LIVE_ENTITY_ROBOT_SENTINEL_SEEDS } from "@/shared/harthmere/live_entity_production_seed";
 
 export const HARTHMERE_LIVE_MODE_ROBOT_ENERGY_SCHEDULER_VERSION =
   "harthmere-live-mode-robot-energy-scheduler" as const;
@@ -83,6 +86,42 @@ function changedAreaIds(
   });
 }
 
+/**
+ * Mirror the scheduler's server-owned energy into the real robot ECS
+ * components. Redis retains the MMO protection-area ledger, while native ECS
+ * remains the source consumed by robot rendering, movement, overlays, and
+ * ordinary Biomes subscriptions.
+ */
+export async function syncHarthmereRobotEnergyStateToEcs(input: {
+  worldApi: WorldApi;
+  robotProtection: LiveEntityRobotEnergyState;
+  nowMs: number;
+}) {
+  const seeds = HARTHMERE_LIVE_ENTITY_ROBOT_SENTINEL_SEEDS.filter((seed) =>
+    Boolean(input.robotProtection.robots[seed.robotId])
+  );
+  const editor = input.worldApi.edit();
+  const entities = await editor.get(seeds.map((seed) => seed.entityId));
+  const syncedRobotIds: string[] = [];
+  for (let index = 0; index < seeds.length; index += 1) {
+    const seed = seeds[index];
+    const entity = entities[index];
+    const robot = input.robotProtection.robots[seed.robotId];
+    if (!entity || !robot) continue;
+    entity.setRobotComponent(
+      RobotComponent.create({
+        ...(entity.robotComponent() ?? {}),
+        internal_battery_charge: robot.energy,
+        internal_battery_capacity: robot.maxEnergy,
+        last_update: input.nowMs / 1000,
+      })
+    );
+    syncedRobotIds.push(seed.robotId);
+  }
+  await editor.commit();
+  return syncedRobotIds;
+}
+
 export async function readOrSeedHarthmereLiveModeRobotProtectionSharedState(input: {
   redis: HarthmereLiveModeRobotEnergyRedis;
   nowMs: number;
@@ -147,6 +186,7 @@ export async function readOrSeedHarthmereLiveModeRobotProtectionSharedState(inpu
 
 export async function runHarthmereLiveModeRobotEnergySchedulerTick(input: {
   redis: HarthmereLiveModeRobotEnergyRedis;
+  worldApi?: WorldApi;
   nowMs: number;
   drainPerHour?: number;
   actorId?: string;
@@ -201,6 +241,13 @@ export async function runHarthmereLiveModeRobotEnergySchedulerTick(input: {
   tx.set(sharedWorldStateKey, JSON.stringify(sharedWorldState));
   const txResult = await tx.exec();
   if (txResult !== null) {
+    const syncedEcsRobotIds = input.worldApi
+      ? await syncHarthmereRobotEnergyStateToEcs({
+          worldApi: input.worldApi,
+          robotProtection: sharedWorldState.robotProtection,
+          nowMs: input.nowMs,
+        })
+      : [];
     return {
       version: HARTHMERE_LIVE_MODE_ROBOT_ENERGY_SCHEDULER_VERSION,
       sharedWorldStateKey,
@@ -216,6 +263,7 @@ export async function runHarthmereLiveModeRobotEnergySchedulerTick(input: {
         beforeRobotProtection,
         sharedWorldState.robotProtection
       ),
+      syncedEcsRobotIds,
     };
   }
   return {
@@ -233,6 +281,7 @@ export async function runHarthmereLiveModeRobotEnergySchedulerTick(input: {
     robotProtection: (parsedShared ?? sharedWorldState).robotProtection,
     changedRobotIds: [],
     changedAreaIds: [],
+    syncedEcsRobotIds: [],
   };
 }
 
@@ -247,6 +296,7 @@ function shouldRunRobotEnergyScheduler() {
 }
 
 export function startHarthmereLiveModeRobotEnergyScheduler(input?: {
+  worldApi?: WorldApi;
   intervalMs?: number;
   drainPerHour?: number;
   enabled?: boolean;
@@ -278,6 +328,7 @@ export function startHarthmereLiveModeRobotEnergyScheduler(input?: {
       const redis = await schedulerRedis();
       const result = await runHarthmereLiveModeRobotEnergySchedulerTick({
         redis,
+        worldApi: input?.worldApi,
         nowMs: input?.nowMs?.() ?? Date.now(),
         drainPerHour: input?.drainPerHour,
       });

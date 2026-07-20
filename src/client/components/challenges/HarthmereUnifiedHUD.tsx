@@ -59,9 +59,7 @@ import {
   HARTHMERE_LIVE_EQUIPMENT_EVENT,
 } from "@/client/components/challenges/harthmereEvents";
 import { harthmereLiveServerAuthoritative } from "@/client/components/challenges/harthmereLiveAuthoritySignal";
-import { harthmereLocalEquipmentBikkieWearables } from "@/shared/harthmere/harthmere_bikkie_wearables";
-import { Wearing } from "@/shared/ecs/gen/components";
-import { anItem } from "@/shared/game/item";
+import { nativeBiomesEcsAuthorityEnabled } from "@/shared/harthmere/native_road_ahead_contract";
 import { HarthmereLevelingMenuPanel } from "@/client/components/challenges/LocalDevHarthmereLevelingSystem";
 import { HarthmereMissionJournalPanel } from "@/client/components/challenges/LocalDevHarthmereMissionSystem";
 import {
@@ -746,63 +744,6 @@ function useHarthmerePlayerSwordVisualBridge() {
       itemId,
     });
   }, [itemId, multiplayer.weaponDrawn]);
-}
-
-function useHarthmereLocalPlayerWearableMeshBridge() {
-  const { resources, userId } = useClientContext();
-  const localWearableSlotsRef = React.useRef<Set<number>>(new Set());
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-    const refresh = () => {
-      try {
-        if (harthmereLiveServerAuthoritative()) {
-          const previousSlots = localWearableSlotsRef.current;
-          if (previousSlots.size > 0) {
-            const wearing =
-              resources.peek("/ecs/c/wearing", userId) ?? Wearing.create();
-            const items = new Map(wearing.items ?? []);
-            for (const slot of previousSlots) items.delete(slot as any);
-            localWearableSlotsRef.current = new Set();
-            resources.set("/ecs/c/wearing", userId, { items } as Wearing);
-            resources.invalidate("/scene/player/mesh", userId);
-          }
-          return;
-        }
-        const mapped = harthmereLocalEquipmentBikkieWearables(
-          readHarthmereInventoryState().equipment
-        );
-        const previousSlots = localWearableSlotsRef.current;
-        if (mapped.length > 0 || previousSlots.size > 0) {
-          const wearing =
-            resources.peek("/ecs/c/wearing", userId) ?? Wearing.create();
-          const items = new Map(wearing.items ?? []);
-          for (const slot of previousSlots) {
-            items.delete(slot as any);
-          }
-          for (const wearable of mapped) {
-            items.set(wearable.slot, anItem(wearable.itemId));
-          }
-          localWearableSlotsRef.current = new Set(
-            mapped.map((wearable) => Number(wearable.slot))
-          );
-          resources.set("/ecs/c/wearing", userId, { items } as Wearing);
-        }
-      } catch {}
-      resources.invalidate("/scene/player/mesh", userId);
-    };
-    refresh();
-    window.addEventListener(HARTHMERE_INVENTORY_EVENT, refresh);
-    window.addEventListener(HARTHMERE_LIVE_EQUIPMENT_EVENT, refresh);
-    window.addEventListener("storage", refresh);
-    return () => {
-      window.removeEventListener(HARTHMERE_INVENTORY_EVENT, refresh);
-      window.removeEventListener(HARTHMERE_LIVE_EQUIPMENT_EVENT, refresh);
-      window.removeEventListener("storage", refresh);
-    };
-  }, [resources, userId]);
 }
 
 // harthmere-full-animation-runtime
@@ -2928,7 +2869,6 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{
   hideLegacyVisuals?: boolean;
 }> = ({ hideLegacyVisuals = true }) => {
   useHarthmerePlayerSwordVisualBridge();
-  useHarthmereLocalPlayerWearableMeshBridge();
   const pointerLockManager = usePointerLockManager();
   const jobsBoardReturnPointerLockRef = React.useRef(false);
   const { userId, reactResources } = useClientContext();
@@ -3117,12 +3057,22 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{
       <SnapshotCompletePortRuntimeController />
       <SnapshotProductionPortRuntimeController />
       <SnapshotLiveDiagnosticsRuntimeController />
-      <HarthmereDeathRuntimeController />
+      {!nativeBiomesEcsAuthorityEnabled() && (
+        <HarthmereDeathRuntimeController />
+      )}
       <HarthmereFoodStaminaRuntimeController />
       <HarthmereCampfireWarmthRuntimeController />
-      <HarthmereNativeTerrainBlockInventoryBridge />
+      {/* Native EditEvent handling already creates ECS drops, publishes the
+          collect firehose event, and debits placed blocks.  The Harthmere
+          mirror is only for the opt-in synthetic runtime; mounting it beside
+          ECS duplicates ownership in localStorage/Redis. */}
+      {!nativeBiomesEcsAuthorityEnabled() && (
+        <HarthmereNativeTerrainBlockInventoryBridge />
+      )}
       <SnapshotProductionPortFacts />
-      <SnapshotCombatRuntimeController />
+      {!nativeBiomesEcsAuthorityEnabled() && (
+        <SnapshotCombatRuntimeController />
+      )}
     </>
   );
 
@@ -3130,11 +3080,12 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{
     return (
       <>
         {runtimeControllers}
-        <HarthmereDeathScreenOverlay />
+        {!nativeBiomesEcsAuthorityEnabled() && <HarthmereDeathScreenOverlay />}
         <HarthmereVendorTradePanel />
-        <HarthmereObjectContainerPanel />
-        <HarthmereCookingStationPanel />
-        <HarthmereGatheringNodeWorldInteraction />
+        {/* BiomesUIMount owns the replacement container, cooking, and gathering
+            surfaces. Mounting the same event consumers here created two stacked
+            dialogs and two pointer-lock owners, making Take/Take All appear to
+            do nothing while the hidden duplicate remained pending. */}
         <HarthmereLootDropWorldInteraction />
         <HarthmereJobsBoardWorldPrompt onOpen={openJobsBoard} />
         <HarthmereHomeConsoleWorldInterface
@@ -3161,7 +3112,7 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{
     <>
       {runtimeControllers}
       {hudVisibility.vitals && <CompactStatusCluster />}
-      <HarthmereDeathScreenOverlay />
+      {!nativeBiomesEcsAuthorityEnabled() && <HarthmereDeathScreenOverlay />}
       {hudVisibility.vitals && (
         <div className="fixed left-2 top-[9.25rem] z-30 md:left-3 md:top-[10.25rem]">
           <HarthmereDeathHUD />

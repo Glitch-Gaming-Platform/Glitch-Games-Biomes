@@ -7,6 +7,7 @@ import type { WorldApi } from "@/server/shared/world/api";
 import { ShimWorldApi } from "@/server/shared/world/shim/api";
 import { InMemoryWorld } from "@/server/shared/world/shim/in_memory_world";
 import {
+  bootstrapSyncPriorityForTest,
   Observer,
   localDevStarterWorldBootstrapCountsForTest,
   localDevStarterWorldEntityIdsForTest,
@@ -40,6 +41,18 @@ describe("Observer tests", () => {
   let syncIndex!: SyncIndex;
   let scanner!: Scanner;
   let observer!: Observer;
+
+  it("prioritizes nearby terrain during a capped initial bootstrap", () => {
+    const nearbyTerrain = bootstrapSyncPriorityForTest("terrain", 16);
+    const distantTerrain = bootstrapSyncPriorityForTest("terrain", 40_000);
+    const nearbyNpc = bootstrapSyncPriorityForTest("npc", 16);
+
+    assert.ok(nearbyTerrain > distantTerrain);
+    assert.ok(
+      nearbyTerrain > nearbyNpc,
+      "ground shards must arrive before decorative/non-terrain entities"
+    );
+  });
 
   beforeEach(async () => {
     db = createBdb(await createStorageBackend("memory"));
@@ -166,6 +179,44 @@ describe("Observer tests", () => {
         },
       ]
     );
+  });
+
+  it("retains every entity beyond the capped first bootstrap batch", async function () {
+    this.timeout(30_000);
+    const nearbyIds = Array.from(
+      { length: 1_025 },
+      (_, index) => (100_000 + index) as BiomesId
+    );
+    world.applyChanges(
+      nearbyIds.map((id, index) => ({
+        kind: "create" as const,
+        entity: {
+          id,
+          position: { v: [index % 20, 0, Math.floor(index / 20)] },
+        },
+      }))
+    );
+    await yieldToOthers();
+    createLocalObserver();
+
+    const initial = await observer.start();
+    const initialIds = idsFromBootstrap(initial);
+    const overflow = pull(100);
+    const delivered = new Set([
+      ...initialIds,
+      ...overflow.flatMap((change) =>
+        typeof change === "number"
+          ? [change]
+          : change.kind === "update"
+          ? [change.entity.id]
+          : []
+      ),
+    ]);
+
+    for (const id of nearbyIds) {
+      assert.ok(delivered.has(id), `bootstrap overflow lost entity ${id}`);
+    }
+    assert.equal(observer.pendingChanges, 0);
   });
 
   it("keeps fallback world metadata resident when a sparse backend is missing metadata", async () => {

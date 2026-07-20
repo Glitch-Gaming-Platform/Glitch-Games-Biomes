@@ -325,6 +325,7 @@ interface BaseClientResourcePaths {
     MetaState<any> | undefined
   >;
   "/challenges/available_or_in_progress": PathDef<[], QuestBundle[]>;
+  "/challenges/all": PathDef<[], QuestBundle[]>;
   "/challenges/active_leaves": PathDef<
     [],
     Promise<TriggerProgress<TriggerProgressKindPayload>[]>

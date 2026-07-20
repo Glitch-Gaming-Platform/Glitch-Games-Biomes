@@ -136,14 +136,50 @@ const EQUIPMENT_ORDER: Array<{
     highlight: UI_IDS.INVENTORY_SLOT_HEAD,
   },
   {
+    id: "hair",
+    label: "Hair",
+    key: "hair",
+    highlight: UI_IDS.INVENTORY_SLOT_HAIR,
+  },
+  {
+    id: "hat",
+    label: "Hat",
+    key: "hat",
+    highlight: UI_IDS.INVENTORY_SLOT_HAT,
+  },
+  {
+    id: "face",
+    label: "Face",
+    key: "face",
+    highlight: UI_IDS.INVENTORY_SLOT_FACE,
+  },
+  {
+    id: "ears",
+    label: "Ears",
+    key: "ears",
+    highlight: UI_IDS.INVENTORY_SLOT_EARS,
+  },
+  {
+    id: "neck",
+    label: "Neck",
+    key: "neck",
+    highlight: UI_IDS.INVENTORY_SLOT_NECK,
+  },
+  {
     id: "chest",
-    label: "Chest",
+    label: "Top",
     key: "chest",
     highlight: UI_IDS.INVENTORY_SLOT_CHEST,
   },
   {
+    id: "back",
+    label: "Outerwear",
+    key: "back",
+    highlight: UI_IDS.INVENTORY_SLOT_OUTERWEAR,
+  },
+  {
     id: "legs",
-    label: "Legs",
+    label: "Bottoms",
     key: "legs",
     highlight: UI_IDS.INVENTORY_SLOT_LEGS,
   },
@@ -312,6 +348,8 @@ export const InventoryTab: React.FunctionComponent<{
   const [draggedRef, setDraggedRef] = React.useState<InventoryUiRef | null>(
     null
   );
+  const [pendingAction, setPendingAction] = React.useState<string>();
+  const pendingTimeoutRef = React.useRef<number>();
 
   const backpack = adapter?.getBackpack?.() ?? {
     items: [],
@@ -343,6 +381,48 @@ export const InventoryTab: React.FunctionComponent<{
   const firstEmptyBackpackIndex = React.useMemo(
     () => backpack.items.findIndex((item) => !item),
     [backpack.items]
+  );
+  const inventoryRevision = [
+    ...backpack.items,
+    ...hotbar.items,
+    ...equipment.map((slot) => slot.item ?? null),
+  ]
+    .map((item) => (item ? `${item.id}:${item.count ?? 1}` : "-"))
+    .join("|");
+  React.useEffect(() => {
+    setPendingAction(undefined);
+    if (pendingTimeoutRef.current !== undefined) {
+      window.clearTimeout(pendingTimeoutRef.current);
+      pendingTimeoutRef.current = undefined;
+    }
+  }, [inventoryRevision]);
+  React.useEffect(
+    () => () => {
+      if (pendingTimeoutRef.current !== undefined) {
+        window.clearTimeout(pendingTimeoutRef.current);
+      }
+    },
+    []
+  );
+  const runInventoryAction = React.useCallback(
+    (name: string, action: () => unknown) => {
+      if (pendingAction) return;
+      setPendingAction(name);
+      try {
+        action();
+      } catch {
+        setPendingAction(undefined);
+        return;
+      }
+      // ECS normally invalidates the inventory resource immediately. The
+      // timeout is only a safety valve for rejected/network-lost mutations so
+      // the UI cannot remain disabled forever.
+      pendingTimeoutRef.current = window.setTimeout(
+        () => setPendingAction(undefined),
+        10_000
+      );
+    },
+    [pendingAction]
   );
 
   const cells = React.useMemo(() => {
@@ -480,10 +560,13 @@ export const InventoryTab: React.FunctionComponent<{
           <button
             type="button"
             className="biomes-ui-action-button"
-            onClick={() => adapter?.sortInventory?.()}
+            onClick={() =>
+              runInventoryAction("sort", () => adapter?.sortInventory?.())
+            }
+            disabled={Boolean(pendingAction)}
             data-inventory-action="sort"
           >
-            Sort
+            {pendingAction === "sort" ? "Sorting…" : "Sort"}
           </button>
         </div>
         <div style={paperDollStyle}>
@@ -500,7 +583,10 @@ export const InventoryTab: React.FunctionComponent<{
                 }
               }}
               onUnequip={() =>
-                slot.item?.ref && adapter?.unequipItem?.(slot.item.ref)
+                slot.item?.ref &&
+                runInventoryAction("unequip", () =>
+                  adapter?.unequipItem?.(slot.item!.ref!)
+                )
               }
             />
           ))}
@@ -958,12 +1044,21 @@ export const InventoryTab: React.FunctionComponent<{
                 <button
                   type="button"
                   onClick={() =>
-                    selectedItem.ref && adapter?.useItem?.(selectedItem.ref)
+                    selectedItem.ref &&
+                    runInventoryAction("use", () =>
+                      adapter?.useItem?.(selectedItem.ref!)
+                    )
                   }
-                  disabled={!selectedItem.ref || selectedItem.canUse === false}
+                  disabled={
+                    Boolean(pendingAction) ||
+                    !selectedItem.ref ||
+                    selectedItem.canUse === false
+                  }
                   data-inventory-action="use"
                 >
-                  {selectedItem.useActionLabel ?? "Use / Select"}
+                  {pendingAction === "use"
+                    ? "Working…"
+                    : selectedItem.useActionLabel ?? "Use / Select"}
                 </button>
               </Highlightable>
               <Highlightable
@@ -974,17 +1069,21 @@ export const InventoryTab: React.FunctionComponent<{
                   type="button"
                   onClick={() =>
                     selectedItem.ref &&
-                    adapter?.equipItem?.(
-                      selectedItem.ref,
-                      selectedItem.equipSlot
+                    runInventoryAction("equip", () =>
+                      adapter?.equipItem?.(
+                        selectedItem.ref!,
+                        selectedItem.equipSlot
+                      )
                     )
                   }
                   disabled={
-                    !selectedItem.equipSlot || selectedItem.canEquip === false
+                    Boolean(pendingAction) ||
+                    !selectedItem.equipSlot ||
+                    selectedItem.canEquip === false
                   }
                   data-inventory-action="equip"
                 >
-                  Equip
+                  {pendingAction === "equip" ? "Equipping…" : "Equip"}
                 </button>
               </Highlightable>
               <Highlightable
@@ -994,16 +1093,20 @@ export const InventoryTab: React.FunctionComponent<{
                 <button
                   type="button"
                   onClick={() =>
-                    selectedItem.ref && adapter?.unequipItem?.(selectedItem.ref)
+                    selectedItem.ref &&
+                    runInventoryAction("unequip", () =>
+                      adapter?.unequipItem?.(selectedItem.ref!)
+                    )
                   }
                   disabled={
+                    Boolean(pendingAction) ||
                     !selectedItem.ref ||
                     selectedItem.source !== "equipment" ||
                     selectedItem.canUnequip === false
                   }
                   data-inventory-action="unequip"
                 >
-                  Unequip
+                  {pendingAction === "unequip" ? "Unequipping…" : "Unequip"}
                 </button>
               </Highlightable>
               <Highlightable
@@ -1014,15 +1117,21 @@ export const InventoryTab: React.FunctionComponent<{
                   type="button"
                   onClick={() =>
                     selectedItem.ref &&
-                    adapter?.moveItem?.(selectedItem.ref, {
-                      kind: "hotbar",
-                      idx: 0,
-                    })
+                    runInventoryAction("move-hotbar", () =>
+                      adapter?.moveItem?.(selectedItem.ref!, {
+                        kind: "hotbar",
+                        idx: 0,
+                      })
+                    )
                   }
-                  disabled={!selectedItem.ref || selectedItem.canMove === false}
+                  disabled={
+                    Boolean(pendingAction) ||
+                    !selectedItem.ref ||
+                    selectedItem.canMove === false
+                  }
                   data-inventory-action="move-hotbar"
                 >
-                  Hotbar 1
+                  {pendingAction === "move-hotbar" ? "Moving…" : "Hotbar 1"}
                 </button>
               </Highlightable>
               <button
@@ -1037,6 +1146,7 @@ export const InventoryTab: React.FunctionComponent<{
                   )
                 }
                 disabled={
+                  Boolean(pendingAction) ||
                   (selectedItem.count ?? 1) < 2 ||
                   firstEmptyBackpackIndex < 0 ||
                   selectedItem.canSplit === false
@@ -1052,12 +1162,19 @@ export const InventoryTab: React.FunctionComponent<{
                 <button
                   type="button"
                   onClick={() =>
-                    selectedItem.ref && adapter?.dropItem?.(selectedItem.ref, 1)
+                    selectedItem.ref &&
+                    runInventoryAction("drop-one", () =>
+                      adapter?.dropItem?.(selectedItem.ref!, 1)
+                    )
                   }
-                  disabled={!selectedItem.ref || selectedItem.canDrop === false}
+                  disabled={
+                    Boolean(pendingAction) ||
+                    !selectedItem.ref ||
+                    selectedItem.canDrop === false
+                  }
                   data-inventory-action="drop-one"
                 >
-                  Drop 1
+                  {pendingAction === "drop-one" ? "Dropping…" : "Drop 1"}
                 </button>
               </Highlightable>
               <Highlightable
@@ -1067,26 +1184,37 @@ export const InventoryTab: React.FunctionComponent<{
                 <button
                   type="button"
                   onClick={() =>
-                    selectedItem.ref && adapter?.dropItem?.(selectedItem.ref)
+                    selectedItem.ref &&
+                    runInventoryAction("drop-all", () =>
+                      adapter?.dropItem?.(selectedItem.ref!)
+                    )
                   }
-                  disabled={!selectedItem.ref || selectedItem.canDrop === false}
+                  disabled={
+                    Boolean(pendingAction) ||
+                    !selectedItem.ref ||
+                    selectedItem.canDrop === false
+                  }
                   data-inventory-action="drop-all"
                 >
-                  Drop All
+                  {pendingAction === "drop-all" ? "Dropping…" : "Drop All"}
                 </button>
               </Highlightable>
               <button
                 type="button"
                 onClick={() =>
                   selectedItem.ref &&
-                  adapter?.destroyItem?.(selectedItem.ref, 1)
+                  runInventoryAction("destroy", () =>
+                    adapter?.destroyItem?.(selectedItem.ref!, 1)
+                  )
                 }
                 disabled={
-                  !selectedItem.ref || selectedItem.canDestroy === false
+                  Boolean(pendingAction) ||
+                  !selectedItem.ref ||
+                  selectedItem.canDestroy === false
                 }
                 data-inventory-action="destroy"
               >
-                Destroy
+                {pendingAction === "destroy" ? "Destroying…" : "Destroy"}
               </button>
             </div>
           </div>

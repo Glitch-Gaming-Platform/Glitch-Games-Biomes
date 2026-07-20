@@ -34,6 +34,7 @@ import {
   chooseSnapshotMissionStep,
 } from "@/shared/harthmere/snapshot_mission_advance";
 import { applySnapshotRoadAheadProgressFromPortForBiomesUI } from "@/client/components/challenges/LocalDevSnapshotMissionBridge";
+import { nativeRoadAheadEcsAuthorityEnabled } from "@/shared/harthmere/native_road_ahead_contract";
 
 export const SNAPSHOT_COMPLETE_PORT_STATE_KEY =
   "biomes.localDev.snapshotCompletePortState";
@@ -448,7 +449,7 @@ function pinTestCaseMarker(mapManager: any, testCase: SnapshotMissionTestCase) {
   });
 }
 
-export const SnapshotCompletePortRuntimeController: React.FunctionComponent<{}> =
+const LegacySnapshotCompletePortRuntimeController: React.FunctionComponent<{}> =
   () => {
     const { gardenHose, mapManager, reactResources } = useClientContext();
 
@@ -637,6 +638,17 @@ export const SnapshotCompletePortRuntimeController: React.FunctionComponent<{}> 
     }, [mapManager, reactResources]);
 
     return null;
+  };
+
+export const SnapshotCompletePortRuntimeController: React.FunctionComponent<{}> =
+  () => {
+    // The complete-port reducer accepts client GardenHose events and can
+    // implicitly accept/advance Road Ahead out of order.  That is useful for a
+    // developer port audit, but it must never run beside the original ECS
+    // trigger service in normal gameplay.
+    return nativeRoadAheadEcsAuthorityEnabled() ? null : (
+      <LegacySnapshotCompletePortRuntimeController />
+    );
   };
 
 export function runSnapshotMissionAudit() {

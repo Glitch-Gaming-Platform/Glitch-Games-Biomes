@@ -3,6 +3,9 @@
 import assert from "assert";
 import { createRequire } from "module";
 
+// Opt into the legacy bridge solely for its compatibility marker tests.
+process.env.NEXT_PUBLIC_BIOMES_ENABLE_SYNTHETIC_ROAD_AHEAD = "1";
+
 const globalAny = global as any;
 const localStorageValues = new Map<string, string>();
 

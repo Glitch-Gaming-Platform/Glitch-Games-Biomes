@@ -37,6 +37,7 @@ import {
   snapshotPlayerScopedStorageKey,
 } from "@/client/components/challenges/LocalDevSnapshotCompletePort";
 import React, { useEffect, useMemo, useState } from "react";
+import { nativeRoadAheadEcsAuthorityEnabled } from "@/shared/harthmere/native_road_ahead_contract";
 
 export const SNAPSHOT_PRODUCTION_PORT_EVENT = "biomes:snapshot-production-port";
 export const SNAPSHOT_PRODUCTION_PENDING_KEY =
@@ -569,7 +570,7 @@ export function runSnapshotProductionAudit() {
   };
 }
 
-export const SnapshotProductionPortRuntimeController: React.FunctionComponent<{}> =
+const LegacySnapshotProductionPortRuntimeController: React.FunctionComponent<{}> =
   () => {
     const { gardenHose } = useClientContext();
 
@@ -683,6 +684,17 @@ export const SnapshotProductionPortRuntimeController: React.FunctionComponent<{}
     }, []);
 
     return null;
+  };
+
+export const SnapshotProductionPortRuntimeController: React.FunctionComponent<{}> =
+  () => {
+    // Native challenge/trigger state is already durable through ECS.  Posting a
+    // second client-authored Road Ahead document to snapshot_progress caused
+    // multi-replica, out-of-order progress and symbolic rewards with no item
+    // grant.  Keep the port available only when explicitly testing it.
+    return nativeRoadAheadEcsAuthorityEnabled() ? null : (
+      <LegacySnapshotProductionPortRuntimeController />
+    );
   };
 
 export const SnapshotProductionPortStatusPanel: React.FunctionComponent<{}> =

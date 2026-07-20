@@ -241,12 +241,12 @@ export function computeTriggerProgress(
       const children = triggerDef.triggers.map((child) =>
         computeTriggerProgress(userId, table, deps, child, stateProvider)
       );
-          const completedChildren = state?.firedAt
-            ? children.length
-            : children.reduce(
-                (acc, child) => acc + (child?.progressPercentage ?? 0),
-                0
-              );
+      const completedChildren = state?.firedAt
+        ? children.length
+        : children.reduce(
+            (acc, child) => acc + (child?.progressPercentage ?? 0),
+            0
+          );
 
       const count = state?.firedAt
         ? children.length
@@ -882,10 +882,32 @@ function fetchAvailableOrInProgressChallenges(
   );
 }
 
+/**
+ * The unified journal needs completed native quests as well as currently
+ * offered/active ones.  Build every bundle from the single ECS challenge
+ * component so the UI cannot drift into a second quest-state authority.
+ */
+function fetchAllChallenges(
+  { userId }: { userId: BiomesId },
+  deps: ClientResourceDeps
+) {
+  const challenges = deps.get("/ecs/c/challenges", userId);
+  if (!challenges) {
+    return [];
+  }
+  return compact(
+    uniq([
+      ...challenges.in_progress,
+      ...challenges.available,
+      ...challenges.complete,
+    ]).map((id) => deps.get("/quest", id))
+  );
+}
+
 function getActiveLeafSteps(
   progress: TriggerProgress<TriggerProgressKindPayload>
 ): Array<TriggerProgress<TriggerProgressKindPayload>> {
-  if (progress.progressPercentage > 1.0) {
+  if (progress.progressPercentage >= 1.0) {
     return [];
   }
 
@@ -1109,6 +1131,7 @@ export async function addChallengeResources(
     "/challenges/available_or_in_progress",
     loader.provide(fetchAvailableOrInProgressChallenges)
   );
+  builder.add("/challenges/all", loader.provide(fetchAllChallenges));
   builder.add("/challenges/active_leaves", loader.provide(genActiveLeaves));
 
   // The following rigamorole is to ensure that we can get fine-grained invalidation

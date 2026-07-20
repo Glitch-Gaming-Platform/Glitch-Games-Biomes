@@ -35,6 +35,7 @@ import {
 } from "../mmo_economy_authority";
 import {
   harthmereJobsBoardQuestMarkerPositionForId,
+  harthmereJobsBoardQuestMarkerRuntimePositionForId,
   unresolvedHarthmereJobsBoardQuestMarkerIds,
 } from "../jobs_board_quest_marker_positions";
 import {
@@ -50,6 +51,30 @@ import {
 import { isKnownHarthmereJobsBoardExecutableItemId } from "../jobs_board_business_templates";
 
 const NOW = 1_800_000_000_000;
+
+function fieldCompletionContext(
+  job: HarthmereJobsBoardState["postings"][string],
+  overrides: Partial<HarthmereJobsBoardMutationContext> = {}
+) {
+  const marker = harthmereJobsBoardQuestMarkerRuntimePositionForId(
+    job.mapMarkerId ??
+      job.requirements.find((requirement) => requirement.mapMarkerId)
+        ?.mapMarkerId ??
+      job.targetId
+  );
+  return seedContext({
+    ...(marker
+      ? {
+          actorPosition: {
+            x: marker.position[0],
+            y: marker.position[1],
+            z: marker.position[2],
+          },
+        }
+      : {}),
+    ...overrides,
+  });
+}
 
 function seedContext(
   overrides: Partial<HarthmereJobsBoardMutationContext> = {}
@@ -612,7 +637,9 @@ describe("mmo_jobs_board_authority — monster hunting (current)", () => {
           ? `harthmere_owner:${req.recipientNpcId}`
           : req.mapMarkerId,
       } as any,
-      seedContext({ actorInventoryItems: { [req.itemId!]: req.count ?? 1 } })
+      fieldCompletionContext(job!, {
+        actorInventoryItems: { [req.itemId!]: req.count ?? 1 },
+      })
     );
     assert.deepEqual(delivered.warnings, []);
     assert.deepEqual(delivered.inventoryItemDeltas, {
@@ -761,11 +788,13 @@ describe("mmo_jobs_board_authority — monster hunting (current)", () => {
         usedToolAction: job.requirements.find((req) => req.requiredToolAction)
           ?.requiredToolAction,
       } as any,
-      {
+      fieldCompletionContext(job, {
         actorGold: 0,
         actorInventoryItems,
-        nearbyBoardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
-      }
+        authoritativeEquippedToolActions: job.requirements
+          .map((requirement) => requirement.requiredToolAction)
+          .filter((action): action is string => Boolean(action)),
+      })
     );
     assert.equal(questDone.jobsBoard.postings[job.jobId].status, "active");
     assert.equal(
@@ -831,7 +860,9 @@ describe("mmo_jobs_board_authority — monster hunting (current)", () => {
         jobId: job!.jobId,
         questTodoId: todo?.todoId,
       } as any,
-      seedContext({ actorInventoryItems: { wild_berries: 5 } })
+      fieldCompletionContext(job!, {
+        actorInventoryItems: { wild_berries: 5 },
+      })
     );
     assert.ok(
       missing.warnings.includes(
@@ -850,7 +881,9 @@ describe("mmo_jobs_board_authority — monster hunting (current)", () => {
         jobId: job!.jobId,
         questTodoId: todo?.todoId,
       } as any,
-      seedContext({ actorInventoryItems: { wild_berries: 6 } })
+      fieldCompletionContext(job!, {
+        actorInventoryItems: { wild_berries: 6 },
+      })
     );
     assert.deepEqual(questDone.inventoryItemDeltas, { wild_berries: -6 });
     assert.equal(

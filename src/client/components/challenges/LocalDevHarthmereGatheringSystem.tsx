@@ -16,6 +16,8 @@ import {
 import { awardHarthmereXp } from "@/client/components/challenges/LocalDevHarthmereLevelingSystem";
 import { applyHarthmereReputationChange } from "@/client/components/challenges/LocalDevHarthmereReputation";
 import { HARTHMERE_INVENTORY_EVENT } from "@/client/components/challenges/harthmereEvents";
+import { submitHarthmereGatheringNode } from "@/client/components/challenges/harthmereGatheringLiveAuthority";
+import { nativeBiomesEcsAuthorityEnabled } from "@/shared/harthmere/native_road_ahead_contract";
 import type { TalkDialogStepAction } from "@/client/components/challenges/TalkDialogModalStep";
 import React, { useEffect, useMemo, useState } from "react";
 
@@ -1264,6 +1266,13 @@ export function performHarthmereGather(
     forceIllegal?: boolean;
   }
 ) {
+  if (isBrowser() && nativeBiomesEcsAuthorityEnabled()) {
+    return {
+      ok: false,
+      message:
+        "Production gathering is server-authoritative. Use the world node interaction.",
+    };
+  }
   const node = nodeById(nodeId);
   if (!node) {
     return { ok: false, message: "Unknown resource node." };
@@ -1505,6 +1514,9 @@ export const __harthmereGatheringAuthorityTestHooks = {
 };
 
 export function grantHarthmereStarterGatheringTools() {
+  if (isBrowser() && nativeBiomesEcsAuthorityEnabled()) {
+    return;
+  }
   for (const tool of STARTER_TOOLS) {
     if (!hasInventoryItem(tool)) {
       grantHarthmereItem(tool, 1, "Starter gathering tool kit");
@@ -1664,7 +1676,10 @@ export function gatheringActionsForHarthmereNpc(
   const nodes = nodesForNpc(offset);
   const actions: TalkDialogStepAction[] = [];
 
-  if ([41, 42, 6, 13, 16, 27].includes(offset)) {
+  if (
+    !nativeBiomesEcsAuthorityEnabled() &&
+    [41, 42, 6, 13, 16, 27].includes(offset)
+  ) {
     actions.push({
       name: "Claim starter gathering tools",
       tooltip:
@@ -1690,7 +1705,11 @@ export function gatheringActionsForHarthmereNpc(
         ? `You work quickly around ${node.name}. This resource has ownership or restriction rules, so the town may treat it as theft if noticed.`
         : `You gather from ${node.name}. The materials go to material storage or your backpack depending on item type.`,
       onPerformed: () => {
-        performHarthmereGather(node.id);
+        if (nativeBiomesEcsAuthorityEnabled()) {
+          void submitHarthmereGatheringNode(node.id);
+        } else {
+          performHarthmereGather(node.id);
+        }
       },
     });
   }
@@ -1750,6 +1769,21 @@ export const HarthmereGatheringMenuPanel: React.FunctionComponent<{}> = () => {
   );
   const [filter, setFilter] = useState<"all" | GatheringProfession>("all");
   const inventory = readHarthmereInventoryState();
+
+  if (nativeBiomesEcsAuthorityEnabled()) {
+    return (
+      <div className="rounded-lg bg-black/85 mb-2 w-[33rem] border border-white/20 p-3 text-white shadow-xl">
+        <div className="text-base text-lime-200 font-semibold">
+          Harthmere Gathering
+        </div>
+        <div className="mt-1 text-xs text-white/75">
+          Gathering is synchronized with the server. Walk to a marked resource
+          node and press F; tools, range, yield, depletion, inventory, and
+          profession progress are validated authoritatively.
+        </div>
+      </div>
+    );
+  }
 
   const visibleNodes = useMemo(
     () =>

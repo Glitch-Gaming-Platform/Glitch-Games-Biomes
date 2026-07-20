@@ -67,9 +67,18 @@ function applyOne(
   overrides: Partial<HarthmereLiveModeAuthorityEnvelope> = {},
   nowMs = NOW_MS
 ) {
+  const resolvedOverrides = { ...overrides };
+  if (
+    actionKind === "request_loot_claim" &&
+    typeof payload.dropId === "string" &&
+    !Object.prototype.hasOwnProperty.call(overrides, "serverActorPosition")
+  ) {
+    resolvedOverrides.serverActorPosition =
+      state.inventoryLoot.lootDrops[payload.dropId]?.position;
+  }
   return reduceHarthmereLiveModeBackendState(
     state,
-    makeEnvelope(actionKind, payload, overrides),
+    makeEnvelope(actionKind, payload, resolvedOverrides),
     nowMs
   );
 }
@@ -349,7 +358,10 @@ describe("non-NPC b:<id> live entity combat bridge current", () => {
     assert.ok(
       invalid.summary.warnings.includes("loot_rejected:invalid_pickup_token")
     );
-    assert.equal(invalid.state.inventoryLoot.lootDrops[dropId].status, "available");
+    assert.equal(
+      invalid.state.inventoryLoot.lootDrops[dropId].status,
+      "available"
+    );
 
     const claimed = applyOne(
       state,

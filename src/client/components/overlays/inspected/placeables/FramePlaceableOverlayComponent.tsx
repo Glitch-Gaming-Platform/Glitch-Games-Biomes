@@ -173,10 +173,21 @@ export const FramePlaceableOverlayComponent: React.FunctionComponent<{
   overlay: PlaceableInspectOverlay;
 }> = ({ overlay }) => {
   const { reactResources } = useClientContext();
+  const questGiver = reactResources.use("/ecs/c/quest_giver", overlay.entityId);
   const pictureFrameContents = reactResources.use(
     "/ecs/c/picture_frame_contents",
     overlay.entityId
   );
+
+  if (questGiver) {
+    // The original May 16 snapshot represents reward-choice objects such as
+    // the Clothing Crate and Billy's Toolbag as quest-giver picture frames.
+    // A blank-frame overlay only offered owner editing, swallowing Talk and its
+    // CompleteQuestStepAtEntityEvent. Route quest-giver frames through the
+    // normal cursor inspection so native dialog, exact reward grants, and the
+    // ordered challenge trigger all run unchanged.
+    return <CursorInspectionComponent overlay={overlay} />;
+  }
 
   if (pictureFrameContents?.photo_id) {
     return (

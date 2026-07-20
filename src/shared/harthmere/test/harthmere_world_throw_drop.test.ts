@@ -5,7 +5,9 @@
  * world": drop_item only debited the inventory and the item vanished. Now a
  * drop_item carrying a world `position` creates a positioned, claimable,
  * shared loot drop after the debit — and the debit still happens exactly
- * once. Also pins the quest-item protection and the claim round trip.
+ * once. A missing or invalid position rejects the entire operation so a
+ * client timing/raycast failure can never silently delete an item. Also pins
+ * the quest-item protection and the claim round trip.
  */
 
 import assert from "assert";
@@ -32,7 +34,8 @@ function nextId() {
 
 function makeEnvelope(
   actionKind: HarthmereLiveModeActionKind,
-  payload: Record<string, unknown> = {}
+  payload: Record<string, unknown> = {},
+  serverActorPosition?: { x: number; y: number; z: number }
 ): HarthmereLiveModeAuthorityEnvelope {
   return {
     requestId: nextId(),
@@ -41,6 +44,7 @@ function makeEnvelope(
     actionKind,
     subsystem: "inventory",
     source: "client_request",
+    serverActorPosition,
     serverReceivedAtMs: NOW_MS,
     serverTick: 1,
     actorEntityVersion: 1,
@@ -59,9 +63,17 @@ function applyOne(
   actionKind: HarthmereLiveModeActionKind,
   payload: Record<string, unknown> = {}
 ) {
+  const dropId =
+    actionKind === "request_loot_claim" && typeof payload.dropId === "string"
+      ? payload.dropId
+      : undefined;
   return reduceHarthmereLiveModeBackendState(
     state,
-    makeEnvelope(actionKind, payload),
+    makeEnvelope(
+      actionKind,
+      payload,
+      dropId ? state.inventoryLoot.lootDrops[dropId]?.position : undefined
+    ),
     NOW_MS
   );
 }
@@ -104,19 +116,23 @@ describe("HARTHMERE_WORLD_THROW_DROP", () => {
     );
   });
 
-  it("drop_item WITHOUT a position keeps the legacy debit-only behaviour", () => {
+  it("drop_item WITHOUT a position is rejected without debiting the stack", () => {
     const s = freshState();
     const grassBlockItemId = `b:${BikkieIds.grass}`;
     s.inventory.items[grassBlockItemId] = 5;
 
-    const { state } = applyOne(s, "request_inventory_item_action", {
+    const { state, summary } = applyOne(s, "request_inventory_item_action", {
       operation: "drop_item",
       itemId: grassBlockItemId,
       count: 1,
     });
 
-    assert.strictEqual(state.inventory.items[grassBlockItemId], 4);
+    assert.strictEqual(state.inventory.items[grassBlockItemId], 5);
     assert.strictEqual(availableDrops(state).length, 0);
+    assert.ok(summary.touchedModels.includes("inventory_rejection"));
+    assert.ok(
+      summary.warnings.includes("inventory_item_rejected:missing_drop_position")
+    );
   });
 
   it("a thrown drop can be claimed back through the normal loot-claim path", () => {

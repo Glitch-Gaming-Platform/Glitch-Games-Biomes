@@ -56,6 +56,38 @@ function baseSyncPriority(entityClass?: EntityClass) {
   return 2;
 }
 
+const BOOTSTRAP_PRIORITY_BASE = 1_000_000;
+const BOOTSTRAP_TERRAIN_CLASS_BONUS = 200_000;
+
+/**
+ * Initial subscriptions may contain several thousand entities but the first
+ * frame is capped to a bounded batch.  Raw bootstrap IDs used to all receive
+ * the same score, leaving Map/Set insertion order to decide whether nearby
+ * terrain or unrelated entities arrived first.  A player could therefore enter
+ * the game on a small platform surrounded by sky even though Redis contained
+ * every terrain shard.
+ *
+ * Keep bootstraps ahead of ordinary updates, prioritize terrain, then sort
+ * nearest-first within the class.  Vertical distance matters here so the
+ * ground/air layers around the player's current Y arrive before deep/sky
+ * layers from the same X/Z column.
+ */
+export function bootstrapSyncPriorityForTest(
+  entityClass: EntityClass | undefined,
+  distanceSq = 0
+) {
+  const classBonus =
+    entityClass === "terrain" ? BOOTSTRAP_TERRAIN_CLASS_BONUS : 0;
+  const finiteDistanceSq = Number.isFinite(distanceSq)
+    ? Math.max(0, distanceSq)
+    : Number.MAX_SAFE_INTEGER;
+  return (
+    BOOTSTRAP_PRIORITY_BASE +
+    classBonus -
+    finiteDistanceSq * CONFIG.syncDistanceBias
+  );
+}
+
 type LazySyncChange = LazyChange | BiomesId;
 
 class SyncChangeBuffer {
@@ -468,16 +500,19 @@ export class Observer {
     if (id === this.requiredId) {
       return 0;
     }
+    const knowledge = this.context.syncIndex.getKnowledge(id);
     if (typeof change === "number") {
-      // Bootstraps are more important.
-      return 2;
+      const distanceSq =
+        selfKnowledge?.position && knowledge?.position
+          ? lengthSq(sub(knowledge.position, selfKnowledge.position))
+          : 0;
+      return bootstrapSyncPriorityForTest(knowledge?.entityClass, distanceSq);
     }
     if (change.kind === "delete") {
       // Prioritize cleaning out things.
       return 1;
     }
 
-    const knowledge = this.context.syncIndex.getKnowledge(id);
     const lastSyncTime = this.lastSyncTimes.get(id) ?? 0;
 
     const timeSinceLastSync = now - (lastSyncTime ?? 0);

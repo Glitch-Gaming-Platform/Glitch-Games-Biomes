@@ -39,13 +39,21 @@ export const UI_IDS = {
   INVENTORY_SLOT_CHEST: "inventory.slot.chest",
   INVENTORY_SLOT_LEGS: "inventory.slot.legs",
   INVENTORY_SLOT_HEAD: "inventory.slot.head",
+  INVENTORY_SLOT_HAIR: "inventory.slot.hair",
+  INVENTORY_SLOT_HAT: "inventory.slot.hat",
+  INVENTORY_SLOT_FACE: "inventory.slot.face",
+  INVENTORY_SLOT_EARS: "inventory.slot.ears",
+  INVENTORY_SLOT_NECK: "inventory.slot.neck",
+  INVENTORY_SLOT_OUTERWEAR: "inventory.slot.outerwear",
   INVENTORY_SLOT_FEET: "inventory.slot.feet",
   INVENTORY_SLOT_HANDS: "inventory.slot.hands",
   INVENTORY_SLOT_MAIN_HAND: "inventory.slot.main_hand",
   INVENTORY_SLOT_OFF_HAND: "inventory.slot.off_hand",
   INVENTORY_BACKPACK_SLOT: (n: number) => `inventory.backpack.slot_${n}`,
   INVENTORY_ITEM: (id: string) =>
-    `inventory.item.${String(id).toLowerCase().replace(/[^a-z0-9_]+/g, "_")}`,
+    `inventory.item.${String(id)
+      .toLowerCase()
+      .replace(/[^a-z0-9_]+/g, "_")}`,
   INVENTORY_ACTION: (id: string) => `inventory.action.${id}`,
 
   // Specific recipes / actions

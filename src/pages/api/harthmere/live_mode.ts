@@ -29,6 +29,7 @@ import {
   parseHarthmereLiveModeBackendState,
   parseHarthmereLiveModeSharedWorldState,
   reduceHarthmereLiveModeBackendState,
+  stringifyHarthmereLiveModePlayerPersistenceState,
   type HarthmereLiveModeBackendState,
 } from "@/shared/harthmere/live_mode_backend";
 import { buildHarthmereEscortCompanionNpcProposedChanges } from "@/server/harthmere/escort_companion_npc_ecs";
@@ -51,7 +52,7 @@ import { HARTHMERE_JOBS_BOARD_LOCATIONS } from "@/shared/harthmere/mmo_jobs_boar
 import { EditEvent, PlaceGroupEvent } from "@/shared/ecs/gen/events";
 import { blockPos, voxelShard } from "@/shared/game/shard";
 import { shiftHarthmereAuthoredPositionToWorld } from "@/shared/harthmere/coordinate_transform";
-import type { BiomesId } from "@/shared/ids";
+import { safeParseBiomesId, type BiomesId } from "@/shared/ids";
 import type { Vec3 } from "@/shared/math/types";
 import { loadBlockWrapper, saveBlockWrapper } from "@/shared/wasm/biomes";
 import { z } from "zod";
@@ -66,12 +67,88 @@ import {
   acquireHarthmereActorStateLock,
   type HarthmereActorStateLock,
 } from "@/server/harthmere/live_mode_actor_state_authority";
+import { nativeBiomesEcsAuthorityEnabled } from "@/shared/harthmere/native_road_ahead_contract";
 
 const HARTHMERE_LIVE_MODE_SERVER_ROUTE =
   "HARTHMERE_LIVE_MODE_SERVER_ROUTE" as const;
 const HARTHMERE_WORLD_MATERIALIZER_USER_ID = 8810000000099191 as BiomesId;
 const HARTHMERE_WORLD_MATERIALIZER_USERNAME = "HarthmereWorldMaterializer";
 export const HARTHMERE_BUILDING_MATERIALIZATION_ECS_PUBLISH_CHUNK_SIZE = 1000;
+
+const HARTHMERE_SHARED_WORLD_TOUCH_MODELS = new Set([
+  "auction_listing",
+  "auction_seller_payout",
+  "business_marker",
+  "business_outpost_materialization",
+  "business_outpost_voxel_rebuild",
+  "custom_muck_plot",
+  "economy_production_business_linked",
+  "economy_production_business_removed",
+  "economy_production_business_replaced",
+  "economy_production_state",
+  "exotic_matter_deposits",
+  "guild_hall",
+  "gathering_nodes",
+  "home_decoration_voxel_materialization",
+  "jobs_board_quest_todo",
+  "inventory_loot_drops",
+  "loot_claims",
+  "law_bounty_cleared",
+  "law_crime_records",
+  "law_flags",
+  "law_guard_response",
+  "map_marker",
+  "muck_safe_zone",
+  "physical_access_controls",
+  "physical_storage_container",
+  "placed_structures",
+  "plot_boundary_markers",
+  "plot_terraform",
+  "quest_invites",
+  "robot_protection",
+  "terrain_materialization",
+  "vendor_stock",
+  "world_placement",
+]);
+
+/**
+ * Fast ownership check before comparing the large shared-world projection.
+ *
+ * A normal inventory/equipment/status mutation cannot change production
+ * economy, global buildings, jobs, law, guilds, robots, shared claims, quest
+ * invitations, or auctions. Skipping the two ~33 MB JSON serializations for
+ * those actor-only operations removes a large fixed delay from every button
+ * press. False positives are intentionally safe (they perform the old compare);
+ * this predicate must never return false for a shared-owned branch.
+ */
+export function harthmereMutationMayChangeSharedWorldForTest(input: {
+  sharedWorldStateKey: string;
+  sharedStateKeys?: readonly string[];
+  touchedModels?: readonly string[];
+}) {
+  const keys = input.sharedStateKeys ?? [];
+  if (keys.includes(input.sharedWorldStateKey)) {
+    return true;
+  }
+  if (
+    keys.some((key) =>
+      /(?:jobs_board|economy(?::|_)(?:business|town|contract)|zone_law|guild|building|plot|property|auction|quest_invite|loot_drop|gathering_node|exotic_matter|wild_(?:forage|hunt)_spawn)/.test(
+        key
+      )
+    )
+  ) {
+    return true;
+  }
+  return (input.touchedModels ?? []).some(
+    (model) =>
+      HARTHMERE_SHARED_WORLD_TOUCH_MODELS.has(model) ||
+      model.startsWith("building_") ||
+      model.startsWith("business_") ||
+      model.startsWith("guild_") ||
+      model.startsWith("jobs_board_") ||
+      model.startsWith("property_")
+  );
+}
 
 const HARTHMERE_LIVE_MODE_ACTION_KINDS = [
   "request_attack",
@@ -303,6 +380,24 @@ const HARTHMERE_LIVE_MODE_MUTATION_SNAPSHOT_KEYS = [
   "playerStatusState",
   "questState",
 ] as const;
+
+const HARTHMERE_NATIVE_ECS_OWNED_LIVE_MODE_ACTIONS =
+  new Set<HarthmereLiveModeActionKind>([
+    "request_attack",
+    "request_ability_cast",
+    "request_death_transition",
+    "request_environment_damage",
+    "request_revive",
+    "request_respawn",
+    "request_npc_ai_tick",
+    "request_boss_tick",
+  ]);
+
+export function nativeEcsOwnsHarthmereLiveModeActionForTest(
+  actionKind: HarthmereLiveModeActionKind
+) {
+  return HARTHMERE_NATIVE_ECS_OWNED_LIVE_MODE_ACTIONS.has(actionKind);
+}
 
 type HarthmereLiveModeMutationSnapshotKey =
   (typeof HARTHMERE_LIVE_MODE_MUTATION_SNAPSHOT_KEYS)[number];
@@ -826,6 +921,58 @@ async function redisUnwatchIfSupported(redisPrimary: any) {
   if (typeof redisPrimary.unwatch === "function") {
     await redisPrimary.unwatch();
   }
+}
+
+/**
+ * A building is not materialized merely because its Redis transaction committed.
+ * Acknowledge successful ECS/world work in a second optimistic transaction so a
+ * failed publish remains visibly pending and can be retried by `read_state`.
+ */
+export async function markBuildingMaterializationPlansAppliedForTest(input: {
+  redisPrimary: any;
+  sharedWorldStateKey: string;
+  plans: readonly BuildingSystemAnyMaterializationPlan[];
+  nowMs?: number;
+}) {
+  const structureIds = [
+    ...new Set(
+      input.plans
+        .filter((plan) => plan.materializesSolidVoxelBuilding)
+        .map((plan) => plan.projectId ?? plan.requestId)
+    ),
+  ];
+  if (structureIds.length === 0) return 0;
+
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    await input.redisPrimary.watch(input.sharedWorldStateKey);
+    const raw = await input.redisPrimary.get(input.sharedWorldStateKey);
+    const shared = parseHarthmereLiveModeSharedWorldState(
+      raw,
+      input.nowMs ?? Date.now()
+    );
+    if (!shared) {
+      await redisUnwatchIfSupported(input.redisPrimary);
+      return 0;
+    }
+    let changed = 0;
+    for (const structureId of structureIds) {
+      const structure = shared.building.placedStructures[structureId];
+      if (structure && structure.materializedInEcs !== true) {
+        structure.materializedInEcs = true;
+        changed += 1;
+      }
+    }
+    if (changed === 0) {
+      await redisUnwatchIfSupported(input.redisPrimary);
+      return 0;
+    }
+    shared.updatedAtMs = input.nowMs ?? Date.now();
+    const tx = input.redisPrimary.multi();
+    tx.set(input.sharedWorldStateKey, JSON.stringify(shared));
+    if ((await tx.exec()) !== null) return changed;
+  }
+  await redisUnwatchIfSupported(input.redisPrimary);
+  throw new Error("Building materialization acknowledgement conflicted");
 }
 
 function buildAuctionSellerSettlement(input: {
@@ -1534,7 +1681,14 @@ export async function materializeBuildingSystemMaterializationPlansToTerrain(inp
 
   const editsByShard = new Map<
     string,
-    Array<{ position: Vec3; value: number; shiftedOutpost: boolean }>
+    Array<{
+      position: Vec3;
+      value: number;
+      expectedValue?: number;
+      label: BuildingSystemAnyMaterializationPlan["edits"][number]["label"];
+      placerId: BiomesId;
+      shiftedOutpost: boolean;
+    }>
   >();
   let directTerrainEditCount = 0;
   let shiftedOutpostEditEventCount = 0;
@@ -1548,7 +1702,14 @@ export async function materializeBuildingSystemMaterializationPlansToTerrain(inp
       );
       const shardId = voxelShard(...position);
       const shardEdits = editsByShard.get(shardId) ?? [];
-      shardEdits.push({ position, value: edit.value, shiftedOutpost });
+      shardEdits.push({
+        position,
+        value: edit.value,
+        expectedValue: edit.expectedValue,
+        label: edit.label,
+        placerId: safeParseBiomesId(plan.actorId) ?? input.userId,
+        shiftedOutpost,
+      });
       editsByShard.set(shardId, shardEdits);
       directTerrainEditCount += 1;
       if (shiftedOutpost) {
@@ -1593,29 +1754,84 @@ export async function materializeBuildingSystemMaterializationPlansToTerrain(inp
     }
     const seed = new voxeloo.VolumeBlock_U32();
     const diff = new voxeloo.SparseBlock_U32();
+    const placer = new voxeloo.SparseBlock_U32();
+    const occupancy = new voxeloo.SparseBlock_U32();
     try {
       loadBlockWrapper(voxeloo, seed, terrainEntity.shardSeed());
       loadBlockWrapper(voxeloo, diff, terrainEntity.shardDiff());
+      loadBlockWrapper(voxeloo, placer, terrainEntity.shardPlacer());
+      loadBlockWrapper(voxeloo, occupancy, terrainEntity.shardOccupancy());
       for (const edit of shardEdits) {
         const localPosition = blockPos(...edit.position);
+        const currentValue =
+          diff.get(...localPosition) ?? seed.get(...localPosition) ?? 0;
+        const currentPlacer = placer.get(...localPosition) ?? 0;
+        const occupancyId = occupancy.get(...localPosition) ?? 0;
+        if (occupancyId) {
+          throw new Error(
+            `Building materialization conflicts with occupied voxel at ${edit.position.join(
+              ","
+            )}`
+          );
+        }
         if (edit.value === 0) {
+          if (currentValue === 0) {
+            placer.del(...localPosition);
+            continue;
+          }
+          if (
+            edit.expectedValue === undefined ||
+            currentValue !== edit.expectedValue
+          ) {
+            throw new Error(
+              `Building cleanup expected ${
+                edit.expectedValue ?? "an explicit value"
+              } but found ${currentValue} at ${edit.position.join(",")}`
+            );
+          }
           if (seed.get(...localPosition) === 0) {
             diff.del(...localPosition);
           } else {
             diff.set(...localPosition, 0);
           }
+          placer.del(...localPosition);
         } else {
+          if (currentValue === edit.value) {
+            // Idempotent retry. Preserve another actor's placer metadata rather
+            // than silently taking ownership of an already-materialized voxel.
+            if (!currentPlacer) {
+              placer.set(...localPosition, edit.placerId);
+            }
+            continue;
+          }
+          const mayReplaceNaturalGround =
+            !currentPlacer &&
+            (edit.label === "foundation" || edit.label === "safe_ground");
+          if (currentValue !== 0 && !mayReplaceNaturalGround) {
+            throw new Error(
+              `Building materialization would overwrite terrain ${currentValue} at ${edit.position.join(
+                ","
+              )}`
+            );
+          }
           diff.set(...localPosition, edit.value);
+          placer.set(...localPosition, edit.placerId);
         }
       }
       terrainEntity.mutableShardDiff().buffer = saveBlockWrapper(
         voxeloo,
         diff
       ).buffer;
+      terrainEntity.mutableShardPlacer().buffer = saveBlockWrapper(
+        voxeloo,
+        placer
+      ).buffer;
       directTerrainShardCount += 1;
     } finally {
       seed.delete();
       diff.delete();
+      placer.delete();
+      occupancy.delete();
     }
   }
   await editor.commit();
@@ -2207,15 +2423,25 @@ export async function persistHarthmereLiveModeResponse(
       // `now`, so timestamps cancel and the comparison is purely structural.
       // `reduceHarthmereLiveModeBackendState` deep-clones its input, so
       // `currentState` still holds the pre-reduce (merged) view here.
-      const sharedWorldStateBefore = JSON.stringify(
-        createHarthmereLiveModeSharedWorldState(currentState, now)
+      const mayChangeSharedWorld = harthmereMutationMayChangeSharedWorldForTest(
+        {
+          sharedWorldStateKey,
+          sharedStateKeys: reduced.summary.sharedStateKeys,
+          touchedModels: reduced.summary.touchedModels,
+        }
       );
-      let sharedWorldStateAfter = JSON.stringify(
-        createHarthmereLiveModeSharedWorldState(reduced.state, now)
-      );
-      let sharedWorldWriteNeeded =
-        sharedWorldStateAfter !== sharedWorldStateBefore ||
-        (reduced.summary.sharedStateKeys?.length ?? 0) > 0;
+      let sharedWorldStateAfter = "";
+      let sharedWorldWriteNeeded = false;
+      if (mayChangeSharedWorld) {
+        const sharedWorldStateBefore = JSON.stringify(
+          createHarthmereLiveModeSharedWorldState(currentState, now)
+        );
+        sharedWorldStateAfter = JSON.stringify(
+          createHarthmereLiveModeSharedWorldState(reduced.state, now)
+        );
+        sharedWorldWriteNeeded =
+          sharedWorldStateAfter !== sharedWorldStateBefore;
+      }
 
       if ((sellerStateKey || sharedWorldWriteNeeded) && supportsWatch) {
         await redisUnwatchIfSupported(txPrimary);
@@ -2340,7 +2566,7 @@ export async function persistHarthmereLiveModeResponse(
       });
       const persistActorAndSharedState =
         !isHarthmereLiveModeReadOnlySnapshotRequest(envelope, reduced.summary);
-      if (persistActorAndSharedState) {
+      if (persistActorAndSharedState && !nativeBiomesEcsAuthorityEnabled()) {
         stageStartedAt = Date.now();
         const latestRawStateForStatusChannels = await txPrimary.get(
           playerStateKey
@@ -2436,7 +2662,10 @@ export async function persistHarthmereLiveModeResponse(
       stageStartedAt = Date.now();
       const tx = txPrimary.multi();
       if (persistActorAndSharedState) {
-        tx.set(playerStateKey, JSON.stringify(reduced.state));
+        tx.set(
+          playerStateKey,
+          stringifyHarthmereLiveModePlayerPersistenceState(reduced.state)
+        );
         // HARTHMERE_LIVE_MODE_SCOPED_WATCH: only rewrite the global shared
         // world blob when this mutation actually changed it (detected above,
         // in which case the shared key was escalated into the WATCH set).
@@ -2453,7 +2682,10 @@ export async function persistHarthmereLiveModeResponse(
         );
       }
       if (sellerStateKey && sellerState) {
-        tx.set(sellerStateKey, JSON.stringify(sellerState));
+        tx.set(
+          sellerStateKey,
+          stringifyHarthmereLiveModePlayerPersistenceState(sellerState)
+        );
       }
       tx.xadd(
         harthmereLiveModeLedgerStreamKey(response.actorId),
@@ -2522,9 +2754,21 @@ export async function persistHarthmereLiveModeResponse(
                   userId: materializerUserId,
                   plans: reduced.summary.buildingMaterializationPlans,
                 });
+          const acknowledgedStructures =
+            await markBuildingMaterializationPlansAppliedForTest({
+              redisPrimary: txPrimary,
+              sharedWorldStateKey,
+              plans: reduced.summary.buildingMaterializationPlans,
+              nowMs: Date.now(),
+            });
           persistedResponse.backendMutation?.warnings.push(
             `building_materialized:edit_events:${materializationCounts.editEventCount}:place_group_events:${materializationCounts.placeGroupEventCount}:publish_batches:${materializationCounts.publishBatchCount}`
           );
+          if (acknowledgedStructures > 0) {
+            persistedResponse.backendMutation?.warnings.push(
+              `building_materialization_acknowledged:${acknowledgedStructures}`
+            );
+          }
           if (materializationCounts.directTerrainEditCount > 0) {
             persistedResponse.backendMutation?.warnings.push(
               `building_materialized_direct_terrain:terrain_edits:${materializationCounts.directTerrainEditCount}:terrain_shards:${materializationCounts.directTerrainShardCount}`
@@ -2680,6 +2924,28 @@ export default biomesApiHandler(
         uiEvents: [],
       };
     }
+    if (
+      actorIdentity.userId !== undefined &&
+      nativeBiomesEcsAuthorityEnabled() &&
+      nativeEcsOwnsHarthmereLiveModeActionForTest(body.actionKind)
+    ) {
+      return {
+        ok: false,
+        version: HARTHMERE_LIVE_MODE_SERVER_ROUTE,
+        actorId: actorIdentity.actorId,
+        duplicate: false,
+        replayed: false,
+        persisted: false,
+        validation: {
+          ok: false,
+          errors: [`native_ecs_authority_required:${body.actionKind}`],
+          warnings: [],
+          rejectedClientClaims: [],
+        },
+        events: [],
+        uiEvents: [],
+      };
+    }
     // Heal the install/user split on writes too: converge an install-only write
     // onto the linked user key and record the install->user link on the first
     // authed write, so actions never strand progress under a second key.
@@ -2695,8 +2961,7 @@ export default biomesApiHandler(
             worldApi,
             actorIdentity.userId
           )
-        : combatActorPositionFromInstallLiveModeBody(body) ??
-          jobsBoardPositionFromLiveModeBody(body);
+        : combatActorPositionFromInstallLiveModeBody(body);
     const serverTargetPosition = await readServerTargetPositionForQuestInvite(
       worldApi,
       body

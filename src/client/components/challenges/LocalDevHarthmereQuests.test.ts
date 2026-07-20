@@ -1,7 +1,6 @@
 /// <reference types="mocha" />
 
 import assert from "assert";
-import { HARTHMERE_BIOMES_ECS_CHALLENGES_UPDATED_EVENT } from "@/shared/harthmere/harthmere_biomes_ecs_bridge";
 
 const memoryStore = new Map<string, string>();
 const dispatchedEvents: any[] = [];
@@ -68,7 +67,7 @@ describe("Harthmere quest Biomes ECS projection", () => {
     (globalThis as any).localStorage = localStorageShim;
   });
 
-  it("publishes quest writes through the shared Challenges projection", () => {
+  it("keeps string-keyed local quests out of native Challenges ECS", () => {
     const state: HarthmereQuestState = {
       active: { "welcome-to-harthmere": 0 },
       completed: ["read-the-jobs-board"],
@@ -77,16 +76,11 @@ describe("Harthmere quest Biomes ECS projection", () => {
     writeHarthmereQuestState(state);
 
     assert.deepEqual(readHarthmereQuestState(), state);
-    const event = dispatchedEvents.find(
-      (entry) => entry.type === HARTHMERE_BIOMES_ECS_CHALLENGES_UPDATED_EVENT
-    );
-    assert.ok(event);
-    assert.ok(event.detail.component.in_progress instanceof Set);
-    assert.ok(event.detail.component.complete instanceof Set);
-    assert.ok(
-      event.detail.warnings.some(
-        (warning: { id?: string }) => warning.id === "welcome-to-harthmere"
-      )
+    assert.equal(
+      dispatchedEvents.some((entry) =>
+        String(entry.type).includes("harthmere-biomes-ecs-challenges")
+      ),
+      false
     );
   });
 });

@@ -11,6 +11,8 @@ import {
   xpRequiredForNextHarthmereLevel,
 } from "@/client/components/challenges/LocalDevHarthmereLevelingSystem";
 import { BIOMES_GAME_NAME } from "@/shared/biomes/display_names";
+import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
+import { nativeBiomesEcsAuthorityEnabled } from "@/shared/harthmere/native_road_ahead_contract";
 import React from "react";
 import {
   biomesUIVitalsDisplayFromLiveStatusForTest,
@@ -224,6 +226,8 @@ function useLiveModeGoldBalance(): number {
 }
 
 export const BiomesUIVitalsPanel: React.FunctionComponent<{}> = () => {
+  const { reactResources, userId } = useClientContext();
+  const nativeHealth = reactResources.use("/ecs/c/health", userId);
   const combat = useHarthmereCombatState();
   const multiplayer = useHarthmereMultiplayerCombatState();
   const stamina = useHarthmereFoodStaminaState();
@@ -247,9 +251,27 @@ export const BiomesUIVitalsPanel: React.FunctionComponent<{}> = () => {
   // BiomesUI is the only active vitals surface. The data can arrive from the
   // server or the local-dev ECS bridge, but it must pass through the BiomesUI
   // player-status adapter so the panel never has competing health authorities.
-  const healthHp = Math.max(0, Math.round(display.hp));
-  const healthMaxHp = Math.max(1, Math.round(display.maxHp));
-  const healthCombatState = display.combatState;
+  // ECS component updates arrive over the existing world sync websocket and
+  // invalidate this resource immediately. Reading it directly removes the
+  // multi-second REST/Redis polling delay and restores the May 16 snapshot's
+  // single health/death authority.
+  const useNativeHealth =
+    nativeBiomesEcsAuthorityEnabled() && nativeHealth !== undefined;
+  const healthHp = Math.max(
+    0,
+    Math.round(useNativeHealth ? nativeHealth.hp : display.hp)
+  );
+  const healthMaxHp = Math.max(
+    1,
+    Math.round(useNativeHealth ? nativeHealth.maxHp : display.maxHp)
+  );
+  const healthCombatState = useNativeHealth
+    ? nativeHealth.hp <= 0
+      ? "dead"
+      : nativeHealth.lastDamageTime
+      ? "in_combat"
+      : "idle"
+    : display.combatState;
   // Mana stays local because casting is client-immediate. Stamina is owned by
   // the live status cache in production, so the HUD shows the same server value
   // that death/respawn and persistence use, with local stamina as a fallback.

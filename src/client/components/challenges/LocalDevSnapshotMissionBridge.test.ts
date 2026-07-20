@@ -1,5 +1,7 @@
 import assert from "assert";
 
+process.env.NEXT_PUBLIC_BIOMES_ENABLE_SYNTHETIC_ROAD_AHEAD = "1";
+
 const storage = new Map<string, string>();
 const localStorageMock = {
   getItem: (key: string) => storage.get(key) ?? null,
@@ -237,7 +239,7 @@ describe("LocalDevSnapshotMissionBridge Road Ahead UI projection", () => {
     );
   });
 
-  it("accepts dropped block proof for the Road Ahead block placement step only when active", () => {
+  it("advances placement only from a real place_voxel event, never a dropped block", () => {
     writeSnapshotMissionState({
       accepted: true,
       active: { snapshot_road_ahead_full_chain: 3 },
@@ -258,9 +260,18 @@ describe("LocalDevSnapshotMissionBridge Road Ahead UI projection", () => {
     const result = handleSnapshotRoadAheadEventForTest({
       kind: "block_inventory_throw",
     });
-    assert.equal(result.state.currentStepIndex, 4);
+    assert.equal(result.state.currentStepIndex, 3);
+    assert.equal(
+      result.state.completedStepIds.includes("road_ahead_place_blocks"),
+      false
+    );
+
+    const placed = handleSnapshotRoadAheadEventForTest({
+      kind: "place_voxel",
+    });
+    assert.equal(placed.state.currentStepIndex, 4);
     assert.ok(
-      result.state.completedStepIds.includes("road_ahead_place_blocks")
+      placed.state.completedStepIds.includes("road_ahead_place_blocks")
     );
   });
 

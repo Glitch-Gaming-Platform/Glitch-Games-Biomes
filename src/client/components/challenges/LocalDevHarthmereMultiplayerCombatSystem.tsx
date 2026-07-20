@@ -80,9 +80,11 @@ import {
 } from "@/client/components/challenges/harthmereCrosshairCombatTarget";
 import { harthmereUserScopedStorageKey } from "@/client/components/challenges/LocalDevHarthmereUserScope";
 import { HARTHMERE_VOXEL_INTERACTION_ATTACK_REACH_UNITS } from "@/shared/harthmere/combat_reach";
+import { nativeBiomesEcsAuthorityEnabled } from "@/shared/harthmere/native_road_ahead_contract";
 import React, { useEffect, useMemo, useState } from "react";
 
-const HARTHMERE_NO_SPARK_BASIC_ACTOR_MATCH_VERSION = "harthmere-no-spark-basic-actor-match";
+const HARTHMERE_NO_SPARK_BASIC_ACTOR_MATCH_VERSION =
+  "harthmere-no-spark-basic-actor-match";
 
 const HARTHMERE_MULTIPLAYER_COMBAT_STATE_KEY =
   "biomes.localDev.harthmere.multiplayerCombatState";
@@ -90,15 +92,24 @@ const HARTHMERE_MULTIPLAYER_COMBAT_EVENT =
   "biomes:harthmere-multiplayer-combat-changed";
 export const HARTHMERE_ATTACK_ANIMATION_EVENT =
   "biomes:harthmere-attack-animation";
-const HARTHMERE_MULTIPLAYER_RULESET_REVISION =
-  "harthmere-gltf-action-keymap";
+const HARTHMERE_MULTIPLAYER_RULESET_REVISION = "harthmere-gltf-action-keymap";
 
 // harthmere-full-animation-runtime
 const HARTHMERE_FULL_ANIMATION_REQUEST_EVENT =
   "biomes:harthmere-animation-request";
-function emitHarthmereFullAnimationRequest(detail: { family: string; action: string; phase?: string; itemId?: string; windupMs?: number; impactMs?: number; recoveryMs?: number; }) {
+function emitHarthmereFullAnimationRequest(detail: {
+  family: string;
+  action: string;
+  phase?: string;
+  itemId?: string;
+  windupMs?: number;
+  impactMs?: number;
+  recoveryMs?: number;
+}) {
   if (!isBrowser()) return;
-  window.dispatchEvent(new CustomEvent(HARTHMERE_FULL_ANIMATION_REQUEST_EVENT, { detail }));
+  window.dispatchEvent(
+    new CustomEvent(HARTHMERE_FULL_ANIMATION_REQUEST_EVENT, { detail })
+  );
 }
 
 // harthmere-hard-router-bhl-safety
@@ -116,7 +127,18 @@ export const HARTHMERE_COMBAT_ACTION_CLIPS = {
   heavy: ["HeavyAttack", "Attack2", "SideSwing"],
   spark: ["BasicMagic", "HeavyMagic", "Attack"],
   npcHuman: ["Attack", "SideSwing", "Attack2", "Thrusting", "HeavyAttack"],
-  npcAnimal: ["Bite", "Claw", "Pounce", "Charge", "Peck", "Scratch", "Kick", "TailWhip", "Attack", "HeavyAttack"],
+  npcAnimal: [
+    "Bite",
+    "Claw",
+    "Pounce",
+    "Charge",
+    "Peck",
+    "Scratch",
+    "Kick",
+    "TailWhip",
+    "Attack",
+    "HeavyAttack",
+  ],
   hit: ["HitReact", "Block", "ShieldBlock", "Stunned"],
   death: ["Death", "Fall", "Falling"],
 } as const;
@@ -213,7 +235,9 @@ interface HarthmereMultiplayerCombatState {
   party: MultiplayerPartyMember[];
   raidSize: number;
   contribution: MultiplayerContribution;
-  cooldowns: Partial<Record<HarthmerePlayerAttackType | "draw" | "sheathe", number>>;
+  cooldowns: Partial<
+    Record<HarthmerePlayerAttackType | "draw" | "sheathe", number>
+  >;
   recent: MultiplayerCombatLogEntry[];
 }
 
@@ -223,17 +247,19 @@ function isBrowser() {
   );
 }
 
-
 function /* current audit: performHarthmereCombatAttack(targetOffset, attack) */
 debugHarthmereKeyCombat(stage: string, payload: Record<string, unknown>) {
   if (
     !isBrowser() ||
-    harthmereLocalStorage.getItem("biomes.localDev.harthmere.combatDebug") !== "1"
+    harthmereLocalStorage.getItem("biomes.localDev.harthmere.combatDebug") !==
+      "1"
   ) {
     return;
   }
   const entry = { at: Date.now(), stage, ...payload };
-  const win = window as typeof window & { __harthmereKeyCombatDebugLog?: unknown[] };
+  const win = window as typeof window & {
+    __harthmereKeyCombatDebugLog?: unknown[];
+  };
   win.__harthmereKeyCombatDebugLog = [
     entry,
     ...(win.__harthmereKeyCombatDebugLog ?? []),
@@ -245,7 +271,6 @@ function now() {
   return Date.now();
 }
 
-
 // harthmere-sword-animation-polish
 // Physical sword damage is resolved at the impact frame, not immediately when
 // the key goes down. These values also feed the renderer so visual and damage
@@ -256,7 +281,7 @@ const HARTHMERE_SWORD_ATTACK_TIMINGS = {
 } as const;
 
 function harthmereSwordAttackTiming(
-  attack: HarthmerePlayerAttackType | undefined,
+  attack: HarthmerePlayerAttackType | undefined
 ) {
   return attack === "heavy"
     ? HARTHMERE_SWORD_ATTACK_TIMINGS.heavy
@@ -265,7 +290,7 @@ function harthmereSwordAttackTiming(
 
 function recordHarthmereSwordImpactTimingDebug(
   attack: HarthmerePlayerAttackType,
-  payload: Record<string, unknown>,
+  payload: Record<string, unknown>
 ) {
   if (!isBrowser()) {
     return;
@@ -283,8 +308,6 @@ function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
 }
 
-
-
 // harthmere-all-weapon-animation
 // Keep visual equipment events tied to the equipped inventory item. The renderer
 // maps these game item ids to generated equipment animation manifest ids.
@@ -300,7 +323,7 @@ function emitHarthmereWeaponVisualState(
   action: "draw" | "sheathe" | "attack" | "sync",
   drawn: boolean,
   attack?: HarthmerePlayerAttackType,
-  itemId = harthmereEquippedWeaponVisualItemId(),
+  itemId = harthmereEquippedWeaponVisualItemId()
 ) {
   if (!isBrowser()) {
     return;
@@ -330,7 +353,7 @@ function emitHarthmereWeaponVisualState(
         at: now(),
         ...timing,
       },
-    }),
+    })
   );
 }
 
@@ -359,7 +382,11 @@ function __hmPickSwingVariant(): string {
   // Avoid repeating the same variant twice in a row.
   let next = Math.floor(Math.random() * __HM_SWING_VARIANTS.length);
   if (next === __hmLastSwingIndex) {
-    next = (next + 1 + Math.floor(Math.random() * (__HM_SWING_VARIANTS.length - 1))) % __HM_SWING_VARIANTS.length;
+    next =
+      (next +
+        1 +
+        Math.floor(Math.random() * (__HM_SWING_VARIANTS.length - 1))) %
+      __HM_SWING_VARIANTS.length;
   }
   __hmLastSwingIndex = next;
   return __HM_SWING_VARIANTS[next];
@@ -367,7 +394,11 @@ function __hmPickSwingVariant(): string {
 
 function emitAttackAnimation(
   attack: HarthmerePlayerAttackType,
-  options: { itemId?: string; emptyHanded?: boolean; weaponVisual?: boolean } = {},
+  options: {
+    itemId?: string;
+    emptyHanded?: boolean;
+    weaponVisual?: boolean;
+  } = {}
 ) {
   if (!isBrowser()) {
     return;
@@ -380,7 +411,7 @@ function emitAttackAnimation(
         swingVariant: __hmPickSwingVariant(),
         ...options,
       },
-    }),
+    })
   );
 }
 
@@ -456,26 +487,23 @@ function defaultState(): HarthmereMultiplayerCombatState {
     recent: [
       logEntry(
         "Controls Ready",
-        "Press X to draw/sheathe, Tab to cycle target, B for Basic Attack → GLTF Attack, H for Heavy Attack → GLTF HeavyAttack, L for Spark → GLTF BasicMagic, and P for PvP. These keys are reserved and do not overlap with map/quest/menu keys.",
+        "Press X to draw/sheathe, Tab to cycle target, B for Basic Attack → GLTF Attack, H for Heavy Attack → GLTF HeavyAttack, L for Spark → GLTF BasicMagic, and P for PvP. These keys are reserved and do not overlap with map/quest/menu keys."
       ),
     ],
   };
 }
 
 function normalizeState(
-  raw: Partial<HarthmereMultiplayerCombatState> | undefined,
+  raw: Partial<HarthmereMultiplayerCombatState> | undefined
 ): HarthmereMultiplayerCombatState {
   const fallback = defaultState();
-  if (
-    raw &&
-    raw.rulesetRevision !== HARTHMERE_MULTIPLAYER_RULESET_REVISION
-  ) {
+  if (raw && raw.rulesetRevision !== HARTHMERE_MULTIPLAYER_RULESET_REVISION) {
     return fallback;
   }
   const maxMana = getHarthmereLevelSummary().derived.maxMana;
   const merged = { ...fallback, ...(raw ?? {}) };
   const currentTarget = TARGETS.find(
-    (target) => target.offset === merged.currentTargetOffset,
+    (target) => target.offset === merged.currentTargetOffset
   );
   return {
     ...merged,
@@ -501,13 +529,13 @@ export function readHarthmereMultiplayerCombatState(): HarthmereMultiplayerComba
   }
   try {
     const raw = harthmereLocalStorage.getItem(
-      harthmereUserScopedStorageKey(HARTHMERE_MULTIPLAYER_COMBAT_STATE_KEY),
+      harthmereUserScopedStorageKey(HARTHMERE_MULTIPLAYER_COMBAT_STATE_KEY)
     );
     if (!raw) {
       return normalizeState(undefined);
     }
     return normalizeState(
-      JSON.parse(raw) as Partial<HarthmereMultiplayerCombatState>,
+      JSON.parse(raw) as Partial<HarthmereMultiplayerCombatState>
     );
   } catch {
     return normalizeState(undefined);
@@ -515,14 +543,14 @@ export function readHarthmereMultiplayerCombatState(): HarthmereMultiplayerComba
 }
 
 function writeHarthmereMultiplayerCombatState(
-  state: HarthmereMultiplayerCombatState,
+  state: HarthmereMultiplayerCombatState
 ) {
   if (!isBrowser()) {
     return;
   }
   harthmereLocalStorage.setItem(
     harthmereUserScopedStorageKey(HARTHMERE_MULTIPLAYER_COMBAT_STATE_KEY),
-    JSON.stringify(normalizeState(state)),
+    JSON.stringify(normalizeState(state))
   );
   event();
 }
@@ -530,7 +558,7 @@ function writeHarthmereMultiplayerCombatState(
 function appendLog(
   state: HarthmereMultiplayerCombatState,
   label: string,
-  detail: string,
+  detail: string
 ): HarthmereMultiplayerCombatState {
   return {
     ...state,
@@ -540,7 +568,7 @@ function appendLog(
 
 function cooldownReady(
   state: HarthmereMultiplayerCombatState,
-  key: HarthmerePlayerAttackType | "draw" | "sheathe",
+  key: HarthmerePlayerAttackType | "draw" | "sheathe"
 ) {
   return (state.cooldowns[key] ?? 0) <= now();
 }
@@ -548,7 +576,7 @@ function cooldownReady(
 function setCooldown(
   state: HarthmereMultiplayerCombatState,
   key: HarthmerePlayerAttackType | "draw" | "sheathe",
-  seconds: number,
+  seconds: number
 ) {
   return {
     ...state,
@@ -559,7 +587,7 @@ function setCooldown(
 function hasKnownSpell(spellId: string) {
   const inventory = readHarthmereInventoryState();
   return inventory.spellbook.knownSpells.some(
-    (spell) => spell.spellId === spellId,
+    (spell) => spell.spellId === spellId
   );
 }
 
@@ -599,7 +627,11 @@ export function toggleHarthmereWeaponDrawn() {
   let state = readHarthmereMultiplayerCombatState();
   if (!cooldownReady(state, state.weaponDrawn ? "sheathe" : "draw")) {
     writeHarthmereMultiplayerCombatState(
-      appendLog(state, "Too Fast", "Wait a moment before changing weapon stance again."),
+      appendLog(
+        state,
+        "Too Fast",
+        "Wait a moment before changing weapon stance again."
+      )
     );
     return;
   }
@@ -609,7 +641,7 @@ export function toggleHarthmereWeaponDrawn() {
       ...appendLog(
         state,
         "Weapon Sheathed",
-        "You put your weapon away. Services and normal town dialogue feel safer now.",
+        "You put your weapon away. Services and normal town dialogue feel safer now."
       ),
       weaponDrawn: false,
     });
@@ -619,7 +651,7 @@ export function toggleHarthmereWeaponDrawn() {
       ...appendLog(
         state,
         "Weapon Drawn",
-        "You draw your weapon. Attacks are now available, but hostile actions can start aggression timers.",
+        "You draw your weapon. Attacks are now available, but hostile actions can start aggression timers."
       ),
       weaponDrawn: true,
     });
@@ -636,7 +668,7 @@ export function setHarthmerePvpFlag(flag: PvpFlag) {
     ...appendLog(
       state,
       "PvP Flag Changed",
-      `Your PvP flag is now ${flag.replaceAll("_", " ")}.${safeZoneDetail}`,
+      `Your PvP flag is now ${flag.replaceAll("_", " ")}.${safeZoneDetail}`
     ),
     pvpFlag: flag,
   });
@@ -645,14 +677,14 @@ export function setHarthmerePvpFlag(flag: PvpFlag) {
 export function selectHarthmereCombatTarget(
   offset: number,
   label: string,
-  reason = "Target Selected",
+  reason = "Target Selected"
 ) {
   const state = readHarthmereMultiplayerCombatState();
   writeHarthmereMultiplayerCombatState({
     ...appendLog(
       state,
       reason,
-      `Current combat target: ${label}. B runs Basic Attack/Attack, H runs Heavy Attack/HeavyAttack, and L runs Spark/BasicMagic.`,
+      `Current combat target: ${label}. B runs Basic Attack/Attack, H runs Heavy Attack/HeavyAttack, and L runs Spark/BasicMagic.`
     ),
     currentTargetOffset: offset,
     currentTargetLabel: label,
@@ -662,9 +694,10 @@ export function selectHarthmereCombatTarget(
 export function cycleHarthmereCombatTarget() {
   const state = readHarthmereMultiplayerCombatState();
   const currentIndex = TARGETS.findIndex(
-    (target) => target.offset === state.currentTargetOffset,
+    (target) => target.offset === state.currentTargetOffset
   );
-  const nextTarget = TARGETS[(currentIndex + 1 + TARGETS.length) % TARGETS.length];
+  const nextTarget =
+    TARGETS[(currentIndex + 1 + TARGETS.length) % TARGETS.length];
   selectHarthmereCombatTarget(nextTarget.offset, nextTarget.label);
 }
 
@@ -672,12 +705,12 @@ function afterHostileAction(
   state: HarthmereMultiplayerCombatState,
   label: string,
   detail: string,
-  contribution: Partial<MultiplayerContribution>,
+  contribution: Partial<MultiplayerContribution>
 ): HarthmereMultiplayerCombatState {
   const nextContribution = { ...state.contribution };
   for (const [key, value] of Object.entries(contribution) as [
     keyof MultiplayerContribution,
-    number,
+    number
   ][]) {
     nextContribution[key] += value;
   }
@@ -883,7 +916,9 @@ function submitHarthmereLiveModeNpcAiTicks(
   explicitTargetIds?: ReadonlyArray<string>,
   reason = "interval"
 ) {
-  if (!isBrowser()) {
+  if (!isBrowser() || nativeBiomesEcsAuthorityEnabled()) {
+    // Native Anima owns NPC think/movement ticks. A browser must never request
+    // a second AI decision for the same ECS entity.
     return;
   }
   const nowMs = Date.now();
@@ -1017,7 +1052,9 @@ function submitHarthmereLiveModeMousePrimaryAttack(
   runtime: HarthmereForwardArcRuntimeSnapshot | undefined,
   source: "native_contact" | "forward_arc_fallback" | "crosshair_visible_actor"
 ) {
-  if (!isBrowser() || hits.length === 0) {
+  if (!isBrowser() || nativeBiomesEcsAuthorityEnabled() || hits.length === 0) {
+    // Native contact handling already publishes UpdateNpcHealthEvent. Retain
+    // this path only for the explicitly enabled legacy combat simulator.
     return;
   }
   const normalizedHits = hits
@@ -1101,7 +1138,9 @@ function submitHarthmereLiveModeMousePrimaryAttack(
         if (body?.combatState) {
           publishHarthmereLiveEntityCombatMotionToRenderer(body.combatState);
           rememberHarthmereLiveModeNpcAiTarget(targetId);
-          submitHarthmereLiveModeNpcAiTicks([targetId], "player_attack");
+          if (!nativeBiomesEcsAuthorityEnabled()) {
+            submitHarthmereLiveModeNpcAiTicks([targetId], "player_attack");
+          }
         }
         debugHarthmereMouseLiveModeAttack({
           type: response.ok ? "submitted" : "rejected",
@@ -1140,18 +1179,18 @@ export function performHarthmereMousePrimaryAttack(
   const blockedReason = getHarthmereMultiplayerAttackDisabledReason(
     attack,
     state,
-    combat.player,
+    combat.player
   );
   if (blockedReason) {
     writeHarthmereMultiplayerCombatState(
-      appendLog(state, "Action Blocked", blockedReason),
+      appendLog(state, "Action Blocked", blockedReason)
     );
     return { hitOffsets: [], candidateOffsets: [] };
   }
 
   if (!cooldownReady(state, attack)) {
     writeHarthmereMultiplayerCombatState(
-      appendLog(state, "On Cooldown", `${attack} is not ready yet.`),
+      appendLog(state, "On Cooldown", `${attack} is not ready yet.`)
     );
     return { hitOffsets: [], candidateOffsets: [] };
   }
@@ -1182,7 +1221,12 @@ export function performHarthmereMousePrimaryAttack(
     weaponVisual: hasPhysicalWeapon,
   });
   if (hasPhysicalWeapon) {
-    emitHarthmereWeaponVisualState("attack", true, attack, equippedWeaponItemId);
+    emitHarthmereWeaponVisualState(
+      "attack",
+      true,
+      attack,
+      equippedWeaponItemId
+    );
   }
 
   const runtime = readHarthmereForwardArcRuntime();
@@ -1250,8 +1294,8 @@ export function performHarthmereMousePrimaryAttack(
       state,
       "Mouse Attack",
       `Left mouse resolved a basic attack and hit ${arcResult.hitOffsets.length} target(s). Candidates checked: ${arcResult.candidateOffsets.length}.`,
-      { damage: 18 },
-    ),
+      { damage: 18 }
+    )
   );
   return arcResult;
 }
@@ -1271,11 +1315,11 @@ export function performHarthmereKeyedAttack(attack: HarthmerePlayerAttackType) {
   const blockedReason = getHarthmereMultiplayerAttackDisabledReason(
     attack,
     state,
-    combat.player,
+    combat.player
   );
   if (blockedReason) {
     writeHarthmereMultiplayerCombatState(
-      appendLog(state, "Action Blocked", blockedReason),
+      appendLog(state, "Action Blocked", blockedReason)
     );
     return;
   }
@@ -1291,8 +1335,8 @@ export function performHarthmereKeyedAttack(attack: HarthmerePlayerAttackType) {
       appendLog(
         state,
         "Weapon Not Drawn",
-        "You draw your sword. Press basic or heavy attack again to strike with it.",
-      ),
+        "You draw your sword. Press basic or heavy attack again to strike with it."
+      )
     );
     emitHarthmereWeaponVisualState("draw", true, attack, equippedWeaponItemId);
     return;
@@ -1303,8 +1347,8 @@ export function performHarthmereKeyedAttack(attack: HarthmerePlayerAttackType) {
       appendLog(
         state,
         "No Spell Target",
-        "Press Tab to pick a target before casting Spark. B and H do not need a selected target because they sweep forward.",
-      ),
+        "Press Tab to pick a target before casting Spark. B and H do not need a selected target because they sweep forward."
+      )
     );
     return;
   }
@@ -1319,13 +1363,13 @@ export function performHarthmereKeyedAttack(attack: HarthmerePlayerAttackType) {
     state = appendLog(
       state,
       "Town Law Warning",
-      "Harthmere's center is guarded, not magically safe. You can attack townspeople here, but they can take damage, fight back, and call the Watch.",
+      "Harthmere's center is guarded, not magically safe. You can attack townspeople here, but they can take damage, fight back, and call the Watch."
     );
   }
 
   if (!cooldownReady(state, attack)) {
     writeHarthmereMultiplayerCombatState(
-      appendLog(state, "On Cooldown", `${attack} is not ready yet.`),
+      appendLog(state, "On Cooldown", `${attack} is not ready yet.`)
     );
     return;
   }
@@ -1339,8 +1383,8 @@ export function performHarthmereKeyedAttack(attack: HarthmerePlayerAttackType) {
         appendLog(
           state,
           "Spell Unknown",
-          "You need to learn Spark from a scroll or trainer before L can cast it.",
-        ),
+          "You need to learn Spark from a scroll or trainer before L can cast it."
+        )
       );
       return;
     }
@@ -1349,14 +1393,18 @@ export function performHarthmereKeyedAttack(attack: HarthmerePlayerAttackType) {
         appendLog(
           state,
           "Not Enough Mana",
-          "Spark needs 10 mana. Rest, respawn, or wait for recovery before casting again.",
-        ),
+          "Spark needs 10 mana. Rest, respawn, or wait for recovery before casting again."
+        )
       );
       return;
     }
     state = { ...state, mana: Math.max(0, state.mana - 10) };
     // harthmere-real-player-attack-gesture: spark emits only after validation
-    emitHarthmereFullAnimationRequest({ family: "magic", action: attack, phase: "start" });
+    emitHarthmereFullAnimationRequest({
+      family: "magic",
+      action: attack,
+      phase: "start",
+    });
     emitAttackAnimation(attack, { emptyHanded: true, weaponVisual: false });
     performHarthmereCombatAttack(Number(targetOffset), attack);
   } else {
@@ -1376,7 +1424,12 @@ export function performHarthmereKeyedAttack(attack: HarthmerePlayerAttackType) {
     // B/H weapon attacks trigger visible equipment animation even when
     // combatDebug is disabled and even if the forward arc misses every target.
     if (hasPhysicalWeapon) {
-      emitHarthmereWeaponVisualState("attack", true, attack, equippedWeaponItemId);
+      emitHarthmereWeaponVisualState(
+        "attack",
+        true,
+        attack,
+        equippedWeaponItemId
+      );
     }
     const timing = harthmereSwordAttackTiming(attack);
     const resolveHarthmereSwordImpactFrame = () => {
@@ -1387,15 +1440,16 @@ export function performHarthmereKeyedAttack(attack: HarthmerePlayerAttackType) {
         hitOffsets: arcResult.hitOffsets,
         candidateOffsets: arcResult.candidateOffsets,
       });
-      const impactLabel = attack === "heavy" ? "Heavy Attack Impact" : "Basic Attack Impact";
+      const impactLabel =
+        attack === "heavy" ? "Heavy Attack Impact" : "Basic Attack Impact";
       const impactState = readHarthmereMultiplayerCombatState();
       writeHarthmereMultiplayerCombatState(
         afterHostileAction(
           impactState,
           impactLabel,
           `${impactLabel} resolved at the sword impact frame and hit ${arcResult.hitOffsets.length} target(s). Candidates checked: ${arcResult.candidateOffsets.length}.`,
-          { damage: attack === "heavy" ? 35 : 18 },
-        ),
+          { damage: attack === "heavy" ? 35 : 18 }
+        )
       );
       return arcResult;
     };
@@ -1414,29 +1468,36 @@ export function performHarthmereKeyedAttack(attack: HarthmerePlayerAttackType) {
     }
   }
 
-  const cooldownSeconds = attack === "heavy" ? 2.8 : attack === "spark" ? 4 : 1.4;
+  const cooldownSeconds =
+    attack === "heavy" ? 2.8 : attack === "spark" ? 4 : 1.4;
   state = setCooldown(state, attack, cooldownSeconds);
   const attackLabel =
     attack === "spark"
       ? "Magic Attack"
       : attack === "heavy"
-        ? "Heavy Attack"
-        : "Basic Attack";
+      ? "Heavy Attack"
+      : "Basic Attack";
   const contribution =
     attack === "spark"
       ? { damage: 24, crowdControl: 3 }
       : { damage: attack === "heavy" ? 35 : 18 };
   const detail =
     attack === "spark"
-      ? `${attackLabel} ${equippedWeapon ? "sent" : "cast"} at ${state.currentTargetLabel}. Credit is contribution-based, not last-hit based.`
-      : `${attackLabel} started. Physical damage resolves at the ${hasPhysicalWeapon ? "weapon" : "body"} impact frame; credit remains contribution-based, not last-hit based.`;
+      ? `${attackLabel} ${equippedWeapon ? "sent" : "cast"} at ${
+          state.currentTargetLabel
+        }. Credit is contribution-based, not last-hit based.`
+      : `${attackLabel} started. Physical damage resolves at the ${
+          hasPhysicalWeapon ? "weapon" : "body"
+        } impact frame; credit remains contribution-based, not last-hit based.`;
 
   writeHarthmereMultiplayerCombatState(
-    afterHostileAction(state, attackLabel, detail, contribution),
+    afterHostileAction(state, attackLabel, detail, contribution)
   );
 }
 
-export function simulateHarthmereAllySupport(kind: "heal" | "shield" | "revive") {
+export function simulateHarthmereAllySupport(
+  kind: "heal" | "shield" | "revive"
+) {
   const state = readHarthmereMultiplayerCombatState();
   const details = {
     heal: "You support nearby allies with a practical group heal. Meaningful healing counts toward contribution.",
@@ -1449,21 +1510,25 @@ export function simulateHarthmereAllySupport(kind: "heal" | "shield" | "revive")
     kind === "heal"
       ? { healing: 42 }
       : kind === "shield"
-        ? { shielding: 35 }
-        : { revives: 1 };
+      ? { shielding: 35 }
+      : { revives: 1 };
   writeHarthmereMultiplayerCombatState(
-    afterHostileAction(state, "Co-op Support", details[kind], contribution),
+    afterHostileAction(state, "Co-op Support", details[kind], contribution)
   );
 }
 
 export function setHarthmereMultiplayerMode(mode: MultiplayerMode) {
   const state = readHarthmereMultiplayerCombatState();
-  const raidSize = mode === "raid" ? Math.max(10, state.raidSize || 10) : state.raidSize;
+  const raidSize =
+    mode === "raid" ? Math.max(10, state.raidSize || 10) : state.raidSize;
   writeHarthmereMultiplayerCombatState({
     ...appendLog(
       state,
       "Group Mode",
-      `Combat mode changed to ${mode.replaceAll("_", " ")}. Rewards, revive rules, and contribution expectations now follow that mode.`,
+      `Combat mode changed to ${mode.replaceAll(
+        "_",
+        " "
+      )}. Rewards, revive rules, and contribution expectations now follow that mode.`
     ),
     mode,
     raidSize,
@@ -1476,7 +1541,7 @@ export function startHarthmereReadyCheck() {
     ...appendLog(
       state,
       "Ready Check",
-      "Ready check started. Group members should confirm before a dungeon, raid, world boss, or PvP objective pull.",
+      "Ready check started. Group members should confirm before a dungeon, raid, world boss, or PvP objective pull."
     ),
     readyCheckUntil: now() + 30_000,
     party: state.party.map((member) => ({ ...member, ready: false })),
@@ -1489,10 +1554,10 @@ export function markHarthmerePartyReady() {
     ...appendLog(
       state,
       "Ready",
-      "You marked yourself ready. In production, every affected player would confirm their own readiness.",
+      "You marked yourself ready. In production, every affected player would confirm their own readiness."
     ),
     party: state.party.map((member, index) =>
-      index === 0 ? { ...member, ready: true } : member,
+      index === 0 ? { ...member, ready: true } : member
     ),
   });
 }
@@ -1503,7 +1568,7 @@ export function startHarthmerePullTimer() {
     ...appendLog(
       state,
       "Pull Timer",
-      "Pull timer started: 10 seconds. This gives tanks, healers, damage dealers, and support players time to prepare.",
+      "Pull timer started: 10 seconds. This gives tanks, healers, damage dealers, and support players time to prepare."
     ),
     pullTimerUntil: now() + 10_000,
   });
@@ -1529,18 +1594,16 @@ function isTypingTarget(target: EventTarget | null) {
 }
 
 export function useHarthmereCombatHotkeys() {
-  // ClientContext is needed for networked PvP (firing UpdatePlayerHealthEvent and
-  // scanning for nearby players). It is stable for the session; a ref keeps the
-  // window listener using a live reference without re-subscribing.
-  const clientContext = useClientContext();
-  const clientContextRef = React.useRef(clientContext);
-  clientContextRef.current = clientContext;
   useEffect(() => {
     if (!isBrowser()) {
       return;
     }
     const handler = (event: KeyboardEvent) => {
-      if (event.defaultPrevented || event.repeat || isTypingTarget(event.target)) {
+      if (
+        event.defaultPrevented ||
+        event.repeat ||
+        isTypingTarget(event.target)
+      ) {
         return;
       }
       if (event.metaKey || event.ctrlKey || event.altKey) {
@@ -1581,43 +1644,31 @@ export function useHarthmereCombatHotkeys() {
         event.stopImmediatePropagation();
         const state = readHarthmereMultiplayerCombatState();
         setHarthmerePvpFlag(
-          state.pvpFlag === "voluntary_pvp" ? "unflagged" : "voluntary_pvp",
+          state.pvpFlag === "voluntary_pvp" ? "unflagged" : "voluntary_pvp"
         );
       }
     };
-    // HARTHMERE_MOUSE_PRIMARY_ATTACK:
-    // Creature/body hits are installed by the module-level hard mouse router so
-    // they exist as soon as the combat module loads. This hook keeps the PvP
-    // half because it needs the live ClientContext for authoritative events.
-    const mouseHandler = (event: MouseEvent) => {
-      if (event.button !== 0 || isTypingTarget(event.target)) {
-        return;
-      }
-      if (!isHarthmereGameplayMouseTarget(event.target)) {
-        return;
-      }
-      // Other players — fire authoritative networked PvP damage for anyone in the
-      // swing arc. Independent of the creature branch: one click can hit both.
-      resolveHarthmerePvpMousePrimaryAttack(clientContextRef.current);
-    };
-
     window.addEventListener("keydown", handler, true);
-    window.addEventListener("mousedown", mouseHandler, true);
-    const npcAiInterval = window.setInterval(
-      () => submitHarthmereLiveModeNpcAiTicks(undefined, "combat_runtime"),
-      HARTHMERE_LIVE_MODE_NPC_AI_TICK_INTERVAL_MS
-    );
+    // The original snapshot routes mouse input through the selected native item
+    // spec. A global mousedown listener cannot distinguish placing Muckwad from
+    // attacking, so it was creating hostility and out-of-range retaliation.
+    // Keep the custom AI poll only for the explicitly enabled legacy simulation.
+    const npcAiInterval = nativeBiomesEcsAuthorityEnabled()
+      ? undefined
+      : window.setInterval(
+          () => submitHarthmereLiveModeNpcAiTicks(undefined, "combat_runtime"),
+          HARTHMERE_LIVE_MODE_NPC_AI_TICK_INTERVAL_MS
+        );
     return () => {
       window.removeEventListener("keydown", handler, true);
-      window.removeEventListener("mousedown", mouseHandler, true);
-      window.clearInterval(npcAiInterval);
+      if (npcAiInterval !== undefined) window.clearInterval(npcAiInterval);
     };
   }, []);
 }
 
 export function useHarthmereMultiplayerCombatState() {
   const [state, setState] = useState<HarthmereMultiplayerCombatState>(() =>
-    readHarthmereMultiplayerCombatState(),
+    readHarthmereMultiplayerCombatState()
   );
 
   useEffect(() => {
@@ -1655,67 +1706,77 @@ function StatLine({ label, value }: { label: string; value: string | number }) {
   );
 }
 
-export const HarthmereMultiplayerCombatHUD: React.FunctionComponent<{}> = () => {
-  useHarthmereCombatHotkeys();
-  const state = useHarthmereMultiplayerCombatState();
-  const combat = readHarthmereCombatState();
-  const interfaceRules = describeHarthmereMultiplayerCombatInterface(
-    state,
-    combat.player,
-  );
-  const latest = state.recent[0];
-  const activeTarget = useMemo(
-    () =>
-      TARGETS.find((target) => target.offset === state.currentTargetOffset) ??
-      TARGETS[0],
-    [state.currentTargetOffset],
-  );
+export const HarthmereMultiplayerCombatHUD: React.FunctionComponent<{}> =
+  () => {
+    useHarthmereCombatHotkeys();
+    const state = useHarthmereMultiplayerCombatState();
+    const combat = readHarthmereCombatState();
+    const interfaceRules = describeHarthmereMultiplayerCombatInterface(
+      state,
+      combat.player
+    );
+    const latest = state.recent[0];
+    const activeTarget = useMemo(
+      () =>
+        TARGETS.find((target) => target.offset === state.currentTargetOffset) ??
+        TARGETS[0],
+      [state.currentTargetOffset]
+    );
 
-  return (
-    <div
-      className="pointer-events-none w-[22rem] rounded-lg border border-orange-300/30 bg-black/70 p-2 text-white shadow-lg"
-      style={{ textShadow: "0 1px 2px rgba(0,0,0,0.85)" }}
-    >
-      <div className="mb-1 flex items-start justify-between gap-2">
-        <div>
-          <div className="text-sm font-semibold uppercase tracking-wide text-orange-200">
-            Multiplayer Fighting
+    return (
+      <div
+        className="rounded-lg border-orange-300/30 pointer-events-none w-[22rem] border bg-black/70 p-2 text-white shadow-lg"
+        style={{ textShadow: "0 1px 2px rgba(0,0,0,0.85)" }}
+      >
+        <div className="mb-1 flex items-start justify-between gap-2">
+          <div>
+            <div className="text-orange-200 text-sm font-semibold uppercase tracking-wide">
+              Multiplayer Fighting
+            </div>
+            <div className="text-xs text-white/75">
+              {HARTHMERE_COMBAT_INTERFACE_KEY_COPY.draw} draw/sheathe ·{" "}
+              {HARTHMERE_COMBAT_INTERFACE_KEY_COPY.target} target ·{" "}
+              {HARTHMERE_COMBAT_INTERFACE_KEY_COPY.basic} attack ·{" "}
+              {HARTHMERE_COMBAT_INTERFACE_KEY_COPY.heavy} heavy ·{" "}
+              {HARTHMERE_COMBAT_INTERFACE_KEY_COPY.spark} Spark ·{" "}
+              {HARTHMERE_COMBAT_INTERFACE_KEY_COPY.pvp} PvP
+            </div>
           </div>
-          <div className="text-xs text-white/75">
-            {HARTHMERE_COMBAT_INTERFACE_KEY_COPY.draw} draw/sheathe ·{" "}
-            {HARTHMERE_COMBAT_INTERFACE_KEY_COPY.target} target ·{" "}
-            {HARTHMERE_COMBAT_INTERFACE_KEY_COPY.basic} attack ·{" "}
-            {HARTHMERE_COMBAT_INTERFACE_KEY_COPY.heavy} heavy ·{" "}
-            {HARTHMERE_COMBAT_INTERFACE_KEY_COPY.spark} Spark ·{" "}
-            {HARTHMERE_COMBAT_INTERFACE_KEY_COPY.pvp} PvP
+          <div className="rounded bg-orange-300/20 px-1.5 py-0.5 text-orange-100 text-xs font-semibold">
+            {state.weaponDrawn ? "Drawn" : "Sheathed"}
           </div>
         </div>
-        <div className="rounded bg-orange-300/20 px-1.5 py-0.5 text-xs font-semibold text-orange-100">
-          {state.weaponDrawn ? "Drawn" : "Sheathed"}
+        <div className="rounded grid grid-cols-2 gap-x-3 gap-y-1 border border-white/10 bg-white/5 p-2">
+          <StatLine label="Mode" value={state.mode.replaceAll("_", " ")} />
+          <StatLine label="PvP" value={pvpFlagLabel(state.pvpFlag)} />
+          <StatLine label="Target" value={activeTarget.label} />
+          <StatLine label="Mana" value={`${state.mana}/${state.maxMana}`} />
+          <StatLine
+            label="Aggression"
+            value={formatSeconds(state.aggressionUntil)}
+          />
+          <StatLine
+            label="Player HP"
+            value={`${combat.player.hp}/${combat.player.maxHp}`}
+          />
+          <StatLine
+            label="PvP rule"
+            value={interfaceRules.pvpMode.replaceAll("_", " ")}
+          />
         </div>
-      </div>
-      <div className="grid grid-cols-2 gap-x-3 gap-y-1 rounded border border-white/10 bg-white/5 p-2">
-        <StatLine label="Mode" value={state.mode.replaceAll("_", " ")} />
-        <StatLine label="PvP" value={pvpFlagLabel(state.pvpFlag)} />
-        <StatLine label="Target" value={activeTarget.label} />
-        <StatLine label="Mana" value={`${state.mana}/${state.maxMana}`} />
-        <StatLine label="Aggression" value={formatSeconds(state.aggressionUntil)} />
-        <StatLine label="Player HP" value={`${combat.player.hp}/${combat.player.maxHp}`} />
-        <StatLine label="PvP rule" value={interfaceRules.pvpMode.replaceAll("_", " ")} />
-      </div>
-      <div className="mt-2 rounded border border-white/10 bg-white/5 p-1.5 text-[11px] leading-snug text-white/75">
-        <div>{interfaceRules.pvpLegalitySummary}</div>
-        <div>{interfaceRules.protectionSummary}</div>
-      </div>
-      {latest && (
-        <div className="mt-2 rounded border border-white/10 bg-white/5 p-1.5 text-[11px] leading-snug text-white/80">
-          <span className="font-semibold text-white">{latest.label}:</span>{" "}
-          {latest.detail}
+        <div className="rounded p-1.5 mt-2 border border-white/10 bg-white/5 text-[11px] leading-snug text-white/75">
+          <div>{interfaceRules.pvpLegalitySummary}</div>
+          <div>{interfaceRules.protectionSummary}</div>
         </div>
-      )}
-    </div>
-  );
-};
+        {latest && (
+          <div className="rounded p-1.5 mt-2 border border-white/10 bg-white/5 text-[11px] leading-snug text-white/80">
+            <span className="font-semibold text-white">{latest.label}:</span>{" "}
+            {latest.detail}
+          </div>
+        )}
+      </div>
+    );
+  };
 
 function ActionButton({
   children,
@@ -1740,200 +1801,277 @@ function ActionButton({
   );
 }
 
-export const HarthmereMultiplayerCombatMenuPanel: React.FunctionComponent<{}> = () => {
-  const state = useHarthmereMultiplayerCombatState();
-  const combat = readHarthmereCombatState();
-  const interfaceRules = describeHarthmereMultiplayerCombatInterface(
-    state,
-    combat.player,
-  );
-  const basicBlock = getHarthmereMultiplayerAttackDisabledReason(
-    "basic",
-    state,
-    combat.player,
-  );
-  const heavyBlock = getHarthmereMultiplayerAttackDisabledReason(
-    "heavy",
-    state,
-    combat.player,
-  );
-  const sparkBlock = getHarthmereMultiplayerAttackDisabledReason(
-    "spark",
-    state,
-    combat.player,
-  );
-  const activeTarget =
-    TARGETS.find((target) => target.offset === state.currentTargetOffset) ?? TARGETS[0];
-  const partyReady = state.party.filter((member) => member.ready).length;
-  const totalContribution =
-    state.contribution.damage +
-    state.contribution.healing +
-    state.contribution.shielding +
-    state.contribution.objectives +
-    state.contribution.revives * 50 +
-    state.contribution.crowdControl;
+export const HarthmereMultiplayerCombatMenuPanel: React.FunctionComponent<{}> =
+  () => {
+    const state = useHarthmereMultiplayerCombatState();
+    const combat = readHarthmereCombatState();
+    const interfaceRules = describeHarthmereMultiplayerCombatInterface(
+      state,
+      combat.player
+    );
+    const basicBlock = getHarthmereMultiplayerAttackDisabledReason(
+      "basic",
+      state,
+      combat.player
+    );
+    const heavyBlock = getHarthmereMultiplayerAttackDisabledReason(
+      "heavy",
+      state,
+      combat.player
+    );
+    const sparkBlock = getHarthmereMultiplayerAttackDisabledReason(
+      "spark",
+      state,
+      combat.player
+    );
+    const activeTarget =
+      TARGETS.find((target) => target.offset === state.currentTargetOffset) ??
+      TARGETS[0];
+    const partyReady = state.party.filter((member) => member.ready).length;
+    const totalContribution =
+      state.contribution.damage +
+      state.contribution.healing +
+      state.contribution.shielding +
+      state.contribution.objectives +
+      state.contribution.revives * 50 +
+      state.contribution.crowdControl;
 
-  return (
-    <div className="pointer-events-auto mt-2 max-h-[55vh] w-[30rem] overflow-y-auto rounded-lg border border-orange-300/25 bg-black/75 p-3 text-white shadow-xl">
-      <div className="mb-2">
-        <div className="text-base font-bold text-orange-200">
-          Harthmere Multiplayer Fighting
-        </div>
-        <div className="text-xs text-white/75">
-          Local-dev controls and multiplayer combat rules for PvP, parties,
-          raids, public events, contribution, safe zones, and grief prevention.
-        </div>
-      </div>
-
-      <div className="mb-2 rounded border border-white/10 bg-white/5 p-2">
-        <div className="mb-1 text-xs font-semibold text-white">Keyboard</div>
-        <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[11px] text-white/75">
-          <div><span className="font-semibold text-white">{HARTHMERE_COMBAT_INTERFACE_KEY_COPY.draw}</span> draw / put away weapon</div>
-          <div><span className="font-semibold text-white">{HARTHMERE_COMBAT_INTERFACE_KEY_COPY.target}</span> cycle target</div>
-          <div><span className="font-semibold text-white">{HARTHMERE_COMBAT_INTERFACE_KEY_COPY.basic}</span> basic weapon attack</div>
-          <div><span className="font-semibold text-white">{HARTHMERE_COMBAT_INTERFACE_KEY_COPY.heavy}</span> heavy weapon attack</div>
-          <div><span className="font-semibold text-white">{HARTHMERE_COMBAT_INTERFACE_KEY_COPY.spark}</span> Spark magic attack</div>
-          <div><span className="font-semibold text-white">{HARTHMERE_COMBAT_INTERFACE_KEY_COPY.pvp}</span> toggle voluntary PvP</div>
-        </div>
-      </div>
-
-      <div className="mb-2 rounded border border-emerald-300/20 bg-emerald-950/20 p-2 text-[11px] leading-snug text-emerald-50/80">
-        <div className="mb-1 text-xs font-bold text-emerald-100">GLTF clip routing</div>
-        <div><span className="font-semibold text-white">B</span> Basic Attack → Attack, Attack2, SideSwing</div>
-        <div><span className="font-semibold text-white">H</span> Heavy Attack → HeavyAttack, Attack2</div>
-        <div><span className="font-semibold text-white">L</span> Spark → BasicMagic, HeavyMagic</div>
-        <div><span className="font-semibold text-white">Animals</span> → Bite, Claw, Pounce, Charge, Peck, Scratch, Kick, TailWhip, Attack</div>
-        <div><span className="font-semibold text-white">Reactions</span> → HitReact, Block, ShieldBlock, Dodging, Death</div>
-      </div>
-
-      <div className="mb-2 grid grid-cols-2 gap-2 rounded border border-white/10 bg-white/5 p-2">
-        <div>
-          <div className="mb-1 text-xs font-semibold text-white">Combat State</div>
-          <StatLine label="Weapon" value={state.weaponDrawn ? "drawn" : "sheathed"} />
-          <StatLine label="Target" value={activeTarget.label} />
-          <StatLine label="Mode" value={state.mode.replaceAll("_", " ")} />
-          <StatLine label="Role" value={state.role} />
-          <StatLine label="Mana" value={`${state.mana}/${state.maxMana}`} />
-          <StatLine label="Safe zone" value={state.safeZone ? "yes" : "no"} />
-        </div>
-        <div>
-          <div className="mb-1 text-xs font-semibold text-white">PvP / Group</div>
-          <StatLine label="PvP flag" value={pvpFlagLabel(state.pvpFlag)} />
-          <StatLine label="PvP rule" value={interfaceRules.pvpMode.replaceAll("_", " ")} />
-          <StatLine label="Aggression" value={formatSeconds(state.aggressionUntil)} />
-          <StatLine label="Party ready" value={`${partyReady}/${state.party.length}`} />
-          <StatLine label="Raid size" value={state.raidSize || "—"} />
-          <StatLine label="Pull timer" value={formatSeconds(state.pullTimerUntil)} />
-          <StatLine label="Contribution" value={totalContribution} />
-        </div>
-      </div>
-
-      <div className="mb-2 rounded border border-white/10 bg-white/5 p-2 text-xs leading-snug text-white/75">
-        <div className="font-semibold text-white">PvP / Death Rules</div>
-        <div>{interfaceRules.pvpLegalitySummary}</div>
-        <div>{interfaceRules.protectionSummary}</div>
-        <div>{interfaceRules.rewardPolicySummary}</div>
-      </div>
-
-      <div className="mb-2 flex flex-wrap gap-2">
-        <ActionButton onClick={() => toggleHarthmereWeaponDrawn()}>
-          {state.weaponDrawn ? "Put Weapon Away" : "Draw Weapon"}
-        </ActionButton>
-        <ActionButton onClick={() => cycleHarthmereCombatTarget()}>
-          Cycle Target
-        </ActionButton>
-        <ActionButton
-          disabled={Boolean(basicBlock)}
-          onClick={() => performHarthmereKeyedAttack("basic")}
-          title={basicBlock}
-        >
-          B Basic Attack → Attack
-        </ActionButton>
-        <ActionButton
-          disabled={Boolean(heavyBlock)}
-          onClick={() => performHarthmereKeyedAttack("heavy")}
-          title={heavyBlock}
-        >
-          H Heavy Attack → HeavyAttack
-        </ActionButton>
-        <ActionButton
-          disabled={Boolean(sparkBlock)}
-          onClick={() => performHarthmereKeyedAttack("spark")}
-          title={sparkBlock}
-        >
-          L Spark → BasicMagic
-        </ActionButton>
-        <ActionButton
-          onClick={() =>
-            setHarthmerePvpFlag(
-              state.pvpFlag === "voluntary_pvp" ? "unflagged" : "voluntary_pvp",
-            )
-          }
-        >
-          Toggle PvP Flag
-        </ActionButton>
-      </div>
-
-      <div className="mb-2 flex flex-wrap gap-2">
-        <ActionButton onClick={() => setHarthmereMultiplayerMode("party")}>
-          Form Party
-        </ActionButton>
-        <ActionButton onClick={() => setHarthmereMultiplayerMode("raid")}>
-          Form Raid
-        </ActionButton>
-        <ActionButton onClick={() => setHarthmereMultiplayerMode("public_event")}>
-          Public Event
-        </ActionButton>
-        <ActionButton onClick={() => setHarthmereMultiplayerMode("duel")}>
-          Duel Mode
-        </ActionButton>
-        <ActionButton onClick={() => startHarthmereReadyCheck()}>
-          Ready Check
-        </ActionButton>
-        <ActionButton onClick={() => markHarthmerePartyReady()}>
-          Mark Ready
-        </ActionButton>
-        <ActionButton onClick={() => startHarthmerePullTimer()}>
-          Pull Timer
-        </ActionButton>
-      </div>
-
-      <div className="mb-2 flex flex-wrap gap-2">
-        <ActionButton onClick={() => simulateHarthmereAllySupport("heal")}>
-          Heal Ally
-        </ActionButton>
-        <ActionButton onClick={() => simulateHarthmereAllySupport("shield")}>
-          Shield Ally
-        </ActionButton>
-        <ActionButton onClick={() => simulateHarthmereAllySupport("revive")}>
-          Revive Ally
-        </ActionButton>
-        <ActionButton onClick={() => resetHarthmereMultiplayerCombat()}>
-          Reset Multiplayer Combat
-        </ActionButton>
-      </div>
-
-      <div className="mb-2 rounded border border-white/10 bg-white/5 p-2 text-xs leading-snug text-white/75">
-        <div className="mb-1 font-semibold text-white">Rules implemented</div>
-        <div>
-          Safe zones block surprise PvP, aggression timers prevent hit-and-hide
-          abuse, contribution tracks damage/healing/shields/revives/objectives,
-          party and raid tools include ready checks and pull timers, and rewards
-          should be based on meaningful participation rather than last hit.
-        </div>
-      </div>
-
-      <div className="space-y-1">
-        {state.recent.slice(0, 8).map((entry) => (
-          <div key={entry.id} className="rounded border border-white/10 bg-black/20 p-2 text-xs">
-            <div className="font-semibold text-white">{entry.label}</div>
-            <div className="text-white/70">{entry.detail}</div>
+    return (
+      <div className="rounded-lg border-orange-300/25 pointer-events-auto mt-2 max-h-[55vh] w-[30rem] overflow-y-auto border bg-black/75 p-3 text-white shadow-xl">
+        <div className="mb-2">
+          <div className="text-base text-orange-200 font-bold">
+            Harthmere Multiplayer Fighting
           </div>
-        ))}
+          <div className="text-xs text-white/75">
+            Local-dev controls and multiplayer combat rules for PvP, parties,
+            raids, public events, contribution, safe zones, and grief
+            prevention.
+          </div>
+        </div>
+
+        <div className="rounded mb-2 border border-white/10 bg-white/5 p-2">
+          <div className="mb-1 text-xs font-semibold text-white">Keyboard</div>
+          <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[11px] text-white/75">
+            <div>
+              <span className="font-semibold text-white">
+                {HARTHMERE_COMBAT_INTERFACE_KEY_COPY.draw}
+              </span>{" "}
+              draw / put away weapon
+            </div>
+            <div>
+              <span className="font-semibold text-white">
+                {HARTHMERE_COMBAT_INTERFACE_KEY_COPY.target}
+              </span>{" "}
+              cycle target
+            </div>
+            <div>
+              <span className="font-semibold text-white">
+                {HARTHMERE_COMBAT_INTERFACE_KEY_COPY.basic}
+              </span>{" "}
+              basic weapon attack
+            </div>
+            <div>
+              <span className="font-semibold text-white">
+                {HARTHMERE_COMBAT_INTERFACE_KEY_COPY.heavy}
+              </span>{" "}
+              heavy weapon attack
+            </div>
+            <div>
+              <span className="font-semibold text-white">
+                {HARTHMERE_COMBAT_INTERFACE_KEY_COPY.spark}
+              </span>{" "}
+              Spark magic attack
+            </div>
+            <div>
+              <span className="font-semibold text-white">
+                {HARTHMERE_COMBAT_INTERFACE_KEY_COPY.pvp}
+              </span>{" "}
+              toggle voluntary PvP
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded border-emerald-300/20 bg-emerald-950/20 text-emerald-50/80 mb-2 border p-2 text-[11px] leading-snug">
+          <div className="text-emerald-100 mb-1 text-xs font-bold">
+            GLTF clip routing
+          </div>
+          <div>
+            <span className="font-semibold text-white">B</span> Basic Attack →
+            Attack, Attack2, SideSwing
+          </div>
+          <div>
+            <span className="font-semibold text-white">H</span> Heavy Attack →
+            HeavyAttack, Attack2
+          </div>
+          <div>
+            <span className="font-semibold text-white">L</span> Spark →
+            BasicMagic, HeavyMagic
+          </div>
+          <div>
+            <span className="font-semibold text-white">Animals</span> → Bite,
+            Claw, Pounce, Charge, Peck, Scratch, Kick, TailWhip, Attack
+          </div>
+          <div>
+            <span className="font-semibold text-white">Reactions</span> →
+            HitReact, Block, ShieldBlock, Dodging, Death
+          </div>
+        </div>
+
+        <div className="rounded mb-2 grid grid-cols-2 gap-2 border border-white/10 bg-white/5 p-2">
+          <div>
+            <div className="mb-1 text-xs font-semibold text-white">
+              Combat State
+            </div>
+            <StatLine
+              label="Weapon"
+              value={state.weaponDrawn ? "drawn" : "sheathed"}
+            />
+            <StatLine label="Target" value={activeTarget.label} />
+            <StatLine label="Mode" value={state.mode.replaceAll("_", " ")} />
+            <StatLine label="Role" value={state.role} />
+            <StatLine label="Mana" value={`${state.mana}/${state.maxMana}`} />
+            <StatLine label="Safe zone" value={state.safeZone ? "yes" : "no"} />
+          </div>
+          <div>
+            <div className="mb-1 text-xs font-semibold text-white">
+              PvP / Group
+            </div>
+            <StatLine label="PvP flag" value={pvpFlagLabel(state.pvpFlag)} />
+            <StatLine
+              label="PvP rule"
+              value={interfaceRules.pvpMode.replaceAll("_", " ")}
+            />
+            <StatLine
+              label="Aggression"
+              value={formatSeconds(state.aggressionUntil)}
+            />
+            <StatLine
+              label="Party ready"
+              value={`${partyReady}/${state.party.length}`}
+            />
+            <StatLine label="Raid size" value={state.raidSize || "—"} />
+            <StatLine
+              label="Pull timer"
+              value={formatSeconds(state.pullTimerUntil)}
+            />
+            <StatLine label="Contribution" value={totalContribution} />
+          </div>
+        </div>
+
+        <div className="rounded mb-2 border border-white/10 bg-white/5 p-2 text-xs leading-snug text-white/75">
+          <div className="font-semibold text-white">PvP / Death Rules</div>
+          <div>{interfaceRules.pvpLegalitySummary}</div>
+          <div>{interfaceRules.protectionSummary}</div>
+          <div>{interfaceRules.rewardPolicySummary}</div>
+        </div>
+
+        <div className="mb-2 flex flex-wrap gap-2">
+          <ActionButton onClick={() => toggleHarthmereWeaponDrawn()}>
+            {state.weaponDrawn ? "Put Weapon Away" : "Draw Weapon"}
+          </ActionButton>
+          <ActionButton onClick={() => cycleHarthmereCombatTarget()}>
+            Cycle Target
+          </ActionButton>
+          <ActionButton
+            disabled={Boolean(basicBlock)}
+            onClick={() => performHarthmereKeyedAttack("basic")}
+            title={basicBlock}
+          >
+            B Basic Attack → Attack
+          </ActionButton>
+          <ActionButton
+            disabled={Boolean(heavyBlock)}
+            onClick={() => performHarthmereKeyedAttack("heavy")}
+            title={heavyBlock}
+          >
+            H Heavy Attack → HeavyAttack
+          </ActionButton>
+          <ActionButton
+            disabled={Boolean(sparkBlock)}
+            onClick={() => performHarthmereKeyedAttack("spark")}
+            title={sparkBlock}
+          >
+            L Spark → BasicMagic
+          </ActionButton>
+          <ActionButton
+            onClick={() =>
+              setHarthmerePvpFlag(
+                state.pvpFlag === "voluntary_pvp"
+                  ? "unflagged"
+                  : "voluntary_pvp"
+              )
+            }
+          >
+            Toggle PvP Flag
+          </ActionButton>
+        </div>
+
+        <div className="mb-2 flex flex-wrap gap-2">
+          <ActionButton onClick={() => setHarthmereMultiplayerMode("party")}>
+            Form Party
+          </ActionButton>
+          <ActionButton onClick={() => setHarthmereMultiplayerMode("raid")}>
+            Form Raid
+          </ActionButton>
+          <ActionButton
+            onClick={() => setHarthmereMultiplayerMode("public_event")}
+          >
+            Public Event
+          </ActionButton>
+          <ActionButton onClick={() => setHarthmereMultiplayerMode("duel")}>
+            Duel Mode
+          </ActionButton>
+          <ActionButton onClick={() => startHarthmereReadyCheck()}>
+            Ready Check
+          </ActionButton>
+          <ActionButton onClick={() => markHarthmerePartyReady()}>
+            Mark Ready
+          </ActionButton>
+          <ActionButton onClick={() => startHarthmerePullTimer()}>
+            Pull Timer
+          </ActionButton>
+        </div>
+
+        <div className="mb-2 flex flex-wrap gap-2">
+          <ActionButton onClick={() => simulateHarthmereAllySupport("heal")}>
+            Heal Ally
+          </ActionButton>
+          <ActionButton onClick={() => simulateHarthmereAllySupport("shield")}>
+            Shield Ally
+          </ActionButton>
+          <ActionButton onClick={() => simulateHarthmereAllySupport("revive")}>
+            Revive Ally
+          </ActionButton>
+          <ActionButton onClick={() => resetHarthmereMultiplayerCombat()}>
+            Reset Multiplayer Combat
+          </ActionButton>
+        </div>
+
+        <div className="rounded mb-2 border border-white/10 bg-white/5 p-2 text-xs leading-snug text-white/75">
+          <div className="mb-1 font-semibold text-white">Rules implemented</div>
+          <div>
+            Safe zones block surprise PvP, aggression timers prevent
+            hit-and-hide abuse, contribution tracks
+            damage/healing/shields/revives/objectives, party and raid tools
+            include ready checks and pull timers, and rewards should be based on
+            meaningful participation rather than last hit.
+          </div>
+        </div>
+
+        <div className="space-y-1">
+          {state.recent.slice(0, 8).map((entry) => (
+            <div
+              key={entry.id}
+              className="rounded border border-white/10 bg-black/20 p-2 text-xs"
+            >
+              <div className="font-semibold text-white">{entry.label}</div>
+              <div className="text-white/70">{entry.detail}</div>
+            </div>
+          ))}
+        </div>
       </div>
-    </div>
-  );
-};
+    );
+  };
 
 // Harthmere hard combat key router
 // --------------------------------
@@ -1956,7 +2094,9 @@ function isHarthmereTextEntryTarget(target: EventTarget | null) {
     tag === "textarea" ||
     tag === "select" ||
     element.isContentEditable ||
-    !!element.closest("input, textarea, select, [contenteditable='true'], [role='textbox']")
+    !!element.closest(
+      "input, textarea, select, [contenteditable='true'], [role='textbox']"
+    )
   );
 }
 
@@ -1973,7 +2113,9 @@ function isHarthmereGameplayMouseTarget(target: EventTarget | null) {
   return Boolean(target.closest("canvas"));
 }
 
-function hardCombatActionForCode(code: string): HarthmereHardCombatKey | undefined {
+function hardCombatActionForCode(
+  code: string
+): HarthmereHardCombatKey | undefined {
   if (code === "KeyB") {
     return "basic";
   }
@@ -1991,18 +2133,22 @@ function installHarthmereHardCombatKeyRouter() {
     return;
   }
 
-  const win = window as Window & typeof globalThis & {
-    __harthmereHardCombatKeyRouterVersion?: string;
-    __harthmereHardCombatKeyRouterCleanup?: () => void;
-    __harthmereHardCombatKeyRouterLog?: unknown[];
-    __harthmereHardCombatKeyRouter?: {
-      version: string;
-      log: () => unknown[];
-      route: (action: HarthmereHardCombatKey) => void;
+  const win = window as Window &
+    typeof globalThis & {
+      __harthmereHardCombatKeyRouterVersion?: string;
+      __harthmereHardCombatKeyRouterCleanup?: () => void;
+      __harthmereHardCombatKeyRouterLog?: unknown[];
+      __harthmereHardCombatKeyRouter?: {
+        version: string;
+        log: () => unknown[];
+        route: (action: HarthmereHardCombatKey) => void;
+      };
     };
-  };
 
-  if (win.__harthmereHardCombatKeyRouterVersion === HARTHMERE_HARD_COMBAT_KEY_ROUTER_VERSION) {
+  if (
+    win.__harthmereHardCombatKeyRouterVersion ===
+    HARTHMERE_HARD_COMBAT_KEY_ROUTER_VERSION
+  ) {
     return;
   }
 
@@ -2014,7 +2160,10 @@ function installHarthmereHardCombatKeyRouter() {
     const logged = { at: new Date().toISOString(), ...entry };
     log.unshift(logged);
     log.length = Math.min(log.length, 80);
-    if (window.localStorage?.getItem("biomes.localDev.harthmere.combatDebug") === "1") {
+    if (
+      window.localStorage?.getItem("biomes.localDev.harthmere.combatDebug") ===
+      "1"
+    ) {
       console.info("[HarthmereHardKeyRouter]", logged);
     }
   };
@@ -2030,7 +2179,13 @@ function installHarthmereHardCombatKeyRouter() {
       return;
     }
 
-    if (event.repeat || event.metaKey || event.ctrlKey || event.altKey || isHarthmereTextEntryTarget(event.target)) {
+    if (
+      event.repeat ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.altKey ||
+      isHarthmereTextEntryTarget(event.target)
+    ) {
       pushLog({
         type: "ignored",
         code: event.code,
@@ -2039,7 +2194,10 @@ function installHarthmereHardCombatKeyRouter() {
         metaKey: event.metaKey,
         ctrlKey: event.ctrlKey,
         altKey: event.altKey,
-        target: event.target instanceof HTMLElement ? event.target.tagName : typeof event.target,
+        target:
+          event.target instanceof HTMLElement
+            ? event.target.tagName
+            : typeof event.target,
       });
       return;
     }
@@ -2054,7 +2212,8 @@ function installHarthmereHardCombatKeyRouter() {
   };
 
   window.addEventListener("keydown", handler, true);
-  win.__harthmereHardCombatKeyRouterVersion = HARTHMERE_HARD_COMBAT_KEY_ROUTER_VERSION;
+  win.__harthmereHardCombatKeyRouterVersion =
+    HARTHMERE_HARD_COMBAT_KEY_ROUTER_VERSION;
   win.__harthmereHardCombatKeyRouterCleanup = () => {
     window.removeEventListener("keydown", handler, true);
   };
@@ -2064,7 +2223,10 @@ function installHarthmereHardCombatKeyRouter() {
     route,
   };
 
-  pushLog({ type: "installed", version: HARTHMERE_HARD_COMBAT_KEY_ROUTER_VERSION });
+  pushLog({
+    type: "installed",
+    version: HARTHMERE_HARD_COMBAT_KEY_ROUTER_VERSION,
+  });
 }
 
 installHarthmereHardCombatKeyRouter();
@@ -2082,17 +2244,18 @@ function installHarthmereHardCombatMouseRouter() {
     return;
   }
 
-  const win = window as Window & typeof globalThis & {
-    __harthmereHardCombatMouseRouterVersion?: string;
-    __harthmereHardCombatMouseRouterCleanup?: () => void;
-    __harthmereHardCombatMouseRouterLog?: unknown[];
-    __harthmereNativeNpcAttackContactLastAt?: number;
-    __harthmereNativeNpcAttackContactLastHits?: HarthmereNativeNpcAttackContactHit[];
-    __harthmereHardCombatMouseRouter?: {
-      version: string;
-      log: () => unknown[];
+  const win = window as Window &
+    typeof globalThis & {
+      __harthmereHardCombatMouseRouterVersion?: string;
+      __harthmereHardCombatMouseRouterCleanup?: () => void;
+      __harthmereHardCombatMouseRouterLog?: unknown[];
+      __harthmereNativeNpcAttackContactLastAt?: number;
+      __harthmereNativeNpcAttackContactLastHits?: HarthmereNativeNpcAttackContactHit[];
+      __harthmereHardCombatMouseRouter?: {
+        version: string;
+        log: () => unknown[];
+      };
     };
-  };
 
   if (
     win.__harthmereHardCombatMouseRouterVersion ===
@@ -2109,7 +2272,10 @@ function installHarthmereHardCombatMouseRouter() {
     const logged = { at: new Date().toISOString(), ...entry };
     log.unshift(logged);
     log.length = Math.min(log.length, 80);
-    if (window.localStorage?.getItem("biomes.localDev.harthmere.combatDebug") === "1") {
+    if (
+      window.localStorage?.getItem("biomes.localDev.harthmere.combatDebug") ===
+      "1"
+    ) {
       console.info("[HarthmereHardMouseRouter]", logged);
     }
   };
@@ -2159,7 +2325,7 @@ function installHarthmereHardCombatMouseRouter() {
       return;
     }
     const nativeContactBefore = Number(
-      win.__harthmereNativeNpcAttackContactLastAt ?? 0,
+      win.__harthmereNativeNpcAttackContactLastAt ?? 0
     );
     pushLog({
       type: "mousedown",
@@ -2170,17 +2336,17 @@ function installHarthmereHardCombatMouseRouter() {
     });
     window.setTimeout(() => {
       const nativeContactAfter = Number(
-        win.__harthmereNativeNpcAttackContactLastAt ?? 0,
+        win.__harthmereNativeNpcAttackContactLastAt ?? 0
       );
       if (nativeContactAfter > nativeContactBefore) {
         const nativeHitOffsets =
           harthmereMousePrimaryAttackOffsetsFromNativeHits(
-            win.__harthmereNativeNpcAttackContactLastHits,
+            win.__harthmereNativeNpcAttackContactLastHits
           );
         submitHarthmereLiveModeMousePrimaryAttack(
           nativeHitOffsets,
           readHarthmereForwardArcRuntime(),
-          "native_contact",
+          "native_contact"
         );
         pushLog({
           type: "ignored",
@@ -2211,15 +2377,21 @@ function installHarthmereHardCombatMouseRouter() {
   });
 }
 
-installHarthmereHardCombatMouseRouter();
-
+// Deliberately disabled by default. It is retained only as an opt-in diagnostic
+// for the legacy Harthmere simulator; production uses native ECS item delegates
+// so a terrain placement click can never become a proximity attack.
+if (
+  typeof process !== "undefined" &&
+  process.env.NEXT_PUBLIC_BIOMES_ENABLE_LEGACY_MOUSE_COMBAT === "1"
+) {
+  installHarthmereHardCombatMouseRouter();
+}
 
 // current combat variation event marker
 const __HARTHMERE_ATTACK_VARIATION_EVENT = {
   attackVariationId: true,
   attackVariationFamily: true,
 };
-
 
 // current combat variation payload markers.
 const __HARTHMERE_VARIATION_COMBAT = {

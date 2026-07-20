@@ -4,6 +4,8 @@
 // and stored back, and an emptied container is NOT re-seeded on re-open.
 import assert from "assert";
 
+process.env.NEXT_PUBLIC_BIOMES_ENABLE_SYNTHETIC_ROAD_AHEAD = "1";
+
 // A minimal browser shim so the localStorage-backed container + inventory
 // modules run under node. Must be installed before importing the modules.
 const store: Record<string, string> = {};
@@ -218,7 +220,14 @@ describe("harthmere object container take/store interface", () => {
         return {
           ok: true,
           status: 200,
-          json: async () => ({ ok: true }),
+          json: async () => ({
+            ok: true,
+            backendMutation: {
+              applied: true,
+              warnings: [],
+              touchedModels: ["inventory_items"],
+            },
+          }),
         } as Response;
       };
 
@@ -337,7 +346,14 @@ describe("harthmere object container take/store interface", () => {
       return {
         ok: true,
         status: 200,
-        json: async () => ({ ok: true }),
+        json: async () => ({
+          ok: true,
+          backendMutation: {
+            applied: true,
+            warnings: [],
+            touchedModels: ["container_transfer"],
+          },
+        }),
       } as Response;
     };
 
@@ -370,6 +386,37 @@ describe("harthmere object container take/store interface", () => {
           ok: false,
           status: 409,
           json: async () => ({ ok: false, error: "inventory_full" }),
+        } as Response);
+
+    assert.equal(takeAllFromHarthmereContainer(key), 6);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    assert.equal(countInContainer(key, "baker_apron"), 1);
+    assert.equal(countInContainer(key, "field_trousers"), 1);
+    assert.equal(countInContainer(key, "cloth_scrap"), 4);
+  });
+
+  it("does not empty Take All on an HTTP-200 gameplay rejection", async () => {
+    const entityId = 42453 as BiomesId;
+    const { key } = getOrSeedHarthmereContainer(
+      entityId,
+      "Clothing Crate",
+      READY
+    );
+    (windowMock as typeof windowMock & { fetch: typeof fetch }).fetch =
+      async () =>
+        ({
+          ok: true,
+          status: 200,
+          json: async () => ({
+            ok: true,
+            backendMutation: {
+              applied: true,
+              warnings: [
+                "container_transfer_rejected:unknown_item_id:baker_apron",
+              ],
+              touchedModels: ["container_transfer_rejection"],
+            },
+          }),
         } as Response);
 
     assert.equal(takeAllFromHarthmereContainer(key), 6);
