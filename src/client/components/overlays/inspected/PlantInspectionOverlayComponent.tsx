@@ -3,6 +3,10 @@ import { ProgressBar } from "@/client/components/HealthBarHUD";
 import type { InspectShortcuts } from "@/client/components/overlays/inspected/CursorInspectionOverlayComponent";
 import { CursorInspectionComponent } from "@/client/components/overlays/inspected/CursorInspectionOverlayComponent";
 import { plantInspectionCanHarvest } from "@/client/components/overlays/inspected/plantInspectionShortcuts";
+import {
+  acquiredInventoryCountForBag,
+  snapshotInventoryCountsForBag,
+} from "@/client/components/overlays/inspected/nativeEcsAcquisitionFeedback";
 import { addToast } from "@/client/components/toast/helpers";
 import type { PlantInspectOverlay } from "@/client/game/resources/overlays";
 import { getBiscuit } from "@/shared/bikkie/active";
@@ -13,6 +17,7 @@ import {
 } from "@/shared/ecs/gen/events";
 import type { BiomesId } from "@/shared/ids";
 import { fireAndForget, sleep } from "@/shared/util/async";
+import { createBag } from "@/shared/game/items";
 import { plantTimeString } from "@/shared/util/helpers";
 import { useAnimationFrame } from "framer-motion";
 import { compact } from "lodash";
@@ -118,6 +123,16 @@ export const PlantInspectionOverlayComponent: React.FunctionComponent<{
               "/ecs/c/position",
               overlay.entityId
             )?.v;
+            const expectedYield = createBag(
+              ...compact(
+                resources.get("/ecs/c/container_inventory", overlay.entityId)
+                  ?.items ?? []
+              )
+            );
+            const inventoryBefore = snapshotInventoryCountsForBag(
+              resources.get("/ecs/c/inventory", userId),
+              expectedYield
+            );
             await events.publish(
               new HarvestPlantEvent({
                 id: userId,
@@ -138,14 +153,31 @@ export const PlantInspectionOverlayComponent: React.FunctionComponent<{
               }
               await sleep(250);
             }
+            let acquired = 0n;
+            if (applied) {
+              for (let attempt = 0; attempt < 20; attempt += 1) {
+                acquired = acquiredInventoryCountForBag(
+                  inventoryBefore,
+                  resources.get("/ecs/c/inventory", userId),
+                  expectedYield
+                );
+                if (acquired > 0n) break;
+                await sleep(250);
+              }
+            }
             addToast(resources, {
               kind: "basic",
               id: `harthmere-native-harvest:${plantId}`,
-              message: applied
-                ? `${name ?? "Crop"} harvested. Pick up the crop drop.`
-                : `Harvest accepted for ${
-                    name ?? "this plant"
-                  }, but the crop drop is still syncing.`,
+              message:
+                acquired > 0n
+                  ? `${name ?? "Crop"} harvested and added to your inventory.`
+                  : applied
+                  ? `${
+                      name ?? "Crop"
+                    } harvested. The native crop drop is ready; press F to pick it up.`
+                  : `Harvest is still pending for ${
+                      name ?? "this plant"
+                    }. No item has been awarded yet.`,
             });
           })()
             .catch(() => {

@@ -12,25 +12,20 @@ import {
 import { publishHarthmereWorldLootDrops } from "@/client/components/challenges/harthmereLootDropWorldState";
 import type { HarthmereInventoryLootDrop } from "@/shared/harthmere/mmo_inventory_loot_authority";
 import { hasNativeInspectableWorldTarget } from "@/client/components/challenges/worldInteractionPriority";
+import {
+  useWorldInteractionCandidate,
+  WORLD_INTERACTION_PRIORITY,
+} from "@/client/components/challenges/worldInteractionDispatcher";
 
 export const HARTHMERE_LOOT_DROP_WORLD_INTERACTION_VERSION =
   "harthmere-loot-drop-world-interaction" as const;
 
-const HARTHMERE_LOOT_DROP_PROMPT_RADIUS = 7.5;
+// Keep the prompt inside the backend's authoritative five-block 3D claim
+// radius. A wider/XZ-only prompt offered F through floors and then failed.
+const HARTHMERE_LOOT_DROP_PROMPT_RADIUS = 5;
 const HARTHMERE_LOOT_DROP_REFRESH_MS = 10_000;
 const HARTHMERE_LOOT_FEEDBACK_VISIBLE_MS = 4500;
 type HarthmereLootPoint = { x: number; y?: number; z: number };
-
-function eventStartedInEditable(event: Event): boolean {
-  const target = event.target as HTMLElement | null;
-  const tagName = target?.tagName?.toLowerCase();
-  return (
-    tagName === "input" ||
-    tagName === "textarea" ||
-    tagName === "select" ||
-    Boolean(target?.isContentEditable)
-  );
-}
 
 function itemLabel(itemId: string): string {
   return itemId
@@ -64,6 +59,9 @@ export function nearestAvailableHarthmereLootDrop(
     if (!position) continue;
     const distance = Math.hypot(
       position.x - playerPosition.x,
+      Number.isFinite(position.y) && Number.isFinite(playerPosition.y)
+        ? Number(position.y) - Number(playerPosition.y)
+        : 0,
       position.z - playerPosition.z
     );
     if (distance <= radius && (!best || distance < best.distance)) {
@@ -268,10 +266,9 @@ export function HarthmereLootDropWorldInteraction({
     );
   }, []);
 
-  const activeDrop = nearestAvailableHarthmereLootDrop(
-    drops,
-    playerPosition,
-    Date.now()
+  const activeDrop = React.useMemo(
+    () => nearestAvailableHarthmereLootDrop(drops, playerPosition, Date.now()),
+    [drops, playerPosition?.x, playerPosition?.y, playerPosition?.z]
   );
   const promptBlocked =
     suppressPrompt || hasNativeInspectableWorldTarget(overlays);
@@ -303,30 +300,22 @@ export function HarthmereLootDropWorldInteraction({
     }
   }, [activeDrop, claimingDropId, refreshDrops, showFeedback]);
 
-  React.useEffect(() => {
-    if (!activeDrop || promptBlocked || typeof window === "undefined") return;
-    const handler = (event: KeyboardEvent) => {
-      if (
-        event.repeat ||
-        event.metaKey ||
-        event.ctrlKey ||
-        event.altKey ||
-        eventStartedInEditable(event)
-      ) {
-        return;
-      }
-      if (event.code === "KeyF") {
-        event.preventDefault();
-        event.stopPropagation();
-        event.stopImmediatePropagation();
-        void salvage();
-      }
-    };
-    window.addEventListener("keydown", handler, true);
-    return () => window.removeEventListener("keydown", handler, true);
-  }, [activeDrop, salvage, promptBlocked]);
+  const worldCandidate = React.useMemo(
+    () =>
+      activeDrop && !promptBlocked
+        ? {
+            id: `harthmere:loot:${activeDrop.dropId}`,
+            priority:
+              WORLD_INTERACTION_PRIORITY.authoredLoot - activeDrop.distance,
+            disabled: Boolean(claimingDropId),
+            onInteract: salvage,
+          }
+        : undefined,
+    [activeDrop, claimingDropId, promptBlocked, salvage]
+  );
+  const ownsInteraction = useWorldInteractionCandidate(worldCandidate);
 
-  if (!activeDrop || promptBlocked) return null;
+  if (!activeDrop || promptBlocked || !ownsInteraction) return null;
 
   const feedbackState = feedback ? (feedback.ok ? "success" : "error") : "";
   const distance = `${Math.max(0, activeDrop.distance).toFixed(1)}m`;

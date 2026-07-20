@@ -1,5 +1,5 @@
 import assert from "assert";
-import { harthmereBiomesAuthSessionMatchesIdentity } from "../harthmere";
+import { harthmereBiomesAuthSessionMatchesIdentity } from "@/pages/api/glitch/harthmere";
 
 const identity = {
   valid: true,

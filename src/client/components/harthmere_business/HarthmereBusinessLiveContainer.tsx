@@ -1,4 +1,8 @@
 import * as React from "react";
+import {
+  useWorldInteractionCandidate,
+  WORLD_INTERACTION_PRIORITY,
+} from "@/client/components/challenges/worldInteractionDispatcher";
 import { usePointerLockUnlockWhileOpenActive } from "@/client/components/contexts/usePointerLockUnlockWhileOpenActive";
 import { HarthmereBusinessInterfacePanel } from "./HarthmereBusinessInterfacePanel";
 import { HarthmereBusinessInteractionPrompt } from "./HarthmereBusinessInteractionPrompt";
@@ -44,17 +48,6 @@ export function planHarthmereBusinessRefreshLoading(
     clearLoadingWhenSettled: isInitialLoad,
     hasLoadedAfter: true,
   };
-}
-
-function isTypingInBusinessInput(target: EventTarget | null) {
-  const element = target as HTMLElement | null;
-  const tagName = element?.tagName?.toLowerCase();
-  return (
-    tagName === "input" ||
-    tagName === "textarea" ||
-    tagName === "select" ||
-    element?.isContentEditable === true
-  );
 }
 
 export function mergeHarthmereBusinessWorldContext(
@@ -178,41 +171,25 @@ export function HarthmereBusinessLiveContainer({
     onClose?.();
   }, [onClose, open, prompt.visible, state]);
 
-  React.useEffect(() => {
-    if (
-      !prompt.visible ||
-      !canShowWorldPrompt ||
-      !onOpen ||
-      typeof window === "undefined"
-    ) {
-      return;
-    }
-    const handler = (event: KeyboardEvent) => {
-      if (
-        event.repeat ||
-        event.metaKey ||
-        event.ctrlKey ||
-        event.altKey ||
-        isTypingInBusinessInput(event.target)
-      ) {
-        return;
-      }
-      if (event.code === "KeyE" || event.code === "KeyF") {
-        event.preventDefault();
-        event.stopPropagation();
-        event.stopImmediatePropagation();
-        onOpen();
-      }
-    };
-    window.addEventListener("keydown", handler, true);
-    return () => window.removeEventListener("keydown", handler, true);
-  }, [canShowWorldPrompt, onOpen, prompt.visible]);
+  const worldCandidate = React.useMemo(
+    () =>
+      prompt.visible && canShowWorldPrompt && onOpen
+        ? {
+            id: `harthmere:business:${context.nearbyBusinessId ?? "nearby"}`,
+            priority: WORLD_INTERACTION_PRIORITY.authoredStation,
+            keyCodes: ["KeyF", "KeyE"],
+            onInteract: onOpen,
+          }
+        : undefined,
+    [canShowWorldPrompt, context.nearbyBusinessId, onOpen, prompt.visible]
+  );
+  const ownsInteraction = useWorldInteractionCandidate(worldCandidate);
 
   if (!state && (loading || !error)) return null;
 
   return (
     <>
-      {canShowWorldPrompt ? (
+      {canShowWorldPrompt && ownsInteraction ? (
         <HarthmereBusinessInteractionPrompt
           adapter={adapter}
           context={context}

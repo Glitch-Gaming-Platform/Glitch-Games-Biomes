@@ -40,6 +40,18 @@ describe("HarthmereLootDropWorldInteraction", () => {
     );
 
     assert.equal(nearest?.dropId, "near");
-    assert.equal(nearest?.distance, 2);
+    assert.equal(nearest?.distance, Math.sqrt(5));
+  });
+
+  it("does not offer loot through floors or beyond the server claim radius", () => {
+    const nearest = nearestAvailableHarthmereLootDrop(
+      [
+        drop("upstairs", { x: 1, y: 61, z: 0 }),
+        drop("outside-server-range", { x: 5.1, y: 53, z: 0 }),
+      ],
+      { x: 0, y: 53, z: 0 },
+      1_700_000_000_100
+    );
+    assert.equal(nearest, undefined);
   });
 });

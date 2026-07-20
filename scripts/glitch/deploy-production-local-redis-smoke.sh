@@ -1861,7 +1861,12 @@ push_and_deploy() {
   check_production_redis_snapshot_hash "Azure Container App update"
   archive_production_mutable_hotfix_manifest "Azure Container App update"
   log "Updating Azure Container App $AZURE_CONTAINER_APP to $IMAGE."
-  mapfile -t existing_azure_envs < <(
+  existing_azure_envs=()
+  while IFS= read -r env_name; do
+    if [ -n "$env_name" ]; then
+      existing_azure_envs+=("$env_name")
+    fi
+  done < <(
     az containerapp show \
       --resource-group "$AZURE_RESOURCE_GROUP" \
       --name "$AZURE_CONTAINER_APP" \

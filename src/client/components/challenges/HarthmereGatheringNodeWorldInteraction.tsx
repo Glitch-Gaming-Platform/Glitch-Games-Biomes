@@ -17,22 +17,15 @@ import {
   type HarthmereGatheringNodePrompt,
 } from "@/client/components/challenges/LocalDevHarthmereGatheringSystem";
 import { hasNativeInspectableWorldTarget } from "@/client/components/challenges/worldInteractionPriority";
+import {
+  useWorldInteractionCandidate,
+  WORLD_INTERACTION_PRIORITY,
+} from "@/client/components/challenges/worldInteractionDispatcher";
 
 export const HARTHMERE_GATHERING_NODE_WORLD_INTERACTION_VERSION =
   "harthmere-gathering-node-world-interaction" as const;
 
 const GATHER_FEEDBACK_VISIBLE_MS = 4500;
-
-function eventStartedInEditable(event: Event): boolean {
-  const target = event.target as HTMLElement | null;
-  const tagName = target?.tagName?.toLowerCase();
-  return (
-    tagName === "input" ||
-    tagName === "textarea" ||
-    tagName === "select" ||
-    Boolean(target?.isContentEditable)
-  );
-}
 
 function requirementLabel(prompt: HarthmereGatheringNodePrompt): string {
   const tool = prompt.requiredTool
@@ -58,7 +51,10 @@ export function HarthmereGatheringNodeWorldInteraction({
   const feedbackTimer = React.useRef<ReturnType<typeof setTimeout>>();
 
   const playerPosition = harthmereJobsBoardPlayerPosition(localPlayer, camera);
-  const prompt = nearestHarthmereGatheringNodePrompt(playerPosition);
+  const prompt = React.useMemo(
+    () => nearestHarthmereGatheringNodePrompt(playerPosition),
+    [playerPosition?.x, playerPosition?.y, playerPosition?.z]
+  );
   const promptBlocked =
     suppressPrompt || hasNativeInspectableWorldTarget(overlays);
 
@@ -98,30 +94,22 @@ export function HarthmereGatheringNodeWorldInteraction({
     };
   }, []);
 
-  React.useEffect(() => {
-    if (!prompt || promptBlocked || typeof window === "undefined") return;
-    const handler = (event: KeyboardEvent) => {
-      if (
-        event.repeat ||
-        event.metaKey ||
-        event.ctrlKey ||
-        event.altKey ||
-        eventStartedInEditable(event)
-      ) {
-        return;
-      }
-      if (event.code === "KeyF" && !pending) {
-        event.preventDefault();
-        event.stopPropagation();
-        event.stopImmediatePropagation();
-        harvest();
-      }
-    };
-    window.addEventListener("keydown", handler, true);
-    return () => window.removeEventListener("keydown", handler, true);
-  }, [prompt, harvest, pending, promptBlocked]);
+  const worldCandidate = React.useMemo(
+    () =>
+      prompt && !promptBlocked
+        ? {
+            id: `harthmere:gathering:${prompt.id}`,
+            priority:
+              WORLD_INTERACTION_PRIORITY.authoredGathering - prompt.distance,
+            disabled: pending,
+            onInteract: harvest,
+          }
+        : undefined,
+    [harvest, pending, prompt, promptBlocked]
+  );
+  const ownsInteraction = useWorldInteractionCandidate(worldCandidate);
 
-  if (!prompt || promptBlocked) {
+  if (!prompt || promptBlocked || !ownsInteraction) {
     return null;
   }
   const detailState = feedback

@@ -120,12 +120,15 @@ includesAll(route, "route persistence wiring", [
   "backendMutation",
   "harthmereLiveModePlayerStateKey",
   "harthmereLiveModeLedgerStreamKey",
-  "tx.set(playerStateKey",
   "stateAdoption",
   "actor_state_adopted",
   "tx.xadd(",
   '"NX"',
 ]);
+check(
+  /\btx\.set\(\s*playerStateKey\s*,/.test(route),
+  "route persistence wiring writes the player state in the transaction"
+);
 check(
   /\.del\?\.\(\s*adoptionSourceStateKey\s*\)/.test(route),
   "route persistence wiring deletes the adopted source state in the transaction"

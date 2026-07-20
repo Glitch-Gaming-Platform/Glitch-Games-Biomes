@@ -1,4 +1,8 @@
 import * as React from "react";
+import {
+  useWorldInteractionCandidate,
+  WORLD_INTERACTION_PRIORITY,
+} from "@/client/components/challenges/worldInteractionDispatcher";
 import { HarthmereHomeConsolePanel } from "./HarthmereHomeConsolePanel";
 import { HarthmereHomeConsolePrompt } from "./HarthmereHomeConsolePrompt";
 import {
@@ -110,45 +114,31 @@ export function HarthmereHomeConsoleLiveContainer({
     onClose?.();
   }, [adapter, context, onClose, open, state]);
 
-  React.useEffect(() => {
-    if (!prompt.visible || open || !onOpen || typeof window === "undefined") {
-      return;
-    }
-    const handler = (event: KeyboardEvent) => {
-      const target = event.target as HTMLElement | null;
-      const tagName = target?.tagName?.toLowerCase();
-      if (
-        event.repeat ||
-        event.metaKey ||
-        event.ctrlKey ||
-        event.altKey ||
-        tagName === "input" ||
-        tagName === "textarea" ||
-        tagName === "select" ||
-        target?.isContentEditable
-      ) {
-        return;
-      }
-      if (event.code === "KeyF" || event.code === "KeyE") {
-        event.preventDefault();
-        event.stopPropagation();
-        event.stopImmediatePropagation();
-        onOpen();
-      }
-    };
-    window.addEventListener("keydown", handler, true);
-    return () => window.removeEventListener("keydown", handler, true);
-  }, [onOpen, open, prompt.visible]);
+  const worldCandidate = React.useMemo(
+    () =>
+      prompt.visible && !open && onOpen
+        ? {
+            id: `harthmere:home:${context.nearbyPropertyId ?? "nearby"}`,
+            priority: WORLD_INTERACTION_PRIORITY.authoredStation,
+            keyCodes: ["KeyF", "KeyE"],
+            onInteract: onOpen,
+          }
+        : undefined,
+    [context.nearbyPropertyId, onOpen, open, prompt.visible]
+  );
+  const ownsInteraction = useWorldInteractionCandidate(worldCandidate);
 
   if (!state && (loading || !error)) return null;
 
   return (
     <>
-      <HarthmereHomeConsolePrompt
-        adapter={adapter}
-        context={promptContext}
-        onInteract={() => onOpen?.()}
-      />
+      {ownsInteraction ? (
+        <HarthmereHomeConsolePrompt
+          adapter={adapter}
+          context={promptContext}
+          onInteract={() => onOpen?.()}
+        />
+      ) : null}
       {open ? (
         <HarthmereHomeConsolePanel
           adapter={adapter}

@@ -18,6 +18,10 @@ import {
   closeHarthmereJobsBoardPointerLock,
   openHarthmereJobsBoardPointerLock,
 } from "./jobsBoardPointerLock";
+import {
+  useWorldInteractionCandidate,
+  WORLD_INTERACTION_PRIORITY,
+} from "@/client/components/challenges/worldInteractionDispatcher";
 
 export const HARTHMERE_JOBS_BOARD_WORLD_INTERACTION_VERSION =
   "harthmere-jobs-board-world-interaction" as const;
@@ -59,7 +63,10 @@ export function HarthmereJobsBoardWorldInteraction({
   const [openBoardId, setOpenBoardId] = React.useState<string | undefined>();
   const playerPosition = harthmereJobsBoardPlayerPosition(localPlayer, camera);
   const cameraPosition = harthmereJobsBoardCameraPosition(camera);
-  const prompt = nearestHarthmereJobsBoardPhysicalPrompt(playerPosition);
+  const prompt = React.useMemo(
+    () => nearestHarthmereJobsBoardPhysicalPrompt(playerPosition),
+    [playerPosition?.x, playerPosition?.y, playerPosition?.z]
+  );
   const activePrompt = prompt;
   const promptBlocked = suppressPrompt || (anyUiOpen && !openBoardId);
 
@@ -96,28 +103,22 @@ export function HarthmereJobsBoardWorldInteraction({
     installHarthmereJobsBoardStyles();
   }, []);
 
-  React.useEffect(() => {
-    if (!activePrompt || promptBlocked || typeof window === "undefined") return;
-    const handler = (event: KeyboardEvent) => {
-      if (
-        event.repeat ||
-        event.metaKey ||
-        event.ctrlKey ||
-        event.altKey ||
-        eventStartedInEditable(event)
-      ) {
-        return;
-      }
-      if (event.code === "KeyF" || event.code === "KeyE") {
-        event.preventDefault();
-        event.stopPropagation();
-        event.stopImmediatePropagation();
-        open(event.code === "KeyF" ? "keyboard_f" : "keyboard_e");
-      }
-    };
-    window.addEventListener("keydown", handler, true);
-    return () => window.removeEventListener("keydown", handler, true);
-  }, [activePrompt, open, promptBlocked]);
+  const worldCandidate = React.useMemo(
+    () =>
+      activePrompt && !promptBlocked
+        ? {
+            id: `harthmere:jobs-board:${activePrompt.boardId}`,
+            priority:
+              WORLD_INTERACTION_PRIORITY.authoredStation -
+              activePrompt.distance,
+            keyCodes: ["KeyF", "KeyE"],
+            onInteract: (event: KeyboardEvent) =>
+              open(event.code === "KeyF" ? "keyboard_f" : "keyboard_e"),
+          }
+        : undefined,
+    [activePrompt, open, promptBlocked]
+  );
+  const ownsInteraction = useWorldInteractionCandidate(worldCandidate);
 
   React.useEffect(() => {
     if (!activePrompt || promptBlocked || typeof window === "undefined") return;
@@ -191,7 +192,7 @@ export function HarthmereJobsBoardWorldInteraction({
 
   return (
     <>
-      {activePrompt && !openBoardId && !promptBlocked && (
+      {activePrompt && !openBoardId && !promptBlocked && ownsInteraction && (
         <button
           type="button"
           className="harthmere-jobs-prompt"

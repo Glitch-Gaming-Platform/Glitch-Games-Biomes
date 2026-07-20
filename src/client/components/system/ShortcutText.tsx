@@ -1,11 +1,15 @@
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
 import { usePointerLockManager } from "@/client/components/contexts/PointerLockContext";
+import {
+  useWorldInteractionCandidate,
+  WORLD_INTERACTION_PRIORITY,
+} from "@/client/components/challenges/worldInteractionDispatcher";
 import type { KeyCode } from "@/client/game/util/keyboard";
 import { cleanListener } from "@/client/util/helpers";
 import { getTypedStorageItem } from "@/client/util/typed_local_storage";
 import { motion } from "framer-motion";
 import type { PropsWithChildren } from "react";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import leftClickIcon from "/public/hud/icon-16-left-mouse.png";
 import rightClickIcon from "/public/hud/icon-16-right-mouse.png";
 
@@ -52,14 +56,63 @@ export const ShortcutText: React.FunctionComponent<
     extraClassName?: string;
     progressPercent?: number;
     disabled?: boolean;
+    worldInteractionCandidateId?: string;
+    worldInteractionPriority?: number;
   }>
 > = ({ ...props }) => {
   const [keydown, setKeydown] = useState(false);
   const { audioManager } = useClientContext();
   const pointerLockManager = usePointerLockManager();
 
+  const runShortcut = useCallback(
+    (event?: KeyboardEvent) => {
+      if (props.disabled || !pointerLockManager.allowHUDInput()) return;
+      if (props.onShiftedKeyDown && event?.shiftKey) {
+        props.onShiftedKeyDown();
+      } else {
+        props.onKeyDown?.();
+      }
+      audioManager.playSound("button_click");
+      setKeydown(true);
+    },
+    [
+      audioManager,
+      pointerLockManager,
+      props.disabled,
+      props.onKeyDown,
+      props.onShiftedKeyDown,
+    ]
+  );
+  const centralizedWorldCandidate = useMemo(
+    () =>
+      props.worldInteractionCandidateId && props.keyCode
+        ? {
+            id: props.worldInteractionCandidateId,
+            priority:
+              props.worldInteractionPriority ??
+              WORLD_INTERACTION_PRIORITY.nativeEcs,
+            keyCodes: [props.keyCode],
+            disabled: props.disabled,
+            canHandle: () => pointerLockManager.allowHUDInput(),
+            onInteract: runShortcut,
+          }
+        : undefined,
+    [
+      pointerLockManager,
+      props.disabled,
+      props.keyCode,
+      props.worldInteractionCandidateId,
+      props.worldInteractionPriority,
+      runShortcut,
+    ]
+  );
+  useWorldInteractionCandidate(
+    centralizedWorldCandidate,
+    props.keyCode ?? "KeyF"
+  );
+
   useEffect(() => {
-    if (props.keyCode) {
+    if (props.keyCode && !centralizedWorldCandidate) {
       return cleanListener(document, {
         keydown: (e: KeyboardEvent) => {
           if (
@@ -71,21 +124,14 @@ export const ShortcutText: React.FunctionComponent<
             return;
           }
 
-          if (props.onShiftedKeyDown && e.shiftKey) {
-            props.onShiftedKeyDown();
-          } else {
-            props.onKeyDown?.();
-          }
-
-          audioManager.playSound("button_click");
-          setKeydown(true);
+          runShortcut(e);
         },
         keyup: () => {
           setKeydown(false);
         },
       });
     }
-  }, [props.keyCode, props.onKeyDown]);
+  }, [centralizedWorldCandidate, props.disabled, props.keyCode, runShortcut]);
   return (
     <span className={`key-hint ${props.disabled ? "disabled" : ""}`}>
       <motion.span

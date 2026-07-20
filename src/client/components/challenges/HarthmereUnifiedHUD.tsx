@@ -143,6 +143,10 @@ import {
 import { biomesUIStaminaWarningLevelForTest } from "@/client/components/biomes_ui/staminaWarning";
 import { useBiomesHUDVisibilitySnapshot } from "@/client/components/biomes_ui/hudVisibilitySettings";
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
+import {
+  useWorldInteractionCandidate,
+  WORLD_INTERACTION_PRIORITY,
+} from "@/client/components/challenges/worldInteractionDispatcher";
 import { usePointerLockManager } from "@/client/components/contexts/PointerLockContext";
 import { setHarthmereLocalDevUserScope } from "@/client/components/challenges/LocalDevHarthmereUserScope";
 import {
@@ -2457,7 +2461,10 @@ function HarthmereBusinessBoardWorldPrompt({
   const camera = reactResources.use("/scene/camera") as any;
   const playerPosition = harthmereJobsBoardPlayerPosition(localPlayer, camera);
   const cameraPosition = harthmereJobsBoardCameraPosition(camera);
-  const prompt = nearestHarthmereBusinessBoardPhysicalPrompt(playerPosition);
+  const prompt = React.useMemo(
+    () => nearestHarthmereBusinessBoardPhysicalPrompt(playerPosition),
+    [playerPosition?.x, playerPosition?.y, playerPosition?.z]
+  );
   const projectedPrompt = prompt
     ? harthmereJobsBoardPromptScreenProjection(prompt.position, camera)
     : undefined;
@@ -2467,36 +2474,23 @@ function HarthmereBusinessBoardWorldPrompt({
     onOpen(prompt);
   }, [onOpen, prompt]);
 
-  useEffect(() => {
-    if (!prompt || typeof window === "undefined") return;
-    const handler = (event: KeyboardEvent) => {
-      const target = event.target as HTMLElement | null;
-      const tagName = target?.tagName?.toLowerCase();
-      if (
-        event.repeat ||
-        event.metaKey ||
-        event.ctrlKey ||
-        event.altKey ||
-        tagName === "input" ||
-        tagName === "textarea" ||
-        tagName === "select" ||
-        target?.isContentEditable
-      ) {
-        return;
-      }
-      if (event.code === "KeyF" || event.code === "KeyE") {
-        event.preventDefault();
-        event.stopPropagation();
-        event.stopImmediatePropagation();
-        openBusinessBoardFromPrompt();
-      }
-    };
-    window.addEventListener("keydown", handler, true);
-    return () => window.removeEventListener("keydown", handler, true);
-  }, [openBusinessBoardFromPrompt, prompt]);
+  const worldCandidate = React.useMemo(
+    () =>
+      prompt
+        ? {
+            id: `harthmere:business-board:${prompt.businessId}`,
+            priority:
+              WORLD_INTERACTION_PRIORITY.authoredStation - prompt.distance,
+            keyCodes: ["KeyF", "KeyE"],
+            onInteract: openBusinessBoardFromPrompt,
+          }
+        : undefined,
+    [openBusinessBoardFromPrompt, prompt]
+  );
+  const ownsInteraction = useWorldInteractionCandidate(worldCandidate);
 
   useEffect(() => {
-    if (!prompt || typeof window === "undefined") return;
+    if (!prompt || !ownsInteraction || typeof window === "undefined") return;
     const handler = (event: MouseEvent) => {
       if (
         event.defaultPrevented ||
@@ -2517,7 +2511,7 @@ function HarthmereBusinessBoardWorldPrompt({
     };
     window.addEventListener("click", handler, true);
     return () => window.removeEventListener("click", handler, true);
-  }, [openBusinessBoardFromPrompt, prompt]);
+  }, [openBusinessBoardFromPrompt, ownsInteraction, prompt]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -2536,7 +2530,7 @@ function HarthmereBusinessBoardWorldPrompt({
     };
   }, [cameraPosition, onOpen, playerPosition, prompt]);
 
-  if (!prompt) return null;
+  if (!prompt || !ownsInteraction) return null;
   const openFromPromptClick = (event: React.MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
     event.stopPropagation();
@@ -2612,54 +2606,52 @@ function HarthmereJobsBoardWorldPrompt({
   const camera = reactResources.use("/scene/camera") as any;
   const playerPosition = harthmereJobsBoardPlayerPosition(localPlayer, camera);
   const cameraPosition = harthmereJobsBoardCameraPosition(camera);
-  const prompt = nearestHarthmereJobsBoardPhysicalPrompt(playerPosition);
+  const prompt = React.useMemo(
+    () => nearestHarthmereJobsBoardPhysicalPrompt(playerPosition),
+    [playerPosition?.x, playerPosition?.y, playerPosition?.z]
+  );
   const projectedPrompt = prompt
     ? harthmereJobsBoardPromptScreenProjection(prompt.position, camera)
     : undefined;
-  const openContext: HarthmereJobsBoardWorldContext | undefined = prompt
-    ? {
-        nearbyBoardId: prompt.boardId,
-        interactionTargetId: prompt.boardId,
-        playerPosition: playerPosition
-          ? {
-              x: playerPosition.x,
-              y: playerPosition.y ?? 0,
-              z: playerPosition.z,
-            }
-          : undefined,
-      }
-    : undefined;
+  const openContext: HarthmereJobsBoardWorldContext | undefined = React.useMemo(
+    () =>
+      prompt
+        ? {
+            nearbyBoardId: prompt.boardId,
+            interactionTargetId: prompt.boardId,
+            playerPosition: playerPosition
+              ? {
+                  x: playerPosition.x,
+                  y: playerPosition.y ?? 0,
+                  z: playerPosition.z,
+                }
+              : undefined,
+          }
+        : undefined,
+    [playerPosition?.x, playerPosition?.y, playerPosition?.z, prompt?.boardId]
+  );
+
+  const openJobsBoardFromPrompt = React.useCallback(
+    () => onOpen(openContext),
+    [onOpen, openContext]
+  );
+  const worldCandidate = React.useMemo(
+    () =>
+      prompt
+        ? {
+            id: `harthmere:jobs-board:${prompt.boardId}`,
+            priority:
+              WORLD_INTERACTION_PRIORITY.authoredStation - prompt.distance,
+            keyCodes: ["KeyF", "KeyE"],
+            onInteract: openJobsBoardFromPrompt,
+          }
+        : undefined,
+    [openJobsBoardFromPrompt, prompt]
+  );
+  const ownsInteraction = useWorldInteractionCandidate(worldCandidate);
 
   useEffect(() => {
-    if (!prompt || typeof window === "undefined") return;
-    const handler = (event: KeyboardEvent) => {
-      const target = event.target as HTMLElement | null;
-      const tagName = target?.tagName?.toLowerCase();
-      if (
-        event.repeat ||
-        event.metaKey ||
-        event.ctrlKey ||
-        event.altKey ||
-        tagName === "input" ||
-        tagName === "textarea" ||
-        tagName === "select" ||
-        target?.isContentEditable
-      ) {
-        return;
-      }
-      if (event.code === "KeyF" || event.code === "KeyE") {
-        event.preventDefault();
-        event.stopPropagation();
-        event.stopImmediatePropagation();
-        onOpen(openContext);
-      }
-    };
-    window.addEventListener("keydown", handler, true);
-    return () => window.removeEventListener("keydown", handler, true);
-  }, [onOpen, openContext, prompt]);
-
-  useEffect(() => {
-    if (!prompt || typeof window === "undefined") return;
+    if (!prompt || !ownsInteraction || typeof window === "undefined") return;
     const handler = (event: MouseEvent) => {
       if (
         event.defaultPrevented ||
@@ -2676,11 +2668,11 @@ function HarthmereJobsBoardWorldPrompt({
       event.preventDefault();
       event.stopPropagation();
       event.stopImmediatePropagation();
-      onOpen(openContext);
+      openJobsBoardFromPrompt();
     };
     window.addEventListener("click", handler, true);
     return () => window.removeEventListener("click", handler, true);
-  }, [onOpen, openContext, prompt]);
+  }, [openJobsBoardFromPrompt, ownsInteraction, prompt]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -2707,12 +2699,12 @@ function HarthmereJobsBoardWorldPrompt({
     };
   }, [cameraPosition, onOpen, openContext, playerPosition, prompt]);
 
-  if (!prompt) return null;
+  if (!prompt || !ownsInteraction) return null;
   const openFromPromptClick = (event: React.MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
     event.stopPropagation();
     event.nativeEvent.stopImmediatePropagation?.();
-    onOpen(openContext);
+    openJobsBoardFromPrompt();
   };
   return (
     <>

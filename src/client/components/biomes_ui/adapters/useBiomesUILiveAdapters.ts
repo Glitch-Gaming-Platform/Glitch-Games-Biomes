@@ -1,4 +1,8 @@
 import { harthmereLiveServerAuthoritative } from "@/client/components/challenges/harthmereLiveAuthoritySignal";
+import {
+  useWorldInteractionCandidate,
+  WORLD_INTERACTION_PRIORITY,
+} from "@/client/components/challenges/worldInteractionDispatcher";
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
 import {
   defaultHarthmereLiveFetch,
@@ -193,17 +197,6 @@ const BIOMES_UI_KEY_TO_TAB: Record<string, TabKey> = {
   KeyV: "inbox",
   Comma: "options",
 };
-
-function hasActiveHarthmereGatheringNodePrompt() {
-  return (
-    typeof document !== "undefined" &&
-    Boolean(
-      document.querySelector(
-        '[data-harthmere-gathering-node-world-prompt="active"]'
-      )
-    )
-  );
-}
 
 function isJobsBoardActivePinMarkerId(markerId: string | undefined): boolean {
   return Boolean(
@@ -2776,6 +2769,49 @@ export function useBiomesUILiveAdapters({
     return () => window.removeEventListener("keydown", handler, true);
   }, [openTab, replacementMode]);
 
+  const farmingFoodQuickModel = React.useMemo(
+    () =>
+      buildFarmingFoodInterfaceModelForTest(
+        farmingFoodState,
+        farmingFoodHydrated
+      ),
+    [farmingFoodHydrated, farmingFoodState]
+  );
+  const ambientFarmingAction = farmingFoodQuickActionForKey(
+    farmingFoodQuickModel,
+    "KeyF"
+  );
+  const runAmbientFarmingAction = React.useCallback(() => {
+    if (!ambientFarmingAction || ambientFarmingAction.disabled) return;
+    fireAndForget(
+      submitFarmingFoodLiveModeAction(
+        ambientFarmingAction.operation,
+        ambientFarmingAction.payload
+      )
+        .then(applyLiveModeInventoryResponse)
+        .catch(() => refreshFarmingFoodState())
+    );
+  }, [
+    ambientFarmingAction,
+    applyLiveModeInventoryResponse,
+    refreshFarmingFoodState,
+  ]);
+  const ambientFarmingCandidate = React.useMemo(
+    () =>
+      replacementMode &&
+      activeTab === null &&
+      ambientFarmingAction &&
+      !ambientFarmingAction.disabled
+        ? {
+            id: `harthmere:ambient-farming:${ambientFarmingAction.id}`,
+            priority: WORLD_INTERACTION_PRIORITY.ambientQuickAction,
+            onInteract: runAmbientFarmingAction,
+          }
+        : undefined,
+    [activeTab, ambientFarmingAction, replacementMode, runAmbientFarmingAction]
+  );
+  useWorldInteractionCandidate(ambientFarmingCandidate);
+
   React.useEffect(() => {
     if (!replacementMode || typeof window === "undefined") return;
     const handler = (event: KeyboardEvent) => {
@@ -2790,14 +2826,13 @@ export function useBiomesUILiveAdapters({
       ) {
         return;
       }
-      if (event.code === "KeyF" && hasActiveHarthmereGatheringNodePrompt()) {
-        return;
-      }
-      const model = buildFarmingFoodInterfaceModelForTest(
-        farmingFoodState,
-        farmingFoodHydrated
+      // F is owned by the central world-interaction dispatcher above. This
+      // listener only retains the non-world R/T food and cooking shortcuts.
+      if (event.code === "KeyF") return;
+      const action = farmingFoodQuickActionForKey(
+        farmingFoodQuickModel,
+        event.code
       );
-      const action = farmingFoodQuickActionForKey(model, event.code);
       if (!action || action.disabled) return;
       event.preventDefault();
       event.stopPropagation();
@@ -2813,8 +2848,7 @@ export function useBiomesUILiveAdapters({
   }, [
     activeTab,
     applyLiveModeInventoryResponse,
-    farmingFoodHydrated,
-    farmingFoodState,
+    farmingFoodQuickModel,
     refreshFarmingFoodState,
     replacementMode,
   ]);

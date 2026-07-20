@@ -251,6 +251,11 @@ export const CursorInspectionComponent: React.FunctionComponent<
                   .keyCode as GlobalKeyCode
               }
               onKeyDown={shortcut.onKeyDown}
+              worldInteractionCandidateId={
+                i === 0 && overlay
+                  ? `native:${overlay.kind}:${maybeEntityId}`
+                  : undefined
+              }
             >
               {shortcut.title}
             </ShortcutText>
