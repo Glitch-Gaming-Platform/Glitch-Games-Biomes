@@ -452,12 +452,16 @@ assert(
   "createBiomesAuthForGlitchIdentity sets request-aware auth cookies on the response"
 );
 assert(
-  /biomes_user_id:\s*user\.id/.test(handlerSrc),
+  /biomes_user_id:\s*auth\.userId/.test(handlerSrc),
   "autoLogin returns biomes_user_id"
 );
 assert(
-  /biomes_session_id:\s*session\.id/.test(handlerSrc),
+  /biomes_session_id:\s*auth\.session\.id/.test(handlerSrc),
   "autoLogin returns a stateless Biomes session for cookie-free iframe auth"
+);
+assert(
+  /biomes_auth_reused:\s*auth\.reused/.test(handlerSrc),
+  "autoLogin reports whether the install-bound Biomes session was reused"
 );
 assert(
   /auto_login:\s*true/.test(handlerSrc),

@@ -237,6 +237,7 @@ async function autoLoginWithGlitchInstall(installId: string) {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      ...harthmereBiomesAuthHeaders("/api/glitch/harthmere"),
     },
     credentials: "same-origin",
     body: JSON.stringify({

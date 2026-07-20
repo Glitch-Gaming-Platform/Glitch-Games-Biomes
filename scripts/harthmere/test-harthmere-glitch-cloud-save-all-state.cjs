@@ -828,18 +828,20 @@ const claimSessionRoute = sectionBetween(
 check(
   "server autoLogin returns the stable Glitch account user_id as durable cloud game_user_id",
   includesAll(autoLoginRoute, [
-    "createBiomesAuthForGlitchIdentity",
+    "resolveBiomesAuthForGlitchIdentity",
     "...validationJson(identity)",
-    "biomes_user_id: user.id",
+    "biomes_user_id: auth.userId",
+    "biomes_auth_reused: auth.reused",
   ])
 );
 check(
   "server claimSession returns the stable Glitch account user_id as durable cloud game_user_id",
   includesAll(claimSessionRoute, [
-    "createBiomesAuthForGlitchIdentity",
+    "resolveBiomesAuthForGlitchIdentity",
     "claimServerSession",
     "game_user_id: identity.gameUserId",
-    "biomes_user_id: user.id",
+    "biomes_user_id: auth.userId",
+    "biomes_auth_reused: auth.reused",
   ])
 );
 check(

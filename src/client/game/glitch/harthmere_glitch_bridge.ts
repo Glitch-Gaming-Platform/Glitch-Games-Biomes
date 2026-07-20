@@ -20,6 +20,7 @@ import { shouldApplyHarthmereCloudSave } from "@/client/game/glitch/harthmere_cl
 import { HARTHMERE_INVENTORY_EVENT } from "@/client/components/challenges/harthmereEvents";
 
 import { BIOMES_GAME_NAME } from "@/shared/biomes/display_names";
+import { harthmereBiomesAuthHeaders } from "@/shared/util/harthmere_auth_session";
 const DEFAULT_HARTHMERE_TITLE_ID = "42de534c-600f-4228-af9e-b69faef94cce";
 const HARTHMERE_GLITCH_BRIDGE_FETCH_TIMEOUT_MS = 15_000;
 const HARTHMERE_STORAGE_PREFIX = "biomes.localDev.harthmere.";
@@ -496,7 +497,9 @@ async function requestGlitch<T = any>(
       headers: {
         "Content-Type": "application/json",
         Accept: "application/json",
+        ...harthmereBiomesAuthHeaders("/api/glitch/harthmere"),
       },
+      credentials: "same-origin",
       body: JSON.stringify({ op, ...body }),
       keepalive: options.keepalive === true,
       signal: controller?.signal,

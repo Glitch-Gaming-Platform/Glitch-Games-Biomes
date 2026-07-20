@@ -25,22 +25,37 @@ function assert(condition, message) {
 
 const bootstrap = fs.readFileSync(bootstrapPath, "utf8");
 const route = fs.readFileSync(routePath, "utf8");
+const reuseStart = route.indexOf(
+  "async function reusableBiomesAuthForGlitchIdentity"
+);
+const reuseEnd = route.indexOf(
+  "async function resolveBiomesAuthForGlitchIdentity",
+  reuseStart
+);
+const reuseRoute =
+  reuseStart >= 0 && reuseEnd > reuseStart
+    ? route.slice(reuseStart, reuseEnd)
+    : "";
 
 assert(
-  bootstrap.includes("GLITCH_BIOMES_INSTALL_AUTH_BRIDGE"),
-  "install auth bridge marker exists"
+  bootstrap.includes("HARTHMERE_INSTALL_ID_FLOW"),
+  "install auth flow marker exists"
 );
 assert(
   bootstrap.includes('op: "autoLogin"'),
   "bootstrap calls the validated Glitch autoLogin operation"
 );
 assert(
-  !bootstrap.includes('/api/auth/dev/login'),
+  !bootstrap.includes("/api/auth/dev/login"),
   "bootstrap no longer uses the unsafe dev auth endpoint"
 );
 assert(
-  bootstrap.includes('nextUrl.searchParams.set("glitch_biomes_auth", "1")'),
+  bootstrap.includes('nextUrl.searchParams.set(AUTO_AUTH_RELOAD_PARAM, "1")'),
   "successful first auth reload is still marked in the URL"
+);
+assert(
+  bootstrap.includes("harthmereBiomesAuthHeaders"),
+  "autoLogin sends the cookie-free iframe auth fallback headers"
 );
 assert(
   route.includes('if (op === "autoLogin")'),
@@ -51,11 +66,28 @@ assert(
   "autoLogin validates the Glitch install before creating a Biomes session"
 );
 assert(
-  route.includes("setAuthCookies(res, session)"),
+  /setAuthCookies\(res,\s*session,\s*req\)/.test(route),
   "autoLogin sets normal Biomes auth cookies"
 );
 assert(
-  route.includes("connectForeignAuth") && route.includes("getUserOrCreateIfNotExists"),
+  route.includes("resolveBiomesAuthForGlitchIdentity") &&
+    route.includes("harthmereBiomesAuthSessionMatchesIdentity") &&
+    route.includes("readHarthmereRedisStrings"),
+  "repeat autoLogin and claimSession requests reuse only a verified install-bound Biomes session"
+);
+assert(
+  reuseRoute.indexOf("harthmereBiomesAuthSessionMatchesIdentity") >= 0 &&
+    reuseRoute.indexOf("setAuthCookies(res, authResult.auth.session, req)") >
+      reuseRoute.indexOf("harthmereBiomesAuthSessionMatchesIdentity"),
+  "repeat auth refreshes cookies only after the durable install identity matches"
+);
+assert(
+  route.includes("createBiomesAuthForGlitchIdentity(req, res, identity)"),
+  "verified-session reuse retains the full native ECS player bootstrap fallback"
+);
+assert(
+  route.includes("connectForeignAuth") &&
+    route.includes("getUserOrCreateIfNotExists"),
   "autoLogin creates or reuses a stable Biomes account link"
 );
 assert(
@@ -63,7 +95,8 @@ assert(
   "autoLogin bootstraps the ECS player before the sync client connects"
 );
 assert(
-  route.includes("validationsByKey") && route.includes("GLITCH_VALIDATE_CACHE_MS"),
+  route.includes("validationsByKey") &&
+    route.includes("GLITCH_VALIDATE_CACHE_MS"),
   "install validation is cached briefly to avoid duplicate slow Glitch API calls"
 );
 

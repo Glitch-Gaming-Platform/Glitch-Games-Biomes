@@ -52,6 +52,32 @@ semantics: live ECS entity components -> inspect overlay -> F shortcut -> quest
 dialog -> `CompleteQuestStepAtEntityEvent` -> canonical firehose identity ->
 native reward/inventory trigger.
 
+## Auth, ECS, and Redis latency follow-up — 2026-07-20
+
+The July 19 production HAR showed two sequential startup requests taking about
+12 seconds in total: `autoLogin` created/ensured the native ECS player and a
+Biomes session, then `claimSession` repeated the same account lookup, player
+bootstrap, and session creation before it claimed the Harthmere server session.
+
+The optimized path keeps the same authority boundaries:
+
+- Glitch install validation still runs first and remains the external identity
+  authority.
+- The existing Biomes session is verified through the normal cookie/header
+  authentication helper. The client sends the `X-Biomes-User-Id` and
+  `X-Biomes-Session-Id` fallback headers for same-origin Glitch bridge requests,
+  so private-window iframe cookie restrictions do not force another login.
+- Redis batch-reads the durable install-to-Biomes-user and
+  install-to-Glitch-game-user bindings in one `MGET`. Reuse is allowed only when
+  both bindings match the authenticated session and the newly validated Glitch
+  identity.
+- First login, expired auth, missing Redis bindings, an account switch, and any
+  Redis failure all fall back to `createBiomesAuthForGlitchIdentity`, including
+  `ensurePlayerExists`. Native ECS therefore remains the player authority; the
+  fast path only removes duplicate work for an already-established player.
+- `autoLogin` and `claimSession` return `biomes_auth_reused` so a future HAR can
+  distinguish the one-time ECS bootstrap from the verified repeat path.
+
 ## Native Road Ahead contract
 
 - Quest: `6193612340426932`
@@ -73,6 +99,11 @@ NODE_OPTIONS=--max-old-space-size=8192 ./b typecheck
 ./b test --grep "retains every entity beyond the capped first bootstrap batch|prioritizes nearby terrain during a capped initial bootstrap"
 ./b test --grep "Harthmere live environment damage client|live_mode_player_status_state API route integration"
 ./b test --grep "live_mode API Redis persistence|persists only actor-owned state"
+./b test --grep "Harthmere Glitch Biomes auth session reuse|glitch harthmere resource guards|Harthmere Glitch auth reload policy"
+
+node scripts/glitch/test-glitch-install-auto-auth.cjs .
+node scripts/harthmere/test-harthmere-glitch-cloud-save-all-state.cjs .
+node scripts/harthmere/test-harthmere-install-id-flow-unit.cjs .
 ```
 
 ## Verification completed
@@ -80,7 +111,8 @@ NODE_OPTIONS=--max-old-space-size=8192 ./b typecheck
 The expanded local release gate completed on July 20, 2026 without deploying:
 
 - TypeScript typecheck: passed.
-- Complete non-browser suite: `3344 passing`, `5 pending`, `0 failing`.
+- Complete non-browser suite after the auth/ECS/Redis latency follow-up:
+  `3355 passing`, `5 pending`, `0 failing`.
 - Rendered Chromium dialogue flow: passed, including the disabled `Working…`
   state while an asynchronous quest action is unresolved.
 - Production deploy/local Redis guardrail: passed every assertion.

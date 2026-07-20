@@ -3,12 +3,16 @@ import type { IncomingMessage, ServerResponse } from "http";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { ensurePlayerExists } from "@/server/logic/utils/players";
+import { readHarthmereRedisStrings } from "@/server/harthmere/live_mode_state_read_helpers";
 import { connectToRedis } from "@/server/shared/redis/connection";
 import {
   connectForeignAuth,
   findLinkForForeignAuth,
 } from "@/server/shared/auth/auth_link";
-import { setAuthCookies } from "@/server/shared/auth/cookies";
+import {
+  setAuthCookies,
+  verifyAuthenticatedRequest,
+} from "@/server/shared/auth/cookies";
 import type { ForeignAccountProfile } from "@/server/shared/auth/types";
 import type { WebServerRequest } from "@/server/web/context";
 import {
@@ -1194,6 +1198,123 @@ async function rememberHarthmereLiveModeActorIdentity(
   }
 }
 
+export function harthmereBiomesAuthSessionMatchesIdentity(input: {
+  authenticatedBiomesUserId: string;
+  linkedBiomesUserId?: string | null;
+  linkedGameUserId?: string | null;
+  identity: Pick<
+    HarthmereValidatedIdentity,
+    "installId" | "gameUserId" | "valid" | "guest"
+  >;
+}) {
+  // Both links are required. The Biomes-user link prevents one signed-in user
+  // from borrowing another install's session, while the game-user link catches
+  // an account change on an otherwise stable install id. Missing or stale links
+  // deliberately fall back to the full native-ECS player bootstrap below.
+  return Boolean(
+    (input.identity.valid || input.identity.guest) &&
+      input.identity.installId &&
+      input.identity.gameUserId &&
+      input.linkedBiomesUserId &&
+      input.linkedGameUserId &&
+      String(input.authenticatedBiomesUserId) ===
+        String(input.linkedBiomesUserId) &&
+      input.identity.gameUserId === input.linkedGameUserId
+  );
+}
+
+async function reusableBiomesAuthForGlitchIdentity(
+  req: IncomingMessage,
+  res: NextApiResponse,
+  identity: HarthmereValidatedIdentity
+) {
+  const webReq = req as WebServerRequest;
+  if (
+    !webReq.context?.sessionStore ||
+    !shouldUseRedisHarthmereSessionStore() ||
+    !identity.installId ||
+    !identity.gameUserId
+  ) {
+    return undefined;
+  }
+
+  const authResult = await verifyAuthenticatedRequest(
+    webReq.context.sessionStore,
+    req
+  );
+  if (authResult.error) {
+    return undefined;
+  }
+
+  try {
+    const redis = await harthmereGlitchRedis();
+    // A single MGET keeps this identity check to one Redis round trip. This is
+    // the hot path after autoLogin and avoids repeating account lookup, player
+    // creation, ECS ensurePlayerExists, and stateless-session creation.
+    const [linkedBiomesUserId, linkedGameUserId] =
+      await readHarthmereRedisStrings(redis.primary, [
+        harthmereLiveModeInstallLinkKey(identity.installId),
+        harthmereLiveModeInstallGameUserLinkKey(identity.installId),
+      ]);
+    if (
+      !harthmereBiomesAuthSessionMatchesIdentity({
+        authenticatedBiomesUserId: String(authResult.auth.userId),
+        linkedBiomesUserId,
+        linkedGameUserId,
+        identity,
+      })
+    ) {
+      return undefined;
+    }
+    // Refresh cookies only after both durable identity bindings match. If the
+    // install changed accounts, the fallback below must be the only writer of
+    // the replacement BUID/BSID pair.
+    setAuthCookies(res, authResult.auth.session, req);
+    return authResult.auth;
+  } catch (error) {
+    // Redis availability must never prevent login. The established slow path
+    // remains authoritative and recreates/verifies the native ECS player.
+    log.warn("HARTHMERE_GLITCH_AUTH_REUSE_LOOKUP_FAILED", {
+      error,
+      installId: identity.installId,
+      gameUserId: identity.gameUserId,
+    });
+    return undefined;
+  }
+}
+
+async function resolveBiomesAuthForGlitchIdentity(
+  req: IncomingMessage,
+  res: NextApiResponse,
+  identity: HarthmereValidatedIdentity
+) {
+  const reusable = await reusableBiomesAuthForGlitchIdentity(
+    req,
+    res,
+    identity
+  );
+  if (reusable) {
+    return {
+      userId: reusable.userId,
+      session: reusable.session,
+      username: identity.userName,
+      provider: "dev" as const,
+      guest: identity.guest,
+      reused: true,
+    };
+  }
+
+  const created = await createBiomesAuthForGlitchIdentity(req, res, identity);
+  return {
+    userId: created.user.id,
+    session: created.session,
+    username: created.user.username ?? created.profile.username,
+    provider: created.profile.provider,
+    guest: created.guest,
+    reused: false,
+  };
+}
+
 function normalizeProgressionPayload(body: JsonMap) {
   const payload =
     body.payload && typeof body.payload === "object" ? body.payload : {};
@@ -1689,20 +1810,20 @@ export default async function handler(
           .json({ ok: false, valid: false, error: "INVALID_INSTALL" });
       }
 
-      const { user, session, profile, guest } =
-        await createBiomesAuthForGlitchIdentity(req, res, identity);
+      const auth = await resolveBiomesAuthForGlitchIdentity(req, res, identity);
       // HARTHMERE_CLOUD_SAVE_IDENTITY: the durable cloud game_user_id is the
       // stable Glitch account user_id surfaced by normalizeIdentityFromValidateResponse
       // as identity.gameUserId (`glitch:<user_id>`), which validationJson returns.
       // biomes_user_id remains the internal biomes user resolved from that scope.
       return res.status(200).json({
         ...validationJson(identity),
-        guest,
-        cloud_save: !guest,
-        biomes_user_id: user.id,
-        biomes_session_id: session.id,
-        biomes_username: user.username ?? profile.username,
-        auth_provider: profile.provider,
+        guest: auth.guest,
+        cloud_save: !auth.guest,
+        biomes_user_id: auth.userId,
+        biomes_session_id: auth.session.id,
+        biomes_username: auth.username,
+        auth_provider: auth.provider,
+        biomes_auth_reused: auth.reused,
         auto_login: true,
       });
     }
@@ -1724,11 +1845,7 @@ export default async function handler(
           .status(403)
           .json({ ok: false, valid: false, error: "INVALID_INSTALL" });
       }
-      const { user, guest } = await createBiomesAuthForGlitchIdentity(
-        req,
-        res,
-        identity
-      );
+      const auth = await resolveBiomesAuthForGlitchIdentity(req, res, identity);
       // HARTHMERE_CLOUD_SAVE_IDENTITY: scope the session and return the cloud
       // game_user_id off the stable Glitch account id (identity.gameUserId =
       // `glitch:<user_id>` from the validate response), the canonical user id for
@@ -1740,14 +1857,15 @@ export default async function handler(
       return res.status(200).json({
         ok: true,
         valid: true,
-        guest,
-        cloud_save: !guest,
+        guest: auth.guest,
+        cloud_save: !auth.guest,
         title_id: identity.titleId,
         install_id: identity.installId,
         game_user_id: identity.gameUserId,
         glitch_user_id: identity.glitchUserId,
         user_id: identity.glitchUserId,
-        biomes_user_id: user.id,
+        biomes_user_id: auth.userId,
+        biomes_auth_reused: auth.reused,
         user_name: identity.userName,
         username: identity.userName,
         server_session_id: session.serverSessionId,
