@@ -16,6 +16,7 @@ import {
   nearestHarthmereGatheringNodePrompt,
   type HarthmereGatheringNodePrompt,
 } from "@/client/components/challenges/LocalDevHarthmereGatheringSystem";
+import { hasNativeInspectableWorldTarget } from "@/client/components/challenges/worldInteractionPriority";
 
 export const HARTHMERE_GATHERING_NODE_WORLD_INTERACTION_VERSION =
   "harthmere-gathering-node-world-interaction" as const;
@@ -49,6 +50,7 @@ export function HarthmereGatheringNodeWorldInteraction({
   const { reactResources } = useClientContext();
   const localPlayer = reactResources.use("/scene/local_player") as unknown;
   const camera = reactResources.use("/scene/camera") as unknown;
+  const overlays = reactResources.use("/overlays");
   const [feedback, setFeedback] = React.useState<
     { message: string; ok: boolean } | undefined
   >();
@@ -57,7 +59,8 @@ export function HarthmereGatheringNodeWorldInteraction({
 
   const playerPosition = harthmereJobsBoardPlayerPosition(localPlayer, camera);
   const prompt = nearestHarthmereGatheringNodePrompt(playerPosition);
-  const promptBlocked = suppressPrompt;
+  const promptBlocked =
+    suppressPrompt || hasNativeInspectableWorldTarget(overlays);
 
   React.useEffect(() => {
     installHarthmereJobsBoardStyles();

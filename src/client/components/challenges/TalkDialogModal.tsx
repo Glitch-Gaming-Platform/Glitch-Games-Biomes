@@ -1,5 +1,6 @@
 import type { QuestStepBundle } from "@/client/components/challenges/helpers";
 import {
+  claimRewardsStepMatchesEntity,
   playerVoiceContextForNpcChat,
   questVoiceContextForStepBundle,
   unslugNpcDescription,
@@ -76,7 +77,7 @@ export const TalkToNpcQuestView: React.FunctionComponent<{
   onClose: () => void;
   stepBundle: QuestStepBundle;
 }> = ({ talkingToNPCId, stepBundle, onClose, onStepComplete }) => {
-  const { userId, events, reactResources } = useClientContext();
+  const { userId, events, reactResources, resources } = useClientContext();
   const [voiceDialogText, setVoiceDialogText] = useState<string | undefined>();
   const [voiceQuerying, setVoiceQuerying] = useState(false);
   const voiceMessageContext = useRef<string | undefined>();
@@ -149,7 +150,7 @@ export const TalkToNpcQuestView: React.FunctionComponent<{
       // matching against `claimFromEntity.npcMetadata().type_id`.
       if (
         expected !== undefined &&
-        expected !== talkingToNPCId &&
+        !claimRewardsStepMatchesEntity(resources, talkingToNPCId, expected) &&
         stepBundle.questBundle.biscuit.questGiver !== talkingToNPCId
       ) {
         onClose();

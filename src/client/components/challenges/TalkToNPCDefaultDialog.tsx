@@ -120,6 +120,13 @@ export function useCanTalkToNpc(
   if (isHarthmereCombatCreatureNpcType(npcMetadata?.type_id)) {
     return false;
   }
+  // Snapshot quest objects such as the Clothing Crate and Billy's Toolbag are
+  // non-living picture-frame placeables with a native quest_giver component.
+  // They must open the native quest dialog even though their labels also match
+  // generic crate/bag semantics.
+  if (questGiver && entityId) {
+    return true;
+  }
   if (
     isHarthmereNonLivingDialogueObjectLabel({
       label: label?.text,
@@ -177,6 +184,9 @@ export function canTalkToNpc(
   // otherwise accept as a "talk" signal.
   if (isHarthmereCombatCreatureNpcType(entity?.npc_metadata?.type_id)) {
     return false;
+  }
+  if (questGiver && entityId) {
+    return true;
   }
   if (
     isHarthmereNonLivingDialogueObjectLabel({

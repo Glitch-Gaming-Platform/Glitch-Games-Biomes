@@ -159,6 +159,34 @@ export function useRelevantStepsForEntity(
   }, [quests, entityId, resources]);
 }
 
+/**
+ * Match a native claim-rewards step to the entity the player is interacting
+ * with. Snapshot quests may author the target as a concrete entity id, an NPC
+ * type id, or a placeable item id. The server accepts all three forms, so the
+ * client must use the same contract when deciding which dialogue to display.
+ */
+export function claimRewardsStepMatchesEntity(
+  resources: ClientResources | ClientReactResources,
+  entityId: BiomesId,
+  expectedId: BiomesId | undefined
+) {
+  if (expectedId === undefined) {
+    return false;
+  }
+  if (expectedId === entityId) {
+    return true;
+  }
+  const npcTypeId = resources.get("/ecs/c/npc_metadata", entityId)?.type_id;
+  if (npcTypeId !== undefined && expectedId === npcTypeId) {
+    return true;
+  }
+  const placeableItemId = resources.get(
+    "/ecs/c/placeable_component",
+    entityId
+  )?.item_id;
+  return placeableItemId !== undefined && expectedId === placeableItemId;
+}
+
 export function getEntityDisplayName(
   step: TriggerProgress,
   npcEntity: ReadonlyEntity | null
@@ -339,10 +367,13 @@ function itemAssignmentNames(items: any): string[] {
   if (!items) {
     return [];
   }
-  const values = items instanceof Map ? [...items.values()] : Object.values(items);
+  const values =
+    items instanceof Map ? [...items.values()] : Object.values(items);
   return values
     .map((item: any) => item?.displayName ?? item?.item?.displayName)
-    .filter((name): name is string => typeof name === "string" && name.length > 0);
+    .filter(
+      (name): name is string => typeof name === "string" && name.length > 0
+    );
 }
 
 export function playerVoiceContextForNpcChat(input: {
@@ -361,7 +392,9 @@ export function playerVoiceContextForNpcChat(input: {
   );
   const wornItems = itemAssignmentNames((wearing as any)?.items);
   const appearanceParts = Object.entries((appearance as any)?.appearance ?? {})
-    .filter(([, value]) => value !== undefined && value !== null && value !== "")
+    .filter(
+      ([, value]) => value !== undefined && value !== null && value !== ""
+    )
     .slice(0, 12)
     .map(([key, value]) => `${key}=${String(value)}`);
 
@@ -468,7 +501,11 @@ function allAppropriateStepsForEntity(
         } else {
           return (
             step.payload.kind === "challengeClaimRewards" &&
-            step.payload.returnQuestGiverId === entityId
+            claimRewardsStepMatchesEntity(
+              resources,
+              entityId,
+              step.payload.returnQuestGiverId
+            )
           );
         }
       })
@@ -502,7 +539,11 @@ export function getLatestFinishedDialogStepForNpc(
     if (
       step.payload.kind === "challengeClaimRewards" &&
       !isEntityRobot &&
-      entityId !== step.payload.returnQuestGiverId
+      !claimRewardsStepMatchesEntity(
+        resources,
+        entityId,
+        step.payload.returnQuestGiverId
+      )
     ) {
       return false;
     }

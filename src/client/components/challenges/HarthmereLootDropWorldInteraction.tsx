@@ -11,6 +11,7 @@ import {
 // published to the module store so the 3D marker renderer can draw the drops.
 import { publishHarthmereWorldLootDrops } from "@/client/components/challenges/harthmereLootDropWorldState";
 import type { HarthmereInventoryLootDrop } from "@/shared/harthmere/mmo_inventory_loot_authority";
+import { hasNativeInspectableWorldTarget } from "@/client/components/challenges/worldInteractionPriority";
 
 export const HARTHMERE_LOOT_DROP_WORLD_INTERACTION_VERSION =
   "harthmere-loot-drop-world-interaction" as const;
@@ -167,6 +168,7 @@ export function HarthmereLootDropWorldInteraction({
   const { reactResources } = useClientContext();
   const localPlayer = reactResources.use("/scene/local_player") as unknown;
   const camera = reactResources.use("/scene/camera") as unknown;
+  const overlays = reactResources.use("/overlays");
   const playerPosition = harthmereJobsBoardPlayerPosition(localPlayer, camera);
   const [drops, setDrops] = React.useState<HarthmereInventoryLootDrop[]>([]);
   const [feedback, setFeedback] = React.useState<
@@ -271,6 +273,8 @@ export function HarthmereLootDropWorldInteraction({
     playerPosition,
     Date.now()
   );
+  const promptBlocked =
+    suppressPrompt || hasNativeInspectableWorldTarget(overlays);
 
   const salvage = React.useCallback(async () => {
     if (!activeDrop || claimingDropId) return;
@@ -300,7 +304,7 @@ export function HarthmereLootDropWorldInteraction({
   }, [activeDrop, claimingDropId, refreshDrops, showFeedback]);
 
   React.useEffect(() => {
-    if (!activeDrop || suppressPrompt || typeof window === "undefined") return;
+    if (!activeDrop || promptBlocked || typeof window === "undefined") return;
     const handler = (event: KeyboardEvent) => {
       if (
         event.repeat ||
@@ -320,9 +324,9 @@ export function HarthmereLootDropWorldInteraction({
     };
     window.addEventListener("keydown", handler, true);
     return () => window.removeEventListener("keydown", handler, true);
-  }, [activeDrop, salvage, suppressPrompt]);
+  }, [activeDrop, salvage, promptBlocked]);
 
-  if (!activeDrop || suppressPrompt) return null;
+  if (!activeDrop || promptBlocked) return null;
 
   const feedbackState = feedback ? (feedback.ok ? "success" : "error") : "";
   const distance = `${Math.max(0, activeDrop.distance).toFixed(1)}m`;

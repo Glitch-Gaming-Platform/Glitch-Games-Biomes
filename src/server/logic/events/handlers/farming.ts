@@ -1,4 +1,5 @@
 import {
+  RollbackError,
   aclChecker,
   makeEventHandler,
   newIds,
@@ -27,7 +28,7 @@ import { getPlayerBuffsByComponents } from "@/shared/game/players";
 import { voxelShard, worldPos } from "@/shared/game/shard";
 import type { BiomesId } from "@/shared/ids";
 import { log } from "@/shared/logging";
-import { equals, sub } from "@/shared/math/linear";
+import { sub } from "@/shared/math/linear";
 import { ok } from "assert";
 
 const TREE_SEED_IDS = new Set<BiomesId>([
@@ -354,15 +355,15 @@ export const harvestPlantEventHandler = makeEventHandler("harvestPlantEvent", {
   }),
   apply({ plant, player }, event) {
     const position = plant.position()?.v;
-    if (!position || !equals(position, event.position)) {
-      return;
+    if (!position) {
+      throw new RollbackError("Harvest target has no world position");
     }
     const plantComponent = plant.mutableFarmingPlantComponent();
     if (plantComponent.status !== "fully_grown") {
-      return;
+      throw new RollbackError("Plant is not ready to harvest");
     }
     if (isTreeSeed(plantComponent.seed)) {
-      return;
+      throw new RollbackError("Trees must be harvested with the proper tool");
     }
     // The client can name any plant id. Re-read both entities and enforce the
     // same server-side interaction distance used for world pickups, with a
@@ -370,8 +371,14 @@ export const harvestPlantEventHandler = makeEventHandler("harvestPlantEvent", {
     // for ripe non-tree crops, matching the original snapshot, but harvesting
     // from elsewhere in the world is never valid.
     if (staleOkDistance(plant, player) > CONFIG.gameDropPickupDistance + 1) {
-      return;
+      throw new RollbackError("Plant is too far away to harvest");
     }
+
+    // `event.position` is the cursor-hit voxel. Multi-block crops can be hit on
+    // a stem, leaf, or fruit voxel that differs from the ECS root position.
+    // The authoritative plant id plus the server-read player/plant distance is
+    // sufficient validation; exact equality with a client voxel silently
+    // rejected legitimate harvests.
 
     plantComponent.player_actions.push({
       kind: "harvest",

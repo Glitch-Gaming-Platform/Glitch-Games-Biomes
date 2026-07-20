@@ -67,6 +67,20 @@ export type QuestStepValidationResult =
   | QuestStepValidationOk
   | QuestStepValidationErr;
 
+/**
+ * Identity recorded in the firehose event after validation. Claim-reward
+ * leaves compare against their authored return id, while robot claims retain
+ * the concrete robot instance id.
+ */
+export function canonicalClaimFromEntityId(
+  validation: QuestStepValidationOk,
+  concreteEntityId: BiomesId
+) {
+  return validation.leaf.kind === "challengeClaimRewards"
+    ? validation.leaf.returnNpcTypeId
+    : concreteEntityId;
+}
+
 // Identity facts about the entity the player claims to be talking to. The
 // handler resolves these from the ECS Delta (npc_metadata.type_id /
 // placeable_component.item_id / robotComponent + createdBy.id).
@@ -100,9 +114,7 @@ export interface ValidateClaimStepInput {
   // The player's `triggerState.by_root.get(challengeId)` — the per-spec-id
   // map of MetaState serialized values (number = firedAt, string = packed).
   // May be undefined if no triggers have ever been ticked for this quest.
-  triggerStateForChallenge:
-    | ReadonlyMap<BiomesId, string | number>
-    | undefined;
+  triggerStateForChallenge: ReadonlyMap<BiomesId, string | number> | undefined;
   // Identity of the entity in the CompleteQuestStepAtEntity event.
   claimEntity: ClaimEntityIdentity;
 }
@@ -111,9 +123,7 @@ export interface ValidateClaimStepInput {
 // player's trigger state. Both number-form (legacy firedAt-only) and
 // string-form (packed MetaState with payload) are supported.
 export function isTriggerFired(
-  triggerStateForChallenge:
-    | ReadonlyMap<BiomesId, string | number>
-    | undefined,
+  triggerStateForChallenge: ReadonlyMap<BiomesId, string | number> | undefined,
   triggerSpecId: BiomesId
 ): boolean {
   if (!triggerStateForChallenge) {
@@ -144,13 +154,17 @@ export function isTriggerFired(
 function findStepWithAncestors(
   root: StoredTriggerDefinition,
   stepId: BiomesId
-): { leaf: StoredTriggerDefinition; ancestors: StoredTriggerDefinition[] } | undefined {
+):
+  | { leaf: StoredTriggerDefinition; ancestors: StoredTriggerDefinition[] }
+  | undefined {
   // DFS, recording the ancestor stack.
   const stack: StoredTriggerDefinition[] = [];
 
   const visit = (
     node: StoredTriggerDefinition
-  ): { leaf: StoredTriggerDefinition; ancestors: StoredTriggerDefinition[] } | undefined => {
+  ):
+    | { leaf: StoredTriggerDefinition; ancestors: StoredTriggerDefinition[] }
+    | undefined => {
     if (node.id === stepId) {
       // This node itself is the step.
       return { leaf: node, ancestors: [...stack] };

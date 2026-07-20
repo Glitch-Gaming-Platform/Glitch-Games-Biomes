@@ -16,6 +16,7 @@ import {
   isHarthmereContainerObjectLabel,
   isHarthmereNonLivingObjectLabel,
 } from "@/shared/harthmere/object_interaction_semantics";
+import { nativeQuestGiverUsesEcsDialogue } from "@/shared/harthmere/native_road_ahead_contract";
 import { relevantBiscuitForEntityId } from "@/shared/npc/bikkie";
 import type { PropsWithChildren } from "react";
 import { useMemo } from "react";
@@ -56,12 +57,14 @@ export const CursorInspectionComponent: React.FunctionComponent<
   const context = useClientContext();
   const { reactResources, resources, gardenHose } = context;
   const maybeEntityId = overlay?.entityId ?? INVALID_BIOMES_ID;
-  const [tweaks, itemBuyer, label, entityDescription] = reactResources.useAll(
-    ["/tweaks"],
-    ["/ecs/c/item_buyer", maybeEntityId],
-    ["/ecs/c/label", maybeEntityId],
-    ["/ecs/c/entity_description", maybeEntityId]
-  );
+  const [tweaks, itemBuyer, label, entityDescription, questGiver] =
+    reactResources.useAll(
+      ["/tweaks"],
+      ["/ecs/c/item_buyer", maybeEntityId],
+      ["/ecs/c/label", maybeEntityId],
+      ["/ecs/c/entity_description", maybeEntityId],
+      ["/ecs/c/quest_giver", maybeEntityId]
+    );
 
   const canTalk = useCanTalkToNpc(
     context,
@@ -87,13 +90,19 @@ export const CursorInspectionComponent: React.FunctionComponent<
   const harthmereObjectInteractionEntityId = overlay?.entityId;
   const harthmereObjectId =
     overlay?.kind === "harthmere_object" ? overlay.objectId : undefined;
+  // A native quest-giver prop may also have a crate/bag label. Its action is
+  // native dialogue and CompleteQuestStepAtEntityEvent, never the parallel
+  // label/localStorage container path.
+  const isNativeQuestObject = nativeQuestGiverUsesEcsDialogue(questGiver);
   const isHarthmereObjectContainer =
+    !isNativeQuestObject &&
     overlay?.kind !== "placeable" &&
     isHarthmereContainerObjectLabel({
       label: harthmereObjectLabel,
       entityDescription: harthmereObjectDescription,
     });
   const isHarthmereWorldObject =
+    !isNativeQuestObject &&
     overlay?.kind !== "placeable" &&
     isHarthmereNonLivingObjectLabel({
       label: harthmereObjectLabel,
@@ -204,6 +213,7 @@ export const CursorInspectionComponent: React.FunctionComponent<
     inspectText,
     isHarthmereObjectContainer,
     isHarthmereWorldObject,
+    isNativeQuestObject,
     label?.text,
     overlay?.entityId,
     itemBuyer,

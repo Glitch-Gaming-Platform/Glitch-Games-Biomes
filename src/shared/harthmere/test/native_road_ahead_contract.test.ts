@@ -5,6 +5,7 @@ import {
   NATIVE_ROAD_AHEAD_QUEST_ID,
   NATIVE_ROAD_AHEAD_STEP_IDS,
   isNativeRoadAheadQuestObjectLabel,
+  nativeQuestGiverUsesEcsDialogue,
   nativeRoadAheadEcsAuthorityEnabled,
 } from "@/shared/harthmere/native_road_ahead_contract";
 
@@ -50,6 +51,21 @@ describe("native Road Ahead snapshot contract", () => {
     assert.equal(nativeRoadAheadEcsAuthorityEnabled(), true);
     process.env.NEXT_PUBLIC_BIOMES_ENABLE_SYNTHETIC_ROAD_AHEAD = "1";
     assert.equal(nativeRoadAheadEcsAuthorityEnabled(), false);
+  });
+
+  it("routes native quest-giver props through ECS dialogue", () => {
+    delete process.env.NEXT_PUBLIC_BIOMES_NATIVE_ECS_AUTHORITY;
+    assert.equal(
+      nativeQuestGiverUsesEcsDialogue({ concurrent_quests: 1 }),
+      true
+    );
+    assert.equal(nativeQuestGiverUsesEcsDialogue(undefined), false);
+    process.env.NEXT_PUBLIC_BIOMES_NATIVE_ECS_AUTHORITY = "0";
+    assert.equal(
+      nativeQuestGiverUsesEcsDialogue({ concurrent_quests: 1 }),
+      false
+    );
+    delete process.env.NEXT_PUBLIC_BIOMES_NATIVE_ECS_AUTHORITY;
   });
 
   it("recognizes the snapshot quest-giver containers that must not be locally looted", () => {

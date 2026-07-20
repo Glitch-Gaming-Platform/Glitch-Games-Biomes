@@ -25,6 +25,33 @@ property/decor/placeable state, and conflict-safe terrain materialization.
 | Slow buttons       | Inventory, container, and dialog actions appeared inert while requests ran.                                                                                   | Buttons enter a disabled `Working…`, `Taking…`, `Equipping…`, or equivalent state until authoritative state changes or the request completes.                                                                 |
 | Dialogue variety   | NPC opener pool was too repetitive.                                                                                                                           | The production opener builder contains exactly 30 distinct, tested openers.                                                                                                                                   |
 
+## Interaction and harvest follow-up — 2026-07-20
+
+The production Clothing Crate report exposed a routing regression that was not
+covered by the earlier source-string checks:
+
+- Native quest-giver picture frames remain discoverable through direct cursor
+  hits and the proximity world-object selector, but their F action is native
+  dialogue rather than the label/localStorage container panel.
+- Claim-reward identity now uses the same entity-instance, NPC-type, and
+  placeable-item matching on the client and server. After validation, the
+  firehose event records the trigger leaf's canonical authored id so the
+  `challengeClaimRewards` leaf can actually advance.
+- Native storage opening and inventory transfer use the `interact` ACL. Storage
+  access no longer requires permission to demolish the container.
+- Native crop harvesting validates the server-read plant id, state, and
+  distance without requiring the cursor-hit voxel to equal the plant root.
+  Rejected harvests return a rollback error, and the client remains in a
+  `Harvesting…` state until Gaia/world synchronization removes the plant.
+- Native GrabBags have an explicit F pickup action in addition to automatic
+  pickup. Bespoke Harthmere gathering/loot capture listeners yield while a
+  native cursor target is active.
+
+The regression suite must cover the complete identity chain, not only label
+semantics: live ECS entity components -> inspect overlay -> F shortcut -> quest
+dialog -> `CompleteQuestStepAtEntityEvent` -> canonical firehose identity ->
+native reward/inventory trigger.
+
 ## Native Road Ahead contract
 
 - Quest: `6193612340426932`

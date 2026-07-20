@@ -1,7 +1,10 @@
 import { makeEventHandler, RollbackError } from "@/server/logic/events/core";
 import { staleOkDistance } from "@/server/logic/events/handlers/distance";
 import type { ClaimEntityIdentity } from "@/server/logic/events/handlers/quest_step_validation";
-import { validateClaimStep } from "@/server/logic/events/handlers/quest_step_validation";
+import {
+  canonicalClaimFromEntityId,
+  validateClaimStep,
+} from "@/server/logic/events/handlers/quest_step_validation";
 import { q } from "@/server/logic/events/query";
 import { getBiscuit } from "@/shared/bikkie/active";
 import { secondsSinceEpoch } from "@/shared/ecs/config";
@@ -145,7 +148,16 @@ export const completeQuestStepAtEntityEventHandler = makeEventHandler(
       context.publish({
         kind: "completeQuestStepAtEntity",
         challenge: event.challenge_id,
-        claimFromEntityId: claimFromEntity.id,
+        // The trigger leaf is authored against either an entity id, NPC type
+        // id, or placeable item id. Validation proved the concrete entity is a
+        // valid instance; publish the leaf's canonical authored id so
+        // ChallengeClaimRewardsTrigger.findEvent observes the same identity.
+        // Publishing the instance id here made placeable quest objects appear
+        // to complete in the dialog while the native trigger never advanced.
+        claimFromEntityId: canonicalClaimFromEntityId(
+          validation,
+          claimFromEntity.id
+        ),
         entityId: player.id,
         chosenRewardIndex: event.chosen_reward_index,
         stepId: event.step_id,

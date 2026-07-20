@@ -4,15 +4,22 @@ import { CursorInspectionComponent } from "@/client/components/overlays/inspecte
 import type { PlaceableInspectOverlay } from "@/client/game/resources/overlays";
 import { useUserCanAction } from "@/client/util/permissions_manager_hooks";
 import { StartPlaceableAnimationEvent } from "@/shared/ecs/gen/events";
+import { CONTAINER_ACCESS_ACL_ACTION } from "@/shared/game/container_access";
 import { fireAndForget } from "@/shared/util/async";
 
 export const ContainerOverlayComponent: React.FunctionComponent<{
   overlay: PlaceableInspectOverlay;
 }> = ({ overlay }) => {
   const { reactResources, events } = useClientContext();
-  const canChange = useUserCanAction(overlay.entityId, "destroy");
+  // Storage access is governed by the interaction ACL. Requiring `destroy`
+  // made public and quest containers visible but impossible to open unless the
+  // visitor also had permission to demolish them.
+  const canAccess = useUserCanAction(
+    overlay.entityId,
+    CONTAINER_ACCESS_ACL_ACTION
+  );
 
-  const shortcuts: InspectShortcuts = canChange
+  const shortcuts: InspectShortcuts = canAccess
     ? [
         {
           title: "Open Container",

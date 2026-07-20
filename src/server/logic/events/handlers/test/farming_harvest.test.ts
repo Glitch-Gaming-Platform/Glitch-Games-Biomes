@@ -116,41 +116,62 @@ describe("harvestPlantEventHandler", () => {
     assert.equal(component.player_actions[0].kind, "harvest");
   });
 
-  it("rejects immature, tree, and stale-position harvests", () => {
+  it("rejects immature and tree harvests", () => {
     for (const setup of [
       fakeHarvestPlant({ status: "growing" }),
       fakeHarvestPlant({ seed: BikkieIds.oakSeed }),
-      fakeHarvestPlant({ position: [4, 5, 6] }),
     ]) {
-      harvestPlantEventHandler.apply(
-        {
-          plant: setup.plant,
-          player: fakeHarvestPlayer(),
-        } as any,
-        new HarvestPlantEvent({
-          id: generateTestId(),
-          plant_id: setup.plant.id,
-          position: [1, 2, 3],
-        }),
-        {} as any
+      assert.throws(() =>
+        harvestPlantEventHandler.apply(
+          {
+            plant: setup.plant,
+            player: fakeHarvestPlayer(),
+          } as any,
+          new HarvestPlantEvent({
+            id: generateTestId(),
+            plant_id: setup.plant.id,
+            position: [1, 2, 3],
+          }),
+          {} as any
+        )
       );
       assert.equal(setup.component.player_actions.length, 0);
     }
   });
 
-  it("rejects a fully grown crop when the player is outside pickup range", () => {
-    const { component, plant } = fakeHarvestPlant();
+  it("accepts a hit voxel that differs from a multi-block plant root", () => {
+    const { component, plant } = fakeHarvestPlant({ position: [4, 5, 6] });
     harvestPlantEventHandler.apply(
       {
         plant,
-        player: fakeHarvestPlayer([100, 2, 100]),
+        player: fakeHarvestPlayer([4, 5, 6]),
       } as any,
       new HarvestPlantEvent({
         id: generateTestId(),
         plant_id: plant.id,
-        position: [1, 2, 3],
+        position: [4, 7, 6],
       }),
       {} as any
+    );
+    assert.equal(component.player_actions.length, 1);
+    assert.equal(component.player_actions[0].kind, "harvest");
+  });
+
+  it("rejects a fully grown crop when the player is outside pickup range", () => {
+    const { component, plant } = fakeHarvestPlant();
+    assert.throws(() =>
+      harvestPlantEventHandler.apply(
+        {
+          plant,
+          player: fakeHarvestPlayer([100, 2, 100]),
+        } as any,
+        new HarvestPlantEvent({
+          id: generateTestId(),
+          plant_id: plant.id,
+          position: [1, 2, 3],
+        }),
+        {} as any
+      )
     );
 
     assert.equal(component.player_actions.length, 0);

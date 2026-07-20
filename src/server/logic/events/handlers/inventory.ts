@@ -39,6 +39,7 @@ import {
   isDroppableItem,
   itemDeletesOnDrop,
 } from "@/shared/game/items";
+import { CONTAINER_ACCESS_ACL_ACTION } from "@/shared/game/container_access";
 import { stringToItemBag } from "@/shared/game/items_serde";
 import type { ReadonlyBiomesId } from "@/shared/ids";
 import { INVALID_BIOMES_ID } from "@/shared/ids";
@@ -118,8 +119,10 @@ function checkInventoryPermissions(
 
   const placeableComponent = entity.placeableComponent();
   if (placeableComponent) {
-    // Check acl for positions of the item
-    return acl.can("destroy", { entity });
+    // Moving items through a storage placeable is an interaction. Destruction
+    // permission is intentionally independent: public/shared containers must
+    // be usable without granting visitors permission to demolish them.
+    return acl.can(CONTAINER_ACCESS_ACL_ACTION, { entity });
   }
 
   return false;

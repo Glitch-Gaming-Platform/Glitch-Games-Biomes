@@ -45,6 +45,11 @@ const ecsBridge = read("src/shared/harthmere/live_entity_ecs_bridge.ts");
 const helperTest = read(
   "src/client/components/challenges/TalkToNPCDefaultDialog.liveEntityHelper.test.ts"
 );
+const talkDialog = read(
+  "src/client/components/challenges/TalkToNPCDefaultDialog.tsx"
+);
+const challengeHandler = read("src/server/logic/events/handlers/challenges.ts");
+const questHelpers = read("src/client/components/challenges/helpers.ts");
 
 const canonicalRoadAheadStepIds = [
   "meet_jackie_in_grove",
@@ -141,6 +146,13 @@ ok(
     overlay.includes("isHarthmereContainerObjectLabel") &&
     overlay.includes('"Open Container"'),
   "inspect overlay restores an F-key container action for authored objects"
+);
+ok(
+  overlay.includes("nativeQuestGiverUsesEcsDialogue") &&
+    talkDialog.includes("if (questGiver && entityId)") &&
+    challengeHandler.includes("canonicalClaimFromEntityId") &&
+    questHelpers.includes("claimRewardsStepMatchesEntity"),
+  "native quest-giver props route through ECS dialogue and canonical claim identity"
 );
 ok(
   objectContainers.includes("HARTHMERE_ROAD_AHEAD_CLOTHING_LOOT_VERSION") &&

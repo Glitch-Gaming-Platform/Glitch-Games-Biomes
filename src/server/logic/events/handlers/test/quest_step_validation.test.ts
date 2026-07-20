@@ -13,7 +13,10 @@
 // actually fired. The "talk → APPROACH → talk" tests below are the
 // canonical regression cases.
 
-import { validateClaimStep } from "@/server/logic/events/handlers/quest_step_validation";
+import {
+  canonicalClaimFromEntityId,
+  validateClaimStep,
+} from "@/server/logic/events/handlers/quest_step_validation";
 import type {
   ClaimEntityIdentity,
   ReadonlyChallengeStateSlice,
@@ -350,6 +353,13 @@ describe("validateClaimStep — quest step server-authoritative validation", () 
         claimEntity: entityPaintingInstance(),
       });
       assert.equal(result.ok, true);
+      if (result.ok) {
+        assert.equal(
+          canonicalClaimFromEntityId(result, PAINTING_INSTANCE),
+          PAINTING_TYPE,
+          "firehose identity must match the authored placeable id"
+        );
+      }
     });
 
     it("rejects when the player is in front of the wrong NPC", () => {

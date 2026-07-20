@@ -91,6 +91,11 @@ export function nativeRoadAheadEcsAuthorityEnabled() {
   );
 }
 
+/** Native quest-giver props always use ECS dialogue/reward handling. */
+export function nativeQuestGiverUsesEcsDialogue(questGiver: unknown) {
+  return nativeBiomesEcsAuthorityEnabled() && Boolean(questGiver);
+}
+
 const NATIVE_ROAD_AHEAD_QUEST_OBJECT_LABELS = new Set([
   "clothing crate",
   "billy's toolbag",

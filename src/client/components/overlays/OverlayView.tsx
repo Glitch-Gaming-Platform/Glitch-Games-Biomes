@@ -8,6 +8,7 @@ import { LootEventOverlayComponent } from "@/client/components/overlays/LootEven
 import { BlueprintOverlayComponent } from "@/client/components/overlays/inspected/BlueprintOverlayComponent";
 import { CursorInspectionComponent } from "@/client/components/overlays/inspected/CursorInspectionOverlayComponent";
 import { GroupInspectionOverlayComponent } from "@/client/components/overlays/inspected/GroupInspectionOverlayComponent";
+import { GrabBagInspectionOverlayComponent } from "@/client/components/overlays/inspected/GrabBagInspectionOverlayComponent";
 import { NpcOverlayComponent } from "@/client/components/overlays/inspected/NpcOverlayComponent";
 import { PlantInspectionOverlayComponent } from "@/client/components/overlays/inspected/PlantInspectionOverlayComponent";
 import { PlayerInspectionOverlayComponent } from "@/client/components/overlays/inspected/PlayerInspectionOverlayComponent";
@@ -119,6 +120,9 @@ export const OverlayComponent: React.FunctionComponent<{
 
     case "plant":
       return <PlantInspectionOverlayComponent overlay={overlay} />;
+
+    case "grab_bag":
+      return <GrabBagInspectionOverlayComponent overlay={overlay} />;
 
     case "harthmere_object":
       return <CursorInspectionComponent overlay={overlay} />;

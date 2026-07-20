@@ -12,18 +12,18 @@ import {
   HarvestPlantEvent,
 } from "@/shared/ecs/gen/events";
 import type { BiomesId } from "@/shared/ids";
-import { fireAndForget } from "@/shared/util/async";
+import { fireAndForget, sleep } from "@/shared/util/async";
 import { plantTimeString } from "@/shared/util/helpers";
 import { useAnimationFrame } from "framer-motion";
 import { compact } from "lodash";
-import { useRef, useState } from "react";
+import { useState } from "react";
 
 export const PlantInspectionOverlayComponent: React.FunctionComponent<{
   overlay: PlantInspectOverlay;
 }> = ({ overlay }) => {
   const { reactResources, resources, authManager, userId, events } =
     useClientContext();
-  const harvestInFlightRef = useRef<Set<string>>(new Set());
+  const [harvestPending, setHarvestPending] = useState(false);
   const plant = reactResources.use(
     "/ecs/c/farming_plant_component",
     overlay.entityId
@@ -102,49 +102,62 @@ export const PlantInspectionOverlayComponent: React.FunctionComponent<{
   const shortcuts: InspectShortcuts = [];
   if (harvestPermitted) {
     shortcuts.push({
-      title: "Harvest",
+      title: harvestPending ? "Harvesting…" : "Harvest",
+      disabled: harvestPending,
       onKeyDown: () => {
         const plantId = String(overlay.entityId);
-        if (harvestInFlightRef.current.has(plantId)) return;
-        harvestInFlightRef.current.add(plantId);
+        if (harvestPending) return;
+        setHarvestPending(true);
         // Harvest is one native ECS operation. Gaia converts the plant's actual
         // container yield into a native GrabBag, so crossbreeding/rare output,
         // pickup range, inventory capacity, and collect quest triggers cannot
         // diverge from a separate HTTP grant.
         fireAndForget(
-          events
-            .publish(
+          (async () => {
+            const authoritativeRoot = resources.get(
+              "/ecs/c/position",
+              overlay.entityId
+            )?.v;
+            await events.publish(
               new HarvestPlantEvent({
                 id: userId,
                 plant_id: overlay.entityId,
-                position: overlay.pos,
+                position: authoritativeRoot ?? overlay.pos,
               })
-            )
-            .then(
-              () => {
-                try {
-                  addToast(resources, {
-                    kind: "basic",
-                    id: `harthmere-native-harvest:${plantId}`,
-                    message: `Harvested ${
-                      name ?? "plant"
-                    }. Pick up the crop drop.`,
-                  });
-                } finally {
-                  harvestInFlightRef.current.delete(plantId);
-                }
-              },
-              () => {
-                harvestInFlightRef.current.delete(plantId);
-                addToast(resources, {
-                  kind: "basic",
-                  id: `harthmere-native-harvest-rejected:${plantId}`,
-                  message: `Couldn't harvest ${
-                    name ?? "this plant"
-                  }. Move closer and try again.`,
-                });
+            );
+
+            // Event acceptance only means the logic handler queued the native
+            // harvest action. Wait for Gaia/world sync to remove the plant
+            // before telling the player that a crop drop actually exists.
+            let applied = false;
+            for (let attempt = 0; attempt < 60; attempt += 1) {
+              const current = resources.get("/ecs/entity", overlay.entityId);
+              if (!current?.farming_plant_component) {
+                applied = true;
+                break;
               }
-            )
+              await sleep(250);
+            }
+            addToast(resources, {
+              kind: "basic",
+              id: `harthmere-native-harvest:${plantId}`,
+              message: applied
+                ? `${name ?? "Crop"} harvested. Pick up the crop drop.`
+                : `Harvest accepted for ${
+                    name ?? "this plant"
+                  }, but the crop drop is still syncing.`,
+            });
+          })()
+            .catch(() => {
+              addToast(resources, {
+                kind: "basic",
+                id: `harthmere-native-harvest-rejected:${plantId}`,
+                message: `Couldn't harvest ${
+                  name ?? "this plant"
+                }. Move closer and try again.`,
+              });
+            })
+            .finally(() => setHarvestPending(false))
         );
       },
     });

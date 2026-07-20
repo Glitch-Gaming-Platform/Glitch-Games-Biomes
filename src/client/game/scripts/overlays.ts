@@ -89,7 +89,6 @@ import {
 } from "@/shared/harthmere/harthmere_world_object_inspectable";
 import {
   isNativeRoadAheadQuestObjectLabel,
-  nativeBiomesEcsAuthorityEnabled,
   nativeRoadAheadEcsAuthorityEnabled,
 } from "@/shared/harthmere/native_road_ahead_contract";
 import {
@@ -1244,6 +1243,7 @@ export class OverlayScript implements Script {
         : changeRadius(this.resources);
       if (hit.distance > maxInspectDistance) {
         return (
+          this.getNearbyGrabBagInspectableOverlay() ??
           this.getNearbyHarthmereObjectInspectableOverlay() ??
           this.getNearbyHarthmerePlaceableCraftingStationOverlay() ??
           this.getNearbyNpcTalkInspectableOverlay()
@@ -1254,6 +1254,12 @@ export class OverlayScript implements Script {
         return {
           kind: "player",
           key: `inspect:player:${entity.id}`,
+          entityId: entity.id,
+        };
+      } else if (entity.grab_bag) {
+        return {
+          kind: "grab_bag",
+          key: `inspect:grab_bag:${entity.id}`,
           entityId: entity.id,
         };
       } else if (entity.robot_component) {
@@ -1320,6 +1326,7 @@ export class OverlayScript implements Script {
       // (minViewDot 0.15, 6.5m), so it only wins when the player is genuinely
       // looking at the prop; otherwise the NPC-talk prompt still shows.
       return (
+        this.getNearbyGrabBagInspectableOverlay() ??
         this.getNearbyHarthmereObjectInspectableOverlay() ??
         this.getNearbyHarthmerePlaceableCraftingStationOverlay() ??
         this.getNearbyNpcTalkInspectableOverlay()
@@ -1328,6 +1335,11 @@ export class OverlayScript implements Script {
 
     // HARTHMERE_WORLD_OBJECT_PROMPT_PRIORITY: object before NPC fallback
     // (see rationale above).
+    const nearbyGrabBagOverlay = this.getNearbyGrabBagInspectableOverlay();
+    if (nearbyGrabBagOverlay) {
+      return nearbyGrabBagOverlay;
+    }
+
     const nearbyHarthmereObjectOverlay =
       this.getNearbyHarthmereObjectInspectableOverlay();
     if (nearbyHarthmereObjectOverlay) {
@@ -1378,23 +1390,42 @@ export class OverlayScript implements Script {
     }
   }
 
+  private getNearbyGrabBagInspectableOverlay(): InspectableOverlay | undefined {
+    const localPlayer = this.resources.get("/scene/local_player");
+    let best:
+      | {
+          entityId: BiomesId;
+          distance: number;
+        }
+      | undefined;
+    for (const entity of this.table.scan(
+      DropSelector.query.spatial.inSphere({
+        center: localPlayer.player.position,
+        radius: this.clientConfig.gameDropPickupDistance + 1,
+      })
+    )) {
+      const position = entity.position?.v;
+      if (!position || !entity.grab_bag) continue;
+      const distance = dist(position, localPlayer.player.position);
+      if (!best || distance < best.distance) {
+        best = { entityId: entity.id, distance };
+      }
+    }
+    return best
+      ? {
+          kind: "grab_bag",
+          key: `inspect:grab_bag:nearby:${best.entityId}`,
+          entityId: best.entityId,
+        }
+      : undefined;
+  }
+
   // HARTHMERE_WORLD_OBJECT_INSPECT_OVERLAY
   // Returns true when an ECS entity's label/description marks it a non-living,
   // interactable world prop (crate / chest / board / cookpot / door / ...). This
   // is the same gate the object-interaction semantics use, so the prompt only
   // appears for objects the resolver knows how to act on.
   private isHarthmereWorldObjectEntity(entity: ReadonlyEntity): boolean {
-    if (
-      nativeBiomesEcsAuthorityEnabled() &&
-      (Boolean(entity.quest_giver) ||
-        isNativeRoadAheadQuestObjectLabel(entity.label?.text))
-    ) {
-      // Native quest-giver entities must remain in the ECS inspection/dialog
-      // path for every quest, not just Road Ahead. Reclassifying one as a
-      // generic Harthmere crate bypasses CompleteQuestStepAtEntityEvent, exact
-      // item grants, item-taking validation, and the challenge trigger tree.
-      return false;
-    }
     return isHarthmereInspectableWorldObject({
       label: entity.label?.text,
       entityDescription: entity.entity_description?.text,
