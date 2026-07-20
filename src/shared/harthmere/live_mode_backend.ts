@@ -1429,9 +1429,9 @@ export interface HarthmereLiveModeSharedWorldState {
   economyProduction: HarthmereProductionEconomyState;
   jobsBoard: HarthmereJobsBoardState;
   /**
-   * Positioned custom-item drops that do not yet have Bikkie ids. Native items
-   * use ECS GrabBags; this shared compatibility slice prevents one private copy
-   * of a custom drop per actor while those remaining items are migrated.
+   * Durable source metadata for positioned rewards. In native mode the client
+   * never claims this compatibility projection: the API materializes exact
+   * item ids as ECS GrabBags and the normal inventory/firehose path owns pickup.
    */
   inventoryLootWorld: HarthmereLiveModeSharedInventoryLootWorldState;
   building: HarthmereLiveModeSharedBuildingState;
@@ -1895,7 +1895,27 @@ export interface HarthmereLiveModeBackendMutationSummary {
   warnings: string[];
   touchedModels: string[];
   buildingMaterializationPlans?: BuildingSystemAnyMaterializationPlan[];
+  nativeEcsMaterializationPlans?: HarthmereNativeEcsMaterializationPlan[];
 }
+
+/**
+ * Durable reducer output for physical items that must enter the world through
+ * native ECS. Redis may still own cooldown/economy metadata, but it never adds
+ * these stacks to a second player inventory.
+ */
+export interface HarthmereNativeEcsDropMaterializationPlan {
+  kind: "drop";
+  materializationKey: string;
+  position: { x: number; y: number; z: number };
+  itemStacks: Record<string, number>;
+  ownerActorIds: string[];
+  expiresAtMs: number;
+  mined: boolean;
+  sourceKind: string;
+}
+
+export type HarthmereNativeEcsMaterializationPlan =
+  HarthmereNativeEcsDropMaterializationPlan;
 
 function recordDelta(
   target: Record<string, number>,
@@ -7196,11 +7216,29 @@ export function createHarthmereInventoryLootClientSnapshotFromBackend(
     actor.equipment = { ...state.inventory.equipment };
     actor.equipmentInstances = { ...state.inventory.equipmentInstances };
   }
+  const snapshot = createHarthmereInventoryLootClientSnapshot(
+    state.inventoryLoot,
+    state.actorId
+  );
+  const nativeDropInstanceIds = nativeBiomesEcsAuthorityEnabled()
+    ? new Set(
+        Object.values(state.inventoryLoot.lootDrops).flatMap(
+          (drop) => drop.instanceIds
+        )
+      )
+    : undefined;
   return {
-    ...createHarthmereInventoryLootClientSnapshot(
-      state.inventoryLoot,
-      state.actorId
-    ),
+    ...snapshot,
+    ...(nativeDropInstanceIds
+      ? {
+          availableLootDrops: [],
+          itemInstances: Object.fromEntries(
+            Object.entries(snapshot.itemInstances).filter(
+              ([instanceId]) => !nativeDropInstanceIds.has(instanceId)
+            )
+          ),
+        }
+      : {}),
     overflow: state.inventory.overflow.map((entry) => ({ ...entry })),
     materialStorage: {
       items: { ...state.banking.materialStorage },
@@ -7208,6 +7246,47 @@ export function createHarthmereInventoryLootClientSnapshotFromBackend(
       usedSlots: countOccupiedBankSlots(state.banking.materialStorage),
     },
   };
+}
+
+/**
+ * Convert every still-available shared compatibility drop into the durable
+ * native ECS outbox shape. This is also called by the inventory read endpoint
+ * so drops saved before this migration are repaired on login without waiting
+ * for an unrelated player mutation.
+ */
+export function harthmereNativeEcsPlansForAvailableInventoryLoot(
+  state: HarthmereLiveModeBackendState,
+  nowMs: number
+): HarthmereNativeEcsDropMaterializationPlan[] {
+  const plans: HarthmereNativeEcsDropMaterializationPlan[] = [];
+  for (const drop of Object.values(state.inventoryLoot.lootDrops)) {
+    if (
+      drop.status !== "available" ||
+      !drop.position ||
+      drop.expiresAtMs <= nowMs
+    ) {
+      continue;
+    }
+    const itemStacks = { ...drop.itemStacks };
+    for (const instanceId of drop.instanceIds) {
+      const instance = state.inventoryLoot.itemInstances[instanceId];
+      if (!instance || instance.quantity <= 0) continue;
+      itemStacks[instance.itemId] =
+        (itemStacks[instance.itemId] ?? 0) + instance.quantity;
+    }
+    if (!Object.values(itemStacks).some((count) => count > 0)) continue;
+    plans.push({
+      kind: "drop",
+      materializationKey: `inventory-loot:${drop.dropId}`,
+      position: { ...drop.position },
+      itemStacks,
+      ownerActorIds: [...drop.ownerActorIds],
+      expiresAtMs: drop.expiresAtMs,
+      mined: false,
+      sourceKind: drop.sourceKind,
+    });
+  }
+  return plans;
 }
 
 function normalizedLiveModePlayerHp(
@@ -7764,6 +7843,8 @@ export function reduceHarthmereLiveModeBackendState(
   const sharedStateKeys = new Set<string>();
   const warnings: string[] = [];
   const buildingMaterializationPlans: BuildingSystemAnyMaterializationPlan[] =
+    [];
+  const nativeEcsMaterializationPlans: HarthmereNativeEcsMaterializationPlan[] =
     [];
   const playerStateKey = harthmereLiveModePlayerStateKey(envelope.actorId);
 
@@ -16109,6 +16190,7 @@ export function reduceHarthmereLiveModeBackendState(
             nodeId,
             actorPosition: actorWorldPositionFromAuthority(envelope),
             equippedItemIds: Object.values(next.inventory.equipment),
+            equippedBiomesItemIds: envelope.serverActorItemIds,
             professionLevel:
               (gatheringNode &&
                 next.classMagic.skills[gatheringNode.profession]?.level) ??
@@ -16131,24 +16213,38 @@ export function reduceHarthmereLiveModeBackendState(
             touchedModels.add("farming_rejection");
             break;
           }
-          if (
-            wouldStacksExceedCarryWeight(
-              next.inventory.items,
-              authorityAttempt.itemDeltas
-            )
-          ) {
-            pushCarryWeightRejection(warnings, touchedModels, "gathering");
-            break;
-          }
           for (const [itemId, count] of Object.entries(
             authorityAttempt.itemDeltas
           )) {
             ensureLiveModeItemDefinition(itemId, buildInventorySnapshot());
-            recordDelta(next.inventory.items, itemId, count);
-            advanceSnapshotGroveQuestsFromAuthoritativeEvent("collect", {
-              itemId,
-              itemName: getHarthmereItemDefinition(itemId)?.displayName,
+            if (count <= 0) delete authorityAttempt.itemDeltas[itemId];
+          }
+          if (nativeBiomesEcsAuthorityEnabled()) {
+            nativeEcsMaterializationPlans.push({
+              kind: "drop",
+              materializationKey: `gathering:${nodeId}:${envelope.requestId}`,
+              position: {
+                x: authorityAttempt.node.position[0],
+                y: authorityAttempt.node.position[1] + 0.5,
+                z: authorityAttempt.node.position[2],
+              },
+              itemStacks: { ...authorityAttempt.itemDeltas },
+              ownerActorIds: [envelope.actorId],
+              expiresAtMs: authorityAttempt.respawnAtMs,
+              mined: true,
+              sourceKind: "harthmere_gathering_node",
             });
+            warnings.push("gathering_yield_materialized_as_native_ecs_drop");
+          } else {
+            for (const [itemId, count] of Object.entries(
+              authorityAttempt.itemDeltas
+            )) {
+              recordDelta(next.inventory.items, itemId, count);
+              advanceSnapshotGroveQuestsFromAuthoritativeEvent("collect", {
+                itemId,
+                itemName: getHarthmereItemDefinition(itemId)?.displayName,
+              });
+            }
           }
           next.combat.lootClaims[respawnKey] = authorityAttempt.respawnAtMs;
           const skillProgress = upsertSkill(
@@ -16162,7 +16258,9 @@ export function reduceHarthmereLiveModeBackendState(
               `gathering_illegal:${authorityAttempt.node.ownership}`
             );
           }
-          touchedModels.add("inventory_items");
+          if (!nativeBiomesEcsAuthorityEnabled()) {
+            touchedModels.add("inventory_items");
+          }
           touchedModels.add("gathering_nodes");
           touchedModels.add("loot_claims");
           touchedModels.add("skill_xp");
@@ -17204,6 +17302,12 @@ export function reduceHarthmereLiveModeBackendState(
     }
   }
 
+  if (nativeBiomesEcsAuthorityEnabled()) {
+    nativeEcsMaterializationPlans.push(
+      ...harthmereNativeEcsPlansForAvailableInventoryLoot(next, nowMs)
+    );
+  }
+
   return {
     state: next,
     summary: {
@@ -17219,6 +17323,9 @@ export function reduceHarthmereLiveModeBackendState(
       touchedModels: [...touchedModels],
       buildingMaterializationPlans: buildingMaterializationPlans.length
         ? buildingMaterializationPlans
+        : undefined,
+      nativeEcsMaterializationPlans: nativeEcsMaterializationPlans.length
+        ? nativeEcsMaterializationPlans
         : undefined,
     },
   };

@@ -3,7 +3,9 @@ import type { AskApi } from "@/server/ask/api";
 import type { LogicApi } from "@/server/shared/api/logic";
 import { loadVoxeloo } from "@/server/shared/voxeloo";
 import type { WorldApi } from "@/server/shared/world/api";
+import type { IdGenerator } from "@/server/shared/ids/generator";
 import { ensurePlayerExists } from "@/server/logic/utils/players";
+import { materializeHarthmereNativeEcsPlans } from "@/server/harthmere/native_ecs_drop_materialization";
 import { connectToRedis } from "@/server/shared/redis/connection";
 import { biomesApiHandler } from "@/server/web/util/api_middleware";
 import { log } from "@/shared/logging";
@@ -50,6 +52,7 @@ import {
 } from "@/shared/harthmere/live_mode_readiness";
 import { HARTHMERE_JOBS_BOARD_LOCATIONS } from "@/shared/harthmere/mmo_jobs_board_authority";
 import { EditEvent, PlaceGroupEvent } from "@/shared/ecs/gen/events";
+import { getSlotByRef } from "@/shared/game/inventory";
 import { blockPos, voxelShard } from "@/shared/game/shard";
 import { shiftHarthmereAuthoredPositionToWorld } from "@/shared/harthmere/coordinate_transform";
 import { safeParseBiomesId, type BiomesId } from "@/shared/ids";
@@ -68,6 +71,8 @@ import {
   type HarthmereActorStateLock,
 } from "@/server/harthmere/live_mode_actor_state_authority";
 import { nativeBiomesEcsAuthorityEnabled } from "@/shared/harthmere/native_road_ahead_contract";
+
+export { materializeHarthmereNativeEcsPlans } from "@/server/harthmere/native_ecs_drop_materialization";
 
 const HARTHMERE_LIVE_MODE_SERVER_ROUTE =
   "HARTHMERE_LIVE_MODE_SERVER_ROUTE" as const;
@@ -310,6 +315,17 @@ const zLiveModeEventResponse = z.object({
   payload: zJsonRecord,
 });
 
+const zHarthmereNativeEcsMaterializationPlan = z.object({
+  kind: z.literal("drop"),
+  materializationKey: z.string(),
+  position: z.object({ x: z.number(), y: z.number(), z: z.number() }),
+  itemStacks: z.record(z.number()),
+  ownerActorIds: z.string().array(),
+  expiresAtMs: z.number(),
+  mined: z.boolean(),
+  sourceKind: z.string(),
+});
+
 const zLiveModeUiEventResponse = z.object({
   uiEventId: z.string(),
   kind: z.string(),
@@ -333,6 +349,9 @@ const zLiveModeBackendMutationResponse = z.object({
   warnings: z.string().array(),
   touchedModels: z.string().array(),
   buildingMaterializationPlans: zBuildingMaterializationPlansResponse,
+  nativeEcsMaterializationPlans: zHarthmereNativeEcsMaterializationPlan
+    .array()
+    .optional(),
 });
 
 const zLiveModeResponse = z.object({
@@ -391,12 +410,26 @@ const HARTHMERE_NATIVE_ECS_OWNED_LIVE_MODE_ACTIONS =
     "request_respawn",
     "request_npc_ai_tick",
     "request_boss_tick",
+    "request_loot_claim",
+    "request_container_transfer",
   ]);
 
 export function nativeEcsOwnsHarthmereLiveModeActionForTest(
   actionKind: HarthmereLiveModeActionKind
 ) {
   return HARTHMERE_NATIVE_ECS_OWNED_LIVE_MODE_ACTIONS.has(actionKind);
+}
+
+export function nativeEcsPhysicalDropNeedsAuthenticatedActorForTest(input: {
+  actionKind: HarthmereLiveModeActionKind;
+  payload: Record<string, unknown>;
+}) {
+  return (
+    (input.actionKind === "request_farming_action" &&
+      input.payload.operation === "gather_node") ||
+    (input.actionKind === "request_inventory_item_action" &&
+      input.payload.operation === "drop_item")
+  );
 }
 
 type HarthmereLiveModeMutationSnapshotKey =
@@ -1040,7 +1073,8 @@ function wire_network_requests_to_validateHarthmereLiveModeAuthorityEnvelope(
   actorId: string,
   body: z.infer<typeof zLiveModeRequest>,
   serverActorPosition?: { x: number; y: number; z: number },
-  serverTargetPosition?: { x: number; y: number; z: number }
+  serverTargetPosition?: { x: number; y: number; z: number },
+  serverActorItemIds?: BiomesId[]
 ): HarthmereLiveModeAuthorityEnvelope {
   const now = Date.now();
   return {
@@ -1052,6 +1086,7 @@ function wire_network_requests_to_validateHarthmereLiveModeAuthorityEnvelope(
     subsystem: body.subsystem,
     source: "client_request",
     serverActorPosition,
+    serverActorItemIds,
     serverTargetPosition,
     clientSentAtMs: body.clientSentAtMs,
     serverReceivedAtMs: now,
@@ -1072,18 +1107,55 @@ export async function readServerActorPositionForLiveMode(
   worldApi: WorldApi,
   userId: BiomesId
 ) {
+  return (await readServerActorNativeContextForLiveMode(worldApi, userId))
+    .position;
+}
+
+export async function readServerActorNativeContextForLiveMode(
+  worldApi: WorldApi,
+  userId: BiomesId,
+  includeItemIds = false
+) {
   try {
     const entity = await worldApi.get(userId);
     const position = entity?.position()?.v;
-    if (!Array.isArray(position) || position.length < 3) return undefined;
-    const [x, y, z] = position.map(Number);
-    if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) {
-      return undefined;
+    let parsedPosition: { x: number; y: number; z: number } | undefined;
+    if (Array.isArray(position) && position.length >= 3) {
+      const [x, y, z] = position.map(Number);
+      if (Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(z)) {
+        parsedPosition = { x, y, z };
+      }
     }
-    return { x, y, z };
+    const ids = new Set<BiomesId>();
+    if (includeItemIds) {
+      const inventory = entity?.inventory();
+      const wearing = entity?.wearing();
+      if (inventory) {
+        const selected = getSlotByRef(
+          { inventory, wearing },
+          inventory.selected
+        );
+        if (selected) ids.add(selected.item.id);
+      }
+      for (const item of wearing?.items.values() ?? []) {
+        ids.add(item.id);
+      }
+    }
+    return {
+      position: parsedPosition,
+      itemIds: includeItemIds ? [...ids] : undefined,
+    };
   } catch {
-    return undefined;
+    return { position: undefined, itemIds: includeItemIds ? [] : undefined };
   }
+}
+
+export async function readServerActorNativeItemIdsForLiveMode(
+  worldApi: WorldApi,
+  userId: BiomesId
+) {
+  return (await readServerActorNativeContextForLiveMode(worldApi, userId, true))
+    .itemIds!;
 }
 
 function biomesIdFromLiveModeActorId(value: unknown): BiomesId | undefined {
@@ -1898,6 +1970,53 @@ export async function materializeHarthmereEscortCompanionsToEcs(input: {
   return { changeCount: changes.length, outcome: applied.outcome };
 }
 
+async function hydrateAndRepairHarthmereLiveModeIdempotencyReplay(input: {
+  redisPrimary: any;
+  idempotencyRedisKey: string;
+  envelope: HarthmereLiveModeAuthorityEnvelope;
+  response: LiveModeResponse;
+  worldApi?: WorldApi;
+  idGenerator?: IdGenerator;
+}) {
+  const hydrated = await hydrateHarthmereLiveModeIdempotencyReplay(input);
+  const plans = hydrated.backendMutation?.nativeEcsMaterializationPlans;
+  if (!plans?.length) return hydrated;
+
+  try {
+    if (!input.worldApi || !input.idGenerator) {
+      hydrated.backendMutation?.warnings.push(
+        `native_ecs_replay_repair_deferred:${
+          !input.worldApi ? "no_world_api" : "no_id_generator"
+        }`
+      );
+    } else {
+      const result = await materializeHarthmereNativeEcsPlans({
+        redisPrimary: input.redisPrimary,
+        worldApi: input.worldApi,
+        idGenerator: input.idGenerator,
+        plans,
+      });
+      hydrated.backendMutation?.warnings.push(
+        `native_ecs_replay_repaired:created:${result.created}:existing:${result.alreadyMaterialized}`
+      );
+    }
+  } catch (error) {
+    hydrated.backendMutation?.warnings.push(
+      `native_ecs_replay_repair_deferred:${String(
+        error instanceof Error ? error.message : error
+      ).slice(0, 240)}`
+    );
+  }
+
+  await input.redisPrimary.set(
+    input.idempotencyRedisKey,
+    JSON.stringify(slimHarthmereLiveModeIdempotencyResponse(hydrated)),
+    "EX",
+    24 * 60 * 60
+  );
+  return hydrated;
+}
+
 export async function ensureHarthmereWorldMaterializerPlayerExists(
   worldApi: WorldApi
 ) {
@@ -2200,6 +2319,7 @@ export async function persistHarthmereLiveModeResponse(
   response: LiveModeResponse,
   deps: {
     askApi?: Pick<AskApi, "scanForExport">;
+    idGenerator?: IdGenerator;
     logicApi: LogicApi;
     worldApi?: WorldApi;
     userId?: BiomesId;
@@ -2274,10 +2394,13 @@ export async function persistHarthmereLiveModeResponse(
 
   const previousBeforeActorLock = await redis.primary.get(key);
   if (previousBeforeActorLock) {
-    return hydrateHarthmereLiveModeIdempotencyReplay({
+    return hydrateAndRepairHarthmereLiveModeIdempotencyReplay({
       redisPrimary: redis.primary,
+      idempotencyRedisKey: key,
       envelope,
       response: JSON.parse(previousBeforeActorLock) as LiveModeResponse,
+      worldApi: deps.worldApi,
+      idGenerator: deps.idGenerator,
     });
   }
   const stateAdoption = normalizeHarthmereLiveModeActorStateAdoption({
@@ -2720,6 +2843,44 @@ export async function persistHarthmereLiveModeResponse(
       // actions are never held behind external side effects.
       await releaseActorLock();
 
+      if (reduced.summary.nativeEcsMaterializationPlans?.length) {
+        stageStartedAt = Date.now();
+        try {
+          if (!deps.worldApi || !deps.idGenerator) {
+            persistedResponse.backendMutation?.warnings.push(
+              `native_ecs_materialization_deferred:${
+                !deps.worldApi ? "no_world_api" : "no_id_generator"
+              }`
+            );
+          } else {
+            const materialized = await materializeHarthmereNativeEcsPlans({
+              redisPrimary: txPrimary,
+              worldApi: deps.worldApi,
+              idGenerator: deps.idGenerator,
+              plans: reduced.summary.nativeEcsMaterializationPlans,
+            });
+            persistedResponse.backendMutation?.warnings.push(
+              `native_ecs_materialized:created:${materialized.created}:existing:${materialized.alreadyMaterialized}`
+            );
+          }
+        } catch (error) {
+          persistedResponse.backendMutation?.warnings.push(
+            `native_ecs_materialization_deferred:${String(
+              error instanceof Error ? error.message : error
+            ).slice(0, 240)}`
+          );
+        }
+        await txPrimary.set(
+          key,
+          JSON.stringify(
+            slimHarthmereLiveModeIdempotencyResponse(persistedResponse)
+          ),
+          "EX",
+          24 * 60 * 60
+        );
+        mark("native_ecs_materialization_ms", stageStartedAt);
+      }
+
       // Materialize server-approved building plans after the state/idempotency
       // commit succeeds. This keeps ECS side effects downstream of durable state.
       if (reduced.summary.buildingMaterializationPlans?.length) {
@@ -2892,7 +3053,7 @@ export default biomesApiHandler(
     response: zLiveModeResponse,
   },
   async ({
-    context: { askApi, logicApi, worldApi },
+    context: { askApi, idGenerator, logicApi, worldApi },
     auth,
     body,
     unsafeRequest,
@@ -2946,6 +3107,28 @@ export default biomesApiHandler(
         uiEvents: [],
       };
     }
+    if (
+      actorIdentity.userId === undefined &&
+      nativeBiomesEcsAuthorityEnabled() &&
+      nativeEcsPhysicalDropNeedsAuthenticatedActorForTest(body)
+    ) {
+      return {
+        ok: false,
+        version: HARTHMERE_LIVE_MODE_SERVER_ROUTE,
+        actorId: actorIdentity.actorId,
+        duplicate: false,
+        replayed: false,
+        persisted: false,
+        validation: {
+          ok: false,
+          errors: ["native_ecs_authenticated_actor_required"],
+          warnings: [],
+          rejectedClientClaims: [],
+        },
+        events: [],
+        uiEvents: [],
+      };
+    }
     // Heal the install/user split on writes too: converge an install-only write
     // onto the linked user key and record the install->user link on the first
     // authed write, so actions never strand progress under a second key.
@@ -2955,23 +3138,29 @@ export default biomesApiHandler(
       actorIdentity.actorId
     );
     const actorId = actorContext.actorId;
-    const serverActorPosition =
+    const needsNativeToolEvidence =
+      body.actionKind === "request_farming_action" &&
+      body.payload.operation === "gather_node";
+    const [serverActorContext, serverTargetPosition] = await Promise.all([
       actorIdentity.userId !== undefined
-        ? await readServerActorPositionForLiveMode(
+        ? readServerActorNativeContextForLiveMode(
             worldApi,
-            actorIdentity.userId
+            actorIdentity.userId,
+            needsNativeToolEvidence
           )
-        : combatActorPositionFromInstallLiveModeBody(body);
-    const serverTargetPosition = await readServerTargetPositionForQuestInvite(
-      worldApi,
-      body
-    );
+        : Promise.resolve({
+            position: combatActorPositionFromInstallLiveModeBody(body),
+            itemIds: undefined,
+          }),
+      readServerTargetPositionForQuestInvite(worldApi, body),
+    ]);
     const envelope =
       wire_network_requests_to_validateHarthmereLiveModeAuthorityEnvelope(
         actorId,
         body,
-        serverActorPosition,
-        serverTargetPosition
+        serverActorContext.position,
+        serverTargetPosition,
+        serverActorContext.itemIds
       );
     const validation = validateHarthmereLiveModeAuthorityEnvelope(envelope);
     if (!validation.ok) {
@@ -3011,6 +3200,7 @@ export default biomesApiHandler(
       },
       {
         askApi,
+        idGenerator,
         logicApi,
         worldApi,
         userId: actorIdentity.userId,

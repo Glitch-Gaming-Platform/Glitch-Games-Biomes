@@ -483,6 +483,20 @@ export function getHarthmereItemDefinition(
   return _itemCatalogueRegistry.get(itemId);
 }
 
+/**
+ * Return a stable snapshot of every server-authored Harthmere item.
+ *
+ * Native ECS integration must build Bikkie biscuits from the same catalogue
+ * used by recipes, vendors, loot, and quest validation. Exposing a copy keeps
+ * callers from mutating the registry while still avoiding a second item
+ * manifest with subtly different stack sizes or equipment rules.
+ */
+export function listHarthmereItemDefinitions(): HarthmereItemDefinition[] {
+  return [..._itemCatalogueRegistry.values()].sort((a, b) =>
+    a.itemId.localeCompare(b.itemId)
+  );
+}
+
 // Vendor catalogue registry
 const _vendorRegistry = new Map<string, Map<string, HarthmereVendorEntry>>();
 

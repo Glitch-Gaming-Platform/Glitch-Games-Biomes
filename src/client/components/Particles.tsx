@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Particles from "react-tsparticles";
 import { loadFull } from "tsparticles";
 import type { Engine } from "tsparticles-engine";
@@ -139,9 +139,20 @@ export const TreasureParticles: React.FunctionComponent<{}> = ({}) => {
 };
 
 export const WakeupMuckParticles: React.FunctionComponent<{}> = ({}) => {
+  // tsparticles creates browser-specific/random canvas state. Rendering it
+  // during SSR made the first browser tree differ from the server HTML (React
+  // minified errors 425/423), which then remounted the whole game and aborted
+  // the sync loader. Keep the server and first client render identically empty,
+  // then mount particles after hydration has completed.
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => setHydrated(true), []);
   const particlesInit = useCallback(async (engine: Engine) => {
     await loadFull(engine);
   }, []);
+
+  if (!hydrated) {
+    return null;
+  }
 
   return (
     <Particles

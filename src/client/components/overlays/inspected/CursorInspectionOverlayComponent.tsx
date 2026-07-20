@@ -16,10 +16,14 @@ import {
   isHarthmereContainerObjectLabel,
   isHarthmereNonLivingObjectLabel,
 } from "@/shared/harthmere/object_interaction_semantics";
-import { nativeQuestGiverUsesEcsDialogue } from "@/shared/harthmere/native_road_ahead_contract";
+import {
+  isNativeRoadAheadQuestObjectLabel,
+  nativeQuestGiverUsesEcsDialogue,
+  nativeRoadAheadEcsAuthorityEnabled,
+} from "@/shared/harthmere/native_road_ahead_contract";
 import { relevantBiscuitForEntityId } from "@/shared/npc/bikkie";
 import type { PropsWithChildren } from "react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 export type InspectShortcut = {
   title: string | JSX.Element;
@@ -70,6 +74,8 @@ export const CursorInspectionComponent: React.FunctionComponent<
     context,
     overlay?.entityId ?? INVALID_BIOMES_ID
   );
+  const [openingContainer, setOpeningContainer] = useState(false);
+  const [containerOpenError, setContainerOpenError] = useState<string>();
 
   const item = relevantBiscuitForEntityId(resources, overlay?.entityId);
   const inspectText =
@@ -93,7 +99,10 @@ export const CursorInspectionComponent: React.FunctionComponent<
   // A native quest-giver prop may also have a crate/bag label. Its action is
   // native dialogue and CompleteQuestStepAtEntityEvent, never the parallel
   // label/localStorage container path.
-  const isNativeQuestObject = nativeQuestGiverUsesEcsDialogue(questGiver);
+  const isNativeQuestObject =
+    nativeQuestGiverUsesEcsDialogue(questGiver) ||
+    (nativeRoadAheadEcsAuthorityEnabled() &&
+      isNativeRoadAheadQuestObjectLabel(harthmereObjectLabel));
   const isHarthmereObjectContainer =
     !isNativeQuestObject &&
     overlay?.kind !== "placeable" &&
@@ -146,19 +155,47 @@ export const CursorInspectionComponent: React.FunctionComponent<
 
     if (isHarthmereObjectContainer && harthmereObjectActionable) {
       ret.unshift({
-        title: harthmereObjectInteraction?.title ?? "Open Container",
+        title: openingContainer
+          ? "Opening…"
+          : harthmereObjectInteraction?.title ?? "Open Container",
+        disabled: openingContainer,
         onKeyDown: () => {
-          completeHarthmereJobsBoardFieldObjectiveForObjectSoon({
+          setContainerOpenError(undefined);
+          setOpeningContainer(true);
+          void openHarthmereObjectContainer({
+            entityId: harthmereObjectInteractionEntityId ?? INVALID_BIOMES_ID,
             objectId: harthmereObjectId,
             label: harthmereObjectLabel,
-            interactionKind: "open_container",
             resources,
-          });
-          openHarthmereObjectContainer({
-            entityId: harthmereObjectInteractionEntityId ?? INVALID_BIOMES_ID,
-            label: harthmereObjectLabel,
-            resources,
-          });
+          })
+            .then((result) => {
+              completeHarthmereJobsBoardFieldObjectiveForObjectSoon({
+                objectId: harthmereObjectId,
+                label: harthmereObjectLabel,
+                interactionKind: "open_container",
+                resources,
+              });
+              if (
+                result.native &&
+                result.containerId &&
+                result.containerItemId
+              ) {
+                reactResources.set("/game_modal", {
+                  kind: "generic_miniphone",
+                  rootPayload: {
+                    type: "container",
+                    placeableId: result.containerId,
+                    itemId: result.containerItemId,
+                  },
+                });
+              }
+            })
+            .catch(() =>
+              setContainerOpenError(
+                "The container could not be opened. Move closer and try again."
+              )
+            )
+            .finally(() => setOpeningContainer(false));
         },
       });
     }
@@ -214,6 +251,8 @@ export const CursorInspectionComponent: React.FunctionComponent<
     isHarthmereObjectContainer,
     isHarthmereWorldObject,
     isNativeQuestObject,
+    openingContainer,
+    containerOpenError,
     label?.text,
     overlay?.entityId,
     itemBuyer,
@@ -233,7 +272,7 @@ export const CursorInspectionComponent: React.FunctionComponent<
       )}
       <div className="inspect">
         <>
-          <MaybeError error={error} />
+          <MaybeError error={containerOpenError ?? error} />
           {customHeader}
           {(title || subtitle) && (
             <div className="title-subtitle">

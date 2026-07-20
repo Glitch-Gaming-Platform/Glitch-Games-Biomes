@@ -6,6 +6,7 @@ import {
   createHarthmereBiomesEcsHealth,
   createHarthmereBiomesEcsInventory,
   HARTHMERE_GOLD_ECS_CURRENCY_ID,
+  harthmereItemIdToBiomesId,
 } from "@/shared/harthmere/harthmere_biomes_ecs_bridge";
 import type { BiomesId } from "@/shared/ids";
 
@@ -38,7 +39,7 @@ describe("Harthmere Biomes ECS bridge", () => {
     assert.deepEqual(projected.warnings, []);
   });
 
-  it("projects Harthmere visual item ids while warning on unknown strings", () => {
+  it("projects every non-empty Harthmere string as an exact native item id", () => {
     const projected = createHarthmereBiomesEcsInventory({
       gold: 0,
       items: {
@@ -48,10 +49,17 @@ describe("Harthmere Biomes ECS bridge", () => {
       },
     });
 
-    assert.equal(projected.component.items.length, 2);
+    assert.equal(projected.component.items.length, 3);
     assert.ok(
       projected.component.items.some(
-        (itemAndCount) => itemAndCount?.item.id === BikkieIds.muckBuster
+        (itemAndCount) =>
+          itemAndCount?.item.id === harthmereItemIdToBiomesId("iron_longsword")
+      )
+    );
+    assert.ok(
+      projected.component.items.some(
+        (itemAndCount) =>
+          itemAndCount?.item.id === harthmereItemIdToBiomesId("harthmere_only")
       )
     );
     assert.ok(
@@ -61,8 +69,7 @@ describe("Harthmere Biomes ECS bridge", () => {
           itemAndCount?.count === 4n
       )
     );
-    assert.equal(projected.warnings.length, 1);
-    assert.equal(projected.warnings[0].id, "harthmere_only");
+    assert.deepEqual(projected.warnings, []);
   });
 
   it("projects quest state only through known Biomes challenge ids", () => {
@@ -108,7 +115,6 @@ describe("Harthmere Biomes ECS bridge", () => {
       5n
     );
     assert.equal(projected.challenges.in_progress.has(questId), true);
-    assert.equal(projected.warnings.length, 1);
-    assert.equal(projected.warnings[0].id, "harthmere_only");
+    assert.deepEqual(projected.warnings, []);
   });
 });

@@ -16,6 +16,7 @@ import {
   useWorldInteractionCandidate,
   WORLD_INTERACTION_PRIORITY,
 } from "@/client/components/challenges/worldInteractionDispatcher";
+import { nativeBiomesEcsAuthorityEnabled } from "@/shared/harthmere/native_road_ahead_contract";
 
 export const HARTHMERE_LOOT_DROP_WORLD_INTERACTION_VERSION =
   "harthmere-loot-drop-world-interaction" as const;
@@ -74,6 +75,10 @@ export function nearestAvailableHarthmereLootDrop(
 async function fetchAvailableLootDrops(): Promise<
   HarthmereInventoryLootDrop[]
 > {
+  // Native GrabBags are synchronized through the ECS websocket and rendered by
+  // the normal drop renderer. Polling the Redis compatibility projection here
+  // would offer a second claim button for the same physical reward.
+  if (nativeBiomesEcsAuthorityEnabled()) return [];
   const response = await defaultHarthmereLiveFetch(
     "/api/harthmere/live_mode_inventory_loot_state",
     {

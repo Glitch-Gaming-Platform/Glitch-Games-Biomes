@@ -7,6 +7,9 @@
  * respawn time.
  */
 
+import { harthmereNativeBiomesIdForItemId } from "@/shared/harthmere/harthmere_native_item_ids";
+import type { BiomesId } from "@/shared/ids";
+
 export const HARTHMERE_GATHERING_NODE_AUTHORITY_VERSION =
   "harthmere-gathering-node-authority-2026-07-19" as const;
 export const HARTHMERE_GATHERING_NODE_INTERACTION_RADIUS = 5;
@@ -1012,6 +1015,7 @@ export function resolveHarthmereGatheringAuthorityAttempt(input: {
   nodeId: string;
   actorPosition?: { x: number; y: number; z: number };
   equippedItemIds: readonly string[];
+  equippedBiomesItemIds?: readonly BiomesId[];
   professionLevel: number;
   nowMs: number;
   randomSeed: string;
@@ -1030,7 +1034,13 @@ export function resolveHarthmereGatheringAuthorityAttempt(input: {
   ) {
     return { ok: false, reason: "node_out_of_range" };
   }
-  if (node.requiredTool && !input.equippedItemIds.includes(node.requiredTool)) {
+  const hasRequiredTool =
+    !node.requiredTool ||
+    input.equippedItemIds.includes(node.requiredTool) ||
+    input.equippedBiomesItemIds?.includes(
+      harthmereNativeBiomesIdForItemId(node.requiredTool)!
+    );
+  if (!hasRequiredTool) {
     return { ok: false, reason: "required_tool_missing:" + node.requiredTool };
   }
   if (input.professionLevel < node.requiredSkill) {

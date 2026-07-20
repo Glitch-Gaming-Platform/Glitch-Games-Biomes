@@ -9,10 +9,13 @@ import {
   liveModeActorIdentityFromRequest,
   markBuildingMaterializationPlansAppliedForTest,
   materializeBuildingSystemMaterializationPlansToTerrain,
+  materializeHarthmereNativeEcsPlans,
   nativeEcsOwnsHarthmereLiveModeActionForTest,
+  nativeEcsPhysicalDropNeedsAuthenticatedActorForTest,
   persistHarthmereLiveModeResponse,
   preserveFreshHarthmereLiveModeStatusChannelsForTest,
   publishBuildingSystemMaterializationPlansToEcs,
+  readServerActorNativeContextForLiveMode,
   readServerActorPositionForLiveMode,
 } from "../live_mode";
 import { createEmptyTerrainShard } from "@/server/test/test_helpers";
@@ -39,6 +42,9 @@ import {
 } from "@/shared/harthmere/live_mode_readiness";
 import { loadBlockWrapper } from "@/shared/wasm/biomes";
 import { harthmereJobsBoardQuestMarkerRuntimePositionForId } from "@/shared/harthmere/jobs_board_quest_marker_positions";
+import { harthmereItemIdToBiomesId } from "@/shared/harthmere/harthmere_biomes_ecs_bridge";
+import { Inventory, Wearing } from "@/shared/ecs/gen/components";
+import { countOf } from "@/shared/game/items";
 
 const ACTOR = "player_live_api_persist_001";
 const NOW_MS = 1_700_400_000_000;
@@ -257,6 +263,112 @@ function gameplayMutationWarnings(warnings: string[] | undefined) {
 }
 
 describe("live_mode API Redis persistence", () => {
+  it("materializes exact native drops once across retries and deletion", async () => {
+    const redisPrimary = new FakeRedisPrimary();
+    const world = new InMemoryWorld();
+    const worldApi = ShimWorldApi.createForWorld(world);
+    let allocations = 0;
+    const idGenerator = {
+      next: async () => {
+        allocations += 1;
+        return 8_700_000_000_000_001 as any;
+      },
+      batch: async (count: number) => {
+        allocations += count;
+        return Array.from(
+          { length: count },
+          (_, index) => (8_700_000_000_000_001 + index) as any
+        );
+      },
+    };
+    const plans = [
+      {
+        kind: "drop" as const,
+        materializationKey: "gather:test-node:actor:1234:1700400000000",
+        position: { x: 10, y: 20, z: 30 },
+        itemStacks: { iron_ore: 2, rough_stone: 3 },
+        ownerActorIds: ["1234"],
+        expiresAtMs: NOW_MS + 60_000,
+        mined: true,
+        sourceKind: "gathering_node",
+      },
+    ];
+
+    const first = await materializeHarthmereNativeEcsPlans({
+      redisPrimary,
+      worldApi,
+      idGenerator,
+      plans,
+    });
+    assert.deepEqual(first, { created: 1, alreadyMaterialized: 0 });
+    assert.equal(allocations, 1);
+
+    const entityId = 8_700_000_000_000_001 as any;
+    const entity = world.table.get(entityId);
+    assert.ok(entity?.grab_bag);
+    const contents = [...entity.grab_bag.slots.values()];
+    assert.deepEqual(
+      new Map(contents.map((entry) => [entry.item.id, Number(entry.count)])),
+      new Map([
+        [harthmereItemIdToBiomesId("iron_ore")!, 2],
+        [harthmereItemIdToBiomesId("rough_stone")!, 3],
+      ])
+    );
+    assert.equal(entity.grab_bag.filter?.kind, "only");
+    assert.equal(entity.grab_bag.filter?.entity_ids.has(1234 as any), true);
+
+    const replay = await materializeHarthmereNativeEcsPlans({
+      redisPrimary,
+      worldApi,
+      idGenerator,
+      plans,
+    });
+    assert.deepEqual(replay, { created: 0, alreadyMaterialized: 1 });
+    assert.equal(allocations, 1);
+
+    world.applyChanges([{ kind: "delete", id: entityId }]);
+    const afterAcquisition = await materializeHarthmereNativeEcsPlans({
+      redisPrimary,
+      worldApi,
+      idGenerator,
+      plans,
+    });
+    assert.deepEqual(afterAcquisition, {
+      created: 0,
+      alreadyMaterialized: 1,
+    });
+    assert.equal(world.table.get(entityId), undefined);
+  });
+
+  it("never turns an unresolved install-owned drop into public loot", async () => {
+    const redisPrimary = new FakeRedisPrimary();
+    const world = new InMemoryWorld();
+    const worldApi = ShimWorldApi.createForWorld(world);
+    await assert.rejects(
+      materializeHarthmereNativeEcsPlans({
+        redisPrimary,
+        worldApi,
+        idGenerator: {
+          next: async () => 8_700_000_000_000_002 as any,
+          batch: async () => [8_700_000_000_000_002 as any],
+        },
+        plans: [
+          {
+            kind: "drop",
+            materializationKey: "install-owned-private-drop",
+            position: { x: 1, y: 2, z: 3 },
+            itemStacks: { rough_stone: 1 },
+            ownerActorIds: ["install:pre-auth"],
+            expiresAtMs: NOW_MS + 60_000,
+            mined: false,
+            sourceKind: "test",
+          },
+        ],
+      }),
+      /unresolved owner/
+    );
+    assert.equal(world.table.get(8_700_000_000_000_002 as any), undefined);
+  });
   it("keeps authenticated combat, death, AI, and respawn on native ECS", () => {
     for (const action of [
       "request_attack",
@@ -274,6 +386,30 @@ describe("live_mode API Redis persistence", () => {
       nativeEcsOwnsHarthmereLiveModeActionForTest(
         "request_jobs_board_mutation"
       ),
+      false
+    );
+  });
+
+  it("requires a numeric authenticated ECS actor before creating private native drops", () => {
+    assert.equal(
+      nativeEcsPhysicalDropNeedsAuthenticatedActorForTest({
+        actionKind: "request_farming_action",
+        payload: { operation: "gather_node" },
+      }),
+      true
+    );
+    assert.equal(
+      nativeEcsPhysicalDropNeedsAuthenticatedActorForTest({
+        actionKind: "request_inventory_item_action",
+        payload: { operation: "drop_item" },
+      }),
+      true
+    );
+    assert.equal(
+      nativeEcsPhysicalDropNeedsAuthenticatedActorForTest({
+        actionKind: "request_farming_action",
+        payload: { operation: "cook" },
+      }),
       false
     );
   });
@@ -518,6 +654,40 @@ describe("live_mode API Redis persistence", () => {
       1 as any
     );
     assert.equal(missing, undefined);
+  });
+
+  it("reads gathering position and exact selected/worn tool ids in one ECS lookup", async () => {
+    const selectedTool = harthmereItemIdToBiomesId("rusty_pickaxe")!;
+    const wornTool = harthmereItemIdToBiomesId("repair_mallet")!;
+    const inventory = Inventory.create({
+      hotbar: [countOf(selectedTool, 1n)],
+      selected: { kind: "hotbar", idx: 0 },
+    });
+    const wearing = Wearing.create({
+      items: new Map([[1 as any, countOf(wornTool, 1n).item]]),
+    });
+    let reads = 0;
+    const context = await readServerActorNativeContextForLiveMode(
+      {
+        get: async () => {
+          reads += 1;
+          return {
+            position: () => ({ v: [503, 53, -270] }),
+            inventory: () => inventory,
+            wearing: () => wearing,
+          };
+        },
+      } as any,
+      1 as any,
+      true
+    );
+
+    assert.equal(reads, 1);
+    assert.deepEqual(context.position, { x: 503, y: 53, z: -270 });
+    assert.deepEqual(
+      new Set(context.itemIds),
+      new Set([selectedTool, wornTool])
+    );
   });
 
   it("keeps jobs-board mutation snapshots slim without cutting building snapshots from building actions", () => {

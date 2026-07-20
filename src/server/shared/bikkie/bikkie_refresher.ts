@@ -4,6 +4,7 @@ import type { Notifier } from "@/server/shared/distributed_notifier/api";
 import type { WorldApi } from "@/server/shared/world/api";
 import { BikkieRuntime } from "@/shared/bikkie/active";
 import { WorldMetadataId } from "@/shared/ecs/ids";
+import { withHarthmereNativeBikkieItems } from "@/shared/harthmere/harthmere_native_bikkie_items";
 import type { BiomesId } from "@/shared/ids";
 import { log } from "@/shared/logging";
 import type { RegistryLoader } from "@/shared/registry";
@@ -48,7 +49,9 @@ export class BikkieRefresher {
   }
 
   async force() {
-    const baked = await this.storage.load(this.prior);
+    const baked = withHarthmereNativeBikkieItems(
+      await this.storage.load(this.prior)
+    );
     this.runtime.registerBiscuits(baked.contents);
     this.prior = baked;
     return baked;
@@ -93,7 +96,9 @@ export async function registerBikkieRefresher<
       const t = Date.now();
       const v = await loader.get("bikkieNotifiers");
       console.log(
-        `GLITCH_STARTUP_TRACE registerBikkieRefresher:got-bikkieNotifiers elapsedMs=${Date.now() - t}`
+        `GLITCH_STARTUP_TRACE registerBikkieRefresher:got-bikkieNotifiers elapsedMs=${
+          Date.now() - t
+        }`
       );
       return v;
     })(),
@@ -101,7 +106,9 @@ export async function registerBikkieRefresher<
       const t = Date.now();
       const v = await loader.get("bikkieStorage");
       console.log(
-        `GLITCH_STARTUP_TRACE registerBikkieRefresher:got-bikkieStorage elapsedMs=${Date.now() - t}`
+        `GLITCH_STARTUP_TRACE registerBikkieRefresher:got-bikkieStorage elapsedMs=${
+          Date.now() - t
+        }`
       );
       return v;
     })(),
@@ -109,7 +116,9 @@ export async function registerBikkieRefresher<
       const t = Date.now();
       const v = await loader.getOptional("worldApi");
       console.log(
-        `GLITCH_STARTUP_TRACE registerBikkieRefresher:got-worldApi elapsedMs=${Date.now() - t} present=${v !== undefined}`
+        `GLITCH_STARTUP_TRACE registerBikkieRefresher:got-worldApi elapsedMs=${
+          Date.now() - t
+        } present=${v !== undefined}`
       );
       return v;
     })(),

@@ -5565,12 +5565,13 @@ describe("reduceHarthmereLiveModeBackendState — loot and inventory mutation", 
     );
 
     assert.equal(snapshot.actor?.items[muckwadBlockItemId], 2);
-    assert.equal(snapshot.availableLootDrops.length, 1);
-    assert.equal(
-      snapshot.availableLootDrops[0].itemStacks[muckwadBlockItemId],
-      1
+    assert.equal(snapshot.availableLootDrops.length, 0);
+    const nativeDrop = result.summary.nativeEcsMaterializationPlans?.find(
+      (plan) => plan.kind === "drop"
     );
-    assert.deepEqual(snapshot.availableLootDrops[0].position, {
+    assert.ok(nativeDrop);
+    assert.equal(nativeDrop.itemStacks[muckwadBlockItemId], 1);
+    assert.deepEqual(nativeDrop.position, {
       x: 232.44,
       y: 67,
       z: -80.83,

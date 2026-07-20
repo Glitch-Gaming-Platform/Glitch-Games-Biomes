@@ -6,6 +6,8 @@
  * when wiring combat/progression into real networking and persistence.
  */
 
+import type { BiomesId } from "@/shared/ids";
+
 export const HARTHMERE_LIVE_MODE_READINESS_VERSION =
   "harthmere-live-mode-readiness";
 
@@ -158,6 +160,8 @@ export interface HarthmereLiveModeAuthorityEnvelope {
     | "server_replay"
     | "admin_tool";
   serverActorPosition?: { x: number; y: number; z: number };
+  /** Exact server-read native inventory/wearing ids used for tool gates. */
+  serverActorItemIds?: BiomesId[];
   serverTargetPosition?: { x: number; y: number; z: number };
   clientSentAtMs?: number;
   serverReceivedAtMs: number;

@@ -32,7 +32,7 @@ const ecsItem = (label: string): Slot => ({ label });
 describe("HARTHMERE_HOTBAR_OVERLAY_NO_CLOBBER", () => {
   beforeEach(() => resetHarthmereWorldLootDropsForTest());
 
-  it("keeps a Muckwad voxel stack in inventory, decrements one throw, and publishes it into the world", () => {
+  it("keeps a Muckwad voxel stack in inventory and plans one exact native world drop", () => {
     const actorId = "muckwad-hotbar-player";
     const itemId = "muckwad_voxel_block";
     const nowMs = 1_700_000_000_000;
@@ -108,18 +108,18 @@ describe("HARTHMERE_HOTBAR_OVERLAY_NO_CLOBBER", () => {
     assert.deepEqual(thrown.summary.warnings, []);
     assert.equal(afterSnapshot.actor?.items[itemId], 3);
     assert.equal(afterCounts.total, 3);
-    assert.equal(afterSnapshot.availableLootDrops.length, 1);
-    assert.deepEqual(afterSnapshot.availableLootDrops[0].itemStacks, {
+    assert.equal(afterSnapshot.availableLootDrops.length, 0);
+    const nativeDrop = thrown.summary.nativeEcsMaterializationPlans?.find(
+      (plan) => plan.kind === "drop"
+    );
+    assert.ok(nativeDrop);
+    assert.deepEqual(nativeDrop.itemStacks, {
       [itemId]: 1,
     });
-    assert.deepEqual(
-      afterSnapshot.availableLootDrops[0].position,
-      throwPosition
-    );
+    assert.deepEqual(nativeDrop.position, throwPosition);
 
     publishHarthmereWorldLootDrops(afterSnapshot.availableLootDrops, nowMs);
-    assert.equal(getHarthmereWorldLootDrops().length, 1);
-    assert.deepEqual(getHarthmereWorldLootDrops()[0].position, throwPosition);
+    assert.equal(getHarthmereWorldLootDrops().length, 0);
   });
 
   it("places overlay entries into empty slots", () => {

@@ -204,18 +204,23 @@ describe("Harthmere inventory BiomesUI presentation and actions", () => {
   });
 
   it("maps Harthmere hotbar items to real ECS items for held-item rendering", () => {
-    assert.equal(harthmereItemIdToBiomesId("woodsman_axe"), BikkieIds.axe);
-    assert.equal(harthmereItemIdToBiomesId("baker_apron"), BikkieIds.grassyTop);
-    assert.equal(
-      harthmereItemIdToBiomesId("rough_stone"),
-      BikkieIds.cobblestone
-    );
+    const axeId = harthmereItemIdToBiomesId("woodsman_axe");
+    const apronId = harthmereItemIdToBiomesId("baker_apron");
+    const stoneId = harthmereItemIdToBiomesId("rough_stone");
+    assert.ok(axeId);
+    assert.ok(apronId);
+    assert.ok(stoneId);
+    assert.notEqual(axeId, BikkieIds.axe);
+    assert.notEqual(apronId, BikkieIds.grassyTop);
+    assert.notEqual(stoneId, BikkieIds.cobblestone);
+    assert.notEqual(axeId, harthmereItemIdToBiomesId("repair_mallet"));
     assert.equal(
       harthmereItemIdToBiomesId(`b:${BikkieIds.pickaxe}`),
       BikkieIds.pickaxe
     );
     const held = harthmereItemIdToBiomesEcsItemAndCount("muck_rake", 1);
-    assert.equal(held?.item.id, BikkieIds.muckBuster);
+    assert.equal(held?.item.id, harthmereItemIdToBiomesId("muck_rake"));
+    assert.notEqual(held?.item.id, BikkieIds.muckBuster);
   });
 
   it("uses local consumables instead of only selecting them", () => {

@@ -56,10 +56,15 @@ Native visual state is never written by a BiomesUI adapter:
 - Hotbar movement publishes native inventory events and reads
   `/ecs/c/inventory.hotbar`. The inventory tab may display a hotbar-owned stack,
   but it does not clone that stack into the backpack component.
-- Harthmere-only string items such as `baker_apron` remain supplemental UI rows
-  until they have real Bikkie ids. `harthmere_biomes_ecs_bridge.ts` is
-  compatibility/test conversion code, not permission to mutate synchronized
-  resources.
+- Harthmere catalogue strings such as `baker_apron` resolve to deterministic,
+  collision-checked Bikkie ids from the server's native Harthmere tray overlay.
+  The exact id—not a visually similar ore, weapon, or garment—is used by ECS
+  inventory, wearing, drops, recipes, and collect/use triggers. Existing
+  snapshot biscuits may donate mesh/icon/vox presentation attributes only.
+- Generic authored containers are materialized as native
+  `container_inventory` entities by `/api/harthmere/native_container`. The
+  browser cannot supply their label, position, or contents, and legacy
+  localStorage transfer remains only for explicit non-native diagnostics.
 
 When adding an item that must participate in native equipment, hotbar, or quest
 triggers, publish a real Bikkie item id and use the native inventory event path.

@@ -169,7 +169,13 @@ describe("Harthmere shared-world authority regressions", () => {
       ),
       NOW
     );
-    assert.ok((gathered.state.inventory.items.iron_ore ?? 0) >= 2);
+    assert.equal(gathered.state.inventory.items.iron_ore ?? 0, 0);
+    const nativeDrop = gathered.summary.nativeEcsMaterializationPlans?.find(
+      (plan) => plan.kind === "drop"
+    );
+    assert.ok(nativeDrop);
+    assert.ok((nativeDrop.itemStacks.iron_ore ?? 0) >= 2);
+    assert.deepEqual(nativeDrop.ownerActorIds, ["gather_a"]);
     assert.ok(gathered.summary.touchedModels.includes("gathering_nodes"));
 
     const secondActor = mergeHarthmereLiveModeSharedWorldStateIntoBackend(

@@ -13,9 +13,14 @@ import { harthmereUserScopedStorageKey } from "@/client/components/challenges/Lo
 import { harthmereLocalStorage } from "@/client/util/storage";
 import {
   isNativeRoadAheadQuestObjectLabel,
+  nativeBiomesEcsAuthorityEnabled,
   nativeRoadAheadEcsAuthorityEnabled,
 } from "@/shared/harthmere/native_road_ahead_contract";
+import { harthmereContainerLootForLabel } from "@/shared/harthmere/harthmere_container_loot_authority";
 import type { BiomesId } from "@/shared/ids";
+import { INVALID_BIOMES_ID } from "@/shared/ids";
+
+export { harthmereContainerLootForLabel } from "@/shared/harthmere/harthmere_container_loot_authority";
 
 export const HARTHMERE_OBJECT_CONTAINER_OPENED_EVENT =
   "biomes:harthmere-object-container-opened";
@@ -67,11 +72,6 @@ export function isHarthmereContainerTransferPending(
     if (key.startsWith(`${containerKey}:`)) return true;
   }
   return false;
-}
-
-export interface HarthmereObjectContainerLoot {
-  itemId: string;
-  quantity: number;
 }
 
 export interface HarthmereObjectContainerSlot {
@@ -145,67 +145,6 @@ const HARTHMERE_CLOTHING_QUEST_REQUIRED_ITEM_IDS = [
   "baker_apron",
   "field_trousers",
 ];
-
-export function harthmereContainerLootForLabel(
-  label?: string | null
-): HarthmereObjectContainerLoot[] {
-  const text = (label ?? "").toLowerCase();
-  if (HARTHMERE_CLOTHING_QUEST_CRATE_RE.test(text)) {
-    // A full starter outfit: a top (chest) AND bottoms (legs). The Road Ahead
-    // "equip both clothing slots" step requires both halves, so the clothing
-    // container must grant both — otherwise the quest can never complete from
-    // the crate. See hasRequiredClothing in LocalDevSnapshotMissionBridge.
-    return [
-      { itemId: "baker_apron", quantity: 1 },
-      { itemId: "field_trousers", quantity: 1 },
-      { itemId: "cloth_scrap", quantity: 4 },
-    ];
-  }
-  // Mail/bank intent (e.g. "Kit's Mailbag Stand") must win over the tool branch,
-  // whose "kit" keyword would otherwise match the courier's name.
-  if (/mail|bank|courier|postage|parcel|deposit/.test(text)) {
-    return [
-      { itemId: "old_coin", quantity: 3 },
-      { itemId: "iron_key_blank", quantity: 1 },
-    ];
-  }
-  if (/toolbag|tool|repair|kit/.test(text)) {
-    return [
-      { itemId: "woodcutters_axe", quantity: 1 },
-      { itemId: "rough_stone", quantity: 3 },
-      { itemId: "scrap_metal", quantity: 2 },
-    ];
-  }
-  if (/underwater|waterproof|water|dock|river|fishing/.test(text)) {
-    return [
-      { itemId: "clean_water", quantity: 3 },
-      { itemId: "river_trout", quantity: 2 },
-    ];
-  }
-  if (/key|lock|strongbox|lockbox/.test(text)) {
-    return [
-      { itemId: "iron_key_blank", quantity: 1 },
-      { itemId: "scrap_metal", quantity: 2 },
-    ];
-  }
-  if (/first.?aid|bandage|medicine|medical|infirmary|salve|healer/.test(text)) {
-    return [
-      { itemId: "minor_healing_salve", quantity: 2 },
-      { itemId: "cloth_scrap", quantity: 2 },
-    ];
-  }
-  if (/food|ration|satchel|bag|basket/.test(text)) {
-    return [
-      { itemId: "road_ration", quantity: 3 },
-      { itemId: "wild_berries", quantity: 2 },
-    ];
-  }
-  return [
-    { itemId: "road_ration", quantity: 1 },
-    { itemId: "rough_stone", quantity: 2 },
-    { itemId: "cloth_scrap", quantity: 2 },
-  ];
-}
 
 function parseContainerStore(
   raw: string | null
@@ -703,11 +642,19 @@ export function clearHarthmereContainerOpenRequest() {
 // runs any label-driven daily-task hooks, and asks the mounted panel to show
 // the take/store interface. It no longer one-shot-grants loot and no longer
 // marks the container "searched" — the player decides what to take or store.
-export function openHarthmereObjectContainer({
+export interface HarthmereObjectContainerOpenResult {
+  native: boolean;
+  containerId?: BiomesId;
+  containerItemId?: BiomesId;
+}
+
+export async function openHarthmereObjectContainer({
   entityId,
+  objectId,
   label,
 }: {
   entityId: BiomesId;
+  objectId?: string;
   label?: string | null;
   // Accepted for call-site compatibility; the panel is the feedback surface.
   resources?: unknown;
@@ -721,7 +668,32 @@ export function openHarthmereObjectContainer({
     // performs the ECS grant atomically and records the exact trigger progress;
     // opening a second localStorage container created duplicate/wrong items and
     // left The Road Ahead permanently waiting for its native collection step.
-    return;
+    return { native: true } satisfies HarthmereObjectContainerOpenResult;
+  }
+  if (nativeBiomesEcsAuthorityEnabled() && isBrowser()) {
+    const response = await window.fetch("/api/harthmere/native_container", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...(entityId !== INVALID_BIOMES_ID ? { entityId } : {}),
+        ...(objectId ? { objectId } : {}),
+      }),
+    });
+    const body = await response.json().catch(() => undefined);
+    if (
+      !response.ok ||
+      body?.ok !== true ||
+      typeof body.containerId !== "number" ||
+      typeof body.containerItemId !== "number"
+    ) {
+      throw new Error(String(body?.error ?? "container_open_failed"));
+    }
+    return {
+      native: true,
+      containerId: body.containerId as BiomesId,
+      containerItemId: body.containerItemId as BiomesId,
+    } satisfies HarthmereObjectContainerOpenResult;
   }
   const record = getOrSeedHarthmereContainer(entityId, displayLabel);
 
@@ -756,4 +728,5 @@ export function openHarthmereObjectContainer({
       })
     );
   }
+  return { native: false } satisfies HarthmereObjectContainerOpenResult;
 }

@@ -18,7 +18,7 @@ import { SyncIndex } from "@/server/sync/subscription/sync_index";
 import type { SyncTarget } from "@/shared/api/sync";
 import { zSyncChange } from "@/shared/api/sync";
 import type { Update } from "@/shared/ecs/change";
-import { Iced } from "@/shared/ecs/gen/components";
+import { Box, Iced, ShardSeed } from "@/shared/ecs/gen/components";
 import type { Entity } from "@/shared/ecs/gen/entities";
 import { WorldMetadataId } from "@/shared/ecs/ids";
 import type { VersionMap } from "@/shared/ecs/version";
@@ -217,6 +217,83 @@ describe("Observer tests", () => {
       assert.ok(delivered.has(id), `bootstrap overflow lost entity ${id}`);
     }
     assert.equal(observer.pendingChanges, 0);
+  });
+
+  it("drains a production-sized mixed bootstrap without losing terrain", async function () {
+    this.timeout(60_000);
+    const terrainIds = Array.from(
+      { length: 2_200 },
+      (_, index) => (200_000 + index) as BiomesId
+    );
+    const decorationIds = Array.from(
+      { length: 300 },
+      (_, index) => (300_000 + index) as BiomesId
+    );
+    world.applyChanges([
+      ...terrainIds.map((id, index) => {
+        const x = (index % 20) - 10;
+        const y = Math.floor(index / 400) - 2;
+        const z = (Math.floor(index / 20) % 20) - 10;
+        return {
+          kind: "create" as const,
+          entity: {
+            id,
+            box: Box.create({
+              v0: [x, y, z],
+              v1: [x + 1, y + 1, z + 1],
+            }),
+            shard_seed: ShardSeed.create(),
+          },
+        };
+      }),
+      ...decorationIds.map((id, index) => ({
+        kind: "create" as const,
+        entity: {
+          id,
+          position: {
+            v: [(index % 20) - 10, 0, Math.floor(index / 20) - 7] as [
+              number,
+              number,
+              number
+            ],
+          },
+        },
+      })),
+    ]);
+    await yieldToOthers();
+    createLocalObserver();
+
+    const initial = await observer.start();
+    const delivered = idsFromBootstrap(initial);
+    const firstBatchTerrainCount = terrainIds.filter((id) =>
+      delivered.has(id)
+    ).length;
+    const firstBatchDecorationCount = decorationIds.filter((id) =>
+      delivered.has(id)
+    ).length;
+    assert.ok(firstBatchTerrainCount > 0);
+    assert.equal(
+      firstBatchDecorationCount,
+      0,
+      "terrain should consume the capped bootstrap before decoration"
+    );
+
+    let pulls = 0;
+    while (observer.pendingChanges > 0 && pulls < 200) {
+      for (const change of pull(37)) {
+        if (typeof change === "number") {
+          delivered.add(change);
+        } else if (change.kind === "update") {
+          delivered.add(change.entity.id);
+        }
+      }
+      pulls += 1;
+    }
+
+    assert.equal(observer.pendingChanges, 0);
+    for (const id of [...terrainIds, ...decorationIds]) {
+      assert.ok(delivered.has(id), `mixed bootstrap lost entity ${id}`);
+    }
   });
 
   it("keeps fallback world metadata resident when a sparse backend is missing metadata", async () => {

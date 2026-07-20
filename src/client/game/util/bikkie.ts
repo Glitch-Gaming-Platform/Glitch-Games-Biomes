@@ -9,6 +9,7 @@ import { PipelineBatcher, asyncYieldForEach } from "@/shared/util/async";
 import { MultiMap } from "@/shared/util/collections";
 import { Cval } from "@/shared/util/cvals";
 import { jsonFetch } from "@/shared/util/fetch_helpers";
+import { HARTHMERE_NATIVE_BIKKIE_OVERLAY_VERSION } from "@/shared/harthmere/harthmere_native_item_ids";
 
 const requestBikkieCount = new Cval({
   path: ["game", "bikkie", "requests"],
@@ -45,9 +46,9 @@ const lastLoadedHashes = new Map<BiomesId, string>();
 
 function bikkieUrl(expectedTrayId?: BiomesId): string {
   if (expectedTrayId) {
-    return `/api/bikkie?expectedTrayId=${expectedTrayId}&v=0`;
+    return `/api/bikkie?expectedTrayId=${expectedTrayId}&v=${HARTHMERE_NATIVE_BIKKIE_OVERLAY_VERSION}`;
   }
-  return "/api/bikkie";
+  return `/api/bikkie?v=${HARTHMERE_NATIVE_BIKKIE_OVERLAY_VERSION}`;
 }
 
 async function doRefresh(

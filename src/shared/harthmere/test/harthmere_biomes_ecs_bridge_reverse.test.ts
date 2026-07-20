@@ -11,7 +11,6 @@
  */
 
 import assert from "assert";
-import { BikkieIds } from "@/shared/bikkie/ids";
 import {
   biomesIdToHarthmereItemId,
   compareHarthmereLiveAndEcsInventories,
@@ -21,23 +20,18 @@ import {
 import type { BiomesId } from "@/shared/ids";
 
 describe("HARTHMERE_BIOMES_ECS_BRIDGE_REVERSE", () => {
-  it("maps curated BiomesIds back to their Harthmere item ids", () => {
-    assert.strictEqual(
-      biomesIdToHarthmereItemId(BikkieIds.cobblestone),
-      "rough_stone"
+  it("assigns distinct exact native ids instead of semantic visual aliases", () => {
+    assert.notStrictEqual(
+      harthmereItemIdToBiomesId("rough_stone"),
+      harthmereItemIdToBiomesId("iron_ore")
     );
-    assert.strictEqual(biomesIdToHarthmereItemId(BikkieIds.fruit), "wild_berries");
-    assert.strictEqual(biomesIdToHarthmereItemId(BikkieIds.goldOre), "iron_ore");
-  });
-
-  it("shared visual stand-ins reverse to their canonical (first-declared) item", () => {
-    // woodsman_axe and repair_mallet both render as BikkieIds.axe; the
-    // canonical reverse target is the first declaration.
-    assert.strictEqual(biomesIdToHarthmereItemId(BikkieIds.axe), "woodsman_axe");
-    // muck_rake is the first of several items sharing BikkieIds.muckBuster.
-    assert.strictEqual(
-      biomesIdToHarthmereItemId(BikkieIds.muckBuster),
-      "muck_rake"
+    assert.notStrictEqual(
+      harthmereItemIdToBiomesId("woodsman_axe"),
+      harthmereItemIdToBiomesId("repair_mallet")
+    );
+    assert.notStrictEqual(
+      harthmereItemIdToBiomesId("training_dagger"),
+      harthmereItemIdToBiomesId("iron_longsword")
     );
   });
 
@@ -48,10 +42,10 @@ describe("HARTHMERE_BIOMES_ECS_BRIDGE_REVERSE", () => {
 
   it("round-trips: harthmereItemIdToBiomesId(biomesIdToHarthmereItemId(x)) === x", () => {
     const samples: BiomesId[] = [
-      BikkieIds.cobblestone,
-      BikkieIds.axe,
-      BikkieIds.muckBuster,
-      BikkieIds.fruit,
+      harthmereItemIdToBiomesId("rough_stone")!,
+      harthmereItemIdToBiomesId("woodsman_axe")!,
+      harthmereItemIdToBiomesId("muck_rake")!,
+      harthmereItemIdToBiomesId("wild_berries")!,
       123456789 as BiomesId, // unmapped → b:<id> namespace
     ];
     for (const biomesId of samples) {
@@ -65,17 +59,20 @@ describe("HARTHMERE_BIOMES_ECS_BRIDGE_REVERSE", () => {
     }
   });
 
-  it("distinguishes curated mappings from b:<id> passthrough", () => {
+  it("recognizes every non-empty item id as an exact native mapping", () => {
     assert.strictEqual(
       harthmereItemIdHasCuratedBiomesMapping("rough_stone"),
       true
     );
-    assert.strictEqual(harthmereItemIdHasCuratedBiomesMapping("b:12345"), false);
+    assert.strictEqual(harthmereItemIdHasCuratedBiomesMapping("b:12345"), true);
     assert.strictEqual(
       harthmereItemIdHasCuratedBiomesMapping("harthmere_only_item"),
+      true
+    );
+    assert.strictEqual(
+      harthmereItemIdHasCuratedBiomesMapping(undefined),
       false
     );
-    assert.strictEqual(harthmereItemIdHasCuratedBiomesMapping(undefined), false);
   });
 
   it("handles undefined/garbage input safely", () => {
@@ -89,8 +86,8 @@ describe("HARTHMERE_INVENTORY_DRIFT_REPORT", () => {
     const drift = compareHarthmereLiveAndEcsInventories(
       { rough_stone: 3, wild_berries: 2 },
       new Map<BiomesId, number>([
-        [BikkieIds.cobblestone, 3],
-        [BikkieIds.fruit, 2],
+        [harthmereItemIdToBiomesId("rough_stone")!, 3],
+        [harthmereItemIdToBiomesId("wild_berries")!, 2],
       ])
     );
     assert.deepStrictEqual(drift, []);
@@ -100,8 +97,8 @@ describe("HARTHMERE_INVENTORY_DRIFT_REPORT", () => {
     const drift = compareHarthmereLiveAndEcsInventories(
       { rough_stone: 5, wild_berries: 1 },
       new Map<BiomesId, number>([
-        [BikkieIds.cobblestone, 3], // live ahead by 2
-        [BikkieIds.fruit, 4], // ecs ahead by 3
+        [harthmereItemIdToBiomesId("rough_stone")!, 3], // live ahead by 2
+        [harthmereItemIdToBiomesId("wild_berries")!, 4], // ecs ahead by 3
       ])
     );
     const byItem = Object.fromEntries(
@@ -111,23 +108,24 @@ describe("HARTHMERE_INVENTORY_DRIFT_REPORT", () => {
     assert.strictEqual(byItem.wild_berries?.delta, -3);
   });
 
-  it("only compares canonical items so shared stand-ins are not double-counted", () => {
-    // repair_mallet shares BikkieIds.axe with woodsman_axe; only the
-    // canonical woodsman_axe row may appear in a drift report.
+  it("compares formerly aliased tools independently", () => {
     const drift = compareHarthmereLiveAndEcsInventories(
       { woodsman_axe: 1, repair_mallet: 7 },
-      new Map<BiomesId, number>([[BikkieIds.axe, 0]])
+      new Map<BiomesId, number>([
+        [harthmereItemIdToBiomesId("woodsman_axe")!, 0],
+        [harthmereItemIdToBiomesId("repair_mallet")!, 0],
+      ])
     );
     assert.deepStrictEqual(
       drift.map((entry) => entry.harthmereItemId),
-      ["woodsman_axe"]
+      ["woodsman_axe", "repair_mallet"]
     );
   });
 
   it("accepts plain-object ECS counts keyed by stringified BiomesId", () => {
     const drift = compareHarthmereLiveAndEcsInventories(
       { rough_stone: 2 },
-      { [String(BikkieIds.cobblestone)]: 1 }
+      { [String(harthmereItemIdToBiomesId("rough_stone"))]: 1 }
     );
     assert.strictEqual(drift.length, 1);
     assert.strictEqual(drift[0].delta, 1);
