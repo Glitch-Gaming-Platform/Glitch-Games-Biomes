@@ -6,6 +6,7 @@ import { bikkie } from "@/shared/bikkie/schema/biomes";
 import { HARTHMERE_GATHERING_AUTHORITY_NODES } from "@/shared/harthmere/gathering_node_authority";
 import {
   ensureHarthmereNativeItemCatalogue,
+  HARTHMERE_NATIVE_BIKKIE_OVERLAY_VERSION,
   harthmereNativeBiomesIdForItemId,
   withHarthmereNativeBikkieItems,
 } from "@/shared/harthmere/harthmere_native_bikkie_items";
@@ -120,6 +121,52 @@ describe("Harthmere exact native Bikkie overlay", () => {
       tray(new Map([[BikkieIds.pickaxe, exact]]))
     );
     assert.strictEqual(augmented.contents.get(BikkieIds.pickaxe), exact);
+  });
+
+  it("adopts an exact authored biscuit at the deterministic native id", () => {
+    ensureHarthmereNativeItemCatalogue();
+    const itemId = "alcubierre_drive_core";
+    const id = harthmereNativeBiomesIdForItemId(itemId)!;
+    const exact = {
+      id,
+      name: "harthmere_alcubierre_drive_core",
+      displayName: "Authored Alcubierre Drive Core",
+      stackable: 1n,
+      isDroppable: true,
+      galoisPath: "items/alcubierre_drive_core",
+    } as Biscuit;
+
+    const augmented = withHarthmereNativeBikkieItems(
+      tray(new Map([[id, exact]]))
+    );
+    const adopted = augmented.contents.get(id);
+
+    assert.ok(adopted);
+    assert.equal(adopted.name, exact.name);
+    assert.equal(adopted.galoisPath, exact.galoisPath);
+    assert.ok(
+      augmented.hashes
+        .get(id)
+        ?.startsWith(`${HARTHMERE_NATIVE_BIKKIE_OVERLAY_VERSION}:${itemId}:`)
+    );
+  });
+
+  it("still rejects an unrelated biscuit at a deterministic native id", () => {
+    ensureHarthmereNativeItemCatalogue();
+    const itemId = "alcubierre_drive_core";
+    const id = harthmereNativeBiomesIdForItemId(itemId)!;
+    const unrelated = {
+      id,
+      name: "unrelated_snapshot_biscuit",
+      displayName: "Unrelated",
+      stackable: 1n,
+      isDroppable: true,
+    } as Biscuit;
+
+    assert.throws(
+      () => withHarthmereNativeBikkieItems(tray(new Map([[id, unrelated]]))),
+      /collides with unrelated_snapshot_biscuit/
+    );
   });
 
   it("can reapply the overlay to an unchanged prior tray", () => {

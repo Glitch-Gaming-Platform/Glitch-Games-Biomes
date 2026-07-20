@@ -90,6 +90,10 @@ function humanizeHarthmereItemId(itemId: string) {
     .replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
+function harthmereBiscuitNameForItemId(itemId: string) {
+  return `harthmere_${itemId.replace(/[^a-zA-Z0-9]+/g, "_")}`;
+}
+
 function defaultHarthmereItemDefinition(input: {
   itemId: string;
   displayName?: string;
@@ -241,7 +245,7 @@ export function harthmereBiscuitForItemDefinition(
   return {
     ...presentation,
     id,
-    name: `harthmere_${definition.itemId.replace(/[^a-zA-Z0-9]+/g, "_")}`,
+    name: harthmereBiscuitNameForItemId(definition.itemId),
     displayName: definition.displayName,
     displayDescription: definition.description,
     craftingCategory: category,
@@ -283,6 +287,7 @@ export function withHarthmereNativeBikkieItems(
     claimedIds.set(id, definition.itemId);
 
     const existing = contents.get(id);
+    const expectedName = harthmereBiscuitNameForItemId(definition.itemId);
     if (existing) {
       // Numeric/b:<id> definitions intentionally bind to an authored snapshot
       // biscuit. Reapplying our own overlay is expected because Redis storage
@@ -292,6 +297,7 @@ export function withHarthmereNativeBikkieItems(
         continue;
       }
       if (
+        existing.name !== expectedName &&
         !hashes
           .get(id)
           ?.startsWith(
@@ -305,9 +311,15 @@ export function withHarthmereNativeBikkieItems(
     }
     const presentationSourceId =
       HARTHMERE_NATIVE_PRESENTATION_SOURCE_IDS[definition.itemId];
+    const presentationSource =
+      existing?.name === expectedName
+        ? existing
+        : presentationSourceId
+        ? contents.get(presentationSourceId)
+        : undefined;
     const biscuit = harthmereBiscuitForItemDefinition(
       definition,
-      presentationSourceId ? contents.get(presentationSourceId) : undefined
+      presentationSource
     );
     contents.set(id, biscuit);
     hashes.set(id, overlayHash);
