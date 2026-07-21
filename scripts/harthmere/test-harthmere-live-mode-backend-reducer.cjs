@@ -270,6 +270,10 @@ check(
 state = apply(state, "request_quest_state_update", "quest", {
   questId: "fountain_buttons_first",
   completed: true,
+}, undefined, {
+  // Native ECS mode intentionally rejects browser-asserted quest completion.
+  // Exercise the authoritative trigger/challenge completion path here.
+  source: "server_event",
 });
 check(
   Boolean(state.quests.completed.fountain_buttons_first),
