@@ -6,9 +6,7 @@ import path from "path";
 import { chromium } from "playwright";
 
 describe("InventoryTab browser actions", () => {
-  it("wires Use/Select, Equip, Unequip, Hotbar, Split, Drop, and Destroy to the inventory adapter", async function () {
-    this.timeout(45_000);
-
+  it("wires Use/Select, Equip, Unequip, Hotbar, Split, Drop, and Destroy to the inventory adapter", async () => {
     const tempDir = await mkdtemp(
       path.join(tmpdir(), "biomes-inventory-actions-")
     );
@@ -43,13 +41,26 @@ describe("InventoryTab browser actions", () => {
           canEquip: true,
           canUnequip: true,
           canMove: true,
+          hotbarEligible: true,
           canSplit: true,
           canDrop: true,
           canDestroy: true,
         };
+        let revisionItem = {
+          id: "inventory_revision",
+          label: "Inventory Revision",
+          count: 1,
+          ref: { kind: "hotbar", idx: 9 },
+          source: "hotbar",
+        };
 
         window.__inventoryEvents = [];
-        const record = (kind, payload) => window.__inventoryEvents.push({ kind, payload });
+        let forceInventoryRefresh = () => {};
+        const record = (kind, payload) => {
+          window.__inventoryEvents.push({ kind, payload });
+          revisionItem = { ...revisionItem, count: revisionItem.count + 1 };
+          forceInventoryRefresh();
+        };
         const adapter = {
           getEquipment: () => [],
           getCurrencies: () => [],
@@ -59,7 +70,7 @@ describe("InventoryTab browser actions", () => {
             usedSlots: 1,
             capacityLabel: "Backpack",
           }),
-          getHotbar: () => ({ items: [], selectedIndex: -1 }),
+          getHotbar: () => ({ items: [revisionItem], selectedIndex: -1 }),
           getSelectedItem: () => selectedItem,
           useItem: (ref) => record("use", { ref }),
           equipItem: (ref, slot) => record("equip", { ref, slot }),
@@ -70,9 +81,13 @@ describe("InventoryTab browser actions", () => {
           destroyItem: (ref, count) => record("destroy", { ref, count }),
         };
 
-        createRoot(document.getElementById("root")).render(
-          <InventoryTab adapter={adapter} />
-        );
+        function App() {
+          const [, force] = React.useReducer((x) => x + 1, 0);
+          forceInventoryRefresh = force;
+          return <InventoryTab adapter={adapter} />;
+        }
+
+        createRoot(document.getElementById("root")).render(<App />);
       `
     );
     await writeFile(
@@ -182,5 +197,5 @@ describe("InventoryTab browser actions", () => {
       await browser.close();
       await rm(tempDir, { recursive: true, force: true });
     }
-  });
+  }).timeout(45_000);
 });

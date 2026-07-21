@@ -310,37 +310,82 @@ const zBehaviorSocializeParams = z
   });
 export type BehaviorSocializeParams = z.infer<typeof zBehaviorSocializeParams>;
 
-export const zBehavior = z.object({
-  meander: zBehaviorMeanderParams
-    .optional()
-    .describe(
-      "Makes the NPC idly walk around if it has nothing more pressing to do."
-    ),
-  swim: zBehaviorSwimParams.optional().describe("Makes the NPC swim in water."),
-  fly: zBehaviorFlyParams.optional().describe("Makes the NPC fly."),
-  chaseAttack: zBehaviorChaseAttackParams
-    .optional()
-    .describe(
-      "NPCs with this behavior will chase and attack players that get close enough to them."
-    ),
-  questGiver: zBehaviorQuestGiverParams
-    .optional()
-    .describe(
-      "A special behavior that marks this NPC as a quest giver that the player can interact with."
-    ),
-  damageable: zBehaviorDamageableParams
-    .optional()
-    .describe("NPCs without this behavior cannot take damage or be killed."),
-  sizeVariation: zBehaviorSizeVariationParams
-    .optional()
-    .describe("The variation from the default box size that NPCs have"),
-  hideNameOverlay: zBehaviorHideNameOverlayParams
-    .optional()
-    .describe("Hides the name overlay for the NPC."),
-  socialize: zBehaviorSocializeParams
-    .optional()
-    .describe("Makes the NPC walk around and interact with other NPCs."),
-});
+const behaviorParamSchemas = {
+  meander: zBehaviorMeanderParams,
+  swim: zBehaviorSwimParams,
+  fly: zBehaviorFlyParams,
+  chaseAttack: zBehaviorChaseAttackParams,
+  questGiver: zBehaviorQuestGiverParams,
+  damageable: zBehaviorDamageableParams,
+  sizeVariation: zBehaviorSizeVariationParams,
+  hideNameOverlay: zBehaviorHideNameOverlayParams,
+  socialize: zBehaviorSocializeParams,
+} as const;
+
+function normalizeLegacyBooleanBehavior(value: unknown): unknown {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return value;
+  }
+
+  const behavior = value as Record<string, unknown>;
+  let normalized: Record<string, unknown> | undefined;
+  for (const [key, schema] of Object.entries(behaviorParamSchemas)) {
+    const field = behavior[key];
+    if (typeof field !== "boolean") {
+      continue;
+    }
+
+    normalized ??= { ...behavior };
+    if (field) {
+      // Older biscuits used `true` as shorthand for enabling a behavior with
+      // its defaults. Keep accepting that wire format without exposing
+      // booleans to the rest of the runtime.
+      normalized[key] = schema.parse(undefined);
+    } else {
+      // `false` meant disabled, which is represented by an absent field in the
+      // current object-valued behavior schema.
+      delete normalized[key];
+    }
+  }
+  return normalized ?? value;
+}
+
+export const zBehavior = z.preprocess(
+  normalizeLegacyBooleanBehavior,
+  z.object({
+    meander: zBehaviorMeanderParams
+      .optional()
+      .describe(
+        "Makes the NPC idly walk around if it has nothing more pressing to do."
+      ),
+    swim: zBehaviorSwimParams
+      .optional()
+      .describe("Makes the NPC swim in water."),
+    fly: zBehaviorFlyParams.optional().describe("Makes the NPC fly."),
+    chaseAttack: zBehaviorChaseAttackParams
+      .optional()
+      .describe(
+        "NPCs with this behavior will chase and attack players that get close enough to them."
+      ),
+    questGiver: zBehaviorQuestGiverParams
+      .optional()
+      .describe(
+        "A special behavior that marks this NPC as a quest giver that the player can interact with."
+      ),
+    damageable: zBehaviorDamageableParams
+      .optional()
+      .describe("NPCs without this behavior cannot take damage or be killed."),
+    sizeVariation: zBehaviorSizeVariationParams
+      .optional()
+      .describe("The variation from the default box size that NPCs have"),
+    hideNameOverlay: zBehaviorHideNameOverlayParams
+      .optional()
+      .describe("Hides the name overlay for the NPC."),
+    socialize: zBehaviorSocializeParams
+      .optional()
+      .describe("Makes the NPC walk around and interact with other NPCs."),
+  })
+);
 
 export type Behavior = z.infer<typeof zBehavior>;
 

@@ -226,6 +226,7 @@ describe("live-entity helper dialog context", () => {
         (landmark) =>
           landmark.kind !== "npc" &&
           landmark.kind !== "danger" &&
+          landmark.kind !== "connector" &&
           !livingLabels.has(landmark.label) &&
           !nonObjectLabels.has(landmark.label)
       )

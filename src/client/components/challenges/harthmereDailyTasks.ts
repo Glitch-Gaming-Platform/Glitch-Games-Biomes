@@ -167,6 +167,7 @@ export function resetHarthmereDailyTaskHotPathThrottleForTest() {
     clearTimeout(timer as ReturnType<typeof setTimeout>);
   }
   pendingHotPathTimers.clear();
+  inFlightDailyTaskCompletions.clear();
   completedTodayFallback.day = "";
   completedTodayFallback.ids = new Set();
   try {

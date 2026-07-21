@@ -8,8 +8,11 @@ import { mkdtemp, readFile, rm, writeFile } from "fs/promises";
 import { tmpdir } from "os";
 import path from "path";
 import { chromium } from "playwright";
-import { BankingTab } from "../tabs/BankingTab";
-import { InventoryTab, type InventoryUiItem } from "../tabs/InventoryTab";
+import { BankingTab } from "@/client/components/biomes_ui/tabs/BankingTab";
+import {
+  InventoryTab,
+  type InventoryUiItem,
+} from "@/client/components/biomes_ui/tabs/InventoryTab";
 
 const FORBIDDEN_COPY = [
   "audit_quest_badge",
@@ -208,9 +211,7 @@ describe("InventoryTab full stack frontend and SSR audit", () => {
     );
   });
 
-  it("browser-wires enabled item actions and suppresses protected item drop/destroy/equip clicks", async function () {
-    this.timeout(45_000);
-
+  it("browser-wires enabled item actions and suppresses protected item drop/destroy/equip clicks", async () => {
     const tempDir = await mkdtemp(
       path.join(tmpdir(), "biomes-inventory-full-stack-")
     );
@@ -245,6 +246,7 @@ describe("InventoryTab full stack frontend and SSR audit", () => {
           canUse: true,
           canEquip: true,
           canMove: true,
+          hotbarEligible: true,
           canSplit: true,
           canDrop: true,
           canDestroy: true,
@@ -260,15 +262,28 @@ describe("InventoryTab full stack frontend and SSR audit", () => {
           canUse: true,
           canEquip: false,
           canMove: true,
+          hotbarEligible: true,
           canSplit: false,
           canDrop: false,
           canDestroy: false,
           protectedReason: "Quest items stay with your quest pouch.",
         };
+        let revisionItem = {
+          id: "inventory_revision",
+          label: "Inventory Revision",
+          count: 1,
+          ref: { kind: "hotbar", idx: 9 },
+          source: "hotbar",
+        };
 
         window.__inventoryEvents = [];
-        const record = (kind, payload) => window.__inventoryEvents.push({ kind, payload });
         let selected = enabledItem;
+        let forceInventoryRefresh = () => {};
+        const record = (kind, payload) => {
+          window.__inventoryEvents.push({ kind, payload });
+          revisionItem = { ...revisionItem, count: revisionItem.count + 1 };
+          forceInventoryRefresh();
+        };
         const adapter = {
           getEquipment: () => [],
           getCurrencies: () => [{ id: "gold", name: "Gold", amount: 77, icon: "G" }],
@@ -278,7 +293,7 @@ describe("InventoryTab full stack frontend and SSR audit", () => {
             usedSlots: 2,
             capacityLabel: "Backpack",
           }),
-          getHotbar: () => ({ items: [enabledItem], selectedIndex: 0 }),
+          getHotbar: () => ({ items: [revisionItem], selectedIndex: 0 }),
           getSelectedItem: () => selected,
           selectItem: (ref) => {
             selected = ref.idx === 1 ? protectedItem : enabledItem;
@@ -294,6 +309,7 @@ describe("InventoryTab full stack frontend and SSR audit", () => {
 
         function App() {
           const [, force] = React.useReducer((x) => x + 1, 0);
+          forceInventoryRefresh = force;
           const wrapped = {
             ...adapter,
             selectItem: (ref) => {
@@ -369,9 +385,17 @@ describe("InventoryTab full stack frontend and SSR audit", () => {
       await page.locator("[data-inventory-action='use']").click();
       await page.locator("[data-inventory-action='move-hotbar']").click();
 
-      for (const action of ["equip", "split", "drop-one", "drop-all", "destroy"]) {
+      for (const action of [
+        "equip",
+        "split",
+        "drop-one",
+        "drop-all",
+        "destroy",
+      ]) {
         assert.equal(
-          await page.locator(`[data-inventory-action='${action}']`).isDisabled(),
+          await page
+            .locator(`[data-inventory-action='${action}']`)
+            .isDisabled(),
           true,
           `${action} should be disabled for protected quest item`
         );
@@ -424,5 +448,5 @@ describe("InventoryTab full stack frontend and SSR audit", () => {
       await browser.close();
       await rm(tempDir, { recursive: true, force: true });
     }
-  });
+  }).timeout(45_000);
 });

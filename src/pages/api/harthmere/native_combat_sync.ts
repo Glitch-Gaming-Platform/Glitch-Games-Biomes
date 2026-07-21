@@ -1,5 +1,6 @@
 import { resolveHarthmereLiveModeActorId } from "@/server/harthmere/live_mode_actor_resolution";
 import { connectToRedis } from "@/server/shared/redis/connection";
+import { editWorldWithRetry } from "@/server/shared/world/edit_retry";
 import { biomesApiHandler } from "@/server/web/util/api_middleware";
 import {
   HarthmereMaterialStorage,
@@ -315,161 +316,165 @@ export default biomesApiHandler(
     );
     const legacy = parseHarthmereLiveModeBackendState(raw, actorId, Date.now());
 
-    const editor = worldApi.edit();
-    const player = await editor.get(auth.userId);
-    if (!player) {
-      return { ok: false, migrated: false, level: 1, xp: 0 };
-    }
-    const current = readHarthmereNativeCombatProgression(player.triggerState());
-    const currentVitals = readHarthmereNativeVitals(player.triggerState());
-    const combatNeedsMigration =
-      current.migrationVersion < HARTHMERE_NATIVE_COMBAT_MIGRATION_VERSION;
-    const vitalsNeedMigration =
-      currentVitals.migrationVersion <
-      HARTHMERE_NATIVE_VITALS_MIGRATION_VERSION;
-    const character = legacy.classMagic.skills.character_level ?? {
-      level: 1,
-      xp: 0,
-    };
-    const legacyProgress = harthmereSkillProgressFromTotalXp(
-      "character_level",
-      Math.max(0, Number(character.xp) || 0)
-    );
-    const legacyLevel = Math.max(
-      1,
-      Math.trunc(Number(character.level) || 1),
-      legacyProgress.level
-    );
-    const nextLevel = Math.max(current.level, legacyLevel);
-    const nextXp =
-      nextLevel === legacyLevel
-        ? Math.max(current.xp, legacyProgress.xp)
-        : current.xp;
+    return editWorldWithRetry(worldApi, async (editor) => {
+      const player = await editor.get(auth.userId);
+      if (!player) {
+        return { ok: false, migrated: false, level: 1, xp: 0 };
+      }
+      const current = readHarthmereNativeCombatProgression(
+        player.triggerState()
+      );
+      const currentVitals = readHarthmereNativeVitals(player.triggerState());
+      const combatNeedsMigration =
+        current.migrationVersion < HARTHMERE_NATIVE_COMBAT_MIGRATION_VERSION;
+      const vitalsNeedMigration =
+        currentVitals.migrationVersion <
+        HARTHMERE_NATIVE_VITALS_MIGRATION_VERSION;
+      const character = legacy.classMagic.skills.character_level ?? {
+        level: 1,
+        xp: 0,
+      };
+      const legacyProgress = harthmereSkillProgressFromTotalXp(
+        "character_level",
+        Math.max(0, Number(character.xp) || 0)
+      );
+      const legacyLevel = Math.max(
+        1,
+        Math.trunc(Number(character.level) || 1),
+        legacyProgress.level
+      );
+      const nextLevel = Math.max(current.level, legacyLevel);
+      const nextXp =
+        nextLevel === legacyLevel
+          ? Math.max(current.xp, legacyProgress.xp)
+          : current.xp;
 
-    const inventory = Inventory.clone(player.inventory());
-    const wearing = Wearing.clone(player.wearing());
-    const recipeBook = RecipeBook.clone(player.recipeBook());
-    const materialStorage = HarthmereMaterialStorage.clone(
-      player.harthmereMaterialStorage()
-    );
-    const status = createHarthmereLiveModePlayerStatusClientSnapshot(legacy);
-    if (combatNeedsMigration) {
-      const migratedInventory = migrateHarthmereLegacyInventoryForTest({
-        inventory,
-        items: legacy.inventory.items,
-        overflow: legacy.inventory.overflow,
-      });
-      if (migratedInventory.unresolvedItemIds.length > 0) {
-        throw new Error(
-          `Native inventory manifest is missing: ${migratedInventory.unresolvedItemIds.join(
-            ","
-          )}`
-        );
+      const inventory = Inventory.clone(player.inventory());
+      const wearing = Wearing.clone(player.wearing());
+      const recipeBook = RecipeBook.clone(player.recipeBook());
+      const materialStorage = HarthmereMaterialStorage.clone(
+        player.harthmereMaterialStorage()
+      );
+      const status = createHarthmereLiveModePlayerStatusClientSnapshot(legacy);
+      if (combatNeedsMigration) {
+        const migratedInventory = migrateHarthmereLegacyInventoryForTest({
+          inventory,
+          items: legacy.inventory.items,
+          overflow: legacy.inventory.overflow,
+        });
+        if (migratedInventory.unresolvedItemIds.length > 0) {
+          throw new Error(
+            `Native inventory manifest is missing: ${migratedInventory.unresolvedItemIds.join(
+              ","
+            )}`
+          );
+        }
+        // Gold is copied only during the versioned cutover. Preserve a newer
+        // native wallet rather than repairing it from a stale Redis projection.
+        const legacyGold = BigInt(Math.max(0, Math.trunc(status.gold)));
+        const currentGold = bagCount(inventory.currencies, {
+          id: HARTHMERE_GOLD_ECS_CURRENCY_ID,
+        });
+        const gold = legacyGold > currentGold ? legacyGold : currentGold;
+        const goldKey = String(HARTHMERE_GOLD_ECS_CURRENCY_ID);
+        if (gold > 0n) {
+          inventory.currencies.set(
+            goldKey,
+            countOf(HARTHMERE_GOLD_ECS_CURRENCY_ID, gold)
+          );
+        } else {
+          inventory.currencies.delete(goldKey);
+        }
+        const selectedRef = migrateHarthmereLegacyCombatEquipmentForTest({
+          inventory,
+          wearing,
+          equipment: legacy.inventory.equipment,
+        });
+        if (selectedRef) {
+          inventory.selected = selectedRef;
+          const container: ItemContainer =
+            selectedRef.kind === "hotbar" ? inventory.hotbar : inventory.items;
+          const selected = container[selectedRef.idx];
+          player.setSelectedItem(SelectedItem.create({ item: selected }));
+        }
+        const migratedRecipes = migrateHarthmereLegacyRecipeBookForTest({
+          recipeBook,
+          knownRecipeIds: legacy.classMagic.knownRecipes,
+        });
+        if (migratedRecipes.unresolvedRecipeIds.length > 0) {
+          throw new Error(
+            `Native recipe manifest is missing: ${migratedRecipes.unresolvedRecipeIds.join(
+              ","
+            )}`
+          );
+        }
+        const migratedStorage = migrateHarthmereLegacyMaterialStorageForTest({
+          storage: materialStorage,
+          items: legacy.banking.materialStorage,
+          maxSlots: legacy.banking.materialStorageMaxSlots,
+          personalItems: legacy.inventory.bank,
+          personalMaxSlots: legacy.banking.personalBankMaxSlots,
+          accountItems: legacy.banking.accountBank,
+          accountMaxSlots: legacy.banking.accountBankMaxSlots,
+        });
+        if (migratedStorage.unresolvedItemIds.length > 0) {
+          throw new Error(
+            `Native material-storage manifest is missing: ${migratedStorage.unresolvedItemIds.join(
+              ","
+            )}`
+          );
+        }
       }
-      // Gold is copied only during the versioned cutover. Preserve a newer
-      // native wallet rather than repairing it from a stale Redis projection.
-      const legacyGold = BigInt(Math.max(0, Math.trunc(status.gold)));
-      const currentGold = bagCount(inventory.currencies, {
-        id: HARTHMERE_GOLD_ECS_CURRENCY_ID,
-      });
-      const gold = legacyGold > currentGold ? legacyGold : currentGold;
-      const goldKey = String(HARTHMERE_GOLD_ECS_CURRENCY_ID);
-      if (gold > 0n) {
-        inventory.currencies.set(
-          goldKey,
-          countOf(HARTHMERE_GOLD_ECS_CURRENCY_ID, gold)
-        );
-      } else {
-        inventory.currencies.delete(goldKey);
+      if (vitalsNeedMigration) {
+        writeHarthmereNativeVitals(player.mutableTriggerState(), {
+          mana: Math.max(
+            0,
+            Number(
+              status.combat.resources.mana ?? status.combat.resource ?? 100
+            ) || 0
+          ),
+          maxMana: Math.max(
+            1,
+            Number(
+              status.combat.maxResources.mana ??
+                status.combat.maxResource ??
+                100
+            ) || 100
+          ),
+          stamina: Math.max(
+            0,
+            Number(status.combat.resources.stamina ?? 100) || 0
+          ),
+          maxStamina: Math.max(
+            1,
+            Number(status.combat.maxResources.stamina ?? 100) || 100
+          ),
+          standingScopeId: status.standing.scopeId,
+          likeability: status.standing.likeability,
+          legal: status.standing.legal,
+          notoriety: status.standing.notoriety,
+          notorietyFloor: status.standing.notorietyFloor,
+          migrationVersion: HARTHMERE_NATIVE_VITALS_MIGRATION_VERSION,
+          statusProjectionUpdatedAtMs: legacy.updatedAtMs,
+        });
       }
-      const selectedRef = migrateHarthmereLegacyCombatEquipmentForTest({
-        inventory,
-        wearing,
-        equipment: legacy.inventory.equipment,
-      });
-      if (selectedRef) {
-        inventory.selected = selectedRef;
-        const container: ItemContainer =
-          selectedRef.kind === "hotbar" ? inventory.hotbar : inventory.items;
-        const selected = container[selectedRef.idx];
-        player.setSelectedItem(SelectedItem.create({ item: selected }));
-      }
-      const migratedRecipes = migrateHarthmereLegacyRecipeBookForTest({
-        recipeBook,
-        knownRecipeIds: legacy.classMagic.knownRecipes,
-      });
-      if (migratedRecipes.unresolvedRecipeIds.length > 0) {
-        throw new Error(
-          `Native recipe manifest is missing: ${migratedRecipes.unresolvedRecipeIds.join(
-            ","
-          )}`
-        );
-      }
-      const migratedStorage = migrateHarthmereLegacyMaterialStorageForTest({
-        storage: materialStorage,
-        items: legacy.banking.materialStorage,
-        maxSlots: legacy.banking.materialStorageMaxSlots,
-        personalItems: legacy.inventory.bank,
-        personalMaxSlots: legacy.banking.personalBankMaxSlots,
-        accountItems: legacy.banking.accountBank,
-        accountMaxSlots: legacy.banking.accountBankMaxSlots,
-      });
-      if (migratedStorage.unresolvedItemIds.length > 0) {
-        throw new Error(
-          `Native material-storage manifest is missing: ${migratedStorage.unresolvedItemIds.join(
-            ","
-          )}`
-        );
-      }
-    }
-    if (vitalsNeedMigration) {
-      writeHarthmereNativeVitals(player.mutableTriggerState(), {
-        mana: Math.max(
-          0,
-          Number(
-            status.combat.resources.mana ?? status.combat.resource ?? 100
-          ) || 0
-        ),
-        maxMana: Math.max(
-          1,
-          Number(
-            status.combat.maxResources.mana ?? status.combat.maxResource ?? 100
-          ) || 100
-        ),
-        stamina: Math.max(
-          0,
-          Number(status.combat.resources.stamina ?? 100) || 0
-        ),
-        maxStamina: Math.max(
-          1,
-          Number(status.combat.maxResources.stamina ?? 100) || 100
-        ),
-        standingScopeId: status.standing.scopeId,
-        likeability: status.standing.likeability,
-        legal: status.standing.legal,
-        notoriety: status.standing.notoriety,
-        notorietyFloor: status.standing.notorietyFloor,
-        migrationVersion: HARTHMERE_NATIVE_VITALS_MIGRATION_VERSION,
-        statusProjectionUpdatedAtMs: legacy.updatedAtMs,
-      });
-    }
-    player.setInventory(inventory);
-    player.setWearing(wearing);
-    player.setRecipeBook(recipeBook);
-    player.setHarthmereMaterialStorage(materialStorage);
-    const progression = combatNeedsMigration
-      ? writeHarthmereNativeCombatProgression(player.mutableTriggerState(), {
-          level: nextLevel,
-          xp: nextXp,
-          migrationVersion: HARTHMERE_NATIVE_COMBAT_MIGRATION_VERSION,
-        })
-      : current;
-    await editor.commit();
-    return {
-      ok: true,
-      migrated: combatNeedsMigration || vitalsNeedMigration,
-      level: progression.level,
-      xp: progression.xp,
-    };
+      player.setInventory(inventory);
+      player.setWearing(wearing);
+      player.setRecipeBook(recipeBook);
+      player.setHarthmereMaterialStorage(materialStorage);
+      const progression = combatNeedsMigration
+        ? writeHarthmereNativeCombatProgression(player.mutableTriggerState(), {
+            level: nextLevel,
+            xp: nextXp,
+            migrationVersion: HARTHMERE_NATIVE_COMBAT_MIGRATION_VERSION,
+          })
+        : current;
+      return {
+        ok: true,
+        migrated: combatNeedsMigration || vitalsNeedMigration,
+        level: progression.level,
+        xp: progression.xp,
+      };
+    });
   }
 );

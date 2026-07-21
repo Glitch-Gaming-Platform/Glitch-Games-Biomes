@@ -1,6 +1,6 @@
 import type { BakedBiscuitTray } from "@/server/shared/bikkie/registry";
 import { BikkieIds } from "@/shared/bikkie/ids";
-import type { Biscuit } from "@/shared/bikkie/schema/attributes";
+import { zBiscuit, type Biscuit } from "@/shared/bikkie/schema/attributes";
 import {
   HARTHMERE_GATHERING_AUTHORITY_NODES,
   type HarthmereGatheringAuthorityNode,
@@ -107,6 +107,21 @@ const ROAD_AHEAD_MUCKWAD_ITEM_ALIASES = new Set([
 
 const HARTHMERE_NATIVE_RECIPE_OVERLAY_VERSION =
   "harthmere-native-recipes-v1" as const;
+
+function assertFrontendBikkieDecodable(
+  contents: ReadonlyMap<BiomesId, Biscuit>
+) {
+  for (const [id, biscuit] of contents) {
+    const parsed = zBiscuit.safeParse(biscuit);
+    if (!parsed.success) {
+      throw new Error(
+        `Bikkie ${
+          biscuit.name ?? id
+        } (${id}) cannot be decoded by the frontend: ${parsed.error.message}`
+      );
+    }
+  }
+}
 
 export function harthmereNativeRecipeBiscuit(
   recipe: ReturnType<typeof listHarthmereCraftingRecipes>[number]
@@ -333,7 +348,7 @@ export function ensureHarthmereNativeItemCatalogue() {
   // Quest rewards and objective proofs are physical items too. Register the
   // complete authored set before the Bikkie overlay so a reward can never
   // create a string-only Redis stack with no native inventory identity.
-  for (const quest of HARTHMERE_QUEST_CATALOG as readonly any[]) {
+  for (const quest of HARTHMERE_QUEST_CATALOG) {
     for (const rewardItemId of quest.rewards?.items ?? []) {
       ensureDefinition(harthmereBibleRewardItemDefinition(rewardItemId));
     }
@@ -517,7 +532,13 @@ export function withHarthmereNativeBikkieItems(
   const claimedIds = new Map<BiomesId, string>();
 
   for (const definition of ensureHarthmereNativeItemCatalogue()) {
-    const id = harthmereNativeBiomesIdForItemId(definition.itemId)!;
+    const id = harthmereNativeBiomesIdForItemId(definition.itemId);
+    if (id === undefined) {
+      // Tests and server-only systems may register catalogue fixtures that do
+      // not have a native ECS identity. They must not become an `undefined`-id
+      // Bikkie record on the browser wire.
+      continue;
+    }
     const overlayHash = `${HARTHMERE_NATIVE_BIKKIE_OVERLAY_VERSION}:${definition.itemId}:${definition.maxStackSize}`;
     const priorItemId = claimedIds.get(id);
     if (priorItemId && priorItemId !== definition.itemId) {
@@ -691,5 +712,9 @@ export function withHarthmereNativeBikkieItems(
     contents.set(quest.id, quest);
     hashes.set(quest.id, overlayHash);
   }
+  // Native overlays are applied after the normal bakery validation path. Do
+  // not allow that bypass to ship a wire payload the browser's zBiscuit parser
+  // cannot consume; catch it during server refresh and deployment tests.
+  assertFrontendBikkieDecodable(contents);
   return { ...tray, contents, hashes };
 }

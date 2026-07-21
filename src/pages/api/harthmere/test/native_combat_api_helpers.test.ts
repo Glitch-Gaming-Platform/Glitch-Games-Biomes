@@ -6,6 +6,11 @@ import {
   migrateHarthmereLegacyRecipeBookForTest,
 } from "@/pages/api/harthmere/native_combat_sync";
 import { applyHarthmereNativeVitalsHeartbeatForTest } from "@/pages/api/harthmere/native_vitals";
+import { editWorldWithRetry } from "@/server/shared/world/edit_retry";
+import {
+  WorldEditConflictError,
+  type WorldEditor,
+} from "@/server/shared/world/editor";
 import { BikkieRuntime } from "@/shared/bikkie/active";
 import { BikkieIds } from "@/shared/bikkie/ids";
 import {
@@ -256,5 +261,26 @@ describe("native combat API migration helpers", () => {
     assert.equal(drowning.damage, 5);
     assert.equal(drowning.deathCause, "drowning");
     assert.equal(drowning.hp, 0);
+  });
+
+  it("uses the shared ECS retry path for native-vitals conflicts", async () => {
+    let commits = 0;
+    const worldApi = {
+      edit: () =>
+        ({
+          commit: async () => {
+            commits += 1;
+            if (commits < 3) throw new WorldEditConflictError();
+          },
+        } as WorldEditor),
+    };
+    const result = await editWorldWithRetry(
+      worldApi,
+      async (_editor, attempt) => `committed-${attempt}`,
+      { minDelayMs: 0, maxDelayMs: 0 }
+    );
+
+    assert.equal(result, "committed-3");
+    assert.equal(commits, 3);
   });
 });

@@ -43,6 +43,14 @@ function deferred<T>() {
 
 const originalWindow = (globalThis as any).window;
 
+function restoreOriginalWindow() {
+  if (originalWindow === undefined) {
+    delete (globalThis as any).window;
+  } else {
+    (globalThis as any).window = originalWindow;
+  }
+}
+
 function setFakeWindow(
   search: string,
   storedInstallId?: string,
@@ -67,10 +75,16 @@ function setFakeWindow(
 
 describe("harthmere live fetch coalescing", () => {
   beforeEach(() => {
+    delete (globalThis as any).window;
     resetHarthmereLiveFetchCache();
     resetHarthmereLiveMutationLocksForTest();
     // The sticky install-id cache is module-global; without this reset an
     // earlier test's install id leaks into later cache-key assertions.
+    resetHarthmereLiveInstallIdForTest();
+  });
+
+  after(() => {
+    restoreOriginalWindow();
     resetHarthmereLiveInstallIdForTest();
   });
 
@@ -306,7 +320,7 @@ describe("harthmere live fetch coalescing", () => {
           ? input
           : input instanceof URL
           ? input.toString()
-          : (input as Request).url;
+          : input.url;
       capturedHeaders = new Headers(init?.headers);
       return fakeResponse("server-install");
     }) as unknown as typeof fetch;

@@ -10,9 +10,8 @@ import type { Item } from "@/shared/game/item";
 import { anItem } from "@/shared/game/item";
 import type { BiomesId } from "@/shared/ids";
 import type { Vec3 } from "@/shared/math/types";
-import type { MovementType } from "@/shared/npc/npc_types";
+import type { Behavior, MovementType } from "@/shared/npc/npc_types";
 import { ok } from "assert";
-
 
 export const LOCAL_DEV_HUMAN_NPC_TYPE_ID = 8_810_000_000_020_001 as BiomesId;
 
@@ -31,13 +30,10 @@ function localDevHumanNpcType(id: BiomesId): Item {
     runSpeed: 4.4,
     rotateSpeed: 200,
     behavior: {
-      fly: false,
-      swim: false,
       damageable: { maxHp: 20, attackable: false },
       chaseAttack: undefined,
-      questGiver: false,
       hideNameOverlay: { hideNameOverlay: false },
-    },
+    } satisfies Behavior,
     ttl: undefined,
     npcNameGenerator: undefined,
     npcAppearanceGenerator: undefined,
@@ -47,7 +43,6 @@ function localDevHumanNpcType(id: BiomesId): Item {
     galoisPath: undefined,
   } as unknown as Item;
 }
-
 
 // SNAPSHOT_LEGACY_NPC_TYPE_COMPAT:
 // The imported 2026-05-16 snapshot contains NPC item records that are valid
@@ -82,7 +77,10 @@ function isSnapshotLegacyNpcLikeItem(biscuit: Item | undefined): boolean {
 }
 
 function snapshotLegacyNpcType(id: BiomesId, biscuit: Item): Item {
-  const fallback = localDevHumanNpcType(id) as unknown as Record<string, unknown>;
+  const fallback = localDevHumanNpcType(id) as unknown as Record<
+    string,
+    unknown
+  >;
   const candidate = biscuit as unknown as Record<string, unknown>;
   const fallbackBehavior = (fallback.behavior ?? {}) as Record<string, unknown>;
   const candidateBehavior =
@@ -98,11 +96,17 @@ function snapshotLegacyNpcType(id: BiomesId, biscuit: Item): Item {
       typeof candidate.displayName === "string"
         ? candidate.displayName
         : fallback.displayName,
-    boxSize: Array.isArray(candidate.boxSize) ? candidate.boxSize : fallback.boxSize,
+    boxSize: Array.isArray(candidate.boxSize)
+      ? candidate.boxSize
+      : fallback.boxSize,
     walkSpeed:
-      typeof candidate.walkSpeed === "number" ? candidate.walkSpeed : fallback.walkSpeed,
+      typeof candidate.walkSpeed === "number"
+        ? candidate.walkSpeed
+        : fallback.walkSpeed,
     runSpeed:
-      typeof candidate.runSpeed === "number" ? candidate.runSpeed : fallback.runSpeed,
+      typeof candidate.runSpeed === "number"
+        ? candidate.runSpeed
+        : fallback.runSpeed,
     rotateSpeed:
       typeof candidate.rotateSpeed === "number"
         ? candidate.rotateSpeed
@@ -119,8 +123,12 @@ function snapshotLegacyNpcType(id: BiomesId, biscuit: Item): Item {
       // damageable block and merely omits attackable. In Biomes' schema, omitted
       // attackable means the author did not opt out, so those hostile imported
       // NPCs must remain attackable and able to retaliate.
-      const fallbackDamageable = (fallbackBehavior.damageable ?? {}) as Record<string, unknown>;
-      const candidateDamageable = (candidateBehavior.damageable ?? null) as Record<string, unknown> | null;
+      const fallbackDamageable = (fallbackBehavior.damageable ?? {}) as Record<
+        string,
+        unknown
+      >;
+      const candidateDamageable = (candidateBehavior.damageable ??
+        null) as Record<string, unknown> | null;
       const mergedDamageable = candidateDamageable
         ? {
             ...fallbackDamageable,
@@ -129,8 +137,8 @@ function snapshotLegacyNpcType(id: BiomesId, biscuit: Item): Item {
               candidateDamageable.attackable === false
                 ? false
                 : candidateDamageable.attackable === true
-                  ? true
-                  : true,
+                ? true
+                : true,
           }
         : fallbackDamageable;
       return {
@@ -142,7 +150,9 @@ function snapshotLegacyNpcType(id: BiomesId, biscuit: Item): Item {
   } as unknown as Item;
 }
 
-function idToNpcTypeInternal(id: BiomesId, soft: boolean) {
+function idToNpcTypeInternal(id: BiomesId, soft: false): Item;
+function idToNpcTypeInternal(id: BiomesId, soft: true): Item | undefined;
+function idToNpcTypeInternal(id: BiomesId, soft: boolean): Item | undefined {
   if (isLocalDevHumanNpcTypeId(id)) {
     return localDevHumanNpcType(id);
   }
@@ -184,13 +194,13 @@ export function isNpcTypeId(maybeId: BiomesId): maybeId is BiomesId {
 // biscuit, so the soft=false path never actually returns undefined. Narrow the
 // type for TS so callers don't have to litter ! / ?. everywhere.
 export function idToNpcType(id: BiomesId): Item {
-  return idToNpcTypeInternal(id, false) as Item;
+  return idToNpcTypeInternal(id, false);
 }
 
 export type NpcType = ReturnType<typeof idToNpcType>;
 
 export function maybeIdToNpcType(id: BiomesId): NpcType | undefined {
-  return idToNpcTypeInternal(id, true) as NpcType | undefined;
+  return idToNpcTypeInternal(id, true);
 }
 
 // Defensive defaults used by local-dev/Harthmere NPCs and by older biscuits that
@@ -217,7 +227,10 @@ export function getNpcWalkSpeed(npcType: NpcType): number {
 }
 
 export function getNpcRunSpeed(npcType: NpcType): number {
-  return npcType.runSpeed ?? Math.max(getNpcWalkSpeed(npcType), DEFAULT_NPC_RUN_SPEED);
+  return (
+    npcType.runSpeed ??
+    Math.max(getNpcWalkSpeed(npcType), DEFAULT_NPC_RUN_SPEED)
+  );
 }
 
 export function getNpcRotateSpeed(npcType: NpcType): number {
@@ -227,7 +240,7 @@ export function getNpcRotateSpeed(npcType: NpcType): number {
 export function allNpcs(): NpcType[] {
   return [
     ...(getBiscuits("/npcs/types") as NpcType[]),
-    localDevHumanNpcType(LOCAL_DEV_HUMAN_NPC_TYPE_ID) as NpcType,
+    localDevHumanNpcType(LOCAL_DEV_HUMAN_NPC_TYPE_ID),
   ];
 }
 
@@ -273,7 +286,6 @@ function useLocalRuntimeNpcGlobalsFallback() {
     process.env.BIOMES_FORCE_LOCAL_DEV_TOWN === "1"
   );
 }
-
 
 export function npcGlobals() {
   const biscuit = anItem(BikkieIds.npcGlobals);

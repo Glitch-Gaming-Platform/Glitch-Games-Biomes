@@ -1,6 +1,7 @@
 import assert from "assert";
 import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { resetHarthmereLiveInstallIdForTest } from "@/client/components/harthmere_live_fetch";
 import {
   buildingSystemBlueprintById,
   buildingSystemPlotById,
@@ -32,11 +33,20 @@ import {
   submitHarthmereHomeDecorationMutation,
   type HarthmereHomeConsoleClientSnapshot,
   type HarthmereHomeConsoleSubmitPayload,
-} from "../";
+} from "@/client/components/harthmere_home";
 
 const ACTOR = "home_console_actor";
 const OTHER = "home_console_other";
 const NOW = 1_770_000_000_000;
+const originalWindow = (globalThis as any).window;
+
+function restoreOriginalWindow() {
+  if (originalWindow === undefined) {
+    delete (globalThis as any).window;
+  } else {
+    (globalThis as any).window = originalWindow;
+  }
+}
 
 function property(
   overrides: Partial<BuildingSystemPropertyRecord> = {}
@@ -168,6 +178,16 @@ function snapshot(
 }
 
 describe("HarthmereHomeConsolePanel", () => {
+  beforeEach(() => {
+    delete (globalThis as any).window;
+    resetHarthmereLiveInstallIdForTest();
+  });
+
+  after(() => {
+    restoreOriginalWindow();
+    resetHarthmereLiveInstallIdForTest();
+  });
+
   it("renders a BiomesUI owner-only home management interface with Bikkie visuals", () => {
     const state = snapshot();
     const marker = listHarthmereHomeConsoleMarkers(state)[0];
@@ -252,7 +272,9 @@ describe("HarthmereHomeConsolePanel", () => {
     assert.ok(html.includes('data-harthmere-home-console-prompt="true"'));
     assert.ok(html.includes('data-harthmere-interface-access-point="true"'));
     assert.ok(html.includes('data-access-point-polish="production"'));
-    assert.ok(html.includes('data-access-point-visible-target="bottom-center"'));
+    assert.ok(
+      html.includes('data-access-point-visible-target="bottom-center"')
+    );
     assert.ok(html.includes('data-access-point-min-height="82"'));
     assert.ok(html.includes('data-access-point-key-size="46"'));
     assert.ok(html.includes('data-home-console-marker-kind="home_console"'));
@@ -343,11 +365,22 @@ describe("HarthmereHomeConsolePanel", () => {
         return { ok: true, buildingState: state };
       },
     });
-    await adapter.placeDecoration(HARTHMERE_HOME_DECORATION_ITEM_IDS.storageCabinet);
-    await adapter.moveDecoration("decor_property_grove_muckstead_cottage_lot_1", { x: 1, y: 0, z: 2 }, 90);
+    await adapter.placeDecoration(
+      HARTHMERE_HOME_DECORATION_ITEM_IDS.storageCabinet
+    );
+    await adapter.moveDecoration(
+      "decor_property_grove_muckstead_cottage_lot_1",
+      { x: 1, y: 0, z: 2 },
+      90
+    );
     await adapter.useDecoration("decor_property_grove_muckstead_cottage_lot_2");
-    await adapter.removeDecoration("decor_property_grove_muckstead_cottage_lot_1");
-    await adapter.plantGarden("decor_property_grove_muckstead_cottage_lot_1", "grain_seed");
+    await adapter.removeDecoration(
+      "decor_property_grove_muckstead_cottage_lot_1"
+    );
+    await adapter.plantGarden(
+      "decor_property_grove_muckstead_cottage_lot_1",
+      "grain_seed"
+    );
     await adapter.waterGarden("decor_property_grove_muckstead_cottage_lot_1");
     await adapter.harvestGarden("decor_property_grove_muckstead_cottage_lot_1");
     assert.deepStrictEqual(
@@ -423,29 +456,32 @@ describe("HarthmereHomeConsolePanel", () => {
     );
   });
 
-  it("renders the live container prompt and panel from an initial building snapshot", () => {
+  it("renders the live container panel from an initial building snapshot", () => {
     const state = snapshot();
     const marker = listHarthmereHomeConsoleMarkers(state)[0];
+    const homeProperty = Object.values(state.completedProperties).find(
+      (property) => property.plotId === marker.plotId
+    );
+    assert.ok(homeProperty);
     const playerPosition = {
       x: marker.position[0],
       y: marker.position[1],
       z: marker.position[2],
     };
-    const promptHtml = renderToStaticMarkup(
-      React.createElement(HarthmereHomeConsoleLiveContainer, {
-        initialState: state,
-        playerPosition,
-        open: false,
-      })
-    );
-    assert.ok(promptHtml.includes('data-harthmere-home-console-prompt="true"'));
-    assert.ok(promptHtml.includes('data-harthmere-interface-access-point="true"'));
-    assert.ok(promptHtml.includes("Press F to manage"));
-
     const panelHtml = renderToStaticMarkup(
       React.createElement(HarthmereHomeConsoleLiveContainer, {
         initialState: state,
         playerPosition,
+        worldContext: {
+          insideHome: true,
+          nearbyPropertyId: homeProperty.propertyId,
+          nearbyConsoleId: marker.markerId,
+          interactionPosition: {
+            x: marker.position[0],
+            y: marker.position[1],
+            z: marker.position[2],
+          },
+        },
         open: true,
       })
     );

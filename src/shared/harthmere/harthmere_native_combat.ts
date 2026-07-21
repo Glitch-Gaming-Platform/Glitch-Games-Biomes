@@ -15,6 +15,7 @@ import {
   harthmereNativeBiomesIdForNpcType,
 } from "@/shared/harthmere/harthmere_native_item_ids";
 import type { BiomesId } from "@/shared/ids";
+import type { Behavior } from "@/shared/npc/npc_types";
 
 export const HARTHMERE_NATIVE_COMBAT_VERSION =
   "harthmere-native-combat-v1" as const;
@@ -241,9 +242,8 @@ export function harthmereNativeNpcBiscuit(
         profile.behaviorKind === "sentinel"
           ? undefined
           : { stayDistanceFromSpawn: profile.disengageDistance * 0.6 },
-      questGiver: false,
       hideNameOverlay: { hideNameOverlay: false },
-    },
+    } satisfies Behavior,
   } as unknown as Biscuit;
 }
 

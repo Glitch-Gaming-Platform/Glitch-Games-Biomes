@@ -2,6 +2,10 @@ import type { AskApi } from "@/server/ask/api";
 import { serverDerivedHarthmereUnderwater } from "@/server/harthmere/native_vitals_environment";
 import { connectToRedis } from "@/server/shared/redis/connection";
 import type { WorldApi } from "@/server/shared/world/api";
+import {
+  editWorldWithRetry,
+  isWorldEditConflict,
+} from "@/server/shared/world/edit_retry";
 import { secondsSinceEpoch } from "@/shared/ecs/config";
 import {
   readHarthmereNativeVitals,
@@ -72,60 +76,64 @@ export async function runHarthmereNativeVitalsSchedulerTick(input: {
   const conflictedPlayerIds: number[] = [];
   let playerCount = 0;
   for (const id of ids) {
-    const editor = input.worldApi.edit();
-    const player = await editor.get(id);
-    const position = player?.position()?.v;
-    const health = player?.health();
-    if (!player || !position || !health) continue;
+    // Resolve environment outside the optimistic edit. The Ask/voxel lookup
+    // can be slow enough for combat or another scheduler tick to invalidate a
+    // transaction before it ever reaches commit.
+    const snapshot = await input.worldApi.get(id);
+    const position = snapshot?.position()?.v;
+    const health = snapshot?.health();
+    if (!snapshot || !position || !health) continue;
     playerCount += 1;
     const underwater = await deriveUnderwater({
       askApi: input.askApi,
       voxeloo: input.voxeloo,
       position: [position[0], position[1], position[2]],
-      height: player.size()?.v[1],
+      height: snapshot.size()?.v[1],
     });
-    const before = readHarthmereNativeVitals(player.triggerState());
-    const tick = tickHarthmereNativeVitals(player.mutableTriggerState(), {
-      nowMs: input.nowMs,
-      gameplayActive: true,
-      underwater,
-      alive: health.hp > 0,
-    });
-    const mutableHealth = player.mutableHealth();
-    const previousHp = mutableHealth.hp;
-    if (tick.deathCause === "stamina") {
-      mutableHealth.hp = 0;
-    } else if (tick.damage > 0) {
-      mutableHealth.hp = Math.max(0, mutableHealth.hp - tick.damage);
-    }
-    if (mutableHealth.hp !== previousHp) {
-      mutableHealth.lastDamageSource =
-        tick.deathCause === "drowning"
-          ? { kind: "drown" }
-          : { kind: "suicide" };
-      mutableHealth.lastDamageAmount = Math.max(
-        0,
-        previousHp - mutableHealth.hp
-      );
-      mutableHealth.lastDamageTime = secondsSinceEpoch();
-    }
-    const changed =
-      tick.vitals.stamina !== before.stamina ||
-      tick.vitals.breath !== before.breath ||
-      tick.vitals.underwater !== before.underwater ||
-      mutableHealth.hp !== previousHp;
     try {
-      // Commit each connected player independently. A simultaneous combat,
-      // respawn, consumable, or heartbeat write may invalidate one optimistic
-      // ECS edit; it must not discard the vitals tick for every other player.
-      await editor.commit();
-      if (changed) changedPlayerIds.push(player.id);
+      const changed = await editWorldWithRetry(
+        input.worldApi,
+        async (editor) => {
+          const player = await editor.get(id);
+          const currentHealth = player?.health();
+          if (!player || !currentHealth) return false;
+          const before = readHarthmereNativeVitals(player.triggerState());
+          const tick = tickHarthmereNativeVitals(player.mutableTriggerState(), {
+            nowMs: input.nowMs,
+            gameplayActive: true,
+            underwater,
+            alive: currentHealth.hp > 0,
+          });
+          const mutableHealth = player.mutableHealth();
+          const previousHp = mutableHealth.hp;
+          if (tick.deathCause === "stamina") {
+            mutableHealth.hp = 0;
+          } else if (tick.damage > 0) {
+            mutableHealth.hp = Math.max(0, mutableHealth.hp - tick.damage);
+          }
+          if (mutableHealth.hp !== previousHp) {
+            mutableHealth.lastDamageSource =
+              tick.deathCause === "drowning"
+                ? { kind: "drown" }
+                : { kind: "suicide" };
+            mutableHealth.lastDamageAmount = Math.max(
+              0,
+              previousHp - mutableHealth.hp
+            );
+            mutableHealth.lastDamageTime = secondsSinceEpoch();
+          }
+          return (
+            tick.vitals.stamina !== before.stamina ||
+            tick.vitals.breath !== before.breath ||
+            tick.vitals.underwater !== before.underwater ||
+            mutableHealth.hp !== previousHp
+          );
+        }
+      );
+      if (changed) changedPlayerIds.push(id);
     } catch (error) {
-      if (
-        error instanceof Error &&
-        error.message.includes("Failed to apply change to world")
-      ) {
-        conflictedPlayerIds.push(player.id);
+      if (isWorldEditConflict(error)) {
+        conflictedPlayerIds.push(id);
         continue;
       }
       throw error;
@@ -185,10 +193,10 @@ export function startHarthmereNativeVitalsScheduler(input: {
     } catch (error) {
       log.error("Harthmere native vitals scheduler tick failed", { error });
     } finally {
-      if (!stopped) timeout = setTimeout(run, intervalMs);
+      if (!stopped) timeout = setTimeout(() => void run(), intervalMs);
     }
   };
-  timeout = setTimeout(run, 0);
+  timeout = setTimeout(() => void run(), 0);
   return {
     enabled: true,
     stop: () => {

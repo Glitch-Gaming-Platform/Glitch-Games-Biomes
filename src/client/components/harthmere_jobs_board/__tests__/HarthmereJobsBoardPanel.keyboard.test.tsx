@@ -15,13 +15,13 @@ import {
   harthmereJobsBoardColumnCountForWidth,
   nextHarthmereJobsBoardGridIndexForKey,
   nextHarthmereJobsBoardTabForKey,
-} from "../HarthmereJobsBoardPanel";
+} from "@/client/components/harthmere_jobs_board/HarthmereJobsBoardPanel";
 import {
   HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
   HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS,
   normalizeHarthmereJobsBoardSnapshot,
   type HarthmereJobsBoardSnapshot,
-} from "../jobsBoardLiveAdapter";
+} from "@/client/components/harthmere_jobs_board/jobsBoardLiveAdapter";
 
 declare global {
   interface Window {
@@ -110,6 +110,7 @@ function jobsBoardBusinessTemplatesStub() {
 
 function jobsBoardMmoAuthorityStub() {
   return `
+    export const HARTHMERE_JOBS_BOARD_HARTHMERE_POSITION = [532, 70, -207];
     export function formatHarthmereJobTimeRemaining(deadlineAtMs, nowMs) {
       if (deadlineAtMs === undefined) return "";
       const remaining = Number(deadlineAtMs) - Number(nowMs ?? Date.now());
@@ -400,9 +401,7 @@ describe("HarthmereJobsBoardPanel keyboard support", () => {
     );
   });
 
-  it("supports arrow traversal, accept, turn-in, cancel, post, empty-tab, and close flows in a browser", async function () {
-    this.timeout(45_000);
-
+  it("supports arrow traversal, accept, turn-in, cancel, post, empty-tab, and close flows in a browser", async () => {
     const tempDir = await mkdtemp(
       path.join(tmpdir(), "biomes-jobs-board-keyboard-")
     );
@@ -796,11 +795,9 @@ describe("HarthmereJobsBoardPanel keyboard support", () => {
       await browser.close();
       await rm(tempDir, { recursive: true, force: true });
     }
-  });
+  }).timeout(45_000);
 
-  it("keeps live-container hooks stable from loading to ready and anchors to the physical board", async function () {
-    this.timeout(45_000);
-
+  it("keeps live-container hooks stable from loading to ready and anchors to the physical board", async () => {
     const snapshot = sampleSnapshot();
     snapshot.boards.harthmere_town_market_jobs_board = {
       ...snapshot.boards[HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID],
@@ -1111,5 +1108,5 @@ describe("HarthmereJobsBoardPanel keyboard support", () => {
       await browser.close();
       await rm(tempDir, { recursive: true, force: true });
     }
-  });
+  }).timeout(45_000);
 });

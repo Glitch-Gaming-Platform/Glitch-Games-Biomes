@@ -64,7 +64,7 @@ describe("HARTHMERE_BIOMES_ECS_BRIDGE_REVERSE", () => {
     assert.strictEqual(biomesIdToHarthmereItemId(nativeId), "rough_stone");
   });
 
-  it("recognizes every non-empty item id as an exact native mapping", () => {
+  it("recognizes only checked-in or numeric exact native mappings", () => {
     assert.strictEqual(
       harthmereItemIdHasCuratedBiomesMapping("rough_stone"),
       true
@@ -72,7 +72,7 @@ describe("HARTHMERE_BIOMES_ECS_BRIDGE_REVERSE", () => {
     assert.strictEqual(harthmereItemIdHasCuratedBiomesMapping("b:12345"), true);
     assert.strictEqual(
       harthmereItemIdHasCuratedBiomesMapping("harthmere_only_item"),
-      true
+      false
     );
     assert.strictEqual(
       harthmereItemIdHasCuratedBiomesMapping(undefined),

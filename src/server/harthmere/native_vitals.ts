@@ -1,4 +1,5 @@
 import type { WorldApi } from "@/server/shared/world/api";
+import { editWorldWithRetry } from "@/server/shared/world/edit_retry";
 import { Inventory } from "@/shared/ecs/gen/components";
 import { countOf } from "@/shared/game/items";
 import { HARTHMERE_GOLD_ECS_CURRENCY_ID } from "@/shared/harthmere/harthmere_biomes_ecs_bridge";
@@ -49,75 +50,77 @@ export async function syncHarthmereCommittedStatusToNativeEcs(input: {
   migrateResources?: boolean;
   migrateGold?: boolean;
 }) {
-  const editor = input.worldApi.edit();
-  const player = await editor.get(input.userId);
-  if (!player) return false;
   const status = createHarthmereLiveModePlayerStatusClientSnapshot(input.state);
-  const current = readHarthmereNativeVitals(player.triggerState());
-  if (
-    harthmereStatusProjectionIsStaleForTest(
-      input.state.updatedAtMs,
-      current.statusProjectionUpdatedAtMs
-    )
-  ) {
-    // A slower migration attempt must not overwrite a newer wallet, resource,
-    // or law transaction that has already reached the ECS document.
-    return true;
-  }
-  if (input.migrateGold) {
-    const inventory = Inventory.clone(player.inventory());
-    replaceNativeGoldCurrencyForTest(inventory, status.gold);
-    player.setInventory(inventory);
-  }
-  const resourceChanges = input.migrateResources
-    ? {
-        mana: Math.max(
-          0,
-          Number(
-            status.combat.resources.mana ?? status.combat.resource ?? 100
-          ) || 0
-        ),
-        maxMana: Math.max(
-          1,
-          Number(
-            status.combat.maxResources.mana ?? status.combat.maxResource ?? 100
-          ) || 100
-        ),
-        stamina: Math.max(
-          0,
-          Number(status.combat.resources.stamina ?? 100) || 0
-        ),
-        maxStamina: Math.max(
-          1,
-          Number(status.combat.maxResources.stamina ?? 100) || 100
-        ),
-      }
-    : {
-        // Class changes may alter the maximum mana pool. Preserve current
-        // native mana rather than restoring it during an unrelated mutation.
-        maxMana: Math.max(
-          1,
-          Number(status.combat.maxResources.mana ?? current.maxMana) ||
-            current.maxMana
-        ),
-        mana: Math.min(
-          Math.max(
+  return editWorldWithRetry(input.worldApi, async (editor) => {
+    const player = await editor.get(input.userId);
+    if (!player) return false;
+    const current = readHarthmereNativeVitals(player.triggerState());
+    if (
+      harthmereStatusProjectionIsStaleForTest(
+        input.state.updatedAtMs,
+        current.statusProjectionUpdatedAtMs
+      )
+    ) {
+      // A slower migration attempt must not overwrite a newer wallet, resource,
+      // or law transaction that has already reached the ECS document.
+      return true;
+    }
+    if (input.migrateGold) {
+      const inventory = Inventory.clone(player.inventory());
+      replaceNativeGoldCurrencyForTest(inventory, status.gold);
+      player.setInventory(inventory);
+    }
+    const resourceChanges = input.migrateResources
+      ? {
+          mana: Math.max(
+            0,
+            Number(
+              status.combat.resources.mana ?? status.combat.resource ?? 100
+            ) || 0
+          ),
+          maxMana: Math.max(
+            1,
+            Number(
+              status.combat.maxResources.mana ??
+                status.combat.maxResource ??
+                100
+            ) || 100
+          ),
+          stamina: Math.max(
+            0,
+            Number(status.combat.resources.stamina ?? 100) || 0
+          ),
+          maxStamina: Math.max(
+            1,
+            Number(status.combat.maxResources.stamina ?? 100) || 100
+          ),
+        }
+      : {
+          // Class changes may alter the maximum mana pool. Preserve current
+          // native mana rather than restoring it during an unrelated mutation.
+          maxMana: Math.max(
             1,
             Number(status.combat.maxResources.mana ?? current.maxMana) ||
               current.maxMana
           ),
-          current.mana
-        ),
-      };
-  writeHarthmereNativeVitals(player.mutableTriggerState(), {
-    ...resourceChanges,
-    standingScopeId: status.standing.scopeId,
-    likeability: status.standing.likeability,
-    legal: status.standing.legal,
-    notoriety: status.standing.notoriety,
-    notorietyFloor: status.standing.notorietyFloor,
-    statusProjectionUpdatedAtMs: input.state.updatedAtMs,
+          mana: Math.min(
+            Math.max(
+              1,
+              Number(status.combat.maxResources.mana ?? current.maxMana) ||
+                current.maxMana
+            ),
+            current.mana
+          ),
+        };
+    writeHarthmereNativeVitals(player.mutableTriggerState(), {
+      ...resourceChanges,
+      standingScopeId: status.standing.scopeId,
+      likeability: status.standing.likeability,
+      legal: status.standing.legal,
+      notoriety: status.standing.notoriety,
+      notorietyFloor: status.standing.notorietyFloor,
+      statusProjectionUpdatedAtMs: input.state.updatedAtMs,
+    });
+    return true;
   });
-  await editor.commit();
-  return true;
 }

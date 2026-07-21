@@ -118,9 +118,9 @@ export function biomesIdToHarthmereItemId(
   return harthmereNativeItemIdForBiomesId(id) ?? `b:${id}`;
 }
 
-// Every non-empty Harthmere id has a deterministic, exact native identity.
-// The server tray augmenter is responsible for publishing the corresponding
-// biscuit; this function intentionally no longer means "has a visual alias".
+// Only checked-in semantic ids and explicit numeric/b:<id> identities have a
+// deterministic native identity. Unknown strings must remain unmapped instead
+// of silently creating a browser biscuit with no valid ECS id.
 export function harthmereItemIdHasCuratedBiomesMapping(
   itemId: string | number | undefined
 ): boolean {
@@ -295,11 +295,11 @@ export function createHarthmereBiomesEcsChallenges(
   input: HarthmereChallengesEcsInput
 ): HarthmereBiomesEcsProjection<BiomesEcsChallenges> {
   const warnings: HarthmereBiomesEcsProjectionWarning[] = [];
-  const in_progress = new Set<BiomesId>();
+  const inProgress = new Set<BiomesId>();
   const complete = new Set<BiomesId>();
   const available = new Set<BiomesId>();
-  const started_at = new Map<BiomesId, number>();
-  const finished_at = new Map<BiomesId, number>();
+  const startedAt = new Map<BiomesId, number>();
+  const finishedAt = new Map<BiomesId, number>();
   for (const [questId, state] of Object.entries(input.active ?? {})) {
     const id = questIdToBiomesId(questId, input.questIdMap);
     if (!id) {
@@ -311,13 +311,13 @@ export function createHarthmereBiomesEcsChallenges(
       });
       continue;
     }
-    in_progress.add(id);
+    inProgress.add(id);
     const startedAtMs =
       state && typeof state === "object"
         ? whole((state as { startedAtMs?: number }).startedAtMs, 0)
         : 0;
     if (startedAtMs > 0) {
-      started_at.set(id, startedAtMs / 1000);
+      startedAt.set(id, startedAtMs / 1000);
     }
   }
   for (const [questId, finishedAtMs] of Object.entries(input.completed ?? {})) {
@@ -333,7 +333,7 @@ export function createHarthmereBiomesEcsChallenges(
     }
     complete.add(id);
     if (finishedAtMs > 0) {
-      finished_at.set(id, finishedAtMs / 1000);
+      finishedAt.set(id, finishedAtMs / 1000);
     }
   }
   for (const questId of input.available ?? []) {
@@ -344,11 +344,11 @@ export function createHarthmereBiomesEcsChallenges(
   }
   return {
     component: Challenges.create({
-      in_progress,
+      in_progress: inProgress,
       complete,
       available,
-      started_at,
-      finished_at,
+      started_at: startedAt,
+      finished_at: finishedAt,
     }),
     warnings,
   };

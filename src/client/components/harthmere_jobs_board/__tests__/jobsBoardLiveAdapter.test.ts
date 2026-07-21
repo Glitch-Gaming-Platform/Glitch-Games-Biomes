@@ -1,11 +1,12 @@
 /// <reference types="mocha" />
 /// <reference types="node" />
 import assert from "assert";
+import { resetHarthmereDailyTaskHotPathThrottleForTest } from "@/client/components/challenges/harthmereDailyTasks";
 import {
   HARTHMERE_BUSINESS_OUTPOSTS,
   harthmereBusinessOutpostJobsBoardPosition,
-} from "../../../../shared/harthmere/business_customer_simulator";
-import { HARTHMERE_LIVE_INVENTORY_SYNC_EVENT } from "../../challenges/harthmereEvents";
+} from "@/shared/harthmere/business_customer_simulator";
+import { HARTHMERE_LIVE_INVENTORY_SYNC_EVENT } from "@/client/components/challenges/harthmereEvents";
 import {
   HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
   HARTHMERE_JOBS_BOARD_STATE_UPDATED_EVENT,
@@ -30,9 +31,17 @@ import {
   submitHarthmereDailyTaskCompleted,
   submitHarthmereJobsBoardMutation,
   type HarthmereJobsBoardSnapshot,
-} from "../jobsBoardLiveAdapter";
+} from "@/client/components/harthmere_jobs_board/jobsBoardLiveAdapter";
 
 const NOW = 1_800_000_000_000;
+
+beforeEach(() => {
+  resetHarthmereDailyTaskHotPathThrottleForTest();
+});
+
+after(() => {
+  resetHarthmereDailyTaskHotPathThrottleForTest();
+});
 
 async function withGlitchInstallLocation<T>(
   callback: () => Promise<T> | T

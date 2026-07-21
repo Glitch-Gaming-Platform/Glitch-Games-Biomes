@@ -1,5 +1,9 @@
 import { newPlaceable } from "@/server/logic/utils/placeables";
 import { connectToRedis } from "@/server/shared/redis/connection";
+import {
+  editWorldWithRetry,
+  isWorldEditConflict,
+} from "@/server/shared/world/edit_retry";
 import { biomesApiHandler } from "@/server/web/util/api_middleware";
 import { BikkieIds } from "@/shared/bikkie/ids";
 import { secondsSinceEpoch } from "@/shared/ecs/config";
@@ -266,27 +270,31 @@ export default biomesApiHandler(
           // Refresh the hidden inventory's range anchor if an administrator
           // moved the authored prop. Existing contents are never reseeded, so
           // reopening cannot duplicate a reward the player already took.
-          const repairEditor = worldApi.edit();
-          const repair = await repairEditor.get(containerId);
-          if (!repair) {
-            return { ok: false, error: "container_materialization_conflicted" };
-          }
-          const validOwner = repair.createdBy()?.id === auth.userId;
-          const validMarker =
-            repair.entityDescription()?.text ===
-            NATIVE_ROAD_AHEAD_PRIVATE_CONTAINER_DESCRIPTION;
-          if (!validOwner || !validMarker) {
-            return { ok: false, error: "container_identity_conflict" };
-          }
-          repair.setPosition(Position.create({ v: [...position] }));
-          if (!repair.containerInventory()) {
-            repair.setContainerInventory(
-              seededNativeRoadAheadContainerInventoryForTest(label)
-            );
-          }
           try {
-            await repairEditor.commit();
-          } catch {
+            const repairError = await editWorldWithRetry(
+              worldApi,
+              async (repairEditor) => {
+                const repair = await repairEditor.get(containerId);
+                if (!repair) return "container_materialization_conflicted";
+                const validOwner = repair.createdBy()?.id === auth.userId;
+                const validMarker =
+                  repair.entityDescription()?.text ===
+                  NATIVE_ROAD_AHEAD_PRIVATE_CONTAINER_DESCRIPTION;
+                if (!validOwner || !validMarker) {
+                  return "container_identity_conflict";
+                }
+                repair.setPosition(Position.create({ v: [...position] }));
+                if (!repair.containerInventory()) {
+                  repair.setContainerInventory(
+                    seededNativeRoadAheadContainerInventoryForTest(label)
+                  );
+                }
+                return undefined;
+              }
+            );
+            if (repairError) return { ok: false, error: repairError };
+          } catch (error) {
+            if (!isWorldEditConflict(error)) throw error;
             return { ok: false, error: "container_materialization_conflicted" };
           }
         }
@@ -300,17 +308,34 @@ export default biomesApiHandler(
 
       const created = !target.containerInventory();
       if (created) {
-        target.setContainerInventory(
-          seededHarthmereNativeContainerInventoryForTest(label)
-        );
-        if (!target.placeableComponent()) {
-          target.setPlaceableComponent(
-            PlaceableComponent.create({ item_id: BikkieIds.woodContainer })
-          );
-        }
         try {
-          await editor.commit();
-        } catch {
+          const materializationError = await editWorldWithRetry(
+            worldApi,
+            async (materializationEditor) => {
+              const materializationTarget = await materializationEditor.get(
+                body.entityId!
+              );
+              if (!materializationTarget) return "container_not_found";
+              if (!materializationTarget.containerInventory()) {
+                materializationTarget.setContainerInventory(
+                  seededHarthmereNativeContainerInventoryForTest(label)
+                );
+              }
+              if (!materializationTarget.placeableComponent()) {
+                materializationTarget.setPlaceableComponent(
+                  PlaceableComponent.create({
+                    item_id: BikkieIds.woodContainer,
+                  })
+                );
+              }
+              return undefined;
+            }
+          );
+          if (materializationError) {
+            return { ok: false, error: materializationError };
+          }
+        } catch (error) {
+          if (!isWorldEditConflict(error)) throw error;
           return { ok: false, error: "container_materialization_conflicted" };
         }
       }
@@ -368,17 +393,23 @@ export default biomesApiHandler(
         created = true;
       }
     } else if (!existing.containerInventory()) {
-      const editor = worldApi.edit();
-      const repair = await editor.get(containerId);
-      if (!repair) {
-        return { ok: false, error: "container_materialization_conflicted" };
-      }
-      repair.setContainerInventory(
-        seededHarthmereNativeContainerInventoryForTest(landmark.label)
-      );
       try {
-        await editor.commit();
-      } catch {
+        const repairError = await editWorldWithRetry(
+          worldApi,
+          async (editor) => {
+            const repair = await editor.get(containerId);
+            if (!repair) return "container_materialization_conflicted";
+            if (!repair.containerInventory()) {
+              repair.setContainerInventory(
+                seededHarthmereNativeContainerInventoryForTest(landmark.label)
+              );
+            }
+            return undefined;
+          }
+        );
+        if (repairError) return { ok: false, error: repairError };
+      } catch (error) {
+        if (!isWorldEditConflict(error)) throw error;
         return { ok: false, error: "container_materialization_conflicted" };
       }
     }

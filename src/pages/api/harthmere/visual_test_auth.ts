@@ -4,6 +4,7 @@ import { GameEvent } from "@/server/shared/api/game_event";
 import { getUserOrCreateIfNotExists } from "@/server/web/db/users";
 import { usernameOrIdToUser } from "@/server/web/util/admin";
 import { biomesApiHandler } from "@/server/web/util/api_middleware";
+import { editWorldWithRetry } from "@/server/shared/world/edit_retry";
 import { LabelChangeEvent, PlayerInitEvent } from "@/shared/ecs/gen/events";
 import { APIError } from "@/shared/api/errors";
 import { safeParseBiomesId, zBiomesId, type BiomesId } from "@/shared/ids";
@@ -51,12 +52,13 @@ export default biomesApiHandler(
     const userId: BiomesId =
       existingUser?.id ?? parsedId ?? (await idGenerator.next());
     const desiredUsername =
-      existingUser?.username ?? (parsedId === undefined ? usernameOrId : undefined);
+      existingUser?.username ??
+      (parsedId === undefined ? usernameOrId : undefined);
     const user = await getUserOrCreateIfNotExists(db, userId, desiredUsername);
 
-    const editor = worldApi.edit();
-    await ensurePlayerExists(editor, user.id, user.username ?? "VisualTestPlayer");
-    await editor.commit();
+    await editWorldWithRetry(worldApi, (editor) =>
+      ensurePlayerExists(editor, user.id, user.username ?? "VisualTestPlayer")
+    );
     await logicApi.publish(
       new GameEvent(user.id, new PlayerInitEvent({ id: user.id })),
       new GameEvent(

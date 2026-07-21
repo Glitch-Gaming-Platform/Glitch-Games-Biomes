@@ -6,6 +6,13 @@ import type { ReadonlyEntity } from "@/shared/ecs/gen/entities";
 import type { BiomesId } from "@/shared/ids";
 import { ok } from "assert";
 
+export class WorldEditConflictError extends Error {
+  constructor() {
+    super("Failed to apply change to world!");
+    this.name = "WorldEditConflictError";
+  }
+}
+
 export class WorldEditor {
   private readonly fetched = new Map<
     BiomesId,
@@ -89,6 +96,8 @@ export class WorldEditor {
       return;
     }
     const { outcome } = await this.worldApi.apply(changeToApply);
-    ok(outcome === "success", "Failed to apply change to world!");
+    if (outcome !== "success") {
+      throw new WorldEditConflictError();
+    }
   }
 }

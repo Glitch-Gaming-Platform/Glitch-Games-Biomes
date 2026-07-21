@@ -1,6 +1,7 @@
 import assert from "assert";
 
 import { localFallbackMapMetadata } from "@/pages/api/world_map/metadata";
+import { HARTHMERE_EXPANDED_WORLD_EAST_EDGE_X } from "@/shared/harthmere/world_extension";
 import { zWorldMapMetadataResponse } from "@/shared/types";
 
 function assertValidFallbackResponse(
@@ -37,8 +38,14 @@ describe("world map metadata fallback", () => {
 
     for (const metadata of [missing, malformed]) {
       assert.deepEqual(metadata.boundsStart, [-2048, -2048]);
-      assert.deepEqual(metadata.boundsEnd, [2048, 2048]);
-      assert.equal(metadata.fullImageWidth, 4096);
+      assert.deepEqual(metadata.boundsEnd, [
+        HARTHMERE_EXPANDED_WORLD_EAST_EDGE_X,
+        2048,
+      ]);
+      assert.equal(
+        metadata.fullImageWidth,
+        HARTHMERE_EXPANDED_WORLD_EAST_EDGE_X + 2048
+      );
       assert.equal(metadata.fullImageHeight, 4096);
       assertValidFallbackResponse(metadata);
     }

@@ -3,6 +3,7 @@ import type { AskApi } from "@/server/ask/api";
 import type { LogicApi } from "@/server/shared/api/logic";
 import { loadVoxeloo } from "@/server/shared/voxeloo";
 import type { WorldApi } from "@/server/shared/world/api";
+import { editWorldWithRetry } from "@/server/shared/world/edit_retry";
 import type { IdGenerator } from "@/server/shared/ids/generator";
 import { ensurePlayerExists } from "@/server/logic/utils/players";
 import { materializeHarthmereNativeEcsPlans } from "@/server/harthmere/native_ecs_drop_materialization";
@@ -1243,6 +1244,7 @@ function applyAuctionSellerSettlement(input: {
   input.sellerState.updatedAtMs = input.nowMs;
 }
 
+// eslint-disable-next-line @typescript-eslint/naming-convention
 function wire_network_requests_to_validateHarthmereLiveModeAuthorityEnvelope(
   actorId: string,
   body: z.infer<typeof zLiveModeRequest>,
@@ -1338,11 +1340,11 @@ export async function readServerActorNativeContextForLiveMode(
     const equipment: Record<string, string> = {};
     let equippedItemKeys: string[] = [];
     let knownRecipeIds: string[] = [];
-    let materialStorageItemCounts: Record<string, number> = {};
+    const materialStorageItemCounts: Record<string, number> = {};
     let materialStorageMaxSlots: number | undefined;
-    let personalBankItemCounts: Record<string, number> = {};
+    const personalBankItemCounts: Record<string, number> = {};
     let personalBankMaxSlots: number | undefined;
-    let accountBankItemCounts: Record<string, number> = {};
+    const accountBankItemCounts: Record<string, number> = {};
     let accountBankMaxSlots: number | undefined;
     let standing:
       | NonNullable<HarthmereLiveModeAuthorityEnvelope["serverActorStanding"]>
@@ -1698,6 +1700,7 @@ export function combatActorPositionFromInstallLiveModeBody(
   );
 }
 
+// eslint-disable-next-line @typescript-eslint/naming-convention
 function route_real_attacks_abilities_xp_loot_death_respawn_through_shared_rules(
   envelope: HarthmereLiveModeAuthorityEnvelope,
   plan: NonNullable<LiveModeResponse["mutationPlan"]>
@@ -1725,6 +1728,7 @@ function route_real_attacks_abilities_xp_loot_death_respawn_through_shared_rules
   return { events, uiEvents };
 }
 
+// eslint-disable-next-line @typescript-eslint/naming-convention
 async function publish_createHarthmereLiveModeEvent_to_server_event_stream(
   response: LiveModeResponse
 ) {
@@ -1750,6 +1754,7 @@ async function publish_createHarthmereLiveModeEvent_to_server_event_stream(
   await tx.exec();
 }
 
+// eslint-disable-next-line @typescript-eslint/naming-convention
 async function deliver_createHarthmereLiveModeUiEvent_from_server_outbox(
   response: LiveModeResponse
 ) {
@@ -1804,7 +1809,7 @@ async function flushHarthmereLiveModePostCommitOutbox(
 }
 
 function isHarthmereServerOutpostMaterializationPlan(
-  plan: BuildingSystemAnyMaterializationPlan
+  _plan: BuildingSystemAnyMaterializationPlan
 ) {
   return false;
 }
@@ -2196,7 +2201,6 @@ export async function materializeBuildingSystemMaterializationPlansToTerrain(inp
   }
 
   const voxeloo = await loadVoxeloo();
-  const editor = input.worldApi.edit();
   const shardEntries = [...editsByShard.entries()];
   const terrainIds = shardEntries.map(([shardId]) => {
     const terrainEntityId = terrainResolution.terrainIdsByShard.get(shardId);
@@ -2205,99 +2209,104 @@ export async function materializeBuildingSystemMaterializationPlansToTerrain(inp
     }
     return shardId as unknown as BiomesId;
   });
-  const terrainEntities = await editor.get(terrainIds);
-  let directTerrainShardCount = 0;
-  for (let i = 0; i < shardEntries.length; i += 1) {
-    const [shardId, shardEdits] = shardEntries[i];
-    const terrainEntity = terrainEntities[i];
-    if (!terrainEntity) {
-      throw new Error(
-        `Missing terrain entity ${terrainIds[i]} for materialization shard ${shardId}`
-      );
-    }
-    const seed = new voxeloo.VolumeBlock_U32();
-    const diff = new voxeloo.SparseBlock_U32();
-    const placer = new voxeloo.SparseBlock_U32();
-    const occupancy = new voxeloo.SparseBlock_U32();
-    try {
-      loadBlockWrapper(voxeloo, seed, terrainEntity.shardSeed());
-      loadBlockWrapper(voxeloo, diff, terrainEntity.shardDiff());
-      loadBlockWrapper(voxeloo, placer, terrainEntity.shardPlacer());
-      loadBlockWrapper(voxeloo, occupancy, terrainEntity.shardOccupancy());
-      for (const edit of shardEdits) {
-        const localPosition = blockPos(...edit.position);
-        const currentValue =
-          diff.get(...localPosition) ?? seed.get(...localPosition) ?? 0;
-        const currentPlacer = placer.get(...localPosition) ?? 0;
-        const occupancyId = occupancy.get(...localPosition) ?? 0;
-        if (occupancyId) {
+  const directTerrainShardCount = await editWorldWithRetry(
+    input.worldApi,
+    async (editor) => {
+      const terrainEntities = await editor.get(terrainIds);
+      let changedShardCount = 0;
+      for (let i = 0; i < shardEntries.length; i += 1) {
+        const [shardId, shardEdits] = shardEntries[i];
+        const terrainEntity = terrainEntities[i];
+        if (!terrainEntity) {
           throw new Error(
-            `Building materialization conflicts with occupied voxel at ${edit.position.join(
-              ","
-            )}`
+            `Missing terrain entity ${terrainIds[i]} for materialization shard ${shardId}`
           );
         }
-        if (edit.value === 0) {
-          if (currentValue === 0) {
-            placer.del(...localPosition);
-            continue;
-          }
-          if (
-            edit.expectedValue === undefined ||
-            currentValue !== edit.expectedValue
-          ) {
-            throw new Error(
-              `Building cleanup expected ${
-                edit.expectedValue ?? "an explicit value"
-              } but found ${currentValue} at ${edit.position.join(",")}`
-            );
-          }
-          if (seed.get(...localPosition) === 0) {
-            diff.del(...localPosition);
-          } else {
-            diff.set(...localPosition, 0);
-          }
-          placer.del(...localPosition);
-        } else {
-          if (currentValue === edit.value) {
-            // Idempotent retry. Preserve another actor's placer metadata rather
-            // than silently taking ownership of an already-materialized voxel.
-            if (!currentPlacer) {
+        const seed = new voxeloo.VolumeBlock_U32();
+        const diff = new voxeloo.SparseBlock_U32();
+        const placer = new voxeloo.SparseBlock_U32();
+        const occupancy = new voxeloo.SparseBlock_U32();
+        try {
+          loadBlockWrapper(voxeloo, seed, terrainEntity.shardSeed());
+          loadBlockWrapper(voxeloo, diff, terrainEntity.shardDiff());
+          loadBlockWrapper(voxeloo, placer, terrainEntity.shardPlacer());
+          loadBlockWrapper(voxeloo, occupancy, terrainEntity.shardOccupancy());
+          for (const edit of shardEdits) {
+            const localPosition = blockPos(...edit.position);
+            const currentValue =
+              diff.get(...localPosition) ?? seed.get(...localPosition) ?? 0;
+            const currentPlacer = placer.get(...localPosition) ?? 0;
+            const occupancyId = occupancy.get(...localPosition) ?? 0;
+            if (occupancyId) {
+              throw new Error(
+                `Building materialization conflicts with occupied voxel at ${edit.position.join(
+                  ","
+                )}`
+              );
+            }
+            if (edit.value === 0) {
+              if (currentValue === 0) {
+                placer.del(...localPosition);
+                continue;
+              }
+              if (
+                edit.expectedValue === undefined ||
+                currentValue !== edit.expectedValue
+              ) {
+                throw new Error(
+                  `Building cleanup expected ${
+                    edit.expectedValue ?? "an explicit value"
+                  } but found ${currentValue} at ${edit.position.join(",")}`
+                );
+              }
+              if (seed.get(...localPosition) === 0) {
+                diff.del(...localPosition);
+              } else {
+                diff.set(...localPosition, 0);
+              }
+              placer.del(...localPosition);
+            } else {
+              if (currentValue === edit.value) {
+                // Idempotent retry. Preserve another actor's placer metadata rather
+                // than silently taking ownership of an already-materialized voxel.
+                if (!currentPlacer) {
+                  placer.set(...localPosition, edit.placerId);
+                }
+                continue;
+              }
+              const mayReplaceNaturalGround =
+                !currentPlacer &&
+                (edit.label === "foundation" || edit.label === "safe_ground");
+              if (currentValue !== 0 && !mayReplaceNaturalGround) {
+                throw new Error(
+                  `Building materialization would overwrite terrain ${currentValue} at ${edit.position.join(
+                    ","
+                  )}`
+                );
+              }
+              diff.set(...localPosition, edit.value);
               placer.set(...localPosition, edit.placerId);
             }
-            continue;
           }
-          const mayReplaceNaturalGround =
-            !currentPlacer &&
-            (edit.label === "foundation" || edit.label === "safe_ground");
-          if (currentValue !== 0 && !mayReplaceNaturalGround) {
-            throw new Error(
-              `Building materialization would overwrite terrain ${currentValue} at ${edit.position.join(
-                ","
-              )}`
-            );
-          }
-          diff.set(...localPosition, edit.value);
-          placer.set(...localPosition, edit.placerId);
+          terrainEntity.mutableShardDiff().buffer = saveBlockWrapper(
+            voxeloo,
+            diff
+          ).buffer;
+          terrainEntity.mutableShardPlacer().buffer = saveBlockWrapper(
+            voxeloo,
+            placer
+          ).buffer;
+          changedShardCount += 1;
+        } finally {
+          seed.delete();
+          diff.delete();
+          placer.delete();
+          occupancy.delete();
         }
       }
-      terrainEntity.mutableShardDiff().buffer = saveBlockWrapper(
-        voxeloo,
-        diff
-      ).buffer;
-      terrainEntity.mutableShardPlacer().buffer = saveBlockWrapper(
-        voxeloo,
-        placer
-      ).buffer;
-      directTerrainShardCount += 1;
-    } finally {
-      seed.delete();
-      diff.delete();
-      placer.delete();
-      occupancy.delete();
+      return changedShardCount;
     }
-  }
-  await editor.commit();
+  );
 
   let publishBatchCount = 0;
   if (input.logicApi) {
@@ -2417,14 +2426,14 @@ async function hydrateAndRepairHarthmereLiveModeIdempotencyReplay(input: {
 export async function ensureHarthmereWorldMaterializerPlayerExists(
   worldApi: WorldApi
 ) {
-  const editor = worldApi.edit();
-  await ensurePlayerExists(
-    editor,
-    HARTHMERE_WORLD_MATERIALIZER_USER_ID,
-    HARTHMERE_WORLD_MATERIALIZER_USERNAME,
-    true
+  await editWorldWithRetry(worldApi, (editor) =>
+    ensurePlayerExists(
+      editor,
+      HARTHMERE_WORLD_MATERIALIZER_USER_ID,
+      HARTHMERE_WORLD_MATERIALIZER_USERNAME,
+      true
+    )
   );
-  await editor.commit();
 }
 
 function normalizeHarthmereLiveModeActorStateAdoption(input: {
@@ -2831,7 +2840,7 @@ export async function persistHarthmereLiveModeResponse(
   // concurrency (see acquireHarthmereLiveModeTxClient).
   const { client: txPrimary, release: releaseTxPrimary } =
     await acquireHarthmereLiveModeTxClient(redis.primary);
-  const supportsWatch = typeof (txPrimary as any).watch === "function";
+  const supportsWatch = typeof txPrimary.watch === "function";
   if (!supportsWatch) {
     await releaseActorLock();
     await releaseTxPrimary();
@@ -2851,7 +2860,7 @@ export async function persistHarthmereLiveModeResponse(
       const previous = await txPrimary.get(key);
       mark("idempotency_get_ms", stageStartedAt);
       if (previous) {
-        return hydrateHarthmereLiveModeIdempotencyReplay({
+        return await hydrateHarthmereLiveModeIdempotencyReplay({
           redisPrimary: txPrimary,
           envelope,
           response: JSON.parse(previous) as LiveModeResponse,
@@ -2877,7 +2886,7 @@ export async function persistHarthmereLiveModeResponse(
       const now = Date.now();
       if (supportsWatch) {
         stageStartedAt = Date.now();
-        await (txPrimary as any).watch(...watchKeys);
+        await txPrimary.watch(...watchKeys);
         mark("watch_ms", stageStartedAt);
       }
 
@@ -2886,7 +2895,7 @@ export async function persistHarthmereLiveModeResponse(
       mark("watched_idempotency_get_ms", stageStartedAt);
       if (watchedPrevious) {
         await redisUnwatchIfSupported(txPrimary);
-        return hydrateHarthmereLiveModeIdempotencyReplay({
+        return await hydrateHarthmereLiveModeIdempotencyReplay({
           redisPrimary: txPrimary,
           envelope,
           response: JSON.parse(watchedPrevious) as LiveModeResponse,
@@ -2966,7 +2975,7 @@ export async function persistHarthmereLiveModeResponse(
 
       if ((sellerStateKey || sharedWorldWriteNeeded) && supportsWatch) {
         await redisUnwatchIfSupported(txPrimary);
-        await (txPrimary as any).watch(
+        await txPrimary.watch(
           ...uniqueHarthmereLiveModeWatchKeys([
             key,
             playerStateKey,
@@ -2978,7 +2987,7 @@ export async function persistHarthmereLiveModeResponse(
         const secondPrevious = await txPrimary.get(key);
         if (secondPrevious) {
           await redisUnwatchIfSupported(txPrimary);
-          return hydrateHarthmereLiveModeIdempotencyReplay({
+          return await hydrateHarthmereLiveModeIdempotencyReplay({
             redisPrimary: txPrimary,
             envelope,
             response: JSON.parse(secondPrevious) as LiveModeResponse,

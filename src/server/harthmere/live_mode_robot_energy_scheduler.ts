@@ -1,4 +1,5 @@
 import { connectToRedis } from "@/server/shared/redis/connection";
+import { editWorldWithRetry } from "@/server/shared/world/edit_retry";
 import {
   createHarthmereLiveModeSharedWorldState,
   defaultHarthmereLiveModeBackendState,
@@ -103,26 +104,26 @@ export async function syncHarthmereRobotEnergyStateToEcs(input: {
   const seeds = HARTHMERE_LIVE_ENTITY_ROBOT_SENTINEL_SEEDS.filter((seed) =>
     Boolean(input.robotProtection.robots[seed.robotId])
   );
-  const editor = input.worldApi.edit();
-  const entities = await editor.get(seeds.map((seed) => seed.entityId));
-  const syncedRobotIds: string[] = [];
-  for (let index = 0; index < seeds.length; index += 1) {
-    const seed = seeds[index];
-    const entity = entities[index];
-    const robot = input.robotProtection.robots[seed.robotId];
-    if (!entity || !robot) continue;
-    entity.setRobotComponent(
-      RobotComponent.create({
-        ...(entity.robotComponent() ?? {}),
-        internal_battery_charge: robot.energy,
-        internal_battery_capacity: robot.maxEnergy,
-        last_update: input.nowMs / 1000,
-      })
-    );
-    syncedRobotIds.push(seed.robotId);
-  }
-  await editor.commit();
-  return syncedRobotIds;
+  return editWorldWithRetry(input.worldApi, async (editor) => {
+    const entities = await editor.get(seeds.map((seed) => seed.entityId));
+    const syncedRobotIds: string[] = [];
+    for (let index = 0; index < seeds.length; index += 1) {
+      const seed = seeds[index];
+      const entity = entities[index];
+      const robot = input.robotProtection.robots[seed.robotId];
+      if (!entity || !robot) continue;
+      entity.setRobotComponent(
+        RobotComponent.create({
+          ...(entity.robotComponent() ?? {}),
+          internal_battery_charge: robot.energy,
+          internal_battery_capacity: robot.maxEnergy,
+          last_update: input.nowMs / 1000,
+        })
+      );
+      syncedRobotIds.push(seed.robotId);
+    }
+    return syncedRobotIds;
+  });
 }
 
 /**
@@ -141,71 +142,71 @@ export async function tickHarthmereRobotEnergyInEcs(input: {
     0,
     input.drainPerHour ?? LIVE_ENTITY_ROBOT_DEFAULT_DRAIN_PER_HOUR
   );
-  const editor = input.worldApi.edit();
   const seeds = HARTHMERE_LIVE_ENTITY_ROBOT_SENTINEL_SEEDS;
-  const entities = await editor.get(seeds.map((seed) => seed.entityId));
-  const robots = { ...input.robotProtection.robots };
-  const syncedRobotIds: string[] = [];
-  for (let index = 0; index < seeds.length; index += 1) {
-    const seed = seeds[index];
-    const entity = entities[index];
-    const component = entity?.robotComponent();
-    if (!entity || !component || !seed.robotId) continue;
-    const prior = robots[seed.robotId];
-    const maxEnergy = Math.max(
-      1,
-      Number(
-        component.internal_battery_capacity ??
-          prior?.maxEnergy ??
-          seed.maxEnergy ??
-          100
-      ) || 100
-    );
-    const previousEnergy = Math.max(
-      0,
-      Math.min(
-        maxEnergy,
+  return editWorldWithRetry(input.worldApi, async (editor) => {
+    const entities = await editor.get(seeds.map((seed) => seed.entityId));
+    const robots = { ...input.robotProtection.robots };
+    const syncedRobotIds: string[] = [];
+    for (let index = 0; index < seeds.length; index += 1) {
+      const seed = seeds[index];
+      const entity = entities[index];
+      const component = entity?.robotComponent();
+      if (!entity || !component || !seed.robotId) continue;
+      const prior = robots[seed.robotId];
+      const maxEnergy = Math.max(
+        1,
         Number(
-          component.internal_battery_charge ??
-            prior?.energy ??
-            seed.energy ??
-            maxEnergy
-        ) || 0
-      )
-    );
-    const lastUpdateMs = Math.max(
-      0,
-      Number(component.last_update ?? input.nowMs / 1000) * 1000
-    );
-    const elapsedHours = Math.max(0, input.nowMs - lastUpdateMs) / 3_600_000;
-    const energy = Number(
-      Math.max(0, previousEnergy - elapsedHours * drainPerHour).toFixed(3)
-    );
-    const mutable = entity.mutableRobotComponent();
-    mutable.internal_battery_capacity = maxEnergy;
-    mutable.internal_battery_charge = energy;
-    mutable.last_update = input.nowMs / 1000;
-    robots[seed.robotId] = {
-      robotId: seed.robotId,
-      areaId: seed.areaId,
-      displayName: seed.displayName,
-      energy,
-      maxEnergy,
-      status: liveEntityRobotEnergyStatus(energy, maxEnergy),
-      lastTickAtMs: input.nowMs,
-      depletedAtMs:
-        energy <= 0 ? prior?.depletedAtMs ?? input.nowMs : undefined,
+          component.internal_battery_capacity ??
+            prior?.maxEnergy ??
+            seed.maxEnergy ??
+            100
+        ) || 100
+      );
+      const previousEnergy = Math.max(
+        0,
+        Math.min(
+          maxEnergy,
+          Number(
+            component.internal_battery_charge ??
+              prior?.energy ??
+              seed.energy ??
+              maxEnergy
+          ) || 0
+        )
+      );
+      const lastUpdateMs = Math.max(
+        0,
+        Number(component.last_update ?? input.nowMs / 1000) * 1000
+      );
+      const elapsedHours = Math.max(0, input.nowMs - lastUpdateMs) / 3_600_000;
+      const energy = Number(
+        Math.max(0, previousEnergy - elapsedHours * drainPerHour).toFixed(3)
+      );
+      const mutable = entity.mutableRobotComponent();
+      mutable.internal_battery_capacity = maxEnergy;
+      mutable.internal_battery_charge = energy;
+      mutable.last_update = input.nowMs / 1000;
+      robots[seed.robotId] = {
+        robotId: seed.robotId,
+        areaId: seed.areaId,
+        displayName: seed.displayName,
+        energy,
+        maxEnergy,
+        status: liveEntityRobotEnergyStatus(energy, maxEnergy),
+        lastTickAtMs: input.nowMs,
+        depletedAtMs:
+          energy <= 0 ? prior?.depletedAtMs ?? input.nowMs : undefined,
+      };
+      syncedRobotIds.push(seed.robotId);
+    }
+    return {
+      robotProtection: normalizeLiveEntityRobotEnergyState(
+        { ...input.robotProtection, robots },
+        input.nowMs
+      ),
+      syncedRobotIds,
     };
-    syncedRobotIds.push(seed.robotId);
-  }
-  await editor.commit();
-  return {
-    robotProtection: normalizeLiveEntityRobotEnergyState(
-      { ...input.robotProtection, robots },
-      input.nowMs
-    ),
-    syncedRobotIds,
-  };
+  });
 }
 
 export async function readOrSeedHarthmereLiveModeRobotProtectionSharedState(input: {
@@ -435,11 +436,11 @@ export function startHarthmereLiveModeRobotEnergyScheduler(input?: {
       log.error("Harthmere robot energy scheduler tick failed", { error });
     } finally {
       if (!stopped) {
-        timeout = setTimeout(run, intervalMs);
+        timeout = setTimeout(() => void run(), intervalMs);
       }
     }
   };
-  timeout = setTimeout(run, 0);
+  timeout = setTimeout(() => void run(), 0);
   return {
     enabled: true,
     stop: () => {

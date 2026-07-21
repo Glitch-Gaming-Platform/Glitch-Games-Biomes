@@ -5,6 +5,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { ensurePlayerExists } from "@/server/logic/utils/players";
 import { readHarthmereRedisStrings } from "@/server/harthmere/live_mode_state_read_helpers";
 import { connectToRedis } from "@/server/shared/redis/connection";
+import { editWorldWithRetry } from "@/server/shared/world/edit_retry";
 import {
   connectForeignAuth,
   findLinkForForeignAuth,
@@ -497,12 +498,10 @@ function kickGlitchAsyncOutboxDrain() {
     return;
   }
   globalForHarthmere.__harthmereGlitchAsyncOutboxDrain = true;
-  setImmediate(async () => {
-    try {
-      await drainGlitchAsyncOutbox();
-    } finally {
+  setImmediate(() => {
+    void drainGlitchAsyncOutbox().finally(() => {
       globalForHarthmere.__harthmereGlitchAsyncOutboxDrain = false;
-    }
+    });
   });
 }
 
@@ -1526,9 +1525,9 @@ async function ensureLogicHasPlayer(
   userId: any,
   username: string
 ) {
-  const editor = req.context.worldApi.edit();
-  await ensurePlayerExists(editor, userId, username);
-  await editor.commit();
+  await editWorldWithRetry(req.context.worldApi, (editor) =>
+    ensurePlayerExists(editor, userId, username)
+  );
 }
 
 export async function createBiomesAuthForGlitchIdentity(

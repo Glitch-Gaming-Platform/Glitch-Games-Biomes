@@ -1,7 +1,7 @@
 import type { BakedBiscuitTray } from "@/server/shared/bikkie/registry";
 import { conformsWith } from "@/shared/bikkie/core";
 import { BikkieIds } from "@/shared/bikkie/ids";
-import type { Biscuit } from "@/shared/bikkie/schema/attributes";
+import { zBiscuit, type Biscuit } from "@/shared/bikkie/schema/attributes";
 import { bikkie } from "@/shared/bikkie/schema/biomes";
 import { HARTHMERE_GATHERING_AUTHORITY_NODES } from "@/shared/harthmere/gathering_node_authority";
 import {
@@ -31,6 +31,7 @@ import { NATIVE_ROAD_AHEAD_MUCKWAD_ITEM_ID } from "@/shared/harthmere/native_roa
 import { allHarthmereNativeQuestBiscuits } from "@/shared/harthmere/harthmere_native_quests";
 import { SNAPSHOT_GROVE_QUESTS } from "@/shared/harthmere/snapshot_grove_content";
 import { HARTHMERE_QUEST_CATALOG } from "@/shared/harthmere/quest_compendium";
+import { zrpcWebDeserialize, zrpcWebSerialize } from "@/shared/zrpc/serde";
 
 function tray(contents: ReadonlyMap<number, Biscuit> = new Map()) {
   return {
@@ -217,6 +218,10 @@ describe("Harthmere exact native Bikkie overlay", () => {
     for (const profile of profiles) {
       const biscuit = augmented.contents.get(profile.id);
       assert.ok(biscuit, `missing NPC biscuit ${profile.key}`);
+      assert.doesNotThrow(
+        () => zBiscuit.parse(biscuit),
+        `${profile.key} must survive the frontend Bikkie decoder`
+      );
       assert.equal(
         conformsWith(bikkie.schema.npcs.types.schema, biscuit),
         true,
@@ -230,6 +235,31 @@ describe("Harthmere exact native Bikkie overlay", () => {
         Boolean(biscuit.behavior?.chaseAttack),
         profile.attackDamage > 0
       );
+      assert.equal(
+        biscuit.behavior?.questGiver,
+        undefined,
+        `${profile.key} must omit disabled object-valued behaviors`
+      );
+      for (const [behaviorName, behavior] of Object.entries(
+        biscuit.behavior ?? {}
+      )) {
+        assert.notEqual(
+          typeof behavior,
+          "boolean",
+          `${profile.key}.${behaviorName} must be an object or absent`
+        );
+      }
+    }
+  });
+
+  it("round-trips every generated native biscuit through the frontend wire decoder", () => {
+    const augmented = withHarthmereNativeBikkieItems(tray());
+
+    for (const [id, biscuit] of augmented.contents) {
+      assert.doesNotThrow(() => {
+        const decoded = zrpcWebDeserialize(zrpcWebSerialize(biscuit), zBiscuit);
+        assert.equal(decoded.id, id);
+      }, `${biscuit.name ?? id} must match the frontend Bikkie wire schema`);
     }
   });
 

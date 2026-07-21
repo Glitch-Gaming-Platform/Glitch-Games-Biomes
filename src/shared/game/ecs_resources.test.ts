@@ -3,6 +3,7 @@ import type { EcsResourcePaths } from "@/shared/game/ecs_resources";
 import { SyntheticStats, WorldMetadata } from "@/shared/ecs/gen/components";
 import { WorldMetadataId } from "@/shared/ecs/ids";
 import { createTable } from "@/shared/ecs/table";
+import { HARTHMERE_EXPANDED_WORLD_EAST_EDGE_X } from "@/shared/harthmere/world_extension";
 import { BiomesResourcesBuilder } from "@/shared/resources/biomes";
 import assert from "assert";
 
@@ -26,7 +27,11 @@ describe("ECS metadata resources", () => {
     const metadata = resources.get("/ecs/metadata");
 
     assert.deepEqual(metadata.aabb.v0, [-2048, -256, -2048]);
-    assert.deepEqual(metadata.aabb.v1, [2048, 512, 2048]);
+    assert.deepEqual(metadata.aabb.v1, [
+      HARTHMERE_EXPANDED_WORLD_EAST_EDGE_X,
+      512,
+      2048,
+    ]);
   });
 
   it("uses fallback metadata for synthetic-only WorldMetadataId updates", () => {
@@ -45,7 +50,11 @@ describe("ECS metadata resources", () => {
     const metadata = resources.get("/ecs/metadata");
 
     assert.deepEqual(metadata.aabb.v0, [-2048, -256, -2048]);
-    assert.deepEqual(metadata.aabb.v1, [2048, 512, 2048]);
+    assert.deepEqual(metadata.aabb.v1, [
+      HARTHMERE_EXPANDED_WORLD_EAST_EDGE_X,
+      512,
+      2048,
+    ]);
   });
 
   it("prefers real world metadata when present", () => {
