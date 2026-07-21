@@ -7,11 +7,6 @@ import {
   type HarthmereJobsBoardWorldContext,
 } from "@/client/components/harthmere_jobs_board/jobsBoardLiveAdapter";
 import { useHarthmereJobsBoard } from "@/client/components/harthmere_jobs_board/useHarthmereJobsBoard";
-import {
-  grantHarthmereJobReward,
-  harthmereInventoryCanAcceptItems,
-  isHarthmereRepairToolEquipped,
-} from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
 import { HarthmereWantedBoardPanel } from "./HarthmereWantedBoardPanel";
 import {
   buildHarthmereWantedBoardView,
@@ -32,8 +27,12 @@ export function HarthmereWantedBoardLiveContainer({
   const [snapshot, setSnapshot] = React.useState<
     HarthmereJobsBoardSnapshot | undefined
   >();
-  const [mutationError, setMutationError] = React.useState<string | undefined>();
-  const [pendingActionId, setPendingActionId] = React.useState<string | undefined>();
+  const [mutationError, setMutationError] = React.useState<
+    string | undefined
+  >();
+  const [pendingActionId, setPendingActionId] = React.useState<
+    string | undefined
+  >();
   const adapter = React.useMemo(() => createHarthmereJobsBoardAdapter(), []);
 
   React.useEffect(() => {
@@ -88,38 +87,16 @@ export function HarthmereWantedBoardLiveContainer({
 
   const onCompleteJob = React.useCallback(
     (jobId: string, preferredBoardId?: string) => {
-      const job = snapshot?.myAcceptedJobs.find((entry) => entry.jobId === jobId);
+      const job = snapshot?.myAcceptedJobs.find(
+        (entry) => entry.jobId === jobId
+      );
       const todo = snapshot?.myTodos.find((entry) => entry.jobId === jobId);
       const mutationBoardId = preferredBoardId ?? job?.boardId ?? activeBoardId;
-      const rewardItems = job?.rewardItems ?? [];
-      const usedToolAction = isHarthmereRepairToolEquipped()
-        ? "repair"
-        : undefined;
       return run(`job:${jobId}`, async () => {
-        if (
-          rewardItems.length > 0 &&
-          !harthmereInventoryCanAcceptItems(
-            rewardItems.map((reward) => ({
-              itemId: reward.itemId,
-              quantity: reward.count,
-            }))
-          )
-        ) {
-          throw new Error(
-            "Free up backpack space to collect this bounty reward, then turn it in again."
-          );
-        }
-        const completed = await adapter.completeJobFully(jobId, mutationBoardId, {
+        return adapter.completeJobFully(jobId, mutationBoardId, {
           todoStatus: todo?.status,
           questTodoId: todo?.todoId,
-          usedToolAction,
         });
-        grantHarthmereJobReward({
-          jobId,
-          rewardGold: job?.rewardGold,
-          rewardItems,
-        });
-        return completed;
       });
     },
     [activeBoardId, adapter, run, snapshot]
@@ -138,7 +115,11 @@ export function HarthmereWantedBoardLiveContainer({
     return (
       <HarthmereWantedBoardPanel
         statusLine={
-          error || mutationError || (loading ? "Loading live wanted board..." : "Connecting to live wanted board...")
+          error ||
+          mutationError ||
+          (loading
+            ? "Loading live wanted board..."
+            : "Connecting to live wanted board...")
         }
         statusState={error || mutationError ? "error" : "info"}
         onClose={onClose}

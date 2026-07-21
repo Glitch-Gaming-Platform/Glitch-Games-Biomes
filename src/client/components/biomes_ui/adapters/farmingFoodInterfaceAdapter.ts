@@ -66,13 +66,16 @@ function bestFoodItemId(snapshot: any) {
   return Object.keys(HARTHMERE_FOOD_DEFINITIONS)
     .filter((itemId) => {
       const food = HARTHMERE_FOOD_DEFINITIONS[itemId];
-      return count(snapshot, itemId) > 0 &&
+      return (
+        count(snapshot, itemId) > 0 &&
         food.edible !== false &&
-        food.staminaRestore > 0;
+        food.staminaRestore > 0
+      );
     })
-    .sort((a, b) =>
-      HARTHMERE_FOOD_DEFINITIONS[b].staminaRestore -
-      HARTHMERE_FOOD_DEFINITIONS[a].staminaRestore
+    .sort(
+      (a, b) =>
+        HARTHMERE_FOOD_DEFINITIONS[b].staminaRestore -
+        HARTHMERE_FOOD_DEFINITIONS[a].staminaRestore
     )[0];
 }
 
@@ -83,7 +86,9 @@ function firstSeedItemId(snapshot: any) {
 }
 
 function nextPlotId(snapshot: any) {
-  const existing = new Set((snapshot?.plots ?? []).map((plot: any) => String(plot?.plotId ?? "")));
+  const existing = new Set(
+    (snapshot?.plots ?? []).map((plot: any) => String(plot?.plotId ?? ""))
+  );
   for (let index = 1; index <= 24; index += 1) {
     const candidate = `farm_plot_${String(index).padStart(3, "0")}`;
     if (!existing.has(candidate)) return candidate;
@@ -107,7 +112,8 @@ function plotIdForFarmingAction(plot: any) {
 
 function firstFeedItemId(snapshot: any) {
   return Object.keys(snapshot?.inventory ?? {}).find(
-    (itemId) => count(snapshot, itemId) > 0 && isHarthmereLivestockFeedItem(itemId)
+    (itemId) =>
+      count(snapshot, itemId) > 0 && isHarthmereLivestockFeedItem(itemId)
   );
 }
 
@@ -119,8 +125,9 @@ function availableCookingStations(snapshot: any) {
 }
 
 function cookingIngredientName(itemId: string) {
-  return harthmereFarmingFoodItemDisplayName(itemId) ??
-    itemId.replace(/_/g, " ");
+  return (
+    harthmereFarmingFoodItemDisplayName(itemId) ?? itemId.replace(/_/g, " ")
+  );
 }
 
 function missingCookingInput(snapshot: any, inputs: Record<string, number>) {
@@ -131,12 +138,16 @@ function missingCookingInput(snapshot: any, inputs: Record<string, number>) {
 
 export function buildFarmingFoodInterfaceModelForTest(
   snapshot: any,
-  hydrated = true,
+  hydrated = true
 ): FarmingFoodInterfaceModel {
   const safeSnapshot = snapshot ?? {};
   const plots = Array.isArray(safeSnapshot.plots) ? safeSnapshot.plots : [];
-  const livestock = Array.isArray(safeSnapshot.livestock) ? safeSnapshot.livestock : [];
-  const wildlife = Array.isArray(safeSnapshot.wildlife) ? safeSnapshot.wildlife : [];
+  const livestock = Array.isArray(safeSnapshot.livestock)
+    ? safeSnapshot.livestock
+    : [];
+  const wildlife = Array.isArray(safeSnapshot.wildlife)
+    ? safeSnapshot.wildlife
+    : [];
   const foodItemId = bestFoodItemId(safeSnapshot);
   const seedItemId = firstSeedItemId(safeSnapshot);
   const activePlot = firstActivePlot(safeSnapshot);
@@ -144,11 +155,15 @@ export function buildFarmingFoodInterfaceModelForTest(
   const feedItemId = firstFeedItemId(safeSnapshot);
   const livestockTarget = livestock[0];
   const updatedAtMs = Number(safeSnapshot.updatedAtMs);
-  const collectableLivestock = livestock.find((animal: any) =>
-    animal?.productReady === true ||
-    (Number.isFinite(updatedAtMs) && Number(animal?.productReadyAtMs) <= updatedAtMs)
+  const collectableLivestock = livestock.find(
+    (animal: any) =>
+      animal?.productReady === true ||
+      (Number.isFinite(updatedAtMs) &&
+        Number(animal?.productReadyAtMs) <= updatedAtMs)
   );
-  const harvestableWildlife = wildlife.find((animal: any) => animal?.harvestable === true);
+  const harvestableWildlife = wildlife.find(
+    (animal: any) => animal?.harvestable === true
+  );
   const seedSpawn = Array.isArray(safeSnapshot.seedSpawns)
     ? safeSnapshot.seedSpawns.find((spawn: any) => !spawn?.depletedAtMs)
     : undefined;
@@ -156,11 +171,13 @@ export function buildFarmingFoodInterfaceModelForTest(
     ? safeSnapshot.foodSpawns.find((spawn: any) => !spawn?.depletedAtMs)
     : undefined;
   const stations = availableCookingStations(safeSnapshot);
-  const cookingActions = Object.values(HARTHMERE_COOKING_RECIPES)
-    .map((recipe): FarmingFoodInterfaceAction => {
+  const cookingActions = Object.values(HARTHMERE_COOKING_RECIPES).map(
+    (recipe): FarmingFoodInterfaceAction => {
       const missingInput = missingCookingInput(safeSnapshot, recipe.inputs);
-      const stationAvailable = recipe.stationKind === "field" || stations.has(recipe.stationKind);
-      const id = COOKING_RECIPE_ACTION_IDS[recipe.recipeId] ??
+      const stationAvailable =
+        recipe.stationKind === "field" || stations.has(recipe.stationKind);
+      const id =
+        COOKING_RECIPE_ACTION_IDS[recipe.recipeId] ??
         (`cook_recipe:${recipe.recipeId}` as FarmingFoodActionKind);
       return {
         id,
@@ -168,7 +185,8 @@ export function buildFarmingFoodInterfaceModelForTest(
         operation: "cook_food",
         payload: {
           recipeId: recipe.recipeId,
-          rawItemId: recipe.recipeId === "grilled_meat" ? "raw_meat" : undefined,
+          rawItemId:
+            recipe.recipeId === "grilled_meat" ? "raw_meat" : undefined,
           stationKind: recipe.stationKind,
           count: 1,
         },
@@ -176,15 +194,18 @@ export function buildFarmingFoodInterfaceModelForTest(
         blockedReason: !stationAvailable
           ? `Needs ${recipe.stationKind}.`
           : missingInput
-            ? `Needs ${cookingIngredientName(missingInput)}.`
-            : undefined,
+          ? `Needs ${cookingIngredientName(missingInput)}.`
+          : undefined,
       };
-    });
+    }
+  );
 
   const actions: FarmingFoodInterfaceAction[] = [
     {
       id: "eat_best_food",
-      label: foodItemId ? `Eat ${HARTHMERE_FOOD_DEFINITIONS[foodItemId].displayName}` : "Eat Food",
+      label: foodItemId
+        ? `Eat ${HARTHMERE_FOOD_DEFINITIONS[foodItemId].displayName}`
+        : "Eat Food",
       operation: "eat_food",
       payload: { itemId: foodItemId ?? "" },
       disabled: !foodItemId,
@@ -193,9 +214,13 @@ export function buildFarmingFoodInterfaceModelForTest(
     ...cookingActions,
     {
       id: "gather_seed",
-      label: seedSpawn?.seedItemId && HARTHMERE_SEED_DEFINITIONS[seedSpawn.seedItemId]
-        ? `Gather ${HARTHMERE_SEED_DEFINITIONS[seedSpawn.seedItemId].displayName}`
-        : "Gather Seed",
+      label:
+        seedSpawn?.seedItemId &&
+        HARTHMERE_SEED_DEFINITIONS[seedSpawn.seedItemId]
+          ? `Gather ${
+              HARTHMERE_SEED_DEFINITIONS[seedSpawn.seedItemId].displayName
+            }`
+          : "Gather Seed",
       operation: "gather_seed",
       payload: {
         seedItemId: seedSpawn?.seedItemId ?? "",
@@ -206,9 +231,14 @@ export function buildFarmingFoodInterfaceModelForTest(
     },
     {
       id: "plant_seed",
-      label: seedItemId ? `Plant ${HARTHMERE_SEED_DEFINITIONS[seedItemId].displayName}` : "Plant Seed",
+      label: seedItemId
+        ? `Plant ${HARTHMERE_SEED_DEFINITIONS[seedItemId].displayName}`
+        : "Plant Seed",
       operation: "plant",
-      payload: { plotId: nextPlotId(safeSnapshot), seedItemId: seedItemId ?? "" },
+      payload: {
+        plotId: nextPlotId(safeSnapshot),
+        seedItemId: seedItemId ?? "",
+      },
       disabled: !seedItemId,
       blockedReason: seedItemId ? undefined : "No seed in backpack.",
     },
@@ -221,8 +251,8 @@ export function buildFarmingFoodInterfaceModelForTest(
       blockedReason: !activePlot
         ? "No active plot."
         : activePlot.wateredAtMs
-          ? "Plot is already watered."
-          : undefined,
+        ? "Plot is already watered."
+        : undefined,
     },
     {
       id: "harvest_plot",
@@ -245,15 +275,21 @@ export function buildFarmingFoodInterfaceModelForTest(
     },
     {
       id: "hunt_animal",
-      label: harvestableWildlife ? `Skin ${String(harvestableWildlife.species ?? "Animal")}` : "Skin Wild Animal",
+      label: harvestableWildlife
+        ? `Skin ${String(harvestableWildlife.species ?? "Animal")}`
+        : "Skin Wild Animal",
       operation: "hunt_animal",
       payload: { animalId: harvestableWildlife?.animalId ?? "" },
       disabled: !harvestableWildlife,
-      blockedReason: harvestableWildlife ? undefined : "No defeated legal wildlife nearby.",
+      blockedReason: harvestableWildlife
+        ? undefined
+        : "No defeated legal wildlife nearby.",
     },
     {
       id: "feed_livestock",
-      label: livestockTarget ? `Feed ${String(livestockTarget.species ?? "Livestock")}` : "Feed Livestock",
+      label: livestockTarget
+        ? `Feed ${String(livestockTarget.species ?? "Livestock")}`
+        : "Feed Livestock",
       operation: "feed_livestock",
       payload: {
         livestockId: livestockTarget?.livestockId ?? "",
@@ -263,16 +299,20 @@ export function buildFarmingFoodInterfaceModelForTest(
       blockedReason: !livestockTarget
         ? "No livestock selected."
         : feedItemId
-          ? undefined
-          : "No livestock feed in backpack.",
+        ? undefined
+        : "No livestock feed in backpack.",
     },
     {
       id: "collect_livestock_product",
-      label: collectableLivestock ? `Collect ${String(collectableLivestock.productItemId ?? "Product")}` : "Collect Livestock Product",
+      label: collectableLivestock
+        ? `Collect ${String(collectableLivestock.productItemId ?? "Product")}`
+        : "Collect Livestock Product",
       operation: "collect_livestock_product",
       payload: { livestockId: collectableLivestock?.livestockId ?? "" },
       disabled: !collectableLivestock,
-      blockedReason: livestockTarget ? "No livestock product is ready." : "No livestock selected.",
+      blockedReason: livestockTarget
+        ? "No livestock product is ready."
+        : "No livestock selected.",
     },
   ];
 
@@ -288,40 +328,40 @@ export function buildFarmingFoodInterfaceModelForTest(
   };
 }
 
-const FIELD_ACTION_PRIORITY: FarmingFoodActionKind[] = [
-  "harvest_plot",
-  "forage_food",
-  "collect_livestock_product",
-  "feed_livestock",
-  "hunt_animal",
-  "water_plot",
-  "plant_seed",
-  "gather_seed",
-];
-
 function firstEnabledAction(
   model: FarmingFoodInterfaceModel,
-  actionIds: FarmingFoodActionKind[],
+  actionIds: FarmingFoodActionKind[]
 ) {
   return actionIds
     .map((actionId) => model.actions.find((action) => action.id === actionId))
-    .find((action): action is FarmingFoodInterfaceAction => !!action && !action.disabled);
+    .find(
+      (action): action is FarmingFoodInterfaceAction =>
+        !!action && !action.disabled
+    );
 }
 
 export function farmingFoodQuickActionForKey(
   model: FarmingFoodInterfaceModel,
-  code: string,
+  code: string
 ): FarmingFoodInterfaceAction | undefined {
   if (!model.hydrated) return undefined;
   if (code === "KeyF") {
-    return firstEnabledAction(model, FIELD_ACTION_PRIORITY);
+    // F is a world-target interaction. Choosing the first global plot/animal
+    // action can harvest, feed, collect from, or hunt an entity the player is
+    // not facing. Targeted plant/NPC/loot overlays own F; this adapter retains
+    // only non-world R/T shortcuts until a concrete ECS target is supplied.
+    return undefined;
   }
   if (code === "KeyR") {
     return firstEnabledAction(model, ["eat_best_food"]);
   }
   if (code === "KeyT") {
-    return firstEnabledAction(model, COOKING_ACTION_PRIORITY) ??
-      model.actions.find((action) => action.operation === "cook_food" && !action.disabled);
+    return (
+      firstEnabledAction(model, COOKING_ACTION_PRIORITY) ??
+      model.actions.find(
+        (action) => action.operation === "cook_food" && !action.disabled
+      )
+    );
   }
   return undefined;
 }

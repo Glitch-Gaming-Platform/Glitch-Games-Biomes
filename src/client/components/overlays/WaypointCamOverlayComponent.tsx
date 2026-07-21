@@ -1,4 +1,5 @@
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
+import { WORLD_INTERACTION_PRIORITY } from "@/client/components/challenges/worldInteractionDispatcher";
 import {
   ClickIcon,
   getClickIcon,
@@ -33,6 +34,8 @@ export const WaypointCamOverlayComponent: React.FunctionComponent = () => {
         <ShortcutText
           shortcut="F"
           keyCode="KeyF"
+          worldInteractionCandidateId="active-tool:waypoint-camera-speed"
+          worldInteractionPriority={WORLD_INTERACTION_PRIORITY.activeTool}
           onKeyDown={() => {
             reactResources.update("/scene/waypoint_camera/track", (t) => {
               t.speed += 0.25;

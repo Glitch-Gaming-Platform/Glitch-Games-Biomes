@@ -92,6 +92,7 @@ import {
 } from "@/client/game/util/harthmere_entity_grounding";
 import { isHarthmereBusinessOwnerNpcEntityId } from "@/shared/harthmere/business_owner_npc_seed";
 import { isHarthmereBusinessCustomerNpcEntityId } from "@/shared/harthmere/business_customer_npc_seed";
+import { nativeBiomesEcsAuthorityEnabled } from "@/shared/harthmere/native_road_ahead_contract";
 import {
   SNAPSHOT_LIVE_NPC_GROUNDING_VERSION,
   snapshotGroundLiveNpcPosition,
@@ -1451,6 +1452,7 @@ export class NpcRenderState {
         ? becomeNPC
         : undefined;
     const localPlayer = resources.get("/scene/local_player");
+    const nativeEcsAuthority = nativeBiomesEcsAuthorityEnabled();
     const npcPosition = entity.position?.v;
     const npcTypeId = entity.npc_metadata.type_id;
     ok(npcTypeId);
@@ -1458,6 +1460,7 @@ export class NpcRenderState {
 
     const rawPosition = motionOverrides?.position ?? entity.position.v;
     const snapshotGroundedLiveNpc =
+      !nativeEcsAuthority &&
       !motionOverrides &&
       snapshotIsLiveFloatingGroveNpcCandidate({
         id: entity.id,
@@ -1465,9 +1468,13 @@ export class NpcRenderState {
         position: rawPosition,
         entityDescription: (entity as any).entity_description?.text,
       });
-    let position =
-      motionOverrides?.position ??
-      snapshotGroundLiveNpcPosition(rawPosition, entity.label?.text);
+    // In native mode the ECS Position is also the collision/hit-test position.
+    // Render-only grounding, route motion, or chase interpolation creates a
+    // visible body in one place and an authoritative hitbox in another.
+    let position = nativeEcsAuthority
+      ? rawPosition
+      : motionOverrides?.position ??
+        snapshotGroundLiveNpcPosition(rawPosition, entity.label?.text);
     if (snapshotGroundedLiveNpc) {
       this.mixedMesh.three.userData.snapshotLiveGrounding = {
         version: SNAPSHOT_LIVE_NPC_GROUNDING_VERSION,
@@ -1493,7 +1500,7 @@ export class NpcRenderState {
         : entity.orientation.v;
 
     const harthmereVoxelNpcMotion =
-      !motionOverrides && entity.health.hp > 0
+      !nativeEcsAuthority && !motionOverrides && entity.health.hp > 0
         ? getHarthmereVoxelNpcMotionOverride(
             entity,
             position,
@@ -1507,7 +1514,7 @@ export class NpcRenderState {
       orientation = harthmereVoxelNpcMotion.orientation;
     }
     const harthmereNavigationResult =
-      !motionOverrides && entity.health.hp > 0
+      !nativeEcsAuthority && !motionOverrides && entity.health.hp > 0
         ? resolveHarthmereNpcNavigationStep({
             label: entity.label?.text,
             mode: harthmereNavigationModeForMotion(harthmereVoxelNpcMotion),
@@ -1540,12 +1547,14 @@ export class NpcRenderState {
     } else if (this.mixedMesh.three.userData.harthmereNpcNavigationGuard) {
       delete this.mixedMesh.three.userData.harthmereNpcNavigationGuard;
     }
-    publishHarthmereVoxelNpcMotionActorPosition(
-      entity,
-      position,
-      orientation,
-      harthmereVoxelNpcMotion
-    );
+    if (!nativeEcsAuthority) {
+      publishHarthmereVoxelNpcMotionActorPosition(
+        entity,
+        position,
+        orientation,
+        harthmereVoxelNpcMotion
+      );
+    }
 
     if (
       !_.isEqual(this.position, position) ||

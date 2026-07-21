@@ -141,6 +141,8 @@ GLITCH_MUTABLE_HOTFIX_REDIS_KEY="${GLITCH_MUTABLE_HOTFIX_REDIS_KEY:-glitch:mutab
 HARTHMERE_BUSINESS_OUTPOST_MATERIALIZATION_MODE="${HARTHMERE_BUSINESS_OUTPOST_MATERIALIZATION_MODE:-per-outpost}"
 HARTHMERE_BUSINESS_OUTPOST_MATERIALIZATION_SCAN_COUNT="${HARTHMERE_BUSINESS_OUTPOST_MATERIALIZATION_SCAN_COUNT:-5000}"
 HARTHMERE_BUSINESS_OUTPOST_MATERIALIZATION_APPLY_SHARD_BATCH_SIZE="${HARTHMERE_BUSINESS_OUTPOST_MATERIALIZATION_APPLY_SHARD_BATCH_SIZE:-2}"
+HARTHMERE_CONNECTOR_ROUTE_SCAN_COUNT="${HARTHMERE_CONNECTOR_ROUTE_SCAN_COUNT:-5000}"
+HARTHMERE_CONNECTOR_ROUTE_APPLY_SHARD_BATCH_SIZE="${HARTHMERE_CONNECTOR_ROUTE_APPLY_SHARD_BATCH_SIZE:-4}"
 LOCAL_NETWORK="${LOCAL_NETWORK:-biomes-prod-smoke-net}"
 LOCAL_REDIS_CONTAINER="${LOCAL_REDIS_CONTAINER:-biomes-prod-smoke-redis}"
 LOCAL_REDIS_IMAGE="${LOCAL_REDIS_IMAGE:-redis:6.0.16-alpine}"
@@ -1398,6 +1400,24 @@ materialize_production_business_outposts() {
   log "Harthmere business outpost terrain materialization processed ${materialized_count}/${expected_count} outposts."
 }
 
+materialize_production_harthmere_connector_route() {
+  local redis_host redis_port
+  redis_host="${HARTHMERE_CONNECTOR_ROUTE_REDIS_HOST:-$PROD_REDIS_RECONCILE_HOST}"
+  redis_port="${HARTHMERE_CONNECTOR_ROUTE_REDIS_PORT:-$PROD_REDIS_PORT}"
+
+  log "Reconciling the protected Grove-to-Harthmere player route against production terrain."
+  APPLY=1 \
+    IS_SERVER=1 \
+    REDIS_HOST="$redis_host" \
+    GLITCH_REDIS_HOST="$redis_host" \
+    LOCAL_REDIS_HOST="$redis_host" \
+    REDIS_PORT="$redis_port" \
+    GLITCH_REDIS_PORT="$redis_port" \
+    SCAN_COUNT="$HARTHMERE_CONNECTOR_ROUTE_SCAN_COUNT" \
+    APPLY_SHARD_BATCH_SIZE="$HARTHMERE_CONNECTOR_ROUTE_APPLY_SHARD_BATCH_SIZE" \
+    node scripts/harthmere/materialize-harthmere-connector-route.cjs
+}
+
 reconcile_production_world_sync() {
   local revision="$1"
 
@@ -1414,6 +1434,12 @@ reconcile_production_world_sync() {
     materialize_production_business_outposts
   else
     log "Skipping Harthmere business outpost terrain reconciliation by request."
+  fi
+
+  if [ "${HARTHMERE_SKIP_CONNECTOR_ROUTE_MATERIALIZATION:-0}" != "1" ]; then
+    materialize_production_harthmere_connector_route
+  else
+    log "Skipping Grove-to-Harthmere connector route reconciliation by request."
   fi
 
   log "Reconciling Harthmere production world sync against production Redis."
@@ -1588,6 +1614,7 @@ run_build_checks() {
   node scripts/harthmere/test-harthmere-npc-route-graph.cjs .
   node scripts/harthmere/test-harthmere-runtime-navigation-collision.cjs .
   node scripts/harthmere/test-harthmere-npc-navigation-grounded-routes.cjs .
+  node scripts/harthmere/test-harthmere-connector-route-materialization.cjs .
   node scripts/harthmere/test-harthmere-glitch-cloud-save-all-state.cjs .
   node scripts/harthmere/test-harthmere-uploaded-coordinate-marker-cleanup.cjs
   node scripts/harthmere/test-harthmere-grove-npc-speed.cjs .

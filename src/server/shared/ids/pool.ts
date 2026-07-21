@@ -71,6 +71,11 @@ const usedIdsCounter = createCounter({
   help: "Actual number of IDs used",
 });
 
+const discardedIdsCounter = createCounter({
+  name: "game_id_discarded",
+  help: "Allocated IDs intentionally removed from reuse after a collision",
+});
+
 export class IdPoolLoan {
   private readonly allocated: BiomesId[] = [];
 
@@ -90,20 +95,30 @@ export class IdPoolLoan {
     return ids;
   }
 
-  commit(used: Iterable<BiomesId>) {
+  commit(used: Iterable<BiomesId>, discarded: Iterable<BiomesId> = []) {
     ok(this.allocated.length > 0, "No IDs were allocated");
     let usedCount = 0;
-    const ids = new Set(used);
+    let discardedCount = 0;
+    const usedIds = new Set(used);
+    const discardedIds = new Set(discarded);
     this.backing.return(
       ...this.allocated.filter((id) => {
-        if (ids.has(id)) {
+        if (usedIds.has(id)) {
           usedCount++;
+          return false;
+        }
+        // A failed ECS create may prove that an allocated ID already belongs
+        // to an authoritative entity. Never put that poisoned ID back into the
+        // pool: doing so makes every retry fail on the same [id, 0] IFF.
+        if (discardedIds.has(id)) {
+          discardedCount++;
           return false;
         }
         return true;
       })
     );
     usedIdsCounter.inc(usedCount);
+    discardedIdsCounter.inc(discardedCount);
     this.allocated.length = 0;
   }
 }

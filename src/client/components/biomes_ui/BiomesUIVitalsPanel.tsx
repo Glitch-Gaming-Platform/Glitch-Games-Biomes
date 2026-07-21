@@ -13,6 +13,12 @@ import {
 import { BIOMES_GAME_NAME } from "@/shared/biomes/display_names";
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
 import { nativeBiomesEcsAuthorityEnabled } from "@/shared/harthmere/native_road_ahead_contract";
+import {
+  harthmereNativeXpForNextLevel,
+  readHarthmereNativeCombatProgression,
+} from "@/shared/harthmere/harthmere_native_combat";
+import { readHarthmereNativeVitals } from "@/shared/harthmere/harthmere_native_vitals";
+import { HARTHMERE_GOLD_ECS_CURRENCY_ID } from "@/shared/harthmere/harthmere_biomes_ecs_bridge";
 import React from "react";
 import {
   biomesUIVitalsDisplayFromLiveStatusForTest,
@@ -181,6 +187,17 @@ export function formatBiomesLevelForVitalsForTest(value: unknown): string {
   return `Level ${level}`;
 }
 
+export function nativeGoldBalanceForVitalsForTest(
+  inventory:
+    | { currencies?: ReadonlyMap<string, { count?: bigint }> }
+    | undefined
+) {
+  const count = inventory?.currencies?.get(
+    String(HARTHMERE_GOLD_ECS_CURRENCY_ID)
+  )?.count;
+  return Math.max(0, Number(count ?? 0n));
+}
+
 function useLiveModeGoldBalance(): number {
   const [gold, setGold] = React.useState(0);
   React.useEffect(() => {
@@ -228,6 +245,13 @@ function useLiveModeGoldBalance(): number {
 export const BiomesUIVitalsPanel: React.FunctionComponent<{}> = () => {
   const { reactResources, userId } = useClientContext();
   const nativeHealth = reactResources.use("/ecs/c/health", userId);
+  const nativeTriggerState = reactResources.use("/ecs/c/trigger_state", userId);
+  const nativeInventory = reactResources.use("/ecs/c/inventory", userId);
+  const canBreathe = reactResources.useSubset(
+    (actions) => actions.canBreathe,
+    "/players/possible_terrain_actions",
+    userId
+  );
   const combat = useHarthmereCombatState();
   const multiplayer = useHarthmereMultiplayerCombatState();
   const stamina = useHarthmereFoodStaminaState();
@@ -235,9 +259,59 @@ export const BiomesUIVitalsPanel: React.FunctionComponent<{}> = () => {
   const leveling = useHarthmereLevelingState();
   const liveStatus = useBiomesUIPlayerStatusState();
 
+  React.useEffect(() => {
+    if (!nativeBiomesEcsAuthorityEnabled()) return;
+    // One idempotent server migration imports legacy level/equipment once.
+    // Subsequent combat and HUD updates arrive through normal ECS sync.
+    void defaultHarthmereLiveFetch("/api/harthmere/native_combat_sync", {
+      method: "POST",
+      credentials: "same-origin",
+    }).catch(() => undefined);
+  }, []);
+
+  React.useEffect(() => {
+    if (!nativeBiomesEcsAuthorityEnabled()) return;
+    let stopped = false;
+    let inFlight = false;
+    let activeController: AbortController | undefined;
+    const heartbeat = async () => {
+      if (stopped || inFlight) return;
+      inFlight = true;
+      activeController = new AbortController();
+      try {
+        await defaultHarthmereLiveFetch("/api/harthmere/native_vitals", {
+          method: "POST",
+          credentials: "same-origin",
+          signal: activeController.signal,
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "heartbeat",
+            gameplayActive:
+              typeof document === "undefined" ||
+              document.visibilityState === "visible",
+            underwater: canBreathe === false,
+          }),
+        });
+      } catch {
+        // ECS remains authoritative. The bounded next heartbeat safely resumes
+        // without stacking concurrent writes or applying a large catch-up tick.
+      } finally {
+        inFlight = false;
+        activeController = undefined;
+      }
+    };
+    void heartbeat();
+    const interval = window.setInterval(() => void heartbeat(), 1_000);
+    return () => {
+      stopped = true;
+      activeController?.abort();
+      window.clearInterval(interval);
+    };
+  }, [canBreathe]);
+
   const player = combat.player;
   const title = getHarthmereCombinedPublicTitle(reputation);
-  const gold = useLiveModeGoldBalance();
+  const legacyGold = useLiveModeGoldBalance();
   const display = biomesUIVitalsDisplayFromLiveStatusForTest(liveStatus, {
     hp: player.hp,
     maxHp: player.maxHp,
@@ -246,7 +320,7 @@ export const BiomesUIVitalsPanel: React.FunctionComponent<{}> = () => {
     resourceValue: multiplayer.mana,
     resourceMax: multiplayer.maxMana,
     standing: reputation.regions.harthmere,
-    gold,
+    gold: legacyGold,
   });
   // BiomesUI is the only active vitals surface. The data can arrive from the
   // server or the local-dev ECS bridge, but it must pass through the BiomesUI
@@ -257,6 +331,9 @@ export const BiomesUIVitalsPanel: React.FunctionComponent<{}> = () => {
   // single health/death authority.
   const useNativeHealth =
     nativeBiomesEcsAuthorityEnabled() && nativeHealth !== undefined;
+  const nativeVitals = readHarthmereNativeVitals(nativeTriggerState);
+  const useNativeVitals =
+    nativeBiomesEcsAuthorityEnabled() && nativeVitals.migrationVersion > 0;
   const healthHp = Math.max(
     0,
     Math.round(useNativeHealth ? nativeHealth.hp : display.hp)
@@ -272,27 +349,61 @@ export const BiomesUIVitalsPanel: React.FunctionComponent<{}> = () => {
       ? "in_combat"
       : "idle"
     : display.combatState;
-  // Mana stays local because casting is client-immediate. Stamina is owned by
-  // the live status cache in production, so the HUD shows the same server value
-  // that death/respawn and persistence use, with local stamina as a fallback.
-  const manaValue = Math.max(0, Math.round(multiplayer.mana));
-  const manaMax = Math.max(1, Math.round(multiplayer.maxMana));
+  // Mana, survival stamina, breath, and standing share the server-synced ECS
+  // TriggerState used by attacks, consumables, drowning, and death. Legacy
+  // adapters remain visible only until the one-time migration completes.
+  const manaValue = Math.max(
+    0,
+    Math.round(useNativeVitals ? nativeVitals.mana : multiplayer.mana)
+  );
+  const manaMax = Math.max(
+    1,
+    Math.round(useNativeVitals ? nativeVitals.maxMana : multiplayer.maxMana)
+  );
   const staminaDisplay = biomesUIVitalsStaminaDisplayForTest(liveStatus, {
     staminaValue: Math.max(0, Number(stamina.stamina) || 0),
     staminaMax: Math.max(1, Math.round(stamina.maxStamina)),
   });
-  const staminaValue = staminaDisplay.staminaValue;
-  const staminaMax = staminaDisplay.staminaMax;
-  const regional = display.standing ?? reputation.regions.harthmere;
-  // Level / XP come from the LOCAL leveling system (the source of truth where
-  // quests, gathering, building, and combat actually award XP via
-  // awardHarthmereXp) — not the 5-15s-polled backend status, which doesn't see
-  // those local awards and would otherwise show "Level 1" until the next poll.
-  const playerLevel = Math.max(1, Math.floor(leveling.level));
-  const xpCurrent = Math.max(0, Math.floor(leveling.xpCurrent));
+  const staminaValue = useNativeVitals
+    ? nativeVitals.stamina
+    : staminaDisplay.staminaValue;
+  const staminaMax = useNativeVitals
+    ? nativeVitals.maxStamina
+    : staminaDisplay.staminaMax;
+  const regional = useNativeVitals
+    ? {
+        likeability: nativeVitals.likeability,
+        legal: nativeVitals.legal,
+        notoriety: nativeVitals.notoriety,
+        notorietyFloor: nativeVitals.notorietyFloor,
+      }
+    : display.standing ?? reputation.regions.harthmere;
+  const gold = useNativeVitals
+    ? nativeGoldBalanceForVitalsForTest(nativeInventory)
+    : display.gold ?? legacyGold;
+  const nativeProgression =
+    readHarthmereNativeCombatProgression(nativeTriggerState);
+  const useNativeProgression =
+    nativeBiomesEcsAuthorityEnabled() && nativeProgression.migrationVersion > 0;
+  // Native combat level and XP share the TriggerState document used by the
+  // server's weapon gates and kill transaction. The local state is visible only
+  // before the one-time migration completes, preventing a temporary Level 1
+  // flash without keeping a second post-migration authority.
+  const playerLevel = Math.max(
+    1,
+    Math.floor(useNativeProgression ? nativeProgression.level : leveling.level)
+  );
+  const xpCurrent = Math.max(
+    0,
+    Math.floor(useNativeProgression ? nativeProgression.xp : leveling.xpCurrent)
+  );
   const xpNext = Math.max(
     1,
-    Math.floor(xpRequiredForNextHarthmereLevel(playerLevel))
+    Math.floor(
+      useNativeProgression
+        ? harthmereNativeXpForNextLevel(playerLevel)
+        : xpRequiredForNextHarthmereLevel(playerLevel)
+    )
   );
   const levelProgress = `${xpCurrent}/${xpNext} xp`;
   // Keep the class name from the live status but show the LOCAL level so the
@@ -391,11 +502,11 @@ export const BiomesUIVitalsPanel: React.FunctionComponent<{}> = () => {
           data-tone="notoriety"
           data-ui-id={UI_IDS.HUD_VITALS_GOLD}
           data-ui-blinking={goldHighlight.blinking ? "true" : undefined}
-          aria-label={`Gold ${display.gold ?? gold}`}
+          aria-label={`Gold ${gold}`}
         >
           <span className="biomes-ui-vitals-chip__label">Gold</span>
           <span className="biomes-ui-vitals-chip__value">
-            {formatBiomesGoldForVitalsForTest(display.gold ?? gold)}
+            {formatBiomesGoldForVitalsForTest(gold)}
           </span>
         </div>
         <div

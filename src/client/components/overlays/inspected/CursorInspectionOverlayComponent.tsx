@@ -2,11 +2,13 @@ import { useCanTalkToNpc } from "@/client/components/challenges/TalkToNPCDefault
 import { openHarthmereObjectContainer } from "@/client/components/challenges/harthmereObjectContainers";
 import {
   completeHarthmereJobsBoardFieldObjectiveForObjectSoon,
+  harthmereWorldObjectInteractionErrorMessage,
   performHarthmereObjectInteraction,
 } from "@/client/components/challenges/harthmereObjectInteractions";
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
 import { CURSOR_INSPECTION_SHORTCUT_KEYS_FOR_TEST } from "@/client/components/overlays/inspected/inspectionShortcutKeys";
 import { MaybeError } from "@/client/components/system/MaybeError";
+import { mergeInspectShortcutLayers } from "@/client/components/overlays/inspected/inspectShortcutOrdering";
 import { ShortcutText } from "@/client/components/system/ShortcutText";
 import type { InspectableOverlay } from "@/client/game/resources/overlays";
 import type { GlobalKeyCode } from "@/client/game/util/keyboard";
@@ -16,11 +18,7 @@ import {
   isHarthmereContainerObjectLabel,
   isHarthmereNonLivingObjectLabel,
 } from "@/shared/harthmere/object_interaction_semantics";
-import {
-  isNativeRoadAheadQuestObjectLabel,
-  nativeQuestGiverUsesEcsDialogue,
-  nativeRoadAheadEcsAuthorityEnabled,
-} from "@/shared/harthmere/native_road_ahead_contract";
+import { nativeQuestGiverUsesEcsDialogue } from "@/shared/harthmere/native_road_ahead_contract";
 import { relevantBiscuitForEntityId } from "@/shared/npc/bikkie";
 import type { PropsWithChildren } from "react";
 import { useMemo, useState } from "react";
@@ -44,6 +42,7 @@ export const CursorInspectionComponent: React.FunctionComponent<
     subtitle?: string | JSX.Element;
     shortcuts?: InspectShortcuts;
     suppressTalkShortcut?: boolean;
+    allowPlaceableObjectInteraction?: boolean;
     fade?: boolean;
   }>
 > = ({
@@ -55,6 +54,7 @@ export const CursorInspectionComponent: React.FunctionComponent<
   subtitle,
   shortcuts,
   suppressTalkShortcut,
+  allowPlaceableObjectInteraction,
   fade,
   children,
 }) => {
@@ -76,6 +76,10 @@ export const CursorInspectionComponent: React.FunctionComponent<
   );
   const [openingContainer, setOpeningContainer] = useState(false);
   const [containerOpenError, setContainerOpenError] = useState<string>();
+  const [objectInteractionPending, setObjectInteractionPending] =
+    useState(false);
+  const [objectInteractionError, setObjectInteractionError] =
+    useState<string>();
 
   const item = relevantBiscuitForEntityId(resources, overlay?.entityId);
   const inspectText =
@@ -96,34 +100,35 @@ export const CursorInspectionComponent: React.FunctionComponent<
   const harthmereObjectInteractionEntityId = overlay?.entityId;
   const harthmereObjectId =
     overlay?.kind === "harthmere_object" ? overlay.objectId : undefined;
-  // A native quest-giver prop may also have a crate/bag label. Its action is
-  // native dialogue and CompleteQuestStepAtEntityEvent, never the parallel
-  // label/localStorage container path.
-  const isNativeQuestObject =
-    nativeQuestGiverUsesEcsDialogue(questGiver) ||
-    (nativeRoadAheadEcsAuthorityEnabled() &&
-      isNativeRoadAheadQuestObjectLabel(harthmereObjectLabel));
+  // Quest metadata may add progression, but it must never replace a physical
+  // capability. Road Ahead's quest-giver frames are containers first; living
+  // NPC quest givers continue to use the native dialogue path.
+  const isNativeDialogueQuestObject = nativeQuestGiverUsesEcsDialogue(
+    questGiver,
+    harthmereObjectLabel
+  );
+  const canUseObjectSemantics =
+    overlay?.kind !== "placeable" || allowPlaceableObjectInteraction;
   const isHarthmereObjectContainer =
-    !isNativeQuestObject &&
-    overlay?.kind !== "placeable" &&
+    !isNativeDialogueQuestObject &&
+    canUseObjectSemantics &&
     isHarthmereContainerObjectLabel({
       label: harthmereObjectLabel,
       entityDescription: harthmereObjectDescription,
     });
   const isHarthmereWorldObject =
-    !isNativeQuestObject &&
-    overlay?.kind !== "placeable" &&
+    !isNativeDialogueQuestObject &&
+    canUseObjectSemantics &&
     isHarthmereNonLivingObjectLabel({
       label: harthmereObjectLabel,
       entityDescription: harthmereObjectDescription,
     });
-  const harthmereObjectInteraction =
-    overlay?.kind !== "placeable"
-      ? harthmereObjectInteractionForLabel({
-          label: harthmereObjectLabel,
-          entityDescription: harthmereObjectDescription,
-        })
-      : undefined;
+  const harthmereObjectInteraction = canUseObjectSemantics
+    ? harthmereObjectInteractionForLabel({
+        label: harthmereObjectLabel,
+        entityDescription: harthmereObjectDescription,
+      })
+    : undefined;
   // Procedural world props use INVALID_BIOMES_ID (0, falsy), so a plain
   // `overlay?.entityId` truthiness gate would hide their prompt. Treat the
   // harthmere_object overlay as an actionable target explicitly.
@@ -132,14 +137,19 @@ export const CursorInspectionComponent: React.FunctionComponent<
   );
 
   const trueShortcuts = useMemo(() => {
-    const ret = [...(shortcuts ?? [])];
+    // Typed overlays own F. Supplemental actions are appended so a quest_giver
+    // component cannot turn Move/Open/Read/Craft/Play into Talk, and an item
+    // buyer cannot turn a station or shop into Sell.
+    const typedActions = [...(shortcuts ?? [])];
+    const objectActions: InspectShortcuts = [];
+    const contextualActions: InspectShortcuts = [];
     if (
       !isHarthmereWorldObject &&
       !suppressTalkShortcut &&
       canTalk &&
       overlay?.entityId
     ) {
-      ret.unshift({
+      contextualActions.push({
         title: inspectText,
         onKeyDown: () => {
           reactResources.update("/scene/local_player", (localPlayer) => {
@@ -154,7 +164,7 @@ export const CursorInspectionComponent: React.FunctionComponent<
     }
 
     if (isHarthmereObjectContainer && harthmereObjectActionable) {
-      ret.unshift({
+      objectActions.push({
         title: openingContainer
           ? "Opening…"
           : harthmereObjectInteraction?.title ?? "Open Container",
@@ -205,10 +215,15 @@ export const CursorInspectionComponent: React.FunctionComponent<
       !isHarthmereObjectContainer &&
       harthmereObjectActionable
     ) {
-      ret.unshift({
-        title: harthmereObjectInteraction?.title ?? "Inspect",
+      objectActions.push({
+        title: objectInteractionPending
+          ? `${harthmereObjectInteraction?.title ?? "Inspect"}…`
+          : harthmereObjectInteraction?.title ?? "Inspect",
+        disabled: objectInteractionPending,
         onKeyDown: () => {
-          performHarthmereObjectInteraction({
+          setObjectInteractionError(undefined);
+          setObjectInteractionPending(true);
+          void performHarthmereObjectInteraction({
             entityId: harthmereObjectInteractionEntityId ?? INVALID_BIOMES_ID,
             objectId: harthmereObjectId,
             label: harthmereObjectLabel,
@@ -219,13 +234,22 @@ export const CursorInspectionComponent: React.FunctionComponent<
             },
             resources,
             gardenHose,
-          });
+          })
+            .catch((error) =>
+              setObjectInteractionError(
+                harthmereWorldObjectInteractionErrorMessage(
+                  error,
+                  harthmereObjectLabel ?? "this object"
+                )
+              )
+            )
+            .finally(() => setObjectInteractionPending(false));
         },
       });
     }
 
     if (!isHarthmereWorldObject && itemBuyer && overlay?.entityId) {
-      ret.unshift({
+      contextualActions.unshift({
         title: "Sell",
         onKeyDown: () => {
           reactResources.set("/game_modal", {
@@ -239,7 +263,11 @@ export const CursorInspectionComponent: React.FunctionComponent<
       });
     }
 
-    return ret;
+    return mergeInspectShortcutLayers(
+      typedActions,
+      objectActions,
+      contextualActions
+    );
   }, [
     canTalk,
     harthmereObjectInteraction,
@@ -250,8 +278,11 @@ export const CursorInspectionComponent: React.FunctionComponent<
     inspectText,
     isHarthmereObjectContainer,
     isHarthmereWorldObject,
-    isNativeQuestObject,
+    isNativeDialogueQuestObject,
+    canUseObjectSemantics,
     openingContainer,
+    objectInteractionPending,
+    objectInteractionError,
     containerOpenError,
     label?.text,
     overlay?.entityId,
@@ -272,7 +303,9 @@ export const CursorInspectionComponent: React.FunctionComponent<
       )}
       <div className="inspect">
         <>
-          <MaybeError error={containerOpenError ?? error} />
+          <MaybeError
+            error={containerOpenError ?? objectInteractionError ?? error}
+          />
           {customHeader}
           {(title || subtitle) && (
             <div className="title-subtitle">

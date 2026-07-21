@@ -11,11 +11,7 @@ import { completeHarthmereDailyTaskSoon } from "@/client/components/challenges/h
 import { dispatchHarthmereWorldObjectInteractionEvent } from "@/client/components/challenges/harthmereObjectInteractions";
 import { harthmereUserScopedStorageKey } from "@/client/components/challenges/LocalDevHarthmereUserScope";
 import { harthmereLocalStorage } from "@/client/util/storage";
-import {
-  isNativeRoadAheadQuestObjectLabel,
-  nativeBiomesEcsAuthorityEnabled,
-  nativeRoadAheadEcsAuthorityEnabled,
-} from "@/shared/harthmere/native_road_ahead_contract";
+import { nativeBiomesEcsAuthorityEnabled } from "@/shared/harthmere/native_road_ahead_contract";
 import { harthmereContainerLootForLabel } from "@/shared/harthmere/harthmere_container_loot_authority";
 import type { BiomesId } from "@/shared/ids";
 import { INVALID_BIOMES_ID } from "@/shared/ids";
@@ -660,16 +656,6 @@ export async function openHarthmereObjectContainer({
   resources?: unknown;
 }) {
   const displayLabel = label?.trim() || "Container";
-  if (
-    nativeRoadAheadEcsAuthorityEnabled() &&
-    isNativeRoadAheadQuestObjectLabel(displayLabel)
-  ) {
-    // Native quest objects are not loot containers. Their quest-giver dialog
-    // performs the ECS grant atomically and records the exact trigger progress;
-    // opening a second localStorage container created duplicate/wrong items and
-    // left The Road Ahead permanently waiting for its native collection step.
-    return { native: true } satisfies HarthmereObjectContainerOpenResult;
-  }
   if (nativeBiomesEcsAuthorityEnabled() && isBrowser()) {
     const response = await window.fetch("/api/harthmere/native_container", {
       method: "POST",

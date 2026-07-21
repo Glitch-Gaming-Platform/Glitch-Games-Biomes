@@ -7,6 +7,7 @@ import {
   HARTHMERE_JOBS_BOARD_ACCEPT_WINDOW_MAX_MS,
   HARTHMERE_JOBS_BOARD_ACCEPT_WINDOW_MIN_MS,
   HARTHMERE_JOBS_BOARD_ACCEPT_COOLDOWN_MS,
+  HARTHMERE_BUSINESS_OWNER_MARKER_PREFIX,
   HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
   HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS,
   defaultHarthmereJobsBoardState,
@@ -62,6 +63,18 @@ function mutate(
             ""
         )
       : undefined;
+  const authoritativeCompletedTargetIds =
+    operation === "complete_job_quest" && posting
+      ? posting.requirements.flatMap((requirement) => [
+          ...(requirement.targetId ? [requirement.targetId] : []),
+          ...(requirement.recipientNpcId
+            ? [
+                requirement.recipientNpcId,
+                `${HARTHMERE_BUSINESS_OWNER_MARKER_PREFIX}${requirement.recipientNpcId}`,
+              ]
+            : []),
+        ])
+      : undefined;
   return reduceHarthmereJobsBoardMutation(
     state,
     {
@@ -82,6 +95,7 @@ function mutate(
             },
           }
         : {}),
+      authoritativeCompletedTargetIds,
       ...ctx,
     })
   );
@@ -998,7 +1012,7 @@ describe("mmo_jobs_board_authority — repair-tool completion gate (HARTHMERE_RE
     );
   });
 
-  it("completes a repair job when the repair tool was used (usedToolAction matches)", () => {
+  it("completes a repair job when native equipped-tool evidence matches", () => {
     const posted = mutate(
       defaultHarthmereJobsBoardState(NOW),
       "create_job_posting",
@@ -1017,7 +1031,7 @@ describe("mmo_jobs_board_authority — repair-tool completion gate (HARTHMERE_RE
     const result = mutate(
       accepted.jobsBoard,
       "complete_job_quest",
-      { jobId, usedToolAction: "repair" },
+      { jobId },
       {
         actorInventoryItems: { repair_part: 1 },
         authoritativeEquippedToolActions: ["repair"],
@@ -1457,7 +1471,7 @@ describe("mmo_jobs_board_authority — delivery (HARTHMERE_DELIVERY)", () => {
     });
   }
 
-  it("blocks completing a person-delivery that was not handed to the recipient", () => {
+  it("blocks a delivery without server-observed recipient evidence", () => {
     const posted = mutate(
       defaultHarthmereJobsBoardState(NOW),
       "create_job_posting",
@@ -1477,7 +1491,10 @@ describe("mmo_jobs_board_authority — delivery (HARTHMERE_DELIVERY)", () => {
       accepted.jobsBoard,
       "complete_job_quest",
       { jobId },
-      { actorInventoryItems: { repair_part: 1 } },
+      {
+        actorInventoryItems: { repair_part: 1 },
+        authoritativeCompletedTargetIds: [],
+      },
       "seeker"
     );
     assert.ok(
@@ -1486,7 +1503,7 @@ describe("mmo_jobs_board_authority — delivery (HARTHMERE_DELIVERY)", () => {
     );
   });
 
-  it("completes a person-delivery handed to the recipient (completedTargetId matches owner marker)", () => {
+  it("completes a person-delivery at the server-observed recipient", () => {
     const posted = mutate(
       defaultHarthmereJobsBoardState(NOW),
       "create_job_posting",
@@ -1506,10 +1523,7 @@ describe("mmo_jobs_board_authority — delivery (HARTHMERE_DELIVERY)", () => {
     const result = mutate(
       accepted.jobsBoard,
       "complete_job_quest",
-      {
-        jobId,
-        completedTargetId: "harthmere_owner:npc_outpost_brightcart_trader",
-      },
+      { jobId },
       { actorInventoryItems: { repair_part: 1 } },
       "seeker"
     );

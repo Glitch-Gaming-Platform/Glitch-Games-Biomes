@@ -13,6 +13,7 @@ import type { ClientReactResources } from "@/client/game/resources/types";
 import { useUserCanAction } from "@/client/util/permissions_manager_hooks";
 import { useCachedPostBundle } from "@/client/util/social_manager_hooks";
 import type { BiomesId } from "@/shared/ids";
+import { isNativeRoadAheadQuestObjectLabel } from "@/shared/harthmere/native_road_ahead_contract";
 import { useCallback, useState } from "react";
 import heartBorderedIcon from "/public/hud/icon-16-heart-bordered.png";
 import heartFilledIcon from "/public/hud/icon-16-heart-filled-bordered.png";
@@ -173,22 +174,14 @@ export const FramePlaceableOverlayComponent: React.FunctionComponent<{
   overlay: PlaceableInspectOverlay;
 }> = ({ overlay }) => {
   const { reactResources } = useClientContext();
-  const questGiver = reactResources.use("/ecs/c/quest_giver", overlay.entityId);
-  const pictureFrameContents = reactResources.use(
-    "/ecs/c/picture_frame_contents",
-    overlay.entityId
+  const [questGiver, pictureFrameContents, label] = reactResources.useAll(
+    ["/ecs/c/quest_giver", overlay.entityId],
+    ["/ecs/c/picture_frame_contents", overlay.entityId],
+    ["/ecs/c/label", overlay.entityId]
   );
 
-  if (questGiver) {
-    // The original May 16 snapshot represents reward-choice objects such as
-    // the Clothing Crate and Billy's Toolbag as quest-giver picture frames.
-    // A blank-frame overlay only offered owner editing, swallowing Talk and its
-    // CompleteQuestStepAtEntityEvent. Route quest-giver frames through the
-    // normal cursor inspection so native dialog, exact reward grants, and the
-    // ordered challenge trigger all run unchanged.
-    return <CursorInspectionComponent overlay={overlay} />;
-  }
-
+  // Concrete frame contents are the frame's primary capability. Quest metadata
+  // can accompany a photo or minigame, but may not replace View/Play with Talk.
   if (pictureFrameContents?.photo_id) {
     return (
       <BiomesPostOverlayComponent
@@ -203,7 +196,25 @@ export const FramePlaceableOverlayComponent: React.FunctionComponent<{
         minigameId={pictureFrameContents.minigame_id}
       />
     );
-  } else {
-    return <BlankOverlayComponent overlay={overlay} />;
   }
+
+  if (isNativeRoadAheadQuestObjectLabel(label?.text)) {
+    // In the May 16 snapshot these two storage props happen to use the picture
+    // frame archetype and carry quest_giver. Their actual player-facing role is
+    // a native take/store container, so explicitly enable object semantics and
+    // suppress the generic NPC fallback.
+    return (
+      <CursorInspectionComponent
+        overlay={overlay}
+        allowPlaceableObjectInteraction
+        suppressTalkShortcut
+      />
+    );
+  }
+
+  if (questGiver) {
+    return <CursorInspectionComponent overlay={overlay} />;
+  }
+
+  return <BlankOverlayComponent overlay={overlay} />;
 };

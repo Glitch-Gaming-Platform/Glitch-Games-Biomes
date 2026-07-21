@@ -54,6 +54,13 @@ export class ChallengeClaimRewardsTrigger extends BaseStatelessTrigger {
     const event = this.findEvent(context);
     ok(event);
 
+    // A server-authoritative container transfer has already delivered the
+    // selected reward through native inventory. The firehose event exists to
+    // advance this original claim leaf, not to mint a duplicate item.
+    if (event.skipRewardGrant) {
+      return;
+    }
+
     const requestedRewardIndex =
       event.chosenRewardIndex === undefined ? 0 : event.chosenRewardIndex;
     // Guard against an out-of-range chosenRewardIndex silently granting nothing:
@@ -72,7 +79,6 @@ export class ChallengeClaimRewardsTrigger extends BaseStatelessTrigger {
         bag: this.rewardsList[rewardToGiveIndex],
       });
     }
-
   }
 
   protected override maybeTakeItems(context: TriggerContext): boolean {

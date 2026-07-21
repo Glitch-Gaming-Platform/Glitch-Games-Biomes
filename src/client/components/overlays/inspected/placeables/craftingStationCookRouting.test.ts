@@ -14,6 +14,7 @@ describe("placed crafting station cooking routing", () => {
       "Firepit",
       "Fire Pit",
       "Stone Oven",
+      "Iron Stove",
       "Cookpot",
       "Cooking Pot",
       "Soup Pot",
@@ -33,6 +34,7 @@ describe("isHarthmerePlacedCookStationItem prompt gate", () => {
       "Fire Pit",
       "Stone Oven",
       "Clay Oven",
+      "Kitchen Stove",
       "Cookpot",
       "Cooking Pot",
       "Soup Pot",
@@ -50,9 +52,7 @@ describe("isHarthmerePlacedCookStationItem prompt gate", () => {
   });
 
   it("matches the base-game campfire by id even with no display name", () => {
-    assert.ok(
-      isHarthmerePlacedCookStationItem({ id: BikkieIds.campfire })
-    );
+    assert.ok(isHarthmerePlacedCookStationItem({ id: BikkieIds.campfire }));
     assert.ok(
       isHarthmerePlacedCookStationItem({
         id: BikkieIds.campfire,

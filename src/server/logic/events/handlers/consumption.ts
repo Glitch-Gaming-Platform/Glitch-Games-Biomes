@@ -7,6 +7,10 @@ import { secondsSinceEpoch } from "@/shared/ecs/config";
 import { buffExpirationTime, buffTimeRemaining } from "@/shared/game/buffs";
 import { countOf } from "@/shared/game/items";
 import { isEqual, minBy } from "lodash";
+import {
+  applyHarthmereNativeConsumableToVitals,
+  harthmereNativeConsumableProfile,
+} from "@/shared/harthmere/harthmere_native_vitals";
 
 export const consumptionEventHandler = makeEventHandler("consumptionEvent", {
   prepareInvolves: (event) => ({
@@ -49,10 +53,25 @@ export const consumptionEventHandler = makeEventHandler("consumptionEvent", {
 
     addBuff({ itemId: event.item_id, player });
 
-    if (slot.item.givesHealth) {
+    const harthmereProfile = harthmereNativeConsumableProfile(slot.item);
+    if (harthmereProfile) {
+      // The item debit and resource recovery share this ECS transaction. Food,
+      // health items, and mana draughts therefore cannot be duplicated by a
+      // delayed client callback or applied without consuming the native stack.
+      applyHarthmereNativeConsumableToVitals(
+        player.mutableTriggerState(),
+        harthmereProfile
+      );
+    }
+
+    const healthRestore = Math.max(
+      0,
+      Number(slot.item.givesHealth ?? harthmereProfile?.healthRestore ?? 0) || 0
+    );
+    if (healthRestore > 0) {
       modifyPlayerHealth(
         player,
-        slot.item.givesHealth,
+        healthRestore,
         {
           kind: "heal",
         },

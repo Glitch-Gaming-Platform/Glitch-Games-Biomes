@@ -9,6 +9,7 @@ import {
 } from "@/client/components/inventory/helpers";
 import type { InspectShortcuts } from "@/client/components/overlays/inspected/CursorInspectionOverlayComponent";
 import { CursorInspectionComponent } from "@/client/components/overlays/inspected/CursorInspectionOverlayComponent";
+import { WORLD_INTERACTION_PRIORITY } from "@/client/components/challenges/worldInteractionDispatcher";
 import { SegmentedProgressBar } from "@/client/components/system/SegmentedProgressBar";
 import {
   ClickIcon,
@@ -119,6 +120,8 @@ const FishingReadyToCastOverlayComponent: React.FunctionComponent<{
             <ShortcutText
               shortcut="F"
               keyCode="KeyF"
+              worldInteractionCandidateId="active-tool:fishing-bait"
+              worldInteractionPriority={WORLD_INTERACTION_PRIORITY.activeTool}
               onKeyDown={() => {
                 setBaitIndex(
                   baitIndex === baits.length - 1 ? -1 : baitIndex + 1

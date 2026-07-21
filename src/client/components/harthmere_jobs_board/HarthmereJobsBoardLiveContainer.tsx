@@ -21,17 +21,13 @@ import {
 } from "./jobsBoardLiveAdapter";
 import { useHarthmereJobsBoard } from "./useHarthmereJobsBoard";
 import { HarthmereJobsBoardPanel } from "./HarthmereJobsBoardPanel";
-import {
-  grantHarthmereJobReward,
-  harthmereInventoryCanAcceptItems,
-  isHarthmereRepairToolEquipped,
-} from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
 
 // HARTHMERE_JOBS_BOARD_HARTHMERE_TOWN:
 // Mirrors the authority module's constants. Hardcoded here so the container
 // doesn't pull a server-only import on the client bundle. Kept in lockstep
 // via the test in __tests__/jobsBoardBoardSelector.test.ts.
-export const HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID_CLIENT = "harthmere_town_market_jobs_board" as const;
+export const HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID_CLIENT =
+  "harthmere_town_market_jobs_board" as const;
 
 const completedDailyTasksForSession = new Set<string>();
 
@@ -53,9 +49,15 @@ export function HarthmereJobsBoardLiveContainer({
   onClose?: () => void;
 }) {
   const { state, loading, error, refresh } = useHarthmereJobsBoard();
-  const [snapshot, setSnapshot] = React.useState<HarthmereJobsBoardSnapshot | undefined>();
-  const [mutationError, setMutationError] = React.useState<string | undefined>();
-  const [pendingActionId, setPendingActionId] = React.useState<string | undefined>();
+  const [snapshot, setSnapshot] = React.useState<
+    HarthmereJobsBoardSnapshot | undefined
+  >();
+  const [mutationError, setMutationError] = React.useState<
+    string | undefined
+  >();
+  const [pendingActionId, setPendingActionId] = React.useState<
+    string | undefined
+  >();
 
   // The fetcher publishes to `state`; mirror it into local `snapshot` so the
   // mutation path can also replace it without round-tripping the fetcher.
@@ -67,7 +69,9 @@ export function HarthmereJobsBoardLiveContainer({
 
   React.useEffect(() => {
     if (!snapshot) return;
-    const physicalBoardId = worldContext ? nearestPhysicalHarthmereJobsBoardId(snapshot, worldContext) : snapshot.defaultBoardId;
+    const physicalBoardId = worldContext
+      ? nearestPhysicalHarthmereJobsBoardId(snapshot, worldContext)
+      : snapshot.defaultBoardId;
     if (!physicalBoardId) return;
     const taskId = "jobs_board";
     if (completedDailyTasksForSession.has(taskId)) return;
@@ -82,7 +86,7 @@ export function HarthmereJobsBoardLiveContainer({
       worldContext
         ? nearestPhysicalHarthmereJobsBoardId(snapshot, worldContext)
         : undefined,
-    [snapshot, worldContext],
+    [snapshot, worldContext]
   );
   const activeBoardId =
     boardId ??
@@ -104,13 +108,13 @@ export function HarthmereJobsBoardLiveContainer({
         setPendingActionId(undefined);
       }
     },
-    [pendingActionId],
+    [pendingActionId]
   );
 
   const onAcceptJob = React.useCallback(
     (jobId: string) =>
       run(`accept:${jobId}`, () => adapter.acceptJob(jobId, activeBoardId)),
-    [adapter, activeBoardId, run],
+    [adapter, activeBoardId, run]
   );
   const onCompleteJob = React.useCallback(
     (jobId: string) => {
@@ -118,64 +122,35 @@ export function HarthmereJobsBoardLiveContainer({
       // then claim the payout. The current todo status decides whether the
       // verification step is still needed.
       const todo = snapshot?.myTodos.find((entry) => entry.jobId === jobId);
-      // HARTHMERE_REPAIR_TOOL_COMPLETION: report the repair tool as used
-      // when it is equipped, so the server completes a repair-gated job (and
-      // otherwise rejects it, which surfaces the "equip a repair tool" prompt).
-      const usedToolAction = isHarthmereRepairToolEquipped()
-        ? "repair"
-        : undefined;
-      const job = snapshot?.myAcceptedJobs.find((entry) => entry.jobId === jobId);
-      const rewardItems = job?.rewardItems ?? [];
       return run(`complete:${jobId}`, async () => {
-        // HARTHMERE_JOB_REWARD_BRIDGE: refuse the turn-in if the reward items
-        // would not fit, BEFORE the server marks it complete, so a full backpack
-        // never loses the reward. The job stays claimable once space is freed.
-        if (
-          rewardItems.length > 0 &&
-          !harthmereInventoryCanAcceptItems(
-            rewardItems.map((reward) => ({
-              itemId: reward.itemId,
-              quantity: reward.count,
-            }))
-          )
-        ) {
-          throw new Error(
-            "Free up backpack space to collect this job's reward, then turn it in again."
-          );
-        }
-        const completed = await adapter.completeJobFully(jobId, activeBoardId, {
+        return adapter.completeJobFully(jobId, activeBoardId, {
           todoStatus: todo?.status,
           questTodoId: todo?.todoId,
-          usedToolAction,
         });
-        // Bridge the payout into the visible HUD wallet + inventory (idempotent
-        // per jobId, so a re-fired turn-in can't double-grant).
-        grantHarthmereJobReward({
-          jobId,
-          rewardGold: job?.rewardGold,
-          rewardItems,
-        });
-        return completed;
       });
     },
-    [adapter, activeBoardId, run, snapshot],
+    [adapter, activeBoardId, run, snapshot]
   );
   const onCancelJob = React.useCallback(
     (jobId: string) =>
       run(`cancel:${jobId}`, () => adapter.cancelJob(jobId, activeBoardId)),
-    [adapter, activeBoardId, run],
+    [adapter, activeBoardId, run]
   );
   const onPostJob = React.useCallback(
     (payload: Record<string, unknown>) =>
       run("post:create", () =>
         adapter.postJob({ ...payload, boardId: activeBoardId })
       ),
-    [adapter, activeBoardId, run],
+    [adapter, activeBoardId, run]
   );
 
   if (!snapshot) {
     return (
-      <div className="harthmere-jobs-board__backdrop" role="dialog" aria-modal="true">
+      <div
+        className="harthmere-jobs-board__backdrop"
+        role="dialog"
+        aria-modal="true"
+      >
         <section
           className="harthmere-jobs-board"
           data-harthmere-jobs-board-interface="true"
@@ -186,14 +161,35 @@ export function HarthmereJobsBoardLiveContainer({
           <header className="harthmere-jobs-board__header">
             <div>
               <h2>Jobs Board</h2>
-              <p>{loading ? "Loading live board state…" : (error ?? mutationError) ? "Could not reach the jobs board." : "Connecting…"}</p>
+              <p>
+                {loading
+                  ? "Loading live board state…"
+                  : error ?? mutationError
+                  ? "Could not reach the jobs board."
+                  : "Connecting…"}
+              </p>
             </div>
-            <button onClick={onClose} aria-label="Close jobs board">×</button>
+            <button onClick={onClose} aria-label="Close jobs board">
+              ×
+            </button>
           </header>
           <main className="harthmere-jobs-board__content">
-            <div className="harthmere-jobs-board__status" data-state={error || mutationError ? "error" : "info"}>
-              <span>{error || mutationError || (loading ? "Fetching jobs from the live backend…" : "Waiting for backend response.")}</span>
-              <button type="button" onClick={() => void refresh()} disabled={loading}>
+            <div
+              className="harthmere-jobs-board__status"
+              data-state={error || mutationError ? "error" : "info"}
+            >
+              <span>
+                {error ||
+                  mutationError ||
+                  (loading
+                    ? "Fetching jobs from the live backend…"
+                    : "Waiting for backend response.")}
+              </span>
+              <button
+                type="button"
+                onClick={() => void refresh()}
+                disabled={loading}
+              >
                 Retry
               </button>
             </div>
@@ -206,12 +202,12 @@ export function HarthmereJobsBoardLiveContainer({
   const statusLine = mutationError
     ? mutationError
     : error
-      ? error
-      : pendingActionId
-        ? "Sending request to live backend..."
-      : loading
-        ? "Refreshing from live backend…"
-        : `Live · ${snapshot.openJobs.length} open · ${snapshot.myAcceptedJobs.length} accepted by you`;
+    ? error
+    : pendingActionId
+    ? "Sending request to live backend..."
+    : loading
+    ? "Refreshing from live backend…"
+    : `Live · ${snapshot.openJobs.length} open · ${snapshot.myAcceptedJobs.length} accepted by you`;
 
   // HARTHMERE_JOBS_BOARD_PROXIMITY_GATE:
   // The player must be physically at a board (either via interaction prompt,
@@ -222,7 +218,10 @@ export function HarthmereJobsBoardLiveContainer({
   // are unaffected — only the new HUD wiring passes worldContext.
   if (worldContext) {
     if (!physicalBoardId) {
-      const hints = listHarthmereJobsBoardWayfindingHints(snapshot, worldContext);
+      const hints = listHarthmereJobsBoardWayfindingHints(
+        snapshot,
+        worldContext
+      );
       return (
         <div
           className="harthmere-jobs-board__backdrop"
@@ -243,25 +242,40 @@ export function HarthmereJobsBoardLiveContainer({
             <header className="harthmere-jobs-board__header">
               <div>
                 <h2>Walk to a Jobs Board</h2>
-                <p>You must be standing at a physical board to read or post jobs.</p>
+                <p>
+                  You must be standing at a physical board to read or post jobs.
+                </p>
               </div>
-              <button onClick={onClose} aria-label="Close jobs board">×</button>
+              <button onClick={onClose} aria-label="Close jobs board">
+                ×
+              </button>
             </header>
             <main className="harthmere-jobs-board__content">
               {hints.length === 0 ? (
                 <p className="empty">No jobs boards are registered yet.</p>
               ) : (
-                <div className="harthmere-jobs-grid" data-testid="harthmere-jobs-board-wayfinding">
+                <div
+                  className="harthmere-jobs-grid"
+                  data-testid="harthmere-jobs-board-wayfinding"
+                >
                   {hints.map((hint) => (
                     <article className="harthmere-jobs-card" key={hint.boardId}>
                       <strong>{hint.displayName}</strong>
                       <span>{hint.district}</span>
                       <small>
                         {Number.isFinite(hint.approxDistanceMeters)
-                          ? `${hint.approxDistanceMeters}m away · world ${Math.round(hint.position.x)}, ${Math.round(hint.position.z)}`
-                          : `World ${Math.round(hint.position.x)}, ${Math.round(hint.position.z)}`}
+                          ? `${
+                              hint.approxDistanceMeters
+                            }m away · world ${Math.round(
+                              hint.position.x
+                            )}, ${Math.round(hint.position.z)}`
+                          : `World ${Math.round(hint.position.x)}, ${Math.round(
+                              hint.position.z
+                            )}`}
                       </small>
-                      <em>Open the map (M) and follow the marker to this board.</em>
+                      <em>
+                        Open the map (M) and follow the marker to this board.
+                      </em>
                     </article>
                   ))}
                 </div>
@@ -306,7 +320,11 @@ export function HarthmereJobsBoardLiveContainer({
           }}
         >
           <span>{statusLine}</span>
-          <button type="button" onClick={() => void refresh()} disabled={loading}>
+          <button
+            type="button"
+            onClick={() => void refresh()}
+            disabled={loading}
+          >
             Refresh
           </button>
         </div>

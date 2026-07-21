@@ -2,6 +2,7 @@ import {
   registerWorldInteractionCandidate,
   resetWorldInteractionDispatcherForTest,
   selectedWorldInteractionIdForKey,
+  WORLD_INTERACTION_PRIORITY,
 } from "@/client/components/challenges/worldInteractionDispatcher";
 import assert from "assert";
 
@@ -55,5 +56,53 @@ describe("world interaction dispatcher", () => {
     });
     assert.equal(selectedWorldInteractionIdForKey("KeyF"), "f-only");
     assert.equal(selectedWorldInteractionIdForKey("KeyE"), "e-only");
+  });
+
+  it("lets an explicitly active tool own F over an inspected world entity", () => {
+    registerWorldInteractionCandidate({
+      id: "native-container",
+      priority: WORLD_INTERACTION_PRIORITY.nativeEcs,
+      onInteract: () => undefined,
+    });
+    registerWorldInteractionCandidate({
+      id: "active-camera",
+      priority: WORLD_INTERACTION_PRIORITY.activeTool,
+      onInteract: () => undefined,
+    });
+    assert.equal(selectedWorldInteractionIdForKey("KeyF"), "active-camera");
+  });
+
+  it("ignores candidates whose current target guard is false", () => {
+    registerWorldInteractionCandidate({
+      id: "stale-nearest-board",
+      priority: 100,
+      canHandle: () => false,
+      onInteract: () => undefined,
+    });
+    registerWorldInteractionCandidate({
+      id: "faced-sign",
+      priority: 90,
+      canHandle: () => true,
+      onInteract: () => undefined,
+    });
+    assert.equal(selectedWorldInteractionIdForKey("KeyF"), "faced-sign");
+  });
+
+  it("restores the prior candidate when an overlapping target unmounts", () => {
+    const board = registerWorldInteractionCandidate({
+      id: "board",
+      priority: 100,
+      onInteract: () => undefined,
+    });
+    const crate = registerWorldInteractionCandidate({
+      id: "crate",
+      priority: 100,
+      onInteract: () => undefined,
+    });
+    assert.equal(selectedWorldInteractionIdForKey(), "crate");
+    crate.unregister();
+    assert.equal(selectedWorldInteractionIdForKey(), "board");
+    board.unregister();
+    assert.equal(selectedWorldInteractionIdForKey(), undefined);
   });
 });

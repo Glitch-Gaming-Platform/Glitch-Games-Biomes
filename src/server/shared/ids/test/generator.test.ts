@@ -3,6 +3,7 @@ import {
   ilcg,
   lcg,
   MAX_ID,
+  SHARDS,
 } from "@/server/shared/ids/generator";
 import { createBdb } from "@/server/shared/storage";
 import { createInMemoryStorage } from "@/server/shared/storage/memory";
@@ -39,5 +40,19 @@ describe("Test ID generation", () => {
     const db = createBdb(store);
     const generator = new DbIdGenerator(db, [42]);
     assert.equal(await generator.next(), 86826341220823);
+  });
+
+  it("removes exhausted shards instead of retrying them forever", async () => {
+    const store = createInMemoryStorage();
+    const db = createBdb(store);
+    const shard = 42;
+    const shardSize = Number(MAX_ID / BigInt(SHARDS));
+    await db
+      .collection("id-generators")
+      .doc(String(shard))
+      .set({ next: shardSize - 1 });
+
+    const generator = new DbIdGenerator(db, [shard]);
+    await assert.rejects(() => generator.next(), /Id space exhausted/);
   });
 });

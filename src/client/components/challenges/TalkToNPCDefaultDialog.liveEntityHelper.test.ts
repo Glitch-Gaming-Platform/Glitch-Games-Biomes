@@ -155,6 +155,8 @@ describe("live-entity helper dialog context", () => {
       "The Grove",
       "Road to Harthmere",
       "Harthmere Bridge Center",
+      "Harthmere Road — Grove Trailhead",
+      "Harthmere Road — West Gate",
     ]);
     const worldObjectLabels = SNAPSHOT_GROVE_LANDMARKS.filter(
       (landmark) =>
@@ -213,6 +215,8 @@ describe("live-entity helper dialog context", () => {
       "The Grove",
       "Road to Harthmere",
       "Harthmere Bridge Center",
+      "Harthmere Road — Grove Trailhead",
+      "Harthmere Road — West Gate",
     ]);
     const labels = [
       ...SNAPSHOT_GROVE_LANDMARKS,

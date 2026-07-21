@@ -10,7 +10,15 @@ import {
   harthmereNativeBiomesIdForItemId,
   withHarthmereNativeBikkieItems,
 } from "@/shared/harthmere/harthmere_native_bikkie_items";
+import { allHarthmereNativeNpcCombatProfiles } from "@/shared/harthmere/harthmere_native_combat_catalog";
+import { HARTHMERE_FOOD_DEFINITIONS } from "@/shared/harthmere/mmo_farming_food_stamina";
+import { HARTHMERE_MEDICAL_ITEM_DEFINITIONS } from "@/shared/harthmere/mmo_medical_health";
+import {
+  getHarthmereItemDefinition,
+  registerHarthmereItemDefinition,
+} from "@/shared/harthmere/mmo_inventory_authority";
 import assert from "assert";
+import type { BiomesId } from "@/shared/ids";
 
 function tray(contents: ReadonlyMap<number, Biscuit> = new Map()) {
   return {
@@ -81,6 +89,128 @@ describe("Harthmere exact native Bikkie overlay", () => {
     );
   });
 
+  it("publishes authored furniture and stations as native ECS placeables", () => {
+    const definition = ensureHarthmereNativeItemCatalogue().find(
+      (entry) =>
+        entry.objectMetadata?.sizeVoxels &&
+        ["device", "station", "furniture", "garden", "fixture"].includes(
+          entry.objectMetadata.objectKind
+        )
+    );
+    assert.ok(definition, "expected at least one authored placeable object");
+    const biscuit = withHarthmereNativeBikkieItems(tray()).contents.get(
+      harthmereNativeBiomesIdForItemId(definition.itemId)!
+    );
+    assert.equal(biscuit?.isPlaceable, true);
+    assert.deepEqual(biscuit?.boxSize, [
+      definition.objectMetadata!.sizeVoxels!.width,
+      definition.objectMetadata!.sizeVoxels!.height,
+      definition.objectMetadata!.sizeVoxels!.depth,
+    ]);
+  });
+
+  it("treats legacy Muckwad names as one exact snapshot stack", () => {
+    ensureHarthmereNativeItemCatalogue();
+    const canonical = getHarthmereItemDefinition("muckwad");
+    assert.ok(canonical);
+    if (!getHarthmereItemDefinition("muckwad_voxel_block")) {
+      registerHarthmereItemDefinition({
+        ...canonical,
+        itemId: "muckwad_voxel_block",
+        displayName: "Muckwad Voxel Block",
+      });
+    }
+
+    assert.equal(
+      harthmereNativeBiomesIdForItemId("muckwad"),
+      harthmereNativeBiomesIdForItemId("muckwad_voxel_block")
+    );
+    assert.doesNotThrow(() => withHarthmereNativeBikkieItems(tray()));
+  });
+
+  it("publishes exact native NPC types with damage, aggro, drops, and trigger identity", () => {
+    const augmented = withHarthmereNativeBikkieItems(tray());
+    const profiles = allHarthmereNativeNpcCombatProfiles();
+    assert.ok(profiles.length > 3);
+    assert.equal(
+      new Set(profiles.map((profile) => profile.id)).size,
+      profiles.length
+    );
+
+    for (const profile of profiles) {
+      const biscuit = augmented.contents.get(profile.id);
+      assert.ok(biscuit, `missing NPC biscuit ${profile.key}`);
+      assert.equal(
+        conformsWith(bikkie.schema.npcs.types.schema, biscuit),
+        true,
+        `${profile.key} must conform to /npcs/types`
+      );
+      assert.equal(
+        biscuit.behavior?.damageable?.attackable,
+        profile.behaviorKind !== "sentinel"
+      );
+      assert.equal(
+        Boolean(biscuit.behavior?.chaseAttack),
+        profile.attackDamage > 0
+      );
+    }
+  });
+
+  it("authors native weapon DPS and durable armor on exact item biscuits", () => {
+    const augmented = withHarthmereNativeBikkieItems(tray());
+    const sword = augmented.contents.get(
+      harthmereNativeBiomesIdForItemId("iron_longsword")!
+    );
+    const bow = augmented.contents.get(
+      harthmereNativeBiomesIdForItemId("hunter_bow")!
+    );
+    const armor = augmented.contents.get(
+      harthmereNativeBiomesIdForItemId("leather_armor")!
+    );
+
+    assert.ok(sword?.dps && sword.dps > 30);
+    assert.ok(sword?.lifetimeDurabilityMs);
+    assert.equal(sword?.isTool, true);
+    assert.ok(bow?.dps && bow.dps > 0);
+    assert.equal(armor?.isWearable, true);
+    assert.equal(armor?.wearAsTop, true);
+    assert.ok(armor?.lifetimeDurabilityMs);
+  });
+
+  it("publishes native recovery actions for edible, medical, and mana items only", () => {
+    const augmented = withHarthmereNativeBikkieItems(tray());
+    for (const food of Object.values(HARTHMERE_FOOD_DEFINITIONS)) {
+      const biscuit = augmented.contents.get(
+        harthmereNativeBiomesIdForItemId(food.itemId)!
+      );
+      assert.ok(biscuit, `missing ${food.itemId}`);
+      assert.equal(
+        biscuit.isConsumable,
+        food.edible === false ? undefined : true,
+        `${food.itemId} native consumption contract is wrong`
+      );
+    }
+    for (const medical of Object.values(HARTHMERE_MEDICAL_ITEM_DEFINITIONS)) {
+      const biscuit = augmented.contents.get(
+        harthmereNativeBiomesIdForItemId(medical.itemId)!
+      );
+      assert.equal(biscuit?.isConsumable, true, medical.itemId);
+      assert.equal(biscuit?.givesHealth, medical.healthRestore, medical.itemId);
+    }
+    const mana = augmented.contents.get(
+      harthmereNativeBiomesIdForItemId("mana_draught")!
+    );
+    assert.equal(mana?.isConsumable, true);
+    assert.equal(mana?.action, "drink");
+    assert.equal(
+      augmented.contents.get(
+        harthmereNativeBiomesIdForItemId("field_revival_scroll")!
+      )?.isConsumable,
+      undefined,
+      "custom revival must not be downgraded to generic eat/drink"
+    );
+  });
+
   it("copies only presentation assets while preserving exact wearable ids", () => {
     const visualTop = {
       id: BikkieIds.grassyTop,
@@ -121,6 +251,25 @@ describe("Harthmere exact native Bikkie overlay", () => {
       tray(new Map([[BikkieIds.pickaxe, exact]]))
     );
     assert.strictEqual(augmented.contents.get(BikkieIds.pickaxe), exact);
+  });
+
+  it("keeps a dual-purpose snapshot food placeable while adding native eating", () => {
+    const redMushroomId = Number("1534621126189838") as BiomesId;
+    const exact = {
+      id: redMushroomId,
+      name: "redMushroom",
+      displayName: "Red Mushroom",
+      stackable: 99n,
+      isDroppable: true,
+      action: "place",
+    } as Biscuit;
+    const augmented = withHarthmereNativeBikkieItems(
+      tray(new Map([[redMushroomId, exact]]))
+    );
+    const ediblePlaceable = augmented.contents.get(redMushroomId);
+
+    assert.equal(ediblePlaceable?.action, "place");
+    assert.equal(ediblePlaceable?.isConsumable, true);
   });
 
   it("adopts an exact authored biscuit at the deterministic native id", () => {

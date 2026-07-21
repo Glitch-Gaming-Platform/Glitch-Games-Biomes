@@ -14,6 +14,7 @@ import type { EntityHit } from "@/shared/game/spatial";
 import { isPlayer } from "@/shared/game/players";
 import type { BiomesId } from "@/shared/ids";
 import { isHarthmereNonLivingObjectLabel } from "@/shared/harthmere/object_interaction_semantics";
+import { harthmereNativeNpcCombatProfileForTypeId } from "@/shared/harthmere/harthmere_native_combat_catalog";
 import {
   add,
   frustumBoundingSphere,
@@ -102,6 +103,13 @@ export function canAttackFilter(
   const harthmereLiveAttackable = isAttackableLiveEntityWithoutNpcMetadata(x);
   if (npcTypeId === undefined) {
     return harthmereLiveAttackable;
+  }
+
+  const nativeProfile = harthmereNativeNpcCombatProfileForTypeId(npcTypeId);
+  if (nativeProfile) {
+    // Exact type identity is authoritative. Labels are presentation and must
+    // never decide whether a native creature can be hit.
+    return nativeProfile.behaviorKind !== "sentinel";
   }
 
   // SNAPSHOT_NPC_ATTACK_FILTER_COMPAT:

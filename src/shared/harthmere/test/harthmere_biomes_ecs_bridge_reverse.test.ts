@@ -59,6 +59,11 @@ describe("HARTHMERE_BIOMES_ECS_BRIDGE_REVERSE", () => {
     }
   });
 
+  it("returns the exact semantic key for registered Harthmere item ids", () => {
+    const nativeId = harthmereItemIdToBiomesId("rough_stone")!;
+    assert.strictEqual(biomesIdToHarthmereItemId(nativeId), "rough_stone");
+  });
+
   it("recognizes every non-empty item id as an exact native mapping", () => {
     assert.strictEqual(
       harthmereItemIdHasCuratedBiomesMapping("rough_stone"),

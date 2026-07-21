@@ -103,6 +103,7 @@ describe("world-object F interaction: all prop types", () => {
       ["Campfire", "cook", "campfire"],
       ["Camp Fire", "cook", "campfire"],
       ["Stone Oven", "cook", "oven"],
+      ["Kitchen Stove", "cook", "oven"],
       ["Cooking Pot", "cook", "cookpot"],
       ["Soup Pot", "cook", "cookpot"],
       ["Business Craft Table", "craft", undefined],
@@ -156,9 +157,7 @@ describe("world-object F interaction: door/gate/well/chest candidates exist", ()
       "econ_grove_wishing_well",
     ];
     for (const id of newProps) {
-      const landmark = GROVE_ECONOMY_STARTER_LANDMARKS.find(
-        (l) => l.id === id
-      );
+      const landmark = GROVE_ECONOMY_STARTER_LANDMARKS.find((l) => l.id === id);
       assert.ok(landmark, `missing authored landmark ${id}`);
       assert.notEqual(landmark!.kind, "npc");
       assert.equal(

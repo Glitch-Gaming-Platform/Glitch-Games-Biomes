@@ -4,7 +4,7 @@ import type { BiomesId } from "@/shared/ids";
 // A placed campfire / oven / pot / fire pit is a cooking station — pressing F
 // opens the timer-based cooking panel rather than the generic crafting UI.
 export const HARTHMERE_PLACED_COOK_STATION_RE =
-  /\b(ovens?|cookpots?|cook\s+pots?|cooking\s+pots?|soup\s+pots?|stew\s+pots?|kitchen\s+pots?|pots?|campfires?|camp\s+fires?|firepits?|fire\s+pits?)\b/i;
+  /\b(ovens?|stoves?|cookpots?|cook\s+pots?|cooking\s+pots?|soup\s+pots?|stew\s+pots?|kitchen\s+pots?|pots?|campfires?|camp\s+fires?|firepits?|fire\s+pits?)\b/i;
 
 // HARTHMERE_PLACED_COOK_STATION_PROMPT
 // Decides whether a *placed placeable* should get the "F" cook prompt at all.
@@ -16,7 +16,7 @@ export const HARTHMERE_PLACED_COOK_STATION_RE =
 // explicit cooking word (campfire / fire pit / oven / cookpot / kettle / hearth)
 // and never matches a standalone "pot".
 const HARTHMERE_PLACED_COOK_STATION_PROMPT_RE =
-  /\b(ovens?|cookpots?|cook\s+pots?|cooking\s+pots?|soup\s+pots?|stew\s+pots?|kitchen\s+pots?|kettles?|campfires?|camp\s+fires?|firepits?|fire\s+pits?|fire\s+rings?|hearths?|cooking\s+fires?)\b/i;
+  /\b(ovens?|stoves?|cookpots?|cook\s+pots?|cooking\s+pots?|soup\s+pots?|stew\s+pots?|kitchen\s+pots?|kettles?|campfires?|camp\s+fires?|firepits?|fire\s+pits?|fire\s+rings?|hearths?|cooking\s+fires?)\b/i;
 
 /** Minimal item shape needed to classify a placeable as a cooking station.
  *  Kept structural so the predicate stays pure and node-testable without

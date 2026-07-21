@@ -35,6 +35,7 @@ import {
   type SnapshotGroveNpc,
   type SnapshotGroveQuest,
 } from "@/shared/harthmere/snapshot_grove_content";
+import { snapshotGroveAmbientLineForNpc } from "@/shared/harthmere/snapshot_grove_ambient_dialogue";
 import {
   HARTHMERE_LOCAL_DEV_ITEM_USE_EVENT,
   SNAPSHOT_GROVE_CONTEXTUAL_PRACTICE_TRIGGER_KIND_SET,
@@ -1687,6 +1688,13 @@ function npcLineForLikeability(npc: SnapshotGroveNpc) {
   return npc.line;
 }
 
+function npcAmbientLineForLikeability(npc: SnapshotGroveNpc) {
+  // Ambient copy lives separately so relationship chatter can evolve without
+  // mutating the canonical tutorial and Road Ahead dialogue fields.
+  const likeability = readSnapshotGroveLikeability()[npc.id] || 0;
+  return snapshotGroveAmbientLineForNpc(npc.id, likeability);
+}
+
 function npcQuestDialogueCopy(
   npc: SnapshotGroveNpc,
   quest: SnapshotGroveQuest,
@@ -1840,7 +1848,11 @@ export function useSnapshotGroveNpcDialog(
 
     actions.push(...groveBankerProgressiveQuestionActions(npc));
 
-    const line = npcLineForLikeability(npc);
+    // Keep all authored quest/tutorial copy exactly as-is. The separate ambient
+    // bank is used only when this NPC has no active or available quest.
+    const line = quest
+      ? npcLineForLikeability(npc)
+      : npcAmbientLineForLikeability(npc) ?? npcLineForLikeability(npc);
     const questCopy =
       !activeQuest && availableQuests.length > 1
         ? `<text>I have a few short lessons set aside if you have a quiet minute. Pick whichever feels useful first.</text>`

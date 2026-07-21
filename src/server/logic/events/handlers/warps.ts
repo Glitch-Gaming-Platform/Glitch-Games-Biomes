@@ -10,6 +10,11 @@ import { onWarpHomeHook } from "@/server/shared/minigames/logic_hooks";
 import { BikkieIds } from "@/shared/bikkie/ids";
 import { countOf } from "@/shared/game/items";
 import { log } from "@/shared/logging";
+import { nativeBiomesEcsAuthorityEnabled } from "@/shared/harthmere/native_road_ahead_contract";
+import {
+  HARTHMERE_GROVE_RESPAWN_POSITION,
+  restoreHarthmereNativeVitalsForRespawn,
+} from "@/shared/harthmere/harthmere_native_vitals";
 
 export const warpEventHandler = makeEventHandler("warpEvent", {
   mergeKey: (event) => event.id,
@@ -62,7 +67,13 @@ export const warpHomeEventHandler = makeEventHandler("warpHomeEvent", {
     { reason, position, orientation },
     context
   ) => {
-    forcePlayerWarp(player, position, orientation);
+    const nativeHarthmereRespawn =
+      reason === "respawn" && nativeBiomesEcsAuthorityEnabled();
+    forcePlayerWarp(
+      player,
+      nativeHarthmereRespawn ? [...HARTHMERE_GROVE_RESPAWN_POSITION] : position,
+      orientation
+    );
     onWarpHomeHook(player, playerActiveMinigameInstance, reason);
 
     if (reason === "admin") {
@@ -79,6 +90,16 @@ export const warpHomeEventHandler = makeEventHandler("warpHomeEvent", {
           playerActiveMinigame,
           playerActiveMinigameInstance,
           context
+        );
+      }
+
+      if (nativeHarthmereRespawn) {
+        // Health, position, and survival resources recover in the same native
+        // ECS respawn transaction. A player who died at zero stamina therefore
+        // cannot arrive at the Grove and immediately die again on heartbeat.
+        restoreHarthmereNativeVitalsForRespawn(
+          player.mutableTriggerState(),
+          Date.now()
         );
       }
 

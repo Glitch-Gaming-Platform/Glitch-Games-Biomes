@@ -4717,7 +4717,7 @@ function starterTownNpcs(): StarterNpc[] {
       [0, 3.15],
       npcDialog(
         "Welcome to Harthmere, traveler. Start with the Market Board beside the fountain; it tells new arrivals what to do next.",
-        "Your house is south-west of the square. It has a bed, storage, a hearth, and a starter journal upstairs.",
+        "A small house south-west of the square is kept for new residents; its hearth, storage, and upstairs ledger are ready for use.",
         "If you get lost, follow the colored signs: red for safety and law, blue for services, yellow for jobs, green for food and healing.",
         "The town is safe in the center, but the docks, drains, and old well are where the strange stories begin.",
       ),
@@ -4729,10 +4729,12 @@ function starterTownNpcs(): StarterNpc[] {
       [505, y, -190],
       [0, 4.7],
       npcDialog(
-        "Archive note: the original production world snapshot is missing, so Harthmere is the local-dev replacement starter town.",
-        "Everything here is procedural or block-built on purpose. It should not fetch missing production meshes, icons, audio, or textures.",
-        "If a cosmetic asset is unavailable, it must fail soft. Gameplay should continue.",
-        "The Market Board includes the local-dev quest/objective test chain.",
+        // Explain the science-fantasy/medieval tension in-world; these lines
+        // replace former local-development and missing-asset diagnostics.
+        "Archive note: Harthmere's oldest street plan shows repairs layered over repairs, as if the town has been rebuilding around one buried mistake.",
+        "My frame makes residents uneasy. Harthmere distrusts robots, portals, and Exotic Matter, but the Reeve still permits an archivist that records without preaching.",
+        "When my memory loses an image, I keep the account in words; history should survive the failure of any single machine or medium.",
+        "The Market Board is my best public source because shortages, road closures, and private fear usually appear there before official histories admit them.",
       ),
       "A robot archivist explaining the local-dev setup.",
     ),
@@ -4742,10 +4744,10 @@ function starterTownNpcs(): StarterNpc[] {
       [504, y, -221],
       [0, 3.0],
       npcDialog(
-        "Mind the roads. I flattened the town footprint so nobody should fall through holes or spawn under land.",
+        "Mind the roads. I have reset half these pavers after rain exposed hollows above the old drains.",
         "The important interiors now have props: counters, beds, shelves, barrels, vaults, hearths, and worktables.",
-        "If you see anyone sinking, check their exact spawn height before blaming the renderer.",
-        "The next good test is walking every shop, doorway, and sign from the Market Board.",
+        "If a boot sinks near a threshold, check the drainage and foundation before blaming the traveler; the Underways make liars of solid-looking ground.",
+        "My next inspection runs from the Market Board through every shop doorway and signpost, because small obstructions become dangerous in a crowded evacuation.",
       ),
       "The builder standing by the workshop.",
     ),
@@ -4943,7 +4945,7 @@ function starterTownNpcs(): StarterNpc[] {
       [470, y, -210],
       [0, 1.57],
       npcDialog(
-        "The plaza connects every important shop. That was deliberate; nobody likes getting lost during a smoke test.",
+        "The plaza connects the important shops by design; market smoke, festival crowds, and frightened newcomers all need a route that remains readable.",
         "If you are new, read the Market Board before picking a road.",
       ),
       "A walking town NPC.",
@@ -5004,7 +5006,7 @@ function starterTownNpcs(): StarterNpc[] {
       [0, 0.8],
       npcDialog(
         "That two-level house is yours. Upstairs is for looking important; downstairs is for finding the door.",
-        "There is a starter journal inside. It points you back to the Market Board.",
+        "There is a household ledger inside with the Market Board route copied on its first page, in case the square fogs over again.",
       ),
       "A walking town NPC.",
       [0.2, 0, 0.3],
@@ -5254,7 +5256,7 @@ function starterTownNpcs(): StarterNpc[] {
         "MARKET BOARD: New arrivals should begin with Welcome to Harthmere.",
         "Available work: bakery apples, missing lockbox, cold iron, fever tea, tavern rumors, loose chickens, whispering crate, and Missing Bell inquiry.",
         "Suggested path: read this board, ask Mara, visit Smithy, Bank, Inn, Chapel, North Gate, Guard Yard, then choose Farms, Docks, or Old Drains.",
-        "This board also drives the local-dev quest/objective test system.",
+        "Clerks copy urgent notices here at dawn, and I keep the older layers posted long enough for travelers to see which troubles refuse to stay solved.",
       ),
       "A quest board covered in notices, arrows, and beginner work.",
     ),
@@ -5546,7 +5548,7 @@ function starterTownNpcs(): StarterNpc[] {
       npcDialog(
         "The stable is small today, but the travel system has ambitions.",
         "Feed the mule before judging it. Same advice works on guards.",
-        "One day this yard will send players to farms, roads, and ferry routes.",
+        "This yard sends riders toward the farms, road posts, and ferry landings; each route needs a different horse and a different warning.",
       ),
       "A stablehand near the south-west road.",
     ),
@@ -5608,7 +5610,7 @@ function starterTownNpcs(): StarterNpc[] {
       [448, y, -206],
       [0, 1.2],
       npcDialog(
-        "Keep the path clear. The square handles players, carts, stalls, and bad decisions.",
+        "Keep the path clear. The square handles pilgrims, carts, stalls, and more bad decisions than the watch ledger has room to describe.",
         "The board is watched. So are the pockets near it.",
         "If a riot starts, stand behind the fountain unless you are useful.",
       ),

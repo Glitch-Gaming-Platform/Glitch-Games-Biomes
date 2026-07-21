@@ -168,10 +168,26 @@ describe("Harthmere live entity AI audit matrix current", () => {
       "production must cover every authored Muck layout"
     );
 
+    const robotLines = new Set<string>();
     for (const seed of HARTHMERE_LIVE_ENTITY_ROBOT_SENTINEL_SEEDS) {
       assert.ok(seed.robotId, `${seed.displayName} robot id`);
       assert.equal(seed.energy, seed.maxEnergy);
       assert.ok((seed.maxEnergy ?? 0) > 0, `${seed.displayName} max energy`);
+      const lines = seed.dialog
+        .split("{break}")
+        .map((line) => line.replace(/^<text>|<\/text>$/g, ""));
+      assert.equal(lines.length, 3, `${seed.displayName} dialogue count`);
+      for (const line of lines) {
+        assert.ok(
+          line.length > 60,
+          `${seed.displayName} dialogue is too short`
+        );
+        assert.ok(
+          !robotLines.has(line),
+          `${seed.displayName} repeats robot dialogue`
+        );
+        robotLines.add(line);
+      }
     }
   });
 

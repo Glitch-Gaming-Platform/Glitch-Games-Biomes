@@ -103,7 +103,7 @@ describe("Harthmere NPC visuals and talk affordances", () => {
     });
     const guardOptions = harthmereFallbackNpcOptions({
       name: "Sergeant Bram Holt",
-      description: "guard near the north gate",
+      description: "Town Watch guard stationed at North Gate",
     });
 
     assert.ok(/Grove|Biomes economy law|Harthmere/.test(text));
@@ -116,6 +116,11 @@ describe("Harthmere NPC visuals and talk affordances", () => {
     assert.ok(options.some((option) => option.likeability > 0));
     assert.ok(options.some((option) => option.likeability < 0));
     assert.ok(options.some((option) => option.type === "destructive"));
+    const guardPlaceLine = guardOptions.find(
+      (option) => option.name === "Ask about this place"
+    )?.followUpText;
+    assert.match(guardPlaceLine ?? "", /North Gate/);
+    assert.doesNotMatch(guardPlaceLine ?? "", /Grove|Jackie/);
     assert.notDeepEqual(
       options.map((option) => option.name),
       guardOptions.map((option) => option.name)

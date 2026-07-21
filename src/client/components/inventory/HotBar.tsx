@@ -37,7 +37,7 @@ import { motion } from "framer-motion";
 import { first, isEqual } from "lodash";
 import React, { useCallback, useEffect, useRef } from "react";
 
-function handleCameraKeyDown(
+export function handleCameraKeyDown(
   reactResources: ClientReactResources,
   events: Events,
   selection: CameraSelection

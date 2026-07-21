@@ -1,12 +1,58 @@
 import type { BDB } from "@/server/shared/storage";
 import type { BiomesId } from "@/shared/ids";
 import type { RegistryLoader } from "@/shared/registry";
+import { createCounter } from "@/shared/metrics/metrics";
 import { ok } from "assert";
 import { remove } from "lodash";
 
 export interface IdGenerator {
   next(): Promise<BiomesId>;
   batch(count: number): Promise<BiomesId[]>;
+}
+
+const rejectedAllocatedIdsCounter = createCounter({
+  name: "game_id_allocated_collision_rejections",
+  help: "Generated IDs rejected because an authoritative ECS entity already uses them",
+});
+
+/**
+ * Filters an allocator through an authoritative existence check.
+ *
+ * The database-backed allocator is normally globally unique. Snapshot restores
+ * must also restore its `id-generators` counters, though, and an incomplete
+ * restore can otherwise issue an ID already present in the ECS world. Keeping
+ * this wrapper at the event-ID boundary prevents a stale allocator counter from
+ * turning every entity-creating gameplay event into permanent contention.
+ */
+export class ExistingEntityAwareIdGenerator implements IdGenerator {
+  constructor(
+    private readonly backing: IdGenerator,
+    private readonly existingIds: (
+      candidates: readonly BiomesId[]
+    ) => Promise<readonly BiomesId[]>
+  ) {}
+
+  async next(): Promise<BiomesId> {
+    return (await this.batch(1))[0];
+  }
+
+  async batch(count: number): Promise<BiomesId[]> {
+    ok(Number.isInteger(count), "count must be an integer");
+    ok(count >= 0, "count must be >= 0");
+
+    const accepted: BiomesId[] = [];
+    while (accepted.length < count) {
+      const candidates = await this.backing.batch(count - accepted.length);
+      const occupied = new Set(await this.existingIds(candidates));
+      rejectedAllocatedIdsCounter.inc(occupied.size);
+      for (const id of candidates) {
+        if (!occupied.has(id)) {
+          accepted.push(id);
+        }
+      }
+    }
+    return accepted;
+  }
 }
 
 // Generated IDs are in the range 1-(2^53-5), 0 is never valid.
@@ -86,7 +132,9 @@ export class DbIdGenerator implements IdGenerator {
     if (id >= SHARD_SIZE - count) {
       // Check if it's full
       if (id >= SHARD_SIZE - 1) {
-        this.shards.push(shardId);
+        // A full shard must leave the candidate set permanently. Re-adding it
+        // makes batch() recurse forever against the same exhausted counter.
+        remove(this.shards, (candidate) => candidate === shardId);
       }
       // Shard cannot fit the batch, try again.
       return this.batch(count);

@@ -15,6 +15,7 @@ import {
   dailyTodoTasksFromCareSnapshotForTest,
 } from "../adapters/dailyTodoAdapter";
 import { harthmereDailyTaskXpReward } from "@/shared/harthmere/mmo_care_loops";
+import { BikkieIds } from "@/shared/bikkie/ids";
 import {
   mergeInventoryAndHotbarForBiomesBackpackForTest,
   mergeMirroredBiomesBackpackUiItemsForTest,
@@ -63,6 +64,7 @@ import {
   formatBiomesVitalsBarValueForTest,
   formatBiomesGoldForVitalsForTest,
   formatBiomesLevelForVitalsForTest,
+  nativeGoldBalanceForVitalsForTest,
 } from "../BiomesUIVitalsPanel";
 import {
   biomesInventoryItemIcon,
@@ -297,6 +299,12 @@ describe("Biomes UI progression tabs", () => {
     assert.equal(formatBiomesGoldForVitalsForTest(-5), "0 gold");
     assert.equal(formatBiomesLevelForVitalsForTest(2.9), "Level 2");
     assert.equal(formatBiomesLevelForVitalsForTest(undefined), "Level 1");
+    assert.equal(
+      nativeGoldBalanceForVitalsForTest({
+        currencies: new Map([[String(BikkieIds.bling), { count: 37n }]]),
+      }),
+      37
+    );
   });
 
   it("does not display a positive stamina bar value as zero", () => {
@@ -618,26 +626,20 @@ describe("Biomes UI progression tabs", () => {
   });
 
   it("treats visible Harthmere gameplay as active even when pointer lock is released", () => {
-    const previousDocument = (globalThis as any).document;
-    try {
-      (globalThis as any).document = {
-        visibilityState: "visible",
-        pointerLockElement: null,
-        documentElement: { dataset: {} },
-      };
-      assert.equal(biomesUIPlayerStatusGameplayActiveForTest(), true);
+    const documentState = {
+      visibilityState: "visible",
+      documentElement: { dataset: {} as Record<string, string> },
+    };
+    assert.equal(
+      biomesUIPlayerStatusGameplayActiveForTest(documentState),
+      true
+    );
 
-      (
-        globalThis as any
-      ).document.documentElement.dataset.harthmereWakeUpActive = "true";
-      assert.equal(biomesUIPlayerStatusGameplayActiveForTest(), false);
-    } finally {
-      if (previousDocument === undefined) {
-        delete (globalThis as any).document;
-      } else {
-        (globalThis as any).document = previousDocument;
-      }
-    }
+    documentState.documentElement.dataset.harthmereWakeUpActive = "true";
+    assert.equal(
+      biomesUIPlayerStatusGameplayActiveForTest(documentState),
+      false
+    );
   });
 
   it("formats non-mana class resources for the HUD", () => {
@@ -1075,12 +1077,10 @@ describe("Biomes UI progression tabs", () => {
     });
 
     assert.equal(
-      farmingFoodQuickActionForKey(model, "KeyF")?.id,
-      "harvest_plot"
+      farmingFoodQuickActionForKey(model, "KeyF"),
+      undefined,
+      "F must never select the first global plot or animal without a faced ECS target"
     );
-    assert.deepEqual(farmingFoodQuickActionForKey(model, "KeyF")?.payload, {
-      plotId: "farm_plot_001",
-    });
     assert.deepEqual(
       model.actions.find((action) => action.id === "water_plot")?.payload,
       { plotId: "farm_plot_001" }

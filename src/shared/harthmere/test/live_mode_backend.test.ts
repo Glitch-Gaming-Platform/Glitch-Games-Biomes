@@ -241,6 +241,34 @@ function applyOne(
   if (
     !Object.prototype.hasOwnProperty.call(
       envelopeOverrides,
+      "serverActorItemCounts"
+    )
+  ) {
+    resolvedOverrides.serverActorItemCounts = {
+      ...state.inventory.items,
+      ...Object.fromEntries(
+        Object.entries(state.banking.materialStorage ?? {}).map(
+          ([itemId, count]) => [
+            itemId,
+            (state.inventory.items[itemId] ?? 0) + Number(count),
+          ]
+        )
+      ),
+    };
+  }
+  if (
+    !Object.prototype.hasOwnProperty.call(
+      envelopeOverrides,
+      "serverActorEquippedItemKeys"
+    )
+  ) {
+    resolvedOverrides.serverActorEquippedItemKeys = Object.values(
+      state.inventory.equipment
+    ).filter((itemId): itemId is string => Boolean(itemId));
+  }
+  if (
+    !Object.prototype.hasOwnProperty.call(
+      envelopeOverrides,
       "serverActorPosition"
     )
   ) {
@@ -635,7 +663,7 @@ describe("defaultHarthmereLiveModeBackendState", function () {
       );
       assert.equal(
         s.building.placedStructures[plan.requestId].materializedInEcs,
-        true
+        false
       );
       assert.ok(
         s.building.safeZones[record.plot.plotId],
@@ -706,7 +734,7 @@ describe("defaultHarthmereLiveModeBackendState", function () {
     assert.equal(
       parsed.building.placedStructures[canonical.materializationPlan.requestId]
         .materializedInEcs,
-      true
+      false
     );
     assert.ok(
       parsed.building.inWorldMarkers[
@@ -6002,18 +6030,21 @@ describe("reduceHarthmereLiveModeBackendState — quest state", function () {
     assert.ok(state.quests.active["quest_goblin_slayer"].progress >= 3);
   });
 
-  it("marks quest as completed and removes from active", function () {
+  it("rejects client-asserted generic completion in native ECS mode", function () {
     const s = freshState();
     s.quests.active["quest_goblin_slayer"] = { progress: 10 };
-    const { state } = applyOne(s, "request_quest_state_update", {
+    const { state, summary } = applyOne(s, "request_quest_state_update", {
       questId: "quest_goblin_slayer",
       completed: true,
     });
-    assert.ok(state.quests.completed["quest_goblin_slayer"] !== undefined);
-    assert.ok(state.quests.active["quest_goblin_slayer"] === undefined);
+    assert.ok(
+      summary.warnings.includes("quest_rejected:native_ecs_challenge_required")
+    );
+    assert.equal(state.quests.completed["quest_goblin_slayer"], undefined);
+    assert.ok(state.quests.active["quest_goblin_slayer"] !== undefined);
   });
 
-  it("persists Snapshot Grove quest accepts and completion to the Cloud Save quest snapshot", function () {
+  it("persists Snapshot Grove accepts but refuses client completion assertions", function () {
     const s = freshState();
     const accepted = applyOne(s, "request_quest_state_update", {
       questId: "moss_that_went_quiet",
@@ -6043,13 +6074,17 @@ describe("reduceHarthmereLiveModeBackendState — quest state", function () {
       progress: 4,
       completed: true,
     });
-    assert.deepEqual(completed.summary.warnings, []);
     assert.ok(
-      completed.state.quests.completed["moss_that_went_quiet"] !== undefined
+      completed.summary.warnings.includes(
+        "quest_rejected:native_ecs_challenge_required"
+      )
     );
     assert.equal(
-      completed.state.quests.active["moss_that_went_quiet"],
+      completed.state.quests.completed["moss_that_went_quiet"],
       undefined
+    );
+    assert.ok(
+      completed.state.quests.active["moss_that_went_quiet"] !== undefined
     );
   });
 
@@ -7444,12 +7479,20 @@ describe("reduceHarthmereLiveModeBackendState — farming", function () {
       subsystem: "farming",
       serverActorPosition: actorPosition,
     });
-    assert.deepEqual(first.summary.warnings, []);
+    assert.ok(
+      first.summary.warnings.includes(
+        "exotic_matter_yield_materialized_as_native_ecs_drop"
+      )
+    );
     assert.equal(
       first.state.inventory.items[
         HARTHMERE_EXOTIC_MATTER_COMPONENTS.antiboron.itemId
-      ],
-      1
+      ] ?? 0,
+      0
+    );
+    assert.equal(
+      first.summary.nativeEcsMaterializationPlans?.[0]?.kind,
+      "drop"
     );
     assert.equal(first.state.combat.lootClaims[claimKey], NOW_MS);
     const shared = createHarthmereLiveModeSharedWorldState(first.state, NOW_MS);
@@ -7492,8 +7535,8 @@ describe("reduceHarthmereLiveModeBackendState — farming", function () {
     assert.equal(
       duplicate.state.inventory.items[
         HARTHMERE_EXOTIC_MATTER_COMPONENTS.antiboron.itemId
-      ],
-      1
+      ] ?? 0,
+      0
     );
 
     const early = reduceHarthmereLiveModeBackendState(
@@ -7518,12 +7561,16 @@ describe("reduceHarthmereLiveModeBackendState — farming", function () {
       }),
       NOW_MS + HARTHMERE_EXOTIC_MATTER_DEPOSIT_REPLENISH_MS
     );
-    assert.deepEqual(replenished.summary.warnings, []);
+    assert.ok(
+      replenished.summary.warnings.includes(
+        "exotic_matter_yield_materialized_as_native_ecs_drop"
+      )
+    );
     assert.equal(
       replenished.state.inventory.items[
         HARTHMERE_EXOTIC_MATTER_COMPONENTS.antiboron.itemId
-      ],
-      2
+      ] ?? 0,
+      0
     );
     assert.equal(
       replenished.state.combat.lootClaims[claimKey],
@@ -7619,12 +7666,16 @@ describe("reduceHarthmereLiveModeBackendState — farming", function () {
         z: deposit.terrainPosition![2],
       },
     });
-    assert.deepEqual(mined.summary.warnings, []);
+    assert.ok(
+      mined.summary.warnings.includes(
+        "exotic_matter_yield_materialized_as_native_ecs_drop"
+      )
+    );
     assert.equal(
       mined.state.inventory.items[
         HARTHMERE_EXOTIC_MATTER_COMPONENTS.antiboron.itemId
-      ],
-      1
+      ] ?? 0,
+      0
     );
   });
 
@@ -7828,6 +7879,34 @@ describe("reduceHarthmereLiveModeBackendState — farming", function () {
       unknownRecipe.summary.warnings.includes("cooking_rejected:unknown_recipe")
     );
     assert.equal(unknownRecipe.state.inventory.items.raw_meat, 1);
+  });
+
+  it("reserves timer-cooking ingredients through native ECS inventory", function () {
+    const s = freshState();
+    const queued = applyOne(
+      s,
+      "request_farming_action",
+      {
+        operation: "cook_enqueue",
+        stationId: "grove_campfire",
+        stationKind: "campfire",
+        recipeId: "grilled_meat",
+        count: 1,
+      },
+      {
+        subsystem: "farming",
+        serverActorPosition: { x: 500, y: 70, z: -130 },
+        serverActorItemCounts: { raw_meat: 1 },
+      }
+    );
+
+    assert.deepEqual(queued.summary.warnings, []);
+    assert.equal(queued.state.inventory.items.raw_meat, undefined);
+    const exchange = queued.summary.nativeEcsMaterializationPlans?.[0] as any;
+    assert.equal(exchange?.kind, "inventory_exchange");
+    assert.deepEqual(exchange?.consumeItemStacks, { raw_meat: 1 });
+    assert.deepEqual(exchange?.rewardItemStacks, {});
+    assert.equal(queued.state.farming.cooking.grove_campfire.jobs.length, 1);
   });
 
   it("uses medical items through live mode to restore health only", function () {
@@ -8845,7 +8924,8 @@ describe("reduceHarthmereLiveModeBackendState — building mutation", function (
       "outpostBuildRevision must be stamped after auto-rebuild"
     );
 
-    // Second read_state with matching revision must NOT re-queue plans.
+    // A matching revision suppresses another cleanup/rebuild, but unapplied
+    // ECS outbox plans remain retryable until the API acknowledges them.
     const { summary: second } = applyOne(
       state,
       "request_property_building_mutation",
@@ -8853,8 +8933,8 @@ describe("reduceHarthmereLiveModeBackendState — building mutation", function (
     );
     assert.equal(
       second.buildingMaterializationPlans?.length ?? 0,
-      0,
-      "read_state must not re-queue plans when revision already matches"
+      Object.keys(HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS).length,
+      "read_state must retry each still-unacknowledged ECS building plan"
     );
     assert.equal(
       second.touchedModels.includes("business_outpost_voxel_rebuild"),
@@ -9355,10 +9435,15 @@ describe("multi-step scenario — new player progression", function () {
     assert.ok((s.classMagic.skills["character_level"]?.xp ?? 0) >= 1000);
 
     // Step 5: complete quest
-    ({ state: s } = applyOne(s, "request_quest_state_update", {
-      questId: "quest_first_steps",
-      completed: true,
-    }));
+    ({ state: s } = applyOne(
+      s,
+      "request_quest_state_update",
+      {
+        questId: "quest_first_steps",
+        completed: true,
+      },
+      { source: "server_scheduled_tick" }
+    ));
     assert.ok(s.quests.completed["quest_first_steps"] !== undefined);
     assert.strictEqual(s.quests.active["quest_first_steps"], undefined);
 
@@ -9496,7 +9581,7 @@ describe("reduceHarthmereLiveModeBackendState — physical jobs board and live t
     assert.equal(Object.values(state.jobsBoard.todos)[0]?.actorId, ACTOR);
   });
 
-  it("accepting a delivery job grants the parcel into live inventory", function () {
+  it("accepting a delivery job creates the parcel through native ECS", function () {
     const s = freshState();
     s.jobsBoard.postings.job_delivery_accept = {
       jobId: "job_delivery_accept",
@@ -9549,7 +9634,11 @@ describe("reduceHarthmereLiveModeBackendState — physical jobs board and live t
 
     assert.deepEqual(summary.warnings, []);
     assert.equal(state.jobsBoard.postings.job_delivery_accept.status, "active");
-    assert.equal(state.inventory.items.sealed_package, 1);
+    assert.equal(state.inventory.items.sealed_package, undefined);
+    const exchange = summary.nativeEcsMaterializationPlans?.[0] as any;
+    assert.equal(exchange?.kind, "inventory_exchange");
+    assert.deepEqual(exchange?.consumeItemStacks, {});
+    assert.deepEqual(exchange?.rewardItemStacks, { sealed_package: 1 });
   });
 
   it("delivery drop-off completion keeps the job active and points back to the board", function () {
@@ -9620,6 +9709,7 @@ describe("reduceHarthmereLiveModeBackendState — physical jobs board and live t
       {
         subsystem: "jobs",
         targetId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
+        serverActorItemCounts: { sealed_package: 1 },
         serverActorPosition: {
           x: 751,
           y: 53,
@@ -9633,6 +9723,12 @@ describe("reduceHarthmereLiveModeBackendState — physical jobs board and live t
     assert.equal(s.jobsBoard.postings.job_delivery_dropoff.status, "active");
     assert.equal(s.jobsBoard.todos[todo.todoId].status, "completed");
     assert.equal(s.inventory.items.sealed_package ?? 0, 0);
+    const exchange = result.summary.nativeEcsMaterializationPlans?.[0] as any;
+    assert.equal(exchange?.kind, "inventory_exchange");
+    assert.equal(exchange?.actorId, ACTOR);
+    assert.deepEqual(exchange?.position, { x: 751, y: 53, z: -562 });
+    assert.deepEqual(exchange?.consumeItemStacks, { sealed_package: 1 });
+    assert.deepEqual(exchange?.rewardItemStacks, {});
     assert.deepEqual(s.quests.active[`jobs_board:${todo.todoId}`], {
       stepId: "job_delivery_dropoff:return_to_board",
       progress: 1,
@@ -9724,11 +9820,19 @@ describe("reduceHarthmereLiveModeBackendState — physical jobs board and live t
     assert.deepEqual(result.summary.warnings, []);
     assert.equal(result.state.jobsBoard.todos[todo.todoId].status, "completed");
     assert.equal(result.state.inventory.items.herb_bundle ?? 0, 0);
-    assert.equal(result.state.banking.materialStorage.herb_bundle ?? 0, 0);
-    assert.ok(result.summary.touchedModels.includes("material_storage"));
+    assert.equal(result.state.banking.materialStorage.herb_bundle ?? 0, 2);
+    assert.deepEqual(
+      result.summary.nativeEcsMaterializationPlans?.[0]?.kind,
+      "inventory_exchange"
+    );
+    assert.deepEqual(
+      (result.summary.nativeEcsMaterializationPlans?.[0] as any)
+        ?.consumeItemStacks,
+      { herb_bundle: 2 }
+    );
   });
 
-  it("jobs-board quest completion forwards used tool action evidence", function () {
+  it("jobs-board quest completion uses native equipped-tool evidence", function () {
     let s = freshState();
     s.banking.materialStorage.softwood_log = 3;
     s.inventory.equipment.main_hand = "repair_mallet";
@@ -9790,7 +9894,6 @@ describe("reduceHarthmereLiveModeBackendState — physical jobs board and live t
       {
         questId: `jobs_board:${todo.todoId}`,
         completed: true,
-        usedToolAction: "repair",
         completionItemDeltas: { softwood_log: -3 },
       },
       { subsystem: "quest" }
@@ -9798,7 +9901,12 @@ describe("reduceHarthmereLiveModeBackendState — physical jobs board and live t
 
     assert.deepEqual(result.summary.warnings, []);
     assert.equal(result.state.jobsBoard.todos[todo.todoId].status, "completed");
-    assert.equal(result.state.banking.materialStorage.softwood_log ?? 0, 0);
+    assert.equal(result.state.banking.materialStorage.softwood_log ?? 0, 3);
+    assert.deepEqual(
+      (result.summary.nativeEcsMaterializationPlans?.[0] as any)
+        ?.consumeItemStacks,
+      { softwood_log: 3 }
+    );
   });
 
   function addOpenEscortJob(state: HarthmereLiveModeBackendState) {

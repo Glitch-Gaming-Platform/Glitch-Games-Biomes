@@ -3,7 +3,7 @@ import fs from "fs";
 import path from "path";
 
 describe("quest-giver frame inspection", () => {
-  it("routes snapshot quest objects through Talk before blank-frame editing", () => {
+  it("routes Road Ahead storage frames through container semantics, never Talk", () => {
     const source = fs.readFileSync(
       path.resolve(
         process.cwd(),
@@ -11,18 +11,40 @@ describe("quest-giver frame inspection", () => {
       ),
       "utf8"
     );
-    const questBranch = source.indexOf("if (questGiver)");
-    const blankFrameBranch = source.indexOf(
-      "if (pictureFrameContents?.photo_id)"
+    const questContainerBranch = source.indexOf(
+      "isNativeRoadAheadQuestObjectLabel(label?.text)"
     );
-    assert.ok(questBranch >= 0, "quest-giver frames need a native Talk branch");
+    const genericQuestBranch = source.indexOf("if (questGiver)");
+    assert.ok(questContainerBranch >= 0);
     assert.ok(
-      source.includes("<CursorInspectionComponent overlay={overlay} />"),
-      "the quest-giver frame must use the normal native inspection/dialog path"
+      source.includes("allowPlaceableObjectInteraction"),
+      "the storage frame must opt into the native container/object route"
     );
     assert.ok(
-      questBranch < blankFrameBranch,
-      "native quest dialog must win before picture/blank frame routing"
+      source.includes("suppressTalkShortcut"),
+      "the storage frame must never expose generated NPC dialogue"
+    );
+    assert.ok(
+      questContainerBranch < genericQuestBranch,
+      "the exact container role must win before the generic quest-giver role"
+    );
+  });
+
+  it("keeps photo and minigame contents ahead of generic quest metadata", () => {
+    const source = fs.readFileSync(
+      path.resolve(
+        process.cwd(),
+        "src/client/components/overlays/inspected/placeables/FramePlaceableOverlayComponent.tsx"
+      ),
+      "utf8"
+    );
+    assert.ok(
+      source.indexOf("pictureFrameContents?.photo_id") <
+        source.indexOf("if (questGiver)")
+    );
+    assert.ok(
+      source.indexOf("pictureFrameContents?.minigame_id") <
+        source.indexOf("if (questGiver)")
     );
   });
 });

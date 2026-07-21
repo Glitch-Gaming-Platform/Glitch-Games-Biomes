@@ -4,6 +4,7 @@ import {
   harthmereDeathMovementShouldLockForTest,
   harthmereDeathScreenShouldRenderForTest,
   harthmereLocalDeathFallbackAllowedForTest,
+  harthmereNativeDeathSyncActionForTest,
   harthmereShouldClearLiveAliveDeathLockForTest,
   harthmereLivePlayerDeathSyncActionForTest,
   harthmereLivePlayerDeathSyncSummaryForTest,
@@ -66,6 +67,47 @@ describe("Harthmere live death sync", () => {
 
     assert.equal(summary.dead, true);
     assert.equal(summary.alive, false);
+  });
+
+  it("turns native stamina and drowning deaths into the correct Grove recap", () => {
+    const stamina = harthmereNativeDeathSyncActionForTest({
+      hp: 0,
+      maxHp: 100,
+      damageSourceKind: "suicide",
+      stamina: 0,
+      currentDeathState: "alive",
+    });
+    assert.equal(stamina.kind, "down");
+    assert.match(stamina.kind === "down" ? stamina.cause : "", /Stamina/);
+
+    const drowning = harthmereNativeDeathSyncActionForTest({
+      hp: 0,
+      maxHp: 100,
+      damageSourceKind: "drown",
+      stamina: 50,
+      currentDeathState: "alive",
+    });
+    assert.equal(drowning.kind, "down");
+    assert.equal(drowning.kind === "down" ? drowning.cause : "", "drowning");
+  });
+
+  it("uses native positive health to clear a stale death lock after respawn", () => {
+    assert.deepEqual(
+      harthmereNativeDeathSyncActionForTest({
+        hp: 100,
+        maxHp: 100,
+        stamina: 100,
+        currentDeathState: "dead",
+      }),
+      {
+        kind: "recover",
+        hp: 100,
+        maxHp: 100,
+        deathState: "alive",
+        detail:
+          "Native ECS health recovered; clearing the stale death and movement lock.",
+      }
+    );
   });
 
   it("does not let a stale live-alive read clear a local zero-hp death lock", () => {

@@ -21,6 +21,8 @@ export const SNAPSHOT_MISSION_WORLD_MAP_LANDMARKS_VERSION =
   "snapshot-mission-world-map-landmarks";
 export const SNAPSHOT_GROVE_WORLD_MAP_LANDMARKS_VERSION =
   "snapshot-grove-world-map-landmarks";
+export const HARTHMERE_CONNECTOR_WORLD_MAP_LANDMARKS_VERSION =
+  "harthmere-connector-world-map-landmarks";
 
 const SNAPSHOT_MISSION_WORLD_MAP_LANDMARKS: Landmark[] = [
   {
@@ -79,7 +81,6 @@ const SNAPSHOT_MISSION_WORLD_MAP_LANDMARKS: Landmark[] = [
   },
 ];
 
-
 const SNAPSHOT_GROVE_WORLD_MAP_LANDMARKS: Landmark[] =
   SNAPSHOT_GROVE_LANDMARKS.filter((landmark) => landmark.visibleOnWorldMap).map(
     (landmark, index): Landmark => ({
@@ -88,8 +89,52 @@ const SNAPSHOT_GROVE_WORLD_MAP_LANDMARKS: Landmark[] =
         landmark.kind === "safe_zone" || landmark.kind === "connector" ? 1 : 0,
       name: landmark.label,
       position: [...landmark.position],
-    }),
+    })
   );
+
+function connectorWorldMapLandmark(
+  landmarkId: string,
+  mapId: BiomesId
+): Landmark {
+  const landmark = SNAPSHOT_GROVE_LANDMARKS.find(
+    (candidate) => candidate.id === landmarkId
+  );
+  if (!landmark) {
+    throw new Error(`Missing connector world-map landmark: ${landmarkId}`);
+  }
+  return {
+    id: mapId,
+    importance: 1,
+    name: landmark.label,
+    position: [...landmark.position],
+  };
+}
+
+// These two pins are navigation infrastructure, not optional mission markers.
+// They remain available even when the snapshot mission bridge is disabled.
+export const HARTHMERE_CONNECTOR_WORLD_MAP_LANDMARKS: Landmark[] = [
+  connectorWorldMapLandmark(
+    "harthmere_road_grove_trailhead",
+    8997551883502315 as BiomesId
+  ),
+  connectorWorldMapLandmark(
+    "harthmere_road_west_gate",
+    8997551883502316 as BiomesId
+  ),
+];
+
+export function appendHarthmereConnectorWorldMapLandmarks(
+  items: Landmark[]
+): Landmark[] {
+  const seen = new Set(items.map((item) => item.name));
+  const appended = [...items];
+  for (const item of HARTHMERE_CONNECTOR_WORLD_MAP_LANDMARKS) {
+    if (seen.has(item.name)) continue;
+    seen.add(item.name);
+    appended.push(item);
+  }
+  return appended;
+}
 
 function shouldExposeSnapshotMissionLandmarks() {
   return (
@@ -119,7 +164,6 @@ function appendSnapshotMissionLandmarks(items: Landmark[]): Landmark[] {
   return appended;
 }
 
-
 export default biomesApiHandler(
   {
     auth: "optional",
@@ -144,6 +188,8 @@ export default biomesApiHandler(
         },
       ];
     });
-    return appendSnapshotMissionLandmarks(scanned);
+    return appendSnapshotMissionLandmarks(
+      appendHarthmereConnectorWorldMapLandmarks(scanned)
+    );
   }
 );

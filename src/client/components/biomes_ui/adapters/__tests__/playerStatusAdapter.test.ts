@@ -3,6 +3,7 @@
 import assert from "assert";
 import {
   applyOptimisticPlayerStatusForTest,
+  biomesUIPlayerStatusGameplayActiveForTest,
   biomesUIVitalsDisplayFromLiveStatusForTest,
 } from "../playerStatusAdapter";
 
@@ -130,5 +131,48 @@ describe("Biomes UI player status adapter", () => {
     );
     assert.equal(display.maxHp, 100);
     assert.equal(display.hp, 100);
+  });
+
+  it("keeps the local respawn resource envelope while a dead server snapshot is stale", () => {
+    const display = biomesUIVitalsDisplayFromLiveStatusForTest(
+      {
+        combat: {
+          hp: 0,
+          maxHp: 100,
+          deathState: "dead",
+          primaryResource: "mana",
+          resource: 0,
+          maxResource: 100,
+        },
+      },
+      {
+        hp: 100,
+        maxHp: 100,
+        combatState: "protected_after_respawn",
+        resourceLabel: "Mana",
+        resourceValue: 122,
+        resourceMax: 122,
+      }
+    );
+
+    assert.equal(display.combatState, "protected_after_respawn");
+    assert.equal(display.resourceValue, 122);
+    assert.equal(display.resourceMax, 122);
+  });
+
+  it("uses visibility and the Harthmere wake-up guard without requiring pointer lock", () => {
+    const documentState = {
+      visibilityState: "visible",
+      documentElement: { dataset: {} as Record<string, string> },
+    };
+    assert.equal(
+      biomesUIPlayerStatusGameplayActiveForTest(documentState),
+      true
+    );
+    documentState.documentElement.dataset.harthmereWakeUpActive = "true";
+    assert.equal(
+      biomesUIPlayerStatusGameplayActiveForTest(documentState),
+      false
+    );
   });
 });

@@ -4,12 +4,31 @@ import {
   BiomesUIShopSection,
 } from "@/client/components/inventory/BiomesUIShopChrome";
 import { useInventoryControllerContext } from "@/client/components/inventory/InventoryControllerContext";
+import { useOwnedItems } from "@/client/components/inventory/helpers";
 import { InventoryOverrideContextProvider } from "@/client/components/inventory/InventoryOverrideContext";
 import { NormalSlotWithTooltip } from "@/client/components/inventory/NormalSlotWithTooltip";
 import { SelfInventoryRightPaneContent } from "@/client/components/inventory/SelfInventoryScreen";
 import type { OpenContainer } from "@/client/components/inventory/types";
 import { anItem, resolveItemAttributeId } from "@/shared/game/item";
+import { cloneDeepWithItems } from "@/shared/game/item";
 import type { ItemAndCount } from "@/shared/game/types";
+import {
+  findSlotToMergeIntoInventory,
+  giveToOwnedItems,
+  maybeGetSlotByRef,
+  patternAsSingleRef,
+  type OwnedItems,
+} from "@/shared/game/inventory";
+import {
+  InventoryCombineEvent,
+  InventorySwapEvent,
+} from "@/shared/ecs/gen/events";
+import {
+  nativeRoadAheadContainerClaimForItem,
+  NATIVE_ROAD_AHEAD_QUEST_ID,
+} from "@/shared/harthmere/native_road_ahead_contract";
+import { pollUntil } from "@/shared/util/async";
+import { compact } from "lodash";
 import { rowMajorIdx } from "@/shared/util/helpers";
 import { range } from "lodash";
 import type { PropsWithChildren } from "react";
@@ -20,16 +39,113 @@ export const StorageContainerLeftPaneContent: React.FunctionComponent<{
   openContainer: OpenContainer;
 }> = ({ openContainer }) => {
   const { handleInventorySlotClick } = useInventoryControllerContext();
-  const { reactResources } = useClientContext();
-  const containerInventory = reactResources.use(
-    "/ecs/c/container_inventory",
-    openContainer.containerId
+  const { reactResources, events, userId } = useClientContext();
+  const [containerInventory, containerLabel] = reactResources.useAll(
+    ["/ecs/c/container_inventory", openContainer.containerId],
+    ["/ecs/c/label", openContainer.containerId]
   );
+  const ownedItems = useOwnedItems(reactResources, userId);
+  const [takingAll, setTakingAll] = React.useState(false);
+  const [takeAllError, setTakeAllError] = React.useState<string>();
 
   const numItems = containerInventory?.items.length ?? 0;
   const numCols = anItem(openContainer.itemId).numCols || 1;
 
   const derivedNumRows = Math.ceil(numItems / numCols);
+
+  const takeAll = React.useCallback(async () => {
+    if (takingAll || !containerInventory || !ownedItems.inventory) return;
+    setTakingAll(true);
+    setTakeAllError(undefined);
+    try {
+      // Plan against a mutable local projection so each item reserves or fills
+      // a real backpack slot. Take All never spills wearables/materials into
+      // hotbar, and it stops without swapping over an occupied incompatible
+      // slot when the backpack is full.
+      const projected = cloneDeepWithItems(ownedItems) as OwnedItems;
+      const sourcePosition = reactResources.get(
+        "/ecs/c/position",
+        openContainer.containerId
+      )?.v;
+      const playerPosition = reactResources.get("/ecs/c/position", userId)?.v;
+      const positions = compact([sourcePosition, playerPosition]);
+
+      for (let idx = 0; idx < containerInventory.items.length; idx += 1) {
+        const source = containerInventory.items[idx];
+        if (!source) continue;
+        const pattern = findSlotToMergeIntoInventory(projected, source, {
+          spreadOk: false,
+          noHotbar: true,
+        });
+        const destination = patternAsSingleRef(pattern);
+        if (!destination || !pattern) {
+          throw new Error("Backpack full");
+        }
+        const existing = maybeGetSlotByRef(projected, destination);
+        const sourceRef = { kind: "item" as const, idx };
+        if (existing) {
+          await events.publish(
+            new InventoryCombineEvent({
+              src_id: openContainer.containerId,
+              src: sourceRef,
+              dst_id: userId,
+              dst: destination,
+              count: source.count,
+              player_id: userId,
+              positions,
+            })
+          );
+        } else {
+          await events.publish(
+            new InventorySwapEvent({
+              src_id: openContainer.containerId,
+              src: sourceRef,
+              dst_id: userId,
+              dst: destination,
+              player_id: userId,
+              positions,
+            })
+          );
+        }
+        giveToOwnedItems(projected, pattern);
+
+        const claim = nativeRoadAheadContainerClaimForItem(
+          containerLabel?.text,
+          source.item.id
+        );
+        if (claim) {
+          // Road Ahead's reward choices are consecutive sequence leaves. Wait
+          // for the authoritative trigger-state socket update before moving the
+          // next item, otherwise a fast Take All can race the prior-step check.
+          await pollUntil(
+            () => {
+              const raw = reactResources
+                .get("/ecs/c/trigger_state", userId)
+                ?.by_root.get(NATIVE_ROAD_AHEAD_QUEST_ID)
+                ?.get(claim.stepId);
+              return raw !== undefined && raw !== 0;
+            },
+            { timeout: 10_000, timeoutText: "Quest update timed out" }
+          );
+        }
+      }
+    } catch (error) {
+      setTakeAllError(
+        error instanceof Error ? error.message : "Could not take all items"
+      );
+    } finally {
+      setTakingAll(false);
+    }
+  }, [
+    containerInventory,
+    containerLabel?.text,
+    events,
+    openContainer.containerId,
+    ownedItems,
+    reactResources,
+    takingAll,
+    userId,
+  ]);
 
   return (
     <div
@@ -63,6 +179,19 @@ export const StorageContainerLeftPaneContent: React.FunctionComponent<{
       ))}
       {derivedNumRows === 0 ? (
         <p className="biomes-ui-shop-muted">This container has no slots.</p>
+      ) : null}
+      {containerInventory?.items.some(Boolean) ? (
+        <button
+          type="button"
+          className="biomes-ui-shop-button"
+          disabled={takingAll}
+          onClick={() => void takeAll()}
+        >
+          {takingAll ? "Taking…" : "Take All"}
+        </button>
+      ) : null}
+      {takeAllError ? (
+        <p className="biomes-ui-shop-muted">{takeAllError}</p>
       ) : null}
     </div>
   );

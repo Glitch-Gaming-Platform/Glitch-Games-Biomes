@@ -27,6 +27,7 @@ import {
 import { dispatchHarthmereHudActionEvent } from "@/shared/harthmere/harthmere_hud_key_bindings";
 import type { HarthmereObjectInteraction } from "@/shared/harthmere/object_interaction_semantics";
 import { fireAndForget } from "@/shared/util/async";
+import { fetchHarthmereLiveWithTimeout } from "@/client/components/harthmere_live_fetch";
 
 // HARTHMERE_REPAIR_PERFORMED_EVENT: fired when the player interacts with a
 // repair target. `repaired` is true only when a repair tool is equipped — that
@@ -50,6 +51,140 @@ export interface HarthmereWorldObjectInteractionEventDetail {
   label?: string | null;
   kind: HarthmereObjectInteraction["kind"];
   title: string;
+}
+
+const HARTHMERE_SERVER_RECEIPT_INTERACTION_KINDS = new Set<
+  HarthmereObjectInteraction["kind"]
+>([
+  "open_door",
+  "open_gate",
+  "read",
+  "use",
+  "repair",
+  "recover",
+  "tend",
+  "practice",
+  "check_outfit",
+  "take_photo",
+  "inspect",
+]);
+
+export function harthmereWorldObjectInteractionNeedsServerReceiptForTest(
+  kind: HarthmereObjectInteraction["kind"]
+) {
+  return HARTHMERE_SERVER_RECEIPT_INTERACTION_KINDS.has(kind);
+}
+
+function liveModeWorldObjectUrl(search?: string) {
+  const params = new URLSearchParams(
+    search ?? (typeof window === "undefined" ? "" : window.location.search)
+  );
+  const installId = params.get("install_id") ?? params.get("installId");
+  return installId
+    ? `/api/harthmere/live_mode?install_id=${encodeURIComponent(installId)}`
+    : "/api/harthmere/live_mode";
+}
+
+export function harthmereWorldObjectInteractionRequestBodyForTest(input: {
+  objectId: string;
+  label?: string | null;
+  interaction: HarthmereObjectInteraction;
+  requestId: string;
+}) {
+  return {
+    requestId: input.requestId,
+    idempotencyKey: input.requestId,
+    actionKind: "request_care_loop_action",
+    subsystem: "care",
+    actorEntityVersion: 1,
+    zoneId: "harthmere",
+    clientSentAtMs: Date.now(),
+    payload: {
+      operation: "world_object_interaction",
+      objectId: input.objectId,
+      label: input.label ?? undefined,
+      interactionKind: input.interaction.kind,
+    },
+    clientClaims: {},
+  };
+}
+
+export class HarthmereWorldObjectInteractionError extends Error {
+  constructor(public readonly warnings: string[]) {
+    super(warnings.join(","));
+    this.name = "HarthmereWorldObjectInteractionError";
+  }
+}
+
+export function harthmereWorldObjectInteractionErrorMessage(
+  error: unknown,
+  label = "this object"
+) {
+  const warnings =
+    error instanceof HarthmereWorldObjectInteractionError
+      ? error.warnings
+      : [String((error as any)?.message ?? error ?? "")];
+  if (warnings.some((warning) => warning.includes("repair_tool_required"))) {
+    return `Equip a repair tool before repairing ${label}.`;
+  }
+  if (warnings.some((warning) => warning.includes("out_of_range"))) {
+    return `Move closer to ${label} and try again.`;
+  }
+  if (
+    warnings.some((warning) =>
+      /unknown_object|missing_object|kind_mismatch|label_mismatch/.test(warning)
+    )
+  ) {
+    return `${label} is not the authoritative interaction target. Face the object and try again.`;
+  }
+  return `${label} could not be used. Try again.`;
+}
+
+export async function submitHarthmereWorldObjectInteraction(input: {
+  objectId: string;
+  label?: string | null;
+  interaction: HarthmereObjectInteraction;
+  fetchImpl?: typeof fetch;
+  locationSearch?: string;
+  requestId?: string;
+}) {
+  const requestId =
+    input.requestId ??
+    `harthmere_world_object_${Date.now()}_${Math.random()
+      .toString(36)
+      .slice(2)}`;
+  const response = await fetchHarthmereLiveWithTimeout(
+    input.fetchImpl ?? fetch,
+    liveModeWorldObjectUrl(input.locationSearch),
+    {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(
+        harthmereWorldObjectInteractionRequestBodyForTest({
+          objectId: input.objectId,
+          label: input.label,
+          interaction: input.interaction,
+          requestId,
+        })
+      ),
+    }
+  );
+  const body = await response.json();
+  const warnings = Array.isArray(body?.backendMutation?.warnings)
+    ? body.backendMutation.warnings.map(String)
+    : [];
+  const rejected = warnings.filter((warning: string) =>
+    warning.startsWith("world_object_rejected:")
+  );
+  if (!response.ok || body?.ok === false || rejected.length > 0) {
+    throw new HarthmereWorldObjectInteractionError(
+      rejected.length > 0
+        ? rejected
+        : [String(body?.error ?? "world_object_interaction_failed")]
+    );
+  }
+  return body;
 }
 
 const HARTHMERE_READABLE_OBJECT_TEXT = new Map<string, string>(
@@ -376,7 +511,7 @@ export function dispatchHarthmereWorldObjectInteractionEvent(
   );
 }
 
-export function performHarthmereObjectInteraction(input: {
+export async function performHarthmereObjectInteraction(input: {
   label?: string | null;
   objectId?: string;
   entityId: unknown;
@@ -384,27 +519,30 @@ export function performHarthmereObjectInteraction(input: {
   resources: Parameters<typeof addToast>[0];
   gardenHose: { publish: (event: { kind: "inspect_frame" }) => void };
 }) {
-  dispatchHarthmereWorldObjectInteractionEvent({
-    entityId: input.entityId,
-    objectId: input.objectId,
-    label: input.label,
-    kind: input.interaction.kind,
-    title: input.interaction.title,
-  });
-  completeHarthmereJobsBoardFieldObjectiveForObjectSoon({
-    objectId: input.objectId,
-    label: input.label,
-    interactionKind: input.interaction.kind,
-    resources: input.resources,
-  });
-  for (const activityId of dailyTasksForObjectInteraction(input)) {
-    completeHarthmereDailyTaskSoon(activityId);
-  }
+  const recordConfirmedInteraction = () => {
+    dispatchHarthmereWorldObjectInteractionEvent({
+      entityId: input.entityId,
+      objectId: input.objectId,
+      label: input.label,
+      kind: input.interaction.kind,
+      title: input.interaction.title,
+    });
+    completeHarthmereJobsBoardFieldObjectiveForObjectSoon({
+      objectId: input.objectId,
+      label: input.label,
+      interactionKind: input.interaction.kind,
+      resources: input.resources,
+    });
+    for (const activityId of dailyTasksForObjectInteraction(input)) {
+      completeHarthmereDailyTaskSoon(activityId);
+    }
+  };
 
   if (
     input.interaction.kind === "open_jobs_board" ||
     input.interaction.kind === "open_wanted_board"
   ) {
+    recordConfirmedInteraction();
     const eventName =
       input.interaction.kind === "open_wanted_board"
         ? HARTHMERE_WANTED_BOARD_OPEN_EVENT
@@ -426,6 +564,7 @@ export function performHarthmereObjectInteraction(input: {
   }
 
   if (input.interaction.kind === "cook") {
+    recordConfirmedInteraction();
     const stationKind = input.interaction.stationKind ?? "campfire";
     const stationId = harthmereCookingStationId(input.entityId, input.label);
     openHarthmereCookingStation({
@@ -438,36 +577,59 @@ export function performHarthmereObjectInteraction(input: {
   }
 
   if (input.interaction.kind === "craft") {
+    recordConfirmedInteraction();
     dispatchHarthmereHudActionEvent("crafting");
+    return;
   }
 
   if (input.interaction.kind === "gather") {
     const nodeId = harthmereGatheringNodeIdForObjectLabel(input.label);
     if (nodeId) {
-      fireAndForget(
-        submitHarthmereGatheringNode(nodeId).then(
-          () =>
-            addToast(input.resources, {
-              kind: "basic",
-              id: `harthmere-gather:${nodeId}`,
-              message: harthmereObjectInteractionToastMessage({
-                label: input.label,
-                interaction: input.interaction,
-              }),
-            }),
-          (error) =>
-            addToast(input.resources, {
-              kind: "basic",
-              id: `harthmere-gather-rejected:${nodeId}`,
-              message: harthmereGatheringErrorMessage(
-                error,
-                input.label ?? "this resource"
-              ),
-            })
-        )
-      );
+      try {
+        await submitHarthmereGatheringNode(nodeId);
+        recordConfirmedInteraction();
+        addToast(input.resources, {
+          kind: "basic",
+          id: `harthmere-gather:${nodeId}`,
+          message: harthmereObjectInteractionToastMessage({
+            label: input.label,
+            interaction: input.interaction,
+          }),
+        });
+      } catch (error) {
+        addToast(input.resources, {
+          kind: "basic",
+          id: `harthmere-gather-rejected:${nodeId}`,
+          message: harthmereGatheringErrorMessage(
+            error,
+            input.label ?? "this resource"
+          ),
+        });
+        throw error;
+      }
       return;
     }
+    throw new HarthmereWorldObjectInteractionError([
+      "world_object_rejected:gathering_node_required",
+    ]);
+  }
+
+  if (
+    harthmereWorldObjectInteractionNeedsServerReceiptForTest(
+      input.interaction.kind
+    )
+  ) {
+    if (!input.objectId) {
+      throw new HarthmereWorldObjectInteractionError([
+        "world_object_rejected:missing_object",
+      ]);
+    }
+    await submitHarthmereWorldObjectInteraction({
+      objectId: input.objectId,
+      label: input.label,
+      interaction: input.interaction,
+    });
+    recordConfirmedInteraction();
   }
 
   // HARTHMERE_REPAIR_TOOL_EQUIP: a repair only happens with a repair tool
@@ -475,7 +637,6 @@ export function performHarthmereObjectInteraction(input: {
   // the job flow consumes) and confirm; without one, direct the player to get
   // and equip a repair tool first instead of silently "repairing" nothing.
   if (input.interaction.kind === "repair") {
-    const repaired = isHarthmereRepairToolEquipped();
     const repairLabel = input.label?.trim() || "the structure";
     if (typeof window !== "undefined") {
       window.dispatchEvent(
@@ -483,7 +644,7 @@ export function performHarthmereObjectInteraction(input: {
           detail: {
             entityId: input.entityId,
             label: input.label,
-            repaired,
+            repaired: true,
           } satisfies HarthmereRepairPerformedEventDetail,
         })
       );
@@ -491,9 +652,7 @@ export function performHarthmereObjectInteraction(input: {
     addToast(input.resources, {
       kind: "basic",
       id: `harthmere-repair:${String(input.entityId)}`,
-      message: repaired
-        ? `Repaired ${repairLabel} — your repair tool restored the broken blocks.`
-        : `Equip a repair tool to fix ${repairLabel}. Buy or craft a Repair Mallet, equip it in your main hand, then try again.`,
+      message: `Repaired ${repairLabel}. The server confirmed the equipped repair tool and recorded the world-object mutation.`,
     });
     return;
   }

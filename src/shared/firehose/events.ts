@@ -137,6 +137,9 @@ export const zCompleteQuestStepAtEntityEvent = z.object({
   stepId: zBiomesId.optional(),
   chosenRewardIndex: z.number().optional(),
   claimFromEntityId: zBiomesId.annotate(questGiverSymbol, true),
+  // Native quest containers transfer the chosen item before publishing the
+  // claim event. The trigger still advances, but must not grant it twice.
+  skipRewardGrant: z.boolean().optional(),
 });
 
 export type CompleteQuestStepAtEntityEvent = z.infer<

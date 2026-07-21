@@ -188,6 +188,11 @@ function emitHarthmereNativeNpcAttackContact({
       return {
         id,
         label,
+        hpBefore:
+          typeof (record.health as { hp?: unknown } | undefined)?.hp ===
+          "number"
+            ? Number((record.health as { hp: number }).hp)
+            : undefined,
         hasNpcMetadata,
         hasPosition: true,
       };
@@ -198,6 +203,7 @@ function emitHarthmereNativeNpcAttackContact({
       ): hit is {
         id: number;
         label: string | undefined;
+        hpBefore: number | undefined;
         hasNpcMetadata: boolean;
         hasPosition: true;
       } => Boolean(hit)

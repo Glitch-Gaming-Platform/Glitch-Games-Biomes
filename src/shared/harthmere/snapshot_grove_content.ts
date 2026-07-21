@@ -841,6 +841,10 @@ export const SNAPSHOT_GROVE_LANDMARKS: SnapshotGroveLandmark[] = [
   { id: "grove_trade_desk", label: "Charter Trade Desk", position: snapshotGroveMarkerPosition(snapshotGroveFountainPosition(6, -1)), kind: "interactable", area: "the_grove", questIds: ["fountain_trade_table_promises"], visibleOnWorldMap: true },
   // GROVE_ECONOMY_STARTER: workspots referenced by the new economy quests.
   ...GROVE_ECONOMY_STARTER_LANDMARKS,
+  // Dedicated connector endpoint pins are appended after all legacy entries so
+  // the index-derived numeric ids of existing world-map landmarks stay stable.
+  { id: "harthmere_road_grove_trailhead", label: "Harthmere Road — Grove Trailhead", position: snapshotGroveMarkerPosition([560, SNAPSHOT_GROVE_MARKER_Y, -182]), kind: "connector", area: "harthmere_connector", visibleOnWorldMap: true },
+  { id: "harthmere_road_west_gate", label: "Harthmere Road — West Gate", position: snapshotGroveMarkerPosition([904, SNAPSHOT_GROVE_MARKER_Y, -209]), kind: "connector", area: "harthmere", visibleOnWorldMap: true },
 ];
 
 export function snapshotGroveLandmarkById(id: string) {

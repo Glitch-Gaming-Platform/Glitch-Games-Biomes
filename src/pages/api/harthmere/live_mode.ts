@@ -53,6 +53,11 @@ import {
 import { HARTHMERE_JOBS_BOARD_LOCATIONS } from "@/shared/harthmere/mmo_jobs_board_authority";
 import { EditEvent, PlaceGroupEvent } from "@/shared/ecs/gen/events";
 import { getSlotByRef } from "@/shared/game/inventory";
+import {
+  biomesIdToHarthmereItemId,
+  harthmereItemIdToBiomesId,
+} from "@/shared/harthmere/harthmere_biomes_ecs_bridge";
+import { ensureHarthmereNativeItemCatalogue } from "@/shared/harthmere/harthmere_native_bikkie_items";
 import { blockPos, voxelShard } from "@/shared/game/shard";
 import { shiftHarthmereAuthoredPositionToWorld } from "@/shared/harthmere/coordinate_transform";
 import { safeParseBiomesId, type BiomesId } from "@/shared/ids";
@@ -71,6 +76,7 @@ import {
   type HarthmereActorStateLock,
 } from "@/server/harthmere/live_mode_actor_state_authority";
 import { nativeBiomesEcsAuthorityEnabled } from "@/shared/harthmere/native_road_ahead_contract";
+import { syncHarthmereCommittedStatusToNativeEcs } from "@/server/harthmere/native_vitals";
 
 export { materializeHarthmereNativeEcsPlans } from "@/server/harthmere/native_ecs_drop_materialization";
 
@@ -315,16 +321,28 @@ const zLiveModeEventResponse = z.object({
   payload: zJsonRecord,
 });
 
-const zHarthmereNativeEcsMaterializationPlan = z.object({
-  kind: z.literal("drop"),
-  materializationKey: z.string(),
-  position: z.object({ x: z.number(), y: z.number(), z: z.number() }),
-  itemStacks: z.record(z.number()),
-  ownerActorIds: z.string().array(),
-  expiresAtMs: z.number(),
-  mined: z.boolean(),
-  sourceKind: z.string(),
-});
+const zHarthmereNativeEcsMaterializationPlan = z.discriminatedUnion("kind", [
+  z.object({
+    kind: z.literal("drop"),
+    materializationKey: z.string(),
+    position: z.object({ x: z.number(), y: z.number(), z: z.number() }),
+    itemStacks: z.record(z.number()),
+    ownerActorIds: z.string().array(),
+    expiresAtMs: z.number(),
+    mined: z.boolean(),
+    sourceKind: z.string(),
+  }),
+  z.object({
+    kind: z.literal("inventory_exchange"),
+    materializationKey: z.string(),
+    actorId: z.string(),
+    position: z.object({ x: z.number(), y: z.number(), z: z.number() }),
+    consumeItemStacks: z.record(z.number()),
+    rewardItemStacks: z.record(z.number()),
+    expiresAtMs: z.number(),
+    sourceKind: z.string(),
+  }),
+]);
 
 const zLiveModeUiEventResponse = z.object({
   uiEventId: z.string(),
@@ -410,6 +428,7 @@ const HARTHMERE_NATIVE_ECS_OWNED_LIVE_MODE_ACTIONS =
     "request_respawn",
     "request_npc_ai_tick",
     "request_boss_tick",
+    "request_loot_roll",
     "request_loot_claim",
     "request_container_transfer",
   ]);
@@ -426,9 +445,46 @@ export function nativeEcsPhysicalDropNeedsAuthenticatedActorForTest(input: {
 }) {
   return (
     (input.actionKind === "request_farming_action" &&
-      input.payload.operation === "gather_node") ||
+      [
+        "gather_node",
+        "mine_exotic_matter_deposit",
+        "cook_enqueue",
+        "cook_collect",
+        "cook_cancel",
+      ].includes(String(input.payload.operation ?? ""))) ||
     (input.actionKind === "request_inventory_item_action" &&
-      input.payload.operation === "drop_item")
+      input.payload.operation === "drop_item") ||
+    input.actionKind === "request_jobs_board_mutation" ||
+    (input.actionKind === "request_quest_state_update" &&
+      input.payload.completed === true &&
+      String(input.payload.questId ?? "").startsWith("jobs_board:"))
+  );
+}
+
+const HARTHMERE_NATIVE_ECS_ALLOWED_FARMING_OPERATIONS = new Set([
+  "gather_node",
+  "mine_exotic_matter_deposit",
+  // Cooking recipes remain a Harthmere server reducer, but their ingredients
+  // and outputs are exchanged through the actor's native ECS inventory.
+  "cook_enqueue",
+  "cook_collect",
+  "cook_cancel",
+]);
+
+/**
+ * Legacy field/livestock/cooking actions mutate a second Redis inventory from
+ * browser-authored facts. Native mode keeps those endpoints closed until the
+ * action is represented by a native ECS event and entity.
+ */
+export function nativeEcsRejectsLegacyFarmingRequestForTest(input: {
+  actionKind: HarthmereLiveModeActionKind;
+  payload: Record<string, unknown>;
+}) {
+  return (
+    input.actionKind === "request_farming_action" &&
+    !HARTHMERE_NATIVE_ECS_ALLOWED_FARMING_OPERATIONS.has(
+      String(input.payload.operation ?? "")
+    )
   );
 }
 
@@ -1074,7 +1130,9 @@ function wire_network_requests_to_validateHarthmereLiveModeAuthorityEnvelope(
   body: z.infer<typeof zLiveModeRequest>,
   serverActorPosition?: { x: number; y: number; z: number },
   serverTargetPosition?: { x: number; y: number; z: number },
-  serverActorItemIds?: BiomesId[]
+  serverActorItemIds?: BiomesId[],
+  serverActorItemCounts?: Record<string, number>,
+  serverActorEquippedItemKeys?: string[]
 ): HarthmereLiveModeAuthorityEnvelope {
   const now = Date.now();
   return {
@@ -1087,6 +1145,8 @@ function wire_network_requests_to_validateHarthmereLiveModeAuthorityEnvelope(
     source: "client_request",
     serverActorPosition,
     serverActorItemIds,
+    serverActorItemCounts,
+    serverActorEquippedItemKeys,
     serverTargetPosition,
     clientSentAtMs: body.clientSentAtMs,
     serverReceivedAtMs: now,
@@ -1127,6 +1187,8 @@ export async function readServerActorNativeContextForLiveMode(
       }
     }
     const ids = new Set<BiomesId>();
+    const itemCounts: Record<string, number> = {};
+    let equippedItemKeys: string[] = [];
     if (includeItemIds) {
       const inventory = entity?.inventory();
       const wearing = entity?.wearing();
@@ -1140,13 +1202,48 @@ export async function readServerActorNativeContextForLiveMode(
       for (const item of wearing?.items.values() ?? []) {
         ids.add(item.id);
       }
+      const semanticIds = new Map<BiomesId, string>();
+      for (const definition of ensureHarthmereNativeItemCatalogue()) {
+        const nativeId = harthmereItemIdToBiomesId(definition.itemId);
+        if (nativeId !== undefined) {
+          semanticIds.set(nativeId, definition.itemId);
+        }
+      }
+      equippedItemKeys = [...ids].flatMap((id) => {
+        const semanticId = semanticIds.get(id) ?? biomesIdToHarthmereItemId(id);
+        return semanticId ? [semanticId] : [];
+      });
+      const addCount = (item: { item: { id: BiomesId }; count: bigint }) => {
+        const semanticId =
+          semanticIds.get(item.item.id) ??
+          biomesIdToHarthmereItemId(item.item.id);
+        if (!semanticId) return;
+        itemCounts[semanticId] =
+          (itemCounts[semanticId] ?? 0) + Number(item.count);
+      };
+      for (const item of inventory?.items ?? []) {
+        if (item) addCount(item);
+      }
+      for (const item of inventory?.hotbar ?? []) {
+        if (item) addCount(item);
+      }
+      // Wearing is evidence that an item is equipped, not spendable inventory.
+      // Excluding it prevents a delivery/cooking exchange from consuming armor
+      // or clothing merely because it shares the requested item identity.
     }
     return {
       position: parsedPosition,
       itemIds: includeItemIds ? [...ids] : undefined,
+      itemCounts: includeItemIds ? itemCounts : undefined,
+      equippedItemKeys: includeItemIds ? equippedItemKeys : undefined,
     };
   } catch {
-    return { position: undefined, itemIds: includeItemIds ? [] : undefined };
+    return {
+      position: undefined,
+      itemIds: includeItemIds ? [] : undefined,
+      itemCounts: includeItemIds ? {} : undefined,
+      equippedItemKeys: includeItemIds ? [] : undefined,
+    };
   }
 }
 
@@ -1981,14 +2078,14 @@ async function hydrateAndRepairHarthmereLiveModeIdempotencyReplay(input: {
   const hydrated = await hydrateHarthmereLiveModeIdempotencyReplay(input);
   const plans = hydrated.backendMutation?.nativeEcsMaterializationPlans;
   if (!plans?.length) return hydrated;
+  const requiresAtomicInventoryExchange = plans.some(
+    (plan) => plan.kind === "inventory_exchange"
+  );
+  let repairError: unknown;
 
   try {
     if (!input.worldApi || !input.idGenerator) {
-      hydrated.backendMutation?.warnings.push(
-        `native_ecs_replay_repair_deferred:${
-          !input.worldApi ? "no_world_api" : "no_id_generator"
-        }`
-      );
+      throw new Error(!input.worldApi ? "no_world_api" : "no_id_generator");
     } else {
       const result = await materializeHarthmereNativeEcsPlans({
         redisPrimary: input.redisPrimary,
@@ -2001,6 +2098,7 @@ async function hydrateAndRepairHarthmereLiveModeIdempotencyReplay(input: {
       );
     }
   } catch (error) {
+    repairError = error;
     hydrated.backendMutation?.warnings.push(
       `native_ecs_replay_repair_deferred:${String(
         error instanceof Error ? error.message : error
@@ -2014,6 +2112,9 @@ async function hydrateAndRepairHarthmereLiveModeIdempotencyReplay(input: {
     "EX",
     24 * 60 * 60
   );
+  if (requiresAtomicInventoryExchange && repairError) {
+    throw repairError;
+  }
   return hydrated;
 }
 
@@ -2838,19 +2939,69 @@ export async function persistHarthmereLiveModeResponse(
       if (supportsWatch && txResult === null) {
         continue;
       }
-      // The authoritative actor document and its idempotency marker are now
-      // committed. Release before ECS/materialization work so unrelated player
-      // actions are never held behind external side effects.
+      if (
+        nativeBiomesEcsAuthorityEnabled() &&
+        deps.worldApi &&
+        deps.userId !== undefined
+      ) {
+        stageStartedAt = Date.now();
+        try {
+          await syncHarthmereCommittedStatusToNativeEcs({
+            worldApi: deps.worldApi,
+            userId: deps.userId,
+            state: reduced.state,
+          });
+          persistedResponse.backendMutation?.warnings.push(
+            "native_ecs_status_projected:gold:standing"
+          );
+          const sellerUserId = settlement
+            ? safeParseBiomesId(settlement.sellerId)
+            : undefined;
+          if (sellerUserId && sellerState) {
+            await syncHarthmereCommittedStatusToNativeEcs({
+              worldApi: deps.worldApi,
+              userId: sellerUserId,
+              state: sellerState,
+            });
+            persistedResponse.backendMutation?.warnings.push(
+              "native_ecs_seller_status_projected:gold:standing"
+            );
+          }
+        } catch (error) {
+          persistedResponse.backendMutation?.warnings.push(
+            `native_ecs_status_projection_deferred:${String(
+              error instanceof Error ? error.message : error
+            ).slice(0, 240)}`
+          );
+        }
+        await txPrimary.set(
+          key,
+          JSON.stringify(
+            slimHarthmereLiveModeIdempotencyResponse(persistedResponse)
+          ),
+          "EX",
+          24 * 60 * 60
+        );
+        mark("native_ecs_status_projection_ms", stageStartedAt);
+      }
+
+      // Keep the actor lock through the small ECS wallet/standing projection so
+      // two committed mutations cannot publish their results out of order.
+      // Release before terrain/drop materialization, which may be substantially
+      // slower and is independently idempotent.
       await releaseActorLock();
 
       if (reduced.summary.nativeEcsMaterializationPlans?.length) {
         stageStartedAt = Date.now();
+        const requiresAtomicInventoryExchange =
+          reduced.summary.nativeEcsMaterializationPlans.some(
+            (plan) => plan.kind === "inventory_exchange"
+          );
+        let materializationError: unknown;
         try {
           if (!deps.worldApi || !deps.idGenerator) {
-            persistedResponse.backendMutation?.warnings.push(
-              `native_ecs_materialization_deferred:${
-                !deps.worldApi ? "no_world_api" : "no_id_generator"
-              }`
+            throw new Error(
+              !deps.worldApi ? "no_world_api" : "no_id_generator"
             );
           } else {
             const materialized = await materializeHarthmereNativeEcsPlans({
@@ -2864,6 +3015,7 @@ export async function persistHarthmereLiveModeResponse(
             );
           }
         } catch (error) {
+          materializationError = error;
           persistedResponse.backendMutation?.warnings.push(
             `native_ecs_materialization_deferred:${String(
               error instanceof Error ? error.message : error
@@ -2879,6 +3031,12 @@ export async function persistHarthmereLiveModeResponse(
           24 * 60 * 60
         );
         mark("native_ecs_materialization_ms", stageStartedAt);
+        if (requiresAtomicInventoryExchange && materializationError) {
+          // The Redis/idempotency commit remains repairable, but the client
+          // must not advance to the payout step until this exact request is
+          // replayed and the native exchange succeeds.
+          throw materializationError;
+        }
       }
 
       // Materialize server-approved building plans after the state/idempotency
@@ -3086,7 +3244,6 @@ export default biomesApiHandler(
       };
     }
     if (
-      actorIdentity.userId !== undefined &&
       nativeBiomesEcsAuthorityEnabled() &&
       nativeEcsOwnsHarthmereLiveModeActionForTest(body.actionKind)
     ) {
@@ -3099,7 +3256,36 @@ export default biomesApiHandler(
         persisted: false,
         validation: {
           ok: false,
-          errors: [`native_ecs_authority_required:${body.actionKind}`],
+          errors: [
+            actorIdentity.userId === undefined
+              ? "native_ecs_authenticated_actor_required"
+              : `native_ecs_authority_required:${body.actionKind}`,
+          ],
+          warnings: [],
+          rejectedClientClaims: [],
+        },
+        events: [],
+        uiEvents: [],
+      };
+    }
+    if (
+      nativeBiomesEcsAuthorityEnabled() &&
+      nativeEcsRejectsLegacyFarmingRequestForTest(body)
+    ) {
+      return {
+        ok: false,
+        version: HARTHMERE_LIVE_MODE_SERVER_ROUTE,
+        actorId: actorIdentity.actorId,
+        duplicate: false,
+        replayed: false,
+        persisted: false,
+        validation: {
+          ok: false,
+          errors: [
+            `native_ecs_farming_action_required:${String(
+              body.payload.operation ?? "unknown"
+            )}`,
+          ],
           warnings: [],
           rejectedClientClaims: [],
         },
@@ -3139,8 +3325,21 @@ export default biomesApiHandler(
     );
     const actorId = actorContext.actorId;
     const needsNativeToolEvidence =
-      body.actionKind === "request_farming_action" &&
-      body.payload.operation === "gather_node";
+      (body.actionKind === "request_farming_action" &&
+        [
+          "gather_node",
+          "mine_exotic_matter_deposit",
+          "cook_enqueue",
+          "cook_collect",
+          "cook_cancel",
+        ].includes(String(body.payload.operation ?? ""))) ||
+      body.actionKind === "request_jobs_board_mutation" ||
+      (body.actionKind === "request_care_loop_action" &&
+        body.payload.operation === "world_object_interaction" &&
+        body.payload.interactionKind === "repair") ||
+      (body.actionKind === "request_quest_state_update" &&
+        body.payload.completed === true &&
+        String(body.payload.questId ?? "").startsWith("jobs_board:"));
     const [serverActorContext, serverTargetPosition] = await Promise.all([
       actorIdentity.userId !== undefined
         ? readServerActorNativeContextForLiveMode(
@@ -3151,6 +3350,8 @@ export default biomesApiHandler(
         : Promise.resolve({
             position: combatActorPositionFromInstallLiveModeBody(body),
             itemIds: undefined,
+            itemCounts: undefined,
+            equippedItemKeys: undefined,
           }),
       readServerTargetPositionForQuestInvite(worldApi, body),
     ]);
@@ -3160,7 +3361,9 @@ export default biomesApiHandler(
         body,
         serverActorContext.position,
         serverTargetPosition,
-        serverActorContext.itemIds
+        serverActorContext.itemIds,
+        serverActorContext.itemCounts,
+        serverActorContext.equippedItemKeys
       );
     const validation = validateHarthmereLiveModeAuthorityEnvelope(envelope);
     if (!validation.ok) {

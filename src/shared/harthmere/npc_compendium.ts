@@ -23,11 +23,11 @@ export const HARTHMERE_NAMED_NPCS = [
       "Takes small bribes for Yenna’s medicine and knows the Reeve has noticed."
     ],
     "dialogue": {
-      "greeting": "“Evening, traveler. I am Sergeant Bramwell Holt; mind your step and I will give you the truth as cleanly as I can.”",
-      "service": "“If you need my help, ask plainly. Harthmere has enough whispers already, and my work is better done with steady hands.”",
-      "rumor": "“The town sounds normal until you listen under the noise. Lately, even ordinary stone seems to be holding its breath.”",
-      "questOffer": "“There is a matter tied to my route, my people, and what I have seen. Do it carefully, and do not turn it into tavern theater.”",
-      "farewell": "“Go safe. Come back with your boots dirty and your story straight.”"
+      "greeting": "You found Sergeant Bramwell Holt in North Gate; if you want an answer, ask a question worth stopping for.",
+      "service": "What I know is practical rather than grand. I can explain local law, road warnings, watch boundaries, and the difference between keeping order and abusing it. I keep the North Gate orderly and make certain tired guards remember that authority is a duty, not a license.",
+      "rumor": "Sergeant Bramwell Holt would not call rumor evidence, yet reports of cart queues, toll boards, refugee fires, and warnings about roads that worsen after dusk keep circling North Gate from people who do not usually agree.",
+      "questOffer": "If you are looking for useful work, Sergeant Bramwell Holt needs a steady hand to check a warning, escort someone vulnerable, or verify trouble before steel makes it worse near North Gate.",
+      "farewell": "Sergeant Bramwell Holt wishes you a steady road. Around North Gate, kept promises travel farther than boasts."
     },
     "route": {
       "routeId": "sergeant_bram_holt_daily_route",
@@ -175,11 +175,11 @@ export const HARTHMERE_NAMED_NPCS = [
       "Refused to charge the crowd during the Bridge Tax Riot and keeps a private boot fund for poor children."
     ],
     "dialogue": {
-      "greeting": "“Evening, traveler. I am Drill Instructor Walt Ormsby; mind your step and I will give you the truth as cleanly as I can.”",
-      "service": "“If you need my help, ask plainly. Harthmere has enough whispers already, and my work is better done with steady hands.”",
-      "rumor": "“The town sounds normal until you listen under the noise. Lately, even ordinary stone seems to be holding its breath.”",
-      "questOffer": "“There is a matter tied to my route, my people, and what I have seen. Do it carefully, and do not turn it into tavern theater.”",
-      "farewell": "“Go safe. Come back with your boots dirty and your story straight.”"
+      "greeting": "If Guard Yard sent you looking for someone, Drill Instructor Walt Ormsby is the name you were probably given.",
+      "service": "I train recruits hard, stop bullies harder, and still know every muddy lane between the Guard Yard and Mudden Ward; because of that, I can also explain local law, road warnings, watch boundaries, and the difference between keeping order and abusing it.",
+      "rumor": "Lately Guard Yard has been marked by drill calls, dented practice shields, and recruits learning that restraint is part of watch work. Drill Instructor Walt Ormsby advises attention before fear turns the story into nonsense.",
+      "questOffer": "Guard Yard has a matter suited to an outsider: check a warning, escort someone vulnerable, or verify trouble before steel makes it worse. Return to Drill Instructor Walt Ormsby when you can explain what actually happened.",
+      "farewell": "We are finished for the moment. Mind the warnings in Guard Yard, even the quiet ones. —Drill Instructor Walt Ormsby"
     },
     "route": {
       "routeId": "walt_ormsby_daily_route",
@@ -327,11 +327,11 @@ export const HARTHMERE_NAMED_NPCS = [
       "Was approached by the Compact’s inner ring for grain manipulation and refused."
     ],
     "dialogue": {
-      "greeting": "“Evening, traveler. I am Mara Thistle; mind your step and I will give you the truth as cleanly as I can.”",
-      "service": "“If you need my help, ask plainly. Harthmere has enough whispers already, and my work is better done with steady hands.”",
-      "rumor": "“The town sounds normal until you listen under the noise. Lately, even ordinary stone seems to be holding its breath.”",
-      "questOffer": "“There is a matter tied to my route, my people, and what I have seen. Do it carefully, and do not turn it into tavern theater.”",
-      "farewell": "“Go safe. Come back with your boots dirty and your story straight.”"
+      "greeting": "Mara Thistle here. I trust useful questions more than grand entrances, especially in Market Square.",
+      "service": "I raised a family behind a market stall, so I can price an onion, spot a cheat, and hear grief hiding inside gossip; because of that, I can also speak to supply, fair measure, local prices, and which road delays are reaching the stalls.",
+      "rumor": "Lately Market Square has been marked by bread prices, fountain gossip, stall permits, and merchants measuring fear as carefully as coin. Mara Thistle advises attention before fear turns the story into nonsense.",
+      "questOffer": "Market Square has a matter suited to an outsider: trace a delayed supply, verify a measure, or carry goods where the road has made trade uncertain. Return to Mara Thistle when you can explain what actually happened.",
+      "farewell": "Go safely. Mara Thistle would rather see you return to Market Square wiser than hear a dramatic story about your absence."
     },
     "route": {
       "routeId": "mara_thistle_daily_route",
@@ -474,11 +474,11 @@ export const HARTHMERE_NAMED_NPCS = [
       "He is the buyer seeking what lies beneath the chapel, without yet knowing Thaedryn’s name."
     ],
     "dialogue": {
-      "greeting": "“Evening, traveler. I am Edrik Vane; mind your step and I will give you the truth as cleanly as I can.”",
-      "service": "“If you need my help, ask plainly. Harthmere has enough whispers already, and my work is better done with steady hands.”",
-      "rumor": "“The town sounds normal until you listen under the noise. Lately, even ordinary stone seems to be holding its breath.”",
-      "questOffer": "“There is a matter tied to my route, my people, and what I have seen. Do it carefully, and do not turn it into tavern theater.”",
-      "farewell": "“Go safe. Come back with your boots dirty and your story straight.”"
+      "greeting": "Edrik Vane, at your service for a moment. Noble Rise rarely leaves anyone idle for longer than that.",
+      "service": "What I know is practical rather than grand. I can speak to supply, fair measure, local prices, and which road delays are reaching the stalls. I lend carefully, collect patiently, and prefer signed figures to the loud moral theater of Noble Rise.",
+      "rumor": "Edrik Vane has noticed deeds, debts, polished manners, and decisions whose cost is usually paid downhill around Noble Rise; when several small things change together, it is rarely coincidence.",
+      "questOffer": "If you are looking for useful work, Edrik Vane needs a steady hand to trace a delayed supply, verify a measure, or carry goods where the road has made trade uncertain near Noble Rise.",
+      "farewell": "Take care of your boots, your word, and whoever walks beside you. Edrik Vane will still be in Noble Rise."
     },
     "route": {
       "routeId": "edrik_vane_daily_route",
@@ -595,7 +595,7 @@ export const HARTHMERE_NAMED_NPCS = [
       ]
     },
     "spawn": {
-      "x": 562.0,
+      "x": 562,
       "z": -264.2,
       "rot": 3.14,
       "scale": 1.12,
@@ -621,11 +621,11 @@ export const HARTHMERE_NAMED_NPCS = [
       "Has been redirecting funds to conceal town debt and suspects an old chapel curse."
     ],
     "dialogue": {
-      "greeting": "“Evening, traveler. I am Reeve Caldus Merrow; mind your step and I will give you the truth as cleanly as I can.”",
-      "service": "“If you need my help, ask plainly. Harthmere has enough whispers already, and my work is better done with steady hands.”",
-      "rumor": "“The town sounds normal until you listen under the noise. Lately, even ordinary stone seems to be holding its breath.”",
-      "questOffer": "“There is a matter tied to my route, my people, and what I have seen. Do it carefully, and do not turn it into tavern theater.”",
-      "farewell": "“Go safe. Come back with your boots dirty and your story straight.”"
+      "greeting": "Mind where you step and call me Reeve Caldus Merrow; Noble Rise has enough confusion without careless introductions.",
+      "service": "I can explain petitions, deeds, public obligations, and the manners people use when power is in the room. That knowledge comes from this much of my life: I inherited Harthmere's seal along with its roads, debts, petitions, and the expectation that none of them fail in public.",
+      "rumor": "Lately Noble Rise has been marked by deeds, debts, polished manners, and decisions whose cost is usually paid downhill. Reeve Caldus Merrow advises attention before fear turns the story into nonsense.",
+      "questOffer": "There is honest work around Noble Rise: verify a petition, witness an agreement, or uncover the human cost hidden inside a clean record. Reeve Caldus Merrow values a clean result more than a heroic retelling.",
+      "farewell": "Go safely. Reeve Caldus Merrow would rather see you return to Noble Rise wiser than hear a dramatic story about your absence."
     },
     "route": {
       "routeId": "reeve_caldus_merrow_daily_route",
@@ -768,11 +768,11 @@ export const HARTHMERE_NAMED_NPCS = [
       "His grandfather helped cast the buried bell and Osric has waited decades to be asked."
     ],
     "dialogue": {
-      "greeting": "“Evening, traveler. I am Master Osric Vale; mind your step and I will give you the truth as cleanly as I can.”",
-      "service": "“If you need my help, ask plainly. Harthmere has enough whispers already, and my work is better done with steady hands.”",
-      "rumor": "“The town sounds normal until you listen under the noise. Lately, even ordinary stone seems to be holding its breath.”",
-      "questOffer": "“There is a matter tied to my route, my people, and what I have seen. Do it carefully, and do not turn it into tavern theater.”",
-      "farewell": "“Go safe. Come back with your boots dirty and your story straight.”"
+      "greeting": "You found Master Osric Vale in Craftsman Row; if you want an answer, ask a question worth stopping for.",
+      "service": "My trade has taught me where trouble begins. Five generations of Vale smiths taught me that honest iron answers a clean hammer long before it answers a speech. I can judge materials, repairs, apprentices' work, and the small failures that become expensive emergencies.",
+      "rumor": "Master Osric Vale would not call rumor evidence, yet reports of hammer blows, sawdust, tannery sharpness, and repairs that keep the whole town functioning keep circling Craftsman Row from people who do not usually agree.",
+      "questOffer": "If you are looking for useful work, Master Osric Vale needs a steady hand to recover sound materials, inspect damage, or put a failing piece of town work right near Craftsman Row.",
+      "farewell": "That is enough for now. If you come back to Master Osric Vale, bring honest news from Craftsman Row."
     },
     "route": {
       "routeId": "master_osric_vale_daily_route",
@@ -917,11 +917,11 @@ export const HARTHMERE_NAMED_NPCS = [
       "Remembers a forgotten childhood song in a language he is trying to recover."
     ],
     "dialogue": {
-      "greeting": "“Evening, traveler. I am Apprentice Luth; mind your step and I will give you the truth as cleanly as I can.”",
-      "service": "“If you need my help, ask plainly. Harthmere has enough whispers already, and my work is better done with steady hands.”",
-      "rumor": "“The town sounds normal until you listen under the noise. Lately, even ordinary stone seems to be holding its breath.”",
-      "questOffer": "“There is a matter tied to my route, my people, and what I have seen. Do it carefully, and do not turn it into tavern theater.”",
-      "farewell": "“Go safe. Come back with your boots dirty and your story straight.”"
+      "greeting": "Mind where you step and call me Apprentice Luth; Craftsman Row has enough confusion without careless introductions.",
+      "service": "Osric taught me the forge, books taught me the rest, and both agree that metal remembers careless hands; because of that, I can also judge materials, repairs, apprentices' work, and the small failures that become expensive emergencies.",
+      "rumor": "The talk reaching Apprentice Luth from Craftsman Row concerns hammer blows, sawdust, tannery sharpness, and repairs that keep the whole town functioning. Treat it as a warning, not a proven accusation.",
+      "questOffer": "Craftsman Row has a matter suited to an outsider: recover sound materials, inspect damage, or put a failing piece of town work right. Return to Apprentice Luth when you can explain what actually happened.",
+      "farewell": "Go safely. Apprentice Luth would rather see you return to Craftsman Row wiser than hear a dramatic story about your absence."
     },
     "route": {
       "routeId": "apprentice_luth_daily_route",
@@ -1066,11 +1066,11 @@ export const HARTHMERE_NAMED_NPCS = [
       "Understands the bridge cracks are a frequency pattern and fears being proven right."
     ],
     "dialogue": {
-      "greeting": "“Evening, traveler. I am Master Garrik Fen; mind your step and I will give you the truth as cleanly as I can.”",
-      "service": "“If you need my help, ask plainly. Harthmere has enough whispers already, and my work is better done with steady hands.”",
-      "rumor": "“The town sounds normal until you listen under the noise. Lately, even ordinary stone seems to be holding its breath.”",
-      "questOffer": "“There is a matter tied to my route, my people, and what I have seen. Do it carefully, and do not turn it into tavern theater.”",
-      "farewell": "“Go safe. Come back with your boots dirty and your story straight.”"
+      "greeting": "Master Garrik Fen here. I trust useful questions more than grand entrances, especially in Craftsman Row.",
+      "service": "I can judge materials, repairs, apprentices' work, and the small failures that become expensive emergencies. That knowledge comes from this much of my life: I build roofs, braces, carts, and whatever else keeps Harthmere standing when weather and officials arrive together.",
+      "rumor": "The talk reaching Master Garrik Fen from Craftsman Row concerns hammer blows, sawdust, tannery sharpness, and repairs that keep the whole town functioning. Treat it as a warning, not a proven accusation.",
+      "questOffer": "Craftsman Row has a matter suited to an outsider: recover sound materials, inspect damage, or put a failing piece of town work right. Return to Master Garrik Fen when you can explain what actually happened.",
+      "farewell": "We are finished for the moment. Mind the warnings in Craftsman Row, even the quiet ones. —Master Garrik Fen"
     },
     "route": {
       "routeId": "master_garrik_fen_daily_route",
@@ -1213,11 +1213,11 @@ export const HARTHMERE_NAMED_NPCS = [
       "Keeps a private ledger of noble clothes mended after suspicious nights."
     ],
     "dialogue": {
-      "greeting": "“Evening, traveler. I am Mistress Helna Voss; mind your step and I will give you the truth as cleanly as I can.”",
-      "service": "“If you need my help, ask plainly. Harthmere has enough whispers already, and my work is better done with steady hands.”",
-      "rumor": "“The town sounds normal until you listen under the noise. Lately, even ordinary stone seems to be holding its breath.”",
-      "questOffer": "“There is a matter tied to my route, my people, and what I have seen. Do it carefully, and do not turn it into tavern theater.”",
-      "farewell": "“Go safe. Come back with your boots dirty and your story straight.”"
+      "greeting": "Around Craftsman Row, people call me Mistress Helna Voss; speak plainly and I will do the same.",
+      "service": "What I know is practical rather than grand. I can judge materials, repairs, apprentices' work, and the small failures that become expensive emergencies. Cloth tells me who works, who mourns, who is pretending to prosper, and who needs a seam repaired without public questions.",
+      "rumor": "Mistress Helna Voss has noticed hammer blows, sawdust, tannery sharpness, and repairs that keep the whole town functioning around Craftsman Row; when several small things change together, it is rarely coincidence.",
+      "questOffer": "If you are looking for useful work, Mistress Helna Voss needs a steady hand to recover sound materials, inspect damage, or put a failing piece of town work right near Craftsman Row.",
+      "farewell": "Mistress Helna Voss wishes you a steady road. Around Craftsman Row, kept promises travel farther than boasts."
     },
     "route": {
       "routeId": "helna_voss_daily_route",
@@ -1360,11 +1360,11 @@ export const HARTHMERE_NAMED_NPCS = [
       "Can identify poached noble-ground game from one cut of leather."
     ],
     "dialogue": {
-      "greeting": "“Evening, traveler. I am Mistress Selka Doryn; mind your step and I will give you the truth as cleanly as I can.”",
-      "service": "“If you need my help, ask plainly. Harthmere has enough whispers already, and my work is better done with steady hands.”",
-      "rumor": "“The town sounds normal until you listen under the noise. Lately, even ordinary stone seems to be holding its breath.”",
-      "questOffer": "“There is a matter tied to my route, my people, and what I have seen. Do it carefully, and do not turn it into tavern theater.”",
-      "farewell": "“Go safe. Come back with your boots dirty and your story straight.”"
+      "greeting": "If Craftsman Row sent you looking for someone, Mistress Selka Doryn is the name you were probably given.",
+      "service": "I can judge materials, repairs, apprentices' work, and the small failures that become expensive emergencies. That knowledge comes from this much of my life: I judge leather by grain, hunters by the hides they bring, and saddles by whether a frightened horse will trust them.",
+      "rumor": "Lately Craftsman Row has been marked by hammer blows, sawdust, tannery sharpness, and repairs that keep the whole town functioning. Mistress Selka Doryn advises attention before fear turns the story into nonsense.",
+      "questOffer": "Mistress Selka Doryn could use someone willing to recover sound materials, inspect damage, or put a failing piece of town work right here in Craftsman Row; do it carefully, and bring back facts rather than theater.",
+      "farewell": "We are finished for the moment. Mind the warnings in Craftsman Row, even the quiet ones. —Mistress Selka Doryn"
     },
     "route": {
       "routeId": "selka_doryn_daily_route",
@@ -1507,11 +1507,11 @@ export const HARTHMERE_NAMED_NPCS = [
       "Has dreamed of Thaedryn as a woman sitting at the bottom of the river for months."
     ],
     "dialogue": {
-      "greeting": "“Evening, traveler. I am Mistress Ysabet Fenlow; mind your step and I will give you the truth as cleanly as I can.”",
-      "service": "“If you need my help, ask plainly. Harthmere has enough whispers already, and my work is better done with steady hands.”",
-      "rumor": "“The town sounds normal until you listen under the noise. Lately, even ordinary stone seems to be holding its breath.”",
-      "questOffer": "“There is a matter tied to my route, my people, and what I have seen. Do it carefully, and do not turn it into tavern theater.”",
-      "farewell": "“Go safe. Come back with your boots dirty and your story straight.”"
+      "greeting": "Around Apothecary, people call me Mistress Ysabet Fenlow; speak plainly and I will do the same.",
+      "service": "Herbs, river damp, fever, and sleeplessness all leave different traces if a healer is patient enough to notice. I can offer care, chapel custom, grave courtesy, and what public faith asks of an uneasy town.",
+      "rumor": "Mistress Ysabet Fenlow has noticed herb bundles, bitter steam, river damp, and patients who waited too long to ask for help around Apothecary; when several small things change together, it is rarely coincidence.",
+      "questOffer": "If you are looking for useful work, Mistress Ysabet Fenlow needs a steady hand to tend the living, honor the dead, or investigate a disturbance without feeding public panic near Apothecary.",
+      "farewell": "Take care of your boots, your word, and whoever walks beside you. Mistress Ysabet Fenlow will still be in Apothecary."
     },
     "route": {
       "routeId": "ysabet_fenlow_daily_route",
@@ -1630,7 +1630,7 @@ export const HARTHMERE_NAMED_NPCS = [
       ]
     },
     "spawn": {
-      "x": 455.0,
+      "x": 455,
       "z": -177.1,
       "rot": 1.57,
       "scale": 1.12,
@@ -1656,11 +1656,11 @@ export const HARTHMERE_NAMED_NPCS = [
       "Knows the horses keep staring at the chapel and fears the ground beneath town."
     ],
     "dialogue": {
-      "greeting": "“Evening, traveler. I am Old Jory Brann; mind your step and I will give you the truth as cleanly as I can.”",
-      "service": "“If you need my help, ask plainly. Harthmere has enough whispers already, and my work is better done with steady hands.”",
-      "rumor": "“The town sounds normal until you listen under the noise. Lately, even ordinary stone seems to be holding its breath.”",
-      "questOffer": "“There is a matter tied to my route, my people, and what I have seen. Do it carefully, and do not turn it into tavern theater.”",
-      "farewell": "“Go safe. Come back with your boots dirty and your story straight.”"
+      "greeting": "I am Old Jory Brann. The day's work in North Gate has not swallowed me yet, so ask.",
+      "service": "What I know is practical rather than grand. I can read cargo work, river conditions, ferry practice, and the difference between haste and a dangerous load. Horses are plainer company than officials, and they feel a bad road or restless ground before most riders do.",
+      "rumor": "Ask what feels different in North Gate, and Old Jory Brann will point to cart queues, toll boards, refugee fires, and warnings about roads that worsen after dusk. The town is listening for a pattern.",
+      "questOffer": "If you are looking for useful work, Old Jory Brann needs a steady hand to check a manifest, secure a crossing, or learn why a load and its paperwork disagree near North Gate.",
+      "farewell": "That is enough for now. If you come back to Old Jory Brann, bring honest news from North Gate."
     },
     "route": {
       "routeId": "old_jory_brann_daily_route",
@@ -1803,11 +1803,11 @@ export const HARTHMERE_NAMED_NPCS = [
       "Has been watering flour during lean weeks so poor children still get bread."
     ],
     "dialogue": {
-      "greeting": "“Evening, traveler. I am Mistress Dawn Loaf; mind your step and I will give you the truth as cleanly as I can.”",
-      "service": "“If you need my help, ask plainly. Harthmere has enough whispers already, and my work is better done with steady hands.”",
-      "rumor": "“The town sounds normal until you listen under the noise. Lately, even ordinary stone seems to be holding its breath.”",
-      "questOffer": "“There is a matter tied to my route, my people, and what I have seen. Do it carefully, and do not turn it into tavern theater.”",
-      "farewell": "“Go safe. Come back with your boots dirty and your story straight.”"
+      "greeting": "Mistress Dawn Loaf here. I trust useful questions more than grand entrances, especially in Market Square.",
+      "service": "Bread is Harthmere's daily arithmetic: grain in, loaves out, and no child or apprentice left hungry if I can prevent it; because of that, I can also speak to supply, fair measure, local prices, and which road delays are reaching the stalls.",
+      "rumor": "Market Square usually hides worry inside routine, but Mistress Dawn Loaf keeps hearing about bread prices, fountain gossip, stall permits, and merchants measuring fear as carefully as coin. Something is pressing on ordinary life.",
+      "questOffer": "Market Square has a matter suited to an outsider: trace a delayed supply, verify a measure, or carry goods where the road has made trade uncertain. Return to Mistress Dawn Loaf when you can explain what actually happened.",
+      "farewell": "We are finished for the moment. Mind the warnings in Market Square, even the quiet ones. —Mistress Dawn Loaf"
     },
     "route": {
       "routeId": "dawn_loaf_daily_route",
@@ -1950,11 +1950,11 @@ export const HARTHMERE_NAMED_NPCS = [
       "Dreams the river flows backward while something vast follows under his boat."
     ],
     "dialogue": {
-      "greeting": "“Evening, traveler. I am Master Tovin Reed; mind your step and I will give you the truth as cleanly as I can.”",
-      "service": "“If you need my help, ask plainly. Harthmere has enough whispers already, and my work is better done with steady hands.”",
-      "rumor": "“The town sounds normal until you listen under the noise. Lately, even ordinary stone seems to be holding its breath.”",
-      "questOffer": "“There is a matter tied to my route, my people, and what I have seen. Do it carefully, and do not turn it into tavern theater.”",
-      "farewell": "“Go safe. Come back with your boots dirty and your story straight.”"
+      "greeting": "If River Docks sent you looking for someone, Master Tovin Reed is the name you were probably given.",
+      "service": "I know the river by rope strain, cargo weight, weather smell, and the silence a crew keeps around a dishonest manifest; because of that, I can also read cargo work, river conditions, ferry practice, and the difference between haste and a dangerous load.",
+      "rumor": "The talk reaching Master Tovin Reed from River Docks concerns changing current, wet rope, cargo ledgers, ferry bells, and crates that invite the wrong questions. Treat it as a warning, not a proven accusation.",
+      "questOffer": "River Docks has a matter suited to an outsider: check a manifest, secure a crossing, or learn why a load and its paperwork disagree. Return to Master Tovin Reed when you can explain what actually happened.",
+      "farewell": "We are finished for the moment. Mind the warnings in River Docks, even the quiet ones. —Master Tovin Reed"
     },
     "route": {
       "routeId": "tovin_reed_daily_route",
@@ -2097,11 +2097,11 @@ export const HARTHMERE_NAMED_NPCS = [
       "Was warned by the river-lady to keep her father off the boat at night."
     ],
     "dialogue": {
-      "greeting": "“Evening, traveler. I am Mistress Lina Reed; mind your step and I will give you the truth as cleanly as I can.”",
-      "service": "“If you need my help, ask plainly. Harthmere has enough whispers already, and my work is better done with steady hands.”",
-      "rumor": "“The town sounds normal until you listen under the noise. Lately, even ordinary stone seems to be holding its breath.”",
-      "questOffer": "“There is a matter tied to my route, my people, and what I have seen. Do it carefully, and do not turn it into tavern theater.”",
-      "farewell": "“Go safe. Come back with your boots dirty and your story straight.”"
+      "greeting": "Mistress Lina Reed. I know the work and worries of River Docks, though I do not sell either as entertainment.",
+      "service": "I know which adults listen, where children are warned away, and what changes grown-ups hope we miss. I learned it the ordinary way: I grew up beside the docks, where water carries songs, warnings, and things adults decide they did not hear.",
+      "rumor": "Lately River Docks has been marked by changing current, wet rope, cargo ledgers, ferry bells, and crates that invite the wrong questions. Mistress Lina Reed advises attention before fear turns the story into nonsense.",
+      "questOffer": "Mistress Lina Reed could use someone willing to notice something adults dismissed and bring back an answer without frightening anyone for sport here in River Docks; do it carefully, and bring back facts rather than theater.",
+      "farewell": "We are finished for the moment. Mind the warnings in River Docks, even the quiet ones. —Mistress Lina Reed"
     },
     "route": {
       "routeId": "lina_reed_daily_route",
@@ -2219,7 +2219,7 @@ export const HARTHMERE_NAMED_NPCS = [
     },
     "spawn": {
       "x": 592.1,
-      "z": -177.0,
+      "z": -177,
       "rot": -1.57,
       "scale": 0.82,
       "asset": "townsperson_mudden"
@@ -2244,11 +2244,11 @@ export const HARTHMERE_NAMED_NPCS = [
       "Knows which dock crates are legitimate and which are moved after midnight."
     ],
     "dialogue": {
-      "greeting": "“Evening, traveler. I am Sora Reed; mind your step and I will give you the truth as cleanly as I can.”",
-      "service": "“If you need my help, ask plainly. Harthmere has enough whispers already, and my work is better done with steady hands.”",
-      "rumor": "“The town sounds normal until you listen under the noise. Lately, even ordinary stone seems to be holding its breath.”",
-      "questOffer": "“There is a matter tied to my route, my people, and what I have seen. Do it carefully, and do not turn it into tavern theater.”",
-      "farewell": "“Go safe. Come back with your boots dirty and your story straight.”"
+      "greeting": "You found Sora Reed in River Docks; if you want an answer, ask a question worth stopping for.",
+      "service": "My trade has taught me where trouble begins. I run dock errands quickly enough to know which barges are late, which ropes are frayed, and which grown-ups are worried. I know which adults listen, where children are warned away, and what changes grown-ups hope we miss.",
+      "rumor": "Sora Reed has noticed changing current, wet rope, cargo ledgers, ferry bells, and crates that invite the wrong questions around River Docks; when several small things change together, it is rarely coincidence.",
+      "questOffer": "If you are looking for useful work, Sora Reed needs a steady hand to notice something adults dismissed and bring back an answer without frightening anyone for sport near River Docks.",
+      "farewell": "Take care of your boots, your word, and whoever walks beside you. Sora Reed will still be in River Docks."
     },
     "route": {
       "routeId": "sora_reed_daily_route",
@@ -2366,7 +2366,7 @@ export const HARTHMERE_NAMED_NPCS = [
     },
     "spawn": {
       "x": 593.4,
-      "z": -177.0,
+      "z": -177,
       "rot": -1.57,
       "scale": 0.82,
       "asset": "townsperson_mudden"
@@ -2391,11 +2391,11 @@ export const HARTHMERE_NAMED_NPCS = [
       "Knows the missing bell was not stolen but cannot yet carry the truth alone."
     ],
     "dialogue": {
-      "greeting": "“Evening, traveler. I am Father Aldren Mell; mind your step and I will give you the truth as cleanly as I can.”",
-      "service": "“If you need my help, ask plainly. Harthmere has enough whispers already, and my work is better done with steady hands.”",
-      "rumor": "“The town sounds normal until you listen under the noise. Lately, even ordinary stone seems to be holding its breath.”",
-      "questOffer": "“There is a matter tied to my route, my people, and what I have seen. Do it carefully, and do not turn it into tavern theater.”",
-      "farewell": "“Go safe. Come back with your boots dirty and your story straight.”"
+      "greeting": "You found Father Aldren Mell in Temple Green; if you want an answer, ask a question worth stopping for.",
+      "service": "What I know is practical rather than grand. I can offer care, chapel custom, grave courtesy, and what public faith asks of an uneasy town. I keep the chapel's rites, records, and frightened silences in order while the town asks faith to sound more certain than people feel.",
+      "rumor": "Father Aldren Mell would not call rumor evidence, yet reports of candle vigils, charity lines, grave records, and an old unease beneath formal prayers keep circling Temple Green from people who do not usually agree.",
+      "questOffer": "Father Aldren Mell will trust you with one local problem if you agree to tend the living, honor the dead, or investigate a disturbance without feeding public panic; Temple Green has suffered enough careless favors.",
+      "farewell": "Father Aldren Mell wishes you a steady road. Around Temple Green, kept promises travel farther than boasts."
     },
     "route": {
       "routeId": "father_aldren_mell_daily_route",
@@ -2515,7 +2515,7 @@ export const HARTHMERE_NAMED_NPCS = [
     },
     "spawn": {
       "x": 478.7,
-      "z": -137.0,
+      "z": -137,
       "rot": 0,
       "scale": 1.12,
       "asset": "townsperson_clergy"
@@ -2540,11 +2540,11 @@ export const HARTHMERE_NAMED_NPCS = [
       "Has quietly prepared emergency blessing kits in case the crypt opens."
     ],
     "dialogue": {
-      "greeting": "“Evening, traveler. I am Sister Maelle Frenn; mind your step and I will give you the truth as cleanly as I can.”",
-      "service": "“If you need my help, ask plainly. Harthmere has enough whispers already, and my work is better done with steady hands.”",
-      "rumor": "“The town sounds normal until you listen under the noise. Lately, even ordinary stone seems to be holding its breath.”",
-      "questOffer": "“There is a matter tied to my route, my people, and what I have seen. Do it carefully, and do not turn it into tavern theater.”",
-      "farewell": "“Go safe. Come back with your boots dirty and your story straight.”"
+      "greeting": "If Temple Green sent you looking for someone, Sister Maelle Frenn is the name you were probably given.",
+      "service": "I tend wounds and fevers without confusing kindness for gullibility or pain for permission to be cruel; because of that, I can also offer care, chapel custom, grave courtesy, and what public faith asks of an uneasy town.",
+      "rumor": "Lately Temple Green has been marked by candle vigils, charity lines, grave records, and an old unease beneath formal prayers. Sister Maelle Frenn advises attention before fear turns the story into nonsense.",
+      "questOffer": "There is honest work around Temple Green: tend the living, honor the dead, or investigate a disturbance without feeding public panic. Sister Maelle Frenn values a clean result more than a heroic retelling.",
+      "farewell": "We are finished for the moment. Mind the warnings in Temple Green, even the quiet ones. —Sister Maelle Frenn"
     },
     "route": {
       "routeId": "sister_maelle_frenn_daily_route",
@@ -2663,8 +2663,8 @@ export const HARTHMERE_NAMED_NPCS = [
       ]
     },
     "spawn": {
-      "x": 480.0,
-      "z": -137.0,
+      "x": 480,
+      "z": -137,
       "rot": 0,
       "scale": 1.12,
       "asset": "townsperson_clergy"
@@ -2689,11 +2689,11 @@ export const HARTHMERE_NAMED_NPCS = [
       "Saw enough of Halene’s last night to know the bell answered her."
     ],
     "dialogue": {
-      "greeting": "“Evening, traveler. I am Brother Vance Holt; mind your step and I will give you the truth as cleanly as I can.”",
-      "service": "“If you need my help, ask plainly. Harthmere has enough whispers already, and my work is better done with steady hands.”",
-      "rumor": "“The town sounds normal until you listen under the noise. Lately, even ordinary stone seems to be holding its breath.”",
-      "questOffer": "“There is a matter tied to my route, my people, and what I have seen. Do it carefully, and do not turn it into tavern theater.”",
-      "farewell": "“Go safe. Come back with your boots dirty and your story straight.”"
+      "greeting": "Around Temple Green, people call me Brother Vance Holt; speak plainly and I will do the same.",
+      "service": "Poor sight taught me to listen closely; footsteps, pauses, and careful omissions often tell more than a confident face. I can offer care, chapel custom, grave courtesy, and what public faith asks of an uneasy town.",
+      "rumor": "Brother Vance Holt has noticed candle vigils, charity lines, grave records, and an old unease beneath formal prayers around Temple Green; when several small things change together, it is rarely coincidence.",
+      "questOffer": "Brother Vance Holt will trust you with one local problem if you agree to tend the living, honor the dead, or investigate a disturbance without feeding public panic; Temple Green has suffered enough careless favors.",
+      "farewell": "Take care of your boots, your word, and whoever walks beside you. Brother Vance Holt will still be in Temple Green."
     },
     "route": {
       "routeId": "brother_vance_holt_daily_route",
@@ -2813,7 +2813,7 @@ export const HARTHMERE_NAMED_NPCS = [
     },
     "spawn": {
       "x": 481.3,
-      "z": -137.0,
+      "z": -137,
       "rot": 0,
       "scale": 1.12,
       "asset": "townsperson_clergy"
@@ -2838,11 +2838,11 @@ export const HARTHMERE_NAMED_NPCS = [
       "Has copied pages from forbidden chapel records into his own shorthand."
     ],
     "dialogue": {
-      "greeting": "“Evening, traveler. I am Brother Halpen Wren; mind your step and I will give you the truth as cleanly as I can.”",
-      "service": "“If you need my help, ask plainly. Harthmere has enough whispers already, and my work is better done with steady hands.”",
-      "rumor": "“The town sounds normal until you listen under the noise. Lately, even ordinary stone seems to be holding its breath.”",
-      "questOffer": "“There is a matter tied to my route, my people, and what I have seen. Do it carefully, and do not turn it into tavern theater.”",
-      "farewell": "“Go safe. Come back with your boots dirty and your story straight.”"
+      "greeting": "I am Brother Halpen Wren. The day's work in Temple Green has not swallowed me yet, so ask.",
+      "service": "What I know is practical rather than grand. I can offer care, chapel custom, grave courtesy, and what public faith asks of an uneasy town. I catalogue prayers, graves, and old town references because neglected records have a habit of becoming present trouble.",
+      "rumor": "Brother Halpen Wren has noticed candle vigils, charity lines, grave records, and an old unease beneath formal prayers around Temple Green; when several small things change together, it is rarely coincidence.",
+      "questOffer": "Brother Halpen Wren will trust you with one local problem if you agree to tend the living, honor the dead, or investigate a disturbance without feeding public panic; Temple Green has suffered enough careless favors.",
+      "farewell": "Take care of your boots, your word, and whoever walks beside you. Brother Halpen Wren will still be in Temple Green."
     },
     "route": {
       "routeId": "brother_halpen_wren_daily_route",
@@ -2962,7 +2962,7 @@ export const HARTHMERE_NAMED_NPCS = [
     },
     "spawn": {
       "x": 482.6,
-      "z": -137.0,
+      "z": -137,
       "rot": 0,
       "scale": 1.12,
       "asset": "townsperson_clergy"
@@ -2987,11 +2987,11 @@ export const HARTHMERE_NAMED_NPCS = [
       "Her last letters confess the bell is buried beneath the altar."
     ],
     "dialogue": {
-      "greeting": "“Evening, traveler. I am Mother Halene Brae; mind your step and I will give you the truth as cleanly as I can.”",
-      "service": "“If you need my help, ask plainly. Harthmere has enough whispers already, and my work is better done with steady hands.”",
-      "rumor": "“The town sounds normal until you listen under the noise. Lately, even ordinary stone seems to be holding its breath.”",
-      "questOffer": "“There is a matter tied to my route, my people, and what I have seen. Do it carefully, and do not turn it into tavern theater.”",
-      "farewell": "“Go safe. Come back with your boots dirty and your story straight.”"
+      "greeting": "I am Mother Halene Brae. The day's work in Temple Green has not swallowed me yet, so ask.",
+      "service": "My trade has taught me where trouble begins. Memory holds me near the chapel, where duty, mercy, and old choices still echo more loudly than any living sermon. I can offer only memory: incomplete, stubborn, and tied to the place that refuses to let it fade.",
+      "rumor": "Mother Halene Brae has noticed candle vigils, charity lines, grave records, and an old unease beneath formal prayers around Temple Green; when several small things change together, it is rarely coincidence.",
+      "questOffer": "Mother Halene Brae will trust you with one local problem if you agree to follow the surviving evidence and decide which part of memory deserves belief; Temple Green has suffered enough careless favors.",
+      "farewell": "Mother Halene Brae wishes you a steady road. Around Temple Green, kept promises travel farther than boasts."
     },
     "route": {
       "routeId": "mother_halene_brae_daily_route",
@@ -3099,7 +3099,7 @@ export const HARTHMERE_NAMED_NPCS = [
     },
     "spawn": {
       "x": 483.9,
-      "z": -137.0,
+      "z": -137,
       "rot": 0,
       "scale": 1.12,
       "asset": "townsperson_clergy"
@@ -3124,11 +3124,11 @@ export const HARTHMERE_NAMED_NPCS = [
       "Has found old cellar drafts that do not match the inn’s floor plan."
     ],
     "dialogue": {
-      "greeting": "“Evening, traveler. I am Mistress Elowen Pike; mind your step and I will give you the truth as cleanly as I can.”",
-      "service": "“If you need my help, ask plainly. Harthmere has enough whispers already, and my work is better done with steady hands.”",
-      "rumor": "“The town sounds normal until you listen under the noise. Lately, even ordinary stone seems to be holding its breath.”",
-      "questOffer": "“There is a matter tied to my route, my people, and what I have seen. Do it carefully, and do not turn it into tavern theater.”",
-      "farewell": "“Go safe. Come back with your boots dirty and your story straight.”"
+      "greeting": "I am Mistress Elowen Pike. The day's work in Copper Kettle has not swallowed me yet, so ask.",
+      "service": "My trade has taught me where trouble begins. I keep the Copper Kettle warm, the rooms accounted for, and rumor useful enough that it does not become simple cruelty. I can speak to supply, fair measure, local prices, and which road delays are reaching the stalls.",
+      "rumor": "Mistress Elowen Pike has noticed hot food, rented beds, travelers' stories, and rumors polished smooth by repetition around Copper Kettle; when several small things change together, it is rarely coincidence.",
+      "questOffer": "Mistress Elowen Pike will trust you with one local problem if you agree to trace a delayed supply, verify a measure, or carry goods where the road has made trade uncertain; Copper Kettle has suffered enough careless favors.",
+      "farewell": "Mistress Elowen Pike wishes you a steady road. Around Copper Kettle, kept promises travel farther than boasts."
     },
     "route": {
       "routeId": "elowen_pike_daily_route",
@@ -3271,11 +3271,11 @@ export const HARTHMERE_NAMED_NPCS = [
       "Hears singing in the walls when storms roll over the Copper Kettle."
     ],
     "dialogue": {
-      "greeting": "“Evening, traveler. I am Tisa Pike; mind your step and I will give you the truth as cleanly as I can.”",
-      "service": "“If you need my help, ask plainly. Harthmere has enough whispers already, and my work is better done with steady hands.”",
-      "rumor": "“The town sounds normal until you listen under the noise. Lately, even ordinary stone seems to be holding its breath.”",
-      "questOffer": "“There is a matter tied to my route, my people, and what I have seen. Do it carefully, and do not turn it into tavern theater.”",
-      "farewell": "“Go safe. Come back with your boots dirty and your story straight.”"
+      "greeting": "Mind where you step and call me Tisa Pike; Copper Kettle has enough confusion without careless introductions.",
+      "service": "Serving tables taught me to read a room by empty cups, untouched meals, and the person everyone avoids looking toward; because of that, I know which adults listen, where children are warned away, and what changes grown-ups hope we miss.",
+      "rumor": "Copper Kettle usually hides worry inside routine, but Tisa Pike keeps hearing about hot food, rented beds, travelers' stories, and rumors polished smooth by repetition. Something is pressing on ordinary life.",
+      "questOffer": "There is honest work around Copper Kettle: notice something adults dismissed and bring back an answer without frightening anyone for sport. Tisa Pike values a clean result more than a heroic retelling.",
+      "farewell": "Tisa Pike has work to return to. Walk carefully through Copper Kettle, and leave fewer problems than you found."
     },
     "route": {
       "routeId": "tisa_pike_daily_route",
@@ -3418,11 +3418,11 @@ export const HARTHMERE_NAMED_NPCS = [
       "Knows an old Bellbinder melody but does not know why it quiets the room."
     ],
     "dialogue": {
-      "greeting": "“Evening, traveler. I am Maestro Cellan Bow; mind your step and I will give you the truth as cleanly as I can.”",
-      "service": "“If you need my help, ask plainly. Harthmere has enough whispers already, and my work is better done with steady hands.”",
-      "rumor": "“The town sounds normal until you listen under the noise. Lately, even ordinary stone seems to be holding its breath.”",
-      "questOffer": "“There is a matter tied to my route, my people, and what I have seen. Do it carefully, and do not turn it into tavern theater.”",
-      "farewell": "“Go safe. Come back with your boots dirty and your story straight.”"
+      "greeting": "Around Copper Kettle, people call me Maestro Cellan Bow; speak plainly and I will do the same.",
+      "service": "I turn Harthmere's work, weather, and grief into songs people can carry without pretending any of it was easy. I can speak to supply, fair measure, local prices, and which road delays are reaching the stalls.",
+      "rumor": "Ask what feels different in Copper Kettle, and Maestro Cellan Bow will point to hot food, rented beds, travelers' stories, and rumors polished smooth by repetition. The town is listening for a pattern.",
+      "questOffer": "Maestro Cellan Bow will trust you with one local problem if you agree to trace a delayed supply, verify a measure, or carry goods where the road has made trade uncertain; Copper Kettle has suffered enough careless favors.",
+      "farewell": "Maestro Cellan Bow wishes you a steady road. Around Copper Kettle, kept promises travel farther than boasts."
     },
     "route": {
       "routeId": "cellan_bow_daily_route",
@@ -3565,11 +3565,11 @@ export const HARTHMERE_NAMED_NPCS = [
       "Fell into the Old Well as a child and heard Thaedryn speak."
     ],
     "dialogue": {
-      "greeting": "“Evening, traveler. I am Nessa Crowe; mind your step and I will give you the truth as cleanly as I can.”",
-      "service": "“If you need my help, ask plainly. Harthmere has enough whispers already, and my work is better done with steady hands.”",
-      "rumor": "“The town sounds normal until you listen under the noise. Lately, even ordinary stone seems to be holding its breath.”",
-      "questOffer": "“There is a matter tied to my route, my people, and what I have seen. Do it carefully, and do not turn it into tavern theater.”",
-      "farewell": "“Go safe. Come back with your boots dirty and your story straight.”"
+      "greeting": "Nessa Crowe. I know the work and worries of Mudden Ward, though I do not sell either as entertainment.",
+      "service": "I know the ward's work, safe paths, informal bargains, and which official promises never reached the lower streets. I learned it the ordinary way: Mudden Ward raised me to know dry ledges, loose stones, rat paths, and which friendly shortcut becomes a trap after rain.",
+      "rumor": "The talk reaching Nessa Crowe from Mudden Ward concerns flood marks, patched roofs, informal trade, and neighbors who survive by noticing one another. Treat it as a warning, not a proven accusation.",
+      "questOffer": "Mudden Ward has a matter suited to an outsider: protect a neighbor, trace a shortage, or fix danger before an eviction crew calls it someone else's problem. Return to Nessa Crowe when you can explain what actually happened.",
+      "farewell": "We are finished for the moment. Mind the warnings in Mudden Ward, even the quiet ones. —Nessa Crowe"
     },
     "route": {
       "routeId": "nessa_crowe_daily_route",
@@ -3688,7 +3688,7 @@ export const HARTHMERE_NAMED_NPCS = [
       ]
     },
     "spawn": {
-      "x": 416.0,
+      "x": 416,
       "z": -156.9,
       "rot": 1.57,
       "scale": 1.12,
@@ -3714,11 +3714,11 @@ export const HARTHMERE_NAMED_NPCS = [
       "Knows an old drain route under Noble Rise but refuses to sell it."
     ],
     "dialogue": {
-      "greeting": "“Evening, traveler. I am Old Tam Crowe; mind your step and I will give you the truth as cleanly as I can.”",
-      "service": "“If you need my help, ask plainly. Harthmere has enough whispers already, and my work is better done with steady hands.”",
-      "rumor": "“The town sounds normal until you listen under the noise. Lately, even ordinary stone seems to be holding its breath.”",
-      "questOffer": "“There is a matter tied to my route, my people, and what I have seen. Do it carefully, and do not turn it into tavern theater.”",
-      "farewell": "“Go safe. Come back with your boots dirty and your story straight.”"
+      "greeting": "Old Tam Crowe here. I trust useful questions more than grand entrances, especially in Mudden Ward.",
+      "service": "I know the ward's work, safe paths, informal bargains, and which official promises never reached the lower streets. I learned it the ordinary way: I remember Mudden floods, evictions, bargains, and betrayals because a ward without memory is easy to cheat twice.",
+      "rumor": "Mudden Ward usually hides worry inside routine, but Old Tam Crowe keeps hearing about flood marks, patched roofs, informal trade, and neighbors who survive by noticing one another. Something is pressing on ordinary life.",
+      "questOffer": "Old Tam Crowe could use someone willing to protect a neighbor, trace a shortage, or fix danger before an eviction crew calls it someone else's problem here in Mudden Ward; do it carefully, and bring back facts rather than theater.",
+      "farewell": "We are finished for the moment. Mind the warnings in Mudden Ward, even the quiet ones. —Old Tam Crowe"
     },
     "route": {
       "routeId": "old_tam_crowe_daily_route",
@@ -3861,11 +3861,11 @@ export const HARTHMERE_NAMED_NPCS = [
       "The well asked him to bring it a bell and he still hears dripping at night."
     ],
     "dialogue": {
-      "greeting": "“Evening, traveler. I am The boy Tam; mind your step and I will give you the truth as cleanly as I can.”",
-      "service": "“If you need my help, ask plainly. Harthmere has enough whispers already, and my work is better done with steady hands.”",
-      "rumor": "“The town sounds normal until you listen under the noise. Lately, even ordinary stone seems to be holding its breath.”",
-      "questOffer": "“There is a matter tied to my route, my people, and what I have seen. Do it carefully, and do not turn it into tavern theater.”",
-      "farewell": "“Go safe. Come back with your boots dirty and your story straight.”"
+      "greeting": "Mind where you step and call me The boy Tam; Old Well / Underways has enough confusion without careless introductions.",
+      "service": "I listen more than grown-ups expect, especially near the old stones where sounds travel in ways they should not; because of that, I know which adults listen, where children are warned away, and what changes grown-ups hope we miss.",
+      "rumor": "Lately Old Well / Underways has been marked by wet stone, chalk marks, lost passages, and echoes that do not always match the speaker. The boy Tam advises attention before fear turns the story into nonsense.",
+      "questOffer": "There is honest work around Old Well / Underways: notice something adults dismissed and bring back an answer without frightening anyone for sport. The boy Tam values a clean result more than a heroic retelling.",
+      "farewell": "The boy Tam has work to return to. Walk carefully through Old Well / Underways, and leave fewer problems than you found."
     },
     "route": {
       "routeId": "boy_tam_daily_route",
@@ -4008,11 +4008,11 @@ export const HARTHMERE_NAMED_NPCS = [
       "Suspects Edrik Vane is using storage accounts to hide Compact payments."
     ],
     "dialogue": {
-      "greeting": "“Evening, traveler. I am Banker Merl Voss; mind your step and I will give you the truth as cleanly as I can.”",
-      "service": "“If you need my help, ask plainly. Harthmere has enough whispers already, and my work is better done with steady hands.”",
-      "rumor": "“The town sounds normal until you listen under the noise. Lately, even ordinary stone seems to be holding its breath.”",
-      "questOffer": "“There is a matter tied to my route, my people, and what I have seen. Do it carefully, and do not turn it into tavern theater.”",
-      "farewell": "“Go safe. Come back with your boots dirty and your story straight.”"
+      "greeting": "Banker Merl Voss, at your service for a moment. Player Services rarely leaves anyone idle for longer than that.",
+      "service": "My trade has taught me where trouble begins. I make storage and accounts deliberately boring, because excitement is the last quality anyone should want near their savings. I can speak to supply, fair measure, local prices, and which road delays are reaching the stalls.",
+      "rumor": "Ask what feels different in Player Services, and Banker Merl Voss will point to tight supplies, old obligations, guarded roads, and the uneasy boundary between Harthmere and the wider Biomes. The town is listening for a pattern.",
+      "questOffer": "Banker Merl Voss will trust you with one local problem if you agree to trace a delayed supply, verify a measure, or carry goods where the road has made trade uncertain; Player Services has suffered enough careless favors.",
+      "farewell": "Take care of your boots, your word, and whoever walks beside you. Banker Merl Voss will still be in Player Services."
     },
     "route": {
       "routeId": "banker_merl_voss_daily_route",
@@ -4155,11 +4155,11 @@ export const HARTHMERE_NAMED_NPCS = [
       "Can identify forged noble seals by smell because of the wax recipe."
     ],
     "dialogue": {
-      "greeting": "“Evening, traveler. I am Courier Anwen Mell; mind your step and I will give you the truth as cleanly as I can.”",
-      "service": "“If you need my help, ask plainly. Harthmere has enough whispers already, and my work is better done with steady hands.”",
-      "rumor": "“The town sounds normal until you listen under the noise. Lately, even ordinary stone seems to be holding its breath.”",
-      "questOffer": "“There is a matter tied to my route, my people, and what I have seen. Do it carefully, and do not turn it into tavern theater.”",
-      "farewell": "“Go safe. Come back with your boots dirty and your story straight.”"
+      "greeting": "You found Courier Anwen Mell in Player Services; if you want an answer, ask a question worth stopping for.",
+      "service": "My trade has taught me where trouble begins. A sealed letter is a promise with weight, and I carry promises across Harthmere whether the sender is rich, frightened, or late. I can speak to supply, fair measure, local prices, and which road delays are reaching the stalls.",
+      "rumor": "Ask what feels different in Player Services, and Courier Anwen Mell will point to tight supplies, old obligations, guarded roads, and the uneasy boundary between Harthmere and the wider Biomes. The town is listening for a pattern.",
+      "questOffer": "Courier Anwen Mell will trust you with one local problem if you agree to trace a delayed supply, verify a measure, or carry goods where the road has made trade uncertain; Player Services has suffered enough careless favors.",
+      "farewell": "That is enough for now. If you come back to Courier Anwen Mell, bring honest news from Player Services."
     },
     "route": {
       "routeId": "courier_anwen_mell_daily_route",
@@ -4302,11 +4302,11 @@ export const HARTHMERE_NAMED_NPCS = [
       "Has noticed one buyer bidding on bone, bronze, and old maps under different names."
     ],
     "dialogue": {
-      "greeting": "“Evening, traveler. I am Auction Clerk Pell Marsten; mind your step and I will give you the truth as cleanly as I can.”",
-      "service": "“If you need my help, ask plainly. Harthmere has enough whispers already, and my work is better done with steady hands.”",
-      "rumor": "“The town sounds normal until you listen under the noise. Lately, even ordinary stone seems to be holding its breath.”",
-      "questOffer": "“There is a matter tied to my route, my people, and what I have seen. Do it carefully, and do not turn it into tavern theater.”",
-      "farewell": "“Go safe. Come back with your boots dirty and your story straight.”"
+      "greeting": "You found Auction Clerk Pell Marsten in Player Services; if you want an answer, ask a question worth stopping for.",
+      "service": "My trade has taught me where trouble begins. I keep bids public, rules exact, and favoritism outside the auction rail where it belongs. I can speak to supply, fair measure, local prices, and which road delays are reaching the stalls.",
+      "rumor": "Auction Clerk Pell Marsten has noticed tight supplies, old obligations, guarded roads, and the uneasy boundary between Harthmere and the wider Biomes around Player Services; when several small things change together, it is rarely coincidence.",
+      "questOffer": "Before the next rumor grows teeth, Auction Clerk Pell Marsten wants someone to trace a delayed supply, verify a measure, or carry goods where the road has made trade uncertain in Player Services and report without embellishment.",
+      "farewell": "Auction Clerk Pell Marsten wishes you a steady road. Around Player Services, kept promises travel farther than boasts."
     },
     "route": {
       "routeId": "auction_pell_marsten_daily_route",
@@ -4449,11 +4449,11 @@ export const HARTHMERE_NAMED_NPCS = [
       "Keeps rejected guild names in a private book because some are accidentally prophetic."
     ],
     "dialogue": {
-      "greeting": "“Evening, traveler. I am Guild Registrar Erena Voss; mind your step and I will give you the truth as cleanly as I can.”",
-      "service": "“If you need my help, ask plainly. Harthmere has enough whispers already, and my work is better done with steady hands.”",
-      "rumor": "“The town sounds normal until you listen under the noise. Lately, even ordinary stone seems to be holding its breath.”",
-      "questOffer": "“There is a matter tied to my route, my people, and what I have seen. Do it carefully, and do not turn it into tavern theater.”",
-      "farewell": "“Go safe. Come back with your boots dirty and your story straight.”"
+      "greeting": "Guild Registrar Erena Voss. I know the work and worries of Player Services, though I do not sell either as entertainment.",
+      "service": "I register guild charters and apprentices so craft reputation rests on witnessed work instead of family boasting; because of that, I can also speak to supply, fair measure, local prices, and which road delays are reaching the stalls.",
+      "rumor": "Player Services usually hides worry inside routine, but Guild Registrar Erena Voss keeps hearing about tight supplies, old obligations, guarded roads, and the uneasy boundary between Harthmere and the wider Biomes. Something is pressing on ordinary life.",
+      "questOffer": "Guild Registrar Erena Voss could use someone willing to trace a delayed supply, verify a measure, or carry goods where the road has made trade uncertain here in Player Services; do it carefully, and bring back facts rather than theater.",
+      "farewell": "We are finished for the moment. Mind the warnings in Player Services, even the quiet ones. —Guild Registrar Erena Voss"
     },
     "route": {
       "routeId": "erena_voss_daily_route",
@@ -4596,11 +4596,11 @@ export const HARTHMERE_NAMED_NPCS = [
       "Knows Caldus is hiding debt and has begun keeping her own copies of records."
     ],
     "dialogue": {
-      "greeting": "“Evening, traveler. I am Lady Henrietta Merrow; mind your step and I will give you the truth as cleanly as I can.”",
-      "service": "“If you need my help, ask plainly. Harthmere has enough whispers already, and my work is better done with steady hands.”",
-      "rumor": "“The town sounds normal until you listen under the noise. Lately, even ordinary stone seems to be holding its breath.”",
-      "questOffer": "“There is a matter tied to my route, my people, and what I have seen. Do it carefully, and do not turn it into tavern theater.”",
-      "farewell": "“Go safe. Come back with your boots dirty and your story straight.”"
+      "greeting": "You found Lady Henrietta Merrow in Noble Rise; if you want an answer, ask a question worth stopping for.",
+      "service": "My trade has taught me where trouble begins. Years among capital nobles taught me how courtesy can shelter kindness, sharpen a warning, or disguise an empty threat. I can explain petitions, deeds, public obligations, and the manners people use when power is in the room.",
+      "rumor": "Ask what feels different in Noble Rise, and Lady Henrietta Merrow will point to deeds, debts, polished manners, and decisions whose cost is usually paid downhill. The town is listening for a pattern.",
+      "questOffer": "Before the next rumor grows teeth, Lady Henrietta Merrow wants someone to verify a petition, witness an agreement, or uncover the human cost hidden inside a clean record in Noble Rise and report without embellishment.",
+      "farewell": "That is enough for now. If you come back to Lady Henrietta Merrow, bring honest news from Noble Rise."
     },
     "route": {
       "routeId": "lady_henrietta_merrow_daily_route",
@@ -4717,7 +4717,7 @@ export const HARTHMERE_NAMED_NPCS = [
       ]
     },
     "spawn": {
-      "x": 562.0,
+      "x": 562,
       "z": -259.8,
       "rot": 3.14,
       "scale": 1.12,
@@ -4743,11 +4743,11 @@ export const HARTHMERE_NAMED_NPCS = [
       "Volunteers in the Mudden Ward under an assumed name."
     ],
     "dialogue": {
-      "greeting": "“Evening, traveler. I am Lila Merrow; mind your step and I will give you the truth as cleanly as I can.”",
-      "service": "“If you need my help, ask plainly. Harthmere has enough whispers already, and my work is better done with steady hands.”",
-      "rumor": "“The town sounds normal until you listen under the noise. Lately, even ordinary stone seems to be holding its breath.”",
-      "questOffer": "“There is a matter tied to my route, my people, and what I have seen. Do it carefully, and do not turn it into tavern theater.”",
-      "farewell": "“Go safe. Come back with your boots dirty and your story straight.”"
+      "greeting": "If Noble Rise sent you looking for someone, Lila Merrow is the name you were probably given.",
+      "service": "I can explain petitions, deeds, public obligations, and the manners people use when power is in the room. That knowledge comes from this much of my life: Noble Rise has too many windows and too little fresh air, so I pay attention to the streets its residents discuss only at dinner.",
+      "rumor": "Lately Noble Rise has been marked by deeds, debts, polished manners, and decisions whose cost is usually paid downhill. Lila Merrow advises attention before fear turns the story into nonsense.",
+      "questOffer": "Lila Merrow could use someone willing to verify a petition, witness an agreement, or uncover the human cost hidden inside a clean record here in Noble Rise; do it carefully, and bring back facts rather than theater.",
+      "farewell": "Go safely. Lila Merrow would rather see you return to Noble Rise wiser than hear a dramatic story about your absence."
     },
     "route": {
       "routeId": "lila_merrow_daily_route",
@@ -4890,11 +4890,11 @@ export const HARTHMERE_NAMED_NPCS = [
       "Meets Lila near the stable path and keeps the time by horse bells."
     ],
     "dialogue": {
-      "greeting": "“Evening, traveler. I am Ren Skell; mind your step and I will give you the truth as cleanly as I can.”",
-      "service": "“If you need my help, ask plainly. Harthmere has enough whispers already, and my work is better done with steady hands.”",
-      "rumor": "“The town sounds normal until you listen under the noise. Lately, even ordinary stone seems to be holding its breath.”",
-      "questOffer": "“There is a matter tied to my route, my people, and what I have seen. Do it carefully, and do not turn it into tavern theater.”",
-      "farewell": "“Go safe. Come back with your boots dirty and your story straight.”"
+      "greeting": "Mind where you step and call me Ren Skell; Mudden Ward has enough confusion without careless introductions.",
+      "service": "I know the ward's work, safe paths, informal bargains, and which official promises never reached the lower streets. That knowledge comes from this much of my life: Stable work rewards quiet hands, early mornings, and the sense to treat a frightened animal better than a proud rider.",
+      "rumor": "The talk reaching Ren Skell from Mudden Ward concerns flood marks, patched roofs, informal trade, and neighbors who survive by noticing one another. Treat it as a warning, not a proven accusation.",
+      "questOffer": "Ren Skell could use someone willing to protect a neighbor, trace a shortage, or fix danger before an eviction crew calls it someone else's problem here in Mudden Ward; do it carefully, and bring back facts rather than theater.",
+      "farewell": "We are finished for the moment. Mind the warnings in Mudden Ward, even the quiet ones. —Ren Skell"
     },
     "route": {
       "routeId": "ren_skell_daily_route",
@@ -5037,11 +5037,11 @@ export const HARTHMERE_NAMED_NPCS = [
       "Has enough evidence to ruin Caldus but not enough context to judge him fairly."
     ],
     "dialogue": {
-      "greeting": "“Evening, traveler. I am Lord Wrethan Pell; mind your step and I will give you the truth as cleanly as I can.”",
-      "service": "“If you need my help, ask plainly. Harthmere has enough whispers already, and my work is better done with steady hands.”",
-      "rumor": "“The town sounds normal until you listen under the noise. Lately, even ordinary stone seems to be holding its breath.”",
-      "questOffer": "“There is a matter tied to my route, my people, and what I have seen. Do it carefully, and do not turn it into tavern theater.”",
-      "farewell": "“Go safe. Come back with your boots dirty and your story straight.”"
+      "greeting": "Lord Wrethan Pell. I know the work and worries of Noble Rise, though I do not sell either as entertainment.",
+      "service": "I can explain petitions, deeds, public obligations, and the manners people use when power is in the room. I learned it the ordinary way: I audit law and revenue carefully because a neat column can conceal either honest hardship or practiced theft.",
+      "rumor": "Noble Rise usually hides worry inside routine, but Lord Wrethan Pell keeps hearing about deeds, debts, polished manners, and decisions whose cost is usually paid downhill. Something is pressing on ordinary life.",
+      "questOffer": "There is honest work around Noble Rise: verify a petition, witness an agreement, or uncover the human cost hidden inside a clean record. Lord Wrethan Pell values a clean result more than a heroic retelling.",
+      "farewell": "Go safely. Lord Wrethan Pell would rather see you return to Noble Rise wiser than hear a dramatic story about your absence."
     },
     "route": {
       "routeId": "lord_wrethan_pell_daily_route",
@@ -5184,11 +5184,11 @@ export const HARTHMERE_NAMED_NPCS = [
       "Keeps seeing a large shadow under the ferry when the bell tone is strongest."
     ],
     "dialogue": {
-      "greeting": "“Evening, traveler. I am Ferry Master Henrick Brell; mind your step and I will give you the truth as cleanly as I can.”",
-      "service": "“If you need my help, ask plainly. Harthmere has enough whispers already, and my work is better done with steady hands.”",
-      "rumor": "“The town sounds normal until you listen under the noise. Lately, even ordinary stone seems to be holding its breath.”",
-      "questOffer": "“There is a matter tied to my route, my people, and what I have seen. Do it carefully, and do not turn it into tavern theater.”",
-      "farewell": "“Go safe. Come back with your boots dirty and your story straight.”"
+      "greeting": "You found Ferry Master Henrick Brell in River Docks; if you want an answer, ask a question worth stopping for.",
+      "service": "My trade has taught me where trouble begins. The ferry teaches short lessons: balance the load, respect the current, and never boast before both banks are behind you. I can read cargo work, river conditions, ferry practice, and the difference between haste and a dangerous load.",
+      "rumor": "Ferry Master Henrick Brell has noticed changing current, wet rope, cargo ledgers, ferry bells, and crates that invite the wrong questions around River Docks; when several small things change together, it is rarely coincidence.",
+      "questOffer": "Before the next rumor grows teeth, Ferry Master Henrick Brell wants someone to check a manifest, secure a crossing, or learn why a load and its paperwork disagree in River Docks and report without embellishment.",
+      "farewell": "That is enough for now. If you come back to Ferry Master Henrick Brell, bring honest news from River Docks."
     },
     "route": {
       "routeId": "henrick_brell_daily_route",
@@ -5331,11 +5331,11 @@ export const HARTHMERE_NAMED_NPCS = [
       "Knows the Compact has a buyer and is hunting the buyer’s identity."
     ],
     "dialogue": {
-      "greeting": "“Evening, traveler. I am Smuggler-Mother Veska Reed; mind your step and I will give you the truth as cleanly as I can.”",
-      "service": "“If you need my help, ask plainly. Harthmere has enough whispers already, and my work is better done with steady hands.”",
-      "rumor": "“The town sounds normal until you listen under the noise. Lately, even ordinary stone seems to be holding its breath.”",
-      "questOffer": "“There is a matter tied to my route, my people, and what I have seen. Do it carefully, and do not turn it into tavern theater.”",
-      "farewell": "“Go safe. Come back with your boots dirty and your story straight.”"
+      "greeting": "If River Docks sent you looking for someone, Smuggler-Mother Veska Reed is the name you were probably given.",
+      "service": "I know the ward's work, safe paths, informal bargains, and which official promises never reached the lower streets. I learned it the ordinary way: River people survive by keeping their word, choosing their risks, and knowing when a law protects the town or merely its richest desk.",
+      "rumor": "The talk reaching Smuggler-Mother Veska Reed from River Docks concerns changing current, wet rope, cargo ledgers, ferry bells, and crates that invite the wrong questions. Treat it as a warning, not a proven accusation.",
+      "questOffer": "Smuggler-Mother Veska Reed could use someone willing to protect a neighbor, trace a shortage, or fix danger before an eviction crew calls it someone else's problem here in River Docks; do it carefully, and bring back facts rather than theater.",
+      "farewell": "Smuggler-Mother Veska Reed has work to return to. Walk carefully through River Docks, and leave fewer problems than you found."
     },
     "route": {
       "routeId": "veska_reed_daily_route",
@@ -5480,11 +5480,11 @@ export const HARTHMERE_NAMED_NPCS = [
       "Once killed a Compact informant she loved; the Watch covered it up."
     ],
     "dialogue": {
-      "greeting": "“Evening, traveler. I am Edda Wren; mind your step and I will give you the truth as cleanly as I can.”",
-      "service": "“If you need my help, ask plainly. Harthmere has enough whispers already, and my work is better done with steady hands.”",
-      "rumor": "“The town sounds normal until you listen under the noise. Lately, even ordinary stone seems to be holding its breath.”",
-      "questOffer": "“There is a matter tied to my route, my people, and what I have seen. Do it carefully, and do not turn it into tavern theater.”",
-      "farewell": "“Go safe. Come back with your boots dirty and your story straight.”"
+      "greeting": "If Harthmere Wilds - Last Watch Post sent you looking for someone, Edda Wren is the name you were probably given.",
+      "service": "I count road deaths, broken markers, missing travelers, and every warning that someone in town found inconvenient; because of that, I can also explain local law, road warnings, watch boundaries, and the difference between keeping order and abusing it.",
+      "rumor": "Harthmere Wilds - Last Watch Post usually hides worry inside routine, but Edda Wren keeps hearing about tight supplies, old obligations, guarded roads, and the uneasy boundary between Harthmere and the wider Biomes. Something is pressing on ordinary life.",
+      "questOffer": "Harthmere Wilds - Last Watch Post has a matter suited to an outsider: check a warning, escort someone vulnerable, or verify trouble before steel makes it worse. Return to Edda Wren when you can explain what actually happened.",
+      "farewell": "We are finished for the moment. Mind the warnings in Harthmere Wilds - Last Watch Post, even the quiet ones. —Edda Wren"
     },
     "route": {
       "routeId": "edda_wren_daily_route",
@@ -5632,11 +5632,11 @@ export const HARTHMERE_NAMED_NPCS = [
       "Has seen lights in a grove he will not name unless trust is earned."
     ],
     "dialogue": {
-      "greeting": "“Evening, traveler. I am Old Merrit Bracken; mind your step and I will give you the truth as cleanly as I can.”",
-      "service": "“If you need my help, ask plainly. Harthmere has enough whispers already, and my work is better done with steady hands.”",
-      "rumor": "“The town sounds normal until you listen under the noise. Lately, even ordinary stone seems to be holding its breath.”",
-      "questOffer": "“There is a matter tied to my route, my people, and what I have seen. Do it carefully, and do not turn it into tavern theater.”",
-      "farewell": "“Go safe. Come back with your boots dirty and your story straight.”"
+      "greeting": "Old Merrit Bracken, at your service for a moment. Harthmere Wilds - Charcoal Camp rarely leaves anyone idle for longer than that.",
+      "service": "What I know is practical rather than grand. I know the old paths, natural signs, and why the wood should never be mistaken for empty land. Charcoal smoke, old tracks, and the temper of the wood have kept me alive longer than speed or fine equipment would have.",
+      "rumor": "Old Merrit Bracken has noticed tight supplies, old obligations, guarded roads, and the uneasy boundary between Harthmere and the wider Biomes around Harthmere Wilds - Charcoal Camp; when several small things change together, it is rarely coincidence.",
+      "questOffer": "Before the next rumor grows teeth, Old Merrit Bracken wants someone to read the land carefully and learn what has disturbed an older balance in Harthmere Wilds - Charcoal Camp and report without embellishment.",
+      "farewell": "Old Merrit Bracken wishes you a steady road. Around Harthmere Wilds - Charcoal Camp, kept promises travel farther than boasts."
     },
     "route": {
       "routeId": "merrit_bracken_daily_route",
@@ -5758,7 +5758,7 @@ export const HARTHMERE_NAMED_NPCS = [
       ]
     },
     "spawn": {
-      "x": 466.0,
+      "x": 466,
       "z": -454.2,
       "rot": -1.57,
       "scale": 1.12,
@@ -5784,11 +5784,11 @@ export const HARTHMERE_NAMED_NPCS = [
       "Believes someone deliberately blocked a marsh path that used to lead under town."
     ],
     "dialogue": {
-      "greeting": "“Evening, traveler. I am Sella Reedfoot; mind your step and I will give you the truth as cleanly as I can.”",
-      "service": "“If you need my help, ask plainly. Harthmere has enough whispers already, and my work is better done with steady hands.”",
-      "rumor": "“The town sounds normal until you listen under the noise. Lately, even ordinary stone seems to be holding its breath.”",
-      "questOffer": "“There is a matter tied to my route, my people, and what I have seen. Do it carefully, and do not turn it into tavern theater.”",
-      "farewell": "“Go safe. Come back with your boots dirty and your story straight.”"
+      "greeting": "Around Harthmere Wilds - Briarfen, people call me Sella Reedfoot; speak plainly and I will do the same.",
+      "service": "Briarfen has safe planks, false ground, and reeds that point away from deep water if you know how to read them. I know the old paths, natural signs, and why the wood should never be mistaken for empty land.",
+      "rumor": "Ask what feels different in Harthmere Wilds - Briarfen, and Sella Reedfoot will point to tight supplies, old obligations, guarded roads, and the uneasy boundary between Harthmere and the wider Biomes. The town is listening for a pattern.",
+      "questOffer": "Before the next rumor grows teeth, Sella Reedfoot wants someone to read the land carefully and learn what has disturbed an older balance in Harthmere Wilds - Briarfen and report without embellishment.",
+      "farewell": "Take care of your boots, your word, and whoever walks beside you. Sella Reedfoot will still be in Harthmere Wilds - Briarfen."
     },
     "route": {
       "routeId": "sella_reedfoot_daily_route",
@@ -5935,11 +5935,11 @@ export const HARTHMERE_NAMED_NPCS = [
       "Wants Osric’s respect but refuses to admit she needs help."
     ],
     "dialogue": {
-      "greeting": "“Evening, traveler. I am Tamsin Vale; mind your step and I will give you the truth as cleanly as I can.”",
-      "service": "“If you need my help, ask plainly. Harthmere has enough whispers already, and my work is better done with steady hands.”",
-      "rumor": "“The town sounds normal until you listen under the noise. Lately, even ordinary stone seems to be holding its breath.”",
-      "questOffer": "“There is a matter tied to my route, my people, and what I have seen. Do it carefully, and do not turn it into tavern theater.”",
-      "farewell": "“Go safe. Come back with your boots dirty and your story straight.”"
+      "greeting": "Tamsin Vale. I know the work and worries of Harthmere Wilds - Greenmere Edge, though I do not sell either as entertainment.",
+      "service": "I know the old paths, natural signs, and why the wood should never be mistaken for empty land. I learned it the ordinary way: I hunt cleanly, boast more than my uncle likes, and know the difference between a bold trail and a foolish one most days.",
+      "rumor": "Lately Harthmere Wilds - Greenmere Edge has been marked by tight supplies, old obligations, guarded roads, and the uneasy boundary between Harthmere and the wider Biomes. Tamsin Vale advises attention before fear turns the story into nonsense.",
+      "questOffer": "There is honest work around Harthmere Wilds - Greenmere Edge: read the land carefully and learn what has disturbed an older balance. Tamsin Vale values a clean result more than a heroic retelling.",
+      "farewell": "Tamsin Vale has work to return to. Walk carefully through Harthmere Wilds - Greenmere Edge, and leave fewer problems than you found."
     },
     "route": {
       "routeId": "tamsin_vale_daily_route",
@@ -6087,11 +6087,11 @@ export const HARTHMERE_NAMED_NPCS = [
       "Has recorded graves that appear in different locations after fog nights."
     ],
     "dialogue": {
-      "greeting": "“Evening, traveler. I am Brother Cael Marsen; mind your step and I will give you the truth as cleanly as I can.”",
-      "service": "“If you need my help, ask plainly. Harthmere has enough whispers already, and my work is better done with steady hands.”",
-      "rumor": "“The town sounds normal until you listen under the noise. Lately, even ordinary stone seems to be holding its breath.”",
-      "questOffer": "“There is a matter tied to my route, my people, and what I have seen. Do it carefully, and do not turn it into tavern theater.”",
-      "farewell": "“Go safe. Come back with your boots dirty and your story straight.”"
+      "greeting": "Brother Cael Marsen here. I trust useful questions more than grand entrances, especially in Harthmere Wilds - Gravewood.",
+      "service": "I can offer care, chapel custom, grave courtesy, and what public faith asks of an uneasy town. I learned it the ordinary way: The forgotten dead deserve names, straight stones, and a traveler willing to notice when a grave has changed.",
+      "rumor": "Harthmere Wilds - Gravewood usually hides worry inside routine, but Brother Cael Marsen keeps hearing about tight supplies, old obligations, guarded roads, and the uneasy boundary between Harthmere and the wider Biomes. Something is pressing on ordinary life.",
+      "questOffer": "Harthmere Wilds - Gravewood has a matter suited to an outsider: tend the living, honor the dead, or investigate a disturbance without feeding public panic. Return to Brother Cael Marsen when you can explain what actually happened.",
+      "farewell": "We are finished for the moment. Mind the warnings in Harthmere Wilds - Gravewood, even the quiet ones. —Brother Cael Marsen"
     },
     "route": {
       "routeId": "brother_cael_marsen_daily_route",
@@ -6238,11 +6238,11 @@ export const HARTHMERE_NAMED_NPCS = [
       "His daughter Ellie is alive in a far village though most assume she died."
     ],
     "dialogue": {
-      "greeting": "“Evening, traveler. I am Rusk Hallowhand; mind your step and I will give you the truth as cleanly as I can.”",
-      "service": "“If you need my help, ask plainly. Harthmere has enough whispers already, and my work is better done with steady hands.”",
-      "rumor": "“The town sounds normal until you listen under the noise. Lately, even ordinary stone seems to be holding its breath.”",
-      "questOffer": "“There is a matter tied to my route, my people, and what I have seen. Do it carefully, and do not turn it into tavern theater.”",
-      "farewell": "“Go safe. Come back with your boots dirty and your story straight.”"
+      "greeting": "Rusk Hallowhand, at your service for a moment. Harthmere Wilds - Watchtower Ridge rarely leaves anyone idle for longer than that.",
+      "service": "My trade has taught me where trouble begins. I learned watch discipline before the roads taught me how cheaply comfortable people value those guarding them. I know road discipline, desperate bargains, and the grievances respectable rooms prefer not to hear.",
+      "rumor": "Rusk Hallowhand would not call rumor evidence, yet reports of tight supplies, old obligations, guarded roads, and the uneasy boundary between Harthmere and the wider Biomes keep circling Harthmere Wilds - Watchtower Ridge from people who do not usually agree.",
+      "questOffer": "If you are looking for useful work, Rusk Hallowhand needs a steady hand to weigh a road grievance against the facts before choosing who deserves your help near Harthmere Wilds - Watchtower Ridge.",
+      "farewell": "Take care of your boots, your word, and whoever walks beside you. Rusk Hallowhand will still be in Harthmere Wilds - Watchtower Ridge."
     },
     "route": {
       "routeId": "rusk_hallowhand_daily_route",
@@ -6390,11 +6390,11 @@ export const HARTHMERE_NAMED_NPCS = [
       "Knows the truth of the Bellbinders and will only answer players who earn trust."
     ],
     "dialogue": {
-      "greeting": "“Evening, traveler. I am Veneth of the Green Threshold; mind your step and I will give you the truth as cleanly as I can.”",
-      "service": "“If you need my help, ask plainly. Harthmere has enough whispers already, and my work is better done with steady hands.”",
-      "rumor": "“The town sounds normal until you listen under the noise. Lately, even ordinary stone seems to be holding its breath.”",
-      "questOffer": "“There is a matter tied to my route, my people, and what I have seen. Do it carefully, and do not turn it into tavern theater.”",
-      "farewell": "“Go safe. Come back with your boots dirty and your story straight.”"
+      "greeting": "I am Veneth of the Green Threshold. The day's work in Harthmere Wilds - Deep Old Wood has not swallowed me yet, so ask.",
+      "service": "What I know is practical rather than grand. I know the old paths, natural signs, and why the wood should never be mistaken for empty land. I knew these roots before Harthmere named its wards, and I measure promises by seasons rather than signatures.",
+      "rumor": "Veneth of the Green Threshold has noticed tight supplies, old obligations, guarded roads, and the uneasy boundary between Harthmere and the wider Biomes around Harthmere Wilds - Deep Old Wood; when several small things change together, it is rarely coincidence.",
+      "questOffer": "If you are looking for useful work, Veneth of the Green Threshold needs a steady hand to read the land carefully and learn what has disturbed an older balance near Harthmere Wilds - Deep Old Wood.",
+      "farewell": "That is enough for now. If you come back to Veneth of the Green Threshold, bring honest news from Harthmere Wilds - Deep Old Wood."
     },
     "route": {
       "routeId": "veneth_moss_woman_daily_route",
@@ -6728,11 +6728,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Tessen Hark carries a hidden detail tied to Guard Yard, Town Watch, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Tessen Hark. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "Tessen Hark. I know the work and worries of Guard Yard, though I do not sell either as entertainment.",
+      "service": "I can share what a recruit is taught about patrols, lawful force, and the roads beyond the gate. I learned it the ordinary way: I am still learning whether a guard's oath means obeying the loudest order or protecting the person most easily ignored.",
+      "rumor": "Guard Yard usually hides worry inside routine, but Tessen Hark keeps hearing about drill calls, dented practice shields, and recruits learning that restraint is part of watch work. Something is pressing on ordinary life.",
+      "questOffer": "Tessen Hark could use someone willing to settle a patrol matter without turning uncertainty into needless bloodshed here in Guard Yard; do it carefully, and bring back facts rather than theater.",
+      "farewell": "We are finished for the moment. Mind the warnings in Guard Yard, even the quiet ones. —Tessen Hark"
     },
     "route": {
       "routeId": "tessen_hark_daily_route",
@@ -6877,11 +6877,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Yenna Holt carries a hidden detail tied to Residential District, Town Watch Family, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Yenna Holt. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "Yenna Holt here. I trust useful questions more than grand entrances, especially in Residential District.",
+      "service": "Illness keeps me indoors too often, but the gate brings enough footsteps and stories that I still know when Father is worried; because of that, I know which adults listen, where children are warned away, and what changes grown-ups hope we miss.",
+      "rumor": "Lately Residential District has been marked by tight supplies, old obligations, guarded roads, and the uneasy boundary between Harthmere and the wider Biomes. Yenna Holt advises attention before fear turns the story into nonsense.",
+      "questOffer": "Residential District has a matter suited to an outsider: notice something adults dismissed and bring back an answer without frightening anyone for sport. Return to Yenna Holt when you can explain what actually happened.",
+      "farewell": "Go safely. Yenna Holt would rather see you return to Residential District wiser than hear a dramatic story about your absence."
     },
     "route": {
       "routeId": "yenna_holt_daily_route",
@@ -7024,11 +7024,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Bree Thistle carries a hidden detail tied to Market Square, Market Families, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Bree Thistle. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "Bree Thistle, at your service for a moment. Market Square rarely leaves anyone idle for longer than that.",
+      "service": "What remains of Bree lives in market memory, family grief, and stories that should be examined gently rather than consumed as entertainment. I can offer only memory: incomplete, stubborn, and tied to the place that refuses to let it fade.",
+      "rumor": "Bree Thistle would not call rumor evidence, yet reports of bread prices, fountain gossip, stall permits, and merchants measuring fear as carefully as coin keep circling Market Square from people who do not usually agree.",
+      "questOffer": "Bree Thistle will trust you with one local problem if you agree to follow the surviving evidence and decide which part of memory deserves belief; Market Square has suffered enough careless favors.",
+      "farewell": "Bree Thistle wishes you a steady road. Around Market Square, kept promises travel farther than boasts."
     },
     "route": {
       "routeId": "bree_thistle_daily_route",
@@ -7159,11 +7159,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Corvin Ash carries a hidden detail tied to Market Square, Traveling Merchants, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Corvin Ash. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "Mind where you step and call me Corvin Ash; Market Square has enough confusion without careless introductions.",
+      "service": "I travel with stories, trade news, and enough road dust that sensible people ask for proof before trusting any of them; because of that, I can also speak to supply, fair measure, local prices, and which road delays are reaching the stalls.",
+      "rumor": "Market Square usually hides worry inside routine, but Corvin Ash keeps hearing about bread prices, fountain gossip, stall permits, and merchants measuring fear as carefully as coin. Something is pressing on ordinary life.",
+      "questOffer": "Market Square has a matter suited to an outsider: trace a delayed supply, verify a measure, or carry goods where the road has made trade uncertain. Return to Corvin Ash when you can explain what actually happened.",
+      "farewell": "We are finished for the moment. Mind the warnings in Market Square, even the quiet ones. —Corvin Ash"
     },
     "route": {
       "routeId": "corvin_bree_friend_daily_route",
@@ -7308,11 +7308,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Harlo Fenwick carries a hidden detail tied to Market Square, Merchant Compact, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Harlo Fenwick. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "Harlo Fenwick here. I trust useful questions more than grand entrances, especially in Market Square.",
+      "service": "I can speak to supply, fair measure, local prices, and which road delays are reaching the stalls. I learned it the ordinary way: I trade grain by season, storage, and risk, though hungry crowds rarely care how respectable a ledger looks.",
+      "rumor": "Lately Market Square has been marked by bread prices, fountain gossip, stall permits, and merchants measuring fear as carefully as coin. Harlo Fenwick advises attention before fear turns the story into nonsense.",
+      "questOffer": "Market Square has a matter suited to an outsider: trace a delayed supply, verify a measure, or carry goods where the road has made trade uncertain. Return to Harlo Fenwick when you can explain what actually happened.",
+      "farewell": "We are finished for the moment. Mind the warnings in Market Square, even the quiet ones. —Harlo Fenwick"
     },
     "route": {
       "routeId": "harlo_grain_merchant_daily_route",
@@ -7457,11 +7457,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Rinna Scale carries a hidden detail tied to Market Square, River Docks, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Rinna Scale. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "Rinna Scale here. I trust useful questions more than grand entrances, especially in Market Square.",
+      "service": "Freshness, weight, and a clean scale decide a fish stall's reputation faster than any painted sign; because of that, I can also speak to supply, fair measure, local prices, and which road delays are reaching the stalls.",
+      "rumor": "The talk reaching Rinna Scale from Market Square concerns bread prices, fountain gossip, stall permits, and merchants measuring fear as carefully as coin. Treat it as a warning, not a proven accusation.",
+      "questOffer": "There is honest work around Market Square: trace a delayed supply, verify a measure, or carry goods where the road has made trade uncertain. Rinna Scale values a clean result more than a heroic retelling.",
+      "farewell": "Go safely. Rinna Scale would rather see you return to Market Square wiser than hear a dramatic story about your absence."
     },
     "route": {
       "routeId": "rinna_fishmonger_daily_route",
@@ -7580,7 +7580,7 @@ export const HARTHMERE_REMAINING_NPCS = [
       ]
     },
     "spawn": {
-      "x": 476.0,
+      "x": 476,
       "z": -215.3,
       "rot": 1.57,
       "scale": 1.08,
@@ -7606,11 +7606,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Envoy Brokkan Drath carries a hidden detail tied to Noble Rise, Drathmar Embassy, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Envoy Brokkan Drath. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "Envoy Brokkan Drath here. I trust useful questions more than grand entrances, especially in Noble Rise.",
+      "service": "I can explain petitions, deeds, public obligations, and the manners people use when power is in the room. I learned it the ordinary way: I represent Drathmar at a court where every meal, pause, and seating choice is treated as a small act of diplomacy.",
+      "rumor": "Lately Noble Rise has been marked by deeds, debts, polished manners, and decisions whose cost is usually paid downhill. Envoy Brokkan Drath advises attention before fear turns the story into nonsense.",
+      "questOffer": "Noble Rise has a matter suited to an outsider: verify a petition, witness an agreement, or uncover the human cost hidden inside a clean record. Return to Envoy Brokkan Drath when you can explain what actually happened.",
+      "farewell": "Go safely. Envoy Brokkan Drath would rather see you return to Noble Rise wiser than hear a dramatic story about your absence."
     },
     "route": {
       "routeId": "drathmar_envoy_daily_route",
@@ -7755,11 +7755,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Crown Auditor Selwyn Marr carries a hidden detail tied to Noble Rise, Crown Audit Office, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Crown Auditor Selwyn Marr. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "Mind where you step and call me Crown Auditor Selwyn Marr; Noble Rise has enough confusion without careless introductions.",
+      "service": "I can explain petitions, deeds, public obligations, and the manners people use when power is in the room. I learned it the ordinary way: I follow Crown figures through permits, taxes, and sealed ledgers until public money has nowhere left to hide.",
+      "rumor": "Lately Noble Rise has been marked by deeds, debts, polished manners, and decisions whose cost is usually paid downhill. Crown Auditor Selwyn Marr advises attention before fear turns the story into nonsense.",
+      "questOffer": "Noble Rise has a matter suited to an outsider: verify a petition, witness an agreement, or uncover the human cost hidden inside a clean record. Return to Crown Auditor Selwyn Marr when you can explain what actually happened.",
+      "farewell": "Crown Auditor Selwyn Marr has work to return to. Walk carefully through Noble Rise, and leave fewer problems than you found."
     },
     "route": {
       "routeId": "crown_auditor_selwyn_daily_route",
@@ -7904,11 +7904,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Avelina Dorne carries a hidden detail tied to Noble Rise, Noble Rise, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Avelina Dorne. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "I am Avelina Dorne. The day's work in Noble Rise has not swallowed me yet, so ask.",
+      "service": "What I know is practical rather than grand. I can explain petitions, deeds, public obligations, and the manners people use when power is in the room. Widowhood taught me how quickly polite society studies a person's property while pretending concern for their grief.",
+      "rumor": "Avelina Dorne would not call rumor evidence, yet reports of deeds, debts, polished manners, and decisions whose cost is usually paid downhill keep circling Noble Rise from people who do not usually agree.",
+      "questOffer": "Avelina Dorne will trust you with one local problem if you agree to verify a petition, witness an agreement, or uncover the human cost hidden inside a clean record; Noble Rise has suffered enough careless favors.",
+      "farewell": "That is enough for now. If you come back to Avelina Dorne, bring honest news from Noble Rise."
     },
     "route": {
       "routeId": "noble_widow_avelina_daily_route",
@@ -8053,11 +8053,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Captain Orren Pike carries a hidden detail tied to River Docks, River Knots, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Captain Orren Pike. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "Captain Orren Pike. I know the work and worries of River Docks, though I do not sell either as entertainment.",
+      "service": "A captain is judged by the cargo delivered, the crew returned, and the explanations required when those numbers differ; because of that, I can also read cargo work, river conditions, ferry practice, and the difference between haste and a dangerous load.",
+      "rumor": "Lately River Docks has been marked by changing current, wet rope, cargo ledgers, ferry bells, and crates that invite the wrong questions. Captain Orren Pike advises attention before fear turns the story into nonsense.",
+      "questOffer": "River Docks has a matter suited to an outsider: check a manifest, secure a crossing, or learn why a load and its paperwork disagree. Return to Captain Orren Pike when you can explain what actually happened.",
+      "farewell": "Go safely. Captain Orren Pike would rather see you return to River Docks wiser than hear a dramatic story about your absence."
     },
     "route": {
       "routeId": "barge_captain_orren_daily_route",
@@ -8202,11 +8202,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Pell Barlow carries a hidden detail tied to Charcoal Camp, Charcoal Burners, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Pell Barlow. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "If Charcoal Camp sent you looking for someone, Pell Barlow is the name you were probably given.",
+      "service": "I can read weather, tracks, field boundaries, and the moment a familiar route becomes unsafe. I learned it the ordinary way: I tend the charcoal pits and Old Merrit's cough, trying to stretch poor coin across work that cannot simply stop.",
+      "rumor": "Charcoal Camp usually hides worry inside routine, but Pell Barlow keeps hearing about tight supplies, old obligations, guarded roads, and the uneasy boundary between Harthmere and the wider Biomes. Something is pressing on ordinary life.",
+      "questOffer": "There is honest work around Charcoal Camp: restore a marker, find a missing worker, or clear a route without damaging owned land. Pell Barlow values a clean result more than a heroic retelling.",
+      "farewell": "Go safely. Pell Barlow would rather see you return to Charcoal Camp wiser than hear a dramatic story about your absence."
     },
     "route": {
       "routeId": "merrit_apprentice_pell_daily_route",
@@ -8352,11 +8352,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Alen Reed carries a hidden detail tied to River Docks, Pellmarra Contact, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Alen Reed. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "You found Alen Reed in River Docks; if you want an answer, ask a question worth stopping for.",
+      "service": "What I know is practical rather than grand. I can read cargo work, river conditions, ferry practice, and the difference between haste and a dangerous load. Distance has reduced family to letters, remembered river sounds, and news that never arrives quickly enough.",
+      "rumor": "Alen Reed would not call rumor evidence, yet reports of changing current, wet rope, cargo ledgers, ferry bells, and crates that invite the wrong questions keep circling River Docks from people who do not usually agree.",
+      "questOffer": "Before the next rumor grows teeth, Alen Reed wants someone to check a manifest, secure a crossing, or learn why a load and its paperwork disagree in River Docks and report without embellishment.",
+      "farewell": "Alen Reed wishes you a steady road. Around River Docks, kept promises travel farther than boasts."
     },
     "route": {
       "routeId": "veska_brother_alen_daily_route",
@@ -8501,11 +8501,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Hobb and Merra Wale carries a hidden detail tied to Mudden Ward, Mudden Kin, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Hobb and Merra Wale. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "Mind where you step and call me Hobb and Merra Wale; Mudden Ward has enough confusion without careless introductions.",
+      "service": "We built a life from Mudden wages and careful saving, only to learn how small a debt looks from a Noble Rise window; because of that, I know the ward's work, safe paths, informal bargains, and which official promises never reached the lower streets.",
+      "rumor": "Mudden Ward usually hides worry inside routine, but Hobb and Merra Wale keeps hearing about flood marks, patched roofs, informal trade, and neighbors who survive by noticing one another. Something is pressing on ordinary life.",
+      "questOffer": "Hobb and Merra Wale could use someone willing to protect a neighbor, trace a shortage, or fix danger before an eviction crew calls it someone else's problem here in Mudden Ward; do it carefully, and bring back facts rather than theater.",
+      "farewell": "Go safely. Hobb and Merra Wale would rather see you return to Mudden Ward wiser than hear a dramatic story about your absence."
     },
     "route": {
       "routeId": "evicted_couple_hobb_daily_route",
@@ -8650,11 +8650,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Vera Harth carries a hidden detail tied to Old Well / Underways, Bellbinders, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Vera Harth. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "Around Old Well / Underways, people call me Vera Harth; speak plainly and I will do the same.",
+      "service": "My trade has taught me where trouble begins. Vera's words survive where old masonry, family duty, and dangerous questions meet beneath Harthmere. I can offer only memory: incomplete, stubborn, and tied to the place that refuses to let it fade.",
+      "rumor": "Vera Harth has noticed wet stone, chalk marks, lost passages, and echoes that do not always match the speaker around Old Well / Underways; when several small things change together, it is rarely coincidence.",
+      "questOffer": "If you are looking for useful work, Vera Harth needs a steady hand to follow the surviving evidence and decide which part of memory deserves belief near Old Well / Underways.",
+      "farewell": "That is enough for now. If you come back to Vera Harth, bring honest news from Old Well / Underways."
     },
     "route": {
       "routeId": "vera_harth_daily_route",
@@ -8785,11 +8785,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Old Harth carries a hidden detail tied to Temple Green, Bellbinders, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Old Harth. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "Old Harth here. I trust useful questions more than grand entrances, especially in Temple Green.",
+      "service": "Harthmere remembers its founder in monuments, but memory beneath stone is less obedient than civic ceremony; because of that, I can also offer only memory: incomplete, stubborn, and tied to the place that refuses to let it fade.",
+      "rumor": "Lately Temple Green has been marked by candle vigils, charity lines, grave records, and an old unease beneath formal prayers. Old Harth advises attention before fear turns the story into nonsense.",
+      "questOffer": "Temple Green has a matter suited to an outsider: follow the surviving evidence and decide which part of memory deserves belief. Return to Old Harth when you can explain what actually happened.",
+      "farewell": "Go safely. Old Harth would rather see you return to Temple Green wiser than hear a dramatic story about your absence."
     },
     "route": {
       "routeId": "old_harth_daily_route",
@@ -8920,11 +8920,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Thaedryn the Bellbound carries a hidden detail tied to Old Well / Underways, Ancient Dragon, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "Thaedryn the Bellbound offers no greeting — only breath, the scrape of movement, and the far echo of a bell under stone.",
-      "service": "Read Thaedryn the Bellbound before it reads you: watch its silhouette, how it moves, and where it lingers — that is your only warning.",
-      "rumor": "Folk in Harthmere trade quiet warnings about Thaedryn the Bellbound long before anyone sees it — cold air, wrong sounds, a bell that should be still.",
-      "questOffer": "Thaedryn the Bellbound is the reason more than one Harthmere task ends in danger — something to put down, cleanse, or drive back.",
-      "farewell": "Thaedryn the Bellbound will not be reasoned with. It ends when it is put down, scattered, or driven back into the dark."
+      "greeting": "Thaedryn the Bellbound offers no welcome in Old Well / Underways; movement, breath, and a ready weapon or unnatural stillness announce a quest named threat.",
+      "service": "There is nothing to request from Thaedryn the Bellbound. Read the ground and silhouette carefully, because survival in Old Well / Underways depends on recognizing its method before it closes.",
+      "rumor": "Warnings about Thaedryn the Bellbound reach the roads before clear sightings do: wrong lanterns, broken markers, disturbed graves, or silence spreading through Old Well / Underways.",
+      "questOffer": "Thaedryn the Bellbound is the danger behind a local task in Old Well / Underways: investigate its signs, protect those in its path, and decide whether capture, cleansing, retreat, or force is justified.",
+      "farewell": "Thaedryn the Bellbound does not exchange farewells. The encounter ends only when the threat withdraws, surrenders, is dispersed, or lies still in Old Well / Underways."
     },
     "route": {
       "routeId": "thaedryn_bellbound_daily_route",
@@ -9057,11 +9057,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Vyrahel carries a hidden detail tied to Temple Green, Ancient Dragon Echo, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "Vyrahel offers no greeting — only breath, the scrape of movement, and the far echo of a bell under stone.",
-      "service": "Read Vyrahel before it reads you: watch its silhouette, how it moves, and where it lingers — that is your only warning.",
-      "rumor": "Folk in Harthmere trade quiet warnings about Vyrahel long before anyone sees it — cold air, wrong sounds, a bell that should be still.",
-      "questOffer": "Vyrahel is the reason more than one Harthmere task ends in danger — something to put down, cleanse, or drive back.",
-      "farewell": "Vyrahel will not be reasoned with. It ends when it is put down, scattered, or driven back into the dark."
+      "greeting": "Vyrahel offers no welcome in Temple Green; movement, breath, and a ready weapon or unnatural stillness announce a quest named threat.",
+      "service": "There is nothing to request from Vyrahel. Read the ground and silhouette carefully, because survival in Temple Green depends on recognizing its method before it closes.",
+      "rumor": "Warnings about Vyrahel reach the roads before clear sightings do: wrong lanterns, broken markers, disturbed graves, or silence spreading through Temple Green.",
+      "questOffer": "Vyrahel is the danger behind a local task in Temple Green: investigate its signs, protect those in its path, and decide whether capture, cleansing, retreat, or force is justified.",
+      "farewell": "Vyrahel does not exchange farewells. The encounter ends only when the threat withdraws, surrenders, is dispersed, or lies still in Temple Green."
     },
     "route": {
       "routeId": "vyrahel_chapel_wyrmling_daily_route",
@@ -9168,7 +9168,7 @@ export const HARTHMERE_REMAINING_NPCS = [
       ]
     },
     "spawn": {
-      "x": 480.0,
+      "x": 480,
       "z": -139.2,
       "rot": 0,
       "scale": 1.25,
@@ -9194,11 +9194,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Alban Veld carries a hidden detail tied to North Gate, Refugees, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Alban Veld. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "Around North Gate, people call me Alban Veld; speak plainly and I will do the same.",
+      "service": "What I know is practical rather than grand. I can speak to supply, fair measure, local prices, and which road delays are reaching the stalls. I brought my family to the North Gate because road danger is immediate and paperwork only feels immediate to guards.",
+      "rumor": "Alban Veld would not call rumor evidence, yet reports of cart queues, toll boards, refugee fires, and warnings about roads that worsen after dusk keep circling North Gate from people who do not usually agree.",
+      "questOffer": "If you are looking for useful work, Alban Veld needs a steady hand to trace a delayed supply, verify a measure, or carry goods where the road has made trade uncertain near North Gate.",
+      "farewell": "Take care of your boots, your word, and whoever walks beside you. Alban Veld will still be in North Gate."
     },
     "route": {
       "routeId": "outside_gate_father_daily_route",
@@ -9343,11 +9343,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Corra Veld carries a hidden detail tied to North Gate, Refugees, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Corra Veld. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "Mind where you step and call me Corra Veld; North Gate has enough confusion without careless introductions.",
+      "service": "I fear official papers less than hunger, but I know one frightened lie can close a gate faster than truth opens it; because of that, I can also speak to supply, fair measure, local prices, and which road delays are reaching the stalls.",
+      "rumor": "Lately North Gate has been marked by cart queues, toll boards, refugee fires, and warnings about roads that worsen after dusk. Corra Veld advises attention before fear turns the story into nonsense.",
+      "questOffer": "North Gate has a matter suited to an outsider: trace a delayed supply, verify a measure, or carry goods where the road has made trade uncertain. Return to Corra Veld when you can explain what actually happened.",
+      "farewell": "We are finished for the moment. Mind the warnings in North Gate, even the quiet ones. —Corra Veld"
     },
     "route": {
       "routeId": "outside_gate_mother_daily_route",
@@ -9492,11 +9492,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Piers Veld carries a hidden detail tied to North Gate, Refugees, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Piers Veld. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "Piers Veld, at your service for a moment. North Gate rarely leaves anyone idle for longer than that.",
+      "service": "What I know is practical rather than grand. I know which adults listen, where children are warned away, and what changes grown-ups hope we miss. I stay close to my parents, watch the guards, and remember who speaks about us as if we cannot hear.",
+      "rumor": "Piers Veld would not call rumor evidence, yet reports of cart queues, toll boards, refugee fires, and warnings about roads that worsen after dusk keep circling North Gate from people who do not usually agree.",
+      "questOffer": "Piers Veld will trust you with one local problem if you agree to notice something adults dismissed and bring back an answer without frightening anyone for sport; North Gate has suffered enough careless favors.",
+      "farewell": "Piers Veld wishes you a steady road. Around North Gate, kept promises travel farther than boasts."
     },
     "route": {
       "routeId": "outside_gate_child_daily_route",
@@ -9639,11 +9639,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "North Gate Day Guard carries a hidden detail tied to North Gate, Town Watch, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am North Gate Day Guard. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "I am North Gate Day Guard. The day's work in North Gate has not swallowed me yet, so ask.",
+      "service": "People know me as North Gate Day Guard; I work as guard among Town Watch, where reputation depends on useful work and remembered promises. I can explain local law, road warnings, watch boundaries, and the difference between keeping order and abusing it.",
+      "rumor": "Ask what feels different in North Gate, and North Gate Day Guard will point to cart queues, toll boards, refugee fires, and warnings about roads that worsen after dusk. The town is listening for a pattern.",
+      "questOffer": "Before the next rumor grows teeth, North Gate Day Guard wants someone to check a warning, escort someone vulnerable, or verify trouble before steel makes it worse in North Gate and report without embellishment.",
+      "farewell": "Take care of your boots, your word, and whoever walks beside you. North Gate Day Guard will still be in North Gate."
     },
     "route": {
       "routeId": "north_gate_day_guard_daily_route",
@@ -9789,11 +9789,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "North Gate Night Guard carries a hidden detail tied to North Gate, Town Watch, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am North Gate Night Guard. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "Around North Gate, people call me North Gate Night Guard; speak plainly and I will do the same.",
+      "service": "My trade has taught me where trouble begins. People know me as North Gate Night Guard; I work as guard among Town Watch, where reputation depends on useful work and remembered promises. I can explain local law, road warnings, watch boundaries, and the difference between keeping order and abusing it.",
+      "rumor": "Ask what feels different in North Gate, and North Gate Night Guard will point to cart queues, toll boards, refugee fires, and warnings about roads that worsen after dusk. The town is listening for a pattern.",
+      "questOffer": "If you are looking for useful work, North Gate Night Guard needs a steady hand to check a warning, escort someone vulnerable, or verify trouble before steel makes it worse near North Gate.",
+      "farewell": "That is enough for now. If you come back to North Gate Night Guard, bring honest news from North Gate."
     },
     "route": {
       "routeId": "north_gate_night_guard_daily_route",
@@ -9939,11 +9939,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Toll Clerk Evin carries a hidden detail tied to North Gate, Town Watch, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Toll Clerk Evin. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "If North Gate sent you looking for someone, Toll Clerk Evin is the name you were probably given.",
+      "service": "I can point you toward local services, practical help, and the quiet habits that keep this place running. I learned it the ordinary way: People know me as Toll Clerk Evin; I work as service among Town Watch, where reputation depends on useful work and remembered promises.",
+      "rumor": "North Gate usually hides worry inside routine, but Toll Clerk Evin keeps hearing about cart queues, toll boards, refugee fires, and warnings about roads that worsen after dusk. Something is pressing on ordinary life.",
+      "questOffer": "There is honest work around North Gate: deliver needed help, recover a missing item, or solve the practical problem everyone has stepped around. Toll Clerk Evin values a clean result more than a heroic retelling.",
+      "farewell": "We are finished for the moment. Mind the warnings in North Gate, even the quiet ones. —Toll Clerk Evin"
     },
     "route": {
       "routeId": "toll_clerk_daily_route",
@@ -10086,11 +10086,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Gate Peddler Noll carries a hidden detail tied to North Gate, Free Traders, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Gate Peddler Noll. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "Gate Peddler Noll, at your service for a moment. North Gate rarely leaves anyone idle for longer than that.",
+      "service": "People know me as Gate Peddler Noll; I work as merchant among Free Traders, where reputation depends on useful work and remembered promises. I can speak to supply, fair measure, local prices, and which road delays are reaching the stalls.",
+      "rumor": "Gate Peddler Noll would not call rumor evidence, yet reports of cart queues, toll boards, refugee fires, and warnings about roads that worsen after dusk keep circling North Gate from people who do not usually agree.",
+      "questOffer": "Before the next rumor grows teeth, Gate Peddler Noll wants someone to trace a delayed supply, verify a measure, or carry goods where the road has made trade uncertain in North Gate and report without embellishment.",
+      "farewell": "That is enough for now. If you come back to Gate Peddler Noll, bring honest news from North Gate."
     },
     "route": {
       "routeId": "gate_peddler_daily_route",
@@ -10235,11 +10235,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Gate Farmer Jossa carries a hidden detail tied to North Gate, Gate Fields, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Gate Farmer Jossa. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "Mind where you step and call me Gate Farmer Jossa; North Gate has enough confusion without careless introductions.",
+      "service": "I can speak to supply, fair measure, local prices, and which road delays are reaching the stalls. That knowledge comes from this much of my life: People know me as Gate Farmer Jossa; I work as merchant among Gate Fields, where reputation depends on useful work and remembered promises.",
+      "rumor": "North Gate usually hides worry inside routine, but Gate Farmer Jossa keeps hearing about cart queues, toll boards, refugee fires, and warnings about roads that worsen after dusk. Something is pressing on ordinary life.",
+      "questOffer": "Gate Farmer Jossa could use someone willing to trace a delayed supply, verify a measure, or carry goods where the road has made trade uncertain here in North Gate; do it carefully, and bring back facts rather than theater.",
+      "farewell": "Gate Farmer Jossa has work to return to. Walk carefully through North Gate, and leave fewer problems than you found."
     },
     "route": {
       "routeId": "gate_farmer_daily_route",
@@ -10384,11 +10384,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Caravan Hand Dalk carries a hidden detail tied to North Gate, Road Caravans, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Caravan Hand Dalk. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "Caravan Hand Dalk, at your service for a moment. North Gate rarely leaves anyone idle for longer than that.",
+      "service": "What I know is practical rather than grand. I can read cargo work, river conditions, ferry practice, and the difference between haste and a dangerous load. People know me as Caravan Hand Dalk; I work as dock among Road Caravans, where reputation depends on useful work and remembered promises.",
+      "rumor": "Ask what feels different in North Gate, and Caravan Hand Dalk will point to cart queues, toll boards, refugee fires, and warnings about roads that worsen after dusk. The town is listening for a pattern.",
+      "questOffer": "If you are looking for useful work, Caravan Hand Dalk needs a steady hand to check a manifest, secure a crossing, or learn why a load and its paperwork disagree near North Gate.",
+      "farewell": "Caravan Hand Dalk wishes you a steady road. Around North Gate, kept promises travel farther than boasts."
     },
     "route": {
       "routeId": "caravan_hand_daily_route",
@@ -10533,11 +10533,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Gate Beggar Child Rill carries a hidden detail tied to North Gate, Mudden Kin, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Gate Beggar Child Rill. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "If North Gate sent you looking for someone, Gate Beggar Child Rill is the name you were probably given.",
+      "service": "People know me as Gate Beggar Child Rill; I work as child among Mudden Kin, where reputation depends on useful work and remembered promises; because of that, I know which adults listen, where children are warned away, and what changes grown-ups hope we miss.",
+      "rumor": "North Gate usually hides worry inside routine, but Gate Beggar Child Rill keeps hearing about cart queues, toll boards, refugee fires, and warnings about roads that worsen after dusk. Something is pressing on ordinary life.",
+      "questOffer": "North Gate has a matter suited to an outsider: notice something adults dismissed and bring back an answer without frightening anyone for sport. Return to Gate Beggar Child Rill when you can explain what actually happened.",
+      "farewell": "We are finished for the moment. Mind the warnings in North Gate, even the quiet ones. —Gate Beggar Child Rill"
     },
     "route": {
       "routeId": "beggar_child_gate_daily_route",
@@ -10680,11 +10680,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Food Seller Bria carries a hidden detail tied to Market Square, Market Sellers, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Food Seller Bria. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "I am Food Seller Bria. The day's work in Market Square has not swallowed me yet, so ask.",
+      "service": "People know me as Food Seller Bria; I work as merchant among Market Sellers, where reputation depends on useful work and remembered promises. I can speak to supply, fair measure, local prices, and which road delays are reaching the stalls.",
+      "rumor": "Ask what feels different in Market Square, and Food Seller Bria will point to bread prices, fountain gossip, stall permits, and merchants measuring fear as carefully as coin. The town is listening for a pattern.",
+      "questOffer": "If you are looking for useful work, Food Seller Bria needs a steady hand to trace a delayed supply, verify a measure, or carry goods where the road has made trade uncertain near Market Square.",
+      "farewell": "Take care of your boots, your word, and whoever walks beside you. Food Seller Bria will still be in Market Square."
     },
     "route": {
       "routeId": "food_seller_daily_route",
@@ -10803,7 +10803,7 @@ export const HARTHMERE_REMAINING_NPCS = [
       ]
     },
     "spawn": {
-      "x": 476.0,
+      "x": 476,
       "z": -213.1,
       "rot": 1.57,
       "scale": 1.08,
@@ -10829,11 +10829,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Cloth Trader Kell carries a hidden detail tied to Market Square, Market Sellers, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Cloth Trader Kell. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "Mind where you step and call me Cloth Trader Kell; Market Square has enough confusion without careless introductions.",
+      "service": "People know me as Cloth Trader Kell; I work as merchant among Market Sellers, where reputation depends on useful work and remembered promises; because of that, I can also speak to supply, fair measure, local prices, and which road delays are reaching the stalls.",
+      "rumor": "Lately Market Square has been marked by bread prices, fountain gossip, stall permits, and merchants measuring fear as carefully as coin. Cloth Trader Kell advises attention before fear turns the story into nonsense.",
+      "questOffer": "Market Square has a matter suited to an outsider: trace a delayed supply, verify a measure, or carry goods where the road has made trade uncertain. Return to Cloth Trader Kell when you can explain what actually happened.",
+      "farewell": "Go safely. Cloth Trader Kell would rather see you return to Market Square wiser than hear a dramatic story about your absence."
     },
     "route": {
       "routeId": "cloth_trader_daily_route",
@@ -10978,11 +10978,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Spice Trader Orla carries a hidden detail tied to Market Square, Market Sellers, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Spice Trader Orla. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "Spice Trader Orla here. I trust useful questions more than grand entrances, especially in Market Square.",
+      "service": "I can speak to supply, fair measure, local prices, and which road delays are reaching the stalls. I learned it the ordinary way: People know me as Spice Trader Orla; I work as merchant among Market Sellers, where reputation depends on useful work and remembered promises.",
+      "rumor": "The talk reaching Spice Trader Orla from Market Square concerns bread prices, fountain gossip, stall permits, and merchants measuring fear as carefully as coin. Treat it as a warning, not a proven accusation.",
+      "questOffer": "Market Square has a matter suited to an outsider: trace a delayed supply, verify a measure, or carry goods where the road has made trade uncertain. Return to Spice Trader Orla when you can explain what actually happened.",
+      "farewell": "We are finished for the moment. Mind the warnings in Market Square, even the quiet ones. —Spice Trader Orla"
     },
     "route": {
       "routeId": "spice_trader_daily_route",
@@ -11127,11 +11127,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Market Clerk Sen carries a hidden detail tied to Market Square, Merchant Compact, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Market Clerk Sen. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "You found Market Clerk Sen in Market Square; if you want an answer, ask a question worth stopping for.",
+      "service": "People know me as Market Clerk Sen; I work as service among Merchant Compact, where reputation depends on useful work and remembered promises. I can point you toward local services, practical help, and the quiet habits that keep this place running.",
+      "rumor": "Market Clerk Sen has noticed bread prices, fountain gossip, stall permits, and merchants measuring fear as carefully as coin around Market Square; when several small things change together, it is rarely coincidence.",
+      "questOffer": "If you are looking for useful work, Market Clerk Sen needs a steady hand to deliver needed help, recover a missing item, or solve the practical problem everyone has stepped around near Market Square.",
+      "farewell": "Take care of your boots, your word, and whoever walks beside you. Market Clerk Sen will still be in Market Square."
     },
     "route": {
       "routeId": "market_clerk_daily_route",
@@ -11274,11 +11274,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Gossiping Elder Marn carries a hidden detail tied to Market Square, Market Families, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Gossiping Elder Marn. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "You found Gossiping Elder Marn in Market Square; if you want an answer, ask a question worth stopping for.",
+      "service": "People know me as Gossiping Elder Marn; I work as service among Market Families, where reputation depends on useful work and remembered promises. I can point you toward local services, practical help, and the quiet habits that keep this place running.",
+      "rumor": "Gossiping Elder Marn would not call rumor evidence, yet reports of bread prices, fountain gossip, stall permits, and merchants measuring fear as carefully as coin keep circling Market Square from people who do not usually agree.",
+      "questOffer": "Gossiping Elder Marn will trust you with one local problem if you agree to deliver needed help, recover a missing item, or solve the practical problem everyone has stepped around; Market Square has suffered enough careless favors.",
+      "farewell": "That is enough for now. If you come back to Gossiping Elder Marn, bring honest news from Market Square."
     },
     "route": {
       "routeId": "gossip_elder_daily_route",
@@ -11421,11 +11421,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Fountain Child Petta carries a hidden detail tied to Market Square, Market Families, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Fountain Child Petta. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "Fountain Child Petta. I know the work and worries of Market Square, though I do not sell either as entertainment.",
+      "service": "People know me as Fountain Child Petta; I work as child among Market Families, where reputation depends on useful work and remembered promises; because of that, I know which adults listen, where children are warned away, and what changes grown-ups hope we miss.",
+      "rumor": "Lately Market Square has been marked by bread prices, fountain gossip, stall permits, and merchants measuring fear as carefully as coin. Fountain Child Petta advises attention before fear turns the story into nonsense.",
+      "questOffer": "Fountain Child Petta could use someone willing to notice something adults dismissed and bring back an answer without frightening anyone for sport here in Market Square; do it carefully, and bring back facts rather than theater.",
+      "farewell": "We are finished for the moment. Mind the warnings in Market Square, even the quiet ones. —Fountain Child Petta"
     },
     "route": {
       "routeId": "fountain_child_daily_route",
@@ -11568,11 +11568,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Market Performer Ludo carries a hidden detail tied to Market Square, Performers, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Market Performer Ludo. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "Mind where you step and call me Market Performer Ludo; Market Square has enough confusion without careless introductions.",
+      "service": "I can point you toward local services, practical help, and the quiet habits that keep this place running. I learned it the ordinary way: People know me as Market Performer Ludo; I work as service among Performers, where reputation depends on useful work and remembered promises.",
+      "rumor": "The talk reaching Market Performer Ludo from Market Square concerns bread prices, fountain gossip, stall permits, and merchants measuring fear as carefully as coin. Treat it as a warning, not a proven accusation.",
+      "questOffer": "Market Square has a matter suited to an outsider: deliver needed help, recover a missing item, or solve the practical problem everyone has stepped around. Return to Market Performer Ludo when you can explain what actually happened.",
+      "farewell": "Market Performer Ludo has work to return to. Walk carefully through Market Square, and leave fewer problems than you found."
     },
     "route": {
       "routeId": "market_performer_daily_route",
@@ -11690,7 +11690,7 @@ export const HARTHMERE_REMAINING_NPCS = [
     },
     "spawn": {
       "x": 470.25,
-      "z": -212.0,
+      "z": -212,
       "rot": 1.57,
       "scale": 1.08,
       "asset": "townsperson_market"
@@ -11715,11 +11715,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Stock Keeper Hal carries a hidden detail tied to Player Services, Merchant Compact, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Stock Keeper Hal. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "Mind where you step and call me Stock Keeper Hal; Player Services has enough confusion without careless introductions.",
+      "service": "People know me as Stock Keeper Hal; I work as service among Merchant Compact, where reputation depends on useful work and remembered promises; because of that, I can also point you toward local services, practical help, and the quiet habits that keep this place running.",
+      "rumor": "Player Services usually hides worry inside routine, but Stock Keeper Hal keeps hearing about tight supplies, old obligations, guarded roads, and the uneasy boundary between Harthmere and the wider Biomes. Something is pressing on ordinary life.",
+      "questOffer": "Stock Keeper Hal could use someone willing to deliver needed help, recover a missing item, or solve the practical problem everyone has stepped around here in Player Services; do it carefully, and bring back facts rather than theater.",
+      "farewell": "Go safely. Stock Keeper Hal would rather see you return to Player Services wiser than hear a dramatic story about your absence."
     },
     "route": {
       "routeId": "stock_keeper_daily_route",
@@ -11837,7 +11837,7 @@ export const HARTHMERE_REMAINING_NPCS = [
     },
     "spawn": {
       "x": 551.4,
-      "z": -224.0,
+      "z": -224,
       "rot": 3.14,
       "scale": 1.08,
       "asset": "townsperson_market"
@@ -11862,11 +11862,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Copper Kettle Cook Ressa carries a hidden detail tied to Copper Kettle, Copper Kettle, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Copper Kettle Cook Ressa. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "Around Copper Kettle, people call me Copper Kettle Cook Ressa; speak plainly and I will do the same.",
+      "service": "What I know is practical rather than grand. I can point you toward local services, practical help, and the quiet habits that keep this place running. People know me as Copper Kettle Cook Ressa; I work as service among Copper Kettle, where reputation depends on useful work and remembered promises.",
+      "rumor": "Copper Kettle Cook Ressa has noticed hot food, rented beds, travelers' stories, and rumors polished smooth by repetition around Copper Kettle; when several small things change together, it is rarely coincidence.",
+      "questOffer": "If you are looking for useful work, Copper Kettle Cook Ressa needs a steady hand to deliver needed help, recover a missing item, or solve the practical problem everyone has stepped around near Copper Kettle.",
+      "farewell": "Take care of your boots, your word, and whoever walks beside you. Copper Kettle Cook Ressa will still be in Copper Kettle."
     },
     "route": {
       "routeId": "inn_cook_daily_route",
@@ -11984,7 +11984,7 @@ export const HARTHMERE_REMAINING_NPCS = [
     },
     "spawn": {
       "x": 548.55,
-      "z": -194.0,
+      "z": -194,
       "rot": -1.57,
       "scale": 1.08,
       "asset": "townsperson_market"
@@ -12009,11 +12009,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Room Attendant Valea carries a hidden detail tied to Copper Kettle, Copper Kettle, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Room Attendant Valea. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "Mind where you step and call me Room Attendant Valea; Copper Kettle has enough confusion without careless introductions.",
+      "service": "People know me as Room Attendant Valea; I work as service among Copper Kettle, where reputation depends on useful work and remembered promises; because of that, I can also point you toward local services, practical help, and the quiet habits that keep this place running.",
+      "rumor": "The talk reaching Room Attendant Valea from Copper Kettle concerns hot food, rented beds, travelers' stories, and rumors polished smooth by repetition. Treat it as a warning, not a proven accusation.",
+      "questOffer": "Copper Kettle has a matter suited to an outsider: deliver needed help, recover a missing item, or solve the practical problem everyone has stepped around. Return to Room Attendant Valea when you can explain what actually happened.",
+      "farewell": "Go safely. Room Attendant Valea would rather see you return to Copper Kettle wiser than hear a dramatic story about your absence."
     },
     "route": {
       "routeId": "room_attendant_daily_route",
@@ -12131,7 +12131,7 @@ export const HARTHMERE_REMAINING_NPCS = [
     },
     "spawn": {
       "x": 549.7,
-      "z": -194.0,
+      "z": -194,
       "rot": -1.57,
       "scale": 1.08,
       "asset": "townsperson_market"
@@ -12156,11 +12156,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Traveler Patron Nym carries a hidden detail tied to Copper Kettle, Travelers, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Traveler Patron Nym. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "You found Traveler Patron Nym in Copper Kettle; if you want an answer, ask a question worth stopping for.",
+      "service": "My trade has taught me where trouble begins. People know me as Traveler Patron Nym; I work as service among Travelers, where reputation depends on useful work and remembered promises. I can point you toward local services, practical help, and the quiet habits that keep this place running.",
+      "rumor": "Traveler Patron Nym would not call rumor evidence, yet reports of hot food, rented beds, travelers' stories, and rumors polished smooth by repetition keep circling Copper Kettle from people who do not usually agree.",
+      "questOffer": "If you are looking for useful work, Traveler Patron Nym needs a steady hand to deliver needed help, recover a missing item, or solve the practical problem everyone has stepped around near Copper Kettle.",
+      "farewell": "That is enough for now. If you come back to Traveler Patron Nym, bring honest news from Copper Kettle."
     },
     "route": {
       "routeId": "traveler_patron_daily_route",
@@ -12278,7 +12278,7 @@ export const HARTHMERE_REMAINING_NPCS = [
     },
     "spawn": {
       "x": 550.85,
-      "z": -194.0,
+      "z": -194,
       "rot": -1.57,
       "scale": 1.08,
       "asset": "townsperson_market"
@@ -12303,11 +12303,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Roleplay Patron Corren carries a hidden detail tied to Copper Kettle, Travelers, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Roleplay Patron Corren. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "Mind where you step and call me Roleplay Patron Corren; Copper Kettle has enough confusion without careless introductions.",
+      "service": "I can point you toward local services, practical help, and the quiet habits that keep this place running. That knowledge comes from this much of my life: People know me as Roleplay Patron Corren; I work as service among Travelers, where reputation depends on useful work and remembered promises.",
+      "rumor": "Copper Kettle usually hides worry inside routine, but Roleplay Patron Corren keeps hearing about hot food, rented beds, travelers' stories, and rumors polished smooth by repetition. Something is pressing on ordinary life.",
+      "questOffer": "There is honest work around Copper Kettle: deliver needed help, recover a missing item, or solve the practical problem everyone has stepped around. Roleplay Patron Corren values a clean result more than a heroic retelling.",
+      "farewell": "Go safely. Roleplay Patron Corren would rather see you return to Copper Kettle wiser than hear a dramatic story about your absence."
     },
     "route": {
       "routeId": "roleplay_patron_daily_route",
@@ -12424,8 +12424,8 @@ export const HARTHMERE_REMAINING_NPCS = [
       ]
     },
     "spawn": {
-      "x": 552.0,
-      "z": -194.0,
+      "x": 552,
+      "z": -194,
       "rot": -1.57,
       "scale": 1.08,
       "asset": "townsperson_market"
@@ -12450,11 +12450,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Mail Runner Tove carries a hidden detail tied to Player Services, Courier Post, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Mail Runner Tove. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "Around Player Services, people call me Mail Runner Tove; speak plainly and I will do the same.",
+      "service": "What I know is practical rather than grand. I can point you toward local services, practical help, and the quiet habits that keep this place running. People know me as Mail Runner Tove; I work as service among Courier Post, where reputation depends on useful work and remembered promises.",
+      "rumor": "Ask what feels different in Player Services, and Mail Runner Tove will point to tight supplies, old obligations, guarded roads, and the uneasy boundary between Harthmere and the wider Biomes. The town is listening for a pattern.",
+      "questOffer": "Mail Runner Tove will trust you with one local problem if you agree to deliver needed help, recover a missing item, or solve the practical problem everyone has stepped around; Player Services has suffered enough careless favors.",
+      "farewell": "Mail Runner Tove wishes you a steady road. Around Player Services, kept promises travel farther than boasts."
     },
     "route": {
       "routeId": "mail_runner_daily_route",
@@ -12572,7 +12572,7 @@ export const HARTHMERE_REMAINING_NPCS = [
     },
     "spawn": {
       "x": 557.15,
-      "z": -224.0,
+      "z": -224,
       "rot": 3.14,
       "scale": 1.08,
       "asset": "townsperson_market"
@@ -12597,11 +12597,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Forge Apprentice Della carries a hidden detail tied to Craftsman Row, Crafting Guild, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Forge Apprentice Della. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "Forge Apprentice Della here. I trust useful questions more than grand entrances, especially in Craftsman Row.",
+      "service": "I can judge materials, repairs, apprentices' work, and the small failures that become expensive emergencies. I learned it the ordinary way: People know me as Forge Apprentice Della; I work as crafter among Crafting Guild, where reputation depends on useful work and remembered promises.",
+      "rumor": "Lately Craftsman Row has been marked by hammer blows, sawdust, tannery sharpness, and repairs that keep the whole town functioning. Forge Apprentice Della advises attention before fear turns the story into nonsense.",
+      "questOffer": "There is honest work around Craftsman Row: recover sound materials, inspect damage, or put a failing piece of town work right. Forge Apprentice Della values a clean result more than a heroic retelling.",
+      "farewell": "Forge Apprentice Della has work to return to. Walk carefully through Craftsman Row, and leave fewer problems than you found."
     },
     "route": {
       "routeId": "forge_apprentice_daily_route",
@@ -12721,7 +12721,7 @@ export const HARTHMERE_REMAINING_NPCS = [
     },
     "spawn": {
       "x": 532.3,
-      "z": -232.0,
+      "z": -232,
       "rot": 1.57,
       "scale": 1.08,
       "asset": "townsperson_market"
@@ -12746,11 +12746,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Carpenter Apprentice Rook carries a hidden detail tied to Craftsman Row, Crafting Guild, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Carpenter Apprentice Rook. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "You found Carpenter Apprentice Rook in Craftsman Row; if you want an answer, ask a question worth stopping for.",
+      "service": "What I know is practical rather than grand. I can judge materials, repairs, apprentices' work, and the small failures that become expensive emergencies. People know me as Carpenter Apprentice Rook; I work as crafter among Crafting Guild, where reputation depends on useful work and remembered promises.",
+      "rumor": "Ask what feels different in Craftsman Row, and Carpenter Apprentice Rook will point to hammer blows, sawdust, tannery sharpness, and repairs that keep the whole town functioning. The town is listening for a pattern.",
+      "questOffer": "Carpenter Apprentice Rook will trust you with one local problem if you agree to recover sound materials, inspect damage, or put a failing piece of town work right; Craftsman Row has suffered enough careless favors.",
+      "farewell": "Take care of your boots, your word, and whoever walks beside you. Carpenter Apprentice Rook will still be in Craftsman Row."
     },
     "route": {
       "routeId": "carpenter_apprentice_daily_route",
@@ -12870,7 +12870,7 @@ export const HARTHMERE_REMAINING_NPCS = [
     },
     "spawn": {
       "x": 533.45,
-      "z": -232.0,
+      "z": -232,
       "rot": 1.57,
       "scale": 1.08,
       "asset": "townsperson_market"
@@ -12895,11 +12895,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Porter Hen carries a hidden detail tied to Craftsman Row, Crafting Guild, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Porter Hen. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "Around Craftsman Row, people call me Porter Hen; speak plainly and I will do the same.",
+      "service": "What I know is practical rather than grand. I can read cargo work, river conditions, ferry practice, and the difference between haste and a dangerous load. People know me as Porter Hen; I work as dock among Crafting Guild, where reputation depends on useful work and remembered promises.",
+      "rumor": "Porter Hen would not call rumor evidence, yet reports of hammer blows, sawdust, tannery sharpness, and repairs that keep the whole town functioning keep circling Craftsman Row from people who do not usually agree.",
+      "questOffer": "Porter Hen will trust you with one local problem if you agree to check a manifest, secure a crossing, or learn why a load and its paperwork disagree; Craftsman Row has suffered enough careless favors.",
+      "farewell": "Take care of your boots, your word, and whoever walks beside you. Porter Hen will still be in Craftsman Row."
     },
     "route": {
       "routeId": "porter_daily_route",
@@ -13019,7 +13019,7 @@ export const HARTHMERE_REMAINING_NPCS = [
     },
     "spawn": {
       "x": 534.6,
-      "z": -232.0,
+      "z": -232,
       "rot": 1.57,
       "scale": 1.08,
       "asset": "townsperson_courier"
@@ -13044,11 +13044,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Tanner Vessa carries a hidden detail tied to Craftsman Row, Crafting Guild, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Tanner Vessa. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "I am Tanner Vessa. The day's work in Craftsman Row has not swallowed me yet, so ask.",
+      "service": "People know me as Tanner Vessa; I work as crafter among Crafting Guild, where reputation depends on useful work and remembered promises. I can judge materials, repairs, apprentices' work, and the small failures that become expensive emergencies.",
+      "rumor": "Tanner Vessa has noticed hammer blows, sawdust, tannery sharpness, and repairs that keep the whole town functioning around Craftsman Row; when several small things change together, it is rarely coincidence.",
+      "questOffer": "If you are looking for useful work, Tanner Vessa needs a steady hand to recover sound materials, inspect damage, or put a failing piece of town work right near Craftsman Row.",
+      "farewell": "That is enough for now. If you come back to Tanner Vessa, bring honest news from Craftsman Row."
     },
     "route": {
       "routeId": "tanner_daily_route",
@@ -13168,7 +13168,7 @@ export const HARTHMERE_REMAINING_NPCS = [
     },
     "spawn": {
       "x": 535.75,
-      "z": -232.0,
+      "z": -232,
       "rot": 1.57,
       "scale": 1.08,
       "asset": "townsperson_market"
@@ -13193,11 +13193,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Alchemy Runner Pip carries a hidden detail tied to Apothecary, Apothecary Circle, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Alchemy Runner Pip. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "You found Alchemy Runner Pip in Apothecary; if you want an answer, ask a question worth stopping for.",
+      "service": "People know me as Alchemy Runner Pip; I work as child among Apothecary Circle, where reputation depends on useful work and remembered promises. I know which adults listen, where children are warned away, and what changes grown-ups hope we miss.",
+      "rumor": "Alchemy Runner Pip would not call rumor evidence, yet reports of herb bundles, bitter steam, river damp, and patients who waited too long to ask for help keep circling Apothecary from people who do not usually agree.",
+      "questOffer": "Alchemy Runner Pip will trust you with one local problem if you agree to notice something adults dismissed and bring back an answer without frightening anyone for sport; Apothecary has suffered enough careless favors.",
+      "farewell": "Take care of your boots, your word, and whoever walks beside you. Alchemy Runner Pip will still be in Apothecary."
     },
     "route": {
       "routeId": "alchemy_runner_daily_route",
@@ -13340,11 +13340,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Chapel Pilgrim Oren carries a hidden detail tied to Temple Green, Chapel Circle, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Chapel Pilgrim Oren. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "You found Chapel Pilgrim Oren in Temple Green; if you want an answer, ask a question worth stopping for.",
+      "service": "People know me as Chapel Pilgrim Oren; I work as clergy among Chapel Circle, where reputation depends on useful work and remembered promises. I can offer care, chapel custom, grave courtesy, and what public faith asks of an uneasy town.",
+      "rumor": "Ask what feels different in Temple Green, and Chapel Pilgrim Oren will point to candle vigils, charity lines, grave records, and an old unease beneath formal prayers. The town is listening for a pattern.",
+      "questOffer": "Chapel Pilgrim Oren will trust you with one local problem if you agree to tend the living, honor the dead, or investigate a disturbance without feeding public panic; Temple Green has suffered enough careless favors.",
+      "farewell": "Chapel Pilgrim Oren wishes you a steady road. Around Temple Green, kept promises travel farther than boasts."
     },
     "route": {
       "routeId": "chapel_pilgrim_daily_route",
@@ -13489,11 +13489,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Mourner Sela carries a hidden detail tied to Temple Green, Chapel Circle, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Mourner Sela. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "You found Mourner Sela in Temple Green; if you want an answer, ask a question worth stopping for.",
+      "service": "What I know is practical rather than grand. I can point you toward local services, practical help, and the quiet habits that keep this place running. People know me as Mourner Sela; I work as service among Chapel Circle, where reputation depends on useful work and remembered promises.",
+      "rumor": "Mourner Sela would not call rumor evidence, yet reports of candle vigils, charity lines, grave records, and an old unease beneath formal prayers keep circling Temple Green from people who do not usually agree.",
+      "questOffer": "Before the next rumor grows teeth, Mourner Sela wants someone to deliver needed help, recover a missing item, or solve the practical problem everyone has stepped around in Temple Green and report without embellishment.",
+      "farewell": "Take care of your boots, your word, and whoever walks beside you. Mourner Sela will still be in Temple Green."
     },
     "route": {
       "routeId": "mourner_daily_route",
@@ -13636,11 +13636,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Candle Server Min carries a hidden detail tied to Temple Green, Chapel Circle, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Candle Server Min. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "Candle Server Min here. I trust useful questions more than grand entrances, especially in Temple Green.",
+      "service": "I know which adults listen, where children are warned away, and what changes grown-ups hope we miss. That knowledge comes from this much of my life: People know me as Candle Server Min; I work as child among Chapel Circle, where reputation depends on useful work and remembered promises.",
+      "rumor": "Lately Temple Green has been marked by candle vigils, charity lines, grave records, and an old unease beneath formal prayers. Candle Server Min advises attention before fear turns the story into nonsense.",
+      "questOffer": "Candle Server Min could use someone willing to notice something adults dismissed and bring back an answer without frightening anyone for sport here in Temple Green; do it carefully, and bring back facts rather than theater.",
+      "farewell": "Candle Server Min has work to return to. Walk carefully through Temple Green, and leave fewer problems than you found."
     },
     "route": {
       "routeId": "candle_server_daily_route",
@@ -13783,11 +13783,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Charity Worker Pellia carries a hidden detail tied to Temple Green, Chapel Circle, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Charity Worker Pellia. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "Charity Worker Pellia here. I trust useful questions more than grand entrances, especially in Temple Green.",
+      "service": "People know me as Charity Worker Pellia; I work as clergy among Chapel Circle, where reputation depends on useful work and remembered promises; because of that, I can also offer care, chapel custom, grave courtesy, and what public faith asks of an uneasy town.",
+      "rumor": "The talk reaching Charity Worker Pellia from Temple Green concerns candle vigils, charity lines, grave records, and an old unease beneath formal prayers. Treat it as a warning, not a proven accusation.",
+      "questOffer": "There is honest work around Temple Green: tend the living, honor the dead, or investigate a disturbance without feeding public panic. Charity Worker Pellia values a clean result more than a heroic retelling.",
+      "farewell": "We are finished for the moment. Mind the warnings in Temple Green, even the quiet ones. —Charity Worker Pellia"
     },
     "route": {
       "routeId": "charity_worker_daily_route",
@@ -13932,11 +13932,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Noble Clerk Verro carries a hidden detail tied to Noble Rise, Reeve Office, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Noble Clerk Verro. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "Around Noble Rise, people call me Noble Clerk Verro; speak plainly and I will do the same.",
+      "service": "What I know is practical rather than grand. I can explain petitions, deeds, public obligations, and the manners people use when power is in the room. People know me as Noble Clerk Verro; I work as noble among Reeve Office, where reputation depends on useful work and remembered promises.",
+      "rumor": "Noble Clerk Verro would not call rumor evidence, yet reports of deeds, debts, polished manners, and decisions whose cost is usually paid downhill keep circling Noble Rise from people who do not usually agree.",
+      "questOffer": "If you are looking for useful work, Noble Clerk Verro needs a steady hand to verify a petition, witness an agreement, or uncover the human cost hidden inside a clean record near Noble Rise.",
+      "farewell": "That is enough for now. If you come back to Noble Clerk Verro, bring honest news from Noble Rise."
     },
     "route": {
       "routeId": "noble_clerk_daily_route",
@@ -14055,7 +14055,7 @@ export const HARTHMERE_REMAINING_NPCS = [
       ]
     },
     "spawn": {
-      "x": 562.0,
+      "x": 562,
       "z": -260.9,
       "rot": 3.14,
       "scale": 1.08,
@@ -14081,11 +14081,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "House Servant Marae carries a hidden detail tied to Noble Rise, Noble Rise Households, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am House Servant Marae. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "Around Noble Rise, people call me House Servant Marae; speak plainly and I will do the same.",
+      "service": "What I know is practical rather than grand. I can point you toward local services, practical help, and the quiet habits that keep this place running. People know me as House Servant Marae; I work as service among Noble Rise Households, where reputation depends on useful work and remembered promises.",
+      "rumor": "House Servant Marae would not call rumor evidence, yet reports of deeds, debts, polished manners, and decisions whose cost is usually paid downhill keep circling Noble Rise from people who do not usually agree.",
+      "questOffer": "House Servant Marae will trust you with one local problem if you agree to deliver needed help, recover a missing item, or solve the practical problem everyone has stepped around; Noble Rise has suffered enough careless favors.",
+      "farewell": "House Servant Marae wishes you a steady road. Around Noble Rise, kept promises travel farther than boasts."
     },
     "route": {
       "routeId": "house_servant_daily_route",
@@ -14228,11 +14228,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Shaken Debtor Arven carries a hidden detail tied to Noble Rise, Brass Scale Debtors, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Shaken Debtor Arven. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "If Noble Rise sent you looking for someone, Shaken Debtor Arven is the name you were probably given.",
+      "service": "I know the ward's work, safe paths, informal bargains, and which official promises never reached the lower streets. That knowledge comes from this much of my life: People know me as Shaken Debtor Arven; I work as mudden among Brass Scale Debtors, where reputation depends on useful work and remembered promises.",
+      "rumor": "Lately Noble Rise has been marked by deeds, debts, polished manners, and decisions whose cost is usually paid downhill. Shaken Debtor Arven advises attention before fear turns the story into nonsense.",
+      "questOffer": "Noble Rise has a matter suited to an outsider: protect a neighbor, trace a shortage, or fix danger before an eviction crew calls it someone else's problem. Return to Shaken Debtor Arven when you can explain what actually happened.",
+      "farewell": "We are finished for the moment. Mind the warnings in Noble Rise, even the quiet ones. —Shaken Debtor Arven"
     },
     "route": {
       "routeId": "debt_shaken_debtor_daily_route",
@@ -14377,11 +14377,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Private Guard Sel carries a hidden detail tied to Noble Rise, Noble Rise Households, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Private Guard Sel. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "Private Guard Sel here. I trust useful questions more than grand entrances, especially in Noble Rise.",
+      "service": "I can explain local law, road warnings, watch boundaries, and the difference between keeping order and abusing it. That knowledge comes from this much of my life: People know me as Private Guard Sel; I work as guard among Noble Rise Households, where reputation depends on useful work and remembered promises.",
+      "rumor": "Noble Rise usually hides worry inside routine, but Private Guard Sel keeps hearing about deeds, debts, polished manners, and decisions whose cost is usually paid downhill. Something is pressing on ordinary life.",
+      "questOffer": "There is honest work around Noble Rise: check a warning, escort someone vulnerable, or verify trouble before steel makes it worse. Private Guard Sel values a clean result more than a heroic retelling.",
+      "farewell": "Go safely. Private Guard Sel would rather see you return to Noble Rise wiser than hear a dramatic story about your absence."
     },
     "route": {
       "routeId": "private_guard_daily_route",
@@ -14527,11 +14527,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Docker Fenn carries a hidden detail tied to River Docks, River Docks, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Docker Fenn. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "I am Docker Fenn. The day's work in River Docks has not swallowed me yet, so ask.",
+      "service": "People know me as Docker Fenn; I work as dock among River Docks, where reputation depends on useful work and remembered promises. I can read cargo work, river conditions, ferry practice, and the difference between haste and a dangerous load.",
+      "rumor": "Docker Fenn has noticed changing current, wet rope, cargo ledgers, ferry bells, and crates that invite the wrong questions around River Docks; when several small things change together, it is rarely coincidence.",
+      "questOffer": "If you are looking for useful work, Docker Fenn needs a steady hand to check a manifest, secure a crossing, or learn why a load and its paperwork disagree near River Docks.",
+      "farewell": "Take care of your boots, your word, and whoever walks beside you. Docker Fenn will still be in River Docks."
     },
     "route": {
       "routeId": "docker_daily_route",
@@ -14676,11 +14676,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Ferryhand Ull carries a hidden detail tied to River Docks, River Docks, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Ferryhand Ull. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "I am Ferryhand Ull. The day's work in River Docks has not swallowed me yet, so ask.",
+      "service": "What I know is practical rather than grand. I can read cargo work, river conditions, ferry practice, and the difference between haste and a dangerous load. People know me as Ferryhand Ull; I work as dock among River Docks, where reputation depends on useful work and remembered promises.",
+      "rumor": "Ask what feels different in River Docks, and Ferryhand Ull will point to changing current, wet rope, cargo ledgers, ferry bells, and crates that invite the wrong questions. The town is listening for a pattern.",
+      "questOffer": "Ferryhand Ull will trust you with one local problem if you agree to check a manifest, secure a crossing, or learn why a load and its paperwork disagree; River Docks has suffered enough careless favors.",
+      "farewell": "That is enough for now. If you come back to Ferryhand Ull, bring honest news from River Docks."
     },
     "route": {
       "routeId": "ferryman_daily_route",
@@ -14825,11 +14825,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Fishmonger Pella carries a hidden detail tied to River Docks, River Docks, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Fishmonger Pella. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "Fishmonger Pella, at your service for a moment. River Docks rarely leaves anyone idle for longer than that.",
+      "service": "What I know is practical rather than grand. I can speak to supply, fair measure, local prices, and which road delays are reaching the stalls. People know me as Fishmonger Pella; I work as merchant among River Docks, where reputation depends on useful work and remembered promises.",
+      "rumor": "Fishmonger Pella has noticed changing current, wet rope, cargo ledgers, ferry bells, and crates that invite the wrong questions around River Docks; when several small things change together, it is rarely coincidence.",
+      "questOffer": "Fishmonger Pella will trust you with one local problem if you agree to trace a delayed supply, verify a measure, or carry goods where the road has made trade uncertain; River Docks has suffered enough careless favors.",
+      "farewell": "That is enough for now. If you come back to Fishmonger Pella, bring honest news from River Docks."
     },
     "route": {
       "routeId": "fishmonger_daily_route",
@@ -14974,11 +14974,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Bargeman Ruskell carries a hidden detail tied to River Docks, River Docks, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Bargeman Ruskell. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "Bargeman Ruskell here. I trust useful questions more than grand entrances, especially in River Docks.",
+      "service": "People know me as Bargeman Ruskell; I work as dock among River Docks, where reputation depends on useful work and remembered promises; because of that, I can also read cargo work, river conditions, ferry practice, and the difference between haste and a dangerous load.",
+      "rumor": "River Docks usually hides worry inside routine, but Bargeman Ruskell keeps hearing about changing current, wet rope, cargo ledgers, ferry bells, and crates that invite the wrong questions. Something is pressing on ordinary life.",
+      "questOffer": "River Docks has a matter suited to an outsider: check a manifest, secure a crossing, or learn why a load and its paperwork disagree. Return to Bargeman Ruskell when you can explain what actually happened.",
+      "farewell": "We are finished for the moment. Mind the warnings in River Docks, even the quiet ones. —Bargeman Ruskell"
     },
     "route": {
       "routeId": "bargeman_daily_route",
@@ -15123,11 +15123,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Dock Inspector Vale carries a hidden detail tied to River Docks, Reeve Office, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Dock Inspector Vale. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "Mind where you step and call me Dock Inspector Vale; River Docks has enough confusion without careless introductions.",
+      "service": "I can point you toward local services, practical help, and the quiet habits that keep this place running. I learned it the ordinary way: People know me as Dock Inspector Vale; I work as service among Reeve Office, where reputation depends on useful work and remembered promises.",
+      "rumor": "River Docks usually hides worry inside routine, but Dock Inspector Vale keeps hearing about changing current, wet rope, cargo ledgers, ferry bells, and crates that invite the wrong questions. Something is pressing on ordinary life.",
+      "questOffer": "River Docks has a matter suited to an outsider: deliver needed help, recover a missing item, or solve the practical problem everyone has stepped around. Return to Dock Inspector Vale when you can explain what actually happened.",
+      "farewell": "Go safely. Dock Inspector Vale would rather see you return to River Docks wiser than hear a dramatic story about your absence."
     },
     "route": {
       "routeId": "dock_inspector_daily_route",
@@ -15270,11 +15270,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Mudden Laborer Jekk carries a hidden detail tied to Mudden Ward, Mudden Kin, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Mudden Laborer Jekk. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "Mudden Laborer Jekk here. I trust useful questions more than grand entrances, especially in Mudden Ward.",
+      "service": "I know the ward's work, safe paths, informal bargains, and which official promises never reached the lower streets. I learned it the ordinary way: People know me as Mudden Laborer Jekk; I work as mudden among Mudden Kin, where reputation depends on useful work and remembered promises.",
+      "rumor": "Mudden Ward usually hides worry inside routine, but Mudden Laborer Jekk keeps hearing about flood marks, patched roofs, informal trade, and neighbors who survive by noticing one another. Something is pressing on ordinary life.",
+      "questOffer": "Mudden Laborer Jekk could use someone willing to protect a neighbor, trace a shortage, or fix danger before an eviction crew calls it someone else's problem here in Mudden Ward; do it carefully, and bring back facts rather than theater.",
+      "farewell": "Go safely. Mudden Laborer Jekk would rather see you return to Mudden Ward wiser than hear a dramatic story about your absence."
     },
     "route": {
       "routeId": "mudden_laborer_daily_route",
@@ -15419,11 +15419,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Mudden Widow Asha carries a hidden detail tied to Mudden Ward, Mudden Kin, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Mudden Widow Asha. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "Around Mudden Ward, people call me Mudden Widow Asha; speak plainly and I will do the same.",
+      "service": "My trade has taught me where trouble begins. People know me as Mudden Widow Asha; I work as mudden among Mudden Kin, where reputation depends on useful work and remembered promises. I know the ward's work, safe paths, informal bargains, and which official promises never reached the lower streets.",
+      "rumor": "Ask what feels different in Mudden Ward, and Mudden Widow Asha will point to flood marks, patched roofs, informal trade, and neighbors who survive by noticing one another. The town is listening for a pattern.",
+      "questOffer": "Before the next rumor grows teeth, Mudden Widow Asha wants someone to protect a neighbor, trace a shortage, or fix danger before an eviction crew calls it someone else's problem in Mudden Ward and report without embellishment.",
+      "farewell": "Mudden Widow Asha wishes you a steady road. Around Mudden Ward, kept promises travel farther than boasts."
     },
     "route": {
       "routeId": "mudden_widow_daily_route",
@@ -15568,11 +15568,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Mudden Child Lio carries a hidden detail tied to Mudden Ward, Mudden Kin, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Mudden Child Lio. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "I am Mudden Child Lio. The day's work in Mudden Ward has not swallowed me yet, so ask.",
+      "service": "My trade has taught me where trouble begins. People know me as Mudden Child Lio; I work as child among Mudden Kin, where reputation depends on useful work and remembered promises. I know which adults listen, where children are warned away, and what changes grown-ups hope we miss.",
+      "rumor": "Mudden Child Lio has noticed flood marks, patched roofs, informal trade, and neighbors who survive by noticing one another around Mudden Ward; when several small things change together, it is rarely coincidence.",
+      "questOffer": "Before the next rumor grows teeth, Mudden Child Lio wants someone to notice something adults dismissed and bring back an answer without frightening anyone for sport in Mudden Ward and report without embellishment.",
+      "farewell": "That is enough for now. If you come back to Mudden Child Lio, bring honest news from Mudden Ward."
     },
     "route": {
       "routeId": "mudden_child_daily_route",
@@ -15689,7 +15689,7 @@ export const HARTHMERE_REMAINING_NPCS = [
       ]
     },
     "spawn": {
-      "x": 416.0,
+      "x": 416,
       "z": -155.8,
       "rot": 1.57,
       "scale": 0.72,
@@ -15715,11 +15715,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Rat-Catcher Borr carries a hidden detail tied to Mudden Ward, Mudden Kin, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Rat-Catcher Borr. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "Rat-Catcher Borr, at your service for a moment. Mudden Ward rarely leaves anyone idle for longer than that.",
+      "service": "My trade has taught me where trouble begins. People know me as Rat-Catcher Borr; I work as mudden among Mudden Kin, where reputation depends on useful work and remembered promises. I know the ward's work, safe paths, informal bargains, and which official promises never reached the lower streets.",
+      "rumor": "Ask what feels different in Mudden Ward, and Rat-Catcher Borr will point to flood marks, patched roofs, informal trade, and neighbors who survive by noticing one another. The town is listening for a pattern.",
+      "questOffer": "If you are looking for useful work, Rat-Catcher Borr needs a steady hand to protect a neighbor, trace a shortage, or fix danger before an eviction crew calls it someone else's problem near Mudden Ward.",
+      "farewell": "Rat-Catcher Borr wishes you a steady road. Around Mudden Ward, kept promises travel farther than boasts."
     },
     "route": {
       "routeId": "rat_catcher_daily_route",
@@ -15864,11 +15864,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Informal Trader Sann carries a hidden detail tied to Mudden Ward, Mudden Kin, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Informal Trader Sann. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "Informal Trader Sann here. I trust useful questions more than grand entrances, especially in Mudden Ward.",
+      "service": "I can speak to supply, fair measure, local prices, and which road delays are reaching the stalls. That knowledge comes from this much of my life: People know me as Informal Trader Sann; I work as merchant among Mudden Kin, where reputation depends on useful work and remembered promises.",
+      "rumor": "Mudden Ward usually hides worry inside routine, but Informal Trader Sann keeps hearing about flood marks, patched roofs, informal trade, and neighbors who survive by noticing one another. Something is pressing on ordinary life.",
+      "questOffer": "Informal Trader Sann could use someone willing to trace a delayed supply, verify a measure, or carry goods where the road has made trade uncertain here in Mudden Ward; do it carefully, and bring back facts rather than theater.",
+      "farewell": "Informal Trader Sann has work to return to. Walk carefully through Mudden Ward, and leave fewer problems than you found."
     },
     "route": {
       "routeId": "informal_trader_daily_route",
@@ -16013,11 +16013,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Mudden Lookout Ree carries a hidden detail tied to Mudden Ward, Mudden Kin, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Mudden Lookout Ree. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "Mudden Lookout Ree here. I trust useful questions more than grand entrances, especially in Mudden Ward.",
+      "service": "People know me as Mudden Lookout Ree; I work as mudden among Mudden Kin, where reputation depends on useful work and remembered promises; because of that, I know the ward's work, safe paths, informal bargains, and which official promises never reached the lower streets.",
+      "rumor": "Lately Mudden Ward has been marked by flood marks, patched roofs, informal trade, and neighbors who survive by noticing one another. Mudden Lookout Ree advises attention before fear turns the story into nonsense.",
+      "questOffer": "Mudden Lookout Ree could use someone willing to protect a neighbor, trace a shortage, or fix danger before an eviction crew calls it someone else's problem here in Mudden Ward; do it carefully, and bring back facts rather than theater.",
+      "farewell": "Mudden Lookout Ree has work to return to. Walk carefully through Mudden Ward, and leave fewer problems than you found."
     },
     "route": {
       "routeId": "mudden_lookout_daily_route",
@@ -16162,11 +16162,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Old Well Scavenger Tor carries a hidden detail tied to Old Well / Underways, Scavengers, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Old Well Scavenger Tor. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "Old Well Scavenger Tor. I know the work and worries of Old Well / Underways, though I do not sell either as entertainment.",
+      "service": "People know me as Old Well Scavenger Tor; I work as mudden among Scavengers, where reputation depends on useful work and remembered promises; because of that, I know the ward's work, safe paths, informal bargains, and which official promises never reached the lower streets.",
+      "rumor": "Lately Old Well / Underways has been marked by wet stone, chalk marks, lost passages, and echoes that do not always match the speaker. Old Well Scavenger Tor advises attention before fear turns the story into nonsense.",
+      "questOffer": "Old Well / Underways has a matter suited to an outsider: protect a neighbor, trace a shortage, or fix danger before an eviction crew calls it someone else's problem. Return to Old Well Scavenger Tor when you can explain what actually happened.",
+      "farewell": "Old Well Scavenger Tor has work to return to. Walk carefully through Old Well / Underways, and leave fewer problems than you found."
     },
     "route": {
       "routeId": "old_well_scavenger_daily_route",
@@ -16311,11 +16311,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Secretive Figure in Gray carries a hidden detail tied to Old Well / Underways, Unknown, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Secretive Figure in Gray. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "Secretive Figure in Gray here. I trust useful questions more than grand entrances, especially in Old Well / Underways.",
+      "service": "I can point you toward local services, practical help, and the quiet habits that keep this place running. That knowledge comes from this much of my life: People know me as Secretive Figure in Gray; I work as service among Unknown, where reputation depends on useful work and remembered promises.",
+      "rumor": "The talk reaching Secretive Figure in Gray from Old Well / Underways concerns wet stone, chalk marks, lost passages, and echoes that do not always match the speaker. Treat it as a warning, not a proven accusation.",
+      "questOffer": "There is honest work around Old Well / Underways: deliver needed help, recover a missing item, or solve the practical problem everyone has stepped around. Secretive Figure in Gray values a clean result more than a heroic retelling.",
+      "farewell": "We are finished for the moment. Mind the warnings in Old Well / Underways, even the quiet ones. —Secretive Figure in Gray"
     },
     "route": {
       "routeId": "secretive_figure_daily_route",
@@ -16458,11 +16458,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Last Watch Guard Adren carries a hidden detail tied to Last Watch Post, Town Watch, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Last Watch Guard Adren. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "If Last Watch Post sent you looking for someone, Last Watch Guard Adren is the name you were probably given.",
+      "service": "I can explain local law, road warnings, watch boundaries, and the difference between keeping order and abusing it. I learned it the ordinary way: People know me as Last Watch Guard Adren; I work as guard among Town Watch, where reputation depends on useful work and remembered promises.",
+      "rumor": "Lately Last Watch Post has been marked by a tired brazier, road bounties, failing markers, and the last dependable warning before the wilds. Last Watch Guard Adren advises attention before fear turns the story into nonsense.",
+      "questOffer": "Last Watch Guard Adren could use someone willing to check a warning, escort someone vulnerable, or verify trouble before steel makes it worse here in Last Watch Post; do it carefully, and bring back facts rather than theater.",
+      "farewell": "We are finished for the moment. Mind the warnings in Last Watch Post, even the quiet ones. —Last Watch Guard Adren"
     },
     "route": {
       "routeId": "last_watch_tired_guard_a_daily_route",
@@ -16608,11 +16608,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Last Watch Guard Bel carries a hidden detail tied to Last Watch Post, Town Watch, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Last Watch Guard Bel. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "Last Watch Guard Bel, at your service for a moment. Last Watch Post rarely leaves anyone idle for longer than that.",
+      "service": "People know me as Last Watch Guard Bel; I work as guard among Town Watch, where reputation depends on useful work and remembered promises. I can explain local law, road warnings, watch boundaries, and the difference between keeping order and abusing it.",
+      "rumor": "Last Watch Guard Bel would not call rumor evidence, yet reports of a tired brazier, road bounties, failing markers, and the last dependable warning before the wilds keep circling Last Watch Post from people who do not usually agree.",
+      "questOffer": "Last Watch Guard Bel will trust you with one local problem if you agree to check a warning, escort someone vulnerable, or verify trouble before steel makes it worse; Last Watch Post has suffered enough careless favors.",
+      "farewell": "Last Watch Guard Bel wishes you a steady road. Around Last Watch Post, kept promises travel farther than boasts."
     },
     "route": {
       "routeId": "last_watch_tired_guard_b_daily_route",
@@ -16758,11 +16758,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Miller Oth carries a hidden detail tied to Mill Road, Mill Road, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Miller Oth. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "Mind where you step and call me Miller Oth; Mill Road has enough confusion without careless introductions.",
+      "service": "I can read weather, tracks, field boundaries, and the moment a familiar route becomes unsafe. I learned it the ordinary way: People know me as Miller Oth; I work as wilds human among Mill Road, where reputation depends on useful work and remembered promises.",
+      "rumor": "Lately Mill Road has been marked by flour carts, a turning waterwheel, and every road delay eventually appearing in the price of bread. Miller Oth advises attention before fear turns the story into nonsense.",
+      "questOffer": "Miller Oth could use someone willing to restore a marker, find a missing worker, or clear a route without damaging owned land here in Mill Road; do it carefully, and bring back facts rather than theater.",
+      "farewell": "Go safely. Miller Oth would rather see you return to Mill Road wiser than hear a dramatic story about your absence."
     },
     "route": {
       "routeId": "miller_daily_route",
@@ -16908,11 +16908,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Orchard Worker Janna carries a hidden detail tied to Orchard Lane, Orchard Lane, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Orchard Worker Janna. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "Orchard Worker Janna, at your service for a moment. Orchard Lane rarely leaves anyone idle for longer than that.",
+      "service": "My trade has taught me where trouble begins. People know me as Orchard Worker Janna; I work as wilds human among Orchard Lane, where reputation depends on useful work and remembered promises. I can read weather, tracks, field boundaries, and the moment a familiar route becomes unsafe.",
+      "rumor": "Orchard Worker Janna has noticed windfall fruit, old boundary charms, and scarecrows that workers swear have shifted overnight around Orchard Lane; when several small things change together, it is rarely coincidence.",
+      "questOffer": "Before the next rumor grows teeth, Orchard Worker Janna wants someone to restore a marker, find a missing worker, or clear a route without damaging owned land in Orchard Lane and report without embellishment.",
+      "farewell": "Orchard Worker Janna wishes you a steady road. Around Orchard Lane, kept promises travel farther than boasts."
     },
     "route": {
       "routeId": "orchard_worker_daily_route",
@@ -17058,11 +17058,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Shepherd Coll carries a hidden detail tied to Gate Fields, Gate Fields, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Shepherd Coll. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "Shepherd Coll here. I trust useful questions more than grand entrances, especially in Gate Fields.",
+      "service": "I can read weather, tracks, field boundaries, and the moment a familiar route becomes unsafe. I learned it the ordinary way: People know me as Shepherd Coll; I work as wilds human among Gate Fields, where reputation depends on useful work and remembered promises.",
+      "rumor": "Gate Fields usually hides worry inside routine, but Shepherd Coll keeps hearing about owned crops, pasture fences, mill traffic, and predators probing the safer edge of settlement. Something is pressing on ordinary life.",
+      "questOffer": "There is honest work around Gate Fields: restore a marker, find a missing worker, or clear a route without damaging owned land. Shepherd Coll values a clean result more than a heroic retelling.",
+      "farewell": "Go safely. Shepherd Coll would rather see you return to Gate Fields wiser than hear a dramatic story about your absence."
     },
     "route": {
       "routeId": "shepherd_daily_route",
@@ -17208,11 +17208,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Woodcutter Rowan carries a hidden detail tied to Greenmere Edge, Greenmere Edge, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Woodcutter Rowan. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "Woodcutter Rowan, at your service for a moment. Greenmere Edge rarely leaves anyone idle for longer than that.",
+      "service": "What I know is practical rather than grand. I can read weather, tracks, field boundaries, and the moment a familiar route becomes unsafe. People know me as Woodcutter Rowan; I work as wilds human among Greenmere Edge, where reputation depends on useful work and remembered promises.",
+      "rumor": "Woodcutter Rowan would not call rumor evidence, yet reports of legal timber, hunter paths, animal sign, and the point where familiar fields stop feeling protected keep circling Greenmere Edge from people who do not usually agree.",
+      "questOffer": "Woodcutter Rowan will trust you with one local problem if you agree to restore a marker, find a missing worker, or clear a route without damaging owned land; Greenmere Edge has suffered enough careless favors.",
+      "farewell": "Take care of your boots, your word, and whoever walks beside you. Woodcutter Rowan will still be in Greenmere Edge."
     },
     "route": {
       "routeId": "woodcutter_daily_route",
@@ -17332,7 +17332,7 @@ export const HARTHMERE_REMAINING_NPCS = [
       ]
     },
     "spawn": {
-      "x": 532.0,
+      "x": 532,
       "z": -384.7,
       "rot": 1.57,
       "scale": 1.08,
@@ -17358,11 +17358,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Hunter Marker Keeper Edd carries a hidden detail tied to Old Hunter Track, Old Hunter Track, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Hunter Marker Keeper Edd. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "I am Hunter Marker Keeper Edd. The day's work in Old Hunter Track has not swallowed me yet, so ask.",
+      "service": "My trade has taught me where trouble begins. People know me as Hunter Marker Keeper Edd; I work as wilds human among Old Hunter Track, where reputation depends on useful work and remembered promises. I can read weather, tracks, field boundaries, and the moment a familiar route becomes unsafe.",
+      "rumor": "Hunter Marker Keeper Edd would not call rumor evidence, yet reports of faded ribbons, false trails, and signs of something using paths meant for experienced hunters keep circling Old Hunter Track from people who do not usually agree.",
+      "questOffer": "Hunter Marker Keeper Edd will trust you with one local problem if you agree to restore a marker, find a missing worker, or clear a route without damaging owned land; Old Hunter Track has suffered enough careless favors.",
+      "farewell": "Take care of your boots, your word, and whoever walks beside you. Hunter Marker Keeper Edd will still be in Old Hunter Track."
     },
     "route": {
       "routeId": "hunter_marker_keeper_daily_route",
@@ -17508,11 +17508,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Quarry Miner Ral carries a hidden detail tied to Watchtower Ridge, Watchtower Ridge, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Quarry Miner Ral. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "Around Watchtower Ridge, people call me Quarry Miner Ral; speak plainly and I will do the same.",
+      "service": "My trade has taught me where trouble begins. People know me as Quarry Miner Ral; I work as wilds human among Watchtower Ridge, where reputation depends on useful work and remembered promises. I can read weather, tracks, field boundaries, and the moment a familiar route becomes unsafe.",
+      "rumor": "Ask what feels different in Watchtower Ridge, and Quarry Miner Ral will point to old quarry cuts, bandit lookouts, loose stone, and a ruined tower that still commands the road. The town is listening for a pattern.",
+      "questOffer": "Quarry Miner Ral will trust you with one local problem if you agree to restore a marker, find a missing worker, or clear a route without damaging owned land; Watchtower Ridge has suffered enough careless favors.",
+      "farewell": "Quarry Miner Ral wishes you a steady road. Around Watchtower Ridge, kept promises travel farther than boasts."
     },
     "route": {
       "routeId": "quarry_miner_daily_route",
@@ -17658,11 +17658,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Wild Rabbit carries a hidden detail tied to Gate Fields, Wildlife:passive, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "Wild Rabbit gives a readable ambient cue instead of speech: posture, sound, and movement tell the player whether it is calm, defensive, predatory, or corrupted.",
-      "service": "Wild Rabbit supports gathering, hunting, ecology, and warning-sign gameplay rather than vendor service.",
-      "rumor": "Tracks, calls, and behavior from Wild Rabbit tell a small story about weather, time of day, nearby danger, or corruption.",
-      "questOffer": "Wild Rabbit can be referenced by hunting, rescue, culling, tracking, or corruption quests without ever carrying a human weapon.",
-      "farewell": "Wild Rabbit leaves the scene through fleeing, circling, burrowing, stalking, or returning to its den."
+      "greeting": "Wild Rabbit does not greet travelers; it pauses in Gate Fields, weighing scent, wind, and distance before choosing whether to flee or stand.",
+      "service": "Watch Wild Rabbit rather than approaching it: its posture reveals whether this part of Gate Fields is calm, hunted, corrupted, or suddenly unsafe.",
+      "rumor": "People near Gate Fields have been comparing signs left by Wild Rabbit; changed feeding paths often warn of danger before road patrols notice it.",
+      "questOffer": "No words pass from Wild Rabbit, but its tracks through Gate Fields may lead toward a damaged fence, a fouled den, or whatever disturbed the local wildlife.",
+      "farewell": "Wild Rabbit breaks contact on its own terms, leaving bent grass, prints, and one more clue about the present temper of Gate Fields."
     },
     "route": {
       "routeId": "wild_rabbit_daily_route",
@@ -17793,11 +17793,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Greenmere Deer carries a hidden detail tied to Gate Fields, Wildlife:passive, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "Greenmere Deer gives a readable ambient cue instead of speech: posture, sound, and movement tell the player whether it is calm, defensive, predatory, or corrupted.",
-      "service": "Greenmere Deer supports gathering, hunting, ecology, and warning-sign gameplay rather than vendor service.",
-      "rumor": "Tracks, calls, and behavior from Greenmere Deer tell a small story about weather, time of day, nearby danger, or corruption.",
-      "questOffer": "Greenmere Deer can be referenced by hunting, rescue, culling, tracking, or corruption quests without ever carrying a human weapon.",
-      "farewell": "Greenmere Deer leaves the scene through fleeing, circling, burrowing, stalking, or returning to its den."
+      "greeting": "Greenmere Deer does not greet travelers; it pauses in Gate Fields, weighing scent, wind, and distance before choosing whether to flee or stand.",
+      "service": "Watch Greenmere Deer rather than approaching it: its posture reveals whether this part of Gate Fields is calm, hunted, corrupted, or suddenly unsafe.",
+      "rumor": "People near Gate Fields have been comparing signs left by Greenmere Deer; changed feeding paths often warn of danger before road patrols notice it.",
+      "questOffer": "No words pass from Greenmere Deer, but its tracks through Gate Fields may lead toward a damaged fence, a fouled den, or whatever disturbed the local wildlife.",
+      "farewell": "Greenmere Deer breaks contact on its own terms, leaving bent grass, prints, and one more clue about the present temper of Gate Fields."
     },
     "route": {
       "routeId": "greenmere_deer_daily_route",
@@ -17928,11 +17928,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Red Squirrel carries a hidden detail tied to Gate Fields, Wildlife:passive, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "Red Squirrel gives a readable ambient cue instead of speech: posture, sound, and movement tell the player whether it is calm, defensive, predatory, or corrupted.",
-      "service": "Red Squirrel supports gathering, hunting, ecology, and warning-sign gameplay rather than vendor service.",
-      "rumor": "Tracks, calls, and behavior from Red Squirrel tell a small story about weather, time of day, nearby danger, or corruption.",
-      "questOffer": "Red Squirrel can be referenced by hunting, rescue, culling, tracking, or corruption quests without ever carrying a human weapon.",
-      "farewell": "Red Squirrel leaves the scene through fleeing, circling, burrowing, stalking, or returning to its den."
+      "greeting": "Red Squirrel does not greet travelers; it pauses in Gate Fields, weighing scent, wind, and distance before choosing whether to flee or stand.",
+      "service": "Watch Red Squirrel rather than approaching it: its posture reveals whether this part of Gate Fields is calm, hunted, corrupted, or suddenly unsafe.",
+      "rumor": "People near Gate Fields have been comparing signs left by Red Squirrel; changed feeding paths often warn of danger before road patrols notice it.",
+      "questOffer": "No words pass from Red Squirrel, but its tracks through Gate Fields may lead toward a damaged fence, a fouled den, or whatever disturbed the local wildlife.",
+      "farewell": "Red Squirrel breaks contact on its own terms, leaving bent grass, prints, and one more clue about the present temper of Gate Fields."
     },
     "route": {
       "routeId": "red_squirrel_daily_route",
@@ -18063,11 +18063,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Hedge Songbird carries a hidden detail tied to Gate Fields, Wildlife:passive, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "Hedge Songbird gives a readable ambient cue instead of speech: posture, sound, and movement tell the player whether it is calm, defensive, predatory, or corrupted.",
-      "service": "Hedge Songbird supports gathering, hunting, ecology, and warning-sign gameplay rather than vendor service.",
-      "rumor": "Tracks, calls, and behavior from Hedge Songbird tell a small story about weather, time of day, nearby danger, or corruption.",
-      "questOffer": "Hedge Songbird can be referenced by hunting, rescue, culling, tracking, or corruption quests without ever carrying a human weapon.",
-      "farewell": "Hedge Songbird leaves the scene through fleeing, circling, burrowing, stalking, or returning to its den."
+      "greeting": "Hedge Songbird does not greet travelers; it pauses in Gate Fields, weighing scent, wind, and distance before choosing whether to flee or stand.",
+      "service": "Watch Hedge Songbird rather than approaching it: its posture reveals whether this part of Gate Fields is calm, hunted, corrupted, or suddenly unsafe.",
+      "rumor": "People near Gate Fields have been comparing signs left by Hedge Songbird; changed feeding paths often warn of danger before road patrols notice it.",
+      "questOffer": "No words pass from Hedge Songbird, but its tracks through Gate Fields may lead toward a damaged fence, a fouled den, or whatever disturbed the local wildlife.",
+      "farewell": "Hedge Songbird breaks contact on its own terms, leaving bent grass, prints, and one more clue about the present temper of Gate Fields."
     },
     "route": {
       "routeId": "hedge_songbird_daily_route",
@@ -18198,11 +18198,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Briarfen Frog carries a hidden detail tied to Gate Fields, Wildlife:passive, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "Briarfen Frog gives a readable ambient cue instead of speech: posture, sound, and movement tell the player whether it is calm, defensive, predatory, or corrupted.",
-      "service": "Briarfen Frog supports gathering, hunting, ecology, and warning-sign gameplay rather than vendor service.",
-      "rumor": "Tracks, calls, and behavior from Briarfen Frog tell a small story about weather, time of day, nearby danger, or corruption.",
-      "questOffer": "Briarfen Frog can be referenced by hunting, rescue, culling, tracking, or corruption quests without ever carrying a human weapon.",
-      "farewell": "Briarfen Frog leaves the scene through fleeing, circling, burrowing, stalking, or returning to its den."
+      "greeting": "Briarfen Frog does not greet travelers; it pauses in Gate Fields, weighing scent, wind, and distance before choosing whether to flee or stand.",
+      "service": "Watch Briarfen Frog rather than approaching it: its posture reveals whether this part of Gate Fields is calm, hunted, corrupted, or suddenly unsafe.",
+      "rumor": "People near Gate Fields have been comparing signs left by Briarfen Frog; changed feeding paths often warn of danger before road patrols notice it.",
+      "questOffer": "No words pass from Briarfen Frog, but its tracks through Gate Fields may lead toward a damaged fence, a fouled den, or whatever disturbed the local wildlife.",
+      "farewell": "Briarfen Frog breaks contact on its own terms, leaving bent grass, prints, and one more clue about the present temper of Gate Fields."
     },
     "route": {
       "routeId": "briarfen_frog_daily_route",
@@ -18333,11 +18333,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "River Duck carries a hidden detail tied to Gate Fields, Wildlife:passive, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "River Duck gives a readable ambient cue instead of speech: posture, sound, and movement tell the player whether it is calm, defensive, predatory, or corrupted.",
-      "service": "River Duck supports gathering, hunting, ecology, and warning-sign gameplay rather than vendor service.",
-      "rumor": "Tracks, calls, and behavior from River Duck tell a small story about weather, time of day, nearby danger, or corruption.",
-      "questOffer": "River Duck can be referenced by hunting, rescue, culling, tracking, or corruption quests without ever carrying a human weapon.",
-      "farewell": "River Duck leaves the scene through fleeing, circling, burrowing, stalking, or returning to its den."
+      "greeting": "River Duck does not greet travelers; it pauses in Gate Fields, weighing scent, wind, and distance before choosing whether to flee or stand.",
+      "service": "Watch River Duck rather than approaching it: its posture reveals whether this part of Gate Fields is calm, hunted, corrupted, or suddenly unsafe.",
+      "rumor": "People near Gate Fields have been comparing signs left by River Duck; changed feeding paths often warn of danger before road patrols notice it.",
+      "questOffer": "No words pass from River Duck, but its tracks through Gate Fields may lead toward a damaged fence, a fouled den, or whatever disturbed the local wildlife.",
+      "farewell": "River Duck breaks contact on its own terms, leaving bent grass, prints, and one more clue about the present temper of Gate Fields."
     },
     "route": {
       "routeId": "river_duck_daily_route",
@@ -18468,11 +18468,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Red Fox carries a hidden detail tied to Gate Fields, Wildlife:passive, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "Red Fox gives a readable ambient cue instead of speech: posture, sound, and movement tell the player whether it is calm, defensive, predatory, or corrupted.",
-      "service": "Red Fox supports gathering, hunting, ecology, and warning-sign gameplay rather than vendor service.",
-      "rumor": "Tracks, calls, and behavior from Red Fox tell a small story about weather, time of day, nearby danger, or corruption.",
-      "questOffer": "Red Fox can be referenced by hunting, rescue, culling, tracking, or corruption quests without ever carrying a human weapon.",
-      "farewell": "Red Fox leaves the scene through fleeing, circling, burrowing, stalking, or returning to its den."
+      "greeting": "Red Fox does not greet travelers; it pauses in Gate Fields, weighing scent, wind, and distance before choosing whether to flee or stand.",
+      "service": "Watch Red Fox rather than approaching it: its posture reveals whether this part of Gate Fields is calm, hunted, corrupted, or suddenly unsafe.",
+      "rumor": "People near Gate Fields have been comparing signs left by Red Fox; changed feeding paths often warn of danger before road patrols notice it.",
+      "questOffer": "No words pass from Red Fox, but its tracks through Gate Fields may lead toward a damaged fence, a fouled den, or whatever disturbed the local wildlife.",
+      "farewell": "Red Fox breaks contact on its own terms, leaving bent grass, prints, and one more clue about the present temper of Gate Fields."
     },
     "route": {
       "routeId": "red_fox_daily_route",
@@ -18603,11 +18603,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "River Otter carries a hidden detail tied to Gate Fields, Wildlife:passive, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "River Otter gives a readable ambient cue instead of speech: posture, sound, and movement tell the player whether it is calm, defensive, predatory, or corrupted.",
-      "service": "River Otter supports gathering, hunting, ecology, and warning-sign gameplay rather than vendor service.",
-      "rumor": "Tracks, calls, and behavior from River Otter tell a small story about weather, time of day, nearby danger, or corruption.",
-      "questOffer": "River Otter can be referenced by hunting, rescue, culling, tracking, or corruption quests without ever carrying a human weapon.",
-      "farewell": "River Otter leaves the scene through fleeing, circling, burrowing, stalking, or returning to its den."
+      "greeting": "River Otter does not greet travelers; it pauses in Gate Fields, weighing scent, wind, and distance before choosing whether to flee or stand.",
+      "service": "Watch River Otter rather than approaching it: its posture reveals whether this part of Gate Fields is calm, hunted, corrupted, or suddenly unsafe.",
+      "rumor": "People near Gate Fields have been comparing signs left by River Otter; changed feeding paths often warn of danger before road patrols notice it.",
+      "questOffer": "No words pass from River Otter, but its tracks through Gate Fields may lead toward a damaged fence, a fouled den, or whatever disturbed the local wildlife.",
+      "farewell": "River Otter breaks contact on its own terms, leaving bent grass, prints, and one more clue about the present temper of Gate Fields."
     },
     "route": {
       "routeId": "river_otter_daily_route",
@@ -18738,11 +18738,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Field Mouse carries a hidden detail tied to Gate Fields, Wildlife:passive, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "Field Mouse gives a readable ambient cue instead of speech: posture, sound, and movement tell the player whether it is calm, defensive, predatory, or corrupted.",
-      "service": "Field Mouse supports gathering, hunting, ecology, and warning-sign gameplay rather than vendor service.",
-      "rumor": "Tracks, calls, and behavior from Field Mouse tell a small story about weather, time of day, nearby danger, or corruption.",
-      "questOffer": "Field Mouse can be referenced by hunting, rescue, culling, tracking, or corruption quests without ever carrying a human weapon.",
-      "farewell": "Field Mouse leaves the scene through fleeing, circling, burrowing, stalking, or returning to its den."
+      "greeting": "Field Mouse does not greet travelers; it pauses in Gate Fields, weighing scent, wind, and distance before choosing whether to flee or stand.",
+      "service": "Watch Field Mouse rather than approaching it: its posture reveals whether this part of Gate Fields is calm, hunted, corrupted, or suddenly unsafe.",
+      "rumor": "People near Gate Fields have been comparing signs left by Field Mouse; changed feeding paths often warn of danger before road patrols notice it.",
+      "questOffer": "No words pass from Field Mouse, but its tracks through Gate Fields may lead toward a damaged fence, a fouled den, or whatever disturbed the local wildlife.",
+      "farewell": "Field Mouse breaks contact on its own terms, leaving bent grass, prints, and one more clue about the present temper of Gate Fields."
     },
     "route": {
       "routeId": "field_mouse_daily_route",
@@ -18847,7 +18847,7 @@ export const HARTHMERE_REMAINING_NPCS = [
       ]
     },
     "spawn": {
-      "x": 470.0,
+      "x": 470,
       "z": -363.3,
       "rot": 0,
       "scale": 0.72,
@@ -18873,11 +18873,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Wild Boar carries a hidden detail tied to Greenmere Edge, Wildlife:defensive, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "Wild Boar gives a readable ambient cue instead of speech: posture, sound, and movement tell the player whether it is calm, defensive, predatory, or corrupted.",
-      "service": "Wild Boar supports gathering, hunting, ecology, and warning-sign gameplay rather than vendor service.",
-      "rumor": "Tracks, calls, and behavior from Wild Boar tell a small story about weather, time of day, nearby danger, or corruption.",
-      "questOffer": "Wild Boar can be referenced by hunting, rescue, culling, tracking, or corruption quests without ever carrying a human weapon.",
-      "farewell": "Wild Boar leaves the scene through fleeing, circling, burrowing, stalking, or returning to its den."
+      "greeting": "Wild Boar does not greet travelers; it pauses in Greenmere Edge, weighing scent, wind, and distance before choosing whether to flee or stand.",
+      "service": "Watch Wild Boar rather than approaching it: its posture reveals whether this part of Greenmere Edge is calm, hunted, corrupted, or suddenly unsafe.",
+      "rumor": "People near Greenmere Edge have been comparing signs left by Wild Boar; changed feeding paths often warn of danger before road patrols notice it.",
+      "questOffer": "No words pass from Wild Boar, but its tracks through Greenmere Edge may lead toward a damaged fence, a fouled den, or whatever disturbed the local wildlife.",
+      "farewell": "Wild Boar breaks contact on its own terms, leaving bent grass, prints, and one more clue about the present temper of Greenmere Edge."
     },
     "route": {
       "routeId": "wild_boar_daily_route",
@@ -19008,11 +19008,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Black Bear carries a hidden detail tied to Greenmere Edge, Wildlife:defensive, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "Black Bear gives a readable ambient cue instead of speech: posture, sound, and movement tell the player whether it is calm, defensive, predatory, or corrupted.",
-      "service": "Black Bear supports gathering, hunting, ecology, and warning-sign gameplay rather than vendor service.",
-      "rumor": "Tracks, calls, and behavior from Black Bear tell a small story about weather, time of day, nearby danger, or corruption.",
-      "questOffer": "Black Bear can be referenced by hunting, rescue, culling, tracking, or corruption quests without ever carrying a human weapon.",
-      "farewell": "Black Bear leaves the scene through fleeing, circling, burrowing, stalking, or returning to its den."
+      "greeting": "Black Bear does not greet travelers; it pauses in Greenmere Edge, weighing scent, wind, and distance before choosing whether to flee or stand.",
+      "service": "Watch Black Bear rather than approaching it: its posture reveals whether this part of Greenmere Edge is calm, hunted, corrupted, or suddenly unsafe.",
+      "rumor": "People near Greenmere Edge have been comparing signs left by Black Bear; changed feeding paths often warn of danger before road patrols notice it.",
+      "questOffer": "No words pass from Black Bear, but its tracks through Greenmere Edge may lead toward a damaged fence, a fouled den, or whatever disturbed the local wildlife.",
+      "farewell": "Black Bear breaks contact on its own terms, leaving bent grass, prints, and one more clue about the present temper of Greenmere Edge."
     },
     "route": {
       "routeId": "black_bear_daily_route",
@@ -19143,11 +19143,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Water Snake carries a hidden detail tied to Greenmere Edge, Wildlife:defensive, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "Water Snake gives a readable ambient cue instead of speech: posture, sound, and movement tell the player whether it is calm, defensive, predatory, or corrupted.",
-      "service": "Water Snake supports gathering, hunting, ecology, and warning-sign gameplay rather than vendor service.",
-      "rumor": "Tracks, calls, and behavior from Water Snake tell a small story about weather, time of day, nearby danger, or corruption.",
-      "questOffer": "Water Snake can be referenced by hunting, rescue, culling, tracking, or corruption quests without ever carrying a human weapon.",
-      "farewell": "Water Snake leaves the scene through fleeing, circling, burrowing, stalking, or returning to its den."
+      "greeting": "Water Snake does not greet travelers; it pauses in Greenmere Edge, weighing scent, wind, and distance before choosing whether to flee or stand.",
+      "service": "Watch Water Snake rather than approaching it: its posture reveals whether this part of Greenmere Edge is calm, hunted, corrupted, or suddenly unsafe.",
+      "rumor": "People near Greenmere Edge have been comparing signs left by Water Snake; changed feeding paths often warn of danger before road patrols notice it.",
+      "questOffer": "No words pass from Water Snake, but its tracks through Greenmere Edge may lead toward a damaged fence, a fouled den, or whatever disturbed the local wildlife.",
+      "farewell": "Water Snake breaks contact on its own terms, leaving bent grass, prints, and one more clue about the present temper of Greenmere Edge."
     },
     "route": {
       "routeId": "water_snake_daily_route",
@@ -19278,11 +19278,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Old Badger carries a hidden detail tied to Greenmere Edge, Wildlife:defensive, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "Old Badger gives a readable ambient cue instead of speech: posture, sound, and movement tell the player whether it is calm, defensive, predatory, or corrupted.",
-      "service": "Old Badger supports gathering, hunting, ecology, and warning-sign gameplay rather than vendor service.",
-      "rumor": "Tracks, calls, and behavior from Old Badger tell a small story about weather, time of day, nearby danger, or corruption.",
-      "questOffer": "Old Badger can be referenced by hunting, rescue, culling, tracking, or corruption quests without ever carrying a human weapon.",
-      "farewell": "Old Badger leaves the scene through fleeing, circling, burrowing, stalking, or returning to its den."
+      "greeting": "Old Badger does not greet travelers; it pauses in Greenmere Edge, weighing scent, wind, and distance before choosing whether to flee or stand.",
+      "service": "Watch Old Badger rather than approaching it: its posture reveals whether this part of Greenmere Edge is calm, hunted, corrupted, or suddenly unsafe.",
+      "rumor": "People near Greenmere Edge have been comparing signs left by Old Badger; changed feeding paths often warn of danger before road patrols notice it.",
+      "questOffer": "No words pass from Old Badger, but its tracks through Greenmere Edge may lead toward a damaged fence, a fouled den, or whatever disturbed the local wildlife.",
+      "farewell": "Old Badger breaks contact on its own terms, leaving bent grass, prints, and one more clue about the present temper of Greenmere Edge."
     },
     "route": {
       "routeId": "old_badger_daily_route",
@@ -19413,11 +19413,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Rutting Stag carries a hidden detail tied to Greenmere Edge, Wildlife:defensive, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "Rutting Stag gives a readable ambient cue instead of speech: posture, sound, and movement tell the player whether it is calm, defensive, predatory, or corrupted.",
-      "service": "Rutting Stag supports gathering, hunting, ecology, and warning-sign gameplay rather than vendor service.",
-      "rumor": "Tracks, calls, and behavior from Rutting Stag tell a small story about weather, time of day, nearby danger, or corruption.",
-      "questOffer": "Rutting Stag can be referenced by hunting, rescue, culling, tracking, or corruption quests without ever carrying a human weapon.",
-      "farewell": "Rutting Stag leaves the scene through fleeing, circling, burrowing, stalking, or returning to its den."
+      "greeting": "Rutting Stag does not greet travelers; it pauses in Greenmere Edge, weighing scent, wind, and distance before choosing whether to flee or stand.",
+      "service": "Watch Rutting Stag rather than approaching it: its posture reveals whether this part of Greenmere Edge is calm, hunted, corrupted, or suddenly unsafe.",
+      "rumor": "People near Greenmere Edge have been comparing signs left by Rutting Stag; changed feeding paths often warn of danger before road patrols notice it.",
+      "questOffer": "No words pass from Rutting Stag, but its tracks through Greenmere Edge may lead toward a damaged fence, a fouled den, or whatever disturbed the local wildlife.",
+      "farewell": "Rutting Stag breaks contact on its own terms, leaving bent grass, prints, and one more clue about the present temper of Greenmere Edge."
     },
     "route": {
       "routeId": "rutting_stag_daily_route",
@@ -19548,11 +19548,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Farm Dog carries a hidden detail tied to Greenmere Edge, Wildlife:defensive, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "Farm Dog gives a readable ambient cue instead of speech: posture, sound, and movement tell the player whether it is calm, defensive, predatory, or corrupted.",
-      "service": "Farm Dog supports gathering, hunting, ecology, and warning-sign gameplay rather than vendor service.",
-      "rumor": "Tracks, calls, and behavior from Farm Dog tell a small story about weather, time of day, nearby danger, or corruption.",
-      "questOffer": "Farm Dog can be referenced by hunting, rescue, culling, tracking, or corruption quests without ever carrying a human weapon.",
-      "farewell": "Farm Dog leaves the scene through fleeing, circling, burrowing, stalking, or returning to its den."
+      "greeting": "Farm Dog does not greet travelers; it pauses in Greenmere Edge, weighing scent, wind, and distance before choosing whether to flee or stand.",
+      "service": "Watch Farm Dog rather than approaching it: its posture reveals whether this part of Greenmere Edge is calm, hunted, corrupted, or suddenly unsafe.",
+      "rumor": "People near Greenmere Edge have been comparing signs left by Farm Dog; changed feeding paths often warn of danger before road patrols notice it.",
+      "questOffer": "No words pass from Farm Dog, but its tracks through Greenmere Edge may lead toward a damaged fence, a fouled den, or whatever disturbed the local wildlife.",
+      "farewell": "Farm Dog breaks contact on its own terms, leaving bent grass, prints, and one more clue about the present temper of Greenmere Edge."
     },
     "route": {
       "routeId": "farm_dog_daily_route",
@@ -19683,11 +19683,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Angry Goose carries a hidden detail tied to Greenmere Edge, Wildlife:defensive, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "Angry Goose gives a readable ambient cue instead of speech: posture, sound, and movement tell the player whether it is calm, defensive, predatory, or corrupted.",
-      "service": "Angry Goose supports gathering, hunting, ecology, and warning-sign gameplay rather than vendor service.",
-      "rumor": "Tracks, calls, and behavior from Angry Goose tell a small story about weather, time of day, nearby danger, or corruption.",
-      "questOffer": "Angry Goose can be referenced by hunting, rescue, culling, tracking, or corruption quests without ever carrying a human weapon.",
-      "farewell": "Angry Goose leaves the scene through fleeing, circling, burrowing, stalking, or returning to its den."
+      "greeting": "Angry Goose does not greet travelers; it pauses in Greenmere Edge, weighing scent, wind, and distance before choosing whether to flee or stand.",
+      "service": "Watch Angry Goose rather than approaching it: its posture reveals whether this part of Greenmere Edge is calm, hunted, corrupted, or suddenly unsafe.",
+      "rumor": "People near Greenmere Edge have been comparing signs left by Angry Goose; changed feeding paths often warn of danger before road patrols notice it.",
+      "questOffer": "No words pass from Angry Goose, but its tracks through Greenmere Edge may lead toward a damaged fence, a fouled den, or whatever disturbed the local wildlife.",
+      "farewell": "Angry Goose breaks contact on its own terms, leaving bent grass, prints, and one more clue about the present temper of Greenmere Edge."
     },
     "route": {
       "routeId": "angry_goose_daily_route",
@@ -19818,11 +19818,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Gray Wolf carries a hidden detail tied to Greenmere Edge, Wildlife:predator, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "Gray Wolf gives a readable ambient cue instead of speech: posture, sound, and movement tell the player whether it is calm, defensive, predatory, or corrupted.",
-      "service": "Gray Wolf supports gathering, hunting, ecology, and warning-sign gameplay rather than vendor service.",
-      "rumor": "Tracks, calls, and behavior from Gray Wolf tell a small story about weather, time of day, nearby danger, or corruption.",
-      "questOffer": "Gray Wolf can be referenced by hunting, rescue, culling, tracking, or corruption quests without ever carrying a human weapon.",
-      "farewell": "Gray Wolf leaves the scene through fleeing, circling, burrowing, stalking, or returning to its den."
+      "greeting": "Gray Wolf does not greet travelers; it pauses in Greenmere Edge, weighing scent, wind, and distance before choosing whether to flee or stand.",
+      "service": "Watch Gray Wolf rather than approaching it: its posture reveals whether this part of Greenmere Edge is calm, hunted, corrupted, or suddenly unsafe.",
+      "rumor": "People near Greenmere Edge have been comparing signs left by Gray Wolf; changed feeding paths often warn of danger before road patrols notice it.",
+      "questOffer": "No words pass from Gray Wolf, but its tracks through Greenmere Edge may lead toward a damaged fence, a fouled den, or whatever disturbed the local wildlife.",
+      "farewell": "Gray Wolf breaks contact on its own terms, leaving bent grass, prints, and one more clue about the present temper of Greenmere Edge."
     },
     "route": {
       "routeId": "gray_wolf_daily_route",
@@ -19953,11 +19953,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Dire Wolf carries a hidden detail tied to Greenmere Edge, Wildlife:predator, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "Dire Wolf gives a readable ambient cue instead of speech: posture, sound, and movement tell the player whether it is calm, defensive, predatory, or corrupted.",
-      "service": "Dire Wolf supports gathering, hunting, ecology, and warning-sign gameplay rather than vendor service.",
-      "rumor": "Tracks, calls, and behavior from Dire Wolf tell a small story about weather, time of day, nearby danger, or corruption.",
-      "questOffer": "Dire Wolf can be referenced by hunting, rescue, culling, tracking, or corruption quests without ever carrying a human weapon.",
-      "farewell": "Dire Wolf leaves the scene through fleeing, circling, burrowing, stalking, or returning to its den."
+      "greeting": "Dire Wolf does not greet travelers; it pauses in Greenmere Edge, weighing scent, wind, and distance before choosing whether to flee or stand.",
+      "service": "Watch Dire Wolf rather than approaching it: its posture reveals whether this part of Greenmere Edge is calm, hunted, corrupted, or suddenly unsafe.",
+      "rumor": "People near Greenmere Edge have been comparing signs left by Dire Wolf; changed feeding paths often warn of danger before road patrols notice it.",
+      "questOffer": "No words pass from Dire Wolf, but its tracks through Greenmere Edge may lead toward a damaged fence, a fouled den, or whatever disturbed the local wildlife.",
+      "farewell": "Dire Wolf breaks contact on its own terms, leaving bent grass, prints, and one more clue about the present temper of Greenmere Edge."
     },
     "route": {
       "routeId": "dire_wolf_daily_route",
@@ -20088,11 +20088,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Reed Cat carries a hidden detail tied to Greenmere Edge, Wildlife:predator, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "Reed Cat gives a readable ambient cue instead of speech: posture, sound, and movement tell the player whether it is calm, defensive, predatory, or corrupted.",
-      "service": "Reed Cat supports gathering, hunting, ecology, and warning-sign gameplay rather than vendor service.",
-      "rumor": "Tracks, calls, and behavior from Reed Cat tell a small story about weather, time of day, nearby danger, or corruption.",
-      "questOffer": "Reed Cat can be referenced by hunting, rescue, culling, tracking, or corruption quests without ever carrying a human weapon.",
-      "farewell": "Reed Cat leaves the scene through fleeing, circling, burrowing, stalking, or returning to its den."
+      "greeting": "Reed Cat does not greet travelers; it pauses in Greenmere Edge, weighing scent, wind, and distance before choosing whether to flee or stand.",
+      "service": "Watch Reed Cat rather than approaching it: its posture reveals whether this part of Greenmere Edge is calm, hunted, corrupted, or suddenly unsafe.",
+      "rumor": "People near Greenmere Edge have been comparing signs left by Reed Cat; changed feeding paths often warn of danger before road patrols notice it.",
+      "questOffer": "No words pass from Reed Cat, but its tracks through Greenmere Edge may lead toward a damaged fence, a fouled den, or whatever disturbed the local wildlife.",
+      "farewell": "Reed Cat breaks contact on its own terms, leaving bent grass, prints, and one more clue about the present temper of Greenmere Edge."
     },
     "route": {
       "routeId": "reed_cat_daily_route",
@@ -20223,11 +20223,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "River Lurker carries a hidden detail tied to Greenmere Edge, Wildlife:predator, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "River Lurker gives a readable ambient cue instead of speech: posture, sound, and movement tell the player whether it is calm, defensive, predatory, or corrupted.",
-      "service": "River Lurker supports gathering, hunting, ecology, and warning-sign gameplay rather than vendor service.",
-      "rumor": "Tracks, calls, and behavior from River Lurker tell a small story about weather, time of day, nearby danger, or corruption.",
-      "questOffer": "River Lurker can be referenced by hunting, rescue, culling, tracking, or corruption quests without ever carrying a human weapon.",
-      "farewell": "River Lurker leaves the scene through fleeing, circling, burrowing, stalking, or returning to its den."
+      "greeting": "River Lurker does not greet travelers; it pauses in Greenmere Edge, weighing scent, wind, and distance before choosing whether to flee or stand.",
+      "service": "Watch River Lurker rather than approaching it: its posture reveals whether this part of Greenmere Edge is calm, hunted, corrupted, or suddenly unsafe.",
+      "rumor": "People near Greenmere Edge have been comparing signs left by River Lurker; changed feeding paths often warn of danger before road patrols notice it.",
+      "questOffer": "No words pass from River Lurker, but its tracks through Greenmere Edge may lead toward a damaged fence, a fouled den, or whatever disturbed the local wildlife.",
+      "farewell": "River Lurker breaks contact on its own terms, leaving bent grass, prints, and one more clue about the present temper of Greenmere Edge."
     },
     "route": {
       "routeId": "river_lurker_daily_route",
@@ -20332,7 +20332,7 @@ export const HARTHMERE_REMAINING_NPCS = [
       ]
     },
     "spawn": {
-      "x": 532.0,
+      "x": 532,
       "z": -390.2,
       "rot": 1.57,
       "scale": 0.72,
@@ -20358,11 +20358,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Giant Spider carries a hidden detail tied to Greenmere Edge, Wildlife:predator, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "Giant Spider gives a readable ambient cue instead of speech: posture, sound, and movement tell the player whether it is calm, defensive, predatory, or corrupted.",
-      "service": "Giant Spider supports gathering, hunting, ecology, and warning-sign gameplay rather than vendor service.",
-      "rumor": "Tracks, calls, and behavior from Giant Spider tell a small story about weather, time of day, nearby danger, or corruption.",
-      "questOffer": "Giant Spider can be referenced by hunting, rescue, culling, tracking, or corruption quests without ever carrying a human weapon.",
-      "farewell": "Giant Spider leaves the scene through fleeing, circling, burrowing, stalking, or returning to its den."
+      "greeting": "Giant Spider does not greet travelers; it pauses in Greenmere Edge, weighing scent, wind, and distance before choosing whether to flee or stand.",
+      "service": "Watch Giant Spider rather than approaching it: its posture reveals whether this part of Greenmere Edge is calm, hunted, corrupted, or suddenly unsafe.",
+      "rumor": "People near Greenmere Edge have been comparing signs left by Giant Spider; changed feeding paths often warn of danger before road patrols notice it.",
+      "questOffer": "No words pass from Giant Spider, but its tracks through Greenmere Edge may lead toward a damaged fence, a fouled den, or whatever disturbed the local wildlife.",
+      "farewell": "Giant Spider breaks contact on its own terms, leaving bent grass, prints, and one more clue about the present temper of Greenmere Edge."
     },
     "route": {
       "routeId": "web_spider_daily_route",
@@ -20493,11 +20493,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Carrion Crow carries a hidden detail tied to Greenmere Edge, Wildlife:predator, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "Carrion Crow gives a readable ambient cue instead of speech: posture, sound, and movement tell the player whether it is calm, defensive, predatory, or corrupted.",
-      "service": "Carrion Crow supports gathering, hunting, ecology, and warning-sign gameplay rather than vendor service.",
-      "rumor": "Tracks, calls, and behavior from Carrion Crow tell a small story about weather, time of day, nearby danger, or corruption.",
-      "questOffer": "Carrion Crow can be referenced by hunting, rescue, culling, tracking, or corruption quests without ever carrying a human weapon.",
-      "farewell": "Carrion Crow leaves the scene through fleeing, circling, burrowing, stalking, or returning to its den."
+      "greeting": "Carrion Crow does not greet travelers; it pauses in Greenmere Edge, weighing scent, wind, and distance before choosing whether to flee or stand.",
+      "service": "Watch Carrion Crow rather than approaching it: its posture reveals whether this part of Greenmere Edge is calm, hunted, corrupted, or suddenly unsafe.",
+      "rumor": "People near Greenmere Edge have been comparing signs left by Carrion Crow; changed feeding paths often warn of danger before road patrols notice it.",
+      "questOffer": "No words pass from Carrion Crow, but its tracks through Greenmere Edge may lead toward a damaged fence, a fouled den, or whatever disturbed the local wildlife.",
+      "farewell": "Carrion Crow breaks contact on its own terms, leaving bent grass, prints, and one more clue about the present temper of Greenmere Edge."
     },
     "route": {
       "routeId": "carrion_crow_daily_route",
@@ -20628,11 +20628,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Rot-Sick Deer carries a hidden detail tied to Gravewood, Wildlife:corrupted, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "Rot-Sick Deer gives a readable ambient cue instead of speech: posture, sound, and movement tell the player whether it is calm, defensive, predatory, or corrupted.",
-      "service": "Rot-Sick Deer supports gathering, hunting, ecology, and warning-sign gameplay rather than vendor service.",
-      "rumor": "Tracks, calls, and behavior from Rot-Sick Deer tell a small story about weather, time of day, nearby danger, or corruption.",
-      "questOffer": "Rot-Sick Deer can be referenced by hunting, rescue, culling, tracking, or corruption quests without ever carrying a human weapon.",
-      "farewell": "Rot-Sick Deer leaves the scene through fleeing, circling, burrowing, stalking, or returning to its den."
+      "greeting": "Rot-Sick Deer does not greet travelers; it pauses in Gravewood, weighing scent, wind, and distance before choosing whether to flee or stand.",
+      "service": "Watch Rot-Sick Deer rather than approaching it: its posture reveals whether this part of Gravewood is calm, hunted, corrupted, or suddenly unsafe.",
+      "rumor": "People near Gravewood have been comparing signs left by Rot-Sick Deer; changed feeding paths often warn of danger before road patrols notice it.",
+      "questOffer": "No words pass from Rot-Sick Deer, but its tracks through Gravewood may lead toward a damaged fence, a fouled den, or whatever disturbed the local wildlife.",
+      "farewell": "Rot-Sick Deer breaks contact on its own terms, leaving bent grass, prints, and one more clue about the present temper of Gravewood."
     },
     "route": {
       "routeId": "rot_sick_deer_daily_route",
@@ -20763,11 +20763,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Pale Wolf carries a hidden detail tied to Gravewood, Wildlife:corrupted, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "Pale Wolf gives a readable ambient cue instead of speech: posture, sound, and movement tell the player whether it is calm, defensive, predatory, or corrupted.",
-      "service": "Pale Wolf supports gathering, hunting, ecology, and warning-sign gameplay rather than vendor service.",
-      "rumor": "Tracks, calls, and behavior from Pale Wolf tell a small story about weather, time of day, nearby danger, or corruption.",
-      "questOffer": "Pale Wolf can be referenced by hunting, rescue, culling, tracking, or corruption quests without ever carrying a human weapon.",
-      "farewell": "Pale Wolf leaves the scene through fleeing, circling, burrowing, stalking, or returning to its den."
+      "greeting": "Pale Wolf does not greet travelers; it pauses in Gravewood, weighing scent, wind, and distance before choosing whether to flee or stand.",
+      "service": "Watch Pale Wolf rather than approaching it: its posture reveals whether this part of Gravewood is calm, hunted, corrupted, or suddenly unsafe.",
+      "rumor": "People near Gravewood have been comparing signs left by Pale Wolf; changed feeding paths often warn of danger before road patrols notice it.",
+      "questOffer": "No words pass from Pale Wolf, but its tracks through Gravewood may lead toward a damaged fence, a fouled den, or whatever disturbed the local wildlife.",
+      "farewell": "Pale Wolf breaks contact on its own terms, leaving bent grass, prints, and one more clue about the present temper of Gravewood."
     },
     "route": {
       "routeId": "pale_wolf_daily_route",
@@ -20898,11 +20898,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Moss-Covered Boar carries a hidden detail tied to Gravewood, Wildlife:corrupted, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "Moss-Covered Boar gives a readable ambient cue instead of speech: posture, sound, and movement tell the player whether it is calm, defensive, predatory, or corrupted.",
-      "service": "Moss-Covered Boar supports gathering, hunting, ecology, and warning-sign gameplay rather than vendor service.",
-      "rumor": "Tracks, calls, and behavior from Moss-Covered Boar tell a small story about weather, time of day, nearby danger, or corruption.",
-      "questOffer": "Moss-Covered Boar can be referenced by hunting, rescue, culling, tracking, or corruption quests without ever carrying a human weapon.",
-      "farewell": "Moss-Covered Boar leaves the scene through fleeing, circling, burrowing, stalking, or returning to its den."
+      "greeting": "Moss-Covered Boar does not greet travelers; it pauses in Gravewood, weighing scent, wind, and distance before choosing whether to flee or stand.",
+      "service": "Watch Moss-Covered Boar rather than approaching it: its posture reveals whether this part of Gravewood is calm, hunted, corrupted, or suddenly unsafe.",
+      "rumor": "People near Gravewood have been comparing signs left by Moss-Covered Boar; changed feeding paths often warn of danger before road patrols notice it.",
+      "questOffer": "No words pass from Moss-Covered Boar, but its tracks through Gravewood may lead toward a damaged fence, a fouled den, or whatever disturbed the local wildlife.",
+      "farewell": "Moss-Covered Boar breaks contact on its own terms, leaving bent grass, prints, and one more clue about the present temper of Gravewood."
     },
     "route": {
       "routeId": "moss_boar_daily_route",
@@ -21033,11 +21033,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Black-Eyed Crow carries a hidden detail tied to Gravewood, Wildlife:corrupted, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "Black-Eyed Crow gives a readable ambient cue instead of speech: posture, sound, and movement tell the player whether it is calm, defensive, predatory, or corrupted.",
-      "service": "Black-Eyed Crow supports gathering, hunting, ecology, and warning-sign gameplay rather than vendor service.",
-      "rumor": "Tracks, calls, and behavior from Black-Eyed Crow tell a small story about weather, time of day, nearby danger, or corruption.",
-      "questOffer": "Black-Eyed Crow can be referenced by hunting, rescue, culling, tracking, or corruption quests without ever carrying a human weapon.",
-      "farewell": "Black-Eyed Crow leaves the scene through fleeing, circling, burrowing, stalking, or returning to its den."
+      "greeting": "Black-Eyed Crow does not greet travelers; it pauses in Gravewood, weighing scent, wind, and distance before choosing whether to flee or stand.",
+      "service": "Watch Black-Eyed Crow rather than approaching it: its posture reveals whether this part of Gravewood is calm, hunted, corrupted, or suddenly unsafe.",
+      "rumor": "People near Gravewood have been comparing signs left by Black-Eyed Crow; changed feeding paths often warn of danger before road patrols notice it.",
+      "questOffer": "No words pass from Black-Eyed Crow, but its tracks through Gravewood may lead toward a damaged fence, a fouled den, or whatever disturbed the local wildlife.",
+      "farewell": "Black-Eyed Crow breaks contact on its own terms, leaving bent grass, prints, and one more clue about the present temper of Gravewood."
     },
     "route": {
       "routeId": "black_eyed_crow_daily_route",
@@ -21168,11 +21168,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Thornback Spider carries a hidden detail tied to Gravewood, Wildlife:corrupted, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "Thornback Spider gives a readable ambient cue instead of speech: posture, sound, and movement tell the player whether it is calm, defensive, predatory, or corrupted.",
-      "service": "Thornback Spider supports gathering, hunting, ecology, and warning-sign gameplay rather than vendor service.",
-      "rumor": "Tracks, calls, and behavior from Thornback Spider tell a small story about weather, time of day, nearby danger, or corruption.",
-      "questOffer": "Thornback Spider can be referenced by hunting, rescue, culling, tracking, or corruption quests without ever carrying a human weapon.",
-      "farewell": "Thornback Spider leaves the scene through fleeing, circling, burrowing, stalking, or returning to its den."
+      "greeting": "Thornback Spider does not greet travelers; it pauses in Gravewood, weighing scent, wind, and distance before choosing whether to flee or stand.",
+      "service": "Watch Thornback Spider rather than approaching it: its posture reveals whether this part of Gravewood is calm, hunted, corrupted, or suddenly unsafe.",
+      "rumor": "People near Gravewood have been comparing signs left by Thornback Spider; changed feeding paths often warn of danger before road patrols notice it.",
+      "questOffer": "No words pass from Thornback Spider, but its tracks through Gravewood may lead toward a damaged fence, a fouled den, or whatever disturbed the local wildlife.",
+      "farewell": "Thornback Spider breaks contact on its own terms, leaving bent grass, prints, and one more clue about the present temper of Gravewood."
     },
     "route": {
       "routeId": "thornback_spider_daily_route",
@@ -21303,11 +21303,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Root-Bound Bear carries a hidden detail tied to Gravewood, Wildlife:corrupted, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "Root-Bound Bear gives a readable ambient cue instead of speech: posture, sound, and movement tell the player whether it is calm, defensive, predatory, or corrupted.",
-      "service": "Root-Bound Bear supports gathering, hunting, ecology, and warning-sign gameplay rather than vendor service.",
-      "rumor": "Tracks, calls, and behavior from Root-Bound Bear tell a small story about weather, time of day, nearby danger, or corruption.",
-      "questOffer": "Root-Bound Bear can be referenced by hunting, rescue, culling, tracking, or corruption quests without ever carrying a human weapon.",
-      "farewell": "Root-Bound Bear leaves the scene through fleeing, circling, burrowing, stalking, or returning to its den."
+      "greeting": "Root-Bound Bear does not greet travelers; it pauses in Gravewood, weighing scent, wind, and distance before choosing whether to flee or stand.",
+      "service": "Watch Root-Bound Bear rather than approaching it: its posture reveals whether this part of Gravewood is calm, hunted, corrupted, or suddenly unsafe.",
+      "rumor": "People near Gravewood have been comparing signs left by Root-Bound Bear; changed feeding paths often warn of danger before road patrols notice it.",
+      "questOffer": "No words pass from Root-Bound Bear, but its tracks through Gravewood may lead toward a damaged fence, a fouled den, or whatever disturbed the local wildlife.",
+      "farewell": "Root-Bound Bear breaks contact on its own terms, leaving bent grass, prints, and one more clue about the present temper of Gravewood."
     },
     "route": {
       "routeId": "root_bound_bear_daily_route",
@@ -21438,11 +21438,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Bell-Mad Hound carries a hidden detail tied to Gravewood, Wildlife:corrupted, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "Bell-Mad Hound gives a readable ambient cue instead of speech: posture, sound, and movement tell the player whether it is calm, defensive, predatory, or corrupted.",
-      "service": "Bell-Mad Hound supports gathering, hunting, ecology, and warning-sign gameplay rather than vendor service.",
-      "rumor": "Tracks, calls, and behavior from Bell-Mad Hound tell a small story about weather, time of day, nearby danger, or corruption.",
-      "questOffer": "Bell-Mad Hound can be referenced by hunting, rescue, culling, tracking, or corruption quests without ever carrying a human weapon.",
-      "farewell": "Bell-Mad Hound leaves the scene through fleeing, circling, burrowing, stalking, or returning to its den."
+      "greeting": "Bell-Mad Hound does not greet travelers; it pauses in Gravewood, weighing scent, wind, and distance before choosing whether to flee or stand.",
+      "service": "Watch Bell-Mad Hound rather than approaching it: its posture reveals whether this part of Gravewood is calm, hunted, corrupted, or suddenly unsafe.",
+      "rumor": "People near Gravewood have been comparing signs left by Bell-Mad Hound; changed feeding paths often warn of danger before road patrols notice it.",
+      "questOffer": "No words pass from Bell-Mad Hound, but its tracks through Gravewood may lead toward a damaged fence, a fouled den, or whatever disturbed the local wildlife.",
+      "farewell": "Bell-Mad Hound breaks contact on its own terms, leaving bent grass, prints, and one more clue about the present temper of Gravewood."
     },
     "route": {
       "routeId": "bell_mad_hound_daily_route",
@@ -21573,11 +21573,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Gate Chicken carries a hidden detail tied to Gate Fields, Wildlife:passive, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "Gate Chicken gives a readable ambient cue instead of speech: posture, sound, and movement tell the player whether it is calm, defensive, predatory, or corrupted.",
-      "service": "Gate Chicken supports gathering, hunting, ecology, and warning-sign gameplay rather than vendor service.",
-      "rumor": "Tracks, calls, and behavior from Gate Chicken tell a small story about weather, time of day, nearby danger, or corruption.",
-      "questOffer": "Gate Chicken can be referenced by hunting, rescue, culling, tracking, or corruption quests without ever carrying a human weapon.",
-      "farewell": "Gate Chicken leaves the scene through fleeing, circling, burrowing, stalking, or returning to its den."
+      "greeting": "Gate Chicken does not greet travelers; it pauses in Gate Fields, weighing scent, wind, and distance before choosing whether to flee or stand.",
+      "service": "Watch Gate Chicken rather than approaching it: its posture reveals whether this part of Gate Fields is calm, hunted, corrupted, or suddenly unsafe.",
+      "rumor": "People near Gate Fields have been comparing signs left by Gate Chicken; changed feeding paths often warn of danger before road patrols notice it.",
+      "questOffer": "No words pass from Gate Chicken, but its tracks through Gate Fields may lead toward a damaged fence, a fouled den, or whatever disturbed the local wildlife.",
+      "farewell": "Gate Chicken breaks contact on its own terms, leaving bent grass, prints, and one more clue about the present temper of Gate Fields."
     },
     "route": {
       "routeId": "gate_chicken_daily_route",
@@ -21708,11 +21708,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Pasture Sheep carries a hidden detail tied to Gate Fields, Wildlife:passive, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "Pasture Sheep gives a readable ambient cue instead of speech: posture, sound, and movement tell the player whether it is calm, defensive, predatory, or corrupted.",
-      "service": "Pasture Sheep supports gathering, hunting, ecology, and warning-sign gameplay rather than vendor service.",
-      "rumor": "Tracks, calls, and behavior from Pasture Sheep tell a small story about weather, time of day, nearby danger, or corruption.",
-      "questOffer": "Pasture Sheep can be referenced by hunting, rescue, culling, tracking, or corruption quests without ever carrying a human weapon.",
-      "farewell": "Pasture Sheep leaves the scene through fleeing, circling, burrowing, stalking, or returning to its den."
+      "greeting": "Pasture Sheep does not greet travelers; it pauses in Gate Fields, weighing scent, wind, and distance before choosing whether to flee or stand.",
+      "service": "Watch Pasture Sheep rather than approaching it: its posture reveals whether this part of Gate Fields is calm, hunted, corrupted, or suddenly unsafe.",
+      "rumor": "People near Gate Fields have been comparing signs left by Pasture Sheep; changed feeding paths often warn of danger before road patrols notice it.",
+      "questOffer": "No words pass from Pasture Sheep, but its tracks through Gate Fields may lead toward a damaged fence, a fouled den, or whatever disturbed the local wildlife.",
+      "farewell": "Pasture Sheep breaks contact on its own terms, leaving bent grass, prints, and one more clue about the present temper of Gate Fields."
     },
     "route": {
       "routeId": "pasture_sheep_daily_route",
@@ -21817,7 +21817,7 @@ export const HARTHMERE_REMAINING_NPCS = [
       ]
     },
     "spawn": {
-      "x": 470.0,
+      "x": 470,
       "z": -361.1,
       "rot": 0,
       "scale": 0.72,
@@ -21843,11 +21843,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Pasture Cow carries a hidden detail tied to Gate Fields, Wildlife:passive, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "Pasture Cow gives a readable ambient cue instead of speech: posture, sound, and movement tell the player whether it is calm, defensive, predatory, or corrupted.",
-      "service": "Pasture Cow supports gathering, hunting, ecology, and warning-sign gameplay rather than vendor service.",
-      "rumor": "Tracks, calls, and behavior from Pasture Cow tell a small story about weather, time of day, nearby danger, or corruption.",
-      "questOffer": "Pasture Cow can be referenced by hunting, rescue, culling, tracking, or corruption quests without ever carrying a human weapon.",
-      "farewell": "Pasture Cow leaves the scene through fleeing, circling, burrowing, stalking, or returning to its den."
+      "greeting": "Pasture Cow does not greet travelers; it pauses in Gate Fields, weighing scent, wind, and distance before choosing whether to flee or stand.",
+      "service": "Watch Pasture Cow rather than approaching it: its posture reveals whether this part of Gate Fields is calm, hunted, corrupted, or suddenly unsafe.",
+      "rumor": "People near Gate Fields have been comparing signs left by Pasture Cow; changed feeding paths often warn of danger before road patrols notice it.",
+      "questOffer": "No words pass from Pasture Cow, but its tracks through Gate Fields may lead toward a damaged fence, a fouled den, or whatever disturbed the local wildlife.",
+      "farewell": "Pasture Cow breaks contact on its own terms, leaving bent grass, prints, and one more clue about the present temper of Gate Fields."
     },
     "route": {
       "routeId": "pasture_cow_daily_route",
@@ -21978,11 +21978,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Stable Horse carries a hidden detail tied to Gate Fields, Wildlife:passive, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "Stable Horse gives a readable ambient cue instead of speech: posture, sound, and movement tell the player whether it is calm, defensive, predatory, or corrupted.",
-      "service": "Stable Horse supports gathering, hunting, ecology, and warning-sign gameplay rather than vendor service.",
-      "rumor": "Tracks, calls, and behavior from Stable Horse tell a small story about weather, time of day, nearby danger, or corruption.",
-      "questOffer": "Stable Horse can be referenced by hunting, rescue, culling, tracking, or corruption quests without ever carrying a human weapon.",
-      "farewell": "Stable Horse leaves the scene through fleeing, circling, burrowing, stalking, or returning to its den."
+      "greeting": "Stable Horse does not greet travelers; it pauses in Gate Fields, weighing scent, wind, and distance before choosing whether to flee or stand.",
+      "service": "Watch Stable Horse rather than approaching it: its posture reveals whether this part of Gate Fields is calm, hunted, corrupted, or suddenly unsafe.",
+      "rumor": "People near Gate Fields have been comparing signs left by Stable Horse; changed feeding paths often warn of danger before road patrols notice it.",
+      "questOffer": "No words pass from Stable Horse, but its tracks through Gate Fields may lead toward a damaged fence, a fouled den, or whatever disturbed the local wildlife.",
+      "farewell": "Stable Horse breaks contact on its own terms, leaving bent grass, prints, and one more clue about the present temper of Gate Fields."
     },
     "route": {
       "routeId": "stable_horse_daily_route",
@@ -22113,11 +22113,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Bandit Road Scout carries a hidden detail tied to Watchtower Ridge, Bandits, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Bandit Road Scout. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "Bandit Road Scout offers no welcome in Watchtower Ridge; movement, breath, and a ready weapon or unnatural stillness announce a bandit threat.",
+      "service": "There is nothing to request from Bandit Road Scout. Read the ground and silhouette carefully, because survival in Watchtower Ridge depends on recognizing its method before it closes.",
+      "rumor": "Warnings about Bandit Road Scout reach the roads before clear sightings do: wrong lanterns, broken markers, disturbed graves, or silence spreading through Watchtower Ridge.",
+      "questOffer": "Bandit Road Scout is the danger behind a local task in Watchtower Ridge: investigate its signs, protect those in its path, and decide whether capture, cleansing, retreat, or force is justified.",
+      "farewell": "Bandit Road Scout does not exchange farewells. The encounter ends only when the threat withdraws, surrenders, is dispersed, or lies still in Watchtower Ridge."
     },
     "route": {
       "routeId": "bandit_road_scout_daily_route",
@@ -22253,11 +22253,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Bandit Hedge Archer carries a hidden detail tied to Watchtower Ridge, Bandits, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Bandit Hedge Archer. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "Bandit Hedge Archer offers no welcome in Watchtower Ridge; movement, breath, and a ready weapon or unnatural stillness announce a bandit threat.",
+      "service": "There is nothing to request from Bandit Hedge Archer. Read the ground and silhouette carefully, because survival in Watchtower Ridge depends on recognizing its method before it closes.",
+      "rumor": "Warnings about Bandit Hedge Archer reach the roads before clear sightings do: wrong lanterns, broken markers, disturbed graves, or silence spreading through Watchtower Ridge.",
+      "questOffer": "Bandit Hedge Archer is the danger behind a local task in Watchtower Ridge: investigate its signs, protect those in its path, and decide whether capture, cleansing, retreat, or force is justified.",
+      "farewell": "Bandit Hedge Archer does not exchange farewells. The encounter ends only when the threat withdraws, surrenders, is dispersed, or lies still in Watchtower Ridge."
     },
     "route": {
       "routeId": "bandit_hedge_archer_daily_route",
@@ -22393,11 +22393,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Bandit Knife Thief carries a hidden detail tied to Watchtower Ridge, Bandits, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Bandit Knife Thief. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "Bandit Knife Thief offers no welcome in Watchtower Ridge; movement, breath, and a ready weapon or unnatural stillness announce a bandit threat.",
+      "service": "There is nothing to request from Bandit Knife Thief. Read the ground and silhouette carefully, because survival in Watchtower Ridge depends on recognizing its method before it closes.",
+      "rumor": "Warnings about Bandit Knife Thief reach the roads before clear sightings do: wrong lanterns, broken markers, disturbed graves, or silence spreading through Watchtower Ridge.",
+      "questOffer": "Bandit Knife Thief is the danger behind a local task in Watchtower Ridge: investigate its signs, protect those in its path, and decide whether capture, cleansing, retreat, or force is justified.",
+      "farewell": "Bandit Knife Thief does not exchange farewells. The encounter ends only when the threat withdraws, surrenders, is dispersed, or lies still in Watchtower Ridge."
     },
     "route": {
       "routeId": "bandit_knife_thief_daily_route",
@@ -22533,11 +22533,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Bandit Snare Setter carries a hidden detail tied to Watchtower Ridge, Bandits, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Bandit Snare Setter. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "Bandit Snare Setter offers no welcome in Watchtower Ridge; movement, breath, and a ready weapon or unnatural stillness announce a bandit threat.",
+      "service": "There is nothing to request from Bandit Snare Setter. Read the ground and silhouette carefully, because survival in Watchtower Ridge depends on recognizing its method before it closes.",
+      "rumor": "Warnings about Bandit Snare Setter reach the roads before clear sightings do: wrong lanterns, broken markers, disturbed graves, or silence spreading through Watchtower Ridge.",
+      "questOffer": "Bandit Snare Setter is the danger behind a local task in Watchtower Ridge: investigate its signs, protect those in its path, and decide whether capture, cleansing, retreat, or force is justified.",
+      "farewell": "Bandit Snare Setter does not exchange farewells. The encounter ends only when the threat withdraws, surrenders, is dispersed, or lies still in Watchtower Ridge."
     },
     "route": {
       "routeId": "bandit_snare_setter_daily_route",
@@ -22648,7 +22648,7 @@ export const HARTHMERE_REMAINING_NPCS = [
     },
     "spawn": {
       "x": 376.25,
-      "z": -454.0,
+      "z": -454,
       "rot": 1.57,
       "scale": 1.25,
       "asset": "townsperson_bandit"
@@ -22673,11 +22673,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Bandit Wagon Raider carries a hidden detail tied to Watchtower Ridge, Bandits, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Bandit Wagon Raider. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "Bandit Wagon Raider offers no welcome in Watchtower Ridge; movement, breath, and a ready weapon or unnatural stillness announce a bandit threat.",
+      "service": "There is nothing to request from Bandit Wagon Raider. Read the ground and silhouette carefully, because survival in Watchtower Ridge depends on recognizing its method before it closes.",
+      "rumor": "Warnings about Bandit Wagon Raider reach the roads before clear sightings do: wrong lanterns, broken markers, disturbed graves, or silence spreading through Watchtower Ridge.",
+      "questOffer": "Bandit Wagon Raider is the danger behind a local task in Watchtower Ridge: investigate its signs, protect those in its path, and decide whether capture, cleansing, retreat, or force is justified.",
+      "farewell": "Bandit Wagon Raider does not exchange farewells. The encounter ends only when the threat withdraws, surrenders, is dispersed, or lies still in Watchtower Ridge."
     },
     "route": {
       "routeId": "bandit_wagon_raider_daily_route",
@@ -22788,7 +22788,7 @@ export const HARTHMERE_REMAINING_NPCS = [
     },
     "spawn": {
       "x": 377.4,
-      "z": -454.0,
+      "z": -454,
       "rot": 1.57,
       "scale": 1.25,
       "asset": "townsperson_bandit"
@@ -22813,11 +22813,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Bandit False Beggar carries a hidden detail tied to Watchtower Ridge, Bandits, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Bandit False Beggar. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "Bandit False Beggar offers no welcome in Watchtower Ridge; movement, breath, and a ready weapon or unnatural stillness announce a bandit threat.",
+      "service": "There is nothing to request from Bandit False Beggar. Read the ground and silhouette carefully, because survival in Watchtower Ridge depends on recognizing its method before it closes.",
+      "rumor": "Warnings about Bandit False Beggar reach the roads before clear sightings do: wrong lanterns, broken markers, disturbed graves, or silence spreading through Watchtower Ridge.",
+      "questOffer": "Bandit False Beggar is the danger behind a local task in Watchtower Ridge: investigate its signs, protect those in its path, and decide whether capture, cleansing, retreat, or force is justified.",
+      "farewell": "Bandit False Beggar does not exchange farewells. The encounter ends only when the threat withdraws, surrenders, is dispersed, or lies still in Watchtower Ridge."
     },
     "route": {
       "routeId": "bandit_false_beggar_daily_route",
@@ -22928,7 +22928,7 @@ export const HARTHMERE_REMAINING_NPCS = [
     },
     "spawn": {
       "x": 378.55,
-      "z": -454.0,
+      "z": -454,
       "rot": 1.57,
       "scale": 1.25,
       "asset": "townsperson_bandit"
@@ -22953,11 +22953,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Outlaw Brute carries a hidden detail tied to Watchtower Ridge, Bandits, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Outlaw Brute. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "Outlaw Brute offers no welcome in Watchtower Ridge; movement, breath, and a ready weapon or unnatural stillness announce a bandit threat.",
+      "service": "There is nothing to request from Outlaw Brute. Read the ground and silhouette carefully, because survival in Watchtower Ridge depends on recognizing its method before it closes.",
+      "rumor": "Warnings about Outlaw Brute reach the roads before clear sightings do: wrong lanterns, broken markers, disturbed graves, or silence spreading through Watchtower Ridge.",
+      "questOffer": "Outlaw Brute is the danger behind a local task in Watchtower Ridge: investigate its signs, protect those in its path, and decide whether capture, cleansing, retreat, or force is justified.",
+      "farewell": "Outlaw Brute does not exchange farewells. The encounter ends only when the threat withdraws, surrenders, is dispersed, or lies still in Watchtower Ridge."
     },
     "route": {
       "routeId": "bandit_outlaw_brute_daily_route",
@@ -23068,7 +23068,7 @@ export const HARTHMERE_REMAINING_NPCS = [
     },
     "spawn": {
       "x": 379.7,
-      "z": -454.0,
+      "z": -454,
       "rot": 1.57,
       "scale": 1.25,
       "asset": "townsperson_bandit"
@@ -23093,11 +23093,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Bandit Quartermaster carries a hidden detail tied to Watchtower Ridge, Bandits, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Bandit Quartermaster. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "Bandit Quartermaster offers no welcome in Watchtower Ridge; movement, breath, and a ready weapon or unnatural stillness announce a bandit threat.",
+      "service": "There is nothing to request from Bandit Quartermaster. Read the ground and silhouette carefully, because survival in Watchtower Ridge depends on recognizing its method before it closes.",
+      "rumor": "Warnings about Bandit Quartermaster reach the roads before clear sightings do: wrong lanterns, broken markers, disturbed graves, or silence spreading through Watchtower Ridge.",
+      "questOffer": "Bandit Quartermaster is the danger behind a local task in Watchtower Ridge: investigate its signs, protect those in its path, and decide whether capture, cleansing, retreat, or force is justified.",
+      "farewell": "Bandit Quartermaster does not exchange farewells. The encounter ends only when the threat withdraws, surrenders, is dispersed, or lies still in Watchtower Ridge."
     },
     "route": {
       "routeId": "bandit_quartermaster_daily_route",
@@ -23208,7 +23208,7 @@ export const HARTHMERE_REMAINING_NPCS = [
     },
     "spawn": {
       "x": 380.85,
-      "z": -454.0,
+      "z": -454,
       "rot": 1.57,
       "scale": 1.25,
       "asset": "townsperson_bandit"
@@ -23233,11 +23233,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Former Guard Captain carries a hidden detail tied to Watchtower Ridge, Bandits, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Former Guard Captain. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "Former Guard Captain offers no welcome in Watchtower Ridge; movement, breath, and a ready weapon or unnatural stillness announce a bandit threat.",
+      "service": "There is nothing to request from Former Guard Captain. Read the ground and silhouette carefully, because survival in Watchtower Ridge depends on recognizing its method before it closes.",
+      "rumor": "Warnings about Former Guard Captain reach the roads before clear sightings do: wrong lanterns, broken markers, disturbed graves, or silence spreading through Watchtower Ridge.",
+      "questOffer": "Former Guard Captain is the danger behind a local task in Watchtower Ridge: investigate its signs, protect those in its path, and decide whether capture, cleansing, retreat, or force is justified.",
+      "farewell": "Former Guard Captain does not exchange farewells. The encounter ends only when the threat withdraws, surrenders, is dispersed, or lies still in Watchtower Ridge."
     },
     "route": {
       "routeId": "bandit_former_guard_captain_daily_route",
@@ -23347,8 +23347,8 @@ export const HARTHMERE_REMAINING_NPCS = [
       ]
     },
     "spawn": {
-      "x": 382.0,
-      "z": -454.0,
+      "x": 382,
+      "z": -454,
       "rot": 1.57,
       "scale": 1.25,
       "asset": "townsperson_bandit"
@@ -23373,11 +23373,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Smuggler-Bandit Liaison carries a hidden detail tied to Watchtower Ridge, Bandits, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Smuggler-Bandit Liaison. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "Smuggler-Bandit Liaison offers no welcome in Watchtower Ridge; movement, breath, and a ready weapon or unnatural stillness announce a bandit threat.",
+      "service": "There is nothing to request from Smuggler-Bandit Liaison. Read the ground and silhouette carefully, because survival in Watchtower Ridge depends on recognizing its method before it closes.",
+      "rumor": "Warnings about Smuggler-Bandit Liaison reach the roads before clear sightings do: wrong lanterns, broken markers, disturbed graves, or silence spreading through Watchtower Ridge.",
+      "questOffer": "Smuggler-Bandit Liaison is the danger behind a local task in Watchtower Ridge: investigate its signs, protect those in its path, and decide whether capture, cleansing, retreat, or force is justified.",
+      "farewell": "Smuggler-Bandit Liaison does not exchange farewells. The encounter ends only when the threat withdraws, surrenders, is dispersed, or lies still in Watchtower Ridge."
     },
     "route": {
       "routeId": "bandit_smuggler_liaison_daily_route",
@@ -23488,7 +23488,7 @@ export const HARTHMERE_REMAINING_NPCS = [
     },
     "spawn": {
       "x": 383.15,
-      "z": -454.0,
+      "z": -454,
       "rot": 1.57,
       "scale": 1.25,
       "asset": "townsperson_bandit"
@@ -23513,11 +23513,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Fresh Risen carries a hidden detail tied to Gravewood, Undead, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "Fresh Risen offers no greeting — only breath, the scrape of movement, and the far echo of a bell under stone.",
-      "service": "Read Fresh Risen before it reads you: watch its silhouette, how it moves, and where it lingers — that is your only warning.",
-      "rumor": "Folk in Harthmere trade quiet warnings about Fresh Risen long before anyone sees it — cold air, wrong sounds, a bell that should be still.",
-      "questOffer": "Fresh Risen is the reason more than one Harthmere task ends in danger — something to put down, cleanse, or drive back.",
-      "farewell": "Fresh Risen will not be reasoned with. It ends when it is put down, scattered, or driven back into the dark."
+      "greeting": "Fresh Risen offers no welcome in Gravewood; movement, breath, and a ready weapon or unnatural stillness announce an undead threat.",
+      "service": "There is nothing to request from Fresh Risen. Read the ground and silhouette carefully, because survival in Gravewood depends on recognizing its method before it closes.",
+      "rumor": "Warnings about Fresh Risen reach the roads before clear sightings do: wrong lanterns, broken markers, disturbed graves, or silence spreading through Gravewood.",
+      "questOffer": "Fresh Risen is the danger behind a local task in Gravewood: investigate its signs, protect those in its path, and decide whether capture, cleansing, retreat, or force is justified.",
+      "farewell": "Fresh Risen does not exchange farewells. The encounter ends only when the threat withdraws, surrenders, is dispersed, or lies still in Gravewood."
     },
     "route": {
       "routeId": "undead_fresh_risen_daily_route",
@@ -23625,7 +23625,7 @@ export const HARTHMERE_REMAINING_NPCS = [
     },
     "spawn": {
       "x": 538.3,
-      "z": -119.0,
+      "z": -119,
       "rot": 3.14,
       "scale": 1.08,
       "asset": "townsperson_undead"
@@ -23650,11 +23650,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Grave-Caked Walker carries a hidden detail tied to Gravewood, Undead, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "Grave-Caked Walker offers no greeting — only breath, the scrape of movement, and the far echo of a bell under stone.",
-      "service": "Read Grave-Caked Walker before it reads you: watch its silhouette, how it moves, and where it lingers — that is your only warning.",
-      "rumor": "Folk in Harthmere trade quiet warnings about Grave-Caked Walker long before anyone sees it — cold air, wrong sounds, a bell that should be still.",
-      "questOffer": "Grave-Caked Walker is the reason more than one Harthmere task ends in danger — something to put down, cleanse, or drive back.",
-      "farewell": "Grave-Caked Walker will not be reasoned with. It ends when it is put down, scattered, or driven back into the dark."
+      "greeting": "Grave-Caked Walker offers no welcome in Gravewood; movement, breath, and a ready weapon or unnatural stillness announce an undead threat.",
+      "service": "There is nothing to request from Grave-Caked Walker. Read the ground and silhouette carefully, because survival in Gravewood depends on recognizing its method before it closes.",
+      "rumor": "Warnings about Grave-Caked Walker reach the roads before clear sightings do: wrong lanterns, broken markers, disturbed graves, or silence spreading through Gravewood.",
+      "questOffer": "Grave-Caked Walker is the danger behind a local task in Gravewood: investigate its signs, protect those in its path, and decide whether capture, cleansing, retreat, or force is justified.",
+      "farewell": "Grave-Caked Walker does not exchange farewells. The encounter ends only when the threat withdraws, surrenders, is dispersed, or lies still in Gravewood."
     },
     "route": {
       "routeId": "undead_grave_caked_walker_daily_route",
@@ -23762,7 +23762,7 @@ export const HARTHMERE_REMAINING_NPCS = [
     },
     "spawn": {
       "x": 539.45,
-      "z": -119.0,
+      "z": -119,
       "rot": 3.14,
       "scale": 1.08,
       "asset": "townsperson_undead"
@@ -23787,11 +23787,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Bell-Woken Dead carries a hidden detail tied to Gravewood, Undead, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "Bell-Woken Dead offers no greeting — only breath, the scrape of movement, and the far echo of a bell under stone.",
-      "service": "Read Bell-Woken Dead before it reads you: watch its silhouette, how it moves, and where it lingers — that is your only warning.",
-      "rumor": "Folk in Harthmere trade quiet warnings about Bell-Woken Dead long before anyone sees it — cold air, wrong sounds, a bell that should be still.",
-      "questOffer": "Bell-Woken Dead is the reason more than one Harthmere task ends in danger — something to put down, cleanse, or drive back.",
-      "farewell": "Bell-Woken Dead will not be reasoned with. It ends when it is put down, scattered, or driven back into the dark."
+      "greeting": "Bell-Woken Dead offers no welcome in Gravewood; movement, breath, and a ready weapon or unnatural stillness announce an undead threat.",
+      "service": "There is nothing to request from Bell-Woken Dead. Read the ground and silhouette carefully, because survival in Gravewood depends on recognizing its method before it closes.",
+      "rumor": "Warnings about Bell-Woken Dead reach the roads before clear sightings do: wrong lanterns, broken markers, disturbed graves, or silence spreading through Gravewood.",
+      "questOffer": "Bell-Woken Dead is the danger behind a local task in Gravewood: investigate its signs, protect those in its path, and decide whether capture, cleansing, retreat, or force is justified.",
+      "farewell": "Bell-Woken Dead does not exchange farewells. The encounter ends only when the threat withdraws, surrenders, is dispersed, or lies still in Gravewood."
     },
     "route": {
       "routeId": "undead_bell_woken_dead_daily_route",
@@ -23899,7 +23899,7 @@ export const HARTHMERE_REMAINING_NPCS = [
     },
     "spawn": {
       "x": 540.6,
-      "z": -119.0,
+      "z": -119,
       "rot": 3.14,
       "scale": 1.08,
       "asset": "townsperson_undead"
@@ -23924,11 +23924,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Drowned Corpse carries a hidden detail tied to Gravewood, Undead, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "Drowned Corpse offers no greeting — only breath, the scrape of movement, and the far echo of a bell under stone.",
-      "service": "Read Drowned Corpse before it reads you: watch its silhouette, how it moves, and where it lingers — that is your only warning.",
-      "rumor": "Folk in Harthmere trade quiet warnings about Drowned Corpse long before anyone sees it — cold air, wrong sounds, a bell that should be still.",
-      "questOffer": "Drowned Corpse is the reason more than one Harthmere task ends in danger — something to put down, cleanse, or drive back.",
-      "farewell": "Drowned Corpse will not be reasoned with. It ends when it is put down, scattered, or driven back into the dark."
+      "greeting": "Drowned Corpse offers no welcome in Gravewood; movement, breath, and a ready weapon or unnatural stillness announce an undead threat.",
+      "service": "There is nothing to request from Drowned Corpse. Read the ground and silhouette carefully, because survival in Gravewood depends on recognizing its method before it closes.",
+      "rumor": "Warnings about Drowned Corpse reach the roads before clear sightings do: wrong lanterns, broken markers, disturbed graves, or silence spreading through Gravewood.",
+      "questOffer": "Drowned Corpse is the danger behind a local task in Gravewood: investigate its signs, protect those in its path, and decide whether capture, cleansing, retreat, or force is justified.",
+      "farewell": "Drowned Corpse does not exchange farewells. The encounter ends only when the threat withdraws, surrenders, is dispersed, or lies still in Gravewood."
     },
     "route": {
       "routeId": "undead_drowned_corpse_daily_route",
@@ -24036,7 +24036,7 @@ export const HARTHMERE_REMAINING_NPCS = [
     },
     "spawn": {
       "x": 541.75,
-      "z": -119.0,
+      "z": -119,
       "rot": 3.14,
       "scale": 1.08,
       "asset": "townsperson_undead"
@@ -24061,11 +24061,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Bone Crawler carries a hidden detail tied to Gravewood, Undead, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "Bone Crawler offers no greeting — only breath, the scrape of movement, and the far echo of a bell under stone.",
-      "service": "Read Bone Crawler before it reads you: watch its silhouette, how it moves, and where it lingers — that is your only warning.",
-      "rumor": "Folk in Harthmere trade quiet warnings about Bone Crawler long before anyone sees it — cold air, wrong sounds, a bell that should be still.",
-      "questOffer": "Bone Crawler is the reason more than one Harthmere task ends in danger — something to put down, cleanse, or drive back.",
-      "farewell": "Bone Crawler will not be reasoned with. It ends when it is put down, scattered, or driven back into the dark."
+      "greeting": "Bone Crawler offers no welcome in Gravewood; movement, breath, and a ready weapon or unnatural stillness announce an undead threat.",
+      "service": "There is nothing to request from Bone Crawler. Read the ground and silhouette carefully, because survival in Gravewood depends on recognizing its method before it closes.",
+      "rumor": "Warnings about Bone Crawler reach the roads before clear sightings do: wrong lanterns, broken markers, disturbed graves, or silence spreading through Gravewood.",
+      "questOffer": "Bone Crawler is the danger behind a local task in Gravewood: investigate its signs, protect those in its path, and decide whether capture, cleansing, retreat, or force is justified.",
+      "farewell": "Bone Crawler does not exchange farewells. The encounter ends only when the threat withdraws, surrenders, is dispersed, or lies still in Gravewood."
     },
     "route": {
       "routeId": "undead_bone_crawler_daily_route",
@@ -24198,11 +24198,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Mourning Wraith carries a hidden detail tied to Gravewood, Undead, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "Mourning Wraith offers no greeting — only breath, the scrape of movement, and the far echo of a bell under stone.",
-      "service": "Read Mourning Wraith before it reads you: watch its silhouette, how it moves, and where it lingers — that is your only warning.",
-      "rumor": "Folk in Harthmere trade quiet warnings about Mourning Wraith long before anyone sees it — cold air, wrong sounds, a bell that should be still.",
-      "questOffer": "Mourning Wraith is the reason more than one Harthmere task ends in danger — something to put down, cleanse, or drive back.",
-      "farewell": "Mourning Wraith will not be reasoned with. It ends when it is put down, scattered, or driven back into the dark."
+      "greeting": "Mourning Wraith offers no welcome in Gravewood; movement, breath, and a ready weapon or unnatural stillness announce an undead threat.",
+      "service": "There is nothing to request from Mourning Wraith. Read the ground and silhouette carefully, because survival in Gravewood depends on recognizing its method before it closes.",
+      "rumor": "Warnings about Mourning Wraith reach the roads before clear sightings do: wrong lanterns, broken markers, disturbed graves, or silence spreading through Gravewood.",
+      "questOffer": "Mourning Wraith is the danger behind a local task in Gravewood: investigate its signs, protect those in its path, and decide whether capture, cleansing, retreat, or force is justified.",
+      "farewell": "Mourning Wraith does not exchange farewells. The encounter ends only when the threat withdraws, surrenders, is dispersed, or lies still in Gravewood."
     },
     "route": {
       "routeId": "undead_mourning_wraith_daily_route",
@@ -24335,11 +24335,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Hollow Sexton carries a hidden detail tied to Gravewood, Undead, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "Hollow Sexton offers no greeting — only breath, the scrape of movement, and the far echo of a bell under stone.",
-      "service": "Read Hollow Sexton before it reads you: watch its silhouette, how it moves, and where it lingers — that is your only warning.",
-      "rumor": "Folk in Harthmere trade quiet warnings about Hollow Sexton long before anyone sees it — cold air, wrong sounds, a bell that should be still.",
-      "questOffer": "Hollow Sexton is the reason more than one Harthmere task ends in danger — something to put down, cleanse, or drive back.",
-      "farewell": "Hollow Sexton will not be reasoned with. It ends when it is put down, scattered, or driven back into the dark."
+      "greeting": "Hollow Sexton offers no welcome in Gravewood; movement, breath, and a ready weapon or unnatural stillness announce an undead threat.",
+      "service": "There is nothing to request from Hollow Sexton. Read the ground and silhouette carefully, because survival in Gravewood depends on recognizing its method before it closes.",
+      "rumor": "Warnings about Hollow Sexton reach the roads before clear sightings do: wrong lanterns, broken markers, disturbed graves, or silence spreading through Gravewood.",
+      "questOffer": "Hollow Sexton is the danger behind a local task in Gravewood: investigate its signs, protect those in its path, and decide whether capture, cleansing, retreat, or force is justified.",
+      "farewell": "Hollow Sexton does not exchange farewells. The encounter ends only when the threat withdraws, surrenders, is dispersed, or lies still in Gravewood."
     },
     "route": {
       "routeId": "undead_hollow_sexton_daily_route",
@@ -24472,11 +24472,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Root-Bound Dead carries a hidden detail tied to Gravewood, Undead, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "Root-Bound Dead offers no greeting — only breath, the scrape of movement, and the far echo of a bell under stone.",
-      "service": "Read Root-Bound Dead before it reads you: watch its silhouette, how it moves, and where it lingers — that is your only warning.",
-      "rumor": "Folk in Harthmere trade quiet warnings about Root-Bound Dead long before anyone sees it — cold air, wrong sounds, a bell that should be still.",
-      "questOffer": "Root-Bound Dead is the reason more than one Harthmere task ends in danger — something to put down, cleanse, or drive back.",
-      "farewell": "Root-Bound Dead will not be reasoned with. It ends when it is put down, scattered, or driven back into the dark."
+      "greeting": "Root-Bound Dead offers no welcome in Gravewood; movement, breath, and a ready weapon or unnatural stillness announce an undead threat.",
+      "service": "There is nothing to request from Root-Bound Dead. Read the ground and silhouette carefully, because survival in Gravewood depends on recognizing its method before it closes.",
+      "rumor": "Warnings about Root-Bound Dead reach the roads before clear sightings do: wrong lanterns, broken markers, disturbed graves, or silence spreading through Gravewood.",
+      "questOffer": "Root-Bound Dead is the danger behind a local task in Gravewood: investigate its signs, protect those in its path, and decide whether capture, cleansing, retreat, or force is justified.",
+      "farewell": "Root-Bound Dead does not exchange farewells. The encounter ends only when the threat withdraws, surrenders, is dispersed, or lies still in Gravewood."
     },
     "route": {
       "routeId": "undead_root_bound_dead_daily_route",
@@ -24609,11 +24609,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Old Soldier Wight carries a hidden detail tied to Gravewood, Undead, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "Old Soldier Wight offers no greeting — only breath, the scrape of movement, and the far echo of a bell under stone.",
-      "service": "Read Old Soldier Wight before it reads you: watch its silhouette, how it moves, and where it lingers — that is your only warning.",
-      "rumor": "Folk in Harthmere trade quiet warnings about Old Soldier Wight long before anyone sees it — cold air, wrong sounds, a bell that should be still.",
-      "questOffer": "Old Soldier Wight is the reason more than one Harthmere task ends in danger — something to put down, cleanse, or drive back.",
-      "farewell": "Old Soldier Wight will not be reasoned with. It ends when it is put down, scattered, or driven back into the dark."
+      "greeting": "Old Soldier Wight offers no welcome in Gravewood; movement, breath, and a ready weapon or unnatural stillness announce an undead threat.",
+      "service": "There is nothing to request from Old Soldier Wight. Read the ground and silhouette carefully, because survival in Gravewood depends on recognizing its method before it closes.",
+      "rumor": "Warnings about Old Soldier Wight reach the roads before clear sightings do: wrong lanterns, broken markers, disturbed graves, or silence spreading through Gravewood.",
+      "questOffer": "Old Soldier Wight is the danger behind a local task in Gravewood: investigate its signs, protect those in its path, and decide whether capture, cleansing, retreat, or force is justified.",
+      "farewell": "Old Soldier Wight does not exchange farewells. The encounter ends only when the threat withdraws, surrenders, is dispersed, or lies still in Gravewood."
     },
     "route": {
       "routeId": "undead_old_soldier_wight_daily_route",
@@ -24746,11 +24746,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Rootling carries a hidden detail tied to Deep Old Wood, Old Wood Monsters, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "Rootling offers no greeting — only breath, the scrape of movement, and the far echo of a bell under stone.",
-      "service": "Read Rootling before it reads you: watch its silhouette, how it moves, and where it lingers — that is your only warning.",
-      "rumor": "Folk in Harthmere trade quiet warnings about Rootling long before anyone sees it — cold air, wrong sounds, a bell that should be still.",
-      "questOffer": "Rootling is the reason more than one Harthmere task ends in danger — something to put down, cleanse, or drive back.",
-      "farewell": "Rootling will not be reasoned with. It ends when it is put down, scattered, or driven back into the dark."
+      "greeting": "Rootling offers no welcome in Deep Old Wood; movement, breath, and a ready weapon or unnatural stillness announce a forest monster threat.",
+      "service": "There is nothing to request from Rootling. Read the ground and silhouette carefully, because survival in Deep Old Wood depends on recognizing its method before it closes.",
+      "rumor": "Warnings about Rootling reach the roads before clear sightings do: wrong lanterns, broken markers, disturbed graves, or silence spreading through Deep Old Wood.",
+      "questOffer": "Rootling is the danger behind a local task in Deep Old Wood: investigate its signs, protect those in its path, and decide whether capture, cleansing, retreat, or force is justified.",
+      "farewell": "Rootling does not exchange farewells. The encounter ends only when the threat withdraws, surrenders, is dispersed, or lies still in Deep Old Wood."
     },
     "route": {
       "routeId": "monster_rootling_daily_route",
@@ -24857,7 +24857,7 @@ export const HARTHMERE_REMAINING_NPCS = [
       ]
     },
     "spawn": {
-      "x": 620.0,
+      "x": 620,
       "z": -503.9,
       "rot": 3.14,
       "scale": 1.25,
@@ -24883,11 +24883,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Thorn Imp carries a hidden detail tied to Deep Old Wood, Old Wood Monsters, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "Thorn Imp offers no greeting — only breath, the scrape of movement, and the far echo of a bell under stone.",
-      "service": "Read Thorn Imp before it reads you: watch its silhouette, how it moves, and where it lingers — that is your only warning.",
-      "rumor": "Folk in Harthmere trade quiet warnings about Thorn Imp long before anyone sees it — cold air, wrong sounds, a bell that should be still.",
-      "questOffer": "Thorn Imp is the reason more than one Harthmere task ends in danger — something to put down, cleanse, or drive back.",
-      "farewell": "Thorn Imp will not be reasoned with. It ends when it is put down, scattered, or driven back into the dark."
+      "greeting": "Thorn Imp offers no welcome in Deep Old Wood; movement, breath, and a ready weapon or unnatural stillness announce a forest monster threat.",
+      "service": "There is nothing to request from Thorn Imp. Read the ground and silhouette carefully, because survival in Deep Old Wood depends on recognizing its method before it closes.",
+      "rumor": "Warnings about Thorn Imp reach the roads before clear sightings do: wrong lanterns, broken markers, disturbed graves, or silence spreading through Deep Old Wood.",
+      "questOffer": "Thorn Imp is the danger behind a local task in Deep Old Wood: investigate its signs, protect those in its path, and decide whether capture, cleansing, retreat, or force is justified.",
+      "farewell": "Thorn Imp does not exchange farewells. The encounter ends only when the threat withdraws, surrenders, is dispersed, or lies still in Deep Old Wood."
     },
     "route": {
       "routeId": "monster_thorn_imp_daily_route",
@@ -25020,11 +25020,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Webbed Matron carries a hidden detail tied to Deep Old Wood, Old Wood Monsters, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "Webbed Matron offers no greeting — only breath, the scrape of movement, and the far echo of a bell under stone.",
-      "service": "Read Webbed Matron before it reads you: watch its silhouette, how it moves, and where it lingers — that is your only warning.",
-      "rumor": "Folk in Harthmere trade quiet warnings about Webbed Matron long before anyone sees it — cold air, wrong sounds, a bell that should be still.",
-      "questOffer": "Webbed Matron is the reason more than one Harthmere task ends in danger — something to put down, cleanse, or drive back.",
-      "farewell": "Webbed Matron will not be reasoned with. It ends when it is put down, scattered, or driven back into the dark."
+      "greeting": "Webbed Matron offers no welcome in Deep Old Wood; movement, breath, and a ready weapon or unnatural stillness announce a forest monster threat.",
+      "service": "There is nothing to request from Webbed Matron. Read the ground and silhouette carefully, because survival in Deep Old Wood depends on recognizing its method before it closes.",
+      "rumor": "Warnings about Webbed Matron reach the roads before clear sightings do: wrong lanterns, broken markers, disturbed graves, or silence spreading through Deep Old Wood.",
+      "questOffer": "Webbed Matron is the danger behind a local task in Deep Old Wood: investigate its signs, protect those in its path, and decide whether capture, cleansing, retreat, or force is justified.",
+      "farewell": "Webbed Matron does not exchange farewells. The encounter ends only when the threat withdraws, surrenders, is dispersed, or lies still in Deep Old Wood."
     },
     "route": {
       "routeId": "monster_webbed_matron_daily_route",
@@ -25157,11 +25157,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Rot-Stag carries a hidden detail tied to Deep Old Wood, Old Wood Monsters, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "Rot-Stag offers no greeting — only breath, the scrape of movement, and the far echo of a bell under stone.",
-      "service": "Read Rot-Stag before it reads you: watch its silhouette, how it moves, and where it lingers — that is your only warning.",
-      "rumor": "Folk in Harthmere trade quiet warnings about Rot-Stag long before anyone sees it — cold air, wrong sounds, a bell that should be still.",
-      "questOffer": "Rot-Stag is the reason more than one Harthmere task ends in danger — something to put down, cleanse, or drive back.",
-      "farewell": "Rot-Stag will not be reasoned with. It ends when it is put down, scattered, or driven back into the dark."
+      "greeting": "Rot-Stag offers no welcome in Deep Old Wood; movement, breath, and a ready weapon or unnatural stillness announce a forest monster threat.",
+      "service": "There is nothing to request from Rot-Stag. Read the ground and silhouette carefully, because survival in Deep Old Wood depends on recognizing its method before it closes.",
+      "rumor": "Warnings about Rot-Stag reach the roads before clear sightings do: wrong lanterns, broken markers, disturbed graves, or silence spreading through Deep Old Wood.",
+      "questOffer": "Rot-Stag is the danger behind a local task in Deep Old Wood: investigate its signs, protect those in its path, and decide whether capture, cleansing, retreat, or force is justified.",
+      "farewell": "Rot-Stag does not exchange farewells. The encounter ends only when the threat withdraws, surrenders, is dispersed, or lies still in Deep Old Wood."
     },
     "route": {
       "routeId": "monster_rot_stag_daily_route",
@@ -25294,11 +25294,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Witch-Crow carries a hidden detail tied to Deep Old Wood, Old Wood Monsters, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "Witch-Crow offers no greeting — only breath, the scrape of movement, and the far echo of a bell under stone.",
-      "service": "Read Witch-Crow before it reads you: watch its silhouette, how it moves, and where it lingers — that is your only warning.",
-      "rumor": "Folk in Harthmere trade quiet warnings about Witch-Crow long before anyone sees it — cold air, wrong sounds, a bell that should be still.",
-      "questOffer": "Witch-Crow is the reason more than one Harthmere task ends in danger — something to put down, cleanse, or drive back.",
-      "farewell": "Witch-Crow will not be reasoned with. It ends when it is put down, scattered, or driven back into the dark."
+      "greeting": "Witch-Crow offers no welcome in Deep Old Wood; movement, breath, and a ready weapon or unnatural stillness announce a forest monster threat.",
+      "service": "There is nothing to request from Witch-Crow. Read the ground and silhouette carefully, because survival in Deep Old Wood depends on recognizing its method before it closes.",
+      "rumor": "Warnings about Witch-Crow reach the roads before clear sightings do: wrong lanterns, broken markers, disturbed graves, or silence spreading through Deep Old Wood.",
+      "questOffer": "Witch-Crow is the danger behind a local task in Deep Old Wood: investigate its signs, protect those in its path, and decide whether capture, cleansing, retreat, or force is justified.",
+      "farewell": "Witch-Crow does not exchange farewells. The encounter ends only when the threat withdraws, surrenders, is dispersed, or lies still in Deep Old Wood."
     },
     "route": {
       "routeId": "monster_witch_crow_daily_route",
@@ -25431,11 +25431,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Hollow Treant carries a hidden detail tied to Deep Old Wood, Old Wood Monsters, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "Hollow Treant offers no greeting — only breath, the scrape of movement, and the far echo of a bell under stone.",
-      "service": "Read Hollow Treant before it reads you: watch its silhouette, how it moves, and where it lingers — that is your only warning.",
-      "rumor": "Folk in Harthmere trade quiet warnings about Hollow Treant long before anyone sees it — cold air, wrong sounds, a bell that should be still.",
-      "questOffer": "Hollow Treant is the reason more than one Harthmere task ends in danger — something to put down, cleanse, or drive back.",
-      "farewell": "Hollow Treant will not be reasoned with. It ends when it is put down, scattered, or driven back into the dark."
+      "greeting": "Hollow Treant offers no welcome in Deep Old Wood; movement, breath, and a ready weapon or unnatural stillness announce a forest monster threat.",
+      "service": "There is nothing to request from Hollow Treant. Read the ground and silhouette carefully, because survival in Deep Old Wood depends on recognizing its method before it closes.",
+      "rumor": "Warnings about Hollow Treant reach the roads before clear sightings do: wrong lanterns, broken markers, disturbed graves, or silence spreading through Deep Old Wood.",
+      "questOffer": "Hollow Treant is the danger behind a local task in Deep Old Wood: investigate its signs, protect those in its path, and decide whether capture, cleansing, retreat, or force is justified.",
+      "farewell": "Hollow Treant does not exchange farewells. The encounter ends only when the threat withdraws, surrenders, is dispersed, or lies still in Deep Old Wood."
     },
     "route": {
       "routeId": "monster_hollow_treant_daily_route",
@@ -25568,11 +25568,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Mossback Bear carries a hidden detail tied to Deep Old Wood, Old Wood Monsters, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "Mossback Bear offers no greeting — only breath, the scrape of movement, and the far echo of a bell under stone.",
-      "service": "Read Mossback Bear before it reads you: watch its silhouette, how it moves, and where it lingers — that is your only warning.",
-      "rumor": "Folk in Harthmere trade quiet warnings about Mossback Bear long before anyone sees it — cold air, wrong sounds, a bell that should be still.",
-      "questOffer": "Mossback Bear is the reason more than one Harthmere task ends in danger — something to put down, cleanse, or drive back.",
-      "farewell": "Mossback Bear will not be reasoned with. It ends when it is put down, scattered, or driven back into the dark."
+      "greeting": "Mossback Bear offers no welcome in Deep Old Wood; movement, breath, and a ready weapon or unnatural stillness announce a forest monster threat.",
+      "service": "There is nothing to request from Mossback Bear. Read the ground and silhouette carefully, because survival in Deep Old Wood depends on recognizing its method before it closes.",
+      "rumor": "Warnings about Mossback Bear reach the roads before clear sightings do: wrong lanterns, broken markers, disturbed graves, or silence spreading through Deep Old Wood.",
+      "questOffer": "Mossback Bear is the danger behind a local task in Deep Old Wood: investigate its signs, protect those in its path, and decide whether capture, cleansing, retreat, or force is justified.",
+      "farewell": "Mossback Bear does not exchange farewells. The encounter ends only when the threat withdraws, surrenders, is dispersed, or lies still in Deep Old Wood."
     },
     "route": {
       "routeId": "monster_mossback_bear_daily_route",
@@ -25705,11 +25705,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Root-Crowned Dead carries a hidden detail tied to Deep Old Wood, Old Wood Monsters, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "Root-Crowned Dead offers no greeting — only breath, the scrape of movement, and the far echo of a bell under stone.",
-      "service": "Read Root-Crowned Dead before it reads you: watch its silhouette, how it moves, and where it lingers — that is your only warning.",
-      "rumor": "Folk in Harthmere trade quiet warnings about Root-Crowned Dead long before anyone sees it — cold air, wrong sounds, a bell that should be still.",
-      "questOffer": "Root-Crowned Dead is the reason more than one Harthmere task ends in danger — something to put down, cleanse, or drive back.",
-      "farewell": "Root-Crowned Dead will not be reasoned with. It ends when it is put down, scattered, or driven back into the dark."
+      "greeting": "Root-Crowned Dead offers no welcome in Deep Old Wood; movement, breath, and a ready weapon or unnatural stillness announce a forest monster threat.",
+      "service": "There is nothing to request from Root-Crowned Dead. Read the ground and silhouette carefully, because survival in Deep Old Wood depends on recognizing its method before it closes.",
+      "rumor": "Warnings about Root-Crowned Dead reach the roads before clear sightings do: wrong lanterns, broken markers, disturbed graves, or silence spreading through Deep Old Wood.",
+      "questOffer": "Root-Crowned Dead is the danger behind a local task in Deep Old Wood: investigate its signs, protect those in its path, and decide whether capture, cleansing, retreat, or force is justified.",
+      "farewell": "Root-Crowned Dead does not exchange farewells. The encounter ends only when the threat withdraws, surrenders, is dispersed, or lies still in Deep Old Wood."
     },
     "route": {
       "routeId": "monster_root_crowned_dead_daily_route",
@@ -25842,11 +25842,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Reed Runner carries a hidden detail tied to Briarfen, River Knots, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Reed Runner. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "Reed Runner offers no welcome in Briarfen; movement, breath, and a ready weapon or unnatural stillness announce a smuggler threat.",
+      "service": "There is nothing to request from Reed Runner. Read the ground and silhouette carefully, because survival in Briarfen depends on recognizing its method before it closes.",
+      "rumor": "Warnings about Reed Runner reach the roads before clear sightings do: wrong lanterns, broken markers, disturbed graves, or silence spreading through Briarfen.",
+      "questOffer": "Reed Runner is the danger behind a local task in Briarfen: investigate its signs, protect those in its path, and decide whether capture, cleansing, retreat, or force is justified.",
+      "farewell": "Reed Runner does not exchange farewells. The encounter ends only when the threat withdraws, surrenders, is dispersed, or lies still in Briarfen."
     },
     "route": {
       "routeId": "smuggler_reed_runner_daily_route",
@@ -25981,11 +25981,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Lantern Signalman carries a hidden detail tied to Briarfen, River Knots, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Lantern Signalman. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "Lantern Signalman offers no welcome in Briarfen; movement, breath, and a ready weapon or unnatural stillness announce a smuggler threat.",
+      "service": "There is nothing to request from Lantern Signalman. Read the ground and silhouette carefully, because survival in Briarfen depends on recognizing its method before it closes.",
+      "rumor": "Warnings about Lantern Signalman reach the roads before clear sightings do: wrong lanterns, broken markers, disturbed graves, or silence spreading through Briarfen.",
+      "questOffer": "Lantern Signalman is the danger behind a local task in Briarfen: investigate its signs, protect those in its path, and decide whether capture, cleansing, retreat, or force is justified.",
+      "farewell": "Lantern Signalman does not exchange farewells. The encounter ends only when the threat withdraws, surrenders, is dispersed, or lies still in Briarfen."
     },
     "route": {
       "routeId": "smuggler_lantern_signalman_daily_route",
@@ -26120,11 +26120,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "False Fisherman carries a hidden detail tied to Briarfen, River Knots, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am False Fisherman. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "False Fisherman offers no welcome in Briarfen; movement, breath, and a ready weapon or unnatural stillness announce a smuggler threat.",
+      "service": "There is nothing to request from False Fisherman. Read the ground and silhouette carefully, because survival in Briarfen depends on recognizing its method before it closes.",
+      "rumor": "Warnings about False Fisherman reach the roads before clear sightings do: wrong lanterns, broken markers, disturbed graves, or silence spreading through Briarfen.",
+      "questOffer": "False Fisherman is the danger behind a local task in Briarfen: investigate its signs, protect those in its path, and decide whether capture, cleansing, retreat, or force is justified.",
+      "farewell": "False Fisherman does not exchange farewells. The encounter ends only when the threat withdraws, surrenders, is dispersed, or lies still in Briarfen."
     },
     "route": {
       "routeId": "smuggler_false_fisherman_daily_route",
@@ -26259,11 +26259,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Crate Guard carries a hidden detail tied to Briarfen, River Knots, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Crate Guard. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "Crate Guard offers no welcome in Briarfen; movement, breath, and a ready weapon or unnatural stillness announce a smuggler threat.",
+      "service": "There is nothing to request from Crate Guard. Read the ground and silhouette carefully, because survival in Briarfen depends on recognizing its method before it closes.",
+      "rumor": "Warnings about Crate Guard reach the roads before clear sightings do: wrong lanterns, broken markers, disturbed graves, or silence spreading through Briarfen.",
+      "questOffer": "Crate Guard is the danger behind a local task in Briarfen: investigate its signs, protect those in its path, and decide whether capture, cleansing, retreat, or force is justified.",
+      "farewell": "Crate Guard does not exchange farewells. The encounter ends only when the threat withdraws, surrenders, is dispersed, or lies still in Briarfen."
     },
     "route": {
       "routeId": "smuggler_crate_guard_daily_route",
@@ -26372,7 +26372,7 @@ export const HARTHMERE_REMAINING_NPCS = [
       ]
     },
     "spawn": {
-      "x": 650.0,
+      "x": 650,
       "z": -293.8,
       "rot": 3.14,
       "scale": 1.08,
@@ -26398,11 +26398,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Dock Knife carries a hidden detail tied to Briarfen, River Knots, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Dock Knife. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "Dock Knife offers no welcome in Briarfen; movement, breath, and a ready weapon or unnatural stillness announce a smuggler threat.",
+      "service": "There is nothing to request from Dock Knife. Read the ground and silhouette carefully, because survival in Briarfen depends on recognizing its method before it closes.",
+      "rumor": "Warnings about Dock Knife reach the roads before clear sightings do: wrong lanterns, broken markers, disturbed graves, or silence spreading through Briarfen.",
+      "questOffer": "Dock Knife is the danger behind a local task in Briarfen: investigate its signs, protect those in its path, and decide whether capture, cleansing, retreat, or force is justified.",
+      "farewell": "Dock Knife does not exchange farewells. The encounter ends only when the threat withdraws, surrenders, is dispersed, or lies still in Briarfen."
     },
     "route": {
       "routeId": "smuggler_dock_knife_daily_route",
@@ -26537,11 +26537,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "River Fence carries a hidden detail tied to Briarfen, River Knots, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am River Fence. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "River Fence offers no welcome in Briarfen; movement, breath, and a ready weapon or unnatural stillness announce a smuggler threat.",
+      "service": "There is nothing to request from River Fence. Read the ground and silhouette carefully, because survival in Briarfen depends on recognizing its method before it closes.",
+      "rumor": "Warnings about River Fence reach the roads before clear sightings do: wrong lanterns, broken markers, disturbed graves, or silence spreading through Briarfen.",
+      "questOffer": "River Fence is the danger behind a local task in Briarfen: investigate its signs, protect those in its path, and decide whether capture, cleansing, retreat, or force is justified.",
+      "farewell": "River Fence does not exchange farewells. The encounter ends only when the threat withdraws, surrenders, is dispersed, or lies still in Briarfen."
     },
     "route": {
       "routeId": "smuggler_river_fence_daily_route",
@@ -26676,11 +26676,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Smuggler Captain carries a hidden detail tied to Briarfen, River Knots, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Smuggler Captain. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
-      "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
-      "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
-      "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
-      "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
+      "greeting": "Smuggler Captain offers no welcome in Briarfen; movement, breath, and a ready weapon or unnatural stillness announce a smuggler threat.",
+      "service": "There is nothing to request from Smuggler Captain. Read the ground and silhouette carefully, because survival in Briarfen depends on recognizing its method before it closes.",
+      "rumor": "Warnings about Smuggler Captain reach the roads before clear sightings do: wrong lanterns, broken markers, disturbed graves, or silence spreading through Briarfen.",
+      "questOffer": "Smuggler Captain is the danger behind a local task in Briarfen: investigate its signs, protect those in its path, and decide whether capture, cleansing, retreat, or force is justified.",
+      "farewell": "Smuggler Captain does not exchange farewells. The encounter ends only when the threat withdraws, surrenders, is dispersed, or lies still in Briarfen."
     },
     "route": {
       "routeId": "smuggler_captain_daily_route",

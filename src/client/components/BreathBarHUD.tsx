@@ -5,6 +5,8 @@ import {
 } from "@/client/game/scripts/player";
 import { useAnimation } from "@/client/util/animation";
 import { secondsSinceEpoch } from "@/shared/ecs/config";
+import { nativeBiomesEcsAuthorityEnabled } from "@/shared/harthmere/native_road_ahead_contract";
+import { readHarthmereNativeVitals } from "@/shared/harthmere/harthmere_native_vitals";
 import { motion, useMotionValue, useTransform } from "framer-motion";
 import React, { useEffect, useState } from "react";
 
@@ -18,8 +20,12 @@ import React, { useEffect, useState } from "react";
 const BREATH_DURATION_S = (DROWN_DELAY_IN_TICKS * MILLISECONDS_PER_TICK) / 1000;
 
 export const BreathBarHUD: React.FunctionComponent = () => {
-  const { reactResources } = useClientContext();
+  const { reactResources, userId } = useClientContext();
   const localPlayer = reactResources.get("/scene/local_player");
+  const triggerState = reactResources.use("/ecs/c/trigger_state", userId);
+  const nativeVitals = readHarthmereNativeVitals(triggerState);
+  const useNativeBreath =
+    nativeBiomesEcsAuthorityEnabled() && nativeVitals.migrationVersion > 0;
   const canBreathe = reactResources.useSubset(
     (q) => q.canBreathe,
     "/players/possible_terrain_actions",
@@ -34,15 +40,29 @@ export const BreathBarHUD: React.FunctionComponent = () => {
   const underwater = canBreathe === false;
 
   useEffect(() => {
+    if (useNativeBreath) {
+      setExpiration(undefined);
+      return;
+    }
     if (!underwater) {
       setExpiration(undefined);
       return;
     }
     // Entered (or still) underwater — start a fresh 15s breath countdown.
     setExpiration(secondsSinceEpoch() + BREATH_DURATION_S);
-  }, [underwater]);
+  }, [underwater, useNativeBreath]);
 
   useAnimation(() => {
+    if (useNativeBreath) {
+      const elapsed = nativeVitals.underwater
+        ? Math.max(0, Date.now() - nativeVitals.lastTickMs) / 1000
+        : 0;
+      const remaining = nativeVitals.underwater
+        ? Math.max(0, nativeVitals.breath - elapsed)
+        : nativeVitals.maxBreath;
+      scaleX.set(Math.max(0, Math.min(1, remaining / nativeVitals.maxBreath)));
+      return;
+    }
     if (!underwater || expiration === undefined) {
       scaleX.set(1);
       return;

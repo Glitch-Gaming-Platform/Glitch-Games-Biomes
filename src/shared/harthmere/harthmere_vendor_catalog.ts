@@ -96,6 +96,8 @@ interface HarthmereVendorItemDefinitionSeed {
   stats?: Record<string, number>;
   tradeable?: boolean;
   durabilityMax?: number;
+  consumableCooldownCategory?: string;
+  consumableCooldownMs?: number;
 }
 
 const vendor = (
@@ -243,6 +245,7 @@ export const HARTHMERE_VENDOR_CATALOG: Record<number, HarthmereVendorProfile> =
         { itemId: "scroll_of_spark", quantity: 1, price: 45 },
         { itemId: "field_revival_scroll", quantity: 1, price: 110 },
         { itemId: "arcane_extractor", quantity: 1, price: 42 },
+        { itemId: "mana_draught", quantity: 3, price: 36 },
         { itemId: "mana_essence", quantity: 3, price: 28 },
         { itemId: "stabilized_exotic_matter", quantity: 1, price: 240 },
       ],
@@ -832,6 +835,18 @@ const HARTHMERE_VENDOR_ITEM_DEFINITIONS: Record<
     baseValue: 20,
     description: "Magical residue for scrolls, potions, and enchantments.",
   },
+  mana_draught: {
+    displayName: "Mana Draught",
+    category: "consumable",
+    maxStackSize: 20,
+    baseValue: 28,
+    isConsumable: true,
+    consumableCooldownCategory: "potion",
+    consumableCooldownMs: 30_000,
+    stats: { manaRestore: 35 },
+    description:
+      "A measured blue draught that restores 35 mana without consuming Mana Essence directly.",
+  },
   stabilized_exotic_matter: {
     displayName: "Stabilized Exotic Matter",
     category: "crafting_material",
@@ -852,8 +867,11 @@ const HARTHMERE_VENDOR_ITEM_DEFINITIONS: Record<
     category: "food",
     maxStackSize: 100,
     baseValue: 5,
-    isConsumable: true,
-    description: "Fresh fish used in cooking and stamina recovery.",
+    // Raw fish is a cooking ingredient. The food catalogue intentionally marks
+    // it non-edible, so exposing a native consume action would let players gain
+    // stamina from an uncooked item and bypass the cooking progression.
+    isConsumable: false,
+    description: "Fresh fish used in cooking before it can restore stamina.",
   },
   woodcutters_axe: {
     displayName: "Woodcutter's Axe",
@@ -1052,6 +1070,8 @@ function itemDefinitionFromSeed(
     category: seed.category,
     durabilityMax: seed.durabilityMax,
     repairable: seed.durabilityMax !== undefined,
+    consumableCooldownCategory: seed.consumableCooldownCategory,
+    consumableCooldownMs: seed.consumableCooldownMs,
   };
 }
 

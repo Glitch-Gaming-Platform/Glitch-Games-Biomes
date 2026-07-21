@@ -8,7 +8,10 @@ import type {
 import type { ItemAndCount, ItemContainer } from "@/shared/ecs/gen/types";
 import { anItem } from "@/shared/game/item";
 import { countOf } from "@/shared/game/items";
-import { harthmereNativeBiomesIdForItemId } from "@/shared/harthmere/harthmere_native_item_ids";
+import {
+  harthmereNativeBiomesIdForItemId,
+  harthmereNativeItemIdForBiomesId,
+} from "@/shared/harthmere/harthmere_native_item_ids";
 import type { BiomesId } from "@/shared/ids";
 import { safeParseBiomesId } from "@/shared/ids";
 
@@ -112,7 +115,7 @@ export function biomesIdToHarthmereItemId(
   if (!id) {
     return undefined;
   }
-  return `b:${id}`;
+  return harthmereNativeItemIdForBiomesId(id) ?? `b:${id}`;
 }
 
 // Every non-empty Harthmere id has a deterministic, exact native identity.

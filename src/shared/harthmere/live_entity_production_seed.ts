@@ -8,6 +8,7 @@ import {
   validateLiveEntityRobotProtectionAreas,
 } from "./live_entity_robot_energy_protection";
 import {
+  LIVE_ENTITY_HELPER_MUCK_BOSS_OFFSET,
   isLiveEntityHelperQuestExcludedPosition,
   isPositionInsideLiveEntityHelperBounds,
 } from "./live_entity_helper_quests";
@@ -83,12 +84,62 @@ function entityIdFromOffset(idOffset: number) {
   return (Number(SNAPSHOT_GROVE_LOCAL_DEV_NPC_BASE) + idOffset) as BiomesId;
 }
 
-function robotDialog(areaLabel: string) {
-  return [
-    `Power steady. ${areaLabel} remains shielded.`,
-    "If my energy drops, bring Stabilized Exotic Matter before the Muck spreads.",
-    "Recharge assistance pays in XP and field supplies.",
-  ];
+/** Quest-gated native boss; materialized only after accepting the contract. */
+export const HARTHMERE_NATIVE_MUCK_SCARRED_HELIX_SEED = {
+  seedId: "live-helper-muck-scarred-helix",
+  kind: "ambient_muck_monster",
+  entityId: entityIdFromOffset(LIVE_ENTITY_HELPER_MUCK_BOSS_OFFSET),
+  idOffset: LIVE_ENTITY_HELPER_MUCK_BOSS_OFFSET,
+  displayName: "Muck-Scarred Helix",
+  areaId: "west_muck_breach",
+  areaLabel: "West Muck Breach",
+  position: [236, 54, -506],
+  orientation: [0, 0] as Vec2,
+  dialog: "",
+  description:
+    "An elite Muck-Scarred Helix raised by the active breach contract.",
+  combatKind: "hex",
+  combatLevel: 5,
+  combatHp: 1800,
+  attackDamage: 140,
+  killXp: 500,
+} satisfies HarthmereLiveEntityProductionSeed;
+
+// Each sentinel reads a different landscape and failure mode. Area-keyed copy
+// prevents repeated recharge boilerplate and gives useful local warnings.
+function robotDialog(areaId: string, areaLabel: string) {
+  const authored: Readonly<Record<string, readonly [string, string, string]>> =
+    {
+      west_muck_breach: [
+        `West seal holding. I am measuring reality shear along ${areaLabel}, not merely visible Muck.`,
+        "My charge is the last stable margin between this breach and the road traffic east of it.",
+        "If my warning lamp turns violet, bring Stabilized Exotic Matter and approach from the marked stone line.",
+      ],
+      watchtower_muck_clearing: [
+        `Watchtower perimeter stable. From ${areaLabel}, I track both Muck movement and anyone using the ruined ridge as cover.`,
+        "Loose quarry stone distorts my ground readings, so I compare each surge against the old tower foundation.",
+        "A low battery here blinds the road before it opens the field; recharge me before the patrol markers disappear.",
+      ],
+      old_wood_mucker_copse: [
+        `Root pressure increasing around ${areaLabel}. The forest is moving independently of the Muck front.`,
+        "I keep my shield narrow here so the containment field does not scorch healthy roots with the corrupted growth.",
+        "For recharge, follow the blue stake lights and do not cut across the mushrooms inside my eastern arc.",
+      ],
+      gravewood_pale_muck: [
+        `Pale contamination contained at ${areaLabel}. Grave soil makes every energy fluctuation harder to classify.`,
+        "I distinguish fresh Muck disturbance from older burial damage before alerting the road wardens.",
+        "If I request charge, carry Stabilized Exotic Matter along the cairn path; the direct route crosses unstable graves.",
+      ],
+    };
+  return (
+    // New protection areas receive safe in-world copy until bespoke lines are
+    // authored, rather than shipping a silent sentinel.
+    authored[areaId] ?? [
+      `Containment steady at ${areaLabel}; I am watching for Muck movement beyond the marked boundary.`,
+      `My stored charge protects the roads and working ground nearest ${areaLabel}.`,
+      `If my warning lamp changes color, bring Stabilized Exotic Matter by the signed approach.`,
+    ]
+  );
 }
 
 function monsterDialog(areaLabel: string) {
@@ -190,7 +241,7 @@ export const HARTHMERE_LIVE_ENTITY_ROBOT_SENTINEL_SEEDS =
       areaLabel: area.label,
       position: [...area.anchor] as Vec3,
       orientation: [0, Math.PI / 2] as Vec2,
-      dialog: robotDialog(area.label)
+      dialog: robotDialog(area.areaId, area.label)
         .map((line) => `<text>${line}</text>`)
         .join("{break}"),
       description: `${displayName} keeps nearby Biomes protected from the Muck while its battery holds.`,

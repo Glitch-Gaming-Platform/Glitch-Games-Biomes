@@ -13,6 +13,7 @@ import {
 } from "@/server/logic/events/context/batch_context";
 import { LogicVersionedEntitySource } from "@/server/logic/events/context/versioned_entity_source";
 import { groupByHandler } from "@/server/logic/events/grouping";
+import { generatedIdsCollidingWithAuthoritativeState } from "@/server/logic/id_contention";
 import { registerEventIdPool } from "@/server/logic/events/processor";
 import type { LockMapScope } from "@/server/logic/lock_map";
 import { LockMap } from "@/server/logic/lock_map";
@@ -43,6 +44,7 @@ import type { ZrpcServer } from "@/server/shared/zrpc/server";
 import { registerRpcServer } from "@/server/shared/zrpc/server";
 import { secondsSinceEpoch } from "@/shared/ecs/config";
 import type { AnyEvent } from "@/shared/ecs/gen/events";
+import { changedBiomesId } from "@/shared/ecs/change";
 import type { BiomesId } from "@/shared/ids";
 import { log } from "@/shared/logging";
 import { createCounter } from "@/shared/metrics/metrics";
@@ -127,6 +129,11 @@ const logicAttempts = createCounter({
   help: "Count of overall logic batches",
 });
 
+const generatedIdCollisionCounter = createCounter({
+  name: "logic_generated_id_collisions",
+  help: "Generated entity IDs discarded after an authoritative ECS collision",
+});
+
 class LogicHandler {
   constructor(
     private readonly voxeloo: VoxelooModule,
@@ -187,8 +194,20 @@ class LogicHandler {
         allUsedIds.push(...usedIds);
       }
     }
+    const collidingGeneratedIds = generatedIdsCollidingWithAuthoritativeState(
+      proposals,
+      outcomes,
+      eagerChanges.map(changedBiomesId)
+    );
+    if (collidingGeneratedIds.length > 0) {
+      generatedIdCollisionCounter.inc(collidingGeneratedIds.length);
+      log.warn(
+        "Discarding generated IDs that collide with authoritative ECS entities",
+        { ids: collidingGeneratedIds }
+      );
+    }
     if (loan.size > 0) {
-      loan.commit(allUsedIds);
+      loan.commit(allUsedIds, collidingGeneratedIds);
     }
 
     // The transaction response may include updates we can eagerly apply to
@@ -325,9 +344,8 @@ void runServer(
       context.idGenerator,
       context.worldApi
     );
-    await npcRespawnService.start();
-
     await context.logicServer.start();
+    await npcRespawnService.start(context.replica.table);
     context.rpcServer.install(zLogicService, context.logicServer);
     await context.rpcServer.start(HostPort.rpcPort);
     return {

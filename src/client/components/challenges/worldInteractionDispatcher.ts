@@ -1,6 +1,10 @@
 import { useEffect, useRef, useSyncExternalStore } from "react";
 
 export const WORLD_INTERACTION_PRIORITY = {
+  // A deliberately active tool mode (camera/fishing/wand) owns its controls
+  // before any object behind the reticle. The player selected that mode and
+  // its HUD is the visible contract for F.
+  activeTool: 20_000,
   nativeEcs: 10_000,
   authoredStation: 6_000,
   authoredLoot: 5_000,

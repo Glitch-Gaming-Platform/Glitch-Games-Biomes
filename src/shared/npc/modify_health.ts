@@ -6,7 +6,10 @@ import { log } from "@/shared/logging";
 import { createCounter } from "@/shared/metrics/metrics";
 import type { NpcType } from "@/shared/npc/bikkie";
 import { idToNpcType } from "@/shared/npc/bikkie";
-import { deserializeNpcCustomState, serializeNpcCustomState } from "@/shared/npc/serde";
+import {
+  deserializeNpcCustomState,
+  serializeNpcCustomState,
+} from "@/shared/npc/serde";
 import { THREAT_PER_DAMAGE_DEALT, addThreat } from "@/shared/npc/threat";
 
 const npcDeaths = createCounter({
@@ -82,16 +85,22 @@ function onNpcDeath(
     `NPC id "${npc.id}" (${npcTypeName}) has died (reason: "${deathReasonText}").`
   );
 
-  // Reset their expiry to be much sooner, to clean up the
-  // no-longer-active NPC.
+  // Keep the corpse through the respawn deadline plus the animation linger.
+  // The logic service reconstructs `respawnAt = expires - linger` after a
+  // restart, so the ECS entity itself remains the durable lifecycle record.
   npc.setRigidBody({ velocity: [0, 0, 0] });
 
-  const newExpiryTime = secondsSinceEpoch + NPC_CORPSE_LINGER_SECS;
+  const respawnAt = scheduleNpcRespawnIfPersistent(
+    npc,
+    npcType,
+    secondsSinceEpoch
+  );
+  const newExpiryTime = respawnAt
+    ? respawnAt + NPC_CORPSE_LINGER_SECS
+    : secondsSinceEpoch + NPC_CORPSE_LINGER_SECS;
   if (!npc.expires() || npc.expires()!.trigger_at > newExpiryTime) {
     npc.mutableExpires().trigger_at = newExpiryTime;
   }
-
-  scheduleNpcRespawnIfPersistent(npc, npcType, secondsSinceEpoch);
 }
 
 type RespawnEntry = {
@@ -124,9 +133,9 @@ function scheduleNpcRespawnIfPersistent(
     (npcType as any).role === "innkeeper" ||
     (npcType as any).role === "guard";
   if (!wantsRespawn) {
-    return;
+    return undefined;
   }
-  respawnEnqueue?.({
+  const entry = {
     typeId: npc.npcMetadata().type_id,
     spawnPosition: [...npc.position().v] as [number, number, number],
     spawnOrientation: npc.npcMetadata().spawn_orientation
@@ -134,7 +143,9 @@ function scheduleNpcRespawnIfPersistent(
       : undefined,
     respawnAt: secondsSinceEpoch + respawnAfter,
     previousId: npc.id,
-  });
+  };
+  respawnEnqueue?.(entry);
+  return entry.respawnAt;
 }
 
 function recordThreatFromDamage(
@@ -151,8 +162,14 @@ function recordThreatFromDamage(
     const anyNpc = npc as any;
     const decoded = deserializeNpcCustomState(anyNpc.npcState?.()?.data);
     decoded.threat ??= { table: {} };
-    addThreat(decoded.threat.table, damageSource.attacker, damage * THREAT_PER_DAMAGE_DEALT);
-    anyNpc.setNpcState?.(NpcState.create({ data: serializeNpcCustomState(decoded) }));
+    addThreat(
+      decoded.threat.table,
+      damageSource.attacker,
+      damage * THREAT_PER_DAMAGE_DEALT
+    );
+    anyNpc.setNpcState?.(
+      NpcState.create({ data: serializeNpcCustomState(decoded) })
+    );
   } catch (error) {
     log.warn(`Unable to record NPC threat from damage: ${error}`);
   }

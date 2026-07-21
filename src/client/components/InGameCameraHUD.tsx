@@ -1,6 +1,8 @@
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
 import { usePointerLockManager } from "@/client/components/contexts/PointerLockContext";
 import { ShortcutText } from "@/client/components/system/ShortcutText";
+import { WORLD_INTERACTION_PRIORITY } from "@/client/components/challenges/worldInteractionDispatcher";
+import { handleCameraKeyDown } from "@/client/components/inventory/HotBar";
 import { useScreenshotter } from "@/client/game/helpers/screenshot";
 import { cleanListener } from "@/client/util/helpers";
 import { BikkieIds } from "@/shared/bikkie/ids";
@@ -18,7 +20,7 @@ import React, {
 
 export const InGameCameraHUD: React.FunctionComponent<{}> = ({}) => {
   const clientContext = useClientContext();
-  const { input, reactResources, audioManager } = clientContext;
+  const { input, reactResources, audioManager, events } = clientContext;
   const selection = reactResources.use("/hotbar/selection");
   const [locked, setLocked] = useState(false);
   const pointerLockManager = usePointerLockManager();
@@ -95,7 +97,17 @@ export const InGameCameraHUD: React.FunctionComponent<{}> = ({}) => {
 
           <div className="camera-hud">
             <div className="absolute bottom-1 right-1 font-semibold text-shadow-bordered">
-              <ShortcutText shortcut="F" keyCode="KeyF">
+              <ShortcutText
+                shortcut="F"
+                keyCode="KeyF"
+                worldInteractionCandidateId="active-tool:camera-mode"
+                worldInteractionPriority={WORLD_INTERACTION_PRIORITY.activeTool}
+                onKeyDown={() => {
+                  if (selection.kind !== "camera") return;
+                  handleCameraKeyDown(reactResources, events, selection);
+                  audioManager.playSound("camera_flip");
+                }}
+              >
                 {cameraAction}
               </ShortcutText>{" "}
             </div>

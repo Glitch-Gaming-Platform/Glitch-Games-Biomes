@@ -1,4 +1,5 @@
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
+import { WORLD_INTERACTION_PRIORITY } from "@/client/components/challenges/worldInteractionDispatcher";
 import { InventoryCellContents } from "@/client/components/inventory/InventoryCellContents";
 import { ShortcutText } from "@/client/components/system/ShortcutText";
 import { MarchHelper } from "@/client/game/helpers/march";
@@ -121,6 +122,8 @@ export const FishMeterOverlayComponent: React.FunctionComponent<{
             <ShortcutText
               shortcut="F"
               keyCode="KeyF"
+              worldInteractionCandidateId="active-tool:fish-meter-bait"
+              worldInteractionPriority={WORLD_INTERACTION_PRIORITY.activeTool}
               onKeyDown={() =>
                 setBaitIndex((v) => {
                   if (v === undefined) {

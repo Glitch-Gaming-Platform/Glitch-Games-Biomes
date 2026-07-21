@@ -48,6 +48,8 @@ export interface HarthmereHomeConsoleWorldContext {
   nearbyPropertyId?: string | null;
   nearbyConsoleId?: string | null;
   interactionKeyLabel?: string;
+  /** Exact physical console used to require a faced, not merely nearby, F target. */
+  interactionPosition?: HarthmereHomeConsoleWorldPoint;
 }
 
 export interface HarthmereHomeConsoleWorldPoint {
@@ -132,10 +134,7 @@ export interface HarthmereHomeConsoleAdapter {
   ) => HarthmereHomeConsoleInteractionPrompt;
   placeDecoration: (
     itemId: string,
-    payload?: Omit<
-      HarthmereHomeConsoleSubmitPayload,
-      "operation" | "itemId"
-    >
+    payload?: Omit<HarthmereHomeConsoleSubmitPayload, "operation" | "itemId">
   ) => Promise<void>;
   moveDecoration: (
     decorationId: string,
@@ -347,7 +346,10 @@ function visibleDefinitions(
     .filter((definition) => definition.allowedPropertyUses.includes("home"))
     .map((definition) => {
       const item = getHarthmereItemDefinition(definition.itemId);
-      const ownedCount = Math.max(0, snapshot.inventoryItems[definition.itemId] ?? 0);
+      const ownedCount = Math.max(
+        0,
+        snapshot.inventoryItems[definition.itemId] ?? 0
+      );
       return {
         definition,
         item,
@@ -367,11 +369,15 @@ function visibleSeeds(
 ): HarthmereHomeConsoleVisibleSeed[] {
   return listHarthmereHomeDecorationGardenSeeds().map((seed) => {
     const item = getHarthmereItemDefinition(seed.seedItemId);
-    const ownedCount = Math.max(0, snapshot.inventoryItems[seed.seedItemId] ?? 0);
+    const ownedCount = Math.max(
+      0,
+      snapshot.inventoryItems[seed.seedItemId] ?? 0
+    );
     return {
       ...seed,
       displayName:
-        item?.displayName ?? formatHarthmereHomeConsolePlayerLabel(seed.seedItemId),
+        item?.displayName ??
+        formatHarthmereHomeConsolePlayerLabel(seed.seedItemId),
       ownedCount,
       canPlant: canAccess && ownedCount > 0,
     };
@@ -418,7 +424,9 @@ function visiblePlaced(
         canRemove: canAccess,
         gardenStatus: status,
         gardenLabel: garden
-          ? `${formatHarthmereHomeConsolePlayerLabel(garden.cropItemId)} x${garden.cropCount}`
+          ? `${formatHarthmereHomeConsolePlayerLabel(garden.cropItemId)} x${
+              garden.cropCount
+            }`
           : undefined,
       };
     });
@@ -458,7 +466,9 @@ export function getHarthmereHomeConsolePanel(
   const snapshot = normalizeHarthmereHomeConsoleClientSnapshot(snapshotInput);
   const property = resolveProperty(snapshot, context);
   if (!property) {
-    return defaultPanel(context.insideHome ? "missing_property" : "not_inside_home");
+    return defaultPanel(
+      context.insideHome ? "missing_property" : "not_inside_home"
+    );
   }
   const marker = markerForProperty(snapshot, property);
   const access = canAccessHarthmereHomeConsole(property, {
@@ -551,6 +561,11 @@ export function nearestHarthmereHomeConsoleWorldContext(
     insideHome: true,
     nearbyConsoleId: best.marker.markerId,
     nearbyPropertyId: property?.propertyId,
+    interactionPosition: {
+      x: best.marker.position[0],
+      y: best.marker.position[1],
+      z: best.marker.position[2],
+    },
   };
 }
 
@@ -669,7 +684,10 @@ export async function submitHarthmereHomeDecorationMutation(
   }
   const body = await response.json();
   const warnings: string[] =
-    body?.backendMutation?.warnings ?? body?.summary?.warnings ?? body?.warnings ?? [];
+    body?.backendMutation?.warnings ??
+    body?.summary?.warnings ??
+    body?.warnings ??
+    [];
   const rejected = warnings.filter((warning) =>
     String(warning).startsWith("home_decoration_rejected:")
   );
@@ -711,7 +729,8 @@ export function createHarthmereHomeConsoleAdapter({
     }
     updateState(body.buildingState);
   };
-  const propertyId = () => getHarthmereHomeConsolePanel(current, context).property?.propertyId;
+  const propertyId = () =>
+    getHarthmereHomeConsolePanel(current, context).property?.propertyId;
   const withProperty = (
     payload: HarthmereHomeConsoleSubmitPayload
   ): HarthmereHomeConsoleSubmitPayload => ({
@@ -728,7 +747,9 @@ export function createHarthmereHomeConsoleAdapter({
     getInteractionPrompt: (nextContext) =>
       getHarthmereHomeConsoleInteractionPrompt(current, nextContext),
     placeDecoration: (itemId, payload = {}) =>
-      mutate(withProperty({ ...payload, operation: "place_decoration", itemId })),
+      mutate(
+        withProperty({ ...payload, operation: "place_decoration", itemId })
+      ),
     moveDecoration: (decorationId, position, rotationDegrees) =>
       mutate({
         operation: "move_decoration",

@@ -378,10 +378,16 @@ export const InventoryTab: React.FunctionComponent<{
     hotbar.items.find((item): item is InventoryUiItem => Boolean(item)) ??
     null;
   const overflowItems = backpack.overflow ?? [];
-  const firstEmptyBackpackIndex = React.useMemo(
-    () => backpack.items.findIndex((item) => !item),
-    [backpack.items]
-  );
+  const firstEmptyBackpackIndex = React.useMemo(() => {
+    const empty = backpack.items.findIndex((item) => !item);
+    return empty >= 0
+      ? empty
+      : backpack.items.length < backpack.maxSlots
+      ? backpack.items.length
+      : -1;
+  }, [backpack.items, backpack.maxSlots]);
+  const selectedEquipmentBlockedByFullBackpack =
+    selectedItem?.source === "equipment" && firstEmptyBackpackIndex < 0;
   const inventoryRevision = [
     ...backpack.items,
     ...hotbar.items,
@@ -1102,11 +1108,16 @@ export const InventoryTab: React.FunctionComponent<{
                     Boolean(pendingAction) ||
                     !selectedItem.ref ||
                     selectedItem.source !== "equipment" ||
-                    selectedItem.canUnequip === false
+                    selectedItem.canUnequip === false ||
+                    selectedEquipmentBlockedByFullBackpack
                   }
                   data-inventory-action="unequip"
                 >
-                  {pendingAction === "unequip" ? "Unequipping…" : "Unequip"}
+                  {pendingAction === "unequip"
+                    ? "Unequipping…"
+                    : selectedEquipmentBlockedByFullBackpack
+                    ? "Backpack full"
+                    : "Unequip"}
                 </button>
               </Highlightable>
               <Highlightable
@@ -1127,6 +1138,7 @@ export const InventoryTab: React.FunctionComponent<{
                   disabled={
                     Boolean(pendingAction) ||
                     !selectedItem.ref ||
+                    selectedItem.hotbarEligible !== true ||
                     selectedItem.canMove === false
                   }
                   data-inventory-action="move-hotbar"

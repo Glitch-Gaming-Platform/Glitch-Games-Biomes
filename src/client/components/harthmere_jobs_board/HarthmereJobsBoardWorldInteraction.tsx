@@ -10,6 +10,7 @@ import {
 import {
   harthmereJobsBoardCameraPosition,
   harthmereJobsBoardPlayerPosition,
+  harthmereWorldTargetIsFaced,
 } from "./harthmereJobsBoardPosition";
 import { HARTHMERE_JOBS_BOARD_OPEN_EVENT } from "@/client/components/challenges/harthmereEvents";
 import { HarthmereJobsBoardLiveContainer } from "./HarthmereJobsBoardLiveContainer";
@@ -68,6 +69,10 @@ export function HarthmereJobsBoardWorldInteraction({
     [playerPosition?.x, playerPosition?.y, playerPosition?.z]
   );
   const activePrompt = prompt;
+  const targetFaced = harthmereWorldTargetIsFaced(
+    camera,
+    activePrompt?.position
+  );
   const promptBlocked = suppressPrompt || (anyUiOpen && !openBoardId);
 
   const open = React.useCallback(
@@ -105,7 +110,7 @@ export function HarthmereJobsBoardWorldInteraction({
 
   const worldCandidate = React.useMemo(
     () =>
-      activePrompt && !promptBlocked
+      activePrompt && targetFaced && !promptBlocked
         ? {
             id: `harthmere:jobs-board:${activePrompt.boardId}`,
             priority:
@@ -116,12 +121,18 @@ export function HarthmereJobsBoardWorldInteraction({
               open(event.code === "KeyF" ? "keyboard_f" : "keyboard_e"),
           }
         : undefined,
-    [activePrompt, open, promptBlocked]
+    [activePrompt, open, promptBlocked, targetFaced]
   );
   const ownsInteraction = useWorldInteractionCandidate(worldCandidate);
 
   React.useEffect(() => {
-    if (!activePrompt || promptBlocked || typeof window === "undefined") return;
+    if (
+      !activePrompt ||
+      !targetFaced ||
+      promptBlocked ||
+      typeof window === "undefined"
+    )
+      return;
     const handler = (event: MouseEvent) => {
       if (
         event.defaultPrevented ||
@@ -142,7 +153,7 @@ export function HarthmereJobsBoardWorldInteraction({
     };
     window.addEventListener("click", handler, true);
     return () => window.removeEventListener("click", handler, true);
-  }, [activePrompt, open, promptBlocked]);
+  }, [activePrompt, open, promptBlocked, targetFaced]);
 
   React.useEffect(() => {
     return () => {

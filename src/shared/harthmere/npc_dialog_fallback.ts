@@ -230,9 +230,46 @@ export function harthmereFallbackNpcOptions(input: {
   const displayName = input.name?.trim() || "this local";
   const context = [input.name, input.description].join(" ").toLowerCase();
   const role = fallbackNpcRelationshipRole(displayName, context);
-  const worldLine = /grove|harthmere|muck|fountain|guild|road/.test(context)
-    ? "I trust small habits to keep the Grove alive: check the boards, share food before exhaustion wins, and tell Jackie when the roads start acting strange."
-    : "I keep the economy law simple in public and hard in practice: record the work, respect closed shops, and never pretend a found thing has no owner.";
+  const district = harthmereDistrictFromContext(context);
+  // This path runs only when richer authored options are unavailable. Facts
+  // remain public and observational, and naming the speaker keeps same-district
+  // fallbacks unique.
+  const placeLore: Readonly<Record<string, string>> = {
+    "North Gate":
+      "the gate measures carts, papers, and patience by daylight, then becomes the last warm warning before the roads after dusk",
+    "Market Square":
+      "bread prices, fountain gossip, and stall permits reveal shortages before officials are ready to name them",
+    "Craftsman Row":
+      "every hammer, saw, and repair bench here supports work in districts that rarely notice who kept their roofs and tools sound",
+    "River Docks":
+      "the river brings food and trade, but wet rope, altered manifests, and a crew's sudden silence deserve equal attention",
+    "Temple Green":
+      "charity, grave tending, and old faith share this green, though the chapel's calm has felt carefully maintained of late",
+    "Noble Rise":
+      "deeds and polished manners travel downhill from these houses, while their consequences usually arrive elsewhere first",
+    "Mudden Ward":
+      "patched roofs, flood marks, and neighborly warnings keep this ward alive more reliably than promises made uphill",
+    "Old Well / Underways":
+      "wet stone and old passages carry sounds farther than expected, so sensible people mark their route and disturb nothing casually",
+    Gravewood:
+      "grave stones have shifted, pale animals avoid familiar paths, and silence among the birds is often the first honest warning",
+    Briarfen:
+      "a safe plank and a false patch of reeds can look identical until the fen decides what weight it will bear",
+    "Deep Old Wood":
+      "the forest is older than Harthmere's claims, and a path that moved overnight should be treated as a warning rather than an invitation",
+  };
+  // Resolve a known district first. The old broad Harthmere/Muck match leaked a
+  // Jackie-and-Grove response into town, wilds, and outpost conversations.
+  const worldLine = district
+    ? `I am ${displayName}, and from ${district} I can tell you this: ${
+        placeLore[district] ??
+        "local work, shortages, and road warnings matter more than whatever rumor is loudest today"
+      }.`
+    : /\bgrove\b|fountain|jackie/.test(context)
+    ? `I am ${displayName}. The Grove survives through shared food, maintained paths, honest board notices, and warnings passed on before a road turns dangerous.`
+    : /harthmere|muck|guild|road/.test(context)
+    ? `I am ${displayName}. Harthmere distrusts Exotic Matter for good historical reasons, but fear is not a substitute for careful observation, responsible work, or truth.`
+    : `I am ${displayName}. Around here, record the work, respect closed shops and owned ground, and never pretend a found thing has no owner.`;
   return [
     {
       name: "Ask about this place",

@@ -162,6 +162,14 @@ export interface HarthmereLiveModeAuthorityEnvelope {
   serverActorPosition?: { x: number; y: number; z: number };
   /** Exact server-read native inventory/wearing ids used for tool gates. */
   serverActorItemIds?: BiomesId[];
+  /** Canonical keys for only the server-read selected/worn items. */
+  serverActorEquippedItemKeys?: string[];
+  /**
+   * Exact native inventory counts translated to canonical Harthmere item keys
+   * by the server. Client inventory mirrors are never accepted as turn-in
+   * evidence.
+   */
+  serverActorItemCounts?: Record<string, number>;
   serverTargetPosition?: { x: number; y: number; z: number };
   clientSentAtMs?: number;
   serverReceivedAtMs: number;

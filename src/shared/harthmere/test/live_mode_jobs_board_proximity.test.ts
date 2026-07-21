@@ -270,7 +270,6 @@ describe("live-mode jobs board accept/proximity current", () => {
       "active"
     );
 
-    accepted.state.inventory.items.repair_part = 2;
     const questDone = applyAction(
       accepted.state,
       "request_quest_state_update",
@@ -280,9 +279,29 @@ describe("live-mode jobs board accept/proximity current", () => {
         completedTargetId: "fixture_1",
         completionItemDeltas: { repair_part: -2 },
       },
-      { subsystem: "quest" }
+      {
+        subsystem: "quest",
+        // Native ECS inventory is authoritative in production. The reducer
+        // validates the server-observed stack count and emits an atomic ECS
+        // exchange instead of mutating the legacy Redis inventory mirror.
+        serverActorItemCounts: { repair_part: 2 },
+        serverActorPosition: {
+          x: 501.99486179104775,
+          y: 70,
+          z: -132.00350672753194,
+        },
+      }
     );
     assert.equal(questDone.state.inventory.items.repair_part ?? 0, 0);
+    const exchange = questDone.summary.nativeEcsMaterializationPlans?.find(
+      (plan) => plan.kind === "inventory_exchange"
+    );
+    assert.ok(
+      exchange,
+      "quest completion should materialize a native exchange"
+    );
+    assert.deepEqual(exchange.consumeItemStacks, { repair_part: 2 });
+    assert.deepEqual(exchange.rewardItemStacks, {});
     assert.equal(
       questDone.state.jobsBoard.todos[todo!.todoId].status,
       "completed"

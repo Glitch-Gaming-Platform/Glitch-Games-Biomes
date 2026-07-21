@@ -24,6 +24,7 @@ import { ShopOverlayComponent } from "@/client/components/overlays/inspected/pla
 import { SignOverlayComponent } from "@/client/components/overlays/inspected/placeables/SignOverlayComponent";
 import { TextSignOverlayComponent } from "@/client/components/overlays/inspected/placeables/TextSignOverlayComponent";
 import { VideoOverlayComponent } from "@/client/components/overlays/inspected/placeables/VideoOverlayComponent";
+import { resolveNativePlaceableInteractionRole } from "@/client/components/overlays/inspected/interactionRoleResolver";
 import { MinigameElementOverlayComponent } from "@/client/components/overlays/projected/MinigameElementOverlayComponent";
 import { NameOverlayComponent } from "@/client/components/overlays/projected/NameOverlayComponent";
 import { NavigationAidOverlayComponent } from "@/client/components/overlays/projected/NavigationAidOverlayComponent";
@@ -69,48 +70,50 @@ export const OverlayComponent: React.FunctionComponent<{
 
     case "placeable":
       const item = anItem(overlay.itemId);
-      if (item.isFrame) {
-        return <FramePlaceableOverlayComponent overlay={overlay} />;
+      // Resolve one native role before rendering a shortcut. This prevents the
+      // render order (or quest_giver metadata read later by CursorInspection)
+      // from silently changing the handler behind the visible F prompt.
+      switch (
+        resolveNativePlaceableInteractionRole({
+          isMailbox: item.isMailbox,
+          isShopContainer: item.isShopContainer,
+          isContainer: item.isContainer,
+          isCraftingStation: item.isCraftingStation,
+          isCookStation: isHarthmerePlacedCookStationItem(item),
+          isDoor: item.isDoor,
+          isReadable: Boolean(item.readable),
+          isCustomizableTextSign: item.isCustomizableTextSign,
+          isOutfitStand: item.isOutfitStand,
+          isMediaPlayer: item.isMediaPlayer,
+          isMinigame: isMinigamePlaceableItem(item),
+          isFrame: item.isFrame,
+        })
+      ) {
+        case "mailbox":
+          return <MailboxOverlayComponent overlay={overlay} />;
+        case "shop":
+          return <ShopOverlayComponent overlay={overlay} />;
+        case "container":
+          return <ContainerOverlayComponent overlay={overlay} />;
+        case "crafting_station":
+          return <CraftingStationOverlayComponent overlay={overlay} />;
+        case "door":
+          return <DoorOverlayComponent overlay={overlay} />;
+        case "readable":
+          return <SignOverlayComponent overlay={overlay} />;
+        case "text_sign":
+          return <TextSignOverlayComponent overlay={overlay} />;
+        case "outfit_stand":
+          return <OutfitStandOverlayComponent overlay={overlay} />;
+        case "media":
+          return <VideoOverlayComponent overlay={overlay} />;
+        case "minigame":
+          return <MinigamePlaceableOverlay overlay={overlay} />;
+        case "frame":
+          return <FramePlaceableOverlayComponent overlay={overlay} />;
+        case "inspect":
+          return <CursorInspectionComponent overlay={overlay} />;
       }
-      if (item.isContainer) {
-        return <ContainerOverlayComponent overlay={overlay} />;
-      }
-      if (item.readable) {
-        return <SignOverlayComponent overlay={overlay} />;
-      }
-      if (item.isShopContainer) {
-        return <ShopOverlayComponent overlay={overlay} />;
-      }
-      if (item.isDoor) {
-        return <DoorOverlayComponent overlay={overlay} />;
-      }
-      if (item.isCraftingStation) {
-        return <CraftingStationOverlayComponent overlay={overlay} />;
-      }
-      // A placed campfire / oven / cookpot / fire pit is a cooking station that
-      // is not flagged isCraftingStation. Route it to the same overlay so the
-      // cook "F" prompt opens the cooking panel (CraftingStationOverlayComponent
-      // already splits cook vs craft via HARTHMERE_PLACED_COOK_STATION_RE).
-      if (isHarthmerePlacedCookStationItem(item)) {
-        return <CraftingStationOverlayComponent overlay={overlay} />;
-      }
-      if (item.isOutfitStand) {
-        return <OutfitStandOverlayComponent overlay={overlay} />;
-      }
-      if (item.isMediaPlayer) {
-        return <VideoOverlayComponent overlay={overlay} />;
-      }
-      if (item.isCustomizableTextSign) {
-        return <TextSignOverlayComponent overlay={overlay} />;
-      }
-      if (item.isMailbox) {
-        return <MailboxOverlayComponent overlay={overlay} />;
-      }
-      if (isMinigamePlaceableItem(item)) {
-        return <MinigamePlaceableOverlay overlay={overlay} />;
-      }
-
-      return <CursorInspectionComponent overlay={overlay} />;
 
     case "robot":
       return <RobotInspectionOverlayComponent overlay={overlay} />;

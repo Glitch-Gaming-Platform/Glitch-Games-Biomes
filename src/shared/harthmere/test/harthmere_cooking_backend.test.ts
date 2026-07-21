@@ -17,7 +17,8 @@ let seq = 0;
 
 function envelope(
   payload: Record<string, unknown>,
-  nowMs = NOW
+  nowMs = NOW,
+  serverActorItemCounts: Record<string, number> = {}
 ): HarthmereLiveModeAuthorityEnvelope {
   seq += 1;
   return {
@@ -33,6 +34,8 @@ function envelope(
     zoneId: "the_grove",
     payload,
     clientClaims: {},
+    serverActorPosition: { x: 0, y: 0, z: 0 },
+    serverActorItemCounts,
   };
 }
 
@@ -45,9 +48,14 @@ function freshState(): HarthmereLiveModeBackendState {
 function reduce(
   state: HarthmereLiveModeBackendState,
   payload: Record<string, unknown>,
-  nowMs = NOW
+  nowMs = NOW,
+  serverActorItemCounts: Record<string, number> = state.inventory.items
 ) {
-  return reduceHarthmereLiveModeBackendState(state, envelope(payload, nowMs), nowMs);
+  return reduceHarthmereLiveModeBackendState(
+    state,
+    envelope(payload, nowMs, serverActorItemCounts),
+    nowMs
+  );
 }
 
 const READY_AT = NOW + 10 * 60_000; // well past the longest (120s) cook time
@@ -63,18 +71,29 @@ describe("Harthmere live-mode cooking backend", () => {
       count: 1,
     });
     assert.deepEqual(
-      enq.summary.warnings.filter((w: string) => w.startsWith("cooking_rejected")),
-      [],
+      enq.summary.warnings.filter((w: string) =>
+        w.startsWith("cooking_rejected")
+      ),
+      []
     );
     const station = enq.state.farming.cooking["ecs:1"];
     assert.ok(station, "station recorded in farming.cooking");
     assert.equal(station.jobs.length, 1);
     assert.equal(station.jobs[0].status, "cooking");
-    assert.equal(enq.state.inventory.items.raw_meat, 1); // one reserved
+    assert.equal(enq.state.inventory.items.raw_meat, 2);
+    const enqueuePlan = enq.summary.nativeEcsMaterializationPlans?.find(
+      (plan) => plan.kind === "inventory_exchange"
+    );
+    assert.equal(enqueuePlan?.kind, "inventory_exchange");
+    if (enqueuePlan?.kind === "inventory_exchange") {
+      assert.equal(enqueuePlan.actorId, ACTOR);
+      assert.deepEqual(enqueuePlan.consumeItemStacks, { raw_meat: 1 });
+      assert.deepEqual(enqueuePlan.rewardItemStacks, {});
+    }
 
     // Client snapshot projects the station + an in-progress job.
     const snapshot = createHarthmereLiveModeFarmingFoodClientSnapshot(
-      enq.state,
+      enq.state
     ) as any;
     assert.equal(snapshot.cookingStations.length, 1);
     assert.equal(snapshot.cookingStations[0].jobs[0].recipeId, "grilled_meat");
@@ -93,10 +112,11 @@ describe("Harthmere live-mode cooking backend", () => {
       enq.state,
       { operation: "cook_collect", stationId: "ecs:1", jobId },
       NOW + 1,
+      { raw_meat: 1 }
     );
     assert.ok(
       early.summary.warnings.includes("cooking_rejected:not_ready"),
-      JSON.stringify(early.summary.warnings),
+      JSON.stringify(early.summary.warnings)
     );
     assert.equal(early.state.inventory.items.grilled_meat ?? 0, 0);
   });
@@ -114,19 +134,24 @@ describe("Harthmere live-mode cooking backend", () => {
       enq.state,
       { operation: "cook_collect", stationId: "ecs:1", jobId },
       READY_AT,
+      { raw_meat: 1 }
     );
     assert.deepEqual(
       collected.summary.warnings.filter((w: string) =>
-        w.startsWith("cooking_rejected"),
+        w.startsWith("cooking_rejected")
       ),
-      [],
+      []
     );
-    assert.equal(collected.state.inventory.items.grilled_meat, 1);
+    assert.equal(collected.state.inventory.items.grilled_meat ?? 0, 0);
+    const collectPlan = collected.summary.nativeEcsMaterializationPlans?.find(
+      (plan) => plan.kind === "inventory_exchange"
+    );
+    assert.deepEqual(collectPlan?.rewardItemStacks, { grilled_meat: 1 });
     assert.equal(collected.state.farming.cooking["ecs:1"], undefined);
     assert.ok(
       (collected.state.classMagic.skills.cooking?.xp ?? 0) >=
         HARTHMERE_COOKING_RECIPES.grilled_meat.xp,
-      JSON.stringify(collected.state.classMagic.skills.cooking),
+      JSON.stringify(collected.state.classMagic.skills.cooking)
     );
   });
 
@@ -138,14 +163,19 @@ describe("Harthmere live-mode cooking backend", () => {
       recipeId: "grilled_meat",
       count: 1,
     });
-    assert.equal(enq.state.inventory.items.raw_meat, 1);
+    assert.equal(enq.state.inventory.items.raw_meat, 2);
     const jobId = enq.state.farming.cooking["ecs:1"].jobs[0].jobId;
     const cancelled = reduce(
       enq.state,
       { operation: "cook_cancel", stationId: "ecs:1", jobId },
       NOW + 1,
+      { raw_meat: 1 }
     );
-    assert.equal(cancelled.state.inventory.items.raw_meat, 2); // refunded
+    assert.equal(cancelled.state.inventory.items.raw_meat, 2);
+    const cancelPlan = cancelled.summary.nativeEcsMaterializationPlans?.find(
+      (plan) => plan.kind === "inventory_exchange"
+    );
+    assert.deepEqual(cancelPlan?.rewardItemStacks, { raw_meat: 1 });
     assert.equal(cancelled.state.farming.cooking["ecs:1"], undefined);
   });
 
@@ -164,31 +194,35 @@ describe("Harthmere live-mode cooking backend", () => {
       enq.state,
       { operation: "cook_collect", stationId: "ecs:1", jobId },
       NOW + 3 * 60 * 60 * 1000,
+      { raw_meat: 1 }
     );
     assert.equal(late.state.farming.cooking["ecs:1"], undefined);
     assert.equal(late.state.inventory.items.grilled_meat ?? 0, 0);
     assert.ok(
       late.summary.warnings.some((w: string) =>
-        w.startsWith("cooking_rejected"),
+        w.startsWith("cooking_rejected")
       ),
-      JSON.stringify(late.summary.warnings),
+      JSON.stringify(late.summary.warnings)
     );
   });
 
   it("rejects an oven recipe at a campfire station", () => {
     const enq = reduce(
-      { ...freshState(), inventory: { items: { wild_berries: 2, loaf_bread: 1, fresh_milk: 1 } } } as any,
+      {
+        ...freshState(),
+        inventory: { items: { wild_berries: 2, loaf_bread: 1, fresh_milk: 1 } },
+      } as any,
       {
         operation: "cook_enqueue",
         stationId: "ecs:1",
         stationKind: "campfire",
         recipeId: "berry_tart",
         count: 1,
-      },
+      }
     );
     assert.ok(
       enq.summary.warnings.includes("cooking_rejected:missing_station:oven"),
-      JSON.stringify(enq.summary.warnings),
+      JSON.stringify(enq.summary.warnings)
     );
   });
 });

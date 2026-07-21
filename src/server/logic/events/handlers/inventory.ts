@@ -9,6 +9,10 @@ import {
   makeEventHandler,
   newId,
 } from "@/server/logic/events/core";
+import {
+  canonicalClaimFromEntityId,
+  validateClaimStep,
+} from "@/server/logic/events/handlers/quest_step_validation";
 import { q } from "@/server/logic/events/query";
 import type { WithInventory } from "@/server/logic/events/with_inventory";
 import { newDrop } from "@/server/logic/utils/drops";
@@ -41,6 +45,12 @@ import {
 } from "@/shared/game/items";
 import { CONTAINER_ACCESS_ACL_ACTION } from "@/shared/game/container_access";
 import { stringToItemBag } from "@/shared/game/items_serde";
+import {
+  nativeRoadAheadContainerClaimForItem,
+  nativeRoadAheadContainerSpecForLabel,
+  NATIVE_ROAD_AHEAD_PRIVATE_CONTAINER_DESCRIPTION,
+  NATIVE_ROAD_AHEAD_QUEST_ID,
+} from "@/shared/harthmere/native_road_ahead_contract";
 import type { ReadonlyBiomesId } from "@/shared/ids";
 import { INVALID_BIOMES_ID } from "@/shared/ids";
 import { log } from "@/shared/logging";
@@ -117,6 +127,20 @@ function checkInventoryPermissions(
     return true;
   }
 
+  if (isOwnedRoadAheadQuestContainer(player, entity)) {
+    // Hidden quest inventories have no placeable component because rendering a
+    // second crate at the source would duplicate geometry. Ownership plus the
+    // copied source position supplies the same security boundary as a normal
+    // storage placeable: only its player can use it, and only while nearby.
+    const containerPosition = entity.staleOk().position()?.v;
+    const playerPosition = player.staleOk().position()?.v;
+    return Boolean(
+      containerPosition &&
+        playerPosition &&
+        dist(containerPosition, playerPosition) <= CONFIG.gameMaxTalkDistance
+    );
+  }
+
   const placeableComponent = entity.placeableComponent();
   if (placeableComponent) {
     // Moving items through a storage placeable is an interaction. Destruction
@@ -128,30 +152,152 @@ function checkInventoryPermissions(
   return false;
 }
 
+function isOwnedRoadAheadQuestContainer(
+  player: ReadonlyDeltaWith<"id">,
+  entity: ReadonlyDeltaWith<"id">
+) {
+  return Boolean(
+    !entity.placeableComponent() &&
+      entity.containerInventory() &&
+      entity.questGiver() &&
+      entity.createdBy()?.id === player.id &&
+      entity.entityDescription()?.text ===
+        NATIVE_ROAD_AHEAD_PRIVATE_CONTAINER_DESCRIPTION &&
+      nativeRoadAheadContainerSpecForLabel(entity.label()?.text)
+  );
+}
+
+function prepareRoadAheadContainerClaim(
+  src: WithInventory,
+  dst: WithInventory,
+  player: ReadonlyDeltaWith<"id">,
+  itemId: ReadonlyBiomesId
+) {
+  // Only movement out of the player's private quest container and into that
+  // same player's inventory is a claim. Storing items, rearranging slots, and
+  // moving arbitrary non-reward items remain ordinary native inventory ops.
+  if (
+    dst.delta().id !== player.id ||
+    !isOwnedRoadAheadQuestContainer(player, src.delta())
+  ) {
+    return undefined;
+  }
+  const claim = nativeRoadAheadContainerClaimForItem(
+    src.delta().label()?.text,
+    itemId
+  );
+  if (!claim) return undefined;
+
+  const validation = validateClaimStep({
+    challengeId: NATIVE_ROAD_AHEAD_QUEST_ID,
+    stepId: claim.stepId,
+    questTrigger: getBiscuit(NATIVE_ROAD_AHEAD_QUEST_ID).trigger,
+    challenges: player.challenges(),
+    triggerStateForChallenge: player
+      .triggerState()
+      ?.by_root.get(NATIVE_ROAD_AHEAD_QUEST_ID),
+    claimEntity: {
+      entityId: src.delta().id,
+      placeableItemId: claim.placeableItemId,
+      isMyRobot: false,
+    },
+  });
+  if (!validation.ok) {
+    // A completed step means the player stored their already-owned item back
+    // into the container. Allowing them to retrieve it is idempotent; every
+    // other failure is an out-of-order or forged reward claim.
+    if (validation.reason === "step_already_completed") {
+      return { alreadyCompleted: true as const };
+    }
+    throw new RollbackError(
+      `Road Ahead container claim rejected: ${validation.reason}`
+    );
+  }
+  return { claim, validation, alreadyCompleted: false as const };
+}
+
+function finishRoadAheadContainerClaim(
+  src: WithInventory,
+  player: ReadonlyDeltaWith<"id">,
+  prepared: ReturnType<typeof prepareRoadAheadContainerClaim>,
+  context: EventContext<InvolvedSpecification>,
+  preserveSourceRef?: ReadonlyOwnedItemReference
+) {
+  if (!prepared || prepared.alreadyCompleted) return;
+
+  // A reward group is a choice, not a loot-all list. Clear the unchosen top or
+  // bottoms atomically with the transfer so concurrent drags cannot duplicate
+  // alternatives or race quest progression.
+  const siblingIds = new Set<ReadonlyBiomesId>(prepared.claim.siblingItemIds);
+  const slots = src.delta().containerInventory()?.items ?? [];
+  for (let idx = 0; idx < slots.length; idx += 1) {
+    const ref = { kind: "item" as const, idx };
+    // A swap may put an item the player already owned into the source slot.
+    // Preserve that exact slot while removing only the untouched seeded
+    // alternatives elsewhere in the quest container.
+    if (
+      preserveSourceRef?.kind === "item" &&
+      preserveSourceRef.idx === ref.idx
+    ) {
+      continue;
+    }
+    const slot = src.inventory.get(ref);
+    if (slot && siblingIds.has(slot.item.id)) {
+      src.inventory.set(ref, undefined);
+    }
+  }
+
+  context.publish({
+    kind: "completeQuestStepAtEntity",
+    challenge: NATIVE_ROAD_AHEAD_QUEST_ID,
+    claimFromEntityId: canonicalClaimFromEntityId(
+      prepared.validation,
+      src.delta().id
+    ),
+    entityId: player.id,
+    chosenRewardIndex: prepared.claim.chosenRewardIndex,
+    stepId: prepared.claim.stepId,
+    // The selected item was already moved by the native inventory transaction.
+    // The trigger must advance without granting the same reward a second time.
+    skipRewardGrant: true,
+  });
+}
+
 const inventorySwapEventHandler = makeInventoryEventHandler<InventorySwapEvent>(
   "inventorySwapEvent",
-  ({ src, dst }, event) => {
+  ({ src, dst, player }, event, context) => {
     const a = src.inventory.get(event.src);
     const b = dst.inventory.get(event.dst);
+    const prepared = a
+      ? prepareRoadAheadContainerClaim(src, dst, player, a.item.id)
+      : undefined;
     src.inventory.set(event.src, b);
     dst.inventory.set(event.dst, a);
+    finishRoadAheadContainerClaim(src, player, prepared, context, event.src);
   }
 );
 
 const inventoryCombineEventHandler =
   makeInventoryEventHandler<InventoryCombineEvent>(
     "inventoryCombineEvent",
-    ({ src, dst }, event) => {
+    ({ src, dst, player }, event, context) => {
       const a = src.inventory.get(event.src);
       const b = dst.inventory.get(event.dst);
       if (!a) {
         throw new Error("Ignoring combine from empty source slot!");
         return;
       }
+      const prepared = prepareRoadAheadContainerClaim(
+        src,
+        dst,
+        player,
+        a.item.id
+      );
       if (!b) {
         // No destination, just move it.
         src.inventory.set(event.src, undefined);
         dst.inventory.set(event.dst, a);
+        finishRoadAheadContainerClaim(src, player, prepared, context);
         return;
       }
 
@@ -166,9 +312,10 @@ const inventoryCombineEventHandler =
         count: b.count + event.count,
       });
       src.inventory.set(event.src, {
-        ...b,
+        ...a,
         count: a.count - event.count,
       });
+      finishRoadAheadContainerClaim(src, player, prepared, context);
     }
   );
 

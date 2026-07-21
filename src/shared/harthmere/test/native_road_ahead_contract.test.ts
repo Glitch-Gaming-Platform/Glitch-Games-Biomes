@@ -1,13 +1,17 @@
 import assert from "assert";
 import {
+  NATIVE_ROAD_AHEAD_CONTAINER_SPECS,
   NATIVE_ROAD_AHEAD_MUCKWAD_ITEM_ID,
   NATIVE_ROAD_AHEAD_ORDERED_STEP_IDS,
   NATIVE_ROAD_AHEAD_QUEST_ID,
   NATIVE_ROAD_AHEAD_STEP_IDS,
   isNativeRoadAheadQuestObjectLabel,
+  nativeRoadAheadContainerClaimForItem,
+  nativeRoadAheadContainerItemIds,
   nativeQuestGiverUsesEcsDialogue,
   nativeRoadAheadEcsAuthorityEnabled,
 } from "@/shared/harthmere/native_road_ahead_contract";
+import { BikkieIds } from "@/shared/bikkie/ids";
 
 describe("native Road Ahead snapshot contract", () => {
   const originalSyntheticFlag =
@@ -60,6 +64,14 @@ describe("native Road Ahead snapshot contract", () => {
       true
     );
     assert.equal(nativeQuestGiverUsesEcsDialogue(undefined), false);
+    assert.equal(
+      nativeQuestGiverUsesEcsDialogue(
+        { concurrent_quests: 1 },
+        "Clothing Crate"
+      ),
+      false,
+      "quest metadata must not turn a storage prop into an NPC"
+    );
     process.env.NEXT_PUBLIC_BIOMES_NATIVE_ECS_AUTHORITY = "0";
     assert.equal(
       nativeQuestGiverUsesEcsDialogue({ concurrent_quests: 1 }),
@@ -68,9 +80,39 @@ describe("native Road Ahead snapshot contract", () => {
     delete process.env.NEXT_PUBLIC_BIOMES_NATIVE_ECS_AUTHORITY;
   });
 
-  it("recognizes the snapshot quest-giver containers that must not be locally looted", () => {
+  it("recognizes the snapshot quest-giver containers that use private native inventory", () => {
     assert.equal(isNativeRoadAheadQuestObjectLabel("Clothing Crate"), true);
     assert.equal(isNativeRoadAheadQuestObjectLabel("Billy's Toolbag"), true);
     assert.equal(isNativeRoadAheadQuestObjectLabel("First-Aid Bin"), false);
+  });
+
+  it("seeds exact native Mucky clothing and maps transfers to original claim leaves", () => {
+    assert.deepEqual(nativeRoadAheadContainerItemIds("Clothing Crate"), [
+      BikkieIds.muckyTop,
+      BikkieIds.muckySkirt,
+    ]);
+    assert.deepEqual(nativeRoadAheadContainerItemIds("Billy's Toolbag"), [
+      NATIVE_ROAD_AHEAD_CONTAINER_SPECS.billysToolbag.choices[0].seedItemId,
+    ]);
+    assert.deepEqual(
+      nativeRoadAheadContainerClaimForItem(
+        "Clothing Crate",
+        BikkieIds.muckyTop
+      ),
+      {
+        placeableItemId:
+          NATIVE_ROAD_AHEAD_CONTAINER_SPECS.clothingCrate.placeableItemId,
+        stepId: NATIVE_ROAD_AHEAD_STEP_IDS.CHOOSE_TOP,
+        chosenRewardIndex: 0,
+        siblingItemIds: [
+          BikkieIds.muckyTop,
+          ...NATIVE_ROAD_AHEAD_CONTAINER_SPECS.clothingCrate.choices[0].itemIds,
+        ],
+      }
+    );
+    assert.equal(
+      nativeRoadAheadContainerClaimForItem("First-Aid Bin", BikkieIds.muckyTop),
+      undefined
+    );
   });
 });

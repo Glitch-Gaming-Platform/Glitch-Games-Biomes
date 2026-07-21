@@ -11,6 +11,13 @@ Keep source folders for runtime code and tests; put gameplay/reference documents
 - `NATIVE_ECS_WORLD_SYSTEMS_IMPLEMENTATION_2026-07-20.md` - implemented jobs,
   loot, gathering/farming, living-entity, robot, property/decor, and terrain
   materialization authority repairs, migration rules, and deployment checks.
+- `HARTHMERE_NATIVE_ECS_COMBAT.md` - one-authority native combat, exact NPC and
+  item identity, server validation, migration, and verification matrix.
+- `HARTHMERE_NATIVE_ECS_VITALS.md` - native health, mana, stamina, breath,
+  social standing, gold, consumables, drowning, and Grove respawn authority.
+- `HARTHMERE_F_INTERACTION_AUTHORITY.md` - capability-first `F` routing,
+  Road Ahead private containers, authored fallback receipts, pending UI, and
+  the interaction regression matrix.
 - `HARTHMERE_TDD_BOOT_AND_TOWN_TESTS.md` - local boot, testing, placement, and town TDD rules.
 - `PERFORMANCE_AND_PLACEMENT.md` - runtime placement and performance guidance.
 - `HARTHMERE_PRODUCTION_TERRAIN_PLACEMENT_MAP.md` - terrain placement map generation and resolver rules.
@@ -55,17 +62,28 @@ overwrite native slots. Native hotbar stacks likewise stay in
 `/ecs/c/inventory.hotbar`; BiomesUI lists them in the backpack view for count
 visibility without cloning or projecting the stack.
 
-Native quest reward objects (including the Road Ahead Clothing Crate and
-Billy's Toolbag) must stay in the quest-giver dialog path. Their buttons publish
-`CompleteQuestStepAtEntityEvent`, wait while the event is in flight, and grant
-the exact Bikkie item ids authored in the challenge. Generic Harthmere container
-handling is only for non-native crates.
+Native quest metadata never replaces an object's physical capability. The Road
+Ahead Clothing Crate and Billy's Toolbag open player-private native ECS
+`container_inventory` entities seeded once with the exact snapshot Bikkie
+items. Native inventory swaps own taking and storing; the server validates the
+matching quest step from the same transfer and advances it without minting a
+duplicate reward. Reopening, relogging, or using another browser observes the
+same private container, and an emptied container never reseeds.
 
 Containers must preserve the distinction between hidden quest helpers and visible
 world objects. Hidden/inactive quest containers must not show an `F` prompt and
 must not block movement. Visible crates, chests, boxes, bags, and toolbags should
 keep their `F` prompt and open through the normal object-container panel even
 when they are quest-related.
+
+All `F` interactions use capability-first routing. Container, plant, GrabBag,
+shop, crafting/cooking, door, readable, media/minigame, outfit, and living-NPC
+components select the action before labels or quest metadata are considered.
+Exactly one central dispatcher candidate wins. Active tools may intentionally
+override the world target; targetless farming actions may not. Label-authored
+fallback actions such as read, repair, tend, practice, use, and take-photo must
+receive a proximity-validated server receipt before quest or toast consequences
+run. Repair additionally requires server-observed native equipped-tool proof.
 
 Jobs-board quests have two distinct completion moments: field objective complete
 and payout claimed. Field completion must leave the job active/claimable, route

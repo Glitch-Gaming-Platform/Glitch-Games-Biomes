@@ -41,15 +41,51 @@ describe("business owner NPC seeds", () => {
   });
 
   it("gives every owner a unique entity id, offset, and human name", () => {
-    const ids = new Set(HARTHMERE_BUSINESS_OWNER_NPC_SEEDS.map((s) => s.entityId));
-    const offsets = new Set(HARTHMERE_BUSINESS_OWNER_NPC_SEEDS.map((s) => s.idOffset));
-    const names = new Set(HARTHMERE_BUSINESS_OWNER_NPC_SEEDS.map((s) => s.displayName));
+    const ids = new Set(
+      HARTHMERE_BUSINESS_OWNER_NPC_SEEDS.map((s) => s.entityId)
+    );
+    const offsets = new Set(
+      HARTHMERE_BUSINESS_OWNER_NPC_SEEDS.map((s) => s.idOffset)
+    );
+    const names = new Set(
+      HARTHMERE_BUSINESS_OWNER_NPC_SEEDS.map((s) => s.displayName)
+    );
     assert.equal(ids.size, HARTHMERE_BUSINESS_OWNER_NPC_SEEDS.length);
     assert.equal(offsets.size, HARTHMERE_BUSINESS_OWNER_NPC_SEEDS.length);
     assert.equal(names.size, HARTHMERE_BUSINESS_OWNER_NPC_SEEDS.length);
     for (const seed of HARTHMERE_BUSINESS_OWNER_NPC_SEEDS) {
       assert.ok(seed.displayName.trim().length > 0);
       assert.ok(seed.line.trim().length > 0);
+      assert.equal(seed.ambientLines.length, 2);
+    }
+  });
+
+  it("gives every owner unique ambient dialogue separate from job offers", () => {
+    const ambient = new Set<string>();
+    const jobOffers = new Set<string>();
+    for (const seed of HARTHMERE_BUSINESS_OWNER_NPC_SEEDS) {
+      for (const line of [seed.line, ...seed.ambientLines]) {
+        assert.ok(
+          line.length > 45,
+          `${seed.ownerNpcId} ambient line is too short`
+        );
+        assert.ok(
+          !ambient.has(line),
+          `${seed.ownerNpcId} repeats ambient dialogue`
+        );
+        ambient.add(line);
+      }
+      for (const line of seed.extraLines) {
+        assert.ok(
+          !ambient.has(line),
+          `${seed.ownerNpcId} job offer leaked into ambient dialogue`
+        );
+        assert.ok(
+          !jobOffers.has(line),
+          `${seed.ownerNpcId} repeats a job offer`
+        );
+        jobOffers.add(line);
+      }
     }
   });
 
@@ -92,7 +128,11 @@ describe("business owner NPC seeds", () => {
       );
       assert.ok(site, `missing safe site for ${seed.outpostId}`);
       // Authored at the building floor Y — the grounding system keeps them here.
-      assert.equal(seed.position[1], site?.groundY, `${seed.ownerNpcId} off-floor`);
+      assert.equal(
+        seed.position[1],
+        site?.groundY,
+        `${seed.ownerNpcId} off-floor`
+      );
       assert.ok(
         Number.isFinite(seed.position[0]) && Number.isFinite(seed.position[2])
       );

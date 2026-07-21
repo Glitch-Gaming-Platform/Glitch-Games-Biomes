@@ -20,6 +20,7 @@ import {
 import {
   harthmereJobsBoardCameraPosition,
   harthmereJobsBoardPlayerPosition,
+  harthmereWorldTargetIsFaced,
 } from "../harthmereJobsBoardPosition";
 
 const FIXTURE: HarthmereJobsBoardSnapshot = {
@@ -143,6 +144,27 @@ describe("harthmere_jobs_board proximity gate (current)", () => {
         three: { position: { toArray: () => [503, 71, -133] } },
       }),
       { x: 503, y: 71, z: -133 }
+    );
+  });
+
+  it("requires a nearby board to be inside the camera's forward cone", () => {
+    const camera = {
+      pos: () => [0, 0, 0],
+      view: () => [0, 0, -1],
+    };
+    assert.equal(
+      harthmereWorldTargetIsFaced(camera, { x: 0, y: 0, z: -5 }),
+      true
+    );
+    assert.equal(
+      harthmereWorldTargetIsFaced(camera, { x: 0, y: 0, z: 5 }),
+      false,
+      "a closer board behind the player must not own F"
+    );
+    assert.equal(
+      harthmereWorldTargetIsFaced(camera, { x: 5, y: 0, z: 0 }),
+      false,
+      "a side board outside the forward cone must not own F"
     );
   });
 

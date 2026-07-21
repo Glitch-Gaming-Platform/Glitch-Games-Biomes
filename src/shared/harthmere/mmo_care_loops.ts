@@ -4,8 +4,7 @@ import {
 } from "@/shared/harthmere/mmo_farming_food_stamina";
 import { HARTHMERE_SKILL_XP_PER_LEVEL } from "@/shared/harthmere/mmo_class_ability_collectibles";
 
-export const HARTHMERE_CARE_LOOPS_VERSION =
-  "harthmere-care-loops" as const;
+export const HARTHMERE_CARE_LOOPS_VERSION = "harthmere-care-loops" as const;
 export const HARTHMERE_CARE_LOOP_DAY_MS = 24 * 60 * 60 * 1000;
 export const HARTHMERE_DAILY_TASK_MIN_GOLD = 200;
 /** Daily-return retention hook: the headline daily check-in pays an escalating streak bonus
@@ -18,6 +17,7 @@ export const HARTHMERE_DAILY_TASK_COUNT = 8;
 
 export type HarthmereCareLoopKind =
   | "daily_task_completed"
+  | "world_object_interaction"
   | "daily_check_in"
   | "npc_talk"
   | "npc_gift"
@@ -66,6 +66,23 @@ export interface HarthmereCareLoopState {
   townNeeds: Record<string, number>;
   skills: Record<string, { xp: number; level: number }>;
   seasonal: Record<string, number>;
+  /**
+   * Server receipts for authored object interactions that do not own a native
+   * ECS component yet. Native containers/plants/stations never use this path;
+   * it exists so read/repair/tend/practice/use fallbacks are authoritative
+   * server actions instead of browser-only toasts.
+   */
+  worldInteractions: Record<
+    string,
+    {
+      objectId: string;
+      kind: string;
+      label: string;
+      count: number;
+      lastAtMs: number;
+      lastRequestId: string;
+    }
+  >;
 }
 
 export interface HarthmereCareLoopRequest {
@@ -224,6 +241,7 @@ export function defaultHarthmereCareLoopState(
     townNeeds: { food: 50, safety: 50, housing: 50, happiness: 50 },
     skills: {},
     seasonal: {},
+    worldInteractions: {},
   };
 }
 
@@ -283,6 +301,11 @@ export function normalizeHarthmereCareLoopState(
     seasonal:
       typeof parsed.seasonal === "object" && parsed.seasonal !== null
         ? parsed.seasonal
+        : {},
+    worldInteractions:
+      typeof parsed.worldInteractions === "object" &&
+      parsed.worldInteractions !== null
+        ? parsed.worldInteractions
         : {},
   };
 }
@@ -344,11 +367,7 @@ function bumpNeed(care: HarthmereCareLoopState, need: string, delta: number) {
   };
 }
 
-function addSkillXp(
-  care: HarthmereCareLoopState,
-  skillId: string,
-  xp: number
-) {
+function addSkillXp(care: HarthmereCareLoopState, skillId: string, xp: number) {
   const current = care.skills[skillId] ?? { xp: 0, level: 1 };
   const nextXp = current.xp + xp;
   return {
@@ -453,7 +472,8 @@ export function reduceHarthmereCareLoop(
           ) * HARTHMERE_DAILY_STREAK_BONUS_GOLD
         : 0;
     const goldReward =
-      Math.max(HARTHMERE_DAILY_TASK_MIN_GOLD, reward.gold ?? 0) + streakBonusGold;
+      Math.max(HARTHMERE_DAILY_TASK_MIN_GOLD, reward.gold ?? 0) +
+      streakBonusGold;
     const needBump: Record<string, [string, number]> = {
       check_in: ["happiness", 2],
       jobs_board: ["safety", 2],

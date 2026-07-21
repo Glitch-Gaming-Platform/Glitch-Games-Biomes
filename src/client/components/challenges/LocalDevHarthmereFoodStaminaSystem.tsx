@@ -22,6 +22,7 @@ import { useClientContext } from "@/client/components/contexts/ClientContextReac
 import { anItem } from "@/shared/game/item";
 import { PlaceableSelector } from "@/shared/ecs/gen/selectors";
 import { HARTHMERE_CRAFTING_TABLE_PROMPT_RADIUS } from "@/shared/harthmere/harthmere_crafting_table_proximity";
+import { nativeBiomesEcsAuthorityEnabled } from "@/shared/harthmere/native_road_ahead_contract";
 import React, { useEffect, useState } from "react";
 
 export const HARTHMERE_FOOD_STAMINA_STATE_KEY =
@@ -206,10 +207,7 @@ export function readHarthmereFoodStaminaState(): HarthmereFoodStaminaState {
     }
     // Nothing persisted: prefer this session's in-memory value over a fresh
     // default so a storage-blocked iframe doesn't reset stamina every read.
-    return (
-      inMemoryFoodStaminaState ??
-      normalizeFoodStaminaState(undefined)
-    );
+    return inMemoryFoodStaminaState ?? normalizeFoodStaminaState(undefined);
   } catch {
     // localStorage read threw (blocked/partitioned iframe).
     return (
@@ -383,7 +381,9 @@ export const HarthmereFoodStaminaRuntimeController: React.FunctionComponent<{}> 
         // window must never wake the client starvation sim back up (that was
         // the "randomly dying and reviving" loop in production).
         const plan = harthmereClientStaminaTickPlanForTest({
-          liveSnapshotPresent: harthmereLiveServerAuthoritative(),
+          liveSnapshotPresent:
+            nativeBiomesEcsAuthorityEnabled() ||
+            harthmereLiveServerAuthoritative(),
           stamina: before.stamina,
           deadFromStaminaAtMs: before.deadFromStaminaAtMs,
         });
@@ -472,7 +472,9 @@ export const HarthmereCampfireWarmthRuntimeController: React.FunctionComponent<{
           hp: combat.player.hp,
           maxHp: combat.player.maxHp,
           combatState: combat.player.combatState,
-          liveSnapshotPresent: harthmereLiveServerAuthoritative(),
+          liveSnapshotPresent:
+            nativeBiomesEcsAuthorityEnabled() ||
+            harthmereLiveServerAuthoritative(),
         });
         if (decision.shouldHeal && decision.amount > 0) {
           healHarthmerePlayer(decision.amount, "Campfire warmth");

@@ -107,6 +107,8 @@ import {
 } from "./mmo_economy_authority";
 import {
   HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
+  HARTHMERE_JOBS_BOARD_FIELD_COMPLETION_RADIUS,
+  HARTHMERE_BUSINESS_OWNER_MARKER_PREFIX,
   HARTHMERE_JOBS_BOARD_GROVE_MARKET_BOARD_MARKER_ID,
   createHarthmereJobsBoardClientSnapshotAtTime,
   defaultHarthmereJobsBoardState,
@@ -117,7 +119,15 @@ import {
   type HarthmereJobsBoardState,
 } from "./mmo_jobs_board_authority";
 import { isKnownHarthmereJobsBoardExecutableItemId } from "./jobs_board_business_templates";
-import { SNAPSHOT_GROVE_QUESTS } from "./snapshot_grove_content";
+import {
+  SNAPSHOT_GROVE_QUESTS,
+  snapshotGroveLandmarkById,
+} from "./snapshot_grove_content";
+import {
+  harthmereObjectInteractionForLabel,
+  type HarthmereObjectInteractionKind,
+} from "./object_interaction_semantics";
+import { HARTHMERE_WORLD_OBJECT_INSPECT_RADIUS } from "./harthmere_world_object_inspectable";
 import {
   snapshotGroveCollectEventMatchesObjective,
   snapshotGroveInventoryEventMatchesObjective,
@@ -141,7 +151,10 @@ import {
   type HarthmereBibleQuestRewardInstructions,
 } from "./bible_quest_live_authority";
 import { applyThaedrynBossEvent } from "./thaedryn_boss";
-import { harthmereJobsBoardQuestMarkerRuntimePositionForTodo } from "./jobs_board_quest_marker_positions";
+import {
+  harthmereJobsBoardQuestMarkerRuntimePositionForId,
+  harthmereJobsBoardQuestMarkerRuntimePositionForTodo,
+} from "./jobs_board_quest_marker_positions";
 import {
   harthmereJobMarkerPlan,
   type HarthmereJobProgress,
@@ -1914,8 +1927,25 @@ export interface HarthmereNativeEcsDropMaterializationPlan {
   sourceKind: string;
 }
 
+/**
+ * Atomically consumes native player inventory and creates a native reward
+ * GrabBag. A receipt entity makes the exchange replay-safe if the response is
+ * lost after the ECS transaction commits.
+ */
+export interface HarthmereNativeEcsInventoryExchangeMaterializationPlan {
+  kind: "inventory_exchange";
+  materializationKey: string;
+  actorId: string;
+  position: { x: number; y: number; z: number };
+  consumeItemStacks: Record<string, number>;
+  rewardItemStacks: Record<string, number>;
+  expiresAtMs: number;
+  sourceKind: string;
+}
+
 export type HarthmereNativeEcsMaterializationPlan =
-  HarthmereNativeEcsDropMaterializationPlan;
+  | HarthmereNativeEcsDropMaterializationPlan
+  | HarthmereNativeEcsInventoryExchangeMaterializationPlan;
 
 function recordDelta(
   target: Record<string, number>,
@@ -5014,6 +5044,191 @@ function distanceSq3(
   return dx * dx + dy * dy + dz * dz;
 }
 
+const HARTHMERE_AUTHORITATIVE_FALLBACK_INTERACTIONS =
+  new Set<HarthmereObjectInteractionKind>([
+    "open_door",
+    "open_gate",
+    "read",
+    "use",
+    "repair",
+    "recover",
+    "tend",
+    "practice",
+    "check_outfit",
+    "take_photo",
+    "inspect",
+  ]);
+
+function normalizeWorldObjectText(value: unknown) {
+  return String(value ?? "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toLowerCase();
+}
+
+/**
+ * Validates a label-authored fallback object against the server's landmark
+ * catalog and server-read actor position. Native ECS capabilities never enter
+ * this path; containers/plants/stations/loot continue through native events.
+ */
+function validateHarthmereFallbackWorldObjectInteraction(input: {
+  envelope: HarthmereLiveModeAuthorityEnvelope;
+  kind: string;
+  objectId: string;
+  label?: string;
+  fallbackEquipment: HarthmereLiveModeBackendState["inventory"]["equipment"];
+}) {
+  const landmark = snapshotGroveLandmarkById(input.objectId);
+  if (!landmark) {
+    return {
+      ok: false as const,
+      warning: "world_object_rejected:unknown_object",
+    };
+  }
+  const interaction = harthmereObjectInteractionForLabel({
+    label: landmark.label,
+  });
+  if (
+    !interaction ||
+    !HARTHMERE_AUTHORITATIVE_FALLBACK_INTERACTIONS.has(interaction.kind)
+  ) {
+    return {
+      ok: false as const,
+      warning: "world_object_rejected:native_or_typed_capability_required",
+    };
+  }
+  if (interaction.kind !== input.kind) {
+    return {
+      ok: false as const,
+      warning: "world_object_rejected:interaction_kind_mismatch",
+    };
+  }
+  if (
+    input.label &&
+    normalizeWorldObjectText(input.label) !==
+      normalizeWorldObjectText(landmark.label)
+  ) {
+    return {
+      ok: false as const,
+      warning: "world_object_rejected:label_mismatch",
+    };
+  }
+  const actorPosition = input.envelope.serverActorPosition;
+  if (!actorPosition) {
+    return {
+      ok: false as const,
+      warning: "world_object_rejected:actor_position_required",
+    };
+  }
+  const dx = actorPosition.x - landmark.position[0];
+  const dz = actorPosition.z - landmark.position[2];
+  if (
+    dx * dx + dz * dz >
+    HARTHMERE_WORLD_OBJECT_INSPECT_RADIUS *
+      HARTHMERE_WORLD_OBJECT_INSPECT_RADIUS
+  ) {
+    return {
+      ok: false as const,
+      warning: "world_object_rejected:out_of_range",
+    };
+  }
+  if (
+    interaction.kind === "repair" &&
+    !nativeJobsBoardEquippedToolActions(
+      input.envelope,
+      input.fallbackEquipment
+    ).includes("repair")
+  ) {
+    return {
+      ok: false as const,
+      warning: "world_object_rejected:repair_tool_required",
+    };
+  }
+  return { ok: true as const, landmark, interaction };
+}
+
+function nativeJobsBoardEquippedToolActions(
+  envelope: HarthmereLiveModeAuthorityEnvelope,
+  fallbackEquipment: HarthmereLiveModeBackendState["inventory"]["equipment"]
+) {
+  const equipment = nativeBiomesEcsAuthorityEnabled()
+    ? Object.fromEntries(
+        (envelope.serverActorEquippedItemKeys ?? []).map((itemId, index) => [
+          `native_${index}`,
+          itemId,
+        ])
+      )
+    : fallbackEquipment;
+  return [
+    ...(harthmereRepairToolGate({ equipment }).ok ? ["repair"] : []),
+    ...(harthmereCleanupToolGate({ equipment }).ok ? ["cleanup"] : []),
+  ];
+}
+
+/**
+ * Treat the completion request itself as the interaction, but derive the
+ * target from the authored job and the server-read player position. Client
+ * target/recipient strings never become completion evidence.
+ */
+function nativeJobsBoardObservedTargetIds(input: {
+  job?: HarthmereJobsBoardPosting;
+  actorPosition?: { x: number; y: number; z: number };
+}) {
+  const observed = new Set<string>();
+  if (!input.job || !input.actorPosition) return [];
+  const radiusSq = HARTHMERE_JOBS_BOARD_FIELD_COMPLETION_RADIUS ** 2;
+  const authoredFieldMarker = harthmereJobsBoardQuestMarkerRuntimePositionForId(
+    input.job.mapMarkerId ?? input.job.targetId
+  );
+  const atAuthoredFieldMarker = Boolean(
+    authoredFieldMarker &&
+      distanceSq3(input.actorPosition, {
+        x: authoredFieldMarker.position[0],
+        y: authoredFieldMarker.position[1],
+        z: authoredFieldMarker.position[2],
+      }) <= radiusSq
+  );
+  for (const requirement of input.job.requirements) {
+    const candidates = new Set<string>();
+    if (requirement.targetId) candidates.add(requirement.targetId);
+    if (requirement.recipientNpcId) {
+      candidates.add(requirement.recipientNpcId);
+      candidates.add(
+        `${HARTHMERE_BUSINESS_OWNER_MARKER_PREFIX}${requirement.recipientNpcId}`
+      );
+    }
+    // Some authored creature/service targets deliberately point the player at
+    // a shared field-area marker rather than publishing every spawned entity's
+    // exact coordinate. Being at that server-authored marker proves the target
+    // class for the completion request without trusting the client's id.
+    if (atAuthoredFieldMarker) {
+      for (const candidate of candidates) observed.add(candidate);
+    }
+    for (const candidate of candidates) {
+      const marker =
+        harthmereJobsBoardQuestMarkerRuntimePositionForId(candidate);
+      if (!marker) continue;
+      if (
+        distanceSq3(input.actorPosition, {
+          x: marker.position[0],
+          y: marker.position[1],
+          z: marker.position[2],
+        }) <= radiusSq
+      ) {
+        observed.add(candidate);
+        if (requirement.targetId) observed.add(requirement.targetId);
+        if (requirement.recipientNpcId) {
+          observed.add(requirement.recipientNpcId);
+          observed.add(
+            `${HARTHMERE_BUSINESS_OWNER_MARKER_PREFIX}${requirement.recipientNpcId}`
+          );
+        }
+      }
+    }
+  }
+  return [...observed];
+}
+
 const HARTHMERE_EXOTIC_MATTER_DEPOSIT_CLAIM_PREFIX = "exotic_matter_deposit:";
 const HARTHMERE_EXOTIC_MATTER_MINE_INTERACTION_RADIUS = 4;
 
@@ -6092,7 +6307,9 @@ function defaultHarthmereBusinessOutpostBuildingState(nowMs: number) {
       blueprintId: plan.blueprintId,
       use: plan.use,
       voxelEditCount: plan.edits.length,
-      materializedInEcs: true,
+      // ECS/world materialization is an outbox side effect. Only the API
+      // acknowledgement path may flip this after the world transaction wins.
+      materializedInEcs: false,
     };
     if (plan.safeZone) {
       safeZones[plan.safeZone.plotId] = {
@@ -6109,6 +6326,24 @@ function defaultHarthmereBusinessOutpostBuildingState(nowMs: number) {
     }
   }
   return { placedStructures, safeZones, inWorldMarkers, materializationPlans };
+}
+
+function mergeCanonicalHarthmereBusinessOutpostStructures(
+  existing: HarthmereLiveModeBackendState["building"]["placedStructures"],
+  nowMs: number
+) {
+  const canonical =
+    defaultHarthmereBusinessOutpostBuildingState(nowMs).placedStructures;
+  const merged = { ...existing };
+  for (const [structureId, structure] of Object.entries(canonical)) {
+    merged[structureId] = {
+      ...structure,
+      // Preserve only the post-ECS acknowledgement from persistence. All
+      // authored geometry/ownership metadata is refreshed from canonical code.
+      materializedInEcs: existing[structureId]?.materializedInEcs === true,
+    };
+  }
+  return merged;
 }
 
 export function defaultHarthmereLiveModeBackendState(
@@ -6609,9 +6844,13 @@ export function parseHarthmereLiveModeBackendState(
         ...defaults.building,
         ...(parsed.building ?? {}),
         placedStructures: {
-          ...defaults.building.placedStructures,
-          ...((parsed.building as any)?.placedStructures ?? {}),
-          ...businessOutpostBuildingState.placedStructures,
+          ...mergeCanonicalHarthmereBusinessOutpostStructures(
+            {
+              ...defaults.building.placedStructures,
+              ...((parsed.building as any)?.placedStructures ?? {}),
+            },
+            nowMs
+          ),
         },
         ownedPlots: [
           ...new Set([
@@ -7003,9 +7242,13 @@ export function mergeHarthmereLiveModeSharedWorldStateIntoBackend(
   state.building = {
     ...state.building,
     placedStructures: {
-      ...state.building.placedStructures,
-      ...sharedBuilding.placedStructures,
-      ...businessOutpostBuildingState.placedStructures,
+      ...mergeCanonicalHarthmereBusinessOutpostStructures(
+        {
+          ...state.building.placedStructures,
+          ...sharedBuilding.placedStructures,
+        },
+        nowMs
+      ),
     },
     customPlots: {
       ...state.building.customPlots,
@@ -9181,6 +9424,11 @@ export function reduceHarthmereLiveModeBackendState(
         actorCollectibles: next.collections.discovered,
         actorGuildId: next.guild.memberGuildId,
         actorPosition: snapshot.position,
+        authoritativeCompletedTargetIds: [
+          companion.destinationTargetId,
+          companion.destinationMarkerId,
+          job.targetId,
+        ].filter((value): value is string => Boolean(value)),
         nearbyBoardId: job.boardId,
         economy: next.economy.production,
       }
@@ -9462,7 +9710,8 @@ export function reduceHarthmereLiveModeBackendState(
   }
 
   function liveFarmingAuthorityState(
-    spawns: Record<string, HarthmereWorldSpawn> = {}
+    spawns: Record<string, HarthmereWorldSpawn> = {},
+    inventoryItems: Record<string, number> = next.inventory.items
   ) {
     const pools = ensureCombatResourcePools(next);
     const plots: Record<string, HarthmereFarmingPlot> = {};
@@ -9488,7 +9737,7 @@ export function reduceHarthmereLiveModeBackendState(
       deadFromStaminaAtMs: Number.isFinite(next.combat.deadFromStaminaAtMs)
         ? next.combat.deadFromStaminaAtMs
         : undefined,
-      inventory: { ...next.inventory.items },
+      inventory: { ...inventoryItems },
       plots,
       spawns,
       livestock: { ...(next.farming.livestock ?? {}) },
@@ -9497,9 +9746,12 @@ export function reduceHarthmereLiveModeBackendState(
   }
 
   function applyLiveFarmingAuthorityResult(
-    authorityState: HarthmereFoodStaminaState
+    authorityState: HarthmereFoodStaminaState,
+    applyInventory = true
   ) {
-    next.inventory.items = { ...authorityState.inventory };
+    if (applyInventory) {
+      next.inventory.items = { ...authorityState.inventory };
+    }
     next.farming.plots = Object.fromEntries(
       Object.entries(authorityState.plots).map(([plotId, plot]) => [
         plotId,
@@ -9532,7 +9784,9 @@ export function reduceHarthmereLiveModeBackendState(
     }
     next.combat.lastStaminaTickMs = authorityState.lastStaminaTickMs;
     next.combat.deadFromStaminaAtMs = authorityState.deadFromStaminaAtMs;
-    touchedModels.add("inventory_items");
+    if (applyInventory) {
+      touchedModels.add("inventory_items");
+    }
     touchedModels.add("farming");
     touchedModels.add("combat_resources");
   }
@@ -9613,7 +9867,9 @@ export function reduceHarthmereLiveModeBackendState(
           blueprintId: plan.blueprintId,
           use: plan.use,
           voxelEditCount: plan.edits.length,
-          materializedInEcs: true,
+          // Never pre-acknowledge a world write. Failed/replayed
+          // materialization remains discoverable and repairable.
+          materializedInEcs: false,
         };
         touchedModels.add("placed_structures");
       }
@@ -12140,14 +12396,11 @@ export function reduceHarthmereLiveModeBackendState(
         payloadString(envelope, "boardId") ??
         HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID;
       const actorPosition = actorWorldPositionFromAuthority(envelope);
-      const authoritativeEquippedToolActions = [
-        ...(harthmereRepairToolGate({ equipment: next.inventory.equipment }).ok
-          ? ["repair"]
-          : []),
-        ...(harthmereCleanupToolGate({ equipment: next.inventory.equipment }).ok
-          ? ["cleanup"]
-          : []),
-      ];
+      const authoritativeEquippedToolActions =
+        nativeJobsBoardEquippedToolActions(envelope, next.inventory.equipment);
+      const authoritativeInventoryItems = nativeBiomesEcsAuthorityEnabled()
+        ? { ...(envelope.serverActorItemCounts ?? {}) }
+        : combinedBackpackAndMaterialStorageItems(next);
       const board = next.jobsBoard.boards[boardId];
       const nearbyBoardId =
         actorPosition && board
@@ -12177,8 +12430,10 @@ export function reduceHarthmereLiveModeBackendState(
           } as any,
           {
             actorGold: next.inventory.gold,
-            actorInventoryItems: combinedBackpackAndMaterialStorageItems(next),
-            actorMaterialStorageItems: next.banking.materialStorage,
+            actorInventoryItems: authoritativeInventoryItems,
+            actorMaterialStorageItems: nativeBiomesEcsAuthorityEnabled()
+              ? undefined
+              : next.banking.materialStorage,
             actorCollectibles: next.collections.discovered,
             actorGuildId: next.guild.memberGuildId,
             actorPosition,
@@ -12204,12 +12459,20 @@ export function reduceHarthmereLiveModeBackendState(
         } as any,
         {
           actorGold: next.inventory.gold,
-          actorInventoryItems: combinedBackpackAndMaterialStorageItems(next),
-          actorMaterialStorageItems: next.banking.materialStorage,
+          actorInventoryItems: authoritativeInventoryItems,
+          actorMaterialStorageItems: nativeBiomesEcsAuthorityEnabled()
+            ? undefined
+            : next.banking.materialStorage,
           actorCollectibles: next.collections.discovered,
           actorGuildId: next.guild.memberGuildId,
           actorPosition,
           authoritativeEquippedToolActions,
+          authoritativeCompletedTargetIds: nativeJobsBoardObservedTargetIds({
+            job: requestedJobId
+              ? next.jobsBoard.postings[requestedJobId]
+              : undefined,
+            actorPosition,
+          }),
           nearbyBoardId,
           economy: next.economy.production,
           canManageBusinessJobs: (business: any) =>
@@ -12247,15 +12510,53 @@ export function reduceHarthmereLiveModeBackendState(
         0,
         next.inventory.gold + result.inventoryGoldDelta
       );
-      for (const [itemId, delta] of Object.entries(
-        result.inventoryItemDeltas
-      )) {
-        applyJobsBoardInventoryItemDelta(
-          next,
-          itemId,
-          Number(delta),
-          touchedModels
-        );
+      const inventoryDeltas = Object.fromEntries(
+        Object.entries(result.inventoryItemDeltas).filter(
+          ([, delta]) => Number(delta) !== 0
+        )
+      );
+      if (
+        nativeBiomesEcsAuthorityEnabled() &&
+        Object.keys(inventoryDeltas).length > 0 &&
+        !result.warnings.some((warning) =>
+          warning.startsWith("jobs_board_rejected:")
+        )
+      ) {
+        if (!actorPosition) {
+          warnings.push("jobs_board_rejected:native_actor_position_required");
+          touchedModels.add("jobs_board_rejection");
+        } else {
+          nativeEcsMaterializationPlans.push({
+            kind: "inventory_exchange",
+            materializationKey: `jobs_board:${envelope.actorId}:${operation}:${
+              requestedJobId ?? envelope.requestId
+            }:${envelope.requestId}`,
+            actorId: envelope.actorId,
+            position: actorPosition,
+            consumeItemStacks: Object.fromEntries(
+              Object.entries(inventoryDeltas).flatMap(([itemId, delta]) =>
+                Number(delta) < 0 ? [[itemId, Math.abs(Number(delta))]] : []
+              )
+            ),
+            rewardItemStacks: Object.fromEntries(
+              Object.entries(inventoryDeltas).flatMap(([itemId, delta]) =>
+                Number(delta) > 0 ? [[itemId, Number(delta)]] : []
+              )
+            ),
+            expiresAtMs: nowMs + 30 * 24 * 60 * 60 * 1000,
+            sourceKind: `harthmere_jobs_board_${operation}`,
+          });
+          touchedModels.add("native_ecs_inventory_exchange");
+        }
+      } else {
+        for (const [itemId, delta] of Object.entries(inventoryDeltas)) {
+          applyJobsBoardInventoryItemDelta(
+            next,
+            itemId,
+            Number(delta),
+            touchedModels
+          );
+        }
       }
       for (const collectibleId of result.collectibleRewardIds ?? []) {
         if (HARTHMERE_COLLECTIBLE_DEFINITIONS[collectibleId]) {
@@ -13162,6 +13463,8 @@ export function reduceHarthmereLiveModeBackendState(
             warnings.push("jobs_board_rejected:quest_todo_required");
             touchedModels.add("jobs_board_rejection");
           } else {
+            const job = next.jobsBoard.postings[todo.jobId];
+            const actorPosition = actorWorldPositionFromAuthority(envelope);
             const result = reduceHarthmereJobsBoardMutation(
               next.jobsBoard,
               {
@@ -13171,46 +13474,75 @@ export function reduceHarthmereLiveModeBackendState(
                 operation: "complete_job_quest",
                 jobId: todo.jobId,
                 questTodoId: todo.todoId,
-                completedTargetId: payloadString(envelope, "completedTargetId"),
                 completionNote: payloadString(envelope, "completionNote"),
                 completionItemDeltas: (envelope.payload as any)
                   .completionItemDeltas,
-                usedToolAction: payloadString(envelope, "usedToolAction"),
               },
               {
                 actorGold: next.inventory.gold,
-                actorInventoryItems:
-                  combinedBackpackAndMaterialStorageItems(next),
-                actorMaterialStorageItems: next.banking.materialStorage,
+                actorInventoryItems: nativeBiomesEcsAuthorityEnabled()
+                  ? { ...(envelope.serverActorItemCounts ?? {}) }
+                  : combinedBackpackAndMaterialStorageItems(next),
+                actorMaterialStorageItems: nativeBiomesEcsAuthorityEnabled()
+                  ? undefined
+                  : next.banking.materialStorage,
                 actorCollectibles: next.collections.discovered,
                 actorGuildId: next.guild.memberGuildId,
-                actorPosition: actorWorldPositionFromAuthority(envelope),
-                authoritativeEquippedToolActions: [
-                  ...(harthmereRepairToolGate({
-                    equipment: next.inventory.equipment,
-                  }).ok
-                    ? ["repair"]
-                    : []),
-                  ...(harthmereCleanupToolGate({
-                    equipment: next.inventory.equipment,
-                  }).ok
-                    ? ["cleanup"]
-                    : []),
-                ],
+                actorPosition,
+                authoritativeEquippedToolActions:
+                  nativeJobsBoardEquippedToolActions(
+                    envelope,
+                    next.inventory.equipment
+                  ),
+                authoritativeCompletedTargetIds:
+                  nativeJobsBoardObservedTargetIds({
+                    job,
+                    actorPosition,
+                  }),
                 economy: next.economy.production,
               }
             );
             next.jobsBoard = result.jobsBoard;
             if (result.economy) next.economy.production = result.economy;
-            for (const [itemId, delta] of Object.entries(
-              result.inventoryItemDeltas
-            )) {
-              applyJobsBoardInventoryItemDelta(
-                next,
-                itemId,
-                Number(delta),
-                touchedModels
-              );
+            const inventoryDeltas = Object.fromEntries(
+              Object.entries(result.inventoryItemDeltas).filter(
+                ([, delta]) => Number(delta) !== 0
+              )
+            );
+            if (
+              nativeBiomesEcsAuthorityEnabled() &&
+              actorPosition &&
+              Object.keys(inventoryDeltas).length > 0 &&
+              result.warnings.length === 0
+            ) {
+              nativeEcsMaterializationPlans.push({
+                kind: "inventory_exchange",
+                materializationKey: `jobs_board:${envelope.actorId}:complete_job_quest:${todo.jobId}`,
+                actorId: envelope.actorId,
+                position: actorPosition,
+                consumeItemStacks: Object.fromEntries(
+                  Object.entries(inventoryDeltas).flatMap(([itemId, delta]) =>
+                    Number(delta) < 0 ? [[itemId, Math.abs(Number(delta))]] : []
+                  )
+                ),
+                rewardItemStacks: Object.fromEntries(
+                  Object.entries(inventoryDeltas).flatMap(([itemId, delta]) =>
+                    Number(delta) > 0 ? [[itemId, Number(delta)]] : []
+                  )
+                ),
+                expiresAtMs: nowMs + 30 * 24 * 60 * 60 * 1000,
+                sourceKind: "harthmere_jobs_board_complete_job_quest",
+              });
+              touchedModels.add("native_ecs_inventory_exchange");
+            } else if (!nativeBiomesEcsAuthorityEnabled()) {
+              for (const [itemId, delta] of Object.entries(inventoryDeltas)) {
+                applyJobsBoardInventoryItemDelta(
+                  next,
+                  itemId,
+                  Number(delta),
+                  touchedModels
+                );
+              }
             }
             for (const warning of result.warnings) warnings.push(warning);
             for (const model of result.touchedModels) touchedModels.add(model);
@@ -13237,14 +13569,19 @@ export function reduceHarthmereLiveModeBackendState(
             }
           }
         } else if (completed) {
-          // NOTE: generic (non jobs-board / non live-entity-helper) quest
-          // completion is currently client-asserted with no server-side
-          // objective verification, and one-shot completion (without a prior
-          // "active" record) is a supported flow. Proper anti-cheat here needs
-          // the current quest objectives wired into this reducer so the server can
-          // re-derive completion -- tracked as a feature-scale follow-up.
-          next.quests.completed[questId] = nowMs;
-          delete next.quests.active[questId];
+          if (
+            nativeBiomesEcsAuthorityEnabled() &&
+            !isServerAuthorityEnvelope(envelope)
+          ) {
+            // Authored quests complete through native Challenges/TriggerState
+            // and firehose evidence. A browser-supplied boolean must never
+            // bypass those objective handlers.
+            warnings.push("quest_rejected:native_ecs_challenge_required");
+            touchedModels.add("quest_state_rejection");
+          } else {
+            next.quests.completed[questId] = nowMs;
+            delete next.quests.active[questId];
+          }
         } else {
           const questSource = payloadString(envelope, "source");
           if (questSource === "snapshot_grove") {
@@ -13455,7 +13792,13 @@ export function reduceHarthmereLiveModeBackendState(
           if (!plan.materializesSolidVoxelBuilding) continue;
           const structureId = plan.projectId ?? plan.requestId;
           const structure = next.building.placedStructures[structureId];
-          if (structure && structure.materializedInEcs !== true) {
+          if (
+            structure &&
+            structure.materializedInEcs !== true &&
+            !buildingMaterializationPlans.some(
+              (queued) => queued.requestId === plan.requestId
+            )
+          ) {
             buildingMaterializationPlans.push(plan);
             touchedModels.add("building_materialization_retry");
           }
@@ -16155,13 +16498,37 @@ export function reduceHarthmereLiveModeBackendState(
     case "request_farming_action": {
       const operation = payloadString(envelope, "operation");
       if (operation) {
-        let authority = liveFarmingAuthorityState();
+        const nativeInventoryExchange =
+          nativeBiomesEcsAuthorityEnabled() &&
+          ["cook_enqueue", "cook_collect", "cook_cancel"].includes(operation);
+        const nativeExchangeActorPosition = nativeInventoryExchange
+          ? actorWorldPositionFromAuthority(envelope)
+          : undefined;
+        if (nativeInventoryExchange && !nativeExchangeActorPosition) {
+          warnings.push("cooking_rejected:native_actor_position_required");
+          touchedModels.add("farming_rejection");
+          break;
+        }
+        let authority = liveFarmingAuthorityState(
+          {},
+          nativeInventoryExchange
+            ? { ...(envelope.serverActorItemCounts ?? {}) }
+            : next.inventory.items
+        );
         // Advance cooking-job statuses from the clock (and expire spoiled dishes /
         // prune emptied + orphaned stations) before any op reads them. Persist the
         // cleanup immediately so it survives even if the op below is rejected.
         authority.cooking = tickHarthmereCooking(authority.cooking, nowMs);
         next.farming.cooking = authority.cooking;
         touchedModels.add("farming");
+        const cookingJobBeforeOperation =
+          operation === "cook_collect"
+            ? authority.cooking[
+                payloadString(envelope, "stationId") ?? ""
+              ]?.jobs.find(
+                (job) => job.jobId === (payloadString(envelope, "jobId") ?? "")
+              )
+            : undefined;
         let authorityResult:
           | ReturnType<typeof plantHarthmereCrop>
           | ReturnType<typeof waterHarthmereCrop>
@@ -16392,19 +16759,54 @@ export function reduceHarthmereLiveModeBackendState(
             touchedModels.add("exotic_matter_rejection");
             break;
           }
-          for (const [itemId, delta] of Object.entries(
-            mineResult.inventoryItemDeltas
-          )) {
-            recordDelta(next.inventory.items, itemId, delta);
-            if (delta > 0) {
-              advanceSnapshotGroveQuestsFromAuthoritativeEvent("collect", {
-                itemId,
-                itemName: getHarthmereItemDefinition(itemId)?.displayName,
-              });
+          if (nativeBiomesEcsAuthorityEnabled()) {
+            const dropPosition =
+              minePositions.find(
+                (pos) =>
+                  distanceSq3(actorPosition, {
+                    x: pos[0],
+                    y: pos[1],
+                    z: pos[2],
+                  }) <= mineRadiusSq
+              ) ?? deposit.position;
+            nativeEcsMaterializationPlans.push({
+              kind: "drop",
+              materializationKey: `exotic_matter:${deposit.depositId}:${envelope.requestId}`,
+              position: {
+                x: dropPosition[0],
+                y: dropPosition[1] + 0.5,
+                z: dropPosition[2],
+              },
+              itemStacks: Object.fromEntries(
+                Object.entries(mineResult.inventoryItemDeltas).filter(
+                  ([, delta]) => Number(delta) > 0
+                )
+              ),
+              ownerActorIds: [envelope.actorId],
+              expiresAtMs: nowMs + 5 * 60 * 1000,
+              mined: true,
+              sourceKind: "harthmere_exotic_matter_deposit",
+            });
+            warnings.push(
+              "exotic_matter_yield_materialized_as_native_ecs_drop"
+            );
+          } else {
+            for (const [itemId, delta] of Object.entries(
+              mineResult.inventoryItemDeltas
+            )) {
+              recordDelta(next.inventory.items, itemId, delta);
+              if (delta > 0) {
+                advanceSnapshotGroveQuestsFromAuthoritativeEvent("collect", {
+                  itemId,
+                  itemName: getHarthmereItemDefinition(itemId)?.displayName,
+                });
+              }
             }
           }
           next.combat.lootClaims[claimKey] = nowMs;
-          touchedModels.add("inventory_items");
+          if (!nativeBiomesEcsAuthorityEnabled()) {
+            touchedModels.add("inventory_items");
+          }
           touchedModels.add("exotic_matter_deposits");
           touchedModels.add("loot_claims");
           sharedStateKeys.add(
@@ -16653,7 +17055,10 @@ export function reduceHarthmereLiveModeBackendState(
           touchedModels.add("farming_rejection");
           break;
         }
-        applyLiveFarmingAuthorityResult(authorityResult.state);
+        applyLiveFarmingAuthorityResult(
+          authorityResult.state,
+          !nativeInventoryExchange
+        );
         for (const [plotId, plot] of Object.entries(
           authorityResult.state.plots
         )) {
@@ -16662,15 +17067,41 @@ export function reduceHarthmereLiveModeBackendState(
           }
         }
         if (Object.keys(authorityResult.inventoryDeltas).length > 0) {
-          touchedModels.add("inventory_items");
+          if (nativeInventoryExchange) {
+            nativeEcsMaterializationPlans.push({
+              kind: "inventory_exchange",
+              materializationKey: `cooking:${envelope.actorId}:${operation}:${envelope.requestId}`,
+              actorId: envelope.actorId,
+              position: nativeExchangeActorPosition!,
+              consumeItemStacks: Object.fromEntries(
+                Object.entries(authorityResult.inventoryDeltas).flatMap(
+                  ([itemId, delta]) =>
+                    Number(delta) < 0 ? [[itemId, Math.abs(Number(delta))]] : []
+                )
+              ),
+              rewardItemStacks: Object.fromEntries(
+                Object.entries(authorityResult.inventoryDeltas).flatMap(
+                  ([itemId, delta]) =>
+                    Number(delta) > 0 ? [[itemId, Number(delta)]] : []
+                )
+              ),
+              expiresAtMs: nowMs + 30 * 24 * 60 * 60 * 1000,
+              sourceKind: `harthmere_cooking_${operation}`,
+            });
+            touchedModels.add("native_ecs_inventory_exchange");
+          } else {
+            touchedModels.add("inventory_items");
+          }
           for (const [itemId, delta] of Object.entries(
             authorityResult.inventoryDeltas
           )) {
             if (delta <= 0) continue;
-            advanceSnapshotGroveQuestsFromAuthoritativeEvent("collect", {
-              itemId,
-              itemName: getHarthmereItemDefinition(itemId)?.displayName,
-            });
+            if (!nativeInventoryExchange) {
+              advanceSnapshotGroveQuestsFromAuthoritativeEvent("collect", {
+                itemId,
+                itemName: getHarthmereItemDefinition(itemId)?.displayName,
+              });
+            }
           }
         }
         if (
@@ -16711,6 +17142,16 @@ export function reduceHarthmereLiveModeBackendState(
             next.classMagic.skills,
             "cooking",
             (recipe?.xp ?? 10) * cookCount
+          );
+          touchedModels.add("skill_xp");
+        }
+        if (operation === "cook_collect" && cookingJobBeforeOperation) {
+          const recipe =
+            HARTHMERE_COOKING_RECIPES[cookingJobBeforeOperation.recipeId];
+          upsertSkill(
+            next.classMagic.skills,
+            "cooking",
+            (recipe?.xp ?? 10) * Math.max(1, cookingJobBeforeOperation.count)
           );
           touchedModels.add("skill_xp");
         }
@@ -16821,6 +17262,39 @@ export function reduceHarthmereLiveModeBackendState(
       if (!operation) {
         warnings.push("care_rejected:missing_operation");
         touchedModels.add("care_loop_rejection");
+        break;
+      }
+      if (operation === "world_object_interaction") {
+        const objectId = payloadString(envelope, "objectId") ?? "";
+        const kind = payloadString(envelope, "interactionKind") ?? "";
+        const validation = validateHarthmereFallbackWorldObjectInteraction({
+          envelope,
+          objectId,
+          kind,
+          label: payloadString(envelope, "label"),
+          fallbackEquipment: next.inventory.equipment,
+        });
+        if (!validation.ok) {
+          warnings.push(validation.warning);
+          touchedModels.add("world_object_interaction_rejection");
+          break;
+        }
+        const previous = next.careLoops.worldInteractions[objectId];
+        // This receipt is deliberately actor-owned server state. It gives
+        // authored fallback props a durable mutation while native ECS objects
+        // continue to mutate their own components through stock handlers.
+        next.careLoops.worldInteractions[objectId] = {
+          objectId,
+          kind: validation.interaction.kind,
+          label: validation.landmark.label,
+          count: Math.max(0, previous?.count ?? 0) + 1,
+          lastAtMs: nowMs,
+          lastRequestId: envelope.requestId,
+        };
+        touchedModels.add("world_object_interactions");
+        touchedModels.add(
+          `world_object_interaction:${validation.interaction.kind}`
+        );
         break;
       }
       const careResult = reduceHarthmereCareLoop(next.careLoops, {

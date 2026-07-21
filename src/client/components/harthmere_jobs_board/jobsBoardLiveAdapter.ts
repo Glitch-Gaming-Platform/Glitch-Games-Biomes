@@ -951,7 +951,11 @@ export function createHarthmereJobsBoardAdapter(
       submitHarthmereJobsBoardMutation(
         "accept_job",
         { jobId, boardId },
-        { fetchImpl, requestId, boardId }
+        {
+          fetchImpl,
+          requestId: requestId ?? `jobs_board_accept_job:${jobId}`,
+          boardId,
+        }
       ),
     completeJob: (
       jobId: string,
@@ -961,7 +965,11 @@ export function createHarthmereJobsBoardAdapter(
       submitHarthmereJobsBoardMutation(
         "complete_job",
         { jobId, boardId },
-        { fetchImpl, requestId, boardId }
+        {
+          fetchImpl,
+          requestId: requestId ?? `jobs_board_complete_job:${jobId}`,
+          boardId,
+        }
       ),
     // Mark the quest todo complete (server validates items/target, consumes
     // required items). Use before completeJob when the todo is not yet done.
@@ -978,7 +986,11 @@ export function createHarthmereJobsBoardAdapter(
       submitHarthmereJobsBoardMutation(
         "complete_job_quest",
         { jobId, boardId, ...evidence },
-        { fetchImpl, requestId, boardId }
+        {
+          fetchImpl,
+          requestId: requestId ?? `jobs_board_complete_job_quest:${jobId}`,
+          boardId,
+        }
       ),
     // Full completion: verify the work (consuming items / checking the target)
     // then claim the payout. Skips the verification step if the todo is already
@@ -991,11 +1003,6 @@ export function createHarthmereJobsBoardAdapter(
         questTodoId?: string;
         completedTargetId?: string;
         completionItemDeltas?: Record<string, number>;
-        // HARTHMERE_REPAIR_TOOL_COMPLETION: the tool action the player used
-        // to do the work (e.g. "repair"), set only when the matching tool was
-        // equipped. The server rejects completion of a tool-gated requirement
-        // unless this matches.
-        usedToolAction?: string;
       } = {}
     ) => {
       const steps = planHarthmereJobsBoardCompletionSteps(options.todoStatus);
@@ -1010,13 +1017,13 @@ export function createHarthmereJobsBoardAdapter(
           if (options.completionItemDeltas) {
             payload.completionItemDeltas = options.completionItemDeltas;
           }
-          if (options.usedToolAction) {
-            payload.usedToolAction = options.usedToolAction;
-          }
         }
         snapshot = await submitHarthmereJobsBoardMutation(step, payload, {
           fetchImpl,
           boardId,
+          // Stable per-step keys let an HTTP retry repair a Redis commit whose
+          // ECS inventory exchange was interrupted before the response.
+          requestId: `jobs_board_${step}:${jobId}`,
         });
       }
       if (!snapshot) {

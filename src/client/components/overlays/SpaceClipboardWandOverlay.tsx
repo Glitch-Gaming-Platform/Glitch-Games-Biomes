@@ -1,4 +1,5 @@
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
+import { WORLD_INTERACTION_PRIORITY } from "@/client/components/challenges/worldInteractionDispatcher";
 import {
   ClickIcon,
   getClickIcon,
@@ -31,6 +32,8 @@ export const SpaceClipboardWandOverlay: React.FunctionComponent = () => {
         <ShortcutText
           shortcut="F"
           keyCode="KeyF"
+          worldInteractionCandidateId="active-tool:space-clipboard-radius"
+          worldInteractionPriority={WORLD_INTERACTION_PRIORITY.activeTool}
           onKeyDown={() => {
             reactResources.set("/space_clipboard/radius", {
               value: Math.max(

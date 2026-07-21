@@ -21,6 +21,7 @@ import { registerTwitchBot } from "@/server/shared/twitch/twitch";
 import { loadVoxeloo } from "@/server/shared/voxeloo";
 import { registerWorldApi } from "@/server/shared/world/register";
 import { startHarthmereLiveModeRobotEnergyScheduler } from "@/server/harthmere/live_mode_robot_energy_scheduler";
+import { startHarthmereLiveModeEscortScheduler } from "@/server/harthmere/live_mode_escort_scheduler";
 import { registerApp } from "@/server/web/app";
 import { installGlitchSameOriginSyncWebSocketProxy } from "@/server/web/glitch_sync_ws_proxy";
 import { registerBigQueryClient } from "@/server/web/bigquery";
@@ -236,6 +237,9 @@ export async function webServerContext(signal?: AbortSignal) {
 void runServer("web", webServerContext, async (context) => {
   const harthmereRobotEnergyScheduler =
     startHarthmereLiveModeRobotEnergyScheduler({ worldApi: context.worldApi });
+  const harthmereEscortScheduler = startHarthmereLiveModeEscortScheduler({
+    worldApi: context.worldApi,
+  });
   installGlitchSameOriginOobProxy(context);
   installGlitchSameOriginSyncWebSocketProxy(context.app.http);
   await context.app.start(context);
@@ -248,6 +252,7 @@ void runServer("web", webServerContext, async (context) => {
     },
     shutdownHook: async () => {
       harthmereRobotEnergyScheduler.stop();
+      harthmereEscortScheduler.stop();
       await sleep(CONFIG.webServerLameDuckMs);
       await context.app.stop();
     },

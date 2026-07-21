@@ -33,11 +33,35 @@ describe("business owner NPC ECS seed builder", () => {
         String(entity.default_dialog?.text ?? "").includes(seed!.line),
         "owner dialog should include its authored line"
       );
+      for (const ambientLine of seed!.ambientLines) {
+        assert.ok(
+          String(entity.default_dialog?.text ?? "").includes(ambientLine),
+          "owner default dialog should include ambient lore"
+        );
+      }
+      for (const jobOffer of seed!.extraLines) {
+        assert.ok(
+          !String(entity.default_dialog?.text ?? "").includes(jobOffer),
+          "owner default dialog should not include job-offer copy"
+        );
+        assert.ok(
+          String(entity.quest_giver?.concurrent_quest_dialog ?? "").includes(
+            jobOffer
+          ),
+          "owner quest dialog should retain job-offer copy"
+        );
+      }
 
       // Unique generated appearance (embedded in the entity description markers).
       const description = String(entity.entity_description?.text ?? "");
-      assert.ok(description.length > 0, "owner needs an appearance description");
-      assert.ok(!descriptions.has(description), "owner appearances must be unique");
+      assert.ok(
+        description.length > 0,
+        "owner needs an appearance description"
+      );
+      assert.ok(
+        !descriptions.has(description),
+        "owner appearances must be unique"
+      );
       descriptions.add(description);
 
       ids.add(entity.id);

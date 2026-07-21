@@ -9,16 +9,14 @@ export const VideoOverlayComponent: React.FunctionComponent<{
   const { reactResources } = useClientContext();
   const canChange = useUserCanAction(overlay.entityId, "destroy");
 
-  if (!canChange) {
-    return <></>;
-  }
-
   return (
     <CursorInspectionComponent
       overlay={overlay}
       shortcuts={[
         {
-          title: "Change",
+          // Visitors can deliberately view the media in the focused player;
+          // only ACL-authorized owners can persist URL or mute changes.
+          title: canChange ? "Change Media" : "View Media",
           onKeyDown: () => {
             reactResources.set("/game_modal", {
               kind: "generic_miniphone",

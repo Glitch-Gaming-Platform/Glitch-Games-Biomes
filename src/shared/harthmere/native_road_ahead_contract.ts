@@ -1,4 +1,5 @@
 import type { BiomesId } from "@/shared/ids";
+import { BikkieIds } from "@/shared/bikkie/ids";
 
 /**
  * Native ECS contract for the original Biomes onboarding quest.
@@ -15,6 +16,10 @@ import type { BiomesId } from "@/shared/ids";
  * migrate old client-only mirrors without inventing progress.
  */
 export const NATIVE_ROAD_AHEAD_QUEST_ID = 6193612340426932 as BiomesId;
+
+/** Server-only marker placed on invisible, per-player quest inventories. */
+export const NATIVE_ROAD_AHEAD_PRIVATE_CONTAINER_DESCRIPTION =
+  "native-road-ahead-private-container-v1";
 
 export const NATIVE_ROAD_AHEAD_MUCKWAD_ITEM_ID = 4603863378554668 as BiomesId;
 
@@ -91,11 +96,6 @@ export function nativeRoadAheadEcsAuthorityEnabled() {
   );
 }
 
-/** Native quest-giver props always use ECS dialogue/reward handling. */
-export function nativeQuestGiverUsesEcsDialogue(questGiver: unknown) {
-  return nativeBiomesEcsAuthorityEnabled() && Boolean(questGiver);
-}
-
 const NATIVE_ROAD_AHEAD_QUEST_OBJECT_LABELS = new Set([
   "clothing crate",
   "billy's toolbag",
@@ -105,16 +105,132 @@ const NATIVE_ROAD_AHEAD_QUEST_OBJECT_LABELS = new Set([
 ]);
 
 /**
- * These objects are `challengeClaimRewards` quest givers in the snapshot, not
- * generic loot containers.  Native dialogue must choose the reward and publish
- * `CompleteQuestStepAtEntityEvent`; opening a parallel local crate bypasses the
- * ordered trigger, gives the wrong items, and leaves Road Ahead incomplete.
+ * Exact native identities authored by the May 16 snapshot.
+ *
+ * The two props are picture frames with `quest_giver`, but their physical
+ * capability is container storage.  Keeping the authored placeable and reward
+ * IDs here lets the interaction, inventory, and quest layers share one
+ * contract instead of guessing from display names or Harthmere aliases.
  */
+export const NATIVE_ROAD_AHEAD_CONTAINER_SPECS = Object.freeze({
+  clothingCrate: {
+    labels: ["clothing crate"],
+    placeableItemId: 5165478204703095 as BiomesId,
+    choices: [
+      {
+        stepId: NATIVE_ROAD_AHEAD_STEP_IDS.CHOOSE_TOP,
+        seedItemId: BikkieIds.muckyTop,
+        itemIds: [
+          4537020877770135 as BiomesId,
+          6561590643697708 as BiomesId,
+          1152171766050944 as BiomesId,
+        ],
+      },
+      {
+        stepId: NATIVE_ROAD_AHEAD_STEP_IDS.CHOOSE_BOTTOMS,
+        seedItemId: BikkieIds.muckySkirt,
+        itemIds: [
+          1534621126189793 as BiomesId,
+          6407921801695863 as BiomesId,
+          2512451111844299 as BiomesId,
+        ],
+      },
+    ],
+  },
+  billysToolbag: {
+    labels: ["billy's toolbag", "billys toolbag", "billy's bag", "billys bag"],
+    placeableItemId: 5682301664350905 as BiomesId,
+    choices: [
+      {
+        stepId: NATIVE_ROAD_AHEAD_STEP_IDS.OPEN_BILLYS_BAG,
+        seedItemId: 4155260615577796 as BiomesId,
+        itemIds: [4155260615577796 as BiomesId],
+      },
+    ],
+  },
+} as const);
+
+export type NativeRoadAheadContainerSpec =
+  (typeof NATIVE_ROAD_AHEAD_CONTAINER_SPECS)[keyof typeof NATIVE_ROAD_AHEAD_CONTAINER_SPECS];
+
+function normalizedQuestObjectLabel(label?: string | null) {
+  return String(label ?? "")
+    .trim()
+    .toLowerCase();
+}
+
+/** These labels identify the snapshot's two quest-backed storage props. */
 export function isNativeRoadAheadQuestObjectLabel(label?: string | null) {
   return NATIVE_ROAD_AHEAD_QUEST_OBJECT_LABELS.has(
-    String(label ?? "")
-      .trim()
-      .toLowerCase()
+    normalizedQuestObjectLabel(label)
+  );
+}
+
+/** Resolve a quest container without relying on the generic crate regex. */
+export function nativeRoadAheadContainerSpecForLabel(
+  label?: string | null
+): NativeRoadAheadContainerSpec | undefined {
+  const normalized = normalizedQuestObjectLabel(label);
+  return Object.values(NATIVE_ROAD_AHEAD_CONTAINER_SPECS).find((spec) =>
+    (spec.labels as readonly string[]).includes(normalized)
+  );
+}
+
+/** Flattened seed list used by each player's private native ECS container. */
+export function nativeRoadAheadContainerItemIds(label?: string | null) {
+  return nativeRoadAheadContainerSpecForLabel(label)?.choices.map(
+    (choice) => choice.seedItemId
+  );
+}
+
+/**
+ * Maps a transferred native item back to its exact claim step and reward
+ * index.  The inventory handler uses this after validating ownership/range so
+ * taking an item advances the original trigger without granting a duplicate.
+ */
+export function nativeRoadAheadContainerClaimForItem(
+  label: string | null | undefined,
+  itemId: BiomesId
+) {
+  const spec = nativeRoadAheadContainerSpecForLabel(label);
+  if (!spec) return undefined;
+  for (const choice of spec.choices) {
+    const originalRewardIndex = (choice.itemIds as readonly BiomesId[]).indexOf(
+      itemId
+    );
+    // The current native mesh uses Mucky Top/Skirt identities while the May 16
+    // claim leaf lists older reward alternatives. Map the native migration item
+    // to option zero; skipRewardGrant prevents the old item from being minted.
+    const chosenRewardIndex =
+      itemId === choice.seedItemId ? 0 : originalRewardIndex;
+    if (chosenRewardIndex >= 0) {
+      return {
+        placeableItemId: spec.placeableItemId,
+        stepId: choice.stepId,
+        chosenRewardIndex,
+        siblingItemIds: [
+          choice.seedItemId,
+          ...(choice.itemIds as readonly BiomesId[]),
+        ],
+      };
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Quest-giver data supplements an object's capability.  The two Road Ahead
+ * storage props must therefore route to their container UI rather than the
+ * generic NPC dialogue fallback.
+ */
+export function nativeQuestGiverUsesEcsDialogue(
+  questGiver: unknown,
+  label?: string | null
+) {
+  return (
+    nativeBiomesEcsAuthorityEnabled() &&
+    Boolean(questGiver) &&
+    !isNativeRoadAheadQuestObjectLabel(label)
   );
 }
 

@@ -7,6 +7,7 @@ import { scanGroupTensor } from "@/shared/game/group";
 import type { Item } from "@/shared/game/item";
 import { anItem } from "@/shared/game/item";
 import type { BiomesId } from "@/shared/ids";
+import { harthmereNativeItemCombatProfile } from "@/shared/harthmere/harthmere_native_combat";
 import { getNpcBehavior, idToNpcType, npcGlobals } from "@/shared/npc/bikkie";
 import type { VoxelooModule } from "@/shared/wasm/types";
 import { isBlockGroupEntry } from "@/shared/wasm/types/galois";
@@ -146,8 +147,11 @@ export function damagePerEntityAttack(
   return entityDps(tool, entity) * attackIntervalSeconds(tool);
 }
 
-export function attackIntervalSeconds(_tool: Item | undefined) {
-  return npcGlobals().playerAttackInterval;
+export function attackIntervalSeconds(tool: Item | undefined) {
+  return (
+    harthmereNativeItemCombatProfile(tool)?.intervalSecs ??
+    npcGlobals().playerAttackInterval
+  );
 }
 
 export function groupHardnessClass(

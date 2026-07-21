@@ -18,6 +18,11 @@ import { traceEntities } from "@/shared/game/spatial";
 import { TerrainHelper } from "@/shared/game/terrain_helper";
 import { terrainMarch } from "@/shared/game/terrain_march";
 import type { BiomesId } from "@/shared/ids";
+import {
+  harthmereNativeItemCombatProfile,
+  harthmereNativeItemDefinitionForBiomesId,
+} from "@/shared/harthmere/harthmere_native_combat";
+import { nativeBiomesEcsAuthorityEnabled } from "@/shared/harthmere/native_road_ahead_contract";
 import { cross } from "@/shared/math/linear";
 import type { VoxelooModule } from "@/shared/wasm/types";
 import { compact, isEqual, last } from "lodash";
@@ -150,10 +155,13 @@ export class CursorScript implements Script {
     // Check attackable entities in the region.
 
     const player = this.resources.get("/scene/local_player");
-    const attackableEntities = attackableEntitiesInAttackRegion(
-      this,
-      player.id
-    );
+    const nativeEcsAuthority = nativeBiomesEcsAuthorityEnabled();
+    // The original melee region is a broad local cone. Native Harthmere combat
+    // uses the authoritative crosshair ray so a block throw/swing cannot hit a
+    // nearby or occluded NPC and accidentally trigger retaliation.
+    const attackableEntities = nativeEcsAuthority
+      ? []
+      : attackableEntitiesInAttackRegion(this, player.id);
 
     // HARTHMERE_VOXEL_REACH_ATTACK:
     // The native melee cone (combat.meleeAttackRegion.far = 3.5) is far shorter
@@ -162,8 +170,18 @@ export class CursorScript implements Script {
     // longer voxel-edit radius made a block break/throw also damage an NPC up to
     // ~8.8 blocks away and could trigger retaliation from outside combat range.
     if (entityHit && entityHit.kind === "entity") {
+      const selectedItem = this.resources.get("/ecs/entity", player.id)
+        ?.selected_item?.item?.item;
+      const nativeItemDefinition = harthmereNativeItemDefinitionForBiomesId(
+        selectedItem?.id
+      );
+      const nativeItemProfile = harthmereNativeItemCombatProfile(selectedItem);
+      const selectedCanAttack = nativeItemDefinition
+        ? (nativeItemProfile?.damagePerHit ?? 0) > 0
+        : true;
       const reach =
-        this.resources.get("/tweaks").combat.meleeAttackRegion.far +
+        (nativeItemProfile?.reach ??
+          this.resources.get("/tweaks").combat.meleeAttackRegion.far) +
         this.resources.get("/player/modifiers").reach.increase;
       const target = entityHit.entity;
       const ruleSet = this.resources.get("/ruleset/current");
@@ -174,6 +192,8 @@ export class CursorScript implements Script {
       );
       const canAttack = canAttackFilter(ruleSet, aclAllowsPlayers, me, target);
       if (
+        selectedCanAttack &&
+        (!nativeEcsAuthority || hit === entityHit) &&
         shouldAddCrosshairMeleeTarget({
           hasEntityHit: true,
           distance: entityHit.distance,

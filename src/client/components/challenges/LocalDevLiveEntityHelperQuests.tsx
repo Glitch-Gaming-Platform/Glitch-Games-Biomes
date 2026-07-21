@@ -29,6 +29,7 @@ import {
 } from "@/client/components/challenges/LocalDevLiveEntityRobotEnergyState";
 import type { TalkDialogStepAction } from "@/client/components/challenges/TalkDialogModalStep";
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
+import { defaultHarthmereLiveFetch } from "@/client/components/harthmere_live_fetch";
 import { BikkieIds } from "@/shared/bikkie/ids";
 import {
   canCompleteLiveEntityHelperQuest,
@@ -64,6 +65,9 @@ import {
   relevantBiscuitForEntityId,
 } from "@/shared/npc/bikkie";
 import { HARTHMERE_INVENTORY_EVENT } from "@/client/components/challenges/harthmereEvents";
+import { readHarthmereNativeCombatProgression } from "@/shared/harthmere/harthmere_native_combat";
+import { HARTHMERE_NATIVE_MUCK_SCARRED_HELIX_SEED } from "@/shared/harthmere/live_entity_production_seed";
+import { nativeBiomesEcsAuthorityEnabled } from "@/shared/harthmere/native_road_ahead_contract";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 const HARTHMERE_COMBAT_EVENT = "biomes:harthmere-combat-changed";
@@ -158,7 +162,8 @@ export function liveEntityHelperQuestRecordReadyToTurnIn(record: {
 // accept and as the input to completionEvidence.
 function currentRawEvidence(
   quest: LiveEntityHelperQuestInstance,
-  liveSnapshot?: LiveEntityHelperQuestLiveSnapshot
+  liveSnapshot?: LiveEntityHelperQuestLiveSnapshot,
+  nativeBossDefeats = 0
 ) {
   const inventory: Record<string, number> = {};
   for (const item of quest.requirements.items ?? []) {
@@ -171,7 +176,8 @@ function currentRawEvidence(
     inventory,
     hardBossDefeats: Math.max(
       hardBossDefeatCount(),
-      hardBossDefeatCountFromLiveSnapshot(quest, liveSnapshot)
+      hardBossDefeatCountFromLiveSnapshot(quest, liveSnapshot),
+      nativeBossDefeats
     ),
   };
 }
@@ -182,23 +188,29 @@ function currentRawEvidence(
 function completionEvidence(
   quest: LiveEntityHelperQuestInstance,
   liveSnapshot?: LiveEntityHelperQuestLiveSnapshot,
-  baseline?: LiveEntityHelperQuestObjectiveBaseline
+  baseline?: LiveEntityHelperQuestObjectiveBaseline,
+  nativeBossDefeats = 0
 ) {
   return liveEntityHelperQuestEvidenceSinceBaseline(
-    currentRawEvidence(quest, liveSnapshot),
+    currentRawEvidence(quest, liveSnapshot, nativeBossDefeats),
     baseline
   );
 }
 
 function markQuestActiveLocally(
   quest: LiveEntityHelperQuestInstance,
-  giverPosition?: readonly number[] | null
+  giverPosition?: readonly number[] | null,
+  nativeBossDefeats = 0
 ) {
   const state = readLiveEntityHelperQuestState();
   if (state.completed[quest.questId]) {
     return;
   }
-  if (quest.kind === "hard_boss" && !hasActiveHardBossQuest(state)) {
+  if (
+    quest.kind === "hard_boss" &&
+    !nativeBiomesEcsAuthorityEnabled() &&
+    !hasActiveHardBossQuest(state)
+  ) {
     resetHarthmereCombatNpc(HARTHMERE_LIVE_ENTITY_HELPER_MUCK_BOSS_OFFSET);
   }
   // Snapshot what the player already holds toward this quest AFTER any boss
@@ -206,7 +218,7 @@ function markQuestActiveLocally(
   // is never instantly "done" on accept (e.g. the default Road Rations).
   const objectiveBaseline = liveEntityHelperQuestObjectiveBaseline(
     quest,
-    currentRawEvidence(quest)
+    currentRawEvidence(quest, undefined, nativeBossDefeats)
   );
   writeLiveEntityHelperQuestState({
     ...state,
@@ -235,7 +247,8 @@ function markQuestCompletedLocally(quest: LiveEntityHelperQuestInstance) {
 
 async function acceptQuest(
   quest: LiveEntityHelperQuestInstance,
-  context: LiveEntityHelperQuestEntityContext
+  context: LiveEntityHelperQuestEntityContext,
+  nativeBossDefeats = 0
 ) {
   try {
     const snapshot = await submitLiveEntityHelperQuestMutation(
@@ -243,13 +256,13 @@ async function acceptQuest(
       quest,
       context
     );
-    markQuestActiveLocally(quest, context.position);
+    markQuestActiveLocally(quest, context.position, nativeBossDefeats);
     return snapshot;
   } catch (error) {
     if (isLiveEntityHelperLiveModeRejectionError(error)) {
       return undefined;
     }
-    markQuestActiveLocally(quest, context.position);
+    markQuestActiveLocally(quest, context.position, nativeBossDefeats);
     return undefined;
   }
 }
@@ -321,12 +334,14 @@ function completeQuestLocally(quest: LiveEntityHelperQuestInstance) {
 async function completeQuest(
   quest: LiveEntityHelperQuestInstance,
   context: LiveEntityHelperQuestEntityContext,
-  liveSnapshot: LiveEntityHelperQuestLiveSnapshot | undefined
+  liveSnapshot: LiveEntityHelperQuestLiveSnapshot | undefined,
+  nativeBossDefeats = 0
 ) {
   const evidence = completionEvidence(
     quest,
     liveSnapshot,
-    storedObjectiveBaseline(quest.questId)
+    storedObjectiveBaseline(quest.questId),
+    nativeBossDefeats
   );
   const check = canCompleteLiveEntityHelperQuest(quest, evidence);
   if (!check.ok) {
@@ -335,7 +350,8 @@ async function completeQuest(
 
   try {
     let latestSnapshot = liveSnapshot;
-    if (quest.kind === "hard_boss" && hardBossDefeatCount() > 0) {
+    const bossKillCredit = Math.max(hardBossDefeatCount(), nativeBossDefeats);
+    if (quest.kind === "hard_boss" && bossKillCredit > 0) {
       latestSnapshot = await submitLiveEntityHelperQuestMutation(
         "live_entity_helper_record_boss_defeat",
         quest,
@@ -343,8 +359,10 @@ async function completeQuest(
         {
           extraPayload: {
             bossDefeated: true,
-            bossKillCredit: hardBossDefeatCount(),
-            bossEntityId: String(HARTHMERE_LIVE_ENTITY_HELPER_MUCK_BOSS_OFFSET),
+            bossKillCredit,
+            bossEntityId: String(
+              HARTHMERE_NATIVE_MUCK_SCARRED_HELIX_SEED.entityId
+            ),
           },
         }
       );
@@ -446,7 +464,11 @@ export function contextForLiveEntityHelperQuest(input: {
 }
 
 export function useLiveEntityHelperQuestDialog(talkingToNPCId: BiomesId) {
-  const { reactResources, resources } = useClientContext();
+  const { reactResources, resources, userId } = useClientContext();
+  const nativeCombatState = reactResources.use("/ecs/c/trigger_state", userId);
+  const nativeBossDefeats = nativeBiomesEcsAuthorityEnabled()
+    ? readHarthmereNativeCombatProgression(nativeCombatState).bossKills
+    : 0;
   const [
     label,
     defaultDialog,
@@ -593,18 +615,21 @@ export function useLiveEntityHelperQuestDialog(talkingToNPCId: BiomesId) {
 
   const complete = useCallback(
     (activeQuest: LiveEntityHelperQuestInstance) => {
-      void completeQuest(activeQuest, questContext, liveQuestSnapshot).then(
-        (result) => {
-          if (result.liveSnapshot) {
-            setLiveQuestSnapshot(result.liveSnapshot);
-          }
-          if (result.ok) {
-            setRefreshToken((old) => old + 1);
-          }
+      void completeQuest(
+        activeQuest,
+        questContext,
+        liveQuestSnapshot,
+        nativeBossDefeats
+      ).then((result) => {
+        if (result.liveSnapshot) {
+          setLiveQuestSnapshot(result.liveSnapshot);
         }
-      );
+        if (result.ok) {
+          setRefreshToken((old) => old + 1);
+        }
+      });
     },
-    [liveQuestSnapshot, questContext]
+    [liveQuestSnapshot, nativeBossDefeats, questContext]
   );
 
   if (!quest) {
@@ -622,7 +647,8 @@ export function useLiveEntityHelperQuestDialog(talkingToNPCId: BiomesId) {
   const evidence = completionEvidence(
     quest,
     liveQuestSnapshot,
-    state.active[quest.questId]?.objectiveBaseline
+    state.active[quest.questId]?.objectiveBaseline,
+    nativeBossDefeats
   );
   const completionCheck = canCompleteLiveEntityHelperQuest(quest, evidence);
   const missingText = completionCheck.missing.join(", ");
@@ -636,12 +662,14 @@ export function useLiveEntityHelperQuestDialog(talkingToNPCId: BiomesId) {
       tooltip: quest.taskHint,
       followUpText: textBlock(quest.activeText),
       onPerformed: () => {
-        void acceptQuest(quest, questContext).then((snapshot) => {
-          if (snapshot) {
-            setLiveQuestSnapshot(snapshot);
+        void acceptQuest(quest, questContext, nativeBossDefeats).then(
+          (snapshot) => {
+            if (snapshot) {
+              setLiveQuestSnapshot(snapshot);
+            }
+            setRefreshToken((old) => old + 1);
           }
-          setRefreshToken((old) => old + 1);
-        });
+        );
       },
     });
   }
@@ -660,11 +688,21 @@ export function useLiveEntityHelperQuestDialog(talkingToNPCId: BiomesId) {
       followUpText: textBlock(
         "The Muck-Scarred Helix rises at the West Muck Breach. Keep fighting until it is defeated, then return for the reward."
       ),
-      onPerformed: () =>
-        performHarthmereCombatAttack(
-          HARTHMERE_LIVE_ENTITY_HELPER_MUCK_BOSS_OFFSET,
-          "heavy"
-        ),
+      onPerformed: () => {
+        if (!nativeBiomesEcsAuthorityEnabled()) {
+          performHarthmereCombatAttack(
+            HARTHMERE_LIVE_ENTITY_HELPER_MUCK_BOSS_OFFSET,
+            "heavy"
+          );
+          return;
+        }
+        // Materialize the exact native boss; the player then fights it through
+        // ordinary cursor -> UpdateNpcHealth -> Anima/ECS combat.
+        void defaultHarthmereLiveFetch("/api/harthmere/native_combat_boss", {
+          method: "POST",
+          credentials: "same-origin",
+        }).then(() => setRefreshToken((old) => old + 1));
+      },
     });
   }
 

@@ -120,13 +120,10 @@ export function useCanTalkToNpc(
   if (isHarthmereCombatCreatureNpcType(npcMetadata?.type_id)) {
     return false;
   }
-  // Snapshot quest objects such as the Clothing Crate and Billy's Toolbag are
-  // non-living picture-frame placeables with a native quest_giver component.
-  // They must open the native quest dialog even though their labels also match
-  // generic crate/bag semantics.
-  if (questGiver && entityId) {
-    return true;
-  }
+  // Physical object semantics win over quest metadata. A crate, board, sign,
+  // station, or other non-living prop may carry quest_giver so its native
+  // interaction advances a trigger; that does not make the prop an NPC or
+  // permit the generic generated-conversation fallback.
   if (
     isHarthmereNonLivingDialogueObjectLabel({
       label: label?.text,
@@ -134,6 +131,9 @@ export function useCanTalkToNpc(
     })
   ) {
     return false;
+  }
+  if (questGiver && entityId) {
+    return true;
   }
   return (
     canTalkToNpc(deps, entityId) ||
@@ -185,9 +185,6 @@ export function canTalkToNpc(
   if (isHarthmereCombatCreatureNpcType(entity?.npc_metadata?.type_id)) {
     return false;
   }
-  if (questGiver && entityId) {
-    return true;
-  }
   if (
     isHarthmereNonLivingDialogueObjectLabel({
       label: label?.text,
@@ -195,6 +192,9 @@ export function canTalkToNpc(
     })
   ) {
     return false;
+  }
+  if (questGiver && entityId) {
+    return true;
   }
   const hasDefaultDialog =
     typeof item?.npcDefaultDialog === "string" ||
@@ -216,7 +216,10 @@ export function canTalkToNpc(
       iced: entity?.iced,
     })
   );
-  if ((Boolean(questGiver) || entityDescription?.text) && entityId) {
+  // A description is presentation data, not proof of personhood. Requiring an
+  // actual quest/dialog/player-like/mount/helper capability prevents passive
+  // animals and labeled props from receiving fabricated NPC conversation.
+  if (Boolean(questGiver) && entityId) {
     return true;
   } else if (hasDefaultDialog && entityId) {
     return true;

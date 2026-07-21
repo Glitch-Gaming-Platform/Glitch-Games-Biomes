@@ -12,6 +12,7 @@ import {
   materializeHarthmereNativeEcsPlans,
   nativeEcsOwnsHarthmereLiveModeActionForTest,
   nativeEcsPhysicalDropNeedsAuthenticatedActorForTest,
+  nativeEcsRejectsLegacyFarmingRequestForTest,
   persistHarthmereLiveModeResponse,
   preserveFreshHarthmereLiveModeStatusChannelsForTest,
   publishBuildingSystemMaterializationPlansToEcs,
@@ -369,6 +370,109 @@ describe("live_mode API Redis persistence", () => {
     );
     assert.equal(world.table.get(8_700_000_000_000_002 as any), undefined);
   });
+
+  it("reallocates a stale materialization id instead of accepting an unrelated ECS entity", async () => {
+    const redisPrimary = new FakeRedisPrimary();
+    const world = new InMemoryWorld();
+    const worldApi = ShimWorldApi.createForWorld(world);
+    const occupied = 8_700_000_000_000_003 as any;
+    const replacement = 8_700_000_000_000_004 as any;
+    world.applyChanges([
+      {
+        kind: "create",
+        entity: { id: occupied, label: { text: "unrelated terrain marker" } },
+      },
+    ]);
+    const ids = [occupied, replacement];
+    const result = await materializeHarthmereNativeEcsPlans({
+      redisPrimary,
+      worldApi,
+      idGenerator: {
+        next: async () => ids.shift()!,
+        batch: async (count: number) => ids.splice(0, count),
+      },
+      plans: [
+        {
+          kind: "drop",
+          materializationKey: "drop-stale-id-collision",
+          position: { x: 1, y: 2, z: 3 },
+          itemStacks: { rough_stone: 1 },
+          ownerActorIds: ["1234"],
+          expiresAtMs: NOW_MS + 60_000,
+          mined: true,
+          sourceKind: "test",
+        },
+      ],
+    });
+    assert.deepEqual(result, { created: 1, alreadyMaterialized: 0 });
+    assert.equal(
+      world.table.get(occupied)?.label?.text,
+      "unrelated terrain marker"
+    );
+    assert.ok(world.table.get(replacement)?.grab_bag);
+  });
+
+  it("consumes native job items and creates one replay-safe native reward drop", async () => {
+    const redisPrimary = new FakeRedisPrimary();
+    const world = new InMemoryWorld();
+    const worldApi = ShimWorldApi.createForWorld(world);
+    const actorId = 1234 as any;
+    const consumedId = harthmereItemIdToBiomesId("rough_stone")!;
+    const rewardId = harthmereItemIdToBiomesId("iron_ore")!;
+    world.applyChanges([
+      {
+        kind: "create",
+        entity: {
+          id: actorId,
+          inventory: Inventory.create({
+            items: [countOf(consumedId, 1n)],
+          }),
+        },
+      },
+    ]);
+    const ids = [8_700_000_000_000_005 as any, 8_700_000_000_000_006 as any];
+    const idGenerator = {
+      next: async () => ids.shift()!,
+      batch: async (count: number) => ids.splice(0, count),
+    };
+    const plans = [
+      {
+        kind: "inventory_exchange" as const,
+        materializationKey: "jobs:1234:repair:1",
+        actorId: String(actorId),
+        position: { x: 10, y: 20, z: 30 },
+        consumeItemStacks: { rough_stone: 1 },
+        rewardItemStacks: { iron_ore: 2 },
+        expiresAtMs: NOW_MS + 60_000,
+        sourceKind: "jobs_test",
+      },
+    ];
+    assert.deepEqual(
+      await materializeHarthmereNativeEcsPlans({
+        redisPrimary,
+        worldApi,
+        idGenerator,
+        plans,
+      }),
+      { created: 1, alreadyMaterialized: 0 }
+    );
+    const player = world.table.get(actorId)!;
+    assert.equal(player.inventory!.items[0], undefined);
+    const reward = world.table.get(8_700_000_000_000_006 as any)!;
+    assert.equal(Number([...reward.grab_bag!.slots.values()][0].count), 2);
+    assert.equal([...reward.grab_bag!.slots.values()][0].item.id, rewardId);
+
+    assert.deepEqual(
+      await materializeHarthmereNativeEcsPlans({
+        redisPrimary,
+        worldApi,
+        idGenerator,
+        plans,
+      }),
+      { created: 0, alreadyMaterialized: 1 }
+    );
+    assert.equal(world.table.get(actorId)!.inventory!.items[0], undefined);
+  });
   it("keeps authenticated combat, death, AI, and respawn on native ECS", () => {
     for (const action of [
       "request_attack",
@@ -379,6 +483,7 @@ describe("live_mode API Redis persistence", () => {
       "request_respawn",
       "request_npc_ai_tick",
       "request_boss_tick",
+      "request_loot_roll",
     ] as const) {
       assert.equal(nativeEcsOwnsHarthmereLiveModeActionForTest(action), true);
     }
@@ -388,6 +493,52 @@ describe("live_mode API Redis persistence", () => {
       ),
       false
     );
+    assert.equal(
+      nativeEcsPhysicalDropNeedsAuthenticatedActorForTest({
+        actionKind: "request_jobs_board_mutation",
+        payload: { operation: "complete_job_quest" },
+      }),
+      true
+    );
+  });
+
+  it("rejects browser-authored legacy farming while leaving native drop operations open", () => {
+    for (const operation of [
+      "plant",
+      "water",
+      "harvest",
+      "forage_food",
+      "hunt_animal",
+      "cook_food",
+      "eat_food",
+      "feed_livestock",
+      "collect_livestock_product",
+    ]) {
+      assert.equal(
+        nativeEcsRejectsLegacyFarmingRequestForTest({
+          actionKind: "request_farming_action",
+          payload: { operation },
+        }),
+        true,
+        operation
+      );
+    }
+    for (const operation of [
+      "gather_node",
+      "mine_exotic_matter_deposit",
+      "cook_enqueue",
+      "cook_collect",
+      "cook_cancel",
+    ]) {
+      assert.equal(
+        nativeEcsRejectsLegacyFarmingRequestForTest({
+          actionKind: "request_farming_action",
+          payload: { operation },
+        }),
+        false,
+        operation
+      );
+    }
   });
 
   it("requires a numeric authenticated ECS actor before creating private native drops", () => {
@@ -408,9 +559,9 @@ describe("live_mode API Redis persistence", () => {
     assert.equal(
       nativeEcsPhysicalDropNeedsAuthenticatedActorForTest({
         actionKind: "request_farming_action",
-        payload: { operation: "cook" },
+        payload: { operation: "cook_enqueue" },
       }),
-      false
+      true
     );
   });
 
@@ -688,6 +839,13 @@ describe("live_mode API Redis persistence", () => {
       new Set(context.itemIds),
       new Set([selectedTool, wornTool])
     );
+    assert.deepEqual(
+      new Set(context.equippedItemKeys),
+      new Set(["rusty_pickaxe", "repair_mallet"])
+    );
+    assert.deepEqual(context.itemCounts, {
+      rusty_pickaxe: 1,
+    });
   });
 
   it("keeps jobs-board mutation snapshots slim without cutting building snapshots from building actions", () => {

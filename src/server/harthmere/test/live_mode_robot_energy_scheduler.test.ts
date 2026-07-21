@@ -44,6 +44,7 @@ import { BikkieIds } from "@/shared/bikkie/ids";
 import { muckMonsterAreaForPosition } from "@/shared/harthmere/muck_monster_aggression_ai";
 import { InMemoryWorld } from "@/server/shared/world/shim/in_memory_world";
 import { ShimWorldApi } from "@/server/shared/world/shim/api";
+import { harthmereNativeNpcCombatProfileForSeed } from "@/shared/harthmere/harthmere_native_combat";
 
 const NOW_MS = 1_700_600_000_000;
 
@@ -195,7 +196,9 @@ describe("Harthmere live entity production seeds", () => {
     assert.equal(robotChange.tick, 77);
     assert.equal(
       robotChange.entity.npc_metadata?.type_id,
-      BikkieIds.biomesRobot
+      harthmereNativeNpcCombatProfileForSeed(
+        HARTHMERE_LIVE_ENTITY_ROBOT_SENTINEL_SEEDS[0]
+      ).id
     );
     assert.equal(
       robotChange.entity.robot_component?.internal_battery_charge,

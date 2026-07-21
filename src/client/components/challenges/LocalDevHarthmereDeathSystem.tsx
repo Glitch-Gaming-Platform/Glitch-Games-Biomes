@@ -1,4 +1,5 @@
 import { harthmereLocalStorage } from "@/client/util/storage";
+import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
 import {
   downHarthmerePlayerFromSystem,
   endHarthmereRespawnProtection,
@@ -39,6 +40,8 @@ import {
 import { harthmereLiveServerAuthoritative } from "@/client/components/challenges/harthmereLiveAuthoritySignal";
 import { defaultHarthmereLiveFetch } from "@/client/components/harthmere_live_fetch";
 import { fireAndForget } from "@/shared/util/async";
+import { nativeBiomesEcsAuthorityEnabled } from "@/shared/harthmere/native_road_ahead_contract";
+import { readHarthmereNativeVitals } from "@/shared/harthmere/harthmere_native_vitals";
 import React, { useEffect, useMemo, useState } from "react";
 
 export {
@@ -202,6 +205,18 @@ export function requestHarthmereGroveRespawnTeleport(): HarthmereGroveTeleportRe
 }
 
 async function submitHarthmereLiveModeGroveRespawn() {
+  if (nativeBiomesEcsAuthorityEnabled()) {
+    const response = await defaultHarthmereLiveFetch(
+      "/api/harthmere/native_vitals",
+      {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "respawn_grove" }),
+      }
+    );
+    return response.json().catch(() => undefined);
+  }
   const requestId = `harthmere_grove_respawn_${Date.now()}_${Math.random()
     .toString(36)
     .slice(2)}`;
@@ -443,6 +458,79 @@ export type HarthmereDeathSyncAction =
       damageType: string;
       detail: string;
     };
+
+export function harthmereNativeDeathSyncActionForTest(input: {
+  hp?: number;
+  maxHp?: number;
+  damageSourceKind?: string;
+  stamina?: number;
+  currentDeathState: HarthmereDeathStateName;
+  currentProtectionUntil?: number;
+  nowMs?: number;
+}): HarthmereDeathSyncAction {
+  const hp = Number(input.hp);
+  if (!Number.isFinite(hp)) return { kind: "none" };
+  if (
+    harthmereActiveRespawnProtectionSuppressesDeathSyncForTest({
+      deathState: input.currentDeathState,
+      protectionUntil: input.currentProtectionUntil,
+      nowMs: input.nowMs,
+    })
+  ) {
+    return { kind: "none" };
+  }
+  if (hp > 0) {
+    return HARTHMERE_DEATH_LOCKED_STATES.has(input.currentDeathState)
+      ? {
+          kind: "recover",
+          hp,
+          maxHp: input.maxHp,
+          deathState: "alive",
+          detail:
+            "Native ECS health recovered; clearing the stale death and movement lock.",
+        }
+      : { kind: "none" };
+  }
+  if (HARTHMERE_DEATH_LOCKED_STATES.has(input.currentDeathState)) {
+    return { kind: "pose", state: input.currentDeathState };
+  }
+
+  const exhausted = Number(input.stamina) <= 0;
+  const drowned = input.damageSourceKind === "drown";
+  const maxHp = Math.max(1, Math.round(Number(input.maxHp) || 100));
+  return exhausted
+    ? {
+        kind: "down",
+        cause: "Stamina reached zero",
+        killerName: "Starvation and exhaustion",
+        abilityName: "Stamina Depletion",
+        damage: maxHp,
+        damageType: "survival",
+        detail:
+          "You ran out of stamina. Respawn at The Grove to recover with full stamina.",
+      }
+    : drowned
+    ? {
+        kind: "down",
+        cause: "drowning",
+        killerName: "Deep Water",
+        abilityName: "Drowning",
+        damage: maxHp,
+        damageType: "survival",
+        detail:
+          "You ran out of breath and drowned. Respawn at The Grove to recover.",
+      }
+    : {
+        kind: "down",
+        cause: "Native ECS health reached zero",
+        killerName: "Combat",
+        abilityName: "Native Damage",
+        damage: maxHp,
+        damageType: "combat",
+        detail:
+          "Your native health reached zero. Respawn at The Grove to recover.",
+      };
+}
 
 function normalizedLiveDeathCause(status?: BiomesUIPlayerStatusSnapshot) {
   return String(status?.combat?.lastDeath?.cause ?? "")
@@ -818,6 +906,13 @@ export const HarthmereDeathHUD: React.FunctionComponent<{}> = () => {
 
 export const HarthmereDeathRuntimeController: React.FunctionComponent<{}> =
   () => {
+    const { reactResources, userId } = useClientContext();
+    const nativeHealth = reactResources.use("/ecs/c/health", userId);
+    const nativeTriggerState = reactResources.use(
+      "/ecs/c/trigger_state",
+      userId
+    );
+    const nativeVitals = readHarthmereNativeVitals(nativeTriggerState);
     const death = useHarthmereDeathState();
     const combat = useHarthmereCombatState();
     const liveStatus = useBiomesUIPlayerStatusState();
@@ -825,6 +920,9 @@ export const HarthmereDeathRuntimeController: React.FunctionComponent<{}> =
 
     const syncLivePlayerStatusToDeath = React.useCallback(
       (status: BiomesUIPlayerStatusSnapshot | undefined) => {
+        // Once native ECS authority is active, delayed Redis/player-status
+        // snapshots must not resurrect or kill the player after Health changed.
+        if (nativeBiomesEcsAuthorityEnabled()) return;
         const latest = readHarthmereDeathState();
         const action = harthmereLivePlayerDeathSyncActionForTest({
           status,
@@ -861,6 +959,44 @@ export const HarthmereDeathRuntimeController: React.FunctionComponent<{}> =
       },
       [combat.player.combatState, combat.player.hp, combat.player.maxHp]
     );
+
+    useEffect(() => {
+      if (!nativeBiomesEcsAuthorityEnabled() || !nativeHealth) return;
+      const latest = readHarthmereDeathState();
+      const action = harthmereNativeDeathSyncActionForTest({
+        hp: nativeHealth.hp,
+        maxHp: nativeHealth.maxHp,
+        damageSourceKind: nativeHealth.lastDamageSource?.kind,
+        stamina: nativeVitals.stamina,
+        currentDeathState: latest.state,
+        currentProtectionUntil: latest.protectionUntil,
+      });
+      if (action.kind === "down") {
+        downHarthmerePlayerFromSystem({
+          cause: action.cause,
+          killerName: action.killerName,
+          abilityName: action.abilityName,
+          damage: action.damage,
+          damageType: action.damageType,
+          detail: action.detail,
+        });
+      } else if (action.kind === "recover") {
+        reconcileHarthmereCombatStateFromLiveStatus({
+          hp: action.hp,
+          maxHp: action.maxHp,
+          deathState: action.deathState,
+        });
+        clearHarthmereDeathState(action.detail);
+        dispatchHarthmerePlayerDeathPose(false, "alive");
+      } else if (action.kind === "pose") {
+        dispatchHarthmerePlayerDeathPose(true, action.state);
+      }
+    }, [
+      nativeHealth?.hp,
+      nativeHealth?.lastDamageSource?.kind,
+      nativeHealth?.maxHp,
+      nativeVitals.stamina,
+    ]);
 
     useEffect(() => {
       if (typeof window === "undefined") {

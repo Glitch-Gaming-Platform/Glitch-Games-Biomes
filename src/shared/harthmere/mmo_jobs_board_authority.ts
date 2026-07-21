@@ -423,6 +423,8 @@ export interface HarthmereJobsBoardMutationContext {
   actorPosition?: { x: number; y: number; z: number };
   /** Tool actions proven by server-owned equipped inventory state. */
   authoritativeEquippedToolActions?: string[];
+  /** Target ids proven by server position against authored ECS/world markers. */
+  authoritativeCompletedTargetIds?: string[];
   economy?: HarthmereProductionEconomyState;
   allowNpcJobPosting?: boolean;
   canManageGuildJobs?: (guildId: string) => boolean;
@@ -1600,7 +1602,10 @@ function completeJobQuest(
     (req) => !req.itemId && (req.targetId || req.serviceKind)
   );
   for (const req of serviceRequirements) {
-    if (req.targetId && request.completedTargetId !== req.targetId) {
+    if (
+      req.targetId &&
+      !context.authoritativeCompletedTargetIds?.includes(req.targetId)
+    ) {
       return reject(
         result,
         `jobs_board_rejected:wrong_quest_target:${req.targetId}`
@@ -1610,18 +1615,14 @@ function completeJobQuest(
   if (job.kind === "escort" && job.escortCompanion?.status !== "arrived") {
     return reject(result, "jobs_board_rejected:escort_companion_not_arrived");
   }
-  // HARTHMERE_REPAIR_TOOL_COMPLETION: any requirement that needs a tool
-  // action (e.g. a repair job) can only be completed when the client reports the
-  // matching tool was actually used (it sets request.usedToolAction only when the
-  // player performed the work with the EQUIPPED tool). This is the server-side
-  // half of the equip-gated repair flow.
+  // Tool-gated work is proven only from the server-read selected/worn native
+  // inventory. The client no longer supplies a `usedToolAction` claim.
   for (const req of job.requirements) {
     if (
       req.requiredToolAction &&
-      (request.usedToolAction !== req.requiredToolAction ||
-        !context.authoritativeEquippedToolActions?.includes(
-          req.requiredToolAction
-        ))
+      !context.authoritativeEquippedToolActions?.includes(
+        req.requiredToolAction
+      )
     ) {
       return reject(
         result,
@@ -1637,8 +1638,8 @@ function completeJobQuest(
     if (!req.recipientNpcId) continue;
     const ownerMarkerId = `${HARTHMERE_BUSINESS_OWNER_MARKER_PREFIX}${req.recipientNpcId}`;
     if (
-      request.completedTargetId !== ownerMarkerId &&
-      request.completedTargetId !== req.recipientNpcId
+      !context.authoritativeCompletedTargetIds?.includes(ownerMarkerId) &&
+      !context.authoritativeCompletedTargetIds?.includes(req.recipientNpcId)
     ) {
       return reject(
         result,

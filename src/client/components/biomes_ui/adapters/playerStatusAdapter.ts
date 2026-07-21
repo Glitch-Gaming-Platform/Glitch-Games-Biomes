@@ -210,6 +210,21 @@ function shouldPreferFallbackCombatVitals(
   );
 }
 
+function fallbackOwnsProtectedRespawnVitals(
+  live: BiomesUIPlayerStatusSnapshot,
+  fallback: BiomesUIVitalsDisplayState
+) {
+  const liveCombatState = normalizeCombatState(
+    live.combat?.deathState,
+    "alive"
+  );
+  return (
+    normalizeCombatState(fallback.combatState) === "protected_after_respawn" &&
+    (safeWhole(live.combat?.hp, fallback.hp) <= 0 ||
+      ["dead", "downed"].includes(liveCombatState))
+  );
+}
+
 export function formatBiomesResourceLabelForVitalsForTest(
   kind: string | undefined,
   explicit?: string
@@ -236,6 +251,10 @@ export function biomesUIVitalsDisplayFromLiveStatusForTest(
   const level = Math.max(1, safeWhole(live.level, fallback.level ?? 1));
   const className = String(live.className || "").trim();
   const preferFallbackCombat = shouldPreferFallbackCombatVitals(live, fallback);
+  const fallbackOwnsRespawnVitals = fallbackOwnsProtectedRespawnVitals(
+    live,
+    fallback
+  );
   // maxHp / maxResource must be STABLE across the alive↔in-combat transition,
   // otherwise the health bar visibly rescales when combat starts (the server's
   // leveled max, e.g. 108, vs the local sim's base max, e.g. 100). We therefore
@@ -246,7 +265,11 @@ export function biomesUIVitalsDisplayFromLiveStatusForTest(
   const liveMaxHp = safeWhole(live.combat?.maxHp, 0);
   const maxHp = Math.max(
     1,
-    liveMaxHp > 0 ? liveMaxHp : Math.max(1, fallback.maxHp)
+    fallbackOwnsRespawnVitals
+      ? fallback.maxHp
+      : liveMaxHp > 0
+      ? liveMaxHp
+      : Math.max(1, fallback.maxHp)
   );
   const rawHp = preferFallbackCombat
     ? fallback.hp
@@ -258,7 +281,11 @@ export function biomesUIVitalsDisplayFromLiveStatusForTest(
   const liveMaxResource = safeWhole(live.combat?.maxResource, 0);
   const resourceMax = Math.max(
     1,
-    liveMaxResource > 0 ? liveMaxResource : Math.max(1, fallback.resourceMax)
+    fallbackOwnsRespawnVitals
+      ? fallback.resourceMax
+      : liveMaxResource > 0
+      ? liveMaxResource
+      : Math.max(1, fallback.resourceMax)
   );
   const rawResourceValue = preferFallbackCombat
     ? fallback.resourceValue
@@ -354,10 +381,19 @@ export function biomesUIPlayerStatusEndpoint(
   );
 }
 
-function biomesUIPlayerStatusGameplayActive() {
-  if (typeof document === "undefined") return false;
-  if (document.visibilityState !== "visible") return false;
-  if (document.documentElement.dataset.harthmereWakeUpActive === "true") {
+interface BiomesUIPlayerStatusDocumentState {
+  visibilityState?: string;
+  documentElement: { dataset: Record<string, string | undefined> };
+}
+
+function biomesUIPlayerStatusGameplayActive(
+  documentState:
+    | BiomesUIPlayerStatusDocumentState
+    | undefined = typeof document === "undefined" ? undefined : document
+) {
+  if (!documentState) return false;
+  if (documentState.visibilityState !== "visible") return false;
+  if (documentState.documentElement.dataset.harthmereWakeUpActive === "true") {
     return false;
   }
   return true;
@@ -367,8 +403,10 @@ function biomesUIPlayerStatusRefreshDelayMs() {
   return biomesUIPlayerStatusGameplayActive() ? 5_000 : 15_000;
 }
 
-export function biomesUIPlayerStatusGameplayActiveForTest() {
-  return biomesUIPlayerStatusGameplayActive();
+export function biomesUIPlayerStatusGameplayActiveForTest(
+  documentState?: BiomesUIPlayerStatusDocumentState
+) {
+  return biomesUIPlayerStatusGameplayActive(documentState);
 }
 
 export async function fetchBiomesUIPlayerStatus(

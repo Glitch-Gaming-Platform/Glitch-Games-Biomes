@@ -1,8 +1,4 @@
 import { harthmereLiveServerAuthoritative } from "@/client/components/challenges/harthmereLiveAuthoritySignal";
-import {
-  useWorldInteractionCandidate,
-  WORLD_INTERACTION_PRIORITY,
-} from "@/client/components/challenges/worldInteractionDispatcher";
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
 import {
   defaultHarthmereLiveFetch,
@@ -73,6 +69,7 @@ import {
 import { publishHarthmereLiveEntityCombatMotionToRenderer } from "@/client/game/resources/harthmere_live_entity_motion_bridge";
 import type { GameModal } from "@/client/game/resources/game_modal";
 import {
+  ConsumptionEvent,
   InventoryChangeSelectionEvent,
   InventoryCombineEvent,
   InventorySortEvent,
@@ -116,6 +113,7 @@ import {
   harthmereHotbarCarriedCounts,
   mergeMirroredBiomesBackpackUiItemsForTest,
 } from "./inventoryAdapterHelpers";
+import { nativeConsumptionForBiomesUIForTest } from "./nativeConsumptionAdapter";
 import { shouldHydrateBiomesUILiveStateForTab } from "./liveStateHydrationPolicy";
 import {
   activeBiomesUIMapPinFromMarkerForTest,
@@ -1141,6 +1139,18 @@ function isLiveVoxelBlockItemId(itemId: string) {
 
 function isNativeBikkieItemId(itemId: string) {
   return safeParseBiomesId(itemId) !== undefined;
+}
+
+const RETIRED_ROAD_AHEAD_CLOTHING_ALIASES = new Set([
+  "baker_apron",
+  "field_trousers",
+]);
+
+function isRetiredRoadAheadClothingAlias(itemId: string) {
+  return (
+    nativeBiomesEcsAuthorityEnabled() &&
+    RETIRED_ROAD_AHEAD_CLOTHING_ALIASES.has(itemId)
+  );
 }
 
 function isHotbarEligibleItemId(itemId: string) {
@@ -2777,41 +2787,6 @@ export function useBiomesUILiveAdapters({
       ),
     [farmingFoodHydrated, farmingFoodState]
   );
-  const ambientFarmingAction = farmingFoodQuickActionForKey(
-    farmingFoodQuickModel,
-    "KeyF"
-  );
-  const runAmbientFarmingAction = React.useCallback(() => {
-    if (!ambientFarmingAction || ambientFarmingAction.disabled) return;
-    fireAndForget(
-      submitFarmingFoodLiveModeAction(
-        ambientFarmingAction.operation,
-        ambientFarmingAction.payload
-      )
-        .then(applyLiveModeInventoryResponse)
-        .catch(() => refreshFarmingFoodState())
-    );
-  }, [
-    ambientFarmingAction,
-    applyLiveModeInventoryResponse,
-    refreshFarmingFoodState,
-  ]);
-  const ambientFarmingCandidate = React.useMemo(
-    () =>
-      replacementMode &&
-      activeTab === null &&
-      ambientFarmingAction &&
-      !ambientFarmingAction.disabled
-        ? {
-            id: `harthmere:ambient-farming:${ambientFarmingAction.id}`,
-            priority: WORLD_INTERACTION_PRIORITY.ambientQuickAction,
-            onInteract: runAmbientFarmingAction,
-          }
-        : undefined,
-    [activeTab, ambientFarmingAction, replacementMode, runAmbientFarmingAction]
-  );
-  useWorldInteractionCandidate(ambientFarmingCandidate);
-
   React.useEffect(() => {
     if (!replacementMode || typeof window === "undefined") return;
     const handler = (event: KeyboardEvent) => {
@@ -2826,8 +2801,8 @@ export function useBiomesUILiveAdapters({
       ) {
         return;
       }
-      // F is owned by the central world-interaction dispatcher above. This
-      // listener only retains the non-world R/T food and cooking shortcuts.
+      // F is exclusively owned by a concrete inspected/proximity target. This
+      // listener retains only the non-world R/T food and cooking shortcuts.
       if (event.code === "KeyF") return;
       const action = farmingFoodQuickActionForKey(
         farmingFoodQuickModel,
@@ -3345,7 +3320,7 @@ export function useBiomesUILiveAdapters({
         protectedReason: undefined,
         indexOffset: liveBackpackIndexOffset,
       }
-    );
+    ).filter((item) => !isRetiredRoadAheadClothingAlias(item.id));
     const liveBackpackInstanceItems = instanceRecordToInventoryUiItems(
       backendActor?.instanceIds,
       inventoryLootState?.itemInstances,
@@ -3762,35 +3737,38 @@ export function useBiomesUILiveAdapters({
             ),
           })
         );
-        const backendEquipment = normalizeAssignment(
-          backendActor?.equipment
-        ).map(([key, itemId]: [string, any]) => ({
-          id: key,
-          label: key.replace(/_/g, " "),
-          ref: { kind: "wearable" as const, key },
-          item: (() => {
-            const item = stackRecordToInventoryUiItems(
-              { [String(itemId)]: 1 },
-              "equipment",
-              "wearable",
-              {
-                description: "Equipped from your Harthmere inventory.",
-                canEquip: false,
-                canMove: false,
-                canSplit: false,
-                canDrop: false,
-                canDestroy: false,
-              }
-            )[0];
-            return item
-              ? {
-                  ...item,
-                  ref: { kind: "wearable" as const, key },
-                  canUnequip: true,
+        const backendEquipment = normalizeAssignment(backendActor?.equipment)
+          .filter(
+            ([, itemId]: [string, any]) =>
+              !isRetiredRoadAheadClothingAlias(String(itemId))
+          )
+          .map(([key, itemId]: [string, any]) => ({
+            id: key,
+            label: key.replace(/_/g, " "),
+            ref: { kind: "wearable" as const, key },
+            item: (() => {
+              const item = stackRecordToInventoryUiItems(
+                { [String(itemId)]: 1 },
+                "equipment",
+                "wearable",
+                {
+                  description: "Equipped from your Harthmere inventory.",
+                  canEquip: false,
+                  canMove: false,
+                  canSplit: false,
+                  canDrop: false,
+                  canDestroy: false,
                 }
-              : item;
-          })(),
-        }));
+              )[0];
+              return item
+                ? {
+                    ...item,
+                    ref: { kind: "wearable" as const, key },
+                    canUnequip: true,
+                  }
+                : item;
+            })(),
+          }));
         // Wearing is native ECS state in the May 16 snapshot. Keep every native
         // slot visible (notably both top and bottoms), and append only custom
         // Harthmere slots that do not collide with it.
@@ -3881,6 +3859,30 @@ export function useBiomesUILiveAdapters({
       useItem: (ref: InventoryUiRef) => {
         if (materialItemIdForRef(ref)) {
           return;
+        }
+        // Native-ECS inventory refs must be consumed through ConsumptionEvent.
+        // Selecting the slot only changes the held item and never debits the
+        // stack, applies recovery, or publishes the native consumption trigger.
+        // Resolve this before the legacy Redis/local appendices so a mirrored
+        // Harthmere item cannot accidentally mutate a second authority.
+        if (nativeBiomesEcsAuthorityEnabled()) {
+          const consumption = nativeConsumptionForBiomesUIForTest(
+            inventory,
+            ref
+          );
+          if (consumption) {
+            fireAndForget(
+              events.publish(
+                new ConsumptionEvent({
+                  id: userId,
+                  item_id: consumption.itemId,
+                  inventory_ref: consumption.ref,
+                  action: consumption.action,
+                })
+              )
+            );
+            return;
+          }
         }
         const localHarthmereItem = localHarthmereItemForRef(ref);
         if (localHarthmereItem) {
@@ -4258,6 +4260,25 @@ export function useBiomesUILiveAdapters({
             )
           ) {
             return;
+          }
+          if (isNativeInventoryRef(src)) {
+            const nativeSlot =
+              src.kind === "item"
+                ? backpackItems[Number(src.idx ?? -1)]
+                : src.kind === "hotbar"
+                ? hotbarItems[Number(src.idx ?? -1)]
+                : undefined;
+            const nativeItemId = nativeSlot?.item?.id;
+            // Native hotbar cells hold the actual stack, so enforce the same
+            // block/tool/consumable eligibility as the replacement UI before
+            // publishing a swap. Wearables and arbitrary quest items remain in
+            // backpack even if a forged drag payload targets hotbar.
+            if (
+              nativeItemId === undefined ||
+              !isHotbarEligibleItemId(String(nativeItemId))
+            ) {
+              return;
+            }
           }
           // A native ECS source must always publish the native swap, even when
           // the optional Redis inventory is hydrated. Blocking this mutation was

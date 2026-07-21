@@ -81,7 +81,9 @@ export function buildHarthmereBusinessOwnerNpcSeedChanges(input: {
         orientation: seed.orientation,
         velocity: [0, 0, 0],
         displayName: seed.displayName,
-        defaultDialog: npcDialog(seed.line, ...seed.extraLines),
+        // Casual talk contains identity, business, and local conditions only.
+        // Job offers are attached to quest_giver below.
+        defaultDialog: npcDialog(seed.line, ...seed.ambientLines),
       },
       nowSeconds
     );
@@ -110,7 +112,8 @@ export function buildHarthmereBusinessOwnerNpcSeedChanges(input: {
       }),
       quest_giver: QuestGiver.create({
         concurrent_quests: 1,
-        concurrent_quest_dialog: npcDialog(seed.line),
+        // Preserve authored work offers without forcing them into every chat.
+        concurrent_quest_dialog: npcDialog(seed.line, ...seed.extraLines),
       }),
       voice: Voice.create({
         voice: harthmereVoiceProfileForActor({

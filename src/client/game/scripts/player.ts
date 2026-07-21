@@ -55,6 +55,7 @@ import { getPlayerBuffs } from "@/shared/game/players";
 import { friendlyShardId, shardsForAABB } from "@/shared/game/shard";
 import { blockIsEmpty } from "@/shared/game/terrain_helper";
 import type { BiomesId } from "@/shared/ids";
+import { nativeBiomesEcsAuthorityEnabled } from "@/shared/harthmere/native_road_ahead_contract";
 import {
   add,
   approxEquals,
@@ -2101,6 +2102,13 @@ export class PlayerScript implements Script {
   }
 
   private updateDrowningHealth() {
+    if (nativeBiomesEcsAuthorityEnabled()) {
+      // Native Harthmere breath and drowning are advanced by the authenticated
+      // server heartbeat and written to ECS TriggerState/Health. Running this
+      // legacy client damage loop as well would apply every drowning tick twice.
+      this.drownThrottle.reset(DROWN_DELAY_IN_TICKS);
+      return;
+    }
     const { canBreathe } = this.resources.get(
       "/players/possible_terrain_actions",
       this.userId

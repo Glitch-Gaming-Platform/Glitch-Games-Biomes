@@ -1,5 +1,4 @@
 import { npcEntity } from "@/server/spawn/spawn_npc";
-import { BikkieIds } from "@/shared/bikkie/ids";
 import type { Change, ProposedChange } from "@/shared/ecs/change";
 import {
   EntityDescription,
@@ -9,16 +8,16 @@ import {
   Voice,
 } from "@/shared/ecs/gen/components";
 import type { BiomesId } from "@/shared/ids";
-import { LOCAL_DEV_HUMAN_NPC_TYPE_ID, isNpcTypeId } from "@/shared/npc/bikkie";
 import {
   HARTHMERE_LIVE_ENTITY_ROBOT_SENTINEL_SEEDS,
+  HARTHMERE_NATIVE_MUCK_SCARRED_HELIX_SEED,
   harthmereActiveLiveEntityProductionSeedIds,
-  harthmereCombatHpForLiveEntitySeed,
   harthmereGroundedLivestockSeedsInTerritory,
   harthmereGroundedMuckMonsterSeedsInTerritory,
   harthmereLiveEntitySizeForSeed,
   type HarthmereLiveEntityProductionSeed,
 } from "@/shared/harthmere/live_entity_production_seed";
+import { harthmereNativeNpcCombatProfileForSeed } from "@/shared/harthmere/harthmere_native_combat";
 import { harthmereVoiceProfileForActor } from "@/shared/harthmere/npc_voice_profiles";
 import { resolveHarthmereProductionMarkerPosition } from "@/shared/harthmere/production_terrain_placement_map";
 
@@ -69,19 +68,14 @@ export function buildHarthmereLiveEntityProductionSeedChanges(input: {
   const existingIds = input.existingIds ?? new Set<BiomesId>();
   const isRespawnSuppressed = input.isRespawnSuppressed ?? (() => false);
   const changes: Change[] = [];
-  const monsterTypeId = isNpcTypeId(BikkieIds.dMucker)
-    ? BikkieIds.dMucker
-    : LOCAL_DEV_HUMAN_NPC_TYPE_ID;
-  const robotTypeId = isNpcTypeId(BikkieIds.biomesRobot)
-    ? BikkieIds.biomesRobot
-    : LOCAL_DEV_HUMAN_NPC_TYPE_ID;
 
   for (const seed of HARTHMERE_LIVE_ENTITY_ROBOT_SENTINEL_SEEDS) {
+    const combatProfile = harthmereNativeNpcCombatProfileForSeed(seed);
     const entity = {
       ...npcEntity(
         {
           id: seed.entityId,
-          typeId: robotTypeId,
+          typeId: combatProfile.id,
           position: seed.position,
           orientation: seed.orientation,
           velocity: [0, 0, 0],
@@ -118,10 +112,11 @@ export function buildHarthmereLiveEntityProductionSeedChanges(input: {
   }
 
   for (const seed of harthmereGroundedMuckMonsterSeedsInTerritory()) {
+    const combatProfile = harthmereNativeNpcCombatProfileForSeed(seed);
     const base = npcEntity(
       {
         id: seed.entityId,
-        typeId: monsterTypeId,
+        typeId: combatProfile.id,
         position: productionPlacedLiveEntitySeedPosition(
           seed,
           "live_muck_monster"
@@ -137,10 +132,12 @@ export function buildHarthmereLiveEntityProductionSeedChanges(input: {
     // is what raises the "F: Talk" prompt, so strip it — you attack them, you
     // don't talk to them.
     delete (base as { default_dialog?: unknown }).default_dialog;
-    const combatHp = harthmereCombatHpForLiveEntitySeed(seed);
     const entity = {
       ...base,
-      health: Health.create({ hp: combatHp, maxHp: combatHp }),
+      health: Health.create({
+        hp: combatProfile.maxHp,
+        maxHp: combatProfile.maxHp,
+      }),
       size: Size.create({ v: harthmereLiveEntitySizeForSeed(seed) }),
       entity_description: EntityDescription.create({
         text: seed.description,
@@ -158,15 +155,14 @@ export function buildHarthmereLiveEntityProductionSeedChanges(input: {
     });
   }
 
-  // Wildlife (cows, sheep, rabbits) reuse the same damageable NPC type as
-  // muckers so they are huntable; their passive (ignore-until-attacked)
-  // behaviour is enforced by the live-mode combat reducer, and the client
-  // renders the matching animal mesh from the species in the label.
+  // Wildlife use exact passive/retaliating native types. Sharing the hostile
+  // dMucker type made animals aggro first and assigned monster drops/triggers.
   for (const seed of harthmereGroundedLivestockSeedsInTerritory()) {
+    const combatProfile = harthmereNativeNpcCombatProfileForSeed(seed);
     const base = npcEntity(
       {
         id: seed.entityId,
-        typeId: monsterTypeId,
+        typeId: combatProfile.id,
         position: productionPlacedLiveEntitySeedPosition(
           seed,
           "live_livestock"
@@ -179,10 +175,12 @@ export function buildHarthmereLiveEntityProductionSeedChanges(input: {
     );
     // Wildlife are huntable, not conversational — no "F: Talk" prompt.
     delete (base as { default_dialog?: unknown }).default_dialog;
-    const combatHp = harthmereCombatHpForLiveEntitySeed(seed);
     const entity = {
       ...base,
-      health: Health.create({ hp: combatHp, maxHp: combatHp }),
+      health: Health.create({
+        hp: combatProfile.maxHp,
+        maxHp: combatProfile.maxHp,
+      }),
       size: Size.create({ v: harthmereLiveEntitySizeForSeed(seed) }),
       entity_description: EntityDescription.create({
         text: seed.description,
@@ -201,6 +199,33 @@ export function buildHarthmereLiveEntityProductionSeedChanges(input: {
   }
 
   return changes;
+}
+
+/** Build the quest-gated boss as the same native ECS entity used in combat. */
+export function buildHarthmereNativeMuckScarredHelixEntity(nowSeconds: number) {
+  const seed = HARTHMERE_NATIVE_MUCK_SCARRED_HELIX_SEED;
+  const combatProfile = harthmereNativeNpcCombatProfileForSeed(seed);
+  const entity = {
+    ...npcEntity(
+      {
+        id: seed.entityId,
+        typeId: combatProfile.id,
+        position: seed.position,
+        orientation: seed.orientation,
+        velocity: [0, 0, 0],
+        displayName: seed.displayName,
+      },
+      nowSeconds
+    ),
+    health: Health.create({
+      hp: combatProfile.maxHp,
+      maxHp: combatProfile.maxHp,
+    }),
+    size: Size.create({ v: harthmereLiveEntitySizeForSeed(seed) }),
+    entity_description: EntityDescription.create({ text: seed.description }),
+  };
+  delete (entity as { default_dialog?: unknown }).default_dialog;
+  return entity;
 }
 
 export function buildHarthmereLiveEntityProductionSeedProposedChanges(input: {

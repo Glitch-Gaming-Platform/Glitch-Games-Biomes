@@ -1,4 +1,5 @@
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
+import { WORLD_INTERACTION_PRIORITY } from "@/client/components/challenges/worldInteractionDispatcher";
 import {
   ClickIcon,
   getClickIcon,
@@ -21,6 +22,8 @@ export const NegaWandOverlay: React.FunctionComponent = () => {
         <ShortcutText
           shortcut="F"
           keyCode="KeyF"
+          worldInteractionCandidateId="active-tool:nega-wand-radius"
+          worldInteractionPriority={WORLD_INTERACTION_PRIORITY.activeTool}
           onKeyDown={() => {
             reactResources.set("/space_clipboard/radius", {
               value: Math.max(

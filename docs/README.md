@@ -1,5 +1,15 @@
 # Biomes Docs
 
+### Harthmere Native ECS Combat
+
+For the one-authority combat implementation covering exact NPC types, weapons,
+armor, levels, cooldowns, native AI, death/drops/XP, boss quests, migration, and
+the required test/live-canary matrix, read:
+
+```text
+docs/harthmere/HARTHMERE_NATIVE_ECS_COMBAT.md
+```
+
 ### Harthmere Attack Targeting
 
 For the confirmed left-click attack path for muckers, hexes, animals, sentinels,
@@ -26,6 +36,13 @@ That guide documents the generated production terrain placement map, the
 read-only Azure/Redis regeneration command, cave/hollow spawn records, and the
 resolver APIs runtime code should use.
 
+For native player health, mana, stamina, breath, social standing, gold,
+consumable recovery, drowning, and Grove respawn behavior, read:
+
+```text
+docs/harthmere/HARTHMERE_NATIVE_ECS_VITALS.md
+```
+
 ### Harthmere Live Construction, Equipment, Hotbar, And Containers
 
 For production/live-mode verification notes covering throwaway home/business
@@ -35,6 +52,14 @@ visible versus hidden container behavior, read:
 ```text
 docs/harthmere/README.md
 src/client/components/biomes_ui/README.md
+```
+
+For the capability-first `F` interaction resolver, Road Ahead private native
+containers, authored fallback server receipts, active-tool precedence, and the
+full interaction regression matrix, read:
+
+```text
+docs/harthmere/HARTHMERE_F_INTERACTION_AUTHORITY.md
 ```
 
 Production construction tests can write real terrain/property/business state into

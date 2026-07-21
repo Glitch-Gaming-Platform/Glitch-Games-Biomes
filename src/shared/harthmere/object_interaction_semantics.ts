@@ -20,9 +20,10 @@ export type HarthmereObjectInteractionKind =
   | "take_photo"
   | "inspect";
 
-/** Physical cooking-station kind for "cook" interactions (campfire/cookpot/oven).
+/** Physical recipe authority used by cooking interactions.
  *  Mirrors the cookable station kinds in mmo_farming_food_stamina (excluding
- *  the station-less "field" recipes). */
+ *  the station-less "field" recipes). A stove uses the authored oven recipe
+ *  class rather than inventing a fourth incompatible recipe authority. */
 export type HarthmereCookStationKind = "campfire" | "cookpot" | "oven";
 
 export interface HarthmereObjectInteraction {
@@ -33,8 +34,12 @@ export interface HarthmereObjectInteraction {
   stationKind?: HarthmereCookStationKind;
 }
 
+// Connector names such as "Road Muckling" or "Road Bandit" are also used by
+// living entities. Do not classify bare road/trailhead words as object
+// capabilities; route markers are navigation data unless they own a concrete
+// sign/post/board component or authored object label.
 const HARTHMERE_NON_LIVING_OBJECT_RE =
-  /\b(crates?|chests?|box(?:es)?|barrels?|containers?|caches|satchels?|mailbags?|toolbags?|bags?|baskets?|bins?|lockers?|wardrobes?|cabinets?|shelves|shelf|workbenches|workbench|anvils?|boards?|signs?|posts?|markers?|ledgers?|books?|notes?|carts?|wagons?|lockboxes|strongboxes|stashes|footlockers?|stakes?|stones?|dumm(?:y|ies)|rings?|ropes?|firefl(?:y|ies)|flags?|pots?|cook\s+pots?|cooking\s+pots?|soup\s+pots?|stew\s+pots?|kettles?|fences?|boundar(?:y|ies)|tables?|desks?|mirrors?|moss|towers?|platforms?|offices?|chapels?|materials?|berries|patch(?:es)?|plots?|branches?|softwood|harvests?|remains?|carcasses?|sounders?|stretch|spots?|overlooks?|corners?|ovens?|beds?|stands?|cookpots?|campfires?|camp\s+fires?|firepits?|fire\s+pits?|fire\s+rings?|hearths?|cooking\s+fires?|pails?|mailboxes?|consoles?|terminals?|grates?|pillars?|candles?|altars?|shrines?|statues?|banners?|lamps?|braziers?|fountains?|wells?|gates?|doors?)\b/i;
+  /\b(crates?|chests?|box(?:es)?|barrels?|containers?|caches|satchels?|mailbags?|toolbags?|bags?|baskets?|bins?|lockers?|wardrobes?|cabinets?|shelves|shelf|workbenches|workbench|anvils?|boards?|signs?|posts?|markers?|ledgers?|books?|notes?|carts?|wagons?|lockboxes|strongboxes|stashes|footlockers?|stakes?|stones?|dumm(?:y|ies)|rings?|ropes?|firefl(?:y|ies)|flags?|pots?|cook\s+pots?|cooking\s+pots?|soup\s+pots?|stew\s+pots?|kettles?|fences?|boundar(?:y|ies)|tables?|desks?|mirrors?|moss|towers?|platforms?|offices?|chapels?|materials?|berries|patch(?:es)?|plots?|branches?|softwood|harvests?|remains?|carcasses?|sounders?|stretch|spots?|overlooks?|corners?|ovens?|stoves?|beds?|stands?|cookpots?|campfires?|camp\s+fires?|firepits?|fire\s+pits?|fire\s+rings?|hearths?|cooking\s+fires?|pails?|mailboxes?|consoles?|terminals?|grates?|pillars?|candles?|altars?|shrines?|statues?|banners?|lamps?|braziers?|fountains?|wells?|gates?|doors?)\b/i;
 
 const HARTHMERE_CONTAINER_OBJECT_RE =
   /\b(crates?|chests?|box(?:es)?|barrels?|containers?|caches|satchels?|mailbags?|toolbags?|bags?|baskets?|bins?|lockers?|wardrobes?|cabinets?|lockboxes|strongboxes|stashes|footlockers?)\b/i;
@@ -52,7 +57,7 @@ const HARTHMERE_READABLE_OBJECT_RE =
 const HARTHMERE_CRAFT_STATION_OBJECT_RE =
   /\b(workbenches|workbench|anvils?|craft\s+tables?|crafting\s+tables?)\b/i;
 const HARTHMERE_COOKING_STATION_OBJECT_RE =
-  /\b(ovens?|cookpots?|cook\s+pots?|cooking\s+pots?|soup\s+pots?|stew\s+pots?|kitchen\s+pots?|kettles?|campfires?|camp\s+fires?|firepits?|fire\s+pits?|fire\s+rings?|hearths?|cooking\s+fires?|pots?)\b/i;
+  /\b(ovens?|stoves?|cookpots?|cook\s+pots?|cooking\s+pots?|soup\s+pots?|stew\s+pots?|kitchen\s+pots?|kettles?|campfires?|camp\s+fires?|firepits?|fire\s+pits?|fire\s+rings?|hearths?|cooking\s+fires?|pots?)\b/i;
 const HARTHMERE_USE_OBJECT_RE = /\b(pots?|tables?|desks?)\b/i;
 const HARTHMERE_RESOURCE_OBJECT_RE =
   /\b(berries|berry|muckwad|materials?|patch(?:es)?|branches?|softwood|harvests?|remains?|carcasses?|sounders?)\b/i;
@@ -78,7 +83,7 @@ function objectInteraction(
 export function harthmereCookStationKindForText(
   text: string
 ): HarthmereCookStationKind {
-  if (/\bovens?\b/i.test(text)) return "oven";
+  if (/\b(ovens?|stoves?)\b/i.test(text)) return "oven";
   if (
     /\b(cookpots?|cook\s+pots?|cooking\s+pots?|soup\s+pots?|stew\s+pots?|kitchen\s+pots?|kettles?|pots?)\b/i.test(
       text

@@ -4,6 +4,7 @@ import { fetchHarthmereLiveWithTimeout } from "@/client/components/harthmere_liv
 import {
   harthmereJobsBoardCameraPosition,
   harthmereJobsBoardPlayerPosition,
+  harthmereWorldTargetIsFaced,
 } from "@/client/components/harthmere_jobs_board/harthmereJobsBoardPosition";
 import type { BuildingSystemInWorldMarker } from "@/shared/harthmere/building_system";
 import {
@@ -164,6 +165,10 @@ export function HarthmereBusinessWorldInteraction({
     ...dynamicBoards,
   ]);
   const activeBusinessId = openBusinessId ?? activeBoard?.businessId;
+  const targetFaced = harthmereWorldTargetIsFaced(
+    camera,
+    activeBoard?.position
+  );
 
   const worldContext: HarthmereBusinessWorldContext | undefined =
     activeBusinessId
@@ -202,9 +207,11 @@ export function HarthmereBusinessWorldInteraction({
   return (
     <HarthmereBusinessLiveContainer
       open={Boolean(openBusinessId)}
-      onOpen={() => activeBoard && setOpenBusinessId(activeBoard.businessId)}
+      onOpen={() =>
+        activeBoard && targetFaced && setOpenBusinessId(activeBoard.businessId)
+      }
       onClose={() => setOpenBusinessId(undefined)}
-      showPrompt={!suppressPrompt}
+      showPrompt={!suppressPrompt && targetFaced}
       playerPosition={businessPointFromJobsPoint(playerPosition)}
       worldContext={worldContext}
     />

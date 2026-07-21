@@ -47,3 +47,29 @@ export function harthmereJobsBoardCameraPosition(
     normalizeHarthmereJobsBoardPoint(record?.position)
   );
 }
+
+/**
+ * Proximity alone is not an interaction target. Require the board/object to be
+ * inside a forward cone so F cannot open whichever station happens to be
+ * nearest behind the player or off to the side.
+ */
+export function harthmereWorldTargetIsFaced(
+  camera: unknown,
+  target: HarthmereJobsBoardPoint | undefined,
+  minimumDot = 0.55
+) {
+  if (!target) return false;
+  const position = harthmereJobsBoardCameraPosition(camera);
+  const record = camera as { view?: unknown } | undefined;
+  const view = pointFromMaybeMethod(record?.view);
+  if (!position || !view) return false;
+  const dx = target.x - position.x;
+  const dy = (target.y ?? position.y ?? 0) - (position.y ?? 0);
+  const dz = target.z - position.z;
+  const distance = Math.hypot(dx, dy, dz);
+  const viewLength = Math.hypot(view.x, view.y ?? 0, view.z);
+  if (distance === 0 || viewLength === 0) return true;
+  const dot =
+    (dx * view.x + dy * (view.y ?? 0) + dz * view.z) / (distance * viewLength);
+  return Number.isFinite(dot) && dot >= minimumDot;
+}

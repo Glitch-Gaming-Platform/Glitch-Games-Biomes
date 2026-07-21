@@ -60,6 +60,9 @@ import {
 } from "@/client/components/challenges/harthmereEvents";
 import { harthmereLiveServerAuthoritative } from "@/client/components/challenges/harthmereLiveAuthoritySignal";
 import { nativeBiomesEcsAuthorityEnabled } from "@/shared/harthmere/native_road_ahead_contract";
+import type { BiomesId } from "@/shared/ids";
+import { NpcMetadataSelector } from "@/shared/ecs/gen/selectors";
+import { harthmereNativeNpcCombatProfileForTypeId } from "@/shared/harthmere/harthmere_native_combat_catalog";
 import { HarthmereLevelingMenuPanel } from "@/client/components/challenges/LocalDevHarthmereLevelingSystem";
 import { HarthmereMissionJournalPanel } from "@/client/components/challenges/LocalDevHarthmereMissionSystem";
 import {
@@ -1597,6 +1600,57 @@ function useHarthmereLiveEntityHealthHudSnapshots(intervalMs = 120) {
   return snapshots;
 }
 
+function useHarthmereNativeEcsEnemySnapshots(intervalMs = 100) {
+  const { table } = useClientContext();
+  const [snapshots, setSnapshots] = useState<
+    Array<{
+      id: BiomesId;
+      label: string;
+      hp: number;
+      maxHp: number;
+      position: { x: number; y: number; z: number };
+      lastDamageTime?: number;
+    }>
+  >([]);
+  useEffect(() => {
+    if (!nativeBiomesEcsAuthorityEnabled()) return;
+    const refresh = () => {
+      const next = [] as typeof snapshots;
+      for (const entity of table.scan(NpcMetadataSelector.query.all())) {
+        const profile = harthmereNativeNpcCombatProfileForTypeId(
+          entity.npc_metadata.type_id
+        );
+        if (
+          !profile ||
+          profile.behaviorKind === "sentinel" ||
+          !entity.position ||
+          !entity.health ||
+          entity.health.hp <= 0
+        ) {
+          continue;
+        }
+        next.push({
+          id: entity.id,
+          label: entity.label?.text ?? profile.displayName,
+          hp: entity.health.hp,
+          maxHp: entity.health.maxHp,
+          position: {
+            x: entity.position.v[0],
+            y: entity.position.v[1],
+            z: entity.position.v[2],
+          },
+          lastDamageTime: entity.health.lastDamageTime,
+        });
+      }
+      setSnapshots(next);
+    };
+    refresh();
+    const interval = window.setInterval(refresh, intervalMs);
+    return () => window.clearInterval(interval);
+  }, [intervalMs, table]);
+  return snapshots;
+}
+
 function harthmereHealthBarScreenProjection(
   position: { x: number; y?: number; z: number } | undefined,
   camera:
@@ -1788,6 +1842,7 @@ function HarthmereEnemyHealthBarsHUD() {
   const multiplayer = useHarthmereMultiplayerCombatState();
   const actorHud = useHarthmereCombatActorHudSnapshots(100);
   const liveEntityHealth = useHarthmereLiveEntityHealthHudSnapshots(100);
+  const nativeEcsEnemies = useHarthmereNativeEcsEnemySnapshots(100);
   const camera = reactResources.use("/scene/camera") as any;
   const selectedOffset =
     multiplayer.currentTargetOffset ?? combat.selectedNpcOffset;
@@ -1894,7 +1949,7 @@ function HarthmereEnemyHealthBarsHUD() {
     excludedActorKeys: coveredActorKeys,
     excludedLiveTargetIds: coveredLiveTargetIds,
   });
-  const rows = [
+  const legacyRows = [
     ...localRows.map((row) => ({
       key: `${row.offset}-${row.npc.name}`,
       label: row.npc.name,
@@ -1909,7 +1964,32 @@ function HarthmereEnemyHealthBarsHUD() {
       depth: row.screen?.depth ?? 1,
     })),
     ...actorRows,
-  ].sort((a, b) => {
+  ];
+  const nativeRows = nativeEcsEnemies.flatMap((enemy) => {
+    const screen = harthmereHealthBarScreenProjection(enemy.position, camera);
+    if (
+      !screen ||
+      !harthmereHealthBarScreenIsVisible(screen, viewportWidth, viewportHeight)
+    ) {
+      return [];
+    }
+    return [
+      {
+        key: `native-${enemy.id}`,
+        label: enemy.label,
+        hp: enemy.hp,
+        maxHp: enemy.maxHp,
+        selected: false,
+        screen,
+        depth: screen.depth,
+      },
+    ];
+  });
+  // Native mode never mixes local combat HP or Redis-polled entity snapshots
+  // into the visible bar. The bar is a direct projection of ECS Health.
+  const rows = (
+    nativeBiomesEcsAuthorityEnabled() ? nativeRows : legacyRows
+  ).sort((a, b) => {
     if (a.selected) return -1;
     if (b.selected) return 1;
     return a.depth - b.depth;
@@ -2369,6 +2449,7 @@ function HarthmereHomeConsoleWorldInterface({
       open={open}
       onOpen={onOpen}
       onClose={onClose}
+      camera={camera}
       playerPosition={
         playerPosition
           ? {
@@ -2476,7 +2557,7 @@ function HarthmereBusinessBoardWorldPrompt({
 
   const worldCandidate = React.useMemo(
     () =>
-      prompt
+      prompt && projectedPrompt
         ? {
             id: `harthmere:business-board:${prompt.businessId}`,
             priority:
@@ -2485,7 +2566,7 @@ function HarthmereBusinessBoardWorldPrompt({
             onInteract: openBusinessBoardFromPrompt,
           }
         : undefined,
-    [openBusinessBoardFromPrompt, prompt]
+    [openBusinessBoardFromPrompt, projectedPrompt, prompt]
   );
   const ownsInteraction = useWorldInteractionCandidate(worldCandidate);
 
@@ -2637,7 +2718,7 @@ function HarthmereJobsBoardWorldPrompt({
   );
   const worldCandidate = React.useMemo(
     () =>
-      prompt
+      prompt && projectedPrompt
         ? {
             id: `harthmere:jobs-board:${prompt.boardId}`,
             priority:
@@ -2646,7 +2727,7 @@ function HarthmereJobsBoardWorldPrompt({
             onInteract: openJobsBoardFromPrompt,
           }
         : undefined,
-    [openJobsBoardFromPrompt, prompt]
+    [openJobsBoardFromPrompt, projectedPrompt, prompt]
   );
   const ownsInteraction = useWorldInteractionCandidate(worldCandidate);
 
@@ -2857,6 +2938,111 @@ function CenterMapPanel({
 
 installSnapshotLiveNpcLoreDebug();
 
+interface NativeCombatContactDetail {
+  hits?: Array<{
+    id?: number;
+    label?: string;
+    hpBefore?: number;
+  }>;
+}
+
+/**
+ * Native hit feedback is confirmation-based: a click first shows a small
+ * pending indicator, then becomes damage only after world sync reports a lower
+ * ECS Health value. If the server rejects range, cooldown, level or tool
+ * validation, the player sees a miss/blocked result instead of silent input.
+ */
+const HarthmereNativeCombatFeedback: React.FunctionComponent = () => {
+  const { resources } = useClientContext();
+  const [feedback, setFeedback] = useState<
+    | { kind: "pending"; label: string }
+    | { kind: "confirmed"; label: string; damage: number }
+    | { kind: "rejected"; label: string }
+  >();
+
+  useEffect(() => {
+    if (!nativeBiomesEcsAuthorityEnabled()) return;
+    let pendingTimer: number | undefined;
+    let pollTimer: number | undefined;
+    let clearTimer: number | undefined;
+
+    const cancelTimers = () => {
+      if (pendingTimer !== undefined) window.clearTimeout(pendingTimer);
+      if (pollTimer !== undefined) window.clearInterval(pollTimer);
+      if (clearTimer !== undefined) window.clearTimeout(clearTimer);
+      pendingTimer = pollTimer = clearTimer = undefined;
+    };
+
+    const onContact = (event: Event) => {
+      cancelTimers();
+      const hits = (
+        event as CustomEvent<NativeCombatContactDetail>
+      ).detail?.hits?.filter(
+        (hit): hit is { id: number; label?: string; hpBefore: number } =>
+          Number.isFinite(hit.id) && Number.isFinite(hit.hpBefore)
+      );
+      if (!hits?.length) return;
+      const startedAt = Date.now();
+      const label = hits[0].label?.trim() || "Target";
+      pendingTimer = window.setTimeout(
+        () => setFeedback({ kind: "pending", label }),
+        150
+      );
+      pollTimer = window.setInterval(() => {
+        let confirmedDamage = 0;
+        for (const hit of hits) {
+          const health = resources.get("/ecs/c/health", hit.id as BiomesId);
+          if (health && health.hp < hit.hpBefore) {
+            confirmedDamage += Math.max(0, hit.hpBefore - health.hp);
+          }
+        }
+        if (confirmedDamage > 0) {
+          cancelTimers();
+          setFeedback({ kind: "confirmed", label, damage: confirmedDamage });
+          clearTimer = window.setTimeout(() => setFeedback(undefined), 850);
+        } else if (Date.now() - startedAt >= 1200) {
+          cancelTimers();
+          setFeedback({ kind: "rejected", label });
+          clearTimer = window.setTimeout(() => setFeedback(undefined), 1100);
+        }
+      }, 50);
+    };
+
+    window.addEventListener(
+      "biomes:harthmere-native-npc-attack-contact",
+      onContact
+    );
+    return () => {
+      cancelTimers();
+      window.removeEventListener(
+        "biomes:harthmere-native-npc-attack-contact",
+        onContact
+      );
+    };
+  }, [resources]);
+
+  if (!feedback) return null;
+  return (
+    <div
+      className={`rounded-lg py-1.5 pointer-events-none fixed left-1/2 top-[58%] z-[80] -translate-x-1/2 border px-3 text-sm font-bold shadow-xl backdrop-blur ${
+        feedback.kind === "confirmed"
+          ? "border-emerald-300/70 bg-emerald-950/85 text-emerald-100"
+          : feedback.kind === "rejected"
+          ? "border-orange-300/70 bg-orange-950/85 text-orange-100"
+          : "border-white/40 bg-black/80 text-white"
+      }`}
+      role="status"
+      aria-live="polite"
+    >
+      {feedback.kind === "pending"
+        ? `Attacking ${feedback.label}…`
+        : feedback.kind === "confirmed"
+        ? `${feedback.label} −${feedback.damage}`
+        : `${feedback.label}: missed, blocked, or out of range`}
+    </div>
+  );
+};
+
 export const HarthmereUnifiedHUD: React.FunctionComponent<{
   hideLegacyVisuals?: boolean;
 }> = ({ hideLegacyVisuals = true }) => {
@@ -3065,6 +3251,7 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{
       {!nativeBiomesEcsAuthorityEnabled() && (
         <SnapshotCombatRuntimeController />
       )}
+      {nativeBiomesEcsAuthorityEnabled() && <HarthmereNativeCombatFeedback />}
     </>
   );
 

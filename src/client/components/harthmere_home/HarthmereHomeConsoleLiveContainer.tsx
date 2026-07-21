@@ -15,6 +15,7 @@ import {
   type HarthmereHomeConsoleWorldContext,
   type HarthmereHomeConsoleWorldPoint,
 } from "./homeConsoleLiveAdapter";
+import { harthmereWorldTargetIsFaced } from "@/client/components/harthmere_jobs_board/harthmereJobsBoardPosition";
 
 export interface HarthmereHomeConsoleLiveContainerProps {
   open?: boolean;
@@ -22,6 +23,7 @@ export interface HarthmereHomeConsoleLiveContainerProps {
   onClose?: () => void;
   playerPosition?: HarthmereHomeConsoleWorldPoint;
   worldContext?: HarthmereHomeConsoleWorldContext;
+  camera?: unknown;
   initialState?: Partial<HarthmereHomeConsoleClientSnapshot>;
 }
 
@@ -31,6 +33,7 @@ export function HarthmereHomeConsoleLiveContainer({
   onClose,
   playerPosition,
   worldContext,
+  camera,
   initialState,
 }: HarthmereHomeConsoleLiveContainerProps) {
   const [state, setState] = React.useState<
@@ -108,6 +111,9 @@ export function HarthmereHomeConsoleLiveContainer({
     () => adapter.getInteractionPrompt(promptContext),
     [adapter, promptContext]
   );
+  const targetFaced = context.interactionPosition
+    ? harthmereWorldTargetIsFaced(camera, context.interactionPosition)
+    : true;
 
   React.useEffect(() => {
     if (!open || !state || adapter.isAvailable(context)) return;
@@ -116,7 +122,7 @@ export function HarthmereHomeConsoleLiveContainer({
 
   const worldCandidate = React.useMemo(
     () =>
-      prompt.visible && !open && onOpen
+      prompt.visible && targetFaced && !open && onOpen
         ? {
             id: `harthmere:home:${context.nearbyPropertyId ?? "nearby"}`,
             priority: WORLD_INTERACTION_PRIORITY.authoredStation,
@@ -124,7 +130,7 @@ export function HarthmereHomeConsoleLiveContainer({
             onInteract: onOpen,
           }
         : undefined,
-    [context.nearbyPropertyId, onOpen, open, prompt.visible]
+    [context.nearbyPropertyId, onOpen, open, prompt.visible, targetFaced]
   );
   const ownsInteraction = useWorldInteractionCandidate(worldCandidate);
 
