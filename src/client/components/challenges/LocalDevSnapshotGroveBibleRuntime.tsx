@@ -197,6 +197,7 @@ const EMPTY_SNAPSHOT_GROVE_QUEST_STATE: SnapshotGroveQuestState = {
   completedObjectiveIds: [],
   rewards: [],
 };
+const snapshotGroveQuestMutationsInFlight = new Set<string>();
 
 function isBrowser() {
   return (
@@ -291,7 +292,8 @@ function writeSnapshotGroveQuestState(state: SnapshotGroveQuestState) {
 async function submitSnapshotGroveQuestStateToCloudSave(
   quest: SnapshotGroveQuest,
   state: SnapshotGroveQuestState,
-  reason: string
+  reason: string,
+  completedObjectiveIndex?: number
 ) {
   if (!isBrowser()) {
     return;
@@ -329,6 +331,7 @@ async function submitSnapshotGroveQuestStateToCloudSave(
           quest.triggers[objectiveIndex] ?? "step"
         }`,
         progress: completed ? quest.objectives.length : objectiveIndex + 1,
+        objectiveIndex: completedObjectiveIndex,
         reason,
       },
       clientClaims: {},
@@ -350,14 +353,14 @@ async function submitSnapshotGroveQuestStateToCloudSave(
 function syncSnapshotGroveQuestStateToCloudSave(
   quest: SnapshotGroveQuest,
   state: SnapshotGroveQuestState,
-  reason: string
+  reason: string,
+  completedObjectiveIndex?: number
 ) {
-  void submitSnapshotGroveQuestStateToCloudSave(quest, state, reason).catch(
-    (error) => {
-      // Local quest progression remains responsive while the next quest action
-      // retries the live Cloud Save projection.
-      console.warn(error);
-    }
+  return submitSnapshotGroveQuestStateToCloudSave(
+    quest,
+    state,
+    reason,
+    completedObjectiveIndex
   );
 }
 
@@ -650,11 +653,13 @@ function addSnapshotGroveObjectiveToast(
   });
 }
 
-function acceptSnapshotGroveQuest(
+async function acceptSnapshotGroveQuest(
   quest: SnapshotGroveQuest,
   mapManager: any,
   resources?: ReturnType<typeof useClientContext>["resources"]
 ) {
+  const mutationKey = `accept:${quest.id}`;
+  if (snapshotGroveQuestMutationsInFlight.has(mutationKey)) return;
   const state = readSnapshotGroveQuestState();
   const isFreshAcceptance =
     !state.acceptedQuestIds.includes(quest.id) &&
@@ -683,16 +688,30 @@ function acceptSnapshotGroveQuest(
         ]
       : state.completedObjectiveIds,
   };
-  if (isFreshAcceptance) {
-    grantSnapshotGroveAcceptedTutorialItems(quest);
+  snapshotGroveQuestMutationsInFlight.add(mutationKey);
+  try {
+    // Native Challenges and the signed starter-item exchange commit first.
+    // localStorage is only a UI cache and must never display accepted progress
+    // the server failed to materialize.
+    await syncSnapshotGroveQuestStateToCloudSave(
+      quest,
+      next,
+      "accepted",
+      shouldSkipFirstStep ? 0 : undefined
+    );
+  } catch (error) {
+    console.warn(error);
+    return;
+  } finally {
+    snapshotGroveQuestMutationsInFlight.delete(mutationKey);
   }
+  if (isFreshAcceptance) grantSnapshotGroveAcceptedTutorialItems(quest);
   writeSnapshotGroveQuestState(next);
-  syncSnapshotGroveQuestStateToCloudSave(quest, next, "accepted");
   syncSnapshotGroveQuestMarkers(mapManager, quest, initialObjectiveIndex);
   addSnapshotGroveObjectiveToast(resources, quest, initialObjectiveIndex);
 }
 
-function advanceSnapshotGroveQuest(
+async function advanceSnapshotGroveQuest(
   quest: SnapshotGroveQuest,
   mapManager: any,
   reason: string,
@@ -710,6 +729,8 @@ function advanceSnapshotGroveQuest(
     )
   );
   const objectiveId = `${quest.id}:${safeObjectiveIndex}:${reason}`;
+  const mutationKey = `progress:${quest.id}:${safeObjectiveIndex}`;
+  if (snapshotGroveQuestMutationsInFlight.has(mutationKey)) return;
   const nextIndex = safeObjectiveIndex + 1;
   const completedQuest = nextIndex >= quest.objectives.length;
   const next: SnapshotGroveQuestState = {
@@ -727,8 +748,21 @@ function advanceSnapshotGroveQuest(
       ? [...new Set([...state.rewards, `${quest.title}: ${quest.reward}`])]
       : state.rewards,
   };
+  snapshotGroveQuestMutationsInFlight.add(mutationKey);
+  try {
+    await syncSnapshotGroveQuestStateToCloudSave(
+      quest,
+      next,
+      reason,
+      safeObjectiveIndex
+    );
+  } catch (error) {
+    console.warn(error);
+    return;
+  } finally {
+    snapshotGroveQuestMutationsInFlight.delete(mutationKey);
+  }
   writeSnapshotGroveQuestState(next);
-  syncSnapshotGroveQuestStateToCloudSave(quest, next, reason);
   if (completedQuest) {
     clearAllSnapshotGroveQuestMarkers(mapManager);
     recordSnapshotGroveLikeability(quest.giverNpcId, 1);

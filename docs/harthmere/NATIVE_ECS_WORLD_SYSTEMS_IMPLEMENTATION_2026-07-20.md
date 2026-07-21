@@ -13,7 +13,7 @@ production deployment is performed by these changes.
 | ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | NPC combat               | Every seeded NPC uses native ECS `Health`. Native death produces native drops and `npcKilled` events. Client Redis attack/AI bridges are disabled in native mode, authenticated legacy combat HTTP mutations are rejected, and the server rejects melee damage beyond 5.5 entity-center units.                                                                                                                                                                                                                                                                 |
 | Creature respawn         | Seeded creatures are persistent native ECS entities with explicit respawn deadlines. The logic replica starts before the respawn service, which reconstructs pending deaths after process restart and revives the same fixed entity id only when its deadline is reached. Corpse expiry is kept beyond that deadline so the seed reconciler cannot recreate a defeated creature immediately.                                                                                                                                                                   |
-| Robot living state       | The scheduled shared protection ledger synchronizes charge/capacity/time into each sentinel's native `RobotComponent` after the Redis transaction. Native world subscriptions therefore receive battery changes without waiting for a REST poll.                                                                                                                                                                                                                                                                                                               |
+| Robot living state       | The scheduler advances charge/capacity/time in each sentinel's native `RobotComponent` first, then derives the Redis protection-area policy/display projection. Native world subscriptions therefore receive the authoritative battery change without waiting for a REST poll or a post-commit mirror.                                                                                                                                                                                                                                                         |
 | Native crops             | The client publishes one `HarvestPlantEvent`. The server checks plant status and player distance; Gaia always converts the crop container into a native `GrabBag`. The client now distinguishes request pending, world-applied/drop-ready, and inventory-acquired states by observing synchronized ECS plant and inventory components. The former HTTP inventory grant is rejected while native authority is enabled.                                                                                                                                          |
 | Authored gathering nodes | Node id is the only client choice. Server code owns node coordinates, exact equipped-tool Bikkie evidence, profession level, deterministic yield, legality warning, and shared absolute respawn time. All 29 nodes now emit exact items into one idempotent native ECS `GrabBag`; no Redis inventory grant or custom collect event runs in native mode.                                                                                                                                                                                                        |
 | Custom loot              | Positioned source metadata stays in the shared reducer as a durable materialization outbox, but physical loot is an exact native ECS `GrabBag`. Stable allocation and receipt keys make retries and process restarts idempotent. Existing ids are accepted only when their `GrabBag` contents match; stale keys that point at terrain, NPCs, or unrelated drops are reallocated without touching that entity. Legacy numeric done receipts are repaired under the same rule.                                                                                   |
@@ -21,7 +21,9 @@ production deployment is performed by these changes.
 | Jobs                     | Field completion requires a resolvable authored marker and a server-read actor position within eight blocks. Repair/cleanup completion uses server-read wearing/selected-tool evidence, while delivery and reward item changes use server-read native inventory counts plus an atomic ECS inventory exchange. Browser item deltas, target ids, tool claims, and local reward grants are ignored. Failed/cancelled/expired todos cannot be resurrected.                                                                                                         |
 | Escort jobs              | A server scheduler reads the accepted player's synchronized ECS position, advances the shared escort state, and mirrors the companion to its ECS entity. Arrival and completion no longer depend on a browser poll or a client-authored target claim.                                                                                                                                                                                                                                                                                                          |
 | Cooking                  | Recipe queues and timers remain a shared Harthmere reducer because Biomes has no native cooking-job component. Ingredients and collected/refunded outputs are nevertheless authoritative native ECS inventory exchanges. Worn clothing is tool evidence only and is never counted as spendable recipe or delivery inventory. Legacy browser farming, livestock, instant-cooking, and eating mutations stay closed in native mode; plants and consumption use native events.                                                                                    |
-| Property/building        | Plot ownership, active projects, completed properties, progress, structures, access records, decoration state, and free-world placeables are shared world state. Cross-player double claims and foreign-plot placeables are rejected. Transfers update the global owner ledger, structures, and decorations. Authored object biscuits carry exact stable ids and native `isPlaceable`/box metadata so ECS-held furniture and stations can use the stock placement path.                                                                                        |
+| Property/building        | Plot claims and transfers materialize stable native deed, ACL, protection-volume, bounds, owner, and builder access components. Native placeable transactions own physical furniture/stations, item debit/refund, terrain occupancy, transforms, ownership, and non-empty-container removal rejection. Redis retains construction progress, finance, access labels, and accounting metadata. Cross-player double claims and foreign-plot placeables are rejected.                                                                                              |
+| Player banks             | Backpack, material-storage, personal-bank, and account-bank stacks are one atomic ECS transaction over `Inventory` and `HarthmereMaterialStorage`. Slot limits are stored with the ECS bags; bank tiers, fees, loans, and transaction-log metadata remain in Redis. Legacy bank records migrate additively and cannot overwrite a newer native stack.                                                                                                                                                                                                          |
+| Authored quests          | All authored Grove and Bible quests publish explicit challenge/step ids and exact item/NPC identities. Native `Challenges`, trigger state, firehose evidence, and signed custom progress own advancement. Thaedryn is a native NPC with native `Health`; only story-choice metadata remains in the Bible reducer. Dynamic jobs-board contracts deliberately remain runtime records.                                                                                                                                                                            |
 | Terrain materialization  | Solid plans write terrain diff and placer ECS components in one version-checked world transaction. Occupancy, unexpected overwrite, and destructive expected-value conflicts defer the plan. Redis marks a structure materialized only after the ECS transaction succeeds; reads retry unacknowledged plans without charging materials again.                                                                                                                                                                                                                  |
 | Terrain mining           | Mining remains the snapshot-native `EditEvent` transaction: the server owns terrain clearing, durability, block-destroy events, and native drop creation. Event ID batches are now checked against authoritative ECS state before use. A race-time `[newId, 0]` collision is discarded rather than returned to the pool, so a restored world with stale allocator counters cannot make the mined voxel reappear forever.                                                                                                                                       |
 | UI latency/world loading | Native health is read directly from synchronized ECS resources. Initial sync prioritizes nearby terrain and retains bootstrap overflow for subsequent websocket batches. A production-shaped 2,500-entity canary drains repeated small batches without loss. Browser-random particle canvases mount only after hydration, preventing the React 425/423 remount that interrupted the sync loader. Async controls display pending labels and disable duplicate input.                                                                                            |
@@ -49,15 +51,16 @@ sync. The repaired code follows that same rule instead of mirroring those
 components into browser state or actor Redis records.
 
 Harthmere systems with no native schema—dynamic job contracts, production
-economy, property finance, and some authored custom resources—remain server
-reducers. Their multiplayer portions are now one shared transaction rather
-than one private world per actor.
+economy, property finance, crafting/cooking timers, and robot-area policy—remain
+server reducers. Their physical effects are native transactions or entities,
+and their multiplayer metadata is one shared transaction rather than one
+private world per actor.
 
 ## Native quest and item ids
 
-All authored story quests should use native challenge ids and exact Bikkie item
-ids. The Road Ahead does this now, including native collect and wearing trigger
-events.
+All authored story quests use checked-in native challenge/step ids and exact
+Bikkie item/NPC ids. This includes Road Ahead collect/wearing triggers and the
+full Grove/Bible catalog.
 
 Dynamic jobs-board todos should **not** fabricate native challenge ids. They are
 runtime contracts whose ids are created after deployment; the correct model is
@@ -69,16 +72,14 @@ The baked May 16 data snapshot contains exact-name biscuits for only 3 of the
 substitutes—using the `goldOre` identity for custom `iron_ore`, for example,
 would corrupt recipes and native triggers.
 
-The runtime now closes this gap without semantic aliasing. The Bikkie refresher
-overlays one deterministic, collision-checked biscuit for every server-authored
-Harthmere catalogue item before `/api/bikkie` serves the tray. Numeric and
-`b:<id>` items retain their original snapshot ids. String items get stable
-safe-integer ids derived from their exact item key; all 79 gathering yields and
-all required tools are therefore independently addressable by native ECS.
-Existing snapshot biscuits may donate presentation-only fields (`mesh`, `vox`,
-`galoisPath`, icon, palette, and attachment transform), but never id, recipe,
-drop, terrain, or trigger semantics. This keeps both clothing layers visible
-and held tools recognizable without collapsing distinct items.
+The runtime closes this gap without semantic aliasing. Permanent item, NPC,
+recipe, challenge, and challenge-step ids are checked into explicit manifests;
+runtime hashing is not an identity source. The Bikkie refresher publishes those
+exact contracts before `/api/bikkie` serves the tray. Existing snapshot
+biscuits may donate presentation-only fields (`mesh`, `vox`, `galoisPath`,
+icon, palette, and attachment transform), but never id, recipe, drop, terrain,
+or trigger semantics. All 79 gathering yields and every required tool are
+independently addressable while both clothing layers remain visible.
 
 Generic containers use the same exact ids. The native container endpoint
 converts a real frame-backed entity in place or creates a stable ECS placeable
@@ -122,8 +123,11 @@ The implementation adds or updates coverage for:
   delivery, escort, gather, mining, cancellation, and payout routing;
 - native inventory counts that exclude worn gear, plus atomic cooking
   ingredient reservation, output/refund drops, and replay receipts;
+- atomic material, personal, and account bank transfers with slot limits,
+  rollback, replay protection, and additive legacy migration;
 - global plot claims, transfers, completed-property visibility, shared decor,
-  shared placeables, foreign-land rejection, and stale actor migration;
+  native deed/ACL protection, native placeables, foreign-land rejection, and
+  stale actor migration;
 - terrain materialization idempotency, placer metadata, overwrite conflicts,
   success acknowledgement, and retry state;
 - native Road Ahead items, wearing layers, hotbar/inventory counts, atomic crate

@@ -858,33 +858,62 @@ archive_production_mutable_hotfix_manifest() {
 
 wait_for_azure_revision_ready() {
   local desired_revision="$1"
-  local ready_revision=""
+  local min_replicas=""
+  local replica_count="0"
+  local ready_count="0"
   local i=0
 
-  log "Waiting for Azure revision $desired_revision to become ready."
+  min_replicas="$(az containerapp revision show \
+    --resource-group "$AZURE_RESOURCE_GROUP" \
+    --name "$AZURE_CONTAINER_APP" \
+    --revision "$desired_revision" \
+    --query 'properties.template.scale.minReplicas' \
+    -o tsv 2>/dev/null || true)"
+  if ! printf '%s\n' "$min_replicas" | grep -Eq '^[1-9][0-9]*$'; then
+    min_replicas=1
+  fi
+
+  log "Waiting for all $min_replicas minimum replicas of Azure revision $desired_revision to become ready."
   while [ "$i" -lt "${AZURE_REVISION_READY_POLLS:-90}" ]; do
-    ready_revision="$(az containerapp show \
+    replica_count="$(az containerapp replica list \
       --resource-group "$AZURE_RESOURCE_GROUP" \
       --name "$AZURE_CONTAINER_APP" \
-      --query properties.latestReadyRevisionName \
+      --revision "$desired_revision" \
+      --query 'length(@)' \
       -o tsv 2>/dev/null || true)"
-    if [ "$ready_revision" = "$desired_revision" ]; then
-      log "Azure revision is ready: $desired_revision"
+    ready_count="$(az containerapp replica list \
+      --resource-group "$AZURE_RESOURCE_GROUP" \
+      --name "$AZURE_CONTAINER_APP" \
+      --revision "$desired_revision" \
+      --query '[?properties.containers[0].ready==`true` && properties.containers[0].started==`true`] | length(@)' \
+      -o tsv 2>/dev/null || true)"
+    replica_count="${replica_count:-0}"
+    ready_count="${ready_count:-0}"
+    if [ "$replica_count" -ge "$min_replicas" ] 2>/dev/null &&
+       [ "$ready_count" -ge "$min_replicas" ] 2>/dev/null; then
+      log "Azure revision replicas are ready: $desired_revision ($ready_count/$min_replicas)."
       return 0
     fi
     i=$((i + 1))
     sleep "${AZURE_REVISION_READY_SLEEP_SECONDS:-10}"
   done
 
-  echo "ERROR latest revision did not become ready." >&2
-  echo "  expected: $desired_revision" >&2
-  echo "  ready:    $ready_revision" >&2
+  echo "ERROR Azure revision replicas did not become ready." >&2
+  echo "  revision: $desired_revision" >&2
+  echo "  replicas: ${replica_count:-0}" >&2
+  echo "  ready:    ${ready_count:-0}/${min_replicas}" >&2
+  az containerapp replica list \
+    --resource-group "$AZURE_RESOURCE_GROUP" \
+    --name "$AZURE_CONTAINER_APP" \
+    --revision "$desired_revision" \
+    --query '[].{name:name,runningState:properties.runningState,ready:properties.containers[0].ready,started:properties.containers[0].started,restarts:properties.containers[0].restartCount,details:properties.containers[0].runningStateDetails}' \
+    -o table >&2 || true
   az containerapp revision list \
     --resource-group "$AZURE_RESOURCE_GROUP" \
     --name "$AZURE_CONTAINER_APP" \
     --query '[].{name:name,active:properties.active,trafficWeight:properties.trafficWeight,createdTime:properties.createdTime,healthState:properties.healthState,runningState:properties.runningState}' \
     -o table >&2 || true
-  exit 1
+  return 1
 }
 
 azure_revision_fqdn() {
@@ -939,19 +968,60 @@ capture_azure_traffic_weights() {
 restore_azure_traffic_weights() {
   local weights_text="$1"
   local weights=()
+  local rollback_revisions=()
+  local active_revisions=""
+  local active_revision=""
+  local rollback_revision=""
+  local preserve="0"
   while IFS= read -r weight; do
     [ -n "$weight" ] || continue
     weights+=("$weight")
+    rollback_revisions+=("${weight%%=*}")
   done <<< "$weights_text"
   if [ "${#weights[@]}" -eq 0 ]; then
     return
   fi
 
-  log "Restoring previous Azure traffic weights after failed post-shift validation."
+  log "Restoring previous Azure revisions and traffic after failed deployment validation."
+  active_revisions="$(az containerapp revision list \
+    --resource-group "$AZURE_RESOURCE_GROUP" \
+    --name "$AZURE_CONTAINER_APP" \
+    --query '[?properties.active==`true`].name' \
+    -o tsv 2>/dev/null || true)"
+  while IFS= read -r active_revision; do
+    [ -n "$active_revision" ] || continue
+    preserve=0
+    for rollback_revision in "${rollback_revisions[@]}"; do
+      if [ "$active_revision" = "$rollback_revision" ]; then
+        preserve=1
+        break
+      fi
+    done
+    if [ "$preserve" != "1" ]; then
+      log "Deactivating failed Azure revision $active_revision before rollback."
+      az containerapp revision deactivate \
+        --resource-group "$AZURE_RESOURCE_GROUP" \
+        --name "$AZURE_CONTAINER_APP" \
+        --revision "$active_revision" >/dev/null || true
+    fi
+  done <<< "$active_revisions"
+
+  for rollback_revision in "${rollback_revisions[@]}"; do
+    log "Reactivating previous Azure revision $rollback_revision."
+    az containerapp revision activate \
+      --resource-group "$AZURE_RESOURCE_GROUP" \
+      --name "$AZURE_CONTAINER_APP" \
+      --revision "$rollback_revision" >/dev/null || return 1
+  done
+  for rollback_revision in "${rollback_revisions[@]}"; do
+    wait_for_azure_revision_ready "$rollback_revision" || return 1
+  done
+
   az containerapp ingress traffic set \
     --resource-group "$AZURE_RESOURCE_GROUP" \
     --name "$AZURE_CONTAINER_APP" \
-    --revision-weight "${weights[@]}" >/dev/null || true
+    --revision-weight "${weights[@]}" >/dev/null || return 1
+  log "Previous Azure traffic restored: ${weights[*]}"
 }
 
 AZURE_TRAFFIC_RESTORE_ARMED=0
@@ -1022,9 +1092,7 @@ promote_azure_revision_when_ready() {
 
   wait_for_azure_revision_ready "$revision"
   validate_production_revision_before_traffic "$revision"
-  AZURE_PREVIOUS_TRAFFIC_WEIGHTS="$(capture_azure_traffic_weights)"
   force_azure_traffic_to_revision "$revision"
-  AZURE_TRAFFIC_RESTORE_ARMED=1
 }
 
 validate_bucket_asset_url() {
@@ -1436,12 +1504,6 @@ reconcile_production_world_sync() {
     log "Skipping Harthmere business outpost terrain reconciliation by request."
   fi
 
-  if [ "${HARTHMERE_SKIP_CONNECTOR_ROUTE_MATERIALIZATION:-0}" != "1" ]; then
-    materialize_production_harthmere_connector_route
-  else
-    log "Skipping Grove-to-Harthmere connector route reconciliation by request."
-  fi
-
   log "Reconciling Harthmere production world sync against production Redis."
   APPLY=1 \
     IS_SERVER=1 \
@@ -1452,6 +1514,15 @@ reconcile_production_world_sync() {
     GLITCH_REDIS_PORT="${HARTHMERE_WORLD_SYNC_REDIS_PORT:-$PROD_REDIS_PORT}" \
     node scripts/harthmere/reconcile-production-world-sync.cjs
 
+  # The protected player route must be the final terrain writer. Town/world
+  # sync can legitimately rebuild nearby Harthmere terrain, so applying the
+  # connector before it risks burying the tunnel/causeway again.
+  if [ "${HARTHMERE_SKIP_CONNECTOR_ROUTE_MATERIALIZATION:-0}" != "1" ]; then
+    materialize_production_harthmere_connector_route
+  else
+    log "Skipping Grove-to-Harthmere connector route reconciliation by request."
+  fi
+
   validate_production_world_sync_http "$revision"
   audit_production_authored_content
   force_production_redis_bgsave "post-deploy world sync reconciliation"
@@ -1461,7 +1532,10 @@ reconcile_production_world_sync() {
 cleanup() {
   local status="$?"
   if [ "$status" -ne 0 ] && [ "${AZURE_TRAFFIC_RESTORE_ARMED:-0}" = "1" ]; then
-    restore_azure_traffic_weights "$AZURE_PREVIOUS_TRAFFIC_WEIGHTS"
+    AZURE_TRAFFIC_RESTORE_ARMED=0
+    if ! restore_azure_traffic_weights "$AZURE_PREVIOUS_TRAFFIC_WEIGHTS"; then
+      echo "ERROR automatic Azure traffic rollback failed; manual intervention is required." >&2
+    fi
   fi
   if [ "$KEEP_LOCAL_SMOKE" = "1" ]; then
     log "Keeping local smoke containers: $LOCAL_APP_CONTAINER, $LOCAL_REDIS_CONTAINER"
@@ -1626,6 +1700,7 @@ run_build_checks() {
   node scripts/harthmere/test-harthmere-live-mode-backend-production.cjs .
   node scripts/harthmere/test-harthmere-live-mode-backend-reducer.cjs .
   node scripts/harthmere/test-harthmere-live-entity-production-smoke.cjs .
+  ./b test -b -p "src/shared/harthmere/test/harthmere_native_bikkie_items.test.ts"
   node scripts/harthmere/test-snapshot-grove-quest-marker-acceptance.cjs .
   node scripts/harthmere/check-biomes-snapshot-bucket-conversion.cjs .
 }
@@ -1959,6 +2034,12 @@ push_and_deploy() {
       AZURE_SPEECH_REGION="${AZURE_SPEECH_REGION:-eastus2}"
       AZURE_SPEECH_KEY=secretref:azure-speech-key
   )
+  AZURE_PREVIOUS_TRAFFIC_WEIGHTS="$(capture_azure_traffic_weights)"
+  if [ -z "$AZURE_PREVIOUS_TRAFFIC_WEIGHTS" ]; then
+    echo "ERROR refusing Azure update without a captured serving revision for rollback." >&2
+    exit 1
+  fi
+  AZURE_TRAFFIC_RESTORE_ARMED=1
   az containerapp update "${update_args[@]}"
   ensure_azure_ingress_target_port
 

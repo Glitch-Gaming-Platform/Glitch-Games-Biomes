@@ -1,5 +1,5 @@
 // GENERATED: This file is generated from lazy.ts.j2. Do not modify directly.
-// Content Hash: 600543f2012805b5d4aeeb62a29abdfb
+// Content Hash: 8050b6be3b3ae22cb20ccfad90ff775d
 
 import { LazyComponentData, LazyEntityLike, LazyLikeWith } from "@/server/shared/ecs/lazy_base";
 import * as c from "@/shared/ecs/gen/components";
@@ -331,6 +331,12 @@ abstract class BaseLazyEntityDelta<SuperT, OutT> extends LazyEntityLike<SuperT, 
     } return true;
     case 153: {
       this.decode("gift_giver", value, j.GiftGiverSerde.deserialize);
+    } return true;
+    case 154: {
+      this.decode("harthmere_ecs_transaction_ledger", value, j.HarthmereEcsTransactionLedgerSerde.deserialize);
+    } return true;
+    case 155: {
+      this.decode("harthmere_material_storage", value, j.HarthmereMaterialStorageSerde.deserialize);
     } return true;
     }
     return false;
@@ -2226,6 +2232,42 @@ abstract class BaseLazyEntityDelta<SuperT, OutT> extends LazyEntityLike<SuperT, 
     this.giftGiver = () => this.decoded.gift_giver as c.ReadonlyGiftGiver | null | undefined;
     return this.giftGiver();
   }
+  altersHarthmereEcsTransactionLedger(): boolean {
+    return (
+      (this.encoded && this.encoded[154] !== undefined) ||
+      this.decoded.harthmere_ecs_transaction_ledger !== undefined
+    );
+  }
+
+  hasHarthmereEcsTransactionLedger(): boolean {
+    return (this.encoded && !!this.encoded[154]) || !!this.decoded.harthmere_ecs_transaction_ledger;
+  }
+
+  harthmereEcsTransactionLedger(): c.ReadonlyHarthmereEcsTransactionLedger | null | undefined {
+    this.decode("harthmere_ecs_transaction_ledger",
+      this.encoded?.[154],
+      j.HarthmereEcsTransactionLedgerSerde.deserialize);
+    this.harthmereEcsTransactionLedger = () => this.decoded.harthmere_ecs_transaction_ledger as c.ReadonlyHarthmereEcsTransactionLedger | null | undefined;
+    return this.harthmereEcsTransactionLedger();
+  }
+  altersHarthmereMaterialStorage(): boolean {
+    return (
+      (this.encoded && this.encoded[155] !== undefined) ||
+      this.decoded.harthmere_material_storage !== undefined
+    );
+  }
+
+  hasHarthmereMaterialStorage(): boolean {
+    return (this.encoded && !!this.encoded[155]) || !!this.decoded.harthmere_material_storage;
+  }
+
+  harthmereMaterialStorage(): c.ReadonlyHarthmereMaterialStorage | null | undefined {
+    this.decode("harthmere_material_storage",
+      this.encoded?.[155],
+      j.HarthmereMaterialStorageSerde.deserialize);
+    this.harthmereMaterialStorage = () => this.decoded.harthmere_material_storage as c.ReadonlyHarthmereMaterialStorage | null | undefined;
+    return this.harthmereMaterialStorage();
+  }
 }
 
 export class LazyEntityDelta extends BaseLazyEntityDelta<LazyEntityDelta, LazyEntityDelta> {
@@ -3027,6 +3069,20 @@ export class LazyEntity extends BaseLazyEntityDelta<SuperLazyEntity, LazyEntity>
   giftGiver(): c.ReadonlyGiftGiver | undefined {
     return super.giftGiver() as c.ReadonlyGiftGiver | undefined;
   }
+  hasHarthmereEcsTransactionLedger(): this is LazyEntityWith<"harthmere_ecs_transaction_ledger"> {
+    return super.hasHarthmereEcsTransactionLedger();
+  }
+
+  harthmereEcsTransactionLedger(): c.ReadonlyHarthmereEcsTransactionLedger | undefined {
+    return super.harthmereEcsTransactionLedger() as c.ReadonlyHarthmereEcsTransactionLedger | undefined;
+  }
+  hasHarthmereMaterialStorage(): this is LazyEntityWith<"harthmere_material_storage"> {
+    return super.hasHarthmereMaterialStorage();
+  }
+
+  harthmereMaterialStorage(): c.ReadonlyHarthmereMaterialStorage | undefined {
+    return super.harthmereMaterialStorage() as c.ReadonlyHarthmereMaterialStorage | undefined;
+  }
 }
 
 export interface SuperLazyEntity {
@@ -3136,6 +3192,8 @@ export interface SuperLazyEntity {
   idle(): c.ReadonlyIdle;
   voice(): c.ReadonlyVoice;
   giftGiver(): c.ReadonlyGiftGiver;
+  harthmereEcsTransactionLedger(): c.ReadonlyHarthmereEcsTransactionLedger;
+  harthmereMaterialStorage(): c.ReadonlyHarthmereMaterialStorage;
 }
 
 export type LazyEntityWith<C extends keyof ReadonlyEntity> = LazyLikeWith<C, SuperLazyEntity, LazyEntity>;
@@ -3798,6 +3856,18 @@ export class LazyEntityBackedDelta extends Delta {
       return this.delta.gift_giver ?? undefined;
     }
     return this.entity.giftGiver();
+  }
+  harthmereEcsTransactionLedger(): c.ReadonlyHarthmereEcsTransactionLedger | undefined {
+    if (this.delta?.harthmere_ecs_transaction_ledger !== undefined) {
+      return this.delta.harthmere_ecs_transaction_ledger ?? undefined;
+    }
+    return this.entity.harthmereEcsTransactionLedger();
+  }
+  harthmereMaterialStorage(): c.ReadonlyHarthmereMaterialStorage | undefined {
+    if (this.delta?.harthmere_material_storage !== undefined) {
+      return this.delta.harthmere_material_storage ?? undefined;
+    }
+    return this.entity.harthmereMaterialStorage();
   }
 }
 
@@ -4571,6 +4641,20 @@ export class PatchableLazyEntity extends Delta {
     }
     this.readComponentIds.add(153);
     return this.entity.giftGiver();
+  }
+  harthmereEcsTransactionLedger(): c.ReadonlyHarthmereEcsTransactionLedger | undefined {
+    if (this.delta?.harthmere_ecs_transaction_ledger !== undefined) {
+      return this.delta.harthmere_ecs_transaction_ledger ?? undefined;
+    }
+    this.readComponentIds.add(154);
+    return this.entity.harthmereEcsTransactionLedger();
+  }
+  harthmereMaterialStorage(): c.ReadonlyHarthmereMaterialStorage | undefined {
+    if (this.delta?.harthmere_material_storage !== undefined) {
+      return this.delta.harthmere_material_storage ?? undefined;
+    }
+    this.readComponentIds.add(155);
+    return this.entity.harthmereMaterialStorage();
   }
 
   finish(): AsDelta<Entity> | undefined {

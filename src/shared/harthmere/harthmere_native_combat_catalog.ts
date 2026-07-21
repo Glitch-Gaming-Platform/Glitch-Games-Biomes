@@ -1,6 +1,7 @@
 import {
   HARTHMERE_LIVE_ENTITY_ROBOT_SENTINEL_SEEDS,
   HARTHMERE_NATIVE_MUCK_SCARRED_HELIX_SEED,
+  HARTHMERE_NATIVE_THAEDRYN_SEED,
   harthmereGroundedLivestockSeedsInTerritory,
   harthmereGroundedMuckMonsterSeedsInTerritory,
 } from "@/shared/harthmere/live_entity_production_seed";
@@ -16,6 +17,7 @@ export function allHarthmereNativeNpcCombatProfiles() {
     ...harthmereGroundedMuckMonsterSeedsInTerritory(),
     ...harthmereGroundedLivestockSeedsInTerritory(),
     HARTHMERE_NATIVE_MUCK_SCARRED_HELIX_SEED,
+    HARTHMERE_NATIVE_THAEDRYN_SEED,
   ].map(harthmereNativeNpcCombatProfileForSeed);
   return [
     ...new Map(profiles.map((profile) => [profile.id, profile])).values(),

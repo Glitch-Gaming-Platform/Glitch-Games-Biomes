@@ -126,8 +126,7 @@ const directSeedTargetsByNumber = (() => {
 // seed), so the seed-matching below can never map her. The rendered arena
 // actor is labeled "Thaedryn the Bellbound"; route it straight to the boss
 // snapshot id so the native crosshair attack path hits the encounter entity.
-export const HARTHMERE_THAEDRYN_VISIBLE_TARGET_ID =
-  "bible-boss:thaedryn_bellbound" as const;
+export const HARTHMERE_THAEDRYN_VISIBLE_TARGET_ID = "8810000000019120" as const;
 export const HARTHMERE_THAEDRYN_VISIBLE_ACTOR_OFFSET = 9120;
 
 export function harthmereVisibleCombatTargetForActor(

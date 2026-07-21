@@ -16,6 +16,7 @@ import { ensureHarthmereProductionCraftingCatalogue } from "@/shared/harthmere/m
 import {
   getHarthmereItemDefinition,
   harthmereAllowedEquipmentSlots,
+  listHarthmereCraftingRecipes,
   listHarthmereItemDefinitions,
   registerHarthmereItemDefinition,
   type HarthmereEquipmentSlot,
@@ -26,6 +27,7 @@ import { safeParseBiomesId } from "@/shared/ids";
 import {
   HARTHMERE_NATIVE_BIKKIE_OVERLAY_VERSION,
   harthmereNativeBiomesIdForItemId,
+  harthmereNativeBiomesIdForRecipeId,
 } from "@/shared/harthmere/harthmere_native_item_ids";
 import { NATIVE_ROAD_AHEAD_MUCKWAD_ITEM_ID } from "@/shared/harthmere/native_road_ahead_contract";
 import {
@@ -35,6 +37,16 @@ import {
 } from "@/shared/harthmere/harthmere_native_combat";
 import { allHarthmereNativeNpcCombatProfiles } from "@/shared/harthmere/harthmere_native_combat_catalog";
 import { harthmereNativeConsumableProfile } from "@/shared/harthmere/harthmere_native_vitals";
+import {
+  allHarthmereNativeQuestBiscuits,
+  HARTHMERE_NATIVE_QUEST_OVERLAY_VERSION,
+} from "@/shared/harthmere/harthmere_native_quests";
+import { HARTHMERE_QUEST_CATALOG } from "@/shared/harthmere/quest_compendium";
+import {
+  harthmereBibleObjectiveItemDefinition,
+  harthmereBibleRewardItemDefinition,
+} from "@/shared/harthmere/bible_quest_live_authority";
+import { SNAPSHOT_STRUCTURED_REWARDS } from "@/shared/harthmere/snapshot_complete_port";
 
 /**
  * Existing snapshot biscuits may donate presentation data to an exact
@@ -92,6 +104,49 @@ const ROAD_AHEAD_MUCKWAD_ITEM_ALIASES = new Set([
   "muckwad",
   "muckwad_voxel_block",
 ]);
+
+const HARTHMERE_NATIVE_RECIPE_OVERLAY_VERSION =
+  "harthmere-native-recipes-v1" as const;
+
+export function harthmereNativeRecipeBiscuit(
+  recipe: ReturnType<typeof listHarthmereCraftingRecipes>[number]
+): Biscuit | undefined {
+  // Repair, salvage, upgrade, enchant, and quest-forge workflows have target
+  // item/quality semantics that the stock InventoryCraftEvent does not model.
+  // Their queue metadata may remain custom, while their physical debits and
+  // outputs still use the signed ECS inventory transaction.
+  if (recipe.workflowKind && recipe.workflowKind !== "craft") return undefined;
+  const id = harthmereNativeBiomesIdForRecipeId(recipe.recipeId);
+  const outputId = harthmereNativeBiomesIdForItemId(recipe.outputItemId);
+  const input = [...recipe.inputs, ...(recipe.fuelInputs ?? [])].map(
+    ({ itemId, count }) =>
+      [
+        harthmereNativeBiomesIdForItemId(itemId),
+        Math.max(1, Math.trunc(count)),
+      ] as const
+  );
+  if (!id || !outputId || input.some(([itemId]) => !itemId)) return undefined;
+  const outputDefinition = getHarthmereItemDefinition(recipe.outputItemId);
+  const stationId = safeParseBiomesId(recipe.requiredStationId);
+  return {
+    id,
+    name: `harthmere_recipe_${recipe.recipeId.replace(/[^a-z0-9]+/gi, "_")}`,
+    displayName: `${
+      outputDefinition?.displayName ?? recipe.outputItemId
+    } Recipe`,
+    displayDescription: `Crafts ${Math.max(
+      1,
+      Math.trunc(recipe.outputCount)
+    )} ${outputDefinition?.displayName ?? recipe.outputItemId}.`,
+    craftingCategory: outputDefinition?.category ?? "Harthmere",
+    tooltipTypeName: "Recipe",
+    isRecipe: true,
+    input: input.map(([itemId, count]) => [itemId!, count]),
+    output: [[outputId, Math.max(1, Math.trunc(recipe.outputCount))]],
+    craftWith: stationId ? [stationId] : [],
+    craftingDurationMs: Math.max(0, Math.trunc(recipe.craftingTimeMs)),
+  } as Biscuit;
+}
 
 function isRoadAheadMuckwadIdentity(itemId: string) {
   return (
@@ -275,6 +330,38 @@ export function ensureHarthmereNativeItemCatalogue() {
       binding: copy.binding,
     });
   }
+  // Quest rewards and objective proofs are physical items too. Register the
+  // complete authored set before the Bikkie overlay so a reward can never
+  // create a string-only Redis stack with no native inventory identity.
+  for (const quest of HARTHMERE_QUEST_CATALOG as readonly any[]) {
+    for (const rewardItemId of quest.rewards?.items ?? []) {
+      ensureDefinition(harthmereBibleRewardItemDefinition(rewardItemId));
+    }
+    for (const objective of quest.objectives ?? []) {
+      ensureDefinition(
+        harthmereBibleObjectiveItemDefinition({
+          itemId: `quest_objective_item:${quest.id}:${objective.id}`,
+          displayName: String(
+            objective.targetName ?? objective.label ?? "Quest Item"
+          ),
+        })
+      );
+    }
+  }
+  for (const reward of SNAPSHOT_STRUCTURED_REWARDS) {
+    for (const itemId of reward.items) {
+      ensureDefinition(
+        defaultHarthmereItemDefinition({
+          itemId,
+          category: "quest_item",
+          maxStackSize: 99,
+          isCraftingMaterial: false,
+          isQuestItem: true,
+          tradeable: false,
+        })
+      );
+    }
+  }
   registerGatheringDefinitions(HARTHMERE_GATHERING_AUTHORITY_NODES);
 
   return listHarthmereItemDefinitions();
@@ -297,6 +384,12 @@ function wearableAttributes(definition: HarthmereItemDefinition) {
   if (Object.keys(attributes).length > 0) attributes.isWearable = true;
   return attributes as Partial<Biscuit>;
 }
+
+const HARTHMERE_LOCAL_CROP_BLOCK_IDS: Readonly<Record<string, BiomesId>> = {
+  wheat: 7_539_420_629_350_057 as BiomesId,
+  carrot: 4_560_450_207_940_471 as BiomesId,
+  muckroot: 6_127_458_937_593_352 as BiomesId,
+};
 
 export function harthmereBiscuitForItemDefinition(
   definition: HarthmereItemDefinition,
@@ -322,6 +415,16 @@ export function harthmereBiscuitForItemDefinition(
         definition.objectMetadata!.objectKind
       )
   );
+  const seedDefinition = Object.values(HARTHMERE_SEED_DEFINITIONS).find(
+    (seed) => seed.seedItemId === definition.itemId
+  );
+  const cropBlockId = seedDefinition
+    ? safeParseBiomesId(seedDefinition.cropItemId) ??
+      HARTHMERE_LOCAL_CROP_BLOCK_IDS[seedDefinition.cropItemId]
+    : undefined;
+  const yieldItemId = seedDefinition
+    ? harthmereNativeBiomesIdForItemId(seedDefinition.yieldItemId)
+    : undefined;
   const presentation = Object.fromEntries(
     HARTHMERE_NATIVE_PRESENTATION_ATTRIBUTES.flatMap((attribute) => {
       const value = presentationSource?.[attribute];
@@ -345,6 +448,29 @@ export function harthmereBiscuitForItemDefinition(
             placeableSize.height,
             placeableSize.depth,
           ],
+        }
+      : {}),
+    ...(seedDefinition && cropBlockId && yieldItemId
+      ? {
+          isSeed: true,
+          action: "plant",
+          plantableBlocks: [BikkieIds.tilledSoil],
+          farming: {
+            kind: "basic" as const,
+            block: cropBlockId,
+            timeMs: seedDefinition.growMs,
+            hasGrowthStages: true,
+            requiresSun: seedDefinition.requiresSun,
+            waterIntervalMs: seedDefinition.waterIntervalMs,
+            deathTimeMs: seedDefinition.deathTimeMs,
+            dropTable: [
+              [
+                "guaranteed" as const,
+                [[yieldItemId, seedDefinition.yieldCount] as const],
+              ],
+            ],
+            seedDropTable: [["guaranteed" as const, [[id, 1] as const]]],
+          },
         }
       : {}),
     tooltipTypeName: category,
@@ -495,8 +621,15 @@ export function withHarthmereNativeBikkieItems(
   for (const profile of allHarthmereNativeNpcCombatProfiles()) {
     const existing = contents.get(profile.id);
     const overlayHash = `${HARTHMERE_NATIVE_BIKKIE_OVERLAY_VERSION}:npc:${profile.key}`;
+    const presentation = contents.get(
+      profile.behaviorKind === "sentinel"
+        ? BikkieIds.biomesRobot
+        : BikkieIds.dMucker
+    );
+    const biscuit = harthmereNativeNpcBiscuit(profile, presentation);
     if (
       existing &&
+      existing.name !== biscuit.name &&
       !hashes
         .get(profile.id)
         ?.startsWith(`${HARTHMERE_NATIVE_BIKKIE_OVERLAY_VERSION}:npc:`)
@@ -505,13 +638,58 @@ export function withHarthmereNativeBikkieItems(
         `Generated Harthmere NPC Bikkie id ${profile.id} for ${profile.key} collides with ${existing.name}`
       );
     }
-    const presentation = contents.get(
-      profile.behaviorKind === "sentinel"
-        ? BikkieIds.biomesRobot
-        : BikkieIds.dMucker
-    );
-    contents.set(profile.id, harthmereNativeNpcBiscuit(profile, presentation));
+    // Redis can contain the exact NPC biscuit written by a prior revision even
+    // when its process-local overlay hash is absent or belongs to an older
+    // overlay version. The stable biscuit name is the authored identity, so
+    // adopt and refresh that exact record while continuing to reject unrelated
+    // biscuits at the same numeric id.
+    contents.set(profile.id, biscuit);
     hashes.set(profile.id, overlayHash);
+  }
+
+  // Native-compatible recipes are real Bikkie recipe items. Giving one through
+  // PlayerInventoryEditor routes it into RecipeBook and emits recipeUnlocked,
+  // matching the snapshot's one-authority crafting path. Complex target-item
+  // workflows remain custom metadata but still transact physical items in ECS.
+  for (const recipe of listHarthmereCraftingRecipes()) {
+    const biscuit = harthmereNativeRecipeBiscuit(recipe);
+    if (!biscuit) continue;
+    const existing = contents.get(biscuit.id);
+    const overlayHash = `${HARTHMERE_NATIVE_RECIPE_OVERLAY_VERSION}:${recipe.recipeId}`;
+    if (
+      existing &&
+      existing.name !== biscuit.name &&
+      !hashes
+        .get(biscuit.id)
+        ?.startsWith(`${HARTHMERE_NATIVE_RECIPE_OVERLAY_VERSION}:`)
+    ) {
+      throw new Error(
+        `Harthmere recipe Bikkie id ${biscuit.id} for ${recipe.recipeId} collides with ${existing.name}`
+      );
+    }
+    contents.set(biscuit.id, biscuit);
+    hashes.set(biscuit.id, overlayHash);
+  }
+
+  // Authored Grove/Bible quests use native Challenges + TriggerState. Their
+  // objective leaves consume server-signed firehose evidence, while normal
+  // collect/wear/craft events continue to update stock snapshot quests.
+  for (const quest of allHarthmereNativeQuestBiscuits()) {
+    const existing = contents.get(quest.id);
+    const overlayHash = `${HARTHMERE_NATIVE_QUEST_OVERLAY_VERSION}:${quest.name}`;
+    if (
+      existing &&
+      existing.name !== quest.name &&
+      !hashes
+        .get(quest.id)
+        ?.startsWith(`${HARTHMERE_NATIVE_QUEST_OVERLAY_VERSION}:`)
+    ) {
+      throw new Error(
+        `Harthmere quest Bikkie id ${quest.id} for ${quest.name} collides with ${existing.name}`
+      );
+    }
+    contents.set(quest.id, quest);
+    hashes.set(quest.id, overlayHash);
   }
   return { ...tray, contents, hashes };
 }

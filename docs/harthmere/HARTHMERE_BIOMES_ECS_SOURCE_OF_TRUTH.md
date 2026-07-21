@@ -5,11 +5,14 @@ the existing game playable during the merge.
 
 ## Rule
 
-Biomes ECS is the sole gameplay authority for native Biomes inventory, hotbar,
-wearing, health/death, challenges, and trigger progress. Glitch Cloud Save is
-durable only for Harthmere-specific player data that has no native ECS model.
-Harthmere live-mode Redis is the transaction/runtime layer for those custom
-systems; it must not project a second copy over synchronized native components.
+Biomes ECS is the sole gameplay authority for every physical or authored
+Harthmere value: inventory, hotbar, equipment, player wallet, banked item
+stacks, health/death, mana/stamina/breath, current standing, authored quests,
+NPCs, transforms, containers, plants, terrain, deeds/ACLs, placeables, and
+robot battery. Glitch Cloud Save and live-mode Redis are durable only for
+Harthmere-specific contracts, timers, simulations, and financial metadata that
+have no native ECS model. They must not project a competing copy over a native
+component.
 
 BiomesUI is the UI source of truth. Player-facing Harthmere panels must either
 be BiomesUI tabs/surfaces or BiomesUI-styled world interaction modals. Legacy
@@ -24,15 +27,19 @@ Glitch Cloud Save payloads. It is not durable authority by itself.
 - Health and death: the synchronized `Health` component and native
   `UpdatePlayerHealthEvent`. Fall and drowning damage are not mirrored into the
   Redis combat reducer while native authority is enabled.
-- Inventory, hotbar, and wearing: synchronized `Inventory` and `Wearing`
-  components changed only through native inventory events. A hotbar slot owns a
-  real stack; BiomesUI also lists that stack in the inventory view without
-  cloning it. Harthmere-only string item ids stay in the inventory-loot adapter
-  until real Bikkie ids exist.
-- Quests: synchronized `Challenges` plus the native trigger-state tree. The
-  unified journal reads every native quest through `/challenges/all`; it does
-  not maintain a Road Ahead progress mirror. String-only Harthmere quest ids
-  remain adapter data and are never hashed or fabricated into ECS ids.
+- Inventory, hotbar, wearing, wallet, and banked stacks: synchronized
+  `Inventory`, `Wearing`, and `HarthmereMaterialStorage` components. The signed,
+  replay-protected `HarthmereInventoryTransactionEvent` atomically changes the
+  backpack, gold, material storage, personal bank, account bank, current
+  standing, recipe grants, and robot recharge when one Harthmere operation
+  spans those channels. A hotbar slot owns a real stack; BiomesUI lists that
+  same stack in the inventory view without cloning it.
+- Quests: all authored Grove and Bible quests are explicit Bikkie challenges
+  with native challenge and step ids. `Challenges`, the native trigger tree,
+  inventory/firehose events, and signed custom objective events own progress.
+  Browser storage is applied only after the server accepts progress. Dynamic
+  jobs-board contracts remain runtime Redis records and are projected into the
+  journal without inventing challenge ids.
 - UI: `src/client/components/biomes_ui` is the active UI shell. Local-dev
   systems dispatch BiomesUI adapter events instead of rendering duplicate
   gameplay tabs.
@@ -49,21 +56,42 @@ Glitch Cloud Save payloads. It is not durable authority by itself.
   sent through the live-mode writer; a GET must never tick stamina, create a
   death, or rewrite actor state.
 - Backend player/shared ownership: Redis player records contain only
-  actor-owned fields. Production economy, jobs, positioned custom loot,
-  gathering-node cooldowns, plot ownership, active construction, completed
-  properties, home decorations, free-world placeables, global
-  structures/containers, guild state, auctions, robot protection, and quest
-  invitations are stored once in the shared-world record and merged for
-  reduction. Shared authority schema version 2 replaces stale actor copies so
-  a claimed drop or deleted/transferred property cannot be resurrected.
+  actor-owned custom metadata. Production economy, jobs, gathering cooldowns,
+  construction schedules, property finance, guild state, auctions, robot-area
+  policy, and quest invitations are stored once in the appropriate player or
+  shared record. Physical loot is a native `GrabBag`; physical plot ownership
+  and build access are a native deed/ACL/protection entity; placed objects are
+  native placeables. Shared authority schema version 2 replaces stale actor
+  copies so retired metadata cannot resurrect a claimed drop, transferred
+  property, or removed object.
 - Actor identity healing: `src/server/harthmere/live_mode_actor_resolution.ts`
   may plan an install/user state adoption, but only the live-mode write
   transaction may move that state and delete the old duplicate key.
-- Scheduled backend jobs: server-only schedulers, such as robot energy drain,
-  must reduce through shared backend rules. When the system also has a native
-  ECS representation, the scheduler must update it after the shared transaction;
-  robot battery charge is synchronized into `RobotComponent` so movement,
-  overlays, and websocket subscribers do not read a stale second value.
+- Scheduled backend jobs: server-only schedulers must update the native
+  component first whenever the state has an ECS representation. Robot drain
+  advances `RobotComponent` and then derives Redis protection-area policy and
+  display metadata. Player survival is ticked from server-read ECS position and
+  terrain even when no HUD component is mounted.
+
+## Explicit Native Ids And Transaction Boundaries
+
+- `harthmere_native_id_manifest.ts` checks in permanent item, NPC, and recipe
+  ids. `harthmere_native_quest_manifest.ts` checks in every authored challenge
+  and step id. Runtime hashing is not an identity source.
+- `harthmere_native_bikkie_items.ts` publishes exact item, NPC, recipe, and
+  challenge biscuits. Presentation may be borrowed from the May 16 snapshot,
+  but identity and gameplay semantics may not be aliased.
+- `HarthmereInventoryTransactionEvent`, `HarthmerePlaceableTransactionEvent`,
+  and `HarthmereQuestProgressEvent` are server-authorized and replay-protected.
+  A failure rolls back every involved ECS component and does not write a replay
+  receipt.
+- `HarthmereEcsTransactionLedger` protects idempotency across retries. Material,
+  personal, and account vault stacks live in `HarthmereMaterialStorage`; bank
+  tiers, fees, loans, and transaction-log text remain custom metadata.
+- Authored placeables use native `PlaceableComponent`, terrain occupancy,
+  ownership, and ACL checks. Plot claims materialize native `DeedComponent`,
+  `AclComponent`, `Protection`, and bounds; finance and construction workflow
+  remain Redis metadata.
 
 ## Duplicate-Write Rules
 
@@ -76,18 +104,19 @@ Glitch Cloud Save payloads. It is not durable authority by itself.
   live-mode Redis.
 - Do not make a second wallet UI path. Inventory writes emit the BiomesUI wallet
   event so the vitals panel reads one UI contract.
-- Do not insert non-Biomes item or quest ids into ECS by hashing or fabricating
-  ids. Add real Bikkie/challenge ids or keep them in the adapter with a warning.
+- Do not insert non-Biomes item, NPC, recipe, or quest ids into ECS by hashing or
+  fabricating ids. Add an explicit checked-in manifest entry and its authored
+  Bikkie contract.
 - Do not persist gameplay changes from GET/read endpoints.
 - Do not let live-mode Redis block a valid Glitch Cloud Save restore on boot.
 - Do not treat browser localStorage alone as durable authority; it must be backed
   by Glitch Cloud Save.
 - Do not copy duplicate install/user Redis player_state blobs outside the
   live-mode transaction; move-and-delete adoption belongs to the writer.
-- Do not persist shared-world branches in every actor record. Mixed-ownership
-  objects must explicitly retain only their actor fields. Plot ownership,
-  active projects, properties, decorations, placeables, and positioned drops
-  are shared; private jobs-board objective markers remain actor-owned.
+- Do not persist native physical state in shared-world Redis branches. Redis may
+  retain the contract/outbox record needed to materialize or account for a
+  native entity, but the entity, item stack, transform, health, container,
+  deed/ACL, or terrain edit is authoritative only after ECS commits it.
 
 ## Native Quest and Item ID Rules
 
@@ -101,12 +130,11 @@ Glitch Cloud Save payloads. It is not durable authority by itself.
 - Collection, wearing, crafting, placement, and item-taking progress comes from
   native firehose events emitted by the inventory/logic editors. A UI click is
   not quest progress by itself.
-- Custom Harthmere quests may use string ids only inside their server-authority
-  and UI adapter. Before migration into native ECS, publish real Bikkie item and
-  challenge ids and replace the string objective/reward references. Never hash
-  a string into a numeric id.
-- Authored story quests should use native challenge ids and exact Bikkie item
-  ids. Dynamic jobs-board todos are the deliberate exception: they are runtime
+- Every authored story/tutorial quest uses its checked-in challenge id, step
+  ids, exact item ids, and exact NPC/entity ids. Thaedryn is a native NPC with
+  native `Health`; the custom Bible state machine retains only story-choice
+  metadata.
+- Dynamic jobs-board todos are the deliberate exception: they are runtime
   contracts with server-generated string ids, remain in the shared jobs ledger,
   and are projected into BiomesUI without fabricating ECS challenge ids.
 
@@ -135,20 +163,39 @@ Glitch Cloud Save payloads. It is not durable authority by itself.
   ECS expiry removes it.
 - Native plant harvests publish one `HarvestPlantEvent`; Gaia creates the native
   `GrabBag`. The retired HTTP harvest bridge is rejected under native authority.
-- Custom gathering nodes that do not yet have authored Bikkie resources are
-  validated entirely on the server: node location, equipped tool, profession,
-  deterministic yield, carry weight, and shared respawn time. Their string-item
-  inventory remains a compatibility system until real Bikkie ids are authored.
-- Custom positioned drops are shared world state and use a server-read five-block
-  pickup radius. Native Bikkie loot continues to use ECS `GrabBag` entities.
+- Authored gathering nodes are validated entirely on the server: node location,
+  equipped tool, profession, deterministic yield, legality, and shared respawn
+  time. All 79 yield identities are explicit Bikkie ids and materialize as
+  native `GrabBag` entities.
+- Positioned-drop metadata is a retryable shared outbox, while the physical drop
+  is a native `GrabBag`. Stable allocation and exact-content checks prevent a
+  stale receipt from adopting an unrelated entity.
 - Solid building materialization writes ECS terrain diff and placer components
   atomically. It refuses occupied voxels, refuses unexpected destructive edits,
   does not overwrite non-ground terrain, and marks Redis materialization complete
   only after the ECS write succeeds. Unacknowledged plans retry on read.
 
+## Systems Intentionally Outside ECS
+
+Redis may continue to own dynamic job contracts, business simulation and
+staffing, auction listings/order books, loans/insurance/taxes/accounting,
+guild/mail metadata, construction schedules and finance, quest invitations,
+robot protection-area policy, and crafting/cooking timers. Their physical
+effects still cross a signed native boundary: item/currency changes use the
+inventory transaction, spawned loot uses native `GrabBag`, ownership uses
+deeds/ACLs, and placed output uses native placeables or terrain edits.
+
+Legacy browser-authored farming, livestock, combat, container, equipment, and
+quest mutation routes remain closed in native mode. A disabled legacy route is
+not a fallback authority. Native crops use plant events, ambient animals use
+native NPC health/drops, and any future livestock product timer must identify a
+real native animal and exchange feed/products through native inventory before
+the feature is exposed.
+
 ## Migration Notes
 
-The bridge deliberately refuses to invent ECS ids for Harthmere-only strings.
-That is slower than pretending everything is merged, but it prevents a more
-dangerous split-brain state where ECS contains fake ids while live mode and
-BiomesUI display real Harthmere content.
+Versioned migration is additive and idempotent. It copies legacy backpack,
+wearing, recipe ownership, gold, vitals, material storage, personal bank, and
+account bank data only when native migration versions require it. Runtime
+mutations never repair ECS from a stale Redis projection. Unresolved or renamed
+identities fail migration instead of creating a substitute id.

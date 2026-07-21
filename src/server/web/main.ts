@@ -22,6 +22,7 @@ import { loadVoxeloo } from "@/server/shared/voxeloo";
 import { registerWorldApi } from "@/server/shared/world/register";
 import { startHarthmereLiveModeRobotEnergyScheduler } from "@/server/harthmere/live_mode_robot_energy_scheduler";
 import { startHarthmereLiveModeEscortScheduler } from "@/server/harthmere/live_mode_escort_scheduler";
+import { startHarthmereNativeVitalsScheduler } from "@/server/harthmere/native_vitals_scheduler";
 import { registerApp } from "@/server/web/app";
 import { installGlitchSameOriginSyncWebSocketProxy } from "@/server/web/glitch_sync_ws_proxy";
 import { registerBigQueryClient } from "@/server/web/bigquery";
@@ -240,6 +241,11 @@ void runServer("web", webServerContext, async (context) => {
   const harthmereEscortScheduler = startHarthmereLiveModeEscortScheduler({
     worldApi: context.worldApi,
   });
+  const harthmereNativeVitalsScheduler = startHarthmereNativeVitalsScheduler({
+    askApi: context.askApi,
+    worldApi: context.worldApi,
+    voxeloo: context.voxeloo,
+  });
   installGlitchSameOriginOobProxy(context);
   installGlitchSameOriginSyncWebSocketProxy(context.app.http);
   await context.app.start(context);
@@ -253,6 +259,7 @@ void runServer("web", webServerContext, async (context) => {
     shutdownHook: async () => {
       harthmereRobotEnergyScheduler.stop();
       harthmereEscortScheduler.stop();
+      harthmereNativeVitalsScheduler.stop();
       await sleep(CONFIG.webServerLameDuckMs);
       await context.app.stop();
     },

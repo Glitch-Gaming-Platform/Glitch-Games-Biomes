@@ -1,5 +1,5 @@
 // GENERATED: This file is generated from components.ts.j2. Do not modify directly.
-// Content Hash: a56cf5c56038634189cb82f444855a75
+// Content Hash: 0186ff10c53b7011e29e28139d51c311
 
 import * as t from "@/shared/ecs/gen/types";
 import { cloneDeepWithItems } from "@/shared/game/item";
@@ -44,6 +44,8 @@ export const COMPONENT_SERIALIZATION_MODE: Record<number, "server" | "self"> = {
   [141]: "self",
   [149]: "self",
   [153]: "self",
+  [154]: "self",
+  [155]: "self",
 };
 
 export interface Iced {}
@@ -3082,6 +3084,87 @@ export class GiftGiver {
       : (cloneDeepWithItems(value) as unknown as GiftGiver);
   }
 }
+export interface HarthmereEcsTransactionLedger {
+  transaction_ids: t.Strings;
+}
+
+export interface ReadonlyHarthmereEcsTransactionLedger {
+  readonly transaction_ids: t.ReadonlyStrings;
+}
+
+export class HarthmereEcsTransactionLedger {
+  static ID = 154;
+
+  static create(
+    fields: Partial<HarthmereEcsTransactionLedger> = {}
+  ): HarthmereEcsTransactionLedger {
+    if (fields.transaction_ids === undefined) {
+      fields.transaction_ids = t.defaultStrings();
+    }
+    return fields as HarthmereEcsTransactionLedger;
+  }
+
+  static clone(
+    value?: ReadonlyHarthmereEcsTransactionLedger
+  ): HarthmereEcsTransactionLedger {
+    return value === undefined
+      ? HarthmereEcsTransactionLedger.create()
+      : (cloneDeepWithItems(value) as unknown as HarthmereEcsTransactionLedger);
+  }
+}
+export interface HarthmereMaterialStorage {
+  items: t.ItemBag;
+  max_slots: t.U32;
+  personal_items: t.ItemBag;
+  personal_max_slots: t.U32;
+  account_items: t.ItemBag;
+  account_max_slots: t.U32;
+}
+
+export interface ReadonlyHarthmereMaterialStorage {
+  readonly items: t.ReadonlyItemBag;
+  readonly max_slots: t.ReadonlyU32;
+  readonly personal_items: t.ReadonlyItemBag;
+  readonly personal_max_slots: t.ReadonlyU32;
+  readonly account_items: t.ReadonlyItemBag;
+  readonly account_max_slots: t.ReadonlyU32;
+}
+
+export class HarthmereMaterialStorage {
+  static ID = 155;
+
+  static create(
+    fields: Partial<HarthmereMaterialStorage> = {}
+  ): HarthmereMaterialStorage {
+    if (fields.items === undefined) {
+      fields.items = t.defaultItemBag();
+    }
+    if (fields.max_slots === undefined) {
+      fields.max_slots = t.defaultU32;
+    }
+    if (fields.personal_items === undefined) {
+      fields.personal_items = t.defaultItemBag();
+    }
+    if (fields.personal_max_slots === undefined) {
+      fields.personal_max_slots = t.defaultU32;
+    }
+    if (fields.account_items === undefined) {
+      fields.account_items = t.defaultItemBag();
+    }
+    if (fields.account_max_slots === undefined) {
+      fields.account_max_slots = t.defaultU32;
+    }
+    return fields as HarthmereMaterialStorage;
+  }
+
+  static clone(
+    value?: ReadonlyHarthmereMaterialStorage
+  ): HarthmereMaterialStorage {
+    return value === undefined
+      ? HarthmereMaterialStorage.create()
+      : (cloneDeepWithItems(value) as unknown as HarthmereMaterialStorage);
+  }
+}
 export interface ComponentResourcePaths {
   "/ecs/c/iced": PathDef<[BiomesId], ReadonlyIced | undefined>;
   "/ecs/c/remote_connection": PathDef<
@@ -3317,4 +3400,12 @@ export interface ComponentResourcePaths {
   "/ecs/c/idle": PathDef<[BiomesId], ReadonlyIdle | undefined>;
   "/ecs/c/voice": PathDef<[BiomesId], ReadonlyVoice | undefined>;
   "/ecs/c/gift_giver": PathDef<[BiomesId], ReadonlyGiftGiver | undefined>;
+  "/ecs/c/harthmere_ecs_transaction_ledger": PathDef<
+    [BiomesId],
+    ReadonlyHarthmereEcsTransactionLedger | undefined
+  >;
+  "/ecs/c/harthmere_material_storage": PathDef<
+    [BiomesId],
+    ReadonlyHarthmereMaterialStorage | undefined
+  >;
 }

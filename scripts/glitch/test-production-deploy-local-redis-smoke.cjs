@@ -72,6 +72,14 @@ const pushAndDeploy = script.slice(
   script.indexOf("push_and_deploy()"),
   script.indexOf('if [ "$REDIS_HEALTH_CHECK_ONLY"')
 );
+const waitForAzureRevisionReady = script.slice(
+  script.indexOf("wait_for_azure_revision_ready()"),
+  script.indexOf("azure_revision_fqdn()")
+);
+const restoreAzureTrafficWeights = script.slice(
+  script.indexOf("restore_azure_traffic_weights()"),
+  script.indexOf("AZURE_TRAFFIC_RESTORE_ARMED=0")
+);
 const mainFlow = script.slice(
   script.indexOf('if [ "$REDIS_HEALTH_CHECK_ONLY"')
 );
@@ -369,6 +377,12 @@ ok(
   "script runs production MMO backend reducer behavior"
 );
 ok(
+  runBuildChecks.includes(
+    './b test -b -p "src/shared/harthmere/test/harthmere_native_bikkie_items.test.ts"'
+  ),
+  "script runs the restart-safe native Bikkie overlay regression suite before packaging"
+);
+ok(
   script.includes("check-biomes-snapshot-bucket-conversion.cjs"),
   "script verifies snapshot bucket asset conversion before packaging"
 );
@@ -523,6 +537,28 @@ ok(
     script.includes("AZURE_TRAFFIC_RESTORE_ARMED=0") &&
     script.includes("deactivate_stale_azure_revisions"),
   "production deploy can restore previous traffic if validation fails after shifting"
+);
+ok(
+  !waitForAzureRevisionReady.includes("latestReadyRevisionName") &&
+    waitForAzureRevisionReady.includes("az containerapp replica list") &&
+    waitForAzureRevisionReady.includes("properties.containers[0].ready") &&
+    waitForAzureRevisionReady.includes("properties.containers[0].started") &&
+    waitForAzureRevisionReady.includes("properties.template.scale.minReplicas"),
+  "production deploy requires the configured minimum replicas to be started and ready instead of trusting Azure's stale revision label"
+);
+ok(
+  restoreAzureTrafficWeights.includes("az containerapp revision deactivate") &&
+    restoreAzureTrafficWeights.includes("az containerapp revision activate") &&
+    restoreAzureTrafficWeights.includes("wait_for_azure_revision_ready"),
+  "automatic rollback frees failed-revision capacity, reactivates prior revisions, and waits for readiness"
+);
+ok(
+  pushAndDeploy.indexOf(
+    'AZURE_PREVIOUS_TRAFFIC_WEIGHTS="$(capture_azure_traffic_weights)"'
+  ) < pushAndDeploy.indexOf('az containerapp update "${update_args[@]}"') &&
+    pushAndDeploy.indexOf("AZURE_TRAFFIC_RESTORE_ARMED=1") <
+      pushAndDeploy.indexOf('az containerapp update "${update_args[@]}"'),
+  "automatic rollback is armed before Azure can replace the serving revision"
 );
 ok(
   script.includes("az containerapp ingress traffic set") &&

@@ -9,33 +9,35 @@ authorities.
 
 ## Authority map
 
-| State                       | Native authority                                   | Writer                                                   | HUD consumer           |
-| --------------------------- | -------------------------------------------------- | -------------------------------------------------------- | ---------------------- |
-| Health                      | ECS `Health`                                       | damage, healing, consumption, respawn transactions       | `/ecs/c/health`        |
-| Mana                        | ECS `TriggerState` vitals root                     | spell-hit and consumable transactions                    | `/ecs/c/trigger_state` |
-| Stamina                     | ECS `TriggerState` vitals root                     | authenticated survival heartbeat and food consumption    | `/ecs/c/trigger_state` |
-| Breath                      | ECS `TriggerState` vitals root                     | authenticated underwater heartbeat                       | `/ecs/c/trigger_state` |
-| Likeability, law, notoriety | ECS `TriggerState` vitals root                     | committed law/reputation projection                      | `/ecs/c/trigger_state` |
-| Gold                        | ECS `Inventory.currencies` using `BikkieIds.bling` | committed economy projection and native inventory events | `/ecs/c/inventory`     |
+| State                       | Native authority                                   | Writer                                             | HUD consumer           |
+| --------------------------- | -------------------------------------------------- | -------------------------------------------------- | ---------------------- |
+| Health                      | ECS `Health`                                       | damage, healing, consumption, respawn transactions | `/ecs/c/health`        |
+| Mana                        | ECS `TriggerState` vitals root                     | spell-hit and consumable transactions              | `/ecs/c/trigger_state` |
+| Stamina                     | ECS `TriggerState` vitals root                     | server survival scheduler and food consumption     | `/ecs/c/trigger_state` |
+| Breath                      | ECS `TriggerState` vitals root                     | server terrain/environment scheduler               | `/ecs/c/trigger_state` |
+| Likeability, law, notoriety | ECS `TriggerState` vitals root                     | signed native standing transaction                 | `/ecs/c/trigger_state` |
+| Gold                        | ECS `Inventory.currencies` using `BikkieIds.bling` | signed native wallet/inventory transactions        | `/ecs/c/inventory`     |
 
-Redis remains the atomic transaction engine for the large Harthmere economy,
-law, auction, and reputation reducers. After a transaction commits, its wallet
-and standing result is projected to ECS. The browser does not combine or choose
-between two values after the native migration version is present. A page-load
-sync also repairs any projection that was deferred by a temporary world-write
-failure.
+Redis remains the transaction engine for economy, law, auction, and reputation
+metadata. The player-facing wallet and current standing are not post-commit
+projections: the reducer rebases from ECS and publishes one signed,
+replay-protected native transaction. A failed debit or standing write rolls the
+whole transaction back. The older projection helper is migration-only and is
+not a runtime repair path.
 
 ## Survival clock and drowning
 
 Active gameplay drains stamina at a constant rate of 100 points per two hours.
-The server bounds each heartbeat to ten seconds, preventing a suspended tab,
-network interruption, or process restart from applying hours of catch-up damage
-at once. Hidden or inactive gameplay does not drain stamina.
+A server-owned scheduler scans active players and bounds each tick to ten
+seconds, preventing a suspended browser or process restart from applying hours
+of catch-up damage at once. The clock does not depend on a mounted HUD.
 
-Underwater breath lasts 15 seconds. Breath is restored to full after surfacing.
-Once breath reaches zero, the same heartbeat transaction subtracts 5 native HP
-per second and records `drown` as the ECS damage source. The old client drowning
-loop is disabled in native mode so damage cannot be applied twice.
+Underwater breath lasts 15 seconds. The server derives head submersion from the
+player ECS position and authoritative terrain, not a browser boolean. Breath is
+restored to full after surfacing. Once breath reaches zero, the same scheduler
+transaction subtracts 5 native HP per second and records `drown` as the ECS
+damage source. The old client drowning loop is disabled in native mode so
+damage cannot be applied twice.
 
 At zero stamina the heartbeat sets native Health to zero. Standard Biomes death
 UI handles the dead ECS player. A native respawn always returns the player to

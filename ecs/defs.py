@@ -756,6 +756,10 @@ def define_types(g: TypeGenerator):
                 fertilizer=t.Item(),
                 timestamp=t.F64(),
             ),
+            harvest=t.Dict(
+                kind=t.Enum(["harvest"]),
+                timestamp=t.F64(),
+            ),
             adminDestroy=t.Dict(
                 kind=t.Enum(["adminDestroy"]),
                 timestamp=t.F64(),
@@ -1995,6 +1999,35 @@ def define_components(g: Generator):
         },
     )
 
+    g.add_component(
+        id=154,
+        name="HarthmereEcsTransactionLedger",
+        visibility=ComponentVisibility.SELF,
+        fields={
+            # Bounded, newest-last replay keys for server-authorized Harthmere
+            # inventory/wallet transactions. This lives beside Inventory so a
+            # retry can never apply value twice after an outbox crash.
+            1: FieldDef(name="transaction_ids", kind=s.Strings),
+        },
+    )
+
+    g.add_component(
+        id=155,
+        name="HarthmereMaterialStorage",
+        visibility=ComponentVisibility.SELF,
+        fields={
+            # Every physical bank-vault stack remains on the player ECS
+            # document. Redis owns tiers, fees, loans, and ledger metadata,
+            # never a second copy of material, personal, or account-bank items.
+            1: FieldDef(name="items", kind=s.ItemBag),
+            2: FieldDef(name="max_slots", kind=s.U32),
+            3: FieldDef(name="personal_items", kind=s.ItemBag),
+            4: FieldDef(name="personal_max_slots", kind=s.U32),
+            5: FieldDef(name="account_items", kind=s.ItemBag),
+            6: FieldDef(name="account_max_slots", kind=s.U32),
+        },
+    )
+
 
 def define_entities(g: Generator):
     s = g.symbols
@@ -2019,6 +2052,8 @@ def define_entities(g: Generator):
             s.GroupPreviewReference,
             s.Health,
             s.BuffsComponent,
+            s.HarthmereEcsTransactionLedger,
+            s.HarthmereMaterialStorage,
         ],
     )
 
@@ -2357,6 +2392,71 @@ def define_events(g: Generator):
             id=s.BiomesId,
             dst=s.OwnedItemReference,
             item=s.OptionalItemAndCount,
+        ),
+    )
+
+    # Server-authorized bridge for Harthmere systems whose metadata remains in
+    # Redis while all physical items and wallet value are committed in ECS.
+    # The logic handler verifies `authorization` and records `transaction_id`
+    # in HarthmereEcsTransactionLedger in the same atomic change.
+    g.add_event(
+        "HarthmereInventoryTransaction",
+        OrderedDict(
+            id=s.BiomesId,
+            transaction_id=s.String,
+            take=s.ItemBag,
+            give=s.ItemBag,
+            storage_take=s.ItemBag,
+            storage_give=s.ItemBag,
+            storage_max_slots=s.U32,
+            personal_bank_take=s.ItemBag,
+            personal_bank_give=s.ItemBag,
+            personal_bank_max_slots=s.U32,
+            account_bank_take=s.ItemBag,
+            account_bank_give=s.ItemBag,
+            account_bank_max_slots=s.U32,
+            gold_delta=s.I64,
+            publish_craft=s.Bool,
+            station_entity_id=s.OptionalBiomesId,
+            robot_entity_id=s.OptionalBiomesId,
+            robot_energy_delta=s.F64,
+            write_standing=s.Bool,
+            standing_scope=s.String,
+            standing_likeability=s.I32,
+            standing_legal=s.I32,
+            standing_notoriety=s.I32,
+            standing_notoriety_floor=s.I32,
+            authorization=s.String,
+        ),
+    )
+
+    # Internal bridge from server-validated authored quest objectives into the
+    # native Challenges/TriggerState engine.
+    g.add_event(
+        "HarthmereQuestProgress",
+        OrderedDict(
+            id=s.BiomesId,
+            challenge_id=s.BiomesId,
+            step_id=s.BiomesId,
+            authorization=s.String,
+        ),
+    )
+
+    # Server-authorized bridge for custom property/decor metadata. Physical
+    # placeables, terrain occupancy, ACLs, and inventory remain one logic tx.
+    g.add_event(
+        "HarthmerePlaceableTransaction",
+        OrderedDict(
+            id=s.BiomesId,
+            transaction_id=s.String,
+            operation=s.String,
+            entity_id=s.BiomesId,
+            item_id=s.BiomesId,
+            position=s.Vec3f,
+            orientation=s.Vec2f,
+            old_position=s.Vec3f,
+            old_orientation=s.Vec2f,
+            authorization=s.String,
         ),
     )
 
@@ -2986,6 +3086,14 @@ def define_events(g: Generator):
             id=s.BiomesId,
             user_id=s.BiomesId,
             tool_ref=s.OwnedItemReference,
+        ),
+    )
+    g.add_event(
+        "HarvestPlant",
+        OrderedDict(
+            id=s.BiomesId,
+            plant_id=s.BiomesId,
+            position=s.Vec3i,
         ),
     )
     g.add_event(

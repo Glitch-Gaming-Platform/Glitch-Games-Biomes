@@ -1,5 +1,5 @@
 // GENERATED: This file is generated from events.ts.j2. Do not modify directly.
-// Content Hash: 20d2d168938b16b056b754e62d7c71e8
+// Content Hash: 1f48aaf0ff1972ba8b51359c108adbcd
 
 import * as t from "@/shared/ecs/gen/types";
 import type { BiomesId } from "@/shared/ids";
@@ -26,6 +26,9 @@ export interface EventSet {
   readonly dyeBlockEvent?: DyeBlockEvent[];
   readonly unmuckerEvent?: UnmuckerEvent[];
   readonly internalInventorySetEvent?: InternalInventorySetEvent[];
+  readonly harthmereInventoryTransactionEvent?: HarthmereInventoryTransactionEvent[];
+  readonly harthmereQuestProgressEvent?: HarthmereQuestProgressEvent[];
+  readonly harthmerePlaceableTransactionEvent?: HarthmerePlaceableTransactionEvent[];
   readonly inventoryCraftEvent?: InventoryCraftEvent[];
   readonly inventoryDyeEvent?: InventoryDyeEvent[];
   readonly inventoryCookEvent?: InventoryCookEvent[];
@@ -182,6 +185,9 @@ interface SuperEventSet {
   readonly dyeBlockEvent: DyeBlockEvent[];
   readonly unmuckerEvent: UnmuckerEvent[];
   readonly internalInventorySetEvent: InternalInventorySetEvent[];
+  readonly harthmereInventoryTransactionEvent: HarthmereInventoryTransactionEvent[];
+  readonly harthmereQuestProgressEvent: HarthmereQuestProgressEvent[];
+  readonly harthmerePlaceableTransactionEvent: HarthmerePlaceableTransactionEvent[];
   readonly inventoryCraftEvent: InventoryCraftEvent[];
   readonly inventoryDyeEvent: InventoryDyeEvent[];
   readonly inventoryCookEvent: InventoryCookEvent[];
@@ -984,6 +990,240 @@ export class InternalInventorySetEvent implements Event {
     this.id = id;
     this.dst = dst;
     this.item = item;
+  }
+}
+
+export interface HandlerHarthmereInventoryTransactionEvent {
+  readonly kind: "harthmereInventoryTransactionEvent";
+  readonly id: BiomesId;
+  transaction_id: t.String;
+  take: t.ItemBag;
+  give: t.ItemBag;
+  storage_take: t.ItemBag;
+  storage_give: t.ItemBag;
+  storage_max_slots: t.U32;
+  personal_bank_take: t.ItemBag;
+  personal_bank_give: t.ItemBag;
+  personal_bank_max_slots: t.U32;
+  account_bank_take: t.ItemBag;
+  account_bank_give: t.ItemBag;
+  account_bank_max_slots: t.U32;
+  gold_delta: t.I64;
+  publish_craft: t.Bool;
+  station_entity_id: t.OptionalBiomesId;
+  robot_entity_id: t.OptionalBiomesId;
+  robot_energy_delta: t.F64;
+  write_standing: t.Bool;
+  standing_scope: t.String;
+  standing_likeability: t.I32;
+  standing_legal: t.I32;
+  standing_notoriety: t.I32;
+  standing_notoriety_floor: t.I32;
+  authorization: t.String;
+}
+
+export class HarthmereInventoryTransactionEvent implements Event {
+  readonly kind = "harthmereInventoryTransactionEvent";
+  readonly id: BiomesId;
+  transaction_id: t.ReadonlyString;
+  take: t.ReadonlyItemBag;
+  give: t.ReadonlyItemBag;
+  storage_take: t.ReadonlyItemBag;
+  storage_give: t.ReadonlyItemBag;
+  storage_max_slots: t.ReadonlyU32;
+  personal_bank_take: t.ReadonlyItemBag;
+  personal_bank_give: t.ReadonlyItemBag;
+  personal_bank_max_slots: t.ReadonlyU32;
+  account_bank_take: t.ReadonlyItemBag;
+  account_bank_give: t.ReadonlyItemBag;
+  account_bank_max_slots: t.ReadonlyU32;
+  gold_delta: t.ReadonlyI64;
+  publish_craft: t.ReadonlyBool;
+  station_entity_id: t.ReadonlyOptionalBiomesId;
+  robot_entity_id: t.ReadonlyOptionalBiomesId;
+  robot_energy_delta: t.ReadonlyF64;
+  write_standing: t.ReadonlyBool;
+  standing_scope: t.ReadonlyString;
+  standing_likeability: t.ReadonlyI32;
+  standing_legal: t.ReadonlyI32;
+  standing_notoriety: t.ReadonlyI32;
+  standing_notoriety_floor: t.ReadonlyI32;
+  authorization: t.ReadonlyString;
+
+  constructor({
+    id = t.defaultBiomesId,
+    transaction_id = t.defaultString,
+    take = t.defaultItemBag(),
+    give = t.defaultItemBag(),
+    storage_take = t.defaultItemBag(),
+    storage_give = t.defaultItemBag(),
+    storage_max_slots = t.defaultU32,
+    personal_bank_take = t.defaultItemBag(),
+    personal_bank_give = t.defaultItemBag(),
+    personal_bank_max_slots = t.defaultU32,
+    account_bank_take = t.defaultItemBag(),
+    account_bank_give = t.defaultItemBag(),
+    account_bank_max_slots = t.defaultU32,
+    gold_delta = t.defaultI64,
+    publish_craft = t.defaultBool,
+    station_entity_id = t.defaultOptionalBiomesId,
+    robot_entity_id = t.defaultOptionalBiomesId,
+    robot_energy_delta = t.defaultF64,
+    write_standing = t.defaultBool,
+    standing_scope = t.defaultString,
+    standing_likeability = t.defaultI32,
+    standing_legal = t.defaultI32,
+    standing_notoriety = t.defaultI32,
+    standing_notoriety_floor = t.defaultI32,
+    authorization = t.defaultString,
+  }: {
+    id?: BiomesId;
+    transaction_id?: t.ReadonlyString;
+    take?: t.ReadonlyItemBag;
+    give?: t.ReadonlyItemBag;
+    storage_take?: t.ReadonlyItemBag;
+    storage_give?: t.ReadonlyItemBag;
+    storage_max_slots?: t.ReadonlyU32;
+    personal_bank_take?: t.ReadonlyItemBag;
+    personal_bank_give?: t.ReadonlyItemBag;
+    personal_bank_max_slots?: t.ReadonlyU32;
+    account_bank_take?: t.ReadonlyItemBag;
+    account_bank_give?: t.ReadonlyItemBag;
+    account_bank_max_slots?: t.ReadonlyU32;
+    gold_delta?: t.ReadonlyI64;
+    publish_craft?: t.ReadonlyBool;
+    station_entity_id?: t.ReadonlyOptionalBiomesId;
+    robot_entity_id?: t.ReadonlyOptionalBiomesId;
+    robot_energy_delta?: t.ReadonlyF64;
+    write_standing?: t.ReadonlyBool;
+    standing_scope?: t.ReadonlyString;
+    standing_likeability?: t.ReadonlyI32;
+    standing_legal?: t.ReadonlyI32;
+    standing_notoriety?: t.ReadonlyI32;
+    standing_notoriety_floor?: t.ReadonlyI32;
+    authorization?: t.ReadonlyString;
+  }) {
+    this.id = id;
+    this.transaction_id = transaction_id;
+    this.take = take;
+    this.give = give;
+    this.storage_take = storage_take;
+    this.storage_give = storage_give;
+    this.storage_max_slots = storage_max_slots;
+    this.personal_bank_take = personal_bank_take;
+    this.personal_bank_give = personal_bank_give;
+    this.personal_bank_max_slots = personal_bank_max_slots;
+    this.account_bank_take = account_bank_take;
+    this.account_bank_give = account_bank_give;
+    this.account_bank_max_slots = account_bank_max_slots;
+    this.gold_delta = gold_delta;
+    this.publish_craft = publish_craft;
+    this.station_entity_id = station_entity_id;
+    this.robot_entity_id = robot_entity_id;
+    this.robot_energy_delta = robot_energy_delta;
+    this.write_standing = write_standing;
+    this.standing_scope = standing_scope;
+    this.standing_likeability = standing_likeability;
+    this.standing_legal = standing_legal;
+    this.standing_notoriety = standing_notoriety;
+    this.standing_notoriety_floor = standing_notoriety_floor;
+    this.authorization = authorization;
+  }
+}
+
+export interface HandlerHarthmereQuestProgressEvent {
+  readonly kind: "harthmereQuestProgressEvent";
+  readonly id: BiomesId;
+  readonly challenge_id: BiomesId;
+  readonly step_id: BiomesId;
+  authorization: t.String;
+}
+
+export class HarthmereQuestProgressEvent implements Event {
+  readonly kind = "harthmereQuestProgressEvent";
+  readonly id: BiomesId;
+  readonly challenge_id: BiomesId;
+  readonly step_id: BiomesId;
+  authorization: t.ReadonlyString;
+
+  constructor({
+    id = t.defaultBiomesId,
+    challenge_id = t.defaultBiomesId,
+    step_id = t.defaultBiomesId,
+    authorization = t.defaultString,
+  }: {
+    id?: BiomesId;
+    challenge_id?: BiomesId;
+    step_id?: BiomesId;
+    authorization?: t.ReadonlyString;
+  }) {
+    this.id = id;
+    this.challenge_id = challenge_id;
+    this.step_id = step_id;
+    this.authorization = authorization;
+  }
+}
+
+export interface HandlerHarthmerePlaceableTransactionEvent {
+  readonly kind: "harthmerePlaceableTransactionEvent";
+  readonly id: BiomesId;
+  transaction_id: t.String;
+  operation: t.String;
+  readonly entity_id: BiomesId;
+  readonly item_id: BiomesId;
+  position: t.Vec3f;
+  orientation: t.Vec2f;
+  old_position: t.Vec3f;
+  old_orientation: t.Vec2f;
+  authorization: t.String;
+}
+
+export class HarthmerePlaceableTransactionEvent implements Event {
+  readonly kind = "harthmerePlaceableTransactionEvent";
+  readonly id: BiomesId;
+  transaction_id: t.ReadonlyString;
+  operation: t.ReadonlyString;
+  readonly entity_id: BiomesId;
+  readonly item_id: BiomesId;
+  position: t.ReadonlyVec3f;
+  orientation: t.ReadonlyVec2f;
+  old_position: t.ReadonlyVec3f;
+  old_orientation: t.ReadonlyVec2f;
+  authorization: t.ReadonlyString;
+
+  constructor({
+    id = t.defaultBiomesId,
+    transaction_id = t.defaultString,
+    operation = t.defaultString,
+    entity_id = t.defaultBiomesId,
+    item_id = t.defaultBiomesId,
+    position = t.defaultVec3f(),
+    orientation = t.defaultVec2f(),
+    old_position = t.defaultVec3f(),
+    old_orientation = t.defaultVec2f(),
+    authorization = t.defaultString,
+  }: {
+    id?: BiomesId;
+    transaction_id?: t.ReadonlyString;
+    operation?: t.ReadonlyString;
+    entity_id?: BiomesId;
+    item_id?: BiomesId;
+    position?: t.ReadonlyVec3f;
+    orientation?: t.ReadonlyVec2f;
+    old_position?: t.ReadonlyVec3f;
+    old_orientation?: t.ReadonlyVec2f;
+    authorization?: t.ReadonlyString;
+  }) {
+    this.id = id;
+    this.transaction_id = transaction_id;
+    this.operation = operation;
+    this.entity_id = entity_id;
+    this.item_id = item_id;
+    this.position = position;
+    this.orientation = orientation;
+    this.old_position = old_position;
+    this.old_orientation = old_orientation;
+    this.authorization = authorization;
   }
 }
 
@@ -4892,6 +5132,9 @@ export type AnyHandlerEvent =
   | HandlerDyeBlockEvent
   | HandlerUnmuckerEvent
   | HandlerInternalInventorySetEvent
+  | HandlerHarthmereInventoryTransactionEvent
+  | HandlerHarthmereQuestProgressEvent
+  | HandlerHarthmerePlaceableTransactionEvent
   | HandlerInventoryCraftEvent
   | HandlerInventoryDyeEvent
   | HandlerInventoryCookEvent
@@ -5047,6 +5290,9 @@ export type AnyEvent =
   | DyeBlockEvent
   | UnmuckerEvent
   | InternalInventorySetEvent
+  | HarthmereInventoryTransactionEvent
+  | HarthmereQuestProgressEvent
+  | HarthmerePlaceableTransactionEvent
   | InventoryCraftEvent
   | InventoryDyeEvent
   | InventoryCookEvent

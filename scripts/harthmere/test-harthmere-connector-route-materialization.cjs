@@ -19,26 +19,29 @@ function check(message, condition) {
 }
 
 check(
-  "route has Grove, connector, and west-gate anchors",
+  "route has Grove, connector, approach, and town-entrance anchors",
   route.includes("[560, -182]") &&
     route.includes("[640, -209]") &&
-    route.includes("[896, -209]")
+    route.includes("[896, -209]") &&
+    route.includes("988, -207")
 );
 check(
   "route planner enforces a one-block player grade",
   route.includes("if (rise > 1) continue")
 );
 check(
-  "route planner provides a terrain-matched west-gate stair",
-  route.includes("westGateStairEdits") &&
-    route.includes("landingColumn.surfaceY - startColumn.surfaceY")
+  "route planner provides a protected, graded town approach",
+  route.includes("engineeredTownApproach") &&
+    route.includes("passage_clearance") &&
+    route.includes("approach_fill") &&
+    route.includes("approach_cap")
 );
 check(
   "road beginning and end have dedicated visible world-map markers",
   groveContent.includes('id: "harthmere_road_grove_trailhead"') &&
     groveContent.includes('id: "harthmere_road_west_gate"') &&
     groveContent.includes('label: "Harthmere Road — Grove Trailhead"') &&
-    groveContent.includes('label: "Harthmere Road — West Gate"')
+    groveContent.includes('label: "Harthmere Road — Town Entrance"')
 );
 check(
   "connector endpoint pins are appended outside the optional mission gate",
@@ -58,9 +61,15 @@ check(
 );
 check(
   "materializer validates every destructive edit before writing",
-  materializer.includes("validateEdits(edits") &&
-    materializer.indexOf("validateEdits(edits") <
+  materializer.includes("validateEdits(") &&
+    materializer.indexOf("validateEdits(") <
       materializer.indexOf("await applyEdits(")
+);
+check(
+  "materializer verifies a collidable floor and three blocks of headroom after edits",
+  materializer.includes("validatePostEditTraversal") &&
+    materializer.includes("missing_collidable_floor") &&
+    materializer.includes("blocked_headroom")
 );
 check(
   "materializer supports a read-only packaged-snapshot audit",
@@ -71,6 +80,13 @@ check(
   "production reconciliation applies the connector route",
   deploy.includes("materialize_production_harthmere_connector_route") &&
     deploy.includes("materialize-harthmere-connector-route.cjs")
+);
+check(
+  "connector terrain is the final writer after Harthmere world sync",
+  deploy.lastIndexOf("materialize_production_harthmere_connector_route") >
+    deploy.lastIndexOf(
+      "node scripts/harthmere/reconcile-production-world-sync.cjs"
+    )
 );
 check(
   "production route reconciliation has an explicit emergency skip",

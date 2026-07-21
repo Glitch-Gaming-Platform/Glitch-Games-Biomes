@@ -9,6 +9,10 @@ import { BikkieIds } from "@/shared/bikkie/ids";
 import { safeParseBiomesId } from "@/shared/ids";
 import { nativeBiomesEcsAuthorityEnabled } from "./native_road_ahead_contract";
 import {
+  harthmereNativeBiomesIdForItemId,
+  harthmereNativeBiomesIdForRecipeId,
+} from "./harthmere_native_item_ids";
+import {
   harthmereGatheringAuthorityNode,
   resolveHarthmereGatheringAuthorityAttempt,
 } from "./gathering_node_authority";
@@ -123,6 +127,8 @@ import {
   SNAPSHOT_GROVE_QUESTS,
   snapshotGroveLandmarkById,
 } from "./snapshot_grove_content";
+import { HARTHMERE_NATIVE_QUEST_GIVER_MANIFEST } from "./harthmere_native_quest_manifest";
+import { getHarthmereQuestById } from "./quest_compendium";
 import {
   harthmereObjectInteractionForLabel,
   type HarthmereObjectInteractionKind,
@@ -139,7 +145,10 @@ import {
 // through live mode, and drives the Thaedryn encounter. See the header of
 // bible_quest_live_authority.ts for the full design rationale.
 import {
+  HARTHMERE_BIBLE_DRAGON_QUEST_ID,
   HARTHMERE_BIBLE_QUEST_OPERATION_PREFIX,
+  HARTHMERE_NATIVE_THAEDRYN_ENTITY_ID,
+  HARTHMERE_Q12_OBJECTIVE_IDS,
   HARTHMERE_THAEDRYN_COMBAT_ENTITY_ID,
   defaultHarthmereBibleQuestLiveSlice,
   harthmereBibleRewardItemDefinition,
@@ -293,6 +302,7 @@ import {
   muckMonsterAreaForPosition,
 } from "./muck_monster_aggression_ai";
 import {
+  HARTHMERE_LIVE_ENTITY_ROBOT_SENTINEL_SEEDS,
   harthmereCombatAttackDamageForLiveEntitySeed,
   harthmereCombatHpForLiveEntitySeed,
   harthmereGroundedLivestockSeedsInTerritory,
@@ -1928,24 +1938,126 @@ export interface HarthmereNativeEcsDropMaterializationPlan {
 }
 
 /**
- * Atomically consumes native player inventory and creates a native reward
- * GrabBag. A receipt entity makes the exchange replay-safe if the response is
- * lost after the ECS transaction commits.
+ * Atomically changes one player's native inventory/wallet. Redis owns the
+ * surrounding vendor/job/auction/timer metadata only; a server-signed logic
+ * event commits these physical deltas and its replay key to ECS together.
  */
 export interface HarthmereNativeEcsInventoryExchangeMaterializationPlan {
   kind: "inventory_exchange";
   materializationKey: string;
   actorId: string;
+  /** Kept for old persisted plans; direct inventory delivery no longer drops rewards here. */
   position: { x: number; y: number; z: number };
   consumeItemStacks: Record<string, number>;
   rewardItemStacks: Record<string, number>;
+  consumeMaterialStorageItemStacks?: Record<string, number>;
+  rewardMaterialStorageItemStacks?: Record<string, number>;
+  materialStorageMaxSlots?: number;
+  consumePersonalBankItemStacks?: Record<string, number>;
+  rewardPersonalBankItemStacks?: Record<string, number>;
+  personalBankMaxSlots?: number;
+  consumeAccountBankItemStacks?: Record<string, number>;
+  rewardAccountBankItemStacks?: Record<string, number>;
+  accountBankMaxSlots?: number;
+  goldDelta?: number;
+  publishCraft?: boolean;
+  stationEntityId?: number;
+  /** Optional atomic side effect for a server-validated sentinel recharge. */
+  robotEntityId?: number;
+  robotEnergyDelta?: number;
+  standing?: {
+    scopeId: string;
+    likeability: number;
+    legal: number;
+    notoriety: number;
+    notorietyFloor: number;
+  };
+  /** Kept for compatibility with durable plans created before the ECS ledger. */
   expiresAtMs: number;
+  sourceKind: string;
+}
+
+export interface HarthmereNativeEcsQuestAcceptMaterializationPlan {
+  kind: "quest_accept";
+  materializationKey: string;
+  actorId: string;
+  questSource: "grove" | "bible";
+  questId: string;
+  giverEntityId: number;
+  sourceKind: string;
+}
+
+export interface HarthmereNativeEcsQuestProgressMaterializationPlan {
+  kind: "quest_progress";
+  materializationKey: string;
+  actorId: string;
+  questSource: "grove" | "bible";
+  questId: string;
+  objectiveIdOrIndex: string | number;
+  sourceKind: string;
+}
+
+export interface HarthmereNativeEcsQuestResetMaterializationPlan {
+  kind: "quest_reset";
+  materializationKey: string;
+  actorId: string;
+  questSource: "grove" | "bible";
+  questId: string;
+  sourceKind: string;
+}
+
+export interface HarthmereNativeEcsBossEntityMaterializationPlan {
+  kind: "boss_entity";
+  materializationKey: string;
+  boss: "thaedryn";
+  operation: "ensure" | "delete";
+  sourceKind: string;
+}
+
+export interface HarthmereNativeEcsPlaceableMaterializationPlan {
+  kind: "placeable";
+  materializationKey: string;
+  objectKey: string;
+  actorId: string;
+  operation: "place" | "move" | "remove";
+  itemId: string;
+  position: { x: number; y: number; z: number };
+  rotationDegrees: number;
+  oldPosition?: { x: number; y: number; z: number };
+  oldRotationDegrees?: number;
+  sourceKind: string;
+}
+
+/**
+ * Native land identity and build ACL for a custom Harthmere plot. Financial
+ * lifecycle metadata stays in Redis, while the physical deed/protection volume
+ * is visible to the same ACL checker used by terrain and placeable events.
+ */
+export interface HarthmereNativeEcsDeedMaterializationPlan {
+  kind: "deed";
+  materializationKey: string;
+  plotId: string;
+  operation: "upsert" | "delete";
+  ownerActorId: string;
+  displayName: string;
+  description: string;
+  bounds: { xMin: number; xMax: number; zMin: number; zMax: number };
+  groundY: number;
+  maxStructureHeight: number;
+  allowedBuilderActorIds: string[];
+  publicBuild: boolean;
   sourceKind: string;
 }
 
 export type HarthmereNativeEcsMaterializationPlan =
   | HarthmereNativeEcsDropMaterializationPlan
-  | HarthmereNativeEcsInventoryExchangeMaterializationPlan;
+  | HarthmereNativeEcsInventoryExchangeMaterializationPlan
+  | HarthmereNativeEcsQuestAcceptMaterializationPlan
+  | HarthmereNativeEcsQuestProgressMaterializationPlan
+  | HarthmereNativeEcsQuestResetMaterializationPlan
+  | HarthmereNativeEcsBossEntityMaterializationPlan
+  | HarthmereNativeEcsPlaceableMaterializationPlan
+  | HarthmereNativeEcsDeedMaterializationPlan;
 
 function recordDelta(
   target: Record<string, number>,
@@ -8089,7 +8201,167 @@ export function reduceHarthmereLiveModeBackendState(
     [];
   const nativeEcsMaterializationPlans: HarthmereNativeEcsMaterializationPlan[] =
     [];
+  const nativeHandledItemDeltas: Record<string, number> = {};
+  const recordNativeHandledItemDelta = (itemId: string, delta: number) => {
+    nativeHandledItemDeltas[itemId] =
+      (nativeHandledItemDeltas[itemId] ?? 0) + Math.trunc(delta);
+  };
   const playerStateKey = harthmereLiveModePlayerStateKey(envelope.actorId);
+  const queueNativeDeed = (input: {
+    plot: BuildingSystemPlotDefinition;
+    ownerActorId: string;
+    operation?: "upsert" | "delete";
+    property?: BuildingSystemPropertyRecord;
+    materializationKey: string;
+    sourceKind: string;
+  }) => {
+    if (!nativeBiomesEcsAuthorityEnabled()) return;
+    if (!safeParseBiomesId(input.ownerActorId)) {
+      warnings.push(
+        `native_ecs_deed_deferred:unresolved_owner:${input.plot.plotId}`
+      );
+      return;
+    }
+    const property = input.property;
+    nativeEcsMaterializationPlans.push({
+      kind: "deed",
+      materializationKey: input.materializationKey,
+      plotId: input.plot.plotId,
+      operation: input.operation ?? "upsert",
+      ownerActorId: input.ownerActorId,
+      displayName: input.plot.displayName,
+      description: input.plot.description,
+      bounds: { ...input.plot.bounds },
+      groundY: input.plot.groundY,
+      maxStructureHeight: input.plot.maxStructureHeight,
+      allowedBuilderActorIds:
+        property?.permissions.friends_guests.build_edit === true
+          ? property.guestActorIds.filter((actorId) =>
+              Boolean(safeParseBiomesId(actorId))
+            )
+          : [],
+      publicBuild: property?.permissions.public.build_edit === true,
+      sourceKind: input.sourceKind,
+    });
+    touchedModels.add("native_ecs_deed");
+  };
+
+  // Recipe definitions must be registered before reconciling the native
+  // RecipeBook. This is idempotent and removes module import order from the
+  // crafting authority boundary.
+  ensureHarthmereProductionCraftingCatalogue();
+
+  const nativePlayerInventoryBaseline =
+    nativeBiomesEcsAuthorityEnabled() &&
+    envelope.serverActorItemCounts !== undefined &&
+    envelope.serverActorGold !== undefined
+      ? {
+          items: Object.fromEntries(
+            Object.entries(envelope.serverActorItemCounts).flatMap(
+              ([itemId, count]) => {
+                const safeCount = Math.max(0, Math.trunc(Number(count) || 0));
+                return safeCount > 0 ? [[itemId, safeCount]] : [];
+              }
+            )
+          ),
+          gold: Math.max(0, Math.trunc(envelope.serverActorGold)),
+          equipment: { ...(envelope.serverActorEquipment ?? {}) },
+        }
+      : undefined;
+  const nativePlayerStandingBaseline =
+    nativeBiomesEcsAuthorityEnabled() && envelope.serverActorStanding
+      ? {
+          scopeId: envelope.serverActorStanding.scopeId,
+          standing: normalizeReputationStanding(envelope.serverActorStanding),
+        }
+      : undefined;
+  const nativeMaterialStorageBaseline =
+    nativeBiomesEcsAuthorityEnabled() &&
+    envelope.serverActorMaterialStorageItemCounts !== undefined
+      ? Object.fromEntries(
+          Object.entries(envelope.serverActorMaterialStorageItemCounts).flatMap(
+            ([itemId, count]) => {
+              const safeCount = Math.max(0, Math.trunc(Number(count) || 0));
+              return safeCount > 0 ? [[itemId, safeCount]] : [];
+            }
+          )
+        )
+      : undefined;
+  const normalizeNativeBankCounts = (counts: Record<string, number>) =>
+    Object.fromEntries(
+      Object.entries(counts).flatMap(([itemId, count]) => {
+        const safeCount = Math.max(0, Math.trunc(Number(count) || 0));
+        return safeCount > 0 ? [[itemId, safeCount]] : [];
+      })
+    );
+  const nativePersonalBankBaseline =
+    nativeBiomesEcsAuthorityEnabled() &&
+    envelope.serverActorPersonalBankItemCounts !== undefined
+      ? normalizeNativeBankCounts(envelope.serverActorPersonalBankItemCounts)
+      : undefined;
+  const nativeAccountBankBaseline =
+    nativeBiomesEcsAuthorityEnabled() &&
+    envelope.serverActorAccountBankItemCounts !== undefined
+      ? normalizeNativeBankCounts(envelope.serverActorAccountBankItemCounts)
+      : undefined;
+  if (nativePlayerInventoryBaseline) {
+    // Redis keeps this projection for legacy read models, but every mutation
+    // starts from the same server-read ECS snapshot and can only commit the
+    // resulting delta through HarthmereInventoryTransactionEvent.
+    next.inventory.items = { ...nativePlayerInventoryBaseline.items };
+    next.inventory.gold = nativePlayerInventoryBaseline.gold;
+    next.inventory.equipment = {
+      ...nativePlayerInventoryBaseline.equipment,
+    };
+    const nativeKnownRecipes = new Set(
+      envelope.serverActorKnownRecipeIds ?? []
+    );
+    next.classMagic.knownRecipes = [
+      ...nativeKnownRecipes,
+      ...next.classMagic.knownRecipes.filter((recipeId) => {
+        const recipe = getHarthmereCraftingRecipe(recipeId);
+        // Target-item workflows are custom metadata because the stock native
+        // craft event cannot represent repair/salvage/upgrade semantics.
+        return Boolean(recipe?.workflowKind && recipe.workflowKind !== "craft");
+      }),
+    ];
+  }
+  if (nativePlayerStandingBaseline) {
+    // Multi-faction history can remain in Redis, but the current player-facing
+    // standing is always rebased from TriggerState before a mutation. This
+    // prevents stale Redis values from overwriting likeability, legal standing,
+    // or notoriety that another native ECS event has already committed.
+    next.law.standing[nativePlayerStandingBaseline.scopeId] = {
+      ...nativePlayerStandingBaseline.standing,
+    };
+  }
+  if (nativeMaterialStorageBaseline) {
+    next.banking.materialStorage = { ...nativeMaterialStorageBaseline };
+    if (envelope.serverActorMaterialStorageMaxSlots !== undefined) {
+      next.banking.materialStorageMaxSlots = Math.max(
+        1,
+        Math.trunc(envelope.serverActorMaterialStorageMaxSlots)
+      );
+    }
+  }
+  if (nativePersonalBankBaseline) {
+    next.inventory.bank = { ...nativePersonalBankBaseline };
+    if (envelope.serverActorPersonalBankMaxSlots !== undefined) {
+      next.banking.personalBankMaxSlots = Math.max(
+        1,
+        Math.trunc(envelope.serverActorPersonalBankMaxSlots)
+      );
+    }
+  }
+  if (nativeAccountBankBaseline) {
+    next.banking.accountBank = { ...nativeAccountBankBaseline };
+    if (envelope.serverActorAccountBankMaxSlots !== undefined) {
+      next.banking.accountBankMaxSlots = Math.max(
+        1,
+        Math.trunc(envelope.serverActorAccountBankMaxSlots)
+      );
+    }
+  }
 
   const loanConsequenceResult = applyHarthmereBankLoanConsequences(next, nowMs);
   if (loanConsequenceResult.changed) {
@@ -8113,7 +8385,6 @@ export function reduceHarthmereLiveModeBackendState(
   for (const plotId of next.building.ownedPlots) {
     next.building.plotOwners[plotId] ??= envelope.actorId;
   }
-  ensureHarthmereProductionCraftingCatalogue();
   ensureHarthmereProductionVendorCatalog();
   ensureCombatResourcePools(next);
 
@@ -13070,6 +13341,23 @@ export function reduceHarthmereLiveModeBackendState(
         )
       ) {
         const actorPosition = actorWorldPositionFromAuthority(envelope);
+        const requestedQuestId = payloadString(envelope, "questId");
+        if (
+          requestedQuestId === HARTHMERE_BIBLE_DRAGON_QUEST_ID &&
+          liveEntityHelperOperation === "bible_quest_boss_event" &&
+          next.quests.bible.thaedryn
+        ) {
+          const nativeHealthPct = payloadNumber(
+            envelope,
+            "__serverNativeThaedrynHealthPct"
+          );
+          if (nativeHealthPct !== undefined) {
+            next.quests.bible.thaedryn.healthPct = Math.max(
+              0,
+              Math.min(100, nativeHealthPct)
+            );
+          }
+        }
         const result = reduceHarthmereBibleQuestOperation({
           slice: next.quests.bible,
           actorId: envelope.actorId,
@@ -13097,6 +13385,135 @@ export function reduceHarthmereLiveModeBackendState(
           break;
         }
         next.quests.bible = result.slice;
+        if (nativeBiomesEcsAuthorityEnabled()) {
+          if (
+            requestedQuestId &&
+            liveEntityHelperOperation === "bible_quest_accept"
+          ) {
+            const authoredQuest = getHarthmereQuestById(requestedQuestId) as
+              | any
+              | undefined;
+            const giver = authoredQuest?.giverId
+              ? HARTHMERE_NATIVE_QUEST_GIVER_MANIFEST[
+                  authoredQuest.giverId as keyof typeof HARTHMERE_NATIVE_QUEST_GIVER_MANIFEST
+                ]
+              : undefined;
+            const giverEntityId =
+              requestedQuestId === HARTHMERE_BIBLE_DRAGON_QUEST_ID
+                ? HARTHMERE_NATIVE_THAEDRYN_ENTITY_ID
+                : giver?.entityId;
+            if (requestedQuestId === HARTHMERE_BIBLE_DRAGON_QUEST_ID) {
+              nativeEcsMaterializationPlans.push({
+                kind: "boss_entity",
+                materializationKey: `boss_entity:thaedryn:ensure:${envelope.requestId}`,
+                boss: "thaedryn",
+                operation: "ensure",
+                sourceKind: "harthmere_q12_accept",
+              });
+            }
+            if (giverEntityId) {
+              nativeEcsMaterializationPlans.push({
+                kind: "quest_accept",
+                materializationKey: `quest_accept:${envelope.actorId}:bible:${requestedQuestId}:${envelope.requestId}`,
+                actorId: envelope.actorId,
+                questSource: "bible",
+                questId: requestedQuestId,
+                giverEntityId,
+                sourceKind: "harthmere_bible_quest_accept",
+              });
+            }
+          } else if (
+            requestedQuestId &&
+            liveEntityHelperOperation === "bible_quest_advance"
+          ) {
+            const objectiveId = payloadString(envelope, "objectiveId");
+            if (objectiveId) {
+              nativeEcsMaterializationPlans.push({
+                kind: "quest_progress",
+                materializationKey: `quest_progress:${envelope.actorId}:bible:${requestedQuestId}:${objectiveId}`,
+                actorId: envelope.actorId,
+                questSource: "bible",
+                questId: requestedQuestId,
+                objectiveIdOrIndex: objectiveId,
+                sourceKind: "harthmere_bible_quest_advance",
+              });
+            }
+          } else if (
+            requestedQuestId &&
+            liveEntityHelperOperation === "bible_quest_abandon"
+          ) {
+            nativeEcsMaterializationPlans.push({
+              kind: "quest_reset",
+              materializationKey: `quest_reset:${envelope.actorId}:bible:${requestedQuestId}:${envelope.requestId}`,
+              actorId: envelope.actorId,
+              questSource: "bible",
+              questId: requestedQuestId,
+              sourceKind: "harthmere_bible_quest_abandon",
+            });
+          } else if (
+            requestedQuestId &&
+            liveEntityHelperOperation === "bible_quest_retry"
+          ) {
+            const authoredQuest = getHarthmereQuestById(requestedQuestId) as
+              | any
+              | undefined;
+            const giver = authoredQuest?.giverId
+              ? HARTHMERE_NATIVE_QUEST_GIVER_MANIFEST[
+                  authoredQuest.giverId as keyof typeof HARTHMERE_NATIVE_QUEST_GIVER_MANIFEST
+                ]
+              : undefined;
+            const giverEntityId =
+              requestedQuestId === HARTHMERE_BIBLE_DRAGON_QUEST_ID
+                ? HARTHMERE_NATIVE_THAEDRYN_ENTITY_ID
+                : giver?.entityId;
+            nativeEcsMaterializationPlans.push({
+              kind: "quest_reset",
+              materializationKey: `quest_reset:${envelope.actorId}:bible:${requestedQuestId}:${envelope.requestId}`,
+              actorId: envelope.actorId,
+              questSource: "bible",
+              questId: requestedQuestId,
+              sourceKind: "harthmere_bible_quest_retry",
+            });
+            if (requestedQuestId === HARTHMERE_BIBLE_DRAGON_QUEST_ID) {
+              nativeEcsMaterializationPlans.push({
+                kind: "boss_entity",
+                materializationKey: `boss_entity:thaedryn:retry:${envelope.requestId}`,
+                boss: "thaedryn",
+                operation: "ensure",
+                sourceKind: "harthmere_q12_retry",
+              });
+            }
+            if (giverEntityId) {
+              nativeEcsMaterializationPlans.push({
+                kind: "quest_accept",
+                materializationKey: `quest_accept:${envelope.actorId}:bible:${requestedQuestId}:retry:${envelope.requestId}`,
+                actorId: envelope.actorId,
+                questSource: "bible",
+                questId: requestedQuestId,
+                giverEntityId,
+                sourceKind: "harthmere_bible_quest_retry",
+              });
+            }
+          } else if (
+            requestedQuestId === HARTHMERE_BIBLE_DRAGON_QUEST_ID &&
+            liveEntityHelperOperation === "bible_quest_boss_event" &&
+            payloadString(envelope, "bossEventType") === "resolve"
+          ) {
+            for (const objectiveId of Object.values(
+              HARTHMERE_Q12_OBJECTIVE_IDS
+            )) {
+              nativeEcsMaterializationPlans.push({
+                kind: "quest_progress",
+                materializationKey: `quest_progress:${envelope.actorId}:bible:${requestedQuestId}:${objectiveId}:${envelope.requestId}`,
+                actorId: envelope.actorId,
+                questSource: "bible",
+                questId: requestedQuestId,
+                objectiveIdOrIndex: objectiveId,
+                sourceKind: "harthmere_q12_resolution",
+              });
+            }
+          }
+        }
         if (result.objectiveItemGrant) {
           const grant = result.objectiveItemGrant;
           if (!getHarthmereItemDefinition(grant.itemId)) {
@@ -13193,6 +13610,18 @@ export function reduceHarthmereLiveModeBackendState(
               HARTHMERE_THAEDRYN_COMBAT_ENTITY_ID
             )
           );
+          if (
+            nativeBiomesEcsAuthorityEnabled() &&
+            result.thaedrynSnapshot === "remove"
+          ) {
+            nativeEcsMaterializationPlans.push({
+              kind: "boss_entity",
+              materializationKey: `boss_entity:thaedryn:delete:${envelope.requestId}`,
+              boss: "thaedryn",
+              operation: "delete",
+              sourceKind: "harthmere_q12_cleanup",
+            });
+          }
         }
         touchedModels.add("quest_state");
         touchedModels.add("building_state");
@@ -13225,6 +13654,17 @@ export function reduceHarthmereLiveModeBackendState(
             envelope.targetId;
           if (!robotId) {
             warnings.push("live_entity_robot_rejected:robot_required");
+            touchedModels.add("robot_protection_rejection");
+            break;
+          }
+          if (
+            nativeBiomesEcsAuthorityEnabled() &&
+            !HARTHMERE_LIVE_ENTITY_ROBOT_SENTINEL_SEEDS.some(
+              (seed) =>
+                seed.robotId === robotId || String(seed.entityId) === robotId
+            )
+          ) {
+            warnings.push("live_entity_robot_rejected:native_robot_required");
             touchedModels.add("robot_protection_rejection");
             break;
           }
@@ -13456,6 +13896,7 @@ export function reduceHarthmereLiveModeBackendState(
       const questId = payloadString(envelope, "questId");
       if (questId) {
         const completed = envelope.payload.completed === true;
+        const questSource = payloadString(envelope, "source");
         if (completed && questId.startsWith("jobs_board:")) {
           const todoId = questId.slice("jobs_board:".length);
           const todo = next.jobsBoard.todos[todoId];
@@ -13568,7 +14009,7 @@ export function reduceHarthmereLiveModeBackendState(
               touchedModels.add("building_state");
             }
           }
-        } else if (completed) {
+        } else if (completed && questSource !== "snapshot_grove") {
           if (
             nativeBiomesEcsAuthorityEnabled() &&
             !isServerAuthorityEnvelope(envelope)
@@ -13583,7 +14024,6 @@ export function reduceHarthmereLiveModeBackendState(
             delete next.quests.active[questId];
           }
         } else {
-          const questSource = payloadString(envelope, "source");
           if (questSource === "snapshot_grove") {
             const authoredQuest = SNAPSHOT_GROVE_QUESTS.find(
               (quest) => quest.id === questId
@@ -13597,6 +14037,23 @@ export function reduceHarthmereLiveModeBackendState(
               next.quests.active[questId] === undefined &&
               next.quests.completed[questId] === undefined;
             if (firstAcceptance) {
+              if (nativeBiomesEcsAuthorityEnabled()) {
+                const giver =
+                  HARTHMERE_NATIVE_QUEST_GIVER_MANIFEST[
+                    authoredQuest.giverNpcId as keyof typeof HARTHMERE_NATIVE_QUEST_GIVER_MANIFEST
+                  ];
+                if (giver) {
+                  nativeEcsMaterializationPlans.push({
+                    kind: "quest_accept",
+                    materializationKey: `quest_accept:${envelope.actorId}:grove:${questId}`,
+                    actorId: envelope.actorId,
+                    questSource: "grove",
+                    questId,
+                    giverEntityId: giver.entityId,
+                    sourceKind: "harthmere_snapshot_grove_quest_accept",
+                  });
+                }
+              }
               ensureInventoryLootActorSynced();
               const lootActor = next.inventoryLoot.actors[next.actorId];
               for (const grant of snapshotGroveTutorialInventoryGrantsForQuest(
@@ -13651,6 +14108,24 @@ export function reduceHarthmereLiveModeBackendState(
               if (lootActor) {
                 lootActor.items = { ...next.inventory.items };
               }
+            }
+            const objectiveIndex = payloadNumber(envelope, "objectiveIndex");
+            if (
+              nativeBiomesEcsAuthorityEnabled() &&
+              objectiveIndex !== undefined &&
+              Number.isInteger(objectiveIndex) &&
+              objectiveIndex >= 0 &&
+              objectiveIndex < authoredQuest.objectives.length
+            ) {
+              nativeEcsMaterializationPlans.push({
+                kind: "quest_progress",
+                materializationKey: `quest_progress:${envelope.actorId}:grove:${questId}:${objectiveIndex}`,
+                actorId: envelope.actorId,
+                questSource: "grove",
+                questId,
+                objectiveIdOrIndex: objectiveIndex,
+                sourceKind: "harthmere_snapshot_grove_quest_progress",
+              });
             }
           }
           next.quests.active[questId] = {
@@ -13803,6 +14278,26 @@ export function reduceHarthmereLiveModeBackendState(
             touchedModels.add("building_materialization_retry");
           }
         }
+        // Upgrade legacy Redis-only claims on ordinary state reads. The key is
+        // stable, so each plot is repaired once without minting a new deed per
+        // page load.
+        for (const [plotId, ownerActorId] of Object.entries(
+          next.building.plotOwners
+        )) {
+          if (ownerActorId !== envelope.actorId) continue;
+          const ownedPlot = buildingSystemPlotFromState(next, plotId);
+          if (!ownedPlot) continue;
+          const property = Object.values(next.property.owned).find(
+            (candidate) => candidate.plotId === plotId
+          );
+          queueNativeDeed({
+            plot: ownedPlot,
+            ownerActorId,
+            property,
+            materializationKey: `deed:migrate:${plotId}:${ownerActorId}`,
+            sourceKind: "harthmere_plot_claim_migration",
+          });
+        }
         break;
       }
 
@@ -13947,6 +14442,15 @@ export function reduceHarthmereLiveModeBackendState(
           if (!next.building.ownedPlots.includes(plot.plotId)) {
             next.building.ownedPlots.push(plot.plotId);
           }
+          queueNativeDeed({
+            plot,
+            ownerActorId: envelope.actorId,
+            property: Object.values(next.property.owned).find(
+              (candidate) => candidate.plotId === plot!.plotId
+            ),
+            materializationKey: `deed:repair:${plot.plotId}:${envelope.actorId}`,
+            sourceKind: "harthmere_plot_claim_idempotent_repair",
+          });
           touchedModels.add("owned_plots");
           break;
         }
@@ -13995,6 +14499,12 @@ export function reduceHarthmereLiveModeBackendState(
           next.building.ownedPlots.push(plot.plotId);
         }
         next.building.plotOwners[plot.plotId] = envelope.actorId;
+        queueNativeDeed({
+          plot,
+          ownerActorId: envelope.actorId,
+          materializationKey: `deed:claim:${plot.plotId}:${envelope.actorId}`,
+          sourceKind: "harthmere_plot_claim",
+        });
         const claimMiraMapMarker = createBuildingSystemMiraMapMarker(nowMs);
         next.building.inWorldMarkers[claimMiraMapMarker.markerId] =
           claimMiraMapMarker;
@@ -14977,6 +15487,16 @@ export function reduceHarthmereLiveModeBackendState(
           plotId: property.plotId,
           nowMs,
         });
+        const accessPlot = buildingSystemPlotFromState(next, property.plotId);
+        if (accessPlot) {
+          queueNativeDeed({
+            plot: accessPlot,
+            ownerActorId: property.ownerId,
+            property,
+            materializationKey: `deed:access:${property.plotId}:${property.updatedAtMs}`,
+            sourceKind: "harthmere_property_access_mode",
+          });
+        }
         sharedStateKeys.add(
           harthmereLiveModeSharedStateKey("property", propertyId)
         );
@@ -15012,6 +15532,25 @@ export function reduceHarthmereLiveModeBackendState(
           payloadBoolean(envelope, "enabled") === true;
         property.updatedAtMs = nowMs;
         next.property.owned[propertyId] = property;
+        syncBuildingSystemPhysicalAccessRecords({
+          state: next,
+          property,
+          plotId: property.plotId,
+          nowMs,
+        });
+        const permissionPlot = buildingSystemPlotFromState(
+          next,
+          property.plotId
+        );
+        if (permissionPlot) {
+          queueNativeDeed({
+            plot: permissionPlot,
+            ownerActorId: property.ownerId,
+            property,
+            materializationKey: `deed:permission:${property.plotId}:${property.updatedAtMs}`,
+            sourceKind: "harthmere_property_permission",
+          });
+        }
         sharedStateKeys.add(
           harthmereLiveModeSharedStateKey("property", propertyId)
         );
@@ -15054,6 +15593,16 @@ export function reduceHarthmereLiveModeBackendState(
           plotId: property.plotId,
           nowMs,
         });
+        const guestPlot = buildingSystemPlotFromState(next, property.plotId);
+        if (guestPlot) {
+          queueNativeDeed({
+            plot: guestPlot,
+            ownerActorId: property.ownerId,
+            property,
+            materializationKey: `deed:guest:${property.plotId}:${property.updatedAtMs}`,
+            sourceKind: "harthmere_property_guest_access",
+          });
+        }
         sharedStateKeys.add(
           harthmereLiveModeSharedStateKey("property", propertyId)
         );
@@ -15396,6 +15945,13 @@ export function reduceHarthmereLiveModeBackendState(
         }
         delete next.property.owned[propertyId];
         if (propertyPlot) {
+          queueNativeDeed({
+            plot: propertyPlot,
+            ownerActorId: envelope.actorId,
+            operation: "delete",
+            materializationKey: `deed:delete:${propertyPlot.plotId}:${envelope.requestId}`,
+            sourceKind: "harthmere_property_demolition",
+          });
           next.building.ownedPlots = next.building.ownedPlots.filter(
             (id) => id !== propertyPlot.plotId
           );
@@ -15537,6 +16093,16 @@ export function reduceHarthmereLiveModeBackendState(
           plotId: property.plotId,
           nowMs,
         });
+        const transferPlot = buildingSystemPlotFromState(next, property.plotId);
+        if (transferPlot) {
+          queueNativeDeed({
+            plot: transferPlot,
+            ownerActorId: property.ownerId,
+            property,
+            materializationKey: `deed:transfer:${property.plotId}:${property.ownerId}:${property.updatedAtMs}`,
+            sourceKind: "harthmere_property_transfer",
+          });
+        }
         sharedStateKeys.add(
           harthmereLiveModeSharedStateKey("property", propertyId)
         );
@@ -15907,6 +16473,12 @@ export function reduceHarthmereLiveModeBackendState(
         | HarthmereHomeDecorationOperation
         | undefined;
       const decorationId = payloadString(envelope, "decorationId");
+      const existingDecoration = decorationId
+        ? next.homeDecoration.placed[decorationId]
+        : undefined;
+      const priorDecorationIds = new Set(
+        Object.keys(next.homeDecoration.placed)
+      );
       const existingDecorationPropertyId = decorationId
         ? next.homeDecoration.placed[decorationId]?.propertyId
         : undefined;
@@ -15962,7 +16534,54 @@ export function reduceHarthmereLiveModeBackendState(
       for (const model of result.touchedModels) {
         touchedModels.add(model);
       }
-      if (result.materializationPlans?.length) {
+      const placedDecorationId =
+        operation === "place_decoration"
+          ? Object.keys(result.state.placed).find(
+              (candidate) => !priorDecorationIds.has(candidate)
+            )
+          : decorationId;
+      const physicalDecoration =
+        operation === "remove_decoration"
+          ? existingDecoration
+          : placedDecorationId
+          ? result.state.placed[placedDecorationId]
+          : undefined;
+      const nativeDecorationOperation =
+        operation === "place_decoration"
+          ? "place"
+          : operation === "move_decoration"
+          ? "move"
+          : operation === "remove_decoration"
+          ? "remove"
+          : undefined;
+      const nativeDecorationItemId = physicalDecoration
+        ? harthmereNativeBiomesIdForItemId(physicalDecoration.itemId)
+        : undefined;
+      if (
+        nativeBiomesEcsAuthorityEnabled() &&
+        nativeDecorationOperation &&
+        physicalDecoration &&
+        placedDecorationId &&
+        nativeDecorationItemId
+      ) {
+        nativeEcsMaterializationPlans.push({
+          kind: "placeable",
+          materializationKey: `home_placeable:${envelope.actorId}:${envelope.requestId}`,
+          objectKey: `home:${placedDecorationId}`,
+          actorId: envelope.actorId,
+          operation: nativeDecorationOperation,
+          itemId: physicalDecoration.itemId,
+          position: physicalDecoration.position,
+          rotationDegrees: physicalDecoration.rotationDegrees,
+          oldPosition: existingDecoration?.position,
+          oldRotationDegrees: existingDecoration?.rotationDegrees,
+          sourceKind: `harthmere_home_${operation}`,
+        });
+        for (const [itemId, delta] of Object.entries(result.itemDeltas)) {
+          recordNativeHandledItemDelta(itemId, delta);
+        }
+        touchedModels.add("native_ecs_placeable");
+      } else if (result.materializationPlans?.length) {
         for (const plan of result.materializationPlans) {
           next.building.materializationPlans[plan.requestId] = plan;
         }
@@ -16102,6 +16721,46 @@ export function reduceHarthmereLiveModeBackendState(
       }
       if (Object.keys(result.itemDeltas).length > 0) {
         touchedModels.add("inventory_items");
+      }
+      const placedObjectId =
+        operation === "place_object"
+          ? (result as { placedObjectId?: string }).placedObjectId
+          : objectId;
+      const physicalObject =
+        operation === "remove_object"
+          ? existingObject
+          : placedObjectId
+          ? result.state.placed[placedObjectId]
+          : undefined;
+      const nativePlacementOperation =
+        operation === "place_object"
+          ? "place"
+          : operation === "move_object"
+          ? "move"
+          : "remove";
+      if (
+        nativeBiomesEcsAuthorityEnabled() &&
+        physicalObject &&
+        placedObjectId &&
+        harthmereNativeBiomesIdForItemId(physicalObject.itemId)
+      ) {
+        nativeEcsMaterializationPlans.push({
+          kind: "placeable",
+          materializationKey: `world_placeable:${envelope.actorId}:${envelope.requestId}`,
+          objectKey: `world:${placedObjectId}`,
+          actorId: envelope.actorId,
+          operation: nativePlacementOperation,
+          itemId: physicalObject.itemId,
+          position: physicalObject.position,
+          rotationDegrees: physicalObject.rotationDegrees,
+          oldPosition: existingObject?.position,
+          oldRotationDegrees: existingObject?.rotationDegrees,
+          sourceKind: `harthmere_world_${operation}`,
+        });
+        for (const [itemId, delta] of Object.entries(result.itemDeltas)) {
+          recordNativeHandledItemDelta(itemId, delta);
+        }
+        touchedModels.add("native_ecs_placeable");
       }
       touchedModels.add("world_placement");
       sharedStateKeys.add(harthmereLiveModeSharedWorldStateKey());
@@ -17780,6 +18439,319 @@ export function reduceHarthmereLiveModeBackendState(
     nativeEcsMaterializationPlans.push(
       ...harthmereNativeEcsPlansForAvailableInventoryLoot(next, nowMs)
     );
+  }
+
+  if (nativePlayerInventoryBaseline) {
+    const exchanges = nativeEcsMaterializationPlans.filter(
+      (plan): plan is HarthmereNativeEcsInventoryExchangeMaterializationPlan =>
+        plan.kind === "inventory_exchange"
+    );
+    const itemDeltas: Record<string, number> = {};
+    const addItemDelta = (itemId: string, delta: number) => {
+      const safeDelta = Math.trunc(Number(delta) || 0);
+      if (safeDelta === 0) return;
+      itemDeltas[itemId] = (itemDeltas[itemId] ?? 0) + safeDelta;
+      if (itemDeltas[itemId] === 0) delete itemDeltas[itemId];
+    };
+
+    // Some timed/job reducers deliberately leave the Redis inventory
+    // projection untouched and already emit an exchange plan. Fold those
+    // deltas into the same native transaction as ordinary vendor/bank/craft
+    // changes instead of publishing multiple partially ordered writes.
+    for (const exchange of exchanges) {
+      for (const [itemId, count] of Object.entries(
+        exchange.consumeItemStacks
+      )) {
+        addItemDelta(itemId, -count);
+      }
+      for (const [itemId, count] of Object.entries(exchange.rewardItemStacks)) {
+        addItemDelta(itemId, count);
+      }
+    }
+    const materialStorageDeltas: Record<string, number> = {};
+    const addMaterialStorageDelta = (itemId: string, delta: number) => {
+      const safeDelta = Math.trunc(Number(delta) || 0);
+      if (safeDelta === 0) return;
+      materialStorageDeltas[itemId] =
+        (materialStorageDeltas[itemId] ?? 0) + safeDelta;
+      if (materialStorageDeltas[itemId] === 0) {
+        delete materialStorageDeltas[itemId];
+      }
+    };
+    for (const exchange of exchanges) {
+      for (const [itemId, count] of Object.entries(
+        exchange.consumeMaterialStorageItemStacks ?? {}
+      )) {
+        addMaterialStorageDelta(itemId, -count);
+      }
+      for (const [itemId, count] of Object.entries(
+        exchange.rewardMaterialStorageItemStacks ?? {}
+      )) {
+        addMaterialStorageDelta(itemId, count);
+      }
+    }
+    for (const itemId of new Set([
+      ...Object.keys(nativeMaterialStorageBaseline ?? {}),
+      ...Object.keys(next.banking.materialStorage),
+    ])) {
+      addMaterialStorageDelta(
+        itemId,
+        (next.banking.materialStorage[itemId] ?? 0) -
+          (nativeMaterialStorageBaseline?.[itemId] ?? 0)
+      );
+    }
+    const bankDeltas = (input: {
+      baseline: Record<string, number> | undefined;
+      current: Record<string, number>;
+      consume: (
+        exchange: HarthmereNativeEcsInventoryExchangeMaterializationPlan
+      ) => Record<string, number> | undefined;
+      reward: (
+        exchange: HarthmereNativeEcsInventoryExchangeMaterializationPlan
+      ) => Record<string, number> | undefined;
+    }) => {
+      const deltas: Record<string, number> = {};
+      const add = (itemId: string, delta: number) => {
+        const safeDelta = Math.trunc(Number(delta) || 0);
+        if (safeDelta === 0) return;
+        deltas[itemId] = (deltas[itemId] ?? 0) + safeDelta;
+        if (deltas[itemId] === 0) delete deltas[itemId];
+      };
+      for (const exchange of exchanges) {
+        for (const [itemId, count] of Object.entries(
+          input.consume(exchange) ?? {}
+        )) {
+          add(itemId, -count);
+        }
+        for (const [itemId, count] of Object.entries(
+          input.reward(exchange) ?? {}
+        )) {
+          add(itemId, count);
+        }
+      }
+      for (const itemId of new Set([
+        ...Object.keys(input.baseline ?? {}),
+        ...Object.keys(input.current),
+      ])) {
+        add(
+          itemId,
+          (input.current[itemId] ?? 0) - (input.baseline?.[itemId] ?? 0)
+        );
+      }
+      return deltas;
+    };
+    const personalBankDeltas = bankDeltas({
+      baseline: nativePersonalBankBaseline,
+      current: next.inventory.bank,
+      consume: (exchange) => exchange.consumePersonalBankItemStacks,
+      reward: (exchange) => exchange.rewardPersonalBankItemStacks,
+    });
+    const accountBankDeltas = bankDeltas({
+      baseline: nativeAccountBankBaseline,
+      current: next.banking.accountBank,
+      consume: (exchange) => exchange.consumeAccountBankItemStacks,
+      reward: (exchange) => exchange.rewardAccountBankItemStacks,
+    });
+    for (const itemId of new Set([
+      ...Object.keys(nativePlayerInventoryBaseline.items),
+      ...Object.keys(next.inventory.items),
+    ])) {
+      addItemDelta(
+        itemId,
+        (next.inventory.items[itemId] ?? 0) -
+          (nativePlayerInventoryBaseline.items[itemId] ?? 0) -
+          (nativeHandledItemDeltas[itemId] ?? 0)
+      );
+    }
+    const nativeKnownRecipeIds = new Set(
+      envelope.serverActorKnownRecipeIds ?? []
+    );
+    for (const recipeId of next.classMagic.knownRecipes) {
+      const recipe = getHarthmereCraftingRecipe(recipeId);
+      if (
+        nativeKnownRecipeIds.has(recipeId) ||
+        !recipe ||
+        (recipe.workflowKind && recipe.workflowKind !== "craft") ||
+        !harthmereNativeBiomesIdForRecipeId(recipeId)
+      ) {
+        continue;
+      }
+      // Recipe items are diverted into RecipeBook by PlayerInventoryEditor and
+      // emit recipeUnlocked in the same signed ECS transaction.
+      addItemDelta(recipeId, 1);
+    }
+
+    const goldDelta = Math.trunc(
+      next.inventory.gold - nativePlayerInventoryBaseline.gold
+    );
+    const consumeItemStacks = Object.fromEntries(
+      Object.entries(itemDeltas).flatMap(([itemId, delta]) =>
+        delta < 0 ? [[itemId, -delta]] : []
+      )
+    );
+    const rewardItemStacks = Object.fromEntries(
+      Object.entries(itemDeltas).flatMap(([itemId, delta]) =>
+        delta > 0 ? [[itemId, delta]] : []
+      )
+    );
+    const consumeMaterialStorageItemStacks = Object.fromEntries(
+      Object.entries(materialStorageDeltas).flatMap(([itemId, delta]) =>
+        delta < 0 ? [[itemId, -delta]] : []
+      )
+    );
+    const rewardMaterialStorageItemStacks = Object.fromEntries(
+      Object.entries(materialStorageDeltas).flatMap(([itemId, delta]) =>
+        delta > 0 ? [[itemId, delta]] : []
+      )
+    );
+    const consumePersonalBankItemStacks = Object.fromEntries(
+      Object.entries(personalBankDeltas).flatMap(([itemId, delta]) =>
+        delta < 0 ? [[itemId, -delta]] : []
+      )
+    );
+    const rewardPersonalBankItemStacks = Object.fromEntries(
+      Object.entries(personalBankDeltas).flatMap(([itemId, delta]) =>
+        delta > 0 ? [[itemId, delta]] : []
+      )
+    );
+    const consumeAccountBankItemStacks = Object.fromEntries(
+      Object.entries(accountBankDeltas).flatMap(([itemId, delta]) =>
+        delta < 0 ? [[itemId, -delta]] : []
+      )
+    );
+    const rewardAccountBankItemStacks = Object.fromEntries(
+      Object.entries(accountBankDeltas).flatMap(([itemId, delta]) =>
+        delta > 0 ? [[itemId, delta]] : []
+      )
+    );
+    const materialStorageMaxSlotsChanged =
+      nativeMaterialStorageBaseline !== undefined &&
+      next.banking.materialStorageMaxSlots !==
+        envelope.serverActorMaterialStorageMaxSlots;
+    const personalBankMaxSlotsChanged =
+      nativePersonalBankBaseline !== undefined &&
+      next.banking.personalBankMaxSlots !==
+        envelope.serverActorPersonalBankMaxSlots;
+    const accountBankMaxSlotsChanged =
+      nativeAccountBankBaseline !== undefined &&
+      next.banking.accountBankMaxSlots !==
+        envelope.serverActorAccountBankMaxSlots;
+    const position = envelope.serverActorPosition ?? { x: 0, y: 0, z: 0 };
+    const stationEntityId = Number(envelope.payload.stationEntityId);
+    const robotRecharge =
+      envelope.actionKind === "request_quest_state_update" &&
+      payloadString(envelope, "operation") ===
+        "live_entity_robot_energy_recharge" &&
+      !touchedModels.has("robot_protection_rejection");
+    const robotId = robotRecharge
+      ? payloadString(envelope, "robotId") ??
+        payloadString(envelope, "entityId") ??
+        envelope.targetId
+      : undefined;
+    const robotSeed = robotId
+      ? HARTHMERE_LIVE_ENTITY_ROBOT_SENTINEL_SEEDS.find(
+          (seed) =>
+            seed.robotId === robotId || String(seed.entityId) === robotId
+        )
+      : undefined;
+    const standingScopeId =
+      (touchedModels.has("law_standing")
+        ? payloadString(envelope, "factionId") ?? envelope.zoneId
+        : undefined) ?? nativePlayerStandingBaseline?.scopeId;
+    const standingAfter = standingScopeId
+      ? normalizeReputationStanding(next.law.standing[standingScopeId])
+      : undefined;
+    const standingChanged = Boolean(
+      nativePlayerStandingBaseline &&
+        standingScopeId &&
+        standingAfter &&
+        (standingScopeId !== nativePlayerStandingBaseline.scopeId ||
+          standingAfter.likeability !==
+            nativePlayerStandingBaseline.standing.likeability ||
+          standingAfter.legal !== nativePlayerStandingBaseline.standing.legal ||
+          standingAfter.notoriety !==
+            nativePlayerStandingBaseline.standing.notoriety ||
+          standingAfter.notorietyFloor !==
+            nativePlayerStandingBaseline.standing.notorietyFloor)
+    );
+    const hasNativeTransactionDelta =
+      goldDelta !== 0 ||
+      Object.keys(itemDeltas).length > 0 ||
+      Object.keys(materialStorageDeltas).length > 0 ||
+      materialStorageMaxSlotsChanged ||
+      Object.keys(personalBankDeltas).length > 0 ||
+      personalBankMaxSlotsChanged ||
+      Object.keys(accountBankDeltas).length > 0 ||
+      accountBankMaxSlotsChanged ||
+      Boolean(robotSeed) ||
+      standingChanged;
+    if (hasNativeTransactionDelta) {
+      const publishesCraft =
+        exchanges.some((exchange) => exchange.publishCraft) ||
+        (envelope.actionKind === "request_crafting" &&
+          !touchedModels.has("crafting_rejection") &&
+          Object.keys(rewardItemStacks).length > 0);
+      for (
+        let index = nativeEcsMaterializationPlans.length - 1;
+        index >= 0;
+        index -= 1
+      ) {
+        if (
+          nativeEcsMaterializationPlans[index].kind === "inventory_exchange"
+        ) {
+          nativeEcsMaterializationPlans.splice(index, 1);
+        }
+      }
+      nativeEcsMaterializationPlans.push({
+        kind: "inventory_exchange",
+        materializationKey: `live_mode:${envelope.actorId}:${envelope.idempotencyKey}`,
+        actorId: envelope.actorId,
+        position,
+        consumeItemStacks,
+        rewardItemStacks,
+        consumeMaterialStorageItemStacks,
+        rewardMaterialStorageItemStacks,
+        materialStorageMaxSlots: next.banking.materialStorageMaxSlots,
+        consumePersonalBankItemStacks,
+        rewardPersonalBankItemStacks,
+        personalBankMaxSlots: next.banking.personalBankMaxSlots,
+        consumeAccountBankItemStacks,
+        rewardAccountBankItemStacks,
+        accountBankMaxSlots: next.banking.accountBankMaxSlots,
+        goldDelta,
+        publishCraft: publishesCraft,
+        stationEntityId:
+          Number.isSafeInteger(stationEntityId) && stationEntityId > 0
+            ? stationEntityId
+            : undefined,
+        robotEntityId: robotSeed?.entityId,
+        robotEnergyDelta: robotSeed
+          ? payloadNumber(envelope, "energyAmount") ??
+            LIVE_ENTITY_ROBOT_RECHARGE_AMOUNT
+          : undefined,
+        standing:
+          standingChanged && standingScopeId && standingAfter
+            ? { scopeId: standingScopeId, ...standingAfter }
+            : undefined,
+        expiresAtMs: nowMs + 30 * 24 * 60 * 60 * 1000,
+        sourceKind: `harthmere_live_mode_${envelope.actionKind}`,
+      });
+      touchedModels.add("native_ecs_inventory_exchange");
+    } else if (exchanges.length > 0) {
+      // Existing plans that net to zero are redundant (for example an
+      // idempotent cancellation). Do not publish an empty transaction.
+      for (
+        let index = nativeEcsMaterializationPlans.length - 1;
+        index >= 0;
+        index -= 1
+      ) {
+        if (
+          nativeEcsMaterializationPlans[index].kind === "inventory_exchange"
+        ) {
+          nativeEcsMaterializationPlans.splice(index, 1);
+        }
+      }
+    }
   }
 
   return {

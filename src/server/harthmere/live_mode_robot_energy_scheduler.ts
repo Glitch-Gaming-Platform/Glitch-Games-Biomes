@@ -9,6 +9,8 @@ import {
 } from "@/shared/harthmere/live_mode_backend";
 import {
   LIVE_ENTITY_ROBOT_DEFAULT_DRAIN_PER_HOUR,
+  liveEntityRobotEnergyStatus,
+  normalizeLiveEntityRobotEnergyState,
   type LiveEntityRobotEnergyState,
 } from "@/shared/harthmere/live_entity_robot_energy_protection";
 import type { HarthmereLiveModeAuthorityEnvelope } from "@/shared/harthmere/live_mode_readiness";
@@ -87,10 +89,11 @@ function changedAreaIds(
 }
 
 /**
- * Mirror the scheduler's server-owned energy into the real robot ECS
- * components. Redis retains the MMO protection-area ledger, while native ECS
- * remains the source consumed by robot rendering, movement, overlays, and
- * ordinary Biomes subscriptions.
+ * One-time compatibility import for a legacy Redis robot-energy record.
+ *
+ * Regular scheduler ticks use `tickHarthmereRobotEnergyInEcs`: native
+ * RobotComponent is authoritative and Redis retains only protection-area
+ * policy, markers, and display metadata.
  */
 export async function syncHarthmereRobotEnergyStateToEcs(input: {
   worldApi: WorldApi;
@@ -120,6 +123,89 @@ export async function syncHarthmereRobotEnergyStateToEcs(input: {
   }
   await editor.commit();
   return syncedRobotIds;
+}
+
+/**
+ * Advance the physical batteries in RobotComponent, then derive the Redis
+ * protection-area projection from those components. This is the inverse of
+ * the legacy mirror: ECS charge is authoritative; Redis retains only area
+ * policy, marker, and display metadata.
+ */
+export async function tickHarthmereRobotEnergyInEcs(input: {
+  worldApi: WorldApi;
+  robotProtection: LiveEntityRobotEnergyState;
+  nowMs: number;
+  drainPerHour?: number;
+}) {
+  const drainPerHour = Math.max(
+    0,
+    input.drainPerHour ?? LIVE_ENTITY_ROBOT_DEFAULT_DRAIN_PER_HOUR
+  );
+  const editor = input.worldApi.edit();
+  const seeds = HARTHMERE_LIVE_ENTITY_ROBOT_SENTINEL_SEEDS;
+  const entities = await editor.get(seeds.map((seed) => seed.entityId));
+  const robots = { ...input.robotProtection.robots };
+  const syncedRobotIds: string[] = [];
+  for (let index = 0; index < seeds.length; index += 1) {
+    const seed = seeds[index];
+    const entity = entities[index];
+    const component = entity?.robotComponent();
+    if (!entity || !component || !seed.robotId) continue;
+    const prior = robots[seed.robotId];
+    const maxEnergy = Math.max(
+      1,
+      Number(
+        component.internal_battery_capacity ??
+          prior?.maxEnergy ??
+          seed.maxEnergy ??
+          100
+      ) || 100
+    );
+    const previousEnergy = Math.max(
+      0,
+      Math.min(
+        maxEnergy,
+        Number(
+          component.internal_battery_charge ??
+            prior?.energy ??
+            seed.energy ??
+            maxEnergy
+        ) || 0
+      )
+    );
+    const lastUpdateMs = Math.max(
+      0,
+      Number(component.last_update ?? input.nowMs / 1000) * 1000
+    );
+    const elapsedHours = Math.max(0, input.nowMs - lastUpdateMs) / 3_600_000;
+    const energy = Number(
+      Math.max(0, previousEnergy - elapsedHours * drainPerHour).toFixed(3)
+    );
+    const mutable = entity.mutableRobotComponent();
+    mutable.internal_battery_capacity = maxEnergy;
+    mutable.internal_battery_charge = energy;
+    mutable.last_update = input.nowMs / 1000;
+    robots[seed.robotId] = {
+      robotId: seed.robotId,
+      areaId: seed.areaId,
+      displayName: seed.displayName,
+      energy,
+      maxEnergy,
+      status: liveEntityRobotEnergyStatus(energy, maxEnergy),
+      lastTickAtMs: input.nowMs,
+      depletedAtMs:
+        energy <= 0 ? prior?.depletedAtMs ?? input.nowMs : undefined,
+    };
+    syncedRobotIds.push(seed.robotId);
+  }
+  await editor.commit();
+  return {
+    robotProtection: normalizeLiveEntityRobotEnergyState(
+      { ...input.robotProtection, robots },
+      input.nowMs
+    ),
+    syncedRobotIds,
+  };
 }
 
 export async function readOrSeedHarthmereLiveModeRobotProtectionSharedState(input: {
@@ -208,6 +294,17 @@ export async function runHarthmereLiveModeRobotEnergySchedulerTick(input: {
     input.nowMs
   );
   const beforeRobotProtection = backend.robotProtection;
+  const nativeTick = input.worldApi
+    ? await tickHarthmereRobotEnergyInEcs({
+        worldApi: input.worldApi,
+        robotProtection: backend.robotProtection,
+        nowMs: input.nowMs,
+        drainPerHour: input.drainPerHour,
+      })
+    : undefined;
+  if (nativeTick) {
+    backend.robotProtection = nativeTick.robotProtection;
+  }
   const envelope: HarthmereLiveModeAuthorityEnvelope = {
     requestId: `robot-energy-scheduler:${input.nowMs}`,
     idempotencyKey: `robot-energy-scheduler:${input.nowMs}`,
@@ -221,8 +318,9 @@ export async function runHarthmereLiveModeRobotEnergySchedulerTick(input: {
     zoneId: "harthmere_wilderness",
     payload: {
       operation: "live_entity_robot_energy_tick",
-      drainPerHour:
-        input.drainPerHour ?? LIVE_ENTITY_ROBOT_DEFAULT_DRAIN_PER_HOUR,
+      drainPerHour: nativeTick
+        ? 0
+        : input.drainPerHour ?? LIVE_ENTITY_ROBOT_DEFAULT_DRAIN_PER_HOUR,
     },
   };
   const reduced = reduceHarthmereLiveModeBackendState(
@@ -241,13 +339,7 @@ export async function runHarthmereLiveModeRobotEnergySchedulerTick(input: {
   tx.set(sharedWorldStateKey, JSON.stringify(sharedWorldState));
   const txResult = await tx.exec();
   if (txResult !== null) {
-    const syncedEcsRobotIds = input.worldApi
-      ? await syncHarthmereRobotEnergyStateToEcs({
-          worldApi: input.worldApi,
-          robotProtection: sharedWorldState.robotProtection,
-          nowMs: input.nowMs,
-        })
-      : [];
+    const syncedEcsRobotIds = nativeTick?.syncedRobotIds ?? [];
     return {
       version: HARTHMERE_LIVE_MODE_ROBOT_ENERGY_SCHEDULER_VERSION,
       sharedWorldStateKey,

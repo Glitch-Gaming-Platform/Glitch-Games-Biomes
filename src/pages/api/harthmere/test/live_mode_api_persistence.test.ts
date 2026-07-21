@@ -45,7 +45,8 @@ import { loadBlockWrapper } from "@/shared/wasm/biomes";
 import { harthmereJobsBoardQuestMarkerRuntimePositionForId } from "@/shared/harthmere/jobs_board_quest_marker_positions";
 import { harthmereItemIdToBiomesId } from "@/shared/harthmere/harthmere_biomes_ecs_bridge";
 import { Inventory, Wearing } from "@/shared/ecs/gen/components";
-import { countOf } from "@/shared/game/items";
+import { BikkieIds } from "@/shared/bikkie/ids";
+import { countOf, createBag } from "@/shared/game/items";
 
 const ACTOR = "player_live_api_persist_001";
 const NOW_MS = 1_700_400_000_000;
@@ -412,13 +413,12 @@ describe("live_mode API Redis persistence", () => {
     assert.ok(world.table.get(replacement)?.grab_bag);
   });
 
-  it("consumes native job items and creates one replay-safe native reward drop", async () => {
+  it("publishes one replay-safe native inventory transaction for a job exchange", async () => {
     const redisPrimary = new FakeRedisPrimary();
     const world = new InMemoryWorld();
     const worldApi = ShimWorldApi.createForWorld(world);
     const actorId = 1234 as any;
     const consumedId = harthmereItemIdToBiomesId("rough_stone")!;
-    const rewardId = harthmereItemIdToBiomesId("iron_ore")!;
     world.applyChanges([
       {
         kind: "create",
@@ -430,10 +430,19 @@ describe("live_mode API Redis persistence", () => {
         },
       },
     ]);
-    const ids = [8_700_000_000_000_005 as any, 8_700_000_000_000_006 as any];
     const idGenerator = {
-      next: async () => ids.shift()!,
-      batch: async (count: number) => ids.splice(0, count),
+      next: async () => {
+        throw new Error("inventory exchange must not allocate a receipt/drop");
+      },
+      batch: async () => {
+        throw new Error("inventory exchange must not allocate a receipt/drop");
+      },
+    };
+    const published: any[] = [];
+    const logicApi = {
+      publish: async (...events: any[]) => {
+        published.push(...events);
+      },
     };
     const plans = [
       {
@@ -452,26 +461,29 @@ describe("live_mode API Redis persistence", () => {
         redisPrimary,
         worldApi,
         idGenerator,
+        logicApi,
         plans,
       }),
       { created: 1, alreadyMaterialized: 0 }
     );
-    const player = world.table.get(actorId)!;
-    assert.equal(player.inventory!.items[0], undefined);
-    const reward = world.table.get(8_700_000_000_000_006 as any)!;
-    assert.equal(Number([...reward.grab_bag!.slots.values()][0].count), 2);
-    assert.equal([...reward.grab_bag!.slots.values()][0].item.id, rewardId);
+    assert.equal(published.length, 1);
+    assert.equal(published[0].userId, actorId);
+    assert.equal(Number([...published[0].event.take.values()][0].count), 1);
+    assert.equal(Number([...published[0].event.give.values()][0].count), 2);
+    assert.ok(published[0].event.authorization);
 
     assert.deepEqual(
       await materializeHarthmereNativeEcsPlans({
         redisPrimary,
         worldApi,
         idGenerator,
+        logicApi,
         plans,
       }),
       { created: 0, alreadyMaterialized: 1 }
     );
-    assert.equal(world.table.get(actorId)!.inventory!.items[0], undefined);
+    assert.equal(published.length, 1);
+    assert.equal(world.table.get(actorId)!.inventory!.items[0]?.count, 1n);
   });
   it("keeps authenticated combat, death, AI, and respawn on native ECS", () => {
     for (const action of [
@@ -813,9 +825,10 @@ describe("live_mode API Redis persistence", () => {
     const inventory = Inventory.create({
       hotbar: [countOf(selectedTool, 1n)],
       selected: { kind: "hotbar", idx: 0 },
+      currencies: createBag(countOf(BikkieIds.bling, 114n)),
     });
     const wearing = Wearing.create({
-      items: new Map([[1 as any, countOf(wornTool, 1n).item]]),
+      items: new Map([[BikkieIds.hands, countOf(wornTool, 1n).item]]),
     });
     let reads = 0;
     const context = await readServerActorNativeContextForLiveMode(
@@ -845,6 +858,11 @@ describe("live_mode API Redis persistence", () => {
     );
     assert.deepEqual(context.itemCounts, {
       rusty_pickaxe: 1,
+    });
+    assert.equal(context.gold, 114);
+    assert.deepEqual(context.equipment, {
+      main_hand: "rusty_pickaxe",
+      hands: "repair_mallet",
     });
   });
 

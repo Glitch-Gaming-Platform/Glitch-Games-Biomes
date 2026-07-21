@@ -63,6 +63,9 @@ import {
   updateGroupPreviewEventHandler,
 } from "@/server/logic/events/handlers/groups";
 import { allInventoryEventHandlers } from "@/server/logic/events/handlers/inventory";
+import { harthmereInventoryTransactionEventHandler } from "@/server/logic/events/handlers/harthmere_inventory_transaction";
+import { harthmerePlaceableTransactionEventHandler } from "@/server/logic/events/handlers/harthmere_placeable_transaction";
+import { harthmereQuestProgressEventHandler } from "@/server/logic/events/handlers/harthmere_quest_progress";
 import { labelChangeEventHandler } from "@/server/logic/events/handlers/labels";
 import { minigameEventHandlers } from "@/server/logic/events/handlers/minigames";
 import { moveEventHandler } from "@/server/logic/events/handlers/motion";
@@ -132,6 +135,9 @@ export function eventHandlerMapFor(serverMods: ServerMods) {
 
     // Inventory events.
     ...allInventoryEventHandlers,
+    harthmereInventoryTransactionEventHandler,
+    harthmerePlaceableTransactionEventHandler,
+    harthmereQuestProgressEventHandler,
     pickUpEventHandler,
 
     // Admin events.

@@ -29,14 +29,14 @@ ok(
   "bucket proxy declares iframe/XHR asset header hardening"
 );
 ok(
-  app.includes('Access-Control-Allow-Origin') &&
-    app.includes('Cross-Origin-Resource-Policy') &&
-    app.includes('Timing-Allow-Origin'),
+  app.includes("Access-Control-Allow-Origin") &&
+    app.includes("Cross-Origin-Resource-Policy") &&
+    app.includes("Timing-Allow-Origin"),
   "bucket proxy sets CORS/CORP/timing headers for embedded runtime asset fetches"
 );
 ok(
   app.includes('req.method === "OPTIONS"') &&
-    app.includes('GET, HEAD, OPTIONS'),
+    app.includes("GET, HEAD, OPTIONS"),
   "bucket proxy supports OPTIONS preflight and advertises GET/HEAD/OPTIONS"
 );
 ok(
@@ -52,16 +52,19 @@ ok(
   "bucket proxy checks exact bikkie hash and extension variants before remote fallback"
 );
 ok(
-  app.includes('X-Glitch-Bucket-Asset-Revision') &&
-    app.includes('X-Glitch-Bucket-Asset-Path') &&
-    app.includes('source=${candidate.source}'),
+  app.includes("X-Glitch-Bucket-Asset-Revision") &&
+    app.includes("X-Glitch-Bucket-Asset-Path") &&
+    app.includes("source=${candidate.source}"),
   "bucket proxy emits diagnostic headers showing revision, source, and asset path"
 );
 ok(
   deploy.includes("wait_for_azure_revision_ready") &&
-    deploy.includes("latestReadyRevisionName") &&
+    !deploy.includes("latestReadyRevisionName") &&
+    deploy.includes("az containerapp replica list") &&
+    deploy.includes("properties.containers[0].ready") &&
+    deploy.includes("properties.containers[0].started") &&
     deploy.includes("latestRevisionName"),
-  "deploy script waits until the new Azure revision is actually ready"
+  "deploy script waits for started and ready replicas instead of Azure's stale revision label"
 );
 ok(
   deploy.includes("force_azure_traffic_to_revision") &&
@@ -78,7 +81,9 @@ ok(
 );
 
 if (failures.length) {
-  console.error(`\n${failures.length} current bucket asset hardening check(s) failed.`);
+  console.error(
+    `\n${failures.length} current bucket asset hardening check(s) failed.`
+  );
   process.exit(1);
 }
 

@@ -105,4 +105,27 @@ describe("world interaction dispatcher", () => {
     board.unregister();
     assert.equal(selectedWorldInteractionIdForKey(), undefined);
   });
+
+  it("updates a registration in place without replacing its token", () => {
+    registerWorldInteractionCandidate({
+      id: "background",
+      priority: 10,
+      onInteract: () => undefined,
+    });
+    const foreground = registerWorldInteractionCandidate({
+      id: "foreground",
+      priority: 20,
+      onInteract: () => undefined,
+    });
+    const originalToken = foreground.token;
+
+    foreground.update({
+      id: "foreground-updated",
+      priority: 5,
+      onInteract: () => undefined,
+    });
+
+    assert.equal(foreground.token, originalToken);
+    assert.equal(selectedWorldInteractionIdForKey(), "background");
+  });
 });

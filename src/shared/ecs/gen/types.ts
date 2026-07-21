@@ -1,32 +1,6 @@
 // GENERATED: This file is generated from types.ts.j2. Do not modify directly.
-// Content Hash: 1def4e7a68650a8bceb0668ab3147bf2
+// Content Hash: 703cb6c8664855730b5959fc22cb4b5c
 
-export type { ItemAndCount, ReadonlyItemAndCount } from "@/shared/ecs/extern";
-export {
-  zItemAndCount,
-  defaultItemAndCount,
-  serializeItemAndCount,
-  deserializeItemAndCount,
-} from "@/shared/ecs/extern";
-import {
-  ItemAndCount,
-  ReadonlyItemAndCount,
-  zItemAndCount,
-  defaultItemAndCount,
-  serializeItemAndCount,
-  deserializeItemAndCount,
-} from "@/shared/ecs/extern";
-import { ReadonlyBiomesId, BiomesId, zBiomesId } from "@/shared/ids";
-import {
-  defaultBiomesId,
-  serializeBiomesId,
-  deserializeBiomesId,
-} from "@/shared/ecs/extern";
-export {
-  defaultBiomesId,
-  serializeBiomesId,
-  deserializeBiomesId,
-} from "@/shared/ecs/extern";
 export type { Item, ReadonlyItem } from "@/shared/ecs/extern";
 export {
   zItem,
@@ -57,6 +31,17 @@ import {
   serializeShardId,
   deserializeShardId,
 } from "@/shared/ecs/extern";
+import { ReadonlyBiomesId, BiomesId, zBiomesId } from "@/shared/ids";
+import {
+  defaultBiomesId,
+  serializeBiomesId,
+  deserializeBiomesId,
+} from "@/shared/ecs/extern";
+export {
+  defaultBiomesId,
+  serializeBiomesId,
+  deserializeBiomesId,
+} from "@/shared/ecs/extern";
 export type {
   TriggerStateMap,
   ReadonlyTriggerStateMap,
@@ -74,6 +59,21 @@ import {
   defaultTriggerStateMap,
   serializeTriggerStateMap,
   deserializeTriggerStateMap,
+} from "@/shared/ecs/extern";
+export type { ItemAndCount, ReadonlyItemAndCount } from "@/shared/ecs/extern";
+export {
+  zItemAndCount,
+  defaultItemAndCount,
+  serializeItemAndCount,
+  deserializeItemAndCount,
+} from "@/shared/ecs/extern";
+import {
+  ItemAndCount,
+  ReadonlyItemAndCount,
+  zItemAndCount,
+  defaultItemAndCount,
+  serializeItemAndCount,
+  deserializeItemAndCount,
 } from "@/shared/ecs/extern";
 import { z } from "zod";
 import { isInteger } from "lodash";
@@ -230,11 +230,12 @@ const zT172 = z.object({});
 const zT188 = z.enum(["waiting", "racing"]);
 const zT198 = z.enum(["water"]);
 const zT200 = z.enum(["fertilize"]);
-const zT202 = z.enum(["adminDestroy"]);
-const zT204 = z.enum(["poke"]);
-const zT210 = z.enum(["biomes-social"]);
-const zT224 = z.enum(["box"]);
-const zT226 = z.enum(["sphere"]);
+const zT202 = z.enum(["harvest"]);
+const zT204 = z.enum(["adminDestroy"]);
+const zT206 = z.enum(["poke"]);
+const zT212 = z.enum(["biomes-social"]);
+const zT226 = z.enum(["box"]);
+const zT228 = z.enum(["sphere"]);
 export const zEntityRestoreToState = z.enum(["created", "deleted"]);
 export const zStrings = zString.array().default([]);
 export const zBiomesIdList = zBiomesId.array().default([]);
@@ -390,6 +391,10 @@ const zT205 = z.object({
   kind: zT204,
   timestamp: zF64,
 });
+const zT207 = z.object({
+  kind: zT206,
+  timestamp: zF64,
+});
 export const zTeamMemberMetadata = z.object({
   joined_at: zF64,
 });
@@ -402,8 +407,8 @@ export const zTeamJoinRequest = z.object({
   entity_id: zBiomesId,
   created_at: zF64,
 });
-const zT227 = z.object({
-  kind: zT226,
+const zT229 = z.object({
+  kind: zT228,
   radius: zF64,
 });
 export const zTradeSpec = z.object({
@@ -517,11 +522,11 @@ export const zReachedCheckpoints = z.map(zBiomesId, zT186);
 export const zFarmingPlayerAction = z.discriminatedUnion("kind", [
   zT199.extend({ kind: z.literal("water") }),
   zT201.extend({ kind: z.literal("fertilize") }),
-  z.object({ kind: z.literal("harvest"), timestamp: zF64 }),
-  zT203.extend({ kind: z.literal("adminDestroy") }),
-  zT205.extend({ kind: z.literal("poke") }),
+  zT203.extend({ kind: z.literal("harvest") }),
+  zT205.extend({ kind: z.literal("adminDestroy") }),
+  zT207.extend({ kind: z.literal("poke") }),
 ]);
-const zT208 = z.object({
+const zT210 = z.object({
   type_ids: zBiomesIdList,
 });
 export const zBucketedImageCloudBundle = z.object({
@@ -530,7 +535,7 @@ export const zBucketedImageCloudBundle = z.object({
   webp_1280w: zOptionalString,
   png_1280w: zOptionalString,
   webp_original: zOptionalString,
-  bucket: zT210,
+  bucket: zT212,
 });
 export const zTerrainRestorationEntry = z.object({
   position_index: zU16,
@@ -544,8 +549,8 @@ export const zTerrainRestorationEntry = z.object({
 export const zTeamPendingInvites = z.map(zBiomesId, zTeamInvite);
 export const zTeamPendingRequests = zTeamJoinRequest.array().default([]);
 export const zTeamMembers = z.map(zBiomesId, zTeamMemberMetadata);
-const zT225 = z.object({
-  kind: zT224,
+const zT227 = z.object({
+  kind: zT226,
   box: zVec3f,
 });
 export const zTradeSpecList = zTradeSpec.array().default([]);
@@ -622,15 +627,15 @@ const zT194 = z.object({
 export const zFarmingPlayerActionList = zFarmingPlayerAction
   .array()
   .default([]);
-export const zItemBuyerSpec = zT208.extend({
+export const zItemBuyerSpec = zT210.extend({
   kind: z.literal("item_types"),
 });
 export const zTerrainRestorationEntryList = zTerrainRestorationEntry
   .array()
   .default([]);
 export const zVolume = z.discriminatedUnion("kind", [
-  zT225.extend({ kind: z.literal("box") }),
-  zT227.extend({ kind: z.literal("sphere") }),
+  zT227.extend({ kind: z.literal("box") }),
+  zT229.extend({ kind: z.literal("sphere") }),
 ]);
 export const zInventoryAssignmentPattern = zT64.array().default([]);
 const zT66 = zT64.array().default([]);
@@ -868,11 +873,12 @@ type T172 = {};
 type T188 = "waiting" | "racing";
 type T198 = "water";
 type T200 = "fertilize";
-type T202 = "adminDestroy";
-type T204 = "poke";
-type T210 = "biomes-social";
-type T224 = "box";
-type T226 = "sphere";
+type T202 = "harvest";
+type T204 = "adminDestroy";
+type T206 = "poke";
+type T212 = "biomes-social";
+type T226 = "box";
+type T228 = "sphere";
 export type EntityRestoreToState = "created" | "deleted";
 export type Strings = string[];
 export type BiomesIdList = BiomesId[];
@@ -1031,8 +1037,9 @@ export type GiveMinigameKitData =
   | ({} & { kind: "spleef" });
 type T199 = { kind: "water"; amount: number; timestamp: number };
 type T201 = { kind: "fertilize"; fertilizer: Item; timestamp: number };
-type T203 = { kind: "adminDestroy"; timestamp: number };
-type T205 = { kind: "poke"; timestamp: number };
+type T203 = { kind: "harvest"; timestamp: number };
+type T205 = { kind: "adminDestroy"; timestamp: number };
+type T207 = { kind: "poke"; timestamp: number };
 export type TeamMemberMetadata = { joined_at: number };
 export type TeamInvite = {
   inviter_id: BiomesId;
@@ -1040,7 +1047,7 @@ export type TeamInvite = {
   created_at: number;
 };
 export type TeamJoinRequest = { entity_id: BiomesId; created_at: number };
-type T227 = { kind: "sphere"; radius: number };
+type T229 = { kind: "sphere"; radius: number };
 export type TradeSpec = { trade_id: BiomesId; id1: BiomesId; id2: BiomesId };
 export type OptionalMat3f =
   | [number, number, number, number, number, number, number, number, number]
@@ -1231,7 +1238,7 @@ export type FarmingPlayerAction =
   | ({ kind: "harvest"; timestamp: number } & { kind: "harvest" })
   | ({ kind: "adminDestroy"; timestamp: number } & { kind: "adminDestroy" })
   | ({ kind: "poke"; timestamp: number } & { kind: "poke" });
-type T208 = { type_ids: BiomesId[] };
+type T210 = { type_ids: BiomesId[] };
 export type BucketedImageCloudBundle = {
   webp_320w: string | undefined;
   webp_640w: string | undefined;
@@ -1255,7 +1262,7 @@ export type TeamPendingInvites = Map<
 >;
 export type TeamPendingRequests = { entity_id: BiomesId; created_at: number }[];
 export type TeamMembers = Map<BiomesId, { joined_at: number }>;
-type T225 = { kind: "box"; box: [number, number, number] };
+type T227 = { kind: "box"; box: [number, number, number] };
 export type TradeSpecList = {
   trade_id: BiomesId;
   id1: BiomesId;
@@ -2715,11 +2722,12 @@ type ReadonlyT172 = {};
 type ReadonlyT188 = "waiting" | "racing";
 type ReadonlyT198 = "water";
 type ReadonlyT200 = "fertilize";
-type ReadonlyT202 = "adminDestroy";
-type ReadonlyT204 = "poke";
-type ReadonlyT210 = "biomes-social";
-type ReadonlyT224 = "box";
-type ReadonlyT226 = "sphere";
+type ReadonlyT202 = "harvest";
+type ReadonlyT204 = "adminDestroy";
+type ReadonlyT206 = "poke";
+type ReadonlyT212 = "biomes-social";
+type ReadonlyT226 = "box";
+type ReadonlyT228 = "sphere";
 export type ReadonlyEntityRestoreToState = "created" | "deleted";
 export type ReadonlyStrings = ReadonlyArray<string>;
 export type ReadonlyBiomesIdList = ReadonlyArray<ReadonlyBiomesId>;
@@ -2909,11 +2917,12 @@ type ReadonlyT201 = {
   readonly fertilizer: ReadonlyItem;
   readonly timestamp: number;
 };
-type ReadonlyT203 = {
+type ReadonlyT203 = { readonly kind: "harvest"; readonly timestamp: number };
+type ReadonlyT205 = {
   readonly kind: "adminDestroy";
   readonly timestamp: number;
 };
-type ReadonlyT205 = { readonly kind: "poke"; readonly timestamp: number };
+type ReadonlyT207 = { readonly kind: "poke"; readonly timestamp: number };
 export type ReadonlyTeamMemberMetadata = { readonly joined_at: number };
 export type ReadonlyTeamInvite = {
   readonly inviter_id: ReadonlyBiomesId;
@@ -2924,7 +2933,7 @@ export type ReadonlyTeamJoinRequest = {
   readonly entity_id: ReadonlyBiomesId;
   readonly created_at: number;
 };
-type ReadonlyT227 = { readonly kind: "sphere"; readonly radius: number };
+type ReadonlyT229 = { readonly kind: "sphere"; readonly radius: number };
 export type ReadonlyTradeSpec = {
   readonly trade_id: ReadonlyBiomesId;
   readonly id1: ReadonlyBiomesId;
@@ -3184,7 +3193,7 @@ export type ReadonlyFarmingPlayerAction =
       kind: "adminDestroy";
     })
   | ({ readonly kind: "poke"; readonly timestamp: number } & { kind: "poke" });
-type ReadonlyT208 = { readonly type_ids: ReadonlyArray<ReadonlyBiomesId> };
+type ReadonlyT210 = { readonly type_ids: ReadonlyArray<ReadonlyBiomesId> };
 export type ReadonlyBucketedImageCloudBundle = {
   readonly webp_320w: string | undefined;
   readonly webp_640w: string | undefined;
@@ -3218,7 +3227,7 @@ export type ReadonlyTeamMembers = ReadonlyMap<
   ReadonlyBiomesId,
   { readonly joined_at: number }
 >;
-type ReadonlyT225 = {
+type ReadonlyT227 = {
   readonly kind: "box";
   readonly box: readonly [number, number, number];
 };
@@ -4721,11 +4730,12 @@ export const defaultT172 = () => ({} as T172);
 export const defaultT188 = "waiting";
 export const defaultT198 = "water";
 export const defaultT200 = "fertilize";
-export const defaultT202 = "adminDestroy";
-export const defaultT204 = "poke";
-export const defaultT210 = "biomes-social";
-export const defaultT224 = "box";
-export const defaultT226 = "sphere";
+export const defaultT202 = "harvest";
+export const defaultT204 = "adminDestroy";
+export const defaultT206 = "poke";
+export const defaultT212 = "biomes-social";
+export const defaultT226 = "box";
+export const defaultT228 = "sphere";
 export const defaultEntityRestoreToState = "created";
 export const defaultStrings = () => [];
 export const defaultBiomesIdList = () => [];
@@ -4913,6 +4923,11 @@ export const defaultT205 = () =>
     kind: defaultT204,
     timestamp: defaultF64,
   } as T205);
+export const defaultT207 = () =>
+  ({
+    kind: defaultT206,
+    timestamp: defaultF64,
+  } as T207);
 export const defaultTeamMemberMetadata = () =>
   ({
     joined_at: defaultF64,
@@ -4928,11 +4943,11 @@ export const defaultTeamJoinRequest = () =>
     entity_id: defaultBiomesId,
     created_at: defaultF64,
   } as TeamJoinRequest);
-export const defaultT227 = () =>
+export const defaultT229 = () =>
   ({
-    kind: defaultT226,
+    kind: defaultT228,
     radius: defaultF64,
-  } as T227);
+  } as T229);
 export const defaultTradeSpec = () =>
   ({
     trade_id: defaultBiomesId,
@@ -5060,10 +5075,10 @@ export const defaultFarmingPlayerAction = () =>
     ...defaultT199(),
     kind: "water",
   } as FarmingPlayerAction);
-export const defaultT208 = () =>
+export const defaultT210 = () =>
   ({
     type_ids: defaultBiomesIdList(),
-  } as T208);
+  } as T210);
 export const defaultBucketedImageCloudBundle = () =>
   ({
     webp_320w: defaultOptionalString,
@@ -5071,7 +5086,7 @@ export const defaultBucketedImageCloudBundle = () =>
     webp_1280w: defaultOptionalString,
     png_1280w: defaultOptionalString,
     webp_original: defaultOptionalString,
-    bucket: defaultT210,
+    bucket: defaultT212,
   } as BucketedImageCloudBundle);
 export const defaultTerrainRestorationEntry = () =>
   ({
@@ -5086,11 +5101,11 @@ export const defaultTerrainRestorationEntry = () =>
 export const defaultTeamPendingInvites = () => new Map() as TeamPendingInvites;
 export const defaultTeamPendingRequests = () => [];
 export const defaultTeamMembers = () => new Map() as TeamMembers;
-export const defaultT225 = () =>
+export const defaultT227 = () =>
   ({
-    kind: defaultT224,
+    kind: defaultT226,
     box: defaultVec3f(),
-  } as T225);
+  } as T227);
 export const defaultTradeSpecList = () => [];
 export const defaultTerrainUpdateList = () => [];
 export const defaultPricedItemContainer = () => [];
@@ -5176,13 +5191,13 @@ export const defaultT194 = () =>
 export const defaultFarmingPlayerActionList = () => [];
 export const defaultItemBuyerSpec = () =>
   ({
-    ...defaultT208(),
+    ...defaultT210(),
     kind: "item_types",
   } as ItemBuyerSpec);
 export const defaultTerrainRestorationEntryList = () => [];
 export const defaultVolume = () =>
   ({
-    ...defaultT225(),
+    ...defaultT227(),
     kind: "box",
   } as Volume);
 export const defaultInventoryAssignmentPattern = () => [];
@@ -5506,16 +5521,20 @@ export function deserializeT204(data: unknown): T204 {
   return zT204.parse(data);
 }
 
-export function deserializeT210(data: unknown): T210 {
-  return zT210.parse(data);
+export function deserializeT206(data: unknown): T206 {
+  return zT206.parse(data);
 }
 
-export function deserializeT224(data: unknown): T224 {
-  return zT224.parse(data);
+export function deserializeT212(data: unknown): T212 {
+  return zT212.parse(data);
 }
 
 export function deserializeT226(data: unknown): T226 {
   return zT226.parse(data);
+}
+
+export function deserializeT228(data: unknown): T228 {
+  return zT228.parse(data);
 }
 
 export function deserializeEntityRestoreToState(
@@ -6291,6 +6310,19 @@ export function deserializeT205(data: unknown): T205 {
   };
 }
 
+const zRawT207 = z.object({
+  kind: z.unknown(),
+  timestamp: z.unknown(),
+});
+
+export function deserializeT207(data: unknown): T207 {
+  const obj = zRawT207.parse(data);
+  return {
+    kind: deserializeT206(obj.kind),
+    timestamp: deserializeF64(obj.timestamp),
+  };
+}
+
 const zRawTeamMemberMetadata = z.object({
   joined_at: z.unknown(),
 });
@@ -6345,15 +6377,15 @@ export function deserializeTeamJoinRequest(data: unknown): TeamJoinRequest {
   };
 }
 
-const zRawT227 = z.object({
+const zRawT229 = z.object({
   kind: z.unknown(),
   radius: z.unknown(),
 });
 
-export function deserializeT227(data: unknown): T227 {
-  const obj = zRawT227.parse(data);
+export function deserializeT229(data: unknown): T229 {
+  const obj = zRawT229.parse(data);
   return {
-    kind: deserializeT226(obj.kind),
+    kind: deserializeT228(obj.kind),
     radius: deserializeF64(obj.radius),
   };
 }
@@ -7022,35 +7054,35 @@ export function deserializeFarmingPlayerAction(
       };
     case "harvest":
       return {
-        timestamp: deserializeF64(obj.timestamp),
+        ...deserializeT203(obj),
         kind: "harvest",
       };
     case "adminDestroy":
       return {
-        ...deserializeT203(obj),
+        ...deserializeT205(obj),
         kind: "adminDestroy",
       };
     case "poke":
       return {
-        ...deserializeT205(obj),
+        ...deserializeT207(obj),
         kind: "poke",
       };
     default:
       throw new Error(`Unknown OneOf variant: ${obj.kind}`);
   }
 }
-export function serializeT208(value: ReadonlyT208) {
+export function serializeT210(value: ReadonlyT210) {
   return {
     type_ids: serializeBiomesIdList(value.type_ids),
   };
 }
 
-const zRawT208 = z.object({
+const zRawT210 = z.object({
   type_ids: z.unknown(),
 });
 
-export function deserializeT208(data: unknown): T208 {
-  const obj = zRawT208.parse(data);
+export function deserializeT210(data: unknown): T210 {
+  const obj = zRawT210.parse(data);
   return {
     type_ids: deserializeBiomesIdList(obj.type_ids),
   };
@@ -7075,7 +7107,7 @@ export function deserializeBucketedImageCloudBundle(
     webp_1280w: deserializeOptionalString(obj.webp_1280w),
     png_1280w: deserializeOptionalString(obj.png_1280w),
     webp_original: deserializeOptionalString(obj.webp_original),
-    bucket: deserializeT210(obj.bucket),
+    bucket: deserializeT212(obj.bucket),
   };
 }
 
@@ -7144,15 +7176,15 @@ export function deserializeTeamMembers(data: unknown): TeamMembers {
   );
 }
 
-const zRawT225 = z.object({
+const zRawT227 = z.object({
   kind: z.unknown(),
   box: z.unknown(),
 });
 
-export function deserializeT225(data: unknown): T225 {
-  const obj = zRawT225.parse(data);
+export function deserializeT227(data: unknown): T227 {
+  const obj = zRawT227.parse(data);
   return {
-    kind: deserializeT224(obj.kind),
+    kind: deserializeT226(obj.kind),
     box: deserializeVec3f(obj.box),
   };
 }
@@ -7616,7 +7648,7 @@ export function serializeItemBuyerSpec(value: ReadonlyItemBuyerSpec) {
   switch (value.kind) {
     case "item_types":
       return {
-        ...serializeT208(value),
+        ...serializeT210(value),
         kind: "item_types",
       };
   }
@@ -7627,7 +7659,7 @@ export function deserializeItemBuyerSpec(data: unknown): ItemBuyerSpec {
   switch (obj.kind) {
     case "item_types":
       return {
-        ...deserializeT208(obj),
+        ...deserializeT210(obj),
         kind: "item_types",
       };
     default:
@@ -7661,12 +7693,12 @@ export function deserializeVolume(data: unknown): Volume {
   switch (obj.kind) {
     case "box":
       return {
-        ...deserializeT225(obj),
+        ...deserializeT227(obj),
         kind: "box",
       };
     case "sphere":
       return {
-        ...deserializeT227(obj),
+        ...deserializeT229(obj),
         kind: "sphere",
       };
     default:

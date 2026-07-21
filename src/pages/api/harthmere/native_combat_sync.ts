@@ -1,10 +1,16 @@
 import { resolveHarthmereLiveModeActorId } from "@/server/harthmere/live_mode_actor_resolution";
 import { connectToRedis } from "@/server/shared/redis/connection";
 import { biomesApiHandler } from "@/server/web/util/api_middleware";
-import { Inventory, SelectedItem, Wearing } from "@/shared/ecs/gen/components";
+import {
+  HarthmereMaterialStorage,
+  Inventory,
+  RecipeBook,
+  SelectedItem,
+  Wearing,
+} from "@/shared/ecs/gen/components";
 import type { ItemContainer, OwnedItemReference } from "@/shared/ecs/gen/types";
 import { anItem } from "@/shared/game/item";
-import { countOf } from "@/shared/game/items";
+import { addToBag, bagCount, countOf, itemPk } from "@/shared/game/items";
 import { findItemEquippableSlot } from "@/shared/game/wearables";
 import { HARTHMERE_GOLD_ECS_CURRENCY_ID } from "@/shared/harthmere/harthmere_biomes_ecs_bridge";
 import { ensureHarthmereNativeItemCatalogue } from "@/shared/harthmere/harthmere_native_bikkie_items";
@@ -12,13 +18,17 @@ import {
   readHarthmereNativeCombatProgression,
   writeHarthmereNativeCombatProgression,
 } from "@/shared/harthmere/harthmere_native_combat";
-import { harthmereNativeBiomesIdForItemId } from "@/shared/harthmere/harthmere_native_item_ids";
+import {
+  harthmereNativeBiomesIdForItemId,
+  harthmereNativeBiomesIdForRecipeId,
+} from "@/shared/harthmere/harthmere_native_item_ids";
 import {
   createHarthmereLiveModePlayerStatusClientSnapshot,
   harthmereLiveModePlayerStateKey,
   parseHarthmereLiveModeBackendState,
 } from "@/shared/harthmere/live_mode_backend";
 import { harthmereSkillProgressFromTotalXp } from "@/shared/harthmere/mmo_class_ability_collectibles";
+import { getHarthmereCraftingRecipe } from "@/shared/harthmere/mmo_inventory_authority";
 import { nativeBiomesEcsAuthorityEnabled } from "@/shared/harthmere/native_road_ahead_contract";
 import {
   HARTHMERE_NATIVE_VITALS_MIGRATION_VERSION,
@@ -28,7 +38,7 @@ import {
 import type { BiomesId } from "@/shared/ids";
 import { z } from "zod";
 
-export const HARTHMERE_NATIVE_COMBAT_MIGRATION_VERSION = 1;
+export const HARTHMERE_NATIVE_COMBAT_MIGRATION_VERSION = 4;
 
 const zResponse = z.object({
   ok: z.boolean(),
@@ -87,6 +97,92 @@ function addEquippedMainHand(
   return undefined;
 }
 
+function inventoryCountForItem(
+  inventory: ReturnType<typeof Inventory.clone>,
+  itemId: BiomesId
+) {
+  let count = bagCount(inventory.overflow, { id: itemId });
+  for (const slot of [...inventory.items, ...inventory.hotbar]) {
+    if (slot?.item.id === itemId) count += slot.count;
+  }
+  return count;
+}
+
+function addMissingInventoryCount(
+  inventory: ReturnType<typeof Inventory.clone>,
+  itemId: BiomesId,
+  missing: bigint
+) {
+  let remaining = missing;
+  const item = anItem(itemId);
+  const maxStack = item.stackable && item.stackable > 0n ? item.stackable : 1n;
+  for (const container of [inventory.items, inventory.hotbar]) {
+    for (
+      let index = 0;
+      index < container.length && remaining > 0n;
+      index += 1
+    ) {
+      const slot = container[index];
+      if (slot?.item.id !== itemId || slot.item.payload !== undefined) continue;
+      const available = maxStack - slot.count;
+      if (available <= 0n) continue;
+      const added = available < remaining ? available : remaining;
+      container[index] = countOf(itemId, slot.count + added);
+      remaining -= added;
+    }
+  }
+  for (const container of [inventory.items, inventory.hotbar]) {
+    for (
+      let index = 0;
+      index < container.length && remaining > 0n;
+      index += 1
+    ) {
+      if (container[index]) continue;
+      const added = maxStack < remaining ? maxStack : remaining;
+      container[index] = countOf(itemId, added);
+      remaining -= added;
+    }
+  }
+  if (remaining > 0n) {
+    addToBag(inventory.overflow, countOf(itemId, remaining));
+  }
+}
+
+/**
+ * One-time additive cutover from the legacy Redis backpack/overflow. Existing
+ * native counts always win; rerunning can only add a missing difference and
+ * therefore cannot duplicate stacks after a partial/retried migration.
+ */
+export function migrateHarthmereLegacyInventoryForTest(input: {
+  inventory: ReturnType<typeof Inventory.clone>;
+  items: Readonly<Record<string, number>>;
+  overflow?: ReadonlyArray<{ itemId: string; count: number }>;
+}) {
+  const desiredCounts: Record<string, number> = { ...input.items };
+  for (const entry of input.overflow ?? []) {
+    desiredCounts[entry.itemId] =
+      (desiredCounts[entry.itemId] ?? 0) +
+      Math.max(0, Math.trunc(Number(entry.count) || 0));
+  }
+  const unresolvedItemIds: string[] = [];
+  let addedCount = 0n;
+  for (const [legacyItemId, rawCount] of Object.entries(desiredCounts)) {
+    const desired = BigInt(Math.max(0, Math.trunc(Number(rawCount) || 0)));
+    if (desired === 0n) continue;
+    const nativeId = harthmereNativeBiomesIdForItemId(legacyItemId);
+    if (!nativeId) {
+      unresolvedItemIds.push(legacyItemId);
+      continue;
+    }
+    const existing = inventoryCountForItem(input.inventory, nativeId);
+    if (existing >= desired) continue;
+    const missing = desired - existing;
+    addMissingInventoryCount(input.inventory, nativeId, missing);
+    addedCount += missing;
+  }
+  return { addedCount, unresolvedItemIds };
+}
+
 export function migrateHarthmereLegacyCombatEquipmentForTest(input: {
   inventory: ReturnType<typeof Inventory.clone>;
   wearing: ReturnType<typeof Wearing.clone>;
@@ -108,6 +204,92 @@ export function migrateHarthmereLegacyCombatEquipmentForTest(input: {
     }
   }
   return selectedRef;
+}
+
+/** Additive one-time cutover for recipes the stock native craft event models. */
+export function migrateHarthmereLegacyRecipeBookForTest(input: {
+  recipeBook: ReturnType<typeof RecipeBook.clone>;
+  knownRecipeIds: readonly string[];
+}) {
+  const unresolvedRecipeIds: string[] = [];
+  let addedCount = 0;
+  for (const recipeId of new Set(input.knownRecipeIds)) {
+    const definition = getHarthmereCraftingRecipe(recipeId);
+    if (!definition) {
+      // Dynamic/event recipe metadata is not necessarily a Bikkie recipe.
+      continue;
+    }
+    // Target-item workflows keep custom unlock metadata; all their physical
+    // input/output changes still commit through the native inventory event.
+    if (definition?.workflowKind && definition.workflowKind !== "craft") {
+      continue;
+    }
+    const nativeId = harthmereNativeBiomesIdForRecipeId(recipeId);
+    if (!nativeId) {
+      unresolvedRecipeIds.push(recipeId);
+      continue;
+    }
+    const recipe = anItem(nativeId);
+    const key = itemPk(recipe);
+    if (!input.recipeBook.recipes.has(key)) {
+      input.recipeBook.recipes.set(key, recipe);
+      addedCount += 1;
+    }
+  }
+  return { addedCount, unresolvedRecipeIds };
+}
+
+/** Additive cutover for the former Redis material-bank stack record. */
+export function migrateHarthmereLegacyMaterialStorageForTest(input: {
+  storage: ReturnType<typeof HarthmereMaterialStorage.clone>;
+  items: Record<string, number>;
+  maxSlots: number;
+  personalItems?: Record<string, number>;
+  personalMaxSlots?: number;
+  accountItems?: Record<string, number>;
+  accountMaxSlots?: number;
+}) {
+  const unresolvedItemIds: string[] = [];
+  let addedCount = 0n;
+  const migrateBag = (
+    target: typeof input.storage.items,
+    source: Record<string, number>
+  ) => {
+    for (const [itemId, rawCount] of Object.entries(source)) {
+      const count = Math.max(0, Math.trunc(Number(rawCount) || 0));
+      if (count === 0) continue;
+      const nativeId = harthmereNativeBiomesIdForItemId(itemId);
+      if (!nativeId) {
+        unresolvedItemIds.push(itemId);
+        continue;
+      }
+      const current = bagCount(target, { id: nativeId });
+      const missing = BigInt(count) - current;
+      if (missing > 0n) {
+        addToBag(target, countOf(nativeId, missing));
+        addedCount += missing;
+      }
+    }
+  };
+  migrateBag(input.storage.items, input.items);
+  migrateBag(input.storage.personal_items, input.personalItems ?? {});
+  migrateBag(input.storage.account_items, input.accountItems ?? {});
+  input.storage.max_slots = Math.max(
+    1,
+    input.storage.max_slots,
+    Math.trunc(Number(input.maxSlots) || 0)
+  );
+  input.storage.personal_max_slots = Math.max(
+    1,
+    input.storage.personal_max_slots,
+    Math.trunc(Number(input.personalMaxSlots) || 0)
+  );
+  input.storage.account_max_slots = Math.max(
+    1,
+    input.storage.account_max_slots,
+    Math.trunc(Number(input.accountMaxSlots) || 0)
+  );
+  return { addedCount, unresolvedItemIds };
 }
 
 export default biomesApiHandler(
@@ -166,18 +348,40 @@ export default biomesApiHandler(
 
     const inventory = Inventory.clone(player.inventory());
     const wearing = Wearing.clone(player.wearing());
+    const recipeBook = RecipeBook.clone(player.recipeBook());
+    const materialStorage = HarthmereMaterialStorage.clone(
+      player.harthmereMaterialStorage()
+    );
     const status = createHarthmereLiveModePlayerStatusClientSnapshot(legacy);
-    const gold = Math.max(0, Math.trunc(status.gold));
-    const goldKey = String(HARTHMERE_GOLD_ECS_CURRENCY_ID);
-    if (gold > 0) {
-      inventory.currencies.set(
-        goldKey,
-        countOf(HARTHMERE_GOLD_ECS_CURRENCY_ID, BigInt(gold))
-      );
-    } else {
-      inventory.currencies.delete(goldKey);
-    }
     if (combatNeedsMigration) {
+      const migratedInventory = migrateHarthmereLegacyInventoryForTest({
+        inventory,
+        items: legacy.inventory.items,
+        overflow: legacy.inventory.overflow,
+      });
+      if (migratedInventory.unresolvedItemIds.length > 0) {
+        throw new Error(
+          `Native inventory manifest is missing: ${migratedInventory.unresolvedItemIds.join(
+            ","
+          )}`
+        );
+      }
+      // Gold is copied only during the versioned cutover. Preserve a newer
+      // native wallet rather than repairing it from a stale Redis projection.
+      const legacyGold = BigInt(Math.max(0, Math.trunc(status.gold)));
+      const currentGold = bagCount(inventory.currencies, {
+        id: HARTHMERE_GOLD_ECS_CURRENCY_ID,
+      });
+      const gold = legacyGold > currentGold ? legacyGold : currentGold;
+      const goldKey = String(HARTHMERE_GOLD_ECS_CURRENCY_ID);
+      if (gold > 0n) {
+        inventory.currencies.set(
+          goldKey,
+          countOf(HARTHMERE_GOLD_ECS_CURRENCY_ID, gold)
+        );
+      } else {
+        inventory.currencies.delete(goldKey);
+      }
       const selectedRef = migrateHarthmereLegacyCombatEquipmentForTest({
         inventory,
         wearing,
@@ -189,6 +393,33 @@ export default biomesApiHandler(
           selectedRef.kind === "hotbar" ? inventory.hotbar : inventory.items;
         const selected = container[selectedRef.idx];
         player.setSelectedItem(SelectedItem.create({ item: selected }));
+      }
+      const migratedRecipes = migrateHarthmereLegacyRecipeBookForTest({
+        recipeBook,
+        knownRecipeIds: legacy.classMagic.knownRecipes,
+      });
+      if (migratedRecipes.unresolvedRecipeIds.length > 0) {
+        throw new Error(
+          `Native recipe manifest is missing: ${migratedRecipes.unresolvedRecipeIds.join(
+            ","
+          )}`
+        );
+      }
+      const migratedStorage = migrateHarthmereLegacyMaterialStorageForTest({
+        storage: materialStorage,
+        items: legacy.banking.materialStorage,
+        maxSlots: legacy.banking.materialStorageMaxSlots,
+        personalItems: legacy.inventory.bank,
+        personalMaxSlots: legacy.banking.personalBankMaxSlots,
+        accountItems: legacy.banking.accountBank,
+        accountMaxSlots: legacy.banking.accountBankMaxSlots,
+      });
+      if (migratedStorage.unresolvedItemIds.length > 0) {
+        throw new Error(
+          `Native material-storage manifest is missing: ${migratedStorage.unresolvedItemIds.join(
+            ","
+          )}`
+        );
       }
     }
     if (vitalsNeedMigration) {
@@ -221,24 +452,11 @@ export default biomesApiHandler(
         migrationVersion: HARTHMERE_NATIVE_VITALS_MIGRATION_VERSION,
         statusProjectionUpdatedAtMs: legacy.updatedAtMs,
       });
-    } else {
-      // This endpoint also repairs a projection that was deferred after a
-      // committed Redis economy/law transaction. Resource pools stay native;
-      // only the latest committed wallet and standing values are refreshed.
-      writeHarthmereNativeVitals(player.mutableTriggerState(), {
-        standingScopeId: status.standing.scopeId,
-        likeability: status.standing.likeability,
-        legal: status.standing.legal,
-        notoriety: status.standing.notoriety,
-        notorietyFloor: status.standing.notorietyFloor,
-        statusProjectionUpdatedAtMs: Math.max(
-          currentVitals.statusProjectionUpdatedAtMs,
-          legacy.updatedAtMs
-        ),
-      });
     }
     player.setInventory(inventory);
     player.setWearing(wearing);
+    player.setRecipeBook(recipeBook);
+    player.setHarthmereMaterialStorage(materialStorage);
     const progression = combatNeedsMigration
       ? writeHarthmereNativeCombatProgression(player.mutableTriggerState(), {
           level: nextLevel,

@@ -1,5 +1,5 @@
 // GENERATED: This file is generated from delta.ts.j2. Do not modify directly.
-// Content Hash: 15fdd94f6dc13b117b0832f1108b78d3
+// Content Hash: ec0abfd6c3f120ab4be6dfca880dc544
 
 import * as c from "@/shared/ecs/gen/components";
 import {
@@ -660,6 +660,18 @@ export abstract class ReadonlyDelta {
         entity.gift_giver = component;
       }
     }
+    {
+      const component = this.harthmereEcsTransactionLedger();
+      if (component !== undefined) {
+        entity.harthmere_ecs_transaction_ledger = component;
+      }
+    }
+    {
+      const component = this.harthmereMaterialStorage();
+      if (component !== undefined) {
+        entity.harthmere_material_storage = component;
+      }
+    }
     return entity;
   }
 
@@ -778,6 +790,12 @@ export abstract class ReadonlyDelta {
   abstract idle(): c.ReadonlyIdle | undefined;
   abstract voice(): c.ReadonlyVoice | undefined;
   abstract giftGiver(): c.ReadonlyGiftGiver | undefined;
+  abstract harthmereEcsTransactionLedger():
+    | c.ReadonlyHarthmereEcsTransactionLedger
+    | undefined;
+  abstract harthmereMaterialStorage():
+    | c.ReadonlyHarthmereMaterialStorage
+    | undefined;
 }
 
 export abstract class Delta extends ReadonlyDelta {
@@ -1196,6 +1214,17 @@ export abstract class Delta extends ReadonlyDelta {
     }
     if (other.gift_giver !== undefined) {
       this.delta.gift_giver = c.GiftGiver.clone(other.gift_giver);
+    }
+    if (other.harthmere_ecs_transaction_ledger !== undefined) {
+      this.delta.harthmere_ecs_transaction_ledger =
+        c.HarthmereEcsTransactionLedger.clone(
+          other.harthmere_ecs_transaction_ledger
+        );
+    }
+    if (other.harthmere_material_storage !== undefined) {
+      this.delta.harthmere_material_storage = c.HarthmereMaterialStorage.clone(
+        other.harthmere_material_storage
+      );
     }
   }
 
@@ -2742,6 +2771,41 @@ export abstract class Delta extends ReadonlyDelta {
   clearGiftGiver() {
     (this.delta ??= {}).gift_giver = null;
   }
+  mutableHarthmereEcsTransactionLedger(): c.HarthmereEcsTransactionLedger {
+    this.delta ??= {};
+    if (this.delta.harthmere_ecs_transaction_ledger === undefined) {
+      this.delta.harthmere_ecs_transaction_ledger =
+        c.HarthmereEcsTransactionLedger.clone(
+          this.harthmereEcsTransactionLedger()
+        );
+    }
+    return this.delta.harthmere_ecs_transaction_ledger!;
+  }
+
+  setHarthmereEcsTransactionLedger(x: c.HarthmereEcsTransactionLedger) {
+    (this.delta ??= {}).harthmere_ecs_transaction_ledger = x;
+  }
+
+  clearHarthmereEcsTransactionLedger() {
+    (this.delta ??= {}).harthmere_ecs_transaction_ledger = null;
+  }
+  mutableHarthmereMaterialStorage(): c.HarthmereMaterialStorage {
+    this.delta ??= {};
+    if (this.delta.harthmere_material_storage === undefined) {
+      this.delta.harthmere_material_storage = c.HarthmereMaterialStorage.clone(
+        this.harthmereMaterialStorage()
+      );
+    }
+    return this.delta.harthmere_material_storage!;
+  }
+
+  setHarthmereMaterialStorage(x: c.HarthmereMaterialStorage) {
+    (this.delta ??= {}).harthmere_material_storage = x;
+  }
+
+  clearHarthmereMaterialStorage() {
+    (this.delta ??= {}).harthmere_material_storage = null;
+  }
 
   apply(delta: RawDelta) {
     if (this.delta === undefined) {
@@ -2866,6 +2930,8 @@ export interface SuperReadonlyDelta extends ReadonlyDelta {
   idle(): c.Idle;
   voice(): c.Voice;
   giftGiver(): c.GiftGiver;
+  harthmereEcsTransactionLedger(): c.HarthmereEcsTransactionLedger;
+  harthmereMaterialStorage(): c.HarthmereMaterialStorage;
 }
 
 export type ReadonlyDeltaWith<C extends keyof ReadonlyEntity> = (Pick<
@@ -2984,6 +3050,8 @@ export interface SuperDelta extends Delta {
   idle(): c.Idle;
   voice(): c.Voice;
   giftGiver(): c.GiftGiver;
+  harthmereEcsTransactionLedger(): c.HarthmereEcsTransactionLedger;
+  harthmereMaterialStorage(): c.HarthmereMaterialStorage;
 }
 
 export type DeltaWith<C extends keyof ReadonlyEntity> = (Pick<
@@ -3650,6 +3718,20 @@ export class EntityBackedDelta extends Delta {
       return this.delta.gift_giver ?? undefined;
     }
     return this.entity.gift_giver;
+  }
+  harthmereEcsTransactionLedger():
+    | c.ReadonlyHarthmereEcsTransactionLedger
+    | undefined {
+    if (this.delta?.harthmere_ecs_transaction_ledger !== undefined) {
+      return this.delta.harthmere_ecs_transaction_ledger ?? undefined;
+    }
+    return this.entity.harthmere_ecs_transaction_ledger;
+  }
+  harthmereMaterialStorage(): c.ReadonlyHarthmereMaterialStorage | undefined {
+    if (this.delta?.harthmere_material_storage !== undefined) {
+      return this.delta.harthmere_material_storage ?? undefined;
+    }
+    return this.entity.harthmere_material_storage;
   }
 }
 
@@ -4427,6 +4509,22 @@ export class PatchableEntity extends Delta {
     this.readComponentIds.add(153);
     return this.entity.gift_giver;
   }
+  harthmereEcsTransactionLedger():
+    | c.ReadonlyHarthmereEcsTransactionLedger
+    | undefined {
+    if (this.delta?.harthmere_ecs_transaction_ledger !== undefined) {
+      return this.delta.harthmere_ecs_transaction_ledger ?? undefined;
+    }
+    this.readComponentIds.add(154);
+    return this.entity.harthmere_ecs_transaction_ledger;
+  }
+  harthmereMaterialStorage(): c.ReadonlyHarthmereMaterialStorage | undefined {
+    if (this.delta?.harthmere_material_storage !== undefined) {
+      return this.delta.harthmere_material_storage ?? undefined;
+    }
+    this.readComponentIds.add(155);
+    return this.entity.harthmere_material_storage;
+  }
 
   clear() {
     this.delta = {};
@@ -5119,6 +5217,20 @@ export class DeltaPatch extends Delta {
       return this.delta.gift_giver ?? undefined;
     }
     return this.parent.giftGiver();
+  }
+  harthmereEcsTransactionLedger():
+    | c.ReadonlyHarthmereEcsTransactionLedger
+    | undefined {
+    if (this.delta?.harthmere_ecs_transaction_ledger !== undefined) {
+      return this.delta.harthmere_ecs_transaction_ledger ?? undefined;
+    }
+    return this.parent.harthmereEcsTransactionLedger();
+  }
+  harthmereMaterialStorage(): c.ReadonlyHarthmereMaterialStorage | undefined {
+    if (this.delta?.harthmere_material_storage !== undefined) {
+      return this.delta.harthmere_material_storage ?? undefined;
+    }
+    return this.parent.harthmereMaterialStorage();
   }
 
   commit() {

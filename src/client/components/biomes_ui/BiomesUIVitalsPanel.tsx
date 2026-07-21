@@ -247,11 +247,6 @@ export const BiomesUIVitalsPanel: React.FunctionComponent<{}> = () => {
   const nativeHealth = reactResources.use("/ecs/c/health", userId);
   const nativeTriggerState = reactResources.use("/ecs/c/trigger_state", userId);
   const nativeInventory = reactResources.use("/ecs/c/inventory", userId);
-  const canBreathe = reactResources.useSubset(
-    (actions) => actions.canBreathe,
-    "/players/possible_terrain_actions",
-    userId
-  );
   const combat = useHarthmereCombatState();
   const multiplayer = useHarthmereMultiplayerCombatState();
   const stamina = useHarthmereFoodStaminaState();
@@ -286,10 +281,6 @@ export const BiomesUIVitalsPanel: React.FunctionComponent<{}> = () => {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             action: "heartbeat",
-            gameplayActive:
-              typeof document === "undefined" ||
-              document.visibilityState === "visible",
-            underwater: canBreathe === false,
           }),
         });
       } catch {
@@ -307,7 +298,7 @@ export const BiomesUIVitalsPanel: React.FunctionComponent<{}> = () => {
       activeController?.abort();
       window.clearInterval(interval);
     };
-  }, [canBreathe]);
+  }, []);
 
   const player = combat.player;
   const title = getHarthmereCombinedPublicTitle(reputation);

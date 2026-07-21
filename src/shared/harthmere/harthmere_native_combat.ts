@@ -72,6 +72,9 @@ export function harthmereNativeNpcTypeKeyForSeed(
   if (/muck[- ]scarred helix/i.test(seed.displayName)) {
     return "boss_muck_scarred_helix";
   }
+  if (/thaedryn/i.test(seed.displayName)) {
+    return "boss_thaedryn_bellbound";
+  }
   if (seed.kind === "ambient_livestock") {
     return `livestock_${slug(seed.species || seed.displayName)}`;
   }
@@ -105,6 +108,7 @@ export function harthmereNativeNpcCombatProfileForSeed(
   const sentinel = seed.kind === "robot_sentinel";
   const tutorialRetaliationOnly = seed.areaId === "road_muckwad_patch";
   const hex = seed.combatKind === "hex" || /hex/i.test(seed.displayName);
+  const thaedryn = key === "boss_thaedryn_bellbound";
   return {
     key,
     id: harthmereNativeBiomesIdForNpcType(key)!,
@@ -125,40 +129,44 @@ export function harthmereNativeNpcCombatProfileForSeed(
       : boss
       ? Math.max(120, monsterDamage(seed))
       : monsterDamage(seed),
-    attackDistance: boss ? 3.2 : hex ? 3 : livestock ? 2 : 2.4,
+    attackDistance: thaedryn ? 8 : boss ? 3.2 : hex ? 3 : livestock ? 2 : 2.4,
     attackIntervalSecs: boss ? 1.6 : hex ? 2.1 : livestock ? 2.4 : 1.9,
     attackStrikeMomentSecs: boss ? 0.42 : 0.5,
     attackFovDeg: boss ? 170 : 125,
     aggroTrigger:
-      sentinel || livestock || tutorialRetaliationOnly
+      sentinel || livestock || tutorialRetaliationOnly || thaedryn
         ? { kind: "onlyIfAttacked" }
         : { kind: "proximity", distance: boss ? 18 : hex ? 12 : 10.5 },
     disengageDistance: boss ? 42 : livestock ? 16 : 34,
-    walkSpeed: sentinel
-      ? 0
-      : livestock
-      ? seed.sizeTier === "small"
-        ? 2.4
-        : 1.4
-      : hex
-      ? 2.5
-      : 2.2,
-    runSpeed: sentinel
-      ? 0
-      : livestock
-      ? seed.sizeTier === "small"
-        ? 4.4
-        : 3.1
-      : hex
-      ? 4.8
-      : 4.4,
+    walkSpeed:
+      sentinel || thaedryn
+        ? 0
+        : livestock
+        ? seed.sizeTier === "small"
+          ? 2.4
+          : 1.4
+        : hex
+        ? 2.5
+        : 2.2,
+    runSpeed:
+      sentinel || thaedryn
+        ? 0
+        : livestock
+        ? seed.sizeTier === "small"
+          ? 4.4
+          : 3.1
+        : hex
+        ? 4.8
+        : 4.4,
     rotateSpeed: sentinel ? 0 : boss ? 260 : 220,
     behaviorKind: sentinel
       ? "sentinel"
       : livestock || tutorialRetaliationOnly
       ? "retaliate"
       : "hostile",
-    dropItems: livestock
+    dropItems: thaedryn
+      ? []
+      : livestock
       ? [{ itemId: "raw_meat", count: Math.max(1, seed.meatUnits ?? 1) }]
       : boss
       ? [
@@ -193,8 +201,13 @@ export function harthmereNativeNpcBiscuit(
     // Native death/respawn remains ECS-owned. Fixed Harthmere seed ids are
     // revived by the logic respawn service so process restarts cannot reset a
     // browser-local suppression timer or create a second copy.
-    persistent: true,
-    respawnAfterSecs: profile.isBoss ? 30 * 60 : 5 * 60,
+    persistent: profile.key !== "boss_thaedryn_bellbound",
+    respawnAfterSecs:
+      profile.key === "boss_thaedryn_bellbound"
+        ? undefined
+        : profile.isBoss
+        ? 30 * 60
+        : 5 * 60,
     drop: profile.dropItems.length
       ? ([
           [

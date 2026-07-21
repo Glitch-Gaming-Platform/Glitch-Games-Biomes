@@ -16,6 +16,8 @@ import {
   Emote,
   GroupPreviewReference,
   Health,
+  HarthmereEcsTransactionLedger,
+  HarthmereMaterialStorage,
   Icing,
   Inventory,
   Label,
@@ -365,6 +367,12 @@ export function newPlayer(id: BiomesId, name: string): Player {
     health: Health.create({ hp: 100, maxHp: 100 }),
     buffs_component: BuffsComponent.create(),
     trigger_state: TriggerState.create(),
+    harthmere_ecs_transaction_ledger: HarthmereEcsTransactionLedger.create(),
+    harthmere_material_storage: HarthmereMaterialStorage.create({
+      max_slots: 32,
+      personal_max_slots: 24,
+      account_max_slots: 40,
+    }),
     collideable: Collideable.create(),
   };
   return player;
@@ -388,6 +396,9 @@ export function copyPlayer(from: ReadonlyDelta, to: Delta) {
   to.setPlayerBehavior(PlayerBehavior.clone(from.playerBehavior()));
   to.setHealth(Health.clone(from.health()));
   to.setBuffsComponent(BuffsComponent.clone(from.buffsComponent()));
+  to.setHarthmereEcsTransactionLedger(
+    HarthmereEcsTransactionLedger.clone(from.harthmereEcsTransactionLedger())
+  );
   to.setTriggerState(TriggerState.clone(from.triggerState()));
 }
 

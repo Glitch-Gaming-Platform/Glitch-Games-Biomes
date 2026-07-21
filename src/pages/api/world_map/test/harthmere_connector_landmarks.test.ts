@@ -6,7 +6,7 @@ import {
 } from "@/pages/api/world_map/landmarks";
 import {
   HARTHMERE_CONNECTOR_ROUTE_ANCHORS,
-  HARTHMERE_CONNECTOR_WEST_GATE_LANDING,
+  HARTHMERE_CONNECTOR_TOWN_ENTRANCE,
 } from "@/shared/harthmere/harthmere_connector_route";
 import { SNAPSHOT_GROVE_LANDMARKS } from "@/shared/harthmere/snapshot_grove_content";
 
@@ -27,7 +27,7 @@ describe("Harthmere connector world-map landmarks", () => {
     );
     assert.deepEqual(
       [westGate.position[0], westGate.position[2]],
-      HARTHMERE_CONNECTOR_WEST_GATE_LANDING
+      HARTHMERE_CONNECTOR_TOWN_ENTRANCE
     );
   });
 
@@ -43,7 +43,7 @@ describe("Harthmere connector world-map landmarks", () => {
       ]),
       [
         ["Harthmere Road — Grove Trailhead", 1],
-        ["Harthmere Road — West Gate", 1],
+        ["Harthmere Road — Town Entrance", 1],
       ]
     );
   });
@@ -52,7 +52,7 @@ describe("Harthmere connector world-map landmarks", () => {
     const appended = appendHarthmereConnectorWorldMapLandmarks([]);
     assert.deepEqual(
       appended.map((landmark) => landmark.name),
-      ["Harthmere Road — Grove Trailhead", "Harthmere Road — West Gate"]
+      ["Harthmere Road — Grove Trailhead", "Harthmere Road — Town Entrance"]
     );
 
     const repeated = appendHarthmereConnectorWorldMapLandmarks(appended);

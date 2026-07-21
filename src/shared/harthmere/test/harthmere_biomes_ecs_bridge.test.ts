@@ -39,7 +39,7 @@ describe("Harthmere Biomes ECS bridge", () => {
     assert.deepEqual(projected.warnings, []);
   });
 
-  it("projects every non-empty Harthmere string as an exact native item id", () => {
+  it("projects only explicit native item identities and reports unknown strings", () => {
     const projected = createHarthmereBiomesEcsInventory({
       gold: 0,
       items: {
@@ -49,19 +49,14 @@ describe("Harthmere Biomes ECS bridge", () => {
       },
     });
 
-    assert.equal(projected.component.items.length, 3);
+    assert.equal(projected.component.items.length, 2);
     assert.ok(
       projected.component.items.some(
         (itemAndCount) =>
           itemAndCount?.item.id === harthmereItemIdToBiomesId("iron_longsword")
       )
     );
-    assert.ok(
-      projected.component.items.some(
-        (itemAndCount) =>
-          itemAndCount?.item.id === harthmereItemIdToBiomesId("harthmere_only")
-      )
-    );
+    assert.equal(harthmereItemIdToBiomesId("harthmere_only"), undefined);
     assert.ok(
       projected.component.items.some(
         (itemAndCount) =>
@@ -69,7 +64,8 @@ describe("Harthmere Biomes ECS bridge", () => {
           itemAndCount?.count === 4n
       )
     );
-    assert.deepEqual(projected.warnings, []);
+    assert.equal(projected.warnings.length, 1);
+    assert.equal(projected.warnings[0].id, "harthmere_only");
   });
 
   it("projects quest state only through known Biomes challenge ids", () => {
@@ -115,6 +111,8 @@ describe("Harthmere Biomes ECS bridge", () => {
       5n
     );
     assert.equal(projected.challenges.in_progress.has(questId), true);
-    assert.deepEqual(projected.warnings, []);
+    assert.equal(projected.warnings.length, 1);
+    assert.equal(projected.warnings[0].field, "inventory");
+    assert.equal(projected.warnings[0].id, "harthmere_only");
   });
 });

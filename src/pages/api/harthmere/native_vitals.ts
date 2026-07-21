@@ -1,4 +1,5 @@
 import { biomesApiHandler } from "@/server/web/util/api_middleware";
+import { serverDerivedHarthmereUnderwater } from "@/server/harthmere/native_vitals_environment";
 import { secondsSinceEpoch } from "@/shared/ecs/config";
 import {
   HARTHMERE_NATIVE_VITALS_MIGRATION_VERSION,
@@ -14,8 +15,10 @@ import { z } from "zod";
 const zBody = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("heartbeat"),
-    gameplayActive: z.boolean(),
-    underwater: z.boolean(),
+    // Accepted during a rolling upgrade only. The server deliberately ignores
+    // these former browser claims and derives activity/environment itself.
+    gameplayActive: z.boolean().optional(),
+    underwater: z.boolean().optional(),
   }),
   z.object({ action: z.literal("respawn_grove") }),
 ]);
@@ -34,6 +37,9 @@ const zResponse = z.object({
   damage: z.number(),
   deathCause: z.enum(["stamina", "drowning"]).optional(),
 });
+
+export const serverDerivedHarthmereUnderwaterForTest =
+  serverDerivedHarthmereUnderwater;
 
 export function applyHarthmereNativeVitalsHeartbeatForTest(input: {
   triggerState: Parameters<typeof tickHarthmereNativeVitals>[0];
@@ -64,7 +70,7 @@ export default biomesApiHandler(
     body: zBody,
     response: zResponse,
   },
-  async ({ context: { worldApi }, auth, body }) => {
+  async ({ context: { worldApi, askApi, voxeloo }, auth, body }) => {
     if (!nativeBiomesEcsAuthorityEnabled()) {
       return {
         ok: false,
@@ -122,12 +128,24 @@ export default biomesApiHandler(
         ),
       });
     } else {
+      const position = player.position()?.v;
+      const underwater = await serverDerivedHarthmereUnderwater({
+        askApi,
+        voxeloo,
+        position:
+          position && position.length >= 3
+            ? [position[0], position[1], position[2]]
+            : undefined,
+        height: player.size()?.v[1],
+      });
       const result = applyHarthmereNativeVitalsHeartbeatForTest({
         triggerState: player.mutableTriggerState(),
         health,
         nowMs,
-        gameplayActive: body.gameplayActive,
-        underwater: body.underwater,
+        // Receiving an authenticated heartbeat is the server-side activity
+        // lease. A caller can no longer pause survival drain with a false bit.
+        gameplayActive: true,
+        underwater,
       });
       damage = result.damage;
       deathCause = result.deathCause;

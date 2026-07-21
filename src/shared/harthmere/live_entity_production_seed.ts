@@ -27,6 +27,10 @@ import {
   getHarthmereProductionPlacementByKey,
   harthmereProductionPlacementKey,
 } from "./production_terrain_placement_map";
+import {
+  HARTHMERE_NATIVE_THAEDRYN_ENTITY_ID,
+  harthmereThaedrynArenaWorldAnchor,
+} from "./bible_quest_live_authority";
 
 export const HARTHMERE_LIVE_ENTITY_PRODUCTION_SEED_VERSION =
   "harthmere-live-entity-production-seed" as const;
@@ -103,6 +107,27 @@ export const HARTHMERE_NATIVE_MUCK_SCARRED_HELIX_SEED = {
   combatHp: 1800,
   attackDamage: 140,
   killXp: 500,
+} satisfies HarthmereLiveEntityProductionSeed;
+
+/** Q12's physical boss. Encounter phases stay custom; transform/health are ECS. */
+export const HARTHMERE_NATIVE_THAEDRYN_SEED = {
+  seedId: "bible-boss-thaedryn-bellbound",
+  kind: "ambient_muck_monster",
+  entityId: HARTHMERE_NATIVE_THAEDRYN_ENTITY_ID as BiomesId,
+  idOffset: 9120,
+  displayName: "Thaedryn the Bellbound",
+  areaId: "wyrms_bed",
+  areaLabel: "Wyrm's Bed",
+  position: harthmereThaedrynArenaWorldAnchor(),
+  orientation: [0, Math.PI] as Vec2,
+  dialog: "",
+  description:
+    "The ancient Bellbound dragon. Native Health and Anima own combat; the Q12 path machine owns Rebind, Slay, or Wake rules.",
+  combatKind: "hex",
+  combatLevel: 30,
+  combatHp: 4000,
+  attackDamage: 160,
+  killXp: 0,
 } satisfies HarthmereLiveEntityProductionSeed;
 
 // Each sentinel reads a different landscape and failure mode. Area-keyed copy

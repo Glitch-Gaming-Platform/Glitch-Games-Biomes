@@ -125,9 +125,10 @@ export function harthmereThaedrynArenaWorldAnchor(): [number, number, number] {
   ) as [number, number, number];
 }
 
-/** The live-mode combat entity id the Thaedryn snapshot is stored under. */
-export const HARTHMERE_THAEDRYN_COMBAT_ENTITY_ID =
-  "bible-boss:thaedryn_bellbound" as const;
+/** Exact native entity id for the quest-gated Thaedryn NPC. */
+export const HARTHMERE_NATIVE_THAEDRYN_ENTITY_ID = 8_810_000_000_019_120;
+/** Compatibility key used by legacy snapshot maps and the visible target. */
+export const HARTHMERE_THAEDRYN_COMBAT_ENTITY_ID = "8810000000019120" as const;
 
 export const HARTHMERE_BIBLE_DRAGON_QUEST_ID =
   "bellbound_q12_thaedryn_bellbound" as const;

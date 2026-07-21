@@ -175,6 +175,23 @@ export const zChallengeCompletedEvent = z.object({
 
 export type ChallengeCompletedEvent = z.infer<typeof zChallengeCompletedEvent>;
 
+/**
+ * Server-validated progress for authored Harthmere objectives that do not map
+ * to a stock collect/wear/craft/kill firehose event. Challenge and step ids are
+ * exact native manifest identities, so one objective can never advance a
+ * similarly named quest.
+ */
+export const zHarthmereQuestProgressEvent = z.object({
+  kind: z.literal("harthmereQuestProgress"),
+  entityId: zBiomesId,
+  challengeId: zBiomesId,
+  stepId: zBiomesId,
+});
+
+export type HarthmereQuestProgressEvent = z.infer<
+  typeof zHarthmereQuestProgressEvent
+>;
+
 export const zRecipeUnlockedEvent = z.object({
   kind: z.literal("recipeUnlocked"),
   entityId: zBiomesId,
@@ -611,6 +628,7 @@ export const zFirehoseEvent = z.discriminatedUnion("kind", [
   zCompleteQuestStepAtEntityEvent,
   zCompleteQuestStepAtMyRobot,
   zChallengeCompletedEvent,
+  zHarthmereQuestProgressEvent,
   zChallengeUnlockedEvent,
   zChangePictureFrameContentsEvent,
   zCollectEvent,

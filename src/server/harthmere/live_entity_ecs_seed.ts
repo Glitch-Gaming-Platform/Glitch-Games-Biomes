@@ -3,6 +3,7 @@ import type { Change, ProposedChange } from "@/shared/ecs/change";
 import {
   EntityDescription,
   Health,
+  QuestGiver,
   RobotComponent,
   Size,
   Voice,
@@ -11,6 +12,7 @@ import type { BiomesId } from "@/shared/ids";
 import {
   HARTHMERE_LIVE_ENTITY_ROBOT_SENTINEL_SEEDS,
   HARTHMERE_NATIVE_MUCK_SCARRED_HELIX_SEED,
+  HARTHMERE_NATIVE_THAEDRYN_SEED,
   harthmereActiveLiveEntityProductionSeedIds,
   harthmereGroundedLivestockSeedsInTerritory,
   harthmereGroundedMuckMonsterSeedsInTerritory,
@@ -223,6 +225,34 @@ export function buildHarthmereNativeMuckScarredHelixEntity(nowSeconds: number) {
     }),
     size: Size.create({ v: harthmereLiveEntitySizeForSeed(seed) }),
     entity_description: EntityDescription.create({ text: seed.description }),
+  };
+  delete (entity as { default_dialog?: unknown }).default_dialog;
+  return entity;
+}
+
+/** Build Q12's native boss/giver at the exact visible encounter entity id. */
+export function buildHarthmereNativeThaedrynEntity(nowSeconds: number) {
+  const seed = HARTHMERE_NATIVE_THAEDRYN_SEED;
+  const combatProfile = harthmereNativeNpcCombatProfileForSeed(seed);
+  const entity = {
+    ...npcEntity(
+      {
+        id: seed.entityId,
+        typeId: combatProfile.id,
+        position: seed.position,
+        orientation: seed.orientation,
+        velocity: [0, 0, 0],
+        displayName: seed.displayName,
+      },
+      nowSeconds
+    ),
+    health: Health.create({
+      hp: combatProfile.maxHp,
+      maxHp: combatProfile.maxHp,
+    }),
+    size: Size.create({ v: [7, 5, 10] }),
+    entity_description: EntityDescription.create({ text: seed.description }),
+    quest_giver: QuestGiver.create({ concurrent_quests: 1 }),
   };
   delete (entity as { default_dialog?: unknown }).default_dialog;
   return entity;

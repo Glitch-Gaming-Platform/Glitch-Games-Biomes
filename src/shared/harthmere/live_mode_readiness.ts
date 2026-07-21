@@ -170,6 +170,27 @@ export interface HarthmereLiveModeAuthorityEnvelope {
    * evidence.
    */
   serverActorItemCounts?: Record<string, number>;
+  /** Exact native Bling balance used as the only spendable player wallet. */
+  serverActorGold?: number;
+  /** Native selected/worn projection used for validation, never persistence. */
+  serverActorEquipment?: Record<string, string>;
+  /** Native RecipeBook identities; compatible recipes never trust Redis unlocks. */
+  serverActorKnownRecipeIds?: string[];
+  /** Exact native material-storage stacks; Redis retains only bank metadata. */
+  serverActorMaterialStorageItemCounts?: Record<string, number>;
+  serverActorMaterialStorageMaxSlots?: number;
+  serverActorPersonalBankItemCounts?: Record<string, number>;
+  serverActorPersonalBankMaxSlots?: number;
+  serverActorAccountBankItemCounts?: Record<string, number>;
+  serverActorAccountBankMaxSlots?: number;
+  /** Native TriggerState standing used as the only HUD/social standing value. */
+  serverActorStanding?: {
+    scopeId: string;
+    likeability: number;
+    legal: number;
+    notoriety: number;
+    notorietyFloor: number;
+  };
   serverTargetPosition?: { x: number; y: number; z: number };
   clientSentAtMs?: number;
   serverReceivedAtMs: number;

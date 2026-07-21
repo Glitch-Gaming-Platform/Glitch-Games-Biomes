@@ -317,7 +317,11 @@ describe("harthmere bible quest live authority", () => {
         anchor
       );
       assert.equal(snapshot.movementSpeed, 0, "chained dragon must not chase");
-      assert.ok(HARTHMERE_THAEDRYN_COMBAT_ENTITY_ID.includes("thaedryn"));
+      assert.match(
+        HARTHMERE_THAEDRYN_COMBAT_ENTITY_ID,
+        /^\d+$/,
+        "Thaedryn must use a stable native ECS entity id"
+      );
     });
 
     it("attack damage converts to percent events + wake tracking", () => {

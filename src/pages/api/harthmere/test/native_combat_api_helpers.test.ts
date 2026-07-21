@@ -1,20 +1,34 @@
 import { hasActiveHarthmereHardBossQuestForTest } from "@/pages/api/harthmere/native_combat_boss";
-import { migrateHarthmereLegacyCombatEquipmentForTest } from "@/pages/api/harthmere/native_combat_sync";
+import {
+  migrateHarthmereLegacyCombatEquipmentForTest,
+  migrateHarthmereLegacyInventoryForTest,
+  migrateHarthmereLegacyMaterialStorageForTest,
+  migrateHarthmereLegacyRecipeBookForTest,
+} from "@/pages/api/harthmere/native_combat_sync";
 import { applyHarthmereNativeVitalsHeartbeatForTest } from "@/pages/api/harthmere/native_vitals";
 import { BikkieRuntime } from "@/shared/bikkie/active";
 import { BikkieIds } from "@/shared/bikkie/ids";
-import { Inventory, TriggerState, Wearing } from "@/shared/ecs/gen/components";
+import {
+  Inventory,
+  HarthmereMaterialStorage,
+  RecipeBook,
+  TriggerState,
+  Wearing,
+} from "@/shared/ecs/gen/components";
 import {
   ensureHarthmereNativeItemCatalogue,
   harthmereBiscuitForItemDefinition,
   harthmereNativeBiomesIdForItemId,
+  harthmereNativeRecipeBiscuit,
 } from "@/shared/harthmere/harthmere_native_bikkie_items";
+import { listHarthmereCraftingRecipes } from "@/shared/harthmere/mmo_inventory_authority";
 import assert from "assert";
 import { writeHarthmereNativeVitals } from "@/shared/harthmere/harthmere_native_vitals";
 import {
   harthmereStatusProjectionIsStaleForTest,
   replaceNativeGoldCurrencyForTest,
 } from "@/server/harthmere/native_vitals";
+import { bagCount, countOf } from "@/shared/game/items";
 
 describe("native combat API migration helpers", () => {
   before(() => {
@@ -25,6 +39,12 @@ describe("native combat API migration helpers", () => {
       const biscuit = harthmereBiscuitForItemDefinition(definition);
       fixtures.set(biscuit.id, biscuit);
     }
+    const recipe = listHarthmereCraftingRecipes().find(
+      (candidate) =>
+        !candidate.workflowKind || candidate.workflowKind === "craft"
+    )!;
+    const recipeBiscuit = harthmereNativeRecipeBiscuit(recipe)!;
+    fixtures.set(recipeBiscuit.id, recipeBiscuit);
     BikkieRuntime.get().registerBiscuits(fixtures);
   });
 
@@ -71,6 +91,105 @@ describe("native combat API migration helpers", () => {
       ).length,
       1
     );
+  });
+
+  it("additively migrates the legacy backpack and overflow exactly once", () => {
+    const itemId = harthmereNativeBiomesIdForItemId("iron_longsword")!;
+    const inventory = Inventory.create({
+      items: new Array(8),
+      hotbar: [countOf(itemId, 1n)],
+    });
+    const first = migrateHarthmereLegacyInventoryForTest({
+      inventory,
+      items: { iron_longsword: 3 },
+      overflow: [{ itemId: "iron_longsword", count: 2 }],
+    });
+    assert.equal(first.addedCount, 4n);
+    assert.deepEqual(first.unresolvedItemIds, []);
+
+    const second = migrateHarthmereLegacyInventoryForTest({
+      inventory,
+      items: { iron_longsword: 3 },
+      overflow: [{ itemId: "iron_longsword", count: 2 }],
+    });
+    assert.equal(second.addedCount, 0n);
+    assert.deepEqual(second.unresolvedItemIds, []);
+    const total = [...inventory.items, ...inventory.hotbar].reduce(
+      (count, slot) =>
+        count + (slot?.item.id === itemId ? Number(slot.count) : 0),
+      0
+    );
+    assert.equal(total, 5);
+  });
+
+  it("migrates compatible recipe ownership into native RecipeBook once", () => {
+    const compatible = listHarthmereCraftingRecipes().find(
+      (candidate) =>
+        !candidate.workflowKind || candidate.workflowKind === "craft"
+    )!;
+    const customWorkflow = listHarthmereCraftingRecipes().find(
+      (candidate) =>
+        candidate.workflowKind && candidate.workflowKind !== "craft"
+    );
+    const recipeBook = RecipeBook.create();
+    const first = migrateHarthmereLegacyRecipeBookForTest({
+      recipeBook,
+      knownRecipeIds: [
+        compatible.recipeId,
+        ...(customWorkflow ? [customWorkflow.recipeId] : []),
+        "dynamic_event_recipe",
+      ],
+    });
+    assert.equal(first.addedCount, 1);
+    assert.deepEqual(first.unresolvedRecipeIds, []);
+
+    const second = migrateHarthmereLegacyRecipeBookForTest({
+      recipeBook,
+      knownRecipeIds: [compatible.recipeId],
+    });
+    assert.equal(second.addedCount, 0);
+    assert.equal(recipeBook.recipes.size, 1);
+  });
+
+  it("migrates every legacy bank vault into the player ECS component", () => {
+    const storage = HarthmereMaterialStorage.create({ max_slots: 1 });
+    const first = migrateHarthmereLegacyMaterialStorageForTest({
+      storage,
+      items: { iron_longsword: 3 },
+      maxSlots: 24,
+      personalItems: { leather_armor: 2 },
+      personalMaxSlots: 30,
+      accountItems: { wooden_shield: 4 },
+      accountMaxSlots: 48,
+    });
+    assert.equal(first.addedCount, 9n);
+    assert.deepEqual(first.unresolvedItemIds, []);
+    assert.equal(storage.max_slots, 24);
+    assert.equal(storage.personal_max_slots, 30);
+    assert.equal(storage.account_max_slots, 48);
+    assert.equal(
+      bagCount(storage.personal_items, {
+        id: harthmereNativeBiomesIdForItemId("leather_armor")!,
+      }),
+      2n
+    );
+    assert.equal(
+      bagCount(storage.account_items, {
+        id: harthmereNativeBiomesIdForItemId("wooden_shield")!,
+      }),
+      4n
+    );
+
+    const second = migrateHarthmereLegacyMaterialStorageForTest({
+      storage,
+      items: { iron_longsword: 3 },
+      maxSlots: 24,
+      personalItems: { leather_armor: 2 },
+      personalMaxSlots: 30,
+      accountItems: { wooden_shield: 4 },
+      accountMaxSlots: 48,
+    });
+    assert.equal(second.addedCount, 0n);
   });
 
   it("requires a real active hard-boss quest before materialization", () => {

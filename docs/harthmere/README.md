@@ -5,6 +5,9 @@ Keep source folders for runtime code and tests; put gameplay/reference documents
 
 ## Current runbooks
 
+- `HARTHMERE_BIOMES_ECS_SOURCE_OF_TRUTH.md` - canonical one-authority boundary,
+  explicit identity manifests, signed native transactions, migration rules,
+  and the metadata that may intentionally remain outside ECS.
 - `NATIVE_ECS_RESTORATION_2026-07-19.md` - July production bug restoration,
   native authority decisions, regression coverage, and post-deploy acceptance
   checklist.

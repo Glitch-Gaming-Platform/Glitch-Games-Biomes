@@ -218,7 +218,7 @@ function pushItemIntoContainer(
       field,
       id: itemId,
       reason:
-        "Harthmere item has no BiomesId yet; keep it in the Harthmere inventory-loot adapter until a Bikkie item id exists.",
+        "Harthmere item is not in the explicit native identity manifest; keep it out of ECS until an authored Bikkie item id is checked in.",
     });
     return;
   }

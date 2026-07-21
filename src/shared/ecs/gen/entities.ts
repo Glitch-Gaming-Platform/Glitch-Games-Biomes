@@ -1,5 +1,5 @@
 // GENERATED: This file is generated from entities.ts.j2. Do not modify directly.
-// Content Hash: f3af497e4523eb11738b78866e21aa12
+// Content Hash: 1c1a17f3067e624ada95b39ec7347501
 
 import * as c from "@/shared/ecs/gen/components";
 import { Delta } from "@/shared/ecs/gen/delta";
@@ -118,6 +118,8 @@ export interface Entity {
   idle?: c.Idle;
   voice?: c.Voice;
   gift_giver?: c.GiftGiver;
+  harthmere_ecs_transaction_ledger?: c.HarthmereEcsTransactionLedger;
+  harthmere_material_storage?: c.HarthmereMaterialStorage;
 }
 
 export interface ReadonlyEntity {
@@ -227,6 +229,8 @@ export interface ReadonlyEntity {
   readonly idle?: c.ReadonlyIdle;
   readonly voice?: c.ReadonlyVoice;
   readonly gift_giver?: c.ReadonlyGiftGiver;
+  readonly harthmere_ecs_transaction_ledger?: c.ReadonlyHarthmereEcsTransactionLedger;
+  readonly harthmere_material_storage?: c.ReadonlyHarthmereMaterialStorage;
 }
 
 export type AsDelta<T> = { -readonly [P in keyof T]: T[P] | null } & {
@@ -344,6 +348,8 @@ export interface SuperEntity {
   idle: c.Idle;
   voice: c.Voice;
   gift_giver: c.GiftGiver;
+  harthmere_ecs_transaction_ledger: c.HarthmereEcsTransactionLedger;
+  harthmere_material_storage: c.HarthmereMaterialStorage;
 }
 
 export interface ReadonlySuperEntity {
@@ -453,6 +459,8 @@ export interface ReadonlySuperEntity {
   readonly idle: c.ReadonlyIdle;
   readonly voice: c.ReadonlyVoice;
   readonly gift_giver: c.ReadonlyGiftGiver;
+  readonly harthmere_ecs_transaction_ledger: c.ReadonlyHarthmereEcsTransactionLedger;
+  readonly harthmere_material_storage: c.ReadonlyHarthmereMaterialStorage;
 }
 
 export type EntityWith<C extends keyof Entity> = Pick<SuperEntity, C | "id"> &
@@ -507,6 +515,8 @@ export interface Player extends Entity {
   readonly group_preview_reference: c.GroupPreviewReference;
   readonly health: c.Health;
   readonly buffs_component: c.BuffsComponent;
+  readonly harthmere_ecs_transaction_ledger: c.HarthmereEcsTransactionLedger;
+  readonly harthmere_material_storage: c.HarthmereMaterialStorage;
 }
 
 export class Player {
@@ -529,7 +539,9 @@ export class Player {
       "player_behavior",
       "group_preview_reference",
       "health",
-      "buffs_component"
+      "buffs_component",
+      "harthmere_ecs_transaction_ledger",
+      "harthmere_material_storage"
     )
       ? (entity as Player)
       : undefined;
@@ -895,6 +907,11 @@ export const RESOURCE_PATH_TO_ENTITY_PROP = new Map<
   ["/ecs/c/idle", "idle"],
   ["/ecs/c/voice", "voice"],
   ["/ecs/c/gift_giver", "gift_giver"],
+  [
+    "/ecs/c/harthmere_ecs_transaction_ledger",
+    "harthmere_ecs_transaction_ledger",
+  ],
+  ["/ecs/c/harthmere_material_storage", "harthmere_material_storage"],
 ]);
 
 export const ENTITY_PROP_TO_RESOURCE_PATH: {
@@ -1006,6 +1023,8 @@ export const ENTITY_PROP_TO_RESOURCE_PATH: {
   idle: "/ecs/c/idle",
   voice: "/ecs/c/voice",
   gift_giver: "/ecs/c/gift_giver",
+  harthmere_ecs_transaction_ledger: "/ecs/c/harthmere_ecs_transaction_ledger",
+  harthmere_material_storage: "/ecs/c/harthmere_material_storage",
 };
 
 export const COMPONENT_PROP_NAME_TO_ID = new Map<ComponentName, number>([
@@ -1114,6 +1133,8 @@ export const COMPONENT_PROP_NAME_TO_ID = new Map<ComponentName, number>([
   ["idle", 151],
   ["voice", 152],
   ["gift_giver", 153],
+  ["harthmere_ecs_transaction_ledger", 154],
+  ["harthmere_material_storage", 155],
 ]);
 
 export const COMPONENT_ID_TO_PROP_NAME: ComponentName[] = [];
@@ -1222,3 +1243,5 @@ COMPONENT_ID_TO_PROP_NAME[150] = "synthetic_stats";
 COMPONENT_ID_TO_PROP_NAME[151] = "idle";
 COMPONENT_ID_TO_PROP_NAME[152] = "voice";
 COMPONENT_ID_TO_PROP_NAME[153] = "gift_giver";
+COMPONENT_ID_TO_PROP_NAME[154] = "harthmere_ecs_transaction_ledger";
+COMPONENT_ID_TO_PROP_NAME[155] = "harthmere_material_storage";

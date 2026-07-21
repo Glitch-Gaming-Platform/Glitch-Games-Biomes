@@ -1,5 +1,5 @@
 // GENERATED: This file is generated from json_serde.ts.j2. Do not modify directly.
-// Content Hash: 00457510e3f497fddb442970e29931a9
+// Content Hash: 94c618b000f96d739c051cfefb5c8e36
 
 import * as c from "@/shared/ecs/gen/components";
 import * as e from "@/shared/ecs/gen/entities";
@@ -4631,6 +4631,125 @@ export class GiftGiverSerde {
     return c.GiftGiver.create(fields);
   }
 }
+export class HarthmereEcsTransactionLedgerSerde {
+  static serialize(component: c.ReadonlyHarthmereEcsTransactionLedger) {
+    const data = [];
+    if (component.transaction_ids !== null) {
+      data[1 - 1] = component.transaction_ids;
+    }
+    return data;
+  }
+
+  static deserialize(data: any): c.HarthmereEcsTransactionLedger {
+    const fields: Partial<c.HarthmereEcsTransactionLedger> = {};
+    if (!Array.isArray(data)) {
+      if (data[1] !== undefined) {
+        fields.transaction_ids = t.deserializeStrings(data[1]);
+      } else if (data.transaction_ids !== undefined) {
+        fields.transaction_ids = t.deserializeStrings(data.transaction_ids);
+      }
+    } else {
+      for (let i = 0; i < data.length; i++) {
+        if (data[i] === null || data[i] === undefined) {
+          continue;
+        }
+        switch (i + 1) {
+          case 1:
+            fields.transaction_ids = t.deserializeStrings(data[i]);
+            break;
+        }
+      }
+    }
+    return c.HarthmereEcsTransactionLedger.create(fields);
+  }
+}
+export class HarthmereMaterialStorageSerde {
+  static serialize(component: c.ReadonlyHarthmereMaterialStorage) {
+    const data = [];
+    if (component.items !== null) {
+      data[1 - 1] = t.serializeItemBag(component.items);
+    }
+    if (component.max_slots !== null) {
+      data[2 - 1] = component.max_slots;
+    }
+    if (component.personal_items !== null) {
+      data[3 - 1] = t.serializeItemBag(component.personal_items);
+    }
+    if (component.personal_max_slots !== null) {
+      data[4 - 1] = component.personal_max_slots;
+    }
+    if (component.account_items !== null) {
+      data[5 - 1] = t.serializeItemBag(component.account_items);
+    }
+    if (component.account_max_slots !== null) {
+      data[6 - 1] = component.account_max_slots;
+    }
+    return data;
+  }
+
+  static deserialize(data: any): c.HarthmereMaterialStorage {
+    const fields: Partial<c.HarthmereMaterialStorage> = {};
+    if (!Array.isArray(data)) {
+      if (data[1] !== undefined) {
+        fields.items = t.deserializeItemBag(data[1]);
+      } else if (data.items !== undefined) {
+        fields.items = t.deserializeItemBag(data.items);
+      }
+      if (data[2] !== undefined) {
+        fields.max_slots = t.deserializeU32(data[2]);
+      } else if (data.max_slots !== undefined) {
+        fields.max_slots = t.deserializeU32(data.max_slots);
+      }
+      if (data[3] !== undefined) {
+        fields.personal_items = t.deserializeItemBag(data[3]);
+      } else if (data.personal_items !== undefined) {
+        fields.personal_items = t.deserializeItemBag(data.personal_items);
+      }
+      if (data[4] !== undefined) {
+        fields.personal_max_slots = t.deserializeU32(data[4]);
+      } else if (data.personal_max_slots !== undefined) {
+        fields.personal_max_slots = t.deserializeU32(data.personal_max_slots);
+      }
+      if (data[5] !== undefined) {
+        fields.account_items = t.deserializeItemBag(data[5]);
+      } else if (data.account_items !== undefined) {
+        fields.account_items = t.deserializeItemBag(data.account_items);
+      }
+      if (data[6] !== undefined) {
+        fields.account_max_slots = t.deserializeU32(data[6]);
+      } else if (data.account_max_slots !== undefined) {
+        fields.account_max_slots = t.deserializeU32(data.account_max_slots);
+      }
+    } else {
+      for (let i = 0; i < data.length; i++) {
+        if (data[i] === null || data[i] === undefined) {
+          continue;
+        }
+        switch (i + 1) {
+          case 1:
+            fields.items = t.deserializeItemBag(data[i]);
+            break;
+          case 2:
+            fields.max_slots = t.deserializeU32(data[i]);
+            break;
+          case 3:
+            fields.personal_items = t.deserializeItemBag(data[i]);
+            break;
+          case 4:
+            fields.personal_max_slots = t.deserializeU32(data[i]);
+            break;
+          case 5:
+            fields.account_items = t.deserializeItemBag(data[i]);
+            break;
+          case 6:
+            fields.account_max_slots = t.deserializeU32(data[i]);
+            break;
+        }
+      }
+    }
+    return c.HarthmereMaterialStorage.create(fields);
+  }
+}
 
 function badEntity(message: string, data: unknown): never {
   log.warn(`Bad entity: ${message}`, {
@@ -4745,6 +4864,8 @@ const COMPONENT_ID_TO_DESERIALIZE = {
   151: IdleSerde.deserialize,
   152: VoiceSerde.deserialize,
   153: GiftGiverSerde.deserialize,
+  154: HarthmereEcsTransactionLedgerSerde.deserialize,
+  155: HarthmereMaterialStorageSerde.deserialize,
 };
 
 const COMPONENT_ID_TO_PROP_NAME: { [key: number]: keyof e.Entity } = {
@@ -4853,6 +4974,8 @@ const COMPONENT_ID_TO_PROP_NAME: { [key: number]: keyof e.Entity } = {
   151: "idle",
   152: "voice",
   153: "gift_giver",
+  154: "harthmere_ecs_transaction_ledger",
+  155: "harthmere_material_storage",
 };
 
 export interface SerializeForClient {
@@ -5947,6 +6070,38 @@ export class EntitySerde {
         }
       }
     }
+    if (target.whoFor !== "client" || entity.id === target.id) {
+      if (entity.harthmere_ecs_transaction_ledger !== undefined) {
+        if (entity.harthmere_ecs_transaction_ledger === null) {
+          if (encodeDelta) {
+            data.push(154, null);
+          }
+        } else {
+          data.push(
+            154,
+            HarthmereEcsTransactionLedgerSerde.serialize(
+              entity.harthmere_ecs_transaction_ledger
+            )
+          );
+        }
+      }
+    }
+    if (target.whoFor !== "client" || entity.id === target.id) {
+      if (entity.harthmere_material_storage !== undefined) {
+        if (entity.harthmere_material_storage === null) {
+          if (encodeDelta) {
+            data.push(155, null);
+          }
+        } else {
+          data.push(
+            155,
+            HarthmereMaterialStorageSerde.serialize(
+              entity.harthmere_material_storage
+            )
+          );
+        }
+      }
+    }
     return data;
   }
 
@@ -6971,6 +7126,28 @@ export class EntitySerde {
           );
         }
       }
+      {
+        const value = legacyEntity.harthmere_ecs_transaction_ledger;
+        if (value === null && decodeDelta) {
+          entity.harthmere_ecs_transaction_ledger = null;
+        } else if (value) {
+          entity.harthmere_ecs_transaction_ledger =
+            HarthmereEcsTransactionLedgerSerde.deserialize(
+              legacyEntity.harthmere_ecs_transaction_ledger
+            );
+        }
+      }
+      {
+        const value = legacyEntity.harthmere_material_storage;
+        if (value === null && decodeDelta) {
+          entity.harthmere_material_storage = null;
+        } else if (value) {
+          entity.harthmere_material_storage =
+            HarthmereMaterialStorageSerde.deserialize(
+              legacyEntity.harthmere_material_storage
+            );
+        }
+      }
       return entity as e.Entity;
     }
 
@@ -7913,6 +8090,24 @@ export class EntitySerde {
         entity.gift_giver = GiftGiverSerde.deserialize(field);
       }
     }
+    {
+      const field = (entityData as any)[154];
+      if (field === null && decodeDelta) {
+        entity.harthmere_ecs_transaction_ledger = null;
+      } else if (field) {
+        entity.harthmere_ecs_transaction_ledger =
+          HarthmereEcsTransactionLedgerSerde.deserialize(field);
+      }
+    }
+    {
+      const field = (entityData as any)[155];
+      if (field === null && decodeDelta) {
+        entity.harthmere_material_storage = null;
+      } else if (field) {
+        entity.harthmere_material_storage =
+          HarthmereMaterialStorageSerde.deserialize(field);
+      }
+    }
     return entity as e.Entity;
   }
 }
@@ -8334,6 +8529,120 @@ class InternalInventorySetEventSerde {
       id: t.deserializeBiomesId(data.id),
       dst: t.deserializeOwnedItemReference(data.dst),
       item: t.deserializeOptionalItemAndCount(data.item),
+    });
+  }
+}
+class HarthmereInventoryTransactionEventSerde {
+  static serialize(event: ev.HarthmereInventoryTransactionEvent) {
+    return {
+      kind: "harthmereInventoryTransactionEvent",
+      id: t.serializeBiomesId(event.id),
+      transaction_id: event.transaction_id,
+      take: t.serializeItemBag(event.take),
+      give: t.serializeItemBag(event.give),
+      storage_take: t.serializeItemBag(event.storage_take),
+      storage_give: t.serializeItemBag(event.storage_give),
+      storage_max_slots: event.storage_max_slots,
+      personal_bank_take: t.serializeItemBag(event.personal_bank_take),
+      personal_bank_give: t.serializeItemBag(event.personal_bank_give),
+      personal_bank_max_slots: event.personal_bank_max_slots,
+      account_bank_take: t.serializeItemBag(event.account_bank_take),
+      account_bank_give: t.serializeItemBag(event.account_bank_give),
+      account_bank_max_slots: event.account_bank_max_slots,
+      gold_delta: t.serializeI64(event.gold_delta),
+      publish_craft: event.publish_craft,
+      station_entity_id: t.serializeOptionalBiomesId(event.station_entity_id),
+      robot_entity_id: t.serializeOptionalBiomesId(event.robot_entity_id),
+      robot_energy_delta: event.robot_energy_delta,
+      write_standing: event.write_standing,
+      standing_scope: event.standing_scope,
+      standing_likeability: event.standing_likeability,
+      standing_legal: event.standing_legal,
+      standing_notoriety: event.standing_notoriety,
+      standing_notoriety_floor: event.standing_notoriety_floor,
+      authorization: event.authorization,
+    };
+  }
+
+  static deserialize(data: any) {
+    return new ev.HarthmereInventoryTransactionEvent({
+      id: t.deserializeBiomesId(data.id),
+      transaction_id: t.deserializeString(data.transaction_id),
+      take: t.deserializeItemBag(data.take),
+      give: t.deserializeItemBag(data.give),
+      storage_take: t.deserializeItemBag(data.storage_take),
+      storage_give: t.deserializeItemBag(data.storage_give),
+      storage_max_slots: t.deserializeU32(data.storage_max_slots),
+      personal_bank_take: t.deserializeItemBag(data.personal_bank_take),
+      personal_bank_give: t.deserializeItemBag(data.personal_bank_give),
+      personal_bank_max_slots: t.deserializeU32(data.personal_bank_max_slots),
+      account_bank_take: t.deserializeItemBag(data.account_bank_take),
+      account_bank_give: t.deserializeItemBag(data.account_bank_give),
+      account_bank_max_slots: t.deserializeU32(data.account_bank_max_slots),
+      gold_delta: t.deserializeI64(data.gold_delta),
+      publish_craft: t.deserializeBool(data.publish_craft),
+      station_entity_id: t.deserializeOptionalBiomesId(data.station_entity_id),
+      robot_entity_id: t.deserializeOptionalBiomesId(data.robot_entity_id),
+      robot_energy_delta: t.deserializeF64(data.robot_energy_delta),
+      write_standing: t.deserializeBool(data.write_standing),
+      standing_scope: t.deserializeString(data.standing_scope),
+      standing_likeability: t.deserializeI32(data.standing_likeability),
+      standing_legal: t.deserializeI32(data.standing_legal),
+      standing_notoriety: t.deserializeI32(data.standing_notoriety),
+      standing_notoriety_floor: t.deserializeI32(data.standing_notoriety_floor),
+      authorization: t.deserializeString(data.authorization),
+    });
+  }
+}
+class HarthmereQuestProgressEventSerde {
+  static serialize(event: ev.HarthmereQuestProgressEvent) {
+    return {
+      kind: "harthmereQuestProgressEvent",
+      id: t.serializeBiomesId(event.id),
+      challenge_id: t.serializeBiomesId(event.challenge_id),
+      step_id: t.serializeBiomesId(event.step_id),
+      authorization: event.authorization,
+    };
+  }
+
+  static deserialize(data: any) {
+    return new ev.HarthmereQuestProgressEvent({
+      id: t.deserializeBiomesId(data.id),
+      challenge_id: t.deserializeBiomesId(data.challenge_id),
+      step_id: t.deserializeBiomesId(data.step_id),
+      authorization: t.deserializeString(data.authorization),
+    });
+  }
+}
+class HarthmerePlaceableTransactionEventSerde {
+  static serialize(event: ev.HarthmerePlaceableTransactionEvent) {
+    return {
+      kind: "harthmerePlaceableTransactionEvent",
+      id: t.serializeBiomesId(event.id),
+      transaction_id: event.transaction_id,
+      operation: event.operation,
+      entity_id: t.serializeBiomesId(event.entity_id),
+      item_id: t.serializeBiomesId(event.item_id),
+      position: event.position,
+      orientation: event.orientation,
+      old_position: event.old_position,
+      old_orientation: event.old_orientation,
+      authorization: event.authorization,
+    };
+  }
+
+  static deserialize(data: any) {
+    return new ev.HarthmerePlaceableTransactionEvent({
+      id: t.deserializeBiomesId(data.id),
+      transaction_id: t.deserializeString(data.transaction_id),
+      operation: t.deserializeString(data.operation),
+      entity_id: t.deserializeBiomesId(data.entity_id),
+      item_id: t.deserializeBiomesId(data.item_id),
+      position: t.deserializeVec3f(data.position),
+      orientation: t.deserializeVec2f(data.orientation),
+      old_position: t.deserializeVec3f(data.old_position),
+      old_orientation: t.deserializeVec2f(data.old_orientation),
+      authorization: t.deserializeString(data.authorization),
     });
   }
 }
@@ -10895,6 +11204,18 @@ export class EventSerde {
         return InternalInventorySetEventSerde.serialize(
           event as ev.InternalInventorySetEvent
         );
+      case "harthmereInventoryTransactionEvent":
+        return HarthmereInventoryTransactionEventSerde.serialize(
+          event as ev.HarthmereInventoryTransactionEvent
+        );
+      case "harthmereQuestProgressEvent":
+        return HarthmereQuestProgressEventSerde.serialize(
+          event as ev.HarthmereQuestProgressEvent
+        );
+      case "harthmerePlaceableTransactionEvent":
+        return HarthmerePlaceableTransactionEventSerde.serialize(
+          event as ev.HarthmerePlaceableTransactionEvent
+        );
       case "inventoryCraftEvent":
         return InventoryCraftEventSerde.serialize(
           event as ev.InventoryCraftEvent
@@ -11381,6 +11702,12 @@ export class EventSerde {
         return UnmuckerEventSerde.deserialize(data);
       case "internalInventorySetEvent":
         return InternalInventorySetEventSerde.deserialize(data);
+      case "harthmereInventoryTransactionEvent":
+        return HarthmereInventoryTransactionEventSerde.deserialize(data);
+      case "harthmereQuestProgressEvent":
+        return HarthmereQuestProgressEventSerde.deserialize(data);
+      case "harthmerePlaceableTransactionEvent":
+        return HarthmerePlaceableTransactionEventSerde.deserialize(data);
       case "inventoryCraftEvent":
         return InventoryCraftEventSerde.deserialize(data);
       case "inventoryDyeEvent":

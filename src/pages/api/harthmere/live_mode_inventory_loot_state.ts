@@ -90,7 +90,7 @@ export default biomesApiHandler(
     response: zHarthmereLiveModeInventoryLootStateResponse,
   },
   async ({
-    context: { idGenerator, worldApi },
+    context: { idGenerator, logicApi, worldApi },
     auth,
     unsafeRequest,
     unsafeResponse,
@@ -117,6 +117,7 @@ export default biomesApiHandler(
         await materializeHarthmereNativeEcsPlans({
           redisPrimary: redis.primary as any,
           idGenerator,
+          logicApi,
           worldApi,
           plans: harthmereNativeEcsPlansForAvailableInventoryLoot(state, nowMs),
         });

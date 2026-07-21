@@ -12,6 +12,9 @@ import { z } from "zod";
 import { readHarthmerePlayerAndSharedStateStrings } from "@/server/harthmere/live_mode_state_read_helpers";
 import { resolveHarthmereLiveModeActorId } from "@/server/harthmere/live_mode_actor_resolution";
 import { disableHarthmereLiveModeHttpCaching } from "@/server/harthmere/live_mode_http_cache";
+import type { WorldApi } from "@/server/shared/world/api";
+import { HARTHMERE_NATIVE_THAEDRYN_ENTITY_ID } from "@/shared/harthmere/bible_quest_live_authority";
+import type { BiomesId } from "@/shared/ids";
 
 const zJsonRecord = z.record(z.unknown());
 
@@ -38,6 +41,7 @@ export async function readHarthmereLiveModeQuestStateForActor(input: {
   };
   actorId: string;
   nowMs: number;
+  worldApi?: WorldApi;
 }) {
   const stateKey = harthmereLiveModePlayerStateKey(input.actorId);
   const sharedStateKey = harthmereLiveModeSharedWorldStateKey();
@@ -58,6 +62,21 @@ export async function readHarthmereLiveModeQuestStateForActor(input: {
     input.nowMs
   );
   state.updatedAtMs = input.nowMs;
+  if (input.worldApi && state.quests.bible.thaedryn) {
+    const boss = await input.worldApi.get(
+      HARTHMERE_NATIVE_THAEDRYN_ENTITY_ID as BiomesId
+    );
+    const health = boss?.health();
+    if (health) {
+      state.quests.bible.thaedryn = {
+        ...state.quests.bible.thaedryn,
+        healthPct: Math.max(
+          0,
+          Math.min(100, (health.hp / Math.max(1, health.maxHp)) * 100)
+        ),
+      };
+    }
+  }
   return createHarthmereLiveModeQuestClientSnapshot(state);
 }
 
@@ -67,7 +86,7 @@ export default biomesApiHandler(
     method: "GET",
     response: zHarthmereLiveModeQuestStateResponse,
   },
-  async ({ auth, unsafeRequest, unsafeResponse }) => {
+  async ({ context: { worldApi }, auth, unsafeRequest, unsafeResponse }) => {
     disableHarthmereLiveModeHttpCaching(unsafeResponse);
     const redis = await liveModeQuestStateRedis();
     const actorId = await resolveHarthmereLiveModeActorId(
@@ -86,6 +105,7 @@ export default biomesApiHandler(
         redis,
         actorId,
         nowMs,
+        worldApi,
       }),
     };
   }

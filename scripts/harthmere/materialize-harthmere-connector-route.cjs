@@ -56,6 +56,7 @@ const {
   HARTHMERE_CONNECTOR_MIN_HEADROOM,
   HARTHMERE_CONNECTOR_ROUTE_BOUNDS,
   HARTHMERE_CONNECTOR_ROUTE_VERSION,
+  HARTHMERE_CONNECTOR_TOWN_ENTRANCE,
   planHarthmereConnectorRoute,
   validateHarthmereConnectorRoutePlan,
 } = require("../../src/shared/harthmere/harthmere_connector_route");
@@ -79,6 +80,9 @@ const ANCHOR_SEARCH_RADIUS = Math.max(
   12,
   Number.parseInt(process.env.ANCHOR_SEARCH_RADIUS || "48", 10)
 );
+const PRINT_ROUTE_PROFILE = process.env.PRINT_ROUTE_PROFILE === "1";
+const FORCE_ALLOW_EXISTING_CONNECTOR_CAPS =
+  process.env.ALLOW_EXISTING_CONNECTOR_CAPS === "1";
 const PROBE_MIN_Y = 32;
 const PROBE_MAX_Y = 96;
 const STRUCTURE_PADDING = 1;
@@ -100,9 +104,10 @@ const SAFE_SURFACE_NAMES = new Set([
   "moss_grass",
   "cobblestone",
 ]);
-const SAFE_EDIT_NAMES = new Set([...SAFE_SURFACE_NAMES, "stone_brick"]);
+const SAFE_EDIT_NAMES = new Set(SAFE_SURFACE_NAMES);
 const SAFE_TRAVERSABLE_NAMES = new Set([
   ...SAFE_EDIT_NAMES,
+  "stone_brick",
   "stone_polished",
   "cobblestone_brick",
   "cobblestone_polished",
@@ -111,7 +116,11 @@ const SAFE_TRAVERSABLE_NAMES = new Set([
 ]);
 const ROAD_CENTER_ID = getTerrainID("cobblestone");
 const ROAD_SHOULDER_ID = getTerrainID("gravel");
-const STAIR_CAP_ID = getTerrainID("stone_brick");
+const APPROACH_CAP_ID = getTerrainID("stone_brick");
+
+function isExistingConnectorCapColumn(x, z) {
+  return x >= 894 && x <= 989 && z >= -210 && z <= -204;
+}
 
 function component(entity, field, method) {
   if (typeof entity?.[method] === "function") return entity[method]();
@@ -341,7 +350,11 @@ function makeStructureIndex(structureBoxes) {
   };
 }
 
-function makeTerrainSamplers(found, structureIndex) {
+function makeTerrainSamplers(
+  found,
+  structureIndex,
+  allowExistingConnectorCaps = false
+) {
   const shardFor = (x, y, z) => found.get(voxelShard(x, y, z));
   const terrainIdAt = (x, y, z) => {
     const shard = shardFor(x, y, z);
@@ -404,7 +417,12 @@ function makeTerrainSamplers(found, structureIndex) {
       canTraverse: terrainName
         ? SAFE_TRAVERSABLE_NAMES.has(terrainName)
         : false,
-      canResurface: terrainName ? SAFE_SURFACE_NAMES.has(terrainName) : false,
+      canResurface: terrainName
+        ? SAFE_SURFACE_NAMES.has(terrainName) ||
+          (allowExistingConnectorCaps &&
+            terrainName === "stone_brick" &&
+            isExistingConnectorCapColumn(x, z))
+        : false,
     };
     cache.set(key, value);
     return value;
@@ -412,7 +430,12 @@ function makeTerrainSamplers(found, structureIndex) {
   return { sample, terrainIdAt, occupancyAt, waterAt };
 }
 
-function validateEdits(edits, samplers, structureIndex) {
+function validateEdits(
+  edits,
+  samplers,
+  structureIndex,
+  allowExistingConnectorCaps = false
+) {
   const failures = [];
   for (const edit of edits) {
     const [x, y, z] = edit.position;
@@ -426,17 +449,29 @@ function validateEdits(edits, samplers, structureIndex) {
       failures.push(`${edit.label}@${x},${y},${z}:occupied_voxel`);
       continue;
     }
-    if (edit.label === "stair_fill") {
-      if (current !== 0)
-        failures.push(`${edit.label}@${x},${y},${z}:fill_not_air`);
+    if (edit.label === "approach_fill") {
+      // Surface probing intentionally ignores non-colliding flora. Supported
+      // causeway fill may replace that natural decoration, but never a solid
+      // block, occupied voxel, or protected structure.
+      if (current !== 0 && terrainCollides(current))
+        failures.push(`${edit.label}@${x},${y},${z}:fill_not_clear`);
       continue;
     }
-    if (edit.label === "stair_carve") {
+    if (edit.label === "passage_clearance") {
+      if (current === 0) continue;
       if (!currentName || !SAFE_EDIT_NAMES.has(currentName)) {
         failures.push(
           `${edit.label}@${x},${y},${z}:unsafe_${currentName || current}`
         );
       }
+      continue;
+    }
+    if (
+      edit.label === "approach_cap" &&
+      currentName === "stone_brick" &&
+      allowExistingConnectorCaps &&
+      isExistingConnectorCapColumn(x, z)
+    ) {
       continue;
     }
     if (current !== 0 && (!currentName || !SAFE_EDIT_NAMES.has(currentName))) {
@@ -453,10 +488,55 @@ function dedupeEdits(edits) {
   for (const edit of edits) {
     const key = edit.position.join(":");
     const previous = byPosition.get(key);
-    // Gate stairs are the final authority where the surface road meets them.
-    if (!previous || edit.label.startsWith("stair_")) byPosition.set(key, edit);
+    // The engineered town approach is the final authority where the surface
+    // road meets its causeway/tunnel floor.
+    if (!previous || edit.label.startsWith("approach_"))
+      byPosition.set(key, edit);
   }
   return [...byPosition.values()];
+}
+
+function validatePostEditTraversal(plan, edits, samplers, structureIndex) {
+  const failures = [];
+  const overlay = new Map(
+    edits.map((edit) => [edit.position.join(":"), Number(edit.value)])
+  );
+  const terrainAfter = (x, y, z) =>
+    overlay.has(`${x}:${y}:${z}`)
+      ? overlay.get(`${x}:${y}:${z}`)
+      : samplers.terrainIdAt(x, y, z);
+
+  for (const [x, y, z] of plan.traversal) {
+    const floorId = terrainAfter(x, y, z);
+    if (!floorId || !terrainCollides(floorId)) {
+      failures.push(`traversal@${x},${y},${z}:missing_collidable_floor`);
+    }
+    if (structureIndex.blocked(x, y, y + HARTHMERE_CONNECTOR_MIN_HEADROOM, z)) {
+      failures.push(`traversal@${x},${y},${z}:protected_structure`);
+    }
+    for (
+      let headY = y + 1;
+      headY <= y + HARTHMERE_CONNECTOR_MIN_HEADROOM;
+      headY += 1
+    ) {
+      const headId = terrainAfter(x, headY, z);
+      if (headId && terrainCollides(headId)) {
+        failures.push(`traversal@${x},${headY},${z}:blocked_headroom`);
+      }
+      if (samplers.occupancyAt(x, headY, z) !== 0) {
+        failures.push(`traversal@${x},${headY},${z}:occupied_headroom`);
+      }
+    }
+  }
+
+  const last = plan.traversal.at(-1);
+  if (
+    last?.[0] !== HARTHMERE_CONNECTOR_TOWN_ENTRANCE[0] ||
+    last?.[2] !== HARTHMERE_CONNECTOR_TOWN_ENTRANCE[1]
+  ) {
+    failures.push("traversal_does_not_reach_marked_town_entrance");
+  }
+  return failures;
 }
 
 function countBy(items, keyFor) {
@@ -544,18 +624,48 @@ async function main() {
   );
   try {
     const structureIndex = makeStructureIndex(structureBoxes);
-    const samplers = makeTerrainSamplers(found, structureIndex);
-    const plan = planHarthmereConnectorRoute({
+    let allowExistingConnectorCaps = FORCE_ALLOW_EXISTING_CONNECTOR_CAPS;
+    let samplers = makeTerrainSamplers(
+      found,
+      structureIndex,
+      allowExistingConnectorCaps
+    );
+    let plan = planHarthmereConnectorRoute({
       sample: samplers.sample,
       anchorSearchRadius: ANCHOR_SEARCH_RADIUS,
     });
+    if (!allowExistingConnectorCaps && plan.failures.length > 0) {
+      const retrySamplers = makeTerrainSamplers(found, structureIndex, true);
+      const retryPlan = planHarthmereConnectorRoute({
+        sample: retrySamplers.sample,
+        anchorSearchRadius: ANCHOR_SEARCH_RADIUS,
+      });
+      if (retryPlan.failures.length === 0) {
+        allowExistingConnectorCaps = true;
+        samplers = retrySamplers;
+        plan = retryPlan;
+      }
+    }
     const contractFailures = validateHarthmereConnectorRoutePlan(
       plan,
       samplers.sample
     );
     const edits = dedupeEdits(plan.edits);
-    const editFailures = validateEdits(edits, samplers, structureIndex);
-    const failures = [...new Set([...contractFailures, ...editFailures])];
+    const editFailures = validateEdits(
+      edits,
+      samplers,
+      structureIndex,
+      allowExistingConnectorCaps
+    );
+    const traversalFailures = validatePostEditTraversal(
+      plan,
+      edits,
+      samplers,
+      structureIndex
+    );
+    const failures = [
+      ...new Set([...contractFailures, ...editFailures, ...traversalFailures]),
+    ];
 
     const editsByShard = new Map();
     for (const edit of edits) {
@@ -586,7 +696,11 @@ async function main() {
           resolvedTerrainShards: found.size,
           protectedStructureBoxes: structureBoxes.length,
           resolvedAnchors: plan.resolvedAnchors,
+          markedTownEntrance: HARTHMERE_CONNECTOR_TOWN_ENTRANCE,
+          reusedExistingConnectorCaps: allowExistingConnectorCaps,
           pathColumns: plan.path.length,
+          traversalStart: plan.traversal.at(0),
+          traversalEnd: plan.traversal.at(-1),
           pathHeightRange: pathHeights.length
             ? [Math.min(...pathHeights), Math.max(...pathHeights)]
             : undefined,
@@ -596,8 +710,25 @@ async function main() {
           materialIds: {
             roadCenter: ROAD_CENTER_ID,
             roadShoulder: ROAD_SHOULDER_ID,
-            stairCap: STAIR_CAP_ID,
+            approachCap: APPROACH_CAP_ID,
           },
+          ...(PRINT_ROUTE_PROFILE
+            ? {
+                routeProfile: plan.traversal.map(([x, y, z]) => [
+                  x,
+                  y,
+                  z,
+                  samplers.sample(x, z).surfaceY,
+                ]),
+                approachProtectedBoxes: structureBoxes.filter(
+                  (box) =>
+                    box.x1 >= 888 &&
+                    box.x0 <= 952 &&
+                    box.z1 >= -232 &&
+                    box.z0 <= -188
+                ),
+              }
+            : {}),
           failures,
         },
         null,

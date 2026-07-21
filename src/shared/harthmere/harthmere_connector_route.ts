@@ -2,7 +2,7 @@ import { getTerrainID } from "@/shared/asset_defs/terrain";
 import type { BiomesId } from "@/shared/ids";
 
 export const HARTHMERE_CONNECTOR_ROUTE_VERSION =
-  "harthmere-protected-surface-route-v1" as const;
+  "harthmere-protected-town-entry-route-v3" as const;
 
 export type HarthmereConnectorPoint = readonly [x: number, z: number];
 
@@ -20,13 +20,20 @@ export interface HarthmereConnectorRouteEdit {
   label:
     | "road_center"
     | "road_shoulder"
-    | "stair_carve"
-    | "stair_fill"
-    | "stair_cap";
+    | "passage_clearance"
+    | "approach_fill"
+    | "approach_cap";
 }
+
+export type HarthmereConnectorTraversalPoint = readonly [
+  x: number,
+  y: number,
+  z: number
+];
 
 export interface HarthmereConnectorRoutePlan {
   path: HarthmereConnectorPoint[];
+  traversal: HarthmereConnectorTraversalPoint[];
   resolvedAnchors: HarthmereConnectorPoint[];
   edits: HarthmereConnectorRouteEdit[];
   failures: string[];
@@ -34,38 +41,39 @@ export interface HarthmereConnectorRoutePlan {
 
 export const HARTHMERE_CONNECTOR_ROUTE_BOUNDS = {
   minX: 488,
-  maxX: 904,
+  maxX: 1000,
   minZ: -232,
   maxZ: -120,
 } as const;
 
 // The route starts at the existing Selfie Overlook on the Grove's east road,
-// after the dense built-up fountain/Old Road cluster, and reaches a short
-// purpose-built stair at the Harthmere west gate. Anchors are resolved to
+// after the dense built-up fountain/Old Road cluster, and reaches a protected
+// engineered approach into Harthmere. Anchors are resolved to
 // nearby safe terrain at materialization time so an existing building can
-// never be bulldozed just because it overlaps an authored waypoint.
+// never be bulldozed just because it overlaps an authored waypoint. The final
+// engineered approach continues beyond the west-gate terrain and lands at the
+// first confirmed, player-usable Old Bridge town road surface.
 export const HARTHMERE_CONNECTOR_ROUTE_ANCHORS = [
   [560, -182],
   [640, -209],
   [896, -209],
 ] as const satisfies readonly HarthmereConnectorPoint[];
 
-export const HARTHMERE_CONNECTOR_WEST_GATE_START: HarthmereConnectorPoint = [
+export const HARTHMERE_CONNECTOR_APPROACH_START: HarthmereConnectorPoint = [
   896, -209,
 ];
-export const HARTHMERE_CONNECTOR_WEST_GATE_END: HarthmereConnectorPoint = [
-  903, -209,
+export const HARTHMERE_CONNECTOR_TOWN_ENTRANCE: HarthmereConnectorPoint = [
+  988, -207,
 ];
-export const HARTHMERE_CONNECTOR_WEST_GATE_LANDING: HarthmereConnectorPoint = [
-  904, -209,
-];
-export const HARTHMERE_CONNECTOR_STAIR_HALF_WIDTH = 2;
+export const HARTHMERE_CONNECTOR_APPROACH_HALF_WIDTH = 0;
+export const HARTHMERE_CONNECTOR_APPROACH_OPTIONAL_HALF_WIDTH = 1;
 export const HARTHMERE_CONNECTOR_MIN_HEADROOM = 3;
+export const HARTHMERE_CONNECTOR_MAX_APPROACH_CUT_OR_FILL = 12;
 
 const ROAD_CENTER = getTerrainID("cobblestone") as BiomesId;
 const ROAD_SHOULDER = getTerrainID("gravel") as BiomesId;
-const STAIR_FILL = getTerrainID("dirt") as BiomesId;
-const STAIR_CAP = getTerrainID("stone_brick") as BiomesId;
+const APPROACH_FILL = getTerrainID("dirt") as BiomesId;
+const APPROACH_CAP = getTerrainID("stone_brick") as BiomesId;
 
 function pointKey([x, z]: HarthmereConnectorPoint) {
   return `${x},${z}`;
@@ -293,90 +301,262 @@ function roadEditsForPath(
   return [...edits.values()];
 }
 
-function westGateStairEdits(
+function isBuildableApproachPoint(
+  point: HarthmereConnectorPoint,
   sample: (x: number, z: number) => HarthmereConnectorColumn
-): { edits: HarthmereConnectorRouteEdit[]; failures: string[] } {
-  const failures: string[] = [];
-  const start = HARTHMERE_CONNECTOR_WEST_GATE_START;
-  const end = HARTHMERE_CONNECTOR_WEST_GATE_END;
-  const landing = HARTHMERE_CONNECTOR_WEST_GATE_LANDING;
-  const startColumn = sample(start[0], start[1]);
-  if (
-    !isWalkableColumn(startColumn) ||
-    startColumn.surfaceY === undefined ||
-    startColumn.canResurface === false
+) {
+  for (
+    let dx = -HARTHMERE_CONNECTOR_APPROACH_HALF_WIDTH;
+    dx <= HARTHMERE_CONNECTOR_APPROACH_HALF_WIDTH;
+    dx += 1
   ) {
+    for (
+      let dz = -HARTHMERE_CONNECTOR_APPROACH_HALF_WIDTH;
+      dz <= HARTHMERE_CONNECTOR_APPROACH_HALF_WIDTH;
+      dz += 1
+    ) {
+      const column = sample(point[0] + dx, point[1] + dz);
+      if (!isWalkableColumn(column) || column.canResurface === false) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+function findBuildableApproach(
+  start: HarthmereConnectorPoint,
+  goal: HarthmereConnectorPoint,
+  sample: (x: number, z: number) => HarthmereConnectorColumn
+): HarthmereConnectorPoint[] | undefined {
+  if (
+    !isBuildableApproachPoint(start, sample) ||
+    !isBuildableApproachPoint(goal, sample)
+  ) {
+    return undefined;
+  }
+  const startKey = pointKey(start);
+  const goalKey = pointKey(goal);
+  const firstPriority = manhattan(start, goal);
+  const open: ConnectorOpenNode[] = [
+    { key: startKey, priority: firstPriority },
+  ];
+  const openPriority = new Map<string, number>([[startKey, firstPriority]]);
+  const cameFrom = new Map<string, string>();
+  const gScore = new Map<string, number>([[startKey, 0]]);
+  const neighbors = [
+    [1, 0],
+    [-1, 0],
+    [0, 1],
+    [0, -1],
+  ] as const;
+
+  while (open.length > 0) {
+    const currentNode = popOpenNode(open);
+    if (!currentNode) break;
+    const currentKey = currentNode.key;
+    if (openPriority.get(currentKey) !== currentNode.priority) continue;
+    if (currentKey === goalKey) return reconstructPath(cameFrom, currentKey);
+    openPriority.delete(currentKey);
+
+    const current = parsePointKey(currentKey);
+    const currentY = sample(current[0], current[1]).surfaceY;
+    if (currentY === undefined) continue;
+    const currentG = gScore.get(currentKey) ?? Number.POSITIVE_INFINITY;
+
+    for (const [dx, dz] of neighbors) {
+      const next: HarthmereConnectorPoint = [current[0] + dx, current[1] + dz];
+      if (!inConnectorBounds(next) || !isBuildableApproachPoint(next, sample))
+        continue;
+      const nextY = sample(next[0], next[1]).surfaceY;
+      if (nextY === undefined) continue;
+      const naturalRise = Math.abs(nextY - currentY);
+      if (naturalRise > HARTHMERE_CONNECTOR_MAX_APPROACH_CUT_OR_FILL) continue;
+
+      const nextKey = pointKey(next);
+      // The approach is allowed to cut a short tunnel or build a supported
+      // causeway, but it still prefers flatter natural ground and a direct
+      // line. Protected structures remain completely impassable.
+      const tentative = currentG + 1 + naturalRise * 0.2;
+      if (tentative >= (gScore.get(nextKey) ?? Number.POSITIVE_INFINITY))
+        continue;
+      cameFrom.set(nextKey, currentKey);
+      gScore.set(nextKey, tentative);
+      const priority = tentative + manhattan(next, goal);
+      openPriority.set(nextKey, priority);
+      pushOpenNode(open, { key: nextKey, priority });
+    }
+  }
+  return undefined;
+}
+
+function approachCellsForPoint(
+  path: readonly HarthmereConnectorPoint[],
+  index: number,
+  sample: (x: number, z: number) => HarthmereConnectorColumn
+): HarthmereConnectorPoint[] {
+  const current = path[index];
+  const previous = path[Math.max(0, index - 1)];
+  const next = path[Math.min(path.length - 1, index + 1)];
+  const dx = next[0] - previous[0];
+  const dz = next[1] - previous[1];
+  const cells: HarthmereConnectorPoint[] = [current];
+  const optionalCells: HarthmereConnectorPoint[] = [];
+  if (Math.abs(dx) >= Math.abs(dz)) {
+    optionalCells.push(
+      [
+        current[0],
+        current[1] - HARTHMERE_CONNECTOR_APPROACH_OPTIONAL_HALF_WIDTH,
+      ],
+      [
+        current[0],
+        current[1] + HARTHMERE_CONNECTOR_APPROACH_OPTIONAL_HALF_WIDTH,
+      ]
+    );
+  } else {
+    optionalCells.push(
+      [
+        current[0] - HARTHMERE_CONNECTOR_APPROACH_OPTIONAL_HALF_WIDTH,
+        current[1],
+      ],
+      [
+        current[0] + HARTHMERE_CONNECTOR_APPROACH_OPTIONAL_HALF_WIDTH,
+        current[1],
+      ]
+    );
+  }
+  for (const cell of optionalCells) {
+    const column = sample(cell[0], cell[1]);
+    if (isWalkableColumn(column) && column.canResurface !== false) {
+      cells.push(cell);
+    }
+  }
+  return cells;
+}
+
+function engineeredTownApproach(
+  start: HarthmereConnectorPoint,
+  sample: (x: number, z: number) => HarthmereConnectorColumn
+): {
+  path: HarthmereConnectorPoint[];
+  traversal: HarthmereConnectorTraversalPoint[];
+  edits: HarthmereConnectorRouteEdit[];
+  failures: string[];
+} {
+  const path = findBuildableApproach(
+    start,
+    HARTHMERE_CONNECTOR_TOWN_ENTRANCE,
+    sample
+  );
+  if (!path) {
     return {
+      path: [],
+      traversal: [],
       edits: [],
-      failures: ["west gate stair start is not safe walkable terrain"],
+      failures: [
+        `no protected-structure-safe town approach from ${start.join(
+          ","
+        )} to ${HARTHMERE_CONNECTOR_TOWN_ENTRANCE.join(",")}`,
+      ],
     };
   }
-  const landingColumn = sample(landing[0], landing[1]);
-  if (
-    landingColumn.surfaceY === undefined ||
-    landingColumn.isWater ||
-    landingColumn.canTraverse === false
-  ) {
+  const startY = sample(start[0], start[1]).surfaceY;
+  const endY = sample(
+    HARTHMERE_CONNECTOR_TOWN_ENTRANCE[0],
+    HARTHMERE_CONNECTOR_TOWN_ENTRANCE[1]
+  ).surfaceY;
+  if (startY === undefined || endY === undefined) {
     return {
+      path: [],
+      traversal: [],
       edits: [],
-      failures: ["west gate landing is not reachable walkable terrain"],
+      failures: ["town approach is missing start or entrance terrain"],
     };
   }
-  const run = end[0] - start[0];
-  const rise = landingColumn.surfaceY - startColumn.surfaceY;
-  if (run <= 0 || Math.abs(rise) > run) {
+  const run = Math.max(1, path.length - 1);
+  const rise = endY - startY;
+  if (Math.abs(rise) > run) {
     return {
+      path: [],
+      traversal: [],
       edits: [],
-      failures: [`west gate stair cannot cover rise ${rise} over run ${run}`],
+      failures: [`town approach cannot cover rise ${rise} over run ${run}`],
     };
   }
 
-  const edits: HarthmereConnectorRouteEdit[] = [];
-  for (let offset = 0; offset <= run; offset += 1) {
-    const x = start[0] + offset;
-    const progress = offset / run;
-    const desiredY =
-      startColumn.surfaceY +
-      Math.trunc(rise * progress + Math.sign(rise) * 0.0001);
-    for (
-      let z = start[1] - HARTHMERE_CONNECTOR_STAIR_HALF_WIDTH;
-      z <= start[1] + HARTHMERE_CONNECTOR_STAIR_HALF_WIDTH;
-      z += 1
-    ) {
-      const column = sample(x, z);
+  const edits = new Map<string, HarthmereConnectorRouteEdit>();
+  const traversal: HarthmereConnectorTraversalPoint[] = [];
+  const addEdit = (edit: HarthmereConnectorRouteEdit) => {
+    const key = edit.position.join(":");
+    const previous = edits.get(key);
+    if (!previous || edit.label === "approach_cap") edits.set(key, edit);
+  };
+
+  for (let index = 0; index < path.length; index += 1) {
+    const progress = index / run;
+    const desiredY = startY + Math.round(rise * progress);
+    const [x, z] = path[index];
+    traversal.push([x, desiredY, z]);
+    for (const [cellX, cellZ] of approachCellsForPoint(path, index, sample)) {
+      const column = sample(cellX, cellZ);
       if (
         !isWalkableColumn(column) ||
         column.surfaceY === undefined ||
         column.canResurface === false
       ) {
-        failures.push(`west gate stair intersects protected column ${x},${z}`);
-        continue;
+        return {
+          path,
+          traversal,
+          edits: [],
+          failures: [
+            `town approach intersects protected column ${cellX},${cellZ}`,
+          ],
+        };
+      }
+      const cutOrFill = Math.abs(column.surfaceY - desiredY);
+      if (cutOrFill > HARTHMERE_CONNECTOR_MAX_APPROACH_CUT_OR_FILL) {
+        return {
+          path,
+          traversal,
+          edits: [],
+          failures: [
+            `town approach requires ${cutOrFill} blocks of cut/fill at ${cellX},${cellZ}`,
+          ],
+        };
       }
       if (column.surfaceY > desiredY) {
-        for (let y = desiredY + 1; y <= column.surfaceY; y += 1) {
-          edits.push({
-            position: [x, y, z],
+        for (
+          let y = desiredY + 1;
+          y <=
+          Math.min(
+            column.surfaceY,
+            desiredY + HARTHMERE_CONNECTOR_MIN_HEADROOM
+          );
+          y += 1
+        ) {
+          addEdit({
+            position: [cellX, y, cellZ],
             value: 0 as BiomesId,
-            label: "stair_carve",
+            label: "passage_clearance",
           });
         }
       } else if (column.surfaceY < desiredY) {
         for (let y = column.surfaceY + 1; y < desiredY; y += 1) {
-          edits.push({
-            position: [x, y, z],
-            value: STAIR_FILL,
-            label: "stair_fill",
+          addEdit({
+            position: [cellX, y, cellZ],
+            value: APPROACH_FILL,
+            label: "approach_fill",
           });
         }
       }
-      edits.push({
-        position: [x, desiredY, z],
-        value: STAIR_CAP,
-        label: "stair_cap",
+      addEdit({
+        position: [cellX, desiredY, cellZ],
+        value: APPROACH_CAP,
+        label: "approach_cap",
       });
     }
   }
-  return { edits: failures.length > 0 ? [] : edits, failures };
+  return { path, traversal, edits: [...edits.values()], failures: [] };
 }
 
 export function planHarthmereConnectorRoute(input: {
@@ -400,7 +580,13 @@ export function planHarthmereConnectorRoute(input: {
     }
   }
   if (failures.length > 0) {
-    return { path: [], resolvedAnchors, edits: [], failures };
+    return {
+      path: [],
+      traversal: [],
+      resolvedAnchors,
+      edits: [],
+      failures,
+    };
   }
 
   const path: HarthmereConnectorPoint[] = [];
@@ -421,18 +607,34 @@ export function planHarthmereConnectorRoute(input: {
     path.push(...(path.length > 0 ? segment.slice(1) : segment));
   }
   if (failures.length > 0) {
-    return { path: [], resolvedAnchors, edits: [], failures };
+    return {
+      path: [],
+      traversal: [],
+      resolvedAnchors,
+      edits: [],
+      failures,
+    };
   }
 
-  const stair = westGateStairEdits(input.sample);
-  failures.push(...stair.failures);
+  const surfaceTraversal: HarthmereConnectorTraversalPoint[] = path.map(
+    ([x, z]) => [x, input.sample(x, z).surfaceY!, z]
+  );
+  const approach = engineeredTownApproach(path.at(-1)!, input.sample);
+  failures.push(...approach.failures);
   if (failures.length > 0) {
-    return { path, resolvedAnchors, edits: [], failures };
+    return {
+      path,
+      traversal: surfaceTraversal,
+      resolvedAnchors,
+      edits: [],
+      failures,
+    };
   }
   return {
-    path,
+    path: [...path, ...approach.path.slice(1)],
+    traversal: [...surfaceTraversal, ...approach.traversal.slice(1)],
     resolvedAnchors,
-    edits: [...roadEditsForPath(path, input.sample), ...stair.edits],
+    edits: [...roadEditsForPath(path, input.sample), ...approach.edits],
     failures,
   };
 }
@@ -442,22 +644,21 @@ export function validateHarthmereConnectorRoutePlan(
   sample: (x: number, z: number) => HarthmereConnectorColumn
 ): string[] {
   const failures = [...plan.failures];
-  for (let index = 1; index < plan.path.length; index += 1) {
-    const previous = plan.path[index - 1];
-    const current = plan.path[index];
-    if (manhattan(previous, current) !== 1) {
+  if (plan.path.length !== plan.traversal.length) {
+    failures.push("route traversal length does not match centerline path");
+  }
+  for (let index = 1; index < plan.traversal.length; index += 1) {
+    const previous = plan.traversal[index - 1];
+    const current = plan.traversal[index];
+    if (manhattan([previous[0], previous[2]], [current[0], current[2]]) !== 1) {
       failures.push(
-        `route gap between ${previous.join(",")} and ${current.join(",")}`
+        `route gap between ${previous[0]},${previous[2]} and ${current[0]},${current[2]}`
       );
     }
-    const previousY = sample(previous[0], previous[1]).surfaceY;
-    const currentY = sample(current[0], current[1]).surfaceY;
-    if (
-      previousY === undefined ||
-      currentY === undefined ||
-      Math.abs(previousY - currentY) > 1
-    ) {
-      failures.push(`route grade exceeds one block at ${current.join(",")}`);
+    if (Math.abs(previous[1] - current[1]) > 1) {
+      failures.push(
+        `route grade exceeds one block at ${current[0]},${current[2]}`
+      );
     }
   }
   for (const point of plan.path) {
@@ -467,6 +668,13 @@ export function validateHarthmereConnectorRoutePlan(
         `route crosses protected or unsafe column ${point.join(",")}`
       );
     }
+  }
+  const finalPoint = plan.path.at(-1);
+  if (
+    finalPoint?.[0] !== HARTHMERE_CONNECTOR_TOWN_ENTRANCE[0] ||
+    finalPoint?.[1] !== HARTHMERE_CONNECTOR_TOWN_ENTRANCE[1]
+  ) {
+    failures.push("route does not reach the marked Harthmere town entrance");
   }
   return [...new Set(failures)];
 }

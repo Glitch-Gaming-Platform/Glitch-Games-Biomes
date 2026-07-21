@@ -36,15 +36,18 @@ export function harthmereStatusProjectionIsStaleForTest(
 }
 
 /**
- * Projects the committed economy/law transaction into the player's native ECS
- * document. Redis remains the transaction engine for those large subsystems;
- * the HUD and game client consume only the committed ECS projection.
+ * One-time migration helper for legacy status records.
+ *
+ * Runtime wallet and standing mutations use the signed native inventory
+ * transaction; this helper must never be called as a post-commit repair path.
+ * `migrateGold` and `migrateResources` exist only for versioned cutover data.
  */
 export async function syncHarthmereCommittedStatusToNativeEcs(input: {
   worldApi: WorldApi;
   userId: BiomesId;
   state: HarthmereLiveModeBackendState;
   migrateResources?: boolean;
+  migrateGold?: boolean;
 }) {
   const editor = input.worldApi.edit();
   const player = await editor.get(input.userId);
@@ -57,13 +60,15 @@ export async function syncHarthmereCommittedStatusToNativeEcs(input: {
       current.statusProjectionUpdatedAtMs
     )
   ) {
-    // A slower post-commit callback must not overwrite a newer wallet or law
-    // transaction that has already reached the ECS document.
+    // A slower migration attempt must not overwrite a newer wallet, resource,
+    // or law transaction that has already reached the ECS document.
     return true;
   }
-  const inventory = Inventory.clone(player.inventory());
-  replaceNativeGoldCurrencyForTest(inventory, status.gold);
-  player.setInventory(inventory);
+  if (input.migrateGold) {
+    const inventory = Inventory.clone(player.inventory());
+    replaceNativeGoldCurrencyForTest(inventory, status.gold);
+    player.setInventory(inventory);
+  }
   const resourceChanges = input.migrateResources
     ? {
         mana: Math.max(

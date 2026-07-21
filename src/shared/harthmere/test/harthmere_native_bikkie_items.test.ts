@@ -10,6 +10,14 @@ import {
   harthmereNativeBiomesIdForItemId,
   withHarthmereNativeBikkieItems,
 } from "@/shared/harthmere/harthmere_native_bikkie_items";
+import {
+  HARTHMERE_NATIVE_ITEM_ID_MANIFEST,
+  HARTHMERE_NATIVE_NPC_ID_MANIFEST,
+} from "@/shared/harthmere/harthmere_native_id_manifest";
+import {
+  harthmereNativeBiomesIdForNpcType,
+  harthmereNativeItemIdForBiomesId,
+} from "@/shared/harthmere/harthmere_native_item_ids";
 import { allHarthmereNativeNpcCombatProfiles } from "@/shared/harthmere/harthmere_native_combat_catalog";
 import { HARTHMERE_FOOD_DEFINITIONS } from "@/shared/harthmere/mmo_farming_food_stamina";
 import { HARTHMERE_MEDICAL_ITEM_DEFINITIONS } from "@/shared/harthmere/mmo_medical_health";
@@ -19,6 +27,10 @@ import {
 } from "@/shared/harthmere/mmo_inventory_authority";
 import assert from "assert";
 import type { BiomesId } from "@/shared/ids";
+import { NATIVE_ROAD_AHEAD_MUCKWAD_ITEM_ID } from "@/shared/harthmere/native_road_ahead_contract";
+import { allHarthmereNativeQuestBiscuits } from "@/shared/harthmere/harthmere_native_quests";
+import { SNAPSHOT_GROVE_QUESTS } from "@/shared/harthmere/snapshot_grove_content";
+import { HARTHMERE_QUEST_CATALOG } from "@/shared/harthmere/quest_compendium";
 
 function tray(contents: ReadonlyMap<number, Biscuit> = new Map()) {
   return {
@@ -29,6 +41,71 @@ function tray(contents: ReadonlyMap<number, Biscuit> = new Map()) {
 }
 
 describe("Harthmere exact native Bikkie overlay", () => {
+  it("requires every authored item and NPC identity to be checked in", () => {
+    const definitions = ensureHarthmereNativeItemCatalogue();
+    for (const definition of definitions) {
+      const parsedNumericId = Number(definition.itemId);
+      if (Number.isSafeInteger(parsedNumericId) && parsedNumericId > 0) {
+        continue;
+      }
+      assert.ok(
+        Object.hasOwn(HARTHMERE_NATIVE_ITEM_ID_MANIFEST, definition.itemId),
+        `${definition.itemId} is missing from the native item manifest`
+      );
+    }
+
+    for (const profile of allHarthmereNativeNpcCombatProfiles()) {
+      assert.equal(
+        HARTHMERE_NATIVE_NPC_ID_MANIFEST[
+          profile.key as keyof typeof HARTHMERE_NATIVE_NPC_ID_MANIFEST
+        ],
+        profile.id
+      );
+      assert.equal(harthmereNativeBiomesIdForNpcType(profile.key), profile.id);
+    }
+
+    assert.equal(
+      HARTHMERE_NATIVE_ITEM_ID_MANIFEST.muckwad,
+      NATIVE_ROAD_AHEAD_MUCKWAD_ITEM_ID
+    );
+    assert.equal(
+      HARTHMERE_NATIVE_ITEM_ID_MANIFEST.muckwad_voxel_block,
+      NATIVE_ROAD_AHEAD_MUCKWAD_ITEM_ID
+    );
+    assert.equal(
+      harthmereNativeItemIdForBiomesId(NATIVE_ROAD_AHEAD_MUCKWAD_ITEM_ID),
+      "muckwad"
+    );
+  });
+
+  it("does not mint native identities for misspelled or renamed content", () => {
+    assert.equal(harthmereNativeBiomesIdForItemId("iron_oree"), undefined);
+    assert.equal(
+      harthmereNativeBiomesIdForNpcType("monster_road_muckwadd"),
+      undefined
+    );
+  });
+
+  it("publishes every authored Grove and Bible quest as a native challenge", () => {
+    const quests = allHarthmereNativeQuestBiscuits();
+    assert.equal(
+      quests.length,
+      SNAPSHOT_GROVE_QUESTS.length + HARTHMERE_QUEST_CATALOG.length
+    );
+    assert.equal(new Set(quests.map((quest) => quest.id)).size, quests.length);
+    const augmented = withHarthmereNativeBikkieItems(tray());
+    for (const quest of quests) {
+      const biscuit = augmented.contents.get(quest.id);
+      assert.ok(biscuit?.isQuest, quest.name);
+      assert.ok(biscuit?.trigger, `${quest.name} has no trigger tree`);
+      assert.equal(
+        conformsWith(bikkie.schema.quests.schema, biscuit),
+        true,
+        `${quest.name} must be discoverable through /quests`
+      );
+    }
+  });
+
   it("covers every authored gathering node and all 79 exact yield identities", () => {
     const definitions = new Map(
       ensureHarthmereNativeItemCatalogue().map((definition) => [
@@ -156,6 +233,49 @@ describe("Harthmere exact native Bikkie overlay", () => {
     }
   });
 
+  it("adopts an exact native NPC biscuit restored from Redis without overlay hashes", () => {
+    const profile = allHarthmereNativeNpcCombatProfiles().find(
+      (entry) => entry.key === "robot_sentinel"
+    );
+    assert.ok(profile);
+    const restored = {
+      id: profile.id,
+      name: `harthmere_npc_${profile.key}`,
+      displayName: "Stale Sentinel",
+    } as Biscuit;
+
+    const augmented = withHarthmereNativeBikkieItems(
+      tray(new Map([[profile.id, restored]]))
+    );
+    const adopted = augmented.contents.get(profile.id);
+
+    assert.equal(adopted?.name, restored.name);
+    assert.equal(adopted?.displayName, profile.displayName);
+    assert.ok(
+      augmented.hashes
+        .get(profile.id)
+        ?.startsWith(`${HARTHMERE_NATIVE_BIKKIE_OVERLAY_VERSION}:npc:`)
+    );
+  });
+
+  it("still rejects an unrelated biscuit at a native NPC id", () => {
+    const profile = allHarthmereNativeNpcCombatProfiles()[0];
+    assert.ok(profile);
+    const unrelated = {
+      id: profile.id,
+      name: "unrelated_snapshot_npc",
+      displayName: "Unrelated",
+    } as Biscuit;
+
+    assert.throws(
+      () =>
+        withHarthmereNativeBikkieItems(
+          tray(new Map([[profile.id, unrelated]]))
+        ),
+      /collides with unrelated_snapshot_npc/
+    );
+  });
+
   it("authors native weapon DPS and durable armor on exact item biscuits", () => {
     const augmented = withHarthmereNativeBikkieItems(tray());
     const sword = augmented.contents.get(
@@ -209,6 +329,23 @@ describe("Harthmere exact native Bikkie overlay", () => {
       undefined,
       "custom revival must not be downgraded to generic eat/drink"
     );
+  });
+
+  it("publishes local Harthmere seeds through the native farming contract", () => {
+    const augmented = withHarthmereNativeBikkieItems(tray());
+    for (const seedItemId of ["seed_wheat", "seed_carrot", "seed_muckroot"]) {
+      const seed = augmented.contents.get(
+        harthmereNativeBiomesIdForItemId(seedItemId)!
+      );
+      assert.equal(seed?.isSeed, true, seedItemId);
+      assert.equal(seed?.action, "plant", seedItemId);
+      assert.deepEqual(seed?.plantableBlocks, [BikkieIds.tilledSoil]);
+      assert.equal(seed?.farming?.kind, "basic", seedItemId);
+      assert.ok(
+        seed?.farming?.kind === "basic" && seed.farming.dropTable?.length,
+        seedItemId
+      );
+    }
   });
 
   it("copies only presentation assets while preserving exact wearable ids", () => {

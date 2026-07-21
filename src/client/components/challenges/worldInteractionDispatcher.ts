@@ -31,8 +31,11 @@ interface RegisteredWorldInteractionCandidate
 
 const candidates = new Map<symbol, RegisteredWorldInteractionCandidate>();
 const subscribers = new Set<() => void>();
+const DEFAULT_KEY_CODES = ["KeyF"] as const;
 let nextOrder = 1;
 let removeKeyboardListener: (() => void) | undefined;
+let nextSubscriberNotificationId = 1;
+let pendingSubscriberNotificationId: number | undefined;
 
 function eventStartedInEditable(event: Event): boolean {
   const target = event.target as HTMLElement | null;
@@ -49,7 +52,7 @@ function candidateAcceptsKey(
   candidate: RegisteredWorldInteractionCandidate,
   keyCode: string
 ) {
-  return (candidate.keyCodes ?? ["KeyF"]).includes(keyCode);
+  return (candidate.keyCodes ?? DEFAULT_KEY_CODES).includes(keyCode);
 }
 
 function selectedCandidate(keyCode: string) {
@@ -69,8 +72,44 @@ function selectedCandidate(keyCode: string) {
   return selected;
 }
 
+function interactionKeys(
+  ...candidateValues: Array<WorldInteractionCandidate | undefined>
+) {
+  const keys = new Set<string>();
+  for (const candidate of candidateValues) {
+    for (const keyCode of candidate?.keyCodes ?? DEFAULT_KEY_CODES) {
+      keys.add(keyCode);
+    }
+  }
+  return keys;
+}
+
+function selectedTokenSnapshot(keyCodes: Iterable<string>) {
+  const snapshot = new Map<string, symbol | undefined>();
+  for (const keyCode of keyCodes) {
+    snapshot.set(keyCode, selectedCandidate(keyCode)?.token);
+  }
+  return snapshot;
+}
+
+function selectionChanged(snapshot: Map<string, symbol | undefined>) {
+  for (const [keyCode, selectedToken] of snapshot) {
+    if (selectedCandidate(keyCode)?.token !== selectedToken) {
+      return true;
+    }
+  }
+  return false;
+}
+
 function notifySubscribers() {
-  for (const subscriber of subscribers) subscriber();
+  if (pendingSubscriberNotificationId !== undefined) return;
+  const notificationId = nextSubscriberNotificationId++;
+  pendingSubscriberNotificationId = notificationId;
+  queueMicrotask(() => {
+    if (pendingSubscriberNotificationId !== notificationId) return;
+    pendingSubscriberNotificationId = undefined;
+    for (const subscriber of [...subscribers]) subscriber();
+  });
 }
 
 function installKeyboardListener() {
@@ -112,14 +151,38 @@ export function registerWorldInteractionCandidate(
   candidate: WorldInteractionCandidate
 ) {
   const token = Symbol(candidate.id);
+  const registrationKeys = interactionKeys(candidate);
+  const previousSelection = selectedTokenSnapshot(registrationKeys);
   candidates.set(token, { ...candidate, token, order: nextOrder++ });
   installKeyboardListener();
-  notifySubscribers();
+  if (selectionChanged(previousSelection)) {
+    notifySubscribers();
+  }
   return {
     token,
+    update: (nextCandidate: WorldInteractionCandidate) => {
+      const currentCandidate = candidates.get(token);
+      if (!currentCandidate) return;
+      const affectedKeys = interactionKeys(currentCandidate, nextCandidate);
+      const previousSelection = selectedTokenSnapshot(affectedKeys);
+      candidates.set(token, {
+        ...nextCandidate,
+        token,
+        order: currentCandidate.order,
+      });
+      if (selectionChanged(previousSelection)) {
+        notifySubscribers();
+      }
+    },
     unregister: () => {
-      if (!candidates.delete(token)) return;
-      notifySubscribers();
+      const currentCandidate = candidates.get(token);
+      if (!currentCandidate) return;
+      const affectedKeys = interactionKeys(currentCandidate);
+      const previousSelection = selectedTokenSnapshot(affectedKeys);
+      candidates.delete(token);
+      if (selectionChanged(previousSelection)) {
+        notifySubscribers();
+      }
       removeKeyboardListenerWhenIdle();
     },
   };
@@ -152,6 +215,8 @@ export function useWorldInteractionCandidate(
   primaryKeyCode = "KeyF"
 ) {
   const registrationToken = useRef<symbol>();
+  const registration =
+    useRef<ReturnType<typeof registerWorldInteractionCandidate>>();
   const selectedToken = useSyncExternalStore(
     subscribe,
     () => selectedTokenForKey(primaryKeyCode),
@@ -160,18 +225,31 @@ export function useWorldInteractionCandidate(
 
   useEffect(() => {
     if (!candidate) {
+      const currentRegistration = registration.current;
+      registration.current = undefined;
       registrationToken.current = undefined;
+      currentRegistration?.unregister();
       return;
     }
-    const registration = registerWorldInteractionCandidate(candidate);
-    registrationToken.current = registration.token;
+
+    if (registration.current) {
+      registration.current.update(candidate);
+      return;
+    }
+
+    const nextRegistration = registerWorldInteractionCandidate(candidate);
+    registration.current = nextRegistration;
+    registrationToken.current = nextRegistration.token;
+  });
+
+  useEffect(() => {
     return () => {
-      registration.unregister();
-      if (registrationToken.current === registration.token) {
-        registrationToken.current = undefined;
-      }
+      const currentRegistration = registration.current;
+      registration.current = undefined;
+      registrationToken.current = undefined;
+      currentRegistration?.unregister();
     };
-  }, [candidate]);
+  }, []);
 
   return Boolean(
     candidate &&
@@ -181,8 +259,12 @@ export function useWorldInteractionCandidate(
 }
 
 export function resetWorldInteractionDispatcherForTest() {
+  const hadCandidates = candidates.size > 0;
   candidates.clear();
   nextOrder = 1;
-  notifySubscribers();
+  pendingSubscriberNotificationId = undefined;
+  if (hadCandidates) {
+    notifySubscribers();
+  }
   removeKeyboardListener?.();
 }

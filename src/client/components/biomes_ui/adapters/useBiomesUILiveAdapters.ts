@@ -78,7 +78,10 @@ import {
 } from "@/shared/ecs/gen/events";
 import type { OwnedItemReference } from "@/shared/ecs/gen/types";
 import { fireAndForget } from "@/shared/util/async";
-import { harthmereItemIdToBiomesEcsItem } from "@/shared/harthmere/harthmere_biomes_ecs_bridge";
+import {
+  harthmereItemIdToBiomesEcsItem,
+  harthmereItemIdToBiomesId,
+} from "@/shared/harthmere/harthmere_biomes_ecs_bridge";
 import { harthmereEquipmentSlotToBikkieWearableSlot } from "@/shared/harthmere/harthmere_bikkie_wearables";
 import {
   createBiomesUIGuildsAdapter,
@@ -1138,7 +1141,7 @@ function isLiveVoxelBlockItemId(itemId: string) {
 }
 
 function isNativeBikkieItemId(itemId: string) {
-  return safeParseBiomesId(itemId) !== undefined;
+  return harthmereItemIdToBiomesId(itemId) !== undefined;
 }
 
 const RETIRED_ROAD_AHEAD_CLOTHING_ALIASES = new Set([

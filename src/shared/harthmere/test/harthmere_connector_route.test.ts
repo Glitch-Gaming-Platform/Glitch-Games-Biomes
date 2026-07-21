@@ -1,7 +1,7 @@
 import assert from "assert";
 import {
   HARTHMERE_CONNECTOR_ROUTE_ANCHORS,
-  HARTHMERE_CONNECTOR_WEST_GATE_LANDING,
+  HARTHMERE_CONNECTOR_TOWN_ENTRANCE,
   planHarthmereConnectorRoute,
   validateHarthmereConnectorRoutePlan,
   type HarthmereConnectorColumn,
@@ -13,13 +13,10 @@ function syntheticSample(input?: {
 }) {
   return (x: number, z: number): HarthmereConnectorColumn => ({
     surfaceY:
-      x === HARTHMERE_CONNECTOR_WEST_GATE_LANDING[0] &&
-      z === HARTHMERE_CONNECTOR_WEST_GATE_LANDING[1]
-        ? 56
-        : input?.surfaceY?.(x, z) ??
-          (x >= 890 && x <= HARTHMERE_CONNECTOR_ROUTE_ANCHORS.at(-1)![0]
-            ? 64 - Math.floor((x - 890) / 3)
-            : 64),
+      input?.surfaceY?.(x, z) ??
+      (x >= 890 && x <= HARTHMERE_CONNECTOR_ROUTE_ANCHORS.at(-1)![0]
+        ? 64 - Math.floor((x - 890) / 3)
+        : 64),
     blocked: input?.blocked?.(x, z) ?? false,
     canTraverse: true,
     canResurface: true,
@@ -27,27 +24,38 @@ function syntheticSample(input?: {
 }
 
 describe("harthmere protected connector route", () => {
-  it("finds a continuous player route and builds the west-gate stair", () => {
+  it("finds a continuous player route through the town entrance", () => {
     const sample = syntheticSample();
     const plan = planHarthmereConnectorRoute({ sample });
 
     assert.deepEqual(validateHarthmereConnectorRoutePlan(plan, sample), []);
     assert.ok(plan.path.length > 300);
     assert.ok(plan.edits.some((edit) => edit.label === "road_center"));
-    assert.ok(plan.edits.some((edit) => edit.label === "stair_cap"));
-    assert.ok(plan.edits.some((edit) => edit.label === "stair_carve"));
-    const stairCenterline = plan.edits
-      .filter((edit) => edit.label === "stair_cap" && edit.position[2] === -209)
-      .sort((a, b) => a.position[0] - b.position[0]);
+    assert.ok(plan.edits.some((edit) => edit.label === "approach_cap"));
+    assert.ok(plan.edits.some((edit) => edit.label === "passage_clearance"));
+    assert.deepEqual(plan.path.at(-1), HARTHMERE_CONNECTOR_TOWN_ENTRANCE);
     assert.ok(
-      stairCenterline.every(
-        (edit, index) =>
-          index === 0 ||
-          Math.abs(edit.position[1] - stairCenterline[index - 1].position[1]) <=
-            1
+      plan.traversal.every(
+        (point, index) =>
+          index === 0 || Math.abs(point[1] - plan.traversal[index - 1][1]) <= 1
       )
     );
-    assert.equal(stairCenterline.at(-1)?.position[1], 56);
+    assert.equal(plan.traversal.at(-1)?.[1], 64);
+  });
+
+  it("routes the player-width approach around the two live bridge blockers", () => {
+    const blocked = (x: number, z: number) =>
+      (x >= 904 && x <= 908 && z >= -212 && z <= -208) ||
+      (x >= 898 && x <= 902 && z >= -204 && z <= -200);
+    const sample = syntheticSample({ blocked });
+    const plan = planHarthmereConnectorRoute({ sample });
+
+    assert.deepEqual(validateHarthmereConnectorRoutePlan(plan, sample), []);
+    assert.deepEqual(plan.path.at(-1), HARTHMERE_CONNECTOR_TOWN_ENTRANCE);
+    assert.ok(plan.path.every(([x, z]) => !blocked(x, z)));
+    assert.ok(
+      plan.edits.every((edit) => !blocked(edit.position[0], edit.position[2]))
+    );
   });
 
   it("detours around a building footprint instead of editing through it", () => {
