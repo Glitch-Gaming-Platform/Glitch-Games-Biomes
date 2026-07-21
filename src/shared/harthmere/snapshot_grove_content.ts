@@ -11,6 +11,8 @@ import {
   GROVE_ECONOMY_STARTER_NPCS,
   GROVE_ECONOMY_STARTER_QUESTS,
 } from "@/shared/harthmere/grove_economy_starter";
+import { shiftHarthmereAuthoredPositionToWorld } from "@/shared/harthmere/coordinate_transform";
+import { HARTHMERE_EXTENSION_ROAD } from "@/shared/harthmere/world_extension";
 
 export const SNAPSHOT_GROVE_BIBLE_CONTENT_VERSION =
   "snapshot-grove-bible-grounded";
@@ -178,6 +180,15 @@ export function snapshotGroveGroundedPosition(position: Vec3): Vec3 {
 
 export function snapshotGroveMarkerPosition(position: Vec3): Vec3 {
   return [position[0], SNAPSHOT_GROVE_LIVE_MARKER_Y, position[2]];
+}
+
+export function snapshotHarthmereAuthoredMarkerPosition(
+  position: Vec3
+): Vec3 {
+  // Harthmere markers use the town's authored Y=52/53/54 plane and only take
+  // the shared XZ transform. Reusing the raised Grove marker helper would put
+  // town interactions seventeen blocks above the generated extension ground.
+  return shiftHarthmereAuthoredPositionToWorld(position);
 }
 
 export function snapshotGroveNpcEntityId(npc: Pick<SnapshotGroveNpc, "idOffset">): BiomesId {
@@ -799,7 +810,7 @@ export const SNAPSHOT_GROVE_LANDMARKS: SnapshotGroveLandmark[] = [
   // Second jobs board landmark for Harthmere's market district. Same kiosk
   // asset, planted right next to the Harthmere Market Office landmark so
   // the proximity check and the visible voxel building line up.
-  { id: "harthmere_town_market_posting_board", label: "Harthmere Town Jobs Board", position: snapshotGroveMarkerPosition([1046, SNAPSHOT_GROVE_MARKER_Y, -202]), kind: "interactable", area: "harthmere", visibleOnWorldMap: true },
+  { id: "harthmere_town_market_posting_board", label: "Harthmere Town Jobs Board", position: snapshotHarthmereAuthoredMarkerPosition([534, SNAPSHOT_GROVE_MARKER_Y, -202]), kind: "interactable", area: "harthmere", visibleOnWorldMap: true },
   { id: "old_grove_road_post", label: "Old Grove Road Post", position: snapshotGroveMarkerPosition([500, SNAPSHOT_GROVE_MARKER_Y, -140]), kind: "interactable", area: "old_grove_road", visibleOnWorldMap: true },
   { id: "muckwad_patch", label: "Muckwad Patch", position: snapshotGroveMarkerPosition([512, SNAPSHOT_GROVE_MARKER_Y, -152]), kind: "resource", area: "muck_edges", visibleOnWorldMap: true },
   { id: "building_practice_spot", label: "Building Practice Spot", position: snapshotGroveMarkerPosition([528, SNAPSHOT_GROVE_MARKER_Y, -152]), kind: "interactable", area: "old_grove_road", visibleOnWorldMap: true },
@@ -821,11 +832,11 @@ export const SNAPSHOT_GROVE_LANDMARKS: SnapshotGroveLandmark[] = [
   { id: "shutter_cove_marker", label: "Shutter Cove Photo Marker", position: snapshotGroveMarkerPosition([560, SNAPSHOT_GROVE_MARKER_Y, -182]), kind: "interactable", area: "shutter_cove", visibleOnWorldMap: true },
   { id: "coop_supply_box", label: "Old Supply Box", position: snapshotGroveMarkerPosition([384, SNAPSHOT_GROVE_MARKER_Y, -198]), kind: "interactable", area: "the_grove", visibleOnWorldMap: true },
   { id: "service_tower_platform", label: "Crossroads Service Tower", position: snapshotGroveMarkerPosition([498, SNAPSHOT_GROVE_MARKER_Y, -216]), kind: "interactable", area: "genesis_crossroads", visibleOnWorldMap: true },
-  { id: "harthmere_connector", label: "Road to Harthmere", position: snapshotGroveMarkerPosition([640, SNAPSHOT_GROVE_MARKER_Y, -209]), kind: "connector", area: "harthmere_connector", visibleOnWorldMap: true },
-  { id: "sergeant_bram_holt", label: "Sergeant Bram Holt", position: snapshotGroveMarkerPosition([998, SNAPSHOT_GROVE_MARKER_Y, -277]), kind: "npc", area: "harthmere", npcId: "sergeant_bram_holt", visibleOnWorldMap: true },
-  { id: "harthmere_market_office", label: "Harthmere Market Office", position: snapshotGroveMarkerPosition([1044, SNAPSHOT_GROVE_MARKER_Y, -207]), kind: "interactable", area: "harthmere", visibleOnWorldMap: true },
-  { id: "harthmere_chapel_stone", label: "Harthmere Chapel Stone", position: snapshotGroveMarkerPosition([989, SNAPSHOT_GROVE_MARKER_Y, -139]), kind: "interactable", area: "harthmere", visibleOnWorldMap: true },
-  { id: "harthmere_bridge_center", label: "Harthmere Bridge Center", position: snapshotGroveMarkerPosition([904, SNAPSHOT_GROVE_MARKER_Y, -209]), kind: "connector", area: "harthmere", visibleOnWorldMap: true },
+  { id: "harthmere_connector", label: "Road to Harthmere", position: snapshotHarthmereAuthoredMarkerPosition([HARTHMERE_EXTENSION_ROAD.authoredStart[0], SNAPSHOT_GROVE_MARKER_Y, HARTHMERE_EXTENSION_ROAD.authoredStart[1]]), kind: "connector", area: "harthmere_connector", visibleOnWorldMap: true },
+  { id: "sergeant_bram_holt", label: "Sergeant Bram Holt", position: snapshotHarthmereAuthoredMarkerPosition([486, SNAPSHOT_GROVE_MARKER_Y, -277]), kind: "npc", area: "harthmere", npcId: "sergeant_bram_holt", visibleOnWorldMap: true },
+  { id: "harthmere_market_office", label: "Harthmere Market Office", position: snapshotHarthmereAuthoredMarkerPosition([532, SNAPSHOT_GROVE_MARKER_Y, -207]), kind: "interactable", area: "harthmere", visibleOnWorldMap: true },
+  { id: "harthmere_chapel_stone", label: "Harthmere Chapel Stone", position: snapshotHarthmereAuthoredMarkerPosition([477, SNAPSHOT_GROVE_MARKER_Y, -139]), kind: "interactable", area: "harthmere", visibleOnWorldMap: true },
+  { id: "harthmere_bridge_center", label: "Harthmere Bridge Center", position: snapshotHarthmereAuthoredMarkerPosition([392, SNAPSHOT_GROVE_MARKER_Y, -209]), kind: "connector", area: "harthmere", visibleOnWorldMap: true },
   // GROVE_FOUNTAIN_TUTORIAL_LANDMARKS.
   // These landmarks back the new fountain tutorial quests (chat channels,
   // food & stamina, first aid, hotbar/drop, first crafting recipe, and trade
@@ -845,6 +856,8 @@ export const SNAPSHOT_GROVE_LANDMARKS: SnapshotGroveLandmark[] = [
   // the index-derived numeric ids of existing world-map landmarks stay stable.
   { id: "harthmere_road_grove_trailhead", label: "Harthmere Road — Grove Trailhead", position: snapshotGroveMarkerPosition([560, SNAPSHOT_GROVE_MARKER_Y, -182]), kind: "connector", area: "harthmere_connector", visibleOnWorldMap: true },
   { id: "harthmere_road_west_gate", label: "Harthmere Road — Town Entrance", position: snapshotGroveMarkerPosition([988, SNAPSHOT_GROVE_MARKER_Y, -207]), kind: "connector", area: "harthmere", visibleOnWorldMap: true },
+  { id: "harthmere_extension_road_start", label: "Harthmere Extension Road — Map Boundary Start", position: [HARTHMERE_EXTENSION_ROAD.worldStart[0], SNAPSHOT_GROVE_MARKER_Y, HARTHMERE_EXTENSION_ROAD.worldStart[1]], kind: "connector", area: "harthmere_connector", visibleOnWorldMap: true },
+  { id: "harthmere_extension_north_gate", label: "Harthmere North Gate — Road End", position: [HARTHMERE_EXTENSION_ROAD.worldNorthGate[0], SNAPSHOT_GROVE_MARKER_Y, HARTHMERE_EXTENSION_ROAD.worldNorthGate[1]], kind: "connector", area: "harthmere", visibleOnWorldMap: true },
 ];
 
 export function snapshotGroveLandmarkById(id: string) {

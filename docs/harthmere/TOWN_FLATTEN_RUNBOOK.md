@@ -1,5 +1,11 @@
 # Harthmere Town Flatten Runbook (flat-town fix, 2026-07-14)
 
+> **Deprecated for the connected production town.** Do not run this in-place
+> flatten against the original map. Harthmere now uses the additive extension
+> documented in `docs/harthmere/ADDITIVE_WORLD_EXTENSION.md`: new terrain at
+> X=1792..2559, flat Y=52, with no original terrain replacement. This runbook
+> remains only as historical documentation and for isolated legacy snapshots.
+
 ## Why
 
 The 2026-07-14 systems audit measured the production terrain under the
@@ -14,13 +20,12 @@ the measured surface.
 - **Pure edit math** lives in `src/shared/harthmere/town_flatten_terraform.ts`
   (unit tests: `src/shared/harthmere/test/town_flatten_terraform.test.ts`):
   - Flatten area = the union of the 12 district-bible rectangles
-    (authored X 380–660, Z −380…−100 → world X 892–1172 after the +512 shift),
+    (authored X 380–660, Z −380…−100 → extension X 1980–2260 after the +1600 shift),
     **minus a ±16 protected hole around the Thaedryn arena anchor**
     (authored 640, −268) so the dragon quest's land is never bulldozed.
-  - Target level `HARTHMERE_TOWN_FLATTEN_TARGET_Y = 64` (modal measured
-    surface of the town core, and — enforced by the contract check — the same
-    Y the Q12 boss anchor stands on).
-  - Per column: carve air above 64, backfill dirt below it, re-cap with
+  - Target level `HARTHMERE_TOWN_FLATTEN_TARGET_Y = 52`, matching the additive
+    generator. The Q12 boss stands at feet Y=53.
+  - Per column: carve air above 52, backfill dirt below it, re-cap with
     grass. Already-flat columns produce **zero edits** (idempotent);
     water columns are skipped (the river keeps its bed); carve/fill are
     bounded (94 / 46) so no column can demand unbounded work.
@@ -79,5 +84,5 @@ node scripts/harthmere/check-harthmere-production-placement-map.cjs
   follow the new surface automatically; the placement-map regen (step 4)
   re-anchors everything server-side.
 - The flat level matches the renderer's authored `GROUND_Y` era assumption
-  much more closely (53.05 authored vs 64 world — the +512-shift world sits
+  much more closely (53.05 authored vs 53 extension feet — the +1600-shift town sits
   higher; do NOT change `GROUND_Y` without re-measuring after the flatten).

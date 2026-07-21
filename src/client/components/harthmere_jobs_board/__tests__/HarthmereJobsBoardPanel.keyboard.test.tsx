@@ -811,8 +811,8 @@ describe("HarthmereJobsBoardPanel keyboard support", () => {
       markerId: "harthmere_town_market_posting_board",
       location: {
         ...snapshot.boards[HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID].location,
-        x: 1046,
-        y: 65,
+        x: 2134,
+        y: 53,
         z: -202,
         district: "Harthmere Town Market",
         landmarkId: "harthmere_town_market_posting_board",
@@ -853,7 +853,7 @@ describe("HarthmereJobsBoardPanel keyboard support", () => {
         });
         createRoot(document.getElementById("root")).render(
           <HarthmereJobsBoardLiveContainer
-            worldContext={{ playerPosition: { x: 1046, y: 65, z: -202 } }}
+            worldContext={{ playerPosition: { x: 2134, y: 53, z: -202 } }}
             onClose={() => window.__jobsBoardEvents.push("close")}
           />
         );

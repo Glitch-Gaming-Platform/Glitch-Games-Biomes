@@ -5,6 +5,10 @@ export const WORLD_INTERACTION_PRIORITY = {
   // before any object behind the reticle. The player selected that mode and
   // its HUD is the visible contract for F.
   activeTool: 20_000,
+  // A physical jobs board is an explicit station interaction and must outrank
+  // an NPC standing beside or behind it. Otherwise the native cursor shortcut
+  // steals F and the board can never be opened or used in crowded settlements.
+  jobsBoard: 15_000,
   nativeEcs: 10_000,
   authoredStation: 6_000,
   authoredLoot: 5_000,

@@ -29,6 +29,7 @@ import {
 import {
   HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
   HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID,
+  HARTHMERE_JOBS_BOARD_HARTHMERE_POSITION,
   defaultHarthmereJobsBoardState,
   isActorAtHarthmereJobsBoard,
 } from "@/shared/harthmere/mmo_jobs_board_authority";
@@ -65,11 +66,14 @@ describe("Harthmere jobs board visibility fix (current)", () => {
       (m) => m.id === "harthmere_town_market_posting_board",
     );
     assert.ok(marker, "Harthmere town jobs board landmark must exist in snapshot content");
-    assert.equal(marker?.position[0], 1046);
-    assert.equal(marker?.position[2], -202);
+    assert.deepEqual(marker?.position, [
+      HARTHMERE_JOBS_BOARD_HARTHMERE_POSITION[0],
+      marker?.position[1],
+      HARTHMERE_JOBS_BOARD_HARTHMERE_POSITION[2],
+    ]);
     assert.ok(
-      (marker?.position[1] ?? 0) >= SNAPSHOT_GROVE_LIVE_MARKER_Y - 6,
-      "Harthmere town board marker Y must remain above the live snapshot ground",
+      (marker?.position[1] ?? 0) > HARTHMERE_JOBS_BOARD_HARTHMERE_POSITION[1],
+      "Harthmere town board map marker must sit above its extension feet position",
     );
     assert.equal(marker?.kind, "interactable");
     assert.equal(marker?.visibleOnWorldMap, true);
@@ -94,7 +98,13 @@ describe("Harthmere jobs board visibility fix (current)", () => {
     assert.equal(
       isActorAtHarthmereJobsBoard(
         state,
-        { actorPosition: { x: 1046, y: 65, z: -202 } },
+        {
+          actorPosition: {
+            x: HARTHMERE_JOBS_BOARD_HARTHMERE_POSITION[0],
+            y: HARTHMERE_JOBS_BOARD_HARTHMERE_POSITION[1],
+            z: HARTHMERE_JOBS_BOARD_HARTHMERE_POSITION[2],
+          },
+        },
         HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID,
       ),
       true,

@@ -21,11 +21,11 @@
 //     ("build the world as real Biomes world data; do not fake the world with
 //     client-only meshes"). This file describes where the bible says the
 //     districts go; the terrain seeding/shifting (e.g. town_block_build
-//     and the +512 x offset documented in town_routes.ts) consume this layout.
+//     and the additive X offset documented in town_routes.ts) consume this layout.
 //
 // Coordinates are in authored snapshot world space.  The Grove sits roughly
 // in x≈[300,650], z≈[-360,-40] at ground y=52.  Harthmere is laid out east
-// of the Grove and uses the +512 x runtime offset documented in
+// of the Grove and uses the additive runtime offset documented in
 // HARTHMERE_CONNECTED_MAP_ROUTE_ANCHORS.  This means: every coordinate
 // here is the "authored" position; the runtime applies the offset uniformly
 // to NPCs, routes, quests, landmarks, and map markers together so the town

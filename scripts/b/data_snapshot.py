@@ -497,14 +497,36 @@ def run(
         )
 
 
+def configured_redis_address():
+    """Match the Redis environment precedence used by the TypeScript services."""
+    host = (
+        os.environ.get("GLITCH_REDIS_HOST")
+        or os.environ.get("LOCAL_REDIS_HOST")
+        or os.environ.get("REDIS_HOST")
+        or "127.0.0.1"
+    )
+    port = int(
+        os.environ.get("GLITCH_REDIS_PORT")
+        or os.environ.get("LOCAL_REDIS_PORT")
+        or os.environ.get("REDIS_PORT")
+        or "6379"
+    )
+    return host, port
+
+
 def redis_cli(command: str, db=0):
-    args = ["redis-cli", "-n", str(db)]
+    host, port = configured_redis_address()
+    args = ["redis-cli", "-h", host, "-p", str(port), "-n", str(db)]
     p = subprocess.Popen(args, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
     return p.communicate(command.encode(), timeout=60)[0].decode()
 
 
 def redis_server_started():
-    ping = subprocess.Popen(["redis-cli", "ping"], stdout=subprocess.PIPE)
+    host, port = configured_redis_address()
+    ping = subprocess.Popen(
+        ["redis-cli", "-h", host, "-p", str(port), "ping"],
+        stdout=subprocess.PIPE,
+    )
     return ping.communicate()[0] == b"PONG\n"
 
 
@@ -529,9 +551,17 @@ class RedisServer(object):
             )
             return None
 
-        click.secho("Starting redis-server...", fg=WARNING_COLOR)
+        host, port = configured_redis_address()
+        click.secho(
+            f"Starting redis-server on {host}:{port}...", fg=WARNING_COLOR
+        )
+        if host not in ("127.0.0.1", "localhost"):
+            raise RuntimeError(
+                "Managed data-snapshot Redis must use a local host; "
+                "pass --reuse-running-redis for an external server."
+            )
         self.process = subprocess.Popen(
-            "redis-server",
+            ["redis-server", "--bind", "127.0.0.1", "--port", str(port)],
             start_new_session=self.keep_after_exit,
         )
         # Wait for server to start.
@@ -612,11 +642,15 @@ def _configure_snapshot_runtime_environment():
         "B_WEB_RAM",
         os.environ.get("HARTHMERE_SNAPSHOT_WEB_RAM_MB", "16384"),
     )
-    if os.environ.get("BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN") == "1":
-        _snapshot_setdefault_env("NEXT_PUBLIC_BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN", "1")
+    # The additive town is regular snapshot content. Export it by default so
+    # client assets, quest hints, and server terrain cannot disagree.
+    _snapshot_setdefault_env(
+        "NEXT_PUBLIC_BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN",
+        os.environ.get("BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN", "1"),
+    )
     _snapshot_setdefault_env(
         "NEXT_PUBLIC_BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X",
-        os.environ.get("BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X", "512"),
+        os.environ.get("BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X", "1600"),
     )
     _snapshot_setdefault_env(
         "NEXT_PUBLIC_BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_Z",

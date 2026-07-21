@@ -3,6 +3,11 @@ import {
   HARTHMERE_UPLOADED_ASSET_DIMENSIONS_VERSION,
   harthmereUploadedAssetCollisionFootprint,
 } from "@/shared/harthmere/uploaded_asset_dimensions";
+import {
+  HARTHMERE_ADDITIVE_TOWN_OFFSET_X,
+  HARTHMERE_ADDITIVE_TOWN_OFFSET_Z,
+  HARTHMERE_EXTENSION_ROAD,
+} from "@/shared/harthmere/world_extension";
 
 export const HARTHMERE_TOWN_REGISTRY_VERSION = "harthmere-town-registry-metadata-collision-lod";
 export const HARTHMERE_TOWN_REGISTRY_ASSET_DIMENSIONS_COLLISION_VERSION = HARTHMERE_UPLOADED_ASSET_DIMENSIONS_VERSION;
@@ -294,9 +299,9 @@ export const HARTHMERE_LORE_DESIGN_RULES = [
 
 export const HARTHMERE_CONNECTED_MAP_RULES = {
   version: "harthmere-connected-map-rules",
-  defaultOffset: { x: 512, z: 0, shardAligned: true, shardSize: 32 },
-  authoredRoad: { from: [128, -209], to: [392, -209], shiftedDefaultFrom: [640, -209], shiftedDefaultTo: [904, -209] },
-  purpose: "Connect the implemented snapshot edge into Harthmere's west road so the town is reachable, readable, and not hidden.",
+  defaultOffset: { x: HARTHMERE_ADDITIVE_TOWN_OFFSET_X, z: HARTHMERE_ADDITIVE_TOWN_OFFSET_Z, shardAligned: true, shardSize: 32 },
+  authoredRoad: { from: [192, -209], to: [392, -209], shiftedDefaultFrom: HARTHMERE_EXTENSION_ROAD.worldStart, shiftedDefaultTo: HARTHMERE_EXTENSION_ROAD.worldWestGate },
+  purpose: "Cross the existing east edge into additive terrain and continue to Harthmere's west and north gates without replacing the current map.",
   requiredCues: ["road", "signpost", "lamp", "red-black-watch-banner", "traveler-shrine", "patrol", "off-road-threat"],
 } as const;
 

@@ -68,6 +68,7 @@ import {
   resolveSnapshotGroveGroundY,
   resolveSnapshotGroveTerrainMode,
 } from "@/shared/harthmere/snapshot_backend_resolver";
+import { HARTHMERE_EXTENSION_ROAD } from "@/shared/harthmere/world_extension";
 
 describe("Grove NPC positions (snapshot_grove_content)", () => {
   it("every Grove NPC has feet at the canonical ground Y", () => {
@@ -219,15 +220,15 @@ describe("Harthmere connected-world bounds", () => {
     );
   });
 
-  it("Grove publishes a connector landmark that's reachable from the east edge", () => {
+  it("publishes the connector at the additive map-boundary road start", () => {
     const connector = SNAPSHOT_GROVE_LANDMARKS.find(
       (landmark) => landmark.id === "harthmere_connector"
     );
     assert.ok(connector, "Grove must publish a harthmere_connector landmark");
-    assert.ok(
-      connector.position[0] >= SNAPSHOT_GROVE_LIVE_BOUNDS.min[0] &&
-        connector.position[0] <= SNAPSHOT_GROVE_LIVE_BOUNDS.max[0] + 200,
-      `Connector at x=${connector.position[0]} is too far from the Grove east edge`
+    assert.deepEqual(
+      [connector.position[0], connector.position[2]],
+      HARTHMERE_EXTENSION_ROAD.worldStart,
+      "connector marker must match the first generated extension road block"
     );
   });
 });

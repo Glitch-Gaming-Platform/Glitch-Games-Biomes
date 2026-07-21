@@ -1,4 +1,7 @@
-import { runHarthmereNativeVitalsSchedulerTick } from "@/server/harthmere/native_vitals_scheduler";
+import {
+  claimHarthmereNativeVitalsSchedulerTick,
+  runHarthmereNativeVitalsSchedulerTick,
+} from "@/server/harthmere/native_vitals_scheduler";
 import { ShimWorldApi } from "@/server/shared/world/shim/api";
 import { InMemoryWorld } from "@/server/shared/world/shim/in_memory_world";
 import { addGameUser, editEntity } from "@/server/test/test_helpers";
@@ -11,6 +14,43 @@ import type { VoxelooModule } from "@/shared/wasm/types";
 import assert from "assert";
 
 describe("Harthmere native vitals scheduler", () => {
+  it("allows exactly one replica to claim each scheduler interval", async () => {
+    const claimed = new Set<string>();
+    const redis = {
+      async set(key: string, _value: string, ...args: Array<string | number>) {
+        assert.deepEqual(args.slice(-1), ["NX"]);
+        if (claimed.has(key)) return null;
+        claimed.add(key);
+        return "OK";
+      },
+    };
+
+    assert.equal(
+      await claimHarthmereNativeVitalsSchedulerTick({
+        redis,
+        nowMs: 1_000,
+        intervalMs: 1_000,
+      }),
+      true
+    );
+    assert.equal(
+      await claimHarthmereNativeVitalsSchedulerTick({
+        redis,
+        nowMs: 1_999,
+        intervalMs: 1_000,
+      }),
+      false
+    );
+    assert.equal(
+      await claimHarthmereNativeVitalsSchedulerTick({
+        redis,
+        nowMs: 2_000,
+        intervalMs: 1_000,
+      }),
+      true
+    );
+  });
+
   it("ticks active players without relying on a mounted HUD", async () => {
     const world = new InMemoryWorld();
     const player = await addGameUser(world, generateTestId(), {});

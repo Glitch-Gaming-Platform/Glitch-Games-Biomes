@@ -2,7 +2,7 @@ import { getTerrainID } from "@/shared/asset_defs/terrain";
 import type { BiomesId } from "@/shared/ids";
 
 export const HARTHMERE_CONNECTOR_ROUTE_VERSION =
-  "harthmere-protected-town-entry-route-v3" as const;
+  "harthmere-protected-town-entry-route-v5" as const;
 
 export type HarthmereConnectorPoint = readonly [x: number, z: number];
 
@@ -51,17 +51,34 @@ export const HARTHMERE_CONNECTOR_ROUTE_BOUNDS = {
 // engineered approach into Harthmere. Anchors are resolved to
 // nearby safe terrain at materialization time so an existing building can
 // never be bulldozed just because it overlaps an authored waypoint. The final
-// engineered approach continues beyond the west-gate terrain and lands at the
-// first confirmed, player-usable Old Bridge town road surface.
+// engineered descent leaves the upper shelf at the Harthmere Bridge Center,
+// lands on the confirmed green Y=56 floor inside the opening, and then follows
+// the natural, building-safe terrain to the marked town entrance.
+export const HARTHMERE_CONNECTOR_DESCENT_START: HarthmereConnectorPoint = [
+  896, -209,
+];
+export const HARTHMERE_CONNECTOR_DESCENT_LANDING: HarthmereConnectorPoint = [
+  903, -209,
+];
+export const HARTHMERE_CONNECTOR_DESCENT_LANDING_Y = 56;
+export const HARTHMERE_CONNECTOR_DESCENT_LEAD_IN = [
+  HARTHMERE_CONNECTOR_DESCENT_START,
+] as const satisfies readonly HarthmereConnectorPoint[];
+export const HARTHMERE_CONNECTOR_DESCENT_PATH = [
+  HARTHMERE_CONNECTOR_DESCENT_START,
+  [897, -209],
+  [898, -209],
+  [899, -209],
+  [900, -209],
+  [901, -209],
+  [902, -209],
+  HARTHMERE_CONNECTOR_DESCENT_LANDING,
+] as const satisfies readonly HarthmereConnectorPoint[];
 export const HARTHMERE_CONNECTOR_ROUTE_ANCHORS = [
   [560, -182],
   [640, -209],
-  [896, -209],
+  HARTHMERE_CONNECTOR_DESCENT_START,
 ] as const satisfies readonly HarthmereConnectorPoint[];
-
-export const HARTHMERE_CONNECTOR_APPROACH_START: HarthmereConnectorPoint = [
-  896, -209,
-];
 export const HARTHMERE_CONNECTOR_TOWN_ENTRANCE: HarthmereConnectorPoint = [
   988, -207,
 ];
@@ -434,43 +451,73 @@ function approachCellsForPoint(
   return cells;
 }
 
-function engineeredTownApproach(
+function engineeredConnectorSegment(
   start: HarthmereConnectorPoint,
-  sample: (x: number, z: number) => HarthmereConnectorColumn
+  end: HarthmereConnectorPoint,
+  description: string,
+  sample: (x: number, z: number) => HarthmereConnectorColumn,
+  authoredPath?: readonly HarthmereConnectorPoint[]
 ): {
   path: HarthmereConnectorPoint[];
   traversal: HarthmereConnectorTraversalPoint[];
   edits: HarthmereConnectorRouteEdit[];
   failures: string[];
 } {
-  const path = findBuildableApproach(
-    start,
-    HARTHMERE_CONNECTOR_TOWN_ENTRANCE,
-    sample
-  );
+  const path = authoredPath
+    ? authoredPath.map(([x, z]): HarthmereConnectorPoint => [x, z])
+    : findBuildableApproach(start, end, sample);
   if (!path) {
     return {
       path: [],
       traversal: [],
       edits: [],
       failures: [
-        `no protected-structure-safe town approach from ${start.join(
+        `no protected-structure-safe ${description} from ${start.join(
           ","
-        )} to ${HARTHMERE_CONNECTOR_TOWN_ENTRANCE.join(",")}`,
+        )} to ${end.join(",")}`,
       ],
     };
   }
+  if (
+    path.length === 0 ||
+    pointKey(path[0]) !== pointKey(start) ||
+    pointKey(path.at(-1)!) !== pointKey(end)
+  ) {
+    return {
+      path: [],
+      traversal: [],
+      edits: [],
+      failures: [`${description} authored path has incorrect endpoints`],
+    };
+  }
+  for (let index = 0; index < path.length; index += 1) {
+    if (!isBuildableApproachPoint(path[index], sample)) {
+      return {
+        path: [],
+        traversal: [],
+        edits: [],
+        failures: [
+          `${description} intersects protected column ${path[index].join(",")}`,
+        ],
+      };
+    }
+    if (index > 0 && manhattan(path[index - 1], path[index]) !== 1) {
+      return {
+        path: [],
+        traversal: [],
+        edits: [],
+        failures: [`${description} authored path contains a route gap`],
+      };
+    }
+  }
   const startY = sample(start[0], start[1]).surfaceY;
-  const endY = sample(
-    HARTHMERE_CONNECTOR_TOWN_ENTRANCE[0],
-    HARTHMERE_CONNECTOR_TOWN_ENTRANCE[1]
-  ).surfaceY;
+  const endY = sample(end[0], end[1]).surfaceY;
   if (startY === undefined || endY === undefined) {
     return {
       path: [],
       traversal: [],
       edits: [],
-      failures: ["town approach is missing start or entrance terrain"],
+      failures: [`${description} is missing start or end terrain`],
     };
   }
   const run = Math.max(1, path.length - 1);
@@ -480,12 +527,19 @@ function engineeredTownApproach(
       path: [],
       traversal: [],
       edits: [],
-      failures: [`town approach cannot cover rise ${rise} over run ${run}`],
+      failures: [`${description} cannot cover rise ${rise} over run ${run}`],
     };
   }
 
   const edits = new Map<string, HarthmereConnectorRouteEdit>();
-  const traversal: HarthmereConnectorTraversalPoint[] = [];
+  const traversal: HarthmereConnectorTraversalPoint[] = path.map(
+    ([x, z], index) => [x, startY + Math.round(rise * (index / run)), z]
+  );
+  const centerlineColumns = new Set(path.map(pointKey));
+  const floorByColumn = new Map<
+    string,
+    { point: HarthmereConnectorPoint; desiredY: number }
+  >();
   const addEdit = (edit: HarthmereConnectorRouteEdit) => {
     const key = edit.position.join(":");
     const previous = edits.get(key);
@@ -493,68 +547,89 @@ function engineeredTownApproach(
   };
 
   for (let index = 0; index < path.length; index += 1) {
-    const progress = index / run;
-    const desiredY = startY + Math.round(rise * progress);
-    const [x, z] = path[index];
-    traversal.push([x, desiredY, z]);
+    const [x, desiredY, z] = traversal[index];
+    floorByColumn.set(pointKey([x, z]), { point: [x, z], desiredY });
+  }
+  for (let index = 0; index < path.length; index += 1) {
+    const [x, desiredY, z] = traversal[index];
     for (const [cellX, cellZ] of approachCellsForPoint(path, index, sample)) {
-      const column = sample(cellX, cellZ);
+      // A shoulder from a nearby turn must never become a second floor above
+      // another centerline step. Keep every authored traversal column reserved
+      // for its own exact stair height and headroom.
       if (
-        !isWalkableColumn(column) ||
-        column.surfaceY === undefined ||
-        column.canResurface === false
+        (cellX !== x || cellZ !== z) &&
+        centerlineColumns.has(pointKey([cellX, cellZ]))
       ) {
-        return {
-          path,
-          traversal,
-          edits: [],
-          failures: [
-            `town approach intersects protected column ${cellX},${cellZ}`,
-          ],
-        };
+        continue;
       }
-      const cutOrFill = Math.abs(column.surfaceY - desiredY);
-      if (cutOrFill > HARTHMERE_CONNECTOR_MAX_APPROACH_CUT_OR_FILL) {
-        return {
-          path,
-          traversal,
-          edits: [],
-          failures: [
-            `town approach requires ${cutOrFill} blocks of cut/fill at ${cellX},${cellZ}`,
-          ],
-        };
+      const key = pointKey([cellX, cellZ]);
+      const previous = floorByColumn.get(key);
+      if (!previous || desiredY < previous.desiredY) {
+        floorByColumn.set(key, {
+          point: [cellX, cellZ],
+          desiredY,
+        });
       }
-      if (column.surfaceY > desiredY) {
-        for (
-          let y = desiredY + 1;
-          y <=
-          Math.min(
-            column.surfaceY,
-            desiredY + HARTHMERE_CONNECTOR_MIN_HEADROOM
-          );
-          y += 1
-        ) {
-          addEdit({
-            position: [cellX, y, cellZ],
-            value: 0 as BiomesId,
-            label: "passage_clearance",
-          });
-        }
-      } else if (column.surfaceY < desiredY) {
-        for (let y = column.surfaceY + 1; y < desiredY; y += 1) {
-          addEdit({
-            position: [cellX, y, cellZ],
-            value: APPROACH_FILL,
-            label: "approach_fill",
-          });
-        }
-      }
-      addEdit({
-        position: [cellX, desiredY, cellZ],
-        value: APPROACH_CAP,
-        label: "approach_cap",
-      });
     }
+  }
+
+  for (const {
+    point: [cellX, cellZ],
+    desiredY,
+  } of floorByColumn.values()) {
+    const column = sample(cellX, cellZ);
+    if (
+      !isWalkableColumn(column) ||
+      column.surfaceY === undefined ||
+      column.canResurface === false
+    ) {
+      return {
+        path,
+        traversal,
+        edits: [],
+        failures: [
+          `${description} intersects protected column ${cellX},${cellZ}`,
+        ],
+      };
+    }
+    const cutOrFill = Math.abs(column.surfaceY - desiredY);
+    if (cutOrFill > HARTHMERE_CONNECTOR_MAX_APPROACH_CUT_OR_FILL) {
+      return {
+        path,
+        traversal,
+        edits: [],
+        failures: [
+          `${description} requires ${cutOrFill} blocks of cut/fill at ${cellX},${cellZ}`,
+        ],
+      };
+    }
+    if (column.surfaceY > desiredY) {
+      for (
+        let y = desiredY + 1;
+        y <=
+        Math.min(column.surfaceY, desiredY + HARTHMERE_CONNECTOR_MIN_HEADROOM);
+        y += 1
+      ) {
+        addEdit({
+          position: [cellX, y, cellZ],
+          value: 0 as BiomesId,
+          label: "passage_clearance",
+        });
+      }
+    } else if (column.surfaceY < desiredY) {
+      for (let y = column.surfaceY + 1; y < desiredY; y += 1) {
+        addEdit({
+          position: [cellX, y, cellZ],
+          value: APPROACH_FILL,
+          label: "approach_fill",
+        });
+      }
+    }
+    addEdit({
+      position: [cellX, desiredY, cellZ],
+      value: APPROACH_CAP,
+      label: "approach_cap",
+    });
   }
   return { path, traversal, edits: [...edits.values()], failures: [] };
 }
@@ -619,8 +694,60 @@ export function planHarthmereConnectorRoute(input: {
   const surfaceTraversal: HarthmereConnectorTraversalPoint[] = path.map(
     ([x, z]) => [x, input.sample(x, z).surfaceY!, z]
   );
-  const approach = engineeredTownApproach(path.at(-1)!, input.sample);
-  failures.push(...approach.failures);
+  for (const leadInPoint of HARTHMERE_CONNECTOR_DESCENT_LEAD_IN.slice(1)) {
+    const previous = path.at(-1)!;
+    const previousY = input.sample(previous[0], previous[1]).surfaceY;
+    const column = input.sample(leadInPoint[0], leadInPoint[1]);
+    if (
+      manhattan(previous, leadInPoint) !== 1 ||
+      !isWalkableColumn(column) ||
+      column.surfaceY === undefined ||
+      previousY === undefined ||
+      Math.abs(column.surfaceY - previousY) > 1
+    ) {
+      failures.push(
+        `Harthmere descent lead-in is not walkable at ${leadInPoint.join(",")}`
+      );
+      break;
+    }
+    path.push(leadInPoint);
+    surfaceTraversal.push([leadInPoint[0], column.surfaceY, leadInPoint[1]]);
+  }
+  const descentLanding = input.sample(
+    HARTHMERE_CONNECTOR_DESCENT_LANDING[0],
+    HARTHMERE_CONNECTOR_DESCENT_LANDING[1]
+  );
+  if (
+    !isWalkableColumn(descentLanding) ||
+    descentLanding.canResurface === false ||
+    descentLanding.surfaceY !== HARTHMERE_CONNECTOR_DESCENT_LANDING_Y
+  ) {
+    failures.push(
+      `Harthmere descent landing is not usable at ${HARTHMERE_CONNECTOR_DESCENT_LANDING.join(
+        ","
+      )},${HARTHMERE_CONNECTOR_DESCENT_LANDING_Y}`
+    );
+  }
+  const descent = engineeredConnectorSegment(
+    path.at(-1)!,
+    HARTHMERE_CONNECTOR_DESCENT_LANDING,
+    "Harthmere floor descent",
+    input.sample,
+    HARTHMERE_CONNECTOR_DESCENT_PATH
+  );
+  failures.push(...descent.failures);
+  const lowerSurfacePath = findWalkableSegment(
+    HARTHMERE_CONNECTOR_DESCENT_LANDING,
+    HARTHMERE_CONNECTOR_TOWN_ENTRANCE,
+    input.sample
+  );
+  if (!lowerSurfacePath) {
+    failures.push(
+      `no building-safe lower-floor segment from ${HARTHMERE_CONNECTOR_DESCENT_LANDING.join(
+        ","
+      )} to ${HARTHMERE_CONNECTOR_TOWN_ENTRANCE.join(",")}`
+    );
+  }
   if (failures.length > 0) {
     return {
       path,
@@ -630,11 +757,25 @@ export function planHarthmereConnectorRoute(input: {
       failures,
     };
   }
+  const lowerSurfaceTraversal: HarthmereConnectorTraversalPoint[] =
+    lowerSurfacePath!.map(([x, z]) => [x, input.sample(x, z).surfaceY!, z]);
   return {
-    path: [...path, ...approach.path.slice(1)],
-    traversal: [...surfaceTraversal, ...approach.traversal.slice(1)],
+    path: [
+      ...path,
+      ...descent.path.slice(1),
+      ...lowerSurfacePath!.slice(1),
+    ],
+    traversal: [
+      ...surfaceTraversal,
+      ...descent.traversal.slice(1),
+      ...lowerSurfaceTraversal.slice(1),
+    ],
     resolvedAnchors,
-    edits: [...roadEditsForPath(path, input.sample), ...approach.edits],
+    edits: [
+      ...roadEditsForPath(path, input.sample),
+      ...descent.edits,
+      ...roadEditsForPath(lowerSurfacePath!, input.sample),
+    ],
     failures,
   };
 }
@@ -670,6 +811,17 @@ export function validateHarthmereConnectorRoutePlan(
     }
   }
   const finalPoint = plan.path.at(-1);
+  const landingIndex = plan.path.findIndex(
+    ([x, z]) =>
+      x === HARTHMERE_CONNECTOR_DESCENT_LANDING[0] &&
+      z === HARTHMERE_CONNECTOR_DESCENT_LANDING[1]
+  );
+  if (
+    landingIndex < 0 ||
+    plan.traversal[landingIndex]?.[1] !== HARTHMERE_CONNECTOR_DESCENT_LANDING_Y
+  ) {
+    failures.push("route does not land on the Y=56 Harthmere floor");
+  }
   if (
     finalPoint?.[0] !== HARTHMERE_CONNECTOR_TOWN_ENTRANCE[0] ||
     finalPoint?.[1] !== HARTHMERE_CONNECTOR_TOWN_ENTRANCE[1]

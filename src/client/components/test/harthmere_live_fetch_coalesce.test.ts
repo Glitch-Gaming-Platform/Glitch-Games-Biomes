@@ -43,12 +43,18 @@ function deferred<T>() {
 
 const originalWindow = (globalThis as any).window;
 
-function setFakeWindow(search: string, storedInstallId?: string) {
+function setFakeWindow(
+  search: string,
+  storedInstallId?: string,
+  biomesSession?: { userId: string; sessionId: string }
+) {
   (globalThis as any).window = {
     location: {
       href: `https://www.glitch.fun/games/test/play${search}`,
+      origin: "https://www.glitch.fun",
       search,
     },
+    __HARTHMERE_BIOMES_AUTH_SESSION: biomesSession,
     localStorage: {
       getItem(key: string) {
         return key === "biomes.glitch.installId"
@@ -319,6 +325,62 @@ describe("harthmere live fetch coalescing", () => {
       "install with spaces"
     );
     assert.equal(capturedHeaders?.get("Content-Type"), "application/json");
+  });
+
+  it("attaches the authenticated Biomes session to native ECS requests", () => {
+    setFakeWindow("?install_id=glitch-install", "glitch-install", {
+      userId: "4626616310484863",
+      sessionId: "biomes-session",
+    });
+    const prepared = prepareHarthmereLiveFetchRequest(
+      "/api/harthmere/native_container",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+    const headers = new Headers(prepared.init.headers);
+
+    assert.equal(headers.get("X-Biomes-User-Id"), "4626616310484863");
+    assert.equal(headers.get("X-Biomes-Session-Id"), "biomes-session");
+    assert.equal(headers.get("X-Glitch-Install-Id"), null);
+    assert.equal(prepared.input, "/api/harthmere/native_container");
+  });
+
+  it("keeps Glitch install and Biomes session identities distinct on live mode", () => {
+    setFakeWindow("?install_id=glitch-install", "glitch-install", {
+      userId: "8889894099659013",
+      sessionId: "biomes-session",
+    });
+    const prepared = prepareHarthmereLiveFetchRequest(
+      "/api/harthmere/live_mode",
+      { method: "POST" }
+    );
+    const headers = new Headers(prepared.init.headers);
+
+    assert.equal(headers.get("X-Glitch-Install-Id"), "glitch-install");
+    assert.equal(headers.get("X-Biomes-User-Id"), "8889894099659013");
+    assert.equal(headers.get("X-Biomes-Session-Id"), "biomes-session");
+  });
+
+  it("never sends Harthmere identity headers cross-origin", () => {
+    setFakeWindow("?install_id=glitch-install", "glitch-install", {
+      userId: "8889894099659013",
+      sessionId: "biomes-session",
+    });
+    const prepared = prepareHarthmereLiveFetchRequest(
+      "https://example.test/api/harthmere/live_mode",
+      { method: "POST" }
+    );
+    const headers = new Headers(prepared.init.headers);
+
+    assert.equal(headers.get("X-Glitch-Install-Id"), null);
+    assert.equal(headers.get("X-Biomes-User-Id"), null);
+    assert.equal(headers.get("X-Biomes-Session-Id"), null);
+    assert.equal(
+      prepared.input,
+      "https://example.test/api/harthmere/live_mode"
+    );
   });
 
   it("does not duplicate existing live-mode install query params", () => {

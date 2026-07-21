@@ -52,7 +52,11 @@ const DEFAULT_IDLE_SESSION_MS = 2 * 60 * 1000;
 const DEFAULT_SESSION_TTL_MS = 12 * 60 * 60 * 1000;
 const DEFAULT_VALIDATE_CACHE_MS = 60 * 1000;
 const DEFAULT_GLITCH_API_TIMEOUT_MS = 10 * 1000;
-const DEFAULT_GLITCH_TELEMETRY_TIMEOUT_MS = 2500;
+// Production Glitch analytics commonly completes successfully in 2.0-2.9s.
+// A 2.5s cutoff converted healthy 201 responses into 504 retries and created
+// outbox pressure during gameplay bursts. Telemetry stays asynchronous, but
+// receives a realistic bounded window before it is discarded.
+const DEFAULT_GLITCH_TELEMETRY_TIMEOUT_MS = 5_000;
 const DEFAULT_GLITCH_API_SLOW_MS = 1500;
 const DEFAULT_HARTHMERE_ROUTE_SLOW_MS = 1500;
 const GLITCH_HARTHMERE_SESSION_REDIS_PREFIX = "glitch:harthmere:current";

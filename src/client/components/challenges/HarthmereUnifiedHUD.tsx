@@ -2721,8 +2721,7 @@ function HarthmereJobsBoardWorldPrompt({
       prompt && projectedPrompt
         ? {
             id: `harthmere:jobs-board:${prompt.boardId}`,
-            priority:
-              WORLD_INTERACTION_PRIORITY.authoredStation - prompt.distance,
+            priority: WORLD_INTERACTION_PRIORITY.jobsBoard - prompt.distance,
             keyCodes: ["KeyF", "KeyE"],
             onInteract: openJobsBoardFromPrompt,
           }

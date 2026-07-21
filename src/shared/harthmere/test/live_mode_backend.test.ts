@@ -68,6 +68,7 @@ import { fallDamageForBlocks } from "@/shared/game/fall_damage";
 import {
   HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
   HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID,
+  HARTHMERE_JOBS_BOARD_HARTHMERE_POSITION,
   HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS,
 } from "@/shared/harthmere/mmo_jobs_board_authority";
 import {
@@ -10386,7 +10387,11 @@ describe("reduceHarthmereLiveModeBackendState — physical jobs board and live t
       {
         subsystem: "jobs",
         targetId: HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID,
-        serverActorPosition: { x: 1046, y: 65, z: -202 },
+        serverActorPosition: {
+          x: HARTHMERE_JOBS_BOARD_HARTHMERE_POSITION[0],
+          y: HARTHMERE_JOBS_BOARD_HARTHMERE_POSITION[1],
+          z: HARTHMERE_JOBS_BOARD_HARTHMERE_POSITION[2],
+        },
       }
     );
 

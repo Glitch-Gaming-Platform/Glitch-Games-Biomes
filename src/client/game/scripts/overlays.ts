@@ -1333,30 +1333,11 @@ export class OverlayScript implements Script {
       );
     }
 
-    // HARTHMERE_WORLD_OBJECT_PROMPT_PRIORITY: object before NPC fallback
-    // (see rationale above).
-    const nearbyGrabBagOverlay = this.getNearbyGrabBagInspectableOverlay();
-    if (nearbyGrabBagOverlay) {
-      return nearbyGrabBagOverlay;
-    }
-
-    const nearbyHarthmereObjectOverlay =
-      this.getNearbyHarthmereObjectInspectableOverlay();
-    if (nearbyHarthmereObjectOverlay) {
-      return nearbyHarthmereObjectOverlay;
-    }
-
-    const nearbyHarthmereCraftingStationOverlay =
-      this.getNearbyHarthmerePlaceableCraftingStationOverlay();
-    if (nearbyHarthmereCraftingStationOverlay) {
-      return nearbyHarthmereCraftingStationOverlay;
-    }
-
-    const nearbyNpcTalkOverlay = this.getNearbyNpcTalkInspectableOverlay();
-    if (nearbyNpcTalkOverlay) {
-      return nearbyNpcTalkOverlay;
-    }
-
+    // A terrain ray hit is more specific than any proximity fallback. Resolve
+    // native groups/plants before nearby bags, authored props, stations, or
+    // NPCs; otherwise a person or crate several metres away can steal the
+    // inspection overlay from the fully-grown crop under the reticle and the
+    // HarvestPlantEvent is never emitted.
     if (hitExistingTerrain(hit)) {
       const groupId = groupOccupancyAt(this.resources, hit.pos);
       if (groupId) {
@@ -1387,6 +1368,30 @@ export class OverlayScript implements Script {
           };
         }
       }
+    }
+
+    // HARTHMERE_WORLD_OBJECT_PROMPT_PRIORITY: object before NPC fallback
+    // (see rationale above), but only after a direct terrain target.
+    const nearbyGrabBagOverlay = this.getNearbyGrabBagInspectableOverlay();
+    if (nearbyGrabBagOverlay) {
+      return nearbyGrabBagOverlay;
+    }
+
+    const nearbyHarthmereObjectOverlay =
+      this.getNearbyHarthmereObjectInspectableOverlay();
+    if (nearbyHarthmereObjectOverlay) {
+      return nearbyHarthmereObjectOverlay;
+    }
+
+    const nearbyHarthmereCraftingStationOverlay =
+      this.getNearbyHarthmerePlaceableCraftingStationOverlay();
+    if (nearbyHarthmereCraftingStationOverlay) {
+      return nearbyHarthmereCraftingStationOverlay;
+    }
+
+    const nearbyNpcTalkOverlay = this.getNearbyNpcTalkInspectableOverlay();
+    if (nearbyNpcTalkOverlay) {
+      return nearbyNpcTalkOverlay;
     }
   }
 

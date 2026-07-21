@@ -9,6 +9,7 @@ import {
 import {
   HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
   HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID,
+  HARTHMERE_JOBS_BOARD_HARTHMERE_POSITION,
 } from "@/shared/harthmere/mmo_jobs_board_authority";
 
 const ACTOR = "player_api_jobs_001";
@@ -69,11 +70,11 @@ describe("live_mode_jobs_board_state API route integration", () => {
     assert.ok(snapshot.boards[HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID]);
     assert.equal(
       snapshot.boards[HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID].location.x,
-      1046
+      HARTHMERE_JOBS_BOARD_HARTHMERE_POSITION[0]
     );
     assert.equal(
       snapshot.boards[HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID].location.z,
-      -202
+      HARTHMERE_JOBS_BOARD_HARTHMERE_POSITION[2]
     );
     const existingHarthmereJob = snapshot.openJobs.find(
       (job) => job.jobId === "harthmere_auto_1"

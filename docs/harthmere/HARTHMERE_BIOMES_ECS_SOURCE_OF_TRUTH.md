@@ -47,6 +47,14 @@ Glitch Cloud Save payloads. It is not durable authority by itself.
   `glitchCloudSave` player snapshots. On boot, the latest valid Glitch Cloud Save
   is allowed to restore even when Redis still has runtime state, because Redis is
   resettable and Cloud Save is the durable player record.
+- Player identity has two deliberately separate credentials. Glitch's stable
+  account identity and current `install_id` select portable Cloud Save and
+  live-mode metadata; the authenticated Biomes user/session selects the ECS
+  actor. Client calls under `/api/harthmere/*` must use
+  `harthmere_live_fetch.ts`, which adds same-origin `X-Biomes-User-Id` and
+  `X-Biomes-Session-Id` headers. Only `live_mode*` routes additionally receive
+  `X-Glitch-Install-Id`. An install id must never impersonate an ECS session,
+  and guest installs must never gain account Cloud Save through this bridge.
 - Backend gameplay writes: `src/pages/api/harthmere/live_mode.ts` validates a
   `HarthmereLiveModeAuthorityEnvelope`, reduces it through
   `reduceHarthmereLiveModeBackendState`, then persists player/shared Redis state
@@ -142,6 +150,10 @@ Glitch Cloud Save payloads. It is not durable authority by itself.
 
 - Native ECS changes reach the browser through the existing sync websocket and
   invalidate React resources immediately.
+- Every browser call to a Harthmere API goes through the shared authenticated
+  transport. A source guard fails tests if production client code combines a
+  `/api/harthmere/*` endpoint with raw `fetch()`, preventing containers, jobs,
+  combat, vitals, or future native routes from silently dropping ECS identity.
 - A Harthmere live-mode mutation returns changed snapshots in its HTTP response;
   the caller applies that response immediately. Polling is fallback hydration,
   not the primary mutation callback.

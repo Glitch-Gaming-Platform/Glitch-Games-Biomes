@@ -1,7 +1,5 @@
 import type { Vec3 } from "@/shared/math/types";
-import {
-  HARTHMERE_PRODUCTION_TERRAIN_PLACEMENT_MAP,
-} from "@/shared/harthmere/generated/production_terrain_placement_map";
+import { HARTHMERE_PRODUCTION_TERRAIN_PLACEMENT_MAP } from "@/shared/harthmere/generated/production_terrain_placement_map";
 
 export const HARTHMERE_PRODUCTION_TERRAIN_PLACEMENT_MAP_VERSION =
   "harthmere-production-terrain-placement-map" as const;
@@ -103,8 +101,7 @@ export const HARTHMERE_PRODUCTION_PLACEMENT_MAP =
 const PLACEMENTS_BY_KEY: Map<string, HarthmereProductionPlacementRecord> =
   new Map(
     (
-      HARTHMERE_PRODUCTION_PLACEMENT_MAP
-        .placements as readonly HarthmereProductionPlacementRecord[]
+      HARTHMERE_PRODUCTION_PLACEMENT_MAP.placements as readonly HarthmereProductionPlacementRecord[]
     ).map((placement) => [placement.key, placement])
   );
 
@@ -130,10 +127,7 @@ function horizontalDistanceSquared(a: Vec3, b: Vec3): number {
   return dx * dx + dz * dz;
 }
 
-export function harthmereProductionPlacementKey(
-  source: string,
-  id: string
-) {
+export function harthmereProductionPlacementKey(source: string, id: string) {
   return `${source}:${id}`;
 }
 
@@ -182,10 +176,7 @@ export function resolveHarthmereQuestObjectivePlacement(input: {
 }): HarthmereProductionPlacementRecord {
   const exact = input.objectiveId
     ? getHarthmereProductionPlacementByKey(
-        getHarthmereQuestObjectivePlacementKey(
-          input.questId,
-          input.objectiveId
-        )
+        getHarthmereQuestObjectivePlacementKey(input.questId, input.objectiveId)
       )
     : undefined;
   const questLocation = getHarthmereProductionPlacementByKey(
@@ -193,7 +184,19 @@ export function resolveHarthmereQuestObjectivePlacement(input: {
   );
   const fallbackPlacement = exact ?? questLocation;
   if (fallbackPlacement) {
-    return fallbackPlacement;
+    // The generated placement map was measured against the retired +512 town
+    // terrain. Keep its identity/purpose metadata, but never let those stale
+    // X/Y coordinates pull an additive-extension quest back onto the old map.
+    return {
+      ...fallbackPlacement,
+      worldPosition: input.fallback,
+      recommendedPosition: input.fallback,
+      surfaceFeetY: input.fallback[1] >= 0 ? input.fallback[1] : undefined,
+      nearestFeetY: input.fallback[1],
+      deltaY: 0,
+      notes:
+        "Additive Harthmere extension: coordinate resolved from the shared authored-to-world transform; legacy +512 terrain scan retained for metadata only.",
+    };
   }
   return {
     key: harthmereProductionPlacementKey(
@@ -233,7 +236,10 @@ export function findNearestHarthmereProductionPlacement(
     if (options.purpose && placement.purpose !== options.purpose) {
       continue;
     }
-    const distance2 = horizontalDistanceSquared(position, placement.recommendedPosition);
+    const distance2 = horizontalDistanceSquared(
+      position,
+      placement.recommendedPosition
+    );
     if (distance2 > maxDistance2) {
       continue;
     }
@@ -253,9 +259,9 @@ export function chooseHarthmereQuestCaveSpawnPoint(input: {
         (cave) => cave.caveId === input.caveId
       )
     : HARTHMERE_PRODUCTION_PLACEMENT_MAP.caves;
-  const spawnPoints: HarthmereProductionCaveSpawnPoint[] = caves.flatMap((cave) => [
-    ...cave.spawnPoints,
-  ]);
+  const spawnPoints: HarthmereProductionCaveSpawnPoint[] = caves.flatMap(
+    (cave) => [...cave.spawnPoints]
+  );
   return spawnPoints[stableIndex(input.seed, spawnPoints.length)];
 }
 
@@ -266,9 +272,7 @@ export function chooseHarthmereQuestOutdoorSpawnPoint(input: {
   const allPoints =
     HARTHMERE_PRODUCTION_PLACEMENT_MAP.outdoorSpawnPoints as readonly HarthmereProductionOutdoorSpawnPoint[];
   const points: HarthmereProductionOutdoorSpawnPoint[] = input.areaId
-    ? allPoints.filter(
-        (point) => point.areaId === input.areaId
-      )
+    ? allPoints.filter((point) => point.areaId === input.areaId)
     : [...allPoints];
   return points[stableIndex(input.seed, points.length)];
 }

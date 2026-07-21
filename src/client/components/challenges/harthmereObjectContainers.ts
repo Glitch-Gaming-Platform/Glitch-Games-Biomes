@@ -10,6 +10,7 @@ import {
 import { completeHarthmereDailyTaskSoon } from "@/client/components/challenges/harthmereDailyTasks";
 import { dispatchHarthmereWorldObjectInteractionEvent } from "@/client/components/challenges/harthmereObjectInteractions";
 import { harthmereUserScopedStorageKey } from "@/client/components/challenges/LocalDevHarthmereUserScope";
+import { defaultHarthmereLiveFetch } from "@/client/components/harthmere_live_fetch";
 import { harthmereLocalStorage } from "@/client/util/storage";
 import { nativeBiomesEcsAuthorityEnabled } from "@/shared/harthmere/native_road_ahead_contract";
 import { harthmereContainerLootForLabel } from "@/shared/harthmere/harthmere_container_loot_authority";
@@ -657,15 +658,21 @@ export async function openHarthmereObjectContainer({
 }) {
   const displayLabel = label?.trim() || "Container";
   if (nativeBiomesEcsAuthorityEnabled() && isBrowser()) {
-    const response = await window.fetch("/api/harthmere/native_container", {
-      method: "POST",
-      credentials: "same-origin",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...(entityId !== INVALID_BIOMES_ID ? { entityId } : {}),
-        ...(objectId ? { objectId } : {}),
-      }),
-    });
+    // Native containers are authenticated ECS mutations. Route them through
+    // the shared Harthmere transport so the Biomes user/session headers are
+    // attached consistently with vitals, combat, jobs, and other native APIs.
+    const response = await defaultHarthmereLiveFetch(
+      "/api/harthmere/native_container",
+      {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...(entityId !== INVALID_BIOMES_ID ? { entityId } : {}),
+          ...(objectId ? { objectId } : {}),
+        }),
+      }
+    );
     const body = await response.json().catch(() => undefined);
     if (
       !response.ok ||

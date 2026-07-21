@@ -1,6 +1,8 @@
 import assert from "assert";
 import {
-  HARTHMERE_CONNECTOR_ROUTE_ANCHORS,
+  HARTHMERE_CONNECTOR_DESCENT_START,
+  HARTHMERE_CONNECTOR_DESCENT_LANDING,
+  HARTHMERE_CONNECTOR_DESCENT_LANDING_Y,
   HARTHMERE_CONNECTOR_TOWN_ENTRANCE,
   planHarthmereConnectorRoute,
   validateHarthmereConnectorRoutePlan,
@@ -14,8 +16,16 @@ function syntheticSample(input?: {
   return (x: number, z: number): HarthmereConnectorColumn => ({
     surfaceY:
       input?.surfaceY?.(x, z) ??
-      (x >= 890 && x <= HARTHMERE_CONNECTOR_ROUTE_ANCHORS.at(-1)![0]
-        ? 64 - Math.floor((x - 890) / 3)
+      (z === HARTHMERE_CONNECTOR_DESCENT_START[1] &&
+      x >= HARTHMERE_CONNECTOR_DESCENT_START[0] - 1 &&
+      x <= HARTHMERE_CONNECTOR_DESCENT_START[0]
+        ? 64 - (x - (HARTHMERE_CONNECTOR_DESCENT_START[0] - 2))
+        : x >= HARTHMERE_CONNECTOR_DESCENT_LANDING[0] && x < 929
+        ? Math.min(
+            64,
+            HARTHMERE_CONNECTOR_DESCENT_LANDING_Y +
+              Math.floor((x - HARTHMERE_CONNECTOR_DESCENT_LANDING[0]) / 3)
+          )
         : 64),
     blocked: input?.blocked?.(x, z) ?? false,
     canTraverse: true,
@@ -34,6 +44,16 @@ describe("harthmere protected connector route", () => {
     assert.ok(plan.edits.some((edit) => edit.label === "approach_cap"));
     assert.ok(plan.edits.some((edit) => edit.label === "passage_clearance"));
     assert.deepEqual(plan.path.at(-1), HARTHMERE_CONNECTOR_TOWN_ENTRANCE);
+    const landingIndex = plan.path.findIndex(
+      ([x, z]) =>
+        x === HARTHMERE_CONNECTOR_DESCENT_LANDING[0] &&
+        z === HARTHMERE_CONNECTOR_DESCENT_LANDING[1]
+    );
+    assert.ok(landingIndex >= 0);
+    assert.equal(
+      plan.traversal[landingIndex][1],
+      HARTHMERE_CONNECTOR_DESCENT_LANDING_Y
+    );
     assert.ok(
       plan.traversal.every(
         (point, index) =>
@@ -45,8 +65,8 @@ describe("harthmere protected connector route", () => {
 
   it("routes the player-width approach around the two live bridge blockers", () => {
     const blocked = (x: number, z: number) =>
-      (x >= 904 && x <= 908 && z >= -212 && z <= -208) ||
-      (x >= 898 && x <= 902 && z >= -204 && z <= -200);
+      (x >= 906 && x <= 910 && z >= -212 && z <= -208) ||
+      (x >= 914 && x <= 918 && z >= -204 && z <= -200);
     const sample = syntheticSample({ blocked });
     const plan = planHarthmereConnectorRoute({ sample });
 

@@ -18,8 +18,10 @@
  *   SNAPSHOT_PATH=snapshot_backup.json node scripts/harthmere/materialize-harthmere-connector-route.cjs
  */
 
-require("ts-node/register/transpile-only");
-require("tsconfig-paths/register");
+if (process.env.HARTHMERE_BUNDLED_MATERIALIZER !== "1") {
+  require("ts-node/register/transpile-only");
+  require("tsconfig-paths/register");
+}
 process.env.IS_SERVER = process.env.IS_SERVER || "1";
 
 const path = require("path");
@@ -54,6 +56,8 @@ const {
 const { Tensor } = require("../../src/shared/wasm/tensors");
 const {
   HARTHMERE_CONNECTOR_MIN_HEADROOM,
+  HARTHMERE_CONNECTOR_DESCENT_LANDING,
+  HARTHMERE_CONNECTOR_DESCENT_LANDING_Y,
   HARTHMERE_CONNECTOR_ROUTE_BOUNDS,
   HARTHMERE_CONNECTOR_ROUTE_VERSION,
   HARTHMERE_CONNECTOR_TOWN_ENTRANCE,
@@ -119,7 +123,10 @@ const ROAD_SHOULDER_ID = getTerrainID("gravel");
 const APPROACH_CAP_ID = getTerrainID("stone_brick");
 
 function isExistingConnectorCapColumn(x, z) {
-  return x >= 894 && x <= 989 && z >= -210 && z <= -204;
+  return (
+    (x >= 718 && x <= 734 && z >= -212 && z <= -196) ||
+    (x >= 894 && x <= 989 && z >= -210 && z <= -204)
+  );
 }
 
 function component(entity, field, method) {
@@ -457,6 +464,13 @@ function validateEdits(
         failures.push(`${edit.label}@${x},${y},${z}:fill_not_clear`);
       continue;
     }
+    if (
+      currentName === "stone_brick" &&
+      allowExistingConnectorCaps &&
+      isExistingConnectorCapColumn(x, z)
+    ) {
+      continue;
+    }
     if (edit.label === "passage_clearance") {
       if (current === 0) continue;
       if (!currentName || !SAFE_EDIT_NAMES.has(currentName)) {
@@ -464,14 +478,6 @@ function validateEdits(
           `${edit.label}@${x},${y},${z}:unsafe_${currentName || current}`
         );
       }
-      continue;
-    }
-    if (
-      edit.label === "approach_cap" &&
-      currentName === "stone_brick" &&
-      allowExistingConnectorCaps &&
-      isExistingConnectorCapColumn(x, z)
-    ) {
       continue;
     }
     if (current !== 0 && (!currentName || !SAFE_EDIT_NAMES.has(currentName))) {
@@ -697,6 +703,10 @@ async function main() {
           protectedStructureBoxes: structureBoxes.length,
           resolvedAnchors: plan.resolvedAnchors,
           markedTownEntrance: HARTHMERE_CONNECTOR_TOWN_ENTRANCE,
+          confirmedLowerFloorLanding: [
+            ...HARTHMERE_CONNECTOR_DESCENT_LANDING,
+            HARTHMERE_CONNECTOR_DESCENT_LANDING_Y,
+          ],
           reusedExistingConnectorCaps: allowExistingConnectorCaps,
           pathColumns: plan.path.length,
           traversalStart: plan.traversal.at(0),

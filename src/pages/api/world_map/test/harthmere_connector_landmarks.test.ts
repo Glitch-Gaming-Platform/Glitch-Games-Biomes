@@ -1,8 +1,11 @@
 import assert from "assert";
 
 import {
+  HARTHMERE_BIBLE_WORLD_MAP_LANDMARKS,
   HARTHMERE_CONNECTOR_WORLD_MAP_LANDMARKS,
+  HARTHMERE_EXTENSION_WORLD_MAP_LANDMARKS,
   appendHarthmereConnectorWorldMapLandmarks,
+  appendHarthmereExtensionWorldMapLandmarks,
 } from "@/pages/api/world_map/landmarks";
 import {
   HARTHMERE_CONNECTOR_ROUTE_ANCHORS,
@@ -57,5 +60,42 @@ describe("Harthmere connector world-map landmarks", () => {
 
     const repeated = appendHarthmereConnectorWorldMapLandmarks(appended);
     assert.equal(repeated.length, 2, "endpoint pins should not duplicate");
+  });
+
+  it("publishes the additive road endpoints and every bible building", () => {
+    assert.deepEqual(
+      HARTHMERE_EXTENSION_WORLD_MAP_LANDMARKS.map((landmark) => [
+        landmark.name,
+        [landmark.position[0], landmark.position[2]],
+      ]),
+      [
+        ["Harthmere Extension Road — Map Boundary Start", [1792, -209]],
+        ["Harthmere West Gate", [1992, -209]],
+        ["Harthmere North Gate — Road End", [2100, -284]],
+      ]
+    );
+    assert.ok(
+      HARTHMERE_BIBLE_WORLD_MAP_LANDMARKS.some(
+        (landmark) => landmark.name === "Harthmere — Chapel of Saint Verena"
+      )
+    );
+    assert.ok(
+      HARTHMERE_BIBLE_WORLD_MAP_LANDMARKS.some(
+        (landmark) => landmark.name === "Harthmere — River Warehouse"
+      )
+    );
+    assert.ok(
+      HARTHMERE_BIBLE_WORLD_MAP_LANDMARKS.some(
+        (landmark) => landmark.name === "Harthmere — Guard Barracks"
+      )
+    );
+
+    const once = appendHarthmereExtensionWorldMapLandmarks([]);
+    const twice = appendHarthmereExtensionWorldMapLandmarks(once);
+    assert.equal(
+      twice.length,
+      once.length,
+      "extension pins should not duplicate"
+    );
   });
 });

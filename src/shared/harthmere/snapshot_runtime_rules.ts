@@ -137,7 +137,8 @@ export const SNAPSHOT_SAFE_AREAS: SnapshotArea[] = [
     radius: 142,
     type: "safe",
     mapLabel: "Harthmere",
-    description: "Town services, quest givers, and civilians. Hostiles stay outside.",
+    description:
+      "Town services, quest givers, and civilians. Hostiles stay outside.",
   },
   {
     id: "harthmere_west_road_safe",
@@ -146,7 +147,8 @@ export const SNAPSHOT_SAFE_AREAS: SnapshotArea[] = [
     radius: 38,
     type: "safe",
     mapLabel: "Road to Harthmere",
-    description: "Readable road connector from snapshot edge to Harthmere west gate.",
+    description:
+      "Readable road connector from snapshot edge to Harthmere west gate.",
   },
 ];
 
@@ -158,7 +160,8 @@ export const SNAPSHOT_DANGER_AREAS: SnapshotArea[] = [
     radius: 34,
     type: "danger",
     mapLabel: "Muck Clearing",
-    description: "Low-risk first combat pocket for Road Ahead follow-up lessons.",
+    description:
+      "Low-risk first combat pocket for Road Ahead follow-up lessons.",
   },
   {
     id: "old_wood_mucker_copse",
@@ -188,7 +191,8 @@ export const SNAPSHOT_HARTHMERE_MUCK_ZONES: SnapshotArea[] = [
     radius: 10,
     type: "muck",
     mapLabel: "Muckwad Patch",
-    description: "Starter muck patch used by Road Ahead and Muck Buster training.",
+    description:
+      "Starter muck patch used by Road Ahead and Muck Buster training.",
   },
   {
     id: "watchtower_muck_patch",
@@ -266,7 +270,12 @@ export interface SnapshotCombatChallengeStep {
   objective: string;
   targetLabel: string;
   targetPosition: Vec3;
-  trigger: "location" | "damage_hostile" | "defeat_hostile" | "destroy_muck" | "craft_muck_buster";
+  trigger:
+    | "location"
+    | "damage_hostile"
+    | "defeat_hostile"
+    | "destroy_muck"
+    | "craft_muck_buster";
   radius?: number;
   reward: string;
   mapHint: string;
@@ -278,7 +287,8 @@ export const SNAPSHOT_COMBAT_PRIMER_STEPS: SnapshotCombatChallengeStep[] = [
   {
     id: "reach_muck_clearing",
     title: "Reach a Muck Clearing",
-    objective: "Follow the marker to the first muck clearing outside the safe road.",
+    objective:
+      "Follow the marker to the first muck clearing outside the safe road.",
     targetLabel: "Muck Clearing",
     targetPosition: [524, 54, -154],
     trigger: "location",
@@ -294,7 +304,8 @@ export const SNAPSHOT_COMBAT_PRIMER_STEPS: SnapshotCombatChallengeStep[] = [
     targetPosition: [524, 54, -154],
     trigger: "damage_hostile",
     reward: "First hostile hit. +25 XP.",
-    mapHint: "Draw your weapon, face the target, and attack from the front arc.",
+    mapHint:
+      "Draw your weapon, face the target, and attack from the front arc.",
   },
   {
     id: "defeat_hostile",
@@ -304,7 +315,8 @@ export const SNAPSHOT_COMBAT_PRIMER_STEPS: SnapshotCombatChallengeStep[] = [
     targetPosition: [524, 54, -154],
     trigger: "defeat_hostile",
     reward: "First threat defeated. +50 XP.",
-    mapHint: "The hostile has real health. Back up if you take too much damage.",
+    mapHint:
+      "The hostile has real health. Back up if you take too much damage.",
   },
   {
     id: "clear_muck",
@@ -314,7 +326,8 @@ export const SNAPSHOT_COMBAT_PRIMER_STEPS: SnapshotCombatChallengeStep[] = [
     targetPosition: [512, 54, -152],
     trigger: "destroy_muck",
     reward: "Muck cleared. +35 XP.",
-    mapHint: "Use block breaking or a Muck Buster-compatible tool on the marked patch.",
+    mapHint:
+      "Use block breaking or a Muck Buster-compatible tool on the marked patch.",
   },
   {
     id: "carry_muck_buster",
@@ -324,21 +337,25 @@ export const SNAPSHOT_COMBAT_PRIMER_STEPS: SnapshotCombatChallengeStep[] = [
     targetPosition: [494, 54, -213],
     trigger: "craft_muck_buster",
     reward: "Muck Buster ready. +50 XP.",
-    mapHint: "The inventory check completes when you have an item with unmuck capability.",
+    mapHint:
+      "The inventory check completes when you have an item with unmuck capability.",
   },
 ];
 
 export function distance2DToSnapshotArea(
   pos: ReadonlyVec3,
-  area: SnapshotArea,
+  area: SnapshotArea
 ) {
-  return Math.hypot(pos[0] - area.authoredCenter[0], pos[2] - area.authoredCenter[2]);
+  return Math.hypot(
+    pos[0] - area.authoredCenter[0],
+    pos[2] - area.authoredCenter[2]
+  );
 }
 
 export function isAuthoredPointInSnapshotArea(
   pos: ReadonlyVec3,
   area: SnapshotArea,
-  pad = 0,
+  pad = 0
 ) {
   return distance2DToSnapshotArea(pos, area) <= area.radius + pad;
 }
@@ -346,7 +363,7 @@ export function isAuthoredPointInSnapshotArea(
 export function authoredSnapshotAreaForPoint(
   pos: ReadonlyVec3,
   areas: readonly SnapshotArea[],
-  pad = 0,
+  pad = 0
 ) {
   return areas.find((area) => isAuthoredPointInSnapshotArea(pos, area, pad));
 }
@@ -356,13 +373,15 @@ export function isAuthoredPointInSnapshotSafeZone(pos: ReadonlyVec3, pad = 0) {
 }
 
 export function isAuthoredPointInSnapshotMuckZone(pos: ReadonlyVec3, pad = 0) {
-  return Boolean(authoredSnapshotAreaForPoint(pos, SNAPSHOT_HARTHMERE_MUCK_ZONES, pad));
+  return Boolean(
+    authoredSnapshotAreaForPoint(pos, SNAPSHOT_HARTHMERE_MUCK_ZONES, pad)
+  );
 }
 
 export function shiftSnapshotAuthoredPointToWorld(pos: ReadonlyVec3): Vec3 {
   // SNAPSHOT_GROVE_NO_HARTHMERE_OFFSET:
   // Snapshot/Grove civic content is already in the snapshot world. Only
-  // Harthmere authored town content receives the +512 connected-town shift.
+  // Harthmere authored town content receives the additive connected-town shift.
   // Applying the Harthmere transform here is what made Grove NPCs/markers
   // appear displaced. Civic Grove NPCs still use the live courtyard grounding
   // helper because the visible fountain/courtyard sits around y=69/70.
@@ -391,10 +410,15 @@ export function hostileWorldPosition(spawn: SnapshotHostileSpawn): Vec3 {
   return snapshotCombatGroundedPosition(spawn.authoredPosition);
 }
 
-export function combatStepWorldPosition(step: SnapshotCombatChallengeStep): Vec3 {
+export function combatStepWorldPosition(
+  step: SnapshotCombatChallengeStep
+): Vec3 {
   return snapshotCombatGroundedPosition(step.targetPosition);
 }
 
-export function snapshotHostileEntityId(localDevNpcBase: BiomesId, spawn: SnapshotHostileSpawn): BiomesId {
+export function snapshotHostileEntityId(
+  localDevNpcBase: BiomesId,
+  spawn: SnapshotHostileSpawn
+): BiomesId {
   return (Number(localDevNpcBase) + spawn.idOffset) as BiomesId;
 }

@@ -12,6 +12,7 @@ import {
   RESOURCE_PATH_TO_ENTITY_PROP,
 } from "@/shared/ecs/gen/entities";
 import { WorldMetadataId } from "@/shared/ecs/ids";
+import { HARTHMERE_EXPANDED_WORLD_EAST_EDGE_X } from "@/shared/harthmere/world_extension";
 import type { MetaIndex } from "@/shared/ecs/selectors/selector";
 import type { Table, VersionedTable } from "@/shared/ecs/table";
 import { EmitterSubscription } from "@/shared/events";
@@ -43,7 +44,9 @@ export function fallbackWorldMetadata(): ReadonlyWorldMetadata {
   return WorldMetadata.create({
     aabb: {
       v0: [-2048, -256, -2048],
-      v1: [2048, 512, 2048],
+      // Keep the client fallback large enough to display the additive town
+      // while the authoritative WorldMetadata entity is still loading.
+      v1: [HARTHMERE_EXPANDED_WORLD_EAST_EDGE_X, 512, 2048],
     },
   });
 }

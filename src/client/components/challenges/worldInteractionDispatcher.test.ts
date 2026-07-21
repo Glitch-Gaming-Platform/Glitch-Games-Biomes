@@ -72,6 +72,20 @@ describe("world interaction dispatcher", () => {
     assert.equal(selectedWorldInteractionIdForKey("KeyF"), "active-camera");
   });
 
+  it("lets a nearby jobs board outrank an overlapping NPC conversation", () => {
+    registerWorldInteractionCandidate({
+      id: "native-npc-talk",
+      priority: WORLD_INTERACTION_PRIORITY.nativeEcs,
+      onInteract: () => undefined,
+    });
+    registerWorldInteractionCandidate({
+      id: "jobs-board",
+      priority: WORLD_INTERACTION_PRIORITY.jobsBoard - 2,
+      onInteract: () => undefined,
+    });
+    assert.equal(selectedWorldInteractionIdForKey("KeyF"), "jobs-board");
+  });
+
   it("ignores candidates whose current target guard is false", () => {
     registerWorldInteractionCandidate({
       id: "stale-nearest-board",

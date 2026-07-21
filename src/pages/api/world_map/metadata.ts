@@ -2,13 +2,14 @@ import { fetchSocialMetadata, fetchTileMetadata } from "@/server/web/db/map";
 import { biomesApiHandler } from "@/server/web/util/api_middleware";
 import type { ReadonlyWorldMetadata } from "@/shared/ecs/gen/components";
 import { WorldMetadataId } from "@/shared/ecs/ids";
+import { HARTHMERE_EXPANDED_WORLD_EAST_EDGE_X } from "@/shared/harthmere/world_extension";
 import type { ReadonlyAABB, ReadonlyVec3 } from "@/shared/math/types";
 import type { WorldMapMetadataResponse } from "@/shared/types";
 import { zWorldMapMetadataResponse } from "@/shared/types";
 
 const LOCAL_FALLBACK_MAP_AABB: ReadonlyAABB = [
   [-2048, -256, -2048],
-  [2048, 512, 2048],
+  [HARTHMERE_EXPANDED_WORLD_EAST_EDGE_X, 512, 2048],
 ];
 
 function isFiniteVec3(value: unknown): value is ReadonlyVec3 {
@@ -57,7 +58,7 @@ export function localFallbackMapMetadata(
   // local world size used by the sync observer fallback.
   if (x0 === x1 || z0 === z1) {
     x0 = -2048;
-    x1 = 2048;
+    x1 = HARTHMERE_EXPANDED_WORLD_EAST_EDGE_X;
     z0 = -2048;
     z1 = 2048;
   }

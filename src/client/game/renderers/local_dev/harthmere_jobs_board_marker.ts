@@ -30,6 +30,7 @@ import {
   HARTHMERE_BUSINESS_OUTPOSTS,
   harthmereBusinessOutpostJobsBoardPosition,
 } from "@/shared/harthmere/business_customer_simulator";
+import { HARTHMERE_JOBS_BOARD_HARTHMERE_POSITION } from "@/shared/harthmere/mmo_jobs_board_authority";
 import * as THREE from "three";
 
 export const HARTHMERE_JOBS_BOARD_PROCEDURAL_MARKER_VERSION =
@@ -62,9 +63,9 @@ export const HARTHMERE_JOBS_BOARD_MARKER_LOCATIONS: readonly HarthmereJobsBoardM
   {
     id: "harthmere_town_market_jobs_board",
     label: "Harthmere Jobs Board",
-    x: 1046,
-    y: 65,
-    z: -202,
+    x: HARTHMERE_JOBS_BOARD_HARTHMERE_POSITION[0],
+    y: HARTHMERE_JOBS_BOARD_HARTHMERE_POSITION[1],
+    z: HARTHMERE_JOBS_BOARD_HARTHMERE_POSITION[2],
     // Warm amber for the Harthmere market district.
     accentColor: 0xffb74d,
   },

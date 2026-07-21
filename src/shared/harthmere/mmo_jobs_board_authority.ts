@@ -39,6 +39,8 @@ import {
 } from "./jobs_board_muck_bounty_targets";
 import { harthmereJobsBoardQuestMarkerRuntimePositionForId } from "./jobs_board_quest_marker_positions";
 import type { BiomesId } from "@/shared/ids";
+import { shiftHarthmereAuthoredPositionToWorld } from "@/shared/harthmere/coordinate_transform";
+import { HARTHMERE_EXTENSION_FEET_Y } from "@/shared/harthmere/world_extension";
 
 export const HARTHMERE_JOBS_BOARD_AUTHORITY_VERSION =
   "harthmere-jobs-board-authority" as const;
@@ -59,6 +61,12 @@ export const HARTHMERE_JOBS_BOARD_HARTHMERE_MARKER_ID =
   "harthmere_town_market_posting_board" as const;
 export const HARTHMERE_JOBS_BOARD_HARTHMERE_DISPLAY_NAME =
   "Harthmere Town Jobs Board" as const;
+export const HARTHMERE_JOBS_BOARD_HARTHMERE_POSITION =
+  shiftHarthmereAuthoredPositionToWorld([
+    534,
+    HARTHMERE_EXTENSION_FEET_Y,
+    -202,
+  ]);
 export const HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS = 3.25;
 export const HARTHMERE_JOBS_BOARD_FIELD_COMPLETION_RADIUS = 8;
 export const HARTHMERE_JOBS_BOARD_MAX_ACTIVE_POSTINGS_PER_ISSUER = 12;
@@ -571,8 +579,9 @@ export const HARTHMERE_JOBS_BOARD_LOCATIONS: Record<
     createdAtMs: 0,
   },
   // HARTHMERE_JOBS_BOARD_HARTHMERE_TOWN:
-  // Harthmere town market district board. Sits east of the Grove (around
-  // x ≈ 1046, z ≈ -202) next to the Harthmere Market Office landmark, and
+  // Harthmere town market district board. Its authored market position is
+  // shifted by the shared additive transform so map, voxel, and authority
+  // coordinates cannot drift independently.
   // is townId-scoped to `harthmere_town` so its postings stay distinct from
   // the Grove board in the live snapshot.
   [HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID]: {
@@ -582,9 +591,9 @@ export const HARTHMERE_JOBS_BOARD_LOCATIONS: Record<
     regionId: "harthmere_town_region",
     markerId: HARTHMERE_JOBS_BOARD_HARTHMERE_MARKER_ID,
     location: {
-      x: 1046,
-      y: 65,
-      z: -202,
+      x: HARTHMERE_JOBS_BOARD_HARTHMERE_POSITION[0],
+      y: HARTHMERE_JOBS_BOARD_HARTHMERE_POSITION[1],
+      z: HARTHMERE_JOBS_BOARD_HARTHMERE_POSITION[2],
       radius: HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS,
       district: "Harthmere Market District",
       landmarkId: HARTHMERE_JOBS_BOARD_HARTHMERE_MARKER_ID,

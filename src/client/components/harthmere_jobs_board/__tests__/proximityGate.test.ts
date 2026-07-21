@@ -52,8 +52,8 @@ const FIXTURE: HarthmereJobsBoardSnapshot = {
       regionId: "harthmere_town_region",
       markerId: "harthmere_town_market_posting_board",
       location: {
-        x: 1046,
-        y: 65,
+        x: 2134,
+        y: 53,
         z: -202,
         radius: HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS,
         district: "Harthmere Market District",
@@ -89,7 +89,7 @@ describe("harthmere_jobs_board proximity gate (current)", () => {
 
   it("returns the Harthmere board id when the player is inside its radius", () => {
     const id = nearestPhysicalHarthmereJobsBoardId(FIXTURE, {
-      playerPosition: { x: 1044, y: 66, z: -204 },
+      playerPosition: { x: 2132, y: 54, z: -204 },
     });
     assert.equal(id, "harthmere_town_market_jobs_board");
   });
@@ -200,7 +200,7 @@ describe("harthmere_jobs_board proximity gate (current)", () => {
   it("ignores an unknown nearbyBoardId and falls back to distance", () => {
     const id = nearestPhysicalHarthmereJobsBoardId(FIXTURE, {
       nearbyBoardId: "not_a_board",
-      playerPosition: { x: 1046, y: 65, z: -202 },
+      playerPosition: { x: 2134, y: 53, z: -202 },
     });
     assert.equal(id, "harthmere_town_market_jobs_board");
   });
@@ -226,7 +226,7 @@ describe("harthmere_jobs_board proximity gate (current)", () => {
       y: 70,
       z: -132.00350672753194,
     });
-    assert.deepEqual(hints[1].position, { x: 1046, y: 65, z: -202 });
+    assert.deepEqual(hints[1].position, { x: 2134, y: 53, z: -202 });
   });
 
   it("returns hints with Infinity distance when no player position is supplied", () => {

@@ -19,6 +19,7 @@ import {
   makeHarthmereJobsBoardMarkerRenderer,
 } from "@/client/game/renderers/local_dev/harthmere_jobs_board_marker";
 import { createNewScenes } from "@/client/game/renderers/scenes";
+import { HARTHMERE_JOBS_BOARD_HARTHMERE_POSITION } from "@/shared/harthmere/mmo_jobs_board_authority";
 import * as THREE from "three";
 
 // HARTHMERE_JOBS_BOARD_GROVE_RELOCATION:
@@ -32,8 +33,8 @@ const GROVE_BOARD_Z = -132.00350672753194;
 const GROVE_BOARD_Y = 70;
 const GROVE_FOUNTAIN_CENTER_X = 496;
 const GROVE_FOUNTAIN_CENTER_Z = -126;
-const HARTHMERE_BOARD_X = 1046;
-const HARTHMERE_BOARD_Z = -202;
+const HARTHMERE_BOARD_X = HARTHMERE_JOBS_BOARD_HARTHMERE_POSITION[0];
+const HARTHMERE_BOARD_Z = HARTHMERE_JOBS_BOARD_HARTHMERE_POSITION[2];
 
 describe("Harthmere jobs board kiosk placements V141/V143", () => {
   const SOURCE = fs.readFileSync(
@@ -302,8 +303,8 @@ describe("Harthmere jobs board kiosk placements V141/V143", () => {
     assert.equal(grove?.y, GROVE_BOARD_Y, "Grove board must use the player-reported live ground Y");
     assert.equal(
       harthmere?.y,
-      65,
-      "Harthmere Town kiosk Y must use the measured live market-district ground (65)",
+      HARTHMERE_JOBS_BOARD_HARTHMERE_POSITION[1],
+      "Harthmere Town kiosk Y must use the additive extension feet level",
     );
   });
 

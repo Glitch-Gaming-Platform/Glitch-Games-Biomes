@@ -20,6 +20,7 @@ import {
 import { HARTHMERE_THAEDRYN_ARENA_AUTHORED_ANCHOR } from "@/shared/harthmere/bible_quest_live_authority";
 import { HARTHMERE_BIBLE_DISTRICTS } from "@/shared/harthmere/harthmere_district_bible_layout";
 import { BikkieIds } from "@/shared/bikkie/ids";
+import { HARTHMERE_ADDITIVE_TOWN_OFFSET_X } from "@/shared/harthmere/world_extension";
 
 describe("harthmere town flatten terraform", () => {
   it("bounds are the union of the 12 district rectangles", () => {
@@ -30,10 +31,10 @@ describe("harthmere town flatten terraform", () => {
       assert.ok(district.bounds.minZ >= bounds.minZ);
       assert.ok(district.bounds.maxZ <= bounds.maxZ);
     }
-    // World bounds = authored + the +512 town X shift (Z unshifted).
+    // World bounds = authored + the additive town X shift (Z unshifted).
     const world = harthmereTownFlattenWorldBounds();
-    assert.equal(world.minX, bounds.minX + 512);
-    assert.equal(world.maxX, bounds.maxX + 512);
+    assert.equal(world.minX, bounds.minX + HARTHMERE_ADDITIVE_TOWN_OFFSET_X);
+    assert.equal(world.maxX, bounds.maxX + HARTHMERE_ADDITIVE_TOWN_OFFSET_X);
     assert.equal(world.minZ, bounds.minZ);
     assert.equal(world.maxZ, bounds.maxZ);
   });
@@ -78,16 +79,20 @@ describe("harthmere town flatten terraform", () => {
       []
     );
     assert.deepEqual(
-      harthmereTownFlattenColumnEdits(500, -200, { surfaceY: 70, isWater: true }),
+      harthmereTownFlattenColumnEdits(500, -200, {
+        surfaceY: 70,
+        isWater: true,
+      }),
       []
     );
   });
 
   it("carves high columns down to the target and re-caps with grass", () => {
-    const edits = harthmereTownFlattenColumnEdits(500, -200, { surfaceY: 70 });
+    const surfaceY = HARTHMERE_TOWN_FLATTEN_TARGET_Y + 6;
+    const edits = harthmereTownFlattenColumnEdits(500, -200, { surfaceY });
     const carves = edits.filter((edit) => edit.label === "carve");
     const caps = edits.filter((edit) => edit.label === "cap");
-    // 70 - 64 = 6 carve layers (65..70) + 1 grass cap at 64.
+    // Six blocks above target produce six carve layers plus one grass cap.
     assert.equal(carves.length, 6);
     assert.ok(
       carves.every(
@@ -102,15 +107,16 @@ describe("harthmere town flatten terraform", () => {
   });
 
   it("fills low columns up to the target with dirt under a grass cap", () => {
-    const edits = harthmereTownFlattenColumnEdits(500, -200, { surfaceY: 58 });
+    const surfaceY = HARTHMERE_TOWN_FLATTEN_TARGET_Y - 6;
+    const edits = harthmereTownFlattenColumnEdits(500, -200, { surfaceY });
     const fills = edits.filter((edit) => edit.label === "fill");
-    // 59..63 dirt (5 layers) + grass cap at 64.
+    // Five dirt layers fill the gap below the grass cap.
     assert.equal(fills.length, 5);
     assert.ok(fills.every((edit) => edit.value === BikkieIds.dirt));
     assert.ok(
       fills.every(
         (edit) =>
-          edit.position[1] > 58 &&
+          edit.position[1] > surfaceY &&
           edit.position[1] < HARTHMERE_TOWN_FLATTEN_TARGET_Y
       )
     );
@@ -122,17 +128,13 @@ describe("harthmere town flatten terraform", () => {
     assert.ok(
       tall
         .filter((edit) => edit.label === "carve")
-        .every(
-          (edit) => edit.position[1] <= HARTHMERE_TOWN_FLATTEN_MAX_CARVE_Y
-        )
+        .every((edit) => edit.position[1] <= HARTHMERE_TOWN_FLATTEN_MAX_CARVE_Y)
     );
     const deep = harthmereTownFlattenColumnEdits(500, -200, { surfaceY: 10 });
     assert.ok(
       deep
         .filter((edit) => edit.label === "fill")
-        .every(
-          (edit) => edit.position[1] >= HARTHMERE_TOWN_FLATTEN_MIN_FILL_Y
-        )
+        .every((edit) => edit.position[1] >= HARTHMERE_TOWN_FLATTEN_MIN_FILL_Y)
     );
   });
 

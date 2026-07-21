@@ -1,18 +1,29 @@
 // Harthmere snapshot coordinate transform current.
 //
 // Harthmere content is authored in local-town coordinates, while the
-// snapshot-connected world shifts the town by a default +512 X offset so it
-// no longer overlaps the imported snapshot terrain. Keep the authored
+// snapshot-connected world shifts the town into an additive east extension so
+// it no longer overlaps the imported snapshot terrain. Keep the authored
 // content stable and convert to world coordinates at the boundary where UI,
 // quests, maps, and runtime hints need real positions.
 
-import type { ReadonlyVec2, ReadonlyVec3, Vec2, Vec3 } from "@/shared/math/types";
+import type {
+  ReadonlyVec2,
+  ReadonlyVec3,
+  Vec2,
+  Vec3,
+} from "@/shared/math/types";
+import {
+  HARTHMERE_ADDITIVE_TOWN_OFFSET_X,
+  HARTHMERE_ADDITIVE_TOWN_OFFSET_Z,
+} from "@/shared/harthmere/world_extension";
 
 export const HARTHMERE_COORDINATE_TRANSFORM_VERSION =
   "harthmere-coordinate-transform";
 
-export const HARTHMERE_DEFAULT_EXTRA_TOWN_OFFSET_X = 512;
-export const HARTHMERE_DEFAULT_EXTRA_TOWN_OFFSET_Z = 0;
+export const HARTHMERE_DEFAULT_EXTRA_TOWN_OFFSET_X =
+  HARTHMERE_ADDITIVE_TOWN_OFFSET_X;
+export const HARTHMERE_DEFAULT_EXTRA_TOWN_OFFSET_Z =
+  HARTHMERE_ADDITIVE_TOWN_OFFSET_Z;
 
 export interface HarthmereExtraTownOffset {
   x: number;
@@ -38,37 +49,39 @@ export function getHarthmereDefaultExtraTownOffset(): HarthmereExtraTownOffset {
   return {
     x: parseOffset(
       envValue("BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X"),
-      HARTHMERE_DEFAULT_EXTRA_TOWN_OFFSET_X,
+      HARTHMERE_DEFAULT_EXTRA_TOWN_OFFSET_X
     ),
     z: parseOffset(
       envValue("BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_Z"),
-      HARTHMERE_DEFAULT_EXTRA_TOWN_OFFSET_Z,
+      HARTHMERE_DEFAULT_EXTRA_TOWN_OFFSET_Z
     ),
   };
 }
 
 export function shiftHarthmereAuthoredXZToWorld(
   xz: ReadonlyVec2,
-  offset = getHarthmereDefaultExtraTownOffset(),
+  offset = getHarthmereDefaultExtraTownOffset()
 ): Vec2 {
   return [xz[0] + offset.x, xz[1] + offset.z];
 }
 
 export function shiftHarthmereAuthoredPositionToWorld(
   pos: ReadonlyVec3,
-  offset = getHarthmereDefaultExtraTownOffset(),
+  offset = getHarthmereDefaultExtraTownOffset()
 ): Vec3 {
   return [pos[0] + offset.x, pos[1], pos[2] + offset.z];
 }
 
 export function unshiftHarthmereWorldPositionToAuthored(
   pos: ReadonlyVec3,
-  offset = getHarthmereDefaultExtraTownOffset(),
+  offset = getHarthmereDefaultExtraTownOffset()
 ): Vec3 {
   return [pos[0] - offset.x, pos[1], pos[2] - offset.z];
 }
 
-export function getHarthmereWorldMapBounds(offset = getHarthmereDefaultExtraTownOffset()) {
+export function getHarthmereWorldMapBounds(
+  offset = getHarthmereDefaultExtraTownOffset()
+) {
   const min = shiftHarthmereAuthoredPositionToWorld([392, 54, -288], offset);
   const max = shiftHarthmereAuthoredPositionToWorld([608, 54, -104], offset);
   return {

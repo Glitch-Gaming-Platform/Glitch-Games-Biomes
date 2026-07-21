@@ -75,6 +75,7 @@ import {
   type HarthmereThaedrynPath,
 } from "@/shared/harthmere/thaedryn_boss";
 import { shiftHarthmereAuthoredPositionToWorld } from "@/shared/harthmere/coordinate_transform";
+import { HARTHMERE_EXTENSION_FEET_Y } from "@/shared/harthmere/world_extension";
 import { getHarthmereMainQuestSpaceById } from "@/shared/harthmere/main_quest_spaces";
 
 export const HARTHMERE_BIBLE_QUEST_LIVE_AUTHORITY_VERSION =
@@ -101,23 +102,20 @@ export const HARTHMERE_BIBLE_QUEST_ACTIVE_SOURCE = "bible_catalog" as const;
 
 // ---------------------------------------------------------------------------
 // Canonical dragon arena anchor (see REACHABILITY GUARANTEE above).
-// Authored coordinates; world = authored + the standard +512 X town shift.
+// Authored coordinates; world = authored + the standard additive town shift.
 // (640, -268) is the center of the renderer's phase-safe Wyrm's Bed dragon
 // chamber markers ("bronze-stone snout silhouette", threshold wall, candle
 // eye glows at 636–644 / -260..-272) in Old Well / Underways — real, already
 // rendered, walkable-surface assets.
 // ---------------------------------------------------------------------------
-// Y = 64 is the town's flat ground level (HARTHMERE_TOWN_FLATTEN_TARGET_Y in
-// town_flatten_terraform.ts — a test asserts they stay equal). The anchor
-// must carry a REAL ground Y because combat reach and objective distance are
-// 3D: an anchor at Y 0 under ~64-high terrain would put the boss 64 blocks
-// "below" every attacker and make the encounter unreachable — exactly the
-// class of silent gap this wiring exists to close.
+// The additive terrain generator owns a flat Y=52 surface, so actors stand at
+// Y=53. The anchor carries that real feet Y because combat reach and objective
+// distance are 3D; leaving it at Y=0 would soft-lock the encounter.
 export const HARTHMERE_THAEDRYN_ARENA_AUTHORED_ANCHOR: readonly [
   number,
   number,
   number
-] = [640, 64, -268];
+] = [640, HARTHMERE_EXTENSION_FEET_Y, -268];
 
 export function harthmereThaedrynArenaWorldAnchor(): [number, number, number] {
   return shiftHarthmereAuthoredPositionToWorld(

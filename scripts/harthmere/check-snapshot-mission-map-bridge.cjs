@@ -26,7 +26,7 @@ const landmarks = read("src/pages/api/world_map/landmarks.ts");
 const overlayNpcVisualCheck = read("scripts/harthmere/check-harthmere-snapshot-overlay-npc-visuals.cjs");
 
 ok(transform.includes("HARTHMERE_COORDINATE_TRANSFORM_VERSION"), "shared Harthmere coordinate transform exists");
-ok(transform.includes("HARTHMERE_DEFAULT_EXTRA_TOWN_OFFSET_X = 512"), "default Harthmere snapshot offset is 512");
+ok(transform.includes("HARTHMERE_ADDITIVE_TOWN_OFFSET_X"), "default Harthmere snapshot offset comes from the additive extension contract");
 ok(transform.includes("shiftHarthmereAuthoredPositionToWorld"), "authored-to-world position helper exists");
 
 ok(bridge.includes("SNAPSHOT_MISSION_BRIDGE_VERSION"), "snapshot mission bridge marker exists");

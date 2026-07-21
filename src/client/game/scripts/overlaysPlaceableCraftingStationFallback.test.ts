@@ -9,10 +9,7 @@ describe("Harthmere placeable crafting-station F fallback", () => {
   );
 
   it("scans nearby placeable crafting stations with the shared proximity gate", () => {
-    assert.match(
-      source,
-      /HARTHMERE_PLACEABLE_CRAFTING_STATION_FALLBACK/
-    );
+    assert.match(source, /HARTHMERE_PLACEABLE_CRAFTING_STATION_FALLBACK/);
     assert.match(source, /selectNearestHarthmereCraftingTable/);
     assert.match(source, /PlaceableSelector\.query\.spatial\.inSphere/);
     assert.match(source, /item\.isCraftingStation/);
@@ -23,10 +20,7 @@ describe("Harthmere placeable crafting-station F fallback", () => {
     // fallback must additionally accept cook stations or standing over a
     // campfire shows no F prompt.
     assert.match(source, /isHarthmerePlacedCookStationItem/);
-    assert.match(
-      source,
-      /!item\.isCraftingStation\s*&&\s*!isCookStation/
-    );
+    assert.match(source, /!item\.isCraftingStation\s*&&\s*!isCookStation/);
   });
 
   it("returns the native placeable overlay so cooking and crafting keep existing routing", () => {
@@ -43,9 +37,30 @@ describe("Harthmere placeable crafting-station F fallback", () => {
     assert.match(source, priority);
   });
 
+  it("keeps a directly targeted native crop ahead of every proximity fallback", () => {
+    const directTerrainTarget = source.indexOf(
+      "A terrain ray hit is more specific than any proximity fallback"
+    );
+    const nearbyFallbacks = source.indexOf(
+      "const nearbyGrabBagOverlay = this.getNearbyGrabBagInspectableOverlay()"
+    );
+    assert.ok(
+      directTerrainTarget >= 0,
+      "direct terrain priority is documented"
+    );
+    assert.ok(nearbyFallbacks >= 0, "nearby fallback chain exists");
+    assert.ok(
+      directTerrainTarget < nearbyFallbacks,
+      "the crop under the reticle must mount its plant overlay before a nearby NPC, container, bag, or station can claim F"
+    );
+  });
+
   it("keeps hidden static quest containers gated without suppressing visible live crates", () => {
     assert.match(source, /harthmereVisibleStaticWorldObjectInspectCandidates/);
-    assert.match(source, /harthmereWorldObjectCandidateIsVisibleForInteraction/);
+    assert.match(
+      source,
+      /harthmereWorldObjectCandidateIsVisibleForInteraction/
+    );
     assert.match(source, /activeHarthmereStaticWorldObjectMarkerId/);
     assert.match(source, /readActiveBiomesUIMapPin/);
     assert.match(

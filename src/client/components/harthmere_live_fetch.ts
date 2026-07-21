@@ -1,6 +1,7 @@
 import { readHarthmereGlitchIdentity } from "@/client/game/glitch/harthmere_glitch_identity";
 import { emitHarthmereGlitchBehaviorEvent } from "@/client/game/glitch/harthmere_glitch_behavior_events";
 import { humanizeHarthmereGlitchKey } from "@/client/game/glitch/harthmere_glitch_event_catalog";
+import { harthmereBiomesAuthHeaders } from "@/shared/util/harthmere_auth_session";
 
 // HARTHMERE_LIVE_FETCH_TIMEOUT_RETRY (2026-07-05): production HAR analysis
 // showed the live_mode server route regularly takes 10s+ to respond while the
@@ -347,6 +348,12 @@ function isHarthmereLiveApiPath(pathname: string) {
   );
 }
 
+function isHarthmereApiPath(pathname: string) {
+  return (
+    pathname === "/api/harthmere" || pathname.startsWith("/api/harthmere/")
+  );
+}
+
 function currentWindowLocation() {
   return typeof window !== "undefined" ? window.location : undefined;
 }
@@ -458,12 +465,17 @@ export function prepareHarthmereLiveFetchRequest(
   } catch {
     return { input, init };
   }
-  if (!isHarthmereLiveApiPath(url.pathname)) {
+  if (!isHarthmereApiPath(url.pathname)) {
     return { input, init };
   }
+  const location = currentWindowLocation();
+  if (location?.origin && url.origin !== location.origin) {
+    return { input, init };
+  }
+  const isLiveApiRequest = isHarthmereLiveApiPath(url.pathname);
   let nextInit = init;
   const method = String(nextInit.method ?? "GET").toUpperCase();
-  if (method === "GET") {
+  if (isLiveApiRequest && method === "GET") {
     // Live state reads are already coalesced in-memory above. Browser/HTTP
     // caching can replay stale 304 snapshots after a mutation, so always
     // read these Cloud Save projections from the backend source.
@@ -472,7 +484,7 @@ export function prepareHarthmereLiveFetchRequest(
   const nextHeaders = new Headers(
     nextInit.headers ?? (isRequestInput(input) ? input.headers : undefined)
   );
-  if (method === "GET") {
+  if (isLiveApiRequest && method === "GET") {
     nextHeaders.delete("If-None-Match");
     nextHeaders.delete("If-Modified-Since");
     nextHeaders.delete("If-Range");
@@ -483,12 +495,25 @@ export function prepareHarthmereLiveFetchRequest(
       nextHeaders.set("Pragma", "no-cache");
     }
   }
-  const installId = resolveHarthmereLiveInstallId(url);
-  if (installId && !url.searchParams.has("install_id")) {
-    url.searchParams.set("install_id", installId);
+  // Glitch's install id selects the portable per-player live-mode/Cloud Save
+  // projection. It is not an ECS credential. Native ECS APIs instead require
+  // the authenticated Biomes user/session pair created by the Glitch login
+  // bridge. Keep both identities on live-mode requests, and only the Biomes
+  // session on other same-origin Harthmere APIs. The helper deliberately
+  // returns no credentials for cross-origin URLs.
+  for (const [key, value] of Object.entries(harthmereBiomesAuthHeaders(url))) {
+    if (!nextHeaders.has(key)) {
+      nextHeaders.set(key, value);
+    }
   }
-  if (installId && !nextHeaders.has(HARTHMERE_LIVE_INSTALL_HEADER)) {
-    nextHeaders.set(HARTHMERE_LIVE_INSTALL_HEADER, installId);
+  if (isLiveApiRequest) {
+    const installId = resolveHarthmereLiveInstallId(url);
+    if (installId && !url.searchParams.has("install_id")) {
+      url.searchParams.set("install_id", installId);
+    }
+    if (installId && !nextHeaders.has(HARTHMERE_LIVE_INSTALL_HEADER)) {
+      nextHeaders.set(HARTHMERE_LIVE_INSTALL_HEADER, installId);
+    }
   }
   nextInit = { ...nextInit, headers: nextHeaders };
 

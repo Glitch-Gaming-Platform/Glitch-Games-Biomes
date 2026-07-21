@@ -2,7 +2,10 @@ import {
   HARTHMERE_BUSINESS_OUTPOSTS,
   harthmereBusinessOutpostJobsBoardPosition,
 } from "../../../shared/harthmere/business_customer_simulator";
-import { formatHarthmereJobTimeRemaining } from "../../../shared/harthmere/mmo_jobs_board_authority";
+import {
+  formatHarthmereJobTimeRemaining,
+  HARTHMERE_JOBS_BOARD_HARTHMERE_POSITION,
+} from "../../../shared/harthmere/mmo_jobs_board_authority";
 import { completeHarthmereDailyTask } from "@/client/components/challenges/harthmereDailyTasks";
 import { fetchHarthmereLiveWithTimeout } from "@/client/components/harthmere_live_fetch";
 import { HARTHMERE_LIVE_INVENTORY_SYNC_EVENT } from "@/client/components/challenges/harthmereEvents";
@@ -36,7 +39,11 @@ export const HARTHMERE_JOBS_BOARD_PHYSICAL_BOARDS = [
   {
     boardId: "harthmere_town_market_jobs_board",
     displayName: "Harthmere Jobs Board",
-    position: { x: 1046, y: 65, z: -202 },
+    position: {
+      x: HARTHMERE_JOBS_BOARD_HARTHMERE_POSITION[0],
+      y: HARTHMERE_JOBS_BOARD_HARTHMERE_POSITION[1],
+      z: HARTHMERE_JOBS_BOARD_HARTHMERE_POSITION[2],
+    },
     radius: HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS,
   },
   ...HARTHMERE_BUSINESS_OUTPOST_PHYSICAL_JOB_BOARDS,

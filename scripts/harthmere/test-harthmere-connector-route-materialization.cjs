@@ -19,10 +19,12 @@ function check(message, condition) {
 }
 
 check(
-  "route has Grove, connector, approach, and town-entrance anchors",
+  "route has Grove, connector, Harthmere Bridge Center descent, and town-entrance anchors",
   route.includes("[560, -182]") &&
     route.includes("[640, -209]") &&
-    route.includes("[896, -209]") &&
+    route.includes("896, -209") &&
+    route.includes("903, -209") &&
+    route.includes("HARTHMERE_CONNECTOR_DESCENT_LANDING_Y = 56") &&
     route.includes("988, -207")
 );
 check(
@@ -31,7 +33,7 @@ check(
 );
 check(
   "route planner provides a protected, graded town approach",
-  route.includes("engineeredTownApproach") &&
+  route.includes("engineeredConnectorSegment") &&
     route.includes("passage_clearance") &&
     route.includes("approach_fill") &&
     route.includes("approach_cap")

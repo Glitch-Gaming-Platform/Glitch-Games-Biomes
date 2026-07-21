@@ -114,8 +114,7 @@ export function HarthmereJobsBoardWorldInteraction({
         ? {
             id: `harthmere:jobs-board:${activePrompt.boardId}`,
             priority:
-              WORLD_INTERACTION_PRIORITY.authoredStation -
-              activePrompt.distance,
+              WORLD_INTERACTION_PRIORITY.jobsBoard - activePrompt.distance,
             keyCodes: ["KeyF", "KeyE"],
             onInteract: (event: KeyboardEvent) =>
               open(event.code === "KeyF" ? "keyboard_f" : "keyboard_e"),

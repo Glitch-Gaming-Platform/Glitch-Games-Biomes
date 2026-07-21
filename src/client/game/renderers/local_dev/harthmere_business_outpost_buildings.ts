@@ -5,6 +5,10 @@ import {
   HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS,
   type HarthmereBusinessOutpostProceduralBuildingRecord,
 } from "@/shared/harthmere/business_customer_simulator";
+import {
+  HARTHMERE_ADDITIVE_TOWN_OFFSET_X,
+  HARTHMERE_ADDITIVE_TOWN_OFFSET_Z,
+} from "@/shared/harthmere/world_extension";
 import * as THREE from "three";
 
 export const HARTHMERE_BUSINESS_OUTPOST_BUILDING_RENDER_VERSION =
@@ -14,7 +18,7 @@ function harthmereBusinessOutpostRuntimeOffsetX() {
   return Number.parseInt(
     process.env.NEXT_PUBLIC_BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X ??
       process.env.BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X ??
-      "512",
+      String(HARTHMERE_ADDITIVE_TOWN_OFFSET_X),
     10
   );
 }
@@ -23,7 +27,7 @@ function harthmereBusinessOutpostRuntimeOffsetZ() {
   return Number.parseInt(
     process.env.NEXT_PUBLIC_BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_Z ??
       process.env.BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_Z ??
-      "0",
+      String(HARTHMERE_ADDITIVE_TOWN_OFFSET_Z),
     10
   );
 }

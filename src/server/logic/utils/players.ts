@@ -43,6 +43,11 @@ import type {
 import type { Item, OptionalDamageSource, Vec3f } from "@/shared/ecs/gen/types";
 import { WorldMetadataId } from "@/shared/ecs/ids";
 import {
+  HARTHMERE_ADDITIVE_TOWN_OFFSET_X,
+  HARTHMERE_ADDITIVE_TOWN_OFFSET_Z,
+  shouldEnableHarthmereAdditiveWorldExtension,
+} from "@/shared/harthmere/world_extension";
+import {
   PLAYER_HOTBAR_SLOTS,
   PLAYER_INVENTORY_SLOTS,
   currencyRefTo,
@@ -59,7 +64,7 @@ import type {
   ReadonlyVec3,
 } from "@/shared/math/types";
 import { ok } from "assert";
-import { clamp, sample } from "lodash";
+import { sample } from "lodash";
 
 export function newPlayerInventory() {
   const ret = Inventory.create({
@@ -120,26 +125,19 @@ const LOCAL_DEV_STARTER_TOWN_START_POSITIONS: Readonly<
 
 // HARTHMERE_EXTRA_TOWN_PLAYER_START_OFFSET:
 const HARTHMERE_EXTRA_TOWN_PLAYER_START_OFFSET_X = Number.parseInt(
-  process.env.BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X ?? "512",
+  process.env.BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X ??
+    String(HARTHMERE_ADDITIVE_TOWN_OFFSET_X),
   10
 );
 const HARTHMERE_EXTRA_TOWN_PLAYER_START_OFFSET_Z = Number.parseInt(
-  process.env.BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_Z ?? "0",
+  process.env.BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_Z ??
+    String(HARTHMERE_ADDITIVE_TOWN_OFFSET_Z),
   10
 );
 function shouldOffsetLocalDevStarterTownSpawn() {
   // HARTHMERE_GROVE_SEPARATION_PLAYER_SPAWN:
   // Keep player spawn/rescue aligned with the server terrain shift.
-  if (
-    process.env.BIOMES_DISABLE_HARTHMERE_EXTRA_TOWN_OFFSET === "1" ||
-    process.env.BIOMES_HARTHMERE_STANDALONE_TOWN === "1"
-  ) {
-    return false;
-  }
-  return (
-    process.env.BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN === "1" ||
-    process.env.BIOMES_FORCE_LOCAL_DEV_TOWN === "1"
-  );
+  return shouldEnableHarthmereAdditiveWorldExtension(process.env);
 }
 function offsetLocalDevStarterTownSpawn(
   point: ReadonlyOrientedPoint
@@ -191,19 +189,13 @@ function shouldUseLocalDevStarterTownSpawn() {
   if (!allowLocalTownSpawnRuntime || !wantsHarthmereStart) {
     return false;
   }
-  if (
-    process.env.BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN === "1" ||
-    process.env.BIOMES_FORCE_LOCAL_DEV_TOWN === "1" ||
-    process.env.BIOMES_HARTHMERE_STANDALONE_TOWN === "1"
-  ) {
+  if (shouldEnableHarthmereAdditiveWorldExtension(process.env)) {
     return true;
   }
   if (!warnedInvalidHarthmereStartMode) {
     warnedInvalidHarthmereStartMode = true;
     log.warn(
-      "BIOMES_START_IN_HARTHMERE=1 was ignored because no Harthmere town mode is enabled. " +
-        "Use BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN=1 with terrain enabled, " +
-        "or use BIOMES_FORCE_LOCAL_DEV_TOWN=1 for the legacy local-dev town."
+      "BIOMES_START_IN_HARTHMERE=1 was ignored because the additive Harthmere town was explicitly disabled."
     );
   }
   return false;

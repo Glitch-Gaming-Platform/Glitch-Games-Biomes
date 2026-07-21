@@ -430,10 +430,9 @@ describe("harthmere bible quest live authority", () => {
       assert.deepEqual(report.failures, []);
       assert.ok(report.ok);
       assert.equal(report.mainChainQuestIds.length, 13); // Q1..Q12 + Q2.5
-      // World anchor = authored (640, 64, -268) + the +512 town X shift.
-      // Y 64 = the town's flat ground level: combat reach and objective
-      // distance are 3D, so the anchor must sit ON the ground, not at Y 0.
-      assert.deepEqual(report.arenaWorldAnchor, [1152, 64, -268]);
+      // World anchor = authored X 640 + the additive +1600 town shift.
+      // Y 53 is the real feet level on the generated Y=52 flat surface.
+      assert.deepEqual(report.arenaWorldAnchor, [2240, 53, -268]);
     });
   });
 

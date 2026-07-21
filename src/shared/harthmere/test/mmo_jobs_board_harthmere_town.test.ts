@@ -18,6 +18,7 @@ import {
   HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID,
   HARTHMERE_JOBS_BOARD_HARTHMERE_DISPLAY_NAME,
   HARTHMERE_JOBS_BOARD_HARTHMERE_MARKER_ID,
+  HARTHMERE_JOBS_BOARD_HARTHMERE_POSITION,
   HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS,
   defaultHarthmereJobsBoardState,
   isActorAtHarthmereJobsBoard,
@@ -75,8 +76,10 @@ describe("mmo_jobs_board_authority — second Harthmere board (current)", () => 
       [grove.location.x, grove.location.z],
       [harthmere.location.x, harthmere.location.z],
     );
-    assert.equal(harthmere.location.x, 1046);
-    assert.equal(harthmere.location.z, -202);
+    assert.deepEqual(
+      [harthmere.location.x, harthmere.location.y, harthmere.location.z],
+      HARTHMERE_JOBS_BOARD_HARTHMERE_POSITION,
+    );
     assert.equal(grove.location.radius, HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS);
     assert.equal(harthmere.location.radius, HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS);
     assert.equal(harthmere.location.district, "Harthmere Market District");
@@ -93,7 +96,17 @@ describe("mmo_jobs_board_authority — second Harthmere board (current)", () => 
       true,
     );
     assert.equal(
-      isActorAtHarthmereJobsBoard(state, { actorPosition: { x: 1046, y: 65, z: -202 } }, HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID),
+      isActorAtHarthmereJobsBoard(
+        state,
+        {
+          actorPosition: {
+            x: HARTHMERE_JOBS_BOARD_HARTHMERE_POSITION[0],
+            y: HARTHMERE_JOBS_BOARD_HARTHMERE_POSITION[1],
+            z: HARTHMERE_JOBS_BOARD_HARTHMERE_POSITION[2],
+          },
+        },
+        HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID,
+      ),
       true,
     );
     // Far away — neither board.

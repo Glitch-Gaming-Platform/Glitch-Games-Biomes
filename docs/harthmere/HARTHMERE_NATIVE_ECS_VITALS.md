@@ -30,7 +30,14 @@ not a runtime repair path.
 Active gameplay drains stamina at a constant rate of 100 points per two hours.
 A server-owned scheduler scans active players and bounds each tick to ten
 seconds, preventing a suspended browser or process restart from applying hours
-of catch-up damage at once. The clock does not depend on a mounted HUD.
+of catch-up damage at once. Production replicas compete for one Redis time-slot
+claim per interval, so exactly one process advances the survival clock in that
+interval; the key expires automatically and the next interval can fail over to
+any replica. Each player commits in a separate optimistic ECS transaction;
+combat or respawn contention for one player is retried on the next tick without
+aborting every other player's vitals. The browser heartbeat runs at a lower
+fallback cadence and is not the survival clock authority. The clock does not
+depend on a mounted HUD.
 
 Underwater breath lasts 15 seconds. The server derives head submersion from the
 player ECS position and authoritative terrain, not a browser boolean. Breath is
@@ -39,8 +46,8 @@ transaction subtracts 5 native HP per second and records `drown` as the ECS
 damage source. The old client drowning loop is disabled in native mode so
 damage cannot be applied twice.
 
-At zero stamina the heartbeat sets native Health to zero. Standard Biomes death
-UI handles the dead ECS player. A native respawn always returns the player to
+At zero stamina the server tick sets native Health to zero. Standard Biomes
+death UI handles the dead ECS player. A native respawn always returns the player to
 The Grove at `[496, 70, -126]` and restores Health, mana, stamina, and breath in
 the same `warpHomeEvent` transaction. This prevents a zero-stamina player from
 dying again immediately after respawn.

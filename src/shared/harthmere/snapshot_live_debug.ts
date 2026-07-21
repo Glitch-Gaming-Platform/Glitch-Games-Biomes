@@ -9,6 +9,7 @@ import {
   SNAPSHOT_GROVE_NPC_FEET_Y,
   SNAPSHOT_GROVE_NPCS,
 } from "@/shared/harthmere/snapshot_grove_content";
+import { HARTHMERE_ADDITIVE_TOWN_OFFSET_X } from "@/shared/harthmere/world_extension";
 
 export const SNAPSHOT_LIVE_DEBUG_PLAYER_SCOPE_VERSION =
   "snapshot-live-debug-player-scope" as const;
@@ -53,13 +54,12 @@ export const SNAPSHOT_HARTHMERE_LIVE_BOUNDS = {
 
 // BIOMES_HARTHMERE_SHIFTED_TOWN_BOUNDS
 // When BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN or BIOMES_FORCE_LOCAL_DEV_TOWN is
-// active, the server shifts the Harthmere city terrain by +512 X so it can sit
-// beside the imported snapshot/Grove world. The old diagnostic bounds called
-// that shifted city "wilds", which made the survey and logs misleading.
+// active, the server shifts the Harthmere city into the additive east band so
+// it cannot overwrite imported snapshot/Grove terrain.
 export const SNAPSHOT_HARTHMERE_SHIFTED_LIVE_BOUNDS = {
-  label: "Harthmere shifted local-dev town",
-  min: [704, 24, -512] as Vec3,
-  max: [1280, 140, 192] as Vec3,
+  label: "Harthmere additive east-extension town",
+  min: [192 + HARTHMERE_ADDITIVE_TOWN_OFFSET_X, 24, -512] as Vec3,
+  max: [768 + HARTHMERE_ADDITIVE_TOWN_OFFSET_X, 140, 192] as Vec3,
   expectedFeetY: SNAPSHOT_GROVE_NPC_FEET_Y,
 };
 
@@ -97,9 +97,7 @@ export function snapshotPointInBounds(
   );
 }
 
-export function snapshotLabelIsOriginalFloatingNpc(
-  label: string | undefined
-) {
+export function snapshotLabelIsOriginalFloatingNpc(label: string | undefined) {
   const normalized = (label ?? "").trim().toLowerCase();
   if (!normalized) return false;
   if (GROVE_BIBLE_NAMES.has(normalized)) return false;
@@ -124,10 +122,7 @@ export function snapshotIsLiveFloatingGroveNpcCandidate(input: {
   const position = input.position;
   if (!position) return false;
   const label = input.label?.trim();
-  const inGrove = snapshotPointInBounds(
-    position,
-    SNAPSHOT_GROVE_LIVE_BOUNDS
-  );
+  const inGrove = snapshotPointInBounds(position, SNAPSHOT_GROVE_LIVE_BOUNDS);
   if (!inGrove) return false;
   const fromAuthoredSeed = input.entityDescription?.includes(
     "snapshot-grove-npc-grounding"
@@ -292,12 +287,7 @@ export function snapshotAreaForPosition(
     return "grove";
   if (snapshotPointInBounds(position, SNAPSHOT_HARTHMERE_LIVE_BOUNDS))
     return "harthmere";
-  if (
-    snapshotPointInBounds(
-      position,
-      SNAPSHOT_HARTHMERE_SHIFTED_LIVE_BOUNDS
-    )
-  )
+  if (snapshotPointInBounds(position, SNAPSHOT_HARTHMERE_SHIFTED_LIVE_BOUNDS))
     return "harthmere";
   if (
     position[0] >= 620 &&

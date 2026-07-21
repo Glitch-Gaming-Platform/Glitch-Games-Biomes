@@ -3,6 +3,9 @@ import { zBiomesId, type BiomesId } from "@/shared/ids";
 import { zVec3f } from "@/shared/math/types";
 import { z } from "zod";
 import { SNAPSHOT_GROVE_LANDMARKS } from "@/shared/harthmere/snapshot_grove_content";
+import { shiftHarthmereAuthoredPositionToWorld } from "@/shared/harthmere/coordinate_transform";
+import { HARTHMERE_BIBLE_DISTRICTS } from "@/shared/harthmere/harthmere_district_bible_layout";
+import { HARTHMERE_EXTENSION_ROAD } from "@/shared/harthmere/world_extension";
 
 export const zLandmark = z.object({
   id: zBiomesId,
@@ -23,6 +26,10 @@ export const SNAPSHOT_GROVE_WORLD_MAP_LANDMARKS_VERSION =
   "snapshot-grove-world-map-landmarks";
 export const HARTHMERE_CONNECTOR_WORLD_MAP_LANDMARKS_VERSION =
   "harthmere-connector-world-map-landmarks";
+export const HARTHMERE_EXTENSION_WORLD_MAP_LANDMARKS_VERSION =
+  "harthmere-additive-extension-world-map-landmarks-v1";
+export const HARTHMERE_BIBLE_WORLD_MAP_LANDMARKS_VERSION =
+  "harthmere-bible-world-map-landmarks-v1";
 
 const SNAPSHOT_MISSION_WORLD_MAP_LANDMARKS: Landmark[] = [
   {
@@ -71,13 +78,13 @@ const SNAPSHOT_MISSION_WORLD_MAP_LANDMARKS: Landmark[] = [
     id: 8810000000007101 as BiomesId,
     importance: 1,
     name: "Road to Harthmere",
-    position: [640, 54, -209],
+    position: shiftHarthmereAuthoredPositionToWorld([128, 54, -209]),
   },
   {
     id: 8810000000007102 as BiomesId,
     importance: 1,
     name: "Sergeant Bram Holt",
-    position: [998, 54, -277],
+    position: shiftHarthmereAuthoredPositionToWorld([486, 54, -277]),
   },
 ];
 
@@ -122,6 +129,82 @@ export const HARTHMERE_CONNECTOR_WORLD_MAP_LANDMARKS: Landmark[] = [
     8997551883502316 as BiomesId
   ),
 ];
+
+// Route infrastructure is always visible. The old connector endpoints remain
+// useful for players already following the Grove road, while these pins mark
+// the exact beginning, old/new shard handoff, west gate, and north-gate end of
+// the additive extension road.
+export const HARTHMERE_EXTENSION_WORLD_MAP_LANDMARKS: Landmark[] = [
+  {
+    id: 8997551883600000 as BiomesId,
+    importance: 1,
+    name: "Harthmere Extension Road — Map Boundary Start",
+    position: [
+      HARTHMERE_EXTENSION_ROAD.worldStart[0],
+      54,
+      HARTHMERE_EXTENSION_ROAD.worldStart[1],
+    ],
+  },
+  {
+    id: 8997551883600001 as BiomesId,
+    importance: 1,
+    name: "Harthmere West Gate",
+    position: [
+      HARTHMERE_EXTENSION_ROAD.worldWestGate[0],
+      54,
+      HARTHMERE_EXTENSION_ROAD.worldWestGate[1],
+    ],
+  },
+  {
+    id: 8997551883600002 as BiomesId,
+    importance: 1,
+    name: "Harthmere North Gate — Road End",
+    position: [
+      HARTHMERE_EXTENSION_ROAD.worldNorthGate[0],
+      54,
+      HARTHMERE_EXTENSION_ROAD.worldNorthGate[1],
+    ],
+  },
+];
+
+// Every district and every named landmark in the canonical bible gets a map
+// pin. This keeps buildings such as the chapel, forge, inn, bank, warehouse,
+// wells, barracks, residences, and civic offices discoverable without a second
+// hand-maintained coordinate list drifting away from the generated town.
+export const HARTHMERE_BIBLE_WORLD_MAP_LANDMARKS: Landmark[] =
+  HARTHMERE_BIBLE_DISTRICTS.flatMap((district, districtIndex) => {
+    const districtAnchor: Landmark = {
+      id: (8997551883600100 + districtIndex) as BiomesId,
+      importance: 1,
+      name: `Harthmere — ${district.label}`,
+      position: shiftHarthmereAuthoredPositionToWorld(district.anchor),
+    };
+    const buildings = district.landmarks.map(
+      (landmark, landmarkIndex): Landmark => ({
+        id: (8997551883601000 + districtIndex * 32 + landmarkIndex) as BiomesId,
+        importance: landmark.icon ? 1 : 0,
+        name: `Harthmere — ${landmark.label}`,
+        position: shiftHarthmereAuthoredPositionToWorld(landmark.position),
+      })
+    );
+    return [districtAnchor, ...buildings];
+  });
+
+export function appendHarthmereExtensionWorldMapLandmarks(
+  items: Landmark[]
+): Landmark[] {
+  const seen = new Set(items.map((item) => item.name));
+  const appended = [...items];
+  for (const item of [
+    ...HARTHMERE_EXTENSION_WORLD_MAP_LANDMARKS,
+    ...HARTHMERE_BIBLE_WORLD_MAP_LANDMARKS,
+  ]) {
+    if (seen.has(item.name)) continue;
+    seen.add(item.name);
+    appended.push(item);
+  }
+  return appended;
+}
 
 export function appendHarthmereConnectorWorldMapLandmarks(
   items: Landmark[]
@@ -189,7 +272,9 @@ export default biomesApiHandler(
       ];
     });
     return appendSnapshotMissionLandmarks(
-      appendHarthmereConnectorWorldMapLandmarks(scanned)
+      appendHarthmereExtensionWorldMapLandmarks(
+        appendHarthmereConnectorWorldMapLandmarks(scanned)
+      )
     );
   }
 );

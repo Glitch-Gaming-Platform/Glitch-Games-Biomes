@@ -50,12 +50,11 @@ export const HARTHMERE_TOWN_FLATTEN_VERSION =
   "harthmere-town-flatten-terraform" as const;
 
 /**
- * The flat town level. 64 is the modal measured surface of the town core
- * (largest bucket in the 2026-06-07 production scan; market plaza measured
- * 65, Grove board 70 — both OUTSIDE this rectangle). Renderer buildings and
- * NPCs re-ground through the shared probes, so they follow the new surface.
+ * The additive town's generated surface level. The legacy in-place production
+ * scan used Y=64, but that migration is deprecated; new terrain is authored at
+ * Y=52 and actors/quests stand one block above it at Y=53.
  */
-export const HARTHMERE_TOWN_FLATTEN_TARGET_Y = 64;
+export const HARTHMERE_TOWN_FLATTEN_TARGET_Y = 52;
 
 /** How far above the target we carve (highest measured town surface was 86;
  * +8 margin clears overhangs without touching authored structures higher up). */
@@ -114,7 +113,12 @@ export function isHarthmereTownFlattenAuthoredColumn(
   z: number
 ): boolean {
   const bounds = harthmereTownFlattenAuthoredBounds();
-  if (x < bounds.minX || x > bounds.maxX || z < bounds.minZ || z > bounds.maxZ) {
+  if (
+    x < bounds.minX ||
+    x > bounds.maxX ||
+    z < bounds.minZ ||
+    z > bounds.maxZ
+  ) {
     return false;
   }
   const hole = harthmereTownFlattenArenaExclusion();
@@ -124,7 +128,7 @@ export function isHarthmereTownFlattenAuthoredColumn(
   return true;
 }
 
-/** The same rectangle in world coordinates (authored + the +512 X shift). */
+/** The same rectangle in world coordinates (authored + the additive X shift). */
 export function harthmereTownFlattenWorldBounds(): HarthmereTownFlattenBounds {
   const authored = harthmereTownFlattenAuthoredBounds();
   const [minX, , minZ] = shiftHarthmereAuthoredPositionToWorld([
@@ -272,12 +276,13 @@ export function validateHarthmereTownFlattenContract(): {
   ) {
     failures.push("target level must sit strictly inside the fill/carve caps");
   }
-  // 4. Cross-module consistency: the boss anchor's ground Y and the flat
-  //    town level are the same number — combat reach is 3D, so if these ever
-  //    diverge the dragon floats above or sinks below the flattened ground.
-  if (anchorY !== HARTHMERE_TOWN_FLATTEN_TARGET_Y) {
+  // 4. Cross-module consistency: the boss stands one block above the flat
+  //    terrain cap. Combat reach is 3D, so this relationship is explicit.
+  if (anchorY !== HARTHMERE_TOWN_FLATTEN_TARGET_Y + 1) {
     failures.push(
-      `arena anchor ground Y (${anchorY}) != flatten target (${HARTHMERE_TOWN_FLATTEN_TARGET_Y})`
+      `arena anchor feet Y (${anchorY}) != flatten target + 1 (${
+        HARTHMERE_TOWN_FLATTEN_TARGET_Y + 1
+      })`
     );
   }
   return { ok: failures.length === 0, failures };

@@ -7,12 +7,13 @@ import {
   HARTHMERE_QUEST_CATALOG,
   getHarthmereQuestById,
   validateHarthmereQuestActivation,
-} from "./quest_compendium";
-import { shiftHarthmereAuthoredPositionToWorld } from "./coordinate_transform";
+} from "@/shared/harthmere/quest_compendium";
+import { shiftHarthmereAuthoredPositionToWorld } from "@/shared/harthmere/coordinate_transform";
+import { normalizeHarthmereExtensionQuestWorldPosition } from "@/shared/harthmere/world_extension";
 import {
   resolveHarthmereQuestObjectivePlacement,
   type HarthmereProductionPlacementPurpose,
-} from "./production_terrain_placement_map";
+} from "@/shared/harthmere/production_terrain_placement_map";
 
 export const HARTHMERE_QUEST_RUNTIME_VERSION = 47 as const;
 
@@ -288,11 +289,9 @@ export function getHarthmereQuestResolvedWaypoint(
   if (!quest || !source?.waypoint) {
     return undefined;
   }
-  const fallback = shiftHarthmereAuthoredPositionToWorld(source.waypoint) as [
-    number,
-    number,
-    number
-  ];
+  const fallback = normalizeHarthmereExtensionQuestWorldPosition(
+    shiftHarthmereAuthoredPositionToWorld(source.waypoint)
+  );
   return resolveHarthmereQuestObjectivePlacement({
     questId,
     objectiveId: objective?.id,
@@ -864,11 +863,9 @@ export function getHarthmereQuestMapHint(
   const source = firstOpenObjective?.location ?? quest.location;
   const waypoint =
     getHarthmereQuestResolvedWaypoint(questId, firstOpenObjective) ??
-    (shiftHarthmereAuthoredPositionToWorld(source.waypoint) as [
-      number,
-      number,
-      number
-    ]);
+    normalizeHarthmereExtensionQuestWorldPosition(
+      shiftHarthmereAuthoredPositionToWorld(source.waypoint)
+    );
   return {
     questId,
     objectiveId: firstOpenObjective?.id,

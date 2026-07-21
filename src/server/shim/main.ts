@@ -109,7 +109,10 @@ import {
   ShardDiff,
   ShardSeed,
   ShardShapes,
+  WorldMetadata,
+  type ReadonlyWorldMetadata,
 } from "@/shared/ecs/gen/components";
+import { WorldMetadataId } from "@/shared/ecs/ids";
 import { isPlayer } from "@/shared/game/players";
 import {
   SHARD_DIM,
@@ -149,6 +152,19 @@ import {
 import { harthmereExoticMatterDepositAtBlock } from "@/shared/harthmere/exotic_matter_caves";
 import { createHarthmereBusinessOutpostRebuildMaterializationPlans } from "@/shared/harthmere/business_customer_simulator";
 import { HARTHMERE_NATIVE_QUEST_GIVER_MANIFEST } from "@/shared/harthmere/harthmere_native_quest_manifest";
+import {
+  HARTHMERE_ADDITIVE_TOWN_OFFSET_X,
+  HARTHMERE_ADDITIVE_TOWN_OFFSET_Z,
+  HARTHMERE_ADDITIVE_WORLD_EXTENSION_VERSION,
+  HARTHMERE_BELLBINDER_DESCENT,
+  HARTHMERE_EXPANDED_WORLD_EAST_EDGE_X,
+  HARTHMERE_ORIGINAL_WORLD_EAST_EDGE_X,
+  expandWorldAabbForHarthmere,
+  harthmereBellbinderDescentFloorBlocks,
+  initialHarthmereWorldAabb,
+  isHarthmereExtensionWorldShardX,
+  shouldEnableHarthmereAdditiveWorldExtension,
+} from "@/shared/harthmere/world_extension";
 
 export interface ShimServerConfig extends BaseServerConfig {
   bootstrapMode: BootstrapMode;
@@ -179,13 +195,18 @@ async function registerShimWorldService(
 const HARTHMERE_LOCAL_DEV_TERRAIN_BOUNDS_VERSION =
   "harthmere-local-dev-terrain-bounds";
 const HARTHMERE_LOCAL_DEV_SEED_CONTENT_PASS =
-  "harthmere-town-design-rebuild-brightcart-left-road-clearance";
+  "harthmere-additive-east-extension-switchback-clearance-complete-town";
 const HARTHMERE_LOCAL_DEV_SEED_FINGERPRINT_VERSION =
-  "harthmere-local-dev-seed-fingerprint-business-customers";
+  "harthmere-local-dev-seed-fingerprint-additive-east-extension-v3";
 
-const LOCAL_DEV_TERRAIN_ID_BASE = 8_810_000_000_000_000 as BiomesId;
+// Use a new terrain id band for the additive extension. Reusing the legacy
+// band would move existing +512 town entities to +1600 and therefore remove
+// terrain from the current map—the opposite of the user's add-only contract.
+const LEGACY_LOCAL_DEV_TERRAIN_ID_BASE = 8_810_000_000_000_000 as BiomesId;
+const LEGACY_LOCAL_DEV_TERRAIN_ID_LIMIT = 8_810_000_000_010_000;
+const LOCAL_DEV_TERRAIN_ID_BASE = 8_810_000_000_030_000 as BiomesId;
 const LOCAL_DEV_NPC_ID_BASE = 8_810_000_000_010_000 as BiomesId;
-const LOCAL_DEV_TERRAIN_ID_LIMIT = 8_810_000_000_010_000;
+const LOCAL_DEV_TERRAIN_ID_LIMIT = 8_810_000_000_040_000;
 const LOCAL_DEV_NPC_ID_LIMIT = 8_810_000_000_020_000;
 const LOCAL_DEV_SEED_MARKER_ID = 8_810_000_000_020_000 as BiomesId;
 
@@ -193,29 +214,33 @@ const STARTER_TOWN_GROUND_Y = 52;
 const STARTER_TOWN_SPAWN: Vec3 = [486, STARTER_TOWN_GROUND_Y + 1, -209];
 
 // HARTHMERE_CONNECTED_MAP_ROAD_VERSION:
-// Harthmere is no longer treated as a hidden far-away local-dev island.
-// The authored road below connects the snapshot edge to Harthmere's west
-// approach when the default +512 x offset is active:
-//   authored [128, -209] -> [392, -209]
-//   shifted  [640, -209] -> [904, -209]
-// Keep this shard-aligned and close enough that players can follow the road.
+// Harthmere is no longer treated as a hidden or overlapping local-dev island.
+// The authored road below crosses the old X=1792 boundary and continues over
+// newly seeded extension terrain to Harthmere's west approach:
+//   authored [192, -209] -> [392, -209]
+//   shifted  [1792, -209] -> [1992, -209]
 const HARTHMERE_CONNECTED_MAP_ROAD_VERSION =
-  "harthmere-snapshot-connected-road";
-const HARTHMERE_CONNECTED_MAP_DEFAULT_OFFSET_X = 512;
-const HARTHMERE_CONNECTED_MAP_DEFAULT_OFFSET_Z = 0;
-const HARTHMERE_SNAPSHOT_EDGE_ROAD_AUTHORED_START_X = 128;
+  "harthmere-additive-extension-road";
+const HARTHMERE_CONNECTED_MAP_DEFAULT_OFFSET_X =
+  HARTHMERE_ADDITIVE_TOWN_OFFSET_X;
+const HARTHMERE_CONNECTED_MAP_DEFAULT_OFFSET_Z =
+  HARTHMERE_ADDITIVE_TOWN_OFFSET_Z;
+const HARTHMERE_SNAPSHOT_EDGE_ROAD_AUTHORED_START_X = 192;
 const HARTHMERE_SNAPSHOT_EDGE_ROAD_AUTHORED_Z = -209;
 const HARTHMERE_WEST_GATE_AUTHORED_X = 392;
 
 // HARTHMERE_EXTRA_TOWN_OFFSET:
 // In snapshot-merge mode, Harthmere becomes a shifted extra town instead of
-// the base spawn world. The default offset is shard-aligned: 512 / 32 = 16.
+// the base spawn world. +1600 is shard-aligned and places authored shard X=6
+// exactly at the old production edge (1600 + 6 * 32 = 1792).
 const HARTHMERE_EXTRA_TOWN_OFFSET_X = Number.parseInt(
-  process.env.BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X ?? "512",
+  process.env.BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X ??
+    String(HARTHMERE_CONNECTED_MAP_DEFAULT_OFFSET_X),
   10
 );
 const HARTHMERE_EXTRA_TOWN_OFFSET_Z = Number.parseInt(
-  process.env.BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_Z ?? "0",
+  process.env.BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_Z ??
+    String(HARTHMERE_CONNECTED_MAP_DEFAULT_OFFSET_Z),
   10
 );
 function shouldUseHarthmereExtraTownOffset() {
@@ -224,16 +249,10 @@ function shouldUseHarthmereExtraTownOffset() {
   // "seed Harthmere as the connected extra town". It must never paint the
   // Harthmere terrain/NPC layer directly over The Grove. Use
   // BIOMES_HARTHMERE_STANDALONE_TOWN=1 only for legacy unshifted tests.
-  if (
-    process.env.BIOMES_DISABLE_HARTHMERE_EXTRA_TOWN_OFFSET === "1" ||
-    process.env.BIOMES_HARTHMERE_STANDALONE_TOWN === "1"
-  ) {
-    return false;
-  }
-  return (
-    process.env.BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN === "1" ||
-    process.env.BIOMES_FORCE_LOCAL_DEV_TOWN === "1"
-  );
+  // The additive town is normal world content now, not an opt-in debug mode.
+  // Keeping only explicit disable/standalone switches makes production boots
+  // self-healing while preserving a deliberate emergency rollback path.
+  return shouldEnableHarthmereAdditiveWorldExtension(process.env);
 }
 function harthmereExtraTownOffsetX() {
   return shouldUseHarthmereExtraTownOffset()
@@ -298,7 +317,7 @@ const HARTHMERE_BUSINESS_OUTPOST_SEED_TERRAIN_SHARDS = Array.from(
 // Keep Grove snapshot NPCs in authored Grove X/Z, but ground them on the live
 // installed snapshot courtyard height. The logs showed the player standing at
 // y=70.5 while seeded Grove NPCs were at y=53, which means the cast existed but
-// was buried under the visible courtyard. Do not apply the Harthmere +512 X
+// was buried under the visible courtyard. Do not apply the Harthmere town X
 // offset here; only fix the Grove live Y band.
 function snapshotGroveRuntimeGroundedPosition(position: Vec3): Vec3 {
   return snapshotGroveGroundedPosition(position);
@@ -945,14 +964,15 @@ function shouldSeedLocalDevTerrain() {
     !!process.env.GLITCH_TITLE_ID;
   return (
     allowLocalTerrainRuntime &&
-    (process.env.BIOMES_FORCE_LOCAL_DEV_TOWN === "1" ||
-      process.env.BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN === "1") &&
+    shouldUseHarthmereExtraTownOffset() &&
     process.env.BIOMES_CREATE_LOCAL_DEV_TERRAIN !== "0"
   );
 }
 
 function isLocalDevStarterWorldEntityId(id: BiomesId) {
   return (
+    (id >= LEGACY_LOCAL_DEV_TERRAIN_ID_BASE &&
+      id < LEGACY_LOCAL_DEV_TERRAIN_ID_LIMIT) ||
     (id >= LOCAL_DEV_TERRAIN_ID_BASE && id < LOCAL_DEV_TERRAIN_ID_LIMIT) ||
     (id >= LOCAL_DEV_NPC_ID_BASE && id < LOCAL_DEV_NPC_ID_LIMIT)
   );
@@ -3648,7 +3668,49 @@ const HARTHMERE_DUNGEON_AREAS: ReadonlyArray<{
     y0: 45,
     y1: 57,
   },
+  {
+    // A single continuous shaft serves every negative-Y Bellbound quest.
+    // The generated switchback stair and level landings are added below.
+    name: "bellbinder_switchback_descent",
+    x0: HARTHMERE_BELLBINDER_DESCENT.authoredBounds.minX,
+    x1: HARTHMERE_BELLBINDER_DESCENT.authoredBounds.maxX,
+    z0: HARTHMERE_BELLBINDER_DESCENT.authoredBounds.minZ,
+    z1: HARTHMERE_BELLBINDER_DESCENT.authoredBounds.maxZ,
+    y0: HARTHMERE_BELLBINDER_DESCENT.minRelativeY,
+    y1: HARTHMERE_BELLBINDER_DESCENT.maxRelativeY,
+  },
 ];
+
+// One horizontal step descends one block. The first stair floor is Y=51,
+// immediately below the Y=52 chapel opening; step 112 reaches feet Y=-60.
+const HARTHMERE_BELLBINDER_FLOOR_BLOCKS = new Set(
+  harthmereBellbinderDescentFloorBlocks().map(([x, y, z]) => `${x}:${y}:${z}`)
+);
+
+function harthmereIsBellbinderSurfaceOpening(
+  worldX: number,
+  worldY: number,
+  worldZ: number
+) {
+  const [centerX, centerY, centerZ] =
+    HARTHMERE_BELLBINDER_DESCENT.surfaceOpeningCenter;
+  return (
+    worldY === centerY &&
+    inRange(worldX, centerX - 1, centerX + 1) &&
+    inRange(worldZ, centerZ - 2, centerZ)
+  );
+}
+
+function harthmereBellbinderDescentBlockAt(
+  materials: ReturnType<typeof localDevMaterials>,
+  worldX: number,
+  worldY: number,
+  worldZ: number
+): TerrainID | undefined {
+  return HARTHMERE_BELLBINDER_FLOOR_BLOCKS.has(`${worldX}:${worldY}:${worldZ}`)
+    ? materials.stoneBrick
+    : undefined;
+}
 
 function harthmereMat(
   materials: ReturnType<typeof localDevMaterials>,
@@ -3954,6 +4016,14 @@ function harthmereDungeonBlockAt(
   );
   if (exoticMatterDeposit !== undefined) return exoticMatterDeposit;
 
+  const bellbinderDescent = harthmereBellbinderDescentBlockAt(
+    materials,
+    worldX,
+    worldY,
+    worldZ
+  );
+  if (bellbinderDescent !== undefined) return bellbinderDescent;
+
   for (const area of HARTHMERE_DUNGEON_AREAS) {
     if (!inRect(worldX, worldZ, area.x0, area.x1, area.z0, area.z1)) continue;
     const boundary =
@@ -4001,12 +4071,16 @@ function harthmereSurfaceMaterial(
     return marketDistance <= 9 ? materials.stonePolished : materials.stoneBrick;
 
   // HARTHMERE_CONNECTED_ROAD_SURFACE:
-  // Explicit snapshot-edge connector road. This is authored pre-offset; when
-  // BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN=1 and the default +512 x offset is used,
-  // this becomes world x=640..904 at z=-209. That gives a real visible road from
-  // the snapshot edge into Harthmere's west approach even when all GLB road
-  // meshes are disabled by the snapshot-built runtime policy.
-  if (inRange(worldX, 128, 392) && inRange(worldZ, -214, -204)) {
+  // Explicit additive connector road. Authored X=192 maps to the old/new world
+  // boundary X=1792 and continues to the west gate at world X=1992.
+  if (
+    inRange(
+      worldX,
+      HARTHMERE_SNAPSHOT_EDGE_ROAD_AUTHORED_START_X,
+      HARTHMERE_WEST_GATE_AUTHORED_X
+    ) &&
+    inRange(worldZ, -214, -204)
+  ) {
     if (inRange(worldZ, -211, -207)) return materials.stoneBrick;
     return materials.gravel;
   }
@@ -6221,6 +6295,15 @@ function localDevTerrainShardSpecs() {
   const seen = new Set<string>();
   let idOffset = 0;
   const pushRuntimeSpec = (shardX: number, shardY: number, shardZ: number) => {
+    // In connected-world mode, this seed owns only the new east extension.
+    // Skipping every older-map shard is the fail-closed guarantee that cave,
+    // outpost, or full-profile additions cannot replace production terrain.
+    if (
+      shouldUseHarthmereExtraTownOffset() &&
+      !isHarthmereExtensionWorldShardX(shardX)
+    ) {
+      return;
+    }
     const key = `${shardX}:${shardY}:${shardZ}`;
     if (seen.has(key)) {
       return;
@@ -6241,24 +6324,104 @@ function localDevTerrainShardSpecs() {
     );
   };
 
-  // Ground is y=52, so shardY=1 covers y=32..63. That includes the flat
-  // surface, roads, walls, roofs, and low landmarks. A second empty air layer
-  // is not needed and was the largest cause of the shim startup wait.
-  for (let shardY = 1; shardY <= 1; shardY += 1) {
+  const pushAuthoredVolume = (
+    x0: number,
+    x1: number,
+    worldY0: number,
+    worldY1: number,
+    z0: number,
+    z1: number
+  ) => {
     for (
-      let shardX = STARTER_TOWN_WILDS_SHARD_X0;
-      shardX <= STARTER_TOWN_WILDS_SHARD_X1;
+      let shardX = Math.floor(x0 / SHARD_DIM);
+      shardX <= Math.floor(x1 / SHARD_DIM);
       shardX += 1
     ) {
+      if (
+        shardX < STARTER_TOWN_WILDS_SHARD_X0 ||
+        shardX > STARTER_TOWN_WILDS_SHARD_X1
+      ) {
+        continue;
+      }
       for (
-        let shardZ = STARTER_TOWN_WILDS_SHARD_Z0;
-        shardZ <= STARTER_TOWN_WILDS_SHARD_Z1;
+        let shardZ = Math.floor(z0 / SHARD_DIM);
+        shardZ <= Math.floor(z1 / SHARD_DIM);
         shardZ += 1
       ) {
-        pushSpec(shardX, shardY, shardZ);
+        if (
+          shardZ < STARTER_TOWN_WILDS_SHARD_Z0 ||
+          shardZ > STARTER_TOWN_WILDS_SHARD_Z1
+        ) {
+          continue;
+        }
+        for (
+          let shardY = Math.floor(worldY0 / SHARD_DIM);
+          shardY <= Math.floor(worldY1 / SHARD_DIM);
+          shardY += 1
+        ) {
+          pushSpec(shardX, shardY, shardZ);
+        }
       }
     }
+  };
+
+  // The full surface is contiguous, but empty air and solid underground do not
+  // need five complete horizontal copies. Seed the surface everywhere, then
+  // add only shards intersecting upper structures or authored dungeons. This
+  // preserves every bible building/quest level while keeping deployment boot
+  // readiness bounded to hundreds of shards instead of nearly two thousand.
+  for (
+    let shardX = STARTER_TOWN_WILDS_SHARD_X0;
+    shardX <= STARTER_TOWN_WILDS_SHARD_X1;
+    shardX += 1
+  ) {
+    for (
+      let shardZ = STARTER_TOWN_WILDS_SHARD_Z0;
+      shardZ <= STARTER_TOWN_WILDS_SHARD_Z1;
+      shardZ += 1
+    ) {
+      pushSpec(shardX, 1, shardZ);
+    }
   }
+
+  for (const building of HARTHMERE_BUILDINGS) {
+    const topWorldY = STARTER_TOWN_GROUND_Y + harthmereTopRelY(building) + 2;
+    if (topWorldY < 64) continue;
+    pushAuthoredVolume(
+      building.x0 - 2,
+      building.x1 + 2,
+      64,
+      topWorldY,
+      building.z0 - 2,
+      building.z1 + 2
+    );
+  }
+  // Legacy gate/watchtower generators are not represented in the building
+  // array, but their roofs cross the Y=64 shard boundary.
+  for (const [x0, x1, z0, z1, topWorldY] of [
+    [520, 529, -254, -245, STARTER_TOWN_GROUND_Y + 16],
+    [462, 476, -290, -276, STARTER_TOWN_GROUND_Y + 12],
+    [498, 512, -290, -276, STARTER_TOWN_GROUND_Y + 12],
+    [584, 596, -220, -208, STARTER_TOWN_GROUND_Y + 12],
+    [584, 596, -194, -182, STARTER_TOWN_GROUND_Y + 12],
+    [386, 398, -220, -206, STARTER_TOWN_GROUND_Y + 12],
+    [386, 398, -126, -112, STARTER_TOWN_GROUND_Y + 12],
+    [584, 596, -126, -112, STARTER_TOWN_GROUND_Y + 12],
+  ] as const) {
+    pushAuthoredVolume(x0, x1, 64, topWorldY, z0, z1);
+  }
+
+  for (const area of HARTHMERE_DUNGEON_AREAS) {
+    pushAuthoredVolume(
+      area.x0 - 1,
+      area.x1 + 1,
+      STARTER_TOWN_GROUND_Y + area.y0 - 1,
+      STARTER_TOWN_GROUND_Y + area.y1 + 1,
+      area.z0 - 1,
+      area.z1 + 1
+    );
+  }
+
   for (const shard of HARTHMERE_SUPPLEMENTAL_TERRAIN_SHARDS) {
     pushSpec(shard.shardX, shard.shardY, shard.shardZ);
   }
@@ -6275,7 +6438,7 @@ function localDevTerrainShardSpecs() {
 function localDevLegacyTerrainShardIds() {
   return Array.from(
     { length: HARTHMERE_LEGACY_LOCAL_DEV_TERRAIN_SHARD_COUNT },
-    (_, offset) => (LOCAL_DEV_TERRAIN_ID_BASE + offset) as BiomesId
+    (_, offset) => (LEGACY_LOCAL_DEV_TERRAIN_ID_BASE + offset) as BiomesId
   );
 }
 
@@ -6284,6 +6447,11 @@ function makeLocalDevStaleTerrainDeletes(
   activeTerrainIds: Set<BiomesId>,
   existingIds: Set<BiomesId>
 ): Change[] {
+  if (shouldUseHarthmereExtraTownOffset()) {
+    // Additive mode never deletes the old terrain id band. Old map state is
+    // preserved byte-for-byte while the new extension uses its own entities.
+    return [];
+  }
   if (HARTHMERE_LOCAL_DEV_PERF_PROFILE === "full") {
     return [];
   }
@@ -6341,6 +6509,17 @@ function makeLocalDevTerrainShard(
                 : materials.dirt;
 
             if (depth === 0) {
+              if (
+                harthmereIsBellbinderSurfaceOpening(
+                  authoredWorldX,
+                  worldY,
+                  authoredWorldZ
+                )
+              ) {
+                // Leave the chapel stair mouth as real air. The volume block
+                // starts empty, so no explicit zero write is required.
+                continue;
+              }
               const authoredGround = starterTownAboveGroundBlockAt(
                 materials,
                 authoredWorldX,
@@ -6360,7 +6539,11 @@ function makeLocalDevTerrainShard(
                   )
               );
             } else {
-              const authoredUnderground = starterTownAboveGroundBlockAt(
+              // Buildings, vegetation, roads, and landmarks are surface-only.
+              // Calling the full town generator for every underground voxel
+              // made deployment seeding unnecessarily expensive; dungeon and
+              // cave generation is the only authored source below ground.
+              const authoredUnderground = harthmereDungeonBlockAt(
                 materials,
                 authoredWorldX,
                 worldY,
@@ -6395,7 +6578,7 @@ function makeLocalDevTerrainShard(
         } else if (v1[1] <= STARTER_TOWN_GROUND_Y) {
           for (let y = 0; y < SHARD_DIM; y += 1) {
             const worldY = v0[1] + y;
-            const authoredUnderground = starterTownAboveGroundBlockAt(
+            const authoredUnderground = harthmereDungeonBlockAt(
               materials,
               authoredWorldX,
               worldY,
@@ -8137,6 +8320,121 @@ async function existingLocalDevIds(
   return new Set((await worldApi.has(ids)) as BiomesId[]);
 }
 
+async function ensureHarthmereAdditiveWorldBoundary(
+  service: ShimWorldService | undefined,
+  worldApi: WorldApi,
+  extensionTerrainAlreadyExists: boolean
+) {
+  if (!shouldUseHarthmereExtraTownOffset()) {
+    return false;
+  }
+
+  // Read through the concrete shim entity when available and through the lazy
+  // WorldApi entity in Redis-backed production. Keeping the two paths explicit
+  // avoids accidentally serializing lazy component accessors into ECS state.
+  let current: ReadonlyWorldMetadata | undefined;
+  let currentEntityExists = false;
+  if (service) {
+    const currentEntity = service.table.get(WorldMetadataId);
+    currentEntityExists = currentEntity !== undefined;
+    current = currentEntity?.world_metadata;
+  } else {
+    const currentEntity = await worldApi.get(WorldMetadataId);
+    currentEntityExists = currentEntity !== undefined;
+    current = currentEntity?.worldMetadata();
+  }
+  if (!current) {
+    // A brand-new snapshot can legitimately have no WorldMetadata entity yet.
+    // Create only that singleton component so the normal extension terrain can
+    // seed itself; no existing terrain or entity is modified by this bootstrap.
+    const initial = initialHarthmereWorldAabb();
+    const tick = service ? service.table.tick + 1 : 1;
+    const change: Change = {
+      kind: currentEntityExists ? "update" : "create",
+      tick,
+      entity: {
+        id: WorldMetadataId,
+        world_metadata: WorldMetadata.create({ aabb: initial }),
+      },
+    };
+    if (service) {
+      service.writeableTable.apply([change]);
+    } else {
+      const applied = await worldApi.apply({
+        changes: [toProposedChange(change)],
+      });
+      if (applied.outcome !== "success") {
+        log.error("Failed to create WorldMetadata for additive Harthmere", {
+          version: HARTHMERE_ADDITIVE_WORLD_EXTENSION_VERSION,
+          outcome: applied.outcome,
+        });
+        return false;
+      }
+    }
+    log.warn("Created WorldMetadata for fresh additive Harthmere world", {
+      version: HARTHMERE_ADDITIVE_WORLD_EXTENSION_VERSION,
+      aabb: initial,
+    });
+    return true;
+  }
+
+  const currentEastEdge = current.aabb.v1[0];
+  if (
+    !extensionTerrainAlreadyExists &&
+    currentEastEdge > HARTHMERE_ORIGINAL_WORLD_EAST_EDGE_X &&
+    currentEastEdge !== HARTHMERE_EXPANDED_WORLD_EAST_EDGE_X
+  ) {
+    // A differently-expanded world may already own part of X=1792..2559.
+    // Refuse to guess: automatic add-only seeding is safe only against the
+    // known original edge, our exact idempotent bound, or our own terrain IDs.
+    log.error("Refusing Harthmere extension over an unknown expanded map", {
+      version: HARTHMERE_ADDITIVE_WORLD_EXTENSION_VERSION,
+      currentEastEdge,
+      expectedOriginalEastEdge: HARTHMERE_ORIGINAL_WORLD_EAST_EDGE_X,
+      expectedExtensionEastEdge: HARTHMERE_EXPANDED_WORLD_EAST_EDGE_X,
+    });
+    return false;
+  }
+
+  const expanded = expandWorldAabbForHarthmere(current.aabb);
+  if (
+    expanded.v0.every((value, index) => value === current.aabb.v0[index]) &&
+    expanded.v1.every((value, index) => value === current.aabb.v1[index])
+  ) {
+    return true;
+  }
+
+  const tick = service ? service.table.tick + 1 : 1;
+  const change: Change = {
+    kind: "update",
+    tick,
+    entity: {
+      id: WorldMetadataId,
+      world_metadata: WorldMetadata.create({ aabb: expanded }),
+    },
+  };
+  if (service) {
+    service.writeableTable.apply([change]);
+  } else {
+    const applied = await worldApi.apply({
+      changes: [toProposedChange(change)],
+    });
+    if (applied.outcome !== "success") {
+      log.error("Failed to expand the Harthmere world-map boundary", {
+        version: HARTHMERE_ADDITIVE_WORLD_EXTENSION_VERSION,
+        outcome: applied.outcome,
+      });
+      return false;
+    }
+  }
+  log.warn("Expanded world metadata for additive Harthmere terrain", {
+    version: HARTHMERE_ADDITIVE_WORLD_EXTENSION_VERSION,
+    previous: current.aabb,
+    expanded,
+  });
+  return true;
+}
+
 // PRODUCTION_CONTENT_SYNC:
 // When a real (non-local) world already exists we must NOT rebuild or overwrite
 // terrain. But authored CONTENT added since the world was first seeded (e.g. the
@@ -8237,11 +8535,28 @@ async function seedLocalDevTerrainIfMissing(
     return;
   }
 
+  const firstExtensionTerrainId = localDevTerrainShardSpecs()[0]?.id;
+  const extensionTerrainAlreadyExists = firstExtensionTerrainId
+    ? (
+        await existingLocalDevIds([firstExtensionTerrainId], service, worldApi)
+      ).has(firstExtensionTerrainId)
+    : false;
+  // Map metadata must include the new shard band before clients receive town
+  // landmarks or terrain changes. This is idempotent and never shrinks bounds.
+  if (
+    !(await ensureHarthmereAdditiveWorldBoundary(
+      service,
+      worldApi,
+      extensionTerrainAlreadyExists
+    ))
+  ) {
+    return;
+  }
+
   if (
     service &&
     hasNonLocalTerrainShard(service) &&
-    process.env.BIOMES_FORCE_LOCAL_DEV_TOWN !== "1" &&
-    process.env.BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN !== "1"
+    !shouldUseHarthmereExtraTownOffset()
   ) {
     // PRODUCTION_CONTENT_SYNC: existing non-local terrain — do NOT rebuild
     // terrain, but still create any missing authored content (e.g. business
@@ -8297,9 +8612,11 @@ async function seedLocalDevTerrainIfMissing(
     service,
     worldApi
   );
-  const obsoleteLocalDevIds = legacyTerrainIds.filter(
-    (id) => existingIds.has(id) && !activeTerrainIds.has(id)
-  );
+  const obsoleteLocalDevIds = shouldUseHarthmereExtraTownOffset()
+    ? []
+    : legacyTerrainIds.filter(
+        (id) => existingIds.has(id) && !activeTerrainIds.has(id)
+      );
   const allExpectedSeedIdsExist = allExpectedLocalDevSeedIdsExist(
     expectedSeedIds,
     existingIds
@@ -8451,7 +8768,7 @@ async function seedLocalDevTerrainIfMissing(
       STARTER_TOWN_WILDS_X0 + harthmereExtraTownOffsetX(),
       STARTER_TOWN_WILDS_X1 + harthmereExtraTownOffsetX(),
     ],
-    y: [32, 96],
+    y: [-64, 96],
     z: [
       STARTER_TOWN_WILDS_Z0 + harthmereExtraTownOffsetZ(),
       STARTER_TOWN_WILDS_Z1 + harthmereExtraTownOffsetZ(),

@@ -34,6 +34,11 @@ import {
   makeHarthmereNpcFaceConfig,
 } from "@/shared/harthmere/voxel_faces";
 import {
+  HARTHMERE_ADDITIVE_TOWN_OFFSET_X,
+  HARTHMERE_ADDITIVE_TOWN_OFFSET_Z,
+  shouldEnableHarthmereAdditiveWorldExtension,
+} from "@/shared/harthmere/world_extension";
+import {
   HARTHMERE_FACIAL_EXPRESSION_EVENT,
   dispatchHarthmereFacialExpressionEvent,
   makeHarthmereFacialExpressionState,
@@ -363,13 +368,13 @@ const HARTHMERE_RUNTIME_CORE_BASE_ORIGIN = [486, -209] as const;
 const HARTHMERE_RUNTIME_EXTRA_TOWN_OFFSET_X = Number.parseInt(
   process.env.NEXT_PUBLIC_BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X ??
     process.env.BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X ??
-    "512",
+    String(HARTHMERE_ADDITIVE_TOWN_OFFSET_X),
   10,
 );
 const HARTHMERE_RUNTIME_EXTRA_TOWN_OFFSET_Z = Number.parseInt(
   process.env.NEXT_PUBLIC_BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_Z ??
     process.env.BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_Z ??
-    "0",
+    String(HARTHMERE_ADDITIVE_TOWN_OFFSET_Z),
   10,
 );
 function shouldUseHarthmereRuntimeExtraTownOffset() {
@@ -377,22 +382,7 @@ function shouldUseHarthmereRuntimeExtraTownOffset() {
   // Match the server: forced local-dev seeding is now shifted so Harthmere
   // remains separate from The Grove. Legacy unshifted runtime can be restored
   // only with BIOMES_HARTHMERE_STANDALONE_TOWN=1.
-  if (
-    process.env.NEXT_PUBLIC_BIOMES_DISABLE_HARTHMERE_EXTRA_TOWN_OFFSET === "1" ||
-    process.env.BIOMES_DISABLE_HARTHMERE_EXTRA_TOWN_OFFSET === "1" ||
-    process.env.NEXT_PUBLIC_BIOMES_HARTHMERE_STANDALONE_TOWN === "1" ||
-    process.env.BIOMES_HARTHMERE_STANDALONE_TOWN === "1"
-  ) {
-    return false;
-  }
-  return (
-    process.env.NEXT_PUBLIC_GLITCH_RUNTIME === "1" ||
-    process.env.NEXT_PUBLIC_GLITCH_LOCAL_ASSETS === "1" ||
-    process.env.NEXT_PUBLIC_BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN === "1" ||
-    process.env.BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN === "1" ||
-    process.env.NEXT_PUBLIC_BIOMES_FORCE_LOCAL_DEV_TOWN === "1" ||
-    process.env.BIOMES_FORCE_LOCAL_DEV_TOWN === "1"
-  );
+  return shouldEnableHarthmereAdditiveWorldExtension(process.env);
 }
 function harthmereRuntimeExtraTownOffsetX() {
   return shouldUseHarthmereRuntimeExtraTownOffset()
@@ -6005,23 +5995,23 @@ function createHarthmereWideWildsPlacements(): RuntimePlacement[] {
     ...row("road", "Harthmere Wilds - Northeast Reed Track", "Reed track stone", 604, -260, 60, 8, -8, 0.68, 0.64),
     ...row("road", "Harthmere Wilds - Southwest Orchard Track", "Orchard track stone", 420, -100, 60, -8, 8, 0.68, 0.64),
     ...row("road", "Harthmere Wilds - Southeast Grave Track", "Grave track stone", 568, -100, 60, 8, 8, -0.68, 0.64),
-    // HARTHMERE_CONNECTED_MAP_ROAD Snapshot edge road. With the default +512 x offset,
-    // these authored placements render from x=640 to x=904, connecting the implemented
-    // snapshot edge into Harthmere's west road instead of hiding the town off-map.
-    ...row("road", "Harthmere Snapshot Edge Road", "HARTHMERE_CONNECTED_MAP_ROAD Snapshot edge road packed dirt and gravel", 128, -209, 35, 8, 0, Math.PI / 2, 0.82),
-    ...row("obj_lamp_ground_small", "Harthmere Snapshot Edge Road", "HARTHMERE_CONNECTED_MAP_ROAD safe road lantern", 152, -203.8, 8, 32, 0, 0, 0.36),
-    ...row("banner_red", "Harthmere Snapshot Edge Road", "HARTHMERE_CONNECTED_MAP_ROAD red black watch banner", 168, -214.2, 7, 36, 0, 0, 0.34),
+    // HARTHMERE_CONNECTED_MAP_ROAD. With the additive +1600 X offset these
+    // placements render from X=1792 to X=1992, entirely on newly generated
+    // extension terrain and therefore never replacing an original map shard.
+    ...row("road", "Harthmere Snapshot Edge Road", "HARTHMERE_CONNECTED_MAP_ROAD Snapshot edge road packed dirt and gravel", 192, -209, 26, 8, 0, Math.PI / 2, 0.82),
+    ...row("obj_lamp_ground_small", "Harthmere Snapshot Edge Road", "HARTHMERE_CONNECTED_MAP_ROAD safe road lantern", 200, -203.8, 7, 32, 0, 0, 0.36),
+    ...row("banner_red", "Harthmere Snapshot Edge Road", "HARTHMERE_CONNECTED_MAP_ROAD red black watch banner", 208, -214.2, 6, 36, 0, 0, 0.34),
   );
 
   placements.push(
-    P("obj_sign_post", 128, -205.2, Math.PI / 2, 0.42, "HARTHMERE_CONNECTED_MAP_ROAD Snapshot edge sign: Harthmere west road", "Harthmere Snapshot Edge Road"),
+    P("obj_sign_post", 192, -205.2, Math.PI / 2, 0.42, "HARTHMERE_CONNECTED_MAP_ROAD Map boundary sign: Harthmere west road", "Harthmere Snapshot Edge Road"),
     P("obj_sign_post", 280, -205.4, Math.PI / 2, 0.38, "HARTHMERE_CONNECTED_MAP_ROAD Road bends: town smoke and bells ahead", "Harthmere Snapshot Edge Road"),
     P("obj_lamp_ground_large", 392, -205.8, 0, 0.44, "HARTHMERE_CONNECTED_MAP_ROAD West gate approach lamp visible from road", "Harthmere Snapshot Edge Road"),
-    P("candle_lit", 184, -214.8, 0, 0.28, "HARTHMERE_CONNECTED_MAP_ROAD traveler return-safely candle shrine", "Harthmere Snapshot Edge Road", GROUND_Y + 0.18),
-    P("rock_small", 184.6, -215.0, 0, 0.34, "HARTHMERE_CONNECTED_MAP_ROAD small roadside prayer stone", "Harthmere Snapshot Edge Road"),
+    P("candle_lit", 216, -214.8, 0, 0.28, "HARTHMERE_CONNECTED_MAP_ROAD traveler return-safely candle shrine", "Harthmere Snapshot Edge Road", GROUND_Y + 0.18),
+    P("rock_small", 216.6, -215.0, 0, 0.34, "HARTHMERE_CONNECTED_MAP_ROAD small roadside prayer stone", "Harthmere Snapshot Edge Road"),
     P("forest_bush_1a", 240, -218.5, -0.2, 0.54, "HARTHMERE_CONNECTED_MAP_ROAD hedgerow transition from safe road to Wilds", "Harthmere Snapshot Edge Road"),
     P("forest_grass_1c", 304, -218.0, 0.1, 0.42, "HARTHMERE_CONNECTED_MAP_ROAD wagon-rut grass shoulder", "Harthmere Snapshot Edge Road"),
-    A("townsperson_guard", 160, -211.5, Math.PI / 2, 0.96, "HARTHMERE_CONNECTED_MAP_ROAD Harthmere road patrol at snapshot edge", "Harthmere Snapshot Edge Road", { radius: 3.2, speed: 0.12, phase: 1.7 }),
+    A("townsperson_guard", 200, -211.5, Math.PI / 2, 0.96, "HARTHMERE_CONNECTED_MAP_ROAD Harthmere road patrol at map boundary", "Harthmere Snapshot Edge Road", { radius: 3.2, speed: 0.12, phase: 1.7 }),
     A("townsperson_bandit", 254, -232.0, -Math.PI / 2, 0.98, "HARTHMERE_CONNECTED_MAP_ROAD bandit scout watching from hedgerow, off the safe lane", "Harthmere Snapshot Edge Road", { radius: 2.6, speed: 0.08, phase: 2.4 }),
     P("coin_pile", 360, -209.2, 0, 0.16, "HARTHMERE_CONNECTED_MAP_ROAD bellbound bronze road nail set into west approach", "Harthmere Snapshot Edge Road", GROUND_Y + 0.06),
   );
