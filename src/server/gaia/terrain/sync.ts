@@ -1,5 +1,6 @@
 import type { GaiaServerContext } from "@/server/gaia/context";
 import type { GaiaReplica } from "@/server/gaia/table";
+import { gaiaMissingShardAllowance } from "@/server/gaia/terrain/missing_shard_allowance";
 import { using, usingAsync } from "@/shared/deletable";
 import {
   ChangeBuffer,
@@ -116,18 +117,32 @@ export class TerrainSync {
 
     log.info(`Populated ${seedsPopulated} seed tensors`);
     log.info(`Builder computed aabb: ${builder.aabb()}`);
-    log.info(`Builder expected shard count: ${builder.shardCount()}`);
+    const expectedShards = builder.shardCount();
+    log.info(`Builder expected shard count: ${expectedShards}`);
 
     const holes = builder.holeCount();
     // holeCount uses unique shard coordinates, while shardIds can include
     // overlapping terrain entities. Log the measured value before enforcing
     // the guardrail so sparse-world startup failures remain diagnosable.
+    // The absolute floor gives known sparse layouts room to start, while the
+    // ratio lets that allowance grow with intentional AABB expansion. Taking
+    // the larger value still fails closed when sparsity exceeds both policies.
+    const {
+      absoluteThreshold,
+      thresholdRatio,
+      ratioThreshold,
+      effectiveThreshold,
+    } = gaiaMissingShardAllowance(
+      expectedShards,
+      CONFIG.gaiaV2MissingShardsThreshold,
+      CONFIG.gaiaV2MissingShardsThresholdRatio
+    );
     log.info(
-      `Builder measured ${holes} missing terrain shard coordinates (threshold: ${CONFIG.gaiaV2MissingShardsThreshold}).`
+      `Builder measured ${holes} missing terrain shard coordinates (effective threshold: ${effectiveThreshold}; absolute: ${absoluteThreshold}; ratio: ${thresholdRatio}; ratio threshold: ${ratioThreshold}).`
     );
     ok(
-      holes <= CONFIG.gaiaV2MissingShardsThreshold,
-      `Gaia terrain has ${holes} missing shard coordinates; configured maximum is ${CONFIG.gaiaV2MissingShardsThreshold}`
+      holes <= effectiveThreshold,
+      `Gaia terrain has ${holes} missing shard coordinates; effective maximum is ${effectiveThreshold} (absolute ${absoluteThreshold}, ratio ${thresholdRatio})`
     );
     log.info(
       `Finished loading terrain with ${shardIds.length} shards and ${holes} holes.`

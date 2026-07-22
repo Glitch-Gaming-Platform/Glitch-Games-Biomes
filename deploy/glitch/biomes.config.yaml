@@ -27,10 +27,14 @@ gamePlayerExpirationSecs: 15
 # Gaia settings
 #
 gaiaClockMultiplier: 1.0
-# The additive Harthmere world has 20,188 missing unique shard coordinates
-# inside Gaia's rectangular terrain AABB. Keep a small measured allowance so
-# the sparse world starts while materially larger terrain loss still fails.
-gaiaV2MissingShardsThreshold: 20_500
+# The additive Harthmere world currently has 20,188 missing unique shard
+# coordinates inside Gaia's rectangular terrain AABB. Permit substantially
+# more intentional sparse expansion without disabling the corruption guard.
+gaiaV2MissingShardsThreshold: 32_768
+# Gaia uses the larger of the absolute allowance and 12% of the expected AABB
+# shard coordinates. At the current 282,624-coordinate AABB this permits
+# 33,914 holes, leaving 13,726 coordinates of growth above the measured world.
+gaiaV2MissingShardsThresholdRatio: 0.12
 # Production observed a 101-change farming batch when six plants were ticked.
 # Cap each pass below that boundary and let the existing requeue path drain the
 # remaining plants without generating oversized Redis world updates.

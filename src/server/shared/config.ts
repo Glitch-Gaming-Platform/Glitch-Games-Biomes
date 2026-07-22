@@ -479,8 +479,13 @@ const DEFAULT_CONFIG = deepFreeze({
   gaiaV2DryRun: false,
   // How quickly to step muck values in a single update
   gaiaV2MuckSimStepSize: 7,
-  // How many missing shards to tolerate
+  // Absolute floor for the number of missing terrain shard coordinates Gaia
+  // may tolerate while densifying the world's rectangular terrain AABB.
   gaiaV2MissingShardsThreshold: 0,
+  // Optional proportional allowance for sparse worlds. Gaia uses the larger
+  // of the absolute threshold above and this fraction of the expected shard
+  // coordinates. Zero preserves the strict absolute-only policy.
+  gaiaV2MissingShardsThresholdRatio: 0,
   // Gaia shutdown delay
   // When shutting down we release shards, then we push our hipri queue so others can
   // handle it, this is they delay before we do that push (giving time for the balancer

@@ -185,12 +185,15 @@ function runStaticChecks() {
     "Glitch roles keep Gaia enabled for unified/simulation stacks and require both dedicated workers"
   );
   ok(
-    glitchConfig.includes("gaiaV2MissingShardsThreshold: 20_500") &&
-      glitchConfig.includes("20,188 missing unique shard coordinates") &&
+    glitchConfig.includes("gaiaV2MissingShardsThreshold: 32_768") &&
+      glitchConfig.includes("gaiaV2MissingShardsThresholdRatio: 0.12") &&
+      glitchConfig.includes("20,188 missing unique shard") &&
+      glitchConfig.includes("13,726 coordinates of growth") &&
       glitchConfig.includes("farmingPlantsPerTick: 5") &&
       gaiaTerrainSync.includes("Builder measured ${holes}") &&
-      gaiaTerrainSync.includes("configured maximum is"),
-    "Glitch Gaia accepts the known sparse terrain shape and bounds farming update batches"
+      gaiaTerrainSync.includes("gaiaMissingShardAllowance(") &&
+      gaiaTerrainSync.includes("effective maximum is"),
+    "Glitch Gaia scales its bounded sparse-terrain allowance and limits farming update batches"
   );
   ok(
     glitchConfig.includes('- name: "anima"') &&
