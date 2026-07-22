@@ -187,9 +187,10 @@ function runStaticChecks() {
   ok(
     glitchConfig.includes("gaiaV2MissingShardsThreshold: 20_500") &&
       glitchConfig.includes("20,188 missing unique shard coordinates") &&
+      glitchConfig.includes("farmingPlantsPerTick: 5") &&
       gaiaTerrainSync.includes("Builder measured ${holes}") &&
       gaiaTerrainSync.includes("configured maximum is"),
-    "Glitch Gaia accepts the known sparse Harthmere terrain shape with a narrow missing-shard guardrail"
+    "Glitch Gaia accepts the known sparse terrain shape and bounds farming update batches"
   );
   ok(
     glitchConfig.includes('- name: "anima"') &&

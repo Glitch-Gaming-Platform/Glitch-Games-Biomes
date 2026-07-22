@@ -31,6 +31,10 @@ gaiaClockMultiplier: 1.0
 # inside Gaia's rectangular terrain AABB. Keep a small measured allowance so
 # the sparse world starts while materially larger terrain loss still fails.
 gaiaV2MissingShardsThreshold: 20_500
+# Production observed a 101-change farming batch when six plants were ticked.
+# Cap each pass below that boundary and let the existing requeue path drain the
+# remaining plants without generating oversized Redis world updates.
+farmingPlantsPerTick: 5
 
 # Gaia growth
 gaiaFloraGrowthSoil: []

@@ -493,7 +493,10 @@ failure while preserving their shared Logic and Redis dependencies.
   coordinates; the persisted sparse Harthmere world measured `20,188` holes on
   July 22, 2026, so larger terrain loss still fails startup. Gaia logs the
   measured value before enforcing the guardrail because overlapping terrain
-  entities make the raw entity count unsuitable for this check.
+  entities make the raw entity count unsuitable for this check. Production also
+  sets `farmingPlantsPerTick: 5`; remaining plants use the existing immediate
+  requeue path, preventing the oversized merged update seen when six plants
+  produced a 101-change batch.
 
 This boundary is a correctness guardrail, not an optional optimization. The
 July 22, 2026 co-located revision used roughly 11-12 GiB before simulation
@@ -1187,7 +1190,7 @@ After deploy:
 - [ ] Logs show `WebSocket listening on port 4900`.
 - [ ] Logs show `web now running`.
 - [ ] Simulation logs show the local Logic helper ready, Anima ready, Gaia ready, and `GLITCH_SIMULATION_ROLE_READY anima=1 gaia=1`.
-- [ ] Simulation logs show Gaia measured `20,188` missing terrain shard coordinates and do not contain `shard manager does not support weighted balancing`.
+- [ ] Simulation logs show Gaia measured `20,188` missing terrain shard coordinates and do not contain `shard manager does not support weighted balancing` or `Farming update batch too large`.
 - [ ] Public replicas remain below their previous co-located memory peak and have zero worker-driven restarts.
 - [ ] Production `/api/world_map/metadata` returns finite map bounds and no
       response-schema validation error.
