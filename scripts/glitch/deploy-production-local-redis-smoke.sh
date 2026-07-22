@@ -131,6 +131,14 @@ AZURE_SIMULATION_MAX_REPLICAS="${AZURE_SIMULATION_MAX_REPLICAS:-1}"
 AZURE_SIMULATION_CPU="${AZURE_SIMULATION_CPU:-4.0}"
 AZURE_SIMULATION_MEMORY="${AZURE_SIMULATION_MEMORY:-16Gi}"
 AZURE_SIMULATION_WORKLOAD_PROFILE="${AZURE_SIMULATION_WORKLOAD_PROFILE:-d4-prod}"
+HARTHMERE_WORLD_SYNC_RUNNER_MODE="${HARTHMERE_WORLD_SYNC_RUNNER_MODE:-auto}"
+HARTHMERE_WORLD_SYNC_JOB_NAME="${HARTHMERE_WORLD_SYNC_JOB_NAME:-biomes-harthmere-sync}"
+HARTHMERE_WORLD_SYNC_JOB_CONTAINER_NAME="${HARTHMERE_WORLD_SYNC_JOB_CONTAINER_NAME:-harthmere-sync}"
+HARTHMERE_WORLD_SYNC_JOB_CPU="${HARTHMERE_WORLD_SYNC_JOB_CPU:-4.0}"
+HARTHMERE_WORLD_SYNC_JOB_MEMORY="${HARTHMERE_WORLD_SYNC_JOB_MEMORY:-16Gi}"
+HARTHMERE_WORLD_SYNC_JOB_WORKLOAD_PROFILE="${HARTHMERE_WORLD_SYNC_JOB_WORKLOAD_PROFILE:-$AZURE_SIMULATION_WORKLOAD_PROFILE}"
+HARTHMERE_WORLD_SYNC_JOB_TIMEOUT_SECONDS="${HARTHMERE_WORLD_SYNC_JOB_TIMEOUT_SECONDS:-10800}"
+HARTHMERE_WORLD_SYNC_JOB_CREATED=0
 PROD_REDIS_HOST="${PROD_REDIS_HOST:-10.0.0.12}"
 PROD_REDIS_PUBLIC_HOST="${PROD_REDIS_PUBLIC_HOST:-}"
 PROD_REDIS_HEALTH_HOST="${PROD_REDIS_HEALTH_HOST:-$PROD_REDIS_HOST}"
@@ -815,6 +823,25 @@ check_production_redis_aof_health() {
   log "Production Redis write health OK: appendonly=$appendonly aof_enabled=$aof_enabled dir=$dir dbfilename=$dbfilename save=\"$save\"."
 }
 
+use_azure_world_sync_job() {
+  case "$HARTHMERE_WORLD_SYNC_RUNNER_MODE" in
+    azure-job)
+      return 0
+      ;;
+    direct)
+      return 1
+      ;;
+    auto)
+      [ -z "${PROD_REDIS_RECONCILE_HOST:-}" ]
+      return
+      ;;
+    *)
+      echo "ERROR unknown HARTHMERE_WORLD_SYNC_RUNNER_MODE=$HARTHMERE_WORLD_SYNC_RUNNER_MODE; expected auto, direct, or azure-job." >&2
+      exit 2
+      ;;
+  esac
+}
+
 check_production_world_sync_runner() {
   if [ "${HARTHMERE_SKIP_WORLD_SYNC_RECONCILIATION:-0}" = "1" ]; then
     return
@@ -824,10 +851,19 @@ check_production_world_sync_runner() {
     PROD_REDIS_RECONCILE_HOST="$PROD_REDIS_HEALTH_HOST"
   fi
 
+  if use_azure_world_sync_job; then
+    if ! command -v az >/dev/null 2>&1; then
+      echo "ERROR Azure CLI is required for the in-VNet Harthmere reconciliation job." >&2
+      exit 1
+    fi
+    log "Post-deploy Harthmere reconciliation will run in a temporary Azure VNet job."
+    return
+  fi
+
   if [ -z "${PROD_REDIS_RECONCILE_HOST:-}" ]; then
     echo "ERROR post-deploy world sync needs direct Redis access from an in-VNet runner." >&2
     echo "Production Redis is intentionally private; do not re-open the public Redis IP." >&2
-    echo "Run deploy from an Azure/VNet runner or set HARTHMERE_SKIP_WORLD_SYNC_RECONCILIATION=1 for an app-only rollout." >&2
+    echo "Use HARTHMERE_WORLD_SYNC_RUNNER_MODE=azure-job from a local workstation, run from an Azure/VNet runner, or explicitly request an app-only rollout." >&2
     exit 1
   fi
 }
@@ -1710,6 +1746,148 @@ wait_for_production_harthmere_extension_terrain_audit() {
   return 1
 }
 
+delete_azure_world_sync_job() {
+  if [ "$HARTHMERE_WORLD_SYNC_JOB_CREATED" != "1" ]; then
+    return
+  fi
+  log "Deleting temporary Harthmere reconciliation job $HARTHMERE_WORLD_SYNC_JOB_NAME."
+  az containerapp job delete \
+    --resource-group "$AZURE_RESOURCE_GROUP" \
+    --name "$HARTHMERE_WORLD_SYNC_JOB_NAME" \
+    --yes \
+    --output none >/dev/null 2>&1 || true
+  HARTHMERE_WORLD_SYNC_JOB_CREATED=0
+}
+
+run_azure_world_sync_job() {
+  local registry_username registry_password execution status="" polls=0 logs=""
+
+  if az containerapp job show \
+    --resource-group "$AZURE_RESOURCE_GROUP" \
+    --name "$HARTHMERE_WORLD_SYNC_JOB_NAME" \
+    --output none >/dev/null 2>&1; then
+    log "Removing stale Harthmere reconciliation job $HARTHMERE_WORLD_SYNC_JOB_NAME."
+    az containerapp job delete \
+      --resource-group "$AZURE_RESOURCE_GROUP" \
+      --name "$HARTHMERE_WORLD_SYNC_JOB_NAME" \
+      --yes \
+      --output none
+  fi
+
+  registry_username="$(az acr credential show --name "$ACR_NAME" --query username -o tsv)"
+  registry_password="$(az acr credential show --name "$ACR_NAME" --query 'passwords[0].value' -o tsv)"
+  log "Creating temporary in-VNet Harthmere reconciliation job (${HARTHMERE_WORLD_SYNC_JOB_CPU} CPU, ${HARTHMERE_WORLD_SYNC_JOB_MEMORY})."
+  az containerapp job create \
+    --resource-group "$AZURE_RESOURCE_GROUP" \
+    --name "$HARTHMERE_WORLD_SYNC_JOB_NAME" \
+    --environment "$AZURE_CONTAINER_APP_ENVIRONMENT" \
+    --trigger-type Manual \
+    --replica-timeout "$HARTHMERE_WORLD_SYNC_JOB_TIMEOUT_SECONDS" \
+    --replica-retry-limit 0 \
+    --replica-completion-count 1 \
+    --parallelism 1 \
+    --workload-profile-name "$HARTHMERE_WORLD_SYNC_JOB_WORKLOAD_PROFILE" \
+    --image "$IMAGE" \
+    --registry-server "$ACR_SERVER" \
+    --registry-username "$registry_username" \
+    --registry-password "$registry_password" \
+    --container-name "$HARTHMERE_WORLD_SYNC_JOB_CONTAINER_NAME" \
+    --cpu "$HARTHMERE_WORLD_SYNC_JOB_CPU" \
+    --memory "$HARTHMERE_WORLD_SYNC_JOB_MEMORY" \
+    --command ./scripts/glitch/run-harthmere-production-reconciliation.sh \
+    --env-vars \
+      NODE_ENV=production \
+      NODE_OPTIONS="--openssl-legacy-provider --enable-source-maps --max-old-space-size=8192" \
+      IS_SERVER=1 \
+      APPLY=1 \
+      REDIS_HOST="$PROD_REDIS_HOST" \
+      GLITCH_REDIS_HOST="$PROD_REDIS_HOST" \
+      LOCAL_REDIS_HOST="$PROD_REDIS_HOST" \
+      REDIS_PORT="$PROD_REDIS_PORT" \
+      GLITCH_REDIS_PORT="$PROD_REDIS_PORT" \
+      ALLOW_NON_K8_REDIS=1 \
+      USE_K8_REDIS=0 \
+      BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN=1 \
+      BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X=1600 \
+      BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_Z=0 \
+      HARTHMERE_DEPLOY_TAG="$TAG" \
+      HARTHMERE_BUSINESS_OUTPOST_MATERIALIZATION_MODE="$HARTHMERE_BUSINESS_OUTPOST_MATERIALIZATION_MODE" \
+      HARTHMERE_BUSINESS_OUTPOST_MATERIALIZATION_SCAN_COUNT="$HARTHMERE_BUSINESS_OUTPOST_MATERIALIZATION_SCAN_COUNT" \
+      HARTHMERE_BUSINESS_OUTPOST_MATERIALIZATION_APPLY_SHARD_BATCH_SIZE="$HARTHMERE_BUSINESS_OUTPOST_MATERIALIZATION_APPLY_SHARD_BATCH_SIZE" \
+      HARTHMERE_CONNECTOR_ROUTE_SCAN_COUNT="$HARTHMERE_CONNECTOR_ROUTE_SCAN_COUNT" \
+      HARTHMERE_CONNECTOR_ROUTE_APPLY_SHARD_BATCH_SIZE="$HARTHMERE_CONNECTOR_ROUTE_APPLY_SHARD_BATCH_SIZE" \
+      HARTHMERE_SKIP_BUSINESS_OUTPOST_MATERIALIZATION="${HARTHMERE_SKIP_BUSINESS_OUTPOST_MATERIALIZATION:-0}" \
+      HARTHMERE_SKIP_CONNECTOR_ROUTE_MATERIALIZATION="${HARTHMERE_SKIP_CONNECTOR_ROUTE_MATERIALIZATION:-0}" \
+      HARTHMERE_SKIP_GROUNDING_PROBE="${HARTHMERE_SKIP_GROUNDING_PROBE:-0}" \
+      HARTHMERE_SKIP_LIVE_CREATURE_GROUNDING_RECONCILE="${HARTHMERE_SKIP_LIVE_CREATURE_GROUNDING_RECONCILE:-0}" \
+    --output none
+  unset registry_password
+  HARTHMERE_WORLD_SYNC_JOB_CREATED=1
+
+  log "Starting Harthmere production reconciliation inside the Azure VNet."
+  execution="$(az containerapp job start \
+    --resource-group "$AZURE_RESOURCE_GROUP" \
+    --name "$HARTHMERE_WORLD_SYNC_JOB_NAME" \
+    --query name \
+    -o tsv)"
+  if [ -z "$execution" ]; then
+    execution="$(az containerapp job execution list \
+      --resource-group "$AZURE_RESOURCE_GROUP" \
+      --name "$HARTHMERE_WORLD_SYNC_JOB_NAME" \
+      --query 'sort_by(@,&properties.startTime)[-1].name' \
+      -o tsv)"
+  fi
+  if [ -z "$execution" ]; then
+    echo "ERROR Azure did not return a Harthmere reconciliation execution name." >&2
+    exit 1
+  fi
+
+  while [ "$polls" -lt "${HARTHMERE_WORLD_SYNC_JOB_POLLS:-1080}" ]; do
+    status="$(az containerapp job execution show \
+      --resource-group "$AZURE_RESOURCE_GROUP" \
+      --name "$HARTHMERE_WORLD_SYNC_JOB_NAME" \
+      --job-execution-name "$execution" \
+      --query properties.status \
+      -o tsv 2>/dev/null || true)"
+    case "$status" in
+      Succeeded)
+        break
+        ;;
+      Failed|Stopped|Degraded)
+        break
+        ;;
+    esac
+    polls=$((polls + 1))
+    if [ $((polls % 6)) -eq 0 ]; then
+      log "Harthmere reconciliation job status: ${status:-Pending} (${polls}/${HARTHMERE_WORLD_SYNC_JOB_POLLS:-1080})."
+    fi
+    sleep "${HARTHMERE_WORLD_SYNC_JOB_POLL_SECONDS:-10}"
+  done
+
+  logs="$(az containerapp job logs show \
+    --resource-group "$AZURE_RESOURCE_GROUP" \
+    --name "$HARTHMERE_WORLD_SYNC_JOB_NAME" \
+    --execution "$execution" \
+    --container "$HARTHMERE_WORLD_SYNC_JOB_CONTAINER_NAME" \
+    --tail 300 \
+    --format text 2>&1 || true)"
+  printf '%s\n' "$logs"
+
+  if [ "$status" != "Succeeded" ]; then
+    echo "ERROR Harthmere reconciliation job did not succeed: execution=$execution status=${status:-unknown}." >&2
+    delete_azure_world_sync_job
+    exit 1
+  fi
+  if ! printf '%s\n' "$logs" | grep -q "HARTHMERE_PRODUCTION_RECONCILIATION_READY tag=$TAG"; then
+    echo "ERROR Harthmere reconciliation job succeeded without the required read-back success marker." >&2
+    delete_azure_world_sync_job
+    exit 1
+  fi
+
+  log "Harthmere reconciliation job passed all migration and read-back gates: $execution."
+  delete_azure_world_sync_job
+}
+
 seed_production_harthmere_extension_terrain() {
   local candidate_revision="$1"
   local suffix
@@ -1748,7 +1926,13 @@ seed_production_harthmere_extension_terrain() {
   fi
 
   wait_for_azure_revision_ready "$HARTHMERE_TERRAIN_MAINTENANCE_REVISION"
-  wait_for_production_harthmere_extension_terrain_audit
+  if use_azure_world_sync_job; then
+    # Shim startup awaits the terrain seed before the revision becomes ready.
+    # The in-VNet job audits the complete foundation before applying outposts.
+    log "Deferring the private-Redis terrain read-back audit to the in-VNet reconciliation job."
+  else
+    wait_for_production_harthmere_extension_terrain_audit
+  fi
   log "Deactivating completed Harthmere terrain maintenance revision $HARTHMERE_TERRAIN_MAINTENANCE_REVISION."
   az containerapp revision deactivate \
     --resource-group "$AZURE_RESOURCE_GROUP" \
@@ -1767,6 +1951,14 @@ reconcile_production_world_sync() {
 
   check_production_redis_aof_health "post-deploy world sync"
   check_production_redis_snapshot_hash "post-deploy world sync"
+
+  if use_azure_world_sync_job; then
+    run_azure_world_sync_job
+    validate_production_world_sync_http "$revision"
+    audit_production_authored_content
+    force_production_redis_bgsave "post-deploy world sync and grounding reconciliation"
+    return
+  fi
 
   if [ "${HARTHMERE_SKIP_BUSINESS_OUTPOST_MATERIALIZATION:-0}" != "1" ]; then
     log "Reconciling Harthmere business outpost terrain against production Redis."
@@ -1803,6 +1995,7 @@ reconcile_production_world_sync() {
 
 cleanup() {
   local status="$?"
+  delete_azure_world_sync_job
   if [ -n "${HARTHMERE_TERRAIN_MAINTENANCE_REVISION:-}" ]; then
     log "Deactivating unfinished Harthmere terrain maintenance revision $HARTHMERE_TERRAIN_MAINTENANCE_REVISION."
     az containerapp revision deactivate \

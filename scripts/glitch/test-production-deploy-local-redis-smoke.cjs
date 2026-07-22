@@ -86,6 +86,13 @@ const harthmereCreatureGrounding = fs.readFileSync(
   ),
   "utf8"
 );
+const harthmereProductionReconciliation = fs.readFileSync(
+  path.join(
+    root,
+    "scripts/glitch/run-harthmere-production-reconciliation.sh"
+  ),
+  "utf8"
+);
 const runBuildChecks = script.slice(script.indexOf("run_build_checks()"));
 const pushAndDeploy = script.slice(
   script.indexOf("push_and_deploy()"),
@@ -930,6 +937,51 @@ ok(
 ok(
   script.includes("HARTHMERE_SKIP_WORLD_SYNC_RECONCILIATION"),
   "deploy can explicitly skip broad world sync reconciliation only by request"
+);
+ok(
+  script.includes(
+    'HARTHMERE_WORLD_SYNC_RUNNER_MODE="${HARTHMERE_WORLD_SYNC_RUNNER_MODE:-auto}"'
+  ) &&
+    script.includes("az containerapp job create") &&
+    script.includes("run_azure_world_sync_job") &&
+    script.includes("HARTHMERE_PRODUCTION_RECONCILIATION_READY tag=$TAG"),
+  "local production deploy runs private-Redis reconciliation in a temporary Azure VNet job"
+);
+ok(
+  script.includes(
+    'HARTHMERE_WORLD_SYNC_JOB_CPU="${HARTHMERE_WORLD_SYNC_JOB_CPU:-4.0}"'
+  ) &&
+    script.includes(
+      'HARTHMERE_WORLD_SYNC_JOB_MEMORY="${HARTHMERE_WORLD_SYNC_JOB_MEMORY:-16Gi}"'
+    ) &&
+    script.includes("--workload-profile-name") &&
+    script.includes("delete_azure_world_sync_job"),
+  "production reconciliation job has a dedicated D4-sized memory budget and cleanup"
+);
+ok(
+  harthmereProductionReconciliation.includes(
+    [
+      "audit_extension_terrain",
+      "materialize_business_outposts",
+      "run_node \"Harthmere ECS and shared-state reconciliation\" \\",
+      "  scripts/harthmere/reconcile-production-world-sync.cjs",
+      "materialize_connector_route",
+    ].join("\n")
+  ) &&
+    harthmereProductionReconciliation.includes(
+      "probe-production-terrain-grounding.cjs"
+    ) &&
+    harthmereProductionReconciliation.includes(
+      "reconcile-production-live-creature-grounding.cjs"
+    ),
+  "in-VNet reconciliation audits terrain, applies map/ECS migration, writes the connector last, and verifies grounding"
+);
+ok(
+  dockerfile.includes("ts-node@10.9.1") &&
+    dockerfile.includes("tsconfig-paths@3.12.0") &&
+    dockerfile.includes("typescript@5.9.3") &&
+    dockerfile.includes("run-harthmere-production-reconciliation.sh"),
+  "production image packages the narrow TypeScript runtime needed by the VNet reconciliation job"
 );
 ok(
   script.includes("reconcile_production_world_sync"),

@@ -178,8 +178,13 @@ COPY --chown=nextjs:nodejs node_modules/ node_modules/
 
 # .next and dist are built on the deploy host. Keep only runtime dependencies;
 # build/test tooling and caches previously accounted for multiple gigabytes.
+# The three small TypeScript runtime packages are restored after pruning so a
+# temporary in-VNet maintenance job can execute the reviewed reconciliation
+# scripts against private production Redis without shipping all dev tooling.
 RUN npm prune --omit=dev --ignore-scripts --no-audit --no-fund \
-    && node -e "for (const m of ['stream-json/streamers/StreamArray', 'spark-md5']) { require(m); console.log('OK snapshot runtime dependency', m); }" \
+    && npm install --no-save --omit=dev --ignore-scripts --no-audit --no-fund \
+      ts-node@10.9.1 tsconfig-paths@3.12.0 typescript@5.9.3 \
+    && node -e "for (const m of ['stream-json/streamers/StreamArray', 'spark-md5', 'ts-node/register/transpile-only', 'tsconfig-paths/register', 'typescript']) { require(m); console.log('OK production maintenance dependency', m); }" \
     && rm -rf node_modules/.cache /root/.npm /home/nextjs/.npm
 
 # ACR can strip executable bits from uploaded node_modules.
@@ -288,6 +293,7 @@ RUN set -eux; \
     chmod 755 scripts/glitch/run-glitch-local-game-stack.sh 2>/dev/null || true; \
     chmod 755 scripts/glitch/prepare-glitch-image.sh 2>/dev/null || true; \
     chmod 755 scripts/glitch/healthcheck-glitch-web.cjs 2>/dev/null || true; \
+    bash -n scripts/glitch/run-harthmere-production-reconciliation.sh; \
     find scripts -type f -name '*.sh' -exec chmod 755 {} \; || true
 
 

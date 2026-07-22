@@ -69,22 +69,39 @@ when you need the full local container proof:
 scripts/glitch/deploy-production-local-redis-smoke.sh --local-smoke
 ```
 
-For an app-only production deploy from a local workstation, keep production
-Redis private and skip the post-deploy Redis world-sync phase:
+For a full production deploy from a local workstation, use the normal push
+command:
+
+```bash
+scripts/glitch/deploy-production-local-redis-smoke.sh --push
+```
+
+When direct private-Redis access is unavailable, the deploy automatically
+creates a temporary `biomes-harthmere-sync` Azure Container Apps job on the
+`d4-prod` workload profile. That job runs inside the production VNet with 4 CPU
+and 16 GiB, audits the additive foundation, materializes all 19 outposts one at
+a time, applies the Harthmere ECS/shared-state migration, writes the protected
+Grove-to-Harthmere connector last, repairs actor/object/creature grounding, and
+requires persisted read-back success before the deploy can finish. The job is
+deleted after success or rollback cleanup; production Redis remains private.
+
+Use an app-only rollout only for an explicit emergency that must not modify
+persisted terrain or entities:
 
 ```bash
 HARTHMERE_SKIP_WORLD_SYNC_RECONCILIATION=1 \
 scripts/glitch/deploy-production-local-redis-smoke.sh --push
 ```
 
-An app-only rollout intentionally skips the terrain maintenance revision and
-terrain audit. Use the full VNet-runner deploy below for this Harthmere terrain
-repair; an app-only rollout updates code but will not correct persisted cliffs.
+An app-only rollout intentionally skips the terrain maintenance revision,
+coordinate migration, connector materialization, and grounding/read-back
+audits. It updates code but does not make authored map changes live.
 
-For a full production deploy with post-deploy world reconciliation, run from an
-Azure/VNet runner that can reach private Redis and pass the private Redis host:
+An Azure/VNet runner may still use direct Redis access instead of the temporary
+job:
 
 ```bash
+HARTHMERE_WORLD_SYNC_RUNNER_MODE=direct \
 PROD_REDIS_RECONCILE_HOST=10.0.0.12 \
 scripts/glitch/deploy-production-local-redis-smoke.sh --push
 ```
