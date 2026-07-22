@@ -3,7 +3,10 @@ import type { BiomesId } from "@/shared/ids";
 import { zBiomesId } from "@/shared/ids";
 import { dist, sub, yaw } from "@/shared/math/linear";
 import type { ReadonlyVec3, Vec3 } from "@/shared/math/types";
-import { createHistogram } from "@/shared/metrics/metrics";
+import {
+  createHistogram,
+  exponentialBuckets,
+} from "@/shared/metrics/metrics";
 import { Timer } from "@/shared/metrics/timer";
 import type { Path } from "@/shared/npc/behavior/pathfinding";
 import {
@@ -20,7 +23,6 @@ import { getNpcWalkSpeed } from "@/shared/npc/bikkie";
 import type { SimulatedNpc } from "@/shared/npc/simulated";
 import { ok } from "assert";
 import { sample } from "lodash";
-import { exponentialBuckets } from "prom-client";
 import { z } from "zod";
 
 const npcPathfindingTimeMs = createHistogram({

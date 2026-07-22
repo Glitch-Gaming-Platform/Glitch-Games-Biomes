@@ -73,4 +73,15 @@ describe("Harthmere placeable crafting-station F fallback", () => {
     );
     assert.doesNotMatch(source, /isAuthoredQuestContainer/);
   });
+
+  it("imports the shared world-object radius used by the render loop", () => {
+    assert.match(
+      source,
+      /import\s*\{[\s\S]*?HARTHMERE_WORLD_OBJECT_INSPECT_RADIUS[\s\S]*?\}\s*from\s*["']@\/shared\/harthmere\/harthmere_world_object_inspectable["']/
+    );
+    assert.match(
+      source,
+      /Math\.min\(HARTHMERE_WORLD_OBJECT_INSPECT_RADIUS,\s*maxDistance\)/
+    );
+  });
 });

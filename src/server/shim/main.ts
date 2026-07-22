@@ -6514,18 +6514,38 @@ async function existingPreviousAdditiveTerrainIds(
     return terrainIds;
   }
 
+  if (process.env.BIOMES_SKIP_RETIRED_TERRAIN_SCAN === "1") {
+    log.warn("Skipping retired additive terrain scan by explicit request", {
+      previousTerrainIds: previousIds.length,
+    });
+    return terrainIds;
+  }
+
   // The retired terrain band collided with escort-companion ids. Never delete
   // a numeric range blindly: inspect the ECS components and retain only actual
   // terrain entities (box + shard seed) for migration cleanup.
   for (let start = 0; start < previousIds.length; start += 500) {
     const batch = previousIds.slice(start, start + 500);
-    const entities = await worldApi.get(batch);
+    log.warn("Inspecting retired additive terrain id batch", {
+      start,
+      end: start + batch.length,
+      total: previousIds.length,
+    });
+    const existingIds = (await worldApi.has(batch)) as BiomesId[];
+    const entities = await worldApi.get(existingIds);
     for (let index = 0; index < entities.length; index += 1) {
       const entity = entities[index];
       if (entity?.hasBox?.() && entity.hasShardSeed?.()) {
-        terrainIds.add(batch[index]);
+        terrainIds.add(existingIds[index]);
       }
     }
+    log.warn("Inspected retired additive terrain id batch", {
+      start,
+      end: start + batch.length,
+      total: previousIds.length,
+      existingIds: existingIds.length,
+      retiredTerrainIds: terrainIds.size,
+    });
   }
   return terrainIds;
 }
@@ -8783,7 +8803,19 @@ async function existingLocalDevIds(
   if (service) {
     return new Set(ids.filter((id) => service.table.get(id) !== undefined));
   }
-  return new Set((await worldApi.has(ids)) as BiomesId[]);
+  const existingIds = new Set<BiomesId>();
+  for (let start = 0; start < ids.length; start += 500) {
+    const batch = ids.slice(start, start + 500);
+    for (const id of (await worldApi.has(batch)) as BiomesId[]) {
+      existingIds.add(id);
+    }
+    log.warn("Checked local dev seed id batch", {
+      checked: start + batch.length,
+      total: ids.length,
+      existingIds: existingIds.size,
+    });
+  }
+  return existingIds;
 }
 
 async function ensureHarthmereAdditiveWorldBoundary(
@@ -9337,18 +9369,32 @@ async function start({
     // Set the fake Bikkie tray ID.
     notifierService.set("bikkie", String(BACKUP_BIKKIE_TRAY_ID));
     // Force refresh of Bikkie in the Shim server itself.
+    log.info("Shim initializer: refreshing Bikkie");
     await bikkieRefresher.force();
+    log.info("Shim initializer: Bikkie refresh complete");
     // Force-set the names in the DB to match the active bikkie tray.
-    await db
-      .collection("bikkie")
-      .doc("names")
-      .set({
-        idToName: encodeNames(getBiscuits().map((b) => [b.id, b.name])),
-      });
+    if (process.env.BIOMES_SKIP_BIKKIE_NAMES_WRITE === "1") {
+      log.warn("Shim initializer: skipping Bikkie names write for maintenance");
+    } else {
+      log.info("Shim initializer: writing Bikkie names");
+      await db
+        .collection("bikkie")
+        .doc("names")
+        .set({
+          idToName: encodeNames(getBiscuits().map((b) => [b.id, b.name])),
+        });
+      log.info("Shim initializer: Bikkie names write complete");
+    }
   }
 
   // Start the player spatial observer, used for shim chat distribution.
-  await playerSpatialObserver.start();
+  if (process.env.BIOMES_SKIP_PLAYER_SPATIAL_OBSERVER === "1") {
+    log.warn("Shim initializer: skipping player spatial observer for maintenance");
+  } else {
+    log.info("Shim initializer: starting player spatial observer");
+    await playerSpatialObserver.start();
+    log.info("Shim initializer: player spatial observer ready");
+  }
 
   // Bootstrap the world and chat.
   log.info("Bootstrapping shim world and chat...");

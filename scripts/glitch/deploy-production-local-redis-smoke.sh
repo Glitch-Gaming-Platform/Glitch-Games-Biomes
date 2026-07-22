@@ -1513,7 +1513,7 @@ validate_game_html_url() {
 
 validate_production_revision_before_traffic() {
   local revision="$1"
-  local revision_fqdn revision_origin install_id
+  local revision_fqdn revision_origin install_id expected_sync_host
   revision_fqdn="$(azure_revision_fqdn "$revision")"
   if [ -z "$revision_fqdn" ] || [ "$revision_fqdn" = "null" ]; then
     echo "ERROR Azure revision $revision does not have a revision-specific FQDN." >&2
@@ -1529,6 +1529,18 @@ validate_production_revision_before_traffic() {
   validate_world_sync_http_url "$revision_origin" "/api/world_map/metadata" "revision world map metadata" '"fullImageWidth"[[:space:]]*:[[:space:]]*[0-9]'
   validate_world_sync_http_url "$revision_origin" "/api/harthmere/live_mode_jobs_board_state?install_id=${install_id}" "revision jobs board shared state" '"ok"[[:space:]]*:[[:space:]]*true'
   validate_world_sync_http_url "$revision_origin" "/api/harthmere/live_mode_player_status_state?install_id=${install_id}&gameplay_active=0" "revision player status state" '"ok"[[:space:]]*:[[:space:]]*true'
+
+  expected_sync_host="${PROD_ORIGIN#*://}"
+  expected_sync_host="${expected_sync_host%%/*}"
+  expected_sync_host="${expected_sync_host%%:*}"
+  log "Running strict rendered-world browser E2E against concrete revision before traffic."
+  HARTHMERE_E2E_EXPECTED_SYNC_HOST="$expected_sync_host" \
+  HEADLESS=1 \
+  STRICT_RENDER=1 \
+  E2E_ARTIFACTS_DIR="/tmp/harthmere-pretraffic-${revision}" \
+  node scripts/harthmere/test-harthmere-install-player-ingame-e2e.cjs . \
+    --base-url "$revision_origin" \
+    --install-id "$install_id"
 }
 
 validate_production_world_sync_http() {
@@ -1912,7 +1924,7 @@ const readLog = () => {
       SKIP_MISSING_ASSET_CHECK=true \
       GLITCH_REDIS_MODE=external \
       DISTRIBUTED_NOTIFIER_KIND=redis \
-      GLITCH_STORAGE_MODE=shim \
+      GLITCH_STORAGE_MODE=memory \
       GLITCH_SHIM_STORAGE_MODE=memory \
       GLITCH_WORLD_API_MODE=hfc-hybrid \
       GLITCH_BISCUIT_MODE=redis2 \
@@ -1921,7 +1933,10 @@ const readLog = () => {
       GLITCH_REQUIRE_SNAPSHOT_REDIS=1 \
       BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN=1 \
       BIOMES_CREATE_LOCAL_DEV_TERRAIN=1 \
-      BIOMES_FORCE_LOCAL_DEV_TOWN_RESEED=1 \
+      BIOMES_FORCE_LOCAL_DEV_TOWN_RESEED=0 \
+      BIOMES_SKIP_RETIRED_TERRAIN_SCAN=1 \
+      BIOMES_SKIP_BIKKIE_NAMES_WRITE=1 \
+      BIOMES_SKIP_PLAYER_SPATIAL_OBSERVER=1 \
       BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X=1600 \
       BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_Z=0 \
     --output none

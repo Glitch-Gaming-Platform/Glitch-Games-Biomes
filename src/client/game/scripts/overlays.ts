@@ -82,6 +82,7 @@ import {
   isVisibleHarthmereWorldObjectMarker,
 } from "@/client/game/renderers/local_dev/harthmere_quest_object_markers";
 import {
+  HARTHMERE_WORLD_OBJECT_INSPECT_RADIUS,
   harthmereWorldObjectCandidateIsVisibleForInteraction,
   isHarthmereInspectableWorldObject,
   selectNearestHarthmereWorldObjectInspectable,

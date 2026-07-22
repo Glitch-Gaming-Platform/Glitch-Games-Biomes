@@ -51,6 +51,9 @@ const wantHeadless = !(headlessEnv === "0" || headlessEnv === "false" || headles
 const strictRenderEnv = String(process.env.STRICT_RENDER ?? "").toLowerCase();
 const strictRender =
   strictRenderEnv === "1" || strictRenderEnv === "true" || strictRenderEnv === "yes";
+const expectedSyncHost = String(
+  process.env.HARTHMERE_E2E_EXPECTED_SYNC_HOST || ""
+).trim();
 const artifactsDir = path.resolve(
   process.env.E2E_ARTIFACTS_DIR || "/tmp/harthmere-playboot-e2e"
 );
@@ -99,6 +102,10 @@ const fatalConsolePatterns = [
   /ClientLongLoad/i,
   /HARTHMERE_INSTALL_BOOTSTRAP_FAILED/i,
   /HARTHMERE_AUTH_COOKIE_MISSING/i,
+  /Fatal Error:/i,
+  /Exception while rendering:/i,
+  /Exception in main loop:/i,
+  /client-side exception has occurred/i,
 ];
 
 const remotePlayerMeshPattern = /https:\/\/biomes\.gg\/api\/assets\/player_mesh\.glb/i;
@@ -252,6 +259,7 @@ function installIdentityReachedGame(events) {
           const resolvedHost = new URL(resolvedSyncBaseUrl, launchUrl).hostname;
           if (
             resolvedHost === pageHost ||
+            resolvedHost === expectedSyncHost ||
             resolvedHost === "127.0.0.1" ||
             resolvedHost === "localhost"
           ) {
@@ -289,6 +297,7 @@ function installIdentityReachedGame(events) {
           const failedHost = new URL(wsFailMatch[1]).hostname;
           if (
             failedHost !== pageHost &&
+            failedHost !== expectedSyncHost &&
             failedHost !== "127.0.0.1" &&
             failedHost !== "localhost"
           ) {
