@@ -1891,7 +1891,9 @@ run_azure_world_sync_job() {
 
 seed_production_harthmere_extension_terrain() {
   local candidate_revision="$1"
+  local max_suffix_length
   local suffix
+  local tag_slug
 
   if [ "${HARTHMERE_SKIP_WORLD_SYNC_RECONCILIATION:-0}" = "1" ]; then
     log "Skipping additive Harthmere terrain maintenance during an explicit app-only rollout."
@@ -1906,7 +1908,16 @@ seed_production_harthmere_extension_terrain() {
   # three replicas cannot race the same Redis writes. A temporary one-replica,
   # zero-traffic copy performs the idempotent seed before promotion instead.
   wait_for_azure_revision_ready "$candidate_revision"
-  suffix="terrain-$(printf '%s' "$TAG" | tr '[:upper:]_' '[:lower:]-' | tr -cd 'a-z0-9-' | cut -c1-44)"
+  # Azure limits the complete "<app>--<suffix>" revision name to 54
+  # characters. Derive the suffix budget from the actual app name so long,
+  # descriptive image tags cannot fail after the candidate is already ready.
+  max_suffix_length=$((54 - ${#AZURE_CONTAINER_APP} - 2))
+  if [ "$max_suffix_length" -lt 9 ]; then
+    echo "ERROR Azure Container App name leaves no safe terrain revision suffix budget: $AZURE_CONTAINER_APP" >&2
+    exit 1
+  fi
+  tag_slug="$(printf '%s' "$TAG" | tr '[:upper:]_' '[:lower:]-' | tr -cd 'a-z0-9-')"
+  suffix="$(printf 'terrain-%s' "$tag_slug" | cut -c1-"$max_suffix_length")"
   log "Creating one-replica Harthmere terrain maintenance revision from $candidate_revision."
   HARTHMERE_TERRAIN_MAINTENANCE_REVISION="$(az containerapp revision copy \
     --resource-group "$AZURE_RESOURCE_GROUP" \

@@ -229,6 +229,13 @@ ok(
   "isolated terrain maintenance has a dedicated one-hour readiness window"
 );
 ok(
+  deploy.includes('max_suffix_length=$((54 - ${#AZURE_CONTAINER_APP} - 2))') &&
+    deploy.includes(
+      'suffix="$(printf \'terrain-%s\' "$tag_slug" | cut -c1-"$max_suffix_length")"'
+    ),
+  "terrain maintenance revision suffix stays within Azure's combined 54-character name limit"
+);
+ok(
   deploy.includes("BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X=1600"),
   "Azure deployment explicitly uses the +1600 server offset"
 );

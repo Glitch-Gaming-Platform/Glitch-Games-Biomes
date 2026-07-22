@@ -105,6 +105,11 @@ An app-only rollout intentionally skips the terrain maintenance revision,
 coordinate migration, connector materialization, and grounding/read-back
 audits. It updates code but does not make authored map changes live.
 
+The terrain maintenance revision suffix is truncated against Azure Container
+Apps' combined 54-character revision-name limit (`<app>--<suffix>`). This lets
+operators keep descriptive image tags without failing after the zero-traffic
+web candidate has already passed readiness.
+
 An Azure/VNet runner may still use direct Redis access instead of the temporary
 job:
 
