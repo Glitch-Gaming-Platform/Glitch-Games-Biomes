@@ -1019,6 +1019,13 @@ ok(
   "production deploy seeds additive terrain in one isolated maintenance replica"
 );
 ok(
+  script.includes("run_azure_terrain_seed_job") &&
+    script.includes("HARTHMERE_TERRAIN_MAINTENANCE_READY") &&
+    script.includes("audit-production-extension-terrain.cjs") &&
+    script.includes("no web startup probe"),
+  "in-VNet terrain maintenance uses a completion-audited job instead of a probe-limited web revision"
+);
+ok(
   pushAndDeploy.indexOf(
     'seed_production_harthmere_extension_terrain "$latest_revision"'
   ) <

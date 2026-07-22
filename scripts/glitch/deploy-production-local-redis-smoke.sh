@@ -152,6 +152,9 @@ HARTHMERE_WORLD_SYNC_JOB_MEMORY="${HARTHMERE_WORLD_SYNC_JOB_MEMORY:-16Gi}"
 HARTHMERE_WORLD_SYNC_JOB_WORKLOAD_PROFILE="${HARTHMERE_WORLD_SYNC_JOB_WORKLOAD_PROFILE:-$AZURE_SIMULATION_WORKLOAD_PROFILE}"
 HARTHMERE_WORLD_SYNC_JOB_TIMEOUT_SECONDS="${HARTHMERE_WORLD_SYNC_JOB_TIMEOUT_SECONDS:-10800}"
 HARTHMERE_WORLD_SYNC_JOB_CREATED=0
+HARTHMERE_TERRAIN_JOB_NAME="${HARTHMERE_TERRAIN_JOB_NAME:-biomes-harthmere-terrain}"
+HARTHMERE_TERRAIN_JOB_CONTAINER_NAME="${HARTHMERE_TERRAIN_JOB_CONTAINER_NAME:-harthmere-terrain}"
+HARTHMERE_TERRAIN_JOB_CREATED=0
 PROD_REDIS_HOST="${PROD_REDIS_HOST:-10.0.0.12}"
 PROD_REDIS_PUBLIC_HOST="${PROD_REDIS_PUBLIC_HOST:-}"
 PROD_REDIS_HEALTH_HOST="${PROD_REDIS_HEALTH_HOST:-$PROD_REDIS_HOST}"
@@ -1773,6 +1776,156 @@ delete_azure_world_sync_job() {
   HARTHMERE_WORLD_SYNC_JOB_CREATED=0
 }
 
+delete_azure_terrain_job() {
+  if [ "$HARTHMERE_TERRAIN_JOB_CREATED" != "1" ]; then
+    return
+  fi
+  log "Deleting temporary Harthmere terrain job $HARTHMERE_TERRAIN_JOB_NAME."
+  az containerapp job delete \
+    --resource-group "$AZURE_RESOURCE_GROUP" \
+    --name "$HARTHMERE_TERRAIN_JOB_NAME" \
+    --yes \
+    --output none >/dev/null 2>&1 || true
+  HARTHMERE_TERRAIN_JOB_CREATED=0
+}
+
+run_azure_terrain_seed_job() {
+  local registry_username registry_password execution status="" polls=0 logs=""
+  local terrain_command
+
+  if az containerapp job show \
+    --resource-group "$AZURE_RESOURCE_GROUP" \
+    --name "$HARTHMERE_TERRAIN_JOB_NAME" \
+    --output none >/dev/null 2>&1; then
+    az containerapp job delete \
+      --resource-group "$AZURE_RESOURCE_GROUP" \
+      --name "$HARTHMERE_TERRAIN_JOB_NAME" \
+      --yes \
+      --output none
+  fi
+
+  # The shim performs the exact production terrain seed. A Container Apps Job
+  # avoids inheriting the web revision's 15-minute startup probe, which would
+  # restart this intentional ~30-minute maintenance operation. The wrapper
+  # exits only after the shim's completion log and a full 2,362-shard audit.
+  terrain_command='set -euo pipefail
+log=/tmp/harthmere-terrain.log
+node dist/shim.js --bootstrapMode sync >"$log" 2>&1 &
+shim_pid=$!
+cleanup() { kill "$shim_pid" >/dev/null 2>&1 || true; wait "$shim_pid" >/dev/null 2>&1 || true; }
+trap cleanup EXIT
+for attempt in $(seq 1 720); do
+  if ! kill -0 "$shim_pid" >/dev/null 2>&1; then
+    cat "$log"
+    echo "ERROR Harthmere terrain shim exited before completion." >&2
+    exit 1
+  fi
+  if grep -Fq "Seeded local dev starter town" "$log"; then
+    cat "$log"
+    export NODE_PATH="/opt/harthmere-maintenance/node_modules${NODE_PATH:+:$NODE_PATH}"
+    node scripts/harthmere/audit-production-extension-terrain.cjs
+    echo "HARTHMERE_TERRAIN_MAINTENANCE_READY"
+    exit 0
+  fi
+  if [ $((attempt % 30)) -eq 0 ]; then tail -20 "$log"; fi
+  sleep 5
+done
+cat "$log"
+echo "ERROR timed out waiting for Harthmere terrain maintenance." >&2
+exit 1'
+
+  registry_username="$(az acr credential show --name "$ACR_NAME" --query username -o tsv)"
+  registry_password="$(az acr credential show --name "$ACR_NAME" --query 'passwords[0].value' -o tsv)"
+  log "Creating temporary in-VNet Harthmere terrain job (no web startup probe)."
+  az containerapp job create \
+    --resource-group "$AZURE_RESOURCE_GROUP" \
+    --name "$HARTHMERE_TERRAIN_JOB_NAME" \
+    --environment "$AZURE_CONTAINER_APP_ENVIRONMENT" \
+    --trigger-type Manual \
+    --replica-timeout "$HARTHMERE_WORLD_SYNC_JOB_TIMEOUT_SECONDS" \
+    --replica-retry-limit 0 \
+    --replica-completion-count 1 \
+    --parallelism 1 \
+    --workload-profile-name "$HARTHMERE_WORLD_SYNC_JOB_WORKLOAD_PROFILE" \
+    --image "$IMAGE" \
+    --registry-server "$ACR_SERVER" \
+    --registry-username "$registry_username" \
+    --registry-password "$registry_password" \
+    --container-name "$HARTHMERE_TERRAIN_JOB_CONTAINER_NAME" \
+    --cpu "$HARTHMERE_WORLD_SYNC_JOB_CPU" \
+    --memory "$HARTHMERE_WORLD_SYNC_JOB_MEMORY" \
+    --command /bin/bash \
+    --args -lc "$terrain_command" \
+    --env-vars \
+      NODE_ENV=production \
+      NODE_OPTIONS="--openssl-legacy-provider --enable-source-maps --max-old-space-size=8192" \
+      IS_SERVER=1 \
+      REDIS_HOST="$PROD_REDIS_HOST" \
+      GLITCH_REDIS_HOST="$PROD_REDIS_HOST" \
+      LOCAL_REDIS_HOST="$PROD_REDIS_HOST" \
+      REDIS_PORT="$PROD_REDIS_PORT" \
+      GLITCH_REDIS_PORT="$PROD_REDIS_PORT" \
+      ALLOW_NON_K8_REDIS=1 \
+      USE_K8_REDIS=0 \
+      GLITCH_RUNTIME=1 \
+      GLITCH_DISABLE_GCP=1 \
+      GLITCH_SKIP_GCE_METADATA=1 \
+      GLITCH_SKIP_GOOGLE_SECRETS=1 \
+      GLITCH_DISABLE_DISCORD=1 \
+      GLITCH_DISABLE_ASSET_MIRROR=1 \
+      GLITCH_SKIP_PROD_TRAY=1 \
+      SKIP_PROD_LOAD=true \
+      SKIP_MISSING_ASSET_CHECK=true \
+      GLITCH_REDIS_MODE=external \
+      DISTRIBUTED_NOTIFIER_KIND=redis \
+      GLITCH_STORAGE_MODE=shim \
+      GLITCH_SHIM_STORAGE_MODE=memory \
+      GLITCH_WORLD_API_MODE=hfc-hybrid \
+      GLITCH_BISCUIT_MODE=redis2 \
+      GLITCH_BIKKIE_CACHE_MODE=redis \
+      GLITCH_POPULATE_SNAPSHOT_REDIS=0 \
+      GLITCH_REQUIRE_SNAPSHOT_REDIS=1 \
+      BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN=1 \
+      BIOMES_CREATE_LOCAL_DEV_TERRAIN=1 \
+      BIOMES_FORCE_LOCAL_DEV_TOWN_RESEED=1 \
+      BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X=1600 \
+      BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_Z=0 \
+    --output none
+  unset registry_password
+  HARTHMERE_TERRAIN_JOB_CREATED=1
+
+  execution="$(az containerapp job start \
+    --resource-group "$AZURE_RESOURCE_GROUP" \
+    --name "$HARTHMERE_TERRAIN_JOB_NAME" \
+    --query name -o tsv)"
+  while [ "$polls" -lt "${HARTHMERE_WORLD_SYNC_JOB_POLLS:-1080}" ]; do
+    status="$(az containerapp job execution show \
+      --resource-group "$AZURE_RESOURCE_GROUP" \
+      --name "$HARTHMERE_TERRAIN_JOB_NAME" \
+      --job-execution-name "$execution" \
+      --query properties.status -o tsv 2>/dev/null || true)"
+    case "$status" in
+      Succeeded|Failed) break ;;
+    esac
+    polls=$((polls + 1))
+    sleep "${HARTHMERE_WORLD_SYNC_JOB_SLEEP_SECONDS:-10}"
+  done
+  logs="$(az containerapp job logs show \
+    --resource-group "$AZURE_RESOURCE_GROUP" \
+    --name "$HARTHMERE_TERRAIN_JOB_NAME" \
+    --execution "$execution" \
+    --container "$HARTHMERE_TERRAIN_JOB_CONTAINER_NAME" \
+    --tail 300 2>&1 || true)"
+  printf '%s\n' "$logs"
+  if [ "$status" != "Succeeded" ] || ! printf '%s\n' "$logs" | grep -q "HARTHMERE_TERRAIN_MAINTENANCE_READY"; then
+    echo "ERROR Harthmere terrain job failed: execution=$execution status=${status:-unknown}." >&2
+    delete_azure_terrain_job
+    return 1
+  fi
+  log "Harthmere terrain job passed the complete foundation audit: $execution."
+  delete_azure_terrain_job
+}
+
 run_azure_world_sync_job() {
   local registry_username registry_password execution status="" polls=0 logs=""
 
@@ -1917,6 +2070,11 @@ seed_production_harthmere_extension_terrain() {
     return
   fi
 
+  if use_azure_world_sync_job; then
+    run_azure_terrain_seed_job
+    return
+  fi
+
   # The normal web revision deliberately leaves startup terrain seeding off so
   # three replicas cannot race the same Redis writes. A temporary one-replica,
   # zero-traffic copy performs the idempotent seed before promotion instead.
@@ -2027,6 +2185,7 @@ reconcile_production_world_sync() {
 cleanup() {
   local status="$?"
   delete_azure_world_sync_job
+  delete_azure_terrain_job
   if [ -n "${HARTHMERE_TERRAIN_MAINTENANCE_REVISION:-}" ]; then
     log "Deactivating unfinished Harthmere terrain maintenance revision $HARTHMERE_TERRAIN_MAINTENANCE_REVISION."
     az containerapp revision deactivate \
