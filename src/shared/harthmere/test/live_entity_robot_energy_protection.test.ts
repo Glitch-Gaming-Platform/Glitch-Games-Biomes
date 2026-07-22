@@ -19,19 +19,18 @@ import {
   isLiveEntityHelperPositionInMuckBreachArea,
   isLiveEntityHelperQuestExcludedPosition,
 } from "../live_entity_helper_quests";
+import { muckMonsterAreaForPosition } from "../muck_monster_aggression_ai";
 import {
-  SNAPSHOT_DANGER_AREAS,
-  SNAPSHOT_HARTHMERE_MUCK_ZONES,
-  authoredSnapshotAreaForPoint,
-} from "../snapshot_runtime_rules";
+  HARTHMERE_EXTENSION_FEET_Y,
+  HARTHMERE_EXTENSION_WORLD_BOUNDS,
+} from "../world_extension";
 
 const NOW_MS = 1_700_000_000_000;
 const ONE_HOUR_MS = 3_600_000;
 
 function knownMuckOrDangerAreaForPosition(position: [number, number, number]) {
   return (
-    authoredSnapshotAreaForPoint(position, SNAPSHOT_HARTHMERE_MUCK_ZONES) ??
-    authoredSnapshotAreaForPoint(position, SNAPSHOT_DANGER_AREAS) ??
+    muckMonsterAreaForPosition(position) ??
     (isLiveEntityHelperPositionInMuckBreachArea(position)
       ? { id: "west_muck_breach" }
       : undefined)
@@ -43,6 +42,11 @@ describe("live_entity_robot_energy_protection", () => {
     assert.deepEqual(validateLiveEntityRobotProtectionAreas(), []);
     assert.equal(LIVE_ENTITY_ROBOT_PROTECTION_AREAS.length, 4);
     for (const area of LIVE_ENTITY_ROBOT_PROTECTION_AREAS) {
+      assert.equal(area.groundY, HARTHMERE_EXTENSION_FEET_Y);
+      assert.ok(area.bounds.minX >= HARTHMERE_EXTENSION_WORLD_BOUNDS.minX);
+      assert.ok(area.bounds.maxX < HARTHMERE_EXTENSION_WORLD_BOUNDS.maxX);
+      assert.ok(area.bounds.minZ >= HARTHMERE_EXTENSION_WORLD_BOUNDS.minZ);
+      assert.ok(area.bounds.maxZ < HARTHMERE_EXTENSION_WORLD_BOUNDS.maxZ);
       assert.equal(
         isLiveEntityHelperQuestExcludedPosition(area.anchor),
         false,
@@ -99,8 +103,7 @@ describe("live_entity_robot_energy_protection", () => {
     assert.equal(result.state.robots[robotId].status, "depleted");
     assert.equal(canLiveEntityRobotMove(result.state, robotId), false);
     assert.equal(
-      liveEntityRobotEnergyDisplay(result.state, robotId)
-        ?.needsRechargeText,
+      liveEntityRobotEnergyDisplay(result.state, robotId)?.needsRechargeText,
       "Needs 1 Stabilized Exotic Matter to restore protection."
     );
     assert.equal(
@@ -249,6 +252,9 @@ describe("live_entity_robot_energy_protection", () => {
       text,
       "Reward: 90 XP, 1 Black Anvil Repair Voucher, 2 Minor Healing Salves."
     );
-    assert.equal(/repair_voucher|minor_healing_salve|debug|developer|server/i.test(text), false);
+    assert.equal(
+      /repair_voucher|minor_healing_salve|debug|developer|server/i.test(text),
+      false
+    );
   });
 });

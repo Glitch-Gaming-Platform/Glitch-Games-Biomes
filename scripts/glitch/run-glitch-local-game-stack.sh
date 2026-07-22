@@ -63,6 +63,34 @@ if [ -z "${DISTRIBUTED_NOTIFIER_KIND:-}" ]; then
 fi
 export GLITCH_ENABLE_STREAM_WORKERS="${GLITCH_ENABLE_STREAM_WORKERS:-1}"
 export GLITCH_ENABLE_SINK_WORKER="${GLITCH_ENABLE_SINK_WORKER:-0}"
+
+# Anima is the authoritative native-ECS NPC simulation service. Without it,
+# NPC entities still render and retain health bars because sync can read their
+# seeded ECS records, but nothing advances their behavior state: they do not
+# acquire players, chase, retaliate, swing, or write movement updates. Keep it
+# enabled by default in the unified stack and retain an explicit kill switch for
+# recovery work where operators intentionally need a motionless world.
+export GLITCH_ENABLE_ANIMA="${GLITCH_ENABLE_ANIMA:-1}"
+
+# A single local stack must start Anima immediately, but production runs three
+# dense all-in-one replicas. During a rolling start, the first Anima process can
+# otherwise acquire every world shard while the other containers are still
+# booting. Keep the portable default at one and let production explicitly
+# require all three web replicas to reach the crash-safe Redis barrier first.
+export GLITCH_ANIMA_STARTUP_CANDIDATES="${GLITCH_ANIMA_STARTUP_CANDIDATES:-1}"
+export GLITCH_ANIMA_CANDIDATE_TTL_SECONDS="${GLITCH_ANIMA_CANDIDATE_TTL_SECONDS:-45}"
+
+# Production co-locates many Node services in one 16 GiB container. Anima's
+# terrain/replica initialization can otherwise consume the remaining headroom
+# even after shard ownership is balanced. Keep its V8 heap bounded separately
+# from the larger web heap; native/WASM allocations remain outside this cap.
+export GLITCH_ANIMA_MAX_OLD_SPACE_MB="${GLITCH_ANIMA_MAX_OLD_SPACE_MB:-2048}"
+
+# Gaia owns asynchronous native-world simulations.  Farming handlers enqueue
+# player actions on plant entities; Gaia consumes those actions, mutates/removes
+# the plant, and creates the authoritative harvest drop.  A stack without Gaia
+# can accept HarvestPlantEvent while never delivering its world result.
+export GLITCH_ENABLE_GAIA="${GLITCH_ENABLE_GAIA:-1}"
 export GLITCH_WEB_MAX_OLD_SPACE_MB="${GLITCH_WEB_MAX_OLD_SPACE_MB:-6144}"
 
 export GLITCH_SYNC_BIND_HOST="${GLITCH_SYNC_BIND_HOST:-0.0.0.0}"
@@ -223,6 +251,13 @@ start_bg() {
 }
 
 cleanup() {
+  # The Anima startup barrier uses one expiring Redis key per replica. Delete
+  # ours eagerly during an ordinary shutdown; the TTL remains the safety net for
+  # hard node loss where this trap cannot run.
+  if [ -n "${ANIMA_CANDIDATE_KEY:-}" ] && command -v redis-cli >/dev/null 2>&1; then
+    redis-cli -h "${REDIS_HOST:-127.0.0.1}" -p "${REDIS_PORT:-6379}" -n 6 \
+      DEL "$ANIMA_CANDIDATE_KEY" >/dev/null 2>&1 || true
+  fi
   log "Stopping Glitch local game stack: $PIDS"
   kill $PIDS 2>/dev/null || true
   wait $PIDS 2>/dev/null || true
@@ -293,6 +328,59 @@ start_redis_if_needed
 
 redis_cli_runtime() {
   redis-cli -h "${REDIS_HOST:-127.0.0.1}" -p "${REDIS_PORT:-6379}" "$@"
+}
+
+wait_anima_startup_barrier() {
+  local required="$GLITCH_ANIMA_STARTUP_CANDIDATES"
+  if [ "$required" -le 1 ] 2>/dev/null; then
+    log "Anima startup barrier disabled for single-replica stack (required=$required)."
+    return 0
+  fi
+
+  # Existing web/sync services can make a replica look healthy before its Anima
+  # process starts. Publish a separate short lease only after this runner has
+  # reached the Anima launch point. Redis SET EX works on production Redis 6 and
+  # automatically removes a candidate when its node disappears without running
+  # cleanup. Database 6 is already reserved for service-discovery coordination.
+  local candidate_id="${HOSTNAME:-$(hostname)}"
+  local candidate_prefix="glitch:anima-hotfix:candidate:"
+  local candidate_key="${candidate_prefix}${candidate_id}"
+  local ttl="$GLITCH_ANIMA_CANDIDATE_TTL_SECONDS"
+  local candidate_count
+  ANIMA_CANDIDATE_KEY="$candidate_key"
+
+  (
+    while true; do
+      redis_cli_runtime -n 6 SET "$candidate_key" "$(date +%s)" EX "$ttl" \
+        >/dev/null 2>&1 || true
+      sleep 5
+    done
+  ) &
+  local heartbeat_pid="$!"
+  PIDS="$PIDS $heartbeat_pid"
+  log "PID anima-startup-candidate-heartbeat=$heartbeat_pid key=$candidate_key ttl=${ttl}s"
+
+  # Publish synchronously once so the barrier does not depend on when the
+  # background heartbeat receives its first scheduling slice.
+  redis_cli_runtime -n 6 SET "$candidate_key" "$(date +%s)" EX "$ttl" \
+    >/dev/null 2>&1 || true
+  log "Anima candidate $candidate_id waiting for $required ready replicas."
+  while true; do
+    candidate_count="$(
+      redis_cli_runtime -n 6 --scan --pattern "${candidate_prefix}*" 2>/dev/null \
+        | wc -l | tr -d ' '
+    )"
+    if [ "${candidate_count:-0}" -ge "$required" ] 2>/dev/null; then
+      log "Anima startup barrier satisfied: candidates=$candidate_count required=$required."
+      break
+    fi
+    sleep 2
+  done
+
+  # Give every candidate one heartbeat interval to observe the satisfied
+  # barrier. This prevents the first observer from beginning a full-shard
+  # initialization while another replica is still between Redis SCAN polls.
+  sleep 6
 }
 
 snapshot_backup_hash() {
@@ -471,6 +559,8 @@ log "  sync websocket: $SYNC_PORT -> same-origin /sync proxy"
 log "  sync rpc: $RPC_PORT"
 log "  chat distributor: 3300/3301"
 log "  stream workers: trigger/notify=$GLITCH_ENABLE_STREAM_WORKERS sink=$GLITCH_ENABLE_SINK_WORKER"
+log "  npc simulation: anima=$GLITCH_ENABLE_ANIMA"
+log "  world simulation: gaia=$GLITCH_ENABLE_GAIA"
 log "  sync base: $NEXT_PUBLIC_GLITCH_SYNC_BASE_URL"
 
 start_bg shim 127.0.0.1 3100 3104 3101 "$APP_ROOT/dist/shim.js" --bootstrapMode sync "${SHIM_ARGS[@]}"
@@ -504,6 +594,62 @@ wait_http_ready 127.0.0.1 3301 chat
 wait_redis_stream_group 4 chat-delivery redis-chat-distributor chat-distributor
 wait_tcp 127.0.0.1 "$SYNC_PORT" sync-websocket-base
 wait_tcp 127.0.0.1 "$RPC_PORT" sync-rpc
+
+if [ "$GLITCH_ENABLE_ANIMA" = "1" ]; then
+  # Run one Anima process in every stack replica. `SHARD_MANAGER_KIND=distributed`
+  # uses rendezvous hashing, and Redis discovery lets those processes agree on
+  # a disjoint ownership set. This avoids both failure modes that are easy to
+  # introduce in the one-container topology: the production default `balancer`
+  # would wait for a balancer service this stack does not run, while `fake`
+  # would make every replica simulate every NPC and duplicate attacks.
+  #
+  # The world API is hfc-hybrid. NPC locomotion, target changes, and combat are
+  # high-frequency state, so `ANIMA_HFC_WRITES=1` is required to write that state
+  # to the HFC Redis store consumed by sync. Omitting it leaves Anima apparently
+  # alive while its movement/behavior deltas are discarded or routed incorrectly.
+  #
+  # Galois asset paths are compiled as paths relative to the biomes-static
+  # bucket (for example `asset_data/indices/blocks.<hash>.json`). Browser fetch
+  # resolves those paths against the page automatically; Node's fetch does not.
+  # Give the standalone worker an absolute, trailing-slash bucket origin served
+  # by the already-ready local web process. The bucket path and trailing slash
+  # are both significant because resolveAssetUrl concatenates strings directly.
+  wait_anima_startup_barrier
+
+  # `start_bg` normally invokes Node itself. Pass the heap option through
+  # NODE_OPTIONS for Anima only so the cap cannot accidentally constrain web,
+  # sync, logic, or the other co-located services.
+  GALOIS_STATIC_PREFIX="${GALOIS_STATIC_PREFIX:-http://127.0.0.1:$WEB_BASE_PORT/buckets/biomes-static/}" \
+    DISCOVERY_KIND=redis SHARD_MANAGER_KIND=distributed ANIMA_HFC_WRITES=1 \
+    NODE_OPTIONS="${NODE_OPTIONS:-} --max-old-space-size=$GLITCH_ANIMA_MAX_OLD_SPACE_MB" \
+    start_bg anima 127.0.0.1 4100 4104 4101 "$APP_ROOT/dist/anima.js" "${SERVICE_ARGS[@]}"
+
+  # Do not declare the stack healthy merely because the Anima process exists.
+  # `/ready` turns 200 only after its replica, terrain resources, shard manager,
+  # and NPC controller have initialized, which catches missing assets and broken
+  # Redis coordination before this replica is allowed to settle as healthy.
+  wait_http_ready 127.0.0.1 4101 anima
+else
+  log "NPC simulation disabled by GLITCH_ENABLE_ANIMA=$GLITCH_ENABLE_ANIMA"
+fi
+
+if [ "$GLITCH_ENABLE_GAIA" = "1" ]; then
+  # The unified image runs all Gaia simulations in one process.  Distributed
+  # sharding gives each replica a disjoint shard set, matching the production
+  # shared-world ownership model without starting one duplicate simulator per
+  # app replica.  A distinct domain prevents Gaia from competing with Anima for
+  # the same shard-manager membership namespace.
+  DISCOVERY_KIND=redis SHARD_MANAGER_KIND=distributed \
+    GAIA_SHARD_DOMAIN="${GAIA_SHARD_DOMAIN:-gaia-harthmere-unified}" \
+    WASM_MEMORY="${WASM_MEMORY:-4096}" \
+    start_bg gaia 127.0.0.1 4200 4204 4201 "$APP_ROOT/dist/gaia.js" "${SERVICE_ARGS[@]}"
+
+  # Process existence is insufficient: readiness is published only after the
+  # replica, terrain resources, shard manager, and simulation pipeline start.
+  wait_http_ready 127.0.0.1 4201 gaia
+else
+  log "World simulation disabled by GLITCH_ENABLE_GAIA=$GLITCH_ENABLE_GAIA"
+fi
 
 if [ "$GLITCH_ENABLE_STREAM_WORKERS" = "1" ]; then
   start_bg trigger 127.0.0.1 3700 3704 3701 "$APP_ROOT/dist/trigger.js" "${SERVICE_ARGS[@]}"

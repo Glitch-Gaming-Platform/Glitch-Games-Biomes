@@ -1,6 +1,10 @@
 import type { BiomesId } from "@/shared/ids";
 import type { ReadonlyVec3, Vec2, Vec3 } from "@/shared/math/types";
 import {
+  shiftHarthmereAuthoredPositionToWorld,
+  unshiftHarthmereWorldPositionToAuthored,
+} from "./coordinate_transform";
+import {
   LIVE_ENTITY_ROBOT_DEFAULT_MAX_ENERGY,
   LIVE_ENTITY_ROBOT_PROTECTION_AREAS,
   isLiveEntityRobotProtectionAnchorGrounded,
@@ -31,6 +35,11 @@ import {
   HARTHMERE_NATIVE_THAEDRYN_ENTITY_ID,
   harthmereThaedrynArenaWorldAnchor,
 } from "./bible_quest_live_authority";
+import {
+  HARTHMERE_EXTENSION_FEET_Y,
+  HARTHMERE_ORIGINAL_WORLD_EAST_EDGE_X,
+  normalizeHarthmereExtensionOutdoorFeetPosition,
+} from "./world_extension";
 
 export const HARTHMERE_LIVE_ENTITY_PRODUCTION_SEED_VERSION =
   "harthmere-live-entity-production-seed" as const;
@@ -97,7 +106,14 @@ export const HARTHMERE_NATIVE_MUCK_SCARRED_HELIX_SEED = {
   displayName: "Muck-Scarred Helix",
   areaId: "west_muck_breach",
   areaLabel: "West Muck Breach",
-  position: [236, 54, -506],
+  position: normalizeHarthmereExtensionOutdoorFeetPosition(
+    shiftHarthmereAuthoredPositionToWorld([
+      236,
+      HARTHMERE_EXTENSION_FEET_Y,
+      -506,
+    ]),
+    1.5
+  ),
   orientation: [0, 0] as Vec2,
   dialog: "",
   description:
@@ -601,7 +617,24 @@ function productionPlacedLiveEntityPosition(
   if (placement?.placementMode !== "outdoor_surface") {
     return undefined;
   }
-  return finiteVec3(placement.recommendedPosition);
+  const recommended = finiteVec3(placement.recommendedPosition);
+  if (!recommended) {
+    return undefined;
+  }
+  // ADDITIVE_HARTHMERE_LIVE_ENTITY_PLACEMENT:
+  // The generated placement map was sampled against the retired world layout.
+  // Its X/Z still identify the authored muck region, but its old surface Y and
+  // unshifted world position do not exist in the additive town. Keep the X/Z
+  // distribution, ground it on the new flat terrain, and apply the same +1600
+  // transform used by terrain, town NPCs, quests, and map landmarks.
+  return normalizeHarthmereExtensionOutdoorFeetPosition(
+    shiftHarthmereAuthoredPositionToWorld([
+      recommended[0],
+      HARTHMERE_EXTENSION_FEET_Y,
+      recommended[2],
+    ]),
+    1.5
+  );
 }
 
 // Wildlife grounded to the production surface and kept inside their muck area
@@ -611,9 +644,16 @@ export function harthmereGroundedLivestockSeedsInTerritory(
   options: HarthmereLiveEntityGroundingOptions = {}
 ): HarthmereLiveEntityProductionSeed[] {
   return HARTHMERE_LIVE_ENTITY_LIVESTOCK_SEEDS.flatMap((seed) => {
-    const grounded =
-      productionPlacedLiveEntityPosition(seed, "live_livestock", options) ??
-      groundMuckEntityFeet(seed.position);
+    const runtimeWorldSpace = options.useProductionPlacementMap !== false;
+    const grounded = runtimeWorldSpace
+      ? productionPlacedLiveEntityPosition(seed, "live_livestock", options) ??
+        normalizeHarthmereExtensionOutdoorFeetPosition(
+          shiftHarthmereAuthoredPositionToWorld(
+            groundMuckEntityFeet(seed.position)
+          ),
+          1.5
+        )
+      : groundMuckEntityFeet(seed.position);
     if (
       harthmereMuckMonsterPositionIsInSafeZone(grounded) ||
       !muckMonsterAreaForPosition(grounded, 1.5)
@@ -641,8 +681,12 @@ export function harthmereGroundedLivestockSeedsInTerritory(
 export function harthmereMuckMonsterPositionIsInSafeZone(
   position: ReadonlyVec3
 ): boolean {
+  const authoredPosition =
+    position[0] >= HARTHMERE_ORIGINAL_WORLD_EAST_EDGE_X
+      ? unshiftHarthmereWorldPositionToAuthored(position)
+      : position;
   return Boolean(
-    authoredSnapshotAreaForPoint(position, SNAPSHOT_SAFE_AREAS, 0)
+    authoredSnapshotAreaForPoint(authoredPosition, SNAPSHOT_SAFE_AREAS, 0)
   );
 }
 
@@ -725,12 +769,17 @@ export function harthmereGroundedMuckMonsterSeedsInTerritory(
     }
     // Keep an authored/local-dev fallback for placement-map generation, then
     // prefer the generated production surface when runtime callers spawn them.
-    const fallbackPosition = groundMuckEntityFeet(position);
-    const productionPosition = productionPlacedLiveEntityPosition(
-      seed,
-      "live_muck_monster",
-      options
-    );
+    const runtimeWorldSpace = options.useProductionPlacementMap !== false;
+    const authoredFallbackPosition = groundMuckEntityFeet(position);
+    const fallbackPosition = runtimeWorldSpace
+      ? normalizeHarthmereExtensionOutdoorFeetPosition(
+          shiftHarthmereAuthoredPositionToWorld(authoredFallbackPosition),
+          1.5
+        )
+      : authoredFallbackPosition;
+    const productionPosition = runtimeWorldSpace
+      ? productionPlacedLiveEntityPosition(seed, "live_muck_monster", options)
+      : undefined;
     if (
       productionPosition &&
       !harthmereMuckMonsterPositionIsInSafeZone(productionPosition) &&

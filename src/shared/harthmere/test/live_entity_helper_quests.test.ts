@@ -69,7 +69,7 @@ describe("live_entity_helper_quests - eligibility", () => {
       const context = {
         entityId: label.toLowerCase().replace(/\s+/g, "-"),
         label,
-        position: [232, 54, -506],
+        position: [1832, 53, -506],
       } as const;
 
       assert.equal(isLiveEntityHelperQuestEligibleEntity(context), true);
@@ -84,7 +84,7 @@ describe("live_entity_helper_quests - eligibility", () => {
     const context = {
       entityId: "frogberry",
       label: "Frogberry",
-      position: [232, 54, -506],
+      position: [1832, 53, -506],
       hasTalkableDialog: true,
     } as const;
 
@@ -107,7 +107,7 @@ describe("live_entity_helper_quests - eligibility", () => {
     assert.equal(
       isLiveEntityHelperQuestEligibleEntity({
         entityId: "harthmere-person",
-        position: [904, 70, -160],
+        position: [2080, 53, -160],
         hasAppearanceComponent: true,
         hasNpcMetadata: true,
       }),

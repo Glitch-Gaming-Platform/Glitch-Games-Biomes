@@ -1,5 +1,6 @@
 import type { Vec3 } from "@/shared/math/types";
 import { HARTHMERE_PRODUCTION_TERRAIN_PLACEMENT_MAP } from "@/shared/harthmere/generated/production_terrain_placement_map";
+import { HARTHMERE_ORIGINAL_WORLD_EAST_EDGE_X } from "@/shared/harthmere/world_extension";
 
 export const HARTHMERE_PRODUCTION_TERRAIN_PLACEMENT_MAP_VERSION =
   "harthmere-production-terrain-placement-map" as const;
@@ -151,7 +152,24 @@ export function resolveHarthmereProductionMarkerPosition(input: {
       input.markerId
     )
   );
-  return placement?.recommendedPosition ?? input.fallback;
+  const recommended = placement?.recommendedPosition;
+  if (!recommended) {
+    return input.fallback;
+  }
+  // ADDITIVE_HARTHMERE_MARKER_PLACEMENT:
+  // The checked-in production placement map predates the +1600 extension. A
+  // shifted canonical fallback must never be replaced by a legacy coordinate
+  // west of the old map boundary. This protects helper quests, jobs-board
+  // targets, business markers, HUD pins, and persisted building markers that
+  // all share this resolver. A future placement map generated in the extension
+  // can still refine Y because its recommended X will also be in the new band.
+  if (
+    input.fallback[0] >= HARTHMERE_ORIGINAL_WORLD_EAST_EDGE_X &&
+    recommended[0] < HARTHMERE_ORIGINAL_WORLD_EAST_EDGE_X
+  ) {
+    return input.fallback;
+  }
+  return recommended;
 }
 
 export function getHarthmereQuestObjectivePlacementKey(

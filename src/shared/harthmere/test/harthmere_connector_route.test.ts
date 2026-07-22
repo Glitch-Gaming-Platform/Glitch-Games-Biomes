@@ -1,5 +1,6 @@
 import assert from "assert";
 import {
+  HARTHMERE_CONNECTOR_BOUNDARY_APPROACH_START,
   HARTHMERE_CONNECTOR_DESCENT_START,
   HARTHMERE_CONNECTOR_DESCENT_LANDING,
   HARTHMERE_CONNECTOR_DESCENT_LANDING_Y,
@@ -75,6 +76,33 @@ describe("harthmere protected connector route", () => {
     assert.ok(plan.path.every(([x, z]) => !blocked(x, z)));
     assert.ok(
       plan.edits.every((edit) => !blocked(edit.position[0], edit.position[2]))
+    );
+  });
+
+  it("builds a usable stair onto the higher additive extension road", () => {
+    const sample = syntheticSample({
+      surfaceY: (x, z) => {
+        if (x === HARTHMERE_CONNECTOR_TOWN_ENTRANCE[0] && z === -209) {
+          return 52;
+        }
+        if (x >= HARTHMERE_CONNECTOR_BOUNDARY_APPROACH_START[0]) {
+          return 42;
+        }
+        if (x >= 1600) {
+          return Math.max(42, 64 - Math.floor((x - 1600) / 8));
+        }
+        return syntheticSample()(x, z).surfaceY!;
+      },
+    });
+    const plan = planHarthmereConnectorRoute({ sample });
+
+    assert.deepEqual(validateHarthmereConnectorRoutePlan(plan, sample), []);
+    assert.deepEqual(plan.path.at(-1), HARTHMERE_CONNECTOR_TOWN_ENTRANCE);
+    assert.equal(plan.traversal.at(-1)?.[1], 52);
+    assert.ok(
+      plan.edits.some(
+        (edit) => edit.label === "approach_fill" && edit.position[0] >= 1781
+      )
     );
   });
 

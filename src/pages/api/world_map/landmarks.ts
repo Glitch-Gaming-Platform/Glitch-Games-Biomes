@@ -78,7 +78,11 @@ const SNAPSHOT_MISSION_WORLD_MAP_LANDMARKS: Landmark[] = [
     id: 8810000000007101 as BiomesId,
     importance: 1,
     name: "Road to Harthmere",
-    position: shiftHarthmereAuthoredPositionToWorld([128, 54, -209]),
+    position: [
+      HARTHMERE_EXTENSION_ROAD.worldBoundaryHandoff[0],
+      54,
+      HARTHMERE_EXTENSION_ROAD.worldBoundaryHandoff[1],
+    ],
   },
   {
     id: 8810000000007102 as BiomesId,

@@ -46,9 +46,6 @@ const {
   harthmereGroundedLivestockSeedsInTerritory,
   harthmereMuckMonsterPositionIsInSafeZone,
 } = require("../../src/shared/harthmere/live_entity_production_seed");
-const {
-  resolveHarthmereProductionMarkerPosition,
-} = require("../../src/shared/harthmere/production_terrain_placement_map");
 const { Position, NpcMetadata } = require("../../src/shared/ecs/gen/components");
 const {
   deserializeRedisEntityState,
@@ -261,12 +258,6 @@ async function reconcileSharedLiveModeState(nowMs) {
 // correct), and it will NEVER write a muck monster into a safe zone — a hard gate
 // fails the deploy if the seed ever resolves one into the Grove.
 async function repairLiveEntityPositions(world) {
-  const placedSeedPosition = (seed, source) =>
-    resolveHarthmereProductionMarkerPosition({
-      source,
-      markerId: seed.seedId,
-      fallback: seed.position,
-    });
   const canonical = [
     ...HARTHMERE_LIVE_ENTITY_ROBOT_SENTINEL_SEEDS.map((seed) => ({
       id: Number(seed.entityId),
@@ -275,12 +266,15 @@ async function repairLiveEntityPositions(world) {
     })),
     ...harthmereGroundedMuckMonsterSeedsInTerritory().map((seed) => ({
       id: Number(seed.entityId),
-      position: placedSeedPosition(seed, "live_muck_monster"),
+      // The grounded seed is already in additive world space. Resolving the
+      // retired production placement map here moved every existing Mucker back
+      // onto the original map after the server had seeded it correctly.
+      position: seed.position,
       isMonster: true,
     })),
     ...harthmereGroundedLivestockSeedsInTerritory().map((seed) => ({
       id: Number(seed.entityId),
-      position: placedSeedPosition(seed, "live_livestock"),
+      position: seed.position,
       isMonster: false,
     })),
   ];
@@ -317,6 +311,10 @@ async function repairLiveEntityPositions(world) {
 
   const drift2d = (a, b) =>
     !a || !b ? Infinity : Math.hypot(a[0] - b[0], a[2] - b[2]);
+  const drift3d = (a, b) =>
+    !a || !b
+      ? Infinity
+      : Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
   let repaired = 0;
   let alreadyCorrect = 0;
   let createdByReconcile = 0;
@@ -339,11 +337,13 @@ async function repairLiveEntityPositions(world) {
       const current = entity.position()?.v;
       const meta = entity.hasNpcMetadata?.() ? entity.npcMetadata() : undefined;
       const spawn = meta?.spawn_position;
-      const positionDrifted = drift2d(current, entry.position) > 0.5;
+      const positionDrifted = drift3d(current, entry.position) > 0.5;
       // spawn_position carries an intentional +-4m spawn-spread jitter (max ~5.7m
       // euclidean), so only treat it as drift when it is FAR from the seed (a real
       // layout move, e.g. an old Grove spawn anchor) — never the jitter.
-      const spawnDrifted = drift2d(spawn, entry.position) > 8;
+      const spawnDrifted =
+        drift2d(spawn, entry.position) > 8 ||
+        Math.abs((spawn?.[1] ?? Infinity) - entry.position[1]) > 0.5;
       if (!positionDrifted && !spawnDrifted) {
         alreadyCorrect += 1;
         continue;
@@ -374,6 +374,45 @@ async function repairLiveEntityPositions(world) {
       }
       repaired += 1;
     }
+
+    // POST_DEPLOY_POSITION_AUDIT:
+    // Read the persisted ECS records back after repair. The old implementation
+    // called check(true), so a deploy could report success while all creatures
+    // were still on the original map. This makes incorrect X/Y/Z fatal.
+    const unresolved = [];
+    for (const entry of safeCanonical) {
+      const raw = await redis.getBuffer(`b:${entry.id}`);
+      let entity;
+      if (raw) {
+        try {
+          [, entity] = deserializeRedisEntityState(entry.id, raw);
+        } catch {
+          entity = undefined;
+        }
+      }
+      const current = entity?.hasPosition?.() ? entity.position()?.v : undefined;
+      const meta = entity?.hasNpcMetadata?.() ? entity.npcMetadata() : undefined;
+      const spawn = meta?.spawn_position;
+      if (
+        drift3d(current, entry.position) > 0.5 ||
+        drift2d(spawn, entry.position) > 8 ||
+        Math.abs((spawn?.[1] ?? Infinity) - entry.position[1]) > 0.5
+      ) {
+        unresolved.push({
+          id: entry.id,
+          expected: entry.position,
+          current,
+          spawn,
+        });
+      }
+    }
+    check(
+      unresolved.length === 0,
+      "live entity positions persist in the additive Harthmere world",
+      unresolved.length
+        ? JSON.stringify({ count: unresolved.length, sample: unresolved.slice(0, 5) })
+        : undefined
+    );
   } finally {
     redis.disconnect();
   }
@@ -389,7 +428,7 @@ async function repairLiveEntityPositions(world) {
     })
   );
   check(
-    true,
+    repaired + alreadyCorrect + createdByReconcile === canonical.length,
     `live entity positions converged on seed (repaired=${repaired}, ok=${alreadyCorrect})`
   );
 }

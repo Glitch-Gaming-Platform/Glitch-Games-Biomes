@@ -1,8 +1,9 @@
 # Harthmere Production Terrain Placement Map
 
-This is the current source of truth for placing Harthmere quest items, quest
-markers, monsters, NPCs, interactables, and random spawn pools on real
-production terrain.
+This is the source of truth for original-map/Grove hilly terrain placement and
+for cave metadata. It is not the vertical source of truth for the additive
+Harthmere extension east of X=1792, whose outdoor surface is deliberately flat
+at ground Y=52 / feet Y=53.
 
 Use it whenever code needs to answer this question:
 
@@ -10,11 +11,11 @@ Use it whenever code needs to answer this question:
 Given this authored X/Z, what Y should the thing actually use in production?
 ```
 
-Do not trust authored `y=0`, local-dev `localDevTerrainHeight()`, screenshot
-coordinates, one-off constants such as `y=54`, or older per-cluster anchor
-tables for new quest/object/monster placement. Production terrain is uneven,
-has roofs and indoor floors, contains cave floors under outdoor surfaces, and
-can differ from local authored terrain.
+On the original map, do not trust authored `y=0`, screenshots, or one-off
+constants. Production terrain is uneven, has roofs and indoor floors, and
+contains cave floors under outdoor surfaces. In the additive extension, use
+`normalizeHarthmereExtensionOutdoorFeetPosition()` for outdoor actors and keep
+explicit negative-Y dungeon positions unchanged.
 
 ## Files
 
@@ -23,7 +24,8 @@ can differ from local authored terrain.
 | Runtime resolver API | `src/shared/harthmere/production_terrain_placement_map.ts` |
 | Generated TypeScript map used by runtime code | `src/shared/harthmere/generated/production_terrain_placement_map.ts` |
 | Full local scan artifact with extra rows/stats | `artifacts/harthmere-production-placement-map/placement-map.json` |
-| Read-only production scanner | `scripts/harthmere/build-production-terrain-placement-map.cjs` |
+| Read-only placement-map scanner | `scripts/harthmere/build-production-terrain-placement-map.cjs` |
+| Required production actor/object repair gate | `scripts/harthmere/probe-production-terrain-grounding.cjs` |
 | Wiring/check script | `scripts/harthmere/check-harthmere-production-placement-map.cjs` |
 
 The generated TypeScript file is intentionally checked in with the runtime
@@ -162,10 +164,10 @@ For outdoor items and monsters:
   closer to the authored `y`.
 - Live muckers, hexes, and muck-area livestock should come from
   `harthmereGroundedMuckMonsterSeedsInTerritory()` or
-  `harthmereGroundedLivestockSeedsInTerritory()`. Runtime/default callers use
-  each seed's generated `live_muck_monster:*` or `live_livestock:*`
-  `recommendedPosition`; the placement-map builder passes
-  `useProductionPlacementMap: false` while regenerating the map.
+  `harthmereGroundedLivestockSeedsInTerritory()`. Runtime/default callers keep
+  the legacy placement map's deterministic X/Z distribution only, apply the
+  shared `+1600` transform, clip it inside the extension, and force feet Y=53.
+  The retired map's old hilly Y must never move these actors back west.
 - Keep the Grove/town-safe `road_muckwad_patch` out of runtime ambient
   distribution. It overlaps safe areas, so it is not a valid live mucker
   destination even though it is a named muck patch.
@@ -182,6 +184,15 @@ For indoor businesses, owners, customers, and roofed service points:
   helpers.
 - Do not require open sky; that can snap a counter, owner, or customer to the
   roof instead of the walkable floor.
+
+For deployment:
+
+- The grounding probe is mandatory by default and runs with `APPLY=1`.
+- It repairs authoritative ECS position plus NPC `spawn_position`, then reads
+  the records back.
+- It covers deterministic Grove NPCs/hostiles, additive town actors, robots,
+  Muckers/Hexers, livestock, business occupants, and seeded crafting stations.
+- It does not touch players or player-authored placeables.
 
 For fixed quest objectives:
 

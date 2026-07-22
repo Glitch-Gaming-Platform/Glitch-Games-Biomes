@@ -96,26 +96,21 @@ export function nativeRoadAheadEcsAuthorityEnabled() {
   );
 }
 
-const NATIVE_ROAD_AHEAD_QUEST_OBJECT_LABELS = new Set([
-  "clothing crate",
-  "billy's toolbag",
-  "billys toolbag",
-  "billy's bag",
-  "billys bag",
-]);
-
 /**
  * Exact native identities authored by the May 16 snapshot.
  *
  * The two props are picture frames with `quest_giver`, but their physical
- * capability is container storage.  Keeping the authored placeable and reward
- * IDs here lets the interaction, inventory, and quest layers share one
- * contract instead of guessing from display names or Harthmere aliases.
+ * capability is container storage. `sourceEntityId` is the concrete ECS world
+ * entity and is also the return identity authored into the quest trigger;
+ * `placeableItemId` is the biscuit stored in that entity's
+ * `placeable_component`. They are deliberately separate because treating one
+ * as the other makes every legitimate production container look forged.
  */
 export const NATIVE_ROAD_AHEAD_CONTAINER_SPECS = Object.freeze({
   clothingCrate: {
     labels: ["clothing crate"],
-    placeableItemId: 5165478204703095 as BiomesId,
+    sourceEntityId: 5165478204703095 as BiomesId,
+    placeableItemId: 6720083171323032 as BiomesId,
     choices: [
       {
         stepId: NATIVE_ROAD_AHEAD_STEP_IDS.CHOOSE_TOP,
@@ -139,7 +134,8 @@ export const NATIVE_ROAD_AHEAD_CONTAINER_SPECS = Object.freeze({
   },
   billysToolbag: {
     labels: ["billy's toolbag", "billys toolbag", "billy's bag", "billys bag"],
-    placeableItemId: 5682301664350905 as BiomesId,
+    sourceEntityId: 5682301664350905 as BiomesId,
+    placeableItemId: 6811733198167399 as BiomesId,
     choices: [
       {
         stepId: NATIVE_ROAD_AHEAD_STEP_IDS.OPEN_BILLYS_BAG,
@@ -159,13 +155,6 @@ function normalizedQuestObjectLabel(label?: string | null) {
     .toLowerCase();
 }
 
-/** These labels identify the snapshot's two quest-backed storage props. */
-export function isNativeRoadAheadQuestObjectLabel(label?: string | null) {
-  return NATIVE_ROAD_AHEAD_QUEST_OBJECT_LABELS.has(
-    normalizedQuestObjectLabel(label)
-  );
-}
-
 /** Resolve a quest container without relying on the generic crate regex. */
 export function nativeRoadAheadContainerSpecForLabel(
   label?: string | null
@@ -174,6 +163,13 @@ export function nativeRoadAheadContainerSpecForLabel(
   return Object.values(NATIVE_ROAD_AHEAD_CONTAINER_SPECS).find((spec) =>
     (spec.labels as readonly string[]).includes(normalized)
   );
+}
+
+/** These labels identify the snapshot's two quest-backed storage props. */
+export function isNativeRoadAheadQuestObjectLabel(label?: string | null) {
+  // Derive recognition from the same table used for ECS validation so adding
+  // an authored alias cannot silently route it through the generic container.
+  return Boolean(nativeRoadAheadContainerSpecForLabel(label));
 }
 
 /** Flattened seed list used by each player's private native ECS container. */
@@ -205,6 +201,7 @@ export function nativeRoadAheadContainerClaimForItem(
       itemId === choice.seedItemId ? 0 : originalRewardIndex;
     if (chosenRewardIndex >= 0) {
       return {
+        sourceEntityId: spec.sourceEntityId,
         placeableItemId: spec.placeableItemId,
         stepId: choice.stepId,
         chosenRewardIndex,

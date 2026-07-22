@@ -72,6 +72,23 @@ function readSnapshotGroveApi(): any | undefined {
 
 function normalizeMarkerId(markerId: string): string {
   const lower = markerId.toLowerCase();
+  const legacyTutorialAliases: Record<string, string> = {
+    old_grove_road_post: "road_marker",
+    road_marker: "road_marker",
+    road_jump_stretch: "jump_run",
+    jump_run: "jump_run",
+    muckwad_patch: "muckwad_patch",
+    building_practice_spot: "building_spot",
+    building_spot: "building_spot",
+    lovely_locks_mirror: "wardrobe",
+    wardrobe: "wardrobe",
+    selfie_overlook: "selfie_overlook",
+    shutter_cove_marker: "selfie_overlook",
+    service_tower_platform: "crafting_stop",
+    crafting_stop: "crafting_stop",
+  };
+  const tutorialAlias = legacyTutorialAliases[lower];
+  if (tutorialAlias) return tutorialAlias;
   if (
     lower.includes("mira") ||
     lower.includes("miranda") ||
@@ -79,31 +96,13 @@ function normalizeMarkerId(markerId: string): string {
   )
     return "mira_grove_land_steward";
   if (lower.includes("jackie")) return "jackie";
-  if (lower.includes("jump") || lower.includes("stretch")) return "jump_run";
-  if (lower.includes("road")) return "road_marker";
-  if (lower.includes("muck")) return "muckwad_patch";
-  if (lower.includes("build") || lower.includes("place"))
-    return "building_spot";
-  if (
-    lower.includes("wardrobe") ||
-    lower.includes("mirror") ||
-    lower.includes("locks")
-  )
-    return "wardrobe";
-  if (
-    lower.includes("selfie") ||
-    lower.includes("overlook") ||
-    lower.includes("camera")
-  )
-    return "selfie_overlook";
-  if (
-    lower.includes("craft") ||
-    lower.includes("service_tower") ||
-    lower.includes("tower_platform")
-  )
-    return "crafting_stop";
+  // Marker ids outside the finite tutorial alias table must stay unique. The
+  // previous substring rules collapsed every Harthmere road, bridge, Muck
+  // district, and building into a handful of Grove tutorial ids.
   return markerId.replace(/^npc_/, "").replace(/^grove_/, "");
 }
+
+export const normalizeMapMarkerIdForTest = normalizeMarkerId;
 
 function questIds(value: unknown) {
   return Array.isArray(value)

@@ -50,6 +50,11 @@ const talkDialog = read(
 );
 const challengeHandler = read("src/server/logic/events/handlers/challenges.ts");
 const questHelpers = read("src/client/components/challenges/helpers.ts");
+const nativeRoadAheadContract = read(
+  "src/shared/harthmere/native_road_ahead_contract.ts"
+);
+const nativeContainerApi = read("src/pages/api/harthmere/native_container.ts");
+const inventoryHandler = read("src/server/logic/events/handlers/inventory.ts");
 
 const canonicalRoadAheadStepIds = [
   "meet_jackie_in_grove",
@@ -159,6 +164,27 @@ ok(
     objectContainers.includes("backfillLegacySealedRoadAheadClothingCrate") &&
     objectContainers.includes("questLootVersion"),
   "object containers backfill legacy sealed Road Ahead clothing crates once"
+);
+for (const [label, sourceEntityId, placeableItemId] of [
+  ["Clothing Crate", "5165478204703095", "6720083171323032"],
+  ["Billy's Toolbag", "5682301664350905", "6811733198167399"],
+]) {
+  ok(
+    nativeRoadAheadContract.includes(`sourceEntityId: ${sourceEntityId}`) &&
+      nativeRoadAheadContract.includes(`placeableItemId: ${placeableItemId}`),
+    `${label} keeps its ECS source entity separate from its placeable biscuit`
+  );
+}
+ok(
+  nativeContainerApi.includes("entityId: body.entityId") &&
+    nativeContainerApi.includes("wrong_source_entity") &&
+    nativeContainerApi.includes("wrong_placeable_item"),
+  "native container API validates both ECS identity layers"
+);
+ok(
+  inventoryHandler.includes("entityId: claim.sourceEntityId") &&
+    inventoryHandler.includes("placeableItemId: claim.placeableItemId"),
+  "native inventory claims preserve source and placeable identities"
 );
 ok(
   overlay.includes("isHarthmereNonLivingObjectLabel") &&

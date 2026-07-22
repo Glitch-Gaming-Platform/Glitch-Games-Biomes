@@ -1,4 +1,12 @@
 import type { ReadonlyVec3, Vec3 } from "@/shared/math/types";
+import {
+  shiftHarthmereAuthoredPositionToWorld,
+  unshiftHarthmereWorldPositionToAuthored,
+} from "./coordinate_transform";
+import {
+  HARTHMERE_EXTENSION_WORLD_BOUNDS,
+  HARTHMERE_ORIGINAL_WORLD_EAST_EDGE_X,
+} from "./world_extension";
 
 // HARTHMERE_MUCK_MONSTER_CONTAINMENT
 //
@@ -68,15 +76,55 @@ export function muckContainmentAreaForPosition(
   if (!pos) {
     return undefined;
   }
-  let best: HarthmereMuckContainmentArea | undefined;
-  for (const area of HARTHMERE_MUCK_CONTAINMENT_AREAS) {
-    if (distance2d(pos, area.center) <= area.radius + pad) {
-      if (!best || area.radius > best.radius) {
-        best = area;
+  const findArea = (candidate: ReadonlyVec3) => {
+    let best: HarthmereMuckContainmentArea | undefined;
+    for (const area of HARTHMERE_MUCK_CONTAINMENT_AREAS) {
+      if (distance2d(candidate, area.center) <= area.radius + pad) {
+        if (!best || area.radius > best.radius) {
+          best = area;
+        }
       }
     }
+    return best;
+  };
+
+  const direct = findArea(pos);
+  if (direct) {
+    return direct;
   }
-  return best;
+
+  // ADDITIVE_HARTHMERE_MUCK_CONTAINMENT:
+  // Grove tutorial hostiles remain in their original coordinates, while the
+  // 100 Harthmere production creatures live in the east extension. Resolve
+  // both spaces, and return a world-space center for extension creatures so
+  // generic NPC meander clamping never pulls them 1600 blocks back west.
+  if (pos[0] >= HARTHMERE_ORIGINAL_WORLD_EAST_EDGE_X) {
+    const authored = unshiftHarthmereWorldPositionToAuthored(pos);
+    const authoredArea = findArea(authored);
+    if (authoredArea) {
+      const center = shiftHarthmereAuthoredPositionToWorld(authoredArea.center);
+      // The authored West Muck Breach began twelve blocks west of the newly
+      // added terrain. Shrink only the world-space containment radius at an
+      // extension edge so AI wander can never pull a creature back onto the
+      // original hilly map or beyond generated Z terrain.
+      const extensionEdgeRadius = Math.max(
+        0,
+        Math.min(
+          center[0] - HARTHMERE_EXTENSION_WORLD_BOUNDS.minX,
+          HARTHMERE_EXTENSION_WORLD_BOUNDS.maxX - center[0],
+          center[2] - HARTHMERE_EXTENSION_WORLD_BOUNDS.minZ,
+          HARTHMERE_EXTENSION_WORLD_BOUNDS.maxZ - center[2]
+        )
+      );
+      return {
+        ...authoredArea,
+        center,
+        radius: Math.min(authoredArea.radius, extensionEdgeRadius),
+      };
+    }
+  }
+
+  return undefined;
 }
 
 export function isInsideMuckContainment(
@@ -120,11 +168,9 @@ export function harthmereClampMeanderDestinationToMuckArea(
 ): Vec3 {
   const area = muckContainmentAreaForPosition(homePoint, 0);
   if (!area) {
-    return asVec3(destination) ?? [
-      destination[0],
-      destination[1],
-      destination[2],
-    ];
+    return (
+      asVec3(destination) ?? [destination[0], destination[1], destination[2]]
+    );
   }
   return clampPointToMuckContainmentArea(destination, area, margin);
 }

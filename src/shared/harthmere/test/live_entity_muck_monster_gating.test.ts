@@ -10,9 +10,11 @@ import {
 } from "@/shared/harthmere/live_entity_production_seed";
 import { muckMonsterAreaForPosition } from "@/shared/harthmere/muck_monster_aggression_ai";
 import {
-  getHarthmereProductionPlacementByKey,
-  harthmereProductionPlacementKey,
-} from "@/shared/harthmere/production_terrain_placement_map";
+  HARTHMERE_EXPANDED_WORLD_EAST_EDGE_X,
+  HARTHMERE_EXTENSION_FEET_Y,
+  HARTHMERE_EXTENSION_WORLD_BOUNDS,
+  HARTHMERE_ORIGINAL_WORLD_EAST_EDGE_X,
+} from "@/shared/harthmere/world_extension";
 
 describe("muck monster placement", () => {
   it("keeps all 100 muckers/hexes — none dropped", () => {
@@ -68,26 +70,14 @@ describe("muck monster placement", () => {
     );
   });
 
-  it("uses production terrain placement-map Y instead of the flat local-dev fallback", () => {
-    const yValues = new Set<number>();
+  it("places every production creature on the flat additive terrain", () => {
     for (const seed of harthmereGroundedMuckMonsterSeedsInTerritory()) {
-      const placement = getHarthmereProductionPlacementByKey(
-        harthmereProductionPlacementKey("live_muck_monster", seed.seedId)
-      );
-      assert.ok(placement, `${seed.seedId} is missing a production placement`);
-      assert.equal(placement.placementMode, "outdoor_surface");
-      assert.deepEqual(seed.position, placement.recommendedPosition);
-      assert.ok(
-        Number.isFinite(seed.position[1]),
-        `${seed.seedId} has a non-finite Y`
-      );
-      yValues.add(seed.position[1]);
+      assert.equal(seed.position[1], HARTHMERE_EXTENSION_FEET_Y);
+      assert.ok(seed.position[0] >= HARTHMERE_ORIGINAL_WORLD_EAST_EDGE_X);
+      assert.ok(seed.position[0] < HARTHMERE_EXPANDED_WORLD_EAST_EDGE_X);
+      assert.ok(seed.position[2] >= HARTHMERE_EXTENSION_WORLD_BOUNDS.minZ);
+      assert.ok(seed.position[2] < HARTHMERE_EXTENSION_WORLD_BOUNDS.maxZ);
     }
-    assert.ok(
-      yValues.size > 1 &&
-        ![...yValues].every((y) => y === HARTHMERE_MUCK_FLOOR_FEET_Y),
-      "mucker Y values should come from varied production terrain, not a single flat fallback"
-    );
   });
 
   it("keeps placement-map generation independent of the generated placement map", () => {
@@ -103,6 +93,7 @@ describe("muck monster placement", () => {
       generatedFromAuthoredXz.every(
         (seed) =>
           seed.position[1] === HARTHMERE_MUCK_FLOOR_FEET_Y &&
+          seed.position[0] < HARTHMERE_ORIGINAL_WORLD_EAST_EDGE_X &&
           !harthmereMuckMonsterPositionIsInSafeZone(seed.position) &&
           muckMonsterAreaForPosition(seed.position, 1.5)
       )

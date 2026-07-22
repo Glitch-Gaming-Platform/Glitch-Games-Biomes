@@ -186,6 +186,19 @@ describe("Harthmere live entity production seeds", () => {
       existingIds: new Set(),
     });
     assert.equal(changes.length, HARTHMERE_LIVE_ENTITY_PRODUCTION_SEEDS.length);
+    for (const change of changes) {
+      assert.notEqual(change.kind, "delete");
+      if (change.kind === "delete") continue;
+      assert.ok(
+        (change.entity.position?.v[0] ?? 0) >= 1792,
+        `seed ${change.entity.id} should be in the additive east band`
+      );
+      assert.equal(
+        change.entity.position?.v[1],
+        53,
+        `seed ${change.entity.id} should stand on extension ground`
+      );
+    }
     const robotChange = changes.find(
       (change) =>
         change.kind !== "delete" &&

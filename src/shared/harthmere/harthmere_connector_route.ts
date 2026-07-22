@@ -2,7 +2,7 @@ import { getTerrainID } from "@/shared/asset_defs/terrain";
 import type { BiomesId } from "@/shared/ids";
 
 export const HARTHMERE_CONNECTOR_ROUTE_VERSION =
-  "harthmere-protected-town-entry-route-v5" as const;
+  "harthmere-protected-additive-town-entry-route-v6" as const;
 
 export type HarthmereConnectorPoint = readonly [x: number, z: number];
 
@@ -41,7 +41,7 @@ export interface HarthmereConnectorRoutePlan {
 
 export const HARTHMERE_CONNECTOR_ROUTE_BOUNDS = {
   minX: 488,
-  maxX: 1000,
+  maxX: 1792,
   minZ: -232,
   maxZ: -120,
 } as const;
@@ -53,7 +53,8 @@ export const HARTHMERE_CONNECTOR_ROUTE_BOUNDS = {
 // never be bulldozed just because it overlaps an authored waypoint. The final
 // engineered descent leaves the upper shelf at the Harthmere Bridge Center,
 // lands on the confirmed green Y=56 floor inside the opening, and then follows
-// the natural, building-safe terrain to the marked town entrance.
+// the natural, building-safe terrain to X=1792. The additive terrain generator
+// owns the final flat road from that boundary handoff to Harthmere's West Gate.
 export const HARTHMERE_CONNECTOR_DESCENT_START: HarthmereConnectorPoint = [
   896, -209,
 ];
@@ -61,6 +62,8 @@ export const HARTHMERE_CONNECTOR_DESCENT_LANDING: HarthmereConnectorPoint = [
   903, -209,
 ];
 export const HARTHMERE_CONNECTOR_DESCENT_LANDING_Y = 56;
+export const HARTHMERE_CONNECTOR_BOUNDARY_APPROACH_START: HarthmereConnectorPoint =
+  [1780, -209];
 export const HARTHMERE_CONNECTOR_DESCENT_LEAD_IN = [
   HARTHMERE_CONNECTOR_DESCENT_START,
 ] as const satisfies readonly HarthmereConnectorPoint[];
@@ -74,13 +77,28 @@ export const HARTHMERE_CONNECTOR_DESCENT_PATH = [
   [902, -209],
   HARTHMERE_CONNECTOR_DESCENT_LANDING,
 ] as const satisfies readonly HarthmereConnectorPoint[];
+export const HARTHMERE_CONNECTOR_BOUNDARY_APPROACH_PATH = [
+  [1780, -209],
+  [1781, -209],
+  [1782, -209],
+  [1783, -209],
+  [1784, -209],
+  [1785, -209],
+  [1786, -209],
+  [1787, -209],
+  [1788, -209],
+  [1789, -209],
+  [1790, -209],
+  [1791, -209],
+  [1792, -209],
+] as const satisfies readonly HarthmereConnectorPoint[];
 export const HARTHMERE_CONNECTOR_ROUTE_ANCHORS = [
   [560, -182],
   [640, -209],
   HARTHMERE_CONNECTOR_DESCENT_START,
 ] as const satisfies readonly HarthmereConnectorPoint[];
 export const HARTHMERE_CONNECTOR_TOWN_ENTRANCE: HarthmereConnectorPoint = [
-  988, -207,
+  1792, -209,
 ];
 export const HARTHMERE_CONNECTOR_APPROACH_HALF_WIDTH = 0;
 export const HARTHMERE_CONNECTOR_APPROACH_OPTIONAL_HALF_WIDTH = 1;
@@ -738,16 +756,24 @@ export function planHarthmereConnectorRoute(input: {
   failures.push(...descent.failures);
   const lowerSurfacePath = findWalkableSegment(
     HARTHMERE_CONNECTOR_DESCENT_LANDING,
-    HARTHMERE_CONNECTOR_TOWN_ENTRANCE,
+    HARTHMERE_CONNECTOR_BOUNDARY_APPROACH_START,
     input.sample
   );
   if (!lowerSurfacePath) {
     failures.push(
       `no building-safe lower-floor segment from ${HARTHMERE_CONNECTOR_DESCENT_LANDING.join(
         ","
-      )} to ${HARTHMERE_CONNECTOR_TOWN_ENTRANCE.join(",")}`
+      )} to ${HARTHMERE_CONNECTOR_BOUNDARY_APPROACH_START.join(",")}`
     );
   }
+  const boundaryApproach = engineeredConnectorSegment(
+    HARTHMERE_CONNECTOR_BOUNDARY_APPROACH_START,
+    HARTHMERE_CONNECTOR_TOWN_ENTRANCE,
+    "Harthmere extension boundary stair",
+    input.sample,
+    HARTHMERE_CONNECTOR_BOUNDARY_APPROACH_PATH
+  );
+  failures.push(...boundaryApproach.failures);
   if (failures.length > 0) {
     return {
       path,
@@ -764,17 +790,20 @@ export function planHarthmereConnectorRoute(input: {
       ...path,
       ...descent.path.slice(1),
       ...lowerSurfacePath!.slice(1),
+      ...boundaryApproach.path.slice(1),
     ],
     traversal: [
       ...surfaceTraversal,
       ...descent.traversal.slice(1),
       ...lowerSurfaceTraversal.slice(1),
+      ...boundaryApproach.traversal.slice(1),
     ],
     resolvedAnchors,
     edits: [
       ...roadEditsForPath(path, input.sample),
       ...descent.edits,
       ...roadEditsForPath(lowerSurfacePath!, input.sample),
+      ...boundaryApproach.edits,
     ],
     failures,
   };
@@ -826,7 +855,7 @@ export function validateHarthmereConnectorRoutePlan(
     finalPoint?.[0] !== HARTHMERE_CONNECTOR_TOWN_ENTRANCE[0] ||
     finalPoint?.[1] !== HARTHMERE_CONNECTOR_TOWN_ENTRANCE[1]
   ) {
-    failures.push("route does not reach the marked Harthmere town entrance");
+    failures.push("route does not reach the additive-map boundary handoff");
   }
   return [...new Set(failures)];
 }

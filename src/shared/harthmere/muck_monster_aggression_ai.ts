@@ -5,10 +5,15 @@ import {
 } from "./third_party_combat_ai";
 import { isLiveEntityHelperPositionInMuckBreachArea } from "./live_entity_helper_quests";
 import {
+  shiftHarthmereAuthoredPositionToWorld,
+  unshiftHarthmereWorldPositionToAuthored,
+} from "./coordinate_transform";
+import {
   SNAPSHOT_DANGER_AREAS,
   SNAPSHOT_HARTHMERE_MUCK_ZONES,
   authoredSnapshotAreaForPoint,
 } from "./snapshot_runtime_rules";
+import { HARTHMERE_ORIGINAL_WORLD_EAST_EDGE_X } from "./world_extension";
 
 export const MUCK_MONSTER_AGGRESSION_AI_VERSION =
   "muck-monster-aggression-ai" as const;
@@ -108,12 +113,18 @@ export function muckMonsterAreaForPosition(
   if (!pos) {
     return undefined;
   }
-  const muck =
-    authoredSnapshotAreaForPoint(
-      pos,
-      SNAPSHOT_HARTHMERE_MUCK_ZONES,
-      pad
-    ) ?? authoredSnapshotAreaForPoint(pos, SNAPSHOT_DANGER_AREAS, pad);
+  let muck =
+    authoredSnapshotAreaForPoint(pos, SNAPSHOT_HARTHMERE_MUCK_ZONES, pad) ??
+    authoredSnapshotAreaForPoint(pos, SNAPSHOT_DANGER_AREAS, pad);
+  if (!muck && pos[0] >= HARTHMERE_ORIGINAL_WORLD_EAST_EDGE_X) {
+    const authored = unshiftHarthmereWorldPositionToAuthored(pos);
+    muck =
+      authoredSnapshotAreaForPoint(
+        authored,
+        SNAPSHOT_HARTHMERE_MUCK_ZONES,
+        pad
+      ) ?? authoredSnapshotAreaForPoint(authored, SNAPSHOT_DANGER_AREAS, pad);
+  }
   if (muck) {
     return {
       id: muck.id,
@@ -122,6 +133,20 @@ export function muckMonsterAreaForPosition(
     };
   }
   if (isLiveEntityHelperPositionInMuckBreachArea(pos)) {
+    return {
+      id: "west_muck_breach",
+      label: "West Muck Breach",
+      type: "muck",
+    };
+  }
+  // Placement builders and validation tests still operate on authored seeds.
+  // Check their transformed point against the now-world-space breach bounds.
+  if (
+    pos[0] < HARTHMERE_ORIGINAL_WORLD_EAST_EDGE_X &&
+    isLiveEntityHelperPositionInMuckBreachArea(
+      shiftHarthmereAuthoredPositionToWorld(pos)
+    )
+  ) {
     return {
       id: "west_muck_breach",
       label: "West Muck Breach",
@@ -159,12 +184,10 @@ export function evaluateMuckMonsterAggression(
 ): MuckMonsterAggressionDecision {
   const monsterPosition = asVec3(input.monsterPosition);
   const playerPosition = asVec3(input.playerPosition);
-  const aggroRadius =
-    input.aggroRadius ?? MUCK_MONSTER_UNPROVOKED_AGGRO_RADIUS;
+  const aggroRadius = input.aggroRadius ?? MUCK_MONSTER_UNPROVOKED_AGGRO_RADIUS;
   const warningRadius =
     input.warningRadius ?? MUCK_MONSTER_UNPROVOKED_WARNING_RADIUS;
-  const leashRadius =
-    input.leashRadius ?? MUCK_MONSTER_UNPROVOKED_LEASH_RADIUS;
+  const leashRadius = input.leashRadius ?? MUCK_MONSTER_UNPROVOKED_LEASH_RADIUS;
   const base: MuckMonsterAggressionDecision = {
     version: MUCK_MONSTER_AGGRESSION_AI_VERSION,
     aggressive: false,

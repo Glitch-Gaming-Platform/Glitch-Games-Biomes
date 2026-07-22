@@ -855,7 +855,7 @@ export const SNAPSHOT_GROVE_LANDMARKS: SnapshotGroveLandmark[] = [
   // Dedicated connector endpoint pins are appended after all legacy entries so
   // the index-derived numeric ids of existing world-map landmarks stay stable.
   { id: "harthmere_road_grove_trailhead", label: "Harthmere Road — Grove Trailhead", position: snapshotGroveMarkerPosition([560, SNAPSHOT_GROVE_MARKER_Y, -182]), kind: "connector", area: "harthmere_connector", visibleOnWorldMap: true },
-  { id: "harthmere_road_west_gate", label: "Harthmere Road — Town Entrance", position: snapshotGroveMarkerPosition([988, SNAPSHOT_GROVE_MARKER_Y, -207]), kind: "connector", area: "harthmere", visibleOnWorldMap: true },
+  { id: "harthmere_road_west_gate", label: "Harthmere Road — West Gate", position: snapshotHarthmereAuthoredMarkerPosition([HARTHMERE_EXTENSION_ROAD.authoredWestGate[0], SNAPSHOT_GROVE_MARKER_Y, HARTHMERE_EXTENSION_ROAD.authoredWestGate[1]]), kind: "connector", area: "harthmere", visibleOnWorldMap: true },
   { id: "harthmere_extension_road_start", label: "Harthmere Extension Road — Map Boundary Start", position: [HARTHMERE_EXTENSION_ROAD.worldStart[0], SNAPSHOT_GROVE_MARKER_Y, HARTHMERE_EXTENSION_ROAD.worldStart[1]], kind: "connector", area: "harthmere_connector", visibleOnWorldMap: true },
   { id: "harthmere_extension_north_gate", label: "Harthmere North Gate — Road End", position: [HARTHMERE_EXTENSION_ROAD.worldNorthGate[0], SNAPSHOT_GROVE_MARKER_Y, HARTHMERE_EXTENSION_ROAD.worldNorthGate[1]], kind: "connector", area: "harthmere", visibleOnWorldMap: true },
 ];

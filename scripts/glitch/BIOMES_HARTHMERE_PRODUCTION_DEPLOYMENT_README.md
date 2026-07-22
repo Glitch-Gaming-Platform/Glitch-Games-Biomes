@@ -471,17 +471,19 @@ created it.
 ### Replica policy
 
 The current Azure Container App runs the full game stack in one container:
-web, sync WebSocket, shim, bikkie, logic, oob, sidefx, chat, and Redis stream
-workers. Production defaults to `AZURE_MIN_REPLICAS=2` and
+web, sync WebSocket, shim, bikkie, logic, oob, sidefx, chat, Redis stream
+workers, Anima, and Gaia. Production defaults to `AZURE_MIN_REPLICAS=2` and
 `AZURE_MAX_REPLICAS=3` so an Azure node eviction or image pull does not leave
 players waiting for the only replica to cold-start the large Biomes image.
 
 Do not lower production to one replica unless this is an intentional emergency
 downgrade. The deploy script rejects `AZURE_MIN_REPLICAS<2` or
 `AZURE_MAX_REPLICAS<2` unless `AZURE_ALLOW_SINGLE_REPLICA=1` is set explicitly.
-The gameplay stream workers use Redis consumer groups and the BigQuery sink
-worker remains opt-in, so the HA default matches the live recovery posture while
-keeping the destructive snapshot/bootstrap paths disabled on app replicas.
+The gameplay stream workers use Redis consumer groups. Anima and Gaia use Redis
+discovery with distributed shard ownership, so each NPC/world shard has one
+simulation owner across replicas. The BigQuery sink worker remains opt-in, so
+the HA default matches the live recovery posture while keeping destructive
+snapshot/bootstrap paths disabled on app replicas.
 
 ### Why not `CMD ["dist/web.js"]`?
 
@@ -772,6 +774,10 @@ dist/oob.js
 dist/sync.js
 dist/logic.js
 dist/sidefx.js
+dist/anima.js
+dist/gaia.js
+dist/trigger.js
+dist/notify.js
 dist/web.js
 ```
 
@@ -788,6 +794,10 @@ ls -lh \
   dist/sync.js \
   dist/logic.js \
   dist/sidefx.js \
+  dist/anima.js \
+  dist/gaia.js \
+  dist/trigger.js \
+  dist/notify.js \
   dist/web.js
 
 grep -R "$NEXT_PUBLIC_GLITCH_SYNC_BASE_URL" .next/static .next/server 2>/dev/null | head -20
@@ -842,6 +852,8 @@ IFS= read -r GLITCH_TITLE_TOKEN
 stty echo
 printf "\n"
 
+HARTHMERE_E2E_CONTROL_TOKEN="$(openssl rand -hex 32)"
+
 docker run -d \
   --name biomes-local \
   --network glitch-dev \
@@ -854,6 +866,12 @@ docker run -d \
   -e GLITCH_REDIS_HOST="glitch-redis-local" \
   -e REDIS_PORT="6379" \
   -e GLITCH_REDIS_PORT="6379" \
+  -e HARTHMERE_VISUAL_TEST_AUTH="1" \
+  -e HARTHMERE_NATIVE_ECS_E2E="1" \
+  -e HARTHMERE_E2E_CONTROL_TOKEN="$HARTHMERE_E2E_CONTROL_TOKEN" \
+  -e GLITCH_ENABLE_ANIMA="1" \
+  -e GLITCH_ENABLE_GAIA="1" \
+  -e GLITCH_ENABLE_STREAM_WORKERS="1" \
   -e NEXT_PUBLIC_GLITCH_SYNC_BASE_URL="http://127.0.0.1:4900" \
   glitch-harthmere-biomes:production
 ```
@@ -876,6 +894,10 @@ START logic HOST=127.0.0.1 BASE_PORT=3500 RPC_PORT=3504 METRICS_PORT=3501 file=/
 START oob HOST=127.0.0.1 BASE_PORT=4700 RPC_PORT=4704 METRICS_PORT=4701 file=/app/dist/oob.js
 START sidefx HOST=127.0.0.1 BASE_PORT=4600 RPC_PORT=4604 METRICS_PORT=4601 file=/app/dist/sidefx.js
 START sync HOST=0.0.0.0 BASE_PORT=4900 RPC_PORT=4904 METRICS_PORT=4901 file=/app/dist/sync.js
+START anima HOST=127.0.0.1 BASE_PORT=4100 RPC_PORT=4104 METRICS_PORT=4101 file=/app/dist/anima.js
+START gaia HOST=127.0.0.1 BASE_PORT=4200 RPC_PORT=4204 METRICS_PORT=4201 file=/app/dist/gaia.js
+START trigger HOST=127.0.0.1 BASE_PORT=3700 RPC_PORT=3704 METRICS_PORT=3701 file=/app/dist/trigger.js
+START notify HOST=127.0.0.1 BASE_PORT=3800 RPC_PORT=3804 METRICS_PORT=3801 file=/app/dist/notify.js
 shim now running
 bikkie now running
 oob now running
@@ -886,7 +908,25 @@ sync now running
 web now running
 ```
 
-### 9.4 Validate local API
+### 9.4 Run the browser-to-native-ECS release gate
+
+Keep the control token in the same shell that launched the local container:
+
+```bash
+HARTHMERE_E2E_BASE_URL=http://127.0.0.1:3000 \
+HARTHMERE_E2E_URL=http://127.0.0.1:3000/at/Joe \
+HARTHMERE_E2E_CONTROL_TOKEN="$HARTHMERE_E2E_CONTROL_TOKEN" \
+yarn harthmere:test:native-ecs-e2e
+```
+
+This must pass before uploading an image. It verifies visible F/inventory/jobs
+controls, native handlers, Cloud Save identity, two-client ECS synchronization,
+containers, equipment, throws/pickups, consumables, damage, reconnect, and the
+Gaia harvest boundary. See
+`docs/harthmere/NATIVE_ECS_END_TO_END_TESTING.md` for the assertion and latency
+contract.
+
+### 9.5 Validate local API
 
 ```bash
 curl -i \

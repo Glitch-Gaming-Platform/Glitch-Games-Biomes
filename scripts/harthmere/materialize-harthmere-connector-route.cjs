@@ -125,7 +125,11 @@ const APPROACH_CAP_ID = getTerrainID("stone_brick");
 function isExistingConnectorCapColumn(x, z) {
   return (
     (x >= 718 && x <= 734 && z >= -212 && z <= -196) ||
-    (x >= 894 && x <= 989 && z >= -210 && z <= -204)
+    (x >= 894 && x <= 989 && z >= -210 && z <= -204) ||
+    // The generated additive road owns the exact old/new-world boundary.
+    // Reusing its stone-brick lane lets the protected transition stair meet
+    // the extension without treating the West Gate road as a building.
+    (x === 1792 && z >= -214 && z <= -204)
   );
 }
 

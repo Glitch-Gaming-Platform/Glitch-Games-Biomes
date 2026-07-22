@@ -158,6 +158,7 @@ import {
   HARTHMERE_ADDITIVE_WORLD_EXTENSION_VERSION,
   HARTHMERE_BELLBINDER_DESCENT,
   HARTHMERE_EXPANDED_WORLD_EAST_EDGE_X,
+  HARTHMERE_EXTENSION_FEET_Y,
   HARTHMERE_ORIGINAL_WORLD_EAST_EDGE_X,
   expandWorldAabbForHarthmere,
   harthmereBellbinderDescentFloorBlocks,
@@ -209,6 +210,9 @@ const LOCAL_DEV_NPC_ID_BASE = 8_810_000_000_010_000 as BiomesId;
 const LOCAL_DEV_TERRAIN_ID_LIMIT = 8_810_000_000_040_000;
 const LOCAL_DEV_NPC_ID_LIMIT = 8_810_000_000_020_000;
 const LOCAL_DEV_SEED_MARKER_ID = 8_810_000_000_020_000 as BiomesId;
+const LOCAL_DEV_RUNTIME_CONTENT_MARKER_ID = 8_810_000_000_020_001 as BiomesId;
+const HARTHMERE_ADDITIVE_RUNTIME_CONTENT_VERSION =
+  "harthmere-additive-runtime-content-grounding-v2" as const;
 
 const STARTER_TOWN_GROUND_Y = 52;
 const STARTER_TOWN_SPAWN: Vec3 = [486, STARTER_TOWN_GROUND_Y + 1, -209];
@@ -647,7 +651,16 @@ function harthmereNpcAuthoredPositionWithAuditOverride(npc: StarterNpc): Vec3 {
 function harthmereGroundedNpcWorldPosition(position: Vec3): Vec3 {
   const safeAuthored = harthmereNpcSafeAuthoredPosition(position);
   const shifted = harthmereWorldPosition(safeAuthored);
-  return [shifted[0], safeAuthored[1], shifted[2]];
+  // The old live-snapshot Harthmere used several measured hill/structure Y
+  // bands. The additive town is a separate, deliberately flat terrain layer.
+  // Preserve those measured heights only in explicit legacy standalone mode.
+  return [
+    shifted[0],
+    shouldUseHarthmereExtraTownOffset()
+      ? HARTHMERE_EXTENSION_FEET_Y
+      : safeAuthored[1],
+    shifted[2],
+  ];
 }
 
 // HARTHMERE_PERF_AND_PLACEMENT
@@ -664,9 +677,12 @@ function harthmereGroundedNpcWorldPosition(position: Vec3): Vec3 {
 //
 // Two structural fixes:
 //   1. Per-NPC anchor table (HARTHMERE_NPC_STABLE_ANCHOR) seeded from the
-//      mission-audit cluster measurements. NPCs with a stable anchor skip the
-//      outward safe-relocation search entirely — that search was the source of
-//      multiple NPCs collapsing to the same first-found clearance spot.
+//      mission-audit cluster measurements. Its X/Z remains the stable placement
+//      source. Its measured Y is used only by explicit legacy standalone mode;
+//      additive Harthmere normalizes every outdoor town actor to feet Y=53.
+//      Anchored NPCs skip the outward safe-relocation search entirely — that
+//      search was the source of multiple NPCs collapsing to the same first-found
+//      clearance spot.
 //   2. A shared collision claim set (`HarthmereNpcClaimSet`) prevents two
 //      anchored NPCs from landing on the same (x, z) by nudging the second one
 //      ±2 blocks in a deterministic per-id direction.
@@ -707,9 +723,9 @@ const HARTHMERE_CLUSTER_FEET_Y_NORTH_GATE = 58;
 //
 // Adding a new NPC here promises three things:
 //   1. The XZ position is reachable (no building wall directly above).
-//   2. The Y is the actual snapshot terrain feet-Y at that XZ.
-//   3. The NPC will NOT be re-located by safe-relocation; this is the final
-//      placement.
+//   2. The Y is the actual legacy snapshot feet-Y for standalone compatibility;
+//      normal additive-world seeding replaces it with HARTHMERE_EXTENSION_FEET_Y.
+//   3. The NPC will NOT be re-located by safe-relocation; this is the final XZ.
 const HARTHMERE_NPC_STABLE_ANCHOR = new Map<number, Vec3>([
   // --- Welcome / orientation around the Plaza fountain ---
   [1, [488, HARTHMERE_CLUSTER_FEET_Y_APOTHECARY, -205]], // Mira, Town Guide
@@ -865,14 +881,21 @@ function harthmereGroundedNpcWorldPositionWithClaim(
   npc: StarterNpc,
   claimed: HarthmereNpcClaimSet
 ): Vec3 {
-  // Anchored NPCs use their measured-cluster Y and skip safe-relocation
-  // entirely — that's what was collapsing multiple NPCs onto the same first
-  // available clearance column. Non-anchored NPCs (walkers, late additions)
-  // still go through the legacy safe-relocation path.
+  // Anchored NPCs use their stable X/Z and skip safe-relocation entirely —
+  // that's what was collapsing multiple NPCs onto the same first available
+  // clearance column. Their measured legacy Y survives only in standalone
+  // mode; the additive town uses the shared flat feet plane. Non-anchored NPCs
+  // (walkers, late additions) still go through the clearance path for X/Z.
   const anchorAuthored = harthmereStableAnchorAuthoredPosition(npc, claimed);
   if (anchorAuthored) {
     const shifted = harthmereWorldPosition(anchorAuthored);
-    return [shifted[0], anchorAuthored[1], shifted[2]];
+    return [
+      shifted[0],
+      shouldUseHarthmereExtraTownOffset()
+        ? HARTHMERE_EXTENSION_FEET_Y
+        : anchorAuthored[1],
+      shifted[2],
+    ];
   }
   const legacyAuthored = harthmereNpcAuthoredPositionWithAuditOverride(npc);
   const safeAuthored = harthmereNpcSafeAuthoredPosition(legacyAuthored);
@@ -881,7 +904,13 @@ function harthmereGroundedNpcWorldPositionWithClaim(
     claimed.add(claimedKey);
   }
   const shifted = harthmereWorldPosition(safeAuthored);
-  return [shifted[0], safeAuthored[1], shifted[2]];
+  return [
+    shifted[0],
+    shouldUseHarthmereExtraTownOffset()
+      ? HARTHMERE_EXTENSION_FEET_Y
+      : safeAuthored[1],
+    shifted[2],
+  ];
 }
 
 const STARTER_TOWN_SAFE_X0 = 352;
@@ -902,7 +931,9 @@ const HARTHMERE_FULL_WILDS_SHARD_Z0 = -31;
 const HARTHMERE_FULL_WILDS_SHARD_Z1 = 15;
 const HARTHMERE_OPTIMIZED_WILDS_SHARD_X0 = 6;
 const HARTHMERE_OPTIMIZED_WILDS_SHARD_X1 = 23;
-const HARTHMERE_OPTIMIZED_WILDS_SHARD_Z0 = -16;
+// Include the complete West Muck Breach (Z=-560) plus one shard of terrain
+// support so no extension-owned creature or object can stand over the void.
+const HARTHMERE_OPTIMIZED_WILDS_SHARD_Z0 = -18;
 const HARTHMERE_OPTIMIZED_WILDS_SHARD_Z1 = 5;
 const STARTER_TOWN_WILDS_SHARD_X0 =
   HARTHMERE_LOCAL_DEV_PERF_PROFILE === "full"
@@ -8123,6 +8154,37 @@ function makeLocalDevSeedMarkerChange(
   };
 }
 
+function makeLocalDevRuntimeContentFingerprint() {
+  return JSON.stringify({
+    version: HARTHMERE_ADDITIVE_RUNTIME_CONTENT_VERSION,
+    liveEntityProductionSeedVersion:
+      HARTHMERE_LIVE_ENTITY_PRODUCTION_SEED_VERSION,
+    npcPositionOverrideVersion: HARTHMERE_NPC_POSITION_OVERRIDE_VERSION,
+    performanceAndPlacementVersion: HARTHMERE_PERF_AND_PLACEMENT_VERSION,
+    offsets: {
+      x: harthmereExtraTownOffsetX(),
+      z: harthmereExtraTownOffsetZ(),
+    },
+  });
+}
+
+function makeLocalDevRuntimeContentMarkerChange(
+  tick: number,
+  existingIds: Set<BiomesId>,
+  fingerprint = makeLocalDevRuntimeContentFingerprint()
+): Change {
+  return {
+    kind: existingIds.has(LOCAL_DEV_RUNTIME_CONTENT_MARKER_ID)
+      ? "update"
+      : "create",
+    tick,
+    entity: {
+      id: LOCAL_DEV_RUNTIME_CONTENT_MARKER_ID,
+      entity_description: EntityDescription.create({ text: fingerprint }),
+    },
+  };
+}
+
 async function localDevSeedMarkerFingerprint(
   service: ShimWorldService | undefined,
   worldApi: WorldApi
@@ -8138,6 +8200,82 @@ async function localDevSeedMarkerFingerprint(
       ? entity.entityDescription()
       : entity.entity_description;
   return description?.text;
+}
+
+async function localDevRuntimeContentMarkerFingerprint(
+  service: ShimWorldService | undefined,
+  worldApi: WorldApi
+) {
+  const entity = service
+    ? service.table.get(LOCAL_DEV_RUNTIME_CONTENT_MARKER_ID)
+    : await worldApi.get(LOCAL_DEV_RUNTIME_CONTENT_MARKER_ID);
+  if (!entity) return undefined;
+  const description =
+    "entityDescription" in entity
+      ? entity.entityDescription()
+      : entity.entity_description;
+  return description?.text;
+}
+
+async function reconcileLocalDevRuntimeContent(
+  service: ShimWorldService | undefined,
+  worldApi: WorldApi
+) {
+  const fingerprint = makeLocalDevRuntimeContentFingerprint();
+  if (
+    (await localDevRuntimeContentMarkerFingerprint(service, worldApi)) ===
+    fingerprint
+  ) {
+    return true;
+  }
+
+  const tick = service ? service.table.tick + 1 : 1;
+  const emptyIds = new Set<BiomesId>();
+  const candidate = [
+    ...makeLocalDevNpcChanges(tick, emptyIds),
+    ...buildHarthmereLiveEntityProductionSeedChanges({
+      tick,
+      nowSeconds: secondsSinceEpoch(),
+      existingIds: emptyIds,
+      isRespawnSuppressed: (id) =>
+        harthmereSharedLiveCreatureRespawnRegistry().isSuppressed(
+          id,
+          Date.now()
+        ),
+    }),
+  ];
+  const candidateIds = candidate.map(localDevSeedChangeId);
+  const existingIds = await existingLocalDevIds(
+    [...candidateIds, LOCAL_DEV_RUNTIME_CONTENT_MARKER_ID],
+    service,
+    worldApi
+  );
+  const changes = [
+    ...makeLocalDevNpcChanges(tick, existingIds),
+    ...buildHarthmereLiveEntityProductionSeedChanges({
+      tick,
+      nowSeconds: secondsSinceEpoch(),
+      existingIds,
+      isRespawnSuppressed: (id) =>
+        harthmereSharedLiveCreatureRespawnRegistry().isSuppressed(
+          id,
+          Date.now()
+        ),
+    }),
+    makeLocalDevRuntimeContentMarkerChange(tick, existingIds, fingerprint),
+  ];
+
+  log.warn("Reconciling additive Harthmere runtime content coordinates", {
+    version: HARTHMERE_ADDITIVE_RUNTIME_CONTENT_VERSION,
+    ...summarizeLocalDevSeedChanges(changes),
+    runtimeOffsetX: harthmereExtraTownOffsetX(),
+    runtimeOffsetZ: harthmereExtraTownOffsetZ(),
+  });
+  if (service) {
+    service.writeableTable.apply(changes);
+    return true;
+  }
+  return applyLocalDevSeedChangesInDebugBatches(worldApi, changes);
 }
 
 function allExpectedLocalDevSeedIdsExist(
@@ -8280,6 +8418,7 @@ function makeLocalDevMiniWorldChanges(
     ...businessOwnerNpcChanges,
     ...businessCustomerNpcChanges,
     ...businessCraftingStationChanges,
+    makeLocalDevRuntimeContentMarkerChange(tick, existingIds),
     makeLocalDevSeedMarkerChange(tick, existingIds, seedFingerprint)
   );
 
@@ -8606,6 +8745,7 @@ async function seedLocalDevTerrainIfMissing(
       ...new Set([
         ...expectedSeedIds,
         LOCAL_DEV_SEED_MARKER_ID,
+        LOCAL_DEV_RUNTIME_CONTENT_MARKER_ID,
         ...legacyTerrainIds,
       ]),
     ],
@@ -8649,6 +8789,7 @@ async function seedLocalDevTerrainIfMissing(
         runtimeOffsetZ: harthmereExtraTownOffsetZ(),
       }
     );
+    await reconcileLocalDevRuntimeContent(service, worldApi);
     return;
   }
   if (
@@ -8681,6 +8822,7 @@ async function seedLocalDevTerrainIfMissing(
           runtimeOffsetZ: harthmereExtraTownOffsetZ(),
         }
       );
+      await reconcileLocalDevRuntimeContent(service, worldApi);
       return;
     }
   }

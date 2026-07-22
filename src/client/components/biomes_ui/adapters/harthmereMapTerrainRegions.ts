@@ -14,6 +14,9 @@
 // markers use (see harthmereMapTerrainRegionsForBounds), so the terrain lines
 // up exactly with the markers drawn on top of it.
 
+import { shiftHarthmereAuthoredXZToWorld } from "@/shared/harthmere/coordinate_transform";
+import { HARTHMERE_EXTENSION_ROAD } from "@/shared/harthmere/world_extension";
+
 export type HarthmereMapTerrainKind =
   | "land"
   | "town"
@@ -64,7 +67,7 @@ export interface MapTerrainRegion {
 // Authoritative world regions. Order in this array is paint order (earlier =
 // underneath). Land first as the base, then water/muck/town areas, then thin
 // overlays (roads, ridges).
-export const HARTHMERE_MAP_TERRAIN_REGIONS_WORLD: HarthmereMapTerrainRegionWorld[] =
+const AUTHORED_HARTHMERE_MAP_TERRAIN_REGIONS: HarthmereMapTerrainRegionWorld[] =
   [
     // --- Town & built area (route-graph extent) --------------------------------
     {
@@ -154,6 +157,76 @@ export const HARTHMERE_MAP_TERRAIN_REGIONS_WORLD: HarthmereMapTerrainRegionWorld
       label: "Temple Green Path",
       kind: "road",
       shape: { type: "path", points: [[486, -207], [486, -190], [491, -155]], width: 5 },
+    },
+  ];
+
+function shiftAuthoredTerrainShapeToWorld(
+  shape: HarthmereMapTerrainRegionWorld["shape"]
+): HarthmereMapTerrainRegionWorld["shape"] {
+  if (shape.type === "circle") {
+    const [cx, cz] = shiftHarthmereAuthoredXZToWorld([shape.cx, shape.cz]);
+    return { ...shape, cx, cz };
+  }
+  if (shape.type === "rect") {
+    const [xMin, zMin] = shiftHarthmereAuthoredXZToWorld([
+      shape.xMin,
+      shape.zMin,
+    ]);
+    const [xMax, zMax] = shiftHarthmereAuthoredXZToWorld([
+      shape.xMax,
+      shape.zMax,
+    ]);
+    return { ...shape, xMin, xMax, zMin, zMax };
+  }
+  return {
+    ...shape,
+    points: shape.points.map(([x, z]) =>
+      shiftHarthmereAuthoredXZToWorld([x, z])
+    ),
+  };
+}
+
+// ADDITIVE_HARTHMERE_MAP_TERRAIN:
+// The old overlay was still painted over the Grove/authored coordinates, which
+// made the production map look like the extension contained pins but no town.
+// Keep the Grove tutorial muck patch in place, shift every Harthmere terrain
+// feature east, and draw the complete player route from the Grove trailhead to
+// the extension road and North Gate.
+export const HARTHMERE_MAP_TERRAIN_REGIONS_WORLD: HarthmereMapTerrainRegionWorld[] =
+  [
+    ...AUTHORED_HARTHMERE_MAP_TERRAIN_REGIONS.map((region) =>
+      region.id === "road_muckwad_patch"
+        ? region
+        : { ...region, shape: shiftAuthoredTerrainShapeToWorld(region.shape) }
+    ),
+    {
+      id: "grove_to_harthmere_connector_road",
+      label: "Grove to Harthmere Road",
+      kind: "road",
+      shape: {
+        type: "path",
+        points: [
+          [560, -182],
+          [640, -209],
+          [896, -209],
+          [988, -207],
+          [1280, -209],
+          [1600, -209],
+          [
+            HARTHMERE_EXTENSION_ROAD.worldBoundaryHandoff[0],
+            HARTHMERE_EXTENSION_ROAD.worldBoundaryHandoff[1],
+          ],
+          [
+            HARTHMERE_EXTENSION_ROAD.worldWestGate[0],
+            HARTHMERE_EXTENSION_ROAD.worldWestGate[1],
+          ],
+          [
+            HARTHMERE_EXTENSION_ROAD.worldNorthGate[0],
+            HARTHMERE_EXTENSION_ROAD.worldNorthGate[1],
+          ],
+        ],
+        width: 7,
+      },
     },
   ];
 

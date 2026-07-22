@@ -21,7 +21,6 @@ import {
 } from "@/shared/harthmere/live_entity_production_seed";
 import { harthmereNativeNpcCombatProfileForSeed } from "@/shared/harthmere/harthmere_native_combat";
 import { harthmereVoiceProfileForActor } from "@/shared/harthmere/npc_voice_profiles";
-import { resolveHarthmereProductionMarkerPosition } from "@/shared/harthmere/production_terrain_placement_map";
 
 function changeKindForSeed(
   seed: HarthmereLiveEntityProductionSeed,
@@ -38,17 +37,6 @@ function proposedFromChange(change: Change): ProposedChange {
     return { kind: "create", entity: change.entity };
   }
   return { kind: "update", entity: change.entity };
-}
-
-function productionPlacedLiveEntitySeedPosition(
-  seed: HarthmereLiveEntityProductionSeed,
-  source: "live_muck_monster" | "live_livestock"
-) {
-  return resolveHarthmereProductionMarkerPosition({
-    source,
-    markerId: seed.seedId,
-    fallback: seed.position,
-  });
 }
 
 export function harthmereLiveEntityProductionSeedIds() {
@@ -119,10 +107,10 @@ export function buildHarthmereLiveEntityProductionSeedChanges(input: {
       {
         id: seed.entityId,
         typeId: combatProfile.id,
-        position: productionPlacedLiveEntitySeedPosition(
-          seed,
-          "live_muck_monster"
-        ),
+        // Grounded production seeds are already in additive world space.
+        // Resolving the retired placement map here used to pull them back onto
+        // the original map after the town terrain moved east.
+        position: seed.position,
         orientation: seed.orientation,
         velocity: [0, 0, 0],
         displayName: seed.displayName,
@@ -165,10 +153,7 @@ export function buildHarthmereLiveEntityProductionSeedChanges(input: {
       {
         id: seed.entityId,
         typeId: combatProfile.id,
-        position: productionPlacedLiveEntitySeedPosition(
-          seed,
-          "live_livestock"
-        ),
+        position: seed.position,
         orientation: seed.orientation,
         velocity: [0, 0, 0],
         displayName: seed.displayName,

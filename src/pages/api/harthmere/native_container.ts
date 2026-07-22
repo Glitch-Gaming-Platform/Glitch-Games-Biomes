@@ -28,11 +28,13 @@ import {
   nativeRoadAheadContainerSpecForLabel,
   nativeRoadAheadContainerItemIds,
   NATIVE_ROAD_AHEAD_PRIVATE_CONTAINER_DESCRIPTION,
+  type NativeRoadAheadContainerSpec,
 } from "@/shared/harthmere/native_road_ahead_contract";
 import { isHarthmereContainerObjectLabel } from "@/shared/harthmere/object_interaction_semantics";
 import { SNAPSHOT_GROVE_LANDMARKS } from "@/shared/harthmere/snapshot_grove_content";
 import type { BiomesId } from "@/shared/ids";
 import { INVALID_BIOMES_ID, zBiomesId } from "@/shared/ids";
+import { log } from "@/shared/logging";
 import { z } from "zod";
 
 const NATIVE_CONTAINER_INTERACTION_RADIUS = 8;
@@ -163,15 +165,61 @@ export function seededNativeRoadAheadContainerInventoryForTest(label: string) {
   });
 }
 
+export type NativeRoadAheadContainerSourceValidationFailure =
+  | "unknown_label"
+  | "wrong_source_entity"
+  | "missing_quest_giver"
+  | "wrong_placeable_item";
+
+export type NativeRoadAheadContainerSourceValidation =
+  | { ok: true; spec: NativeRoadAheadContainerSpec }
+  | {
+      ok: false;
+      reason: NativeRoadAheadContainerSourceValidationFailure;
+      spec?: NativeRoadAheadContainerSpec;
+    };
+
+export function validateNativeRoadAheadContainerSourceForTest(input: {
+  entityId?: BiomesId;
+  label?: string | null;
+  questGiver: unknown;
+  placeableItemId?: BiomesId;
+}): NativeRoadAheadContainerSourceValidation {
+  const spec = nativeRoadAheadContainerSpecForLabel(input.label);
+  if (!spec) {
+    return { ok: false as const, reason: "unknown_label" as const };
+  }
+  if (input.entityId !== spec.sourceEntityId) {
+    return {
+      ok: false as const,
+      reason: "wrong_source_entity" as const,
+      spec,
+    };
+  }
+  if (!input.questGiver) {
+    return {
+      ok: false as const,
+      reason: "missing_quest_giver" as const,
+      spec,
+    };
+  }
+  if (input.placeableItemId !== spec.placeableItemId) {
+    return {
+      ok: false as const,
+      reason: "wrong_placeable_item" as const,
+      spec,
+    };
+  }
+  return { ok: true as const, spec };
+}
+
 export function validNativeRoadAheadContainerSourceForTest(input: {
+  entityId?: BiomesId;
   label?: string | null;
   questGiver: unknown;
   placeableItemId?: BiomesId;
 }) {
-  const spec = nativeRoadAheadContainerSpecForLabel(input.label);
-  return Boolean(
-    spec && input.questGiver && input.placeableItemId === spec.placeableItemId
-  );
+  return validateNativeRoadAheadContainerSourceForTest(input).ok;
 }
 
 export default biomesApiHandler(
@@ -209,16 +257,26 @@ export default biomesApiHandler(
       }
 
       if (isNativeRoadAheadQuestObjectLabel(label)) {
-        if (
-          !validNativeRoadAheadContainerSourceForTest({
+        const sourceValidation = validateNativeRoadAheadContainerSourceForTest({
+          entityId: body.entityId,
+          label,
+          questGiver: target.questGiver(),
+          placeableItemId: target.placeableComponent()?.item_id,
+        });
+        if (!sourceValidation.ok) {
+          // Labels are editable presentation data. Require all three native ECS
+          // facts: concrete source entity, quest_giver, and placeable biscuit.
+          // Keeping the IDs distinct prevents a valid snapshot prop from being
+          // rejected while still blocking renamed frames and copied labels.
+          log.warn("Rejected invalid native Road Ahead container source", {
+            reason: sourceValidation.reason,
+            sourceEntityId: body.entityId,
             label,
-            questGiver: target.questGiver(),
+            hasQuestGiver: Boolean(target.questGiver()),
             placeableItemId: target.placeableComponent()?.item_id,
-          })
-        ) {
-          // Labels are editable presentation data. Materialize rewards only for
-          // the exact snapshot quest-giver placeable identity, never for a
-          // player-renamed frame or crate.
+            expectedSourceEntityId: sourceValidation.spec?.sourceEntityId,
+            expectedPlaceableItemId: sourceValidation.spec?.placeableItemId,
+          });
           return { ok: false, error: "invalid_native_quest_container" };
         }
         const containerId = await allocatedRoadAheadContainerId(

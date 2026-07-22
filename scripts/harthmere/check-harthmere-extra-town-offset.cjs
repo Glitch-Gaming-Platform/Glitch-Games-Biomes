@@ -25,6 +25,26 @@ const deploy = fs.readFileSync(
   "scripts/glitch/deploy-production-local-redis-smoke.sh",
   "utf8"
 );
+const liveEntitySeed = fs.readFileSync(
+  "src/server/harthmere/live_entity_ecs_seed.ts",
+  "utf8"
+);
+const mapTerrain = fs.readFileSync(
+  "src/client/components/biomes_ui/adapters/harthmereMapTerrainRegions.ts",
+  "utf8"
+);
+const worldSync = fs.readFileSync(
+  "scripts/harthmere/reconcile-production-world-sync.cjs",
+  "utf8"
+);
+const productionPlacement = fs.readFileSync(
+  "src/shared/harthmere/production_terrain_placement_map.ts",
+  "utf8"
+);
+const groundingProbe = fs.readFileSync(
+  "scripts/harthmere/probe-production-terrain-grounding.cjs",
+  "utf8"
+);
 ok(
   shim.includes("HARTHMERE_EXTRA_TOWN_OFFSET"),
   "server shim extra-town offset marker is present"
@@ -46,10 +66,28 @@ ok(
   "terrain generator maps shifted world Z back to authored Z"
 );
 ok(
+  shim.includes("LOCAL_DEV_RUNTIME_CONTENT_MARKER_ID") &&
+    shim.includes("reconcileLocalDevRuntimeContent(service, worldApi)"),
+  "already-seeded worlds reconcile persisted Harthmere runtime coordinates"
+);
+ok(
+  shim.indexOf("reconcileLocalDevRuntimeContent(service, worldApi)") >
+    shim.indexOf(
+      '"Skipping local dev starter town seed; fingerprint already current."'
+    ),
+  "terrain fingerprint fast path still runs runtime-content migration"
+);
+ok(
   shim.includes(
     "const obsoleteLocalDevIds = shouldUseHarthmereExtraTownOffset()"
   ),
   "additive fingerprint checks ignore intentionally preserved legacy terrain ids"
+);
+ok(
+  shim.includes("HARTHMERE_EXTENSION_FEET_Y") &&
+    shim.includes("harthmere-additive-runtime-content-grounding-v2") &&
+    shim.includes("? HARTHMERE_EXTENSION_FEET_Y"),
+  "persisted additive-town NPCs migrate to the flat extension feet level"
 );
 ok(
   shim.includes("position: harthmereWorldPosition(npc.position)") ||
@@ -85,6 +123,52 @@ ok(
 ok(
   renderer.includes("extra-town-offset"),
   "shifted client placements are tagged"
+);
+ok(
+  liveEntitySeed.includes("position: seed.position") &&
+    !liveEntitySeed.includes("resolveHarthmereProductionMarkerPosition"),
+  "live entity ECS seeds use canonical additive-world positions"
+);
+ok(
+  worldSync.includes("position: seed.position") &&
+    !worldSync.includes("resolveHarthmereProductionMarkerPosition") &&
+    worldSync.includes("POST_DEPLOY_POSITION_AUDIT") &&
+    !worldSync.includes(
+      "check(\n    true,\n    `live entity positions converged"
+    ),
+  "post-deploy world sync preserves and verifies additive-world coordinates"
+);
+ok(
+  productionPlacement.includes("ADDITIVE_HARTHMERE_MARKER_PLACEMENT") &&
+    productionPlacement.includes("HARTHMERE_ORIGINAL_WORLD_EAST_EDGE_X"),
+  "shared marker resolver rejects retired west-map coordinates for shifted content"
+);
+ok(
+  mapTerrain.includes("shiftAuthoredTerrainShapeToWorld") &&
+    mapTerrain.includes('id: "grove_to_harthmere_connector_road"'),
+  "player map shifts town geography and draws the complete connector road"
+);
+for (const family of [
+  "additive_town_npcs",
+  "additive_robot_sentinels",
+  "additive_muckers_hexers",
+  "additive_animals",
+  "original_grove_npcs",
+  "original_snapshot_hostiles",
+  "original_business_owners",
+  "original_business_customers",
+  "original_business_objects",
+]) {
+  ok(
+    groundingProbe.includes(`\"${family}\"`),
+    `production grounding gate covers ${family}`
+  );
+}
+ok(
+  deploy.includes("HARTHMERE_SKIP_GROUNDING_PROBE") &&
+    deploy.includes("APPLY=1") &&
+    !deploy.includes("HARTHMERE_RUN_GROUNDING_PROBE:-0"),
+  "production deploy repairs and verifies grounding by default"
 );
 ok(
   docker.includes("ENV BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN=1"),

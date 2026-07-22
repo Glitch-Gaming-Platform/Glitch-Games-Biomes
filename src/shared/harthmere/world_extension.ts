@@ -8,7 +8,7 @@ import type { ReadonlyVec3, Vec3 } from "@/shared/math/types";
 // production shard. The extra 192 blocks before X=2560 leave room for roads,
 // walls, and future bible additions without another metadata migration.
 export const HARTHMERE_ADDITIVE_WORLD_EXTENSION_VERSION =
-  "harthmere-additive-world-extension-v1" as const;
+  "harthmere-additive-world-extension-v2" as const;
 export const HARTHMERE_ORIGINAL_WORLD_EAST_EDGE_X = 1792;
 export const HARTHMERE_EXPANDED_WORLD_EAST_EDGE_X = 2560;
 export const HARTHMERE_ADDITIVE_TOWN_OFFSET_X = 1600;
@@ -20,7 +20,10 @@ export const HARTHMERE_EXTENSION_SHARD_SIZE = 32;
 export const HARTHMERE_EXTENSION_WORLD_BOUNDS = {
   minX: HARTHMERE_ORIGINAL_WORLD_EAST_EDGE_X,
   maxX: HARTHMERE_EXPANDED_WORLD_EAST_EDGE_X,
-  minZ: -512,
+  // West Muck Breach reaches Z=-560. Keep the additive terrain band one full
+  // shard beyond it so sentinels, Muckers, livestock, and their wander leash
+  // never step onto an unseeded edge.
+  minZ: -576,
   maxZ: 192,
 } as const;
 
@@ -187,6 +190,55 @@ export function isHarthmereExtensionWorldShardX(shardX: number): boolean {
     worldMinX >= HARTHMERE_EXTENSION_WORLD_BOUNDS.minX &&
     worldMinX < HARTHMERE_EXTENSION_WORLD_BOUNDS.maxX
   );
+}
+
+/** True when an X/Z point belongs to the additive, flat Harthmere terrain. */
+export function isHarthmereExtensionWorldPosition(
+  position: ReadonlyVec3
+): boolean {
+  return (
+    position[0] >= HARTHMERE_EXTENSION_WORLD_BOUNDS.minX &&
+    position[0] < HARTHMERE_EXTENSION_WORLD_BOUNDS.maxX &&
+    position[2] >= HARTHMERE_EXTENSION_WORLD_BOUNDS.minZ &&
+    position[2] < HARTHMERE_EXTENSION_WORLD_BOUNDS.maxZ
+  );
+}
+
+/**
+ * Canonical placement for an outdoor actor owned by the additive extension.
+ *
+ * Harthmere's added terrain is deliberately flat at ground Y=52. This helper
+ * must not be used for the original snapshot/Grove map, whose hills require a
+ * real terrain probe, or for negative-Y Bellbinder dungeon coordinates.
+ */
+export function normalizeHarthmereExtensionOutdoorFeetPosition(
+  position: ReadonlyVec3,
+  edgeMargin = 0
+): Vec3 {
+  const requestedMargin = Number.isFinite(edgeMargin)
+    ? Math.max(0, edgeMargin)
+    : 0;
+  const maxMargin = Math.max(
+    0,
+    Math.min(
+      (HARTHMERE_EXTENSION_WORLD_BOUNDS.maxX -
+        HARTHMERE_EXTENSION_WORLD_BOUNDS.minX) /
+        2,
+      (HARTHMERE_EXTENSION_WORLD_BOUNDS.maxZ -
+        HARTHMERE_EXTENSION_WORLD_BOUNDS.minZ) /
+        2
+    ) - 0.001
+  );
+  const margin = Math.min(requestedMargin, maxMargin);
+  const minX = HARTHMERE_EXTENSION_WORLD_BOUNDS.minX + margin;
+  const maxX = HARTHMERE_EXTENSION_WORLD_BOUNDS.maxX - margin - 0.001;
+  const minZ = HARTHMERE_EXTENSION_WORLD_BOUNDS.minZ + margin;
+  const maxZ = HARTHMERE_EXTENSION_WORLD_BOUNDS.maxZ - margin - 0.001;
+  return [
+    Math.min(maxX, Math.max(minX, Number(position[0]))),
+    HARTHMERE_EXTENSION_FEET_Y,
+    Math.min(maxZ, Math.max(minZ, Number(position[2]))),
+  ];
 }
 
 export function harthmereExtensionAuthoredShardXRange(offsetX: number): {

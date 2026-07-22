@@ -54,6 +54,7 @@ import {
   mapMarkerVisualStateForTest,
   mapPanelTabForMarkerForTest,
   nextMapZoomForWheelForTest,
+  shouldRenderMapMarkerLabelAtZoomForTest,
   shouldRenderMapMarkerLabelForTest,
 } from "../tabs/MapQuestsTab";
 import { SkillsTab } from "../tabs/SkillsTab";
@@ -1766,6 +1767,29 @@ describe("Biomes UI progression tabs", () => {
       true
     );
     assert.equal(shouldRenderMapMarkerLabelForTest({ label: "   " }), false);
+    assert.equal(
+      shouldRenderMapMarkerLabelAtZoomForTest(
+        { label: "Vale Forge", kind: "store", active: false },
+        2.45
+      ),
+      false,
+      "overview zoom should declutter nearby town-building labels"
+    );
+    assert.equal(
+      shouldRenderMapMarkerLabelAtZoomForTest(
+        { label: "Vale Forge", kind: "store", active: false },
+        4
+      ),
+      true
+    );
+    assert.equal(
+      shouldRenderMapMarkerLabelAtZoomForTest(
+        { label: "West Gate", kind: "route", active: false },
+        1
+      ),
+      true,
+      "major route labels remain visible at overview zoom"
+    );
   });
 
   it("derives geography terrain swatches from live map markers", () => {

@@ -36,6 +36,7 @@ import {
   registerTable,
 } from "@/client/game/game";
 import { registerMarchHelper } from "@/client/game/helpers/march";
+import { installHarthmereNativeEcsE2E } from "@/client/game/e2e/harthmere_native_ecs_e2e";
 import { registerRendererController } from "@/client/game/renderers/bootstrap";
 import {
   registerReactResources,
@@ -203,6 +204,7 @@ export async function initializeClient(
       global.ecs = context.table;
       global.resources = context.resources;
       global.clientContext = context;
+      installHarthmereNativeEcsE2E(context);
 
       context.mapManager.start();
       context.loop.start();

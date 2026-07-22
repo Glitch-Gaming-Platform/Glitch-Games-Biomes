@@ -20,6 +20,7 @@ const applyTs = read("src/server/shared/world/lua/apply.ts");
 const redisWorld = read("src/server/shared/world/redis.ts");
 const firehose = read("src/server/shared/firehose/redis.ts");
 const chatDistribution = read("src/server/shared/chat/redis/distribution.ts");
+const redisDiscovery = read("src/server/shared/discovery/redis.ts");
 const config = read("src/server/shared/config.ts");
 const deploy = read("scripts/glitch/deploy-production-local-redis-smoke.sh");
 
@@ -84,6 +85,23 @@ ok(
 ok(
   chatDistribution.includes("getMissedDeliveriesWithXPending"),
   "chat distributor routes missed-delivery recovery through the Redis 6 fallback"
+);
+
+// Keep this source-level deployment guard even though RedisServiceDiscovery has
+// unit coverage. The ordinary test harness intentionally runs a Redis 7 server,
+// where `EXPIRE ... GT` is valid; only the production Redis 6 image exposes the
+// transaction-aborting incompatibility. Matching the complete two-argument call
+// prevents a future formatting-only change from weakening the check, while the
+// separate negative assertion makes the operational constraint unmistakable.
+ok(
+  /tx[.]expire[(]\s*this[.]redisKey,\s*CONFIG[.]serviceDiscoveryServiceExpirySeconds,?\s*[)]/.test(
+    redisDiscovery
+  ),
+  "service discovery refreshes its coarse key TTL with Redis 6-compatible EXPIRE"
+);
+ok(
+  !/tx[.]expire[(][\s\S]{0,160}["']GT["']/.test(redisDiscovery),
+  "service discovery avoids Redis 7 conditional EXPIRE flags that abort MULTI on Redis 6"
 );
 ok(
   deploy.includes("redis:6.0.16-alpine"),

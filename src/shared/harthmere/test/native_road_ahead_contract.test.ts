@@ -8,6 +8,7 @@ import {
   isNativeRoadAheadQuestObjectLabel,
   nativeRoadAheadContainerClaimForItem,
   nativeRoadAheadContainerItemIds,
+  nativeRoadAheadContainerSpecForLabel,
   nativeQuestGiverUsesEcsDialogue,
   nativeRoadAheadEcsAuthorityEnabled,
 } from "@/shared/harthmere/native_road_ahead_contract";
@@ -86,6 +87,39 @@ describe("native Road Ahead snapshot contract", () => {
     assert.equal(isNativeRoadAheadQuestObjectLabel("First-Aid Bin"), false);
   });
 
+  it("keeps concrete ECS source ids separate from placeable biscuit ids", () => {
+    assert.deepEqual(
+      {
+        sourceEntityId:
+          NATIVE_ROAD_AHEAD_CONTAINER_SPECS.clothingCrate.sourceEntityId,
+        placeableItemId:
+          NATIVE_ROAD_AHEAD_CONTAINER_SPECS.clothingCrate.placeableItemId,
+      },
+      {
+        sourceEntityId: 5165478204703095,
+        placeableItemId: 6720083171323032,
+      }
+    );
+    assert.deepEqual(
+      {
+        sourceEntityId:
+          NATIVE_ROAD_AHEAD_CONTAINER_SPECS.billysToolbag.sourceEntityId,
+        placeableItemId:
+          NATIVE_ROAD_AHEAD_CONTAINER_SPECS.billysToolbag.placeableItemId,
+      },
+      {
+        sourceEntityId: 5682301664350905,
+        placeableItemId: 6811733198167399,
+      }
+    );
+    for (const spec of Object.values(NATIVE_ROAD_AHEAD_CONTAINER_SPECS)) {
+      assert.notEqual(spec.sourceEntityId, spec.placeableItemId);
+      for (const label of spec.labels) {
+        assert.equal(nativeRoadAheadContainerSpecForLabel(label), spec);
+      }
+    }
+  });
+
   it("seeds exact native Mucky clothing and maps transfers to original claim leaves", () => {
     assert.deepEqual(nativeRoadAheadContainerItemIds("Clothing Crate"), [
       BikkieIds.muckyTop,
@@ -100,6 +134,8 @@ describe("native Road Ahead snapshot contract", () => {
         BikkieIds.muckyTop
       ),
       {
+        sourceEntityId:
+          NATIVE_ROAD_AHEAD_CONTAINER_SPECS.clothingCrate.sourceEntityId,
         placeableItemId:
           NATIVE_ROAD_AHEAD_CONTAINER_SPECS.clothingCrate.placeableItemId,
         stepId: NATIVE_ROAD_AHEAD_STEP_IDS.CHOOSE_TOP,
@@ -110,6 +146,35 @@ describe("native Road Ahead snapshot contract", () => {
         ],
       }
     );
+    assert.deepEqual(
+      nativeRoadAheadContainerClaimForItem(
+        "Billys Bag",
+        NATIVE_ROAD_AHEAD_CONTAINER_SPECS.billysToolbag.choices[0].seedItemId
+      ),
+      {
+        sourceEntityId:
+          NATIVE_ROAD_AHEAD_CONTAINER_SPECS.billysToolbag.sourceEntityId,
+        placeableItemId:
+          NATIVE_ROAD_AHEAD_CONTAINER_SPECS.billysToolbag.placeableItemId,
+        stepId: NATIVE_ROAD_AHEAD_STEP_IDS.OPEN_BILLYS_BAG,
+        chosenRewardIndex: 0,
+        siblingItemIds: [
+          NATIVE_ROAD_AHEAD_CONTAINER_SPECS.billysToolbag.choices[0].seedItemId,
+          ...NATIVE_ROAD_AHEAD_CONTAINER_SPECS.billysToolbag.choices[0].itemIds,
+        ],
+      }
+    );
+    const bottomsClaim = nativeRoadAheadContainerClaimForItem(
+      "Clothing Crate",
+      BikkieIds.muckySkirt
+    );
+    assert.equal(bottomsClaim?.sourceEntityId, 5165478204703095);
+    assert.equal(bottomsClaim?.placeableItemId, 6720083171323032);
+    assert.equal(
+      bottomsClaim?.stepId,
+      NATIVE_ROAD_AHEAD_STEP_IDS.CHOOSE_BOTTOMS
+    );
+    assert.equal(bottomsClaim?.chosenRewardIndex, 0);
     assert.equal(
       nativeRoadAheadContainerClaimForItem("First-Aid Bin", BikkieIds.muckyTop),
       undefined

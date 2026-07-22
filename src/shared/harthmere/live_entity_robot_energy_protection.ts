@@ -1,10 +1,16 @@
 import type { BuildingSystemInWorldMarker } from "./building_system";
+import { shiftHarthmereAuthoredPositionToWorld } from "./coordinate_transform";
 import {
   LIVE_ENTITY_HELPER_GROVE_EXCLUSION_BOUNDS,
   LIVE_ENTITY_HELPER_HARTHMERE_EXCLUSION_BOUNDS,
   isPositionInsideLiveEntityHelperBounds,
   type LiveEntityHelperBounds,
 } from "./live_entity_helper_quests";
+import {
+  HARTHMERE_EXTENSION_FEET_Y,
+  HARTHMERE_EXTENSION_WORLD_BOUNDS,
+  normalizeHarthmereExtensionOutdoorFeetPosition,
+} from "./world_extension";
 
 export const LIVE_ENTITY_ROBOT_ENERGY_PROTECTION_VERSION =
   "live-entity-robot-energy-protection" as const;
@@ -107,14 +113,14 @@ export interface LiveEntityRobotEnergyDisplay {
   movementAllowed: boolean;
 }
 
-export const LIVE_ENTITY_ROBOT_PROTECTION_AREAS: readonly LiveEntityRobotProtectionArea[] =
+const AUTHORED_LIVE_ENTITY_ROBOT_PROTECTION_AREAS: readonly LiveEntityRobotProtectionArea[] =
   [
     {
       areaId: "west_muck_breach",
       label: "West Muck Breach",
       bounds: { minX: 180, maxX: 292, minZ: -560, maxZ: -460 },
-      anchor: [232, 32, -506],
-      groundY: 32,
+      anchor: [232, 54, -506],
+      groundY: 54,
       protectedMarkerId: "robot_shield_west_muck_breach",
       muckMarkerId: "robot_muck_west_muck_breach",
       protectedLabel: "West Breach Shield",
@@ -126,8 +132,8 @@ export const LIVE_ENTITY_ROBOT_PROTECTION_AREAS: readonly LiveEntityRobotProtect
       areaId: "watchtower_muck_clearing",
       label: "Watchtower Muck Clearing",
       bounds: { minX: 316, maxX: 348, minZ: -406, maxZ: -374 },
-      anchor: [332, 38, -390],
-      groundY: 38,
+      anchor: [332, 54, -390],
+      groundY: 54,
       protectedMarkerId: "robot_shield_watchtower_clearing",
       muckMarkerId: "robot_muck_watchtower_clearing",
       protectedLabel: "Watchtower Shield",
@@ -139,8 +145,8 @@ export const LIVE_ENTITY_ROBOT_PROTECTION_AREAS: readonly LiveEntityRobotProtect
       areaId: "old_wood_mucker_copse",
       label: "Old Wood Mucker Copse",
       bounds: { minX: 600, maxX: 688, minZ: -495, maxZ: -415 },
-      anchor: [640, 57, -455],
-      groundY: 57,
+      anchor: [640, 54, -455],
+      groundY: 54,
       protectedMarkerId: "robot_shield_old_wood_copse",
       muckMarkerId: "robot_muck_old_wood_copse",
       protectedLabel: "Old Wood Shield",
@@ -152,8 +158,8 @@ export const LIVE_ENTITY_ROBOT_PROTECTION_AREAS: readonly LiveEntityRobotProtect
       areaId: "gravewood_pale_muck",
       label: "Gravewood Pale Muck",
       bounds: { minX: 598, maxX: 682, minZ: 78, maxZ: 162 },
-      anchor: [640, 46, 120],
-      groundY: 46,
+      anchor: [640, 54, 120],
+      groundY: 54,
       protectedMarkerId: "robot_shield_gravewood",
       muckMarkerId: "robot_muck_gravewood",
       protectedLabel: "Gravewood Shield",
@@ -162,6 +168,49 @@ export const LIVE_ENTITY_ROBOT_PROTECTION_AREAS: readonly LiveEntityRobotProtect
         "A robot beacon holds back the pale Muck south of the abandoned road.",
     },
   ];
+
+// ADDITIVE_HARTHMERE_ROBOT_AREAS:
+// Protection policy used to remain in authored/+512 coordinates after the
+// physical town moved east. Export world-space bounds and anchors so the robot
+// ECS bodies, recharge checks, safe-zone markers, and Mucker AI all agree with
+// the terrain the player can actually reach.
+export const LIVE_ENTITY_ROBOT_PROTECTION_AREAS: readonly LiveEntityRobotProtectionArea[] =
+  AUTHORED_LIVE_ENTITY_ROBOT_PROTECTION_AREAS.map((area) => {
+    const worldMin = shiftHarthmereAuthoredPositionToWorld([
+      area.bounds.minX,
+      0,
+      area.bounds.minZ,
+    ]);
+    const worldMax = shiftHarthmereAuthoredPositionToWorld([
+      area.bounds.maxX,
+      0,
+      area.bounds.maxZ,
+    ]);
+    return {
+      ...area,
+      bounds: {
+        minX: Math.max(HARTHMERE_EXTENSION_WORLD_BOUNDS.minX, worldMin[0]),
+        maxX: Math.min(
+          HARTHMERE_EXTENSION_WORLD_BOUNDS.maxX - 0.001,
+          worldMax[0]
+        ),
+        minZ: Math.max(HARTHMERE_EXTENSION_WORLD_BOUNDS.minZ, worldMin[2]),
+        maxZ: Math.min(
+          HARTHMERE_EXTENSION_WORLD_BOUNDS.maxZ - 0.001,
+          worldMax[2]
+        ),
+      },
+      anchor: normalizeHarthmereExtensionOutdoorFeetPosition(
+        shiftHarthmereAuthoredPositionToWorld([
+          area.anchor[0],
+          HARTHMERE_EXTENSION_FEET_Y,
+          area.anchor[2],
+        ]),
+        1.5
+      ),
+      groundY: HARTHMERE_EXTENSION_FEET_Y,
+    };
+  });
 
 function areaById(areaId: string | undefined) {
   return LIVE_ENTITY_ROBOT_PROTECTION_AREAS.find(
@@ -238,7 +287,9 @@ export function liveEntityRobotEnergyDisplay(
       percent,
       status: "depleted",
       barText,
-      statusText: `${robot.displayName} is out of power. ${area?.label ?? "This area"} is no longer protected.`,
+      statusText: `${robot.displayName} is out of power. ${
+        area?.label ?? "This area"
+      } is no longer protected.`,
       needsRechargeText: `Needs ${LIVE_ENTITY_ROBOT_RECHARGE_ITEM_QUANTITY} Stabilized Exotic Matter to restore protection.`,
       rewardText: liveEntityRobotRechargeRewardText(),
       movementAllowed: false,
@@ -375,10 +426,7 @@ function cloneState(state: LiveEntityRobotEnergyState) {
       ])
     ),
     areas: Object.fromEntries(
-      Object.entries(state.areas).map(([areaId, area]) => [
-        areaId,
-        { ...area },
-      ])
+      Object.entries(state.areas).map(([areaId, area]) => [areaId, { ...area }])
     ),
   } satisfies LiveEntityRobotEnergyState;
 }
@@ -478,16 +526,11 @@ export function validateLiveEntityRobotProtectionAreas() {
     ) {
       errors.push(`${area.areaId}:anchor_inside_excluded_settlement`);
     }
-    if (
-      boundsOverlap(area.bounds, LIVE_ENTITY_HELPER_GROVE_EXCLUSION_BOUNDS)
-    ) {
+    if (boundsOverlap(area.bounds, LIVE_ENTITY_HELPER_GROVE_EXCLUSION_BOUNDS)) {
       errors.push(`${area.areaId}:bounds_overlap_grove`);
     }
     if (
-      boundsOverlap(
-        area.bounds,
-        LIVE_ENTITY_HELPER_HARTHMERE_EXCLUSION_BOUNDS
-      )
+      boundsOverlap(area.bounds, LIVE_ENTITY_HELPER_HARTHMERE_EXCLUSION_BOUNDS)
     ) {
       errors.push(`${area.areaId}:bounds_overlap_harthmere`);
     }
@@ -497,13 +540,19 @@ export function validateLiveEntityRobotProtectionAreas() {
     if (area.protectedLabel.includes("_") || area.muckLabel.includes("_")) {
       errors.push(`${area.areaId}:player_label_contains_internal_case`);
     }
-    if (/debug|developer|server|local-dev|snakecase|camelcase/i.test(
-      `${area.label} ${area.protectedLabel} ${area.muckLabel} ${area.description}`
-    )) {
+    if (
+      /debug|developer|server|local-dev|snakecase|camelcase/i.test(
+        `${area.label} ${area.protectedLabel} ${area.muckLabel} ${area.description}`
+      )
+    ) {
       errors.push(`${area.areaId}:player_copy_contains_non_player_text`);
     }
   }
-  for (let index = 0; index < LIVE_ENTITY_ROBOT_PROTECTION_AREAS.length; index += 1) {
+  for (
+    let index = 0;
+    index < LIVE_ENTITY_ROBOT_PROTECTION_AREAS.length;
+    index += 1
+  ) {
     for (
       let otherIndex = index + 1;
       otherIndex < LIVE_ENTITY_ROBOT_PROTECTION_AREAS.length;
@@ -550,10 +599,7 @@ export function tickLiveEntityRobotEnergy(
     const drain = (elapsedMs / 3_600_000) * drainPerHour;
     const energy = clampEnergy(previousEnergy - drain, robot.maxEnergy);
     robot.energy = Number(energy.toFixed(3));
-    robot.status = liveEntityRobotEnergyStatus(
-      robot.energy,
-      robot.maxEnergy
-    );
+    robot.status = liveEntityRobotEnergyStatus(robot.energy, robot.maxEnergy);
     robot.lastTickAtMs = input.nowMs;
     if (robot.energy <= 0 && previousEnergy > 0) {
       robot.depletedAtMs = input.nowMs;

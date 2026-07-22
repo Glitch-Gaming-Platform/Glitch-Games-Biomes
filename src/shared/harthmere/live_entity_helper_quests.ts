@@ -1,4 +1,9 @@
 import { isHarthmereNonLivingObjectLabel } from "@/shared/harthmere/object_interaction_semantics";
+import { shiftHarthmereAuthoredPositionToWorld } from "@/shared/harthmere/coordinate_transform";
+import {
+  HARTHMERE_EXTENSION_FEET_Y,
+  HARTHMERE_EXTENSION_WORLD_BOUNDS,
+} from "@/shared/harthmere/world_extension";
 
 export const LIVE_ENTITY_HELPER_QUESTS_VERSION =
   "live-entity-helper-quests" as const;
@@ -268,25 +273,31 @@ export const LIVE_ENTITY_HELPER_GROVE_EXCLUSION_BOUNDS: LiveEntityHelperBounds =
   };
 
 // Harthmere is authored in town coordinates and shifted east in the snapshot
-// world. Use a deliberately broad exclusion so local Harthmere people do not
-// receive the live-entity helper quests by accident.
+// world. Exclude the built district envelope, rather than the complete authored
+// wilderness, so the surrounding Muck clearings remain valid combat/helper
+// territory after the town moves into the additive extension.
 export const LIVE_ENTITY_HELPER_HARTHMERE_EXCLUSION_BOUNDS: LiveEntityHelperBounds =
   {
-    minX: 704,
-    maxX: 1280,
-    minZ: -512,
-    maxZ: 192,
+    // ADDITIVE_HARTHMERE_LIVE_HELPERS:
+    // The bible's actual built districts occupy authored X=380..660 and
+    // Z=-380..-100. Apply the same +1600 transform as terrain/NPCs while
+    // intentionally leaving West Breach, Watchtower, Old Wood, and Gravewood
+    // outside the settlement exclusion.
+    minX: 1980,
+    maxX: 2260,
+    minZ: -380,
+    maxZ: -100,
   };
 
 export const LIVE_ENTITY_HELPER_WEST_MUCK_BREACH_AREA: LiveEntityHelperMuckArea =
   {
     id: "west_muck_breach",
     label: "West Muck Breach",
-    minX: 180,
-    maxX: 292,
-    minZ: -560,
+    minX: HARTHMERE_EXTENSION_WORLD_BOUNDS.minX,
+    maxX: 1892,
+    minZ: Math.max(-560, HARTHMERE_EXTENSION_WORLD_BOUNDS.minZ),
     maxZ: -460,
-    groundY: 54,
+    groundY: HARTHMERE_EXTENSION_FEET_Y,
   };
 
 export const LIVE_ENTITY_HELPER_EXOTIC_MATTER_MARKER_ID =
@@ -304,8 +315,12 @@ export const LIVE_ENTITY_HELPER_QUEST_TARGET_MARKERS: readonly LiveEntityHelperQ
       id: LIVE_ENTITY_HELPER_EXOTIC_MATTER_MARKER_ID,
       label: "Old Well Residue",
       kind: "resource",
-      position: [428, 53, -160],
-      groundY: 53,
+      position: shiftHarthmereAuthoredPositionToWorld([
+        428,
+        HARTHMERE_EXTENSION_FEET_Y,
+        -160,
+      ]),
+      groundY: HARTHMERE_EXTENSION_FEET_Y,
       questKinds: ["exotic_matter"],
       areaId: "old_well_underways",
       areaLabel: "Old Well",
@@ -314,8 +329,12 @@ export const LIVE_ENTITY_HELPER_QUEST_TARGET_MARKERS: readonly LiveEntityHelperQ
       id: LIVE_ENTITY_HELPER_FOOD_WATER_MARKER_ID,
       label: "Bluewater Supply Route",
       kind: "resource",
-      position: [604, 53, -168],
-      groundY: 53,
+      position: shiftHarthmereAuthoredPositionToWorld([
+        604,
+        HARTHMERE_EXTENSION_FEET_Y,
+        -168,
+      ]),
+      groundY: HARTHMERE_EXTENSION_FEET_Y,
       questKinds: ["food_water"],
       areaId: "bluewater_docks",
       areaLabel: "River Docks",
@@ -325,7 +344,7 @@ export const LIVE_ENTITY_HELPER_QUEST_TARGET_MARKERS: readonly LiveEntityHelperQ
       label: "Muck-Scarred Helix",
       kind: "danger",
       position: [
-        232,
+        LIVE_ENTITY_HELPER_WEST_MUCK_BREACH_AREA.minX + 52,
         LIVE_ENTITY_HELPER_WEST_MUCK_BREACH_AREA.groundY,
         -506,
       ],
@@ -798,9 +817,7 @@ const LIVE_ENTITY_HELPER_JOBS_BOARD_LABEL_REGEX =
 const LIVE_ENTITY_HELPER_ROBOT_LABEL_REGEX =
   /\b(robots?|bots?|sentinels?|sententials?|sentientals?|constructs?|automatons?|drones?|androids?)\b/i;
 
-export function isLiveEntityHelperLabelMuckMonster(
-  label: string | undefined
-) {
+export function isLiveEntityHelperLabelMuckMonster(label: string | undefined) {
   if (!label) return false;
   if (LIVE_ENTITY_HELPER_ROBOT_LABEL_REGEX.test(label)) {
     // A sentinel/robot label whose area name happens to include "Muck" is
@@ -810,9 +827,7 @@ export function isLiveEntityHelperLabelMuckMonster(
   return LIVE_ENTITY_HELPER_MUCK_MONSTER_LABEL_REGEX.test(label);
 }
 
-export function isLiveEntityHelperLabelJobsBoard(
-  label: string | undefined
-) {
+export function isLiveEntityHelperLabelJobsBoard(label: string | undefined) {
   if (!label) return false;
   return LIVE_ENTITY_HELPER_JOBS_BOARD_LABEL_REGEX.test(label);
 }
@@ -845,10 +860,7 @@ export function isLiveEntityHelperQuestEligibleEntity(
   ) {
     return false;
   }
-  if (
-    context.isJobsBoard ||
-    isLiveEntityHelperLabelJobsBoard(context.label)
-  ) {
+  if (context.isJobsBoard || isLiveEntityHelperLabelJobsBoard(context.label)) {
     return false;
   }
   if (context.isMountOnly) {

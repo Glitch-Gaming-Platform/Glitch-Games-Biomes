@@ -769,6 +769,29 @@ describe("defaultHarthmereLiveModeBackendState", function () {
     );
   });
 
+  it("migrates the persisted +512 Harthmere town board into the additive town", function () {
+    const stale = freshState();
+    stale.building.inWorldMarkers.harthmere_town_market_jobs_board.position = [
+      1046, 65, -202,
+    ];
+    stale.building.inWorldMarkers.harthmere_town_market_jobs_board.createdAtMs = 123;
+
+    const parsed = parseHarthmereLiveModeBackendState(
+      JSON.stringify(stale),
+      ACTOR,
+      NOW_MS
+    );
+    assert.deepEqual(
+      parsed.building.inWorldMarkers.harthmere_town_market_jobs_board.position,
+      HARTHMERE_JOBS_BOARD_HARTHMERE_POSITION
+    );
+    assert.equal(
+      parsed.building.inWorldMarkers.harthmere_town_market_jobs_board
+        .createdAtMs,
+      123
+    );
+  });
+
   it("seeds canonical outpost businesses without duplicating saved records", function () {
     const canonical =
       HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS.outpost_restaurant_redpot;
@@ -4156,6 +4179,16 @@ describe("reduceHarthmereLiveModeBackendState — combat target authority", func
       ...muckerCanonical,
       hp: 20,
       maxHp: 110,
+      position: {
+        x: muckerCanonical.position.x - 1600,
+        y: muckerCanonical.position.y,
+        z: muckerCanonical.position.z,
+      },
+      homePosition: {
+        x: muckerCanonical.position.x - 1600,
+        y: muckerCanonical.position.y,
+        z: muckerCanonical.position.z,
+      },
     };
 
     harthmereNormalizeSeededCombatEntitySnapshots(
@@ -4170,6 +4203,11 @@ describe("reduceHarthmereLiveModeBackendState — combat target authority", func
     assert.ok(
       s.combat.entitySnapshots[muckerId].hp > 20,
       "normalization should preserve the health ratio when max HP is raised"
+    );
+    assert.deepEqual(
+      s.combat.entitySnapshots[muckerId].position,
+      muckerCanonical.position,
+      "legacy combat positions should migrate to the additive world"
     );
 
     const [rabbitId, rabbitCanonical] = Object.entries(seedSnapshots).find(

@@ -11,7 +11,10 @@ import {
   appendHarthmereBusinessOutpostMapLandmarks,
   harthmereBusinessOutpostMapLandmarks,
 } from "../harthmereBusinessMapMarkers";
-import { buildBiomesUIMapAdapterForTest } from "../mapLiveAdapter";
+import {
+  buildBiomesUIMapAdapterForTest,
+  normalizeMapMarkerIdForTest,
+} from "../mapLiveAdapter";
 import { HARTHMERE_BUSINESS_OUTPOSTS } from "@/shared/harthmere/business_customer_simulator";
 import { NUX_PAIRED_STEPS } from "@/client/util/nux/state_machines";
 
@@ -371,6 +374,25 @@ function buildAdapter(playerWorldPos?: [number, number, number]) {
 }
 
 describe("biomes_ui map adapter (V141)", () => {
+  it("keeps additive Harthmere route and building marker ids distinct", () => {
+    assert.equal(
+      normalizeMapMarkerIdForTest("old_grove_road_post"),
+      "road_marker"
+    );
+    assert.equal(
+      normalizeMapMarkerIdForTest("harthmere_road_grove_trailhead"),
+      "harthmere_road_grove_trailhead"
+    );
+    assert.equal(
+      normalizeMapMarkerIdForTest("harthmere_road_west_gate"),
+      "harthmere_road_west_gate"
+    );
+    assert.notEqual(
+      normalizeMapMarkerIdForTest("harthmere_extension_boundary"),
+      normalizeMapMarkerIdForTest("harthmere_bridge_center")
+    );
+  });
+
   beforeEach(() => installFixture());
   afterEach(() => clearFixture());
 

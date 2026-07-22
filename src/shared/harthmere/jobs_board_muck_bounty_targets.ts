@@ -1,9 +1,9 @@
 import {
   HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS,
+  harthmereGroundedMuckMonsterSeedsInTerritory,
   type HarthmereLiveEntityProductionSeed,
 } from "@/shared/harthmere/live_entity_production_seed";
 import { muckMonsterAreaForPosition } from "@/shared/harthmere/muck_monster_aggression_ai";
-import { resolveHarthmereProductionMarkerPosition } from "@/shared/harthmere/production_terrain_placement_map";
 import type { BiomesId } from "@/shared/ids";
 import type { Vec3 } from "@/shared/math/types";
 
@@ -93,11 +93,10 @@ function targetFromSeed(input: {
   seed: HarthmereLiveEntityProductionSeed;
   legacyTarget?: boolean;
 }): HarthmereJobsBoardMuckBountyTarget {
-  const position = resolveHarthmereProductionMarkerPosition({
-    source: "live_muck_monster",
-    markerId: input.seed.seedId,
-    fallback: [...input.seed.position] as Vec3,
-  });
+  const position =
+    harthmereGroundedMuckMonsterSeedsInTerritory().find(
+      (seed) => seed.seedId === input.seed.seedId
+    )?.position ?? ([...input.seed.position] as Vec3);
   return {
     targetId: input.targetId,
     markerId: input.markerId,
@@ -189,9 +188,7 @@ const LEGACY_MUCK_BOUNTY_TARGETS: readonly HarthmereJobsBoardMuckBountyTarget[] 
 const GENERATED_MUCK_BOUNTY_TARGETS: readonly HarthmereJobsBoardMuckBountyTarget[] =
   HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS.flatMap((seed) => {
     const monsterId =
-      seed.combatKind === "hex"
-        ? ("hex" as const)
-        : ("mucker" as const);
+      seed.combatKind === "hex" ? ("hex" as const) : ("mucker" as const);
     const tiers: readonly HarthmereJobsBoardMuckBountyTier[] =
       monsterId === "hex" ? ["boss"] : ["elite", "boss"];
     return tiers.map((monsterTier) =>
@@ -221,10 +218,7 @@ export function harthmereJobsBoardMuckBountyTargetsForMonster(input: {
   return HARTHMERE_JOBS_BOARD_MUCK_BOUNTY_TARGETS.filter((target) => {
     if (!input.includeLegacy && target.legacyTarget) return false;
     if (target.monsterId !== input.monsterId) return false;
-    if (
-      input.monsterTier === "elite" ||
-      input.monsterTier === "boss"
-    ) {
+    if (input.monsterTier === "elite" || input.monsterTier === "boss") {
       return target.monsterTier === input.monsterTier;
     }
     return true;
@@ -244,10 +238,7 @@ export function randomHarthmereJobsBoardMuckBountyTarget(input: {
     return undefined;
   }
   return candidates[
-    Math.min(
-      candidates.length - 1,
-      Math.floor(input.rng() * candidates.length)
-    )
+    Math.min(candidates.length - 1, Math.floor(input.rng() * candidates.length))
   ];
 }
 
@@ -279,11 +270,10 @@ export function validateHarthmereJobsBoardMuckBountyTargets() {
     if (!seed) {
       errors.push(`${target.markerId}:missing_seed`);
     } else {
-      const resolvedSeedPosition = resolveHarthmereProductionMarkerPosition({
-        source: "live_muck_monster",
-        markerId: seed.seedId,
-        fallback: [...seed.position] as Vec3,
-      });
+      const resolvedSeedPosition =
+        harthmereGroundedMuckMonsterSeedsInTerritory().find(
+          (candidate) => candidate.seedId === seed.seedId
+        )?.position ?? ([...seed.position] as Vec3);
       if (
         seed.entityId !== target.entityId ||
         seed.areaId !== target.areaId ||

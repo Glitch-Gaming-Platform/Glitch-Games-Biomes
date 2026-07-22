@@ -6,7 +6,7 @@ import {
 } from "@/client/components/biomes_ui/adapters/harthmereMapTerrainRegions";
 
 describe("harthmere map terrain regions current", () => {
-  const bounds = { minX: 200, maxX: 700, minZ: -520, maxZ: 140 };
+  const bounds = { minX: 0, maxX: 2300, minZ: -520, maxZ: 140 };
 
   it("returns nothing without finite bounds", () => {
     assert.deepEqual(harthmereMapTerrainRegionsForBounds(undefined), []);
@@ -27,8 +27,8 @@ describe("harthmere map terrain regions current", () => {
     assert.ok(watchtower, "watchtower muck region present");
     assert.equal(watchtower!.shape.type, "ellipse");
     if (watchtower!.shape.type === "ellipse") {
-      // center x = (332-200)/500*100 = 26.4, y = (-390 - -520)/660*100 = 19.7
-      assert.ok(Math.abs(watchtower!.shape.cx - 26.4) < 0.1);
+      // Harthmere features use world X=authored+1600. Watchtower X=1932.
+      assert.ok(Math.abs(watchtower!.shape.cx - 84.0) < 0.1);
       assert.ok(Math.abs(watchtower!.shape.cy - 19.7) < 0.2);
       assert.ok(watchtower!.shape.rx > 0 && watchtower!.shape.rx < 50);
     }
@@ -51,8 +51,39 @@ describe("harthmere map terrain regions current", () => {
     const kinds = new Set(
       HARTHMERE_MAP_TERRAIN_REGIONS_WORLD.map((region) => region.kind)
     );
-    for (const kind of ["town", "water", "muck", "highland", "road", "safe_zone"]) {
+    for (const kind of [
+      "town",
+      "water",
+      "muck",
+      "highland",
+      "road",
+      "safe_zone",
+    ]) {
       assert.ok(kinds.has(kind as any), `missing terrain kind: ${kind}`);
+    }
+  });
+
+  it("draws the town in the additive east band and a road from Grove to North Gate", () => {
+    const town = HARTHMERE_MAP_TERRAIN_REGIONS_WORLD.find(
+      (region) => region.id === "harthmere_town_core"
+    );
+    assert.ok(town && town.shape.type === "rect");
+    if (town?.shape.type === "rect") {
+      assert.ok(town.shape.xMin >= 1792);
+      assert.ok(town.shape.xMax < 2560);
+    }
+
+    const connector = HARTHMERE_MAP_TERRAIN_REGIONS_WORLD.find(
+      (region) => region.id === "grove_to_harthmere_connector_road"
+    );
+    assert.ok(connector && connector.shape.type === "path");
+    if (connector?.shape.type === "path") {
+      assert.deepEqual(connector.shape.points[0], [560, -182]);
+      assert.deepEqual(connector.shape.points.at(-1), [2100, -284]);
+      assert.ok(
+        connector.shape.points.some(([x]) => x === 1792),
+        "route should mark the old/new map boundary"
+      );
     }
   });
 

@@ -197,7 +197,11 @@ function prepareRoadAheadContainerClaim(
       .triggerState()
       ?.by_root.get(NATIVE_ROAD_AHEAD_QUEST_ID),
     claimEntity: {
-      entityId: src.delta().id,
+      // `src` is the hidden per-player inventory, not the authored prop. The
+      // API validated that prop before creating this server-owned container,
+      // so quest validation must use its canonical world identity while still
+      // carrying the distinct placeable biscuit as a second identity fact.
+      entityId: claim.sourceEntityId,
       placeableItemId: claim.placeableItemId,
       isMyRobot: false,
     },
@@ -252,7 +256,7 @@ function finishRoadAheadContainerClaim(
     challenge: NATIVE_ROAD_AHEAD_QUEST_ID,
     claimFromEntityId: canonicalClaimFromEntityId(
       prepared.validation,
-      src.delta().id
+      prepared.claim.sourceEntityId
     ),
     entityId: player.id,
     chosenRewardIndex: prepared.claim.chosenRewardIndex,

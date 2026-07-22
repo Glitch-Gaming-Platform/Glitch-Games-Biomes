@@ -179,6 +179,7 @@ import {
   replenishHarthmereExoticMatterDeposits,
 } from "./exotic_matter_caves";
 import { resolveHarthmereProductionMarkerPosition } from "./production_terrain_placement_map";
+import { HARTHMERE_ORIGINAL_WORLD_EAST_EDGE_X } from "./world_extension";
 import {
   HARTHMERE_COOKING_RECIPES,
   HARTHMERE_FOOD_DEFINITIONS,
@@ -553,17 +554,16 @@ function resolveLiveEntityProductionSeedPosition(
     seedId: string;
     position: readonly number[];
   },
-  source: "live_muck_monster" | "live_livestock"
+  _source: "live_muck_monster" | "live_livestock"
 ) {
-  return resolveHarthmereProductionMarkerPosition({
-    source,
-    markerId: seed.seedId,
-    fallback: [seed.position[0], seed.position[1], seed.position[2]] as [
-      number,
-      number,
-      number
-    ],
-  });
+  // Grounded seeds already carry their authoritative additive-world position.
+  // Looking up the retired placement map again here pulled combat snapshots
+  // back to the original map even though their ECS bodies belonged east.
+  return [seed.position[0], seed.position[1], seed.position[2]] as [
+    number,
+    number,
+    number
+  ];
 }
 
 function boostedMuckHexHp(baseHp: number, entityKind: "mux" | "hex") {
@@ -800,10 +800,20 @@ export function harthmereNormalizeSeededCombatEntitySnapshots(
             Math.round((previousHp / previousMaxHp) * nextMaxHp)
           )
         );
-    const position =
-      cloneHarthmereLiveCombatPosition(existing.position) ??
+    const canonicalPosition =
       cloneHarthmereLiveCombatPosition(canonical.position) ??
       canonical.position;
+    const existingPosition = cloneHarthmereLiveCombatPosition(
+      existing.position
+    );
+    const legacyPositionNeedsMigration = Boolean(
+      existingPosition &&
+        existingPosition.x < HARTHMERE_ORIGINAL_WORLD_EAST_EDGE_X &&
+        canonicalPosition.x >= HARTHMERE_ORIGINAL_WORLD_EAST_EDGE_X
+    );
+    const position = legacyPositionNeedsMigration
+      ? canonicalPosition
+      : existingPosition ?? canonicalPosition;
     const homePosition =
       cloneHarthmereLiveCombatPosition(canonical.homePosition) ??
       cloneHarthmereLiveCombatPosition(existing.homePosition);
@@ -6459,6 +6469,20 @@ function mergeCanonicalHarthmereBusinessOutpostStructures(
   return merged;
 }
 
+function canonicalHarthmereTownJobsBoardMarker(
+  nowMs: number,
+  createdAtMs = nowMs
+): BuildingSystemInWorldMarker {
+  return {
+    markerId: "harthmere_town_market_jobs_board",
+    plotId: "harthmere_town_market_posting_board",
+    kind: "npc_board",
+    position: [...HARTHMERE_JOBS_BOARD_HARTHMERE_POSITION],
+    label: "Harthmere Town Jobs Board",
+    createdAtMs,
+  };
+}
+
 export function defaultHarthmereLiveModeBackendState(
   actorId: string,
   nowMs: number
@@ -6533,12 +6557,7 @@ export function defaultHarthmereLiveModeBackendState(
           createdAtMs: nowMs,
         },
         harthmere_town_market_jobs_board: {
-          markerId: "harthmere_town_market_jobs_board",
-          plotId: "harthmere_town_market_posting_board",
-          kind: "npc_board",
-          position: [...HARTHMERE_JOBS_BOARD_HARTHMERE_POSITION],
-          label: "Harthmere Town Jobs Board",
-          createdAtMs: nowMs,
+          ...canonicalHarthmereTownJobsBoardMarker(nowMs),
         },
       },
       materializationPlans: businessOutpostBuildingState.materializationPlans,
@@ -6992,6 +7011,18 @@ export function parseHarthmereLiveModeBackendState(
           ...defaults.building.inWorldMarkers,
           ...((parsed.building as any)?.inWorldMarkers ?? {}),
           ...businessOutpostBuildingState.inWorldMarkers,
+          // PERSISTED_512_MARKER_MIGRATION:
+          // Existing players may have saved this structural marker at X=1046.
+          // Canonical infrastructure wins over persistence while retaining its
+          // original creation time, so one read/write migrates it to X=2134.
+          harthmere_town_market_jobs_board:
+            canonicalHarthmereTownJobsBoardMarker(
+              nowMs,
+              Number(
+                (parsed.building as any)?.inWorldMarkers
+                  ?.harthmere_town_market_jobs_board?.createdAtMs ?? nowMs
+              )
+            ),
         },
         materializationPlans: {
           ...defaults.building.materializationPlans,
@@ -7402,6 +7433,14 @@ export function mergeHarthmereLiveModeSharedWorldStateIntoBackend(
       ...sharedBuilding.doorLocks,
     },
   };
+  state.building.inWorldMarkers.harthmere_town_market_jobs_board =
+    canonicalHarthmereTownJobsBoardMarker(
+      nowMs,
+      Number(
+        state.building.inWorldMarkers.harthmere_town_market_jobs_board
+          ?.createdAtMs ?? nowMs
+      )
+    );
   state.building.ownedPlots = Object.entries(state.building.plotOwners)
     .filter(([, ownerActorId]) => ownerActorId === state.actorId)
     .map(([plotId]) => plotId);

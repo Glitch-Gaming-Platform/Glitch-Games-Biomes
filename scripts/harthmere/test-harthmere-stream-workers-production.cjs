@@ -5,12 +5,13 @@ const path = require("path");
 
 const root = process.argv[2] ? path.resolve(process.argv[2]) : process.cwd();
 const REDIS_HOST =
-  process.env.BIOMES_PROD_REDIS_HOST || process.env.REDIS_HOST || "20.127.78.175";
+  process.env.BIOMES_PROD_REDIS_HOST ||
+  process.env.REDIS_HOST ||
+  "20.127.78.175";
 const REDIS_PORT =
   process.env.BIOMES_PROD_REDIS_PORT || process.env.REDIS_PORT || "6379";
 const LIVE_REDIS = process.env.BIOMES_PROD_STREAM_REDIS_CHECK === "1";
-const EXPECT_PROD_GROUPS =
-  process.env.BIOMES_EXPECT_PROD_STREAM_GROUPS === "1";
+const EXPECT_PROD_GROUPS = process.env.BIOMES_EXPECT_PROD_STREAM_GROUPS === "1";
 
 const streams = [
   {
@@ -54,7 +55,7 @@ function redisCli(db, args, options = {}) {
       {
         encoding: "utf8",
         stdio: ["ignore", "pipe", options.quiet ? "ignore" : "pipe"],
-      },
+      }
     );
   } catch (error) {
     if (options.allowFailure) {
@@ -65,7 +66,10 @@ function redisCli(db, args, options = {}) {
 }
 
 function redisGroupNames(raw) {
-  const lines = raw.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  const lines = raw
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
   const names = new Set();
   for (let i = 0; i < lines.length - 1; i += 1) {
     if (lines[i] === "name") {
@@ -78,7 +82,7 @@ function redisGroupNames(raw) {
 function runStaticChecks() {
   const runner = read("scripts/glitch/run-glitch-local-game-stack.sh");
   const deploy = fs.existsSync(
-    path.join(root, "scripts/glitch/deploy-production-local-redis-smoke.sh"),
+    path.join(root, "scripts/glitch/deploy-production-local-redis-smoke.sh")
   )
     ? read("scripts/glitch/deploy-production-local-redis-smoke.sh")
     : "";
@@ -92,99 +96,167 @@ function runStaticChecks() {
 
   ok(
     chatCommon.includes('Buffer.from("chat-delivery")'),
-    "chat extended delivery stream remains chat-delivery",
+    "chat extended delivery stream remains chat-delivery"
   );
   ok(
     chatDistribution.includes("xgroup(") &&
       chatDistribution.includes("EXTENDED_DELIVERY_STREAM_KEY") &&
       chatDistribution.includes("redis-chat-distributor"),
-    "chat distributor creates and uses the redis-chat-distributor consumer group",
+    "chat distributor creates and uses the redis-chat-distributor consumer group"
   );
   ok(
     chatServer.includes("redisChatDistributor.runForever(signal)"),
-    "chat server starts the Redis chat distributor loop",
+    "chat server starts the Redis chat distributor loop"
   );
   ok(
     firehose.includes('Buffer.from("firehose")') &&
       firehose.includes("xgroup(") &&
       firehose.includes("xreadgroupBuffer"),
-    "firehose uses a Redis stream with consumer groups",
+    "firehose uses a Redis stream with consumer groups"
   );
   ok(
     trigger.includes("return `trigger-server`;") &&
       trigger.includes("this.firehose.events("),
-    "trigger server consumes firehose as trigger-server in production",
+    "trigger server consumes firehose as trigger-server in production"
   );
   ok(
     notify.includes("return `notifications-server`;") &&
       notify.includes("this.firehose.events("),
-    "notifications server consumes firehose as notifications-server in production",
+    "notifications server consumes firehose as notifications-server in production"
   );
   ok(
     sink.includes("return `sink`;") && sink.includes("firehose.events("),
-    "sink consumes firehose as sink when that worker is explicitly enabled",
+    "sink consumes firehose as sink when that worker is explicitly enabled"
   );
 
   ok(
     runner.includes("wait_http_ready 127.0.0.1 3301 chat"),
-    "Glitch stack waits for chat service readiness on the real metrics port",
+    "Glitch stack waits for chat service readiness on the real metrics port"
   );
   ok(
     runner.includes(
-      "wait_redis_stream_group 4 chat-delivery redis-chat-distributor chat-distributor",
+      "wait_redis_stream_group 4 chat-delivery redis-chat-distributor chat-distributor"
     ),
-    "Glitch stack waits for chat-delivery consumer group before web traffic",
+    "Glitch stack waits for chat-delivery consumer group before web traffic"
   );
   ok(
     !runner.includes("wait_tcp 127.0.0.1 3304 chat-rpc"),
-    "Glitch stack no longer waits on a non-existent chat RPC port",
-  );
-  ok(
-    runner.includes('GLITCH_ENABLE_STREAM_WORKERS="${GLITCH_ENABLE_STREAM_WORKERS:-1}"'),
-    "Glitch stack enables gameplay stream workers by default",
+    "Glitch stack no longer waits on a non-existent chat RPC port"
   );
   ok(
     runner.includes(
-      'start_bg trigger 127.0.0.1 3700 3704 3701 "$APP_ROOT/dist/trigger.js"',
+      'GLITCH_ENABLE_STREAM_WORKERS="${GLITCH_ENABLE_STREAM_WORKERS:-1}"'
     ),
-    "Glitch stack starts the trigger firehose worker",
+    "Glitch stack enables gameplay stream workers by default"
+  );
+  ok(
+    runner.includes('GLITCH_ENABLE_ANIMA="${GLITCH_ENABLE_ANIMA:-1}"'),
+    "Glitch stack enables the NPC simulation worker by default"
   );
   ok(
     runner.includes(
-      'start_bg notify 127.0.0.1 3800 3804 3801 "$APP_ROOT/dist/notify.js"',
+      'GLITCH_ANIMA_STARTUP_CANDIDATES="${GLITCH_ANIMA_STARTUP_CANDIDATES:-1}"'
+    ) &&
+      runner.includes("wait_anima_startup_barrier()") &&
+      runner.includes('SET "$candidate_key" "$(date +%s)" EX "$ttl"') &&
+      runner.includes('--scan --pattern "${candidate_prefix}*"') &&
+      runner.includes("wait_anima_startup_barrier") &&
+      runner.includes(
+        'GLITCH_ANIMA_MAX_OLD_SPACE_MB="${GLITCH_ANIMA_MAX_OLD_SPACE_MB:-2048}"'
+      ) &&
+      runner.includes("--max-old-space-size=$GLITCH_ANIMA_MAX_OLD_SPACE_MB"),
+    "Glitch stack supports a crash-safe Redis barrier and isolated heap cap before distributed Anima startup"
+  );
+  ok(
+    runner.includes('GLITCH_ENABLE_GAIA="${GLITCH_ENABLE_GAIA:-1}"'),
+    "Glitch stack enables native world simulations by default"
+  );
+
+  // These options are asserted together because an Anima process can exist yet
+  // still be functionally inert: the wrong shard manager duplicates or owns no
+  // NPCs, missing HFC writes drops behavior state, and a relative Galois prefix
+  // makes Node fail while loading the terrain indices needed for navigation.
+  ok(
+    runner.includes(
+      "DISCOVERY_KIND=redis SHARD_MANAGER_KIND=distributed ANIMA_HFC_WRITES=1"
+    ) &&
+      runner.includes(
+        'GALOIS_STATIC_PREFIX="${GALOIS_STATIC_PREFIX:-http://127.0.0.1:$WEB_BASE_PORT/buckets/biomes-static/}"'
+      ) &&
+      runner.includes(
+        'start_bg anima 127.0.0.1 4100 4104 4101 "$APP_ROOT/dist/anima.js"'
+      ) &&
+      runner.includes("wait_http_ready 127.0.0.1 4101 anima"),
+    "Glitch stack starts a Redis-coordinated Anima worker with hybrid-world writes and an absolute asset origin"
+  );
+  ok(
+    runner.includes("DISCOVERY_KIND=redis SHARD_MANAGER_KIND=distributed") &&
+      runner.includes(
+        'GAIA_SHARD_DOMAIN="${GAIA_SHARD_DOMAIN:-gaia-harthmere-unified}"'
+      ) &&
+      runner.includes(
+        'start_bg gaia 127.0.0.1 4200 4204 4201 "$APP_ROOT/dist/gaia.js"'
+      ) &&
+      runner.includes("wait_http_ready 127.0.0.1 4201 gaia"),
+    "Glitch stack starts and readiness-checks Redis-coordinated Gaia simulations"
+  );
+  ok(
+    runner.includes(
+      'start_bg trigger 127.0.0.1 3700 3704 3701 "$APP_ROOT/dist/trigger.js"'
     ),
-    "Glitch stack starts the notifications firehose worker",
+    "Glitch stack starts the trigger firehose worker"
+  );
+  ok(
+    runner.includes(
+      'start_bg notify 127.0.0.1 3800 3804 3801 "$APP_ROOT/dist/notify.js"'
+    ),
+    "Glitch stack starts the notifications firehose worker"
   );
   ok(
     read("server.webpack.config.cjs").includes('"notify"') &&
       read("server.webpack.config.ts").includes('"notify"'),
-    "server bundle config builds dist/notify.js for the notifications worker",
+    "server bundle config builds dist/notify.js for the notifications worker"
   );
   ok(
-    runner.includes("wait_redis_stream_group 0 firehose trigger-server trigger-firehose"),
-    "Glitch stack waits for trigger-server firehose consumer group",
+    read("server.webpack.config.cjs").includes('"anima"') &&
+      read("server.webpack.config.ts").includes('"anima"') &&
+      read("server.webpack.config.cjs").includes('["gaia"') &&
+      read("server.webpack.config.ts").includes('["gaia"'),
+    "server bundle config builds dist/anima.js and dist/gaia.js for native simulations"
   );
   ok(
     runner.includes(
-      "wait_redis_stream_group 0 firehose notifications-server notify-firehose",
+      "wait_redis_stream_group 0 firehose trigger-server trigger-firehose"
     ),
-    "Glitch stack waits for notifications-server firehose consumer group",
+    "Glitch stack waits for trigger-server firehose consumer group"
   );
   ok(
-    runner.includes('GLITCH_ENABLE_SINK_WORKER="${GLITCH_ENABLE_SINK_WORKER:-0}"') &&
+    runner.includes(
+      "wait_redis_stream_group 0 firehose notifications-server notify-firehose"
+    ),
+    "Glitch stack waits for notifications-server firehose consumer group"
+  );
+  ok(
+    runner.includes(
+      'GLITCH_ENABLE_SINK_WORKER="${GLITCH_ENABLE_SINK_WORKER:-0}"'
+    ) &&
       runner.includes("wait_redis_stream_group 0 firehose sink sink-firehose"),
-    "Glitch stack leaves BigQuery sink opt-in while keeping a readiness guard",
+    "Glitch stack leaves BigQuery sink opt-in while keeping a readiness guard"
   );
 
   if (deploy) {
     ok(
       deploy.includes("test-harthmere-stream-workers-production.cjs"),
-      "production deploy guardrails include stream worker startup test",
+      "production deploy guardrails include stream worker startup test"
     );
     ok(
       deploy.includes("GLITCH_ENABLE_STREAM_WORKERS=1") &&
-        deploy.includes("GLITCH_ENABLE_SINK_WORKER=0"),
-      "production deploy forces gameplay stream workers on while keeping sink opt-in",
+        deploy.includes("GLITCH_ENABLE_SINK_WORKER=0") &&
+        deploy.includes("GLITCH_ENABLE_ANIMA=1") &&
+        deploy.includes("GLITCH_ANIMA_STARTUP_CANDIDATES=3") &&
+        deploy.includes("GLITCH_ANIMA_MAX_OLD_SPACE_MB=2048") &&
+        deploy.includes("GLITCH_ENABLE_GAIA=1"),
+      "production deploy forces gameplay, barrier-coordinated NPC, and world simulation workers on while keeping sink opt-in"
     );
   }
 }
@@ -195,16 +267,24 @@ function runProductionRedisChecks() {
     const type = redisCli(stream.db, ["TYPE", stream.stream], {
       allowFailure: true,
     }).trim();
-    ok(type === "stream", `${stream.name} Redis stream exists`, `db=${stream.db} type=${type || "<missing>"}`);
+    ok(
+      type === "stream",
+      `${stream.name} Redis stream exists`,
+      `db=${stream.db} type=${type || "<missing>"}`
+    );
     const lengthRaw = redisCli(stream.db, ["XLEN", stream.stream], {
       allowFailure: true,
     }).trim();
     const length = Number(lengthRaw);
-    ok(Number.isFinite(length), `${stream.name} stream length is readable`, `xlen=${lengthRaw || "<unreadable>"}`);
+    ok(
+      Number.isFinite(length),
+      `${stream.name} stream length is readable`,
+      `xlen=${lengthRaw || "<unreadable>"}`
+    );
     const groups = redisGroupNames(
       redisCli(stream.db, ["XINFO", "GROUPS", stream.stream], {
         allowFailure: true,
-      }),
+      })
     );
     const groupList = Array.from(groups).join(",") || "<none>";
     for (const group of stream.requiredGroups) {
@@ -212,13 +292,13 @@ function runProductionRedisChecks() {
         ok(
           groups.has(group),
           `${stream.name} has required production consumer group ${group}`,
-          `groups=${groupList}`,
+          `groups=${groupList}`
         );
       } else {
         ok(
           true,
           `${stream.name} production consumer group status for ${group}`,
-          `present=${groups.has(group)} groups=${groupList}`,
+          `present=${groups.has(group)} groups=${groupList}`
         );
       }
     }
@@ -226,7 +306,7 @@ function runProductionRedisChecks() {
       ok(
         true,
         `${stream.name} optional consumer group status for ${group}`,
-        `present=${groups.has(group)} groups=${groupList}`,
+        `present=${groups.has(group)} groups=${groupList}`
       );
     }
   }
@@ -238,7 +318,9 @@ runStaticChecks();
 if (LIVE_REDIS || EXPECT_PROD_GROUPS) {
   runProductionRedisChecks();
 } else {
-  note("live production Redis check skipped. Set BIOMES_PROD_STREAM_REDIS_CHECK=1 for read-only stream/group diagnostics.");
+  note(
+    "live production Redis check skipped. Set BIOMES_PROD_STREAM_REDIS_CHECK=1 for read-only stream/group diagnostics."
+  );
 }
 
 if (failures > 0) {

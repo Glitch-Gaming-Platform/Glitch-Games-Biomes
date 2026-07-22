@@ -344,6 +344,27 @@ export function shouldRenderMapMarkerLabelForTest(
   return marker.label.trim().length > 0;
 }
 
+export function shouldRenderMapMarkerLabelAtZoomForTest(
+  marker: Pick<MapMarker, "label" | "kind" | "active">,
+  zoom: number,
+  focused = false
+): boolean {
+  if (!shouldRenderMapMarkerLabelForTest(marker)) return false;
+  // MAP_LABEL_DECLUTTER:
+  // The complete Harthmere bible adds dozens of nearby building pins. Showing
+  // every label at overview zoom made distinct coordinates look like one pile.
+  // Keep route/town context visible, always identify focused/active pins, and
+  // reveal every building label once the player zooms into the town.
+  return (
+    focused ||
+    marker.active === true ||
+    marker.kind === "player" ||
+    marker.kind === "route" ||
+    marker.kind === "town" ||
+    zoom >= 4
+  );
+}
+
 export function mapMarkerVisualStateForTest(
   marker: Pick<MapMarker, "id" | "kind" | "active">,
   activeMapPinMarkerId?: string
@@ -797,9 +818,10 @@ export const MapQuestsTab: React.FunctionComponent<{
   const [enabledLayers, setEnabledLayers] = React.useState<Set<MapPanelTab>>(
     () => new Set<MapPanelTab>(["quests"])
   );
-  // Terrain starts OFF so the map opens clean (just markers); the player can
-  // toggle the authentic terrain layer on from the layer bar when they want it.
-  const [showTerrain, setShowTerrain] = React.useState(false);
+  // The town extension must be visible as land/roads on first open. Players can
+  // still hide terrain, but a marker-only dark field made the seeded town look
+  // nonexistent even when every building pin had the right world coordinate.
+  const [showTerrain, setShowTerrain] = React.useState(true);
   const [panelFilters, setPanelFilters] = React.useState<
     Record<MapPanelTab, string>
   >({
@@ -1529,7 +1551,11 @@ export const MapQuestsTab: React.FunctionComponent<{
                   }}
                 >
                   <span className="sr-only">{marker.label}</span>
-                  {shouldRenderMapMarkerLabelForTest(marker) && (
+                  {shouldRenderMapMarkerLabelAtZoomForTest(
+                    marker,
+                    zoom,
+                    focusedMarkerId === marker.id
+                  ) && (
                     <span
                       aria-hidden
                       style={{

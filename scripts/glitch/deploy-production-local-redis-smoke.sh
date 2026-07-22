@@ -1385,20 +1385,24 @@ audit_production_authored_content() {
   log "Production authored-content audit passed: all authored families materialized in production."
 }
 
-# HARTHMERE_ENTITY_GROUNDING_PROBE (opt-in):
-# Probe the real production terrain at every seeded entity position and verify
-# the client grounder's scan budget reaches the surface everywhere (no entity
-# floats/buries/cave-traps). Heavy (scans the world + voxeloo decode), so it is
-# off by default; enable with HARTHMERE_RUN_GROUNDING_PROBE=1.
+# HARTHMERE_ENTITY_GROUNDING_PROBE:
+# Probe the real production terrain for every deterministic NPC, hostile,
+# Mucker, animal, robot, business occupant, and seeded business object. The
+# probe repairs original-map hilly placements and verifies additive Harthmere's
+# flat Y=53 contract with persisted ECS readback. It is a required deployment
+# gate; use HARTHMERE_SKIP_GROUNDING_PROBE=1 only for an explicit emergency
+# app-only rollout.
 run_production_grounding_probe() {
-  if [ "${HARTHMERE_RUN_GROUNDING_PROBE:-0}" != "1" ]; then
+  if [ "${HARTHMERE_SKIP_GROUNDING_PROBE:-0}" = "1" ]; then
+    log "Skipping production terrain grounding repair/audit by request."
     return
   fi
-  log "Probing production terrain grounding (entity positions vs real surface)."
+  log "Repairing and auditing production terrain grounding for all deterministic actor/object families."
   REDIS_HOST="${HARTHMERE_WORLD_SYNC_REDIS_HOST:-$PROD_REDIS_RECONCILE_HOST}" \
     GLITCH_REDIS_HOST="${HARTHMERE_WORLD_SYNC_REDIS_HOST:-$PROD_REDIS_RECONCILE_HOST}" \
     REDIS_PORT="${HARTHMERE_WORLD_SYNC_REDIS_PORT:-$PROD_REDIS_PORT}" \
     IS_SERVER=1 \
+    APPLY=1 \
     node scripts/harthmere/probe-production-terrain-grounding.cjs
 }
 
@@ -1525,8 +1529,8 @@ reconcile_production_world_sync() {
 
   validate_production_world_sync_http "$revision"
   audit_production_authored_content
-  force_production_redis_bgsave "post-deploy world sync reconciliation"
   run_production_grounding_probe
+  force_production_redis_bgsave "post-deploy world sync and grounding reconciliation"
 }
 
 cleanup() {
@@ -2020,6 +2024,24 @@ push_and_deploy() {
       GLITCH_ALLOW_SNAPSHOT_REDIS_FLUSH=0
       GLITCH_ENABLE_STREAM_WORKERS=1
       GLITCH_ENABLE_SINK_WORKER=0
+      # Existing NPC records can render without Anima, which makes a missing
+      # worker deceptively look like a client combat bug. Pin the worker on in
+      # production; the stack runner supplies its Redis shard coordination,
+      # hybrid-world write mode, absolute asset origin, and readiness gate.
+      GLITCH_ENABLE_ANIMA=1
+      # The first Anima worker in a rolling start would temporarily own all
+      # world shards and push the dense 16 GiB all-in-one replica close to its
+      # memory ceiling. Require all three production replicas to publish their
+      # expiring Redis candidate leases before any worker starts simulation.
+      GLITCH_ANIMA_STARTUP_CANDIDATES=3
+      # The rest of the unified stack consumes roughly 11 GiB before Anima.
+      # Bound Anima's V8 heap so native/WASM growth and normal request bursts do
+      # not push the 16 GiB D4 container or its node agent into memory pressure.
+      GLITCH_ANIMA_MAX_OLD_SPACE_MB=2048
+      # Harvesting, growth, decay, restoration, water, and terrain simulation
+      # are asynchronous native-ECS work and must be present in every unified
+      # production stack. Distributed sharding prevents duplicate processing.
+      GLITCH_ENABLE_GAIA=1
       DISTRIBUTED_NOTIFIER_KIND=redis
       GLITCH_SERVER_CACHE_MODE=redis
       PLAYER_MESH_MAX_ACTIVE_COMPUTES=1

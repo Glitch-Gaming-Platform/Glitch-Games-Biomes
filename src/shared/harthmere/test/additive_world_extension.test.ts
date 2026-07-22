@@ -1,5 +1,7 @@
 import assert from "assert";
 
+import { LIVE_ENTITY_HELPER_QUEST_TARGET_MARKERS } from "@/shared/harthmere/live_entity_helper_quests";
+import { resolveHarthmereProductionMarkerPosition } from "@/shared/harthmere/production_terrain_placement_map";
 import {
   HARTHMERE_ADDITIVE_TOWN_OFFSET_X,
   HARTHMERE_BELLBINDER_DESCENT,
@@ -7,11 +9,15 @@ import {
   HARTHMERE_EXTENSION_FEET_Y,
   HARTHMERE_EXTENSION_GROUND_Y,
   HARTHMERE_EXTENSION_ROAD,
+  HARTHMERE_EXTENSION_WORLD_BOUNDS,
+  HARTHMERE_ORIGINAL_WORLD_EAST_EDGE_X,
   expandWorldAabbForHarthmere,
   harthmereBellbinderDescentFloorBlocks,
   harthmereBellbinderStairLoop,
   initialHarthmereWorldAabb,
+  isHarthmereExtensionWorldPosition,
   isHarthmereExtensionWorldShardX,
+  normalizeHarthmereExtensionOutdoorFeetPosition,
   shouldEnableHarthmereAdditiveWorldExtension,
 } from "@/shared/harthmere/world_extension";
 import { HARTHMERE_QUEST_CATALOG } from "@/shared/harthmere/quest_compendium";
@@ -80,6 +86,30 @@ describe("Harthmere additive world extension", () => {
     assert.equal(isHarthmereExtensionWorldShardX(56), true); // X=1792
     assert.equal(isHarthmereExtensionWorldShardX(79), true); // X=2528
     assert.equal(isHarthmereExtensionWorldShardX(80), false); // X=2560
+  });
+
+  it("normalizes only additive outdoor actors to the flat terrain contract", () => {
+    assert.deepEqual(
+      normalizeHarthmereExtensionOutdoorFeetPosition([1780, 99, -600], 1.5),
+      [
+        HARTHMERE_EXTENSION_WORLD_BOUNDS.minX + 1.5,
+        HARTHMERE_EXTENSION_FEET_Y,
+        HARTHMERE_EXTENSION_WORLD_BOUNDS.minZ + 1.5,
+      ]
+    );
+    assert.equal(
+      isHarthmereExtensionWorldPosition([
+        HARTHMERE_EXTENSION_WORLD_BOUNDS.minX,
+        HARTHMERE_EXTENSION_FEET_Y,
+        HARTHMERE_EXTENSION_WORLD_BOUNDS.minZ,
+      ]),
+      true
+    );
+    assert.equal(
+      isHarthmereExtensionWorldPosition([500, 70, -126]),
+      false,
+      "the original hilly Grove must never use flat Harthmere grounding"
+    );
   });
 
   it("marks the actual generated road start and its north-gate destination", () => {
@@ -202,5 +232,18 @@ describe("Harthmere additive world extension", () => {
       SNAPSHOT_GROVE_NPC_FEET_Y + 17,
       -140,
     ]);
+  });
+
+  it("does not let the retired placement map pull shifted markers back west", () => {
+    for (const marker of LIVE_ENTITY_HELPER_QUEST_TARGET_MARKERS) {
+      assert.ok(marker.position[0] >= HARTHMERE_ORIGINAL_WORLD_EAST_EDGE_X);
+      assert.deepEqual(
+        resolveHarthmereProductionMarkerPosition({
+          markerId: marker.id,
+          fallback: marker.position,
+        }),
+        marker.position
+      );
+    }
   });
 });

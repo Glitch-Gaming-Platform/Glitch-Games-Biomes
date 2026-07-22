@@ -188,15 +188,14 @@ describe("MapQuestsTab browser interactions", () => {
       const allLayersBody = await page.textContent("body");
       assert.ok(allLayersBody?.includes("Road Work"), "quest content visible by default");
 
-      // Terrain starts OFF so the map opens clean; it renders only after the
-      // player turns the Terrain layer on.
-      assert.equal(
-        await page.$("[data-testid='biomes-map-terrain-layer']"),
-        null,
-        "terrain layer should be hidden by default"
-      );
-      await page.getByRole("switch", { name: "Toggle terrain layer" }).click();
+      // Terrain starts ON so the additive town reads as real land and roads,
+      // not a cluster of pins floating on an empty dark canvas.
       await page.waitForSelector("[data-testid='biomes-map-terrain-layer']");
+      await page.getByRole("switch", { name: "Toggle terrain layer" }).click();
+      await page.waitForFunction(
+        () =>
+          !document.querySelector("[data-testid='biomes-map-terrain-layer']")
+      );
 
       // Toggling a layer on shows its section; toggling back off removes it.
       await page.getByRole("switch", { name: "Toggle People layer" }).click();

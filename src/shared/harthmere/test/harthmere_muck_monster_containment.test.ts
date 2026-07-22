@@ -12,6 +12,7 @@ import {
   SNAPSHOT_HARTHMERE_MUCK_ZONES,
 } from "@/shared/harthmere/snapshot_runtime_rules";
 import type { Vec3 } from "@/shared/math/types";
+import { HARTHMERE_EXTENSION_WORLD_BOUNDS } from "@/shared/harthmere/world_extension";
 
 function dist2d(a: Vec3, b: readonly number[]) {
   return Math.hypot(a[0] - b[0], a[2] - b[2]);
@@ -37,7 +38,10 @@ describe("muck containment membership", () => {
   it("recognizes a point inside a muck zone", () => {
     // Road Muckwad Patch center.
     assert.ok(isInsideMuckContainment([512, 54, -152]));
-    assert.equal(muckContainmentAreaForPosition([512, 54, -152])?.id !== undefined, true);
+    assert.equal(
+      muckContainmentAreaForPosition([512, 54, -152])?.id !== undefined,
+      true
+    );
   });
 
   it("rejects points outside every muck zone (town/grove center, world origin)", () => {
@@ -52,10 +56,26 @@ describe("muck containment membership", () => {
     assert.equal(area?.id, "watchtower_muck_clearing");
     assert.equal(area?.radius, 34);
   });
+
+  it("clips shifted containment before the additive terrain edge", () => {
+    const area = muckContainmentAreaForPosition([1836, 53, -506]);
+    assert.equal(area?.id, "west_muck_breach");
+    assert.ok(area);
+    assert.ok(
+      area!.center[0] - area!.radius >= HARTHMERE_EXTENSION_WORLD_BOUNDS.minX
+    );
+    assert.ok(
+      area!.center[2] - area!.radius >= HARTHMERE_EXTENSION_WORLD_BOUNDS.minZ
+    );
+  });
 });
 
 describe("clampPointToMuckContainmentArea", () => {
-  const area = { id: "road_muckwad_patch", center: [512, 54, -152] as Vec3, radius: 10 };
+  const area = {
+    id: "road_muckwad_patch",
+    center: [512, 54, -152] as Vec3,
+    radius: 10,
+  };
 
   it("leaves a point already inside untouched", () => {
     const inside: Vec3 = [515, 54, -150];

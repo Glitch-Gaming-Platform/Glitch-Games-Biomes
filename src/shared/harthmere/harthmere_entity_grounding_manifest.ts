@@ -11,14 +11,16 @@ import {
 // read it as the spec. Keep it in sync when you add a new positioned entity
 // type or change the grounding wiring.
 //
-// THE MODEL (see harthmere_entity_grounding.ts):
-//   Entities are SEEDED with a flat/authored hint Y (muck areas ≈ 54, Grove
-//   ≈ 70). At RENDER time the client probes the REAL voxel terrain at the
-//   entity's (x,z) — via /terrain/pathfinding/human_can_occupy — and rests the
-//   entity on the true surface (nearest standable feet-Y to the hint). Because
-//   it probes real terrain, hills and the Grove/wilds height seam resolve with
-//   no per-zone constants. Grounding lives on the CLIENT because the server seed
-//   cannot cheaply read terrain (it is in encoded Redis shards).
+// THE TWO-FRAME MODEL (see harthmere_entity_grounding.ts and
+// world_extension.ts):
+//   1. Additive Harthmere owns a known flat terrain band east of X=1792. Its
+//      outdoor actors seed authoritatively at feet Y=53 and are clipped inside
+//      the extension bounds.
+//   2. The original snapshot/Grove map remains hilly. Its outdoor actors use an
+//      open-sky terrain probe and its roofed business actors use the nearest
+//      indoor floor. The required post-deploy probe repairs ECS position and NPC
+//      spawn_position, then reads them back. Client grounding remains a visual
+//      streaming safeguard, not the only authority.
 //
 // EDGE CASES HANDLED:
 //   - CAVES: outdoor entities use requireOpenSky=true so they never ground onto a
@@ -33,14 +35,16 @@ import {
 //     mis-judged; in practice entity hints sit near the surface so this is rare.
 
 export const HARTHMERE_ENTITY_GROUNDING_MANIFEST_VERSION =
-  "harthmere-entity-grounding-manifest" as const;
+  "harthmere-entity-grounding-manifest-v2" as const;
 
 // Authored / observed terrain reference frames (world feet-Y). The grounder does
 // NOT hardcode these — they are documentation of why a flat hint is unreliable.
 export const HARTHMERE_TERRAIN_HEIGHT_FRAMES = {
-  // Live production Grove/Harthmere courtyard the browser actually loads.
+  // Flat feet plane for the additive Harthmere extension.
+  additiveHarthmereFeetY: 53,
+  // Live production Grove courtyard the browser actually loads.
   groveLiveFeetY: 70,
-  // Wilds / muck floor.
+  // Historical original-map wilds hint; real hills vary by column.
   wildsFeetY: 54,
   // The seam the old constant "-17" hack tried to bridge.
   groveWildsSeamBlocks: 16,
@@ -55,7 +59,8 @@ export const HARTHMERE_GROUNDING_SCAN_BUDGET = {
 } as const;
 
 export type HarthmereGroundingStatus =
-  | "terrain_grounded" // probes real terrain at render
+  | "extension_flat_grounded" // authoritative flat extension position
+  | "terrain_grounded" // production terrain repair + client streaming safeguard
   | "intentional_position" // authored/player position is deliberate; do NOT auto-ground
   | "needs_wiring"; // floats today; render path lacks terrain access
 
@@ -70,27 +75,36 @@ export interface HarthmereGroundedEntityKind {
 export const HARTHMERE_GROUNDED_ENTITY_REGISTRY: readonly HarthmereGroundedEntityKind[] =
   [
     {
-      kind: "npcs",
-      status: "terrain_grounded",
+      kind: "additive_harthmere_town_npcs_and_boards",
+      status: "extension_flat_grounded",
       where:
-        "src/client/game/resources/npcs.ts (sampleHarthmereNpcGroundFeetY -> navigation guard groundYAt)",
+        "src/server/shim/main.ts (harthmereGroundedNpcWorldPositionWithClaim + runtime-content grounding v2)",
       notes:
-        "All living NPCs ground to the real surface each frame via the robust probe.",
+        "All migrated town actors preserve authored X/Z but use feet Y=53. Legacy measured cluster Y values apply only to explicit standalone mode.",
     },
     {
-      kind: "muckers_hexers_quest_monsters",
+      kind: "original_grove_npcs_and_snapshot_hostiles",
       status: "terrain_grounded",
-      where: "same NPC path (they are NPCs)",
+      where:
+        "scripts/harthmere/probe-production-terrain-grounding.cjs plus src/client/game/resources/npcs.ts",
       notes:
-        "Replaces the Grove-only constant '-17' hack; the probe bridges the Grove/wilds seam and hills.",
+        "The deploy probe repairs authoritative ECS/spawn Y from the hilly production terrain; the client repeats the probe when streamed terrain changes.",
+    },
+    {
+      kind: "additive_muckers_hexers_animals_and_robots",
+      status: "extension_flat_grounded",
+      where:
+        "src/shared/harthmere/live_entity_production_seed.ts and world_extension.ts",
+      notes:
+        "Every outdoor seed is normalized to Y=53 and clipped inside X=1792..2560 and Z=-576..192. Containment radii cannot cross the edge.",
     },
     {
       kind: "business_owner_and_customer_npcs",
       status: "terrain_grounded",
       where:
-        "src/client/game/resources/npcs.ts (requireOpenSky=false for owner/customer ids)",
+        "scripts/harthmere/probe-production-terrain-grounding.cjs and src/client/game/resources/npcs.ts (requireOpenSky=false)",
       notes:
-        "Owners (id band 9601+) and customers (9701+) stand on a ROOFED building floor, so they ground with requireOpenSky=false (nearest-to-floor) — open-sky mode would push them onto the roof. isHarthmereBusinessOwnerNpcEntityId / isHarthmereBusinessCustomerNpcEntityId select them.",
+        "Owners (9601+), customers (9701+), and seeded crafting stations use the nearest roofed floor. The deploy gate repairs NPCs and objects without moving player-authored placeables.",
     },
     {
       kind: "quest_items_drops",
@@ -128,8 +142,10 @@ export interface HarthmereGroundingProbeAreaResult {
   columnsWithNoTerrainData: number;
 }
 
-// Measured live against production Redis (public host) on 2026-06-03 by
-// scripts/harthmere/probe-production-terrain-grounding.cjs over 335,366 keys.
+// Historical measurement of the ORIGINAL hilly map, captured on 2026-06-03.
+// It must not be reused as the height model for the additive flat extension.
+// The current deployment probe runs against every deterministic family and
+// emits live per-family results instead of relying on this frozen sample.
 // VERDICT: terrain is very hilly (54-block ground spread across muck areas,
 // 42-block across outpost pads). The flat hints were wrong by up to 40 blocks
 // (muckers floating) / 10 blocks (owners buried) — which is exactly why this
@@ -143,13 +159,77 @@ export const HARTHMERE_GROUNDING_PRODUCTION_PROBE: {
 } = {
   measuredAtIso: "2026-06-03",
   areas: [
-    { area: "west_muck_breach", positions: 17, groundFeetYMin: 14, groundFeetYMax: 48, maxAbsDeltaFromHint: 40, budgetInsufficient: 0, columnsWithNoTerrainData: 0 },
-    { area: "watchtower_muck_patch", positions: 23, groundFeetYMin: 27, groundFeetYMax: 53, maxAbsDeltaFromHint: 27, budgetInsufficient: 0, columnsWithNoTerrainData: 0 },
-    { area: "old_wood_muck_patch", positions: 21, groundFeetYMin: 49, groundFeetYMax: 68, maxAbsDeltaFromHint: 14, budgetInsufficient: 0, columnsWithNoTerrainData: 0 },
-    { area: "old_wood_mucker_copse", positions: 12, groundFeetYMin: 49, groundFeetYMax: 64, maxAbsDeltaFromHint: 10, budgetInsufficient: 0, columnsWithNoTerrainData: 0 },
-    { area: "gravewood_pale_muck", positions: 16, groundFeetYMin: 46, groundFeetYMax: 58, maxAbsDeltaFromHint: 8, budgetInsufficient: 0, columnsWithNoTerrainData: 0 },
-    { area: "watchtower_muck_clearing", positions: 11, groundFeetYMin: 34, groundFeetYMax: 47, maxAbsDeltaFromHint: 20, budgetInsufficient: 0, columnsWithNoTerrainData: 0 },
-    { area: "ALL_MUCKERS", positions: 100, groundFeetYMin: 14, groundFeetYMax: 68, maxAbsDeltaFromHint: 40, budgetInsufficient: 0, columnsWithNoTerrainData: 0 },
-    { area: "ALL_BUSINESS_OWNERS", positions: 19, groundFeetYMin: 33, groundFeetYMax: 75, maxAbsDeltaFromHint: 10, budgetInsufficient: 0, columnsWithNoTerrainData: 0 },
+    {
+      area: "west_muck_breach",
+      positions: 17,
+      groundFeetYMin: 14,
+      groundFeetYMax: 48,
+      maxAbsDeltaFromHint: 40,
+      budgetInsufficient: 0,
+      columnsWithNoTerrainData: 0,
+    },
+    {
+      area: "watchtower_muck_patch",
+      positions: 23,
+      groundFeetYMin: 27,
+      groundFeetYMax: 53,
+      maxAbsDeltaFromHint: 27,
+      budgetInsufficient: 0,
+      columnsWithNoTerrainData: 0,
+    },
+    {
+      area: "old_wood_muck_patch",
+      positions: 21,
+      groundFeetYMin: 49,
+      groundFeetYMax: 68,
+      maxAbsDeltaFromHint: 14,
+      budgetInsufficient: 0,
+      columnsWithNoTerrainData: 0,
+    },
+    {
+      area: "old_wood_mucker_copse",
+      positions: 12,
+      groundFeetYMin: 49,
+      groundFeetYMax: 64,
+      maxAbsDeltaFromHint: 10,
+      budgetInsufficient: 0,
+      columnsWithNoTerrainData: 0,
+    },
+    {
+      area: "gravewood_pale_muck",
+      positions: 16,
+      groundFeetYMin: 46,
+      groundFeetYMax: 58,
+      maxAbsDeltaFromHint: 8,
+      budgetInsufficient: 0,
+      columnsWithNoTerrainData: 0,
+    },
+    {
+      area: "watchtower_muck_clearing",
+      positions: 11,
+      groundFeetYMin: 34,
+      groundFeetYMax: 47,
+      maxAbsDeltaFromHint: 20,
+      budgetInsufficient: 0,
+      columnsWithNoTerrainData: 0,
+    },
+    {
+      area: "ALL_MUCKERS",
+      positions: 100,
+      groundFeetYMin: 14,
+      groundFeetYMax: 68,
+      maxAbsDeltaFromHint: 40,
+      budgetInsufficient: 0,
+      columnsWithNoTerrainData: 0,
+    },
+    {
+      area: "ALL_BUSINESS_OWNERS",
+      positions: 19,
+      groundFeetYMin: 33,
+      groundFeetYMax: 75,
+      maxAbsDeltaFromHint: 10,
+      budgetInsufficient: 0,
+      columnsWithNoTerrainData: 0,
+    },
   ],
 };

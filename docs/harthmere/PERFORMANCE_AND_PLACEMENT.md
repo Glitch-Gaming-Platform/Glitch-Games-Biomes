@@ -3,11 +3,11 @@
 This guide is the current operating contract for Harthmere placement,
 streaming, NPC grounding, quest markers, and performance diagnostics.
 
-The core rule is simple: production terrain is not flat. Streets, roofs,
-indoor floors, water, caves, and hollows all affect where content should
-appear. New quest items, monsters, map pins, HUD targets, and random spawns
-must use the production terrain placement map, not authored `y=0`, old cluster
-constants, or one-off coordinate overrides.
+The core rule has two coordinate spaces. The original snapshot/Grove terrain is
+hilly and must be sampled. The additive Harthmere extension is deliberately
+flat at ground Y=52 / feet Y=53. Streets, roofs, indoor floors, water, caves,
+and hollows still determine whether a placement is outdoor, indoor, or an
+intentional negative-Y dungeon coordinate.
 
 See also:
 
@@ -53,19 +53,23 @@ Current placement rules:
 - BiomesUI map markers, HUD/minimap targets, quest pointers, server authority,
   and 3D markers must all consume the same resolved `recommendedPosition`.
 
-## NPC Grounding
+## NPC and object grounding
 
-Do not trust authored terrain height for production NPCs. Named town residents
-use stable anchors seeded from measured production terrain. When adding an NPC:
+For additive Harthmere town NPCs, use a stable authored X/Z anchor and let the
+runtime normalizer set feet Y=53. The old per-cluster Y values were measured on
+the retired overlapping snapshot layout and apply only to standalone legacy
+mode. When adding a town NPC:
 
-1. Identify the intended town cluster.
-2. Add the NPC to `HARTHMERE_NPC_STABLE_ANCHOR` with the measured feet-Y for
-   that cluster.
+1. Identify a clear intended X/Z near the correct building or road.
+2. Add the NPC to `HARTHMERE_NPC_STABLE_ANCHOR`; use the base Y in authored
+   data because the additive runtime owns the final Y=53.
 3. Add matching quest-target labels to
-   `HARTHMERE_QUEST_TARGET_LABEL_CLUSTER_FEET_Y` when a marker should share
-   the same terrain height.
-4. Re-run the Harthmere placement checks and the browser survey before
-   shipping.
+   the shared transformed marker source when needed.
+4. Re-run the coordinate contracts and production grounding gate.
+
+For original-map Grove NPCs/hostiles, use open-sky terrain grounding. For
+roofed business NPCs and seeded crafting stations, use nearest-floor grounding
+without open sky. Never flatten original-map content to Y=53.
 
 Anchored NPCs bypass the safe-relocation pass. That relocation pass is useful
 for ambient placement, but it can collapse nearby named NPCs onto the same
@@ -132,8 +136,12 @@ Before shipping placement or performance changes:
 
 1. Run `node scripts/harthmere/check-biomes-harthmere.cjs .`.
 2. Run `node scripts/harthmere/check-harthmere-auto-survey.cjs .`.
-3. Restart the server.
-4. In the browser console, reset local survey and mission state:
+3. Run `node scripts/harthmere/check-harthmere-extra-town-offset.cjs`.
+4. During deployment, do not skip
+   `scripts/harthmere/probe-production-terrain-grounding.cjs`; it repairs and
+   reads back every deterministic actor/object family.
+5. Restart the server.
+6. In the browser console, reset local survey and mission state:
 
    ```js
    window.__harthmereAutoSurvey?.clear?.();
@@ -143,8 +151,8 @@ Before shipping placement or performance changes:
    location.reload();
    ```
 
-5. Run an auto-survey for several minutes, then download the JSON.
-6. Verify the JSON:
+7. Run an auto-survey for several minutes, then download the JSON.
+8. Verify the JSON:
    - `npcs.offGroundCount` is at or near zero.
    - `npcs.offGroundWanderingCount` is interpreted separately from town
      residents.

@@ -3,11 +3,13 @@ import {
   seededNativeRoadAheadContainerInventoryForTest,
   seededHarthmereNativeContainerInventoryForTest,
   staticHarthmereNativeContainerLandmarkForTest,
+  validateNativeRoadAheadContainerSourceForTest,
   validNativeRoadAheadContainerSourceForTest,
   withinHarthmereNativeContainerRangeForTest,
 } from "@/pages/api/harthmere/native_container";
 import { BikkieIds } from "@/shared/bikkie/ids";
 import { harthmereItemIdToBiomesId } from "@/shared/harthmere/harthmere_biomes_ecs_bridge";
+import { NATIVE_ROAD_AHEAD_CONTAINER_SPECS } from "@/shared/harthmere/native_road_ahead_contract";
 import type { BiomesId } from "@/shared/ids";
 import assert from "assert";
 
@@ -90,30 +92,87 @@ describe("native Harthmere generic containers", () => {
     );
   });
 
-  it("rejects renamed or wrong-archetype quest-container spoofs", () => {
+  it("accepts every authored Road Ahead alias with exact native ECS identities", () => {
+    for (const spec of Object.values(NATIVE_ROAD_AHEAD_CONTAINER_SPECS)) {
+      for (const label of spec.labels) {
+        const result = validateNativeRoadAheadContainerSourceForTest({
+          entityId: spec.sourceEntityId,
+          label,
+          questGiver: {},
+          placeableItemId: spec.placeableItemId,
+        });
+        assert.equal(result.ok, true, label);
+        assert.equal(
+          validNativeRoadAheadContainerSourceForTest({
+            entityId: spec.sourceEntityId,
+            label,
+            questGiver: {},
+            placeableItemId: spec.placeableItemId,
+          }),
+          true,
+          label
+        );
+      }
+    }
+  });
+
+  it("rejects every identity drift that could mint a forged quest container", () => {
+    const clothing = NATIVE_ROAD_AHEAD_CONTAINER_SPECS.clothingCrate;
+    const billy = NATIVE_ROAD_AHEAD_CONTAINER_SPECS.billysToolbag;
+    const failureReason = (
+      input: Parameters<typeof validateNativeRoadAheadContainerSourceForTest>[0]
+    ) => {
+      const result = validateNativeRoadAheadContainerSourceForTest(input);
+      assert.equal(result.ok, false);
+      return result.ok ? undefined : result.reason;
+    };
+
     assert.equal(
-      validNativeRoadAheadContainerSourceForTest({
-        label: "Clothing Crate",
+      failureReason({
+        entityId: clothing.placeableItemId,
+        label: clothing.labels[0],
         questGiver: {},
-        placeableItemId: 5165478204703095 as BiomesId,
+        placeableItemId: clothing.sourceEntityId,
       }),
-      true
+      "wrong_source_entity",
+      "source entity and placeable biscuit must never be interchangeable"
     );
     assert.equal(
-      validNativeRoadAheadContainerSourceForTest({
-        label: "Clothing Crate",
+      failureReason({
+        entityId: clothing.sourceEntityId,
+        label: clothing.labels[0],
         questGiver: undefined,
-        placeableItemId: 5165478204703095 as BiomesId,
+        placeableItemId: clothing.placeableItemId,
       }),
-      false
+      "missing_quest_giver"
     );
     assert.equal(
-      validNativeRoadAheadContainerSourceForTest({
-        label: "Clothing Crate",
+      failureReason({
+        entityId: clothing.sourceEntityId,
+        label: clothing.labels[0],
         questGiver: {},
         placeableItemId: BikkieIds.woodContainer,
       }),
-      false
+      "wrong_placeable_item"
+    );
+    assert.equal(
+      failureReason({
+        entityId: clothing.sourceEntityId,
+        label: clothing.labels[0],
+        questGiver: {},
+        placeableItemId: billy.placeableItemId,
+      }),
+      "wrong_placeable_item",
+      "one Road Ahead prop cannot borrow the other prop's native archetype"
+    );
+    assert.equal(
+      failureReason({
+        entityId: clothing.sourceEntityId,
+        label: "Invented Quest Crate",
+        questGiver: {},
+        placeableItemId: clothing.placeableItemId,
+      }),
+      "unknown_label"
     );
   });
 });

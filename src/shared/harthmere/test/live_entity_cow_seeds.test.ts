@@ -10,9 +10,11 @@ import {
 import { harthmereMuckCreatureAssetKeyForLabel } from "@/shared/harthmere/muck_creature_assets";
 import { muckMonsterAreaForPosition } from "@/shared/harthmere/muck_monster_aggression_ai";
 import {
-  getHarthmereProductionPlacementByKey,
-  harthmereProductionPlacementKey,
-} from "@/shared/harthmere/production_terrain_placement_map";
+  HARTHMERE_EXPANDED_WORLD_EAST_EDGE_X,
+  HARTHMERE_EXTENSION_FEET_Y,
+  HARTHMERE_EXTENSION_WORLD_BOUNDS,
+  HARTHMERE_ORIGINAL_WORLD_EAST_EDGE_X,
+} from "@/shared/harthmere/world_extension";
 import assert from "assert";
 
 const SPECIES = ["cow", "sheep", "rabbit"] as const;
@@ -38,11 +40,11 @@ describe("Muck-area wildlife (cows, sheep, rabbits)", () => {
     const grounded = harthmereGroundedLivestockSeedsInTerritory();
     assert.ok(grounded.length >= 16, "expected the full wildlife herd");
     for (const seed of grounded) {
-      const placement = getHarthmereProductionPlacementByKey(
-        harthmereProductionPlacementKey("live_livestock", seed.seedId)
-      );
-      assert.ok(placement, `${seed.seedId} is missing a production placement`);
-      assert.deepEqual(seed.position, placement.recommendedPosition);
+      assert.equal(seed.position[1], HARTHMERE_EXTENSION_FEET_Y);
+      assert.ok(seed.position[0] >= HARTHMERE_ORIGINAL_WORLD_EAST_EDGE_X);
+      assert.ok(seed.position[0] < HARTHMERE_EXPANDED_WORLD_EAST_EDGE_X);
+      assert.ok(seed.position[2] >= HARTHMERE_EXTENSION_WORLD_BOUNDS.minZ);
+      assert.ok(seed.position[2] < HARTHMERE_EXTENSION_WORLD_BOUNDS.maxZ);
       assert.ok(
         muckMonsterAreaForPosition(seed.position, 1.5),
         `${seed.seedId} is not inside a muck area`
