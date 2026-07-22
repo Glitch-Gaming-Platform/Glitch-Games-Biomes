@@ -543,12 +543,16 @@ ok(
     script.includes("GLITCH_ENABLE_GAIA=1") &&
     script.includes("GLITCH_ANIMA_MAX_OLD_SPACE_MB=2048") &&
     script.includes("GLITCH_GAIA_WASM_MEMORY_MB=4096") &&
+    script.includes("GLITCH_STACK_HTTP_READY_WAIT_TRIES=900") &&
     script.includes("deploy_simulation_container_app") &&
     script.includes("--ingress internal"),
   "production deploy provisions an internal D4 simulation app with explicit Anima and Gaia memory budgets"
 );
 ok(
   stackRunner.includes("simulation-health-server.cjs") &&
+    stackRunner.includes(
+      'start_bg logic 127.0.0.1 3500 3504 3501 "$APP_ROOT/dist/logic.js"'
+    ) &&
     stackRunner.includes("GLITCH_SIMULATION_ROLE_READY anima=1 gaia=1") &&
     simulationHealth.includes("ready ? 200 : 503") &&
     simulationHealth.includes('name: "anima"') &&

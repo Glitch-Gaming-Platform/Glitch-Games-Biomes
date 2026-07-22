@@ -210,6 +210,10 @@ function runStaticChecks() {
   ok(
     runner.includes('GLITCH_STACK_ROLE" = "simulation"') &&
       runner.includes("simulation-health-server.cjs") &&
+      runner.includes(
+        'start_bg logic 127.0.0.1 3500 3504 3501 "$APP_ROOT/dist/logic.js"'
+      ) &&
+      runner.includes("wait_http_ready 127.0.0.1 3501 simulation-logic") &&
       runner.includes("GLITCH_SIMULATION_ROLE_READY anima=1 gaia=1") &&
       simulationHealth.includes(
         '{ name: "anima", host: "127.0.0.1", port: 4101 }'
@@ -281,7 +285,8 @@ function runStaticChecks() {
         deploy.includes("GLITCH_ANIMA_STARTUP_CANDIDATES=1") &&
         deploy.includes("GLITCH_ANIMA_MAX_OLD_SPACE_MB=2048") &&
         deploy.includes("GLITCH_ENABLE_GAIA=1") &&
-        deploy.includes("GLITCH_GAIA_WASM_MEMORY_MB=4096"),
+        deploy.includes("GLITCH_GAIA_WASM_MEMORY_MB=4096") &&
+        deploy.includes("GLITCH_STACK_HTTP_READY_WAIT_TRIES=900"),
       "production deploy keeps gameplay stream workers on web while isolating required Anima/Gaia workers in a dedicated app"
     );
   }

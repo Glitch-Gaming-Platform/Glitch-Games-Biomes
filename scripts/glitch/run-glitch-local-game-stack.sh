@@ -672,6 +672,12 @@ if [ "$GLITCH_STACK_ROLE" = "simulation" ]; then
     "$APP_ROOT/scripts/glitch/simulation-health-server.cjs"
   wait_tcp 127.0.0.1 "$GLITCH_SIMULATION_HEALTH_PORT" simulation-health-http
 
+  # Anima's shared server context requires the Logic RPC API and waits on
+  # /logic/ping before it can build its world replica. Keep Logic local to the
+  # worker container so simulation does not depend on a public web replica.
+  start_bg logic 127.0.0.1 3500 3504 3501 "$APP_ROOT/dist/logic.js" "${SERVICE_ARGS[@]}"
+  wait_http_ready 127.0.0.1 3501 simulation-logic
+
   start_anima_worker
   start_gaia_worker
   wait_http_ready 127.0.0.1 "$GLITCH_SIMULATION_HEALTH_PORT" simulation-stack

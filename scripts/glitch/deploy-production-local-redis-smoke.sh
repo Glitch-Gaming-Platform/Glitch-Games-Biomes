@@ -1035,6 +1035,10 @@ deploy_simulation_container_app() {
     GLITCH_ANIMA_MAX_OLD_SPACE_MB=2048
     GLITCH_ENABLE_GAIA=1
     GLITCH_GAIA_WASM_MEMORY_MB=4096
+    # Anima's first native terrain/context load exceeds the web stack's generic
+    # two-minute service timeout. Keep the dedicated health endpoint unready
+    # while allowing up to 15 minutes for each native worker to initialize.
+    GLITCH_STACK_HTTP_READY_WAIT_TRIES=900
     GLITCH_SIMULATION_HEALTH_PORT="$AZURE_SIMULATION_TARGET_PORT"
     GLITCH_PUBLIC_WEB_ORIGIN="$PROD_ORIGIN"
     GALOIS_STATIC_PREFIX="${PROD_ORIGIN%/}/buckets/biomes-static/"

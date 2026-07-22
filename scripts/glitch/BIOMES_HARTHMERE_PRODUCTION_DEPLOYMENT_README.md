@@ -480,8 +480,10 @@ Production uses two Container Apps in `glitch-prod-vnet-env`:
   workers. It sets `GLITCH_STACK_ROLE=web`, `GLITCH_ENABLE_ANIMA=0`, and
   `GLITCH_ENABLE_GAIA=0`.
 - `biomes-simulation-vnet`: one internal D4 replica (`4 CPU`, `16Gi`) running
-  required Anima and Gaia workers. It sets `GLITCH_STACK_ROLE=simulation`, an
-  Anima V8 heap limit of `2048 MiB`, and a Gaia WASM budget of `4096 MiB`.
+  required Anima and Gaia workers plus the local Logic RPC helper required by
+  Anima's context. It sets `GLITCH_STACK_ROLE=simulation`, an
+  Anima V8 heap limit of `2048 MiB`, a Gaia WASM budget of `4096 MiB`, and a
+  15-minute native-worker startup allowance (`GLITCH_STACK_HTTP_READY_WAIT_TRIES=900`).
 
 This boundary is a correctness guardrail, not an optional optimization. The
 July 22, 2026 co-located revision used roughly 11-12 GiB before simulation
@@ -1153,7 +1155,7 @@ Before deploy:
 - [ ] `GLITCH_TITLE_TOKEN` secret exists.
 - [ ] Runtime Redis host is the shared production Redis `10.0.0.12`.
 - [ ] Public runtime env includes `GLITCH_STACK_ROLE=web`, `GLITCH_ENABLE_ANIMA=0`, `GLITCH_ENABLE_GAIA=0`, `GLITCH_REDIS_MODE=external`, `GLITCH_POPULATE_SNAPSHOT_REDIS=0`, `GLITCH_REQUIRE_SNAPSHOT_REDIS=1`, `BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN=1`, `BIOMES_FORCE_LOCAL_DEV_TOWN=0`, `BIOMES_CREATE_LOCAL_DEV_TERRAIN=0`, `BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X=1600`, `NEXT_PUBLIC_BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X=1600`, `BIOMES_START_IN_HARTHMERE=0`, `GLITCH_WORLD_API_MODE=hfc-hybrid`, `GLITCH_BISCUIT_MODE=redis2`, and `GLITCH_ENABLE_SNAPSHOT_ASSET_SERVER=1`.
-- [ ] Simulation runtime env includes `GLITCH_STACK_ROLE=simulation`, `GLITCH_ENABLE_ANIMA=1`, `GLITCH_ENABLE_GAIA=1`, `GLITCH_ANIMA_MAX_OLD_SPACE_MB=2048`, `GLITCH_GAIA_WASM_MEMORY_MB=4096`, `GALOIS_STATIC_PREFIX=<public-origin>/buckets/biomes-static/`, and `BIOMES_CREATE_LOCAL_DEV_TERRAIN=0`.
+- [ ] Simulation runtime env includes `GLITCH_STACK_ROLE=simulation`, `GLITCH_ENABLE_ANIMA=1`, `GLITCH_ENABLE_GAIA=1`, `GLITCH_ANIMA_MAX_OLD_SPACE_MB=2048`, `GLITCH_GAIA_WASM_MEMORY_MB=4096`, `GLITCH_STACK_HTTP_READY_WAIT_TRIES=900`, `GALOIS_STATIC_PREFIX=<public-origin>/buckets/biomes-static/`, and `BIOMES_CREATE_LOCAL_DEV_TERRAIN=0`.
 
 After deploy:
 
@@ -1174,7 +1176,7 @@ After deploy:
 - [ ] Logs show `/api/assets/player_mesh.glb` responses without automatic redirects to the Harthmere static body fallback.
 - [ ] Logs show `WebSocket listening on port 4900`.
 - [ ] Logs show `web now running`.
-- [ ] Simulation logs show Anima ready, Gaia ready, and `GLITCH_SIMULATION_ROLE_READY anima=1 gaia=1`.
+- [ ] Simulation logs show the local Logic helper ready, Anima ready, Gaia ready, and `GLITCH_SIMULATION_ROLE_READY anima=1 gaia=1`.
 - [ ] Public replicas remain below their previous co-located memory peak and have zero worker-driven restarts.
 - [ ] Production `/api/world_map/metadata` returns finite map bounds and no
       response-schema validation error.
