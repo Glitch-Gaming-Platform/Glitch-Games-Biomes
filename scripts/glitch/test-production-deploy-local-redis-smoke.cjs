@@ -753,6 +753,10 @@ ok(
     script.includes("Production image was already pushed by Docker Buildx"),
   "production upload reuses a local image only when Buildx did not already push it"
 );
+ok(
+  script.includes('IMAGE_WAS_PUSHED="${IMAGE_WAS_PUSHED:-0}"'),
+  "a verified already-pushed image can resume deployment without a duplicate multi-gigabyte upload"
+);
 ok(script.includes("PUSH_PRODUCTION=0"), "production push is opt-in");
 ok(script.includes("--push"), "script exposes an explicit push flag");
 ok(

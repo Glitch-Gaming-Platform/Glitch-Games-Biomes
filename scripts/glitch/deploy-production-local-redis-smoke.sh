@@ -20,7 +20,9 @@ DOCKER_BUILD_MIN_FREE_MB="${DOCKER_BUILD_MIN_FREE_MB:-18432}"
 DOCKER_CACHE_EXPORT_MIN_FREE_MB="${DOCKER_CACHE_EXPORT_MIN_FREE_MB:-32768}"
 DOCKER_BUILD_POST_BUILD_MIN_FREE_MB="${DOCKER_BUILD_POST_BUILD_MIN_FREE_MB:-8192}"
 DOCKER_BUILD_RETRY_WITHOUT_CACHE_ON_ENOSPC="${DOCKER_BUILD_RETRY_WITHOUT_CACHE_ON_ENOSPC:-1}"
-IMAGE_WAS_PUSHED=0
+# Set only after independently verifying the exact tag in ACR. This lets a
+# failed post-push rollout resume without paying to upload the same large image.
+IMAGE_WAS_PUSHED="${IMAGE_WAS_PUSHED:-0}"
 TAG="${TAG:-prod-$(date -u +%Y%m%d%H%M%S)}"
 
 usage() {
