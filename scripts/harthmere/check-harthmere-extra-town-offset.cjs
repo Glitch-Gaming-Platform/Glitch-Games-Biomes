@@ -195,16 +195,20 @@ ok(
   "image preparation mirrors the offset into the client build"
 );
 ok(
-  runner.includes("BIOMES_CREATE_LOCAL_DEV_TERRAIN:-1"),
-  "production runner leaves automatic terrain creation enabled"
+  runner.includes("GLITCH_DEFAULT_CREATE_TERRAIN=1") &&
+    runner.includes(
+      "BIOMES_CREATE_LOCAL_DEV_TERRAIN:-$GLITCH_DEFAULT_CREATE_TERRAIN"
+    ),
+  "unified local runner leaves automatic terrain creation enabled while production roles can disable it"
 );
 ok(
   runner.includes("BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X:-1600"),
   "production runner defaults the connected offset to +1600"
 );
 ok(
-  deploy.includes("BIOMES_CREATE_LOCAL_DEV_TERRAIN=1"),
-  "Azure deployment explicitly enables terrain seeding"
+  deploy.includes("BIOMES_CREATE_LOCAL_DEV_TERRAIN=0") &&
+    deploy.includes("materialize_production_harthmere_connector_route"),
+  "Azure runtime disables per-replica terrain seeding after guarded Harthmere and connector reconciliation"
 );
 ok(
   deploy.includes("BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X=1600"),

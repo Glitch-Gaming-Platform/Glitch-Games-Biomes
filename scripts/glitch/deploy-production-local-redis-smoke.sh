@@ -112,6 +112,7 @@ PROD_ORIGIN="${PROD_ORIGIN:-https://biomes-node-vnet.thankfulfield-9814940f.east
 GLITCH_TITLE_ID="${GLITCH_TITLE_ID:-42de534c-600f-4228-af9e-b69faef94cce}"
 GLITCH_API_BASE_URL="${GLITCH_API_BASE_URL:-https://api.glitch.fun/api}"
 ACR_SERVER="${ACR_SERVER:-glitchgames.azurecr.io}"
+ACR_NAME="${ACR_NAME:-GlitchGames}"
 IMAGE_REPO="${IMAGE_REPO:-biomes-node}"
 IMAGE="${ACR_SERVER}/${IMAGE_REPO}:${TAG}"
 LOCAL_IMAGE="${LOCAL_IMAGE:-biomes-node:local-${TAG}}"
@@ -122,6 +123,14 @@ AZURE_WEB_TARGET_PORT="${AZURE_WEB_TARGET_PORT:-3000}"
 AZURE_MIN_REPLICAS="${AZURE_MIN_REPLICAS:-3}"
 AZURE_MAX_REPLICAS="${AZURE_MAX_REPLICAS:-3}"
 AZURE_ALLOW_SINGLE_REPLICA="${AZURE_ALLOW_SINGLE_REPLICA:-0}"
+AZURE_CONTAINER_APP_ENVIRONMENT="${AZURE_CONTAINER_APP_ENVIRONMENT:-glitch-prod-vnet-env}"
+AZURE_SIMULATION_CONTAINER_APP="${AZURE_SIMULATION_CONTAINER_APP:-biomes-simulation-vnet}"
+AZURE_SIMULATION_TARGET_PORT="${AZURE_SIMULATION_TARGET_PORT:-3000}"
+AZURE_SIMULATION_MIN_REPLICAS="${AZURE_SIMULATION_MIN_REPLICAS:-1}"
+AZURE_SIMULATION_MAX_REPLICAS="${AZURE_SIMULATION_MAX_REPLICAS:-1}"
+AZURE_SIMULATION_CPU="${AZURE_SIMULATION_CPU:-4.0}"
+AZURE_SIMULATION_MEMORY="${AZURE_SIMULATION_MEMORY:-16Gi}"
+AZURE_SIMULATION_WORKLOAD_PROFILE="${AZURE_SIMULATION_WORKLOAD_PROFILE:-d4-prod}"
 PROD_REDIS_HOST="${PROD_REDIS_HOST:-10.0.0.12}"
 PROD_REDIS_PUBLIC_HOST="${PROD_REDIS_PUBLIC_HOST:-}"
 PROD_REDIS_HEALTH_HOST="${PROD_REDIS_HEALTH_HOST:-$PROD_REDIS_HOST}"
@@ -858,6 +867,7 @@ archive_production_mutable_hotfix_manifest() {
 
 wait_for_azure_revision_ready() {
   local desired_revision="$1"
+  local container_app="${2:-$AZURE_CONTAINER_APP}"
   local min_replicas=""
   local replica_count="0"
   local ready_count="0"
@@ -865,7 +875,7 @@ wait_for_azure_revision_ready() {
 
   min_replicas="$(az containerapp revision show \
     --resource-group "$AZURE_RESOURCE_GROUP" \
-    --name "$AZURE_CONTAINER_APP" \
+    --name "$container_app" \
     --revision "$desired_revision" \
     --query 'properties.template.scale.minReplicas' \
     -o tsv 2>/dev/null || true)"
@@ -877,13 +887,13 @@ wait_for_azure_revision_ready() {
   while [ "$i" -lt "${AZURE_REVISION_READY_POLLS:-90}" ]; do
     replica_count="$(az containerapp replica list \
       --resource-group "$AZURE_RESOURCE_GROUP" \
-      --name "$AZURE_CONTAINER_APP" \
+      --name "$container_app" \
       --revision "$desired_revision" \
       --query 'length(@)' \
       -o tsv 2>/dev/null || true)"
     ready_count="$(az containerapp replica list \
       --resource-group "$AZURE_RESOURCE_GROUP" \
-      --name "$AZURE_CONTAINER_APP" \
+      --name "$container_app" \
       --revision "$desired_revision" \
       --query '[?properties.containers[0].ready==`true` && properties.containers[0].started==`true`] | length(@)' \
       -o tsv 2>/dev/null || true)"
@@ -904,13 +914,13 @@ wait_for_azure_revision_ready() {
   echo "  ready:    ${ready_count:-0}/${min_replicas}" >&2
   az containerapp replica list \
     --resource-group "$AZURE_RESOURCE_GROUP" \
-    --name "$AZURE_CONTAINER_APP" \
+    --name "$container_app" \
     --revision "$desired_revision" \
     --query '[].{name:name,runningState:properties.runningState,ready:properties.containers[0].ready,started:properties.containers[0].started,restarts:properties.containers[0].restartCount,details:properties.containers[0].runningStateDetails}' \
     -o table >&2 || true
   az containerapp revision list \
     --resource-group "$AZURE_RESOURCE_GROUP" \
-    --name "$AZURE_CONTAINER_APP" \
+    --name "$container_app" \
     --query '[].{name:name,active:properties.active,trafficWeight:properties.trafficWeight,createdTime:properties.createdTime,healthState:properties.healthState,runningState:properties.runningState}' \
     -o table >&2 || true
   return 1
@@ -955,6 +965,169 @@ ensure_azure_ingress_target_port() {
     echo "ERROR Azure ingress target port is $actual_port, expected $AZURE_WEB_TARGET_PORT." >&2
     exit 1
   fi
+}
+
+wait_for_simulation_role_ready() {
+  local revision="$1"
+  local i=0
+  local logs=""
+
+  log "Waiting for dedicated Anima/Gaia readiness marker on $revision."
+  while [ "$i" -lt "${AZURE_SIMULATION_READY_POLLS:-90}" ]; do
+    logs="$(az containerapp logs show \
+      --resource-group "$AZURE_RESOURCE_GROUP" \
+      --name "$AZURE_SIMULATION_CONTAINER_APP" \
+      --revision "$revision" \
+      --type console \
+      --tail 300 \
+      --follow false 2>/dev/null || true)"
+    if printf '%s\n' "$logs" | grep -Fq "GLITCH_SIMULATION_ROLE_READY anima=1 gaia=1"; then
+      log "Dedicated simulation revision is ready: $revision (Anima and Gaia)."
+      return 0
+    fi
+    i=$((i + 1))
+    sleep "${AZURE_SIMULATION_READY_SLEEP_SECONDS:-10}"
+  done
+
+  echo "ERROR dedicated simulation revision did not report both Anima and Gaia ready: $revision" >&2
+  printf '%s\n' "$logs" >&2
+  az containerapp logs show \
+    --resource-group "$AZURE_RESOURCE_GROUP" \
+    --name "$AZURE_SIMULATION_CONTAINER_APP" \
+    --revision "$revision" \
+    --type system \
+    --tail 100 \
+    --follow false >&2 || true
+  return 1
+}
+
+deploy_simulation_container_app() {
+  local simulation_revision
+  local registry_username
+  local registry_password
+  local simulation_exists=0
+  local simulation_envs=(
+    GLITCH_STACK_ROLE=simulation
+    GLITCH_TITLE_ID="$GLITCH_TITLE_ID"
+    GLITCH_API_BASE_URL="$GLITCH_API_BASE_URL"
+    GLITCH_REDIS_MODE=external
+    REDIS_HOST="$PROD_REDIS_HOST"
+    GLITCH_REDIS_HOST="$PROD_REDIS_HOST"
+    LOCAL_REDIS_HOST="$PROD_REDIS_HOST"
+    REDIS_PORT="$PROD_REDIS_PORT"
+    GLITCH_REDIS_PORT="$PROD_REDIS_PORT"
+    GLITCH_POPULATE_SNAPSHOT_REDIS=0
+    GLITCH_REQUIRE_SNAPSHOT_REDIS=1
+    GLITCH_SNAPSHOT_BOOTSTRAP_ROLE=0
+    GLITCH_ALLOW_SNAPSHOT_REDIS_FLUSH=0
+    GLITCH_STORAGE_MODE=memory
+    GLITCH_FIREHOSE_MODE=redis
+    GLITCH_BISCUIT_MODE=redis2
+    GLITCH_CHAT_API_MODE=redis
+    GLITCH_WORLD_API_MODE=hfc-hybrid
+    GLITCH_BIKKIE_CACHE_MODE=redis
+    GLITCH_SERVER_CACHE_MODE=redis
+    DISTRIBUTED_NOTIFIER_KIND=redis
+    GLITCH_ENABLE_STREAM_WORKERS=0
+    GLITCH_ENABLE_SINK_WORKER=0
+    GLITCH_ENABLE_ANIMA=1
+    GLITCH_ANIMA_STARTUP_CANDIDATES=1
+    GLITCH_ANIMA_MAX_OLD_SPACE_MB=2048
+    GLITCH_ENABLE_GAIA=1
+    GLITCH_GAIA_WASM_MEMORY_MB=4096
+    GLITCH_SIMULATION_HEALTH_PORT="$AZURE_SIMULATION_TARGET_PORT"
+    GLITCH_PUBLIC_WEB_ORIGIN="$PROD_ORIGIN"
+    GALOIS_STATIC_PREFIX="${PROD_ORIGIN%/}/buckets/biomes-static/"
+    GAIA_SHARD_DOMAIN=gaia-harthmere-simulation-v1
+    BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN=1
+    BIOMES_FORCE_LOCAL_DEV_TOWN=0
+    BIOMES_CREATE_LOCAL_DEV_TERRAIN=0
+    BIOMES_START_IN_HARTHMERE=0
+    BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X=1600
+    BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_Z=0
+    GLITCH_DISABLE_GCP=1
+    GLITCH_SKIP_GCE_METADATA=1
+    GLITCH_SKIP_GOOGLE_SECRETS=1
+    GLITCH_DISABLE_DISCORD=1
+    SKIP_PROD_LOAD=true
+    SKIP_MISSING_ASSET_CHECK=true
+    ALLOW_NON_K8_REDIS=1
+    USE_K8_REDIS=0
+  )
+
+  if az containerapp show \
+    --resource-group "$AZURE_RESOURCE_GROUP" \
+    --name "$AZURE_SIMULATION_CONTAINER_APP" \
+    --output none 2>/dev/null; then
+    simulation_exists=1
+  fi
+
+  # Keep the public stack and native simulations on separate D4 replicas. The
+  # failed co-located revision reached about 15.1 GiB of 16 GiB and was evicted;
+  # explicit Anima/Gaia heap budgets are necessary but not sufficient isolation.
+  if [ "$simulation_exists" = "1" ]; then
+    log "Updating dedicated Anima/Gaia Container App $AZURE_SIMULATION_CONTAINER_APP to $IMAGE."
+    az containerapp revision set-mode \
+      --resource-group "$AZURE_RESOURCE_GROUP" \
+      --name "$AZURE_SIMULATION_CONTAINER_APP" \
+      --mode single \
+      --output none
+    az containerapp update \
+      --resource-group "$AZURE_RESOURCE_GROUP" \
+      --name "$AZURE_SIMULATION_CONTAINER_APP" \
+      --image "$IMAGE" \
+      --workload-profile-name "$AZURE_SIMULATION_WORKLOAD_PROFILE" \
+      --cpu "$AZURE_SIMULATION_CPU" \
+      --memory "$AZURE_SIMULATION_MEMORY" \
+      --min-replicas "$AZURE_SIMULATION_MIN_REPLICAS" \
+      --max-replicas "$AZURE_SIMULATION_MAX_REPLICAS" \
+      --command ./scripts/glitch/run-glitch-local-game-stack.sh \
+      --args "" \
+      --set-env-vars "${simulation_envs[@]}" \
+      --output none
+  else
+    log "Creating dedicated Anima/Gaia Container App $AZURE_SIMULATION_CONTAINER_APP with $AZURE_SIMULATION_CPU CPU and $AZURE_SIMULATION_MEMORY memory."
+    registry_username="$(az acr credential show --name "$ACR_NAME" --query username -o tsv)"
+    registry_password="$(az acr credential show --name "$ACR_NAME" --query 'passwords[0].value' -o tsv)"
+    az containerapp create \
+      --resource-group "$AZURE_RESOURCE_GROUP" \
+      --name "$AZURE_SIMULATION_CONTAINER_APP" \
+      --environment "$AZURE_CONTAINER_APP_ENVIRONMENT" \
+      --workload-profile-name "$AZURE_SIMULATION_WORKLOAD_PROFILE" \
+      --image "$IMAGE" \
+      --registry-server "$ACR_SERVER" \
+      --registry-username "$registry_username" \
+      --registry-password "$registry_password" \
+      --ingress internal \
+      --target-port "$AZURE_SIMULATION_TARGET_PORT" \
+      --transport http \
+      --cpu "$AZURE_SIMULATION_CPU" \
+      --memory "$AZURE_SIMULATION_MEMORY" \
+      --min-replicas "$AZURE_SIMULATION_MIN_REPLICAS" \
+      --max-replicas "$AZURE_SIMULATION_MAX_REPLICAS" \
+      --command ./scripts/glitch/run-glitch-local-game-stack.sh \
+      --args "" \
+      --env-vars "${simulation_envs[@]}" \
+      --output none
+    unset registry_password
+  fi
+
+  az containerapp ingress enable \
+    --resource-group "$AZURE_RESOURCE_GROUP" \
+    --name "$AZURE_SIMULATION_CONTAINER_APP" \
+    --type internal \
+    --target-port "$AZURE_SIMULATION_TARGET_PORT" \
+    --transport http \
+    --output none
+
+  simulation_revision="$(az containerapp show \
+    --resource-group "$AZURE_RESOURCE_GROUP" \
+    --name "$AZURE_SIMULATION_CONTAINER_APP" \
+    --query properties.latestRevisionName \
+    -o tsv)"
+  wait_for_azure_revision_ready "$simulation_revision" "$AZURE_SIMULATION_CONTAINER_APP"
+  wait_for_simulation_role_ready "$simulation_revision"
+  log "Dedicated Anima/Gaia update verified: $IMAGE revision=$simulation_revision"
 }
 
 capture_azure_traffic_weights() {
@@ -1989,7 +2162,7 @@ push_and_deploy() {
   remove_azure_envs=()
   for env_name in "${existing_azure_envs[@]}"; do
     case "$env_name" in
-      ES_LOCAL_DEV_BACKEND_VOXEL_TREES_*|GLITCH_CODEX_HOTPATCH|GLITCH_CODEX_HOTPATCH_JS|GLITCH_MUTABLE_HOTFIX_MANIFEST_BASE64|GLITCH_MUTABLE_HOTFIX_MANIFEST_URL|GLITCH_PLAYER_MESH_FALLBACK_ON_BUILD_ERROR|GLITCH_STATIC_PLAYER_MESH_HOTFIX)
+      ES_LOCAL_DEV_BACKEND_VOXEL_TREES_*|GLITCH_CODEX_HOTPATCH|GLITCH_CODEX_HOTPATCH_JS|GLITCH_MUTABLE_HOTFIX_MANIFEST_BASE64|GLITCH_MUTABLE_HOTFIX_MANIFEST_URL|GLITCH_PLAYER_MESH_FALLBACK_ON_BUILD_ERROR|GLITCH_STATIC_PLAYER_MESH_HOTFIX|GLITCH_ANIMA_STARTUP_CANDIDATES|GLITCH_ANIMA_MAX_OLD_SPACE_MB|GLITCH_GAIA_WASM_MEMORY_MB|WASM_MEMORY|GAIA_SHARD_DOMAIN|GALOIS_STATIC_PREFIX|GLITCH_PUBLIC_WEB_ORIGIN)
         remove_azure_envs+=("$env_name")
         ;;
     esac
@@ -2012,6 +2185,7 @@ push_and_deploy() {
       GLITCH_TITLE_ID="$GLITCH_TITLE_ID"
       GLITCH_API_BASE_URL="$GLITCH_API_BASE_URL"
       NEXT_PUBLIC_GLITCH_TITLE_ID="$GLITCH_TITLE_ID"
+      GLITCH_STACK_ROLE=web
       GLITCH_REDIS_MODE=external
       REDIS_HOST="$PROD_REDIS_HOST"
       GLITCH_REDIS_HOST="$PROD_REDIS_HOST"
@@ -2024,24 +2198,11 @@ push_and_deploy() {
       GLITCH_ALLOW_SNAPSHOT_REDIS_FLUSH=0
       GLITCH_ENABLE_STREAM_WORKERS=1
       GLITCH_ENABLE_SINK_WORKER=0
-      # Existing NPC records can render without Anima, which makes a missing
-      # worker deceptively look like a client combat bug. Pin the worker on in
-      # production; the stack runner supplies its Redis shard coordination,
-      # hybrid-world write mode, absolute asset origin, and readiness gate.
-      GLITCH_ENABLE_ANIMA=1
-      # The first Anima worker in a rolling start would temporarily own all
-      # world shards and push the dense 16 GiB all-in-one replica close to its
-      # memory ceiling. Require all three production replicas to publish their
-      # expiring Redis candidate leases before any worker starts simulation.
-      GLITCH_ANIMA_STARTUP_CANDIDATES=3
-      # The rest of the unified stack consumes roughly 11 GiB before Anima.
-      # Bound Anima's V8 heap so native/WASM growth and normal request bursts do
-      # not push the 16 GiB D4 container or its node agent into memory pressure.
-      GLITCH_ANIMA_MAX_OLD_SPACE_MB=2048
-      # Harvesting, growth, decay, restoration, water, and terrain simulation
-      # are asynchronous native-ECS work and must be present in every unified
-      # production stack. Distributed sharding prevents duplicate processing.
-      GLITCH_ENABLE_GAIA=1
+      # Anima and Gaia are required, but production telemetry proved that they
+      # cannot safely share the 16 GiB public web replica. The runner also
+      # rejects this role if stale settings turn either worker back on.
+      GLITCH_ENABLE_ANIMA=0
+      GLITCH_ENABLE_GAIA=0
       DISTRIBUTED_NOTIFIER_KIND=redis
       GLITCH_SERVER_CACHE_MODE=redis
       PLAYER_MESH_MAX_ACTIVE_COMPUTES=1
@@ -2053,7 +2214,9 @@ push_and_deploy() {
       BIOMES_FORCE_LOCAL_DEV_TOWN=0
       BIOMES_START_IN_HARTHMERE=0
       BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN=1
-      BIOMES_CREATE_LOCAL_DEV_TERRAIN=1
+      # Production terrain is reconciled once by this deploy script. Rebuilding
+      # it in every web replica caused concurrent startup memory spikes.
+      BIOMES_CREATE_LOCAL_DEV_TERRAIN=0
       BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X=1600
       BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_Z=0
       NEXT_PUBLIC_BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN=1
@@ -2091,12 +2254,13 @@ push_and_deploy() {
   reconcile_production_world_sync "$latest_revision"
   AZURE_TRAFFIC_RESTORE_ARMED=0
   deactivate_stale_azure_revisions "$latest_revision"
+  deploy_simulation_container_app
 
-  log "Production update verified: $IMAGE revision=$latest_revision"
+  log "Production web and dedicated Anima/Gaia updates verified: $IMAGE webRevision=$latest_revision"
 }
 
 login_to_acr() {
-  az acr login --name "${ACR_NAME:-GlitchGames}"
+  az acr login --name "$ACR_NAME"
 }
 
 check_production_image_push_preflight() {

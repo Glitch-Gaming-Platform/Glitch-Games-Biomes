@@ -81,6 +81,7 @@ function redisGroupNames(raw) {
 
 function runStaticChecks() {
   const runner = read("scripts/glitch/run-glitch-local-game-stack.sh");
+  const simulationHealth = read("scripts/glitch/simulation-health-server.cjs");
   const deploy = fs.existsSync(
     path.join(root, "scripts/glitch/deploy-production-local-redis-smoke.sh")
   )
@@ -144,14 +145,17 @@ function runStaticChecks() {
     "Glitch stack no longer waits on a non-existent chat RPC port"
   );
   ok(
-    runner.includes(
-      'GLITCH_ENABLE_STREAM_WORKERS="${GLITCH_ENABLE_STREAM_WORKERS:-1}"'
-    ),
-    "Glitch stack enables gameplay stream workers by default"
+    runner.includes("GLITCH_DEFAULT_STREAM_WORKERS=1"),
+    "Glitch unified/web roles enable gameplay stream workers by default"
   );
   ok(
-    runner.includes('GLITCH_ENABLE_ANIMA="${GLITCH_ENABLE_ANIMA:-1}"'),
-    "Glitch stack enables the NPC simulation worker by default"
+    runner.includes("GLITCH_STACK_ROLE") &&
+      runner.includes("GLITCH_DEFAULT_ANIMA=1") &&
+      runner.includes("GLITCH_DEFAULT_ANIMA=0") &&
+      runner.includes(
+        "GLITCH_STACK_ROLE=web requires GLITCH_ENABLE_ANIMA=0 and GLITCH_ENABLE_GAIA=0"
+      ),
+    "Glitch roles keep Anima enabled for unified/simulation stacks and forbidden in public web replicas"
   );
   ok(
     runner.includes(
@@ -168,8 +172,12 @@ function runStaticChecks() {
     "Glitch stack supports a crash-safe Redis barrier and isolated heap cap before distributed Anima startup"
   );
   ok(
-    runner.includes('GLITCH_ENABLE_GAIA="${GLITCH_ENABLE_GAIA:-1}"'),
-    "Glitch stack enables native world simulations by default"
+    runner.includes("GLITCH_DEFAULT_GAIA=1") &&
+      runner.includes("GLITCH_DEFAULT_GAIA=0") &&
+      runner.includes(
+        "GLITCH_STACK_ROLE=simulation requires both Anima and Gaia"
+      ),
+    "Glitch roles keep Gaia enabled for unified/simulation stacks and require both dedicated workers"
   );
 
   // These options are asserted together because an Anima process can exist yet
@@ -181,7 +189,7 @@ function runStaticChecks() {
       "DISCOVERY_KIND=redis SHARD_MANAGER_KIND=distributed ANIMA_HFC_WRITES=1"
     ) &&
       runner.includes(
-        'GALOIS_STATIC_PREFIX="${GALOIS_STATIC_PREFIX:-http://127.0.0.1:$WEB_BASE_PORT/buckets/biomes-static/}"'
+        'galois_prefix="${GLITCH_PUBLIC_WEB_ORIGIN%/}/buckets/biomes-static/"'
       ) &&
       runner.includes(
         'start_bg anima 127.0.0.1 4100 4104 4101 "$APP_ROOT/dist/anima.js"'
@@ -191,14 +199,26 @@ function runStaticChecks() {
   );
   ok(
     runner.includes("DISCOVERY_KIND=redis SHARD_MANAGER_KIND=distributed") &&
-      runner.includes(
-        'GAIA_SHARD_DOMAIN="${GAIA_SHARD_DOMAIN:-gaia-harthmere-unified}"'
-      ) &&
+      runner.includes("gaia_domain=gaia-harthmere-unified") &&
+      runner.includes('WASM_MEMORY="$GLITCH_GAIA_WASM_MEMORY_MB"') &&
       runner.includes(
         'start_bg gaia 127.0.0.1 4200 4204 4201 "$APP_ROOT/dist/gaia.js"'
       ) &&
       runner.includes("wait_http_ready 127.0.0.1 4201 gaia"),
     "Glitch stack starts and readiness-checks Redis-coordinated Gaia simulations"
+  );
+  ok(
+    runner.includes('GLITCH_STACK_ROLE" = "simulation"') &&
+      runner.includes("simulation-health-server.cjs") &&
+      runner.includes("GLITCH_SIMULATION_ROLE_READY anima=1 gaia=1") &&
+      simulationHealth.includes(
+        '{ name: "anima", host: "127.0.0.1", port: 4101 }'
+      ) &&
+      simulationHealth.includes(
+        '{ name: "gaia", host: "127.0.0.1", port: 4201 }'
+      ) &&
+      simulationHealth.includes("ready ? 200 : 503"),
+    "dedicated simulation role opens its target port early and reports ready only after Anima and Gaia"
   );
   ok(
     runner.includes(
@@ -252,11 +272,17 @@ function runStaticChecks() {
     ok(
       deploy.includes("GLITCH_ENABLE_STREAM_WORKERS=1") &&
         deploy.includes("GLITCH_ENABLE_SINK_WORKER=0") &&
+        deploy.includes("GLITCH_STACK_ROLE=web") &&
+        deploy.includes("GLITCH_ENABLE_ANIMA=0") &&
+        deploy.includes("GLITCH_ENABLE_GAIA=0") &&
+        deploy.includes("AZURE_SIMULATION_CONTAINER_APP") &&
+        deploy.includes("GLITCH_STACK_ROLE=simulation") &&
         deploy.includes("GLITCH_ENABLE_ANIMA=1") &&
-        deploy.includes("GLITCH_ANIMA_STARTUP_CANDIDATES=3") &&
+        deploy.includes("GLITCH_ANIMA_STARTUP_CANDIDATES=1") &&
         deploy.includes("GLITCH_ANIMA_MAX_OLD_SPACE_MB=2048") &&
-        deploy.includes("GLITCH_ENABLE_GAIA=1"),
-      "production deploy forces gameplay, barrier-coordinated NPC, and world simulation workers on while keeping sink opt-in"
+        deploy.includes("GLITCH_ENABLE_GAIA=1") &&
+        deploy.includes("GLITCH_GAIA_WASM_MEMORY_MB=4096"),
+      "production deploy keeps gameplay stream workers on web while isolating required Anima/Gaia workers in a dedicated app"
     );
   }
 }

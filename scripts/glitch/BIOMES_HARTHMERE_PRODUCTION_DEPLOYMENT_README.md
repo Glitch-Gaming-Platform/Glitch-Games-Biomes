@@ -2,14 +2,15 @@
 
 ## Automatic additive Harthmere world extension
 
-Harthmere is now regular production world content and is enabled by default.
-At boot, the server grows only the positive-X world bound to X=2560 and creates
-the complete town in new terrain shards beginning at X=1792. The town uses the
-shared +1600 X coordinate transform and a separate terrain entity-id band, so
-the installed production map is not flattened, moved, deleted, or replaced.
-Only the contiguous surface plus upper-building and dungeon-intersection
-shards are generated, so the automatic first boot does not block readiness on
-empty vertical layers.
+Harthmere is regular production world content and is enabled by default. The
+guarded deploy reconciles the positive-X world bound to X=2560, the complete
+town beginning at X=1792, and the protected Grove-to-Harthmere connector before
+declaring the release complete. App replicas run with
+`BIOMES_CREATE_LOCAL_DEV_TERRAIN=0`; they read the persisted result instead of
+rebuilding hundreds of terrain shards concurrently during every cold start.
+The town uses the shared +1600 X coordinate transform and a separate terrain
+entity-id band, so the installed production map is not flattened, moved,
+deleted, or replaced.
 
 Do not set `BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN=0` in a production revision.
 The runtime and image scripts default it to `1`; the code also treats the town
@@ -114,6 +115,7 @@ The managed identity needs enough access to:
 
 - Push to ACR `GlitchGames` / `glitchgames.azurecr.io`.
 - Update Container App `biomes-node-vnet` in resource group `openai-resource-group`.
+- Create or update Container App `biomes-simulation-vnet` in the same managed environment.
 - Read Redis NSG rules for `biomes-redis-prod-nsg`.
 - Run commands on VM `biomes-redis-prod` for private Redis health checks.
 
@@ -459,8 +461,9 @@ CMD ["./scripts/glitch/run-glitch-local-game-stack.sh"]
 
 The deploy script replaces Azure Container App `command` overrides with
 `./scripts/glitch/run-glitch-local-game-stack.sh` on every update so Azure
-cannot keep running an older manual startup command after the image has moved
-to the unified stack script.
+cannot keep running an older manual startup command. `GLITCH_STACK_ROLE=web`
+starts the public HTTP/sync stack, while `GLITCH_STACK_ROLE=simulation` starts
+only Anima, Gaia, and their aggregate health server.
 
 After the new revision reports ready, the script smoke-tests that revision's
 own FQDN for real game HTML and live Harthmere APIs before moving public
@@ -470,20 +473,36 @@ created it.
 
 ### Replica policy
 
-The current Azure Container App runs the full game stack in one container:
-web, sync WebSocket, shim, bikkie, logic, oob, sidefx, chat, Redis stream
-workers, Anima, and Gaia. Production defaults to `AZURE_MIN_REPLICAS=2` and
-`AZURE_MAX_REPLICAS=3` so an Azure node eviction or image pull does not leave
-players waiting for the only replica to cold-start the large Biomes image.
+Production uses two Container Apps in `glitch-prod-vnet-env`:
+
+- `biomes-node-vnet`: three public D4 replicas (`4 CPU`, `16Gi`) running web,
+  sync WebSocket, shim, bikkie, logic, oob, sidefx, chat, and Redis stream
+  workers. It sets `GLITCH_STACK_ROLE=web`, `GLITCH_ENABLE_ANIMA=0`, and
+  `GLITCH_ENABLE_GAIA=0`.
+- `biomes-simulation-vnet`: one internal D4 replica (`4 CPU`, `16Gi`) running
+  required Anima and Gaia workers. It sets `GLITCH_STACK_ROLE=simulation`, an
+  Anima V8 heap limit of `2048 MiB`, and a Gaia WASM budget of `4096 MiB`.
+
+This boundary is a correctness guardrail, not an optional optimization. The
+July 22, 2026 co-located revision used roughly 11-12 GiB before simulation
+startup, rose to approximately 15.1 GiB of its 16 GiB allocation after
+Anima/Gaia initialized, and was evicted under node pressure. The web role now
+refuses to start if either native worker is accidentally enabled.
 
 Do not lower production to one replica unless this is an intentional emergency
 downgrade. The deploy script rejects `AZURE_MIN_REPLICAS<2` or
 `AZURE_MAX_REPLICAS<2` unless `AZURE_ALLOW_SINGLE_REPLICA=1` is set explicitly.
-The gameplay stream workers use Redis consumer groups. Anima and Gaia use Redis
-discovery with distributed shard ownership, so each NPC/world shard has one
-simulation owner across replicas. The BigQuery sink worker remains opt-in, so
-the HA default matches the live recovery posture while keeping destructive
-snapshot/bootstrap paths disabled on app replicas.
+The gameplay stream workers use Redis consumer groups. Anima and Gaia use the
+shared private Redis world and service discovery. The simulation health server
+binds internal port `3000` immediately but returns `503` until both
+`127.0.0.1:4101/ready` and `127.0.0.1:4201/ready` return `200`; the deploy also
+waits for the `GLITCH_SIMULATION_ROLE_READY anima=1 gaia=1` marker.
+
+The simulation app intentionally starts at one replica because the D4 workload
+profile currently has capacity for one additional node. For simulation HA,
+raise the managed environment's D4 maximum first, then increase both
+`AZURE_SIMULATION_MIN_REPLICAS` and `AZURE_SIMULATION_MAX_REPLICAS`; Anima and
+Gaia already use distributed shard ownership for that future topology.
 
 ### Why not `CMD ["dist/web.js"]`?
 
@@ -1113,7 +1132,8 @@ Before build:
 - [ ] `webpack` completed with the current server sources.
 - [ ] `node scripts/glitch/assert-glitch-build-artifacts-current.cjs .` passes.
 - [ ] `.next/BUILD_ID` exists.
-- [ ] `dist/shim.js`, `dist/bikkie.js`, `dist/oob.js`, `dist/sync.js`, `dist/logic.js`, `dist/sidefx.js`, and `dist/web.js` exist.
+- [ ] `dist/shim.js`, `dist/bikkie.js`, `dist/oob.js`, `dist/sync.js`, `dist/logic.js`, `dist/sidefx.js`, `dist/web.js`, `dist/anima.js`, and `dist/gaia.js` exist.
+- [ ] `scripts/glitch/simulation-health-server.cjs` is present in the image.
 
 Before deploy:
 
@@ -1123,15 +1143,17 @@ Before deploy:
 - [ ] Redis persistence is `dir=/var/lib/redis`, `dbfilename=dump.rdb`, `save="900 1 300 10 60 10000"`, and `rdb_last_bgsave_status=ok`.
 - [ ] Production Redis snapshot hash matches `snapshot_backup.json`, and required seed keys are present (`required_seed_keys_present=3/3`).
 - [ ] Docker image builds locally.
-- [ ] Local Docker runtime starts or validates Redis, populates the installed snapshot only when explicitly requested, then starts shim, bikkie, logic, oob, sidefx, sync, and web.
+- [ ] Local Docker unified runtime starts or validates Redis, populates the installed snapshot only when explicitly requested, then starts the web stack, Anima, and Gaia.
 - [ ] Local `/api/glitch/harthmere` returns `valid:true`.
 - [ ] Image is pushed to ACR.
-- [ ] Container App exposes web `3000`; sync `4900` is internal/proxied.
-- [ ] Container App scale is `minReplicas=2`, `maxReplicas>=2` for the normal production path.
+- [ ] Public Container App `biomes-node-vnet` exposes web `3000`; sync `4900` is internal/proxied.
+- [ ] Public scale is `minReplicas=3`, `maxReplicas=3` for the normal production path.
+- [ ] Internal Container App `biomes-simulation-vnet` uses workload profile `d4-prod`, `4 CPU`, `16Gi`, internal target port `3000`, and `minReplicas=maxReplicas=1`.
 - [ ] The new revision's own FQDN serves `200 text/html` before traffic is shifted.
 - [ ] `GLITCH_TITLE_TOKEN` secret exists.
 - [ ] Runtime Redis host is the shared production Redis `10.0.0.12`.
-- [ ] Runtime env includes `GLITCH_REDIS_MODE=external`, `GLITCH_POPULATE_SNAPSHOT_REDIS=0`, `GLITCH_REQUIRE_SNAPSHOT_REDIS=1`, `BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN=1`, `BIOMES_FORCE_LOCAL_DEV_TOWN=0`, `BIOMES_CREATE_LOCAL_DEV_TERRAIN=1`, `BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X=1600`, `NEXT_PUBLIC_BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X=1600`, `BIOMES_START_IN_HARTHMERE=0`, `GLITCH_WORLD_API_MODE=hfc-hybrid`, `GLITCH_BISCUIT_MODE=redis2`, and `GLITCH_ENABLE_SNAPSHOT_ASSET_SERVER=1`.
+- [ ] Public runtime env includes `GLITCH_STACK_ROLE=web`, `GLITCH_ENABLE_ANIMA=0`, `GLITCH_ENABLE_GAIA=0`, `GLITCH_REDIS_MODE=external`, `GLITCH_POPULATE_SNAPSHOT_REDIS=0`, `GLITCH_REQUIRE_SNAPSHOT_REDIS=1`, `BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN=1`, `BIOMES_FORCE_LOCAL_DEV_TOWN=0`, `BIOMES_CREATE_LOCAL_DEV_TERRAIN=0`, `BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X=1600`, `NEXT_PUBLIC_BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X=1600`, `BIOMES_START_IN_HARTHMERE=0`, `GLITCH_WORLD_API_MODE=hfc-hybrid`, `GLITCH_BISCUIT_MODE=redis2`, and `GLITCH_ENABLE_SNAPSHOT_ASSET_SERVER=1`.
+- [ ] Simulation runtime env includes `GLITCH_STACK_ROLE=simulation`, `GLITCH_ENABLE_ANIMA=1`, `GLITCH_ENABLE_GAIA=1`, `GLITCH_ANIMA_MAX_OLD_SPACE_MB=2048`, `GLITCH_GAIA_WASM_MEMORY_MB=4096`, `GALOIS_STATIC_PREFIX=<public-origin>/buckets/biomes-static/`, and `BIOMES_CREATE_LOCAL_DEV_TERRAIN=0`.
 
 After deploy:
 
@@ -1152,6 +1174,8 @@ After deploy:
 - [ ] Logs show `/api/assets/player_mesh.glb` responses without automatic redirects to the Harthmere static body fallback.
 - [ ] Logs show `WebSocket listening on port 4900`.
 - [ ] Logs show `web now running`.
+- [ ] Simulation logs show Anima ready, Gaia ready, and `GLITCH_SIMULATION_ROLE_READY anima=1 gaia=1`.
+- [ ] Public replicas remain below their previous co-located memory peak and have zero worker-driven restarts.
 - [ ] Production `/api/world_map/metadata` returns finite map bounds and no
       response-schema validation error.
 - [ ] Production `/api/glitch/harthmere` returns `valid:true`.
@@ -1162,21 +1186,25 @@ After deploy:
 ## 19. Known-good final state
 
 ```text
-Container App: biomes-node-vnet
+Public Container App: biomes-node-vnet
 Resource Group: openai-resource-group
 Environment: glitch-prod-vnet-env
-Revision: biomes-node-vnet--ha2
 Revision State: Running
 Health State: Healthy
 Traffic Weight: 100
 Ingress target port: 3000
-Scale: minReplicas=2, maxReplicas=3
-Image: glitchgames.azurecr.io/biomes-node:prod-20260611185041
+Scale: minReplicas=3, maxReplicas=3
 Web URL: https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io
 Sync URL: https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io
+Public role: GLITCH_STACK_ROLE=web, Anima=0, Gaia=0
+
+Simulation Container App: biomes-simulation-vnet
+Ingress: internal, target port 3000
+Scale: minReplicas=1, maxReplicas=1
+Resources: 4 CPU, 16Gi, workload profile d4-prod
+Simulation role: GLITCH_STACK_ROLE=simulation, Anima=1, Gaia=1
 Redis Host: 10.0.0.12
 Redis Port: 6379
-Redis snapshot hash: 3013026c00d11eb16ab4cacfb524b317
 Title ID: 42de534c-600f-4228-af9e-b69faef94cce
 ```
 
@@ -1196,8 +1224,9 @@ title_id: 42de534c-600f-4228-af9e-b69faef94cce
 
 Use the guarded script. Do not hand-run `az containerapp update` for normal
 production deploys, because that bypasses the Redis NSG, persistence, snapshot,
-ingress target-port assertion, HA replica defaults, revision-specific smoke,
-traffic-pinning, rollback, and stale-revision checks.
+ingress target-port assertion, web/simulation role separation, native-worker
+readiness, HA web defaults, revision-specific smoke, traffic-pinning, rollback,
+and stale-revision checks.
 
 ```bash
 cd /Users/devindixon/Development/biomes-game

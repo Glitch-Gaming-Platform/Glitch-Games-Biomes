@@ -12,6 +12,10 @@ const stackRunner = fs.readFileSync(
   path.join(root, "scripts/glitch/run-glitch-local-game-stack.sh"),
   "utf8"
 );
+const simulationHealth = fs.readFileSync(
+  path.join(root, "scripts/glitch/simulation-health-server.cjs"),
+  "utf8"
+);
 const dockerfile = fs.readFileSync(
   path.join(root, "Dockerfile.biomes"),
   "utf8"
@@ -512,7 +516,45 @@ ok(
   script.includes(
     "--command ./scripts/glitch/run-glitch-local-game-stack.sh"
   ) && script.includes('--args ""'),
-  "production update replaces stale Azure startup command overrides with the unified stack runner"
+  "production updates replace stale Azure startup command overrides with the role-aware stack runner"
+);
+ok(
+  script.includes("GLITCH_STACK_ROLE=web") &&
+    script.includes("GLITCH_ENABLE_ANIMA=0") &&
+    script.includes("GLITCH_ENABLE_GAIA=0") &&
+    script.includes("BIOMES_CREATE_LOCAL_DEV_TERRAIN=0") &&
+    stackRunner.includes(
+      "GLITCH_STACK_ROLE=web requires GLITCH_ENABLE_ANIMA=0 and GLITCH_ENABLE_GAIA=0"
+    ),
+  "public production replicas cannot co-locate Anima/Gaia or rebuild terrain during startup"
+);
+ok(
+  script.includes(
+    'AZURE_SIMULATION_CONTAINER_APP="${AZURE_SIMULATION_CONTAINER_APP:-biomes-simulation-vnet}"'
+  ) &&
+    script.includes(
+      'AZURE_SIMULATION_WORKLOAD_PROFILE="${AZURE_SIMULATION_WORKLOAD_PROFILE:-d4-prod}"'
+    ) &&
+    script.includes(
+      'AZURE_SIMULATION_MEMORY="${AZURE_SIMULATION_MEMORY:-16Gi}"'
+    ) &&
+    script.includes("GLITCH_STACK_ROLE=simulation") &&
+    script.includes("GLITCH_ENABLE_ANIMA=1") &&
+    script.includes("GLITCH_ENABLE_GAIA=1") &&
+    script.includes("GLITCH_ANIMA_MAX_OLD_SPACE_MB=2048") &&
+    script.includes("GLITCH_GAIA_WASM_MEMORY_MB=4096") &&
+    script.includes("deploy_simulation_container_app") &&
+    script.includes("--ingress internal"),
+  "production deploy provisions an internal D4 simulation app with explicit Anima and Gaia memory budgets"
+);
+ok(
+  stackRunner.includes("simulation-health-server.cjs") &&
+    stackRunner.includes("GLITCH_SIMULATION_ROLE_READY anima=1 gaia=1") &&
+    simulationHealth.includes("ready ? 200 : 503") &&
+    simulationHealth.includes('name: "anima"') &&
+    simulationHealth.includes('name: "gaia"') &&
+    script.includes("wait_for_simulation_role_ready"),
+  "simulation deployment waits for a health endpoint and log marker that require both native workers"
 );
 ok(
   script.includes("ensure_azure_ingress_target_port") &&

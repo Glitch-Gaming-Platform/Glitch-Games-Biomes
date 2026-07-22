@@ -11,6 +11,35 @@ set -euo pipefail
 APP_ROOT="${APP_ROOT:-/app}"
 cd "$APP_ROOT"
 
+export GLITCH_STACK_ROLE="${GLITCH_STACK_ROLE:-unified}"
+case "$GLITCH_STACK_ROLE" in
+  unified)
+    GLITCH_DEFAULT_CREATE_TERRAIN=1
+    GLITCH_DEFAULT_STORAGE_MODE=shim
+    GLITCH_DEFAULT_STREAM_WORKERS=1
+    GLITCH_DEFAULT_ANIMA=1
+    GLITCH_DEFAULT_GAIA=1
+    ;;
+  web)
+    GLITCH_DEFAULT_CREATE_TERRAIN=0
+    GLITCH_DEFAULT_STORAGE_MODE=shim
+    GLITCH_DEFAULT_STREAM_WORKERS=1
+    GLITCH_DEFAULT_ANIMA=0
+    GLITCH_DEFAULT_GAIA=0
+    ;;
+  simulation)
+    GLITCH_DEFAULT_CREATE_TERRAIN=0
+    GLITCH_DEFAULT_STORAGE_MODE=memory
+    GLITCH_DEFAULT_STREAM_WORKERS=0
+    GLITCH_DEFAULT_ANIMA=1
+    GLITCH_DEFAULT_GAIA=1
+    ;;
+  *)
+    printf 'ERROR unknown GLITCH_STACK_ROLE=%s; expected unified, web, or simulation\n' "$GLITCH_STACK_ROLE" >&2
+    exit 1
+    ;;
+esac
+
 export NODE_ENV="${NODE_ENV:-production}"
 export NODE_OPTIONS="${NODE_OPTIONS:- --openssl-legacy-provider}"
 export GLITCH_RUNTIME="${GLITCH_RUNTIME:-1}"
@@ -30,7 +59,7 @@ export SKIP_PROD_LOAD="${SKIP_PROD_LOAD:-true}"
 export SKIP_MISSING_ASSET_CHECK="${SKIP_MISSING_ASSET_CHECK:-true}"
 export BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN="${BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN:-1}"
 export BIOMES_FORCE_LOCAL_DEV_TOWN="${BIOMES_FORCE_LOCAL_DEV_TOWN:-0}"
-export BIOMES_CREATE_LOCAL_DEV_TERRAIN="${BIOMES_CREATE_LOCAL_DEV_TERRAIN:-1}"
+export BIOMES_CREATE_LOCAL_DEV_TERRAIN="${BIOMES_CREATE_LOCAL_DEV_TERRAIN:-$GLITCH_DEFAULT_CREATE_TERRAIN}"
 export BIOMES_START_IN_HARTHMERE="${BIOMES_START_IN_HARTHMERE:-0}"
 export NEXT_PUBLIC_BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN="${NEXT_PUBLIC_BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN:-$BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN}"
 export NEXT_PUBLIC_BIOMES_FORCE_LOCAL_DEV_TOWN="${NEXT_PUBLIC_BIOMES_FORCE_LOCAL_DEV_TOWN:-$BIOMES_FORCE_LOCAL_DEV_TOWN}"
@@ -44,7 +73,7 @@ export NEXT_PUBLIC_BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X="${NEXT_PUBLIC_BIOMES_HA
 export NEXT_PUBLIC_BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_Z="${NEXT_PUBLIC_BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_Z:-${BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_Z:-0}}"
 
 export GLITCH_SHIM_STORAGE_MODE="${GLITCH_SHIM_STORAGE_MODE:-memory}"
-export GLITCH_STORAGE_MODE="${GLITCH_STORAGE_MODE:-shim}"
+export GLITCH_STORAGE_MODE="${GLITCH_STORAGE_MODE:-$GLITCH_DEFAULT_STORAGE_MODE}"
 export GLITCH_FIREHOSE_MODE="${GLITCH_FIREHOSE_MODE:-redis}"
 export GLITCH_BISCUIT_MODE="${GLITCH_BISCUIT_MODE:-redis2}"
 export GLITCH_CHAT_API_MODE="${GLITCH_CHAT_API_MODE:-redis}"
@@ -61,7 +90,7 @@ if [ -z "${DISTRIBUTED_NOTIFIER_KIND:-}" ]; then
     export DISTRIBUTED_NOTIFIER_KIND=shim
   fi
 fi
-export GLITCH_ENABLE_STREAM_WORKERS="${GLITCH_ENABLE_STREAM_WORKERS:-1}"
+export GLITCH_ENABLE_STREAM_WORKERS="${GLITCH_ENABLE_STREAM_WORKERS:-$GLITCH_DEFAULT_STREAM_WORKERS}"
 export GLITCH_ENABLE_SINK_WORKER="${GLITCH_ENABLE_SINK_WORKER:-0}"
 
 # Anima is the authoritative native-ECS NPC simulation service. Without it,
@@ -70,13 +99,11 @@ export GLITCH_ENABLE_SINK_WORKER="${GLITCH_ENABLE_SINK_WORKER:-0}"
 # acquire players, chase, retaliate, swing, or write movement updates. Keep it
 # enabled by default in the unified stack and retain an explicit kill switch for
 # recovery work where operators intentionally need a motionless world.
-export GLITCH_ENABLE_ANIMA="${GLITCH_ENABLE_ANIMA:-1}"
+export GLITCH_ENABLE_ANIMA="${GLITCH_ENABLE_ANIMA:-$GLITCH_DEFAULT_ANIMA}"
 
-# A single local stack must start Anima immediately, but production runs three
-# dense all-in-one replicas. During a rolling start, the first Anima process can
-# otherwise acquire every world shard while the other containers are still
-# booting. Keep the portable default at one and let production explicitly
-# require all three web replicas to reach the crash-safe Redis barrier first.
+# A single local or dedicated simulation stack starts Anima immediately. Keep
+# the Redis candidate barrier available for future multi-replica simulation
+# deployments so workers can begin distributed shard ownership together.
 export GLITCH_ANIMA_STARTUP_CANDIDATES="${GLITCH_ANIMA_STARTUP_CANDIDATES:-1}"
 export GLITCH_ANIMA_CANDIDATE_TTL_SECONDS="${GLITCH_ANIMA_CANDIDATE_TTL_SECONDS:-45}"
 
@@ -90,8 +117,12 @@ export GLITCH_ANIMA_MAX_OLD_SPACE_MB="${GLITCH_ANIMA_MAX_OLD_SPACE_MB:-2048}"
 # player actions on plant entities; Gaia consumes those actions, mutates/removes
 # the plant, and creates the authoritative harvest drop.  A stack without Gaia
 # can accept HarvestPlantEvent while never delivering its world result.
-export GLITCH_ENABLE_GAIA="${GLITCH_ENABLE_GAIA:-1}"
+export GLITCH_ENABLE_GAIA="${GLITCH_ENABLE_GAIA:-$GLITCH_DEFAULT_GAIA}"
+export GLITCH_GAIA_WASM_MEMORY_MB="${GLITCH_GAIA_WASM_MEMORY_MB:-4096}"
 export GLITCH_WEB_MAX_OLD_SPACE_MB="${GLITCH_WEB_MAX_OLD_SPACE_MB:-6144}"
+
+export GLITCH_SIMULATION_BIND_HOST="${GLITCH_SIMULATION_BIND_HOST:-0.0.0.0}"
+export GLITCH_SIMULATION_HEALTH_PORT="${GLITCH_SIMULATION_HEALTH_PORT:-3000}"
 
 export GLITCH_SYNC_BIND_HOST="${GLITCH_SYNC_BIND_HOST:-0.0.0.0}"
 export GLITCH_WEB_BIND_HOST="${GLITCH_WEB_BIND_HOST:-0.0.0.0}"
@@ -265,8 +296,26 @@ cleanup() {
 trap cleanup INT TERM EXIT
 
 require_env GLITCH_TITLE_ID
-require_env GLITCH_TITLE_TOKEN
 require_env GLITCH_API_BASE_URL
+if [ "$GLITCH_STACK_ROLE" != "simulation" ]; then
+  require_env GLITCH_TITLE_TOKEN
+fi
+
+# July 2026 production telemetry showed the public stack at 11-12 GiB before
+# simulation startup and roughly 15.1 GiB after Anima/Gaia joined a 16 GiB
+# replica. Keep this as a hard runtime guard: a stale Azure environment variable
+# must not be able to recreate the node-pressure eviction incident.
+if [ "$GLITCH_STACK_ROLE" = "web" ] &&
+   { [ "$GLITCH_ENABLE_ANIMA" != "0" ] || [ "$GLITCH_ENABLE_GAIA" != "0" ]; }; then
+  log "ERROR GLITCH_STACK_ROLE=web requires GLITCH_ENABLE_ANIMA=0 and GLITCH_ENABLE_GAIA=0; deploy simulations in the dedicated simulation Container App" >&2
+  exit 1
+fi
+
+if [ "$GLITCH_STACK_ROLE" = "simulation" ] &&
+   { [ "$GLITCH_ENABLE_ANIMA" != "1" ] || [ "$GLITCH_ENABLE_GAIA" != "1" ]; }; then
+  log "ERROR GLITCH_STACK_ROLE=simulation requires both Anima and Gaia" >&2
+  exit 1
+fi
 
 start_redis_if_needed() {
   local mode="$GLITCH_REDIS_MODE"
@@ -552,8 +601,87 @@ apply_mutable_hotfix() {
 
 apply_mutable_hotfix
 
+start_anima_worker() {
+  local galois_prefix="${GALOIS_STATIC_PREFIX:-}"
+  if [ -z "$galois_prefix" ]; then
+    if [ "$GLITCH_STACK_ROLE" = "simulation" ]; then
+      if [ -z "${GLITCH_PUBLIC_WEB_ORIGIN:-}" ]; then
+        log "ERROR simulation role requires GALOIS_STATIC_PREFIX or GLITCH_PUBLIC_WEB_ORIGIN" >&2
+        return 1
+      fi
+      galois_prefix="${GLITCH_PUBLIC_WEB_ORIGIN%/}/buckets/biomes-static/"
+    else
+      galois_prefix="http://127.0.0.1:$WEB_BASE_PORT/buckets/biomes-static/"
+    fi
+  fi
+
+  # `SHARD_MANAGER_KIND=distributed` and Redis discovery prevent duplicate NPC
+  # simulation. HFC writes are mandatory because locomotion and combat are
+  # high-frequency state consumed by sync from the Redis-backed world API.
+  wait_anima_startup_barrier
+  GALOIS_STATIC_PREFIX="$galois_prefix" \
+    DISCOVERY_KIND=redis SHARD_MANAGER_KIND=distributed ANIMA_HFC_WRITES=1 \
+    NODE_OPTIONS="${NODE_OPTIONS:-} --max-old-space-size=$GLITCH_ANIMA_MAX_OLD_SPACE_MB" \
+    start_bg anima 127.0.0.1 4100 4104 4101 "$APP_ROOT/dist/anima.js" "${SERVICE_ARGS[@]}"
+  wait_http_ready 127.0.0.1 4101 anima
+}
+
+start_gaia_worker() {
+  local gaia_domain="${GAIA_SHARD_DOMAIN:-}"
+  if [ -z "$gaia_domain" ]; then
+    if [ "$GLITCH_STACK_ROLE" = "simulation" ]; then
+      gaia_domain=gaia-harthmere-simulation
+    else
+      gaia_domain=gaia-harthmere-unified
+    fi
+  fi
+
+  # Gaia has a separate shard-manager domain from Anima and an explicit WASM
+  # memory budget. The dedicated simulation container has room for this native
+  # allocation without taking memory away from public HTTP and sync processes.
+  DISCOVERY_KIND=redis SHARD_MANAGER_KIND=distributed \
+    GAIA_SHARD_DOMAIN="$gaia_domain" \
+    WASM_MEMORY="$GLITCH_GAIA_WASM_MEMORY_MB" \
+    start_bg gaia 127.0.0.1 4200 4204 4201 "$APP_ROOT/dist/gaia.js" "${SERVICE_ARGS[@]}"
+  wait_http_ready 127.0.0.1 4201 gaia
+}
+
+supervise_processes() {
+  # Keep PID 1 alive and fail the container if any core process exits.
+  while true; do
+    for pid in $PIDS; do
+      if ! kill -0 "$pid" 2>/dev/null; then
+        log "ERROR process exited pid=$pid; failing container so Azure will restart a bad revision" >&2
+        exit 1
+      fi
+    done
+    sleep 5
+  done
+}
+
+if [ "$GLITCH_STACK_ROLE" = "simulation" ]; then
+  log "Glitch dedicated simulation stack"
+  log "  health: $GLITCH_SIMULATION_HEALTH_PORT"
+  log "  npc simulation: anima=$GLITCH_ENABLE_ANIMA heapMb=$GLITCH_ANIMA_MAX_OLD_SPACE_MB"
+  log "  world simulation: gaia=$GLITCH_ENABLE_GAIA wasmMemoryMb=$GLITCH_GAIA_WASM_MEMORY_MB"
+
+  # Open the Container App target port before native terrain initialization.
+  # `/ready` remains 503 until both workers are actually ready, so Azure sees
+  # the correct listening port without receiving a false-positive health signal.
+  start_bg simulation-health "$GLITCH_SIMULATION_BIND_HOST" "$GLITCH_SIMULATION_HEALTH_PORT" 0 0 \
+    "$APP_ROOT/scripts/glitch/simulation-health-server.cjs"
+  wait_tcp 127.0.0.1 "$GLITCH_SIMULATION_HEALTH_PORT" simulation-health-http
+
+  start_anima_worker
+  start_gaia_worker
+  wait_http_ready 127.0.0.1 "$GLITCH_SIMULATION_HEALTH_PORT" simulation-stack
+  log "GLITCH_SIMULATION_ROLE_READY anima=1 gaia=1 healthPort=$GLITCH_SIMULATION_HEALTH_PORT"
+  supervise_processes
+fi
+
 log "Redis preflight host=${REDIS_HOST:-unset} port=${REDIS_PORT:-unset} mode=$GLITCH_REDIS_MODE notifier=$DISTRIBUTED_NOTIFIER_KIND"
 log "Glitch local game stack"
+log "  role: $GLITCH_STACK_ROLE"
 log "  web: $WEB_BASE_PORT -> container app target 3000"
 log "  sync websocket: $SYNC_PORT -> same-origin /sync proxy"
 log "  sync rpc: $RPC_PORT"
@@ -596,57 +724,13 @@ wait_tcp 127.0.0.1 "$SYNC_PORT" sync-websocket-base
 wait_tcp 127.0.0.1 "$RPC_PORT" sync-rpc
 
 if [ "$GLITCH_ENABLE_ANIMA" = "1" ]; then
-  # Run one Anima process in every stack replica. `SHARD_MANAGER_KIND=distributed`
-  # uses rendezvous hashing, and Redis discovery lets those processes agree on
-  # a disjoint ownership set. This avoids both failure modes that are easy to
-  # introduce in the one-container topology: the production default `balancer`
-  # would wait for a balancer service this stack does not run, while `fake`
-  # would make every replica simulate every NPC and duplicate attacks.
-  #
-  # The world API is hfc-hybrid. NPC locomotion, target changes, and combat are
-  # high-frequency state, so `ANIMA_HFC_WRITES=1` is required to write that state
-  # to the HFC Redis store consumed by sync. Omitting it leaves Anima apparently
-  # alive while its movement/behavior deltas are discarded or routed incorrectly.
-  #
-  # Galois asset paths are compiled as paths relative to the biomes-static
-  # bucket (for example `asset_data/indices/blocks.<hash>.json`). Browser fetch
-  # resolves those paths against the page automatically; Node's fetch does not.
-  # Give the standalone worker an absolute, trailing-slash bucket origin served
-  # by the already-ready local web process. The bucket path and trailing slash
-  # are both significant because resolveAssetUrl concatenates strings directly.
-  wait_anima_startup_barrier
-
-  # `start_bg` normally invokes Node itself. Pass the heap option through
-  # NODE_OPTIONS for Anima only so the cap cannot accidentally constrain web,
-  # sync, logic, or the other co-located services.
-  GALOIS_STATIC_PREFIX="${GALOIS_STATIC_PREFIX:-http://127.0.0.1:$WEB_BASE_PORT/buckets/biomes-static/}" \
-    DISCOVERY_KIND=redis SHARD_MANAGER_KIND=distributed ANIMA_HFC_WRITES=1 \
-    NODE_OPTIONS="${NODE_OPTIONS:-} --max-old-space-size=$GLITCH_ANIMA_MAX_OLD_SPACE_MB" \
-    start_bg anima 127.0.0.1 4100 4104 4101 "$APP_ROOT/dist/anima.js" "${SERVICE_ARGS[@]}"
-
-  # Do not declare the stack healthy merely because the Anima process exists.
-  # `/ready` turns 200 only after its replica, terrain resources, shard manager,
-  # and NPC controller have initialized, which catches missing assets and broken
-  # Redis coordination before this replica is allowed to settle as healthy.
-  wait_http_ready 127.0.0.1 4101 anima
+  start_anima_worker
 else
   log "NPC simulation disabled by GLITCH_ENABLE_ANIMA=$GLITCH_ENABLE_ANIMA"
 fi
 
 if [ "$GLITCH_ENABLE_GAIA" = "1" ]; then
-  # The unified image runs all Gaia simulations in one process.  Distributed
-  # sharding gives each replica a disjoint shard set, matching the production
-  # shared-world ownership model without starting one duplicate simulator per
-  # app replica.  A distinct domain prevents Gaia from competing with Anima for
-  # the same shard-manager membership namespace.
-  DISCOVERY_KIND=redis SHARD_MANAGER_KIND=distributed \
-    GAIA_SHARD_DOMAIN="${GAIA_SHARD_DOMAIN:-gaia-harthmere-unified}" \
-    WASM_MEMORY="${WASM_MEMORY:-4096}" \
-    start_bg gaia 127.0.0.1 4200 4204 4201 "$APP_ROOT/dist/gaia.js" "${SERVICE_ARGS[@]}"
-
-  # Process existence is insufficient: readiness is published only after the
-  # replica, terrain resources, shard manager, and simulation pipeline start.
-  wait_http_ready 127.0.0.1 4201 gaia
+  start_gaia_worker
 else
   log "World simulation disabled by GLITCH_ENABLE_GAIA=$GLITCH_ENABLE_GAIA"
 fi
@@ -671,14 +755,4 @@ else
 fi
 
 log "GLITCH_PRODUCTION_STACK_PORT_FIX ready web=$WEB_BASE_PORT sync=$SYNC_PORT rpc=$RPC_PORT"
-
-# Keep PID 1 alive and fail the container if any core process exits.
-while true; do
-  for pid in $PIDS; do
-    if ! kill -0 "$pid" 2>/dev/null; then
-      log "ERROR process exited pid=$pid; failing container so Azure will restart a bad revision" >&2
-      exit 1
-    fi
-  done
-  sleep 5
-done
+supervise_processes
