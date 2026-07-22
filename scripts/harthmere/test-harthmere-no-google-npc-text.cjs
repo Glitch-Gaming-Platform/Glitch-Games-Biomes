@@ -70,9 +70,11 @@ ok(
 );
 ok(
   voiceRoute.includes("azureSpeechConfigFromEnv") &&
-    voiceRoute.includes('return { url: "" };') &&
-    !voiceRoute.toLowerCase().includes("el" + "even"),
-  "voice route is Azure-only and returns silent success when Azure Speech is absent"
+    voiceRoute.includes("elevenLabsConfigFromEnv") &&
+    voiceRoute.includes("synthesizeAzureSpeech") &&
+    voiceRoute.includes("synthesizeElevenLabsSpeech") &&
+    voiceRoute.includes('return { url: "" };'),
+  "voice route uses configured server-side providers and returns silent success when speech is unavailable"
 );
 ok(
   voiceClient.includes("if (!res.url)") && voiceClient.includes("return;"),
