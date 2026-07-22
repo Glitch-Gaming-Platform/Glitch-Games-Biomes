@@ -27,6 +27,11 @@ gamePlayerExpirationSecs: 15
 # Gaia settings
 #
 gaiaClockMultiplier: 1.0
+# The additive Harthmere world deliberately leaves 19,948 shards absent inside
+# Gaia's rectangular terrain AABB (upper empty layers and sparse extension
+# columns). Keep a narrow allowance above that known shape so Gaia can start,
+# while a materially larger terrain loss still fails the readiness gate.
+gaiaV2MissingShardsThreshold: 20_000
 
 # Gaia growth
 gaiaFloraGrowthSoil: []

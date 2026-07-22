@@ -82,6 +82,7 @@ function redisGroupNames(raw) {
 function runStaticChecks() {
   const runner = read("scripts/glitch/run-glitch-local-game-stack.sh");
   const simulationHealth = read("scripts/glitch/simulation-health-server.cjs");
+  const glitchConfig = read("deploy/glitch/biomes.config.yaml");
   const deploy = fs.existsSync(
     path.join(root, "scripts/glitch/deploy-production-local-redis-smoke.sh")
   )
@@ -178,6 +179,11 @@ function runStaticChecks() {
         "GLITCH_STACK_ROLE=simulation requires both Anima and Gaia"
       ),
     "Glitch roles keep Gaia enabled for unified/simulation stacks and require both dedicated workers"
+  );
+  ok(
+    glitchConfig.includes("gaiaV2MissingShardsThreshold: 20_000") &&
+      glitchConfig.includes("deliberately leaves 19,948 shards absent"),
+    "Glitch Gaia accepts the known sparse Harthmere terrain shape with a narrow missing-shard guardrail"
   );
 
   // These options are asserted together because an Anima process can exist yet
