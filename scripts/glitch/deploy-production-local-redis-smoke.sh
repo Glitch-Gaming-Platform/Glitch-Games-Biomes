@@ -905,6 +905,7 @@ archive_production_mutable_hotfix_manifest() {
 wait_for_azure_revision_ready() {
   local desired_revision="$1"
   local container_app="${2:-$AZURE_CONTAINER_APP}"
+  local max_polls="${3:-${AZURE_REVISION_READY_POLLS:-90}}"
   local min_replicas=""
   local replica_count="0"
   local ready_count="0"
@@ -921,7 +922,7 @@ wait_for_azure_revision_ready() {
   fi
 
   log "Waiting for all $min_replicas minimum replicas of Azure revision $desired_revision to become ready."
-  while [ "$i" -lt "${AZURE_REVISION_READY_POLLS:-90}" ]; do
+  while [ "$i" -lt "$max_polls" ]; do
     replica_count="$(az containerapp replica list \
       --resource-group "$AZURE_RESOURCE_GROUP" \
       --name "$container_app" \
@@ -1925,7 +1926,13 @@ seed_production_harthmere_extension_terrain() {
     exit 1
   fi
 
-  wait_for_azure_revision_ready "$HARTHMERE_TERRAIN_MAINTENANCE_REVISION"
+  # A complete 2,362-shard Harthmere rebuild intentionally runs longer than a
+  # normal web cold start. Give this isolated zero-traffic revision up to one
+  # hour while keeping the ordinary candidate/rollback readiness gate short.
+  wait_for_azure_revision_ready \
+    "$HARTHMERE_TERRAIN_MAINTENANCE_REVISION" \
+    "$AZURE_CONTAINER_APP" \
+    "${HARTHMERE_TERRAIN_MAINTENANCE_READY_POLLS:-360}"
   if use_azure_world_sync_job; then
     # Shim startup awaits the terrain seed before the revision becomes ready.
     # The in-VNet job audits the complete foundation before applying outposts.

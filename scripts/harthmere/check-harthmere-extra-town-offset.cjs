@@ -84,6 +84,16 @@ ok(
   "additive fingerprint checks ignore intentionally preserved legacy terrain ids"
 );
 ok(
+  shim.includes("LOCAL_DEV_TERRAIN_BUILD_APPLY_BATCH_SIZE") &&
+    shim.includes("buildAndApplyLocalDevTerrainSeedBatches") &&
+    shim.includes("Applied bounded local dev terrain seed batch") &&
+    shim.includes("batch = []") &&
+    shim.includes(
+      "The seed marker is written later, after every shard and authored"
+    ),
+  "production terrain reseed applies bounded build batches and stamps completion only after all shards"
+);
+ok(
   shim.includes("HARTHMERE_EXTENSION_FEET_Y") &&
     shim.includes("HARTHMERE_ADDITIVE_RUNTIME_CONTENT_VERSION") &&
     shim.includes("makeLocalDevRuntimeContentFingerprint") &&
@@ -210,6 +220,13 @@ ok(
   deploy.includes("BIOMES_CREATE_LOCAL_DEV_TERRAIN=0") &&
     deploy.includes("materialize_production_harthmere_connector_route"),
   "Azure runtime disables per-replica terrain seeding after guarded Harthmere and connector reconciliation"
+);
+ok(
+  deploy.includes("HARTHMERE_TERRAIN_MAINTENANCE_READY_POLLS:-360") &&
+    deploy.includes(
+      'local max_polls="${3:-${AZURE_REVISION_READY_POLLS:-90}}"'
+    ),
+  "isolated terrain maintenance has a dedicated one-hour readiness window"
 );
 ok(
   deploy.includes("BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X=1600"),

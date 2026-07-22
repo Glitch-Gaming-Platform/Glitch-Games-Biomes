@@ -8058,6 +8058,13 @@ function makeLocalDevNpcChanges(tick: number, existingIds: Set<BiomesId>) {
 }
 
 const LOCAL_DEV_SEED_APPLY_BATCH_SIZE = 400;
+const LOCAL_DEV_TERRAIN_BUILD_APPLY_BATCH_SIZE = Math.max(
+  1,
+  Number.parseInt(
+    process.env.HARTHMERE_TERRAIN_SEED_BUILD_APPLY_BATCH_SIZE ?? "16",
+    10
+  ) || 16
+);
 
 function localDevSeedChangeId(change: Change) {
   if (change.kind === "create" || change.kind === "update") {
@@ -8531,7 +8538,8 @@ function makeLocalDevMiniWorldChanges(
   voxeloo: VoxelooModule,
   tick: number,
   existingIds: Set<BiomesId>,
-  seedFingerprint: string
+  seedFingerprint: string,
+  includeTerrain = true
 ) {
   const changes: Change[] = [];
   const specs = localDevTerrainShardSpecs();
@@ -8547,47 +8555,51 @@ function makeLocalDevMiniWorldChanges(
   }
   const startedAt = Date.now();
 
-  log.warn("Building local dev starter town seed changes", {
-    terrainShardSpecs: specs.length,
-    existingLocalDevIds: existingIds.size,
-    fastHarvestableBlocks: HARTHMERE_FAST_HARVESTABLE_BLOCK_BY_COORD.size,
-    muckZones: SNAPSHOT_HARTHMERE_MUCK_ZONES.length,
-    harvestableTreeCenters: HARTHMERE_HARVESTABLE_TREE_CENTERS.length,
-    harvestableOreClusters: HARTHMERE_HARVESTABLE_ORE_CENTERS.length,
-    harvestableForageClusters: HARTHMERE_HARVESTABLE_FORAGE_CENTERS.length,
-  });
+  if (includeTerrain) {
+    log.warn("Building local dev starter town seed changes", {
+      terrainShardSpecs: specs.length,
+      existingLocalDevIds: existingIds.size,
+      fastHarvestableBlocks: HARTHMERE_FAST_HARVESTABLE_BLOCK_BY_COORD.size,
+      muckZones: SNAPSHOT_HARTHMERE_MUCK_ZONES.length,
+      harvestableTreeCenters: HARTHMERE_HARVESTABLE_TREE_CENTERS.length,
+      harvestableOreClusters: HARTHMERE_HARVESTABLE_ORE_CENTERS.length,
+      harvestableForageClusters: HARTHMERE_HARVESTABLE_FORAGE_CENTERS.length,
+    });
+  }
 
-  for (let index = 0; index < specs.length; index += 1) {
-    const spec = specs[index];
-    const shardStartedAt = Date.now();
-    const terrainChange = makeLocalDevTerrainShard(
-      voxeloo,
-      existingIds.has(spec.id) ? "update" : "create",
-      spec.id,
-      spec.shardX,
-      spec.shardY,
-      spec.shardZ,
-      tick
-    );
-    changes.push(terrainChange);
+  if (includeTerrain) {
+    for (let index = 0; index < specs.length; index += 1) {
+      const spec = specs[index];
+      const shardStartedAt = Date.now();
+      const terrainChange = makeLocalDevTerrainShard(
+        voxeloo,
+        existingIds.has(spec.id) ? "update" : "create",
+        spec.id,
+        spec.shardX,
+        spec.shardY,
+        spec.shardZ,
+        tick
+      );
+      changes.push(terrainChange);
 
-    const shardElapsedMs = Date.now() - shardStartedAt;
-    if (
-      index === 0 ||
-      (index + 1) % 128 === 0 ||
-      index + 1 === specs.length ||
-      shardElapsedMs > 750
-    ) {
-      log.warn("Built local dev terrain seed shard", {
-        shardNumber: index + 1,
-        terrainShardSpecs: specs.length,
-        shardId: spec.id,
-        shardX: spec.shardX,
-        shardY: spec.shardY,
-        shardZ: spec.shardZ,
-        shardElapsedMs,
-        totalElapsedMs: Date.now() - startedAt,
-      });
+      const shardElapsedMs = Date.now() - shardStartedAt;
+      if (
+        index === 0 ||
+        (index + 1) % 128 === 0 ||
+        index + 1 === specs.length ||
+        shardElapsedMs > 750
+      ) {
+        log.warn("Built local dev terrain seed shard", {
+          shardNumber: index + 1,
+          terrainShardSpecs: specs.length,
+          shardId: spec.id,
+          shardX: spec.shardX,
+          shardY: spec.shardY,
+          shardZ: spec.shardZ,
+          shardElapsedMs,
+          totalElapsedMs: Date.now() - startedAt,
+        });
+      }
     }
   }
 
@@ -8651,7 +8663,7 @@ function makeLocalDevMiniWorldChanges(
   );
 
   log.warn("Built local dev starter town seed changes", {
-    terrainShards: specs.length,
+    terrainShards: includeTerrain ? specs.length : 0,
     npcs: npcChanges.length,
     snapshotGroveNpcs: groveNpcChanges.length,
     snapshotCombatNpcs: combatNpcChanges.length,
@@ -8674,6 +8686,93 @@ function makeLocalDevMiniWorldChanges(
   });
 
   return changes;
+}
+
+async function buildAndApplyLocalDevTerrainSeedBatches(
+  voxeloo: VoxelooModule,
+  tick: number,
+  existingIds: Set<BiomesId>,
+  worldApi: WorldApi
+) {
+  const specs = localDevTerrainShardSpecs();
+  const startedAt = Date.now();
+  let appliedShardCount = 0;
+  let batch: Change[] = [];
+
+  log.warn("Building and applying local dev terrain in bounded batches", {
+    reason:
+      "Retaining every serialized shard until the final Redis write exceeded the 16 GiB maintenance replica.",
+    terrainShardSpecs: specs.length,
+    buildApplyBatchSize: LOCAL_DEV_TERRAIN_BUILD_APPLY_BATCH_SIZE,
+    existingLocalDevIds: existingIds.size,
+  });
+
+  for (let index = 0; index < specs.length; index += 1) {
+    const spec = specs[index];
+    const shardStartedAt = Date.now();
+    batch.push(
+      makeLocalDevTerrainShard(
+        voxeloo,
+        existingIds.has(spec.id) ? "update" : "create",
+        spec.id,
+        spec.shardX,
+        spec.shardY,
+        spec.shardZ,
+        tick
+      )
+    );
+
+    const shardElapsedMs = Date.now() - shardStartedAt;
+    if (
+      index === 0 ||
+      (index + 1) % 128 === 0 ||
+      index + 1 === specs.length ||
+      shardElapsedMs > 750
+    ) {
+      log.warn("Built local dev terrain seed shard", {
+        shardNumber: index + 1,
+        terrainShardSpecs: specs.length,
+        shardId: spec.id,
+        shardX: spec.shardX,
+        shardY: spec.shardY,
+        shardZ: spec.shardZ,
+        shardElapsedMs,
+        totalElapsedMs: Date.now() - startedAt,
+      });
+    }
+
+    if (
+      batch.length < LOCAL_DEV_TERRAIN_BUILD_APPLY_BATCH_SIZE &&
+      index + 1 < specs.length
+    ) {
+      continue;
+    }
+
+    // Apply and release each serialized terrain batch before building the next
+    // one. The seed marker is written later, after every shard and authored
+    // entity succeeds, so a restart cannot falsely advertise a complete map.
+    const batchSize = batch.length;
+    const applied = await applyLocalDevSeedChangesInDebugBatches(
+      worldApi,
+      batch
+    );
+    if (!applied) {
+      return false;
+    }
+    appliedShardCount += batchSize;
+    log.warn("Applied bounded local dev terrain seed batch", {
+      appliedShardCount,
+      terrainShardSpecs: specs.length,
+      buildApplyBatchSize: LOCAL_DEV_TERRAIN_BUILD_APPLY_BATCH_SIZE,
+      totalElapsedMs: Date.now() - startedAt,
+    });
+    batch = [];
+    await new Promise<void>((resolve) => {
+      setImmediate(resolve);
+    });
+  }
+
+  return true;
 }
 
 async function existingLocalDevIds(
@@ -9091,11 +9190,25 @@ async function seedLocalDevTerrainIfMissing(
     ],
   });
   const tick = service ? service.table.tick + 1 : 1;
+  let terrainWasAppliedSeparately = false;
+  if (!service) {
+    const applied = await buildAndApplyLocalDevTerrainSeedBatches(
+      voxeloo,
+      tick,
+      existingIds,
+      worldApi
+    );
+    if (!applied) {
+      return;
+    }
+    terrainWasAppliedSeparately = true;
+  }
   const changes = makeLocalDevMiniWorldChanges(
     voxeloo,
     tick,
     existingIds,
-    seedFingerprint
+    seedFingerprint,
+    !terrainWasAppliedSeparately
   );
   changes.push(
     ...makeLocalDevStaleTerrainDeletes(tick, new Set(terrainIds), existingIds)
@@ -9117,12 +9230,14 @@ async function seedLocalDevTerrainIfMissing(
     }
   }
 
-  const terrainUpdates = changes.filter(
-    (change) =>
-      (change.kind === "create" || change.kind === "update") &&
-      change.entity.id >= LOCAL_DEV_TERRAIN_ID_BASE &&
-      change.entity.id < LOCAL_DEV_TERRAIN_ID_LIMIT
-  );
+  const terrainUpdateCount = terrainWasAppliedSeparately
+    ? terrainIds.length
+    : changes.filter(
+        (change) =>
+          (change.kind === "create" || change.kind === "update") &&
+          change.entity.id >= LOCAL_DEV_TERRAIN_ID_BASE &&
+          change.entity.id < LOCAL_DEV_TERRAIN_ID_LIMIT
+      ).length;
   const npcUpdates = changes.filter(
     (change) =>
       (change.kind === "create" || change.kind === "update") &&
@@ -9135,7 +9250,7 @@ async function seedLocalDevTerrainIfMissing(
     npcPositionOverrideVersion: HARTHMERE_NPC_POSITION_OVERRIDE_VERSION,
     performanceProfile: HARTHMERE_LOCAL_DEV_PERF_PROFILE,
     fingerprintVersion: HARTHMERE_LOCAL_DEV_SEED_FINGERPRINT_VERSION,
-    terrainShards: terrainUpdates.length,
+    terrainShards: terrainUpdateCount,
     npcs: npcUpdates.length,
     harvestableTreeCenters: HARTHMERE_HARVESTABLE_TREE_CENTERS.length,
     harvestableOreClusters: HARTHMERE_HARVESTABLE_ORE_CENTERS.length,

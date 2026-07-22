@@ -16,6 +16,14 @@ The town uses the shared +1600 X coordinate transform and a separate terrain
 entity-id band, so the installed production map is not flattened, moved,
 deleted, or replaced.
 
+The maintenance seeder builds and writes terrain in bounded batches of 16
+shards. It deliberately writes the completion fingerprint only after all 2,362
+terrain shards and authored entities succeed. This prevents serialized shard
+buffers from accumulating past the 16 GiB D4 replica limit while keeping a
+restart or partial batch from falsely marking the map complete. The isolated
+terrain revision has a dedicated one-hour readiness window; normal web
+revisions retain the shorter readiness gate.
+
 Do not set `BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN=0` in a production revision.
 The runtime and image scripts default it to `1`; the code also treats the town
 as enabled when the retired opt-in flag is absent. For an emergency rollback,
