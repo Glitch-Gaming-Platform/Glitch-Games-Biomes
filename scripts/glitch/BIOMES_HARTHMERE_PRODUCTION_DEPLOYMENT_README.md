@@ -77,6 +77,21 @@ when you need the full local container proof:
 scripts/glitch/deploy-production-local-redis-smoke.sh --local-smoke
 ```
 
+Before an expensive production rollout, run the complete local rehearsal. It
+boots the unified production image against disposable Redis, completes the same
+terrain/outpost/ECS/connector/grounding reconciliation used by the in-VNet job,
+checks Anima and Gaia after those writes, validates ElevenLabs configuration
+without printing its key, runs the HTTP/browser smoke suite, and leaves the
+containers running for inspection:
+
+```bash
+ELEVENLABS_API_KEY=... \
+scripts/glitch/deploy-production-local-redis-smoke.sh --local-rehearsal
+```
+
+Do not begin a production push until this rehearsal passes for the exact source
+revision being deployed.
+
 For a full production deploy from a local workstation, use the normal push
 command:
 

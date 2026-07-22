@@ -14,6 +14,7 @@ KEEP_LOCAL_SMOKE=0
 REDIS_HEALTH_CHECK_ONLY=0
 BOOTSTRAP_PROD_REDIS_SNAPSHOT=0
 RUN_LOCAL_SMOKE="${RUN_LOCAL_SMOKE:-0}"
+RUN_LOCAL_FULL_REHEARSAL="${RUN_LOCAL_FULL_REHEARSAL:-0}"
 DOCKER_BUILD_DIRECT_PUSH="${DOCKER_BUILD_DIRECT_PUSH:-1}"
 DOCKER_BUILD_MIN_FREE_MB="${DOCKER_BUILD_MIN_FREE_MB:-18432}"
 DOCKER_CACHE_EXPORT_MIN_FREE_MB="${DOCKER_CACHE_EXPORT_MIN_FREE_MB:-32768}"
@@ -34,6 +35,10 @@ Options:
                  Run guardrails and source artifact builds, then exit before
                  the Docker image build.
   --local-smoke  Run the memory-heavy local container HTTP smoke before push.
+  --local-rehearsal
+                 Run the production image, full Harthmere reconciliation,
+                 ElevenLabs configuration check, and Anima/Gaia checks locally;
+                 leave the local stack running for manual inspection.
   --keep-local   Leave local smoke containers running for manual inspection.
   --bootstrap-prod-redis-snapshot
                  Explicitly flush and reload production Redis from snapshot_backup.json
@@ -72,6 +77,12 @@ while [ "$#" -gt 0 ]; do
       ;;
     --local-smoke)
       RUN_LOCAL_SMOKE=1
+      shift
+      ;;
+    --local-rehearsal)
+      RUN_LOCAL_SMOKE=1
+      RUN_LOCAL_FULL_REHEARSAL=1
+      KEEP_LOCAL_SMOKE=1
       shift
       ;;
     --keep-local)
@@ -2375,9 +2386,100 @@ PYCODE
   '
 }
 
+run_local_full_deployment_rehearsal() {
+  local reconciliation_log
+  reconciliation_log="$(mktemp)"
+
+  log "Running the complete Harthmere terrain, outpost, ECS, connector, and grounding reconciliation locally."
+  if ! docker exec \
+    -e HARTHMERE_DEPLOY_TAG="local-$TAG" \
+    "$LOCAL_APP_CONTAINER" \
+    ./scripts/glitch/run-harthmere-production-reconciliation.sh \
+    | tee "$reconciliation_log"; then
+    rm -f "$reconciliation_log"
+    echo "ERROR complete local Harthmere reconciliation failed." >&2
+    return 1
+  fi
+  if ! grep -Fq \
+    "HARTHMERE_PRODUCTION_RECONCILIATION_READY tag=local-$TAG" \
+    "$reconciliation_log"; then
+    rm -f "$reconciliation_log"
+    echo "ERROR local Harthmere reconciliation completed without its read-back marker." >&2
+    return 1
+  fi
+  rm -f "$reconciliation_log"
+
+  # The unified local stack uses the same bounded Anima heap and Gaia WASM
+  # allowance as production. Probe both native workers after reconciliation so
+  # a map write cannot leave either required simulation unhealthy.
+  docker exec -i "$LOCAL_APP_CONTAINER" node - <<'NODE'
+const http = require("http");
+const probes = [
+  ["Anima", 4101],
+  ["Gaia", 4201],
+];
+Promise.all(
+  probes.map(
+    ([name, port]) =>
+      new Promise((resolve, reject) => {
+        const req = http.get(
+          { host: "127.0.0.1", port, path: "/ready", timeout: 2000 },
+          (res) => {
+            res.resume();
+            if (res.statusCode === 200) {
+              console.log(`OK ${name} local readiness`);
+              resolve();
+            } else {
+              reject(new Error(`${name} readiness returned ${res.statusCode}`));
+            }
+          }
+        );
+        req.on("timeout", () => req.destroy(new Error(`${name} readiness timed out`)));
+        req.on("error", reject);
+      })
+  )
+).catch((error) => {
+  console.error(error.message);
+  process.exit(1);
+});
+NODE
+
+  if [ -n "${ELEVENLABS_API_KEY:-}" ]; then
+    # Validate only presence and parser acceptance; never print the secret.
+    docker exec "$LOCAL_APP_CONTAINER" /bin/sh -lc '
+      test -n "${ELEVENLABS_API_KEY:-}"
+      export NODE_PATH="/opt/harthmere-maintenance/node_modules${NODE_PATH:+:$NODE_PATH}"
+      node -r ts-node/register/transpile-only -r tsconfig-paths/register -e '\''
+        const { elevenLabsConfigFromEnv } = require("./src/server/shared/elevenlabs");
+        if (!elevenLabsConfigFromEnv(process.env)) process.exit(1);
+        console.log("OK ElevenLabs local production configuration");
+      '\''
+    '
+  else
+    echo "ERROR --local-rehearsal requires ELEVENLABS_API_KEY so speech deployment is tested locally." >&2
+    return 1
+  fi
+
+  if [ "$(docker inspect -f '{{.RestartCount}}' "$LOCAL_APP_CONTAINER")" != "0" ]; then
+    echo "ERROR local production container restarted during the full rehearsal." >&2
+    return 1
+  fi
+  log "Complete local production rehearsal passed; the stack will remain running."
+}
+
 smoke_local_image() {
+  local optional_env_args=()
   fetch_title_token_if_needed
   require_cmd docker
+
+  if [ -n "${ELEVENLABS_API_KEY:-}" ]; then
+    # `docker run -e NAME` copies the host value without putting it in argv or
+    # logs, which keeps the local rehearsal from exposing the provider key.
+    optional_env_args+=(
+      -e ELEVENLABS_API_KEY
+      -e "ELEVENLABS_MODEL_ID=${ELEVENLABS_MODEL_ID:-eleven_multilingual_v2}"
+    )
+  fi
 
   log "Starting local Redis smoke database: $LOCAL_REDIS_IMAGE."
   docker network create "$LOCAL_NETWORK" >/dev/null 2>&1 || true
@@ -2410,14 +2512,20 @@ smoke_local_image() {
     -e GLITCH_SNAPSHOT_BOOTSTRAP_ROLE=1 \
     -e GLITCH_ALLOW_SNAPSHOT_REDIS_FLUSH=1 \
     -e GLITCH_REQUIRE_SNAPSHOT_REDIS=1 \
+    -e GLITCH_STACK_ROLE=unified \
     -e HARTHMERE_VISUAL_TEST_AUTH=1 \
     -e GLITCH_IDLE_SESSION_MS="${GLITCH_IDLE_SESSION_MS:-1000}" \
     -e NEXT_PUBLIC_GLITCH_SYNC_BASE_URL="http://127.0.0.1:${LOCAL_WEB_PORT}" \
+    "${optional_env_args[@]}" \
     "$LOCAL_IMAGE" >/dev/null
 
   wait_for_http
 
   verify_galois_runtime_in_container
+
+  if [ "$RUN_LOCAL_FULL_REHEARSAL" = "1" ]; then
+    run_local_full_deployment_rehearsal
+  fi
 
   log "Running Glitch container smoke test against local production image."
   GLITCH_TEST_BASE_URL="http://127.0.0.1:${LOCAL_WEB_PORT}" \

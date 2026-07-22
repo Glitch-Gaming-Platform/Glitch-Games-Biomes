@@ -161,6 +161,17 @@ ok(
   "script exposes an explicit opt-in flag for memory-heavy local HTTP smoke"
 );
 ok(
+    script.includes("--local-rehearsal") &&
+    script.includes("run_local_full_deployment_rehearsal") &&
+    script.includes("run-harthmere-production-reconciliation.sh") &&
+    script.includes('["Anima", 4101]') &&
+    script.includes('["Gaia", 4201]') &&
+    script.includes("OK ${name} local readiness") &&
+    script.includes("OK ElevenLabs local production configuration") &&
+    script.includes('KEEP_LOCAL_SMOKE=1'),
+  "script exposes a complete local production rehearsal that remains running"
+);
+ok(
   script.includes("STOP_BEFORE_DOCKER_BUILD=0"),
   "script tracks the explicit pre-Docker-build stop mode"
 );
