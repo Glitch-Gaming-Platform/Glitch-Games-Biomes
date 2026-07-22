@@ -943,9 +943,9 @@ ok(
 );
 ok(
   script.includes(
-    'force_production_redis_bgsave "post-deploy world sync reconciliation"'
+    'force_production_redis_bgsave "post-deploy world sync and grounding reconciliation"'
   ),
-  "production deploy persists reconciled authored content with a forced RDB save"
+  "production deploy persists reconciled and grounded authored content with a forced RDB save"
 );
 ok(
   script.includes("/api/harthmere/live_mode_jobs_board_state"),

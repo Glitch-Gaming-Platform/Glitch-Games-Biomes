@@ -41,3 +41,5 @@ public/assets/harthmere/**/*.mp3 filter=lfs diff=lfs merge=lfs -text
 public/assets/harthmere/**/*.wav filter=lfs diff=lfs merge=lfs -text
 public/assets/harthmere/**/*.ogg filter=lfs diff=lfs merge=lfs -text
 public/assets/harthmere/**/*.mp4 filter=lfs diff=lfs merge=lfs -text
+public/harthmere/voices/generated/current/** !text !filter !merge !diff
+public/assets/harthmere/audio/hauntsync-rpg-battle-chiptune.webm !text !filter !merge !diff
