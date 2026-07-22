@@ -182,9 +182,10 @@ COPY --chown=nextjs:nodejs node_modules/ node_modules/
 # temporary in-VNet maintenance job can execute the reviewed reconciliation
 # scripts against private production Redis without shipping all dev tooling.
 RUN npm prune --omit=dev --ignore-scripts --no-audit --no-fund \
-    && npm install --no-save --omit=dev --ignore-scripts --no-audit --no-fund \
+    && npm install --prefix /opt/harthmere-maintenance --no-save --ignore-scripts --no-audit --no-fund \
       ts-node@10.9.1 tsconfig-paths@3.12.0 typescript@5.9.3 \
-    && node -e "for (const m of ['stream-json/streamers/StreamArray', 'spark-md5', 'ts-node/register/transpile-only', 'tsconfig-paths/register', 'typescript']) { require(m); console.log('OK production maintenance dependency', m); }" \
+    && node -e "for (const m of ['stream-json/streamers/StreamArray', 'spark-md5']) { require(m); console.log('OK production runtime dependency', m); }" \
+    && NODE_PATH=/opt/harthmere-maintenance/node_modules node -e "for (const m of ['ts-node/register/transpile-only', 'tsconfig-paths/register', 'typescript']) { require(m); console.log('OK production maintenance dependency', m); }" \
     && rm -rf node_modules/.cache /root/.npm /home/nextjs/.npm
 
 # ACR can strip executable bits from uploaded node_modules.

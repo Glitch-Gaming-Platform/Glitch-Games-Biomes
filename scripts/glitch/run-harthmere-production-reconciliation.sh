@@ -21,6 +21,9 @@ export REDIS_PORT
 export GLITCH_REDIS_PORT="${GLITCH_REDIS_PORT:-$REDIS_PORT}"
 export IS_SERVER="${IS_SERVER:-1}"
 export APPLY="${APPLY:-1}"
+# Maintenance-only TypeScript packages live outside /app so the normal game
+# dependency tree remains production-pruned. NODE_PATH exposes them only here.
+export NODE_PATH="/opt/harthmere-maintenance/node_modules${NODE_PATH:+:$NODE_PATH}"
 
 log() {
   printf '[harthmere-reconcile] %s\n' "$*"

@@ -980,6 +980,10 @@ ok(
   dockerfile.includes("ts-node@10.9.1") &&
     dockerfile.includes("tsconfig-paths@3.12.0") &&
     dockerfile.includes("typescript@5.9.3") &&
+    dockerfile.includes("--prefix /opt/harthmere-maintenance") &&
+    harthmereProductionReconciliation.includes(
+      'NODE_PATH="/opt/harthmere-maintenance/node_modules'
+    ) &&
     dockerfile.includes("run-harthmere-production-reconciliation.sh"),
   "production image packages the narrow TypeScript runtime needed by the VNet reconciliation job"
 );
