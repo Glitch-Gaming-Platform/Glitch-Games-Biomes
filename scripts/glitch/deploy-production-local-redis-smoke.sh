@@ -1238,6 +1238,10 @@ restore_azure_traffic_weights() {
   done <<< "$active_revisions"
 
   for rollback_revision in "${rollback_revisions[@]}"; do
+    if printf '%s\n' "$active_revisions" | grep -Fxq "$rollback_revision"; then
+      log "Previous Azure revision $rollback_revision remains active."
+      continue
+    fi
     log "Reactivating previous Azure revision $rollback_revision."
     az containerapp revision activate \
       --resource-group "$AZURE_RESOURCE_GROUP" \
@@ -1791,7 +1795,7 @@ delete_azure_terrain_job() {
 
 run_azure_terrain_seed_job() {
   local registry_username registry_password execution status="" polls=0 logs=""
-  local terrain_command
+  local terrain_command terrain_command_b64 terrain_eval_arg
 
   if az containerapp job show \
     --resource-group "$AZURE_RESOURCE_GROUP" \
@@ -1808,31 +1812,61 @@ run_azure_terrain_seed_job() {
   # avoids inheriting the web revision's 15-minute startup probe, which would
   # restart this intentional ~30-minute maintenance operation. The wrapper
   # exits only after the shim's completion log and a full 2,362-shard audit.
-  terrain_command='set -euo pipefail
-log=/tmp/harthmere-terrain.log
-node dist/shim.js --bootstrapMode sync >"$log" 2>&1 &
-shim_pid=$!
-cleanup() { kill "$shim_pid" >/dev/null 2>&1 || true; wait "$shim_pid" >/dev/null 2>&1 || true; }
-trap cleanup EXIT
-for attempt in $(seq 1 720); do
-  if ! kill -0 "$shim_pid" >/dev/null 2>&1; then
-    cat "$log"
-    echo "ERROR Harthmere terrain shim exited before completion." >&2
-    exit 1
-  fi
-  if grep -Fq "Seeded local dev starter town" "$log"; then
-    cat "$log"
-    export NODE_PATH="/opt/harthmere-maintenance/node_modules${NODE_PATH:+:$NODE_PATH}"
-    node scripts/harthmere/audit-production-extension-terrain.cjs
-    echo "HARTHMERE_TERRAIN_MAINTENANCE_READY"
-    exit 0
-  fi
-  if [ $((attempt % 30)) -eq 0 ]; then tail -20 "$log"; fi
-  sleep 5
-done
-cat "$log"
-echo "ERROR timed out waiting for Harthmere terrain maintenance." >&2
-exit 1'
+  # Azure CLI treats dash-prefixed values after --args as CLI options. Pass a
+  # single --eval=<wrapper> Node argument instead, with the wrapper encoded so
+  # its shell metacharacters and newlines survive CLI and ARM serialization.
+  terrain_command='const fs = require("fs");
+const { spawn, spawnSync } = require("child_process");
+const logPath = "/tmp/harthmere-terrain.log";
+const logFd = fs.openSync(logPath, "w");
+const shim = spawn(process.execPath, ["dist/shim.js", "--bootstrapMode", "sync"], {
+  env: process.env,
+  stdio: ["ignore", logFd, logFd],
+});
+const cleanup = () => {
+  if (shim.exitCode === null && !shim.killed) shim.kill("SIGTERM");
+};
+process.on("SIGTERM", () => { cleanup(); process.exit(143); });
+process.on("SIGINT", () => { cleanup(); process.exit(130); });
+process.on("exit", cleanup);
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const readLog = () => {
+  try { return fs.readFileSync(logPath, "utf8"); } catch { return ""; }
+};
+(async () => {
+  for (let attempt = 1; attempt <= 720; attempt += 1) {
+    if (shim.exitCode !== null) {
+      process.stdout.write(readLog());
+      throw new Error(`Harthmere terrain shim exited before completion (status ${shim.exitCode}).`);
+    }
+    const output = readLog();
+    if (output.includes("Seeded local dev starter town")) {
+      process.stdout.write(output);
+      const nodePath = "/opt/harthmere-maintenance/node_modules" +
+        (process.env.NODE_PATH ? `:${process.env.NODE_PATH}` : "");
+      const audit = spawnSync(process.execPath, ["scripts/harthmere/audit-production-extension-terrain.cjs"], {
+        env: { ...process.env, NODE_PATH: nodePath },
+        stdio: "inherit",
+      });
+      if (audit.status !== 0) throw new Error(`Harthmere terrain audit failed (status ${audit.status}).`);
+      console.log("HARTHMERE_TERRAIN_MAINTENANCE_READY");
+      cleanup();
+      return;
+    }
+    if (attempt % 30 === 0) {
+      console.log(output.split("\n").slice(-20).join("\n"));
+    }
+    await sleep(5000);
+  }
+  process.stdout.write(readLog());
+  throw new Error("Timed out waiting for Harthmere terrain maintenance.");
+})().catch((error) => {
+  console.error(`ERROR ${error.message}`);
+  cleanup();
+  process.exitCode = 1;
+});'
+  terrain_command_b64="$(printf '%s' "$terrain_command" | base64 | tr -d '\n')"
+  terrain_eval_arg="--eval=eval(Buffer.from('${terrain_command_b64}','base64').toString())"
 
   registry_username="$(az acr credential show --name "$ACR_NAME" --query username -o tsv)"
   registry_password="$(az acr credential show --name "$ACR_NAME" --query 'passwords[0].value' -o tsv)"
@@ -1854,8 +1888,8 @@ exit 1'
     --container-name "$HARTHMERE_TERRAIN_JOB_CONTAINER_NAME" \
     --cpu "$HARTHMERE_WORLD_SYNC_JOB_CPU" \
     --memory "$HARTHMERE_WORLD_SYNC_JOB_MEMORY" \
-    --command /bin/bash \
-    --args -lc "$terrain_command" \
+    --command node \
+    --args="$terrain_eval_arg" \
     --env-vars \
       NODE_ENV=production \
       NODE_OPTIONS="--openssl-legacy-provider --enable-source-maps --max-old-space-size=8192" \
