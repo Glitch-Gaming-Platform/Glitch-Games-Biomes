@@ -85,7 +85,8 @@ ok(
 );
 ok(
   shim.includes("HARTHMERE_EXTENSION_FEET_Y") &&
-    shim.includes("harthmere-additive-runtime-content-grounding-v2") &&
+    shim.includes("HARTHMERE_ADDITIVE_RUNTIME_CONTENT_VERSION") &&
+    shim.includes("makeLocalDevRuntimeContentFingerprint") &&
     shim.includes("? HARTHMERE_EXTENSION_FEET_Y"),
   "persisted additive-town NPCs migrate to the flat extension feet level"
 );
