@@ -146,4 +146,17 @@ describe("nativeQuestMapAdapter", () => {
       ]
     );
   });
+
+  it("does not preload available or locked quests into the journal", () => {
+    const available = quest(50, "available", leaf(51, "Not accepted", 0));
+    const locked = quest(52, "locked", leaf(53, "Not discovered", 0));
+    const active = quest(54, "in_progress", leaf(55, "Accepted", 0));
+
+    assert.deepStrictEqual(
+      nativeQuestTrackableQuests([available, locked, active]).map(
+        (entry) => entry.questId
+      ),
+      ["54"]
+    );
+  });
 });

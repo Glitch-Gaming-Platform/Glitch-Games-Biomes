@@ -1,9 +1,10 @@
 // HARTHMERE_NPC_VOICE_PROFILES
 //
-// Azure-only voice casting for Harthmere NPCs and living entities. The
-// resulting `voiceParameterId` is safe to store in the ECS Voice component or a
-// static recording manifest. It is intentionally deterministic: the same actor
-// identity always resolves to the same Azure Speech voice and prosody.
+// Deterministic voice casting for Harthmere NPCs and living entities. The
+// resulting `voiceParameterId` remains an Azure-compatible descriptor for the
+// existing provider, and now also carries actor metadata used to select a
+// matching ElevenLabs voice. It is safe to store in the ECS Voice component or
+// a static recording manifest.
 
 import { harthmereSpeechDeliveryForActor } from "@/shared/harthmere/npc_speech_delivery";
 
@@ -52,6 +53,10 @@ export interface HarthmereNpcVoiceProfile {
 export interface ParsedHarthmereAzureVoice {
   provider: "azure-speech";
   voiceName: string;
+  // Provider-neutral casting metadata is embedded alongside the Azure voice
+  // fields so ElevenLabs can reuse the same deterministic NPC profile.
+  gender?: HarthmereVoiceGender;
+  actorKind?: HarthmereVoiceActorKind;
   style?: string;
   styleDegree?: string;
   role?: string;
@@ -169,6 +174,41 @@ export const HARTHMERE_AZURE_VOICE_NAMES = [
   ...MALE_AZURE_VOICES.map((voice) => voice.voiceName),
   ...NEUTRAL_AZURE_VOICES.map((voice) => voice.voiceName),
 ] as const;
+
+function isHarthmereVoiceGender(
+  value: string | undefined
+): value is HarthmereVoiceGender {
+  return value === "female" || value === "male" || value === "neutral";
+}
+
+function isHarthmereVoiceActorKind(
+  value: string | undefined
+): value is HarthmereVoiceActorKind {
+  return (
+    value === "humanoid" ||
+    value === "robot" ||
+    value === "creature" ||
+    value === "animal" ||
+    value === "undead"
+  );
+}
+
+function azureVoiceGenderFromName(
+  voiceName: string
+): HarthmereVoiceGender | undefined {
+  // Older stored voice IDs predate explicit gender metadata. Recover it from
+  // the curated Azure pools when possible without rejecting legacy entities.
+  if (FEMALE_AZURE_VOICES.some((voice) => voice.voiceName === voiceName)) {
+    return "female";
+  }
+  if (MALE_AZURE_VOICES.some((voice) => voice.voiceName === voiceName)) {
+    return "male";
+  }
+  if (NEUTRAL_AZURE_VOICES.some((voice) => voice.voiceName === voiceName)) {
+    return "neutral";
+  }
+  return undefined;
+}
 
 function normalizeVoiceText(text: string | undefined) {
   return (text ?? "").trim().replace(/\s+/g, " ");
@@ -469,6 +509,8 @@ function prosodyForActor(hash: number, actorKind: HarthmereVoiceActorKind) {
 
 export function buildHarthmereAzureVoiceParameterId(input: {
   voiceName: string;
+  gender?: HarthmereVoiceGender;
+  actorKind?: HarthmereVoiceActorKind;
   style?: string;
   styleDegree?: string;
   role?: string;
@@ -478,8 +520,12 @@ export function buildHarthmereAzureVoiceParameterId(input: {
   sentenceBreakMs?: number;
   actorKey?: string;
 }) {
+  // Keep the original descriptor format so ECS data remains backward
+  // compatible while adding metadata consumed by other TTS providers.
   const parts = [
     ["voice", input.voiceName],
+    ["gender", input.gender],
+    ["kind", input.actorKind],
     ["style", input.style],
     ["styleDegree", input.styleDegree],
     ["role", input.role],
@@ -508,9 +554,12 @@ export function parseHarthmereAzureVoiceId(
       trimmed
     )
   ) {
+    // Raw Azure short names are still accepted for old/admin-authored entities.
+    const gender = azureVoiceGenderFromName(trimmed);
     return {
       provider: "azure-speech",
       voiceName: trimmed,
+      ...(gender ? { gender } : {}),
       rate: "+0%",
       pitch: "+0%",
       volume: "default",
@@ -531,9 +580,19 @@ export function parseHarthmereAzureVoiceId(
   if (!values.voice) {
     return undefined;
   }
+  const gender = isHarthmereVoiceGender(values.gender)
+    ? values.gender
+    : azureVoiceGenderFromName(values.voice);
+  const actorKind = isHarthmereVoiceActorKind(values.kind)
+    ? values.kind
+    : undefined;
   return {
+    // Optional fields are omitted instead of emitted as undefined so existing
+    // callers and serialized test fixtures retain their previous shapes.
     provider: "azure-speech",
     voiceName: values.voice,
+    ...(gender ? { gender } : {}),
+    ...(actorKind ? { actorKind } : {}),
     style: values.style,
     styleDegree: values.styleDegree,
     role: values.role,
@@ -559,9 +618,7 @@ export function harthmereVoiceProfileForActor(
 ): HarthmereNpcVoiceProfile {
   const actorKey =
     actorKeyForVoiceInput(input) ||
-    `${input.source}:unknown:${displayNameForVoiceInput(
-      input
-    ).toLowerCase()}`;
+    `${input.source}:unknown:${displayNameForVoiceInput(input).toLowerCase()}`;
   const hash = stableHarthmereVoiceHash(
     [actorKey, input.role, input.kind, input.background, input.voiceStyle]
       .filter(Boolean)
@@ -581,7 +638,11 @@ export function harthmereVoiceProfileForActor(
   const prosody = prosodyForActor(hash, actorKind);
   const displayName = displayNameForVoiceInput(input);
   const voiceParameterId = buildHarthmereAzureVoiceParameterId({
+    // Embed the inferred cast metadata once at profile creation. Both Azure
+    // and ElevenLabs then stay stable for the same NPC identity.
     voiceName: azureVoiceName,
+    gender: inferredGender,
+    actorKind,
     style,
     styleDegree,
     rate: prosody.rate,
@@ -813,9 +874,7 @@ export function buildAzureSpeechSsml(input: {
     ? [
         `<mstts:express-as style="${escapeSsml(input.voice.style)}"${
           styleDegree ? ` styledegree="${escapeSsml(styleDegree)}"` : ""
-        }${
-          input.voice.role ? ` role="${escapeSsml(input.voice.role)}"` : ""
-        }>`,
+        }${input.voice.role ? ` role="${escapeSsml(input.voice.role)}"` : ""}>`,
         prosody,
         "</mstts:express-as>",
       ].join("")

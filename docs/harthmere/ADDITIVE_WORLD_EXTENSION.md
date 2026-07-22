@@ -24,7 +24,11 @@ The canonical layout is:
 The +1600 offset is shard aligned (`1600 / 32 = 50`). Authored optimized
 terrain begins at shard X=6, so its first shifted shard begins exactly at world
 X=1792. Terrain IDs use a new reserved band beginning at
-`8810000000030000`; the legacy terrain entity band is never deleted or moved.
+`8810000001000000`. IDs are derived from shard X/Y/Z, so adding a row cannot
+remap an existing entity to a different box. The retired sequential range
+`[8810000000030000, 8810000000040000)` has its terrain components removed only
+when an entity is verified as terrain; overlapping escort-companion NPC data
+is preserved instead of deleting the whole ECS record.
 
 ## Automatic enablement
 
@@ -41,11 +45,11 @@ Emergency/legacy switches remain explicit:
 
 ## Terrain completeness
 
-The extension seeds the complete surface layer across the town/near-wilds
-band, then adds only upper or underground shards that intersect authored
-structures and dungeons. The resulting content spans world Y `-64..95`
-without generating empty air or featureless stone across five full copies of
-the map. This includes:
+The extension seeds every X/Z shard in `1792 <= X < 2560` and
+`-576 <= Z < 192` from world Y=-64 through the surface shard ending at Y=63.
+This full foundation prevents black void, floating slabs, and giant internal
+cliffs anywhere inside the expanded map. It then adds only upper or deeper
+shards that intersect authored structures and dungeons. This includes:
 
 - the flat town, roads, plazas, walls, and surrounding near-wilds;
 - upper floors, roofs, gate towers, and tall landmarks above Y=63;
@@ -107,6 +111,10 @@ On startup, the runtime-content reconciler therefore:
 Changing runtime entity coordinates must bump the runtime-content fingerprint,
 even when the terrain fingerprint remains unchanged.
 
+Snapshot combat hostiles are also part of deploy-time reconciliation. Every
+authored Mucker is checked against the Grove, town-core, and safe-road radii;
+the first combat encounter is at the watchtower clearing, not in the Grove.
+
 ## Grounding and coordinate-space contract
 
 Grounding is intentionally different on the two sides of the connector:
@@ -128,6 +136,26 @@ Hexers, livestock, business owners/customers, and seeded business objects. It
 updates ECS position and NPC spawn position, reads every repair back, and fails
 the deployment on missing terrain, missing standable floor, unsupported flat
 extension terrain, or unresolved floating/buried placement.
+
+Muckers, Hexes, and wildlife receive an additional persisted-ECS integrity
+pass after every terrain writer has finished. The pass reads each creature's
+actual Redis position rather than trusting its seed, samples the final terrain
+under its complete body footprint, repairs floating/buried or out-of-zone X/Y/Z,
+recreates missing/dead deployment records, restores species-specific size and
+combat data, removes stale expiry, and pins `npc_metadata.spawn_position` to
+the same grounded anchor. Readback must confirm all 100 hostile creatures and
+24 animals are alive, body-supported, correctly sized, outside safe zones, and
+inside real Muck containment. Native fixed-ID respawns use the same full entity
+builder, so cows, sheep, rabbits, Muckers, and Hexes do not lose their authored
+body size or respawn at a death-position terrain seam.
+
+Normal three-replica web revisions keep `BIOMES_CREATE_LOCAL_DEV_TERRAIN=0`.
+Before traffic promotion, the guarded deploy creates a temporary one-replica,
+zero-traffic maintenance revision with terrain seeding forced on. Promotion is
+blocked until `scripts/harthmere/audit-production-extension-terrain.cjs`
+confirms all 2,304 foundation shards, all 576 surface shards, solid Y=52 in
+every extension column, non-empty lower foundation tensors, correct shard
+boxes, and zero retired terrain records.
 
 ## Physical player route contract
 
@@ -187,6 +215,8 @@ node scripts/harthmere/check-harthmere-extra-town-offset.cjs
 node scripts/harthmere/check-harthmere-connected-town-design.cjs
 node scripts/harthmere/test-harthmere-building-bible-coverage.cjs
 APPLY=0 node scripts/harthmere/probe-production-terrain-grounding.cjs
+APPLY=0 node scripts/harthmere/reconcile-production-live-creature-grounding.cjs
+node scripts/harthmere/audit-production-extension-terrain.cjs
 ```
 
 The production source guardrails run the offset check before building. It
@@ -201,10 +231,18 @@ healthy:
 - `/api/world_map/landmarks` returns the boundary, West Gate, North Gate, every
   district, and every bible building in the shifted east-side coordinates;
 - terrain entities in the new ID band occupy only X=1792..2528 shard origins;
+- the extension terrain audit reports `2304` foundation shards, `576` surface
+  shards, and zero missing, invalid, empty-foundation, surface-hole, or
+  retired-terrain records;
 - the Town Jobs Board resolves to `(2134, 53, -202)`, not the retired
   `(1046, 65, -202)` position;
 - seeded Muckers, livestock, and robot sentinels are at `X>=1792`, on `Y=53`,
   and remain inside their shifted Muck/protection areas;
+- the live-creature integrity pass reports all `100` Muckers/Hexes and `24`
+  animals with zero unresolved missing, dead, floating, buried, wrong-size,
+  expiring, unsafe, or unsupported-footprint records;
+- snapshot combat Muckers remain outside the Grove/town safe radii, with the
+  primer encounter in the watchtower danger clearing;
 - the mandatory grounding gate reports every actor/object family with zero
   `noTerrainData`, `noSurface`, `unsupportedExtensionSurface`, and
   `unresolvedAfterRepair`;

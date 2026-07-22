@@ -1,4 +1,5 @@
 import {
+  invokeSelectedWorldInteractionForKey,
   registerWorldInteractionCandidate,
   resetWorldInteractionDispatcherForTest,
   selectedWorldInteractionIdForKey,
@@ -141,5 +142,37 @@ describe("world interaction dispatcher", () => {
 
     assert.equal(foreground.token, originalToken);
     assert.equal(selectedWorldInteractionIdForKey(), "background");
+  });
+
+  it("lets hotbar tools invoke the same winning interaction as KeyF", () => {
+    const invoked: string[] = [];
+    registerWorldInteractionCandidate({
+      id: "gathering",
+      priority: WORLD_INTERACTION_PRIORITY.authoredGathering,
+      onInteract: () => invoked.push("gathering"),
+    });
+    registerWorldInteractionCandidate({
+      id: "native-container",
+      priority: WORLD_INTERACTION_PRIORITY.nativeEcs,
+      onInteract: () => invoked.push("native-container"),
+    });
+
+    assert.equal(invokeSelectedWorldInteractionForKey(), true);
+    assert.deepEqual(invoked, ["native-container"]);
+  });
+
+  it("does not invoke a disabled winning interaction", () => {
+    let invoked = false;
+    registerWorldInteractionCandidate({
+      id: "locked",
+      priority: 100,
+      disabled: true,
+      onInteract: () => {
+        invoked = true;
+      },
+    });
+
+    assert.equal(invokeSelectedWorldInteractionForKey(), false);
+    assert.equal(invoked, false);
   });
 });

@@ -2,10 +2,12 @@ import { speechStatusForEnv } from "@/pages/api/voices/speech_status";
 import assert from "assert";
 
 describe("voice speech status", () => {
-  it("keeps voice disabled unless Azure Speech and Azure OpenAI are both configured", () => {
+  it("reports Azure/OpenAI and ElevenLabs capabilities independently", () => {
     assert.deepEqual(speechStatusForEnv({}), {
       speechToText: false,
       textToSpeech: false,
+      openAITextToSpeech: false,
+      elevenLabsTextToSpeech: false,
       generatedChat: false,
     });
     assert.deepEqual(
@@ -16,6 +18,8 @@ describe("voice speech status", () => {
       {
         speechToText: true,
         textToSpeech: true,
+        openAITextToSpeech: true,
+        elevenLabsTextToSpeech: false,
         generatedChat: false,
       }
     );
@@ -28,6 +32,8 @@ describe("voice speech status", () => {
       {
         speechToText: false,
         textToSpeech: false,
+        openAITextToSpeech: false,
+        elevenLabsTextToSpeech: false,
         generatedChat: true,
       }
     );
@@ -42,7 +48,19 @@ describe("voice speech status", () => {
       {
         speechToText: true,
         textToSpeech: true,
+        openAITextToSpeech: true,
+        elevenLabsTextToSpeech: false,
         generatedChat: true,
+      }
+    );
+    assert.deepEqual(
+      speechStatusForEnv({ ELEVENLABS_API_KEY: "elevenlabs-key" }),
+      {
+        speechToText: false,
+        textToSpeech: true,
+        openAITextToSpeech: false,
+        elevenLabsTextToSpeech: true,
+        generatedChat: false,
       }
     );
   });

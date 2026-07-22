@@ -10,7 +10,6 @@ import { ClientContextReactContext } from "../contexts/ClientContextReactContext
 import { installBiomesUITheme } from "../biomes_ui/theme/biomesUITheme";
 import { RovingGrid } from "../biomes_ui/nav/RovingGrid";
 import {
-  harthmereBikkieVisualGlyphStyle,
   harthmereBikkieVisualImageStyle,
   harthmereBikkieVisualImageUrl,
   harthmereBikkieVisualTileStyle,
@@ -22,6 +21,7 @@ import type {
   HarthmereBusinessBikkieGraphic,
   HarthmereBusinessContract,
   HarthmereBusinessInterfaceAdapter,
+  HarthmereBusinessServiceAction,
   HarthmereBusinessShopfront,
   HarthmereBusinessVisibleInventoryItem,
   HarthmereBusinessWorldContext,
@@ -101,6 +101,151 @@ type ShopfrontMerchKind =
 type ShopfrontGood = NonNullable<
   HarthmereBusinessShopfront["storefrontGoods"]
 >[number];
+
+type HarthmereBusinessPresentation = {
+  mark: string;
+  accent: string;
+  accentRgb: string;
+  descriptor: string;
+};
+
+const HARTHMERE_BUSINESS_PRESENTATIONS: Record<
+  string,
+  HarthmereBusinessPresentation
+> = {
+  exotic_matter_refinery: {
+    mark: "AT",
+    accent: "#72e4e9",
+    accentRgb: "114, 228, 233",
+    descriptor: "Applied transmutation",
+  },
+  biome_maintenance_repair: {
+    mark: "MR",
+    accent: "#f2bb68",
+    accentRgb: "242, 187, 104",
+    descriptor: "Biome restoration",
+  },
+  biome_design_studio: {
+    mark: "DS",
+    accent: "#ee9fc9",
+    accentRgb: "238, 159, 201",
+    descriptor: "Design atelier",
+  },
+  security_defense_contractor: {
+    mark: "SD",
+    accent: "#ef9a70",
+    accentRgb: "239, 154, 112",
+    descriptor: "Defense services",
+  },
+  portal_transit_company: {
+    mark: "PT",
+    accent: "#9ea4ff",
+    accentRgb: "158, 164, 255",
+    descriptor: "Portal transit",
+  },
+  biome_farming_rare_foods: {
+    mark: "RF",
+    accent: "#a8dc78",
+    accentRgb: "168, 220, 120",
+    descriptor: "Rare harvests",
+  },
+  weapons_tools: {
+    mark: "WT",
+    accent: "#f0b76b",
+    accentRgb: "240, 183, 107",
+    descriptor: "Field equipment",
+  },
+  magic_goods: {
+    mark: "MG",
+    accent: "#c59cff",
+    accentRgb: "197, 156, 255",
+    descriptor: "Arcane provisions",
+  },
+  exploration_guide: {
+    mark: "EG",
+    accent: "#7ed9c4",
+    accentRgb: "126, 217, 196",
+    descriptor: "Expedition outfitter",
+  },
+  custom_home_property_development: {
+    mark: "HP",
+    accent: "#e7bd82",
+    accentRgb: "231, 189, 130",
+    descriptor: "Property works",
+  },
+  general_trader: {
+    mark: "GT",
+    accent: "#8dc7f3",
+    accentRgb: "141, 199, 243",
+    descriptor: "Regional exchange",
+  },
+  hunter_wild_meat: {
+    mark: "HW",
+    accent: "#c8b16b",
+    accentRgb: "200, 177, 107",
+    descriptor: "Hunter's provisions",
+  },
+  medical_doctor: {
+    mark: "+",
+    accent: "#75e0bd",
+    accentRgb: "117, 224, 189",
+    descriptor: "Clinic & apothecary",
+  },
+  teleport_owner: {
+    mark: "TP",
+    accent: "#b09cff",
+    accentRgb: "176, 156, 255",
+    descriptor: "Teleport services",
+  },
+  waste_sanitation_cleanup: {
+    mark: "SC",
+    accent: "#7bd9a2",
+    accentRgb: "123, 217, 162",
+    descriptor: "Sanitation works",
+  },
+  repair_maintenance_person: {
+    mark: "RM",
+    accent: "#efb36a",
+    accentRgb: "239, 179, 106",
+    descriptor: "Repair workshop",
+  },
+  food_service_restaurant: {
+    mark: "FS",
+    accent: "#e9a66e",
+    accentRgb: "233, 166, 110",
+    descriptor: "Kitchen & dining",
+  },
+  courier: {
+    mark: "CR",
+    accent: "#71c9ee",
+    accentRgb: "113, 201, 238",
+    descriptor: "Courier dispatch",
+  },
+  hospitality_inn_hotel_shelter: {
+    mark: "IN",
+    accent: "#e7c18c",
+    accentRgb: "231, 193, 140",
+    descriptor: "Rooms & shelter",
+  },
+};
+
+function harthmereBusinessPresentation(
+  typeId: string
+): HarthmereBusinessPresentation {
+  return (
+    HARTHMERE_BUSINESS_PRESENTATIONS[typeId] ?? {
+      mark: displayLabel(typeId)
+        .split(/\s+/)
+        .slice(0, 2)
+        .map((word) => word[0] ?? "")
+        .join("")
+        .toUpperCase(),
+      accent: "#77d8ee",
+      accentRgb: "119, 216, 238",
+      descriptor: "Harthmere commerce",
+    }
+  );
+}
 
 const OWNER_TABS: OwnerTab[] = [
   "dashboard",
@@ -195,8 +340,292 @@ function installHarthmereBusinessPendingStyles() {
     "@keyframes harthmere-business-toast { 0% { opacity: 0; transform: translateY(8px) scale(.98); } 100% { opacity: 1; transform: none; } }",
     "@keyframes harthmere-business-urgent { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }",
     "@keyframes harthmere-business-rise { 0% { opacity: 0; transform: translateY(6px); } 100% { opacity: 1; transform: none; } }",
+    "@keyframes harthmere-business-button-sheen { 0% { transform: translateX(-140%) skewX(-22deg); } 55%, 100% { transform: translateX(240%) skewX(-22deg); } }",
     ".harthmere-business-customer-mesh-avatar, .harthmere-business-customer-mesh-avatar .three-object-preview-wrapper { width: 100%; height: 100%; min-height: 60px; overflow: hidden; }",
     ".harthmere-business-customer-mesh-avatar canvas { width: 100% !important; height: 100% !important; }",
+    `
+      .harthmere-business-panel {
+        --business-accent: #77d8ee;
+        --business-accent-rgb: 119, 216, 238;
+        isolation: isolate;
+        display: flex;
+        flex-direction: column;
+        font-size: 13px;
+        background:
+          radial-gradient(circle at 10% -18%, rgba(var(--business-accent-rgb), .2), transparent 31%),
+          radial-gradient(circle at 92% 8%, rgba(121, 89, 188, .13), transparent 25%),
+          linear-gradient(145deg, rgba(16, 24, 42, .985), rgba(5, 10, 20, .985) 72%);
+        border-color: rgba(var(--business-accent-rgb), .48);
+        box-shadow:
+          inset 0 1px 0 rgba(255,255,255,.08),
+          inset 0 0 70px rgba(var(--business-accent-rgb), .035),
+          0 28px 90px rgba(0,0,0,.7),
+          0 0 0 1px rgba(0,0,0,.78);
+      }
+      .harthmere-business-panel::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        z-index: -1;
+        pointer-events: none;
+        opacity: .18;
+        background-image:
+          linear-gradient(rgba(255,255,255,.018) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255,255,255,.014) 1px, transparent 1px);
+        background-size: 34px 34px;
+        mask-image: linear-gradient(to bottom, #000, transparent 78%);
+      }
+      .harthmere-business-header {
+        position: relative;
+        flex: 0 0 auto;
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 14px;
+        padding: 2px 2px 15px;
+        border-bottom: 1px solid rgba(var(--business-accent-rgb), .18);
+      }
+      .harthmere-business-crest {
+        position: relative;
+        width: 54px;
+        height: 54px;
+        display: grid;
+        place-items: center;
+        color: #f7fbff;
+        font-size: 18px;
+        font-weight: 950;
+        letter-spacing: .04em;
+        border: 1px solid rgba(var(--business-accent-rgb), .72);
+        background:
+          linear-gradient(145deg, rgba(var(--business-accent-rgb), .24), rgba(5,11,22,.88)),
+          rgba(8,14,27,.92);
+        box-shadow:
+          inset 0 0 18px rgba(var(--business-accent-rgb), .14),
+          0 0 22px rgba(var(--business-accent-rgb), .16);
+        clip-path: polygon(18% 0, 82% 0, 100% 18%, 100% 82%, 82% 100%, 18% 100%, 0 82%, 0 18%);
+      }
+      .harthmere-business-crest::after {
+        content: "";
+        position: absolute;
+        inset: 5px;
+        border: 1px solid rgba(255,255,255,.12);
+        clip-path: inherit;
+      }
+      .harthmere-business-eyebrow {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 7px;
+        margin-bottom: 4px;
+        color: rgba(var(--business-accent-rgb), .9);
+        font-size: 9px;
+        font-weight: 900;
+        letter-spacing: .19em;
+        text-transform: uppercase;
+      }
+      .harthmere-business-eyebrow::before {
+        content: "";
+        width: 18px;
+        height: 1px;
+        background: var(--business-accent);
+        box-shadow: 0 0 8px rgba(var(--business-accent-rgb), .6);
+      }
+      .harthmere-business-meta {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 7px;
+        margin-top: 6px;
+      }
+      .harthmere-business-meta-chip {
+        display: inline-flex;
+        align-items: center;
+        min-height: 20px;
+        padding: 0 7px;
+        border: 1px solid rgba(255,255,255,.1);
+        border-radius: 999px;
+        color: rgba(231,241,251,.72);
+        background: rgba(1,5,13,.34);
+        font-size: 9px;
+        font-weight: 800;
+        letter-spacing: .09em;
+        text-transform: uppercase;
+      }
+      .harthmere-business-meta-chip[data-status="open"]::before {
+        content: "";
+        width: 6px;
+        height: 6px;
+        margin-right: 6px;
+        border-radius: 999px;
+        background: #79e5b7;
+        box-shadow: 0 0 8px rgba(121,229,183,.7);
+      }
+      .harthmere-business-close {
+        align-self: start;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 34px;
+        padding: 0 10px !important;
+        border: 1px solid rgba(255,255,255,.1) !important;
+        border-radius: 4px;
+        background: rgba(2,7,16,.42) !important;
+      }
+      .harthmere-business-close:hover,
+      .harthmere-business-close:focus-visible {
+        border-color: rgba(var(--business-accent-rgb), .6) !important;
+        background: rgba(var(--business-accent-rgb), .1) !important;
+      }
+      .harthmere-business-close-mark {
+        font-size: 16px;
+        line-height: 1;
+        color: var(--business-accent);
+      }
+      .harthmere-business-close-key {
+        padding: 2px 5px;
+        border: 1px solid rgba(255,255,255,.13);
+        border-radius: 3px;
+        color: rgba(231,241,251,.5);
+        font-size: 8px;
+        letter-spacing: .04em;
+      }
+      .harthmere-business-nav {
+        position: relative;
+        flex: 0 0 auto;
+        display: flex;
+        flex-wrap: nowrap;
+        gap: 2px;
+        margin: 0 -2px 14px;
+        padding: 6px 2px 5px;
+        overflow-x: auto;
+        scrollbar-width: thin;
+        border-bottom: 1px solid rgba(255,255,255,.055);
+      }
+      .harthmere-business-nav .harthmere-business-tab {
+        flex: 0 0 auto;
+        min-height: 34px;
+        padding: 7px 12px;
+        border: 1px solid transparent;
+        border-radius: 4px 4px 0 0;
+        transition: color 120ms ease, background 120ms ease, border-color 120ms ease;
+      }
+      .harthmere-business-nav .harthmere-business-tab:hover,
+      .harthmere-business-nav .harthmere-business-tab:focus-visible {
+        color: #fff;
+        background: rgba(var(--business-accent-rgb), .065);
+        border-color: rgba(var(--business-accent-rgb), .13);
+      }
+      .harthmere-business-nav .harthmere-business-tab[aria-selected="true"] {
+        color: #fff;
+        background: linear-gradient(180deg, rgba(var(--business-accent-rgb), .13), rgba(var(--business-accent-rgb), .035));
+        border-color: rgba(var(--business-accent-rgb), .24);
+      }
+      .harthmere-business-nav .harthmere-business-tab[aria-selected="true"]::after {
+        left: 9px;
+        right: 9px;
+        bottom: -1px;
+        background: var(--business-accent);
+        box-shadow: 0 0 12px rgba(var(--business-accent-rgb), .72);
+      }
+      .harthmere-business-content {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow: auto;
+        padding: 1px 3px 5px 1px;
+        scrollbar-color: rgba(var(--business-accent-rgb), .36) rgba(0,0,0,.16);
+      }
+      .harthmere-business-panel .biomes-ui-tab {
+        transition: color 120ms ease, border-color 120ms ease, background 120ms ease, transform 80ms ease, box-shadow 120ms ease;
+      }
+      .harthmere-business-panel .biomes-ui-tab:active:not(:disabled) {
+        transform: translateY(1px);
+      }
+      .harthmere-business-content .biomes-ui-tab:not(.harthmere-business-primary-action):not(.harthmere-business-service-card) {
+        border: 1px solid rgba(var(--business-accent-rgb), .25);
+        border-radius: 4px;
+        background: linear-gradient(180deg, rgba(var(--business-accent-rgb), .095), rgba(3,8,17,.36));
+      }
+      .harthmere-business-content .biomes-ui-tab:not(.harthmere-business-primary-action):not(.harthmere-business-service-card):hover:not(:disabled),
+      .harthmere-business-content .biomes-ui-tab:not(.harthmere-business-primary-action):not(.harthmere-business-service-card):focus-visible:not(:disabled) {
+        border-color: rgba(var(--business-accent-rgb), .58);
+        background: linear-gradient(180deg, rgba(var(--business-accent-rgb), .18), rgba(3,8,17,.42));
+        box-shadow: 0 0 14px rgba(var(--business-accent-rgb), .11);
+      }
+      .harthmere-business-bikkie-tile {
+        transform: translateZ(0);
+      }
+      .harthmere-business-bikkie-tile img {
+        filter: drop-shadow(0 7px 7px rgba(0,0,0,.4));
+      }
+      .harthmere-business-merch-section {
+        transition: border-color 140ms ease, box-shadow 140ms ease;
+      }
+      .harthmere-business-product-card {
+        transition: transform 130ms ease, border-color 140ms ease, box-shadow 140ms ease;
+      }
+      .harthmere-business-product-card:hover {
+        transform: translateY(-2px);
+        border-color: color-mix(in srgb, var(--business-accent) 42%, white 18%);
+        box-shadow:
+          inset 0 1px 0 rgba(255,255,255,.12),
+          0 17px 34px rgba(0,0,0,.34),
+          0 0 22px rgba(var(--business-accent-rgb), .12);
+      }
+      .harthmere-business-primary-action {
+        position: relative;
+        overflow: hidden;
+        isolation: isolate;
+      }
+      .harthmere-business-primary-action::before {
+        content: "";
+        position: absolute;
+        inset: -30% auto -30% -20%;
+        z-index: -1;
+        width: 35%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,.44), transparent);
+        transform: translateX(-140%) skewX(-22deg);
+      }
+      .harthmere-business-primary-action:hover:not(:disabled)::before,
+      .harthmere-business-primary-action:focus-visible:not(:disabled)::before {
+        animation: harthmere-business-button-sheen 850ms ease-out;
+      }
+      .harthmere-business-primary-action:hover:not(:disabled),
+      .harthmere-business-primary-action:focus-visible:not(:disabled) {
+        filter: saturate(1.08) brightness(1.07);
+        box-shadow:
+          inset 0 1px 0 rgba(255,255,255,.58),
+          0 0 20px rgba(55,219,164,.42),
+          0 7px 18px rgba(0,0,0,.3);
+      }
+      .harthmere-business-quantity button:hover:not(:disabled),
+      .harthmere-business-quantity button:focus-visible:not(:disabled) {
+        color: #fff;
+        background: rgba(var(--business-accent-rgb), .24) !important;
+      }
+      .harthmere-business-service-card {
+        transition: transform 130ms ease, border-color 140ms ease, box-shadow 140ms ease;
+      }
+      .harthmere-business-service-card:hover:not(:disabled),
+      .harthmere-business-service-card:focus-visible:not(:disabled) {
+        transform: translateY(-2px);
+        border-color: rgba(var(--business-accent-rgb), .72) !important;
+        box-shadow: 0 16px 30px rgba(0,0,0,.34), 0 0 20px rgba(var(--business-accent-rgb), .13);
+      }
+      @media (max-width: 760px) {
+        .harthmere-business-panel { font-size: 12px; }
+        .harthmere-business-header { grid-template-columns: 44px minmax(0, 1fr) auto; gap: 10px; }
+        .harthmere-business-crest { width: 44px; height: 44px; font-size: 15px; }
+        .harthmere-business-close-key { display: none; }
+        .harthmere-business-tool-card { grid-template-columns: 1fr !important; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .harthmere-business-panel *, .harthmere-business-panel *::before, .harthmere-business-panel *::after {
+          animation-duration: .001ms !important;
+          animation-iteration-count: 1 !important;
+          scroll-behavior: auto !important;
+        }
+      }
+    `,
   ].join("\n");
   document.head.appendChild(style);
 }
@@ -418,34 +847,363 @@ function usePendingBusinessAdapter(
   return { adapter: wrapped, pending: pendingCount > 0 };
 }
 
+const BikkieProceduralArt: React.FunctionComponent<{
+  visual: HarthmereResolvedBikkieVisual;
+  size: number;
+}> = ({ visual, size }) => {
+  const shape = visual.shape;
+  const primary = visual.primaryHex;
+  const accent = visual.accentHex;
+  const semanticText = `${visual.label} ${visual.kind ?? ""} ${
+    visual.metadataSummary
+  }`.toLowerCase();
+  const inset = Math.max(6, Math.round(size * 0.13));
+  const line = Math.max(2, Math.round(size * 0.055));
+  const commonShapeStyle: React.CSSProperties = {
+    position: "absolute",
+    display: "block",
+    boxSizing: "border-box",
+    filter: "drop-shadow(0 7px 7px rgba(0,0,0,.36))",
+  };
+  let silhouette: React.ReactNode;
+  switch (shape) {
+    case "block":
+      silhouette = (
+        <>
+          <span
+            style={{
+              ...commonShapeStyle,
+              width: "48%",
+              height: "48%",
+              left: "26%",
+              top: "24%",
+              transform: "rotate(30deg) skew(-5deg)",
+              border: `${line}px solid rgba(255,255,255,.5)`,
+              borderRadius: 3,
+              background: `linear-gradient(145deg, ${accent}, ${primary})`,
+            }}
+          />
+          <span
+            style={{
+              ...commonShapeStyle,
+              width: "30%",
+              height: line,
+              left: "36%",
+              top: "43%",
+              transform: "rotate(30deg)",
+              background: "rgba(255,255,255,.34)",
+            }}
+          />
+        </>
+      );
+      break;
+    case "tool":
+      silhouette = (
+        <>
+          <span
+            style={{
+              ...commonShapeStyle,
+              width: line + 3,
+              height: "58%",
+              left: "47%",
+              top: "26%",
+              transform: "rotate(38deg)",
+              borderRadius: 999,
+              background: `linear-gradient(180deg, ${accent}, #513820)`,
+            }}
+          />
+          <span
+            style={{
+              ...commonShapeStyle,
+              width: "47%",
+              height: "18%",
+              left: "27%",
+              top: "22%",
+              transform: "rotate(38deg)",
+              border: `${line}px solid rgba(255,255,255,.4)`,
+              borderRadius: 4,
+              background: `linear-gradient(180deg, ${accent}, ${primary})`,
+            }}
+          />
+        </>
+      );
+      break;
+    case "document":
+      silhouette = (
+        <span
+          style={{
+            ...commonShapeStyle,
+            width: "52%",
+            height: "64%",
+            left: "24%",
+            top: "15%",
+            border: `${line}px solid rgba(255,255,255,.48)`,
+            borderRadius: 4,
+            background: `repeating-linear-gradient(180deg, rgba(45,34,24,.32) 0 2px, transparent 2px 8px), linear-gradient(145deg, #f5e1ae, ${accent})`,
+          }}
+        />
+      );
+      break;
+    case "food":
+    case "seed":
+      silhouette = (
+        <>
+          <span
+            style={{
+              ...commonShapeStyle,
+              width: "50%",
+              height: "50%",
+              left: "25%",
+              top: "27%",
+              border: `${line}px solid rgba(255,255,255,.42)`,
+              borderRadius: shape === "seed" ? "62% 38% 58% 42%" : "52%",
+              transform: shape === "seed" ? "rotate(-18deg)" : undefined,
+              background: `radial-gradient(circle at 34% 28%, ${accent}, ${primary} 72%)`,
+            }}
+          />
+          <span
+            style={{
+              ...commonShapeStyle,
+              width: "23%",
+              height: "12%",
+              left: "49%",
+              top: "19%",
+              transform: "rotate(-35deg)",
+              borderRadius: "100% 0 100% 0",
+              background: "#9ae27b",
+            }}
+          />
+        </>
+      );
+      break;
+    case "canister":
+    case "capsule":
+      silhouette = (
+        <span
+          style={{
+            ...commonShapeStyle,
+            width: shape === "capsule" ? "34%" : "42%",
+            height: "64%",
+            left: shape === "capsule" ? "33%" : "29%",
+            top: "16%",
+            border: `${line}px solid rgba(255,255,255,.46)`,
+            borderRadius: shape === "capsule" ? 999 : 8,
+            background: `linear-gradient(180deg, ${accent} 0 18%, ${primary} 19% 72%, ${accent} 73%)`,
+          }}
+        />
+      );
+      break;
+    default:
+      if (/medical|medicine|medkit|bandage|health|care/.test(semanticText)) {
+        silhouette = (
+          <>
+            <span
+              style={{
+                ...commonShapeStyle,
+                width: "62%",
+                height: "50%",
+                left: "19%",
+                top: "27%",
+                border: `${line}px solid rgba(255,255,255,.48)`,
+                borderRadius: 8,
+                background: `linear-gradient(145deg, ${accent}, ${primary})`,
+              }}
+            />
+            <span
+              style={{
+                ...commonShapeStyle,
+                width: "11%",
+                height: "31%",
+                left: "44.5%",
+                top: "36%",
+                borderRadius: 2,
+                background: "rgba(246,255,252,.92)",
+              }}
+            />
+            <span
+              style={{
+                ...commonShapeStyle,
+                width: "31%",
+                height: "11%",
+                left: "34.5%",
+                top: "46%",
+                borderRadius: 2,
+                background: "rgba(246,255,252,.92)",
+              }}
+            />
+          </>
+        );
+      } else if (
+        /furniture|chair|bed|shelf|storage|table|wardrobe/.test(semanticText)
+      ) {
+        silhouette = (
+          <>
+            <span
+              style={{
+                ...commonShapeStyle,
+                width: "62%",
+                height: "18%",
+                left: "19%",
+                top: "43%",
+                border: `${line}px solid rgba(255,255,255,.38)`,
+                borderRadius: 4,
+                background: `linear-gradient(145deg, ${accent}, ${primary})`,
+              }}
+            />
+            {[25, 67].map((left) => (
+              <span
+                key={left}
+                style={{
+                  ...commonShapeStyle,
+                  width: line + 2,
+                  height: "27%",
+                  left: `${left}%`,
+                  top: "57%",
+                  borderRadius: 2,
+                  background: primary,
+                }}
+              />
+            ))}
+          </>
+        );
+      } else if (/light|lantern|lamp/.test(semanticText)) {
+        silhouette = (
+          <>
+            <span
+              style={{
+                ...commonShapeStyle,
+                width: "39%",
+                height: "52%",
+                left: "30.5%",
+                top: "24%",
+                border: `${line}px solid rgba(255,255,255,.44)`,
+                borderRadius: "8px 8px 12px 12px",
+                background: `radial-gradient(circle, rgba(255,239,161,.96), ${accent} 42%, ${primary})`,
+                boxShadow: `0 0 ${Math.max(10, size * 0.22)}px ${accent}`,
+              }}
+            />
+            <span
+              style={{
+                ...commonShapeStyle,
+                width: "28%",
+                height: line,
+                left: "36%",
+                top: "18%",
+                borderRadius: 999,
+                background: "rgba(255,255,255,.6)",
+              }}
+            />
+          </>
+        );
+      } else {
+        silhouette = (
+          <>
+            <span
+              style={{
+                ...commonShapeStyle,
+                width: "55%",
+                height: "55%",
+                left: "22.5%",
+                top: "22%",
+                border: `${line}px solid rgba(255,255,255,.42)`,
+                borderRadius: shape === "station" ? 6 : "24%",
+                background: `linear-gradient(145deg, ${accent}, ${primary})`,
+              }}
+            />
+            <span
+              style={{
+                ...commonShapeStyle,
+                width: "21%",
+                height: "21%",
+                left: "39.5%",
+                top: "39%",
+                borderRadius: 999,
+                background: "rgba(238,252,255,.88)",
+                boxShadow: `0 0 ${Math.max(8, size * 0.18)}px ${accent}`,
+              }}
+            />
+          </>
+        );
+      }
+  }
+  return (
+    <span
+      aria-hidden="true"
+      data-bikkie-procedural-art={shape}
+      style={{ position: "absolute", inset, overflow: "hidden" }}
+    >
+      {silhouette}
+      <span
+        style={{
+          position: "absolute",
+          right: 1,
+          bottom: 0,
+          padding: "2px 3px",
+          borderRadius: 3,
+          color: "rgba(255,255,255,.88)",
+          background: "rgba(0,0,0,.42)",
+          fontSize: Math.max(7, Math.round(size * 0.12)),
+          fontWeight: 950,
+          lineHeight: 1,
+          letterSpacing: ".02em",
+        }}
+      >
+        {visual.glyph}
+      </span>
+    </span>
+  );
+};
+
 const BikkieVisualTileForVisual: React.FunctionComponent<{
   visual: HarthmereResolvedBikkieVisual;
   size?: number;
   dataTestId?: string;
 }> = ({ visual, size, dataTestId }) => {
   const imageUrl = harthmereBikkieVisualImageUrl(visual);
+  const [imageFailed, setImageFailed] = React.useState(false);
+  const resolvedSize = size ?? 42;
+  const showImage = Boolean(imageUrl) && !imageFailed;
   return (
     <span
+      className="harthmere-business-bikkie-tile"
       aria-label={visual.ariaLabel}
       title={visual.metadataSummary}
-      style={harthmereBikkieVisualTileStyle(visual, size)}
+      style={{
+        ...harthmereBikkieVisualTileStyle(visual, resolvedSize),
+        border: "1px solid rgba(255,255,255,.2)",
+        boxShadow: `${visual.cssShadow}, inset 0 1px 0 rgba(255,255,255,.14)`,
+      }}
       data-testid={dataTestId}
       data-bikkie-visual="true"
+      data-bikkie-id={visual.bikkieId}
       data-visual-source={visual.source}
       data-visual-kind={visual.shape}
       data-visual-id={visual.visualId}
       data-icon-asset-path={visual.iconAssetPath}
     >
-      {imageUrl ? (
+      {showImage ? (
         <img
           src={imageUrl}
           alt=""
           aria-hidden="true"
-          style={harthmereBikkieVisualImageStyle}
+          style={{
+            ...harthmereBikkieVisualImageStyle,
+            inset: Math.max(4, Math.round(resolvedSize * 0.08)),
+            width: `calc(100% - ${Math.max(
+              8,
+              Math.round(resolvedSize * 0.16)
+            )}px)`,
+            height: `calc(100% - ${Math.max(
+              8,
+              Math.round(resolvedSize * 0.16)
+            )}px)`,
+          }}
+          onError={() => setImageFailed(true)}
           data-bikkie-visual-img="true"
         />
-      ) : null}
-      <span style={harthmereBikkieVisualGlyphStyle}>{visual.glyph}</span>
+      ) : (
+        <BikkieProceduralArt visual={visual} size={resolvedSize} />
+      )}
     </span>
   );
 };
@@ -453,6 +1211,36 @@ const BikkieVisualTileForVisual: React.FunctionComponent<{
 const BikkieVisualTile: React.FunctionComponent<{
   graphic: HarthmereBusinessBikkieGraphic;
 }> = ({ graphic }) => <BikkieVisualTileForVisual visual={graphic.visual} />;
+
+const GoldPrice: React.FunctionComponent<{
+  amount: number;
+  suffix?: string;
+}> = ({ amount, suffix = "Gold" }) => (
+  <span style={goldPriceStyle}>
+    <span style={goldCoinStyle} aria-hidden="true">
+      ◆
+    </span>
+    <span>{amount.toLocaleString()}</span>
+    <span style={goldPriceSuffixStyle}>{suffix}</span>
+  </span>
+);
+
+function businessServiceGlyph(action: HarthmereBusinessServiceAction) {
+  const text = `${action.actionId} ${action.serviceNeed ?? ""} ${
+    action.label
+  }`.toLowerCase();
+  if (/health|care|medical|treat|doctor/.test(text)) return "+";
+  if (/repair|maintenance|fix|inspect/.test(text)) return "◇";
+  if (/security|guard|defen|safety/.test(text)) return "◆";
+  if (/portal|teleport|transit/.test(text)) return "◎";
+  if (/food|meal|restaurant|cook/.test(text)) return "◒";
+  if (/delivery|courier|logistics|dispatch/.test(text)) return "↗";
+  if (/clean|sanitation|waste/.test(text)) return "≈";
+  if (/build|home|housing|property/.test(text)) return "⌂";
+  if (/magic|ward|arcane/.test(text)) return "✦";
+  if (/explore|expedition|guide|knowledge/.test(text)) return "△";
+  return "◈";
+}
 
 export const HarthmereBusinessInterfacePanel: React.FunctionComponent<
   HarthmereBusinessInterfacePanelProps
@@ -556,6 +1344,7 @@ export const HarthmereBusinessInterfacePanel: React.FunctionComponent<
     business.name,
     business.typeId
   );
+  const businessPresentation = harthmereBusinessPresentation(business.typeId);
   let activePane: React.ReactNode = null;
   switch (activeTab) {
     case "dashboard":
@@ -668,8 +1457,10 @@ export const HarthmereBusinessInterfacePanel: React.FunctionComponent<
         data-business-id={activeBusinessId}
         data-business-mode={mode}
         data-business-backend-pending={backendPending ? "true" : "false"}
-        className="biomes-ui-panel"
+        className="biomes-ui-panel harthmere-business-panel"
         style={{
+          ["--business-accent" as string]: businessPresentation.accent,
+          ["--business-accent-rgb" as string]: businessPresentation.accentRgb,
           position: compact ? "relative" : "fixed",
           inset: compact
             ? undefined
@@ -677,54 +1468,69 @@ export const HarthmereBusinessInterfacePanel: React.FunctionComponent<
           zIndex: compact ? undefined : 1250,
           maxWidth: compact ? undefined : 1180,
           width: compact ? "100%" : "calc(100vw - 20px)",
+          height: compact ? undefined : "calc(100vh - 20px)",
           maxHeight: compact ? undefined : "calc(100vh - 20px)",
           boxSizing: "border-box",
           margin: compact ? undefined : "auto",
-          overflow: "auto",
-          padding: compact ? 12 : "16px 18px",
+          overflow: "hidden",
+          padding: compact ? 14 : "18px 20px 16px",
         }}
       >
-        <header
-          style={{
-            display: "grid",
-            gridTemplateColumns: "minmax(0, 1fr) auto",
-            gap: 12,
-            alignItems: "start",
-            marginBottom: 12,
-          }}
-        >
-          <div>
+        <header className="harthmere-business-header">
+          <div className="harthmere-business-crest" aria-hidden="true">
+            {businessPresentation.mark}
+          </div>
+          <div style={{ minWidth: 0 }}>
+            <div className="harthmere-business-eyebrow">
+              <span>{businessPresentation.descriptor}</span>
+              <span aria-hidden="true">{"//"}</span>
+              <span>
+                {mode === "owner" ? "Management console" : "Public counter"}
+              </span>
+            </div>
             <h2 style={panelTitleStyle}>{businessDisplayName}</h2>
-            <p style={mutedTextStyle}>
-              {type?.displayName ?? displayLabel(business.typeId)} ·{" "}
-              {mode === "owner" ? "Owner Management" : "Customer Services"} ·{" "}
-              {displayLabel(business.status)}
-            </p>
+            <div className="harthmere-business-meta">
+              <span className="harthmere-business-meta-chip">
+                {type?.displayName ?? displayLabel(business.typeId)}
+              </span>
+              {type?.category ? (
+                <span className="harthmere-business-meta-chip">
+                  {displayLabel(type.category)}
+                </span>
+              ) : null}
+              <span
+                className="harthmere-business-meta-chip"
+                data-status={business.status}
+              >
+                {displayLabel(business.status)}
+              </span>
+            </div>
           </div>
           <button
             type="button"
-            className="biomes-ui-tab"
+            className="biomes-ui-tab harthmere-business-close"
             onClick={onClose}
             aria-label="Close business interface"
           >
-            Close
+            <span className="harthmere-business-close-mark" aria-hidden="true">
+              ×
+            </span>
+            <span>Close</span>
+            <span className="harthmere-business-close-key" aria-hidden="true">
+              Esc
+            </span>
           </button>
         </header>
 
         <nav
           aria-label="Business interface sections"
-          style={{
-            display: "flex",
-            flexWrap: "wrap",
-            gap: 4,
-            marginBottom: 12,
-          }}
+          className="harthmere-business-nav"
         >
           {tabs.map((tab) => (
             <button
               key={tab}
               type="button"
-              className="biomes-ui-tab"
+              className="biomes-ui-tab harthmere-business-tab"
               aria-selected={activeTab === tab}
               onClick={() => setActiveTab(tab)}
             >
@@ -733,12 +1539,14 @@ export const HarthmereBusinessInterfacePanel: React.FunctionComponent<
           ))}
         </nav>
 
-        <React.Profiler
-          id={`harthmere-business-${activeTab}`}
-          onRender={onActivePaneRender}
-        >
-          {activePane}
-        </React.Profiler>
+        <div className="harthmere-business-content">
+          <React.Profiler
+            id={`harthmere-business-${activeTab}`}
+            onRender={onActivePaneRender}
+          >
+            {activePane}
+          </React.Profiler>
+        </div>
         {backendPending ? (
           <div
             style={businessPendingOverlayStyle}
@@ -1788,10 +2596,24 @@ const ShopfrontPane: React.FunctionComponent<{
     );
   };
   return (
-    <section style={cardStyle}>
-      <h3 style={sectionTitleStyle}>
-        {mode === "owner" ? "Shopfront & Inventory" : "Shopfront"}
-      </h3>
+    <section style={shopfrontRootStyle}>
+      <div style={shopfrontPaneHeaderStyle}>
+        <div style={{ minWidth: 0 }}>
+          <span style={shopfrontPaneEyebrowStyle}>Merchant inventory</span>
+          <h3 style={shopfrontPaneTitleStyle}>
+            {mode === "owner" ? "Shopfront & Inventory" : "Shopfront"}
+          </h3>
+          <p style={shopfrontPaneDescriptionStyle}>
+            {mode === "owner"
+              ? "Manage public stock, quantities, and regional pricing."
+              : "Select an item, set the quantity, and confirm the purchase."}
+          </p>
+        </div>
+        <span style={shopfrontSecureTradeStyle}>
+          <span style={shopfrontSecureTradeDotStyle} aria-hidden="true" />
+          Secure trade
+        </span>
+      </div>
       {mode === "owner" ? (
         <>
           <div style={formRowStyle}>
@@ -1885,12 +2707,15 @@ const ShopfrontPane: React.FunctionComponent<{
           countLabel="1 tool"
           dataTestId="biomes-business-tool-for-sale"
         >
-          <div style={shopfrontToolListingStyle}>
+          <div
+            className="harthmere-business-product-card harthmere-business-tool-card"
+            style={shopfrontToolListingStyle}
+          >
             <div style={shopfrontItemLeadStyle}>
               {shop.toolForSale.visual ? (
                 <BikkieVisualTileForVisual
                   visual={shop.toolForSale.visual}
-                  size={72}
+                  size={88}
                   dataTestId="biomes-business-tool-for-sale-icon"
                 />
               ) : null}
@@ -1902,23 +2727,25 @@ const ShopfrontPane: React.FunctionComponent<{
                   <span style={shopfrontKindBadgeStyle("tool")}>Tool</span>
                 </div>
                 <div style={shopItemMetaStyle}>
-                  Unit price {shop.toolForSale.priceGold} gold
+                  <span>Standard issue · </span>
+                  <GoldPrice amount={shop.toolForSale.priceGold} />
                 </div>
               </div>
             </div>
             <button
-              className="biomes-ui-tab"
+              className="biomes-ui-tab harthmere-business-primary-action"
               type="button"
               aria-label={`Buy ${shop.toolForSale.toolName}`}
               data-business-backend-action="true"
               disabled={backendPending}
               onClick={() => purchaseHarthmereBusinessTool(shop.businessType)}
               style={backendActionStyle(
-                shopfrontPrimaryBuyButtonStyle,
+                shopfrontToolBuyButtonStyle,
                 backendPending
               )}
             >
-              Buy Tool · {shop.toolForSale.priceGold} Gold
+              <span>Buy Tool</span>
+              <GoldPrice amount={shop.toolForSale.priceGold} />
             </button>
           </div>
         </ShopfrontMerchSection>
@@ -2024,6 +2851,7 @@ const ShopfrontGoodPurchaseCard: React.FunctionComponent<{
     : "Buy";
   return (
     <article
+      className="harthmere-business-product-card"
       data-shopfront-card="bikkie-first"
       data-shopfront-has-bikkie-visual={good.visual ? "true" : undefined}
       data-testid={`biomes-business-storefront-good-${good.itemId}`}
@@ -2037,7 +2865,7 @@ const ShopfrontGoodPurchaseCard: React.FunctionComponent<{
           {good.visual ? (
             <BikkieVisualTileForVisual
               visual={good.visual}
-              size={68}
+              size={84}
               dataTestId={`biomes-business-storefront-good-icon-${good.itemId}`}
             />
           ) : (
@@ -2055,7 +2883,7 @@ const ShopfrontGoodPurchaseCard: React.FunctionComponent<{
           </div>
           <div style={shopfrontPriceLineStyle}>
             <span>{isRecipeBook ? "Book price" : "Each"}</span>
-            <strong>{good.priceGold} Gold</strong>
+            <GoldPrice amount={good.priceGold} />
           </div>
           {isRecipeBook ? (
             <div style={shopItemMetaStyle}>
@@ -2067,7 +2895,9 @@ const ShopfrontGoodPurchaseCard: React.FunctionComponent<{
       </div>
       <div style={shopfrontPurchaseRowStyle}>
         {isRecipeBook ? (
-          <span style={shopfrontTotalStyle}>{totalGold} Gold</span>
+          <span style={shopfrontTotalStyle}>
+            <GoldPrice amount={totalGold} />
+          </span>
         ) : (
           <ShopfrontQuantityControl
             itemId={good.itemId}
@@ -2078,7 +2908,7 @@ const ShopfrontGoodPurchaseCard: React.FunctionComponent<{
           />
         )}
         <button
-          className="biomes-ui-tab"
+          className="biomes-ui-tab harthmere-business-primary-action"
           type="button"
           data-business-backend-action="true"
           disabled={disabled}
@@ -2094,8 +2924,8 @@ const ShopfrontGoodPurchaseCard: React.FunctionComponent<{
           )}
           onClick={() => onBuy(purchaseCount)}
         >
-          {actionLabel}
-          {!learned ? ` · ${totalGold} Gold` : ""}
+          <span>{actionLabel}</span>
+          {!learned ? <GoldPrice amount={totalGold} /> : null}
         </button>
       </div>
     </article>
@@ -2117,6 +2947,7 @@ const ShopfrontInventoryPurchaseCard: React.FunctionComponent<{
   const totalGold = item.priceGold * purchaseCount;
   return (
     <article
+      className="harthmere-business-product-card"
       data-shopfront-card="stock"
       data-shopfront-has-bikkie-visual={item.visual ? "true" : undefined}
       data-testid={`biomes-business-shop-stock-card-${item.itemId}`}
@@ -2127,7 +2958,7 @@ const ShopfrontInventoryPurchaseCard: React.FunctionComponent<{
           {item.visual ? (
             <BikkieVisualTileForVisual
               visual={item.visual}
-              size={62}
+              size={78}
               dataTestId={`biomes-business-shop-stock-icon-${item.itemId}`}
             />
           ) : (
@@ -2145,7 +2976,7 @@ const ShopfrontInventoryPurchaseCard: React.FunctionComponent<{
           </div>
           <div style={shopfrontPriceLineStyle}>
             <span>Each</span>
-            <strong>{item.priceGold} Gold</strong>
+            <GoldPrice amount={item.priceGold} />
           </div>
           <div style={shopItemMetaStyle}>Stock x{item.count}</div>
         </div>
@@ -2161,7 +2992,7 @@ const ShopfrontInventoryPurchaseCard: React.FunctionComponent<{
           testIdPrefix="biomes-business-shop-stock-quantity"
         />
         <button
-          className="biomes-ui-tab"
+          className="biomes-ui-tab harthmere-business-primary-action"
           type="button"
           data-business-backend-action="true"
           disabled={disabled}
@@ -2177,8 +3008,12 @@ const ShopfrontInventoryPurchaseCard: React.FunctionComponent<{
           )}
           onClick={() => onBuy?.(item, purchaseCount)}
         >
-          {purchaseCount > 1 ? `${actionLabel} x${purchaseCount}` : actionLabel}
-          {` · ${totalGold} Gold`}
+          <span>
+            {purchaseCount > 1
+              ? `${actionLabel} x${purchaseCount}`
+              : actionLabel}
+          </span>
+          <GoldPrice amount={totalGold} />
         </button>
       </div>
     </article>
@@ -2209,7 +3044,10 @@ const ShopfrontQuantityControl: React.FunctionComponent<{
   };
   const atMax = maxCount !== undefined && parsedCount >= maxCount;
   return (
-    <div style={shopfrontQuantityControlStyle}>
+    <div
+      className="harthmere-business-quantity"
+      style={shopfrontQuantityControlStyle}
+    >
       <button
         type="button"
         aria-label={`Decrease quantity for ${itemLabel}`}
@@ -2258,6 +3096,7 @@ const ShopfrontMerchSection: React.FunctionComponent<{
   children: React.ReactNode;
 }> = ({ kind, title, countLabel, dataTestId, children }) => (
   <div
+    className="harthmere-business-merch-section"
     data-testid={dataTestId ?? `biomes-business-storefront-section-${kind}`}
     style={shopfrontSectionStyle(kind)}
   >
@@ -3102,18 +3941,31 @@ const OperationsPane: React.FunctionComponent<{
     mode === "owner" ? screen.ownerActions : screen.customerActions;
   const actionRows = React.useMemo(() => chunk(actions, 3), [actions]);
   return (
-    <section style={cardStyle}>
-      <h3 style={sectionTitleStyle}>{screen.title} Operations</h3>
-      {mode === "customer" ? (
-        <p style={{ ...mutedTextStyle, marginBottom: 10 }}>
-          Choose a paid service from this business. Buying a service creates a
-          request for the owner to fulfill.
-        </p>
-      ) : null}
+    <section style={serviceRootStyle}>
+      <div style={servicePaneHeaderStyle}>
+        <div style={{ minWidth: 0 }}>
+          <span style={shopfrontPaneEyebrowStyle}>
+            {mode === "customer" ? "Available services" : "Operations desk"}
+          </span>
+          <h3 style={shopfrontPaneTitleStyle}>
+            {displayLabel(screen.title)} Operations
+          </h3>
+          <p style={shopfrontPaneDescriptionStyle}>
+            {mode === "customer"
+              ? "Choose a paid service from this business. The owner receives a tracked fulfillment request."
+              : "Run service actions and manage the work connected to this business."}
+          </p>
+        </div>
+        <span style={serviceAvailabilityStyle}>
+          <span style={serviceAvailabilityDotStyle} aria-hidden="true" />
+          {actions.length} {actions.length === 1 ? "service" : "services"}
+        </span>
+      </div>
       {actions.length ? (
         <RovingGrid
           ariaLabel="Business operation actions"
           items={actionRows}
+          style={serviceGridStyle}
           onActivate={(_row, _col, action) => {
             if (backendPending) return;
             if (mode === "owner") {
@@ -3136,7 +3988,7 @@ const OperationsPane: React.FunctionComponent<{
                 onFocus={cell.onFocus}
                 onKeyDown={cell.onKeyDown}
                 onClick={cell.onClick}
-                className="biomes-ui-tab"
+                className="biomes-ui-tab harthmere-business-service-card"
                 data-business-backend-action="true"
                 data-business-service-price-gold={
                   isCustomer ? priceGold : undefined
@@ -3151,15 +4003,39 @@ const OperationsPane: React.FunctionComponent<{
                 }
               >
                 <span style={serviceOfferHeaderStyle}>
-                  <strong>{action.label}</strong>
+                  <span style={serviceIconStyle} aria-hidden="true">
+                    {businessServiceGlyph(action)}
+                  </span>
+                  <span style={serviceOfferIdentityStyle}>
+                    <span style={serviceOfferEyebrowStyle}>
+                      {displayLabel(action.serviceNeed ?? action.operation)}
+                    </span>
+                    <strong style={serviceOfferTitleStyle}>
+                      {action.label}
+                    </strong>
+                  </span>
                   {isCustomer ? (
-                    <span style={servicePriceBadgeStyle}>{priceGold} gold</span>
+                    <span style={servicePriceBadgeStyle}>
+                      <GoldPrice amount={priceGold} />
+                    </span>
                   ) : null}
                 </span>
-                <span style={mutedTextStyle}>{action.description}</span>
-                {isCustomer ? (
-                  <span style={serviceBuyCtaStyle}>Buy Service</span>
-                ) : null}
+                <span style={serviceDescriptionStyle}>
+                  {action.description}
+                </span>
+                <span style={serviceFooterStyle}>
+                  <span style={serviceFulfillmentStyle}>
+                    {action.requiresWorldService
+                      ? "Tracked field request"
+                      : isCustomer
+                      ? "Business fulfillment"
+                      : "Owner operation"}
+                  </span>
+                  <span style={serviceBuyCtaStyle}>
+                    {isCustomer ? "Buy Service" : "Run Operation"}
+                    <span aria-hidden="true">›</span>
+                  </span>
+                </span>
               </button>
             );
           }}
@@ -3169,7 +4045,7 @@ const OperationsPane: React.FunctionComponent<{
           No actions are available for this business type.
         </p>
       )}
-      <div style={{ marginTop: 12 }}>
+      <div style={serviceRecordsStyle}>
         <h3 style={sectionTitleStyle}>World Records</h3>
         <p style={mutedTextStyle}>
           {Object.entries(screen.systemRecords)
@@ -3363,29 +4239,36 @@ const MetricCard: React.FunctionComponent<{
 
 const panelTitleStyle: React.CSSProperties = {
   margin: 0,
-  fontSize: 22,
-  letterSpacing: "0.18em",
+  fontSize: "clamp(21px, 2.1vw, 29px)",
+  lineHeight: 1.05,
+  letterSpacing: "0.105em",
   textTransform: "uppercase",
-  color: "var(--biomes-fg)",
+  color: "#f4f8fc",
+  textShadow: "0 2px 20px rgba(0,0,0,.46)",
+  overflowWrap: "anywhere",
 };
 const sectionTitleStyle: React.CSSProperties = {
-  margin: "0 0 8px",
-  fontSize: 11,
-  letterSpacing: "0.16em",
+  margin: "0 0 10px",
+  fontSize: 10,
+  fontWeight: 900,
+  letterSpacing: "0.18em",
   textTransform: "uppercase",
-  color: "var(--biomes-fg-muted)",
+  color: "rgba(var(--business-accent-rgb), .88)",
 };
 const mutedTextStyle: React.CSSProperties = {
   margin: 0,
-  fontSize: 12,
-  color: "var(--biomes-fg-muted)",
-  lineHeight: 1.45,
+  fontSize: 12.5,
+  color: "rgba(226, 237, 248, .66)",
+  lineHeight: 1.5,
 };
 const cardStyle: React.CSSProperties = {
-  padding: 12,
-  background: "var(--biomes-bg-glass)",
-  border: "1px solid var(--biomes-edge-cyan-soft)",
-  borderRadius: 4,
+  padding: 14,
+  background:
+    "linear-gradient(155deg, rgba(18, 29, 49, .82), rgba(6, 12, 24, .82))",
+  border: "1px solid rgba(var(--business-accent-rgb), .2)",
+  borderRadius: 8,
+  boxShadow:
+    "inset 0 1px 0 rgba(255,255,255,.045), 0 10px 28px rgba(0,0,0,.16)",
 };
 const metricCardStyle: React.CSSProperties = {
   ...cardStyle,
@@ -3435,17 +4318,19 @@ const bikkieGraphicKindStyle: React.CSSProperties = {
 };
 const responsiveGridStyle: React.CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-  gap: 12,
+  gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+  gap: 14,
   alignItems: "start",
 };
 const inputStyle: React.CSSProperties = {
   minWidth: 0,
-  padding: "7px 9px",
+  minHeight: 36,
+  padding: "8px 11px",
   color: "var(--biomes-fg)",
-  background: "var(--biomes-bg-deep)",
-  border: "1px solid var(--biomes-edge-cyan-soft)",
-  borderRadius: 4,
+  background: "rgba(2, 7, 16, .7)",
+  border: "1px solid rgba(var(--business-accent-rgb), .28)",
+  borderRadius: 5,
+  boxShadow: "inset 0 1px 8px rgba(0,0,0,.24)",
 };
 const labelStyle: React.CSSProperties = {
   display: "grid",
@@ -3458,9 +4343,9 @@ const labelStyle: React.CSSProperties = {
 };
 const formRowStyle: React.CSSProperties = {
   display: "flex",
-  gap: 8,
+  gap: 9,
   flexWrap: "wrap",
-  marginBottom: 12,
+  marginBottom: 14,
 };
 const actionTextStyle: React.CSSProperties = {
   marginTop: 2,
@@ -3512,72 +4397,278 @@ const startShiftButtonStyle: React.CSSProperties = {
   textShadow: "0 1px 0 rgba(255, 255, 255, 0.55)",
   fontWeight: 800,
 };
+const goldPriceStyle: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 4,
+  color: "#ffe29b",
+  fontSize: "inherit",
+  fontWeight: 950,
+  lineHeight: 1,
+  whiteSpace: "nowrap",
+};
+const goldCoinStyle: React.CSSProperties = {
+  display: "inline-grid",
+  placeItems: "center",
+  width: 14,
+  height: 14,
+  border: "1px solid rgba(255,243,172,.82)",
+  borderRadius: 999,
+  color: "#674113",
+  background: "linear-gradient(145deg, #fff0a8, #f5b83e 62%, #a96712)",
+  boxShadow:
+    "inset 0 1px 0 rgba(255,255,255,.62), 0 0 8px rgba(245,184,62,.28)",
+  fontSize: 6,
+  lineHeight: 1,
+};
+const goldPriceSuffixStyle: React.CSSProperties = {
+  color: "rgba(255,226,155,.68)",
+  fontSize: ".82em",
+  fontWeight: 800,
+  letterSpacing: ".04em",
+  textTransform: "uppercase",
+};
+const serviceRootStyle: React.CSSProperties = {
+  display: "grid",
+  gap: 14,
+  minHeight: "100%",
+  padding: 16,
+  boxSizing: "border-box",
+  border: "1px solid rgba(var(--business-accent-rgb), .23)",
+  borderRadius: 10,
+  background:
+    "radial-gradient(circle at 90% -10%, rgba(var(--business-accent-rgb), .13), transparent 32%), linear-gradient(155deg, rgba(17,28,47,.72), rgba(5,11,22,.74))",
+  boxShadow: "inset 0 1px 0 rgba(255,255,255,.04)",
+};
+const servicePaneHeaderStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "flex-start",
+  justifyContent: "space-between",
+  gap: 16,
+  padding: "2px 2px 14px",
+  borderBottom: "1px solid rgba(var(--business-accent-rgb), .16)",
+};
+const serviceAvailabilityStyle: React.CSSProperties = {
+  flex: "0 0 auto",
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 7,
+  minHeight: 26,
+  padding: "0 9px",
+  border: "1px solid rgba(var(--business-accent-rgb), .24)",
+  borderRadius: 999,
+  color: "rgba(228,241,250,.72)",
+  background: "rgba(2,7,16,.38)",
+  fontSize: 9,
+  fontWeight: 850,
+  letterSpacing: ".09em",
+  textTransform: "uppercase",
+};
+const serviceAvailabilityDotStyle: React.CSSProperties = {
+  width: 6,
+  height: 6,
+  borderRadius: 999,
+  background: "var(--business-accent)",
+  boxShadow: "0 0 8px rgba(var(--business-accent-rgb), .65)",
+};
+const serviceGridStyle: React.CSSProperties = {
+  display: "grid",
+  gap: 8,
+};
 const serviceButtonStyle: React.CSSProperties = {
   display: "flex",
   flexDirection: "column",
   alignItems: "flex-start",
   justifyContent: "flex-start",
-  gap: 6,
+  flex: "1 1 0",
+  gap: 11,
   width: "100%",
   minWidth: 0,
-  minHeight: 96,
+  minHeight: 184,
+  marginBottom: 4,
+  padding: 14,
   whiteSpace: "normal",
   textAlign: "left",
-  border: "1px solid rgba(145, 224, 255, 0.7)",
+  color: "var(--biomes-fg)",
+  border: "1px solid rgba(var(--business-accent-rgb), .31)",
   background:
-    "linear-gradient(180deg, rgba(39, 70, 104, 0.72), rgba(12, 22, 42, 0.96))",
-  borderRadius: 4,
+    "linear-gradient(155deg, rgba(var(--business-accent-rgb), .105), rgba(11,20,36,.94) 42%, rgba(4,9,19,.98))",
+  borderRadius: 8,
   textTransform: "none",
   letterSpacing: 0,
   boxShadow:
-    "0 8px 20px rgba(0, 0, 0, 0.24), 0 0 16px rgba(84, 184, 255, 0.18)",
+    "inset 0 1px 0 rgba(255,255,255,.055), 0 12px 26px rgba(0,0,0,.24)",
 };
 const serviceOfferHeaderStyle: React.CSSProperties = {
   width: "100%",
-  display: "flex",
-  alignItems: "flex-start",
-  justifyContent: "space-between",
+  display: "grid",
+  gridTemplateColumns: "48px minmax(0, 1fr) auto",
+  alignItems: "center",
   gap: 10,
+};
+const serviceIconStyle: React.CSSProperties = {
+  width: 46,
+  height: 46,
+  display: "grid",
+  placeItems: "center",
+  border: "1px solid rgba(var(--business-accent-rgb), .48)",
+  borderRadius: 8,
+  color: "var(--business-accent)",
+  background:
+    "linear-gradient(145deg, rgba(var(--business-accent-rgb), .2), rgba(2,7,16,.64))",
+  boxShadow:
+    "inset 0 1px 0 rgba(255,255,255,.09), 0 0 16px rgba(var(--business-accent-rgb), .1)",
+  fontSize: 23,
+  fontWeight: 500,
+};
+const serviceOfferIdentityStyle: React.CSSProperties = {
+  display: "grid",
+  gap: 3,
+  minWidth: 0,
+};
+const serviceOfferEyebrowStyle: React.CSSProperties = {
+  color: "rgba(var(--business-accent-rgb), .76)",
+  fontSize: 8,
+  fontWeight: 900,
+  letterSpacing: ".13em",
+  textTransform: "uppercase",
+};
+const serviceOfferTitleStyle: React.CSSProperties = {
+  color: "#f4f8fc",
+  fontSize: 14,
+  lineHeight: 1.2,
+  letterSpacing: ".01em",
+  overflowWrap: "anywhere",
 };
 const servicePriceBadgeStyle: React.CSSProperties = {
   flex: "0 0 auto",
-  padding: "3px 7px",
-  color: "#06111f",
-  background: "linear-gradient(180deg, #fff477, #ffbd3f)",
-  border: "1px solid rgba(255, 246, 142, 0.95)",
-  borderRadius: 999,
-  fontSize: 10,
-  fontWeight: 900,
-  lineHeight: 1,
+  padding: "5px 7px",
+  color: "#ffe29b",
+  background: "rgba(3,8,17,.55)",
+  border: "1px solid rgba(255,210,101,.22)",
+  borderRadius: 5,
+  fontSize: 11,
   whiteSpace: "nowrap",
 };
-const serviceBuyCtaStyle: React.CSSProperties = {
+const serviceDescriptionStyle: React.CSSProperties = {
+  display: "block",
+  color: "rgba(226,237,248,.68)",
+  fontSize: 12.5,
+  lineHeight: 1.5,
+  textTransform: "none",
+};
+const serviceFooterStyle: React.CSSProperties = {
   marginTop: "auto",
   alignSelf: "stretch",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: 10,
+  paddingTop: 11,
+  borderTop: "1px solid rgba(255,255,255,.075)",
+};
+const serviceFulfillmentStyle: React.CSSProperties = {
+  minWidth: 0,
+  color: "rgba(226,237,248,.48)",
+  fontSize: 9,
+  fontWeight: 800,
+  letterSpacing: ".08em",
+  textTransform: "uppercase",
+};
+const serviceBuyCtaStyle: React.CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
+  gap: 8,
   justifyContent: "center",
-  minHeight: 28,
-  padding: "0 10px",
-  color: "#06111f",
-  background: "linear-gradient(180deg, #92ffd7, #37dba4)",
-  border: "1px solid rgba(169, 255, 225, 0.9)",
-  borderRadius: 4,
-  fontSize: 11,
+  color: "var(--business-accent)",
+  fontSize: 10,
   fontWeight: 900,
   textTransform: "uppercase",
-  letterSpacing: "0.08em",
+  letterSpacing: "0.1em",
+  whiteSpace: "nowrap",
+};
+const serviceRecordsStyle: React.CSSProperties = {
+  marginTop: 2,
+  padding: "12px 2px 2px",
+  borderTop: "1px solid rgba(var(--business-accent-rgb), .14)",
+};
+const shopfrontRootStyle: React.CSSProperties = {
+  display: "grid",
+  gap: 14,
+  minHeight: "100%",
+  padding: 16,
+  boxSizing: "border-box",
+  border: "1px solid rgba(var(--business-accent-rgb), .23)",
+  borderRadius: 10,
+  background:
+    "radial-gradient(circle at 92% -12%, rgba(var(--business-accent-rgb), .13), transparent 32%), linear-gradient(155deg, rgba(17,28,47,.7), rgba(5,11,22,.75))",
+  boxShadow: "inset 0 1px 0 rgba(255,255,255,.04)",
+};
+const shopfrontPaneHeaderStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "flex-start",
+  justifyContent: "space-between",
+  gap: 16,
+  padding: "2px 2px 14px",
+  borderBottom: "1px solid rgba(var(--business-accent-rgb), .16)",
+};
+const shopfrontPaneEyebrowStyle: React.CSSProperties = {
+  display: "block",
+  marginBottom: 4,
+  color: "rgba(var(--business-accent-rgb), .84)",
+  fontSize: 9,
+  fontWeight: 900,
+  letterSpacing: ".18em",
+  textTransform: "uppercase",
+};
+const shopfrontPaneTitleStyle: React.CSSProperties = {
+  margin: 0,
+  color: "#f4f8fc",
+  fontSize: 20,
+  lineHeight: 1.12,
+  letterSpacing: ".04em",
+  textTransform: "uppercase",
+};
+const shopfrontPaneDescriptionStyle: React.CSSProperties = {
+  maxWidth: 620,
+  margin: "6px 0 0",
+  color: "rgba(226,237,248,.61)",
+  fontSize: 12.5,
+  lineHeight: 1.45,
+};
+const shopfrontSecureTradeStyle: React.CSSProperties = {
+  flex: "0 0 auto",
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 7,
+  minHeight: 26,
+  padding: "0 9px",
+  border: "1px solid rgba(var(--business-accent-rgb), .24)",
+  borderRadius: 999,
+  color: "rgba(228,241,250,.72)",
+  background: "rgba(2,7,16,.38)",
+  fontSize: 9,
+  fontWeight: 850,
+  letterSpacing: ".09em",
+  textTransform: "uppercase",
+};
+const shopfrontSecureTradeDotStyle: React.CSSProperties = {
+  width: 6,
+  height: 6,
+  borderRadius: 999,
+  background: "#7de4b8",
+  boxShadow: "0 0 8px rgba(125,228,184,.65)",
 };
 const shopfrontSectionStackStyle: React.CSSProperties = {
   display: "grid",
-  gap: 10,
-  margin: "8px 0",
+  gap: 14,
 };
 const shopfrontGoodsGridStyle: React.CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 220px), 1fr))",
-  gap: 10,
-  marginTop: 8,
+  gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 260px), 1fr))",
+  gap: 12,
+  marginTop: 10,
   alignItems: "stretch",
 };
 const shopfrontMerchTones: Record<
@@ -3650,12 +4741,11 @@ function shopfrontKindLabel(kind: ShopfrontMerchKind): string {
 function shopfrontSectionStyle(kind: ShopfrontMerchKind): React.CSSProperties {
   const tone = shopfrontMerchTones[kind];
   return {
-    margin: "8px 0",
-    padding: 10,
-    border: `1px solid ${tone.border}`,
-    borderRadius: 4,
-    background: `linear-gradient(180deg, ${tone.surfaceTop}, rgba(9, 14, 26, 0.94))`,
-    boxShadow: `inset 4px 0 0 ${tone.accent}, 0 0 18px ${tone.glow}`,
+    padding: 13,
+    border: `1px solid color-mix(in srgb, ${tone.accent} 48%, transparent)`,
+    borderRadius: 8,
+    background: `radial-gradient(circle at 100% 0, ${tone.glow}, transparent 28%), linear-gradient(155deg, ${tone.surfaceTop}, rgba(5, 11, 22, 0.9) 48%)`,
+    boxShadow: `inset 3px 0 0 ${tone.accent}, inset 0 1px 0 rgba(255,255,255,.04), 0 10px 28px rgba(0,0,0,.16)`,
   };
 }
 const shopfrontSectionHeaderStyle: React.CSSProperties = {
@@ -3672,10 +4762,11 @@ function shopfrontSectionTitleStyle(
   return {
     minWidth: 0,
     color: tone.badgeText,
-    fontSize: 12,
+    fontSize: 11,
+    fontWeight: 950,
     lineHeight: 1.2,
     textTransform: "uppercase",
-    letterSpacing: "0.08em",
+    letterSpacing: "0.13em",
   };
 }
 function shopfrontSectionCountStyle(
@@ -3684,9 +4775,9 @@ function shopfrontSectionCountStyle(
   const tone = shopfrontMerchTones[kind];
   return {
     flex: "0 0 auto",
-    padding: "2px 6px",
+    padding: "3px 7px",
     border: `1px solid ${tone.border}`,
-    borderRadius: 4,
+    borderRadius: 999,
     color: tone.badgeText,
     background: tone.badgeBg,
     fontSize: 9,
@@ -3701,48 +4792,51 @@ function shopfrontGoodCardStyle(kind: ShopfrontMerchKind): React.CSSProperties {
   return {
     display: "grid",
     gridTemplateRows: "minmax(0, 1fr) auto",
-    gap: 12,
-    minHeight: 176,
+    gap: 14,
+    minHeight: 214,
     minWidth: 0,
-    padding: 12,
+    padding: 14,
     boxSizing: "border-box",
-    border: `1px solid ${tone.border}`,
-    borderRadius: 6,
+    border: `1px solid color-mix(in srgb, ${tone.accent} 44%, transparent)`,
+    borderRadius: 8,
     color: "var(--biomes-fg)",
-    background: `linear-gradient(180deg, ${tone.surfaceTop}, ${tone.surfaceBottom})`,
+    background: `radial-gradient(circle at 100% 0, ${tone.glow}, transparent 31%), linear-gradient(155deg, ${tone.surfaceTop}, ${tone.surfaceBottom} 56%)`,
     boxShadow:
-      `inset 0 1px 0 rgba(255, 255, 255, 0.12), ` +
-      `inset 4px 0 0 ${tone.accent}, 0 12px 24px rgba(0, 0, 0, 0.2), 0 0 18px ${tone.glow}`,
+      `inset 0 1px 0 rgba(255, 255, 255, 0.09), ` +
+      `inset 3px 0 0 ${tone.accent}, 0 14px 28px rgba(0, 0, 0, 0.25)`,
     overflow: "hidden",
     position: "relative",
   };
 }
 const shopfrontToolListingStyle: React.CSSProperties = {
   ...shopfrontGoodCardStyle("tool"),
-  minHeight: 118,
-  marginTop: 8,
-  padding: 12,
+  gridTemplateColumns: "minmax(0, 1fr) minmax(190px, 280px)",
+  gridTemplateRows: "1fr",
+  alignItems: "center",
+  minHeight: 132,
+  marginTop: 10,
+  padding: 14,
   cursor: "default",
 };
 const shopfrontCardBodyStyle: React.CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "78px minmax(0, 1fr)",
-  gap: 12,
-  alignItems: "start",
+  gridTemplateColumns: "94px minmax(0, 1fr)",
+  gap: 14,
+  alignItems: "center",
   minWidth: 0,
 };
 function shopfrontItemArtStyle(kind: ShopfrontMerchKind): React.CSSProperties {
   const tone = shopfrontMerchTones[kind];
   return {
-    width: 78,
-    height: 78,
+    width: 94,
+    height: 94,
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     border: `1px solid ${tone.border}`,
-    borderRadius: 6,
-    background: `linear-gradient(180deg, rgba(255, 255, 255, 0.13), ${tone.badgeBg})`,
-    boxShadow: `inset 0 0 18px rgba(255, 255, 255, 0.08), 0 0 14px ${tone.glow}`,
+    borderRadius: 8,
+    background: `radial-gradient(circle at 50% 35%, rgba(255,255,255,.14), transparent 52%), linear-gradient(180deg, rgba(255, 255, 255, 0.09), ${tone.badgeBg})`,
+    boxShadow: `inset 0 0 22px rgba(255, 255, 255, 0.055), 0 10px 24px rgba(0,0,0,.18)`,
     overflow: "hidden",
   };
 }
@@ -3754,7 +4848,7 @@ const shopfrontFallbackGlyphStyle: React.CSSProperties = {
 };
 const shopfrontItemLeadStyle: React.CSSProperties = {
   display: "flex",
-  gap: 10,
+  gap: 14,
   alignItems: "center",
   minWidth: 0,
 };
@@ -3774,9 +4868,10 @@ const shopItemHeaderStyle: React.CSSProperties = {
 };
 const shopItemNameStyle: React.CSSProperties = {
   minWidth: 0,
-  fontSize: 13,
+  color: "#f5f8fc",
+  fontSize: 14,
   fontWeight: 900,
-  lineHeight: 1.2,
+  lineHeight: 1.25,
   overflowWrap: "anywhere",
 };
 const shopItemMetaStyle: React.CSSProperties = {
@@ -3790,9 +4885,10 @@ const shopfrontPriceLineStyle: React.CSSProperties = {
   alignItems: "center",
   justifyContent: "space-between",
   gap: 8,
-  padding: "5px 7px",
+  minHeight: 29,
+  padding: "5px 8px",
   border: "1px solid rgba(255, 255, 255, 0.12)",
-  borderRadius: 4,
+  borderRadius: 5,
   background: "rgba(0, 0, 0, 0.18)",
   color: "rgba(223, 238, 255, 0.82)",
   fontSize: 11,
@@ -3800,17 +4896,17 @@ const shopfrontPriceLineStyle: React.CSSProperties = {
 };
 const shopfrontPurchaseRowStyle: React.CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "minmax(104px, auto) minmax(0, 1fr)",
-  gap: 8,
+  gridTemplateColumns: "minmax(112px, auto) minmax(0, 1fr)",
+  gap: 9,
   alignItems: "stretch",
 };
 const shopfrontQuantityControlStyle: React.CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "28px 42px 28px",
+  gridTemplateColumns: "32px 48px 32px",
   alignItems: "stretch",
-  minHeight: 30,
-  border: "1px solid rgba(154, 199, 230, 0.35)",
-  borderRadius: 4,
+  minHeight: 36,
+  border: "1px solid rgba(var(--business-accent-rgb), .27)",
+  borderRadius: 5,
   overflow: "hidden",
   background: "rgba(4, 12, 22, 0.62)",
 };
@@ -3822,8 +4918,8 @@ const shopfrontQuantityStepStyle: React.CSSProperties = {
   padding: 0,
   border: 0,
   color: "var(--biomes-fg)",
-  background: "rgba(154, 199, 230, 0.14)",
-  fontSize: 15,
+  background: "rgba(var(--business-accent-rgb), .09)",
+  fontSize: 16,
   fontWeight: 900,
 };
 const shopfrontQuantityInputStyle: React.CSSProperties = {
@@ -3841,19 +4937,28 @@ const shopfrontQuantityInputStyle: React.CSSProperties = {
 };
 const shopfrontPrimaryBuyButtonStyle: React.CSSProperties = {
   ...buyActionTextStyle,
-  minHeight: 30,
+  minHeight: 36,
   width: "100%",
   marginTop: 0,
+  gap: 8,
+  padding: "6px 10px",
+  borderRadius: 5,
   whiteSpace: "normal",
+};
+const shopfrontToolBuyButtonStyle: React.CSSProperties = {
+  ...shopfrontPrimaryBuyButtonStyle,
+  alignSelf: "center",
+  minHeight: 52,
+  height: "fit-content",
 };
 const shopfrontTotalStyle: React.CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
   justifyContent: "center",
-  minHeight: 30,
+  minHeight: 36,
   padding: "0 8px",
   border: "1px solid rgba(255, 255, 255, 0.14)",
-  borderRadius: 4,
+  borderRadius: 5,
   background: "rgba(0, 0, 0, 0.18)",
   color: "rgba(223, 238, 255, 0.88)",
   fontSize: 11,

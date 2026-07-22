@@ -14,13 +14,22 @@ export interface AudioResource {
   listener?: THREE.AudioListener;
 }
 
-function fetchAudioBuffer(path: AssetPath): Promise<AudioBuffer> {
+export type AudioPath = AssetPath | `/${string}`;
+
+export const HARTHMERE_BATTLE_MUSIC_PATH =
+  "/assets/harthmere/audio/hauntsync-rpg-battle-chiptune.webm" as const;
+
+export function resolveAudioUrl(path: AudioPath) {
+  return path.startsWith("/") ? path : resolveAssetUrl(path as AssetPath);
+}
+
+function fetchAudioBuffer(path: AudioPath): Promise<AudioBuffer> {
   // Note: We cannot load samples if the AudioContext is missing, or there will be a warning in the console.
   // So make sure it exists before calling this function.
   return new Promise((resolve, reject) => {
     const audioLoader = new THREE.AudioLoader();
     audioLoader.load(
-      resolveAssetUrl(path),
+      resolveAudioUrl(path),
       function (buffer) {
         resolve(buffer);
       },
@@ -30,7 +39,7 @@ function fetchAudioBuffer(path: AssetPath): Promise<AudioBuffer> {
   });
 }
 
-async function genAudioBuffer(deps: ClientResourceDeps, path: AssetPath) {
+async function genAudioBuffer(deps: ClientResourceDeps, path: AudioPath) {
   const { listener: audioListener, manager: audioManager } = deps.get("/audio");
   if (!audioListener || !audioManager) {
     return;

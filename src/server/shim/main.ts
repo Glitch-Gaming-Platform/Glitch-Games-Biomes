@@ -72,6 +72,10 @@ import {
   buildHarthmereBusinessCraftingStationSeedChanges,
   harthmereBusinessCraftingStationSeedEntityIds,
 } from "@/server/harthmere/business_crafting_station_ecs_seed";
+import {
+  HARTHMERE_PLAYER_LIKE_NPC_COSMETIC_RESET_VERSION,
+  prepareHarthmerePlayerLikeNpcForUniqueAppearance,
+} from "@/server/harthmere/player_like_npc_cosmetics";
 import { HARTHMERE_BUSINESS_CRAFTING_STATION_SEED_VERSION } from "@/shared/harthmere/business_crafting_station_seed";
 import { HARTHMERE_BUSINESS_OWNER_NPC_SEED_VERSION } from "@/shared/harthmere/business_owner_npc_seed";
 import { HARTHMERE_BUSINESS_CUSTOMER_NPC_SEED_VERSION } from "@/shared/harthmere/business_customer_npc_seed";
@@ -137,6 +141,7 @@ import {
   type HarthmereVoxelBodyConfig,
   type HarthmereVoxelFaceConfig,
 } from "@/shared/harthmere/voxel_faces";
+import { HARTHMERE_PLAYER_LIKE_NPC_VARIANT_VERSION } from "@/shared/harthmere/npc_playerlike_variants";
 import {
   SNAPSHOT_HARTHMERE_HOSTILE_SPAWNS,
   SNAPSHOT_HARTHMERE_MUCK_ZONES,
@@ -159,9 +164,15 @@ import {
   HARTHMERE_BELLBINDER_DESCENT,
   HARTHMERE_EXPANDED_WORLD_EAST_EDGE_X,
   HARTHMERE_EXTENSION_FEET_Y,
+  HARTHMERE_EXTENSION_TERRAIN_ENTITY_ID_BASE,
+  HARTHMERE_EXTENSION_TERRAIN_ENTITY_ID_LIMIT,
   HARTHMERE_ORIGINAL_WORLD_EAST_EDGE_X,
+  HARTHMERE_PREVIOUS_EXTENSION_TERRAIN_ENTITY_ID_BASE,
+  HARTHMERE_PREVIOUS_EXTENSION_TERRAIN_ENTITY_ID_LIMIT,
   expandWorldAabbForHarthmere,
   harthmereBellbinderDescentFloorBlocks,
+  harthmereExtensionFoundationShardSpecs,
+  harthmereExtensionTerrainEntityIdForShard,
   initialHarthmereWorldAabb,
   isHarthmereExtensionWorldShardX,
   shouldEnableHarthmereAdditiveWorldExtension,
@@ -194,25 +205,27 @@ async function registerShimWorldService(
 }
 
 const HARTHMERE_LOCAL_DEV_TERRAIN_BOUNDS_VERSION =
-  "harthmere-local-dev-terrain-bounds";
+  "harthmere-local-dev-terrain-complete-foundation-v2";
 const HARTHMERE_LOCAL_DEV_SEED_CONTENT_PASS =
-  "harthmere-additive-east-extension-switchback-clearance-complete-town";
+  "harthmere-additive-east-extension-complete-foundation-flat-town";
 const HARTHMERE_LOCAL_DEV_SEED_FINGERPRINT_VERSION =
-  "harthmere-local-dev-seed-fingerprint-additive-east-extension-v3";
+  "harthmere-local-dev-seed-fingerprint-additive-east-extension-v4";
 
 // Use a new terrain id band for the additive extension. Reusing the legacy
 // band would move existing +512 town entities to +1600 and therefore remove
 // terrain from the current map—the opposite of the user's add-only contract.
 const LEGACY_LOCAL_DEV_TERRAIN_ID_BASE = 8_810_000_000_000_000 as BiomesId;
 const LEGACY_LOCAL_DEV_TERRAIN_ID_LIMIT = 8_810_000_000_010_000;
-const LOCAL_DEV_TERRAIN_ID_BASE = 8_810_000_000_030_000 as BiomesId;
+const LOCAL_DEV_TERRAIN_ID_BASE =
+  HARTHMERE_EXTENSION_TERRAIN_ENTITY_ID_BASE as BiomesId;
 const LOCAL_DEV_NPC_ID_BASE = 8_810_000_000_010_000 as BiomesId;
-const LOCAL_DEV_TERRAIN_ID_LIMIT = 8_810_000_000_040_000;
+const LOCAL_DEV_TERRAIN_ID_LIMIT = HARTHMERE_EXTENSION_TERRAIN_ENTITY_ID_LIMIT;
 const LOCAL_DEV_NPC_ID_LIMIT = 8_810_000_000_020_000;
 const LOCAL_DEV_SEED_MARKER_ID = 8_810_000_000_020_000 as BiomesId;
 const LOCAL_DEV_RUNTIME_CONTENT_MARKER_ID = 8_810_000_000_020_001 as BiomesId;
+const LOCAL_DEV_NPC_COSMETIC_MARKER_ID = 8_810_000_000_020_002 as BiomesId;
 const HARTHMERE_ADDITIVE_RUNTIME_CONTENT_VERSION =
-  "harthmere-additive-runtime-content-grounding-v2" as const;
+  "harthmere-additive-runtime-content-unique-npc-cosmetics-v3" as const;
 
 const STARTER_TOWN_GROUND_Y = 52;
 const STARTER_TOWN_SPAWN: Vec3 = [486, STARTER_TOWN_GROUND_Y + 1, -209];
@@ -1004,6 +1017,8 @@ function isLocalDevStarterWorldEntityId(id: BiomesId) {
   return (
     (id >= LEGACY_LOCAL_DEV_TERRAIN_ID_BASE &&
       id < LEGACY_LOCAL_DEV_TERRAIN_ID_LIMIT) ||
+    (id >= HARTHMERE_PREVIOUS_EXTENSION_TERRAIN_ENTITY_ID_BASE &&
+      id < HARTHMERE_PREVIOUS_EXTENSION_TERRAIN_ENTITY_ID_LIMIT) ||
     (id >= LOCAL_DEV_TERRAIN_ID_BASE && id < LOCAL_DEV_TERRAIN_ID_LIMIT) ||
     (id >= LOCAL_DEV_NPC_ID_BASE && id < LOCAL_DEV_NPC_ID_LIMIT)
   );
@@ -6324,7 +6339,6 @@ function localDevTerrainShardSpecs() {
     shardZ: number;
   }> = [];
   const seen = new Set<string>();
-  let idOffset = 0;
   const pushRuntimeSpec = (shardX: number, shardY: number, shardZ: number) => {
     // In connected-world mode, this seed owns only the new east extension.
     // Skipping every older-map shard is the fail-closed guarantee that cave,
@@ -6339,9 +6353,19 @@ function localDevTerrainShardSpecs() {
     if (seen.has(key)) {
       return;
     }
+    const terrainEntityId = harthmereExtensionTerrainEntityIdForShard(
+      shardX,
+      shardY,
+      shardZ
+    );
+    if (terrainEntityId === undefined) {
+      throw new Error(
+        `Harthmere terrain shard is outside the stable id grid: ${key}`
+      );
+    }
     seen.add(key);
     specs.push({
-      id: (LOCAL_DEV_TERRAIN_ID_BASE + idOffset++) as BiomesId,
+      id: terrainEntityId as BiomesId,
       shardX,
       shardY,
       shardZ,
@@ -6396,23 +6420,12 @@ function localDevTerrainShardSpecs() {
     }
   };
 
-  // The full surface is contiguous, but empty air and solid underground do not
-  // need five complete horizontal copies. Seed the surface everywhere, then
-  // add only shards intersecting upper structures or authored dungeons. This
-  // preserves every bible building/quest level while keeping deployment boot
-  // readiness bounded to hundreds of shards instead of nearly two thousand.
-  for (
-    let shardX = STARTER_TOWN_WILDS_SHARD_X0;
-    shardX <= STARTER_TOWN_WILDS_SHARD_X1;
-    shardX += 1
-  ) {
-    for (
-      let shardZ = STARTER_TOWN_WILDS_SHARD_Z0;
-      shardZ <= STARTER_TOWN_WILDS_SHARD_Z1;
-      shardZ += 1
-    ) {
-      pushSpec(shardX, 1, shardZ);
-    }
+  // Seed every shard in the additive rectangle from Y=-64 through the surface
+  // shard. The old surface-only pass made Harthmere a thin floating slab and
+  // also stopped at the authored town edge, leaving the map's east padding as
+  // a sheer void. These specs are already in runtime/world coordinates.
+  for (const spec of harthmereExtensionFoundationShardSpecs()) {
+    pushRuntimeSpec(spec.shardX, spec.shardY, spec.shardZ);
   }
 
   for (const building of HARTHMERE_BUILDINGS) {
@@ -6471,6 +6484,50 @@ function localDevLegacyTerrainShardIds() {
     { length: HARTHMERE_LEGACY_LOCAL_DEV_TERRAIN_SHARD_COUNT },
     (_, offset) => (LEGACY_LOCAL_DEV_TERRAIN_ID_BASE + offset) as BiomesId
   );
+}
+
+function localDevPreviousAdditiveTerrainIds() {
+  return Array.from(
+    {
+      length:
+        HARTHMERE_PREVIOUS_EXTENSION_TERRAIN_ENTITY_ID_LIMIT -
+        HARTHMERE_PREVIOUS_EXTENSION_TERRAIN_ENTITY_ID_BASE,
+    },
+    (_, offset) =>
+      (HARTHMERE_PREVIOUS_EXTENSION_TERRAIN_ENTITY_ID_BASE + offset) as BiomesId
+  );
+}
+
+async function existingPreviousAdditiveTerrainIds(
+  service: ShimWorldService | undefined,
+  worldApi: WorldApi
+) {
+  const previousIds = localDevPreviousAdditiveTerrainIds();
+  const terrainIds = new Set<BiomesId>();
+  if (service) {
+    for (const id of previousIds) {
+      const entity = service.table.get(id);
+      if (entity?.box && entity.shard_seed) {
+        terrainIds.add(id);
+      }
+    }
+    return terrainIds;
+  }
+
+  // The retired terrain band collided with escort-companion ids. Never delete
+  // a numeric range blindly: inspect the ECS components and retain only actual
+  // terrain entities (box + shard seed) for migration cleanup.
+  for (let start = 0; start < previousIds.length; start += 500) {
+    const batch = previousIds.slice(start, start + 500);
+    const entities = await worldApi.get(batch);
+    for (let index = 0; index < entities.length; index += 1) {
+      const entity = entities[index];
+      if (entity?.hasBox?.() && entity.hasShardSeed?.()) {
+        terrainIds.add(batch[index]);
+      }
+    }
+  }
+  return terrainIds;
 }
 
 function makeLocalDevStaleTerrainDeletes(
@@ -6685,10 +6742,9 @@ function resolveNpcTypeId(
   fallbackIds: BiomesId[] = []
 ): BiomesId | undefined {
   // Harthmere local-dev townspeople must use the synthetic local-dev human
-  // type. The Bikkie tray may also contain a biscuit named local_dev_human,
-  // but that path renders with the regular player-like head. Returning the
-  // synthetic type here keeps every named/dialogue NPC on the same blocky
-  // Bolt-style voxel renderer as the ambient townspeople.
+  // type. It is explicitly player-like, so named residents share the player's
+  // animated mesh pipeline while their stable entity ids choose unique hair,
+  // face, palette, clothing, and accessories.
   if (preferredNames.includes("local_dev_human")) {
     return LOCAL_DEV_HUMAN_NPC_TYPE_ID;
   }
@@ -7735,6 +7791,7 @@ function makeLocalDevSnapshotGroveNpcChanges(
       continue;
     }
     const id = snapshotGroveNpcEntityId(npc);
+    const kind = existingIds.has(id) ? "update" : "create";
     const typeId =
       npc.id === "mucked_robot" && isNpcTypeId(BikkieIds.dMucker)
         ? BikkieIds.dMucker
@@ -7747,7 +7804,7 @@ function makeLocalDevSnapshotGroveNpcChanges(
       forwardAxis: "minusZ",
       source: "snapshot-grove-npc-seed",
     });
-    const base = npcEntity(
+    let base = npcEntity(
       {
         id,
         typeId,
@@ -7762,10 +7819,10 @@ function makeLocalDevSnapshotGroveNpcChanges(
     );
     if (typeId === LOCAL_DEV_HUMAN_NPC_TYPE_ID && !npc.snapshotAsset) {
       // Match the live seeder: no-asset Grove humans use the player/Grove
-      // avatar mesh pipeline with deterministic per-id cosmetics, not the
-      // Harthmere voxel/mannequin fallback.
-      delete (base as { appearance_component?: unknown }).appearance_component;
-      delete (base as { wearing?: unknown }).wearing;
+      // avatar mesh pipeline with deterministic per-id cosmetics. Updates must
+      // explicitly remove the old defaults or production keeps the same bald,
+      // tattered NPC appearance even after a reseed.
+      base = prepareHarthmerePlayerLikeNpcForUniqueAppearance(base, kind);
     }
     const entity = {
       ...base,
@@ -7785,7 +7842,7 @@ function makeLocalDevSnapshotGroveNpcChanges(
       }),
     };
     changes.push({
-      kind: existingIds.has(id) ? "update" : "create",
+      kind,
       tick,
       entity,
     });
@@ -7825,6 +7882,42 @@ function localDevBusinessCraftingStationIds() {
   return harthmereBusinessCraftingStationSeedEntityIds();
 }
 
+function localDevPlayerLikeNpcCosmeticRepairIds() {
+  return [
+    ...new Set([
+      ...starterTownNpcs().map((npc) => npc.id),
+      ...Object.values(HARTHMERE_NATIVE_QUEST_GIVER_MANIFEST)
+        .filter((giver) => giver.needsSeed)
+        .map((giver) => giver.entityId),
+      ...SNAPSHOT_GROVE_NPCS.filter(
+        (npc) => npc.seedServerNpc && !npc.snapshotAsset
+      ).map((npc) => snapshotGroveNpcEntityId(npc)),
+      ...localDevBusinessOwnerNpcIds(),
+      ...localDevBusinessCustomerNpcIds(),
+    ]),
+  ];
+}
+
+function makeLocalDevPlayerLikeNpcCosmeticRepairChanges(
+  tick: number,
+  existingIds: ReadonlySet<BiomesId>
+): Change[] {
+  // This migration is intentionally component-only: it repairs the old shared
+  // avatar defaults without moving NPCs, replacing dialogue, or touching any
+  // player-built/world content in an imported snapshot.
+  return localDevPlayerLikeNpcCosmeticRepairIds()
+    .filter((id) => existingIds.has(id))
+    .map((id) => ({
+      kind: "update" as const,
+      tick,
+      entity: {
+        id,
+        appearance_component: null,
+        wearing: null,
+      },
+    }));
+}
+
 function isLocalDevQuestGiverNpcId(id: BiomesId) {
   const offset = Number(id) - Number(LOCAL_DEV_NPC_ID_BASE);
   return (
@@ -7856,8 +7949,16 @@ function makeLocalDevNpcChanges(tick: number, existingIds: Set<BiomesId>) {
       continue;
     }
 
-    const entity = {
-      ...npcEntity(
+    const kind = existingIds.has(npc.id) ? "update" : "create";
+    const appearance = makeHarthmereNpcAppearanceConfig({
+      id: npc.id,
+      name: npc.displayName,
+      roleHint: npc.description,
+      forwardAxis: "minusZ",
+      source: "harthmere-starter-town-npc",
+    });
+    const base = prepareHarthmerePlayerLikeNpcForUniqueAppearance(
+      npcEntity(
         {
           id: npc.id,
           typeId,
@@ -7869,11 +7970,18 @@ function makeLocalDevNpcChanges(tick: number, existingIds: Set<BiomesId>) {
         },
         now
       ),
+      kind
+    );
+    const entity = {
+      ...base,
       entity_description: EntityDescription.create({
-        text: withHarthmereBodyAndFaceMarkers(
-          npc.description,
-          npc.face,
-          npc.body
+        text: withHarthmereAppearanceMarker(
+          withHarthmereBodyAndFaceMarkers(
+            npc.description,
+            appearance.face,
+            appearance.body
+          ),
+          appearance
         ),
       }),
       ...(isLocalDevQuestGiverNpcId(npc.id)
@@ -7886,7 +7994,7 @@ function makeLocalDevNpcChanges(tick: number, existingIds: Set<BiomesId>) {
         : {}),
     };
     changes.push({
-      kind: existingIds.has(npc.id) ? "update" : "create",
+      kind,
       tick,
       entity,
     });
@@ -7897,8 +8005,16 @@ function makeLocalDevNpcChanges(tick: number, existingIds: Set<BiomesId>) {
   // so native quest availability never points at an invisible string actor.
   for (const giver of Object.values(HARTHMERE_NATIVE_QUEST_GIVER_MANIFEST)) {
     if (!giver.needsSeed) continue;
-    const entity = {
-      ...npcEntity(
+    const kind = existingIds.has(giver.entityId) ? "update" : "create";
+    const appearance = makeHarthmereNpcAppearanceConfig({
+      id: giver.entityId,
+      name: giver.displayName,
+      roleHint: "native Harthmere quest giver",
+      forwardAxis: "minusZ",
+      source: "harthmere-native-quest-giver",
+    });
+    const base = prepareHarthmerePlayerLikeNpcForUniqueAppearance(
+      npcEntity(
         {
           id: giver.entityId,
           typeId: LOCAL_DEV_HUMAN_NPC_TYPE_ID,
@@ -7913,8 +8029,19 @@ function makeLocalDevNpcChanges(tick: number, existingIds: Set<BiomesId>) {
         },
         now
       ),
+      kind
+    );
+    const entity = {
+      ...base,
       entity_description: EntityDescription.create({
-        text: `${giver.displayName} — native Harthmere quest giver.`,
+        text: withHarthmereAppearanceMarker(
+          withHarthmereBodyAndFaceMarkers(
+            `${giver.displayName} — native Harthmere quest giver.`,
+            appearance.face,
+            appearance.body
+          ),
+          appearance
+        ),
       }),
       quest_giver: QuestGiver.create({
         concurrent_quests: 1,
@@ -7922,7 +8049,7 @@ function makeLocalDevNpcChanges(tick: number, existingIds: Set<BiomesId>) {
       }),
     };
     changes.push({
-      kind: existingIds.has(giver.entityId) ? "update" : "create",
+      kind,
       tick,
       entity,
     });
@@ -8050,11 +8177,29 @@ function makeLocalDevObsoleteTerrainDeletionChanges(
   );
   const changes: Change[] = [];
   for (const id of existingIds) {
-    if (
+    const isPreviousAdditiveTerrain =
+      id >= HARTHMERE_PREVIOUS_EXTENSION_TERRAIN_ENTITY_ID_BASE &&
+      id < HARTHMERE_PREVIOUS_EXTENSION_TERRAIN_ENTITY_ID_LIMIT;
+    const isUnwantedCurrentTerrain =
       id >= LOCAL_DEV_TERRAIN_ID_BASE &&
       id < LOCAL_DEV_TERRAIN_ID_LIMIT &&
-      !wantedTerrainIds.has(id)
-    ) {
+      !wantedTerrainIds.has(id);
+    if (isPreviousAdditiveTerrain) {
+      // This retired band overlaps deterministic escort-companion ids. Strip
+      // only the terrain identity instead of deleting the whole ECS record, so
+      // any NPC/living components sharing the id survive the migration.
+      changes.push({
+        kind: "update",
+        tick,
+        entity: {
+          id,
+          box: null,
+          shard_seed: null,
+          shard_diff: null,
+          shard_shapes: null,
+        },
+      });
+    } else if (isUnwantedCurrentTerrain) {
       changes.push({ kind: "delete", tick, id });
     }
   }
@@ -8157,6 +8302,9 @@ function makeLocalDevSeedMarkerChange(
 function makeLocalDevRuntimeContentFingerprint() {
   return JSON.stringify({
     version: HARTHMERE_ADDITIVE_RUNTIME_CONTENT_VERSION,
+    playerLikeNpcCosmeticResetVersion:
+      HARTHMERE_PLAYER_LIKE_NPC_COSMETIC_RESET_VERSION,
+    playerLikeNpcVariantVersion: HARTHMERE_PLAYER_LIKE_NPC_VARIANT_VERSION,
     liveEntityProductionSeedVersion:
       HARTHMERE_LIVE_ENTITY_PRODUCTION_SEED_VERSION,
     npcPositionOverrideVersion: HARTHMERE_NPC_POSITION_OVERRIDE_VERSION,
@@ -8183,6 +8331,74 @@ function makeLocalDevRuntimeContentMarkerChange(
       entity_description: EntityDescription.create({ text: fingerprint }),
     },
   };
+}
+
+function makeLocalDevNpcCosmeticMarkerFingerprint() {
+  return JSON.stringify({
+    playerLikeNpcCosmeticResetVersion:
+      HARTHMERE_PLAYER_LIKE_NPC_COSMETIC_RESET_VERSION,
+    playerLikeNpcVariantVersion: HARTHMERE_PLAYER_LIKE_NPC_VARIANT_VERSION,
+  });
+}
+
+async function localDevNpcCosmeticMarkerFingerprint(
+  service: ShimWorldService | undefined,
+  worldApi: WorldApi
+) {
+  const entity = service
+    ? service.table.get(LOCAL_DEV_NPC_COSMETIC_MARKER_ID)
+    : await worldApi.get(LOCAL_DEV_NPC_COSMETIC_MARKER_ID);
+  if (!entity) return undefined;
+  const description =
+    "entityDescription" in entity
+      ? entity.entityDescription()
+      : entity.entity_description;
+  return description?.text;
+}
+
+async function reconcileLocalDevPlayerLikeNpcCosmetics(
+  service: ShimWorldService | undefined,
+  worldApi: WorldApi
+) {
+  const fingerprint = makeLocalDevNpcCosmeticMarkerFingerprint();
+  if (
+    (await localDevNpcCosmeticMarkerFingerprint(service, worldApi)) ===
+    fingerprint
+  ) {
+    return true;
+  }
+
+  const tick = service ? service.table.tick + 1 : 1;
+  const cosmeticIds = localDevPlayerLikeNpcCosmeticRepairIds();
+  const existingIds = await existingLocalDevIds(
+    [...cosmeticIds, LOCAL_DEV_NPC_COSMETIC_MARKER_ID],
+    service,
+    worldApi
+  );
+  const changes: Change[] = [
+    ...makeLocalDevPlayerLikeNpcCosmeticRepairChanges(tick, existingIds),
+    {
+      kind: existingIds.has(LOCAL_DEV_NPC_COSMETIC_MARKER_ID)
+        ? "update"
+        : "create",
+      tick,
+      entity: {
+        id: LOCAL_DEV_NPC_COSMETIC_MARKER_ID,
+        entity_description: EntityDescription.create({ text: fingerprint }),
+      },
+    },
+  ];
+
+  log.warn("Reconciling unique player-like NPC cosmetics", {
+    version: HARTHMERE_PLAYER_LIKE_NPC_COSMETIC_RESET_VERSION,
+    presentNpcIds: existingIds.size,
+    repairedNpcCosmetics: changes.length - 1,
+  });
+  if (service) {
+    service.writeableTable.apply(changes);
+    return true;
+  }
+  return applyLocalDevSeedChangesInDebugBatches(worldApi, changes);
 }
 
 async function localDevSeedMarkerFingerprint(
@@ -8231,6 +8447,7 @@ async function reconcileLocalDevRuntimeContent(
 
   const tick = service ? service.table.tick + 1 : 1;
   const emptyIds = new Set<BiomesId>();
+  const cosmeticRepairIds = localDevPlayerLikeNpcCosmeticRepairIds();
   const candidate = [
     ...makeLocalDevNpcChanges(tick, emptyIds),
     ...buildHarthmereLiveEntityProductionSeedChanges({
@@ -8246,7 +8463,13 @@ async function reconcileLocalDevRuntimeContent(
   ];
   const candidateIds = candidate.map(localDevSeedChangeId);
   const existingIds = await existingLocalDevIds(
-    [...candidateIds, LOCAL_DEV_RUNTIME_CONTENT_MARKER_ID],
+    [
+      ...new Set([
+        ...candidateIds,
+        ...cosmeticRepairIds,
+        LOCAL_DEV_RUNTIME_CONTENT_MARKER_ID,
+      ]),
+    ],
     service,
     worldApi
   );
@@ -8262,6 +8485,7 @@ async function reconcileLocalDevRuntimeContent(
           Date.now()
         ),
     }),
+    ...makeLocalDevPlayerLikeNpcCosmeticRepairChanges(tick, existingIds),
     makeLocalDevRuntimeContentMarkerChange(tick, existingIds, fingerprint),
   ];
 
@@ -8316,7 +8540,6 @@ function makeLocalDevMiniWorldChanges(
     existingIds
   );
   if (staleTerrainDeletes.length) {
-    changes.push(...staleTerrainDeletes);
     log.warn("Pruning obsolete local dev terrain shards", {
       version: HARTHMERE_LOCAL_DEV_TERRAIN_BOUNDS_VERSION,
       count: staleTerrainDeletes.length,
@@ -8367,6 +8590,11 @@ function makeLocalDevMiniWorldChanges(
       });
     }
   }
+
+  // Apply the complete replacement foundation before stripping retired terrain
+  // components. Production clients share Redis during this maintenance pass;
+  // create-first ordering prevents even a temporary hole between batches.
+  changes.push(...staleTerrainDeletes);
 
   const npcStartedAt = Date.now();
   const npcChanges = makeLocalDevNpcChanges(tick, existingIds);
@@ -8701,9 +8929,13 @@ async function seedLocalDevTerrainIfMissing(
     // terrain, but still create any missing authored content (e.g. business
     // owner NPCs) so new content reaches production without a terrain reseed.
     log.info(
-      "Existing non-local terrain detected; syncing missing authored content only."
+      "Existing non-local terrain detected; syncing missing authored content and additive NPC cosmetics only."
     );
     await seedMissingLocalDevContentIntoExistingWorld(service, worldApi);
+    // The imported production world already contains most NPC ids, so a
+    // create-only sync cannot repair their stale shared appearance components.
+    // The versioned reconciler performs the component-only cosmetic migration.
+    await reconcileLocalDevPlayerLikeNpcCosmetics(service, worldApi);
     return;
   }
 
@@ -8740,6 +8972,10 @@ async function seedLocalDevTerrainIfMissing(
     businessCustomerNpcIds,
     businessCraftingStationIds,
   });
+  const previousAdditiveTerrainIds = await existingPreviousAdditiveTerrainIds(
+    service,
+    worldApi
+  );
   const existingIds = await existingLocalDevIds(
     [
       ...new Set([
@@ -8752,8 +8988,11 @@ async function seedLocalDevTerrainIfMissing(
     service,
     worldApi
   );
+  for (const id of previousAdditiveTerrainIds) {
+    existingIds.add(id);
+  }
   const obsoleteLocalDevIds = shouldUseHarthmereExtraTownOffset()
-    ? []
+    ? [...previousAdditiveTerrainIds]
     : legacyTerrainIds.filter(
         (id) => existingIds.has(id) && !activeTerrainIds.has(id)
       );

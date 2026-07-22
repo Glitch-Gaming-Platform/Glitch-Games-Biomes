@@ -46,6 +46,12 @@ describe("TalkDialogModalStep conversation flow guards", () => {
   it("stops recording on page click without advancing and blocks while transcribing", () => {
     assert.equal(
       talkDialogVoiceInputBlocksAdvanceForTest({
+        voiceInputState: "starting",
+      }),
+      true
+    );
+    assert.equal(
+      talkDialogVoiceInputBlocksAdvanceForTest({
         voiceInputState: "recording",
       }),
       true
@@ -59,6 +65,14 @@ describe("TalkDialogModalStep conversation flow guards", () => {
     assert.equal(
       talkDialogVoiceInputBlocksAdvanceForTest({ voiceInputState: "idle" }),
       false
+    );
+    assert.equal(
+      talkDialogAdvanceDecisionForTest({
+        typingComplete: true,
+        hasChoiceActions: false,
+        voiceInputState: "starting",
+      }),
+      "stop_recording"
     );
     assert.equal(
       talkDialogAdvanceDecisionForTest({
@@ -80,6 +94,12 @@ describe("TalkDialogModalStep conversation flow guards", () => {
 
   it("covers every click-advance state used by voice conversations", () => {
     const cases = [
+      {
+        typingComplete: false,
+        hasChoiceActions: false,
+        voiceInputState: "starting",
+        expected: "stop_recording",
+      },
       {
         typingComplete: false,
         hasChoiceActions: false,

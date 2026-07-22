@@ -38,7 +38,11 @@ describe("harthmere world object inspectable selection", () => {
       facingView: facingPlusX,
       objectPosition: [-3, 0, 0],
     });
-    assert.strictEqual(behind, undefined, "objects behind the player are skipped");
+    assert.strictEqual(
+      behind,
+      undefined,
+      "objects behind the player are skipped"
+    );
 
     const tooFar = harthmereWorldObjectCandidateScore({
       playerPosition: [0, 0, 0],
@@ -48,15 +52,34 @@ describe("harthmere world object inspectable selection", () => {
     assert.strictEqual(tooFar, undefined, "out-of-range objects are skipped");
   });
 
-  it("allows a very close object even when slightly off the facing axis", () => {
+  it("allows a close object when it remains inside the facing cone", () => {
     const closeSide = harthmereWorldObjectCandidateScore({
       playerPosition: [0, 0, 0],
       facingView: facingPlusX,
-      objectPosition: [0.2, 0, 2.0],
+      objectPosition: [1.2, 0, 1.6],
     });
     assert.ok(
       closeSide !== undefined,
       "close-radius allowance keeps adjacent props interactable"
+    );
+  });
+
+  it("rejects close side/behind objects and objects on another floor", () => {
+    assert.strictEqual(
+      harthmereWorldObjectCandidateScore({
+        playerPosition: [0, 0, 0],
+        facingView: facingPlusX,
+        objectPosition: [0.2, 0, 2],
+      }),
+      undefined
+    );
+    assert.strictEqual(
+      harthmereWorldObjectCandidateScore({
+        playerPosition: [0, 0, 0],
+        facingView: facingPlusX,
+        objectPosition: [2, 8, 0],
+      }),
+      undefined
     );
   });
 
@@ -82,7 +105,9 @@ describe("harthmere world object inspectable selection", () => {
     const selected = selectNearestHarthmereWorldObjectInspectable({
       playerPosition: [0, 0, 0],
       facingView: facingPlusX,
-      candidates: [{ id: "crate", label: "Road Kit Crate", position: [2, 0, 0] }],
+      candidates: [
+        { id: "crate", label: "Road Kit Crate", position: [2, 0, 0] },
+      ],
     });
     assert.ok(selected);
     assert.strictEqual(selected!.isContainer, true);
@@ -138,7 +163,9 @@ describe("harthmere world object inspectable selection", () => {
       position: [10, 53, -4],
     };
     assert.strictEqual(
-      harthmereWorldObjectCandidateIsVisibleForInteraction({ candidate: crate }),
+      harthmereWorldObjectCandidateIsVisibleForInteraction({
+        candidate: crate,
+      }),
       false
     );
     assert.strictEqual(

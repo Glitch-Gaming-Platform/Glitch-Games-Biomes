@@ -5,8 +5,12 @@ import { ShimWorldApi } from "@/server/shared/world/shim/api";
 import { InMemoryWorld } from "@/server/shared/world/shim/in_memory_world";
 import { BikkieIds } from "@/shared/bikkie/ids";
 import { secondsSinceEpoch } from "@/shared/ecs/config";
-import { Expires, NpcState } from "@/shared/ecs/gen/components";
-import { harthmereRespawningLiveCreatureSeedIds } from "@/shared/harthmere/live_entity_production_seed";
+import { Expires, NpcMetadata, NpcState } from "@/shared/ecs/gen/components";
+import {
+  harthmereLiveEntitySizeForSeed,
+  harthmereRespawningLiveCreatureSeedForId,
+  harthmereRespawningLiveCreatureSeedIds,
+} from "@/shared/harthmere/live_entity_production_seed";
 import {
   deserializeNpcCustomState,
   serializeNpcCustomState,
@@ -27,9 +31,20 @@ describe("NpcRespawnService native persistence", () => {
     );
     const custom = deserializeNpcCustomState(base.npc_state?.data);
     (custom as any).harthmereRespawnAt = now - 1;
+    const canonicalSeed = harthmereRespawningLiveCreatureSeedForId(fixedId)!;
     const dead = {
       ...base,
       health: { ...base.health!, hp: 0 },
+      npc_metadata: NpcMetadata.create({
+        type_id: base.npc_metadata?.type_id,
+        spawn_position: canonicalSeed.position,
+        spawn_orientation: base.npc_metadata?.spawn_orientation
+          ? [...base.npc_metadata.spawn_orientation]
+          : undefined,
+        created_time: base.npc_metadata?.created_time,
+        spawn_event_id: base.npc_metadata?.spawn_event_id,
+        spawn_event_type_id: base.npc_metadata?.spawn_event_type_id,
+      }),
       npc_state: NpcState.create({
         data: serializeNpcCustomState(custom),
       }),
@@ -60,6 +75,14 @@ describe("NpcRespawnService native persistence", () => {
     assert.ok(revived.health!.hp > 0);
     assert.equal(revived.id, fixedId);
     assert.equal(revived.expires, undefined);
-    assert.deepEqual(revived.position?.v, [10, 20, 30]);
+    assert.deepEqual(revived.position?.v, canonicalSeed.position);
+    assert.deepEqual(
+      revived.npc_metadata?.spawn_position,
+      canonicalSeed.position
+    );
+    assert.deepEqual(
+      revived.size?.v,
+      harthmereLiveEntitySizeForSeed(canonicalSeed)
+    );
   });
 });

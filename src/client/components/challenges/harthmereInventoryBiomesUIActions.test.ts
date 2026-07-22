@@ -70,6 +70,7 @@ import {
   grantHarthmereNativeTerrainBlockDropForTest,
   harthmereInventoryItemForNativeTerrainBlockForTest,
   harthmereInventoryCountByItemId,
+  harthmereItemHotbarEligible,
   performHarthmereBackpackItemEquipForBiomesUI,
   performHarthmereBackpackItemUseForBiomesUI,
   performHarthmereEquipmentItemUnequipForBiomesUI,
@@ -237,6 +238,10 @@ describe("Harthmere inventory BiomesUI presentation and actions", () => {
 
     assert.equal(harthmereInventoryCountByItemId("field_revival_scroll"), 0);
     assert.equal(readHarthmereInventoryState().recent[0]?.action, "Item Used");
+  });
+
+  it("allows usable magic scroll items onto the hotbar", () => {
+    assert.equal(harthmereItemHotbarEligible("scroll_of_spark"), true);
   });
 
   it("assigns only approved material shortcuts to the local hotbar without backpack transfer", () => {

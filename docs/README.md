@@ -67,18 +67,19 @@ the shared live world. Use throwaway actors, record what was written, and do not
 use local Docker builds for quick verification unless the task explicitly calls
 for a deployment or container smoke.
 
-### Harthmere Azure Voice And Speech
+### Harthmere Voice And Speech
 
-For Azure-only NPC voice casting, speech-to-text, text-to-speech, quota checks,
-static recording generation, and optional deployment configuration, read:
+For selectable ElevenLabs/OpenAI-Azure NPC voices, hold-to-talk input,
+speech-to-text, quota checks, static recording generation, and optional
+deployment configuration, read:
 
 ```text
 docs/harthmere/HARTHMERE_AZURE_VOICE_AND_SPEECH.md
 ```
 
-That guide documents the verified Azure CLI checks, the optional environment
-variables, the small microphone dialogue flow, and how active quest context is
-sent to the NPC AI only while that quest is in progress.
+That guide documents provider configuration, verified Azure resources, the
+microphone and `T`-key dialogue flow, and how active quest context is sent to
+the NPC AI only while that quest is in progress.
 
 ### Production Redis Crash Loop Runbook
 

@@ -64,6 +64,7 @@ import {
   nativeQuestTrackableQuests,
 } from "./nativeQuestMapAdapter";
 import { legacySyntheticRoadAheadEnabled } from "@/shared/harthmere/native_road_ahead_contract";
+import { dedupeTrackableQuestProjections } from "./questProjectionDedupe";
 
 function readSnapshotGroveApi(): any | undefined {
   if (typeof window === "undefined") return undefined;
@@ -719,7 +720,7 @@ export function buildBiomesUIMapAdapter(
                 : undefined,
           };
         });
-      return [
+      return dedupeTrackableQuestProjections([
         ...jobsBoardTrackableQuestsForBiomesUI(
           jobsBoardState,
           Date.now(),
@@ -754,7 +755,7 @@ export function buildBiomesUIMapAdapter(
         ...authoredQuests.filter(
           (quest: { status?: string }) => quest.status !== "available"
         ),
-      ];
+      ]);
     },
     getMainQuestSelection: () => readBiomesUIMainQuestSelection(),
     setMainQuest: (quest: any) => setBiomesUIMainQuestFromTrackableQuest(quest),

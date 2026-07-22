@@ -5,7 +5,7 @@ function read(rel){ return fs.existsSync(path.join(repo, rel)) ? fs.readFileSync
 function ok(cond, msg) { if (!cond) { console.error(`FAIL ${msg}`); process.exitCode=1; } else { console.log(`OK ${msg}`); } }
 ok(fs.existsSync(path.join(repo, 'scripts/harthmere/dump-snapshot-pre-mission-integration-state.cjs')), 'pre-mission integration dump script exists');
 ok(read('src/client/game/resources/npcs.ts').includes('makeSnapshotPlayerLikeAppearanceMesh(deps, id)'), 'player-like snapshot NPC avatar path is installed before mission/quest work');
-ok(read('src/server/harthmere/snapshot_grove_npc_ecs_seed.ts').includes('delete (base as { appearance_component?: unknown }).appearance_component'), 'no-asset Grove NPCs use deterministic player-avatar cosmetics');
+ok(read('src/server/harthmere/snapshot_grove_npc_ecs_seed.ts').includes('prepareHarthmerePlayerLikeNpcForUniqueAppearance(base, kind)') && read('src/server/harthmere/player_like_npc_cosmetics.ts').includes('prepared.appearance_component = null'), 'no-asset Grove NPCs use deterministic player-avatar cosmetics on create and update');
 ok(read('src/client/game/renderers/local_dev/harthmere_assets.ts').includes('runtime') || read('src/client/game/renderers/local_dev/harthmere_assets.ts').includes('Harthmere'), 'Harthmere runtime assets file is available');
 ok(read('src/server/shim/main.ts').includes('BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN'), 'server supports extra-town toggle before mission/quest work');
 ok(read('src/server/logic/utils/players.ts').includes('BIOMES_START_IN_HARTHMERE'), 'spawn selection is explicit before mission/quest work');

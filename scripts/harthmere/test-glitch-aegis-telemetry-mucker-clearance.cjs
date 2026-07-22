@@ -57,8 +57,12 @@ assert(eventCatalog.includes('Play Session'), 'Human-readable session label miss
 
 const liveFetch = read('src/client/components/harthmere_live_fetch.ts');
 assert(liveFetch.includes('fetchWithLiveMutationTelemetry'), 'Live-mode actions must emit semantic outcome telemetry.');
+assert(liveFetch.includes('HARTHMERE_GLITCH_LIVE_ACTION_BEHAVIORS'), 'Live-mode telemetry must use the exhaustive action manifest.');
+const trackingManifest = read('src/client/game/glitch/harthmere_glitch_tracking_manifest.ts');
+assert(trackingManifest.includes('satisfies Record<') && trackingManifest.includes('HarthmereLiveModeActionKind'), 'Live action tracking must remain exhaustive when action kinds change.');
+assert(trackingManifest.includes('GardenHoseEvent["kind"]'), 'GardenHose behavior tracking must remain exhaustive when logical events change.');
 for (const step of ['quest_accept', 'quest_complete', 'job_accept', 'job_complete', 'loot_claim', 'cooking_start', 'farming_harvest', 'property_claim', 'player_respawn']) {
-  assert(liveFetch.includes(step), `Semantic live-action step missing: ${step}`);
+  assert(trackingManifest.includes(step), `Semantic live-action step missing: ${step}`);
 }
 
 const api = read('src/pages/api/glitch/harthmere.ts');

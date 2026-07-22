@@ -1801,8 +1801,7 @@ export const MapQuestsTab: React.FunctionComponent<{
                       const isSelected = selectedQuestId === quest.questId;
                       const questMarker = questMarkerForMap(quest);
                       const canSetMain =
-                        quest.status !== "completed" &&
-                        quest.status !== "failed" &&
+                        quest.status === "active" &&
                         Boolean(questMarker?.worldPosition);
                       const accent = isMainQuest
                         ? "var(--biomes-warn-amber)"

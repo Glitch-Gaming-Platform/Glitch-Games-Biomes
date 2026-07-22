@@ -5,17 +5,19 @@ import {
   useBiomesHUDVisibilitySnapshot,
   useBiomesHUDVisibilitySetting,
 } from "@/client/components/biomes_ui/hudVisibilitySettings";
-import { useTypedStorageItem } from "@/client/util/typed_local_storage";
-import dynamic from "next/dynamic";
-import * as React from "react";
-import { DEFAULT_TAB_SHORTCUTS } from "../shortcuts/BiomesShortcuts";
-import type { TabShortcut } from "../shortcuts/BiomesShortcuts";
+import {
+  DEFAULT_TAB_SHORTCUTS,
+  type TabShortcut,
+} from "@/client/components/biomes_ui/shortcuts/BiomesShortcuts";
+import { OptionsControlsSurfaceForTest } from "@/client/components/biomes_ui/tabs/OptionsControlsSurface";
 import {
   biomesUIMicrophoneOptionsFromDevices,
   biomesUISelectedMicrophoneDeviceId,
-} from "./microphoneDeviceSettings";
-import type { BiomesUIMicrophoneDeviceOption } from "./microphoneDeviceSettings";
-import { OptionsControlsSurfaceForTest } from "./OptionsControlsSurface";
+  type BiomesUIMicrophoneDeviceOption,
+} from "@/client/components/biomes_ui/tabs/microphoneDeviceSettings";
+import { useTypedStorageItem } from "@/client/util/typed_local_storage";
+import dynamic from "next/dynamic";
+import * as React from "react";
 
 interface OptionsAdapter {
   getShortcuts?: () => TabShortcut[];
@@ -24,7 +26,7 @@ interface OptionsAdapter {
 
 const BiomesUIAvatarEditor = dynamic(
   () =>
-    import("../BiomesUIAvatarEditor").then(
+    import("@/client/components/biomes_ui/BiomesUIAvatarEditor").then(
       (module) => module.BiomesUIAvatarEditor
     ),
   {
@@ -69,6 +71,12 @@ export const OptionsTab: React.FunctionComponent<{
     "settings.voice.npcSpeechEnabled",
     true
   );
+  const [npcSpeechProvider, setNpcSpeechProvider] = useTypedStorageItem(
+    // ElevenLabs is the product default, but the setting remains local and
+    // reversible so the existing provider can be selected at any time.
+    "settings.voice.npcSpeechProvider",
+    "elevenlabs"
+  );
   const [microphoneInputEnabled, setMicrophoneInputEnabled] =
     useTypedStorageItem("settings.voice.microphoneInputEnabled", true);
   const [microphoneDeviceId, setMicrophoneDeviceId] = useTypedStorageItem(
@@ -82,8 +90,7 @@ export const OptionsTab: React.FunctionComponent<{
     "idle" | "loading" | "unavailable"
   >("idle");
   const hudVisibility = useBiomesHUDVisibilitySnapshot();
-  const [, setObjectivesVisible] =
-    useBiomesHUDVisibilitySetting("objectives");
+  const [, setObjectivesVisible] = useBiomesHUDVisibilitySetting("objectives");
   const [, setMiniMapVisible] = useBiomesHUDVisibilitySetting("miniMap");
   const [, setHelpButtonsVisible] =
     useBiomesHUDVisibilitySetting("helpButtons");
@@ -190,6 +197,8 @@ export const OptionsTab: React.FunctionComponent<{
         onVoiceVolumeChange={setVoiceVolume}
         npcSpeechEnabled={npcSpeechEnabled}
         onNpcSpeechEnabledChange={setNpcSpeechEnabled}
+        npcSpeechProvider={npcSpeechProvider}
+        onNpcSpeechProviderChange={setNpcSpeechProvider}
         microphoneInputEnabled={microphoneInputEnabled}
         onMicrophoneInputEnabledChange={setMicrophoneInputEnabled}
         microphoneDevices={microphoneDevices}

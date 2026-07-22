@@ -47,6 +47,7 @@ export const StorageContainerLeftPaneContent: React.FunctionComponent<{
   const ownedItems = useOwnedItems(reactResources, userId);
   const [takingAll, setTakingAll] = React.useState(false);
   const [takeAllError, setTakeAllError] = React.useState<string>();
+  const [takeAllSuccess, setTakeAllSuccess] = React.useState<string>();
 
   const numItems = containerInventory?.items.length ?? 0;
   const numCols = anItem(openContainer.itemId).numCols || 1;
@@ -57,6 +58,8 @@ export const StorageContainerLeftPaneContent: React.FunctionComponent<{
     if (takingAll || !containerInventory || !ownedItems.inventory) return;
     setTakingAll(true);
     setTakeAllError(undefined);
+    setTakeAllSuccess(undefined);
+    const received: string[] = [];
     try {
       // Plan against a mutable local projection so each item reserves or fills
       // a real backpack slot. Take All never spills wearables/materials into
@@ -108,6 +111,10 @@ export const StorageContainerLeftPaneContent: React.FunctionComponent<{
           );
         }
         giveToOwnedItems(projected, pattern);
+        const displayName = source.item.displayName ?? String(source.item.id);
+        received.push(
+          `${displayName}${source.count > 1n ? ` x${source.count}` : ""}`
+        );
 
         const claim = nativeRoadAheadContainerClaimForItem(
           containerLabel?.text,
@@ -128,6 +135,9 @@ export const StorageContainerLeftPaneContent: React.FunctionComponent<{
             { timeout: 10_000, timeoutText: "Quest update timed out" }
           );
         }
+      }
+      if (received.length > 0) {
+        setTakeAllSuccess(`Received ${received.join(", ")}.`);
       }
     } catch (error) {
       setTakeAllError(
@@ -191,7 +201,14 @@ export const StorageContainerLeftPaneContent: React.FunctionComponent<{
         </button>
       ) : null}
       {takeAllError ? (
-        <p className="biomes-ui-shop-muted">{takeAllError}</p>
+        <p role="alert" className="biomes-ui-shop-muted">
+          {takeAllError}
+        </p>
+      ) : null}
+      {takeAllSuccess ? (
+        <p role="status" className="biomes-ui-shop-muted">
+          {takeAllSuccess}
+        </p>
       ) : null}
     </div>
   );

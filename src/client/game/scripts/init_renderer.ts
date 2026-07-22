@@ -69,7 +69,7 @@ function getScripts(
       table,
       deps.voxeloo
     ),
-    new AudioScript(resources, table, audioManager),
+    new AudioScript(userId, resources, table, audioManager),
     // Bridge live-creature ECS entities (muckers/animals/hexes/quest creatures)
     // to the Harthmere renderer so each is drawn on its real entity and is
     // hittable by the native attack ray.

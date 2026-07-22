@@ -40,12 +40,18 @@ echo "== Visible frontend interaction contracts =="
   src/client/components/challenges/worldInteractionDispatcher.browser.test.tsx \
   src/client/components/challenges/TalkDialogModalStep.browser.test.tsx \
   src/client/components/overlays/inspected/interactionRoleResolver.test.ts \
+  src/client/components/biomes_ui/__tests__/BiomesHotbar.actions.browser.test.tsx \
   src/client/components/biomes_ui/__tests__/InventoryTab.actions.browser.test.tsx \
   src/client/components/biomes_ui/__tests__/InventoryTab.fullStack.test.tsx \
+  src/client/components/biomes_ui/hotbar/hotbarAction.test.ts \
+  src/client/components/biomes_ui/hotbar/nativeHotbarActions.test.ts \
+  src/client/components/biomes_ui/adapters/__tests__/nativeQuestMapAdapter.test.ts \
+  src/client/components/biomes_ui/adapters/__tests__/questProjectionDedupe.test.ts \
   src/client/components/harthmere_jobs_board/__tests__/HarthmereJobsBoardPanel.keyboard.test.tsx \
   src/client/components/harthmere_jobs_board/__tests__/jobsBoardInteractionPriority.test.ts \
   src/client/util/nux/state_machines.test.ts \
   src/shared/harthmere/test/world_object_f_interaction_all_props.test.ts \
+  src/shared/harthmere/test/harthmere_world_object_inspectable.test.ts \
   src/shared/harthmere/test/world_object_interaction_authority.test.ts
 
 echo "== Native ECS handler and authority contracts =="
@@ -65,6 +71,7 @@ echo "== Native ECS handler and authority contracts =="
   src/server/logic/test/inventory.test.ts \
   src/server/shared/triggers/test/native_road_ahead_inventory_triggers.test.ts \
   src/server/harthmere/test/native_vitals_scheduler.test.ts \
+  src/server/harthmere/test/native_vitals_environment.test.ts \
   src/shared/harthmere/test/harthmere_native_combat.test.ts \
   src/shared/harthmere/test/harthmere_native_vitals.test.ts \
   src/shared/harthmere/test/inventory_system_full_stack.test.ts \

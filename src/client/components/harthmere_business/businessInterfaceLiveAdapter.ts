@@ -15,6 +15,7 @@ import {
   type HarthmereResolvedBikkieVisual,
 } from "@/shared/harthmere/bikkie_visual_resolver";
 import { getHarthmereItemDefinition } from "@/shared/harthmere/mmo_inventory_authority";
+import { harthmereNativeBiomesIdForItemId } from "@/shared/harthmere/harthmere_native_item_ids";
 import {
   HARTHMERE_FOOD_DEFINITIONS,
   HARTHMERE_SEED_DEFINITIONS,
@@ -1223,6 +1224,7 @@ export function getHarthmereBusinessItemVisual(
   if (!definition && !displayName) return undefined;
   return harthmereResolveBikkieVisual({
     id: itemId,
+    bikkieId: harthmereNativeBiomesIdForItemId(itemId),
     label: displayName,
     kind:
       definition?.category ?? harthmereBusinessItemKindHint(itemId, kindHint),

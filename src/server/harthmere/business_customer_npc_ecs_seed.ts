@@ -1,4 +1,5 @@
 import { npcEntity } from "@/server/spawn/spawn_npc";
+import { prepareHarthmerePlayerLikeNpcForUniqueAppearance } from "@/server/harthmere/player_like_npc_cosmetics";
 import type { Change, ProposedChange } from "@/shared/ecs/change";
 import { secondsSinceEpoch } from "@/shared/ecs/config";
 import { EntityDescription, Voice } from "@/shared/ecs/gen/components";
@@ -53,6 +54,7 @@ export function buildHarthmereBusinessCustomerNpcSeedChanges(input: {
   const changes: Change[] = [];
 
   for (const seed of HARTHMERE_BUSINESS_CUSTOMER_NPC_SEEDS) {
+    const kind = changeKindForSeed(seed.entityId, existingIds);
     const appearance = makeHarthmereNpcAppearanceConfig({
       id: seed.entityId,
       name: seed.displayName,
@@ -60,26 +62,28 @@ export function buildHarthmereBusinessCustomerNpcSeedChanges(input: {
       forwardAxis: "minusZ",
       source: HARTHMERE_BUSINESS_CUSTOMER_NPC_SEED_SOURCE,
     });
-    const base = npcEntity(
-      {
-        id: seed.entityId,
-        typeId: LOCAL_DEV_HUMAN_NPC_TYPE_ID,
-        position: seed.position,
-        orientation: seed.orientation,
-        velocity: [0, 0, 0],
-        displayName: seed.displayName,
-        defaultDialog: npcDialog(seed.line, ...seed.extraLines),
-      },
-      nowSeconds
+    const base = prepareHarthmerePlayerLikeNpcForUniqueAppearance(
+      npcEntity(
+        {
+          id: seed.entityId,
+          typeId: LOCAL_DEV_HUMAN_NPC_TYPE_ID,
+          position: seed.position,
+          orientation: seed.orientation,
+          velocity: [0, 0, 0],
+          displayName: seed.displayName,
+          defaultDialog: npcDialog(seed.line, ...seed.extraLines),
+        },
+        nowSeconds
+      ),
+      kind
     );
     // HARTHMERE_BUSINESS_NPC_PLAYER_AVATAR_PARITY: drop the uniform default
-    // appearance_component/wearing npcEntity assigns to the player-like human
-    // type so each customer renders from the renderer's deterministic per-id
+    // appearance_component/wearing npcEntity assigns to the player-like human.
+    // Explicit nulls on updates repair already-seeded customers; omission alone
+    // only works for brand-new entities. Each customer then renders from per-id
     // rich-appearance fallback (snapshotRichNpc*Fallback) — a distinct,
     // clothed, animated PLAYER/Grove-style avatar matching the rest of the cast,
     // instead of an identical default avatar (or the wrong voxel NPC design).
-    delete (base as { appearance_component?: unknown }).appearance_component;
-    delete (base as { wearing?: unknown }).wearing;
     const entity = {
       ...base,
       entity_description: EntityDescription.create({
@@ -105,7 +109,7 @@ export function buildHarthmereBusinessCustomerNpcSeedChanges(input: {
       }),
     };
     changes.push({
-      kind: changeKindForSeed(seed.entityId, existingIds),
+      kind,
       tick: input.tick,
       entity,
     });

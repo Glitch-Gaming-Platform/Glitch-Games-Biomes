@@ -93,12 +93,16 @@ describe("business shopfront surfaces blocks, furnishings, and recipe books", ()
         assert.ok(good.displayName, `${businessType}:${good.itemId} label`);
         assert.ok(good.visual, `${businessType}:${good.itemId} visual`);
         assert.ok(
-          good.visual!.visualId.length > 0,
+          good.visual.visualId.length > 0,
           `${businessType}:${good.itemId} visual id`
         );
         assert.ok(
-          good.visual!.glyph.length > 0,
+          good.visual.glyph.length > 0,
           `${businessType}:${good.itemId} glyph`
+        );
+        assert.ok(
+          good.visual.bikkieId,
+          `${businessType}:${good.itemId} should retain its native Bikkie id for icon lookup`
         );
       }
     }
@@ -149,6 +153,8 @@ describe("business shopfront surfaces blocks, furnishings, and recipe books", ()
       html.includes('data-testid="biomes-business-tool-for-sale-icon"')
     );
     assert.ok(html.includes('data-bikkie-visual="true"'));
+    assert.ok(html.includes("data-bikkie-id="));
+    assert.ok(html.includes("harthmere-business-product-card"));
     assert.ok(
       html.includes('data-testid="biomes-business-storefront-section-block"')
     );

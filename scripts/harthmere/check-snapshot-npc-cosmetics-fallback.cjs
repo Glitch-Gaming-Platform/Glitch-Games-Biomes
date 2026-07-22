@@ -4,6 +4,8 @@ const repo = path.resolve(__dirname, '..', '..');
 const file = path.join(repo, 'src/client/game/resources/npcs.ts');
 const src = fs.readFileSync(file, 'utf8');
 const seed = fs.readFileSync(path.join(repo, 'src/server/harthmere/snapshot_grove_npc_ecs_seed.ts'), 'utf8');
+const cosmeticReset = fs.readFileSync(path.join(repo, 'src/server/harthmere/player_like_npc_cosmetics.ts'), 'utf8');
+const shim = fs.readFileSync(path.join(repo, 'src/server/shim/main.ts'), 'utf8');
 const routing = fs.readFileSync(path.join(repo, 'src/shared/harthmere/snapshot_grove_npc_mesh_routing.ts'), 'utf8');
 function ok(cond, msg) {
   if (!cond) {
@@ -14,8 +16,11 @@ function ok(cond, msg) {
   }
 }
 ok(src.includes('makeSnapshotPlayerLikeAppearanceMesh(deps, id)'), 'player-like NPCs use the generated player/Grove avatar mesh path');
-ok(seed.includes('delete (base as { appearance_component?: unknown }).appearance_component'), 'no-asset Grove NPC seeder drops uniform default appearance');
-ok(seed.includes('delete (base as { wearing?: unknown }).wearing'), 'no-asset Grove NPC seeder drops uniform default wearables');
+ok(seed.includes('prepareHarthmerePlayerLikeNpcForUniqueAppearance(base, kind)'), 'no-asset Grove NPC seeder uses the create/update cosmetic reset helper');
+ok(cosmeticReset.includes('prepared.appearance_component = null'), 'existing Grove NPC updates explicitly remove uniform default appearance');
+ok(cosmeticReset.includes('prepared.wearing = null'), 'existing Grove NPC updates explicitly remove uniform default wearables');
+ok(shim.includes('makeLocalDevPlayerLikeNpcCosmeticRepairChanges'), 'existing production worlds receive component-only NPC cosmetic repairs');
+ok(shim.includes('await reconcileLocalDevPlayerLikeNpcCosmetics(service, worldApi)'), 'production world startup runs the versioned NPC cosmetic repair');
 ok(routing.includes('sil: "npcs/sil"'), 'Sil uses the original snapshot NPC asset');
 ok(routing.includes('doc: "npcs/doc"'), 'Doc uses the original snapshot NPC asset');
 ok(!src.includes('makeSnapshotNpcCosmeticsFallbackGltf'), 'player-like NPCs no longer route to the Harthmere voxel cosmetics fallback');

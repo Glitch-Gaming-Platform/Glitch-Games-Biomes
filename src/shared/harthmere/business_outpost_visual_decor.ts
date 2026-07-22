@@ -9,6 +9,8 @@ import type {
 
 export const HARTHMERE_BUSINESS_OUTPOST_VISUAL_DECOR_VERSION =
   "harthmere-business-outpost-visual-prop-interiors" as const;
+export const HARTHMERE_BUSINESS_OUTPOST_ENHANCED_FURNISHING_VERSION =
+  "harthmere-business-outpost-additive-furnishing-v2" as const;
 
 export const HARTHMERE_BUSINESS_OUTPOST_VISUAL_DECOR_COLLISION: HarthmereCollisionConfig =
   {
@@ -71,6 +73,235 @@ const HARTHMERE_BUSINESS_OUTPOST_DECOR_DEFAULT_SCALES: Record<string, number> =
     whetstone_fp: 0.32,
     workbench_drawers_fp: 0.72,
   };
+
+type HarthmereBusinessFurnishingChoice = {
+  asset: string;
+  scale: number;
+  support: HarthmerePlacementMetadata["physicalSupport"];
+  yOffset?: number;
+};
+
+const HARTHMERE_BUSINESS_SIGNATURE_FURNISHINGS: Record<
+  HarthmereBusinessOutpostProceduralBuildingRecord["businessType"],
+  HarthmereBusinessFurnishingChoice
+> = {
+  exotic_matter_refinery: {
+    asset: "potion_2_fp",
+    scale: 0.3,
+    support: "table",
+    yOffset: 0.86,
+  },
+  biome_maintenance_repair: {
+    asset: "whetstone_fp",
+    scale: 0.34,
+    support: "table",
+    yOffset: 0.82,
+  },
+  biome_design_studio: {
+    asset: "book_group_2",
+    scale: 0.34,
+    support: "table",
+    yOffset: 0.84,
+  },
+  security_defense_contractor: {
+    asset: "weaponstand_fp",
+    scale: 0.7,
+    support: "floor",
+  },
+  portal_transit_company: {
+    asset: "lantern_wall_fp",
+    scale: 0.66,
+    support: "wall",
+    yOffset: 1.16,
+  },
+  biome_farming_rare_foods: {
+    asset: "farmcrate_carrot",
+    scale: 0.68,
+    support: "floor",
+  },
+  weapons_tools: {
+    asset: "anvil_fp",
+    scale: 0.68,
+    support: "floor",
+  },
+  magic_goods: {
+    asset: "shelf_small_bottles",
+    scale: 0.68,
+    support: "floor",
+  },
+  exploration_guide: {
+    asset: "bookstand_fp",
+    scale: 0.56,
+    support: "table",
+    yOffset: 0.06,
+  },
+  custom_home_property_development: {
+    asset: "book_group_1",
+    scale: 0.34,
+    support: "table",
+    yOffset: 0.84,
+  },
+  general_trader: {
+    asset: "barrel_apples",
+    scale: 0.68,
+    support: "floor",
+  },
+  hunter_wild_meat: {
+    asset: "barrel_fp",
+    scale: 0.7,
+    support: "floor",
+  },
+  medical_doctor: {
+    asset: "potion_2_fp",
+    scale: 0.3,
+    support: "table",
+    yOffset: 0.88,
+  },
+  teleport_owner: {
+    asset: "lantern_wall_fp",
+    scale: 0.66,
+    support: "wall",
+    yOffset: 1.16,
+  },
+  waste_sanitation_cleanup: {
+    asset: "bucket_wood",
+    scale: 0.68,
+    support: "floor",
+  },
+  repair_maintenance_person: {
+    asset: "workbench_drawers_fp",
+    scale: 0.66,
+    support: "floor",
+  },
+  food_service_restaurant: {
+    asset: "mug_fp",
+    scale: 0.3,
+    support: "table",
+    yOffset: 0.8,
+  },
+  courier: {
+    asset: "book_stack_2",
+    scale: 0.32,
+    support: "table",
+    yOffset: 0.78,
+  },
+  hospitality_inn_hotel_shelter: {
+    asset: "mug_fp",
+    scale: 0.3,
+    support: "table",
+    yOffset: 0.8,
+  },
+};
+
+function fixtureForRole(
+  record: HarthmereBusinessOutpostProceduralBuildingRecord,
+  role: HarthmereBusinessOutpostInteriorFixture["role"]
+) {
+  return record.interiorFixtures.find((fixture) => fixture.role === role);
+}
+
+function inwardOffset(
+  record: HarthmereBusinessOutpostProceduralBuildingRecord,
+  fixture: HarthmereBusinessOutpostInteriorFixture,
+  distance: number
+) {
+  const midX = record.origin.x + record.blueprint.footprint.width / 2;
+  const midZ = record.origin.z + record.blueprint.footprint.depth / 2;
+  const vx = midX - fixture.position.x;
+  const vz = midZ - fixture.position.z;
+  const length = Math.hypot(vx, vz) || 1;
+  return { dx: (vx / length) * distance, dz: (vz / length) * distance };
+}
+
+export function createHarthmereBusinessOutpostEnhancedFurnishingSpecs(
+  record: HarthmereBusinessOutpostProceduralBuildingRecord
+): HarthmereBusinessOutpostInteriorDecorSpec[] {
+  const specs: HarthmereBusinessOutpostInteriorDecorSpec[] = [];
+  const serviceCounter = fixtureForRole(record, "service_counter");
+  const dashboard = fixtureForRole(record, "dashboard_access");
+  const primaryStation = fixtureForRole(record, "primary_station");
+  const stockStorage = fixtureForRole(record, "stock_storage");
+
+  // This pass only appends detail around the existing fixture plan. Anchoring
+  // every addition to a known interior fixture keeps doors/queues untouched and
+  // makes the enhancement safe for all 19 already-materialized businesses.
+  if (serviceCounter) {
+    const inward = inwardOffset(record, serviceCounter, 1.15);
+    specs.push(
+      {
+        fixture: serviceCounter,
+        asset: "stool_fp",
+        scale: 0.66,
+        support: "floor",
+        nameSuffix: " enhanced staff stool",
+        ...inward,
+      },
+      {
+        fixture: serviceCounter,
+        asset: "mug_fp",
+        scale: 0.28,
+        support: "table",
+        yOffset: 0.8,
+        nameSuffix: " enhanced counter service item",
+        dx: -inward.dz * 0.28,
+        dz: inward.dx * 0.28,
+        drot: Math.PI / 8,
+      }
+    );
+  }
+
+  if (stockStorage) {
+    specs.push({
+      fixture: stockStorage,
+      asset: "crate_wooden_fp",
+      scale: 0.64,
+      support: "floor",
+      nameSuffix: " enhanced floor stock crate",
+      ...inwardOffset(record, stockStorage, 0.72),
+      drot: -Math.PI / 12,
+    });
+  }
+
+  if (dashboard) {
+    const inward = inwardOffset(record, dashboard, 1.25);
+    specs.push(
+      {
+        fixture: dashboard,
+        asset: "lantern_wall_fp",
+        scale: 0.62,
+        support: "wall",
+        yOffset: 1.12,
+        nameSuffix: " enhanced wall lantern",
+      },
+      {
+        fixture: dashboard,
+        asset: "bench_fp",
+        scale: 0.68,
+        support: "floor",
+        nameSuffix: " enhanced customer bench",
+        ...inward,
+      }
+    );
+  }
+
+  if (primaryStation) {
+    const signature =
+      HARTHMERE_BUSINESS_SIGNATURE_FURNISHINGS[record.businessType];
+    specs.push({
+      fixture: primaryStation,
+      ...signature,
+      nameSuffix: ` enhanced ${record.businessType} signature furnishing`,
+      ...inwardOffset(
+        record,
+        primaryStation,
+        signature.support === "floor" ? 0.56 : 0.16
+      ),
+      drot: Math.PI / 10,
+    });
+  }
+
+  return specs;
+}
 
 function harthmereBusinessOutpostInteriorFixtureAssetChoice(
   record: HarthmereBusinessOutpostProceduralBuildingRecord,
@@ -286,5 +517,6 @@ export function createHarthmereBusinessOutpostInteriorDecorSpecs(
       });
     }
   }
+  specs.push(...createHarthmereBusinessOutpostEnhancedFurnishingSpecs(record));
   return specs;
 }

@@ -1,10 +1,18 @@
 import type * as React from "react";
+import { iconUrl } from "@/client/components/inventory/icons";
 import { resolveAssetUrlUntyped } from "@/galois/interface/asset_paths";
 import type { HarthmereResolvedBikkieVisual } from "@/shared/harthmere/bikkie_visual_resolver";
+import { anItem } from "@/shared/game/item";
+import { safeParseBiomesId } from "@/shared/ids";
 
 export function harthmereBikkieVisualImageUrl(
   visual: HarthmereResolvedBikkieVisual | undefined
 ) {
+  const nativeBikkieId = safeParseBiomesId(String(visual?.bikkieId ?? ""));
+  if (nativeBikkieId !== undefined) {
+    const nativeIconUrl = iconUrl(anItem(nativeBikkieId), { defaultIcon: "" });
+    if (nativeIconUrl) return nativeIconUrl;
+  }
   if (!visual?.iconAssetPath) return undefined;
   return resolveAssetUrlUntyped(visual.iconAssetPath);
 }

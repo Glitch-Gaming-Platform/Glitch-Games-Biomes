@@ -1,5 +1,10 @@
 import { z } from "zod";
 
+// Persisted player-facing TTS choices. "openai" names the existing
+// OpenAI/Azure voice stack without invalidating previously stored settings.
+export const zNpcVoiceProvider = z.enum(["elevenlabs", "openai"]);
+export type NpcVoiceProvider = z.infer<typeof zNpcVoiceProvider>;
+
 export const zChatVoice = z.object({
   text: z.string(),
   voice: z.string(),

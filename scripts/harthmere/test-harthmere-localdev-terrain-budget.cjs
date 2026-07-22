@@ -18,6 +18,9 @@ const optimizedBounds = {
 };
 check("local dev shard bounds are reduced", Number.isFinite(optimizedBounds.x0) && Number.isFinite(optimizedBounds.x1) && Number.isFinite(optimizedBounds.z0) && Number.isFinite(optimizedBounds.z1) && optimizedBounds.x0 >= -2 && optimizedBounds.x1 <= 23 && optimizedBounds.z0 >= -18 && optimizedBounds.z1 <= 5 && shim.includes("HARTHMERE_LOCAL_DEV_PERF_PROFILE"));
 check("stale terrain deletion helper exists", shim.includes("function makeLocalDevObsoleteTerrainDeletionChanges(") && shim.includes("Pruning obsolete local dev terrain shards"));
+check("additive terrain uses stable coordinate ids", shim.includes("harthmereExtensionTerrainEntityIdForShard(") && !shim.includes("LOCAL_DEV_TERRAIN_ID_BASE + idOffset++"));
+check("additive terrain seeds the complete deep foundation", shim.includes("harthmereExtensionFoundationShardSpecs()") && shim.includes("from Y=-64 through the surface"));
+check("retired terrain cleanup verifies terrain components", shim.includes("existingPreviousAdditiveTerrainIds(") && shim.includes("entity?.hasBox?.() && entity.hasShardSeed?.()"));
 function numberFor(key) {
   const match = budgets.match(new RegExp(key + "\\s*:\\s*(\\d+)"));
   return match ? Number(match[1]) : NaN;

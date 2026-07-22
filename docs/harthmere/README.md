@@ -5,6 +5,9 @@ Keep source folders for runtime code and tests; put gameplay/reference documents
 
 ## Current runbooks
 
+- `HARTHMERE_NATIVE_HOTBAR_AND_JOURNAL.md` - native item action routing,
+  one-item throws, journal visibility/deduplication, Road Ahead feedback,
+  targeting gates, and ECS-streamed vitals.
 - `HARTHMERE_BIOMES_ECS_SOURCE_OF_TRUTH.md` - canonical one-authority boundary,
   explicit identity manifests, signed native transactions, migration rules,
   and the metadata that may intentionally remain outside ECS.

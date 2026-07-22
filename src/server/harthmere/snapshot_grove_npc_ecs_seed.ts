@@ -1,4 +1,5 @@
 import { npcEntity } from "@/server/spawn/spawn_npc";
+import { prepareHarthmerePlayerLikeNpcForUniqueAppearance } from "@/server/harthmere/player_like_npc_cosmetics";
 import { BikkieIds } from "@/shared/bikkie/ids";
 import type { Change, ProposedChange } from "@/shared/ecs/change";
 import { secondsSinceEpoch } from "@/shared/ecs/config";
@@ -60,6 +61,7 @@ export function buildHarthmereSnapshotGroveNpcSeedChanges(input: {
       continue;
     }
     const id = snapshotGroveNpcEntityId(npc);
+    const kind = changeKindForSeed(id, existingIds);
     const typeId =
       npc.id === "mucked_robot" && isNpcTypeId(BikkieIds.dMucker)
         ? BikkieIds.dMucker
@@ -72,7 +74,7 @@ export function buildHarthmereSnapshotGroveNpcSeedChanges(input: {
       forwardAxis: "minusZ",
       source: "snapshot-grove-npc-seed",
     });
-    const base = npcEntity(
+    let base = npcEntity(
       {
         id,
         typeId,
@@ -86,11 +88,10 @@ export function buildHarthmereSnapshotGroveNpcSeedChanges(input: {
     );
     if (typeId === LOCAL_DEV_HUMAN_NPC_TYPE_ID && !npc.snapshotAsset) {
       // Grove humans without an authored snapshot GLB should render through the
-      // same player/Grove avatar mesh generator as players. Drop npcEntity's
-      // uniform defaults so the per-id rich-avatar fallback chooses a distinct
-      // Bikkie-style face, hair, and outfit instead of the wrong voxel NPC body.
-      delete (base as { appearance_component?: unknown }).appearance_component;
-      delete (base as { wearing?: unknown }).wearing;
+      // same player/Grove avatar mesh generator as players. Existing ECS rows
+      // need explicit nulls; merely omitting the defaults leaves the old shared
+      // bald/tattered appearance in production.
+      base = prepareHarthmerePlayerLikeNpcForUniqueAppearance(base, kind);
     }
     const entity = {
       ...base,
@@ -121,7 +122,7 @@ export function buildHarthmereSnapshotGroveNpcSeedChanges(input: {
       }),
     };
     changes.push({
-      kind: changeKindForSeed(id, existingIds),
+      kind,
       tick: input.tick,
       entity,
     });

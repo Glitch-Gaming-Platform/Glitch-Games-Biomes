@@ -9,7 +9,7 @@ import type {
   PostprocessName,
 } from "@/client/game/renderers/passes/composer";
 import type { SpatialLighting } from "@/client/game/renderers/util";
-import type { AudioResource } from "@/client/game/resources/audio";
+import type { AudioPath, AudioResource } from "@/client/game/resources/audio";
 import type { TransientBeams } from "@/client/game/resources/beams";
 import type { BlockMesh, BlockTextures } from "@/client/game/resources/blocks";
 import type {
@@ -443,7 +443,7 @@ interface BaseClientResourcePaths {
     Promise<Optional<ParticleSystemMaterials>>
   >;
   "/audio": PathDef<[], AudioResource>;
-  "/audio/buffer": PathDef<[AssetPath], Promise<AudioBuffer | undefined>>;
+  "/audio/buffer": PathDef<[AudioPath], Promise<AudioBuffer | undefined>>;
   "/scene/particles": PathDef<[], Map<string, ParticleSystem>>;
   "/scene/player": PathDef<[BiomesId], ScenePlayer>;
   "/sim/player": PathDef<[BiomesId], Player>;

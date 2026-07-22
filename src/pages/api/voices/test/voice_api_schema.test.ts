@@ -11,6 +11,7 @@ describe("voice API schemas", () => {
         text: "Hello",
         voice: "azure-speech|voice=en-US-AvaNeural",
         language: "en-US",
+        provider: "elevenlabs",
       }).success,
       true
     );
@@ -40,6 +41,8 @@ describe("voice API schemas", () => {
       zSpeechStatusResponse.safeParse({
         speechToText: true,
         textToSpeech: true,
+        openAITextToSpeech: true,
+        elevenLabsTextToSpeech: true,
         generatedChat: true,
       }).success,
       true

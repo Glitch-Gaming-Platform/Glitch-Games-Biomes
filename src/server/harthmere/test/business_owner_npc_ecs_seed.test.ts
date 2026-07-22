@@ -86,5 +86,8 @@ describe("business owner NPC ECS seed builder", () => {
     );
     assert.ok(first);
     assert.equal(first!.kind, "update");
+    if (first!.kind !== "update") assert.fail("expected update change");
+    assert.equal(first!.entity.appearance_component, null);
+    assert.equal(first!.entity.wearing, null);
   });
 });

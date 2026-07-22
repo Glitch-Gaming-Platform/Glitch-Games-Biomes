@@ -185,6 +185,14 @@ export class Input<ActionsAndMotions extends string> {
     { fixed: number; delta: number; phase: MotionPhase }
   >;
   private active_triggers: Set<string>;
+  /**
+   * Motions requested by UI surfaces that do not own the game canvas (for
+   * example the replacement hotbar). Keeping these motions in the shared
+   * input manager means programmatic activation still flows through the
+   * original InteractScript and its native ECS event handlers instead of
+   * reimplementing item behavior in React.
+   */
+  private synthetic_motions: Map<string, Map<string, number>>;
   private active_mods: number;
   private detach_fns: (() => void)[];
   attachedToElement?: HTMLElement;
@@ -195,6 +203,7 @@ export class Input<ActionsAndMotions extends string> {
     this.actions = new Map();
     this.motions = new Map();
     this.active_triggers = new Set();
+    this.synthetic_motions = new Map();
     this.active_mods = Modifiers.None;
     this.detach_fns = [];
     this.emitter = new EventEmitter();
@@ -278,12 +287,57 @@ export class Input<ActionsAndMotions extends string> {
 
   motion(name: ActionsAndMotions) {
     const motion = this.motions.get(name)!;
-    return motion.fixed + motion.delta;
+    const synthetic = [
+      ...(this.synthetic_motions.get(name)?.values() ?? []),
+    ].reduce((sum, value) => sum + value, 0);
+    return motion.fixed + motion.delta + synthetic;
+  }
+
+  /**
+   * Set or clear a named synthetic motion source. Sources are independent, so
+   * releasing a hotbar button cannot cancel a physical mouse button or another
+   * accessibility/touch input that is still held.
+   */
+  setSyntheticMotion(name: ActionsAndMotions, source: string, value: number) {
+    if (!this.motions.has(name)) {
+      return;
+    }
+    const sources =
+      this.synthetic_motions.get(name) ?? new Map<string, number>();
+    if (value === 0) {
+      sources.delete(source);
+    } else {
+      sources.set(source, value);
+    }
+    if (sources.size === 0) {
+      this.synthetic_motions.delete(name);
+    } else {
+      this.synthetic_motions.set(name, sources);
+    }
+  }
+
+  /**
+   * Hold a motion long enough for script ticks to observe both its down and up
+   * edges. This is intentionally expressed as input, not as an item-specific
+   * callback: the selected item's authored action remains the sole authority.
+   */
+  async pulseMotion(
+    name: ActionsAndMotions,
+    durationMs: number,
+    source = "programmatic"
+  ) {
+    const pulseSource = `${source}:${Date.now()}:${Math.random()}`;
+    this.setSyntheticMotion(name, pulseSource, 1);
+    await new Promise<void>((resolve) => {
+      setTimeout(resolve, Math.max(0, durationMs));
+    });
+    this.setSyntheticMotion(name, pulseSource, 0);
   }
 
   private resetState() {
     this.active_mods = Modifiers.None;
     this.active_triggers.clear();
+    this.synthetic_motions.clear();
     for (const action of this.actions.keys()) {
       this.actions.set(action, false);
     }

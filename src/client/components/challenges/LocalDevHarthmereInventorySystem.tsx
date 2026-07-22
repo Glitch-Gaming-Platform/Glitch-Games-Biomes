@@ -2729,6 +2729,8 @@ function itemDefinitionHotbarEligible(def: HarthmereItemDefinition) {
     def.category === "food" ||
     def.category === "weapon" ||
     def.category === "tool" ||
+    def.category === "spell_scroll" ||
+    def.useEffect !== undefined ||
     def.subtype === "biomes_voxel_block"
   );
 }

@@ -9,6 +9,7 @@ declare global {
   interface Window {
     __selectedMicrophoneDeviceId: string;
     __microphoneInputEnabled: boolean;
+    __npcSpeechProvider: string;
   }
 }
 
@@ -50,14 +51,18 @@ describe("BiomesUI Options browser voice controls", () => {
 
         window.__selectedMicrophoneDeviceId = "";
         window.__microphoneInputEnabled = true;
+        window.__npcSpeechProvider = "elevenlabs";
 
         function Harness() {
           const [selectedMicrophoneDeviceId, setSelectedMicrophoneDeviceId] = React.useState("");
           const [microphoneInputEnabled, setMicrophoneInputEnabled] = React.useState(true);
+          const [npcSpeechEnabled, setNpcSpeechEnabled] = React.useState(true);
+          const [npcSpeechProvider, setNpcSpeechProvider] = React.useState("elevenlabs");
           React.useEffect(() => {
             window.__selectedMicrophoneDeviceId = selectedMicrophoneDeviceId;
             window.__microphoneInputEnabled = microphoneInputEnabled;
-          }, [selectedMicrophoneDeviceId, microphoneInputEnabled]);
+            window.__npcSpeechProvider = npcSpeechProvider;
+          }, [selectedMicrophoneDeviceId, microphoneInputEnabled, npcSpeechProvider]);
           return (
             <OptionsControlsSurfaceForTest
               showPerformanceHUD={true}
@@ -65,7 +70,10 @@ describe("BiomesUI Options browser voice controls", () => {
               effectsVolume={100}
               musicVolume={50}
               voiceVolume={50}
-              npcSpeechEnabled={true}
+              npcSpeechEnabled={npcSpeechEnabled}
+              onNpcSpeechEnabledChange={setNpcSpeechEnabled}
+              npcSpeechProvider={npcSpeechProvider}
+              onNpcSpeechProviderChange={setNpcSpeechProvider}
               microphoneInputEnabled={microphoneInputEnabled}
               onMicrophoneInputEnabledChange={setMicrophoneInputEnabled}
               microphoneDevices={[
@@ -134,6 +142,18 @@ describe("BiomesUI Options browser voice controls", () => {
       await page.addScriptTag({ content: await readFile(bundlePath, "utf8") });
 
       const microphoneSelect = page.getByLabel("Microphone", { exact: true });
+      const voiceProviderSelect = page.getByLabel("NPC Voice Provider");
+
+      assert.equal(await voiceProviderSelect.inputValue(), "elevenlabs");
+      await voiceProviderSelect.selectOption("openai");
+      assert.equal(
+        await page.evaluate(() => window.__npcSpeechProvider),
+        "openai"
+      );
+      await page.getByLabel("NPC Speech").uncheck();
+      assert.equal(await voiceProviderSelect.isDisabled(), true);
+      await page.getByLabel("NPC Speech").check();
+      assert.equal(await voiceProviderSelect.isDisabled(), false);
 
       await microphoneSelect.selectOption("studio-mic");
       assert.equal(

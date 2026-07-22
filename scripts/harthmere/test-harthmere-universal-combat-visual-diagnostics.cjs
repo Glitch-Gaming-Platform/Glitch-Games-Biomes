@@ -1086,14 +1086,14 @@ async function main() {
     summary.screenshots.push(await saveScreenshot(page, "04-animal-scan"));
 
     summary.scenarios.muckers = await scanFamilyWithFallback(page, "mucker", /muck|mucker|muckling/i, [
-      { label: "Road Muckling", x: 524, y: 54.5, z: -154 },
+      { label: "Watchtower Muckling", x: 320, y: 54.5, z: -384 },
       { label: "Watchtower Mucker", x: 334, y: 54.5, z: -392 },
       { label: "Old Wood Mucker", x: 644, y: 54.5, z: -456 },
     ]);
     summary.scenarios.muckerNativeNonNpc = await forceRuntimeNonNpcBodyAnimations(
       page,
       "mucker",
-      /combat diagnostic (road muckling|old wood mucker)/i,
+      /combat diagnostic (watchtower muckling|old wood mucker)/i,
       2
     );
     summary.screenshots.push(await saveScreenshot(page, "05-mucker-scan"));

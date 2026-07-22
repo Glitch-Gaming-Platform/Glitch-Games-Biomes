@@ -1,4 +1,8 @@
 import type { ClientContext } from "@/client/game/context";
+import {
+  HARTHMERE_BATTLE_MUSIC_PATH,
+  type AudioPath,
+} from "@/client/game/resources/audio";
 import type { ClientResources } from "@/client/game/resources/types";
 import type { SettingsKey } from "@/client/util/typed_local_storage";
 import { getTypedStorageItem } from "@/client/util/typed_local_storage";
@@ -42,7 +46,19 @@ function fixVolume(volume: number) {
   return isFinite(rounded) ? rounded : 0;
 }
 
-type AudioTrackType = "music" | "muck_music";
+export type AudioTrackType = "music" | "muck_music" | "battle_music";
+
+export const DEFAULT_BACKGROUND_MUSIC_CROSSFADE_SECONDS = 5;
+export const COMBAT_MUSIC_CROSSFADE_SECONDS = 0.75;
+
+export function backgroundMusicCrossfadeSeconds(
+  previousTrack: AudioTrackType | undefined,
+  nextTrack: AudioTrackType
+) {
+  return previousTrack === "battle_music" || nextTrack === "battle_music"
+    ? COMBAT_MUSIC_CROSSFADE_SECONDS
+    : DEFAULT_BACKGROUND_MUSIC_CROSSFADE_SECONDS;
+}
 
 interface AudioTrack {
   audio: THREE.Audio;
@@ -53,6 +69,7 @@ export class AudioManager {
 
   private audioTracks: Map<AudioTrackType, AudioTrack> = new Map();
   private currentTrack: AudioTrack | undefined;
+  private currentTrackType: AudioTrackType | undefined;
 
   private backgroundMusicAttenuation = 0;
   private prefetched = false;
@@ -68,6 +85,15 @@ export class AudioManager {
       audio.stop();
       this.activeRegistry.delete(audio);
     }
+    for (const track of this.audioTracks.values()) {
+      if (track.audio.isPlaying) {
+        track.audio.stop();
+      }
+      track.audio.disconnect();
+    }
+    this.audioTracks.clear();
+    this.currentTrack = undefined;
+    this.currentTrackType = undefined;
   }
 
   hotHandoff(old: AudioManager) {
@@ -128,12 +154,11 @@ export class AudioManager {
     }
     const loadTrack = async (
       audioTrackType: AudioTrackType,
-      assetType: AudioAssetType
+      assetPath: AudioPath
     ) => {
       if (!this.audioListener || this.audioTracks.has(audioTrackType)) {
         return;
       }
-      const assetPath = sample(getAudioAssetPaths(assetType))!;
       const audio = new THREE.Audio(this.audioListener);
       const buffer = await this.resources.get("/audio/buffer", assetPath);
       if (!buffer) {
@@ -148,9 +173,10 @@ export class AudioManager {
       this.audioTracks.set(audioTrackType, { audio });
     };
 
-    await Promise.all([
-      loadTrack("music", "music"),
-      loadTrack("muck_music", "muck_music"),
+    await Promise.allSettled([
+      loadTrack("music", sample(getAudioAssetPaths("music"))!),
+      loadTrack("muck_music", sample(getAudioAssetPaths("muck_music"))!),
+      loadTrack("battle_music", HARTHMERE_BATTLE_MUSIC_PATH),
     ]);
 
     this.setBackgroundMusicTrack("music");
@@ -162,27 +188,40 @@ export class AudioManager {
     }
     const context = this.audioListener.context;
     const newTrack = this.audioTracks.get(trackType);
-    if (newTrack === this.currentTrack) {
+    if (!newTrack || newTrack === this.currentTrack) {
       return;
     }
-    this.currentTrack = this.audioTracks.get(trackType);
+    const crossfadeSeconds = backgroundMusicCrossfadeSeconds(
+      this.currentTrackType,
+      trackType
+    );
+    this.currentTrack = newTrack;
+    this.currentTrackType = trackType;
 
     // Crossfade volume to the current track.
     for (const track of this.audioTracks.values()) {
       if (track !== this.currentTrack) {
         track.audio.gain.gain.cancelScheduledValues(context.currentTime);
+        track.audio.gain.gain.setValueAtTime(
+          track.audio.gain.gain.value,
+          context.currentTime
+        );
         track.audio.gain.gain.linearRampToValueAtTime(
           0,
-          context.currentTime + 5
+          context.currentTime + crossfadeSeconds
         );
       }
     }
     this.currentTrack?.audio.gain.gain.cancelScheduledValues(
       context.currentTime
     );
+    this.currentTrack?.audio.gain.gain.setValueAtTime(
+      this.currentTrack.audio.gain.gain.value,
+      context.currentTime
+    );
     this.currentTrack?.audio.gain.gain.linearRampToValueAtTime(
       this.getVolume("settings.volume.music"),
-      context.currentTime + 5
+      context.currentTime + crossfadeSeconds
     );
   }
 
@@ -228,7 +267,7 @@ export class AudioManager {
     }
   }
 
-  getBuffer(assetPath: AssetPath) {
+  getBuffer(assetPath: AudioPath) {
     return this.resources.cached("/audio/buffer", assetPath);
   }
 

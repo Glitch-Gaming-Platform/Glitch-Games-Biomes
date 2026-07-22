@@ -2016,6 +2016,7 @@ export const HARTHMERE_ESCORT_ACCEPT_WINDOW_MIN_MS = 2 * 60 * 60 * 1000;
 export const HARTHMERE_ESCORT_ACCEPT_WINDOW_MAX_MS = 5 * 60 * 60 * 1000;
 export const HARTHMERE_ESCORT_COMPANION_ENTITY_ID_BASE =
   8_810_000_000_030_000 as BiomesId;
+export const HARTHMERE_ESCORT_COMPANION_ENTITY_ID_SPAN = 500_000;
 
 // Deterministic per-acceptance window in [min, max] (reducers must be pure — no
 // Math.random), seeded from a stable key so the same acceptance always resolves
@@ -2072,7 +2073,7 @@ export function harthmereEscortCompanionEntityId(
 ): BiomesId {
   const offset =
     harthmereDeterministicHash(`escort-companion:${jobId}:${actorId}`) %
-    500_000;
+    HARTHMERE_ESCORT_COMPANION_ENTITY_ID_SPAN;
   return (Number(HARTHMERE_ESCORT_COMPANION_ENTITY_ID_BASE) +
     offset) as BiomesId;
 }

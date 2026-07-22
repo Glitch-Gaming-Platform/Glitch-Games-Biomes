@@ -2,14 +2,16 @@ import {
   browserSupportsNpcSpeechInput,
   npcSpeechButtonTooltip,
   npcSpeechEmptyTranscriptMessage,
+  npcSpeechHotkeyIndicator,
   npcSpeechRecordingRemainingSeconds,
   npcSpeechRecordingTimeoutProgress,
   npcSpeechStatusActive,
+  shouldHandleNpcSpeechHotkey,
 } from "@/client/components/system/npcSpeechInputState";
 import assert from "assert";
 
 describe("NPC speech input state", () => {
-  it("only enables voice UI when STT, TTS, and generated chat are configured", () => {
+  it("enables voice input when STT and generated chat are configured, even if NPC TTS is off", () => {
     assert.equal(npcSpeechStatusActive(undefined), false);
     assert.equal(
       npcSpeechStatusActive({
@@ -33,7 +35,7 @@ describe("NPC speech input state", () => {
         textToSpeech: false,
         generatedChat: true,
       }),
-      false
+      true
     );
     assert.equal(
       npcSpeechStatusActive({
@@ -93,12 +95,16 @@ describe("NPC speech input state", () => {
       "Talk"
     );
     assert.equal(
+      npcSpeechButtonTooltip({ supported: true, state: "starting" }),
+      "Starting microphone"
+    );
+    assert.equal(
       npcSpeechButtonTooltip({ supported: true, state: "recording" }),
       "Stop talking"
     );
     assert.equal(
       npcSpeechButtonTooltip({ supported: true, state: "transcribing" }),
-      "Listening"
+      "Interpreting speech"
     );
     assert.equal(
       npcSpeechButtonTooltip({ supported: false, state: "idle" }),
@@ -112,6 +118,42 @@ describe("NPC speech input state", () => {
       }),
       "Microphone is unavailable."
     );
+  });
+
+  it("shows clear hold-to-talk states and ignores T inside editable controls", () => {
+    assert.equal(
+      npcSpeechHotkeyIndicator({ state: "idle" }),
+      "Press T to talk"
+    );
+    assert.equal(
+      npcSpeechHotkeyIndicator({ state: "starting" }),
+      "Listening… release T to send"
+    );
+    assert.equal(
+      npcSpeechHotkeyIndicator({ state: "recording" }),
+      "Listening… release T to send"
+    );
+    assert.equal(
+      npcSpeechHotkeyIndicator({ state: "transcribing" }),
+      "Interpreting…"
+    );
+    assert.equal(shouldHandleNpcSpeechHotkey({ code: "KeyT" }), true);
+    assert.equal(
+      shouldHandleNpcSpeechHotkey({ code: "KeyT", targetTagName: "input" }),
+      false
+    );
+    assert.equal(
+      shouldHandleNpcSpeechHotkey({
+        code: "KeyT",
+        targetIsContentEditable: true,
+      }),
+      false
+    );
+    assert.equal(
+      shouldHandleNpcSpeechHotkey({ code: "KeyT", ctrlKey: true }),
+      false
+    );
+    assert.equal(shouldHandleNpcSpeechHotkey({ code: "KeyF" }), false);
   });
 
   it("maps recording time into a visible countdown and grey-out progress", () => {

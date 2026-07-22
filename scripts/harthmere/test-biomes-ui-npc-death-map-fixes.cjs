@@ -21,6 +21,7 @@ const liveAdapters = read('src/client/components/biomes_ui/adapters/useBiomesUIL
 const inventoryTab = read('src/client/components/biomes_ui/tabs/InventoryTab.tsx');
 const npcs = read('src/client/game/resources/npcs.ts');
 const npcSeed = read('src/server/harthmere/snapshot_grove_npc_ecs_seed.ts');
+const npcCosmeticReset = read('src/server/harthmere/player_like_npc_cosmetics.ts');
 const npcRouting = read('src/shared/harthmere/snapshot_grove_npc_mesh_routing.ts');
 const deathSystem = read('src/client/components/challenges/LocalDevHarthmereDeathSystem.tsx');
 const combat = read('src/client/components/challenges/LocalDevHarthmereCombat.tsx');
@@ -58,8 +59,9 @@ assert(returnNullIndex > retiredIndex && (legacyTitleIndex < 0 || returnNullInde
 // blocky Harthmere voxel body.
 includes(npcs, 'makeSnapshotGroveNpcAssetMesh(deps, id)', 'Renderer tries archived Grove NPC assets before avatar fallback');
 includes(npcs, 'makeSnapshotPlayerLikeAppearanceMesh(deps, id)', 'No-asset Grove NPCs use player/Grove avatar mesh generation');
-includes(npcSeed, 'delete (base as { appearance_component?: unknown }).appearance_component', 'No-asset Grove NPC seeds drop uniform default appearance');
-includes(npcSeed, 'delete (base as { wearing?: unknown }).wearing', 'No-asset Grove NPC seeds drop uniform default wearables');
+includes(npcSeed, 'prepareHarthmerePlayerLikeNpcForUniqueAppearance(base, kind)', 'No-asset Grove NPC seeds use create/update-aware cosmetic reset');
+includes(npcCosmeticReset, 'prepared.appearance_component = null', 'Existing no-asset Grove NPC updates remove uniform default appearance');
+includes(npcCosmeticReset, 'prepared.wearing = null', 'Existing no-asset Grove NPC updates remove uniform default wearables');
 includes(npcRouting, 'sil: "npcs/sil"', 'Sil routes to the original snapshot NPC asset');
 includes(npcRouting, 'doc: "npcs/doc"', 'Doc routes to the original snapshot NPC asset');
 

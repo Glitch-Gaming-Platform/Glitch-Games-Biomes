@@ -6,6 +6,7 @@ import type {
 } from "@/pages/api/voices/text_to_speech";
 import { log } from "@/shared/logging";
 import { jsonPost } from "@/shared/util/fetch_helpers";
+import type { NpcVoiceProvider } from "@/shared/voices/types";
 import React from "react";
 
 const RECENTLY_PLAYED_VOICE_LINES = new Map<string, number>();
@@ -32,10 +33,11 @@ export function voiceLineSuppressionKeyForTest(input: {
   text: string;
   voice: string;
   language?: string;
+  provider?: NpcVoiceProvider;
 }) {
-  return `${input.voice}|${input.language ?? ""}|${input.text
-    .trim()
-    .replace(/\s+/g, " ")}`;
+  return `${input.provider ?? "elevenlabs"}|${input.voice}|${
+    input.language ?? ""
+  }|${input.text.trim().replace(/\s+/g, " ")}`;
 }
 
 export function shouldPlayVoiceLineForTest(key: string, now = Date.now()) {
@@ -98,6 +100,10 @@ export const VoiceChat: React.FunctionComponent<{
     "settings.voice.npcSpeechEnabled",
     true
   );
+  const [npcSpeechProvider] = useTypedStorageItem(
+    "settings.voice.npcSpeechProvider",
+    "elevenlabs"
+  );
   const audioRef = React.useRef<HTMLAudioElement>(null);
   const latestText = React.useRef(text);
   const latestRequestKey = React.useRef("");
@@ -129,6 +135,9 @@ export const VoiceChat: React.FunctionComponent<{
       text: requestText,
       voice: requestVoice,
       language,
+      // Provider is part of the key so changing providers can immediately
+      // replay the current line in the newly selected voice stack.
+      provider: npcSpeechProvider,
     });
     const requestKey = `${playbackKey ?? ""}|${lineKey}`;
     latestRequestKey.current = requestKey;
@@ -145,6 +154,7 @@ export const VoiceChat: React.FunctionComponent<{
             text: requestText,
             voice: requestVoice,
             language,
+            provider: npcSpeechProvider,
           },
           { signal: controller.signal }
         );
@@ -190,7 +200,7 @@ export const VoiceChat: React.FunctionComponent<{
       }
       clearVoiceChatAudioElementForTest(audio);
     };
-  }, [text, voice, language, playbackKey, npcSpeechEnabled]);
+  }, [text, voice, language, playbackKey, npcSpeechEnabled, npcSpeechProvider]);
 
   return (
     <audio

@@ -1118,6 +1118,13 @@ export class OverlayScript implements Script {
         radius: MAX_NPC_OVERLAY_DIST,
       })
     )) {
+      // Containers/boards bridged through quest_giver are non-living props.
+      // Their object overlay owns the label and uses the real placeable bounds;
+      // sending them through NPC-name sizing produced human fallback warnings
+      // for Billy's Toolbag and the Clothing Crate.
+      if (this.isHarthmereWorldObjectEntity(entity)) {
+        continue;
+      }
       const npcKey = `npc:${entity.id}`;
       if (overlayMap.has(npcKey)) {
         continue; // Already handled in NPC selector above
@@ -1368,6 +1375,14 @@ export class OverlayScript implements Script {
           };
         }
       }
+      // A direct terrain hit terminates generic proximity fallbacks. Only an
+      // authored procedural object at roughly the same depth may still win;
+      // crates, NPCs, bags, and stations behind the aimed voxel cannot leak an
+      // unrelated F prompt through the reticle.
+      const localPlayer = this.resources.get("/scene/local_player");
+      return this.getNearbyHarthmereObjectInspectableOverlay(
+        dist(hit.pos, localPlayer.player.position) + 1.25
+      );
     }
 
     // HARTHMERE_WORLD_OBJECT_PROMPT_PRIORITY: object before NPC fallback
@@ -1671,9 +1686,9 @@ export class OverlayScript implements Script {
   // world but aren't enumerated in source). CursorInspectionComponent then
   // resolves the authored interaction (open container, read, craft, repair, ...)
   // it already uses for placeables and NPCs.
-  private getNearbyHarthmereObjectInspectableOverlay():
-    | InspectableOverlay
-    | undefined {
+  private getNearbyHarthmereObjectInspectableOverlay(
+    maxDistance?: number
+  ): InspectableOverlay | undefined {
     const localPlayer = this.resources.get("/scene/local_player");
     const playerPosition: ReadonlyVec3 = [
       localPlayer.player.position[0],
@@ -1700,8 +1715,24 @@ export class OverlayScript implements Script {
         ),
         ...liveCandidates,
       ],
+      radius:
+        maxDistance === undefined
+          ? undefined
+          : Math.min(HARTHMERE_WORLD_OBJECT_INSPECT_RADIUS, maxDistance),
     });
     if (!selected) {
+      return undefined;
+    }
+    const camera = this.resources.get("/scene/camera");
+    const targetPosition: Vec3 = [
+      selected.position[0],
+      selected.position[1] + 1,
+      selected.position[2],
+    ];
+    if (
+      !screenCoordinateProjection(targetPosition, camera) ||
+      this.isOccluded(targetPosition, camera)
+    ) {
       return undefined;
     }
     const realEntityId =

@@ -7,7 +7,7 @@ import { chromium, type Browser, type Page } from "playwright";
 
 declare global {
   interface Window {
-    __ttsRequests: Array<{ text: string }>;
+    __ttsRequests: Array<{ text: string; provider?: string }>;
     __ttsDelayMs: number;
     __ttsDelayByText: Record<string, number>;
     __ttsIgnoreAbort: boolean;
@@ -121,7 +121,13 @@ async function buildVoiceChatBundle(harnessSource: string) {
             [
               "@/client/util/typed_local_storage",
               `
-                export const useTypedStorageItem = () => [true];
+                export const useTypedStorageItem = (key, fallback) => [
+                  key === "settings.voice.npcSpeechProvider"
+                    ? "elevenlabs"
+                    : key === "settings.voice.npcSpeechEnabled"
+                    ? true
+                    : fallback
+                ];
               `,
             ],
             [

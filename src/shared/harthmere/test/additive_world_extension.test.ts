@@ -9,18 +9,31 @@ import {
   HARTHMERE_EXTENSION_FEET_Y,
   HARTHMERE_EXTENSION_GROUND_Y,
   HARTHMERE_EXTENSION_ROAD,
+  HARTHMERE_EXTENSION_TERRAIN_ENTITY_ID_BASE,
+  HARTHMERE_EXTENSION_TERRAIN_ENTITY_ID_LIMIT,
+  HARTHMERE_EXTENSION_TERRAIN_ID_GRID,
   HARTHMERE_EXTENSION_WORLD_BOUNDS,
   HARTHMERE_ORIGINAL_WORLD_EAST_EDGE_X,
   expandWorldAabbForHarthmere,
   harthmereBellbinderDescentFloorBlocks,
   harthmereBellbinderStairLoop,
+  harthmereExtensionFoundationShardSpecs,
+  harthmereExtensionTerrainEntityIdForShard,
   initialHarthmereWorldAabb,
   isHarthmereExtensionWorldPosition,
   isHarthmereExtensionWorldShardX,
   normalizeHarthmereExtensionOutdoorFeetPosition,
   shouldEnableHarthmereAdditiveWorldExtension,
 } from "@/shared/harthmere/world_extension";
+import {
+  SNAPSHOT_HARTHMERE_HOSTILE_SPAWNS,
+  isAuthoredPointInSnapshotSafeZone,
+} from "@/shared/harthmere/snapshot_runtime_rules";
 import { HARTHMERE_QUEST_CATALOG } from "@/shared/harthmere/quest_compendium";
+import {
+  HARTHMERE_ESCORT_COMPANION_ENTITY_ID_BASE,
+  HARTHMERE_ESCORT_COMPANION_ENTITY_ID_SPAN,
+} from "@/shared/harthmere/mmo_jobs_board_authority";
 import { getHarthmereQuestResolvedWaypoint } from "@/shared/harthmere/quest_runtime";
 import {
   SNAPSHOT_GROVE_NPC_FEET_Y,
@@ -86,6 +99,77 @@ describe("Harthmere additive world extension", () => {
     assert.equal(isHarthmereExtensionWorldShardX(56), true); // X=1792
     assert.equal(isHarthmereExtensionWorldShardX(79), true); // X=2528
     assert.equal(isHarthmereExtensionWorldShardX(80), false); // X=2560
+  });
+
+  it("assigns a stable unique terrain entity id to every reserved grid cell", () => {
+    const ids = new Set<number>();
+    for (
+      let shardY = HARTHMERE_EXTENSION_TERRAIN_ID_GRID.minShardY;
+      shardY <= HARTHMERE_EXTENSION_TERRAIN_ID_GRID.maxShardY;
+      shardY += 1
+    ) {
+      for (
+        let shardZ = HARTHMERE_EXTENSION_TERRAIN_ID_GRID.minShardZ;
+        shardZ <= HARTHMERE_EXTENSION_TERRAIN_ID_GRID.maxShardZ;
+        shardZ += 1
+      ) {
+        for (
+          let shardX = HARTHMERE_EXTENSION_TERRAIN_ID_GRID.minShardX;
+          shardX <= HARTHMERE_EXTENSION_TERRAIN_ID_GRID.maxShardX;
+          shardX += 1
+        ) {
+          const id = harthmereExtensionTerrainEntityIdForShard(
+            shardX,
+            shardY,
+            shardZ
+          );
+          assert.ok(id !== undefined);
+          assert.ok(id >= HARTHMERE_EXTENSION_TERRAIN_ENTITY_ID_BASE);
+          assert.ok(id < HARTHMERE_EXTENSION_TERRAIN_ENTITY_ID_LIMIT);
+          assert.equal(ids.has(id), false, `${shardX}:${shardY}:${shardZ}`);
+          ids.add(id);
+        }
+      }
+    }
+    assert.equal(ids.size, 9024);
+    assert.ok(
+      HARTHMERE_EXTENSION_TERRAIN_ENTITY_ID_BASE >=
+        Number(HARTHMERE_ESCORT_COMPANION_ENTITY_ID_BASE) +
+          HARTHMERE_ESCORT_COMPANION_ENTITY_ID_SPAN,
+      "terrain ids must remain outside the complete hashed escort id interval"
+    );
+    assert.equal(
+      harthmereExtensionTerrainEntityIdForShard(56, -2, -18),
+      harthmereExtensionTerrainEntityIdForShard(56, -2, -18),
+      "the same shard coordinate must always retain the same ECS id"
+    );
+    assert.equal(
+      harthmereExtensionTerrainEntityIdForShard(55, 1, -18),
+      undefined
+    );
+  });
+
+  it("covers the complete additive rectangle with a four-shard-deep foundation", () => {
+    const specs = harthmereExtensionFoundationShardSpecs();
+    const keys = new Set(
+      specs.map(({ shardX, shardY, shardZ }) => `${shardX}:${shardY}:${shardZ}`)
+    );
+    assert.equal(specs.length, 2304);
+    assert.equal(keys.size, specs.length);
+    for (let shardX = 56; shardX <= 79; shardX += 1) {
+      for (let shardZ = -18; shardZ <= 5; shardZ += 1) {
+        for (let shardY = -2; shardY <= 1; shardY += 1) {
+          assert.ok(keys.has(`${shardX}:${shardY}:${shardZ}`));
+        }
+      }
+    }
+  });
+
+  it("keeps every authored snapshot combat spawn outside Grove safe zones", () => {
+    const unsafe = SNAPSHOT_HARTHMERE_HOSTILE_SPAWNS.filter((spawn) =>
+      isAuthoredPointInSnapshotSafeZone(spawn.authoredPosition)
+    );
+    assert.deepEqual(unsafe, []);
   });
 
   it("normalizes only additive outdoor actors to the flat terrain contract", () => {

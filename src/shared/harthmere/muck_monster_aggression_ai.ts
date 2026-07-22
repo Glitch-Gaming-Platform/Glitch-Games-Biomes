@@ -158,13 +158,9 @@ export function muckMonsterAreaForPosition(
 
 // HARTHMERE_TUTORIAL_MUCK_PATCH_SAFE (2026-07-07): the Road Ahead tutorial's
 // "break the muckwad" step sends brand-new, effectively unarmed players to break
-// terrain inside the starter muck patch — which also hosts a seeded Road Muckling.
-// Unprovoked muck aggression there means the muckling attacks and kills the
-// player mid-tutorial ("something was hitting me and killing me while throwing/
-// breaking the muckwad"), and blocks the Road Ahead chain. These starter patches
-// are training zones, so they must never trigger UNPROVOKED muck aggression — the
-// player can still fight (retaliation) and the combat primer, where the player
-// strikes first, is unaffected.
+// terrain inside the starter muck patch. Hostiles are now authored outside the
+// Grove, but keep this hard rule so a wandering or stale production Mucker can
+// never attack a new player during the Road Ahead training step.
 const TUTORIAL_UNPROVOKED_SAFE_MUCK_ZONE_IDS = new Set(["road_muckwad_patch"]);
 
 function isInTutorialUnprovokedSafeMuckZone(

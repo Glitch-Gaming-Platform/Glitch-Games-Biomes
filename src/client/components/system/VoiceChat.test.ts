@@ -45,10 +45,7 @@ describe("NPC voice playback", () => {
 
     assert.equal(keyFromFirstRender, keyFromSecondRender);
     assert.equal(shouldPlayVoiceLineForTest(keyFromFirstRender, 1000), true);
-    assert.equal(
-      shouldPlayVoiceLineForTest(keyFromSecondRender, 3000),
-      false
-    );
+    assert.equal(shouldPlayVoiceLineForTest(keyFromSecondRender, 3000), false);
   });
 
   it("does not suppress the same words when voice or language changes", () => {
@@ -71,6 +68,22 @@ describe("NPC voice playback", () => {
     assert.equal(shouldPlayVoiceLineForTest(avaEnglish, 1000), true);
     assert.equal(shouldPlayVoiceLineForTest(avaFrench, 1500), true);
     assert.equal(shouldPlayVoiceLineForTest(brianEnglish, 2000), true);
+  });
+
+  it("does not suppress a line after the player switches voice providers", () => {
+    const elevenLabs = voiceLineSuppressionKeyForTest({
+      text: "Meet me by the board.",
+      voice: "azure-speech|voice=en-US-AvaNeural",
+      provider: "elevenlabs",
+    });
+    const openAI = voiceLineSuppressionKeyForTest({
+      text: "Meet me by the board.",
+      voice: "azure-speech|voice=en-US-AvaNeural",
+      provider: "openai",
+    });
+    assert.notEqual(elevenLabs, openAI);
+    assert.equal(shouldPlayVoiceLineForTest(elevenLabs, 1000), true);
+    assert.equal(shouldPlayVoiceLineForTest(openAI, 1500), true);
   });
 
   it("expires old voice-line entries while checking new lines", () => {

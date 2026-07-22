@@ -32,6 +32,8 @@ export const HARTHMERE_WORLD_OBJECT_INSPECTABLE_VERSION =
 export const HARTHMERE_WORLD_OBJECT_INSPECT_RADIUS = 6.5;
 export const HARTHMERE_WORLD_OBJECT_INSPECT_CLOSE_RADIUS = 2.75;
 export const HARTHMERE_WORLD_OBJECT_INSPECT_MIN_VIEW_DOT = 0.15;
+export const HARTHMERE_WORLD_OBJECT_INSPECT_CLOSE_MIN_VIEW_DOT = 0.35;
+export const HARTHMERE_WORLD_OBJECT_INSPECT_MAX_VERTICAL_DISTANCE = 3.5;
 
 export type HarthmereWorldObjectVec3 = readonly [number, number, number];
 
@@ -68,6 +70,8 @@ export interface SelectHarthmereWorldObjectInspectableInput {
   radius?: number;
   closeRadius?: number;
   minViewDot?: number;
+  closeMinViewDot?: number;
+  maxVerticalDistance?: number;
 }
 
 export const HARTHMERE_WORLD_OBJECT_ACTIVE_PIN_MARKER_PREFIX =
@@ -98,7 +102,8 @@ export function harthmereWorldObjectCandidateIsVisibleForInteraction(
     const dz = pinPosition[2] - input.candidate.position[2];
     const horizontalDistance = Math.hypot(dx, dz);
     const radius =
-      input.activePinMatchRadius ?? HARTHMERE_WORLD_OBJECT_ACTIVE_PIN_MATCH_RADIUS;
+      input.activePinMatchRadius ??
+      HARTHMERE_WORLD_OBJECT_ACTIVE_PIN_MATCH_RADIUS;
     return Number.isFinite(horizontalDistance) && horizontalDistance <= radius;
   }
   return false;
@@ -124,16 +129,32 @@ export function harthmereWorldObjectCandidateScore(input: {
   radius?: number;
   closeRadius?: number;
   minViewDot?: number;
+  closeMinViewDot?: number;
+  maxVerticalDistance?: number;
 }): number | undefined {
   const radius = input.radius ?? HARTHMERE_WORLD_OBJECT_INSPECT_RADIUS;
   const closeRadius =
     input.closeRadius ?? HARTHMERE_WORLD_OBJECT_INSPECT_CLOSE_RADIUS;
   const minViewDot =
     input.minViewDot ?? HARTHMERE_WORLD_OBJECT_INSPECT_MIN_VIEW_DOT;
+  const closeMinViewDot =
+    input.closeMinViewDot ?? HARTHMERE_WORLD_OBJECT_INSPECT_CLOSE_MIN_VIEW_DOT;
+  const maxVerticalDistance =
+    input.maxVerticalDistance ??
+    HARTHMERE_WORLD_OBJECT_INSPECT_MAX_VERTICAL_DISTANCE;
   const toObjX = input.objectPosition[0] - input.playerPosition[0];
   const toObjZ = input.objectPosition[2] - input.playerPosition[2];
   const horizontalDistance = Math.hypot(toObjX, toObjZ);
   if (!Number.isFinite(horizontalDistance) || horizontalDistance > radius) {
+    return undefined;
+  }
+  const verticalDistance = Math.abs(
+    input.objectPosition[1] - input.playerPosition[1]
+  );
+  if (
+    !Number.isFinite(verticalDistance) ||
+    verticalDistance > maxVerticalDistance
+  ) {
     return undefined;
   }
   const viewX = input.facingView[0];
@@ -143,9 +164,12 @@ export function harthmereWorldObjectCandidateScore(input: {
     return undefined;
   }
   const toObjLength = Math.max(horizontalDistance, 1e-5);
-  const viewDot = (viewX * toObjX + viewZ * toObjZ) / (viewLength * toObjLength);
+  const viewDot =
+    (viewX * toObjX + viewZ * toObjZ) / (viewLength * toObjLength);
   const requiredViewDot =
-    horizontalDistance <= closeRadius ? 0 : Math.max(0, minViewDot);
+    horizontalDistance <= closeRadius
+      ? Math.max(0, closeMinViewDot)
+      : Math.max(0, minViewDot);
   if (viewDot < requiredViewDot) {
     return undefined;
   }
@@ -173,6 +197,8 @@ export function selectNearestHarthmereWorldObjectInspectable(
       radius: input.radius,
       closeRadius: input.closeRadius,
       minViewDot: input.minViewDot,
+      closeMinViewDot: input.closeMinViewDot,
+      maxVerticalDistance: input.maxVerticalDistance,
     });
     if (score === undefined) {
       continue;
@@ -180,12 +206,11 @@ export function selectNearestHarthmereWorldObjectInspectable(
     if (best && score >= best.score) {
       continue;
     }
-    const interaction =
-      harthmereObjectInteractionForLabel(labelInput) ?? {
-        kind: "inspect",
-        title: "Inspect",
-        toastVerb: "Inspected",
-      };
+    const interaction = harthmereObjectInteractionForLabel(labelInput) ?? {
+      kind: "inspect",
+      title: "Inspect",
+      toastVerb: "Inspected",
+    };
     best = {
       id: candidate.id,
       label: candidate.label,

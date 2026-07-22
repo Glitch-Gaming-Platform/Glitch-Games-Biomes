@@ -137,7 +137,13 @@ function scheduleNpcRespawnIfPersistent(
   }
   const entry = {
     typeId: npc.npcMetadata().type_id,
-    spawnPosition: [...npc.position().v] as [number, number, number],
+    // Respawn at the persisted home anchor rather than the death position.
+    // Harthmere's terrain reconciler grounds this anchor using the creature's
+    // complete body footprint, so reusing the corpse position can reintroduce
+    // a cliff-edge, water, buried, or floating spawn after wandering/combat.
+    spawnPosition: [
+      ...(npc.npcMetadata().spawn_position ?? npc.position().v),
+    ] as [number, number, number],
     spawnOrientation: npc.npcMetadata().spawn_orientation
       ? ([...npc.npcMetadata().spawn_orientation] as [number, number])
       : undefined,

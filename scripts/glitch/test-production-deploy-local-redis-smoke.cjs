@@ -71,6 +71,21 @@ const snapshotBucketCheck = fs.readFileSync(
   ),
   "utf8"
 );
+const harthmereWorldSync = fs.readFileSync(
+  path.join(root, "scripts/harthmere/reconcile-production-world-sync.cjs"),
+  "utf8"
+);
+const harthmereTerrainAudit = fs.readFileSync(
+  path.join(root, "scripts/harthmere/audit-production-extension-terrain.cjs"),
+  "utf8"
+);
+const harthmereCreatureGrounding = fs.readFileSync(
+  path.join(
+    root,
+    "scripts/harthmere/reconcile-production-live-creature-grounding.cjs"
+  ),
+  "utf8"
+);
 const runBuildChecks = script.slice(script.indexOf("run_build_checks()"));
 const pushAndDeploy = script.slice(
   script.indexOf("push_and_deploy()"),
@@ -498,6 +513,19 @@ ok(
   "production app uses the Azure Container App title-token secret reference"
 );
 ok(
+  script.includes("ELEVENLABS_API_KEY=secretref:elevenlabs-api-key") &&
+    script.includes(
+      'ELEVENLABS_MODEL_ID="${ELEVENLABS_MODEL_ID:-eleven_multilingual_v2}"'
+    ) &&
+    deployWorkflow.includes(
+      "ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}"
+    ) &&
+    deployWorkflow.includes(
+      '--secrets "elevenlabs-api-key=$ELEVENLABS_API_KEY"'
+    ),
+  "production deploy syncs the masked GitHub ElevenLabs secret into the Azure Container App"
+);
+ok(
   script.includes('AZURE_WEB_TARGET_PORT="${AZURE_WEB_TARGET_PORT:-3000}"') &&
     script.includes('AZURE_MIN_REPLICAS="${AZURE_MIN_REPLICAS:-3}"') &&
     script.includes('AZURE_MAX_REPLICAS="${AZURE_MAX_REPLICAS:-3}"') &&
@@ -908,6 +936,33 @@ ok(
   "production deploy has a named broad world sync reconciliation phase"
 );
 ok(
+  script.includes("seed_production_harthmere_extension_terrain") &&
+    script.includes(
+      "Skipping additive Harthmere terrain maintenance during an explicit app-only rollout."
+    ) &&
+    script.includes("az containerapp revision copy") &&
+    script.includes("BIOMES_CREATE_LOCAL_DEV_TERRAIN=1") &&
+    script.includes("BIOMES_FORCE_LOCAL_DEV_TOWN_RESEED=1") &&
+    script.includes("--min-replicas 1") &&
+    script.includes("--max-replicas 1"),
+  "production deploy seeds additive terrain in one isolated maintenance replica"
+);
+ok(
+  pushAndDeploy.indexOf(
+    'seed_production_harthmere_extension_terrain "$latest_revision"'
+  ) <
+    pushAndDeploy.indexOf(
+      'promote_azure_revision_when_ready "$latest_revision"'
+    ),
+  "production deploy completes terrain seeding before promoting web traffic"
+);
+ok(
+  script.includes("audit-production-extension-terrain.cjs") &&
+    script.includes("wait_for_production_harthmere_extension_terrain_audit") &&
+    script.includes("HARTHMERE_TERRAIN_AUDIT_POLLS"),
+  "production deploy blocks promotion on missing foundation or flat-surface shards"
+);
+ok(
   script.includes('check_production_redis_aof_health "post-deploy world sync"'),
   "post-deploy world sync re-checks Redis write health"
 );
@@ -962,6 +1017,30 @@ ok(
 ok(
   script.includes("reconcile-production-world-sync.cjs"),
   "production deploy runs the broad Harthmere world sync reconciler"
+);
+ok(
+  harthmereWorldSync.includes("harthmereSnapshotCombatNpcSeedIds") &&
+    harthmereWorldSync.includes("SNAPSHOT_HARTHMERE_HOSTILE_SPAWNS") &&
+    harthmereWorldSync.includes(
+      "no muck monster seed resolves into a safe zone"
+    ),
+  "production world sync upserts snapshot combat NPCs and rejects Grove-safe-zone Muckers"
+);
+ok(
+  harthmereTerrainAudit.includes("harthmereExtensionFoundationShardSpecs") &&
+    harthmereTerrainAudit.includes("emptyFoundationCount") &&
+    harthmereTerrainAudit.includes("surfaceHoleShardCount") &&
+    harthmereTerrainAudit.includes("retiredTerrainCount"),
+  "production terrain audit verifies foundation content, flat support, and retired cleanup"
+);
+ok(
+  script.includes("run_production_live_creature_grounding_reconcile") &&
+    script.includes("reconcile-production-live-creature-grounding.cjs") &&
+    harthmereCreatureGrounding.includes("loadCreatureRows") &&
+    harthmereCreatureGrounding.includes("bodyCanStandAt") &&
+    harthmereCreatureGrounding.includes("verifyReadback") &&
+    harthmereCreatureGrounding.includes("respawn_anchor_not_grounded"),
+  "production deploy repairs real persisted creature bodies, footprints, and respawn anchors"
 );
 ok(
   script.includes(

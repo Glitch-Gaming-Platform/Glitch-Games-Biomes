@@ -10,7 +10,7 @@
 // (fires onUse). Q drops, R reloads/cycles (delegated to onAction).
 
 import * as React from "react";
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Highlightable } from "../highlight/HighlightOverlay";
 import { UI_IDS } from "../uniqueIds";
 
@@ -22,6 +22,10 @@ export interface HotbarSlotItem {
   count?: number;
   /** Quality tier — controls border tinting */
   quality?: "common" | "uncommon" | "rare" | "epic" | "legendary" | "quest";
+  /** Human-readable label for the item's authored primary action. */
+  primaryActionLabel?: string;
+  /** Native quest/bound items can explicitly prohibit world throwing. */
+  canDrop?: boolean;
 }
 
 interface BiomesHotbarProps {
@@ -29,8 +33,8 @@ interface BiomesHotbarProps {
   slots: Array<HotbarSlotItem | null>;
   selectedIndex: number;
   onSelect: (index: number) => void;
-  onUse?: (index: number) => void;
-  onDrop?: (index: number) => void;
+  onUse?: (index: number) => unknown | Promise<unknown>;
+  onDrop?: (index: number) => unknown | Promise<unknown>;
   /**
    * Remove the item from the hotbar slot (return it to the backpack / clear
    * the quick-slot assignment). Renders a small × button on occupied slots.
@@ -58,6 +62,30 @@ export const BiomesHotbar: React.FunctionComponent<BiomesHotbarProps> = ({
   onRemove,
   enabled = true,
 }) => {
+  const [pendingAction, setPendingAction] = useState<"use" | "drop">();
+  const [actionError, setActionError] = useState<string>();
+  const selectedItem = slots[selectedIndex] ?? null;
+
+  const runAction = useCallback(
+    async (kind: "use" | "drop", action: (() => unknown) | undefined) => {
+      if (!action || pendingAction) return;
+      setPendingAction(kind);
+      setActionError(undefined);
+      try {
+        await action();
+      } catch (error) {
+        setActionError(
+          error instanceof Error
+            ? error.message
+            : "That action could not be completed."
+        );
+      } finally {
+        setPendingAction(undefined);
+      }
+    },
+    [pendingAction]
+  );
+
   const handleKey = useCallback(
     (e: KeyboardEvent) => {
       if (!enabled) return;
@@ -78,12 +106,28 @@ export const BiomesHotbar: React.FunctionComponent<BiomesHotbarProps> = ({
         onSelect(Math.min(slots.length - 1, selectedIndex + 1));
       } else if (e.key === "Enter" || e.key === " ") {
         e.preventDefault();
-        onUse?.(selectedIndex);
+        void runAction("use", () => onUse?.(selectedIndex));
       } else if (e.key.toLowerCase() === "q") {
-        onDrop?.(selectedIndex);
+        e.preventDefault();
+        if (!selectedItem) {
+          setActionError("That hotbar slot is empty.");
+        } else if (selectedItem.canDrop === false) {
+          setActionError("This item is protected and cannot be thrown.");
+        } else {
+          void runAction("drop", () => onDrop?.(selectedIndex));
+        }
       }
     },
-    [enabled, slots.length, selectedIndex, onSelect, onUse, onDrop]
+    [
+      enabled,
+      slots.length,
+      selectedIndex,
+      selectedItem?.canDrop,
+      onSelect,
+      onUse,
+      onDrop,
+      runAction,
+    ]
   );
 
   useEffect(() => {
@@ -93,117 +137,198 @@ export const BiomesHotbar: React.FunctionComponent<BiomesHotbarProps> = ({
 
   return (
     <div
-      role="toolbar"
-      aria-label="Action hotbar"
-      className="biomes-ui-panel"
       style={{
         display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
         gap: 6,
-        padding: 8,
-        margin: "0 auto",
-        width: "fit-content",
       }}
     >
-      {slots.map((slot, i) => {
-        const selected = i === selectedIndex;
-        const qcolor = QUALITY_COLOR[slot?.quality ?? "common"];
-        const iconIsImage = Boolean(slot?.icon && /^(\/|https?:|data:)/.test(slot.icon));
-        return (
-          <Highlightable key={i} uniqueId={UI_IDS.HOTBAR_SLOT(i + 1)} showCaption>
-            <div style={{ position: "relative", display: "inline-flex" }}>
+      {(selectedItem && (onUse || onDrop)) || actionError ? (
+        <div
+          className="biomes-ui-panel"
+          aria-live="polite"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            padding: "5px 8px",
+          }}
+        >
+          <span
+            style={{
+              maxWidth: 180,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {selectedItem?.label ?? "Empty slot"}
+          </span>
+          {onUse && selectedItem ? (
             <button
               type="button"
-              role="button"
-              aria-label={
-                slot
-                  ? `Slot ${i + 1}: ${slot.label}`
-                  : `Slot ${i + 1}: empty`
-              }
-              aria-pressed={selected}
-              data-selected={selected ? "true" : undefined}
-              className="biomes-ui-slot"
-              style={{ borderColor: selected ? undefined : qcolor }}
-              onClick={() => onSelect(i)}
-              onDoubleClick={() => onUse?.(i)}
+              disabled={!enabled || Boolean(pendingAction)}
+              onClick={() => void runAction("use", () => onUse(selectedIndex))}
             >
-              {slot && (
-                <>
-                  {iconIsImage ? (
-                    <img
-                      aria-hidden
-                      src={slot.icon}
-                      alt=""
-                      draggable={false}
-                      style={{ width: 28, height: 28, objectFit: "contain" }}
-                    />
-                  ) : (
-                    <span
-                      aria-hidden
-                      style={{ fontSize: 22, lineHeight: 1 }}
-                    >
-                      {slot.icon}
-                    </span>
-                  )}
-                  {slot.count && slot.count >= 1 ? (
-                    <span
-                      style={{
-                        position: "absolute",
-                        right: 4,
-                        top: 2,
-                        fontSize: 11,
-                        fontWeight: 700,
-                        color: "#fff",
-                        textShadow: "0 0 4px rgba(0,0,0,0.7)",
-                      }}
-                    >
-                      {slot.count}
-                    </span>
-                  ) : null}
-                </>
-              )}
-              <span className="biomes-ui-slot-key">{i + 1}</span>
+              {pendingAction === "use"
+                ? "Working…"
+                : selectedItem.primaryActionLabel ?? "Use"}
             </button>
-            {slot && onRemove ? (
-              <button
-                type="button"
-                aria-label={`Remove ${slot.label} from hotbar slot ${i + 1}`}
-                title={`Remove ${slot.label} from hotbar`}
-                data-hotbar-remove-index={i}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onRemove(i);
-                }}
-                style={{
-                  // Anchor the remove (×) button to the TOP-LEFT corner. The
-                  // stack count renders at the top-right (right:4/top:2), so a
-                  // top-right × overlapped and hid the number. Keeping × on the
-                  // opposite corner leaves the count fully visible.
-                  position: "absolute",
-                  top: -6,
-                  left: -6,
-                  width: 16,
-                  height: 16,
-                  borderRadius: "50%",
-                  border: "1px solid rgba(180, 200, 220, 0.5)",
-                  background: "rgba(10, 14, 20, 0.9)",
-                  color: "#ff7777",
-                  fontSize: 10,
-                  lineHeight: 1,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  cursor: "pointer",
-                  padding: 0,
-                  zIndex: 2,
-                }}
-              >
-                ×
-              </button>
-            ) : null}
-            </div>
-          </Highlightable>
-        );
-      })}
+          ) : null}
+          {onDrop && selectedItem ? (
+            <button
+              type="button"
+              disabled={!enabled || Boolean(pendingAction)}
+              onClick={() => {
+                if (selectedItem.canDrop === false) {
+                  setActionError(
+                    "This item is protected and cannot be thrown."
+                  );
+                  return;
+                }
+                void runAction("drop", () => onDrop(selectedIndex));
+              }}
+            >
+              {pendingAction === "drop"
+                ? "Throwing…"
+                : selectedItem.canDrop === false
+                ? "Cannot Throw"
+                : "Throw 1"}
+            </button>
+          ) : null}
+          {actionError ? (
+            <span role="alert" style={{ color: "#ff8f8f", maxWidth: 260 }}>
+              {actionError}
+            </span>
+          ) : null}
+        </div>
+      ) : null}
+      <div
+        role="toolbar"
+        aria-label="Action hotbar"
+        className="biomes-ui-panel"
+        style={{
+          display: "flex",
+          gap: 6,
+          padding: 8,
+          margin: "0 auto",
+          width: "fit-content",
+        }}
+      >
+        {slots.map((slot, i) => {
+          const selected = i === selectedIndex;
+          const qcolor = QUALITY_COLOR[slot?.quality ?? "common"];
+          const iconIsImage = Boolean(
+            slot?.icon && /^(\/|https?:|data:)/.test(slot.icon)
+          );
+          return (
+            <Highlightable
+              key={i}
+              uniqueId={UI_IDS.HOTBAR_SLOT(i + 1)}
+              showCaption
+            >
+              <div style={{ position: "relative", display: "inline-flex" }}>
+                <button
+                  type="button"
+                  role="button"
+                  aria-label={
+                    slot
+                      ? `Slot ${i + 1}: ${slot.label}`
+                      : `Slot ${i + 1}: empty`
+                  }
+                  aria-pressed={selected}
+                  data-selected={selected ? "true" : undefined}
+                  className="biomes-ui-slot"
+                  style={{ borderColor: selected ? undefined : qcolor }}
+                  onClick={() => onSelect(i)}
+                  onDoubleClick={() => void runAction("use", () => onUse?.(i))}
+                >
+                  {slot && (
+                    <>
+                      {iconIsImage ? (
+                        <img
+                          aria-hidden
+                          src={slot.icon}
+                          alt=""
+                          draggable={false}
+                          style={{
+                            width: 28,
+                            height: 28,
+                            objectFit: "contain",
+                          }}
+                        />
+                      ) : (
+                        <span
+                          aria-hidden
+                          style={{ fontSize: 22, lineHeight: 1 }}
+                        >
+                          {slot.icon}
+                        </span>
+                      )}
+                      {slot.count && slot.count >= 1 ? (
+                        <span
+                          style={{
+                            position: "absolute",
+                            right: 4,
+                            top: 2,
+                            fontSize: 11,
+                            fontWeight: 700,
+                            color: "#fff",
+                            textShadow: "0 0 4px rgba(0,0,0,0.7)",
+                          }}
+                        >
+                          {slot.count}
+                        </span>
+                      ) : null}
+                    </>
+                  )}
+                  <span className="biomes-ui-slot-key">{i + 1}</span>
+                </button>
+                {slot && onRemove ? (
+                  <button
+                    type="button"
+                    aria-label={`Remove ${slot.label} from hotbar slot ${
+                      i + 1
+                    }`}
+                    title={`Remove ${slot.label} from hotbar`}
+                    data-hotbar-remove-index={i}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onRemove(i);
+                    }}
+                    style={{
+                      // Anchor the remove (×) button to the TOP-LEFT corner. The
+                      // stack count renders at the top-right (right:4/top:2), so a
+                      // top-right × overlapped and hid the number. Keeping × on the
+                      // opposite corner leaves the count fully visible.
+                      position: "absolute",
+                      top: -6,
+                      left: -6,
+                      width: 16,
+                      height: 16,
+                      borderRadius: "50%",
+                      border: "1px solid rgba(180, 200, 220, 0.5)",
+                      background: "rgba(10, 14, 20, 0.9)",
+                      color: "#ff7777",
+                      fontSize: 10,
+                      lineHeight: 1,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      cursor: "pointer",
+                      padding: 0,
+                      zIndex: 2,
+                    }}
+                  >
+                    ×
+                  </button>
+                ) : null}
+              </div>
+            </Highlightable>
+          );
+        })}
+      </div>
     </div>
   );
 };

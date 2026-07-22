@@ -1,5 +1,6 @@
 import { cleanEmitterCallback } from "@/client/util/helpers";
 import { zBiomesId } from "@/shared/ids";
+import { zNpcVoiceProvider } from "@/shared/voices/types";
 import EventEmitter from "events";
 import { useEffect, useState } from "react";
 import type TypedEventEmitter from "typed-emitter";
@@ -96,6 +97,9 @@ export const zSettings = z.object({
   "settings.volume.voice": z.number().default(50),
   "settings.voice.microphoneDeviceId": z.string().default(""),
   "settings.voice.npcSpeechEnabled": z.boolean().default(true),
+  // New and returning players use ElevenLabs unless they explicitly select
+  // the existing OpenAI/Azure provider in Options.
+  "settings.voice.npcSpeechProvider": zNpcVoiceProvider.default("elevenlabs"),
   "settings.voice.microphoneInputEnabled": z.boolean().default(true),
 
   "inventory.craftByDefault": z.boolean(),

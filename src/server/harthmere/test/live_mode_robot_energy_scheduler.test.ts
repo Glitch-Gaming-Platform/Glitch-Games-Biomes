@@ -198,6 +198,13 @@ describe("Harthmere live entity production seeds", () => {
         53,
         `seed ${change.entity.id} should stand on extension ground`
       );
+      if (!change.entity.robot_component) {
+        assert.deepEqual(
+          change.entity.npc_metadata?.spawn_position,
+          change.entity.position?.v,
+          `creature ${change.entity.id} must respawn at its exact grounded anchor`
+        );
+      }
     }
     const robotChange = changes.find(
       (change) =>

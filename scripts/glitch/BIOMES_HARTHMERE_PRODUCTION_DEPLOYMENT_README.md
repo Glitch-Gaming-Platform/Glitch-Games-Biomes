@@ -7,7 +7,11 @@ guarded deploy reconciles the positive-X world bound to X=2560, the complete
 town beginning at X=1792, and the protected Grove-to-Harthmere connector before
 declaring the release complete. App replicas run with
 `BIOMES_CREATE_LOCAL_DEV_TERRAIN=0`; they read the persisted result instead of
-rebuilding hundreds of terrain shards concurrently during every cold start.
+rebuilding terrain concurrently during every cold start. Before traffic moves,
+the deploy creates one temporary zero-traffic maintenance replica with terrain
+seeding forced on, then audits all 2,304 foundation shards and every Y=52
+surface column. A missing shard, cliff/void hole, wrong box, or retired terrain
+record fails the deploy before the candidate can receive production traffic.
 The town uses the shared +1600 X coordinate transform and a separate terrain
 entity-id band, so the installed production map is not flattened, moved,
 deleted, or replaced.
@@ -72,6 +76,10 @@ Redis private and skip the post-deploy Redis world-sync phase:
 HARTHMERE_SKIP_WORLD_SYNC_RECONCILIATION=1 \
 scripts/glitch/deploy-production-local-redis-smoke.sh --push
 ```
+
+An app-only rollout intentionally skips the terrain maintenance revision and
+terrain audit. Use the full VNet-runner deploy below for this Harthmere terrain
+repair; an app-only rollout updates code but will not correct persisted cliffs.
 
 For a full production deploy with post-deploy world reconciliation, run from an
 Azure/VNet runner that can reach private Redis and pass the private Redis host:
@@ -319,11 +327,12 @@ scripts/glitch/deploy-production-local-redis-smoke.sh --redis-health-check-only
 
 ---
 
-## 2A. Optional Azure NPC voice and speech
+## 2A. Optional ElevenLabs and Azure NPC voice and speech
 
-NPC voice is Azure-only and optional. If the Azure OpenAI or Azure Speech
-settings are omitted, the game stays text-only and the microphone button remains
-hidden.
+ElevenLabs is the default NPC text-to-speech provider. The existing Azure voice
+provider remains selectable, Azure OpenAI generates NPC replies, and Azure
+Speech transcribes player microphone input. Missing provider credentials never
+block written NPC dialogue.
 
 The verified resources are:
 
@@ -341,7 +350,8 @@ az containerapp secret set \
   --name biomes-node-vnet \
   --secrets \
     azure-openai-api-key="<do-not-commit>" \
-    azure-speech-key="<do-not-commit>"
+    azure-speech-key="<do-not-commit>" \
+    elevenlabs-api-key="<do-not-commit>"
 
 az containerapp update \
   --resource-group openai-resource-group \
@@ -352,8 +362,24 @@ az containerapp update \
     AZURE_OPENAI_DEPLOYMENT="gpt-5.5" \
     AZURE_OPENAI_API_KEY="secretref:azure-openai-api-key" \
     AZURE_SPEECH_REGION="eastus2" \
-    AZURE_SPEECH_KEY="secretref:azure-speech-key"
+    AZURE_SPEECH_KEY="secretref:azure-speech-key" \
+    ELEVENLABS_API_KEY="secretref:elevenlabs-api-key" \
+    ELEVENLABS_MODEL_ID="eleven_multilingual_v2"
 ```
+
+The deployment script references `elevenlabs-api-key` by name and never accepts
+or prints the raw key. Rotate any key that has been pasted into chat or logs,
+then store only the replacement value in the Container App secret.
+
+The GitHub production deployment also requires the `production` environment
+secret `ELEVENLABS_API_KEY`. The workflow synchronizes that masked value into
+the Azure Container App secret `elevenlabs-api-key` immediately before each
+deployment, making GitHub the deployment source of truth without placing the
+credential in workflow YAML, documentation, or build artifacts.
+
+The key may be restricted to text-to-speech. `voices_read` is optional: without
+it, the runtime caches the denied discovery result and uses the tested premade
+fallback cast instead of repeatedly calling the voice-list endpoint.
 
 Useful verification commands:
 
@@ -1169,6 +1195,8 @@ Before deploy:
 - [ ] Public scale is `minReplicas=3`, `maxReplicas=3` for the normal production path.
 - [ ] Internal Container App `biomes-simulation-vnet` uses workload profile `d4-prod`, `4 CPU`, `16Gi`, internal target port `3000`, and `minReplicas=maxReplicas=1`.
 - [ ] The new revision's own FQDN serves `200 text/html` before traffic is shifted.
+- [ ] The one-replica terrain maintenance revision finishes before traffic is
+      shifted, then is deactivated after the extension terrain audit passes.
 - [ ] `GLITCH_TITLE_TOKEN` secret exists.
 - [ ] Runtime Redis host is the shared production Redis `10.0.0.12`.
 - [ ] Public runtime env includes `GLITCH_STACK_ROLE=web`, `GLITCH_ENABLE_ANIMA=0`, `GLITCH_ENABLE_GAIA=0`, `GLITCH_REDIS_MODE=external`, `GLITCH_POPULATE_SNAPSHOT_REDIS=0`, `GLITCH_REQUIRE_SNAPSHOT_REDIS=1`, `BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN=1`, `BIOMES_FORCE_LOCAL_DEV_TOWN=0`, `BIOMES_CREATE_LOCAL_DEV_TERRAIN=0`, `BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X=1600`, `NEXT_PUBLIC_BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X=1600`, `BIOMES_START_IN_HARTHMERE=0`, `GLITCH_WORLD_API_MODE=hfc-hybrid`, `GLITCH_BISCUIT_MODE=redis2`, and `GLITCH_ENABLE_SNAPSHOT_ASSET_SERVER=1`.
@@ -1190,6 +1218,15 @@ After deploy:
 - [ ] Logs show `Redis is already populated with the installed snapshot data.`; production app replicas must not run the snapshot populate path.
 - [ ] Logs show `registerWorldApi:got-config mode=hfc-hybrid`.
 - [ ] Logs show the snapshot world ready, additive Harthmere boundary expansion, and terrain seeding restricted to world shard origins X=1792..2528.
+- [ ] The extension audit reports `expectedFoundationShards=2304`,
+      `expectedSurfaceShards=576`, and zero missing, invalid, empty-foundation,
+      surface-hole, and retired-terrain counts.
+- [ ] Snapshot combat NPC reconciliation reports all Muckers outside Grove and
+      town safe zones; the first combat Muckling is in the watchtower clearing.
+- [ ] The persisted live-creature grounding pass reports all `100`
+      Muckers/Hexes and `24` animals alive with body-supported feet, exact
+      grounded respawn anchors, species-correct sizes, and zero unresolved
+      readback failures.
 - [ ] Logs show `/api/assets/player_mesh.glb` responses without automatic redirects to the Harthmere static body fallback.
 - [ ] Logs show `WebSocket listening on port 4900`.
 - [ ] Logs show `web now running`.

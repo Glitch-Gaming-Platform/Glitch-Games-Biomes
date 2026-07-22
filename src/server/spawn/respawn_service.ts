@@ -8,9 +8,13 @@ import { setNpcRespawnEnqueue } from "@/shared/npc/modify_health";
 import type { IdGenerator } from "@/server/shared/ids/generator";
 import type { WorldApi } from "@/server/shared/world/api";
 import { makeSpawnChangeToApply, npcEntity } from "@/server/spawn/spawn_npc";
+import { buildHarthmereLiveCreatureEntity } from "@/server/harthmere/live_entity_ecs_seed";
 import { RepeatingAsyncTimer } from "@/shared/util/async";
 import { deserializeNpcCustomState } from "@/shared/npc/serde";
-import { harthmereRespawningLiveCreatureSeedIds } from "@/shared/harthmere/live_entity_production_seed";
+import {
+  harthmereRespawningLiveCreatureSeedForId,
+  harthmereRespawningLiveCreatureSeedIds,
+} from "@/shared/harthmere/live_entity_production_seed";
 
 export const HARTHMERE_NPC_RESPAWN_SERVICE_VERSION =
   "harthmere-npc-respawn-service";
@@ -48,7 +52,9 @@ function persistedRespawnEntry(
   if (!Number.isFinite(respawnAt) || respawnAt <= 0) return undefined;
   return {
     typeId: entity.npc_metadata.type_id,
-    spawnPosition: [...entity.position.v] as [number, number, number],
+    spawnPosition: [
+      ...(entity.npc_metadata.spawn_position ?? entity.position.v),
+    ] as [number, number, number],
     spawnOrientation: entity.npc_metadata.spawn_orientation
       ? ([...entity.npc_metadata.spawn_orientation] as [number, number])
       : undefined,
@@ -116,15 +122,34 @@ export class NpcRespawnService {
           if (existing?.health()?.hp && existing.health()!.hp > 0) {
             continue;
           }
-          const spawned = npcEntity(
-            {
-              id: entry.previousId,
-              typeId: entry.typeId,
-              position: entry.spawnPosition,
-              orientation: entry.spawnOrientation,
-            },
-            now
+          const canonicalSeed = harthmereRespawningLiveCreatureSeedForId(
+            entry.previousId
           );
+          // Rebuild the exact authored creature entity. Generic npcEntity()
+          // respawn loses species size/combat health and reintroduces spawn
+          // jitter, which can make animals vanish into terrain after respawn.
+          const spawned = canonicalSeed
+            ? buildHarthmereLiveCreatureEntity(
+                {
+                  ...canonicalSeed,
+                  // The production grounding reconciler may move a large body
+                  // a few columns to find dry, fully-supported terrain. Keep
+                  // that persisted repair across every future respawn.
+                  position: [...entry.spawnPosition],
+                  orientation:
+                    entry.spawnOrientation ?? canonicalSeed.orientation,
+                },
+                now
+              )
+            : npcEntity(
+                {
+                  id: entry.previousId,
+                  typeId: entry.typeId,
+                  position: entry.spawnPosition,
+                  orientation: entry.spawnOrientation,
+                },
+                now
+              );
           changes.push(
             existing
               ? ({
@@ -134,6 +159,10 @@ export class NpcRespawnService {
                       entity: { ...spawned, expires: null },
                     },
                   ],
+                } as ChangeToApply)
+              : canonicalSeed
+              ? ({
+                  changes: [{ kind: "create", entity: spawned }],
                 } as ChangeToApply)
               : makeSpawnChangeToApply(now, {
                   id: entry.previousId,

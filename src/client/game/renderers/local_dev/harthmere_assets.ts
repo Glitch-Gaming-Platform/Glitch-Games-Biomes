@@ -7983,7 +7983,7 @@ const PLACEMENTS: RuntimePlacement[] = [
   A("animal_snake", 655, -274, -0.6, 1.0, "Briarfen Water Snake", "Harthmere Wilds - Briarfen", { radius: 0.7, speed: 0.16, phase: 2.3 }, 9011),
   A("animal_wolf", 735, 275, -Math.PI / 2, 0.94, "Gravewood Pale Wolf", "Harthmere Wilds - Southeast Gravewood", { radius: 1.8, speed: 0.22, phase: 1.5 }, 9012),
   A("townsperson_bandit", 245, -640, Math.PI, 1.12, "Bandit Trapper", "Harthmere Wilds - West Old Wood", { radius: 2.0, speed: 0.15, phase: 2.1 }, 9013),
-  AD("townsperson_undead", 524, -154, -Math.PI / 2, 1.02, "Combat Diagnostic Road Muckling", "Harthmere Combat Diagnostics - Mucker", { radius: 1.5, speed: 0.2, phase: 0.9 }, 9020),
+  AD("townsperson_undead", 320, -384, -Math.PI / 2, 1.02, "Combat Diagnostic Watchtower Muckling", "Harthmere Combat Diagnostics - Mucker", { radius: 1.5, speed: 0.2, phase: 0.9 }, 9020),
   AD("townsperson_undead", 468, -250, Math.PI, 1.08, "Combat Diagnostic Greater Hexer", "Harthmere Combat Diagnostics - Hex", { radius: 1.4, speed: 0.18, phase: 1.6 }, 9021),
   AD("townsperson_undead", 644, -456, -0.4, 1.04, "Combat Diagnostic Old Wood Mucker", "Harthmere Combat Diagnostics - Mucker", { radius: 1.6, speed: 0.18, phase: 2.4 }, 9022),
   AD("townsperson_undead", 640, 120, 0.2, 1.1, "Combat Diagnostic Lesser Hexer", "Harthmere Combat Diagnostics - Hex", { radius: 1.3, speed: 0.16, phase: 0.7 }, 9023),

@@ -295,7 +295,7 @@ export const BiomesUIVitalsPanel: React.FunctionComponent<{}> = () => {
     // The server scheduler is the periodic ECS authority. This heartbeat only
     // provides a bounded fallback/read response and must not contend with the
     // scheduler on every single world tick.
-    const interval = window.setInterval(() => void heartbeat(), 5_000);
+    const interval = window.setInterval(() => void heartbeat(), 15_000);
     return () => {
       stopped = true;
       activeController?.abort();

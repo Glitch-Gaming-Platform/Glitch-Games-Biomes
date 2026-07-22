@@ -1,4 +1,5 @@
 import { npcEntity } from "@/server/spawn/spawn_npc";
+import { prepareHarthmerePlayerLikeNpcForUniqueAppearance } from "@/server/harthmere/player_like_npc_cosmetics";
 import type { Change, ProposedChange } from "@/shared/ecs/change";
 import { secondsSinceEpoch } from "@/shared/ecs/config";
 import {
@@ -52,6 +53,7 @@ export function buildHarthmereBusinessOwnerNpcSeedChanges(input: {
   const changes: Change[] = [];
 
   for (const seed of HARTHMERE_BUSINESS_OWNER_NPC_SEEDS) {
+    const kind = changeKindForSeed(seed.entityId, existingIds);
     // Deterministic, per-owner appearance — keyed off the stable entity id and
     // the owner's name/role so every shopkeeper looks distinct (same generator
     // the Grove NPCs and player avatars use).
@@ -73,31 +75,33 @@ export function buildHarthmereBusinessOwnerNpcSeedChanges(input: {
       forwardAxis: "minusZ",
       source: HARTHMERE_BUSINESS_OWNER_NPC_SEED_SOURCE,
     });
-    const base = npcEntity(
-      {
-        id: seed.entityId,
-        typeId: LOCAL_DEV_HUMAN_NPC_TYPE_ID,
-        position: seed.position,
-        orientation: seed.orientation,
-        velocity: [0, 0, 0],
-        displayName: seed.displayName,
-        // Casual talk contains identity, business, and local conditions only.
-        // Job offers are attached to quest_giver below.
-        defaultDialog: npcDialog(seed.line, ...seed.ambientLines),
-      },
-      nowSeconds
+    const base = prepareHarthmerePlayerLikeNpcForUniqueAppearance(
+      npcEntity(
+        {
+          id: seed.entityId,
+          typeId: LOCAL_DEV_HUMAN_NPC_TYPE_ID,
+          position: seed.position,
+          orientation: seed.orientation,
+          velocity: [0, 0, 0],
+          displayName: seed.displayName,
+          // Casual talk contains identity, business, and local conditions only.
+          // Job offers are attached to quest_giver below.
+          defaultDialog: npcDialog(seed.line, ...seed.ambientLines),
+        },
+        nowSeconds
+      ),
+      kind
     );
     // HARTHMERE_BUSINESS_NPC_PLAYER_AVATAR_PARITY: npcEntity assigns a
     // UNIFORM default appearance_component/wearing for the player-like human
     // type, which made every owner render identically through the player_mesh
-    // pipeline. Drop those uniform cosmetics so the renderer's deterministic
-    // per-id rich-appearance fallback (snapshotRichNpc*Fallback) engages,
+    // pipeline. The helper omits them on create and writes explicit nulls on
+    // update so old production rows cannot retain the shared defaults and skip
+    // the deterministic per-id rich-appearance fallback.
     // giving each shopkeeper a distinct, clothed, animated PLAYER/Grove-style
     // avatar — the same design as the player, Grove townsfolk, Billy/Donnie/Max
     // (NOT the blocky voxel NPC design). See makeNpcMesh in
     // client/game/resources/npcs.ts.
-    delete (base as { appearance_component?: unknown }).appearance_component;
-    delete (base as { wearing?: unknown }).wearing;
     const entity = {
       ...base,
       entity_description: EntityDescription.create({
@@ -128,7 +132,7 @@ export function buildHarthmereBusinessOwnerNpcSeedChanges(input: {
       }),
     };
     changes.push({
-      kind: changeKindForSeed(seed.entityId, existingIds),
+      kind,
       tick: input.tick,
       entity,
     });

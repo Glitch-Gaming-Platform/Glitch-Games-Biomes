@@ -4,6 +4,7 @@
 // imported safely by UI/onboarding components without pulling in the full bridge.
 
 import {
+  normalizeHarthmereGlitchKey,
   resolveHarthmereGlitchEventText,
   type HarthmereGlitchEventText,
 } from "./harthmere_glitch_event_catalog";
@@ -44,16 +45,6 @@ function isBrowser() {
   );
 }
 
-function cleanKey(value: string | undefined, fallback: string) {
-  const cleaned = (value ?? "")
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9_:.\-]+/g, "_")
-    .replace(/^_+|_+$/g, "")
-    .slice(0, 80);
-  return cleaned || fallback;
-}
-
 function cleanMetadata(
   metadata: HarthmereGlitchBehaviorMetadata | undefined
 ): HarthmereGlitchBehaviorMetadata | undefined {
@@ -62,7 +53,7 @@ function cleanMetadata(
   }
   const cleaned: HarthmereGlitchBehaviorMetadata = {};
   for (const [key, value] of Object.entries(metadata).slice(0, 24)) {
-    const safeKey = cleanKey(key, "field");
+    const safeKey = normalizeHarthmereGlitchKey(key, "field");
     if (value === undefined || typeof value === "function") {
       continue;
     }
@@ -102,8 +93,8 @@ export function makeHarthmereGlitchBehaviorEvent(
   metadata?: HarthmereGlitchBehaviorMetadata,
   text?: Partial<HarthmereGlitchEventText>
 ): HarthmereGlitchBehaviorEvent {
-  const cleanStepKey = cleanKey(stepKey, "unknown_step");
-  const cleanActionKey = cleanKey(actionKey, "event");
+  const cleanStepKey = normalizeHarthmereGlitchKey(stepKey, "unknown_step");
+  const cleanActionKey = normalizeHarthmereGlitchKey(actionKey, "event");
   const resolvedText = resolveHarthmereGlitchEventText(
     cleanStepKey,
     cleanActionKey,

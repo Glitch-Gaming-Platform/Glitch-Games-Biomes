@@ -47,8 +47,8 @@ export interface BiomesUIProps {
     slots: Array<HotbarSlotItem | null>;
     selectedIndex: number;
     onSelect: (i: number) => void;
-    onUse?: (i: number) => void;
-    onDrop?: (i: number) => void;
+    onUse?: (i: number) => unknown | Promise<unknown>;
+    onDrop?: (i: number) => unknown | Promise<unknown>;
     onRemove?: (i: number) => void;
   };
   badges?: Partial<Record<TabKey, number>>;
@@ -96,9 +96,9 @@ export const BiomesUI: React.FunctionComponent<BiomesUIProps> = ({
   hudVisibilityOverride,
 }) => {
   const pointerLockManager = usePointerLockManager();
-  const shouldReturnPointerLock = useRef<PointerLockUnlockWhileOpenReturnRef>(
-    { current: false }
-  );
+  const shouldReturnPointerLock = useRef<PointerLockUnlockWhileOpenReturnRef>({
+    current: false,
+  });
   const shortcuts = shortcutOverrides ?? DEFAULT_TAB_SHORTCUTS;
   const hudVisibility = useBiomesHUDVisibilitySnapshot(hudVisibilityOverride);
 
@@ -278,28 +278,20 @@ export const BiomesUI: React.FunctionComponent<BiomesUIProps> = ({
               onUse={
                 hotbar.onUse
                   ? (i) => {
-                      emitHarthmereGlitchBehaviorEvent(
-                        "hotbar",
-                        "use_slot",
-                        {
-                          slot: i + 1,
-                        }
-                      );
-                      hotbar.onUse?.(i);
+                      emitHarthmereGlitchBehaviorEvent("hotbar", "use_slot", {
+                        slot: i + 1,
+                      });
+                      return hotbar.onUse?.(i);
                     }
                   : undefined
               }
               onDrop={
                 hotbar.onDrop
                   ? (i) => {
-                      emitHarthmereGlitchBehaviorEvent(
-                        "hotbar",
-                        "drop_slot",
-                        {
-                          slot: i + 1,
-                        }
-                      );
-                      hotbar.onDrop?.(i);
+                      emitHarthmereGlitchBehaviorEvent("hotbar", "drop_slot", {
+                        slot: i + 1,
+                      });
+                      return hotbar.onDrop?.(i);
                     }
                   : undefined
               }
@@ -317,6 +309,7 @@ export const BiomesUI: React.FunctionComponent<BiomesUIProps> = ({
                     }
                   : undefined
               }
+              enabled={activeTab === null}
             />
           </div>
         </div>

@@ -3,15 +3,16 @@ import {
   type BiomesHUDVisibilityId,
   type BiomesHUDVisibilitySnapshot,
 } from "@/client/components/biomes_ui/hudVisibilitySettings";
-import type { GraphicsQuality } from "@/client/util/typed_local_storage";
-import * as React from "react";
-import type { TabShortcut } from "../shortcuts/BiomesShortcuts";
+import type { TabShortcut } from "@/client/components/biomes_ui/shortcuts/BiomesShortcuts";
 import {
   BIOMES_UI_DEFAULT_MICROPHONE_DEVICE_ID,
   biomesUIMicrophoneOptionsFromDevices,
   biomesUISelectedMicrophoneDeviceId,
   type BiomesUIMicrophoneDeviceOption,
-} from "./microphoneDeviceSettings";
+} from "@/client/components/biomes_ui/tabs/microphoneDeviceSettings";
+import type { GraphicsQuality } from "@/client/util/typed_local_storage";
+import type { NpcVoiceProvider } from "@/shared/voices/types";
+import * as React from "react";
 
 const GRAPHICS_QUALITY_OPTIONS: readonly {
   value: GraphicsQuality;
@@ -37,6 +38,8 @@ interface OptionsControlsSurfaceProps {
   onVoiceVolumeChange?: (next: number) => void;
   npcSpeechEnabled?: boolean;
   onNpcSpeechEnabledChange?: (next: boolean) => void;
+  npcSpeechProvider?: NpcVoiceProvider;
+  onNpcSpeechProviderChange?: (next: NpcVoiceProvider) => void;
   microphoneInputEnabled?: boolean;
   onMicrophoneInputEnabledChange?: (next: boolean) => void;
   microphoneDevices?: readonly BiomesUIMicrophoneDeviceOption[];
@@ -45,10 +48,7 @@ interface OptionsControlsSurfaceProps {
   onMicrophoneDeviceChange?: (deviceId: string) => void;
   onRefreshMicrophoneDevices?: () => void;
   hudVisibility: BiomesHUDVisibilitySnapshot;
-  onHudVisibilityChange?: (
-    id: BiomesHUDVisibilityId,
-    visible: boolean
-  ) => void;
+  onHudVisibilityChange?: (id: BiomesHUDVisibilityId, visible: boolean) => void;
   shortcuts: TabShortcut[];
   recordingFor?: string | null;
   onStartRecordingShortcut?: (tab: string) => void;
@@ -69,6 +69,8 @@ export const OptionsControlsSurfaceForTest: React.FunctionComponent<
   onVoiceVolumeChange,
   npcSpeechEnabled = true,
   onNpcSpeechEnabledChange,
+  npcSpeechProvider = "elevenlabs",
+  onNpcSpeechProviderChange,
   microphoneInputEnabled = true,
   onMicrophoneInputEnabledChange,
   microphoneDevices = biomesUIMicrophoneOptionsFromDevices([]),
@@ -150,6 +152,23 @@ export const OptionsControlsSurfaceForTest: React.FunctionComponent<
               onNpcSpeechEnabledChange?.(event.currentTarget.checked)
             }
           />
+        </Row>
+        {/* Keep provider selection adjacent to the master NPC-speech switch so
+            disabling speech makes the entire output policy visibly inactive. */}
+        <Row label="NPC Voice Provider">
+          <select
+            aria-label="NPC Voice Provider"
+            value={npcSpeechProvider}
+            disabled={!npcSpeechEnabled}
+            onChange={(event) =>
+              onNpcSpeechProviderChange?.(
+                event.currentTarget.value as NpcVoiceProvider
+              )
+            }
+          >
+            <option value="elevenlabs">ElevenLabs (Natural)</option>
+            <option value="openai">OpenAI / Azure (Existing)</option>
+          </select>
         </Row>
         <Row label="Microphone Input">
           <input

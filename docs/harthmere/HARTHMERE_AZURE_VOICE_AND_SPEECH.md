@@ -1,11 +1,24 @@
-# Harthmere Azure Voice And Speech
+# Harthmere Voice And Speech
 
-This project uses Azure only for NPC voice work:
+The runtime now supports two selectable NPC text-to-speech providers:
 
-- Azure OpenAI Responses for dynamic NPC text.
-- Azure AI Speech for text-to-speech and speech-to-text.
-- No other voice provider is called. If the Azure deployment is not configured,
-  voice controls stay hidden and dialogue stays text-only.
+- **ElevenLabs** is the default and uses natural account voices with stable
+  per-NPC casting.
+- **OpenAI / Azure** preserves the existing Azure AI Speech voice path.
+
+Azure OpenAI Responses still generates dynamic NPC text, and Azure AI Speech
+still handles player speech-to-text. NPC speech can be switched off entirely;
+dialogue always remains readable as text when any external service is missing.
+
+The ElevenLabs key is server-only. The browser sends only the selected provider,
+NPC voice descriptor, language, and dialogue text to the authenticated Biomes
+API route; it never receives the provider credential.
+
+For production, store the value as the GitHub `production` environment secret
+`ELEVENLABS_API_KEY`. The Azure deployment workflow copies that masked value to
+the Container App secret `elevenlabs-api-key` before applying the revision. For
+local development, use the gitignored `.env.local` file and restrict it to the
+current OS user; never place the value in an example file or tracked document.
 
 ## Verified Azure Resources
 
@@ -83,6 +96,17 @@ export AZURE_SPEECH_KEY="$(az cognitiveservices account keys list \
 Optional environment variables:
 
 ```bash
+ELEVENLABS_API_KEY=
+ELEVENLABS_MODEL_ID=eleven_multilingual_v2
+ELEVENLABS_OUTPUT_FORMAT=mp3_44100_128
+
+# Optional comma-separated cast overrides. When omitted, the server discovers
+# available account voices and chooses a stable, gender-matched cast per NPC.
+ELEVENLABS_VOICE_IDS=
+ELEVENLABS_FEMALE_VOICE_IDS=
+ELEVENLABS_MALE_VOICE_IDS=
+ELEVENLABS_NEUTRAL_VOICE_IDS=
+
 AZURE_OPENAI_ENDPOINT=https://glitch-openai-instance.openai.azure.com/
 AZURE_OPENAI_API_VERSION=2025-04-01-preview
 AZURE_OPENAI_DEPLOYMENT=gpt-5.5
@@ -92,13 +116,23 @@ AZURE_SPEECH_REGION=eastus2
 AZURE_SPEECH_KEY=
 ```
 
-If any of the required Azure variables are absent:
+Player defaults:
 
-- `/api/voices/speech_status` reports the capability as disabled.
-- The small microphone button is hidden.
-- Text-to-speech returns `{ "url": "" }`.
+- NPC speech is enabled.
+- ElevenLabs is selected as the NPC voice provider.
+- The Options screen can switch to the existing OpenAI / Azure provider or turn
+  NPC speech off without affecting written dialogue.
+
+If provider credentials are absent or a request fails:
+
+- `/api/voices/speech_status` reports each TTS provider independently.
+- Text-to-speech returns `{ "url": "" }` for the selected unavailable provider.
 - Speech-to-text returns an empty text result with `unavailableReason`.
 - NPC dialogue still works as normal text.
+
+The microphone control depends on Azure Speech-to-text and Azure OpenAI
+generated chat, not on NPC text-to-speech. This means players can still hold
+`T`, speak, and receive a written NPC response when NPC audio is turned off.
 
 ## Voice Assignment
 
@@ -121,15 +155,14 @@ The runtime delivery rules live in:
 src/shared/harthmere/npc_speech_delivery.ts
 ```
 
-Those rules shape each Azure SSML request with actor-specific cadence, line
-aware pauses, modest rate/pitch shifts, and prompt briefs for dynamic generated
-chat.
+Those rules shape Azure SSML with actor-specific cadence and also provide the
+actor identity, presentation, kind, and speed hints used for ElevenLabs casting.
 
 The catalog assigns every authored Harthmere NPC/living entity a stable
 `voiceParameterId`:
 
 ```text
-azure-speech|voice=en-US-LunaNeural|style=conversation|styleDegree=0.95|rate=-3%|pitch=+1%|volume=default|break=150|actor=...
+azure-speech|voice=en-US-LunaNeural|gender=female|kind=humanoid|style=conversation|styleDegree=0.95|rate=-3%|pitch=+1%|volume=default|break=150|actor=...
 ```
 
 The assignment uses:
@@ -147,9 +180,22 @@ The assignment uses:
 This gives a deterministic voice that can be stored in the ECS `Voice`
 component and reused for dynamic responses or static recording generation.
 
+For ElevenLabs, the server queries `GET /v2/voices`, prefers voices compatible
+with the configured quality model, matches authored/inferred presentation when
+labels are available, and hashes the actor identity into the resulting pool.
+The default model is `eleven_multilingual_v2`; operators can choose a lower
+latency model with `ELEVENLABS_MODEL_ID`. Explicit environment voice pools take
+priority over account discovery.
+
+A restricted key only needs text-to-speech access. If it does not include the
+optional `voices_read` permission, the server caches that discovery restriction
+and uses its deterministic premade fallback cast without exposing or weakening
+the credential. Grant `voices_read` only when production should discover custom
+or account-managed voices automatically.
+
 ## Making Speech Less AI-Sounding
 
-Use Azure Speech voices as cast performances, not as one global narrator:
+Use both providers as cast performances, not as one global narrator:
 
 - keep NPC lines short enough to breathe;
 - prefer contractions and concrete local detail;
@@ -167,12 +213,11 @@ Use Azure Speech voices as cast performances, not as one global narrator:
   newscasters, or audiobook narration unless a specific NPC is authored that
   way;
 - reserve custom/personal voice cloning for cases with explicit consent and the
-  correct Azure feature approval.
+  correct provider permissions.
 
 The June 7, 2026 Azure voice audit also found newer MAI voices and Azure OpenAI
-audio deployments. They are documented as available Azure resources, but the
-production NPC path remains Azure Speech-only and defaults to stable
-style-capable neural voices instead of switching providers.
+audio deployments. They remain available through the existing provider, while
+ElevenLabs is now the default player setting for dynamic NPC speech.
 
 ## Static NPC Recordings
 
@@ -199,10 +244,19 @@ public/harthmere/voices/generated/current/
 These generated audio files can be produced in a controlled asset pass. They are
 not required for normal dynamic TTS playback.
 
-## Speak Button Flow
+## Hold-To-Talk And Speak Button Flow
 
-When Azure voice is active, NPC dialogue shows a small microphone button after
-the dialogue text has finished typing and the normal options are visible.
+When speech input is available, NPC dialogue shows a small microphone button and
+the indicator `Press T to talk` after the dialogue text has finished typing and
+the normal options are visible. Clicking the button keeps the previous
+start/stop behavior. Holding `T` starts listening; releasing `T` stops capture
+and submits the recording.
+
+While held, the UI displays `Listening… release T to send`. While speech is
+being transcribed and interpreted, it displays `Interpreting…`. Recording also
+stops safely at the configured time limit, on focus loss, or when the dialog is
+closed. The shortcut ignores key repeat, modifier combinations, and editable
+fields.
 
 Flow:
 
@@ -212,9 +266,11 @@ Flow:
 4. The transcript is sent to `/api/npcs/generated_chat`.
 5. The NPC prompt includes the NPC background and, when applicable, active
    quest context for that NPC.
-6. The response text is sent to `/api/voices/text_to_speech`.
-7. Azure AI Speech returns MP3 audio and the NPC speaks back in its assigned
-   voice.
+6. The response text is sent to `/api/voices/text_to_speech` with the player's
+   selected NPC voice provider.
+7. ElevenLabs or the existing Azure Speech provider returns audio and the NPC
+   speaks back in its assigned voice. If NPC speech is off or unavailable, the
+   response remains text-only.
 
 If the player has an active quest for that NPC, voice-driven responses include
 the quest name, state, current dialogue, and primary/decline actions as context.

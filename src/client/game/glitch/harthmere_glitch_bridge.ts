@@ -13,9 +13,15 @@ import {
   type HarthmereGlitchBehaviorEvent,
 } from "@/client/game/glitch/harthmere_glitch_behavior_events";
 import {
+  HARTHMERE_GLITCH_DASHBOARD_FUNNELS,
+  normalizeHarthmereGlitchKey,
   resolveHarthmereGlitchEventText,
   type HarthmereGlitchEventText,
 } from "@/client/game/glitch/harthmere_glitch_event_catalog";
+import {
+  HARTHMERE_GLITCH_GARDEN_HOSE_BEHAVIORS,
+  HARTHMERE_GLITCH_STATE_CHANGE_BEHAVIORS,
+} from "@/client/game/glitch/harthmere_glitch_tracking_manifest";
 import { shouldApplyHarthmereCloudSave } from "@/client/game/glitch/harthmere_cloud_save_restore_policy";
 import { HARTHMERE_INVENTORY_EVENT } from "@/client/components/challenges/harthmereEvents";
 
@@ -273,6 +279,7 @@ declare global {
       status: () => Record<string, unknown>;
       flush: (reason?: string) => Promise<void>;
       standardEvents: typeof HARTHMERE_GLITCH_STANDARD_FUNNEL_EVENTS;
+      dashboardFunnels: typeof HARTHMERE_GLITCH_DASHBOARD_FUNNELS;
     };
     __harthmereGlitchBehaviorBacklog?: HarthmereGlitchBehaviorEvent[];
     __harthmereGlitch?: {
@@ -1083,10 +1090,10 @@ function closestTelemetryButtonLabel(target: EventTarget | null) {
     "[data-harthmere-track-step],button,[role='button'],.biomes-ui-tab"
   );
   if (!el) return undefined;
-  const label =
-    el.getAttribute("aria-label") ??
-    el.getAttribute("title") ??
-    (el.textContent ?? "").replace(/\s+/g, " ").trim();
+  // Only an explicit telemetry label is safe to send. Visible text and ARIA
+  // labels can contain player names or other user-authored content, which the
+  // Glitch behavioral-event contract forbids placing in metadata.
+  const label = el.getAttribute("data-harthmere-track-label")?.trim();
   return {
     label: label ? label.slice(0, 80) : undefined,
     tag: el.tagName.toLowerCase(),
@@ -1097,6 +1104,63 @@ function closestTelemetryButtonLabel(target: EventTarget | null) {
     step: el.getAttribute("data-harthmere-track-step") ?? undefined,
     action: el.getAttribute("data-harthmere-track-action") ?? undefined,
   };
+}
+
+function gardenHoseBehaviorMetadata(event: Record<string, any>) {
+  const metadata: Record<string, unknown> = {};
+  const primitiveKeys = [
+    "running",
+    "tab",
+    "id",
+    "stepId",
+    "nuxId",
+    "npcId",
+    "hotbarIndex",
+    "itemId",
+    "slot",
+    "operation",
+    "authority",
+    "terrainId",
+    "stationEntityId",
+    "minigameId",
+    "beamType",
+    "initialBootstrap",
+    "questId",
+    "objectiveIndex",
+    "trigger",
+    "markerId",
+    "practiceAction",
+  ] as const;
+  for (const key of primitiveKeys) {
+    const value = event[key];
+    if (
+      typeof value === "string" ||
+      typeof value === "number" ||
+      typeof value === "boolean"
+    ) {
+      metadata[normalizeHarthmereGlitchKey(key, "field")] = value;
+    }
+  }
+  const nestedItemId = event.item?.id ?? event.stationItem?.id;
+  if (typeof nestedItemId === "string" || typeof nestedItemId === "number") {
+    metadata.item_id = nestedItemId;
+  }
+  if (Array.isArray(event.mail)) {
+    metadata.message_count = event.mail.length;
+  }
+  const practiceItem = event.grantedPracticeItem;
+  if (practiceItem && typeof practiceItem === "object") {
+    if (
+      typeof practiceItem.itemId === "string" ||
+      typeof practiceItem.itemId === "number"
+    ) {
+      metadata.practice_item_id = practiceItem.itemId;
+    }
+    if (typeof practiceItem.quantity === "number") {
+      metadata.practice_item_quantity = practiceItem.quantity;
+    }
+  }
+  return Object.keys(metadata).length ? metadata : undefined;
 }
 
 function showDisconnectedOverlay(reason: string) {
@@ -1257,11 +1321,16 @@ class HarthmereGlitchBridgeController {
     this.installDebugApi();
     this.installLocalSessionChannel();
     this.installAegisBridge();
-    this.installBehaviorTelemetry();
     this.enqueueBehaviorEvent("game_boot", "start", {
       launched_by_glitch: this.config.launchedByGlitch,
       local_only: this.config.localOnly,
     });
+    if (this.config.launchedByGlitch && this.config.installId) {
+      // Establish the documented funnel order before draining loading and
+      // onboarding events that were buffered while the game context booted.
+      this.enqueueBehaviorEvent("glitch_auth", "start");
+    }
+    this.installBehaviorTelemetry();
 
     if (!this.config.launchedByGlitch || !this.config.installId) {
       const identity = localIdentity(this.config);
@@ -1273,7 +1342,6 @@ class HarthmereGlitchBridgeController {
       return;
     }
 
-    this.enqueueBehaviorEvent("glitch_auth", "start");
     await this.validateAndClaimInstall();
 
     // Guests play the full game with an ephemeral session: no cloud restore, no
@@ -2068,21 +2136,26 @@ class HarthmereGlitchBridgeController {
       }
       this.behaviorThrottle.set(throttleKey, now);
     }
+    const cleanStepKey = normalizeHarthmereGlitchKey(stepKey, "unknown_step");
+    const cleanActionKey = normalizeHarthmereGlitchKey(actionKey, "event");
     const text = resolveHarthmereGlitchEventText(
-      stepKey,
-      actionKey,
+      cleanStepKey,
+      cleanActionKey,
       options.text
     );
+    const requestedPreviousStepKey = options.previousStepKey
+      ? normalizeHarthmereGlitchKey(options.previousStepKey, "unknown_step")
+      : undefined;
     const previousStepKey =
-      options.previousStepKey ??
-      (this.previousBehaviorStepKey !== stepKey
+      requestedPreviousStepKey ??
+      (this.previousBehaviorStepKey !== cleanStepKey
         ? this.previousBehaviorStepKey
         : undefined);
-    this.previousBehaviorStepKey = stepKey;
+    this.previousBehaviorStepKey = cleanStepKey;
     const event: HarthmereGlitchBehaviorEvent = {
       version: "harthmere-glitch-behavior-events",
-      step_key: stepKey,
-      action_key: actionKey,
+      step_key: cleanStepKey,
+      action_key: cleanActionKey,
       ...text,
       previous_step_key: previousStepKey,
       metadata: safeBehaviorMetadata(metadata),
@@ -2148,130 +2221,56 @@ class HarthmereGlitchBridgeController {
       if (event?.step_key) this.enqueueCustomBehaviorEvent(event);
     }
 
-    const addThrottled = (name: string, step: string, action: string) => {
+    for (const [
+      eventName,
+      stepKey,
+      actionKey,
+    ] of HARTHMERE_GLITCH_STATE_CHANGE_BEHAVIORS) {
       const handler = () =>
-        this.enqueueBehaviorEvent(step, action, undefined, {
-          throttleKey: `${step}:${action}`,
+        this.enqueueBehaviorEvent(stepKey, actionKey, undefined, {
+          throttleKey: `state:${eventName}`,
         });
-      window.addEventListener(name, handler);
+      window.addEventListener(eventName, handler);
       this.behaviorCleanup.push(() =>
-        window.removeEventListener(name, handler)
+        window.removeEventListener(eventName, handler)
       );
-    };
-
-    addThrottled(HARTHMERE_INVENTORY_EVENT, "inventory", "state_changed");
-    addThrottled(
-      "biomes:harthmere-economy-changed",
-      "economy",
-      "state_changed"
-    );
-    addThrottled(
-      "biomes:harthmere-dialogue-changed",
-      "dialogue",
-      "state_changed"
-    );
-    addThrottled(
-      "biomes:harthmere-quest-state-changed",
-      "quest",
-      "state_changed"
-    );
-    addThrottled("biomes:harthmere-mission-event", "mission", "progress");
-    addThrottled("biomes:harthmere-combat-changed", "combat", "state_changed");
-    addThrottled("biomes:harthmere-death-changed", "combat", "death");
-    addThrottled(
-      "biomes:harthmere-leveling-changed",
-      "progression",
-      "leveling_changed"
-    );
+    }
 
     const gardenHose = this.clientContext?.gardenHose;
-    const addGardenHoseEvent = (
-      eventName: string,
-      stepKey: string,
-      actionKey: string,
-      metadata: (event: any) => Record<string, unknown> | undefined = () =>
-        undefined,
-      once = false
-    ) => {
-      if (!gardenHose) return;
+    if (gardenHose) {
+      const onceEvents = new Set<string>();
       const handler = (event: any) => {
-        this.enqueueBehaviorEvent(stepKey, actionKey, metadata(event));
-        if (once) gardenHose.off(eventName as any, handler);
+        const definition =
+          HARTHMERE_GLITCH_GARDEN_HOSE_BEHAVIORS[
+            event?.kind as keyof typeof HARTHMERE_GLITCH_GARDEN_HOSE_BEHAVIORS
+          ];
+        if (!definition) return;
+        if (definition.once && onceEvents.has(event.kind)) return;
+        if (definition.once) onceEvents.add(event.kind);
+        this.enqueueBehaviorEvent(
+          definition.stepKey,
+          definition.actionKey,
+          gardenHoseBehaviorMetadata(event),
+          definition.throttleMs
+            ? {
+                throttleKey: `garden_hose:${event.kind}`,
+                throttleMs: definition.throttleMs,
+              }
+            : undefined
+        );
       };
-      gardenHose.on(eventName as any, handler);
-      this.behaviorCleanup.push(() =>
-        gardenHose.off(eventName as any, handler)
-      );
-    };
-
-    addGardenHoseEvent("move", "first_movement", "complete", undefined, true);
-    addGardenHoseEvent("talk_npc", "npc_dialogue", "start", (event) => ({
-      npc_id: event?.npcId,
-    }));
-    addGardenHoseEvent(
-      "challenge_unlock",
-      "quest_active",
-      "accepted",
-      (event) => ({ quest_id: event?.id })
-    );
-    addGardenHoseEvent(
-      "challenge_step_complete",
-      "quest_objective",
-      "complete",
-      (event) => ({ step_id: event?.stepId })
-    );
-    addGardenHoseEvent(
-      "challenge_complete",
-      "quest_reward",
-      "complete",
-      (event) => ({ quest_id: event?.id })
-    );
-    addGardenHoseEvent(
-      "challenge_abandon",
-      "quest_abandon",
-      "complete",
-      (event) => ({ quest_id: event?.id })
-    );
-    addGardenHoseEvent("open_shop", "vendor_open", "screen_view");
-    addGardenHoseEvent("open_station", "crafting_station", "screen_view");
-    addGardenHoseEvent("craft", "crafting_complete", "complete");
-    addGardenHoseEvent("equip", "equipment_change", "success", (event) => ({
-      hotbar_index: event?.hotbarIndex,
-    }));
-    addGardenHoseEvent(
-      "inventory_overflow_item_received",
-      "inventory_capacity",
-      "overflow"
-    );
-    addGardenHoseEvent(
-      "mail_received",
-      "mail_received",
-      "complete",
-      (event) => ({
-        initial_bootstrap: event?.initialBootstrap === true,
-        message_count: Array.isArray(event?.mail)
-          ? event.mail.length
-          : undefined,
-      })
-    );
-    addGardenHoseEvent(
-      "minigame_simple_race_finish",
-      "minigame_complete",
-      "complete",
-      (event) => ({ minigame_id: event?.minigameId })
-    );
-    addGardenHoseEvent("minigame_quit", "minigame_exit", "quit", (event) => ({
-      minigame_id: event?.minigameId,
-    }));
+      gardenHose.on("anyEvent", handler);
+      this.behaviorCleanup.push(() => gardenHose.off("anyEvent", handler));
+    }
 
     const clickHandler = (event: MouseEvent) => {
       const info = closestTelemetryButtonLabel(event.target);
-      if (!info?.label && !info?.step) return;
+      if (!info) return;
       this.enqueueBehaviorEvent(
         info.step ?? "interface",
         info.action ?? "click",
         {
-          label: info.label,
+          control_label: info.label,
           tag: info.tag,
           class_name: info.className,
         }
@@ -2384,9 +2383,11 @@ class HarthmereGlitchBridgeController {
         launchedByGlitch: this.config.launchedByGlitch,
         queueLength: this.behaviorQueue.length,
         standardEvents: HARTHMERE_GLITCH_STANDARD_FUNNEL_EVENTS.length,
+        dashboardFunnels: HARTHMERE_GLITCH_DASHBOARD_FUNNELS.length,
       }),
       flush: (reason = "debug") => this.flushBehaviorEvents(reason),
       standardEvents: HARTHMERE_GLITCH_STANDARD_FUNNEL_EVENTS,
+      dashboardFunnels: HARTHMERE_GLITCH_DASHBOARD_FUNNELS,
     };
   }
 }

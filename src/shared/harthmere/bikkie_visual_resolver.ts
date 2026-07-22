@@ -73,16 +73,27 @@ export interface HarthmereResolvedBikkieVisual {
 const HEX = /^#[0-9a-f]{6}$/i;
 
 const NAMED_COLOR_HEX: Array<[RegExp, string]> = [
+  [/glass|clear crystal/i, "#70b8cf"],
+  [/limestone|sandstone/i, "#c8b78f"],
+  [/clay|terracotta|brick/i, "#b86b54"],
+  [/cotton|linen|fabric|cloth/i, "#d8d2c4"],
+  [/stone|rock|granite|basalt|cobblestone|quartzite/i, "#7f8994"],
   [/electric|screen|home[-\s]*blue|water|blue|teal|cyan|frost/i, "#3f91c8"],
   [/violet|purple|plum|indigo|lilac|rose|magenta|quartz/i, "#8664c7"],
   [/green|leaf|moss|fern|mint|olive|kelp|pine|seaweed/i, "#4f9a64"],
   [/carrot|orange|ember|fire|copper|rust|salmon|red meat|warning/i, "#d8683f"],
   [/red|cherry|seal/i, "#bd4c48"],
   [/gold|yellow|amber|brass|wheat|straw|sun/i, "#d1a84d"],
-  [/brown|wood|oak|log|chestnut|soil|coffee|twine|post|grip|hide|mud/i, "#7b5438"],
+  [
+    /brown|wood|oak|log|chestnut|soil|coffee|twine|post|grip|hide|mud/i,
+    "#7b5438",
+  ],
   [/tan|beige|cream|ceramic|linen|paper|rice|bone|mug/i, "#e2c892"],
   [/white|moon|ivory|pearl|opal|clear/i, "#f2eadb"],
-  [/silver|gray|grey|graphite|steel|iron|metal|ash|storm|slate|mailbox/i, "#8e9aa7"],
+  [
+    /silver|gray|grey|graphite|steel|iron|metal|ash|storm|slate|mailbox/i,
+    "#8e9aa7",
+  ],
   [/black|charcoal|coal|ink|obsidian|void|dark casing|black glass/i, "#202535"],
   [/pink|raspberry|strawberry/i, "#d56b83"],
 ];
@@ -106,14 +117,14 @@ function hslToHex(h: number, s: number, l: number) {
     h < 60
       ? [c, x, 0]
       : h < 120
-        ? [x, c, 0]
-        : h < 180
-          ? [0, c, x]
-          : h < 240
-            ? [0, x, c]
-            : h < 300
-              ? [x, 0, c]
-              : [c, 0, x];
+      ? [x, c, 0]
+      : h < 180
+      ? [0, c, x]
+      : h < 240
+      ? [0, x, c]
+      : h < 300
+      ? [x, 0, c]
+      : [c, 0, x];
   return `#${[r1, g1, b1]
     .map((v) =>
       Math.round((v + m) * 255)
@@ -199,7 +210,10 @@ function visualShapeForInput(
   if (metadata?.physicalForm === "document" || text.includes("document")) {
     return "document";
   }
-  if (metadata?.physicalForm === "crafting_station" || text.includes("station")) {
+  if (
+    metadata?.physicalForm === "crafting_station" ||
+    text.includes("station")
+  ) {
     return "station";
   }
   if (text.includes("seed") || text.includes("spore")) return "seed";
@@ -216,7 +230,11 @@ function visualShapeForInput(
   if (text.includes("tool") || text.includes("wand") || text.includes("axe")) {
     return "tool";
   }
-  if (text.includes("device") || text.includes("core") || text.includes("cell")) {
+  if (
+    text.includes("device") ||
+    text.includes("core") ||
+    text.includes("cell")
+  ) {
     return "device";
   }
   return "utility";
@@ -251,7 +269,7 @@ function suggestedShapeFor(shape: HarthmereResolvedBikkieVisualShape) {
 
 function fallbackColorsForInput(
   input: HarthmereBikkieVisualResolverInput,
-  shape: HarthmereResolvedBikkieVisualShape,
+  shape: HarthmereResolvedBikkieVisualShape
 ) {
   const text = [
     input.label,
@@ -263,7 +281,11 @@ function fallbackColorsForInput(
     .filter(Boolean)
     .join(" ")
     .toLowerCase();
-  if (/exotic|antimatter|anti(hydrogen|helium|boron)|positron|antiproton/.test(text)) {
+  if (
+    /exotic|antimatter|anti(hydrogen|helium|boron)|positron|antiproton/.test(
+      text
+    )
+  ) {
     return ["teal glow", "white core", "black glass"];
   }
   if (/carrot|pumpkin|marigold|azalea|daylily/.test(text)) {
@@ -280,6 +302,9 @@ function fallbackColorsForInput(
   }
   if (/fish|sashimi/.test(text)) {
     return ["water blue", "silver", "salmon pink"];
+  }
+  if (/medical|medicine|medkit|bandage|health|care/.test(text)) {
+    return ["medical teal", "white", "steel gray"];
   }
   if (/meat|burger|patty/.test(text)) {
     return ["red meat", "bone cream", "charcoal"];
@@ -320,7 +345,8 @@ export function harthmereResolveBikkieVisual(
     .map((color) => harthmereBikkieColorHex(color, label));
   const primaryHex = hexColors[0] ?? harthmereBikkieColorHex(undefined, label);
   const accentHex = hexColors[1] ?? shadeHex(primaryHex, 38);
-  const visualAsset = input.visualAsset || input.objectMetadata?.bikkieGraphicHints?.[0];
+  const visualAsset =
+    input.visualAsset || input.objectMetadata?.bikkieGraphicHints?.[0];
   const hasDriveAsset = Boolean(visualAsset?.startsWith("drive://"));
   const iconAssetPath = assetPathFromVisualPath(
     input.galoisPath || (!hasDriveAsset ? input.visualAsset : undefined)
@@ -331,15 +357,18 @@ export function harthmereResolveBikkieVisual(
   const source: HarthmereResolvedBikkieVisualSource = iconAssetPath
     ? "galois_icon"
     : hasDriveAsset
-      ? "drive_asset"
-      : canGenerateWithVoxels
-        ? "procedural_voxel"
-        : "metadata";
+    ? "drive_asset"
+    : canGenerateWithVoxels
+    ? "procedural_voxel"
+    : "metadata";
   const visualId =
     input.visualId ??
     input.id ??
     (input.bikkieId ? `bikkie:${input.bikkieId}` : undefined) ??
-    label.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
+    label
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "_")
+      .replace(/^_|_$/g, "");
 
   return {
     version: HARTHMERE_BIKKIE_VISUAL_RESOLVER_VERSION,
@@ -356,8 +385,14 @@ export function harthmereResolveBikkieVisual(
     hexColors,
     primaryHex,
     accentHex,
-    cssGradient: `linear-gradient(135deg, ${shadeHex(primaryHex, 26)}, ${primaryHex} 54%, ${accentHex})`,
-    cssShadow: `0 0 0 1px ${shadeHex(accentHex, -35)}, 0 10px 18px ${shadeHex(primaryHex, -42)}66`,
+    cssGradient: `linear-gradient(135deg, ${shadeHex(
+      primaryHex,
+      26
+    )}, ${primaryHex} 54%, ${accentHex})`,
+    cssShadow: `0 0 0 1px ${shadeHex(accentHex, -35)}, 0 10px 18px ${shadeHex(
+      primaryHex,
+      -42
+    )}66`,
     galoisPath: input.galoisPath,
     visualAsset: input.visualAsset,
     iconAssetPath,

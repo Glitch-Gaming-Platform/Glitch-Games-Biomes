@@ -9,7 +9,10 @@ export function talkDialogHasChoiceActionsForTest(
 export function talkDialogVoiceInputBlocksAdvanceForTest(input: {
   voiceInputState?: NpcSpeechButtonState;
 }) {
+  // Starting is treated like recording so a click cannot advance the dialog
+  // while the browser's microphone permission prompt is unresolved.
   return (
+    input.voiceInputState === "starting" ||
     input.voiceInputState === "recording" ||
     input.voiceInputState === "transcribing"
   );
@@ -20,7 +23,10 @@ export function talkDialogAdvanceDecisionForTest(input: {
   hasChoiceActions: boolean;
   voiceInputState?: NpcSpeechButtonState;
 }) {
-  if (input.voiceInputState === "recording") {
+  if (
+    input.voiceInputState === "starting" ||
+    input.voiceInputState === "recording"
+  ) {
     return "stop_recording" as const;
   }
   if (input.voiceInputState === "transcribing") {

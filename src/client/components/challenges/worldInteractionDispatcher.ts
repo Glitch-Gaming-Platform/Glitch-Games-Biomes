@@ -200,6 +200,25 @@ export function hasSelectedWorldInteractionCandidate(keyCode = "KeyF") {
   return selectedCandidate(keyCode) !== undefined;
 }
 
+/**
+ * Invoke the same winner the keyboard dispatcher would choose. Hotbar tool
+ * buttons and accessibility controls use this instead of calling individual
+ * gathering/station implementations, preserving the single global priority
+ * order (including native ECS containers and jobs boards).
+ */
+export function invokeSelectedWorldInteractionForKey(keyCode = "KeyF") {
+  const selected = selectedCandidate(keyCode);
+  if (!selected || selected.disabled) {
+    return false;
+  }
+  const event =
+    typeof KeyboardEvent !== "undefined"
+      ? new KeyboardEvent("keydown", { code: keyCode })
+      : ({ code: keyCode } as KeyboardEvent);
+  selected.onInteract(event);
+  return true;
+}
+
 function subscribe(callback: () => void) {
   subscribers.add(callback);
   return () => subscribers.delete(callback);

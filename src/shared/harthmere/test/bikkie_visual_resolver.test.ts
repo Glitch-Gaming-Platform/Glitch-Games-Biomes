@@ -12,6 +12,9 @@ describe("bikkie_visual_resolver", () => {
   it("normalizes named Bikkie colors into renderable hex values", () => {
     assert.equal(harthmereBikkieColorHex("electric blue"), "#3f91c8");
     assert.equal(harthmereBikkieColorHex("oak brown"), "#7b5438");
+    assert.equal(harthmereBikkieColorHex("simple glass"), "#70b8cf");
+    assert.equal(harthmereBikkieColorHex("polished clay"), "#b86b54");
+    assert.equal(harthmereBikkieColorHex("cotton fabric"), "#d8d2c4");
     assert.match(harthmereBikkieColorHex("mystery aura"), /^#[0-9a-f]{6}$/);
   });
 

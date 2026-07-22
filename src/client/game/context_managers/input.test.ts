@@ -64,6 +64,37 @@ function fakeInputSetup() {
 }
 
 describe("Input", () => {
+  it("combines independent synthetic motion sources with physical input", () => {
+    const { documentTarget, input } = fakeInputSetup();
+
+    input.setSyntheticMotion("forward", "hotbar", 1);
+    assert.equal(input.motion("forward"), 1);
+
+    documentTarget.emit("keydown", fakeKeyboardEvent("KeyW"));
+    assert.equal(input.motion("forward"), 2);
+
+    input.setSyntheticMotion("forward", "hotbar", 0);
+    assert.equal(input.motion("forward"), 1);
+  });
+
+  it("pulses a synthetic motion and releases it after the requested duration", async () => {
+    const { input } = fakeInputSetup();
+
+    const pulse = input.pulseMotion("forward", 1, "hotbar");
+    assert.equal(input.motion("forward"), 1);
+    await pulse;
+    assert.equal(input.motion("forward"), 0);
+  });
+
+  it("clears synthetic motion when input state is detached", () => {
+    const { input } = fakeInputSetup();
+
+    input.setSyntheticMotion("forward", "hotbar", 1);
+    input.detach();
+
+    assert.equal(input.motion("forward"), 0);
+  });
+
   it("captures keyboard motion from the owner document while attached to a canvas", () => {
     const { documentTarget, input } = fakeInputSetup();
 

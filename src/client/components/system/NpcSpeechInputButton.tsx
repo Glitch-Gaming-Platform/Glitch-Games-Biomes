@@ -1,19 +1,22 @@
 import { DialogButton } from "@/client/components/system/DialogButton";
 import { Tooltipped } from "@/client/components/system/Tooltipped";
 import {
+  browserSupportsNpcSpeechInput,
+  npcSpeechButtonTooltip,
+  npcSpeechEmptyTranscriptMessage,
+  npcSpeechHotkeyIndicator,
+  npcSpeechRecordingRemainingSeconds,
+  npcSpeechRecordingTimeoutProgress,
+  npcSpeechStatusActive,
+  shouldHandleNpcSpeechHotkey,
+  type NpcSpeechButtonState,
+} from "@/client/components/system/npcSpeechInputState";
+import {
   blobToBase64,
   startAzureSpeechWavRecorder,
   type AzureSpeechWavRecorder,
 } from "@/client/components/system/speechCapture";
-import {
-  browserSupportsNpcSpeechInput,
-  npcSpeechButtonTooltip,
-  npcSpeechEmptyTranscriptMessage,
-  npcSpeechRecordingRemainingSeconds,
-  npcSpeechRecordingTimeoutProgress,
-  npcSpeechStatusActive,
-  type NpcSpeechButtonState,
-} from "@/client/components/system/npcSpeechInputState";
+import { useTypedStorageItem } from "@/client/util/typed_local_storage";
 import type {
   SpeechToTextRequest,
   SpeechToTextResponse,
@@ -21,7 +24,6 @@ import type {
 import type { SpeechStatusResponse } from "@/pages/api/voices/speech_status";
 import { log } from "@/shared/logging";
 import { jsonFetch, jsonPost } from "@/shared/util/fetch_helpers";
-import { useTypedStorageItem } from "@/client/util/typed_local_storage";
 import {
   AudioOutlined,
   LoadingOutlined,
@@ -56,6 +58,13 @@ export const NpcSpeechInputButton: React.FunctionComponent<{
   const recordingTimeoutRef = useRef<number | undefined>();
   const recordingStartedAtRef = useRef<number | undefined>();
   const stateRef = useRef<NpcSpeechButtonState>("idle");
+  // Refs provide synchronous guards for document-level key events and async
+  // microphone permission callbacks, where React state may still be stale.
+  const mountedRef = useRef(true);
+  const disabledRef = useRef(Boolean(disabled));
+  const keyHeldRef = useRef(false);
+  const startTokenRef = useRef(0);
+  const stopRequestedRef = useRef(false);
   const [state, setState] = useState<NpcSpeechButtonState>("idle");
   const [error, setError] = useState<string | undefined>();
   const [remainingRecordingMs, setRemainingRecordingMs] =
@@ -75,13 +84,23 @@ export const NpcSpeechInputButton: React.FunctionComponent<{
     []
   );
 
+  const setButtonState = useCallback((next: NpcSpeechButtonState) => {
+    // Update the synchronous state first so rapid keyup/click events observe the
+    // new lifecycle phase before React completes its render.
+    stateRef.current = next;
+    if (mountedRef.current) {
+      setState(next);
+    }
+  }, []);
+
   useEffect(() => {
-    stateRef.current = state;
     onStateChange?.(state);
   }, [onStateChange, state]);
 
   useEffect(() => {
     let disposed = false;
+    // Speech input requires transcription and generated chat, but deliberately
+    // does not require NPC TTS so a player can receive text-only responses.
     jsonFetch<SpeechStatusResponse>("/api/voices/speech_status", {
       timeoutMs: 5000,
     })
@@ -107,10 +126,10 @@ export const NpcSpeechInputButton: React.FunctionComponent<{
     }
     const timeout = window.setTimeout(() => {
       setError(undefined);
-      setState("idle");
+      setButtonState("idle");
     }, 2500);
     return () => window.clearTimeout(timeout);
-  }, [error]);
+  }, [error, setButtonState]);
 
   const clearRecordingTimeout = useCallback(() => {
     if (recordingTimeoutRef.current !== undefined) {
@@ -138,52 +157,155 @@ export const NpcSpeechInputButton: React.FunctionComponent<{
     return () => window.clearInterval(interval);
   }, [maxRecordingMs, state]);
 
+  const transcribeRecording = useCallback(
+    async (recorder: AzureSpeechWavRecorder) => {
+      // Stop capture before encoding/uploading so browser microphone tracks are
+      // released during the longer transcription and AI-response work.
+      recordingStartedAtRef.current = undefined;
+      clearRecordingTimeout();
+      setButtonState("transcribing");
+      try {
+        const recording = await recorder.stop();
+        const audioBase64 = await blobToBase64(recording.blob);
+        const res = await jsonPost<SpeechToTextResponse, SpeechToTextRequest>(
+          "/api/voices/speech_to_text",
+          {
+            audioBase64,
+            mimeType: recording.mimeType,
+            language,
+          },
+          { timeoutMs: 20000 }
+        );
+        if (!mountedRef.current) {
+          // Dialog closure invalidates late transcription results and prevents
+          // them from mutating or reopening a conversation that no longer exists.
+          return;
+        }
+        const text = res.text.trim();
+        if (!text) {
+          setButtonState("error");
+          setError(npcSpeechEmptyTranscriptMessage(res.unavailableReason));
+          return;
+        }
+        setButtonState("idle");
+        await onTranscript(text);
+      } catch (error) {
+        log.warn("NPC speech transcription failed", { error });
+        if (mountedRef.current) {
+          setButtonState("error");
+          setError("I couldn't catch that.");
+        }
+      }
+    },
+    [clearRecordingTimeout, language, onTranscript, setButtonState]
+  );
+
   const stopRecording = useCallback(async () => {
+    // Remember release/stop requests even before getUserMedia resolves. This
+    // handles a quick T tap while a permission prompt is still on screen.
+    stopRequestedRef.current = true;
     const recorder = recorderRef.current;
     if (!recorder) {
+      // A quick tap can release T before getUserMedia resolves. Return the UI
+      // to idle immediately; the pending start token will discard the recorder
+      // if permission later succeeds.
+      if (stateRef.current === "starting") {
+        setButtonState("idle");
+      }
       return;
     }
     recorderRef.current = undefined;
-    recordingStartedAtRef.current = undefined;
-    clearRecordingTimeout();
-    setState("transcribing");
+    await transcribeRecording(recorder);
+  }, [transcribeRecording]);
+
+  const beginRecording = useCallback(async () => {
+    if (
+      disabledRef.current ||
+      !supported ||
+      stateRef.current === "starting" ||
+      stateRef.current === "recording" ||
+      stateRef.current === "transcribing"
+    ) {
+      return;
+    }
+    const startToken = ++startTokenRef.current;
+    // Each permission attempt gets a token so an older async completion cannot
+    // replace a newer recorder after retries or unmounts.
+    stopRequestedRef.current = false;
+    setError(undefined);
+    setButtonState("starting");
     try {
-      const recording = await recorder.stop();
-      const audioBase64 = await blobToBase64(recording.blob);
-      const res = await jsonPost<SpeechToTextResponse, SpeechToTextRequest>(
-        "/api/voices/speech_to_text",
-        {
-          audioBase64,
-          mimeType: recording.mimeType,
-          language,
-        },
-        { timeoutMs: 20000 }
-      );
-      const text = res.text.trim();
-      if (!text) {
-        setState("error");
-        setError(npcSpeechEmptyTranscriptMessage(res.unavailableReason));
+      const recorder = await startAzureSpeechWavRecorder({
+        deviceId: microphoneDeviceId || undefined,
+      });
+      if (!mountedRef.current || startToken !== startTokenRef.current) {
+        // Permission resolved after the owning dialog changed or unmounted.
+        // Immediately stop the newly-created recorder instead of leaking a mic.
+        await recorder.stop();
         return;
       }
-      setState("idle");
-      await onTranscript(text);
+      if (disabledRef.current || stopRequestedRef.current) {
+        // The player released T (or AI processing disabled input) before capture
+        // was ready, so discard the empty/partial permission-window recording.
+        setButtonState("idle");
+        await recorder.stop();
+        return;
+      }
+      recorderRef.current = recorder;
+      recordingStartedAtRef.current = Date.now();
+      setRemainingRecordingMs(maxRecordingMs);
+      setButtonState("recording");
+      clearRecordingTimeout();
+      if (Number.isFinite(maxRecordingMs) && maxRecordingMs > 0) {
+        // A hard cap prevents an indefinitely held key from creating oversized
+        // audio uploads or unexpected speech-recognition cost.
+        recordingTimeoutRef.current = window.setTimeout(() => {
+          void stopRecording();
+        }, maxRecordingMs);
+      }
     } catch (error) {
-      log.warn("NPC speech transcription failed", { error });
-      setState("error");
-      setError("I couldn't catch that.");
+      if (!mountedRef.current || startToken !== startTokenRef.current) {
+        return;
+      }
+      log.warn("NPC speech input unavailable", { error });
+      recorderRef.current = undefined;
+      recordingStartedAtRef.current = undefined;
+      clearRecordingTimeout();
+      setButtonState("error");
+      setError("Microphone is unavailable.");
     }
-  }, [clearRecordingTimeout, language, onTranscript]);
+  }, [
+    clearRecordingTimeout,
+    maxRecordingMs,
+    microphoneDeviceId,
+    setButtonState,
+    stopRecording,
+    supported,
+  ]);
+
+  useEffect(() => {
+    disabledRef.current = Boolean(disabled);
+    // If the parent begins querying the NPC while capture is starting/active,
+    // finalize the current utterance instead of leaving the mic live.
+    if (
+      disabled &&
+      (stateRef.current === "starting" || stateRef.current === "recording")
+    ) {
+      void stopRecording();
+    }
+  }, [disabled, stopRecording]);
 
   useEffect(() => {
     const onStopRecording = () => {
-      if (stateRef.current === "recording" || recorderRef.current) {
+      if (
+        stateRef.current === "starting" ||
+        stateRef.current === "recording" ||
+        recorderRef.current
+      ) {
         void stopRecording();
       }
     };
-    window.addEventListener(
-      NPC_SPEECH_STOP_RECORDING_EVENT,
-      onStopRecording
-    );
+    window.addEventListener(NPC_SPEECH_STOP_RECORDING_EVENT, onStopRecording);
     return () => {
       window.removeEventListener(
         NPC_SPEECH_STOP_RECORDING_EVENT,
@@ -193,7 +315,77 @@ export const NpcSpeechInputButton: React.FunctionComponent<{
   }, [stopRecording]);
 
   useEffect(() => {
+    if (!speechActive || !supported) {
+      return;
+    }
+    const onKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (
+        !shouldHandleNpcSpeechHotkey({
+          code: event.code,
+          altKey: event.altKey,
+          ctrlKey: event.ctrlKey,
+          metaKey: event.metaKey,
+          targetTagName: target?.tagName,
+          targetIsContentEditable: target?.isContentEditable,
+        })
+      ) {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      // Key repeat must not start multiple recorders while T remains held.
+      if (event.repeat || keyHeldRef.current || disabledRef.current) {
+        return;
+      }
+      keyHeldRef.current = true;
+      void beginRecording();
+    };
+    const onKeyUp = (event: KeyboardEvent) => {
+      if (event.code !== "KeyT" || !keyHeldRef.current) {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      keyHeldRef.current = false;
+      // Releasing T is the authoritative end of push-to-talk and immediately
+      // transitions into transcription when capture is ready.
+      void stopRecording();
+    };
+    const stopForFocusLoss = () => {
+      // Browsers may omit keyup when focus changes. Treat blur/tab hiding as a
+      // release so recording never remains stuck in the background.
+      keyHeldRef.current = false;
+      if (stateRef.current === "starting" || stateRef.current === "recording") {
+        void stopRecording();
+      }
+    };
+    const onVisibilityChange = () => {
+      if (document.visibilityState !== "visible") {
+        stopForFocusLoss();
+      }
+    };
+    document.addEventListener("keydown", onKeyDown, true);
+    document.addEventListener("keyup", onKeyUp, true);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    window.addEventListener("blur", stopForFocusLoss);
     return () => {
+      document.removeEventListener("keydown", onKeyDown, true);
+      document.removeEventListener("keyup", onKeyUp, true);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      window.removeEventListener("blur", stopForFocusLoss);
+    };
+  }, [beginRecording, speechActive, stopRecording, supported]);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      // Invalidate pending permission callbacks and release any live recorder.
+      // Cleanup intentionally skips transcription because the dialog is gone.
+      mountedRef.current = false;
+      startTokenRef.current += 1;
+      stopRequestedRef.current = true;
+      keyHeldRef.current = false;
       clearRecordingTimeout();
       const recorder = recorderRef.current;
       recorderRef.current = undefined;
@@ -204,38 +396,18 @@ export const NpcSpeechInputButton: React.FunctionComponent<{
   }, [clearRecordingTimeout]);
 
   const onClick = async () => {
-    if (disabled || !supported) {
+    if (disabled || !supported || state === "transcribing") {
       return;
     }
-    try {
-      if (state === "recording") {
-        await stopRecording();
-        return;
-      }
-      setError(undefined);
-      recorderRef.current = await startAzureSpeechWavRecorder({
-        deviceId: microphoneDeviceId || undefined,
-      });
-      recordingStartedAtRef.current = Date.now();
-      setRemainingRecordingMs(maxRecordingMs);
-      setState("recording");
-      clearRecordingTimeout();
-      if (Number.isFinite(maxRecordingMs) && maxRecordingMs > 0) {
-        recordingTimeoutRef.current = window.setTimeout(() => {
-          void stopRecording();
-        }, maxRecordingMs);
-      }
-    } catch (error) {
-      log.warn("NPC speech input unavailable", { error });
-      recorderRef.current = undefined;
-      recordingStartedAtRef.current = undefined;
-      clearRecordingTimeout();
-      setState("error");
-      setError("Microphone is unavailable.");
+    if (state === "starting" || state === "recording") {
+      await stopRecording();
+      return;
     }
+    await beginRecording();
   };
 
-  const busy = state === "recording" || state === "transcribing";
+  const busy =
+    state === "starting" || state === "recording" || state === "transcribing";
   const buttonDisabled = disabled || !supported || state === "transcribing";
   if (!speechActive) {
     return null;
@@ -243,7 +415,7 @@ export const NpcSpeechInputButton: React.FunctionComponent<{
   const icon =
     state === "recording" ? (
       <StopOutlined />
-    ) : state === "transcribing" ? (
+    ) : state === "starting" || state === "transcribing" ? (
       <LoadingOutlined />
     ) : (
       <AudioOutlined />
@@ -269,6 +441,7 @@ export const NpcSpeechInputButton: React.FunctionComponent<{
           opacity: 1 - timeoutProgress * 0.35,
         }
       : undefined;
+  const indicator = npcSpeechHotkeyIndicator({ error, state });
 
   return (
     <Tooltipped
@@ -280,6 +453,7 @@ export const NpcSpeechInputButton: React.FunctionComponent<{
       })}
     >
       <span
+        className="flex flex-col items-center gap-0.4"
         data-npc-speech-input-button={state}
         data-npc-speech-input-active={speechActive ? "true" : "false"}
         data-npc-speech-input-remaining-seconds={remainingSeconds}
@@ -318,6 +492,21 @@ export const NpcSpeechInputButton: React.FunctionComponent<{
             )}
           </span>
         </DialogButton>
+        <span
+          aria-live="polite"
+          className="whitespace-nowrap text-[10px] font-semibold text-white/80"
+          data-npc-speech-hotkey-indicator={state}
+        >
+          {/* The live label gives both keyboard instructions and an accessible
+              listening/processing state without replacing the existing button. */}
+          {(state === "starting" || state === "recording") && (
+            <span
+              aria-hidden="true"
+              className="h-1.5 w-1.5 mr-0.4 inline-block animate-pulse rounded-full bg-red"
+            />
+          )}
+          {indicator}
+        </span>
       </span>
     </Tooltipped>
   );

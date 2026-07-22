@@ -23,6 +23,10 @@ const {
   harthmereSnapshotGroveNpcSeedIds,
 } = require("../../src/server/harthmere/snapshot_grove_npc_ecs_seed");
 const {
+  buildHarthmereSnapshotCombatNpcSeedProposedChanges,
+  harthmereSnapshotCombatNpcSeedIds,
+} = require("../../src/server/harthmere/snapshot_combat_npc_ecs_seed");
+const {
   buildHarthmereBusinessOwnerNpcSeedProposedChanges,
   harthmereBusinessOwnerNpcSeedEntityIds,
 } = require("../../src/server/harthmere/business_owner_npc_ecs_seed");
@@ -46,6 +50,14 @@ const {
   harthmereGroundedLivestockSeedsInTerritory,
   harthmereMuckMonsterPositionIsInSafeZone,
 } = require("../../src/shared/harthmere/live_entity_production_seed");
+const {
+  SNAPSHOT_HARTHMERE_HOSTILE_SPAWNS,
+  snapshotCombatGroundedPosition,
+  snapshotHostileEntityId,
+} = require("../../src/shared/harthmere/snapshot_runtime_rules");
+const {
+  SNAPSHOT_GROVE_LOCAL_DEV_NPC_BASE,
+} = require("../../src/shared/harthmere/snapshot_grove_content");
 const { Position, NpcMetadata } = require("../../src/shared/ecs/gen/components");
 const {
   deserializeRedisEntityState,
@@ -90,6 +102,13 @@ async function reconcileEcsSeeds(world, nowSeconds) {
       label: "Snapshot Grove NPCs",
       ids: harthmereSnapshotGroveNpcSeedIds(),
       build: buildHarthmereSnapshotGroveNpcSeedProposedChanges,
+    },
+    {
+      // Keep this family in the deploy-time upsert list so moving a hostile out
+      // of a safe zone repairs production immediately instead of only new worlds.
+      label: "Snapshot combat NPCs",
+      ids: harthmereSnapshotCombatNpcSeedIds(),
+      build: buildHarthmereSnapshotCombatNpcSeedProposedChanges,
     },
     {
       // HARTHMERE_BUSINESS_OWNER_RECONCILE: without this family the 19 shop
@@ -259,6 +278,13 @@ async function reconcileSharedLiveModeState(nowMs) {
 // fails the deploy if the seed ever resolves one into the Grove.
 async function repairLiveEntityPositions(world) {
   const canonical = [
+    ...SNAPSHOT_HARTHMERE_HOSTILE_SPAWNS.map((spawn) => ({
+      id: Number(
+        snapshotHostileEntityId(SNAPSHOT_GROVE_LOCAL_DEV_NPC_BASE, spawn)
+      ),
+      position: snapshotCombatGroundedPosition(spawn.authoredPosition),
+      isMonster: true,
+    })),
     ...HARTHMERE_LIVE_ENTITY_ROBOT_SENTINEL_SEEDS.map((seed) => ({
       id: Number(seed.entityId),
       position: seed.position,
@@ -338,11 +364,10 @@ async function repairLiveEntityPositions(world) {
       const meta = entity.hasNpcMetadata?.() ? entity.npcMetadata() : undefined;
       const spawn = meta?.spawn_position;
       const positionDrifted = drift3d(current, entry.position) > 0.5;
-      // spawn_position carries an intentional +-4m spawn-spread jitter (max ~5.7m
-      // euclidean), so only treat it as drift when it is FAR from the seed (a real
-      // layout move, e.g. an old Grove spawn anchor) — never the jitter.
+      // Combat creatures and wildlife must respawn at the exact grounded
+      // anchor. Generic NPC jitter can cross a muck boundary or terrain seam.
       const spawnDrifted =
-        drift2d(spawn, entry.position) > 8 ||
+        drift2d(spawn, entry.position) > 0.5 ||
         Math.abs((spawn?.[1] ?? Infinity) - entry.position[1]) > 0.5;
       if (!positionDrifted && !spawnDrifted) {
         alreadyCorrect += 1;
@@ -395,7 +420,7 @@ async function repairLiveEntityPositions(world) {
       const spawn = meta?.spawn_position;
       if (
         drift3d(current, entry.position) > 0.5 ||
-        drift2d(spawn, entry.position) > 8 ||
+        drift2d(spawn, entry.position) > 0.5 ||
         Math.abs((spawn?.[1] ?? Infinity) - entry.position[1]) > 0.5
       ) {
         unresolved.push({

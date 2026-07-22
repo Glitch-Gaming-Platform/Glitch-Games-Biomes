@@ -676,8 +676,8 @@ export function harthmereGroundedLivestockSeedsInTerritory(
 // Harthmere town core, the safe road). The road_muckwad_patch muck zone overlaps
 // the Grove/town safe radii, so its ambient muckers would otherwise appear
 // "inside the Grove". Drop any monster whose grounded position lands in a safe
-// area. (The single authored tutorial hostile in the combat primer is a separate
-// seed and is intentionally left in place.)
+// area. Snapshot combat hostiles use a separate seed family, and that family is
+// independently required to remain outside every safe zone.
 export function harthmereMuckMonsterPositionIsInSafeZone(
   position: ReadonlyVec3
 ): boolean {
@@ -821,14 +821,22 @@ export function harthmereActiveLiveEntityProductionSeedIds(): BiomesId[] {
 }
 
 export function harthmereRespawningLiveCreatureSeedIds(): BiomesId[] {
+  return harthmereRespawningLiveCreatureSeeds().map((seed) => seed.entityId);
+}
+
+export function harthmereRespawningLiveCreatureSeeds(): HarthmereLiveEntityProductionSeed[] {
   return [
-    ...harthmereGroundedMuckMonsterSeedsInTerritory().map(
-      (seed) => seed.entityId
-    ),
-    ...harthmereGroundedLivestockSeedsInTerritory().map(
-      (seed) => seed.entityId
-    ),
+    ...harthmereGroundedMuckMonsterSeedsInTerritory().map((seed) => seed),
+    ...harthmereGroundedLivestockSeedsInTerritory().map((seed) => seed),
   ];
+}
+
+export function harthmereRespawningLiveCreatureSeedForId(
+  entityId: BiomesId
+): HarthmereLiveEntityProductionSeed | undefined {
+  return harthmereRespawningLiveCreatureSeeds().find(
+    (seed) => seed.entityId === entityId
+  );
 }
 
 export const HARTHMERE_LIVE_ENTITY_PRODUCTION_SEEDS = [

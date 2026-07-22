@@ -53,6 +53,16 @@ export const HEARTBEAT_PATH = "\u2665";
 export const LAMEDUCK_PATH = "\uD83E\uDD86";
 export const KILL_CLIENT_PATH = "\uD83D\uDC80";
 
+/** WebSocket bootstrap URLs carry signed session credentials in the query. */
+export function webSocketUriForSafeLogging(uri: string) {
+  try {
+    const parsed = new URL(uri);
+    return `${parsed.protocol}//${parsed.host}${parsed.pathname}`;
+  } catch {
+    return uri.split("?", 1)[0];
+  }
+}
+
 const protocolMapping: { [key: string]: string } = {
   "http:": "ws:",
   "https:": "wss:",
@@ -515,7 +525,7 @@ export class WebSocketZrpcClient
 
   private onOpen() {
     this.lastServerMessageTime.reset();
-    log.info(`WebSocket connected to ${this.uri}`);
+    log.info(`WebSocket connected to ${webSocketUriForSafeLogging(this.uri)}`);
     this.reconnectDelay = this.newReconnectDelay();
     this.checkState("waitingOnHeartbeat");
   }

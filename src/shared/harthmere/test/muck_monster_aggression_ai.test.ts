@@ -114,12 +114,11 @@ describe("muck_monster_aggression_ai", () => {
   });
 
   it("never starts unprovoked aggression in the Road Ahead starter muck patch", () => {
-    // A brand-new player breaking the muckwad in the tutorial patch must not be
-    // attacked unprovoked by the seeded Road Muckling — even at night — so the
-    // Road Ahead "break muckwad" step stays survivable/completable.
+    // This also protects against a stale production Mucker wandering into the
+    // tutorial patch even though current authored spawns are outside the Grove.
     const result = evaluateMuckMonsterAggression({
       monsterId: "road-muckling-one",
-      monsterName: "Road Muckling",
+      monsterName: "Stale Road Muckling",
       monsterPosition: [512, 54, -152],
       playerPosition: [513, 54, -152],
       nowMs: NIGHT_NOW_MS,

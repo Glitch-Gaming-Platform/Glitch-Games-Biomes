@@ -204,28 +204,35 @@ export function nativeQuestTrackableQuests(
     }
   }
 
-  return (nativeQuestBundles ?? [])
-    .filter((quest) => quest.state !== "locked")
-    .map((quest) => {
-      const steps = nativeQuestMissionSteps(quest);
-      const current = steps.find((step) => !step.done);
-      const category = quest.biscuit.questCategory ?? "discover";
-      return {
-        questId: String(quest.biscuit.id),
-        title: quest.biscuit.displayName ?? `Quest ${quest.biscuit.id}`,
-        area: "Biomes",
-        status: nativeQuestStatus(quest.state),
-        firstMarkerId: markersByQuest.get(String(quest.biscuit.id)),
-        kind: `native_ecs_${category}`,
-        kindLabel:
-          category === "main"
-            ? "Story Quest"
-            : `${category.charAt(0).toUpperCase()}${category.slice(1)} Quest`,
-        objective: current?.objective ?? steps.at(-1)?.objective,
-        objectives: steps.map((step) => step.objective),
-        description:
-          quest.biscuit.description ||
-          "Server-authored Biomes quest. Progress is read from the native ECS trigger tree.",
-      } satisfies MapTrackableQuest;
-    });
+  return (
+    (nativeQuestBundles ?? [])
+      // The journal is a record of accepted work, not the global quest catalog.
+      // Available offers remain discoverable at their NPC/board/beacon and enter
+      // this list only after the native challenge state becomes in_progress.
+      .filter(
+        (quest) => quest.state === "in_progress" || quest.state === "completed"
+      )
+      .map((quest) => {
+        const steps = nativeQuestMissionSteps(quest);
+        const current = steps.find((step) => !step.done);
+        const category = quest.biscuit.questCategory ?? "discover";
+        return {
+          questId: String(quest.biscuit.id),
+          title: quest.biscuit.displayName ?? `Quest ${quest.biscuit.id}`,
+          area: "Biomes",
+          status: nativeQuestStatus(quest.state),
+          firstMarkerId: markersByQuest.get(String(quest.biscuit.id)),
+          kind: `native_ecs_${category}`,
+          kindLabel:
+            category === "main"
+              ? "Story Quest"
+              : `${category.charAt(0).toUpperCase()}${category.slice(1)} Quest`,
+          objective: current?.objective ?? steps.at(-1)?.objective,
+          objectives: steps.map((step) => step.objective),
+          description:
+            quest.biscuit.description ||
+            "Server-authored Biomes quest. Progress is read from the native ECS trigger tree.",
+        } satisfies MapTrackableQuest;
+      })
+  );
 }

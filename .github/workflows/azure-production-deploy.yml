@@ -179,10 +179,14 @@ jobs:
           AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
           AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
           AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
         run: |
           set -euo pipefail
           missing=0
-          for name in AZURE_CLIENT_ID AZURE_TENANT_ID AZURE_SUBSCRIPTION_ID; do
+          # ElevenLabs is required because it is the default production NPC
+          # voice provider. GitHub masks the secret and this check prints only
+          # the missing variable name, never its value.
+          for name in AZURE_CLIENT_ID AZURE_TENANT_ID AZURE_SUBSCRIPTION_ID ELEVENLABS_API_KEY; do
             if [ -z "${!name:-}" ]; then
               echo "Missing GitHub production environment secret: $name" >&2
               missing=1
@@ -199,6 +203,20 @@ jobs:
 
       - name: Allow Azure CLI extension auto-install
         run: az config set extension.use_dynamic_install=yes_without_prompt
+
+      - name: Sync ElevenLabs key to the production Container App
+        env:
+          ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+        run: |
+          set -euo pipefail
+          # GitHub is the deployment source of truth. Sync the masked value
+          # into Azure immediately before the deploy script references it via
+          # secretref:elevenlabs-api-key.
+          az containerapp secret set \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --name "$AZURE_CONTAINER_APP" \
+            --secrets "elevenlabs-api-key=$ELEVENLABS_API_KEY" \
+            >/dev/null
 
       - name: Deploy production Container App
         env:

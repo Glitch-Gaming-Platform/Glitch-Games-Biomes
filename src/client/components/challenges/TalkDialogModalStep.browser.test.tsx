@@ -7,13 +7,14 @@ import { chromium } from "playwright";
 
 declare global {
   interface Window {
-    __ttsRequests: Array<{ text: string }>;
+    __ttsRequests: Array<{ text: string; provider?: string }>;
     __transcripts: string[];
     __choices: string[];
     __closedCount: number;
     __audioPlays: number;
     __recorderMode?: "success" | "reject";
     __recorderStarts: number;
+    __recorderStartDelayMs: number;
     __speechToTextMode?: "success" | "empty" | "reject";
   }
 }
@@ -47,6 +48,7 @@ describe("TalkDialogModalStep rendered voice conversation flow", () => {
         window.__audioPlays = 0;
         window.__recorderMode = "success";
         window.__recorderStarts = 0;
+        window.__recorderStartDelayMs = 0;
         window.HTMLMediaElement.prototype.play = function() {
           if (this.getAttribute("src")) {
             window.__audioPlays += 1;
@@ -276,6 +278,9 @@ describe("TalkDialogModalStep rendered voice conversation flow", () => {
                   export const blobToBase64 = async () => "ZmFrZQ==";
                   export const startAzureSpeechWavRecorder = async () => {
                     window.__recorderStarts += 1;
+                    if (window.__recorderStartDelayMs > 0) {
+                      await new Promise((resolve) => window.setTimeout(resolve, window.__recorderStartDelayMs));
+                    }
                     if (window.__recorderMode === "reject") {
                       throw new Error("microphone permission denied");
                     }
@@ -291,6 +296,7 @@ describe("TalkDialogModalStep rendered voice conversation flow", () => {
                   export const useTypedStorageItem = (key, fallback) => {
                     if (key === "settings.voice.microphoneDeviceId") return [""];
                     if (key === "settings.voice.npcSpeechEnabled") return [true];
+                    if (key === "settings.voice.npcSpeechProvider") return ["elevenlabs"];
                     if (key === "settings.voice.microphoneInputEnabled") return [true];
                     return [fallback];
                   };
@@ -301,7 +307,13 @@ describe("TalkDialogModalStep rendered voice conversation flow", () => {
                 `
                   export const jsonFetch = async (url) => {
                     if (url === "/api/voices/speech_status") {
-                      return { speechToText: true, textToSpeech: true, generatedChat: true };
+                      return {
+                        speechToText: true,
+                        textToSpeech: true,
+                        openAITextToSpeech: true,
+                        elevenLabsTextToSpeech: true,
+                        generatedChat: true,
+                      };
                     }
                     return {};
                   };
@@ -384,6 +396,10 @@ describe("TalkDialogModalStep rendered voice conversation flow", () => {
         await page.evaluate(() => window.__ttsRequests.map((r) => r.text)),
         ["First line."]
       );
+      assert.equal(
+        await page.evaluate(() => window.__ttsRequests[0]?.provider),
+        "elevenlabs"
+      );
       assert.equal(await page.evaluate(() => window.__audioPlays), 1);
       await page.evaluate(() => {
         const audio = document.querySelector("audio");
@@ -428,12 +444,42 @@ describe("TalkDialogModalStep rendered voice conversation flow", () => {
         ["First line.", "Second line.", "Third line."]
       );
 
+      assert.equal(
+        await page
+          .locator("[data-npc-speech-hotkey-indicator='idle']")
+          .textContent(),
+        "Press T to talk"
+      );
+      await page.evaluate(() => {
+        window.__recorderStartDelayMs = 120;
+      });
+      await page.keyboard.down("t");
       await page
-        .locator("[data-npc-speech-input-button='idle'] button")
-        .click();
+        .locator("[data-npc-speech-input-button='starting']")
+        .waitFor({ timeout: 10_000 });
+      await page.keyboard.up("t");
+      await page
+        .locator("[data-npc-speech-input-button='idle']")
+        .waitFor({ timeout: 10_000 });
+      await page.waitForTimeout(160);
+      assert.deepEqual(
+        await page.evaluate(() => window.__transcripts),
+        [],
+        "a quick T tap during microphone startup should not submit empty audio"
+      );
+      await page.evaluate(() => {
+        window.__recorderStartDelayMs = 0;
+      });
+      await page.keyboard.down("t");
       await page
         .locator("[data-npc-speech-input-button='recording']")
         .waitFor({ timeout: 10_000 });
+      assert.match(
+        (await page
+          .locator("[data-npc-speech-hotkey-indicator='recording']")
+          .textContent()) ?? "",
+        /Listening.*release T to send/
+      );
       assert.equal(
         await page
           .locator("[data-npc-speech-input-button='recording']")
@@ -451,6 +497,7 @@ describe("TalkDialogModalStep rendered voice conversation flow", () => {
       });
       assert.equal(await page.evaluate(() => window.__closedCount), 0);
 
+      await page.keyboard.up("t");
       await page.mouse.click(450, 300);
       await page.mouse.click(450, 300);
       assert.equal(

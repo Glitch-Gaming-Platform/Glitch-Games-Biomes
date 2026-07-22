@@ -152,6 +152,7 @@ HARTHMERE_BUSINESS_OUTPOST_MATERIALIZATION_SCAN_COUNT="${HARTHMERE_BUSINESS_OUTP
 HARTHMERE_BUSINESS_OUTPOST_MATERIALIZATION_APPLY_SHARD_BATCH_SIZE="${HARTHMERE_BUSINESS_OUTPOST_MATERIALIZATION_APPLY_SHARD_BATCH_SIZE:-2}"
 HARTHMERE_CONNECTOR_ROUTE_SCAN_COUNT="${HARTHMERE_CONNECTOR_ROUTE_SCAN_COUNT:-5000}"
 HARTHMERE_CONNECTOR_ROUTE_APPLY_SHARD_BATCH_SIZE="${HARTHMERE_CONNECTOR_ROUTE_APPLY_SHARD_BATCH_SIZE:-4}"
+HARTHMERE_TERRAIN_MAINTENANCE_REVISION=""
 LOCAL_NETWORK="${LOCAL_NETWORK:-biomes-prod-smoke-net}"
 LOCAL_REDIS_CONTAINER="${LOCAL_REDIS_CONTAINER:-biomes-prod-smoke-redis}"
 LOCAL_REDIS_IMAGE="${LOCAL_REDIS_IMAGE:-redis:6.0.16-alpine}"
@@ -1583,6 +1584,22 @@ run_production_grounding_probe() {
     node scripts/harthmere/probe-production-terrain-grounding.cjs
 }
 
+run_production_live_creature_grounding_reconcile() {
+  if [ "${HARTHMERE_SKIP_LIVE_CREATURE_GROUNDING_RECONCILE:-0}" = "1" ]; then
+    log "Skipping production live-creature grounding reconciliation by request."
+    return
+  fi
+  log "Repairing and auditing persisted Mucker, Hex, and animal bodies against final production terrain."
+  REDIS_HOST="${HARTHMERE_WORLD_SYNC_REDIS_HOST:-$PROD_REDIS_RECONCILE_HOST}" \
+    GLITCH_REDIS_HOST="${HARTHMERE_WORLD_SYNC_REDIS_HOST:-$PROD_REDIS_RECONCILE_HOST}" \
+    LOCAL_REDIS_HOST="${HARTHMERE_WORLD_SYNC_REDIS_HOST:-$PROD_REDIS_RECONCILE_HOST}" \
+    REDIS_PORT="${HARTHMERE_WORLD_SYNC_REDIS_PORT:-$PROD_REDIS_PORT}" \
+    GLITCH_REDIS_PORT="${HARTHMERE_WORLD_SYNC_REDIS_PORT:-$PROD_REDIS_PORT}" \
+    IS_SERVER=1 \
+    APPLY=1 \
+    node scripts/harthmere/reconcile-production-live-creature-grounding.cjs
+}
+
 harthmere_business_outpost_ids() {
   node -r ts-node/register/transpile-only -r tsconfig-paths/register - <<'NODE'
 const { HARTHMERE_BUSINESS_OUTPOSTS } = require("./src/shared/harthmere/business_customer_simulator");
@@ -1667,6 +1684,79 @@ materialize_production_harthmere_connector_route() {
     node scripts/harthmere/materialize-harthmere-connector-route.cjs
 }
 
+audit_production_harthmere_extension_terrain() {
+  log "Auditing the complete additive Harthmere foundation and flat Y=52 surface."
+  IS_SERVER=1 \
+    REDIS_HOST="${HARTHMERE_TERRAIN_AUDIT_REDIS_HOST:-$PROD_REDIS_RECONCILE_HOST}" \
+    GLITCH_REDIS_HOST="${HARTHMERE_TERRAIN_AUDIT_REDIS_HOST:-$PROD_REDIS_RECONCILE_HOST}" \
+    LOCAL_REDIS_HOST="${HARTHMERE_TERRAIN_AUDIT_REDIS_HOST:-$PROD_REDIS_RECONCILE_HOST}" \
+    REDIS_PORT="${HARTHMERE_TERRAIN_AUDIT_REDIS_PORT:-$PROD_REDIS_PORT}" \
+    GLITCH_REDIS_PORT="${HARTHMERE_TERRAIN_AUDIT_REDIS_PORT:-$PROD_REDIS_PORT}" \
+    node scripts/harthmere/audit-production-extension-terrain.cjs
+}
+
+wait_for_production_harthmere_extension_terrain_audit() {
+  local attempt=1
+  local max_attempts="${HARTHMERE_TERRAIN_AUDIT_POLLS:-90}"
+  while [ "$attempt" -le "$max_attempts" ]; do
+    if audit_production_harthmere_extension_terrain; then
+      return 0
+    fi
+    log "Harthmere terrain seed is still converging (${attempt}/${max_attempts}); waiting before the next audit."
+    attempt=$((attempt + 1))
+    sleep "${HARTHMERE_TERRAIN_AUDIT_SLEEP_SECONDS:-10}"
+  done
+  echo "ERROR Harthmere extension terrain did not pass its production audit." >&2
+  return 1
+}
+
+seed_production_harthmere_extension_terrain() {
+  local candidate_revision="$1"
+  local suffix
+
+  if [ "${HARTHMERE_SKIP_WORLD_SYNC_RECONCILIATION:-0}" = "1" ]; then
+    log "Skipping additive Harthmere terrain maintenance during an explicit app-only rollout."
+    return
+  fi
+  if [ "${HARTHMERE_SKIP_EXTENSION_TERRAIN_SEED:-0}" = "1" ]; then
+    log "Skipping additive Harthmere terrain seed by request."
+    return
+  fi
+
+  # The normal web revision deliberately leaves startup terrain seeding off so
+  # three replicas cannot race the same Redis writes. A temporary one-replica,
+  # zero-traffic copy performs the idempotent seed before promotion instead.
+  wait_for_azure_revision_ready "$candidate_revision"
+  suffix="terrain-$(printf '%s' "$TAG" | tr '[:upper:]_' '[:lower:]-' | tr -cd 'a-z0-9-' | cut -c1-44)"
+  log "Creating one-replica Harthmere terrain maintenance revision from $candidate_revision."
+  HARTHMERE_TERRAIN_MAINTENANCE_REVISION="$(az containerapp revision copy \
+    --resource-group "$AZURE_RESOURCE_GROUP" \
+    --name "$AZURE_CONTAINER_APP" \
+    --from-revision "$candidate_revision" \
+    --revision-suffix "$suffix" \
+    --min-replicas 1 \
+    --max-replicas 1 \
+    --set-env-vars \
+      BIOMES_CREATE_LOCAL_DEV_TERRAIN=1 \
+      BIOMES_FORCE_LOCAL_DEV_TOWN_RESEED=1 \
+      GLITCH_ENABLE_STREAM_WORKERS=0 \
+    --query properties.latestRevisionName \
+    -o tsv)"
+  if [ -z "$HARTHMERE_TERRAIN_MAINTENANCE_REVISION" ]; then
+    echo "ERROR Azure did not return the Harthmere terrain maintenance revision name." >&2
+    exit 1
+  fi
+
+  wait_for_azure_revision_ready "$HARTHMERE_TERRAIN_MAINTENANCE_REVISION"
+  wait_for_production_harthmere_extension_terrain_audit
+  log "Deactivating completed Harthmere terrain maintenance revision $HARTHMERE_TERRAIN_MAINTENANCE_REVISION."
+  az containerapp revision deactivate \
+    --resource-group "$AZURE_RESOURCE_GROUP" \
+    --name "$AZURE_CONTAINER_APP" \
+    --revision "$HARTHMERE_TERRAIN_MAINTENANCE_REVISION" >/dev/null
+  HARTHMERE_TERRAIN_MAINTENANCE_REVISION=""
+}
+
 reconcile_production_world_sync() {
   local revision="$1"
 
@@ -1707,11 +1797,20 @@ reconcile_production_world_sync() {
   validate_production_world_sync_http "$revision"
   audit_production_authored_content
   run_production_grounding_probe
+  run_production_live_creature_grounding_reconcile
   force_production_redis_bgsave "post-deploy world sync and grounding reconciliation"
 }
 
 cleanup() {
   local status="$?"
+  if [ -n "${HARTHMERE_TERRAIN_MAINTENANCE_REVISION:-}" ]; then
+    log "Deactivating unfinished Harthmere terrain maintenance revision $HARTHMERE_TERRAIN_MAINTENANCE_REVISION."
+    az containerapp revision deactivate \
+      --resource-group "$AZURE_RESOURCE_GROUP" \
+      --name "$AZURE_CONTAINER_APP" \
+      --revision "$HARTHMERE_TERRAIN_MAINTENANCE_REVISION" >/dev/null 2>&1 || true
+    HARTHMERE_TERRAIN_MAINTENANCE_REVISION=""
+  fi
   if [ "$status" -ne 0 ] && [ "${AZURE_TRAFFIC_RESTORE_ARMED:-0}" = "1" ]; then
     AZURE_TRAFFIC_RESTORE_ARMED=0
     if ! restore_azure_traffic_weights "$AZURE_PREVIOUS_TRAFFIC_WEIGHTS"; then
@@ -2235,6 +2334,10 @@ push_and_deploy() {
       AZURE_OPENAI_API_KEY=secretref:azure-openai-api-key
       AZURE_SPEECH_REGION="${AZURE_SPEECH_REGION:-eastus2}"
       AZURE_SPEECH_KEY=secretref:azure-speech-key
+      # ElevenLabs is the default player TTS provider. The secret must be
+      # created on the Container App before a production push.
+      ELEVENLABS_API_KEY=secretref:elevenlabs-api-key
+      ELEVENLABS_MODEL_ID="${ELEVENLABS_MODEL_ID:-eleven_multilingual_v2}"
   )
   AZURE_PREVIOUS_TRAFFIC_WEIGHTS="$(capture_azure_traffic_weights)"
   if [ -z "$AZURE_PREVIOUS_TRAFFIC_WEIGHTS" ]; then
@@ -2252,6 +2355,7 @@ push_and_deploy() {
     --query properties.latestRevisionName \
     -o tsv)"
 
+  seed_production_harthmere_extension_terrain "$latest_revision"
   promote_azure_revision_when_ready "$latest_revision"
   validate_production_bucket_assets "$latest_revision"
   validate_production_world_sync_http "$latest_revision"

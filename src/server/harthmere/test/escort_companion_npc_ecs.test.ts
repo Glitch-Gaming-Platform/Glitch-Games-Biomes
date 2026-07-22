@@ -59,4 +59,16 @@ describe("Harthmere escort companion NPC ECS materialization", () => {
     });
     assert.deepEqual(change, { kind: "delete", id: companion.entityId });
   });
+
+  it("explicitly clears shared cosmetics when updating an active escort", () => {
+    const [change] = buildHarthmereEscortCompanionNpcProposedChanges({
+      companions: [companion],
+      existingIds: new Set([companion.entityId]),
+      nowSeconds: 1_800_000_000,
+    });
+    assert.equal(change.kind, "update");
+    if (change.kind !== "update") assert.fail("expected update change");
+    assert.equal(change.entity.appearance_component, null);
+    assert.equal(change.entity.wearing, null);
+  });
 });

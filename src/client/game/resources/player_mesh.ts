@@ -64,6 +64,10 @@ import {
   harthmereClothingSlotsHiddenByBikkieWearables,
   harthmereLocalEquipmentBikkieWearables,
 } from "@/shared/harthmere/harthmere_bikkie_wearables";
+import {
+  HARTHMERE_PLAYER_LIKE_NPC_VARIANT_VERSION,
+  harthmerePlayerLikeNpcVariant,
+} from "@/shared/harthmere/npc_playerlike_variants";
 import { BikkieIds } from "@/shared/bikkie/ids";
 import type { Disposable } from "@/shared/disposable";
 import { makeDisposable } from "@/shared/disposable";
@@ -5479,16 +5483,6 @@ const SNAPSHOT_RICH_NPC_APPEARANCE_VERSION = "snapshot-rich-npc-appearance";
 const HARTHMERE_LOCAL_INVENTORY_STATE_KEY =
   "biomes.localDev.harthmere.inventoryState";
 
-function snapshotRichNpcPick<T>(
-  items: readonly T[],
-  id: BiomesId,
-  salt: number
-): T {
-  const numericId = Number(id) || 1;
-  const value = Math.abs(Math.sin(numericId * (salt + 11.731)) * 1000003);
-  return items[Math.floor(value) % items.length]!;
-}
-
 function snapshotRichNpcHasUsefulAppearance(
   appearance?: ReadonlyAppearance
 ): boolean {
@@ -5506,52 +5500,47 @@ function snapshotRichNpcHasUsefulWearables(
   return !!wearables && Array.from(wearables.values()).some(Boolean);
 }
 
+const SNAPSHOT_RICH_NPC_SKIN_COLORS = [
+  "skin_color_0",
+  "skin_color_1",
+  "skin_color_2",
+  "skin_color_3",
+  "skin_color_4",
+  "skin_color_5",
+  "skin_color_6",
+  "skin_color_7",
+  "skin_color_8",
+  "skin_color_9",
+  "skin_color_10",
+  "skin_color_11",
+] as const;
+
+const SNAPSHOT_RICH_NPC_EYE_COLORS = [
+  "eye_color_0",
+  "eye_color_1",
+  "eye_color_2",
+  "eye_color_3",
+  "eye_color_4",
+] as const;
+
+const SNAPSHOT_RICH_NPC_HAIR_COLORS = [
+  "hair_color_0",
+  "hair_color_1",
+  "hair_color_2",
+  "hair_color_3",
+  "hair_color_4",
+  "hair_color_5",
+  "hair_color_6",
+  "hair_color_7",
+  "hair_color_8",
+] as const;
+
 function snapshotRichNpcFallbackAppearance(id: BiomesId): ReadonlyAppearance {
+  const variant = harthmerePlayerLikeNpcVariant(id);
   return {
-    skin_color_id: snapshotRichNpcPick(
-      [
-        "skin_color_0",
-        "skin_color_1",
-        "skin_color_2",
-        "skin_color_3",
-        "skin_color_4",
-        "skin_color_5",
-        "skin_color_6",
-        "skin_color_7",
-        "skin_color_8",
-        "skin_color_9",
-        "skin_color_10",
-        "skin_color_11",
-      ],
-      id,
-      1
-    ),
-    eye_color_id: snapshotRichNpcPick(
-      [
-        "eye_color_0",
-        "eye_color_1",
-        "eye_color_2",
-        "eye_color_3",
-        "eye_color_4",
-      ],
-      id,
-      2
-    ),
-    hair_color_id: snapshotRichNpcPick(
-      [
-        "hair_color_0",
-        "hair_color_1",
-        "hair_color_2",
-        "hair_color_3",
-        "hair_color_4",
-        "hair_color_5",
-        "hair_color_6",
-        "hair_color_7",
-        "hair_color_8",
-      ],
-      id,
-      3
-    ),
+    skin_color_id: SNAPSHOT_RICH_NPC_SKIN_COLORS[variant.skin],
+    eye_color_id: SNAPSHOT_RICH_NPC_EYE_COLORS[variant.eyes],
+    hair_color_id: SNAPSHOT_RICH_NPC_HAIR_COLORS[variant.hairColor],
     head_id: BikkieIds.androgenous,
   };
 }
@@ -5585,6 +5574,7 @@ const SNAPSHOT_RICH_NPC_FALLBACK_HAND_ITEMS = [
 function snapshotRichNpcFallbackWearables(
   id: BiomesId
 ): ReadonlyItemAssignment {
+  const variant = harthmerePlayerLikeNpcVariant(id);
   const items = new Map<BiomesId, Item>();
   const add = (slot: BiomesId, itemId: BiomesId) => {
     try {
@@ -5603,71 +5593,40 @@ function snapshotRichNpcFallbackWearables(
 
   add(
     BikkieIds.top,
-    snapshotRichNpcPick(
-      [
-        BikkieIds.tatteredTop,
-        BikkieIds.grassyTop,
-        BikkieIds.pjTop,
-        BikkieIds.ogTShirt,
-      ],
-      id,
-      4
-    )
+    [
+      BikkieIds.tatteredTop,
+      BikkieIds.grassyTop,
+      BikkieIds.pjTop,
+      BikkieIds.ogTShirt,
+    ][variant.top]!
   );
   add(
     BikkieIds.bottoms,
-    snapshotRichNpcPick(
-      [
-        BikkieIds.tatteredSkirt,
-        BikkieIds.grassyBottom,
-        BikkieIds.pjBottoms,
-        BikkieIds.bellBottoms,
-      ],
-      id,
-      5
-    )
+    [
+      BikkieIds.tatteredSkirt,
+      BikkieIds.grassyBottom,
+      BikkieIds.pjBottoms,
+      BikkieIds.bellBottoms,
+    ][variant.bottoms]!
   );
   add(BikkieIds.feet, BikkieIds.boots);
-  add(
-    BikkieIds.hair,
-    snapshotRichNpcPick(SNAPSHOT_RICH_NPC_FALLBACK_HAIR_ITEMS, id, 8)
-  );
-  add(
-    BikkieIds.face,
-    snapshotRichNpcPick(SNAPSHOT_RICH_NPC_FALLBACK_FACE_ITEMS, id, 9)
-  );
-  add(
-    BikkieIds.ears,
-    snapshotRichNpcPick(SNAPSHOT_RICH_NPC_FALLBACK_EAR_ITEMS, id, 10)
-  );
-  add(
-    BikkieIds.neck,
-    snapshotRichNpcPick(SNAPSHOT_RICH_NPC_FALLBACK_NECK_ITEMS, id, 11)
-  );
-  add(
-    BikkieIds.hands,
-    snapshotRichNpcPick(SNAPSHOT_RICH_NPC_FALLBACK_HAND_ITEMS, id, 12)
-  );
+  add(BikkieIds.hair, SNAPSHOT_RICH_NPC_FALLBACK_HAIR_ITEMS[variant.hair]!);
+  add(BikkieIds.face, SNAPSHOT_RICH_NPC_FALLBACK_FACE_ITEMS[variant.face]!);
+  add(BikkieIds.ears, SNAPSHOT_RICH_NPC_FALLBACK_EAR_ITEMS[variant.ears]!);
+  add(BikkieIds.neck, SNAPSHOT_RICH_NPC_FALLBACK_NECK_ITEMS[variant.neck]!);
+  add(BikkieIds.hands, SNAPSHOT_RICH_NPC_FALLBACK_HAND_ITEMS[variant.hands]!);
 
-  const hat = snapshotRichNpcPick(
-    [
-      undefined,
-      BikkieIds.flowerCrown,
-      BikkieIds.sombrero,
-      BikkieIds.aviatorHat,
-    ],
-    id,
-    6
-  );
+  const hat = [
+    undefined,
+    BikkieIds.flowerCrown,
+    BikkieIds.sombrero,
+    BikkieIds.aviatorHat,
+  ][variant.hat];
   if (hat) {
     add(BikkieIds.hat, hat);
   }
 
-  const outerwear = snapshotRichNpcPick(
-    [undefined, undefined, BikkieIds.poncho],
-    id,
-    7
-  );
+  const outerwear = [undefined, BikkieIds.poncho][variant.outerwear];
   if (outerwear) {
     add(BikkieIds.outerwear, outerwear);
   }
@@ -5790,6 +5749,8 @@ export async function makeSnapshotPlayerLikeAppearanceMesh(
   );
   mesh.scene.userData.snapshotRichNpcAppearanceVersion =
     SNAPSHOT_RICH_NPC_APPEARANCE_VERSION;
+  mesh.scene.userData.harthmerePlayerLikeNpcVariantVersion =
+    HARTHMERE_PLAYER_LIKE_NPC_VARIANT_VERSION;
   mesh.scene.userData.snapshotRichNpcAppearanceUrl = url;
   // HARTHMERE_NPC_BASE_PASS_PARITY:
   // Player-like NPCs (Snapshot Grove humans like Billy/Jackie, business owners,

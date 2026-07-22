@@ -17,6 +17,30 @@ export const HARTHMERE_EXTENSION_GROUND_Y = 52;
 export const HARTHMERE_EXTENSION_FEET_Y = HARTHMERE_EXTENSION_GROUND_Y + 1;
 export const HARTHMERE_EXTENSION_SHARD_SIZE = 32;
 
+// Stable ECS identity grid for additive terrain. The previous implementation
+// assigned ids by loop order, so extending Z by two shards remapped every later
+// id to a different box and left production with missing/moved terrain islands.
+// This reserved band is disjoint from the retired sequential terrain band and
+// from the 30_000+ escort-companion ids.
+export const HARTHMERE_EXTENSION_TERRAIN_ENTITY_ID_BASE = 8_810_000_001_000_000;
+export const HARTHMERE_EXTENSION_TERRAIN_ENTITY_ID_LIMIT = 8_810_000_001_010_000;
+export const HARTHMERE_PREVIOUS_EXTENSION_TERRAIN_ENTITY_ID_BASE = 8_810_000_000_030_000;
+export const HARTHMERE_PREVIOUS_EXTENSION_TERRAIN_ENTITY_ID_LIMIT = 8_810_000_000_040_000;
+
+// The grid deliberately covers the complete possible additive X band, the
+// full authored Z profile, and every foundation/Underways/upper-building Y
+// shard. 24 * 47 * 8 = 9,024 stable ids, fitting inside the 10,000-id band.
+export const HARTHMERE_EXTENSION_TERRAIN_ID_GRID = {
+  minShardX:
+    HARTHMERE_ORIGINAL_WORLD_EAST_EDGE_X / HARTHMERE_EXTENSION_SHARD_SIZE,
+  maxShardX:
+    HARTHMERE_EXPANDED_WORLD_EAST_EDGE_X / HARTHMERE_EXTENSION_SHARD_SIZE - 1,
+  minShardY: -4,
+  maxShardY: 3,
+  minShardZ: -31,
+  maxShardZ: 15,
+} as const;
+
 export const HARTHMERE_EXTENSION_WORLD_BOUNDS = {
   minX: HARTHMERE_ORIGINAL_WORLD_EAST_EDGE_X,
   maxX: HARTHMERE_EXPANDED_WORLD_EAST_EDGE_X,
@@ -26,6 +50,69 @@ export const HARTHMERE_EXTENSION_WORLD_BOUNDS = {
   minZ: -576,
   maxZ: 192,
 } as const;
+
+export function harthmereExtensionTerrainEntityIdForShard(
+  shardX: number,
+  shardY: number,
+  shardZ: number
+): number | undefined {
+  if (
+    !Number.isInteger(shardX) ||
+    !Number.isInteger(shardY) ||
+    !Number.isInteger(shardZ) ||
+    shardX < HARTHMERE_EXTENSION_TERRAIN_ID_GRID.minShardX ||
+    shardX > HARTHMERE_EXTENSION_TERRAIN_ID_GRID.maxShardX ||
+    shardY < HARTHMERE_EXTENSION_TERRAIN_ID_GRID.minShardY ||
+    shardY > HARTHMERE_EXTENSION_TERRAIN_ID_GRID.maxShardY ||
+    shardZ < HARTHMERE_EXTENSION_TERRAIN_ID_GRID.minShardZ ||
+    shardZ > HARTHMERE_EXTENSION_TERRAIN_ID_GRID.maxShardZ
+  ) {
+    return undefined;
+  }
+  const xCount =
+    HARTHMERE_EXTENSION_TERRAIN_ID_GRID.maxShardX -
+    HARTHMERE_EXTENSION_TERRAIN_ID_GRID.minShardX +
+    1;
+  const zCount =
+    HARTHMERE_EXTENSION_TERRAIN_ID_GRID.maxShardZ -
+    HARTHMERE_EXTENSION_TERRAIN_ID_GRID.minShardZ +
+    1;
+  const xIndex = shardX - HARTHMERE_EXTENSION_TERRAIN_ID_GRID.minShardX;
+  const yIndex = shardY - HARTHMERE_EXTENSION_TERRAIN_ID_GRID.minShardY;
+  const zIndex = shardZ - HARTHMERE_EXTENSION_TERRAIN_ID_GRID.minShardZ;
+  const offset = (yIndex * zCount + zIndex) * xCount + xIndex;
+  const id = HARTHMERE_EXTENSION_TERRAIN_ENTITY_ID_BASE + offset;
+  return id < HARTHMERE_EXTENSION_TERRAIN_ENTITY_ID_LIMIT ? id : undefined;
+}
+
+export function harthmereExtensionFoundationShardSpecs(): Array<{
+  shardX: number;
+  shardY: number;
+  shardZ: number;
+}> {
+  const specs: Array<{ shardX: number; shardY: number; shardZ: number }> = [];
+  const minShardZ = Math.floor(
+    HARTHMERE_EXTENSION_WORLD_BOUNDS.minZ / HARTHMERE_EXTENSION_SHARD_SIZE
+  );
+  const maxShardZ =
+    Math.ceil(
+      HARTHMERE_EXTENSION_WORLD_BOUNDS.maxZ / HARTHMERE_EXTENSION_SHARD_SIZE
+    ) - 1;
+  // A continuous foundation from Y=-64 through the surface shard prevents the
+  // flat town from rendering as a floating 21-block slab over a black void.
+  for (
+    let shardX = HARTHMERE_EXTENSION_TERRAIN_ID_GRID.minShardX;
+    shardX <= HARTHMERE_EXTENSION_TERRAIN_ID_GRID.maxShardX;
+    shardX += 1
+  ) {
+    for (let shardZ = minShardZ; shardZ <= maxShardZ; shardZ += 1) {
+      for (let shardY = -2; shardY <= 1; shardY += 1) {
+        specs.push({ shardX, shardY, shardZ });
+      }
+    }
+  }
+  return specs;
+}
 
 // The visible generated road begins exactly at the old/new map boundary and
 // terminates at Harthmere's authored west gate. Both endpoints and the final

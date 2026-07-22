@@ -2,7 +2,10 @@
 
 import assert from "assert";
 import { buildHarthmereSnapshotGroveNpcSeedProposedChanges } from "../snapshot_grove_npc_ecs_seed";
-import { SNAPSHOT_GROVE_NPCS } from "@/shared/harthmere/snapshot_grove_content";
+import {
+  SNAPSHOT_GROVE_NPCS,
+  snapshotGroveNpcEntityId,
+} from "@/shared/harthmere/snapshot_grove_content";
 import { LOCAL_DEV_HUMAN_NPC_TYPE_ID } from "@/shared/npc/bikkie";
 
 describe("snapshot Grove NPC ECS seed cosmetics", () => {
@@ -43,5 +46,21 @@ describe("snapshot Grove NPC ECS seed cosmetics", () => {
       muckedRobot?.npc_metadata?.type_id,
       LOCAL_DEV_HUMAN_NPC_TYPE_ID
     );
+  });
+
+  it("explicitly removes stale default cosmetics when no-asset Grove humans already exist", () => {
+    const gus = SNAPSHOT_GROVE_NPCS.find((npc) => npc.id === "gus_the_baker");
+    assert.ok(gus);
+    const entityId = snapshotGroveNpcEntityId(gus!);
+    const changes = buildHarthmereSnapshotGroveNpcSeedProposedChanges({
+      nowSeconds: 1_800_000_000,
+      existingIds: new Set([entityId]),
+    });
+    const update = changes.find(
+      (change) => change.kind === "update" && change.entity.id === entityId
+    );
+    assert.ok(update && update.kind === "update");
+    assert.equal(update.entity.appearance_component, null);
+    assert.equal(update.entity.wearing, null);
   });
 });
