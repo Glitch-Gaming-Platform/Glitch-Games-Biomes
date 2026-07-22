@@ -111,7 +111,12 @@ export class DistributedShardManager extends ShardManager {
   }
 
   reportWeight(_shard: number, _weight: number): void {
-    this.warnNoWeightSupport();
+    // Anima reports observed timing even when the configured strategy is
+    // balanced. That data is intentionally ignored by this implementation;
+    // only warn when an operator actually requested unsupported weighting.
+    if (this.config.strategy !== "balanced") {
+      this.warnNoWeightSupport();
+    }
   }
 
   async start() {

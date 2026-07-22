@@ -475,6 +475,11 @@ created it.
 
 Production uses two Container Apps in `glitch-prod-vnet-env`:
 
+Yes, production needs separate compute for the simulation workers, but Anima
+and Gaia share one dedicated simulation Container App; they do not need one
+server each. Keeping both off the public web replicas removes the node-pressure
+failure while preserving their shared Logic and Redis dependencies.
+
 - `biomes-node-vnet`: three public D4 replicas (`4 CPU`, `16Gi`) running web,
   sync WebSocket, shim, bikkie, logic, oob, sidefx, chat, and Redis stream
   workers. It sets `GLITCH_STACK_ROLE=web`, `GLITCH_ENABLE_ANIMA=0`, and
@@ -484,9 +489,11 @@ Production uses two Container Apps in `glitch-prod-vnet-env`:
   Anima's context. It sets `GLITCH_STACK_ROLE=simulation`, an
   Anima V8 heap limit of `2048 MiB`, a Gaia WASM budget of `4096 MiB`, and a
   15-minute native-worker startup allowance (`GLITCH_STACK_HTTP_READY_WAIT_TRIES=900`).
-  The packaged Glitch config permits up to `20,000` missing Gaia terrain shards;
-  the persisted sparse Harthmere world currently has `19,948` intentional holes,
-  so larger terrain loss still fails startup.
+  The packaged Glitch config permits up to `20,500` missing unique Gaia terrain
+  coordinates; the persisted sparse Harthmere world measured `20,188` holes on
+  July 22, 2026, so larger terrain loss still fails startup. Gaia logs the
+  measured value before enforcing the guardrail because overlapping terrain
+  entities make the raw entity count unsuitable for this check.
 
 This boundary is a correctness guardrail, not an optional optimization. The
 July 22, 2026 co-located revision used roughly 11-12 GiB before simulation
@@ -1158,7 +1165,7 @@ Before deploy:
 - [ ] `GLITCH_TITLE_TOKEN` secret exists.
 - [ ] Runtime Redis host is the shared production Redis `10.0.0.12`.
 - [ ] Public runtime env includes `GLITCH_STACK_ROLE=web`, `GLITCH_ENABLE_ANIMA=0`, `GLITCH_ENABLE_GAIA=0`, `GLITCH_REDIS_MODE=external`, `GLITCH_POPULATE_SNAPSHOT_REDIS=0`, `GLITCH_REQUIRE_SNAPSHOT_REDIS=1`, `BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN=1`, `BIOMES_FORCE_LOCAL_DEV_TOWN=0`, `BIOMES_CREATE_LOCAL_DEV_TERRAIN=0`, `BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X=1600`, `NEXT_PUBLIC_BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X=1600`, `BIOMES_START_IN_HARTHMERE=0`, `GLITCH_WORLD_API_MODE=hfc-hybrid`, `GLITCH_BISCUIT_MODE=redis2`, and `GLITCH_ENABLE_SNAPSHOT_ASSET_SERVER=1`.
-- [ ] Simulation runtime env includes `GLITCH_STACK_ROLE=simulation`, `GLITCH_ENABLE_ANIMA=1`, `GLITCH_ENABLE_GAIA=1`, `GLITCH_ANIMA_MAX_OLD_SPACE_MB=2048`, `GLITCH_GAIA_WASM_MEMORY_MB=4096`, `GLITCH_STACK_HTTP_READY_WAIT_TRIES=900`, `GALOIS_STATIC_PREFIX=<public-origin>/buckets/biomes-static/`, and `BIOMES_CREATE_LOCAL_DEV_TERRAIN=0`; packaged config sets `gaiaV2MissingShardsThreshold: 20_000` for the known `19,948` sparse-world holes.
+- [ ] Simulation runtime env includes `GLITCH_STACK_ROLE=simulation`, `GLITCH_ENABLE_ANIMA=1`, `GLITCH_ENABLE_GAIA=1`, `GLITCH_ANIMA_MAX_OLD_SPACE_MB=2048`, `GLITCH_GAIA_WASM_MEMORY_MB=4096`, `GLITCH_STACK_HTTP_READY_WAIT_TRIES=900`, `GALOIS_STATIC_PREFIX=<public-origin>/buckets/biomes-static/`, and `BIOMES_CREATE_LOCAL_DEV_TERRAIN=0`; packaged config sets `gaiaV2MissingShardsThreshold: 20_500` for the measured `20,188` sparse-world holes.
 
 After deploy:
 
@@ -1180,6 +1187,7 @@ After deploy:
 - [ ] Logs show `WebSocket listening on port 4900`.
 - [ ] Logs show `web now running`.
 - [ ] Simulation logs show the local Logic helper ready, Anima ready, Gaia ready, and `GLITCH_SIMULATION_ROLE_READY anima=1 gaia=1`.
+- [ ] Simulation logs show Gaia measured `20,188` missing terrain shard coordinates and do not contain `shard manager does not support weighted balancing`.
 - [ ] Public replicas remain below their previous co-located memory peak and have zero worker-driven restarts.
 - [ ] Production `/api/world_map/metadata` returns finite map bounds and no
       response-schema validation error.

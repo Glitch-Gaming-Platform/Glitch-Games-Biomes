@@ -119,7 +119,16 @@ export class TerrainSync {
     log.info(`Builder expected shard count: ${builder.shardCount()}`);
 
     const holes = builder.holeCount();
-    ok(holes <= CONFIG.gaiaV2MissingShardsThreshold);
+    // holeCount uses unique shard coordinates, while shardIds can include
+    // overlapping terrain entities. Log the measured value before enforcing
+    // the guardrail so sparse-world startup failures remain diagnosable.
+    log.info(
+      `Builder measured ${holes} missing terrain shard coordinates (threshold: ${CONFIG.gaiaV2MissingShardsThreshold}).`
+    );
+    ok(
+      holes <= CONFIG.gaiaV2MissingShardsThreshold,
+      `Gaia terrain has ${holes} missing shard coordinates; configured maximum is ${CONFIG.gaiaV2MissingShardsThreshold}`
+    );
     log.info(
       `Finished loading terrain with ${shardIds.length} shards and ${holes} holes.`
     );

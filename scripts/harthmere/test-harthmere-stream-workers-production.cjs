@@ -83,6 +83,10 @@ function runStaticChecks() {
   const runner = read("scripts/glitch/run-glitch-local-game-stack.sh");
   const simulationHealth = read("scripts/glitch/simulation-health-server.cjs");
   const glitchConfig = read("deploy/glitch/biomes.config.yaml");
+  const gaiaTerrainSync = read("src/server/gaia/terrain/sync.ts");
+  const distributedShardManager = read(
+    "src/server/shared/shard_manager/distributed.ts"
+  );
   const deploy = fs.existsSync(
     path.join(root, "scripts/glitch/deploy-production-local-redis-smoke.sh")
   )
@@ -181,9 +185,19 @@ function runStaticChecks() {
     "Glitch roles keep Gaia enabled for unified/simulation stacks and require both dedicated workers"
   );
   ok(
-    glitchConfig.includes("gaiaV2MissingShardsThreshold: 20_000") &&
-      glitchConfig.includes("deliberately leaves 19,948 shards absent"),
+    glitchConfig.includes("gaiaV2MissingShardsThreshold: 20_500") &&
+      glitchConfig.includes("20,188 missing unique shard coordinates") &&
+      gaiaTerrainSync.includes("Builder measured ${holes}") &&
+      gaiaTerrainSync.includes("configured maximum is"),
     "Glitch Gaia accepts the known sparse Harthmere terrain shape with a narrow missing-shard guardrail"
+  );
+  ok(
+    glitchConfig.includes('- name: "anima"') &&
+      glitchConfig.includes('strategy: "balanced"') &&
+      distributedShardManager.includes(
+        'if (this.config.strategy !== "balanced")'
+      ),
+    "distributed Anima uses balanced ownership without unsupported weight-report errors"
   );
 
   // These options are asserted together because an Anima process can exist yet

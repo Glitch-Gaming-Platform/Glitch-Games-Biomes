@@ -27,11 +27,10 @@ gamePlayerExpirationSecs: 15
 # Gaia settings
 #
 gaiaClockMultiplier: 1.0
-# The additive Harthmere world deliberately leaves 19,948 shards absent inside
-# Gaia's rectangular terrain AABB (upper empty layers and sparse extension
-# columns). Keep a narrow allowance above that known shape so Gaia can start,
-# while a materially larger terrain loss still fails the readiness gate.
-gaiaV2MissingShardsThreshold: 20_000
+# The additive Harthmere world has 20,188 missing unique shard coordinates
+# inside Gaia's rectangular terrain AABB. Keep a small measured allowance so
+# the sparse world starts while materially larger terrain loss still fails.
+gaiaV2MissingShardsThreshold: 20_500
 
 # Gaia growth
 gaiaFloraGrowthSoil: []
@@ -172,6 +171,8 @@ leaderboardToDiscordSync:
 
 shardManagerDomains:
   - name: "anima"
-    strategy: "weighted"
+    # The distributed shard manager cannot apply weighted ownership and falls
+    # back noisily at runtime, so configure the supported strategy explicitly.
+    strategy: "balanced"
   - name: "" # Default
     strategy: "balanced"
