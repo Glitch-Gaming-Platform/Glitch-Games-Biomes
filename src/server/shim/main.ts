@@ -111,6 +111,7 @@ import {
   EntityDescription,
   QuestGiver,
   ShardDiff,
+  ShardMuck,
   ShardSeed,
   ShardShapes,
   WorldMetadata,
@@ -135,6 +136,7 @@ import {
 } from "@/shared/npc/bikkie";
 import type { Vec2, Vec3 } from "@/shared/math/types";
 import { saveBlock } from "@/shared/wasm/biomes";
+import { Tensor } from "@/shared/wasm/tensors";
 import { RegistryBuilder } from "@/shared/registry";
 import {
   makeHarthmereNpcAppearanceConfig,
@@ -215,7 +217,7 @@ const HARTHMERE_LOCAL_DEV_TERRAIN_BOUNDS_VERSION =
 const HARTHMERE_LOCAL_DEV_SEED_CONTENT_PASS =
   "harthmere-additive-east-extension-complete-foundation-flat-town";
 const HARTHMERE_LOCAL_DEV_SEED_FINGERPRINT_VERSION =
-  "harthmere-local-dev-seed-fingerprint-additive-east-extension-v4";
+  "harthmere-local-dev-seed-fingerprint-additive-east-extension-clean-muck-v5";
 
 // Use a new terrain id band for the additive extension. Reusing the legacy
 // band would move existing +512 town entities to +1600 and therefore remove
@@ -6780,6 +6782,15 @@ function makeLocalDevTerrainShard(
     }
     return saveBlock(voxeloo, seedBlock);
   });
+  // A terrain-only rewrite leaves an existing shard_muck tensor untouched.
+  // Production can therefore show purple Muck air over perfectly clean
+  // grass/dirt voxels after a reseed. Every additive Harthmere terrain update
+  // explicitly resets the environmental field to zero as part of the same ECS
+  // change, so the town is clean both materially and atmospherically.
+  const muckBuffer = using(
+    Tensor.make(voxeloo, [SHARD_DIM, SHARD_DIM, SHARD_DIM], "U8"),
+    (muck) => muck.save()
+  );
 
   const entity = {
     id,
@@ -6787,6 +6798,7 @@ function makeLocalDevTerrainShard(
     shard_seed: ShardSeed.create({ buffer }),
     shard_diff: ShardDiff.create(),
     shard_shapes: ShardShapes.create(),
+    shard_muck: ShardMuck.create({ buffer: muckBuffer }),
   };
 
   return kind === "create" ? { kind, tick, entity } : { kind, tick, entity };

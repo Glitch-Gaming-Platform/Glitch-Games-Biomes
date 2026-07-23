@@ -14,12 +14,10 @@ import type { ClientResources } from "@/client/game/resources/types";
 import {
   AudioScript,
   COMBAT_MUSIC_DAMAGE_GRACE_SECONDS,
-  combatTargetFromNpcStateData,
   healthIndicatesRecentCombatDamage,
   selectBackgroundMusicTrack,
 } from "@/client/game/scripts/audio";
 import type { BiomesId } from "@/shared/ids";
-import { serializeNpcCustomState } from "@/shared/npc/serde";
 import assert from "assert";
 import fs from "fs";
 import path from "path";
@@ -52,20 +50,15 @@ function health(hp: number, overrides: Partial<TestHealth> = {}): TestHealth {
   };
 }
 
-function npc(target: BiomesId | undefined, hp = 100, data?: Uint8Array) {
+function npc(target: BiomesId | undefined, hp = 100) {
   return {
     id: nextNpcId++ as BiomesId,
     position: { v: [0, 0, 0] },
     size: { v: [1, 1, 1] },
     npc_metadata: { type_id: 1 },
     health: health(hp),
-    npc_state: {
-      data:
-        data ??
-        serializeNpcCustomState({
-          chaseAttack: { attackTarget: target },
-        }),
-    },
+    npc_combat_state:
+      target === undefined ? undefined : { attack_target: target },
   };
 }
 
@@ -213,17 +206,6 @@ describe("combat background music", () => {
     );
   });
 
-  it("reads chase targets and safely ignores malformed NPC state", () => {
-    const data = serializeNpcCustomState({
-      chaseAttack: { attackTarget: PLAYER_ID },
-    });
-    assert.equal(combatTargetFromNpcStateData(data), PLAYER_ID);
-    assert.equal(
-      combatTargetFromNpcStateData(new Uint8Array([0xff, 0x00, 0x01])),
-      undefined
-    );
-  });
-
   it("recognizes only recent attack damage as a combat signal", () => {
     const recentAttack = health(92, {
       lastDamageSource: {
@@ -340,6 +322,20 @@ describe("combat background music", () => {
     ]);
   });
 
+  it("REGRESSION: stays active beyond damage grace while ECS says the chase continues", () => {
+    const harness = audioHarness();
+    harness.setNpcs([npc(PLAYER_ID)]);
+    harness.setNowSeconds(100 + COMBAT_MUSIC_DAMAGE_GRACE_SECONDS + 30);
+
+    harness.script.tick(0);
+    harness.setNowSeconds(100 + COMBAT_MUSIC_DAMAGE_GRACE_SECONDS + 60);
+    harness.script.tick(0);
+    harness.setNpcs([npc(undefined)]);
+    harness.script.tick(0);
+
+    assert.deepEqual(harness.tracks, ["battle_music", "battle_music", "music"]);
+  });
+
   it("ignores dead pursuers, stale other-player targets, and combat after player death", () => {
     const harness = audioHarness();
 
@@ -352,10 +348,10 @@ describe("combat background music", () => {
     assert.deepEqual(harness.tracks, ["music", "music"]);
   });
 
-  it("does not let malformed state break restoration", () => {
+  it("restores ambient music when the public chase state is absent", () => {
     const harness = audioHarness();
     harness.setMuckyness(1);
-    harness.setNpcs([npc(undefined, 100, new Uint8Array([0xff, 0x00, 0x01]))]);
+    harness.setNpcs([npc(undefined)]);
 
     assert.doesNotThrow(() => harness.script.tick(0));
     assert.deepEqual(harness.tracks, ["muck_music"]);

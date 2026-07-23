@@ -2028,6 +2028,18 @@ def define_components(g: Generator):
         },
     )
 
+    g.add_component(
+        id=156,
+        name="NpcCombatState",
+        visibility=ComponentVisibility.EVERYONE,
+        fields={
+            # Deliberately expose only the active target. NpcState remains
+            # server-only because it also contains paths, threat, schedules,
+            # and other high-frequency AI internals.
+            1: FieldDef(name="attack_target", kind=s.OptionalBiomesId),
+        },
+    )
+
 
 def define_entities(g: Generator):
     s = g.symbols

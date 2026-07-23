@@ -10,6 +10,7 @@ import { Entity } from "@/shared/ecs/gen/entities";
 import { UnmuckSourceSelector } from "@/shared/ecs/gen/selectors";
 import type { ShardId } from "@/shared/game/shard";
 import { SHARD_SHAPE, shardCenter, voxelShard } from "@/shared/game/shard";
+import { HARTHMERE_EXTENSION_WORLD_BOUNDS } from "@/shared/harthmere/world_extension";
 import type { BiomesId } from "@/shared/ids";
 import {
   add,
@@ -24,6 +25,15 @@ import { compact } from "lodash";
 
 const MAX_UNMUCKER_COUNT = 4;
 const MAX_UNMUCKER_DISTANCE = 512;
+
+export function suppressMuckInHarthmereExtension(shardOrigin: Vec3) {
+  return (
+    shardOrigin[0] >= HARTHMERE_EXTENSION_WORLD_BOUNDS.minX &&
+    shardOrigin[0] < HARTHMERE_EXTENSION_WORLD_BOUNDS.maxX &&
+    shardOrigin[2] >= HARTHMERE_EXTENSION_WORLD_BOUNDS.minZ &&
+    shardOrigin[2] < HARTHMERE_EXTENSION_WORLD_BOUNDS.maxZ
+  );
+}
 
 export class MuckSimulation extends Simulation {
   private readonly unmuckers = new Map<BiomesId, ShardId>();
@@ -81,6 +91,23 @@ export class MuckSimulation extends Simulation {
 
   async update(shard: TerrainShard) {
     const shardId = voxelShard(...shard.box.v0);
+
+    // Harthmere is an explicitly clean additive world extension. The ordinary
+    // Gaia gradient increases Muck in every shard that lacks a nearby unmuck
+    // source, which otherwise recontaminates the extension immediately after
+    // forced terrain maintenance. Keep every vertical shard in the extension
+    // at zero regardless of the global Muck simulation.
+    if (suppressMuckInHarthmereExtension(shard.box.v0)) {
+      return using(
+        Tensor.make(this.voxeloo, SHARD_SHAPE, "U8"),
+        (muck) =>
+          using(makeWorldMap(this.voxeloo, muck, shard.box.v0), (worldMap) => ({
+            changes: compact([
+              changeFromMuck(this.voxeloo, this.replica, worldMap),
+            ]),
+          }))
+      );
+    }
 
     // Fetch all nearby muck-clearing entities.
     const unmucks = Array.from(

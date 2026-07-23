@@ -26,6 +26,8 @@ import {
   createHarthmereLiveEntityCombatClientSnapshot,
   createHarthmereCraftingStationClientSnapshotFromBackend,
   createHarthmereLiveModeQuestClientSnapshot,
+  bindHarthmereNativeEcsMaterializationPlansToActorForTest,
+  projectHarthmereNativeEcsPlansOntoClientStateForTest,
   createHarthmereLiveModeSharedWorldState,
   defaultHarthmereLiveModeBackendState,
   mergeHarthmereLiveModeSharedWorldStateIntoBackend,
@@ -847,6 +849,69 @@ export function harthmereLiveModeMutationSnapshotKeys(input: {
   return [...snapshots];
 }
 
+function populateHarthmereLiveModeResponseSnapshots(input: {
+  response: LiveModeResponse;
+  state: HarthmereLiveModeBackendState;
+  includedSnapshots: ReadonlySet<HarthmereLiveModeMutationSnapshotKey>;
+  requestedCraftingStationId?: string;
+  requestedCraftingStationType?: string;
+  nowMs: number;
+}) {
+  const { response, state, includedSnapshots } = input;
+  if (includedSnapshots.has("buildingState")) {
+    response.buildingState =
+      createHarthmereLiveModeBuildingClientSnapshot(state);
+  }
+  if (includedSnapshots.has("bankingState")) {
+    response.bankingState = createHarthmereLiveModeBankingClientSnapshot(state);
+  }
+  if (includedSnapshots.has("guildState")) {
+    response.guildState =
+      createHarthmereLiveModeGuildClientSnapshotFromBackend(state);
+  }
+  if (includedSnapshots.has("economyState")) {
+    response.economyState =
+      createHarthmereProductionEconomyClientSnapshotFromBackend(state);
+  }
+  if (includedSnapshots.has("jobsBoardState")) {
+    response.jobsBoardState =
+      createHarthmereJobsBoardClientSnapshotFromBackend(state);
+  }
+  if (includedSnapshots.has("dailyState")) {
+    response.dailyState = createHarthmereCareLoopClientSnapshotFromBackend(
+      state,
+      input.nowMs
+    );
+  }
+  if (includedSnapshots.has("farmingFoodState")) {
+    response.farmingFoodState =
+      createHarthmereLiveModeFarmingFoodClientSnapshot(state);
+  }
+  if (includedSnapshots.has("craftingState")) {
+    response.craftingState =
+      createHarthmereCraftingStationClientSnapshotFromBackend(
+        state,
+        input.requestedCraftingStationId,
+        input.requestedCraftingStationType,
+        input.nowMs
+      );
+  }
+  if (includedSnapshots.has("inventoryLootState")) {
+    response.inventoryLootState =
+      createHarthmereInventoryLootClientSnapshotFromBackend(state);
+  }
+  if (includedSnapshots.has("combatState")) {
+    response.combatState = createHarthmereLiveEntityCombatClientSnapshot(state);
+  }
+  if (includedSnapshots.has("playerStatusState")) {
+    response.playerStatusState =
+      createHarthmereLiveModePlayerStatusClientSnapshot(state);
+  }
+  if (includedSnapshots.has("questState")) {
+    response.questState = createHarthmereLiveModeQuestClientSnapshot(state);
+  }
+}
+
 const globalForHarthmereLiveMode = globalThis as typeof globalThis & {
   __harthmereLiveModeRedis?: ReturnType<typeof connectToRedis>;
 };
@@ -1255,6 +1320,7 @@ function applyAuctionSellerSettlement(input: {
 function wire_network_requests_to_validateHarthmereLiveModeAuthorityEnvelope(
   actorId: string,
   body: z.infer<typeof zLiveModeRequest>,
+  serverActorEntityId?: BiomesId,
   serverActorPosition?: { x: number; y: number; z: number },
   serverTargetPosition?: { x: number; y: number; z: number },
   serverActorItemIds?: BiomesId[],
@@ -1279,6 +1345,7 @@ function wire_network_requests_to_validateHarthmereLiveModeAuthorityEnvelope(
     requestId: body.requestId,
     idempotencyKey: body.idempotencyKey,
     actorId,
+    serverActorEntityId,
     targetId: body.targetId,
     actionKind: body.actionKind,
     subsystem: body.subsystem,
@@ -2492,8 +2559,18 @@ async function hydrateAndRepairHarthmereLiveModeIdempotencyReplay(input: {
   logicApi: LogicApi;
 }) {
   const hydrated = await hydrateHarthmereLiveModeIdempotencyReplay(input);
-  const plans = hydrated.backendMutation?.nativeEcsMaterializationPlans;
+  const storedPlans = hydrated.backendMutation?.nativeEcsMaterializationPlans;
+  const plans = storedPlans?.length
+    ? bindHarthmereNativeEcsMaterializationPlansToActorForTest(
+        storedPlans,
+        input.response.actorId,
+        input.envelope.serverActorEntityId
+      )
+    : undefined;
   if (!plans?.length) return hydrated;
+  if (hydrated.backendMutation) {
+    hydrated.backendMutation.nativeEcsMaterializationPlans = plans;
+  }
   const requiresAtomicNativeMaterialization = plans.some(
     (plan) => plan.kind !== "drop"
   );
@@ -2513,6 +2590,52 @@ async function hydrateAndRepairHarthmereLiveModeIdempotencyReplay(input: {
       hydrated.backendMutation?.warnings.push(
         `native_ecs_replay_repaired:created:${result.created}:existing:${result.alreadyMaterialized}`
       );
+      if (result.created > 0) {
+        const now = Date.now();
+        const { rawState, rawSharedState } =
+          await readHarthmerePlayerAndSharedStateStrings(
+            input.redisPrimary,
+            harthmereLiveModePlayerStateKey(input.response.actorId),
+            harthmereLiveModeSharedWorldStateKey()
+          );
+        const replayState = parseHarthmereLiveModeBackendState(
+          rawState,
+          input.response.actorId,
+          now
+        );
+        mergeHarthmereLiveModeSharedWorldStateIntoBackend(
+          replayState,
+          parseHarthmereLiveModeSharedWorldState(rawSharedState, now),
+          now
+        );
+        const projectedState =
+          projectHarthmereNativeEcsPlansOntoClientStateForTest(
+            replayState,
+            input.envelope,
+            plans
+          );
+        const includedSnapshotSet = new Set(
+          (hydrated.includedSnapshots ?? []).filter(
+            isHarthmereLiveModeMutationSnapshotKey
+          )
+        );
+        populateHarthmereLiveModeResponseSnapshots({
+          response: hydrated,
+          state: projectedState,
+          includedSnapshots: includedSnapshotSet,
+          requestedCraftingStationId:
+            typeof input.envelope.payload.stationId === "string"
+              ? input.envelope.payload.stationId
+              : typeof input.envelope.payload.stationId === "number"
+              ? String(Math.trunc(input.envelope.payload.stationId))
+              : undefined,
+          requestedCraftingStationType:
+            typeof input.envelope.payload.stationType === "string"
+              ? input.envelope.payload.stationType
+              : undefined,
+          nowMs: now,
+        });
+      }
     }
   } catch (error) {
     repairError = error;
@@ -2990,9 +3113,18 @@ export async function persistHarthmereLiveModeResponse(
       // uses) and only then watch + write the shared key. Mutations that never
       // touch shared state (eat, medical, movement mirrors, inventory ops)
       // no longer contend on it at all.
+      // Jobs-board mutations are different: their accept/objective/turn-in
+      // preconditions all come from the shared jobs blob. Watch that blob from
+      // the first read so a scheduler or another player cannot make the
+      // reducer observe one posting state and then cache a rejection or commit
+      // against another. This also avoids the former unwatch/re-read window
+      // between accepting a job and completing its next objective.
+      const sharedWorldIsInitialAuthority =
+        envelope.actionKind === "request_jobs_board_mutation";
       const watchKeys = uniqueHarthmereLiveModeWatchKeys([
         key,
         playerStateKey,
+        sharedWorldIsInitialAuthority ? sharedWorldStateKey : undefined,
         adoptionSourceStateKey,
       ]);
       const now = Date.now();
@@ -3102,7 +3234,11 @@ export async function persistHarthmereLiveModeResponse(
           sharedWorldStateAfter !== sharedWorldStateBefore;
       }
 
-      if ((sellerStateKey || sharedWorldWriteNeeded) && supportsWatch) {
+      if (
+        (sellerStateKey || sharedWorldWriteNeeded) &&
+        supportsWatch &&
+        (!sharedWorldIsInitialAuthority || Boolean(sellerStateKey))
+      ) {
         await redisUnwatchIfSupported(txPrimary);
         await txPrimary.watch(
           ...uniqueHarthmereLiveModeWatchKeys([
@@ -3284,61 +3420,14 @@ export async function persistHarthmereLiveModeResponse(
       };
 
       stageStartedAt = Date.now();
-      if (includedSnapshotSet.has("buildingState")) {
-        persistedResponse.buildingState =
-          createHarthmereLiveModeBuildingClientSnapshot(reduced.state);
-      }
-      if (includedSnapshotSet.has("bankingState")) {
-        persistedResponse.bankingState =
-          createHarthmereLiveModeBankingClientSnapshot(reduced.state);
-      }
-      if (includedSnapshotSet.has("guildState")) {
-        persistedResponse.guildState =
-          createHarthmereLiveModeGuildClientSnapshotFromBackend(reduced.state);
-      }
-      if (includedSnapshotSet.has("economyState")) {
-        persistedResponse.economyState =
-          createHarthmereProductionEconomyClientSnapshotFromBackend(
-            reduced.state
-          );
-      }
-      if (includedSnapshotSet.has("jobsBoardState")) {
-        persistedResponse.jobsBoardState =
-          createHarthmereJobsBoardClientSnapshotFromBackend(reduced.state);
-      }
-      if (includedSnapshotSet.has("dailyState")) {
-        persistedResponse.dailyState =
-          createHarthmereCareLoopClientSnapshotFromBackend(reduced.state, now);
-      }
-      if (includedSnapshotSet.has("farmingFoodState")) {
-        persistedResponse.farmingFoodState =
-          createHarthmereLiveModeFarmingFoodClientSnapshot(reduced.state);
-      }
-      if (includedSnapshotSet.has("craftingState")) {
-        persistedResponse.craftingState =
-          createHarthmereCraftingStationClientSnapshotFromBackend(
-            reduced.state,
-            requestedCraftingStationId,
-            requestedCraftingStationType,
-            now
-          );
-      }
-      if (includedSnapshotSet.has("inventoryLootState")) {
-        persistedResponse.inventoryLootState =
-          createHarthmereInventoryLootClientSnapshotFromBackend(reduced.state);
-      }
-      if (includedSnapshotSet.has("combatState")) {
-        persistedResponse.combatState =
-          createHarthmereLiveEntityCombatClientSnapshot(reduced.state);
-      }
-      if (includedSnapshotSet.has("playerStatusState")) {
-        persistedResponse.playerStatusState =
-          createHarthmereLiveModePlayerStatusClientSnapshot(reduced.state);
-      }
-      if (includedSnapshotSet.has("questState")) {
-        persistedResponse.questState =
-          createHarthmereLiveModeQuestClientSnapshot(reduced.state);
-      }
+      populateHarthmereLiveModeResponseSnapshots({
+        response: persistedResponse,
+        state: reduced.state,
+        includedSnapshots: includedSnapshotSet,
+        requestedCraftingStationId,
+        requestedCraftingStationType,
+        nowMs: now,
+      });
       mark("snapshots_ms", stageStartedAt);
 
       stageStartedAt = Date.now();
@@ -3425,6 +3514,22 @@ export async function persistHarthmereLiveModeResponse(
             persistedResponse.backendMutation?.warnings.push(
               `native_ecs_materialized:created:${materialized.created}:existing:${materialized.alreadyMaterialized}`
             );
+            if (materialized.created > 0) {
+              const projectedState =
+                projectHarthmereNativeEcsPlansOntoClientStateForTest(
+                  reduced.state,
+                  envelope,
+                  reduced.summary.nativeEcsMaterializationPlans
+                );
+              populateHarthmereLiveModeResponseSnapshots({
+                response: persistedResponse,
+                state: projectedState,
+                includedSnapshots: includedSnapshotSet,
+                requestedCraftingStationId,
+                requestedCraftingStationType,
+                nowMs: now,
+              });
+            }
           }
         } catch (error) {
           materializationError = error;
@@ -3790,6 +3895,7 @@ export default biomesApiHandler(
       wire_network_requests_to_validateHarthmereLiveModeAuthorityEnvelope(
         actorId,
         body,
+        actorIdentity.userId,
         serverActorContext.position,
         serverTargetPosition,
         serverActorContext.itemIds,

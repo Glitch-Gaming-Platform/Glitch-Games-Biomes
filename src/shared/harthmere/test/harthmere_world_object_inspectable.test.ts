@@ -114,6 +114,51 @@ describe("harthmere world object inspectable selection", () => {
     assert.strictEqual(selected!.interaction.kind, "open_container");
   });
 
+  it("keeps nearby containers interactable across authored floor anchors", () => {
+    const selected = selectNearestHarthmereWorldObjectInspectable({
+      playerPosition: [526.5, 65, -96.5],
+      facingView: facingPlusX,
+      candidates: [
+        {
+          id: "ecs:4149747832010135",
+          label: "Chest The Grove Underwater Main",
+          position: [528.5, 59, -96.5],
+        },
+      ],
+    });
+    assert.ok(selected, "underwater ship chest should retain its F prompt");
+    assert.strictEqual(selected!.isContainer, true);
+    assert.strictEqual(selected!.interaction.kind, "open_container");
+
+    const directlyAbove = selectNearestHarthmereWorldObjectInspectable({
+      playerPosition: [528.5, 65, -96.5],
+      facingView: facingPlusX,
+      candidates: [
+        {
+          id: "ecs:4149747832010135",
+          label: "Chest The Grove Underwater Main",
+          position: [528.5, 59, -96.5],
+        },
+      ],
+    });
+    assert.ok(
+      directlyAbove,
+      "a close container directly below the player should remain openable"
+    );
+
+    assert.strictEqual(
+      selectNearestHarthmereWorldObjectInspectable({
+        playerPosition: [0, 6, 0],
+        facingView: facingPlusX,
+        candidates: [
+          { id: "board", label: "Fountain Lesson Board", position: [2, 0, 0] },
+        ],
+      }),
+      undefined,
+      "non-container props on another floor keep the strict visibility gate"
+    );
+  });
+
   it("opens the jobs board prop with the jobs-board action", () => {
     const selected = selectNearestHarthmereWorldObjectInspectable({
       playerPosition: [0, 0, 0],

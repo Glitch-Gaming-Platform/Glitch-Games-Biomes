@@ -99,6 +99,10 @@ const waitForAzureRevisionReady = script.slice(
   script.indexOf("wait_for_azure_revision_ready()"),
   script.indexOf("azure_revision_fqdn()")
 );
+const deploySimulationContainerApp = script.slice(
+  script.indexOf("deploy_simulation_container_app()"),
+  script.indexOf("capture_azure_traffic_weights()")
+);
 const restoreAzureTrafficWeights = script.slice(
   script.indexOf("restore_azure_traffic_weights()"),
   script.indexOf("AZURE_TRAFFIC_RESTORE_ARMED=0")
@@ -245,12 +249,21 @@ ok(
   deployWorkflow.includes("Restore production Git LFS assets") &&
     deployWorkflow.includes("cache-prefix: production-lfs") &&
     deployWorkflow.includes(
-      "include: public/assets/**,public/models/**,public/hud/**,public/splash/**,public/textures/**,public/pwa/**,public/quests/**,src/galois/**,voxeloo/**"
+      "include: public/assets/**,public/harthmere/**,public/models/**,public/hud/**,public/splash/**,public/textures/**,public/pwa/**,public/quests/**,src/galois/**,voxeloo/**"
     ) &&
     cachedLfsAction.includes("restore-keys:") &&
     cachedLfsAction.includes("git lfs checkout") &&
     cachedLfsAction.includes("skipping 'git lfs pull'"),
   "production workflow restores filtered LFS assets from cache before contacting GitHub LFS"
+);
+ok(
+  dockerfile.includes(
+    "public/harthmere/voices/generated/current/ public/harthmere/voices/generated/current/"
+  ) &&
+    script.includes("ensure_harthmere_voice_assets") &&
+    script.includes("check-harthmere-npc-voice-recordings.cjs") &&
+    script.includes('git lfs pull --include="public/harthmere/**"'),
+  "production image hydrates, validates, and packages committed NPC voice recordings"
 );
 ok(
   deployWorkflow.includes("Restore production asset cache") &&
@@ -604,6 +617,14 @@ ok(
   "simulation deployment waits for a health endpoint and log marker that require both native workers"
 );
 ok(
+  deploySimulationContainerApp.includes(
+    'ensure_azure_revision_active "$simulation_revision" "$AZURE_SIMULATION_CONTAINER_APP"'
+  ) &&
+    deploySimulationContainerApp.indexOf("ensure_azure_revision_active") <
+      deploySimulationContainerApp.indexOf("wait_for_azure_revision_ready"),
+  "simulation deployment reactivates an inactive latest revision before accepting readiness"
+);
+ok(
   script.includes("ensure_azure_ingress_target_port") &&
     script.includes("az containerapp ingress update") &&
     script.includes('--target-port "$AZURE_WEB_TARGET_PORT"') &&
@@ -615,7 +636,7 @@ ok(
     script.includes("azure_revision_fqdn") &&
     script.includes("validate_game_html_url") &&
     script.includes("returned metrics instead of game HTML") &&
-    pushAndDeploy.indexOf("promote_azure_revision_when_ready") <
+    pushAndDeploy.indexOf("validate_production_revision_before_traffic") <
       pushAndDeploy.indexOf("validate_production_bucket_assets"),
   "production deploy smoke-tests the concrete revision before post-shift validation"
 );
@@ -640,6 +661,45 @@ ok(
     restoreAzureTrafficWeights.includes("az containerapp revision activate") &&
     restoreAzureTrafficWeights.includes("wait_for_azure_revision_ready"),
   "automatic rollback frees failed-revision capacity, reactivates prior revisions, and waits for readiness"
+);
+ok(
+  script.includes("ensure_azure_revision_active") &&
+    pushAndDeploy.indexOf('ensure_azure_revision_active "$latest_revision"') <
+      pushAndDeploy.indexOf(
+        'seed_production_harthmere_extension_terrain "$latest_revision"'
+      ),
+  "production deploy reactivates an Azure candidate reused from an earlier failed rollout"
+);
+ok(
+  script.includes("free_azure_capacity_for_maintenance") &&
+    script.includes("zero-traffic revision") &&
+    script.includes("Keeping serving revision") &&
+    script.includes("AZURE_PREVIOUS_TRAFFIC_WEIGHTS") &&
+    pushAndDeploy.indexOf(
+      'free_azure_capacity_for_maintenance "$latest_revision"'
+    ) <
+      pushAndDeploy.indexOf(
+        'seed_production_harthmere_extension_terrain "$latest_revision"'
+      ),
+  "production deploy frees zero-traffic revision capacity before D4 maintenance jobs"
+);
+ok(
+  script.includes("pause_simulation_container_app_for_world_maintenance") &&
+    script.includes("restore_previous_simulation_after_failed_maintenance") &&
+    pushAndDeploy.indexOf(
+      "pause_simulation_container_app_for_world_maintenance"
+    ) <
+      pushAndDeploy.indexOf(
+        'seed_production_harthmere_extension_terrain "$latest_revision"'
+      ),
+  "production deploy pauses Gaia during world writes and restores the prior simulation after failure"
+);
+ok(
+  script.includes("verify_azure_revision_zero_restarts") &&
+    script.includes(
+      'verify_azure_revision_zero_restarts "$simulation_revision"'
+    ),
+  "production deploy rejects web or simulation revisions with container restarts"
 );
 ok(
   pushAndDeploy.indexOf(
@@ -1023,13 +1083,38 @@ ok(
   "in-VNet terrain maintenance uses a completion-audited job instead of a probe-limited web revision"
 );
 ok(
+  script.includes("run_azure_terrain_audit_job") &&
+    script.includes("post-simulation terrain audit") &&
+    pushAndDeploy.indexOf("deploy_simulation_container_app") <
+      pushAndDeploy.indexOf("run_azure_terrain_audit_job") &&
+    pushAndDeploy.indexOf("run_azure_terrain_audit_job") <
+      pushAndDeploy.indexOf(
+        'force_production_redis_bgsave "post-simulation Harthmere terrain verification"'
+      ),
+  "production deploy proves active Gaia leaves Harthmere Muck-free before the final Redis save"
+);
+ok(
+  script.includes(
+    'HARTHMERE_PREFLIGHT_INSTALL_ID="${HARTHMERE_PREFLIGHT_INSTALL_ID:-f7f602be-8d32-4fd6-9eba-2d3b7e6dafd7}"'
+  ) &&
+    script.includes("HARTHMERE_PREFLIGHT_E2E_ATTEMPTS:-2") &&
+    script.includes("candidate warmup; waiting once before retry"),
+  "candidate E2E uses a real test install and retries once after cold-start warmup"
+);
+ok(
   pushAndDeploy.indexOf(
     'seed_production_harthmere_extension_terrain "$latest_revision"'
   ) <
     pushAndDeploy.indexOf(
-      'promote_azure_revision_when_ready "$latest_revision"'
-    ),
-  "production deploy completes terrain seeding before promoting web traffic"
+      'force_azure_traffic_to_revision "$latest_revision"'
+    ) &&
+    pushAndDeploy.indexOf(
+      'reconcile_production_world_sync "$latest_revision"'
+    ) <
+      pushAndDeploy.indexOf(
+        'force_azure_traffic_to_revision "$latest_revision"'
+      ),
+  "production deploy completes terrain maintenance and reconciliation before promoting web traffic"
 );
 ok(
   script.includes("audit-production-extension-terrain.cjs") &&
@@ -1106,8 +1191,9 @@ ok(
     harthmereTerrainAudit.includes("emptyFoundationCount") &&
     harthmereTerrainAudit.includes("surfaceHoleShardCount") &&
     harthmereTerrainAudit.includes("forbiddenMuckBlockCount") &&
+    harthmereTerrainAudit.includes("atmosphericMuckBlockCount") &&
     harthmereTerrainAudit.includes("retiredTerrainCount"),
-  "production terrain audit verifies foundation content, flat support, zero Muck terrain, and retired cleanup"
+  "production terrain audit verifies foundation content, flat support, zero Muck terrain/atmosphere, and retired cleanup"
 );
 ok(
   script.includes("run_production_live_creature_grounding_reconcile") &&
@@ -1133,9 +1219,10 @@ ok(
 ok(
   pushAndDeploy.includes(
     [
+      'reconcile_production_world_sync "$latest_revision"',
+      'force_azure_traffic_to_revision "$latest_revision"',
       'validate_production_bucket_assets "$latest_revision"',
       'validate_production_world_sync_http "$latest_revision"',
-      'reconcile_production_world_sync "$latest_revision"',
     ].join("\n  ")
   ),
   "app-only production deploy validates live Harthmere world APIs even when Redis reconciliation is skipped"

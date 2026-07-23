@@ -224,13 +224,15 @@ The runtime applies conservative settings based on the natural-voice guidance:
   "stability": 0.55,
   "similarity_boost": 0.82,
   "style": 0,
-  "speed": 0.97,
+  "speed": 1.02,
   "use_speaker_boost": true
 }
 ```
 
 The exact speed retains only a small per-character variation and is clamped to
-`0.94–1.01`. Robots use slightly more stability; creatures and animals remain
+`0.99–1.05`. This is deliberately a modest increase: it shortens delivery
+without creating the clipped consonants or rushed pauses caused by aggressive
+playback rates. Robots use slightly more stability; creatures and animals remain
 inside the same conversational range rather than using highly unstable values.
 Style exaggeration is deliberately zero because nonzero style was producing
 artifacts and uneven pacing.
@@ -259,18 +261,62 @@ ElevenLabs is now the default player setting for dynamic NPC speech.
 
 ## Static NPC Recordings
 
-Static lines are generated from the voice catalog. Dry-run first:
+The text-to-speech endpoint uses a two-layer content-addressed audio cache:
+
+- Known catalog lines use committed MP3 files and a manifest under
+  `public/harthmere/voices/generated/current/`. These play without waiting for
+  or charging the speech provider.
+- New AI-generated lines are synthesized once and saved under
+  `public/harthmere/voices/generated/runtime/<provider>/`. Later requests on
+  that replica reuse the file, but the API returns the cached MP3 bytes as a
+  data URL instead of a public runtime filename. This avoids production 404s
+  caused by Next's startup-time static-file index and requests landing on a
+  different container replica. Concurrent identical requests share one
+  in-flight provider call.
+
+Cache keys are SHA-256 hashes. They include the normalized spoken text, voice
+profile, provider, language, model/output settings, and a versioned synthesis
+policy, but never include provider API keys. Changing a sound-affecting setting
+therefore creates a new recording instead of replaying stale audio. If a
+deployment filesystem is read-only, the endpoint returns the newly generated
+audio for that request and keeps written dialogue working; committed catalog
+audio remains the reliable production fast path.
+
+The catalog currently covers 492 Harthmere actors, all 1,397 catalog lines, and
+139 native robot-story segments from The Road Ahead, Busted, Get the Muck Out,
+and Muck vs. Machine. Username-dependent segments remain dynamic because their
+spoken text differs per player. Preview the complete plan without making paid
+requests:
 
 ```bash
 node scripts/harthmere/generate-harthmere-npc-voice-recordings.cjs --dry-run
 ```
 
-Generate a limited batch:
+Generate the complete ElevenLabs catalog. The script securely loads the
+gitignored `.env.local` file when credentials are not already in the process
+environment, checkpoints its manifest every 25 completed lines, retries
+temporary provider failures, and resumes matching files on the next run:
 
 ```bash
-AZURE_SPEECH_REGION=eastus2 \
-AZURE_SPEECH_KEY="$AZURE_SPEECH_KEY" \
-node scripts/harthmere/generate-harthmere-npc-voice-recordings.cjs --limit=25
+node scripts/harthmere/generate-harthmere-npc-voice-recordings.cjs \
+  --provider=elevenlabs \
+  --concurrency=4
+```
+
+Generate or test a smaller batch:
+
+```bash
+node scripts/harthmere/generate-harthmere-npc-voice-recordings.cjs \
+  --provider=elevenlabs \
+  --limit=25
+```
+
+The existing OpenAI/Azure Speech voice stack can produce the same cache format:
+
+```bash
+node scripts/harthmere/generate-harthmere-npc-voice-recordings.cjs \
+  --provider=openai \
+  --limit=25
 ```
 
 The script writes MP3s and a manifest under:
@@ -279,8 +325,14 @@ The script writes MP3s and a manifest under:
 public/harthmere/voices/generated/current/
 ```
 
-These generated audio files can be produced in a controlled asset pass. They are
-not required for normal dynamic TTS playback.
+MP3 files are tracked with Git LFS. Do not put provider credentials in the
+manifest, generated paths, source files, or documentation.
+
+Production hydration and packaging are enforced by
+`scripts/harthmere/check-harthmere-npc-voice-recordings.cjs`. The Azure deploy
+workflow includes `public/harthmere/**` in its filtered LFS checkout, and the
+production Docker image copies only `voices/generated/current`; replica-local
+runtime recordings are deliberately not treated as public static assets.
 
 ## Hold-To-Talk And Speak Button Flow
 

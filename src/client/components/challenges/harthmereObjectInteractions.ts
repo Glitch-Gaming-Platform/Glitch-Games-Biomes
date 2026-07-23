@@ -388,6 +388,13 @@ async function completeHarthmereJobsBoardFieldObjectiveForObject(input: {
     const operation = isDeliveryPickupTarget({ completedTargetId, job })
       ? "pickup_delivery_parcel"
       : "complete_job_quest";
+    const requestId = [
+      "jobs_board_field",
+      operation,
+      todo.jobId,
+      todo.todoId,
+      job?.acceptedAtMs ?? 0,
+    ].join(":");
     const snapshotAfter = await submitHarthmereJobsBoardMutation(
       operation,
       {
@@ -399,6 +406,7 @@ async function completeHarthmereJobsBoardFieldObjectiveForObject(input: {
       },
       {
         boardId: todo.boardId,
+        requestId,
       }
     );
     const updatedTodo = snapshotAfter.myTodos.find(

@@ -98,7 +98,7 @@ jobs:
         uses: ./.github/actions/cached-lfs-pull
         with:
           cache-prefix: production-lfs
-          include: public/assets/**,public/models/**,public/hud/**,public/splash/**,public/textures/**,public/pwa/**,public/quests/**,src/galois/**,voxeloo/**
+          include: public/assets/**,public/harthmere/**,public/models/**,public/hud/**,public/splash/**,public/textures/**,public/pwa/**,public/quests/**,src/galois/**,voxeloo/**
 
       - name: Install dependencies
         uses: ./.github/actions/cached-yarn-install

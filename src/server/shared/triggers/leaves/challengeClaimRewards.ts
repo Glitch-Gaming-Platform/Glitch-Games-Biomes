@@ -99,6 +99,7 @@ export class ChallengeClaimRewardsTrigger extends BaseStatelessTrigger {
       returnNpcTypeId: this.returnEntityId,
       allowDefaultNavigationAid: this.allowDefaultNavigationAid,
       rewardsList: this.rewardsList,
+      itemsToTake: this.itemsToTake,
     };
   }
 

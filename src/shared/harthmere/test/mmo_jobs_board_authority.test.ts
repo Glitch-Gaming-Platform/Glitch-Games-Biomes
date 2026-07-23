@@ -10,6 +10,7 @@ import {
   HARTHMERE_BUSINESS_OWNER_MARKER_PREFIX,
   HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
   HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS,
+  createHarthmereJobsBoardClientSnapshot,
   defaultHarthmereJobsBoardState,
   formatHarthmereJobTimeRemaining,
   harthmereDeliveryPlan,
@@ -274,6 +275,12 @@ describe("mmo_jobs_board_authority — posting, accepting, quest todos, and comp
     assert.equal(
       Object.values(completed.jobsBoard.todos)[0].status,
       "completed"
+    );
+    assert.deepEqual(
+      createHarthmereJobsBoardClientSnapshot(completed.jobsBoard, "seeker")
+        .myAcceptedJobs,
+      [],
+      "completed jobs should leave the seeker's active My Jobs list"
     );
   });
 

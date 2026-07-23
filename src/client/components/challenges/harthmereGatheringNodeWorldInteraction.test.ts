@@ -106,17 +106,25 @@ describe("harthmere gathering node world interaction", () => {
   });
 
   it("offers F prompts at the screenshot harvest node positions", () => {
+    const orchardTarget = HARTHMERE_GATHERING_NODE_WORLD_TARGETS.find(
+      (target) => target.id === "harthmere_orchard_softwood"
+    )!;
+    assert.deepEqual(orchardTarget.position, [2068, 53, -118]);
     const orchard = nearestHarthmereGatheringNodePrompt({
-      x: 468,
-      y: 53,
-      z: -118,
+      x: orchardTarget.position[0],
+      y: orchardTarget.position[1],
+      z: orchardTarget.position[2],
     });
     assert.equal(orchard?.id, "harthmere_orchard_softwood");
 
+    const boarTarget = HARTHMERE_GATHERING_NODE_WORLD_TARGETS.find(
+      (target) => target.id === "boar_sounder_harvest"
+    )!;
+    assert.deepEqual(boarTarget.position, [404, 43, -414]);
     const boar = nearestHarthmereGatheringNodePrompt({
-      x: 404,
-      y: 53,
-      z: -414,
+      x: boarTarget.position[0],
+      y: boarTarget.position[1],
+      z: boarTarget.position[2],
     });
     assert.equal(boar?.id, "boar_sounder_harvest");
   });

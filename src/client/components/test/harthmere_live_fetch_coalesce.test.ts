@@ -521,6 +521,34 @@ describe("harthmere live fetch coalescing", () => {
     assert.strictEqual((ok as any)._tag, "server-ok");
   });
 
+  it("replays an idempotent mutation after a server materialization error", async () => {
+    let calls = 0;
+    const bodies: unknown[] = [];
+    const fetchImpl = (async (
+      _input: RequestInfo | URL,
+      init?: RequestInit
+    ) => {
+      calls += 1;
+      bodies.push(init?.body);
+      return new Response(JSON.stringify({ ok: calls > 1 }), {
+        status: calls === 1 ? 500 : 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }) as unknown as typeof fetch;
+    const body = JSON.stringify({
+      requestId: "parcel-pickup",
+      idempotencyKey: "parcel-pickup",
+    });
+    const response = await coalescedHarthmereLiveFetch(
+      fetchImpl,
+      "/api/harthmere/live_mode",
+      { method: "POST", body }
+    );
+    assert.equal(response.status, 200);
+    assert.equal(calls, 2);
+    assert.deepEqual(bodies, [body, body]);
+  });
+
   it("evicts a rejected fetch (all attempts failed) so the next call retries", async () => {
     let calls = 0;
     const fetchImpl = (async () => {

@@ -151,6 +151,12 @@ export interface HarthmereLiveModeAuthorityEnvelope {
   requestId: string;
   idempotencyKey: string;
   actorId: string;
+  /**
+   * Authenticated native ECS player entity. `actorId` deliberately remains the
+   * durable Glitch/save identity (often `install:...`), so native mutations
+   * must use this separate numeric identity instead of trying to parse it.
+   */
+  serverActorEntityId?: BiomesId;
   targetId?: string;
   actionKind: HarthmereLiveModeActionKind;
   subsystem: HarthmereLiveModeAnySubsystem;

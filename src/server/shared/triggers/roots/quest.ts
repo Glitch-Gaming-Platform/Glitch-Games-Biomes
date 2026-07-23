@@ -16,6 +16,10 @@ import { reportFunnelStage } from "@/shared/funnel";
 import { bagSpecToBag } from "@/shared/game/items";
 import type { ItemBag } from "@/shared/game/types";
 import type { BiomesId } from "@/shared/ids";
+import {
+  isNativeRobotStoryAutoContinuationQuestId,
+  nativeRobotStoryPredecessorQuestId,
+} from "@/shared/harthmere/native_road_ahead_contract";
 
 export class QuestExecutor extends RootExecutor {
   constructor(
@@ -183,7 +187,18 @@ export class QuestExecutor extends RootExecutor {
         }
         return;
       case "available":
-        // Not activated.
+        // The restored robot story is one continuous onboarding chain. Older
+        // saves can already have Busted/Get the Muck Out stranded in available
+        // from before automatic continuation existed, so promote those offers
+        // idempotently on the next trigger pass as well as on first unlock.
+        const predecessor = nativeRobotStoryPredecessorQuestId(this.id);
+        if (
+          isNativeRobotStoryAutoContinuationQuestId(this.id) &&
+          predecessor !== undefined &&
+          context.entity.challenges()?.complete.has(predecessor)
+        ) {
+          this.transitionState(context, "in_progress");
+        }
         return;
       case "start":
         if (this.unlock) {
@@ -194,7 +209,10 @@ export class QuestExecutor extends RootExecutor {
         // Clear any now-uneeded trigger states.
         this.unlock?.visit((t) => context.clearState(t.spec.id));
 
-        if (this.biscuit.questGiver) {
+        if (
+          this.biscuit.questGiver &&
+          !isNativeRobotStoryAutoContinuationQuestId(this.id)
+        ) {
           this.transitionState(context, "available");
         } else {
           this.transitionState(context, "in_progress");

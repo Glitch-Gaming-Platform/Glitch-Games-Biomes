@@ -28,6 +28,7 @@ import {
   createHarthmereServerMuckCombatEntitySnapshots,
   harthmereNormalizeSeededCombatEntitySnapshots,
   repairHarthmereStatusReadStaminaDeath,
+  projectHarthmereNativeEcsPlansOntoClientStateForTest,
   tickHarthmereLiveModeStaminaForGameplay,
   createHarthmereLiveModeBuildingClientSnapshot,
   HARTHMERE_SERVER_MUCK_COMBAT_RESPAWN_MS,
@@ -135,6 +136,7 @@ import {
 
 const NOW_MS = 1_700_000_000_000;
 const ACTOR = "player_live_001";
+const NATIVE_ACTOR_ID = 8290811499731977 as any;
 const TARGET = "mob_goblin_001";
 
 beforeEach(function () {
@@ -6128,6 +6130,40 @@ describe("reduceHarthmereLiveModeBackendState — quest state", function () {
     );
   });
 
+  it("repairs Billy quest acceptance and progress using the authenticated ECS actor", function () {
+    const questId = "econ_billys_lost_lunch_pail";
+    const s = freshState();
+    // Production had already committed this Redis projection before native
+    // AcceptChallenge failed against the nonnumeric install actor.
+    s.quests.active[questId] = {
+      stepId: `${questId}:1:near_location`,
+      progress: 2,
+      source: "snapshot_grove",
+    };
+    const result = applyOne(
+      s,
+      "request_quest_state_update",
+      {
+        questId,
+        source: "snapshot_grove",
+        stepId: `${questId}:1:near_location`,
+        progress: 2,
+        objectiveIndex: 0,
+      },
+      { serverActorEntityId: NATIVE_ACTOR_ID }
+    );
+    const nativePlans = result.summary.nativeEcsMaterializationPlans ?? [];
+    const accept = nativePlans.find((plan) => plan.kind === "quest_accept");
+    const progress = nativePlans.find((plan) => plan.kind === "quest_progress");
+    assert.ok(
+      accept,
+      "an already-active quest must still repair native accept"
+    );
+    assert.ok(progress, "the current objective must advance natively");
+    assert.equal((accept as any).actorId, String(NATIVE_ACTOR_ID));
+    assert.equal((progress as any).actorId, String(NATIVE_ACTOR_ID));
+  });
+
   it("grants Snapshot Grove equipment starters into live inventory once", function () {
     const questId = "cove_keeps_pictures";
     const cameraItemId = `b:${BikkieIds.camera}`;
@@ -9683,6 +9719,7 @@ describe("reduceHarthmereLiveModeBackendState — physical jobs board and live t
       {
         subsystem: "jobs",
         targetId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
+        serverActorEntityId: NATIVE_ACTOR_ID,
         serverActorPosition: {
           x: 501.99486179104775,
           y: 70,
@@ -9740,6 +9777,7 @@ describe("reduceHarthmereLiveModeBackendState — physical jobs board and live t
       {
         subsystem: "jobs",
         targetId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
+        serverActorEntityId: NATIVE_ACTOR_ID,
         serverActorPosition: {
           x: 501.99486179104775,
           y: 70,
@@ -9753,8 +9791,112 @@ describe("reduceHarthmereLiveModeBackendState — physical jobs board and live t
     assert.equal(state.inventory.items.sealed_package, undefined);
     const exchange = summary.nativeEcsMaterializationPlans?.[0] as any;
     assert.equal(exchange?.kind, "inventory_exchange");
+    assert.equal(exchange?.actorId, String(NATIVE_ACTOR_ID));
     assert.deepEqual(exchange?.consumeItemStacks, {});
     assert.deepEqual(exchange?.rewardItemStacks, { sealed_package: 1 });
+  });
+
+  it("binds a pickup-delivery parcel exchange to the authenticated ECS actor", function () {
+    let s = freshState();
+    s.jobsBoard.postings.job_delivery_pickup = {
+      jobId: "job_delivery_pickup",
+      boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
+      issuerKind: "npc",
+      issuerId: "old_coop",
+      title: "Run the Coop Food Parcel",
+      description: "Collect the parcel, then deliver it.",
+      kind: "delivery",
+      requirements: [
+        {
+          itemId: "sealed_package",
+          count: 1,
+          pickupMarkerId: "grove_tool_crate",
+          mapMarkerId: "grove_mail_bank_satchel",
+        },
+      ],
+      rewardGold: 45,
+      escrowGold: 45,
+      reputationDelta: 1,
+      status: "open",
+      townId: "harthmere_grove",
+      regionId: "harthmere_grove_region",
+      createdAtMs: NOW_MS,
+      deadlineAtMs: NOW_MS + 86_400_000,
+      failurePenaltyGold: 0,
+      requiresFieldWork: true,
+      mapMarkerId: "grove_mail_bank_satchel",
+      abuseFlags: [],
+      logs: [],
+    } as any;
+    ({ state: s } = applyOne(
+      s,
+      "request_jobs_board_mutation",
+      {
+        operation: "accept_job",
+        boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
+        jobId: "job_delivery_pickup",
+      },
+      {
+        subsystem: "jobs",
+        targetId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
+        serverActorEntityId: NATIVE_ACTOR_ID,
+        serverActorPosition: {
+          x: 501.99486179104775,
+          y: 70,
+          z: -132.00350672753194,
+        },
+      }
+    ));
+    const todo = Object.values(s.jobsBoard.todos)[0];
+    const pickup =
+      harthmereJobsBoardQuestMarkerRuntimePositionForId("grove_tool_crate")!;
+    const result = applyOne(
+      s,
+      "request_jobs_board_mutation",
+      {
+        operation: "pickup_delivery_parcel",
+        boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
+        jobId: "job_delivery_pickup",
+        questTodoId: todo.todoId,
+        completedTargetId: "grove_tool_crate",
+      },
+      {
+        subsystem: "jobs",
+        targetId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
+        serverActorEntityId: NATIVE_ACTOR_ID,
+        serverActorPosition: {
+          x: pickup.position[0],
+          y: pickup.position[1],
+          z: pickup.position[2],
+        },
+      }
+    );
+    assert.deepEqual(result.summary.warnings, []);
+    const exchange = result.summary.nativeEcsMaterializationPlans?.find(
+      (plan) => plan.kind === "inventory_exchange"
+    ) as any;
+    assert.equal(exchange?.actorId, String(NATIVE_ACTOR_ID));
+    assert.deepEqual(exchange?.rewardItemStacks, { sealed_package: 1 });
+    assert.equal(result.state.jobsBoard.todos[todo.todoId].status, "active");
+    const projected = projectHarthmereNativeEcsPlansOntoClientStateForTest(
+      result.state,
+      makeEnvelope(
+        "request_jobs_board_mutation",
+        { operation: "pickup_delivery_parcel" },
+        {
+          serverActorEntityId: NATIVE_ACTOR_ID,
+          serverActorItemCounts: {},
+          serverActorGold: 0,
+        }
+      ),
+      result.summary.nativeEcsMaterializationPlans ?? []
+    );
+    assert.equal(
+      createHarthmereInventoryLootClientSnapshotFromBackend(projected).actor
+        ?.items.sealed_package,
+      1,
+      "the successful response must immediately expose the native parcel"
+    );
   });
 
   it("delivery drop-off completion keeps the job active and points back to the board", function () {
@@ -10079,6 +10221,7 @@ describe("reduceHarthmereLiveModeBackendState — physical jobs board and live t
       {
         subsystem: "jobs",
         targetId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
+        serverActorEntityId: NATIVE_ACTOR_ID,
         serverActorPosition: actorPosition,
       }
     );
@@ -10093,6 +10236,7 @@ describe("reduceHarthmereLiveModeBackendState — physical jobs board and live t
     assert.equal(snapshot.isAttackable, false);
     assert.equal(snapshot.combatProtection, "friendly_noncombatant");
     assert.equal(snapshot.escortActorId, ACTOR);
+    assert.equal(companion!.actorEntityId, NATIVE_ACTOR_ID);
     assert.ok(
       Math.hypot(
         snapshot.position.x - actorPosition.x,

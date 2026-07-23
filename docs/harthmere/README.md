@@ -5,6 +5,9 @@ Keep source folders for runtime code and tests; put gameplay/reference documents
 
 ## Current runbooks
 
+- `PRODUCTION_DEPLOYMENT_INCIDENT_REVIEW_2026-07-23.md` - complete July 21-23
+  production rollout history, root causes, recovery decisions, and the one-shot
+  web/terrain/reconciliation/simulation deployment contract.
 - `HARTHMERE_NATIVE_HOTBAR_AND_JOURNAL.md` - native item action routing,
   one-item throws, journal visibility/deduplication, Road Ahead feedback,
   targeting gates, and ECS-streamed vitals.

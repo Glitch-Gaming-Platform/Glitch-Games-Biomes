@@ -20,6 +20,7 @@ import { harthmereJobsBoardQuestMarkerPositionForId } from "@/shared/harthmere/j
 
 const NOW = 1_800_000_000_000;
 const ACTOR_ID = 1234 as any;
+const DURABLE_ACTOR_ID = "install:e4c81804-d210-40c2-8186-0690ada7e1e3";
 
 class FakeRedis implements HarthmereLiveModeEscortRedis {
   readonly store = new Map<string, string>();
@@ -47,7 +48,7 @@ describe("Harthmere native escort scheduler", () => {
     const target = harthmereJobsBoardQuestMarkerPositionForId(
       "old_grove_road_post"
     )!;
-    const state = defaultHarthmereLiveModeBackendState(String(ACTOR_ID), NOW);
+    const state = defaultHarthmereLiveModeBackendState(DURABLE_ACTOR_ID, NOW);
     state.jobsBoard.postings.escort_scheduler_job = {
       jobId: "escort_scheduler_job",
       boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
@@ -83,7 +84,7 @@ describe("Harthmere native escort scheduler", () => {
       state.jobsBoard,
       {
         requestId: "escort-scheduler-accept",
-        actorId: String(ACTOR_ID),
+        actorId: DURABLE_ACTOR_ID,
         nowMs: NOW,
         operation: "accept_job",
         jobId: "escort_scheduler_job",
@@ -92,6 +93,7 @@ describe("Harthmere native escort scheduler", () => {
       {
         actorGold: 100,
         actorInventoryItems: {},
+        actorEntityId: ACTOR_ID,
         nearbyBoardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
       }
     );
@@ -100,7 +102,7 @@ describe("Harthmere native escort scheduler", () => {
     const companion =
       state.jobsBoard.postings.escort_scheduler_job.escortCompanion!;
     companion.position = {
-      x: target.position[0] - 1,
+      x: target.position[0] + 6,
       y: target.position[1],
       z: target.position[2],
     };

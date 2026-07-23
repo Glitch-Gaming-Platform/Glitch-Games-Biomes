@@ -99,11 +99,18 @@ export async function runHarthmereLiveModeEscortSchedulerTick(input: {
   for (const job of Object.values(state.jobsBoard.postings)) {
     const companion = job.escortCompanion;
     if (!companion || companion.status !== "following") continue;
-    const acceptedActorId = numericActorId(job.acceptedByActorId);
+    const acceptedActorId =
+      companion.actorEntityId ?? numericActorId(job.acceptedByActorId);
     if (!acceptedActorId) continue;
     const position = await actorPosition(input.worldApi, acceptedActorId);
     if (!position) continue;
     const before = JSON.stringify(companion);
+    // The reducer's NPC follow path compares the escort's actor to the
+    // backend state's actor and resolves that actor's authoritative position
+    // from the server envelope. This scheduler state starts as a system actor,
+    // so bind it to the accepted player for each escort tick; otherwise the
+    // companion falls through to idle patrol and never reaches its marker.
+    state.actorId = companion.actorId;
     // Combat snapshots are intentionally actor-private and therefore absent
     // from the shared Redis projection. Reconstruct only this escort's server
     // AI input from the shared companion record before invoking the reducer.
@@ -140,7 +147,8 @@ export async function runHarthmereLiveModeEscortSchedulerTick(input: {
     const envelope: HarthmereLiveModeAuthorityEnvelope = {
       requestId: `escort-scheduler:${job.jobId}:${input.nowMs}`,
       idempotencyKey: `escort-scheduler:${job.jobId}:${input.nowMs}`,
-      actorId: String(acceptedActorId),
+      actorId: companion.actorId,
+      serverActorEntityId: acceptedActorId,
       targetId: String(companion.entityId),
       actionKind: "request_npc_ai_tick",
       subsystem: "npc_ai",

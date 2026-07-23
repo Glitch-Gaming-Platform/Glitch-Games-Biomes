@@ -51,6 +51,7 @@ export type MapMarkerKind =
   | "quest"
   | "rift"
   | "resource"
+  | "crop"
   | "property"
   | "danger"
   | "safe_zone"
@@ -169,6 +170,7 @@ type MapPanelTab =
   | "people"
   | "buildings"
   | "properties"
+  | "crops"
   | "geography";
 
 const MAP_PANEL_TABS: Array<{ id: MapPanelTab; label: string }> = [
@@ -176,6 +178,7 @@ const MAP_PANEL_TABS: Array<{ id: MapPanelTab; label: string }> = [
   { id: "people", label: "People" },
   { id: "buildings", label: "Buildings" },
   { id: "properties", label: "My Properties" },
+  { id: "crops", label: "My Crops" },
   { id: "geography", label: "Geography" },
 ];
 
@@ -188,6 +191,7 @@ const KIND_LABEL: Record<MapMarkerKind, string> = {
   quest: "Jobs / Quest Board",
   rift: "Rift",
   resource: "Resource",
+  crop: "My Crop",
   property: "Property",
   danger: "Danger",
   safe_zone: "Safe Zone",
@@ -205,6 +209,7 @@ const KIND_COLOR: Record<MapMarkerKind, string> = {
   quest: "var(--biomes-edge-cyan)",
   rift: "var(--biomes-edge-magenta)",
   resource: "#86efac",
+  crop: "#a3e635",
   property: "#fbbf24",
   danger: "#f87171",
   safe_zone: "#a7f3d0",
@@ -325,6 +330,7 @@ export function mapPanelTabForMarkerForTest(
   )
     tabs.push("buildings");
   if (marker.kind === "property") tabs.push("properties");
+  if (marker.kind === "crop") tabs.push("crops");
   if (
     marker.kind === "safe_zone" ||
     marker.kind === "resource" ||
@@ -829,6 +835,7 @@ export const MapQuestsTab: React.FunctionComponent<{
     people: "",
     buildings: "",
     properties: "",
+    crops: "",
     geography: "",
   });
   const [activeMapPin, setActiveMapPin] = React.useState<
@@ -861,8 +868,23 @@ export const MapQuestsTab: React.FunctionComponent<{
 
   React.useEffect(() => ensureMapTabStyles(), []);
 
+  // Native crop entities can advance or be harvested without replacing the
+  // adapter object. Polling only while this tab is mounted keeps map markers in
+  // sync with the ECS-backed farming projection.
+  const [liveDataRevision, setLiveDataRevision] = React.useState(0);
+  React.useEffect(() => {
+    const timer = window.setInterval(
+      () => setLiveDataRevision((value) => value + 1),
+      1000
+    );
+    return () => window.clearInterval(timer);
+  }, []);
+
   const bounds = adapter?.getMapBounds?.();
-  const markers = React.useMemo(() => adapter?.getMarkers?.() ?? [], [adapter]);
+  const markers = React.useMemo(
+    () => adapter?.getMarkers?.() ?? [],
+    [adapter, liveDataRevision]
+  );
   const playerMarker = adapter?.getPlayerMarker?.();
   const activeMapPinMarker = React.useMemo(
     () => mapMarkerForActivePinForTest(activeMapPin, bounds),
@@ -986,6 +1008,10 @@ export const MapQuestsTab: React.FunctionComponent<{
     () => markersForPanelTab(allMarkers, "properties"),
     [allMarkers]
   );
+  const cropMarkers = React.useMemo(
+    () => markersForPanelTab(allMarkers, "crops"),
+    [allMarkers]
+  );
   const geographyMarkers = React.useMemo(
     () => markersForPanelTab(allMarkers, "geography"),
     [allMarkers]
@@ -1002,6 +1028,10 @@ export const MapQuestsTab: React.FunctionComponent<{
     () => filterMapMarkersForTest(propertyMarkers, panelFilters.properties),
     [panelFilters.properties, propertyMarkers]
   );
+  const filteredCropMarkers = React.useMemo(
+    () => filterMapMarkersForTest(cropMarkers, panelFilters.crops),
+    [cropMarkers, panelFilters.crops]
+  );
   const filteredGeographyMarkers = React.useMemo(
     () => filterMapMarkersForTest(geographyMarkers, panelFilters.geography),
     [panelFilters.geography, geographyMarkers]
@@ -1010,7 +1040,7 @@ export const MapQuestsTab: React.FunctionComponent<{
   // 0..100 map units against the same bounds the markers use.
   const terrainRegions = React.useMemo(
     () => adapter?.getTerrainRegions?.() ?? [],
-    [adapter]
+    [adapter, liveDataRevision]
   );
   // Elevation summary from real marker heights (worldPosition Y).
   const elevationBands = React.useMemo(() => {
@@ -1719,7 +1749,8 @@ export const MapQuestsTab: React.FunctionComponent<{
         {enabledLayers.size === 0 ? (
           <p style={mutedTextStyle}>
             No layers selected. Turn on a layer above (Quests, People,
-            Buildings, My Properties, Geography) to see its markers and list.
+            Buildings, My Properties, My Crops, Geography) to see its markers
+            and list.
           </p>
         ) : null}
         {layerEnabled("quests") ? (
@@ -1953,6 +1984,24 @@ export const MapQuestsTab: React.FunctionComponent<{
             activePinMarkerId={activeMapPinMarkerId}
             filterValue={panelFilters.properties}
             onFilter={(value) => setPanelFilter("properties", value)}
+          />
+        ) : null}
+        {layerEnabled("crops") ? (
+          <MarkerList
+            title="My Crops"
+            empty={
+              panelFilters.crops.trim()
+                ? "No crops match this filter."
+                : "You have not planted any synchronized crops yet."
+            }
+            markers={filteredCropMarkers}
+            playerMarker={playerMarker}
+            focusedMarkerId={focusedMarkerId}
+            onSelect={centerOnMarker}
+            onPin={setActiveDestination}
+            activePinMarkerId={activeMapPinMarkerId}
+            filterValue={panelFilters.crops}
+            onFilter={(value) => setPanelFilter("crops", value)}
           />
         ) : null}
         {layerEnabled("geography") ? (

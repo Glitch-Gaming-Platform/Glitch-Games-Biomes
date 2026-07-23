@@ -104,7 +104,7 @@ describe("harthmereJobItemSourceGuidance — where to get missing job items", ()
     assert.equal(guidance!.missingCount, 2);
     assert.equal(guidance!.sourceKind, "gather");
     assert.equal(guidance!.markerId, "harthmere_orchard_softwood");
-    assert.deepEqual(guidance!.markerPosition, [468, 53, -118]);
+    assert.deepEqual(guidance!.markerPosition, [2068, 53, -118]);
     assert.ok(/Orchard Softwood Branches/i.test(guidance!.hint));
   });
 

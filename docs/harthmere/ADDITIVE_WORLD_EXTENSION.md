@@ -55,6 +55,8 @@ shards that intersect authored structures and dungeons. This includes:
 - grass/dirt as the normal surface, sparse real trees and stone/copper/iron
   resources, and no Muckwad, deprecated Muckwad, splintered Muck, or Mucky
   Brambles in the extension surface shard;
+- an explicitly zeroed `shard_muck` field on every generated terrain shard, so
+  old Gaia state cannot leave purple Muck air over otherwise clean grass/dirt;
 - upper floors, roofs, gate towers, and tall landmarks above Y=63;
 - Old Well/Underways and a solid switchback chapel descent with landings at
   every authored Bellbound quest depth: Y=-6, -14, -26, and -60;
@@ -168,7 +170,8 @@ zero-traffic maintenance revision with terrain seeding forced on. Promotion is
 blocked until `scripts/harthmere/audit-production-extension-terrain.cjs`
 confirms all 2,304 foundation shards, all 576 surface shards, solid Y=52 in
 every extension column, non-empty lower foundation tensors, correct shard
-boxes, zero forbidden Muck terrain blocks, and zero retired terrain records.
+boxes, zero forbidden Muck terrain blocks, zero atmospheric Muck cells, and
+zero retired terrain records.
 
 ## Physical player route contract
 

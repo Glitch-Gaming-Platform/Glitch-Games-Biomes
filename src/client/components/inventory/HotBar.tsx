@@ -12,7 +12,11 @@ import type {
   CameraSelection,
   HotBarSelection,
 } from "@/client/game/resources/inventory";
-import { getSelectedItem } from "@/client/game/resources/inventory";
+import {
+  cameraExitHotbarIndex,
+  getSelectedItem,
+  isCameraExitKey,
+} from "@/client/game/resources/inventory";
 import type { ClientReactResources } from "@/client/game/resources/types";
 import { compatibleCameraModes } from "@/client/game/util/camera";
 import type { LocalKeyCode } from "@/client/game/util/keyboard";
@@ -56,7 +60,7 @@ export function handleCameraKeyDown(
   switchCameraModes(reactResources, events, newMode);
 }
 
-function switchCameraModes(
+export function switchCameraModes(
   reactResources: ClientReactResources,
   events: Events,
   mode: CameraItemMode
@@ -71,6 +75,39 @@ function switchCameraModes(
       new ChangeCameraModeEvent({ id: localPlayer.id, mode: newMode.modeType })
     )
   );
+}
+
+export function exitCameraMode(
+  deps: ClientContextSubset<
+    "events" | "gardenHose" | "reactResources" | "resources" | "userId"
+  >
+) {
+  const selection = deps.reactResources.get("/hotbar/selection");
+  if (selection.kind !== "camera") {
+    return false;
+  }
+
+  // Reset the camera mode before changing selection. CameraScript observes the
+  // selfie -> normal transition and rotates the player camera back by PI, so
+  // leaving selfie mode cannot strand the view facing backwards.
+  switchCameraModes(
+    deps.reactResources,
+    deps.events,
+    first(compatibleCameraModes(undefined))!
+  );
+
+  const currentIndex = deps.resources.get("/hotbar/index").value;
+  const inventory = deps.resources.get("/ecs/c/inventory", deps.userId);
+  const exitIndex = cameraExitHotbarIndex(inventory, currentIndex);
+  if (exitIndex >= 0) {
+    updateHotbarIndexResource(deps, exitIndex);
+  } else {
+    // Extremely defensive fallback for a hotbar made entirely of cameras.
+    // A negative local index produces no camera selection while preserving the
+    // server-owned inventory contents.
+    deps.resources.set("/hotbar/index", { value: -1 });
+  }
+  return true;
 }
 
 function updateHotbarIndexResource(
@@ -128,9 +165,25 @@ export const HotBar: React.FunctionComponent<{}> = ({}) => {
       document.body.classList.remove("selection-camera");
     }
     // Trigger any sound effects if the selected item has changed.
+    const priorSelectedItem = priorSelectedItemRef.current;
     const selectedItemHasChanged =
       !priorSelectedItemRef.current ||
       !isEqual(currentSelection.item, priorSelectedItemRef.current);
+
+    // Reset the authoritative mode whenever ordinary hotbar navigation leaves
+    // a camera. The old index effect read this ref after it had already been
+    // overwritten with the new item, leaving remote player state in selfie.
+    if (
+      selectedItemHasChanged &&
+      priorSelectedItem?.action === "photo" &&
+      currentSelection.item?.action !== "photo"
+    ) {
+      switchCameraModes(
+        reactResources,
+        events,
+        first(compatibleCameraModes(undefined))!
+      );
+    }
     priorSelectedItemRef.current = currentSelection.item;
 
     if (selectedItemHasChanged && currentSelection.item) {
@@ -149,19 +202,6 @@ export const HotBar: React.FunctionComponent<{}> = ({}) => {
     // we won't override it until we change our selected hotbar slot
     if (hotbarSelectedIdx < 0) {
       return;
-    }
-
-    // If previous item was camera, switch camera mode back to normal
-    if (priorSelectedItemRef.current) {
-      const action = priorSelectedItemRef.current.action;
-      if (action === "photo") {
-        switchCameraModes(
-          reactResources,
-          events,
-          first(compatibleCameraModes(currentSelection.item))!
-        );
-        audioManager.playSound("item_select");
-      }
     }
 
     const slotRef = {
@@ -186,6 +226,16 @@ export const HotBar: React.FunctionComponent<{}> = ({}) => {
     const keyDownCB = (event: KeyboardEvent) => {
       if (event.repeat) return;
       const lk = event.code as LocalKeyCode;
+
+      // Camera exit is a recovery key, so it must work after pointer lock is
+      // released by the photo/selfie flow. Ordinary HUD shortcuts remain
+      // gated below, and text inputs still retain X for typing.
+      const selection = reactResources.get("/hotbar/selection");
+      if (!inInputElement(event) && isCameraExitKey(lk, selection)) {
+        event.preventDefault();
+        exitCameraMode(clientContext);
+        return;
+      }
 
       if (!pointerLockManager.allowHUDInput() || inInputElement(event)) {
         return;
@@ -238,15 +288,18 @@ export const HotBar: React.FunctionComponent<{}> = ({}) => {
           break;
       }
 
-      const selection = reactResources.get("/hotbar/selection");
       switch (lk) {
         case "KeyX":
-          fireAndForget(
-            throwInventoryItem(clientContext, localPlayer.id, {
-              kind: "hotbar",
-              idx: hotbarSelectedIdx,
-            })
-          );
+          if (selection.kind === "camera") {
+            exitCameraMode(clientContext);
+          } else {
+            fireAndForget(
+              throwInventoryItem(clientContext, localPlayer.id, {
+                kind: "hotbar",
+                idx: hotbarSelectedIdx,
+              })
+            );
+          }
           break;
         case "KeyF":
           if (selection.kind === "camera") {

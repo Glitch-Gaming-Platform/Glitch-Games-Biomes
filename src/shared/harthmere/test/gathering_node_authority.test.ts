@@ -12,6 +12,33 @@ describe("Harthmere gathering node authority", () => {
   it("keeps the complete authored node catalogue on the server", () => {
     assert.equal(HARTHMERE_GATHERING_AUTHORITY_NODES.length, 29);
     assert.equal(node.requiredTool, "rusty_pickaxe");
+    assert.equal(node.terrainFrame, "additive_town");
+    assert.deepEqual(node.position, [2103, 53, -270]);
+  });
+
+  it("uses production-probed heights for original-map wilderness nodes", () => {
+    const hilly = HARTHMERE_GATHERING_AUTHORITY_NODES.filter(
+      (candidate) => candidate.terrainFrame === "original_hilly"
+    );
+    const additive = HARTHMERE_GATHERING_AUTHORITY_NODES.filter(
+      (candidate) => candidate.terrainFrame === "additive_town"
+    );
+    assert.equal(additive.length, 10);
+    assert.equal(hilly.length, 19);
+    assert.ok(additive.every((candidate) => candidate.position[1] === 53));
+    assert.ok(additive.every((candidate) => candidate.position[0] >= 1792));
+    assert.ok(hilly.every((candidate) => candidate.position[0] < 1792));
+    assert.ok(
+      new Set(hilly.map((candidate) => candidate.position[1])).size > 10
+    );
+    assert.deepEqual(
+      harthmereGatheringAuthorityNode("boar_sounder_harvest")?.position,
+      [404, 43, -414]
+    );
+    assert.deepEqual(
+      harthmereGatheringAuthorityNode("gravewood_zombie_remains")?.position,
+      [536, 77, -119]
+    );
   });
 
   it("rejects unknown, unpositioned, remote, unequipped, and underskilled requests", () => {

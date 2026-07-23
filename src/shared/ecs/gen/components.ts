@@ -1,5 +1,5 @@
 // GENERATED: This file is generated from components.ts.j2. Do not modify directly.
-// Content Hash: 0186ff10c53b7011e29e28139d51c311
+// Content Hash: e3778ac5597c2d025bcf1e1557ba20ec
 
 import * as t from "@/shared/ecs/gen/types";
 import { cloneDeepWithItems } from "@/shared/game/item";
@@ -3165,6 +3165,30 @@ export class HarthmereMaterialStorage {
       : (cloneDeepWithItems(value) as unknown as HarthmereMaterialStorage);
   }
 }
+export interface NpcCombatState {
+  attack_target: t.OptionalBiomesId;
+}
+
+export interface ReadonlyNpcCombatState {
+  readonly attack_target: t.ReadonlyOptionalBiomesId;
+}
+
+export class NpcCombatState {
+  static ID = 156;
+
+  static create(fields: Partial<NpcCombatState> = {}): NpcCombatState {
+    if (fields.attack_target === undefined) {
+      fields.attack_target = t.defaultOptionalBiomesId;
+    }
+    return fields as NpcCombatState;
+  }
+
+  static clone(value?: ReadonlyNpcCombatState): NpcCombatState {
+    return value === undefined
+      ? NpcCombatState.create()
+      : (cloneDeepWithItems(value) as unknown as NpcCombatState);
+  }
+}
 export interface ComponentResourcePaths {
   "/ecs/c/iced": PathDef<[BiomesId], ReadonlyIced | undefined>;
   "/ecs/c/remote_connection": PathDef<
@@ -3407,5 +3431,9 @@ export interface ComponentResourcePaths {
   "/ecs/c/harthmere_material_storage": PathDef<
     [BiomesId],
     ReadonlyHarthmereMaterialStorage | undefined
+  >;
+  "/ecs/c/npc_combat_state": PathDef<
+    [BiomesId],
+    ReadonlyNpcCombatState | undefined
   >;
 }

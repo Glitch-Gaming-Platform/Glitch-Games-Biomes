@@ -135,6 +135,7 @@ import {
 } from "@/shared/harthmere/service_building_visual_decor";
 import { LIVE_ENTITY_ROBOT_PROTECTION_AREAS } from "@/shared/harthmere/live_entity_robot_energy_protection";
 import {
+  harthmereLiveCreatureStaticFallbackTargetIds,
   reconcileHarthmereLiveCreatureBridge,
   readHarthmereLiveCreatureBridge,
   type HarthmereLiveCreatureBridgeRecord,
@@ -13055,6 +13056,9 @@ private harthmerePlayerSword?: THREE.Group;
     const now = Date.now();
     const positions: Record<string, unknown> = {};
     for (const actor of this.combatLifeInstances) {
+      if (actor.object.userData.harthmereEcsFallbackSuppressed === true) {
+        continue;
+      }
       if (actor.combatOffset === undefined || !Number.isFinite(actor.combatOffset)) {
         continue;
       }
@@ -16699,6 +16703,7 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
   // attack ray hits exactly what the player sees.
   private reconcileHarthmereEcsLiveCreatures() {
     if (!harthmereEcsCreatureRenderEnabled()) {
+      this.updateHarthmereStaticCreatureFallbackVisibility(new Set());
       if (this.harthmereEcsLiveCreatures.size > 0) {
         for (const id of [...this.harthmereEcsLiveCreatures.keys()]) {
           this.removeHarthmereEcsLiveCreature(id);
@@ -16719,6 +16724,49 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
     }
     for (const id of toRemove) {
       this.removeHarthmereEcsLiveCreature(id);
+    }
+    this.updateHarthmereStaticCreatureFallbackVisibility(
+      harthmereLiveCreatureStaticFallbackTargetIds(
+        records.filter((record) =>
+          this.harthmereEcsLiveCreatures.has(record.id),
+        ),
+      ),
+    );
+  }
+
+  private updateHarthmereStaticCreatureFallbackVisibility(
+    liveTargetIds: ReadonlySet<string>,
+  ) {
+    for (const actor of this.combatLifeInstances) {
+      if (actor.object.userData.harthmereEcsCreatureId !== undefined) {
+        continue;
+      }
+      if (!isHarthmereEcsDrivenCreatureAsset(actor.asset)) {
+        continue;
+      }
+      const shouldSuppress = Boolean(
+        actor.liveModeTargetId && liveTargetIds.has(actor.liveModeTargetId),
+      );
+      const wasSuppressed =
+        actor.object.userData.harthmereEcsFallbackSuppressed === true;
+      if (shouldSuppress === wasSuppressed) {
+        continue;
+      }
+      if (shouldSuppress) {
+        actor.object.userData.harthmereVisibleBeforeEcsFallbackSuppression =
+          actor.object.visible;
+        actor.object.userData.harthmereEcsFallbackSuppressed = true;
+        actor.object.visible = false;
+      } else {
+        actor.object.userData.harthmereEcsFallbackSuppressed = false;
+        const wasVisible =
+          actor.object.userData.harthmereVisibleBeforeEcsFallbackSuppression !==
+          false;
+        actor.object.visible =
+          wasVisible && !this.deadCombatObjects.has(actor.object);
+        delete actor.object.userData
+          .harthmereVisibleBeforeEcsFallbackSuppression;
+      }
     }
   }
 

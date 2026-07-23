@@ -12,7 +12,6 @@ import {
 import type { ReadonlyHealth } from "@/shared/ecs/gen/components";
 import type { BiomesId } from "@/shared/ids";
 import { dist } from "@/shared/math/linear";
-import { deserializeNpcCustomState } from "@/shared/npc/serde";
 import { clamp } from "lodash";
 
 export const SOUND_REF = 4; // distance around the source where the volume is max
@@ -51,19 +50,6 @@ export function healthIndicatesRecentCombatDamage(
   );
 }
 
-export function combatTargetFromNpcStateData(
-  data: Uint8Array
-): BiomesId | undefined {
-  try {
-    return deserializeNpcCustomState(data, {
-      propagateParseError: true,
-    }).chaseAttack?.attackTarget;
-  } catch {
-    // A malformed or newer NPC state should not break the audio render loop.
-    return undefined;
-  }
-}
-
 export function selectBackgroundMusicTrack(
   muckyness: number,
   activeCombat: boolean
@@ -76,10 +62,6 @@ export function selectBackgroundMusicTrack(
 
 export class AudioScript implements Script {
   readonly name = "audio";
-  private readonly npcCombatTargetCache = new WeakMap<
-    Uint8Array,
-    BiomesId | null
-  >();
 
   constructor(
     private readonly userId: BiomesId,
@@ -87,16 +69,6 @@ export class AudioScript implements Script {
     private readonly table: ClientTable,
     private readonly audioManager: AudioManager
   ) {}
-
-  private cachedNpcCombatTarget(data: Uint8Array) {
-    const cached = this.npcCombatTargetCache.get(data);
-    if (cached !== undefined) {
-      return cached ?? undefined;
-    }
-    const target = combatTargetFromNpcStateData(data);
-    this.npcCombatTargetCache.set(data, target ?? null);
-    return target;
-  }
 
   private isPlayerInActiveCombat(
     center: [number, number, number],
@@ -118,8 +90,7 @@ export class AudioScript implements Script {
     )) {
       if (
         (npc.health?.hp ?? 0) > 0 &&
-        ((npc.npc_state?.data &&
-          this.cachedNpcCombatTarget(npc.npc_state.data) === this.userId) ||
+        (npc.npc_combat_state?.attack_target === this.userId ||
           healthIndicatesRecentCombatDamage(
             npc.health,
             nowSeconds,

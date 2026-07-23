@@ -225,16 +225,12 @@ describe("Harthmere quest object procedural markers current", () => {
     }
   });
 
-  it("keeps item-source markers used by board quests above the live Grove floor", () => {
+  it("keeps additive-town item-source markers on the reachable Harthmere floor", () => {
     const orchard = harthmereJobsBoardQuestMarkerRuntimePositionForId(
       "harthmere_orchard_softwood"
     );
     assert.ok(orchard, "Orchard softwood source marker should resolve");
-    assert.deepEqual(orchard!.position, [468, 70, -118]);
-    assert.ok(
-      orchard!.position[1] > 60,
-      "Orchard source pin should not use the buried authored y=53 fallback"
-    );
+    assert.deepEqual(orchard!.position, [2068, 53, -118]);
   });
 
   it("adds active-only live-entity helper quest targets at the authored coordinates", () => {

@@ -262,6 +262,7 @@ export const HARTHMERE_NATIVE_ITEM_ID_MANIFEST = {
   scavenger_hook: id(8688210892461192),
   scrap_metal: id(8674950302765583),
   scroll_of_spark: id(8658819181251487),
+  sealed_package: id(8799000000000001),
   seed_carrot: id(8669183240997535),
   seed_muckroot: id(8678408564150492),
   seed_wheat: id(8657983184297459),

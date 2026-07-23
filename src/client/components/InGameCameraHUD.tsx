@@ -2,7 +2,10 @@ import { useClientContext } from "@/client/components/contexts/ClientContextReac
 import { usePointerLockManager } from "@/client/components/contexts/PointerLockContext";
 import { ShortcutText } from "@/client/components/system/ShortcutText";
 import { WORLD_INTERACTION_PRIORITY } from "@/client/components/challenges/worldInteractionDispatcher";
-import { handleCameraKeyDown } from "@/client/components/inventory/HotBar";
+import {
+  exitCameraMode,
+  handleCameraKeyDown,
+} from "@/client/components/inventory/HotBar";
 import { useScreenshotter } from "@/client/game/helpers/screenshot";
 import { cleanListener } from "@/client/util/helpers";
 import { BikkieIds } from "@/shared/bikkie/ids";
@@ -26,6 +29,10 @@ export const InGameCameraHUD: React.FunctionComponent<{}> = ({}) => {
   const pointerLockManager = usePointerLockManager();
   const screenshotOverlayRef = useRef<HTMLDivElement>(null);
   const { screenshotting, takeScreenshot } = useScreenshotter(clientContext);
+
+  const exitCamera = useCallback(() => {
+    exitCameraMode(clientContext);
+  }, [clientContext]);
 
   const item = anItem(selection.item);
 
@@ -80,38 +87,55 @@ export const InGameCameraHUD: React.FunctionComponent<{}> = ({}) => {
 
   return (
     <AnimatePresence>
-      {selection.kind === "camera" && locked && (
+      {selection.kind === "camera" && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.1 }}
         >
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: screenshotting ? [0.5, 0] : 0 }}
-            transition={{ duration: waitForAnimationTimeMs / 1000 }}
-            className="screenshot-overlay"
-            ref={screenshotOverlayRef}
-          />
+          {locked && (
+            <>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: screenshotting ? [0.5, 0] : 0 }}
+                transition={{ duration: waitForAnimationTimeMs / 1000 }}
+                className="screenshot-overlay"
+                ref={screenshotOverlayRef}
+              />
 
-          <div className="camera-hud">
-            <div className="absolute bottom-1 right-1 font-semibold text-shadow-bordered">
-              <ShortcutText
-                shortcut="F"
-                keyCode="KeyF"
-                worldInteractionCandidateId="active-tool:camera-mode"
-                worldInteractionPriority={WORLD_INTERACTION_PRIORITY.activeTool}
-                onKeyDown={() => {
-                  if (selection.kind !== "camera") return;
-                  handleCameraKeyDown(reactResources, events, selection);
-                  audioManager.playSound("camera_flip");
-                }}
-              >
-                {cameraAction}
-              </ShortcutText>{" "}
-            </div>
-          </div>
+              <div className="camera-hud">
+                <div className="absolute bottom-1 right-1 font-semibold text-shadow-bordered">
+                  <ShortcutText
+                    shortcut="F"
+                    keyCode="KeyF"
+                    worldInteractionCandidateId="active-tool:camera-mode"
+                    worldInteractionPriority={
+                      WORLD_INTERACTION_PRIORITY.activeTool
+                    }
+                    onKeyDown={() => {
+                      if (selection.kind !== "camera") return;
+                      handleCameraKeyDown(reactResources, events, selection);
+                      audioManager.playSound("camera_flip");
+                    }}
+                  >
+                    {cameraAction}
+                  </ShortcutText>{" "}
+                </div>
+              </div>
+            </>
+          )}
+
+          <button
+            type="button"
+            className="camera-exit-button font-semibold text-shadow-bordered"
+            onClick={() => {
+              audioManager.playSound("button_click");
+              exitCamera();
+            }}
+          >
+            <ShortcutText shortcut="X">Exit Camera</ShortcutText>
+          </button>
         </motion.div>
       )}
     </AnimatePresence>

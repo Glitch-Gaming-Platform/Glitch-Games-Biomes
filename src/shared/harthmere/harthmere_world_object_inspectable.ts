@@ -34,6 +34,12 @@ export const HARTHMERE_WORLD_OBJECT_INSPECT_CLOSE_RADIUS = 2.75;
 export const HARTHMERE_WORLD_OBJECT_INSPECT_MIN_VIEW_DOT = 0.15;
 export const HARTHMERE_WORLD_OBJECT_INSPECT_CLOSE_MIN_VIEW_DOT = 0.35;
 export const HARTHMERE_WORLD_OBJECT_INSPECT_MAX_VERTICAL_DISTANCE = 3.5;
+// Containers inside ships, ruins, and stacked structures can be physically
+// close while their authored anchor sits one floor below the player's feet.
+// The live ECS scan and server range check still cap interaction at eight
+// metres; this only prevents the generic prompt selector from rejecting them
+// before the authoritative check can run.
+export const HARTHMERE_CONTAINER_INSPECT_MAX_VERTICAL_DISTANCE = 8;
 
 export type HarthmereWorldObjectVec3 = readonly [number, number, number];
 
@@ -190,6 +196,7 @@ export function selectNearestHarthmereWorldObjectInspectable(
     if (!isHarthmereInspectableWorldObject(labelInput)) {
       continue;
     }
+    const isContainer = isHarthmereContainerObjectLabel(labelInput);
     const score = harthmereWorldObjectCandidateScore({
       playerPosition: input.playerPosition,
       facingView: input.facingView,
@@ -197,8 +204,15 @@ export function selectNearestHarthmereWorldObjectInspectable(
       radius: input.radius,
       closeRadius: input.closeRadius,
       minViewDot: input.minViewDot,
-      closeMinViewDot: input.closeMinViewDot,
-      maxVerticalDistance: input.maxVerticalDistance,
+      // A player can be beside, above, or nearly centered over a chest inside
+      // tight geometry. At close range, containers should remain usable from
+      // any facing; non-container props still require the normal front cone.
+      closeMinViewDot: input.closeMinViewDot ?? (isContainer ? 0 : undefined),
+      maxVerticalDistance:
+        input.maxVerticalDistance ??
+        (isContainer
+          ? HARTHMERE_CONTAINER_INSPECT_MAX_VERTICAL_DISTANCE
+          : undefined),
     });
     if (score === undefined) {
       continue;
@@ -217,7 +231,7 @@ export function selectNearestHarthmereWorldObjectInspectable(
       entityDescription: candidate.entityDescription,
       position: candidate.position,
       interaction,
-      isContainer: isHarthmereContainerObjectLabel(labelInput),
+      isContainer,
       score,
     };
   }

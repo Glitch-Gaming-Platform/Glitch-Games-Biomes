@@ -588,7 +588,7 @@ describe("BiomesUI jobs board item-source guidance", () => {
       BIOMES_UI_JOBS_BOARD_ITEM_SOURCE_MARKER_SOURCE
     );
     assert.equal(landmarks[0].mapMarkerId, "harthmere_orchard_softwood");
-    assert.deepEqual(landmarks[0].position, [468, 70, -118]);
+    assert.deepEqual(landmarks[0].position, [2068, 53, -118]);
     assert.ok(/Gather 2 Softwood Logs/i.test(landmarks[0].description));
 
     const [quest] = jobsBoardTrackableQuestsForBiomesUI(snapshot, 1000, {

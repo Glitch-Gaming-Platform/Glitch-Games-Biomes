@@ -327,7 +327,7 @@ export const BiomesUIVitalsPanel: React.FunctionComponent<{}> = () => {
     nativeBiomesEcsAuthorityEnabled() && nativeHealth !== undefined;
   const nativeVitals = readHarthmereNativeVitals(nativeTriggerState);
   const useNativeVitals =
-    nativeBiomesEcsAuthorityEnabled() && nativeVitals.migrationVersion > 0;
+    nativeBiomesEcsAuthorityEnabled() && nativeTriggerState !== undefined;
   const healthHp = Math.max(
     0,
     Math.round(useNativeHealth ? nativeHealth.hp : display.hp)
@@ -344,8 +344,10 @@ export const BiomesUIVitalsPanel: React.FunctionComponent<{}> = () => {
       : "idle"
     : display.combatState;
   // Mana, survival stamina, breath, and standing share the server-synced ECS
-  // TriggerState used by attacks, consumables, drowning, and death. Legacy
-  // adapters remain visible only until the one-time migration completes.
+  // TriggerState used by attacks, consumables, drowning, and death. As soon as
+  // the synchronized component exists, its native defaults are authoritative;
+  // waiting for the first migration write would briefly resurrect the stale
+  // legacy 108/108 stamina snapshot.
   const manaValue = Math.max(
     0,
     Math.round(useNativeVitals ? nativeVitals.mana : multiplayer.mana)

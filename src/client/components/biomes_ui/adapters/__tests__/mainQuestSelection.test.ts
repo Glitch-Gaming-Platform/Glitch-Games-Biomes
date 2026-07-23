@@ -82,4 +82,47 @@ describe("Biomes UI main quest selection", () => {
       "native_road_ahead"
     );
   });
+
+  it("automatically carries the main selection through the robot story chapters", () => {
+    const completedRoadAhead: MapTrackableQuest = {
+      questId: "6193612340426932",
+      title: "The Road Ahead",
+      area: "Biomes",
+      status: "completed",
+      kindLabel: "Story Quest",
+    };
+    const busted: MapTrackableQuest = {
+      questId: "7405046529843322",
+      title: "Busted",
+      area: "Biomes",
+      status: "active",
+      kindLabel: "Story Quest",
+    };
+    const unrelated: MapTrackableQuest = {
+      questId: "buried_bell",
+      title: "The Buried Bell",
+      area: "Biomes",
+      status: "active",
+    };
+    const selection = biomesUIMainQuestSelectionFromQuestForTest(
+      completedRoadAhead,
+      3000
+    );
+
+    assert.equal(
+      mainQuestFromTrackableQuestsForTest(
+        [unrelated, completedRoadAhead, busted],
+        selection
+      )?.questId,
+      busted.questId
+    );
+    assert.equal(
+      defaultMainQuestFromTrackableQuestsForTest([
+        unrelated,
+        completedRoadAhead,
+        busted,
+      ])?.questId,
+      busted.questId
+    );
+  });
 });

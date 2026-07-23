@@ -17,6 +17,7 @@ import { awardHarthmereXp } from "@/client/components/challenges/LocalDevHarthme
 import { applyHarthmereReputationChange } from "@/client/components/challenges/LocalDevHarthmereReputation";
 import { HARTHMERE_INVENTORY_EVENT } from "@/client/components/challenges/harthmereEvents";
 import { submitHarthmereGatheringNode } from "@/client/components/challenges/harthmereGatheringLiveAuthority";
+import { harthmereGatheringAuthorityNode } from "@/shared/harthmere/gathering_node_authority";
 import { nativeBiomesEcsAuthorityEnabled } from "@/shared/harthmere/native_road_ahead_contract";
 import type { TalkDialogStepAction } from "@/client/components/challenges/TalkDialogModalStep";
 import React, { useEffect, useMemo, useState } from "react";
@@ -935,7 +936,12 @@ const HARTHMERE_DEEP_RESOURCE_NODE_DEFINITIONS: ResourceNodeDefinition[] = [
 const NODE_DEFINITIONS: ResourceNodeDefinition[] = [
   ...BASE_NODE_DEFINITIONS,
   ...HARTHMERE_DEEP_RESOURCE_NODE_DEFINITIONS,
-];
+].map((node) => ({
+  ...node,
+  position: [
+    ...(harthmereGatheringAuthorityNode(node.id)?.position ?? node.position),
+  ] as [number, number, number],
+}));
 
 // World-facing projection of each gathering node so the in-world renderer and
 // the proximity F-prompt can show + harvest a real, visible node where the map
@@ -995,9 +1001,9 @@ export type HarthmereGatheringNodePrompt = HarthmereGatheringNodeWorldTarget & {
   distance: number;
 };
 
-// Nearest harvestable node within interaction range of the player (XZ distance;
-// the authored Y is a flat hint, so the vertical gate stays generous). Mirrors
-// nearestHarthmereBusinessBoardPhysicalPrompt / jobs-board proximity.
+// Nearest harvestable node within interaction range of the player. Positions
+// come from the shared native authority catalogue: additive-town nodes use the
+// flat extension while original-map nodes carry production-probed hill heights.
 export function nearestHarthmereGatheringNodePrompt(
   playerPosition: { x: number; y?: number; z: number } | undefined
 ): HarthmereGatheringNodePrompt | undefined {

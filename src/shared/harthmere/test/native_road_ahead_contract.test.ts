@@ -1,18 +1,27 @@
 import assert from "assert";
 import {
+  NATIVE_BUSTED_QUEST_ID,
+  NATIVE_BUSTED_UNDERWATER_CONTAINER_SPEC,
+  NATIVE_GET_THE_MUCK_OUT_QUEST_ID,
+  NATIVE_MUCK_VS_MACHINE_QUEST_ID,
   NATIVE_ROAD_AHEAD_CONTAINER_SPECS,
   NATIVE_ROAD_AHEAD_MUCKWAD_ITEM_ID,
   NATIVE_ROAD_AHEAD_ORDERED_STEP_IDS,
   NATIVE_ROAD_AHEAD_QUEST_ID,
   NATIVE_ROAD_AHEAD_STEP_IDS,
+  NATIVE_ROBOT_STORY_FINAL_HANDOFFS,
   isNativeRoadAheadQuestObjectLabel,
+  isNativeBustedUnderwaterContainerLabel,
+  nativeBustedUnderwaterContainerClaimForItem,
   nativeRoadAheadContainerClaimForItem,
   nativeRoadAheadContainerItemIds,
   nativeRoadAheadContainerSpecForLabel,
   nativeQuestGiverUsesEcsDialogue,
+  nativeRobotStoryQuestOrder,
   nativeRoadAheadEcsAuthorityEnabled,
 } from "@/shared/harthmere/native_road_ahead_contract";
 import { BikkieIds } from "@/shared/bikkie/ids";
+import type { BiomesId } from "@/shared/ids";
 
 describe("native Road Ahead snapshot contract", () => {
   const originalSyntheticFlag =
@@ -49,6 +58,51 @@ describe("native Road Ahead snapshot contract", () => {
       NATIVE_ROAD_AHEAD_STEP_IDS.TAKE_SELFIE_WITH_BILLY,
       NATIVE_ROAD_AHEAD_STEP_IDS.RETURN_ROBOT_SHELL_TO_JACKIE,
     ]);
+  });
+
+  it("preserves the full original robot-story chapter order", () => {
+    assert.equal(NATIVE_BUSTED_QUEST_ID, 7405046529843322);
+    assert.equal(NATIVE_GET_THE_MUCK_OUT_QUEST_ID, 817959262145055);
+    assert.equal(NATIVE_MUCK_VS_MACHINE_QUEST_ID, 5739496793885069);
+    assert.equal(nativeRobotStoryQuestOrder(NATIVE_ROAD_AHEAD_QUEST_ID), 0);
+    assert.equal(nativeRobotStoryQuestOrder(NATIVE_BUSTED_QUEST_ID), 1);
+    assert.equal(
+      nativeRobotStoryQuestOrder(NATIVE_GET_THE_MUCK_OUT_QUEST_ID),
+      2
+    );
+    assert.equal(
+      nativeRobotStoryQuestOrder(NATIVE_MUCK_VS_MACHINE_QUEST_ID),
+      3
+    );
+    assert.equal(nativeRobotStoryQuestOrder(123), -1);
+  });
+
+  it("records composite trigger nodes required by final-step validation", () => {
+    assert(
+      NATIVE_ROBOT_STORY_FINAL_HANDOFFS.roadAhead.prerequisiteTriggerIds.includes(
+        NATIVE_ROAD_AHEAD_STEP_IDS.WEAR_TOP_AND_BOTTOMS
+      )
+    );
+    assert(
+      NATIVE_ROBOT_STORY_FINAL_HANDOFFS.busted.prerequisiteTriggerIds.includes(
+        3106453541468841 as BiomesId
+      )
+    );
+    assert(
+      NATIVE_ROBOT_STORY_FINAL_HANDOFFS.busted.prerequisiteTriggerIds.includes(
+        2605479334585778 as BiomesId
+      )
+    );
+    assert(
+      NATIVE_ROBOT_STORY_FINAL_HANDOFFS.busted.prerequisiteTriggerIds.includes(
+        3488902901607828 as BiomesId
+      )
+    );
+    assert(
+      NATIVE_ROBOT_STORY_FINAL_HANDOFFS.getTheMuckOut.prerequisiteTriggerIds.includes(
+        7507033025879660 as BiomesId
+      )
+    );
   });
 
   it("uses native ECS by default and reserves the synthetic reducer for an explicit diagnostic", () => {
@@ -120,10 +174,16 @@ describe("native Road Ahead snapshot contract", () => {
     }
   });
 
-  it("seeds exact native Mucky clothing and maps transfers to original claim leaves", () => {
+  it("seeds every authored clothing choice and maps transfers to original claim leaves", () => {
+    const topChoices = [
+      4537020877770135, 6561590643697708, 1152171766050944,
+    ] as const;
+    const bottomsChoices = [
+      1534621126189793, 6407921801695863, 2512451111844299,
+    ] as const;
     assert.deepEqual(nativeRoadAheadContainerItemIds("Clothing Crate"), [
-      BikkieIds.muckyTop,
-      BikkieIds.muckySkirt,
+      ...topChoices,
+      ...bottomsChoices,
     ]);
     assert.deepEqual(nativeRoadAheadContainerItemIds("Billy's Toolbag"), [
       NATIVE_ROAD_AHEAD_CONTAINER_SPECS.billysToolbag.choices[0].seedItemId,
@@ -131,7 +191,7 @@ describe("native Road Ahead snapshot contract", () => {
     assert.deepEqual(
       nativeRoadAheadContainerClaimForItem(
         "Clothing Crate",
-        BikkieIds.muckyTop
+        4537020877770135 as BiomesId
       ),
       {
         sourceEntityId:
@@ -140,11 +200,14 @@ describe("native Road Ahead snapshot contract", () => {
           NATIVE_ROAD_AHEAD_CONTAINER_SPECS.clothingCrate.placeableItemId,
         stepId: NATIVE_ROAD_AHEAD_STEP_IDS.CHOOSE_TOP,
         chosenRewardIndex: 0,
-        siblingItemIds: [
-          BikkieIds.muckyTop,
-          ...NATIVE_ROAD_AHEAD_CONTAINER_SPECS.clothingCrate.choices[0].itemIds,
-        ],
       }
+    );
+    assert.equal(
+      nativeRoadAheadContainerClaimForItem(
+        "Clothing Crate",
+        1152171766050944 as BiomesId
+      )?.chosenRewardIndex,
+      2
     );
     assert.deepEqual(
       nativeRoadAheadContainerClaimForItem(
@@ -158,10 +221,6 @@ describe("native Road Ahead snapshot contract", () => {
           NATIVE_ROAD_AHEAD_CONTAINER_SPECS.billysToolbag.placeableItemId,
         stepId: NATIVE_ROAD_AHEAD_STEP_IDS.OPEN_BILLYS_BAG,
         chosenRewardIndex: 0,
-        siblingItemIds: [
-          NATIVE_ROAD_AHEAD_CONTAINER_SPECS.billysToolbag.choices[0].seedItemId,
-          ...NATIVE_ROAD_AHEAD_CONTAINER_SPECS.billysToolbag.choices[0].itemIds,
-        ],
       }
     );
     const bottomsClaim = nativeRoadAheadContainerClaimForItem(
@@ -177,6 +236,41 @@ describe("native Road Ahead snapshot contract", () => {
     assert.equal(bottomsClaim?.chosenRewardIndex, 0);
     assert.equal(
       nativeRoadAheadContainerClaimForItem("First-Aid Bin", BikkieIds.muckyTop),
+      undefined
+    );
+  });
+
+  it("binds Busted's underwater reward to the exact snapshot chest and item", () => {
+    assert.deepEqual(NATIVE_BUSTED_UNDERWATER_CONTAINER_SPEC, {
+      labels: ["chest the grove underwater main"],
+      sourceEntityId: 4149747832010135,
+      placeableItemId: 5979991977107628,
+      stepId: 6798640337192760,
+      itemId: 7077725005403292,
+      returnNpcTypeId: 2345000310921173,
+    });
+    assert.equal(
+      isNativeBustedUnderwaterContainerLabel("Chest The Grove Underwater Main"),
+      true
+    );
+    assert.deepEqual(
+      nativeBustedUnderwaterContainerClaimForItem(
+        "Chest The Grove Underwater Main",
+        NATIVE_BUSTED_UNDERWATER_CONTAINER_SPEC.itemId
+      ),
+      {
+        challengeId: NATIVE_BUSTED_QUEST_ID,
+        sourceEntityId: 4149747832010135,
+        placeableItemId: 5979991977107628,
+        stepId: 6798640337192760,
+        chosenRewardIndex: 0,
+      }
+    );
+    assert.equal(
+      nativeBustedUnderwaterContainerClaimForItem(
+        "Chest The Grove Underwater Main",
+        BikkieIds.muckyTop
+      ),
       undefined
     );
   });

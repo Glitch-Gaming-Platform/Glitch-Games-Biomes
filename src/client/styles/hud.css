@@ -2281,6 +2281,26 @@ select.minimal {
   box-shadow: 0 0 0 0.2vmin #1f1f1f;
 }
 
+.camera-exit-button {
+  position: fixed;
+  z-index: 1001;
+  left: calc(50% - 44vmin + 1vmin);
+  bottom: calc(10vh + 1.5vmin);
+  padding: 0.6vmin 0.9vmin;
+  color: var(--white);
+  background: rgb(0 0 0 / 55%);
+  border: 0.2vmin solid rgb(255 255 255 / 45%);
+  border-radius: var(--dialog-border-radius);
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.camera-exit-button:hover,
+.camera-exit-button:focus-visible {
+  background: rgb(0 0 0 / 75%);
+  border-color: var(--white);
+}
+
 .camera-hud,
 .screenshot-overlay {
   border: 0.5vmin solid white;

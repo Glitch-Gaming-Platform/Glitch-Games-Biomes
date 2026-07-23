@@ -1,7 +1,11 @@
 import { applyProposedChange } from "@/shared/ecs/change";
 import { secondsSinceEpoch } from "@/shared/ecs/config";
 import type { Emote, Health } from "@/shared/ecs/gen/components";
-import { NpcMetadata, NpcState } from "@/shared/ecs/gen/components";
+import {
+  NpcCombatState,
+  NpcMetadata,
+  NpcState,
+} from "@/shared/ecs/gen/components";
 import type { Delta, DeltaWith } from "@/shared/ecs/gen/delta";
 import { PatchableEntity } from "@/shared/ecs/gen/delta";
 import type { AsDelta, Npc, ReadonlyEntity } from "@/shared/ecs/gen/entities";
@@ -61,7 +65,9 @@ export class SimulatedNpc {
   }
 
   get questGiver(): boolean {
-    return Boolean(getNpcBehavior(this.type).questGiver || this.entity.questGiver());
+    return Boolean(
+      getNpcBehavior(this.type).questGiver || this.entity.questGiver()
+    );
   }
 
   get health(): DeepReadonly<Health> {
@@ -125,6 +131,22 @@ export class SimulatedNpc {
   mutableState(): DeserializedNpcState {
     this.npcStateMaybeModified = true;
     return this.state as DeserializedNpcState;
+  }
+
+  setPublicCombatTarget(target: BiomesId | undefined) {
+    const current = this.patchableEntity.npcCombatState()?.attack_target;
+    if (current === target) {
+      return;
+    }
+    if (target === undefined) {
+      if (this.patchableEntity.npcCombatState()) {
+        this.patchableEntity.clearNpcCombatState();
+      }
+      return;
+    }
+    this.patchableEntity.setNpcCombatState(
+      NpcCombatState.create({ attack_target: target })
+    );
   }
 
   attack(target: BiomesId, damage: number) {

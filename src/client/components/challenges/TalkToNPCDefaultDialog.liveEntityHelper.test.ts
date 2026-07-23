@@ -132,6 +132,7 @@ describe("live-entity helper dialog context", () => {
     assert.deepEqual(
       harthmereContainerLootForLabel("Chest The Grove Underwater Main"),
       [
+        { itemId: "b:7077725005403292", quantity: 1 },
         { itemId: "clean_water", quantity: 3 },
         { itemId: "river_trout", quantity: 2 },
       ]

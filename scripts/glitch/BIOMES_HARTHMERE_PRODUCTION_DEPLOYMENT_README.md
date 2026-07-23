@@ -1,5 +1,10 @@
 # Biomes / Harthmere Production Deployment README
 
+For the July 21-23, 2026 deployment incident history, root causes, and the
+specific wrapper protections derived from every attempted rollout, read
+`docs/harthmere/PRODUCTION_DEPLOYMENT_INCIDENT_REVIEW_2026-07-23.md` before
+changing this deployment path.
+
 ## Automatic additive Harthmere world extension
 
 Harthmere is regular production world content and is enabled by default. The
@@ -91,6 +96,35 @@ scripts/glitch/deploy-production-local-redis-smoke.sh --local-rehearsal
 
 Do not begin a production push until this rehearsal passes for the exact source
 revision being deployed.
+
+The production phase is intentionally ordered as one transaction:
+
+1. Build and upload one immutable tag. If the upload completed but a later
+   phase failed, resume with `IMAGE_WAS_PUSHED=1 --skip-build --tag <same-tag>`;
+   do not rebuild or upload that tag again.
+2. Create or reactivate the zero-traffic web candidate, free stale zero-traffic
+   revisions that consume workload-profile capacity, and require all three web
+   replicas ready with zero restarts.
+3. Pause the dedicated Anima/Gaia app before terrain or ECS writes. The wrapper
+   records its active revision and restores it automatically if maintenance
+   fails before the replacement simulation is ready.
+4. Run forced terrain maintenance and require the complete 2,304-foundation /
+   576-surface audit, including zero atmospheric Muck and zero retired terrain.
+5. Run the concrete-revision browser E2E using a real non-secret test install.
+   A single warmup retry is allowed because a cold candidate previously
+   reported `loading-stalled` before passing unchanged.
+6. Run production reconciliation, with the connector last, and require the
+   reconciliation readiness marker and persisted read-back before traffic.
+7. Move traffic only to the verified candidate, deploy the matching simulation
+   image, require the Anima/Gaia marker and zero restarts, then run the terrain
+   audit again while Gaia is active. This final audit is what catches simulation
+   behavior that a maintenance-only audit cannot detect.
+8. Force the final Redis `BGSAVE` after the post-simulation audit passes, then
+   remove stale revisions and temporary jobs.
+
+Do not run forced terrain maintenance while Gaia is active. Terrain can be
+written correctly and still be changed immediately by a simulation tick,
+making the maintenance result appear nondeterministic.
 
 For a full production deploy from a local workstation, use the normal push
 command:

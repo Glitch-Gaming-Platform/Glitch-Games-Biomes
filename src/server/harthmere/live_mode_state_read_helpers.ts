@@ -5,15 +5,22 @@ export interface HarthmereRedisReadPrimary {
 
 const globalForHarthmereLiveModeReadInflight =
   globalThis as typeof globalThis & {
-    __harthmereLiveModeReadInflight?: Map<
-      string,
-      Promise<Array<string | null>>
+    __harthmereLiveModeReadInflight?: WeakMap<
+      HarthmereRedisReadPrimary,
+      Map<string, Promise<Array<string | null>>>
     >;
   };
 
-function harthmereLiveModeReadInflight() {
-  return (globalForHarthmereLiveModeReadInflight.__harthmereLiveModeReadInflight ??=
-    new Map());
+function harthmereLiveModeReadInflight(primary: HarthmereRedisReadPrimary) {
+  const byPrimary =
+    (globalForHarthmereLiveModeReadInflight.__harthmereLiveModeReadInflight ??=
+      new WeakMap());
+  let inflight = byPrimary.get(primary);
+  if (!inflight) {
+    inflight = new Map();
+    byPrimary.set(primary, inflight);
+  }
+  return inflight;
 }
 
 export function harthmereLiveModeReadInflightKey(keys: readonly string[]) {
@@ -25,7 +32,12 @@ export async function readHarthmereRedisStrings(
   keys: readonly string[]
 ): Promise<Array<string | null>> {
   if (keys.length === 0) return [];
-  const inflight = harthmereLiveModeReadInflight();
+  // Redis WATCH state is connection-scoped. Coalescing an MGET from a
+  // different connection into a watched transaction gives the transaction a
+  // stale value that its own WATCH can never detect. Keep coalescing local to
+  // the exact primary connection so read-only polling remains cheap without
+  // violating transactional authority.
+  const inflight = harthmereLiveModeReadInflight(primary);
   const inflightKey = harthmereLiveModeReadInflightKey(keys);
   const existing = inflight.get(inflightKey);
   if (existing) {

@@ -1,4 +1,5 @@
 import type { MapTrackableQuest } from "../tabs/MapQuestsTab";
+import { nativeRobotStoryQuestOrder } from "@/shared/harthmere/native_road_ahead_contract";
 
 export const BIOMES_UI_MAIN_QUEST_STORAGE_KEY = "biomes_ui_main_quest";
 export const BIOMES_UI_MAIN_QUEST_EVENT = "biomes-ui-main-quest";
@@ -61,6 +62,12 @@ export function mainQuestFromTrackableQuestsForTest(
   if (!selection) return defaultMainQuestFromTrackableQuestsForTest(quests);
   const quest = quests.find((entry) => entry.questId === selection.questId);
   if (!quest || quest.status === "completed" || quest.status === "failed") {
+    // Carry a completed/retired robot-story selection forward to the chapter
+    // that the ECS trigger engine just auto-started. Explicit selections of
+    // unrelated quests retain their old behavior.
+    if (isRobotStoryIdentity(selection.questId, selection.title)) {
+      return defaultMainQuestFromTrackableQuestsForTest(quests);
+    }
     return undefined;
   }
   return quest;
@@ -75,30 +82,51 @@ function normalizedQuestTitle(value: string): string {
     .trim();
 }
 
-function isRoadAheadQuest(quest: MapTrackableQuest): boolean {
-  return (
-    quest.questId === "snapshot_road_ahead_full_chain" ||
-    quest.kind === "snapshot_nux_challenge_bridge" ||
-    normalizedQuestTitle(quest.title) === "road ahead"
+const ROBOT_STORY_TITLES = [
+  "road ahead",
+  "busted",
+  "get the muck out",
+  "muck vs machine",
+] as const;
+
+function robotStoryTitleOrder(title: string) {
+  return ROBOT_STORY_TITLES.indexOf(
+    normalizedQuestTitle(title) as (typeof ROBOT_STORY_TITLES)[number]
   );
 }
 
+function isRobotStoryIdentity(questId: string, title: string): boolean {
+  return (
+    questId === "snapshot_road_ahead_full_chain" ||
+    nativeRobotStoryQuestOrder(questId) >= 0 ||
+    robotStoryTitleOrder(title) >= 0
+  );
+}
+
+function robotStoryOrder(quest: MapTrackableQuest) {
+  if (
+    quest.questId === "snapshot_road_ahead_full_chain" ||
+    quest.kind === "snapshot_nux_challenge_bridge"
+  ) {
+    return 0;
+  }
+  const nativeOrder = nativeRobotStoryQuestOrder(quest.questId);
+  return nativeOrder >= 0 ? nativeOrder : robotStoryTitleOrder(quest.title);
+}
+
 /**
- * The onboarding story is the initial main quest until the player explicitly
- * chooses another active quest. This is derived from the live quest list rather
- * than a hard-coded native numeric id, so both snapshot and native Road Ahead
- * projections receive the same behavior.
+ * The onboarding/robot story remains the default main quest until its final
+ * chapter is complete or the player explicitly chooses another active quest.
  */
 export function defaultMainQuestFromTrackableQuestsForTest(
   quests: MapTrackableQuest[]
 ): MapTrackableQuest | undefined {
+  const story = quests
+    .filter((quest) => robotStoryOrder(quest) >= 0)
+    .sort((a, b) => robotStoryOrder(a) - robotStoryOrder(b));
   return (
-    quests.find(
-      (quest) => quest.status === "active" && isRoadAheadQuest(quest)
-    ) ??
-    quests.find(
-      (quest) => quest.status === "available" && isRoadAheadQuest(quest)
-    )
+    story.find((quest) => quest.status === "active") ??
+    story.find((quest) => quest.status === "available")
   );
 }
 

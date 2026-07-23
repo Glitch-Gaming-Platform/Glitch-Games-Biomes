@@ -9,9 +9,9 @@ import { harthmereNativeItemDefinitionForBiomesId } from "@/shared/harthmere/har
 import type { BiomesId } from "@/shared/ids";
 
 export const HARTHMERE_NATIVE_VITALS_VERSION =
-  "harthmere-native-vitals-v1" as const;
-export const HARTHMERE_NATIVE_VITALS_MIGRATION_VERSION = 1;
-export const HARTHMERE_NATIVE_MAX_BREATH_SECONDS = 15;
+  "harthmere-native-vitals-v2" as const;
+export const HARTHMERE_NATIVE_VITALS_MIGRATION_VERSION = 2;
+export const HARTHMERE_NATIVE_MAX_BREATH_SECONDS = 45;
 export const HARTHMERE_NATIVE_STAMINA_DRAIN_PER_SECOND = 100 / (2 * 60 * 60);
 export const HARTHMERE_NATIVE_DROWNING_DAMAGE_PER_SECOND = 5;
 export const HARTHMERE_GROVE_RESPAWN_POSITION = [496, 70, -126] as const;
@@ -65,12 +65,24 @@ export function readHarthmereNativeVitals(
   state: ReadonlyTriggerState | TriggerState | undefined
 ): HarthmereNativeVitals {
   const values = state?.by_root.get(HARTHMERE_NATIVE_VITALS_TRIGGER_ROOT);
+  const migrationVersion = Math.max(
+    0,
+    Math.trunc(finite(values?.get(MIGRATION_VERSION_KEY), 0))
+  );
   const maxMana = Math.max(1, finite(values?.get(MAX_MANA_KEY), 100));
   const maxStamina = Math.max(1, finite(values?.get(MAX_STAMINA_KEY), 100));
-  const maxBreath = Math.max(
+  const storedMaxBreath = Math.max(
     1,
     finite(values?.get(MAX_BREATH_KEY), HARTHMERE_NATIVE_MAX_BREATH_SECONDS)
   );
+  const maxBreath = Math.max(
+    HARTHMERE_NATIVE_MAX_BREATH_SECONDS,
+    storedMaxBreath
+  );
+  const breathUpgrade =
+    migrationVersion < HARTHMERE_NATIVE_VITALS_MIGRATION_VERSION
+      ? Math.max(0, maxBreath - storedMaxBreath)
+      : 0;
   const notorietyFloor = Math.max(
     0,
     Math.round(finite(values?.get(NOTORIETY_FLOOR_KEY), 0))
@@ -80,7 +92,11 @@ export function readHarthmereNativeVitals(
     maxMana,
     stamina: clamp(finite(values?.get(STAMINA_KEY), maxStamina), 0, maxStamina),
     maxStamina,
-    breath: clamp(finite(values?.get(BREATH_KEY), maxBreath), 0, maxBreath),
+    breath: clamp(
+      finite(values?.get(BREATH_KEY), storedMaxBreath) + breathUpgrade,
+      0,
+      maxBreath
+    ),
     maxBreath,
     lastTickMs: Math.max(0, finite(values?.get(LAST_TICK_MS_KEY), 0)),
     underwater: Number(values?.get(UNDERWATER_KEY) ?? 0) > 0,
@@ -100,10 +116,7 @@ export function readHarthmereNativeVitals(
     ),
     notorietyFloor,
     standingScopeId: String(values?.get(STANDING_SCOPE_KEY) ?? "harthmere"),
-    migrationVersion: Math.max(
-      0,
-      Math.trunc(finite(values?.get(MIGRATION_VERSION_KEY), 0))
-    ),
+    migrationVersion,
     statusProjectionUpdatedAtMs: Math.max(
       0,
       Math.trunc(finite(values?.get(STATUS_PROJECTION_UPDATED_AT_MS_KEY), 0))
@@ -125,7 +138,7 @@ export function writeHarthmereNativeVitals(
     next.maxStamina
   );
   next.maxBreath = Math.max(
-    1,
+    HARTHMERE_NATIVE_MAX_BREATH_SECONDS,
     finite(next.maxBreath, HARTHMERE_NATIVE_MAX_BREATH_SECONDS)
   );
   next.breath = clamp(finite(next.breath, next.maxBreath), 0, next.maxBreath);
@@ -133,6 +146,10 @@ export function writeHarthmereNativeVitals(
   next.legal = clamp(Math.round(next.legal), -10_000, 10_000);
   next.notorietyFloor = Math.max(0, Math.round(next.notorietyFloor));
   next.notoriety = Math.max(next.notorietyFloor, Math.round(next.notoriety));
+  next.migrationVersion = Math.max(
+    HARTHMERE_NATIVE_VITALS_MIGRATION_VERSION,
+    Math.trunc(next.migrationVersion)
+  );
 
   let values = state.by_root.get(HARTHMERE_NATIVE_VITALS_TRIGGER_ROOT);
   if (!values) {

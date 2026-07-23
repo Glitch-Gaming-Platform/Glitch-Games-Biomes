@@ -22,6 +22,10 @@ function ok(condition, message) {
 
 const app = read("src/server/web/app.ts");
 const deploy = read("scripts/glitch/deploy-production-local-redis-smoke.sh");
+const waitForAzureRevisionReady = deploy.slice(
+  deploy.indexOf("wait_for_azure_revision_ready()"),
+  deploy.indexOf("ensure_azure_revision_active()")
+);
 
 ok(
   app.includes("GLITCH_IFRAME_BUCKET_ASSET_HEADERS") &&
@@ -58,11 +62,11 @@ ok(
   "bucket proxy emits diagnostic headers showing revision, source, and asset path"
 );
 ok(
-  deploy.includes("wait_for_azure_revision_ready") &&
-    !deploy.includes("latestReadyRevisionName") &&
-    deploy.includes("az containerapp replica list") &&
-    deploy.includes("properties.containers[0].ready") &&
-    deploy.includes("properties.containers[0].started") &&
+  waitForAzureRevisionReady.includes("wait_for_azure_revision_ready") &&
+    !waitForAzureRevisionReady.includes("latestReadyRevisionName") &&
+    waitForAzureRevisionReady.includes("az containerapp replica list") &&
+    waitForAzureRevisionReady.includes("properties.containers[0].ready") &&
+    waitForAzureRevisionReady.includes("properties.containers[0].started") &&
     deploy.includes("latestRevisionName"),
   "deploy script waits for started and ready replicas instead of Azure's stale revision label"
 );

@@ -55,6 +55,10 @@ export const NIGHT_MUCKER_HEX_DISENGAGE_DISTANCE = 48;
 export const NIGHT_MUCKER_HEX_MOVEMENT_MULTIPLIER = 1.8;
 export const NIGHT_MUCKER_HEX_DAMAGE_MULTIPLIER = 1.5;
 export const NIGHT_MUCKER_HEX_ATTACK_INTERVAL_MULTIPLIER = 0.55;
+export const HARTHMERE_NPC_CHASE_SPEED_MULTIPLIER = 1.35;
+// Normal player sprint animation transitions at 8 m/s. Keep Harthmere pursuit
+// urgent without allowing an NPC to outrun a sprinting player on open ground.
+export const HARTHMERE_NPC_CHASE_SPEED_CAP_METERS_PER_SECOND = 7.6;
 const LINE_OF_SIGHT_SAMPLE_STEP_METERS = 0.45;
 const LINE_OF_SIGHT_SAMPLE_BOX_METERS = 0.18;
 const DEFAULT_PLAYER_EYE_HEIGHT_METERS = 1.45;
@@ -117,6 +121,48 @@ export function isMuckerOrHexerNameForNightAggro(
   );
 }
 
+export function isHarthmereSightBoundChaserName(
+  name: string | undefined
+): boolean {
+  const text = String(name ?? "").toLowerCase();
+  if (
+    /robot|bot|sentinel|sentential|sentiental|shield|beacon|board|voucher|ration|matter|ward|prisoner/.test(
+      text
+    )
+  ) {
+    return false;
+  }
+  return (
+    isMuckerOrHexerNameForNightAggro(text) ||
+    /\b(bandit|outlaw|thief|brigand|rogue|ambusher|trapper|bruiser)\b/.test(
+      text
+    ) ||
+    /\b(cow|sheep|rabbit)\b/.test(text)
+  );
+}
+
+export function boundedHarthmereChaseSpeedForName(
+  name: string | undefined,
+  requestedSpeed: number
+): number {
+  if (!Number.isFinite(requestedSpeed) || requestedSpeed <= 0) {
+    return 0;
+  }
+  return isHarthmereSightBoundChaserName(name)
+    ? Math.min(
+        requestedSpeed * HARTHMERE_NPC_CHASE_SPEED_MULTIPLIER,
+        HARTHMERE_NPC_CHASE_SPEED_CAP_METERS_PER_SECOND
+      )
+    : requestedSpeed;
+}
+
+export function shouldDropHarthmereChaseTargetForLineOfSight(
+  name: string | undefined,
+  hasLineOfSight: boolean
+): boolean {
+  return isHarthmereSightBoundChaserName(name) && !hasLineOfSight;
+}
+
 // Only the authored mixed Muck encounters participate in pack retaliation.
 // The deny-list keeps player-owned pets, robots, wards, and similarly named
 // utility NPCs from becoming hostile because they happened to be nearby.
@@ -166,6 +212,28 @@ function isMuckerOrHexerNpcForNightAggro(npc: SimulatedNpc): boolean {
   };
   return isMuckerOrHexerNameForNightAggro(
     [npc.label, type.displayName, type.name].filter(Boolean).join(" ")
+  );
+}
+
+function harthmereNpcCombatName(npc: SimulatedNpc): string {
+  const type = npc.type as unknown as {
+    name?: string;
+    displayName?: string;
+  };
+  return [npc.label, type.displayName, type.name].filter(Boolean).join(" ");
+}
+
+function isHarthmereSightBoundChaserNpc(npc: SimulatedNpc): boolean {
+  return isHarthmereSightBoundChaserName(harthmereNpcCombatName(npc));
+}
+
+export function boundedHarthmereNpcChaseSpeed(
+  npc: SimulatedNpc,
+  requestedSpeed: number
+): number {
+  return boundedHarthmereChaseSpeedForName(
+    harthmereNpcCombatName(npc),
+    requestedSpeed
   );
 }
 
@@ -980,6 +1048,7 @@ export function updateAttackTarget(
   const deAggroDistanceSq = params.disengageDistance ** 2;
   const now = secondsSinceEpoch();
   const usesNightMuckerHexAggro = isMuckerOrHexerNpcForNightAggro(npc);
+  const usesSightBoundHarthmereChase = isHarthmereSightBoundChaserNpc(npc);
   const isNight = isNightForNpcAggro(now);
 
   // HARTHMERE_NPC_RETALIATION_SAFE_ZONE:
@@ -1014,6 +1083,7 @@ export function updateAttackTarget(
     if (npc.state.chaseAttack.attackTarget) {
       npc.mutableState().chaseAttack!.attackTarget = undefined;
     }
+    npc.setPublicCombatTarget(undefined);
     return;
   }
 
@@ -1094,11 +1164,18 @@ export function updateAttackTarget(
       // group alert, proactive aggro, or stale remembered target must stop at
       // the boundary instead of dragging an entire herd into a protected area.
       targetId = undefined;
+    } else if (usesNightMuckerHexAggro && !targetIsProvoked && !isNight) {
+      targetId = undefined;
     } else if (
-      usesNightMuckerHexAggro &&
-      !targetIsProvoked &&
-      (!isNight || !hasLineOfSightToPlayer(env, npc, attackTarget))
+      usesSightBoundHarthmereChase &&
+      shouldDropHarthmereChaseTargetForLineOfSight(
+        harthmereNpcCombatName(npc),
+        hasLineOfSightToPlayer(env, npc, attackTarget)
+      )
     ) {
+      // Harthmere fights remain visual and fair: Muckers, Hexes, bandits, and
+      // retaliating herd animals pursue while they can see the player, then
+      // immediately release the target once terrain breaks line of sight.
       targetId = undefined;
     }
   }
@@ -1106,4 +1183,5 @@ export function updateAttackTarget(
   if (targetId !== npc.state.chaseAttack.attackTarget) {
     npc.mutableState().chaseAttack!.attackTarget = targetId;
   }
+  npc.setPublicCombatTarget(targetId);
 }

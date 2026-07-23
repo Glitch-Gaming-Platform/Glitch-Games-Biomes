@@ -1,5 +1,5 @@
 // GENERATED: This file is generated from delta.ts.j2. Do not modify directly.
-// Content Hash: ec0abfd6c3f120ab4be6dfca880dc544
+// Content Hash: 49fe8891bd688ab4d20b5bd10bcf41a0
 
 import * as c from "@/shared/ecs/gen/components";
 import {
@@ -672,6 +672,12 @@ export abstract class ReadonlyDelta {
         entity.harthmere_material_storage = component;
       }
     }
+    {
+      const component = this.npcCombatState();
+      if (component !== undefined) {
+        entity.npc_combat_state = component;
+      }
+    }
     return entity;
   }
 
@@ -796,6 +802,7 @@ export abstract class ReadonlyDelta {
   abstract harthmereMaterialStorage():
     | c.ReadonlyHarthmereMaterialStorage
     | undefined;
+  abstract npcCombatState(): c.ReadonlyNpcCombatState | undefined;
 }
 
 export abstract class Delta extends ReadonlyDelta {
@@ -1224,6 +1231,11 @@ export abstract class Delta extends ReadonlyDelta {
     if (other.harthmere_material_storage !== undefined) {
       this.delta.harthmere_material_storage = c.HarthmereMaterialStorage.clone(
         other.harthmere_material_storage
+      );
+    }
+    if (other.npc_combat_state !== undefined) {
+      this.delta.npc_combat_state = c.NpcCombatState.clone(
+        other.npc_combat_state
       );
     }
   }
@@ -2806,6 +2818,23 @@ export abstract class Delta extends ReadonlyDelta {
   clearHarthmereMaterialStorage() {
     (this.delta ??= {}).harthmere_material_storage = null;
   }
+  mutableNpcCombatState(): c.NpcCombatState {
+    this.delta ??= {};
+    if (this.delta.npc_combat_state === undefined) {
+      this.delta.npc_combat_state = c.NpcCombatState.clone(
+        this.npcCombatState()
+      );
+    }
+    return this.delta.npc_combat_state!;
+  }
+
+  setNpcCombatState(x: c.NpcCombatState) {
+    (this.delta ??= {}).npc_combat_state = x;
+  }
+
+  clearNpcCombatState() {
+    (this.delta ??= {}).npc_combat_state = null;
+  }
 
   apply(delta: RawDelta) {
     if (this.delta === undefined) {
@@ -2932,6 +2961,7 @@ export interface SuperReadonlyDelta extends ReadonlyDelta {
   giftGiver(): c.GiftGiver;
   harthmereEcsTransactionLedger(): c.HarthmereEcsTransactionLedger;
   harthmereMaterialStorage(): c.HarthmereMaterialStorage;
+  npcCombatState(): c.NpcCombatState;
 }
 
 export type ReadonlyDeltaWith<C extends keyof ReadonlyEntity> = (Pick<
@@ -3052,6 +3082,7 @@ export interface SuperDelta extends Delta {
   giftGiver(): c.GiftGiver;
   harthmereEcsTransactionLedger(): c.HarthmereEcsTransactionLedger;
   harthmereMaterialStorage(): c.HarthmereMaterialStorage;
+  npcCombatState(): c.NpcCombatState;
 }
 
 export type DeltaWith<C extends keyof ReadonlyEntity> = (Pick<
@@ -3732,6 +3763,12 @@ export class EntityBackedDelta extends Delta {
       return this.delta.harthmere_material_storage ?? undefined;
     }
     return this.entity.harthmere_material_storage;
+  }
+  npcCombatState(): c.ReadonlyNpcCombatState | undefined {
+    if (this.delta?.npc_combat_state !== undefined) {
+      return this.delta.npc_combat_state ?? undefined;
+    }
+    return this.entity.npc_combat_state;
   }
 }
 
@@ -4525,6 +4562,13 @@ export class PatchableEntity extends Delta {
     this.readComponentIds.add(155);
     return this.entity.harthmere_material_storage;
   }
+  npcCombatState(): c.ReadonlyNpcCombatState | undefined {
+    if (this.delta?.npc_combat_state !== undefined) {
+      return this.delta.npc_combat_state ?? undefined;
+    }
+    this.readComponentIds.add(156);
+    return this.entity.npc_combat_state;
+  }
 
   clear() {
     this.delta = {};
@@ -5231,6 +5275,12 @@ export class DeltaPatch extends Delta {
       return this.delta.harthmere_material_storage ?? undefined;
     }
     return this.parent.harthmereMaterialStorage();
+  }
+  npcCombatState(): c.ReadonlyNpcCombatState | undefined {
+    if (this.delta?.npc_combat_state !== undefined) {
+      return this.delta.npc_combat_state ?? undefined;
+    }
+    return this.parent.npcCombatState();
   }
 
   commit() {

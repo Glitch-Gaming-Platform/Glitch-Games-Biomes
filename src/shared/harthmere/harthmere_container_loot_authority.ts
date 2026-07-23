@@ -13,6 +13,14 @@ export function harthmereContainerLootForLabel(
   label?: string | null
 ): HarthmereContainerLootEntry[] {
   const text = (label ?? "").toLowerCase();
+  if (/chest the grove underwater main/.test(text)) {
+    return [
+      // Exact original-snapshot identity used by Busted's sunken-boat claim.
+      { itemId: "b:7077725005403292", quantity: 1 },
+      { itemId: "clean_water", quantity: 3 },
+      { itemId: "river_trout", quantity: 2 },
+    ];
+  }
   if (/clothing|wardrobe|outfit|garment|laundry/.test(text)) {
     return [
       { itemId: "baker_apron", quantity: 1 },

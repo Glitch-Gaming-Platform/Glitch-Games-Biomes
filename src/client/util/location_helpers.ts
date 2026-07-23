@@ -3,6 +3,7 @@ import { useLatestAvailableComponents } from "@/client/components/hooks/client_h
 import type { ClientResources } from "@/client/game/resources/types";
 import { useCachedUsername } from "@/client/util/social_manager_hooks";
 import type { ReadonlyVec3f } from "@/shared/ecs/gen/types";
+import { isHarthmereExtensionWorldPosition } from "@/shared/harthmere/world_extension";
 import type { BiomesId } from "@/shared/ids";
 import { INVALID_BIOMES_ID } from "@/shared/ids";
 
@@ -81,5 +82,13 @@ export function useCurrentLandName(): string | undefined {
 
   const effectiveRobotId =
     reactResources.use("/player/effective_robot").value ?? INVALID_BIOMES_ID;
-  return useLocationNameForRobot(effectiveRobotId);
+  const authoredLandName = useLocationNameForRobot(effectiveRobotId);
+  const localPlayer = reactResources.use("/scene/local_player");
+  const position = localPlayer?.player?.position;
+  return (
+    authoredLandName ??
+    (position && isHarthmereExtensionWorldPosition(position)
+      ? "Harthmere"
+      : undefined)
+  );
 }

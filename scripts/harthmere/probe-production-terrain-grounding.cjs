@@ -74,6 +74,9 @@ const {
   HARTHMERE_BUSINESS_CRAFTING_STATION_SEEDS,
 } = require("../../src/shared/harthmere/business_crafting_station_seed");
 const {
+  HARTHMERE_GATHERING_AUTHORITY_NODES,
+} = require("../../src/shared/harthmere/gathering_node_authority");
+const {
   HARTHMERE_EXTENSION_FEET_Y,
   HARTHMERE_EXTENSION_WORLD_BOUNDS,
   isHarthmereExtensionWorldPosition,
@@ -119,6 +122,20 @@ function originalIndoorItem(family, tag, entityId, position) {
     entityId: Number(entityId),
     position: [...position],
     placementMode: "original_indoor",
+  };
+}
+
+function logicalPlacementItem(family, tag, index, position, placementMode) {
+  return {
+    family,
+    tag: String(tag),
+    // Logical gathering nodes do not have a standalone ECS entity to repair.
+    // A reserved negative id keeps duplicate detection useful without ever
+    // overlapping a persisted Biomes id.
+    entityId: -1 - index,
+    position: [...position],
+    placementMode,
+    verificationOnly: true,
   };
 }
 
@@ -254,6 +271,17 @@ async function productionProbeItems() {
         seed.stationSeedId,
         seed.entityId,
         seed.position
+      )
+    ),
+    ...HARTHMERE_GATHERING_AUTHORITY_NODES.map((node, index) =>
+      logicalPlacementItem(
+        "gathering_nodes",
+        node.id,
+        index,
+        node.position,
+        node.terrainFrame === "additive_town"
+          ? "extension_flat"
+          : "original_outdoor"
       )
     ),
   ];
@@ -449,6 +477,7 @@ function summarizeFamily(family, rows) {
 async function applyGroundingRepairs(rows) {
   const repairRows = rows.filter(
     (row) =>
+      !row.verificationOnly &&
       row.offGround &&
       row.resolvedFeetY !== undefined &&
       row.extensionSurfaceSupported

@@ -3,6 +3,7 @@ import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import {
   MapQuestsTab,
+  mapPanelTabForMarkerForTest,
   preventCancelableMapWheelDefaultForTest,
   questMapMarkerCandidatesForTest,
 } from "../tabs/MapQuestsTab";
@@ -10,6 +11,30 @@ import { biomesUIMainQuestSelectionFromQuestForTest } from "../adapters/mainQues
 import type { MapTrackableQuest } from "../tabs/MapQuestsTab";
 
 describe("MapQuestsTab main quest controls", () => {
+  it("offers My Crops as an off-by-default personal map layer", () => {
+    const html = renderToStaticMarkup(
+      <MapQuestsTab
+        adapter={{
+          getMarkers: () => [
+            {
+              id: "farming:crop:1",
+              label: "Carrot",
+              x: 0.4,
+              y: 0.6,
+              kind: "crop",
+              worldPosition: [401, 54, -155],
+            },
+          ],
+        }}
+      />
+    );
+    assert.ok(html.includes("My Crops"));
+    assert.ok(
+      html.includes('aria-checked="false" aria-label="Toggle My Crops layer"')
+    );
+    assert.deepEqual(mapPanelTabForMarkerForTest({ kind: "crop" }), ["crops"]);
+  });
+
   it("renders set-main and center controls for trackable quests", () => {
     const quest: MapTrackableQuest = {
       questId: "muck_breach_boss",

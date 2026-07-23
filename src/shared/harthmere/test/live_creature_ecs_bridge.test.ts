@@ -2,12 +2,15 @@
 import {
   harthmereLiveCreatureAssetFor,
   harthmereLiveCreatureBridgeRecord,
+  harthmereLiveCreatureStaticFallbackTargetIds,
   isHarthmereLiveCreatureEntity,
   reconcileHarthmereLiveCreatureBridge,
   type HarthmereLiveCreatureBridgeRecord,
   type HarthmereLiveCreatureEntityView,
 } from "@/shared/harthmere/live_creature_ecs_bridge";
 import assert from "assert";
+import { harthmereServerMuckCombatTargetIdForSeed } from "@/shared/harthmere/visible_combat_target";
+import { harthmereGroundedMuckMonsterSeedsInTerritory } from "@/shared/harthmere/live_entity_production_seed";
 
 function mucker(
   over: Partial<HarthmereLiveCreatureEntityView> & { id: number }
@@ -188,5 +191,31 @@ describe("reconcileHarthmereLiveCreatureBridge", () => {
     const result = reconcileHarthmereLiveCreatureBridge(new Set([5, 6]), []);
     assert.deepEqual(result.toRemove.sort(), [5, 6]);
     assert.equal(result.toAdd.length, 0);
+  });
+});
+
+describe("Harthmere live creature static fallback handoff", () => {
+  it("suppresses the stationary fallback when its authoritative ECS creature is bridged", () => {
+    const seed = harthmereGroundedMuckMonsterSeedsInTerritory()[0];
+    assert.ok(seed, "expected a production Mucker seed");
+    const targetIds = harthmereLiveCreatureStaticFallbackTargetIds([
+      {
+        id: Number(seed.entityId),
+        at: [...seed.position],
+        yaw: seed.orientation[1],
+        family: seed.combatKind === "hex" ? "hex" : "mucker",
+        asset: "townsperson_undead",
+        scale: 1,
+        label: seed.displayName,
+      },
+    ]);
+    assert.deepEqual(
+      [...targetIds],
+      [harthmereServerMuckCombatTargetIdForSeed(seed)]
+    );
+  });
+
+  it("keeps static fallback targets available while the ECS bridge is empty", () => {
+    assert.equal(harthmereLiveCreatureStaticFallbackTargetIds([]).size, 0);
   });
 });

@@ -7,6 +7,8 @@ import {
 
 export const ELEVENLABS_DEFAULT_MODEL_ID = "eleven_v3";
 export const ELEVENLABS_DEFAULT_OUTPUT_FORMAT = "mp3_44100_128";
+export const ELEVENLABS_SYNTHESIS_POLICY_VERSION =
+  "elevenlabs-natural-v3-speed-102-v1";
 
 // Defaults favor natural delivery and broadly playable browser audio. Operators
 // can override both through server environment variables.
@@ -377,15 +379,30 @@ export function selectElevenLabsVoiceForActor(input: {
 
 function speedForVoiceRate(rate: string | undefined) {
   // ElevenLabs sounds most human close to its default speed. Preserve only a
-  // small amount of the actor's Azure rate variation around a 0.97 baseline;
-  // directly mapping percentages made slower NPCs sound conspicuously synthetic.
+  // small amount of the actor's Azure rate variation around a 1.02 baseline.
+  // This is perceptibly quicker than the previous 0.97 baseline while staying
+  // close enough to normal speed to retain natural consonants and pauses.
   const percent = Number(String(rate ?? "0").replace("%", ""));
   if (!Number.isFinite(percent)) {
-    return 0.97;
+    return 1.02;
   }
   return (
-    Math.round(Math.max(0.94, Math.min(1.01, 0.97 + percent / 500)) * 100) / 100
+    Math.round(Math.max(0.99, Math.min(1.05, 1.02 + percent / 500)) * 100) / 100
   );
+}
+
+export function elevenLabsSynthesisCacheIdentity(config: ElevenLabsConfig) {
+  // Voice-pool overrides affect which speaker is selected, so they belong in
+  // the cache identity. The API key is intentionally excluded from filenames.
+  return [
+    ELEVENLABS_SYNTHESIS_POLICY_VERSION,
+    config.modelId,
+    config.outputFormat,
+    config.voiceIds.join(","),
+    config.femaleVoiceIds.join(","),
+    config.maleVoiceIds.join(","),
+    config.neutralVoiceIds.join(","),
+  ].join("|");
 }
 
 function stabilityForActorKind(kind: HarthmereVoiceActorKind | undefined) {

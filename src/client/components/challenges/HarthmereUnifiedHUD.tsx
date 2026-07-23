@@ -60,6 +60,7 @@ import {
 } from "@/client/components/challenges/harthmereEvents";
 import { harthmereLiveServerAuthoritative } from "@/client/components/challenges/harthmereLiveAuthoritySignal";
 import { nativeBiomesEcsAuthorityEnabled } from "@/shared/harthmere/native_road_ahead_contract";
+import { readHarthmereNativeVitals } from "@/shared/harthmere/harthmere_native_vitals";
 import type { BiomesId } from "@/shared/ids";
 import { NpcMetadataSelector } from "@/shared/ecs/gen/selectors";
 import { harthmereNativeNpcCombatProfileForTypeId } from "@/shared/harthmere/harthmere_native_combat_catalog";
@@ -134,6 +135,7 @@ import {
 import {
   HarthmereReputationMenuPanel,
   getHarthmereCombinedPublicTitle,
+  type HarthmereReputationScore,
   useHarthmereReputationState,
 } from "@/client/components/challenges/LocalDevHarthmereReputation";
 import { MiniMapHUD } from "@/client/components/MiniMapHUD";
@@ -210,6 +212,25 @@ function signedStandingPercent(value: number) {
 
 function notorietyPercent(value: number) {
   return clamp((value / 10_000) * 100, 0, 100);
+}
+
+export function harthmereHudStandingForTest(
+  legacyStanding: HarthmereReputationScore,
+  nativeStanding: Pick<
+    ReturnType<typeof readHarthmereNativeVitals>,
+    "likeability" | "legal" | "notoriety" | "notorietyFloor"
+  >,
+  useNativeStanding: boolean
+): HarthmereReputationScore {
+  if (!useNativeStanding) {
+    return legacyStanding;
+  }
+  return {
+    likeability: nativeStanding.likeability,
+    legal: nativeStanding.legal,
+    notoriety: nativeStanding.notoriety,
+    notorietyFloor: nativeStanding.notorietyFloor,
+  };
 }
 
 function itemLabel(itemId?: string) {
@@ -1090,6 +1111,8 @@ function StandingChip({
 }
 
 function CompactStatusCluster() {
+  const { reactResources, userId } = useClientContext();
+  const nativeTriggerState = reactResources.use("/ecs/c/trigger_state", userId);
   const combat = useHarthmereCombatState();
   const death = useHarthmereDeathState();
   const reputation = useHarthmereReputationState();
@@ -1121,9 +1144,12 @@ function CompactStatusCluster() {
       resourceMax: display.resourceMax,
     }
   );
-  const regional = display.standing ?? reputation.regions.harthmere;
-  const title =
-    display.classLine ?? getHarthmereCombinedPublicTitle(reputation);
+  const legacyRegional: HarthmereReputationScore = display.standing
+    ? {
+        ...display.standing,
+        notorietyFloor: display.standing.notorietyFloor ?? 0,
+      }
+    : reputation.regions.harthmere;
   const manaPct =
     (combatResource.resourceValue / Math.max(1, combatResource.resourceMax)) *
     100;
@@ -1131,8 +1157,29 @@ function CompactStatusCluster() {
     staminaValue: Math.max(0, stamina.stamina),
     staminaMax: Math.max(1, Math.round(stamina.maxStamina)),
   });
-  const staminaValue = staminaFromStatus.staminaValue;
-  const staminaMax = staminaFromStatus.staminaMax;
+  const nativeVitals = readHarthmereNativeVitals(nativeTriggerState);
+  const useNativeVitals =
+    nativeBiomesEcsAuthorityEnabled() && nativeTriggerState !== undefined;
+  // Standing mutations are committed to this same server-synced TriggerState.
+  // Once migrated, neither the chips nor their derived title may fall back to
+  // the delayed live-status/local reputation mirrors.
+  const regional = harthmereHudStandingForTest(
+    legacyRegional,
+    nativeVitals,
+    useNativeVitals
+  );
+  const title =
+    display.classLine ??
+    getHarthmereCombinedPublicTitle({
+      ...reputation,
+      regions: { ...reputation.regions, harthmere: regional },
+    });
+  const staminaValue = useNativeVitals
+    ? nativeVitals.stamina
+    : staminaFromStatus.staminaValue;
+  const staminaMax = useNativeVitals
+    ? nativeVitals.maxStamina
+    : staminaFromStatus.staminaMax;
   const staminaPct = (staminaValue / Math.max(1, staminaMax)) * 100;
   const staminaDisplay =
     staminaValue > 0 && !Number.isInteger(staminaValue)

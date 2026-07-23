@@ -1,5 +1,5 @@
 // GENERATED: This file is generated from json_serde.ts.j2. Do not modify directly.
-// Content Hash: 94c618b000f96d739c051cfefb5c8e36
+// Content Hash: fce43ffe20cf7fcd4cb10f43da3a5a16
 
 import * as c from "@/shared/ecs/gen/components";
 import * as e from "@/shared/ecs/gen/entities";
@@ -4750,6 +4750,40 @@ export class HarthmereMaterialStorageSerde {
     return c.HarthmereMaterialStorage.create(fields);
   }
 }
+export class NpcCombatStateSerde {
+  static serialize(component: c.ReadonlyNpcCombatState) {
+    const data = [];
+    if (component.attack_target !== null) {
+      data[1 - 1] = t.serializeOptionalBiomesId(component.attack_target);
+    }
+    return data;
+  }
+
+  static deserialize(data: any): c.NpcCombatState {
+    const fields: Partial<c.NpcCombatState> = {};
+    if (!Array.isArray(data)) {
+      if (data[1] !== undefined) {
+        fields.attack_target = t.deserializeOptionalBiomesId(data[1]);
+      } else if (data.attack_target !== undefined) {
+        fields.attack_target = t.deserializeOptionalBiomesId(
+          data.attack_target
+        );
+      }
+    } else {
+      for (let i = 0; i < data.length; i++) {
+        if (data[i] === null || data[i] === undefined) {
+          continue;
+        }
+        switch (i + 1) {
+          case 1:
+            fields.attack_target = t.deserializeOptionalBiomesId(data[i]);
+            break;
+        }
+      }
+    }
+    return c.NpcCombatState.create(fields);
+  }
+}
 
 function badEntity(message: string, data: unknown): never {
   log.warn(`Bad entity: ${message}`, {
@@ -4866,6 +4900,7 @@ const COMPONENT_ID_TO_DESERIALIZE = {
   153: GiftGiverSerde.deserialize,
   154: HarthmereEcsTransactionLedgerSerde.deserialize,
   155: HarthmereMaterialStorageSerde.deserialize,
+  156: NpcCombatStateSerde.deserialize,
 };
 
 const COMPONENT_ID_TO_PROP_NAME: { [key: number]: keyof e.Entity } = {
@@ -4976,6 +5011,7 @@ const COMPONENT_ID_TO_PROP_NAME: { [key: number]: keyof e.Entity } = {
   153: "gift_giver",
   154: "harthmere_ecs_transaction_ledger",
   155: "harthmere_material_storage",
+  156: "npc_combat_state",
 };
 
 export interface SerializeForClient {
@@ -6102,6 +6138,15 @@ export class EntitySerde {
         }
       }
     }
+    if (entity.npc_combat_state !== undefined) {
+      if (entity.npc_combat_state === null) {
+        if (encodeDelta) {
+          data.push(156, null);
+        }
+      } else {
+        data.push(156, NpcCombatStateSerde.serialize(entity.npc_combat_state));
+      }
+    }
     return data;
   }
 
@@ -7148,6 +7193,16 @@ export class EntitySerde {
             );
         }
       }
+      {
+        const value = legacyEntity.npc_combat_state;
+        if (value === null && decodeDelta) {
+          entity.npc_combat_state = null;
+        } else if (value) {
+          entity.npc_combat_state = NpcCombatStateSerde.deserialize(
+            legacyEntity.npc_combat_state
+          );
+        }
+      }
       return entity as e.Entity;
     }
 
@@ -8106,6 +8161,14 @@ export class EntitySerde {
       } else if (field) {
         entity.harthmere_material_storage =
           HarthmereMaterialStorageSerde.deserialize(field);
+      }
+    }
+    {
+      const field = (entityData as any)[156];
+      if (field === null && decodeDelta) {
+        entity.npc_combat_state = null;
+      } else if (field) {
+        entity.npc_combat_state = NpcCombatStateSerde.deserialize(field);
       }
     }
     return entity as e.Entity;

@@ -117,6 +117,8 @@ export interface HarthmereEscortCompanion {
   entityId: BiomesId;
   jobId: string;
   actorId: string;
+  /** Numeric native ECS entity for the durable save actor in `actorId`. */
+  actorEntityId?: BiomesId;
   displayName: string;
   status: HarthmereEscortCompanionStatus;
   position: { x: number; y: number; z: number };
@@ -418,6 +420,8 @@ export interface HarthmereJobsBoardMutationRequest {
 export interface HarthmereJobsBoardMutationContext {
   actorGold: number;
   actorInventoryItems: Record<string, number>;
+  /** Authenticated native ECS entity corresponding to the durable actor id. */
+  actorEntityId?: BiomesId;
   // Completion items can live outside the backpack when the live server routes
   // bulky building/material rewards into material storage. The jobs reducer
   // still validates item turn-ins here, so it needs both sources.
@@ -2126,6 +2130,7 @@ function createEscortCompanionForAcceptedJob(
     entityId,
     jobId: job.jobId,
     actorId: request.actorId,
+    actorEntityId: context.actorEntityId,
     displayName: "Newcomer",
     status: "following",
     position,
@@ -2335,7 +2340,7 @@ export const HARTHMERE_JOBS_BOARD_AUTO_SEED_TEMPLATES: AutoSeedTemplate[] = [
     kind: "delivery",
     title: "Run the Coop Food Parcel",
     description:
-      "Old Coop wants a sealed food parcel carried from the hen yard to the fountain bakery satchel. You start with the parcel when you accept.",
+      "Collect Old Coop's sealed food parcel from the hen-yard crate, then carry it to the marked bakery satchel by the fountain.",
     requirements: [
       {
         itemId: "sealed_package",
@@ -2634,9 +2639,9 @@ export const HARTHMERE_JOBS_BOARD_AUTO_SEED_TEMPLATES: AutoSeedTemplate[] = [
     kind: "delivery",
     title: "Deliver Sealed Package to Trader Odette Bright",
     description:
-      "Carry the sealed market package to Trader Odette Bright at the Brightcart Exchange. You start with the package — find her shop on the map and hand it to her.",
-    // Person recipient: the pouch is granted on accept (no pickup), and the
-    // marker leads the player to the owner to hand it off.
+      "Collect the sealed market package at the marked pickup, then carry it to the marked trader at Brightcart Exchange.",
+    // Person recipient: repeatable auto-seeding supplies a pickup marker and
+    // routes the drop-off to the live business owner.
     requirements: [
       {
         itemId: "sealed_package",
@@ -2677,7 +2682,7 @@ export const HARTHMERE_JOBS_BOARD_AUTO_SEED_TEMPLATES: AutoSeedTemplate[] = [
     kind: "delivery",
     title: "Bram's Bridge Report Delivery",
     description:
-      "Carry Bram's sealed bridge report to Dispatcher Nyle Stampspur at Stampspur Station before dusk. The report is placed in your pack when you accept.",
+      "Collect Bram's sealed bridge report at the marked pickup, then carry it to the marked dispatcher at Stampspur Station before dusk.",
     requirements: [
       {
         itemId: "sealed_package",
@@ -3679,7 +3684,7 @@ export function createHarthmereJobsBoardClientSnapshotAtTime(
     (job) => job.issuerKind === "player" && job.issuerId === actorId
   );
   const myAcceptedJobs = postings.filter(
-    (job) => job.acceptedByActorId === actorId
+    (job) => job.acceptedByActorId === actorId && job.status === "active"
   );
   const myTodos = Object.values(state.todos).filter(
     (todo) => todo.actorId === actorId

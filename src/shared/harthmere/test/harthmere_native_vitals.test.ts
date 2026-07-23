@@ -8,6 +8,8 @@ import {
 import {
   applyHarthmereNativeConsumableToVitals,
   HARTHMERE_NATIVE_DROWNING_DAMAGE_PER_SECOND,
+  HARTHMERE_NATIVE_MAX_BREATH_SECONDS,
+  HARTHMERE_NATIVE_VITALS_MIGRATION_VERSION,
   harthmereNativeConsumableProfile,
   readHarthmereNativeVitals,
   restoreHarthmereNativeVitalsForRespawn,
@@ -29,14 +31,14 @@ describe("Harthmere native ECS vitals", () => {
       mana: 140,
       maxStamina: 90,
       stamina: -10,
-      maxBreath: 15,
+      maxBreath: HARTHMERE_NATIVE_MAX_BREATH_SECONDS,
       breath: 20,
       likeability: 40,
       legal: -12,
       notoriety: 8,
       notorietyFloor: 10,
       standingScopeId: "harthmere",
-      migrationVersion: 1,
+      migrationVersion: HARTHMERE_NATIVE_VITALS_MIGRATION_VERSION,
       statusProjectionUpdatedAtMs: 0,
     });
 
@@ -45,8 +47,8 @@ describe("Harthmere native ECS vitals", () => {
       maxMana: 120,
       stamina: 0,
       maxStamina: 90,
-      breath: 15,
-      maxBreath: 15,
+      breath: 20,
+      maxBreath: HARTHMERE_NATIVE_MAX_BREATH_SECONDS,
       lastTickMs: 0,
       underwater: false,
       likeability: 40,
@@ -54,9 +56,31 @@ describe("Harthmere native ECS vitals", () => {
       notoriety: 10,
       notorietyFloor: 10,
       standingScopeId: "harthmere",
-      migrationVersion: 1,
+      migrationVersion: HARTHMERE_NATIVE_VITALS_MIGRATION_VERSION,
       statusProjectionUpdatedAtMs: 0,
     });
+  });
+
+  it("adds thirty seconds of breath to existing native-vitals records", () => {
+    const state = TriggerState.create();
+    writeHarthmereNativeVitals(state, {
+      maxBreath: 15,
+      breath: 15,
+      migrationVersion: 1,
+    });
+    // Recreate the legacy values because current writes always stamp the
+    // current migration version.
+    const values = state.by_root.values().next().value!;
+    const numericEntries = [...values.entries()];
+    const maxBreathEntry = numericEntries.find(([, value]) => value === 45);
+    assert.ok(maxBreathEntry);
+    values.set(maxBreathEntry[0], 15);
+    const migrationEntry = numericEntries.find(([, value]) => value === 2);
+    assert.ok(migrationEntry);
+    values.set(migrationEntry[0], 1);
+    const migrated = readHarthmereNativeVitals(state);
+    assert.equal(migrated.maxBreath, 45);
+    assert.equal(migrated.breath, 45);
   });
 
   it("drains 100 stamina over two hours of active gameplay only", () => {
@@ -89,7 +113,7 @@ describe("Harthmere native ECS vitals", () => {
     const state = TriggerState.create();
     writeHarthmereNativeVitals(state, {
       breath: 1,
-      maxBreath: 15,
+      maxBreath: HARTHMERE_NATIVE_MAX_BREATH_SECONDS,
       stamina: 100,
       lastTickMs: 1_000,
     });
@@ -154,7 +178,7 @@ describe("Harthmere native ECS vitals", () => {
       stamina: 90,
       maxStamina: 100,
       breath: 0,
-      maxBreath: 15,
+      maxBreath: HARTHMERE_NATIVE_MAX_BREATH_SECONDS,
     });
     applyHarthmereNativeConsumableToVitals(state, {
       itemId: "feast_and_draught",

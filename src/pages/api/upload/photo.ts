@@ -25,7 +25,8 @@ import type {
 } from "@/shared/types";
 import { zFeedPostBundle, zPostTaggedObject } from "@/shared/types";
 import { fireAndForget } from "@/shared/util/async";
-import { ok } from "assert";
+import { log } from "@/shared/logging";
+import { asyncBackoffOnAllErrors } from "@/shared/util/retry_helpers";
 import { take } from "lodash";
 import { z } from "zod";
 
@@ -209,31 +210,97 @@ export default biomesApiHandler(
       ),
     ];
 
+    const updates = await activityUpdates(context, bundle);
+    const sideEffects: Array<{ name: string; promise: Promise<unknown> }> = [
+      {
+        name: "firehose",
+        // The postPhoto event advances native photo quests, so retry it before
+        // treating the upload as successful. A brief downstream interruption
+        // should not force the client to create a duplicate social post.
+        promise: asyncBackoffOnAllErrors(() => firehose.publish(...events), {
+          baseMs: 100,
+          maxMs: 500,
+          maxAttempts: 3,
+          timeoutMs: 2_000,
+        }),
+      },
+      ...updates.map((update, index) => ({
+        name: `activity:${index}`,
+        promise: chatApi.sendMessage(update),
+      })),
+    ];
     if (allowWarping) {
-      await enqueueMakePhotoWarpable(
-        serverTaskProcessor,
-        logicApi,
-        db,
-        idGenerator,
-        feedPost,
-        position,
-        orientation
+      sideEffects.push({
+        name: "make_warpable",
+        promise: enqueueMakePhotoWarpable(
+          serverTaskProcessor,
+          logicApi,
+          db,
+          idGenerator,
+          feedPost,
+          position,
+          orientation
+        ),
+      });
+    }
+
+    const results = await Promise.allSettled(
+      sideEffects.map(({ promise }) => promise)
+    );
+    for (let index = 0; index < results.length; index += 1) {
+      const result = results[index];
+      if (result.status === "rejected") {
+        log.warn("Photo was created but a follow-up action failed", {
+          feedPostId: feedPost.id,
+          action: sideEffects[index].name,
+          error: result.reason,
+        });
+      }
+    }
+
+    // Firehose drives native photo quest progress, but the social post is
+    // already durable at this point. Never return a 500 after that boundary:
+    // clients retrying the whole upload would create duplicate posts. Continue
+    // retrying the event in the background instead.
+    if (results[0].status === "rejected") {
+      fireAndForget(
+        asyncBackoffOnAllErrors(() => firehose.publish(...events), {
+          baseMs: 500,
+          maxMs: 5_000,
+          maxAttempts: 10,
+          timeoutMs: 30_000,
+        }).catch((error) => {
+          log.error(
+            "Photo was created but its firehose event stayed unavailable",
+            {
+              feedPostId: feedPost.id,
+              error,
+            }
+          );
+        })
       );
     }
 
-    const updates = await activityUpdates(context, bundle);
-    await Promise.all([
-      ...updates.map((update) => chatApi.sendMessage(update)),
-      firehose.publish(...events),
-    ]);
-    const updatedBundle = await fetchFeedPostBundleById(
-      db,
-      worldApi,
-      feedPost.id,
-      userId
-    );
-    ok(updatedBundle, "Created but bundle disappeared");
-    return { feedPostBundle: updatedBundle };
+    try {
+      const updatedBundle = await fetchFeedPostBundleById(
+        db,
+        worldApi,
+        feedPost.id,
+        userId
+      );
+      if (updatedBundle) {
+        return { feedPostBundle: updatedBundle };
+      }
+      log.warn("Created photo bundle was not immediately readable", {
+        feedPostId: feedPost.id,
+      });
+    } catch (error) {
+      log.warn("Failed to refresh a newly created photo bundle", {
+        feedPostId: feedPost.id,
+        error,
+      });
+    }
+    return { feedPostBundle: bundle };
   }
 );
 

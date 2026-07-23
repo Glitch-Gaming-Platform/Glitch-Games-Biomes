@@ -1,15 +1,20 @@
 import {
+  nativeBustedUnderwaterContainerRedisKeyForTest,
   nativeRoadAheadContainerRedisKeyForTest,
   seededNativeRoadAheadContainerInventoryForTest,
   seededHarthmereNativeContainerInventoryForTest,
   staticHarthmereNativeContainerLandmarkForTest,
   validateNativeRoadAheadContainerSourceForTest,
+  validNativeBustedUnderwaterContainerSourceForTest,
   validNativeRoadAheadContainerSourceForTest,
   withinHarthmereNativeContainerRangeForTest,
 } from "@/pages/api/harthmere/native_container";
 import { BikkieIds } from "@/shared/bikkie/ids";
 import { harthmereItemIdToBiomesId } from "@/shared/harthmere/harthmere_biomes_ecs_bridge";
-import { NATIVE_ROAD_AHEAD_CONTAINER_SPECS } from "@/shared/harthmere/native_road_ahead_contract";
+import {
+  NATIVE_BUSTED_UNDERWATER_CONTAINER_SPEC,
+  NATIVE_ROAD_AHEAD_CONTAINER_SPECS,
+} from "@/shared/harthmere/native_road_ahead_contract";
 import type { BiomesId } from "@/shared/ids";
 import assert from "assert";
 
@@ -65,8 +70,12 @@ describe("native Harthmere generic containers", () => {
     assert.deepEqual(
       populated.map((entry) => [entry.item.id, entry.count]),
       [
-        [BikkieIds.muckyTop, 1n],
-        [BikkieIds.muckySkirt, 1n],
+        [4537020877770135, 1n],
+        [6561590643697708, 1n],
+        [1152171766050944, 1n],
+        [1534621126189793, 1n],
+        [6407921801695863, 1n],
+        [2512451111844299, 1n],
       ]
     );
     assert.equal(clothing.items.length, 16);
@@ -89,6 +98,67 @@ describe("native Harthmere generic containers", () => {
     assert.equal(
       first,
       "harthmere:native_road_ahead_container:5165478204703095:101"
+    );
+  });
+
+  it("seeds and isolates Busted's exact underwater quest reward", () => {
+    const inventory = seededHarthmereNativeContainerInventoryForTest(
+      "Chest The Grove Underwater Main"
+    );
+    const populated = inventory.items.filter(
+      (entry): entry is NonNullable<typeof entry> => Boolean(entry)
+    );
+    assert.deepEqual(
+      populated.map((entry) => [entry.item.id, entry.count]),
+      [
+        [NATIVE_BUSTED_UNDERWATER_CONTAINER_SPEC.itemId, 1n],
+        [harthmereItemIdToBiomesId("clean_water")!, 3n],
+        [harthmereItemIdToBiomesId("river_trout")!, 2n],
+      ]
+    );
+    const first = nativeBustedUnderwaterContainerRedisKeyForTest(
+      NATIVE_BUSTED_UNDERWATER_CONTAINER_SPEC.sourceEntityId,
+      101 as BiomesId
+    );
+    const second = nativeBustedUnderwaterContainerRedisKeyForTest(
+      NATIVE_BUSTED_UNDERWATER_CONTAINER_SPEC.sourceEntityId,
+      202 as BiomesId
+    );
+    assert.notEqual(first, second);
+    assert.equal(
+      first,
+      "harthmere:native_busted_underwater_container:4149747832010135:101"
+    );
+  });
+
+  it("accepts only the exact authored Busted underwater chest identity", () => {
+    const spec = NATIVE_BUSTED_UNDERWATER_CONTAINER_SPEC;
+    assert.equal(
+      validNativeBustedUnderwaterContainerSourceForTest({
+        entityId: spec.sourceEntityId,
+        label: "Chest The Grove Underwater Main",
+        questGiver: {},
+        placeableItemId: spec.placeableItemId,
+      }),
+      true
+    );
+    assert.equal(
+      validNativeBustedUnderwaterContainerSourceForTest({
+        entityId: spec.sourceEntityId,
+        label: "Chest The Grove Underwater Main",
+        questGiver: undefined,
+        placeableItemId: spec.placeableItemId,
+      }),
+      false
+    );
+    assert.equal(
+      validNativeBustedUnderwaterContainerSourceForTest({
+        entityId: spec.placeableItemId,
+        label: "Chest The Grove Underwater Main",
+        questGiver: {},
+        placeableItemId: spec.sourceEntityId,
+      }),
+      false
     );
   });
 

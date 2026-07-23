@@ -25,6 +25,10 @@ export interface CameraSelection {
 
 export type HotBarSelection = ItemSelection | CameraSelection;
 
+export function isCameraExitKey(code: string, selection: HotBarSelection) {
+  return code === "KeyX" && selection.kind === "camera";
+}
+
 export function slotRefFromSelection(
   selection: HotBarSelection
 ): OwnedItemReference | undefined {
@@ -38,6 +42,41 @@ export function getSelectedItem(
   return inventory && selectedIdx >= 0 && selectedIdx < inventory.hotbar.length
     ? inventory.hotbar[selectedIdx]
     : undefined;
+}
+
+export function cameraExitHotbarIndex(
+  inventory: ReadonlyInventory | undefined,
+  currentIndex: number
+) {
+  const hotbar = inventory?.hotbar ?? [];
+  if (hotbar.length === 0) {
+    return -1;
+  }
+
+  const indexAtOffset = (offset: number) =>
+    (currentIndex - offset + hotbar.length) % hotbar.length;
+
+  // Prefer returning to a real non-camera tool, scanning backwards from the
+  // camera slot. This usually restores the item the player was using before
+  // taking a photo without requiring a separate client-only history store.
+  for (let offset = 1; offset <= hotbar.length; offset += 1) {
+    const idx = indexAtOffset(offset);
+    const item = hotbar[idx]?.item;
+    if (item && item.action !== "photo") {
+      return idx;
+    }
+  }
+
+  // An empty slot is still a valid way to leave camera mode when the hotbar
+  // contains no other tools.
+  for (let offset = 1; offset <= hotbar.length; offset += 1) {
+    const idx = indexAtOffset(offset);
+    if (!hotbar[idx]) {
+      return idx;
+    }
+  }
+
+  return -1;
 }
 
 function genHotBarSelection(

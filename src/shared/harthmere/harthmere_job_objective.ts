@@ -26,6 +26,7 @@ import {
   type HarthmereJobsBoardRequirement,
 } from "@/shared/harthmere/mmo_jobs_board_authority";
 import type { Vec3 } from "@/shared/math/types";
+import { harthmereGatheringAuthorityNode } from "@/shared/harthmere/gathering_node_authority";
 
 export const HARTHMERE_JOB_OBJECTIVE_VERSION =
   "harthmere-job-objective" as const;
@@ -162,6 +163,11 @@ function displayNameForItemId(itemId: string) {
     .join(" ");
 }
 
+function gatheringNodePosition(nodeId: string): Vec3 | undefined {
+  const position = harthmereGatheringAuthorityNode(nodeId)?.position;
+  return position ? ([...position] as Vec3) : undefined;
+}
+
 const HARTHMERE_JOB_ITEM_SOURCE_DEFINITIONS: Record<
   string,
   HarthmereJobItemSourceDefinition
@@ -180,7 +186,7 @@ const HARTHMERE_JOB_ITEM_SOURCE_DEFINITIONS: Record<
     sourceKind: "gather",
     sourceName: "Orchard Softwood Branches",
     markerId: "harthmere_orchard_softwood",
-    markerPosition: [468, 53, -118],
+    markerPosition: gatheringNodePosition("harthmere_orchard_softwood"),
     hint: (itemName, missing) =>
       `Gather ${missing} ${pluralItem(
         itemName,
@@ -191,7 +197,7 @@ const HARTHMERE_JOB_ITEM_SOURCE_DEFINITIONS: Record<
     sourceKind: "gather",
     sourceName: "Orchard Softwood Branches",
     markerId: "harthmere_orchard_softwood",
-    markerPosition: [468, 53, -118],
+    markerPosition: gatheringNodePosition("harthmere_orchard_softwood"),
     hint: (itemName, missing) =>
       `Gather ${missing} ${pluralItem(
         itemName,
@@ -202,7 +208,7 @@ const HARTHMERE_JOB_ITEM_SOURCE_DEFINITIONS: Record<
     sourceKind: "gather",
     sourceName: "Orchard Softwood Branches",
     markerId: "harthmere_orchard_softwood",
-    markerPosition: [468, 53, -118],
+    markerPosition: gatheringNodePosition("harthmere_orchard_softwood"),
     hint: (itemName, missing) =>
       `Gather wood in the Orchard for a chance at ${missing} ${pluralItem(
         itemName,
@@ -213,7 +219,7 @@ const HARTHMERE_JOB_ITEM_SOURCE_DEFINITIONS: Record<
     sourceKind: "gather",
     sourceName: "North Road Iron Vein",
     markerId: "harthmere_north_iron_vein",
-    markerPosition: [503, 53, -270],
+    markerPosition: gatheringNodePosition("harthmere_north_iron_vein"),
     hint: (itemName, missing) =>
       `Mine ${missing} ${pluralItem(
         itemName,
@@ -224,7 +230,7 @@ const HARTHMERE_JOB_ITEM_SOURCE_DEFINITIONS: Record<
     sourceKind: "gather",
     sourceName: "North Road Iron Vein",
     markerId: "harthmere_north_iron_vein",
-    markerPosition: [503, 53, -270],
+    markerPosition: gatheringNodePosition("harthmere_north_iron_vein"),
     hint: (itemName, missing) =>
       `Mine ${missing} ${pluralItem(
         itemName,
@@ -234,7 +240,7 @@ const HARTHMERE_JOB_ITEM_SOURCE_DEFINITIONS: Record<
   iron_ingot: {
     sourceKind: "craft",
     sourceName: "Forge or Metal Vendor",
-    markerId: "harthmere_owner:npc_outpost_metalmarket_smith",
+    markerId: "harthmere_owner:npc_outpost_cinderlane_smith",
     hint: (itemName, missing) =>
       `Smelt or buy ${missing} ${pluralItem(
         itemName,
@@ -273,12 +279,12 @@ const HARTHMERE_JOB_ITEM_SOURCE_DEFINITIONS: Record<
   },
   sealed_package: {
     sourceKind: "quest_grant",
-    sourceName: "Accepted Delivery Parcel",
+    sourceName: "Marked Delivery Pickup",
     hint: (itemName, missing) =>
-      `This delivery should place ${missing} ${pluralItem(
+      `Collect ${missing} ${pluralItem(
         itemName,
         missing
-      )} in your inventory when you accept it. Check your backpack, then return to the board if it did not sync.`,
+      )} at the delivery's marked pickup. If this job grants the parcel on accept, check your backpack before heading to the recipient.`,
   },
   repair_part: {
     sourceKind: "vendor",
@@ -293,7 +299,7 @@ const HARTHMERE_JOB_ITEM_SOURCE_DEFINITIONS: Record<
   field_medkit: {
     sourceKind: "vendor",
     sourceName: "Clinic Supplies",
-    markerId: "harthmere_owner:npc_outpost_clinic_medic",
+    markerId: "harthmere_owner:npc_outpost_greenlamp_doctor",
     hint: (itemName, missing) =>
       `Buy ${missing} ${pluralItem(
         itemName,
@@ -303,7 +309,7 @@ const HARTHMERE_JOB_ITEM_SOURCE_DEFINITIONS: Record<
   minor_healing_salve: {
     sourceKind: "vendor",
     sourceName: "Clinic Supplies",
-    markerId: "harthmere_owner:npc_outpost_clinic_medic",
+    markerId: "harthmere_owner:npc_outpost_greenlamp_doctor",
     hint: (itemName, missing) =>
       `Buy or craft ${missing} ${pluralItem(
         itemName,
@@ -313,7 +319,7 @@ const HARTHMERE_JOB_ITEM_SOURCE_DEFINITIONS: Record<
   bandage: {
     sourceKind: "vendor",
     sourceName: "Clinic Supplies",
-    markerId: "harthmere_owner:npc_outpost_clinic_medic",
+    markerId: "harthmere_owner:npc_outpost_greenlamp_doctor",
     hint: (itemName, missing) =>
       `Buy or craft ${missing} ${pluralItem(
         itemName,
@@ -331,6 +337,20 @@ const HARTHMERE_JOB_ITEM_SOURCE_DEFINITIONS: Record<
       )} through cleanup work, or ask Clearbarrel Depot for sanitation work.`,
   },
 };
+
+export function harthmereJobItemSourceDestinationsForAudit() {
+  return Object.entries(HARTHMERE_JOB_ITEM_SOURCE_DEFINITIONS).map(
+    ([itemId, definition]) => ({
+      itemId,
+      sourceKind: definition.sourceKind,
+      sourceName: definition.sourceName,
+      markerId: definition.markerId,
+      markerPosition: definition.markerPosition
+        ? ([...definition.markerPosition] as Vec3)
+        : undefined,
+    })
+  );
+}
 
 export function harthmereJobItemSourceGuidance(input: {
   kind?: string;

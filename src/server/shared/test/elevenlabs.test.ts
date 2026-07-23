@@ -5,6 +5,7 @@ import {
   elevenLabsNaturalVoiceSettingsForTest,
   elevenLabsConfigFromEnv,
   elevenLabsSpokenTextForTest,
+  elevenLabsSynthesisCacheIdentity,
   listElevenLabsVoices,
   selectElevenLabsVoiceForActor,
   synthesizeElevenLabsSpeech,
@@ -118,7 +119,7 @@ describe("ElevenLabs NPC speech", () => {
         similarity_boost: 0.82,
         style: 0,
         use_speaker_boost: true,
-        speed: 0.96,
+        speed: 1.01,
       }
     );
     assert.deepEqual(
@@ -131,9 +132,16 @@ describe("ElevenLabs NPC speech", () => {
         similarity_boost: 0.82,
         style: 0,
         use_speaker_boost: true,
-        speed: 1.01,
+        speed: 1.05,
       }
     );
+  });
+
+  it("versions cached audio without including the secret API key", () => {
+    const identity = elevenLabsSynthesisCacheIdentity(testConfig());
+    assert.ok(identity.includes(ELEVENLABS_DEFAULT_MODEL_ID));
+    assert.ok(identity.includes(ELEVENLABS_DEFAULT_OUTPUT_FORMAT));
+    assert.ok(!identity.includes("test-key"));
   });
 
   it("paginates the current ElevenLabs voice search endpoint", async () => {
@@ -224,7 +232,7 @@ describe("ElevenLabs NPC speech", () => {
     assert.equal(body.voice_settings.similarity_boost, 0.82);
     assert.equal(body.voice_settings.style, 0);
     assert.equal(body.voice_settings.use_speaker_boost, true);
-    assert.equal(body.voice_settings.speed, 0.96);
+    assert.equal(body.voice_settings.speed, 1.01);
     assert.deepEqual([...result!.audio], [1, 2, 3]);
     assert.equal(result?.contentType, "audio/mpeg");
     assert.equal(result?.voiceId, "natural-female-voice");

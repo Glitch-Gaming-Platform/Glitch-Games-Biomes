@@ -1,0 +1,49 @@
+import { resolveChatVoiceRequest } from "@/pages/api/voices/text_to_speech";
+import { clearNpcVoiceAudioManifestCacheForTest } from "@/server/shared/npc_voice_audio_cache";
+import { harthmereVoiceProfileForActor } from "@/shared/harthmere/npc_voice_profiles";
+import assert from "assert";
+
+describe("text-to-speech committed audio integration", () => {
+  const originalEnvironment = { ...process.env };
+
+  beforeEach(() => {
+    // A placeholder key is enough for a committed cache hit; the provider must
+    // never be contacted by this test.
+    process.env.ELEVENLABS_API_KEY = "test-key-not-a-real-secret";
+    delete process.env.ELEVEN_LABS_API_KEY;
+    delete process.env.XI_API_KEY;
+    delete process.env.ELEVENLABS_MODEL_ID;
+    delete process.env.ELEVENLABS_OUTPUT_FORMAT;
+    delete process.env.ELEVENLABS_VOICE_ID;
+    delete process.env.ELEVENLABS_VOICE_IDS;
+    delete process.env.ELEVENLABS_FEMALE_VOICE_IDS;
+    delete process.env.ELEVENLABS_MALE_VOICE_IDS;
+    delete process.env.ELEVENLABS_NEUTRAL_VOICE_IDS;
+    clearNpcVoiceAudioManifestCacheForTest();
+  });
+
+  afterEach(() => {
+    process.env = { ...originalEnvironment };
+    clearNpcVoiceAudioManifestCacheForTest();
+  });
+
+  it("resolves the attached production HAR Jackie line to a shipped MP3", async () => {
+    const voice = harthmereVoiceProfileForActor({
+      source: "runtime_entity",
+      entityId: 8997551883502307,
+      displayName: "Jackie",
+    }).voiceParameterId;
+    const response = await resolveChatVoiceRequest({
+      text: "The name is Jackie. I'm glad we found ya before the Muckers did.",
+      voice,
+      language: "en-US",
+      provider: "elevenlabs",
+    });
+
+    assert.match(
+      response.url,
+      /^\/harthmere\/voices\/generated\/current\/native-robot-story\/the-road-ahead-/
+    );
+    assert.ok(!response.url.includes("/runtime/"));
+  });
+});

@@ -57,6 +57,28 @@ export interface HarthmereNativeEcsE2EJobsBoardProjection {
   }>;
 }
 
+export interface HarthmereNativeEcsE2EQuestProjection {
+  ecs: {
+    available: string[];
+    inProgress: string[];
+    complete: string[];
+  };
+  activeQuestId?: string;
+  mainQuestId?: string;
+  quests: Array<{
+    questId: string;
+    title: string;
+    status: string;
+    objective?: string;
+    currentStepId?: string;
+    steps: Array<{
+      id: string;
+      objective: string;
+      done: boolean;
+    }>;
+  }>;
+}
+
 async function projectJobsBoardFrontendState(
   snapshot: unknown
 ): Promise<HarthmereNativeEcsE2EJobsBoardProjection> {
@@ -123,6 +145,25 @@ export interface HarthmereNativeEcsE2EBridge {
   };
   audioDiagnostics(): BackgroundMusicDiagnostics;
   resumeAudio(): Promise<BackgroundMusicDiagnostics>;
+  combatRenderSnapshot(): {
+    bridgeAt?: number;
+    liveCreatureRecords: Array<{
+      id: number;
+      at: [number, number, number];
+      yaw: number;
+      label: string;
+    }>;
+    combatActors: Record<
+      string,
+      {
+        offset?: number;
+        targetId?: string;
+        liveModeTargetId?: string;
+        label?: string;
+        world?: [number, number, number];
+      }
+    >;
+  };
   publish(serializedEvent: JSONable): Promise<{ sequence: number }>;
   applyChanges(serializedChanges: JSONable[]): Promise<void>;
   getAuthoritative(
@@ -132,6 +173,10 @@ export interface HarthmereNativeEcsE2EBridge {
   findLocalByComponent(component: string): Array<[unknown, SerializedEntity]>;
   allocateId(): Promise<BiomesId>;
   farmingFrontendSnapshot(): Promise<unknown>;
+  farmingMapFrontendSnapshot(): Promise<unknown>;
+  farmingHoeQuestSnapshot(
+    operation: "read" | "reset" | "accept" | "reconcile"
+  ): Promise<unknown>;
   findTillableVoxelNear(
     origin: readonly [number, number, number],
     radius?: number
@@ -149,11 +194,20 @@ export interface HarthmereNativeEcsE2EBridge {
     isTillable: boolean;
   }>;
   jobsBoardFrontendRoundTrip(input: {
-    operation: "fetch" | "accept" | "abandon";
+    operation:
+      | "fetch"
+      | "accept"
+      | "pickup"
+      | "completeQuest"
+      | "complete"
+      | "abandon";
     jobId?: string;
     boardId?: string;
+    questTodoId?: string;
+    completedTargetId?: string;
     requestId?: string;
   }): Promise<HarthmereNativeEcsE2EJobsBoardProjection>;
+  nativeQuestFrontendSnapshot(): Promise<HarthmereNativeEcsE2EQuestProjection>;
 }
 
 declare global {
@@ -215,6 +269,38 @@ export function installHarthmereNativeEcsE2E(
     resumeAudio: async () => {
       await context.audioManager.resumeAudio();
       return context.audioManager.getBackgroundMusicDiagnostics();
+    },
+    combatRenderSnapshot: () => {
+      const browserWindow = window as typeof window & {
+        __harthmereLiveCreatureEcsBridge?: {
+          at?: number;
+          records?: Array<{
+            id: number;
+            at: [number, number, number];
+            yaw: number;
+            label: string;
+          }>;
+        };
+        __harthmereCombatActorPositions?: Record<
+          string,
+          {
+            offset?: number;
+            targetId?: string;
+            liveModeTargetId?: string;
+            label?: string;
+            world?: [number, number, number];
+          }
+        >;
+      };
+      return {
+        bridgeAt: browserWindow.__harthmereLiveCreatureEcsBridge?.at,
+        liveCreatureRecords: [
+          ...(browserWindow.__harthmereLiveCreatureEcsBridge?.records ?? []),
+        ],
+        combatActors: {
+          ...(browserWindow.__harthmereCombatActorPositions ?? {}),
+        },
+      };
     },
     publish: async (serializedEvent) => {
       const event = EventSerde.deserialize(serializedEvent);
@@ -285,6 +371,101 @@ export function installHarthmereNativeEcsE2E(
         playerPosition,
       });
     },
+    farmingMapFrontendSnapshot: async () => {
+      const [{ buildNativeFarmingInterfaceModel }, farmingMapQuest] =
+        await Promise.all([
+          import(
+            "@/client/components/biomes_ui/adapters/nativeFarmingInterfaceAdapter"
+          ),
+          import("@/client/components/biomes_ui/adapters/farmingMapQuest"),
+        ]);
+      const playerPosition = context.resources.get("/scene/local_player").player
+        .position;
+      const model = buildNativeFarmingInterfaceModel({
+        userId: context.userId,
+        inventory: context.table.get(context.userId)?.inventory,
+        entities: context.table.contents(),
+        playerPosition,
+      });
+      return {
+        plants: model.plants,
+        markers: farmingMapQuest.harthmereNativeCropMapLandmarks(model),
+      };
+    },
+    nativeQuestFrontendSnapshot: async () => {
+      const [nativeAdapter, mainQuestSelection] = await Promise.all([
+        import("@/client/components/biomes_ui/adapters/nativeQuestMapAdapter"),
+        import("@/client/components/biomes_ui/adapters/mainQuestSelection"),
+      ]);
+      const challenges = context.resources.get(
+        "/ecs/c/challenges",
+        context.userId
+      );
+      const bundles = context.resources.get("/challenges/all");
+      const quests = nativeAdapter.nativeQuestTrackableQuests(bundles);
+      const active = nativeAdapter.activeNativeQuest(bundles);
+      const main =
+        mainQuestSelection.defaultMainQuestFromTrackableQuestsForTest(quests);
+      return {
+        ecs: {
+          available: [...(challenges?.available ?? [])].map(String),
+          inProgress: [...(challenges?.in_progress ?? [])].map(String),
+          complete: [...(challenges?.complete ?? [])].map(String),
+        },
+        activeQuestId: active ? String(active.biscuit.id) : undefined,
+        mainQuestId: main?.questId,
+        quests: quests.map((quest) => {
+          const bundle = bundles.find(
+            (candidate) => String(candidate.biscuit.id) === quest.questId
+          );
+          const steps = nativeAdapter.nativeQuestMissionSteps(bundle);
+          const currentStep = steps.find((step) => !step.done);
+          return {
+            questId: quest.questId,
+            title: quest.title,
+            status: quest.status,
+            objective: quest.objective,
+            currentStepId: currentStep?.id.split(":").at(-1),
+            steps: steps.map((step) => ({
+              id: step.id.split(":").at(-1) ?? step.id,
+              objective: step.objective,
+              done: step.done,
+            })),
+          };
+        }),
+      };
+    },
+    farmingHoeQuestSnapshot: async (operation) => {
+      const [{ buildNativeFarmingInterfaceModel }, farmingMapQuest] =
+        await Promise.all([
+          import(
+            "@/client/components/biomes_ui/adapters/nativeFarmingInterfaceAdapter"
+          ),
+          import("@/client/components/biomes_ui/adapters/farmingMapQuest"),
+        ]);
+      const model = buildNativeFarmingInterfaceModel({
+        userId: context.userId,
+        inventory: context.table.get(context.userId)?.inventory,
+        entities: context.table.contents(),
+      });
+      const state =
+        operation === "reset"
+          ? farmingMapQuest.resetHarthmereHoeQuestForTest(context.userId)
+          : operation === "accept"
+          ? farmingMapQuest.acceptHarthmereHoeQuest(context.userId)
+          : operation === "reconcile"
+          ? farmingMapQuest.reconcileHarthmereHoeQuestState(
+              context.userId,
+              model.hasHoe
+            )
+          : farmingMapQuest.readHarthmereHoeQuestState(context.userId);
+      return {
+        state,
+        hasHoe: model.hasHoe,
+        markers: farmingMapQuest.harthmereHoeQuestMapLandmarks(state),
+        quests: farmingMapQuest.harthmereHoeQuestTrackableQuests(state),
+      };
+    },
     findTillableVoxelNear: async (origin, radius = 5) => {
       const [{ voxelShard, blockPos }, { terrainIdToBlock }] =
         await Promise.all([
@@ -349,7 +530,10 @@ export function installHarthmereNativeEcsE2E(
       };
     },
     jobsBoardFrontendRoundTrip: async (input) => {
-      const { createHarthmereJobsBoardAdapter } = await import(
+      const {
+        createHarthmereJobsBoardAdapter,
+        submitHarthmereJobsBoardMutation,
+      } = await import(
         "@/client/components/harthmere_jobs_board/jobsBoardLiveAdapter"
       );
       const adapter = createHarthmereJobsBoardAdapter(fetch);
@@ -360,18 +544,60 @@ export function installHarthmereNativeEcsE2E(
         if (!input.jobId || !input.boardId) {
           throw new Error("jobs_board_e2e_missing_job_or_board");
         }
-        snapshot =
-          input.operation === "accept"
-            ? await adapter.acceptJob(
-                input.jobId,
-                input.boardId,
-                input.requestId
-              )
-            : await adapter.abandonJob(
-                input.jobId,
-                input.boardId,
-                input.requestId
-              );
+        switch (input.operation) {
+          case "accept":
+            snapshot = await adapter.acceptJob(
+              input.jobId,
+              input.boardId,
+              input.requestId
+            );
+            break;
+          case "pickup":
+            snapshot = await submitHarthmereJobsBoardMutation(
+              "pickup_delivery_parcel",
+              {
+                jobId: input.jobId,
+                boardId: input.boardId,
+                questTodoId: input.questTodoId,
+                completedTargetId: input.completedTargetId,
+              },
+              {
+                fetchImpl: fetch,
+                boardId: input.boardId,
+                requestId: input.requestId,
+              }
+            );
+            break;
+          case "completeQuest":
+            snapshot = await adapter.completeJobQuest(
+              input.jobId,
+              input.boardId,
+              {
+                questTodoId: input.questTodoId,
+                completedTargetId: input.completedTargetId,
+              },
+              input.requestId
+            );
+            break;
+          case "complete":
+            snapshot = await adapter.completeJob(
+              input.jobId,
+              input.boardId,
+              input.requestId
+            );
+            break;
+          case "abandon":
+            snapshot = await adapter.abandonJob(
+              input.jobId,
+              input.boardId,
+              input.requestId
+            );
+            break;
+          default:
+            throw new Error(
+              `jobs_board_e2e_unknown_operation:${input.operation}`
+            );
+        }
       }
       return projectJobsBoardFrontendState(snapshot);
     },

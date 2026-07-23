@@ -102,4 +102,43 @@ describe("live_mode_state_read_helpers", () => {
 
     assert.deepEqual(mgetCalls, [["player"], ["player", "shared"]]);
   });
+
+  it("does not coalesce identical keys across Redis connections", async () => {
+    let releaseStale: (() => void) | undefined;
+    const staleGate = new Promise<void>((resolve) => {
+      releaseStale = resolve;
+    });
+    let staleCalls = 0;
+    let freshCalls = 0;
+    const stalePrimary = {
+      get: async () => null,
+      mget: async (...keys: string[]) => {
+        staleCalls += 1;
+        await staleGate;
+        return keys.map((key) => `stale:${key}`);
+      },
+    };
+    const freshPrimary = {
+      get: async () => null,
+      mget: async (...keys: string[]) => {
+        freshCalls += 1;
+        return keys.map((key) => `fresh:${key}`);
+      },
+    };
+
+    const staleRead = readHarthmereRedisStrings(stalePrimary, [
+      "player",
+      "shared",
+    ]);
+    const freshRead = readHarthmereRedisStrings(freshPrimary, [
+      "player",
+      "shared",
+    ]);
+
+    assert.deepEqual(await freshRead, ["fresh:player", "fresh:shared"]);
+    assert.equal(staleCalls, 1);
+    assert.equal(freshCalls, 1);
+    releaseStale?.();
+    assert.deepEqual(await staleRead, ["stale:player", "stale:shared"]);
+  });
 });

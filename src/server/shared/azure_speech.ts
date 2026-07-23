@@ -3,6 +3,9 @@ import {
   parseHarthmereAzureVoiceId,
 } from "@/shared/harthmere/npc_voice_profiles";
 
+export const AZURE_SPEECH_SYNTHESIS_POLICY_VERSION =
+  "azure-speech-mp3-48khz-192kbps-v1";
+
 export interface AzureSpeechConfig {
   key: string;
   region: string;
@@ -49,10 +52,7 @@ function azureSpeechVoicesEndpoint(config: AzureSpeechConfig) {
   return `https://${config.region}.tts.speech.microsoft.com/cognitiveservices/voices/list`;
 }
 
-function azureSpeechSttEndpoint(
-  config: AzureSpeechConfig,
-  language: string
-) {
+function azureSpeechSttEndpoint(config: AzureSpeechConfig, language: string) {
   const url = new URL(
     `https://${config.region}.stt.speech.microsoft.com/speech/recognition/conversation/cognitiveservices/v1`
   );

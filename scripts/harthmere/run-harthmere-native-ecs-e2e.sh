@@ -47,17 +47,25 @@ echo "== Visible frontend interaction contracts =="
   src/client/components/biomes_ui/__tests__/InventoryTab.actions.browser.test.tsx \
   src/client/components/biomes_ui/__tests__/InventoryTab.fullStack.test.tsx \
   src/client/components/biomes_ui/__tests__/FarmingTab.test.tsx \
+  src/client/components/biomes_ui/__tests__/mapQuestMainQuest.test.tsx \
   src/client/components/biomes_ui/hotbar/hotbarAction.test.ts \
   src/client/components/biomes_ui/hotbar/nativeHotbarActions.test.ts \
   src/client/components/biomes_ui/adapters/__tests__/nativeQuestMapAdapter.test.ts \
+  src/client/components/biomes_ui/adapters/__tests__/mainQuestSelection.test.ts \
+  src/client/components/biomes_ui/adapters/__tests__/farmingMapQuest.test.ts \
+  src/client/components/biomes_ui/adapters/__tests__/mapAdapter.test.ts \
   src/client/components/biomes_ui/adapters/__tests__/jobsBoardQuestMapAdapter.test.ts \
   src/client/components/biomes_ui/adapters/__tests__/questProjectionDedupe.test.ts \
+  src/client/components/challenges/harthmereGatheringNodeWorldInteraction.test.ts \
   src/client/components/harthmere_jobs_board/__tests__/HarthmereJobsBoardPanel.keyboard.test.tsx \
   src/client/components/harthmere_jobs_board/__tests__/jobsBoardLiveAdapter.test.ts \
   src/client/components/harthmere_jobs_board/__tests__/jobsBoardInteractionPriority.test.ts \
+  src/client/components/test/harthmere_live_fetch_coalesce.test.ts \
   src/client/util/nux/state_machines.test.ts \
   src/shared/harthmere/test/world_object_f_interaction_all_props.test.ts \
   src/shared/harthmere/test/harthmere_world_object_inspectable.test.ts \
+  src/shared/harthmere/test/gathering_node_authority.test.ts \
+  src/shared/harthmere/test/harthmere_item_source_reachability.test.ts \
   src/shared/harthmere/test/world_object_interaction_authority.test.ts
 
 echo "== Native ECS handler and authority contracts =="
@@ -75,9 +83,12 @@ echo "== Native ECS handler and authority contracts =="
   src/server/logic/test/harthmere_npc_hit.test.ts \
   src/server/logic/test/harthmere_placeable_transaction.test.ts \
   src/server/logic/test/inventory.test.ts \
+  src/server/shared/triggers/test/challenge_claim_rewards_roundtrip.test.ts \
   src/server/shared/triggers/test/native_road_ahead_inventory_triggers.test.ts \
+  src/server/shared/triggers/test/native_robot_story_continuation.test.ts \
   src/server/harthmere/test/native_vitals_scheduler.test.ts \
   src/server/harthmere/test/native_vitals_environment.test.ts \
+  src/server/harthmere/test/live_mode_escort_scheduler.test.ts \
   src/shared/npc/behavior/test/chase_attack_logic.test.ts \
   src/shared/harthmere/test/harthmere_native_combat.test.ts \
   src/shared/harthmere/test/harthmere_native_vitals.test.ts \
@@ -89,6 +100,9 @@ echo "== Native ECS handler and authority contracts =="
   src/shared/harthmere/test/mmo_inventory_authority.test.ts \
   src/shared/harthmere/test/mmo_inventory_loot_authority.test.ts \
   src/shared/harthmere/test/mmo_jobs_board_authority.test.ts \
+  src/shared/harthmere/test/mmo_jobs_board_auto_seed.test.ts \
+  src/shared/harthmere/test/harthmere_native_bikkie_items.test.ts \
+  src/shared/harthmere/test/live_mode_native_actor_binding.test.ts \
   src/client/game/glitch/harthmere_cloud_save_restore_policy.test.ts \
   src/client/game/glitch/test/harthmere_glitch_identity_normalization.test.ts \
   src/client/util/storage/__tests__/glitch_cloud_save_transport.test.ts \
@@ -106,3 +120,9 @@ fi
 
 echo "== Browser -> logic -> native ECS -> sync round trips =="
 node scripts/harthmere/test-harthmere-native-ecs-roundtrip-e2e.cjs
+
+if [ "${HARTHMERE_NATIVE_ECS_E2E_SKIP_EXHAUSTIVE_ROBOT_STORY:-0}" != "1" ]; then
+  echo "== Exhaustive Busted -> Get the Muck Out -> Muck vs. Machine round trip =="
+  HARTHMERE_E2E_ROBOT_STORY_EXHAUSTIVE=1 \
+    node scripts/harthmere/test-harthmere-native-ecs-roundtrip-e2e.cjs
+fi

@@ -184,6 +184,14 @@ import {
 import { buildNativeFarmingInterfaceModel } from "./nativeFarmingInterfaceAdapter";
 import { buildBiomesUIMapAdapter } from "./mapLiveAdapter";
 import {
+  HARTHMERE_HOE_QUEST_EVENT,
+  HARTHMERE_HOE_VENDOR_MARKER_ID,
+  acceptHarthmereHoeQuest,
+  harthmereHoeQuestMapLandmarks,
+  reconcileHarthmereHoeQuestState,
+  type HarthmereHoeQuestState,
+} from "@/client/components/biomes_ui/adapters/farmingMapQuest";
+import {
   HARTHMERE_PROPERTY_BUILDING_STATE_EVENT,
   type HarthmerePropertyMapBuildingState,
 } from "./propertyMapMarkers";
@@ -2014,6 +2022,10 @@ export function useBiomesUILiveAdapters({
       ?.value ?? [];
   const nativeQuestBundles = reactResources.use("/challenges/all");
   const [snapshotRevision, setSnapshotRevision] = React.useState(0);
+  const [hoeQuestState, setHoeQuestState] =
+    React.useState<HarthmereHoeQuestState>("loading");
+  const [harthmereInventoryRevision, setHarthmereInventoryRevision] =
+    React.useState(0);
   const roadAheadChallengeStepHints = React.useMemo(
     () => [
       ...(resources.cached("/challenges/active_leaves") ?? []),
@@ -2035,8 +2047,43 @@ export function useBiomesUILiveAdapters({
       setSnapshotRevision((value) => value + 1);
     }
   }, [roadAheadChallengeStepHints]);
-  const [harthmereInventoryRevision, setHarthmereInventoryRevision] =
-    React.useState(0);
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    const synchronizeHoeQuest = () => {
+      const farmingModel = buildNativeFarmingInterfaceModel({
+        userId,
+        inventory,
+        entities: clientContext.table.contents(),
+      });
+      const next = reconcileHarthmereHoeQuestState(userId, farmingModel.hasHoe);
+      setHoeQuestState(next);
+      if (
+        next === "completed" &&
+        readActiveBiomesUIMapPin()?.markerId === HARTHMERE_HOE_VENDOR_MARKER_ID
+      ) {
+        writeActiveBiomesUIMapPin(undefined);
+      }
+    };
+    synchronizeHoeQuest();
+    window.addEventListener(HARTHMERE_HOE_QUEST_EVENT, synchronizeHoeQuest);
+    window.addEventListener("storage", synchronizeHoeQuest);
+    return () => {
+      window.removeEventListener(
+        HARTHMERE_HOE_QUEST_EVENT,
+        synchronizeHoeQuest
+      );
+      window.removeEventListener("storage", synchronizeHoeQuest);
+    };
+  }, [
+    clientContext,
+    harthmereInventoryRevision,
+    inventory?.hotbar,
+    inventory?.items,
+    inventory?.overflow,
+    snapshotRevision,
+    userId,
+  ]);
   // Tab-shortcut rebindings from the Options tab, persisted to localStorage and
   // fed back to BiomesUI as shortcutOverrides so the rebinds actually open tabs.
   const [tabShortcuts, setTabShortcuts] = React.useState<TabShortcut[]>(() =>
@@ -3215,6 +3262,13 @@ export function useBiomesUILiveAdapters({
       }
       return undefined;
     })();
+    const getNativeFarmingModel = () =>
+      buildNativeFarmingInterfaceModel({
+        userId,
+        inventory,
+        entities: clientContext.table.contents(),
+        playerPosition: playerWorldPos,
+      });
 
     const publishSwap = (src: InventoryUiRef, dst: InventoryUiRef) => {
       try {
@@ -4650,13 +4704,22 @@ export function useBiomesUILiveAdapters({
       },
       inventory: inventoryAdapter,
       farming: {
-        getModel: () =>
-          buildNativeFarmingInterfaceModel({
-            userId,
-            inventory,
-            entities: clientContext.table.contents(),
-            playerPosition: playerWorldPos,
-          }),
+        getModel: getNativeFarmingModel,
+        getHoeQuestState: () => hoeQuestState,
+        addHoeQuest: () => {
+          const next = acceptHarthmereHoeQuest(userId);
+          setHoeQuestState(next);
+          const landmark = harthmereHoeQuestMapLandmarks(next)[0];
+          if (!landmark) return;
+          const pin = activeBiomesUIMapPinFromMarkerForTest({
+            id: landmark.id,
+            label: landmark.label,
+            kind: landmark.kind,
+            worldPosition: [...landmark.position],
+            description: landmark.description,
+          });
+          if (pin) writeActiveBiomesUIMapPin(pin);
+        },
       },
       inbox: inboxAdapter,
       loot: lootAdapter,
@@ -4750,7 +4813,11 @@ export function useBiomesUILiveAdapters({
         liveQuestState,
         buildingState,
         roadAheadChallengeStepHints,
-        nativeQuestBundles
+        nativeQuestBundles,
+        {
+          getModel: getNativeFarmingModel,
+          hoeQuestState,
+        }
       ),
       questInvites: questInvitesAdapter,
       guilds: guildAdapter,
@@ -4905,6 +4972,7 @@ export function useBiomesUILiveAdapters({
     guildHydrated,
     guildState,
     gardenHose,
+    hoeQuestState,
     harthmereInventoryRevision,
     inventoryLootHydrated,
     inventoryLootState,

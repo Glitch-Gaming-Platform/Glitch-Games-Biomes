@@ -1,5 +1,5 @@
 // GENERATED: This file is generated from lazy.ts.j2. Do not modify directly.
-// Content Hash: 8050b6be3b3ae22cb20ccfad90ff775d
+// Content Hash: 108656208ef19273c5be744051c5adf3
 
 import { LazyComponentData, LazyEntityLike, LazyLikeWith } from "@/server/shared/ecs/lazy_base";
 import * as c from "@/shared/ecs/gen/components";
@@ -337,6 +337,9 @@ abstract class BaseLazyEntityDelta<SuperT, OutT> extends LazyEntityLike<SuperT, 
     } return true;
     case 155: {
       this.decode("harthmere_material_storage", value, j.HarthmereMaterialStorageSerde.deserialize);
+    } return true;
+    case 156: {
+      this.decode("npc_combat_state", value, j.NpcCombatStateSerde.deserialize);
     } return true;
     }
     return false;
@@ -2268,6 +2271,24 @@ abstract class BaseLazyEntityDelta<SuperT, OutT> extends LazyEntityLike<SuperT, 
     this.harthmereMaterialStorage = () => this.decoded.harthmere_material_storage as c.ReadonlyHarthmereMaterialStorage | null | undefined;
     return this.harthmereMaterialStorage();
   }
+  altersNpcCombatState(): boolean {
+    return (
+      (this.encoded && this.encoded[156] !== undefined) ||
+      this.decoded.npc_combat_state !== undefined
+    );
+  }
+
+  hasNpcCombatState(): boolean {
+    return (this.encoded && !!this.encoded[156]) || !!this.decoded.npc_combat_state;
+  }
+
+  npcCombatState(): c.ReadonlyNpcCombatState | null | undefined {
+    this.decode("npc_combat_state",
+      this.encoded?.[156],
+      j.NpcCombatStateSerde.deserialize);
+    this.npcCombatState = () => this.decoded.npc_combat_state as c.ReadonlyNpcCombatState | null | undefined;
+    return this.npcCombatState();
+  }
 }
 
 export class LazyEntityDelta extends BaseLazyEntityDelta<LazyEntityDelta, LazyEntityDelta> {
@@ -3083,6 +3104,13 @@ export class LazyEntity extends BaseLazyEntityDelta<SuperLazyEntity, LazyEntity>
   harthmereMaterialStorage(): c.ReadonlyHarthmereMaterialStorage | undefined {
     return super.harthmereMaterialStorage() as c.ReadonlyHarthmereMaterialStorage | undefined;
   }
+  hasNpcCombatState(): this is LazyEntityWith<"npc_combat_state"> {
+    return super.hasNpcCombatState();
+  }
+
+  npcCombatState(): c.ReadonlyNpcCombatState | undefined {
+    return super.npcCombatState() as c.ReadonlyNpcCombatState | undefined;
+  }
 }
 
 export interface SuperLazyEntity {
@@ -3194,6 +3222,7 @@ export interface SuperLazyEntity {
   giftGiver(): c.ReadonlyGiftGiver;
   harthmereEcsTransactionLedger(): c.ReadonlyHarthmereEcsTransactionLedger;
   harthmereMaterialStorage(): c.ReadonlyHarthmereMaterialStorage;
+  npcCombatState(): c.ReadonlyNpcCombatState;
 }
 
 export type LazyEntityWith<C extends keyof ReadonlyEntity> = LazyLikeWith<C, SuperLazyEntity, LazyEntity>;
@@ -3868,6 +3897,12 @@ export class LazyEntityBackedDelta extends Delta {
       return this.delta.harthmere_material_storage ?? undefined;
     }
     return this.entity.harthmereMaterialStorage();
+  }
+  npcCombatState(): c.ReadonlyNpcCombatState | undefined {
+    if (this.delta?.npc_combat_state !== undefined) {
+      return this.delta.npc_combat_state ?? undefined;
+    }
+    return this.entity.npcCombatState();
   }
 }
 
@@ -4655,6 +4690,13 @@ export class PatchableLazyEntity extends Delta {
     }
     this.readComponentIds.add(155);
     return this.entity.harthmereMaterialStorage();
+  }
+  npcCombatState(): c.ReadonlyNpcCombatState | undefined {
+    if (this.delta?.npc_combat_state !== undefined) {
+      return this.delta.npc_combat_state ?? undefined;
+    }
+    this.readComponentIds.add(156);
+    return this.entity.npcCombatState();
   }
 
   finish(): AsDelta<Entity> | undefined {

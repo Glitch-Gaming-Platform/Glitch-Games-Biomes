@@ -16,12 +16,64 @@ import { BikkieIds } from "@/shared/bikkie/ids";
  * migrate old client-only mirrors without inventing progress.
  */
 export const NATIVE_ROAD_AHEAD_QUEST_ID = 6193612340426932 as BiomesId;
+export const NATIVE_BUSTED_QUEST_ID = 7405046529843322 as BiomesId;
+export const NATIVE_GET_THE_MUCK_OUT_QUEST_ID = 817959262145055 as BiomesId;
+export const NATIVE_MUCK_VS_MACHINE_QUEST_ID = 5739496793885069 as BiomesId;
+
+/**
+ * Original May 16 main-story order, ending with the assembled robot reward.
+ * Road Ahead is giver-less and already auto-starts in the stock trigger
+ * engine. Busted and Get the Muck Out have Jackie as their authored giver, but
+ * this restored build deliberately continues them without a second acceptance
+ * click so the onboarding story cannot appear to stop between chapters.
+ */
+export const NATIVE_ROBOT_STORY_QUEST_IDS = Object.freeze([
+  NATIVE_ROAD_AHEAD_QUEST_ID,
+  NATIVE_BUSTED_QUEST_ID,
+  NATIVE_GET_THE_MUCK_OUT_QUEST_ID,
+  NATIVE_MUCK_VS_MACHINE_QUEST_ID,
+]);
+
+const NATIVE_ROBOT_STORY_AUTO_CONTINUATION_IDS = new Set<BiomesId>([
+  NATIVE_BUSTED_QUEST_ID,
+  NATIVE_GET_THE_MUCK_OUT_QUEST_ID,
+  NATIVE_MUCK_VS_MACHINE_QUEST_ID,
+]);
+
+export function isNativeRobotStoryAutoContinuationQuestId(id: BiomesId) {
+  return NATIVE_ROBOT_STORY_AUTO_CONTINUATION_IDS.has(id);
+}
+
+export function nativeRobotStoryQuestOrder(id: unknown) {
+  return NATIVE_ROBOT_STORY_QUEST_IDS.findIndex(
+    (questId) => Number(questId) === Number(id)
+  );
+}
+
+export function nativeRobotStoryPredecessorQuestId(id: unknown) {
+  const order = nativeRobotStoryQuestOrder(id);
+  return order > 0 ? NATIVE_ROBOT_STORY_QUEST_IDS[order - 1] : undefined;
+}
 
 /** Server-only marker placed on invisible, per-player quest inventories. */
 export const NATIVE_ROAD_AHEAD_PRIVATE_CONTAINER_DESCRIPTION =
   "native-road-ahead-private-container-v1";
 
 export const NATIVE_ROAD_AHEAD_MUCKWAD_ITEM_ID = 4603863378554668 as BiomesId;
+
+/**
+ * The original Busted quest uses the sunken-ship chest as a physical reward
+ * claim. Keep its world identity and reward identity together so the container
+ * API, inventory transaction, and trigger claim cannot drift independently.
+ */
+export const NATIVE_BUSTED_UNDERWATER_CONTAINER_SPEC = Object.freeze({
+  labels: ["chest the grove underwater main"],
+  sourceEntityId: 4149747832010135 as BiomesId,
+  placeableItemId: 5979991977107628 as BiomesId,
+  stepId: 6798640337192760 as BiomesId,
+  itemId: 7077725005403292 as BiomesId,
+  returnNpcTypeId: 2345000310921173 as BiomesId,
+});
 
 export const NATIVE_ROAD_AHEAD_STEP_IDS = {
   TALK_TO_JACKIE: 3960245896803219 as BiomesId,
@@ -60,6 +112,74 @@ export const NATIVE_ROAD_AHEAD_ORDERED_STEP_IDS = Object.freeze([
   NATIVE_ROAD_AHEAD_STEP_IDS.TAKE_SELFIE_WITH_BILLY,
   NATIVE_ROAD_AHEAD_STEP_IDS.RETURN_ROBOT_SHELL_TO_JACKIE,
 ]);
+
+export const NATIVE_ROBOT_STORY_ITEM_IDS = Object.freeze({
+  ROBOT_SHELL: 5883518264640730 as BiomesId,
+  ROBOT_MOTOR_UNIT: 1445038393184935 as BiomesId,
+  ROBOT_POWER_SUPPLY: 8767393169474251 as BiomesId,
+  ASSEMBLED_ROBOT: 567816707675895 as BiomesId,
+});
+
+/** Full trigger-node state fixtures used by the browser round-trip release gate. */
+export const NATIVE_ROBOT_STORY_FINAL_HANDOFFS = Object.freeze({
+  roadAhead: {
+    questId: NATIVE_ROAD_AHEAD_QUEST_ID,
+    finalStepId: NATIVE_ROAD_AHEAD_STEP_IDS.RETURN_ROBOT_SHELL_TO_JACKIE,
+    targetId: 8997551883502307 as BiomesId,
+    prerequisiteTriggerIds: [
+      NATIVE_ROAD_AHEAD_STEP_IDS.TALK_TO_JACKIE,
+      NATIVE_ROAD_AHEAD_STEP_IDS.MEET_BILLY,
+      NATIVE_ROAD_AHEAD_STEP_IDS.FIND_MUCKWAD,
+      NATIVE_ROAD_AHEAD_STEP_IDS.COLLECT_SIX_MUCKWAD,
+      NATIVE_ROAD_AHEAD_STEP_IDS.RETURN_MUCKWAD_TO_BILLY,
+      NATIVE_ROAD_AHEAD_STEP_IDS.FIND_CLOTHING_CRATE,
+      NATIVE_ROAD_AHEAD_STEP_IDS.CHOOSE_TOP,
+      NATIVE_ROAD_AHEAD_STEP_IDS.CHOOSE_BOTTOMS,
+      5261262819224626 as BiomesId,
+      5059357120988468 as BiomesId,
+      NATIVE_ROAD_AHEAD_STEP_IDS.WEAR_TOP_AND_BOTTOMS,
+      NATIVE_ROAD_AHEAD_STEP_IDS.RETURN_TO_BILLY_DRESSED,
+      NATIVE_ROAD_AHEAD_STEP_IDS.OPEN_BILLYS_BAG,
+      NATIVE_ROAD_AHEAD_STEP_IDS.RETURN_BILLYS_PICK,
+      NATIVE_ROAD_AHEAD_STEP_IDS.RECEIVE_ROBOT_SHELL,
+      NATIVE_ROAD_AHEAD_STEP_IDS.RECEIVE_CAMERA,
+      NATIVE_ROAD_AHEAD_STEP_IDS.TAKE_SELFIE_WITH_BILLY,
+    ],
+  },
+  busted: {
+    questId: NATIVE_BUSTED_QUEST_ID,
+    finalStepId: 2564822555755950 as BiomesId,
+    targetId: 8997551883502307 as BiomesId,
+    prerequisiteTriggerIds: [
+      310783173745175, 859994236864492, 3346948724689018, 6798640337192760,
+      3106453541468841, 1250712772360777, 275639178491846, 6436863915440094,
+      4588014125793446, 3014114416679179, 6113676978673631, 7852960194875109,
+      7945988417612118, 2605479334585778, 8417331412810011, 1815083990296399,
+      7368524338732157, 5355669237856170, 3488902901607828, 6548497782720315,
+      1517393677536172, 6620853067071453, 7134920134933805,
+    ] as BiomesId[],
+  },
+  getTheMuckOut: {
+    questId: NATIVE_GET_THE_MUCK_OUT_QUEST_ID,
+    finalStepId: 3822426307564741 as BiomesId,
+    targetId: 7814370709884466 as BiomesId,
+    prerequisiteTriggerIds: [
+      7850203803086744, 1488451563795571, 2465592451503042, 4794743509650569,
+      2185129587403168, 2163078453122381, 8726047292702638, 8381498319603962,
+      3688052208056569, 1177668390064029, 7507033025879660, 1467778625409403,
+      7339582224957377, 6297666130307789,
+    ] as BiomesId[],
+  },
+  muckVsMachine: {
+    questId: NATIVE_MUCK_VS_MACHINE_QUEST_ID,
+    finalStepId: 731822018871376 as BiomesId,
+    targetId: 7976997825186729 as BiomesId,
+    prerequisiteTriggerIds: [
+      7515302201234813 as BiomesId,
+      4851249541237155 as BiomesId,
+    ],
+  },
+});
 
 /**
  * Synthetic Road Ahead is retained only as an explicit developer diagnostic.
@@ -114,21 +234,23 @@ export const NATIVE_ROAD_AHEAD_CONTAINER_SPECS = Object.freeze({
     choices: [
       {
         stepId: NATIVE_ROAD_AHEAD_STEP_IDS.CHOOSE_TOP,
-        seedItemId: BikkieIds.muckyTop,
+        seedItemId: 4537020877770135 as BiomesId,
         itemIds: [
           4537020877770135 as BiomesId,
           6561590643697708 as BiomesId,
           1152171766050944 as BiomesId,
         ],
+        legacyItemIds: [BikkieIds.muckyTop],
       },
       {
         stepId: NATIVE_ROAD_AHEAD_STEP_IDS.CHOOSE_BOTTOMS,
-        seedItemId: BikkieIds.muckySkirt,
+        seedItemId: 1534621126189793 as BiomesId,
         itemIds: [
           1534621126189793 as BiomesId,
           6407921801695863 as BiomesId,
           2512451111844299 as BiomesId,
         ],
+        legacyItemIds: [BikkieIds.muckySkirt],
       },
     ],
   },
@@ -141,6 +263,7 @@ export const NATIVE_ROAD_AHEAD_CONTAINER_SPECS = Object.freeze({
         stepId: NATIVE_ROAD_AHEAD_STEP_IDS.OPEN_BILLYS_BAG,
         seedItemId: 4155260615577796 as BiomesId,
         itemIds: [4155260615577796 as BiomesId],
+        legacyItemIds: [],
       },
     ],
   },
@@ -153,6 +276,31 @@ function normalizedQuestObjectLabel(label?: string | null) {
   return String(label ?? "")
     .trim()
     .toLowerCase();
+}
+
+export function isNativeBustedUnderwaterContainerLabel(label?: string | null) {
+  return (
+    NATIVE_BUSTED_UNDERWATER_CONTAINER_SPEC.labels as readonly string[]
+  ).includes(normalizedQuestObjectLabel(label));
+}
+
+export function nativeBustedUnderwaterContainerClaimForItem(
+  label: string | null | undefined,
+  itemId: BiomesId
+) {
+  if (
+    !isNativeBustedUnderwaterContainerLabel(label) ||
+    itemId !== NATIVE_BUSTED_UNDERWATER_CONTAINER_SPEC.itemId
+  ) {
+    return undefined;
+  }
+  return {
+    challengeId: NATIVE_BUSTED_QUEST_ID,
+    sourceEntityId: NATIVE_BUSTED_UNDERWATER_CONTAINER_SPEC.sourceEntityId,
+    placeableItemId: NATIVE_BUSTED_UNDERWATER_CONTAINER_SPEC.placeableItemId,
+    stepId: NATIVE_BUSTED_UNDERWATER_CONTAINER_SPEC.stepId,
+    chosenRewardIndex: 0,
+  } as const;
 }
 
 /** Resolve a quest container without relying on the generic crate regex. */
@@ -172,10 +320,10 @@ export function isNativeRoadAheadQuestObjectLabel(label?: string | null) {
   return Boolean(nativeRoadAheadContainerSpecForLabel(label));
 }
 
-/** Flattened seed list used by each player's private native ECS container. */
+/** Flattened authored choices used by each player's private native container. */
 export function nativeRoadAheadContainerItemIds(label?: string | null) {
-  return nativeRoadAheadContainerSpecForLabel(label)?.choices.map(
-    (choice) => choice.seedItemId
+  return nativeRoadAheadContainerSpecForLabel(label)?.choices.flatMap(
+    (choice) => choice.itemIds
   );
 }
 
@@ -194,21 +342,24 @@ export function nativeRoadAheadContainerClaimForItem(
     const originalRewardIndex = (choice.itemIds as readonly BiomesId[]).indexOf(
       itemId
     );
-    // The current native mesh uses Mucky Top/Skirt identities while the May 16
-    // claim leaf lists older reward alternatives. Map the native migration item
-    // to option zero; skipRewardGrant prevents the old item from being minted.
+    const legacyRewardIndex = (
+      choice.legacyItemIds as readonly BiomesId[]
+    ).indexOf(itemId);
+    // Containers materialized before the snapshot-parity repair may still hold
+    // Mucky Top/Skirt. Keep those claims valid as option zero while new crates
+    // expose the snapshot's actual T-shirt and Jeans choices.
     const chosenRewardIndex =
-      itemId === choice.seedItemId ? 0 : originalRewardIndex;
+      originalRewardIndex >= 0
+        ? originalRewardIndex
+        : legacyRewardIndex >= 0
+        ? 0
+        : -1;
     if (chosenRewardIndex >= 0) {
       return {
         sourceEntityId: spec.sourceEntityId,
         placeableItemId: spec.placeableItemId,
         stepId: choice.stepId,
         chosenRewardIndex,
-        siblingItemIds: [
-          choice.seedItemId,
-          ...(choice.itemIds as readonly BiomesId[]),
-        ],
       };
     }
   }

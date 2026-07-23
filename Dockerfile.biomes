@@ -281,6 +281,9 @@ COPY --chown=nextjs:nodejs public/textures/ public/textures/
 COPY --chown=nextjs:nodejs public/hud/ public/hud/
 COPY --chown=nextjs:nodejs public/pwa/ public/pwa/
 COPY --chown=nextjs:nodejs public/quests/ public/quests/
+# Committed NPC recordings are a production fast path. Runtime-generated audio
+# is returned inline, so only the reviewed current catalog ships in this layer.
+COPY --chown=nextjs:nodejs public/harthmere/voices/generated/current/ public/harthmere/voices/generated/current/
 COPY --chown=nextjs:nodejs public/harthmere-debug/ public/harthmere-debug/
 COPY --chown=nextjs:nodejs src/ src/
 COPY --chown=nextjs:nodejs deploy/ deploy/

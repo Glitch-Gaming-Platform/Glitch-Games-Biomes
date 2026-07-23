@@ -1,12 +1,15 @@
 import * as React from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
+import type { HarthmereHoeQuestState } from "@/client/components/biomes_ui/adapters/farmingMapQuest";
 import type {
   NativeFarmingInterfaceModel,
   NativeFarmingPlantView,
-} from "../adapters/nativeFarmingInterfaceAdapter";
+} from "@/client/components/biomes_ui/adapters/nativeFarmingInterfaceAdapter";
 
 export interface FarmingTabAdapter {
   getModel?: () => NativeFarmingInterfaceModel;
+  getHoeQuestState?: () => HarthmereHoeQuestState;
+  addHoeQuest?: () => void;
 }
 
 const EMPTY_MODEL: NativeFarmingInterfaceModel = {
@@ -18,7 +21,7 @@ const EMPTY_MODEL: NativeFarmingInterfaceModel = {
 };
 
 function timeUntil(timestamp: number | undefined, now: number) {
-  if (!timestamp) return undefined;
+  if (!timestamp || now <= 0) return undefined;
   const seconds = Math.max(0, Math.ceil(timestamp - now));
   if (seconds < 60) return "less than a minute";
   const minutes = Math.ceil(seconds / 60);
@@ -87,17 +90,17 @@ const Meter: React.FunctionComponent<{
 export const FarmingTab: React.FunctionComponent<{
   adapter?: FarmingTabAdapter;
 }> = ({ adapter }) => {
-  const [now, setNow] = useState(() => Date.now() / 1000);
+  // Keep server/client first render deterministic; the real clock begins after
+  // hydration so crop countdowns cannot trigger a React hydration mismatch.
+  const [now, setNow] = useState(0);
   useEffect(() => {
+    setNow(Date.now() / 1000);
     const timer = window.setInterval(() => setNow(Date.now() / 1000), 1000);
     return () => window.clearInterval(timer);
   }, []);
   const model = adapter?.getModel?.() ?? EMPTY_MODEL;
-  const ownedPlants = useMemo(
-    () => model.plants.filter((plant) => plant.ownedByPlayer),
-    [model.plants]
-  );
-  const visiblePlants = ownedPlants.length ? ownedPlants : model.plants;
+  const visiblePlants = model.plants;
+  const hoeQuestState = adapter?.getHoeQuestState?.() ?? "loading";
 
   const steps = [
     [
@@ -202,6 +205,43 @@ export const FarmingTab: React.FunctionComponent<{
                 {icon} {label} · {ready ? "Ready" : "Needed"}
               </span>
             ))}
+            {!model.hasHoe && hoeQuestState === "available" ? (
+              <button
+                type="button"
+                data-testid="farming-buy-hoe-quest"
+                onClick={() => adapter?.addHoeQuest?.()}
+                style={{
+                  padding: "7px 10px",
+                  border: "1px solid rgba(255,218,92,0.72)",
+                  borderRadius: 7,
+                  background: "rgba(120,77,13,0.72)",
+                  color: "#fff0a4",
+                  cursor: "pointer",
+                  fontSize: 11,
+                  fontWeight: 800,
+                  letterSpacing: "0.04em",
+                  opacity: Math.floor(now) % 2 === 0 ? 1 : 0.45,
+                  transition: "opacity 180ms ease",
+                }}
+              >
+                Buy A Hoe
+              </button>
+            ) : !model.hasHoe && hoeQuestState === "active" ? (
+              <span
+                data-testid="farming-buy-hoe-quest-added"
+                style={{
+                  padding: "7px 10px",
+                  border: "1px solid rgba(126,213,255,0.45)",
+                  borderRadius: 7,
+                  background: "rgba(25,88,119,0.4)",
+                  color: "#bcecff",
+                  fontSize: 11,
+                  fontWeight: 700,
+                }}
+              >
+                Buy A Hoe Quest Added
+              </span>
+            ) : null}
           </div>
         </div>
         <div

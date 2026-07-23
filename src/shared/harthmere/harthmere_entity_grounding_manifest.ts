@@ -107,6 +107,14 @@ export const HARTHMERE_GROUNDED_ENTITY_REGISTRY: readonly HarthmereGroundedEntit
         "Owners (9601+), customers (9701+), and seeded crafting stations use the nearest roofed floor. The deploy gate repairs NPCs and objects without moving player-authored placeables.",
     },
     {
+      kind: "gathering_nodes_and_item_source_markers",
+      status: "terrain_grounded",
+      where:
+        "src/shared/harthmere/gathering_node_authority.ts, gathering_node_terrain_positions.ts, and scripts/harthmere/probe-production-terrain-grounding.cjs",
+      notes:
+        "Town gathering nodes shift into the additive extension at feet Y=53. Deep-wilds nodes retain original-map X/Z and use production-probed hill heights; map guidance, browser prompts, native range checks, and ECS drops share those positions.",
+    },
+    {
       kind: "quest_items_drops",
       status: "terrain_grounded",
       where: "src/client/game/resources/drops.ts (makeDrop)",

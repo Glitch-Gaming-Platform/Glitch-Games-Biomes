@@ -46,8 +46,11 @@ import {
 import { CONTAINER_ACCESS_ACL_ACTION } from "@/shared/game/container_access";
 import { stringToItemBag } from "@/shared/game/items_serde";
 import {
+  nativeBustedUnderwaterContainerClaimForItem,
   nativeRoadAheadContainerClaimForItem,
   nativeRoadAheadContainerSpecForLabel,
+  NATIVE_BUSTED_QUEST_ID,
+  NATIVE_BUSTED_UNDERWATER_CONTAINER_SPEC,
   NATIVE_ROAD_AHEAD_PRIVATE_CONTAINER_DESCRIPTION,
   NATIVE_ROAD_AHEAD_QUEST_ID,
 } from "@/shared/harthmere/native_road_ahead_contract";
@@ -141,6 +144,16 @@ function checkInventoryPermissions(
     );
   }
 
+  if (isOwnedBustedUnderwaterQuestContainer(player, entity)) {
+    const containerPosition = entity.staleOk().position()?.v;
+    const playerPosition = player.staleOk().position()?.v;
+    return Boolean(
+      containerPosition &&
+        playerPosition &&
+        dist(containerPosition, playerPosition) <= CONFIG.gameMaxTalkDistance
+    );
+  }
+
   const placeableComponent = entity.placeableComponent();
   if (placeableComponent) {
     // Moving items through a storage placeable is an interaction. Destruction
@@ -164,6 +177,24 @@ function isOwnedRoadAheadQuestContainer(
       entity.entityDescription()?.text ===
         NATIVE_ROAD_AHEAD_PRIVATE_CONTAINER_DESCRIPTION &&
       nativeRoadAheadContainerSpecForLabel(entity.label()?.text)
+  );
+}
+
+function isOwnedBustedUnderwaterQuestContainer(
+  player: ReadonlyDeltaWith<"id">,
+  entity: ReadonlyDeltaWith<"id">
+) {
+  return Boolean(
+    !entity.placeableComponent() &&
+      entity.containerInventory() &&
+      entity.questGiver() &&
+      entity.createdBy()?.id === player.id &&
+      entity.entityDescription()?.text ===
+        NATIVE_ROAD_AHEAD_PRIVATE_CONTAINER_DESCRIPTION &&
+      nativeBustedUnderwaterContainerClaimForItem(
+        entity.label()?.text,
+        NATIVE_BUSTED_UNDERWATER_CONTAINER_SPEC.itemId
+      )
   );
 }
 
@@ -221,35 +252,11 @@ function prepareRoadAheadContainerClaim(
 }
 
 function finishRoadAheadContainerClaim(
-  src: WithInventory,
   player: ReadonlyDeltaWith<"id">,
   prepared: ReturnType<typeof prepareRoadAheadContainerClaim>,
-  context: EventContext<InvolvedSpecification>,
-  preserveSourceRef?: ReadonlyOwnedItemReference
+  context: EventContext<InvolvedSpecification>
 ) {
   if (!prepared || prepared.alreadyCompleted) return;
-
-  // A reward group is a choice, not a loot-all list. Clear the unchosen top or
-  // bottoms atomically with the transfer so concurrent drags cannot duplicate
-  // alternatives or race quest progression.
-  const siblingIds = new Set<ReadonlyBiomesId>(prepared.claim.siblingItemIds);
-  const slots = src.delta().containerInventory()?.items ?? [];
-  for (let idx = 0; idx < slots.length; idx += 1) {
-    const ref = { kind: "item" as const, idx };
-    // A swap may put an item the player already owned into the source slot.
-    // Preserve that exact slot while removing only the untouched seeded
-    // alternatives elsewhere in the quest container.
-    if (
-      preserveSourceRef?.kind === "item" &&
-      preserveSourceRef.idx === ref.idx
-    ) {
-      continue;
-    }
-    const slot = src.inventory.get(ref);
-    if (slot && siblingIds.has(slot.item.id)) {
-      src.inventory.set(ref, undefined);
-    }
-  }
 
   context.publish({
     kind: "completeQuestStepAtEntity",
@@ -267,6 +274,72 @@ function finishRoadAheadContainerClaim(
   });
 }
 
+function prepareBustedUnderwaterContainerClaim(
+  src: WithInventory,
+  dst: WithInventory,
+  player: ReadonlyDeltaWith<"id">,
+  itemId: ReadonlyBiomesId
+) {
+  if (
+    dst.delta().id !== player.id ||
+    !isOwnedBustedUnderwaterQuestContainer(player, src.delta())
+  ) {
+    return undefined;
+  }
+  const claim = nativeBustedUnderwaterContainerClaimForItem(
+    src.delta().label()?.text,
+    itemId
+  );
+  if (!claim) return undefined;
+  const validation = validateClaimStep({
+    challengeId: claim.challengeId,
+    stepId: claim.stepId,
+    questTrigger: getBiscuit(NATIVE_BUSTED_QUEST_ID).trigger,
+    challenges: player.challenges(),
+    triggerStateForChallenge: player
+      .triggerState()
+      ?.by_root.get(NATIVE_BUSTED_QUEST_ID),
+    claimEntity: {
+      entityId: claim.sourceEntityId,
+      // The original reward leaf is authored against this return type rather
+      // than the physical chest entity. The exact chest identity was already
+      // validated when its private inventory was materialized.
+      npcTypeId: NATIVE_BUSTED_UNDERWATER_CONTAINER_SPEC.returnNpcTypeId,
+      placeableItemId: claim.placeableItemId,
+      isMyRobot: false,
+    },
+  });
+  if (!validation.ok) {
+    if (validation.reason === "step_already_completed") {
+      return { alreadyCompleted: true as const };
+    }
+    throw new RollbackError(
+      `Busted underwater container claim rejected: ${validation.reason}`
+    );
+  }
+  return { claim, validation, alreadyCompleted: false as const };
+}
+
+function finishBustedUnderwaterContainerClaim(
+  player: ReadonlyDeltaWith<"id">,
+  prepared: ReturnType<typeof prepareBustedUnderwaterContainerClaim>,
+  context: EventContext<InvolvedSpecification>
+) {
+  if (!prepared || prepared.alreadyCompleted) return;
+  context.publish({
+    kind: "completeQuestStepAtEntity",
+    challenge: prepared.claim.challengeId,
+    claimFromEntityId: canonicalClaimFromEntityId(
+      prepared.validation,
+      prepared.claim.sourceEntityId
+    ),
+    entityId: player.id,
+    chosenRewardIndex: prepared.claim.chosenRewardIndex,
+    stepId: prepared.claim.stepId,
+    skipRewardGrant: true,
+  });
+}
+
 const inventorySwapEventHandler = makeInventoryEventHandler<InventorySwapEvent>(
   "inventorySwapEvent",
   ({ src, dst, player }, event, context) => {
@@ -275,9 +348,13 @@ const inventorySwapEventHandler = makeInventoryEventHandler<InventorySwapEvent>(
     const prepared = a
       ? prepareRoadAheadContainerClaim(src, dst, player, a.item.id)
       : undefined;
+    const bustedPrepared = a
+      ? prepareBustedUnderwaterContainerClaim(src, dst, player, a.item.id)
+      : undefined;
     src.inventory.set(event.src, b);
     dst.inventory.set(event.dst, a);
-    finishRoadAheadContainerClaim(src, player, prepared, context, event.src);
+    finishRoadAheadContainerClaim(player, prepared, context);
+    finishBustedUnderwaterContainerClaim(player, bustedPrepared, context);
   }
 );
 
@@ -297,11 +374,18 @@ const inventoryCombineEventHandler =
         player,
         a.item.id
       );
+      const bustedPrepared = prepareBustedUnderwaterContainerClaim(
+        src,
+        dst,
+        player,
+        a.item.id
+      );
       if (!b) {
         // No destination, just move it.
         src.inventory.set(event.src, undefined);
         dst.inventory.set(event.dst, a);
-        finishRoadAheadContainerClaim(src, player, prepared, context);
+        finishRoadAheadContainerClaim(player, prepared, context);
+        finishBustedUnderwaterContainerClaim(player, bustedPrepared, context);
         return;
       }
 
@@ -319,7 +403,8 @@ const inventoryCombineEventHandler =
         ...a,
         count: a.count - event.count,
       });
-      finishRoadAheadContainerClaim(src, player, prepared, context);
+      finishRoadAheadContainerClaim(player, prepared, context);
+      finishBustedUnderwaterContainerClaim(player, bustedPrepared, context);
     }
   );
 

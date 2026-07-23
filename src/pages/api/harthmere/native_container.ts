@@ -23,10 +23,12 @@ import { GROVE_ECONOMY_STARTER_LANDMARKS } from "@/shared/harthmere/grove_econom
 import { harthmereContainerLootForLabel } from "@/shared/harthmere/harthmere_container_loot_authority";
 import { harthmereItemIdToBiomesId } from "@/shared/harthmere/harthmere_biomes_ecs_bridge";
 import {
+  isNativeBustedUnderwaterContainerLabel,
   isNativeRoadAheadQuestObjectLabel,
   nativeBiomesEcsAuthorityEnabled,
   nativeRoadAheadContainerSpecForLabel,
   nativeRoadAheadContainerItemIds,
+  NATIVE_BUSTED_UNDERWATER_CONTAINER_SPEC,
   NATIVE_ROAD_AHEAD_PRIVATE_CONTAINER_DESCRIPTION,
   type NativeRoadAheadContainerSpec,
 } from "@/shared/harthmere/native_road_ahead_contract";
@@ -144,11 +146,40 @@ async function allocatedRoadAheadContainerId(
     : undefined;
 }
 
+async function allocatedBustedUnderwaterContainerId(
+  sourceEntityId: BiomesId,
+  userId: BiomesId,
+  idGenerator: { next(): Promise<BiomesId> }
+) {
+  const key = nativeBustedUnderwaterContainerRedisKeyForTest(
+    sourceEntityId,
+    userId
+  );
+  const redis = await nativeContainerRedis();
+  let raw = await redis.primary.get(key);
+  if (!raw) {
+    const nextId = await idGenerator.next();
+    await redis.primary.set(key, String(nextId), "NX");
+    raw = await redis.primary.get(key);
+  }
+  const parsed = Number(raw);
+  return Number.isSafeInteger(parsed) && parsed > 0
+    ? (parsed as BiomesId)
+    : undefined;
+}
+
 export function nativeRoadAheadContainerRedisKeyForTest(
   sourceEntityId: BiomesId,
   userId: BiomesId
 ) {
   return `harthmere:native_road_ahead_container:${sourceEntityId}:${userId}`;
+}
+
+export function nativeBustedUnderwaterContainerRedisKeyForTest(
+  sourceEntityId: BiomesId,
+  userId: BiomesId
+) {
+  return `harthmere:native_busted_underwater_container:${sourceEntityId}:${userId}`;
 }
 
 export function seededNativeRoadAheadContainerInventoryForTest(label: string) {
@@ -222,6 +253,22 @@ export function validNativeRoadAheadContainerSourceForTest(input: {
   return validateNativeRoadAheadContainerSourceForTest(input).ok;
 }
 
+export function validNativeBustedUnderwaterContainerSourceForTest(input: {
+  entityId?: BiomesId;
+  label?: string | null;
+  questGiver: unknown;
+  placeableItemId?: BiomesId;
+}) {
+  return Boolean(
+    isNativeBustedUnderwaterContainerLabel(input.label) &&
+      input.entityId ===
+        NATIVE_BUSTED_UNDERWATER_CONTAINER_SPEC.sourceEntityId &&
+      input.questGiver &&
+      input.placeableItemId ===
+        NATIVE_BUSTED_UNDERWATER_CONTAINER_SPEC.placeableItemId
+  );
+}
+
 export default biomesApiHandler(
   {
     auth: "required",
@@ -256,34 +303,62 @@ export default biomesApiHandler(
         return { ok: false, error: "container_out_of_range" };
       }
 
-      if (isNativeRoadAheadQuestObjectLabel(label)) {
-        const sourceValidation = validateNativeRoadAheadContainerSourceForTest({
-          entityId: body.entityId,
-          label,
-          questGiver: target.questGiver(),
-          placeableItemId: target.placeableComponent()?.item_id,
-        });
-        if (!sourceValidation.ok) {
+      const roadAheadQuestContainer = isNativeRoadAheadQuestObjectLabel(label);
+      const bustedUnderwaterQuestContainer =
+        isNativeBustedUnderwaterContainerLabel(label);
+      if (roadAheadQuestContainer || bustedUnderwaterQuestContainer) {
+        const sourceValidation = roadAheadQuestContainer
+          ? validateNativeRoadAheadContainerSourceForTest({
+              entityId: body.entityId,
+              label,
+              questGiver: target.questGiver(),
+              placeableItemId: target.placeableComponent()?.item_id,
+            })
+          : undefined;
+        const validBustedSource = bustedUnderwaterQuestContainer
+          ? validNativeBustedUnderwaterContainerSourceForTest({
+              entityId: body.entityId,
+              label,
+              questGiver: target.questGiver(),
+              placeableItemId: target.placeableComponent()?.item_id,
+            })
+          : false;
+        if (
+          (roadAheadQuestContainer && !sourceValidation?.ok) ||
+          (bustedUnderwaterQuestContainer && !validBustedSource)
+        ) {
           // Labels are editable presentation data. Require all three native ECS
           // facts: concrete source entity, quest_giver, and placeable biscuit.
           // Keeping the IDs distinct prevents a valid snapshot prop from being
           // rejected while still blocking renamed frames and copied labels.
           log.warn("Rejected invalid native Road Ahead container source", {
-            reason: sourceValidation.reason,
+            reason: sourceValidation?.ok
+              ? undefined
+              : sourceValidation?.reason ?? "invalid_busted_source",
             sourceEntityId: body.entityId,
             label,
             hasQuestGiver: Boolean(target.questGiver()),
             placeableItemId: target.placeableComponent()?.item_id,
-            expectedSourceEntityId: sourceValidation.spec?.sourceEntityId,
-            expectedPlaceableItemId: sourceValidation.spec?.placeableItemId,
+            expectedSourceEntityId:
+              sourceValidation?.spec?.sourceEntityId ??
+              NATIVE_BUSTED_UNDERWATER_CONTAINER_SPEC.sourceEntityId,
+            expectedPlaceableItemId:
+              sourceValidation?.spec?.placeableItemId ??
+              NATIVE_BUSTED_UNDERWATER_CONTAINER_SPEC.placeableItemId,
           });
           return { ok: false, error: "invalid_native_quest_container" };
         }
-        const containerId = await allocatedRoadAheadContainerId(
-          body.entityId,
-          auth.userId,
-          idGenerator
-        );
+        const containerId = roadAheadQuestContainer
+          ? await allocatedRoadAheadContainerId(
+              body.entityId,
+              auth.userId,
+              idGenerator
+            )
+          : await allocatedBustedUnderwaterContainerId(
+              body.entityId,
+              auth.userId,
+              idGenerator
+            );
         if (!containerId) {
           return { ok: false, error: "container_id_allocation_failed" };
         }
@@ -307,8 +382,9 @@ export default biomesApiHandler(
               created_at: secondsSinceEpoch(),
             }),
             quest_giver: QuestGiver.clone(target.questGiver()),
-            container_inventory:
-              seededNativeRoadAheadContainerInventoryForTest(label),
+            container_inventory: roadAheadQuestContainer
+              ? seededNativeRoadAheadContainerInventoryForTest(label)
+              : seededHarthmereNativeContainerInventoryForTest(label),
           };
           const applied = await worldApi.apply({
             changes: [{ kind: "create", entity }],
@@ -344,7 +420,9 @@ export default biomesApiHandler(
                 repair.setPosition(Position.create({ v: [...position] }));
                 if (!repair.containerInventory()) {
                   repair.setContainerInventory(
-                    seededNativeRoadAheadContainerInventoryForTest(label)
+                    roadAheadQuestContainer
+                      ? seededNativeRoadAheadContainerInventoryForTest(label)
+                      : seededHarthmereNativeContainerInventoryForTest(label)
                   );
                 }
                 return undefined;

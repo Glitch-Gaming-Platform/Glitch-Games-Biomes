@@ -155,8 +155,9 @@ ok(
 ok(
   shim.includes("allowMuckwad") &&
     shim.includes("!isHarthmereExtensionWorldPosition") &&
+    shim.includes("shard_muck: ShardMuck.create") &&
     shim.includes('copperOre: terrainId("copper_ore"'),
-  "additive Harthmere suppresses Muck terrain and includes sparse copper resources"
+  "additive Harthmere suppresses Muck terrain/atmosphere and includes sparse copper resources"
 );
 ok(
   worldSync.includes("position: seed.position") &&
@@ -190,6 +191,7 @@ for (const family of [
   "original_business_owners",
   "original_business_customers",
   "original_business_objects",
+  "gathering_nodes",
 ]) {
   ok(
     groundingProbe.includes(`\"${family}\"`),

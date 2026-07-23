@@ -24,6 +24,7 @@ import {
   type HarthmereJobsBoardMuckBountyTarget,
 } from "@/shared/harthmere/jobs_board_muck_bounty_targets";
 import { resolveHarthmereProductionMarkerPosition } from "@/shared/harthmere/production_terrain_placement_map";
+import { harthmereGatheringAuthorityNode } from "@/shared/harthmere/gathering_node_authority";
 import {
   SNAPSHOT_GROVE_LANDMARKS,
   type SnapshotGroveLandmark,
@@ -79,16 +80,19 @@ const HARTHMERE_JOBS_BOARD_ITEM_SOURCE_MARKERS: readonly HarthmereJobsBoardQuest
     {
       markerId: "harthmere_orchard_softwood",
       label: "Orchard Softwood Branches",
-      // The authored gathering node predates the live Grove terrain lift and was
-      // at y=53. Keep the shared quest/map source on the visible courtyard
-      // surface so every item-source pin and active beacon points above ground.
-      position: [468, 70, -118],
+      position: [
+        ...(harthmereGatheringAuthorityNode("harthmere_orchard_softwood")
+          ?.position ?? [2068, 53, -118]),
+      ] as Vec3,
       source: "job_item_source",
     },
     {
       markerId: "harthmere_north_iron_vein",
       label: "North Road Iron Vein",
-      position: [503, 53, -270],
+      position: [
+        ...(harthmereGatheringAuthorityNode("harthmere_north_iron_vein")
+          ?.position ?? [2103, 53, -270]),
+      ] as Vec3,
       source: "job_item_source",
     },
   ];

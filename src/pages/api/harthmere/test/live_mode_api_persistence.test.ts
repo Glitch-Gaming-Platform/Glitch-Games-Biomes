@@ -28,6 +28,7 @@ import { HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS } from "@/shared/harthm
 import { SHARD_DIM, blockPos, shardAlign } from "@/shared/game/shard";
 import {
   createHarthmereLiveModeSharedWorldState,
+  bindHarthmereNativeEcsMaterializationPlansToActorForTest,
   harthmereLiveModePlayerStateKey,
   harthmereLiveModeSharedWorldStateKey,
   mergeHarthmereLiveModeSharedWorldStateIntoBackend,
@@ -35,6 +36,7 @@ import {
   defaultHarthmereLiveModeBackendState,
   parseHarthmereLiveModeSharedWorldState,
 } from "@/shared/harthmere/live_mode_backend";
+import { harthmereNativeBiomesIdForItemId } from "@/shared/harthmere/harthmere_native_item_ids";
 import {
   buildHarthmereLiveModePersistenceMutationPlan,
   createHarthmereLiveModeEvent,
@@ -484,6 +486,54 @@ describe("live_mode API Redis persistence", () => {
     );
     assert.equal(published.length, 1);
     assert.equal(world.table.get(actorId)!.inventory!.items[0]?.count, 1n);
+  });
+
+  it("binds an install-owned parcel pickup to native ECS and materializes the checked-in parcel", async () => {
+    const redisPrimary = new FakeRedisPrimary();
+    const world = new InMemoryWorld();
+    const worldApi = ShimWorldApi.createForWorld(world);
+    const actorId = 8290811499731977 as any;
+    const durableActorId = "install:e4c81804-d210-40c2-8186-0690ada7e1e3";
+    const published: any[] = [];
+    const plans = bindHarthmereNativeEcsMaterializationPlansToActorForTest(
+      [
+        {
+          kind: "inventory_exchange",
+          materializationKey: `jobs_board:${durableActorId}:pickup:parcel`,
+          actorId: durableActorId,
+          position: { x: 503, y: 70, z: -133 },
+          consumeItemStacks: {},
+          rewardItemStacks: { sealed_package: 1 },
+          expiresAtMs: NOW_MS + 60_000,
+          sourceKind: "harthmere_jobs_board_pickup_delivery_parcel",
+        },
+      ],
+      durableActorId,
+      actorId
+    );
+    assert.equal((plans[0] as any).actorId, String(actorId));
+    await materializeHarthmereNativeEcsPlans({
+      redisPrimary,
+      worldApi,
+      idGenerator: {
+        next: async () => {
+          throw new Error("parcel inventory exchange must not allocate an id");
+        },
+        batch: async () => [],
+      },
+      logicApi: {
+        publish: async (...events: any[]) => {
+          published.push(...events);
+        },
+      },
+      plans,
+    });
+    assert.equal(published.length, 1);
+    assert.equal(published[0].userId, actorId);
+    assert.equal(
+      [...published[0].event.give.values()][0].item.id,
+      harthmereNativeBiomesIdForItemId("sealed_package")
+    );
   });
   it("keeps authenticated combat, death, AI, and respawn on native ECS", () => {
     for (const action of [
@@ -1643,6 +1693,13 @@ describe("live_mode API Redis persistence", () => {
       gameplayMutationWarnings(persisted.backendMutation?.warnings),
       []
     );
+    assert.deepEqual(redisPrimary.watched, [
+      [
+        "harthmere:live_mode:current:idempotency:player_live_api_persist_001:live-api-persist-jobs-board-accept",
+        harthmereLiveModePlayerStateKey(ACTOR),
+        harthmereLiveModeSharedWorldStateKey(),
+      ],
+    ]);
     assert.equal(persisted.snapshotMode, "changed");
     assert.deepEqual(persisted.includedSnapshots?.sort(), [
       "buildingState",

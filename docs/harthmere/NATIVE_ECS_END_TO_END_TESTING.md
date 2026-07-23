@@ -83,9 +83,10 @@ only when `?harthmere_native_ecs_e2e=1` is present. It cannot be enabled by a
 normal production URL. The helper does not edit the client ECS table. Fixture
 setup uses existing admin world APIs; gameplay still uses the normal client
 event queue and logic service. The all-jobs case writes exact auto-job fixtures
-only into the isolated local E2E Redis world; every accept/abandon action still
-travels from the browser frontend through the production API/reducer and native
-Position gate before the browser reads the returned quest and marker state.
+only into the isolated local E2E Redis world; every accept, objective
+completion, parcel exchange, escort tick, and reward claim still travels
+through the production frontend/API/native-ECS path before the browser verifies
+the returned quest and marker state.
 
 Do not put the control token in a URL, committed environment file, screenshot,
 or artifact.

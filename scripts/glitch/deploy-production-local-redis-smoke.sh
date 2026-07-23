@@ -155,6 +155,10 @@ HARTHMERE_WORLD_SYNC_JOB_CREATED=0
 HARTHMERE_TERRAIN_JOB_NAME="${HARTHMERE_TERRAIN_JOB_NAME:-biomes-harthmere-terrain}"
 HARTHMERE_TERRAIN_JOB_CONTAINER_NAME="${HARTHMERE_TERRAIN_JOB_CONTAINER_NAME:-harthmere-terrain}"
 HARTHMERE_TERRAIN_JOB_CREATED=0
+HARTHMERE_TERRAIN_AUDIT_JOB_NAME="${HARTHMERE_TERRAIN_AUDIT_JOB_NAME:-biomes-harthmere-terrain-audit}"
+HARTHMERE_TERRAIN_AUDIT_JOB_CONTAINER_NAME="${HARTHMERE_TERRAIN_AUDIT_JOB_CONTAINER_NAME:-harthmere-terrain-audit}"
+HARTHMERE_TERRAIN_AUDIT_JOB_CREATED=0
+HARTHMERE_PREFLIGHT_INSTALL_ID="${HARTHMERE_PREFLIGHT_INSTALL_ID:-f7f602be-8d32-4fd6-9eba-2d3b7e6dafd7}"
 PROD_REDIS_HOST="${PROD_REDIS_HOST:-10.0.0.12}"
 PROD_REDIS_PUBLIC_HOST="${PROD_REDIS_PUBLIC_HOST:-}"
 PROD_REDIS_HEALTH_HOST="${PROD_REDIS_HEALTH_HOST:-$PROD_REDIS_HOST}"
@@ -177,6 +181,8 @@ HARTHMERE_BUSINESS_OUTPOST_MATERIALIZATION_APPLY_SHARD_BATCH_SIZE="${HARTHMERE_B
 HARTHMERE_CONNECTOR_ROUTE_SCAN_COUNT="${HARTHMERE_CONNECTOR_ROUTE_SCAN_COUNT:-5000}"
 HARTHMERE_CONNECTOR_ROUTE_APPLY_SHARD_BATCH_SIZE="${HARTHMERE_CONNECTOR_ROUTE_APPLY_SHARD_BATCH_SIZE:-4}"
 HARTHMERE_TERRAIN_MAINTENANCE_REVISION=""
+AZURE_SIMULATION_MAINTENANCE_PAUSED=0
+AZURE_PREVIOUS_SIMULATION_REVISIONS=""
 LOCAL_NETWORK="${LOCAL_NETWORK:-biomes-prod-smoke-net}"
 LOCAL_REDIS_CONTAINER="${LOCAL_REDIS_CONTAINER:-biomes-prod-smoke-redis}"
 LOCAL_REDIS_IMAGE="${LOCAL_REDIS_IMAGE:-redis:6.0.16-alpine}"
@@ -980,6 +986,77 @@ wait_for_azure_revision_ready() {
   return 1
 }
 
+ensure_azure_revision_active() {
+  local revision="$1"
+  local container_app="${2:-$AZURE_CONTAINER_APP}"
+  local active
+  active="$(az containerapp revision show \
+    --resource-group "$AZURE_RESOURCE_GROUP" \
+    --name "$container_app" \
+    --revision "$revision" \
+    --query properties.active \
+    -o tsv 2>/dev/null || true)"
+  if [ "$active" = "true" ]; then
+    return
+  fi
+  log "Reactivating reused Azure revision $revision before readiness checks."
+  az containerapp revision activate \
+    --resource-group "$AZURE_RESOURCE_GROUP" \
+    --name "$container_app" \
+    --revision "$revision" \
+    --output none
+}
+
+verify_azure_revision_zero_restarts() {
+  local revision="$1"
+  local container_app="${2:-$AZURE_CONTAINER_APP}"
+  local restart_counts
+  restart_counts="$(az containerapp replica list \
+    --resource-group "$AZURE_RESOURCE_GROUP" \
+    --name "$container_app" \
+    --revision "$revision" \
+    --query '[].properties.containers[0].restartCount' \
+    -o tsv 2>/dev/null || true)"
+  if ! printf '%s\n' "$restart_counts" | grep -Eq '^[0-9]+$'; then
+    echo "ERROR could not read Azure restart counts for revision $revision." >&2
+    return 1
+  fi
+  if printf '%s\n' "$restart_counts" | awk 'NF && $1 != 0 { bad=1 } END { exit bad ? 0 : 1 }'; then
+    echo "ERROR Azure revision $revision has a non-zero container restart count." >&2
+    az containerapp replica list \
+      --resource-group "$AZURE_RESOURCE_GROUP" \
+      --name "$container_app" \
+      --revision "$revision" \
+      --query '[].{name:name,restarts:properties.containers[0].restartCount,runningState:properties.runningState}' \
+      -o table >&2 || true
+    return 1
+  fi
+  log "Azure revision restart count is zero: $revision."
+}
+
+free_azure_capacity_for_maintenance() {
+  local candidate_revision="$1"
+  local stale
+  stale="$(az containerapp revision list \
+    --resource-group "$AZURE_RESOURCE_GROUP" \
+    --name "$AZURE_CONTAINER_APP" \
+    --query "[?name!='${candidate_revision}' && properties.active==\`true\` && (properties.trafficWeight==\`0\` || properties.trafficWeight==null)].name" \
+    -o tsv 2>/dev/null || true)"
+  while IFS= read -r revision; do
+    [ -n "$revision" ] || continue
+    if printf '%s\n' "$AZURE_PREVIOUS_TRAFFIC_WEIGHTS" | grep -Eq "^${revision}="; then
+      log "Keeping serving revision $revision active while freeing maintenance capacity."
+      continue
+    fi
+    log "Deactivating zero-traffic revision $revision to free workload-profile capacity for maintenance jobs."
+    az containerapp revision deactivate \
+      --resource-group "$AZURE_RESOURCE_GROUP" \
+      --name "$AZURE_CONTAINER_APP" \
+      --revision "$revision" \
+      --output none || true
+  done <<< "$stale"
+}
+
 azure_revision_fqdn() {
   local revision="$1"
   local fqdn
@@ -1053,6 +1130,56 @@ wait_for_simulation_role_ready() {
     --tail 100 \
     --follow false >&2 || true
   return 1
+}
+
+pause_simulation_container_app_for_world_maintenance() {
+  if ! az containerapp show \
+    --resource-group "$AZURE_RESOURCE_GROUP" \
+    --name "$AZURE_SIMULATION_CONTAINER_APP" \
+    --output none 2>/dev/null; then
+    log "Dedicated simulation app does not exist yet; no simulation pause is required."
+    return
+  fi
+
+  AZURE_PREVIOUS_SIMULATION_REVISIONS="$(az containerapp revision list \
+    --resource-group "$AZURE_RESOURCE_GROUP" \
+    --name "$AZURE_SIMULATION_CONTAINER_APP" \
+    --query '[?properties.active==`true`].name' \
+    -o tsv 2>/dev/null || true)"
+  if [ -z "$AZURE_PREVIOUS_SIMULATION_REVISIONS" ]; then
+    log "Dedicated simulation app is already paused."
+    return
+  fi
+
+  log "Pausing Anima/Gaia while terrain maintenance and ECS reconciliation write production world state."
+  while IFS= read -r revision; do
+    [ -n "$revision" ] || continue
+    az containerapp revision deactivate \
+      --resource-group "$AZURE_RESOURCE_GROUP" \
+      --name "$AZURE_SIMULATION_CONTAINER_APP" \
+      --revision "$revision" \
+      --output none
+  done <<< "$AZURE_PREVIOUS_SIMULATION_REVISIONS"
+  AZURE_SIMULATION_MAINTENANCE_PAUSED=1
+}
+
+restore_previous_simulation_after_failed_maintenance() {
+  if [ "$AZURE_SIMULATION_MAINTENANCE_PAUSED" != "1" ] ||
+     [ -z "$AZURE_PREVIOUS_SIMULATION_REVISIONS" ]; then
+    return
+  fi
+  log "Restoring the previously active simulation revision after failed world maintenance."
+  while IFS= read -r revision; do
+    [ -n "$revision" ] || continue
+    az containerapp revision activate \
+      --resource-group "$AZURE_RESOURCE_GROUP" \
+      --name "$AZURE_SIMULATION_CONTAINER_APP" \
+      --revision "$revision" \
+      --output none || return 1
+    wait_for_azure_revision_ready "$revision" "$AZURE_SIMULATION_CONTAINER_APP" || return 1
+  done <<< "$AZURE_PREVIOUS_SIMULATION_REVISIONS"
+  AZURE_SIMULATION_MAINTENANCE_PAUSED=0
+  AZURE_PREVIOUS_SIMULATION_REVISIONS=""
 }
 
 deploy_simulation_container_app() {
@@ -1183,8 +1310,19 @@ deploy_simulation_container_app() {
     --name "$AZURE_SIMULATION_CONTAINER_APP" \
     --query properties.latestRevisionName \
     -o tsv)"
+  if [ -z "$simulation_revision" ] || [ "$simulation_revision" = "null" ]; then
+    echo "ERROR Azure did not return a dedicated simulation revision after update." >&2
+    exit 1
+  fi
+
+  # latestReadyRevisionName remains populated when maintenance has deactivated
+  # the sole simulation revision, so readiness alone cannot prove Anima exists.
+  ensure_azure_revision_active "$simulation_revision" "$AZURE_SIMULATION_CONTAINER_APP"
   wait_for_azure_revision_ready "$simulation_revision" "$AZURE_SIMULATION_CONTAINER_APP"
   wait_for_simulation_role_ready "$simulation_revision"
+  verify_azure_revision_zero_restarts "$simulation_revision" "$AZURE_SIMULATION_CONTAINER_APP"
+  AZURE_SIMULATION_MAINTENANCE_PAUSED=0
+  AZURE_PREVIOUS_SIMULATION_REVISIONS=""
   log "Dedicated Anima/Gaia update verified: $IMAGE revision=$simulation_revision"
 }
 
@@ -1325,7 +1463,9 @@ promote_azure_revision_when_ready() {
     exit 1
   fi
 
+  ensure_azure_revision_active "$revision"
   wait_for_azure_revision_ready "$revision"
+  verify_azure_revision_zero_restarts "$revision"
   validate_production_revision_before_traffic "$revision"
   force_azure_traffic_to_revision "$revision"
 }
@@ -1513,7 +1653,7 @@ validate_game_html_url() {
 
 validate_production_revision_before_traffic() {
   local revision="$1"
-  local revision_fqdn revision_origin install_id expected_sync_host
+  local revision_fqdn revision_origin install_id expected_sync_host attempt=1
   revision_fqdn="$(azure_revision_fqdn "$revision")"
   if [ -z "$revision_fqdn" ] || [ "$revision_fqdn" = "null" ]; then
     echo "ERROR Azure revision $revision does not have a revision-specific FQDN." >&2
@@ -1522,9 +1662,9 @@ validate_production_revision_before_traffic() {
 
   revision_origin="https://${revision_fqdn}"
   # The Glitch API validates real title-install UUIDs. Synthetic deployment ids
-  # currently receive an upstream 404 even when the candidate is healthy, so a
-  # caller may provide a known real install for the concrete-revision E2E.
-  install_id="${HARTHMERE_PREFLIGHT_INSTALL_ID:-pretraffic-${TAG}-${revision}}"
+  # receive an upstream 404 even when the candidate is healthy, so this defaults
+  # to the non-secret production test install and remains operator-overridable.
+  install_id="$HARTHMERE_PREFLIGHT_INSTALL_ID"
 
   log "Smoke-testing concrete Azure revision before shifting production traffic: $revision_origin"
   validate_game_html_url "$revision_origin" "revision $revision root"
@@ -1536,14 +1676,25 @@ validate_production_revision_before_traffic() {
   expected_sync_host="${PROD_ORIGIN#*://}"
   expected_sync_host="${expected_sync_host%%/*}"
   expected_sync_host="${expected_sync_host%%:*}"
-  log "Running strict rendered-world browser E2E against concrete revision before traffic."
-  HARTHMERE_E2E_EXPECTED_SYNC_HOST="$expected_sync_host" \
-  HEADLESS=1 \
-  STRICT_RENDER="${HARTHMERE_PREFLIGHT_STRICT_RENDER:-1}" \
-  E2E_ARTIFACTS_DIR="/tmp/harthmere-pretraffic-${revision}" \
-  node scripts/harthmere/test-harthmere-install-player-ingame-e2e.cjs . \
-    --base-url "$revision_origin" \
-    --install-id "$install_id"
+  while [ "$attempt" -le "${HARTHMERE_PREFLIGHT_E2E_ATTEMPTS:-2}" ]; do
+    log "Running strict rendered-world browser E2E against concrete revision before traffic (attempt $attempt)."
+    if HARTHMERE_E2E_EXPECTED_SYNC_HOST="$expected_sync_host" \
+      HEADLESS=1 \
+      STRICT_RENDER="${HARTHMERE_PREFLIGHT_STRICT_RENDER:-1}" \
+      E2E_ARTIFACTS_DIR="/tmp/harthmere-pretraffic-${revision}-attempt-${attempt}" \
+      node scripts/harthmere/test-harthmere-install-player-ingame-e2e.cjs . \
+        --base-url "$revision_origin" \
+        --install-id "$install_id"; then
+      return
+    fi
+    if [ "$attempt" -ge "${HARTHMERE_PREFLIGHT_E2E_ATTEMPTS:-2}" ]; then
+      echo "ERROR rendered-world browser E2E failed after $attempt attempts." >&2
+      return 1
+    fi
+    log "Rendered-world E2E did not pass during candidate warmup; waiting once before retry."
+    sleep "${HARTHMERE_PREFLIGHT_E2E_RETRY_SLEEP_SECONDS:-20}"
+    attempt=$((attempt + 1))
+  done
 }
 
 validate_production_world_sync_http() {
@@ -1808,6 +1959,108 @@ delete_azure_terrain_job() {
   HARTHMERE_TERRAIN_JOB_CREATED=0
 }
 
+delete_azure_terrain_audit_job() {
+  if [ "$HARTHMERE_TERRAIN_AUDIT_JOB_CREATED" != "1" ]; then
+    return
+  fi
+  log "Deleting temporary Harthmere terrain audit job $HARTHMERE_TERRAIN_AUDIT_JOB_NAME."
+  az containerapp job delete \
+    --resource-group "$AZURE_RESOURCE_GROUP" \
+    --name "$HARTHMERE_TERRAIN_AUDIT_JOB_NAME" \
+    --yes \
+    --output none >/dev/null 2>&1 || true
+  HARTHMERE_TERRAIN_AUDIT_JOB_CREATED=0
+}
+
+run_azure_terrain_audit_job() {
+  local registry_username registry_password execution status="" polls=0 logs=""
+
+  if az containerapp job show \
+    --resource-group "$AZURE_RESOURCE_GROUP" \
+    --name "$HARTHMERE_TERRAIN_AUDIT_JOB_NAME" \
+    --output none >/dev/null 2>&1; then
+    az containerapp job delete \
+      --resource-group "$AZURE_RESOURCE_GROUP" \
+      --name "$HARTHMERE_TERRAIN_AUDIT_JOB_NAME" \
+      --yes \
+      --output none
+  fi
+
+  registry_username="$(az acr credential show --name "$ACR_NAME" --query username -o tsv)"
+  registry_password="$(az acr credential show --name "$ACR_NAME" --query 'passwords[0].value' -o tsv)"
+  log "Creating post-simulation terrain audit job to prove Gaia does not recontaminate Harthmere."
+  az containerapp job create \
+    --resource-group "$AZURE_RESOURCE_GROUP" \
+    --name "$HARTHMERE_TERRAIN_AUDIT_JOB_NAME" \
+    --environment "$AZURE_CONTAINER_APP_ENVIRONMENT" \
+    --trigger-type Manual \
+    --replica-timeout 1800 \
+    --replica-retry-limit 0 \
+    --replica-completion-count 1 \
+    --parallelism 1 \
+    --workload-profile-name "$HARTHMERE_WORLD_SYNC_JOB_WORKLOAD_PROFILE" \
+    --image "$IMAGE" \
+    --registry-server "$ACR_SERVER" \
+    --registry-username "$registry_username" \
+    --registry-password "$registry_password" \
+    --container-name "$HARTHMERE_TERRAIN_AUDIT_JOB_CONTAINER_NAME" \
+    --cpu "$HARTHMERE_WORLD_SYNC_JOB_CPU" \
+    --memory "$HARTHMERE_WORLD_SYNC_JOB_MEMORY" \
+    --command node \
+    --args scripts/harthmere/audit-production-extension-terrain.cjs \
+    --env-vars \
+      NODE_ENV=production \
+      NODE_OPTIONS="--openssl-legacy-provider --enable-source-maps --max-old-space-size=8192" \
+      NODE_PATH=/opt/harthmere-maintenance/node_modules \
+      IS_SERVER=1 \
+      REDIS_HOST="$PROD_REDIS_HOST" \
+      GLITCH_REDIS_HOST="$PROD_REDIS_HOST" \
+      LOCAL_REDIS_HOST="$PROD_REDIS_HOST" \
+      REDIS_PORT="$PROD_REDIS_PORT" \
+      GLITCH_REDIS_PORT="$PROD_REDIS_PORT" \
+      ALLOW_NON_K8_REDIS=1 \
+      USE_K8_REDIS=0 \
+      BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN=1 \
+      BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X=1600 \
+      BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_Z=0 \
+    --output none
+  unset registry_password
+  HARTHMERE_TERRAIN_AUDIT_JOB_CREATED=1
+
+  execution="$(az containerapp job start \
+    --resource-group "$AZURE_RESOURCE_GROUP" \
+    --name "$HARTHMERE_TERRAIN_AUDIT_JOB_NAME" \
+    --query name -o tsv)"
+  while [ "$polls" -lt "${HARTHMERE_TERRAIN_AUDIT_JOB_POLLS:-180}" ]; do
+    status="$(az containerapp job execution show \
+      --resource-group "$AZURE_RESOURCE_GROUP" \
+      --name "$HARTHMERE_TERRAIN_AUDIT_JOB_NAME" \
+      --job-execution-name "$execution" \
+      --query properties.status -o tsv 2>/dev/null || true)"
+    case "$status" in
+      Succeeded|Failed|Stopped|Degraded) break ;;
+    esac
+    polls=$((polls + 1))
+    sleep "${HARTHMERE_WORLD_SYNC_JOB_POLL_SECONDS:-10}"
+  done
+  logs="$(az containerapp job logs show \
+    --resource-group "$AZURE_RESOURCE_GROUP" \
+    --name "$HARTHMERE_TERRAIN_AUDIT_JOB_NAME" \
+    --execution "$execution" \
+    --container "$HARTHMERE_TERRAIN_AUDIT_JOB_CONTAINER_NAME" \
+    --tail 300 \
+    --format text 2>&1 || true)"
+  printf '%s\n' "$logs"
+  if [ "$status" != "Succeeded" ] ||
+     ! printf '%s\n' "$logs" | grep -Fq "OK Harthmere extension is complete, flat at Y=52, free of Muck terrain and atmosphere"; then
+    echo "ERROR post-simulation terrain audit failed: execution=$execution status=${status:-unknown}." >&2
+    delete_azure_terrain_audit_job
+    return 1
+  fi
+  log "Post-simulation terrain audit passed with zero missing, invalid, empty, holed, Muck, and retired shards."
+  delete_azure_terrain_audit_job
+}
+
 run_azure_terrain_seed_job() {
   local registry_username registry_password execution status="" polls=0 logs=""
   local terrain_command terrain_command_b64 terrain_eval_arg
@@ -1936,7 +2189,7 @@ const readLog = () => {
       GLITCH_REQUIRE_SNAPSHOT_REDIS=1 \
       BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN=1 \
       BIOMES_CREATE_LOCAL_DEV_TERRAIN=1 \
-      BIOMES_FORCE_LOCAL_DEV_TOWN_RESEED=0 \
+      BIOMES_FORCE_LOCAL_DEV_TOWN_RESEED=1 \
       BIOMES_SKIP_RETIRED_TERRAIN_SCAN=1 \
       BIOMES_SKIP_BIKKIE_NAMES_WRITE=1 \
       BIOMES_SKIP_PLAYER_SPATIAL_OBSERVER=1 \
@@ -2238,6 +2491,7 @@ cleanup() {
   local status="$?"
   delete_azure_world_sync_job
   delete_azure_terrain_job
+  delete_azure_terrain_audit_job
   if [ -n "${HARTHMERE_TERRAIN_MAINTENANCE_REVISION:-}" ]; then
     log "Deactivating unfinished Harthmere terrain maintenance revision $HARTHMERE_TERRAIN_MAINTENANCE_REVISION."
     az containerapp revision deactivate \
@@ -2250,6 +2504,11 @@ cleanup() {
     AZURE_TRAFFIC_RESTORE_ARMED=0
     if ! restore_azure_traffic_weights "$AZURE_PREVIOUS_TRAFFIC_WEIGHTS"; then
       echo "ERROR automatic Azure traffic rollback failed; manual intervention is required." >&2
+    fi
+  fi
+  if [ "$status" -ne 0 ] && [ "$AZURE_SIMULATION_MAINTENANCE_PAUSED" = "1" ]; then
+    if ! restore_previous_simulation_after_failed_maintenance; then
+      echo "ERROR automatic simulation restoration failed; manual intervention is required." >&2
     fi
   fi
   if [ "$KEEP_LOCAL_SMOKE" = "1" ]; then
@@ -2333,6 +2592,21 @@ ensure_harthmere_runtime_assets() {
   fi
 }
 
+ensure_harthmere_voice_assets() {
+  local manifest="public/harthmere/voices/generated/current/manifest.json"
+  if [ -f "$manifest" ] &&
+     node scripts/harthmere/check-harthmere-npc-voice-recordings.cjs . >/dev/null 2>&1; then
+    log "Harthmere NPC voice recordings are present and hydrated."
+    return
+  fi
+
+  if command -v git >/dev/null 2>&1 && git lfs version >/dev/null 2>&1; then
+    log "Refreshing Git LFS Harthmere NPC voice recordings."
+    git lfs pull --include="public/harthmere/**" --exclude=""
+  fi
+  node scripts/harthmere/check-harthmere-npc-voice-recordings.cjs .
+}
+
 ensure_snapshot_bucket_assets() {
   local bucket_count
   bucket_count="$(count_files_under public/buckets)"
@@ -2362,6 +2636,7 @@ ensure_snapshot_bucket_assets() {
 ensure_production_asset_inputs() {
   log "Preparing production asset inputs."
   ensure_harthmere_runtime_assets
+  ensure_harthmere_voice_assets
   ensure_snapshot_bucket_assets
 }
 
@@ -2681,7 +2956,10 @@ NODE
 }
 
 smoke_local_image() {
-  local optional_env_args=()
+  local optional_env_args=(
+    -e "HARTHMERE_NATIVE_ECS_E2E=${HARTHMERE_NATIVE_ECS_E2E:-0}"
+    -e "HARTHMERE_E2E_CONTROL_TOKEN=${HARTHMERE_E2E_CONTROL_TOKEN:-}"
+  )
   fetch_title_token_if_needed
   require_cmd docker
 
@@ -2726,6 +3004,7 @@ smoke_local_image() {
     -e GLITCH_ALLOW_SNAPSHOT_REDIS_FLUSH=1 \
     -e GLITCH_REQUIRE_SNAPSHOT_REDIS=1 \
     -e GLITCH_STACK_ROLE=unified \
+    -e BIOMES_CREATE_LOCAL_DEV_TERRAIN="${BIOMES_CREATE_LOCAL_DEV_TERRAIN:-0}" \
     -e HARTHMERE_VISUAL_TEST_AUTH=1 \
     -e GLITCH_IDLE_SESSION_MS="${GLITCH_IDLE_SESSION_MS:-1000}" \
     -e NEXT_PUBLIC_GLITCH_SYNC_BASE_URL="http://127.0.0.1:${LOCAL_WEB_PORT}" \
@@ -2887,14 +3166,31 @@ push_and_deploy() {
     --query properties.latestRevisionName \
     -o tsv)"
 
+  ensure_azure_revision_active "$latest_revision"
+  free_azure_capacity_for_maintenance "$latest_revision"
+  if [ "${HARTHMERE_SKIP_WORLD_SYNC_RECONCILIATION:-0}" != "1" ]; then
+    pause_simulation_container_app_for_world_maintenance
+  fi
   seed_production_harthmere_extension_terrain "$latest_revision"
-  promote_azure_revision_when_ready "$latest_revision"
+  ensure_azure_revision_active "$latest_revision"
+  wait_for_azure_revision_ready "$latest_revision"
+  verify_azure_revision_zero_restarts "$latest_revision"
+  validate_production_revision_before_traffic "$latest_revision"
+  reconcile_production_world_sync "$latest_revision"
+  force_azure_traffic_to_revision "$latest_revision"
   validate_production_bucket_assets "$latest_revision"
   validate_production_world_sync_http "$latest_revision"
-  reconcile_production_world_sync "$latest_revision"
   AZURE_TRAFFIC_RESTORE_ARMED=0
   deactivate_stale_azure_revisions "$latest_revision"
   deploy_simulation_container_app
+  if [ "${HARTHMERE_SKIP_WORLD_SYNC_RECONCILIATION:-0}" != "1" ]; then
+    # The pre-simulation audit proves maintenance wrote clean shards. This
+    # second audit proves active Gaia leaves them clean instead of immediately
+    # recreating atmospheric Muck.
+    sleep "${HARTHMERE_POST_SIMULATION_AUDIT_SETTLE_SECONDS:-30}"
+    run_azure_terrain_audit_job
+    force_production_redis_bgsave "post-simulation Harthmere terrain verification"
+  fi
 
   log "Production web and dedicated Anima/Gaia updates verified: $IMAGE webRevision=$latest_revision"
 }

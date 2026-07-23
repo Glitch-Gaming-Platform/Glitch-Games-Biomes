@@ -474,10 +474,23 @@ async function rawHarthmereLiveFetchWithTimeout(
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
     try {
-      return await fetchImpl(input, {
+      const response = await fetchImpl(input, {
         ...requestInit,
         signal: controller.signal,
       });
+      if (response.status >= 500 && response.status <= 599) {
+        lastError = new Error(`harthmere_live_http_${response.status}`);
+        if (attempt < maxAttempts) {
+          // A native materialization can fail after the server has committed
+          // its idempotency record. Replaying this exact body lets the route
+          // repair that committed decision instead of stranding the UI.
+          await harthmereLiveRetrySleep(
+            HARTHMERE_LIVE_RETRY_BACKOFF_MS * attempt
+          );
+          continue;
+        }
+      }
+      return response;
     } catch (error) {
       lastError = error;
       const timedOut =

@@ -6,7 +6,7 @@ import type {
 import { fallDamageForBlocks } from "@/shared/game/fall_damage";
 import { anItem } from "@/shared/game/item";
 import { BikkieIds } from "@/shared/bikkie/ids";
-import { safeParseBiomesId } from "@/shared/ids";
+import { safeParseBiomesId, type BiomesId } from "@/shared/ids";
 import { nativeBiomesEcsAuthorityEnabled } from "./native_road_ahead_contract";
 import {
   harthmereNativeBiomesIdForItemId,
@@ -2070,6 +2070,178 @@ export type HarthmereNativeEcsMaterializationPlan =
   | HarthmereNativeEcsBossEntityMaterializationPlan
   | HarthmereNativeEcsPlaceableMaterializationPlan
   | HarthmereNativeEcsDeedMaterializationPlan;
+
+/**
+ * Bind plans authored against a durable save identity to the authenticated
+ * numeric native ECS player. Materialization keys intentionally retain the
+ * durable identity so retries remain stable across the install/user link.
+ */
+export function bindHarthmereNativeEcsMaterializationPlansToActorForTest(
+  plans: readonly HarthmereNativeEcsMaterializationPlan[],
+  durableActorId: string,
+  actorEntityId?: BiomesId
+): HarthmereNativeEcsMaterializationPlan[] {
+  const nativeActorId = actorEntityId
+    ? String(actorEntityId)
+    : safeParseBiomesId(durableActorId)
+    ? durableActorId
+    : undefined;
+  if (!nativeActorId) return [...plans];
+  const bindActor = (actorId: string) =>
+    actorId === durableActorId ? nativeActorId : actorId;
+  return plans.map((plan) => {
+    switch (plan.kind) {
+      case "drop":
+        return {
+          ...plan,
+          ownerActorIds: plan.ownerActorIds.map(bindActor),
+        };
+      case "inventory_exchange":
+      case "quest_accept":
+      case "quest_progress":
+      case "quest_reset":
+      case "placeable":
+        return { ...plan, actorId: bindActor(plan.actorId) };
+      case "deed":
+        return {
+          ...plan,
+          ownerActorId: bindActor(plan.ownerActorId),
+          allowedBuilderActorIds: plan.allowedBuilderActorIds.map(bindActor),
+        };
+      case "boss_entity":
+        return { ...plan };
+    }
+  });
+}
+
+/**
+ * Build the frontend-facing post-transaction projection from the same native
+ * baseline and exchange plan sent to ECS. Redis intentionally persists only
+ * decision metadata for several job operations, so response snapshots must
+ * not keep showing the pre-exchange inventory after materialization succeeds.
+ */
+export function projectHarthmereNativeEcsPlansOntoClientStateForTest(
+  state: HarthmereLiveModeBackendState,
+  envelope: HarthmereLiveModeAuthorityEnvelope,
+  plans: readonly HarthmereNativeEcsMaterializationPlan[]
+): HarthmereLiveModeBackendState {
+  const next: HarthmereLiveModeBackendState = JSON.parse(JSON.stringify(state));
+  const exchanges = plans.filter(
+    (plan): plan is HarthmereNativeEcsInventoryExchangeMaterializationPlan =>
+      plan.kind === "inventory_exchange"
+  );
+  const normalizedCounts = (counts: Record<string, number> | undefined) =>
+    Object.fromEntries(
+      Object.entries(counts ?? {}).flatMap(([itemId, count]) => {
+        const safeCount = Math.max(0, Math.trunc(Number(count) || 0));
+        return safeCount > 0 ? [[itemId, safeCount]] : [];
+      })
+    );
+  const applyStacks = (
+    target: Record<string, number>,
+    consume: Record<string, number> | undefined,
+    reward: Record<string, number> | undefined,
+    divertRecipes = false
+  ) => {
+    for (const [itemId, count] of Object.entries(consume ?? {})) {
+      const after = Math.max(
+        0,
+        (target[itemId] ?? 0) - Math.max(0, Math.trunc(Number(count) || 0))
+      );
+      if (after > 0) target[itemId] = after;
+      else delete target[itemId];
+    }
+    for (const [itemId, count] of Object.entries(reward ?? {})) {
+      const safeCount = Math.max(0, Math.trunc(Number(count) || 0));
+      if (safeCount === 0) continue;
+      if (divertRecipes && harthmereNativeBiomesIdForRecipeId(itemId)) {
+        if (!next.classMagic.knownRecipes.includes(itemId)) {
+          next.classMagic.knownRecipes.push(itemId);
+        }
+        continue;
+      }
+      target[itemId] = (target[itemId] ?? 0) + safeCount;
+    }
+  };
+
+  if (envelope.serverActorItemCounts !== undefined) {
+    next.inventory.items = normalizedCounts(envelope.serverActorItemCounts);
+    next.inventory.equipment = { ...(envelope.serverActorEquipment ?? {}) };
+  }
+  if (envelope.serverActorGold !== undefined) {
+    next.inventory.gold = Math.max(0, Math.trunc(envelope.serverActorGold));
+  }
+  if (envelope.serverActorMaterialStorageItemCounts !== undefined) {
+    next.banking.materialStorage = normalizedCounts(
+      envelope.serverActorMaterialStorageItemCounts
+    );
+  }
+  if (envelope.serverActorPersonalBankItemCounts !== undefined) {
+    next.inventory.bank = normalizedCounts(
+      envelope.serverActorPersonalBankItemCounts
+    );
+  }
+  if (envelope.serverActorAccountBankItemCounts !== undefined) {
+    next.banking.accountBank = normalizedCounts(
+      envelope.serverActorAccountBankItemCounts
+    );
+  }
+  if (envelope.serverActorStanding) {
+    next.law.standing[envelope.serverActorStanding.scopeId] =
+      normalizeReputationStanding(envelope.serverActorStanding);
+  }
+
+  for (const exchange of exchanges) {
+    applyStacks(
+      next.inventory.items,
+      exchange.consumeItemStacks,
+      exchange.rewardItemStacks,
+      true
+    );
+    applyStacks(
+      next.banking.materialStorage,
+      exchange.consumeMaterialStorageItemStacks,
+      exchange.rewardMaterialStorageItemStacks
+    );
+    applyStacks(
+      next.inventory.bank,
+      exchange.consumePersonalBankItemStacks,
+      exchange.rewardPersonalBankItemStacks
+    );
+    applyStacks(
+      next.banking.accountBank,
+      exchange.consumeAccountBankItemStacks,
+      exchange.rewardAccountBankItemStacks
+    );
+    next.inventory.gold = Math.max(
+      0,
+      next.inventory.gold + Math.trunc(exchange.goldDelta ?? 0)
+    );
+    if (exchange.materialStorageMaxSlots !== undefined) {
+      next.banking.materialStorageMaxSlots = Math.max(
+        1,
+        Math.trunc(exchange.materialStorageMaxSlots)
+      );
+    }
+    if (exchange.personalBankMaxSlots !== undefined) {
+      next.banking.personalBankMaxSlots = Math.max(
+        1,
+        Math.trunc(exchange.personalBankMaxSlots)
+      );
+    }
+    if (exchange.accountBankMaxSlots !== undefined) {
+      next.banking.accountBankMaxSlots = Math.max(
+        1,
+        Math.trunc(exchange.accountBankMaxSlots)
+      );
+    }
+    if (exchange.standing) {
+      next.law.standing[exchange.standing.scopeId] =
+        normalizeReputationStanding(exchange.standing);
+    }
+  }
+  return next;
+}
 
 function recordDelta(
   target: Record<string, number>,
@@ -8242,6 +8414,10 @@ export function reduceHarthmereLiveModeBackendState(
       (nativeHandledItemDeltas[itemId] ?? 0) + Math.trunc(delta);
   };
   const playerStateKey = harthmereLiveModePlayerStateKey(envelope.actorId);
+  const nativeActorId = (actorId: string) =>
+    actorId === envelope.actorId && envelope.serverActorEntityId
+      ? String(envelope.serverActorEntityId)
+      : actorId;
   const queueNativeDeed = (input: {
     plot: BuildingSystemPlotDefinition;
     ownerActorId: string;
@@ -8251,7 +8427,8 @@ export function reduceHarthmereLiveModeBackendState(
     sourceKind: string;
   }) => {
     if (!nativeBiomesEcsAuthorityEnabled()) return;
-    if (!safeParseBiomesId(input.ownerActorId)) {
+    const ownerActorId = nativeActorId(input.ownerActorId);
+    if (!safeParseBiomesId(ownerActorId)) {
       warnings.push(
         `native_ecs_deed_deferred:unresolved_owner:${input.plot.plotId}`
       );
@@ -8263,7 +8440,7 @@ export function reduceHarthmereLiveModeBackendState(
       materializationKey: input.materializationKey,
       plotId: input.plot.plotId,
       operation: input.operation ?? "upsert",
-      ownerActorId: input.ownerActorId,
+      ownerActorId,
       displayName: input.plot.displayName,
       description: input.plot.description,
       bounds: { ...input.plot.bounds },
@@ -8271,9 +8448,9 @@ export function reduceHarthmereLiveModeBackendState(
       maxStructureHeight: input.plot.maxStructureHeight,
       allowedBuilderActorIds:
         property?.permissions.friends_guests.build_edit === true
-          ? property.guestActorIds.filter((actorId) =>
-              Boolean(safeParseBiomesId(actorId))
-            )
+          ? property.guestActorIds
+              .map(nativeActorId)
+              .filter((actorId) => Boolean(safeParseBiomesId(actorId)))
           : [],
       publicBuild: property?.permissions.public.build_edit === true,
       sourceKind: input.sourceKind,
@@ -12737,6 +12914,7 @@ export function reduceHarthmereLiveModeBackendState(
           {
             actorGold: next.inventory.gold,
             actorInventoryItems: authoritativeInventoryItems,
+            actorEntityId: envelope.serverActorEntityId,
             actorMaterialStorageItems: nativeBiomesEcsAuthorityEnabled()
               ? undefined
               : next.banking.materialStorage,
@@ -12766,6 +12944,7 @@ export function reduceHarthmereLiveModeBackendState(
         {
           actorGold: next.inventory.gold,
           actorInventoryItems: authoritativeInventoryItems,
+          actorEntityId: envelope.serverActorEntityId,
           actorMaterialStorageItems: nativeBiomesEcsAuthorityEnabled()
             ? undefined
             : next.banking.materialStorage,
@@ -14071,24 +14250,27 @@ export function reduceHarthmereLiveModeBackendState(
             const firstAcceptance =
               next.quests.active[questId] === undefined &&
               next.quests.completed[questId] === undefined;
-            if (firstAcceptance) {
-              if (nativeBiomesEcsAuthorityEnabled()) {
-                const giver =
-                  HARTHMERE_NATIVE_QUEST_GIVER_MANIFEST[
-                    authoredQuest.giverNpcId as keyof typeof HARTHMERE_NATIVE_QUEST_GIVER_MANIFEST
-                  ];
-                if (giver) {
-                  nativeEcsMaterializationPlans.push({
-                    kind: "quest_accept",
-                    materializationKey: `quest_accept:${envelope.actorId}:grove:${questId}`,
-                    actorId: envelope.actorId,
-                    questSource: "grove",
-                    questId,
-                    giverEntityId: giver.entityId,
-                    sourceKind: "harthmere_snapshot_grove_quest_accept",
-                  });
-                }
+            if (nativeBiomesEcsAuthorityEnabled()) {
+              const giver =
+                HARTHMERE_NATIVE_QUEST_GIVER_MANIFEST[
+                  authoredQuest.giverNpcId as keyof typeof HARTHMERE_NATIVE_QUEST_GIVER_MANIFEST
+                ];
+              if (giver) {
+                // AcceptChallenge is idempotent. Queue it on every active sync
+                // so a request whose Redis write committed before ECS failed
+                // can repair the missing native challenge on exact replay.
+                nativeEcsMaterializationPlans.push({
+                  kind: "quest_accept",
+                  materializationKey: `quest_accept:${envelope.actorId}:grove:${questId}`,
+                  actorId: envelope.actorId,
+                  questSource: "grove",
+                  questId,
+                  giverEntityId: giver.entityId,
+                  sourceKind: "harthmere_snapshot_grove_quest_accept",
+                });
               }
+            }
+            if (firstAcceptance) {
               ensureInventoryLootActorSynced();
               const lootActor = next.inventoryLoot.actors[next.actorId];
               for (const grant of snapshotGroveTutorialInventoryGrantsForQuest(
@@ -18843,7 +19025,11 @@ export function reduceHarthmereLiveModeBackendState(
         ? buildingMaterializationPlans
         : undefined,
       nativeEcsMaterializationPlans: nativeEcsMaterializationPlans.length
-        ? nativeEcsMaterializationPlans
+        ? bindHarthmereNativeEcsMaterializationPlansToActorForTest(
+            nativeEcsMaterializationPlans,
+            envelope.actorId,
+            envelope.serverActorEntityId
+          )
         : undefined,
     },
   };

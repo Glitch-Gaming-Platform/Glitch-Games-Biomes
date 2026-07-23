@@ -1730,9 +1730,15 @@ export class OverlayScript implements Script {
       selected.position[1] + 1,
       selected.position[2],
     ];
+    // Third-person cameras commonly sit outside an underwater ship or ruin
+    // while the player and chest are together inside it. Nearby containers are
+    // already constrained by the live spatial scan and the server's 3-D range
+    // check, so hull/camera occlusion must not suppress their universal F
+    // prompt. Other object types keep the stricter visible-target behavior.
     if (
-      !screenCoordinateProjection(targetPosition, camera) ||
-      this.isOccluded(targetPosition, camera)
+      !selected.isContainer &&
+      (!screenCoordinateProjection(targetPosition, camera) ||
+        this.isOccluded(targetPosition, camera))
     ) {
       return undefined;
     }

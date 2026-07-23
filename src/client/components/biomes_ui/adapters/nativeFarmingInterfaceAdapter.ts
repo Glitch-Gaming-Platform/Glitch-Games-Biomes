@@ -113,7 +113,10 @@ export function buildNativeFarmingInterfaceModel(input: {
       ? dist(input.playerPosition, position)
       : Number.POSITIVE_INFINITY;
     const ownedByPlayer = plant.planter === input.userId;
-    if (!ownedByPlayer && distance > 96) continue;
+    // The farming journal and crop map are personal views. Nearby plants still
+    // exist in the native ECS world, but another player's field must never be
+    // projected into this player's UI.
+    if (!ownedByPlayer) continue;
     plants.push({
       id: entity.id,
       name: readableItemName(plant.seed, "Crop"),
@@ -144,7 +147,7 @@ export function buildNativeFarmingInterfaceModel(input: {
   );
   return {
     supplies,
-    plants: plants.slice(0, 24),
+    plants,
     seedCount: supplies
       .filter((supply) => supply.kind === "seed")
       .reduce((sum, supply) => sum + supply.count, 0),

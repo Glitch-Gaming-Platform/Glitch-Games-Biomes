@@ -13,7 +13,7 @@ const {
   terrainCollides,
 } = require("../../src/shared/asset_defs/quirk_helpers");
 const { safeGetTerrainId } = require("../../src/shared/asset_defs/terrain");
-const { loadTerrain } = require("../../src/shared/game/terrain");
+const { loadMuck, loadTerrain } = require("../../src/shared/game/terrain");
 const {
   HARTHMERE_ADDITIVE_TOWN_OFFSET_X,
   HARTHMERE_BELLBINDER_DESCENT,
@@ -101,6 +101,7 @@ async function main() {
   const emptyFoundation = [];
   const surfaceHoles = [];
   const forbiddenMuckBlocks = [];
+  const atmosphericMuckBlocks = [];
   const retiredTerrainIds = [];
 
   try {
@@ -144,6 +145,9 @@ async function main() {
           shard_seed: entity.shardSeed(),
           shard_diff: entity.hasShardDiff?.() ? entity.shardDiff() : undefined,
         });
+        const muck = loadMuck(voxeloo, {
+          shard_muck: entity.hasShardMuck?.() ? entity.shardMuck() : undefined,
+        });
         try {
           if (spec.shardY <= 0) {
             const probes = [
@@ -163,6 +167,18 @@ async function main() {
             continue;
           }
           if (spec.shardY !== 1) continue;
+          for (const [localPosition, muckiness] of muck) {
+            if (!muckiness) continue;
+            atmosphericMuckBlocks.push({
+              id,
+              position: [
+                expected.v0[0] + localPosition[0],
+                expected.v0[1] + localPosition[1],
+                expected.v0[2] + localPosition[2],
+              ],
+              muckiness,
+            });
+          }
           for (let localY = 0; localY < SHARD_DIM; localY += 1) {
             for (let localZ = 0; localZ < SHARD_DIM; localZ += 1) {
               for (let localX = 0; localX < SHARD_DIM; localX += 1) {
@@ -213,6 +229,7 @@ async function main() {
             }
           }
         } finally {
+          muck.delete?.();
           terrain.delete?.();
         }
       }
@@ -252,6 +269,7 @@ async function main() {
     emptyFoundationCount: emptyFoundation.length,
     surfaceHoleShardCount: surfaceHoles.length,
     forbiddenMuckBlockCount: forbiddenMuckBlocks.length,
+    atmosphericMuckBlockCount: atmosphericMuckBlocks.length,
     retiredTerrainCount: retiredTerrainIds.length,
     samples: {
       missing: missing.slice(0, 8),
@@ -259,6 +277,7 @@ async function main() {
       emptyFoundation: emptyFoundation.slice(0, 8),
       surfaceHoles: surfaceHoles.slice(0, 8),
       forbiddenMuckBlocks: forbiddenMuckBlocks.slice(0, 8),
+      atmosphericMuckBlocks: atmosphericMuckBlocks.slice(0, 8),
       retiredTerrainIds: retiredTerrainIds.slice(0, 8),
     },
   };
@@ -269,12 +288,13 @@ async function main() {
     emptyFoundation.length ||
     surfaceHoles.length ||
     forbiddenMuckBlocks.length ||
+    atmosphericMuckBlocks.length ||
     retiredTerrainIds.length
   ) {
     throw new Error("Harthmere extension terrain audit failed");
   }
   console.log(
-    "OK Harthmere extension is complete, flat at Y=52, free of Muck terrain, and free of retired terrain shards."
+    "OK Harthmere extension is complete, flat at Y=52, free of Muck terrain and atmosphere, and free of retired terrain shards."
   );
 }
 

@@ -41,16 +41,30 @@ check(
 );
 check(
   runner.includes('operation: "accept"') &&
-    runner.includes('operation: "abandon"') &&
+    runner.includes('operation: "completeQuest"') &&
+    runner.includes('operation: "complete"') &&
     runner.includes("authoritativeEntity(") &&
     runner.includes("native ECS board position"),
-  "every job crosses frontend accept/abandon and authoritative native ECS position readback"
+  "every job crosses frontend accept/objective/reward and authoritative native ECS readback"
 );
 check(
   runner.includes("frontend quest projection missing") &&
     runner.includes("frontend map marker missing") &&
-    runner.includes("accepted frontend job identity changed"),
-  "every job returns to the frontend with exact identity, quest, and marker assertions"
+    runner.includes("return-to-board marker missing") &&
+    runner.includes("completed marker remained active"),
+  "every job returns through objective, board-return, and completed frontend projections"
+);
+check(
+  runner.includes('operation: "pickup"') &&
+    runner.includes("marker did not advance to drop-off") &&
+    runner.includes("parcel was not created in native inventory") &&
+    runner.includes("delivered parcel was not consumed natively"),
+  "delivery E2E proves pickup marker, native parcel exchange, drop-off marker, and consumption"
+);
+check(
+  runner.includes("server escort scheduler completed todo") &&
+    runner.includes("reward was not paid through native wallet"),
+  "escort waits for server scheduler and every completed job verifies native payout"
 );
 check(
   releaseGate.includes("jobsBoardQuestMapAdapter.test.ts") &&

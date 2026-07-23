@@ -11,6 +11,7 @@ import {
 } from "@/shared/math/linear";
 import type { AABB, ReadonlyVec3 } from "@/shared/math/types";
 import {
+  boundedHarthmereNpcChaseSpeed,
   chaseAttackTargetTick,
   nightMuckerHexMovementMultiplier,
   nightMuckerHexUnprovokedAggroParams,
@@ -291,6 +292,9 @@ export function npcTickLogic(
   // contact: idle patrols, returns, and active pursuit all move faster. Combat
   // cadence/damage/range are boosted in nightMuckerHexUnprovokedAggroParams.
   forwardSpeed *= nightMuckerHexMovementMultiplier(npc);
+  if (locomotion === "chaseAttack") {
+    forwardSpeed = boundedHarthmereNpcChaseSpeed(npc, forwardSpeed);
+  }
   // Compute the NPC's AABB which is needed for physics and drowning logic.
   const aabb = anchorAndSizeToAABB(npc.position, npc.size);
 

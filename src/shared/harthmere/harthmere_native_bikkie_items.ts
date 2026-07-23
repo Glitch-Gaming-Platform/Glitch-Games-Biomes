@@ -283,6 +283,30 @@ export function ensureHarthmereNativeItemCatalogue() {
       isCraftingMaterial: true,
     })
   );
+  ensureDefinition(
+    defaultHarthmereItemDefinition({
+      itemId: "sealed_package",
+      displayName: "Sealed Delivery Parcel",
+      category: "quest_item",
+      maxStackSize: 20,
+      isCraftingMaterial: false,
+      isQuestItem: true,
+      tradeable: false,
+    })
+  );
+  ensureDefinition(
+    defaultHarthmereItemDefinition({
+      // Bind the semantic inventory registry to the authored snapshot item;
+      // the Bikkie overlay preserves its original mesh/icon/description.
+      itemId: "b:7077725005403292",
+      displayName: "Water-logged Muck Buster",
+      category: "quest_item",
+      maxStackSize: 1,
+      isCraftingMaterial: false,
+      isQuestItem: true,
+      tradeable: false,
+    })
+  );
 
   for (const food of Object.values(HARTHMERE_FOOD_DEFINITIONS)) {
     ensureConsumableDefinition(

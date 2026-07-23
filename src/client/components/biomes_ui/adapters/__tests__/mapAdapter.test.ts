@@ -1118,4 +1118,59 @@ describe("biomes_ui map adapter (V141)", () => {
     assert.equal(markers.length, HARTHMERE_BUSINESS_OUTPOSTS.length);
     assert.ok(markers.every((marker) => marker.kind === "business"));
   });
+
+  it("projects owned native crops and the active hoe guide into the live map", () => {
+    const cropId = "8810000000099991" as any;
+    const adapter = buildBiomesUIMapAdapterForTest(
+      1,
+      [400, 54, -150],
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      {
+        hoeQuestState: "active",
+        getModel: () => ({
+          supplies: [],
+          seedCount: 0,
+          hasHoe: false,
+          hasWateringCan: false,
+          plants: [
+            {
+              id: cropId,
+              name: "Carrot",
+              seedId: cropId,
+              status: "growing",
+              stage: 1,
+              stageProgress: 0.5,
+              waterLevel: 0.8,
+              wilt: 0,
+              position: [401, 54, -155],
+              distance: 5,
+              ownedByPlayer: true,
+            },
+          ],
+        }),
+      }
+    );
+
+    const crop = adapter
+      .getMarkers()
+      .find((marker: any) => marker.id === `farming:crop:${cropId}`);
+    assert.equal(crop?.kind, "crop");
+    assert.deepEqual(crop?.worldPosition, [401, 54, -155]);
+
+    const hoeMarker = adapter
+      .getMarkers()
+      .find((marker: any) => marker.id === "farming:orchard-produce-stand");
+    assert.equal(hoeMarker?.kind, "objective");
+    assert.equal(hoeMarker?.active, true);
+    assert.deepEqual(hoeMarker?.worldPosition, [2062, 53, -112]);
+    assert.ok(
+      adapter
+        .getTrackableQuests()
+        .some((quest: any) => quest.questId === "farming:buy-a-hoe")
+    );
+  });
 });

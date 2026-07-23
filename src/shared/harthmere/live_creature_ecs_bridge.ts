@@ -17,6 +17,7 @@ import {
   harthmereLiveCreatureRenderFamily,
   type HarthmereLiveCreatureRenderFamily,
 } from "@/shared/harthmere/live_creature_render";
+import { harthmereLiveModeCombatTargetIdForEcsEntity } from "@/shared/harthmere/visible_combat_target";
 
 export type HarthmereLiveCreatureBridgeRecord = {
   id: number;
@@ -275,6 +276,25 @@ export function reconcileHarthmereLiveCreatureBridge(
     }
   }
   return { toAdd, toUpdate, toRemove };
+}
+
+/**
+ * Static life placements are a loading fallback only. Once the corresponding
+ * ECS creature is present in the client bridge, its static combat target must
+ * be hidden and removed from hit selection so the player sees and attacks the
+ * authoritative moving entity instead of a stationary duplicate.
+ */
+export function harthmereLiveCreatureStaticFallbackTargetIds(
+  records: ReadonlyArray<HarthmereLiveCreatureBridgeRecord>
+): Set<string> {
+  const targetIds = new Set<string>();
+  for (const record of records) {
+    const targetId = harthmereLiveModeCombatTargetIdForEcsEntity(record.id);
+    if (targetId) {
+      targetIds.add(targetId);
+    }
+  }
+  return targetIds;
 }
 
 // ---------------------------------------------------------------------------

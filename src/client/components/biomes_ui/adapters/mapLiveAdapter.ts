@@ -65,6 +65,15 @@ import {
 } from "./nativeQuestMapAdapter";
 import { legacySyntheticRoadAheadEnabled } from "@/shared/harthmere/native_road_ahead_contract";
 import { dedupeTrackableQuestProjections } from "./questProjectionDedupe";
+import {
+  HARTHMERE_HOE_QUEST_MARKER_SOURCE,
+  HARTHMERE_NATIVE_CROP_MARKER_SOURCE,
+  harthmereHoeQuestMapLandmarks,
+  harthmereHoeQuestTrackableQuests,
+  harthmereNativeCropMapLandmarks,
+  type HarthmereHoeQuestState,
+} from "@/client/components/biomes_ui/adapters/farmingMapQuest";
+import type { NativeFarmingInterfaceModel } from "@/client/components/biomes_ui/adapters/nativeFarmingInterfaceAdapter";
 
 function readSnapshotGroveApi(): any | undefined {
   if (typeof window === "undefined") return undefined;
@@ -194,7 +203,11 @@ export function buildBiomesUIMapAdapter(
   liveQuestState?: unknown,
   buildingState?: HarthmerePropertyMapBuildingState,
   roadAheadChallengeStepHints?: Iterable<unknown>,
-  nativeQuestBundles?: readonly QuestBundle[]
+  nativeQuestBundles?: readonly QuestBundle[],
+  farming?: {
+    getModel: () => NativeFarmingInterfaceModel;
+    hoeQuestState: HarthmereHoeQuestState;
+  }
 ) {
   const includeSyntheticRoadAhead = legacySyntheticRoadAheadEnabled();
   const NormalizeWorldXZ = (
@@ -247,6 +260,7 @@ export function buildBiomesUIMapAdapter(
     | "bank"
     | "quest"
     | "resource"
+    | "crop"
     | "danger"
     | "safe_zone"
     | "route"
@@ -257,6 +271,11 @@ export function buildBiomesUIMapAdapter(
     const label = readableMapMarkerLabelForTest(landmark).toLowerCase();
     const kind = String(landmark?.kind ?? "").toLowerCase();
     const area = String(landmark?.area ?? "").toLowerCase();
+    if (
+      kind === "crop" ||
+      landmark?.source === HARTHMERE_NATIVE_CROP_MARKER_SOURCE
+    )
+      return "crop";
     if (kind === "objective") return "objective";
     if (
       kind === "property" ||
@@ -315,6 +334,8 @@ export function buildBiomesUIMapAdapter(
     return kind === "business" ||
       kind === "property" ||
       landmark?.source === HARTHMERE_PROPERTY_MARKER_SOURCE ||
+      landmark?.source === HARTHMERE_NATIVE_CROP_MARKER_SOURCE ||
+      landmark?.source === HARTHMERE_HOE_QUEST_MARKER_SOURCE ||
       landmark?.source === BIOMES_UI_LIVE_ENTITY_HELPER_MARKER_SOURCE ||
       landmark?.source === BIOMES_UI_SHARED_QUEST_MARKER_SOURCE
       ? id
@@ -337,6 +358,8 @@ export function buildBiomesUIMapAdapter(
         { isReadyToTurnIn: liveEntityHelperQuestRecordReadyToTurnIn }
       ),
       ...sharedQuestAcceptedLandmarksForBiomesUI(liveQuestState),
+      ...harthmereNativeCropMapLandmarks(farming?.getModel()),
+      ...harthmereHoeQuestMapLandmarks(farming?.hoeQuestState ?? "loading"),
       ...harthmerePropertyMapLandmarksFromBuildingState(buildingState),
       // Show unowned plots as "for sale" pins so players can find/preview a plot
       // (location, district, price) before buying.
@@ -466,13 +489,17 @@ export function buildBiomesUIMapAdapter(
         const isSharedQuestMarker =
           landmark?.active === true &&
           landmark?.source === BIOMES_UI_SHARED_QUEST_MARKER_SOURCE;
+        const isFarmingHoeQuestMarker =
+          landmark?.active === true &&
+          landmark?.source === HARTHMERE_HOE_QUEST_MARKER_SOURCE;
         const isActiveQuestMarker =
           isCurrentObjective ||
           isSyntheticRoadAheadObjective ||
           isInActiveChain ||
           isAcceptedJobMarker ||
           isLiveEntityHelperMarker ||
-          isSharedQuestMarker;
+          isSharedQuestMarker ||
+          isFarmingHoeQuestMarker;
         result.push({
           id: markerId,
           label: readableMapMarkerLabelForTest(landmark),
@@ -483,7 +510,8 @@ export function buildBiomesUIMapAdapter(
             isSyntheticRoadAheadObjective ||
             isAcceptedJobMarker ||
             isLiveEntityHelperMarker ||
-            isSharedQuestMarker
+            isSharedQuestMarker ||
+            isFarmingHoeQuestMarker
               ? ("objective" as const)
               : kind,
           active: isActiveQuestMarker,
@@ -496,6 +524,8 @@ export function buildBiomesUIMapAdapter(
             ? String(landmark.description ?? "Active helper quest target.")
             : isSharedQuestMarker
             ? String(landmark.description ?? "Shared quest target.")
+            : isFarmingHoeQuestMarker
+            ? String(landmark.description ?? "Buy a Hoe here.")
             : isAcceptedJobMarker
             ? String(landmark.description ?? "Accepted jobs board task.")
             : isSyntheticRoadAheadObjective
@@ -577,6 +607,9 @@ export function buildBiomesUIMapAdapter(
                 liveEntityHelperState
               ) ??
               firstActiveSharedQuestTitleForBiomesUI(liveQuestState) ??
+              harthmereHoeQuestTrackableQuests(
+                farming?.hoeQuestState ?? "loading"
+              )[0]?.title ??
               "Current Mission"
       );
     },
@@ -637,6 +670,17 @@ export function buildBiomesUIMapAdapter(
           { isReadyToTurnIn: liveEntityHelperQuestRecordReadyToTurnIn }
         ),
         ...activeSharedQuestMissionStepsForBiomesUI(liveQuestState),
+        ...(farming?.hoeQuestState === "active"
+          ? [
+              {
+                id: "farming:buy-a-hoe:vendor",
+                title: "Buy A Hoe",
+                objective:
+                  "Buy a Hoe for 22 gold from the Orchard Produce Stand.",
+                done: false,
+              },
+            ]
+          : []),
       ];
       if (!activeQuest) {
         return allSteps;
@@ -741,6 +785,9 @@ export function buildBiomesUIMapAdapter(
           { isReadyToTurnIn: liveEntityHelperQuestRecordReadyToTurnIn }
         ),
         ...sharedQuestTrackableQuestsForBiomesUI(liveQuestState),
+        ...harthmereHoeQuestTrackableQuests(
+          farming?.hoeQuestState ?? "loading"
+        ),
         // HARTHMERE_BIBLE_QUEST_WIRING (bible-wiring fix, 2026-07-14): bible
         // catalog quests (Q1–Q12 main arc + side quests) the player has
         // accepted, mirrored server-side into quests.active with

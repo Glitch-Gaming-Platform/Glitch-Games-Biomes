@@ -28,6 +28,10 @@ const speechButton = read(
   "src/client/components/system/NpcSpeechInputButton.tsx"
 );
 const voiceClient = read("src/client/components/system/VoiceChat.tsx");
+const voiceCache = read("src/server/shared/npc_voice_audio_cache.ts");
+const voiceGenerator = read(
+  "scripts/harthmere/generate-harthmere-npc-voice-recordings.cjs"
+);
 const deploy = read("scripts/glitch/deploy-production-local-redis-smoke.sh");
 
 ok(
@@ -79,6 +83,19 @@ ok(
 ok(
   voiceClient.includes("if (!res.url)") && voiceClient.includes("return;"),
   "voice client treats empty audio URLs as text-only dialogue"
+);
+ok(
+  voiceRoute.includes("resolveNpcVoiceAudioUrl") &&
+    voiceRoute.includes("npcVoiceAudioCacheKey") &&
+    voiceCache.includes("runtimeGenerations") &&
+    voiceCache.includes("generated/current/manifest.json"),
+  "voice route reuses committed and runtime audio while collapsing duplicate provider calls"
+);
+ok(
+  voiceGenerator.includes('provider === "elevenlabs"') &&
+    voiceGenerator.includes("NPC_VOICE_AUDIO_CACHE_MANIFEST_VERSION") &&
+    voiceGenerator.includes("writeManifest"),
+  "all-NPC recording generator writes an ElevenLabs-compatible cache manifest"
 );
 ok(
   speechRoute.includes("azureSpeechConfigFromEnv") &&

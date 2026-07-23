@@ -2,6 +2,7 @@ import assert from "assert";
 
 import {
   ATTACK_MEMORY_SECONDS,
+  boundedHarthmereChaseSpeedForName,
   chasePathTargetIsStale,
   enhancedNightMuckerHexCombatParams,
   evaluateMixedCreatureGroupRetaliationTarget,
@@ -9,11 +10,15 @@ import {
   effectiveAttackStrikeDelaySecs,
   isMixedCreatureGroupRetaliationEligible,
   isMixedCreatureGroupRetaliationName,
+  isHarthmereSightBoundChaserName,
   isMuckerOrHexerNameForNightAggro,
   isNightForNpcAggro,
   MIXED_CREATURE_GROUP_ALERT_MAX_VERTICAL_DISTANCE,
   MIXED_CREATURE_GROUP_ALERT_RADIUS,
   NIGHT_MUCKER_HEX_MOVEMENT_MULTIPLIER,
+  HARTHMERE_NPC_CHASE_SPEED_CAP_METERS_PER_SECOND,
+  HARTHMERE_NPC_CHASE_SPEED_MULTIPLIER,
+  shouldDropHarthmereChaseTargetForLineOfSight,
   shouldDropNpcTargetAtSafeZoneBoundary,
   type MixedCreatureGroupAlertCandidate,
 } from "@/shared/npc/behavior/chase_attack";
@@ -151,6 +156,56 @@ describe("chase attack: night muck/hex aggression helpers", () => {
     assert.equal(
       enhancedNightMuckerHexCombatParams("Road Bandit Scout", true, base, base),
       undefined
+    );
+  });
+});
+
+describe("chase attack: Harthmere sight and speed limits", () => {
+  it("keeps combat creatures sight-bound without affecting protected actors", () => {
+    for (const name of [
+      "Old Wood Mucker",
+      "Gravewood Hexer",
+      "Road Bandit Scout",
+      "Muckmeadow Cow",
+      "Guarded Sheep",
+    ]) {
+      assert.equal(isHarthmereSightBoundChaserName(name), true, name);
+    }
+    assert.equal(
+      isHarthmereSightBoundChaserName("Captured Bandit Prisoner"),
+      false
+    );
+    assert.equal(isHarthmereSightBoundChaserName("Mucker Ward"), false);
+    assert.equal(isHarthmereSightBoundChaserName("Town Guard"), false);
+  });
+
+  it("boosts Harthmere pursuit while keeping it below player sprint pace", () => {
+    assert.equal(
+      boundedHarthmereChaseSpeedForName("Pale Hexer", 8.64),
+      HARTHMERE_NPC_CHASE_SPEED_CAP_METERS_PER_SECOND
+    );
+    assert.equal(
+      boundedHarthmereChaseSpeedForName("Road Bandit Scout", 5.1),
+      5.1 * HARTHMERE_NPC_CHASE_SPEED_MULTIPLIER
+    );
+    assert.equal(
+      boundedHarthmereChaseSpeedForName("Unrelated NPC", 8.64),
+      8.64
+    );
+  });
+
+  it("drops a Harthmere combat target exactly when sight is broken", () => {
+    assert.equal(
+      shouldDropHarthmereChaseTargetForLineOfSight("Old Wood Mucker", true),
+      false
+    );
+    assert.equal(
+      shouldDropHarthmereChaseTargetForLineOfSight("Old Wood Mucker", false),
+      true
+    );
+    assert.equal(
+      shouldDropHarthmereChaseTargetForLineOfSight("Unrelated NPC", false),
+      false
     );
   });
 });
