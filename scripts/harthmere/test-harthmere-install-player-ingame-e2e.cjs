@@ -346,7 +346,8 @@ function installIdentityReachedGame(events) {
 
       if (
         failure === "net::ERR_ABORTED" &&
-        /\/api\/auth\/check/.test(url)
+        (/\/api\/auth\/check/.test(url) ||
+          /\/api\/harthmere\/native_vitals/.test(url))
       ) {
         return;
       }
