@@ -86,7 +86,8 @@ Before an expensive production rollout, run the complete local rehearsal. It
 boots the unified production image against disposable Redis, completes the same
 terrain/outpost/ECS/connector/grounding reconciliation used by the in-VNet job,
 checks Anima and Gaia after those writes, validates ElevenLabs configuration
-without printing its key, runs the HTTP/browser smoke suite, and leaves the
+without printing its key, runs the install-to-player browser E2E plus the
+HTTP/browser smoke suite, and leaves the
 containers running for inspection:
 
 ```bash
@@ -96,6 +97,12 @@ scripts/glitch/deploy-production-local-redis-smoke.sh --local-rehearsal
 
 Do not begin a production push until this rehearsal passes for the exact source
 revision being deployed.
+
+`--local-rehearsal` enables `HARTHMERE_RUN_LOCAL_BROWSER_E2E=1` by default.
+Set `HARTHMERE_LOCAL_E2E_HEADLESS=0 HARTHMERE_LOCAL_E2E_STRICT_RENDER=1` when a
+visible local Chrome/WebGL run is required. The same E2E is not run against an
+Azure production revision unless the diagnostic-only
+`HARTHMERE_RUN_PRODUCTION_BROWSER_E2E=1` override is explicitly supplied.
 
 The production phase is intentionally ordered as one transaction:
 
@@ -110,9 +117,11 @@ The production phase is intentionally ordered as one transaction:
    fails before the replacement simulation is ready.
 4. Run forced terrain maintenance and require the complete 2,304-foundation /
    576-surface audit, including zero atmospheric Muck and zero retired terrain.
-5. Run the concrete-revision browser E2E using a real non-secret test install.
-   A single warmup retry is allowed because a cold candidate previously
-   reported `loading-stalled` before passing unchanged.
+5. Validate the concrete revision with replica readiness, zero restarts, game
+   HTML, runtime/map/shared-state APIs, sync reachability, and production asset
+   checks. Do not run browser E2E against production by default; rendered E2E
+   belongs in the exact-image local rehearsal, where WebGL support is known and
+   test failures cannot mutate or delay production.
 6. Run production reconciliation, with the connector last, and require the
    reconciliation readiness marker and persisted read-back before traffic.
 7. Move traffic only to the verified candidate, deploy the matching simulation
@@ -125,6 +134,27 @@ The production phase is intentionally ordered as one transaction:
 Do not run forced terrain maintenance while Gaia is active. Terrain can be
 written correctly and still be changed immediately by a simulation tick,
 making the maintenance result appear nondeterministic.
+
+For a targeted terrain/Muck repair that must not repeat outpost, ECS, connector,
+or grounding reconciliation:
+
+```bash
+IMAGE_WAS_PUSHED=1 \
+HARTHMERE_SKIP_RECONCILIATION_AFTER_TERRAIN=1 \
+scripts/glitch/deploy-production-local-redis-smoke.sh \
+  --skip-build --push --tag <existing-immutable-tag>
+```
+
+This mode still pauses Gaia, forces terrain maintenance, audits before traffic,
+deploys the matching simulation image, audits again after Gaia starts, and
+forces the final Redis save.
+
+The immediate post-maintenance audit is strict: foundations, surface support,
+retired records, and Muck must all be clean. The later active-Gaia audit runs in
+`muck-only` mode because players and other legitimate world systems can modify
+surface cells after traffic resumes. That final gate fails only if Gaia has
+reintroduced forbidden or atmospheric Muck; it still reports unrelated surface
+changes for diagnosis.
 
 For a full production deploy from a local workstation, use the normal push
 command:
@@ -620,7 +650,8 @@ The gameplay stream workers use Redis consumer groups. Anima and Gaia use the
 shared private Redis world and service discovery. The simulation health server
 binds internal port `3000` immediately but returns `503` until both
 `127.0.0.1:4101/ready` and `127.0.0.1:4201/ready` return `200`; the deploy also
-waits for the `GLITCH_SIMULATION_ROLE_READY anima=1 gaia=1` marker.
+waits for the simulation health marker (`anima=1 gaia=1 healthPort=<port>`,
+with or without the legacy `GLITCH_SIMULATION_ROLE_READY` prefix).
 
 The simulation app intentionally starts at one replica because the D4 workload
 profile currently has capacity for one additional node. For simulation HA,
@@ -1309,7 +1340,7 @@ After deploy:
 - [ ] Logs show `/api/assets/player_mesh.glb` responses without automatic redirects to the Harthmere static body fallback.
 - [ ] Logs show `WebSocket listening on port 4900`.
 - [ ] Logs show `web now running`.
-- [ ] Simulation logs show the local Logic helper ready, Anima ready, Gaia ready, and `GLITCH_SIMULATION_ROLE_READY anima=1 gaia=1`.
+- [ ] Simulation logs show the local Logic helper ready, Anima ready, Gaia ready, and `anima=1 gaia=1 healthPort=<port>`.
 - [ ] Simulation logs show Gaia measured `20,188` missing terrain shard coordinates and do not contain `shard manager does not support weighted balancing` or `Farming update batch too large`.
 - [ ] Public replicas remain below their previous co-located memory peak and have zero worker-driven restarts.
 - [ ] Production `/api/world_map/metadata` returns finite map bounds and no

@@ -15,6 +15,7 @@ REDIS_HEALTH_CHECK_ONLY=0
 BOOTSTRAP_PROD_REDIS_SNAPSHOT=0
 RUN_LOCAL_SMOKE="${RUN_LOCAL_SMOKE:-0}"
 RUN_LOCAL_FULL_REHEARSAL="${RUN_LOCAL_FULL_REHEARSAL:-0}"
+HARTHMERE_RUN_LOCAL_BROWSER_E2E="${HARTHMERE_RUN_LOCAL_BROWSER_E2E:-$RUN_LOCAL_FULL_REHEARSAL}"
 DOCKER_BUILD_DIRECT_PUSH="${DOCKER_BUILD_DIRECT_PUSH:-1}"
 DOCKER_BUILD_MIN_FREE_MB="${DOCKER_BUILD_MIN_FREE_MB:-18432}"
 DOCKER_CACHE_EXPORT_MIN_FREE_MB="${DOCKER_CACHE_EXPORT_MIN_FREE_MB:-32768}"
@@ -159,6 +160,7 @@ HARTHMERE_TERRAIN_AUDIT_JOB_NAME="${HARTHMERE_TERRAIN_AUDIT_JOB_NAME:-biomes-har
 HARTHMERE_TERRAIN_AUDIT_JOB_CONTAINER_NAME="${HARTHMERE_TERRAIN_AUDIT_JOB_CONTAINER_NAME:-harthmere-terrain-audit}"
 HARTHMERE_TERRAIN_AUDIT_JOB_CREATED=0
 HARTHMERE_PREFLIGHT_INSTALL_ID="${HARTHMERE_PREFLIGHT_INSTALL_ID:-f7f602be-8d32-4fd6-9eba-2d3b7e6dafd7}"
+HARTHMERE_RUN_PRODUCTION_BROWSER_E2E="${HARTHMERE_RUN_PRODUCTION_BROWSER_E2E:-0}"
 PROD_REDIS_HOST="${PROD_REDIS_HOST:-10.0.0.12}"
 PROD_REDIS_PUBLIC_HOST="${PROD_REDIS_PUBLIC_HOST:-}"
 PROD_REDIS_HEALTH_HOST="${PROD_REDIS_HEALTH_HOST:-$PROD_REDIS_HOST}"
@@ -1112,7 +1114,8 @@ wait_for_simulation_role_ready() {
       --type console \
       --tail 300 \
       --follow false 2>/dev/null || true)"
-    if printf '%s\n' "$logs" | grep -Fq "GLITCH_SIMULATION_ROLE_READY anima=1 gaia=1"; then
+    if printf '%s\n' "$logs" | grep -Eq \
+      '(GLITCH_SIMULATION_ROLE_READY )?anima=1 gaia=1 healthPort=[0-9]+'; then
       log "Dedicated simulation revision is ready: $revision (Anima and Gaia)."
       return 0
     fi
@@ -1673,6 +1676,11 @@ validate_production_revision_before_traffic() {
   validate_world_sync_http_url "$revision_origin" "/api/harthmere/live_mode_jobs_board_state?install_id=${install_id}" "revision jobs board shared state" '"ok"[[:space:]]*:[[:space:]]*true'
   validate_world_sync_http_url "$revision_origin" "/api/harthmere/live_mode_player_status_state?install_id=${install_id}&gameplay_active=0" "revision player status state" '"ok"[[:space:]]*:[[:space:]]*true'
 
+  if [ "$HARTHMERE_RUN_PRODUCTION_BROWSER_E2E" != "1" ]; then
+    log "Skipping browser E2E on production revision; rendered E2E is required in the local rehearsal instead."
+    return
+  fi
+
   expected_sync_host="${PROD_ORIGIN#*://}"
   expected_sync_host="${expected_sync_host%%/*}"
   expected_sync_host="${expected_sync_host%%:*}"
@@ -2023,6 +2031,7 @@ run_azure_terrain_audit_job() {
       BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN=1 \
       BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X=1600 \
       BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_Z=0 \
+      HARTHMERE_TERRAIN_AUDIT_MODE=muck-only \
     --output none
   unset registry_password
   HARTHMERE_TERRAIN_AUDIT_JOB_CREATED=1
@@ -2052,7 +2061,7 @@ run_azure_terrain_audit_job() {
     --format text 2>&1 || true)"
   printf '%s\n' "$logs"
   if [ "$status" != "Succeeded" ] ||
-     ! printf '%s\n' "$logs" | grep -Fq "OK Harthmere extension is complete, flat at Y=52, free of Muck terrain and atmosphere"; then
+     ! printf '%s\n' "$logs" | grep -Fq "OK active Gaia leaves Harthmere free of Muck terrain and atmosphere."; then
     echo "ERROR post-simulation terrain audit failed: execution=$execution status=${status:-unknown}." >&2
     delete_azure_terrain_audit_job
     return 1
@@ -2440,6 +2449,10 @@ reconcile_production_world_sync() {
 
   if [ "${HARTHMERE_SKIP_WORLD_SYNC_RECONCILIATION:-0}" = "1" ]; then
     log "Skipping Harthmere production world sync reconciliation by request."
+    return
+  fi
+  if [ "${HARTHMERE_SKIP_RECONCILIATION_AFTER_TERRAIN:-0}" = "1" ]; then
+    log "Skipping broad Harthmere outpost/ECS/connector reconciliation after targeted terrain maintenance."
     return
   fi
 
@@ -3017,6 +3030,17 @@ smoke_local_image() {
 
   if [ "$RUN_LOCAL_FULL_REHEARSAL" = "1" ]; then
     run_local_full_deployment_rehearsal
+  fi
+
+  if [ "$HARTHMERE_RUN_LOCAL_BROWSER_E2E" = "1" ]; then
+    log "Running install-to-player browser E2E against the local production image."
+    HARTHMERE_E2E_EXPECTED_SYNC_HOST="127.0.0.1" \
+    HEADLESS="${HARTHMERE_LOCAL_E2E_HEADLESS:-1}" \
+    STRICT_RENDER="${HARTHMERE_LOCAL_E2E_STRICT_RENDER:-0}" \
+    E2E_ARTIFACTS_DIR="/tmp/harthmere-local-rehearsal-${TAG}" \
+    node scripts/harthmere/test-harthmere-install-player-ingame-e2e.cjs . \
+      --base-url "http://127.0.0.1:${LOCAL_WEB_PORT}" \
+      --install-id "$HARTHMERE_PREFLIGHT_INSTALL_ID"
   fi
 
   log "Running Glitch container smoke test against local production image."

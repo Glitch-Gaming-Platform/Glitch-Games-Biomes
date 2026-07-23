@@ -164,6 +164,9 @@ ok(
 ok(
   script.includes("--local-rehearsal") &&
     script.includes("run_local_full_deployment_rehearsal") &&
+    script.includes("HARTHMERE_RUN_LOCAL_BROWSER_E2E") &&
+    script.includes("Running install-to-player browser E2E against the local production image") &&
+    script.includes("test-harthmere-install-player-ingame-e2e.cjs") &&
     script.includes("run-harthmere-production-reconciliation.sh") &&
     script.includes('["Anima", 4101]') &&
     script.includes('["Gaia", 4201]') &&
@@ -613,7 +616,8 @@ ok(
     simulationHealth.includes("ready ? 200 : 503") &&
     simulationHealth.includes('name: "anima"') &&
     simulationHealth.includes('name: "gaia"') &&
-    script.includes("wait_for_simulation_role_ready"),
+    script.includes("wait_for_simulation_role_ready") &&
+    script.includes("(GLITCH_SIMULATION_ROLE_READY )?anima=1 gaia=1 healthPort=[0-9]+"),
   "simulation deployment waits for a health endpoint and log marker that require both native workers"
 );
 ok(
@@ -1097,9 +1101,20 @@ ok(
   script.includes(
     'HARTHMERE_PREFLIGHT_INSTALL_ID="${HARTHMERE_PREFLIGHT_INSTALL_ID:-f7f602be-8d32-4fd6-9eba-2d3b7e6dafd7}"'
   ) &&
+    script.includes(
+      'HARTHMERE_RUN_PRODUCTION_BROWSER_E2E="${HARTHMERE_RUN_PRODUCTION_BROWSER_E2E:-0}"'
+    ) &&
+    script.includes("Skipping browser E2E on production revision") &&
     script.includes("HARTHMERE_PREFLIGHT_E2E_ATTEMPTS:-2") &&
     script.includes("candidate warmup; waiting once before retry"),
-  "candidate E2E uses a real test install and retries once after cold-start warmup"
+  "production browser E2E is disabled by default while retaining an explicit diagnostic opt-in"
+);
+ok(
+  script.includes("HARTHMERE_SKIP_RECONCILIATION_AFTER_TERRAIN") &&
+    script.includes(
+      "Skipping broad Harthmere outpost/ECS/connector reconciliation after targeted terrain maintenance."
+    ),
+  "deploy can run targeted terrain maintenance without repeating broad reconciliation"
 );
 ok(
   pushAndDeploy.indexOf(
@@ -1188,6 +1203,8 @@ ok(
 );
 ok(
   harthmereTerrainAudit.includes("harthmereExtensionFoundationShardSpecs") &&
+    harthmereTerrainAudit.includes('HARTHMERE_TERRAIN_AUDIT_MODE') &&
+    harthmereTerrainAudit.includes('AUDIT_MODE === "muck-only"') &&
     harthmereTerrainAudit.includes("emptyFoundationCount") &&
     harthmereTerrainAudit.includes("surfaceHoleShardCount") &&
     harthmereTerrainAudit.includes("forbiddenMuckBlockCount") &&

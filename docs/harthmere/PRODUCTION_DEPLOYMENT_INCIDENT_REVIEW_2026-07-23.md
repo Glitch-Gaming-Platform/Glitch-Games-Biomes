@@ -110,9 +110,18 @@ A known non-secret test install is now the default. One candidate also returned
 `loading-stalled` during first cold execution and passed the same E2E unchanged
 after warmup.
 
-Permanent rule: use a real test install, require auth, sync, client context, and
-rendered player state against the revision FQDN, retain artifacts per attempt,
-and permit exactly one delayed warmup retry. A second failure is real.
+Permanent rule: require auth, sync, client context, canvas, and rendered player
+state in the exact-image local rehearsal. Do not make production rollout depend
+on a workstation headless browser: during the follow-up rollout, Chrome reported
+`webglSupported=false`, so strict canvas verification failed despite successful
+authentication, sync bootstrap, client-context construction, and player-mesh
+loading. Production revision checks use readiness, zero restarts, HTML/API/sync,
+and asset probes. The production browser test remains an explicit diagnostic
+opt-in only.
+
+The wrapper enforces that split: `--local-rehearsal` enables the local
+install-to-player browser E2E by default, while production revision validation
+skips it unless a diagnostic override is explicitly set.
 
 ### Reconciliation gates that were not catastrophic failures
 
@@ -157,6 +166,13 @@ matching simulation image and repeat the complete terrain audit after Gaia is
 ready. The deployment is not complete until the active-Gaia audit still reports
 zero atmospheric Muck.
 
+The follow-up also exposed that the active-Gaia proof must not require a
+player-editable surface to remain unchanged. The strict audit immediately after
+maintenance still requires zero holes. The post-Gaia audit uses `muck-only`
+mode: it reports surface changes but fails only on forbidden or atmospheric
+Muck. A single unrelated surface edit at `(2046, 52, -61)` therefore no longer
+masks a successful Muck-suppression result.
+
 ## One-shot deployment contract
 
 The wrapper now owns this sequence:
@@ -173,12 +189,16 @@ The wrapper now owns this sequence:
 8. Require 2,304 foundations, 576 surface shards, and zero missing, invalid,
    empty, holed, Muck, atmospheric Muck, and retired records.
 9. Require 3/3 candidate replicas and zero restarts.
-10. Run the revision-specific real-install browser E2E, with one warmup retry.
+10. Validate revision HTML, APIs, sync reachability, assets, and zero restarts.
+    Browser E2E has already passed in the exact-image local rehearsal.
 11. Reconcile outposts, ECS/shared state, connector, grounding, and creatures;
     require `HARTHMERE_PRODUCTION_RECONCILIATION_READY`.
 12. Shift traffic to the verified candidate and validate public APIs/assets.
 13. Deploy the same image to the simulation app; require
-    `GLITCH_SIMULATION_ROLE_READY anima=1 gaia=1` and zero restarts.
+    `anima=1 gaia=1 healthPort=<port>` (optionally carrying the legacy
+    `GLITCH_SIMULATION_ROLE_READY` prefix) and zero restarts. The July 23
+    follow-up exposed that matching only the legacy prefix can wait forever on
+    an otherwise healthy simulation revision.
 14. Wait briefly for Gaia ticks, rerun the terrain audit, and require zero Muck.
 15. Force Redis `BGSAVE` after that final audit.
 16. Delete temporary jobs and deactivate stale revisions.
@@ -215,6 +235,8 @@ must remain private and must not be opened to the internet for testing.
 - Do not infer a stall from repeated initialization logs; require phase and
   batch progress or inspect the exact blocked call.
 - Do not use synthetic install IDs for the production browser gate.
+- Do not run browser E2E on production as a normal deployment gate. Use the
+  local exact-image rehearsal; production browser execution is diagnostic-only.
 - Do not run terrain or creature reconciliation concurrently with Gaia.
 - Do not declare success from a pre-Gaia terrain audit.
 - Do not flush Redis as a normal deployment step.
@@ -224,4 +246,3 @@ must remain private and must not be opened to the internet for testing.
   writes or automatically disqualify a healthy candidate.
 - Do not clean up the last known-good revision until web, reconciliation,
   simulation, active-Gaia terrain audit, and Redis persistence have all passed.
-

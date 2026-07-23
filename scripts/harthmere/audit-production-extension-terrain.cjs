@@ -37,6 +37,7 @@ const BATCH_SIZE = Math.max(
   1,
   Number.parseInt(process.env.HARTHMERE_TERRAIN_AUDIT_BATCH_SIZE || "250", 10)
 );
+const AUDIT_MODE = process.env.HARTHMERE_TERRAIN_AUDIT_MODE || "full";
 const SHARD_DIM = 32;
 const FORBIDDEN_HARTHMERE_MUCK_TERRAIN_IDS = new Set(
   ["muckwad", "DEPRECATED_muckwad", "splintered_muck", "mucky_brambles"]
@@ -261,6 +262,7 @@ async function main() {
   }
 
   const summary = {
+    auditMode: AUDIT_MODE,
     redis: { host: REDIS_HOST, port: REDIS_PORT },
     expectedFoundationShards: specs.length,
     expectedSurfaceShards: specs.filter((spec) => spec.shardY === 1).length,
@@ -282,16 +284,24 @@ async function main() {
     },
   };
   console.log(JSON.stringify(summary, null, 2));
-  if (
-    missing.length ||
-    invalid.length ||
-    emptyFoundation.length ||
-    surfaceHoles.length ||
-    forbiddenMuckBlocks.length ||
-    atmosphericMuckBlocks.length ||
-    retiredTerrainIds.length
-  ) {
+  const failed =
+    AUDIT_MODE === "muck-only"
+      ? forbiddenMuckBlocks.length || atmosphericMuckBlocks.length
+      : missing.length ||
+        invalid.length ||
+        emptyFoundation.length ||
+        surfaceHoles.length ||
+        forbiddenMuckBlocks.length ||
+        atmosphericMuckBlocks.length ||
+        retiredTerrainIds.length;
+  if (failed) {
     throw new Error("Harthmere extension terrain audit failed");
+  }
+  if (AUDIT_MODE === "muck-only") {
+    console.log(
+      "OK active Gaia leaves Harthmere free of Muck terrain and atmosphere."
+    );
+    return;
   }
   console.log(
     "OK Harthmere extension is complete, flat at Y=52, free of Muck terrain and atmosphere, and free of retired terrain shards."
