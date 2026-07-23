@@ -334,6 +334,7 @@ import {
   createBuildingSystemHomeConsoleMarker,
   createBuildingSystemMiraMapMarker,
   createBuildingSystemMuckAreaPlotDefinition,
+  createBuildingSystemRequestedPlotDefinition,
   createBuildingSystemPlacementPreview,
   createBuildingSystemRepairDamageMaterializationPlan,
   createBuildingSystemRepairRestoreMaterializationPlan,
@@ -5879,25 +5880,19 @@ function buildingSystemClaimBlockerForPlot(
   state: HarthmereLiveModeBackendState,
   plot: BuildingSystemPlotDefinition
 ) {
-  for (const ownedPlotId of state.building.ownedPlots) {
-    if (ownedPlotId === plot.plotId) continue;
+  // The shared owner ledger is the cross-player source of truth. Checking only
+  // this actor's `ownedPlots` projection would allow two players to purchase
+  // differently named rectangles covering the same land.
+  for (const [ownedPlotId, ownerActorId] of Object.entries(
+    state.building.plotOwners
+  )) {
+    if (!ownerActorId || ownedPlotId === plot.plotId) continue;
     const ownedPlot = buildingSystemPlotFromState(state, ownedPlotId);
     if (
       ownedPlot &&
       buildingSystemPlotBoundsOverlap(plot.bounds, ownedPlot.bounds, 1)
     ) {
       return `area_already_claimed:${ownedPlotId}`;
-    }
-  }
-  for (const [plotId, authoredPlot] of BUILDING_SYSTEM_PLOTS.map(
-    (candidate) => [candidate.plotId, candidate] as const
-  )) {
-    if (!state.building.ownedPlots.includes(plotId)) continue;
-    if (
-      plotId !== plot.plotId &&
-      buildingSystemPlotBoundsOverlap(plot.bounds, authoredPlot.bounds, 1)
-    ) {
-      return `area_already_claimed:${plotId}`;
     }
   }
   for (const structure of buildingSystemNearbyStructuresForState(state)) {
@@ -14049,7 +14044,7 @@ export function reduceHarthmereLiveModeBackendState(
               touchedModels.add("building_state");
             }
           }
-        } else if (completed && questSource !== "snapshot_grove") {
+        } else if (completed) {
           if (
             nativeBiomesEcsAuthorityEnabled() &&
             !isServerAuthorityEnvelope(envelope)
@@ -14218,22 +14213,41 @@ export function reduceHarthmereLiveModeBackendState(
           buildingSystemBlueprintById(claimBlueprintId) ??
           claimBlueprintFromItem ??
           buildingSystemBlueprintByStructureType(claimStructureTypeId);
-        const dynamicPlot = createBuildingSystemMuckAreaPlotDefinition({
-          plotId: requestedPlotId,
-          blueprint: claimBlueprint,
-          origin:
-            payloadNumber(envelope, "originX") !== undefined &&
-            payloadNumber(envelope, "originZ") !== undefined
-              ? {
-                  x: payloadNumber(envelope, "originX")!,
-                  y: payloadNumber(envelope, "originY"),
-                  z: payloadNumber(envelope, "originZ")!,
-                }
-              : undefined,
-          areaId:
-            payloadString(envelope, "muckAreaId") ??
-            payloadString(envelope, "areaId"),
-        });
+        const requestAreaId = payloadString(envelope, "requestAreaId");
+        const requestedWidth = payloadNumber(envelope, "plotWidth");
+        const requestedDepth = payloadNumber(envelope, "plotDepth");
+        const requestedCenterX = payloadNumber(envelope, "centerX");
+        const requestedCenterZ = payloadNumber(envelope, "centerZ");
+        const dynamicPlot =
+          requestAreaId &&
+          requestedWidth !== undefined &&
+          requestedDepth !== undefined &&
+          requestedCenterX !== undefined &&
+          requestedCenterZ !== undefined
+            ? createBuildingSystemRequestedPlotDefinition({
+                plotId: requestedPlotId,
+                requestAreaId,
+                blueprint: claimBlueprint,
+                center: { x: requestedCenterX, z: requestedCenterZ },
+                width: requestedWidth,
+                depth: requestedDepth,
+              })
+            : createBuildingSystemMuckAreaPlotDefinition({
+                plotId: requestedPlotId,
+                blueprint: claimBlueprint,
+                origin:
+                  payloadNumber(envelope, "originX") !== undefined &&
+                  payloadNumber(envelope, "originZ") !== undefined
+                    ? {
+                        x: payloadNumber(envelope, "originX")!,
+                        y: payloadNumber(envelope, "originY"),
+                        z: payloadNumber(envelope, "originZ")!,
+                      }
+                    : undefined,
+                areaId:
+                  payloadString(envelope, "muckAreaId") ??
+                  payloadString(envelope, "areaId"),
+              });
         if (!dynamicPlot.ok) {
           warnings.push(
             ...dynamicPlot.errors.map((error) => `plot_claim_rejected:${error}`)
@@ -14492,6 +14506,24 @@ export function reduceHarthmereLiveModeBackendState(
             sourceKind: "harthmere_plot_claim_idempotent_repair",
           });
           touchedModels.add("owned_plots");
+          break;
+        }
+        // Re-run clearance for authored listings too. A plot can remain in the
+        // catalogue while a newer ECS/Gaia structure occupies its rectangle;
+        // the server must refuse the deed rather than relying on stale UI data.
+        const blocker = buildingSystemClaimBlockerForPlot(next, plot);
+        const nativeStructureCollisionIds = payloadStringArray(
+          envelope,
+          "nativeStructureCollisionIds"
+        );
+        if (blocker || nativeStructureCollisionIds.length > 0) {
+          warnings.push(
+            `plot_claim_rejected:${
+              blocker ??
+              `existing_native_structure:${nativeStructureCollisionIds[0]}`
+            }`
+          );
+          touchedModels.add("building_rejection");
           break;
         }
         if (

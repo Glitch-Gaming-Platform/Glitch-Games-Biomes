@@ -13,7 +13,9 @@ import {
 import type { ClientResources } from "@/client/game/resources/types";
 import {
   AudioScript,
+  COMBAT_MUSIC_DAMAGE_GRACE_SECONDS,
   combatTargetFromNpcStateData,
+  healthIndicatesRecentCombatDamage,
   selectBackgroundMusicTrack,
 } from "@/client/game/scripts/audio";
 import type { BiomesId } from "@/shared/ids";
@@ -26,7 +28,19 @@ const PLAYER_ID = 101 as BiomesId;
 const OTHER_PLAYER_ID = 202 as BiomesId;
 let nextNpcId = 1000;
 
-function health(hp: number) {
+type TestHealth = {
+  hp: number;
+  maxHp: number;
+  lastDamageSource:
+    | { kind: "attack"; attacker: BiomesId; dir: undefined }
+    | { kind: "fall"; distance: number }
+    | undefined;
+  lastDamageTime: number | undefined;
+  lastDamageInventoryConsequence: undefined;
+  lastDamageAmount: number | undefined;
+};
+
+function health(hp: number, overrides: Partial<TestHealth> = {}): TestHealth {
   return {
     hp,
     maxHp: 100,
@@ -34,6 +48,7 @@ function health(hp: number) {
     lastDamageTime: undefined,
     lastDamageInventoryConsequence: undefined,
     lastDamageAmount: undefined,
+    ...overrides,
   };
 }
 
@@ -62,7 +77,8 @@ function audioHarness() {
 
   let muckyness = 0;
   let inWater = false;
-  let playerHp = 100;
+  let nowSeconds = 100;
+  let playerHealth = health(100);
   let mediaVolume = 1;
   let npcs: ReturnType<typeof npc>[] = [];
   let audioSources: TestAudioSource[] = [];
@@ -78,6 +94,9 @@ function audioHarness() {
       if (path === "/ecs/c/position") {
         return { v: [0, 0, 0] as [number, number, number] };
       }
+      if (path === "/clock") {
+        return { time: nowSeconds };
+      }
       if (path === "/camera/environment") {
         return { inWater, muckyness: { get: () => muckyness } };
       }
@@ -87,7 +106,7 @@ function audioHarness() {
   const table = {
     get(id: BiomesId) {
       return id === PLAYER_ID
-        ? { id: PLAYER_ID, health: health(playerHp) }
+        ? { id: PLAYER_ID, health: playerHealth }
         : undefined;
     },
     scan(query: unknown) {
@@ -134,7 +153,13 @@ function audioHarness() {
       inWater = value;
     },
     setPlayerHp(value: number) {
-      playerHp = value;
+      playerHealth = { ...playerHealth, hp: value };
+    },
+    setPlayerHealth(value: ReturnType<typeof health>) {
+      playerHealth = value;
+    },
+    setNowSeconds(value: number) {
+      nowSeconds = value;
     },
     setMediaVolume(value: number) {
       mediaVolume = value;
@@ -197,6 +222,90 @@ describe("combat background music", () => {
       combatTargetFromNpcStateData(new Uint8Array([0xff, 0x00, 0x01])),
       undefined
     );
+  });
+
+  it("recognizes only recent attack damage as a combat signal", () => {
+    const recentAttack = health(92, {
+      lastDamageSource: {
+        kind: "attack",
+        attacker: OTHER_PLAYER_ID,
+        dir: undefined,
+      },
+      lastDamageTime: 100,
+      lastDamageAmount: -8,
+    });
+
+    assert.equal(healthIndicatesRecentCombatDamage(recentAttack, 101), true);
+    assert.equal(
+      healthIndicatesRecentCombatDamage(
+        recentAttack,
+        100 + COMBAT_MUSIC_DAMAGE_GRACE_SECONDS + 0.01
+      ),
+      false
+    );
+    assert.equal(
+      healthIndicatesRecentCombatDamage(
+        {
+          ...recentAttack,
+          lastDamageSource: { kind: "fall", distance: 6 },
+        },
+        101
+      ),
+      false
+    );
+    assert.equal(
+      healthIndicatesRecentCombatDamage(
+        { ...recentAttack, lastDamageAmount: 8 },
+        101
+      ),
+      false
+    );
+    assert.equal(
+      healthIndicatesRecentCombatDamage({ ...recentAttack, hp: 0 }, 101),
+      false
+    );
+  });
+
+  it("REGRESSION: uses native player damage when chase state is unavailable", () => {
+    const harness = audioHarness();
+    harness.setPlayerHealth(
+      health(92, {
+        lastDamageSource: {
+          kind: "attack",
+          attacker: OTHER_PLAYER_ID,
+          dir: undefined,
+        },
+        lastDamageTime: 100,
+        lastDamageAmount: -8,
+      })
+    );
+
+    harness.setNowSeconds(101);
+    harness.script.tick(0);
+    harness.setNowSeconds(100 + COMBAT_MUSIC_DAMAGE_GRACE_SECONDS + 0.01);
+    harness.script.tick(0);
+
+    assert.deepEqual(harness.tracks, ["battle_music", "music"]);
+  });
+
+  it("starts when the player hits a native NPC before chase state synchronizes", () => {
+    const harness = audioHarness();
+    const recentlyHitNpc = npc(undefined);
+    recentlyHitNpc.health = health(75, {
+      lastDamageSource: {
+        kind: "attack",
+        attacker: PLAYER_ID,
+        dir: undefined,
+      },
+      lastDamageTime: 100,
+      lastDamageAmount: -25,
+    });
+    harness.setNpcs([recentlyHitNpc]);
+    harness.setNowSeconds(101);
+
+    harness.script.tick(0);
+
+    assert.equal(harness.tracks.at(-1), "battle_music");
   });
 
   it("starts for a pursuer and restores the underlying ambient track", () => {

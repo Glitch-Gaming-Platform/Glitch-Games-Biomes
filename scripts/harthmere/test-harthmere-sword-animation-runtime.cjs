@@ -66,12 +66,17 @@ checkSection(
 );
 checkSection("toggle weapon emits draw true", toggleWeapon, /emitHarthmereWeaponVisualState\(\s*["']draw["']\s*,\s*true\s*\)/, "Draw toggle must drive the visual event.");
 checkSection("toggle weapon emits sheathe false", toggleWeapon, /emitHarthmereWeaponVisualState\(\s*["']sheathe["']\s*,\s*false\s*\)/, "Sheathe toggle must drive the visual event.");
-checkSection("first physical B/N press draws sword and returns before damage", keyedAttack, /attack\s*!==\s*["']spark["']\s*&&\s*!state\.weaponDrawn[\s\S]{0,900}emitHarthmereWeaponVisualState\(\s*["']draw["']\s*,\s*true\s*,\s*attack\s*\)[\s\S]{0,160}return\s*;/, "First sheathed physical key press should draw, not invisibly damage.");
+const drawGate = sliceBetween(
+  keyedAttack,
+  "if (hasPhysicalWeapon && !state.weaponDrawn)",
+  'if (attack === "spark" && !targetOffset)'
+);
+checkSection("first physical B/N press draws sword and returns before damage", drawGate, /emitHarthmereWeaponVisualState\(\s*["']draw["']\s*,\s*true\s*,\s*attack\s*,\s*equippedWeaponItemId\s*\)[\s\S]{0,180}return\s*;/, "First sheathed physical key press should draw, not invisibly damage.");
 checkSection("draw transition has its own cooldown gate", keyedAttack, /setCooldown\([\s\S]{0,160}["']draw["']\s*,\s*0\.35\s*\)/, "Draw transition should not be spammable.");
-report.check("draw branch does not emit attack animation before returning", /Weapon Not Drawn[\s\S]{0,500}emitHarthmereWeaponVisualState\(\s*["']draw["']\s*,\s*true\s*,\s*attack\s*\)[\s\S]{0,120}return\s*;/.test(keyedAttack) && !/Weapon Not Drawn[\s\S]{0,500}emitAttackAnimation\(attack\)/.test(keyedAttack), "Drawing should be a draw animation, not an attack emote.");
-checkSection("drawn physical attack emits player body attack event", keyedAttack, /emitAttackAnimation\(attack\)/, "B/N attack must still drive the player body animation bridge.");
-checkSection("drawn physical attack emits visible sword attack event", keyedAttack, /emitHarthmereWeaponVisualState\(\s*["']attack["']\s*,\s*true\s*,\s*attack\s*\)/, "B/N attack must drive the sword visual, not just damage.");
-checkSection("drawn physical attack resolves forward arc after visual attack event", keyedAttack, /emitHarthmereWeaponVisualState\(\s*["']attack["']\s*,\s*true\s*,\s*attack\s*\)[\s\S]{0,260}performHarthmereForwardArcAttack\(attack\)/, "Sword visual should be emitted before/with damage arc resolution.");
+report.check("draw branch does not emit attack animation before returning", /Weapon Not Drawn[\s\S]{0,650}emitHarthmereWeaponVisualState\(\s*["']draw["']\s*,\s*true\s*,\s*attack\s*,[\s\S]{0,120}return\s*;/.test(keyedAttack) && !/Weapon Not Drawn[\s\S]{0,500}emitAttackAnimation\(attack/.test(keyedAttack), "Drawing should be a draw animation, not an attack emote.");
+checkSection("drawn physical attack emits player body attack event", keyedAttack, /emitAttackAnimation\(attack\s*,/, "B/N attack must still drive the player body animation bridge.");
+checkSection("drawn physical attack emits visible sword attack event", keyedAttack, /emitHarthmereWeaponVisualState\(\s*["']attack["']\s*,\s*true\s*,\s*attack\s*,/, "B/N attack must drive the sword visual, not just damage.");
+checkSection("drawn physical attack resolves forward arc after visual attack event", keyedAttack, /emitHarthmereWeaponVisualState\(\s*["']attack["']\s*,\s*true\s*,\s*attack\s*,[\s\S]{0,700}performHarthmereForwardArcAttack\(attack\)/, "Sword visual should be emitted before/with damage arc resolution.");
 
 // 2. Clip selection and mixer behavior.
 checkSection("sword clip constants map draw/sheathe/basic/heavy/idle to generated clip names", renderer, /HARTHMERE_PLAYER_SWORD_CLIPS\s*=\s*\{[\s\S]{0,500}draw\s*:\s*["']Draw_24["'][\s\S]{0,120}sheathe\s*:\s*["']Sheathe_24["'][\s\S]{0,120}basic\s*:\s*["']BasicSlash_24["'][\s\S]{0,120}heavy\s*:\s*["']HeavySlash_24["'][\s\S]{0,120}idle\s*:\s*["']IdleDrawn_24["']/, "Sword clip constants must match generated equipment clips.");
@@ -172,7 +177,7 @@ report.check(
 // 10. Guard against accidental duplicate attack emits.
 report.check(
   "physical attack branch emits one visible sword attack event",
-  countMatches(sliceBetween(keyedAttack, "} else {", "const cooldownSeconds"), /emitHarthmereWeaponVisualState\(\s*["']attack["']\s*,\s*true\s*,\s*attack\s*\)/g) === 1,
+  countMatches(sliceBetween(keyedAttack, "} else {", "const cooldownSeconds"), /emitHarthmereWeaponVisualState\(\s*["']attack["']\s*,\s*true\s*,\s*attack\s*,/g) === 1,
   "Do not emit duplicate sword attack visual events from the physical branch."
 );
 

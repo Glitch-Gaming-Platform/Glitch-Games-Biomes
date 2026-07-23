@@ -4,7 +4,7 @@ import { biomesUIMainQuestSelectionFromQuestForTest } from "../adapters/mainQues
 import type { MapTrackableQuest } from "../tabs/MapQuestsTab";
 
 describe("CurrentQuestObjectiveHUD", () => {
-  it("prioritizes the selected main quest objective over pinned and active quests", () => {
+  it("prioritizes an explicit active destination over the selected main quest", () => {
     const mainQuest: MapTrackableQuest = {
       questId: "muck_breach_boss",
       title: "Muck Breach Boss",
@@ -35,7 +35,7 @@ describe("CurrentQuestObjectiveHUD", () => {
           setAtMs: 3000,
         },
       }),
-      "Defeat the Muck-Scarred Helix at the West Muck Breach."
+      "Speak with Jackie in the Grove."
     );
   });
 
@@ -98,7 +98,7 @@ describe("CurrentQuestObjectiveHUD", () => {
     );
   });
 
-  it("prefers the active Road Ahead story objective over background active jobs", () => {
+  it("lets an explicitly pinned jobs-board quest override Road Ahead", () => {
     const deliveryJob: MapTrackableQuest = {
       questId: "jobs_board:harthmere_job_todo_4",
       title: "Courier Run",
@@ -129,7 +129,7 @@ describe("CurrentQuestObjectiveHUD", () => {
           setAtMs: 3000,
         },
       }),
-      "Equip any block and place it on the ground."
+      "Deliver the sealed package to the marked drop-off."
     );
   });
 });

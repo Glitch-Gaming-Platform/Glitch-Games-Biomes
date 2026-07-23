@@ -10,12 +10,14 @@ import {
   type HarthmereNativeNpcCombatProfile,
 } from "@/shared/harthmere/harthmere_native_combat";
 import type { BiomesId } from "@/shared/ids";
+import { HARTHMERE_NATIVE_BANDIT_SEEDS } from "@/shared/harthmere/bandit_production_seed";
 
 export function allHarthmereNativeNpcCombatProfiles() {
   const profiles = [
     ...HARTHMERE_LIVE_ENTITY_ROBOT_SENTINEL_SEEDS,
     ...harthmereGroundedMuckMonsterSeedsInTerritory(),
     ...harthmereGroundedLivestockSeedsInTerritory(),
+    ...HARTHMERE_NATIVE_BANDIT_SEEDS,
     HARTHMERE_NATIVE_MUCK_SCARRED_HELIX_SEED,
     HARTHMERE_NATIVE_THAEDRYN_SEED,
   ].map(harthmereNativeNpcCombatProfileForSeed);

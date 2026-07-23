@@ -40,6 +40,10 @@ import {
   HARTHMERE_ORIGINAL_WORLD_EAST_EDGE_X,
   normalizeHarthmereExtensionOutdoorFeetPosition,
 } from "./world_extension";
+import {
+  HARTHMERE_NATIVE_BANDIT_SEEDS,
+  type HarthmereBanditRole,
+} from "./bandit_production_seed";
 
 export const HARTHMERE_LIVE_ENTITY_PRODUCTION_SEED_VERSION =
   "harthmere-live-entity-production-seed" as const;
@@ -48,7 +52,8 @@ export const HARTHMERE_LIVE_ENTITY_MUCK_HEX_STRENGTH_MULTIPLIER = 5;
 export type HarthmereLiveEntityProductionSeedKind =
   | "robot_sentinel"
   | "ambient_muck_monster"
-  | "ambient_livestock";
+  | "ambient_livestock"
+  | "ambient_bandit";
 
 export interface HarthmereLiveEntityProductionSeed {
   seedId: string;
@@ -75,6 +80,10 @@ export interface HarthmereLiveEntityProductionSeed {
   attackDamage?: number;
   /** Flat kill XP an ambient_livestock animal grants when hunted. */
   killXp?: number;
+  /** Native Anima combat archetype for authored bandit families. */
+  banditRole?: HarthmereBanditRole;
+  /** Prisoners and other restrained actors remain ECS-owned but immobile. */
+  lockedInPlace?: boolean;
   robotId?: string;
   energy?: number;
   maxEnergy?: number;
@@ -97,6 +106,19 @@ function entityIdFromOffset(idOffset: number) {
   return (Number(SNAPSHOT_GROVE_LOCAL_DEV_NPC_BASE) + idOffset) as BiomesId;
 }
 
+function productionOutdoorMarkerPosition(
+  markerId: string,
+  fallback: Vec3
+): Vec3 {
+  const placement = getHarthmereProductionPlacementByKey(
+    harthmereProductionPlacementKey("jobs_board_marker", markerId)
+  );
+  const recommended = finiteVec3(placement?.recommendedPosition);
+  return placement?.placementMode === "outdoor_surface" && recommended
+    ? recommended
+    : fallback;
+}
+
 /** Quest-gated native boss; materialized only after accepting the contract. */
 export const HARTHMERE_NATIVE_MUCK_SCARRED_HELIX_SEED = {
   seedId: "live-helper-muck-scarred-helix",
@@ -106,13 +128,12 @@ export const HARTHMERE_NATIVE_MUCK_SCARRED_HELIX_SEED = {
   displayName: "Muck-Scarred Helix",
   areaId: "west_muck_breach",
   areaLabel: "West Muck Breach",
-  position: normalizeHarthmereExtensionOutdoorFeetPosition(
-    shiftHarthmereAuthoredPositionToWorld([
-      236,
-      HARTHMERE_EXTENSION_FEET_Y,
-      -506,
-    ]),
-    1.5
+  // The Helix belongs to the original-map West Muck Breach, not the safe,
+  // additive Harthmere town. Use the checked-in production terrain sample so
+  // the boss and its quest marker share the same real hill height.
+  position: productionOutdoorMarkerPosition(
+    "live_helper_muck_scarred_helix",
+    [232, 32, -506]
   ),
   orientation: [0, 0] as Vec2,
   dialog: "",
@@ -263,6 +284,9 @@ export function harthmereLiveEntitySizeForSeed(
     }
     return [0.95, 1.0, 1.35]; // sheep / medium
   }
+  if (seed.kind === "ambient_bandit") {
+    return [0.72, 1.8, 0.72];
+  }
   if (seed.combatKind === "hex" || /hex|hexer/.test(text)) {
     return [0.85, 1.75, 0.85];
   }
@@ -292,7 +316,50 @@ export const HARTHMERE_LIVE_ENTITY_ROBOT_SENTINEL_SEEDS =
     } satisfies HarthmereLiveEntityProductionSeed;
   });
 
-export const HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_PRODUCTION_COUNT = 100;
+export const HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_PRODUCTION_COUNT = 116;
+
+export interface HarthmereGuardedWildlifeLocation {
+  areaId: string;
+  areaLabel: string;
+  center: ReadonlyVec3;
+  animalCounts: Readonly<{
+    cow: number;
+    sheep: number;
+    rabbit: number;
+  }>;
+}
+
+// Four additional wildlife pockets distributed across distinct, non-safe Muck
+// regions. Their center Y values come from the checked-in production terrain
+// scan; the deployment grounding pass still verifies every complete body
+// footprint and persists any small final adjustment as the respawn anchor.
+export const HARTHMERE_LIVE_ENTITY_GUARDED_WILDLIFE_LOCATIONS: readonly HarthmereGuardedWildlifeLocation[] =
+  [
+    {
+      areaId: "west_muck_breach_low_shelf",
+      areaLabel: "West Muck Breach Low Shelf",
+      center: [203.172, 53, -518.17],
+      animalCounts: { cow: 1, sheep: 2, rabbit: 2 },
+    },
+    {
+      areaId: "watchtower_muck_north_hollow",
+      areaLabel: "Watchtower Muck North Hollow",
+      center: [307, 44, -385],
+      animalCounts: { cow: 1, sheep: 2, rabbit: 2 },
+    },
+    {
+      areaId: "old_wood_muck_east_verge",
+      areaLabel: "Old Wood Muck East Verge",
+      center: [675, 53, -457],
+      animalCounts: { cow: 1, sheep: 1, rabbit: 3 },
+    },
+    {
+      areaId: "gravewood_pale_muck_south_fold",
+      areaLabel: "Gravewood Pale Muck South Fold",
+      center: [665, 48, 145],
+      animalCounts: { cow: 1, sheep: 1, rabbit: 3 },
+    },
+  ] as const;
 
 interface HarthmereMuckMonsterSeedLayout {
   areaId: string;
@@ -304,6 +371,7 @@ interface HarthmereMuckMonsterSeedLayout {
   muckerName: string;
   hexerName: string;
   hexEvery: number;
+  displayIndexBase?: number;
 }
 
 const HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_LAYOUTS: readonly HarthmereMuckMonsterSeedLayout[] =
@@ -385,6 +453,35 @@ const HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_LAYOUTS: readonly HarthmereMuckMonsterS
       hexerName: "Gravewood Pale Hexer",
       hexEvery: 7,
     },
+    ...HARTHMERE_LIVE_ENTITY_GUARDED_WILDLIFE_LOCATIONS.map(
+      (location, index) => ({
+        areaId: location.areaId,
+        areaLabel: location.areaLabel,
+        count: 4,
+        center: location.center,
+        radius: 5,
+        firstOffset: 10021 + index * 4,
+        muckerName:
+          index === 0
+            ? "West Breach Muckling"
+            : index === 1
+            ? "Watchtower Clearing Mucker"
+            : index === 2
+            ? "Old Wood Copse Mucker"
+            : "Gravewood Pale Muckling",
+        hexerName:
+          index === 0
+            ? "West Breach Lesser Hexer"
+            : index === 1
+            ? "Watchtower Clearing Hexer"
+            : index === 2
+            ? "Old Wood Copse Hexer"
+            : "Gravewood Pale Hexer",
+        // Exactly three Muckers and one Hex guard every added herd.
+        hexEvery: 4,
+        displayIndexBase: index === 0 ? 15 : 14,
+      })
+    ),
   ] as const;
 
 function muckMonsterPositionForLayout(
@@ -410,7 +507,9 @@ const HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SOURCE_SEEDS =
         areaId: layout.areaId,
         areaLabel: layout.areaLabel,
         idOffset,
-        displayName: `${displayName} ${index + 1}`,
+        displayName: `${displayName} ${
+          (layout.displayIndexBase ?? 0) + index + 1
+        }`,
         position: muckMonsterPositionForLayout(layout, index),
       };
     })
@@ -514,6 +613,7 @@ const HARTHMERE_LIVE_ENTITY_LIVESTOCK_PER_AREA =
 // 9601-9619, business customers 9701-9757. The previous value (9601) collided
 // with the 19 business owners, so 19 of the 24 animals were never created.
 const HARTHMERE_LIVE_ENTITY_LIVESTOCK_FIRST_OFFSET = 9551;
+const HARTHMERE_LIVE_ENTITY_GUARDED_WILDLIFE_FIRST_OFFSET = 10001;
 
 // Deterministic spread inside the muck area, kept well within radius so animals
 // stay grounded in the muck (not on its sloped edge). `indexInArea` covers every
@@ -536,7 +636,7 @@ function livestockPositionInMuckArea(
   ];
 }
 
-export const HARTHMERE_LIVE_ENTITY_LIVESTOCK_SEEDS: HarthmereLiveEntityProductionSeed[] =
+const HARTHMERE_LIVE_ENTITY_BASE_MUCK_WILDLIFE_SEEDS: HarthmereLiveEntityProductionSeed[] =
   HARTHMERE_LIVE_ENTITY_LIVESTOCK_AREAS.flatMap((livestockArea, areaIndex) => {
     const area = HARTHMERE_MUCK_CONTAINMENT_AREAS.find(
       (candidate) => candidate.id === livestockArea.areaId
@@ -581,6 +681,170 @@ export const HARTHMERE_LIVE_ENTITY_LIVESTOCK_SEEDS: HarthmereLiveEntityProductio
     );
   });
 
+function guardedWildlifePosition(
+  location: HarthmereGuardedWildlifeLocation,
+  index: number,
+  count: number
+): Vec3 {
+  const radius = 6 * Math.sqrt((index + 0.5) / Math.max(1, count));
+  const angle = index * 2.399963229728653 + 0.65;
+  return [
+    Number((location.center[0] + Math.cos(angle) * radius).toFixed(3)),
+    location.center[1],
+    Number((location.center[2] + Math.sin(angle) * radius).toFixed(3)),
+  ];
+}
+
+export const HARTHMERE_LIVE_ENTITY_GUARDED_WILDLIFE_SEEDS: HarthmereLiveEntityProductionSeed[] =
+  HARTHMERE_LIVE_ENTITY_GUARDED_WILDLIFE_LOCATIONS.flatMap(
+    (location, locationIndex) => {
+      const speciesOrder = HARTHMERE_LIVE_ENTITY_LIVESTOCK_SPECIES.flatMap(
+        (config) =>
+          Array.from(
+            { length: location.animalCounts[config.species] },
+            () => config
+          )
+      );
+      return speciesOrder.map((config, localIndex) => {
+        const animalsBefore =
+          HARTHMERE_LIVE_ENTITY_GUARDED_WILDLIFE_LOCATIONS.slice(
+            0,
+            locationIndex
+          ).reduce(
+            (total, previous) =>
+              total +
+              previous.animalCounts.cow +
+              previous.animalCounts.sheep +
+              previous.animalCounts.rabbit,
+            0
+          );
+        const idOffset =
+          HARTHMERE_LIVE_ENTITY_GUARDED_WILDLIFE_FIRST_OFFSET +
+          animalsBefore +
+          localIndex;
+        return {
+          seedId: `guarded-livestock-${config.species}-${location.areaId}-${idOffset}`,
+          kind: "ambient_livestock" as const,
+          entityId: entityIdFromOffset(idOffset),
+          idOffset,
+          displayName: `${config.displayName} Guarded Herd ${
+            idOffset - HARTHMERE_LIVE_ENTITY_GUARDED_WILDLIFE_FIRST_OFFSET + 1
+          }`,
+          areaId: location.areaId,
+          areaLabel: location.areaLabel,
+          position: guardedWildlifePosition(
+            location,
+            localIndex,
+            speciesOrder.length
+          ),
+          orientation: [0, 0] as Vec2,
+          dialog: config.dialog,
+          description: `A ${config.displayName.toLowerCase()} grazes at ${
+            location.areaLabel
+          } under a nearby Mucker and Hex guard pack.`,
+          combatKind: "mux" as const,
+          combatLevel: 1,
+          combatHp: config.combatHp,
+          species: config.species,
+          sizeTier: config.sizeTier,
+          meatUnits: config.meatUnits,
+          attackDamage: config.attackDamage,
+          killXp: config.killXp,
+        } satisfies HarthmereLiveEntityProductionSeed;
+      });
+    }
+  );
+
+export const HARTHMERE_LIVE_ENTITY_MUCK_WILDLIFE_SEEDS = [
+  ...HARTHMERE_LIVE_ENTITY_BASE_MUCK_WILDLIFE_SEEDS,
+  ...HARTHMERE_LIVE_ENTITY_GUARDED_WILDLIFE_SEEDS,
+];
+
+// Living animals remain in Harthmere after the original-map wildlife is moved
+// back to its terrain-sampled hills. These are a separate, safe-town herd with
+// distinct ids; they must never be mistaken for Muck-area wildlife or shifted
+// into a hostile containment zone.
+const HARTHMERE_LIVE_ENTITY_TOWN_LIVESTOCK_AREAS = [
+  {
+    areaId: "harthmere_town_north_pasture",
+    areaLabel: "Harthmere North Pasture",
+    authoredPositions: [
+      [430, -320],
+      [448, -326],
+      [464, -316],
+      [520, -318],
+      [538, -328],
+      [556, -316],
+    ],
+  },
+  {
+    areaId: "harthmere_town_south_orchard",
+    areaLabel: "Harthmere South Orchard",
+    authoredPositions: [
+      [410, -62],
+      [430, -48],
+      [452, -64],
+      [520, -62],
+      [542, -48],
+      [562, -64],
+    ],
+  },
+] as const;
+
+const HARTHMERE_LIVE_ENTITY_TOWN_LIVESTOCK_FIRST_OFFSET = 9575;
+
+export const HARTHMERE_LIVE_ENTITY_TOWN_LIVESTOCK_SEEDS: HarthmereLiveEntityProductionSeed[] =
+  HARTHMERE_LIVE_ENTITY_TOWN_LIVESTOCK_AREAS.flatMap((area, areaIndex) => {
+    let localIndex = 0;
+    return HARTHMERE_LIVE_ENTITY_LIVESTOCK_SPECIES.flatMap((config) =>
+      Array.from({ length: config.perArea }, () => {
+        const positionIndex = localIndex++;
+        const idOffset =
+          HARTHMERE_LIVE_ENTITY_TOWN_LIVESTOCK_FIRST_OFFSET +
+          areaIndex * HARTHMERE_LIVE_ENTITY_LIVESTOCK_PER_AREA +
+          positionIndex;
+        const [authoredX, authoredZ] = area.authoredPositions[positionIndex];
+        const speciesName =
+          config.species[0].toUpperCase() + config.species.slice(1);
+        return {
+          seedId: `town-livestock-${config.species}-${area.areaId}-${idOffset}`,
+          kind: "ambient_livestock" as const,
+          entityId: entityIdFromOffset(idOffset),
+          idOffset,
+          displayName: `Harthmere ${speciesName} ${
+            idOffset - HARTHMERE_LIVE_ENTITY_TOWN_LIVESTOCK_FIRST_OFFSET + 1
+          }`,
+          areaId: area.areaId,
+          areaLabel: area.areaLabel,
+          position: normalizeHarthmereExtensionOutdoorFeetPosition(
+            shiftHarthmereAuthoredPositionToWorld([
+              authoredX,
+              HARTHMERE_EXTENSION_FEET_Y,
+              authoredZ,
+            ]),
+            2
+          ),
+          orientation: [0, 0] as Vec2,
+          dialog: config.dialog,
+          description: `A ${config.species} grazing safely near ${area.areaLabel}.`,
+          combatKind: "mux" as const,
+          combatLevel: 1,
+          combatHp: config.combatHp,
+          species: config.species,
+          sizeTier: config.sizeTier,
+          meatUnits: config.meatUnits,
+          attackDamage: config.attackDamage,
+          killXp: config.killXp,
+        } satisfies HarthmereLiveEntityProductionSeed;
+      })
+    );
+  });
+
+export const HARTHMERE_LIVE_ENTITY_LIVESTOCK_SEEDS = [
+  ...HARTHMERE_LIVE_ENTITY_MUCK_WILDLIFE_SEEDS,
+  ...HARTHMERE_LIVE_ENTITY_TOWN_LIVESTOCK_SEEDS,
+];
+
 // HARTHMERE_MUCK_FLOOR_FEET_Y: local-dev fallback used while regenerating
 // the production terrain placement map. Runtime callers use the generated
 // terrain-sampled placement records so muckers and wildlife stand on the real
@@ -621,19 +885,26 @@ function productionPlacedLiveEntityPosition(
   if (!recommended) {
     return undefined;
   }
-  // ADDITIVE_HARTHMERE_LIVE_ENTITY_PLACEMENT:
-  // The generated placement map was sampled against the retired world layout.
-  // Its X/Z still identify the authored muck region, but its old surface Y and
-  // unshifted world position do not exist in the additive town. Keep the X/Z
-  // distribution, ground it on the new flat terrain, and apply the same +1600
-  // transform used by terrain, town NPCs, quests, and map landmarks.
-  return normalizeHarthmereExtensionOutdoorFeetPosition(
-    shiftHarthmereAuthoredPositionToWorld([
-      recommended[0],
-      HARTHMERE_EXTENSION_FEET_Y,
-      recommended[2],
-    ]),
-    1.5
+  // The production placement map was sampled from the original snapshot's
+  // real surface. Preserve all three coordinates: its varying Y values are the
+  // protection against burying or floating creatures in the Grove/Wilds hills.
+  return recommended;
+}
+
+export function harthmereLiveEntityIsTownLivestock(
+  seed: HarthmereLiveEntityProductionSeed
+): boolean {
+  return (
+    seed.kind === "ambient_livestock" &&
+    seed.areaId.startsWith("harthmere_town_")
+  );
+}
+
+export function harthmereLiveEntityIsGuardedWildlife(
+  seed: HarthmereLiveEntityProductionSeed
+): boolean {
+  return HARTHMERE_LIVE_ENTITY_GUARDED_WILDLIFE_LOCATIONS.some(
+    (location) => location.areaId === seed.areaId
   );
 }
 
@@ -644,16 +915,17 @@ export function harthmereGroundedLivestockSeedsInTerritory(
   options: HarthmereLiveEntityGroundingOptions = {}
 ): HarthmereLiveEntityProductionSeed[] {
   return HARTHMERE_LIVE_ENTITY_LIVESTOCK_SEEDS.flatMap((seed) => {
+    if (harthmereLiveEntityIsTownLivestock(seed)) {
+      return [{ ...seed, position: [...seed.position] as Vec3 }];
+    }
     const runtimeWorldSpace = options.useProductionPlacementMap !== false;
+    const authoredFallback = groundMuckEntityFeet(seed.position);
     const grounded = runtimeWorldSpace
       ? productionPlacedLiveEntityPosition(seed, "live_livestock", options) ??
-        normalizeHarthmereExtensionOutdoorFeetPosition(
-          shiftHarthmereAuthoredPositionToWorld(
-            groundMuckEntityFeet(seed.position)
-          ),
-          1.5
-        )
-      : groundMuckEntityFeet(seed.position);
+        (harthmereLiveEntityIsGuardedWildlife(seed)
+          ? ([...seed.position] as Vec3)
+          : authoredFallback)
+      : authoredFallback;
     if (
       harthmereMuckMonsterPositionIsInSafeZone(grounded) ||
       !muckMonsterAreaForPosition(grounded, 1.5)
@@ -731,10 +1003,10 @@ function harthmereNonSafeMuckAreas(): HarthmereMuckContainmentArea[] {
   );
 }
 
-// Every authored muck monster, randomly (but deterministically) spread across
-// all non-safe muck regions of the world. A final hard guard re-rolls any
-// position that resolves into a safe zone — a monster can NEVER end up in the
-// Grove.
+// Ordinary authored muck monsters are randomly (but deterministically) spread
+// across all non-safe muck regions. The four guarded-herd packs retain their
+// authored local positions. A final hard guard re-rolls any position that
+// resolves into a safe zone — a monster can NEVER end up in the Grove.
 export function harthmereGroundedMuckMonsterSeedsInTerritory(
   options: HarthmereLiveEntityGroundingOptions = {}
 ): HarthmereLiveEntityProductionSeed[] {
@@ -743,7 +1015,14 @@ export function harthmereGroundedMuckMonsterSeedsInTerritory(
   return HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS.map((seed, index) => {
     const stableSeed = Number.isFinite(seed.idOffset) ? seed.idOffset : index;
     let position: Vec3;
-    if (areas.length === 0) {
+    if (harthmereLiveEntityIsGuardedWildlife(seed)) {
+      // These four packs were authored as guards for specific new herds. Do
+      // not feed them through the legacy map-wide Mucker redistribution or the
+      // animals and their supposed guards end up hundreds of blocks apart.
+      // Deployment still terrain-probes this local X/Z and persists the final
+      // grounded Y, just like the animals in the same encounter pocket.
+      position = [...seed.position] as Vec3;
+    } else if (areas.length === 0) {
       position = snapshotCombatGroundedPosition(seed.position);
     } else {
       // Deterministically choose a muck region for this creature, then a random
@@ -771,12 +1050,10 @@ export function harthmereGroundedMuckMonsterSeedsInTerritory(
     // prefer the generated production surface when runtime callers spawn them.
     const runtimeWorldSpace = options.useProductionPlacementMap !== false;
     const authoredFallbackPosition = groundMuckEntityFeet(position);
-    const fallbackPosition = runtimeWorldSpace
-      ? normalizeHarthmereExtensionOutdoorFeetPosition(
-          shiftHarthmereAuthoredPositionToWorld(authoredFallbackPosition),
-          1.5
-        )
-      : authoredFallbackPosition;
+    const fallbackPosition =
+      runtimeWorldSpace && harthmereLiveEntityIsGuardedWildlife(seed)
+        ? ([...position] as Vec3)
+        : authoredFallbackPosition;
     const productionPosition = runtimeWorldSpace
       ? productionPlacedLiveEntityPosition(seed, "live_muck_monster", options)
       : undefined;
@@ -817,6 +1094,7 @@ export function harthmereActiveLiveEntityProductionSeedIds(): BiomesId[] {
     ...harthmereGroundedLivestockSeedsInTerritory().map(
       (seed) => seed.entityId
     ),
+    ...HARTHMERE_NATIVE_BANDIT_SEEDS.map((seed) => seed.entityId),
   ];
 }
 
@@ -828,6 +1106,7 @@ export function harthmereRespawningLiveCreatureSeeds(): HarthmereLiveEntityProdu
   return [
     ...harthmereGroundedMuckMonsterSeedsInTerritory().map((seed) => seed),
     ...harthmereGroundedLivestockSeedsInTerritory().map((seed) => seed),
+    ...HARTHMERE_NATIVE_BANDIT_SEEDS,
   ];
 }
 
@@ -843,6 +1122,7 @@ export const HARTHMERE_LIVE_ENTITY_PRODUCTION_SEEDS = [
   ...HARTHMERE_LIVE_ENTITY_ROBOT_SENTINEL_SEEDS,
   ...HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS,
   ...HARTHMERE_LIVE_ENTITY_LIVESTOCK_SEEDS,
+  ...HARTHMERE_NATIVE_BANDIT_SEEDS,
 ] as const;
 
 export const HARTHMERE_LIVE_ENTITY_PRODUCTION_SEED_IDS =
@@ -882,7 +1162,9 @@ export function validateHarthmereLiveEntityProductionSeeds() {
         : undefined;
     if (
       isLiveEntityHelperQuestExcludedPosition(seed.position) &&
-      !muckTerritory
+      !muckTerritory &&
+      !harthmereLiveEntityIsTownLivestock(seed) &&
+      !(seed.kind === "ambient_bandit" && seed.lockedInPlace)
     ) {
       errors.push(`${seed.seedId}:inside_excluded_settlement`);
     }

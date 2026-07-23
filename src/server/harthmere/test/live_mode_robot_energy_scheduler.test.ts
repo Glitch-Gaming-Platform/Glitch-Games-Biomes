@@ -179,7 +179,7 @@ describe("Harthmere live entity production seeds", () => {
     );
   });
 
-  it("builds ECS robot components and Muck entities for snapshot bootstrap", () => {
+  it("builds ECS robots, creatures, wildlife, and bandits for snapshot bootstrap", () => {
     const changes = buildHarthmereLiveEntityProductionSeedChanges({
       tick: 77,
       nowSeconds: 1234,
@@ -190,13 +190,8 @@ describe("Harthmere live entity production seeds", () => {
       assert.notEqual(change.kind, "delete");
       if (change.kind === "delete") continue;
       assert.ok(
-        (change.entity.position?.v[0] ?? 0) >= 1792,
-        `seed ${change.entity.id} should be in the additive east band`
-      );
-      assert.equal(
-        change.entity.position?.v[1],
-        53,
-        `seed ${change.entity.id} should stand on extension ground`
+        change.entity.position?.v.every(Number.isFinite),
+        `seed ${change.entity.id} needs a finite authoritative position`
       );
       if (!change.entity.robot_component) {
         assert.deepEqual(

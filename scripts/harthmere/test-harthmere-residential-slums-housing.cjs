@@ -63,8 +63,8 @@ const residentialCapacity = residentialBuildings.reduce((sum, b) => sum + b.floo
 const slumCapacity = slumBuildings.reduce((sum, b) => sum + b.floors * b.roomsPerFloor, 0);
 
 reporter.check("current manifest exists and exports the resident housing version", /HARTHMERE_RESIDENT_HOUSING_VERSION/.test(manifest) && /harthmere-resident-slum-vertical-housing/.test(manifest));
-reporter.check("current authored NPC count is recorded", actors.length === 194 && /HARTHMERE_RESIDENT_HOUSING_EXPECTED_NPC_COUNT\s*=\s*194/.test(manifest), `actors=${actors.length}`);
-reporter.check("humanoid, animal, Mudden, and town counts are recorded", humanoids.length === 133 && animals.length === 61 && mudden.length === 14 && townNonWild.length === 122, [`humanoids=${humanoids.length}`, `animals=${animals.length}`, `mudden=${mudden.length}`, `townNonWild=${townNonWild.length}`]);
+reporter.check("current authored NPC count is recorded", actors.length === 195 && /HARTHMERE_RESIDENT_HOUSING_EXPECTED_NPC_COUNT\s*=\s*195/.test(manifest), `actors=${actors.length}`);
+reporter.check("humanoid, animal, Mudden, and town counts are recorded", humanoids.length === 134 && animals.length === 61 && mudden.length === 14 && townNonWild.length === 123, [`humanoids=${humanoids.length}`, `animals=${animals.length}`, `mudden=${mudden.length}`, `townNonWild=${townNonWild.length}`]);
 reporter.check("every NPC receives a home assignment through the runtime assignment summary", /createHarthmereResidentHomeAssignmentSummary/.test(assets) && /allHaveHome/.test(manifest) && /assignments\.every/.test(manifest));
 reporter.check("renderer exposes the resident housing summary for runtime inspection", /__harthmereResidentHousing/.test(assets) && /harthmereResidentHousingSummary/.test(assets));
 

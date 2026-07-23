@@ -119,6 +119,10 @@ export const tillSoilEventHandler = makeEventHandler("tillSoilEvent", {
     // Decrement hoe durability by half of block destroy time
     const inventory = new PlayerInventoryEditor(context, player);
     const slot = inventory.get(event.tool_ref);
+    if (!slot || slot.item.action !== "till") {
+      log.warn(`Player ${event.id} tried to till without a selected hoe`);
+      return;
+    }
     const totalDestroyTime = blocks.reduce(
       (acc, block) => acc + blockDestructionTimeMs(block, slot?.item),
       0
@@ -263,16 +267,19 @@ export const plantSeedEventHandler = makeEventHandler("plantSeedEvent", {
 export const waterPlantsEventHandler = makeEventHandler("waterPlantsEvent", {
   mergeKey: (event) => event.id,
   involves: (event) => ({
-    plants: q.ids(event.plant_ids).with("farming_plant_component"),
-    player: q.id(event.id).with("inventory", "player_behavior"),
+    plants: q.ids(event.plant_ids).with("farming_plant_component", "position"),
+    player: q.id(event.id).with("inventory", "player_behavior", "position"),
   }),
   apply({ plants, player }, event, context) {
     const inventory = new PlayerInventoryEditor(context, player);
     const toolSlot = inventory.get(event.tool_ref);
-    if (!toolSlot) {
+    if (!toolSlot || toolSlot.item.action !== "waterPlant") {
       return;
     }
     for (const plant of plants) {
+      if (staleOkDistance(plant, player) > CONFIG.gameDropPickupDistance + 1) {
+        continue;
+      }
       const plantWaterLevel = plant.farmingPlantComponent().water_level;
       const waterFromCan = decrementItemWaterAmount(
         inventory,

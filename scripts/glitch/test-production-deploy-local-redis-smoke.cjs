@@ -87,10 +87,7 @@ const harthmereCreatureGrounding = fs.readFileSync(
   "utf8"
 );
 const harthmereProductionReconciliation = fs.readFileSync(
-  path.join(
-    root,
-    "scripts/glitch/run-harthmere-production-reconciliation.sh"
-  ),
+  path.join(root, "scripts/glitch/run-harthmere-production-reconciliation.sh"),
   "utf8"
 );
 const runBuildChecks = script.slice(script.indexOf("run_build_checks()"));
@@ -161,14 +158,14 @@ ok(
   "script exposes an explicit opt-in flag for memory-heavy local HTTP smoke"
 );
 ok(
-    script.includes("--local-rehearsal") &&
+  script.includes("--local-rehearsal") &&
     script.includes("run_local_full_deployment_rehearsal") &&
     script.includes("run-harthmere-production-reconciliation.sh") &&
     script.includes('["Anima", 4101]') &&
     script.includes('["Gaia", 4201]') &&
     script.includes("OK ${name} local readiness") &&
     script.includes("OK ElevenLabs local production configuration") &&
-    script.includes('KEEP_LOCAL_SMOKE=1'),
+    script.includes("KEEP_LOCAL_SMOKE=1"),
   "script exposes a complete local production rehearsal that remains running"
 );
 ok(
@@ -533,7 +530,7 @@ ok(
 ok(
   script.includes("ELEVENLABS_API_KEY=secretref:elevenlabs-api-key") &&
     script.includes(
-      'ELEVENLABS_MODEL_ID="${ELEVENLABS_MODEL_ID:-eleven_multilingual_v2}"'
+      'ELEVENLABS_MODEL_ID="${ELEVENLABS_MODEL_ID:-eleven_v3}"'
     ) &&
     deployWorkflow.includes(
       "ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}"
@@ -978,7 +975,7 @@ ok(
     [
       "audit_extension_terrain",
       "materialize_business_outposts",
-      "run_node \"Harthmere ECS and shared-state reconciliation\" \\",
+      'run_node "Harthmere ECS and shared-state reconciliation" \\',
       "  scripts/harthmere/reconcile-production-world-sync.cjs",
       "materialize_connector_route",
     ].join("\n")
@@ -1108,14 +1105,17 @@ ok(
   harthmereTerrainAudit.includes("harthmereExtensionFoundationShardSpecs") &&
     harthmereTerrainAudit.includes("emptyFoundationCount") &&
     harthmereTerrainAudit.includes("surfaceHoleShardCount") &&
+    harthmereTerrainAudit.includes("forbiddenMuckBlockCount") &&
     harthmereTerrainAudit.includes("retiredTerrainCount"),
-  "production terrain audit verifies foundation content, flat support, and retired cleanup"
+  "production terrain audit verifies foundation content, flat support, zero Muck terrain, and retired cleanup"
 );
 ok(
   script.includes("run_production_live_creature_grounding_reconcile") &&
     script.includes("reconcile-production-live-creature-grounding.cjs") &&
     harthmereCreatureGrounding.includes("loadCreatureRows") &&
     harthmereCreatureGrounding.includes("bodyCanStandAt") &&
+    harthmereCreatureGrounding.includes("supportedSurfaceTargetNear") &&
+    harthmereCreatureGrounding.includes("harthmereLiveEntityIsTownLivestock") &&
     harthmereCreatureGrounding.includes("verifyReadback") &&
     harthmereCreatureGrounding.includes("respawn_anchor_not_grounded"),
   "production deploy repairs real persisted creature bodies, footprints, and respawn anchors"

@@ -28,7 +28,11 @@ function createHarness(title) {
 
 function inventorySource(h) { return h.read("src/client/components/challenges/LocalDevHarthmereInventorySystem.tsx"); }
 function economySource(h) { return h.read("src/client/components/challenges/LocalDevHarthmereEconomySystem.tsx"); }
-function vendorSource(h) { return h.read("src/client/components/challenges/LocalDevHarthmereVendorCatalog.ts"); }
+function vendorClientSource(h) { return h.read("src/client/components/challenges/LocalDevHarthmereVendorCatalog.ts"); }
+// The documented Tier-3 consolidation keeps the catalog in shared code so
+// both server authority and the local client wrapper consume one definition.
+function vendorSource(h) { return h.read("src/shared/harthmere/harthmere_vendor_catalog.ts"); }
+function vendorRuntimeSource(h) { return vendorClientSource(h); }
 function hardeningSource(h) { return h.read("src/client/components/challenges/LocalDevHarthmereEconomyHardening.ts"); }
 function npcBehaviorSource(h) { return h.read("src/client/components/challenges/LocalDevHarthmereNpcBehaviorSystem.ts"); }
 function questEconomySource(h) { return h.read("src/client/components/challenges/LocalDevHarthmereQuestEconomySystem.ts"); }
@@ -63,11 +67,15 @@ function extractItemBlocks(source) {
 function itemBlocks(h) { return extractItemBlocks(inventorySource(h)); }
 function catalogOffsets(h) {
   const src = vendorSource(h);
-  return Array.from(src.matchAll(/^\s{2}(\d+):\s*vendor\(/gm)).map((m) => Number(m[1]));
+  return Array.from(src.matchAll(/^\s+(\d+):\s*vendor\(/gm)).map((m) => Number(m[1]));
 }
 function catalogItemIds(h) {
   const src = vendorSource(h);
-  return Array.from(src.matchAll(/itemId:\s*"([^"]+)"/g)).map((m) => m[1]);
+  return Array.from(src.matchAll(/itemId:\s*"([^"]+)"/g))
+    .map((m) => m[1])
+    // Decimal strings are authored native Biomes/Bikkie ids. They resolve via
+    // the native item registry and intentionally do not duplicate local ids.
+    .filter((id) => !/^\d+$/.test(id));
 }
 function itemIds(h) { return Array.from(itemBlocks(h).keys()); }
 
@@ -100,10 +108,12 @@ function assertUnifiedVendorCatalog(h) {
   const inv = inventorySource(h);
   const eco = economySource(h);
   const cat = vendorSource(h);
+  const client = vendorClientSource(h);
   h.includes("src/client/components/challenges/LocalDevHarthmereInventorySystem.tsx", "HARTHMERE_VENDOR_STOCK", "inventory imports unified vendor stock");
   h.includes("src/client/components/challenges/LocalDevHarthmereEconomySystem.tsx", "HARTHMERE_VENDOR_ECONOMY_PROFILES", "economy imports unified vendor profiles");
   h.ok(!/const VENDOR_STOCK:\s*Record<[^]*?=\s*\{/.test(inv), "inventory no longer owns a separate VENDOR_STOCK object literal");
   h.ok(!/const VENDOR_PROFILES:\s*Record<[^]*?=\s*\{/.test(eco), "economy no longer owns a separate VENDOR_PROFILES object literal");
+  h.ok(client.includes("@/shared/harthmere/harthmere_vendor_catalog"), "client vendor wrapper re-exports the shared source of truth");
   for (const key of ["stocks", "sells", "buys", "buysCategories", "baseSellModifier", "baseBuyModifier", "goldSupply", "restockHours", "buysStolenGoods", "refusesStolenGoods"]) {
     h.ok(cat.includes(key), `vendor catalog includes ${key}`);
   }
@@ -114,6 +124,8 @@ module.exports = {
   inventorySource,
   economySource,
   vendorSource,
+  vendorClientSource,
+  vendorRuntimeSource,
   hardeningSource,
   npcBehaviorSource,
   questEconomySource,

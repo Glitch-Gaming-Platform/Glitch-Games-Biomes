@@ -47,7 +47,6 @@ import {
 } from "@/client/components/harthmere_cooking/harthmereCookingStations";
 import {
   SNAPSHOT_MISSION_STATE_EVENT,
-  firstActiveSnapshotRoadAheadQuestTitleForBiomesUI,
   recordSnapshotRoadAheadChallengeStepForBiomesUI,
   readSnapshotMissionState,
   syncSnapshotRoadAheadChallengeStepHintsForBiomesUI,
@@ -137,14 +136,12 @@ import {
   jobsBoardAcceptedJobLandmarksForBiomesUI,
   jobsBoardItemSourceLandmarksForBiomesUI,
   jobsBoardToolSourceLandmarksForBiomesUI,
-  JOBS_BOARD_ITEM_SOURCE_MARKER_ID_PREFIX,
-  JOBS_BOARD_MARKER_ID_PREFIX,
-  JOBS_BOARD_TOOL_SOURCE_MARKER_ID_PREFIX,
   shouldClearStaleJobsBoardPin,
 } from "./jobsBoardQuestMapAdapter";
 import {
   fetchHarthmereJobsBoardState,
   HARTHMERE_JOBS_BOARD_STATE_UPDATED_EVENT,
+  harthmereJobsBoardStateFromUpdatedEventDetail,
   normalizeHarthmereJobsBoardSnapshot,
 } from "../../harthmere_jobs_board/jobsBoardLiveAdapter";
 import {
@@ -184,6 +181,7 @@ import {
   farmingFoodQuickActionForKey,
   type FarmingFoodInterfaceAction,
 } from "./farmingFoodInterfaceAdapter";
+import { buildNativeFarmingInterfaceModel } from "./nativeFarmingInterfaceAdapter";
 import { buildBiomesUIMapAdapter } from "./mapLiveAdapter";
 import {
   HARTHMERE_PROPERTY_BUILDING_STATE_EVENT,
@@ -194,13 +192,14 @@ export const BIOMES_UI_OPEN_TAB_EVENT = "biomes-ui-open-tab";
 const BIOMES_UI_KEY_TO_TAB: Record<string, TabKey> = {
   [BIOMES_UI_OPEN_MENU_KEY_CODE]: BIOMES_UI_OPEN_MENU_TAB,
   KeyI: "inventory",
+  KeyP: "farming",
   KeyB: "abilities",
   KeyK: "skills",
   KeyY: "classes",
   KeyL: "land",
   KeyO: "loot",
   KeyG: "guilds",
-  KeyP: "banking",
+  KeyQ: "banking",
   KeyM: "map",
   KeyU: "map",
   [BIOMES_UI_QUESTS_KEY_CODE]: "map",
@@ -209,18 +208,10 @@ const BIOMES_UI_KEY_TO_TAB: Record<string, TabKey> = {
   Comma: "options",
 };
 
-function isJobsBoardActivePinMarkerId(markerId: string | undefined): boolean {
-  return Boolean(
-    markerId &&
-      (markerId.startsWith(JOBS_BOARD_MARKER_ID_PREFIX) ||
-        markerId.startsWith(JOBS_BOARD_ITEM_SOURCE_MARKER_ID_PREFIX) ||
-        markerId.startsWith(JOBS_BOARD_TOOL_SOURCE_MARKER_ID_PREFIX))
-  );
-}
-
 const BIOMES_UI_TAB_TO_GARDEN_HOSE_TABS: Partial<Record<TabKey, string[]>> = {
   daily: ["daily"],
   inventory: ["inventory"],
+  farming: ["inventory"],
   abilities: ["tasks"],
   skills: ["skills"],
   classes: ["classes"],
@@ -556,8 +547,12 @@ function localHarthmereHotbarItemToUiItem(
     canDestroy: false,
     protectedReason: "Hotbar slots are shortcuts to your carried items.",
     primaryActionLabel,
-    canDrop: true,
   };
+}
+
+function isBlockHotbarItemId(itemId: string) {
+  const nativeItem = harthmereItemIdToBiomesEcsItem(itemId);
+  return Boolean(nativeItem?.isBlock || nativeItem?.isPlaceable);
 }
 
 function localHarthmereEquipmentItemToUiItem(
@@ -2469,19 +2464,7 @@ export function useBiomesUILiveAdapters({
         harthmereJobToolOwnedState()
       ),
     ];
-    const existing = readActiveBiomesUIMapPin();
-    const roadAheadActive = Boolean(
-      firstActiveSnapshotRoadAheadQuestTitleForBiomesUI(
-        readSnapshotMissionState(),
-        roadAheadChallengeStepHints
-      )
-    );
-    if (roadAheadActive) {
-      if (isJobsBoardActivePinMarkerId(existing?.markerId)) {
-        writeActiveBiomesUIMapPin(undefined);
-      }
-      return;
-    }
+    let existing = readActiveBiomesUIMapPin();
     // Drop a jobs-board pin whose job is no longer active (completed/abandoned)
     // so it stops driving the HUD aid and suppressing other quest beacons.
     if (
@@ -2491,6 +2474,13 @@ export function useBiomesUILiveAdapters({
       })
     ) {
       writeActiveBiomesUIMapPin(undefined);
+      existing = undefined;
+    }
+    // A player-selected destination always wins. The previous implementation
+    // reset a selected jobs-board marker whenever Road Ahead was active and
+    // otherwise replaced it with landmarks[0], which made marker switching
+    // appear stuck on the main quest or the first accepted job.
+    if (existing?.markerId && Array.isArray(existing.worldPosition)) {
       return;
     }
     const landmark = landmarks[0];
@@ -2511,7 +2501,7 @@ export function useBiomesUILiveAdapters({
     if (pin) {
       writeActiveBiomesUIMapPin(pin);
     }
-  }, [jobsBoardState, roadAheadChallengeStepHints]);
+  }, [jobsBoardState]);
 
   const refreshQuestState = React.useCallback(async () => {
     if (questStateRefreshInFlightRef.current) return;
@@ -2583,12 +2573,11 @@ export function useBiomesUILiveAdapters({
   React.useEffect(() => {
     if (typeof window === "undefined") return;
     const handler = (event: Event) => {
-      const detail = (event as CustomEvent<{ jobsBoardState?: unknown }>)
-        .detail;
-      if (detail?.jobsBoardState) {
-        setJobsBoardState(
-          normalizeHarthmereJobsBoardSnapshot(detail.jobsBoardState)
-        );
+      const detail = harthmereJobsBoardStateFromUpdatedEventDetail(
+        (event as CustomEvent).detail
+      );
+      if (detail) {
+        setJobsBoardState(normalizeHarthmereJobsBoardSnapshot(detail));
       } else {
         void refreshJobsBoardState();
       }
@@ -4660,6 +4649,15 @@ export function useBiomesUILiveAdapters({
         },
       },
       inventory: inventoryAdapter,
+      farming: {
+        getModel: () =>
+          buildNativeFarmingInterfaceModel({
+            userId,
+            inventory,
+            entities: clientContext.table.contents(),
+            playerPosition: playerWorldPos,
+          }),
+      },
       inbox: inboxAdapter,
       loot: lootAdapter,
       classes: {

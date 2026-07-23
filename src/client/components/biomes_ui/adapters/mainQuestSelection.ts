@@ -1,9 +1,7 @@
 import type { MapTrackableQuest } from "../tabs/MapQuestsTab";
 
-export const BIOMES_UI_MAIN_QUEST_STORAGE_KEY =
-  "biomes_ui_main_quest";
-export const BIOMES_UI_MAIN_QUEST_EVENT =
-  "biomes-ui-main-quest";
+export const BIOMES_UI_MAIN_QUEST_STORAGE_KEY = "biomes_ui_main_quest";
+export const BIOMES_UI_MAIN_QUEST_EVENT = "biomes-ui-main-quest";
 
 export interface BiomesUIMainQuestSelection {
   questId: string;
@@ -60,7 +58,7 @@ export function mainQuestFromTrackableQuestsForTest(
   quests: MapTrackableQuest[],
   selection: BiomesUIMainQuestSelection | undefined
 ): MapTrackableQuest | undefined {
-  if (!selection) return undefined;
+  if (!selection) return defaultMainQuestFromTrackableQuestsForTest(quests);
   const quest = quests.find((entry) => entry.questId === selection.questId);
   if (!quest || quest.status === "completed" || quest.status === "failed") {
     return undefined;
@@ -68,7 +66,45 @@ export function mainQuestFromTrackableQuestsForTest(
   return quest;
 }
 
-export function readBiomesUIMainQuestSelection(): BiomesUIMainQuestSelection | undefined {
+function normalizedQuestTitle(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/^the\s+/, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function isRoadAheadQuest(quest: MapTrackableQuest): boolean {
+  return (
+    quest.questId === "snapshot_road_ahead_full_chain" ||
+    quest.kind === "snapshot_nux_challenge_bridge" ||
+    normalizedQuestTitle(quest.title) === "road ahead"
+  );
+}
+
+/**
+ * The onboarding story is the initial main quest until the player explicitly
+ * chooses another active quest. This is derived from the live quest list rather
+ * than a hard-coded native numeric id, so both snapshot and native Road Ahead
+ * projections receive the same behavior.
+ */
+export function defaultMainQuestFromTrackableQuestsForTest(
+  quests: MapTrackableQuest[]
+): MapTrackableQuest | undefined {
+  return (
+    quests.find(
+      (quest) => quest.status === "active" && isRoadAheadQuest(quest)
+    ) ??
+    quests.find(
+      (quest) => quest.status === "available" && isRoadAheadQuest(quest)
+    )
+  );
+}
+
+export function readBiomesUIMainQuestSelection():
+  | BiomesUIMainQuestSelection
+  | undefined {
   if (typeof window === "undefined") return undefined;
   try {
     return parseMainQuestSelection(

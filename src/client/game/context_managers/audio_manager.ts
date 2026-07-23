@@ -48,6 +48,16 @@ function fixVolume(volume: number) {
 
 export type AudioTrackType = "music" | "muck_music" | "battle_music";
 
+export interface BackgroundMusicDiagnostics {
+  running: boolean;
+  currentTrack: AudioTrackType | undefined;
+  loadedTracks: AudioTrackType[];
+  transitions: ReadonlyArray<{
+    track: AudioTrackType;
+    atMs: number;
+  }>;
+}
+
 export const DEFAULT_BACKGROUND_MUSIC_CROSSFADE_SECONDS = 5;
 export const COMBAT_MUSIC_CROSSFADE_SECONDS = 0.75;
 
@@ -70,6 +80,10 @@ export class AudioManager {
   private audioTracks: Map<AudioTrackType, AudioTrack> = new Map();
   private currentTrack: AudioTrack | undefined;
   private currentTrackType: AudioTrackType | undefined;
+  private backgroundMusicTransitions: Array<{
+    track: AudioTrackType;
+    atMs: number;
+  }> = [];
 
   private backgroundMusicAttenuation = 0;
   private prefetched = false;
@@ -94,6 +108,7 @@ export class AudioManager {
     this.audioTracks.clear();
     this.currentTrack = undefined;
     this.currentTrackType = undefined;
+    this.backgroundMusicTransitions = [];
   }
 
   hotHandoff(old: AudioManager) {
@@ -129,6 +144,15 @@ export class AudioManager {
 
   isRunning() {
     return this.audioListener && this.audioListener.context.state === "running";
+  }
+
+  getBackgroundMusicDiagnostics(): BackgroundMusicDiagnostics {
+    return {
+      running: Boolean(this.isRunning()),
+      currentTrack: this.currentTrackType,
+      loadedTracks: [...this.audioTracks.keys()].sort(),
+      transitions: [...this.backgroundMusicTransitions],
+    };
   }
 
   async resumeAudio() {
@@ -197,6 +221,16 @@ export class AudioManager {
     );
     this.currentTrack = newTrack;
     this.currentTrackType = trackType;
+    this.backgroundMusicTransitions.push({
+      track: trackType,
+      atMs: Date.now(),
+    });
+    if (this.backgroundMusicTransitions.length > 32) {
+      this.backgroundMusicTransitions.splice(
+        0,
+        this.backgroundMusicTransitions.length - 32
+      );
+    }
 
     // Crossfade volume to the current track.
     for (const track of this.audioTracks.values()) {

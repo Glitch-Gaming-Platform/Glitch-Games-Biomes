@@ -47,9 +47,9 @@ const physicalStart = keyedBody.indexOf("} else {");
 const physicalEnd = indexOfOrEnd(keyedBody, "const cooldownSeconds", Math.max(0, physicalStart));
 const physicalBranch = physicalStart >= 0 ? keyedBody.slice(physicalStart, physicalEnd) : "";
 
-report.check("performHarthmereKeyedAttack emits attack-animation event after validation", /emitAttackAnimation\(attack\)/.test(keyedBody), "Expected attack animation event in keyed attack path");
+report.check("performHarthmereKeyedAttack emits attack-animation event after validation", /emitAttackAnimation\(attack\s*,/.test(keyedBody), "Expected attack animation event in keyed attack path");
 report.check("physical B/N attacks run the forward-arc attack path", /performHarthmereForwardArcAttack\(attack\)/.test(physicalBranch), "Expected B/N physical attacks to call performHarthmereForwardArcAttack(attack)");
-report.check("physical B/N attacks dispatch the visible sword attack animation event outside debug-only logging", /emitHarthmereWeaponVisualState\(\s*["']attack["']\s*,\s*true\s*,\s*attack\s*\)/.test(physicalBranch), "Expected physical branch to emit biomes:harthmere-player-sword-visual action=attack before/with forward arc; do not rely on combatDebug logging");
+report.check("physical B/N attacks dispatch the visible sword attack animation event outside debug-only logging", /emitHarthmereWeaponVisualState\(\s*["']attack["']\s*,\s*true\s*,\s*attack\s*,/.test(physicalBranch), "Expected physical branch to emit biomes:harthmere-player-sword-visual action=attack before/with forward arc; do not rely on combatDebug logging");
 
 report.check("attack-animation event is a named exported event", /export\s+const\s+HARTHMERE_ATTACK_ANIMATION_EVENT\s*=\s*["']biomes:harthmere-attack-animation["']/.test(multiplayer), "Expected exported attack animation event");
 report.check("emitAttackAnimation dispatches a CustomEvent carrying attack detail", /new\s+CustomEvent\(\s*HARTHMERE_ATTACK_ANIMATION_EVENT[\s\S]{0,220}detail\s*:\s*\{\s*attack/.test(multiplayer), "Expected event detail.attack");

@@ -24,7 +24,7 @@ Historically the creatures you saw were **client-side renderer meshes** drawn
 from a static `PLACEMENTS` list in
 `src/client/game/renderers/local_dev/harthmere_assets.ts`. Their server-side ECS
 entities (seeded in `src/shared/harthmere/live_entity_production_seed.ts`)
-lived at *different* positions — muck monsters were deliberately relocated into
+lived at _different_ positions — muck monsters were deliberately relocated into
 muck patches and out of the Grove. So:
 
 - The native attack ray (`scripts/cursor.ts` → `traceEntities(table, …)`) only
@@ -125,19 +125,63 @@ that has no co-located ECS entity. Normal Harthmere muckers, hexes, animals,
 robots, sentinels, bots, NPCs, and players should enter combat through
 `cursor.attackableEntities` and the normal health events.
 
-### 5. Random world spawns (`live_entity_production_seed.ts`)
+### 5. Original-map danger spawns and Harthmere town animals (`live_entity_production_seed.ts`)
 
 `harthmereGroundedMuckMonsterSeedsInTerritory()` now spreads creatures
 **deterministically at random** (mulberry32 seeded by `idOffset`) across **all**
 non-safe muck regions of the world, instead of four hand-picked patches.
+The 16 guards belonging to the four guarded wildlife pockets are the deliberate
+exception: they retain their authored local X/Z so each five-animal herd and its
+three Muckers plus one Hex remain within one encounter-alert envelope instead
+of being redistributed elsewhere on the map.
 Invariants preserved (asserted by `live_entity_muck_monster_gating.test.ts`):
 all creatures kept, none in a safe zone (the Grove/town), every one inside a real
-muck area, spread across several non-Grove areas, and every default runtime spawn
-uses the generated production terrain placement map's `outdoor_surface`
-`recommendedPosition` instead of the flat local-dev fallback Y. The placement-map
-builder calls the same seed function with `useProductionPlacementMap: false` so
-new scans regenerate from deterministic authored X/Z positions rather than
-reading their own generated output.
+muck area, and spread across several non-Grove areas. Existing creatures use
+their exact generated production terrain placement-map `outdoor_surface`
+coordinates. The new guarded pockets begin at production-scanned surface Y
+anchors, then the mandatory deploy reconciler top-down probes and persists the
+final full-footprint position before traffic promotion.
+These 116 Muckers/Hexes and 44 Muck-area animals remain on the original map;
+they are never shifted into the additive Harthmere town. A separate 12-animal
+town herd (cows, sheep, rabbits) uses stable ids and the flat Harthmere feet
+plane `Y=53`. The original-map total includes four new guarded wildlife
+pockets containing 4 cows, 6 sheep, and 10 rabbits; each pocket has exactly 3
+Muckers and 1 Hex. The placement-map builder calls the same seed function with
+`useProductionPlacementMap: false` so new scans regenerate from deterministic
+authored X/Z positions rather than reading their own generated output.
+
+The deploy-time creature reconciler samples the final Redis terrain under the
+entire body footprint. Original-map creatures are resolved by a top-down surface
+probe so caves do not capture them; town animals use the known flat extension
+surface. Both current position and `npc_metadata.spawn_position` are repaired
+and read back before promotion. The same pass classifies native bandits by
+coordinate space: road/camp bandits use original-map surface probing, while the
+guarded Harthmere prisoner remains on the flat town extension.
+
+### 5a. Mixed animal/Mucker/Hex group retaliation
+
+Native Anima combat now treats a nearby cow, sheep, rabbit, Mucker, and Hex as a
+local encounter group when one of them is actually damaged by a player. The
+other eligible creatures acquire that same player through their ordinary
+server-owned chase/attack state. The alert is deliberately bounded:
+
+- direct hits still take priority over a shared alert;
+- the source must carry a recent, negative `Health.lastDamageAmount` from a
+  player `attack`, so healing, environment damage, zero-damage contact, and an
+  already-alerted creature cannot recursively spread hostility;
+- a one-hit kill still alerts survivors because the corpse retains its native
+  damage metadata during the retaliation window;
+- sources must be within 18 horizontal blocks, within 10 vertical blocks, and
+  visible through terrain, preventing alerts across unrelated pockets, caves,
+  cliffs, and sealed buildings;
+- safe zones, peaceful/dead/out-of-leash players, pets/player-owned entities,
+  robots, wards, quest givers, and unrelated NPC families are excluded;
+- when several creatures are attacked, the newest valid hit wins, with stable
+  distance/id tie-breaking so every server process chooses the same target.
+
+This logic lives in `shared/npc/behavior/chase_attack.ts`, so the resulting
+hostility, pathfinding, attacks, death, and respawn remain native ECS behavior
+rather than a browser-only or private live-mode simulation.
 
 ### 6. Respawn on death (30–60 min)
 
@@ -158,19 +202,19 @@ reading their own generated output.
 
 ## Files
 
-| File | Role |
-| --- | --- |
-| `shared/harthmere/live_creature_render.ts` | family mapping + respawn timing (pure) |
-| `shared/harthmere/live_creature_ecs_bridge.ts` | entity → record, asset mapping, reconcile diff (pure) |
-| `shared/harthmere/live_creature_respawn_registry.ts` | kill → respawn suppression registry |
-| `client/game/scripts/harthmere_live_creature_bridge_script.ts` | publishes ECS creatures to the renderer bridge |
-| `client/game/renderers/local_dev/harthmere_assets.ts` | reconciles ECS creature meshes; suppresses static life placements |
-| `client/game/resources/melee_attack_region.ts` | native attackability filter, Harthmere live-target override, metadata ray fallback |
-| `client/game/scripts/cursor.ts` | native cursor entity trace plus NPC metadata attack fallback |
-| `client/components/challenges/harthmereCrosshairCombatTarget.ts` | live-mode crosshair fallback/debug targeting |
-| `shared/harthmere/live_entity_production_seed.ts` | randomized world spawn distribution |
-| `server/harthmere/live_entity_ecs_seed.ts` | respawn-suppression hook in the seed builder |
-| `server/shim/main.ts` | wires the shared respawn registry into the reconciler |
+| File                                                             | Role                                                                               |
+| ---------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `shared/harthmere/live_creature_render.ts`                       | family mapping + respawn timing (pure)                                             |
+| `shared/harthmere/live_creature_ecs_bridge.ts`                   | entity → record, asset mapping, reconcile diff (pure)                              |
+| `shared/harthmere/live_creature_respawn_registry.ts`             | kill → respawn suppression registry                                                |
+| `client/game/scripts/harthmere_live_creature_bridge_script.ts`   | publishes ECS creatures to the renderer bridge                                     |
+| `client/game/renderers/local_dev/harthmere_assets.ts`            | reconciles ECS creature meshes; suppresses static life placements                  |
+| `client/game/resources/melee_attack_region.ts`                   | native attackability filter, Harthmere live-target override, metadata ray fallback |
+| `client/game/scripts/cursor.ts`                                  | native cursor entity trace plus NPC metadata attack fallback                       |
+| `client/components/challenges/harthmereCrosshairCombatTarget.ts` | live-mode crosshair fallback/debug targeting                                       |
+| `shared/harthmere/live_entity_production_seed.ts`                | randomized world spawn distribution                                                |
+| `server/harthmere/live_entity_ecs_seed.ts`                       | respawn-suppression hook in the seed builder                                       |
+| `server/shim/main.ts`                                            | wires the shared respawn registry into the reconciler                              |
 
 ## Tests
 
@@ -179,7 +223,11 @@ Pure unit tests (frontend/backend, no browser):
 - `live_creature_render.test.ts` — 6
 - `live_creature_ecs_bridge.test.ts` — 12
 - `live_creature_respawn_registry.test.ts` — 5
-- `live_entity_muck_monster_gating.test.ts` — 5 (spawn invariants preserved)
+- `live_entity_muck_monster_gating.test.ts` — original-map spawn, safe-zone,
+  Muck-territory, distribution, and varied-elevation invariants
+- `npc/behavior/test/chase_attack_logic.test.ts` — mixed creature group-alert
+  acquisition, one-hit-kill response, deterministic multi-attacker selection,
+  and every safe/distance/ownership/damage exclusion
 - `harthmereCrosshairCombatTarget.test.ts` — 8
 - `melee_attack_region.test.ts` — native cursor attackability and metadata ray
   fallback coverage

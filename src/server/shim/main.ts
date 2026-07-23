@@ -128,7 +128,11 @@ import type { BiomesId } from "@/shared/ids";
 import { log } from "@/shared/logging";
 import type { RegistryLoader } from "@/shared/registry";
 import type { VoxelooModule } from "@/shared/wasm/types";
-import { LOCAL_DEV_HUMAN_NPC_TYPE_ID, isNpcTypeId } from "@/shared/npc/bikkie";
+import {
+  LOCAL_DEV_HUMAN_NPC_TYPE_ID,
+  LOCAL_DEV_WALKER_NPC_TYPE_ID,
+  isNpcTypeId,
+} from "@/shared/npc/bikkie";
 import type { Vec2, Vec3 } from "@/shared/math/types";
 import { saveBlock } from "@/shared/wasm/biomes";
 import { RegistryBuilder } from "@/shared/registry";
@@ -157,6 +161,7 @@ import {
 import { harthmereExoticMatterDepositAtBlock } from "@/shared/harthmere/exotic_matter_caves";
 import { createHarthmereBusinessOutpostRebuildMaterializationPlans } from "@/shared/harthmere/business_customer_simulator";
 import { HARTHMERE_NATIVE_QUEST_GIVER_MANIFEST } from "@/shared/harthmere/harthmere_native_quest_manifest";
+import { findNearestHarthmereProductionPlacement } from "@/shared/harthmere/production_terrain_placement_map";
 import {
   HARTHMERE_ADDITIVE_TOWN_OFFSET_X,
   HARTHMERE_ADDITIVE_TOWN_OFFSET_Z,
@@ -174,6 +179,7 @@ import {
   harthmereExtensionFoundationShardSpecs,
   harthmereExtensionTerrainEntityIdForShard,
   initialHarthmereWorldAabb,
+  isHarthmereExtensionWorldPosition,
   isHarthmereExtensionWorldShardX,
   shouldEnableHarthmereAdditiveWorldExtension,
 } from "@/shared/harthmere/world_extension";
@@ -341,6 +347,13 @@ function snapshotGroveRuntimeGroundedPosition(position: Vec3): Vec3 {
 }
 
 function snapshotCombatRuntimeGroundedPosition(position: Vec3): Vec3 {
+  const sampled = findNearestHarthmereProductionPlacement(position, {
+    purpose: "monster",
+    maxDistance: 32,
+  });
+  if (sampled?.placementMode === "outdoor_surface") {
+    return [...sampled.recommendedPosition];
+  }
   return snapshotCombatGroundedPosition(position);
 }
 
@@ -1377,6 +1390,7 @@ function localDevMaterials() {
     blackWool: terrainId("black_wool", stone),
     greenWool: terrainId("green_wool", grass),
     coal: terrainId("coal", stone),
+    copperOre: terrainId("copper_ore", terrainId("iron_ore", stone)),
     ironOre: terrainId("iron_ore", terrainId("coal", stone)),
     silverOre: terrainId("silver_ore", stone),
     goldOre: terrainId("gold_ore", stone),
@@ -5049,14 +5063,15 @@ function isHarthmereSnapshotMuckPatch(worldX: number, worldZ: number) {
 function harthmereWideWildsSurfaceMaterial(
   materials: ReturnType<typeof localDevMaterials>,
   worldX: number,
-  worldZ: number
+  worldZ: number,
+  allowMuckwad = true
 ): TerrainID | undefined {
   const hash = localDevWildsHash(worldX, worldZ, 13);
 
   // SNAPSHOT_MUCK_TERRAIN_SURFACE: source-visible muck/muckwad
   // tutorial areas are authored once in snapshot_runtime_rules and painted
   // as real terrain, not GLB decoration.
-  if (isHarthmereSnapshotMuckPatch(worldX, worldZ)) {
+  if (allowMuckwad && isHarthmereSnapshotMuckPatch(worldX, worldZ)) {
     return materials.muckwad;
   }
 
@@ -5186,6 +5201,7 @@ type HarthmereHarvestableForageKind =
 type HarthmereHarvestableOreKind =
   | "stone"
   | "coal"
+  | "copper"
   | "iron"
   | "silver"
   | "gold";
@@ -5270,6 +5286,7 @@ const HARTHMERE_HARVESTABLE_ORE_CENTERS = [
   [292, -476, "stone"],
   [244, -532, "coal"],
   [178, -604, "iron"],
+  [212, -566, "copper"],
   [112, -696, "silver"],
   [326, -720, "coal"],
   [220, -820, "iron"],
@@ -5281,6 +5298,7 @@ const HARTHMERE_HARVESTABLE_ORE_CENTERS = [
   [-126, -146, "stone"],
   [-190, 92, "silver"],
   [-222, -432, "iron"],
+  [-154, -494, "copper"],
   [-190, -610, "coal"],
   [-90, 332, "stone"],
   [132, 442, "coal"],
@@ -5288,6 +5306,7 @@ const HARTHMERE_HARVESTABLE_ORE_CENTERS = [
   [724, -396, "stone"],
   [836, -468, "coal"],
   [946, -364, "iron"],
+  [884, -420, "copper"],
   [1088, -236, "silver"],
   [1122, -518, "coal"],
   [1190, -318, "iron"],
@@ -5299,6 +5318,7 @@ const HARTHMERE_HARVESTABLE_ORE_CENTERS = [
   [822, 344, "gold"],
   [1018, 388, "silver"],
   [496, 394, "iron"],
+  [548, 326, "copper"],
   [340, 372, "stone"],
   [940, 118, "coal"],
   [1098, 420, "gold"],
@@ -5527,6 +5547,8 @@ function buildHarthmereFastHarvestableBlockMap() {
     const materialName: HarthmereFastHarvestableMaterialName =
       kind === "coal"
         ? "coal"
+        : kind === "copper"
+        ? "copperOre"
         : kind === "iron"
         ? "ironOre"
         : kind === "silver"
@@ -5703,6 +5725,8 @@ function harthmereHarvestableOreMaterial(
   switch (kind) {
     case "coal":
       return materials.coal;
+    case "copper":
+      return materials.copperOre;
     case "iron":
       return materials.ironOre;
     case "silver":
@@ -6047,13 +6071,15 @@ function starterTownSurfaceMaterial(
   materials: ReturnType<typeof localDevMaterials>,
   worldX: number,
   worldZ: number,
-  current: TerrainID
+  current: TerrainID,
+  allowMuckwad = true
 ): TerrainID {
   const harthmereSurface = harthmereSurfaceMaterial(materials, worldX, worldZ);
   const wideWildsSurface = harthmereWideWildsSurfaceMaterial(
     materials,
     worldX,
-    worldZ
+    worldZ,
+    allowMuckwad
   );
   return harthmereSurface ?? wideWildsSurface ?? current;
 }
@@ -6643,7 +6669,16 @@ function makeLocalDevTerrainShard(
                     materials,
                     authoredWorldX,
                     authoredWorldZ,
-                    base
+                    base,
+                    // Muck terrain belongs to the original map's danger zones.
+                    // The additive Harthmere town is intentionally clean
+                    // grass/dirt/road terrain, even when an authored legacy
+                    // muck circle overlaps its transformed X/Z coordinates.
+                    !isHarthmereExtensionWorldPosition([
+                      worldX,
+                      STARTER_TOWN_GROUND_Y,
+                      worldZ,
+                    ])
                   )
               );
             } else {
@@ -6768,6 +6803,9 @@ function resolveNpcTypeId(
   if (preferredNames.includes("local_dev_human")) {
     return LOCAL_DEV_HUMAN_NPC_TYPE_ID;
   }
+  if (preferredNames.includes("local_dev_walker")) {
+    return LOCAL_DEV_WALKER_NPC_TYPE_ID;
+  }
 
   const preferred = getBiscuits("/npcs/types").find((biscuit) =>
     preferredNames.includes(biscuit.name)
@@ -6821,6 +6859,29 @@ function starterNpc(
       name: displayName,
       roleHint: description,
     }),
+  };
+}
+
+function starterWalkerNpc(
+  offset: number,
+  displayName: string,
+  position: Vec3,
+  orientation: Vec2,
+  dialog: string,
+  velocity?: Vec3
+): StarterNpc {
+  return {
+    ...starterNpc(
+      offset,
+      displayName,
+      position,
+      orientation,
+      dialog,
+      "A walking town NPC.",
+      velocity
+    ),
+    preferredTypes: ["local_dev_walker"],
+    fallbackTypes: [LOCAL_DEV_WALKER_NPC_TYPE_ID, LOCAL_DEV_HUMAN_NPC_TYPE_ID],
   };
 }
 
@@ -7050,7 +7111,7 @@ function starterTownNpcs(): StarterNpc[] {
       ),
       "A bard in the tavern."
     ),
-    starterNpc(
+    starterWalkerNpc(
       17,
       "Rowan, Walker",
       [486, y, -238],
@@ -7059,10 +7120,9 @@ function starterTownNpcs(): StarterNpc[] {
         "I patrol the north road. If I stop moving, assume I found a good view.",
         "The new signs help. Before them, everyone asked the chickens for directions."
       ),
-      "A walking town NPC.",
       [0.35, 0, 0]
     ),
-    starterNpc(
+    starterWalkerNpc(
       18,
       "Iva, Walker",
       [470, y, -210],
@@ -7071,10 +7131,9 @@ function starterTownNpcs(): StarterNpc[] {
         "The plaza connects the important shops by design; market smoke, festival crowds, and frightened newcomers all need a route that remains readable.",
         "If you are new, read the Market Board before picking a road."
       ),
-      "A walking town NPC.",
       [0, 0, 0.35]
     ),
-    starterNpc(
+    starterWalkerNpc(
       19,
       "Cade, Walker",
       [520, y, -210],
@@ -7083,10 +7142,9 @@ function starterTownNpcs(): StarterNpc[] {
         "I walk between the bank and the weapons shop to make the town feel less empty.",
         "The blacksmith has opinions about bad steel and worse politics."
       ),
-      "A walking town NPC.",
       [0, 0, -0.35]
     ),
-    starterNpc(
+    starterWalkerNpc(
       20,
       "Sera, Walker",
       [486, y, -178],
@@ -7095,10 +7153,9 @@ function starterTownNpcs(): StarterNpc[] {
         "The healing shop and magic shop are both open. One fixes mistakes; the other causes them carefully.",
         "The chapel is quiet today. That usually means Aldren knows something."
       ),
-      "A walking town NPC.",
       [-0.35, 0, 0]
     ),
-    starterNpc(
+    starterWalkerNpc(
       21,
       "Tess, Walker",
       [438, y, -210],
@@ -7107,10 +7164,9 @@ function starterTownNpcs(): StarterNpc[] {
         "The bakery smells better than the archive. Do not tell Bolt I said that.",
         "Market work pays small, but it teaches the town."
       ),
-      "A walking town NPC.",
       [0.25, 0, 0.25]
     ),
-    starterNpc(
+    starterWalkerNpc(
       22,
       "Niko, Walker",
       [558, y, -210],
@@ -7119,10 +7175,9 @@ function starterTownNpcs(): StarterNpc[] {
         "The bank is mostly stone, optimism, and a very serious teller.",
         "Merl once frowned at a coin until it apologized."
       ),
-      "A walking town NPC.",
       [-0.25, 0, -0.25]
     ),
-    starterNpc(
+    starterWalkerNpc(
       23,
       "Pera, Walker",
       [462, y, -250],
@@ -7131,10 +7186,9 @@ function starterTownNpcs(): StarterNpc[] {
         "That two-level house is yours. Upstairs is for looking important; downstairs is for finding the door.",
         "There is a household ledger inside with the Market Board route copied on its first page, in case the square fogs over again."
       ),
-      "A walking town NPC.",
       [0.2, 0, 0.3]
     ),
-    starterNpc(
+    starterWalkerNpc(
       24,
       "Olan, Walker",
       [532, y, -170],
@@ -7143,10 +7197,9 @@ function starterTownNpcs(): StarterNpc[] {
         "The magic shop roof glows because someone insisted the town needed a landmark besides the tower.",
         "If the crystal hums, do not hum back."
       ),
-      "A walking town NPC.",
       [-0.2, 0, -0.3]
     ),
-    starterNpc(
+    starterWalkerNpc(
       25,
       "Rin, Walker",
       [452, y, -232],
@@ -7155,10 +7208,9 @@ function starterTownNpcs(): StarterNpc[] {
         "The chickens are near the farm. They are small, loud, and committed to their role.",
         "Tilda pays in eggs and blunt wisdom."
       ),
-      "A walking town NPC.",
       [0.3, 0, -0.2]
     ),
-    starterNpc(
+    starterWalkerNpc(
       26,
       "Dax, Walker",
       [512, y, -236],
@@ -7167,7 +7219,6 @@ function starterTownNpcs(): StarterNpc[] {
         "The weapons shop is south of the bank. The tavern is where everyone goes after pretending to work.",
         "The Guard Yard has dummies if you need to hit something legal."
       ),
-      "A walking town NPC.",
       [-0.3, 0, 0.2]
     ),
     starterNpc(
@@ -9389,7 +9440,9 @@ async function start({
 
   // Start the player spatial observer, used for shim chat distribution.
   if (process.env.BIOMES_SKIP_PLAYER_SPATIAL_OBSERVER === "1") {
-    log.warn("Shim initializer: skipping player spatial observer for maintenance");
+    log.warn(
+      "Shim initializer: skipping player spatial observer for maintenance"
+    );
   } else {
     log.info("Shim initializer: starting player spatial observer");
     await playerSpatialObserver.start();

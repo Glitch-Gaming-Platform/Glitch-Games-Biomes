@@ -1862,6 +1862,50 @@ button.biomes-ui-card:disabled {
   min-width: 0;
 }
 
+.biomes-building-request {
+  margin-top: 12px;
+}
+
+.biomes-building-request-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.biomes-building-request-grid label {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--biomes-fg-muted);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.biomes-building-request-grid select,
+.biomes-building-request-grid input {
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--biomes-edge-cyan-soft);
+  border-radius: 3px;
+  padding: 7px 8px;
+  background: rgba(8, 14, 32, 0.9);
+  color: var(--biomes-fg);
+  font: inherit;
+  letter-spacing: 0.04em;
+  text-transform: none;
+}
+
+@media (max-width: 760px) {
+  .biomes-building-request-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
 .biomes-building-chip-row {
   display: flex;
   flex-wrap: wrap;

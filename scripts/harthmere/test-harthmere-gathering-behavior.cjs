@@ -8,7 +8,7 @@ const performEnd = src.indexOf("export const __harthmereGatheringAuthorityTestHo
 const perform = src.slice(performStart, performEnd);
 h.ok(perform.includes("validateHarthmereGatherAttempt({"), "gather executes authority validation before normal success path");
 h.ok(perform.includes("playerState: options?.playerState"), "gather accepts mocked player/server state");
-h.ok(perform.includes("cooldownReady: Boolean(options?.ignoreCooldown) || cooldownReady(state, node)"), "gather authority owns cooldown preflight");
+h.ok(/cooldownReady:\s*Boolean\(options\?\.ignoreCooldown\)\s*\|\|\s*cooldownReady\(state, node\)/.test(perform), "gather authority owns cooldown preflight");
 h.ok(perform.includes("toolDurability: options?.toolDurability"), "gather authority can reject broken tools");
 h.ok(perform.includes("routeHarthmereGatheredMaterials({"), "gather plans storage route after yield roll");
 h.ok(perform.indexOf("routeHarthmereGatheredMaterials({") < perform.indexOf("grantHarthmereItem("), "gather routes before granting so full inventory cannot delete items");

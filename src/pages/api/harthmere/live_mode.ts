@@ -37,8 +37,15 @@ import {
 } from "@/shared/harthmere/live_mode_backend";
 import { buildHarthmereEscortCompanionNpcProposedChanges } from "@/server/harthmere/escort_companion_npc_ecs";
 import {
+  buildingSystemBlueprintById,
+  buildingSystemBlueprintByItemId,
+  buildingSystemBlueprintByStructureType,
+  buildingSystemPlotById,
+  createBuildingSystemMuckAreaPlotDefinition,
+  createBuildingSystemRequestedPlotDefinition,
   groundedBuildingSystemMaterializationPlan,
   type BuildingSystemAnyMaterializationPlan,
+  type BuildingSystemPlotDefinition,
 } from "@/shared/harthmere/building_system";
 import {
   buildHarthmereLiveModePersistenceMutationPlan,
@@ -1839,6 +1846,111 @@ function terrainShardAabbForMaterializationPositions(positions: Vec3[]) {
   return [min, max] as [Vec3, Vec3];
 }
 
+function numericBuildingPayload(payload: Record<string, unknown>, key: string) {
+  const value = Number(payload[key]);
+  return Number.isFinite(value) ? value : undefined;
+}
+
+/**
+ * Reconstructs the requested deed from server-owned catalogues. This is used
+ * only to choose the ECS/Gaia scan box; the reducer independently rebuilds and
+ * validates the same plot before charging gold or recording ownership.
+ */
+function requestedBuildingPlotForNativeClearance(
+  envelope: HarthmereLiveModeAuthorityEnvelope
+): BuildingSystemPlotDefinition | undefined {
+  if (
+    envelope.actionKind !== "request_property_building_mutation" ||
+    String(envelope.payload?.buildingAction ?? "") !== "claim_plot"
+  ) {
+    return undefined;
+  }
+  const payload = (envelope.payload ?? {}) as Record<string, unknown>;
+  const plotId = String(payload.plotId ?? "").trim();
+  const authored = buildingSystemPlotById(plotId);
+  if (authored) return authored;
+  const blueprint =
+    buildingSystemBlueprintById(String(payload.blueprintId ?? "")) ??
+    buildingSystemBlueprintByItemId(
+      String(payload.blueprintItemId ?? payload.bikkieBlueprintItemId ?? "")
+    ) ??
+    buildingSystemBlueprintByStructureType(
+      String(payload.structureTypeId ?? "")
+    );
+  const requestAreaId = String(payload.requestAreaId ?? "").trim();
+  const centerX = numericBuildingPayload(payload, "centerX");
+  const centerZ = numericBuildingPayload(payload, "centerZ");
+  const width = numericBuildingPayload(payload, "plotWidth");
+  const depth = numericBuildingPayload(payload, "plotDepth");
+  if (
+    requestAreaId &&
+    centerX !== undefined &&
+    centerZ !== undefined &&
+    width !== undefined &&
+    depth !== undefined
+  ) {
+    const requested = createBuildingSystemRequestedPlotDefinition({
+      plotId: plotId || undefined,
+      requestAreaId,
+      blueprint,
+      center: { x: centerX, z: centerZ },
+      width,
+      depth,
+    });
+    return requested.ok ? requested.plot : undefined;
+  }
+  const originX = numericBuildingPayload(payload, "originX");
+  const originZ = numericBuildingPayload(payload, "originZ");
+  const legacy = createBuildingSystemMuckAreaPlotDefinition({
+    plotId: plotId || undefined,
+    blueprint,
+    origin:
+      originX !== undefined && originZ !== undefined
+        ? {
+            x: originX,
+            y: numericBuildingPayload(payload, "originY"),
+            z: originZ,
+          }
+        : undefined,
+    areaId: String(payload.muckAreaId ?? payload.areaId ?? "") || undefined,
+  });
+  return legacy.ok ? legacy.plot : undefined;
+}
+
+/**
+ * Native clearance catches structures that are not represented in the
+ * live-mode property ledger: player placeables, voxel groups, and unfinished
+ * blueprints. Terrain shards, players, NPCs, and ordinary drops are excluded.
+ */
+async function nativeStructureCollisionIdsForPlot(input: {
+  askApi?: Pick<AskApi, "scanForExport">;
+  plot: BuildingSystemPlotDefinition | undefined;
+}) {
+  if (!input.askApi || !input.plot) return [] as string[];
+  const { bounds, groundY, maxStructureHeight } = input.plot;
+  const aabb: [Vec3, Vec3] = [
+    [bounds.xMin, groundY - 4, bounds.zMin],
+    [bounds.xMax + 1, groundY + maxStructureHeight + 8, bounds.zMax + 1],
+  ];
+  const collisions: string[] = [];
+  for await (const [, entity] of input.askApi.scanForExport({ aabb })) {
+    if (entity.hasIced?.() || entity.hasShardSeed?.()) continue;
+    if (
+      !entity.hasGroupComponent?.() &&
+      !entity.hasPlaceableComponent?.() &&
+      !entity.hasBlueprintComponent?.()
+    ) {
+      continue;
+    }
+    collisions.push(String(entity.id));
+    if (collisions.length >= 16) break;
+  }
+  return collisions;
+}
+
+export const nativeStructureCollisionIdsForPlotForTest =
+  nativeStructureCollisionIdsForPlot;
+
 async function resolveTerrainEntityIdsForMaterialization(input: {
   askApi?: Pick<AskApi, "scanForExport">;
   positions: Vec3[];
@@ -2932,6 +3044,23 @@ export async function persistHarthmereLiveModeResponse(
         now
       );
       mark("state_parse_merge_ms", stageStartedAt);
+      // Replace any browser-supplied collision claim with a server-side
+      // ECS/Gaia scan immediately before the authoritative property reduce.
+      // This makes both authored listings and custom additive-town requests
+      // fail closed when a group, placeable, or blueprint occupies the land.
+      if (
+        envelope.actionKind === "request_property_building_mutation" &&
+        String(envelope.payload?.buildingAction ?? "") === "claim_plot"
+      ) {
+        const nativeStructureCollisionIds =
+          await nativeStructureCollisionIdsForPlot({
+            askApi: deps.askApi,
+            plot: requestedBuildingPlotForNativeClearance(envelope),
+          });
+        (envelope.payload as Record<string, unknown>)[
+          "nativeStructureCollisionIds"
+        ] = nativeStructureCollisionIds;
+      }
       stageStartedAt = Date.now();
       let reduced = reduceHarthmereLiveModeBackendState(
         currentState,

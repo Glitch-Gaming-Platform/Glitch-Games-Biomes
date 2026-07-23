@@ -15,17 +15,25 @@
 import assert from "assert";
 import {
   getLiveEntityHelperQuestForEntity,
+  LIVE_ENTITY_HELPER_HARTHMERE_EXCLUSION_BOUNDS,
   isLiveEntityHelperLabelJobsBoard,
   isLiveEntityHelperLabelMuckMonster,
   isLiveEntityHelperQuestEligibleEntity,
   type LiveEntityHelperQuestEntityContext,
 } from "../live_entity_helper_quests";
 
-// Outside both Grove (300<x<650, -360<z<-40) and shifted Harthmere
-// (704<x<1280, -512<z<192).
-const OUTSIDE_POSITION: readonly number[] = [232, 54, -506];
+// Outside both the Grove and the additive Harthmere settlement envelope.
+const OUTSIDE_POSITION: readonly number[] = [1844, 53, -506];
 const GROVE_POSITION: readonly number[] = [501, 70, -132];
-const HARTHMERE_POSITION: readonly number[] = [904, 70, -160];
+const HARTHMERE_POSITION: readonly number[] = [
+  (LIVE_ENTITY_HELPER_HARTHMERE_EXCLUSION_BOUNDS.minX +
+    LIVE_ENTITY_HELPER_HARTHMERE_EXCLUSION_BOUNDS.maxX) /
+    2,
+  53,
+  (LIVE_ENTITY_HELPER_HARTHMERE_EXCLUSION_BOUNDS.minZ +
+    LIVE_ENTITY_HELPER_HARTHMERE_EXCLUSION_BOUNDS.maxZ) /
+    2,
+];
 
 function ctx(
   overrides: Partial<LiveEntityHelperQuestEntityContext>
@@ -152,9 +160,7 @@ describe("live-entity helper classifier — exclusions (current)", () => {
 
   it("rejects entities with no label and no talkable signals (props/scenery)", () => {
     assert.equal(
-      isLiveEntityHelperQuestEligibleEntity(
-        ctx({ entityId: "scenery" })
-      ),
+      isLiveEntityHelperQuestEligibleEntity(ctx({ entityId: "scenery" })),
       false
     );
   });

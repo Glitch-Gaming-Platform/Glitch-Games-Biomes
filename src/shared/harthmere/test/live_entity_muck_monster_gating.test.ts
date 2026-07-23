@@ -2,6 +2,7 @@ import assert from "assert";
 
 import {
   HARTHMERE_MUCK_FLOOR_FEET_Y,
+  HARTHMERE_LIVE_ENTITY_GUARDED_WILDLIFE_LOCATIONS,
   HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_PRODUCTION_COUNT,
   HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS,
   harthmereExcludedMuckMonsterSeedIds,
@@ -9,15 +10,10 @@ import {
   harthmereMuckMonsterPositionIsInSafeZone,
 } from "@/shared/harthmere/live_entity_production_seed";
 import { muckMonsterAreaForPosition } from "@/shared/harthmere/muck_monster_aggression_ai";
-import {
-  HARTHMERE_EXPANDED_WORLD_EAST_EDGE_X,
-  HARTHMERE_EXTENSION_FEET_Y,
-  HARTHMERE_EXTENSION_WORLD_BOUNDS,
-  HARTHMERE_ORIGINAL_WORLD_EAST_EDGE_X,
-} from "@/shared/harthmere/world_extension";
+import { HARTHMERE_ORIGINAL_WORLD_EAST_EDGE_X } from "@/shared/harthmere/world_extension";
 
 describe("muck monster placement", () => {
-  it("keeps all 100 muckers/hexes — none dropped", () => {
+  it("keeps all 116 muckers/hexes — none dropped", () => {
     const placed = harthmereGroundedMuckMonsterSeedsInTerritory();
     assert.equal(
       placed.length,
@@ -28,6 +24,24 @@ describe("muck monster placement", () => {
       HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS.length
     );
     assert.deepEqual(harthmereExcludedMuckMonsterSeedIds(), []);
+  });
+
+  it("guards every added wildlife location with exactly three Muckers and one Hex", () => {
+    const placed = harthmereGroundedMuckMonsterSeedsInTerritory();
+    for (const location of HARTHMERE_LIVE_ENTITY_GUARDED_WILDLIFE_LOCATIONS) {
+      const guards = placed.filter((seed) => seed.areaId === location.areaId);
+      assert.equal(guards.length, 4, `${location.areaId} guard count`);
+      assert.equal(
+        guards.filter((seed) => seed.combatKind === "mux").length,
+        3,
+        `${location.areaId} Mucker count`
+      );
+      assert.equal(
+        guards.filter((seed) => seed.combatKind === "hex").length,
+        1,
+        `${location.areaId} Hex count`
+      );
+    }
   });
 
   it("INVARIANT: NOT ONE mucker/hex is ever inside a safe zone (the Grove/town)", () => {
@@ -70,13 +84,12 @@ describe("muck monster placement", () => {
     );
   });
 
-  it("places every production creature on the flat additive terrain", () => {
-    for (const seed of harthmereGroundedMuckMonsterSeedsInTerritory()) {
-      assert.equal(seed.position[1], HARTHMERE_EXTENSION_FEET_Y);
-      assert.ok(seed.position[0] >= HARTHMERE_ORIGINAL_WORLD_EAST_EDGE_X);
-      assert.ok(seed.position[0] < HARTHMERE_EXPANDED_WORLD_EAST_EDGE_X);
-      assert.ok(seed.position[2] >= HARTHMERE_EXTENSION_WORLD_BOUNDS.minZ);
-      assert.ok(seed.position[2] < HARTHMERE_EXTENSION_WORLD_BOUNDS.maxZ);
+  it("uses the original map's terrain-sampled hill heights", () => {
+    const placed = harthmereGroundedMuckMonsterSeedsInTerritory();
+    const elevations = new Set(placed.map((seed) => seed.position[1]));
+    assert.ok(elevations.size > 10, "expected real, varied terrain heights");
+    for (const seed of placed) {
+      assert.ok(seed.position[0] < HARTHMERE_ORIGINAL_WORLD_EAST_EDGE_X);
     }
   });
 

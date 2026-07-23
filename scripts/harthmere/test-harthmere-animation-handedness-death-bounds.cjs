@@ -76,7 +76,7 @@ ok("death world interaction contract covers visible effect range signals", inclu
 
 ok("NPC death uses visible corpse hold scale instead of shrinking to zero", npcs.includes("HARTHMERE_DEATH_CORPSE_HOLD_SCALE") && !/getScaleFromHitCurve\(\s*onDeathScaleCurve,\s*ON_DEATH_ANIMATION_DURATION_SECS,\s*0\s*\)/.test(npcs));
 ok("NPC death freezes visible render position at death location", npcs.includes("harthmereDeathWorldPosition"));
-ok("dead NPC/animal velocity is zeroed so corpses do not walk", npcs.includes("harthmereStoppedDeathVelocity") && npcs.includes("harthmereIsDead ? harthmereStoppedDeathVelocity : velocity"));
+ok("dead NPC/animal velocity is zeroed so corpses do not walk", npcs.includes("harthmereStoppedDeathVelocity") && /harthmereIsDead\s*\?\s*harthmereStoppedDeathVelocity\s*:\s*velocity/.test(npcs));
 ok("dead NPC/animal attack action is cancelled", npcs.includes("!harthmereIsDead && emote?.emote_type"));
 ok("NPC death writes bounds metadata for above-ground/collision audits", npcs.includes("harthmereDeathBounds") && npcs.includes("aboveGroundRequired") && npcs.includes("notInsideSolidCollision"));
 ok("death bounds include service-route non-blocking requirement", npcs.includes("doesNotBlockCoreRoute") && contract.includes("minSeparationFromServiceApproachMeters"));

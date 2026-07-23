@@ -1122,6 +1122,12 @@ export const HARTHMERE_NATIVE_NPC_ID_MANIFEST = {
   livestock_rabbit: id(8711637540792493),
   boss_muck_scarred_helix: id(8722087466111622),
   boss_thaedryn_bellbound: id(8722087466111623),
+  bandit_scout: id(8722087466111630),
+  bandit_archer: id(8722087466111631),
+  bandit_skirmisher: id(8722087466111632),
+  bandit_brute: id(8722087466111633),
+  bandit_captain: id(8722087466111634),
+  bandit_prisoner: id(8722087466111635),
 } as const satisfies Readonly<Record<string, BiomesId>>;
 
 /**

@@ -12,7 +12,10 @@ import {
 import { ensureHarthmereNativeItemCatalogue } from "@/shared/harthmere/harthmere_native_bikkie_items";
 import { harthmereNativeBiomesIdForItemId } from "@/shared/harthmere/harthmere_native_item_ids";
 import assert from "assert";
-import { harthmereGroundedMuckMonsterSeedsInTerritory } from "@/shared/harthmere/live_entity_production_seed";
+import {
+  harthmereGroundedLivestockSeedsInTerritory,
+  harthmereGroundedMuckMonsterSeedsInTerritory,
+} from "@/shared/harthmere/live_entity_production_seed";
 
 describe("Harthmere native ECS combat rules", () => {
   before(() => ensureHarthmereNativeItemCatalogue());
@@ -114,5 +117,28 @@ describe("Harthmere native ECS combat rules", () => {
     const profile = harthmereNativeNpcCombatProfileForSeed(roadSeed);
     assert.equal(profile.behaviorKind, "retaliate");
     assert.deepEqual(profile.aggroTrigger, { kind: "onlyIfAttacked" });
+  });
+
+  it("makes only cows and sheep retaliate and move a little faster", () => {
+    const seeds = harthmereGroundedLivestockSeedsInTerritory();
+    const profileFor = (species: "cow" | "sheep" | "rabbit") => {
+      const seed = seeds.find((candidate) => candidate.species === species);
+      assert.ok(seed, `expected a ${species} seed`);
+      return harthmereNativeNpcCombatProfileForSeed(seed);
+    };
+
+    for (const species of ["cow", "sheep"] as const) {
+      const profile = profileFor(species);
+      assert.equal(profile.attackIntervalSecs, 1.8);
+      assert.equal(profile.walkSpeed, 1.65);
+      assert.equal(profile.runSpeed, 3.5);
+      assert.equal(profile.behaviorKind, "retaliate");
+      assert.deepEqual(profile.aggroTrigger, { kind: "onlyIfAttacked" });
+    }
+
+    const rabbit = profileFor("rabbit");
+    assert.equal(rabbit.attackIntervalSecs, 2.4);
+    assert.equal(rabbit.walkSpeed, 2.4);
+    assert.equal(rabbit.runSpeed, 4.4);
   });
 });

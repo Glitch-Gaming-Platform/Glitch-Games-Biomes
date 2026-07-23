@@ -46,6 +46,8 @@ export interface InventoryUiItem {
   storageLocation?: InventoryContainerKey;
   canUse?: boolean;
   useActionLabel?: string;
+  /** Human-readable action shown when this item is mirrored into the hotbar. */
+  primaryActionLabel?: string;
   canEquip?: boolean;
   canMove?: boolean;
   hotbarEligible?: boolean;
@@ -1482,15 +1484,18 @@ const FarmingFoodSection: React.FunctionComponent<{
   const staminaWarns = staminaWarning !== "none";
   const visibleActions = model.actions.filter(
     (action) =>
-      action.id !== "forage_food" ||
-      !action.disabled ||
-      model.actions.some(
-        (entry) => entry.id === "forage_food" && !entry.disabled
-      )
+      !["gather_seed", "plant_seed", "water_plot", "harvest_plot"].includes(
+        action.id
+      ) &&
+      (action.id !== "forage_food" ||
+        !action.disabled ||
+        model.actions.some(
+          (entry) => entry.id === "forage_food" && !entry.disabled
+        ))
   );
   return (
     <div aria-label="Farming hunting cattle and food" style={{ marginTop: 16 }}>
-      <h3 style={{ ...titleStyle, marginBottom: 8 }}>Food & Farm</h3>
+      <h3 style={{ ...titleStyle, marginBottom: 8 }}>Food & Cooking</h3>
       <div
         aria-label={`Stamina ${model.stamina} of ${model.maxStamina}`}
         data-stamina-warning={staminaWarns ? staminaWarning : undefined}
@@ -1542,8 +1547,7 @@ const FarmingFoodSection: React.FunctionComponent<{
         ))}
       </div>
       <p style={{ ...mutedTextStyle, marginTop: 8 }}>
-        {model.plots.length} plots · {model.livestock.length} livestock ·{" "}
-        {model.wildlife.length} wildlife
+        {model.livestock.length} livestock · {model.wildlife.length} wildlife
       </p>
     </div>
   );

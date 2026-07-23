@@ -128,6 +128,11 @@ import {
   HARTHMERE_BUSINESS_OUTPOST_VISUAL_DECOR_VERSION,
   type HarthmereBusinessOutpostInteriorDecorSpec,
 } from "@/shared/harthmere/business_outpost_visual_decor";
+import {
+  createHarthmereServiceBuildingVisualDecorSpecs,
+  HARTHMERE_SERVICE_BUILDING_VISUAL_DECOR_VERSION,
+  type HarthmereServiceBuildingProfile,
+} from "@/shared/harthmere/service_building_visual_decor";
 import { LIVE_ENTITY_ROBOT_PROTECTION_AREAS } from "@/shared/harthmere/live_entity_robot_energy_protection";
 import {
   reconcileHarthmereLiveCreatureBridge,
@@ -4083,24 +4088,6 @@ function createBuildingShell(shell: BuildingShell): RuntimePlacement[] {
 }
 
 
-type HarthmereServiceBuildingProfile =
-  | "bakery"
-  | "provision"
-  | "player_services"
-  | "smithy"
-  | "workshop"
-  | "apothecary"
-  | "magic_shop"
-  | "inn"
-  | "reeve_hall"
-  | "dock_warehouse"
-  | "mudden_home"
-  | "wash_house"
-  | "residential_cottage"
-  | "barracks"
-  | "stable_office"
-  | "chapel";
-
 type HarthmereBlockBuiltServiceBuilding = Omit<BuildingShell, "theme"> & {
   floors?: number;
   profile: HarthmereServiceBuildingProfile;
@@ -4325,6 +4312,28 @@ function createHarthmereServiceInteriorBuildout(
       item("bookcase_2", building.w * 0.27, -building.d * 0.3, -Math.PI / 2, 0.42, "chapel archive bookcase against rebuilt stone wall");
       item("candlestick_stand_fp", -2.4, -building.d * 0.32, 0, 0.42, "chapel altar candle on stone floor");
       break;
+  }
+
+  // The May 16 snapshot interiors use a consistent readable grammar: stock
+  // and seating around the perimeter, small objects resting on real tables,
+  // wall-supported light, and an open center aisle. Apply that grammar to all
+  // additive service shells, including lived-in rooms on second stories.
+  for (const spec of createHarthmereServiceBuildingVisualDecorSpecs({
+    profile: building.profile,
+    width: building.w,
+    depth: building.d,
+    floors: Math.max(1, building.floors ?? 1),
+  })) {
+    item(
+      spec.asset,
+      spec.dx,
+      spec.dz,
+      spec.rotAdd,
+      spec.scale,
+      `${spec.label} ${HARTHMERE_SERVICE_BUILDING_VISUAL_DECOR_VERSION}`,
+      spec.yOffset,
+      spec.floor,
+    );
   }
 
   return placements;
@@ -7895,18 +7904,18 @@ function createHarthmereNpcHomeFurniture(): RuntimePlacement[] {
       // Chair near the table
       P(chairAsset, x + 0.20, z + 0.75, Math.PI, 0.18, room.roomLabel + " chair at table", district, y + 0.04),
       // Rug under the bed (small)
-      P("rug_small_fp", x - 0.55, z - 0.55, 0, 0.20, room.roomLabel + " bedside rug", district, y + 0.01),
+      P("banner_brown", x - 0.55, z - 0.55, 0, 0.20, room.roomLabel + " bedside rug", district, y + 0.01),
       // Wall shelf with books and clutter
-      P("shelf", x + 0.95, z + 0.05, -Math.PI / 2, 0.18, room.roomLabel + " wall shelf", district, y + 0.95),
-      P("book_1_fp", x + 0.95, z + 0.05, -Math.PI / 2, 0.08, room.roomLabel + " shelf book", district, y + 1.08),
+      P("shelf_small", x + 0.95, z + 0.05, -Math.PI / 2, 0.18, room.roomLabel + " wall shelf", district, y + 0.95),
+      P("book_stack_1", x + 0.95, z + 0.05, -Math.PI / 2, 0.08, room.roomLabel + " shelf book", district, y + 1.08),
       // Wash basin on a stand near the door area
-      P("vase_4", x - 0.95, z + 0.05, Math.PI / 2, 0.14, room.roomLabel + " water basin", district, y + 0.36),
+      P("cauldron_fp", x - 0.95, z + 0.05, Math.PI / 2, 0.14, room.roomLabel + " water basin", district, y + 0.36),
       // Hung tools / lantern on the wall (rotates around room)
-      P("lantern_post", x + 0.05, z - 0.95, 0, 0.16, room.roomLabel + " wall lantern", district, y + 1.05),
+      P("lantern", x + 0.05, z - 0.95, 0, 0.16, room.roomLabel + " wall lantern", district, y + 1.05),
       // Floor crate of supplies
-      P("crate", x - 0.05, z + 0.95, 0, 0.18, room.roomLabel + " supplies crate", district, y + 0.05),
+      P("crate_wooden_fp", x - 0.05, z + 0.95, 0, 0.18, room.roomLabel + " supplies crate", district, y + 0.05),
       // Broom in the corner
-      P("broom", x - 0.95, z + 0.95, Math.PI / 4, 0.16, room.roomLabel + " broom", district, y + 0.04),
+      P("shovel", x - 0.95, z + 0.95, Math.PI / 4, 0.16, room.roomLabel + " broom", district, y + 0.04),
       // A single coin pile on the table — implies the NPC works for a living
       P("coin_pile", x + 0.85, z + 0.85, 0, 0.06, room.roomLabel + " coin pile", district, y + 0.62),
     );
@@ -14064,12 +14073,52 @@ private harthmerePlayerSword?: THREE.Group;
         name: "oldWellDrain",
         reason: "Old Well Drain Test Entrance",
       },
+      firstChoir: {
+        x: 356,
+        y: 54.05,
+        z: -306,
+        district: "Old Well / Underways",
+        name: "firstChoir",
+        reason: "First Choir Arena threshold",
+      },
+      oldHarth: {
+        x: 640,
+        y: 54.05,
+        z: -314,
+        district: "Old Well / Underways",
+        name: "oldHarth",
+        reason: "Old Harth Antechamber threshold",
+      },
+      bellbinderTomb: {
+        x: 640,
+        y: 54.05,
+        z: -300,
+        district: "Old Well / Underways",
+        name: "bellbinderTomb",
+        reason: "Bellbinder Tomb corridor threshold",
+      },
+      bellwardChamber: {
+        x: 640,
+        y: 54.05,
+        z: -286,
+        district: "Old Well / Underways",
+        name: "bellwardChamber",
+        reason: "Bellward Chamber True Bell threshold",
+      },
       wyrmBed: {
         x: 640,
         y: 54.05,
         z: -268,
         district: "Old Well / Underways",
         name: "wyrmBed",
+        reason: "Wyrm's Bed raid chamber staging",
+      },
+      wyrmsBed: {
+        x: 640,
+        y: 54.05,
+        z: -268,
+        district: "Old Well / Underways",
+        name: "wyrmsBed",
         reason: "Wyrm's Bed raid chamber staging",
       },
     };
@@ -14129,7 +14178,11 @@ private harthmerePlayerSword?: THREE.Group;
       teleportToBellwardHalls: () => harthmereStrictLiveDungeonTeleport("bellwardHalls"),
       teleportToChapelUndercroft: () => harthmereStrictLiveDungeonTeleport("chapelUndercroft"),
       teleportToOldWellDrain: () => harthmereStrictLiveDungeonTeleport("oldWellDrain"),
-      teleportToWyrmBed: () => harthmereStrictLiveDungeonTeleport("wyrmBed"),
+      teleportToFirstChoir: () => harthmereStrictLiveDungeonTeleport("firstChoir"),
+      teleportToOldHarth: () => harthmereStrictLiveDungeonTeleport("oldHarth"),
+      teleportToBellbinderTomb: () => harthmereStrictLiveDungeonTeleport("bellbinderTomb"),
+      teleportToBellwardChamber: () => harthmereStrictLiveDungeonTeleport("bellwardChamber"),
+      teleportToWyrmBed: () => harthmereStrictLiveDungeonTeleport("wyrmsBed"),
     };
 
 
@@ -16820,8 +16873,9 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
       // and removed the crosshair combat actor we need for left-click attacks.
       if (
         harthmereEcsCreatureRenderEnabled() &&
-        harthmereSuppressStaticLifeForEcs() &&
-        isHarthmereEcsDrivenCreatureAsset(authoredPlacement.asset)
+        (authoredPlacement.asset === "townsperson_bandit" ||
+          (harthmereSuppressStaticLifeForEcs() &&
+            isHarthmereEcsDrivenCreatureAsset(authoredPlacement.asset)))
       ) {
         continue;
       }

@@ -43,7 +43,7 @@ ok(
 );
 ok(
   "chase movement no longer freezes when target is behind NPC",
-  /turnSlowdown\s*=\s*Math\.max\(0\.35/.test(chase) && !/const speedMultiplier = Math\.max\(0, Math\.cos\(diffAngleToPlayer\)\)/.test(chase),
+  /turnSlowdown\s*=\s*Math\.max\(\s*0\.35/.test(chase) && !/const speedMultiplier = Math\.max\(0, Math\.cos\(diffAngleToPlayer\)\)/.test(chase),
   ["old cosine-only multiplier produced forwardSpeed=0 for targets behind the NPC"]
 );
 ok(

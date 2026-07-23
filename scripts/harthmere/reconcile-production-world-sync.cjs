@@ -58,7 +58,10 @@ const {
 const {
   SNAPSHOT_GROVE_LOCAL_DEV_NPC_BASE,
 } = require("../../src/shared/harthmere/snapshot_grove_content");
-const { Position, NpcMetadata } = require("../../src/shared/ecs/gen/components");
+const {
+  Position,
+  NpcMetadata,
+} = require("../../src/shared/ecs/gen/components");
 const {
   deserializeRedisEntityState,
 } = require("../../src/server/shared/world/lua/serde");
@@ -292,9 +295,8 @@ async function repairLiveEntityPositions(world) {
     })),
     ...harthmereGroundedMuckMonsterSeedsInTerritory().map((seed) => ({
       id: Number(seed.entityId),
-      // The grounded seed is already in additive world space. Resolving the
-      // retired production placement map here moved every existing Mucker back
-      // onto the original map after the server had seeded it correctly.
+      // The seed has already resolved to its canonical original-map terrain
+      // sample, including the local hill elevation. Do not flatten its Y value.
       position: seed.position,
       isMonster: true,
     })),
@@ -310,7 +312,8 @@ async function repairLiveEntityPositions(world) {
   // deploy instead of silently dropping a hostile into the Grove.
   const seedsInSafeZone = canonical.filter(
     (entry) =>
-      entry.isMonster && harthmereMuckMonsterPositionIsInSafeZone(entry.position)
+      entry.isMonster &&
+      harthmereMuckMonsterPositionIsInSafeZone(entry.position)
   );
   check(
     seedsInSafeZone.length === 0,
@@ -321,7 +324,10 @@ async function repairLiveEntityPositions(world) {
   );
   const safeCanonical = canonical.filter(
     (entry) =>
-      !(entry.isMonster && harthmereMuckMonsterPositionIsInSafeZone(entry.position))
+      !(
+        entry.isMonster &&
+        harthmereMuckMonsterPositionIsInSafeZone(entry.position)
+      )
   );
 
   const host =
@@ -338,9 +344,7 @@ async function repairLiveEntityPositions(world) {
   const drift2d = (a, b) =>
     !a || !b ? Infinity : Math.hypot(a[0] - b[0], a[2] - b[2]);
   const drift3d = (a, b) =>
-    !a || !b
-      ? Infinity
-      : Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+    !a || !b ? Infinity : Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
   let repaired = 0;
   let alreadyCorrect = 0;
   let createdByReconcile = 0;
@@ -376,7 +380,11 @@ async function repairLiveEntityPositions(world) {
       if (APPLY) {
         const npc = NpcMetadata.create({
           type_id: meta?.type_id,
-          spawn_position: [entry.position[0], entry.position[1], entry.position[2]],
+          spawn_position: [
+            entry.position[0],
+            entry.position[1],
+            entry.position[2],
+          ],
           spawn_orientation: meta?.spawn_orientation,
           created_time: meta?.created_time,
           spawn_event_id: meta?.spawn_event_id,
@@ -415,8 +423,12 @@ async function repairLiveEntityPositions(world) {
           entity = undefined;
         }
       }
-      const current = entity?.hasPosition?.() ? entity.position()?.v : undefined;
-      const meta = entity?.hasNpcMetadata?.() ? entity.npcMetadata() : undefined;
+      const current = entity?.hasPosition?.()
+        ? entity.position()?.v
+        : undefined;
+      const meta = entity?.hasNpcMetadata?.()
+        ? entity.npcMetadata()
+        : undefined;
       const spawn = meta?.spawn_position;
       if (
         drift3d(current, entry.position) > 0.5 ||
@@ -433,9 +445,12 @@ async function repairLiveEntityPositions(world) {
     }
     check(
       unresolved.length === 0,
-      "live entity positions persist in the additive Harthmere world",
+      "live entity positions persist in their canonical world coordinate spaces",
       unresolved.length
-        ? JSON.stringify({ count: unresolved.length, sample: unresolved.slice(0, 5) })
+        ? JSON.stringify({
+            count: unresolved.length,
+            sample: unresolved.slice(0, 5),
+          })
         : undefined
     );
   } finally {

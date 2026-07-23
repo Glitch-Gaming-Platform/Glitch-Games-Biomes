@@ -1,4 +1,5 @@
 import assert from "assert";
+import { getHarthmereItemDisplay } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
 import { BikkieIds } from "@/shared/bikkie/ids";
 import {
   nativeWearableSlotLabelForTest,
@@ -35,5 +36,24 @@ describe("native wearable BiomesUI slot mapping", () => {
       nativeWearableSlotLabelForTest(String(BikkieIds.bottoms)),
       "Legs"
     );
+  });
+
+  it("classifies arbitrary native Bikkie wearables as equippable gear", () => {
+    const top = getHarthmereItemDisplay(`b:${BikkieIds.muckyTop}`);
+    const bottoms = getHarthmereItemDisplay(`b:${BikkieIds.muckySkirt}`);
+
+    assert.ok(
+      top,
+      "Mucky Top should resolve through the dynamic Bikkie display"
+    );
+    assert.ok(
+      bottoms,
+      "Mucky Skirt should resolve through the dynamic Bikkie display"
+    );
+    assert.equal(top?.slot, "chest");
+    assert.equal(top?.canEquip, true);
+    assert.equal(top?.category, "armor");
+    assert.equal(bottoms?.slot, "legs");
+    assert.equal(bottoms?.canEquip, true);
   });
 });

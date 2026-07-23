@@ -5,6 +5,7 @@ import type {
   QuestBundle,
   TriggerProgress,
 } from "@/client/game/resources/challenges";
+import type { BiomesId } from "@/shared/ids";
 import {
   activeNativeQuest,
   activeNativeQuestTriggerLeaves,
@@ -157,6 +158,48 @@ describe("nativeQuestMapAdapter", () => {
         (entry) => entry.questId
       ),
       ["54"]
+    );
+  });
+
+  it("suppresses stale in-progress hidden quests that still await discovery", () => {
+    const hiddenBase = quest(
+      60,
+      "in_progress",
+      leaf(61, "Hidden objective", 0)
+    );
+    const hidden: QuestBundle = {
+      ...hiddenBase,
+      biscuit: {
+        ...hiddenBase.biscuit,
+        displayName: "The Buried Bell",
+        unlock: {
+          kind: "event",
+          id: 62 as BiomesId,
+          eventKind: "challengeUnlocked",
+          count: 1,
+          predicate: {
+            kind: "object",
+            fields: [
+              ["challenge", { kind: "value", value: 60 as BiomesId }],
+            ],
+          },
+        },
+      },
+    };
+    const roadAhead = quest(
+      70,
+      "in_progress",
+      leaf(71, "Meet Billy", 0),
+      "main"
+    );
+
+    assert.equal(activeNativeQuest([hidden, roadAhead])?.biscuit.id, 70);
+    assert.deepEqual(nativeQuestMapMarkers([hidden, roadAhead]), []);
+    assert.deepEqual(
+      nativeQuestTrackableQuests([hidden, roadAhead]).map(
+        (entry) => entry.questId
+      ),
+      ["70"]
     );
   });
 });

@@ -115,11 +115,41 @@ function bibleUnlockTrigger(quest: any): StoredTriggerDefinition | undefined {
   const prerequisites = (quest.activeRules?.prerequisiteQuestIds ?? []).filter(
     (id: unknown): id is string => typeof id === "string" && id.length > 0
   );
-  if (prerequisites.length === 0) return undefined;
   const rootId =
     HARTHMERE_NATIVE_QUEST_STEP_ID_MANIFEST[
       `bible:${quest.id}:unlock:root` as keyof typeof HARTHMERE_NATIVE_QUEST_STEP_ID_MANIFEST
+    ] ??
+    HARTHMERE_NATIVE_QUEST_STEP_ID_MANIFEST[
+      `bible:${quest.id}:root` as keyof typeof HARTHMERE_NATIVE_QUEST_STEP_ID_MANIFEST
     ];
+
+  // Giver-less hidden/world-trigger quests must not enter native in-progress
+  // state merely because the player logged in. Their authored discovery rules
+  // (location, weather, time, story flags) are enforced by Harthmere's live
+  // quest authority. A circular unlock event keeps the global native challenge
+  // runner from auto-starting them; a future discovery bridge can publish the
+  // same server-owned challengeUnlocked evidence when the authored conditions
+  // are actually satisfied.
+  if (prerequisites.length === 0) {
+    if (quest.hidden === true && !quest.giverId) {
+      if (!rootId)
+        throw new Error(`Missing native hidden gate for ${quest.id}`);
+      const challenge = harthmereNativeQuestId("bible", quest.id);
+      if (!challenge) throw new Error(`Missing native quest id ${quest.id}`);
+      return {
+        kind: "event",
+        id: rootId,
+        name: `Discover ${quest.title ?? quest.id}`,
+        eventKind: "challengeUnlocked",
+        count: 1,
+        predicate: {
+          kind: "object",
+          fields: [["challenge", { kind: "value", value: challenge }]],
+        },
+      };
+    }
+    return undefined;
+  }
   if (!rootId) throw new Error(`Missing native unlock root for ${quest.id}`);
   return {
     kind: "all",

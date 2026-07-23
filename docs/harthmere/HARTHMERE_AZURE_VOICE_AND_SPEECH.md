@@ -97,7 +97,7 @@ Optional environment variables:
 
 ```bash
 ELEVENLABS_API_KEY=
-ELEVENLABS_MODEL_ID=eleven_multilingual_v2
+ELEVENLABS_MODEL_ID=eleven_v3
 ELEVENLABS_OUTPUT_FORMAT=mp3_44100_128
 
 # Optional comma-separated cast overrides. When omitted, the server discovers
@@ -183,9 +183,9 @@ component and reused for dynamic responses or static recording generation.
 For ElevenLabs, the server queries `GET /v2/voices`, prefers voices compatible
 with the configured quality model, matches authored/inferred presentation when
 labels are available, and hashes the actor identity into the resulting pool.
-The default model is `eleven_multilingual_v2`; operators can choose a lower
-latency model with `ELEVENLABS_MODEL_ID`. Explicit environment voice pools take
-priority over account discovery.
+The default model is `eleven_v3`; operators can choose Multilingual v2 or a
+lower-latency model with `ELEVENLABS_MODEL_ID`. Explicit environment voice pools
+take priority over account discovery.
 
 A restricted key only needs text-to-speech access. If it does not include the
 optional `voices_read` permission, the server caches that discovery restriction
@@ -214,6 +214,44 @@ Use both providers as cast performances, not as one global narrator:
   way;
 - reserve custom/personal voice cloning for cases with explicit consent and the
   correct provider permissions.
+
+### ElevenLabs natural-delivery policy
+
+The runtime applies conservative settings based on the natural-voice guidance:
+
+```json
+{
+  "stability": 0.55,
+  "similarity_boost": 0.82,
+  "style": 0,
+  "speed": 0.97,
+  "use_speaker_boost": true
+}
+```
+
+The exact speed retains only a small per-character variation and is clamped to
+`0.94–1.01`. Robots use slightly more stability; creatures and animals remain
+inside the same conversational range rather than using highly unstable values.
+Style exaggeration is deliberately zero because nonzero style was producing
+artifacts and uneven pacing.
+
+Before ElevenLabs receives a line, the server:
+
+- preserves paragraph breaks and authored `{break}` pauses;
+- inserts a breathing pause after every two sentences in unusually long lines;
+- collapses repeated exclamation/question marks;
+- preserves useful commas, ellipses, and em dashes;
+- decodes common text entities and removes UI/markdown markup;
+- skips bracket-only stage directions such as `[listens closely...]` while
+  leaving them visible in written dialogue;
+- enables provider text normalization so dates, numbers, and abbreviations are
+  spoken naturally.
+
+Generated NPC replies are prompted to use one to three short spoken sentences,
+contractions where appropriate, one idea per sentence, and restrained
+punctuation. The dialog UI already synthesizes one displayed NPC line at a time,
+so long conversations are naturally broken into short TTS requests rather than
+sent as a single drifting monologue.
 
 The June 7, 2026 Azure voice audit also found newer MAI voices and Azure OpenAI
 audio deployments. They remain available through the existing provider, while

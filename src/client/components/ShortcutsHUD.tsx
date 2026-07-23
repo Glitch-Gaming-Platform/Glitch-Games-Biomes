@@ -22,7 +22,8 @@ const HARTHMERE_RESERVED_KEY_CODES = new Set([
   "KeyB", // Basic attack
   "KeyH", // Heavy attack
   "KeyL", // Slotted spell
-  "KeyP", // PvP flag
+  "KeyP", // Farming journal
+  "KeyN", // PvP flag
 ]);
 
 function isLocalDevHarthmereReservedKey(code: string) {

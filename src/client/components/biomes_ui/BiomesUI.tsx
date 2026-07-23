@@ -28,6 +28,7 @@ import {
 
 import { DailyTodoTab } from "./tabs/DailyTodoTab";
 import { InventoryTab } from "./tabs/InventoryTab";
+import { FarmingTab } from "./tabs/FarmingTab";
 import { AbilitiesTab } from "./tabs/AbilitiesTab";
 import { SkillsTab } from "./tabs/SkillsTab";
 import { ClassesTab } from "./tabs/ClassesTab";
@@ -61,6 +62,7 @@ export interface BiomesUIProps {
 export interface BiomesUIAdapters {
   daily?: any;
   inventory?: any;
+  farming?: any;
   abilities?: any;
   skills?: any;
   classes?: any;
@@ -349,6 +351,7 @@ const ActiveTabPane: React.FunctionComponent<{
       </header>
       {tab === "daily" && <DailyTodoTab adapter={adapters?.daily} />}
       {tab === "inventory" && <InventoryTab adapter={adapters?.inventory} />}
+      {tab === "farming" && <FarmingTab adapter={adapters?.farming} />}
       {tab === "abilities" && <AbilitiesTab adapter={adapters?.abilities} />}
       {tab === "skills" && <SkillsTab adapter={adapters?.skills} />}
       {tab === "classes" && <ClassesTab adapter={adapters?.classes} />}

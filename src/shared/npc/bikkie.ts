@@ -14,10 +14,7 @@ import type { Behavior, MovementType } from "@/shared/npc/npc_types";
 import { ok } from "assert";
 
 export const LOCAL_DEV_HUMAN_NPC_TYPE_ID = 8_810_000_000_020_001 as BiomesId;
-
-function isLocalDevHumanNpcTypeId(maybeId: BiomesId): boolean {
-  return maybeId === LOCAL_DEV_HUMAN_NPC_TYPE_ID;
-}
+export const LOCAL_DEV_WALKER_NPC_TYPE_ID = 8_810_000_000_020_002 as BiomesId;
 
 function localDevHumanNpcType(id: BiomesId): Item {
   return {
@@ -41,6 +38,25 @@ function localDevHumanNpcType(id: BiomesId): Item {
       "Good to see you. The Grove is easier to read when you take it one person at a time.",
     effectsProfile: undefined,
     galoisPath: undefined,
+  } as unknown as Item;
+}
+
+function localDevWalkerNpcType(id: BiomesId): Item {
+  const human = localDevHumanNpcType(id);
+  return {
+    ...human,
+    name: "local_dev_walker",
+    displayName: "Local Dev Walking Townsperson",
+    // Native Anima/ECS movement owns roaming. A separate type keeps named
+    // vendors and quest anchors stationary while the designated ambient
+    // walkers pathfind around their spawn points instead of relying on a
+    // one-time rigid-body velocity that immediately decays.
+    walkSpeed: 1.35,
+    runSpeed: 2.7,
+    behavior: {
+      ...getNpcBehavior(human),
+      meander: { stayDistanceFromSpawn: 14 },
+    } satisfies Behavior,
   } as unknown as Item;
 }
 
@@ -153,8 +169,11 @@ function snapshotLegacyNpcType(id: BiomesId, biscuit: Item): Item {
 function idToNpcTypeInternal(id: BiomesId, soft: false): Item;
 function idToNpcTypeInternal(id: BiomesId, soft: true): Item | undefined;
 function idToNpcTypeInternal(id: BiomesId, soft: boolean): Item | undefined {
-  if (isLocalDevHumanNpcTypeId(id)) {
+  if (id === LOCAL_DEV_HUMAN_NPC_TYPE_ID) {
     return localDevHumanNpcType(id);
+  }
+  if (id === LOCAL_DEV_WALKER_NPC_TYPE_ID) {
+    return localDevWalkerNpcType(id);
   }
   const biscuit = anItem(id);
   if (bikkie.schema.npcs.types.check(biscuit)) {
@@ -241,6 +260,7 @@ export function allNpcs(): NpcType[] {
   return [
     ...(getBiscuits("/npcs/types") as NpcType[]),
     localDevHumanNpcType(LOCAL_DEV_HUMAN_NPC_TYPE_ID),
+    localDevWalkerNpcType(LOCAL_DEV_WALKER_NPC_TYPE_ID),
   ];
 }
 

@@ -8,7 +8,7 @@ const playerAnimationsPath = path.join(root, 'src/client/game/util/player_animat
 const hudPath = path.join(root, 'src/client/components/challenges/HarthmereUnifiedHUD.tsx');
 const contractPath = path.join(root, 'src/shared/harthmere/body_weapon_animation_sync_manifest.ts');
 
-const VERSION = 'harthmere-body-weapon-aligned-clips';
+const VERSION = 'harthmere-body-weapon-aligned-clips-v8';
 const REQUIRED = [
   'HarthmereBodyWeaponIdleDrawn_Aligned_30',
   'HarthmereBodyWeaponBasic_Aligned_30',
@@ -159,4 +159,3 @@ if (failures) {
   process.exit(1);
 }
 console.log('RESULT: PASS');
-

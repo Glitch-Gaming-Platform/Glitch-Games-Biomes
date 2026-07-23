@@ -50,7 +50,11 @@ import { z } from "zod";
 const CHASE_PATH_TARGET_DRIFT_METERS = 3.0;
 const CHASE_PATH_TARGET_DRIFT_SQ =
   CHASE_PATH_TARGET_DRIFT_METERS * CHASE_PATH_TARGET_DRIFT_METERS;
-export const NIGHT_MUCKER_HEX_UNPROVOKED_AGGRO_DISTANCE = 18;
+export const NIGHT_MUCKER_HEX_UNPROVOKED_AGGRO_DISTANCE = 30;
+export const NIGHT_MUCKER_HEX_DISENGAGE_DISTANCE = 48;
+export const NIGHT_MUCKER_HEX_MOVEMENT_MULTIPLIER = 1.8;
+export const NIGHT_MUCKER_HEX_DAMAGE_MULTIPLIER = 1.5;
+export const NIGHT_MUCKER_HEX_ATTACK_INTERVAL_MULTIPLIER = 0.55;
 const LINE_OF_SIGHT_SAMPLE_STEP_METERS = 0.45;
 const LINE_OF_SIGHT_SAMPLE_BOX_METERS = 0.18;
 const DEFAULT_PLAYER_EYE_HEIGHT_METERS = 1.45;
@@ -113,6 +117,48 @@ export function isMuckerOrHexerNameForNightAggro(
   );
 }
 
+// Only the authored mixed Muck encounters participate in pack retaliation.
+// The deny-list keeps player-owned pets, robots, wards, and similarly named
+// utility NPCs from becoming hostile because they happened to be nearby.
+export function isMixedCreatureGroupRetaliationName(
+  name: string | undefined
+): boolean {
+  const text = String(name ?? "").toLowerCase();
+  if (
+    /\b(pet|companion|tamed|owned|mount)\b|robot|bot|sentinel|sentential|sentiental|shield|beacon|board|voucher|ration|matter|ward/.test(
+      text
+    )
+  ) {
+    return false;
+  }
+  return (
+    isMuckerOrHexerNameForNightAggro(text) ||
+    /\b(cow|sheep|rabbit)\b/.test(text)
+  );
+}
+
+export function isMixedCreatureGroupRetaliationEligible(input: {
+  name: string | undefined;
+  hasHealth: boolean;
+  hasPosition: boolean;
+  hasNpcMetadata: boolean;
+  isPlayerOwned: boolean;
+  isLockedInPlace: boolean;
+  isRobot: boolean;
+  isQuestGiver: boolean;
+}): boolean {
+  return (
+    input.hasHealth &&
+    input.hasPosition &&
+    input.hasNpcMetadata &&
+    !input.isPlayerOwned &&
+    !input.isLockedInPlace &&
+    !input.isRobot &&
+    !input.isQuestGiver &&
+    isMixedCreatureGroupRetaliationName(input.name)
+  );
+}
+
 function isMuckerOrHexerNpcForNightAggro(npc: SimulatedNpc): boolean {
   const type = npc.type as unknown as {
     name?: string;
@@ -128,7 +174,25 @@ export function nightMuckerHexUnprovokedAggroParams(
   baseParams: BehaviorChaseAttackParams | undefined,
   fallbackParams: BehaviorChaseAttackParams
 ): BehaviorChaseAttackParams | undefined {
-  if (!isMuckerOrHexerNpcForNightAggro(npc)) {
+  const type = npc.type as unknown as {
+    name?: string;
+    displayName?: string;
+  };
+  return enhancedNightMuckerHexCombatParams(
+    [npc.label, type.displayName, type.name].filter(Boolean).join(" "),
+    isNightForNpcAggro(secondsSinceEpoch()),
+    baseParams,
+    fallbackParams
+  );
+}
+
+export function enhancedNightMuckerHexCombatParams(
+  name: string,
+  isNight: boolean,
+  baseParams: BehaviorChaseAttackParams | undefined,
+  fallbackParams: BehaviorChaseAttackParams
+): BehaviorChaseAttackParams | undefined {
+  if (!isNight || !isMuckerOrHexerNameForNightAggro(name)) {
     return undefined;
   }
 
@@ -144,8 +208,32 @@ export function nightMuckerHexUnprovokedAggroParams(
   return {
     ...base,
     aggroTrigger: { kind: "proximity", distance: aggroDistance },
-    disengageDistance: Math.max(base.disengageDistance, aggroDistance),
+    disengageDistance: Math.max(
+      base.disengageDistance,
+      NIGHT_MUCKER_HEX_DISENGAGE_DISTANCE
+    ),
+    attackDistance: base.attackDistance + 0.75,
+    attackAnimationMultiplier: base.attackAnimationMultiplier * 1.35,
+    attackStrikeMomentSecs: base.attackStrikeMomentSecs * 0.7,
+    attackIntervalSecs: Math.max(
+      0.55,
+      base.attackIntervalSecs * NIGHT_MUCKER_HEX_ATTACK_INTERVAL_MULTIPLIER
+    ),
+    attackFovDeg: Math.max(base.attackFovDeg, 175),
+    attackDamage: Math.max(
+      base.attackDamage + 1,
+      Math.ceil(base.attackDamage * NIGHT_MUCKER_HEX_DAMAGE_MULTIPLIER)
+    ),
   };
+}
+
+export function nightMuckerHexMovementMultiplier(
+  npc: SimulatedNpc,
+  seconds = secondsSinceEpoch()
+): number {
+  return isMuckerOrHexerNpcForNightAggro(npc) && isNightForNpcAggro(seconds)
+    ? NIGHT_MUCKER_HEX_MOVEMENT_MULTIPLIER
+    : 1;
 }
 
 function eyePosition(
@@ -482,6 +570,139 @@ export function getNearestPlayer(
 // their target by distance/death/peace.
 export const ATTACK_MEMORY_SECONDS = 30;
 
+// Group alerts are intentionally local. The guarded herds fit inside this
+// radius, while separate spawns in the same broad Muck region do not form one
+// map-wide aggro chain. The vertical limit and terrain visibility check prevent
+// alerts through stacked caves, giant cliffs, and sealed structures.
+export const MIXED_CREATURE_GROUP_ALERT_RADIUS = 18;
+export const MIXED_CREATURE_GROUP_ALERT_MAX_VERTICAL_DISTANCE = 10;
+
+export interface MixedCreatureGroupAlertCandidate {
+  id: BiomesId;
+  position: ReadonlyVec3;
+  eligible: boolean;
+  hasLineOfSight: boolean;
+  lastDamageSource?: { kind: string; attacker: BiomesId };
+  lastDamageTime?: number;
+  lastDamageAmount?: number;
+}
+
+export interface MixedCreatureGroupAlertAttacker {
+  position: ReadonlyVec3;
+  hp: number;
+  isPlayer: boolean;
+  canBeTargeted: boolean;
+}
+
+export interface MixedCreatureGroupAlertInputs {
+  recipientId: BiomesId;
+  recipientEligible: boolean;
+  recipientPosition: ReadonlyVec3;
+  candidates: ReadonlyArray<MixedCreatureGroupAlertCandidate>;
+  lookupAttacker: (id: BiomesId) => MixedCreatureGroupAlertAttacker | undefined;
+  now: number;
+  memorySeconds: number;
+  deAggroDistanceSq: number;
+  alertRadius?: number;
+  maxVerticalDistance?: number;
+}
+
+export function shouldDropNpcTargetAtSafeZoneBoundary(input: {
+  targetId: BiomesId;
+  recentDirectAttackerId: BiomesId | undefined;
+  targetInSafeZone: boolean;
+}): boolean {
+  return (
+    input.targetInSafeZone && input.targetId !== input.recentDirectAttackerId
+  );
+}
+
+// Selects the player responsible for the newest valid nearby hit. This reads
+// only actual Health damage metadata, so an alerted NPC cannot recursively
+// alert a second ring of NPCs. A dead source remains valid long enough for a
+// one-shot kill to alert its surviving group members.
+export function evaluateMixedCreatureGroupRetaliationTarget(
+  inputs: MixedCreatureGroupAlertInputs
+): BiomesId | undefined {
+  if (!inputs.recipientEligible) {
+    return undefined;
+  }
+  const alertRadius = inputs.alertRadius ?? MIXED_CREATURE_GROUP_ALERT_RADIUS;
+  const maxVerticalDistance =
+    inputs.maxVerticalDistance ??
+    MIXED_CREATURE_GROUP_ALERT_MAX_VERTICAL_DISTANCE;
+  const alertRadiusSq = alertRadius * alertRadius;
+  let best:
+    | {
+        attackerId: BiomesId;
+        damageTime: number;
+        sourceDistanceSq: number;
+        sourceId: BiomesId;
+      }
+    | undefined;
+
+  for (const candidate of inputs.candidates) {
+    if (
+      candidate.id === inputs.recipientId ||
+      !candidate.eligible ||
+      !candidate.hasLineOfSight ||
+      candidate.lastDamageSource?.kind !== "attack" ||
+      candidate.lastDamageTime === undefined ||
+      // Health.lastDamageAmount is negative for real damage. Ignore healing,
+      // zero-damage contacts, and malformed events that merely claim a hit.
+      !(
+        candidate.lastDamageAmount !== undefined &&
+        candidate.lastDamageAmount < 0
+      )
+    ) {
+      continue;
+    }
+
+    const damageAge = inputs.now - candidate.lastDamageTime;
+    if (damageAge < 0 || damageAge >= inputs.memorySeconds) {
+      continue;
+    }
+
+    const dx = candidate.position[0] - inputs.recipientPosition[0];
+    const dy = Math.abs(candidate.position[1] - inputs.recipientPosition[1]);
+    const dz = candidate.position[2] - inputs.recipientPosition[2];
+    const sourceDistanceSq = dx * dx + dz * dz;
+    if (sourceDistanceSq > alertRadiusSq || dy > maxVerticalDistance) {
+      continue;
+    }
+
+    const attackerId = candidate.lastDamageSource.attacker;
+    const attacker = inputs.lookupAttacker(attackerId);
+    if (
+      !attacker?.isPlayer ||
+      !attacker.canBeTargeted ||
+      attacker.hp <= 0 ||
+      distSq(attacker.position, inputs.recipientPosition) >=
+        inputs.deAggroDistanceSq
+    ) {
+      continue;
+    }
+
+    if (
+      !best ||
+      candidate.lastDamageTime > best.damageTime ||
+      (candidate.lastDamageTime === best.damageTime &&
+        (sourceDistanceSq < best.sourceDistanceSq ||
+          (sourceDistanceSq === best.sourceDistanceSq &&
+            candidate.id < best.sourceId)))
+    ) {
+      best = {
+        attackerId,
+        damageTime: candidate.lastDamageTime,
+        sourceDistanceSq,
+        sourceId: candidate.id,
+      };
+    }
+  }
+
+  return best?.attackerId;
+}
+
 // HARTHMERE_NPC_RETALIATION_SAFE_ZONE:
 // Returns the entity id of the last attacker if the NPC was hit by a player
 // recently enough to retaliate, AND that attacker is still close enough to
@@ -517,7 +738,8 @@ export function evaluateRetaliationTarget(
   if (lastDamageSource?.kind !== "attack" || lastDamageTime === undefined) {
     return undefined;
   }
-  if (now - lastDamageTime >= memorySeconds) {
+  const damageAge = now - lastDamageTime;
+  if (damageAge < 0 || damageAge >= memorySeconds) {
     return undefined;
   }
   const lastAttackerId = lastDamageSource.attacker;
@@ -537,7 +759,8 @@ export function evaluateRetaliationTarget(
 function lastValidAttackerId(
   env: Environment,
   npc: SimulatedNpc,
-  deAggroDistanceSq: number
+  deAggroDistanceSq: number,
+  now: number
 ): BiomesId | undefined {
   return evaluateRetaliationTarget({
     lastDamageSource: npc.health.lastDamageSource as any,
@@ -545,8 +768,126 @@ function lastValidAttackerId(
     npcPosition: npc.position,
     deAggroDistanceSq,
     lookupEntity: (id) => env.resources.get("/ecs/entity", id) as any,
-    now: secondsSinceEpoch(),
+    now,
     memorySeconds: ATTACK_MEMORY_SECONDS,
+  });
+}
+
+function mixedCreatureEntityIsEligible(entity: ReadonlyEntity | undefined) {
+  return isMixedCreatureGroupRetaliationEligible({
+    name: entity?.label?.text,
+    hasHealth: Boolean(entity?.health),
+    hasPosition: Boolean(entity?.position),
+    hasNpcMetadata: Boolean(entity?.npc_metadata),
+    isPlayerOwned: Boolean(entity?.created_by),
+    isLockedInPlace: Boolean(entity?.locked_in_place),
+    isRobot: Boolean(entity?.robot_component),
+    isQuestGiver: Boolean(entity?.quest_giver),
+  });
+}
+
+function nearbyMixedCreatureGroupAttackerId(
+  env: Environment,
+  npc: SimulatedNpc,
+  deAggroDistanceSq: number,
+  now: number
+): BiomesId | undefined {
+  const recipient = env.resources.get("/ecs/entity", npc.id);
+  if (!mixedCreatureEntityIsEligible(recipient)) {
+    return undefined;
+  }
+  if (isSafeZone(env.voxeloo, npc.position, env.ecsMetaIndex, env.resources)) {
+    // Direct retaliation remains allowed in a safe zone, but bystanders never
+    // join it. This prevents one accidental tutorial/town hit from turning the
+    // whole protected area hostile.
+    return undefined;
+  }
+
+  const candidates: MixedCreatureGroupAlertCandidate[] = [];
+  for (const candidateId of env.ecsMetaIndex.npc_selector.scanSphere({
+    center: npc.position,
+    // The spatial index uses a 3D sphere. Scan the diagonal of the horizontal
+    // and vertical limits, then let the pure evaluator enforce each axis.
+    radius: Math.hypot(
+      MIXED_CREATURE_GROUP_ALERT_RADIUS,
+      MIXED_CREATURE_GROUP_ALERT_MAX_VERTICAL_DISTANCE
+    ),
+  })) {
+    if (candidateId === npc.id) {
+      continue;
+    }
+    const candidate = env.resources.get("/ecs/entity", candidateId);
+    if (!Entity.has(candidate, "health", "position", "npc_metadata")) {
+      continue;
+    }
+    const eligible = mixedCreatureEntityIsEligible(candidate);
+    if (
+      !eligible ||
+      candidate.health.lastDamageSource?.kind !== "attack" ||
+      candidate.health.lastDamageTime === undefined ||
+      !(
+        candidate.health.lastDamageAmount !== undefined &&
+        candidate.health.lastDamageAmount < 0
+      )
+    ) {
+      // Most nearby NPCs have not been hit. Skip the terrain raycast unless
+      // this entity could actually raise a valid group alert.
+      continue;
+    }
+    const npcEyeHeight = Math.max(0.5, npc.size[1] * 0.72);
+    const candidateEyeHeight = Math.max(
+      0.5,
+      (candidate.size?.v[1] ?? DEFAULT_PLAYER_EYE_HEIGHT_METERS) * 0.72
+    );
+    candidates.push({
+      id: candidate.id,
+      position: candidate.position.v,
+      eligible,
+      hasLineOfSight: hasTerrainLineOfSight(
+        env,
+        npc.position,
+        candidate.position.v,
+        npcEyeHeight,
+        candidateEyeHeight
+      ),
+      lastDamageSource: candidate.health.lastDamageSource as
+        | { kind: string; attacker: BiomesId }
+        | undefined,
+      lastDamageTime: candidate.health.lastDamageTime,
+      lastDamageAmount: candidate.health.lastDamageAmount,
+    });
+  }
+
+  return evaluateMixedCreatureGroupRetaliationTarget({
+    recipientId: npc.id,
+    recipientEligible: true,
+    recipientPosition: npc.position,
+    candidates,
+    lookupAttacker: (attackerId) => {
+      const attacker = env.resources.get("/ecs/entity", attackerId);
+      if (!Entity.has(attacker, "health", "position", "player_status")) {
+        return undefined;
+      }
+      const buffs = getPlayerBuffs(env.voxeloo, env.resources, attacker.id);
+      const atPeace = Boolean(
+        getPlayerModifiersFromBuffs(buffs)?.peace.enabled
+      );
+      const inSafeZone = isSafeZone(
+        env.voxeloo,
+        attacker.position.v,
+        env.ecsMetaIndex,
+        env.resources
+      );
+      return {
+        position: attacker.position.v,
+        hp: attacker.health.hp,
+        isPlayer: true,
+        canBeTargeted: !atPeace && !inSafeZone,
+      };
+    },
+    now,
+    memorySeconds: ATTACK_MEMORY_SECONDS,
+    deAggroDistanceSq,
   });
 }
 
@@ -637,8 +978,9 @@ export function updateAttackTarget(
   decayNpcThreat(npc);
 
   const deAggroDistanceSq = params.disengageDistance ** 2;
+  const now = secondsSinceEpoch();
   const usesNightMuckerHexAggro = isMuckerOrHexerNpcForNightAggro(npc);
-  const isNight = isNightForNpcAggro(secondsSinceEpoch());
+  const isNight = isNightForNpcAggro(now);
 
   // HARTHMERE_NPC_RETALIATION_SAFE_ZONE:
   // Independent of the aggro trigger kind, if the NPC was just attacked by a
@@ -649,10 +991,22 @@ export function updateAttackTarget(
   // memory check ever ran. That made the "hit a Muckling but it won't hit back"
   // bug reported from the Grove combat primer where every hostile sits next to
   // Jackie/Thom/etc. and is therefore inside ward range.
-  const recentAttackerId = lastValidAttackerId(env, npc, deAggroDistanceSq);
+  const recentAttackerId = lastValidAttackerId(
+    env,
+    npc,
+    deAggroDistanceSq,
+    now
+  );
+  // A direct hit on this NPC always wins. Otherwise, a nearby cow, sheep,
+  // rabbit, Mucker, or Hex can share its real recent player attacker with this
+  // NPC. Alert state is not itself shared, so propagation cannot fan out.
+  const groupAttackerId = recentAttackerId
+    ? undefined
+    : nearbyMixedCreatureGroupAttackerId(env, npc, deAggroDistanceSq, now);
+  const provokedAttackerId = recentAttackerId ?? groupAttackerId;
 
   if (
-    !recentAttackerId &&
+    !provokedAttackerId &&
     isSafeZone(env.voxeloo, npc.position, env.ecsMetaIndex, env.resources)
   ) {
     // No active attacker and we're inside a safe zone — never hold a proactive
@@ -668,14 +1022,14 @@ export function updateAttackTarget(
 
   // Check to see if we can acquire a new target.
   if (params.aggroTrigger.kind === "onlyIfAttacked") {
-    targetId = recentAttackerId ?? targetId;
+    targetId = provokedAttackerId ?? targetId;
   } else {
-    if (recentAttackerId) {
+    if (provokedAttackerId) {
       // HARTHMERE_NPC_RETALIATION_PROXIMITY_PRIORITY:
       // A specific attacker outranks a generic proximity scan — players who
       // commit to a fight should not get ignored in favor of a stranger
       // wandering into aggro range.
-      targetId = recentAttackerId;
+      targetId = provokedAttackerId;
     } else if (usesNightMuckerHexAggro && !isNight) {
       // Hexes/muckers are only proactively hostile at night. During the day
       // they can still fight back through recent-attacker/threat paths, but a
@@ -713,7 +1067,7 @@ export function updateAttackTarget(
     const attackTarget = env.resources.get("/ecs/entity", targetId);
     const buffs = getPlayerBuffs(env.voxeloo, env.resources, targetId);
     const targetIsProvoked =
-      targetId === recentAttackerId ||
+      targetId === provokedAttackerId ||
       (npc.state.threat?.table?.[String(targetId)] ?? 0) > 0;
 
     if (!attackTarget?.position || (attackTarget.health?.hp ?? 0) <= 0) {
@@ -723,6 +1077,22 @@ export function updateAttackTarget(
     ) {
       targetId = undefined;
     } else if (getPlayerModifiersFromBuffs(buffs)?.peace.enabled) {
+      targetId = undefined;
+    } else if (
+      shouldDropNpcTargetAtSafeZoneBoundary({
+        targetId,
+        recentDirectAttackerId: recentAttackerId,
+        targetInSafeZone: isSafeZone(
+          env.voxeloo,
+          attackTarget.position.v,
+          env.ecsMetaIndex,
+          env.resources
+        ),
+      })
+    ) {
+      // Direct retaliation is the deliberate safe-zone exception. A shared
+      // group alert, proactive aggro, or stale remembered target must stop at
+      // the boundary instead of dragging an entire herd into a protected area.
       targetId = undefined;
     } else if (
       usesNightMuckerHexAggro &&

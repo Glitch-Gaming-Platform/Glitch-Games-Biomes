@@ -39,6 +39,7 @@ function bodyOf(source, signature) {
 }
 
 const loadAllBody = bodyOf(runtime, "private async loadAll()");
+const proceduralPlacementBody = bodyOf(runtime, "private addHarthmereProceduralLifePlacement(");
 const createTownBody = bodyOf(runtime, "function createProceduralTownsperson(");
 const metricsBody = bodyOf(runtime, "function harthmereRuntimeBodyMetrics(");
 const headBody = bodyOf(runtime, "function createHarthmereRuntimeVoxelHead(");
@@ -60,7 +61,7 @@ const clothingSlots = [
   "head", "face", "torso", "legs", "hands", "feet", "back", "belt", "weapon", "shield",
 ];
 
-const proceduralIndex = loadAllBody.indexOf("createProceduralTownsperson(proceduralPlacement)");
+const proceduralIndex = loadAllBody.indexOf("this.addHarthmereProceduralLifePlacement(placement)");
 const prototypeIndex = loadAllBody.indexOf("const prototype = this.prototypes.get(placement.asset)");
 const prototypeGuardIndex = loadAllBody.indexOf("if (prototype && !isProceduralTownspersonKey(placement.asset))");
 
@@ -69,10 +70,10 @@ check("procedural townsperson path is not blocked by prototype path",
   `proceduralIndex=${proceduralIndex}, prototypeIndex=${prototypeIndex}`);
 check("prototype path refuses townsperson assets", prototypeGuardIndex >= 0);
 check("procedural branch uses effective defaultScale before creation",
-  loadAllBody.includes("const proceduralPlacement =") &&
-  loadAllBody.includes("scale: placement.scale ?? assetByKey.get(placement.asset)?.defaultScale ?? 1"));
+  proceduralPlacementBody.includes("const proceduralPlacement =") &&
+  proceduralPlacementBody.includes("scale: placement.scale ?? assetByKey.get(placement.asset)?.defaultScale ?? 1"));
 check("procedural branch registers metadata with proceduralPlacement",
-  loadAllBody.includes("registerHarthmerePlacementInstance(proceduralPlacement"));
+  proceduralPlacementBody.includes("registerHarthmerePlacementInstance(proceduralPlacement"));
 check("procedural townsperson has explicit world scale knob",
   runtime.includes("HARTHMERE_PROCEDURAL_TOWNSPERSON_WORLD_SCALE"));
 check("procedural townsperson applies world scale and metric-based bodyHeight",

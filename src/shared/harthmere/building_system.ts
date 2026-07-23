@@ -392,6 +392,81 @@ export interface BuildingSystemPlotDefinition {
   description: string;
 }
 
+export type BuildingSystemPlotSizeId = "small" | "medium" | "large" | "estate";
+
+export interface BuildingSystemPlotSizeOption {
+  sizeId: BuildingSystemPlotSizeId;
+  displayName: string;
+  width: number;
+  depth: number;
+  description: string;
+}
+
+/**
+ * Player-facing land sizes used by the Land Office request form. Keeping the
+ * dimensions in shared code lets the frontend quote the same footprint that
+ * the authoritative reducer validates and prices.
+ */
+export const BUILDING_SYSTEM_PLOT_SIZE_OPTIONS: readonly BuildingSystemPlotSizeOption[] =
+  [
+    {
+      sizeId: "small",
+      displayName: "Small",
+      width: 12,
+      depth: 12,
+      description: "A compact home, stall, or starter workshop lot.",
+    },
+    {
+      sizeId: "medium",
+      displayName: "Medium",
+      width: 18,
+      depth: 18,
+      description: "Room for a larger home or a full neighborhood shop.",
+    },
+    {
+      sizeId: "large",
+      displayName: "Large",
+      width: 26,
+      depth: 26,
+      description: "A premium holding with generous building and yard space.",
+    },
+    {
+      sizeId: "estate",
+      displayName: "Estate",
+      width: 34,
+      depth: 34,
+      description:
+        "A rare frontier estate with a substantially higher deed price.",
+    },
+  ];
+
+export function buildingSystemPlotDimensions(
+  plot: Pick<BuildingSystemPlotDefinition, "bounds">
+) {
+  return {
+    width: Math.max(0, plot.bounds.xMax - plot.bounds.xMin),
+    depth: Math.max(0, plot.bounds.zMax - plot.bounds.zMin),
+  };
+}
+
+/**
+ * Deed prices grow non-linearly with area. This deliberately makes a 34x34
+ * estate many times more expensive than a 12x12 starter plot instead of
+ * treating extra land as a cheap linear upgrade.
+ */
+export function buildingSystemRequestedPlotPriceGold(input: {
+  width: number;
+  depth: number;
+  startsMucked?: boolean;
+}) {
+  const width = Math.max(10, Math.min(40, Math.floor(input.width)));
+  const depth = Math.max(10, Math.min(40, Math.floor(input.depth)));
+  const area = width * depth;
+  const rawPrice = 12 + area * 0.18 + (area * area) / 5_000;
+  const muckDiscount = input.startsMucked === false ? 1.2 : 1;
+  return Math.max(25, Math.ceil((rawPrice * muckDiscount) / 5) * 5);
+}
+
 export interface BuildingSystemBlueprintDefinition {
   blueprintId: string;
   displayName: string;
@@ -891,6 +966,60 @@ export const BUILDING_SYSTEM_PLOTS: BuildingSystemPlotDefinition[] = [
       "Starter residential claim on the safe West Road to Harthmere. Buy the deed to mark the boundary and build your first home here.",
   },
   {
+    plotId: "harthmere_riverside_cottage_lot",
+    displayName: "Bluewater Riverside Cottage Lot",
+    area: "harthmere",
+    district: "Bluewater Riverside",
+    plotType: "residential",
+    allowedUses: ["home"],
+    allowedBlueprintIds: [
+      "grove_voxel_cottage_tier_1",
+      "bikkie_traditional_shelter_frame",
+      "bikkie_modern_shelter_frame",
+      "bikkie_space_age_shelter_frame",
+    ],
+    claimPriceGold: 75,
+    taxRate: 0.025,
+    bounds: { xMin: 280, xMax: 298, zMin: -232, zMax: -214 },
+    groundY: 54,
+    startsMucked: false,
+    safeAfterPurchase: true,
+    maxStructureHeight: 10,
+    maxCoveredAreaFraction: 0.68,
+    requiresRoadAccess: false,
+    roadAccessDistanceVoxels: 0,
+    terrainType: "grass",
+    description:
+      "A medium riverside home lot with more room for storage, gardens, and a larger shelter footprint.",
+  },
+  {
+    plotId: "harthmere_gravewood_estate_lot",
+    displayName: "Harthmere East Garden Estate",
+    area: "harthmere",
+    district: "Harthmere East Garden",
+    plotType: "residential",
+    allowedUses: ["home"],
+    allowedBlueprintIds: [
+      "grove_voxel_cottage_tier_1",
+      "bikkie_traditional_shelter_frame",
+      "bikkie_modern_shelter_frame",
+      "bikkie_space_age_shelter_frame",
+    ],
+    claimPriceGold: 425,
+    taxRate: 0.04,
+    bounds: { xMin: 2383, xMax: 2417, zMin: 83, zMax: 117 },
+    groundY: 52,
+    startsMucked: false,
+    safeAfterPurchase: true,
+    maxStructureHeight: 14,
+    maxCoveredAreaFraction: 0.55,
+    requiresRoadAccess: false,
+    roadAccessDistanceVoxels: 0,
+    terrainType: "grass",
+    description:
+      "A large residential estate on the flat additive Harthmere extension. Its broad serviced boundary makes the deed substantially more expensive.",
+  },
+  {
     plotId: "grove_crossroads_shop_lot",
     displayName: "Watchtower Frontier Shop Lot",
     area: "harthmere",
@@ -921,6 +1050,68 @@ export const BUILDING_SYSTEM_PLOTS: BuildingSystemPlotDefinition[] = [
     terrainType: "dirt",
     description:
       "A frontier business lot on the edge of the Watchtower muck. It begins as mucked land; claiming the deed lets you build a shop once you terraform it.",
+  },
+  {
+    plotId: "harthmere_watchtower_market_lot",
+    displayName: "Harthmere South Market Row Lot",
+    area: "harthmere",
+    district: "Harthmere South Market Row",
+    plotType: "commercial",
+    allowedUses: ["business"],
+    allowedBlueprintIds: [
+      "grove_voxel_shop_tier_1",
+      "bikkie_marina_shopping_stall",
+      "bikkie_canopy_frame",
+      "bikkie_kitchen",
+      "bikkie_anglers_table",
+      "bikkie_bench",
+      "bikkie_table",
+      "bikkie_t_table",
+    ],
+    claimPriceGold: 135,
+    taxRate: 0.065,
+    bounds: { xMin: 2451, xMax: 2469, zMin: 91, zMax: 109 },
+    groundY: 52,
+    startsMucked: false,
+    safeAfterPurchase: true,
+    maxStructureHeight: 11,
+    maxCoveredAreaFraction: 0.65,
+    requiresRoadAccess: false,
+    roadAccessDistanceVoxels: 0,
+    terrainType: "dirt",
+    description:
+      "A medium additive-town market lot suitable for a full shop with customer and stock space.",
+  },
+  {
+    plotId: "harthmere_west_breach_trade_yard",
+    displayName: "Harthmere Far East Trade Yard",
+    area: "harthmere",
+    district: "Harthmere Far East Trade Yard",
+    plotType: "commercial",
+    allowedUses: ["business"],
+    allowedBlueprintIds: [
+      "grove_voxel_shop_tier_1",
+      "bikkie_marina_shopping_stall",
+      "bikkie_canopy_frame",
+      "bikkie_kitchen",
+      "bikkie_anglers_table",
+      "bikkie_bench",
+      "bikkie_table",
+      "bikkie_t_table",
+    ],
+    claimPriceGold: 360,
+    taxRate: 0.075,
+    bounds: { xMin: 2487, xMax: 2513, zMin: -513, zMax: -487 },
+    groundY: 52,
+    startsMucked: false,
+    safeAfterPurchase: true,
+    maxStructureHeight: 14,
+    maxCoveredAreaFraction: 0.58,
+    requiresRoadAccess: false,
+    roadAccessDistanceVoxels: 0,
+    terrainType: "dirt",
+    description:
+      "A large additive-town trade yard for an ambitious shop, service counter, storage, and outdoor fixtures.",
   },
   {
     plotId: "grove_guild_green_lot",
@@ -1045,6 +1236,18 @@ export interface BuildingSystemMuckBuildArea {
   description: string;
 }
 
+export interface BuildingSystemLandRequestArea {
+  areaId: string;
+  displayName: string;
+  description: string;
+  kind: "frontier_muck" | "additive_town";
+  center: readonly [number, number, number];
+  bounds: { xMin: number; xMax: number; zMin: number; zMax: number };
+  groundY: number;
+  startsMucked: boolean;
+  priceMultiplier: number;
+}
+
 export const BUILDING_SYSTEM_DYNAMIC_MUCK_BUILD_AREAS: readonly BuildingSystemMuckBuildArea[] =
   [
     {
@@ -1108,6 +1311,163 @@ export const BUILDING_SYSTEM_DYNAMIC_MUCK_BUILD_AREAS: readonly BuildingSystemMu
         "Wide frontier muck breach used by late-road jobs and combat.",
     },
   ];
+
+/**
+ * Areas exposed by the Land Office for player-sized requests. The additive
+ * town zones are deliberately on the generated flat extension and charge a
+ * serviced-land premium; the authoritative ECS scan still decides whether a
+ * particular rectangle is clear of buildings, groups, and placeables.
+ */
+export const BUILDING_SYSTEM_LAND_REQUEST_AREAS: readonly BuildingSystemLandRequestArea[] =
+  [
+    ...BUILDING_SYSTEM_DYNAMIC_MUCK_BUILD_AREAS.filter(
+      (area) => area.radius >= 22
+    ).map((area) => ({
+      areaId: area.id,
+      displayName: area.label,
+      description: area.description,
+      kind: "frontier_muck" as const,
+      center: area.authoredCenter,
+      bounds: {
+        xMin: area.authoredCenter[0] - area.radius,
+        xMax: area.authoredCenter[0] + area.radius,
+        zMin: area.authoredCenter[2] - area.radius,
+        zMax: area.authoredCenter[2] + area.radius,
+      },
+      groundY: area.authoredCenter[1],
+      startsMucked: true,
+      priceMultiplier: 1,
+    })),
+    {
+      areaId: "additive_west_gate_homesteads",
+      displayName: "Harthmere West Gate Homesteads",
+      description:
+        "Serviced, flat land inside the additive Harthmere extension near the town approach.",
+      kind: "additive_town",
+      center: [1928, 52, -318],
+      bounds: { xMin: 1840, xMax: 1984, zMin: -374, zMax: -262 },
+      groundY: 52,
+      startsMucked: false,
+      priceMultiplier: 1.65,
+    },
+    {
+      areaId: "additive_south_fields",
+      displayName: "Harthmere South Fields",
+      description:
+        "Broad town-edge plots on the additive extension with room for larger homes and businesses.",
+      kind: "additive_town",
+      center: [2180, 52, 92],
+      bounds: { xMin: 2070, xMax: 2290, zMin: 36, zMax: 154 },
+      groundY: 52,
+      startsMucked: false,
+      priceMultiplier: 1.85,
+    },
+    {
+      areaId: "additive_east_estates",
+      displayName: "Harthmere East Estates",
+      description:
+        "Premium additive-town land intended for large holdings away from the busiest civic blocks.",
+      kind: "additive_town",
+      center: [2420, 52, -250],
+      bounds: { xMin: 2320, xMax: 2520, zMin: -350, zMax: -150 },
+      groundY: 52,
+      startsMucked: false,
+      priceMultiplier: 2.25,
+    },
+  ];
+
+function buildingSystemBoundsContainBounds(
+  outer: BuildingSystemPlotDefinition["bounds"],
+  inner: BuildingSystemPlotDefinition["bounds"]
+) {
+  return (
+    inner.xMin >= outer.xMin &&
+    inner.xMax <= outer.xMax &&
+    inner.zMin >= outer.zMin &&
+    inner.zMax <= outer.zMax
+  );
+}
+
+/**
+ * Builds the exact server-authoritative deed requested by the player. This
+ * only validates area/size geometry; ownership and ECS/Gaia structure
+ * collisions are checked by the live-mode authority immediately afterward.
+ */
+export function createBuildingSystemRequestedPlotDefinition(input: {
+  plotId?: string;
+  requestAreaId: string;
+  blueprint: BuildingSystemBlueprintDefinition | undefined;
+  center: { x: number; z: number };
+  width: number;
+  depth: number;
+}):
+  | {
+      ok: true;
+      plot: BuildingSystemPlotDefinition;
+      area: BuildingSystemLandRequestArea;
+    }
+  | { ok: false; errors: string[] } {
+  if (!input.blueprint) return { ok: false, errors: ["missing_blueprint"] };
+  const area = BUILDING_SYSTEM_LAND_REQUEST_AREAS.find(
+    (candidate) => candidate.areaId === input.requestAreaId
+  );
+  if (!area) return { ok: false, errors: ["request_area_not_found"] };
+  const width = Math.floor(input.width);
+  const depth = Math.floor(input.depth);
+  if (width < 10 || width > 40 || depth < 10 || depth > 40) {
+    return { ok: false, errors: ["invalid_plot_size"] };
+  }
+  if (
+    width < input.blueprint.footprint.width ||
+    depth < input.blueprint.footprint.depth
+  ) {
+    return { ok: false, errors: ["plot_too_small_for_blueprint"] };
+  }
+  const xMin = Math.floor(input.center.x - width / 2);
+  const zMin = Math.floor(input.center.z - depth / 2);
+  const bounds = { xMin, xMax: xMin + width, zMin, zMax: zMin + depth };
+  if (!buildingSystemBoundsContainBounds(area.bounds, bounds)) {
+    return { ok: false, errors: ["outside_request_area"] };
+  }
+  const basePrice = buildingSystemRequestedPlotPriceGold({
+    width,
+    depth,
+    startsMucked: area.startsMucked,
+  });
+  const plotId =
+    input.plotId?.trim() ||
+    buildingSystemDynamicPlotSlug(
+      `land_request_${area.areaId}_${input.blueprint.blueprintId}_${xMin}_${zMin}_${width}x${depth}`
+    );
+  return {
+    ok: true,
+    area,
+    plot: {
+      plotId,
+      displayName: `${area.displayName} ${width}x${depth} Claim`,
+      area: "harthmere",
+      district: area.displayName,
+      plotType: input.blueprint.plotType,
+      allowedUses: [input.blueprint.use],
+      allowedBlueprintIds: [input.blueprint.blueprintId],
+      claimPriceGold: Math.ceil((basePrice * area.priceMultiplier) / 5) * 5,
+      taxRate: input.blueprint.use === "business" ? 0.065 : 0.025,
+      bounds,
+      groundY: area.groundY,
+      startsMucked: area.startsMucked,
+      safeAfterPurchase: !area.startsMucked,
+      maxStructureHeight: Math.max(10, input.blueprint.footprint.height + 5),
+      maxCoveredAreaFraction: 0.75,
+      requiresRoadAccess: false,
+      roadAccessDistanceVoxels: 0,
+      terrainType: area.startsMucked ? "dirt" : "grass",
+      description:
+        area.kind === "additive_town"
+          ? "A player-requested plot on the additive Harthmere town extension. The deed is issued only after native ECS/Gaia confirms that the full boundary is unowned and clear of existing structures."
+          : "A player-requested frontier claim. The deed is issued only after ownership and native ECS/Gaia structure-clearance checks pass.",
+    },
+  };
+}
 
 function isBuildingSystemPointInMuckArea(
   point: { x: number; y: number; z: number },
@@ -1187,6 +1547,10 @@ export function createBuildingSystemMuckAreaPlotDefinition(input: {
   blueprint: BuildingSystemBlueprintDefinition | undefined;
   origin?: { x: number; y?: number; z: number };
   areaId?: string;
+  requestedWidth?: number;
+  requestedDepth?: number;
+  /** New Land Office requests use a map center; legacy callers use a structure origin. */
+  centerAtOrigin?: boolean;
 }):
   | {
       ok: true;
@@ -1207,6 +1571,30 @@ export function createBuildingSystemMuckAreaPlotDefinition(input: {
     : undefined;
   if (input.areaId && !explicitArea) {
     return { ok: false, errors: ["muck_area_not_found"] };
+  }
+  const requestedWidth =
+    input.requestedWidth === undefined
+      ? input.blueprint.footprint.width +
+        BUILDING_SYSTEM_DYNAMIC_MUCK_PLOT_MARGIN_VOXELS * 2
+      : Math.floor(input.requestedWidth);
+  const requestedDepth =
+    input.requestedDepth === undefined
+      ? input.blueprint.footprint.depth +
+        BUILDING_SYSTEM_DYNAMIC_MUCK_PLOT_MARGIN_VOXELS * 2
+      : Math.floor(input.requestedDepth);
+  if (
+    requestedWidth < 10 ||
+    requestedWidth > 40 ||
+    requestedDepth < 10 ||
+    requestedDepth > 40
+  ) {
+    return { ok: false, errors: ["invalid_plot_size"] };
+  }
+  if (
+    requestedWidth < input.blueprint.footprint.width ||
+    requestedDepth < input.blueprint.footprint.depth
+  ) {
+    return { ok: false, errors: ["plot_too_small_for_blueprint"] };
   }
   const origin = input.origin
     ? {
@@ -1230,12 +1618,19 @@ export function createBuildingSystemMuckAreaPlotDefinition(input: {
   if (!origin) {
     return { ok: false, errors: ["missing_origin_or_muck_area"] };
   }
-  const margin = BUILDING_SYSTEM_DYNAMIC_MUCK_PLOT_MARGIN_VOXELS;
+  // Explicit player requests describe the deed boundary itself. Legacy
+  // blueprint-origin calls retain their old lower-left coordinate behavior.
+  const xMin = input.centerAtOrigin
+    ? Math.floor(origin.x - requestedWidth / 2)
+    : origin.x - BUILDING_SYSTEM_DYNAMIC_MUCK_PLOT_MARGIN_VOXELS;
+  const zMin = input.centerAtOrigin
+    ? Math.floor(origin.z - requestedDepth / 2)
+    : origin.z - BUILDING_SYSTEM_DYNAMIC_MUCK_PLOT_MARGIN_VOXELS;
   const bounds = {
-    xMin: origin.x - margin,
-    xMax: origin.x + input.blueprint.footprint.width + margin,
-    zMin: origin.z - margin,
-    zMax: origin.z + input.blueprint.footprint.depth + margin,
+    xMin,
+    xMax: xMin + requestedWidth,
+    zMin,
+    zMax: zMin + requestedDepth,
   };
   const groundY = origin.y - 1;
   const area = buildingSystemMuckBuildAreaForBounds(
@@ -1265,7 +1660,11 @@ export function createBuildingSystemMuckAreaPlotDefinition(input: {
       plotType: input.blueprint.plotType,
       allowedUses: [input.blueprint.use],
       allowedBlueprintIds: [input.blueprint.blueprintId],
-      claimPriceGold: 0,
+      claimPriceGold: buildingSystemRequestedPlotPriceGold({
+        width: requestedWidth,
+        depth: requestedDepth,
+        startsMucked: true,
+      }),
       taxRate: input.blueprint.use === "business" ? 0.06 : 0.02,
       bounds,
       groundY,

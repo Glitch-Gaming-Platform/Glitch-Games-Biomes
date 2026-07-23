@@ -3,6 +3,7 @@ import type { Change, ProposedChange } from "@/shared/ecs/change";
 import {
   EntityDescription,
   Health,
+  LockedInPlace,
   NpcMetadata,
   QuestGiver,
   RobotComponent,
@@ -20,6 +21,7 @@ import {
   harthmereLiveEntitySizeForSeed,
   type HarthmereLiveEntityProductionSeed,
 } from "@/shared/harthmere/live_entity_production_seed";
+import { HARTHMERE_NATIVE_BANDIT_SEEDS } from "@/shared/harthmere/bandit_production_seed";
 import { harthmereNativeNpcCombatProfileForSeed } from "@/shared/harthmere/harthmere_native_combat";
 import { harthmereVoiceProfileForActor } from "@/shared/harthmere/npc_voice_profiles";
 
@@ -179,6 +181,26 @@ export function buildHarthmereLiveEntityProductionSeedChanges(input: {
     }
     changes.push({
       kind: livestockKind,
+      tick: input.tick,
+      entity,
+    });
+  }
+
+  // Authored bandits are ordinary native NPC entities. Anima owns their
+  // patrol/meander, aggro, chase, attacks, death, and respawn just like the
+  // Muck creatures above. The captured prisoner stays an ECS NPC but carries
+  // LockedInPlace so the guard-yard event cannot wander out of its cage.
+  for (const seed of HARTHMERE_NATIVE_BANDIT_SEEDS) {
+    const base = buildHarthmereLiveCreatureEntity(seed, input.nowSeconds);
+    const entity = seed.lockedInPlace
+      ? { ...base, locked_in_place: LockedInPlace.create() }
+      : base;
+    const banditKind = changeKindForSeed(seed, existingIds);
+    if (banditKind === "create" && isRespawnSuppressed(seed.entityId)) {
+      continue;
+    }
+    changes.push({
+      kind: banditKind,
       tick: input.tick,
       entity,
     });

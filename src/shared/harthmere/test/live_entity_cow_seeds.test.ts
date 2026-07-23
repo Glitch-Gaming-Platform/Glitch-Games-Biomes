@@ -3,27 +3,35 @@ import {
   createHarthmereServerMuckCombatEntitySnapshots,
 } from "@/shared/harthmere/live_mode_backend";
 import {
+  HARTHMERE_LIVE_ENTITY_GUARDED_WILDLIFE_LOCATIONS,
+  HARTHMERE_LIVE_ENTITY_GUARDED_WILDLIFE_SEEDS,
   HARTHMERE_LIVE_ENTITY_LIVESTOCK_SEEDS,
+  HARTHMERE_LIVE_ENTITY_MUCK_WILDLIFE_SEEDS,
+  HARTHMERE_LIVE_ENTITY_TOWN_LIVESTOCK_SEEDS,
   harthmereGroundedLivestockSeedsInTerritory,
   harthmereGroundedMuckMonsterSeedsInTerritory,
+  harthmereLiveEntityIsTownLivestock,
 } from "@/shared/harthmere/live_entity_production_seed";
 import { harthmereMuckCreatureAssetKeyForLabel } from "@/shared/harthmere/muck_creature_assets";
 import { muckMonsterAreaForPosition } from "@/shared/harthmere/muck_monster_aggression_ai";
 import {
-  HARTHMERE_EXPANDED_WORLD_EAST_EDGE_X,
+  MIXED_CREATURE_GROUP_ALERT_MAX_VERTICAL_DISTANCE,
+  MIXED_CREATURE_GROUP_ALERT_RADIUS,
+} from "@/shared/npc/behavior/chase_attack";
+import {
   HARTHMERE_EXTENSION_FEET_Y,
-  HARTHMERE_EXTENSION_WORLD_BOUNDS,
   HARTHMERE_ORIGINAL_WORLD_EAST_EDGE_X,
+  isHarthmereExtensionWorldPosition,
 } from "@/shared/harthmere/world_extension";
 import assert from "assert";
 
 const SPECIES = ["cow", "sheep", "rabbit"] as const;
 
 describe("Muck-area wildlife (cows, sheep, rabbits)", () => {
-  it("seeds every species across multiple muck areas, >=2 per area", () => {
+  it("seeds every species across multiple muck areas", () => {
     const byAreaSpecies = new Map<string, number>();
     const speciesSeen = new Set<string>();
-    for (const seed of HARTHMERE_LIVE_ENTITY_LIVESTOCK_SEEDS) {
+    for (const seed of HARTHMERE_LIVE_ENTITY_MUCK_WILDLIFE_SEEDS) {
       speciesSeen.add(String(seed.species));
       const key = `${seed.areaId}:${seed.species}`;
       byAreaSpecies.set(key, (byAreaSpecies.get(key) ?? 0) + 1);
@@ -31,25 +39,93 @@ describe("Muck-area wildlife (cows, sheep, rabbits)", () => {
     for (const species of SPECIES) {
       assert.ok(speciesSeen.has(species), `expected ${species} seeds`);
     }
-    for (const [key, count] of byAreaSpecies) {
-      assert.ok(count >= 2, `${key} should have >=2 animals`);
+    assert.ok(byAreaSpecies.size >= 12, "expected wildlife across many areas");
+  });
+
+  it("adds the requested guarded herds across four new map locations", () => {
+    assert.equal(HARTHMERE_LIVE_ENTITY_GUARDED_WILDLIFE_LOCATIONS.length, 4);
+    assert.equal(HARTHMERE_LIVE_ENTITY_GUARDED_WILDLIFE_SEEDS.length, 20);
+    const speciesCounts = Object.fromEntries(
+      SPECIES.map((species) => [
+        species,
+        HARTHMERE_LIVE_ENTITY_GUARDED_WILDLIFE_SEEDS.filter(
+          (seed) => seed.species === species
+        ).length,
+      ])
+    );
+    assert.deepEqual(speciesCounts, { cow: 4, sheep: 6, rabbit: 10 });
+    for (const location of HARTHMERE_LIVE_ENTITY_GUARDED_WILDLIFE_LOCATIONS) {
+      const animals = HARTHMERE_LIVE_ENTITY_GUARDED_WILDLIFE_SEEDS.filter(
+        (seed) => seed.areaId === location.areaId
+      );
+      assert.equal(animals.length, 5, `${location.areaId} animal count`);
+      for (const animal of animals) {
+        assert.ok(
+          muckMonsterAreaForPosition(animal.position, 1.5),
+          `${animal.seedId} must remain in Muck territory`
+        );
+      }
     }
   });
 
-  it("grounds every animal inside a real muck territory", () => {
-    const grounded = harthmereGroundedLivestockSeedsInTerritory();
-    assert.ok(grounded.length >= 16, "expected the full wildlife herd");
-    for (const seed of grounded) {
-      assert.equal(seed.position[1], HARTHMERE_EXTENSION_FEET_Y);
-      assert.ok(seed.position[0] >= HARTHMERE_ORIGINAL_WORLD_EAST_EDGE_X);
-      assert.ok(seed.position[0] < HARTHMERE_EXPANDED_WORLD_EAST_EDGE_X);
-      assert.ok(seed.position[2] >= HARTHMERE_EXTENSION_WORLD_BOUNDS.minZ);
-      assert.ok(seed.position[2] < HARTHMERE_EXTENSION_WORLD_BOUNDS.maxZ);
-      assert.ok(
-        muckMonsterAreaForPosition(seed.position, 1.5),
-        `${seed.seedId} is not inside a muck area`
+  it("keeps every guarded herd and guard pack inside one native group-alert envelope", () => {
+    const animals = harthmereGroundedLivestockSeedsInTerritory();
+    const monsters = harthmereGroundedMuckMonsterSeedsInTerritory();
+    for (const location of HARTHMERE_LIVE_ENTITY_GUARDED_WILDLIFE_LOCATIONS) {
+      const encounter = [...animals, ...monsters].filter(
+        (seed) => seed.areaId === location.areaId
       );
+      assert.equal(encounter.length, 9, `${location.areaId} encounter size`);
+      for (const source of encounter) {
+        for (const responder of encounter) {
+          if (source.entityId === responder.entityId) {
+            continue;
+          }
+          const horizontalDistance = Math.hypot(
+            source.position[0] - responder.position[0],
+            source.position[2] - responder.position[2]
+          );
+          const verticalDistance = Math.abs(
+            source.position[1] - responder.position[1]
+          );
+          assert.ok(
+            horizontalDistance <= MIXED_CREATURE_GROUP_ALERT_RADIUS,
+            `${source.seedId} is ${horizontalDistance.toFixed(2)}m from ${
+              responder.seedId
+            }`
+          );
+          assert.ok(
+            verticalDistance <=
+              MIXED_CREATURE_GROUP_ALERT_MAX_VERTICAL_DISTANCE,
+            `${source.seedId} is ${verticalDistance.toFixed(
+              2
+            )}m vertically from ${responder.seedId}`
+          );
+        }
+      }
     }
+  });
+
+  it("grounds original-map wildlife on hills and keeps a separate Harthmere herd", () => {
+    const grounded = harthmereGroundedLivestockSeedsInTerritory();
+    assert.equal(grounded.length, HARTHMERE_LIVE_ENTITY_LIVESTOCK_SEEDS.length);
+    assert.equal(HARTHMERE_LIVE_ENTITY_TOWN_LIVESTOCK_SEEDS.length, 12);
+    assert.equal(HARTHMERE_LIVE_ENTITY_MUCK_WILDLIFE_SEEDS.length, 44);
+    const wildElevations = new Set<number>();
+    for (const seed of grounded) {
+      if (harthmereLiveEntityIsTownLivestock(seed)) {
+        assert.equal(seed.position[1], HARTHMERE_EXTENSION_FEET_Y);
+        assert.ok(isHarthmereExtensionWorldPosition(seed.position));
+      } else {
+        wildElevations.add(seed.position[1]);
+        assert.ok(seed.position[0] < HARTHMERE_ORIGINAL_WORLD_EAST_EDGE_X);
+        assert.ok(
+          muckMonsterAreaForPosition(seed.position, 1.5),
+          `${seed.seedId} is not inside a muck area`
+        );
+      }
+    }
+    assert.ok(wildElevations.size > 5, "expected varied original-map hills");
   });
 
   it("routes each species label to its own mesh", () => {

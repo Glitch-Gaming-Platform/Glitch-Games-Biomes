@@ -30,12 +30,19 @@ The browser round-trip currently covers:
 - private native container transfer using the Road Ahead container contract;
 - native `Health` damage propagation;
 - food, health-item, and mana-item debit/recovery transactions;
-- jobs-board rejection/acceptance from the server-read native ECS position;
+- all 20 executable production jobs-board templates, each accepted through the
+  real frontend adapter, rejected away from the board by the server-read native
+  ECS position, and projected back into the frontend as the exact todo, quest,
+  and map marker;
 - authored gathering-node validation, native drop materialization, and pickup;
 - server-calculated weapon damage against a native NPC;
 - Anima retaliation into the player's native `Health`;
 - a two-user race for one drop, proving exactly one `Acquisition`;
 - harvest handler queueing followed by Gaia plant removal/drop materialization;
+- physical farming through selected native hotbar refs: till a voxel, consume a
+  seed into a new ECS plant, water it with a mutable can, time-advance growth in
+  Gaia, project the synchronized crop into the JavaScript Farming tab, and
+  harvest the resulting native world drop;
 - same-user reconnect readback.
 
 The release script also runs the existing visible browser tests and handler/
@@ -75,7 +82,10 @@ The browser helper is installed only on `localhost`, `127.0.0.1`, or `::1` and
 only when `?harthmere_native_ecs_e2e=1` is present. It cannot be enabled by a
 normal production URL. The helper does not edit the client ECS table. Fixture
 setup uses existing admin world APIs; gameplay still uses the normal client
-event queue and logic service.
+event queue and logic service. The all-jobs case writes exact auto-job fixtures
+only into the isolated local E2E Redis world; every accept/abandon action still
+travels from the browser frontend through the production API/reducer and native
+Position gate before the browser reads the returned quest and marker state.
 
 Do not put the control token in a URL, committed environment file, screenshot,
 or artifact.
@@ -98,10 +108,14 @@ Then run:
 
 ```bash
 HARTHMERE_E2E_BASE_URL=http://127.0.0.1:3000 \
-HARTHMERE_E2E_URL=http://127.0.0.1:3000/at/Joe \
+HARTHMERE_E2E_URL=http://127.0.0.1:3000/at \
 HARTHMERE_E2E_CONTROL_TOKEN="$HARTHMERE_E2E_CONTROL_TOKEN" \
 yarn harthmere:test:native-ecs-e2e
 ```
+
+Use the canonical `/at` route so the local-only E2E query parameters survive
+initial navigation. Named `/at/<username>` routes can redirect and drop those
+parameters before the browser bridge installs.
 
 For source, UI, and handler contracts without a running stack:
 

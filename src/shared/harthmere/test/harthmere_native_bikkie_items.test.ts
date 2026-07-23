@@ -43,16 +43,28 @@ function tray(contents: ReadonlyMap<number, Biscuit> = new Map()) {
 
 describe("Harthmere exact native Bikkie overlay", () => {
   it("requires every authored item and NPC identity to be checked in", () => {
-    const definitions = ensureHarthmereNativeItemCatalogue();
-    for (const definition of definitions) {
-      const parsedNumericId = Number(definition.itemId);
-      if (Number.isSafeInteger(parsedNumericId) && parsedNumericId > 0) {
-        continue;
-      }
+    const definitions = new Map(
+      ensureHarthmereNativeItemCatalogue().map((definition) => [
+        definition.itemId,
+        definition,
+      ])
+    );
+    // The inventory registry is process-global and deliberately accepts
+    // server-only test fixtures. Drive this native-identity audit from the
+    // explicit checked-in manifest, which is the production identity source,
+    // rather than treating unrelated registry fixtures as authored content.
+    for (const [itemId, biomesId] of Object.entries(
+      HARTHMERE_NATIVE_ITEM_ID_MANIFEST
+    )) {
       assert.ok(
-        Object.hasOwn(HARTHMERE_NATIVE_ITEM_ID_MANIFEST, definition.itemId),
-        `${definition.itemId} is missing from the native item manifest`
+        definitions.has(itemId) ||
+          [...definitions.keys()].some(
+            (definedItemId) =>
+              harthmereNativeBiomesIdForItemId(definedItemId) === biomesId
+          ),
+        `${itemId} has no item definition or exact-id alias`
       );
+      assert.equal(harthmereNativeBiomesIdForItemId(itemId), biomesId);
     }
 
     for (const profile of allHarthmereNativeNpcCombatProfiles()) {
@@ -103,6 +115,28 @@ describe("Harthmere exact native Bikkie overlay", () => {
         conformsWith(bikkie.schema.quests.schema, biscuit),
         true,
         `${quest.name} must be discoverable through /quests`
+      );
+    }
+  });
+
+  it("keeps giver-less hidden discovery quests locked by default", () => {
+    const hiddenTitles = new Set([
+      "The Buried Bell",
+      "The Doorway That Wasn’t",
+      "The Singing in the Walls",
+    ]);
+    const hidden = allHarthmereNativeQuestBiscuits().filter((quest) =>
+      hiddenTitles.has(String(quest.displayName))
+    );
+
+    assert.equal(hidden.length, hiddenTitles.size);
+    for (const quest of hidden) {
+      assert.equal(quest.questGiver, undefined);
+      assert.equal(quest.unlock?.kind, "event");
+      assert.equal((quest.unlock as any).eventKind, "challengeUnlocked");
+      assert.equal(
+        (quest.unlock as any).predicate?.fields?.[0]?.[1]?.value,
+        quest.id
       );
     }
   });
@@ -376,6 +410,22 @@ describe("Harthmere exact native Bikkie overlay", () => {
         seedItemId
       );
     }
+  });
+
+  it("publishes hotbar-ready native farming tools", () => {
+    const augmented = withHarthmereNativeBikkieItems(tray());
+    const hoe = augmented.contents.get(
+      harthmereNativeBiomesIdForItemId("7539420629350046")!
+    );
+    const wateringCan = augmented.contents.get(
+      harthmereNativeBiomesIdForItemId("7539420629350045")!
+    );
+    assert.equal(hoe?.isTool, true);
+    assert.equal(hoe?.action, "till");
+    assert.ok((hoe?.hardnessClass ?? 0) > 0);
+    assert.equal(wateringCan?.isTool, true);
+    assert.equal(wateringCan?.action, "waterPlant");
+    assert.ok((wateringCan?.waterAmount ?? 0) >= 1);
   });
 
   it("copies only presentation assets while preserving exact wearable ids", () => {

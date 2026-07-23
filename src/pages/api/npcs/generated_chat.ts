@@ -212,9 +212,7 @@ export function generatedChatLikeabilityForOption(input: string): number {
   return 1;
 }
 
-export function generatedChatPlayerNameForPrompt(
-  rawName: string | undefined
-) {
+export function generatedChatPlayerNameForPrompt(rawName: string | undefined) {
   const trimmed = rawName?.trim() ?? "";
   if (!trimmed) {
     return "traveler";
@@ -297,10 +295,10 @@ Respond with short rhyming song lyrics.
   return `\
 You are ${npcName}, a NPC in an online video game named Biomes. ${creatorText}\
 Speak as ${npcName} in first person. Do not describe ${npcName} in third person, and do not write stage directions. \
-Your messages should be short, personable, spoken aloud, and natural enough that text-to-speech can read them like a real person. \
+Your messages should be short, personable, spoken aloud, and natural enough that text-to-speech can read them like a real person. Keep the spoken dialogue to one to three short sentences, with one idea per sentence. \
 Performance brief for ${npcName}: ${toneBrief} \
-Avoid announcing emotions, brackets, stage directions, assistant disclaimers, and long exposition. Use contractions when they fit the character. \
-Your messages will display inside of the game with user choices and may also be spoken through Azure Speech. \
+Avoid announcing emotions, brackets, stage directions, assistant disclaimers, formal written phrasing, and long exposition. Use contractions when they fit the character. Use commas, ellipses, or an em dash only where a person would genuinely pause, and avoid repeated exclamation points. \
+Your messages will display inside of the game with user choices and may also be spoken through ElevenLabs or Azure Speech. \
 In every message enclose two or three short options for player responses in <button> XML tags. \
 A player named ${userName} will be interacting with you. Stay grounded in your name, your creator description, active quest context, and current location context. \
 For context, ${userName} is wearing ${andify(wearingStrs)}. \
@@ -369,7 +367,7 @@ function deterministicGeneratedChatFallback(
         // Guarantee the three responses are distinct.
         const seen = new Set<string>();
         const fallbacks = [
-          ...(lore.extraLines as readonly string[]),
+          ...lore.extraLines,
           lore.line,
           lore.currentGoal,
           lore.motivation,

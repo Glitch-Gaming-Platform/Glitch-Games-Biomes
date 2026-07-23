@@ -56,6 +56,7 @@ import { liveEntityHelperQuestRecordReadyToTurnIn } from "@/client/components/ch
 import {
   fetchHarthmereJobsBoardState,
   HARTHMERE_JOBS_BOARD_STATE_UPDATED_EVENT,
+  harthmereJobsBoardStateFromUpdatedEventDetail,
 } from "@/client/components/harthmere_jobs_board/jobsBoardLiveAdapter";
 import {
   LIVE_ENTITY_HELPER_QUEST_EVENT,
@@ -673,7 +674,9 @@ function useHarthmereObjectiveMiniMapPins(): HarthmereObjectiveMiniMapPin[] {
     const onJobs = (event: Event) => {
       const detail = (event as CustomEvent).detail;
       if (detail) {
-        setJobsRaw(detail);
+        // The shared event wraps the authoritative snapshot. Unwrap it before
+        // marker projection so accepted jobs appear immediately on the minimap.
+        setJobsRaw(harthmereJobsBoardStateFromUpdatedEventDetail(detail));
       } else {
         void refreshJobsFromServer();
       }

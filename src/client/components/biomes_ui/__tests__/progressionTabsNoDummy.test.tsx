@@ -193,6 +193,15 @@ describe("Biomes UI progression tabs", () => {
     );
   });
 
+  it("reserves P for the dedicated physical farming tab", () => {
+    assert.equal(TAB_DESCRIPTORS.farming.shortcut, "P");
+    assert.equal(TAB_DESCRIPTORS.banking.shortcut, "Q");
+    assert.equal(
+      DEFAULT_TAB_SHORTCUTS.find((shortcut) => shortcut.key === "p")?.tab,
+      "farming"
+    );
+  });
+
   it("renders DailyTodoTab from live care-loop progress", () => {
     const tasks = dailyTodoTasksFromCareSnapshotForTest({
       streak: 2,
@@ -1042,9 +1051,9 @@ describe("Biomes UI progression tabs", () => {
       />
     );
 
-    assert.ok(html.includes("Food &amp; Farm"));
+    assert.ok(html.includes("Food &amp; Cooking"));
     assert.ok(html.includes("Stamina 44 of 100"));
-    assert.ok(tagForDataAction(html, "harvest_plot").length > 0);
+    assert.equal(tagForDataAction(html, "harvest_plot").length, 0);
     assert.ok(tagForDataAction(html, "hunt_animal").length > 0);
     assert.ok(tagForDataAction(html, "cook_worker_meal").length > 0);
     assert.ok(html.includes("Cook Worker Meal"));

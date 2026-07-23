@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
-const { createHarness, inventorySource, economySource, vendorSource } = require("./harthmere-economy-test-lib.cjs");
+const { createHarness, inventorySource, economySource, vendorRuntimeSource } = require("./harthmere-economy-test-lib.cjs");
 const h = createHarness("Harthmere vendor rapid-click abuse current");
 const inv = inventorySource(h);
 const eco = economySource(h);
-const vendor = vendorSource(h);
+const vendor = vendorRuntimeSource(h);
 h.ok(/claimHarthmereLocalDevRapidAction\(\s*`inventory:vendor-buy/.test(inv), "vendor buy path ignores double-click abuse");
 h.ok(/claimHarthmereLocalDevRapidAction\(\s*`inventory:vendor-sell/.test(inv), "vendor sell path ignores double-click abuse");
 h.ok(inv.includes("decrementHarthmereVendorStock") && inv.includes("restoreHarthmereVendorStock"), "buy path decrements stock and restores on failed atomic insert");

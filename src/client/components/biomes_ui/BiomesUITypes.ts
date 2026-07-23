@@ -3,6 +3,7 @@
 export type TabKey =
   | "daily"
   | "inventory"
+  | "farming"
   | "abilities"
   | "skills"
   | "classes"
@@ -18,6 +19,7 @@ export type TabKey =
 export const TAB_ORDER: TabKey[] = [
   "daily",
   "inventory",
+  "farming",
   "abilities",
   "skills",
   "classes",
@@ -62,6 +64,13 @@ export const TAB_DESCRIPTORS: Record<TabKey, TabDescriptor> = {
     shortcut: "I",
     subtitle: "Equipment, food, materials, and quest items",
   },
+  farming: {
+    key: "farming",
+    label: "Farming",
+    code: "FRM",
+    shortcut: "P",
+    subtitle: "Till voxel soil, tend native crops, and harvest the field",
+  },
   abilities: {
     key: "abilities",
     label: "Abilities",
@@ -81,7 +90,8 @@ export const TAB_DESCRIPTORS: Record<TabKey, TabDescriptor> = {
     label: "Classes",
     code: "CLS",
     shortcut: "Y",
-    subtitle: "Specialization — choose your role across the fractured timelines",
+    subtitle:
+      "Specialization — choose your role across the fractured timelines",
   },
   land: {
     key: "land",
@@ -108,7 +118,7 @@ export const TAB_DESCRIPTORS: Record<TabKey, TabDescriptor> = {
     key: "banking",
     label: "Bank",
     code: "BNK",
-    shortcut: "P",
+    shortcut: "Q",
     subtitle: "Exotic-matter vault — secured across timelines",
   },
   map: {

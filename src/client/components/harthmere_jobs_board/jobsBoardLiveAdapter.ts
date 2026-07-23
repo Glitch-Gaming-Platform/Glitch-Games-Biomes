@@ -498,6 +498,13 @@ export function dispatchHarthmereJobsBoardStateUpdated(
   );
 }
 
+export function harthmereJobsBoardStateFromUpdatedEventDetail(
+  detail: unknown
+): unknown {
+  if (!detail || typeof detail !== "object") return detail;
+  return (detail as { jobsBoardState?: unknown }).jobsBoardState ?? detail;
+}
+
 function dispatchHarthmereJobsBoardInventoryLootUpdated(response: any) {
   if (
     typeof window === "undefined" ||
@@ -1047,6 +1054,16 @@ export function createHarthmereJobsBoardAdapter(
     ) =>
       submitHarthmereJobsBoardMutation(
         "cancel_job",
+        { jobId, boardId },
+        { fetchImpl, requestId, boardId }
+      ),
+    abandonJob: (
+      jobId: string,
+      boardId: string = HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
+      requestId?: string
+    ) =>
+      submitHarthmereJobsBoardMutation(
+        "abandon_job",
         { jobId, boardId },
         { fetchImpl, requestId, boardId }
       ),

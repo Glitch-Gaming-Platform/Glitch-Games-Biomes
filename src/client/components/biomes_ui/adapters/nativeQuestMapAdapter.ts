@@ -86,6 +86,29 @@ function nativeQuestMarkerId(questId: number, triggerId: number): string {
   return `native_quest:${questId}:${triggerId}`;
 }
 
+/**
+ * Older players may already have a giver-less hidden quest in `in_progress`
+ * from before its discovery unlock was added. Suppress that stale state when
+ * the biscuit explicitly says its own challenge-unlocked event is the gate.
+ * New players remain locked in the trigger engine; this keeps existing saves
+ * from leaking the same hidden quest back into the journal or active marker.
+ */
+function nativeQuestIsWaitingForDiscovery(quest: QuestBundle): boolean {
+  if (quest.state !== "in_progress" || quest.biscuit.questGiver) return false;
+  const unlock = quest.biscuit.unlock;
+  if (unlock?.kind !== "event" || unlock.eventKind !== "challengeUnlocked") {
+    return false;
+  }
+  return unlock.predicate?.kind === "object"
+    ? unlock.predicate.fields.some(
+        ([field, matcher]) =>
+          field === "challenge" &&
+          matcher.kind === "value" &&
+          matcher.value === quest.biscuit.id
+      )
+    : false;
+}
+
 function nativePosition(
   progress: TriggerProgress
 ): [number, number, number] | undefined {
@@ -150,7 +173,8 @@ export function activeNativeQuest(
   nativeQuestBundles: readonly QuestBundle[] | undefined
 ): QuestBundle | undefined {
   const active = (nativeQuestBundles ?? []).filter(
-    (quest) => quest.state === "in_progress"
+    (quest) =>
+      quest.state === "in_progress" && !nativeQuestIsWaitingForDiscovery(quest)
   );
   // Preserve the original game's main-story priority when several challenges
   // are active, while retaining stable ECS order within each category.
@@ -164,7 +188,11 @@ export function nativeQuestMapMarkers(
 ): Array<Omit<MapMarker, "x" | "y">> {
   const markers: Array<Omit<MapMarker, "x" | "y">> = [];
   for (const quest of nativeQuestBundles ?? []) {
-    if (quest.state !== "in_progress" || !quest.progress) {
+    if (
+      quest.state !== "in_progress" ||
+      nativeQuestIsWaitingForDiscovery(quest) ||
+      !quest.progress
+    ) {
       continue;
     }
     for (const leaf of activeNativeQuestTriggerLeaves(quest.progress)) {
@@ -210,7 +238,9 @@ export function nativeQuestTrackableQuests(
       // Available offers remain discoverable at their NPC/board/beacon and enter
       // this list only after the native challenge state becomes in_progress.
       .filter(
-        (quest) => quest.state === "in_progress" || quest.state === "completed"
+        (quest) =>
+          (quest.state === "in_progress" || quest.state === "completed") &&
+          !nativeQuestIsWaitingForDiscovery(quest)
       )
       .map((quest) => {
         const steps = nativeQuestMissionSteps(quest);

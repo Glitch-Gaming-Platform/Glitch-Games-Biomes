@@ -24,16 +24,28 @@ describe("ChatChannel", () => {
   const omitExpiry = (envelopes: Envelope[]) => {
     return envelopes.map((e) => omit(e, "expiryMs"));
   };
-  const msgA = testMessage(TEST_ID_A, { kind: "text", content: "hello" });
-  const msgB = testMessage(TEST_ID_B, {
-    kind: "text",
-    content: "how are you?",
-  });
-  const msgC = testMessage(TEST_ID_B, { kind: "typing" });
-  const msgD = testMessage(TEST_ID_A, { kind: "text", content: "..ok" });
-  const msgE = testMessage(TEST_ID_B, {
-    kind: "text",
-    content: "great!",
+  let msgA: Envelope;
+  let msgB: Envelope;
+  let msgC: Envelope;
+  let msgD: Envelope;
+  let msgE: Envelope;
+
+  beforeEach(() => {
+    // The complete suite can take several minutes. Create the fixtures when
+    // each test starts so the channel's one-minute expiry policy does not
+    // discard module-load-time messages before this describe block runs.
+    nextId = 1;
+    msgA = testMessage(TEST_ID_A, { kind: "text", content: "hello" });
+    msgB = testMessage(TEST_ID_B, {
+      kind: "text",
+      content: "how are you?",
+    });
+    msgC = testMessage(TEST_ID_B, { kind: "typing" });
+    msgD = testMessage(TEST_ID_A, { kind: "text", content: "..ok" });
+    msgE = testMessage(TEST_ID_B, {
+      kind: "text",
+      content: "great!",
+    });
   });
 
   it("Accepts mail", () => {

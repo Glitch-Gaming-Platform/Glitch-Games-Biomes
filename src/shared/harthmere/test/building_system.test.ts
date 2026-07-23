@@ -7,6 +7,8 @@ import {
   BUILDING_SYSTEM_BIKKIE_BLUEPRINTS,
   BUILDING_SYSTEM_CONSTRUCTION_STAGES,
   BUILDING_SYSTEM_PLOTS,
+  BUILDING_SYSTEM_LAND_REQUEST_AREAS,
+  BUILDING_SYSTEM_PLOT_SIZE_OPTIONS,
   BUILDING_SYSTEM_TAX_PERIOD_MS,
   applyBuildingSystemPropertyLifecycle,
   buildingSystemBlueprintByItemId,
@@ -28,6 +30,8 @@ import {
   createBuildingSystemHomeConsoleMarker,
   createBuildingSystemPropertyRecord,
   createBuildingSystemStorageContainer,
+  createBuildingSystemRequestedPlotDefinition,
+  buildingSystemRequestedPlotPriceGold,
   validateBuildingSystemGuideConstructionReadiness,
   normalizeBuildingSystemPropertyRecord,
   buildingSystemRepairCostGold,
@@ -37,6 +41,56 @@ import {
 const NOW_MS = 1_800_000_000_000;
 
 describe("building_system — property access and lifecycle oversights", () => {
+  it("quotes sharply higher deed prices as requested plot area grows", () => {
+    const quotes = BUILDING_SYSTEM_PLOT_SIZE_OPTIONS.map((size) =>
+      buildingSystemRequestedPlotPriceGold({
+        width: size.width,
+        depth: size.depth,
+        startsMucked: true,
+      })
+    );
+    assert.ok(quotes[1] > quotes[0]);
+    assert.ok(quotes[2] > quotes[1]);
+    assert.ok(quotes[3] > quotes[2]);
+    assert.ok(
+      quotes[3] >= quotes[0] * 5,
+      `estate ${quotes[3]} should cost at least five starter deeds ${quotes[0]}`
+    );
+  });
+
+  it("creates sized requests in additive Harthmere with a serviced-land premium", () => {
+    const blueprint = buildingSystemBlueprintById(
+      "grove_voxel_cottage_tier_1"
+    )!;
+    const area = BUILDING_SYSTEM_LAND_REQUEST_AREAS.find(
+      (entry) => entry.areaId === "additive_east_estates"
+    )!;
+    const size = BUILDING_SYSTEM_PLOT_SIZE_OPTIONS.find(
+      (entry) => entry.sizeId === "large"
+    )!;
+    const result = createBuildingSystemRequestedPlotDefinition({
+      requestAreaId: area.areaId,
+      blueprint,
+      center: { x: area.center[0], z: area.center[2] },
+      width: size.width,
+      depth: size.depth,
+    });
+    assert.equal(result.ok, true);
+    if (!result.ok) return;
+    assert.equal(result.plot.groundY, 52);
+    assert.equal(result.plot.startsMucked, false);
+    assert.equal(result.plot.bounds.xMax - result.plot.bounds.xMin, size.width);
+    assert.equal(result.plot.bounds.zMax - result.plot.bounds.zMin, size.depth);
+    assert.ok(
+      result.plot.claimPriceGold >
+        buildingSystemRequestedPlotPriceGold({
+          width: size.width,
+          depth: size.depth,
+          startsMucked: false,
+        })
+    );
+  });
+
   it("registers every available Bikkie blueprint item as a buildable building-system blueprint", () => {
     const expectedBikkieBlueprintIds = [
       BikkieIds.blueprintAnglersTable,

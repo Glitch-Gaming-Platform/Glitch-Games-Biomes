@@ -52,10 +52,12 @@ import { HARTHMERE_LOCAL_DEV_ITEM_USE_EVENT } from "@/shared/harthmere/snapshot_
 import { nativeBiomesEcsAuthorityEnabled } from "@/shared/harthmere/native_road_ahead_contract";
 import { resolveAssetUrlUntyped } from "@/galois/interface/asset_paths";
 import { safeGetTerrainName } from "@/shared/asset_defs/terrain";
+import { BikkieIds } from "@/shared/bikkie/ids";
 import { terrainIdToBlock } from "@/shared/bikkie/terrain";
 import type { AnyBinaryAttribute } from "@/shared/bikkie/schema/binary";
 import { staticUrlForAttribute } from "@/shared/bikkie/schema/binary";
 import { anItem } from "@/shared/game/item";
+import { findItemEquippableSlot } from "@/shared/game/wearables";
 import { safeParseBiomesId } from "@/shared/ids";
 import { resolveBinaryAttribute } from "@/shared/util/dye_helpers";
 import {
@@ -1143,6 +1145,20 @@ const ITEM_DEFINITIONS: Record<string, HarthmereItemDefinition> = {
     baseValue: 20,
     description:
       "Magical residue for scrolls, potions, enchantments, and arcane lamps.",
+  },
+  mana_draught: {
+    id: "mana_draught",
+    name: "Mana Draught",
+    category: "consumable",
+    subtype: "mana_potion",
+    quality: "uncommon",
+    icon: "◈",
+    stackable: true,
+    maxStack: 20,
+    bindType: "unbound",
+    baseValue: 28,
+    description:
+      "A measured blue draught that restores mana without consuming raw essence.",
   },
   mana_crystal_shard: {
     id: "mana_crystal_shard",
@@ -2661,12 +2677,43 @@ function dynamicBiomesItemIcon(
 function dynamicBiomesItemDefinition(
   itemId: string
 ): HarthmereItemDefinition | undefined {
-  const biomesId = safeParseBiomesId(itemId);
+  const biomesId = safeParseBiomesId(itemId.replace(/^b:/, ""));
   if (!biomesId) {
     return undefined;
   }
   const canonicalItemId = `b:${biomesId}`;
   const item = anItem(biomesId);
+  const nativeWearableSlot =
+    findItemEquippableSlot(item) ??
+    (biomesId === BikkieIds.muckyTop
+      ? BikkieIds.top
+      : biomesId === BikkieIds.muckySkirt
+      ? BikkieIds.bottoms
+      : undefined);
+  const equipmentSlot: EquipmentSlot | undefined = (() => {
+    switch (nativeWearableSlot) {
+      case BikkieIds.hat:
+      case BikkieIds.head:
+      case BikkieIds.hair:
+      case BikkieIds.face:
+      case BikkieIds.ears:
+        return "head";
+      case BikkieIds.top:
+        return "chest";
+      case BikkieIds.bottoms:
+        return "legs";
+      case BikkieIds.feet:
+        return "feet";
+      case BikkieIds.hands:
+        return "hands";
+      case BikkieIds.outerwear:
+        return "back";
+      case BikkieIds.neck:
+        return "neck";
+      default:
+        return undefined;
+    }
+  })();
   const stackable = Number(item?.stackable ?? (item?.isBlock ? 99n : 1n));
   const isStackable = Number.isFinite(stackable) && stackable > 1;
   const name =
@@ -2678,12 +2725,21 @@ function dynamicBiomesItemDefinition(
   return {
     id: canonicalItemId,
     name,
-    category: item?.isBlock ? "crafting_material" : "trade_good",
-    subtype: item?.isBlock ? "biomes_voxel_block" : "biomes_item",
+    category: item?.isBlock
+      ? "crafting_material"
+      : equipmentSlot
+      ? "armor"
+      : "trade_good",
+    subtype: item?.isBlock
+      ? "biomes_voxel_block"
+      : equipmentSlot
+      ? "biomes_wearable"
+      : "biomes_item",
     quality: "common",
     icon: dynamicBiomesItemIcon(item, canonicalItemId),
     stackable: isStackable,
     maxStack: isStackable ? Math.max(2, Math.trunc(stackable)) : 1,
+    slot: equipmentSlot,
     bindType: "unbound",
     baseValue: 0,
     description: item?.isBlock

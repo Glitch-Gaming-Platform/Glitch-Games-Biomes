@@ -113,6 +113,7 @@ import {
   buildingSystemHomeConsoleMarkerId,
   buildingSystemMaterialRequirementLines,
   buildingSystemPlotById,
+  createBuildingSystemRequestedPlotDefinition,
 } from "@/shared/harthmere/building_system";
 import { createHarthmereLiveEntityCombatSnapshotsFromEcsRecords } from "@/shared/harthmere/live_entity_ecs_bridge";
 import { HARTHMERE_VOXEL_INTERACTION_ATTACK_REACH_UNITS } from "@/shared/harthmere/combat_reach";
@@ -8421,6 +8422,82 @@ describe("reduceHarthmereLiveModeBackendState — building mutation", function (
     );
   });
 
+  it("prices and claims a custom plot on the additive Harthmere town extension", function () {
+    let state = freshState();
+    state.inventory.gold = 5_000;
+    const startingGold = state.inventory.gold;
+    const claimed = applyOne(
+      state,
+      "request_property_building_mutation",
+      {
+        buildingAction: "claim_plot",
+        blueprintId: "grove_voxel_cottage_tier_1",
+        requestAreaId: "additive_east_estates",
+        plotWidth: 26,
+        plotDepth: 26,
+        centerX: 2420,
+        centerZ: -250,
+      },
+      { subsystem: "building", zoneId: "the_grove" }
+    );
+    assert.deepEqual(
+      claimed.summary.warnings.filter((warning) =>
+        warning.includes("rejected")
+      ),
+      []
+    );
+    state = claimed.state;
+    const plotId = state.building.ownedPlots.find(
+      (candidate) => state.building.customPlots[candidate]
+    );
+    assert.ok(plotId);
+    const plot = state.building.customPlots[plotId!];
+    assert.equal(plot.groundY, 52);
+    assert.equal(plot.startsMucked, false);
+    assert.ok(plot.claimPriceGold > 0);
+    assert.equal(state.inventory.gold, startingGold - plot.claimPriceGold);
+  });
+
+  it("rejects overlap with another actor's custom deed even when it is absent from this actor's owned projection", function () {
+    const state = freshState();
+    state.inventory.gold = 5_000;
+    const blueprint = buildingSystemBlueprintById(
+      "grove_voxel_cottage_tier_1"
+    )!;
+    const existing = createBuildingSystemRequestedPlotDefinition({
+      plotId: "foreign_additive_deed",
+      requestAreaId: "additive_east_estates",
+      blueprint,
+      center: { x: 2420, z: -250 },
+      width: 26,
+      depth: 26,
+    });
+    assert.equal(existing.ok, true);
+    if (!existing.ok) return;
+    state.building.customPlots[existing.plot.plotId] = existing.plot;
+    state.building.plotOwners[existing.plot.plotId] = "another-player";
+
+    const overlap = applyOne(
+      state,
+      "request_property_building_mutation",
+      {
+        buildingAction: "claim_plot",
+        blueprintId: blueprint.blueprintId,
+        requestAreaId: "additive_east_estates",
+        plotWidth: 18,
+        plotDepth: 18,
+        centerX: 2422,
+        centerZ: -250,
+      },
+      { subsystem: "building", zoneId: "the_grove" }
+    );
+    assert.ok(
+      overlap.summary.warnings.some((warning) =>
+        warning.includes("plot_claim_rejected:area_already_claimed")
+      )
+    );
+  });
+
   it("runs the full home flow from land purchase through reload-safe completed cottage", function () {
     let state = freshState();
     state.inventory.gold = 500;
@@ -10642,7 +10719,11 @@ describe("reduceHarthmereLiveModeBackendState — physical jobs board and live t
     state.combat.entitySnapshots[npcId] = {
       hp: 300,
       maxHp: 300,
-      position: { x: 332, y: 54, z: -390 },
+      position: {
+        x: area.anchor[0],
+        y: area.anchor[1],
+        z: area.anchor[2],
+      },
       isHostile: true,
       isAlive: true,
       isAttackable: true,
@@ -10658,7 +10739,11 @@ describe("reduceHarthmereLiveModeBackendState — physical jobs board and live t
         source: "server_scheduled_tick",
         subsystem: "npc_ai",
         targetId: npcId,
-        serverActorPosition: { x: 333, y: 54, z: -390 },
+        serverActorPosition: {
+          x: area.anchor[0] + 1,
+          y: area.anchor[1],
+          z: area.anchor[2],
+        },
       }
     ).state;
     assert.equal(
@@ -10687,7 +10772,11 @@ describe("reduceHarthmereLiveModeBackendState — physical jobs board and live t
         source: "server_scheduled_tick",
         subsystem: "npc_ai",
         targetId: npcId,
-        serverActorPosition: { x: 333, y: 54, z: -390 },
+        serverActorPosition: {
+          x: area.anchor[0] + 1,
+          y: area.anchor[1],
+          z: area.anchor[2],
+        },
       }
     ).state;
     assert.match(

@@ -144,7 +144,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 8205
+        "line": 8196
       },
       {
         "name": "Toll Booth",
@@ -156,7 +156,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 8206
+        "line": 8197
       },
       {
         "name": "Stable Yard Office",
@@ -168,7 +168,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 8196
+        "line": 8187
       },
       {
         "name": "Mara Thistle Two-Story House",
@@ -180,7 +180,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 6872
+        "line": 6863
       },
       {
         "name": "fountain_square",
@@ -192,7 +192,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 1422
+        "line": 1413
       },
       {
         "name": "Black Anvil Smithy",
@@ -204,7 +204,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 6941
+        "line": 6932
       },
       {
         "name": "Carpenter and Tailor Workshop",
@@ -216,7 +216,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 8086
+        "line": 8077
       },
       {
         "name": "Green Mortar Apothecary",
@@ -228,7 +228,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 7061
+        "line": 7052
       },
       {
         "name": "Wyrm and Candle Magic Shop",
@@ -240,7 +240,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 8102
+        "line": 8093
       },
       {
         "name": "Copper Kettle Inn",
@@ -252,7 +252,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 7325
+        "line": 7316
       },
       {
         "name": "Reeve Hall",
@@ -264,7 +264,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 5591
+        "line": 5582
       },
       {
         "name": "Edrik Vane Estate",
@@ -276,7 +276,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 6896
+        "line": 6887
       },
       {
         "name": "Chapel of Saint Verena",
@@ -288,7 +288,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 8199
+        "line": 8190
       },
       {
         "name": "Brother Vance Cottage",
@@ -300,7 +300,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 8209
+        "line": 8200
       },
       {
         "name": "Player Services Hall",
@@ -312,7 +312,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 7469
+        "line": 7460
       },
       {
         "name": "Brass Scale Moneylender",
@@ -324,7 +324,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 8210
+        "line": 8201
       },
       {
         "name": "Mudden Lean-To Home",
@@ -336,7 +336,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 7421
+        "line": 7412
       },
       {
         "name": "Mudden Wash House",
@@ -348,7 +348,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 8166
+        "line": 8157
       },
       {
         "name": "Mudden Tam Crowe Lean-To",
@@ -360,7 +360,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 8211
+        "line": 8202
       },
       {
         "name": "Dock Ledger Warehouse",
@@ -372,7 +372,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 8142
+        "line": 8133
       },
       {
         "name": "River Dock Supply",
@@ -384,7 +384,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 8204
+        "line": 8195
       },
       {
         "name": "Guard Barracks",
@@ -396,7 +396,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 5590
+        "line": 5581
       },
       {
         "name": "Roadside Family Cottage",
@@ -408,7 +408,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 8194
+        "line": 8185
       },
       {
         "name": "Dawn Loaf Bakery",
@@ -420,7 +420,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 4869
+        "line": 4860
       },
       {
         "name": "Brindle Provision House",
@@ -432,7 +432,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 8083
+        "line": 8074
       }
     ],
     "partialOrIncorrect": [],
@@ -448,7 +448,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 8205
+        "line": 8196
       },
       {
         "name": "Toll Booth",
@@ -460,7 +460,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 8206
+        "line": 8197
       },
       {
         "name": "Stable Yard Office",
@@ -472,7 +472,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 8196
+        "line": 8187
       },
       {
         "name": "Mara Thistle Two-Story House",
@@ -484,7 +484,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 6872
+        "line": 6863
       },
       {
         "name": "fountain_square",
@@ -496,7 +496,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 1422
+        "line": 1413
       },
       {
         "name": "Black Anvil Smithy",
@@ -508,7 +508,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 6941
+        "line": 6932
       },
       {
         "name": "Carpenter and Tailor Workshop",
@@ -520,7 +520,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 8086
+        "line": 8077
       },
       {
         "name": "Green Mortar Apothecary",
@@ -532,7 +532,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 7061
+        "line": 7052
       },
       {
         "name": "Wyrm and Candle Magic Shop",
@@ -544,7 +544,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 8102
+        "line": 8093
       },
       {
         "name": "Copper Kettle Inn",
@@ -556,7 +556,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 7325
+        "line": 7316
       },
       {
         "name": "Reeve Hall",
@@ -568,7 +568,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 5591
+        "line": 5582
       },
       {
         "name": "Edrik Vane Estate",
@@ -580,7 +580,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 6896
+        "line": 6887
       },
       {
         "name": "Chapel of Saint Verena",
@@ -592,7 +592,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 8199
+        "line": 8190
       },
       {
         "name": "Brother Vance Cottage",
@@ -604,7 +604,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 8209
+        "line": 8200
       },
       {
         "name": "Player Services Hall",
@@ -616,7 +616,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 7469
+        "line": 7460
       },
       {
         "name": "Brass Scale Moneylender",
@@ -628,7 +628,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 8210
+        "line": 8201
       },
       {
         "name": "Mudden Lean-To Home",
@@ -640,7 +640,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 7421
+        "line": 7412
       },
       {
         "name": "Mudden Wash House",
@@ -652,7 +652,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 8166
+        "line": 8157
       },
       {
         "name": "Mudden Tam Crowe Lean-To",
@@ -664,7 +664,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 8211
+        "line": 8202
       },
       {
         "name": "Dock Ledger Warehouse",
@@ -676,7 +676,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 8142
+        "line": 8133
       },
       {
         "name": "River Dock Supply",
@@ -688,7 +688,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 8204
+        "line": 8195
       },
       {
         "name": "Guard Barracks",
@@ -700,7 +700,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 5590
+        "line": 5581
       },
       {
         "name": "Roadside Family Cottage",
@@ -712,7 +712,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 8194
+        "line": 8185
       },
       {
         "name": "Dawn Loaf Bakery",
@@ -724,7 +724,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 4869
+        "line": 4860
       },
       {
         "name": "Brindle Provision House",
@@ -736,7 +736,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 8083
+        "line": 8074
       }
     ],
     "targetedRequirements": [

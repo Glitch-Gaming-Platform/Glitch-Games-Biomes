@@ -169,7 +169,7 @@ assert(remaining.length === required.length, `expected ${required.length} remain
 const ids = new Set(remaining.map((npc) => npc.id));
 for (const id of required) assert(ids.has(id), `remaining NPC implemented: ${id}`);
 for (const npc of remaining) {
-  assert(npc.implementationStatus === "implemented_v45_remaining_npc", `${npc.id} marked implemented_v45_remaining_npc`);
+  assert(npc.implementationStatus === "implemented_remaining_npc", `${npc.id} marked implemented_remaining_npc`);
   assert(npc.name && npc.category && npc.role && npc.district && npc.home, `${npc.id} has identity, category, role, district, home`);
 }
 const allIds = all.map((npc) => npc.id);

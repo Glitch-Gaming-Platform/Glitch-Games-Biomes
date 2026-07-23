@@ -2,7 +2,9 @@ import {
   ELEVENLABS_DEFAULT_MODEL_ID,
   ELEVENLABS_DEFAULT_OUTPUT_FORMAT,
   clearElevenLabsVoiceCacheForTest,
+  elevenLabsNaturalVoiceSettingsForTest,
   elevenLabsConfigFromEnv,
+  elevenLabsSpokenTextForTest,
   listElevenLabsVoices,
   selectElevenLabsVoiceForActor,
   synthesizeElevenLabsSpeech,
@@ -84,6 +86,54 @@ describe("ElevenLabs NPC speech", () => {
     const second = selectElevenLabsVoiceForActor({ voices, voiceProfileId });
     assert.equal(first?.voice_id, "female-studio");
     assert.equal(second?.voice_id, first?.voice_id);
+  });
+
+  it("prepares written dialogue for natural spoken pacing", () => {
+    assert.equal(
+      elevenLabsSpokenTextForTest(
+        "<text>Hello there!!!\n\nI checked the road... Everything looks good. One more thing: take a lantern.</text>"
+      ),
+      "Hello there!\n\nI checked the road... Everything looks good.\n\nOne more thing: take a lantern."
+    );
+    assert.equal(
+      elevenLabsSpokenTextForTest("<text>[listens closely...]</text>"),
+      ""
+    );
+    assert.equal(
+      elevenLabsSpokenTextForTest(
+        "<text>Salt &amp; iron{break}That's what we'll need.</text>"
+      ),
+      "Salt & iron\n\nThat's what we'll need."
+    );
+  });
+
+  it("uses conservative human voice settings near normal speed", () => {
+    assert.deepEqual(
+      elevenLabsNaturalVoiceSettingsForTest({
+        actorKind: "humanoid",
+        rate: "-3%",
+      }),
+      {
+        stability: 0.55,
+        similarity_boost: 0.82,
+        style: 0,
+        use_speaker_boost: true,
+        speed: 0.96,
+      }
+    );
+    assert.deepEqual(
+      elevenLabsNaturalVoiceSettingsForTest({
+        actorKind: "robot",
+        rate: "+20%",
+      }),
+      {
+        stability: 0.63,
+        similarity_boost: 0.82,
+        style: 0,
+        use_speaker_boost: true,
+        speed: 1.01,
+      }
+    );
   });
 
   it("paginates the current ElevenLabs voice search endpoint", async () => {
@@ -168,9 +218,13 @@ describe("ElevenLabs NPC speech", () => {
     const body = JSON.parse(String(calls[0].init?.body));
     assert.equal(body.text, "Hello from Harthmere.");
     assert.equal(body.model_id, ELEVENLABS_DEFAULT_MODEL_ID);
-    assert.equal(body.language_code, undefined);
+    assert.equal(body.language_code, "en");
+    assert.equal(body.apply_text_normalization, "on");
+    assert.equal(body.voice_settings.stability, 0.55);
+    assert.equal(body.voice_settings.similarity_boost, 0.82);
+    assert.equal(body.voice_settings.style, 0);
     assert.equal(body.voice_settings.use_speaker_boost, true);
-    assert.equal(body.voice_settings.speed, 0.97);
+    assert.equal(body.voice_settings.speed, 0.96);
     assert.deepEqual([...result!.audio], [1, 2, 3]);
     assert.equal(result?.contentType, "audio/mpeg");
     assert.equal(result?.voiceId, "natural-female-voice");

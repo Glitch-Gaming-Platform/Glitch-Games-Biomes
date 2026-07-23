@@ -525,7 +525,11 @@ export class WebSocketZrpcClient
 
   private onOpen() {
     this.lastServerMessageTime.reset();
-    log.info(`WebSocket connected to ${webSocketUriForSafeLogging(this.uri)}`);
+    log.info(
+      `WebSocket connected to ${
+        this.uri ? webSocketUriForSafeLogging(this.uri) : "(unknown URI)"
+      }`
+    );
     this.reconnectDelay = this.newReconnectDelay();
     this.checkState("waitingOnHeartbeat");
   }

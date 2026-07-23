@@ -1,5 +1,4 @@
 import assert from "assert";
-import { isTerrainID } from "../../asset_defs/terrain";
 import {
   buildingSystemBlueprintById,
   buildingSystemHomeConsoleMarkerId,
@@ -159,11 +158,7 @@ describe("Harthmere live-mode home decoration backend", () => {
       propertyId: "decor_live_placed_home",
     });
 
-    const placed = reduceHarthmereLiveModeBackendState(
-      state,
-      request,
-      NOW
-    );
+    const placed = reduceHarthmereLiveModeBackendState(state, request, NOW);
     const plan = placed.state.building.materializationPlans[request.requestId];
     const markerId = buildingSystemHomeConsoleMarkerId(
       "decor_live_placed_home"
@@ -199,23 +194,16 @@ describe("Harthmere live-mode home decoration backend", () => {
 
     assert.deepStrictEqual(placed.summary.warnings, []);
     assert.strictEqual(
-      placed.state.inventory.items[HARTHMERE_CRAFTING_STATIONS.workbench] ??
-        0,
+      placed.state.inventory.items[HARTHMERE_CRAFTING_STATIONS.workbench] ?? 0,
       0
     );
     assert.ok(placed.summary.touchedModels.includes("home_decoration"));
     assert.ok(placed.summary.touchedModels.includes("inventory_items"));
-    assert.ok(
-      placed.summary.touchedModels.includes(
-        "home_decoration_voxel_materialization"
-      )
-    );
-    assert.equal(placed.summary.buildingMaterializationPlans?.length, 1);
-    assert.ok(
-      placed.summary.buildingMaterializationPlans?.[0]?.edits.every((edit) =>
-        isTerrainID(Number(edit.value))
-      ),
-      "home decorations must publish real terrain IDs"
+    assert.ok(placed.summary.touchedModels.includes("native_ecs_placeable"));
+    assert.equal(placed.summary.nativeEcsMaterializationPlans?.length, 1);
+    assert.equal(
+      placed.summary.nativeEcsMaterializationPlans?.[0]?.kind,
+      "placeable"
     );
     assert.deepStrictEqual(
       placed.state.homeDecoration.propertySummaries.decor_live_home
@@ -252,8 +240,7 @@ describe("Harthmere live-mode home decoration backend", () => {
 
     assert.deepStrictEqual(replay.summary.warnings, []);
     assert.strictEqual(
-      replay.state.inventory.items[HARTHMERE_CRAFTING_STATIONS.workbench] ??
-        0,
+      replay.state.inventory.items[HARTHMERE_CRAFTING_STATIONS.workbench] ?? 0,
       0
     );
     assert.strictEqual(
@@ -284,12 +271,14 @@ describe("Harthmere live-mode home decoration backend", () => {
       Object.keys(removed.state.homeDecoration.placed).length,
       0
     );
-    assert.equal(removed.summary.buildingMaterializationPlans?.length, 1);
-    assert.ok(
-      removed.summary.buildingMaterializationPlans?.[0]?.edits.every(
-        (edit) => edit.value === 0
-      ),
-      "removing home decorations must cleanup voxel edits"
+    assert.equal(removed.summary.nativeEcsMaterializationPlans?.length, 1);
+    assert.equal(
+      removed.summary.nativeEcsMaterializationPlans?.[0]?.kind,
+      "placeable"
+    );
+    assert.equal(
+      (removed.summary.nativeEcsMaterializationPlans?.[0] as any)?.operation,
+      "remove"
     );
     assert.ok(
       removed.summary.sharedStateKeys.some((key) =>

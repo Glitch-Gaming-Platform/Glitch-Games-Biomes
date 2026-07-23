@@ -9,6 +9,7 @@ import {
   AudioSourceSelector,
   NpcMetadataSelector,
 } from "@/shared/ecs/gen/selectors";
+import type { ReadonlyHealth } from "@/shared/ecs/gen/components";
 import type { BiomesId } from "@/shared/ids";
 import { dist } from "@/shared/math/linear";
 import { deserializeNpcCustomState } from "@/shared/npc/serde";
@@ -18,6 +19,37 @@ export const SOUND_REF = 4; // distance around the source where the volume is ma
 export const SOUND_DISTANCE = 20; // distance from ref to 0 volume
 export const SOUND_DEADZONE = 32; // distance beyond that where the youtube player is still around at 0 volume
 export const ACTIVE_COMBAT_NPC_SCAN_RADIUS = 64;
+export const COMBAT_MUSIC_DAMAGE_GRACE_SECONDS = 8;
+const COMBAT_MUSIC_CLOCK_SKEW_SECONDS = 2;
+
+type CombatHealth = Pick<
+  ReadonlyHealth,
+  "hp" | "lastDamageAmount" | "lastDamageSource" | "lastDamageTime"
+>;
+
+export function healthIndicatesRecentCombatDamage(
+  health: CombatHealth | undefined,
+  nowSeconds: number,
+  expectedAttacker?: BiomesId
+) {
+  if (
+    !health ||
+    health.hp <= 0 ||
+    health.lastDamageSource?.kind !== "attack" ||
+    health.lastDamageTime === undefined ||
+    (health.lastDamageAmount ?? 0) >= 0 ||
+    (expectedAttacker !== undefined &&
+      health.lastDamageSource.attacker !== expectedAttacker)
+  ) {
+    return false;
+  }
+
+  const ageSeconds = nowSeconds - health.lastDamageTime;
+  return (
+    ageSeconds >= -COMBAT_MUSIC_CLOCK_SKEW_SECONDS &&
+    ageSeconds <= COMBAT_MUSIC_DAMAGE_GRACE_SECONDS
+  );
+}
 
 export function combatTargetFromNpcStateData(
   data: Uint8Array
@@ -66,10 +98,16 @@ export class AudioScript implements Script {
     return target;
   }
 
-  private isPlayerInActiveCombat(center: [number, number, number]) {
+  private isPlayerInActiveCombat(
+    center: [number, number, number],
+    nowSeconds: number
+  ) {
     const playerHealth = this.table.get(this.userId)?.health;
     if (playerHealth && playerHealth.hp <= 0) {
       return false;
+    }
+    if (healthIndicatesRecentCombatDamage(playerHealth, nowSeconds)) {
+      return true;
     }
 
     for (const npc of this.table.scan(
@@ -80,8 +118,13 @@ export class AudioScript implements Script {
     )) {
       if (
         (npc.health?.hp ?? 0) > 0 &&
-        npc.npc_state?.data &&
-        this.cachedNpcCombatTarget(npc.npc_state.data) === this.userId
+        ((npc.npc_state?.data &&
+          this.cachedNpcCombatTarget(npc.npc_state.data) === this.userId) ||
+          healthIndicatesRecentCombatDamage(
+            npc.health,
+            nowSeconds,
+            this.userId
+          ))
       ) {
         return true;
       }
@@ -91,6 +134,7 @@ export class AudioScript implements Script {
 
   tick(_dt: number) {
     const cameraPos = this.resources.get("/scene/camera").pos();
+    const nowSeconds = this.resources.get("/clock").time;
     const playerPos =
       this.resources.get("/ecs/c/position", this.userId)?.v ?? cameraPos;
 
@@ -131,7 +175,7 @@ export class AudioScript implements Script {
     this.audioManager.setBackgroundMusicTrack(
       selectBackgroundMusicTrack(
         muckyness.get(),
-        this.isPlayerInActiveCombat(playerPos)
+        this.isPlayerInActiveCombat([...playerPos], nowSeconds)
       )
     );
 

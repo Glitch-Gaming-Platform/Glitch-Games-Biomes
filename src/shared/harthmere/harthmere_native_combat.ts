@@ -23,7 +23,11 @@ export const HARTHMERE_NATIVE_COMBAT_VERSION =
 export interface HarthmereNativeCombatSeedLike {
   seedId: string;
   displayName: string;
-  kind: "robot_sentinel" | "ambient_muck_monster" | "ambient_livestock";
+  kind:
+    | "robot_sentinel"
+    | "ambient_muck_monster"
+    | "ambient_livestock"
+    | "ambient_bandit";
   combatKind?: "mux" | "hex";
   areaId?: string;
   combatLevel?: number;
@@ -33,6 +37,13 @@ export interface HarthmereNativeCombatSeedLike {
   meatUnits?: number;
   attackDamage?: number;
   killXp?: number;
+  banditRole?:
+    | "scout"
+    | "archer"
+    | "skirmisher"
+    | "brute"
+    | "captain"
+    | "prisoner";
 }
 
 export interface HarthmereNativeNpcCombatProfile {
@@ -53,7 +64,7 @@ export interface HarthmereNativeNpcCombatProfile {
   walkSpeed: number;
   runSpeed: number;
   rotateSpeed: number;
-  behaviorKind: "hostile" | "retaliate" | "sentinel";
+  behaviorKind: "hostile" | "retaliate" | "sentinel" | "prisoner";
   dropItems: ReadonlyArray<{ itemId: string; count: number }>;
   killXp: number;
   isBoss: boolean;
@@ -75,6 +86,9 @@ export function harthmereNativeNpcTypeKeyForSeed(
   }
   if (/thaedryn/i.test(seed.displayName)) {
     return "boss_thaedryn_bellbound";
+  }
+  if (seed.kind === "ambient_bandit") {
+    return `bandit_${seed.banditRole ?? "scout"}`;
   }
   if (seed.kind === "ambient_livestock") {
     return `livestock_${slug(seed.species || seed.displayName)}`;
@@ -107,6 +121,11 @@ export function harthmereNativeNpcCombatProfileForSeed(
   const boss = /boss|muck[- ]scarred helix/i.test(`${key} ${seed.displayName}`);
   const livestock = seed.kind === "ambient_livestock";
   const sentinel = seed.kind === "robot_sentinel";
+  const bandit = seed.kind === "ambient_bandit";
+  const banditRole = seed.banditRole ?? "scout";
+  const prisoner = bandit && banditRole === "prisoner";
+  const quickerLargeLivestock =
+    livestock && (seed.species === "cow" || seed.species === "sheep");
   const tutorialRetaliationOnly = seed.areaId === "road_muckwad_patch";
   const hex = seed.combatKind === "hex" || /hex/i.test(seed.displayName);
   const thaedryn = key === "boss_thaedryn_bellbound";
@@ -130,43 +149,96 @@ export function harthmereNativeNpcCombatProfileForSeed(
       : boss
       ? Math.max(120, monsterDamage(seed))
       : monsterDamage(seed),
-    attackDistance: thaedryn ? 8 : boss ? 3.2 : hex ? 3 : livestock ? 2 : 2.4,
-    attackIntervalSecs: boss ? 1.6 : hex ? 2.1 : livestock ? 2.4 : 1.9,
+    attackDistance: thaedryn
+      ? 8
+      : boss
+      ? 3.2
+      : banditRole === "archer"
+      ? 12
+      : hex
+      ? 3
+      : livestock
+      ? 2
+      : 2.4,
+    attackIntervalSecs: boss
+      ? 1.6
+      : banditRole === "skirmisher"
+      ? 1.35
+      : banditRole === "captain"
+      ? 1.5
+      : banditRole === "archer"
+      ? 1.7
+      : banditRole === "brute"
+      ? 2.2
+      : hex
+      ? 2.1
+      : livestock
+      ? quickerLargeLivestock
+        ? 1.8
+        : 2.4
+      : 1.9,
     attackStrikeMomentSecs: boss ? 0.42 : 0.5,
-    attackFovDeg: boss ? 170 : 125,
+    attackFovDeg: boss || banditRole === "captain" ? 170 : bandit ? 145 : 125,
     aggroTrigger:
-      sentinel || livestock || tutorialRetaliationOnly || thaedryn
+      sentinel || livestock || tutorialRetaliationOnly || thaedryn || prisoner
         ? { kind: "onlyIfAttacked" }
-        : { kind: "proximity", distance: boss ? 18 : hex ? 12 : 10.5 },
-    disengageDistance: boss ? 42 : livestock ? 16 : 34,
+        : {
+            kind: "proximity",
+            distance: boss ? 18 : bandit ? 14 : hex ? 12 : 10.5,
+          },
+    disengageDistance: boss ? 42 : prisoner ? 8 : livestock ? 16 : bandit ? 32 : 34,
     walkSpeed:
-      sentinel || thaedryn
+      sentinel || thaedryn || prisoner
         ? 0
+        : bandit
+        ? banditRole === "brute"
+          ? 1.8
+          : banditRole === "captain"
+          ? 2.4
+          : 2.7
         : livestock
         ? seed.sizeTier === "small"
           ? 2.4
+          : quickerLargeLivestock
+          ? 1.65
           : 1.4
         : hex
         ? 2.5
         : 2.2,
     runSpeed:
-      sentinel || thaedryn
+      sentinel || thaedryn || prisoner
         ? 0
+        : bandit
+        ? banditRole === "brute"
+          ? 4.2
+          : banditRole === "captain"
+          ? 5.2
+          : banditRole === "skirmisher"
+          ? 5.8
+          : 5.1
         : livestock
         ? seed.sizeTier === "small"
           ? 4.4
+          : quickerLargeLivestock
+          ? 3.5
           : 3.1
         : hex
         ? 4.8
         : 4.4,
-    rotateSpeed: sentinel ? 0 : boss ? 260 : 220,
+    rotateSpeed: sentinel || prisoner ? 0 : boss ? 260 : bandit ? 250 : 220,
     behaviorKind: sentinel
       ? "sentinel"
+      : prisoner
+      ? "prisoner"
       : livestock || tutorialRetaliationOnly
       ? "retaliate"
       : "hostile",
     dropItems: thaedryn
       ? []
+      : prisoner
+      ? []
+      : bandit
+      ? [{ itemId: "old_coin", count: banditRole === "captain" ? 4 : 2 }]
       : livestock
       ? [{ itemId: "raw_meat", count: Math.max(1, seed.meatUnits ?? 1) }]
       : boss
@@ -239,7 +311,8 @@ export function harthmereNativeNpcBiscuit(
             }
           : undefined,
       meander:
-        profile.behaviorKind === "sentinel"
+        profile.behaviorKind === "sentinel" ||
+        profile.behaviorKind === "prisoner"
           ? undefined
           : { stayDistanceFromSpawn: profile.disengageDistance * 0.6 },
       hideNameOverlay: { hideNameOverlay: false },

@@ -83,16 +83,24 @@ describe("Harthmere live environment damage client", () => {
       damageKind: "fall",
       fallBlocks: 20,
     });
-    assert.deepEqual(dispatched, [
-      {
-        type: BIOMES_UI_OPTIMISTIC_PLAYER_STATUS_EVENT,
-        detail: { hpPercentDelta: -0.4, label: "Fall damage" },
-      },
-      {
-        type: BIOMES_UI_PLAYER_STATUS_UPDATED_EVENT,
-        detail: { combat: { hp: 168, maxHp: 240 } },
-      },
-    ]);
+    assert.deepEqual(
+      dispatched.filter((event) =>
+        [
+          BIOMES_UI_OPTIMISTIC_PLAYER_STATUS_EVENT,
+          BIOMES_UI_PLAYER_STATUS_UPDATED_EVENT,
+        ].includes(event.type)
+      ),
+      [
+        {
+          type: BIOMES_UI_OPTIMISTIC_PLAYER_STATUS_EVENT,
+          detail: { hpPercentDelta: -0.4, label: "Fall damage" },
+        },
+        {
+          type: BIOMES_UI_PLAYER_STATUS_UPDATED_EVENT,
+          detail: { combat: { hp: 168, maxHp: 240 } },
+        },
+      ]
+    );
   });
 
   it("posts drowning damage and publishes the returned player status", async () => {

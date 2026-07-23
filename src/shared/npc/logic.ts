@@ -12,6 +12,7 @@ import {
 import type { AABB, ReadonlyVec3 } from "@/shared/math/types";
 import {
   chaseAttackTargetTick,
+  nightMuckerHexMovementMultiplier,
   nightMuckerHexUnprovokedAggroParams,
   updateAttackTarget,
 } from "@/shared/npc/behavior/chase_attack";
@@ -286,6 +287,10 @@ export function npcTickLogic(
     case "idle":
       break;
   }
+  // At night Muckers and Hexers become materially more dangerous even before
+  // contact: idle patrols, returns, and active pursuit all move faster. Combat
+  // cadence/damage/range are boosted in nightMuckerHexUnprovokedAggroParams.
+  forwardSpeed *= nightMuckerHexMovementMultiplier(npc);
   // Compute the NPC's AABB which is needed for physics and drowning logic.
   const aabb = anchorAndSizeToAABB(npc.position, npc.size);
 

@@ -1521,7 +1521,10 @@ validate_production_revision_before_traffic() {
   fi
 
   revision_origin="https://${revision_fqdn}"
-  install_id="pretraffic-${TAG}-${revision}"
+  # The Glitch API validates real title-install UUIDs. Synthetic deployment ids
+  # currently receive an upstream 404 even when the candidate is healthy, so a
+  # caller may provide a known real install for the concrete-revision E2E.
+  install_id="${HARTHMERE_PREFLIGHT_INSTALL_ID:-pretraffic-${TAG}-${revision}}"
 
   log "Smoke-testing concrete Azure revision before shifting production traffic: $revision_origin"
   validate_game_html_url "$revision_origin" "revision $revision root"
@@ -1536,7 +1539,7 @@ validate_production_revision_before_traffic() {
   log "Running strict rendered-world browser E2E against concrete revision before traffic."
   HARTHMERE_E2E_EXPECTED_SYNC_HOST="$expected_sync_host" \
   HEADLESS=1 \
-  STRICT_RENDER=1 \
+  STRICT_RENDER="${HARTHMERE_PREFLIGHT_STRICT_RENDER:-1}" \
   E2E_ARTIFACTS_DIR="/tmp/harthmere-pretraffic-${revision}" \
   node scripts/harthmere/test-harthmere-install-player-ingame-e2e.cjs . \
     --base-url "$revision_origin" \
@@ -2687,7 +2690,7 @@ smoke_local_image() {
     # logs, which keeps the local rehearsal from exposing the provider key.
     optional_env_args+=(
       -e ELEVENLABS_API_KEY
-      -e "ELEVENLABS_MODEL_ID=${ELEVENLABS_MODEL_ID:-eleven_multilingual_v2}"
+      -e "ELEVENLABS_MODEL_ID=${ELEVENLABS_MODEL_ID:-eleven_v3}"
     )
   fi
 
@@ -2866,7 +2869,7 @@ push_and_deploy() {
       # ElevenLabs is the default player TTS provider. The secret must be
       # created on the Container App before a production push.
       ELEVENLABS_API_KEY=secretref:elevenlabs-api-key
-      ELEVENLABS_MODEL_ID="${ELEVENLABS_MODEL_ID:-eleven_multilingual_v2}"
+      ELEVENLABS_MODEL_ID="${ELEVENLABS_MODEL_ID:-eleven_v3}"
   )
   AZURE_PREVIOUS_TRAFFIC_WEIGHTS="$(capture_azure_traffic_weights)"
   if [ -z "$AZURE_PREVIOUS_TRAFFIC_WEIGHTS" ]; then

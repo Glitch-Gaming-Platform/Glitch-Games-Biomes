@@ -24,6 +24,7 @@ import {
   getHarthmereJobsBoardTabs,
   getHarthmereMyJobsPanel,
   getHarthmerePostedJobsPanel,
+  harthmereJobsBoardStateFromUpdatedEventDetail,
   isHarthmereJobsBoardAvailable,
   nearestHarthmereJobsBoardPhysicalPrompt,
   nearestPhysicalHarthmereJobsBoardId,
@@ -412,6 +413,14 @@ describe("Harthmere universal jobs board live adapter", () => {
     );
     assert.equal(stateEvents.length, 1);
     assert.equal(stateEvents[0].detail.jobsBoardState.actorId, "player_a");
+    assert.equal(
+      (
+        harthmereJobsBoardStateFromUpdatedEventDetail(
+          stateEvents[0].detail
+        ) as any
+      ).actorId,
+      "player_a"
+    );
   });
 
   it("emits live inventory sync when a jobs board mutation grants items or gold", async () => {
@@ -646,7 +655,7 @@ describe("Harthmere universal jobs board live adapter", () => {
     assert.equal(payload.requiresFieldWork, true);
   });
 
-  it("adapter exposes fetch/post/accept/complete/cancel helpers", async () => {
+  it("adapter exposes fetch/post/accept/complete/cancel/abandon helpers", async () => {
     const calls: any[] = [];
     const fetchImpl = (async (url: string, init: any) => {
       calls.push({ url, init });
@@ -688,7 +697,12 @@ describe("Harthmere universal jobs board live adapter", () => {
       HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
       "cancel_req"
     );
-    assert.equal(calls.length, 6);
+    await adapter.abandonJob(
+      "job_1",
+      HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
+      "abandon_req"
+    );
+    assert.equal(calls.length, 7);
     assert.equal(
       JSON.parse(calls[1].init.body).payload.operation,
       "daily_task_completed"
@@ -708,6 +722,10 @@ describe("Harthmere universal jobs board live adapter", () => {
     assert.equal(
       JSON.parse(calls[5].init.body).payload.operation,
       "cancel_job"
+    );
+    assert.equal(
+      JSON.parse(calls[6].init.body).payload.operation,
+      "abandon_job"
     );
   });
 });

@@ -12,6 +12,7 @@ import {
   submitLiveEntityHelperQuestMutation,
 } from "./liveEntityHelperQuestLiveAdapter";
 import {
+  LIVE_ENTITY_HELPER_QUEST_TARGET_MARKERS,
   LIVE_ENTITY_HELPER_QUEST_DEFINITIONS,
   liveEntityHelperQuestId,
   type LiveEntityHelperQuestInstance,
@@ -245,11 +246,15 @@ describe("live-entity helper live-mode adapter", () => {
       } as any;
     };
 
+    const westBreach = LIVE_ENTITY_HELPER_QUEST_TARGET_MARKERS.find(
+      (marker) => marker.areaId === "west_muck_breach"
+    );
+    assert.ok(westBreach);
     await submitLiveEntityRobotRechargeMutation(
       {
         entityId: "west-breach-sentinel",
         label: "West Muck Breach Sentinel",
-        position: [232, 54, -506],
+        position: westBreach.position,
       },
       { fetchImpl: fetchImpl as any, requestId: "recharge-sentinel" }
     );

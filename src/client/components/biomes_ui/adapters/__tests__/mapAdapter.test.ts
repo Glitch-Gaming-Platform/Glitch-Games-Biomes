@@ -926,7 +926,7 @@ describe("biomes_ui map adapter (V141)", () => {
       .find((entry) => entry.questId === "moss_that_went_quiet");
     assert.equal(quest?.status, "active");
     assert.equal(quest?.title, "The Moss That Went Quiet");
-    assert.equal(quest?.objective, quest?.objectives[1]);
+    assert.equal(quest?.objective, quest?.objectives?.[1]);
     assert.equal(quest?.firstMarkerId, "mosslawn_warning_moss");
 
     const marker = adapter

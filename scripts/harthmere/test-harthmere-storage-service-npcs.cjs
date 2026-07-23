@@ -16,5 +16,9 @@ check("storage debug bridge exposes bank/mail/recovery actions", hasAll(storage,
 check("trade debug bridge exposes trade and auction actions", read(root, tradeRel).includes("__harthmereTradeAuction"));
 check("Unified HUD imports trade auction panel", hud.includes("HarthmereTradeAuctionMenuPanel"));
 check("Unified HUD imports storage mail recovery panel", hud.includes("HarthmereStorageMailRecoveryMenuPanel"));
-check("Unified HUD renders both panels", hud.includes("<HarthmereTradeAuctionMenuPanel />") && hud.includes("<HarthmereStorageMailRecoveryMenuPanel />"));
+check("legacy Unified HUD retires duplicate storage/trade panels in favor of BiomesUI", hasAll(hud, [
+  "HARTHMERE_LEGACY_BIOMES_SYSTEMS_PANEL_RETIRED",
+  "The replacement BiomesUI now owns Journal/Inventory/Map/Bank/Skills/etc.",
+  "return null;",
+]));
 finish();

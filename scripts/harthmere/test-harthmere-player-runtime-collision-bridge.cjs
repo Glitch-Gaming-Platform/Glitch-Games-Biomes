@@ -89,7 +89,7 @@ check(
 
 check(
   "browser stats expose runtime bridge marker and no-obstacle state",
-  player.includes("runtimeBridgeVersion: HARTHMERE_PLAYER_TOWN_COLLISION_RUNTIME_BRIDGE_ENABLED") &&
+  /runtimeBridgeVersion:\s*HARTHMERE_PLAYER_TOWN_COLLISION_RUNTIME_BRIDGE_ENABLED/.test(player) &&
     player.includes("no_obstacles_exported_yet"),
   "Expected window.__harthmereHorizontalPlayerTownCollisionStats to reveal whether the bridge is active or missing exported obstacles"
 );

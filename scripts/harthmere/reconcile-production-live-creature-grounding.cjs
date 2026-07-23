@@ -18,7 +18,9 @@ const {
   deserializeRedisEntityState,
   unpackFromRedis,
 } = require("../../src/server/shared/world/lua/serde");
-const { terrainCollides } = require("../../src/shared/asset_defs/quirk_helpers");
+const {
+  terrainCollides,
+} = require("../../src/shared/asset_defs/quirk_helpers");
 const {
   NpcMetadata,
   Position,
@@ -27,6 +29,7 @@ const {
 const { blockPos, voxelShard } = require("../../src/shared/game/shard");
 const { loadTerrain } = require("../../src/shared/game/terrain");
 const {
+  harthmereLiveEntityIsTownLivestock,
   harthmereLiveEntitySizeForSeed,
   harthmereMuckMonsterPositionIsInSafeZone,
   harthmereRespawningLiveCreatureSeeds,
@@ -91,10 +94,30 @@ function decodeEntity(id, raw) {
   }
 }
 
-function validCreatureXZ(position) {
+function creatureUsesFlatExtensionSurface(seed) {
   return (
-    Boolean(position) &&
-    isHarthmereExtensionWorldPosition(position) &&
+    harthmereLiveEntityIsTownLivestock(seed) ||
+    (seed.kind === "ambient_bandit" &&
+      isHarthmereExtensionWorldPosition(seed.position))
+  );
+}
+
+function validCreatureXZ(seed, position) {
+  if (!position) return false;
+  if (creatureUsesFlatExtensionSurface(seed)) {
+    return isHarthmereExtensionWorldPosition(position);
+  }
+  if (seed.kind === "ambient_bandit") {
+    return (
+      !isHarthmereExtensionWorldPosition(position) &&
+      Math.hypot(
+        position[0] - seed.position[0],
+        position[2] - seed.position[2]
+      ) <= 24
+    );
+  }
+  return (
+    !isHarthmereExtensionWorldPosition(position) &&
     !harthmereMuckMonsterPositionIsInSafeZone(position) &&
     Boolean(muckMonsterAreaForPosition(position, 1.5))
   );
@@ -111,7 +134,7 @@ async function loadCreatureRows(redis, seeds) {
     const spawn = entity?.hasNpcMetadata?.()
       ? entity.npcMetadata()?.spawn_position
       : undefined;
-    const currentXZIsValid = validCreatureXZ(current);
+    const currentXZIsValid = validCreatureXZ(seed, current);
     const sourcePosition = currentXZIsValid ? current : seed.position;
     return {
       seed,
@@ -262,7 +285,7 @@ function bodyCanStandAt(solid, position, feetY, size) {
   return true;
 }
 
-function supportedFlatTargetNear(position, size, solid) {
+function supportedSurfaceTargetNear(seed, position, size, solid) {
   const offsets = [];
   for (let dx = -10; dx <= 10; dx += 1) {
     for (let dz = -10; dz <= 10; dz += 1) {
@@ -274,21 +297,30 @@ function supportedFlatTargetNear(position, size, solid) {
       ax * ax + az * az - (bx * bx + bz * bz) || ax - bx || az - bz
   );
   for (const [dx, dz] of offsets) {
-    const target = [
-      position[0] + dx,
-      HARTHMERE_EXTENSION_FEET_Y,
-      position[2] + dz,
-    ];
-    if (
-      validCreatureXZ(target) &&
-      bodyCanStandAt(
-        solid,
-        target,
-        HARTHMERE_EXTENSION_FEET_Y,
-        size
-      )
-    ) {
-      return target;
+    const x = position[0] + dx;
+    const z = position[2] + dz;
+    if (creatureUsesFlatExtensionSurface(seed)) {
+      const target = [x, HARTHMERE_EXTENSION_FEET_Y, z];
+      if (
+        validCreatureXZ(seed, target) &&
+        bodyCanStandAt(solid, target, HARTHMERE_EXTENSION_FEET_Y, size)
+      ) {
+        return target;
+      }
+      continue;
+    }
+
+    // Original-map terrain is hilly and can contain caves below the surface.
+    // Scan top-down so a creature is placed on the outdoor surface rather than
+    // on a lower cave floor, then validate its whole body footprint and air.
+    for (let feetY = PROBE_TOP_Y; feetY >= PROBE_BOTTOM_Y; feetY -= 1) {
+      const target = [x, feetY, z];
+      if (
+        validCreatureXZ(seed, target) &&
+        bodyCanStandAt(solid, target, feetY, size)
+      ) {
+        return target;
+      }
     }
   }
   return undefined;
@@ -298,7 +330,12 @@ function resolveTarget(row, solid) {
   const size = harthmereLiveEntitySizeForSeed(row.seed);
   const candidates = [row.sourcePosition, row.seed.position];
   for (let index = 0; index < candidates.length; index += 1) {
-    const target = supportedFlatTargetNear(candidates[index], size, solid);
+    const target = supportedSurfaceTargetNear(
+      row.seed,
+      candidates[index],
+      size,
+      solid
+    );
     if (target) {
       return {
         target,
@@ -313,8 +350,9 @@ function resolveTarget(row, solid) {
 function repairReasons(row, resolution) {
   const reasons = [];
   if (!row.entity || !row.current) reasons.push("missing_or_unpositioned");
-  if (row.hp === undefined || row.hp <= 0) reasons.push("dead_or_missing_health");
-  if (!row.currentXZIsValid) reasons.push("outside_muck_or_safe_bounds");
+  if (row.hp === undefined || row.hp <= 0)
+    reasons.push("dead_or_missing_health");
+  if (!row.currentXZIsValid) reasons.push("outside_authored_creature_bounds");
   if (!resolution.target) reasons.push("no_supported_terrain");
   if (
     resolution.target &&
@@ -411,7 +449,7 @@ async function verifyReadback(redis, seeds, targetById, solid) {
       distance3(row.current, target) > POSITION_TOLERANCE ||
       distance3(row.spawn, target) > POSITION_TOLERANCE ||
       !sameSize(row.size, expectedSize) ||
-      !validCreatureXZ(row.current) ||
+      !validCreatureXZ(row.seed, row.current) ||
       !bodyCanStandAt(solid, row.current, row.current[1], expectedSize) ||
       row.hasExpires
     ) {
@@ -464,6 +502,11 @@ async function main() {
     const muckers = hostileSeeds.filter((seed) => seed.combatKind !== "hex");
     const hexes = hostileSeeds.filter((seed) => seed.combatKind === "hex");
     const animals = seeds.filter((seed) => seed.kind === "ambient_livestock");
+    const bandits = seeds.filter((seed) => seed.kind === "ambient_bandit");
+    const townAnimals = animals.filter(harthmereLiveEntityIsTownLivestock);
+    const wildAnimals = animals.filter(
+      (seed) => !harthmereLiveEntityIsTownLivestock(seed)
+    );
     console.log(
       JSON.stringify(
         {
@@ -473,6 +516,9 @@ async function main() {
             muckers: muckers.length,
             hexes: hexes.length,
             animals: animals.length,
+            wildAnimals: wildAnimals.length,
+            townAnimals: townAnimals.length,
+            bandits: bandits.length,
           },
           repairPlanned: result.repairPlans.length,
           repairApplied: result.applied,
@@ -486,11 +532,17 @@ async function main() {
     );
     if (failures.length) {
       throw new Error(
-        `${failures.length} Harthmere creature(s) remain missing, dead, floating, buried, wrongly sized, or outside Muck containment`
+        `${failures.length} Harthmere creature(s) remain missing, dead, floating, buried, wrongly sized, or outside their authored creature bounds`
       );
     }
     console.log(
-      "OK all 100 Muckers/Hexes and 24 animals exist, are alive, body-supported, correctly sized, contained, and have grounded respawn anchors."
+      `OK all ${muckers.length + hexes.length} Muckers/Hexes, ${
+        wildAnimals.length
+      } original-map wildlife, ${
+        townAnimals.length
+      } Harthmere town animals, and ${
+        bandits.length
+      } bandits exist, are alive, body-supported, correctly sized, contained, and have grounded respawn anchors.`
     );
   } finally {
     for (const value of terrainByShard?.values?.() ?? []) {

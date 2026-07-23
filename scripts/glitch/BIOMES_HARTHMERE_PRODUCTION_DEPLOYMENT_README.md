@@ -409,7 +409,7 @@ az containerapp update \
     AZURE_SPEECH_REGION="eastus2" \
     AZURE_SPEECH_KEY="secretref:azure-speech-key" \
     ELEVENLABS_API_KEY="secretref:elevenlabs-api-key" \
-    ELEVENLABS_MODEL_ID="eleven_multilingual_v2"
+    ELEVENLABS_MODEL_ID="eleven_v3"
 ```
 
 The deployment script references `elevenlabs-api-key` by name and never accepts
@@ -1023,7 +1023,7 @@ Keep the control token in the same shell that launched the local container:
 
 ```bash
 HARTHMERE_E2E_BASE_URL=http://127.0.0.1:3000 \
-HARTHMERE_E2E_URL=http://127.0.0.1:3000/at/Joe \
+HARTHMERE_E2E_URL=http://127.0.0.1:3000/at \
 HARTHMERE_E2E_CONTROL_TOKEN="$HARTHMERE_E2E_CONTROL_TOKEN" \
 yarn harthmere:test:native-ecs-e2e
 ```
@@ -1268,8 +1268,8 @@ After deploy:
       surface-hole, and retired-terrain counts.
 - [ ] Snapshot combat NPC reconciliation reports all Muckers outside Grove and
       town safe zones; the first combat Muckling is in the watchtower clearing.
-- [ ] The persisted live-creature grounding pass reports all `100`
-      Muckers/Hexes and `24` animals alive with body-supported feet, exact
+- [ ] The persisted live-creature grounding pass reports all `116`
+      Muckers/Hexes and `56` animals alive with body-supported feet, exact
       grounded respawn anchors, species-correct sizes, and zero unresolved
       readback failures.
 - [ ] Logs show `/api/assets/player_mesh.glb` responses without automatic redirects to the Harthmere static body fallback.

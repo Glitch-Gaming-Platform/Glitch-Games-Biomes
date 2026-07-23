@@ -115,7 +115,7 @@ async function main() {
   check(
     HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS.length ===
       HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_PRODUCTION_COUNT,
-    "production has exactly 100 ambient Muck/Hex hostile seeds"
+    "production has exactly 116 ambient Muck/Hex hostile seeds"
   );
   check(
     HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS.some(
@@ -136,7 +136,7 @@ async function main() {
   const serverCombatEntries = Object.entries(serverCombat);
   // The combat snapshot now also carries retaliating wildlife (cows/sheep/
   // rabbits, entityKind "animal") alongside the Muck/Hex hostiles, so assert the
-  // 100 hostiles are all present rather than that the snapshot is hostiles-only.
+  // 116 hostiles are all present rather than that the snapshot is hostiles-only.
   const serverCombatHostileEntries = serverCombatEntries.filter(
     ([, snapshot]) =>
       snapshot.entityKind === "mux" || snapshot.entityKind === "hex"

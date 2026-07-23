@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
-const { createHarness, inventorySource, economySource, vendorSource } = require("./harthmere-economy-test-lib.cjs");
+const { createHarness, inventorySource, economySource, vendorRuntimeSource } = require("./harthmere-economy-test-lib.cjs");
 const h = createHarness("Harthmere transaction log integrity current");
 const inv = inventorySource(h);
 const eco = economySource(h);
-const vendor = vendorSource(h);
+const vendor = vendorRuntimeSource(h);
 for (const field of ["system", "actorId", "action", "detail", "reason", "success"]) {
   h.ok(inv.includes(field), `inventory log includes ${field}`);
 }

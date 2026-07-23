@@ -53,7 +53,7 @@ export type HarthmereResidentHomeAssignment = {
   readonly homeType: "nice_room" | "slum_room" | "stable" | "kennel" | "roost" | "wild_lair" | "crypt" | "barracks_bunk" | "service_quarters";
 };
 
-export const HARTHMERE_RESIDENT_HOUSING_EXPECTED_NPC_COUNT = 194;
+export const HARTHMERE_RESIDENT_HOUSING_EXPECTED_NPC_COUNT = 195;
 export const HARTHMERE_RESIDENT_HOUSING_EXPECTED_HUMANOID_COUNT = 133;
 export const HARTHMERE_RESIDENT_HOUSING_EXPECTED_ANIMAL_COUNT = 61;
 export const HARTHMERE_RESIDENT_HOUSING_EXPECTED_MUDDEN_COUNT = 14;

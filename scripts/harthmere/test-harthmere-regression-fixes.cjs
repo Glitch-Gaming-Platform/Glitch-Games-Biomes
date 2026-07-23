@@ -54,7 +54,7 @@ check(
 );
 check(
   "NPC serde avoids excessive Zod type-depth inference after current state additions while preserving typed state",
-  (/const zNpcStateBase[0-9]: any = z\.object\(\{\}\);/.test(serde) && (/as z\.ZodTypeAny/.test(serde) || /\.default\(\{\}\) as any;/.test(serde))) &&
+  (/const zNpcStateBase(?:[0-9]+)?: any = z\.object\(\{\}\);/.test(serde) && (/as z\.ZodTypeAny/.test(serde) || /\.default\(\{\}\) as any;/.test(serde))) &&
     /export function serializeNpcCustomState\(decoded: DeserializedNpcState\)/.test(serde) &&
     /export type DeserializedNpcState = \{/.test(serde) &&
     /chaseAttack\?: \{[\s\S]*attackTarget\?: BiomesId/.test(serde)

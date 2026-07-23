@@ -61,13 +61,6 @@ function questIsRoadAheadStoryQuest(quest: MapTrackableQuest): boolean {
   );
 }
 
-function questIsJobsBoardQuest(quest: MapTrackableQuest): boolean {
-  return (
-    quest.questId.startsWith("jobs_board:") ||
-    quest.firstMarkerId?.startsWith("jobs_board_") === true
-  );
-}
-
 function questObjectiveForHUD(
   quest: MapTrackableQuest | undefined,
   pin?: BiomesUIActiveMapPin
@@ -127,24 +120,23 @@ export function currentQuestObjectiveForHUDForTest(input: {
       questIsDisplayableOnHUD(quest) &&
       questObjectiveForHUD(quest)
   );
-  const pinnedQuestForHUD =
-    activeRoadAheadQuest && pinnedQuest && questIsJobsBoardQuest(pinnedQuest)
-      ? undefined
-      : pinnedQuest;
   const currentMissionStep = input.missionSteps?.find(
     (step) => !step.done && cleanObjectiveText(step.objective)
   );
   return (
+    // An explicit map destination is the player's current instruction. It must
+    // override the default story quest; otherwise selecting an accepted job
+    // changes the beam but leaves the HUD permanently showing Road Ahead.
+    questObjectiveForHUD(
+      pinnedQuest && questIsDisplayableOnHUD(pinnedQuest)
+        ? pinnedQuest
+        : undefined,
+      input.activeMapPin
+    ) ??
     questObjectiveForHUD(mainQuest) ??
     (input.quests.length === 0
       ? cleanObjectiveText(input.mainQuestSelection?.objective)
       : undefined) ??
-    questObjectiveForHUD(
-      pinnedQuestForHUD && questIsDisplayableOnHUD(pinnedQuestForHUD)
-        ? pinnedQuestForHUD
-        : undefined,
-      input.activeMapPin
-    ) ??
     questObjectiveForHUD(activeRoadAheadQuest) ??
     questObjectiveForHUD(activeQuest) ??
     cleanObjectiveText(currentMissionStep?.objective)

@@ -29,6 +29,10 @@ const liveEntitySeed = fs.readFileSync(
   "src/server/harthmere/live_entity_ecs_seed.ts",
   "utf8"
 );
+const liveEntityProductionSeed = fs.readFileSync(
+  "src/shared/harthmere/live_entity_production_seed.ts",
+  "utf8"
+);
 const mapTerrain = fs.readFileSync(
   "src/client/components/biomes_ui/adapters/harthmereMapTerrainRegions.ts",
   "utf8"
@@ -138,7 +142,21 @@ ok(
 ok(
   liveEntitySeed.includes("position: seed.position") &&
     !liveEntitySeed.includes("resolveHarthmereProductionMarkerPosition"),
-  "live entity ECS seeds use canonical additive-world positions"
+  "live entity ECS seeds use their canonical per-coordinate-space positions"
+);
+ok(
+  liveEntityProductionSeed.includes("return recommended;") &&
+    liveEntityProductionSeed.includes("harthmereLiveEntityIsTownLivestock") &&
+    liveEntityProductionSeed.includes(
+      "HARTHMERE_LIVE_ENTITY_TOWN_LIVESTOCK_SEEDS"
+    ),
+  "original-map creatures preserve terrain-sampled XYZ while Harthmere uses a separate town herd"
+);
+ok(
+  shim.includes("allowMuckwad") &&
+    shim.includes("!isHarthmereExtensionWorldPosition") &&
+    shim.includes('copperOre: terrainId("copper_ore"'),
+  "additive Harthmere suppresses Muck terrain and includes sparse copper resources"
 );
 ok(
   worldSync.includes("position: seed.position") &&
@@ -147,7 +165,7 @@ ok(
     !worldSync.includes(
       "check(\n    true,\n    `live entity positions converged"
     ),
-  "post-deploy world sync preserves and verifies additive-world coordinates"
+  "post-deploy world sync preserves and verifies canonical creature coordinates"
 );
 ok(
   productionPlacement.includes("ADDITIVE_HARTHMERE_MARKER_PLACEMENT") &&
@@ -162,8 +180,11 @@ ok(
 for (const family of [
   "additive_town_npcs",
   "additive_robot_sentinels",
-  "additive_muckers_hexers",
-  "additive_animals",
+  "additive_town_animals",
+  "additive_town_bandits",
+  "original_muckers_hexers",
+  "original_muck_area_animals",
+  "original_road_camp_bandits",
   "original_grove_npcs",
   "original_snapshot_hostiles",
   "original_business_owners",
@@ -229,7 +250,7 @@ ok(
   "isolated terrain maintenance has a dedicated one-hour readiness window"
 );
 ok(
-  deploy.includes('max_suffix_length=$((54 - ${#AZURE_CONTAINER_APP} - 2))') &&
+  deploy.includes("max_suffix_length=$((54 - ${#AZURE_CONTAINER_APP} - 2))") &&
     deploy.includes(
       'suffix="$(printf \'terrain-%s\' "$tag_slug" | cut -c1-"$max_suffix_length")"'
     ),

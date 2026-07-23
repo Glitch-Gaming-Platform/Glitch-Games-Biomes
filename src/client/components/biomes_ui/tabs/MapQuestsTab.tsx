@@ -887,7 +887,8 @@ export const MapQuestsTab: React.FunctionComponent<{
     if (playerMarker) byId.set(playerMarker.id, playerMarker);
     return Array.from(byId.values());
   }, [markers, activeMapPinMarker, playerMarker]);
-  const title = adapter?.getMissionTitle?.() ?? "No active mission";
+  const adapterMissionTitle =
+    adapter?.getMissionTitle?.() ?? "No active mission";
   const steps = adapter?.getMissionSteps?.() ?? [];
   const trackableQuests = adapter?.getTrackableQuests?.() ?? [];
   const mainQuest = React.useMemo(
@@ -896,6 +897,10 @@ export const MapQuestsTab: React.FunctionComponent<{
     [trackableQuests, mainQuestSelection]
   );
   const mainQuestId = mainQuest?.questId ?? mainQuestSelection?.questId;
+  // Keep the panel heading aligned with the exact quest selected by the
+  // player. Adapter mission order may contain an older native/main quest first,
+  // which previously made a correctly accepted jobs-board quest look wrong.
+  const title = mainQuest?.title ?? adapterMissionTitle;
   const layerEnabled = React.useCallback(
     (tab: MapPanelTab) => enabledLayers.has(tab),
     [enabledLayers]

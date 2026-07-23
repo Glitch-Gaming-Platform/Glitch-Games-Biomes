@@ -4,7 +4,7 @@
 //   ←/→ : move focus between tabs (rolls over)
 //   Enter / Space : activate the focused tab
 //   Tab : moves focus out of the rail (standard browser behavior)
-//   Direct shortcut keys: R/I/B/K/Y/L/O/G/P/M/C/V/, also activate.
+//   Direct shortcut keys: R/I/P/B/K/Y/L/O/G/Q/M/C/V/, also activate.
 //
 // Mouse: click a tab to activate. Hover shows tooltip with shortcut hint.
 
@@ -25,6 +25,7 @@ interface BiomesNavProps {
 const tabIdMap: Record<TabKey, string> = {
   daily: UI_IDS.TAB_DAILY,
   inventory: UI_IDS.TAB_INVENTORY,
+  farming: UI_IDS.TAB_FARMING,
   abilities: UI_IDS.TAB_ABILITIES,
   skills: UI_IDS.TAB_SKILLS,
   classes: UI_IDS.TAB_CLASSES,
@@ -56,8 +57,8 @@ export const BiomesNav: React.FunctionComponent<BiomesNavProps> = ({
   }, [activeTab]);
 
   const focusIndex = useCallback((idx: number) => {
-    const clamped = ((idx % TAB_ORDER.length) + TAB_ORDER.length) %
-      TAB_ORDER.length;
+    const clamped =
+      ((idx % TAB_ORDER.length) + TAB_ORDER.length) % TAB_ORDER.length;
     setFocusedIndex(clamped);
     buttonRefs.current[clamped]?.focus();
   }, []);
@@ -132,7 +133,9 @@ export const BiomesNav: React.FunctionComponent<BiomesNavProps> = ({
               onFocus={() => setFocusedIndex(idx)}
               title={`${desc.label} (${desc.shortcut}) — ${desc.subtitle}`}
             >
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <span
+                style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
+              >
                 {desc.code}
                 <span
                   style={{
@@ -153,8 +156,7 @@ export const BiomesNav: React.FunctionComponent<BiomesNavProps> = ({
                       height: 16,
                       padding: "0 4px",
                       borderRadius: 10,
-                      background:
-                        "linear-gradient(135deg,#ff54c4,#ff8a3d)",
+                      background: "linear-gradient(135deg,#ff54c4,#ff8a3d)",
                       color: "#fff",
                       fontSize: 10,
                       fontWeight: 800,

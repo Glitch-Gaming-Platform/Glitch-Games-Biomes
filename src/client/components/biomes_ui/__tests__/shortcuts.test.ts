@@ -7,7 +7,12 @@ import {
 } from "../shortcuts/BiomesShortcuts";
 
 function dispatchKey(key: string, opts: KeyboardEventInit = {}) {
-  const e = new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true, ...opts });
+  const e = new KeyboardEvent("keydown", {
+    key,
+    bubbles: true,
+    cancelable: true,
+    ...opts,
+  });
   document.dispatchEvent(e);
   return e;
 }
@@ -24,17 +29,30 @@ describe("BiomesUI tab shortcuts", () => {
 
   it("toggles the matched tab when its key is pressed", () => {
     const seen: string[] = [];
-    const cleanup = installTabShortcuts(DEFAULT_TAB_SHORTCUTS, (t) => { seen.push(t); }, () => false);
+    const cleanup = installTabShortcuts(
+      DEFAULT_TAB_SHORTCUTS,
+      (t) => {
+        seen.push(t);
+      },
+      () => false
+    );
     dispatchKey("i");
+    dispatchKey("p");
     dispatchKey("m");
     dispatchKey(",");
     cleanup();
-    assert.deepEqual(seen, ["inventory", "map", "options"]);
+    assert.deepEqual(seen, ["inventory", "farming", "map", "options"]);
   });
 
   it("ignores keys when isTypingInInput is true (chat protection)", () => {
     const seen: string[] = [];
-    const cleanup = installTabShortcuts(DEFAULT_TAB_SHORTCUTS, (t) => { seen.push(t); }, () => true);
+    const cleanup = installTabShortcuts(
+      DEFAULT_TAB_SHORTCUTS,
+      (t) => {
+        seen.push(t);
+      },
+      () => true
+    );
     dispatchKey("i");
     cleanup();
     assert.deepEqual(seen, []);
@@ -42,7 +60,13 @@ describe("BiomesUI tab shortcuts", () => {
 
   it("ignores Cmd/Ctrl/Alt-modified keys (preserves browser shortcuts)", () => {
     const seen: string[] = [];
-    const cleanup = installTabShortcuts(DEFAULT_TAB_SHORTCUTS, (t) => { seen.push(t); }, () => false);
+    const cleanup = installTabShortcuts(
+      DEFAULT_TAB_SHORTCUTS,
+      (t) => {
+        seen.push(t);
+      },
+      () => false
+    );
     dispatchKey("i", { ctrlKey: true });
     dispatchKey("m", { metaKey: true });
     dispatchKey("o", { altKey: true });
@@ -52,7 +76,13 @@ describe("BiomesUI tab shortcuts", () => {
 
   it("cleanup removes the listener", () => {
     const seen: string[] = [];
-    const cleanup = installTabShortcuts(DEFAULT_TAB_SHORTCUTS, (t) => { seen.push(t); }, () => false);
+    const cleanup = installTabShortcuts(
+      DEFAULT_TAB_SHORTCUTS,
+      (t) => {
+        seen.push(t);
+      },
+      () => false
+    );
     cleanup();
     dispatchKey("i");
     assert.deepEqual(seen, []);

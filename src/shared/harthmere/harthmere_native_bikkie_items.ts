@@ -406,6 +406,16 @@ const HARTHMERE_LOCAL_CROP_BLOCK_IDS: Readonly<Record<string, BiomesId>> = {
   muckroot: 6_127_458_937_593_352 as BiomesId,
 };
 
+function nativeFarmingToolAttributes(definition: HarthmereItemDefinition) {
+  if (definition.itemId === "7539420629350046") {
+    return { action: "till" as const, hardnessClass: 1 };
+  }
+  if (definition.itemId === "7539420629350045") {
+    return { action: "waterPlant" as const, waterAmount: 5 };
+  }
+  return undefined;
+}
+
 export function harthmereBiscuitForItemDefinition(
   definition: HarthmereItemDefinition,
   presentationSource?: Biscuit
@@ -433,6 +443,7 @@ export function harthmereBiscuitForItemDefinition(
   const seedDefinition = Object.values(HARTHMERE_SEED_DEFINITIONS).find(
     (seed) => seed.seedItemId === definition.itemId
   );
+  const farmingToolAttributes = nativeFarmingToolAttributes(definition);
   const cropBlockId = seedDefinition
     ? safeParseBiomesId(seedDefinition.cropItemId) ??
       HARTHMERE_LOCAL_CROP_BLOCK_IDS[seedDefinition.cropItemId]
@@ -515,6 +526,11 @@ export function harthmereBiscuitForItemDefinition(
     )
       ? { isTool: true }
       : {}),
+    // Farming interactions are selected-item driven. Publishing the standard
+    // action and item attributes here makes the exact Harthmere tools usable by
+    // the normal Biomes hotbar/interact script and keeps the OwnedItemReference
+    // that reaches logic authoritative.
+    ...farmingToolAttributes,
     ...wearableAttributes(definition),
   } as Biscuit;
 }
@@ -580,6 +596,16 @@ export function withHarthmereNativeBikkieItems(
       // may return the prior augmented tray when the baked tray id is unchanged.
       // A generated string id must never overwrite unrelated snapshot data.
       if (safeParseBiomesId(definition.itemId) !== undefined) {
+        const farmingToolAttributes = nativeFarmingToolAttributes(definition);
+        if (farmingToolAttributes) {
+          contents.set(id, {
+            ...existing,
+            isTool: true,
+            ...farmingToolAttributes,
+          });
+          hashes.set(id, overlayHash);
+          continue;
+        }
         const profile = harthmereNativeConsumableProfile({ id });
         if (
           definition.isConsumable &&

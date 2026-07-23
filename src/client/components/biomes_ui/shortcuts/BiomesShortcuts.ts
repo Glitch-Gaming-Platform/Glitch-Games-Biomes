@@ -21,13 +21,14 @@ export interface TabShortcut {
 /** Default keybindings — overridable per-user in OptionsTab. */
 export const DEFAULT_TAB_SHORTCUTS: TabShortcut[] = [
   { key: "i", label: "I", tab: "inventory" },
+  { key: "p", label: "P", tab: "farming" },
   { key: "b", label: "B", tab: "abilities" },
   { key: "k", label: "K", tab: "skills" },
   { key: "y", label: "Y", tab: "classes" },
   { key: "l", label: "L", tab: "land" },
   { key: "o", label: "O", tab: "loot" },
   { key: "g", label: "G", tab: "guilds" },
-  { key: "p", label: "P", tab: "banking" },
+  { key: "q", label: "Q", tab: "banking" },
   { key: "m", label: "M", tab: "map" },
   { key: "c", label: "C", tab: "collections" },
   { key: "v", label: "V", tab: "inbox" },

@@ -211,11 +211,14 @@ describe("live mode systems frontend and SSR surfaces", () => {
   it("SSR-renders house buying and building surfaces without developer copy", () => {
     const html = renderToStaticMarkup(
       <LandTab
+        initialStep="plots"
         adapter={
           {
             isHydrated: () => true,
             getOwnedPlotIds: () => ["grove_muckstead_cottage_lot"],
-            getPlacedStructureIds: () => ["property_grove_muckstead_cottage_lot"],
+            getPlacedStructureIds: () => [
+              "property_grove_muckstead_cottage_lot",
+            ],
             getBuildingState: () => ({
               gold: 800,
               inventoryItems: { wood_plank: 12, stone_block: 8 },
@@ -253,6 +256,9 @@ describe("live mode systems frontend and SSR surfaces", () => {
     assert.ok(html.includes("Buy Plot"));
     assert.ok(html.includes("Build"));
     assert.ok(html.includes("Manage"));
+    assert.ok(html.includes("Choose another area and plot size"));
+    assert.ok(html.includes("Harthmere East Estates"));
+    assert.ok(html.includes("Additive town"));
     assertPlayerFacing(html);
   });
 
@@ -430,7 +436,13 @@ describe("live mode systems frontend and SSR surfaces", () => {
     assert.equal(vitals.standing?.likeability, 12);
     assert.equal(vitals.standing?.legal, -4);
 
-    for (const html of [guildHtml, skillsHtml, inventoryHtml, lootHtml, dailyHtml]) {
+    for (const html of [
+      guildHtml,
+      skillsHtml,
+      inventoryHtml,
+      lootHtml,
+      dailyHtml,
+    ]) {
       assertPlayerFacing(html);
     }
   });
@@ -453,11 +465,15 @@ describe("live mode systems frontend and SSR surfaces", () => {
     );
     assert.ok(
       businessHtml.includes("Marketplace"),
-      `business market SSR should include Marketplace, got: ${visibleText(businessHtml).slice(0, 300)}`
+      `business market SSR should include Marketplace, got: ${visibleText(
+        businessHtml
+      ).slice(0, 300)}`
     );
     assert.ok(
       businessHtml.toLowerCase().includes("worker meal"),
-      `business market SSR should include worker meal order copy, got: ${visibleText(businessHtml).slice(0, 300)}`
+      `business market SSR should include worker meal order copy, got: ${visibleText(
+        businessHtml
+      ).slice(0, 300)}`
     );
 
     const bountyMarker = {
@@ -528,7 +544,9 @@ describe("live mode systems frontend and SSR surfaces", () => {
     );
     assert.ok(
       mapHtml.includes("Map sections"),
-      `map SSR should include the map section nav label, got: ${visibleText(mapHtml).slice(0, 300)}`
+      `map SSR should include the map section nav label, got: ${visibleText(
+        mapHtml
+      ).slice(0, 300)}`
     );
     assert.equal(
       filterMapMissionStepsForTest(missionSteps, "muck")[0]?.objective,

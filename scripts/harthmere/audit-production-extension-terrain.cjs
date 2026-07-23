@@ -9,7 +9,10 @@ const {
   deserializeRedisEntityState,
 } = require("../../src/server/shared/world/lua/serde");
 const { loadVoxeloo } = require("../../src/server/shared/voxeloo");
-const { terrainCollides } = require("../../src/shared/asset_defs/quirk_helpers");
+const {
+  terrainCollides,
+} = require("../../src/shared/asset_defs/quirk_helpers");
+const { safeGetTerrainId } = require("../../src/shared/asset_defs/terrain");
 const { loadTerrain } = require("../../src/shared/game/terrain");
 const {
   HARTHMERE_ADDITIVE_TOWN_OFFSET_X,
@@ -35,6 +38,12 @@ const BATCH_SIZE = Math.max(
   Number.parseInt(process.env.HARTHMERE_TERRAIN_AUDIT_BATCH_SIZE || "250", 10)
 );
 const SHARD_DIM = 32;
+const FORBIDDEN_HARTHMERE_MUCK_TERRAIN_IDS = new Set(
+  ["muckwad", "DEPRECATED_muckwad", "splintered_muck", "mucky_brambles"]
+    .map((name) => safeGetTerrainId(name))
+    .filter((id) => id !== undefined)
+    .map(Number)
+);
 
 function isIntentionalSurfaceOpening(worldX, worldZ) {
   const [authoredX, , centerZ] =
@@ -50,7 +59,11 @@ function isIntentionalSurfaceOpening(worldX, worldZ) {
 
 function expectedBox(spec) {
   return {
-    v0: [spec.shardX * SHARD_DIM, spec.shardY * SHARD_DIM, spec.shardZ * SHARD_DIM],
+    v0: [
+      spec.shardX * SHARD_DIM,
+      spec.shardY * SHARD_DIM,
+      spec.shardZ * SHARD_DIM,
+    ],
     v1: [
       (spec.shardX + 1) * SHARD_DIM,
       (spec.shardY + 1) * SHARD_DIM,
@@ -60,7 +73,9 @@ function expectedBox(spec) {
 }
 
 function sameVec3(a, b) {
-  return Boolean(a && b && a.length === 3 && a.every((value, index) => value === b[index]));
+  return Boolean(
+    a && b && a.length === 3 && a.every((value, index) => value === b[index])
+  );
 }
 
 function decodeEntity(id, raw) {
@@ -73,7 +88,11 @@ function decodeEntity(id, raw) {
 }
 
 async function main() {
-  const redis = new Redis({ host: REDIS_HOST, port: REDIS_PORT, lazyConnect: true });
+  const redis = new Redis({
+    host: REDIS_HOST,
+    port: REDIS_PORT,
+    lazyConnect: true,
+  });
   await redis.connect();
   const voxeloo = await loadVoxeloo();
   const specs = harthmereExtensionFoundationShardSpecs();
@@ -81,6 +100,7 @@ async function main() {
   const invalid = [];
   const emptyFoundation = [];
   const surfaceHoles = [];
+  const forbiddenMuckBlocks = [];
   const retiredTerrainIds = [];
 
   try {
@@ -143,10 +163,30 @@ async function main() {
             continue;
           }
           if (spec.shardY !== 1) continue;
+          for (let localY = 0; localY < SHARD_DIM; localY += 1) {
+            for (let localZ = 0; localZ < SHARD_DIM; localZ += 1) {
+              for (let localX = 0; localX < SHARD_DIM; localX += 1) {
+                const terrainId = Number(terrain.get(localX, localY, localZ));
+                if (FORBIDDEN_HARTHMERE_MUCK_TERRAIN_IDS.has(terrainId)) {
+                  forbiddenMuckBlocks.push({
+                    id,
+                    position: [
+                      expected.v0[0] + localX,
+                      expected.v0[1] + localY,
+                      expected.v0[2] + localZ,
+                    ],
+                    terrainId,
+                  });
+                }
+              }
+            }
+          }
           const localGroundY = HARTHMERE_EXTENSION_GROUND_Y - expected.v0[1];
           for (let localZ = 0; localZ < SHARD_DIM; localZ += 1) {
             for (let localX = 0; localX < SHARD_DIM; localX += 1) {
-              const terrainId = Number(terrain.get(localX, localGroundY, localZ));
+              const terrainId = Number(
+                terrain.get(localX, localGroundY, localZ)
+              );
               const belowTerrainId = Number(
                 terrain.get(localX, localGroundY - 1, localZ)
               );
@@ -162,11 +202,7 @@ async function main() {
               if (!supportedSurface && !intentionalOpening) {
                 surfaceHoles.push({
                   id,
-                  position: [
-                    worldX,
-                    HARTHMERE_EXTENSION_GROUND_Y,
-                    worldZ,
-                  ],
+                  position: [worldX, HARTHMERE_EXTENSION_GROUND_Y, worldZ],
                   terrainId,
                   belowTerrainId,
                 });
@@ -190,7 +226,8 @@ async function main() {
           HARTHMERE_PREVIOUS_EXTENSION_TERRAIN_ENTITY_ID_LIMIT -
           HARTHMERE_PREVIOUS_EXTENSION_TERRAIN_ENTITY_ID_BASE,
       },
-      (_, offset) => HARTHMERE_PREVIOUS_EXTENSION_TERRAIN_ENTITY_ID_BASE + offset
+      (_, offset) =>
+        HARTHMERE_PREVIOUS_EXTENSION_TERRAIN_ENTITY_ID_BASE + offset
     );
     for (let start = 0; start < retiredIds.length; start += BATCH_SIZE) {
       const ids = retiredIds.slice(start, start + BATCH_SIZE);
@@ -214,12 +251,14 @@ async function main() {
     invalidCount: invalid.length,
     emptyFoundationCount: emptyFoundation.length,
     surfaceHoleShardCount: surfaceHoles.length,
+    forbiddenMuckBlockCount: forbiddenMuckBlocks.length,
     retiredTerrainCount: retiredTerrainIds.length,
     samples: {
       missing: missing.slice(0, 8),
       invalid: invalid.slice(0, 8),
       emptyFoundation: emptyFoundation.slice(0, 8),
       surfaceHoles: surfaceHoles.slice(0, 8),
+      forbiddenMuckBlocks: forbiddenMuckBlocks.slice(0, 8),
       retiredTerrainIds: retiredTerrainIds.slice(0, 8),
     },
   };
@@ -229,11 +268,14 @@ async function main() {
     invalid.length ||
     emptyFoundation.length ||
     surfaceHoles.length ||
+    forbiddenMuckBlocks.length ||
     retiredTerrainIds.length
   ) {
     throw new Error("Harthmere extension terrain audit failed");
   }
-  console.log("OK Harthmere extension is complete, flat at Y=52, and free of retired terrain shards.");
+  console.log(
+    "OK Harthmere extension is complete, flat at Y=52, free of Muck terrain, and free of retired terrain shards."
+  );
 }
 
 main().catch((error) => {

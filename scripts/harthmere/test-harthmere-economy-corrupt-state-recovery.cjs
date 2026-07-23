@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
-const { createHarness, inventorySource, economySource, vendorSource, hardeningSource } = require("./harthmere-economy-test-lib.cjs");
+const { createHarness, inventorySource, economySource, vendorRuntimeSource, hardeningSource } = require("./harthmere-economy-test-lib.cjs");
 const h = createHarness("Harthmere corrupt state recovery current");
 const inv = inventorySource(h);
 const eco = economySource(h);
-const vendor = vendorSource(h);
+const vendor = vendorRuntimeSource(h);
 const hard = hardeningSource(h);
 h.ok(hard.includes("nonNegativeInt") && hard.includes("Number.isFinite"), "hardening clamps corrupt numeric values");
 h.ok(hard.includes("normalizeHarthmereWallet"), "wallet normalization helper exists");

@@ -2,10 +2,12 @@
 // Production grounding gate for every deterministic Harthmere/Grove actor and
 // seeded object. It intentionally uses two coordinate contracts:
 //
-//   1. Additive Harthmere outdoor content is flat and must stand at feet Y=53
-//      inside the east extension bounds.
-//   2. Original snapshot/Grove content is hilly. Its real outdoor or indoor
-//      floor is resolved from production terrain at the entity's X/Z.
+//   1. Additive Harthmere outdoor content, including the separate town-animal
+//      herd and guarded prisoner, is flat and must stand at feet Y=53 inside
+//      the east extension.
+//   2. Original snapshot/Grove content, including all Muckers/Hexes and
+//      Muck-area wildlife plus road/camp bandits, is hilly. Its real outdoor or
+//      indoor floor is resolved from production terrain at the entity's X/Z.
 //
 // APPLY=1 repairs ECS position (and NPC spawn_position) before verifying the
 // persisted result. Player positions and player-authored placeables are never
@@ -46,7 +48,11 @@ const {
   HARTHMERE_LIVE_ENTITY_ROBOT_SENTINEL_SEEDS,
   harthmereGroundedLivestockSeedsInTerritory,
   harthmereGroundedMuckMonsterSeedsInTerritory,
+  harthmereLiveEntityIsTownLivestock,
 } = require("../../src/shared/harthmere/live_entity_production_seed");
+const {
+  HARTHMERE_NATIVE_BANDIT_SEEDS,
+} = require("../../src/shared/harthmere/bandit_production_seed");
 const {
   SNAPSHOT_GROVE_LOCAL_DEV_NPC_BASE,
   SNAPSHOT_GROVE_NPCS,
@@ -173,20 +179,42 @@ async function productionProbeItems() {
       )
     ),
     ...harthmereGroundedMuckMonsterSeedsInTerritory().map((seed) =>
-      extensionItem(
-        "additive_muckers_hexers",
+      originalOutdoorItem(
+        "original_muckers_hexers",
         seed.seedId,
         seed.entityId,
         seed.position
       )
     ),
     ...harthmereGroundedLivestockSeedsInTerritory().map((seed) =>
-      extensionItem(
-        "additive_animals",
-        seed.seedId,
-        seed.entityId,
-        seed.position
-      )
+      harthmereLiveEntityIsTownLivestock(seed)
+        ? extensionItem(
+            "additive_town_animals",
+            seed.seedId,
+            seed.entityId,
+            seed.position
+          )
+        : originalOutdoorItem(
+            "original_muck_area_animals",
+            seed.seedId,
+            seed.entityId,
+            seed.position
+          )
+    ),
+    ...HARTHMERE_NATIVE_BANDIT_SEEDS.map((seed) =>
+      isHarthmereExtensionWorldPosition(seed.position)
+        ? extensionItem(
+            "additive_town_bandits",
+            seed.seedId,
+            seed.entityId,
+            seed.position
+          )
+        : originalOutdoorItem(
+            "original_road_camp_bandits",
+            seed.seedId,
+            seed.entityId,
+            seed.position
+          )
     ),
     ...SNAPSHOT_GROVE_NPCS.filter((npc) => npc.seedServerNpc).map((npc) =>
       originalOutdoorItem(

@@ -13,8 +13,8 @@ const checks = [
   ["food apple default is tiny", /food_apple", "fbx\/props\/food\/quaternius_ultimate_food\/Apple\.fbx", 0\.006\)/.test(src)],
   ["food fish default is tiny", /food_fish", "fbx\/props\/food\/quaternius_ultimate_food\/Fish\.fbx", 0\.004\)/.test(src)],
   ["P() normalizes authored prop scale", /const normalizedScale = normalizeHarthmerePropPlacementScale\(asset, scale\);/.test(src)],
-  ["P() passes normalized scale to metadata", /scale: normalizedScale,\n\s*\}\);/.test(src)],
-  ["P() stores normalized scale on placement", /rot,\n\s*scale: normalizedScale,/.test(src)],
+  ["P() passes normalized/default scale to metadata", /const effectiveScale = normalizedScale \?\? assetByKey\.get\(asset\)\?\.defaultScale;[\s\S]{0,260}scale: effectiveScale,/.test(src)],
+  ["P() stores normalized/default scale on placement", /rot,\n\s*scale: effectiveScale,/.test(src)],
   ["town legacy wander is disabled inside town while route graph fixtures exist", /if \(!isWilds\) \{\n\s*return undefined;\n\s*\}/.test(src)],
 ];
 

@@ -8,11 +8,11 @@ const src = fs.readFileSync(file, "utf8");
 
 const checks = [
   ["version constant exists", /HARTHMERE_TEMPLE_GREEN_VERSION/],
-  ["base chapel shell still exists", /Ivory chapel body[\s\S]*Blue-gray chapel roof[\s\S]*Empty bell-frame clue/],
+  ["rebuilt block chapel shell and bell arch still exist", /chapel block-built placement exists|createHarthmereBlockBuiltServiceBuilding[\s\S]*Chapel of Saint Verena[\s\S]*Empty bell-frame clue/],
   ["temple service sign and banners exist", /Temple Green healer resurrection charity sign[\s\S]*Blue chapel healing banner mounted by entry[\s\S]*White chapel resurrection banner mounted by entry/],
   ["chapel entry lanterns and windows exist", /Temple entry lantern left of healing path[\s\S]*Temple entry lantern right of healing path[\s\S]*Lower stained-glass chapel window west wall[\s\S]*Lower stained-glass chapel window east wall[\s\S]*Upper stained-glass lantern window above altar/],
   ["resurrection altar service exists", /Resurrection altar service table[\s\S]*Left resurrection altar candles supported on altar[\s\S]*Right resurrection altar candles supported on altar[\s\S]*Open resurrection rite book supported on altar[\s\S]*Condition cleansing vial supported on altar[\s\S]*Resurrection point candle ring marker/],
-  ["charity station exists", /Charity turn-in table beside chapel aisle[\s\S]*Donation coins supported on charity table[\s\S]*Charity bread supported on charity table[\s\S]*Charity ledger supported on charity table[\s\S]*Charity food crate on floor beside table[\s\S]*Apple charity crate on floor/],
+  ["charity station exists", /Charity turn-in table beside chapel aisle[\s\S]*Donation coins supported on charity table[\s\S]*Charity bread supported on charity table[\s\S]*Charity ledger supported on charity table[\s\S]*Charity food crate on floor beside wall[\s\S]*Apple charity crate on floor/],
   ["lore archive exists", /Chapel lore archive bookcase against east wall[\s\S]*Missing Bell lore bookstand near archive[\s\S]*Missing Bell archive clue supported on bookstand[\s\S]*Archive books stacked on floor by bookcase/],
   ["candle vigil support exists", /Prayer candle shelf fixed to chapel wall[\s\S]*Left candle rack for candle vigil[\s\S]*Right candle rack for candle vigil/],
   ["infirmary/healing corner exists", /Injured traveler cot in chapel infirmary corner[\s\S]*Healing tincture supported beside injured traveler cot[\s\S]*Clean water bucket beside infirmary cot[\s\S]*Sister Maelle healer chair beside infirmary cot/],

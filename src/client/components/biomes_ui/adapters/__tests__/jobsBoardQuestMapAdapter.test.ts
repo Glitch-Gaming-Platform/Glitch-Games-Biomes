@@ -17,6 +17,11 @@ import {
   HARTHMERE_JOBS_BOARD_ELITE_MUCKER_BOUNTY_MARKER_ID,
   HARTHMERE_JOBS_BOARD_ELITE_MUCKER_BOUNTY_TARGET_ID,
 } from "@/shared/harthmere/jobs_board_muck_bounty_targets";
+import {
+  HARTHMERE_JOBS_BOARD_AUTO_SEED_TEMPLATES,
+  HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID,
+  harthmereAutoSeedTemplateRequirementsObtainable,
+} from "@/shared/harthmere/mmo_jobs_board_authority";
 import { muckMonsterAreaForPosition } from "@/shared/harthmere/muck_monster_aggression_ai";
 import {
   HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
@@ -177,6 +182,210 @@ describe("BiomesUI jobs board quest map adapter", () => {
     assert.equal(steps[0].id, "jobs_board:harthmere_job_todo_7");
     assert.equal(steps[0].done, false);
     assert.ok(steps[0].objective.includes("Clear the Muckwad Patch"));
+  });
+
+  it("keeps every accepted posting paired with its exact returned todo identity", () => {
+    const snapshot = acceptedJobsBoardSnapshot();
+    snapshot.myAcceptedJobs = [
+      {
+        ...snapshot.myAcceptedJobs[0],
+        jobId: "harthmere_auto_5",
+        title: "Bounty: Elite Mucker at the Muck Edge",
+        kind: "hunt",
+      },
+      {
+        ...snapshot.myAcceptedJobs[0],
+        jobId: "harthmere_auto_3",
+        title: "Plane Bench Planks for the Inn",
+        kind: "craft",
+        mapMarkerId: undefined,
+        targetId: undefined,
+      },
+      {
+        ...snapshot.myAcceptedJobs[0],
+        jobId: "harthmere_auto_8",
+        title: "Patch the Safe-Zone Fence",
+        kind: "repair",
+        mapMarkerId: "grove_repair_fence",
+        targetId: undefined,
+      },
+    ] as any;
+    snapshot.myTodos = [
+      {
+        ...snapshot.myTodos[0],
+        todoId: "harthmere_job_todo_4",
+        jobId: "harthmere_auto_5",
+        title: "Bounty: Elite Mucker at the Muck Edge",
+        kind: "hunt",
+      },
+      {
+        ...snapshot.myTodos[0],
+        todoId: "harthmere_job_todo_5",
+        jobId: "harthmere_auto_3",
+        title: "Plane Bench Planks for the Inn",
+        kind: "craft",
+        mapMarkerId: undefined,
+        targetId: undefined,
+      },
+      {
+        ...snapshot.myTodos[0],
+        todoId: "harthmere_job_todo_6",
+        jobId: "harthmere_auto_8",
+        title: "Patch the Safe-Zone Fence",
+        kind: "repair",
+        mapMarkerId: "grove_repair_fence",
+        targetId: undefined,
+      },
+    ] as any;
+
+    const quests = jobsBoardTrackableQuestsForBiomesUI(snapshot, NOW_MS);
+    assert.deepEqual(
+      quests.map((quest) => [quest.questId, quest.title, quest.kind]),
+      [
+        [
+          "jobs_board:harthmere_job_todo_4",
+          "Bounty: Elite Mucker at the Muck Edge",
+          "hunt",
+        ],
+        [
+          "jobs_board:harthmere_job_todo_5",
+          "Plane Bench Planks for the Inn",
+          "craft",
+        ],
+        [
+          "jobs_board:harthmere_job_todo_6",
+          "Patch the Safe-Zone Fence",
+          "repair",
+        ],
+      ]
+    );
+    assert.deepEqual(
+      jobsBoardAcceptedJobLandmarksForBiomesUI(snapshot).map((marker) => [
+        marker.jobsBoardTodoId,
+        marker.jobsBoardJobId,
+        marker.label,
+      ]),
+      [
+        [
+          "harthmere_job_todo_4",
+          "harthmere_auto_5",
+          "Bounty: Elite Mucker at the Muck Edge",
+        ],
+        [
+          "harthmere_job_todo_5",
+          "harthmere_auto_3",
+          "Plane Bench Planks for the Inn",
+        ],
+        [
+          "harthmere_job_todo_6",
+          "harthmere_auto_8",
+          "Patch the Safe-Zone Fence",
+        ],
+      ]
+    );
+  });
+
+  it("projects every executable production job template back into an exact frontend quest and marker", () => {
+    const snapshot = acceptedJobsBoardSnapshot() as any;
+    snapshot.boards[HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID] = {
+      ...snapshot.boards[HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID],
+      boardId: HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID,
+      displayName: "Harthmere Town Jobs Board",
+      townId: "harthmere",
+      regionId: "harthmere_region",
+      markerId: "harthmere_town_market_posting_board",
+      location: {
+        x: 2134,
+        y: 53,
+        z: -202,
+        radius: HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS,
+        district: "Harthmere",
+        landmarkId: "harthmere_town_market_posting_board",
+      },
+    };
+    const templates = HARTHMERE_JOBS_BOARD_AUTO_SEED_TEMPLATES.filter(
+      (template) =>
+        harthmereAutoSeedTemplateRequirementsObtainable(template.requirements)
+    );
+    snapshot.myAcceptedJobs = templates.map((template, index) => {
+      const boardId =
+        template.boardScope === "harthmere"
+          ? HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID
+          : HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID;
+      const mapMarkerId =
+        template.mapMarkerId ??
+        template.requirements.find((requirement) => requirement.mapMarkerId)
+          ?.mapMarkerId;
+      const targetId =
+        template.targetId ??
+        template.requirements.find((requirement) => requirement.targetId)
+          ?.targetId;
+      return {
+        ...acceptedJobsBoardSnapshot().myAcceptedJobs[0],
+        jobId: `e2e_job_${index}`,
+        boardId,
+        templateId: template.templateId,
+        issuerKind: template.issuerKind,
+        issuerId: template.issuerId,
+        title: template.title,
+        description: template.description,
+        kind: template.kind,
+        requirements: template.requirements,
+        rewardGold: template.rewardGold.min,
+        escrowGold: template.rewardGold.min,
+        townId:
+          boardId === HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID
+            ? "harthmere"
+            : "harthmere_grove",
+        regionId:
+          boardId === HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID
+            ? "harthmere_region"
+            : "harthmere_grove_region",
+        requiresFieldWork: template.requiresFieldWork,
+        mapMarkerId,
+        targetId,
+      };
+    });
+    snapshot.myTodos = snapshot.myAcceptedJobs.map(
+      (job: any, index: number) => ({
+        ...acceptedJobsBoardSnapshot().myTodos[0],
+        todoId: `e2e_todo_${index}`,
+        jobId: job.jobId,
+        boardId: job.boardId,
+        title: job.title,
+        todoText: `Go to the marked location and complete: ${job.title}`,
+        kind: job.kind,
+        mapMarkerId: job.mapMarkerId,
+        targetId: job.targetId,
+        townId: job.townId,
+        regionId: job.regionId,
+      })
+    );
+
+    const quests = jobsBoardTrackableQuestsForBiomesUI(snapshot, NOW_MS);
+    const markers = jobsBoardAcceptedJobLandmarksForBiomesUI(snapshot);
+    assert.equal(templates.length, 20);
+    assert.equal(quests.length, templates.length);
+    assert.equal(markers.length, templates.length);
+    for (const [index, template] of templates.entries()) {
+      const jobId = `e2e_job_${index}`;
+      const todoId = `e2e_todo_${index}`;
+      const quest = quests.find(
+        (candidate) => candidate.questId === `jobs_board:${todoId}`
+      );
+      const marker = markers.find(
+        (candidate) => candidate.jobsBoardJobId === jobId
+      );
+      assert.ok(quest, `${template.templateId} quest missing`);
+      assert.ok(marker, `${template.templateId} marker missing`);
+      assert.equal(quest.title, template.title);
+      assert.equal(quest.kind, template.kind);
+      assert.equal(marker.label, template.title);
+      assert.ok(
+        marker.position.every(Number.isFinite),
+        `${template.templateId} marker coordinate invalid`
+      );
+    }
   });
 
   it("keeps a field-complete job active until the player claims the reward at the board", () => {

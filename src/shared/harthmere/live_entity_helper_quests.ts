@@ -1,9 +1,6 @@
 import { isHarthmereNonLivingObjectLabel } from "@/shared/harthmere/object_interaction_semantics";
 import { shiftHarthmereAuthoredPositionToWorld } from "@/shared/harthmere/coordinate_transform";
-import {
-  HARTHMERE_EXTENSION_FEET_Y,
-  HARTHMERE_EXTENSION_WORLD_BOUNDS,
-} from "@/shared/harthmere/world_extension";
+import { HARTHMERE_EXTENSION_FEET_Y } from "@/shared/harthmere/world_extension";
 
 export const LIVE_ENTITY_HELPER_QUESTS_VERSION =
   "live-entity-helper-quests" as const;
@@ -293,11 +290,13 @@ export const LIVE_ENTITY_HELPER_WEST_MUCK_BREACH_AREA: LiveEntityHelperMuckArea 
   {
     id: "west_muck_breach",
     label: "West Muck Breach",
-    minX: HARTHMERE_EXTENSION_WORLD_BOUNDS.minX,
-    maxX: 1892,
-    minZ: Math.max(-560, HARTHMERE_EXTENSION_WORLD_BOUNDS.minZ),
+    // Hostile breach content remains on the original snapshot map. Harthmere's
+    // additive town is safe grassland and must not inherit this Muck territory.
+    minX: 180,
+    maxX: 290,
+    minZ: -560,
     maxZ: -460,
-    groundY: HARTHMERE_EXTENSION_FEET_Y,
+    groundY: 32,
   };
 
 export const LIVE_ENTITY_HELPER_EXOTIC_MATTER_MARKER_ID =
@@ -586,20 +585,24 @@ export const LIVE_ENTITY_HELPER_QUEST_ACTIVE_TARGETS: Record<
 > = {
   // Old Well descent entrance — HARTHMERE_EXOTIC_MATTER_CAVES old_well_descent_room.
   exotic_matter: {
-    position: [400, 53, -235],
+    position: shiftHarthmereAuthoredPositionToWorld([400, 53, -235]),
     label: "Exotic Matter — Old Well",
     areaLabel: "Old Well",
   },
   // West Muck Breach monster cluster center — HARTHMERE_LIVE_ENTITY_MUCK_MONSTER
   // _LAYOUTS west_muck_breach.center.
   hard_boss: {
-    position: [236, 54, -506],
+    position: [
+      LIVE_ENTITY_HELPER_WEST_MUCK_BREACH_AREA.minX + 52,
+      LIVE_ENTITY_HELPER_WEST_MUCK_BREACH_AREA.groundY,
+      -506,
+    ],
     label: "Muck-Scarred Helix",
     areaLabel: "West Muck Breach",
   },
   // Bluewater supply source (food / clean water).
   food_water: {
-    position: [604, 53, -168],
+    position: shiftHarthmereAuthoredPositionToWorld([604, 53, -168]),
     label: "Food & Water Supply",
     areaLabel: "River Docks",
   },

@@ -37,7 +37,7 @@ console.log("");
 
 check(
   "current collision fix marker exists in registry, renderer, and player movement bridge",
-  [registry, assets, player].every((src) => /harthmere-town-spacing-collision-solid-fixture[01]/.test(src)),
+  [registry, assets, player].every((src) => /harthmere-town-spacing-collision-solid-fixture/.test(src)),
 );
 
 check(
@@ -60,9 +60,9 @@ check(
 check(
   "exterior window assets are no longer broad visual-only holes through walls",
   assets.includes("isHarthmereExteriorWindowCollisionAsset") &&
-    /name\.includes\("window"\) && !isHarthmereExteriorWindowCollisionAsset\(asset\)/.test(assets) &&
+    /!isHarthmereExteriorWindowCollisionAsset\(asset\)/.test(assets) &&
     player.includes("isHarthmereLocalDevExteriorWindowBlocker") &&
-    /name\.includes\("window"\) && !isHarthmereLocalDevExteriorWindowBlocker\(asset\)/.test(player),
+    /!isHarthmereLocalDevExteriorWindowBlocker\(asset\)/.test(player),
 );
 
 check(

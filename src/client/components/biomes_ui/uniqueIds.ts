@@ -8,6 +8,7 @@ export const UI_IDS = {
   // Top-level tabs
   TAB_DAILY: "tab.daily",
   TAB_INVENTORY: "tab.inventory",
+  TAB_FARMING: "tab.farming",
   TAB_ABILITIES: "tab.abilities",
   TAB_SKILLS: "tab.skills",
   TAB_CLASSES: "tab.classes",

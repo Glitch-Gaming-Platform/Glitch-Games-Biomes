@@ -52,6 +52,9 @@ cliffs anywhere inside the expanded map. It then adds only upper or deeper
 shards that intersect authored structures and dungeons. This includes:
 
 - the flat town, roads, plazas, walls, and surrounding near-wilds;
+- grass/dirt as the normal surface, sparse real trees and stone/copper/iron
+  resources, and no Muckwad, deprecated Muckwad, splintered Muck, or Mucky
+  Brambles in the extension surface shard;
 - upper floors, roofs, gate towers, and tall landmarks above Y=63;
 - Old Well/Underways and a solid switchback chapel descent with landings at
   every authored Bellbound quest depth: Y=-6, -14, -26, and -60;
@@ -84,18 +87,22 @@ markers still use the retired unshifted or `+512` coordinates.
 
 On startup, the runtime-content reconciler therefore:
 
-- updates seeded Harthmere NPCs, Muckers, livestock, and sentinel robots to the
-  `+1600` world transform;
+- updates additive Harthmere NPCs, the separate safe-town livestock herd, and
+  extension-owned content to the `+1600` world transform;
 - rewrites every additive town NPC/board to player-feet `Y=53`; old measured
   Plaza/Bank/Tavern/Docks Y bands are retained only for explicit standalone
   legacy mode;
-- grounds outdoor creatures at player-feet `Y=53` instead of consulting the
-  obsolete production placement map;
-- clips extension-owned protection, helper, spawn, and Mucker containment
-  coordinates inside `X=1792..2560` and `Z=-576..192`, so no wander path can
-  cross onto the original hilly map or an unseeded terrain edge;
-- migrates old combat snapshots when their canonical seed is now in the east
-  extension, while preserving normal movement for already-migrated entities;
+- keeps the canonical 116 Muckers/Hexes and 44 Muck-area animals on the
+  original snapshot map, using exact checked-in terrain samples for existing
+  actors and production-scanned surface anchors plus deploy-time probing for
+  the new guarded pockets instead of shifting them into Harthmere;
+- keeps 12 separately identified town cows, sheep, and rabbits on the flat
+  Harthmere feet plane `Y=53`, without creating a town Muck territory;
+- distributes 20 of the original-map animals across four additional guarded
+  wildlife pockets (4 cows, 6 sheep, and 10 rabbits), with exactly 3 Muckers
+  and 1 Hex at each pocket;
+- repairs old combat snapshots and respawn anchors back onto their canonical
+  original-map danger areas while preserving normal movement after grounding;
 - forces the persisted Harthmere Town Jobs Board to its canonical position at
   `(2134, 53, -202)`; and
 - makes the post-deploy world-sync repair use those same canonical positions
@@ -119,10 +126,12 @@ the first combat encounter is at the watchtower clearing, not in the Grove.
 
 Grounding is intentionally different on the two sides of the connector:
 
-- Additive Harthmere outdoor NPCs, boards, Muckers, Hexers, livestock, and
-  sentinels use the deterministic flat feet plane `Y=53`.
-- Original Grove/snapshot outdoor NPCs and hostiles keep their original X/Z and
-  resolve Y from the real hilly production terrain with an open-sky probe.
+- Additive Harthmere outdoor NPCs, boards, town livestock, and extension-owned
+  actors such as the guarded bandit prisoner use the deterministic flat feet
+  plane `Y=53`.
+- Original Grove/snapshot outdoor NPCs, Muckers, Hexes, Muck-area wildlife, and
+  road/camp bandits keep original-map X/Z and resolve Y from the real hilly
+  production terrain with a top-down open-body surface probe.
 - Roofed business owners, customers, and seeded crafting stations resolve the
   nearest indoor floor without requiring open sky.
 - Bellbinder/Underways negative-Y positions are authored dungeon levels and are
@@ -132,22 +141,26 @@ Grounding is intentionally different on the two sides of the connector:
 The production deploy runs
 `scripts/harthmere/probe-production-terrain-grounding.cjs` with repair enabled.
 It covers town NPCs/boards, Grove NPCs, snapshot hostiles, robots, Muckers,
-Hexers, livestock, business owners/customers, and seeded business objects. It
-updates ECS position and NPC spawn position, reads every repair back, and fails
-the deployment on missing terrain, missing standable floor, unsupported flat
-extension terrain, or unresolved floating/buried placement.
+Hexers, livestock, bandits, business owners/customers, and seeded business
+objects. It updates ECS position and NPC spawn position, reads every repair
+back, and fails the deployment on missing terrain, missing standable floor,
+unsupported flat extension terrain, or unresolved floating/buried placement.
 
-Muckers, Hexes, and wildlife receive an additional persisted-ECS integrity
-pass after every terrain writer has finished. The pass reads each creature's
-actual Redis position rather than trusting its seed, samples the final terrain
-under its complete body footprint, repairs floating/buried or out-of-zone X/Y/Z,
-recreates missing/dead deployment records, restores species-specific size and
-combat data, removes stale expiry, and pins `npc_metadata.spawn_position` to
-the same grounded anchor. Readback must confirm all 100 hostile creatures and
-24 animals are alive, body-supported, correctly sized, outside safe zones, and
-inside real Muck containment. Native fixed-ID respawns use the same full entity
-builder, so cows, sheep, rabbits, Muckers, and Hexes do not lose their authored
-body size or respawn at a death-position terrain seam.
+Muckers, Hexes, wildlife, town livestock, and native bandits receive an
+additional persisted-ECS integrity pass after every terrain writer has
+finished. The pass reads each creature's actual Redis position rather than
+trusting its seed, samples the final terrain under its complete body footprint,
+repairs floating/buried or out-of-zone X/Y/Z, recreates missing/dead deployment
+records, restores species-specific size and combat data, removes stale expiry,
+and pins `npc_metadata.spawn_position` to the same grounded anchor. Readback
+must confirm all 116 hostile creatures, 44 original-map Muck-area animals, 12
+Harthmere town animals, and 18 native bandits are alive, body-supported,
+correctly sized, and in the correct coordinate class. Muck hostiles and wild
+animals must be outside safe zones and inside original-map Muck containment;
+road/camp bandits use their non-safe original-map regions; town animals and the
+guarded prisoner remain inside the additive extension. Native fixed-ID
+respawns use the same full entity builder, so these actors do not lose their
+authored body size or respawn at a death-position terrain seam.
 
 Normal three-replica web revisions keep `BIOMES_CREATE_LOCAL_DEV_TERRAIN=0`.
 Before traffic promotion, the guarded deploy creates a temporary one-replica,
@@ -155,7 +168,7 @@ zero-traffic maintenance revision with terrain seeding forced on. Promotion is
 blocked until `scripts/harthmere/audit-production-extension-terrain.cjs`
 confirms all 2,304 foundation shards, all 576 surface shards, solid Y=52 in
 every extension column, non-empty lower foundation tensors, correct shard
-boxes, and zero retired terrain records.
+boxes, zero forbidden Muck terrain blocks, and zero retired terrain records.
 
 ## Physical player route contract
 
@@ -233,14 +246,16 @@ healthy:
 - terrain entities in the new ID band occupy only X=1792..2528 shard origins;
 - the extension terrain audit reports `2304` foundation shards, `576` surface
   shards, and zero missing, invalid, empty-foundation, surface-hole, or
-  retired-terrain records;
+  forbidden-Muck/retired-terrain records;
 - the Town Jobs Board resolves to `(2134, 53, -202)`, not the retired
   `(1046, 65, -202)` position;
-- seeded Muckers, livestock, and robot sentinels are at `X>=1792`, on `Y=53`,
-  and remain inside their shifted Muck/protection areas;
-- the live-creature integrity pass reports all `100` Muckers/Hexes and `24`
-  animals with zero unresolved missing, dead, floating, buried, wrong-size,
-  expiring, unsafe, or unsupported-footprint records;
+- all `116` Muckers/Hexes and `44` Muck-area animals remain west of `X=1792`
+  on varied terrain-sampled elevations, while the separate `12` Harthmere town
+  animals remain in the extension at `Y=53`;
+- the live-creature integrity pass reports all `116` Muckers/Hexes, `56`
+  animals, and `18` bandits with zero unresolved missing, dead, floating,
+  buried, wrong-size, expiring, wrong-zone, unsafe, or unsupported-footprint
+  records;
 - snapshot combat Muckers remain outside the Grove/town safe radii, with the
   primer encounter in the watchtower danger clearing;
 - the mandatory grounding gate reports every actor/object family with zero

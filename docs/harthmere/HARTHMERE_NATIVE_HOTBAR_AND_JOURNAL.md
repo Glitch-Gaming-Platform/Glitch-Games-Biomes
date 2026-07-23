@@ -46,6 +46,25 @@ adapter, the projections are deduplicated with
 Title matching is deliberately not used because unrelated quests can share
 display text.
 
+Jobs-board acceptance preserves the server's exact `jobId -> todoId` pairing.
+Each accepted posting becomes its own journal quest and map marker; accepting a
+second job must not rename, replace, or reuse the first job's todo. The live
+jobs-board update event carries `{ jobsBoardState }`, and both the world map and
+minimap unwrap that same authoritative snapshot immediately.
+
+An explicit active map destination has higher HUD priority than the default
+Road Ahead/main-story selection. Selecting a job marker therefore changes the
+navigation beam and current-objective text together. Background jobs-board
+refreshes preserve any still-valid player-selected destination instead of
+resetting it to Road Ahead or the first accepted job; only completed, abandoned,
+or otherwise stale jobs-board pins are cleared.
+
+The native-ECS browser release gate enumerates every executable production job
+template. For each template it invokes the real frontend accept action, proves
+the server used the synchronized native ECS `Position` at the correct physical
+board, then verifies the returned frontend quest title, kind, todo identity,
+and map marker before abandoning the fixture and moving to the next template.
+
 ## Targeting and Road Ahead containers
 
 A direct terrain hit terminates generic proximity fallbacks. A procedural
@@ -77,6 +96,8 @@ The implementation has focused coverage for:
 - exact one-item native hotbar throws;
 - world F-action priority and programmatic tool invocation;
 - available/locked quest exclusion and native projection deduplication;
+- exact multi-job posting/todo/marker identity and switchable active-marker HUD
+  priority;
 - close-facing and vertical object-target rejection;
 - underwater lookup coalescing;
 - signed WebSocket URL redaction.

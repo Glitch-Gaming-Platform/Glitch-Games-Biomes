@@ -1,12 +1,11 @@
 import {
   parseHarthmereAzureVoiceId,
   stableHarthmereVoiceHash,
-  stripHarthmereSpeechMarkup,
   type HarthmereVoiceActorKind,
   type HarthmereVoiceGender,
 } from "@/shared/harthmere/npc_voice_profiles";
 
-export const ELEVENLABS_DEFAULT_MODEL_ID = "eleven_multilingual_v2";
+export const ELEVENLABS_DEFAULT_MODEL_ID = "eleven_v3";
 export const ELEVENLABS_DEFAULT_OUTPUT_FORMAT = "mp3_44100_128";
 
 // Defaults favor natural delivery and broadly playable browser audio. Operators
@@ -43,9 +42,9 @@ export interface ElevenLabsSynthesisResult {
   voiceId: string;
 }
 
-// These legacy premade IDs remain useful as a last-resort cast when an API key
-// is intentionally restricted to TTS and cannot call the voice-list endpoint.
-// ElevenLabs routes legacy IDs to their current replacements.
+// These verified premade IDs remain useful as a last-resort cast when an API
+// key is intentionally restricted to TTS and cannot call voice discovery.
+// Legacy IDs in the pool are routed by ElevenLabs to their current replacements.
 const FALLBACK_ELEVENLABS_VOICES: ElevenLabsVoice[] = [
   {
     voice_id: "21m00Tcm4TlvDq8ikWAM",
@@ -70,6 +69,12 @@ const FALLBACK_ELEVENLABS_VOICES: ElevenLabsVoice[] = [
     name: "Domi",
     category: "premade",
     labels: { gender: "female" },
+  },
+  {
+    voice_id: "JBFqnCBsd6RMkjVDRZzb",
+    name: "George",
+    category: "premade",
+    labels: { gender: "male" },
   },
   {
     voice_id: "pNInz6obpgDQGcFmaJgB",
@@ -371,34 +376,118 @@ export function selectElevenLabsVoiceForActor(input: {
 }
 
 function speedForVoiceRate(rate: string | undefined) {
-  // Translate the existing conservative Azure rate into ElevenLabs' speed
-  // range and clamp it to natural-sounding limits.
+  // ElevenLabs sounds most human close to its default speed. Preserve only a
+  // small amount of the actor's Azure rate variation around a 0.97 baseline;
+  // directly mapping percentages made slower NPCs sound conspicuously synthetic.
   const percent = Number(String(rate ?? "0").replace("%", ""));
   if (!Number.isFinite(percent)) {
-    return 1;
+    return 0.97;
   }
-  return Math.max(0.85, Math.min(1.15, 1 + percent / 100));
+  return (
+    Math.round(Math.max(0.94, Math.min(1.01, 0.97 + percent / 500)) * 100) / 100
+  );
 }
 
 function stabilityForActorKind(kind: HarthmereVoiceActorKind | undefined) {
-  // Humanoids retain expressive variation; robots are intentionally steadier
-  // and creatures/undead are allowed more volatile delivery.
+  // Stay inside ElevenLabs' natural conversational range. The previous 0.42
+  // humanoid setting wandered too much between words; 0.55 keeps expression
+  // while producing steadier, person-like phrasing.
   if (kind === "robot") {
-    return 0.62;
+    return 0.63;
   }
   if (kind === "creature" || kind === "undead") {
-    return 0.32;
+    return 0.5;
   }
   if (kind === "animal") {
-    return 0.4;
+    return 0.52;
   }
-  return 0.42;
+  return 0.55;
+}
+
+function decodeCommonSpeechEntities(text: string) {
+  return text
+    .replace(/&amp;/gi, "&")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">");
+}
+
+function addNaturalParagraphBreaks(text: string) {
+  // Dialogue normally arrives as one short game line. For unusually long
+  // lines, insert a paragraph pause after every two sentences so the model can
+  // reset its breath and cadence without changing any spoken words.
+  return text
+    .split(/\n{2,}/)
+    .flatMap((paragraph) => {
+      const sentences =
+        paragraph
+          .match(/[^.!?]+(?:\.{3}|[.!?]+|$)/g)
+          ?.map((sentence) => sentence.trim()) ?? [];
+      if (sentences.length <= 2) {
+        return [paragraph.trim()];
+      }
+      const groups: string[] = [];
+      for (let index = 0; index < sentences.length; index += 2) {
+        groups.push(sentences.slice(index, index + 2).join(" "));
+      }
+      return groups;
+    })
+    .filter(Boolean)
+    .join("\n\n");
+}
+
+export function elevenLabsSpokenTextForTest(text: string | undefined) {
+  if (!text?.trim()) {
+    return "";
+  }
+  const withStructuralPauses = text
+    .replace(/\{break\}/gi, "\n\n")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(?:text|p|div|li|h[1-6])>/gi, "\n\n")
+    .replace(/<[^>]+>/g, "");
+  const clean = decodeCommonSpeechEntities(withStructuralPauses)
+    .replace(/\*\*/g, "")
+    .replace(/\*/g, "")
+    .replace(/[\u201c\u201d]/g, '"')
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/\r\n?/g, "\n")
+    .replace(/[ \t]+/g, " ")
+    .replace(/ *\n */g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .replace(/!{2,}/g, "!")
+    .replace(/\?{2,}/g, "?")
+    .replace(/\.{4,}/g, "...")
+    .replace(/\s+([,.;:!?])/g, "$1")
+    .trim();
+
+  // Written listening/thinking cues should remain visible in the dialog but
+  // should not be literally narrated by the NPC voice.
+  if (/^\[[^\]]{1,160}\][.!?…]*$/.test(clean)) {
+    return "";
+  }
+  return addNaturalParagraphBreaks(clean);
+}
+
+export function elevenLabsNaturalVoiceSettingsForTest(input: {
+  actorKind?: HarthmereVoiceActorKind;
+  rate?: string;
+}) {
+  return {
+    stability: stabilityForActorKind(input.actorKind),
+    similarity_boost: 0.82,
+    // Style exaggeration frequently causes artifacts and uneven pacing. The
+    // voice and punctuation provide expression without this extra control.
+    style: 0,
+    use_speaker_boost: true,
+    speed: speedForVoiceRate(input.rate),
+  };
 }
 
 function languageCodeForModel(language: string | undefined, modelId: string) {
   // Multilingual v2 infers language and does not accept language_code. Other
   // configured models receive the base ISO language when available.
-  if (!language || modelId === ELEVENLABS_DEFAULT_MODEL_ID) {
+  if (!language || modelId === "eleven_multilingual_v2") {
     return undefined;
   }
   const languageCode = language.trim().split(/[-_]/)[0]?.toLowerCase();
@@ -429,7 +518,7 @@ export async function synthesizeElevenLabsSpeech(input: {
   fetchImpl?: typeof fetch;
 }): Promise<ElevenLabsSynthesisResult | undefined> {
   const config = input.config ?? elevenLabsConfigFromEnv();
-  const text = stripHarthmereSpeechMarkup(input.text);
+  const text = elevenLabsSpokenTextForTest(input.text);
   if (!config || !text) {
     return undefined;
   }
@@ -466,15 +555,13 @@ export async function synthesizeElevenLabsSpeech(input: {
     text,
     model_id: config.modelId,
     ...(languageCode ? { language_code: languageCode } : {}),
-    voice_settings: {
-      // These moderate settings preserve speaker identity and emotion without
-      // pushing the voice into exaggerated demo-style delivery.
-      stability: stabilityForActorKind(parsed?.actorKind),
-      similarity_boost: 0.8,
-      style: 0.18,
-      use_speaker_boost: true,
-      speed: speedForVoiceRate(parsed?.rate),
-    },
+    // Normalize dates, numbers, and abbreviations before synthesis so they are
+    // read as a person would say them instead of as raw written tokens.
+    apply_text_normalization: "on",
+    voice_settings: elevenLabsNaturalVoiceSettingsForTest({
+      actorKind: parsed?.actorKind,
+      rate: parsed?.rate,
+    }),
     seed: stableHarthmereVoiceHash(
       `${parsed?.actorKey ?? input.voiceProfileId}`
     ),

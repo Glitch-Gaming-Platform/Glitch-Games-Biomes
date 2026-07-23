@@ -119,7 +119,7 @@ export const HARTHMERE_COMBAT_KEY_BINDINGS = {
   basic: "KeyB",
   heavy: "KeyH",
   spark: "KeyL",
-  pvp: "KeyP",
+  pvp: "KeyN",
 } as const;
 
 export const HARTHMERE_COMBAT_ACTION_CLIPS = {
@@ -1610,7 +1610,7 @@ export function useHarthmereCombatHotkeys() {
         return;
       }
       const code = event.code;
-      if (["KeyX", "Tab", "KeyB", "KeyH", "KeyL", "KeyP"].includes(code)) {
+      if (["KeyX", "Tab", "KeyB", "KeyH", "KeyL", "KeyN"].includes(code)) {
         debugHarthmereKeyCombat("keyed.hotkey", { code });
       }
       if (code === HARTHMERE_COMBAT_KEY_BINDINGS.draw) {

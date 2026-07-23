@@ -36,5 +36,10 @@ for (const label of requiredInteriorLabels) {
 check("interior builder switch covers bakery", /case "bakery":/.test(src));
 check("interior builder switch covers chapel", /case "chapel":/.test(src));
 check("all service interior props are routed through block-built current label", src.includes("block-built current service interior"));
+check(
+  "snapshot-reference furnishing pass covers every additive service building",
+  src.includes("createHarthmereServiceBuildingVisualDecorSpecs") &&
+    src.includes("HARTHMERE_SERVICE_BUILDING_VISUAL_DECOR_VERSION")
+);
 
 process.exit(ok ? 0 : 1);
