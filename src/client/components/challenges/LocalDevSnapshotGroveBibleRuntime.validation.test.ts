@@ -4,6 +4,7 @@ import {
   doesSnapshotGroveEventAdvanceQuestForTest,
   grantSnapshotGroveWorldObjectPickupItemForTest,
   requestSnapshotGroveLandmarkOnMapForBiomesUI,
+  snapshotGroveObjectiveIsCompletionTurnInForTest,
   snapshotGrovePracticeItemForObjectiveForTest,
   snapshotGroveQuestEventFromWorldObjectInteractionForTest,
   validateSnapshotGroveQuestEventContext,
@@ -153,6 +154,24 @@ function snapshotGrovePhysicalPickupCases() {
 }
 
 describe("Snapshot Grove quest runtime validation current", () => {
+  it("opens all reported onboarding return visits with completion dialogue", () => {
+    for (const questId of [
+      "fountain_buttons_first",
+      "tools_before_treasure",
+      "road_ready_bag_check",
+    ]) {
+      const quest = questById(questId);
+      assert.equal(
+        snapshotGroveObjectiveIsCompletionTurnInForTest(
+          quest,
+          quest.objectives.length - 1
+        ),
+        true,
+        `${quest.title} must turn in on its final giver conversation`
+      );
+    }
+  });
+
   it("opens and centers BiomesUI map when a dialogue marker is shown on the map", () => {
     const restore = installBrowserStorageShim();
     try {

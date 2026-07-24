@@ -26,10 +26,16 @@ import {
 import type { ParticleSystemMaterials } from "@/client/game/resources/particles";
 import { ParticleSystem } from "@/client/game/resources/particles";
 import {
+  ItemAttachment,
   makeSnapshotPlayerLikeAppearanceMesh,
+  playerMeshWeaponAttachmentParent,
   replaceWithPlayerMaterial,
   setFrustumCulling,
 } from "@/client/game/resources/player_mesh";
+import {
+  readCutscenePuppetOverrides,
+  type CutscenePuppetOverride,
+} from "@/shared/cutscene/puppets";
 import type { SkyParams } from "@/client/game/resources/sky";
 import type {
   ClientResourceDeps,
@@ -139,6 +145,7 @@ import type {
   Vec3,
 } from "@/shared/math/types";
 import { voxelShard } from "@/shared/game/shard";
+import { anItem } from "@/shared/game/item";
 import type { NpcType } from "@/shared/npc/bikkie";
 import {
   LOCAL_DEV_HUMAN_NPC_TYPE_ID,
@@ -1353,6 +1360,44 @@ function harthmereNavigationModeForMotion(
   return "town_wander";
 }
 
+function cutsceneNpcAnimationAction(
+  override: CutscenePuppetOverride | undefined,
+  mixerTime: number
+): NpcAnimationAction | undefined {
+  if (!override?.animation) {
+    return undefined;
+  }
+  const aliases: Readonly<Record<string, string>> = {
+    attack1: "attack",
+    attack2: "attack",
+    wave: "talkGesture",
+    point: "questGesture",
+    applause: "crowdEmote",
+    hitReact: "creatureHit",
+    death: "creatureDeath",
+  };
+  const animation = aliases[override.animation] ?? override.animation;
+  if (!npcSystem.hasAnimation(animation)) {
+    return undefined;
+  }
+  return {
+    weights: npcSystem.singleAnimationWeight(animation, 1),
+    state: {
+      // Death holds its final authored frame; hit reactions play once and then
+      // yield to the next cutscene beat. Loops remain appropriate for work,
+      // social, and repeated attack poses.
+      repeat:
+        override.animation === "death"
+          ? { kind: "once", clampWhenFinished: true }
+          : override.animation === "hitReact"
+          ? { kind: "once" }
+          : { kind: "repeat" },
+      startTime: mixerTime - Math.max(0, override.animationTime ?? 0),
+    },
+    layers: { all: "apply" },
+  };
+}
+
 export class NpcRenderState {
   private consecutiveFrameState: ConsecutiveFrameState | undefined;
   private interpolationNeedRetarget = true;
@@ -1366,13 +1411,23 @@ export class NpcRenderState {
     [K in NpcChannels]?: THREE.PositionalAudio;
   } = {};
   private wasIdle = true;
+  private readonly cutsceneHeldItemNode = new THREE.Group();
+  private readonly cutsceneHeldItemAttachment: ItemAttachment;
 
   constructor(
     public mixedMesh: MixedNpcMesh,
     private readonly commonResources: NpcCommonEffects,
     private readonly effectResources: NpcEffects,
     private audioManager: AudioManager
-  ) {}
+  ) {
+    this.cutsceneHeldItemNode.name = "cutscene-native-npc-held-item";
+    playerMeshWeaponAttachmentParent(this.mixedMesh.three).add(
+      this.cutsceneHeldItemNode
+    );
+    this.cutsceneHeldItemAttachment = new ItemAttachment(
+      this.cutsceneHeldItemNode
+    );
+  }
 
   smoothedPosition(): ReadonlyVec3 {
     return this.consecutiveFrameState
@@ -1447,10 +1502,21 @@ export class NpcRenderState {
     // Must do this on the client and not modify the entity on the server so
     // that only this player sees the NPC turn and nobody else.
     const becomeNPC = resources.get("/scene/npc/become_npc");
-    const motionOverrides =
+    const cutsceneOverride = readCutscenePuppetOverrides().find(
+      (override) => override.id === Number(entity.id)
+    );
+    const cutsceneMotionOverrides = cutsceneOverride
+      ? {
+          position: [...cutsceneOverride.at] as Vec3,
+          velocity: [0, 0, 0] as Vec3,
+          orientation: [0, cutsceneOverride.yaw] as Vec2,
+        }
+      : undefined;
+    const becomeNpcMotionOverrides =
       becomeNPC.kind === "active" && becomeNPC.entityId === entity.id
         ? becomeNPC
         : undefined;
+    const motionOverrides = cutsceneMotionOverrides ?? becomeNpcMotionOverrides;
     const localPlayer = resources.get("/scene/local_player");
     const nativeEcsAuthority = nativeBiomesEcsAuthorityEnabled();
     const npcPosition = entity.position?.v;
@@ -1665,6 +1731,14 @@ export class NpcRenderState {
     const spatialLighting = consecutiveFrameState.spatialLighting
       .get()
       .slice(0, 2) as Vec2;
+    this.cutsceneHeldItemAttachment.updateAttachedItem(
+      resources,
+      cutsceneOverride?.itemId
+        ? anItem(cutsceneOverride.itemId as BiomesId)
+        : undefined,
+      spatialLighting,
+      skyParams.sunDirection.toArray() as Vec3
+    );
 
     // If the NPC was hit recently, we want them to flash red.
     const timeSinceLastHit =
@@ -1718,6 +1792,13 @@ export class NpcRenderState {
         ? harthmereVoxelRetaliationAttackTime
         : undefined;
 
+    this.mixedMesh.animationSystem.accumulateAction(
+      cutsceneNpcAnimationAction(
+        cutsceneOverride,
+        this.mixedMesh.animationMixer.time
+      ),
+      animAccum
+    );
     this.mixedMesh.animationSystem.accumulateAction(
       getAttackAnimationAction(
         attackTime,
@@ -2093,6 +2174,8 @@ export class NpcRenderState {
   }
 
   dispose() {
+    this.cutsceneHeldItemAttachment.dispose();
+    this.cutsceneHeldItemNode.removeFromParent();
     this.mixedMesh.dispose();
     this.onHitParticleEffect?.materials.dispose();
   }

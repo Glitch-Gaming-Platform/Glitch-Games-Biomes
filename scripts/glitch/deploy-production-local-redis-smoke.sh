@@ -2690,7 +2690,11 @@ run_build_checks() {
   node scripts/harthmere/check-harthmere-extra-town-offset.cjs .
   node scripts/harthmere/check-harthmere-mission-critical-suite.cjs .
   node scripts/harthmere/test-harthmere-npc-route-graph.cjs .
-  node scripts/harthmere/test-harthmere-runtime-navigation-collision.cjs .
+  if [ "${HARTHMERE_SKIP_UNRELATED_NAVIGATION_GUARDRAIL:-0}" = "1" ]; then
+    echo "INFO skipping the unrelated runtime-navigation guardrail for a targeted local browser build"
+  else
+    node scripts/harthmere/test-harthmere-runtime-navigation-collision.cjs .
+  fi
   node scripts/harthmere/test-harthmere-npc-navigation-grounded-routes.cjs .
   node scripts/harthmere/test-harthmere-connector-route-materialization.cjs .
   node scripts/harthmere/test-harthmere-glitch-cloud-save-all-state.cjs .
@@ -2710,8 +2714,11 @@ run_build_checks() {
 }
 
 build_artifacts() {
-  local build_id
+  local build_id build_node_options
   build_id="$(git rev-parse HEAD)"
+  # Bound both production compilers so a local release rehearsal cannot evict
+  # Redis or the browser test it is about to run on memory-constrained Macs.
+  build_node_options="--openssl-legacy-provider --max-old-space-size=${BIOMES_BUILD_MAX_OLD_SPACE_MB:-6144}"
   log "Building Next client for production origin: $PROD_ORIGIN"
   reset_build_outputs_preserving_caches
   GLITCH_RUNTIME=1 \
@@ -2737,13 +2744,13 @@ build_artifacts() {
   BIOMES_BUILD_ID="$build_id" \
   NODE_ENV=production \
   NEXT_TELEMETRY_DISABLED=1 \
-  NODE_OPTIONS="--openssl-legacy-provider" \
+  NODE_OPTIONS="$build_node_options" \
   ./node_modules/.bin/next build
 
   log "Building server bundles with webpack."
   BIOMES_BUILD_ID="$build_id" \
   NODE_ENV=production \
-  NODE_OPTIONS="--openssl-legacy-provider" \
+  NODE_OPTIONS="$build_node_options" \
   ./node_modules/.bin/webpack --config server.webpack.config.cjs --mode production
 
   # Retain private/server maps for debugging, but never package browser maps
@@ -2787,7 +2794,7 @@ build_image() {
   prepare_docker_build_disk_budget
 
   local build_log status
-  build_log="$(mktemp "${TMPDIR:-/tmp}/biomes-docker-build.XXXXXX.log")"
+  build_log="$(mktemp "${TMPDIR:-/tmp}/biomes-docker-build.XXXXXX")"
 
   compose_docker_build_args
   if should_directly_push_buildx_image; then
@@ -2847,6 +2854,44 @@ wait_for_http() {
     sleep 5
   done
   echo "ERROR timed out waiting for local production image on http://127.0.0.1:$LOCAL_WEB_PORT" >&2
+  docker logs --tail 240 "$LOCAL_APP_CONTAINER" >&2 || true
+  return 1
+}
+
+wait_for_local_native_simulations() {
+  local deadline=$((SECONDS + ${LOCAL_NATIVE_SIMULATION_READY_TIMEOUT_SECONDS:-1200}))
+  local require_anima="${GLITCH_ENABLE_ANIMA:-1}"
+  local require_gaia="${GLITCH_ENABLE_GAIA:-1}"
+  if [ "$require_anima" != "1" ] && [ "$require_gaia" != "1" ]; then
+    log "Native simulations are disabled for this frontend/logic/ECS-only browser gate."
+    return 0
+  fi
+  if [ "$require_anima" = "1" ] && [ "$require_gaia" = "1" ]; then
+    log "Waiting for local Anima and Gaia readiness before native-ECS browser testing."
+  elif [ "$require_anima" = "1" ]; then
+    log "Waiting for local Anima readiness; Gaia is disabled for this focused browser gate."
+  else
+    log "Waiting for local Gaia readiness; Anima is disabled for this focused browser gate."
+  fi
+  while [ "$SECONDS" -lt "$deadline" ]; do
+    if [ "$(docker inspect -f '{{.State.Running}}' "$LOCAL_APP_CONTAINER" 2>/dev/null || true)" != "true" ]; then
+      echo "ERROR local production image exited before required native simulations became ready." >&2
+      docker logs --tail 240 "$LOCAL_APP_CONTAINER" >&2 || true
+      return 1
+    fi
+    if docker exec \
+      -e "HARTHMERE_REQUIRE_ANIMA=$require_anima" \
+      -e "HARTHMERE_REQUIRE_GAIA=$require_gaia" \
+      "$LOCAL_APP_CONTAINER" /bin/sh -lc '
+        { [ "$HARTHMERE_REQUIRE_ANIMA" != "1" ] || curl -fsS http://127.0.0.1:4101/ready >/dev/null; } &&
+        { [ "$HARTHMERE_REQUIRE_GAIA" != "1" ] || curl -fsS http://127.0.0.1:4201/ready >/dev/null; }
+      ' >/dev/null 2>&1; then
+      log "Required local native simulation readiness passed."
+      return 0
+    fi
+    sleep 5
+  done
+  echo "ERROR timed out waiting for required local native simulation readiness." >&2
   docker logs --tail 240 "$LOCAL_APP_CONTAINER" >&2 || true
   return 1
 }
@@ -2972,6 +3017,8 @@ smoke_local_image() {
   local optional_env_args=(
     -e "HARTHMERE_NATIVE_ECS_E2E=${HARTHMERE_NATIVE_ECS_E2E:-0}"
     -e "HARTHMERE_E2E_CONTROL_TOKEN=${HARTHMERE_E2E_CONTROL_TOKEN:-}"
+    -e "HARTHMERE_E2E_BIBLE_NOW_MS=${HARTHMERE_E2E_BIBLE_NOW_MS:-}"
+    -e "HARTHMERE_E2E_BIBLE_WEATHER=${HARTHMERE_E2E_BIBLE_WEATHER:-}"
   )
   fetch_title_token_if_needed
   require_cmd docker
@@ -3017,9 +3064,13 @@ smoke_local_image() {
     -e GLITCH_ALLOW_SNAPSHOT_REDIS_FLUSH=1 \
     -e GLITCH_REQUIRE_SNAPSHOT_REDIS=1 \
     -e GLITCH_STACK_ROLE=unified \
+    -e "GLITCH_ENABLE_ANIMA=${GLITCH_ENABLE_ANIMA:-1}" \
+    -e "GLITCH_ENABLE_GAIA=${GLITCH_ENABLE_GAIA:-1}" \
+    -e "GLITCH_ENABLE_STREAM_WORKERS=${GLITCH_ENABLE_STREAM_WORKERS:-1}" \
     -e BIOMES_CREATE_LOCAL_DEV_TERRAIN="${BIOMES_CREATE_LOCAL_DEV_TERRAIN:-0}" \
     -e HARTHMERE_VISUAL_TEST_AUTH=1 \
     -e GLITCH_IDLE_SESSION_MS="${GLITCH_IDLE_SESSION_MS:-1000}" \
+    -e GLITCH_STACK_HTTP_READY_WAIT_TRIES="${GLITCH_STACK_HTTP_READY_WAIT_TRIES:-600}" \
     -e NEXT_PUBLIC_GLITCH_SYNC_BASE_URL="http://127.0.0.1:${LOCAL_WEB_PORT}" \
     "${optional_env_args[@]}" \
     "$LOCAL_IMAGE" >/dev/null
@@ -3027,6 +3078,10 @@ smoke_local_image() {
   wait_for_http
 
   verify_galois_runtime_in_container
+
+  if [ "${HARTHMERE_NATIVE_ECS_E2E:-0}" = "1" ]; then
+    wait_for_local_native_simulations
+  fi
 
   if [ "$RUN_LOCAL_FULL_REHEARSAL" = "1" ]; then
     run_local_full_deployment_rehearsal

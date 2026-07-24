@@ -1,9 +1,14 @@
 import assert from "assert";
 
 import {
+  npcForwardSpeedForLocomotion,
+  npcGroundWalkingForceCoefficient,
   selectNpcLocomotion,
   type NpcLocomotionInputs,
 } from "@/shared/npc/logic";
+import { horizontalForceForTargetSpeed } from "@/shared/physics/forces";
+import { DEFAULT_ENVIRONMENT_PARAMS } from "@/shared/physics/environments";
+import { HARTHMERE_NPC_CHASE_SPEED_MULTIPLIER } from "@/shared/npc/behavior/chase_attack";
 
 // Every flag off: the NPC has nothing to do.
 const base: NpcLocomotionInputs = {
@@ -116,6 +121,68 @@ describe("NPC locomotion priority selection", () => {
     assert.equal(
       selectNpcLocomotion({ ...base, hasChaseAttack: true }),
       "hostileIdleWander"
+    );
+  });
+
+  it("keeps ordinary walking unchanged even for Muckers, Hexes, and animals", () => {
+    for (const locomotion of [
+      "schedule",
+      "meander",
+      "socialize",
+      "hostileIdleWander",
+      "returnHome",
+      "flee",
+    ] as const) {
+      assert.equal(
+        npcForwardSpeedForLocomotion({
+          locomotion,
+          forwardSpeed: 2.2,
+          nightMovementMultiplier: 1.8,
+          boundChaseSpeed: (requestedSpeed) =>
+            requestedSpeed * HARTHMERE_NPC_CHASE_SPEED_MULTIPLIER,
+        }),
+        2.2,
+        `${locomotion} night speed`
+      );
+      assert.equal(
+        npcGroundWalkingForceCoefficient({
+          locomotion,
+          fightSpeedBoostEligible: true,
+          forwardSpeed: 2.2,
+        }),
+        2.2,
+        locomotion
+      );
+    }
+  });
+
+  it("boosts grounded movement only for eligible creatures actively fighting", () => {
+    const chaseSpeed = 4.4;
+    assert.equal(
+      npcForwardSpeedForLocomotion({
+        locomotion: "chaseAttack",
+        forwardSpeed: chaseSpeed,
+        nightMovementMultiplier: 1.8,
+        boundChaseSpeed: (requestedSpeed) =>
+          requestedSpeed * HARTHMERE_NPC_CHASE_SPEED_MULTIPLIER,
+      }),
+      chaseSpeed * 1.8 * HARTHMERE_NPC_CHASE_SPEED_MULTIPLIER
+    );
+    assert.equal(
+      npcGroundWalkingForceCoefficient({
+        locomotion: "chaseAttack",
+        fightSpeedBoostEligible: true,
+        forwardSpeed: chaseSpeed,
+      }),
+      horizontalForceForTargetSpeed(chaseSpeed, DEFAULT_ENVIRONMENT_PARAMS)
+    );
+    assert.equal(
+      npcGroundWalkingForceCoefficient({
+        locomotion: "chaseAttack",
+        fightSpeedBoostEligible: false,
+        forwardSpeed: chaseSpeed,
+      }),
+      chaseSpeed
     );
   });
 });

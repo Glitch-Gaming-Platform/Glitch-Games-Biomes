@@ -113,6 +113,8 @@ export class CameraScript implements Script {
   private lastTrackedOrientation: Vec2f = [0, 0];
 
   private cinematicOffsets: Vec3f = [0, 0, 0];
+  private wasWaypointCameraActive = false;
+  private lastWaypointOrientation: Vec2f = [0, 0];
 
   private orientation: Vec2f = [0, 0];
   private cleanUps: Array<() => unknown> = [];
@@ -824,10 +826,31 @@ export class CameraScript implements Script {
   tick(dt: number) {
     const wpc = this.resources.get("/scene/waypoint_camera/active");
     if (wpc.kind === "active") {
-      const cam = this.resources.get("/scene/camera");
-      cam.three.setRotationFromQuaternion(getCamOrientation(wpc.value[1]));
-      cam.three.position.fromArray(wpc.value[0]);
+      this.resources.update("/scene/camera", (cam) => {
+        cam.isFirstPerson = false;
+        cam.three.setRotationFromQuaternion(getCamOrientation(wpc.value[1]));
+        cam.three.position.fromArray(wpc.value[0]);
+        this.applyCameraEffects(cam);
+        cam.three.updateMatrixWorld();
+        cam.three.updateProjectionMatrix();
+        cam.updateFrustumBoundingSphere();
+      });
+      this.wasWaypointCameraActive = true;
+      this.lastWaypointOrientation = [...wpc.value[1]];
+      this.lastTrackedPosition = [...wpc.value[0]];
+      this.lastTrackedOrientation = [...wpc.value[1]];
       return;
+    }
+
+    if (this.wasWaypointCameraActive) {
+      const camera = this.resources.get("/scene/camera");
+      this.beginTrackedObjectTransitionPosition =
+        camera.three.position.toArray();
+      this.beginTrackedObjectTransitionOrientation = [
+        ...this.lastWaypointOrientation,
+      ];
+      this.beginTrackedObjectTransition = performance.now();
+      this.wasWaypointCameraActive = false;
     }
 
     // Get the current camera parameters. These are affected by different game

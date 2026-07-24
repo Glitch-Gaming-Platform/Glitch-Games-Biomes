@@ -154,6 +154,8 @@ import {
   defaultHarthmereBibleQuestLiveSlice,
   harthmereBibleRewardItemDefinition,
   harthmereBibleObjectiveItemDefinition,
+  harthmereBibleQuestEvaluationNowMs,
+  harthmereBibleQuestEvaluationWeather,
   harthmereThaedrynCombatSnapshot,
   harthmereThaedrynDamageEventsForAttack,
   normalizeHarthmereBibleQuestLiveSlice,
@@ -309,7 +311,16 @@ import {
   harthmereCombatHpForLiveEntitySeed,
   harthmereGroundedLivestockSeedsInTerritory,
   harthmereGroundedMuckMonsterSeedsInTerritory,
+  harthmereLiveEntityIsOpenWildsMixedGroup,
 } from "./live_entity_production_seed";
+import {
+  HARTHMERE_NPC_CHASE_SPEED_CAP_METERS_PER_SECOND,
+  HARTHMERE_NPC_CHASE_SPEED_MULTIPLIER,
+} from "@/shared/npc/behavior/chase_attack";
+
+export const HARTHMERE_LIVE_ENTITY_PREVIOUS_CHASE_STEP_CAP_METERS = 4;
+export const HARTHMERE_LIVE_ENTITY_CHASE_STEP_CAP_METERS =
+  HARTHMERE_LIVE_ENTITY_PREVIOUS_CHASE_STEP_CAP_METERS * 1.2;
 
 import {
   buildingSystemBlueprintById,
@@ -642,7 +653,8 @@ export function createHarthmereServerMuckCombatEntitySnapshots(
   const monsterEntries = harthmereGroundedMuckMonsterSeedsInTerritory().flatMap(
     (seed) => {
       const territory = muckMonsterAreaForPosition(seed.position, 1.5);
-      if (!territory) {
+      const isOpenWildsGroup = harthmereLiveEntityIsOpenWildsMixedGroup(seed);
+      if (!territory && !isOpenWildsGroup) {
         return [];
       }
       const entityKind = seed.combatKind ?? "mux";
@@ -671,6 +683,11 @@ export function createHarthmereServerMuckCombatEntitySnapshots(
             requiresLineOfSight: true,
             aiEnabled: true,
             retaliatesWhenAttacked: true,
+            outsideMuckEncounter: isOpenWildsGroup,
+            combatTerritoryId: isOpenWildsGroup ? seed.areaId : territory?.id,
+            combatTerritoryLabel: isOpenWildsGroup
+              ? seed.areaLabel
+              : territory?.label,
             animationState: "idle",
             animationStartedAtMs: nowMs,
             animationMoving: false,
@@ -697,7 +714,10 @@ export function createHarthmereServerMuckCombatEntitySnapshots(
     tier === "small" ? 3.2 : tier === "medium" ? 2.5 : 2;
   const livestockEntries = harthmereGroundedLivestockSeedsInTerritory().flatMap(
     (seed) => {
-      if (!muckMonsterAreaForPosition(seed.position, 1.5)) {
+      if (
+        !muckMonsterAreaForPosition(seed.position, 1.5) &&
+        !harthmereLiveEntityIsOpenWildsMixedGroup(seed)
+      ) {
         return [];
       }
       const hp = harthmereCombatHpForLiveEntitySeed(seed);
@@ -728,6 +748,14 @@ export function createHarthmereServerMuckCombatEntitySnapshots(
             requiresLineOfSight: true,
             aiEnabled: true,
             retaliatesWhenAttacked: true,
+            outsideMuckEncounter:
+              harthmereLiveEntityIsOpenWildsMixedGroup(seed),
+            combatTerritoryId: harthmereLiveEntityIsOpenWildsMixedGroup(seed)
+              ? seed.areaId
+              : undefined,
+            combatTerritoryLabel: harthmereLiveEntityIsOpenWildsMixedGroup(seed)
+              ? seed.areaLabel
+              : undefined,
             // Hunting any of them yields meat; larger animals drop more.
             lootDrops: { raw_meat: meatUnits },
             // Size-scaled flat hit + kill XP (cow > sheep > rabbit).
@@ -1348,6 +1376,9 @@ export interface HarthmereLiveModeBackendState {
         leashRange?: number;
         requiresLineOfSight?: boolean;
         aiEnabled?: boolean;
+        outsideMuckEncounter?: boolean;
+        combatTerritoryId?: string;
+        combatTerritoryLabel?: string;
         navigationObstacles?: HarthmereNpcNavigationObstacle[];
         animationState?: HarthmereLiveEntityAnimationState;
         animationStartedAtMs?: number;
@@ -1995,7 +2026,13 @@ export interface HarthmereNativeEcsQuestAcceptMaterializationPlan {
   actorId: string;
   questSource: "grove" | "bible";
   questId: string;
-  giverEntityId: number;
+  /**
+   * Ordinary quests retain the NPC-backed AcceptChallenge path. Hidden and
+   * world-triggered quests deliberately have no giver; omitting this field
+   * tells the native materializer to begin the already server-approved
+   * challenge directly instead of silently dropping the ECS half of accept.
+   */
+  giverEntityId?: number;
   sourceKind: string;
 }
 
@@ -8376,6 +8413,13 @@ export function createHarthmereLiveModeQuestClientSnapshot(
   return {
     version: "harthmere-live-mode-quest-state",
     actorId: state.actorId,
+    // Quest availability is level-gated by the same server-owned skill row
+    // used by mutations. Returning it prevents the browser dialog from
+    // evaluating every offer as a level-1 player while the server evaluates
+    // the real actor level.
+    playerLevel: state.classMagic.skills.character_level?.level ?? 1,
+    serverNowMs: harthmereBibleQuestEvaluationNowMs(state.updatedAtMs),
+    weatherClaim: harthmereBibleQuestEvaluationWeather(),
     active: JSON.parse(JSON.stringify(activeQuestEntriesForActor(state))),
     completed: { ...state.quests.completed },
     pendingReceivedInvites,
@@ -10010,17 +10054,44 @@ export function reduceHarthmereLiveModeBackendState(
     kind: HarthmereLiveEntityKind;
   }) {
     const current = input.current;
-    const speed = liveEntityDefaultMovementSpeed(input.kind, input.target);
-    const maxStep = Math.max(
-      0.05,
-      Math.min(4, speed * Math.max(0.25, input.thinkIntervalMs / 1000))
-    );
     const targetPosition = liveEntityTargetPositionForAi(input.targetId);
     const shouldChase =
       input.decision === "retaliate_to_recent_attacker" ||
       input.decision === "engage_highest_threat" ||
       input.decision === "escort_follow_player" ||
       input.decision.startsWith("muck_unprovoked:");
+    const isEligibleUnownedCombatAnimal =
+      input.kind === "animal" &&
+      !input.target.ownerId &&
+      input.target.isAttackable &&
+      input.target.retaliatesWhenAttacked === true;
+    const receivesFightSpeedBoost =
+      shouldChase &&
+      (input.kind === "mux" ||
+        input.kind === "hex" ||
+        isEligibleUnownedCombatAnimal);
+    const baseSpeed = liveEntityDefaultMovementSpeed(input.kind, input.target);
+    const speed = receivesFightSpeedBoost
+      ? Math.min(
+          baseSpeed * HARTHMERE_NPC_CHASE_SPEED_MULTIPLIER,
+          HARTHMERE_NPC_CHASE_SPEED_CAP_METERS_PER_SECOND
+        )
+      : baseSpeed;
+    // Production combat AI normally ticks every two seconds. Integrate the
+    // authored speed across that interval, then cap the server step at exactly
+    // 20% above the previous 4m chase-step ceiling. This keeps the requested
+    // relative increase without allowing stale ticks to teleport an NPC.
+    const movementSeconds = Math.min(
+      2,
+      Math.max(0.25, input.thinkIntervalMs / 1000)
+    );
+    const maxStep = Math.max(
+      0.05,
+      Math.min(
+        HARTHMERE_LIVE_ENTITY_CHASE_STEP_CAP_METERS,
+        speed * movementSeconds
+      )
+    );
     if (shouldChase && targetPosition) {
       const dx = targetPosition.x - current.x;
       const dz = targetPosition.z - current.z;
@@ -13625,17 +13696,19 @@ export function reduceHarthmereLiveModeBackendState(
                 sourceKind: "harthmere_q12_accept",
               });
             }
-            if (giverEntityId) {
-              nativeEcsMaterializationPlans.push({
-                kind: "quest_accept",
-                materializationKey: `quest_accept:${envelope.actorId}:bible:${requestedQuestId}:${envelope.requestId}`,
-                actorId: envelope.actorId,
-                questSource: "bible",
-                questId: requestedQuestId,
-                giverEntityId,
-                sourceKind: "harthmere_bible_quest_accept",
-              });
-            }
+            // Giver-less hidden/world-trigger quests still need an explicit
+            // native accept plan. The materializer uses a direct authoritative
+            // Challenges transition for those quests; omitting this plan left
+            // live state active while ECS/frontend remained unavailable.
+            nativeEcsMaterializationPlans.push({
+              kind: "quest_accept",
+              materializationKey: `quest_accept:${envelope.actorId}:bible:${requestedQuestId}:${envelope.requestId}`,
+              actorId: envelope.actorId,
+              questSource: "bible",
+              questId: requestedQuestId,
+              giverEntityId,
+              sourceKind: "harthmere_bible_quest_accept",
+            });
           } else if (
             requestedQuestId &&
             liveEntityHelperOperation === "bible_quest_advance"
@@ -13697,17 +13770,15 @@ export function reduceHarthmereLiveModeBackendState(
                 sourceKind: "harthmere_q12_retry",
               });
             }
-            if (giverEntityId) {
-              nativeEcsMaterializationPlans.push({
-                kind: "quest_accept",
-                materializationKey: `quest_accept:${envelope.actorId}:bible:${requestedQuestId}:retry:${envelope.requestId}`,
-                actorId: envelope.actorId,
-                questSource: "bible",
-                questId: requestedQuestId,
-                giverEntityId,
-                sourceKind: "harthmere_bible_quest_retry",
-              });
-            }
+            nativeEcsMaterializationPlans.push({
+              kind: "quest_accept",
+              materializationKey: `quest_accept:${envelope.actorId}:bible:${requestedQuestId}:retry:${envelope.requestId}`,
+              actorId: envelope.actorId,
+              questSource: "bible",
+              questId: requestedQuestId,
+              giverEntityId,
+              sourceKind: "harthmere_bible_quest_retry",
+            });
           } else if (
             requestedQuestId === HARTHMERE_BIBLE_DRAGON_QUEST_ID &&
             liveEntityHelperOperation === "bible_quest_boss_event" &&
@@ -14228,11 +14299,76 @@ export function reduceHarthmereLiveModeBackendState(
             nativeBiomesEcsAuthorityEnabled() &&
             !isServerAuthorityEnvelope(envelope)
           ) {
-            // Authored quests complete through native Challenges/TriggerState
-            // and firehose evidence. A browser-supplied boolean must never
-            // bypass those objective handlers.
-            warnings.push("quest_rejected:native_ecs_challenge_required");
-            touchedModels.add("quest_state_rejection");
+            if (questSource === "snapshot_grove") {
+              const authoredQuest = SNAPSHOT_GROVE_QUESTS.find(
+                (quest) => quest.id === questId
+              );
+              const finalObjectiveIndex = authoredQuest
+                ? authoredQuest.objectives.length - 1
+                : -1;
+              const objectiveIndex = payloadNumber(envelope, "objectiveIndex");
+              const active = next.quests.active[questId];
+              if (!authoredQuest) {
+                warnings.push("snapshot_grove_quest_rejected:unknown_quest");
+              } else if (!active) {
+                warnings.push(
+                  "snapshot_grove_quest_rejected:active_quest_required"
+                );
+              } else if (
+                objectiveIndex !== finalObjectiveIndex ||
+                active.progress < authoredQuest.objectives.length
+              ) {
+                warnings.push(
+                  "snapshot_grove_quest_rejected:prior_objective_incomplete"
+                );
+              } else {
+                const giver =
+                  HARTHMERE_NATIVE_QUEST_GIVER_MANIFEST[
+                    authoredQuest.giverNpcId as keyof typeof HARTHMERE_NATIVE_QUEST_GIVER_MANIFEST
+                  ];
+                // Always queue the authoritative native accept repair. A
+                // missing/retired giver mapping must not suppress Challenges
+                // materialization after the reducer already validated the
+                // authored Grove interaction.
+                nativeEcsMaterializationPlans.push({
+                  kind: "quest_accept",
+                  materializationKey: `quest_accept:${envelope.actorId}:grove:${questId}`,
+                  actorId: envelope.actorId,
+                  questSource: "grove",
+                  questId,
+                  giverEntityId: giver?.entityId,
+                  sourceKind: "harthmere_snapshot_grove_quest_accept",
+                });
+                // The final return-to-giver action is still ordinary signed
+                // objective evidence. Materializing it lets the native trigger
+                // engine complete and remove the Challenge instead of leaving
+                // every onboarding lesson permanently in progress.
+                nativeEcsMaterializationPlans.push({
+                  kind: "quest_progress",
+                  materializationKey: `quest_progress:${envelope.actorId}:grove:${questId}:${finalObjectiveIndex}`,
+                  actorId: envelope.actorId,
+                  questSource: "grove",
+                  questId,
+                  objectiveIdOrIndex: finalObjectiveIndex,
+                  sourceKind: "harthmere_snapshot_grove_quest_completion",
+                });
+                next.quests.completed[questId] = nowMs;
+                delete next.quests.active[questId];
+              }
+              if (
+                warnings.some((warning) =>
+                  warning.startsWith("snapshot_grove_quest_rejected:")
+                )
+              ) {
+                touchedModels.add("quest_state_rejection");
+              }
+            } else {
+              // Other authored quests complete through native
+              // Challenges/TriggerState and server-owned firehose evidence. A
+              // browser-supplied boolean must never bypass those handlers.
+              warnings.push("quest_rejected:native_ecs_challenge_required");
+              touchedModels.add("quest_state_rejection");
+            }
           } else {
             next.quests.completed[questId] = nowMs;
             delete next.quests.active[questId];
@@ -14255,20 +14391,17 @@ export function reduceHarthmereLiveModeBackendState(
                 HARTHMERE_NATIVE_QUEST_GIVER_MANIFEST[
                   authoredQuest.giverNpcId as keyof typeof HARTHMERE_NATIVE_QUEST_GIVER_MANIFEST
                 ];
-              if (giver) {
-                // AcceptChallenge is idempotent. Queue it on every active sync
-                // so a request whose Redis write committed before ECS failed
-                // can repair the missing native challenge on exact replay.
-                nativeEcsMaterializationPlans.push({
-                  kind: "quest_accept",
-                  materializationKey: `quest_accept:${envelope.actorId}:grove:${questId}`,
-                  actorId: envelope.actorId,
-                  questSource: "grove",
-                  questId,
-                  giverEntityId: giver.entityId,
-                  sourceKind: "harthmere_snapshot_grove_quest_accept",
-                });
-              }
+              // Queue this on every active sync so a Redis write that committed
+              // before ECS failed can repair the native challenge on replay.
+              nativeEcsMaterializationPlans.push({
+                kind: "quest_accept",
+                materializationKey: `quest_accept:${envelope.actorId}:grove:${questId}`,
+                actorId: envelope.actorId,
+                questSource: "grove",
+                questId,
+                giverEntityId: giver?.entityId,
+                sourceKind: "harthmere_snapshot_grove_quest_accept",
+              });
             }
             if (firstAcceptance) {
               ensureInventoryLootActorSynced();
@@ -18489,6 +18622,9 @@ export function reduceHarthmereLiveModeBackendState(
           muckExposureForcesAggression:
             isLiveEntityRobotMuckedPosition(next, npcPosition) ||
             isLiveEntityRobotMuckedPosition(next, actorPosition),
+          allowOutsideMuckTerritory: npcSnapshot.outsideMuckEncounter === true,
+          outsideMuckTerritoryId: npcSnapshot.combatTerritoryId,
+          outsideMuckTerritoryLabel: npcSnapshot.combatTerritoryLabel,
         });
         if (aggression.aggressive) {
           decision = `muck_unprovoked:${
@@ -18532,6 +18668,14 @@ export function reduceHarthmereLiveModeBackendState(
         500,
         payloadNumber(envelope, "thinkIntervalMs") ?? 2_000
       );
+      // Resolve attack reach from the position at the start of the server tick.
+      // A chase step may bring the NPC into range, but it must visibly arrive
+      // before it can strike on the following tick.
+      const attack = applyLiveEntityAiPlayerAttack({
+        npcId,
+        npcSnapshot,
+        targetId: npcSnapshot?.escortJobId ? undefined : targetId,
+      });
       const movement = npcSnapshot
         ? applyLiveEntityAiMovement({
             entityId: npcId,
@@ -18541,11 +18685,6 @@ export function reduceHarthmereLiveModeBackendState(
             thinkIntervalMs,
           })
         : undefined;
-      const attack = applyLiveEntityAiPlayerAttack({
-        npcId,
-        npcSnapshot,
-        targetId: npcSnapshot?.escortJobId ? undefined : targetId,
-      });
       const attackSummary = playerTargetBlockReason
         ? {
             attackBlockedReason: playerTargetBlockReason,

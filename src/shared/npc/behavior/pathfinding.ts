@@ -32,8 +32,8 @@ export const zPathfindingComponent = z.object({
   position: zVec3f,
 });
 
-const MIN_UPDATE_POSITION_DISTANCE = 3.0;
-const STUCK_DURATION = 8.0;
+export const PATHFINDING_PROGRESS_DISTANCE_METERS = 0.75;
+export const PATHFINDING_STUCK_DURATION_SECONDS = 2.5;
 
 export type PathfindingComponent = z.infer<typeof zPathfindingComponent>;
 
@@ -294,15 +294,18 @@ export function updatePathfindingPosition(
   position: ReadonlyVec3
 ) {
   const distance = dist(position, state.position);
-  if (!state.position || distance >= MIN_UPDATE_POSITION_DISTANCE) {
+  if (!state.position || distance >= PATHFINDING_PROGRESS_DISTANCE_METERS) {
     state.position = position as Vec3;
     state.searchTime = secondsSinceEpoch();
   }
 }
 
-export function stuckWhilePathfinding(state: PathfindingComponent): boolean {
-  const timeElapsed = secondsSinceEpoch() - state.searchTime;
-  return timeElapsed >= STUCK_DURATION;
+export function stuckWhilePathfinding(
+  state: PathfindingComponent,
+  nowSeconds = secondsSinceEpoch()
+): boolean {
+  const timeElapsed = nowSeconds - state.searchTime;
+  return timeElapsed >= PATHFINDING_STUCK_DURATION_SECONDS;
 }
 
 function isFullHeightBlockAtPosition(

@@ -113,6 +113,21 @@ describe("muck_monster_aggression_ai", () => {
     assert.equal(outsideMuck.reason, "monster_outside_muck_territory");
   });
 
+  it("allows only an explicit authored open-Wilds encounter outside Muck", () => {
+    const result = evaluateMuckMonsterAggression({
+      monsterId: "open-wilds-mucker",
+      monsterName: "Open Wilds Mucker",
+      monsterPosition: [219, 38, -897],
+      playerPosition: [220, 38, -897],
+      nowMs: NIGHT_NOW_MS,
+      allowOutsideMuckTerritory: true,
+      outsideMuckTerritoryId: "northwest_wilds_ridge",
+      outsideMuckTerritoryLabel: "Northwest Wilds Ridge",
+    });
+    assert.equal(result.aggressive, true);
+    assert.equal(result.territoryId, "northwest_wilds_ridge");
+  });
+
   it("never starts unprovoked aggression in the Road Ahead starter muck patch", () => {
     // This also protects against a stale production Mucker wandering into the
     // tutorial patch even though current authored spawns are outside the Grove.

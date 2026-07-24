@@ -127,7 +127,12 @@ export class SyncService
     { displayName }: CreatePlayerRequest
   ): Promise<void> {
     const client = this.contextClient(context);
-    ok(client.userId, "Not supported");
+    // Read-only observer sessions do not own a player entity. Older clients
+    // may still issue createPlayer while negotiating RO_SYNC; treat that as a
+    // no-op instead of generating an assertion and a noisy 500-class RPC log.
+    if (!client.userId) {
+      return;
+    }
 
     displayName ??= await (async () => {
       const user = await findByUID(this.db, client.userId);

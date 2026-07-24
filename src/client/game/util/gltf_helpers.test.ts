@@ -2,6 +2,7 @@ import assert from "assert";
 import {
   coalescedPlayerMeshGltfArrayBufferFetch,
   resetPlayerMeshGltfFetchStateForTest,
+  retryPlayerMeshGltfLoad,
   shouldCoalescePlayerMeshGltfFetch,
 } from "@/client/game/util/gltf_fetch_coalescing";
 
@@ -77,5 +78,23 @@ describe("gltf_helpers player mesh fetch coalescing", () => {
     release?.();
     await Promise.all(requests);
     assert.equal(maxActive, 4);
+  });
+
+  it("retries transient player mesh load and parse failures", async () => {
+    let attempts = 0;
+    const expected = { scene: {} } as any;
+    const loaded = await retryPlayerMeshGltfLoad(
+      async () => {
+        attempts += 1;
+        if (attempts < 3) {
+          throw new Error("transient GLB failure");
+        }
+        return expected;
+      },
+      { attempts: 3, delayMs: 0 }
+    );
+
+    assert.equal(attempts, 3);
+    assert.equal(loaded, expected);
   });
 });

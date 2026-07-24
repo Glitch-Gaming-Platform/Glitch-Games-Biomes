@@ -8,6 +8,7 @@ import {
 import { WarpHomeEvent } from "@/shared/ecs/gen/events";
 import {
   HARTHMERE_GROVE_RESPAWN_POSITION,
+  HARTHMERE_NATIVE_MAX_BREATH_SECONDS,
   readHarthmereNativeVitals,
   writeHarthmereNativeVitals,
 } from "@/shared/harthmere/harthmere_native_vitals";
@@ -60,6 +61,6 @@ describe("Harthmere native ECS respawn", () => {
     const vitals = readHarthmereNativeVitals(player.trigger_state);
     assert.equal(vitals.mana, 90);
     assert.equal(vitals.stamina, 110);
-    assert.equal(vitals.breath, 15);
+    assert.equal(vitals.breath, HARTHMERE_NATIVE_MAX_BREATH_SECONDS);
   });
 });

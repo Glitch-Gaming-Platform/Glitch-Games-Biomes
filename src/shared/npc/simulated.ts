@@ -5,6 +5,9 @@ import {
   NpcCombatState,
   NpcMetadata,
   NpcState,
+  Orientation,
+  Position,
+  RigidBody,
 } from "@/shared/ecs/gen/components";
 import type { Delta, DeltaWith } from "@/shared/ecs/gen/delta";
 import { PatchableEntity } from "@/shared/ecs/gen/delta";
@@ -47,8 +50,21 @@ export class SimulatedNpc {
         ...this.patchableEntity.asReadonlyEntity(),
         health: external.health,
         npc_metadata: NpcMetadata.clone(external?.npc_metadata),
+        position: external.position
+          ? Position.clone(external.position)
+          : undefined,
+        orientation: external.orientation
+          ? Orientation.clone(external.orientation)
+          : undefined,
+        rigid_body: external.rigid_body
+          ? RigidBody.clone(external.rigid_body)
+          : undefined,
+        npc_state: external.npc_state
+          ? NpcState.clone(external.npc_state)
+          : undefined,
       }) as Npc
     );
+    this.deserializedNpcState = undefined;
   }
 
   get id(): BiomesId {
@@ -68,6 +84,10 @@ export class SimulatedNpc {
     return Boolean(
       getNpcBehavior(this.type).questGiver || this.entity.questGiver()
     );
+  }
+
+  get playerOwned(): boolean {
+    return Boolean(this.patchableEntity.createdBy());
   }
 
   get health(): DeepReadonly<Health> {

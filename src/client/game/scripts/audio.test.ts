@@ -11,6 +11,7 @@ import {
   resolveAudioUrl,
 } from "@/client/game/resources/audio";
 import type { ClientResources } from "@/client/game/resources/types";
+import { emptyCutsceneUiState } from "@/client/game/resources/cutscene";
 import {
   AudioScript,
   COMBAT_MUSIC_DAMAGE_GRACE_SECONDS,
@@ -92,6 +93,9 @@ function audioHarness() {
       }
       if (path === "/camera/environment") {
         return { inWater, muckyness: { get: () => muckyness } };
+      }
+      if (path === "/scene/cutscene") {
+        return emptyCutsceneUiState();
       }
       throw new Error(`Unexpected resource ${path}`);
     },

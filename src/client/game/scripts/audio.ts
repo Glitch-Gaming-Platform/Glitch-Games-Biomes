@@ -143,11 +143,16 @@ export class AudioScript implements Script {
       );
 
     const { inWater, muckyness } = this.resources.get("/camera/environment");
+    // Cutscene music override wins over the contextual selection (combat/muck)
+    // for the duration of the scene, same precedence as combat music.
+    const cutscene = this.resources.get("/scene/cutscene");
     this.audioManager.setBackgroundMusicTrack(
-      selectBackgroundMusicTrack(
-        muckyness.get(),
-        this.isPlayerInActiveCombat([...playerPos], nowSeconds)
-      )
+      cutscene.active && cutscene.musicOverride
+        ? (cutscene.musicOverride as AudioTrackType)
+        : selectBackgroundMusicTrack(
+            muckyness.get(),
+            this.isPlayerInActiveCombat([...playerPos], nowSeconds)
+          )
     );
 
     if (closestSource) {

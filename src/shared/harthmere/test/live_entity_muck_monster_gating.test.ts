@@ -5,15 +5,18 @@ import {
   HARTHMERE_LIVE_ENTITY_GUARDED_WILDLIFE_LOCATIONS,
   HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_PRODUCTION_COUNT,
   HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS,
+  HARTHMERE_LIVE_ENTITY_OPEN_WILDS_MIXED_GROUP_LOCATIONS,
   harthmereExcludedMuckMonsterSeedIds,
   harthmereGroundedMuckMonsterSeedsInTerritory,
+  harthmereLiveEntityIsOpenWildsMixedGroup,
   harthmereMuckMonsterPositionIsInSafeZone,
+  harthmereOpenWildsMixedGroupPositionIsValid,
 } from "@/shared/harthmere/live_entity_production_seed";
 import { muckMonsterAreaForPosition } from "@/shared/harthmere/muck_monster_aggression_ai";
 import { HARTHMERE_ORIGINAL_WORLD_EAST_EDGE_X } from "@/shared/harthmere/world_extension";
 
 describe("muck monster placement", () => {
-  it("keeps all 116 muckers/hexes — none dropped", () => {
+  it("keeps all 140 muckers/hexes — none dropped", () => {
     const placed = harthmereGroundedMuckMonsterSeedsInTerritory();
     assert.equal(
       placed.length,
@@ -24,6 +27,23 @@ describe("muck monster placement", () => {
       HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS.length
     );
     assert.deepEqual(harthmereExcludedMuckMonsterSeedIds(), []);
+  });
+
+  it("adds exactly five Muckers and one Hex to every open-Wilds group", () => {
+    const placed = harthmereGroundedMuckMonsterSeedsInTerritory();
+    for (const location of HARTHMERE_LIVE_ENTITY_OPEN_WILDS_MIXED_GROUP_LOCATIONS) {
+      const group = placed.filter((seed) => seed.areaId === location.areaId);
+      assert.equal(group.length, 6, `${location.areaId} hostile count`);
+      assert.equal(group.filter((seed) => seed.combatKind === "mux").length, 5);
+      assert.equal(group.filter((seed) => seed.combatKind === "hex").length, 1);
+      assert.ok(
+        group.every(
+          (seed) =>
+            harthmereOpenWildsMixedGroupPositionIsValid(seed.position) &&
+            !muckMonsterAreaForPosition(seed.position, 1.5)
+        )
+      );
+    }
   });
 
   it("guards every added wildlife location with exactly three Muckers and one Hex", () => {
@@ -54,8 +74,13 @@ describe("muck monster placement", () => {
     }
   });
 
-  it("places every mucker inside a real muck area", () => {
+  it("keeps ordinary Muckers in Muck while only authored open-Wilds packs live outside it", () => {
     for (const seed of harthmereGroundedMuckMonsterSeedsInTerritory()) {
+      if (harthmereLiveEntityIsOpenWildsMixedGroup(seed)) {
+        assert.ok(harthmereOpenWildsMixedGroupPositionIsValid(seed.position));
+        assert.equal(muckMonsterAreaForPosition(seed.position, 1.5), undefined);
+        continue;
+      }
       assert.ok(
         muckMonsterAreaForPosition(seed.position, 1.5),
         `${seed.seedId} at ${seed.position} is not in a muck area`
@@ -66,6 +91,9 @@ describe("muck monster placement", () => {
   it("spreads muckers/hexes across multiple muck areas", () => {
     const areaIds = new Set<string>();
     for (const seed of harthmereGroundedMuckMonsterSeedsInTerritory()) {
+      if (harthmereLiveEntityIsOpenWildsMixedGroup(seed)) {
+        continue;
+      }
       const area = muckMonsterAreaForPosition(seed.position, 1.5);
       if (area) {
         areaIds.add(area.id);
@@ -105,10 +133,13 @@ describe("muck monster placement", () => {
     assert.ok(
       generatedFromAuthoredXz.every(
         (seed) =>
-          seed.position[1] === HARTHMERE_MUCK_FLOOR_FEET_Y &&
           seed.position[0] < HARTHMERE_ORIGINAL_WORLD_EAST_EDGE_X &&
           !harthmereMuckMonsterPositionIsInSafeZone(seed.position) &&
-          muckMonsterAreaForPosition(seed.position, 1.5)
+          (harthmereLiveEntityIsOpenWildsMixedGroup(seed)
+            ? harthmereOpenWildsMixedGroupPositionIsValid(seed.position) &&
+              !muckMonsterAreaForPosition(seed.position, 1.5)
+            : seed.position[1] === HARTHMERE_MUCK_FLOOR_FEET_Y &&
+              Boolean(muckMonsterAreaForPosition(seed.position, 1.5)))
       )
     );
   });

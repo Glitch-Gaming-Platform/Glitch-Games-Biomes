@@ -24,6 +24,7 @@ import {
   harthmereBibleDialogModelForGiver,
   harthmereBibleGiverIdForNpcLabel,
   harthmereBibleHiddenQuestToTrigger,
+  harthmereBibleHiddenQuestInteractionModel,
   harthmereBibleOperationPayloadForAction,
   harthmereThaedrynEncounterModel,
   readHarthmereBibleQuestSnapshot,
@@ -104,7 +105,13 @@ export function useHarthmereBibleQuestDialog(talkingToNPCId: BiomesId):
 
   const model = useMemo(() => {
     if (!giverId || !snapshot) return undefined;
-    return harthmereBibleDialogModelForGiver({ giverId, snapshot });
+    return harthmereBibleDialogModelForGiver({
+      giverId,
+      snapshot,
+      actorId: snapshot.actorId,
+      playerLevel: snapshot.playerLevel,
+      nowMs: snapshot.serverNowMs,
+    });
   }, [giverId, snapshot]);
 
   const perform = useCallback(
@@ -184,6 +191,9 @@ export const HarthmereBibleQuestRuntimeController: React.FunctionComponent<{}> =
       submitHarthmereBibleQuestOperation({
         operation: "bible_quest_accept",
         questId,
+        // Use the exact weather context projected by the server so hidden
+        // discovery and mutation validation cannot disagree.
+        weather: snapshot.weatherClaim,
       }).catch((error) => {
         // Expected for gated triggers (wrong weather); retry next session.
         log.info("hidden bible quest trigger not accepted", {
@@ -200,6 +210,16 @@ export const HarthmereBibleQuestRuntimeController: React.FunctionComponent<{}> =
           : undefined,
       [snapshot, playerPosition?.[0], playerPosition?.[2]]
     );
+    const hiddenInteraction = useMemo(
+      () =>
+        snapshot
+          ? harthmereBibleHiddenQuestInteractionModel({
+              snapshot,
+              playerPosition,
+            })
+          : undefined,
+      [snapshot, playerPosition?.[0], playerPosition?.[2]]
+    );
 
     const performBossAction = useCallback(
       (id: string, payload: Record<string, unknown>) => {
@@ -212,6 +232,80 @@ export const HarthmereBibleQuestRuntimeController: React.FunctionComponent<{}> =
       },
       []
     );
+
+    const performHiddenAction = useCallback(
+      (action: NonNullable<typeof hiddenInteraction>["action"]) => {
+        if (!action) return;
+        setBusyActionId(`hidden:${action.questId}:${action.objectiveId ?? action.kind}`);
+        submitHarthmereBibleQuestOperation(
+          harthmereBibleOperationPayloadForAction(action)
+        )
+          .catch((error) =>
+            log.warn("hidden bible quest action rejected", { error, action })
+          )
+          .finally(() => setBusyActionId(undefined));
+      },
+      [hiddenInteraction]
+    );
+
+    if (hiddenInteraction?.action) {
+      const action = hiddenInteraction.action;
+      return (
+        <div
+          style={{
+            position: "fixed",
+            right: 16,
+            top: "30%",
+            width: 300,
+            zIndex: 40,
+            background: "rgba(12, 10, 18, 0.9)",
+            border: "1px solid rgba(190, 242, 100, 0.5)",
+            borderRadius: 8,
+            padding: 12,
+            color: "#f4f7e8",
+            fontSize: 12,
+            pointerEvents: "auto",
+          }}
+          data-testid={`hidden-bible-quest-panel-${hiddenInteraction.questId}`}
+        >
+          <div style={{ fontWeight: 700, marginBottom: 4 }}>
+            {hiddenInteraction.title}
+          </div>
+          <div style={{ opacity: 0.85, marginBottom: 8 }}>
+            {hiddenInteraction.objective ?? "The discovery is ready to finish."}
+          </div>
+          <button
+            disabled={
+              !hiddenInteraction.nearObjective || busyActionId !== undefined
+            }
+            title={
+              hiddenInteraction.nearObjective
+                ? action.tooltip
+                : "Follow the quest marker and stand near the objective."
+            }
+            onClick={() => performHiddenAction(action)}
+            style={{
+              width: "100%",
+              padding: "7px 9px",
+              background: hiddenInteraction.nearObjective
+                ? "rgba(190, 242, 100, 0.25)"
+                : "rgba(255,255,255,0.08)",
+              border: "1px solid rgba(255,255,255,0.25)",
+              borderRadius: 6,
+              color: "inherit",
+              cursor: hiddenInteraction.nearObjective
+                ? "pointer"
+                : "not-allowed",
+              opacity: hiddenInteraction.nearObjective ? 1 : 0.55,
+            }}
+          >
+            {hiddenInteraction.nearObjective
+              ? action.name
+              : "Move closer to the marked objective"}
+          </button>
+        </div>
+      );
+    }
 
     if (!encounter?.active || !encounter.nearArena) {
       return null;

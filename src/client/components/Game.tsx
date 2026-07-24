@@ -12,6 +12,8 @@ import type { LoadProgress } from "@/client/game/load_progress";
 import { ClientLoader, REQUIRED_FRAMES } from "@/client/game/load_progress";
 import { hotResourceEmitter } from "@/client/game/resources/hot";
 import { useHarthmereGlitchBridge } from "@/client/game/glitch/harthmere_glitch_bridge";
+import { useCutscenePromoCapture } from "@/client/game/cutscene/promo_capture";
+import { useHarthmereCutsceneLibrary } from "@/client/game/cutscene/harthmere_library";
 import { emitHarthmereGlitchBehaviorEvent } from "@/client/game/glitch/harthmere_glitch_behavior_events";
 import { trackConversion } from "@/client/util/ad_helpers";
 import { cleanEmitterCallback } from "@/client/util/helpers";
@@ -39,6 +41,8 @@ const Game: React.FunctionComponent<{
   const loadEffectStarted = useRef(false);
 
   useHarthmereGlitchBridge(Boolean(clientContext), clientContext);
+  useHarthmereCutsceneLibrary(clientContext);
+  useCutscenePromoCapture(Boolean(clientContext));
 
   const startWorldLoadEffect = (context: ClientContext) => {
     if (loadEffectStarted.current) {

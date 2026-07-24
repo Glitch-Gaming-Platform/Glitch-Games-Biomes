@@ -4,6 +4,7 @@ import type { ServerMods } from "@/server/shared/minigames/server_mods";
 import { resolveMinigameWarpPosition } from "@/server/shared/minigames/util";
 import type { WorldApi } from "@/server/shared/world/api";
 import type { FirestoreUser, WithId } from "@/server/web/db/types";
+import { getUserOrCreateIfNotExists } from "@/server/web/db/users";
 import { findByUID } from "@/server/web/db/users_fetch";
 import { okOrAPIError } from "@/server/web/errors";
 import { biomesApiHandler } from "@/server/web/util/api_middleware";
@@ -137,7 +138,15 @@ export default biomesApiHandler(
     auth: { userId },
     body: { destination, reason },
   }) => {
-    const user = await findByUID(db, userId);
+    let user = await findByUID(db, userId);
+    if (!user) {
+      const player = await worldApi.get(userId);
+      user = await getUserOrCreateIfNotExists(
+        db,
+        userId,
+        player?.label()?.text
+      );
+    }
     okOrAPIError(user, "not_found");
 
     const [warpPosition, warpOrientation] = await resolveWarpPosition(

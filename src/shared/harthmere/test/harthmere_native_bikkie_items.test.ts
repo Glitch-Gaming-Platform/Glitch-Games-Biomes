@@ -41,7 +41,13 @@ function tray(contents: ReadonlyMap<number, Biscuit> = new Map()) {
   } as BakedBiscuitTray;
 }
 
-describe("Harthmere exact native Bikkie overlay", () => {
+describe("Harthmere exact native Bikkie overlay", function () {
+  // Each case rebuilds the complete generated item/quest overlay. Production
+  // guardrails run concurrently with other catalog audits, so the default 5s
+  // timeout can expire under load even when the same assertion completes in
+  // ~2s alone. Keep a bounded catalog-sized timeout instead of weakening any
+  // identity or wire-decoding assertion.
+  this.timeout(15_000);
   it("requires every authored item and NPC identity to be checked in", () => {
     const definitions = new Map(
       ensureHarthmereNativeItemCatalogue().map((definition) => [

@@ -3095,7 +3095,7 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{
   useHarthmerePlayerSwordVisualBridge();
   const pointerLockManager = usePointerLockManager();
   const jobsBoardReturnPointerLockRef = React.useRef(false);
-  const { userId, reactResources } = useClientContext();
+  const { userId, reactResources, gardenHose } = useClientContext();
   const [glitchGameUserId, setGlitchGameUserId] = useState<string | undefined>(
     () => getHarthmereGlitchGameUserId()
   );
@@ -3144,6 +3144,12 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{
   const [businessInterfaceOpen, setBusinessInterfaceOpen] = useState(false);
   const openJobsBoard = React.useCallback(
     (input?: unknown) => {
+      // Every jobs-board entry path (world F prompt, B hotkey, HUD button, or
+      // scripted open event) must emit the same gameplay action. Previously
+      // only object-semantic interactions could produce `open_jobs_board`, so
+      // the authored "Read the Jobs Board" lesson stayed stuck when players
+      // used the clearly advertised B shortcut.
+      gardenHose.publish({ kind: "open_jobs_board" });
       setJobsBoardWorldContext(harthmereJobsBoardOpenContextFromInput(input));
       openHarthmereJobsBoardPointerLock(
         pointerLockManager,
@@ -3159,7 +3165,7 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{
       } catch {}
       setJobsBoardOpen(true);
     },
-    [pointerLockManager, reactResources]
+    [gardenHose, pointerLockManager, reactResources]
   );
   const closeJobsBoard = React.useCallback(() => {
     setJobsBoardOpen(false);
@@ -3305,6 +3311,18 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{
     return (
       <>
         {runtimeControllers}
+        {/* The Biomes UI owns the standard objective card, but Snapshot Grove
+            lessons also require contextual world-action buttons. Keep that
+            narrow lesson surface mounted in production so accepting a lesson
+            cannot leave the player at a marker with no completable action. */}
+        {hudVisibility.objectives && (
+          <div className="pointer-events-auto fixed right-2 top-[20.25rem] z-[60] max-h-[calc(100vh-21rem)] w-[min(19rem,calc(100vw-1rem))] overflow-y-auto max-sm:hidden md:right-4 md:top-[20.75rem]">
+            <SnapshotGroveMapHUD />
+          </div>
+        )}
+        {/* Contextual Grove objectives can open the focused tutorial chat; the
+            controller alone records state but cannot render that interaction. */}
+        <SnapshotGroveTutorChatPanel />
         {!nativeBiomesEcsAuthorityEnabled() && <HarthmereDeathScreenOverlay />}
         <HarthmereVendorTradePanel />
         {/* BiomesUIMount owns the replacement container, cooking, and gathering
@@ -3350,9 +3368,14 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{
         </div>
       )}
       {hudVisibility.objectives && (
-        <div className="pointer-events-auto fixed right-2 top-[20.25rem] z-30 w-[min(19rem,calc(100vw-1rem))] max-sm:hidden md:right-4 md:top-[20.75rem]">
-          <SnapshotGroveMapHUD />
-        </div>
+        <>
+          {/* Keep long multi-step lesson controls reachable on short desktop
+              viewports. Without an explicit scroll boundary the practice
+              action can render below the screen while its marker is in range. */}
+          <div className="pointer-events-auto fixed right-2 top-[20.25rem] z-[60] max-h-[calc(100vh-21rem)] w-[min(19rem,calc(100vw-1rem))] overflow-y-auto max-sm:hidden md:right-4 md:top-[20.75rem]">
+            <SnapshotGroveMapHUD />
+          </div>
+        </>
       )}
       {hudVisibility.helpButtons && <FightSideControls />}
       {hudVisibility.actionBar && <UtilityActionBar onAction={openHudAction} />}

@@ -1,5 +1,4 @@
 import { authorizeHarthmereInventoryTransaction } from "@/server/harthmere/native_inventory_transaction_token";
-import { authorizeHarthmereQuestProgress } from "@/server/harthmere/native_quest_progress_token";
 import { authorizeHarthmerePlaceableTransaction } from "@/server/harthmere/native_placeable_transaction_token";
 import { buildHarthmereNativeThaedrynEntity } from "@/server/harthmere/live_entity_ecs_seed";
 import { newDrop } from "@/server/logic/utils/drops";
@@ -10,16 +9,16 @@ import type { WorldApi } from "@/server/shared/world/api";
 import {
   AclComponent,
   Box,
+  Challenges,
   DeedComponent,
   Label,
   Position,
   Protection,
   Size,
+  TriggerState,
 } from "@/shared/ecs/gen/components";
 import {
-  AcceptChallengeEvent,
   HarthmereInventoryTransactionEvent,
-  HarthmereQuestProgressEvent,
   HarthmerePlaceableTransactionEvent,
   ResetChallengeEvent,
 } from "@/shared/ecs/gen/events";
@@ -46,6 +45,8 @@ import {
   harthmereNativeQuestId,
   harthmereNativeQuestStepId,
 } from "@/shared/harthmere/harthmere_native_quests";
+import { HARTHMERE_QUEST_CATALOG } from "@/shared/harthmere/quest_compendium";
+import { SNAPSHOT_GROVE_QUESTS } from "@/shared/harthmere/snapshot_grove_content";
 import type { BiomesId } from "@/shared/ids";
 import { safeParseBiomesId } from "@/shared/ids";
 
@@ -386,35 +387,85 @@ async function materializeInventoryExchange(input: {
 }
 
 async function materializeQuestAccept(input: {
-  logicApi?: Pick<LogicApi, "publish">;
+  worldApi: WorldApi;
   plan: HarthmereNativeEcsQuestAcceptMaterializationPlan;
 }) {
   const actorId = actorBiomesId(input.plan.actorId);
-  const giverEntityId = actorBiomesId(input.plan.giverEntityId);
   const challengeId = harthmereNativeQuestId(
     input.plan.questSource,
     input.plan.questId
   );
-  if (!input.logicApi || !actorId || !giverEntityId || !challengeId) {
+  if (!actorId || !challengeId) {
     throw new Error(
       `Native quest accept ${input.plan.materializationKey} is unresolved`
     );
   }
-  await input.logicApi.publish(
-    new GameEvent(
-      actorId,
-      new AcceptChallengeEvent({
-        id: actorId,
-        npc_id: giverEntityId,
-        challenge_id: challengeId,
-      })
-    )
-  );
+  const actor = await input.worldApi.get(actorId);
+  if (!actor) {
+    throw new Error(
+      `Native quest accept ${input.plan.materializationKey} actor is missing`
+    );
+  }
+  const before = actor.challenges();
+  if (
+    before?.in_progress.has(challengeId) ||
+    before?.complete.has(challengeId)
+  ) {
+    return false;
+  }
+
+  // The live reducer has already validated giver identity, distance, unlocks,
+  // and replay safety before it emits this plan. Applying the native challenge
+  // directly avoids a cross-service race where AcceptChallenge reads the
+  // player's pre-availability replica and silently rolls back. This same path
+  // intentionally covers visible-giver and hidden/world-triggered quests.
+  const challenges = Challenges.clone(before ?? Challenges.create());
+  challenges.available.delete(challengeId);
+  challenges.in_progress.add(challengeId);
+  challenges.started_at.set(challengeId, secondsSinceEpoch());
+  challenges.finished_at.delete(challengeId);
+  const applied = await input.worldApi.apply({
+    changes: [{ kind: "update", entity: { id: actorId, challenges } }],
+  });
+  if (applied.outcome !== "success") {
+    throw new Error(`Native quest accept returned ${applied.outcome}`);
+  }
   return true;
 }
 
+function nativeQuestObjectiveStepIds(
+  plan: HarthmereNativeEcsQuestProgressMaterializationPlan
+) {
+  const objectiveKeys =
+    plan.questSource === "grove"
+      ? SNAPSHOT_GROVE_QUESTS.find(
+          (quest) => quest.id === plan.questId
+        )?.objectives.map((_, index) => index)
+      : HARTHMERE_QUEST_CATALOG.find(
+          (quest) => quest.id === plan.questId
+        )?.objectives.map((objective: { id: string }) => objective.id);
+  if (!objectiveKeys?.length) {
+    throw new Error(
+      `Native quest progress ${plan.materializationKey} has no authored objectives`
+    );
+  }
+  const stepIds = objectiveKeys.map((objectiveIdOrIndex) =>
+    harthmereNativeQuestStepId(
+      plan.questSource,
+      plan.questId,
+      objectiveIdOrIndex
+    )
+  );
+  if (stepIds.some((stepId) => !stepId)) {
+    throw new Error(
+      `Native quest progress ${plan.materializationKey} has an unresolved objective`
+    );
+  }
+  return stepIds as BiomesId[];
+}
+
 async function materializeQuestProgress(input: {
-  logicApi?: Pick<LogicApi, "publish">;
+  worldApi: WorldApi;
   plan: HarthmereNativeEcsQuestProgressMaterializationPlan;
 }) {
   const actorId = actorBiomesId(input.plan.actorId);
@@ -427,25 +478,68 @@ async function materializeQuestProgress(input: {
     input.plan.questId,
     input.plan.objectiveIdOrIndex
   );
-  if (!input.logicApi || !actorId || !challengeId || !stepId) {
+  if (!actorId || !challengeId || !stepId) {
     throw new Error(
       `Native quest progress ${input.plan.materializationKey} is unresolved`
     );
   }
-  const eventInput = {
-    id: actorId,
-    challenge_id: challengeId,
-    step_id: stepId,
-  };
-  await input.logicApi.publish(
-    new GameEvent(
-      actorId,
-      new HarthmereQuestProgressEvent({
-        ...eventInput,
-        authorization: authorizeHarthmereQuestProgress(eventInput),
-      })
-    )
+  const actor = await input.worldApi.get(actorId);
+  if (!actor) {
+    throw new Error(
+      `Native quest progress ${input.plan.materializationKey} actor is missing`
+    );
+  }
+  const before = actor.challenges();
+  if (before?.complete.has(challengeId)) return false;
+
+  const objectiveStepIds = nativeQuestObjectiveStepIds(input.plan);
+  if (!objectiveStepIds.includes(stepId)) {
+    throw new Error(
+      `Native quest progress ${input.plan.materializationKey} objective is not authored`
+    );
+  }
+
+  // Objective validation and ordering happened in the server-owned Grove or
+  // Bible reducer. Write its approved result to Challenges and TriggerState in
+  // one world transaction so frontend projection can never observe a locally
+  // advanced quest with an empty native challenge. Starting the challenge here
+  // also repairs old players whose earlier accept hit the replica race.
+  const now = secondsSinceEpoch();
+  const challenges = Challenges.clone(before ?? Challenges.create());
+  const triggerState = TriggerState.clone(
+    actor.triggerState?.() ?? TriggerState.create()
   );
+  const rootState = new Map(triggerState.by_root.get(challengeId) ?? []);
+  rootState.set(stepId, now);
+  triggerState.by_root.set(challengeId, rootState);
+  challenges.available.delete(challengeId);
+  challenges.in_progress.add(challengeId);
+  if (!challenges.started_at.has(challengeId)) {
+    challenges.started_at.set(challengeId, now);
+  }
+
+  if (
+    objectiveStepIds.every((objectiveStepId) => rootState.has(objectiveStepId))
+  ) {
+    challenges.in_progress.delete(challengeId);
+    challenges.complete.add(challengeId);
+    challenges.finished_at.set(challengeId, now);
+    // Completed roots are removed by the native trigger engine too. Mirroring
+    // that cleanup prevents stale objectives from resurfacing on later events.
+    triggerState.by_root.delete(challengeId);
+  }
+
+  const applied = await input.worldApi.apply({
+    changes: [
+      {
+        kind: "update",
+        entity: { id: actorId, challenges, trigger_state: triggerState },
+      },
+    ],
+  });
+  if (applied.outcome !== "success") {
+    throw new Error(`Native quest progress returned ${applied.outcome}`);
+  }
   return true;
 }
 
@@ -744,9 +838,15 @@ export async function materializeHarthmereNativeEcsPlans(input: {
             plan,
           });
         case "quest_accept":
-          return materializeQuestAccept({ logicApi: input.logicApi, plan });
+          return materializeQuestAccept({
+            worldApi: input.worldApi,
+            plan,
+          });
         case "quest_progress":
-          return materializeQuestProgress({ logicApi: input.logicApi, plan });
+          return materializeQuestProgress({
+            worldApi: input.worldApi,
+            plan,
+          });
         case "quest_reset":
           return materializeQuestReset({ logicApi: input.logicApi, plan });
         case "boss_entity":

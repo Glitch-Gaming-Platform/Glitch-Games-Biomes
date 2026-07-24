@@ -129,6 +129,10 @@ function liveModeHeaders(search?: string) {
 }
 
 export interface HarthmereBibleQuestClientSnapshot {
+  actorId?: string;
+  playerLevel?: number;
+  serverNowMs?: number;
+  weatherClaim?: string;
   /** quests.active mirror (all sources; bible entries have source tag). */
   active: Record<string, any>;
   completed: Record<string, number>;
@@ -162,6 +166,18 @@ export function harthmereBibleQuestSnapshotFromResponse(
 ): HarthmereBibleQuestClientSnapshot {
   const questState = body?.questState ?? {};
   return {
+    actorId:
+      typeof questState.actorId === "string" ? questState.actorId : undefined,
+    playerLevel: Number.isFinite(Number(questState.playerLevel))
+      ? Math.max(1, Math.trunc(Number(questState.playerLevel)))
+      : undefined,
+    serverNowMs: Number.isFinite(Number(questState.serverNowMs))
+      ? Number(questState.serverNowMs)
+      : undefined,
+    weatherClaim:
+      typeof questState.weatherClaim === "string"
+        ? questState.weatherClaim
+        : undefined,
     active:
       questState.active && typeof questState.active === "object"
         ? questState.active
@@ -306,6 +322,8 @@ export interface HarthmereBibleDialogAction {
   tooltip?: string;
   /** For choice objectives: the choice value the server revalidates. */
   choice?: string;
+  /** Combat objectives must carry server-revalidated encounter evidence. */
+  combatResult?: "encounter_cleared";
 }
 
 export interface HarthmereBibleDialogModel {
@@ -331,13 +349,14 @@ export function harthmereBibleDialogModelForGiver(input: {
   playerLevel?: number;
   nowMs?: number;
 }): HarthmereBibleDialogModel {
-  const nowMs = input.nowMs ?? Date.now();
+  const nowMs = input.nowMs ?? input.snapshot.serverNowMs ?? Date.now();
   const context = buildHarthmereBibleQuestContext({
-    actorId: input.actorId ?? "local-player",
-    playerLevel: input.playerLevel ?? 1,
+    actorId: input.actorId ?? input.snapshot.actorId ?? "local-player",
+    playerLevel: input.playerLevel ?? input.snapshot.playerLevel ?? 1,
     completedQuests: input.snapshot.completed,
     slice: input.snapshot.bible,
     nowMs,
+    weatherClaim: input.snapshot.weatherClaim,
   });
   const offers = harthmereBibleQuestOffersForGiver(input.giverId, context);
   const actions: HarthmereBibleDialogAction[] = [];
@@ -371,6 +390,8 @@ export function harthmereBibleDialogModelForGiver(input: {
             quest.objectives.length
           }`,
           choice: objective.type === "choice" ? objective.targetId : undefined,
+          combatResult:
+            objective.type === "combat" ? "encounter_cleared" : undefined,
         });
       }
       continue;
@@ -412,6 +433,86 @@ export function harthmereBibleOperationPayloadForAction(
     questId: action.questId,
     objectiveId: action.objectiveId,
     choice: action.choice,
+    combatResult: action.combatResult,
+  };
+}
+
+export interface HarthmereBibleHiddenQuestInteractionModel {
+  questId: string;
+  title: string;
+  objective?: string;
+  nearObjective: boolean;
+  action?: HarthmereBibleDialogAction;
+}
+
+/**
+ * Hidden quests have no giver dialog by design. This model gives them the
+ * same objective/turn-in action contract at their authored world waypoint,
+ * preventing an accepted discovery quest from becoming impossible to finish.
+ * Q12 remains on its dedicated encounter panel.
+ */
+export function harthmereBibleHiddenQuestInteractionModel(input: {
+  snapshot: HarthmereBibleQuestClientSnapshot;
+  playerPosition: readonly [number, number, number] | undefined;
+}): HarthmereBibleHiddenQuestInteractionModel | undefined {
+  const active = (HARTHMERE_QUEST_CATALOG as readonly any[]).find((quest) => {
+    const state = input.snapshot.bible.runtime[quest.id]?.state;
+    if (!quest.hidden) return false;
+    // Q12 owns a dedicated encounter HUD while active, but after resolution
+    // it still needs the ordinary giver-less completion button.
+    if (
+      quest.id === HARTHMERE_BIBLE_DRAGON_QUEST_ID &&
+      state !== "ready_to_complete"
+    ) {
+      return false;
+    }
+    return state === "active" || state === "ready_to_complete";
+  });
+  if (!active) return undefined;
+
+  const record = input.snapshot.bible.runtime[active.id];
+  const objective = harthmereBibleQuestCurrentObjective(active.id, record);
+  const waypoint = getHarthmereQuestResolvedWaypoint(active.id, objective);
+  const maxDistance = Math.max(
+    HARTHMERE_BIBLE_HIDDEN_TRIGGER_RADIUS,
+    Number(objective?.validation?.maxDistance) || 0
+  );
+  const nearObjective = Boolean(
+    input.playerPosition &&
+      waypoint &&
+      Math.hypot(
+        input.playerPosition[0] - waypoint[0],
+        input.playerPosition[2] - waypoint[2]
+      ) <= maxDistance
+  );
+  const action: HarthmereBibleDialogAction | undefined =
+    record?.state === "ready_to_complete"
+      ? {
+          kind: "turn_in",
+          questId: active.id,
+          name: `Complete: ${active.title}`,
+          followUpText: active.dialogue?.complete ?? "",
+          tooltip: active.rewards?.previewText,
+        }
+      : objective
+      ? {
+          kind: "objective",
+          questId: active.id,
+          objectiveId: objective.id,
+          name: objective.label,
+          followUpText: active.dialogue?.active ?? "",
+          tooltip: `Objective ${objective.id.slice(-2)} of ${active.objectives.length}`,
+          choice: objective.type === "choice" ? objective.targetId : undefined,
+          combatResult:
+            objective.type === "combat" ? "encounter_cleared" : undefined,
+        }
+      : undefined;
+  return {
+    questId: active.id,
+    title: active.title,
+    objective: objective?.label,
+    nearObjective,
+    action,
   };
 }
 

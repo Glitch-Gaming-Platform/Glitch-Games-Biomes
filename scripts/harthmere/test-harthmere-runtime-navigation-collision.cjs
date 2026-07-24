@@ -568,7 +568,12 @@ check("player collision radius is tight enough for MMO town clutter", playerSrc.
 check("low/jumpable object clearance logic remains active", playerSrc.includes("lowEnoughToStep") && playerSrc.includes("centerAboveLowObject") && playerSrc.includes("risingOntoObject"));
 check("collision escape fallback exists for bad overlaps instead of trapping player forever", playerSrc.includes("harthmereLocalDevHorizontalEscapeScore") && playerSrc.includes("lastClear"));
 check("north gate doors and stair/wayfinding markers remain pass-through navigation", assetsSrc.includes("isNorthGateExitDoor") && playerSrc.includes("pass_through_navigation"));
-check("visual-only signs, lamps, banners, notes, food, and scrolls do not become walking blockers", assetsSrc.includes('collisionProfile = isWalkableGateOrStair ? "pass_through_navigation" : "visual_only"'));
+check(
+  "visual-only signs, lamps, banners, notes, food, and scrolls do not become walking blockers",
+  /collisionProfile\s*=\s*isWalkableGateOrStair\s*\?\s*["']pass_through_navigation["']\s*:\s*["']visual_only["']/.test(
+    assetsSrc,
+  ),
+);
 check("hard blockers still exist for walls, towers, buildings, stalls, and service furniture", walkingObstacles.some((obstacle) => obstacle.profile === "building_or_wall") && walkingObstacles.some((obstacle) => obstacle.profile === "service_stall") && walkingObstacles.some((obstacle) => obstacle.profile === "service_furniture"));
 
 const routes = [

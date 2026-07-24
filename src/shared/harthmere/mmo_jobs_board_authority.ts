@@ -746,6 +746,13 @@ function distance(
   return Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2 + (a.z - b.z) ** 2);
 }
 
+function horizontalDistance(
+  a: { x: number; y: number; z: number },
+  b: { x: number; y: number; z: number }
+) {
+  return Math.hypot(a.x - b.x, a.z - b.z);
+}
+
 export function isActorAtHarthmereJobsBoard(
   state: HarthmereJobsBoardState,
   context: Pick<
@@ -1604,8 +1611,14 @@ function completeJobQuest(
       y: marker.position[1],
       z: marker.position[2],
     };
+    // Field markers come from terrain scans whose recommended feet Y can
+    // differ from the live player controller's grounded Y (for example, a
+    // forge marker can be 11m above its actual walkable floor). The objective
+    // target/evidence gates still identify the exact interaction; proximity is
+    // therefore intentionally horizontal so a stale terrain height cannot make
+    // an otherwise reachable job impossible to turn in.
     if (
-      distance(context.actorPosition, markerPosition) >
+      horizontalDistance(context.actorPosition, markerPosition) >
       HARTHMERE_JOBS_BOARD_FIELD_COMPLETION_RADIUS
     ) {
       return reject(result, "jobs_board_rejected:field_target_out_of_range");

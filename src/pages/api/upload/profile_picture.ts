@@ -17,11 +17,18 @@ export default biomesApiHandler(
     body: zUpdateProfilePictureRequest,
   },
   async ({
-    context: { db },
+    context: { db, worldApi },
     auth: { userId },
     body: { photoDataURI, hash },
   }) => {
-    await updateProfilePicture(db, userId, photoDataURI, hash);
+    const player = await worldApi.get(userId);
+    await updateProfilePicture(
+      db,
+      userId,
+      photoDataURI,
+      hash,
+      player?.label()?.text
+    );
   }
 );
 

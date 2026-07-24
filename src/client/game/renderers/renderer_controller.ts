@@ -3,6 +3,10 @@ import type { ClientContext } from "@/client/game/context";
 import type { RenderPassName } from "@/client/game/renderers/passes/composer";
 import type { RenderPass } from "@/client/game/renderers/passes/pass";
 import type { ScenePassDeps } from "@/client/game/renderers/passes/standard_passes";
+import {
+  getActiveRendererController,
+  setActiveRendererController,
+} from "@/client/game/renderers/capture_bridge";
 import { makeStandardScenePasses } from "@/client/game/renderers/passes/standard_passes";
 import { PerformanceProfiler } from "@/client/game/renderers/performance_profiler";
 import type { Scenes } from "@/client/game/renderers/scenes";
@@ -131,6 +135,13 @@ export class RendererController {
   }
 
   detach() {
+    if (getActiveRendererController() === this) {
+      setActiveRendererController(undefined);
+    }
+    if (typeof window !== "undefined") {
+      delete (window as typeof window & { __biomesCaptureReady?: boolean })
+        .__biomesCaptureReady;
+    }
     this.passRenderer?.shutdown();
     this.passRenderer = undefined;
     this.threeClock = undefined;
@@ -145,6 +156,8 @@ export class RendererController {
   }
 
   attach(canvas: HTMLCanvasElement) {
+    setActiveRendererController(this);
+    this.renderedFrames = 0;
     this.canvas = canvas;
 
     // Initialize the CSS renderer.
@@ -206,7 +219,6 @@ export class RendererController {
     timeCode("initialRender", () => {
       this.passRenderer!.render();
     });
-
     // Schedule the render loop.
     this.threeClock = new THREE.Clock();
 
@@ -267,6 +279,11 @@ export class RendererController {
             }
           });
           this.emitter.emit("render");
+          if (this.renderedFrames >= 2 && typeof window !== "undefined") {
+            (
+              window as typeof window & { __biomesCaptureReady?: boolean }
+            ).__biomesCaptureReady = true;
+          }
         };
 
         if (this.resources.get("/tweaks").deferSceneRender) {
@@ -382,10 +399,13 @@ export class RendererController {
     width,
     height,
     format = "image/png",
+    deltaSeconds,
   }: {
     width?: number;
     height?: number;
     format?: "image/png" | "image/jpeg";
+    /** Fixed renderer delta for deterministic cinematic captures. */
+    deltaSeconds?: number;
   } = {}) {
     ok(this.passRenderer);
     const passRenderer = this.passRenderer;
@@ -404,7 +424,10 @@ export class RendererController {
 
     const scenes = this.scenes!;
 
-    const delta = this.threeClock.getDelta();
+    const delta =
+      deltaSeconds === undefined
+        ? this.threeClock.getDelta()
+        : Math.max(0, Math.min(0.25, deltaSeconds));
     timeCode("screenshot draw", () => {
       this.drawAll(scenes, delta);
     });
@@ -413,8 +436,9 @@ export class RendererController {
       passRenderer.screenshot({ width, height, format })
     );
 
-    const screenshotProjectionMatrix = camera.three.projectionMatrix;
-    const screenshotMatrixWorldInverse = camera.three.matrixWorldInverse;
+    const screenshotProjectionMatrix = camera.three.projectionMatrix.clone();
+    const screenshotMatrixWorldInverse =
+      camera.three.matrixWorldInverse.clone();
     camera.three.aspect = oldSize[0] / oldSize[1];
     camera.three.updateProjectionMatrix();
 
@@ -460,11 +484,13 @@ export async function buildRendererController(
       loader.get("clientConfig"),
     ]);
 
-  return new RendererController(
+  const controller = new RendererController(
     renderers,
     resources,
     rendererScripts,
     reactResources,
     clientConfig
   );
+  setActiveRendererController(controller);
+  return controller;
 }

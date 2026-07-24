@@ -11,6 +11,7 @@ import {
 import assert from "assert";
 import { harthmereServerMuckCombatTargetIdForSeed } from "@/shared/harthmere/visible_combat_target";
 import { harthmereGroundedMuckMonsterSeedsInTerritory } from "@/shared/harthmere/live_entity_production_seed";
+import { LOCAL_DEV_HUMAN_NPC_TYPE_ID } from "@/shared/npc/bikkie";
 
 function mucker(
   over: Partial<HarthmereLiveCreatureEntityView> & { id: number }
@@ -56,9 +57,7 @@ describe("isHarthmereLiveCreatureEntity", () => {
       false
     );
     assert.equal(
-      isHarthmereLiveCreatureEntity(
-        mucker({ id: 6, placeable_component: {} })
-      ),
+      isHarthmereLiveCreatureEntity(mucker({ id: 6, placeable_component: {} })),
       false
     );
     assert.equal(
@@ -94,7 +93,11 @@ describe("isHarthmereLiveCreatureEntity", () => {
   it("treats quest-creature flagged entities as renderable", () => {
     assert.equal(
       isHarthmereLiveCreatureEntity(
-        mucker({ id: 10, label: { text: "Quest Wraith" }, harthmere_quest_creature: true })
+        mucker({
+          id: 10,
+          label: { text: "Quest Wraith" },
+          harthmere_quest_creature: true,
+        })
       ),
       true
     );
@@ -103,7 +106,10 @@ describe("isHarthmereLiveCreatureEntity", () => {
 
 describe("harthmereLiveCreatureAssetFor", () => {
   it("maps animals by species then label", () => {
-    assert.equal(harthmereLiveCreatureAssetFor("animal", "cow", undefined), "animal_cow");
+    assert.equal(
+      harthmereLiveCreatureAssetFor("animal", "cow", undefined),
+      "animal_cow"
+    );
     assert.equal(
       harthmereLiveCreatureAssetFor("animal", undefined, "Grey Wolf"),
       "animal_wolf"
@@ -114,9 +120,30 @@ describe("harthmereLiveCreatureAssetFor", () => {
     );
   });
 
-  it("maps muck/hex/quest to the procedural creature mesh", () => {
-    assert.equal(harthmereLiveCreatureAssetFor("mucker", undefined, undefined), "townsperson_undead");
-    assert.equal(harthmereLiveCreatureAssetFor("hex", undefined, undefined), "townsperson_undead");
+  it("maps labeled muck/hex actors to authored native creature assets", () => {
+    assert.equal(
+      harthmereLiveCreatureAssetFor("mucker", undefined, "Road Muckwad 1"),
+      "npcs/seedy_muckling"
+    );
+    assert.equal(
+      harthmereLiveCreatureAssetFor("mucker", undefined, "Old Wood Mucker 3"),
+      "npcs/tree_mucker"
+    );
+    assert.equal(
+      harthmereLiveCreatureAssetFor("hex", undefined, "Gravewood Pale Hexer 7"),
+      "npcs/purple_hexer"
+    );
+  });
+
+  it("keeps the procedural creature mesh as an unlabeled compatibility fallback", () => {
+    assert.equal(
+      harthmereLiveCreatureAssetFor("mucker", undefined, undefined),
+      "townsperson_undead"
+    );
+    assert.equal(
+      harthmereLiveCreatureAssetFor("hex", undefined, undefined),
+      "townsperson_undead"
+    );
     assert.equal(
       harthmereLiveCreatureAssetFor("quest_creature", undefined, undefined),
       "townsperson_undead"
@@ -129,7 +156,11 @@ describe("harthmereLiveCreatureAssetFor", () => {
       "townsperson_guard"
     );
     assert.equal(
-      harthmereLiveCreatureAssetFor("live_entity", undefined, "Brother Aldous, Chapel Clergy"),
+      harthmereLiveCreatureAssetFor(
+        "live_entity",
+        undefined,
+        "Brother Aldous, Chapel Clergy"
+      ),
       "townsperson_clergy"
     );
     assert.equal(
@@ -147,9 +178,10 @@ describe("harthmereLiveCreatureBridgeRecord", () => {
     assert.deepEqual(record?.at, [10, 54, -20]);
     assert.equal(record?.yaw, 1.2);
     assert.equal(record?.family, "mucker");
-    assert.equal(record?.asset, "townsperson_undead");
+    assert.equal(record?.asset, "npcs/tree_mucker");
     assert.equal(record?.hp, 200);
     assert.equal(record?.maxHp, 240);
+    assert.equal(record?.nativeNpcRenderer, true);
   });
 
   it("returns undefined for non-creatures", () => {
@@ -157,6 +189,18 @@ describe("harthmereLiveCreatureBridgeRecord", () => {
       harthmereLiveCreatureBridgeRecord(mucker({ id: 1, robot_component: {} })),
       undefined
     );
+  });
+
+  it("routes player-like humans to the native generated-avatar renderer", () => {
+    const record = harthmereLiveCreatureBridgeRecord(
+      mucker({
+        id: 43,
+        label: { text: "Foreman Calla Ashe" },
+        npc_metadata: { type_id: Number(LOCAL_DEV_HUMAN_NPC_TYPE_ID) },
+      })
+    );
+    assert.ok(record);
+    assert.equal(record.nativeNpcRenderer, true);
   });
 });
 
@@ -172,18 +216,16 @@ describe("reconcileHarthmereLiveCreatureBridge", () => {
   });
 
   it("classifies adds, updates and removals", () => {
-    const result = reconcileHarthmereLiveCreatureBridge(
-      new Set([1, 2, 3]),
-      [rec(2), rec(3), rec(4)]
-    );
+    const result = reconcileHarthmereLiveCreatureBridge(new Set([1, 2, 3]), [
+      rec(2),
+      rec(3),
+      rec(4),
+    ]);
     assert.deepEqual(
       result.toAdd.map((r) => r.id),
       [4]
     );
-    assert.deepEqual(
-      result.toUpdate.map((r) => r.id).sort(),
-      [2, 3]
-    );
+    assert.deepEqual(result.toUpdate.map((r) => r.id).sort(), [2, 3]);
     assert.deepEqual(result.toRemove.sort(), [1]);
   });
 

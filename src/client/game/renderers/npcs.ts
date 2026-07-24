@@ -7,6 +7,8 @@ import { drawLimitValueWithTweak } from "@/client/game/resources/graphics_settin
 import { harthmereEnsureRenderableNpcEntity } from "@/client/game/resources/harthmere_npc_render_compat";
 import type { ClientResources } from "@/client/game/resources/types";
 import { NpcMetadataSelector } from "@/shared/ecs/gen/selectors";
+import type { BiomesId } from "@/shared/ids";
+import { readCutscenePuppetOverrides } from "@/shared/cutscene/puppets";
 import { Cval } from "@/shared/util/cvals";
 
 const numNpcsCval = new Cval({
@@ -42,6 +44,15 @@ export const makeNpcsRenderer = (
       numNpcsRenderedCval.value = 0;
 
       const becomeNpc = resources.get("/scene/npc/become_npc");
+      const cutsceneNpcIds = new Set<BiomesId>(
+        readCutscenePuppetOverrides()
+          .filter((override) => override.id > 0)
+          .map((override) => override.id as BiomesId)
+      );
+      const mustKeepNpcIds = new Set(cutsceneNpcIds);
+      if (becomeNpc.kind === "active") {
+        mustKeepNpcIds.add(becomeNpc.entityId);
+      }
       const skyParams = resources.get("/scene/sky_params");
 
       const entities = nearestKEntitiesInFrustum(
@@ -53,10 +64,7 @@ export const makeNpcsRenderer = (
           tweaks.clientRendering.npcRenderLimit
         ),
         {
-          mustKeep:
-            becomeNpc.kind === "active"
-              ? new Set([becomeNpc.entityId])
-              : undefined,
+          mustKeep: mustKeepNpcIds.size > 0 ? mustKeepNpcIds : undefined,
         }
       );
       if (
@@ -67,6 +75,15 @@ export const makeNpcsRenderer = (
         // client/server position differences, it may not be reported as being
         // in the frustum.
         const entity = table.get(NpcMetadataSelector.point(becomeNpc.entityId));
+        if (entity) {
+          entities.push(entity);
+        }
+      }
+      for (const entityId of cutsceneNpcIds) {
+        if (entities.some((entity) => Number(entity.id) === entityId)) {
+          continue;
+        }
+        const entity = table.get(NpcMetadataSelector.point(entityId));
         if (entity) {
           entities.push(entity);
         }

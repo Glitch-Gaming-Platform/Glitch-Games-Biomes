@@ -31,6 +31,15 @@ import { isEqual } from "lodash";
 import type { ZodTypeAny } from "zod";
 import { z } from "zod";
 
+/** Delete only trigger roots proven to belong to retired Challenge state. */
+export function shouldDeleteUnknownChallengeTriggerRoot(
+  rootId: BiomesId,
+  knownExecutorIds: ReadonlySet<BiomesId>,
+  challengeBackedRootIds: ReadonlySet<BiomesId>
+) {
+  return !knownExecutorIds.has(rootId) && challengeBackedRootIds.has(rootId);
+}
+
 function fanOutLifetimeStats(
   events: ReadonlyArray<FirehoseEvent>
 ): Map<LifetimeStatsType, ItemBag> {
@@ -230,6 +239,21 @@ export class TriggerEngine {
   private cleanupStaleChallenges(entity: Delta, executors: RootExecutor[]) {
     const allIds = new Set<BiomesId>(executors.map((e) => e.id));
 
+    // TriggerState is also the synchronized extension namespace for native
+    // systems such as Harthmere vitals and combat progression. Only roots that
+    // are actually backed by Challenge state may be removed as stale quests;
+    // treating every unknown root as a challenge silently resets unrelated
+    // player state to its defaults whenever the trigger engine processes an
+    // event.
+    const challenges = entity.challenges();
+    const challengeBackedRootIds = new Set<BiomesId>([
+      ...(challenges?.in_progress ?? []),
+      ...(challenges?.complete ?? []),
+      ...(challenges?.available ?? []),
+      ...(challenges?.started_at.keys() ?? []),
+      ...(challenges?.finished_at.keys() ?? []),
+    ]);
+
     // Remove unknown IDs from a given Map or set.
     const filterMap = (
       map: ReadonlyMap<BiomesId, unknown>,
@@ -255,10 +279,17 @@ export class TriggerEngine {
 
     // Clean all references to now-unknown triggers.
     if (entity.triggerState()) {
-      filterMap(
-        entity.triggerState()!.by_root,
-        () => entity.mutableTriggerState().by_root
-      );
+      for (const id of entity.triggerState()!.by_root.keys()) {
+        if (
+          shouldDeleteUnknownChallengeTriggerRoot(
+            id,
+            allIds,
+            challengeBackedRootIds
+          )
+        ) {
+          entity.mutableTriggerState().by_root.delete(id);
+        }
+      }
     }
     if (entity.challenges()) {
       filterSet(

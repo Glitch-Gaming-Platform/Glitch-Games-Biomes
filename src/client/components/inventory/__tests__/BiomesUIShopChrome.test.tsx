@@ -6,8 +6,10 @@ import { renderToStaticMarkup } from "react-dom/server";
 import {
   BiomesUIShopAmountStepper,
   BiomesUIShopChrome,
+  BiomesUIShopItemIcon,
   BiomesUIShopSection,
   closeBiomesUIShopPointerLock,
+  isBiomesUIShopIconImageSource,
   openBiomesUIShopPointerLock,
 } from "../BiomesUIShopChrome";
 import { BIOMES_UI_THEME_CSS } from "@/client/components/biomes_ui/theme/biomesUITheme";
@@ -39,7 +41,9 @@ describe("BiomesUI shop chrome", () => {
     assert.ok(html.includes('data-biomes-ui-shop="container"'));
     assert.ok(html.includes('data-pointer-lock-policy="unlock-while-open"'));
     assert.ok(html.includes('data-mouse-policy="show-while-open"'));
-    assert.ok(html.includes('data-keyboard-navigation="roving-grid-and-enter"'));
+    assert.ok(
+      html.includes('data-keyboard-navigation="roving-grid-and-enter"')
+    );
     assert.ok(html.includes("Raq&#x27;s Shop"));
     assert.ok(html.includes("Increase Quantity"));
     assert.ok(html.includes("Decrease Quantity"));
@@ -66,6 +70,27 @@ describe("BiomesUI shop chrome", () => {
     );
 
     assert.ok(html.includes('src="/hud/avatar-placeholder.png"'));
+  });
+
+  it("renders asset URL icons as images instead of visible URL text", () => {
+    const assetUrl = "/buckets/biomes-static/assets/81/farming-tool-icon";
+    const html = renderToStaticMarkup(
+      <BiomesUIShopItemIcon icon={assetUrl} label="Hoe" />
+    );
+
+    assert.equal(isBiomesUIShopIconImageSource(assetUrl), true);
+    assert.ok(html.includes(`<img src="${assetUrl}"`));
+    assert.equal(html.includes(`>${assetUrl}<`), false);
+  });
+
+  it("keeps compact glyph icons readable for legacy vendor items", () => {
+    const html = renderToStaticMarkup(
+      <BiomesUIShopItemIcon icon="⚔" label="Iron Longsword" />
+    );
+
+    assert.equal(isBiomesUIShopIconImageSource("⚔"), false);
+    assert.ok(html.includes("⚔"));
+    assert.equal(html.includes("<img"), false);
   });
 
   it("returns pointer lock only when the shop opened from locked gameplay", () => {

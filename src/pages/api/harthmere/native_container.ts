@@ -1,4 +1,5 @@
 import { newPlaceable } from "@/server/logic/utils/placeables";
+import type { LazyEntity } from "@/server/shared/ecs/gen/lazy";
 import { connectToRedis } from "@/server/shared/redis/connection";
 import {
   editWorldWithRetry,
@@ -15,6 +16,11 @@ import {
   PlaceableComponent,
   Position,
   QuestGiver,
+  type ReadonlyCreatedBy,
+  type ReadonlyEntityDescription,
+  type ReadonlyLabel,
+  type ReadonlyPlaceableComponent,
+  type ReadonlyPosition,
 } from "@/shared/ecs/gen/components";
 import type { Entity } from "@/shared/ecs/gen/entities";
 import { anItem } from "@/shared/game/item";
@@ -28,6 +34,7 @@ import {
   nativeBiomesEcsAuthorityEnabled,
   nativeRoadAheadContainerSpecForLabel,
   nativeRoadAheadContainerItemIds,
+  NATIVE_BUSTED_QUEST_ID,
   NATIVE_BUSTED_UNDERWATER_CONTAINER_SPEC,
   NATIVE_ROAD_AHEAD_PRIVATE_CONTAINER_DESCRIPTION,
   type NativeRoadAheadContainerSpec,
@@ -35,12 +42,47 @@ import {
 import { isHarthmereContainerObjectLabel } from "@/shared/harthmere/object_interaction_semantics";
 import { SNAPSHOT_GROVE_LANDMARKS } from "@/shared/harthmere/snapshot_grove_content";
 import type { BiomesId } from "@/shared/ids";
-import { INVALID_BIOMES_ID, zBiomesId } from "@/shared/ids";
+import { INVALID_BIOMES_ID, safeParseBiomesId, zBiomesId } from "@/shared/ids";
 import { log } from "@/shared/logging";
 import { z } from "zod";
 
 const NATIVE_CONTAINER_INTERACTION_RADIUS = 8;
 const NATIVE_CONTAINER_SLOT_COUNT = 16;
+const MAX_NATIVE_CONTAINER_ID_ALLOCATION_ATTEMPTS = 16;
+
+const COMPARE_AND_SWAP_NATIVE_CONTAINER_ID_LUA = `
+if redis.call("GET", KEYS[1]) == ARGV[1] then
+  redis.call("SET", KEYS[1], ARGV[2])
+  return 1
+end
+return 0
+`;
+
+type NativeContainerAllocationRedis = {
+  get(key: string): Promise<string | null>;
+  set(key: string, value: string, mode: "NX"): Promise<unknown>;
+  eval(
+    script: string,
+    keyCount: number,
+    key: string,
+    expected: string,
+    replacement: string
+  ): Promise<unknown>;
+};
+
+export type StableHarthmereNativeContainerId = {
+  containerId: BiomesId;
+  existing?: LazyEntity;
+  remapped: boolean;
+};
+
+type NativeContainerIdentityEntity = {
+  createdBy(): ReadonlyCreatedBy | undefined;
+  entityDescription(): ReadonlyEntityDescription | undefined;
+  label(): ReadonlyLabel | undefined;
+  placeableComponent(): ReadonlyPlaceableComponent | undefined;
+  position(): ReadonlyPosition | undefined;
+};
 
 const globalForHarthmereNativeContainers = globalThis as typeof globalThis & {
   __harthmereNativeContainerRedis?: ReturnType<typeof connectToRedis>;
@@ -49,6 +91,93 @@ const globalForHarthmereNativeContainers = globalThis as typeof globalThis & {
 function nativeContainerRedis() {
   return (globalForHarthmereNativeContainers.__harthmereNativeContainerRedis ??=
     connectToRedis("firehose"));
+}
+
+async function compareAndSwapNativeContainerId(
+  redis: NativeContainerAllocationRedis,
+  key: string,
+  expected: string,
+  replacement: BiomesId
+) {
+  return (
+    Number(
+      await redis.eval(
+        COMPARE_AND_SWAP_NATIVE_CONTAINER_ID_LUA,
+        1,
+        key,
+        expected,
+        String(replacement)
+      )
+    ) === 1
+  );
+}
+
+/**
+ * Resolve a stable Redis-backed ECS id without ever adopting an unrelated
+ * world entity. Snapshot restores can leave a durable Redis mapping pointing
+ * at an id that the restored world now uses for terrain, a bridge, an NPC, or
+ * another container. The compare-and-swap keeps concurrent open requests from
+ * clobbering each other's replacement while allowing the next request to
+ * self-heal the stale mapping.
+ */
+export async function stableHarthmereNativeContainerIdForTest(input: {
+  redis: NativeContainerAllocationRedis;
+  redisKey: string;
+  idGenerator: { next(): Promise<BiomesId> };
+  worldGet: (id: BiomesId) => Promise<LazyEntity | undefined>;
+  expectedExisting: (entity: LazyEntity) => boolean;
+  allocationKind: string;
+}): Promise<StableHarthmereNativeContainerId | undefined> {
+  let remapped = false;
+  for (
+    let attempt = 0;
+    attempt < MAX_NATIVE_CONTAINER_ID_ALLOCATION_ATTEMPTS;
+    attempt += 1
+  ) {
+    let raw = await input.redis.get(input.redisKey);
+    if (!raw) {
+      const proposedId = await input.idGenerator.next();
+      await input.redis.set(input.redisKey, String(proposedId), "NX");
+      raw = await input.redis.get(input.redisKey);
+      if (!raw) continue;
+    }
+
+    const parsedContainerId = safeParseBiomesId(raw);
+    const containerId =
+      parsedContainerId &&
+      Number.isSafeInteger(parsedContainerId) &&
+      parsedContainerId > 0
+        ? parsedContainerId
+        : undefined;
+    const existing = containerId
+      ? await input.worldGet(containerId)
+      : undefined;
+    // Do not return an id after another request has remapped its Redis key.
+    if ((await input.redis.get(input.redisKey)) !== raw) continue;
+    if (containerId && (!existing || input.expectedExisting(existing))) {
+      return { containerId, existing, remapped };
+    }
+
+    const replacement = await input.idGenerator.next();
+    if (
+      await compareAndSwapNativeContainerId(
+        input.redis,
+        input.redisKey,
+        raw,
+        replacement
+      )
+    ) {
+      remapped = true;
+      log.warn("Remapped colliding Harthmere native container id", {
+        allocationKind: input.allocationKind,
+        redisKey: input.redisKey,
+        occupiedEntityId: containerId,
+        occupiedEntityLabel: existing?.label()?.text,
+        replacementEntityId: replacement,
+      });
+    }
+  }
+  return undefined;
 }
 
 const zRequest = z.object({
@@ -104,68 +233,6 @@ export function staticHarthmereNativeContainerLandmarkForTest(
       isHarthmereContainerObjectLabel({ label: landmark.label }) &&
       !isNativeRoadAheadQuestObjectLabel(landmark.label)
   );
-}
-
-async function allocatedStaticContainerId(
-  objectId: string,
-  idGenerator: { next(): Promise<BiomesId> }
-) {
-  const key = `harthmere:native_ecs_container:${objectId}`;
-  const redis = await nativeContainerRedis();
-  let raw = await redis.primary.get(key);
-  if (!raw) {
-    const nextId = await idGenerator.next();
-    await redis.primary.set(key, String(nextId), "NX");
-    raw = await redis.primary.get(key);
-  }
-  const parsed = Number(raw);
-  return Number.isSafeInteger(parsed) && parsed > 0
-    ? (parsed as BiomesId)
-    : undefined;
-}
-
-async function allocatedRoadAheadContainerId(
-  sourceEntityId: BiomesId,
-  userId: BiomesId,
-  idGenerator: { next(): Promise<BiomesId> }
-) {
-  // Each player receives a stable private inventory behind the shared visual
-  // prop. A shared container would let the first player permanently consume
-  // every other player's onboarding rewards.
-  const key = nativeRoadAheadContainerRedisKeyForTest(sourceEntityId, userId);
-  const redis = await nativeContainerRedis();
-  let raw = await redis.primary.get(key);
-  if (!raw) {
-    const nextId = await idGenerator.next();
-    await redis.primary.set(key, String(nextId), "NX");
-    raw = await redis.primary.get(key);
-  }
-  const parsed = Number(raw);
-  return Number.isSafeInteger(parsed) && parsed > 0
-    ? (parsed as BiomesId)
-    : undefined;
-}
-
-async function allocatedBustedUnderwaterContainerId(
-  sourceEntityId: BiomesId,
-  userId: BiomesId,
-  idGenerator: { next(): Promise<BiomesId> }
-) {
-  const key = nativeBustedUnderwaterContainerRedisKeyForTest(
-    sourceEntityId,
-    userId
-  );
-  const redis = await nativeContainerRedis();
-  let raw = await redis.primary.get(key);
-  if (!raw) {
-    const nextId = await idGenerator.next();
-    await redis.primary.set(key, String(nextId), "NX");
-    raw = await redis.primary.get(key);
-  }
-  const parsed = Number(raw);
-  return Number.isSafeInteger(parsed) && parsed > 0
-    ? (parsed as BiomesId)
-    : undefined;
 }
 
 export function nativeRoadAheadContainerRedisKeyForTest(
@@ -269,6 +336,131 @@ export function validNativeBustedUnderwaterContainerSourceForTest(input: {
   );
 }
 
+/**
+ * The May 16 snapshot source is an old placed frame. A partial restore can
+ * omit that entity or one of its metadata components even though the rendered
+ * ship/chest geometry remains. Recovery is allowed only for the immutable
+ * source id and only when the source is absent or still carries one of the two
+ * authored identity facts; an unrelated entity occupying the id is rejected.
+ */
+export function recoverableNativeBustedUnderwaterContainerSourceForTest(input: {
+  entityId?: BiomesId;
+  sourceMissing: boolean;
+  label?: string | null;
+  placeableItemId?: BiomesId;
+}) {
+  if (
+    input.entityId !== NATIVE_BUSTED_UNDERWATER_CONTAINER_SPEC.sourceEntityId
+  ) {
+    return false;
+  }
+  return (
+    input.sourceMissing ||
+    isNativeBustedUnderwaterContainerLabel(input.label) ||
+    input.placeableItemId ===
+      NATIVE_BUSTED_UNDERWATER_CONTAINER_SPEC.placeableItemId
+  );
+}
+
+/** Do not recreate the one-shot quest reward after its native leaf fired. */
+export function seededBustedUnderwaterContainerInventoryForTest(
+  rewardAlreadyCompleted = false
+) {
+  const inventory = seededHarthmereNativeContainerInventoryForTest(
+    "Chest The Grove Underwater Main"
+  );
+  if (rewardAlreadyCompleted) {
+    inventory.items = inventory.items.map((slot) =>
+      slot?.item.id === NATIVE_BUSTED_UNDERWATER_CONTAINER_SPEC.itemId
+        ? undefined
+        : slot
+    );
+  }
+  return inventory;
+}
+
+export function validPrivateNativeQuestContainerIdentityForTest(input: {
+  kind: "road_ahead" | "busted_underwater";
+  sourceEntityId: BiomesId;
+  ownerId?: BiomesId;
+  expectedOwnerId: BiomesId;
+  description?: string | null;
+  label?: string | null;
+  placeableItemId?: BiomesId;
+}) {
+  if (
+    input.ownerId !== input.expectedOwnerId ||
+    input.description !== NATIVE_ROAD_AHEAD_PRIVATE_CONTAINER_DESCRIPTION ||
+    input.placeableItemId !== undefined
+  ) {
+    return false;
+  }
+  if (input.kind === "busted_underwater") {
+    return (
+      input.sourceEntityId ===
+        NATIVE_BUSTED_UNDERWATER_CONTAINER_SPEC.sourceEntityId &&
+      isNativeBustedUnderwaterContainerLabel(input.label)
+    );
+  }
+  return (
+    nativeRoadAheadContainerSpecForLabel(input.label)?.sourceEntityId ===
+    input.sourceEntityId
+  );
+}
+
+function validPrivateNativeQuestContainerIdentity(
+  entity: NativeContainerIdentityEntity,
+  input: {
+    kind: "road_ahead" | "busted_underwater";
+    sourceEntityId: BiomesId;
+    expectedOwnerId: BiomesId;
+  }
+) {
+  return validPrivateNativeQuestContainerIdentityForTest({
+    ...input,
+    ownerId: entity.createdBy()?.id,
+    description: entity.entityDescription()?.text,
+    label: entity.label()?.text,
+    placeableItemId: entity.placeableComponent()?.item_id,
+  });
+}
+
+export function validStaticNativeContainerIdentityForTest(input: {
+  label?: string | null;
+  expectedLabel: string;
+  placeableItemId?: BiomesId;
+  creatorId?: BiomesId;
+  position?: readonly number[];
+  expectedPosition: readonly number[];
+}) {
+  return Boolean(
+    input.label?.trim().toLowerCase() ===
+      input.expectedLabel.trim().toLowerCase() &&
+      input.placeableItemId === BikkieIds.woodContainer &&
+      input.creatorId === undefined &&
+      input.position &&
+      Math.hypot(
+        Number(input.position[0]) - Number(input.expectedPosition[0]),
+        Number(input.position[1]) - Number(input.expectedPosition[1]),
+        Number(input.position[2]) - Number(input.expectedPosition[2])
+      ) < 0.01
+  );
+}
+
+function validStaticNativeContainerIdentity(
+  entity: NativeContainerIdentityEntity,
+  landmark: { label: string; position: readonly number[] }
+) {
+  return validStaticNativeContainerIdentityForTest({
+    label: entity.label()?.text,
+    expectedLabel: landmark.label,
+    placeableItemId: entity.placeableComponent()?.item_id,
+    creatorId: entity.createdBy()?.id,
+    position: entity.position()?.v,
+    expectedPosition: landmark.position,
+  });
+}
+
 export default biomesApiHandler(
   {
     auth: "required",
@@ -289,9 +481,35 @@ export default biomesApiHandler(
       // the crate from its initial loot table.
       const editor = worldApi.edit();
       const target = await editor.get(body.entityId);
-      const label = target?.label()?.text?.trim();
-      const position = target?.position()?.v;
-      if (!target || !label || !position) {
+      const recoverableBustedSource =
+        recoverableNativeBustedUnderwaterContainerSourceForTest({
+          entityId: body.entityId,
+          sourceMissing: !target,
+          label: target?.label()?.text,
+          placeableItemId: target?.placeableComponent()?.item_id,
+        });
+      // Use canonical snapshot facts only for the exact recoverable Busted
+      // source. Every ordinary container still requires a complete live ECS
+      // entity, preserving the universal anti-forgery boundary.
+      const label =
+        target?.label()?.text?.trim() ??
+        (recoverableBustedSource
+          ? "Chest The Grove Underwater Main"
+          : undefined);
+      const position =
+        target?.position()?.v ??
+        (recoverableBustedSource
+          ? NATIVE_BUSTED_UNDERWATER_CONTAINER_SPEC.position
+          : undefined);
+      const sourceQuestGiver =
+        target?.questGiver() ??
+        (recoverableBustedSource ? QuestGiver.create() : undefined);
+      const sourcePlaceableItemId =
+        target?.placeableComponent()?.item_id ??
+        (recoverableBustedSource
+          ? NATIVE_BUSTED_UNDERWATER_CONTAINER_SPEC.placeableItemId
+          : undefined);
+      if (!label || !position) {
         return { ok: false, error: "container_not_found" };
       }
       if (!isHarthmereContainerObjectLabel({ label })) {
@@ -311,21 +529,23 @@ export default biomesApiHandler(
           ? validateNativeRoadAheadContainerSourceForTest({
               entityId: body.entityId,
               label,
-              questGiver: target.questGiver(),
-              placeableItemId: target.placeableComponent()?.item_id,
+              questGiver: sourceQuestGiver,
+              placeableItemId: sourcePlaceableItemId,
             })
           : undefined;
         const validBustedSource = bustedUnderwaterQuestContainer
           ? validNativeBustedUnderwaterContainerSourceForTest({
               entityId: body.entityId,
               label,
-              questGiver: target.questGiver(),
-              placeableItemId: target.placeableComponent()?.item_id,
+              questGiver: sourceQuestGiver,
+              placeableItemId: sourcePlaceableItemId,
             })
           : false;
         if (
           (roadAheadQuestContainer && !sourceValidation?.ok) ||
-          (bustedUnderwaterQuestContainer && !validBustedSource)
+          (bustedUnderwaterQuestContainer &&
+            !validBustedSource &&
+            !recoverableBustedSource)
         ) {
           // Labels are editable presentation data. Require all three native ECS
           // facts: concrete source entity, quest_giver, and placeable biscuit.
@@ -337,8 +557,8 @@ export default biomesApiHandler(
               : sourceValidation?.reason ?? "invalid_busted_source",
             sourceEntityId: body.entityId,
             label,
-            hasQuestGiver: Boolean(target.questGiver()),
-            placeableItemId: target.placeableComponent()?.item_id,
+            hasQuestGiver: Boolean(sourceQuestGiver),
+            placeableItemId: sourcePlaceableItemId,
             expectedSourceEntityId:
               sourceValidation?.spec?.sourceEntityId ??
               NATIVE_BUSTED_UNDERWATER_CONTAINER_SPEC.sourceEntityId,
@@ -348,23 +568,71 @@ export default biomesApiHandler(
           });
           return { ok: false, error: "invalid_native_quest_container" };
         }
-        const containerId = roadAheadQuestContainer
-          ? await allocatedRoadAheadContainerId(
+        if (
+          bustedUnderwaterQuestContainer &&
+          recoverableBustedSource &&
+          !validBustedSource
+        ) {
+          // Preserve operational evidence that a snapshot source needed repair
+          // without logging inventory contents or authentication material.
+          log.warn("Recovering canonical Busted underwater container source", {
+            sourceEntityId: body.entityId,
+            sourceMissing: !target,
+            hasQuestGiver: Boolean(target?.questGiver()),
+            placeableItemId: target?.placeableComponent()?.item_id,
+          });
+        }
+        const privateContainerKind = roadAheadQuestContainer
+          ? "road_ahead"
+          : "busted_underwater";
+        // Source validation above guarantees quest-giver metadata. The fallback
+        // keeps the type and runtime boundary explicit for partial restores.
+        const privateQuestGiver = sourceQuestGiver ?? QuestGiver.create();
+        const privateContainerRedisKey = roadAheadQuestContainer
+          ? nativeRoadAheadContainerRedisKeyForTest(body.entityId, auth.userId)
+          : nativeBustedUnderwaterContainerRedisKeyForTest(
               body.entityId,
-              auth.userId,
-              idGenerator
-            )
-          : await allocatedBustedUnderwaterContainerId(
-              body.entityId,
-              auth.userId,
-              idGenerator
+              auth.userId
             );
-        if (!containerId) {
+        const expectedPrivateContainer = (
+          entity: NativeContainerIdentityEntity
+        ) =>
+          validPrivateNativeQuestContainerIdentity(entity, {
+            kind: privateContainerKind,
+            sourceEntityId: body.entityId!,
+            expectedOwnerId: auth.userId,
+          });
+        const redis = await nativeContainerRedis();
+        const allocation = await stableHarthmereNativeContainerIdForTest({
+          redis: redis.primary as unknown as NativeContainerAllocationRedis,
+          redisKey: privateContainerRedisKey,
+          idGenerator,
+          worldGet: (id) => worldApi.get(id),
+          expectedExisting: expectedPrivateContainer,
+          allocationKind: privateContainerKind,
+        });
+        if (!allocation) {
           return { ok: false, error: "container_id_allocation_failed" };
         }
+        const { containerId } = allocation;
 
-        let existing = await worldApi.get(containerId);
+        let existing = allocation.existing;
         let created = false;
+        const bustedRewardAlreadyCompleted = Boolean(
+          player
+            ?.triggerState()
+            ?.by_root.get(NATIVE_BUSTED_QUEST_ID)
+            ?.get(NATIVE_BUSTED_UNDERWATER_CONTAINER_SPEC.stepId)
+        );
+        // Both initial creation and metadata repair use the same idempotent
+        // seed. Road Ahead keeps its authored choices; Busted omits its one-shot
+        // reward after the claim leaf has fired while retaining ordinary loot.
+        const seedQuestContainerInventory = () =>
+          roadAheadQuestContainer
+            ? seededNativeRoadAheadContainerInventoryForTest(label)
+            : seededBustedUnderwaterContainerInventoryForTest(
+                bustedRewardAlreadyCompleted
+              );
         if (!existing) {
           // This ECS entity deliberately has no placeable component. It is a
           // native inventory at the prop's position, not a second rendered
@@ -381,17 +649,18 @@ export default biomesApiHandler(
               id: auth.userId,
               created_at: secondsSinceEpoch(),
             }),
-            quest_giver: QuestGiver.clone(target.questGiver()),
-            container_inventory: roadAheadQuestContainer
-              ? seededNativeRoadAheadContainerInventoryForTest(label)
-              : seededHarthmereNativeContainerInventoryForTest(label),
+            quest_giver: QuestGiver.clone(privateQuestGiver),
+            container_inventory: seedQuestContainerInventory(),
           };
           const applied = await worldApi.apply({
             changes: [{ kind: "create", entity }],
           });
           if (applied.outcome !== "success") {
             existing = await worldApi.get(containerId);
-            if (!existing?.containerInventory()) {
+            if (
+              !existing?.containerInventory() ||
+              !expectedPrivateContainer(existing)
+            ) {
               return {
                 ok: false,
                 error: "container_materialization_conflicted",
@@ -410,20 +679,14 @@ export default biomesApiHandler(
               async (repairEditor) => {
                 const repair = await repairEditor.get(containerId);
                 if (!repair) return "container_materialization_conflicted";
-                const validOwner = repair.createdBy()?.id === auth.userId;
-                const validMarker =
-                  repair.entityDescription()?.text ===
-                  NATIVE_ROAD_AHEAD_PRIVATE_CONTAINER_DESCRIPTION;
-                if (!validOwner || !validMarker) {
+                if (!expectedPrivateContainer(repair)) {
                   return "container_identity_conflict";
                 }
                 repair.setPosition(Position.create({ v: [...position] }));
+                repair.setLabel(Label.create({ text: label }));
+                repair.setQuestGiver(QuestGiver.clone(privateQuestGiver));
                 if (!repair.containerInventory()) {
-                  repair.setContainerInventory(
-                    roadAheadQuestContainer
-                      ? seededNativeRoadAheadContainerInventoryForTest(label)
-                      : seededHarthmereNativeContainerInventoryForTest(label)
-                  );
+                  repair.setContainerInventory(seedQuestContainerInventory());
                 }
                 return undefined;
               }
@@ -440,6 +703,12 @@ export default biomesApiHandler(
           containerItemId: BikkieIds.woodContainer,
           created,
         };
+      }
+
+      // A missing entity can only reach this point through the canonical
+      // Busted recovery branch above, which always returns a private container.
+      if (!target) {
+        return { ok: false, error: "container_not_found" };
       }
 
       const created = !target.containerInventory();
@@ -497,14 +766,22 @@ export default biomesApiHandler(
     ) {
       return { ok: false, error: "container_out_of_range" };
     }
-    const containerId = await allocatedStaticContainerId(
-      landmark.id,
-      idGenerator
-    );
-    if (!containerId) {
+    const expectedStaticContainer = (entity: NativeContainerIdentityEntity) =>
+      validStaticNativeContainerIdentity(entity, landmark);
+    const redis = await nativeContainerRedis();
+    const allocation = await stableHarthmereNativeContainerIdForTest({
+      redis: redis.primary as unknown as NativeContainerAllocationRedis,
+      redisKey: `harthmere:native_ecs_container:${landmark.id}`,
+      idGenerator,
+      worldGet: (id) => worldApi.get(id),
+      expectedExisting: expectedStaticContainer,
+      allocationKind: `static:${landmark.id}`,
+    });
+    if (!allocation) {
       return { ok: false, error: "container_id_allocation_failed" };
     }
-    let existing = await worldApi.get(containerId);
+    const { containerId } = allocation;
+    let existing = allocation.existing;
     let created = false;
     if (!existing) {
       const entity = newPlaceable({
@@ -522,7 +799,10 @@ export default biomesApiHandler(
       });
       if (applied.outcome !== "success") {
         existing = await worldApi.get(containerId);
-        if (!existing?.containerInventory()) {
+        if (
+          !existing?.containerInventory() ||
+          !expectedStaticContainer(existing)
+        ) {
           return { ok: false, error: "container_materialization_conflicted" };
         }
       } else {
@@ -535,6 +815,9 @@ export default biomesApiHandler(
           async (editor) => {
             const repair = await editor.get(containerId);
             if (!repair) return "container_materialization_conflicted";
+            if (!expectedStaticContainer(repair)) {
+              return "container_identity_conflict";
+            }
             if (!repair.containerInventory()) {
               repair.setContainerInventory(
                 seededHarthmereNativeContainerInventoryForTest(landmark.label)

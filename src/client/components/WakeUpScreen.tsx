@@ -38,7 +38,7 @@ import { DialogButton } from "@/client/components/system/DialogButton";
 import { MaybeError, useError } from "@/client/components/system/MaybeError";
 import type { ClientContextSubset } from "@/client/game/context";
 import { makeWakeUpScreenshot } from "@/client/game/util/report";
-import { saveUsername } from "@/client/util/auth";
+import { invalidUsernameReason, saveUsername } from "@/client/util/auth";
 import {
   isGeneratedPlaceholderUsername,
   isInitialUsername,
@@ -2150,10 +2150,19 @@ const WakeUpContent: React.FunctionComponent<{ onWakeup: () => void }> = ({
   }, [events, onWakeup, reactResources, userId]);
 
   const doUsernameSave = async () => {
+    const username = nameEntry.trim();
     emitHarthmereGlitchBehaviorEvent("onboarding_name", "submit", {
-      name_length: nameEntry.trim().length,
+      name_length: username.length,
     });
-    if (nameEntry === reactResources.get("/ecs/c/label", userId)?.text) {
+    const invalidReason = invalidUsernameReason(username);
+    if (invalidReason) {
+      emitHarthmereGlitchBehaviorEvent("onboarding_name", "fail", {
+        error: invalidReason,
+      });
+      setError(invalidReason);
+      return;
+    }
+    if (username === reactResources.get("/ecs/c/label", userId)?.text) {
       emitHarthmereGlitchBehaviorEvent("onboarding_name", "success", {
         unchanged: true,
       });
@@ -2163,7 +2172,7 @@ const WakeUpContent: React.FunctionComponent<{ onWakeup: () => void }> = ({
 
     setSavingName(true);
     try {
-      await saveUsername(nameEntry);
+      await saveUsername(username);
 
       fireAndForget(socialManager.userInfoBundle(userId, true)); // Bust cache
       emitHarthmereGlitchBehaviorEvent("onboarding_name", "success", {

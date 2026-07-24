@@ -15,6 +15,10 @@ import type { ClientTable } from "@/client/game/game";
 import type { Script } from "@/client/game/scripts/script_controller";
 import { NpcMetadataSelector } from "@/shared/ecs/gen/selectors";
 import {
+  mergeCutscenePuppetOverrides,
+  readCutscenePuppetOverrides,
+} from "@/shared/cutscene/puppets";
+import {
   harthmereLiveCreatureBridgeRecord,
   publishHarthmereLiveCreatureBridge,
   type HarthmereLiveCreatureBridgeRecord,
@@ -22,6 +26,22 @@ import {
 } from "@/shared/harthmere/live_creature_ecs_bridge";
 
 const PUBLISH_INTERVAL_SECONDS = 0.25;
+
+export function publishHarthmereLiveCreatureSnapshot(table: ClientTable): void {
+  const cutsceneOverrides = readCutscenePuppetOverrides();
+  const records: HarthmereLiveCreatureBridgeRecord[] = [];
+  for (const entity of table.scan(NpcMetadataSelector.query.all())) {
+    const record = harthmereLiveCreatureBridgeRecord(
+      entity as unknown as HarthmereLiveCreatureEntityView
+    );
+    if (record) {
+      records.push(record);
+    }
+  }
+  publishHarthmereLiveCreatureBridge(
+    mergeCutscenePuppetOverrides(records, cutsceneOverrides)
+  );
+}
 
 export class HarthmereLiveCreatureBridgeScript implements Script {
   readonly name = "harthmereLiveCreatureBridge";
@@ -31,21 +51,18 @@ export class HarthmereLiveCreatureBridgeScript implements Script {
 
   tick(dt: number) {
     this.sincePublish += Number.isFinite(dt) ? dt : 0;
-    if (this.sincePublish < PUBLISH_INTERVAL_SECONDS) {
+    // While a cutscene is puppeteering creatures we publish every tick so
+    // puppets and ghosts move smoothly; otherwise the throttled cadence.
+    const cutsceneOverrides = readCutscenePuppetOverrides();
+    if (
+      cutsceneOverrides.length === 0 &&
+      this.sincePublish < PUBLISH_INTERVAL_SECONDS
+    ) {
       return;
     }
     this.sincePublish = 0;
 
-    const records: HarthmereLiveCreatureBridgeRecord[] = [];
-    for (const entity of this.table.scan(NpcMetadataSelector.query.all())) {
-      const record = harthmereLiveCreatureBridgeRecord(
-        entity as unknown as HarthmereLiveCreatureEntityView
-      );
-      if (record) {
-        records.push(record);
-      }
-    }
-    publishHarthmereLiveCreatureBridge(records);
+    publishHarthmereLiveCreatureSnapshot(this.table);
   }
 
   clear() {

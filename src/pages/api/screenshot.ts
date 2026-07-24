@@ -8,7 +8,7 @@ import type { Vec2, Vec3 } from "@/shared/math/types";
 import { sample } from "lodash";
 import { z } from "zod";
 
-const SCREENSHOT_TIMEOUT_MS = 8000;
+const SCREENSHOT_TIMEOUT_MS = 30_000;
 
 function screenshotsDisabledForRuntime() {
   return (
@@ -43,12 +43,14 @@ export default biomesApiHandler(
     query: z.object({
       position: zQueryNumbers,
       orientation: zQueryNumbers,
+      width: z.coerce.number().int().min(320).max(4096).default(1920),
+      height: z.coerce.number().int().min(240).max(4096).default(1080),
     }),
     response: z.instanceof(Buffer),
   },
   async ({
     context: { cameraClient },
-    query: { position, orientation },
+    query: { position, orientation, width, height },
     unsafeResponse,
   }) => {
     if (screenshotsDisabledForRuntime()) {
@@ -71,6 +73,8 @@ export default biomesApiHandler(
       cameraClient.takeScreenshot({
         position: position as Vec3,
         orientation: orientation as Vec2,
+        width,
+        height,
       })
     );
     unsafeResponse.setHeader("Content-Type", "image/png");

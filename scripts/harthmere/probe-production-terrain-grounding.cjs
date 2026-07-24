@@ -48,6 +48,7 @@ const {
   HARTHMERE_LIVE_ENTITY_ROBOT_SENTINEL_SEEDS,
   harthmereGroundedLivestockSeedsInTerritory,
   harthmereGroundedMuckMonsterSeedsInTerritory,
+  harthmereLiveEntityIsOpenWildsMixedGroup,
   harthmereLiveEntityIsTownLivestock,
 } = require("../../src/shared/harthmere/live_entity_production_seed");
 const {
@@ -90,6 +91,8 @@ const SCAN_COUNT = Number.parseInt(process.env.SCAN_COUNT || "3000", 10);
 const PROBE_TOP_Y = 180;
 const PROBE_BOTTOM_Y = -16;
 const POSITION_TOLERANCE = 0.25;
+const ONLY_OPEN_WILDS = process.env.HARTHMERE_GROUNDING_ONLY_OPEN_WILDS === "1";
+const PRINT_ROWS = process.env.HARTHMERE_GROUNDING_PRINT_ROWS === "1";
 
 function redisOptions() {
   return { host: REDIS_HOST, port: REDIS_PORT, lazyConnect: true };
@@ -184,6 +187,30 @@ async function loadExistingAdditiveTownNpcItems() {
 }
 
 async function productionProbeItems() {
+  if (ONLY_OPEN_WILDS) {
+    return [
+      ...harthmereGroundedMuckMonsterSeedsInTerritory()
+        .filter(harthmereLiveEntityIsOpenWildsMixedGroup)
+        .map((seed) =>
+          originalOutdoorItem(
+            "open_wilds_muckers_hexers",
+            seed.seedId,
+            seed.entityId,
+            seed.position
+          )
+        ),
+      ...harthmereGroundedLivestockSeedsInTerritory()
+        .filter(harthmereLiveEntityIsOpenWildsMixedGroup)
+        .map((seed) =>
+          originalOutdoorItem(
+            "open_wilds_animals",
+            seed.seedId,
+            seed.entityId,
+            seed.position
+          )
+        ),
+    ];
+  }
   const townNpcs = await loadExistingAdditiveTownNpcItems();
   return [
     ...townNpcs,
@@ -625,6 +652,24 @@ async function main() {
   }
   for (const [family, familyRows] of byFamily) {
     summarizeFamily(family, familyRows);
+  }
+  if (PRINT_ROWS) {
+    for (const row of rows) {
+      console.log(
+        JSON.stringify({
+          phase: "grounding_probe_row",
+          family: row.family,
+          tag: row.tag,
+          position: [row.x, row.hintY, row.z],
+          resolvedPosition:
+            row.resolvedFeetY === undefined
+              ? undefined
+              : [row.x, row.resolvedFeetY, row.z],
+          hasTerrainData: row.hasTerrainData,
+          offGround: row.offGround,
+        })
+      );
+    }
   }
 
   const noTerrainData = rows.filter((row) => !row.hasTerrainData);

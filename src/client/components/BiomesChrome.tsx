@@ -2,6 +2,7 @@ import { NotificationPopups } from "@/client/components/activity/NotificationPop
 import { AnonUpsell } from "@/client/components/AnonUpsell";
 import { BuffsHUD } from "@/client/components/BuffsHUD";
 import { CanvasEffects } from "@/client/components/CanvasEffects";
+import { CutsceneOverlay } from "@/client/components/CutsceneOverlay";
 import { useBiomesUIReplaceLegacyFlag } from "@/client/components/biomes_ui/BiomesUIFlags";
 import { useBiomesHUDVisibilitySetting } from "@/client/components/biomes_ui/hudVisibilitySettings";
 import { BreathBarHUD } from "@/client/components/BreathBarHUD";
@@ -162,6 +163,7 @@ const HidesForChromeHidden: React.FunctionComponent<PropsWithChildren<{}>> = ({
   const { clientConfig, reactResources } = useClientContext();
   const [userHidChrome, setUserHidChrome] = useState(clientConfig.hideChrome);
   const effectVal = reactResources.use("/canvas_effects/hide_chrome");
+  const cutscene = reactResources.use("/scene/cutscene");
   useEffect(
     () =>
       cleanListener(window, {
@@ -186,7 +188,7 @@ const HidesForChromeHidden: React.FunctionComponent<PropsWithChildren<{}>> = ({
   );
 
   const effectHidChrome = effectVal.value;
-  const hide = userHidChrome || effectHidChrome;
+  const hide = userHidChrome || effectHidChrome || cutscene.hideHud;
   const disableAnimation = Boolean(effectVal?.disableAnimation);
 
   return (
@@ -242,6 +244,7 @@ export const BiomesChrome: React.FunctionComponent<{}> = React.memo(({}) => {
       <MaybeJoystickInput />
       <SpatialMediaPlayers />
       <CanvasEffects />
+      <CutsceneOverlay />
       <CSS3DContainer />
       <WakeUpScreen />
 

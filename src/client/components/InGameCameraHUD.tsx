@@ -65,6 +65,10 @@ export const InGameCameraHUD: React.FunctionComponent<{}> = ({}) => {
 
   const waitForAnimationTimeMs = 200;
   const screenshotCallback = useCallback(() => {
+    const cutscene = reactResources.get("/scene/cutscene");
+    if (cutscene.active && cutscene.lockInput) {
+      return;
+    }
     if (screenshotting) {
       return;
     }
@@ -76,7 +80,7 @@ export const InGameCameraHUD: React.FunctionComponent<{}> = ({}) => {
     void sleep(waitForAnimationTimeMs + 1).then(() => {
       takeScreenshot(brect);
     });
-  }, [screenshotting, takeScreenshot]);
+  }, [reactResources, screenshotting, takeScreenshot]);
 
   useEffect(() => {
     input.emitter.on("primary", screenshotCallback);

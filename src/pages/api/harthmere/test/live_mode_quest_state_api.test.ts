@@ -28,6 +28,8 @@ describe("live_mode_quest_state API route integration", () => {
       "read-the-jobs-board",
     ]);
     assert.deepEqual(snapshot.completed, {});
+    assert.equal(snapshot.playerLevel, 1);
+    assert.equal(snapshot.serverNowMs, NOW_MS);
   });
 
   it("uses one Redis MGET for actor and shared quest state when available", async () => {
@@ -68,6 +70,7 @@ describe("live_mode_quest_state API route integration", () => {
     ]);
     assert.deepEqual(getCalls, []);
     assert.equal(snapshot.actorId, ACTOR);
+    assert.equal(snapshot.playerLevel, 1);
     assert.ok(snapshot.active["api-test-quest"]);
   });
 });

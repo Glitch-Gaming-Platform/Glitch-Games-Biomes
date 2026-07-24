@@ -124,6 +124,116 @@ For source, UI, and handler contracts without a running stack:
 yarn harthmere:test:native-ecs-contracts
 ```
 
+### Reliable local chase gate
+
+The production image is `linux/amd64`. On an Apple Silicon development machine,
+Anima can need several minutes to hydrate the full snapshot under emulation.
+Do not start the browser round-trip merely because the web route responds. The
+test stack is ready only after both Anima and Gaia return HTTP 200 from their
+`/ready` endpoints.
+
+Build and keep the production-shaped stack running with the native-ECS test
+bridge enabled. The extended readiness allowance prevents the stack runner
+from killing a healthy but still-hydrating Anima process at the default
+120-second boundary:
+
+```bash
+export HARTHMERE_NATIVE_ECS_E2E=1
+export HARTHMERE_E2E_CONTROL_TOKEN="$(openssl rand -hex 32)"
+export GLITCH_STACK_HTTP_READY_WAIT_TRIES=600
+export GLITCH_IDLE_SESSION_MS=900000
+export SMOKE_TIMEOUT_SECONDS=1800
+export HARTHMERE_SKIP_LIVE_ENTITY_BROWSER_SMOKE=1
+
+bash scripts/glitch/deploy-production-local-redis-smoke.sh \
+  --local-smoke \
+  --keep-local \
+  --tag "native-ecs-chase-$(date -u +%Y%m%d%H%M%S)"
+```
+
+`HARTHMERE_SKIP_LIVE_ENTITY_BROWSER_SMOKE=1` skips the separate robot-marker
+visual tour. That tour is useful as a broad render smoke, but it is not the
+native chase release gate and can add several minutes or fail independently on
+a screenshot/navigation timeout. Run it separately when changing robot or
+marker rendering.
+
+`SMOKE_TIMEOUT_SECONDS=1800` covers both the one-time snapshot import and the
+production service hydration cost under AMD64 emulation. The local smoke
+harness also waits for Anima and Gaia automatically whenever
+`HARTHMERE_NATIVE_ECS_E2E=1`; a web-only HTTP 200 is not considered sufficient
+for native-ECS browser testing.
+
+The complete release suite still requires Gaia. For the focused chase-only
+scenario on a Docker Desktop VM with roughly 16-17 GiB of memory, Gaia and the
+unrelated firehose workers may be disabled because neither participates in the
+NPC chase path. This avoids Docker OOM-killing Redis while preserving the real
+web, sync, logic, Redis, ECS, and Anima path:
+
+```bash
+export GLITCH_ENABLE_GAIA=0
+export GLITCH_ENABLE_STREAM_WORKERS=0
+```
+
+Do not use that reduced topology for farming, decay, restoration, water, plant
+growth, harvest, or the complete native-ECS release gate.
+
+Before starting the chase test, verify the native workers in the kept local
+container:
+
+```bash
+docker exec biomes-prod-smoke-app /bin/sh -lc '
+  curl -fsS http://127.0.0.1:4101/ready >/dev/null
+'
+
+# Required for the complete release suite; omit only for the documented
+# chase-only reduced topology.
+docker exec biomes-prod-smoke-app \
+  curl -fsS http://127.0.0.1:4201/ready >/dev/null
+```
+
+Then run the focused browser → backend → native ECS/Anima → sync → rendered
+frontend chase scenario. Reuse the control token from the running container so
+it is not printed or copied into a committed file:
+
+```bash
+export HARTHMERE_E2E_CONTROL_TOKEN="$(
+  docker inspect biomes-prod-smoke-app \
+    --format '{{range .Config.Env}}{{println .}}{{end}}' |
+    sed -n 's/^HARTHMERE_E2E_CONTROL_TOKEN=//p'
+)"
+
+HARTHMERE_E2E_BASE_URL=http://127.0.0.1:3017 \
+HARTHMERE_E2E_SYNC_BASE_URL=http://127.0.0.1:4907 \
+HARTHMERE_E2E_URL=http://127.0.0.1:3017/at \
+HARTHMERE_E2E_EXPECTED_SYNC_HOST=127.0.0.1 \
+HARTHMERE_E2E_CHASE_ONLY=1 \
+HARTHMERE_E2E_TIMEOUT_MS=180000 \
+STRICT_RENDER=1 \
+HEADLESS=1 \
+node scripts/harthmere/test-harthmere-native-ecs-roundtrip-e2e.cjs
+```
+
+Port `3017` is the local web route and port `4907` is the directly published
+native sync websocket. Using `HARTHMERE_E2E_SYNC_BASE_URL` avoids mistaking a
+same-origin development proxy timeout for an NPC locomotion failure while
+still exercising the real sync server and frontend ECS ingestion. A normal
+production deployment continues to use its same-origin `/sync` proxy.
+
+Interpret failures at the boundary where they occur:
+
+- `ERROR anima not ready` or an exited local app container means the native
+  simulation never became test-ready; no chase conclusion can be drawn.
+- A timeout waiting for `clientContext` means browser/sync bootstrap failed
+  before the chase fixture ran.
+- A chase-gate failure after fixture creation is a gameplay failure. The report
+  must show whether the NPC missed the minimum effective speed, failed to climb
+  the step fixtures, failed to enter authoritative combat state, or failed to
+  render that synchronized state in the frontend.
+
+When reusing an already-built image, `--skip-build` is acceptable only if the
+`.next`, `dist`, and Docker image were built after the locomotion changes. A
+source-only test run does not refresh the production image.
+
 The browser run writes JSON timing/network diagnostics and screenshots under
 `artifacts/harthmere-native-ecs-e2e/`. A production candidate should preserve
 that directory with its build evidence.

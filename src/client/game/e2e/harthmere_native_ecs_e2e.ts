@@ -208,6 +208,7 @@ export interface HarthmereNativeEcsE2EBridge {
     requestId?: string;
   }): Promise<HarthmereNativeEcsE2EJobsBoardProjection>;
   nativeQuestFrontendSnapshot(): Promise<HarthmereNativeEcsE2EQuestProjection>;
+  refreshBibleQuestFrontendSnapshot(): Promise<unknown>;
 }
 
 declare global {
@@ -434,6 +435,18 @@ export function installHarthmereNativeEcsE2E(
           };
         }),
       };
+    },
+    refreshBibleQuestFrontendSnapshot: async () => {
+      const adapter = await import(
+        "@/client/components/challenges/bibleQuestLiveAdapter"
+      );
+      // Redis fixtures used by the catalog batch must invalidate the shared
+      // 14-second read cache before React is asked to rebuild NPC actions.
+      adapter.resetHarthmereBibleQuestReadCacheForTest();
+      window.dispatchEvent(
+        new CustomEvent(adapter.HARTHMERE_BIBLE_QUEST_EVENT)
+      );
+      return adapter.readHarthmereBibleQuestSnapshot({ maxAgeMs: 0 });
     },
     farmingHoeQuestSnapshot: async (operation) => {
       const [{ buildNativeFarmingInterfaceModel }, farmingMapQuest] =

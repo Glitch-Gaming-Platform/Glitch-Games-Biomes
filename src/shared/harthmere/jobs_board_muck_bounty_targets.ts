@@ -186,7 +186,12 @@ const LEGACY_MUCK_BOUNTY_TARGETS: readonly HarthmereJobsBoardMuckBountyTarget[] 
   ] as const;
 
 const GENERATED_MUCK_BOUNTY_TARGETS: readonly HarthmereJobsBoardMuckBountyTarget[] =
-  HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS.flatMap((seed) => {
+  HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS.filter((seed) =>
+    // Open-Wilds mixed encounters are legitimate hostile ECS seeds, but they
+    // are intentionally outside Muck. Keep Muck bounty jobs pinned to actual
+    // Muck territory instead of mislabeling those encounters on the job map.
+    Boolean(muckMonsterAreaForPosition(seed.position, 1.5))
+  ).flatMap((seed) => {
     const monsterId =
       seed.combatKind === "hex" ? ("hex" as const) : ("mucker" as const);
     const tiers: readonly HarthmereJobsBoardMuckBountyTier[] =

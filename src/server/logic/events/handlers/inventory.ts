@@ -245,7 +245,9 @@ function prepareRoadAheadContainerClaim(
       return { alreadyCompleted: true as const };
     }
     throw new RollbackError(
-      `Road Ahead container claim rejected: ${validation.reason}`
+      `Road Ahead container claim rejected: ${validation.reason}${
+        validation.details ? ` (${validation.details})` : ""
+      }`
     );
   }
   return { claim, validation, alreadyCompleted: false as const };
@@ -314,7 +316,9 @@ function prepareBustedUnderwaterContainerClaim(
       return { alreadyCompleted: true as const };
     }
     throw new RollbackError(
-      `Busted underwater container claim rejected: ${validation.reason}`
+      `Busted underwater container claim rejected: ${validation.reason}${
+        validation.details ? ` (${validation.details})` : ""
+      }`
     );
   }
   return { claim, validation, alreadyCompleted: false as const };

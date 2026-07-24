@@ -159,6 +159,41 @@ describe("harthmere world object inspectable selection", () => {
     );
   });
 
+  it("keeps a faced container selectable when terrain under the reticle is closer", () => {
+    const selected = selectNearestHarthmereWorldObjectInspectable({
+      playerPosition: [524.5, 65, -96.5],
+      facingView: facingPlusX,
+      candidates: [
+        {
+          id: "ecs:4149747832010135",
+          label: "Chest The Grove Underwater Main",
+          position: [528.5, 59, -96.5],
+        },
+      ],
+      // The reticle hit the ship wall two metres away, but the chest's old ECS
+      // anchor is four horizontal metres away and six metres below the player.
+      radius: 2,
+      containerRadius: 6.5,
+    });
+    assert.ok(selected, "the ship hull must not hide the chest's F prompt");
+    assert.equal(selected!.interaction.kind, "open_container");
+
+    const board = selectNearestHarthmereWorldObjectInspectable({
+      playerPosition: [0, 0, 0],
+      facingView: facingPlusX,
+      candidates: [
+        { id: "board", label: "Fountain Lesson Board", position: [4, 0, 0] },
+      ],
+      radius: 2,
+      containerRadius: 6.5,
+    });
+    assert.equal(
+      board,
+      undefined,
+      "ordinary props retain terrain-depth gating"
+    );
+  });
+
   it("opens the jobs board prop with the jobs-board action", () => {
     const selected = selectNearestHarthmereWorldObjectInspectable({
       playerPosition: [0, 0, 0],

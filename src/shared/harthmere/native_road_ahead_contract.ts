@@ -70,10 +70,23 @@ export const NATIVE_BUSTED_UNDERWATER_CONTAINER_SPEC = Object.freeze({
   labels: ["chest the grove underwater main"],
   sourceEntityId: 4149747832010135 as BiomesId,
   placeableItemId: 5979991977107628 as BiomesId,
+  position: [528.5, 59, -96.5] as const,
   stepId: 6798640337192760 as BiomesId,
   itemId: 7077725005403292 as BiomesId,
   returnNpcTypeId: 2345000310921173 as BiomesId,
 });
+
+const NATIVE_BUSTED_UNDERWATER_PRIOR_STEPS = Object.freeze([
+  310783173745175 as BiomesId,
+  859994236864492 as BiomesId,
+  3346948724689018 as BiomesId,
+]);
+
+const NATIVE_BUSTED_STEP_OBJECTIVES = new Map<BiomesId, string>([
+  [310783173745175 as BiomesId, "Talk to Jackie"],
+  [859994236864492 as BiomesId, "Meet with Doc"],
+  [3346948724689018 as BiomesId, "Talk to Doc"],
+]);
 
 export const NATIVE_ROAD_AHEAD_STEP_IDS = {
   TALK_TO_JACKIE: 3960245896803219 as BiomesId,
@@ -111,6 +124,37 @@ export const NATIVE_ROAD_AHEAD_ORDERED_STEP_IDS = Object.freeze([
   NATIVE_ROAD_AHEAD_STEP_IDS.RECEIVE_CAMERA,
   NATIVE_ROAD_AHEAD_STEP_IDS.TAKE_SELFIE_WITH_BILLY,
   NATIVE_ROAD_AHEAD_STEP_IDS.RETURN_ROBOT_SHELL_TO_JACKIE,
+]);
+
+const NATIVE_ROAD_AHEAD_STEP_OBJECTIVES = new Map<BiomesId, string>([
+  [NATIVE_ROAD_AHEAD_STEP_IDS.TALK_TO_JACKIE, "Talk to Jackie"],
+  [NATIVE_ROAD_AHEAD_STEP_IDS.MEET_BILLY, "Meet Billy"],
+  [NATIVE_ROAD_AHEAD_STEP_IDS.FIND_MUCKWAD, "Find Muckwad"],
+  [NATIVE_ROAD_AHEAD_STEP_IDS.COLLECT_SIX_MUCKWAD, "Collect six Muckwad"],
+  [
+    NATIVE_ROAD_AHEAD_STEP_IDS.RETURN_MUCKWAD_TO_BILLY,
+    "Return the Muckwad to Billy",
+  ],
+  [NATIVE_ROAD_AHEAD_STEP_IDS.FIND_CLOTHING_CRATE, "Find the clothing crate"],
+  [NATIVE_ROAD_AHEAD_STEP_IDS.CHOOSE_TOP, "Choose a top"],
+  [NATIVE_ROAD_AHEAD_STEP_IDS.CHOOSE_BOTTOMS, "Choose bottoms"],
+  [NATIVE_ROAD_AHEAD_STEP_IDS.WEAR_TOP_AND_BOTTOMS, "Wear a top and bottoms"],
+  [
+    NATIVE_ROAD_AHEAD_STEP_IDS.RETURN_TO_BILLY_DRESSED,
+    "Return to Billy dressed",
+  ],
+  [NATIVE_ROAD_AHEAD_STEP_IDS.OPEN_BILLYS_BAG, "Open Billy's bag"],
+  [NATIVE_ROAD_AHEAD_STEP_IDS.RETURN_BILLYS_PICK, "Return Billy's pick"],
+  [NATIVE_ROAD_AHEAD_STEP_IDS.RECEIVE_ROBOT_SHELL, "Receive the Robot Shell"],
+  [NATIVE_ROAD_AHEAD_STEP_IDS.RECEIVE_CAMERA, "Receive the camera"],
+  [
+    NATIVE_ROAD_AHEAD_STEP_IDS.TAKE_SELFIE_WITH_BILLY,
+    "Take a selfie with Billy",
+  ],
+  [
+    NATIVE_ROAD_AHEAD_STEP_IDS.RETURN_ROBOT_SHELL_TO_JACKIE,
+    "Bring the Robot Shell back to Jackie",
+  ],
 ]);
 
 export const NATIVE_ROBOT_STORY_ITEM_IDS = Object.freeze({
@@ -197,6 +241,15 @@ export const NATIVE_ROBOT_STORY_FINAL_HANDOFFS = Object.freeze({
  */
 export function nativeBiomesEcsAuthorityEnabled() {
   return process.env.NEXT_PUBLIC_BIOMES_NATIVE_ECS_AUTHORITY !== "0";
+}
+
+/**
+ * Native Harthmere resources recover only through authored consumables and
+ * respawn transactions. The stock Biomes client health loop must not add a
+ * second, timer-based recovery authority while native ECS owns the player.
+ */
+export function playerHealthAutoRegenerationEnabled() {
+  return !nativeBiomesEcsAuthorityEnabled();
 }
 
 /**
@@ -303,6 +356,61 @@ export function nativeBustedUnderwaterContainerClaimForItem(
   } as const;
 }
 
+/** Normalize every physical native quest reward into one client preflight. */
+export function nativeQuestContainerClaimForItem(
+  label: string | null | undefined,
+  itemId: BiomesId
+) {
+  const roadAhead = nativeRoadAheadContainerClaimForItem(label, itemId);
+  if (roadAhead) {
+    return {
+      ...roadAhead,
+      challengeId: NATIVE_ROAD_AHEAD_QUEST_ID,
+      questTitle: "The Road Ahead",
+    } as const;
+  }
+  const busted = nativeBustedUnderwaterContainerClaimForItem(label, itemId);
+  if (busted) {
+    return { ...busted, questTitle: "Busted" } as const;
+  }
+  return undefined;
+}
+
+/**
+ * Return player-facing prerequisite copy for any supported quest container.
+ * The inventory handler still repeats full trigger-tree validation, so this
+ * shared lookup improves feedback without becoming a second authority.
+ */
+export function nativeQuestContainerFirstIncompletePriorStep(
+  triggerStateForChallenge: ReadonlyMap<BiomesId, unknown> | undefined,
+  challengeId: BiomesId,
+  claimStepId: BiomesId
+) {
+  if (challengeId === NATIVE_ROAD_AHEAD_QUEST_ID) {
+    return nativeRoadAheadFirstIncompletePriorStep(
+      triggerStateForChallenge,
+      claimStepId
+    );
+  }
+  if (
+    challengeId === NATIVE_BUSTED_QUEST_ID &&
+    claimStepId === NATIVE_BUSTED_UNDERWATER_CONTAINER_SPEC.stepId
+  ) {
+    for (const stepId of NATIVE_BUSTED_UNDERWATER_PRIOR_STEPS) {
+      const raw = triggerStateForChallenge?.get(stepId);
+      if (raw === undefined || raw === 0) {
+        return {
+          stepId,
+          objective:
+            NATIVE_BUSTED_STEP_OBJECTIVES.get(stepId) ??
+            "the current Busted objective",
+        };
+      }
+    }
+  }
+  return undefined;
+}
+
 /** Resolve a quest container without relying on the generic crate regex. */
 export function nativeRoadAheadContainerSpecForLabel(
   label?: string | null
@@ -360,6 +468,38 @@ export function nativeRoadAheadContainerClaimForItem(
         placeableItemId: spec.placeableItemId,
         stepId: choice.stepId,
         chosenRewardIndex,
+      };
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Client-side preflight for a private Road Ahead reward container.
+ *
+ * The server remains authoritative and performs the complete trigger-tree
+ * validation. This lightweight ordered-leaf check exists so an interactable
+ * quest container discovered early reports the actual progression gate rather
+ * than publishing a transaction that the server rolls back and then appearing
+ * to hang until the ECS-update timeout expires.
+ */
+export function nativeRoadAheadFirstIncompletePriorStep(
+  triggerStateForChallenge: ReadonlyMap<BiomesId, unknown> | undefined,
+  claimStepId: BiomesId
+) {
+  const claimIndex = NATIVE_ROAD_AHEAD_ORDERED_STEP_IDS.indexOf(claimStepId);
+  if (claimIndex <= 0) return undefined;
+  for (const stepId of NATIVE_ROAD_AHEAD_ORDERED_STEP_IDS.slice(
+    0,
+    claimIndex
+  )) {
+    const raw = triggerStateForChallenge?.get(stepId);
+    if (raw === undefined || raw === 0) {
+      return {
+        stepId,
+        objective:
+          NATIVE_ROAD_AHEAD_STEP_OBJECTIVES.get(stepId) ??
+          "the current Road Ahead objective",
       };
     }
   }

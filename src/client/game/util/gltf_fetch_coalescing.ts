@@ -3,11 +3,32 @@ const PLAYER_MESH_GLTF_MAX_ACTIVE_FETCHES = 4;
 let playerMeshGltfActiveFetches = 0;
 const playerMeshGltfFetchWaiters: Array<() => void> = [];
 
+export async function retryPlayerMeshGltfLoad<T>(
+  operation: () => Promise<T>,
+  options: { attempts?: number; delayMs?: number } = {}
+) {
+  const attempts = Math.max(1, Math.trunc(options.attempts ?? 3));
+  let lastError: unknown;
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    try {
+      return await operation();
+    } catch (error) {
+      lastError = error;
+      if (attempt + 1 < attempts && (options.delayMs ?? 150) > 0) {
+        await new Promise<void>((resolve) => {
+          setTimeout(resolve, options.delayMs ?? 150);
+        });
+      }
+    }
+  }
+  throw lastError;
+}
+
 async function withPlayerMeshGltfFetchSlot<T>(operation: () => Promise<T>) {
   if (playerMeshGltfActiveFetches >= PLAYER_MESH_GLTF_MAX_ACTIVE_FETCHES) {
-    await new Promise<void>((resolve) =>
-      playerMeshGltfFetchWaiters.push(resolve)
-    );
+    await new Promise<void>((resolve) => {
+      playerMeshGltfFetchWaiters.push(resolve);
+    });
   }
   playerMeshGltfActiveFetches += 1;
   try {

@@ -115,7 +115,7 @@ async function main() {
   check(
     HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS.length ===
       HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_PRODUCTION_COUNT,
-    "production has exactly 116 ambient Muck/Hex hostile seeds"
+    "production has exactly 140 ambient Muck/Hex hostile seeds"
   );
   check(
     HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS.some(
@@ -136,7 +136,7 @@ async function main() {
   const serverCombatEntries = Object.entries(serverCombat);
   // The combat snapshot now also carries retaliating wildlife (cows/sheep/
   // rabbits, entityKind "animal") alongside the Muck/Hex hostiles, so assert the
-  // 116 hostiles are all present rather than that the snapshot is hostiles-only.
+  // All hostiles are present rather than that the snapshot is hostiles-only.
   const serverCombatHostileEntries = serverCombatEntries.filter(
     ([, snapshot]) =>
       snapshot.entityKind === "mux" || snapshot.entityKind === "hex"
@@ -152,13 +152,14 @@ async function main() {
     "live-mode server combat snapshot includes both Muckers and Hexes"
   );
   check(
-    serverCombatEntries.every(([, snapshot]) =>
-      muckMonsterAreaForPosition(
+    serverCombatEntries.every(([, snapshot]) => {
+      const territory = muckMonsterAreaForPosition(
         [snapshot.position.x, snapshot.position.y, snapshot.position.z],
         1.5
-      )
-    ),
-    "live-mode server combat Muckers/Hexes are only in authored Muck areas"
+      );
+      return snapshot.outsideMuckEncounter ? !territory : Boolean(territory);
+    }),
+    "live-mode server combat entities stay in Muck or an explicit open-Wilds encounter"
   );
 
   const proposed = buildHarthmereLiveEntityProductionSeedProposedChanges({

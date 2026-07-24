@@ -55,10 +55,16 @@ export const NIGHT_MUCKER_HEX_DISENGAGE_DISTANCE = 48;
 export const NIGHT_MUCKER_HEX_MOVEMENT_MULTIPLIER = 1.8;
 export const NIGHT_MUCKER_HEX_DAMAGE_MULTIPLIER = 1.5;
 export const NIGHT_MUCKER_HEX_ATTACK_INTERVAL_MULTIPLIER = 0.55;
-export const HARTHMERE_NPC_CHASE_SPEED_MULTIPLIER = 1.35;
+// Combat pursuit was already tuned to 1.35x. The current requirement is 20%
+// faster than that tuned value, rather than 20% faster than the raw base speed.
+export const HARTHMERE_PREVIOUS_NPC_CHASE_SPEED_MULTIPLIER = 1.35;
+export const HARTHMERE_NPC_CHASE_SPEED_MULTIPLIER =
+  HARTHMERE_PREVIOUS_NPC_CHASE_SPEED_MULTIPLIER * 1.2;
 // Normal player sprint animation transitions at 8 m/s. Keep Harthmere pursuit
 // urgent without allowing an NPC to outrun a sprinting player on open ground.
 export const HARTHMERE_NPC_CHASE_SPEED_CAP_METERS_PER_SECOND = 7.6;
+export const HARTHMERE_NPC_CHASE_MIN_EFFECTIVE_METERS_PER_SECOND = 2.25;
+const CHASE_STUCK_DIRECT_PURSUIT_SECONDS = 1.0;
 const LINE_OF_SIGHT_SAMPLE_STEP_METERS = 0.45;
 const LINE_OF_SIGHT_SAMPLE_BOX_METERS = 0.18;
 const DEFAULT_PLAYER_EYE_HEIGHT_METERS = 1.45;
@@ -141,6 +147,42 @@ export function isHarthmereSightBoundChaserName(
   );
 }
 
+// Movement acceleration is intentionally narrower than sight-bound combat.
+// Bandits still use native ECS/Anima targeting and line-of-sight disengagement,
+// but only Muckers, Hexes, and combat-capable animals receive the Harthmere
+// fight-speed boost. Protected/owned creatures must never inherit it from a
+// species word in their label.
+export function isHarthmereFightSpeedBoostName(
+  name: string | undefined
+): boolean {
+  const text = String(name ?? "").toLowerCase();
+  if (
+    /\b(pet|companion|tamed|owned|mount|prisoner)\b|robot|bot|sentinel|sentential|sentiental|shield|beacon|board|voucher|ration|matter|ward/.test(
+      text
+    )
+  ) {
+    return false;
+  }
+  return (
+    isMuckerOrHexerNameForNightAggro(text) ||
+    /\b(cow|sheep|rabbit|wolf|boar|bear|deer|duck|horse|stag|goose|chicken|pig|goat)\b/.test(
+      text
+    )
+  );
+}
+
+export function isHarthmereFightSpeedBoostEligible(input: {
+  name: string | undefined;
+  isPlayerOwned: boolean;
+  isCombatCapable: boolean;
+}): boolean {
+  return (
+    input.isCombatCapable &&
+    !input.isPlayerOwned &&
+    isHarthmereFightSpeedBoostName(input.name)
+  );
+}
+
 export function boundedHarthmereChaseSpeedForName(
   name: string | undefined,
   requestedSpeed: number
@@ -148,7 +190,7 @@ export function boundedHarthmereChaseSpeedForName(
   if (!Number.isFinite(requestedSpeed) || requestedSpeed <= 0) {
     return 0;
   }
-  return isHarthmereSightBoundChaserName(name)
+  return isHarthmereFightSpeedBoostName(name)
     ? Math.min(
         requestedSpeed * HARTHMERE_NPC_CHASE_SPEED_MULTIPLIER,
         HARTHMERE_NPC_CHASE_SPEED_CAP_METERS_PER_SECOND
@@ -221,6 +263,16 @@ function harthmereNpcCombatName(npc: SimulatedNpc): string {
     displayName?: string;
   };
   return [npc.label, type.displayName, type.name].filter(Boolean).join(" ");
+}
+
+export function isHarthmereFightSpeedBoostNpc(npc: SimulatedNpc): boolean {
+  return isHarthmereFightSpeedBoostEligible({
+    name: harthmereNpcCombatName(npc),
+    isPlayerOwned: npc.playerOwned,
+    // This helper is only consulted on the native chaseAttack locomotion path;
+    // having reached it is the combat-capable gate.
+    isCombatCapable: true,
+  });
 }
 
 function isHarthmereSightBoundChaserNpc(npc: SimulatedNpc): boolean {
@@ -382,6 +434,10 @@ export const zChaseAttackComponent = z.object({
       strikeTime: z.number().optional(),
       // Pathfinding behavior for chasing around walls/obstacles.
       pathfinding: zPathfindingComponent.optional(),
+      // Briefly use direct pursuit after a path makes no progress. This lets
+      // collision climbing carry an NPC over small ledges instead of instantly
+      // rebuilding the same blocked path.
+      pathfindingRetryTime: z.number().optional(),
     })
     .default({}),
 });
@@ -520,10 +576,13 @@ function nextChasePathTarget(
   targetPosition: ReadonlyVec3
 ): Vec3 | undefined {
   const state = npc.mutableState().chaseAttack!;
+  const now = secondsSinceEpoch();
   if (state.pathfinding) {
     updatePathfindingPosition(state.pathfinding, npc.position);
-    if (
-      stuckWhilePathfinding(state.pathfinding) ||
+    if (stuckWhilePathfinding(state.pathfinding, now)) {
+      state.pathfinding = undefined;
+      state.pathfindingRetryTime = now + CHASE_STUCK_DIRECT_PURSUIT_SECONDS;
+    } else if (
       chasePathTargetIsStale(
         state.pathfinding.path,
         targetPosition,
@@ -536,6 +595,11 @@ function nextChasePathTarget(
       state.pathfinding = undefined;
     }
   }
+
+  if ((state.pathfindingRetryTime ?? 0) > now) {
+    return undefined;
+  }
+  state.pathfindingRetryTime = undefined;
 
   if (!state.pathfinding) {
     const graph = new GraphImpl();
@@ -551,7 +615,7 @@ function nextChasePathTarget(
       if (path) {
         state.pathfinding = {
           path,
-          searchTime: secondsSinceEpoch(),
+          searchTime: now,
           position: npc.position as Vec3,
         };
       }

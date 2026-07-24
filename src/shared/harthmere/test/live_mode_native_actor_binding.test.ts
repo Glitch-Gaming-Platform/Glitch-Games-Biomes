@@ -102,6 +102,26 @@ describe("Harthmere stable save actor -> native ECS binding", () => {
     assert.equal(progress?.actorId, String(NATIVE_ACTOR_ID));
   });
 
+  it("creates a native accept plan for giver-less hidden bible quests", () => {
+    const questId = "harthmere_sq_041_the_doorway_that_wasnt";
+    const state = defaultHarthmereLiveModeBackendState(
+      DURABLE_ACTOR_ID,
+      NOW_MS
+    );
+    state.classMagic.skills.character_level = { xp: 0, level: 6 };
+    const reduced = reduceHarthmereLiveModeBackendState(
+      state,
+      envelope({ operation: "bible_quest_accept", questId }),
+      NOW_MS
+    );
+    const accept = reduced.summary.nativeEcsMaterializationPlans?.find(
+      (plan) => plan.kind === "quest_accept"
+    );
+    assert.ok(accept, "hidden discovery must begin its native challenge");
+    assert.equal((accept as any).giverEntityId, undefined);
+    assert.equal((accept as any).actorId, String(NATIVE_ACTOR_ID));
+  });
+
   it("projects a successful native parcel exchange into the immediate frontend snapshot", () => {
     const state = defaultHarthmereLiveModeBackendState(
       DURABLE_ACTOR_ID,

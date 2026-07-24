@@ -17,7 +17,9 @@ export class CameraServiceImpl implements ZService<typeof zCameraService> {
     try {
       return await this.camera.takeScreenshot(
         request.position,
-        request.orientation
+        request.orientation,
+        request.width,
+        request.height
       );
     } catch (error) {
       throw new RpcError(grpc.status.INTERNAL, String(error));

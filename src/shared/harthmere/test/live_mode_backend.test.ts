@@ -32,6 +32,8 @@ import {
   tickHarthmereLiveModeStaminaForGameplay,
   createHarthmereLiveModeBuildingClientSnapshot,
   HARTHMERE_SERVER_MUCK_COMBAT_RESPAWN_MS,
+  HARTHMERE_LIVE_ENTITY_CHASE_STEP_CAP_METERS,
+  HARTHMERE_LIVE_ENTITY_PREVIOUS_CHASE_STEP_CAP_METERS,
   harthmereReviveDefeatedSeededCombatEntities,
   type HarthmereLiveEntityKind,
   type HarthmereLiveModeBackendState,
@@ -3575,6 +3577,86 @@ describe("reduceHarthmereLiveModeBackendState — combat target authority", func
     assert.ok(tickState.combat.entitySnapshots[id].position.x > 1);
   });
 
+  it("runs eligible combat chases 20% faster than the prior 1.35x tuning", function () {
+    const entityId = "combat-only-speed-mucker";
+    const baseSnapshot = {
+      hp: 100,
+      maxHp: 100,
+      position: { x: 0, y: 0, z: 0 },
+      homePosition: { x: 0, y: 0, z: 0 },
+      isHostile: true,
+      isAlive: true,
+      isAttackable: true,
+      entityKind: "mux" as const,
+      movementSpeed: 2.5,
+      patrolRadius: 8,
+      retaliatesWhenAttacked: true,
+      leashRange: 80,
+      level: 1,
+    };
+
+    const idle = freshState();
+    idle.combat.entitySnapshots[entityId] = { ...baseSnapshot };
+    const idleState = applyOne(
+      idle,
+      "request_npc_ai_tick",
+      {
+        npcId: entityId,
+        thinkIntervalMs: 1_000,
+      },
+      {
+        source: "server_scheduled_tick",
+        subsystem: "npc_ai",
+        targetId: entityId,
+        serverActorPosition: { x: 50, y: 0, z: 0 },
+      }
+    ).state;
+    const idleTick = idleState.combat.npcAiTicks[entityId];
+    assert.equal(idleTick.movementMode, "town_wander");
+    assert.equal(idleState.combat.entitySnapshots[entityId].movementSpeed, 2.5);
+
+    const fighting = freshState();
+    fighting.combat.entitySnapshots[entityId] = {
+      ...baseSnapshot,
+      lastAttackerId: ACTOR,
+      lastAttackedAtMs: NOW_MS,
+      lastDamageTaken: 5,
+    };
+    const fightingState = applyOne(
+      fighting,
+      "request_npc_ai_tick",
+      { npcId: entityId, thinkIntervalMs: 2_000, lineOfSight: true },
+      {
+        source: "server_scheduled_tick",
+        subsystem: "npc_ai",
+        targetId: entityId,
+        serverActorPosition: { x: 20, y: 0, z: 0 },
+      }
+    ).state;
+    const fightingTick = fightingState.combat.npcAiTicks[entityId];
+    assert.equal(fightingTick.decision, "retaliate_to_recent_attacker");
+    assert.equal(fightingTick.movementMode, "combat_chase");
+    assert.equal(HARTHMERE_LIVE_ENTITY_PREVIOUS_CHASE_STEP_CAP_METERS, 4);
+    assert.equal(
+      HARTHMERE_LIVE_ENTITY_CHASE_STEP_CAP_METERS,
+      HARTHMERE_LIVE_ENTITY_PREVIOUS_CHASE_STEP_CAP_METERS * 1.2
+    );
+    assert.ok(
+      Math.abs(
+        (fightingTick.positionTo?.x ?? 0) -
+          HARTHMERE_LIVE_ENTITY_CHASE_STEP_CAP_METERS
+      ) < 1e-9,
+      `expected a two-second chase step of ${HARTHMERE_LIVE_ENTITY_CHASE_STEP_CAP_METERS}m, got ${fightingTick.positionTo?.x}`
+    );
+    assert.equal(fightingTick.attackBlockedReason, "target_out_of_range");
+    assert.equal(fightingState.combat.hp, 100);
+    assert.equal(
+      fightingState.combat.entitySnapshots[entityId].movementSpeed,
+      2.5,
+      "the compounded combat factor must not leak into the stored idle/patrol speed"
+    );
+  });
+
   it("walks idle live animals on server AI ticks and exposes animation metadata", function () {
     const animalId = "live-animal-idle-walker";
     const s = freshState();
@@ -6086,7 +6168,7 @@ describe("reduceHarthmereLiveModeBackendState — quest state", function () {
     assert.ok(state.quests.active["quest_goblin_slayer"] !== undefined);
   });
 
-  it("persists Snapshot Grove accepts but refuses client completion assertions", function () {
+  it("materializes the final Snapshot Grove objective and retires the completed quest", function () {
     const s = freshState();
     const accepted = applyOne(s, "request_quest_state_update", {
       questId: "moss_that_went_quiet",
@@ -6108,25 +6190,58 @@ describe("reduceHarthmereLiveModeBackendState — quest state", function () {
       accepted.state.quests.active["moss_that_went_quiet"]?.source,
       "snapshot_grove"
     );
+    accepted.state.quests.active["moss_that_went_quiet"]!.progress = 4;
 
     const completed = applyOne(accepted.state, "request_quest_state_update", {
       questId: "moss_that_went_quiet",
       source: "snapshot_grove",
       stepId: "moss_that_went_quiet:3:talk_npc",
       progress: 4,
+      objectiveIndex: 3,
+      completed: true,
+    });
+    assert.deepEqual(completed.summary.warnings, []);
+    assert.ok(
+      completed.state.quests.completed["moss_that_went_quiet"] !== undefined
+    );
+    assert.equal(
+      completed.state.quests.active["moss_that_went_quiet"],
+      undefined
+    );
+    assert.ok(
+      completed.summary.nativeEcsMaterializationPlans?.some(
+        (plan) =>
+          plan.kind === "quest_progress" &&
+          plan.questId === "moss_that_went_quiet" &&
+          plan.objectiveIdOrIndex === 3
+      )
+    );
+  });
+
+  it("rejects Snapshot Grove completion until every prior objective is recorded", function () {
+    const s = freshState();
+    s.quests.active.fountain_buttons_first = {
+      stepId: "fountain_buttons_first:2:open_tab",
+      progress: 3,
+      source: "snapshot_grove",
+    };
+    const completed = applyOne(s, "request_quest_state_update", {
+      questId: "fountain_buttons_first",
+      source: "snapshot_grove",
+      stepId: "fountain_buttons_first:4:talk_npc",
+      progress: 5,
+      objectiveIndex: 4,
       completed: true,
     });
     assert.ok(
       completed.summary.warnings.includes(
-        "quest_rejected:native_ecs_challenge_required"
+        "snapshot_grove_quest_rejected:prior_objective_incomplete"
       )
     );
+    assert.ok(completed.state.quests.active.fountain_buttons_first);
     assert.equal(
-      completed.state.quests.completed["moss_that_went_quiet"],
+      completed.state.quests.completed.fountain_buttons_first,
       undefined
-    );
-    assert.ok(
-      completed.state.quests.active["moss_that_went_quiet"] !== undefined
     );
   });
 

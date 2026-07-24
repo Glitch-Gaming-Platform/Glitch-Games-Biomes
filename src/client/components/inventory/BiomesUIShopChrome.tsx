@@ -6,7 +6,7 @@ import {
   nextBiomesUIShopAmount,
 } from "@/client/components/inventory/shopBiomesUIModel";
 import type { PropsWithChildren, ReactNode } from "react";
-import React, { useEffect, useRef } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 
 function isTypingInInput() {
   if (typeof document === "undefined") {
@@ -54,23 +54,37 @@ export const BiomesUIShopChrome: React.FunctionComponent<
     title: string;
     eyebrow: string;
     subtitle?: ReactNode;
-    variant: "container" | "npc-buyer";
+    variant: "container" | "npc-buyer" | "vendor";
     actions?: ReactNode;
     footer?: ReactNode;
+    onClose?: () => void;
   }>
-> = ({ title, eyebrow, subtitle, variant, actions, footer, children }) => {
+> = ({
+  title,
+  eyebrow,
+  subtitle,
+  variant,
+  actions,
+  footer,
+  onClose,
+  children,
+}) => {
   const miniPhone = maybeUseExistingMiniPhoneContext();
   const pointerLockManager = usePointerLockManager();
   const shouldReturnPointerLockRef = useRef(false);
   const dialogRef = useRef<HTMLElement | null>(null);
+  const closeShop = useCallback(() => {
+    if (onClose) {
+      onClose();
+      return;
+    }
+    miniPhone?.close();
+  }, [miniPhone, onClose]);
 
   useEffect(() => installBiomesUITheme(), []);
 
   useEffect(() => {
-    openBiomesUIShopPointerLock(
-      pointerLockManager,
-      shouldReturnPointerLockRef
-    );
+    openBiomesUIShopPointerLock(pointerLockManager, shouldReturnPointerLockRef);
     return () =>
       closeBiomesUIShopPointerLock(
         pointerLockManager,
@@ -90,12 +104,12 @@ export const BiomesUIShopChrome: React.FunctionComponent<
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape" && !isTypingInInput()) {
-        miniPhone?.close();
+        closeShop();
       }
     }
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [miniPhone]);
+  }, [closeShop]);
 
   return (
     <section
@@ -122,7 +136,7 @@ export const BiomesUIShopChrome: React.FunctionComponent<
             type="button"
             className="biomes-ui-shop-screen__close"
             aria-label="Close shop"
-            onClick={() => miniPhone?.close()}
+            onClick={closeShop}
           >
             <span aria-hidden>Esc</span>
             Close
@@ -134,6 +148,49 @@ export const BiomesUIShopChrome: React.FunctionComponent<
         <footer className="biomes-ui-shop-screen__footer">{footer}</footer>
       ) : null}
     </section>
+  );
+};
+
+export function isBiomesUIShopIconImageSource(icon?: string) {
+  if (!icon) {
+    return false;
+  }
+  return /^(?:https?:\/\/|\/|data:image\/|blob:)/i.test(icon.trim());
+}
+
+function shopIconFallback(label: string, fallbackGlyph?: string) {
+  if (fallbackGlyph?.trim()) {
+    return fallbackGlyph;
+  }
+  const letters = label.match(/[A-Za-z0-9]/g)?.join("") ?? "";
+  return (letters.slice(0, 2).toUpperCase() || "?").padEnd(2, " ");
+}
+
+export const BiomesUIShopItemIcon: React.FunctionComponent<{
+  icon?: string;
+  label: string;
+  fallbackGlyph?: string;
+}> = ({ icon, label, fallbackGlyph }) => {
+  const [imageFailed, setImageFailed] = useState(false);
+  const imageSource = isBiomesUIShopIconImageSource(icon);
+
+  useEffect(() => setImageFailed(false), [icon]);
+
+  return (
+    <div className="biomes-ui-shop-item-icon" aria-label={`${label} icon`}>
+      {imageSource && !imageFailed ? (
+        <img
+          src={icon}
+          alt=""
+          draggable={false}
+          onError={() => setImageFailed(true)}
+        />
+      ) : (
+        <span aria-hidden>
+          {icon && !imageSource ? icon : shopIconFallback(label, fallbackGlyph)}
+        </span>
+      )}
+    </div>
   );
 };
 

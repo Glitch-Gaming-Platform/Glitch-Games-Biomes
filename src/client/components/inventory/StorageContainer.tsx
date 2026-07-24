@@ -24,8 +24,8 @@ import {
   InventorySwapEvent,
 } from "@/shared/ecs/gen/events";
 import {
-  nativeRoadAheadContainerClaimForItem,
-  NATIVE_ROAD_AHEAD_QUEST_ID,
+  nativeQuestContainerClaimForItem,
+  nativeQuestContainerFirstIncompletePriorStep,
 } from "@/shared/harthmere/native_road_ahead_contract";
 import { pollUntil } from "@/shared/util/async";
 import { compact } from "lodash";
@@ -86,6 +86,29 @@ export const StorageContainerLeftPaneContent: React.FunctionComponent<{
         }
         const existing = maybeGetSlotByRef(projected, destination);
         const sourceRef = { kind: "item" as const, idx };
+        // Preflight every known native quest reward before publishing its ECS
+        // inventory event. Server validation remains authoritative, but players
+        // now see the exact unfinished objective instead of a socket timeout.
+        const claim = nativeQuestContainerClaimForItem(
+          containerLabel?.text,
+          source.item.id
+        );
+        if (claim) {
+          const triggerStateForChallenge = reactResources
+            .get("/ecs/c/trigger_state", userId)
+            ?.by_root.get(claim.challengeId);
+          const incomplete = nativeQuestContainerFirstIncompletePriorStep(
+            triggerStateForChallenge,
+            claim.challengeId,
+            claim.stepId
+          );
+          if (incomplete) {
+            throw new Error(
+              `Finish “${incomplete.objective}” before taking these quest items. This container is ahead of your current ${claim.questTitle} step.`
+            );
+          }
+        }
+
         if (existing) {
           await events.publish(
             new InventoryCombineEvent({
@@ -110,31 +133,28 @@ export const StorageContainerLeftPaneContent: React.FunctionComponent<{
             })
           );
         }
-        giveToOwnedItems(projected, pattern);
-        const displayName = source.item.displayName ?? String(source.item.id);
-        received.push(
-          `${displayName}${source.count > 1n ? ` x${source.count}` : ""}`
-        );
 
-        const claim = nativeRoadAheadContainerClaimForItem(
-          containerLabel?.text,
-          source.item.id
-        );
         if (claim) {
-          // Road Ahead's reward choices are consecutive sequence leaves. Wait
-          // for the authoritative trigger-state socket update before moving the
+          // Quest reward choices can be consecutive sequence leaves. Wait for
+          // the authoritative trigger-state socket update before moving the
           // next item, otherwise a fast Take All can race the prior-step check.
           await pollUntil(
             () => {
               const raw = reactResources
                 .get("/ecs/c/trigger_state", userId)
-                ?.by_root.get(NATIVE_ROAD_AHEAD_QUEST_ID)
+                ?.by_root.get(claim.challengeId)
                 ?.get(claim.stepId);
               return raw !== undefined && raw !== 0;
             },
             { timeout: 10_000, timeoutText: "Quest update timed out" }
           );
         }
+
+        giveToOwnedItems(projected, pattern);
+        const displayName = source.item.displayName ?? String(source.item.id);
+        received.push(
+          `${displayName}${source.count > 1n ? ` x${source.count}` : ""}`
+        );
       }
       if (received.length > 0) {
         setTakeAllSuccess(`Received ${received.join(", ")}.`);

@@ -110,6 +110,135 @@ export async function warpPoofParticleMaterials(): Promise<ParticleSystemMateria
   );
 }
 
+/**
+ * A layered, engine-native creation effect for stabilized Exotic Matter.
+ * The tight looping core provides the sustained containment glow while the
+ * larger shell reads as energy collapsing into a newly formed
+ * object. Both use the normal particle renderer and lighting uniforms.
+ */
+export async function exoticMatterCreationParticleMaterials(): Promise<
+  ParticleSystemMaterials[]
+> {
+  return Promise.all([
+    ParticleSystemMaterials.createTextureMaterialsFromURL(
+      {
+        spawnType: {
+          kind: "relative_aabb",
+          range: [
+            [-0.42, -0.42, -0.42],
+            [0.42, 0.42, 0.42],
+          ],
+        },
+        loop: true,
+        fadeAfterRelativeLifespan: 0.5,
+        emissiveBoost: 2.2,
+        numParticles: 360,
+        birthTimeRange: [0, 1.6],
+        baseAlphaRange: [0.55, 1],
+        lifespanRange: [0.7, 2.2],
+        velocityRange: [
+          [-0.55, -0.3, -0.55],
+          [0.55, 0.7, 0.55],
+        ],
+        angleVelocityRange: [-5, 5],
+        acceleration: [0, 0.12, 0],
+        sizeRange: [0.04, 0.15],
+      },
+      warpParticle.src
+    ),
+    ParticleSystemMaterials.createTextureMaterialsFromURL(
+      {
+        spawnType: {
+          kind: "relative_aabb",
+          range: [
+            [-0.8, -0.45, -0.8],
+            [0.8, 0.55, 0.8],
+          ],
+        },
+        loop: true,
+        fadeAfterRelativeLifespan: 0.28,
+        emissiveBoost: 1.5,
+        numParticles: 480,
+        birthTimeRange: [0, 2.4],
+        baseAlphaRange: [0.28, 0.82],
+        lifespanRange: [1.1, 3.2],
+        velocityRange: [
+          [-1.1, -0.35, -1.1],
+          [1.1, 1.5, 1.1],
+        ],
+        angleVelocityRange: [-3.5, 3.5],
+        acceleration: [0, -0.2, 0],
+        sizeRange: [0.03, 0.11],
+      },
+      blueprintParticle.src
+    ),
+  ]);
+}
+
+/**
+ * Short, non-looping engine-native sparks and dust for cinematic melee hits.
+ * The effect is deliberately generic so combat templates can reuse it for
+ * swords, tools, claws, and Mucker impacts without inventing per-scene hooks.
+ */
+export async function combatImpactParticleMaterials(): Promise<
+  ParticleSystemMaterials[]
+> {
+  return Promise.all([
+    ParticleSystemMaterials.createTextureMaterialsFromURL(
+      {
+        spawnType: {
+          kind: "relative_aabb",
+          range: [
+            [-0.18, 0.35, -0.18],
+            [0.18, 1.35, 0.18],
+          ],
+        },
+        loop: false,
+        fadeAfterRelativeLifespan: 0.35,
+        emissiveBoost: 1.8,
+        numParticles: 120,
+        birthTimeRange: [0, 0.12],
+        baseAlphaRange: [0.55, 1],
+        lifespanRange: [0.25, 0.75],
+        velocityRange: [
+          [-2.4, -0.2, -2.4],
+          [2.4, 2.8, 2.4],
+        ],
+        angleVelocityRange: [-7, 7],
+        acceleration: [0, -4.5, 0],
+        sizeRange: [0.025, 0.095],
+      },
+      fireIcon.src
+    ),
+    ParticleSystemMaterials.createTextureMaterialsFromURL(
+      {
+        spawnType: {
+          kind: "relative_aabb",
+          range: [
+            [-0.25, 0.15, -0.25],
+            [0.25, 0.75, 0.25],
+          ],
+        },
+        loop: false,
+        fadeAfterRelativeLifespan: 0.2,
+        emissiveBoost: 0.15,
+        numParticles: 48,
+        birthTimeRange: [0, 0.18],
+        baseAlphaRange: [0.2, 0.55],
+        lifespanRange: [0.45, 1.1],
+        velocityRange: [
+          [-0.7, 0.15, -0.7],
+          [0.7, 1.2, 0.7],
+        ],
+        angleVelocityRange: [-2, 2],
+        acceleration: [0, 0.35, 0],
+        sizeRange: [0.08, 0.24],
+      },
+      softSmokeIcon.src
+    ),
+  ]);
+}
+
 export async function firePoofParticleMaterials(): Promise<ParticleSystemMaterials> {
   return ParticleSystemMaterials.createTextureMaterialsFromURL(
     {

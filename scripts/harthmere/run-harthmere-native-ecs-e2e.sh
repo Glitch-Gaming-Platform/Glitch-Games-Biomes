@@ -33,15 +33,21 @@ echo "== Native ECS topology and security contracts =="
 node scripts/harthmere/test-harthmere-stream-workers-production.cjs "$ROOT"
 node scripts/harthmere/test-harthmere-native-farming-e2e-contract.cjs "$ROOT"
 node scripts/harthmere/test-harthmere-native-ecs-all-jobs-e2e-contract.cjs "$ROOT"
+node scripts/harthmere/test-harthmere-native-robot-story-e2e-contract.cjs "$ROOT"
+node scripts/harthmere/test-harthmere-native-chase-e2e-contract.cjs "$ROOT"
 "${TS_MOCHA[@]}" \
   src/client/game/e2e/harthmere_native_ecs_e2e.test.ts \
   src/pages/api/harthmere/test/visual_test_auth.test.ts
 
 echo "== Visible frontend interaction contracts =="
+# Keep onboarding, active-leaf notifications, and their real completion
+# fixtures inside the release gate rather than relying on ad-hoc local runs.
 "${TS_MOCHA[@]}" \
   src/client/game/scripts/audio.test.ts \
   src/client/components/challenges/worldInteractionDispatcher.browser.test.tsx \
   src/client/components/challenges/TalkDialogModalStep.browser.test.tsx \
+  src/client/components/challenges/LocalDevSnapshotGroveBibleRuntime.validation.test.ts \
+  src/client/game/context_managers/garden_hose.test.ts \
   src/client/components/overlays/inspected/interactionRoleResolver.test.ts \
   src/client/components/biomes_ui/__tests__/BiomesHotbar.actions.browser.test.tsx \
   src/client/components/biomes_ui/__tests__/InventoryTab.actions.browser.test.tsx \
@@ -64,6 +70,7 @@ echo "== Visible frontend interaction contracts =="
   src/client/util/nux/state_machines.test.ts \
   src/shared/harthmere/test/world_object_f_interaction_all_props.test.ts \
   src/shared/harthmere/test/harthmere_world_object_inspectable.test.ts \
+  src/shared/harthmere/test/snapshot_grove_trigger_contract.test.ts \
   src/shared/harthmere/test/gathering_node_authority.test.ts \
   src/shared/harthmere/test/harthmere_item_source_reachability.test.ts \
   src/shared/harthmere/test/world_object_interaction_authority.test.ts
@@ -86,9 +93,11 @@ echo "== Native ECS handler and authority contracts =="
   src/server/shared/triggers/test/challenge_claim_rewards_roundtrip.test.ts \
   src/server/shared/triggers/test/native_road_ahead_inventory_triggers.test.ts \
   src/server/shared/triggers/test/native_robot_story_continuation.test.ts \
+  src/server/shared/triggers/test/engine_cleanup.test.ts \
   src/server/harthmere/test/native_vitals_scheduler.test.ts \
   src/server/harthmere/test/native_vitals_environment.test.ts \
   src/server/harthmere/test/live_mode_escort_scheduler.test.ts \
+  src/shared/physics/movement.test.ts \
   src/shared/npc/behavior/test/chase_attack_logic.test.ts \
   src/shared/harthmere/test/harthmere_native_combat.test.ts \
   src/shared/harthmere/test/harthmere_native_vitals.test.ts \
@@ -108,6 +117,14 @@ echo "== Native ECS handler and authority contracts =="
   src/client/util/storage/__tests__/glitch_cloud_save_transport.test.ts \
   src/pages/api/glitch/test/harthmere_cloud_save_identity.test.ts
 
+echo "== Snapshot Grove native completion reducer contracts =="
+# The full live-mode reducer suite is intentionally large. This focused gate
+# runs the transport-success/gameplay-rejection and final-turn-in cases that
+# keep all onboarding lessons completable and removable from the journal.
+"${TS_MOCHA[@]}" \
+  src/shared/harthmere/test/live_mode_backend.test.ts \
+  --grep "Snapshot Grove|generic completion"
+
 if [ "${HARTHMERE_NATIVE_ECS_E2E_REQUIRE_BROWSER:-1}" != "1" ]; then
   echo "INFO browser round-trip skipped by HARTHMERE_NATIVE_ECS_E2E_REQUIRE_BROWSER=0"
   exit 0
@@ -119,6 +136,12 @@ if [ -z "${HARTHMERE_E2E_CONTROL_TOKEN:-}" ]; then
 fi
 
 echo "== Browser -> logic -> native ECS -> sync round trips =="
+HARTHMERE_E2E_SNAPSHOT_GROVE_ONBOARDING_ONLY=1 \
+  node scripts/harthmere/test-harthmere-native-ecs-roundtrip-e2e.cjs
+
+# Run each browser mode serially. Starting multiple WebGL clients alongside the
+# production-shaped local stack can exhaust Docker Desktop memory and conceal
+# gameplay failures behind browser or Redis OOM exits.
 node scripts/harthmere/test-harthmere-native-ecs-roundtrip-e2e.cjs
 
 if [ "${HARTHMERE_NATIVE_ECS_E2E_SKIP_EXHAUSTIVE_ROBOT_STORY:-0}" != "1" ]; then

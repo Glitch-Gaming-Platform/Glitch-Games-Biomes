@@ -17,6 +17,8 @@ import {
   harthmereLiveCreatureRenderFamily,
   type HarthmereLiveCreatureRenderFamily,
 } from "@/shared/harthmere/live_creature_render";
+import { harthmereMuckCreatureAssetKeyForLabel } from "@/shared/harthmere/muck_creature_assets";
+import { LOCAL_DEV_HUMAN_NPC_TYPE_ID } from "@/shared/npc/bikkie";
 import { harthmereLiveModeCombatTargetIdForEcsEntity } from "@/shared/harthmere/visible_combat_target";
 
 export type HarthmereLiveCreatureBridgeRecord = {
@@ -30,6 +32,15 @@ export type HarthmereLiveCreatureBridgeRecord = {
   species?: string;
   hp?: number;
   maxHp?: number;
+  /** Optional deterministic cinematic animation state. */
+  animation?: string;
+  animationTime?: number;
+  moving?: boolean;
+  motionTime?: number;
+  /** Cutscene authority owns the visible transform; do not interpolate it. */
+  cinematic?: boolean;
+  /** Humans and authored Muck GLTFs render through the native NPC renderer. */
+  nativeNpcRenderer?: boolean;
 };
 
 // Minimal structural view of an ECS entity so this stays decoupled from the
@@ -40,7 +51,7 @@ export type HarthmereLiveCreatureEntityView = {
   position?: { v?: readonly [number, number, number] } | undefined;
   orientation?: { v?: readonly [number, number] } | undefined;
   health?: { hp?: number; maxHp?: number } | undefined;
-  npc_metadata?: unknown;
+  npc_metadata?: { type_id?: number } | undefined;
   robot_component?: unknown;
   player_status?: unknown;
   placeable_component?: unknown;
@@ -120,16 +131,21 @@ const ANIMAL_SPECIES_FROM_LABEL_RE =
 // generic one. Falls back to a neutral market-goer.
 function humanTownspersonAssetFromLabel(label: string | undefined): string {
   const text = (label ?? "").toLowerCase();
-  if (/guard|watch|sentry|soldier|warden|knight/.test(text)) return "townsperson_guard";
+  if (/guard|watch|sentry|soldier|warden|knight/.test(text))
+    return "townsperson_guard";
   if (/courier|messenger|runner|page/.test(text)) return "townsperson_courier";
   if (/dock|sailor|fisher|wharf/.test(text)) return "townsperson_dockhand";
   if (/farm|field|shepherd|herd|grange/.test(text)) return "townsperson_farmer";
-  if (/priest|cleric|clergy|monk|nun|chaplain|verena|chapel/.test(text)) return "townsperson_clergy";
+  if (/priest|cleric|clergy|monk|nun|chaplain|verena|chapel/.test(text))
+    return "townsperson_clergy";
   if (/hunt|ranger|trapper|forester/.test(text)) return "townsperson_hunter";
-  if (/bandit|outlaw|thief|brigand|rogue/.test(text)) return "townsperson_bandit";
+  if (/bandit|outlaw|thief|brigand|rogue/.test(text))
+    return "townsperson_bandit";
   if (/smuggler|fence|dealer/.test(text)) return "townsperson_smuggler";
-  if (/charcoal|collier|smith|forge|coal/.test(text)) return "townsperson_charcoal";
-  if (/mud|peasant|laborer|labourer|digger/.test(text)) return "townsperson_mudden";
+  if (/charcoal|collier|smith|forge|coal/.test(text))
+    return "townsperson_charcoal";
+  if (/mud|peasant|laborer|labourer|digger/.test(text))
+    return "townsperson_mudden";
   // Doctors, chefs, merchants, innkeepers, vendors, generic townsfolk.
   return "townsperson_market";
 }
@@ -155,7 +171,11 @@ export function harthmereLiveCreatureFamilyForEntity(
 export function isHarthmereLiveCreatureEntity(
   entity: HarthmereLiveCreatureEntityView
 ): boolean {
-  if (!entity.npc_metadata || entity.player_status || entity.placeable_component) {
+  if (
+    !entity.npc_metadata ||
+    entity.player_status ||
+    entity.placeable_component
+  ) {
     return false;
   }
   if (entity.robot_component) {
@@ -165,7 +185,11 @@ export function isHarthmereLiveCreatureEntity(
     return false;
   }
   // Dead/zero-hp entities are not rendered (they are awaiting respawn).
-  if (entity.health && typeof entity.health.hp === "number" && entity.health.hp <= 0) {
+  if (
+    entity.health &&
+    typeof entity.health.hp === "number" &&
+    entity.health.hp <= 0
+  ) {
     return false;
   }
   return true;
@@ -191,14 +215,13 @@ export function harthmereLiveCreatureAssetFor(
     return "animal_boar";
   }
   if (family === "mucker" || family === "hex") {
-    // Muck monsters and hexes render through the procedural "townsperson_undead"
-    // creature mesh (same asset the static muck placements use today).
-    return "townsperson_undead";
+    // Prefer the original authored Biomes creature GLTF selected from the ECS
+    // label. The procedural undead body is only a last-resort compatibility
+    // fallback for old unlabeled entities.
+    return harthmereMuckCreatureAssetKeyForLabel(label) ?? "townsperson_undead";
   }
   if (family === "quest_creature") {
-    // Quest/hired hostiles: undead creature mesh unless the label clearly names
-    // an animal (e.g. "quest wolf").
-    return "townsperson_undead";
+    return harthmereMuckCreatureAssetKeyForLabel(label) ?? "townsperson_undead";
   }
   // Town humans / escort followers / generic live NPCs (the Doc, the Chef,
   // guards, merchants): a believable human body variant chosen from the name.
@@ -229,17 +252,28 @@ export function harthmereLiveCreatureBridgeRecord(
   const family = harthmereLiveCreatureFamilyForEntity(entity);
   const species = entity.harthmere_creature_species;
   const label = entity.label?.text ?? `Harthmere ${family}`;
+  const asset = harthmereLiveCreatureAssetFor(
+    family,
+    species,
+    entity.label?.text
+  );
   return {
     id: entity.id,
     at: [pos[0], pos[1], pos[2]],
     yaw: yawFromOrientation(entity.orientation),
     family,
-    asset: harthmereLiveCreatureAssetFor(family, species, entity.label?.text),
+    asset,
     scale: 1,
     label,
     species,
     hp: entity.health?.hp,
     maxHp: entity.health?.maxHp,
+    // NpcRenderState already knows how to load the canonical Mucker/Hex GLTFs
+    // and applies cutscene transform/animation/item overrides. Do not cover
+    // those meshes with the local-dev procedural undead compatibility body.
+    nativeNpcRenderer:
+      entity.npc_metadata?.type_id === Number(LOCAL_DEV_HUMAN_NPC_TYPE_ID) ||
+      asset.startsWith("npcs/"),
   };
 }
 

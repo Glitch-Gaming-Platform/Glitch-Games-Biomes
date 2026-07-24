@@ -13,12 +13,16 @@ import {
   isNativeRoadAheadQuestObjectLabel,
   isNativeBustedUnderwaterContainerLabel,
   nativeBustedUnderwaterContainerClaimForItem,
+  nativeQuestContainerClaimForItem,
+  nativeQuestContainerFirstIncompletePriorStep,
+  nativeRoadAheadFirstIncompletePriorStep,
   nativeRoadAheadContainerClaimForItem,
   nativeRoadAheadContainerItemIds,
   nativeRoadAheadContainerSpecForLabel,
   nativeQuestGiverUsesEcsDialogue,
   nativeRobotStoryQuestOrder,
   nativeRoadAheadEcsAuthorityEnabled,
+  playerHealthAutoRegenerationEnabled,
 } from "@/shared/harthmere/native_road_ahead_contract";
 import { BikkieIds } from "@/shared/bikkie/ids";
 import type { BiomesId } from "@/shared/ids";
@@ -26,6 +30,8 @@ import type { BiomesId } from "@/shared/ids";
 describe("native Road Ahead snapshot contract", () => {
   const originalSyntheticFlag =
     process.env.NEXT_PUBLIC_BIOMES_ENABLE_SYNTHETIC_ROAD_AHEAD;
+  const originalNativeAuthority =
+    process.env.NEXT_PUBLIC_BIOMES_NATIVE_ECS_AUTHORITY;
 
   afterEach(() => {
     if (originalSyntheticFlag === undefined) {
@@ -33,6 +39,12 @@ describe("native Road Ahead snapshot contract", () => {
     } else {
       process.env.NEXT_PUBLIC_BIOMES_ENABLE_SYNTHETIC_ROAD_AHEAD =
         originalSyntheticFlag;
+    }
+    if (originalNativeAuthority === undefined) {
+      delete process.env.NEXT_PUBLIC_BIOMES_NATIVE_ECS_AUTHORITY;
+    } else {
+      process.env.NEXT_PUBLIC_BIOMES_NATIVE_ECS_AUTHORITY =
+        originalNativeAuthority;
     }
   });
 
@@ -110,6 +122,32 @@ describe("native Road Ahead snapshot contract", () => {
     assert.equal(nativeRoadAheadEcsAuthorityEnabled(), true);
     process.env.NEXT_PUBLIC_BIOMES_ENABLE_SYNTHETIC_ROAD_AHEAD = "1";
     assert.equal(nativeRoadAheadEcsAuthorityEnabled(), false);
+  });
+
+  it("disables timer-based health regeneration while native ECS owns vitals", () => {
+    delete process.env.NEXT_PUBLIC_BIOMES_NATIVE_ECS_AUTHORITY;
+    assert.equal(playerHealthAutoRegenerationEnabled(), false);
+    process.env.NEXT_PUBLIC_BIOMES_NATIVE_ECS_AUTHORITY = "0";
+    assert.equal(playerHealthAutoRegenerationEnabled(), true);
+  });
+
+  it("names the exact unfinished objective before an early container claim", () => {
+    const fired = new Map<BiomesId, unknown>([
+      [NATIVE_ROAD_AHEAD_STEP_IDS.TALK_TO_JACKIE, 1],
+      [NATIVE_ROAD_AHEAD_STEP_IDS.MEET_BILLY, 1],
+      [NATIVE_ROAD_AHEAD_STEP_IDS.FIND_MUCKWAD, 1],
+      [NATIVE_ROAD_AHEAD_STEP_IDS.COLLECT_SIX_MUCKWAD, 1],
+    ]);
+    assert.deepEqual(
+      nativeRoadAheadFirstIncompletePriorStep(
+        fired,
+        NATIVE_ROAD_AHEAD_STEP_IDS.CHOOSE_TOP
+      ),
+      {
+        stepId: NATIVE_ROAD_AHEAD_STEP_IDS.RETURN_MUCKWAD_TO_BILLY,
+        objective: "Return the Muckwad to Billy",
+      }
+    );
   });
 
   it("routes native quest-giver props through ECS dialogue", () => {
@@ -245,6 +283,7 @@ describe("native Road Ahead snapshot contract", () => {
       labels: ["chest the grove underwater main"],
       sourceEntityId: 4149747832010135,
       placeableItemId: 5979991977107628,
+      position: [528.5, 59, -96.5],
       stepId: 6798640337192760,
       itemId: 7077725005403292,
       returnNpcTypeId: 2345000310921173,
@@ -272,6 +311,29 @@ describe("native Road Ahead snapshot contract", () => {
         BikkieIds.muckyTop
       ),
       undefined
+    );
+  });
+
+  it("names Busted's exact missing prior objective before the underwater claim", () => {
+    const claim = nativeQuestContainerClaimForItem(
+      "Chest The Grove Underwater Main",
+      NATIVE_BUSTED_UNDERWATER_CONTAINER_SPEC.itemId
+    );
+    assert.ok(claim);
+    const fired = new Map<BiomesId, unknown>([
+      [310783173745175 as BiomesId, 1],
+      [859994236864492 as BiomesId, 1],
+    ]);
+    assert.deepEqual(
+      nativeQuestContainerFirstIncompletePriorStep(
+        fired,
+        claim!.challengeId,
+        claim!.stepId
+      ),
+      {
+        stepId: 3346948724689018 as BiomesId,
+        objective: "Talk to Doc",
+      }
     );
   });
 });

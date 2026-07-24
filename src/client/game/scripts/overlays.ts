@@ -90,6 +90,7 @@ import {
 } from "@/shared/harthmere/harthmere_world_object_inspectable";
 import {
   isNativeRoadAheadQuestObjectLabel,
+  NATIVE_BUSTED_UNDERWATER_CONTAINER_SPEC,
   nativeRoadAheadEcsAuthorityEnabled,
 } from "@/shared/harthmere/native_road_ahead_contract";
 import {
@@ -1697,6 +1698,11 @@ export class OverlayScript implements Script {
       localPlayer.player.position[2],
     ];
     const entityIdByCandidateId = new Map<string, BiomesId>();
+    const bustedChestCandidateId = `ecs:${NATIVE_BUSTED_UNDERWATER_CONTAINER_SPEC.sourceEntityId}`;
+    entityIdByCandidateId.set(
+      bustedChestCandidateId,
+      NATIVE_BUSTED_UNDERWATER_CONTAINER_SPEC.sourceEntityId
+    );
     const liveCandidates = this.harthmereLiveWorldObjectInspectCandidates(
       localPlayer.player.position,
       entityIdByCandidateId
@@ -1714,12 +1720,23 @@ export class OverlayScript implements Script {
             !nativeRoadAheadEcsAuthorityEnabled() ||
             !isNativeRoadAheadQuestObjectLabel(candidate.label)
         ),
+        // Canonical snapshot fallback. The real source entity is still fetched
+        // and validated by the server, but the prompt no longer depends on the
+        // client spatial table having synchronized this old placed frame.
+        {
+          id: bustedChestCandidateId,
+          label: "Chest The Grove Underwater Main",
+          position: NATIVE_BUSTED_UNDERWATER_CONTAINER_SPEC.position,
+        },
         ...liveCandidates,
       ],
       radius:
         maxDistance === undefined
           ? undefined
           : Math.min(HARTHMERE_WORLD_OBJECT_INSPECT_RADIUS, maxDistance),
+      // A reticle hit on the ship hull or the chest's voxel art must not shrink
+      // the container prompt to the terrain-hit depth.
+      containerRadius: HARTHMERE_WORLD_OBJECT_INSPECT_RADIUS,
     });
     if (!selected) {
       return undefined;

@@ -23,6 +23,7 @@ import type {
   WaypointCameraActive,
   WaypointCameraTrack,
 } from "@/client/game/resources/camera";
+import type { CutsceneUiState } from "@/client/game/resources/cutscene";
 import type {
   ChallengeStateIndex,
   QuestBundle,
@@ -474,6 +475,7 @@ interface BaseClientResourcePaths {
   "/scene/texture/url": PathDef<[string], Promise<Texture>>;
   "/scene/waypoint_camera/track": PathDef<[], WaypointCameraTrack>;
   "/scene/waypoint_camera/active": PathDef<[], WaypointCameraActive>;
+  "/scene/cutscene": PathDef<[], CutsceneUiState>;
   "/scene/night_lut": PathDef<[], THREE.Data3DTexture>;
 
   "/scene/forbidden_edits": PathDef<[], ForbiddenEdits>;

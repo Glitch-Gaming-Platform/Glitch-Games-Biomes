@@ -231,6 +231,23 @@ if (
     );
 
     (test as any)(
+      "voxel-placement lessons grant the exact practice material",
+      () => {
+        const quest = SNAPSHOT_GROVE_QUESTS.find(
+          (entry) => entry.id === "tools_before_treasure"
+        )!;
+        const fixture = snapshotGroveObjectiveCompletionFixture(quest, 3);
+        const grant = snapshotGroveTutorialInventoryGrantsForQuest(quest).find(
+          (entry) => entry.objectiveIndexes.includes(3)
+        );
+        (expect as any)(fixture?.kind).toBe("place_voxel");
+        (expect as any)(grant?.itemId).toBe("rough_stone");
+        (expect as any)(grant?.quantity).toBe(1);
+        (expect as any)(grant?.trigger).toBe("place_voxel");
+      }
+    );
+
+    (test as any)(
       "repeat item-use objectives grant enough starter copies",
       () => {
         const quest = SNAPSHOT_GROVE_QUESTS.find(

@@ -12,6 +12,7 @@ import {
   HARTHMERE_SEED_DEFINITIONS,
 } from "@/shared/harthmere/mmo_farming_food_stamina";
 import { HARTHMERE_MEDICAL_ITEM_DEFINITIONS } from "@/shared/harthmere/mmo_medical_health";
+import { HARTHMERE_JOBS_BOARD_EXECUTABLE_ITEM_IDS } from "@/shared/harthmere/jobs_board_business_templates";
 import { ensureHarthmereProductionCraftingCatalogue } from "@/shared/harthmere/mmo_crafting_catalogue";
 import {
   getHarthmereItemDefinition,
@@ -283,6 +284,19 @@ export function ensureHarthmereNativeItemCatalogue() {
       isCraftingMaterial: true,
     })
   );
+  // Jobs Board requirements are native inventory contracts. Register the
+  // complete executable set here so a business template can never advertise a
+  // string-only item that has no Bikkie identity or transferable ECS stack.
+  for (const itemId of HARTHMERE_JOBS_BOARD_EXECUTABLE_ITEM_IDS) {
+    ensureDefinition(
+      defaultHarthmereItemDefinition({
+        itemId,
+        category: "job_material",
+        maxStackSize: 999,
+        isCraftingMaterial: true,
+      })
+    );
+  }
   ensureDefinition(
     defaultHarthmereItemDefinition({
       itemId: "sealed_package",

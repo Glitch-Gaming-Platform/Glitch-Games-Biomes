@@ -666,7 +666,7 @@ export interface SnapshotGroveTutorialInventoryGrant {
   itemName: string;
   quantity: number;
   objectiveIndexes: number[];
-  trigger: "item_use" | "inventory_change";
+  trigger: "item_use" | "inventory_change" | "place_voxel";
 }
 
 export function snapshotGroveTutorialInventoryGrantsForQuest(
@@ -680,7 +680,11 @@ export function snapshotGroveTutorialInventoryGrantsForQuest(
     objectiveIndex += 1
   ) {
     const trigger = quest.triggers[objectiveIndex];
-    if (trigger !== "item_use" && trigger !== "inventory_change") {
+    if (
+      trigger !== "item_use" &&
+      trigger !== "inventory_change" &&
+      trigger !== "place_voxel"
+    ) {
       continue;
     }
 
@@ -688,25 +692,35 @@ export function snapshotGroveTutorialInventoryGrantsForQuest(
       quest,
       objectiveIndex
     );
+    // Placement fixtures describe the world action, so their required block
+    // comes from the objective's authored practice-item contract instead of an
+    // event item field. Grant it up front just like equipment and consumables.
+    const placementItem =
+      trigger === "place_voxel"
+        ? snapshotGrovePracticeItemFixtureForObjective(quest, objectiveIndex)
+        : undefined;
+    const itemId = fixture?.itemId ?? placementItem?.itemId;
+    const itemName = fixture?.itemName ?? placementItem?.label ?? itemId;
     if (
-      !fixture?.itemId ||
+      !itemId ||
       (fixture.kind !== "harthmere_local_dev_item_use" &&
-        fixture.kind !== "equip")
+        fixture.kind !== "equip" &&
+        fixture.kind !== "place_voxel")
     ) {
       continue;
     }
 
-    const existing = grantsByItemId.get(fixture.itemId);
+    const existing = grantsByItemId.get(itemId);
     if (existing) {
       existing.quantity += 1;
       existing.objectiveIndexes.push(objectiveIndex);
       continue;
     }
 
-    grantsByItemId.set(fixture.itemId, {
+    grantsByItemId.set(itemId, {
       questId: quest.id,
-      itemId: fixture.itemId,
-      itemName: fixture.itemName ?? fixture.itemId,
+      itemId,
+      itemName,
       quantity: 1,
       objectiveIndexes: [objectiveIndex],
       trigger,

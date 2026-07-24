@@ -46,9 +46,13 @@ import {
 import { loadBlockWrapper } from "@/shared/wasm/biomes";
 import { harthmereJobsBoardQuestMarkerRuntimePositionForId } from "@/shared/harthmere/jobs_board_quest_marker_positions";
 import { harthmereItemIdToBiomesId } from "@/shared/harthmere/harthmere_biomes_ecs_bridge";
-import { Inventory, Wearing } from "@/shared/ecs/gen/components";
+import { Challenges, Inventory, Wearing } from "@/shared/ecs/gen/components";
 import { BikkieIds } from "@/shared/bikkie/ids";
 import { countOf, createBag } from "@/shared/game/items";
+import {
+  harthmereNativeQuestId,
+  harthmereNativeQuestStepId,
+} from "@/shared/harthmere/harthmere_native_quests";
 
 const ACTOR = "player_live_api_persist_001";
 const NOW_MS = 1_700_400_000_000;
@@ -486,6 +490,131 @@ describe("live_mode API Redis persistence", () => {
     );
     assert.equal(published.length, 1);
     assert.equal(world.table.get(actorId)!.inventory!.items[0]?.count, 1n);
+  });
+
+  it("materializes a server-approved visible-giver Grove quest without a replica race", async () => {
+    const redisPrimary = new FakeRedisPrimary();
+    const world = new InMemoryWorld();
+    const worldApi = ShimWorldApi.createForWorld(world);
+    const actorId = 8_242_300_534_462_318 as any;
+    const giverEntityId = 8_810_000_000_019_301 as any;
+    const challengeId = harthmereNativeQuestId(
+      "grove",
+      "fountain_buttons_first"
+    )!;
+    world.applyChanges([
+      {
+        kind: "create",
+        entity: {
+          id: actorId,
+          challenges: Challenges.create(),
+        },
+      },
+      { kind: "create", entity: { id: giverEntityId } },
+    ]);
+    let published = 0;
+    const result = await materializeHarthmereNativeEcsPlans({
+      redisPrimary,
+      worldApi,
+      idGenerator: {
+        next: async () => {
+          throw new Error("quest acceptance must not allocate an id");
+        },
+        batch: async () => [],
+      },
+      logicApi: {
+        publish: async (...events: any[]) => {
+          published += events.length;
+        },
+      },
+      plans: [
+        {
+          kind: "quest_accept",
+          materializationKey: `quest_accept:${actorId}:grove:fountain_buttons_first`,
+          actorId: String(actorId),
+          questSource: "grove",
+          questId: "fountain_buttons_first",
+          giverEntityId: String(giverEntityId),
+          sourceKind: "test",
+        },
+      ],
+    });
+    assert.deepEqual(result, { created: 1, alreadyMaterialized: 0 });
+    // Reducer-approved authored quests are written directly to Challenges so
+    // an asynchronous logic replica cannot observe stale availability.
+    assert.equal(published, 0);
+    assert.equal(
+      world.table.get(actorId)!.challenges!.in_progress.has(challengeId),
+      true
+    );
+  });
+
+  it("repairs missing acceptance while materializing approved quest progress", async () => {
+    const redisPrimary = new FakeRedisPrimary();
+    const world = new InMemoryWorld();
+    const worldApi = ShimWorldApi.createForWorld(world);
+    const actorId = 8_242_300_534_462_319 as any;
+    const challengeId = harthmereNativeQuestId(
+      "grove",
+      "fountain_buttons_first"
+    )!;
+    const stepId = harthmereNativeQuestStepId(
+      "grove",
+      "fountain_buttons_first",
+      0
+    )!;
+    world.applyChanges([
+      {
+        kind: "create",
+        entity: { id: actorId, challenges: Challenges.create() },
+      },
+    ]);
+    let published = 0;
+    const materializationKey = `quest_progress:${actorId}:grove:fountain_buttons_first:0`;
+    assert.deepEqual(
+      await materializeHarthmereNativeEcsPlans({
+        redisPrimary,
+        worldApi,
+        idGenerator: {
+          next: async () => {
+            throw new Error("quest progress must not allocate an id");
+          },
+          batch: async () => [],
+        },
+        logicApi: {
+          publish: async (...events: any[]) => {
+            published += events.length;
+          },
+        },
+        plans: [
+          {
+            kind: "quest_progress",
+            materializationKey,
+            actorId: String(actorId),
+            questSource: "grove",
+            questId: "fountain_buttons_first",
+            objectiveIdOrIndex: 0,
+            sourceKind: "test",
+          },
+        ],
+      }),
+      { created: 1, alreadyMaterialized: 0 }
+    );
+    assert.equal(published, 0);
+    assert.equal(
+      await redisPrimary.get(
+        `harthmere:native_ecs_materialization:${materializationKey}:done`
+      ),
+      "1"
+    );
+    const actor = world.table.get(actorId)!;
+    assert.equal(actor.challenges!.in_progress.has(challengeId), true);
+    assert.equal(
+      actor.trigger_state!.by_root.get(challengeId)?.has(stepId),
+      true
+    );
+    assert.ok(challengeId);
+    assert.ok(stepId);
   });
 
   it("binds an install-owned parcel pickup to native ECS and materializes the checked-in parcel", async () => {

@@ -19,7 +19,9 @@ import { z } from "zod";
 // Keep the runtime parser fully composed, but deliberately break TypeScript's
 // deep generic inference chain. The v37 additions made this schema large enough
 // that a normal .merge(...).merge(...).default({}) export can hit TS2589.
-const zNpcStateBase: any = z.object({});
+const zNpcStateBase: any = z.object({
+  cinematicPauseUntil: z.number().finite().optional(),
+});
 
 export const zDeserializedNpcState = zNpcStateBase
   .merge(zRotateTargetComponent)
@@ -52,6 +54,8 @@ export type NpcMemoryState = {
 };
 
 export type DeserializedNpcState = {
+  /** Refreshed by authorized shared cinematics; Anima holds authority until it expires. */
+  cinematicPauseUntil?: number;
   rotateTarget?: number;
   drown?: {
     submergedSinceSeconds: number;
@@ -70,6 +74,7 @@ export type DeserializedNpcState = {
     attackTarget?: BiomesId;
     strikeTime?: number;
     pathfinding?: PathfindingComponent;
+    pathfindingRetryTime?: number;
   };
   damageReaction?: {
     lastReactionTime?: number;
@@ -83,7 +88,11 @@ export type DeserializedNpcState = {
     meetingTime?: number;
     meetingDuration?: number;
     pathfinding?: PathfindingComponent;
-    state: "with-friend" | "moving-towards-friend" | "friendless" | "finding-a-path";
+    state:
+      | "with-friend"
+      | "moving-towards-friend"
+      | "friendless"
+      | "finding-a-path";
   };
   memory?: NpcMemoryState;
   threat?: {

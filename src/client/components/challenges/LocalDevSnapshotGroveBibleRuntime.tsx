@@ -318,6 +318,7 @@ async function submitSnapshotGroveQuestStateToCloudSave(
     body: JSON.stringify({
       requestId,
       idempotencyKey: requestId,
+      clientSentAtMs: Date.now(),
       actionKind: "request_quest_state_update",
       subsystem: "quest",
       actorEntityVersion: 1,
@@ -338,7 +339,20 @@ async function submitSnapshotGroveQuestStateToCloudSave(
     }),
   });
   const body = await response.json().catch(() => undefined);
-  if (!response.ok || body?.ok === false) {
+  // HTTP 200 means the transport completed; gameplay warnings still mean the
+  // server rejected the transition and local state must not advance.
+  const backendWarnings = Array.isArray(body?.backendMutation?.warnings)
+    ? body.backendMutation.warnings.map(String)
+    : [];
+  if (
+    !response.ok ||
+    body?.ok === false ||
+    backendWarnings.some(
+      (warning: string) =>
+        warning.startsWith("quest_rejected:") ||
+        warning.startsWith("snapshot_grove_quest_rejected:")
+    )
+  ) {
     throw new Error(`snapshot_grove_quest_sync_failed:${quest.id}`);
   }
   if (body?.questState) {
@@ -362,6 +376,64 @@ function syncSnapshotGroveQuestStateToCloudSave(
     reason,
     completedObjectiveIndex
   );
+}
+
+// Reconcile old clients whose local lesson completed while native/Cloud Save
+// remained on the final return-to-giver leaf. The server revalidates progress.
+async function repairSnapshotGroveCompletionProjection() {
+  if (!isBrowser()) return;
+  const response = await defaultHarthmereLiveFetch(
+    "/api/harthmere/live_mode_quest_state",
+    { method: "GET", credentials: "same-origin" }
+  );
+  if (!response.ok) return;
+  const body = await response.json().catch(() => undefined);
+  const liveState = body?.questState;
+  if (!liveState) return;
+
+  let local = readSnapshotGroveQuestState();
+  const liveCompletedIds = Object.keys(liveState.completed ?? {}).filter((id) =>
+    SNAPSHOT_GROVE_QUEST_ID_SET.has(id)
+  );
+  if (liveCompletedIds.length) {
+    const completed = new Set([
+      ...local.completedQuestIds,
+      ...liveCompletedIds,
+    ]);
+    const activeQuestId =
+      local.activeQuestId && completed.has(local.activeQuestId)
+        ? undefined
+        : local.activeQuestId;
+    const next = normalizeSnapshotGroveQuestState({
+      ...local,
+      activeQuestId,
+      completedQuestIds: [...completed],
+    });
+    if (JSON.stringify(next) !== JSON.stringify(local)) {
+      writeSnapshotGroveQuestState(next);
+      local = next;
+    }
+  }
+
+  // Repair clients affected by the old completion branch: local UI marked the
+  // lesson done, but Cloud Save and native Challenges retained its final
+  // return-to-giver objective. Re-submit only when the server has already
+  // recorded every preceding objective.
+  for (const questId of local.completedQuestIds) {
+    if (liveState.completed?.[questId] !== undefined) continue;
+    const liveActive = liveState.active?.[questId];
+    const quest = questById(questId);
+    if (!quest || liveActive?.source !== "snapshot_grove") continue;
+    const progress = Math.max(0, Number(liveActive.progress) || 0);
+    if (progress >= quest.objectives.length) {
+      await submitSnapshotGroveQuestStateToCloudSave(
+        quest,
+        local,
+        "completion_repair",
+        quest.objectives.length - 1
+      ).catch(() => undefined);
+    }
+  }
 }
 
 function readSnapshotGroveLikeability(): Record<string, number> {
@@ -1729,6 +1801,16 @@ function npcAmbientLineForLikeability(npc: SnapshotGroveNpc) {
   return snapshotGroveAmbientLineForNpc(npc.id, likeability);
 }
 
+export function snapshotGroveObjectiveIsCompletionTurnInForTest(
+  quest: SnapshotGroveQuest,
+  objectiveIndex: number
+) {
+  return (
+    objectiveIndex === quest.objectives.length - 1 &&
+    currentTriggerForQuest(quest, objectiveIndex) === "talk_npc"
+  );
+}
+
 function npcQuestDialogueCopy(
   npc: SnapshotGroveNpc,
   quest: SnapshotGroveQuest,
@@ -1752,6 +1834,14 @@ function npcQuestDialogueCopy(
     0,
     Math.min(quest.objectives.length - 1, objectiveIndex)
   );
+  // The final giver interaction should acknowledge the work immediately; the
+  // old generic objective copy made a completed lesson appear unfinished.
+  if (snapshotGroveObjectiveIsCompletionTurnInForTest(quest, safeIndex)) {
+    return [
+      `<text>You completed ${quest.title}.</text>`,
+      `<text>${firstName} confirms the final check, records the lesson, and gives you ${quest.reward}</text>`,
+    ].join("{break}");
+  }
   const marker = currentMarkerForQuest(quest, safeIndex);
   const destination = marker ? marker.label : "your next pinned stop";
   const objectiveSentence = quest.objectives[safeIndex];
@@ -1850,7 +1940,11 @@ export function useSnapshotGroveNpcDialog(
     const actions: TalkDialogStepAction[] = [];
 
     if (!activeQuest && availableQuests.length) {
-      for (const option of availableQuests.slice(0, 3)) {
+      // Do not truncate authored offers. Several Grove residents own more
+      // than three economy/tutorial quests; limiting this list made every
+      // later quest permanently unreachable on a fresh player. The talk
+      // dialog already provides its own scroll boundary for long action lists.
+      for (const option of availableQuests) {
         actions.push({
           name: `Start ${option.title}`,
           type: actions.length === 0 ? "primary" : "normal",
@@ -1903,7 +1997,7 @@ export function useSnapshotGroveNpcDialog(
       // joining with {break} keeps them as separate paragraphs instead of
       // collapsing into one run-on screen.
       dialogText: `<text>${line}</text>{break}${questCopy}`,
-      actions: actions.slice(0, 4),
+      actions,
     };
   }, [
     defaultDialog,
@@ -1922,6 +2016,10 @@ export const SnapshotGroveBibleRuntimeController: React.FunctionComponent<{}> =
       useClientContext();
     const localPlayer = reactResources.use("/scene/local_player");
     const state = useSnapshotGroveQuestState();
+
+    useEffect(() => {
+      void repairSnapshotGroveCompletionProjection();
+    }, []);
 
     useEffect(() => {
       const handler = (event: GardenHoseEvent) => {
@@ -2421,20 +2519,27 @@ export const SnapshotGroveMapHUD: React.FunctionComponent<{}> = () => {
 export const SnapshotGroveJournalPanel: React.FunctionComponent<{}> = () => {
   const state = useSnapshotGroveQuestState();
   const activeQuest = questById(state.activeQuestId);
-  const fountainLessons = SNAPSHOT_GROVE_QUESTS.filter((quest) =>
-    SNAPSHOT_GROVE_FOUNTAIN_TUTORIAL_QUEST_ID_SET.has(quest.id)
+  // Completed lessons leave the learning journal instead of lingering as
+  // actionable rows; completion history remains in synchronized quest state.
+  const visibleQuest = (quest: SnapshotGroveQuest) =>
+    !state.completedQuestIds.includes(quest.id);
+  const fountainLessons = SNAPSHOT_GROVE_QUESTS.filter(
+    (quest) =>
+      SNAPSHOT_GROVE_FOUNTAIN_TUTORIAL_QUEST_ID_SET.has(quest.id) &&
+      visibleQuest(quest)
   );
   const roadGraduation = SNAPSHOT_GROVE_QUESTS.filter(
-    (quest) => quest.category === "road_graduation"
+    (quest) => quest.category === "road_graduation" && visibleQuest(quest)
   );
   const roadNeighbors = SNAPSHOT_GROVE_QUESTS.filter(
-    (quest) => quest.category === "road_neighbor"
+    (quest) => quest.category === "road_neighbor" && visibleQuest(quest)
   );
   const roadStories = SNAPSHOT_GROVE_QUESTS.filter(
     (quest) =>
       !SNAPSHOT_GROVE_FOUNTAIN_TUTORIAL_QUEST_ID_SET.has(quest.id) &&
       quest.category !== "road_graduation" &&
-      quest.category !== "road_neighbor"
+      quest.category !== "road_neighbor" &&
+      visibleQuest(quest)
   );
   const fountainCompletedCount = countCompletedFountainLessons(state);
   const renderQuestRow = (quest: SnapshotGroveQuest) => {

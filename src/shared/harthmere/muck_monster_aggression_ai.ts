@@ -37,6 +37,10 @@ export interface MuckMonsterAggressionInput {
   spawnProtected?: boolean;
   lineOfSight?: boolean;
   muckExposureForcesAggression?: boolean;
+  /** Explicit opt-in for authored hostile encounters intentionally outside Muck. */
+  allowOutsideMuckTerritory?: boolean;
+  outsideMuckTerritoryId?: string;
+  outsideMuckTerritoryLabel?: string;
   alliesNearby?: number;
   enemiesNearby?: number;
   aggroRadius?: number;
@@ -200,7 +204,15 @@ export function evaluateMuckMonsterAggression(
     return { ...base, reason: "missing_positions" };
   }
 
-  const territory = muckMonsterAreaForPosition(monsterPosition, 1.5);
+  const territory =
+    muckMonsterAreaForPosition(monsterPosition, 1.5) ??
+    (input.allowOutsideMuckTerritory
+      ? {
+          id: input.outsideMuckTerritoryId ?? "open_wilds_encounter",
+          label: input.outsideMuckTerritoryLabel ?? "Open Wilds Encounter",
+          type: "danger" as const,
+        }
+      : undefined);
   if (!territory) {
     return { ...base, reason: "monster_outside_muck_territory" };
   }

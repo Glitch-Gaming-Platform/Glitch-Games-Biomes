@@ -1112,6 +1112,46 @@ describe("mmo_jobs_board_authority — field target proximity", () => {
       remote.warnings.includes("jobs_board_rejected:field_target_out_of_range")
     );
   });
+
+  it("accepts a grounded player at the marker XZ when terrain scan Y is stale", () => {
+    const posted = mutate(
+      defaultHarthmereJobsBoardState(NOW),
+      "create_job_posting",
+      postPayload(),
+      {},
+      "poster"
+    );
+    const jobId = Object.keys(posted.jobsBoard.postings)[0];
+    const marker = harthmereJobsBoardQuestMarkerRuntimePositionForId(
+      posted.jobsBoard.postings[jobId].mapMarkerId
+    );
+    assert.ok(marker);
+    const accepted = mutate(
+      posted.jobsBoard,
+      "accept_job",
+      { jobId },
+      {},
+      "seeker"
+    );
+    const completed = mutate(
+      accepted.jobsBoard,
+      "complete_job_quest",
+      { jobId, completedTargetId: "pump_1" },
+      {
+        actorPosition: {
+          x: marker.position[0],
+          // Production terrain placement recommendations can be about 11m
+          // above the controller's actual walkable floor.
+          y: marker.position[1] - 11,
+          z: marker.position[2],
+        },
+        actorInventoryItems: { repair_part: 2 },
+      },
+      "seeker"
+    );
+    assert.equal(completed.warnings.length, 0, JSON.stringify(completed.warnings));
+    assert.equal(Object.values(completed.jobsBoard.todos)[0].status, "completed");
+  });
 });
 
 describe("mmo_jobs_board_authority — accept timer + failure (HARTHMERE_JOB_ACCEPT_TIMER)", () => {

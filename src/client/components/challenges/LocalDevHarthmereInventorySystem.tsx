@@ -1,4 +1,10 @@
 import { harthmereLocalStorage } from "@/client/util/storage";
+import { RovingGrid } from "@/client/components/biomes_ui/nav/RovingGrid";
+import {
+  BiomesUIShopChrome,
+  BiomesUIShopItemIcon,
+  BiomesUIShopSection,
+} from "@/client/components/inventory/BiomesUIShopChrome";
 // LocalDevHarthmereInventorySystem local-dev economy boundary. Do not trust client storage in production.
 import type { TalkDialogStepAction } from "@/client/components/challenges/TalkDialogModalStep";
 import {
@@ -44,10 +50,16 @@ import { getHarthmereLevelSummary } from "@/client/components/challenges/LocalDe
 import { readHarthmereReputationState } from "@/client/components/challenges/LocalDevHarthmereReputation";
 import { SNAPSHOT_GROVE_QUESTS } from "@/shared/harthmere/snapshot_grove_content";
 import { harthmereLocalItemBikkieWearable } from "@/shared/harthmere/harthmere_bikkie_wearables";
+import { ensureHarthmereProductionVendorCatalog } from "@/shared/harthmere/harthmere_vendor_catalog";
+import {
+  getHarthmereItemDefinition as getAuthoritativeHarthmereItemDefinition,
+  type HarthmereItemDefinition as AuthoritativeHarthmereItemDefinition,
+} from "@/shared/harthmere/mmo_inventory_authority";
 import {
   HARTHMERE_BIOMES_ECS_INVENTORY_UPDATED_EVENT,
   createHarthmereBiomesEcsInventory,
 } from "@/shared/harthmere/harthmere_biomes_ecs_bridge";
+import { harthmereNativeItemIdForBiomesId } from "@/shared/harthmere/harthmere_native_item_ids";
 import { HARTHMERE_LOCAL_DEV_ITEM_USE_EVENT } from "@/shared/harthmere/snapshot_grove_trigger_contract";
 import { nativeBiomesEcsAuthorityEnabled } from "@/shared/harthmere/native_road_ahead_contract";
 import { resolveAssetUrlUntyped } from "@/galois/interface/asset_paths";
@@ -2642,12 +2654,179 @@ function fallbackInventoryGlyph(itemId: string, fallback = "IT") {
   return (letters.slice(0, 2).toUpperCase() || fallback).padEnd(2, " ");
 }
 
+function readableNativeItemName(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const name = value.trim();
+  if (!name || /^(?:\?+|unknown(?: item)?|item)$/i.test(name)) {
+    return undefined;
+  }
+  return name;
+}
+
+function humanizeHarthmereSemanticItemId(itemId: string | undefined) {
+  const value = itemId?.replace(/^b:/, "").trim();
+  if (!value) return undefined;
+  return value
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
+let authoritativeHarthmerePresentationCatalogueReady = false;
+
+function authoritativeHarthmereItemDefinition(
+  itemId: string,
+  biomesId: ReturnType<typeof safeParseBiomesId>
+) {
+  if (!authoritativeHarthmerePresentationCatalogueReady) {
+    // Vendor and crafting registration is the server-authoritative source for
+    // names, categories, descriptions and stack rules. Bikkie remains the
+    // source for native identity, actions and authored presentation assets.
+    ensureHarthmereProductionVendorCatalog();
+    authoritativeHarthmerePresentationCatalogueReady = true;
+  }
+  const strippedItemId = itemId.replace(/^b:/, "");
+  const semanticItemId = biomesId
+    ? harthmereNativeItemIdForBiomesId(biomesId)
+    : undefined;
+  for (const candidate of [
+    itemId,
+    strippedItemId,
+    `b:${strippedItemId}`,
+    semanticItemId,
+  ]) {
+    if (!candidate) continue;
+    const definition = getAuthoritativeHarthmereItemDefinition(candidate);
+    if (definition) return definition;
+  }
+  return undefined;
+}
+
+function localCategoryForAuthoritativeItem(
+  definition: AuthoritativeHarthmereItemDefinition
+): HarthmereItemCategory {
+  if (definition.isQuestItem) return "quest_item";
+  if (definition.isCurrency) return "currency";
+  if (definition.isSpellTome) return "spell_scroll";
+  if (definition.isConsumable) return "consumable";
+  const category = definition.category?.trim().toLowerCase();
+  switch (category) {
+    case "weapon":
+    case "armor":
+    case "accessory":
+    case "consumable":
+    case "food":
+    case "drink":
+    case "quest_item":
+    case "currency":
+    case "key":
+    case "book":
+    case "spell_scroll":
+    case "tool":
+    case "trade_good":
+    case "junk":
+    case "trophy":
+    case "cosmetic":
+    case "housing":
+    case "container":
+    case "event_item":
+      return category;
+    case "material":
+    case "materials":
+    case "crafting_material":
+      return "crafting_material";
+    default:
+      return definition.isCraftingMaterial ? "crafting_material" : "trade_good";
+  }
+}
+
+function authoritativeHarthmereItemGlyph(
+  definition: AuthoritativeHarthmereItemDefinition
+) {
+  const category = localCategoryForAuthoritativeItem(definition);
+  const text = `${definition.itemId} ${definition.displayName} ${
+    definition.description ?? ""
+  } ${definition.category ?? ""}`.toLowerCase();
+  if (/watering can|waterplant/.test(text)) return "💧";
+  if (/\bhoe\b|\btill\b/.test(text)) return "⛏";
+  if (/\bbucket\b/.test(text)) return "🪣";
+  if (/\baxe\b|woodcutter/.test(text)) return "🪓";
+  if (/pickaxe|\bpick\b|mining/.test(text)) return "⛏️";
+  if (/fishing|\brod\b/.test(text)) return "🎣";
+  if (/hammer|mallet|repair/.test(text)) return "🔨";
+  if (/wand|arcane|magic|spell|rune/.test(text)) return "✦";
+  if (category === "tool") return "🛠️";
+  if (category === "weapon") return "⚔";
+  if (category === "armor" || category === "cosmetic") return "◈";
+  if (category === "food") return "🍎";
+  if (category === "drink") return "🥤";
+  if (category === "consumable") return "✚";
+  if (category === "key") return "🗝";
+  if (category === "book" || category === "spell_scroll") return "📜";
+  if (category === "currency") return "●";
+  if (category === "container") return "▣";
+  return harthmereResourceIconForItem({
+    id: definition.itemId,
+    name: definition.displayName,
+    category,
+    subtype: definition.category ?? "harthmere_item",
+    quality: "common",
+    icon: "◇",
+    stackable: definition.maxStackSize > 1,
+    maxStack: Math.max(1, definition.maxStackSize),
+    bindType: "unbound",
+    baseValue: definition.baseValue,
+    description: definition.description ?? "An item from the Harthmere world.",
+  });
+}
+
+function authoritativeHarthmereItemDescription(
+  definition: AuthoritativeHarthmereItemDefinition
+) {
+  const authoredDescription = definition.description?.trim();
+  if (authoredDescription) return authoredDescription;
+  const visualDescription =
+    definition.objectMetadata?.visualDescription?.trim();
+  if (visualDescription) return visualDescription;
+  const category = localCategoryForAuthoritativeItem(definition);
+  const text = `${definition.itemId} ${definition.displayName}`.toLowerCase();
+  if (/\bhoe\b/.test(text)) {
+    return "A farming tool for tilling dirt and grass voxels into plantable soil.";
+  }
+  if (/watering can/.test(text)) {
+    return "A farming tool for watering planted crops through the native farming system.";
+  }
+  if (/\bbucket\b/.test(text)) {
+    return "A utility bucket for carrying water and supporting farm work.";
+  }
+  if (category === "tool") {
+    return `A Harthmere tool used for ${definition.displayName.toLowerCase()} work.`;
+  }
+  if (category === "weapon") {
+    return "A Harthmere weapon with native combat and hotbar behavior.";
+  }
+  if (category === "armor" || category === "cosmetic") {
+    return "A Harthmere wearable rendered and equipped through the native item system.";
+  }
+  if (category === "crafting_material") {
+    return "A Harthmere material used by crafting, vendors, and world projects.";
+  }
+  if (category === "food" || category === "drink") {
+    return "A Harthmere provision that can be carried and consumed from inventory.";
+  }
+  if (category === "consumable") {
+    return "A Harthmere consumable with native inventory behavior.";
+  }
+  return "An item from the Harthmere world.";
+}
+
 function dynamicBiomesItemIcon(
   item: ReturnType<typeof anItem>,
   itemId: string
-): string {
+): string | undefined {
   if (!item) {
-    return fallbackInventoryGlyph(itemId);
+    return undefined;
   }
   try {
     if (item.icon) {
@@ -2667,11 +2846,9 @@ function dynamicBiomesItemIcon(
       return `/api/environment_group/${item.groupId}/thumbnail`;
     }
   } catch {
-    return fallbackInventoryGlyph(itemId);
+    return undefined;
   }
-  return fallbackInventoryGlyph(
-    typeof item.displayName === "string" ? item.displayName : itemId
-  );
+  return undefined;
 }
 
 function dynamicBiomesItemDefinition(
@@ -2683,6 +2860,11 @@ function dynamicBiomesItemDefinition(
   }
   const canonicalItemId = `b:${biomesId}`;
   const item = anItem(biomesId);
+  const semanticItemId = harthmereNativeItemIdForBiomesId(biomesId);
+  const semanticDefinition = semanticItemId
+    ? ITEM_DEFINITIONS[semanticItemId]
+    : undefined;
+  const authoritative = authoritativeHarthmereItemDefinition(itemId, biomesId);
   const nativeWearableSlot =
     findItemEquippableSlot(item) ??
     (biomesId === BikkieIds.muckyTop
@@ -2714,37 +2896,73 @@ function dynamicBiomesItemDefinition(
         return undefined;
     }
   })();
-  const stackable = Number(item?.stackable ?? (item?.isBlock ? 99n : 1n));
+  const stackable = Number(
+    authoritative?.maxStackSize ??
+      semanticDefinition?.maxStack ??
+      item?.stackable ??
+      (item?.isBlock ? 99n : 1n)
+  );
   const isStackable = Number.isFinite(stackable) && stackable > 1;
   const name =
-    typeof item?.displayName === "string" && item.displayName.trim().length > 0
-      ? item.displayName
-      : item?.isBlock
-      ? `Biomes Block ${biomesId}`
-      : `Biomes Item ${biomesId}`;
+    readableNativeItemName(item?.displayName) ??
+    readableNativeItemName(authoritative?.displayName) ??
+    readableNativeItemName(semanticDefinition?.name) ??
+    humanizeHarthmereSemanticItemId(semanticItemId) ??
+    (item?.isBlock ? `Biomes Block ${biomesId}` : `Biomes Item ${biomesId}`);
+  const category = authoritative
+    ? localCategoryForAuthoritativeItem(authoritative)
+    : semanticDefinition
+    ? semanticDefinition.category
+    : item?.isBlock
+    ? "crafting_material"
+    : equipmentSlot
+    ? "armor"
+    : "trade_good";
+  const icon =
+    dynamicBiomesItemIcon(item, canonicalItemId) ??
+    semanticDefinition?.icon ??
+    (authoritative
+      ? authoritativeHarthmereItemGlyph(authoritative)
+      : undefined) ??
+    fallbackInventoryGlyph(name);
   return {
     id: canonicalItemId,
     name,
-    category: item?.isBlock
-      ? "crafting_material"
-      : equipmentSlot
-      ? "armor"
-      : "trade_good",
-    subtype: item?.isBlock
-      ? "biomes_voxel_block"
-      : equipmentSlot
-      ? "biomes_wearable"
-      : "biomes_item",
-    quality: "common",
-    icon: dynamicBiomesItemIcon(item, canonicalItemId),
+    category,
+    subtype: authoritative
+      ? `harthmere_${category}`
+      : semanticDefinition?.subtype ??
+        (item?.isBlock
+          ? "biomes_voxel_block"
+          : equipmentSlot
+          ? "biomes_wearable"
+          : "biomes_item"),
+    quality: semanticDefinition?.quality ?? "common",
+    icon,
     stackable: isStackable,
     maxStack: isStackable ? Math.max(2, Math.trunc(stackable)) : 1,
-    slot: equipmentSlot,
-    bindType: "unbound",
-    baseValue: 0,
-    description: item?.isBlock
-      ? "A mined Biomes voxel block saved from the world."
-      : "A Biomes item saved from the world.",
+    slot: equipmentSlot ?? semanticDefinition?.slot,
+    requiredLevel:
+      authoritative?.levelRequirement ?? semanticDefinition?.requiredLevel,
+    bindType:
+      authoritative?.binding === "on_pickup"
+        ? "bind_on_pickup"
+        : authoritative?.binding === "on_equip"
+        ? "bind_on_equip"
+        : authoritative?.binding === "quest"
+        ? "quest_bound"
+        : semanticDefinition?.bindType ?? "unbound",
+    baseValue: authoritative?.baseValue ?? semanticDefinition?.baseValue ?? 0,
+    durabilityMax:
+      authoritative?.durabilityMax ?? semanticDefinition?.durabilityMax,
+    description:
+      (authoritative
+        ? authoritativeHarthmereItemDescription(authoritative)
+        : undefined) ??
+      semanticDefinition?.description ??
+      (item?.isBlock
+        ? "A mined Biomes voxel block saved from the world."
+        : "A Biomes item saved from the world."),
   };
 }
 
@@ -5530,20 +5748,20 @@ export function inventoryActionsForHarthmereNpc(
   return actions;
 }
 
-function VendorItemIcon({ itemId }: { itemId: string }) {
-  const def = itemDef(itemId);
-  return (
-    <div className="h-9 w-9 rounded text-lg flex shrink-0 items-center justify-center bg-white/10 font-bold">
-      {def?.icon ?? "?"}
-    </div>
-  );
+function chunkHarthmereVendorRows<T>(items: readonly T[], columns = 2): T[][] {
+  const safeColumns = Math.max(1, Math.trunc(columns));
+  const rows: T[][] = [];
+  for (let index = 0; index < items.length; index += safeColumns) {
+    rows.push(items.slice(index, index + safeColumns));
+  }
+  return rows;
 }
 
 export const HarthmereVendorTradePanel: React.FunctionComponent<{}> = () => {
   const inventory = useHarthmereInventoryState();
   const [request, setRequest] = useState<
     HarthmereVendorTradeRequest | undefined
-  >(() => readPendingVendorTradeRequest());
+  >(undefined);
 
   useEffect(() => {
     if (!isBrowser()) {
@@ -5627,250 +5845,298 @@ export const HarthmereVendorTradePanel: React.FunctionComponent<{}> = () => {
   const panel = (
     <div
       data-harthmere-vendor-trade-panel="true"
-      className="pointer-events-auto fixed inset-0 flex items-center justify-center bg-black/70 p-3 text-white backdrop-blur-sm"
+      className="biomes-ui-container-backdrop"
       style={{ zIndex: 2147483000 }}
       onMouseDown={(event) => event.stopPropagation()}
       onMouseUp={(event) => event.stopPropagation()}
       onClick={(event) => event.stopPropagation()}
       onKeyDown={(event) => event.stopPropagation()}
     >
-      <div className="rounded-2xl border-white/15 max-h-[calc(100vh-2rem)] w-[min(46rem,calc(100vw-1rem))] overflow-hidden border bg-black/95 shadow-2xl">
-        <div className="border-b border-white/10 p-3">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <div className="text-base text-amber-200 font-bold">
-                {vendor.vendorName}
-              </div>
-              <div className="text-xs text-white/70">
-                Gold:{" "}
-                <span className="text-amber-100 font-semibold">
-                  {inventory.wallet.gold ?? 0}
-                </span>{" "}
-                · Backpack {inventory.backpack.items.length}/
-                {inventory.backpack.maxSlots}
-              </div>
-            </div>
-            <button
-              className="border-white/15 rounded-full border bg-white/10 px-3 py-1 text-xs hover:bg-white/20"
-              onClick={closePanel}
+      <div className="biomes-ui-vendor-panel">
+        <BiomesUIShopChrome
+          title={vendor.vendorName}
+          eyebrow="BiomesUI Store"
+          variant="vendor"
+          onClose={closePanel}
+          subtitle={
+            <>
+              <strong>{inventory.wallet.gold ?? 0} Gold</strong>
+              {" · "}Backpack {inventory.backpack.items.length}/
+              {inventory.backpack.maxSlots}
+            </>
+          }
+          actions={
+            <div
+              className="biomes-ui-vendor-tabs"
+              role="tablist"
+              aria-label="Vendor transaction mode"
             >
-              Close
-            </button>
-          </div>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <button
-              className={`rounded px-3 py-1 text-xs font-semibold ${
-                request.mode === "buy"
-                  ? "bg-amber-300 text-black"
-                  : "bg-white/10 text-white hover:bg-white/20"
-              }`}
-              onClick={() => openHarthmereVendorTrade(request.offset, "buy")}
-            >
-              Buy
-            </button>
-            <button
-              className={`rounded px-3 py-1 text-xs font-semibold ${
-                request.mode === "sell"
-                  ? "bg-amber-300 text-black"
-                  : "bg-white/10 text-white hover:bg-white/20"
-              }`}
-              onClick={() => openHarthmereVendorTrade(request.offset, "sell")}
-            >
-              Sell
-            </button>
-          </div>
-        </div>
-
-        <div className="max-h-[58vh] overflow-y-auto p-3">
-          {request.mode === "buy" && (
-            <div className="space-y-2">
-              {buyStocks.map((stock) => {
-                const def = itemDef(stock.itemId);
-                if (!def) {
-                  return null;
+              <button
+                type="button"
+                role="tab"
+                aria-selected={request.mode === "buy"}
+                data-selected={request.mode === "buy" ? "true" : undefined}
+                data-biomes-ui-shop-initial-focus={
+                  request.mode === "buy" ? "true" : undefined
                 }
-                const reason = buyFitReason(
-                  inventory,
-                  request.offset,
-                  stock.itemId
-                );
-                const dynamicPrice = finalVendorBuyPriceForPlayer(
-                  request.offset,
-                  stock.itemId,
-                  stock.quantity
-                );
-                return (
-                  <div
-                    key={`${stock.itemId}-${stock.price}`}
-                    className="rounded-xl border border-white/10 bg-white/5 p-3"
-                  >
-                    <div className="flex gap-3">
-                      <VendorItemIcon itemId={stock.itemId} />
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-start justify-between gap-2">
-                          <div>
-                            <div className="text-sm font-semibold text-white">
-                              {def.name}{" "}
-                              {stock.quantity > 1 ? `x${stock.quantity}` : ""}
+                className="biomes-ui-action-button"
+                onClick={() => openHarthmereVendorTrade(request.offset, "buy")}
+              >
+                Buy
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={request.mode === "sell"}
+                data-selected={request.mode === "sell" ? "true" : undefined}
+                data-biomes-ui-shop-initial-focus={
+                  request.mode === "sell" ? "true" : undefined
+                }
+                className="biomes-ui-action-button"
+                onClick={() => openHarthmereVendorTrade(request.offset, "sell")}
+              >
+                Sell
+              </button>
+            </div>
+          }
+          footer={
+            <div className="biomes-ui-vendor-transaction-log">
+              <strong>Transaction log</strong>
+              <span>
+                {latest
+                  ? `${latest.action}: ${latest.detail}`
+                  : "No vendor transaction yet."}
+              </span>
+            </div>
+          }
+        >
+          {request.mode === "buy" ? (
+            <BiomesUIShopSection
+              title="Available Goods"
+              meta={`${buyStocks.length} listings`}
+              className="biomes-ui-vendor-catalog"
+            >
+              {buyStocks.length ? (
+                <RovingGrid
+                  ariaLabel={`${vendor.vendorName} goods`}
+                  className="biomes-ui-vendor-grid"
+                  items={chunkHarthmereVendorRows(buyStocks)}
+                  renderCell={(stock, _coords, cell) => {
+                    const def = itemDef(stock.itemId);
+                    if (!def) {
+                      return null;
+                    }
+                    const reason = buyFitReason(
+                      inventory,
+                      request.offset,
+                      stock.itemId
+                    );
+                    const dynamicPrice = finalVendorBuyPriceForPlayer(
+                      request.offset,
+                      stock.itemId,
+                      stock.quantity
+                    );
+                    return (
+                      <article
+                        ref={cell.ref}
+                        role="gridcell"
+                        tabIndex={cell.tabIndex}
+                        data-focused={_coords.focused ? "true" : undefined}
+                        data-harthmere-vendor-item={stock.itemId}
+                        className="biomes-ui-vendor-card"
+                        onFocus={cell.onFocus}
+                        onClick={cell.onClick}
+                        onKeyDown={(event) => {
+                          if (event.target === event.currentTarget) {
+                            cell.onKeyDown(event);
+                          }
+                        }}
+                      >
+                        <BiomesUIShopItemIcon
+                          icon={def.icon}
+                          label={def.name}
+                        />
+                        <div className="biomes-ui-vendor-card__content">
+                          <div className="biomes-ui-vendor-card__heading">
+                            <div>
+                              <strong>{def.name}</strong>
+                              {stock.quantity > 1 ? (
+                                <span>Bundle of {stock.quantity}</span>
+                              ) : null}
                             </div>
-                            <div className="text-white/55 text-[11px]">
-                              {CATEGORY_LABELS[def.category]} · {def.quality} ·
-                              goes to {storageLabelForCategory(def.category)}
-                            </div>
-                          </div>
-                          <div className="rounded bg-amber-300/15 text-amber-100 px-2 py-1 text-xs font-semibold">
-                            <span data-harthmere-dynamic-vendor-price="true">
-                              {dynamicPrice} gold
+                            <span
+                              className="biomes-ui-vendor-price"
+                              data-harthmere-dynamic-vendor-price="true"
+                            >
+                              {dynamicPrice} Gold
                             </span>
                           </div>
-                          <div
+                          <div className="biomes-ui-vendor-card__meta">
+                            <span>{CATEGORY_LABELS[def.category]}</span>
+                            <span>{def.quality}</span>
+                            <span>
+                              Stores in {storageLabelForCategory(def.category)}
+                            </span>
+                          </div>
+                          <p>{def.description}</p>
+                          <p
+                            className="biomes-ui-vendor-card__pricing-note"
                             data-harthmere-dynamic-vendor-modifiers="true"
-                            className="text-white/45 basis-full text-[10px]"
                           >
-                            Dynamic price includes vendor stock, reputation,
-                            legal standing, and local supply.
-                          </div>
-                        </div>
-                        <div className="mt-1 text-xs leading-snug text-white/70">
-                          {def.description}
-                        </div>
-                        {reason && (
-                          <div className="rounded border-red-300/20 bg-red-500/10 text-red-100 mt-2 border p-2 text-[11px]">
-                            {reason}
-                          </div>
-                        )}
-                        <div className="mt-2 flex justify-end">
-                          <button
-                            className={`rounded px-3 py-1 text-xs font-semibold ${
-                              reason
-                                ? "text-white/35 cursor-not-allowed bg-white/10"
-                                : "bg-amber-300 hover:bg-amber-200 text-black"
-                            }`}
-                            disabled={Boolean(reason)}
-                            onClick={() =>
-                              buyFromVendor(request.offset, stock.itemId)
-                            }
-                          >
-                            Buy
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {request.mode === "sell" && (
-            <div className="space-y-2">
-              {sellableBackpackItems.length ? (
-                sellableBackpackItems.map((item) => {
-                  const def = itemDef(item.itemId);
-                  if (!def) {
-                    return null;
-                  }
-                  const reason = sellBlockReason(request.offset, item);
-                  const unitQuote = finalVendorSellQuoteForPlayer(
-                    request.offset,
-                    item
-                  );
-                  return (
-                    <div
-                      key={item.instanceId}
-                      className="rounded-xl border border-white/10 bg-white/5 p-3"
-                    >
-                      <div className="flex gap-3">
-                        <VendorItemIcon itemId={item.itemId} />
-                        <div className="min-w-0 flex-1">
-                          <div className="flex flex-wrap items-start justify-between gap-2">
-                            <div>
-                              <div className="text-sm font-semibold text-white">
-                                {itemName(item)}{" "}
-                                {item.quantity > 1 ? `x${item.quantity}` : ""}
-                              </div>
-                              <div className="text-white/55 text-[11px]">
-                                {CATEGORY_LABELS[def.category]} · {def.quality}{" "}
-                                ·{" "}
-                                {item.locked
-                                  ? "locked"
-                                  : item.bound
-                                  ? "bound"
-                                  : item.stolen
-                                  ? "stolen"
-                                  : "sellable check"}
-                              </div>
-                            </div>
-                            <div className="rounded bg-amber-300/15 text-amber-100 px-2 py-1 text-xs font-semibold">
-                              {reason ? "—" : `${unitQuote} gold each`}
-                            </div>
-                          </div>
-                          <div className="mt-1 text-xs leading-snug text-white/70">
-                            {def.description}
-                          </div>
-                          {reason && (
-                            <div className="rounded border-red-300/20 bg-red-500/10 text-red-100 mt-2 border p-2 text-[11px]">
+                            Price reflects stock, reputation, legal standing,
+                            and local supply.
+                          </p>
+                          {reason ? (
+                            <div className="biomes-ui-vendor-card__warning">
                               {reason}
                             </div>
-                          )}
-                          <div className="mt-2 flex flex-wrap justify-end gap-2">
+                          ) : null}
+                          <div className="biomes-ui-vendor-card__actions">
                             <button
-                              className={`rounded px-3 py-1 text-xs font-semibold ${
-                                reason
-                                  ? "text-white/35 cursor-not-allowed bg-white/10"
-                                  : "bg-white/10 text-white hover:bg-white/20"
-                              }`}
+                              type="button"
+                              className="biomes-ui-action-button"
                               disabled={Boolean(reason)}
-                              onClick={() =>
-                                sellToVendor(request.offset, item.instanceId, 1)
-                              }
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                buyFromVendor(request.offset, stock.itemId);
+                              }}
+                            >
+                              Buy for {dynamicPrice} Gold
+                            </button>
+                          </div>
+                        </div>
+                      </article>
+                    );
+                  }}
+                />
+              ) : (
+                <p className="biomes-ui-shop-muted biomes-ui-vendor-empty">
+                  This vendor has no unlocked stock available right now.
+                </p>
+              )}
+            </BiomesUIShopSection>
+          ) : (
+            <BiomesUIShopSection
+              title="Your Backpack"
+              meta={`${sellableBackpackItems.length} items`}
+              className="biomes-ui-vendor-catalog"
+            >
+              {sellableBackpackItems.length ? (
+                <RovingGrid
+                  ariaLabel={`Items to sell to ${vendor.vendorName}`}
+                  className="biomes-ui-vendor-grid"
+                  items={chunkHarthmereVendorRows(sellableBackpackItems)}
+                  renderCell={(item, _coords, cell) => {
+                    const def = itemDef(item.itemId);
+                    if (!def) {
+                      return null;
+                    }
+                    const reason = sellBlockReason(request.offset, item);
+                    const unitQuote = finalVendorSellQuoteForPlayer(
+                      request.offset,
+                      item
+                    );
+                    return (
+                      <article
+                        ref={cell.ref}
+                        role="gridcell"
+                        tabIndex={cell.tabIndex}
+                        data-focused={_coords.focused ? "true" : undefined}
+                        data-harthmere-vendor-item={item.itemId}
+                        className="biomes-ui-vendor-card"
+                        onFocus={cell.onFocus}
+                        onClick={cell.onClick}
+                        onKeyDown={(event) => {
+                          if (event.target === event.currentTarget) {
+                            cell.onKeyDown(event);
+                          }
+                        }}
+                      >
+                        <BiomesUIShopItemIcon
+                          icon={def.icon}
+                          label={itemName(item)}
+                        />
+                        <div className="biomes-ui-vendor-card__content">
+                          <div className="biomes-ui-vendor-card__heading">
+                            <div>
+                              <strong>{itemName(item)}</strong>
+                              {item.quantity > 1 ? (
+                                <span>Stack of {item.quantity}</span>
+                              ) : null}
+                            </div>
+                            <span className="biomes-ui-vendor-price">
+                              {reason
+                                ? "Not accepted"
+                                : `${unitQuote} Gold each`}
+                            </span>
+                          </div>
+                          <div className="biomes-ui-vendor-card__meta">
+                            <span>{CATEGORY_LABELS[def.category]}</span>
+                            <span>{def.quality}</span>
+                            <span>
+                              {item.locked
+                                ? "locked"
+                                : item.bound
+                                ? "bound"
+                                : item.stolen
+                                ? "stolen"
+                                : "available to sell"}
+                            </span>
+                          </div>
+                          <p>{def.description}</p>
+                          {reason ? (
+                            <div className="biomes-ui-vendor-card__warning">
+                              {reason}
+                            </div>
+                          ) : null}
+                          <div className="biomes-ui-vendor-card__actions">
+                            <button
+                              type="button"
+                              className="biomes-ui-action-button"
+                              disabled={Boolean(reason)}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                sellToVendor(
+                                  request.offset,
+                                  item.instanceId,
+                                  1
+                                );
+                              }}
                             >
                               Sell 1
                             </button>
-                            {item.quantity > 1 && (
+                            {item.quantity > 1 ? (
                               <button
-                                className={`rounded px-3 py-1 text-xs font-semibold ${
-                                  reason
-                                    ? "text-white/35 cursor-not-allowed bg-white/10"
-                                    : "bg-amber-300 hover:bg-amber-200 text-black"
-                                }`}
+                                type="button"
+                                className="biomes-ui-action-button"
                                 disabled={Boolean(reason)}
-                                onClick={() =>
+                                onClick={(event) => {
+                                  event.stopPropagation();
                                   sellToVendor(
                                     request.offset,
                                     item.instanceId,
                                     item.quantity
-                                  )
-                                }
+                                  );
+                                }}
                               >
-                                Sell Stack ({unitQuote * item.quantity}g)
+                                Sell Stack ({unitQuote * item.quantity} Gold)
                               </button>
-                            )}
+                            ) : null}
                           </div>
                         </div>
-                      </div>
-                    </div>
-                  );
-                })
+                      </article>
+                    );
+                  }}
+                />
               ) : (
-                <div className="rounded border border-white/10 bg-white/5 p-4 text-sm text-white/70">
+                <p className="biomes-ui-shop-muted biomes-ui-vendor-empty">
                   Your backpack is empty. Quest pouch, keyring, wallet, bank,
-                  and material storage are protected from accidental vendor
-                  sales.
-                </div>
+                  and material storage are protected from accidental sales.
+                </p>
               )}
-            </div>
+            </BiomesUIShopSection>
           )}
-        </div>
-
-        <div className="border-t border-white/10 bg-white/5 p-3 text-xs text-white/70">
-          <div className="text-white/85 font-semibold">Transaction log</div>
-          <div className="mt-0.5 leading-snug">
-            {latest
-              ? `${latest.action}: ${latest.detail}`
-              : "No vendor transaction yet."}
-          </div>
-        </div>
+        </BiomesUIShopChrome>
       </div>
     </div>
   );

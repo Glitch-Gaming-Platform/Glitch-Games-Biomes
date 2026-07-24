@@ -74,6 +74,7 @@ export interface SelectHarthmereWorldObjectInspectableInput {
   facingView: HarthmereWorldObjectVec3;
   candidates: readonly HarthmereWorldObjectCandidate[];
   radius?: number;
+  containerRadius?: number;
   closeRadius?: number;
   minViewDot?: number;
   closeMinViewDot?: number;
@@ -201,7 +202,14 @@ export function selectNearestHarthmereWorldObjectInspectable(
       playerPosition: input.playerPosition,
       facingView: input.facingView,
       objectPosition: candidate.position,
-      radius: input.radius,
+      // A terrain hit in front of a chest may be the chest's own voxel shell,
+      // a ship hull, or a ruin wall. Callers can keep a tight terrain-depth
+      // radius for ordinary props while allowing containers to use the normal
+      // interaction radius; the server still enforces its authoritative 3-D
+      // range check before opening anything.
+      radius: isContainer
+        ? input.containerRadius ?? input.radius
+        : input.radius,
       closeRadius: input.closeRadius,
       minViewDot: input.minViewDot,
       // A player can be beside, above, or nearly centered over a chest inside

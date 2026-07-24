@@ -49,6 +49,7 @@ export class ServerCamera {
         log.info("Chrome disconnected");
         this.browser = undefined;
       });
+      this.browser = browser;
       log.info("Chrome running", {
         pid: browser.process()?.pid,
       });
@@ -59,7 +60,12 @@ export class ServerCamera {
     }
   }
 
-  private async capture(position: Vec3, orientation: Vec2): Promise<Buffer> {
+  private async capture(
+    position: Vec3,
+    orientation: Vec2,
+    width: number,
+    height: number
+  ): Promise<Buffer> {
     const browser = await this.getBrowser();
     const suffix = `/${position.join("/")}/${orientation.join("/")}`;
     const urlParams = "?hideChrome=1&allowSoftwareWebGL=1";
@@ -72,22 +78,30 @@ export class ServerCamera {
     }
     try {
       try {
+        await page.setViewport({ width, height, deviceScaleFactor: 1 });
         await page.goto(
           process.env.NODE_ENV === "production"
             ? `https://www.biomes.gg/at${suffix}${urlParams}`
             : `http://localhost:3000/at${suffix}${urlParams}`
         );
-        await page.setViewport({ width: 1024, height: 768 });
       } catch (error) {
         log.error("Failed to load page", { error });
         throw error;
       }
-      await sleep(10_000); // TODO: Get response from page?
+      await page.waitForFunction(
+        () =>
+          (window as typeof window & { __biomesCaptureReady?: boolean })
+            .__biomesCaptureReady === true,
+        { timeout: 20_000 }
+      );
+      // The renderer-ready flag guarantees live frames, but texture uploads and
+      // browser layout can still trail by a few tasks on cold camera pages.
+      await sleep(500);
       if (this.controller.aborted) {
         return Buffer.from("");
       }
       try {
-        return await page.screenshot({ type: "png", fullPage: true });
+        return await page.screenshot({ type: "png", fullPage: false });
       } catch (error) {
         log.error("Failed to take screenshot", { error });
         throw error;
@@ -97,10 +111,17 @@ export class ServerCamera {
     }
   }
 
-  async takeScreenshot(position: Vec3, orientation: Vec2): Promise<Buffer> {
+  async takeScreenshot(
+    position: Vec3,
+    orientation: Vec2,
+    width = 1920,
+    height = 1080
+  ): Promise<Buffer> {
     const delayed = new Delayed<Buffer>();
     const promise = this.inflight.then(() =>
-      delayed.resolveWith(() => this.capture(position, orientation))
+      delayed.resolveWith(() =>
+        this.capture(position, orientation, width, height)
+      )
     );
     this.inflight = promise;
     return delayed.wait();

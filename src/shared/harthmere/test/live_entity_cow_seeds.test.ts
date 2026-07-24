@@ -7,11 +7,20 @@ import {
   HARTHMERE_LIVE_ENTITY_GUARDED_WILDLIFE_SEEDS,
   HARTHMERE_LIVE_ENTITY_LIVESTOCK_SEEDS,
   HARTHMERE_LIVE_ENTITY_MUCK_WILDLIFE_SEEDS,
+  HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS,
+  HARTHMERE_LIVE_ENTITY_OPEN_WILDS_MIXED_ANIMAL_SEEDS,
+  HARTHMERE_LIVE_ENTITY_OPEN_WILDS_MIXED_GROUP_LOCATIONS,
+  HARTHMERE_LIVE_ENTITY_OPEN_WILDS_MIXED_MONSTER_SEEDS,
+  HARTHMERE_LIVE_ENTITY_OPEN_WILDS_TERRAIN_PROBE_REVISION,
   HARTHMERE_LIVE_ENTITY_TOWN_LIVESTOCK_SEEDS,
   harthmereGroundedLivestockSeedsInTerritory,
   harthmereGroundedMuckMonsterSeedsInTerritory,
+  harthmereLiveEntityIsOpenWildsMixedGroup,
   harthmereLiveEntityIsTownLivestock,
+  harthmereOpenWildsMixedGroupPositionIsValid,
+  harthmereOpenWildsTerrainFeetYForOffset,
 } from "@/shared/harthmere/live_entity_production_seed";
+import { HARTHMERE_PRODUCTION_TERRAIN_PLACEMENT_MAP } from "@/shared/harthmere/generated/production_terrain_placement_map";
 import { harthmereMuckCreatureAssetKeyForLabel } from "@/shared/harthmere/muck_creature_assets";
 import { muckMonsterAreaForPosition } from "@/shared/harthmere/muck_monster_aggression_ai";
 import {
@@ -106,6 +115,138 @@ describe("Muck-area wildlife (cows, sheep, rabbits)", () => {
     }
   });
 
+  it("adds four exact open-Wilds groups on production-sampled land away from existing encounters", () => {
+    assert.equal(
+      HARTHMERE_LIVE_ENTITY_OPEN_WILDS_MIXED_GROUP_LOCATIONS.length,
+      4
+    );
+    assert.equal(
+      HARTHMERE_LIVE_ENTITY_OPEN_WILDS_MIXED_ANIMAL_SEEDS.length,
+      28
+    );
+    assert.equal(
+      HARTHMERE_LIVE_ENTITY_OPEN_WILDS_MIXED_MONSTER_SEEDS.length,
+      24
+    );
+    assert.equal(
+      HARTHMERE_LIVE_ENTITY_OPEN_WILDS_TERRAIN_PROBE_REVISION,
+      "biomes-node-vnet--0000193"
+    );
+
+    const outdoorPoints = new Set(
+      HARTHMERE_PRODUCTION_TERRAIN_PLACEMENT_MAP.outdoorSpawnPoints.map(
+        ({ position }) => position.join(":")
+      )
+    );
+    const existingSeeds = [
+      ...HARTHMERE_LIVE_ENTITY_MUCK_WILDLIFE_SEEDS,
+      ...HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS.filter(
+        (seed) => !harthmereLiveEntityIsOpenWildsMixedGroup(seed)
+      ),
+    ];
+
+    for (const location of HARTHMERE_LIVE_ENTITY_OPEN_WILDS_MIXED_GROUP_LOCATIONS) {
+      assert.ok(
+        outdoorPoints.has(location.center.join(":")),
+        `${location.areaId} center must be a production-scanned outdoor land point`
+      );
+      const animals =
+        HARTHMERE_LIVE_ENTITY_OPEN_WILDS_MIXED_ANIMAL_SEEDS.filter(
+          (seed) => seed.areaId === location.areaId
+        );
+      const monsters =
+        HARTHMERE_LIVE_ENTITY_OPEN_WILDS_MIXED_MONSTER_SEEDS.filter(
+          (seed) => seed.areaId === location.areaId
+        );
+      assert.deepEqual(
+        Object.fromEntries(
+          SPECIES.map((species) => [
+            species,
+            animals.filter((seed) => seed.species === species).length,
+          ])
+        ),
+        { cow: 1, sheep: 2, rabbit: 4 }
+      );
+      assert.equal(
+        monsters.filter((seed) => seed.combatKind === "mux").length,
+        5
+      );
+      assert.equal(
+        monsters.filter((seed) => seed.combatKind === "hex").length,
+        1
+      );
+
+      const encounter = [...animals, ...monsters];
+      assert.equal(encounter.length, 13);
+      for (const seed of encounter) {
+        assert.equal(
+          seed.position[1],
+          harthmereOpenWildsTerrainFeetYForOffset(seed.idOffset),
+          `${seed.seedId} must use its individual production-probed feet Y`
+        );
+        assert.ok(harthmereOpenWildsMixedGroupPositionIsValid(seed.position));
+        assert.equal(muckMonsterAreaForPosition(seed.position, 1.5), undefined);
+        assert.ok(
+          seed.position[0] < HARTHMERE_ORIGINAL_WORLD_EAST_EDGE_X,
+          `${seed.seedId} must remain outside additive Harthmere`
+        );
+        const nearestExisting = Math.min(
+          ...existingSeeds.map((existing) =>
+            Math.hypot(
+              seed.position[0] - existing.position[0],
+              seed.position[2] - existing.position[2]
+            )
+          )
+        );
+        assert.ok(
+          nearestExisting >= 70,
+          `${seed.seedId} is only ${nearestExisting.toFixed(
+            2
+          )}m from an existing creature area`
+        );
+      }
+      for (const source of encounter) {
+        for (const responder of encounter) {
+          assert.ok(
+            Math.hypot(
+              source.position[0] - responder.position[0],
+              source.position[2] - responder.position[2]
+            ) <= MIXED_CREATURE_GROUP_ALERT_RADIUS
+          );
+          assert.ok(
+            Math.abs(source.position[1] - responder.position[1]) <=
+              MIXED_CREATURE_GROUP_ALERT_MAX_VERTICAL_DISTANCE
+          );
+        }
+      }
+    }
+
+    for (
+      let index = 0;
+      index < HARTHMERE_LIVE_ENTITY_OPEN_WILDS_MIXED_GROUP_LOCATIONS.length;
+      index += 1
+    ) {
+      for (
+        let otherIndex = index + 1;
+        otherIndex <
+        HARTHMERE_LIVE_ENTITY_OPEN_WILDS_MIXED_GROUP_LOCATIONS.length;
+        otherIndex += 1
+      ) {
+        const left =
+          HARTHMERE_LIVE_ENTITY_OPEN_WILDS_MIXED_GROUP_LOCATIONS[index];
+        const right =
+          HARTHMERE_LIVE_ENTITY_OPEN_WILDS_MIXED_GROUP_LOCATIONS[otherIndex];
+        assert.ok(
+          Math.hypot(
+            left.center[0] - right.center[0],
+            left.center[2] - right.center[2]
+          ) >= 200,
+          `${left.areaId} overlaps ${right.areaId}`
+        );
+      }
+    }
+  });
+
   it("grounds original-map wildlife on hills and keeps a separate Harthmere herd", () => {
     const grounded = harthmereGroundedLivestockSeedsInTerritory();
     assert.equal(grounded.length, HARTHMERE_LIVE_ENTITY_LIVESTOCK_SEEDS.length);
@@ -116,6 +257,10 @@ describe("Muck-area wildlife (cows, sheep, rabbits)", () => {
       if (harthmereLiveEntityIsTownLivestock(seed)) {
         assert.equal(seed.position[1], HARTHMERE_EXTENSION_FEET_Y);
         assert.ok(isHarthmereExtensionWorldPosition(seed.position));
+      } else if (harthmereLiveEntityIsOpenWildsMixedGroup(seed)) {
+        wildElevations.add(seed.position[1]);
+        assert.ok(harthmereOpenWildsMixedGroupPositionIsValid(seed.position));
+        assert.equal(muckMonsterAreaForPosition(seed.position, 1.5), undefined);
       } else {
         wildElevations.add(seed.position[1]);
         assert.ok(seed.position[0] < HARTHMERE_ORIGINAL_WORLD_EAST_EDGE_X);

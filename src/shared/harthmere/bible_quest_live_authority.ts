@@ -319,6 +319,35 @@ export function harthmereBibleTimeOfDayForHour(
   return "night";
 }
 
+/**
+ * Production uses the real server clock/weather claim. A production-shaped
+ * local browser batch may pin these inputs so every authored time/weather
+ * gate can be exercised without waiting for a real night or storm.
+ */
+export function harthmereBibleQuestEvaluationNowMs(nowMs: number): number {
+  const override = Number(
+    typeof process !== "undefined"
+      ? process.env.HARTHMERE_E2E_BIBLE_NOW_MS
+      : undefined
+  );
+  return Number.isFinite(override) && override > 0 ? override : nowMs;
+}
+
+export function harthmereBibleQuestEvaluationWeather(
+  claimed?: string
+): string | undefined {
+  if (claimed) return claimed;
+  const override =
+    typeof process !== "undefined"
+      ? process.env.HARTHMERE_E2E_BIBLE_WEATHER
+      : undefined;
+  return ["clear", "rain", "storm", "fog", "snow"].includes(
+    override ?? ""
+  )
+    ? override
+    : undefined;
+}
+
 export interface HarthmereBibleQuestContextInput {
   actorId: string;
   /** `classMagic.skills.character_level.level`, defaulting to 1. */
@@ -691,8 +720,8 @@ export function reduceHarthmereBibleQuestOperation(
     playerLevel: input.playerLevel,
     completedQuests: input.completedQuests,
     slice,
-    nowMs: input.nowMs,
-    weatherClaim: input.weatherClaim,
+    nowMs: harthmereBibleQuestEvaluationNowMs(input.nowMs),
+    weatherClaim: harthmereBibleQuestEvaluationWeather(input.weatherClaim),
   });
   const fail = (...reasons: string[]): HarthmereBibleQuestReduceResult => ({
     ok: false,

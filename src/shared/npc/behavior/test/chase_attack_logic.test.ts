@@ -10,6 +10,8 @@ import {
   effectiveAttackStrikeDelaySecs,
   isMixedCreatureGroupRetaliationEligible,
   isMixedCreatureGroupRetaliationName,
+  isHarthmereFightSpeedBoostEligible,
+  isHarthmereFightSpeedBoostName,
   isHarthmereSightBoundChaserName,
   isMuckerOrHexerNameForNightAggro,
   isNightForNpcAggro,
@@ -18,11 +20,16 @@ import {
   NIGHT_MUCKER_HEX_MOVEMENT_MULTIPLIER,
   HARTHMERE_NPC_CHASE_SPEED_CAP_METERS_PER_SECOND,
   HARTHMERE_NPC_CHASE_SPEED_MULTIPLIER,
+  HARTHMERE_PREVIOUS_NPC_CHASE_SPEED_MULTIPLIER,
   shouldDropHarthmereChaseTargetForLineOfSight,
   shouldDropNpcTargetAtSafeZoneBoundary,
   type MixedCreatureGroupAlertCandidate,
 } from "@/shared/npc/behavior/chase_attack";
 import type { Path } from "@/shared/npc/behavior/pathfinding";
+import {
+  PATHFINDING_STUCK_DURATION_SECONDS,
+  stuckWhilePathfinding,
+} from "@/shared/npc/behavior/pathfinding";
 import type { BiomesId } from "@/shared/ids";
 
 const pathTo = (dest: [number, number, number]): Path => ({
@@ -107,6 +114,25 @@ describe("chase attack: stale path detection", () => {
   it("treats an empty path as stale", () => {
     assert.equal(chasePathTargetIsStale({ nodes: [] }, [0, 0, 0], 9), true);
   });
+
+  it("abandons a path quickly when uneven terrain prevents progress", () => {
+    const state = {
+      path: pathTo([10, 1, 0]),
+      position: [0, 0, 0] as [number, number, number],
+      searchTime: 100,
+    };
+    assert.equal(
+      stuckWhilePathfinding(
+        state,
+        100 + PATHFINDING_STUCK_DURATION_SECONDS - 0.01
+      ),
+      false
+    );
+    assert.equal(
+      stuckWhilePathfinding(state, 100 + PATHFINDING_STUCK_DURATION_SECONDS),
+      true
+    );
+  });
 });
 
 describe("chase attack: night muck/hex aggression helpers", () => {
@@ -179,18 +205,74 @@ describe("chase attack: Harthmere sight and speed limits", () => {
     assert.equal(isHarthmereSightBoundChaserName("Town Guard"), false);
   });
 
-  it("boosts Harthmere pursuit while keeping it below player sprint pace", () => {
+  it("runs 20% faster than the prior tuned pursuit while staying below player sprint pace", () => {
+    assert.equal(HARTHMERE_PREVIOUS_NPC_CHASE_SPEED_MULTIPLIER, 1.35);
+    assert.equal(
+      HARTHMERE_NPC_CHASE_SPEED_MULTIPLIER,
+      HARTHMERE_PREVIOUS_NPC_CHASE_SPEED_MULTIPLIER * 1.2
+    );
+    assert.equal(boundedHarthmereChaseSpeedForName("Muckmeadow Cow", 4), 6.48);
     assert.equal(
       boundedHarthmereChaseSpeedForName("Pale Hexer", 8.64),
       HARTHMERE_NPC_CHASE_SPEED_CAP_METERS_PER_SECOND
     );
     assert.equal(
       boundedHarthmereChaseSpeedForName("Road Bandit Scout", 5.1),
-      5.1 * HARTHMERE_NPC_CHASE_SPEED_MULTIPLIER
+      5.1
     );
     assert.equal(
       boundedHarthmereChaseSpeedForName("Unrelated NPC", 8.64),
       8.64
+    );
+  });
+
+  it("limits fight-speed boosts to Muckers, Hexes, and unowned animals", () => {
+    for (const name of [
+      "Old Wood Mucker",
+      "Pale Hexer",
+      "Muckmeadow Cow",
+      "Guarded Sheep",
+      "Wild Wolf",
+      "Marsh Boar",
+    ]) {
+      assert.equal(isHarthmereFightSpeedBoostName(name), true, name);
+    }
+    for (const name of [
+      "Road Bandit Scout",
+      "Wilds Bandit",
+      "Local Dev Walking Townsperson",
+      "Harthmere Vendor",
+      "Captured Bandit Prisoner",
+      "Mucker Ward",
+      "Tamed Wolf Companion",
+      "Owned Cow Pet",
+      "Horse Mount",
+    ]) {
+      assert.equal(isHarthmereFightSpeedBoostName(name), false, name);
+    }
+    assert.equal(
+      isHarthmereFightSpeedBoostEligible({
+        name: "Wild Wolf",
+        isPlayerOwned: true,
+        isCombatCapable: true,
+      }),
+      false
+    );
+    assert.equal(
+      isHarthmereFightSpeedBoostEligible({
+        name: "Wild Wolf",
+        isPlayerOwned: false,
+        isCombatCapable: false,
+      }),
+      false
+    );
+    assert.equal(
+      isHarthmereFightSpeedBoostEligible({
+        name: "Wild Wolf",
+        isPlayerOwned: false,
+        isCombatCapable: true,
+      }),
+      true
     );
   });
 

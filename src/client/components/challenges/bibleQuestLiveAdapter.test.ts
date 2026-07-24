@@ -8,6 +8,7 @@ import {
   bibleQuestTrackableQuestsForBiomesUI,
   harthmereBibleDialogModelForGiver,
   harthmereBibleGiverIdForNpcLabel,
+  harthmereBibleHiddenQuestInteractionModel,
   harthmereBibleHiddenQuestToTrigger,
   harthmereBibleOperationPayloadForAction,
   harthmereBibleQuestSnapshotFromResponse,
@@ -28,9 +29,13 @@ import {
 } from "@/shared/harthmere/visible_combat_target";
 import { createThaedrynBossState } from "@/shared/harthmere/thaedryn_boss";
 import { HARTHMERE_QUEST_CATALOG } from "@/shared/harthmere/quest_compendium";
+import { getHarthmereQuestResolvedWaypoint } from "@/shared/harthmere/quest_runtime";
 
 function emptySnapshot() {
   return {
+    actorId: "player-test",
+    playerLevel: 8,
+    serverNowMs: 1_700_000_000_000,
     active: {},
     completed: {},
     bible: defaultHarthmereBibleQuestLiveSlice(),
@@ -133,6 +138,76 @@ describe("bible quest client adapter", () => {
     });
   });
 
+  it("uses the server-projected actor level when callers omit an override", () => {
+    const snapshot = emptySnapshot();
+    const model = harthmereBibleDialogModelForGiver({
+      giverId: "reeve_caldus_merrow",
+      snapshot,
+    });
+    assert.ok(
+      model.actions.some(
+        (action) =>
+          action.kind === "accept" &&
+          action.questId === "bellbound_q01_cracks_in_bridge"
+      )
+    );
+  });
+
+  it("supplies combat evidence and a completable world panel for hidden quests", () => {
+    const snapshot = emptySnapshot();
+    const hidden = (HARTHMERE_QUEST_CATALOG as readonly any[]).find(
+      (quest) => quest.id === "bellbound_q08_voices_in_stone"
+    );
+    snapshot.bible.runtime[hidden.id] = {
+      questId: hidden.id,
+      state: "active",
+      objectiveProgress: Object.fromEntries(
+        hidden.objectives.map((objective: any) => [
+          objective.id,
+          { current: 0, target: 1, completed: false },
+        ])
+      ),
+    } as any;
+    const model = harthmereBibleHiddenQuestInteractionModel({
+      snapshot,
+      playerPosition: getHarthmereQuestResolvedWaypoint(
+        hidden.id,
+        hidden.objectives[0]
+      ),
+    });
+    assert.equal(model?.questId, hidden.id);
+    assert.equal(model?.nearObjective, true);
+    assert.equal(model?.action?.kind, "objective");
+
+    const combatQuest = (HARTHMERE_QUEST_CATALOG as readonly any[]).find(
+      (quest) => quest.id === "bellbound_q05_beneath_the_stones"
+    );
+    snapshot.bible.runtime[combatQuest.id] = {
+      questId: combatQuest.id,
+      state: "active",
+      objectiveProgress: Object.fromEntries(
+        combatQuest.objectives.map((objective: any, index: number) => [
+          objective.id,
+          { current: index === 0 ? 1 : 0, target: 1, completed: index === 0 },
+        ])
+      ),
+    } as any;
+    const combatModel = harthmereBibleDialogModelForGiver({
+      giverId: combatQuest.giverId,
+      snapshot,
+      playerLevel: combatQuest.levelBand.min,
+    });
+    const combatAction = combatModel.actions.find(
+      (action) => action.objectiveId === combatQuest.objectives[1].id
+    );
+    assert.equal(combatAction?.combatResult, "encounter_cleared");
+    assert.equal(
+      harthmereBibleOperationPayloadForAction(combatAction as any)
+        .combatResult,
+      "encounter_cleared"
+    );
+  });
+
   it("shows the current objective while active and turn-in when ready", () => {
     const snapshot = emptySnapshot();
     const quest = (HARTHMERE_QUEST_CATALOG as readonly any[]).find(
@@ -199,6 +274,19 @@ describe("bible quest client adapter", () => {
     assert.deepEqual(snapshot.active, {});
     assert.deepEqual(snapshot.completed, {});
     assert.deepEqual(snapshot.bible.runtime, {});
+  });
+
+  it("parses server actor context used by offer gating", () => {
+    const snapshot = harthmereBibleQuestSnapshotFromResponse({
+      questState: {
+        actorId: "player-42",
+        playerLevel: 12,
+        serverNowMs: 1_700_000_123_456,
+      },
+    });
+    assert.equal(snapshot.actorId, "player-42");
+    assert.equal(snapshot.playerLevel, 12);
+    assert.equal(snapshot.serverNowMs, 1_700_000_123_456);
   });
 
   it("selects a hidden quest to trigger only within the radius", () => {

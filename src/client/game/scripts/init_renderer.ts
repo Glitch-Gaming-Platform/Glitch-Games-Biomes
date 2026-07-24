@@ -2,6 +2,7 @@ import type { ClientContext, ClientContextSubset } from "@/client/game/context";
 import { AudioScript } from "@/client/game/scripts/audio";
 import { CameraScript } from "@/client/game/scripts/camera";
 import { CursorScript } from "@/client/game/scripts/cursor";
+import { CutsceneDirectorScript } from "@/client/game/scripts/cutscene_director";
 import { ForbiddenEditsScript } from "@/client/game/scripts/forbidden_edits";
 import { HarthmereLiveCreatureBridgeScript } from "@/client/game/scripts/harthmere_live_creature_bridge_script";
 import { InteractScript } from "@/client/game/scripts/interact";
@@ -48,6 +49,9 @@ function getScripts(
   } = deps;
 
   return compact([
+    // The cutscene director must tick BEFORE CameraScript so the pose it
+    // writes to /scene/waypoint_camera/active lands in the same frame.
+    new CutsceneDirectorScript(userId, resources, table, events, audioManager),
     new CameraScript(userId, input, resources, table, clientConfig, events),
     new TransientBeamsScript(resources),
     new ForbiddenEditsScript(resources),

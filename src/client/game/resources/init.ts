@@ -5,6 +5,7 @@ import { addBlockResources } from "@/client/game/resources/blocks";
 import { addNewBlueprintResources } from "@/client/game/resources/blueprints";
 import { addBoundaryResources } from "@/client/game/resources/boundary";
 import { addCameraResources } from "@/client/game/resources/camera";
+import { addCutsceneResources } from "@/client/game/resources/cutscene";
 import { addChallengeResources } from "@/client/game/resources/challenges";
 import { addChatResources } from "@/client/game/resources/chat";
 import { addCursorResources } from "@/client/game/resources/cursor";
@@ -97,6 +98,7 @@ export async function resourcesBuilder(loader: RegistryLoader<ClientContext>) {
     addGlassResources(loader, builder),
     addBoundaryResources(loader, builder),
     addCameraResources(loader, builder),
+    addCutsceneResources(loader, builder),
     addChallengeResources(loader, builder),
     addChatResources(loader, builder),
     addCursorResources(loader, builder),

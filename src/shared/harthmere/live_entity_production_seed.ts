@@ -1,4 +1,8 @@
 import type { BiomesId } from "@/shared/ids";
+import {
+  HARTHMERE_ROAD_MUCKWAD_FIRST_OFFSET,
+  harthmereLiveEntityIdFromOffset,
+} from "@/shared/harthmere/live_entity_seed_ids";
 import type { ReadonlyVec3, Vec2, Vec3 } from "@/shared/math/types";
 import {
   shiftHarthmereAuthoredPositionToWorld,
@@ -8,6 +12,7 @@ import {
   LIVE_ENTITY_ROBOT_DEFAULT_MAX_ENERGY,
   LIVE_ENTITY_ROBOT_PROTECTION_AREAS,
   isLiveEntityRobotProtectionAnchorGrounded,
+  liveEntityRobotProtectionAreaForPosition,
   liveEntityRobotDefaultRobotIdForArea,
   validateLiveEntityRobotProtectionAreas,
 } from "./live_entity_robot_energy_protection";
@@ -102,9 +107,7 @@ type HarthmereLiveEntityProductionPlacementSource =
   | "live_muck_monster"
   | "live_livestock";
 
-function entityIdFromOffset(idOffset: number) {
-  return (Number(SNAPSHOT_GROVE_LOCAL_DEV_NPC_BASE) + idOffset) as BiomesId;
-}
+const entityIdFromOffset = harthmereLiveEntityIdFromOffset;
 
 function productionOutdoorMarkerPosition(
   markerId: string,
@@ -316,7 +319,7 @@ export const HARTHMERE_LIVE_ENTITY_ROBOT_SENTINEL_SEEDS =
     } satisfies HarthmereLiveEntityProductionSeed;
   });
 
-export const HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_PRODUCTION_COUNT = 116;
+export const HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_PRODUCTION_COUNT = 140;
 
 export interface HarthmereGuardedWildlifeLocation {
   areaId: string;
@@ -361,6 +364,117 @@ export const HARTHMERE_LIVE_ENTITY_GUARDED_WILDLIFE_LOCATIONS: readonly Harthmer
     },
   ] as const;
 
+// Four production-terrain sampled mixed encounters in the open Wilds. These
+// are deliberately outside every safe/protected area and every Muck territory,
+// and remain on the original map west of the additive Harthmere extension.
+// Each location is a checked-in `outdoorSpawnPoints` coordinate from the June
+// production terrain scan, so its Y is a real land surface rather than a guessed
+// flat-world height.
+export const HARTHMERE_LIVE_ENTITY_OPEN_WILDS_MIXED_GROUP_LOCATIONS: readonly HarthmereGuardedWildlifeLocation[] =
+  [
+    {
+      areaId: "northwest_wilds_ridge",
+      areaLabel: "Northwest Wilds Ridge",
+      center: [219, 38, -897],
+      animalCounts: { cow: 1, sheep: 2, rabbit: 4 },
+    },
+    {
+      areaId: "southwest_wilds_meadow",
+      areaLabel: "Southwest Wilds Meadow",
+      center: [43, 51, 247],
+      animalCounts: { cow: 1, sheep: 2, rabbit: 4 },
+    },
+    {
+      areaId: "northeast_wilds_headland",
+      areaLabel: "Northeast Wilds Headland",
+      center: [1499, 43, -897],
+      animalCounts: { cow: 1, sheep: 2, rabbit: 4 },
+    },
+    {
+      areaId: "southeast_wilds_lowland",
+      areaLabel: "Southeast Wilds Lowland",
+      center: [1515, 40, 303],
+      animalCounts: { cow: 1, sheep: 2, rabbit: 4 },
+    },
+  ] as const;
+
+// Read-only production terrain probe, July 24 2026, revision
+// biomes-node-vnet--0000193. Every open-Wilds creature has its own feet Y so
+// the radial group layout follows hills instead of inheriting one center Y and
+// spawning buried or floating. The production grounding gate re-probes these
+// exact X/Z columns and fails on any future terrain drift.
+export const HARTHMERE_LIVE_ENTITY_OPEN_WILDS_TERRAIN_PROBE_REVISION =
+  "biomes-node-vnet--0000193" as const;
+const HARTHMERE_LIVE_ENTITY_OPEN_WILDS_TERRAIN_FEET_Y_BY_OFFSET: Readonly<
+  Record<number, number>
+> = {
+  10041: 36,
+  10042: 37,
+  10043: 36,
+  10044: 37,
+  10045: 37,
+  10046: 35,
+  10047: 38,
+  10048: 51,
+  10049: 51,
+  10050: 52,
+  10051: 51,
+  10052: 51,
+  10053: 54,
+  10054: 52,
+  10055: 43,
+  10056: 43,
+  10057: 42,
+  10058: 43,
+  10059: 43,
+  10060: 42,
+  10061: 43,
+  10062: 40,
+  10063: 39,
+  10064: 41,
+  10065: 39,
+  10066: 47,
+  10067: 41,
+  10068: 39,
+  10069: 36,
+  10070: 38,
+  10071: 36,
+  10072: 36,
+  10073: 38,
+  10074: 34,
+  10075: 51,
+  10076: 51,
+  10077: 51,
+  10078: 53,
+  10079: 51,
+  10080: 55,
+  10081: 43,
+  10082: 43,
+  10083: 42,
+  10084: 43,
+  10085: 43,
+  10086: 42,
+  10087: 40,
+  10088: 39,
+  10089: 40,
+  10090: 40,
+  10091: 39,
+  10092: 41,
+} as const;
+
+export function harthmereOpenWildsTerrainFeetYForOffset(
+  idOffset: number
+): number | undefined {
+  return HARTHMERE_LIVE_ENTITY_OPEN_WILDS_TERRAIN_FEET_Y_BY_OFFSET[idOffset];
+}
+
+function openWildsTerrainGroundedPosition(position: Vec3, idOffset: number) {
+  const feetY = harthmereOpenWildsTerrainFeetYForOffset(idOffset);
+  return feetY === undefined
+    ? position
+    : ([position[0], feetY, position[2]] as Vec3);
+}
+
 interface HarthmereMuckMonsterSeedLayout {
   areaId: string;
   areaLabel: string;
@@ -393,7 +507,7 @@ const HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_LAYOUTS: readonly HarthmereMuckMonsterS
       count: 15,
       center: [512, 54, -152],
       radius: 8,
-      firstOffset: 9466,
+      firstOffset: HARTHMERE_ROAD_MUCKWAD_FIRST_OFFSET,
       muckerName: "Road Muckwad",
       hexerName: "Road Lesser Hexer",
       hexEvery: 5,
@@ -482,6 +596,21 @@ const HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_LAYOUTS: readonly HarthmereMuckMonsterS
         displayIndexBase: index === 0 ? 15 : 14,
       })
     ),
+    ...HARTHMERE_LIVE_ENTITY_OPEN_WILDS_MIXED_GROUP_LOCATIONS.map(
+      (location, index) => ({
+        areaId: location.areaId,
+        areaLabel: location.areaLabel,
+        count: 6,
+        center: location.center,
+        radius: 7,
+        firstOffset: 10069 + index * 6,
+        muckerName: "Open Wilds Mucker",
+        hexerName: "Open Wilds Hex",
+        // Exactly five Muckers and one Hex accompany every seven-animal group.
+        hexEvery: 6,
+        displayIndexBase: index * 6,
+      })
+    ),
   ] as const;
 
 function muckMonsterPositionForLayout(
@@ -503,6 +632,7 @@ const HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SOURCE_SEEDS =
       const idOffset = layout.firstOffset + index;
       const isHexer = (index + 1) % layout.hexEvery === 0;
       const displayName = isHexer ? layout.hexerName : layout.muckerName;
+      const position = muckMonsterPositionForLayout(layout, index);
       return {
         areaId: layout.areaId,
         areaLabel: layout.areaLabel,
@@ -510,7 +640,7 @@ const HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SOURCE_SEEDS =
         displayName: `${displayName} ${
           (layout.displayIndexBase ?? 0) + index + 1
         }`,
-        position: muckMonsterPositionForLayout(layout, index),
+        position: openWildsTerrainGroundedPosition(position, idOffset),
       };
     })
   );
@@ -614,6 +744,7 @@ const HARTHMERE_LIVE_ENTITY_LIVESTOCK_PER_AREA =
 // with the 19 business owners, so 19 of the 24 animals were never created.
 const HARTHMERE_LIVE_ENTITY_LIVESTOCK_FIRST_OFFSET = 9551;
 const HARTHMERE_LIVE_ENTITY_GUARDED_WILDLIFE_FIRST_OFFSET = 10001;
+const HARTHMERE_LIVE_ENTITY_OPEN_WILDS_ANIMAL_FIRST_OFFSET = 10041;
 
 // Deterministic spread inside the muck area, kept well within radius so animals
 // stay grounded in the muck (not on its sloped edge). `indexInArea` covers every
@@ -755,6 +886,60 @@ export const HARTHMERE_LIVE_ENTITY_GUARDED_WILDLIFE_SEEDS: HarthmereLiveEntityPr
     }
   );
 
+export const HARTHMERE_LIVE_ENTITY_OPEN_WILDS_MIXED_ANIMAL_SEEDS: HarthmereLiveEntityProductionSeed[] =
+  HARTHMERE_LIVE_ENTITY_OPEN_WILDS_MIXED_GROUP_LOCATIONS.flatMap(
+    (location, locationIndex) => {
+      const speciesOrder = HARTHMERE_LIVE_ENTITY_LIVESTOCK_SPECIES.flatMap(
+        (config) =>
+          Array.from(
+            { length: location.animalCounts[config.species] },
+            () => config
+          )
+      );
+      return speciesOrder.map((config, localIndex) => {
+        const idOffset =
+          HARTHMERE_LIVE_ENTITY_OPEN_WILDS_ANIMAL_FIRST_OFFSET +
+          locationIndex * speciesOrder.length +
+          localIndex;
+        return {
+          seedId: `open-wilds-livestock-${config.species}-${location.areaId}-${idOffset}`,
+          kind: "ambient_livestock" as const,
+          entityId: entityIdFromOffset(idOffset),
+          idOffset,
+          displayName: `Open Wilds ${config.displayName} ${
+            idOffset - HARTHMERE_LIVE_ENTITY_OPEN_WILDS_ANIMAL_FIRST_OFFSET + 1
+          }`,
+          areaId: location.areaId,
+          areaLabel: location.areaLabel,
+          position: openWildsTerrainGroundedPosition(
+            guardedWildlifePosition(location, localIndex, speciesOrder.length),
+            idOffset
+          ),
+          orientation: [0, 0] as Vec2,
+          dialog: config.dialog,
+          description: `A ${config.displayName.toLowerCase()} grazes in ${
+            location.areaLabel
+          } near an open-Wilds Mucker and Hex pack.`,
+          combatKind: "mux" as const,
+          combatLevel: 1,
+          combatHp: config.combatHp,
+          species: config.species,
+          sizeTier: config.sizeTier,
+          meatUnits: config.meatUnits,
+          attackDamage: config.attackDamage,
+          killXp: config.killXp,
+        } satisfies HarthmereLiveEntityProductionSeed;
+      });
+    }
+  );
+
+export const HARTHMERE_LIVE_ENTITY_OPEN_WILDS_MIXED_MONSTER_SEEDS =
+  HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS.filter((seed) =>
+    HARTHMERE_LIVE_ENTITY_OPEN_WILDS_MIXED_GROUP_LOCATIONS.some(
+      (location) => location.areaId === seed.areaId
+    )
+  );
+
 export const HARTHMERE_LIVE_ENTITY_MUCK_WILDLIFE_SEEDS = [
   ...HARTHMERE_LIVE_ENTITY_BASE_MUCK_WILDLIFE_SEEDS,
   ...HARTHMERE_LIVE_ENTITY_GUARDED_WILDLIFE_SEEDS,
@@ -842,6 +1027,7 @@ export const HARTHMERE_LIVE_ENTITY_TOWN_LIVESTOCK_SEEDS: HarthmereLiveEntityProd
 
 export const HARTHMERE_LIVE_ENTITY_LIVESTOCK_SEEDS = [
   ...HARTHMERE_LIVE_ENTITY_MUCK_WILDLIFE_SEEDS,
+  ...HARTHMERE_LIVE_ENTITY_OPEN_WILDS_MIXED_ANIMAL_SEEDS,
   ...HARTHMERE_LIVE_ENTITY_TOWN_LIVESTOCK_SEEDS,
 ];
 
@@ -908,6 +1094,14 @@ export function harthmereLiveEntityIsGuardedWildlife(
   );
 }
 
+export function harthmereLiveEntityIsOpenWildsMixedGroup(
+  seed: HarthmereLiveEntityProductionSeed
+): boolean {
+  return HARTHMERE_LIVE_ENTITY_OPEN_WILDS_MIXED_GROUP_LOCATIONS.some(
+    (location) => location.areaId === seed.areaId
+  );
+}
+
 // Wildlife grounded to the production surface and kept inside their muck area
 // (mirrors the muck-monster grounding). Animals authored outside any muck
 // territory are dropped.
@@ -918,14 +1112,22 @@ export function harthmereGroundedLivestockSeedsInTerritory(
     if (harthmereLiveEntityIsTownLivestock(seed)) {
       return [{ ...seed, position: [...seed.position] as Vec3 }];
     }
+    const isOpenWildsGroup = harthmereLiveEntityIsOpenWildsMixedGroup(seed);
     const runtimeWorldSpace = options.useProductionPlacementMap !== false;
-    const authoredFallback = groundMuckEntityFeet(seed.position);
+    const authoredFallback = isOpenWildsGroup
+      ? ([...seed.position] as Vec3)
+      : groundMuckEntityFeet(seed.position);
     const grounded = runtimeWorldSpace
       ? productionPlacedLiveEntityPosition(seed, "live_livestock", options) ??
-        (harthmereLiveEntityIsGuardedWildlife(seed)
+        (harthmereLiveEntityIsGuardedWildlife(seed) || isOpenWildsGroup
           ? ([...seed.position] as Vec3)
           : authoredFallback)
       : authoredFallback;
+    if (isOpenWildsGroup) {
+      return harthmereOpenWildsMixedGroupPositionIsValid(grounded)
+        ? [{ ...seed, position: grounded }]
+        : [];
+    }
     if (
       harthmereMuckMonsterPositionIsInSafeZone(grounded) ||
       !muckMonsterAreaForPosition(grounded, 1.5)
@@ -959,6 +1161,18 @@ export function harthmereMuckMonsterPositionIsInSafeZone(
       : position;
   return Boolean(
     authoredSnapshotAreaForPoint(authoredPosition, SNAPSHOT_SAFE_AREAS, 0)
+  );
+}
+
+export function harthmereOpenWildsMixedGroupPositionIsValid(
+  position: ReadonlyVec3
+): boolean {
+  return (
+    position[0] < HARTHMERE_ORIGINAL_WORLD_EAST_EDGE_X &&
+    !harthmereMuckMonsterPositionIsInSafeZone(position) &&
+    !muckMonsterAreaForPosition(position, 1.5) &&
+    !isLiveEntityHelperQuestExcludedPosition(position) &&
+    !liveEntityRobotProtectionAreaForPosition(position)
   );
 }
 
@@ -1012,10 +1226,11 @@ export function harthmereGroundedMuckMonsterSeedsInTerritory(
 ): HarthmereLiveEntityProductionSeed[] {
   const areas = harthmereNonSafeMuckAreas();
   const fallbackArea = areas[0];
-  return HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS.map((seed, index) => {
+  return HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS.flatMap((seed, index) => {
     const stableSeed = Number.isFinite(seed.idOffset) ? seed.idOffset : index;
+    const isOpenWildsGroup = harthmereLiveEntityIsOpenWildsMixedGroup(seed);
     let position: Vec3;
-    if (harthmereLiveEntityIsGuardedWildlife(seed)) {
+    if (harthmereLiveEntityIsGuardedWildlife(seed) || isOpenWildsGroup) {
       // These four packs were authored as guards for specific new herds. Do
       // not feed them through the legacy map-wide Mucker redistribution or the
       // animals and their supposed guards end up hundreds of blocks apart.
@@ -1036,6 +1251,7 @@ export function harthmereGroundedMuckMonsterSeedsInTerritory(
     // every source area is non-safe), re-roll it deep inside the fallback area.
     let guard = 0;
     while (
+      !isOpenWildsGroup &&
       harthmereMuckMonsterPositionIsInSafeZone(position) &&
       fallbackArea &&
       guard < 8
@@ -1051,7 +1267,8 @@ export function harthmereGroundedMuckMonsterSeedsInTerritory(
     const runtimeWorldSpace = options.useProductionPlacementMap !== false;
     const authoredFallbackPosition = groundMuckEntityFeet(position);
     const fallbackPosition =
-      runtimeWorldSpace && harthmereLiveEntityIsGuardedWildlife(seed)
+      isOpenWildsGroup ||
+      (runtimeWorldSpace && harthmereLiveEntityIsGuardedWildlife(seed))
         ? ([...position] as Vec3)
         : authoredFallbackPosition;
     const productionPosition = runtimeWorldSpace
@@ -1059,12 +1276,20 @@ export function harthmereGroundedMuckMonsterSeedsInTerritory(
       : undefined;
     if (
       productionPosition &&
-      !harthmereMuckMonsterPositionIsInSafeZone(productionPosition) &&
-      muckMonsterAreaForPosition(productionPosition, 1.5)
+      (isOpenWildsGroup
+        ? harthmereOpenWildsMixedGroupPositionIsValid(productionPosition)
+        : !harthmereMuckMonsterPositionIsInSafeZone(productionPosition) &&
+          Boolean(muckMonsterAreaForPosition(productionPosition, 1.5)))
     ) {
-      return { ...seed, position: productionPosition };
+      return [{ ...seed, position: productionPosition }];
     }
-    return { ...seed, position: fallbackPosition };
+    if (
+      isOpenWildsGroup &&
+      !harthmereOpenWildsMixedGroupPositionIsValid(fallbackPosition)
+    ) {
+      return [];
+    }
+    return [{ ...seed, position: fallbackPosition }];
   });
 }
 
@@ -1160,10 +1385,12 @@ export function validateHarthmereLiveEntityProductionSeeds() {
       seed.kind === "ambient_muck_monster"
         ? muckMonsterAreaForPosition(seed.position, 1.5)
         : undefined;
+    const isOpenWildsGroup = harthmereLiveEntityIsOpenWildsMixedGroup(seed);
     if (
       isLiveEntityHelperQuestExcludedPosition(seed.position) &&
       !muckTerritory &&
       !harthmereLiveEntityIsTownLivestock(seed) &&
+      !isOpenWildsGroup &&
       !(seed.kind === "ambient_bandit" && seed.lockedInPlace)
     ) {
       errors.push(`${seed.seedId}:inside_excluded_settlement`);
@@ -1183,7 +1410,17 @@ export function validateHarthmereLiveEntityProductionSeeds() {
         errors.push(`${seed.seedId}:robot_anchor_not_grounded`);
       }
     }
-    if (seed.kind === "ambient_muck_monster" && !muckTerritory) {
+    if (
+      isOpenWildsGroup &&
+      !harthmereOpenWildsMixedGroupPositionIsValid(seed.position)
+    ) {
+      errors.push(`${seed.seedId}:invalid_open_wilds_group_position`);
+    }
+    if (
+      seed.kind === "ambient_muck_monster" &&
+      !muckTerritory &&
+      !isOpenWildsGroup
+    ) {
       errors.push(`${seed.seedId}:monster_outside_muck_territory`);
     }
   }

@@ -28,6 +28,7 @@ import { yieldToOthers } from "@/shared/util/async";
 import assert from "assert";
 
 const USER_ID = 1234 as BiomesId;
+const OTHER_USER_ID = 1235 as BiomesId;
 const RANDOM_ENTITY_ID = 31337 as BiomesId;
 const ID_A = 33 as BiomesId;
 const ID_B = 44 as BiomesId;
@@ -179,6 +180,36 @@ describe("Observer tests", () => {
         },
       ]
     );
+  });
+
+  it("includes every nearby connected player in the same observer bootstrap", async () => {
+    world.applyChanges([
+      {
+        kind: "create",
+        entity: {
+          ...newPlayer(OTHER_USER_ID, "OtherPlayer"),
+          position: { v: [1, 0, 0] },
+        },
+      },
+    ]);
+    await yieldToOthers();
+    createLocalObserver();
+
+    const bootstrap = await observer.start();
+    const initial = bootstrap.map((change) => zSyncChange.parse(change).change);
+    const ids = idsFromBootstrap(bootstrap);
+    const updates = initial.filter(
+      (change): change is Update =>
+        typeof change !== "number" && change.kind === "update"
+    );
+
+    assert.equal(
+      updates.find((change) => change.entity.id === WorldMetadataId)?.entity
+        .synthetic_stats?.online_players,
+      2
+    );
+    assert.ok(ids.has(USER_ID));
+    assert.ok(ids.has(OTHER_USER_ID));
   });
 
   it("retains every entity beyond the capped first bootstrap batch", async function () {

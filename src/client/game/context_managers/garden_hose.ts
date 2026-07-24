@@ -14,9 +14,31 @@ import type { RegistryLoader } from "@/shared/registry";
 import type { Args } from "@/shared/resources/types";
 import { difference } from "lodash";
 
+/**
+ * UI notifications are projections, not quest authority. Announce completion
+ * only when a leaf crosses 100% while active (or was active immediately before
+ * the synchronized update); inventory counters on future/completed leaves may
+ * continue changing but must never replay an Objective Complete toast.
+ */
+export function shouldPublishChallengeStepCompletionForTest(
+  previousProgress: number,
+  currentProgress: number,
+  isActiveStep: boolean,
+  wasActiveStep: boolean
+) {
+  return (
+    previousProgress < 1.0 &&
+    currentProgress >= 1.0 &&
+    (isActiveStep || wasActiveStep)
+  );
+}
+
 export class ResourcesPipeToGardenHose {
   private readonly scope: EmitterScope;
   private previousChallengeStepProgress = new Map<BiomesId, number>();
+  // Tracks the active leaf set from the previous synchronized trigger tree so
+  // a leaf that becomes complete in the next tree can emit exactly once.
+  private previousActiveChallengeSteps = new Set<BiomesId>();
   private previousWearing = new Map<
     string,
     { itemId: string | number; itemName?: string; slot: string }
@@ -260,6 +282,7 @@ export class ResourcesPipeToGardenHose {
     this.previousChallengeStepProgress = new Map<BiomesId, number>();
     const recursiveDelete = (progress: TriggerProgress) => {
       this.previousChallengeStepProgress.delete(progress.id);
+      this.previousActiveChallengeSteps.delete(progress.id);
       for (const child of progress.children ?? []) {
         recursiveDelete(child);
       }
@@ -268,9 +291,14 @@ export class ResourcesPipeToGardenHose {
     const recursiveTrack = (
       progress: TriggerProgress,
       isActiveStep: boolean,
-      bootstrap: boolean
+      bootstrap: boolean,
+      nextActiveSteps: Set<BiomesId>
     ) => {
       const prevVal = this.previousChallengeStepProgress.get(progress.id);
+      const wasActiveStep = this.previousActiveChallengeSteps.has(progress.id);
+      if (isActiveStep) {
+        nextActiveSteps.add(progress.id);
+      }
       if (!bootstrap && progress.progressPercentage !== prevVal) {
         if (prevVal === undefined) {
           if (isActiveStep) {
@@ -280,7 +308,14 @@ export class ResourcesPipeToGardenHose {
               stepId: progress.id,
             });
           }
-        } else if (progress.progressPercentage >= 1.0) {
+        } else if (
+          shouldPublishChallengeStepCompletionForTest(
+            prevVal,
+            progress.progressPercentage,
+            isActiveStep,
+            wasActiveStep
+          )
+        ) {
           this.gardenHose.publish({
             kind: "challenge_step_complete",
             triggerProgress: progress,
@@ -320,7 +355,8 @@ export class ResourcesPipeToGardenHose {
         recursiveTrack(
           child,
           couldBeActiveStep && child.progressPercentage < 1.0,
-          bootstrap
+          bootstrap,
+          nextActiveSteps
         );
         if (progress.payload.kind === "seq" && child.progressPercentage < 1.0) {
           couldBeActiveStep = false;
@@ -342,6 +378,7 @@ export class ResourcesPipeToGardenHose {
         );
 
         const newInProgressRoots = [] as Array<BiomesId>;
+        const nextActiveSteps = new Set<BiomesId>();
         for (const [id] of e.by_root) {
           const isInProgress = challengeState?.in_progress.has(id);
           const isNewlyInProgress =
@@ -369,7 +406,8 @@ export class ResourcesPipeToGardenHose {
             recursiveTrack(
               questBundle.progress,
               questBundle.progress.progressPercentage < 1.0,
-              isProgressBootstrap[0]
+              isProgressBootstrap[0],
+              nextActiveSteps
             );
           }
         }
@@ -378,6 +416,7 @@ export class ResourcesPipeToGardenHose {
         for (const e of newInProgressRoots) {
           previousInProgressRoots.add(e);
         }
+        this.previousActiveChallengeSteps = nextActiveSteps;
 
         isProgressBootstrap[0] = false;
       },

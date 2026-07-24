@@ -55,4 +55,24 @@ describe("world interaction F/E keys", () => {
     assert.match(source, /process\.env\.NODE_ENV !== "production"/);
     assert.match(source, /<HarthmereUnifiedHUD hideLegacyVisuals \/>/);
   });
+
+  it("keeps Snapshot Grove actions mounted in the production Biomes UI branch", () => {
+    const source = fs.readFileSync(
+      path.join(
+        ROOT,
+        "src/client/components/challenges/HarthmereUnifiedHUD.tsx"
+      ),
+      "utf8"
+    );
+    const branchStart = source.indexOf(
+      "if (legacyVisualsHidden) {\n    return ("
+    );
+    assert.notEqual(branchStart, -1, "production render branch is missing");
+    const productionBranch = source.slice(
+      branchStart,
+      source.indexOf("\n  return (", branchStart + 1)
+    );
+    assert.match(productionBranch, /<SnapshotGroveMapHUD \/>/);
+    assert.match(productionBranch, /<SnapshotGroveTutorChatPanel \/>/);
+  });
 });

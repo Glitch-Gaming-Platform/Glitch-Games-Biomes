@@ -3,6 +3,7 @@ import type {
   TriggerProgress,
 } from "@/client/game/resources/challenges";
 import type { MapMarker, MapTrackableQuest } from "../tabs/MapQuestsTab";
+import { isHarthmereNativeGroveQuestId } from "@/shared/harthmere/harthmere_native_quests";
 
 /**
  * A native challenge is complete only after the server-authored trigger tree
@@ -240,6 +241,13 @@ export function nativeQuestTrackableQuests(
       .filter(
         (quest) =>
           (quest.state === "in_progress" || quest.state === "completed") &&
+          // Grove lessons are retired UI rows after completion. Main-story
+          // history remains visible, so this is source-scoped rather than a
+          // blanket completed-quest filter.
+          !(
+            quest.state === "completed" &&
+            isHarthmereNativeGroveQuestId(quest.biscuit.id)
+          ) &&
           !nativeQuestIsWaitingForDiscovery(quest)
       )
       .map((quest) => {

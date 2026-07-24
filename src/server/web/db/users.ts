@@ -77,8 +77,15 @@ export async function updateProfilePicture(
   db: BDB,
   userId: BiomesId,
   dataURI: string,
-  hash: string
+  hash: string,
+  desiredUsername?: string
 ) {
+  // Glitch-auth users can have a durable username reservation left behind
+  // while their user document is absent (for example after importing a
+  // copy-on-write snapshot). Repair that split identity before an update,
+  // otherwise remote storage correctly rejects updateDoc for a missing doc.
+  await getUserOrCreateIfNotExists(db, userId, desiredUsername);
+
   const b64 = dataURLToBase64(dataURI);
 
   const basePath = `${userId}/profile_pic`;
@@ -116,19 +123,27 @@ export async function getUserOrCreateIfNotExists(
   inviteCode?: string
 ): Promise<WithId<FirestoreUser, BiomesId>> {
   let writeUsername = desiredUsername ?? generateInitialUsername();
+  const userDocRef = db.collection("users").doc(toStoredEntityId(uid));
   const takenUsername = await db
     .collection("usernames")
     .doc(normalizeUsernameForFirebaseUnique(writeUsername))
     .get();
-  const userDocRef = db.collection("users").doc(toStoredEntityId(uid));
+  let usernameAlreadyOwnedByUser = false;
   if (takenUsername.exists) {
     if (takenUsername.data()!.userId === uid) {
-      return {
-        ...(await userDocRef.get()).data()!,
-        id: uid,
-      };
+      const existingUser = await userDocRef.get();
+      if (existingUser.exists) {
+        return {
+          ...existingUser.data()!,
+          id: uid,
+        };
+      }
+      // A username pointer without its user document is repairable. Keep the
+      // reserved username and create only the missing user document below.
+      usernameAlreadyOwnedByUser = true;
+    } else {
+      writeUsername = `user-${uid}`;
     }
-    writeUsername = `user-${uid}`;
   }
 
   const usernameDocRef = db
@@ -144,9 +159,11 @@ export async function getUserOrCreateIfNotExists(
 
       const doc = newUserData(writeUsername, inviteCode);
       transaction.create(userDocRef, doc);
-      transaction.create(usernameDocRef, {
-        userId: uid,
-      });
+      if (!usernameAlreadyOwnedByUser) {
+        transaction.create(usernameDocRef, {
+          userId: uid,
+        });
+      }
 
       return {
         ...doc,

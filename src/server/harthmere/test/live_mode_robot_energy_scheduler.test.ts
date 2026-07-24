@@ -30,6 +30,8 @@ import {
   HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_PRODUCTION_COUNT,
   HARTHMERE_LIVE_ENTITY_PRODUCTION_SEEDS,
   HARTHMERE_LIVE_ENTITY_ROBOT_SENTINEL_SEEDS,
+  harthmereLiveEntityIsOpenWildsMixedGroup,
+  harthmereOpenWildsMixedGroupPositionIsValid,
   validateHarthmereLiveEntityProductionSeeds,
 } from "@/shared/harthmere/live_entity_production_seed";
 import {
@@ -109,10 +111,15 @@ describe("Harthmere live entity production seeds", () => {
       HARTHMERE_LIVE_ENTITY_PRODUCTION_SEEDS.length
     );
     for (const seed of HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS) {
-      assert.ok(
-        muckMonsterAreaForPosition(seed.position, 1.5),
-        `${seed.displayName} should be inside an authored Muck territory`
-      );
+      if (harthmereLiveEntityIsOpenWildsMixedGroup(seed)) {
+        assert.ok(harthmereOpenWildsMixedGroupPositionIsValid(seed.position));
+        assert.equal(muckMonsterAreaForPosition(seed.position, 1.5), undefined);
+      } else {
+        assert.ok(
+          muckMonsterAreaForPosition(seed.position, 1.5),
+          `${seed.displayName} should be inside an authored Muck territory`
+        );
+      }
     }
     for (const area of LIVE_ENTITY_ROBOT_PROTECTION_AREAS) {
       assert.ok(
@@ -149,13 +156,15 @@ describe("Harthmere live entity production seeds", () => {
       assert.ok(entityId.startsWith("server-muck-combat:"));
       assert.ok(snapshot.isAttackable);
       assert.ok(snapshot.aiEnabled);
-      assert.ok(
-        muckMonsterAreaForPosition(
-          [snapshot.position.x, snapshot.position.y, snapshot.position.z],
-          1.5
-        ),
-        `${entityId} should be inside an authored Muck territory`
+      const inMuck = muckMonsterAreaForPosition(
+        [snapshot.position.x, snapshot.position.y, snapshot.position.z],
+        1.5
       );
+      if (snapshot.outsideMuckEncounter) {
+        assert.equal(inMuck, undefined);
+      } else {
+        assert.ok(inMuck, `${entityId} should be inside Muck territory`);
+      }
     }
 
     // Muckers and hexes are hostile; wildlife is passive but retaliates and

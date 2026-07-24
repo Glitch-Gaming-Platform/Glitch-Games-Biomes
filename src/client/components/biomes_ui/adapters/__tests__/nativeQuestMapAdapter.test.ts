@@ -161,6 +161,15 @@ describe("nativeQuestMapAdapter", () => {
     );
   });
 
+  it("removes completed Grove onboarding lessons from the active journal", () => {
+    const completedGrove = quest(
+      8760000000000002,
+      "completed",
+      leaf(8761000000000009, "Return to Jackie", 1)
+    );
+    assert.deepStrictEqual(nativeQuestTrackableQuests([completedGrove]), []);
+  });
+
   it("suppresses stale in-progress hidden quests that still await discovery", () => {
     const hiddenBase = quest(
       60,
@@ -179,9 +188,7 @@ describe("nativeQuestMapAdapter", () => {
           count: 1,
           predicate: {
             kind: "object",
-            fields: [
-              ["challenge", { kind: "value", value: 60 as BiomesId }],
-            ],
+            fields: [["challenge", { kind: "value", value: 60 as BiomesId }]],
           },
         },
       },

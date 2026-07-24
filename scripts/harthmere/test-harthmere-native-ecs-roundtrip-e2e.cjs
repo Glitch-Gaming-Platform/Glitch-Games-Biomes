@@ -21,6 +21,7 @@ const { z } = require("zod");
 const {
   Acquisition,
   Challenges,
+  Collideable,
   ContainerInventory,
   CreatedBy,
   EntityDescription,
@@ -35,6 +36,7 @@ const {
   MinigameInstance,
   NpcMetadata,
   NpcState,
+  PlaceableComponent,
   PlayingMinigame,
   Position,
   QuestGiver,
@@ -59,6 +61,7 @@ const {
   PlacePlaceableEvent,
   PlantSeedEvent,
   PokePlantEvent,
+  RemoveMapBeamEvent,
   TillSoilEvent,
   UpdateNpcHealthEvent,
   UpdatePlayerHealthEvent,
@@ -91,6 +94,7 @@ const {
   harthmereNativeNpcCombatProfileForSeed,
 } = require("../../src/shared/harthmere/harthmere_native_combat");
 const {
+  HARTHMERE_NPC_CHASE_MIN_EFFECTIVE_METERS_PER_SECOND,
   HARTHMERE_NPC_CHASE_SPEED_CAP_METERS_PER_SECOND,
 } = require("../../src/shared/npc/behavior/chase_attack");
 const {
@@ -113,13 +117,18 @@ const {
   harthmereAutoSeedTemplateRequirementsObtainable,
 } = require("../../src/shared/harthmere/mmo_jobs_board_authority");
 const {
+  HARTHMERE_JOBS_BOARD_BUSINESS_TEMPLATES,
+} = require("../../src/shared/harthmere/jobs_board_business_templates");
+const {
   harthmereJobsBoardQuestMarkerRuntimePositionForId,
 } = require("../../src/shared/harthmere/jobs_board_quest_marker_positions");
 const {
   createHarthmereLiveModeSharedWorldState,
   defaultHarthmereLiveModeBackendState,
   harthmereLiveModeSharedWorldStateKey,
+  harthmereLiveModePlayerStateKey,
   parseHarthmereLiveModeSharedWorldState,
+  parseHarthmereLiveModeBackendState,
 } = require("../../src/shared/harthmere/live_mode_backend");
 const { connectToRedis } = require("../../src/server/shared/redis/connection");
 const {
@@ -138,18 +147,53 @@ const {
   NATIVE_BUSTED_UNDERWATER_CONTAINER_SPEC,
   NATIVE_GET_THE_MUCK_OUT_QUEST_ID,
   NATIVE_MUCK_VS_MACHINE_QUEST_ID,
+  NATIVE_ROAD_AHEAD_CONTAINER_SPECS,
   NATIVE_ROAD_AHEAD_QUEST_ID,
   NATIVE_ROAD_AHEAD_PRIVATE_CONTAINER_DESCRIPTION,
+  NATIVE_ROAD_AHEAD_STEP_IDS,
   NATIVE_ROBOT_STORY_FINAL_HANDOFFS,
   NATIVE_ROBOT_STORY_ITEM_IDS,
   NATIVE_ROBOT_STORY_QUEST_IDS,
 } = require("../../src/shared/harthmere/native_road_ahead_contract");
+const {
+  SNAPSHOT_GROVE_LANDMARKS,
+  SNAPSHOT_GROVE_NPCS,
+  SNAPSHOT_GROVE_QUESTS,
+  snapshotGroveNpcEntityId,
+} = require("../../src/shared/harthmere/snapshot_grove_content");
+const {
+  snapshotGroveObjectiveCompletionFixture,
+  snapshotGrovePracticeItemFixtureForObjective,
+} = require("../../src/shared/harthmere/snapshot_grove_trigger_contract");
+const {
+  harthmereNativeQuestId,
+  harthmereNativeQuestStepId,
+} = require("../../src/shared/harthmere/harthmere_native_quests");
+const {
+  HARTHMERE_NATIVE_QUEST_GIVER_MANIFEST,
+} = require("../../src/shared/harthmere/harthmere_native_quest_manifest");
+const {
+  HARTHMERE_QUEST_CATALOG,
+} = require("../../src/shared/harthmere/quest_compendium");
+const {
+  HARTHMERE_BIBLE_DRAGON_QUEST_ID,
+  harthmereThaedrynArenaWorldAnchor,
+} = require("../../src/shared/harthmere/bible_quest_live_authority");
+const {
+  getHarthmereQuestResolvedWaypoint,
+} = require("../../src/shared/harthmere/quest_runtime");
+const {
+  QUESTS: HARTHMERE_CLIENT_QUESTS,
+  HARTHMERE_QUEST_STATE_KEY: HARTHMERE_CLIENT_QUEST_STATE_KEY,
+  HARTHMERE_JOBS_BOARD_TARGET_OFFSET,
+} = require("../../src/client/components/challenges/LocalDevHarthmereQuests");
 
 const NATIVE_ROBOT_STORY_EXHAUSTIVE_QUEST_IDS = [
-  NATIVE_BUSTED_QUEST_ID,
-  NATIVE_GET_THE_MUCK_OUT_QUEST_ID,
-  NATIVE_MUCK_VS_MACHINE_QUEST_ID,
+  ...NATIVE_ROBOT_STORY_QUEST_IDS,
 ];
+const ROAD_AHEAD_TOP_WEAR_STEP_ID = 5261262819224626;
+const ROAD_AHEAD_BOTTOMS_WEAR_STEP_ID = 5059357120988468;
+const ROAD_AHEAD_BILLY_TYPE_ID = 7520125886856339;
 const BUSTED_WATERLOGGED_DELIVERY_STEP_ID = 1250712772360777;
 const BUSTED_MUCKWAD_STEP_ID = 3014114416679179;
 const BUSTED_MUCK_BUSTER_STEP_ID = 6113676978673631;
@@ -225,15 +269,43 @@ const root = path.resolve(__dirname, "../..");
 const baseUrl = (
   process.env.HARTHMERE_E2E_BASE_URL || "http://127.0.0.1:3000"
 ).replace(/\/$/, "");
+const syncBaseUrl = (
+  process.env.HARTHMERE_E2E_SYNC_BASE_URL || baseUrl
+).replace(/\/$/, "");
 const configuredGameUrl = process.env.HARTHMERE_E2E_URL || `${baseUrl}/at`;
 const combatMusicOnly = process.env.HARTHMERE_E2E_COMBAT_MUSIC_ONLY === "1";
 const chaseOnly = process.env.HARTHMERE_E2E_CHASE_ONLY === "1";
 const exhaustiveRobotStory =
   process.env.HARTHMERE_E2E_ROBOT_STORY_EXHAUSTIVE === "1";
+const snapshotGroveOnboardingOnly =
+  process.env.HARTHMERE_E2E_SNAPSHOT_GROVE_ONBOARDING_ONLY === "1";
 const robotStoryOnly =
   process.env.HARTHMERE_E2E_ROBOT_STORY_ONLY === "1" || exhaustiveRobotStory;
 const jobsOnly = process.env.HARTHMERE_E2E_JOBS_ONLY === "1";
+const remainingJobsOnly =
+  process.env.HARTHMERE_E2E_REMAINING_JOBS_ONLY === "1";
+const remainingQuestsOnly =
+  process.env.HARTHMERE_E2E_REMAINING_QUESTS_ONLY === "1";
+const remainingBibleOnly =
+  process.env.HARTHMERE_E2E_REMAINING_BIBLE_ONLY === "1";
+const remainingClientQuestsOnly =
+  process.env.HARTHMERE_E2E_REMAINING_CLIENT_QUESTS_ONLY === "1";
+
+function selectedCatalogIds(envName) {
+  const raw = String(process.env[envName] ?? "").trim();
+  return raw
+    ? new Set(raw.split(",").map((value) => value.trim()).filter(Boolean))
+    : undefined;
+}
 const timeoutMs = Number(process.env.HARTHMERE_E2E_TIMEOUT_MS || 120000);
+const probeTimeoutMs = Math.min(
+  timeoutMs,
+  Number(process.env.HARTHMERE_E2E_PROBE_TIMEOUT_MS || 30_000)
+);
+const browserCleanupTimeoutMs = Math.min(
+  timeoutMs,
+  Number(process.env.HARTHMERE_E2E_BROWSER_CLEANUP_TIMEOUT_MS || 15_000)
+);
 const acceptanceGateMs = Number(
   process.env.HARTHMERE_E2E_ACCEPTANCE_GATE_MS ||
     (combatMusicOnly || chaseOnly ? 10_000 : 2000)
@@ -276,15 +348,26 @@ const report = {
   version: "harthmere-native-ecs-browser-e2e-v1",
   runId,
   baseUrl,
+  syncBaseUrl,
   gameUrl: configuredGameUrl,
   mode: chaseOnly
     ? "chase-only"
     : combatMusicOnly
     ? "combat-music-only"
+    : snapshotGroveOnboardingOnly
+    ? "snapshot-grove-onboarding-only"
     : exhaustiveRobotStory
     ? "robot-story-exhaustive"
     : robotStoryOnly
     ? "robot-story-only"
+    : remainingJobsOnly
+    ? "remaining-business-jobs-only"
+    : remainingQuestsOnly
+    ? "remaining-grove-quests-only"
+    : remainingBibleOnly
+    ? "remaining-bible-quests-only"
+    : remainingClientQuestsOnly
+    ? "remaining-client-quests-only"
     : jobsOnly
     ? "jobs-only"
     : "full",
@@ -314,12 +397,20 @@ function gameUrl() {
     localBaseUrl.hostname === "127.0.0.1" ||
     localBaseUrl.hostname === "localhost"
   ) {
-    url.searchParams.set("syncBaseUrl", baseUrl);
+    url.searchParams.set("syncBaseUrl", syncBaseUrl);
   }
   url.searchParams.set("glitch_auto_play", "1");
   url.searchParams.set("harthmere_native_ecs_e2e", "1");
   url.searchParams.set("e2e_run", runId);
-  if (robotStoryOnly || jobsOnly) {
+  if (
+    robotStoryOnly ||
+    jobsOnly ||
+    remainingJobsOnly ||
+    remainingQuestsOnly ||
+    remainingBibleOnly ||
+    remainingClientQuestsOnly ||
+    snapshotGroveOnboardingOnly
+  ) {
     url.searchParams.set("lowMemory", "1");
     url.searchParams.set("resourceCapacityScale", "0.25");
     url.searchParams.set("forceDrawDistance", "16");
@@ -369,6 +460,13 @@ function distance3(a, b) {
   );
 }
 
+function distanceXZ(a, b) {
+  return Math.hypot(
+    Number(a?.[0] ?? 0) - Number(b?.[0] ?? 0),
+    Number(a?.[2] ?? 0) - Number(b?.[2] ?? 0)
+  );
+}
+
 function bridgeCall(page, method, ...args) {
   return page.evaluate(
     async ({ method, args }) => {
@@ -411,27 +509,69 @@ async function jobsBoardFetchWithRetry(page, label) {
   throw lastError;
 }
 
-async function authoritativeEntity(page, id) {
-  const response = await page
-    .context()
-    .request.post(
-      new URL("/api/admin/ecs/get_with_version", baseUrl).toString(),
-      {
-        data: { z: zrpcWebSerialize([id]) },
-        timeout: timeoutMs,
+async function jobsBoardMutationWithRetry(page, payload, label) {
+  let lastError;
+  for (let attempt = 1; attempt <= 4; attempt += 1) {
+    try {
+      return await bridgeCall(page, "jobsBoardFrontendRoundTrip", payload);
+    } catch (error) {
+      lastError = error;
+      const message = error instanceof Error ? error.message : String(error);
+      const retryable =
+        message.includes("Jobs board state request failed: 5") ||
+        message.includes("harthmere_live_fetch_timeout");
+      if (!retryable || attempt === 4) {
+        throw error;
       }
-    );
-  assert(
-    response.ok(),
-    `authoritative ECS read failed HTTP ${response.status()}: ${await response.text()}`
-  );
-  const body = await response.json();
-  assert.equal(typeof body.z, "string", "authoritative ECS read was not zRPC");
-  const [[version, wrapped]] = zrpcWebDeserialize(
-    body.z,
-    z.array(z.tuple([z.number(), zEntity.optional()]))
-  );
-  return { version, entity: wrapped?.entity };
+      // Mutations keep the same requestId on retry. The live-mode backend's
+      // idempotency ledger therefore returns the committed result when a slow
+      // production-shaped request outlives the browser fetch timeout, without
+      // accepting, consuming, completing, or paying the job twice.
+      report.browser.transients.push(
+        `jobs-board-mutation-retry:${label}:attempt=${attempt}:${message}`
+      );
+      await delay(attempt * 1000);
+    }
+  }
+  throw lastError;
+}
+
+async function authoritativeEntity(page, id) {
+  let lastError;
+  for (let attempt = 1; attempt <= 4; attempt += 1) {
+    try {
+      const response = await page.context().request.post(
+        new URL("/api/admin/ecs/get_with_version", baseUrl).toString(),
+        {
+          data: { z: zrpcWebSerialize([id]) },
+          timeout: timeoutMs,
+        }
+      );
+      assert(
+        response.ok(),
+        `authoritative ECS read failed HTTP ${response.status()}: ${await response.text()}`
+      );
+      const body = await response.json();
+      assert.equal(
+        typeof body.z,
+        "string",
+        "authoritative ECS read was not zRPC"
+      );
+      const [[version, wrapped]] = zrpcWebDeserialize(
+        body.z,
+        z.array(z.tuple([z.number(), zEntity.optional()]))
+      );
+      return { version, entity: wrapped?.entity };
+    } catch (error) {
+      lastError = error;
+      if (attempt === 4) throw error;
+      // This is a read-only probe. A production-shaped localhost web worker
+      // can reset an HTTP socket under snapshot load, so retrying cannot
+      // duplicate gameplay or mutate native ECS state.
+      await delay(250 * attempt);
+    }
+  }
+  throw lastError;
 }
 
 async function localEntity(page, id) {
@@ -443,23 +583,58 @@ function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+async function withOperationTimeout(label, operation, operationTimeoutMs) {
+  let timer;
+  try {
+    return await Promise.race([
+      Promise.resolve().then(operation),
+      new Promise((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error(`${label} exceeded ${operationTimeoutMs}ms`)),
+          operationTimeoutMs
+        );
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function waitFor(label, probe, predicate, gateMs, timeout = timeoutMs) {
   const started = Date.now();
   let last;
   let lastError;
   while (Date.now() - started < timeout) {
+    let probeSucceeded = false;
     try {
-      last = await probe();
-      if (predicate(last)) {
-        const elapsedMs = Date.now() - started;
-        assert(
-          elapsedMs <= gateMs,
-          `${label} took ${elapsedMs}ms, above gate ${gateMs}ms`
-        );
-        return { value: last, elapsedMs };
-      }
+      // A saturated WebGL renderer can otherwise leave page.evaluate pending
+      // forever, preventing the non-fail-fast quest batch from reaching later
+      // chapters. A hung probe is a chapter failure and must release the batch.
+      last = await withOperationTimeout(
+        `${label}: probe`,
+        probe,
+        probeTimeoutMs
+      );
+      probeSucceeded = true;
+      lastError = undefined;
     } catch (error) {
       lastError = error;
+      if (String(error).includes(": probe exceeded ")) {
+        throw error;
+      }
+    }
+    // A retryable network/read failure has no fresh value for the predicate.
+    // Reusing `undefined` here can turn a transient ECS read into a misleading
+    // destructuring/type failure and prematurely abort a non-fail-fast batch.
+    if (probeSucceeded && predicate(last)) {
+      const elapsedMs = Date.now() - started;
+      // Gate failures are final evidence, not transient probe errors. Throwing
+      // outside the probe catch avoids wasting the rest of the global timeout.
+      assert(
+        elapsedMs <= gateMs,
+        `${label} took ${elapsedMs}ms, above gate ${gateMs}ms`
+      );
+      return { value: last, elapsedMs };
     }
     await delay(50);
   }
@@ -472,18 +647,35 @@ async function waitFor(label, probe, predicate, gateMs, timeout = timeoutMs) {
 }
 
 async function applyFixture(page, ...changes) {
-  const response = await page
-    .context()
-    .request.post(new URL("/api/admin/apply_ecs_changes", baseUrl).toString(), {
-      data: {
-        z: zrpcWebSerialize(changes.map(serializedChange)),
-      },
-      timeout: timeoutMs,
-    });
-  assert(
-    response.ok(),
-    `ECS fixture apply failed HTTP ${response.status()}: ${await response.text()}`
-  );
+  const retryableUpdate = changes.every((change) => change?.kind === "update");
+  let lastError;
+  for (let attempt = 1; attempt <= (retryableUpdate ? 3 : 1); attempt += 1) {
+    try {
+      const response = await page.context().request.post(
+        new URL("/api/admin/apply_ecs_changes", baseUrl).toString(),
+        {
+          data: {
+            z: zrpcWebSerialize(changes.map(serializedChange)),
+          },
+          timeout: timeoutMs,
+        }
+      );
+      assert(
+        response.ok(),
+        `ECS fixture apply failed HTTP ${response.status()}: ${await response.text()}`
+      );
+      return;
+    } catch (error) {
+      lastError = error;
+      if (!retryableUpdate || attempt === 3) throw error;
+      // Production-shaped localhost can briefly reset an HTTP socket while
+      // several emulated services hydrate the large snapshot. Retrying only
+      // idempotent ECS updates avoids duplicating create/delete fixtures while
+      // allowing player-position setup to survive that transport transient.
+      await delay(250 * attempt);
+    }
+  }
+  throw lastError;
 }
 
 async function pageJson(page, pathname, init = {}) {
@@ -733,10 +925,60 @@ async function openUser(browser, username, label) {
   const failureBaseline = report.browser.failures.length;
   const context = await browser.newContext({
     viewport:
-      robotStoryOnly || jobsOnly
+      robotStoryOnly ||
+      jobsOnly ||
+      remainingJobsOnly ||
+      remainingQuestsOnly ||
+      remainingBibleOnly ||
+      remainingClientQuestsOnly ||
+      snapshotGroveOnboardingOnly
         ? { width: 800, height: 600 }
         : { width: 1440, height: 900 },
   });
+  if (
+    robotStoryOnly ||
+    jobsOnly ||
+    remainingJobsOnly ||
+    remainingQuestsOnly ||
+    remainingBibleOnly ||
+    remainingClientQuestsOnly ||
+    snapshotGroveOnboardingOnly
+  ) {
+    await context.addInitScript(() => {
+      // Headless Chromium exposes Pointer Lock but cannot retain it reliably.
+      // Exercise the production no-pointer-lock/embed path instead: the escape
+      // overlay stays hidden and a focused canvas still receives HUD keys.
+      Object.defineProperty(document, "exitPointerLock", {
+        configurable: true,
+        value: undefined,
+      });
+      // Focused catalog runs deliberately use a tiny draw distance and do not
+      // require the full terrain mesh. Mark the product's one-shot partial-
+      // terrain recovery as already attempted so its delayed hard reload does
+      // not destroy a quest action midway through an otherwise healthy test.
+      sessionStorage.setItem(
+        "biomes.harthmere.partialTerrainRecoveryReloaded",
+        "1"
+      );
+      const missingShardRecoveryKey =
+        "biomes.world.missingShardRecoveryReloadedAt";
+      sessionStorage.setItem(missingShardRecoveryKey, String(Date.now()));
+      const removeStorageItem = Storage.prototype.removeItem;
+      Storage.prototype.removeItem = function (key) {
+        if (
+          this === sessionStorage &&
+          key === missingShardRecoveryKey
+        ) {
+          // The real player controller clears this guard after leaving loaded
+          // terrain. Focused E2E intentionally teleports across unloaded
+          // regions, so keep the guard recent and prevent a test-only reload.
+          this.setItem(key, String(Date.now()));
+          return;
+        }
+        return removeStorageItem.call(this, key);
+      };
+    });
+  }
   const authUrl = new URL("/api/harthmere/visual_test_auth", baseUrl);
   authUrl.searchParams.set("usernameOrId", username);
   authUrl.searchParams.set("e2eAdmin", "1");
@@ -800,12 +1042,23 @@ async function openUser(browser, username, label) {
     undefined,
     { timeout: timeoutMs }
   );
-  if (robotStoryOnly || jobsOnly) {
+  if (
+    robotStoryOnly ||
+    jobsOnly ||
+    remainingJobsOnly ||
+    remainingQuestsOnly ||
+    remainingBibleOnly ||
+    remainingClientQuestsOnly ||
+    snapshotGroveOnboardingOnly
+  ) {
     // The isolated production-bundle harness can receive one initial Bikkie
     // notifier refresh after the first context is ready. Let that navigation
     // finish, then prove the replacement page installed the same bridge before
     // applying or publishing any ECS fixtures.
-    await page.waitForTimeout(20_000);
+    // The reduced catalog fixture suppresses the product's one-shot partial-
+    // terrain recovery above. Revalidate the bridge after the first render
+    // turn so no fixture races React/client initialization.
+    await page.waitForTimeout(1_000);
     await page.waitForFunction(
       () =>
         globalThis.__harthmereNativeEcsE2E?.version === "native-ecs-e2e-v1" &&
@@ -821,6 +1074,32 @@ async function openUser(browser, username, label) {
     (value) => value.userId
   );
   assert.equal(String(bridgeUserId), String(auth.userId));
+  const gameCanvas = page.locator("canvas").first();
+  if ((await gameCanvas.count()) === 1) {
+    await gameCanvas.focus({ timeout: probeTimeoutMs });
+  }
+  const enterGame = page.getByRole("button", {
+    name: "Enter Game",
+    exact: true,
+  });
+  if (await enterGame.isVisible().catch(() => false)) {
+    // The production bundle can expose the pause menu while its full-screen
+    // loading wrapper is still receiving pointer events. Waiting on this real
+    // interaction boundary keeps every focused quest/job batch from reporting
+    // a false click timeout during a large Redis world bootstrap.
+    await page.waitForFunction(
+      () => !document.querySelector(".loading-wrapper"),
+      undefined,
+      { timeout: timeoutMs }
+    );
+    // Real keyboard interactions such as F, J, I, and X are ignored while the
+    // pause overlay owns input. Acquire gameplay input before any quest action.
+    await enterGame.click({ timeout: probeTimeoutMs });
+    await enterGame
+      .waitFor({ state: "hidden", timeout: probeTimeoutMs })
+      .catch(() => undefined);
+    report.browser.transients.push(`${label}:entered-game-before-input-e2e`);
+  }
   console.log(`E2E ${label}: client context and bridge ready`);
   return {
     context,
@@ -882,13 +1161,13 @@ function nativeVitalsFixture() {
   return triggerState;
 }
 
-async function waitForPlayerFixture(page, userId) {
+async function waitForPlayerFixture(page, userId, expectedHp = 50) {
   return waitFor(
     "fixture synchronized to browser",
     () => localEntity(page, userId),
     ({ entity }) =>
       inventoryCount(entity, BikkieIds.dirt) === 5n &&
-      entity?.health?.hp === 50,
+      entity?.health?.hp === expectedHp,
     originSyncGateMs
   );
 }
@@ -1246,6 +1525,361 @@ async function craftRecipeOnce(first, position, recipe, outputItemId, label) {
   );
 }
 
+async function performRoadAheadMapBeamStep({
+  first,
+  sameUserPeer,
+  position,
+  questId,
+  step,
+}) {
+  const label = `The Road Ahead: ${step.name}`;
+  await waitForFrontendQuestStep(first.page, questId, step.id, label);
+  assert(
+    Array.isArray(step.pos) && step.pos.length === 2,
+    `${label} has no authored map position`
+  );
+  const destination = [step.pos[0], position[1], step.pos[1]];
+  await publishFrontendMove(first.page, first.userId, destination);
+  await waitFor(
+    `${label}: browser movement reaches the authored beam`,
+    () => localEntity(first.page, first.userId),
+    ({ entity }) => distance3(entity?.position?.v, destination) < 0.01,
+    Math.max(originSyncGateMs, 10_000),
+    timeoutMs
+  );
+  await publishAndWaitForQuestStep({
+    first,
+    sameUserPeer,
+    questId,
+    step,
+    label,
+    // The map manager emits this exact event when an authored destination is
+    // cleared in range. A small client id is sufficient; logic publishes the
+    // player's authoritative location for the trigger distance check.
+    event: new RemoveMapBeamEvent({
+      id: first.userId,
+      beam_client_id: Number(step.id % 2_000_000_000),
+      beam_location: [...step.pos],
+    }),
+  });
+  await publishFrontendMove(first.page, first.userId, position);
+}
+
+async function performRoadAheadCollectStep({ first, position, questId, step }) {
+  const label = `The Road Ahead: ${step.name}`;
+  await waitForFrontendQuestStep(first.page, questId, step.id, label);
+  const itemId = step.item?.id;
+  assert(itemId, `${label} has no exact item id`);
+  const partial = Math.max(0, Number(step.count) - 1);
+  if (partial > 0) {
+    await createAndPickupItem(first, position, itemId, partial, label);
+    await waitForFrontendObjectiveIncludes(
+      first.page,
+      questId,
+      `${partial}/${step.count}`,
+      label
+    );
+    assert.equal(
+      serializedTriggerStepIsFired(
+        (await authoritativeEntity(first.page, first.userId)).entity,
+        questId,
+        step.id
+      ),
+      false,
+      `${label} fired before all Muckwad was collected`
+    );
+  }
+  await createAndPickupItem(first, position, itemId, 1, label);
+  const progressed = await waitForQuestLeaf(first, questId, step, label);
+  assert(
+    inventoryCount(progressed.value.entity, itemId) >= BigInt(step.count),
+    `${label} did not retain the collected Muckwad`
+  );
+  report.scenarios.push({
+    name: label,
+    status: "pass",
+    questId: String(questId),
+    stepId: String(step.id),
+    itemId: String(itemId),
+    requiredCount: step.count,
+  });
+}
+
+function roadAheadContainerDetails(stepId) {
+  if (
+    stepId === NATIVE_ROAD_AHEAD_STEP_IDS.CHOOSE_TOP ||
+    stepId === NATIVE_ROAD_AHEAD_STEP_IDS.CHOOSE_BOTTOMS
+  ) {
+    return {
+      spec: NATIVE_ROAD_AHEAD_CONTAINER_SPECS.clothingCrate,
+      label: "Clothing Crate",
+      itemLabels: ["T-Shirt", "Jeans"],
+    };
+  }
+  if (stepId === NATIVE_ROAD_AHEAD_STEP_IDS.OPEN_BILLYS_BAG) {
+    return {
+      spec: NATIVE_ROAD_AHEAD_CONTAINER_SPECS.billysToolbag,
+      label: "Billy's Toolbag",
+      itemLabels: ["Billy's Pick"],
+    };
+  }
+}
+
+async function performRoadAheadContainerStep({
+  first,
+  position,
+  questId,
+  step,
+}) {
+  const details = roadAheadContainerDetails(step.id);
+  assert(details, `No Road Ahead container plan for ${step.id}`);
+  const label = `The Road Ahead: ${step.name}`;
+  await waitForFrontendQuestStep(first.page, questId, step.id, label);
+  const sourcePosition = [position[0] + 4, position[1], position[2]];
+  const source = await authoritativeEntity(
+    first.page,
+    details.spec.sourceEntityId
+  );
+  await applyFixture(
+    first.page,
+    {
+      kind: source.entity ? "update" : "create",
+      entity: {
+        id: details.spec.sourceEntityId,
+        position: Position.create({ v: sourcePosition }),
+        label: Label.create({ text: details.label }),
+        placeable_component: PlaceableComponent.create({
+          item_id: details.spec.placeableItemId,
+        }),
+        quest_giver: QuestGiver.create(),
+      },
+    },
+    {
+      kind: "update",
+      entity: {
+        id: first.userId,
+        position: Position.create({ v: sourcePosition }),
+      },
+    }
+  );
+  await waitFor(
+    `${label}: canonical source and player reach frontend ECS`,
+    async () => ({
+      source: await localEntity(first.page, details.spec.sourceEntityId),
+      player: await localEntity(first.page, first.userId),
+    }),
+    ({ source: localSource, player }) =>
+      localSource.entity?.placeable_component?.item_id ===
+        details.spec.placeableItemId &&
+      distance3(player.entity?.position?.v, sourcePosition) < 0.01,
+    Math.max(originSyncGateMs, 10_000),
+    timeoutMs
+  );
+  const before = await authoritativeEntity(first.page, first.userId);
+  const openPrompt = first.page.getByText("Open Container", { exact: true });
+  await openPrompt.waitFor({ state: "visible", timeout: timeoutMs });
+  await first.page.screenshot({
+    path: path.join(
+      artifactsDir,
+      `${runId}-road-ahead-${String(step.id)}-f-prompt.png`
+    ),
+  });
+  await first.page.keyboard.press("KeyF");
+  const takeAll = first.page.getByRole("button", { name: "Take All" });
+  await takeAll.waitFor({ state: "visible", timeout: timeoutMs });
+  for (const itemLabel of details.itemLabels) {
+    await first.page
+      .getByText(itemLabel, { exact: true })
+      .first()
+      .waitFor({ state: "visible", timeout: timeoutMs });
+  }
+  await first.page.screenshot({
+    path: path.join(
+      artifactsDir,
+      `${runId}-road-ahead-${String(step.id)}-container.png`
+    ),
+  });
+  await takeAll.click();
+
+  const itemIds = details.spec.choices.flatMap((choice) => choice.itemIds);
+  const progressed = await waitFor(
+    `${label}: Take All transfers every authored item`,
+    () => authoritativeEntity(first.page, first.userId),
+    ({ entity }) =>
+      itemIds.every(
+        (itemId) =>
+          inventoryCount(entity, itemId) >=
+          inventoryCount(before.entity, itemId) + 1n
+      ) &&
+      details.spec.choices.every((choice) =>
+        serializedTriggerStepIsFired(entity, questId, choice.stepId)
+      ),
+    Math.max(acceptanceGateMs, 10_000),
+    timeoutMs
+  );
+  await waitFor(
+    `${label}: complete Take All inventory returns to frontend`,
+    () => localEntity(first.page, first.userId),
+    ({ entity }) =>
+      itemIds.every(
+        (itemId) =>
+          inventoryCount(entity, itemId) ===
+          inventoryCount(progressed.value.entity, itemId)
+      ),
+    Math.max(originSyncGateMs, 10_000),
+    timeoutMs
+  );
+  await first.page.keyboard.press("Escape");
+  await publishFrontendMove(first.page, first.userId, position);
+  report.scenarios.push({
+    name: `${label}: visible F prompt and Take All`,
+    status: "pass",
+    questId: String(questId),
+    stepIds: details.spec.choices.map((choice) => String(choice.stepId)),
+    sourceEntityId: String(details.spec.sourceEntityId),
+    itemIds: itemIds.map(String),
+    action: "Take All",
+  });
+}
+
+async function performRoadAheadWearTypeStep({ first, questId, step }) {
+  const label = `The Road Ahead: ${step.name}`;
+  await waitForFrontendQuestStep(first.page, questId, step.id, label);
+  const top = step.id === ROAD_AHEAD_TOP_WEAR_STEP_ID;
+  const itemLabel = top ? "T-Shirt" : "Jeans";
+  const allowedItemIds = (
+    top
+      ? NATIVE_ROAD_AHEAD_CONTAINER_SPECS.clothingCrate.choices[0]
+      : NATIVE_ROAD_AHEAD_CONTAINER_SPECS.clothingCrate.choices[1]
+  ).itemIds;
+  const before = await authoritativeEntity(first.page, first.userId);
+  assert(
+    allowedItemIds.some((itemId) => inventoryCount(before.entity, itemId) > 0n),
+    `${label} has no eligible ${itemLabel} in inventory`
+  );
+  await first.page.keyboard.press("KeyI");
+  const item = first.page.getByText(itemLabel, { exact: true }).first();
+  await item.waitFor({ state: "visible", timeout: timeoutMs });
+  await item.click();
+  await clickUniqueButton(first.page, "Equip", label);
+  const progressed = await waitForQuestLeaf(first, questId, step, label);
+  assert(
+    [...(progressed.value.entity?.wearing?.items?.values() ?? [])].some(
+      (worn) => worn && allowedItemIds.includes(worn.id)
+    ),
+    `${label} fired without an eligible item in Wearing`
+  );
+  await first.page.keyboard.press("Escape");
+  report.scenarios.push({
+    name: `${label}: real inventory Equip action`,
+    status: "pass",
+    questId: String(questId),
+    stepId: String(step.id),
+    eligibleItemIds: allowedItemIds.map(String),
+  });
+}
+
+async function performRoadAheadPhotoStep({ first, position, questId, step }) {
+  const label = `The Road Ahead: ${step.name}`;
+  await waitForFrontendQuestStep(first.page, questId, step.id, label);
+  const cameraId = BikkieIds.camera;
+  const player = await authoritativeEntity(first.page, first.userId);
+  const cameraRef = inventoryRefForItem(player.entity, cameraId);
+  assert(cameraRef, `${label} has no B-01 Camera`);
+  if (!(cameraRef.kind === "hotbar" && cameraRef.idx === 0)) {
+    await bridgeCall(
+      first.page,
+      "publish",
+      serializedEvent(
+        new InventorySwapEvent({
+          player_id: first.userId,
+          src_id: first.userId,
+          src: cameraRef,
+          dst_id: first.userId,
+          dst: { kind: "hotbar", idx: 0 },
+          positions: [],
+        })
+      )
+    );
+  }
+  await waitFor(
+    `${label}: camera reaches hotbar`,
+    () => localEntity(first.page, first.userId),
+    ({ entity }) => entity?.inventory?.hotbar?.[0]?.item?.id === cameraId,
+    Math.max(originSyncGateMs, 10_000),
+    timeoutMs
+  );
+  await first.page.keyboard.press("Digit1");
+  const exitCamera = first.page.getByRole("button", { name: /Exit Camera/ });
+  await exitCamera.waitFor({ state: "visible", timeout: timeoutMs });
+  await first.page.keyboard.press("KeyF");
+  await waitFor(
+    `${label}: flip key enters authoritative selfie mode`,
+    () => localEntity(first.page, first.userId),
+    ({ entity }) => entity?.player_behavior?.camera_mode === "selfie",
+    Math.max(originSyncGateMs, 10_000),
+    timeoutMs
+  );
+  const upload = await first.page.evaluate(
+    async ({ position: shotPosition, billyId }) => {
+      const response = await fetch("/api/upload/photo", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          photoDataURI:
+            "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9ZQmcAAAAASUVORK5CYII=",
+          position: shotPosition,
+          orientation: [0, 0],
+          shotCoordinates: shotPosition,
+          shotLookAt: [shotPosition[0] + 1, shotPosition[1], shotPosition[2]],
+          taggedObjects: [
+            {
+              kind: "entity",
+              id: billyId,
+              biscuitId: billyId,
+              position: shotPosition,
+            },
+          ],
+          caption: "Road Ahead browser E2E",
+          allowWarping: false,
+          cameraMode: "selfie",
+        }),
+      });
+      return { status: response.status, body: await response.text() };
+    },
+    {
+      position,
+      billyId: ROAD_AHEAD_BILLY_TYPE_ID,
+    }
+  );
+  assert.equal(
+    upload.status,
+    200,
+    `${label} photo upload failed: ${upload.body}`
+  );
+  await waitForQuestLeaf(first, questId, step, label);
+  await first.page.screenshot({
+    path: path.join(artifactsDir, `${runId}-road-ahead-selfie.png`),
+  });
+  await first.page.keyboard.press("KeyX");
+  await exitCamera.waitFor({ state: "hidden", timeout: timeoutMs });
+  await waitFor(
+    `${label}: X exits selfie mode and restores camera direction state`,
+    () => localEntity(first.page, first.userId),
+    ({ entity }) => entity?.player_behavior?.camera_mode !== "selfie",
+    Math.max(originSyncGateMs, 10_000),
+    timeoutMs
+  );
+  report.scenarios.push({
+    name: `${label}: selfie upload and X camera exit`,
+    status: "pass",
+    questId: String(questId),
+    stepId: String(step.id),
+    uploadStatus: upload.status,
+  });
+}
+
 async function performQuestClaimStep({
   first,
   sameUserPeer,
@@ -1254,6 +1888,17 @@ async function performQuestClaimStep({
   questId,
   step,
 }) {
+  if (
+    questId === NATIVE_ROAD_AHEAD_QUEST_ID &&
+    roadAheadContainerDetails(step.id)
+  ) {
+    return performRoadAheadContainerStep({
+      first,
+      position,
+      questId,
+      step,
+    });
+  }
   const label = `${
     nativeRobotStoryBikkieTray.contents.get(questId).displayName
   }: ${step.name ?? step.id}`;
@@ -1401,66 +2046,121 @@ async function performBustedUnderwaterContainerStep({
 }) {
   const label = `Busted: ${step.name}`;
   await waitForFrontendQuestStep(first.page, questId, step.id, label);
-  const containerId = await bridgeCall(first.page, "allocateId");
-  const containerItems = new Array(16);
-  containerItems[0] = countOf(
-    NATIVE_BUSTED_UNDERWATER_CONTAINER_SPEC.itemId,
-    1n
-  );
-  await applyFixture(first.page, {
-    kind: "create",
-    entity: {
-      id: containerId,
-      position: Position.create({ v: [...position] }),
-      label: Label.create({ text: "Chest The Grove Underwater Main" }),
-      entity_description: EntityDescription.create({
-        text: NATIVE_ROAD_AHEAD_PRIVATE_CONTAINER_DESCRIPTION,
-      }),
-      created_by: CreatedBy.create({
-        id: first.userId,
-        created_at: secondsSinceEpoch(),
-      }),
-      quest_giver: QuestGiver.create(),
-      container_inventory: ContainerInventory.create({ items: containerItems }),
+  const sourceId = NATIVE_BUSTED_UNDERWATER_CONTAINER_SPEC.sourceEntityId;
+  const chestPosition = [...NATIVE_BUSTED_UNDERWATER_CONTAINER_SPEC.position];
+  const interactionPosition = [
+    chestPosition[0],
+    chestPosition[1] + 6,
+    chestPosition[2],
+  ];
+  // This is deliberately the rendered snapshot source, not a synthetic hidden
+  // inventory. The browser must discover the same placed frame a player sees,
+  // then the API materializes its private per-player inventory after F is used.
+  await applyFixture(
+    first.page,
+    {
+      kind: "update",
+      entity: {
+        id: sourceId,
+        position: Position.create({ v: chestPosition }),
+        label: Label.create({ text: "Chest The Grove Underwater Main" }),
+        placeable_component: PlaceableComponent.create({
+          item_id: NATIVE_BUSTED_UNDERWATER_CONTAINER_SPEC.placeableItemId,
+        }),
+        quest_giver: QuestGiver.create(),
+      },
     },
-  });
+    {
+      kind: "update",
+      entity: {
+        id: first.userId,
+        position: Position.create({ v: interactionPosition }),
+      },
+    }
+  );
   await waitFor(
-    `${label}: physical chest reaches frontend ECS`,
-    () => localEntity(first.page, containerId),
-    ({ entity }) =>
-      entity?.container_inventory?.items?.[0]?.item?.id ===
-      NATIVE_BUSTED_UNDERWATER_CONTAINER_SPEC.itemId,
+    `${label}: canonical source and player position reach frontend ECS`,
+    async () => ({
+      chest: await localEntity(first.page, sourceId),
+      player: await localEntity(first.page, first.userId),
+    }),
+    ({ chest, player }) =>
+      chest.entity?.label?.text === "Chest The Grove Underwater Main" &&
+      distance3(player.entity?.position?.v, interactionPosition) < 0.01,
     Math.max(originSyncGateMs, 10_000),
     timeoutMs
   );
+
   const before = await authoritativeEntity(first.page, first.userId);
-  await publishAndWaitForQuestStep({
-    first,
-    sameUserPeer,
-    questId,
-    step,
-    label,
-    event: new InventorySwapEvent({
-      player_id: first.userId,
-      src_id: containerId,
-      src: { kind: "item", idx: 0 },
-      dst_id: first.userId,
-      dst: { kind: "item", idx: 5 },
-      positions: [
-        [
-          Math.floor(position[0]),
-          Math.floor(position[1]),
-          Math.floor(position[2]),
-        ],
-      ],
-    }),
+  const openPrompt = first.page.getByText("Open Container", { exact: true });
+  await openPrompt.waitFor({ state: "visible", timeout: timeoutMs });
+  assert.equal(
+    await openPrompt.count(),
+    1,
+    `${label} did not expose exactly one visible F prompt`
+  );
+  await first.page.screenshot({
+    path: path.join(artifactsDir, `${runId}-busted-underwater-f-prompt.png`),
   });
-  const after = await authoritativeEntity(first.page, first.userId);
-  const container = await authoritativeEntity(first.page, containerId);
-  assert(!container.entity?.container_inventory?.items?.[0]);
+
+  // Keyboard input proves the world-interaction dispatcher and modal routing;
+  // clicking a test-only bridge would repeat the original coverage gap.
+  await first.page.keyboard.press("KeyF");
+  const takeAll = first.page.getByRole("button", { name: "Take All" });
+  await takeAll.waitFor({ state: "visible", timeout: timeoutMs });
+  await first.page
+    .getByText("Water-logged Muck Buster", { exact: true })
+    .waitFor({ state: "visible", timeout: timeoutMs });
+  await first.page.screenshot({
+    path: path.join(artifactsDir, `${runId}-busted-underwater-container.png`),
+  });
+  await takeAll.click();
+
+  const progressed = await waitFor(
+    `${label}: browser Take All reaches authoritative inventory and quest state`,
+    () => authoritativeEntity(first.page, first.userId),
+    ({ entity }) =>
+      inventoryCount(entity, NATIVE_BUSTED_UNDERWATER_CONTAINER_SPEC.itemId) ===
+        inventoryCount(
+          before.entity,
+          NATIVE_BUSTED_UNDERWATER_CONTAINER_SPEC.itemId
+        ) +
+          1n && serializedTriggerStepIsFired(entity, questId, step.id),
+    Math.max(acceptanceGateMs, 10_000),
+    timeoutMs
+  );
+  await waitFor(
+    `${label}: browser transfer returns to the originating frontend`,
+    () => localEntity(first.page, first.userId),
+    ({ entity }) =>
+      inventoryCount(entity, NATIVE_BUSTED_UNDERWATER_CONTAINER_SPEC.itemId) ===
+      inventoryCount(
+        progressed.value.entity,
+        NATIVE_BUSTED_UNDERWATER_CONTAINER_SPEC.itemId
+      ),
+    Math.max(originSyncGateMs, 10_000),
+    timeoutMs
+  );
+  if (sameUserPeer) {
+    await waitFor(
+      `${label}: browser transfer reaches the same-user peer`,
+      () => localEntity(sameUserPeer, first.userId),
+      ({ entity }) =>
+        inventoryCount(
+          entity,
+          NATIVE_BUSTED_UNDERWATER_CONTAINER_SPEC.itemId
+        ) ===
+        inventoryCount(
+          progressed.value.entity,
+          NATIVE_BUSTED_UNDERWATER_CONTAINER_SPEC.itemId
+        ),
+      Math.max(secondClientSyncGateMs, 10_000),
+      timeoutMs
+    );
+  }
   assert.equal(
     inventoryCount(
-      after.entity,
+      progressed.value.entity,
       NATIVE_BUSTED_UNDERWATER_CONTAINER_SPEC.itemId
     ),
     inventoryCount(
@@ -1468,6 +2168,41 @@ async function performBustedUnderwaterContainerStep({
       NATIVE_BUSTED_UNDERWATER_CONTAINER_SPEC.itemId
     ) + 1n
   );
+  await waitFor(
+    `${label}: next authored objective reaches the frontend`,
+    () => bridgeCall(first.page, "nativeQuestFrontendSnapshot"),
+    (snapshot) => {
+      const quest = questFromFrontend(snapshot, questId);
+      return (
+        quest?.status === "active" &&
+        quest.currentStepId &&
+        quest.currentStepId !== String(step.id)
+      );
+    },
+    Math.max(originSyncGateMs, 10_000),
+    timeoutMs
+  );
+  await first.page.keyboard.press("Escape");
+  // Return to the shared robot-story fixture so subsequent NPC and world
+  // actions continue to exercise their authored positions.
+  await publishFrontendMove(first.page, first.userId, position);
+  await waitFor(
+    `${label}: player returns to the robot-story fixture`,
+    () => localEntity(first.page, first.userId),
+    ({ entity }) => distance3(entity?.position?.v, position) < 0.01,
+    Math.max(originSyncGateMs, 10_000),
+    timeoutMs
+  );
+  report.scenarios.push({
+    name: `${label}: visible F prompt and container UI retrieval`,
+    status: "pass",
+    questId: String(questId),
+    stepId: String(step.id),
+    sourceEntityId: String(sourceId),
+    itemId: String(NATIVE_BUSTED_UNDERWATER_CONTAINER_SPEC.itemId),
+    prompt: "Open Container",
+    action: "Take All",
+  });
 }
 
 async function waitForQuestLeaf(first, questId, step, label) {
@@ -1933,6 +2668,8 @@ async function performEventStep(args) {
       return performNpcKilledStep(args);
     case "minigame_simple_race_finish":
       return performRaceStep(args);
+    case "postPhoto":
+      return performRoadAheadPhotoStep(args);
     default:
       throw new Error(
         `No exhaustive robot-story action for ${args.step.eventKind}`
@@ -1942,6 +2679,25 @@ async function performEventStep(args) {
 
 async function executeRobotStoryTriggerNode(args) {
   const { first, questId, step } = args;
+  if (
+    step.id &&
+    serializedTriggerStepIsFired(
+      (await authoritativeEntity(first.page, first.userId)).entity,
+      questId,
+      step.id
+    )
+  ) {
+    report.scenarios.push({
+      name: `${nativeRobotStoryBikkieTray.contents.get(questId).displayName}: ${
+        step.name || step.id
+      } already satisfied by the prior multi-action browser step`,
+      status: "pass",
+      questId: String(questId),
+      stepId: String(step.id),
+      satisfiedByPriorAction: true,
+    });
+    return;
+  }
   switch (step.kind) {
     case "seq":
     case "all":
@@ -1974,8 +2730,14 @@ async function executeRobotStoryTriggerNode(args) {
       return performInventoryHasStep(args);
     case "collectType":
       return performCollectTypeStep(args);
+    case "collect":
+      return performRoadAheadCollectStep(args);
     case "craft":
       return performCraftStep(args);
+    case "mapBeam":
+      return performRoadAheadMapBeamStep(args);
+    case "wearType":
+      return performRoadAheadWearTypeStep(args);
     case "event":
       return performEventStep(args);
     default:
@@ -1986,6 +2748,7 @@ async function executeRobotStoryTriggerNode(args) {
 }
 
 async function proveNativeRobotStoryExhaustiveRoundTrip(
+  browser,
   first,
   sameUserPeer,
   position
@@ -2001,23 +2764,14 @@ async function proveNativeRobotStoryExhaustiveRoundTrip(
   );
   const before = await authoritativeEntity(first.page, first.userId);
   const challenges = Challenges.create();
-  challenges.complete.add(NATIVE_ROAD_AHEAD_QUEST_ID);
-  challenges.started_at.set(
-    NATIVE_ROAD_AHEAD_QUEST_ID,
-    secondsSinceEpoch() - 20
-  );
-  challenges.finished_at.set(
-    NATIVE_ROAD_AHEAD_QUEST_ID,
-    secondsSinceEpoch() - 10
-  );
-  challenges.in_progress.add(NATIVE_BUSTED_QUEST_ID);
-  challenges.started_at.set(NATIVE_BUSTED_QUEST_ID, secondsSinceEpoch());
+  challenges.in_progress.add(NATIVE_ROAD_AHEAD_QUEST_ID);
+  challenges.started_at.set(NATIVE_ROAD_AHEAD_QUEST_ID, secondsSinceEpoch());
   const triggerState = TriggerState.clone(before.entity.trigger_state);
   for (const questId of NATIVE_ROBOT_STORY_QUEST_IDS) {
     triggerState.by_root.delete(questId);
   }
   const inventory = Inventory.create({
-    items: [countOf(NATIVE_ROBOT_STORY_ITEM_IDS.ROBOT_SHELL, 1n)],
+    items: [],
     hotbar: new Array(PLAYER_HOTBAR_SLOTS),
     currencies: new Map(),
     overflow: new Map(),
@@ -2037,63 +2791,214 @@ async function proveNativeRobotStoryExhaustiveRoundTrip(
     },
   });
   await waitFor(
-    "Busted exhaustive starting fixture synchronizes",
+    "Road Ahead exhaustive starting fixture synchronizes",
     () => localEntity(first.page, first.userId),
     ({ entity }) =>
-      entity?.challenges?.in_progress.has(NATIVE_BUSTED_QUEST_ID) &&
-      inventoryCount(entity, NATIVE_ROBOT_STORY_ITEM_IDS.ROBOT_SHELL) === 1n,
+      entity?.challenges?.in_progress.has(NATIVE_ROAD_AHEAD_QUEST_ID) &&
+      inventoryCount(entity, NATIVE_ROBOT_STORY_ITEM_IDS.ROBOT_SHELL) === 0n,
     Math.max(originSyncGateMs, 10_000),
     timeoutMs
   );
 
+  const chapterFailures = [];
+  const recordChapterFailure = async (quest, error) => {
+    const message = error?.stack || String(error);
+    chapterFailures.push({
+      questId: String(quest.id),
+      title: quest.displayName,
+      error: message,
+    });
+    report.scenarios.push({
+      name: `${quest.displayName}: exhaustive browser chapter`,
+      status: "fail",
+      questId: String(quest.id),
+      error: message,
+      triggerNodeIds: triggerTreeNodeIds(quest.trigger).map(String),
+    });
+    if (first?.page && !first.page.isClosed()) {
+      await withOperationTimeout(
+        `${quest.displayName}: failure screenshot`,
+        () =>
+          first.page.screenshot({
+            path: path.join(
+              artifactsDir,
+              `${runId}-robot-story-${String(quest.id)}-failure.png`
+            ),
+            fullPage: true,
+          }),
+        browserCleanupTimeoutMs
+      ).catch(() => undefined);
+    }
+    // Persist incremental evidence because a later renderer failure must not
+    // erase the completed chapter results from this non-fail-fast batch.
+    fs.writeFileSync(
+      path.join(artifactsDir, `${runId}-partial-report.json`),
+      JSON.stringify(
+        report,
+        (_key, value) => (typeof value === "bigint" ? `${value}n` : value),
+        2
+      )
+    );
+  };
+  let recoverNextChapter = false;
   for (let index = 0; index < quests.length; index += 1) {
     const quest = quests[index];
     const questId = quest.id;
-    await waitFor(
-      `${quest.displayName}: chapter is active before exhaustive actions`,
-      () => authoritativeEntity(first.page, first.userId),
-      ({ entity }) => entity?.challenges?.in_progress.has(questId),
-      Math.max(acceptanceGateMs, 10_000),
-      timeoutMs
-    );
-    await executeRobotStoryTriggerNode({
-      first,
-      sameUserPeer,
-      position,
-      targets,
-      questId,
-      step: quest.trigger,
-    });
-    const nextQuestId = quests[index + 1]?.id;
-    const completed = await waitFor(
-      `${quest.displayName}: chapter completion and automatic continuation`,
-      () => authoritativeEntity(first.page, first.userId),
-      ({ entity }) =>
-        entity?.challenges?.complete.has(questId) &&
-        (nextQuestId ? entity.challenges.in_progress.has(nextQuestId) : true),
-      Math.max(acceptanceGateMs, 10_000),
-      timeoutMs
-    );
-    if (nextQuestId) {
+    if (recoverNextChapter) {
+      try {
+        // A failed WebGL page can keep page.evaluate saturated. Start the next
+        // chapter with a fresh actor/context so one renderer cannot stall the
+        // remaining quest coverage or carry stale quest receipts forward.
+        await withOperationTimeout(
+          `${quest.displayName}: close failed chapter context`,
+          () => first.context.close(),
+          browserCleanupTimeoutMs
+        ).catch((error) =>
+          report.browser.transients.push(
+            `${quest.displayName}:context-close-timeout:${String(error)}`
+          )
+        );
+        first = await openUser(
+          browser,
+          `RobotChapter-${index + 1}-${runId.slice(-8)}`,
+          `robot-chapter-${index + 1}`
+        );
+        sameUserPeer = undefined;
+
+        const challenges = Challenges.create();
+        for (let priorIndex = 0; priorIndex < index; priorIndex += 1) {
+          const priorQuestId = quests[priorIndex].id;
+          challenges.complete.add(priorQuestId);
+          challenges.started_at.set(priorQuestId, secondsSinceEpoch() - 20);
+          challenges.finished_at.set(priorQuestId, secondsSinceEpoch() - 10);
+        }
+        challenges.in_progress.add(questId);
+        challenges.started_at.set(questId, secondsSinceEpoch());
+        const recoveryItems = [];
+        if (index >= 1) {
+          recoveryItems.push(
+            countOf(NATIVE_ROBOT_STORY_ITEM_IDS.ROBOT_SHELL, 1n)
+          );
+        }
+        if (index >= 2) {
+          recoveryItems.push(
+            countOf(NATIVE_ROBOT_STORY_ITEM_IDS.ROBOT_MOTOR_UNIT, 1n)
+          );
+        }
+        if (index >= 3) {
+          recoveryItems.push(
+            countOf(NATIVE_ROBOT_STORY_ITEM_IDS.ROBOT_POWER_SUPPLY, 1n)
+          );
+        }
+        const recoveryInventory = Inventory.create({
+          items: recoveryItems,
+          hotbar: new Array(PLAYER_HOTBAR_SLOTS),
+          currencies: new Map(),
+          overflow: new Map(),
+          selected: { kind: "hotbar", idx: 0 },
+        });
+        recoveryInventory.items.length = PLAYER_INVENTORY_SLOTS;
+        const current = await authoritativeEntity(first.page, first.userId);
+        const recoveryTriggerState = TriggerState.clone(
+          current.entity.trigger_state
+        );
+        for (const storyQuestId of NATIVE_ROBOT_STORY_QUEST_IDS) {
+          recoveryTriggerState.by_root.delete(storyQuestId);
+        }
+        await applyFixture(first.page, {
+          kind: "update",
+          entity: {
+            id: first.userId,
+            challenges,
+            trigger_state: recoveryTriggerState,
+            inventory: recoveryInventory,
+            recipe_book: RecipeBook.create(),
+            wearing: Wearing.create({ items: new Map() }),
+            position: Position.create({ v: [...position] }),
+          },
+        });
+        await waitFor(
+          `${quest.displayName}: isolated recovery fixture synchronizes after the prior chapter failure`,
+          () => localEntity(first.page, first.userId),
+          ({ entity }) => entity?.challenges?.in_progress.has(questId),
+          Math.max(originSyncGateMs, 10_000),
+          timeoutMs
+        );
+        report.scenarios.push({
+          name: `${quest.displayName}: isolated after prior chapter failure`,
+          status: "pass",
+          questId: String(questId),
+          seededPrerequisiteParts: recoveryItems.map((stack) =>
+            String(stack.item.id)
+          ),
+        });
+      } catch (error) {
+        await recordChapterFailure(quest, error);
+        recoverNextChapter = true;
+        continue;
+      }
+    }
+    try {
       await waitFor(
-        `${quest.displayName}: next chapter reaches frontend`,
-        () => bridgeCall(first.page, "nativeQuestFrontendSnapshot"),
-        (snapshot) =>
-          snapshot.activeQuestId === String(nextQuestId) &&
-          snapshot.mainQuestId === String(nextQuestId) &&
-          questFromFrontend(snapshot, nextQuestId)?.status === "active",
-        Math.max(originSyncGateMs, 10_000),
+        `${quest.displayName}: chapter is active before exhaustive actions`,
+        () => authoritativeEntity(first.page, first.userId),
+        ({ entity }) => entity?.challenges?.in_progress.has(questId),
+        Math.max(acceptanceGateMs, 10_000),
         timeoutMs
       );
+      await executeRobotStoryTriggerNode({
+        first,
+        sameUserPeer: recoverNextChapter ? undefined : sameUserPeer,
+        position,
+        targets,
+        questId,
+        step: quest.trigger,
+      });
+      const nextQuestId = quests[index + 1]?.id;
+      const completed = await waitFor(
+        `${quest.displayName}: chapter completion and automatic continuation`,
+        () => authoritativeEntity(first.page, first.userId),
+        ({ entity }) =>
+          entity?.challenges?.complete.has(questId) &&
+          (nextQuestId ? entity.challenges.in_progress.has(nextQuestId) : true),
+        Math.max(acceptanceGateMs, 10_000),
+        timeoutMs
+      );
+      if (nextQuestId) {
+        await waitFor(
+          `${quest.displayName}: next chapter reaches frontend`,
+          () => bridgeCall(first.page, "nativeQuestFrontendSnapshot"),
+          (snapshot) =>
+            snapshot.activeQuestId === String(nextQuestId) &&
+            snapshot.mainQuestId === String(nextQuestId) &&
+            questFromFrontend(snapshot, nextQuestId)?.status === "active",
+          Math.max(originSyncGateMs, 10_000),
+          timeoutMs
+        );
+      }
+      report.scenarios.push({
+        name: `${quest.displayName}: every authored action completed`,
+        status: "pass",
+        questId: String(questId),
+        triggerNodeIds: triggerTreeNodeIds(quest.trigger).map(String),
+        nextQuestId: nextQuestId ? String(nextQuestId) : undefined,
+        authoritativeMs: completed.elapsedMs,
+      });
+      recoverNextChapter = false;
+    } catch (error) {
+      await recordChapterFailure(quest, error);
+      recoverNextChapter = true;
     }
-    report.scenarios.push({
-      name: `${quest.displayName}: every authored action completed`,
-      status: "pass",
-      questId: String(questId),
-      triggerNodeIds: triggerTreeNodeIds(quest.trigger).map(String),
-      nextQuestId: nextQuestId ? String(nextQuestId) : undefined,
-      authoritativeMs: completed.elapsedMs,
-    });
+  }
+
+  if (chapterFailures.length) {
+    throw new Error(
+      `Robot-story browser batch found ${
+        chapterFailures.length
+      } failing chapter(s):\n${chapterFailures
+        .map((failure) => `${failure.title}: ${failure.error}`)
+        .join("\n\n")}`
+    );
   }
 
   const final = await authoritativeEntity(first.page, first.userId);
@@ -2541,6 +3446,7 @@ async function proveNativeRobotStoryRoundTrip(first, sameUserPeer, position) {
 }
 
 const JOBS_BOARD_E2E_FIXTURE_PREFIX = "native_ecs_e2e_job:";
+const JOBS_BOARD_E2E_POSITION_TOLERANCE_METERS = 1.5;
 
 function e2eBoardIdForTemplate(template) {
   return template.boardScope === "harthmere"
@@ -2548,7 +3454,39 @@ function e2eBoardIdForTemplate(template) {
     : HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID;
 }
 
-async function installAllJobsBoardE2EFixtures(actorId) {
+function jobsBoardE2ETemplates(templateFamily) {
+  if (templateFamily === "business") {
+    // Business templates are production jobs too, but unlike the 20 automatic
+    // board seeds they are issued by a business/outpost system. Normalize
+    // their authoring shape here so the browser proves the same posting/todo/
+    // native-inventory lifecycle without duplicating the execution harness.
+    const skippedTemplateIds = new Set(
+      String(process.env.HARTHMERE_E2E_SKIP_JOB_TEMPLATE_IDS ?? "")
+        .split(",")
+        .map((value) => value.trim())
+        .filter(Boolean)
+    );
+    return HARTHMERE_JOBS_BOARD_BUSINESS_TEMPLATES.filter(
+      (template) => !skippedTemplateIds.has(template.templateId)
+    ).map((template) => ({
+      ...template,
+      // Business templates are issuer-authored and intentionally do not pin a
+      // public board scope. Exercise their complete lifecycle on the default
+      // Grove board; forcing `harthmere` here invents a location contract that
+      // is absent from the template and duplicates the recently passed
+      // auto-template coverage of the Harthmere town board.
+      boardScope: "grove",
+      issuerKind: "business",
+      issuerId: template.businessType,
+      rewardGold: { min: template.defaultRewardGold },
+    }));
+  }
+  return HARTHMERE_JOBS_BOARD_AUTO_SEED_TEMPLATES.filter((template) =>
+    harthmereAutoSeedTemplateRequirementsObtainable(template.requirements)
+  );
+}
+
+async function installAllJobsBoardE2EFixtures(actorId, templateFamily) {
   const redis = await connectToRedis("firehose");
   const key = harthmereLiveModeSharedWorldStateKey();
   const nowMs = Date.now();
@@ -2577,10 +3515,7 @@ async function installAllJobsBoardE2EFixtures(actorId) {
   jobs.actorAcceptedJobIds[String(actorId)] = [];
   jobs.actorCooldowns[String(actorId)] = { abuseScore: 0 };
 
-  const templates = HARTHMERE_JOBS_BOARD_AUTO_SEED_TEMPLATES.filter(
-    (template) =>
-      harthmereAutoSeedTemplateRequirementsObtainable(template.requirements)
-  );
+  const templates = jobsBoardE2ETemplates(templateFamily);
   const fixtures = templates.map((template, index) => {
     const boardId = e2eBoardIdForTemplate(template);
     const board = jobs.boards[boardId];
@@ -2708,20 +3643,64 @@ function setNativeInventoryCount(inventory, itemId, count) {
 }
 
 async function moveJobsE2EPlayer(first, position, label) {
+  // Synchronize the local controller before the admin update. If the order is
+  // reversed, the active movement writer can immediately overwrite the server
+  // fixture with its stale pre-warp position before the first ECS readback.
+  await waitFor(
+    `${label}: browser controller accepts target position`,
+    () =>
+      first.page.evaluate(
+        ({ userId, position: nextPosition }) => {
+          const context = globalThis.clientContext;
+          if (!context?.resources) return false;
+          context.resources.update("/sim/player", userId, (player) => {
+            player.position = [...nextPosition];
+            player.velocity = [0, 0, 0];
+          });
+          return true;
+        },
+        { userId: first.userId, position: [...position] }
+      ),
+    (updated) => updated === true,
+    Math.max(originSyncGateMs, 10_000),
+    timeoutMs
+  );
   await applyFixture(first.page, {
     kind: "update",
     entity: {
       id: first.userId,
-      position: Position.create({ v: position }),
+      position: Position.create({ v: [...position] }),
+      rigid_body: RigidBody.create({ velocity: [0, 0, 0] }),
     },
   });
+  // The Jobs Board API reads the gameplay world view, not the admin endpoint's
+  // immediate readback. Publish the normal frontend movement event after the
+  // deterministic placement so logic/HFC and live-mode proximity converge on
+  // the same actor position before the board mutation is attempted.
+  await publishFrontendMove(first.page, first.userId, position);
   await waitFor(
     `${label}: native position synchronized`,
-    () => localEntity(first.page, first.userId),
+    () => authoritativeEntity(first.page, first.userId),
     ({ entity }) =>
-      entity?.position?.v?.[0] === position[0] &&
-      entity?.position?.v?.[2] === position[2],
-    originSyncGateMs,
+      distance3(entity?.position?.v, position) <=
+      JOBS_BOARD_E2E_POSITION_TOLERANCE_METERS,
+    Math.max(originSyncGateMs, 10_000),
+    timeoutMs
+  );
+  await waitFor(
+    `${label}: browser simulation synchronized`,
+    () =>
+      first.page.evaluate(() => [
+        ...globalThis.clientContext.resources.get("/scene/local_player").player
+          .position,
+      ]),
+    // The controller grounds the visible player against live terrain, while
+    // the checked-in marker map may carry a stale recommended Y. Match the
+    // production Jobs Board's horizontal field-proximity contract here.
+    (localPosition) =>
+      distanceXZ(localPosition, position) <=
+      JOBS_BOARD_E2E_POSITION_TOLERANCE_METERS,
+    10_000,
     timeoutMs
   );
 }
@@ -2802,8 +3781,14 @@ function jobsE2EMarkerPosition(markerId, label) {
   return marker.position;
 }
 
-async function proveAllJobsBoardFrontendNativeEcsRoundTrips(first) {
-  const fixture = await installAllJobsBoardE2EFixtures(first.userId);
+async function proveAllJobsBoardFrontendNativeEcsRoundTrips(
+  first,
+  templateFamily = "auto"
+) {
+  const fixture = await installAllJobsBoardE2EFixtures(
+    first.userId,
+    templateFamily
+  );
   try {
     // First prove the request really crosses the native ECS Position gate by
     // trying the frontend accept action before moving the player to the board.
@@ -2815,27 +3800,19 @@ async function proveAllJobsBoardFrontendNativeEcsRoundTrips(first) {
       firstBoard.location.y,
       firstBoard.location.z + 20,
     ];
-    await applyFixture(first.page, {
-      kind: "update",
-      entity: {
-        id: first.userId,
-        position: Position.create({ v: awayPosition }),
-      },
-    });
-    await waitFor(
-      "jobs-board away-position synchronized",
-      () => localEntity(first.page, first.userId),
-      ({ entity }) => entity?.position?.v?.[0] === awayPosition[0],
-      originSyncGateMs
-    );
+    await moveJobsE2EPlayer(first, awayPosition, "jobs-board away-position");
     await assert.rejects(
       () =>
-        bridgeCall(first.page, "jobsBoardFrontendRoundTrip", {
-          operation: "accept",
-          jobId: firstFixture.jobId,
-          boardId: firstFixture.boardId,
-          requestId: `jobs_e2e_away:${runId}`,
-        }),
+        jobsBoardMutationWithRetry(
+          first.page,
+          {
+            operation: "accept",
+            jobId: firstFixture.jobId,
+            boardId: firstFixture.boardId,
+            requestId: `jobs_e2e_away:${runId}`,
+          },
+          `${firstFixture.templateId}:away-rejection`
+        ),
       /jobs_board_rejected:/
     );
 
@@ -2847,20 +3824,10 @@ async function proveAllJobsBoardFrontendNativeEcsRoundTrips(first) {
         board.location.y,
         board.location.z,
       ];
-      await applyFixture(first.page, {
-        kind: "update",
-        entity: {
-          id: first.userId,
-          position: Position.create({ v: boardPosition }),
-        },
-      });
-      await waitFor(
-        `${expected.templateId}: native board position synchronized`,
-        () => localEntity(first.page, first.userId),
-        ({ entity }) =>
-          entity?.position?.v?.[0] === boardPosition[0] &&
-          entity?.position?.v?.[2] === boardPosition[2],
-        originSyncGateMs
+      await moveJobsE2EPlayer(
+        first,
+        boardPosition,
+        `${expected.templateId}: native board position`
       );
 
       const before = await jobsBoardFetchWithRetry(
@@ -2878,15 +3845,15 @@ async function proveAllJobsBoardFrontendNativeEcsRoundTrips(first) {
         `${expected.templateId}: exact fixture was not visible to the frontend`
       );
 
-      const accepted = await bridgeCall(
+      const accepted = await jobsBoardMutationWithRetry(
         first.page,
-        "jobsBoardFrontendRoundTrip",
         {
           operation: "accept",
           jobId: expected.jobId,
           boardId: expected.boardId,
           requestId: `jobs_e2e_accept:${runId}:${expected.templateId}`,
-        }
+        },
+        `${expected.templateId}:accept`
       );
       const acceptedJob = accepted.acceptedJobs.find(
         (job) => job.jobId === expected.jobId
@@ -2925,10 +3892,10 @@ async function proveAllJobsBoardFrontendNativeEcsRoundTrips(first) {
       );
 
       const nativePlayer = await authoritativeEntity(first.page, first.userId);
-      assert.deepEqual(
-        nativePlayer.entity?.position?.v,
-        boardPosition,
-        `${expected.templateId}: accept did not use the native ECS board position`
+      assert(
+        distance3(nativePlayer.entity?.position?.v, boardPosition) <=
+          JOBS_BOARD_E2E_POSITION_TOLERANCE_METERS,
+        `${expected.templateId}: accept did not use the native ECS board proximity`
       );
       const goldBefore = nativeGold(nativePlayer.entity);
       await provisionJobsE2ERequirements(first, expected);
@@ -2958,9 +3925,8 @@ async function proveAllJobsBoardFrontendNativeEcsRoundTrips(first) {
           ),
           `${expected.templateId}: pickup`
         );
-        const pickedUp = await bridgeCall(
+        const pickedUp = await jobsBoardMutationWithRetry(
           first.page,
-          "jobsBoardFrontendRoundTrip",
           {
             operation: "pickup",
             jobId: expected.jobId,
@@ -2968,7 +3934,8 @@ async function proveAllJobsBoardFrontendNativeEcsRoundTrips(first) {
             questTodoId: todo.todoId,
             completedTargetId: parcel.pickupMarkerId,
             requestId: `jobs_e2e_pickup:${runId}:${expected.templateId}`,
-          }
+          },
+          `${expected.templateId}:pickup`
         );
         const dropoffMarker = pickedUp.markers.find(
           (row) => row.jobsBoardJobId === expected.jobId
@@ -2999,9 +3966,8 @@ async function proveAllJobsBoardFrontendNativeEcsRoundTrips(first) {
           ),
           `${expected.templateId}: drop-off`
         );
-        objectiveCompleted = await bridgeCall(
+        objectiveCompleted = await jobsBoardMutationWithRetry(
           first.page,
-          "jobsBoardFrontendRoundTrip",
           {
             operation: "completeQuest",
             jobId: expected.jobId,
@@ -3010,7 +3976,8 @@ async function proveAllJobsBoardFrontendNativeEcsRoundTrips(first) {
             completedTargetId:
               parcel.recipientNpcId ?? parcel.targetId ?? parcel.mapMarkerId,
             requestId: `jobs_e2e_objective:${runId}:${expected.templateId}`,
-          }
+          },
+          `${expected.templateId}:delivery-objective`
         );
         const nativeAfterDropoff = await authoritativeEntity(
           first.page,
@@ -3071,9 +4038,8 @@ async function proveAllJobsBoardFrontendNativeEcsRoundTrips(first) {
             `${expected.templateId}: objective`
           );
         }
-        objectiveCompleted = await bridgeCall(
+        objectiveCompleted = await jobsBoardMutationWithRetry(
           first.page,
-          "jobsBoardFrontendRoundTrip",
           {
             operation: "completeQuest",
             jobId: expected.jobId,
@@ -3081,7 +4047,8 @@ async function proveAllJobsBoardFrontendNativeEcsRoundTrips(first) {
             questTodoId: todo.todoId,
             completedTargetId: completionTarget.targetId ?? objectiveMarkerId,
             requestId: `jobs_e2e_objective:${runId}:${expected.templateId}`,
-          }
+          },
+          `${expected.templateId}:objective`
         );
       }
 
@@ -3109,15 +4076,15 @@ async function proveAllJobsBoardFrontendNativeEcsRoundTrips(first) {
         boardPosition,
         `${expected.templateId}: reward board`
       );
-      const completed = await bridgeCall(
+      const completed = await jobsBoardMutationWithRetry(
         first.page,
-        "jobsBoardFrontendRoundTrip",
         {
           operation: "complete",
           jobId: expected.jobId,
           boardId: expected.boardId,
           requestId: `jobs_e2e_complete:${runId}:${expected.templateId}`,
-        }
+        },
+        `${expected.templateId}:complete`
       );
       assert(
         !completed.acceptedJobs.some((row) => row.jobId === expected.jobId),
@@ -3127,12 +4094,16 @@ async function proveAllJobsBoardFrontendNativeEcsRoundTrips(first) {
         !completed.markers.some((row) => row.jobsBoardJobId === expected.jobId),
         `${expected.templateId}: completed marker remained active`
       );
-      const nativeCompleted = await authoritativeEntity(
-        first.page,
-        first.userId
+      const nativeCompleted = await waitFor(
+        `${expected.templateId}: native wallet receives reward`,
+        () => authoritativeEntity(first.page, first.userId),
+        ({ entity }) =>
+          nativeGold(entity) === goldBefore + BigInt(expected.rewardGold),
+        Math.max(acceptanceGateMs, 60_000),
+        timeoutMs
       );
       assert.equal(
-        nativeGold(nativeCompleted.entity),
+        nativeGold(nativeCompleted.value.entity),
         goldBefore + BigInt(expected.rewardGold),
         `${expected.templateId}: reward was not paid through native wallet`
       );
@@ -3151,8 +4122,8 @@ async function proveAllJobsBoardFrontendNativeEcsRoundTrips(first) {
 
     assert.equal(
       fixture.fixtures.length,
-      HARTHMERE_JOBS_BOARD_AUTO_SEED_TEMPLATES.length,
-      "every executable production auto-job template must run through E2E"
+      jobsBoardE2ETemplates(templateFamily).length,
+      `every ${templateFamily} jobs-board template must run through E2E`
     );
   } finally {
     await fixture.close();
@@ -3181,32 +4152,67 @@ async function proveNativeChaseRoundTrip(first, combatPosition) {
   );
   await delay(500);
   const npcId = await bridgeCall(first.page, "allocateId");
+  const lowerStepId = await bridgeCall(first.page, "allocateId");
+  const upperStepId = await bridgeCall(first.page, "allocateId");
   const targetPosition = [
     combatPosition[0] + 2,
     combatPosition[1],
     combatPosition[2],
   ];
   const maxHp = combatProfile.maxHp;
-  await applyFixture(first.page, {
-    kind: "create",
-    entity: {
-      id: npcId,
-      position: Position.create({ v: targetPosition }),
-      rigid_body: RigidBody.create({ velocity: [0, 0, 0] }),
-      size: Size.create({ v: [1, 2, 1] }),
-      health: Health.create({ hp: maxHp, maxHp }),
-      npc_state: NpcState.create(),
-      npc_metadata: NpcMetadata.create({
-        type_id: combatProfile.id,
-        created_time: secondsSinceEpoch(),
-        spawn_position: targetPosition,
-        spawn_orientation: [0, 0],
-      }),
-      label: Label.create({
-        text: `E2E ${combatProfile.displayName} Chaser`,
-      }),
+  const lowerStepPosition = [
+    combatPosition[0] + 3.5,
+    combatPosition[1],
+    combatPosition[2],
+  ];
+  const upperStepPosition = [
+    combatPosition[0] + 4.5,
+    combatPosition[1],
+    combatPosition[2],
+  ];
+  await applyFixture(
+    first.page,
+    {
+      kind: "create",
+      entity: {
+        id: lowerStepId,
+        position: Position.create({ v: lowerStepPosition }),
+        size: Size.create({ v: [1, 0.5, 3] }),
+        collideable: Collideable.create(),
+        label: Label.create({ text: "E2E chase lower hill step" }),
+      },
     },
-  });
+    {
+      kind: "create",
+      entity: {
+        id: upperStepId,
+        position: Position.create({ v: upperStepPosition }),
+        size: Size.create({ v: [1, 1, 3] }),
+        collideable: Collideable.create(),
+        label: Label.create({ text: "E2E chase upper hill step" }),
+      },
+    },
+    {
+      kind: "create",
+      entity: {
+        id: npcId,
+        position: Position.create({ v: targetPosition }),
+        rigid_body: RigidBody.create({ velocity: [0, 0, 0] }),
+        size: Size.create({ v: [1, 2, 1] }),
+        health: Health.create({ hp: maxHp, maxHp }),
+        npc_state: NpcState.create(),
+        npc_metadata: NpcMetadata.create({
+          type_id: combatProfile.id,
+          created_time: secondsSinceEpoch(),
+          spawn_position: targetPosition,
+          spawn_orientation: [0, 0],
+        }),
+        label: Label.create({
+          text: `E2E ${combatProfile.displayName} Chaser`,
+        }),
+      },
+    }
+  );
   await waitFor(
     "native Mucker chase fixture synchronized to attacker",
     () => localEntity(first.page, npcId),
@@ -3240,7 +4246,7 @@ async function proveNativeChaseRoundTrip(first, combatPosition) {
   assert(chaseStart.entity?.position?.v, "Mucker has no chase start position");
   const chaseStartPosition = [...chaseStart.entity.position.v];
   const chasePlayerPosition = [
-    combatPosition[0] + 6,
+    combatPosition[0] + 9,
     combatPosition[1],
     combatPosition[2],
   ];
@@ -3261,19 +4267,26 @@ async function proveNativeChaseRoundTrip(first, combatPosition) {
     30_000
   );
 
+  const chaseSamples = [];
   const authoritativeChase = await waitFor(
-    "Anima moves the native Mucker toward the visible player",
-    () => authoritativeEntity(first.page, npcId),
+    "Anima carries the native Mucker over uneven hill steps at chase pace",
+    async () => {
+      const value = await authoritativeEntity(first.page, npcId);
+      if (value.entity?.position?.v) {
+        chaseSamples.push([...value.entity.position.v]);
+      }
+      return value;
+    },
     ({ entity }) => {
       const position = entity?.position?.v;
       return (
         Boolean(position) &&
-        distance3(position, chaseStartPosition) >= 0.75 &&
-        distance3(position, chasePlayerPosition) <= chaseStartDistance - 0.5
+        position[0] >= upperStepPosition[0] + 0.75 &&
+        distance3(position, chasePlayerPosition) <= chaseStartDistance - 3
       );
     },
-    10_000,
-    15_000
+    6_000,
+    12_000
   );
   console.log("E2E chase: Anima movement authoritative; proving render sync");
   const chasePosition = [...authoritativeChase.value.entity.position.v];
@@ -3281,6 +4294,25 @@ async function proveNativeChaseRoundTrip(first, combatPosition) {
   const chaseElapsedSeconds = Math.max(
     0.001,
     (Date.now() - chaseStartedAtMs) / 1000
+  );
+  const effectiveChaseSpeed = chaseDisplacement / chaseElapsedSeconds;
+  const maxChaseHeight = Math.max(
+    chaseStartPosition[1],
+    ...chaseSamples.map((position) => position[1])
+  );
+  assert(
+    maxChaseHeight >= chaseStartPosition[1] + 0.75,
+    `Mucker did not climb the uneven hill fixture: startY=${chaseStartPosition[1].toFixed(
+      2
+    )} maxY=${maxChaseHeight.toFixed(2)}`
+  );
+  assert(
+    effectiveChaseSpeed >= HARTHMERE_NPC_CHASE_MIN_EFFECTIVE_METERS_PER_SECOND,
+    `Mucker chase remained too slow: ${effectiveChaseSpeed.toFixed(
+      2
+    )}m/s, expected at least ${HARTHMERE_NPC_CHASE_MIN_EFFECTIVE_METERS_PER_SECOND.toFixed(
+      2
+    )}m/s`
   );
   assert(
     chaseDisplacement <=
@@ -3331,6 +4363,9 @@ async function proveNativeChaseRoundTrip(first, combatPosition) {
     chaseDisplacement,
     chaseStartDistance,
     chaseEndDistance: distance3(chasePosition, chasePlayerPosition),
+    effectiveChaseSpeed,
+    maxChaseHeight,
+    hillStepIds: [String(lowerStepId), String(upperStepId)],
     renderedPosition: renderedRecord?.at,
     speedCap: HARTHMERE_NPC_CHASE_SPEED_CAP_METERS_PER_SECOND,
   });
@@ -3822,6 +4857,1710 @@ function finishFocusedJobsRun() {
   );
 }
 
+function finishFocusedRemainingJobsRun() {
+  const expectedTemplates = jobsBoardE2ETemplates("business");
+  assert.equal(
+    report.scenarios.filter((scenario) => scenario.status === "pass").length,
+    expectedTemplates.length + 1,
+    "expected bootstrap plus every untested business job template"
+  );
+  assert.deepEqual(
+    report.browser.failures,
+    [],
+    `browser/network errors occurred:\n${report.browser.failures.join("\n")}`
+  );
+  report.finishedAt = new Date().toISOString();
+  report.status = "pass";
+  console.log(
+    `PASS remaining business jobs browser E2E (${expectedTemplates.length} templates)`
+  );
+}
+
+const SNAPSHOT_GROVE_QUEST_STATE_KEY =
+  // Keep this identical to LocalDevSnapshotGroveBibleRuntime. The event name
+  // uses colon separators, but the persisted localStorage key uses dots; using
+  // the event name here makes a healthy browser/ECS round trip look stalled.
+  "biomes.localDev.snapshotGroveQuestState";
+const SNAPSHOT_GROVE_ONBOARDING_QUEST_IDS = [
+  "fountain_buttons_first",
+  "tools_before_treasure",
+  "road_ready_bag_check",
+];
+const SNAPSHOT_GROVE_RECENTLY_BROWSER_TESTED_QUEST_IDS = new Set(
+  SNAPSHOT_GROVE_ONBOARDING_QUEST_IDS
+);
+const SNAPSHOT_GROVE_REQUESTED_QUEST_IDS = selectedCatalogIds(
+  "HARTHMERE_E2E_GROVE_QUEST_IDS"
+);
+const SNAPSHOT_GROVE_REMAINING_QUEST_IDS = SNAPSHOT_GROVE_QUESTS.map(
+  (quest) => quest.id
+).filter(
+  (questId) =>
+    !SNAPSHOT_GROVE_RECENTLY_BROWSER_TESTED_QUEST_IDS.has(questId) &&
+    (!SNAPSHOT_GROVE_REQUESTED_QUEST_IDS ||
+      SNAPSHOT_GROVE_REQUESTED_QUEST_IDS.has(questId))
+);
+const SNAPSHOT_GROVE_CONTEXTUAL_BUTTON_LABELS = {
+  choice: "Pick practice answer",
+  collect: "Pick up marked item",
+  craft: "Craft practice item",
+  photo_post: "Take practice photo",
+  item_grant: "Take practice item",
+  status_check: "Confirm ready state",
+  item_use: "Use practice item",
+  item_update: "Update practice item",
+  escort: "Guide practice target",
+  carry: "Carry practice load",
+  interact: "Use marked object",
+};
+
+function snapshotGroveQuest(questId) {
+  const quest = SNAPSHOT_GROVE_QUESTS.find(
+    (candidate) => candidate.id === questId
+  );
+  assert(quest, `missing Snapshot Grove quest ${questId}`);
+  return quest;
+}
+
+function snapshotGroveMarker(markerId) {
+  const marker = SNAPSHOT_GROVE_LANDMARKS.find(
+    (candidate) => candidate.id === markerId
+  );
+  assert(marker, `missing Snapshot Grove marker ${markerId}`);
+  return marker;
+}
+
+function snapshotGroveNpc(npcId) {
+  const npc = SNAPSHOT_GROVE_NPCS.find((candidate) => candidate.id === npcId);
+  assert(npc, `missing Snapshot Grove NPC ${npcId}`);
+  return npc;
+}
+
+async function snapshotGroveLocalState(page) {
+  return page.evaluate((key) => {
+    const raw = globalThis.localStorage?.getItem(key);
+    return raw ? JSON.parse(raw) : undefined;
+  }, SNAPSHOT_GROVE_QUEST_STATE_KEY);
+}
+
+async function snapshotGroveLiveState(page) {
+  return page.evaluate(async () => {
+    const response = await fetch("/api/harthmere/live_mode_quest_state", {
+      credentials: "same-origin",
+    });
+    if (!response.ok) {
+      throw new Error(`live_mode_quest_state HTTP ${response.status}`);
+    }
+    return (await response.json()).questState;
+  });
+}
+
+async function moveSnapshotGrovePlayer(first, position, label) {
+  // Match the production warp ordering: update the local controller first so
+  // its next movement tick cannot overwrite the authoritative fixture with the
+  // old position while the browser batch is moving between authored markers.
+  await waitFor(
+    `${label}: local controller accepts authored marker`,
+    () =>
+      first.page.evaluate(
+        ({ userId, position: nextPosition }) => {
+          const context = globalThis.clientContext;
+          if (!context?.resources) return false;
+          context.resources.update("/sim/player", userId, (player) => {
+            player.position = [...nextPosition];
+            player.velocity = [0, 0, 0];
+          });
+          return true;
+        },
+        { userId: first.userId, position: [...position] }
+      ),
+    (updated) => updated === true,
+    Math.max(originSyncGateMs, 10_000),
+    timeoutMs
+  );
+  await applyFixture(first.page, {
+    kind: "update",
+    entity: {
+      id: first.userId,
+      position: Position.create({ v: [...position] }),
+      rigid_body: RigidBody.create({ velocity: [0, 0, 0] }),
+    },
+  });
+  await waitFor(
+    `${label}: player reaches authored marker`,
+    () => authoritativeEntity(first.page, first.userId),
+    ({ entity }) =>
+      distance3(entity?.position?.v, position) <=
+      JOBS_BOARD_E2E_POSITION_TOLERANCE_METERS,
+    // Moving between authored lesson fixtures is test setup, not a quest
+    // latency SLO. Give a production-shaped Redis bootstrap enough headroom
+    // without weakening any of the action/progression synchronization gates.
+    Math.max(originSyncGateMs, 60_000),
+    timeoutMs
+  );
+  await waitFor(
+    `${label}: local simulation reaches authored marker`,
+    () =>
+      first.page.evaluate(() => [
+        ...globalThis.clientContext.resources.get("/scene/local_player").player
+          .position,
+      ]),
+    // Normal collision grounding can settle the visible player roughly one
+    // block away from the requested center. Quest proximity uses a radius, so
+    // exact floating-point equality here created catalog-wide false failures.
+    (localPosition) =>
+      distance3(localPosition, position) <=
+      JOBS_BOARD_E2E_POSITION_TOLERANCE_METERS,
+    10_000,
+    timeoutMs
+  );
+}
+
+async function openSnapshotGroveNpcDialog(first, npcId, label) {
+  const npc = snapshotGroveNpc(npcId);
+  const entityId = snapshotGroveNpcEntityId(npc);
+  const entity = await authoritativeEntity(first.page, entityId);
+  assert(
+    entity.entity?.position?.v,
+    `${label}: NPC ${npcId} is absent from ECS`
+  );
+  await moveSnapshotGrovePlayer(first, entity.entity.position.v, label);
+  // Open the production TalkToNPCScreen in the browser. Its mount publishes
+  // the same talk_npc GardenHose event as the normal F interaction.
+  await first.page.evaluate((talkingToNPCId) => {
+    const context = globalThis.clientContext;
+    if (!context?.resources) throw new Error("client context unavailable");
+    context.resources.set("/game_modal", {
+      kind: "talk_to_npc",
+      talkingToNPCId,
+    });
+  }, entityId);
+  return entityId;
+}
+
+async function closeSnapshotGroveModal(page) {
+  await page.keyboard.press("Escape");
+}
+
+async function openSnapshotGroveJournal(page, quest) {
+  await page.keyboard.press("KeyJ");
+  if (quest) {
+    // Scope the assertion to the real Map & Quests list. The compact Grove HUD
+    // can contain the same title behind the modal and must not satisfy this
+    // journal visibility check.
+    const nativeQuestId = harthmereNativeQuestId("grove", quest.id);
+    assert(nativeQuestId, `${quest.title}: missing native journal identity`);
+    // The map adapter collapses authored and native projections by manifest ID
+    // and intentionally keeps the native row. Assert that authoritative ID,
+    // not the retired compatibility string used by the local lesson runtime.
+    const questCard = page.getByTestId(
+      `biomes-map-quest-${String(nativeQuestId)}`
+    );
+    await questCard.waitFor({ state: "attached", timeout: timeoutMs });
+    // Native Road Ahead can contribute a long step list before the Grove
+    // quests. Reach the lesson card through the journal's real scroll region.
+    await questCard.scrollIntoViewIfNeeded({ timeout: timeoutMs });
+    await questCard.waitFor({ state: "visible", timeout: timeoutMs });
+  }
+}
+
+async function clickUniqueButton(page, name, label) {
+  const button = page.getByRole("button", { name, exact: true });
+  await button.waitFor({ state: "attached", timeout: timeoutMs });
+  assert.equal(
+    await button.count(),
+    1,
+    `${label}: expected one ${name} button`
+  );
+  // Snapshot Grove's objective HUD is intentionally scrollable on short
+  // desktop viewports; bring the real action into view before clicking it.
+  await button.scrollIntoViewIfNeeded({ timeout: timeoutMs });
+  await button.waitFor({ state: "visible", timeout: timeoutMs });
+  await button.click();
+}
+
+async function advanceTalkDialogUntil(first, label, predicate) {
+  for (let pageIndex = 0; pageIndex < 12; pageIndex += 1) {
+    if (await predicate()) return;
+    const continueText = first.page.getByText("Click to continue", {
+      exact: true,
+    });
+    if (
+      (await continueText.count()) === 1 &&
+      (await continueText.isVisible())
+    ) {
+      await continueText.click();
+    } else {
+      // The dialog's full-screen click target advances copy even when the small
+      // instruction text is briefly between React transitions.
+      await first.page.mouse.click(400, 560);
+    }
+    await first.page.waitForTimeout(150);
+  }
+  assert.fail(`${label}: dialogue did not reach the expected action or copy`);
+}
+
+async function clickTalkDialogButton(first, name, label) {
+  const button = first.page.getByRole("button", { name, exact: true });
+  await advanceTalkDialogUntil(
+    first,
+    label,
+    async () => (await button.count()) === 1 && (await button.isVisible())
+  );
+  await button.click();
+}
+
+async function publishSnapshotGroveGardenHoseEvent(page, event) {
+  await page.evaluate((value) => {
+    const gardenHose = globalThis.clientContext?.gardenHose;
+    if (!gardenHose) throw new Error("GardenHose unavailable");
+    gardenHose.publish(value);
+  }, event);
+}
+
+async function waitForSnapshotGroveObjective(first, quest, objectiveIndex) {
+  const challengeId = harthmereNativeQuestId("grove", quest.id);
+  const stepId = harthmereNativeQuestStepId("grove", quest.id, objectiveIndex);
+  assert(challengeId, `${quest.title}: missing native challenge id`);
+  assert(stepId, `${quest.title}: missing native objective ${objectiveIndex}`);
+  const completed = objectiveIndex === quest.objectives.length - 1;
+  const nextObjectiveIndex = objectiveIndex + 1;
+  const label = `${quest.title}: objective ${objectiveIndex + 1}`;
+
+  const authoritative = await waitFor(
+    `${label}: frontend action reaches native ECS`,
+    () => authoritativeEntity(first.page, first.userId),
+    ({ entity }) =>
+      serializedTriggerStepIsFired(entity, challengeId, stepId) &&
+      (completed
+        ? entity?.challenges?.complete.has(challengeId)
+        : entity?.challenges?.in_progress.has(challengeId)),
+    Math.max(acceptanceGateMs, 10_000),
+    timeoutMs
+  );
+  const local = await waitFor(
+    `${label}: authoritative result returns to lesson runtime`,
+    () => snapshotGroveLocalState(first.page),
+    (state) =>
+      completed
+        ? state?.completedQuestIds?.includes(quest.id) &&
+          state?.activeQuestId !== quest.id
+        : state?.activeQuestId === quest.id &&
+          state?.activeObjectiveIndex === nextObjectiveIndex,
+    Math.max(originSyncGateMs, 10_000),
+    timeoutMs
+  );
+  const live = await waitFor(
+    `${label}: Cloud Save projection is authoritative`,
+    () => snapshotGroveLiveState(first.page),
+    (state) =>
+      completed
+        ? Boolean(state?.completed?.[quest.id]) && !state?.active?.[quest.id]
+        : state?.active?.[quest.id]?.source === "snapshot_grove" &&
+          Number(state.active[quest.id].progress) >= nextObjectiveIndex + 1,
+    Math.max(originSyncGateMs, 10_000),
+    timeoutMs
+  );
+  const frontend = await waitFor(
+    `${label}: native quest projection returns to frontend`,
+    () => bridgeCall(first.page, "nativeQuestFrontendSnapshot"),
+    (snapshot) => {
+      const projected = questFromFrontend(snapshot, challengeId);
+      return completed
+        ? !projected && snapshot.ecs.complete.includes(String(challengeId))
+        : projected?.status === "active";
+    },
+    Math.max(originSyncGateMs, 10_000),
+    timeoutMs
+  );
+
+  report.scenarios.push({
+    name: `${label}: ${quest.objectives[objectiveIndex]}`,
+    status: "pass",
+    questId: quest.id,
+    nativeChallengeId: String(challengeId),
+    objectiveIndex,
+    nativeStepId: String(stepId),
+    trigger: quest.triggers[objectiveIndex],
+    markerId: quest.markerIds[objectiveIndex],
+    authoritativeMs: authoritative.elapsedMs,
+    frontendMs: local.elapsedMs,
+    liveModeMs: live.elapsedMs,
+    nativeProjectionMs: frontend.elapsedMs,
+  });
+}
+
+async function acceptSnapshotGroveQuestInBrowser(first, quest) {
+  await openSnapshotGroveNpcDialog(first, quest.giverNpcId, quest.title);
+  await clickTalkDialogButton(
+    first,
+    `Start ${quest.title}`,
+    `${quest.title}: acceptance`
+  );
+  await waitForSnapshotGroveObjective(first, quest, 0);
+  await first.page.screenshot({
+    path: path.join(artifactsDir, `${runId}-${quest.id}-accepted.png`),
+  });
+  await closeSnapshotGroveModal(first.page);
+  await openSnapshotGroveJournal(first.page, quest);
+  await closeSnapshotGroveModal(first.page);
+}
+
+async function seedSnapshotGroveUnlockState(first, quest) {
+  const prerequisite = quest.unlockedBy;
+  if (!prerequisite) return;
+  const acceptedQuestIds = [];
+  const completedQuestIds = [];
+  if (prerequisite.kind === "fountain_completion_count") {
+    // This is an unlock fixture only. Every uncovered fountain lesson still
+    // gets its own full browser run; the graduation actor receives five known
+    // completions so the test does not re-run the three recently proven ones.
+    const seeds = SNAPSHOT_GROVE_QUESTS.filter(
+      (candidate) => candidate.category === undefined
+    )
+      .slice(0, prerequisite.minCompletedFountainLessons)
+      .map((candidate) => candidate.id);
+    acceptedQuestIds.push(...seeds);
+    completedQuestIds.push(...seeds);
+  } else if (prerequisite.kind === "quest_accepted") {
+    acceptedQuestIds.push(prerequisite.questId);
+  } else if (prerequisite.kind === "quest_completed") {
+    acceptedQuestIds.push(prerequisite.questId);
+    completedQuestIds.push(prerequisite.questId);
+  }
+  await first.page.evaluate(
+    ({ key, accepted, completed }) => {
+      localStorage.setItem(
+        key,
+        JSON.stringify({
+          acceptedQuestIds: accepted,
+          activeObjectiveIndex: 0,
+          completedQuestIds: completed,
+          completedObjectiveIds: [],
+          rewards: [],
+        })
+      );
+      window.dispatchEvent(
+        new CustomEvent("biomes:local-dev-snapshot-grove-quest-state")
+      );
+    },
+    {
+      key: SNAPSHOT_GROVE_QUEST_STATE_KEY,
+      accepted: acceptedQuestIds,
+      completed: completedQuestIds,
+    }
+  );
+}
+
+async function waitForSnapshotGroveAcceptance(first, quest) {
+  const challengeId = harthmereNativeQuestId("grove", quest.id);
+  assert(challengeId, `${quest.title}: missing native challenge id`);
+  const authoritative = await waitFor(
+    `${quest.title}: acceptance reaches native ECS`,
+    () => authoritativeEntity(first.page, first.userId),
+    ({ entity }) => entity?.challenges?.in_progress.has(challengeId),
+    Math.max(acceptanceGateMs, 10_000),
+    timeoutMs
+  );
+  const local = await waitFor(
+    `${quest.title}: acceptance returns to lesson runtime`,
+    () => snapshotGroveLocalState(first.page),
+    (state) =>
+      state?.acceptedQuestIds?.includes(quest.id) &&
+      state?.activeQuestId === quest.id &&
+      state?.activeObjectiveIndex === 0,
+    Math.max(originSyncGateMs, 10_000),
+    timeoutMs
+  );
+  const live = await waitFor(
+    `${quest.title}: acceptance reaches Cloud Save`,
+    () => snapshotGroveLiveState(first.page),
+    (state) =>
+      state?.active?.[quest.id]?.source === "snapshot_grove" &&
+      Number(state.active[quest.id].progress) >= 1,
+    Math.max(originSyncGateMs, 10_000),
+    timeoutMs
+  );
+  const frontend = await waitFor(
+    `${quest.title}: accepted native quest returns to frontend`,
+    () => bridgeCall(first.page, "nativeQuestFrontendSnapshot"),
+    (snapshot) => questFromFrontend(snapshot, challengeId)?.status === "active",
+    Math.max(originSyncGateMs, 10_000),
+    timeoutMs
+  );
+  report.scenarios.push({
+    name: `${quest.title}: browser acceptance`,
+    status: "pass",
+    questId: quest.id,
+    nativeChallengeId: String(challengeId),
+    authoritativeMs: authoritative.elapsedMs,
+    frontendMs: local.elapsedMs,
+    liveModeMs: live.elapsedMs,
+    nativeProjectionMs: frontend.elapsedMs,
+  });
+}
+
+async function acceptRemainingSnapshotGroveQuest(first, quest) {
+  await seedSnapshotGroveUnlockState(first, quest);
+  await openSnapshotGroveNpcDialog(first, quest.giverNpcId, quest.title);
+  await clickTalkDialogButton(
+    first,
+    `Start ${quest.title}`,
+    `${quest.title}: acceptance`
+  );
+  const leadingTalkCompletesOnAcceptance =
+    quest.triggers[0] === "talk_npc" && quest.objectives.length > 1;
+  if (leadingTalkCompletesOnAcceptance) {
+    await waitForSnapshotGroveObjective(first, quest, 0);
+  } else {
+    await waitForSnapshotGroveAcceptance(first, quest);
+  }
+  await first.page.screenshot({
+    path: path.join(artifactsDir, `${runId}-${quest.id}-accepted.png`),
+  });
+  await closeSnapshotGroveModal(first.page);
+  await openSnapshotGroveJournal(first.page, quest);
+  await closeSnapshotGroveModal(first.page);
+  return leadingTalkCompletesOnAcceptance ? 1 : 0;
+}
+
+async function completeSnapshotGroveTalkStep(first, quest, objectiveIndex) {
+  const marker = snapshotGroveMarker(quest.markerIds[objectiveIndex]);
+  await openSnapshotGroveNpcDialog(
+    first,
+    marker.npcId ?? quest.giverNpcId,
+    `${quest.title}: ${marker.label}`
+  );
+  await waitForSnapshotGroveObjective(first, quest, objectiveIndex);
+  await closeSnapshotGroveModal(first.page);
+}
+
+async function completeSnapshotGroveFixtureEventStep(
+  first,
+  quest,
+  objectiveIndex
+) {
+  const marker = snapshotGroveMarker(quest.markerIds[objectiveIndex]);
+  const fixture = snapshotGroveObjectiveCompletionFixture(
+    quest,
+    objectiveIndex
+  );
+  assert(fixture, `${quest.title}: objective ${objectiveIndex + 1} has no fixture`);
+  await moveSnapshotGrovePlayer(
+    first,
+    marker.position,
+    `${quest.title}: ${marker.label}`
+  );
+  await publishSnapshotGroveGardenHoseEvent(first.page, fixture);
+  await waitForSnapshotGroveObjective(first, quest, objectiveIndex);
+}
+
+async function completeSnapshotGroveInventoryStep(
+  first,
+  quest,
+  objectiveIndex
+) {
+  const fixture = snapshotGroveObjectiveCompletionFixture(
+    quest,
+    objectiveIndex
+  );
+  assert(fixture, `${quest.title}: inventory objective has no fixture`);
+  if (fixture.operation === "organize") {
+    await first.page.keyboard.press("KeyI");
+    await clickUniqueButton(
+      first.page,
+      "Sort",
+      `${quest.title}: organize inventory`
+    );
+    await waitForSnapshotGroveObjective(first, quest, objectiveIndex);
+    await closeSnapshotGroveModal(first.page);
+    return;
+  }
+
+  const itemId = harthmereNativeBiomesIdForItemId(fixture.itemId);
+  assert(itemId, `${quest.title}: ${fixture.itemId} has no native item id`);
+  const before = await authoritativeEntity(first.page, first.userId);
+  assert(
+    inventoryCount(before.entity, itemId) >= 1n,
+    `${quest.title}: acceptance did not grant ${fixture.itemName}`
+  );
+  const displayName =
+    fixture.itemId === "baker_apron"
+      ? "Dawn Loaf Apron"
+      : fixture.itemId === "field_trousers"
+      ? "Grove Field Trousers"
+      : "B-01 Camera";
+  await first.page.keyboard.press("KeyI");
+  const item = first.page.getByText(displayName, { exact: true });
+  await item.first().waitFor({ state: "visible", timeout: timeoutMs });
+  await item.first().click();
+  await clickUniqueButton(first.page, "Equip", `${quest.title}: equip item`);
+  await waitFor(
+    `${quest.title}: equipment reaches native wearing`,
+    () => authoritativeEntity(first.page, first.userId),
+    ({ entity }) =>
+      entity?.wearing?.items &&
+      [...entity.wearing.items.values()].some((entry) => entry?.id === itemId),
+    Math.max(acceptanceGateMs, 10_000),
+    timeoutMs
+  );
+  await waitForSnapshotGroveObjective(first, quest, objectiveIndex);
+  await closeSnapshotGroveModal(first.page);
+}
+
+async function completeSnapshotGroveOpenTabStep(first, quest, objectiveIndex) {
+  const fixture = snapshotGroveObjectiveCompletionFixture(
+    quest,
+    objectiveIndex
+  );
+  assert(fixture, `${quest.title}: open-tab objective has no fixture`);
+  const keyByTab = {
+    map: "KeyM",
+    inventory: "KeyI",
+    journal: "KeyJ",
+    quests: "KeyJ",
+    inbox: "KeyV",
+  };
+  const key = keyByTab[fixture.tab];
+  if (key) {
+    await first.page.keyboard.press(key);
+  } else {
+    // Crafting/chat/tasks do not have a single stable global shortcut in the
+    // production HUD. Publish the exact frontend open_tab signal after the
+    // browser has focused the live game page; the signed quest mutation and
+    // all ECS/frontend return boundaries remain fully asserted below.
+    await publishSnapshotGroveGardenHoseEvent(first.page, fixture);
+  }
+  await waitForSnapshotGroveObjective(first, quest, objectiveIndex);
+  await closeSnapshotGroveModal(first.page);
+}
+
+async function completeRemainingSnapshotGroveObjective(
+  first,
+  quest,
+  objectiveIndex
+) {
+  const trigger = quest.triggers[objectiveIndex];
+  const contextualLabel = SNAPSHOT_GROVE_CONTEXTUAL_BUTTON_LABELS[trigger];
+  if (contextualLabel) {
+    await completeSnapshotGroveContextualStep(
+      first,
+      quest,
+      objectiveIndex,
+      contextualLabel
+    );
+    return;
+  }
+  switch (trigger) {
+    case "talk_npc":
+      await completeSnapshotGroveTalkStep(first, quest, objectiveIndex);
+      return;
+    case "near_location": {
+      const marker = snapshotGroveMarker(quest.markerIds[objectiveIndex]);
+      await moveSnapshotGrovePlayer(
+        first,
+        marker.position,
+        `${quest.title}: ${marker.label}`
+      );
+      await waitForSnapshotGroveObjective(first, quest, objectiveIndex);
+      return;
+    }
+    case "open_tab":
+      await completeSnapshotGroveOpenTabStep(first, quest, objectiveIndex);
+      return;
+    case "inventory_change":
+      await completeSnapshotGroveInventoryStep(first, quest, objectiveIndex);
+      return;
+    case "place_voxel":
+      await completeSnapshotGrovePlacementStep(first, quest, objectiveIndex);
+      return;
+    case "open_jobs_board":
+      await first.page.keyboard.press("KeyB");
+      await waitForSnapshotGroveObjective(first, quest, objectiveIndex);
+      await closeSnapshotGroveModal(first.page);
+      return;
+    case "destroy":
+    case "combat":
+    case "jump_run":
+      await completeSnapshotGroveFixtureEventStep(
+        first,
+        quest,
+        objectiveIndex
+      );
+      return;
+    default:
+      assert.fail(`${quest.title}: unsupported browser trigger ${trigger}`);
+  }
+}
+
+async function confirmSnapshotGroveCompletionAtGiver(first, quest) {
+  await openSnapshotGroveNpcDialog(
+    first,
+    quest.giverNpcId,
+    `${quest.title}: completion acknowledgement`
+  );
+  await advanceTalkDialogUntil(
+    first,
+    `${quest.title}: completion acknowledgement`,
+    () =>
+      first.page.evaluate((title) =>
+        (document.body?.textContent ?? "").includes(`${title} is handled.`),
+        quest.title
+      )
+  );
+  await first.page.screenshot({
+    path: path.join(artifactsDir, `${runId}-${quest.id}-complete.png`),
+  });
+  await closeSnapshotGroveModal(first.page);
+  await openSnapshotGroveJournal(first.page);
+  const nativeQuestId = harthmereNativeQuestId("grove", quest.id);
+  assert(nativeQuestId, `${quest.title}: missing native journal identity`);
+  assert.equal(
+    await first.page
+      .getByTestId(`biomes-map-quest-${String(nativeQuestId)}`)
+      .count(),
+    0,
+    `${quest.title}: completed quest remained in the journal`
+  );
+  await closeSnapshotGroveModal(first.page);
+}
+
+async function proveRemainingSnapshotGroveQuest(first, questId) {
+  const quest = snapshotGroveQuest(questId);
+  const firstObjective = await acceptRemainingSnapshotGroveQuest(first, quest);
+  for (
+    let objectiveIndex = firstObjective;
+    objectiveIndex < quest.objectives.length;
+    objectiveIndex += 1
+  ) {
+    await completeRemainingSnapshotGroveObjective(
+      first,
+      quest,
+      objectiveIndex
+    );
+  }
+  await confirmSnapshotGroveCompletionAtGiver(first, quest);
+}
+
+async function runRemainingSnapshotGroveBrowserBatch(browser, suffix) {
+  const failures = [];
+  for (
+    let index = 0;
+    index < SNAPSHOT_GROVE_REMAINING_QUEST_IDS.length;
+    index += 1
+  ) {
+    const questId = SNAPSHOT_GROVE_REMAINING_QUEST_IDS[index];
+    const quest = snapshotGroveQuest(questId);
+    let user;
+    try {
+      // Fresh actors keep catalog-wide failures independent while contexts
+      // remain serial, bounding Chromium/WebGL memory. The batch records every
+      // quest instead of stopping at the first broken authoring edge.
+      user = await openUser(
+        browser,
+        `RemainingGrove-${index + 1}-${suffix}`,
+        `remaining-grove-${questId}`
+      );
+      const diagnostics = await bridgeCall(user.page, "diagnostics");
+      assert(diagnostics.tableSize > 0, `${quest.title}: no ECS bootstrap`);
+      report.scenarios.push({
+        name: `${quest.title}: world bootstrap`,
+        status: "pass",
+        questId,
+        hydratedEntityCount: diagnostics.tableSize,
+      });
+      await proveRemainingSnapshotGroveQuest(user, questId);
+    } catch (error) {
+      const message = error?.stack || String(error);
+      failures.push({ questId, title: quest.title, error: message });
+      report.scenarios.push({
+        name: `${quest.title}: remaining quest batch`,
+        status: "fail",
+        questId,
+        error: message,
+      });
+      if (user?.page && !user.page.isClosed()) {
+        await user.page
+          .screenshot({
+            path: path.join(
+              artifactsDir,
+              `${runId}-${questId}-failure.png`
+            ),
+            fullPage: true,
+          })
+          .catch(() => undefined);
+      }
+    } finally {
+      await user?.context?.close().catch(() => undefined);
+    }
+  }
+  if (failures.length) {
+    throw new Error(
+      `Remaining Snapshot Grove batch found ${failures.length} failure(s):\n${failures
+        .map((failure) => `${failure.title}: ${failure.error}`)
+        .join("\n\n")}`
+    );
+  }
+}
+
+function finishFocusedRemainingQuestsRun() {
+  const coveredQuestIds = new Set(
+    report.scenarios
+      .filter((scenario) => scenario.status === "pass" && scenario.questId)
+      .map((scenario) => scenario.questId)
+  );
+  assert.deepEqual(
+    [...coveredQuestIds].sort(),
+    [...SNAPSHOT_GROVE_REMAINING_QUEST_IDS].sort(),
+    "every uncovered Snapshot Grove quest must have a passing browser result"
+  );
+  assert.deepEqual(
+    report.browser.failures,
+    [],
+    `browser/network errors occurred:\n${report.browser.failures.join("\n")}`
+  );
+  report.finishedAt = new Date().toISOString();
+  report.status = "pass";
+  console.log(
+    `PASS remaining Snapshot Grove browser E2E (${SNAPSHOT_GROVE_REMAINING_QUEST_IDS.length} quests)`
+  );
+}
+
+const HARTHMERE_REQUESTED_BIBLE_QUEST_IDS = selectedCatalogIds(
+  "HARTHMERE_E2E_BIBLE_QUEST_IDS"
+);
+const HARTHMERE_REMAINING_BIBLE_QUESTS = HARTHMERE_QUEST_CATALOG.filter(
+  (quest) =>
+    quest.category !== "starter" &&
+    (!HARTHMERE_REQUESTED_BIBLE_QUEST_IDS ||
+      HARTHMERE_REQUESTED_BIBLE_QUEST_IDS.has(quest.id))
+);
+
+async function bibleQuestLiveState(page) {
+  return page.evaluate(async () => {
+    const response = await fetch("/api/harthmere/live_mode_quest_state", {
+      credentials: "same-origin",
+      cache: "no-store",
+    });
+    if (!response.ok) {
+      throw new Error(`live_mode_quest_state HTTP ${response.status}`);
+    }
+    return (await response.json()).questState;
+  });
+}
+
+async function installBibleQuestE2EFixture(redis, first, quest) {
+  const nowMs = Date.now();
+  const actorId = String(first.userId);
+  // Reset at a neutral Grove point before exposing a fresh snapshot. Without
+  // this, reusing one memory-safe browser actor can auto-discover the previous
+  // hidden quest while Redis is being prepared for the next catalog row.
+  await moveSnapshotGrovePlayer(
+    first,
+    [496, 70, -126],
+    `${quest.title}: neutral fixture reset`
+  );
+  const state = defaultHarthmereLiveModeBackendState(actorId, nowMs);
+  state.classMagic.skills.character_level = {
+    xp: 0,
+    level: Math.max(1, Number(quest.levelBand?.min ?? 1)),
+  };
+  for (const prerequisite of quest.activeRules?.prerequisiteQuestIds ?? []) {
+    state.quests.completed[prerequisite] = nowMs - 1_000;
+    state.quests.bible.completedAtMs[prerequisite] = nowMs - 1_000;
+  }
+  state.updatedAtMs = nowMs;
+  await redis.primary.set(
+    harthmereLiveModePlayerStateKey(actorId),
+    JSON.stringify(state)
+  );
+  const refreshed = await bridgeCall(
+    first.page,
+    "refreshBibleQuestFrontendSnapshot"
+  );
+  assert.equal(
+    refreshed.playerLevel,
+    state.classMagic.skills.character_level.level,
+    `${quest.title}: browser did not refresh the server-owned level`
+  );
+  return state;
+}
+
+function bibleQuestWaypoint(quest, objective) {
+  return quest.id === HARTHMERE_BIBLE_DRAGON_QUEST_ID
+    ? harthmereThaedrynArenaWorldAnchor()
+    : getHarthmereQuestResolvedWaypoint(quest.id, objective);
+}
+
+async function openBibleQuestGiverDialog(first, quest, label) {
+  assert(quest.giverId, `${quest.title}: giver is missing`);
+  const giver = HARTHMERE_NATIVE_QUEST_GIVER_MANIFEST[quest.giverId];
+  assert(giver?.entityId, `${quest.title}: native giver is missing`);
+  const entity = await authoritativeEntity(first.page, giver.entityId);
+  assert(entity.entity?.position?.v, `${label}: giver is absent from ECS`);
+  await moveSnapshotGrovePlayer(first, entity.entity.position.v, label);
+  await first.page.evaluate((talkingToNPCId) => {
+    const context = globalThis.clientContext;
+    if (!context?.resources) throw new Error("client context unavailable");
+    context.resources.set("/game_modal", {
+      kind: "talk_to_npc",
+      talkingToNPCId,
+    });
+  }, giver.entityId);
+}
+
+async function waitForBibleQuestAcceptance(first, quest) {
+  const challengeId = harthmereNativeQuestId("bible", quest.id);
+  assert(challengeId, `${quest.title}: missing native challenge id`);
+  const authoritative = await waitFor(
+    `${quest.title}: bible accept reaches native ECS`,
+    () => authoritativeEntity(first.page, first.userId),
+    ({ entity }) => entity?.challenges?.in_progress.has(challengeId),
+    Math.max(acceptanceGateMs, 10_000),
+    timeoutMs
+  );
+  const live = await waitFor(
+    `${quest.title}: bible accept reaches live quest state`,
+    () => bibleQuestLiveState(first.page),
+    (snapshot) => snapshot?.bible?.runtime?.[quest.id]?.state === "active",
+    Math.max(originSyncGateMs, 10_000),
+    timeoutMs
+  );
+  const frontend = await waitFor(
+    `${quest.title}: bible accept returns to frontend`,
+    () => bridgeCall(first.page, "nativeQuestFrontendSnapshot"),
+    (snapshot) => questFromFrontend(snapshot, challengeId)?.status === "active",
+    Math.max(originSyncGateMs, 10_000),
+    timeoutMs
+  );
+  report.scenarios.push({
+    name: `${quest.title}: bible browser acceptance`,
+    status: "pass",
+    questId: quest.id,
+    category: quest.category,
+    nativeChallengeId: String(challengeId),
+    authoritativeMs: authoritative.elapsedMs,
+    liveModeMs: live.elapsedMs,
+    frontendMs: frontend.elapsedMs,
+  });
+}
+
+async function acceptBibleQuestInBrowser(first, quest) {
+  if (quest.hidden) {
+    const waypoint = bibleQuestWaypoint(quest, quest.objectives[0]);
+    assert(waypoint, `${quest.title}: hidden trigger waypoint is missing`);
+    await moveSnapshotGrovePlayer(
+      first,
+      waypoint,
+      `${quest.title}: hidden discovery`
+    );
+  } else {
+    await openBibleQuestGiverDialog(first, quest, `${quest.title}: giver`);
+    await clickTalkDialogButton(
+      first,
+      `Accept: ${quest.title}`,
+      `${quest.title}: bible acceptance`
+    );
+    await closeSnapshotGroveModal(first.page);
+  }
+  await waitForBibleQuestAcceptance(first, quest);
+  await openSnapshotGroveJournal(first.page);
+  const challengeId = harthmereNativeQuestId("bible", quest.id);
+  const card = first.page.getByTestId(
+    `biomes-map-quest-${String(challengeId)}`
+  );
+  await card.waitFor({ state: "attached", timeout: timeoutMs });
+  await card.scrollIntoViewIfNeeded({ timeout: timeoutMs });
+  await card.waitFor({ state: "visible", timeout: timeoutMs });
+  await closeSnapshotGroveModal(first.page);
+}
+
+async function waitForBibleQuestObjective(first, quest, objectiveIndex) {
+  const objective = quest.objectives[objectiveIndex];
+  const challengeId = harthmereNativeQuestId("bible", quest.id);
+  const stepId = harthmereNativeQuestStepId(
+    "bible",
+    quest.id,
+    objective.id
+  );
+  assert(challengeId && stepId, `${quest.title}: native objective is missing`);
+  const finalObjective = objectiveIndex === quest.objectives.length - 1;
+  const authoritative = await waitFor(
+    `${quest.title}: objective ${objectiveIndex + 1} reaches native ECS`,
+    () => authoritativeEntity(first.page, first.userId),
+    ({ entity }) =>
+      serializedTriggerStepIsFired(entity, challengeId, stepId) &&
+      entity?.challenges?.in_progress.has(challengeId),
+    Math.max(acceptanceGateMs, 10_000),
+    timeoutMs
+  );
+  const live = await waitFor(
+    `${quest.title}: objective ${objectiveIndex + 1} reaches live state`,
+    () => bibleQuestLiveState(first.page),
+    (snapshot) => {
+      const record = snapshot?.bible?.runtime?.[quest.id];
+      return (
+        record?.objectiveProgress?.[objective.id]?.completed === true &&
+        (finalObjective
+          ? record.state === "ready_to_complete"
+          : record.state === "active")
+      );
+    },
+    Math.max(originSyncGateMs, 10_000),
+    timeoutMs
+  );
+  const frontend = await waitFor(
+    `${quest.title}: objective ${objectiveIndex + 1} returns to frontend`,
+    () => bridgeCall(first.page, "nativeQuestFrontendSnapshot"),
+    (snapshot) => {
+      const projected = questFromFrontend(snapshot, challengeId);
+      const step = projected?.steps?.find(
+        (candidate) => candidate.id === String(stepId)
+      );
+      return projected?.status === "active" && step?.done === true;
+    },
+    Math.max(originSyncGateMs, 10_000),
+    timeoutMs
+  );
+  report.scenarios.push({
+    name: `${quest.title}: ${objective.label}`,
+    status: "pass",
+    questId: quest.id,
+    category: quest.category,
+    objectiveId: objective.id,
+    objectiveType: objective.type,
+    nativeChallengeId: String(challengeId),
+    nativeStepId: String(stepId),
+    authoritativeMs: authoritative.elapsedMs,
+    liveModeMs: live.elapsedMs,
+    frontendMs: frontend.elapsedMs,
+  });
+}
+
+async function completeBibleQuestObjectiveInBrowser(
+  first,
+  quest,
+  objectiveIndex
+) {
+  const objective = quest.objectives[objectiveIndex];
+  const waypoint = bibleQuestWaypoint(quest, objective);
+  assert(waypoint, `${quest.title}: ${objective.label} has no waypoint`);
+  await moveSnapshotGrovePlayer(
+    first,
+    waypoint,
+    `${quest.title}: ${objective.label}`
+  );
+  if (quest.hidden) {
+    const panel = first.page.getByTestId(
+      `hidden-bible-quest-panel-${quest.id}`
+    );
+    await panel.waitFor({ state: "visible", timeout: timeoutMs });
+    await clickUniqueButton(
+      first.page,
+      objective.label,
+      `${quest.title}: hidden objective ${objectiveIndex + 1}`
+    );
+  } else {
+    await openBibleQuestGiverDialog(
+      first,
+      quest,
+      `${quest.title}: objective ${objectiveIndex + 1}`
+    );
+    await clickTalkDialogButton(
+      first,
+      objective.label,
+      `${quest.title}: objective ${objectiveIndex + 1}`
+    );
+    await closeSnapshotGroveModal(first.page);
+  }
+  await waitForBibleQuestObjective(first, quest, objectiveIndex);
+}
+
+async function completeThaedrynBibleQuestInBrowser(first, quest) {
+  const encounter = first.page.getByTestId("thaedryn-encounter-panel");
+  await encounter.waitFor({ state: "visible", timeout: timeoutMs });
+  for (let cycle = 0; cycle < 3; cycle += 1) {
+    const ring = first.page.getByRole("button", {
+      name: new RegExp(`^Ring the Fallen Bell \\(${cycle}/3\\)$`),
+    });
+    await ring.waitFor({ state: "visible", timeout: timeoutMs });
+    await ring.click();
+    await waitFor(
+      `${quest.title}: ring cycle ${cycle + 1} persisted`,
+      () => bibleQuestLiveState(first.page),
+      (snapshot) =>
+        Number(snapshot?.bible?.thaedryn?.rebindRingCyclesCompleted) >=
+        cycle + 1,
+      Math.max(originSyncGateMs, 10_000),
+      timeoutMs
+    );
+  }
+  await clickUniqueButton(
+    first.page,
+    "Commit: Rebind Thaedryn",
+    `${quest.title}: choose rebind path`
+  );
+  await waitFor(
+    `${quest.title}: rebind path persisted`,
+    () => bibleQuestLiveState(first.page),
+    (snapshot) => snapshot?.bible?.thaedryn?.chosenPath === "rebind",
+    Math.max(originSyncGateMs, 10_000),
+    timeoutMs
+  );
+  await clickUniqueButton(
+    first.page,
+    "Resolve the Encounter",
+    `${quest.title}: resolve encounter`
+  );
+  for (let index = 0; index < quest.objectives.length; index += 1) {
+    await waitForBibleQuestObjective(first, quest, index);
+  }
+}
+
+async function completeBibleQuestTurnIn(first, redis, quest) {
+  if (quest.hidden) {
+    const panel = first.page.getByTestId(
+      `hidden-bible-quest-panel-${quest.id}`
+    );
+    await panel.waitFor({ state: "visible", timeout: timeoutMs });
+    await clickUniqueButton(
+      first.page,
+      `Complete: ${quest.title}`,
+      `${quest.title}: hidden completion`
+    );
+  } else {
+    await openBibleQuestGiverDialog(first, quest, `${quest.title}: turn-in`);
+    await clickTalkDialogButton(
+      first,
+      `Complete: ${quest.title}`,
+      `${quest.title}: turn-in`
+    );
+    await closeSnapshotGroveModal(first.page);
+  }
+
+  const challengeId = harthmereNativeQuestId("bible", quest.id);
+  const authoritative = await waitFor(
+    `${quest.title}: completion reaches native ECS`,
+    () => authoritativeEntity(first.page, first.userId),
+    ({ entity }) => entity?.challenges?.complete.has(challengeId),
+    Math.max(acceptanceGateMs, 10_000),
+    timeoutMs
+  );
+  const live = await waitFor(
+    `${quest.title}: completion reaches live state`,
+    () => bibleQuestLiveState(first.page),
+    (snapshot) =>
+      Boolean(snapshot?.completed?.[quest.id]) &&
+      snapshot?.bible?.runtime?.[quest.id]?.state === "completed" &&
+      !snapshot?.active?.[quest.id],
+    Math.max(originSyncGateMs, 10_000),
+    timeoutMs
+  );
+  const frontend = await waitFor(
+    `${quest.title}: completed quest leaves frontend journal`,
+    () => bridgeCall(first.page, "nativeQuestFrontendSnapshot"),
+    (snapshot) =>
+      snapshot.ecs.complete.includes(String(challengeId)) &&
+      !questFromFrontend(snapshot, challengeId),
+    Math.max(originSyncGateMs, 10_000),
+    timeoutMs
+  );
+
+  const raw = await redis.primary.get(
+    harthmereLiveModePlayerStateKey(String(first.userId))
+  );
+  const persisted = parseHarthmereLiveModeBackendState(
+    raw,
+    String(first.userId),
+    Date.now()
+  );
+  assert(
+    persisted.quests.bible.grantedRewardIds.some((grantId) =>
+      grantId.startsWith(`reward:${quest.id}`)
+    ),
+    `${quest.title}: reward grant was not persisted`
+  );
+  for (const itemId of quest.rewards?.items ?? []) {
+    assert(
+      Number(persisted.inventory.items[itemId] ?? 0) >= 1,
+      `${quest.title}: reward item ${itemId} was not persisted`
+    );
+  }
+  assert(
+    Number(persisted.inventory.gold ?? 0) >=
+      Math.max(0, Number(quest.rewards?.silver ?? 0)),
+    `${quest.title}: silver reward was not persisted`
+  );
+  report.scenarios.push({
+    name: `${quest.title}: bible completion and rewards`,
+    status: "pass",
+    questId: quest.id,
+    category: quest.category,
+    nativeChallengeId: String(challengeId),
+    rewardItems: quest.rewards?.items ?? [],
+    rewardSilver: quest.rewards?.silver ?? 0,
+    rewardXp: quest.rewards?.xp ?? 0,
+    authoritativeMs: authoritative.elapsedMs,
+    liveModeMs: live.elapsedMs,
+    frontendMs: frontend.elapsedMs,
+  });
+}
+
+async function proveBibleQuestInBrowser(first, redis, quest) {
+  await installBibleQuestE2EFixture(redis, first, quest);
+  await acceptBibleQuestInBrowser(first, quest);
+  if (quest.id === HARTHMERE_BIBLE_DRAGON_QUEST_ID) {
+    await completeThaedrynBibleQuestInBrowser(first, quest);
+  } else {
+    for (let index = 0; index < quest.objectives.length; index += 1) {
+      await completeBibleQuestObjectiveInBrowser(first, quest, index);
+    }
+  }
+  await completeBibleQuestTurnIn(first, redis, quest);
+}
+
+async function runRemainingBibleQuestBrowserBatch(first) {
+  const redis = await connectToRedis("firehose");
+  const failures = [];
+  try {
+    for (const quest of HARTHMERE_REMAINING_BIBLE_QUESTS) {
+      try {
+        await proveBibleQuestInBrowser(first, redis, quest);
+      } catch (error) {
+        const message = error?.stack || String(error);
+        failures.push({ questId: quest.id, title: quest.title, error: message });
+        report.scenarios.push({
+          name: `${quest.title}: bible catalog batch`,
+          status: "fail",
+          questId: quest.id,
+          category: quest.category,
+          error: message,
+        });
+        await first.page
+          .screenshot({
+            path: path.join(
+              artifactsDir,
+              `${runId}-${quest.id}-failure.png`
+            ),
+            fullPage: true,
+          })
+          .catch(() => undefined);
+        await closeSnapshotGroveModal(first.page).catch(() => undefined);
+      }
+    }
+  } finally {
+    await redis.quit("remaining bible quest browser E2E complete");
+  }
+  if (failures.length) {
+    throw new Error(
+      `Bible catalog browser batch found ${failures.length} failure(s):\n${failures
+        .map((failure) => `${failure.title}: ${failure.error}`)
+        .join("\n\n")}`
+    );
+  }
+}
+
+function finishFocusedRemainingBibleRun() {
+  const completedQuestIds = new Set(
+    report.scenarios
+      .filter(
+        (scenario) =>
+          scenario.status === "pass" &&
+          scenario.name?.endsWith("bible completion and rewards")
+      )
+      .map((scenario) => scenario.questId)
+  );
+  assert.deepEqual(
+    [...completedQuestIds].sort(),
+    HARTHMERE_REMAINING_BIBLE_QUESTS.map((quest) => quest.id).sort(),
+    "every non-starter Bible quest must complete in the browser batch"
+  );
+  assert.deepEqual(
+    report.browser.failures,
+    [],
+    `browser/network errors occurred:\n${report.browser.failures.join("\n")}`
+  );
+  report.finishedAt = new Date().toISOString();
+  report.status = "pass";
+  console.log(
+    `PASS remaining Bible quest browser E2E (${HARTHMERE_REMAINING_BIBLE_QUESTS.length} quests)`
+  );
+}
+
+const HARTHMERE_CLIENT_NPC_ID_BASE = 8_810_000_000_010_000;
+const HARTHMERE_REQUESTED_CLIENT_QUEST_IDS = selectedCatalogIds(
+  "HARTHMERE_E2E_CLIENT_QUEST_IDS"
+);
+const HARTHMERE_SELECTED_CLIENT_QUESTS = HARTHMERE_CLIENT_QUESTS.filter(
+  (quest) =>
+    !HARTHMERE_REQUESTED_CLIENT_QUEST_IDS ||
+    HARTHMERE_REQUESTED_CLIENT_QUEST_IDS.has(quest.id)
+);
+
+async function harthmereClientQuestState(page) {
+  return page.evaluate((key) => {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : undefined;
+  }, HARTHMERE_CLIENT_QUEST_STATE_KEY);
+}
+
+async function resetHarthmereClientQuestState(page) {
+  await page.evaluate((key) => {
+    // Keep the default Jobs Board orientation quest active while isolating all
+    // other client-twin rows. Each row is then accepted and completed only by
+    // its rendered production dialogue/actions.
+    localStorage.setItem(
+      key,
+      JSON.stringify({ active: { "read-the-jobs-board": 0 }, completed: [] })
+    );
+    window.dispatchEvent(new Event("biomes:harthmere-quest-state-changed"));
+  }, HARTHMERE_CLIENT_QUEST_STATE_KEY);
+}
+
+async function openHarthmereClientQuestTarget(first, offset, label) {
+  assert.notEqual(
+    offset,
+    HARTHMERE_JOBS_BOARD_TARGET_OFFSET,
+    `${label}: Jobs Board target must use its rendered board action`
+  );
+  const entityId = HARTHMERE_CLIENT_NPC_ID_BASE + offset;
+  const entity = await authoritativeEntity(first.page, entityId);
+  assert(entity.entity?.position?.v, `${label}: NPC offset ${offset} is absent`);
+  await moveSnapshotGrovePlayer(first, entity.entity.position.v, label);
+  await first.page.evaluate((talkingToNPCId) => {
+    const context = globalThis.clientContext;
+    if (!context?.resources) throw new Error("client context unavailable");
+    context.resources.set("/game_modal", {
+      kind: "talk_to_npc",
+      talkingToNPCId,
+    });
+  }, entityId);
+}
+
+async function proveHarthmereClientQuestInBrowser(first, quest) {
+  await resetHarthmereClientQuestState(first.page);
+  if (quest.id === "read-the-jobs-board") {
+    await first.page.keyboard.press("KeyB");
+    await waitFor(
+      `${quest.title}: rendered Jobs Board action completes quest`,
+      () => harthmereClientQuestState(first.page),
+      (state) =>
+        state?.completed?.includes(quest.id) &&
+        state?.active?.[quest.id] === undefined,
+      Math.max(originSyncGateMs, 10_000),
+      timeoutMs
+    );
+    await closeSnapshotGroveModal(first.page);
+  } else {
+    // Prefer a real NPC giver over the Market Board so action compaction cannot
+    // hide a later catalog row behind unrelated board utilities.
+    const giverOffset =
+      quest.giverOffsets.find((offset) => offset !== 41) ??
+      quest.giverOffsets[0];
+    assert(giverOffset !== undefined, `${quest.title}: no giver offset`);
+    await openHarthmereClientQuestTarget(
+      first,
+      giverOffset,
+      `${quest.title}: giver`
+    );
+    await clickTalkDialogButton(
+      first,
+      `Accept: ${quest.title}`,
+      `${quest.title}: acceptance`
+    );
+    await closeSnapshotGroveModal(first.page);
+    await waitFor(
+      `${quest.title}: acceptance reaches client mission state`,
+      () => harthmereClientQuestState(first.page),
+      (state) => Number.isInteger(state?.active?.[quest.id]),
+      Math.max(originSyncGateMs, 10_000),
+      timeoutMs
+    );
+
+    for (let safety = 0; safety < quest.steps.length + 1; safety += 1) {
+      const state = await harthmereClientQuestState(first.page);
+      const stepIndex = state?.active?.[quest.id];
+      if (stepIndex === undefined) break;
+      const step = quest.steps[stepIndex];
+      assert(step, `${quest.title}: missing active step ${stepIndex}`);
+      await openHarthmereClientQuestTarget(
+        first,
+        step.targetOffset,
+        `${quest.title}: step ${stepIndex + 1}`
+      );
+      await clickTalkDialogButton(
+        first,
+        `Complete: ${quest.title}`,
+        `${quest.title}: step ${stepIndex + 1}`
+      );
+      // Completion copy is part of the rendered dialogue contract; assert it
+      // before closing the modal and checking persisted progression.
+      await first.page
+        .getByText(step.completion, { exact: false })
+        .first()
+        .waitFor({ state: "visible", timeout: timeoutMs });
+      await closeSnapshotGroveModal(first.page);
+      await waitFor(
+        `${quest.title}: step ${stepIndex + 1} persists`,
+        () => harthmereClientQuestState(first.page),
+        (next) =>
+          next?.completed?.includes(quest.id) ||
+          Number(next?.active?.[quest.id]) > stepIndex,
+        Math.max(originSyncGateMs, 10_000),
+        timeoutMs
+      );
+    }
+  }
+
+  const completed = await harthmereClientQuestState(first.page);
+  assert(
+    completed?.completed?.includes(quest.id),
+    `${quest.title}: did not enter completed state`
+  );
+  assert.equal(
+    completed?.active?.[quest.id],
+    undefined,
+    `${quest.title}: remained active after completion`
+  );
+  report.scenarios.push({
+    name: `${quest.title}: client-twin browser completion`,
+    status: "pass",
+    questId: quest.id,
+    steps: quest.steps.length,
+    authority: "client_compatibility_state",
+  });
+}
+
+async function runRemainingClientQuestBrowserBatch(first) {
+  const failures = [];
+  for (const quest of HARTHMERE_SELECTED_CLIENT_QUESTS) {
+    try {
+      await proveHarthmereClientQuestInBrowser(first, quest);
+    } catch (error) {
+      const message = error?.stack || String(error);
+      failures.push({ questId: quest.id, title: quest.title, error: message });
+      report.scenarios.push({
+        name: `${quest.title}: client-twin browser batch`,
+        status: "fail",
+        questId: quest.id,
+        error: message,
+      });
+      await closeSnapshotGroveModal(first.page).catch(() => undefined);
+    }
+  }
+  if (failures.length) {
+    throw new Error(
+      `Client quest browser batch found ${failures.length} failure(s):\n${failures
+        .map((failure) => `${failure.title}: ${failure.error}`)
+        .join("\n\n")}`
+    );
+  }
+}
+
+function finishFocusedRemainingClientQuestsRun() {
+  const completedQuestIds = new Set(
+    report.scenarios
+      .filter(
+        (scenario) =>
+          scenario.status === "pass" &&
+          scenario.name?.endsWith("client-twin browser completion")
+      )
+      .map((scenario) => scenario.questId)
+  );
+  assert.deepEqual(
+    [...completedQuestIds].sort(),
+    HARTHMERE_SELECTED_CLIENT_QUESTS.map((quest) => quest.id).sort(),
+    "every client compatibility quest must complete in the browser"
+  );
+  assert.deepEqual(
+    report.browser.failures,
+    [],
+    `browser/network errors occurred:\n${report.browser.failures.join("\n")}`
+  );
+  report.finishedAt = new Date().toISOString();
+  report.status = "pass";
+  console.log(
+    `PASS remaining client quest browser E2E (${HARTHMERE_SELECTED_CLIENT_QUESTS.length} quests)`
+  );
+}
+
+async function completeSnapshotGroveContextualStep(
+  first,
+  quest,
+  objectiveIndex,
+  buttonName
+) {
+  const marker = snapshotGroveMarker(quest.markerIds[objectiveIndex]);
+  await moveSnapshotGrovePlayer(
+    first,
+    marker.position,
+    `${quest.title}: ${marker.label}`
+  );
+  await clickUniqueButton(
+    first.page,
+    buttonName,
+    `${quest.title}: objective ${objectiveIndex + 1}`
+  );
+  await waitForSnapshotGroveObjective(first, quest, objectiveIndex);
+  await closeSnapshotGroveModal(first.page);
+}
+
+async function completeSnapshotGroveTabStep(first, quest, objectiveIndex, key) {
+  await first.page.keyboard.press(key);
+  await waitForSnapshotGroveObjective(first, quest, objectiveIndex);
+  await closeSnapshotGroveModal(first.page);
+}
+
+async function completeSnapshotGrovePlacementStep(
+  first,
+  quest,
+  objectiveIndex
+) {
+  const marker = snapshotGroveMarker(quest.markerIds[objectiveIndex]);
+  const practiceItem = snapshotGrovePracticeItemFixtureForObjective(
+    quest,
+    objectiveIndex
+  );
+  assert(practiceItem, `${quest.title}: placement item is not authored`);
+  const itemId = harthmereNativeBiomesIdForItemId(practiceItem.itemId);
+  assert(
+    itemId,
+    `${quest.title}: ${practiceItem.itemId} has no native item id`
+  );
+  const before = await authoritativeEntity(first.page, first.userId);
+  assert(
+    inventoryCount(before.entity, itemId) >= BigInt(practiceItem.quantity),
+    `${quest.title}: acceptance did not grant ${practiceItem.label}`
+  );
+  await moveSnapshotGrovePlayer(
+    first,
+    marker.position,
+    `${quest.title}: ${marker.label}`
+  );
+  // The test runs the exact browser-side action signal emitted after the
+  // placement helper accepts a voxel. Inventory ownership was already proven
+  // above and the resulting lesson step must still cross the signed backend
+  // and native TriggerState before the frontend is allowed to advance.
+  await publishSnapshotGroveGardenHoseEvent(first.page, {
+    kind: "place_voxel",
+    questId: quest.id,
+    objectiveIndex,
+    trigger: quest.triggers[objectiveIndex],
+    markerId: marker.id,
+    itemId: practiceItem.itemId,
+    itemName: practiceItem.label,
+  });
+  await waitForSnapshotGroveObjective(first, quest, objectiveIndex);
+}
+
+async function equipSnapshotGroveApronInBrowser(first, quest, objectiveIndex) {
+  const apronId = harthmereNativeBiomesIdForItemId("baker_apron");
+  assert(apronId, `${quest.title}: baker_apron has no native item id`);
+  const before = await authoritativeEntity(first.page, first.userId);
+  assert.equal(
+    inventoryCount(before.entity, apronId),
+    1n,
+    `${quest.title}: acceptance did not grant the Dawn Loaf Apron`
+  );
+  await first.page.keyboard.press("KeyI");
+  const apron = first.page.getByText("Dawn Loaf Apron", { exact: true });
+  await apron.waitFor({ state: "visible", timeout: timeoutMs });
+  assert.equal(
+    await apron.count(),
+    1,
+    `${quest.title}: apron is not unique in UI`
+  );
+  await apron.click();
+  await clickUniqueButton(first.page, "Equip", `${quest.title}: equip apron`);
+  await waitFor(
+    `${quest.title}: browser equip reaches native wearing`,
+    () => authoritativeEntity(first.page, first.userId),
+    ({ entity }) =>
+      entity?.wearing?.items &&
+      [...entity.wearing.items.values()].some((item) => item?.id === apronId),
+    Math.max(acceptanceGateMs, 10_000),
+    timeoutMs
+  );
+  await waitForSnapshotGroveObjective(first, quest, objectiveIndex);
+  await closeSnapshotGroveModal(first.page);
+}
+
+async function turnInSnapshotGroveQuest(first, quest) {
+  const finalIndex = quest.objectives.length - 1;
+  await openSnapshotGroveNpcDialog(
+    first,
+    quest.giverNpcId,
+    `${quest.title}: turn-in`
+  );
+  await advanceTalkDialogUntil(
+    first,
+    `${quest.title}: completion dialogue`,
+    () =>
+      first.page.evaluate((title) => {
+        const text = document.body?.textContent ?? "";
+        return (
+          text.includes(`You completed ${title}.`) ||
+          text.includes(`${title} is handled.`)
+        );
+      }, quest.title)
+  );
+  await first.page.screenshot({
+    path: path.join(artifactsDir, `${runId}-${quest.id}-turn-in.png`),
+  });
+  await waitForSnapshotGroveObjective(first, quest, finalIndex);
+  await closeSnapshotGroveModal(first.page);
+  await openSnapshotGroveJournal(first.page);
+  await first.page.waitForTimeout(250);
+  const nativeQuestId = harthmereNativeQuestId("grove", quest.id);
+  assert(nativeQuestId, `${quest.title}: missing native journal identity`);
+  assert.equal(
+    await first.page
+      .getByTestId(`biomes-map-quest-${String(nativeQuestId)}`)
+      .count(),
+    0,
+    `${quest.title}: completed lesson remained in the journal`
+  );
+  await closeSnapshotGroveModal(first.page);
+}
+
+async function proveSnapshotGroveLesson(first, questId) {
+  const quest = snapshotGroveQuest(questId);
+  await acceptSnapshotGroveQuestInBrowser(first, quest);
+  switch (questId) {
+    case "fountain_buttons_first":
+      await completeSnapshotGroveContextualStep(
+        first,
+        quest,
+        1,
+        "Use marked object"
+      );
+      await completeSnapshotGroveTabStep(first, quest, 2, "KeyM");
+      await completeSnapshotGroveTabStep(first, quest, 3, "KeyJ");
+      break;
+    case "tools_before_treasure":
+      await completeSnapshotGroveContextualStep(
+        first,
+        quest,
+        1,
+        "Use marked object"
+      );
+      await completeSnapshotGroveContextualStep(
+        first,
+        quest,
+        2,
+        "Pick up marked item"
+      );
+      await completeSnapshotGrovePlacementStep(first, quest, 3);
+      await completeSnapshotGroveTabStep(first, quest, 4, "KeyM");
+      await completeSnapshotGroveContextualStep(
+        first,
+        quest,
+        5,
+        "Pick practice answer"
+      );
+      break;
+    case "road_ready_bag_check":
+      await completeSnapshotGroveTabStep(first, quest, 1, "KeyI");
+      await equipSnapshotGroveApronInBrowser(first, quest, 2);
+      await completeSnapshotGroveContextualStep(
+        first,
+        quest,
+        3,
+        "Use marked object"
+      );
+      await completeSnapshotGroveTabStep(first, quest, 4, "KeyI");
+      break;
+    default:
+      assert.fail(`No Snapshot Grove browser plan for ${questId}`);
+  }
+  await turnInSnapshotGroveQuest(first, quest);
+}
+
+async function runSnapshotGroveOnboardingBrowserBatch(browser, suffix) {
+  const failures = [];
+  for (
+    let index = 0;
+    index < SNAPSHOT_GROVE_ONBOARDING_QUEST_IDS.length;
+    index += 1
+  ) {
+    const questId = SNAPSHOT_GROVE_ONBOARDING_QUEST_IDS[index];
+    const quest = snapshotGroveQuest(questId);
+    let user;
+    try {
+      // A fresh actor per lesson lets the batch report every independent
+      // failure without allowing stale local state or receipts to hide one.
+      // Contexts remain serial so Chromium memory stays bounded.
+      user = await openUser(
+        browser,
+        `SnapshotGrove-${index + 1}-${suffix}`,
+        `snapshot-${questId}`
+      );
+      const diagnostics = await bridgeCall(user.page, "diagnostics");
+      assert(
+        diagnostics.tableSize > 0,
+        `${quest.title}: browser hydrated no ECS entities`
+      );
+      report.scenarios.push({
+        name: `${quest.title}: world bootstrap`,
+        status: "pass",
+        questId,
+        hydratedEntityCount: diagnostics.tableSize,
+      });
+      await proveSnapshotGroveLesson(user, questId);
+    } catch (error) {
+      const message = error?.stack || String(error);
+      failures.push({ questId, title: quest.title, error: message });
+      report.scenarios.push({
+        name: `${quest.title}: browser lesson batch`,
+        status: "fail",
+        questId,
+        error: message,
+      });
+      if (user?.page && !user.page.isClosed()) {
+        await user.page
+          .screenshot({
+            path: path.join(artifactsDir, `${runId}-${questId}-failure.png`),
+            fullPage: true,
+          })
+          .catch(() => undefined);
+      }
+    } finally {
+      await user?.context?.close().catch(() => undefined);
+    }
+  }
+  if (failures.length) {
+    throw new Error(
+      `Snapshot Grove browser batch found ${
+        failures.length
+      } failing lesson(s):\n${failures
+        .map((failure) => `${failure.title}: ${failure.error}`)
+        .join("\n\n")}`
+    );
+  }
+}
+
+function finishFocusedSnapshotGroveOnboardingRun() {
+  const expectedObjectives = SNAPSHOT_GROVE_ONBOARDING_QUEST_IDS.reduce(
+    (total, questId) => total + snapshotGroveQuest(questId).objectives.length,
+    0
+  );
+  assert.equal(
+    report.scenarios.length,
+    expectedObjectives + SNAPSHOT_GROVE_ONBOARDING_QUEST_IDS.length,
+    `expected one bootstrap per lesson plus ${expectedObjectives} onboarding objectives`
+  );
+  assert.deepEqual(
+    report.browser.failures,
+    [],
+    `browser/network errors occurred:\n${report.browser.failures.join("\n")}`
+  );
+  report.finishedAt = new Date().toISOString();
+  report.status = "pass";
+  console.log(
+    `PASS Snapshot Grove onboarding browser E2E (${expectedObjectives} objectives)`
+  );
+}
+
 async function run() {
   if (exhaustiveRobotStory) {
     await loadNativeRobotStoryBikkieTray();
@@ -3844,8 +6583,28 @@ async function run() {
   let second;
   let sameUserPeer;
   try {
+    if (snapshotGroveOnboardingOnly) {
+      await runSnapshotGroveOnboardingBrowserBatch(browser, suffix);
+      finishFocusedSnapshotGroveOnboardingRun();
+      return;
+    }
+    if (remainingQuestsOnly) {
+      await runRemainingSnapshotGroveBrowserBatch(browser, suffix);
+      finishFocusedRemainingQuestsRun();
+      return;
+    }
     first = await openUser(browser, `NativeECS-A-${suffix}`, "client-a");
-    if (!combatMusicOnly && !chaseOnly && !robotStoryOnly && !jobsOnly) {
+    if (
+      !combatMusicOnly &&
+      !chaseOnly &&
+      !robotStoryOnly &&
+      !jobsOnly &&
+      !remainingJobsOnly &&
+      !remainingQuestsOnly &&
+      !remainingBibleOnly &&
+      !remainingClientQuestsOnly &&
+      !snapshotGroveOnboardingOnly
+    ) {
       sameUserPeer = await openSameUserPeer(first, "client-a-peer");
       second = await openUser(browser, `NativeECS-B-${suffix}`, "client-b");
     }
@@ -3873,6 +6632,12 @@ async function run() {
       secondClientSyncMs: peerInitial?.elapsedMs,
     });
 
+    if (remainingClientQuestsOnly) {
+      await runRemainingClientQuestBrowserBatch(first);
+      finishFocusedRemainingClientQuestsRun();
+      return;
+    }
+
     if (chaseOnly) {
       console.log("E2E chase: creating native Mucker fixture");
       const combatNode = HARTHMERE_GATHERING_AUTHORITY_NODES.find(
@@ -3895,9 +6660,10 @@ async function run() {
           trigger_state: nativeVitalsFixture(),
         },
       });
-      await waitForPlayerFixture(first.page, first.userId);
+      await waitForPlayerFixture(first.page, first.userId, 50);
       if (exhaustiveRobotStory) {
         await proveNativeRobotStoryExhaustiveRoundTrip(
+          browser,
           first,
           sameUserPeer,
           position
@@ -3909,20 +6675,45 @@ async function run() {
       return;
     }
 
-    if (jobsOnly) {
+    if (remainingBibleOnly) {
       await applyFixture(first.page, {
         kind: "update",
         entity: {
           id: first.userId,
           inventory: playerInventoryFixture(),
           wearing: Wearing.create({ items: new Map() }),
-          health: Health.create({ hp: 50, maxHp: 100 }),
+          health: Health.create({ hp: 100, maxHp: 100 }),
           trigger_state: nativeVitalsFixture(),
         },
       });
-      await waitForPlayerFixture(first.page, first.userId);
-      await proveAllJobsBoardFrontendNativeEcsRoundTrips(first);
-      finishFocusedJobsRun();
+      await waitForPlayerFixture(first.page, first.userId, 100);
+      await runRemainingBibleQuestBrowserBatch(first);
+      finishFocusedRemainingBibleRun();
+      return;
+    }
+
+    if (jobsOnly || remainingJobsOnly) {
+      await applyFixture(first.page, {
+        kind: "update",
+        entity: {
+          id: first.userId,
+          inventory: playerInventoryFixture(),
+          wearing: Wearing.create({ items: new Map() }),
+          // Some authored field markers sit outside the tiny low-memory render
+          // radius used by this catalog run. Keep the fixture nonlethal so a
+          // missing terrain collision cannot kill the actor and remove native
+          // currency between reward materialization and wallet verification.
+          health: Health.create({ hp: 1_000_000, maxHp: 1_000_000 }),
+          trigger_state: nativeVitalsFixture(),
+        },
+      });
+      await waitForPlayerFixture(first.page, first.userId, 1_000_000);
+      await proveAllJobsBoardFrontendNativeEcsRoundTrips(
+        first,
+        remainingJobsOnly ? "business" : "auto"
+      );
+      if (remainingJobsOnly) finishFocusedRemainingJobsRun();
+      else finishFocusedJobsRun();
       return;
     }
 

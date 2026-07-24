@@ -5,7 +5,26 @@
 
 import type { BiomesId } from "@/shared/ids";
 import type { Vec3 } from "@/shared/math/types";
-import { BUILDING_SYSTEM_GROVE_STEWARD_NPC, BUILDING_SYSTEM_MIRA_INTRO_QUEST } from "@/shared/harthmere/building_system";
+import {
+  SNAPSHOT_GROVE_LIVE_MARKER_Y,
+  SNAPSHOT_GROVE_LIVE_NPC_FEET_Y,
+  SNAPSHOT_GROVE_LIVE_WORLD_GROUND_Y,
+  SNAPSHOT_GROVE_LOCAL_DEV_NPC_BASE,
+  SNAPSHOT_GROVE_NPC_ID_OFFSET_BASE,
+} from "@/shared/harthmere/snapshot_grove_ids";
+export {
+  SNAPSHOT_GROVE_JACKIE_ENTITY_ID,
+  SNAPSHOT_GROVE_JACKIE_ID_OFFSET,
+  SNAPSHOT_GROVE_LIVE_MARKER_Y,
+  SNAPSHOT_GROVE_LIVE_NPC_FEET_Y,
+  SNAPSHOT_GROVE_LIVE_WORLD_GROUND_Y,
+  SNAPSHOT_GROVE_LOCAL_DEV_NPC_BASE,
+  SNAPSHOT_GROVE_NPC_ID_OFFSET_BASE,
+} from "@/shared/harthmere/snapshot_grove_ids";
+import {
+  BUILDING_SYSTEM_GROVE_STEWARD_NPC,
+  BUILDING_SYSTEM_MIRA_INTRO_QUEST,
+} from "@/shared/harthmere/building_system";
 import {
   GROVE_ECONOMY_STARTER_LANDMARKS,
   GROVE_ECONOMY_STARTER_NPCS,
@@ -31,12 +50,6 @@ export const SNAPSHOT_GROVE_WORLD_GROUND_Y = 52;
 export const SNAPSHOT_GROVE_NPC_FEET_Y = SNAPSHOT_GROVE_WORLD_GROUND_Y + 1;
 export const SNAPSHOT_GROVE_MARKER_Y = SNAPSHOT_GROVE_WORLD_GROUND_Y + 2;
 
-export const SNAPSHOT_GROVE_LIVE_WORLD_GROUND_Y = 69;
-export const SNAPSHOT_GROVE_LIVE_NPC_FEET_Y =
-  SNAPSHOT_GROVE_LIVE_WORLD_GROUND_Y + 1;
-export const SNAPSHOT_GROVE_LIVE_MARKER_Y =
-  SNAPSHOT_GROVE_LIVE_WORLD_GROUND_Y + 2;
-
 // SNAPSHOT_GROVE_FOUNTAIN_CLUSTER:
 // The current snapshot Grove spawn/fountain area reports the player around
 // [496.335, 69.875, -126.737]. Keep the tutorial cast anchored here so
@@ -45,20 +58,13 @@ export const SNAPSHOT_GROVE_LIVE_MARKER_Y =
 export const SNAPSHOT_GROVE_FOUNTAIN_CENTER_X = 496;
 export const SNAPSHOT_GROVE_FOUNTAIN_CENTER_Z = -126;
 
-export function snapshotGroveFountainPosition(
-  dx: number,
-  dz: number,
-): Vec3 {
+export function snapshotGroveFountainPosition(dx: number, dz: number): Vec3 {
   return [
     SNAPSHOT_GROVE_FOUNTAIN_CENTER_X + dx,
     SNAPSHOT_GROVE_NPC_FEET_Y,
     SNAPSHOT_GROVE_FOUNTAIN_CENTER_Z + dz,
   ];
 }
-
-export const SNAPSHOT_GROVE_LOCAL_DEV_NPC_BASE =
-  8_810_000_000_010_000 as BiomesId;
-export const SNAPSHOT_GROVE_NPC_ID_OFFSET_BASE = 9300;
 
 export type SnapshotGroveArea =
   | "the_grove"
@@ -182,20 +188,22 @@ export function snapshotGroveMarkerPosition(position: Vec3): Vec3 {
   return [position[0], SNAPSHOT_GROVE_LIVE_MARKER_Y, position[2]];
 }
 
-export function snapshotHarthmereAuthoredMarkerPosition(
-  position: Vec3
-): Vec3 {
+export function snapshotHarthmereAuthoredMarkerPosition(position: Vec3): Vec3 {
   // Harthmere markers use the town's authored Y=52/53/54 plane and only take
   // the shared XZ transform. Reusing the raised Grove marker helper would put
   // town interactions seventeen blocks above the generated extension ground.
   return shiftHarthmereAuthoredPositionToWorld(position);
 }
 
-export function snapshotGroveNpcEntityId(npc: Pick<SnapshotGroveNpc, "idOffset">): BiomesId {
+export function snapshotGroveNpcEntityId(
+  npc: Pick<SnapshotGroveNpc, "idOffset">
+): BiomesId {
   return (Number(SNAPSHOT_GROVE_LOCAL_DEV_NPC_BASE) + npc.idOffset) as BiomesId;
 }
 
-export function snapshotGroveNpcIdFromEntityId(entityId: BiomesId): string | undefined {
+export function snapshotGroveNpcIdFromEntityId(
+  entityId: BiomesId
+): string | undefined {
   const offset = Number(entityId) - Number(SNAPSHOT_GROVE_LOCAL_DEV_NPC_BASE);
   return SNAPSHOT_GROVE_NPCS.find((npc) => npc.idOffset === offset)?.id;
 }
@@ -212,76 +220,149 @@ export interface SnapshotGroveNpcRouteProfile {
 
 const GROVE_ROUTE_Y = SNAPSHOT_GROVE_LIVE_NPC_FEET_Y;
 
-export const SNAPSHOT_GROVE_NPC_ROUTE_PROFILES: Record<string, SnapshotGroveNpcRouteProfile> = {
+export const SNAPSHOT_GROVE_NPC_ROUTE_PROFILES: Record<
+  string,
+  SnapshotGroveNpcRouteProfile
+> = {
   billy: {
     speedMetersPerSecond: 0.72,
     phaseOffsetSeconds: 0,
-    points: [[500, GROVE_ROUTE_Y, -140], [507, GROVE_ROUTE_Y, -136], [504, GROVE_ROUTE_Y, -126], [494, GROVE_ROUTE_Y, -130]],
+    points: [
+      [500, GROVE_ROUTE_Y, -140],
+      [507, GROVE_ROUTE_Y, -136],
+      [504, GROVE_ROUTE_Y, -126],
+      [494, GROVE_ROUTE_Y, -130],
+    ],
   },
   doc: {
     speedMetersPerSecond: 0.48,
     phaseOffsetSeconds: 11,
-    points: [[512, GROVE_ROUTE_Y, -152], [518, GROVE_ROUTE_Y, -149], [514, GROVE_ROUTE_Y, -143], [506, GROVE_ROUTE_Y, -148]],
+    points: [
+      [512, GROVE_ROUTE_Y, -152],
+      [518, GROVE_ROUTE_Y, -149],
+      [514, GROVE_ROUTE_Y, -143],
+      [506, GROVE_ROUTE_Y, -148],
+    ],
   },
   mucked_robot: {
     speedMetersPerSecond: 0.32,
     phaseOffsetSeconds: 19,
-    points: [[524, GROVE_ROUTE_Y, -154], [529, GROVE_ROUTE_Y, -156], [526, GROVE_ROUTE_Y, -163], [519, GROVE_ROUTE_Y, -160]],
+    points: [
+      [524, GROVE_ROUTE_Y, -154],
+      [529, GROVE_ROUTE_Y, -156],
+      [526, GROVE_ROUTE_Y, -163],
+      [519, GROVE_ROUTE_Y, -160],
+    ],
   },
   buddy: {
     speedMetersPerSecond: 0.36,
     phaseOffsetSeconds: 5,
-    points: [[486, GROVE_ROUTE_Y, -209], [492, GROVE_ROUTE_Y, -207], [490, GROVE_ROUTE_Y, -215], [483, GROVE_ROUTE_Y, -216]],
+    points: [
+      [486, GROVE_ROUTE_Y, -209],
+      [492, GROVE_ROUTE_Y, -207],
+      [490, GROVE_ROUTE_Y, -215],
+      [483, GROVE_ROUTE_Y, -216],
+    ],
   },
   rosalyn: {
     speedMetersPerSecond: 0.5,
     phaseOffsetSeconds: 7,
-    points: [[495, GROVE_ROUTE_Y, -132], [503, GROVE_ROUTE_Y, -133], [504, GROVE_ROUTE_Y, -123], [493, GROVE_ROUTE_Y, -122]],
+    points: [
+      [495, GROVE_ROUTE_Y, -132],
+      [503, GROVE_ROUTE_Y, -133],
+      [504, GROVE_ROUTE_Y, -123],
+      [493, GROVE_ROUTE_Y, -122],
+    ],
   },
   nia_guild_clerk: {
     speedMetersPerSecond: 0.42,
     phaseOffsetSeconds: 17,
-    points: [[489, GROVE_ROUTE_Y, -137], [485, GROVE_ROUTE_Y, -142], [478, GROVE_ROUTE_Y, -138], [483, GROVE_ROUTE_Y, -131]],
+    points: [
+      [489, GROVE_ROUTE_Y, -137],
+      [485, GROVE_ROUTE_Y, -142],
+      [478, GROVE_ROUTE_Y, -138],
+      [483, GROVE_ROUTE_Y, -131],
+    ],
   },
   grove_banker_merl: {
     speedMetersPerSecond: 0.38,
     phaseOffsetSeconds: 23,
-    points: [[506, GROVE_ROUTE_Y, -119], [511, GROVE_ROUTE_Y, -122], [508, GROVE_ROUTE_Y, -130], [501, GROVE_ROUTE_Y, -126]],
+    points: [
+      [506, GROVE_ROUTE_Y, -119],
+      [511, GROVE_ROUTE_Y, -122],
+      [508, GROVE_ROUTE_Y, -130],
+      [501, GROVE_ROUTE_Y, -126],
+    ],
   },
   mira_thatch: {
     speedMetersPerSecond: 0.45,
     phaseOffsetSeconds: 29,
-    points: [[493, GROVE_ROUTE_Y, -121], [488, GROVE_ROUTE_Y, -116], [481, GROVE_ROUTE_Y, -119], [486, GROVE_ROUTE_Y, -128]],
+    points: [
+      [493, GROVE_ROUTE_Y, -121],
+      [488, GROVE_ROUTE_Y, -116],
+      [481, GROVE_ROUTE_Y, -119],
+      [486, GROVE_ROUTE_Y, -128],
+    ],
   },
   carlo_the_cook: {
     speedMetersPerSecond: 0.46,
     phaseOffsetSeconds: 31,
-    points: [[503, GROVE_ROUTE_Y, -120], [510, GROVE_ROUTE_Y, -116], [515, GROVE_ROUTE_Y, -123], [507, GROVE_ROUTE_Y, -129]],
+    points: [
+      [503, GROVE_ROUTE_Y, -120],
+      [510, GROVE_ROUTE_Y, -116],
+      [515, GROVE_ROUTE_Y, -123],
+      [507, GROVE_ROUTE_Y, -129],
+    ],
   },
   gus_the_baker: {
     speedMetersPerSecond: 0.42,
     phaseOffsetSeconds: 37,
-    points: [[486, GROVE_ROUTE_Y, -126], [480, GROVE_ROUTE_Y, -123], [476, GROVE_ROUTE_Y, -129], [483, GROVE_ROUTE_Y, -134]],
+    points: [
+      [486, GROVE_ROUTE_Y, -126],
+      [480, GROVE_ROUTE_Y, -123],
+      [476, GROVE_ROUTE_Y, -129],
+      [483, GROVE_ROUTE_Y, -134],
+    ],
   },
   fern_repair: {
     speedMetersPerSecond: 0.44,
     phaseOffsetSeconds: 41,
-    points: [[508, GROVE_ROUTE_Y, -134], [515, GROVE_ROUTE_Y, -136], [516, GROVE_ROUTE_Y, -145], [507, GROVE_ROUTE_Y, -143]],
+    points: [
+      [508, GROVE_ROUTE_Y, -134],
+      [515, GROVE_ROUTE_Y, -136],
+      [516, GROVE_ROUTE_Y, -145],
+      [507, GROVE_ROUTE_Y, -143],
+    ],
   },
   kit_courier: {
     speedMetersPerSecond: 0.75,
     phaseOffsetSeconds: 43,
-    points: [[489, GROVE_ROUTE_Y, -119], [502, GROVE_ROUTE_Y, -116], [512, GROVE_ROUTE_Y, -127], [498, GROVE_ROUTE_Y, -137]],
+    points: [
+      [489, GROVE_ROUTE_Y, -119],
+      [502, GROVE_ROUTE_Y, -116],
+      [512, GROVE_ROUTE_Y, -127],
+      [498, GROVE_ROUTE_Y, -137],
+    ],
   },
   mel_market: {
     speedMetersPerSecond: 0.4,
     phaseOffsetSeconds: 47,
-    points: [[500, GROVE_ROUTE_Y, -135], [506, GROVE_ROUTE_Y, -139], [501, GROVE_ROUTE_Y, -145], [493, GROVE_ROUTE_Y, -139]],
+    points: [
+      [500, GROVE_ROUTE_Y, -135],
+      [506, GROVE_ROUTE_Y, -139],
+      [501, GROVE_ROUTE_Y, -145],
+      [493, GROVE_ROUTE_Y, -139],
+    ],
   },
   rin_forager: {
     speedMetersPerSecond: 0.5,
     phaseOffsetSeconds: 53,
-    points: [[484, GROVE_ROUTE_Y, -135], [475, GROVE_ROUTE_Y, -136], [472, GROVE_ROUTE_Y, -128], [481, GROVE_ROUTE_Y, -123]],
+    points: [
+      [484, GROVE_ROUTE_Y, -135],
+      [475, GROVE_ROUTE_Y, -136],
+      [472, GROVE_ROUTE_Y, -128],
+      [481, GROVE_ROUTE_Y, -123],
+    ],
   },
 };
 
@@ -322,7 +403,7 @@ function snapshotGroveRouteDistance(from: Vec3, to: Vec3) {
 
 function snapshotGroveRoutePointAtDistance(
   profile: SnapshotGroveNpcRouteProfile,
-  distance: number,
+  distance: number
 ): Vec3 {
   const points = profile.points;
   if (points.length === 0) {
@@ -332,7 +413,7 @@ function snapshotGroveRoutePointAtDistance(
     return [...points[0]] as Vec3;
   }
   const segmentLengths = points.map((point, index) =>
-    snapshotGroveRouteDistance(point, points[(index + 1) % points.length]),
+    snapshotGroveRouteDistance(point, points[(index + 1) % points.length])
   );
   const total = segmentLengths.reduce((sum, value) => sum + value, 0);
   if (total <= 0.0001) {
@@ -360,12 +441,14 @@ export function snapshotGroveNpcRouteMotion(input: {
   entityId?: BiomesId | number;
   label?: string;
   secondsSinceEpoch: number;
-}): {
-  routeId: string;
-  position: Vec3;
-  nextPosition: Vec3;
-  speedMetersPerSecond: number;
-} | undefined {
+}):
+  | {
+      routeId: string;
+      position: Vec3;
+      nextPosition: Vec3;
+      speedMetersPerSecond: number;
+    }
+  | undefined {
   const routeId = snapshotGroveNpcRouteProfileKey(input);
   if (!routeId) {
     return undefined;
@@ -376,9 +459,10 @@ export function snapshotGroveNpcRouteMotion(input: {
   }
   const speed = Math.max(
     0.1,
-    profile.speedMetersPerSecond * SNAPSHOT_GROVE_NPC_ROUTE_SPEED_MULTIPLIER,
+    profile.speedMetersPerSecond * SNAPSHOT_GROVE_NPC_ROUTE_SPEED_MULTIPLIER
   );
-  const distance = (input.secondsSinceEpoch + (profile.phaseOffsetSeconds ?? 0)) * speed;
+  const distance =
+    (input.secondsSinceEpoch + (profile.phaseOffsetSeconds ?? 0)) * speed;
   return {
     routeId,
     position: snapshotGroveRoutePointAtDistance(profile, distance),
@@ -402,21 +486,22 @@ export const SNAPSHOT_GROVE_NPCS: SnapshotGroveNpc[] = [
     role: "Wayfinder, greeter, and emergency road warden",
     authoredPosition: snapshotGroveFountainPosition(0, 0),
     orientation: [0, 3.15],
-    shortDescription: "The Grove wayfinder who holds the starter road together.",
+    shortDescription:
+      "The Grove wayfinder who holds the starter road together.",
     background:
       "Jackie learned the old road posts by touch and knows how many travelers panic when the signs lie.",
     motivation:
       "Keep arrivals alive long enough to become useful neighbors and make The Grove recognize her work.",
     // GROVE_DIALOGUE_DIRECTNESS:
     // Tell the player who I am, what I help with, and exactly what to do next.
-    line:
-      "I'm Jackie, the Grove wayfinder. Talk to me to start the Road Ahead lessons — I'll pin the first safe road marker on your map so you always know where to go next.",
+    line: "I'm Jackie, the Grove wayfinder. Talk to me to start the Road Ahead lessons — I'll pin the first safe road marker on your map so you always know where to go next.",
     extraLines: [
       "Pick the Road Ahead lesson when you're ready. Each step puts a new marker on your map: go there, do the task, come back to me.",
       "If the map marker is on me, that means it's your turn to report back. Talk to me and I'll mark the next stop.",
     ],
     likeabilityTags: ["wayfinder", "road-ahead", "starter-trust"],
-    snapshotAsset: "asset_data/npcs/jackie.db2de25c1a8e8e8bf5afd846618c17b2.glb",
+    snapshotAsset:
+      "asset_data/npcs/jackie.db2de25c1a8e8e8bf5afd846618c17b2.glb",
   },
   {
     id: "billy",
@@ -432,8 +517,7 @@ export const SNAPSHOT_GROVE_NPCS: SnapshotGroveNpc[] = [
       "Billy repairs markers and carries parcels, but once led a cart into a muck pocket and still calls it scenic.",
     motivation:
       "Become the official bridge-runner between The Grove and Harthmere.",
-    line:
-      "I'm Billy. I run parcels and messages between the Grove and Harthmere. If a Road Ahead step says 'find Billy', come straight to me — I'll hand off whatever the lesson needs.",
+    line: "I'm Billy. I run parcels and messages between the Grove and Harthmere. If a Road Ahead step says 'find Billy', come straight to me — I'll hand off whatever the lesson needs.",
     extraLines: [
       "Jackie marks the route. I move the things along it. If you ever need something delivered to Harthmere, ask me.",
       "If a marker says I have something for you, that's a real item — it lands in your bag when I hand it over.",
@@ -449,19 +533,20 @@ export const SNAPSHOT_GROVE_NPCS: SnapshotGroveNpc[] = [
     role: "Scout, animal tracker, and safe-zone boundary keeper",
     authoredPosition: [450, SNAPSHOT_GROVE_NPC_FEET_Y, -260],
     orientation: [0, 1.2],
-    shortDescription: "A dry, precise ranger who reads animal behavior before maps.",
+    shortDescription:
+      "A dry, precise ranger who reads animal behavior before maps.",
     background:
       "Jane learned the Grove by following animals and can identify Mucker movement by how birds stop singing.",
     motivation:
       "Map the muck edges before they reach the Grove hedges and build a ranger cordon to Harthmere.",
-    line:
-      "I'm Ranger Jane. I track muck, dangerous animals, and the Grove's safe-zone edge. Take my Mosslawn lesson if you want to learn which paths are safe before you head out past the lamps.",
+    line: "I'm Ranger Jane. I track muck, dangerous animals, and the Grove's safe-zone edge. Take my Mosslawn lesson if you want to learn which paths are safe before you head out past the lamps.",
     extraLines: [
       "If the marker leads you to Mosslawn, crouch past the skittish animals and inspect the warning moss patches — that's the real task.",
       "The safe-zone boundary is on your map. Past it, my warnings stop and your own caution starts.",
     ],
     likeabilityTags: ["ranger", "mosslawn", "watch-bridge"],
-    snapshotAsset: "asset_data/npcs/ranger_jane.f73490ebc9f495fd4b93180b6e3be420.glb",
+    snapshotAsset:
+      "asset_data/npcs/ranger_jane.f73490ebc9f495fd4b93180b6e3be420.glb",
   },
   {
     id: "luis",
@@ -472,13 +557,13 @@ export const SNAPSHOT_GROVE_NPCS: SnapshotGroveNpc[] = [
     role: "Cartwright, road mechanic, and practical engineer",
     authoredPosition: [486, SNAPSHOT_GROVE_NPC_FEET_Y, -209],
     orientation: [0, 4.7],
-    shortDescription: "The Crossroads mechanic with road bolts and food metaphors.",
+    shortDescription:
+      "The Crossroads mechanic with road bolts and food metaphors.",
     background:
       "Luis fixes everything that moves except people, though he keeps trying that too.",
     motivation:
       "Design a modular road kit that both Grove locals and Harthmere masons will accept.",
-    line:
-      "I'm Luis, the Crossroads mechanic. Take my Patch, Claim, Build lesson — I'll show you how to break rubble, place blocks, repair a fence, and claim safe land. Start here if you want to build anything.",
+    line: "I'm Luis, the Crossroads mechanic. Take my Patch, Claim, Build lesson — I'll show you how to break rubble, place blocks, repair a fence, and claim safe land. Start here if you want to build anything.",
     extraLines: [
       "Building goes: gather material → place blocks on a claimed plot → repair the broken piece. The marker walks you through each step.",
       "Always claim land inside the Grove or Harthmere safe-zone before building. Wild claims are a different lesson and a much bigger risk.",
@@ -495,13 +580,13 @@ export const SNAPSHOT_GROVE_NPCS: SnapshotGroveNpc[] = [
     role: "Painter, sign maker, and keeper of visual memory",
     authoredPosition: snapshotGroveFountainPosition(-5, 2),
     orientation: [0, 3.1],
-    shortDescription: "A sign painter who treats color as warning, welcome, and navigation.",
+    shortDescription:
+      "A sign painter who treats color as warning, welcome, and navigation.",
     background:
       "Taye paints the road markers and notices muck first because it dulls the warning colors.",
     motivation:
       "Create a shared symbol system for The Grove, Harthmere, and future towns.",
-    line:
-      "I'm Taye. I paint the Grove's route signs. Take my Paint Knows Where Eyes Go lesson to learn what each color means and how the route flags, map pins, and HUD highlights line up.",
+    line: "I'm Taye. I paint the Grove's route signs. Take my Paint Knows Where Eyes Go lesson to learn what each color means and how the route flags, map pins, and HUD highlights line up.",
     extraLines: [
       "Bright red means warning. Green means welcome. Yellow means work in progress. The map uses the same code.",
       "Follow the painted flags to the compass ring, pin it, and the HUD will highlight the next stop. That's the whole lesson.",
@@ -518,19 +603,20 @@ export const SNAPSHOT_GROVE_NPCS: SnapshotGroveNpc[] = [
     role: "Stylist, tailor, and identity mentor",
     authoredPosition: [405, SNAPSHOT_GROVE_NPC_FEET_Y, -128],
     orientation: [0, 2.5],
-    shortDescription: "The Lovely Locks mentor who turns cosmetics into road readiness.",
+    shortDescription:
+      "The Lovely Locks mentor who turns cosmetics into road readiness.",
     background:
       "Alexis treats clothing as promises: boots promise travel, gloves promise work, and a clean shirt promises you have not given up.",
     motivation:
       "Prepare travelers with dignity and grow Lovely Locks into a traveling outfitter guild.",
-    line:
-      "I'm Alexis at Lovely Locks. Open your Inventory and equip a travel top and bottoms — the Gear Up lesson completes the moment both slots are filled.",
+    line: "I'm Alexis at Lovely Locks. Open your Inventory and equip a travel top and bottoms — the Gear Up lesson completes the moment both slots are filled.",
     extraLines: [
       "Use the mirror beside me to check what you have on. The lesson cares about the equipped slots, not how you look.",
       "If you already have a top and bottoms on, the lesson finishes automatically as soon as you talk to me.",
     ],
     likeabilityTags: ["style", "identity", "player-builder"],
-    snapshotAsset: "asset_data/npcs/alexis.6c11f07c0990f7844ccf50e8e856f2fb.glb",
+    snapshotAsset:
+      "asset_data/npcs/alexis.6c11f07c0990f7844ccf50e8e856f2fb.glb",
   },
   {
     id: "sil",
@@ -546,8 +632,7 @@ export const SNAPSHOT_GROVE_NPCS: SnapshotGroveNpc[] = [
       "Sil keeps road songs because songs carry instructions through fear better than lectures.",
     motivation:
       "Find whether Mosslawn's low tone connects to Harthmere bell lore before the safe paths are forgotten.",
-    line:
-      "I'm Sil. I track route songs around Mosslawn. Take my Songline lesson — stand on three moss stones in order, record the pattern at my song board, and pick what the tone sounds like.",
+    line: "I'm Sil. I track route songs around Mosslawn. Take my Songline lesson — stand on three moss stones in order, record the pattern at my song board, and pick what the tone sounds like.",
     extraLines: [
       "The marker will move from stone to stone. Just walk to whichever stone the map shows next.",
       "When the lesson finishes, you unlock the Harthmere bell dialogue branch later. That's the actual payoff.",
@@ -564,13 +649,13 @@ export const SNAPSHOT_GROVE_NPCS: SnapshotGroveNpc[] = [
     role: "Photographer, fisher, and cove tinkerer",
     authoredPosition: [560, SNAPSHOT_GROVE_NPC_FEET_Y, -182],
     orientation: [0, 4.2],
-    shortDescription: "A camera tinkerer trying to prove the cove reflections are real.",
+    shortDescription:
+      "A camera tinkerer trying to prove the cove reflections are real.",
     background:
       "Dimmi repairs cameras and fish traps and now has a lens that caught a stone bridge where no bridge stood.",
     motivation:
       "Build a photo atlas of verified places and prove Shutter Cove is showing something real.",
-    line:
-      "I'm Dimmi at Shutter Cove. I teach the camera: equip it, switch to selfie or scenic mode, and post a photo. The lesson completes the moment you post.",
+    line: "I'm Dimmi at Shutter Cove. I teach the camera: equip it, switch to selfie or scenic mode, and post a photo. The lesson completes the moment you post.",
     extraLines: [
       "If a lesson step says 'take a photo', it's the post action that counts, not the snapshot. Hit post when you're framed up.",
       "I'll loan you a camera if you don't have one — just talk to me when the marker is on me.",
@@ -592,8 +677,7 @@ export const SNAPSHOT_GROVE_NPCS: SnapshotGroveNpc[] = [
       "Doc learned by patching bodies before anyone had time to ask credentials and now studies how muck affects roots, tools, and skin.",
     motivation:
       "Make Harthmere's chapel and engineers treat muck as medicine and ecology, not superstition.",
-    line:
-      "I'm Doc. I study muck. Take my Sticky Medicine lesson: bring me one clean root sample and one mucked root sample, and don't stand in heavy muck for more than a few seconds.",
+    line: "I'm Doc. I study muck. Take my Sticky Medicine lesson: bring me one clean root sample and one mucked root sample, and don't stand in heavy muck for more than a few seconds.",
     extraLines: [
       "The map will mark the muck edge first (clean sample) and then deeper in (mucked sample). Watch your status bar.",
       "Both samples drop into your bag when you collect them. Bring them back to my field table to finish the lesson.",
@@ -610,19 +694,20 @@ export const SNAPSHOT_GROVE_NPCS: SnapshotGroveNpc[] = [
     role: "Retired keeper of hens, keys, and old gossip",
     authoredPosition: [380, SNAPSHOT_GROVE_NPC_FEET_Y, -202],
     orientation: [0, 1.8],
-    shortDescription: "A rambling elder whose chickens know the old route better than maps.",
+    shortDescription:
+      "A rambling elder whose chickens know the old route better than maps.",
     background:
       "Old Coop has lived long enough to see the road renamed, repainted, and misremembered.",
     motivation:
       "Pass on practical route memory before everyone replaces it with map pins.",
-    line:
-      "I'm Old Coop. I remember the original Grove paths from before the new signs. Ask me about the old route if a map marker leads you somewhere that no longer feels right.",
+    line: "I'm Old Coop. I remember the original Grove paths from before the new signs. Ask me about the old route if a map marker leads you somewhere that no longer feels right.",
     extraLines: [
       "I'm here for backup directions. If you're stuck, talk to me and I'll point you at a route the maps forgot.",
       "Bring me anything strange you found near the hen yard — half the time my chickens dig up lost keys.",
     ],
     likeabilityTags: ["old-route", "farm-edge", "hen"],
-    snapshotAsset: "asset_data/npcs/oldCoop.7092e4566d691958f05eca393643ff95.glb",
+    snapshotAsset:
+      "asset_data/npcs/oldCoop.7092e4566d691958f05eca393643ff95.glb",
   },
   {
     id: "buddy",
@@ -633,19 +718,20 @@ export const SNAPSHOT_GROVE_NPCS: SnapshotGroveNpc[] = [
     role: "Friendly service robot with damaged memory",
     authoredPosition: [494, SNAPSHOT_GROVE_NPC_FEET_Y, -213],
     orientation: [0, 5.0],
-    shortDescription: "A helper robot that remembers how to serve but not always why.",
+    shortDescription:
+      "A helper robot that remembers how to serve but not always why.",
     background:
       "Buddy was built to greet, guide, warn, repair, and repeat until muck damaged the order of its routines.",
     motivation:
       "Recover service memory and become more than a maintenance object.",
-    line:
-      "I'm Buddy, a help robot. I can repeat any Grove tutorial step you missed. Ask me to repeat a lesson and I'll re-pin the marker for you.",
+    line: "I'm Buddy, a help robot. I can repeat any Grove tutorial step you missed. Ask me to repeat a lesson and I'll re-pin the marker for you.",
     extraLines: [
       "If a lesson disappeared from your map, talk to me and I'll restore the marker.",
       "I forget things, but I always remember how to point you at the next step.",
     ],
     likeabilityTags: ["robot", "tower", "navigation"],
-    snapshotAsset: "asset_data/npcs/buddy.26e75e1b35cfd6353805c0fe3d62c739.gltf",
+    snapshotAsset:
+      "asset_data/npcs/buddy.26e75e1b35cfd6353805c0fe3d62c739.gltf",
   },
   {
     id: "mucked_robot",
@@ -656,7 +742,8 @@ export const SNAPSHOT_GROVE_NPCS: SnapshotGroveNpc[] = [
     role: "Corrupted service machine",
     authoredPosition: [524, SNAPSHOT_GROVE_NPC_FEET_Y, -154],
     orientation: [0, 3.14],
-    shortDescription: "A warning version of Buddy running obsolete help routines through muck.",
+    shortDescription:
+      "A warning version of Buddy running obsolete help routines through muck.",
     background:
       "The Mucked Robot is what happens when helpful instructions are trapped in corrupted geography.",
     motivation:
@@ -667,7 +754,8 @@ export const SNAPSHOT_GROVE_NPCS: SnapshotGroveNpc[] = [
       "Repairing road. Dismantling wrong object. Apologies pending.",
     ],
     likeabilityTags: ["robot", "muck", "corrupted-duty"],
-    snapshotAsset: "asset_data/npcs/mucked_robot.8acc469f3490a33c56b3f2bedded5fc9.gltf",
+    snapshotAsset:
+      "asset_data/npcs/mucked_robot.8acc469f3490a33c56b3f2bedded5fc9.gltf",
   },
   {
     id: "rosalyn",
@@ -684,13 +772,13 @@ export const SNAPSHOT_GROVE_NPCS: SnapshotGroveNpc[] = [
     role: "Fountain steward, welcome-table helper, and calm inventory tutor",
     authoredPosition: snapshotGroveFountainPosition(3, -2),
     orientation: [0, 3.35],
-    shortDescription: "A Grove fountain helper who turns first-hour confusion into small, safe habits.",
+    shortDescription:
+      "A Grove fountain helper who turns first-hour confusion into small, safe habits.",
     background:
       "Rosalyn keeps the fountain table stocked with labels, satchels, and spare road notes so Jackie can handle the road while newcomers learn the town's tools.",
     motivation:
       "Make sure new arrivals understand bags, mail, storage, recovery, map pins, and HUD signals before a simple mistake becomes a lost item or a dangerous walk.",
-    line:
-      "I'm Rosalyn at the fountain. I teach inventory, mail, storage, and lost-and-found so you don't lose items. Take my Road-Ready Bag Check or Nothing Useful Stays Lost lesson.",
+    line: "I'm Rosalyn at the fountain. I teach inventory, mail, storage, and lost-and-found so you don't lose items. Take my Road-Ready Bag Check or Nothing Useful Stays Lost lesson.",
     extraLines: [
       "Open the inventory panel from the HUD. The lesson watches that panel, so it completes the moment you actually open it.",
       "Use the Lost-and-Found Stone if a quest item ever disappears. It will recover anything the game still tracks.",
@@ -712,8 +800,7 @@ export const SNAPSHOT_GROVE_NPCS: SnapshotGroveNpc[] = [
       "Nia carries sample charters between The Grove and Harthmere because most new travelers join groups before they understand permissions, banks, dues, or repair duties.",
     motivation:
       "Prevent messy first guilds by teaching charters, ranks, banks, projects, safe-zone rules, and wild-claim risk before players create trouble.",
-    line:
-      "I'm Nia, the Grove guild clerk. I teach charters, ranks, banks, and shared projects. Take my Guilds Are Promises lesson before you join or start a guild.",
+    line: "I'm Nia, the Grove guild clerk. I teach charters, ranks, banks, and shared projects. Take my Guilds Are Promises lesson before you join or start a guild.",
     extraLines: [
       "The lesson walks you through: read the sample charter, assign ranks, deposit into the guild bank, and start a tiny shared project.",
       "I also run the Ready Check drill and the Safe Sparring lesson. All three teach a different group habit.",
@@ -735,8 +822,7 @@ export const SNAPSHOT_GROVE_NPCS: SnapshotGroveNpc[] = [
       "Merl was sent from Harthmere with a locking ledger and a hard rule: newcomers should learn banking before their bags teach them through panic.",
     motivation:
       "Keep the Grove economy honest by teaching storage limits, house/store storage, material deposits, account vaults, and responsible borrowing before players lose goods or take careless debt.",
-    line:
-      "I'm Merl, the Grove banker. I teach personal vaults, account vaults, material storage, and loans. Ask me 'What can I store here?' to start the banking primer.",
+    line: "I'm Merl, the Grove banker. I teach personal vaults, account vaults, material storage, and loans. Ask me 'What can I store here?' to start the banking primer.",
     extraLines: [
       "Personal vault: ordinary items. Account vault: shared across your characters. Material storage: wood, stone, ore, herbs.",
       "Loans grow interest by the day, not by story time. Pay early. Ask me 'What happens if I do not repay?' before you borrow.",
@@ -752,7 +838,8 @@ export const SNAPSHOT_GROVE_NPCS: SnapshotGroveNpc[] = [
     role: BUILDING_SYSTEM_GROVE_STEWARD_NPC.role,
     authoredPosition: snapshotGroveFountainPosition(5, -6),
     orientation: [0, 3.35],
-    shortDescription: "The Grove land steward who sells muck-edge plots and permits voxel-only buildings.",
+    shortDescription:
+      "The Grove land steward who sells muck-edge plots and permits voxel-only buildings.",
     background:
       "Mira keeps purchase boundaries, safe-zone flags, and construction permits aligned so a claimed Grove plot turns from muck risk into usable land.",
     motivation:
@@ -769,29 +856,148 @@ export const SNAPSHOT_GROVE_NPCS: SnapshotGroveNpc[] = [
 ];
 
 export const SNAPSHOT_GROVE_LANDMARKS: SnapshotGroveLandmark[] = [
-  { id: "the_grove", label: "The Grove", position: snapshotGroveMarkerPosition(snapshotGroveFountainPosition(0, 0)), kind: "safe_zone", area: "the_grove", visibleOnWorldMap: true },
-  ...SNAPSHOT_GROVE_NPCS.map((npc): SnapshotGroveLandmark => ({
-    id: `npc_${npc.id}`,
-    label: npc.displayName,
-    position: snapshotGroveMarkerPosition(npc.authoredPosition),
-    kind: npc.id === "mucked_robot" ? "danger" : "npc",
-    area: npc.homeArea,
-    npcId: npc.id,
-    visibleOnWorldMap: npc.id !== "mucked_robot",
-  })),
-  { id: "grove_fountain_lesson_board", label: "Fountain Lesson Board", position: snapshotGroveMarkerPosition(snapshotGroveFountainPosition(-2, -3)), kind: "interactable", area: "the_grove", questIds: ["fountain_buttons_first", "painted_path_language"], visibleOnWorldMap: true },
-  { id: "grove_hud_compass_ring", label: "Compass Practice Ring", position: snapshotGroveMarkerPosition(snapshotGroveFountainPosition(0, -5)), kind: "interactable", area: "the_grove", questIds: ["fountain_buttons_first", "painted_path_language"], visibleOnWorldMap: true },
-  { id: "grove_painted_route_flags", label: "Painted Route Flags", position: snapshotGroveMarkerPosition(snapshotGroveFountainPosition(5, -5)), kind: "interactable", area: "the_grove", questIds: ["painted_path_language"], visibleOnWorldMap: true },
-  { id: "grove_tool_crate", label: "Road Kit Crate", position: snapshotGroveMarkerPosition(snapshotGroveFountainPosition(-6, -2)), kind: "interactable", area: "the_grove", questIds: ["tools_before_treasure"], visibleOnWorldMap: true },
-  { id: "grove_resource_basket", label: "Marked Practice Materials", position: snapshotGroveMarkerPosition(snapshotGroveFountainPosition(-7, 1)), kind: "resource", area: "the_grove", questIds: ["tools_before_treasure"], visibleOnWorldMap: true },
-  { id: "grove_garden_edge_berries", label: "Garden Edge Berries", position: snapshotGroveMarkerPosition(snapshotGroveFountainPosition(-10, 6)), kind: "resource", area: "the_grove", questIds: ["color_that_still_points_home"], visibleOnWorldMap: true },
-  { id: "grove_practice_repair_post", label: "Fountain Repair Post", position: snapshotGroveMarkerPosition(snapshotGroveFountainPosition(-3, 4)), kind: "interactable", area: "the_grove", questIds: ["tools_before_treasure"], visibleOnWorldMap: true },
-  { id: "grove_mail_bank_satchel", label: "Mail and Bank Satchel", position: snapshotGroveMarkerPosition(snapshotGroveFountainPosition(-8, 4)), kind: "interactable", area: "the_grove", questIds: ["road_ready_bag_check", "lost_found_and_mail"], visibleOnWorldMap: true },
-  { id: "grove_recovery_stone", label: "Lost-and-Found Stone", position: snapshotGroveMarkerPosition(snapshotGroveFountainPosition(-1, 5)), kind: "interactable", area: "the_grove", questIds: ["lost_found_and_mail"], visibleOnWorldMap: true },
-  { id: "grove_combat_practice_dummy", label: "Softwood Practice Dummy", position: snapshotGroveMarkerPosition(snapshotGroveFountainPosition(8, 4)), kind: "interactable", area: "the_grove", questIds: ["safe_sparring_not_pvp"], visibleOnWorldMap: true },
-  { id: "grove_sparring_boundary", label: "Consent Sparring Ring", position: snapshotGroveMarkerPosition(snapshotGroveFountainPosition(10, 5)), kind: "safe_zone", area: "the_grove", questIds: ["safe_sparring_not_pvp"], visibleOnWorldMap: true },
-  { id: "grove_party_rope_marker", label: "Party Rope Marker", position: snapshotGroveMarkerPosition(snapshotGroveFountainPosition(7, 0)), kind: "interactable", area: "the_grove", questIds: ["safe_sparring_not_pvp", "ready_check_at_fountain"], visibleOnWorldMap: true },
-  { id: "grove_ready_firefly_ring", label: "Ready Check Fireflies", position: snapshotGroveMarkerPosition(snapshotGroveFountainPosition(9, -2)), kind: "interactable", area: "the_grove", questIds: ["ready_check_at_fountain"], visibleOnWorldMap: true },
+  {
+    id: "the_grove",
+    label: "The Grove",
+    position: snapshotGroveMarkerPosition(snapshotGroveFountainPosition(0, 0)),
+    kind: "safe_zone",
+    area: "the_grove",
+    visibleOnWorldMap: true,
+  },
+  ...SNAPSHOT_GROVE_NPCS.map(
+    (npc): SnapshotGroveLandmark => ({
+      id: `npc_${npc.id}`,
+      label: npc.displayName,
+      position: snapshotGroveMarkerPosition(npc.authoredPosition),
+      kind: npc.id === "mucked_robot" ? "danger" : "npc",
+      area: npc.homeArea,
+      npcId: npc.id,
+      visibleOnWorldMap: npc.id !== "mucked_robot",
+    })
+  ),
+  {
+    id: "grove_fountain_lesson_board",
+    label: "Fountain Lesson Board",
+    position: snapshotGroveMarkerPosition(
+      snapshotGroveFountainPosition(-2, -3)
+    ),
+    kind: "interactable",
+    area: "the_grove",
+    questIds: ["fountain_buttons_first", "painted_path_language"],
+    visibleOnWorldMap: true,
+  },
+  {
+    id: "grove_hud_compass_ring",
+    label: "Compass Practice Ring",
+    position: snapshotGroveMarkerPosition(snapshotGroveFountainPosition(0, -5)),
+    kind: "interactable",
+    area: "the_grove",
+    questIds: ["fountain_buttons_first", "painted_path_language"],
+    visibleOnWorldMap: true,
+  },
+  {
+    id: "grove_painted_route_flags",
+    label: "Painted Route Flags",
+    position: snapshotGroveMarkerPosition(snapshotGroveFountainPosition(5, -5)),
+    kind: "interactable",
+    area: "the_grove",
+    questIds: ["painted_path_language"],
+    visibleOnWorldMap: true,
+  },
+  {
+    id: "grove_tool_crate",
+    label: "Road Kit Crate",
+    position: snapshotGroveMarkerPosition(
+      snapshotGroveFountainPosition(-6, -2)
+    ),
+    kind: "interactable",
+    area: "the_grove",
+    questIds: ["tools_before_treasure"],
+    visibleOnWorldMap: true,
+  },
+  {
+    id: "grove_resource_basket",
+    label: "Marked Practice Materials",
+    position: snapshotGroveMarkerPosition(snapshotGroveFountainPosition(-7, 1)),
+    kind: "resource",
+    area: "the_grove",
+    questIds: ["tools_before_treasure"],
+    visibleOnWorldMap: true,
+  },
+  {
+    id: "grove_garden_edge_berries",
+    label: "Garden Edge Berries",
+    position: snapshotGroveMarkerPosition(
+      snapshotGroveFountainPosition(-10, 6)
+    ),
+    kind: "resource",
+    area: "the_grove",
+    questIds: ["color_that_still_points_home"],
+    visibleOnWorldMap: true,
+  },
+  {
+    id: "grove_practice_repair_post",
+    label: "Fountain Repair Post",
+    position: snapshotGroveMarkerPosition(snapshotGroveFountainPosition(-3, 4)),
+    kind: "interactable",
+    area: "the_grove",
+    questIds: ["tools_before_treasure"],
+    visibleOnWorldMap: true,
+  },
+  {
+    id: "grove_mail_bank_satchel",
+    label: "Mail and Bank Satchel",
+    position: snapshotGroveMarkerPosition(snapshotGroveFountainPosition(-8, 4)),
+    kind: "interactable",
+    area: "the_grove",
+    questIds: ["road_ready_bag_check", "lost_found_and_mail"],
+    visibleOnWorldMap: true,
+  },
+  {
+    id: "grove_recovery_stone",
+    label: "Lost-and-Found Stone",
+    position: snapshotGroveMarkerPosition(snapshotGroveFountainPosition(-1, 5)),
+    kind: "interactable",
+    area: "the_grove",
+    questIds: ["lost_found_and_mail"],
+    visibleOnWorldMap: true,
+  },
+  {
+    id: "grove_combat_practice_dummy",
+    label: "Softwood Practice Dummy",
+    position: snapshotGroveMarkerPosition(snapshotGroveFountainPosition(8, 4)),
+    kind: "interactable",
+    area: "the_grove",
+    questIds: ["safe_sparring_not_pvp"],
+    visibleOnWorldMap: true,
+  },
+  {
+    id: "grove_sparring_boundary",
+    label: "Consent Sparring Ring",
+    position: snapshotGroveMarkerPosition(snapshotGroveFountainPosition(10, 5)),
+    kind: "safe_zone",
+    area: "the_grove",
+    questIds: ["safe_sparring_not_pvp"],
+    visibleOnWorldMap: true,
+  },
+  {
+    id: "grove_party_rope_marker",
+    label: "Party Rope Marker",
+    position: snapshotGroveMarkerPosition(snapshotGroveFountainPosition(7, 0)),
+    kind: "interactable",
+    area: "the_grove",
+    questIds: ["safe_sparring_not_pvp", "ready_check_at_fountain"],
+    visibleOnWorldMap: true,
+  },
+  {
+    id: "grove_ready_firefly_ring",
+    label: "Ready Check Fireflies",
+    position: snapshotGroveMarkerPosition(snapshotGroveFountainPosition(9, -2)),
+    kind: "interactable",
+    area: "the_grove",
+    questIds: ["ready_check_at_fountain"],
+    visibleOnWorldMap: true,
+  },
   // HARTHMERE_JOBS_BOARD_GROVE_PLACEMENT:
   // Physical Jobs Board landmark. Sits just east of the fountain on a
   // voxel kiosk tile so the starter "Read the Jobs Board" autostart quest has
@@ -805,59 +1011,400 @@ export const SNAPSHOT_GROVE_LANDMARKS: SnapshotGroveLandmark[] = [
   // HARTHMERE_JOBS_BOARD_GROVE_RELOCATION: pin moved to (501.99486179104775, _, -132.00350672753194)
   // so the world-map marker, the runtime nav-aid pin, the live backend marker,
   // and the rendered voxel kiosk all share a single column.
-  { id: "harthmere_market_posting_board", label: "Jobs Board", position: snapshotGroveMarkerPosition([501.99486179104775, SNAPSHOT_GROVE_MARKER_Y, -132.00350672753194]), kind: "interactable", area: "the_grove", questIds: ["read-the-jobs-board"], visibleOnWorldMap: true },
+  {
+    id: "harthmere_market_posting_board",
+    label: "Jobs Board",
+    position: snapshotGroveMarkerPosition([
+      501.99486179104775,
+      SNAPSHOT_GROVE_MARKER_Y,
+      -132.00350672753194,
+    ]),
+    kind: "interactable",
+    area: "the_grove",
+    questIds: ["read-the-jobs-board"],
+    visibleOnWorldMap: true,
+  },
   // HARTHMERE_JOBS_BOARD_HARTHMERE_TOWN:
   // Second jobs board landmark for Harthmere's market district. Same kiosk
   // asset, planted right next to the Harthmere Market Office landmark so
   // the proximity check and the visible voxel building line up.
-  { id: "harthmere_town_market_posting_board", label: "Harthmere Town Jobs Board", position: snapshotHarthmereAuthoredMarkerPosition([534, SNAPSHOT_GROVE_MARKER_Y, -202]), kind: "interactable", area: "harthmere", visibleOnWorldMap: true },
-  { id: "old_grove_road_post", label: "Old Grove Road Post", position: snapshotGroveMarkerPosition([500, SNAPSHOT_GROVE_MARKER_Y, -140]), kind: "interactable", area: "old_grove_road", visibleOnWorldMap: true },
-  { id: "muckwad_patch", label: "Muckwad Patch", position: snapshotGroveMarkerPosition([512, SNAPSHOT_GROVE_MARKER_Y, -152]), kind: "resource", area: "muck_edges", visibleOnWorldMap: true },
-  { id: "building_practice_spot", label: "Building Practice Spot", position: snapshotGroveMarkerPosition([528, SNAPSHOT_GROVE_MARKER_Y, -152]), kind: "interactable", area: "old_grove_road", visibleOnWorldMap: true },
-  { id: "road_jump_stretch", label: "Road Jump Stretch", position: snapshotGroveMarkerPosition([548, SNAPSHOT_GROVE_MARKER_Y, -170]), kind: "interactable", area: "old_grove_road", visibleOnWorldMap: true },
-  { id: "selfie_overlook", label: "Selfie Overlook", position: snapshotGroveMarkerPosition([560, SNAPSHOT_GROVE_MARKER_Y, -182]), kind: "interactable", area: "shutter_cove", visibleOnWorldMap: true },
-  { id: "paint_pot", label: "Taye's Paint Pot", position: snapshotGroveMarkerPosition(snapshotGroveFountainPosition(-4, 4)), kind: "interactable", area: "the_grove", visibleOnWorldMap: true },
-  { id: "luis_cart", label: "Luis's Repair Cart", position: snapshotGroveMarkerPosition([490, SNAPSHOT_GROVE_MARKER_Y, -206]), kind: "interactable", area: "genesis_crossroads", visibleOnWorldMap: true },
-  { id: "grove_claim_stakes", label: "Grove Practice Claim Stakes", position: snapshotGroveMarkerPosition([504, SNAPSHOT_GROVE_MARKER_Y, -204]), kind: "interactable", area: "genesis_crossroads", questIds: ["build_repair_claim_lesson"], visibleOnWorldMap: true },
-  { id: "grove_repair_fence", label: "Broken Safe-Zone Fence", position: snapshotGroveMarkerPosition([514, SNAPSHOT_GROVE_MARKER_Y, -198]), kind: "interactable", area: "genesis_crossroads", questIds: ["build_repair_claim_lesson"], visibleOnWorldMap: true },
-  { id: "grove_land_ledger", label: "Practice Land Ledger", position: snapshotGroveMarkerPosition([492, SNAPSHOT_GROVE_MARKER_Y, -211]), kind: "interactable", area: "genesis_crossroads", questIds: ["build_repair_claim_lesson"], visibleOnWorldMap: true },
-  { id: "grove_safe_wild_boundary", label: "Safe-Zone Boundary Stones", position: snapshotGroveMarkerPosition([536, SNAPSHOT_GROVE_MARKER_Y, -218]), kind: "safe_zone", area: "old_grove_road", questIds: ["build_repair_claim_lesson", "guilds_are_promises"], visibleOnWorldMap: true },
-  { id: "guild_charter_board", label: "Grove Guild Charter Board", position: snapshotGroveMarkerPosition(snapshotGroveFountainPosition(6, -4)), kind: "interactable", area: "the_grove", questIds: ["guilds_are_promises"], visibleOnWorldMap: true },
-  { id: "guild_bank_crate", label: "Practice Guild Bank Crate", position: snapshotGroveMarkerPosition(snapshotGroveFountainPosition(8, -5)), kind: "interactable", area: "the_grove", questIds: ["guilds_are_promises"], visibleOnWorldMap: true },
-  { id: "guild_project_table", label: "Guild Project Table", position: snapshotGroveMarkerPosition(snapshotGroveFountainPosition(9, -1)), kind: "interactable", area: "the_grove", questIds: ["guilds_are_promises"], visibleOnWorldMap: true },
-  { id: "lovely_locks_mirror", label: "Lovely Locks Mirror", position: snapshotGroveMarkerPosition([407, SNAPSHOT_GROVE_MARKER_Y, -126]), kind: "interactable", area: "lovely_locks", visibleOnWorldMap: true },
-  { id: "mosslawn_warning_moss", label: "Warning Moss Patch", position: snapshotGroveMarkerPosition([456, SNAPSHOT_GROVE_MARKER_Y, -260]), kind: "interactable", area: "mosslawn", visibleOnWorldMap: true },
-  { id: "mosslawn_song_stones", label: "Mosslawn Song Stones", position: snapshotGroveMarkerPosition([468, SNAPSHOT_GROVE_MARKER_Y, -250]), kind: "interactable", area: "mosslawn", visibleOnWorldMap: true },
-  { id: "doc_field_table", label: "Doc's Field Table", position: snapshotGroveMarkerPosition([514, SNAPSHOT_GROVE_MARKER_Y, -150]), kind: "interactable", area: "muck_edges", visibleOnWorldMap: true },
-  { id: "shutter_cove_marker", label: "Shutter Cove Photo Marker", position: snapshotGroveMarkerPosition([560, SNAPSHOT_GROVE_MARKER_Y, -182]), kind: "interactable", area: "shutter_cove", visibleOnWorldMap: true },
-  { id: "coop_supply_box", label: "Old Supply Box", position: snapshotGroveMarkerPosition([384, SNAPSHOT_GROVE_MARKER_Y, -198]), kind: "interactable", area: "the_grove", visibleOnWorldMap: true },
-  { id: "service_tower_platform", label: "Crossroads Service Tower", position: snapshotGroveMarkerPosition([498, SNAPSHOT_GROVE_MARKER_Y, -216]), kind: "interactable", area: "genesis_crossroads", visibleOnWorldMap: true },
-  { id: "harthmere_connector", label: "Road to Harthmere", position: snapshotHarthmereAuthoredMarkerPosition([HARTHMERE_EXTENSION_ROAD.authoredStart[0], SNAPSHOT_GROVE_MARKER_Y, HARTHMERE_EXTENSION_ROAD.authoredStart[1]]), kind: "connector", area: "harthmere_connector", visibleOnWorldMap: true },
-  { id: "sergeant_bram_holt", label: "Sergeant Bram Holt", position: snapshotHarthmereAuthoredMarkerPosition([486, SNAPSHOT_GROVE_MARKER_Y, -277]), kind: "npc", area: "harthmere", npcId: "sergeant_bram_holt", visibleOnWorldMap: true },
-  { id: "harthmere_market_office", label: "Harthmere Market Office", position: snapshotHarthmereAuthoredMarkerPosition([532, SNAPSHOT_GROVE_MARKER_Y, -207]), kind: "interactable", area: "harthmere", visibleOnWorldMap: true },
-  { id: "harthmere_chapel_stone", label: "Harthmere Chapel Stone", position: snapshotHarthmereAuthoredMarkerPosition([477, SNAPSHOT_GROVE_MARKER_Y, -139]), kind: "interactable", area: "harthmere", visibleOnWorldMap: true },
-  { id: "harthmere_bridge_center", label: "Harthmere Bridge Center", position: snapshotHarthmereAuthoredMarkerPosition([392, SNAPSHOT_GROVE_MARKER_Y, -209]), kind: "connector", area: "harthmere", visibleOnWorldMap: true },
+  {
+    id: "harthmere_town_market_posting_board",
+    label: "Harthmere Town Jobs Board",
+    position: snapshotHarthmereAuthoredMarkerPosition([
+      534,
+      SNAPSHOT_GROVE_MARKER_Y,
+      -202,
+    ]),
+    kind: "interactable",
+    area: "harthmere",
+    visibleOnWorldMap: true,
+  },
+  {
+    id: "old_grove_road_post",
+    label: "Old Grove Road Post",
+    position: snapshotGroveMarkerPosition([500, SNAPSHOT_GROVE_MARKER_Y, -140]),
+    kind: "interactable",
+    area: "old_grove_road",
+    visibleOnWorldMap: true,
+  },
+  {
+    id: "muckwad_patch",
+    label: "Muckwad Patch",
+    position: snapshotGroveMarkerPosition([512, SNAPSHOT_GROVE_MARKER_Y, -152]),
+    kind: "resource",
+    area: "muck_edges",
+    visibleOnWorldMap: true,
+  },
+  {
+    id: "building_practice_spot",
+    label: "Building Practice Spot",
+    position: snapshotGroveMarkerPosition([528, SNAPSHOT_GROVE_MARKER_Y, -152]),
+    kind: "interactable",
+    area: "old_grove_road",
+    visibleOnWorldMap: true,
+  },
+  {
+    id: "road_jump_stretch",
+    label: "Road Jump Stretch",
+    position: snapshotGroveMarkerPosition([548, SNAPSHOT_GROVE_MARKER_Y, -170]),
+    kind: "interactable",
+    area: "old_grove_road",
+    visibleOnWorldMap: true,
+  },
+  {
+    id: "selfie_overlook",
+    label: "Selfie Overlook",
+    position: snapshotGroveMarkerPosition([560, SNAPSHOT_GROVE_MARKER_Y, -182]),
+    kind: "interactable",
+    area: "shutter_cove",
+    visibleOnWorldMap: true,
+  },
+  {
+    id: "paint_pot",
+    label: "Taye's Paint Pot",
+    position: snapshotGroveMarkerPosition(snapshotGroveFountainPosition(-4, 4)),
+    kind: "interactable",
+    area: "the_grove",
+    visibleOnWorldMap: true,
+  },
+  {
+    id: "luis_cart",
+    label: "Luis's Repair Cart",
+    position: snapshotGroveMarkerPosition([490, SNAPSHOT_GROVE_MARKER_Y, -206]),
+    kind: "interactable",
+    area: "genesis_crossroads",
+    visibleOnWorldMap: true,
+  },
+  {
+    id: "grove_claim_stakes",
+    label: "Grove Practice Claim Stakes",
+    position: snapshotGroveMarkerPosition([504, SNAPSHOT_GROVE_MARKER_Y, -204]),
+    kind: "interactable",
+    area: "genesis_crossroads",
+    questIds: ["build_repair_claim_lesson"],
+    visibleOnWorldMap: true,
+  },
+  {
+    id: "grove_repair_fence",
+    label: "Broken Safe-Zone Fence",
+    position: snapshotGroveMarkerPosition([514, SNAPSHOT_GROVE_MARKER_Y, -198]),
+    kind: "interactable",
+    area: "genesis_crossroads",
+    questIds: ["build_repair_claim_lesson"],
+    visibleOnWorldMap: true,
+  },
+  {
+    id: "grove_land_ledger",
+    label: "Practice Land Ledger",
+    position: snapshotGroveMarkerPosition([492, SNAPSHOT_GROVE_MARKER_Y, -211]),
+    kind: "interactable",
+    area: "genesis_crossroads",
+    questIds: ["build_repair_claim_lesson"],
+    visibleOnWorldMap: true,
+  },
+  {
+    id: "grove_safe_wild_boundary",
+    label: "Safe-Zone Boundary Stones",
+    position: snapshotGroveMarkerPosition([536, SNAPSHOT_GROVE_MARKER_Y, -218]),
+    kind: "safe_zone",
+    area: "old_grove_road",
+    questIds: ["build_repair_claim_lesson", "guilds_are_promises"],
+    visibleOnWorldMap: true,
+  },
+  {
+    id: "guild_charter_board",
+    label: "Grove Guild Charter Board",
+    position: snapshotGroveMarkerPosition(snapshotGroveFountainPosition(6, -4)),
+    kind: "interactable",
+    area: "the_grove",
+    questIds: ["guilds_are_promises"],
+    visibleOnWorldMap: true,
+  },
+  {
+    id: "guild_bank_crate",
+    label: "Practice Guild Bank Crate",
+    position: snapshotGroveMarkerPosition(snapshotGroveFountainPosition(8, -5)),
+    kind: "interactable",
+    area: "the_grove",
+    questIds: ["guilds_are_promises"],
+    visibleOnWorldMap: true,
+  },
+  {
+    id: "guild_project_table",
+    label: "Guild Project Table",
+    position: snapshotGroveMarkerPosition(snapshotGroveFountainPosition(9, -1)),
+    kind: "interactable",
+    area: "the_grove",
+    questIds: ["guilds_are_promises"],
+    visibleOnWorldMap: true,
+  },
+  {
+    id: "lovely_locks_mirror",
+    label: "Lovely Locks Mirror",
+    position: snapshotGroveMarkerPosition([407, SNAPSHOT_GROVE_MARKER_Y, -126]),
+    kind: "interactable",
+    area: "lovely_locks",
+    visibleOnWorldMap: true,
+  },
+  {
+    id: "mosslawn_warning_moss",
+    label: "Warning Moss Patch",
+    position: snapshotGroveMarkerPosition([456, SNAPSHOT_GROVE_MARKER_Y, -260]),
+    kind: "interactable",
+    area: "mosslawn",
+    visibleOnWorldMap: true,
+  },
+  {
+    id: "mosslawn_song_stones",
+    label: "Mosslawn Song Stones",
+    position: snapshotGroveMarkerPosition([468, SNAPSHOT_GROVE_MARKER_Y, -250]),
+    kind: "interactable",
+    area: "mosslawn",
+    visibleOnWorldMap: true,
+  },
+  {
+    id: "doc_field_table",
+    label: "Doc's Field Table",
+    position: snapshotGroveMarkerPosition([514, SNAPSHOT_GROVE_MARKER_Y, -150]),
+    kind: "interactable",
+    area: "muck_edges",
+    visibleOnWorldMap: true,
+  },
+  {
+    id: "shutter_cove_marker",
+    label: "Shutter Cove Photo Marker",
+    position: snapshotGroveMarkerPosition([560, SNAPSHOT_GROVE_MARKER_Y, -182]),
+    kind: "interactable",
+    area: "shutter_cove",
+    visibleOnWorldMap: true,
+  },
+  {
+    id: "coop_supply_box",
+    label: "Old Supply Box",
+    position: snapshotGroveMarkerPosition([384, SNAPSHOT_GROVE_MARKER_Y, -198]),
+    kind: "interactable",
+    area: "the_grove",
+    visibleOnWorldMap: true,
+  },
+  {
+    id: "service_tower_platform",
+    label: "Crossroads Service Tower",
+    position: snapshotGroveMarkerPosition([498, SNAPSHOT_GROVE_MARKER_Y, -216]),
+    kind: "interactable",
+    area: "genesis_crossroads",
+    visibleOnWorldMap: true,
+  },
+  {
+    id: "harthmere_connector",
+    label: "Road to Harthmere",
+    position: snapshotHarthmereAuthoredMarkerPosition([
+      HARTHMERE_EXTENSION_ROAD.authoredStart[0],
+      SNAPSHOT_GROVE_MARKER_Y,
+      HARTHMERE_EXTENSION_ROAD.authoredStart[1],
+    ]),
+    kind: "connector",
+    area: "harthmere_connector",
+    visibleOnWorldMap: true,
+  },
+  {
+    id: "sergeant_bram_holt",
+    label: "Sergeant Bram Holt",
+    position: snapshotHarthmereAuthoredMarkerPosition([
+      486,
+      SNAPSHOT_GROVE_MARKER_Y,
+      -277,
+    ]),
+    kind: "npc",
+    area: "harthmere",
+    npcId: "sergeant_bram_holt",
+    visibleOnWorldMap: true,
+  },
+  {
+    id: "harthmere_market_office",
+    label: "Harthmere Market Office",
+    position: snapshotHarthmereAuthoredMarkerPosition([
+      532,
+      SNAPSHOT_GROVE_MARKER_Y,
+      -207,
+    ]),
+    kind: "interactable",
+    area: "harthmere",
+    visibleOnWorldMap: true,
+  },
+  {
+    id: "harthmere_chapel_stone",
+    label: "Harthmere Chapel Stone",
+    position: snapshotHarthmereAuthoredMarkerPosition([
+      477,
+      SNAPSHOT_GROVE_MARKER_Y,
+      -139,
+    ]),
+    kind: "interactable",
+    area: "harthmere",
+    visibleOnWorldMap: true,
+  },
+  {
+    id: "harthmere_bridge_center",
+    label: "Harthmere Bridge Center",
+    position: snapshotHarthmereAuthoredMarkerPosition([
+      392,
+      SNAPSHOT_GROVE_MARKER_Y,
+      -209,
+    ]),
+    kind: "connector",
+    area: "harthmere",
+    visibleOnWorldMap: true,
+  },
   // GROVE_FOUNTAIN_TUTORIAL_LANDMARKS.
   // These landmarks back the new fountain tutorial quests (chat channels,
   // food & stamina, first aid, hotbar/drop, first crafting recipe, and trade
   // table). All positions are inside the Grove fountain square so existing
   // bounds tests still pass.
-  { id: "grove_chat_practice_board", label: "Chat Practice Board", position: snapshotGroveMarkerPosition(snapshotGroveFountainPosition(-4, -1)), kind: "interactable", area: "the_grove", questIds: ["fountain_chat_channels"], visibleOnWorldMap: true },
-  { id: "grove_food_satchel", label: "Fountain Food Satchel", position: snapshotGroveMarkerPosition(snapshotGroveFountainPosition(-5, 0)), kind: "interactable", area: "the_grove", questIds: ["fountain_food_keeps_you_moving"], visibleOnWorldMap: true },
-  { id: "grove_first_aid_bin", label: "First-Aid Bin", position: snapshotGroveMarkerPosition(snapshotGroveFountainPosition(-3, 1)), kind: "interactable", area: "the_grove", questIds: ["fountain_first_aid_before_road"], visibleOnWorldMap: true },
-  { id: "grove_practice_scratch_post", label: "Practice Scratch Post", position: snapshotGroveMarkerPosition(snapshotGroveFountainPosition(-6, 2)), kind: "interactable", area: "the_grove", questIds: ["fountain_first_aid_before_road"], visibleOnWorldMap: true },
-  { id: "grove_drop_practice_stones", label: "Practice Drop Stones", position: snapshotGroveMarkerPosition(snapshotGroveFountainPosition(-6, -3)), kind: "interactable", area: "the_grove", questIds: ["fountain_hotbar_and_dropping"], visibleOnWorldMap: true },
-  { id: "grove_fountain_workbench", label: "Fountain Workbench", position: snapshotGroveMarkerPosition(snapshotGroveFountainPosition(1, -3)), kind: "interactable", area: "the_grove", questIds: ["fountain_first_recipe_torch"], visibleOnWorldMap: true },
-  { id: "grove_dim_corner", label: "Fountain Dim Corner", position: snapshotGroveMarkerPosition(snapshotGroveFountainPosition(4, -5)), kind: "interactable", area: "the_grove", questIds: ["fountain_first_recipe_torch"], visibleOnWorldMap: true },
-  { id: "grove_trade_desk", label: "Charter Trade Desk", position: snapshotGroveMarkerPosition(snapshotGroveFountainPosition(6, -1)), kind: "interactable", area: "the_grove", questIds: ["fountain_trade_table_promises"], visibleOnWorldMap: true },
+  {
+    id: "grove_chat_practice_board",
+    label: "Chat Practice Board",
+    position: snapshotGroveMarkerPosition(
+      snapshotGroveFountainPosition(-4, -1)
+    ),
+    kind: "interactable",
+    area: "the_grove",
+    questIds: ["fountain_chat_channels"],
+    visibleOnWorldMap: true,
+  },
+  {
+    id: "grove_food_satchel",
+    label: "Fountain Food Satchel",
+    position: snapshotGroveMarkerPosition(snapshotGroveFountainPosition(-5, 0)),
+    kind: "interactable",
+    area: "the_grove",
+    questIds: ["fountain_food_keeps_you_moving"],
+    visibleOnWorldMap: true,
+  },
+  {
+    id: "grove_first_aid_bin",
+    label: "First-Aid Bin",
+    position: snapshotGroveMarkerPosition(snapshotGroveFountainPosition(-3, 1)),
+    kind: "interactable",
+    area: "the_grove",
+    questIds: ["fountain_first_aid_before_road"],
+    visibleOnWorldMap: true,
+  },
+  {
+    id: "grove_practice_scratch_post",
+    label: "Practice Scratch Post",
+    position: snapshotGroveMarkerPosition(snapshotGroveFountainPosition(-6, 2)),
+    kind: "interactable",
+    area: "the_grove",
+    questIds: ["fountain_first_aid_before_road"],
+    visibleOnWorldMap: true,
+  },
+  {
+    id: "grove_drop_practice_stones",
+    label: "Practice Drop Stones",
+    position: snapshotGroveMarkerPosition(
+      snapshotGroveFountainPosition(-6, -3)
+    ),
+    kind: "interactable",
+    area: "the_grove",
+    questIds: ["fountain_hotbar_and_dropping"],
+    visibleOnWorldMap: true,
+  },
+  {
+    id: "grove_fountain_workbench",
+    label: "Fountain Workbench",
+    position: snapshotGroveMarkerPosition(snapshotGroveFountainPosition(1, -3)),
+    kind: "interactable",
+    area: "the_grove",
+    questIds: ["fountain_first_recipe_torch"],
+    visibleOnWorldMap: true,
+  },
+  {
+    id: "grove_dim_corner",
+    label: "Fountain Dim Corner",
+    position: snapshotGroveMarkerPosition(snapshotGroveFountainPosition(4, -5)),
+    kind: "interactable",
+    area: "the_grove",
+    questIds: ["fountain_first_recipe_torch"],
+    visibleOnWorldMap: true,
+  },
+  {
+    id: "grove_trade_desk",
+    label: "Charter Trade Desk",
+    position: snapshotGroveMarkerPosition(snapshotGroveFountainPosition(6, -1)),
+    kind: "interactable",
+    area: "the_grove",
+    questIds: ["fountain_trade_table_promises"],
+    visibleOnWorldMap: true,
+  },
   // GROVE_ECONOMY_STARTER: workspots referenced by the new economy quests.
   ...GROVE_ECONOMY_STARTER_LANDMARKS,
   // Dedicated connector endpoint pins are appended after all legacy entries so
   // the index-derived numeric ids of existing world-map landmarks stay stable.
-  { id: "harthmere_road_grove_trailhead", label: "Harthmere Road — Grove Trailhead", position: snapshotGroveMarkerPosition([560, SNAPSHOT_GROVE_MARKER_Y, -182]), kind: "connector", area: "harthmere_connector", visibleOnWorldMap: true },
-  { id: "harthmere_road_west_gate", label: "Harthmere Road — West Gate", position: snapshotHarthmereAuthoredMarkerPosition([HARTHMERE_EXTENSION_ROAD.authoredWestGate[0], SNAPSHOT_GROVE_MARKER_Y, HARTHMERE_EXTENSION_ROAD.authoredWestGate[1]]), kind: "connector", area: "harthmere", visibleOnWorldMap: true },
-  { id: "harthmere_extension_road_start", label: "Harthmere Extension Road — Map Boundary Start", position: [HARTHMERE_EXTENSION_ROAD.worldStart[0], SNAPSHOT_GROVE_MARKER_Y, HARTHMERE_EXTENSION_ROAD.worldStart[1]], kind: "connector", area: "harthmere_connector", visibleOnWorldMap: true },
-  { id: "harthmere_extension_north_gate", label: "Harthmere North Gate — Road End", position: [HARTHMERE_EXTENSION_ROAD.worldNorthGate[0], SNAPSHOT_GROVE_MARKER_Y, HARTHMERE_EXTENSION_ROAD.worldNorthGate[1]], kind: "connector", area: "harthmere", visibleOnWorldMap: true },
+  {
+    id: "harthmere_road_grove_trailhead",
+    label: "Harthmere Road — Grove Trailhead",
+    position: snapshotGroveMarkerPosition([560, SNAPSHOT_GROVE_MARKER_Y, -182]),
+    kind: "connector",
+    area: "harthmere_connector",
+    visibleOnWorldMap: true,
+  },
+  {
+    id: "harthmere_road_west_gate",
+    label: "Harthmere Road — West Gate",
+    position: snapshotHarthmereAuthoredMarkerPosition([
+      HARTHMERE_EXTENSION_ROAD.authoredWestGate[0],
+      SNAPSHOT_GROVE_MARKER_Y,
+      HARTHMERE_EXTENSION_ROAD.authoredWestGate[1],
+    ]),
+    kind: "connector",
+    area: "harthmere",
+    visibleOnWorldMap: true,
+  },
+  {
+    id: "harthmere_extension_road_start",
+    label: "Harthmere Extension Road — Map Boundary Start",
+    position: [
+      HARTHMERE_EXTENSION_ROAD.worldStart[0],
+      SNAPSHOT_GROVE_MARKER_Y,
+      HARTHMERE_EXTENSION_ROAD.worldStart[1],
+    ],
+    kind: "connector",
+    area: "harthmere_connector",
+    visibleOnWorldMap: true,
+  },
+  {
+    id: "harthmere_extension_north_gate",
+    label: "Harthmere North Gate — Road End",
+    position: [
+      HARTHMERE_EXTENSION_ROAD.worldNorthGate[0],
+      SNAPSHOT_GROVE_MARKER_Y,
+      HARTHMERE_EXTENSION_ROAD.worldNorthGate[1],
+    ],
+    kind: "connector",
+    area: "harthmere",
+    visibleOnWorldMap: true,
+  },
 ];
 
 export function snapshotGroveLandmarkById(id: string) {
@@ -870,8 +1417,7 @@ export const SNAPSHOT_GROVE_QUESTS: SnapshotGroveQuest[] = [
     title: "Read the Jobs Board",
     giverNpcId: "jackie",
     area: "The Grove · Jobs Board",
-    hook:
-      "Find the Jobs Board so new players understand where public work, seeker tasks, and business requests live.",
+    hook: "Find the Jobs Board so new players understand where public work, seeker tasks, and business requests live.",
     objectives: ["Read the Jobs Board."],
     triggers: ["open_jobs_board"],
     markerIds: ["harthmere_market_posting_board"],
@@ -884,8 +1430,7 @@ export const SNAPSHOT_GROVE_QUESTS: SnapshotGroveQuest[] = [
     title: BUILDING_SYSTEM_MIRA_INTRO_QUEST.displayName,
     giverNpcId: BUILDING_SYSTEM_GROVE_STEWARD_NPC.id,
     area: "The Grove · Building System",
-    hook:
-      "Mira introduces new players to safe land claims, voxel-only building rules, property permissions, taxes, and why muck land must be claimed before construction.",
+    hook: "Mira introduces new players to safe land claims, voxel-only building rules, property permissions, taxes, and why muck land must be claimed before construction.",
     objectives: [BUILDING_SYSTEM_MIRA_INTRO_QUEST.objective],
     triggers: ["talk_npc"],
     markerIds: [`npc_${BUILDING_SYSTEM_GROVE_STEWARD_NPC.id}`],
@@ -897,8 +1442,7 @@ export const SNAPSHOT_GROVE_QUESTS: SnapshotGroveQuest[] = [
     title: "Buttons Before the Road",
     giverNpcId: "jackie",
     area: "The Grove Fountain",
-    hook:
-      "Jackie makes sure the player can read the Grove tracker, pin a stop, open the map, and find the quest journal before the road starts changing on them.",
+    hook: "Jackie makes sure the player can read the Grove tracker, pin a stop, open the map, and find the quest journal before the road starts changing on them.",
     objectives: [
       "Talk with Jackie by the fountain and accept the first lesson.",
       "Use the Grove tracker to pin the Fountain Lesson Board.",
@@ -923,8 +1467,7 @@ export const SNAPSHOT_GROVE_QUESTS: SnapshotGroveQuest[] = [
     title: "Paint Knows Where Eyes Go",
     giverNpcId: "taye",
     area: "The Grove Fountain",
-    hook:
-      "Taye teaches the player how colors, route flags, map markers, and HUD highlights work together so navigation feels like world language instead of menu noise.",
+    hook: "Taye teaches the player how colors, route flags, map markers, and HUD highlights work together so navigation feels like world language instead of menu noise.",
     objectives: [
       "Ask Taye why the route flags are painted in different colors.",
       "Inspect Taye's paint pot without standing on the fountain crowd.",
@@ -933,7 +1476,14 @@ export const SNAPSHOT_GROVE_QUESTS: SnapshotGroveQuest[] = [
       "Choose what the brightest paint should mean: warning, welcome, or work site.",
       "Return to Taye with the answer you would trust on a dark road.",
     ],
-    triggers: ["talk_npc", "interact", "near_location", "open_tab", "choice", "talk_npc"],
+    triggers: [
+      "talk_npc",
+      "interact",
+      "near_location",
+      "open_tab",
+      "choice",
+      "talk_npc",
+    ],
     markerIds: [
       "npc_taye",
       "paint_pot",
@@ -951,8 +1501,7 @@ export const SNAPSHOT_GROVE_QUESTS: SnapshotGroveQuest[] = [
     title: "Road-Ready Bag Check",
     giverNpcId: "rosalyn",
     area: "The Grove Fountain / Lovely Locks",
-    hook:
-      "Rosalyn turns the first inventory lesson into a calm fountain check: equipment, clothing, health, stamina, and the bottom HUD all need to be understood before the player leaves the safe crowd.",
+    hook: "Rosalyn turns the first inventory lesson into a calm fountain check: equipment, clothing, health, stamina, and the bottom HUD all need to be understood before the player leaves the safe crowd.",
     objectives: [
       "Talk to Rosalyn and let her look over your road kit.",
       "Open the inventory panel from the HUD.",
@@ -961,7 +1510,14 @@ export const SNAPSHOT_GROVE_QUESTS: SnapshotGroveQuest[] = [
       "Check the health, stamina, and quick-action bars before walking away.",
       "Return to Rosalyn for one final adjustment.",
     ],
-    triggers: ["talk_npc", "open_tab", "inventory_change", "interact", "status_check", "talk_npc"],
+    triggers: [
+      "talk_npc",
+      "open_tab",
+      "inventory_change",
+      "interact",
+      "status_check",
+      "talk_npc",
+    ],
     markerIds: [
       "npc_rosalyn",
       "grove_mail_bank_satchel",
@@ -979,8 +1535,7 @@ export const SNAPSHOT_GROVE_QUESTS: SnapshotGroveQuest[] = [
     title: "Tools Before Treasure",
     giverNpcId: "jackie",
     area: "The Grove Fountain",
-    hook:
-      "Jackie hands out a careful first repair job so players learn legal gathering, marked practice materials, road repair, and why owned things are not free loot.",
+    hook: "Jackie hands out a careful first repair job so players learn legal gathering, marked practice materials, road repair, and why owned things are not free loot.",
     objectives: [
       "Ask Jackie for the fountain road kit.",
       "Inspect the Road Kit Crate before touching nearby supplies.",
@@ -990,7 +1545,15 @@ export const SNAPSHOT_GROVE_QUESTS: SnapshotGroveQuest[] = [
       "Choose the rule you will follow: ask, claim, or gather only from marked nodes.",
       "Return to Jackie with the kit intact.",
     ],
-    triggers: ["talk_npc", "interact", "collect", "place_voxel", "status_check", "choice", "talk_npc"],
+    triggers: [
+      "talk_npc",
+      "interact",
+      "collect",
+      "place_voxel",
+      "status_check",
+      "choice",
+      "talk_npc",
+    ],
     markerIds: [
       "npc_jackie",
       "grove_tool_crate",
@@ -1009,8 +1572,7 @@ export const SNAPSHOT_GROVE_QUESTS: SnapshotGroveQuest[] = [
     title: "Sparring Is a Promise",
     giverNpcId: "guild_clerk_nia",
     area: "The Grove Fountain / Charter Table",
-    hook:
-      "Nia teaches combat safety, duel consent, safe-zone rules, PvP opt-in language, and the difference between a practice dummy and another player.",
+    hook: "Nia teaches combat safety, duel consent, safe-zone rules, PvP opt-in language, and the difference between a practice dummy and another player.",
     objectives: [
       "Talk to Nia at the charter table.",
       "Read the charter board before drawing a weapon near anyone.",
@@ -1020,7 +1582,15 @@ export const SNAPSHOT_GROVE_QUESTS: SnapshotGroveQuest[] = [
       "Choose the PvP rule Nia should stamp first: consent, safe zones, or no farming.",
       "Return to Nia before leaving the ring.",
     ],
-    triggers: ["talk_npc", "interact", "near_location", "combat", "open_tab", "choice", "talk_npc"],
+    triggers: [
+      "talk_npc",
+      "interact",
+      "near_location",
+      "combat",
+      "open_tab",
+      "choice",
+      "talk_npc",
+    ],
     markerIds: [
       "npc_guild_clerk_nia",
       "guild_charter_board",
@@ -1039,8 +1609,7 @@ export const SNAPSHOT_GROVE_QUESTS: SnapshotGroveQuest[] = [
     title: "Ready Check at the Fountain",
     giverNpcId: "guild_clerk_nia",
     area: "The Grove Fountain / Charter Table",
-    hook:
-      "Nia uses a tiny party drill to teach ready checks, group roles, guild storage, and why players should not pull danger while someone is still reading the map.",
+    hook: "Nia uses a tiny party drill to teach ready checks, group roles, guild storage, and why players should not pull danger while someone is still reading the map.",
     objectives: [
       "Ask Nia to run the fountain ready check.",
       "Stand by the Party Rope Marker where everyone can see you.",
@@ -1050,7 +1619,15 @@ export const SNAPSHOT_GROVE_QUESTS: SnapshotGroveQuest[] = [
       "Choose a first group role: scout, builder, fighter, healer, or quartermaster.",
       "Return to Nia so she can clear the drill.",
     ],
-    triggers: ["talk_npc", "near_location", "open_tab", "status_check", "interact", "choice", "talk_npc"],
+    triggers: [
+      "talk_npc",
+      "near_location",
+      "open_tab",
+      "status_check",
+      "interact",
+      "choice",
+      "talk_npc",
+    ],
     markerIds: [
       "npc_guild_clerk_nia",
       "grove_party_rope_marker",
@@ -1069,8 +1646,7 @@ export const SNAPSHOT_GROVE_QUESTS: SnapshotGroveQuest[] = [
     title: "Nothing Useful Stays Lost",
     giverNpcId: "rosalyn",
     area: "The Grove Fountain / Lovely Locks",
-    hook:
-      "Rosalyn teaches mail, storage, recovery, and calm inventory habits so a new player knows where important items go when panic makes pockets mysterious.",
+    hook: "Rosalyn teaches mail, storage, recovery, and calm inventory habits so a new player knows where important items go when panic makes pockets mysterious.",
     objectives: [
       "Talk to Rosalyn about where important items go when your bag is full.",
       "Open the storage, mail, or recovery panel from the HUD.",
@@ -1079,7 +1655,14 @@ export const SNAPSHOT_GROVE_QUESTS: SnapshotGroveQuest[] = [
       "Store or organize one item instead of carrying everything loose.",
       "Return to Rosalyn with your bag less dramatic than before.",
     ],
-    triggers: ["talk_npc", "open_tab", "interact", "item_grant", "inventory_change", "talk_npc"],
+    triggers: [
+      "talk_npc",
+      "open_tab",
+      "interact",
+      "item_grant",
+      "inventory_change",
+      "talk_npc",
+    ],
     markerIds: [
       "npc_rosalyn",
       "grove_mail_bank_satchel",
@@ -1105,17 +1688,22 @@ export const SNAPSHOT_GROVE_QUESTS: SnapshotGroveQuest[] = [
       "Return the nail to Jackie.",
     ],
     triggers: ["talk_npc", "near_location", "interact", "talk_npc"],
-    markerIds: ["npc_jackie", "old_grove_road_post", "old_grove_road_post", "npc_jackie"],
+    markerIds: [
+      "npc_jackie",
+      "old_grove_road_post",
+      "old_grove_road_post",
+      "npc_jackie",
+    ],
     reward: "35 XP, 20 bling, Road Ahead map layer unlocked.",
-    sampleDialogue: "That post has told three travelers to walk into a hedge this week. I am starting to think it has opinions.",
+    sampleDialogue:
+      "That post has told three travelers to walk into a hedge this week. I am starting to think it has opinions.",
   },
   {
     id: "build_repair_claim_lesson",
     title: "Patch, Claim, Build",
     giverNpcId: "luis",
     area: "Genesis Crossroads / Grove Safe-Zone Edge",
-    hook:
-      "Luis turns a broken cart repair into a real building lesson: patch the road, read the claim stakes, and learn why safe-zone land works differently from wild claims.",
+    hook: "Luis turns a broken cart repair into a real building lesson: patch the road, read the claim stakes, and learn why safe-zone land works differently from wild claims.",
     objectives: [
       "Talk to Luis at the Crossroads repair cart.",
       "Inspect the Grove Practice Claim Stakes beside the safe road.",
@@ -1126,7 +1714,16 @@ export const SNAPSHOT_GROVE_QUESTS: SnapshotGroveQuest[] = [
       "Choose the safer first claim: protected Grove/Harthmere lot before any non-safe-zone wilderness claim.",
       "Return to Luis so he can stamp the lesson complete.",
     ],
-    triggers: ["talk_npc", "near_location", "destroy", "place_voxel", "interact", "open_tab", "choice", "talk_npc"],
+    triggers: [
+      "talk_npc",
+      "near_location",
+      "destroy",
+      "place_voxel",
+      "interact",
+      "open_tab",
+      "choice",
+      "talk_npc",
+    ],
     markerIds: [
       "npc_luis",
       "grove_claim_stakes",
@@ -1147,8 +1744,7 @@ export const SNAPSHOT_GROVE_QUESTS: SnapshotGroveQuest[] = [
     title: "Guilds Are Promises",
     giverNpcId: "guild_clerk_nia",
     area: "The Grove / Guild Charter Table",
-    hook:
-      "Nia uses a fake guild charter to teach what guilds actually do: roles, permissions, banks, dues, projects, halls, and safe-zone law before players risk a real guild.",
+    hook: "Nia uses a fake guild charter to teach what guilds actually do: roles, permissions, banks, dues, projects, halls, and safe-zone law before players risk a real guild.",
     objectives: [
       "Talk to Nia at the Grove Guild Charter Board.",
       "Read the sample charter and pick a guild focus: crafting, gathering, PvE, PvP, trade, social, or building.",
@@ -1159,7 +1755,16 @@ export const SNAPSHOT_GROVE_QUESTS: SnapshotGroveQuest[] = [
       "Choose a first guild rule that prevents drama: bank limits, build permissions, tax rate, or war permissions.",
       "Report back to Nia and receive the charter primer.",
     ],
-    triggers: ["talk_npc", "choice", "choice", "item_grant", "interact", "near_location", "choice", "talk_npc"],
+    triggers: [
+      "talk_npc",
+      "choice",
+      "choice",
+      "item_grant",
+      "interact",
+      "near_location",
+      "choice",
+      "talk_npc",
+    ],
     markerIds: [
       "npc_guild_clerk_nia",
       "guild_charter_board",
@@ -1188,9 +1793,15 @@ export const SNAPSHOT_GROVE_QUESTS: SnapshotGroveQuest[] = [
       "Apply fresh paint to the painted route flags.",
     ],
     triggers: ["collect", "destroy", "interact", "place_voxel"],
-    markerIds: ["grove_garden_edge_berries", "muckwad_patch", "paint_pot", "grove_painted_route_flags"],
+    markerIds: [
+      "grove_garden_edge_berries",
+      "muckwad_patch",
+      "paint_pot",
+      "grove_painted_route_flags",
+    ],
     reward: "40 XP, Sign Painter reputation, cosmetic marker decal.",
-    sampleDialogue: "A good sign does not shout. It waits where your eyes already want to go.",
+    sampleDialogue:
+      "A good sign does not shout. It waits where your eyes already want to go.",
   },
   {
     id: "cart_that_forgot_its_wheel",
@@ -1205,9 +1816,15 @@ export const SNAPSHOT_GROVE_QUESTS: SnapshotGroveQuest[] = [
       "Help Luis push the cart clear.",
     ],
     triggers: ["near_location", "collect", "place_voxel", "interact"],
-    markerIds: ["luis_cart", "grove_tool_crate", "building_practice_spot", "luis_cart"],
+    markerIds: [
+      "luis_cart",
+      "grove_tool_crate",
+      "building_practice_spot",
+      "luis_cart",
+    ],
     reward: "45 XP, 25 bling, 5 road blocks, Luis friendship flag.",
-    sampleDialogue: "A cart with three wheels is not broken. It is just very committed to circles.",
+    sampleDialogue:
+      "A cart with three wheels is not broken. It is just very committed to circles.",
   },
   {
     id: "road_ready_not_fancy",
@@ -1222,9 +1839,15 @@ export const SNAPSHOT_GROVE_QUESTS: SnapshotGroveQuest[] = [
       "Take a mirror check at Lovely Locks before stepping out.",
     ],
     triggers: ["open_tab", "inventory_change", "inventory_change", "interact"],
-    markerIds: ["npc_alexis", "lovely_locks_mirror", "lovely_locks_mirror", "lovely_locks_mirror"],
+    markerIds: [
+      "npc_alexis",
+      "lovely_locks_mirror",
+      "lovely_locks_mirror",
+      "lovely_locks_mirror",
+    ],
     reward: "35 XP, starter travel outfit, Lovely Locks discount flag.",
-    sampleDialogue: "Style is not vanity on the road. It is a warning label you choose for yourself.",
+    sampleDialogue:
+      "Style is not vanity on the road. It is a warning label you choose for yourself.",
   },
   {
     id: "moss_that_went_quiet",
@@ -1239,9 +1862,15 @@ export const SNAPSHOT_GROVE_QUESTS: SnapshotGroveQuest[] = [
       "Clear a small seedy muckling nest the silent moss was hiding.",
     ],
     triggers: ["near_location", "near_location", "interact", "combat"],
-    markerIds: ["mosslawn_warning_moss", "mosslawn_warning_moss", "mosslawn_warning_moss", "npc_mucked_robot"],
+    markerIds: [
+      "mosslawn_warning_moss",
+      "mosslawn_warning_moss",
+      "mosslawn_warning_moss",
+      "npc_mucked_robot",
+    ],
     reward: "60 XP, ranger token, Mosslawn danger zone revealed.",
-    sampleDialogue: "Do not look for the monster first. Look for what stopped behaving normally.",
+    sampleDialogue:
+      "Do not look for the monster first. Look for what stopped behaving normally.",
   },
   {
     id: "songline_under_the_lawn",
@@ -1256,9 +1885,16 @@ export const SNAPSHOT_GROVE_QUESTS: SnapshotGroveQuest[] = [
       "Choose whether it sounds like road, water, or bell.",
     ],
     triggers: ["near_location", "interact", "interact", "choice"],
-    markerIds: ["mosslawn_song_stones", "mosslawn_song_stones", "npc_sil", "npc_sil"],
-    reward: "45 XP, lore codex: Mosslawn Songline, unlocks Harthmere bell dialogue branch later.",
-    sampleDialogue: "The ground remembers. Most people only notice when it screams.",
+    markerIds: [
+      "mosslawn_song_stones",
+      "mosslawn_song_stones",
+      "npc_sil",
+      "npc_sil",
+    ],
+    reward:
+      "45 XP, lore codex: Mosslawn Songline, unlocks Harthmere bell dialogue branch later.",
+    sampleDialogue:
+      "The ground remembers. Most people only notice when it screams.",
   },
   {
     id: "sticky_medicine",
@@ -1273,9 +1909,15 @@ export const SNAPSHOT_GROVE_QUESTS: SnapshotGroveQuest[] = [
       "Bring both samples to Doc's field table.",
     ],
     triggers: ["collect", "collect", "status_check", "interact"],
-    markerIds: ["muckwad_patch", "muckwad_patch", "muckwad_patch", "doc_field_table"],
+    markerIds: [
+      "muckwad_patch",
+      "muckwad_patch",
+      "muckwad_patch",
+      "doc_field_table",
+    ],
     reward: "55 XP, anti-muck poultice, Doc sample flag.",
-    sampleDialogue: "Do not lick it. I only say that because someone always thinks science needs enthusiasm.",
+    sampleDialogue:
+      "Do not lick it. I only say that because someone always thinks science needs enthusiasm.",
   },
   {
     id: "cove_keeps_pictures",
@@ -1290,10 +1932,23 @@ export const SNAPSHOT_GROVE_QUESTS: SnapshotGroveQuest[] = [
       "Post or save the photo from the overlook.",
       "Show Dimmi the image.",
     ],
-    triggers: ["inventory_change", "open_tab", "photo_post", "photo_post", "talk_npc"],
-    markerIds: ["npc_dimmi", "shutter_cove_marker", "shutter_cove_marker", "selfie_overlook", "npc_dimmi"],
+    triggers: [
+      "inventory_change",
+      "open_tab",
+      "photo_post",
+      "photo_post",
+      "talk_npc",
+    ],
+    markerIds: [
+      "npc_dimmi",
+      "shutter_cove_marker",
+      "shutter_cove_marker",
+      "selfie_overlook",
+      "npc_dimmi",
+    ],
     reward: "50 XP, cove photo frame, Shutter Cove map note.",
-    sampleDialogue: "If the water is lying, it is doing it with excellent composition.",
+    sampleDialogue:
+      "If the water is lying, it is doing it with excellent composition.",
   },
   {
     id: "coops_key_hen",
@@ -1308,7 +1963,12 @@ export const SNAPSHOT_GROVE_QUESTS: SnapshotGroveQuest[] = [
       "Use the recovered key on the old supply box.",
     ],
     triggers: ["escort", "collect", "interact", "item_use"],
-    markerIds: ["npc_old_coop", "npc_old_coop", "coop_supply_box", "coop_supply_box"],
+    markerIds: [
+      "npc_old_coop",
+      "npc_old_coop",
+      "coop_supply_box",
+      "coop_supply_box",
+    ],
     reward: "40 XP, road snacks, old route clue pointing toward Billy.",
     sampleDialogue: "Never trust a map that has not been approved by poultry.",
   },
@@ -1325,9 +1985,15 @@ export const SNAPSHOT_GROVE_QUESTS: SnapshotGroveQuest[] = [
       "Ping the Old Grove Road marker from the console.",
     ],
     triggers: ["near_location", "item_use", "destroy", "interact"],
-    markerIds: ["service_tower_platform", "service_tower_platform", "muckwad_patch", "old_grove_road_post"],
+    markerIds: [
+      "service_tower_platform",
+      "service_tower_platform",
+      "muckwad_patch",
+      "old_grove_road_post",
+    ],
     reward: "55 XP, temporary navigation beam upgrade, Buddy memory fragment.",
-    sampleDialogue: "I remember helping. I do not remember who asked. This is inefficient but emotionally promising.",
+    sampleDialogue:
+      "I remember helping. I do not remember who asked. This is inefficient but emotionally promising.",
   },
   {
     id: "letter_for_the_north_gate",
@@ -1342,9 +2008,15 @@ export const SNAPSHOT_GROVE_QUESTS: SnapshotGroveQuest[] = [
       "Return to Jackie with Bram's stamped pass.",
     ],
     triggers: ["item_grant", "near_location", "talk_npc", "talk_npc"],
-    markerIds: ["npc_jackie", "harthmere_connector", "sergeant_bram_holt", "npc_jackie"],
+    markerIds: [
+      "npc_jackie",
+      "harthmere_connector",
+      "sergeant_bram_holt",
+      "npc_jackie",
+    ],
     reward: "80 XP, Harthmere access reputation, North Gate fast marker.",
-    sampleDialogue: "Do not let Bram scare you. He sounds like a locked door because people keep trying to walk through him.",
+    sampleDialogue:
+      "Do not let Bram scare you. He sounds like a locked door because people keep trying to walk through him.",
     connectorToHarthmere: true,
   },
   {
@@ -1360,9 +2032,16 @@ export const SNAPSHOT_GROVE_QUESTS: SnapshotGroveQuest[] = [
       "Compare one Harthmere Wilds track with Jane's notes and return.",
     ],
     triggers: ["interact", "near_location", "talk_npc", "choice"],
-    markerIds: ["mosslawn_warning_moss", "harthmere_connector", "sergeant_bram_holt", "npc_ranger_jane"],
-    reward: "90 XP, Watch/Ranger bridge reputation, Wilds animal-safe marker unlocked.",
-    sampleDialogue: "Tell them if a deer wanted to invade a town, it would start with the vegetable stalls.",
+    markerIds: [
+      "mosslawn_warning_moss",
+      "harthmere_connector",
+      "sergeant_bram_holt",
+      "npc_ranger_jane",
+    ],
+    reward:
+      "90 XP, Watch/Ranger bridge reputation, Wilds animal-safe marker unlocked.",
+    sampleDialogue:
+      "Tell them if a deer wanted to invade a town, it would start with the vegetable stalls.",
     connectorToHarthmere: true,
   },
   {
@@ -1378,9 +2057,15 @@ export const SNAPSHOT_GROVE_QUESTS: SnapshotGroveQuest[] = [
       "Carry the bolt crates back to Luis for road repairs.",
     ],
     triggers: ["item_grant", "talk_npc", "interact", "carry"],
-    markerIds: ["npc_luis", "harthmere_market_office", "harthmere_market_office", "npc_luis"],
+    markerIds: [
+      "npc_luis",
+      "harthmere_market_office",
+      "harthmere_market_office",
+      "npc_luis",
+    ],
     reward: "85 XP, road repair kit recipe, Merchant Compact intro flag.",
-    sampleDialogue: "The difference between a road and a government is that roads occasionally go somewhere.",
+    sampleDialogue:
+      "The difference between a road and a government is that roads occasionally go somewhere.",
     connectorToHarthmere: true,
   },
   {
@@ -1396,9 +2081,15 @@ export const SNAPSHOT_GROVE_QUESTS: SnapshotGroveQuest[] = [
       "Record whether it trembles, darkens, or stays still — and return to Doc.",
     ],
     triggers: ["collect", "talk_npc", "interact", "choice"],
-    markerIds: ["muckwad_patch", "harthmere_chapel_stone", "harthmere_chapel_stone", "npc_doc"],
+    markerIds: [
+      "muckwad_patch",
+      "harthmere_chapel_stone",
+      "harthmere_chapel_stone",
+      "npc_doc",
+    ],
     reward: "95 XP, chapel lore codex, unlocks Bell/Muck theory branch.",
-    sampleDialogue: "If the priests are right, we learn something. If I am right, we learn something louder.",
+    sampleDialogue:
+      "If the priests are right, we learn something. If I am right, we learn something louder.",
     connectorToHarthmere: true,
   },
   {
@@ -1414,17 +2105,23 @@ export const SNAPSHOT_GROVE_QUESTS: SnapshotGroveQuest[] = [
       "Report the marked result to Sil at Mosslawn.",
     ],
     triggers: ["item_grant", "near_location", "talk_npc", "item_update"],
-    markerIds: ["npc_sil", "harthmere_bridge_center", "harthmere_bridge_center", "npc_sil"],
+    markerIds: [
+      "npc_sil",
+      "harthmere_bridge_center",
+      "harthmere_bridge_center",
+      "npc_sil",
+    ],
     reward: "110 XP, Bellbound hint, unlocks future main quest breadcrumb.",
-    sampleDialogue: "If the same note lives under both roads, we should learn whether it is calling or answering.",
+    sampleDialogue:
+      "If the same note lives under both roads, we should learn whether it is calling or answering.",
     connectorToHarthmere: true,
-  },  {
+  },
+  {
     id: "fountain_chat_channels",
     title: "Words Find the Right Ear",
     giverNpcId: "taye",
     area: "The Grove Fountain",
-    hook:
-      "Taye teaches new arrivals that words have channels: say is the room, party is your friends, and whisper is for one ear only — and that picking the wrong one is how strangers learn things they should not.",
+    hook: "Taye teaches new arrivals that words have channels: say is the room, party is your friends, and whisper is for one ear only — and that picking the wrong one is how strangers learn things they should not.",
     objectives: [
       "Talk to Taye at her paint table about who hears your words.",
       "Open the chat panel from the HUD.",
@@ -1433,7 +2130,14 @@ export const SNAPSHOT_GROVE_QUESTS: SnapshotGroveQuest[] = [
       "Choose your default channel: say, party, or whisper.",
       "Return to Taye with the channel you picked.",
     ],
-    triggers: ["talk_npc", "open_tab", "interact", "interact", "choice", "talk_npc"],
+    triggers: [
+      "talk_npc",
+      "open_tab",
+      "interact",
+      "interact",
+      "choice",
+      "talk_npc",
+    ],
     markerIds: [
       "npc_taye",
       "grove_chat_practice_board",
@@ -1451,8 +2155,7 @@ export const SNAPSHOT_GROVE_QUESTS: SnapshotGroveQuest[] = [
     title: "Food Keeps You Moving",
     giverNpcId: "rosalyn",
     area: "The Grove Fountain",
-    hook:
-      "Rosalyn turns the first hunger lesson into a calm fountain drill: stamina, rations, and why nobody walks the Old Grove Road on an empty bag.",
+    hook: "Rosalyn turns the first hunger lesson into a calm fountain drill: stamina, rations, and why nobody walks the Old Grove Road on an empty bag.",
     objectives: [
       "Talk to Rosalyn about traveler's stamina.",
       "Take a starter ration from the fountain food satchel.",
@@ -1461,7 +2164,14 @@ export const SNAPSHOT_GROVE_QUESTS: SnapshotGroveQuest[] = [
       "Eat one more ration to recover before leaving the safe zone.",
       "Return to Rosalyn so she can pack you a road kit.",
     ],
-    triggers: ["talk_npc", "interact", "item_use", "near_location", "item_use", "talk_npc"],
+    triggers: [
+      "talk_npc",
+      "interact",
+      "item_use",
+      "near_location",
+      "item_use",
+      "talk_npc",
+    ],
     markerIds: [
       "npc_rosalyn",
       "grove_food_satchel",
@@ -1479,8 +2189,7 @@ export const SNAPSHOT_GROVE_QUESTS: SnapshotGroveQuest[] = [
     title: "First Aid Before the Road",
     giverNpcId: "rosalyn",
     area: "The Grove Fountain",
-    hook:
-      "Rosalyn teaches the bandage habit before the player meets a fight: out-of-combat heal, when to use it, when to save it, and why a clean bandage is cheaper than a confident sprint.",
+    hook: "Rosalyn teaches the bandage habit before the player meets a fight: out-of-combat heal, when to use it, when to save it, and why a clean bandage is cheaper than a confident sprint.",
     objectives: [
       "Talk to Rosalyn about minor road injuries.",
       "Take one practice bandage from the first-aid bin.",
@@ -1489,7 +2198,14 @@ export const SNAPSHOT_GROVE_QUESTS: SnapshotGroveQuest[] = [
       "Choose whether you would carry one bandage, three, or a full roll on the road.",
       "Return to Rosalyn to confirm the lesson.",
     ],
-    triggers: ["talk_npc", "interact", "near_location", "item_use", "choice", "talk_npc"],
+    triggers: [
+      "talk_npc",
+      "interact",
+      "near_location",
+      "item_use",
+      "choice",
+      "talk_npc",
+    ],
     markerIds: [
       "npc_rosalyn",
       "grove_first_aid_bin",
@@ -1507,8 +2223,7 @@ export const SNAPSHOT_GROVE_QUESTS: SnapshotGroveQuest[] = [
     title: "Hands That Know the Hotbar",
     giverNpcId: "jackie",
     area: "The Grove Fountain",
-    hook:
-      "Jackie shows newcomers how to bind tools to the hotbar, drop a stack on purpose, and pick it back up — so panic never costs them their only torch.",
+    hook: "Jackie shows newcomers how to bind tools to the hotbar, drop a stack on purpose, and pick it back up — so panic never costs them their only torch.",
     objectives: [
       "Talk to Jackie at the fountain about hands-free habits.",
       "Open the inventory and drag a practice stone onto the hotbar.",
@@ -1517,7 +2232,14 @@ export const SNAPSHOT_GROVE_QUESTS: SnapshotGroveQuest[] = [
       "Pick the stack back up to prove dropped items are not lost.",
       "Return to Jackie with the stack in your hand.",
     ],
-    triggers: ["talk_npc", "open_tab", "item_use", "place_voxel", "collect", "talk_npc"],
+    triggers: [
+      "talk_npc",
+      "open_tab",
+      "item_use",
+      "place_voxel",
+      "collect",
+      "talk_npc",
+    ],
     markerIds: [
       "npc_jackie",
       "grove_fountain_lesson_board",
@@ -1535,8 +2257,7 @@ export const SNAPSHOT_GROVE_QUESTS: SnapshotGroveQuest[] = [
     title: "Your First Real Recipe",
     giverNpcId: "jackie",
     area: "The Grove Fountain",
-    hook:
-      "Jackie walks the player through their first real crafted item — a small road torch — so the recipe panel, workbench, and lit-light habit all click before the road goes dark.",
+    hook: "Jackie walks the player through their first real crafted item — a small road torch — so the recipe panel, workbench, and lit-light habit all click before the road goes dark.",
     objectives: [
       "Talk to Jackie about her tinder kit.",
       "Gather two practice sticks from the marked basket.",
@@ -1545,7 +2266,14 @@ export const SNAPSHOT_GROVE_QUESTS: SnapshotGroveQuest[] = [
       "Light the torch and stand in the dim corner of the courtyard until it catches.",
       "Return to Jackie with the lit torch.",
     ],
-    triggers: ["talk_npc", "collect", "open_tab", "craft", "interact", "talk_npc"],
+    triggers: [
+      "talk_npc",
+      "collect",
+      "open_tab",
+      "craft",
+      "interact",
+      "talk_npc",
+    ],
     markerIds: [
       "npc_jackie",
       "grove_resource_basket",
@@ -1563,8 +2291,7 @@ export const SNAPSHOT_GROVE_QUESTS: SnapshotGroveQuest[] = [
     title: "Trade Is a Promise You Both Sign",
     giverNpcId: "guild_clerk_nia",
     area: "The Grove Fountain / Charter Table",
-    hook:
-      "Nia walks the player through a real trade at the practice table — both sides confirm, both sides accept — so a first trade with a stranger does not become a first scam.",
+    hook: "Nia walks the player through a real trade at the practice table — both sides confirm, both sides accept — so a first trade with a stranger does not become a first scam.",
     objectives: [
       "Talk to Nia at the charter table about safe trading.",
       "Open the trade window at the practice trade desk.",
@@ -1573,7 +2300,14 @@ export const SNAPSHOT_GROVE_QUESTS: SnapshotGroveQuest[] = [
       "Choose the trade rule worth keeping: equal value, confirmed both sides, or no rushed accepts.",
       "Return to Nia to stamp the trade habit into your charter.",
     ],
-    triggers: ["talk_npc", "interact", "item_grant", "status_check", "choice", "talk_npc"],
+    triggers: [
+      "talk_npc",
+      "interact",
+      "item_grant",
+      "status_check",
+      "choice",
+      "talk_npc",
+    ],
     markerIds: [
       "npc_guild_clerk_nia",
       "grove_trade_desk",
@@ -1603,8 +2337,7 @@ export const SNAPSHOT_GROVE_QUESTS: SnapshotGroveQuest[] = [
       kind: "fountain_completion_count",
       minCompletedFountainLessons: 5,
     },
-    hook:
-      "Jackie has watched you complete enough fountain lessons that the road is the next teacher. Three Grove neighbors live on it. Walk to each of them once so the road learns your boots.",
+    hook: "Jackie has watched you complete enough fountain lessons that the road is the next teacher. Three Grove neighbors live on it. Walk to each of them once so the road learns your boots.",
     objectives: [
       "Tell Jackie you are ready to step beyond the fountain.",
       "Walk west to Lovely Locks and find Alexis at her fitting room.",
@@ -1638,8 +2371,7 @@ export const SNAPSHOT_GROVE_QUESTS: SnapshotGroveQuest[] = [
     area: "Lovely Locks",
     category: "road_neighbor",
     unlockedBy: { kind: "quest_accepted", questId: "grove_road_graduation" },
-    hook:
-      "Alexis runs the Lovely Locks fitting room and gives every new road-walker one calm look in the mirror before they go further. A travel kit is a promise the road can read.",
+    hook: "Alexis runs the Lovely Locks fitting room and gives every new road-walker one calm look in the mirror before they go further. A travel kit is a promise the road can read.",
     objectives: [
       "Walk to Alexis at the Lovely Locks fitting room.",
       "Stand at the Lovely Locks mirror so Alexis can look you over.",
@@ -1673,8 +2405,7 @@ export const SNAPSHOT_GROVE_QUESTS: SnapshotGroveQuest[] = [
     area: "Genesis Crossroads",
     category: "road_neighbor",
     unlockedBy: { kind: "quest_accepted", questId: "grove_road_graduation" },
-    hook:
-      "Luis's repair cart is the Crossroads' shortest lesson in road problems. Anyone who can talk to Luis once knows where to bring a broken wheel later — and where to find the best gossip about which road is lying this week.",
+    hook: "Luis's repair cart is the Crossroads' shortest lesson in road problems. Anyone who can talk to Luis once knows where to bring a broken wheel later — and where to find the best gossip about which road is lying this week.",
     objectives: [
       "Walk to Luis's repair cart at the Crossroads.",
       "Inspect Luis's cart and find what broke first.",
@@ -1682,20 +2413,8 @@ export const SNAPSHOT_GROVE_QUESTS: SnapshotGroveQuest[] = [
       "Take a sample road bolt from the cart for your kit.",
       "Tell Luis which lesson stuck with you.",
     ],
-    triggers: [
-      "near_location",
-      "interact",
-      "choice",
-      "item_grant",
-      "talk_npc",
-    ],
-    markerIds: [
-      "npc_luis",
-      "luis_cart",
-      "luis_cart",
-      "luis_cart",
-      "npc_luis",
-    ],
+    triggers: ["near_location", "interact", "choice", "item_grant", "talk_npc"],
+    markerIds: ["npc_luis", "luis_cart", "luis_cart", "luis_cart", "npc_luis"],
     reward:
       "65 XP, Crossroads road-bolt sample, repair habit, Luis merchant-compact intro flag.",
     sampleDialogue:
@@ -1708,8 +2427,7 @@ export const SNAPSHOT_GROVE_QUESTS: SnapshotGroveQuest[] = [
     area: "Mosslawn Boundary",
     category: "road_neighbor",
     unlockedBy: { kind: "quest_accepted", questId: "grove_road_graduation" },
-    hook:
-      "Jane teaches new road-walkers to listen to Mosslawn before walking it. Warning moss, animal silence, and the right edge of the safe path are the first three things she shows you.",
+    hook: "Jane teaches new road-walkers to listen to Mosslawn before walking it. Warning moss, animal silence, and the right edge of the safe path are the first three things she shows you.",
     objectives: [
       "Walk to Ranger Jane at the Mosslawn boundary.",
       "Inspect a warning moss patch with Jane standing next to you.",
@@ -1746,25 +2464,29 @@ export const SNAPSHOT_GROVE_PLAYER_BUILDER_PRESETS = [
   {
     id: "grove_wayfinder",
     label: "Grove Wayfinder",
-    description: "Soft starter clothes, strong route-readiness, and Jackie-style road confidence.",
+    description:
+      "Soft starter clothes, strong route-readiness, and Jackie-style road confidence.",
     clothingTags: ["travel_top", "travel_bottoms", "boots", "warm_colors"],
   },
   {
     id: "lovely_locks_traveler",
     label: "Lovely Locks Traveler",
-    description: "Identity-forward outfit choices that make clothing part of player story, not only cosmetics.",
+    description:
+      "Identity-forward outfit choices that make clothing part of player story, not only cosmetics.",
     clothingTags: ["styled_top", "scarf", "clean_boots", "photo_ready"],
   },
   {
     id: "mosslawn_scout",
     label: "Mosslawn Scout",
-    description: "Muted trail colors and practical boots for players who want the ranger path.",
+    description:
+      "Muted trail colors and practical boots for players who want the ranger path.",
     clothingTags: ["ranger", "green", "brown", "trail_boots"],
   },
   {
     id: "shutter_cove_lenskeeper",
     label: "Shutter Cove Lenskeeper",
-    description: "Camera/social starter identity for players who want photo proof and exploration notes.",
+    description:
+      "Camera/social starter identity for players who want photo proof and exploration notes.",
     clothingTags: ["camera", "blue", "cove", "social"],
   },
 ] as const;

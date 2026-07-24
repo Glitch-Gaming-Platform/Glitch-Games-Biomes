@@ -58,6 +58,11 @@ export interface BackgroundMusicDiagnostics {
   }>;
 }
 
+export interface AudioRecordingStream {
+  stream: MediaStream;
+  dispose(): void;
+}
+
 export const DEFAULT_BACKGROUND_MUSIC_CROSSFADE_SECONDS = 5;
 export const COMBAT_MUSIC_CROSSFADE_SECONDS = 0.75;
 
@@ -140,6 +145,26 @@ export class AudioManager {
 
   getAudioListener() {
     return this.audioListener;
+  }
+
+  /** Mirror the listener's final mix into MediaRecorder without muting play. */
+  createRecordingStream(): AudioRecordingStream | undefined {
+    if (!this.audioListener) {
+      return undefined;
+    }
+    const destination =
+      this.audioListener.context.createMediaStreamDestination();
+    this.audioListener.gain.connect(destination);
+    return {
+      stream: destination.stream,
+      dispose: () => {
+        try {
+          this.audioListener?.gain.disconnect(destination);
+        } catch {
+          // The audio graph may already be gone during hot reload/teardown.
+        }
+      },
+    };
   }
 
   isRunning() {
@@ -340,6 +365,38 @@ export class AudioManager {
           };
           sound.play();
         }
+      })()
+    );
+  }
+
+  playSoundAt(assetType: AudioAssetType, position: readonly number[]) {
+    fireAndForget(
+      (async () => {
+        if (!this.audioListener || position.length < 3) {
+          return;
+        }
+        const assetPath = sample(getAudioAssetPaths(assetType));
+        if (!assetPath) {
+          return;
+        }
+        const volume = this.getVolume("settings.volume.effects", assetType);
+        if (volume === 0) {
+          return;
+        }
+        const buffer = await this.resources.get("/audio/buffer", assetPath);
+        if (!buffer) {
+          return;
+        }
+        const sound = new THREE.PositionalAudio(this.audioListener);
+        sound.setBuffer(buffer);
+        sound.setVolume(volume);
+        sound.position.set(position[0], position[1], position[2]);
+        sound.setDistanceModel("exponential");
+        sound.setRefDistance(2);
+        sound.setMaxDistance(64);
+        sound.updateMatrixWorld(true);
+        sound.onEnded = () => sound.disconnect();
+        sound.play();
       })()
     );
   }

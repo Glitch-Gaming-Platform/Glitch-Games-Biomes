@@ -17,6 +17,17 @@ import type { StoredTriggerDefinition } from "@/shared/triggers/schema";
 export const HARTHMERE_NATIVE_QUEST_OVERLAY_VERSION =
   "harthmere-native-authored-quests-v1" as const;
 
+const HARTHMERE_NATIVE_GROVE_QUEST_IDS = new Set<number>(
+  Object.entries(HARTHMERE_NATIVE_QUEST_ID_MANIFEST)
+    .filter(([key]) => key.startsWith("grove:"))
+    .map(([, value]) => Number(value))
+);
+
+/** Source-scoped lifecycle check used to retire completed onboarding lessons. */
+export function isHarthmereNativeGroveQuestId(id: unknown) {
+  return HARTHMERE_NATIVE_GROVE_QUEST_IDS.has(Number(id));
+}
+
 type QuestSource = "grove" | "bible";
 
 function questKey(source: QuestSource, questId: string) {

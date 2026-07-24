@@ -13,6 +13,7 @@ import type { AABB, ReadonlyVec3 } from "@/shared/math/types";
 import {
   boundedHarthmereNpcChaseSpeed,
   chaseAttackTargetTick,
+  isHarthmereFightSpeedBoostNpc,
   nightMuckerHexMovementMultiplier,
   nightMuckerHexUnprovokedAggroParams,
   updateAttackTarget,
@@ -45,6 +46,7 @@ import {
 import {
   addForce,
   forwardWalkingForce,
+  horizontalForceForTargetSpeed,
   nullForce,
 } from "@/shared/physics/forces";
 import { moveBodyFluid, moveBodyWithClimbing } from "@/shared/physics/movement";
@@ -177,6 +179,46 @@ export function selectNpcLocomotion(
   return "idle";
 }
 
+export function npcGroundWalkingForceCoefficient(input: {
+  locomotion: NpcLocomotionChoice;
+  fightSpeedBoostEligible: boolean;
+  forwardSpeed: number;
+}): number {
+  if (input.locomotion !== "chaseAttack" || !input.fightSpeedBoostEligible) {
+    return input.forwardSpeed;
+  }
+  return horizontalForceForTargetSpeed(
+    input.forwardSpeed,
+    DEFAULT_ENVIRONMENT_PARAMS
+  );
+}
+
+export function npcForwardSpeedForLocomotion(input: {
+  locomotion: NpcLocomotionChoice;
+  forwardSpeed: number;
+  nightMovementMultiplier: number;
+  boundChaseSpeed: (requestedSpeed: number) => number;
+}): number {
+  if (input.locomotion !== "chaseAttack") {
+    return input.forwardSpeed;
+  }
+  return input.boundChaseSpeed(
+    input.forwardSpeed * input.nightMovementMultiplier
+  );
+}
+
+export function npcCinematicPauseActive(
+  state: { cinematicPauseUntil?: number },
+  nowSeconds: number
+): boolean {
+  const pauseUntil = state.cinematicPauseUntil;
+  return (
+    typeof pauseUntil === "number" &&
+    Number.isFinite(pauseUntil) &&
+    nowSeconds < pauseUntil
+  );
+}
+
 // The tick context that drives most of the NPCs based on their data-driven
 // behavioral definitions.
 export function npcTickLogic(
@@ -184,6 +226,10 @@ export function npcTickLogic(
   npc: SimulatedNpc,
   dtSecs: number
 ) {
+  if (npcCinematicPauseActive(npc.state, secondsSinceEpoch())) {
+    npc.setVelocity([0, 0, 0]);
+    return;
+  }
   if (npc.lockedInPlace) {
     // Currently this primarily applies for robots, but if they are locked
     // in place, then we will not apply any physics at all to them.
@@ -288,13 +334,16 @@ export function npcTickLogic(
     case "idle":
       break;
   }
-  // At night Muckers and Hexers become materially more dangerous even before
-  // contact: idle patrols, returns, and active pursuit all move faster. Combat
-  // cadence/damage/range are boosted in nightMuckerHexUnprovokedAggroParams.
-  forwardSpeed *= nightMuckerHexMovementMultiplier(npc);
-  if (locomotion === "chaseAttack") {
-    forwardSpeed = boundedHarthmereNpcChaseSpeed(npc, forwardSpeed);
-  }
+  // The night speed increase is combat-only. Idle patrols, schedules,
+  // socializing, fleeing, and ordinary meandering retain their authored
+  // movement behavior.
+  forwardSpeed = npcForwardSpeedForLocomotion({
+    locomotion,
+    forwardSpeed,
+    nightMovementMultiplier: nightMuckerHexMovementMultiplier(npc),
+    boundChaseSpeed: (requestedSpeed) =>
+      boundedHarthmereNpcChaseSpeed(npc, requestedSpeed),
+  });
   // Compute the NPC's AABB which is needed for physics and drowning logic.
   const aabb = anchorAndSizeToAABB(npc.position, npc.size);
 
@@ -338,7 +387,14 @@ export function npcTickLogic(
     };
   }
 
-  const walkingForce = forwardWalkingForce(forwardSpeed, npc.orientation[1]);
+  const walkingForce = forwardWalkingForce(
+    npcGroundWalkingForceCoefficient({
+      locomotion,
+      fightSpeedBoostEligible: isHarthmereFightSpeedBoostNpc(npc),
+      forwardSpeed,
+    }),
+    npc.orientation[1]
+  );
 
   force = addForce(force, walkingForce);
 

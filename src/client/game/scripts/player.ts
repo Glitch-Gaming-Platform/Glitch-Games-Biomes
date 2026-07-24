@@ -55,7 +55,10 @@ import { getPlayerBuffs } from "@/shared/game/players";
 import { friendlyShardId, shardsForAABB } from "@/shared/game/shard";
 import { blockIsEmpty } from "@/shared/game/terrain_helper";
 import type { BiomesId } from "@/shared/ids";
-import { nativeBiomesEcsAuthorityEnabled } from "@/shared/harthmere/native_road_ahead_contract";
+import {
+  nativeBiomesEcsAuthorityEnabled,
+  playerHealthAutoRegenerationEnabled,
+} from "@/shared/harthmere/native_road_ahead_contract";
 import {
   add,
   approxEquals,
@@ -2006,6 +2009,14 @@ export class PlayerScript implements Script {
   }
 
   private applyHpChange(hpDelta: number, damageSource?: OptionalDamageSource) {
+    // Cutscene invulnerability: never let environmental/contact damage kill
+    // (or interrupt) the player mid-scene. Healing still applies.
+    if (hpDelta < 0) {
+      const cutscene = this.resources.get("/scene/cutscene");
+      if (cutscene.active && cutscene.invulnerable) {
+        return;
+      }
+    }
     const currentHealth = this.resources.get("/ecs/c/health", this.userId);
     if (
       currentHealth &&
@@ -2049,6 +2060,7 @@ export class PlayerScript implements Script {
       0
     );
     if (
+      playerHealthAutoRegenerationEnabled() &&
       this.regenThrottle.tick(REGEN_DELAY_IN_TICKS * regenIntervalMultiplier)
     ) {
       this.applyHpChange(this.tweaks.healthRegenAmount);
@@ -2947,6 +2959,13 @@ export class PlayerScript implements Script {
 
     const becomeTheNPC = this.resources.get("/scene/npc/become_npc");
     if (becomeTheNPC.kind === "active") {
+      return true;
+    }
+
+    // Cutscenes freeze motion input (physics still applies so the player
+    // stays grounded); the director may reposition via /sim/player directly.
+    const cutscene = this.resources.get("/scene/cutscene");
+    if (cutscene.active && cutscene.lockInput) {
       return true;
     }
 

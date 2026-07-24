@@ -9,6 +9,8 @@ import { z } from "zod";
 export const zTakeScreenshotRequest = z.object({
   position: zVec3f,
   orientation: zVec2f,
+  width: z.number().int().min(320).max(4096).default(1920),
+  height: z.number().int().min(240).max(4096).default(1080),
 });
 
 export type TakeScreenshotRequest = z.infer<typeof zTakeScreenshotRequest>;

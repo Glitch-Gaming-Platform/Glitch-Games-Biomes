@@ -71,6 +71,13 @@ export class InteractScript implements Script {
   ) {}
 
   tick(dt: number): void {
+    const cutscene = this.deps.resources.get("/scene/cutscene");
+    if (cutscene.active && cutscene.lockInput) {
+      this.lastActiveScript?.onUnselected?.();
+      this.lastActiveScript = undefined;
+      this.lastSelectionChangeSpec = undefined;
+      return;
+    }
     const changeSpec = this.selectionChangeSpec();
     if (!isEqual(changeSpec, this.lastSelectionChangeSpec)) {
       this.lastActiveScript?.onUnselected?.();

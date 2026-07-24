@@ -115,4 +115,20 @@ describe("Harthmere farming tools are obtainable", () => {
       1
     );
   });
+
+  it("buys the exact native Hoe used by tilling and the farming hotbar", () => {
+    const entry = getHarthmereVendorEntry(
+      FARM_VENDOR,
+      HARTHMERE_CRAFTING_TOOLS.hoe
+    )!;
+    const base = snapshot({ gold: 100 });
+    const result = mutate("buy_from_vendor", base, {
+      vendorId: FARM_VENDOR,
+      itemId: HARTHMERE_CRAFTING_TOOLS.hoe,
+      count: 1,
+    });
+    assert.ok(result.ok, `buy failed: ${result.errors.join(",")}`);
+    assert.strictEqual(result.goldDelta, -entry.buyPrice);
+    assert.strictEqual(result.itemDeltas[HARTHMERE_CRAFTING_TOOLS.hoe], 1);
+  });
 });

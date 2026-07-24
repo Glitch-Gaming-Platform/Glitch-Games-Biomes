@@ -1,5 +1,4 @@
 import { makeEventHandler, newIds } from "@/server/logic/events/core";
-import { PlayerInventoryEditor } from "@/server/logic/inventory/player_inventory_editor";
 import { decrementItemDurability } from "@/server/logic/utils/durability";
 import { q } from "@/server/logic/events/query";
 import {
@@ -9,6 +8,7 @@ import {
 } from "@/server/logic/utils/drops";
 import { BikkieIds } from "@/shared/bikkie/ids";
 import { secondsSinceEpoch } from "@/shared/ecs/config";
+import { NpcState } from "@/shared/ecs/gen/components";
 import type * as ecs from "@/shared/ecs/gen/types";
 import type { SellToEntityEvent } from "@/shared/firehose/events";
 import { resolveItemAttributeId } from "@/shared/game/item";
@@ -17,6 +17,10 @@ import { itemBagToString } from "@/shared/game/items_serde";
 import { sellPrice } from "@/shared/game/sales";
 import { idToNpcType } from "@/shared/npc/bikkie";
 import { modifyNpcHealth } from "@/shared/npc/modify_health";
+import {
+  deserializeNpcCustomState,
+  serializeNpcCustomState,
+} from "@/shared/npc/serde";
 import { getAabbForEntity } from "@/shared/game/entity_sizes";
 import { attackIntervalSeconds } from "@/shared/game/damage";
 import { distSqToAABB } from "@/shared/math/linear";
@@ -167,16 +171,18 @@ const updateNpcHealthEventHandler = makeEventHandler("updateNpcHealthEvent", {
           attacker.delta().mutableTriggerState(),
           { lastAttackMs: nowMs }
         );
-        if ((itemProfile?.manaCost ?? 0) > 0) {
+        const manaCost = itemProfile?.manaCost ?? 0;
+        if (manaCost > 0) {
           writeHarthmereNativeVitals(attacker.delta().mutableTriggerState(), {
-            mana: vitals.mana - itemProfile!.manaCost,
+            mana: vitals.mana - manaCost,
           });
         }
-        if (selected && (itemProfile?.durabilityCostMs ?? 0) > 0) {
+        const durabilityCostMs = itemProfile?.durabilityCostMs ?? 0;
+        if (selected && durabilityCostMs > 0) {
           decrementItemDurability(
-            attacker.inventory as PlayerInventoryEditor,
+            attacker.inventory,
             selectedRef,
-            itemProfile!.durabilityCostMs
+            durabilityCostMs
           );
         }
       } else {
@@ -287,6 +293,7 @@ const sellToEntityEventHandler = makeEventHandler("sellToEntityEvent", {
 
 const setNPCPositionEventHandler = makeEventHandler("setNPCPositionEvent", {
   involves: (event) => ({
+    player: q.player(event.id),
     npc: q
       .id(event.entity_id)
       .with(
@@ -298,7 +305,16 @@ const setNPCPositionEventHandler = makeEventHandler("setNPCPositionEvent", {
         "npc_state"
       ),
   }),
-  apply: ({ npc }, event, _context) => {
+  apply: ({ player, npc }, event, _context) => {
+    if (!(player.roles() ?? new Set()).has("admin")) {
+      log.error(
+        `Player ${player.id} tried to reposition NPC ${npc.id} without the admin role`
+      );
+      return;
+    }
+    const state = deserializeNpcCustomState(npc.npcState().data);
+    state.cinematicPauseUntil = secondsSinceEpoch() + 1.5;
+    npc.setNpcState(NpcState.create({ data: serializeNpcCustomState(state) }));
     if (event.position) {
       npc.setPosition({
         v: event.position,

@@ -1,6 +1,9 @@
 import { invalidUsernameReason } from "@/client/util/auth";
 import { GameEvent } from "@/server/shared/api/game_event";
-import { saveUsername } from "@/server/web/db/users";
+import {
+  getUserOrCreateIfNotExists,
+  saveUsername,
+} from "@/server/web/db/users";
 import { findUniqueByUsername } from "@/server/web/db/users_fetch";
 import { okOrAPIError } from "@/server/web/errors";
 import { biomesApiHandler } from "@/server/web/util/api_middleware";
@@ -20,12 +23,15 @@ export default biomesApiHandler(
     body: zSaveUsernameRequest,
   },
   async ({
-    context: { db, logicApi },
+    context: { db, logicApi, worldApi },
     auth: { userId },
     body: { username },
   }) => {
     const invalidReason = invalidUsernameReason(username);
     okOrAPIError(!invalidReason, "bad_param", invalidReason);
+
+    const player = await worldApi.get(userId);
+    await getUserOrCreateIfNotExists(db, userId, player?.label()?.text);
 
     const otherUser = await findUniqueByUsername(db, username);
     if (otherUser && otherUser.id !== userId) {

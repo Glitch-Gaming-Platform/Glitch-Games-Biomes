@@ -11,6 +11,7 @@ import type {
   ClientResources,
   ClientResourcesBuilder,
 } from "@/client/game/resources/types";
+import { retryPlayerMeshGltfLoad } from "@/client/game/util/gltf_fetch_coalescing";
 import {
   gltfToThree,
   loadGltf,
@@ -289,7 +290,7 @@ async function updatePlayerMesh(
   }
 }
 
-class ItemAttachment {
+export class ItemAttachment {
   private selectedItem: Item | undefined;
   private itemMeshInstance: ItemMeshInstance | undefined;
 
@@ -370,6 +371,37 @@ class ItemAttachment {
       this.itemMeshInstance.dispose();
     }
   }
+}
+
+/** Locate the same skeleton node used by the native player held-item path. */
+export function playerMeshWeaponAttachmentParent(
+  root: THREE.Object3D
+): THREE.Object3D {
+  let equippedAttach: THREE.Object3D | undefined;
+  let exactArmAttach: THREE.Object3D | undefined;
+  let fuzzyHandAttach: THREE.Object3D | undefined;
+  root.traverse((child) => {
+    if (child.name === "Equipped_Attach") {
+      equippedAttach = child;
+    } else if (
+      child.name === "R_Arm" ||
+      child.name === "RightArm" ||
+      child.name === "RightHand"
+    ) {
+      exactArmAttach = child;
+    } else if (
+      /righthand/i.test(child.name) ||
+      /right_hand/i.test(child.name) ||
+      /hand_r/i.test(child.name)
+    ) {
+      fuzzyHandAttach = child;
+    }
+  });
+  // Generated Grove avatars can expose R_Arm before Equipped_Attach. Taking
+  // the first partial match attaches a world-scale item to an arm mesh and can
+  // make a pickaxe fill the whole promotional frame. Prefer the authored item
+  // socket, matching the normal player equipment path, and only then fall back.
+  return equippedAttach ?? exactArmAttach ?? fuzzyHandAttach ?? root;
 }
 
 const HARTHMERE_GROVE_INSPIRED_AVATAR_POLISH_VERSION =
@@ -5365,7 +5397,16 @@ export function setFrustumCulling(gltf: GLTF, frustumCulling: boolean) {
 
 async function genFetchPlayerMeshGLTF(deps: ClientResourceDeps, url: string) {
   const isHarthmereVariantMesh = isHarthmerePlayerBodyVariantUrl(url);
-  const mesh = await loadGltfWithCoalescedNetworkFetch(url);
+  // A player without a parsed mesh is omitted from the renderer entirely.
+  // Retry both the network fetch and GLB parse so a transient proxy close or
+  // partial response cannot make remote players/NPCs remain invisible.
+  const mesh = await retryPlayerMeshGltfLoad(
+    () => loadGltfWithCoalescedNetworkFetch(url),
+    {
+      attempts: 3,
+      delayMs: 150,
+    }
+  );
   const hash = url;
 
   if (isHarthmereVariantMesh) {

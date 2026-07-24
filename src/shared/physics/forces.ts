@@ -114,6 +114,23 @@ export function forwardWalkingForce(k: number, yaw: number): Force {
   return (dt) => scale(dt * k, yawVector(yaw));
 }
 
+export function horizontalForceForTargetSpeed(
+  targetSpeed: number,
+  environment: { friction: number; airResistance: number }
+) {
+  if (!Number.isFinite(targetSpeed) || targetSpeed <= 0) {
+    return 0;
+  }
+  // Friction and air resistance remove approximately
+  // (friction + airResistance) * velocity each second. NPC biscuit walk/run
+  // speeds are authored in meters per second, while walkingForce expects an
+  // acceleration coefficient, so convert between those units here.
+  return (
+    targetSpeed *
+    (Math.max(0, environment.friction) + Math.max(0, environment.airResistance))
+  );
+}
+
 export function lateralWalkingForce(k: number, yaw: number): Force {
   return (dt) => scale(dt * k, cross(yawVector(yaw), [0, 1, 0]));
 }

@@ -474,6 +474,250 @@ button.biomes-ui-card:disabled {
   font-size: 11px;
 }
 
+.biomes-ui-shop-item-icon {
+  width: 64px;
+  height: 64px;
+  flex: 0 0 64px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid rgba(74, 222, 255, 0.28);
+  border-radius: 7px;
+  background:
+    radial-gradient(circle at 50% 38%, rgba(232, 244, 255, 0.18), transparent 34%),
+    linear-gradient(180deg, rgba(28, 43, 70, 0.9), rgba(7, 12, 26, 0.92));
+  color: var(--biomes-fg);
+  box-shadow: inset 0 0 18px rgba(0, 0, 0, 0.26);
+}
+
+.biomes-ui-shop-item-icon img {
+  width: 54px;
+  height: 54px;
+  object-fit: contain;
+  image-rendering: auto;
+}
+
+.biomes-ui-shop-item-icon span {
+  font-size: 24px;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  white-space: pre;
+}
+
+.biomes-ui-vendor-panel {
+  width: min(62rem, calc(100vw - 1rem));
+  height: min(45rem, calc(100dvh - 1.5rem));
+  min-height: min(34rem, calc(100dvh - 1.5rem));
+}
+
+.biomes-ui-shop-screen[data-biomes-ui-shop="vendor"] {
+  border: 1px solid rgba(74, 222, 255, 0.3);
+  background:
+    radial-gradient(circle at 18% 0%, rgba(74, 222, 255, 0.12), transparent 31%),
+    radial-gradient(circle at 88% 12%, rgba(255, 184, 68, 0.11), transparent 28%),
+    rgba(4, 9, 21, 0.96);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.68);
+}
+
+.biomes-ui-shop-screen[data-biomes-ui-shop="vendor"] .biomes-ui-shop-screen__body {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.biomes-ui-vendor-tabs {
+  display: flex;
+  gap: 5px;
+}
+
+.biomes-ui-vendor-tabs .biomes-ui-action-button[data-selected="true"] {
+  border-color: rgba(255, 184, 68, 0.78);
+  color: #201300;
+  background: linear-gradient(180deg, #ffd77a, #ffb844);
+  box-shadow: 0 0 16px rgba(255, 184, 68, 0.26);
+}
+
+.biomes-ui-vendor-catalog {
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+
+.biomes-ui-vendor-grid {
+  min-height: 0;
+  display: grid;
+  gap: 8px;
+  overflow: auto;
+  padding: 2px 4px 4px 2px;
+}
+
+.biomes-ui-vendor-grid [role="row"] {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px !important;
+  align-items: stretch;
+}
+
+.biomes-ui-vendor-card {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  padding: 10px;
+  border: 1px solid rgba(74, 222, 255, 0.2);
+  border-radius: 7px;
+  background: rgba(7, 12, 26, 0.72);
+  color: var(--biomes-fg);
+  outline: none;
+}
+
+.biomes-ui-vendor-card:hover,
+.biomes-ui-vendor-card:focus-visible,
+.biomes-ui-vendor-card[data-focused="true"] {
+  border-color: var(--biomes-edge-cyan);
+  background: rgba(12, 23, 45, 0.84);
+  box-shadow: 0 0 14px rgba(74, 222, 255, 0.2);
+}
+
+.biomes-ui-vendor-card__content {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.biomes-ui-vendor-card__heading {
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.biomes-ui-vendor-card__heading > div {
+  min-width: 0;
+}
+
+.biomes-ui-vendor-card__heading strong,
+.biomes-ui-vendor-card__heading > div > span {
+  display: block;
+}
+
+.biomes-ui-vendor-card__heading strong {
+  color: var(--biomes-fg);
+  font-size: 13px;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.biomes-ui-vendor-card__heading > div > span {
+  margin-top: 2px;
+  color: var(--biomes-fg-muted);
+  font-size: 10px;
+}
+
+.biomes-ui-vendor-price {
+  flex: 0 0 auto;
+  padding: 4px 6px;
+  border: 1px solid rgba(255, 184, 68, 0.32);
+  border-radius: 5px;
+  background: rgba(255, 184, 68, 0.1);
+  color: rgba(255, 231, 170, 0.98);
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1.15;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.biomes-ui-vendor-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.biomes-ui-vendor-card__meta span {
+  padding: 2px 5px;
+  border: 1px solid rgba(232, 244, 255, 0.12);
+  border-radius: 999px;
+  background: rgba(232, 244, 255, 0.05);
+  color: var(--biomes-fg-muted);
+  font-size: 9px;
+  line-height: 1.2;
+  text-transform: capitalize;
+}
+
+.biomes-ui-vendor-card p {
+  margin: 0;
+  color: var(--biomes-fg-muted);
+  font-size: 11px;
+  line-height: 1.38;
+}
+
+.biomes-ui-vendor-card p.biomes-ui-vendor-card__pricing-note {
+  color: var(--biomes-fg-dim);
+  font-size: 9px;
+}
+
+.biomes-ui-vendor-card__warning {
+  padding: 6px 7px;
+  border: 1px solid rgba(255, 95, 95, 0.32);
+  border-radius: 5px;
+  background: rgba(126, 18, 32, 0.2);
+  color: rgba(255, 210, 215, 0.96);
+  font-size: 10px;
+  line-height: 1.3;
+}
+
+.biomes-ui-vendor-card__actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: auto;
+}
+
+.biomes-ui-vendor-card__actions .biomes-ui-action-button:not(:disabled) {
+  border-color: rgba(255, 184, 68, 0.48);
+}
+
+.biomes-ui-vendor-empty {
+  display: grid;
+  place-items: center;
+  flex: 1 1 auto;
+  min-height: 180px;
+  margin: 0;
+  padding: 24px;
+  border: 1px dashed rgba(74, 222, 255, 0.24);
+  text-align: center;
+}
+
+.biomes-ui-vendor-transaction-log {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+  color: var(--biomes-fg-muted);
+  font-size: 11px;
+  line-height: 1.3;
+}
+
+.biomes-ui-vendor-transaction-log strong {
+  flex: 0 0 auto;
+  color: var(--biomes-fg);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.biomes-ui-vendor-transaction-log span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .biomes-ui-shop-stepper {
   display: flex;
   align-items: center;
@@ -1178,6 +1422,16 @@ button.biomes-ui-card:disabled {
   .biomes-ui-inventory-stack .avatar-viewer-wrap { height: clamp(96px, 20vh, 138px); }
   .biomes-ui-shop-section--summary { flex-direction: column; align-items: stretch; }
   .biomes-ui-shop-slot-button { width: 64px; min-height: 86px; }
+  .biomes-ui-vendor-panel {
+    width: calc(100vw - 0.8rem);
+    height: calc(100dvh - 0.8rem);
+    min-height: 0;
+  }
+  .biomes-ui-vendor-grid [role="row"] { grid-template-columns: 1fr; }
+  .biomes-ui-vendor-card__heading { flex-direction: column; }
+  .biomes-ui-vendor-price { text-align: left; }
+  .biomes-ui-vendor-transaction-log { align-items: flex-start; flex-direction: column; gap: 3px; }
+  .biomes-ui-vendor-transaction-log span { white-space: normal; }
   .biomes-ui-container-panel { width: calc(100vw - 0.8rem); max-height: calc(100dvh - 0.8rem); }
   .biomes-ui-container-panel__body { grid-template-columns: 1fr; }
   .biomes-ui-container-list { max-height: none; min-height: 180px; }
@@ -1196,6 +1450,9 @@ button.biomes-ui-card:disabled {
   .biomes-ui-shop-stepper button,
   .biomes-ui-shop-stepper output { flex: 1 1 36px; }
   .biomes-ui-shop-inventory-pane { --cell-width: 32px; }
+  .biomes-ui-vendor-card { grid-template-columns: 48px minmax(0, 1fr); gap: 8px; padding: 8px; }
+  .biomes-ui-vendor-card .biomes-ui-shop-item-icon { width: 48px; height: 48px; flex-basis: 48px; }
+  .biomes-ui-vendor-card .biomes-ui-shop-item-icon img { width: 42px; height: 42px; }
   .biomes-ui-inventory-stack .inventory-cells.wearables { --cell-width: 28px; }
   .biomes-ui-inventory-stack .wearables-center { min-width: 86px; }
   .biomes-ui-container-row__inner { grid-template-columns: 34px minmax(0, 1fr); }

@@ -7,6 +7,8 @@ import {
   HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_PRODUCTION_COUNT,
   HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS,
   HARTHMERE_LIVE_ENTITY_ROBOT_SENTINEL_SEEDS,
+  harthmereLiveEntityIsOpenWildsMixedGroup,
+  harthmereOpenWildsMixedGroupPositionIsValid,
   validateHarthmereLiveEntityProductionSeeds,
 } from "../live_entity_production_seed";
 import {
@@ -138,10 +140,15 @@ describe("Harthmere live entity AI audit matrix current", () => {
     let hexCount = 0;
     for (const seed of HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS) {
       const territory = muckMonsterAreaForPosition(seed.position, 1.5);
-      assert.ok(territory, `${seed.displayName} must be in Muck territory`);
-      if (territory!.id !== seed.areaId) {
+      if (harthmereLiveEntityIsOpenWildsMixedGroup(seed)) {
+        assert.equal(territory, undefined);
+        assert.ok(harthmereOpenWildsMixedGroupPositionIsValid(seed.position));
+      } else {
+        assert.ok(territory, `${seed.displayName} must be in Muck territory`);
+      }
+      if (territory && territory.id !== seed.areaId) {
         assert.match(
-          `${territory!.id}:${seed.areaId}`,
+          `${territory.id}:${seed.areaId}`,
           /muck/,
           `${seed.displayName} may only overlap another authored Muck sub-area`
         );
