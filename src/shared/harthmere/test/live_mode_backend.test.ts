@@ -3577,7 +3577,7 @@ describe("reduceHarthmereLiveModeBackendState — combat target authority", func
     assert.ok(tickState.combat.entitySnapshots[id].position.x > 1);
   });
 
-  it("runs eligible combat chases 20% faster than the prior 1.35x tuning", function () {
+  it("compounds another 30% onto the already-increased combat chase speed", function () {
     const entityId = "combat-only-speed-mucker";
     const baseSnapshot = {
       hp: 100,
@@ -3639,7 +3639,7 @@ describe("reduceHarthmereLiveModeBackendState — combat target authority", func
     assert.equal(HARTHMERE_LIVE_ENTITY_PREVIOUS_CHASE_STEP_CAP_METERS, 4);
     assert.equal(
       HARTHMERE_LIVE_ENTITY_CHASE_STEP_CAP_METERS,
-      HARTHMERE_LIVE_ENTITY_PREVIOUS_CHASE_STEP_CAP_METERS * 1.2
+      HARTHMERE_LIVE_ENTITY_PREVIOUS_CHASE_STEP_CAP_METERS * 1.2 * 1.3
     );
     assert.ok(
       Math.abs(
@@ -10403,6 +10403,15 @@ describe("reduceHarthmereLiveModeBackendState — physical jobs board and live t
     assert.equal(tick.animationState, "run");
     assert.equal(tick.animationMoving, true);
     assert.ok(after.position.x > before.x, "escort should step toward actor x");
+    // A follower is not a fighter. It must never inherit the combat pursuit
+    // boost or the raised per-tick chase ceiling.
+    assert.ok(
+      after.position.x - before.x <=
+        HARTHMERE_LIVE_ENTITY_PREVIOUS_CHASE_STEP_CAP_METERS + 1e-9,
+      `escort stepped ${
+        after.position.x - before.x
+      }m, above the ${HARTHMERE_LIVE_ENTITY_PREVIOUS_CHASE_STEP_CAP_METERS}m non-combat ceiling`
+    );
     assert.equal(
       s.jobsBoard.postings.job_escort_newcomer.escortCompanion!.position.x,
       after.position.x

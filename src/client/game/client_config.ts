@@ -338,6 +338,7 @@ export async function genGPUTier() {
 //   - Logs the resolved URL so the E2E test can verify the host is local.
 export function resolveGlitchLocalSyncBaseUrl(input: {
   installIdInUrl: boolean;
+  runtimeOverride?: string;
   explicit: string | undefined;
   protocol: string;
   hostname: string;
@@ -352,7 +353,9 @@ export function resolveGlitchLocalSyncBaseUrl(input: {
   }`;
 
   const publicHttpsInstallRuntime =
-    input.installIdInUrl && input.protocol === "https:" && !isLocalHost(input.hostname);
+    input.installIdInUrl &&
+    input.protocol === "https:" &&
+    !isLocalHost(input.hostname);
 
   const fallbackPort =
     input.port === "3017"
@@ -378,6 +381,39 @@ export function resolveGlitchLocalSyncBaseUrl(input: {
     };
   }
 
+  // Focused native-ECS browser tests append an explicit `syncBaseUrl` query
+  // after the production bundle has already been built. Honor that runtime
+  // value only when it still points at this host (or another loopback spelling).
+  // This prevents a stale Azure NEXT_PUBLIC value from mixing a local web/API
+  // session with a remote world, while keeping arbitrary public query strings
+  // from redirecting normal players to an untrusted sync server.
+  if (input.runtimeOverride) {
+    try {
+      const overrideUrl = new URL(input.runtimeOverride, input.href);
+      const overrideIsLocal =
+        overrideUrl.hostname === input.hostname ||
+        isLocalHost(overrideUrl.hostname);
+      if (overrideIsLocal) {
+        return {
+          syncBaseUrl: overrideUrl.toString().replace(/\/$/, ""),
+          reason: "trusted_runtime_e2e_override",
+          fallback,
+        };
+      }
+      return {
+        syncBaseUrl: fallback,
+        reason: "runtime_e2e_override_is_remote",
+        fallback,
+      };
+    } catch {
+      return {
+        syncBaseUrl: fallback,
+        reason: "runtime_e2e_override_unparseable",
+        fallback,
+      };
+    }
+  }
+
   if (!input.explicit) {
     return {
       syncBaseUrl: fallback,
@@ -398,7 +434,8 @@ export function resolveGlitchLocalSyncBaseUrl(input: {
   }
 
   const explicitHost = explicitUrl.hostname;
-  const explicitIsLocal = explicitHost === input.hostname || isLocalHost(explicitHost);
+  const explicitIsLocal =
+    explicitHost === input.hostname || isLocalHost(explicitHost);
 
   if (input.installIdInUrl && !explicitIsLocal) {
     return {
@@ -410,7 +447,9 @@ export function resolveGlitchLocalSyncBaseUrl(input: {
 
   return {
     syncBaseUrl: input.explicit,
-    reason: explicitIsLocal ? "explicit_is_local" : "explicit_no_install_id_override",
+    reason: explicitIsLocal
+      ? "explicit_is_local"
+      : "explicit_no_install_id_override",
     fallback,
   };
 }
@@ -447,6 +486,11 @@ export async function initializeClientConfig(
   const installIdInUrl =
     typeof window !== "undefined" &&
     new URLSearchParams(window.location.search).has("install_id");
+  const runtimeQuery =
+    typeof window === "undefined"
+      ? undefined
+      : new URLSearchParams(window.location.search);
+  const nativeEcsE2E = runtimeQuery?.get("harthmere_native_ecs_e2e") === "1";
 
   const isGlitchLocalRuntime =
     process.env.NEXT_PUBLIC_GLITCH_RUNTIME === "1" ||
@@ -463,6 +507,9 @@ export async function initializeClientConfig(
 
     const resolved = resolveGlitchLocalSyncBaseUrl({
       installIdInUrl,
+      runtimeOverride: nativeEcsE2E
+        ? runtimeQuery?.get("syncBaseUrl") ?? undefined
+        : undefined,
       explicit: process.env.NEXT_PUBLIC_GLITCH_SYNC_BASE_URL,
       protocol: window.location.protocol,
       hostname: window.location.hostname,

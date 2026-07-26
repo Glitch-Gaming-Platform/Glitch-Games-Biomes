@@ -47,6 +47,25 @@ import {
 import { jsonPost } from "@/shared/util/fetch_helpers";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+export function mergeHarthmereNpcDialogueActions(
+  ...groups: Array<readonly TalkDialogStepAction[] | undefined>
+) {
+  const seen = new Set<string>();
+  // One authored NPC can simultaneously own native Grove/Bible dialogue,
+  // helper work, and a string-keyed compatibility quest. Preserve the primary
+  // authority's ordering, but never let its prose renderer hide actions owned
+  // by another active quest system.
+  return groups
+    .flatMap((group) => group ?? [])
+    .filter((action) => {
+      if (seen.has(action.name)) {
+        return false;
+      }
+      seen.add(action.name);
+      return true;
+    });
+}
+
 export function useCanTalkToNpc(
   deps: ClientContextSubset<"resources" | "reactResources">,
   entityId: BiomesId
@@ -413,16 +432,25 @@ export const TalkToNpcDefaultDialog: React.FunctionComponent<{
     },
     [liveEntityHelperDialog?.dialogText, bibleQuestDialog?.dialogText]
   );
-  const withLiveEntityHelperActions = useCallback(
-    (actions: TalkDialogStepAction[]) => [
-      // Bible quest actions first: starting/advancing the main story is the
-      // highest-signal thing a giver NPC can offer (bible-wiring fix,
-      // 2026-07-14).
-      ...(bibleQuestDialog?.actions ?? []),
-      ...(liveEntityHelperDialog?.actions ?? []),
-      ...actions,
-    ],
-    [liveEntityHelperDialog?.actions, bibleQuestDialog?.actions]
+  const withCoexistingQuestActions = useCallback(
+    (actions: TalkDialogStepAction[]) =>
+      mergeHarthmereNpcDialogueActions(
+        // Bible quest actions first: starting/advancing the main story is the
+        // highest-signal thing a giver NPC can offer (bible-wiring fix,
+        // 2026-07-14).
+        bibleQuestDialog?.actions,
+        liveEntityHelperDialog?.actions,
+        actions,
+        // Snapshot Grove, Road Ahead, and lore dialogue intentionally win the
+        // prose slot above. Append compatibility actions so that precedence
+        // never makes an accepted legacy quest impossible to progress.
+        localDevHarthmereDialog?.actions
+      ),
+    [
+      liveEntityHelperDialog?.actions,
+      bibleQuestDialog?.actions,
+      localDevHarthmereDialog?.actions,
+    ]
   );
 
   const respondWith = useCallback(
@@ -523,10 +551,10 @@ export const TalkToNpcDefaultDialog: React.FunctionComponent<{
         completeStep={onClose}
         advanceText="Close"
         buttonLayout="vertical"
-        additionalActions={[
+        additionalActions={withCoexistingQuestActions([
           ...liveEntityHelperDialog.actions,
           ...liveEntityHelperConversationActions(label),
-        ].map((e) => ({
+        ]).map((e) => ({
           ...e,
           disabled: querying || e.disabled,
         }))}
@@ -550,7 +578,7 @@ export const TalkToNpcDefaultDialog: React.FunctionComponent<{
         completeStep={onClose}
         advanceText="Close"
         buttonLayout="vertical"
-        additionalActions={withLiveEntityHelperActions(
+        additionalActions={withCoexistingQuestActions(
           snapshotGroveNpcDialog.actions
         )}
         voiceInput={voiceInput}
@@ -569,7 +597,7 @@ export const TalkToNpcDefaultDialog: React.FunctionComponent<{
         completeStep={onClose}
         advanceText="Close"
         buttonLayout="vertical"
-        additionalActions={withLiveEntityHelperActions(
+        additionalActions={withCoexistingQuestActions(
           snapshotMissionDialog.actions
         )}
         voiceInput={voiceInput}
@@ -588,7 +616,7 @@ export const TalkToNpcDefaultDialog: React.FunctionComponent<{
         completeStep={onClose}
         advanceText="Close"
         buttonLayout="vertical"
-        additionalActions={withLiveEntityHelperActions(
+        additionalActions={withCoexistingQuestActions(
           snapshotLiveNpcLoreDialog.actions
         )}
         voiceInput={voiceInput}
@@ -607,7 +635,7 @@ export const TalkToNpcDefaultDialog: React.FunctionComponent<{
         completeStep={onClose}
         advanceText="Close"
         buttonLayout="vertical"
-        additionalActions={withLiveEntityHelperActions(
+        additionalActions={withCoexistingQuestActions(
           localDevHarthmereDialog.actions
         )}
         voiceInput={voiceInput}
@@ -627,7 +655,7 @@ export const TalkToNpcDefaultDialog: React.FunctionComponent<{
       completeStep={onClose}
       advanceText="Close"
       buttonLayout="vertical"
-      additionalActions={withLiveEntityHelperActions(additionalActions).map(
+      additionalActions={withCoexistingQuestActions(additionalActions).map(
         (e) => ({
           ...e,
           disabled: querying || e.disabled,

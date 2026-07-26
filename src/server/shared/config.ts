@@ -145,11 +145,13 @@ const DEFAULT_CONFIG = deepFreeze({
   // 600ms made the client tear down and RE-BOOTSTRAP the sync stream, which
   // evicts and re-adds every streamed entity — so NPCs (Doc, Gus, etc.) blinked
   // out while their nameplate lingered, then returned on resync. Tolerate
-  // multi-second stalls (well under the 10s server idle timeout below) so a
-  // brief hiccup no longer drops the entity stream. The client's own built-in
-  // default is 5000/10000; we stay just under wsZrpcTtlMs to avoid racing the
-  // server-side idle close.
-  wsZrpcHeartbeatTtlMs: 3_000,
+  // multi-second stalls so a brief hiccup no longer presents a false
+  // "Disconnected" overlay. Software-WebGL cutscene capture measured
+  // 200-300ms frames plus multi-second synchronous asset/canvas work; the old
+  // 500ms deployment override marked a healthy socket unhealthy while it was
+  // still receiving messages. Ten seconds remains far below both the 30s
+  // reconnect window and the 120s server idle timeout used by deployment.
+  wsZrpcHeartbeatTtlMs: 10_000,
   // How long the client waits (no server message) before it reconnects.
   //
   // HARTHMERE_SYNC_RECONNECT_SPIRAL_FIX (2026-07-01): 8s was still too low for

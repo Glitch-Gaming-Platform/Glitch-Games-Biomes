@@ -227,17 +227,12 @@ export function getHarthmereCurrentVendorStockLine(offset: number, itemId: strin
   if (!vendor || !line) {
     return undefined;
   }
-  const state = readHarthmereVendorRuntimeState();
-  const quantity = Math.max(0, Math.round(state.vendorStock[vendor.vendorId]?.[itemId] ?? line.quantity));
-  if (quantity <= 0) {
-    return undefined;
-  }
-  const unitPrice = line.price / Math.max(1, line.quantity);
-  return {
-    ...line,
-    quantity,
-    price: Math.max(1, Math.ceil(unitPrice * quantity)),
-  };
+  // Catalogue quantities are bundle sizes, not a one-shot client-owned stock
+  // counter. The server owns real availability and rejects unavailable buys
+  // atomically. Returning the catalogue line also repairs old browser saves
+  // where a failed/local-only purchase had incorrectly reduced the runtime
+  // quantity to zero and made the listing disappear forever.
+  return { ...line };
 }
 
 export function decrementHarthmereVendorStock(

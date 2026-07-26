@@ -73,7 +73,8 @@ export async function registerLogicReplica<C extends LogicServerContext>(
     filter: harthmereVisualLiteReplicaFilter(),
     metaIndex: {
       ...createLogicIndexConfig(),
-      ...(process.env.NODE_ENV !== "production"
+      ...(process.env.NODE_ENV !== "production" ||
+      process.env.GLITCH_EMBED_ASK_IN_LOGIC === "1"
         ? createAskIndexConfig()
         : undefined),
     },

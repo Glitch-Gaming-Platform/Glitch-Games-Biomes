@@ -12,6 +12,14 @@ const stackRunner = fs.readFileSync(
   path.join(root, "scripts/glitch/run-glitch-local-game-stack.sh"),
   "utf8"
 );
+const askApi = fs.readFileSync(
+  path.join(root, "src/server/ask/api.ts"),
+  "utf8"
+);
+const logicMain = fs.readFileSync(
+  path.join(root, "src/server/logic/main.ts"),
+  "utf8"
+);
 const simulationHealth = fs.readFileSync(
   path.join(root, "scripts/glitch/simulation-health-server.cjs"),
   "utf8"
@@ -165,7 +173,9 @@ ok(
   script.includes("--local-rehearsal") &&
     script.includes("run_local_full_deployment_rehearsal") &&
     script.includes("HARTHMERE_RUN_LOCAL_BROWSER_E2E") &&
-    script.includes("Running install-to-player browser E2E against the local production image") &&
+    script.includes(
+      "Running install-to-player browser E2E against the local production image"
+    ) &&
     script.includes("test-harthmere-install-player-ingame-e2e.cjs") &&
     script.includes("run-harthmere-production-reconciliation.sh") &&
     script.includes('["Anima", 4101]') &&
@@ -588,6 +598,16 @@ ok(
   "public production replicas cannot co-locate Anima/Gaia or rebuild terrain during startup"
 );
 ok(
+  script.includes("GLITCH_FOCUSED_NATIVE_E2E_STACK") &&
+    stackRunner.includes("GLITCH_FOCUSED_NATIVE_E2E_STACK") &&
+    stackRunner.includes("GLITCH_EMBED_ASK_IN_LOGIC=1") &&
+    stackRunner.includes("Ask is embedded in Logic") &&
+    askApi.includes('process.env.GLITCH_EMBED_ASK_IN_LOGIC === "1"') &&
+    askApi.includes("HostPort.forLogic().rpc") &&
+    logicMain.includes('process.env.GLITCH_EMBED_ASK_IN_LOGIC === "1"'),
+  "focused native E2E reuses Logic's Ask surface and omits duplicate heavyweight services"
+);
+ok(
   script.includes(
     'AZURE_SIMULATION_CONTAINER_APP="${AZURE_SIMULATION_CONTAINER_APP:-biomes-simulation-vnet}"'
   ) &&
@@ -617,7 +637,9 @@ ok(
     simulationHealth.includes('name: "anima"') &&
     simulationHealth.includes('name: "gaia"') &&
     script.includes("wait_for_simulation_role_ready") &&
-    script.includes("(GLITCH_SIMULATION_ROLE_READY )?anima=1 gaia=1 healthPort=[0-9]+"),
+    script.includes(
+      "(GLITCH_SIMULATION_ROLE_READY )?anima=1 gaia=1 healthPort=[0-9]+"
+    ),
   "simulation deployment waits for a health endpoint and log marker that require both native workers"
 );
 ok(
@@ -1203,7 +1225,7 @@ ok(
 );
 ok(
   harthmereTerrainAudit.includes("harthmereExtensionFoundationShardSpecs") &&
-    harthmereTerrainAudit.includes('HARTHMERE_TERRAIN_AUDIT_MODE') &&
+    harthmereTerrainAudit.includes("HARTHMERE_TERRAIN_AUDIT_MODE") &&
     harthmereTerrainAudit.includes('AUDIT_MODE === "muck-only"') &&
     harthmereTerrainAudit.includes("emptyFoundationCount") &&
     harthmereTerrainAudit.includes("surfaceHoleShardCount") &&

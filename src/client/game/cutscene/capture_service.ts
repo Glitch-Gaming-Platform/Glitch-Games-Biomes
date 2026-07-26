@@ -34,6 +34,8 @@ export interface RequestCutsceneScreenshotOptions {
   filename?: string;
   preempt?: boolean;
   timeoutMs?: number;
+  /** Renderer frames to wait after VFX/puppets are published (default 3). */
+  settleFrames?: number;
 }
 
 interface PendingCapture {
@@ -74,6 +76,7 @@ function sanitizedCaptureDef(
     height: options.height ?? 2160,
     format: options.format ?? "image/png",
     filename: options.filename,
+    settleFrames: options.settleFrames ?? 3,
   };
   const shots = def.shots.map((shot, index) =>
     index === shotIndex

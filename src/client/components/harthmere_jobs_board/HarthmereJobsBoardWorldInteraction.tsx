@@ -13,6 +13,7 @@ import {
   harthmereWorldTargetIsFaced,
 } from "./harthmereJobsBoardPosition";
 import { HARTHMERE_JOBS_BOARD_OPEN_EVENT } from "@/client/components/challenges/harthmereEvents";
+import { completeHarthmereJobsBoardReadQuest } from "@/client/components/challenges/LocalDevHarthmereQuests";
 import { HarthmereJobsBoardLiveContainer } from "./HarthmereJobsBoardLiveContainer";
 import { installHarthmereJobsBoardStyles } from "./HarthmereJobsBoardStyles";
 import {
@@ -78,6 +79,10 @@ export function HarthmereJobsBoardWorldInteraction({
   const open = React.useCallback(
     (_source: string) => {
       if (!activePrompt) return;
+      // This self-contained world panel bypasses the unified HUD event path,
+      // so complete the same compatibility lesson here too. Every visible
+      // Jobs Board entry path now has identical quest semantics.
+      completeHarthmereJobsBoardReadQuest("physical_jobs_board_opened");
       installHarthmereJobsBoardStyles();
       openHarthmereJobsBoardPointerLock(
         pointerLockManager,

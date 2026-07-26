@@ -12,7 +12,11 @@ import path from "node:path";
 export const config = {
   api: {
     bodyParser: {
-      sizeLimit: "25mb",
+      // MediaRecorder data is base64 inside JSON (~4/3 the WebM size). The
+      // endpoint is available in production mode only on the explicit focused
+      // native-E2E stack below, so a release-quality 1280px scene can use a
+      // practical ceiling without broadening a public upload surface.
+      sizeLimit: "90mb",
     },
   },
 };
@@ -26,7 +30,10 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-  if (process.env.NODE_ENV === "production") {
+  const focusedNativeE2E =
+    process.env.HARTHMERE_NATIVE_ECS_E2E === "1" &&
+    process.env.GLITCH_FOCUSED_NATIVE_E2E_STACK === "1";
+  if (process.env.NODE_ENV === "production" && !focusedNativeE2E) {
     res.status(404).json({ ok: false, error: "not_found" });
     return;
   }
@@ -51,7 +58,7 @@ export default async function handler(
     dataUri.slice(delimiterIndex + delimiter.length),
     "base64"
   );
-  if (bytes.length === 0 || bytes.length > 20 * 1024 * 1024) {
+  if (bytes.length === 0 || bytes.length > 64 * 1024 * 1024) {
     res.status(400).json({ ok: false, error: "bad_video_size" });
     return;
   }

@@ -175,7 +175,7 @@ export function harthmereWorldObjectCandidateScore(input: {
     (viewX * toObjX + viewZ * toObjZ) / (viewLength * toObjLength);
   const requiredViewDot =
     horizontalDistance <= closeRadius
-      ? Math.max(0, closeMinViewDot)
+      ? Math.max(-1, Math.min(1, closeMinViewDot))
       : Math.max(0, minViewDot);
   if (viewDot < requiredViewDot) {
     return undefined;
@@ -215,7 +215,11 @@ export function selectNearestHarthmereWorldObjectInspectable(
       // A player can be beside, above, or nearly centered over a chest inside
       // tight geometry. At close range, containers should remain usable from
       // any facing; non-container props still require the normal front cone.
-      closeMinViewDot: input.closeMinViewDot ?? (isContainer ? 0 : undefined),
+      // `-1` is intentional: zero still rejects an object directly behind the
+      // current yaw. That happened at Busted's sunken chest when swimming
+      // physics drifted the player one block past its anchor while the camera
+      // continued to face the ship hull.
+      closeMinViewDot: input.closeMinViewDot ?? (isContainer ? -1 : undefined),
       maxVerticalDistance:
         input.maxVerticalDistance ??
         (isContainer

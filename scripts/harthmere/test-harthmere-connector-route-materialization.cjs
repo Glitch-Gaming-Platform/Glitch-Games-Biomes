@@ -76,6 +76,12 @@ check(
     materializer.includes("blocked_headroom")
 );
 check(
+  "materializer makes traversal headroom authoritative over overlapping approach caps",
+  materializer.includes("enforceTraversalHeadroom") &&
+    materializer.lastIndexOf("enforceTraversalHeadroom(") <
+      materializer.indexOf("const editFailures = validateEdits(")
+);
+check(
   "materializer supports a read-only packaged-snapshot audit",
   materializer.includes("SNAPSHOT_PATH=snapshot_backup.json") &&
     materializer.includes("APPLY=1 is not supported with SNAPSHOT_PATH")

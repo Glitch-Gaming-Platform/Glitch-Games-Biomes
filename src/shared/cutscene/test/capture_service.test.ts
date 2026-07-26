@@ -3,6 +3,7 @@ import {
   failCutsceneCapture,
   requestCutsceneScreenshot,
 } from "@/client/game/cutscene/capture_service";
+import { cutsceneVideoOutputSize } from "@/client/game/cutscene/video_capture_service";
 import {
   drainCutsceneRequests,
   resetCutsceneService,
@@ -36,7 +37,13 @@ describe("cutscene capture service", () => {
           commits: [{ hook: "grant.reward" }],
         },
       },
-      { shotId: "hero", at: 1, width: 2048, height: 2048 }
+      {
+        shotId: "hero",
+        at: 1,
+        width: 2048,
+        height: 2048,
+        settleFrames: 5,
+      }
     );
     const requests = drainCutsceneRequests();
     assert.strictEqual(requests.length, 1);
@@ -51,6 +58,7 @@ describe("cutscene capture service", () => {
     assert.ok(capture?.kind === "capture");
     assert.strictEqual(capture.width, 2048);
     assert.strictEqual(capture.height, 2048);
+    assert.strictEqual(capture.settleFrames, 5);
     failCutsceneCapture(capture.captureId, "test complete");
     await assert.rejects(promise, /test complete/);
   });
@@ -171,5 +179,31 @@ describe("cutscene capture service", () => {
       /finite positive/
     );
     assert.strictEqual(drainCutsceneRequests().length, 0);
+  });
+});
+
+describe("cutscene video capture sizing", () => {
+  it("uses displayed resolution instead of a low-scale WebGL backing store", () => {
+    assert.deepStrictEqual(
+      cutsceneVideoOutputSize({
+        width: 360,
+        height: 225,
+        clientWidth: 1440,
+        clientHeight: 900,
+      }),
+      { width: 1280, height: 800 }
+    );
+  });
+
+  it("always returns codec-safe even dimensions", () => {
+    assert.deepStrictEqual(
+      cutsceneVideoOutputSize({
+        width: 853,
+        height: 479,
+        clientWidth: 0,
+        clientHeight: 0,
+      }),
+      { width: 854, height: 480 }
+    );
   });
 });

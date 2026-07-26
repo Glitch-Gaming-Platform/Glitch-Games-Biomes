@@ -1,5 +1,6 @@
 import assert from "assert";
 import {
+  GlitchCloudSaveConflictError,
   GlitchCloudSaveBlobTransport,
   HARTHMERE_KV_CLOUD_SAVE_SLOT,
   type CloudSaveHttp,
@@ -43,7 +44,10 @@ describe("GlitchCloudSaveBlobTransport", () => {
 
   it("isReady requires title, install and authentication", async () => {
     const { http } = recordingHttp({});
-    assert.equal(await new GlitchCloudSaveBlobTransport(http, config).isReady(), true);
+    assert.equal(
+      await new GlitchCloudSaveBlobTransport(http, config).isReady(),
+      true
+    );
     assert.equal(
       await new GlitchCloudSaveBlobTransport(http, {
         ...config,
@@ -67,7 +71,12 @@ describe("GlitchCloudSaveBlobTransport", () => {
         status: 200,
         json: {
           data: [
-            { id: "s1", slot_index: HARTHMERE_KV_CLOUD_SAVE_SLOT, version: 7, payload: `b64(${blob})` },
+            {
+              id: "s1",
+              slot_index: HARTHMERE_KV_CLOUD_SAVE_SLOT,
+              version: 7,
+              payload: `b64(${blob})`,
+            },
             { id: "other", slot_index: 1, version: 3, payload: "b64({})" },
           ],
         },
@@ -77,12 +86,42 @@ describe("GlitchCloudSaveBlobTransport", () => {
     assert.deepEqual(await t.load(), { stamina: "100" });
   });
 
+  it("loads the decoded same-origin proxy response shape", async () => {
+    const blob = JSON.stringify({ quests: "restored" });
+    const { http } = recordingHttp({
+      listSaves: () => ({
+        status: 200,
+        json: {
+          saves: [
+            {
+              id: "proxy-save",
+              slot_index: HARTHMERE_KV_CLOUD_SAVE_SLOT,
+              version: 11,
+              payload: `b64(${blob})`,
+            },
+          ],
+        },
+      }),
+    });
+    const t = new GlitchCloudSaveBlobTransport(http, config);
+    assert.deepEqual(await t.load(), { quests: "restored" });
+  });
+
   it("uploads with base_version and a checksum of the RAW payload", async () => {
     const stored: any[] = [];
     const { http, calls } = recordingHttp({
       listSaves: () => ({
         status: 200,
-        json: { data: [{ id: "s1", slot_index: HARTHMERE_KV_CLOUD_SAVE_SLOT, version: 7, payload: "b64({})" }] },
+        json: {
+          data: [
+            {
+              id: "s1",
+              slot_index: HARTHMERE_KV_CLOUD_SAVE_SLOT,
+              version: 7,
+              payload: "b64({})",
+            },
+          ],
+        },
       }),
       storeSave: (body) => {
         stored.push(body);
@@ -97,13 +136,24 @@ describe("GlitchCloudSaveBlobTransport", () => {
     const sent = stored[0];
     assert.equal(sent.slot_index, HARTHMERE_KV_CLOUD_SAVE_SLOT);
     assert.equal(sent.payload, `b64(${raw})`);
-    assert.equal(sent.checksum, `sha(${raw})`, "checksum must hash raw payload");
+    assert.equal(
+      sent.checksum,
+      `sha(${raw})`,
+      "checksum must hash raw payload"
+    );
     assert.notEqual(sent.checksum, `sha(b64(${raw}))`, "must NOT hash base64");
-    assert.equal(sent.base_version, 7, "sends last loaded version as base_version");
+    assert.equal(
+      sent.base_version,
+      7,
+      "sends last loaded version as base_version"
+    );
 
     // After success the version advances to the returned value for the next save.
     await t.store({ hp: "60" });
-    assert.equal(calls.filter((c) => c.op === "storeSave")[1].body.base_version, 8);
+    assert.equal(
+      calls.filter((c) => c.op === "storeSave")[1].body.base_version,
+      8
+    );
   });
 
   it("uses base_version 0 for a brand-new slot", async () => {
@@ -119,11 +169,20 @@ describe("GlitchCloudSaveBlobTransport", () => {
     await t.store({ a: "1" });
   });
 
-  it("resolves a 409 conflict with keep_server instead of retrying blindly", async () => {
+  it("pauses on 409 until a fresh load instead of choosing for the player", async () => {
     const { http, calls } = recordingHttp({
       listSaves: () => ({
         status: 200,
-        json: { data: [{ id: "s1", slot_index: HARTHMERE_KV_CLOUD_SAVE_SLOT, version: 4, payload: "b64({})" }] },
+        json: {
+          data: [
+            {
+              id: "s1",
+              slot_index: HARTHMERE_KV_CLOUD_SAVE_SLOT,
+              version: 4,
+              payload: "b64({})",
+            },
+          ],
+        },
       }),
       storeSave: () => ({
         status: 409,
@@ -135,15 +194,30 @@ describe("GlitchCloudSaveBlobTransport", () => {
           client_version: 4,
         },
       }),
-      resolveSave: () => ({ status: 200, json: { data: { version: 5 } } }),
     });
     const t = new GlitchCloudSaveBlobTransport(http, config);
     await t.load();
-    await t.store({ a: "1" }); // must NOT throw on 409
-    const resolve = calls.find((c) => c.op === "resolveSave");
-    assert.ok(resolve, "resolve endpoint was called");
-    assert.equal(resolve!.body.choice, "keep_server");
-    assert.equal(resolve!.body.conflict_id, "c-1");
+    await assert.rejects(
+      () => t.store({ a: "1" }),
+      GlitchCloudSaveConflictError
+    );
+    const storesAfterConflict = calls.filter(
+      (c) => c.op === "storeSave"
+    ).length;
+    await assert.rejects(
+      () => t.store({ a: "2" }),
+      GlitchCloudSaveConflictError
+    );
+    assert.equal(
+      calls.filter((c) => c.op === "storeSave").length,
+      storesAfterConflict,
+      "paused writes do not create a conflict storm"
+    );
+    assert.equal(
+      calls.some((c) => c.op === "resolveSave"),
+      false,
+      "the compatibility writer never silently resolves a conflict"
+    );
   });
 
   it("throws on unexpected error status so the adapter can retry", async () => {

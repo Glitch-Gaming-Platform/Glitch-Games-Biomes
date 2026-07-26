@@ -33,11 +33,12 @@ console.log("== Harthmere Grove NPC speed current ==");
 console.log(`Root: ${root}\n`);
 
 check("Harthmere runtime asset file exists", !!assets);
-check("Grove NPC speed multiplier is exactly 1.8", assets.includes("const HARTHMERE_GROVE_NPC_WALK_SPEED_MULTIPLIER = 1.8;"));
+check("Non-battle town NPCs walk at their authored speed (multiplier is 1)", assets.includes("const HARTHMERE_GROVE_NPC_WALK_SPEED_MULTIPLIER = 1;"));
+check("no accelerated town wander multiplier remains", !/const HARTHMERE_GROVE_NPC_WALK_SPEED_MULTIPLIER = (?!1;)/.test(assets));
 check("speed helper exists", speedHelper.includes("speedUpHarthmereGroveNpcWander"));
 check("speed helper only targets townsperson NPC assets", speedHelper.includes('asset.startsWith("townsperson_")'));
 check("speed helper leaves wild and underways actors unchanged", speedHelper.includes('districtName.includes("wild")') && speedHelper.includes('districtName.includes("underways")'));
-check("speed helper multiplies normalized speed by the 1.8 constant", speedHelper.includes("wander.speed * HARTHMERE_GROVE_NPC_WALK_SPEED_MULTIPLIER"));
+check("speed helper still routes through the single multiplier clamp point", speedHelper.includes("wander.speed * HARTHMERE_GROVE_NPC_WALK_SPEED_MULTIPLIER"));
 check("actor factory applies speed helper after normalizeHarthmereActorWander", actorFactory.includes("speedUpHarthmereGroveNpcWander(") && actorFactory.includes("normalizeHarthmereActorWander(asset, name, district, x, z, wander)"));
 check("route distribution preserves already-scaled speed", routeDistribution.includes("speed: wander.speed"));
 check("NPC movement still uses swept collision after speed increase", assets.includes("resolveHarthmereNpcWanderPosition") && assets.includes("sweepHarthmereNpcCollisionObstacle"));

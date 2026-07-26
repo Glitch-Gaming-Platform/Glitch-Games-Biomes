@@ -194,6 +194,43 @@ describe("harthmere world object inspectable selection", () => {
     );
   });
 
+  it("keeps a close container selectable when swimming drift puts it behind the current yaw", () => {
+    // Exact pose captured by the focused Busted browser run. The reticle hit
+    // the ship terrain at distance zero, the player was at the waterline, and
+    // physics had moved the chest just over one block behind the camera yaw.
+    // Close containers must not require the player to spin in place before the
+    // universal F prompt appears; server range and quest-step checks still own
+    // whether opening it is allowed.
+    const selected = selectNearestHarthmereWorldObjectInspectable({
+      playerPosition: [528.5, 67, -97.55260902415804],
+      facingView: [0, 0, -1],
+      candidates: [
+        {
+          id: "ecs:4149747832010135",
+          label: "Chest The Grove Underwater Main",
+          position: [528.5, 59, -96.5],
+        },
+      ],
+      radius: 0,
+      containerRadius: 6.5,
+    });
+    assert.ok(selected, "the close sunken chest must retain its F prompt");
+    assert.equal(selected!.interaction.kind, "open_container");
+
+    const board = selectNearestHarthmereWorldObjectInspectable({
+      playerPosition: [0, 0, 0],
+      facingView: [1, 0, 0],
+      candidates: [
+        { id: "board", label: "Fountain Lesson Board", position: [-1, 0, 0] },
+      ],
+    });
+    assert.equal(
+      board,
+      undefined,
+      "the any-facing close allowance remains container-specific"
+    );
+  });
+
   it("opens the jobs board prop with the jobs-board action", () => {
     const selected = selectNearestHarthmereWorldObjectInspectable({
       playerPosition: [0, 0, 0],

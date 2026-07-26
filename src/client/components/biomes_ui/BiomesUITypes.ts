@@ -11,6 +11,8 @@ export type TabKey =
   | "loot"
   | "guilds"
   | "banking"
+  | "quests"
+  | "recovered"
   | "map"
   | "collections"
   | "inbox"
@@ -27,6 +29,8 @@ export const TAB_ORDER: TabKey[] = [
   "loot",
   "guilds",
   "banking",
+  "quests",
+  "recovered",
   "map",
   "collections",
   "inbox",
@@ -121,12 +125,26 @@ export const TAB_DESCRIPTORS: Record<TabKey, TabDescriptor> = {
     shortcut: "Q",
     subtitle: "Exotic-matter vault — secured across timelines",
   },
+  quests: {
+    key: "quests",
+    label: "Quests",
+    code: "QST",
+    shortcut: BIOMES_UI_QUESTS_SHORTCUT,
+    subtitle: "Your quest log — active, available, and what must be done",
+  },
+  recovered: {
+    key: "recovered",
+    label: "Recovered",
+    code: "MEM",
+    shortcut: "Z",
+    subtitle: "Fragments, confidence, latent skills, and what changed",
+  },
   map: {
     key: "map",
-    label: "Map & Quests",
+    label: "Map",
     code: "MAP",
     shortcut: "M",
-    subtitle: "Charts, beacons, mission log",
+    subtitle: "Charts, beacons, routes, and active destinations",
   },
   collections: {
     key: "collections",

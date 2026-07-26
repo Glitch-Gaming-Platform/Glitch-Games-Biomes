@@ -12,6 +12,8 @@ import type { RegistryLoader } from "@/shared/registry";
 export interface CutsceneSubtitle {
   speaker?: string;
   text: string;
+  /** Provider-neutral NPC actor descriptor; absent for player/narration text. */
+  voice?: string;
 }
 
 export interface CutsceneUiState {

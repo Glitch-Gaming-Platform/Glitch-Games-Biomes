@@ -696,6 +696,11 @@ export function revealCutscene(args: {
       kind: "dolly",
       waypoints: [{ position: from }, { position: near }],
       easing: "easeInOut",
+      // Make the subject explicit. Falling back to "look along the path"
+      // happened to work for ideal geometry, but terrain collision recovery
+      // can lift the camera without recomputing that implicit aim and leave a
+      // capture staring into empty sky.
+      lookAtRole: "revealTarget",
     },
     transitionIn: "fade",
     actions,
@@ -704,7 +709,18 @@ export function revealCutscene(args: {
   return mustValidate({
     id: args.id,
     name: args.name,
-    cast: [{ role: "player", binding: { kind: "player" } }],
+    cast: [
+      { role: "player", binding: { kind: "player" } },
+      {
+        role: "revealTarget",
+        binding: {
+          kind: "anchor",
+          position: args.target,
+          height: 1,
+          label: `${args.name} reveal target`,
+        },
+      },
+    ],
     shots: shots as CutsceneShot[],
   });
 }

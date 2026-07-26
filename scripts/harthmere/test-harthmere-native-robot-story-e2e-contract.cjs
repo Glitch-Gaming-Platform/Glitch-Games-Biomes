@@ -62,13 +62,17 @@ async function main() {
     ['case "collect"', "Road Ahead exact Muckwad collection"],
     ['case "wearType"', "Road Ahead clothing equipment"],
     [
-      'getByText("Open Container", { exact: true })',
+      "waitForOpenContainerPrompt(first.page, label)",
       "visible underwater F prompt",
     ],
     ['keyboard.press("KeyF")', "real F-key interaction"],
     [
-      'getByText("Water-logged Muck Buster", { exact: true })',
-      "exact quest item in container UI",
+      'name: "Water-logged Muck Buster"',
+      "exact accessible quest item in container UI",
+    ],
+    [
+      "did not render exactly one accessible quest-item icon",
+      "unique visible native storage item",
     ],
     [
       'getByRole("button", { name: "Take All" })',
@@ -98,6 +102,14 @@ async function main() {
     [
       "Take All transfers every authored item",
       "complete clothing crate transfer",
+    ],
+    [
+      "response.status() >= 400",
+      "URL-bearing same-origin HTTP error diagnostics",
+    ],
+    [
+      "missingLocalProfilePicture",
+      "local profile-picture fallback classification",
     ],
   ]) {
     requireText(text, label);

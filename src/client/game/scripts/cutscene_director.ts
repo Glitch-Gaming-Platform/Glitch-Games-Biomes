@@ -729,6 +729,10 @@ export class CutsceneDirectorScript implements Script {
             const key = `cutscene-vfx:${activeDefId}:${serial}:${layer}`;
             const system = new ParticleSystem(material, startTime);
             system.three.position.fromArray(effect.position);
+            // Scale belongs to the scene action rather than the shared particle
+            // material, so a promo impact can read at cinematic distance without
+            // making every gameplay-sized combat hit enormous.
+            system.three.scale.setScalar(effect.scale);
             particleSystems.set(key, system);
             this.cutsceneParticleKeys.add(key);
           }
@@ -763,6 +767,25 @@ export class CutsceneDirectorScript implements Script {
       failCutsceneCapture(
         effect.captureId,
         `cutscene VFX failed before capture: ${this.vfxLoadError}`
+      );
+      return;
+    }
+    fireAndForget(this.captureFrameAfterSettledFrames(effect));
+  }
+
+  private async captureFrameAfterSettledFrames(
+    effect: Extract<CutsceneEffect, { kind: "capture" }>
+  ) {
+    const activeDefId = this.activeDef?.id;
+    for (let frame = 0; frame < effect.settleFrames; frame += 1) {
+      await new Promise<void>((resolve) =>
+        requestAnimationFrame(() => resolve())
+      );
+    }
+    if (!activeDefId || this.activeDef?.id !== activeDefId) {
+      failCutsceneCapture(
+        effect.captureId,
+        "cutscene ended while waiting for capture settle frames"
       );
       return;
     }

@@ -55,11 +55,16 @@ export const NIGHT_MUCKER_HEX_DISENGAGE_DISTANCE = 48;
 export const NIGHT_MUCKER_HEX_MOVEMENT_MULTIPLIER = 1.8;
 export const NIGHT_MUCKER_HEX_DAMAGE_MULTIPLIER = 1.5;
 export const NIGHT_MUCKER_HEX_ATTACK_INTERVAL_MULTIPLIER = 0.55;
-// Combat pursuit was already tuned to 1.35x. The current requirement is 20%
-// faster than that tuned value, rather than 20% faster than the raw base speed.
+// Combat pursuit tuning is cumulative, not absolute. It was first tuned to
+// 1.35x, then raised by 20% to 1.62x, and the current requirement is another
+// 30% on top of that already-increased pursuit speed.
 export const HARTHMERE_PREVIOUS_NPC_CHASE_SPEED_MULTIPLIER = 1.35;
+export const HARTHMERE_NPC_CHASE_SPEED_STEP_UP_20 = 1.2;
+export const HARTHMERE_NPC_CHASE_SPEED_STEP_UP_30 = 1.3;
 export const HARTHMERE_NPC_CHASE_SPEED_MULTIPLIER =
-  HARTHMERE_PREVIOUS_NPC_CHASE_SPEED_MULTIPLIER * 1.2;
+  HARTHMERE_PREVIOUS_NPC_CHASE_SPEED_MULTIPLIER *
+  HARTHMERE_NPC_CHASE_SPEED_STEP_UP_20 *
+  HARTHMERE_NPC_CHASE_SPEED_STEP_UP_30;
 // Normal player sprint animation transitions at 8 m/s. Keep Harthmere pursuit
 // urgent without allowing an NPC to outrun a sprinting player on open ground.
 export const HARTHMERE_NPC_CHASE_SPEED_CAP_METERS_PER_SECOND = 7.6;
@@ -152,6 +157,16 @@ export function isHarthmereSightBoundChaserName(
 // but only Muckers, Hexes, and combat-capable animals receive the Harthmere
 // fight-speed boost. Protected/owned creatures must never inherit it from a
 // species word in their label.
+// Town NPCs are people, never combat pursuers. Their labels are matched here
+// first so that no civilian can inherit the fight-speed boost through an
+// incidental species/word collision in a generated name or role description.
+export function isHarthmereCivilianNpcName(name: string | undefined): boolean {
+  const text = String(name ?? "").toLowerCase();
+  return /\b(townsperson|townspeople|townsfolk|townperson|civilian|villager|resident|walker|walking|vendor|merchant|shopkeep|shopkeeper|innkeep|innkeeper|barkeep|customer|patron|clerk|banker|teller|registrar|supplier|guide|guard|watchman|sentry|patrol|sergeant|reeve|archivist|scribe|mascot|builder|blacksmith|smith|apprentice|healer|priest|monk|elder|questgiver)\b/.test(
+    text
+  );
+}
+
 export function isHarthmereFightSpeedBoostName(
   name: string | undefined
 ): boolean {
@@ -161,6 +176,9 @@ export function isHarthmereFightSpeedBoostName(
       text
     )
   ) {
+    return false;
+  }
+  if (isHarthmereCivilianNpcName(text)) {
     return false;
   }
   return (

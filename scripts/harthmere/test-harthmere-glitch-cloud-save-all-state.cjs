@@ -41,6 +41,10 @@ const bridgePath = "src/client/game/glitch/harthmere_glitch_bridge.ts";
 const harthmereEventsPath =
   "src/client/components/challenges/harthmereEvents.ts";
 const proxyPath = "src/pages/api/glitch/harthmere.ts";
+const payloadPath = "src/server/harthmere/glitch_cloud_save_payload.ts";
+const rehydrationPath = "src/server/harthmere/glitch_cloud_save_rehydration.ts";
+const kvTransportPath =
+  "src/client/util/storage/glitch_cloud_save_transport.ts";
 const wakePath = "src/client/components/WakeUpScreen.tsx";
 const deployPath = "scripts/glitch/deploy-production-local-redis-smoke.sh";
 const bridge = exists(bridgePath) ? read(bridgePath) : "";
@@ -48,6 +52,9 @@ const harthmereEvents = exists(harthmereEventsPath)
   ? read(harthmereEventsPath)
   : "";
 const proxy = exists(proxyPath) ? read(proxyPath) : "";
+const payloadRules = exists(payloadPath) ? read(payloadPath) : "";
+const rehydration = exists(rehydrationPath) ? read(rehydrationPath) : "";
+const kvTransport = exists(kvTransportPath) ? read(kvTransportPath) : "";
 const wake = exists(wakePath) ? read(wakePath) : "";
 const deploy = exists(deployPath) ? read(deployPath) : "";
 
@@ -553,7 +560,7 @@ const applySnapshot = sectionBetween(
 );
 check(
   "restore rejects non-Harthmere save schema",
-  applySnapshot.includes('parsed.version !== "harthmere-glitch-save"')
+  applySnapshot.includes("isAcceptedHarthmereCloudSavePayloadVersion")
 );
 check(
   "restore writes only allowed Harthmere mission save keys",
@@ -577,8 +584,9 @@ check(
     'prefix.endsWith(".user.")',
     "const nextScope =",
     "return `${prefix}${nextScope}`",
-    "const migratedKey = migrateCloudSaveStorageKeyToCurrentScope(key)",
-    "window.localStorage.setItem(migratedKey, value)",
+    "migrateCloudSaveStorageKeyToCurrentScope(key)",
+    "migrateLegacyVersionedCloudSaveKeyToCurrentScope(key)",
+    "window.localStorage.setItem(migratedKey, candidate.value)",
   ])
 );
 check(
@@ -647,7 +655,7 @@ check(
 );
 check(
   "restoreLatest only applies Harthmere cloud-save snapshots",
-  restoreLatest.includes('decoded_payload?.version === "harthmere-glitch-save"')
+  restoreLatest.includes("isAcceptedHarthmereCloudSavePayloadVersion")
 );
 check(
   "restoreLatest picks latest version and applies snapshot",
@@ -769,21 +777,73 @@ check(
   ])
 );
 check(
-  "server storeSave encodes snapshot with checksum",
+  "server storeSave encodes structured snapshots and preserves pre-encoded KV payloads",
   includesAll(proxy, [
     'if (op === "storeSave")',
-    "makeSavePayload(body.snapshot",
+    "usesPreEncodedPayload",
+    "enrichHarthmereGlitchSnapshotWithServerState",
+    "makeHarthmereCloudSavePayload(snapshot)",
+    "validateHarthmerePreEncodedCloudSavePayload",
     "payload: encoded.payload",
     "checksum: encoded.checksum",
   ])
 );
 check(
-  "server checksum hashes raw UTF-8 bytes, not the Base64 string",
+  "server listSaves rehydrates an empty actor from the decoded Glitch save",
   includesAll(proxy, [
-    "function makeSavePayload",
-    'Buffer.from(json, "utf8")',
+    "authenticatedCloudSaveActor(req, installId)",
+    "rehydrateHarthmereActorFromGlitchSaves",
+    "save_version: rehydration.saveVersion",
+  ])
+);
+check(
+  "server cloud save access is authorized by Biomes and targets the live gameplay actor",
+  includesAll(proxy, [
+    "function authenticatedCloudSaveActor",
+    "verifyAuthenticatedRequest",
+    "harthmereLiveModeInstallLinkKey(installId)",
+    "harthmereLiveModeInstallGameUserLinkKey(installId)",
+    "planHarthmereLiveModeActorKey",
+    "actorId: actorPlan.actorId",
+    "adoptHarthmereActorStateIfTargetEmpty",
+    "CLOUD_SAVE_INSTALL_ACTOR_MISMATCH",
+  ])
+);
+check(
+  "server adopts meaningful legacy actor progress only into an empty stable actor",
+  includesAll(rehydration, [
+    "function adoptHarthmereActorStateIfTargetEmpty",
+    "target actor has progress; target state always wins",
+    "linked source actor has no meaningful progress",
+    "authored quest/challenge IDs remain exact",
+  ])
+);
+check(
+  "server checksum hashes raw UTF-8 bytes, not the Base64 string",
+  includesAll(payloadRules, [
+    "function makeHarthmereCloudSavePayload",
+    'Buffer.from(JSON.stringify(snapshot ?? {}), "utf8")',
     'crypto.createHash("sha256").update(bytes).digest("hex")',
   ])
+);
+check(
+  "server enforces the live 50 MB decoded limit with Base64 parser headroom",
+  payloadRules.includes("50 * 1024 * 1024") &&
+    proxy.includes('sizeLimit: "72mb"') &&
+    proxy.includes("HarthmereCloudSavePayloadError")
+);
+check(
+  "server and client restore only authoritative slot 0 snapshots",
+  rehydration.includes("(save.slot_index ?? 0) === 0") &&
+    bridge.includes("(save?.slot_index ?? CLOUD_SAVE_SLOT_INDEX) ===")
+);
+check(
+  "compatibility-slot conflicts pause without silent resolution",
+  includesAll(kvTransport, [
+    "GlitchCloudSaveConflictError",
+    "this.conflictPaused = true",
+    "explicit player choice",
+  ]) && !kvTransport.includes('choice: "keep_server"')
 );
 check(
   "server storeSave sends base_version, slot, metadata, save_type and play duration",
@@ -1227,7 +1287,7 @@ check(
 );
 check(
   "restoreLatest ignores non-Harthmere payloads",
-  restoreLatest.includes('decoded_payload?.version === "harthmere-glitch-save"')
+  restoreLatest.includes("isAcceptedHarthmereCloudSavePayloadVersion")
 );
 check(
   "restoreLatest sorts by highest version",

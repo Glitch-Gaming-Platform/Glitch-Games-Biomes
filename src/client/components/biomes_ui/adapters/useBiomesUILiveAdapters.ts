@@ -210,7 +210,9 @@ const BIOMES_UI_KEY_TO_TAB: Record<string, TabKey> = {
   KeyQ: "banking",
   KeyM: "map",
   KeyU: "map",
-  [BIOMES_UI_QUESTS_KEY_CODE]: "map",
+  KeyZ: "recovered",
+  // J opens the dedicated Quests tab (2026-07-24); the map keeps M.
+  [BIOMES_UI_QUESTS_KEY_CODE]: "quests",
   KeyC: "collections",
   KeyV: "inbox",
   Comma: "options",
@@ -227,7 +229,11 @@ const BIOMES_UI_TAB_TO_GARDEN_HOSE_TABS: Partial<Record<TabKey, string[]>> = {
   loot: ["loot"],
   guilds: ["tasks"],
   banking: ["banking"],
-  map: ["map", "journal", "quests"],
+  // The dedicated Quests tab now owns the journal/quests garden-hose tabs;
+  // the map keeps only the chart itself.
+  quests: ["journal", "quests"],
+  recovered: ["journal"],
+  map: ["map"],
   collections: ["collections"],
   inbox: ["inbox"],
   options: ["settings"],

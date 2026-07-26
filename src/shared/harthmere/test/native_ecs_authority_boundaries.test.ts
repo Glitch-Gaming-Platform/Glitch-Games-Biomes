@@ -4,6 +4,10 @@ import {
 } from "@/shared/harthmere/live_mode_backend";
 import { BUILDING_SYSTEM_PLOTS } from "@/shared/harthmere/building_system";
 import type { HarthmereLiveModeAuthorityEnvelope } from "@/shared/harthmere/live_mode_readiness";
+import {
+  registerHarthmereItemDefinition,
+  registerHarthmereVendorEntry,
+} from "@/shared/harthmere/mmo_inventory_authority";
 import assert from "assert";
 
 const ACTOR = "123456789";
@@ -174,5 +178,65 @@ describe("Harthmere native ECS authority boundaries", () => {
       });
       assert.deepEqual(exchange[testCase.expectedConsume], {});
     }
+  });
+
+  it("materializes one vendor bundle purchase into native ECS and charges its exact price", () => {
+    const itemId = "native_vendor_bundle_test_item";
+    const vendorId = "native_vendor_bundle_test_vendor";
+    registerHarthmereItemDefinition({
+      itemId,
+      displayName: "Native Vendor Bundle Test Item",
+      maxStackSize: 20,
+      baseValue: 2,
+      binding: "none",
+      isQuestItem: false,
+      isCurrency: false,
+      isConsumable: false,
+      isCraftingMaterial: false,
+      isSpellTome: false,
+      levelRequirement: 1,
+      classRestriction: [],
+      stats: {},
+      tradeable: true,
+      weight: 1,
+    });
+    registerHarthmereVendorEntry({
+      vendorId,
+      itemId,
+      buyPrice: 3,
+      sellPrice: 1,
+      stock: 3,
+      bundleQuantity: 3,
+      bundlePrice: 7,
+    });
+
+    const result = reduceHarthmereLiveModeBackendState(
+      defaultHarthmereLiveModeBackendState(ACTOR, NOW),
+      envelope(
+        "request_vendor_transaction",
+        "vendor",
+        {
+          vendorId,
+          transactionKind: "buy",
+          itemId,
+          count: 3,
+        },
+        {
+          requestId: `native-boundary:vendor-buy:${NOW}`,
+          idempotencyKey: `native-boundary:vendor-buy:${NOW}`,
+          serverActorGold: 100,
+        }
+      ),
+      NOW
+    );
+
+    assert.ok(result.summary.touchedModels.includes("inventory_items"));
+    const exchange = result.summary.nativeEcsMaterializationPlans?.find(
+      (plan) => plan.kind === "inventory_exchange"
+    );
+    assert.equal(exchange?.kind, "inventory_exchange");
+    if (exchange?.kind !== "inventory_exchange") return;
+    assert.deepEqual(exchange.rewardItemStacks, { [itemId]: 3 });
+    assert.equal(exchange.goldDelta, -7);
   });
 });

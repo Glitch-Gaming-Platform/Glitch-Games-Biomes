@@ -165,6 +165,14 @@ describe("native Road Ahead snapshot contract", () => {
       false,
       "quest metadata must not turn a storage prop into an NPC"
     );
+    assert.equal(
+      nativeQuestGiverUsesEcsDialogue(
+        { concurrent_quests: 1 },
+        "Chest The Grove Underwater Main"
+      ),
+      false,
+      "Busted's quest-giver chest must keep its container shortcut"
+    );
     process.env.NEXT_PUBLIC_BIOMES_NATIVE_ECS_AUTHORITY = "0";
     assert.equal(
       nativeQuestGiverUsesEcsDialogue({ concurrent_quests: 1 }),
@@ -193,6 +201,10 @@ describe("native Road Ahead snapshot contract", () => {
       }
     );
     assert.deepEqual(
+      NATIVE_ROAD_AHEAD_CONTAINER_SPECS.clothingCrate.position,
+      [231.5, 67, -82.5]
+    );
+    assert.deepEqual(
       {
         sourceEntityId:
           NATIVE_ROAD_AHEAD_CONTAINER_SPECS.billysToolbag.sourceEntityId,
@@ -203,6 +215,10 @@ describe("native Road Ahead snapshot contract", () => {
         sourceEntityId: 5682301664350905,
         placeableItemId: 6811733198167399,
       }
+    );
+    assert.deepEqual(
+      NATIVE_ROAD_AHEAD_CONTAINER_SPECS.billysToolbag.position,
+      [244.5, 58, -110.5]
     );
     for (const spec of Object.values(NATIVE_ROAD_AHEAD_CONTAINER_SPECS)) {
       assert.notEqual(spec.sourceEntityId, spec.placeableItemId);

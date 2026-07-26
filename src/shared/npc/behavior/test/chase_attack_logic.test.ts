@@ -10,6 +10,7 @@ import {
   effectiveAttackStrikeDelaySecs,
   isMixedCreatureGroupRetaliationEligible,
   isMixedCreatureGroupRetaliationName,
+  isHarthmereCivilianNpcName,
   isHarthmereFightSpeedBoostEligible,
   isHarthmereFightSpeedBoostName,
   isHarthmereSightBoundChaserName,
@@ -20,6 +21,8 @@ import {
   NIGHT_MUCKER_HEX_MOVEMENT_MULTIPLIER,
   HARTHMERE_NPC_CHASE_SPEED_CAP_METERS_PER_SECOND,
   HARTHMERE_NPC_CHASE_SPEED_MULTIPLIER,
+  HARTHMERE_NPC_CHASE_SPEED_STEP_UP_20,
+  HARTHMERE_NPC_CHASE_SPEED_STEP_UP_30,
   HARTHMERE_PREVIOUS_NPC_CHASE_SPEED_MULTIPLIER,
   shouldDropHarthmereChaseTargetForLineOfSight,
   shouldDropNpcTargetAtSafeZoneBoundary,
@@ -205,17 +208,29 @@ describe("chase attack: Harthmere sight and speed limits", () => {
     assert.equal(isHarthmereSightBoundChaserName("Town Guard"), false);
   });
 
-  it("runs 20% faster than the prior tuned pursuit while staying below player sprint pace", () => {
+  it("compounds another 30% onto the already-increased pursuit speed", () => {
     assert.equal(HARTHMERE_PREVIOUS_NPC_CHASE_SPEED_MULTIPLIER, 1.35);
+    assert.equal(HARTHMERE_NPC_CHASE_SPEED_STEP_UP_20, 1.2);
+    assert.equal(HARTHMERE_NPC_CHASE_SPEED_STEP_UP_30, 1.3);
+    // Cumulative, not a replacement: 1.35 -> 1.62 -> 2.106.
     assert.equal(
       HARTHMERE_NPC_CHASE_SPEED_MULTIPLIER,
-      HARTHMERE_PREVIOUS_NPC_CHASE_SPEED_MULTIPLIER * 1.2
+      HARTHMERE_PREVIOUS_NPC_CHASE_SPEED_MULTIPLIER * 1.2 * 1.3
     );
-    assert.equal(boundedHarthmereChaseSpeedForName("Muckmeadow Cow", 4), 6.48);
+    assert.ok(
+      HARTHMERE_NPC_CHASE_SPEED_MULTIPLIER >
+        HARTHMERE_PREVIOUS_NPC_CHASE_SPEED_MULTIPLIER * 1.2
+    );
+    assert.equal(
+      boundedHarthmereChaseSpeedForName("Muckmeadow Cow", 2),
+      2 * HARTHMERE_NPC_CHASE_SPEED_MULTIPLIER
+    );
     assert.equal(
       boundedHarthmereChaseSpeedForName("Pale Hexer", 8.64),
       HARTHMERE_NPC_CHASE_SPEED_CAP_METERS_PER_SECOND
     );
+    // The cap must stay strictly below the 8 m/s player sprint transition.
+    assert.ok(HARTHMERE_NPC_CHASE_SPEED_CAP_METERS_PER_SECOND < 8);
     assert.equal(
       boundedHarthmereChaseSpeedForName("Road Bandit Scout", 5.1),
       5.1
@@ -224,6 +239,53 @@ describe("chase attack: Harthmere sight and speed limits", () => {
       boundedHarthmereChaseSpeedForName("Unrelated NPC", 8.64),
       8.64
     );
+  });
+
+  it("never accelerates town walkers, vendors, guards, or other civilians", () => {
+    for (const name of [
+      "Rowan, Walker",
+      "Local Dev Walking Townsperson",
+      "Harthmere Vendor",
+      "Town Guard",
+      "Iva the Innkeeper",
+      "Market Clerk",
+      "Toma, Builder",
+      "Mira, Town Guide",
+      "Grove Villager",
+      "Shop Customer",
+      "Blacksmith Apprentice",
+    ]) {
+      assert.equal(isHarthmereCivilianNpcName(name), true, `civilian: ${name}`);
+      assert.equal(
+        isHarthmereFightSpeedBoostName(name),
+        false,
+        `boost: ${name}`
+      );
+      assert.equal(
+        boundedHarthmereChaseSpeedForName(name, 2.2),
+        2.2,
+        `speed: ${name}`
+      );
+      assert.equal(
+        isHarthmereFightSpeedBoostEligible({
+          name,
+          isPlayerOwned: false,
+          isCombatCapable: true,
+        }),
+        false,
+        `eligible: ${name}`
+      );
+    }
+    // Robots/archivists are already excluded by the protected-actor veto.
+    assert.equal(isHarthmereFightSpeedBoostName("Bolt, Archive Robot"), false);
+    assert.equal(
+      boundedHarthmereChaseSpeedForName("Bolt, Archive Robot", 2.2),
+      2.2
+    );
+    // Actual combatants are unaffected by the civilian veto.
+    assert.equal(isHarthmereCivilianNpcName("Old Wood Mucker"), false);
+    assert.equal(isHarthmereCivilianNpcName("Muckmeadow Cow"), false);
+    assert.equal(isHarthmereFightSpeedBoostName("Old Wood Mucker"), true);
   });
 
   it("limits fight-speed boosts to Muckers, Hexes, and unowned animals", () => {

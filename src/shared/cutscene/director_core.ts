@@ -63,7 +63,10 @@ export type CutsceneEffect =
       /** Cover a cut/teleport/cleanup and pause execution until fully black. */
       blocking?: boolean;
     }
-  | { kind: "subtitle"; value?: { speaker?: string; text: string } }
+  | {
+      kind: "subtitle";
+      value?: { speaker?: string; text: string; voice?: string };
+    }
   | {
       kind: "actorPose";
       actor: ResolvedActor;
@@ -82,6 +85,7 @@ export type CutsceneEffect =
       kind: "vfx";
       effect: "exoticMatterCreation" | "combatImpact";
       position: CutsceneVec3;
+      scale: number;
     }
   | { kind: "custom"; hook: string; payload?: unknown }
   | {
@@ -91,6 +95,7 @@ export type CutsceneEffect =
       height: number;
       format: "image/png" | "image/jpeg";
       filename?: string;
+      settleFrames: number;
     }
   | {
       kind: "commitEndState";
@@ -156,6 +161,7 @@ interface PuppetState {
 interface ActiveDialogue {
   speaker?: string;
   text: string;
+  voice?: string;
   endsAt: number; // shot clock
 }
 
@@ -707,6 +713,7 @@ class CutsceneRuntimeImpl implements CutsceneRuntime {
         this.dialogues.push({
           speaker: action.speaker ?? action.role,
           text: action.text,
+          voice: action.voice,
           endsAt: this.shotClock + dialogueDurationSeconds(action),
         });
         break;
@@ -738,6 +745,7 @@ class CutsceneRuntimeImpl implements CutsceneRuntime {
             kind: "vfx",
             effect: action.effect,
             position: [...position],
+            scale: action.scale,
           });
         }
         break;
@@ -770,6 +778,7 @@ class CutsceneRuntimeImpl implements CutsceneRuntime {
           height: action.height,
           format: action.format,
           filename: action.filename,
+          settleFrames: action.settleFrames,
         });
         break;
     }
@@ -809,7 +818,7 @@ class CutsceneRuntimeImpl implements CutsceneRuntime {
     if (top) {
       effects.push({
         kind: "subtitle",
-        value: { speaker: top.speaker, text: top.text },
+        value: { speaker: top.speaker, text: top.text, voice: top.voice },
       });
       this.subtitleVisible = true;
     } else if (this.subtitleVisible) {

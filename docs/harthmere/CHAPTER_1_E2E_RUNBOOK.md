@@ -1,0 +1,406 @@
+# Chapter 1 — End-to-End Test Runbook
+
+Companion to `NATIVE_ECS_BROWSER_E2E_RUNBOOK.md`. Same memory-safe topology,
+same readiness rules, same "one Chromium context at a time" discipline. This
+file covers only what Chapter 1 adds.
+
+## Live status — July 25, 2026
+
+The Chapter 1 **native quest-completion** release gate is closed. The dungeon
+**challenge-experience** gate is still open; quest completion, terrain
+traversal, and pure state contracts are not substitutes for playing each
+authored challenge in the production client. Do not replay retained passes
+without a relevant authority, prompt, quest-definition, or dungeon-mechanics
+change:
+
+- Road Ahead Clothing Crate and Billy's Toolbag are successful in the supplied
+  HAR.
+- Busted's physical sunken chest and every authored action from the chest
+  through chapter completion pass in
+  `artifacts/harthmere-native-ecs-e2e/1784962944155-29904-report.json`.
+- Get the Muck Out and Muck vs. Machine already have retained passing browser
+  evidence.
+- The dedicated J-key Quests UI passes one combined production-browser batch
+  in `1784963562747-35318-report.json` (filters, Failed state, detail,
+  responsive layout, and Show on Map).
+- All **31 Chapter 1 quests and all 80 objectives** complete through the
+  production browser prompt and authoritative progress route. The final
+  checkpointed run is
+  `artifacts/harthmere-native-ecs-e2e/1784986267883-76489-report.json`: 30
+  objectives exercised in that run, 50 retained objective passes, zero browser
+  failures, and final status `pass`.
+- Browser contract/catalog, all 16 scene entries, terrain/cast, and both gate
+  families have retained passing reports. Keep those reports as the release
+  evidence unless their covered code changes.
+- The dungeon survival/stat layer was repaired and rerun as two focused browser
+  batches on July 25, 2026. Desert passes in
+  `artifacts/harthmere-native-ecs-e2e/1785019042164-46154-report.json`; winter
+  passes in `1785019132033-47465-report.json`. Both have zero browser failures
+  and record per-objective native HP/stamina/breath plus physical native
+  water/fuel/light counts.
+
+Use `scripts/harthmere/t.sh gate` to collect quest/container/UI/type failures
+in one local batch. Use `HARTHMERE_E2E_QUESTS_UI_ONLY=1` for the combined UI
+browser gate. Do not split those assertions into separate Chromium launches.
+The detailed Layer 2 and Layer 3 lists below remain useful regression and art
+review checklists, but the user stopped further screenshot/cutscene capture on
+July 25 after the existing deliverables were saved. That stopped visual work
+is not a reason to replay the completed quest gate.
+
+## Native quest completion gate (closed)
+
+Run the whole remaining quest family in one browser context:
+
+```sh
+HARTHMERE_E2E_CHAPTER_1_ONLY=1 \
+HARTHMERE_E2E_CHAPTER_1_FEATURES=quests \
+HARTHMERE_E2E_SKIP_VIDEO=1 \
+  node scripts/harthmere/test-harthmere-native-ecs-roundtrip-e2e.cjs
+```
+
+If a late objective blocks the linear family, retain the completed report and
+resume after its last passing objective rather than replaying the chapter:
+
+```sh
+HARTHMERE_E2E_CHAPTER_1_ONLY=1 \
+HARTHMERE_E2E_CHAPTER_1_FEATURES=quests \
+HARTHMERE_E2E_SKIP_VIDEO=1 \
+HARTHMERE_E2E_CHAPTER_1_RESUME_AFTER=ch1_a4_q05_the_man_who_didnt_accuse/show_him \
+  node scripts/harthmere/test-harthmere-native-ecs-roundtrip-e2e.cjs
+```
+
+The retained 80-objective chain is composed of these reports:
+
+- `1784982537533-46916-report.json` — `wake_up`
+- `1784983289793-51283-report.json` — `the_tea`
+- `1784984378487-57045-report.json` — `kit_check` and `choose_a_name`
+- `1784985254244-70060-report.json` — the next 46 objectives
+- `1784986267883-76489-report.json` — the final 30 objectives and aggregate
+  `retainedPassedStepCount: 50`
+
+The bridge validates the exact active challenge and step, enforces interaction
+distance, and publishes the signed challenge event. The client prompt shares
+the central F-key dispatcher at `chapter1Story` priority, polls single-flight,
+and prevents overlapping completion requests. Proximity-only objectives
+complete automatically after the authoritative route confirms the player is
+at their target.
+
+Teak Morrow's quest starts without a giver because the imported production
+snapshot has no legacy Sergeant Holt entity. Its first objective still targets
+the guaranteed native Teak ECS record, so removing the absent giver fixes the
+orphan without weakening the actual interaction requirement.
+
+## Layer 1 — headless E2E (runs today, no stack required)
+
+```sh
+./b test -p 'src/shared/harthmere/test/ch1_e2e_*.test.ts'
+```
+
+Two suites, **45 assertions**, ~3 s.
+
+### `ch1_e2e_playthrough.test.ts` — the whole chapter, start to finish
+
+Drives a real `Ch1PlayerState` from the Muck vs. Machine ignition to the final
+choice. No mocked flags: every flag is set by the quest step that legitimately
+sets it, and every quest is checked against `ch1AvailableQuestIds()` before it
+is allowed to run.
+
+Covers:
+
+- every authored quest is reachable in a single run (no orphans)
+- acts advance in order and none is skippable
+- all four latent skills unlock
+- every quest-referenced cutscene id is registered
+- both dungeons complete and charge their time-dilation cost
+- the ledger goes **silent** after the Act 4 confrontation and restarts only
+  when the player resumes the vials
+- the designation is never learned before the ice
+- the oath is sworn before the handover; the consolidation fires after it
+- Lou's trust exceeds Jackie's at the climax (or the handover is not credible)
+- all three endings resolve from the same completed run
+- failure modes: under-provisioned entry, wrong-act gate, leaving a retrieval
+  behind, double entry, and a quest requiring a flag nothing grants
+
+### `ch1_e2e_dungeon_traversal.test.ts` — physical traversal, puzzles, portals
+
+**Flood-fills the actual voxel field** with a player-sized body (2 tall,
+one-block step up/down, swimming in water, climbing stair shafts) starting from
+where the portal drops you. This is the test that matters: a graph of connected
+volumes can be perfectly valid and still be solid rock.
+
+Covers:
+
+- every volume has a player-sized standable space
+- every room is walkable from the arrival
+- the exit is walkable (no trapping the player in a one-way gate)
+- no prop is embedded inside a solid block
+- the Hall of Weights is reachable, has its interaction anchor, and the
+  comparative-vs-absolute measurement thesis actually holds numerically
+- the containment sequence has no fail state and fits its timer
+- the portal open curve: opens, holds, closes exactly once, never flickers
+
+## Live Fracture Gate batch
+
+The portal release gate is one browser batch, not four separate launches. It
+must prove both visual and authority behavior in this order:
+
+1. wait for the route's authoritative live-player hook (renderer-ready alone
+   is not sufficient);
+2. move to the Dry Mouth and verify the production F prompt owns the key;
+3. sample `chapter1GateRenderSnapshot()` twice and require the shader animation
+   clock to advance while the aperture remains visible/open;
+4. capture the entry Mouth with the prompt visible;
+5. press F, confirm the native player reaches the desert arrival, then move to
+   the far anchor, confirm the return Mouth/prompt, and press F to return;
+6. repeat entry and exit for the Long Winter Mouth in the same warm browser.
+
+The test query may bypass only provisioning contents when
+`HARTHMERE_NATIVE_ECS_E2E=1` on loopback. The API still re-reads native player
+position, gate identity, active-run state, arrival, far anchor, and return
+position on the server. Production requests always use the real inventory pack
+check and required retrieval check.
+
+Focused local batch:
+
+```sh
+node_modules/.bin/mocha --config .mocharc.fast.json \
+  src/shared/harthmere/test/ch1_live_gate.test.ts \
+  src/shared/harthmere/test/ch1_e2e_dungeon_traversal.test.ts \
+  src/shared/harthmere/test/ch1_gate_visual.test.ts
+NODE_OPTIONS=--max-old-space-size=8192 \
+  node_modules/.bin/tsc -p tsconfig.ch1gate.json
+```
+
+Do not rerun completed quest, cloud-save, cutscene, or marketing-image gates
+while diagnosing this batch. A failure here owns only portal rendering,
+interaction, dungeon streaming, or warp authority.
+
+### July 25 live result
+
+One warm authenticated browser completed the Dry Mouth and Long Winter Mouth
+as a single batch:
+
+- each mainland Mouth showed the correct production F prompt;
+- F established the matching active dungeon and warped the authoritative
+  player to its arrival;
+- each far anchor showed the matching return prompt;
+- F returned the player and cleared the active run.
+
+The interaction and authority seam passes. The portal art does **not** yet pass
+final visual review: its current amber aperture is visibly open and
+interactable, but the shader's rotation is too subtle and reads as a glowing
+solid doorway instead of an unmistakably spinning fracture. Keep that as a
+visual blocker without replaying the already-passing warp flow.
+
+### Production completion authority (July 25 follow-up)
+
+The original native-ECS dungeon runner provisioned retrieval state directly.
+That was useful for testing traversal, but it masked two production-only
+completion failures:
+
+- ordinary objective completion advanced the signed ECS trigger without first
+  applying the authored Chapter 1 reward, fragment, choice, testimony, skill,
+  inventory, or companion consequence; and
+- the exit gate looked only for inventory item ids even though Iris, Marrow,
+  and Sorrel are people represented by durable story flags, not bag items.
+
+The production bridge now applies each objective's durable, idempotent story
+effect before publishing its signed ECS progress event and restores the prior
+state if publication fails. Dungeon extraction combines actual inventory
+retrievals with the rescued/saved/oath story flags. The focused regression
+batch must therefore include `ch1_live_story.test.ts` as well as the existing
+gate and traversal tests. Never use an E2E provisioning shortcut as evidence
+that the same retrieval can be earned and recognized in a normal account.
+
+The live Recovered batch also found one catalog seam that pure fragment tests
+did not: `frag_a2_play_the_ninth_signature` says it becomes available when the
+ledger opens, but no objective carried that playback id. `open_the_tab` now
+delivers it explicitly, allowing the authored three-playback Act 5 link to be
+completed through the production journal. Keep a regression on the delivery
+trigger; a fragment existing in the catalog is not evidence that a player can
+ever obtain it.
+
+- persistent gates hold open indefinitely
+- warp admission accepts a legitimate run and rejects everything else
+- each gate charges a different Grove-time cost
+- no single vendor can satisfy a provisioning check
+
+> **Two real bugs were found by writing these**, both invisible to the unit
+> tests: exiting a dungeon set its own act-complete flag (stranding the dungeon
+> quest and the closing scene in an act the player could no longer enter), and
+> an enclosing room's floor slab sealed the stair shaft carved through it,
+> making everything past the winter landing unreachable.
+
+## Dungeon challenge-experience gate (stat layer closed; physical choreography open)
+
+**Permanent coverage rule:** an authored `trigger`, target label, terrain
+volume, decor prop, analytics event, or pure state transition does not prove a
+live mechanic. A challenge is release-tested only after the production client
+has shown its player-facing feedback, consequence, failure/recovery path, and
+completion/reward path against authoritative state.
+
+The fast mechanics batch is intentionally one process:
+
+```sh
+node_modules/.bin/mocha --config .mocharc.fast.json \
+  src/shared/harthmere/test/ch1_augur9_party.test.ts \
+  src/shared/harthmere/test/ch1_chapter.test.ts \
+  src/shared/harthmere/test/ch1_dungeon_horizon.test.ts \
+  src/shared/harthmere/test/ch1_dungeon_terrain.test.ts
+```
+
+On July 25 this produced **137 passing assertions in 103 ms**. It proves data,
+geometry, AUGUR-9, party, horizon, and chapter-state contracts. It does not
+close the live challenge gate.
+
+### July 25 authoritative mechanics result
+
+The two focused batches prove the following without replaying either retained
+portal flow or unrelated Chapter 1 objectives:
+
+- desert water decrements `12 -> 0`; light decrements `10 -> 7`; the final
+  native stamina snapshot is `61/108`; the Bull route deals 10 HP and the Long
+  Walk deals 4 HP; AUGUR-9 ends at charge `58` under the authored 3x heat drain;
+- winter fuel decrements `18 -> 0`; the final native stamina snapshot is
+  `43/108`; Ash Hall deals 8 HP and the Breaking Year deals 5 HP; AUGUR-9 ends
+  at charge `61.208333333333336` under the authored half-speed cold drain;
+- the reported survival counters exactly equal the corresponding physical
+  native inventory counts after every objective, including three consumed
+  lights in the Cistern;
+- no objective reports the missing-supplies penalty, and both completion
+  reports have `browser.failures: []`;
+- Dune Threshold, Ice Shelf, Drowned Longhouse, and Whale Road now require the
+  signed interaction route. Their former proximity triggers advanced native
+  quest state while bypassing the stat/resource/carry-weight reducer;
+- each resource debit and signed quest leaf is submitted in one overlapping
+  native logic batch. The stable ECS transaction id makes a contended retry
+  exactly-once rather than charging supplies twice.
+
+Current production coverage after that repair:
+
+| Dungeon section | Proven now | Still requires implementation plus live browser E2E |
+| --- | --- | --- |
+| Both whole dungeons | terrain/decor, traversal, gates, quest lifecycle, retrievals, persistent survival HUD contract, exact native resource debits, per-zone native HP/stamina effects, breath authority, and heat/cold AUGUR drain | full physical enemy/follower choreography and player-visible failure/recovery presentation |
+| Dune Threshold | landscape/route plus signed water/stamina/3x AUGUR consequence | shade interaction and visible exhaustion/death/recovery UX |
+| Salt Market | authored route choice, water/stamina cost, and open-fight damage alternative | physical Mucker battle, collapsing awning world interaction, vertical combat, death/retry and loot |
+| Cistern Stair | three-light debit, water/stamina cost, lit-stair/no-air consequences, native breath/drowning authority | changing water, full drowning presentation/retry, and sound-hunting Hexer AI |
+| Hall of Weights | comparative-measurement contract; wrong instruments rejected; temple balance succeeds; water/stamina and rewards commit | animated instrument disagreement, complete puzzle presentation, and playback purchase UI |
+| Sun Court | stealth/fight route contract, fight damage/stamina, core only on the fight route | Bull detection, three physical phases, breakable pillars/horns, death/retry and physical drop |
+| Seed Vault | water debit, stamina recovery, retrieval/reward/cutscene state | full-inventory collection UX and in-place cutscene handoff |
+| Long Walk | final water debit, HP/stamina storm consequence, escort/retrieval/portal state | Iris/Marrow follower AI, storm visuals, pursuit, companion down/disconnect recovery |
+| Ice Shelf Landing | signed fuel/stamina/half-speed AUGUR consequence | warmth HUD art, slow cold-death presentation and recovery |
+| Drowned Longhouse | signed fuel/stamina interval plus native breath authority | furniture wayfinding, drowning/retry presentation and physical reward pickup |
+| Hanged Wood | stealth/fight choice with distinct HP/stamina consequences and fuel debit | sound-driven perception, stealth feedback and physical combat alternative |
+| Whale Road | real live inventory carry-weight calculation, 55 lb hard gate, fuel/stamina debit | visible cracking, fall/recovery and an item-abandon UI |
+| Sorrel's Camp | fuel debit, stamina recovery, key/ledger and oath state | locked-door staging and remembered-player presentation in place |
+| Ash Hall | six-fuel debit, feed-hearth/fight-dark consequences, native HP/stamina, Hallr choice state | Ninth Winter's three physical phases and visible 90-second reset/year-break choreography |
+| Breaking Year | 45 lb return gate, final fuel/HP/stamina consequence, escort/extraction state | Sorrel follower AI, collapsing weather/timeline, movement dialogue and disconnect recovery |
+
+For each unfinished row, test the complete interaction family in one warm
+browser batch: success, failure, recovery, UI/vitals feedback, authoritative
+state change, reward/inventory effect, and quest advancement. Seed or warp to
+the start of each unfinished section; never replay already-passing portal,
+save, or earlier quest chains merely to reach it.
+
+## Layer 2 — browser E2E (needs the local stack)
+
+Start the stack exactly as `NATIVE_ECS_BROWSER_E2E_RUNBOOK.md` describes, then
+run these flows in one warm-stack campaign. Keep one Chromium context active at
+a time for memory safety, but collect and fix the campaign's failures as a
+batch instead of rebuilding or restarting after each failed assertion. Gaia
+and Anima stay disabled unless a step says otherwise.
+
+### 1. Ignition
+
+Complete Muck vs. Machine. Confirm:
+
+- the `ch1-ignition` cutscene plays and the robot's optic focuses on the player
+- the artifacted playback is the **player's own voice bank**, not a generic NPC
+- the `Recovered` journal tab appears, empty, reading "Nothing yet."
+- AUGUR-9 becomes a persistent follower-capable NPC, not a quest prop
+
+### 2. Portal visual
+
+Preview each gate without walking there:
+
+```text
+/at/520/73/-205/-0.15/0.1?hideChrome=1&allowSoftwareWebGL=1
+```
+
+Verify against `ch1_fracture_gate_material.ts`:
+
+- silhouette is a **vesica** (two arcs meeting at points), not a circle
+- the interior scrolls **inward**
+- the rim shows chromatic split (red/blue edges diverge)
+- the centre stays genuinely dark — if it looks additive and friendly, the
+  blending mode has regressed
+- the epilogue gate (`ch1_gate_prime`, `instability: 1.0`) is visibly worse
+  than the two the player walked through
+- the fence-line seam closes on its own at 90 s and does not flicker
+
+### 3. Dungeon entry and the Elsewhen band
+
+- attempt entry under-provisioned → blocked, with a checklist naming every
+  missing line and which Grove NPC supplies it
+- provision fully → warp lands on the slot arrival inside the band
+- **exploit check**: try to reach the band by walking, flying, warpstone, and
+  a stale saved position. All four must fail; the void gap has no terrain and
+  `ch1AdmitToElsewhen` evicts to `[496, 71, -126]`
+- confirm no terrain shard exists between X 2560 and X 2624
+
+### 4. Dungeon interiors
+
+For each of the 23 volumes:
+
+- floor is solid, walls are solid, enclosed rooms have a ceiling
+- open-air volumes have sky
+- every doorway is passable without jumping or crouching
+- stairs walk cleanly up and down; no jump required (recipe Step 5 checklist)
+- water renders in the water pass and appears in generated map tiles
+- props are supported and none floats
+- enclosed zones are navigable on their authored light plus carried torches
+- **escort check**: an NPC follower can path the full route. This is the one
+  that needs Anima enabled.
+
+### 5. Puzzles
+
+- **Hall of Weights**: modern instruments must visibly disagree; the temple
+  balance beam must resolve; solving unlocks `ls_field_calibration` and the
+  ninth-paper playback, and the playback must cost AUGUR-9 core charge
+- **Ashline containment**: 45 s timer, expert UI with no tutorial, four stages;
+  let it time out once and confirm the player's hands finish it rather than
+  failing; all four "how did you do that" replies are variations on _I don't
+  know_
+
+### 6. The climax
+
+- the handover is a **player inventory action** with a confirmation prompt
+  naming the oath; "Not yet" must be accepted indefinitely with no timer
+- the consolidation sequence rewrites six ledger entries, ~4.5 s each, input
+  locked, accessibility skip available after 10 s
+- the corridor revision must reuse the **exact Act 3 shot list** — diff the two
+  captures; if a camera angle changed, the fair-play contract is broken
+- the Card renames to `Custodian Key 7` on screen
+- verify no client payload carried a fragment `truth` value at any point
+  (network tab, `/api/harthmere/*`)
+
+## Layer 3 — capture evidence
+
+Record the two scenes that carry the chapter:
+
+```text
+/at/535/78/-155/-0.15/0.1?hideChrome=1&allowSoftwareWebGL=1&cutsceneVideo=ch1-recon-corridor&videoFps=30&videoRun=1
+/at/535/78/-155/-0.15/0.1?hideChrome=1&allowSoftwareWebGL=1&cutsceneVideo=ch1-consolidation-revision&videoFps=30&videoRun=1
+```
+
+Contact-sheet both before encoding. Reject the take if the opening is blank,
+the camera is inside terrain, or a ghost stands in for a bound actor.
+
+## What is deliberately not automated
+
+- **Whether the player feels complicit rather than cheated at the handover.**
+  That is the one thing that decides whether the chapter works, and it needs
+  real playtesters. If they report feeling tricked, the fix is to strengthen
+  Lou's argument, not to weaken the confirmation prompt.
+- **The buried surname in Act 5.** Target is a ~10–15% catch rate on
+  headphones. Needs human ears at a real mix level.

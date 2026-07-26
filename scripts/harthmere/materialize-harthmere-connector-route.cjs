@@ -506,6 +506,37 @@ function dedupeEdits(edits) {
   return [...byPosition.values()];
 }
 
+function enforceTraversalHeadroom(plan, edits, samplers) {
+  const byPosition = new Map(
+    edits.map((edit) => [edit.position.join(":"), edit])
+  );
+  const terrainAfter = (x, y, z) =>
+    byPosition.has(`${x}:${y}:${z}`)
+      ? Number(byPosition.get(`${x}:${y}:${z}`).value)
+      : samplers.terrainIdAt(x, y, z);
+
+  for (const [x, y, z] of plan.traversal) {
+    for (
+      let headY = y + 1;
+      headY <= y + HARTHMERE_CONNECTOR_MIN_HEADROOM;
+      headY += 1
+    ) {
+      const headId = terrainAfter(x, headY, z);
+      if (headId && terrainCollides(headId)) {
+        // Traversal clearance is the final authority when widened approach
+        // caps overlap the centerline. validateEdits still rejects protected,
+        // occupied, or unsafe material removal before any Redis write.
+        byPosition.set(`${x}:${headY}:${z}`, {
+          position: [x, headY, z],
+          value: 0,
+          label: "passage_clearance",
+        });
+      }
+    }
+  }
+  return [...byPosition.values()];
+}
+
 function validatePostEditTraversal(plan, edits, samplers, structureIndex) {
   const failures = [];
   const overlay = new Map(
@@ -660,7 +691,11 @@ async function main() {
       plan,
       samplers.sample
     );
-    const edits = dedupeEdits(plan.edits);
+    const edits = enforceTraversalHeadroom(
+      plan,
+      dedupeEdits(plan.edits),
+      samplers
+    );
     const editFailures = validateEdits(
       edits,
       samplers,

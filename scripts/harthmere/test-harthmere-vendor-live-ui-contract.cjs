@@ -37,7 +37,11 @@ h.ok(
 );
 h.ok(
   inv.includes("getHarthmereCurrentVendorStockLine"),
-  "vendor UI reads live vendor stock state"
+  "vendor UI resolves each persistent catalogue offer through the shared stock accessor"
+);
+h.ok(
+  inv.includes("pendingBuyItemId === stock.itemId") && inv.includes('"Buying…"'),
+  "vendor UI disables and labels an in-flight purchase until authority responds"
 );
 h.ok(
   inv.includes("biomes:harthmere-open-vendor-trade"),

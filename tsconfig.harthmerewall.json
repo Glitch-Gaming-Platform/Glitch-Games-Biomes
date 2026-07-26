@@ -1,0 +1,23 @@
+// HARTHMERE_TOWN_BACK_BOUNDARY_TYPECHECK
+//
+// The narrowest config that still typechecks the back-wall renderer. It pulls
+// ClientResources and therefore most of the client graph, so it is minutes,
+// not seconds — run it before merging renderer changes, not on every edit.
+//
+//   NODE_OPTIONS="--max-old-space-size=8192" \
+//     node_modules/.bin/tsc -p tsconfig.harthmerewall.json
+//
+// The pure maths it relies on lives in src/shared/harthmere/harthmere_town_horizon.ts
+// and is covered by tsconfig.ch1check.json in about a second.
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "incremental": true,
+    "tsBuildInfoFile": "tmp/harthmerewall.tsbuildinfo"
+  },
+  "include": [
+    "src/client/game/renderers/harthmere_town_back_boundary.ts",
+    "modules.d.ts"
+  ]
+}

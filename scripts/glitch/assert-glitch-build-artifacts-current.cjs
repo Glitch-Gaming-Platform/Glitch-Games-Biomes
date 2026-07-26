@@ -74,6 +74,43 @@ function readMany(relFiles, maxBytes = 64 * 1024 * 1024) {
   return text;
 }
 
+/**
+ * Scan large build trees without concatenating every bundle into one V8
+ * string. The old aggregation could exceed the runtime string limit, catch the
+ * RangeError as if one file were unreadable, and silently skip a later bundle
+ * containing the required marker.
+ */
+function scanFilesForNeedles(
+  relFiles,
+  needles,
+  maxBytes = 64 * 1024 * 1024
+) {
+  const found = new Set();
+  for (const rel of relFiles) {
+    const abs = p(rel);
+    if (!fs.existsSync(abs)) continue;
+    const stat = fs.statSync(abs);
+    if (!stat.isFile() || stat.size > maxBytes) continue;
+    try {
+      const text = fs.readFileSync(abs, "utf8");
+      for (const needle of needles) {
+        if (!found.has(needle) && text.includes(needle)) found.add(needle);
+      }
+    } catch {}
+  }
+  return found;
+}
+
+function expectScannedContains(name, found, needle) {
+  if (found.has(needle)) ok(`${name} contains ${needle}`);
+  else fail(`${name} missing ${needle}`);
+}
+
+function expectScannedNotContains(name, found, needle) {
+  if (!found.has(needle)) ok(`${name} does not contain removed policy ${needle}`);
+  else fail(`${name} still contains removed policy ${needle}`);
+}
+
 function expectContainsText(name, text, needle) {
   if (text.includes(needle)) ok(`${name} contains ${needle}`);
   else fail(`${name} missing ${needle}`);
@@ -180,9 +217,22 @@ const nextFiles = collectFiles(p(".next")).filter((rel) => {
   return /[.](js|json|html)$/i.test(rel);
 });
 if (nextFiles.length) {
-  const nextText = readMany(nextFiles);
-  expectContainsText("built Next artifacts", nextText, "X-Glitch-Player-Mesh-Mode");
-  expectContainsText("built Next artifacts", nextText, "/api/assets/player_mesh.glb");
+  const nextNeedles = [
+    "X-Glitch-Player-Mesh-Mode",
+    "/api/assets/player_mesh.glb",
+    ...bad.slice(0, 4),
+  ];
+  const nextFound = scanFilesForNeedles(nextFiles, nextNeedles);
+  expectScannedContains(
+    "built Next artifacts",
+    nextFound,
+    "X-Glitch-Player-Mesh-Mode"
+  );
+  expectScannedContains(
+    "built Next artifacts",
+    nextFound,
+    "/api/assets/player_mesh.glb"
+  );
   expectNextPagesManifestRoute("/");
   expectNextPagesManifestRoute("/api/assets/player_mesh.glb");
   expectNextPagesManifestRoute("/api/glitch/harthmere");
@@ -191,7 +241,8 @@ if (nextFiles.length) {
   expectNextPagesManifestRoute("/api/harthmere/live_mode_jobs_board_state");
   expectNextPagesManifestRoute("/api/harthmere/live_mode_player_status_state");
   expectNextPagesManifestRoute("/at/[[...slug]]");
-  for (const s of bad.slice(0, 4)) expectNotContainsText("built Next artifacts", nextText, s);
+  for (const s of bad.slice(0, 4))
+    expectScannedNotContains("built Next artifacts", nextFound, s);
 } else {
   ok("built Next artifacts not present yet; source policy validated before build");
 }
@@ -202,9 +253,15 @@ const serverFiles = [
   ...collectFiles(p("server")),
 ].filter((rel) => /[.](js|cjs|mjs|json)$/i.test(rel));
 if (serverFiles.length) {
-  const serverText = readMany(serverFiles);
-  expectContainsText("built server bundle", serverText, "shouldForceLocalAssetRuntime");
-  for (const s of bad) expectNotContainsText("built server bundle", serverText, s);
+  const serverNeedles = ["shouldForceLocalAssetRuntime", ...bad];
+  const serverFound = scanFilesForNeedles(serverFiles, serverNeedles);
+  expectScannedContains(
+    "built server bundle",
+    serverFound,
+    "shouldForceLocalAssetRuntime"
+  );
+  for (const s of bad)
+    expectScannedNotContains("built server bundle", serverFound, s);
 } else {
   ok("built server bundle not present yet; source policy validated before webpack build");
 }

@@ -6,6 +6,7 @@
 
 import {
   registerCutscene,
+  registerCutsceneHook,
   requestCutsceneById,
 } from "@/client/game/cutscene/cutscene_service";
 import { subscribeCutscenePlayback } from "@/client/game/cutscene/playback_events";
@@ -15,13 +16,61 @@ import {
   JACKIE_VS_MUCKERS_CUTSCENE_ID,
   jackieVsMuckersCutscene,
 } from "@/shared/cutscene/harthmere_scenes";
+import { CH1_SCENE_FACTORIES } from "@/shared/cutscene/ch1_scenes";
 import { log } from "@/shared/logging";
 import { sleep } from "@/shared/util/async";
 import { useEffect, useRef } from "react";
 
 const HARTHMERE_SCENE_FACTORIES = new Map<string, () => unknown>([
   [JACKIE_VS_MUCKERS_CUTSCENE_ID, jackieVsMuckersCutscene],
+  // Chapter 1 ("Identity"). Every flashback, overlay, reconstruction, and the
+  // Act 6 consolidation revision sequence. Preview any of them with
+  // ?cutscenePreview=<id>, e.g. cutscenePreview=ch1-recon-corridor.
+  ...CH1_SCENE_FACTORIES,
 ]);
+
+let chapter1HooksRegistered = false;
+
+async function syncChapter1StoryState(): Promise<void> {
+  const response = await fetch("/api/harthmere/chapter1_story", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "sync" }),
+  });
+  if (!response.ok) {
+    throw new Error(`Chapter 1 story sync failed (${response.status})`);
+  }
+  window.dispatchEvent(new CustomEvent("chapter1-story-updated"));
+}
+
+/**
+ * Chapter 1 cutscenes declare durable hooks in shared data. Objective
+ * completion remains server-authoritative and applies the mutation before its
+ * signed ECS progress event; these hooks refresh presentation and make the
+ * director's end-state commit contract real instead of logging "unknown hook".
+ */
+function registerChapter1CutsceneHooks(): void {
+  if (chapter1HooksRegistered) return;
+  chapter1HooksRegistered = true;
+  for (const name of [
+    "ch1.begin",
+    "ch1.unlockLedger",
+    "ch1.recoverFragment",
+    "ch1.applyConsolidation",
+  ]) {
+    registerCutsceneHook(name, syncChapter1StoryState);
+  }
+  registerCutsceneHook("ch1.reviseLedgerEntry", (payload) => {
+    window.dispatchEvent(
+      new CustomEvent("chapter1-ledger-revision", { detail: payload })
+    );
+  });
+  registerCutsceneHook("ch1.renameCard", (payload) => {
+    window.dispatchEvent(
+      new CustomEvent("chapter1-card-renamed", { detail: payload })
+    );
+  });
+}
 
 type CutscenePreviewStatus =
   | { status: "pending"; id: string }
@@ -175,6 +224,7 @@ export function useHarthmereCutsceneLibrary(
     if (!context || typeof window === "undefined") {
       return;
     }
+    registerChapter1CutsceneHooks();
     for (const factory of HARTHMERE_SCENE_FACTORIES.values()) {
       registerCutscene(factory());
     }

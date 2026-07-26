@@ -1,0 +1,26 @@
+// Focused typecheck for the Chapter 1 landscape + cutscene capture loop.
+//
+// Keep this separate from tsconfig.ch1check.json: that broader slice currently
+// also owns cloud-save work, so unrelated persistence edits should not block a
+// terrain/camera iteration. The renderer's 35k-line runtime file is exercised
+// by the production Next build and a static wiring contract in the terrain
+// tests; importing its entire client graph here would erase the fast loop.
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "incremental": true,
+    "tsBuildInfoFile": "tmp/ch1visuals.tsbuildinfo"
+  },
+  "include": [
+    "src/shared/harthmere/ch1_dungeon_terrain.ts",
+    "src/shared/harthmere/ch1_dungeon_decor.ts",
+    "src/shared/harthmere/ch1_ids.ts",
+    "src/shared/cutscene/promo_scenes.ts",
+    "src/shared/cutscene/test/promo_scenes.test.ts",
+    "src/shared/harthmere/test/ch1_dungeon_terrain.test.ts",
+    "src/client/game/cutscene/promo_capture.ts",
+    "src/pages/api/dev/cutscene_still.ts",
+    "modules.d.ts"
+  ]
+}

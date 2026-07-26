@@ -192,6 +192,10 @@ LOCAL_APP_CONTAINER="${LOCAL_APP_CONTAINER:-biomes-prod-smoke-app}"
 LOCAL_WEB_PORT="${LOCAL_WEB_PORT:-3017}"
 LOCAL_SYNC_PORT="${LOCAL_SYNC_PORT:-4907}"
 SMOKE_TIMEOUT_SECONDS="${SMOKE_TIMEOUT_SECONDS:-900}"
+# Long browser/ECS sweeps should survive a child-process crash or Docker
+# Desktop restart instead of silently leaving dead port-forward containers.
+# Callers can still set `no` for one-shot CI cleanup semantics.
+LOCAL_STACK_RESTART_POLICY="${LOCAL_STACK_RESTART_POLICY:-unless-stopped}"
 
 if { [ "$AZURE_MIN_REPLICAS" -lt 2 ] || [ "$AZURE_MAX_REPLICAS" -lt 2 ]; } &&
    [ "$AZURE_ALLOW_SINGLE_REPLICA" != "1" ]; then
@@ -2858,6 +2862,49 @@ wait_for_http() {
   return 1
 }
 
+wait_for_unified_stack_services() {
+  local deadline=$((SECONDS + SMOKE_TIMEOUT_SECONDS))
+  local services=(web logic sync trigger notify shim chat sidefx ask bikkie oob)
+  if [ -n "${LOCAL_STACK_READY_SERVICES:-}" ]; then
+    # Space-delimited escape hatch for a specialized local gate. The caller is
+    # responsible for naming every role its browser path actually consumes.
+    read -r -a services <<<"$LOCAL_STACK_READY_SERVICES"
+  elif [ "${HARTHMERE_NATIVE_ECS_E2E:-0}" = "1" ]; then
+    # Native quest/UI browser gates need the browser, signed event authority,
+    # socket projection, trigger reducer, snapshot bootstrap, and Bikkie. They
+    # do not need notify/chat/side-effect/ask/OOB workers before the first test
+    # can start. The unified container may continue warming those roles in the
+    # background while the focused serial browser session is already useful.
+    services=(web logic sync trigger shim bikkie)
+  fi
+  log "Waiting for ${#services[@]} required unified-stack services before browser testing: ${services[*]}."
+  while [ "$SECONDS" -lt "$deadline" ]; do
+    if [ "$(docker inspect -f '{{.State.Running}}' "$LOCAL_APP_CONTAINER" 2>/dev/null || true)" != "true" ]; then
+      echo "ERROR local production image exited before the unified stack became ready." >&2
+      docker logs --tail 240 "$LOCAL_APP_CONTAINER" >&2 || true
+      return 1
+    fi
+    local logs
+    logs="$(docker logs "$LOCAL_APP_CONTAINER" 2>&1)"
+    local ready=1
+    local service
+    for service in "${services[@]}"; do
+      if ! grep -Fq "\"message\":\"$service now running\"" <<<"$logs"; then
+        ready=0
+        break
+      fi
+    done
+    if [ "$ready" = "1" ]; then
+      log "Required unified-stack services are ready."
+      return 0
+    fi
+    sleep 5
+  done
+  echo "ERROR timed out waiting for required unified-stack services: ${services[*]}." >&2
+  docker logs --tail 240 "$LOCAL_APP_CONTAINER" >&2 || true
+  return 1
+}
+
 wait_for_local_native_simulations() {
   local deadline=$((SECONDS + ${LOCAL_NATIVE_SIMULATION_READY_TIMEOUT_SECONDS:-1200}))
   local require_anima="${GLITCH_ENABLE_ANIMA:-1}"
@@ -3020,6 +3067,21 @@ smoke_local_image() {
     -e "HARTHMERE_E2E_BIBLE_NOW_MS=${HARTHMERE_E2E_BIBLE_NOW_MS:-}"
     -e "HARTHMERE_E2E_BIBLE_WEATHER=${HARTHMERE_E2E_BIBLE_WEATHER:-}"
   )
+  local idle_session_ms="${GLITCH_IDLE_SESSION_MS:-1000}"
+  if [ "${HARTHMERE_NATIVE_ECS_E2E:-0}" = "1" ] && [ -z "${GLITCH_IDLE_SESSION_MS:-}" ]; then
+    # A one-second idle timeout is useful for disposable smoke probes but can
+    # tear down a production-bundle stack between chapters. Keep focused native
+    # browser sessions alive for fifteen minutes unless the caller overrides it.
+    idle_session_ms=900000
+  fi
+  if [ "${HARTHMERE_NATIVE_ECS_E2E:-0}" = "1" ]; then
+    # Next stack boot uses the memory-bounded six-service topology. The current
+    # warm stack is never restarted just to adopt this optimization; it takes
+    # effect on the next local image run after the updated launcher is built.
+    optional_env_args+=(
+      -e "GLITCH_FOCUSED_NATIVE_E2E_STACK=${GLITCH_FOCUSED_NATIVE_E2E_STACK:-1}"
+    )
+  fi
   fetch_title_token_if_needed
   require_cmd docker
 
@@ -3038,6 +3100,11 @@ smoke_local_image() {
   docker run -d \
     --name "$LOCAL_REDIS_CONTAINER" \
     --network "$LOCAL_NETWORK" \
+    --restart "$LOCAL_STACK_RESTART_POLICY" \
+    --health-cmd 'redis-cli ping' \
+    --health-interval 15s \
+    --health-timeout 5s \
+    --health-retries 3 \
     "$LOCAL_REDIS_IMAGE" \
     redis-server \
       --save "" \
@@ -3048,6 +3115,13 @@ smoke_local_image() {
   docker run -d \
     --name "$LOCAL_APP_CONTAINER" \
     --network "$LOCAL_NETWORK" \
+    --restart "$LOCAL_STACK_RESTART_POLICY" \
+    --stop-timeout 90 \
+    --health-cmd 'node scripts/glitch/healthcheck-glitch-web.cjs' \
+    --health-interval 30s \
+    --health-timeout 10s \
+    --health-start-period 300s \
+    --health-retries 3 \
     -p "${LOCAL_WEB_PORT}:3000" \
     -p "${LOCAL_SYNC_PORT}:4900" \
     -e GLITCH_TITLE_TOKEN="$GLITCH_TITLE_TOKEN" \
@@ -3069,13 +3143,15 @@ smoke_local_image() {
     -e "GLITCH_ENABLE_STREAM_WORKERS=${GLITCH_ENABLE_STREAM_WORKERS:-1}" \
     -e BIOMES_CREATE_LOCAL_DEV_TERRAIN="${BIOMES_CREATE_LOCAL_DEV_TERRAIN:-0}" \
     -e HARTHMERE_VISUAL_TEST_AUTH=1 \
-    -e GLITCH_IDLE_SESSION_MS="${GLITCH_IDLE_SESSION_MS:-1000}" \
+    -e GLITCH_IDLE_SESSION_MS="$idle_session_ms" \
     -e GLITCH_STACK_HTTP_READY_WAIT_TRIES="${GLITCH_STACK_HTTP_READY_WAIT_TRIES:-600}" \
-    -e NEXT_PUBLIC_GLITCH_SYNC_BASE_URL="http://127.0.0.1:${LOCAL_WEB_PORT}" \
+    -e GLITCH_STACK_TCP_WAIT_TRIES="${GLITCH_STACK_TCP_WAIT_TRIES:-1800}" \
+    -e NEXT_PUBLIC_GLITCH_SYNC_BASE_URL="http://127.0.0.1:${LOCAL_SYNC_PORT}" \
     "${optional_env_args[@]}" \
     "$LOCAL_IMAGE" >/dev/null
 
   wait_for_http
+  wait_for_unified_stack_services
 
   verify_galois_runtime_in_container
 

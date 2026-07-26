@@ -1,6 +1,13 @@
 import type { ClientContext } from "@/client/game/context";
 import { AudioRenderer } from "@/client/game/renderers/audio";
 import { makeBeamRenderer } from "@/client/game/renderers/beam";
+import {
+  ch1ActiveDungeonRunIdForRender,
+  ch1ActiveGateIdsForRender,
+  makeCh1FractureGateRenderer,
+} from "@/client/game/renderers/ch1_fracture_gate";
+import { makeCh1DungeonHorizonBoundaryRenderer } from "@/client/game/renderers/ch1_dungeon_horizon_boundary";
+import { makeHarthmereTownBackBoundaryRenderer } from "@/client/game/renderers/harthmere_town_back_boundary";
 import { BlueprintsRenderer } from "@/client/game/renderers/blueprints";
 import { BoundaryRenderer } from "@/client/game/renderers/boundary";
 import { DebugAabbRenderer } from "@/client/game/renderers/debug_aabb";
@@ -118,6 +125,21 @@ export async function buildRenderers(loader: RegistryLoader<ClientContext>) {
     // previously drops were an invisible F-prompt radius plus a UI list row,
     // so thrown items vanished from view and silently expired.
     makeHarthmereLootDropMarkersRenderer(resources),
+    // CHAPTER_1_FRACTURE_GATES: the time-portal apertures. Authored data
+    // projected by the client — a gate is never an ECS entity, never moves an
+    // NPC, and never edits terrain. Entry is a server-validated warp into the
+    // unreachable Elsewhen band (src/shared/harthmere/ch1_elsewhen_region.ts).
+    makeCh1FractureGateRenderer(resources, () => ch1ActiveGateIdsForRender()),
+    // CHAPTER_1_DUNGEON_HORIZON: the wall at the edge of a dungeon. Drawn only
+    // while inside a run and only near a face; disposed the moment the player
+    // leaves, so the Grove never pays for dungeon geometry.
+    makeCh1DungeonHorizonBoundaryRenderer(resources, () =>
+      ch1ActiveDungeonRunIdForRender()
+    ),
+    // HARTHMERE_TOWN_BACK_BOUNDARY: the wall at the BACK (east) of the
+    // additive town only. West stays open — that is the connector road from
+    // the main world, and walling it would make Harthmere unreachable.
+    makeHarthmereTownBackBoundaryRenderer(resources),
     new BoundaryRenderer(resources),
     makeBeamRenderer(mapManager, resources),
     new AudioRenderer(resources, audioManager),

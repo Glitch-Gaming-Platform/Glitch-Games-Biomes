@@ -100,6 +100,14 @@ import {
   type HarthmereResidentHousingBuilding,
 } from "@/shared/harthmere/resident_housing";
 import { SNAPSHOT_GROVE_LIVE_WORLD_GROUND_Y } from "@/shared/harthmere/snapshot_grove_content";
+import {
+  CH1_DUNGEON_DECOR,
+  CH1_DUNGEON_DECOR_COLLISION,
+  ch1DecorAssetUrl,
+  ch1DecorPositionToTerrainAuthored,
+  type Ch1DecorProp,
+} from "@/shared/harthmere/ch1_dungeon_decor";
+import { ch1DungeonAuthoredToWorld } from "@/shared/harthmere/ch1_dungeon_terrain";
 import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry";
 import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader";
@@ -261,6 +269,8 @@ export type RuntimePlacement = {
   appearance?: HarthmereCharacterAppearance;
   bob?: number;
   spin?: number;
+  /** Optional local light carried by visual-only authored decor. */
+  light?: { intensity: number; colour: string; distance?: number };
   wander?: {
     radius: number;
     speed: number;
@@ -1862,6 +1872,55 @@ function obj(
   };
 }
 
+// CH1_DUNGEON_DECOR_RENDER_PIPELINE
+//
+// The first Chapter 1 terrain pass authored rich market, cistern, longhouse,
+// camp, and hall props in ch1_dungeon_decor.ts but never imported that file
+// into a client renderer. The data therefore passed tests while every live
+// dungeon still rendered as an empty box. Keep this adapter beside the asset
+// catalogue so authored decor has one explicit, reviewable path to pixels.
+//
+// MagicaVoxel `.vox` files are not loaded by this renderer. Map the small set
+// used by the chapter to established snapshot-style GLTF/OBJ equivalents; do
+// not route them through a procedural NPC/voxel-character generator.
+const CH1_DECOR_VOX_RUNTIME_ASSET: Readonly<Record<string, string>> = {
+  "Market Stall": "stall",
+  Market_Stall_2x_L: "stall_red",
+  Crates_Multiple: "crates_stacked",
+  Fire: "candle_lit",
+  Torch_Long: "torch_lit",
+  Gravestone_1Weathered: "tombstone",
+  Gravestone_3Weathered: "tombstone",
+};
+
+function ch1DecorRuntimeAssetKey(prop: Ch1DecorProp): string {
+  if (prop.pack === "itch_voxel_asset_pack") {
+    return CH1_DECOR_VOX_RUNTIME_ASSET[prop.asset] ?? "crates_stacked";
+  }
+  return `ch1-dungeon-decor:${prop.pack}:${prop.asset}`;
+}
+
+const CH1_DUNGEON_DECOR_RUNTIME_ASSETS: RuntimeAsset[] = [
+  ...new Map(
+    CH1_DUNGEON_DECOR.filter(
+      (prop) => prop.pack !== "itch_voxel_asset_pack"
+    ).map((prop) => {
+      const key = ch1DecorRuntimeAssetKey(prop);
+      return [
+        key,
+        {
+          key,
+          format: "obj" as const,
+          // OBJLoader appends `.obj` and MTLLoader appends `.mtl`, so store the
+          // public URL without the extension just like obj() above.
+          path: ch1DecorAssetUrl(prop).replace(/\.obj$/, ""),
+          defaultScale: 1,
+        },
+      ] as const;
+    })
+  ).values(),
+];
+
 // Curated from public/assets/harthmere/manifest/harthmere-selected-assets.json
 // plus the best older OBJ props. Do not load the whole asset library; the full
 // library is too noisy for a playable town pass.
@@ -2631,9 +2690,52 @@ const ASSETS: RuntimeAsset[] = [
   gltf("cage_small_fp", "gltf/quaternius/fantasy_props/Cage_Small.gltf", 0.78),
 
   // Animals only. No monster placements in town.
+  ...CH1_DUNGEON_DECOR_RUNTIME_ASSETS,
 ];
 
 const assetByKey = new Map(ASSETS.map((asset) => [asset.key, asset]));
+
+const CH1_DUNGEON_RUNTIME_PLACEMENTS: readonly RuntimePlacement[] =
+  Object.freeze(
+    CH1_DUNGEON_DECOR.map((prop) => {
+      // Decor data keeps its original 0..511 slot-index Z, while terrain and
+      // cutscenes use centred -256..255 Z. Convert once before applying the
+      // Elsewhen world offset or every chair/light lands 256 blocks away.
+      const world = ch1DungeonAuthoredToWorld(
+        prop.dungeonId,
+        ch1DecorPositionToTerrainAuthored(prop.at)
+      );
+      const asset = ch1DecorRuntimeAssetKey(prop);
+      const district = `Elsewhen / ${prop.zoneId}`;
+      const meta = makeHarthmerePropMetadata({
+        asset,
+        name: prop.note ?? prop.id,
+        district,
+        position: world,
+        scale: prop.scale,
+      });
+      return {
+        asset,
+        at: [world[0], world[1], world[2]],
+        rot: prop.rotationY ?? 0,
+        scale: prop.scale,
+        name: prop.note ?? prop.id,
+        district,
+        // Dungeon props are visual-only. Canonical voxel terrain owns every
+        // collision surface so an escort can never be soft-locked by a chair,
+        // market stall, or loading-order mismatch.
+        collision: CH1_DUNGEON_DECOR_COLLISION,
+        lodTier: "always" as const,
+        light: prop.light,
+        meta: {
+          ...meta,
+          lodTier: "always" as const,
+          collision: CH1_DUNGEON_DECOR_COLLISION,
+          tags: [...meta.tags, "ch1-dungeon-decor", "elsewhen-unshifted"],
+        },
+      } satisfies RuntimePlacement;
+    })
+  );
 
 // HARTHMERE_SNAPSHOT_BUILT_RUNTIME_POLICY_VERSION
 // In snapshot merge mode, Harthmere's map should be built like the snapshot:
@@ -2932,7 +3034,14 @@ const AD = (...args: Parameters<typeof A>): RuntimePlacement => {
   };
 };
 
-const HARTHMERE_GROVE_NPC_WALK_SPEED_MULTIPLIER = 1.8;
+// HARTHMERE_TOWNSPERSON_WANDER_SPEED (2026-07-25): townsfolk used to wander at
+// 1.8x their authored speed, which made every non-combat NPC in the additive
+// town look like it was jogging. Non-battle NPCs must walk at their authored
+// pace; the only sanctioned acceleration in Harthmere is the combat pursuit
+// boost in `chase_attack.ts`, which is gated on active chaseAttack locomotion.
+// Keep the helper as the single clamp point so a future speed change has one
+// place to live instead of being scattered through placement data.
+const HARTHMERE_GROVE_NPC_WALK_SPEED_MULTIPLIER = 1;
 function speedUpHarthmereGroveNpcWander(
   asset: string,
   district: string | undefined,
@@ -33600,7 +33709,15 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
   private async loadAll() {
     const preparedRuntimePlacements =
       prepareHarthmereRuntimePlacements(RUNTIME_PLACEMENTS);
-    const runtimePlacements = preparedRuntimePlacements.placements;
+    // Elsewhen decor is appended AFTER town shifting, snapshot-owned map
+    // filtering, and the town performance sampler. Those policies are correct
+    // for the additive Harthmere town but would either move dungeon furniture
+    // hundreds of metres or delete it as a GLB map prop. Dungeon decor has its
+    // own small asset/count budget and always keeps its authored world position.
+    const runtimePlacements = [
+      ...preparedRuntimePlacements.placements,
+      ...CH1_DUNGEON_RUNTIME_PLACEMENTS,
+    ];
     const authoredRobotPlacements = PLACEMENTS.filter((placement) =>
       Boolean(placement.robotProtectionAreaId)
     );
@@ -33714,6 +33831,17 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
         clone.rotation.y = placement.rot ?? 0;
         const scale = placement.scale ?? asset?.defaultScale ?? 1;
         clone.scale.setScalar(scale);
+        if (placement.light) {
+          const light = new THREE.PointLight(
+            placement.light.colour,
+            placement.light.intensity,
+            placement.light.distance ?? 18,
+            2
+          );
+          light.name = `${clone.name}-authored-light`;
+          light.position.set(0, 1.35 / Math.max(scale, 0.01), 0);
+          clone.add(light);
+        }
         this.attachHarthmereTownWalkDebugMetadata(
           placement,
           clone,

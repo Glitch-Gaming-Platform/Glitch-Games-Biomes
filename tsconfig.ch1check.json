@@ -1,0 +1,48 @@
+// CHAPTER_1_TYPECHECK
+//
+// Scoped typecheck for Chapter 1 ("Identity") modules and their tests.
+//
+// Why this exists: `./b typecheck` builds the whole program and needs several
+// minutes and ~8GB of heap. This config covers every Chapter 1 file whose
+// import graph is light (pure data, cutscene defs, server authority) and
+// finishes in a few seconds — fast enough to run on every edit:
+//
+//   node_modules/.bin/tsc -p tsconfig.ch1check.json
+//
+// IMPORTANT: ts-node runs with transpileOnly + swc (see the "ts-node" block in
+// tsconfig.json), so `./b test` does NOT typecheck. Green tests are not a
+// substitute for running this.
+//
+// The client renderer (ch1_fracture_gate.ts) pulls in ClientResources and with
+// it the whole client graph, so it is not included here — use
+// tsconfig.ch1renderer.json or the full `./b typecheck` for that file.
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "noEmit": true, "incremental": false },
+  "include": [
+    "src/shared/harthmere/ch1_*.ts",
+    "src/shared/cutscene/ch1_scenes.ts",
+    "src/server/harthmere/ch1_fragment_authority.ts",
+    "src/client/game/renderers/ch1_fracture_gate_material.ts",
+    "src/shared/harthmere/test/ch1_chapter.test.ts",
+    "src/shared/harthmere/test/ch1_gate_visual.test.ts",
+    "src/shared/harthmere/test/ch1_dungeon_terrain.test.ts",
+    "src/shared/harthmere/test/ch1_e2e_playthrough.test.ts",
+    "src/shared/harthmere/test/ch1_e2e_dungeon_traversal.test.ts",
+    "src/shared/harthmere/test/ch1_augur9_party.test.ts",
+    "src/shared/harthmere/test/ch1_live_fixes.test.ts",
+    "src/shared/harthmere/test/ch1_live_gate.test.ts",
+    "src/shared/harthmere/harthmere_cloud_save_rehydration.ts",
+    "src/shared/harthmere/ch1_analytics.ts",
+    "src/client/components/biomes_ui/__tests__/QuestsTabRegistration.test.ts",
+    "src/shared/cutscene/test/ch1_scenes.test.ts",
+    "src/shared/cutscene/promo_scenes.ts",
+    "src/shared/harthmere/test/ch1_dungeon_horizon.test.ts",
+    "src/shared/harthmere/harthmere_horizon_noise.ts",
+    "src/shared/harthmere/harthmere_town_horizon.ts",
+    "src/shared/harthmere/test/harthmere_town_horizon.test.ts",
+    "src/shared/cutscene/test/promo_scenes.test.ts",
+    "src/server/harthmere/test/ch1_fragment_authority.test.ts",
+    "modules.d.ts"
+  ]
+}

@@ -1,5 +1,12 @@
 import { HARTHMERE_BUSINESS_CUSTOMER_NPC_SEEDS } from "@/shared/harthmere/business_customer_npc_seed";
 import { HARTHMERE_BUSINESS_OWNER_NPC_SEEDS } from "@/shared/harthmere/business_owner_npc_seed";
+import { ch1AllScenes } from "@/shared/cutscene/ch1_scenes";
+import { CH1_NEW_CAST, CH1_TESTIMONIES } from "@/shared/harthmere/ch1_cast";
+import {
+  CH1_VOICE_ACTORS,
+  ch1VoiceActorForDescriptor,
+  ch1VoiceActorForSpeaker,
+} from "@/shared/harthmere/ch1_voice";
 import { HARTHMERE_LIVE_ENTITY_PRODUCTION_SEEDS } from "@/shared/harthmere/live_entity_production_seed";
 import { HARTHMERE_NAMED_NPCS } from "@/shared/harthmere/npc_compendium";
 import { HARTHMERE_REMAINING_NPCS } from "@/shared/harthmere/npc_compendium";
@@ -94,9 +101,11 @@ function catalogEntry(
     displayName: string;
     entityId?: number;
     staticLines: readonly (string | undefined)[];
+    /** Reuse an existing actor identity when adding chapter-specific lines. */
+    profile?: HarthmereNpcVoiceProfile;
   }
 ): HarthmereNpcVoiceCatalogEntry {
-  const profile = harthmereVoiceProfileForActor(actor);
+  const profile = actor.profile ?? harthmereVoiceProfileForActor(actor);
   return {
     source: actor.source,
     id: actor.id,
@@ -228,6 +237,70 @@ export function buildHarthmereNpcVoiceCatalog(): HarthmereNpcVoiceCatalogEntry[]
         kind: seed.kind,
         background: seed.description,
         staticLines: [seed.dialog],
+      })
+    );
+  }
+
+  // Group every implemented Chapter 1 cinematic line by the exact actor
+  // descriptor attached to the cutscene. This makes the committed MP3 and the
+  // runtime request share a cache key while preserving returning voices.
+  const chapterLinesByActorKey = new Map<string, string[]>();
+  const addChapterLine = (
+    actorKey: string | undefined,
+    text: string | undefined
+  ) => {
+    if (!actorKey || !text) {
+      return;
+    }
+    const lines = chapterLinesByActorKey.get(actorKey) ?? [];
+    lines.push(text);
+    chapterLinesByActorKey.set(actorKey, lines);
+  };
+
+  for (const member of CH1_NEW_CAST) {
+    addChapterLine(
+      ch1VoiceActorForSpeaker(member.displayName)?.profile.actorKey,
+      member.key === "marrow" ? undefined : member.sampleLine
+    );
+  }
+  for (const testimony of CH1_TESTIMONIES) {
+    addChapterLine(
+      ch1VoiceActorForSpeaker(testimony.npc)?.profile.actorKey,
+      testimony.line
+    );
+  }
+  for (const scene of ch1AllScenes()) {
+    for (const action of scene.shots.flatMap((shot) => shot.actions)) {
+      if (action.kind !== "dialogue" || !action.voice) {
+        continue;
+      }
+      addChapterLine(
+        ch1VoiceActorForDescriptor(action.voice)?.profile.actorKey,
+        action.text
+      );
+    }
+  }
+
+  for (const actor of CH1_VOICE_ACTORS) {
+    const staticLines =
+      chapterLinesByActorKey.get(actor.profile.actorKey) ?? [];
+    if (staticLines.length === 0) {
+      continue;
+    }
+    entries.push(
+      catalogEntry({
+        source: actor.source,
+        id: actor.id,
+        entityId: actor.entityId,
+        displayName: actor.displayName,
+        name: actor.displayName,
+        role: actor.role,
+        background: actor.background,
+        voiceStyle: actor.voiceStyle,
+        staticLines,
+        // Returning characters must sound identical to their earlier Grove or
+        // business dialogue rather than being recast for the new chapter.
+        profile: actor.profile,
       })
     );
   }

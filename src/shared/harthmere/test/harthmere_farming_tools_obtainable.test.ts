@@ -103,16 +103,18 @@ describe("Harthmere farming tools are obtainable", () => {
       HARTHMERE_CRAFTING_TOOLS.wateringCan
     )!;
     const base = snapshot({ gold: 100 });
+    const bundleQuantity = entry.bundleQuantity ?? 1;
+    const bundlePrice = entry.bundlePrice ?? entry.buyPrice * bundleQuantity;
     const result = mutate("buy_from_vendor", base, {
       vendorId: FARM_VENDOR,
       itemId: HARTHMERE_CRAFTING_TOOLS.wateringCan,
-      count: 1,
+      count: bundleQuantity,
     });
     assert.ok(result.ok, `buy failed: ${result.errors.join(",")}`);
-    assert.strictEqual(result.goldDelta, -entry.buyPrice);
+    assert.strictEqual(result.goldDelta, -bundlePrice);
     assert.strictEqual(
       result.itemDeltas[HARTHMERE_CRAFTING_TOOLS.wateringCan],
-      1
+      bundleQuantity
     );
   });
 
@@ -122,13 +124,18 @@ describe("Harthmere farming tools are obtainable", () => {
       HARTHMERE_CRAFTING_TOOLS.hoe
     )!;
     const base = snapshot({ gold: 100 });
+    const bundleQuantity = entry.bundleQuantity ?? 1;
+    const bundlePrice = entry.bundlePrice ?? entry.buyPrice * bundleQuantity;
     const result = mutate("buy_from_vendor", base, {
       vendorId: FARM_VENDOR,
       itemId: HARTHMERE_CRAFTING_TOOLS.hoe,
-      count: 1,
+      count: bundleQuantity,
     });
     assert.ok(result.ok, `buy failed: ${result.errors.join(",")}`);
-    assert.strictEqual(result.goldDelta, -entry.buyPrice);
-    assert.strictEqual(result.itemDeltas[HARTHMERE_CRAFTING_TOOLS.hoe], 1);
+    assert.strictEqual(result.goldDelta, -bundlePrice);
+    assert.strictEqual(
+      result.itemDeltas[HARTHMERE_CRAFTING_TOOLS.hoe],
+      bundleQuantity
+    );
   });
 });

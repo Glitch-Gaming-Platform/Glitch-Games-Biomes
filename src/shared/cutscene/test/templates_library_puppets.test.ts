@@ -236,6 +236,12 @@ describe("cutscene templates", () => {
       sfx: "discover",
     });
     assert.ok(validateCutsceneDef(ok).ok);
+    const target = ok.cast.find((member) => member.role === "revealTarget");
+    assert.equal(target?.binding.kind, "anchor");
+    assert.equal(ok.shots[0].camera.kind, "dolly");
+    if (ok.shots[0].camera.kind === "dolly") {
+      assert.equal(ok.shots[0].camera.lookAtRole, "revealTarget");
+    }
   });
 });
 

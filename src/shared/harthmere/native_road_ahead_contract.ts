@@ -284,6 +284,11 @@ export const NATIVE_ROAD_AHEAD_CONTAINER_SPECS = Object.freeze({
     labels: ["clothing crate"],
     sourceEntityId: 5165478204703095 as BiomesId,
     placeableItemId: 6720083171323032 as BiomesId,
+    // Original May 16 snapshot transform. Browser release gates must interact
+    // with this placed frame at its authored gravel-pile location; moving only
+    // its Position component does not move the old placeable's rendered
+    // occupancy and creates a false missing-prompt failure.
+    position: [231.5, 67, -82.5] as const,
     choices: [
       {
         stepId: NATIVE_ROAD_AHEAD_STEP_IDS.CHOOSE_TOP,
@@ -311,6 +316,8 @@ export const NATIVE_ROAD_AHEAD_CONTAINER_SPECS = Object.freeze({
     labels: ["billy's toolbag", "billys toolbag", "billy's bag", "billys bag"],
     sourceEntityId: 5682301664350905 as BiomesId,
     placeableItemId: 6811733198167399 as BiomesId,
+    // Original May 16 snapshot transform; see the Clothing Crate note above.
+    position: [244.5, 58, -110.5] as const,
     choices: [
       {
         stepId: NATIVE_ROAD_AHEAD_STEP_IDS.OPEN_BILLYS_BAG,
@@ -335,6 +342,48 @@ export function isNativeBustedUnderwaterContainerLabel(label?: string | null) {
   return (
     NATIVE_BUSTED_UNDERWATER_CONTAINER_SPEC.labels as readonly string[]
   ).includes(normalizedQuestObjectLabel(label));
+}
+
+/**
+ * True for ANY label that names a physical native-quest container: the Road
+ * Ahead crates/toolbag AND Busted's sunken-boat chest.
+ *
+ * WHY THIS EXISTS (live bug, 2026-07-25 session): the Busted chest ("chest
+ * the grove underwater main") is an ORIGINAL-SNAPSHOT container placeable —
+ * it has `placed_by` set and its item is a real container with its own aimed
+ * overlay. The proximity F-prompt scanner deliberately skips such entities so
+ * the richer cursor-ray overlay wins... but the chest sits underwater inside
+ * the sunken hull, where the cursor ray hits the hull, the water, or the
+ * terrain first. The aimed overlay never fires, the proximity path skips it,
+ * and the player can never collect the Water-logged Muck Buster — Busted
+ * (and every quest after it) becomes uncompletable.
+ *
+ * Road Ahead containers never hit this because they are authored frame
+ * placeables with a quest_giver and no container overlay of their own.
+ *
+ * The proximity scanner uses this helper to keep quest containers in the
+ * candidate set regardless of `placed_by` or their own-overlay status. The
+ * server still enforces its authoritative range/step validation on open, so
+ * this widens discovery only, not authority.
+ */
+export function isNativeQuestContainerLabel(label?: string | null) {
+  const normalized = normalizedQuestObjectLabel(label);
+  if (!normalized) {
+    return false;
+  }
+  if (
+    (
+      NATIVE_BUSTED_UNDERWATER_CONTAINER_SPEC.labels as readonly string[]
+    ).includes(normalized)
+  ) {
+    return true;
+  }
+  for (const spec of Object.values(NATIVE_ROAD_AHEAD_CONTAINER_SPECS)) {
+    if ((spec.labels as readonly string[]).includes(normalized)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 export function nativeBustedUnderwaterContainerClaimForItem(
@@ -507,9 +556,12 @@ export function nativeRoadAheadFirstIncompletePriorStep(
 }
 
 /**
- * Quest-giver data supplements an object's capability.  The two Road Ahead
- * storage props must therefore route to their container UI rather than the
- * generic NPC dialogue fallback.
+ * Quest-giver data supplements an object's capability. Every physical native
+ * quest container must therefore route to its container UI rather than the
+ * generic NPC dialogue fallback. This includes Busted's sunken chest: it owns
+ * `quest_giver` in the original snapshot just like the Road Ahead frames, and
+ * treating that marker as a living NPC suppresses the Open Container shortcut
+ * even after proximity discovery succeeds.
  */
 export function nativeQuestGiverUsesEcsDialogue(
   questGiver: unknown,
@@ -518,7 +570,7 @@ export function nativeQuestGiverUsesEcsDialogue(
   return (
     nativeBiomesEcsAuthorityEnabled() &&
     Boolean(questGiver) &&
-    !isNativeRoadAheadQuestObjectLabel(label)
+    !isNativeQuestContainerLabel(label)
   );
 }
 

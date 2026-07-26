@@ -61,6 +61,13 @@ function requireNativeEcsE2EAdmin(
 export const zHarthmereVisualTestAuthResponse = z.object({
   userId: zBiomesId,
   username: z.string().optional(),
+  /**
+   * This endpoint is already test-gated. Returning its newly-created session
+   * lets the same-origin visual-auth bridge install the auth mirror required
+   * by the WebSocket client before `/at` mounts. Without it, HTTP looked
+   * authenticated while sync still connected as observer user 0.
+   */
+  sessionId: z.string(),
   e2eAdmin: z.boolean().optional(),
   mode: z.literal("harthmere_visual_test_auth"),
 });
@@ -130,6 +137,7 @@ export default biomesApiHandler(
     return {
       userId: user.id,
       username: user.username,
+      sessionId: session.id,
       e2eAdmin: e2eAdmin === "1" ? true : undefined,
       mode: "harthmere_visual_test_auth" as const,
     };

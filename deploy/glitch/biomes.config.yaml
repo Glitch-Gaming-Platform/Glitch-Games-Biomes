@@ -89,9 +89,13 @@ overrideMapMetadata: {}
 # Connectivity
 wsZrpcTtlMs: 120_000
 wsZrpcHeartbeatIntervalMs: 200
-wsZrpcHeartbeatTtlMs: 500
-wsZrpcHeartbeatReconnectMs: 3000
-wsZrpcHeartbeatStartupReconnectMs: 6000
+# Heavy Glitch clients and software-WebGL capture can block the main thread for
+# several seconds while the socket itself remains healthy. These values must
+# not regress below the documented defaults in server/shared/config.ts or the
+# UI shows a false disconnect and starts a reconnect/bootstrap spiral.
+wsZrpcHeartbeatTtlMs: 10_000
+wsZrpcHeartbeatReconnectMs: 30_000
+wsZrpcHeartbeatStartupReconnectMs: 30_000
 wsZrpcSoftBackpressure: 65536
 
 # Auto-build

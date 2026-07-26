@@ -4,12 +4,74 @@ This document is the catalog checklist for production-shaped browser testing.
 It exists so a future pass enumerates the whole authored catalog first, runs
 independent rows in batches, and does not stop after the first failure.
 
+## July 25, 2026 final wrap: client catalog closed, Grove/Bible remain
+
+Do not repeat the 11 client compatibility quests. Every ID now has retained
+browser completion evidence across these reports:
+
+- `1785015764300-50628-report.json`
+- `1785016423103-65714-report.json`
+- `1785017667020-95863-report.json`
+- `1785017846125-98059-report.json`
+- `1785018214622-21402-report.json`
+- `1785018393704-26889-report.json`
+
+The final three-row report is globally green. Two earlier reports contain
+passing quest scenarios plus explicitly classified text-to-speech abort or
+fixture-cleanup transients; retain the scenario passes instead of replaying
+their quest IDs.
+
+The all-48 Grove batch was stopped on request under run prefix
+`1785019146297-47707`. It produced accepted/failure screenshots through
+`cove_keeps_pictures`, but no report existed because the process was interrupted
+before its final write. Those images are diagnostic evidence, not passes.
+
+Two shared harness defects found during that batch are now fixed without a
+rebuild:
+
+- Grove actor resets use the live-mode persistence serializer, preserving
+  Maps, Sets, and the complete authority schema between rows.
+- The report is checkpointed after every Grove row, including failures, so a
+  stopped batch retains completed IDs and can rerun failures only.
+
+The remaining production-browser work is still 48 Grove rows and 76 Bible
+rows. Keep the warm stack, run each catalog as a non-fail-fast batch, and use
+the checkpoint report to filter subsequent invocations to failures only. Do
+not replay the client catalog, Chapter 1, robot story, locked onboarding
+lessons, Quests UI, or retained Jobs Board passes.
+
 ## July 24, 2026 handoff: stopped before full catalog completion
 
 The local full-catalog campaign was intentionally stopped because the retained
 Linux/AMD64 production snapshot takes tens of seconds per live-mode mutation
 and several hours for the remaining catalog. Do not describe the remaining
 catalog as browser-tested until new reports are written.
+
+### July 25 focused closure (do not replay)
+
+- The HAR proves Road Ahead's Clothing Crate and Billy's Toolbag requests
+  succeeded. Its Busted failure occurred before any underwater-container API
+  request, which isolated the problem to world prompt discovery rather than a
+  clothing-container mismatch.
+- `1784962944155-29904-report.json` records a passing real F prompt, real
+  container UI, real Take All transaction, and every authored Busted action
+  through completion. The outer report failed only on three local profile
+  image 404s; the runner now preserves those URL-bearing diagnostics as
+  transients and keeps every other same-origin HTTP 4xx/5xx fatal.
+- `1784963562747-35318-report.json` is green for the dedicated Quests UI in one
+  combined browser session: All/Active/Available/Failed/Completed filters,
+  Failed count/list agreement, detail selection, responsive stacking, and Show
+  on Map.
+- Chapter 1 is a separate native challenge family from the Grove/Bible/Jobs
+  Board catalogs below. All 31 Chapter 1 quests and all 80 objectives pass via
+  retained checkpoints ending in
+  `1784986267883-76489-report.json` (30 objectives in the final run, 50 retained,
+  zero browser failures). Do not include Chapter 1 in the remaining counts or
+  replay it while working through the unrelated catalogs.
+
+These are locked passes. Resume the still-uncovered catalogs below in batches;
+do not rerun Road Ahead, Busted, Get the Muck Out, Muck vs. Machine, or the
+Quests UI merely to refresh timestamps.
 
 ### Retained browser evidence
 
@@ -40,7 +102,6 @@ catalog as browser-tested until new reports are written.
   `sanitation_cleanup_waste`, `repair_person_fixture_fix`,
   `restaurant_food_supply`, `courier_medicine_delivery`, and
   `hospitality_room_reset`.
-- 11 client compatibility quests.
 - 48 Snapshot Grove lessons not listed as recent skips below.
 - 76 non-starter Bible quests.
 - One browser round trip for each live helper family (`food_water`,
@@ -67,10 +128,12 @@ catalog as browser-tested until new reports are written.
   The authority regression passes, but the final production image rebuild and
   browser retest were stopped before completion.
 
-The attempted `r11` production image was interrupted during packaging and does
-not exist. The older retained stack/image is `r10` and does not contain the
-field-proximity or atomic quest-materialization fixes. Rebuild before resuming
-browser coverage.
+The final packaged Chapter 1 image is
+`biomes-node:local-chapter1-live-20260725-r11`. The warm validation stack uses
+the same built `.next` and `dist` outputs through read-only bind mounts. The
+remaining Grove/Bible/client/business catalog rows are still not
+browser-verified by that fact alone. Preserve the stack and resume only those
+uncovered rows instead of rebuilding between catalogs.
 
 ### July 24 diagnostic browser batches (failure collection, not pass evidence)
 
@@ -184,7 +247,7 @@ than maintaining a second handwritten list.
 | Auto-seeded Jobs Board templates |    20 | all 20                                                                    |               0 |
 | Business Jobs Board templates    |    19 | none                                                                      |              19 |
 | Native robot-story chapters      |     4 | Road Ahead → Busted → Get the Muck Out → Muck vs. Machine                 |               0 |
-| Client compatibility quests      |    11 | none                                                                      |              11 |
+| Client compatibility quests      |    11 | all 11                                                                    |               0 |
 
 Recent skip evidence is retained under
 `artifacts/harthmere-native-ecs-e2e/`; do not rerun those catalogs merely to

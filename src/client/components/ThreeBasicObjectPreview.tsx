@@ -73,7 +73,12 @@ export class ThreeBasicObjectPreview extends React.Component<
     this.renderer = new THREE.WebGLRenderer({ alpha: true });
     this.renderer.debug.onShaderError = shaderErrorCallback;
     this.renderer.setPixelRatio(window.devicePixelRatio);
-    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+    // three@0.152 exposes outputColorSpace at runtime, while the repository's
+    // pinned @types/three@0.151 still only declares outputEncoding. Keep the
+    // runtime-correct API without weakening the renderer type everywhere.
+    (
+      this.renderer as THREE.WebGLRenderer & { outputColorSpace: string }
+    ).outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.setClearColor(0xffffff, 0);
     this.threeMountRef.current.appendChild(this.renderer.domElement);
 

@@ -7,6 +7,7 @@ import path from "path";
 const ROOT = process.cwd();
 
 const WORLD_INTERACTION_FILES = [
+  "src/client/components/challenges/Chapter1NativeObjectivePrompt.tsx",
   "src/client/components/harthmere_jobs_board/HarthmereJobsBoardWorldInteraction.tsx",
   "src/client/components/harthmere_business/HarthmereBusinessLiveContainer.tsx",
   "src/client/components/harthmere_home/HarthmereHomeConsoleLiveContainer.tsx",
@@ -56,7 +57,7 @@ describe("world interaction F/E keys", () => {
     assert.match(source, /<HarthmereUnifiedHUD hideLegacyVisuals \/>/);
   });
 
-  it("keeps Snapshot Grove actions mounted in the production Biomes UI branch", () => {
+  it("keeps the right-side Grove tracker out of the in-world HUD", () => {
     const source = fs.readFileSync(
       path.join(
         ROOT,
@@ -72,7 +73,12 @@ describe("world interaction F/E keys", () => {
       branchStart,
       source.indexOf("\n  return (", branchStart + 1)
     );
-    assert.match(productionBranch, /<SnapshotGroveMapHUD \/>/);
+    assert.doesNotMatch(productionBranch, /<SnapshotGroveMapHUD \/>/);
     assert.match(productionBranch, /<SnapshotGroveTutorChatPanel \/>/);
+    assert.equal(
+      source.match(/<SnapshotGroveMapHUD \/>/g)?.length,
+      1,
+      "the Grove tracker should only render inside the opened map panel"
+    );
   });
 });

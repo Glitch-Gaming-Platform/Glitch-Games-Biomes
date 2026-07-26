@@ -9,6 +9,12 @@ import { BikkieIds } from "@/shared/bikkie/ids";
 import { safeParseBiomesId, type BiomesId } from "@/shared/ids";
 import { nativeBiomesEcsAuthorityEnabled } from "./native_road_ahead_contract";
 import {
+  defaultCh1LiveGateRuntimeState,
+  normalizeCh1LiveGateRuntimeState,
+  type Ch1LiveGateRuntimeState,
+} from "./ch1_live_gate";
+import { registerCh1LiveItemDefinitions } from "./ch1_live_items";
+import {
   harthmereNativeBiomesIdForItemId,
   harthmereNativeBiomesIdForRecipeId,
 } from "./harthmere_native_item_ids";
@@ -316,11 +322,20 @@ import {
 import {
   HARTHMERE_NPC_CHASE_SPEED_CAP_METERS_PER_SECOND,
   HARTHMERE_NPC_CHASE_SPEED_MULTIPLIER,
+  HARTHMERE_NPC_CHASE_SPEED_STEP_UP_20,
+  HARTHMERE_NPC_CHASE_SPEED_STEP_UP_30,
+  isHarthmereCivilianNpcName,
 } from "@/shared/npc/behavior/chase_attack";
 
 export const HARTHMERE_LIVE_ENTITY_PREVIOUS_CHASE_STEP_CAP_METERS = 4;
+// The raised per-tick chase ceiling exists only so the fight-speed boost is not
+// silently clamped away. Anything that is merely "moving toward a target" —
+// escorts, followers, town routes — keeps the original 4m ceiling so no
+// non-combat NPC is accelerated as a side effect of combat tuning.
 export const HARTHMERE_LIVE_ENTITY_CHASE_STEP_CAP_METERS =
-  HARTHMERE_LIVE_ENTITY_PREVIOUS_CHASE_STEP_CAP_METERS * 1.2;
+  HARTHMERE_LIVE_ENTITY_PREVIOUS_CHASE_STEP_CAP_METERS *
+  HARTHMERE_NPC_CHASE_SPEED_STEP_UP_20 *
+  HARTHMERE_NPC_CHASE_SPEED_STEP_UP_30;
 
 import {
   buildingSystemBlueprintById,
@@ -391,6 +406,11 @@ import {
   harthmereBusinessOutpostBusinessId,
   isPointInsideHarthmereBusinessSafeSite,
 } from "./business_customer_simulator";
+
+// Chapter 1 quest rewards use the normal MMO inventory authority. Register
+// their binding/trade rules before any actor state is parsed so reconnects do
+// not temporarily treat plot-critical items as generic tradeable stacks.
+registerCh1LiveItemDefinitions();
 
 export const HARTHMERE_LIVE_MODE_BACKEND_VERSION =
   "harthmere-live-mode-backend";
@@ -1141,6 +1161,13 @@ export interface HarthmereLiveModeBackendState {
   version: typeof HARTHMERE_LIVE_MODE_BACKEND_VERSION;
   actorId: string;
   updatedAtMs: number;
+  /**
+   * Glitch save version last used to rebuild an otherwise empty actor record.
+   * Persisted with the actor-owned state so the same cloud version cannot
+   * resurrect progress after a player intentionally resets it.
+   */
+  rehydratedFromCloudSaveVersion?: number;
+  rehydratedAtMs?: number;
   inventory: {
     items: Record<string, number>;
     bank: Record<string, number>;
@@ -1290,6 +1317,13 @@ export interface HarthmereLiveModeBackendState {
      */
     bible: ReturnType<typeof defaultHarthmereBibleQuestLiveSlice>;
   };
+  /**
+   * Durable Fracture Gate run authority. This sits beside quest progress
+   * because entering Elsewhen is a server warp with a lifecycle of its own:
+   * native challenge leaves describe objectives, while this branch proves the
+   * player legitimately entered one slot and remembers where to return them.
+   */
+  chapter1: Ch1LiveGateRuntimeState;
   questInvites: HarthmereLiveModeQuestInviteState;
   property: {
     owned: Record<string, BuildingSystemPropertyRecord>;
@@ -6809,6 +6843,7 @@ export function defaultHarthmereLiveModeBackendState(
       // dialogue / world triggers (bible-wiring fix, 2026-07-14).
       bible: defaultHarthmereBibleQuestLiveSlice(),
     },
+    chapter1: defaultCh1LiveGateRuntimeState(),
     questInvites: {
       invites: {},
       sharedQuests: {},
@@ -7063,6 +7098,7 @@ export function parseHarthmereLiveModeBackendState(
           (parsed.quests as any)?.bible
         ),
       },
+      chapter1: normalizeCh1LiveGateRuntimeState((parsed as any).chapter1),
       questInvites: normalizeHarthmereQuestInviteState(
         (parsed as any).questInvites,
         nowMs
@@ -10065,8 +10101,18 @@ export function reduceHarthmereLiveModeBackendState(
       !input.target.ownerId &&
       input.target.isAttackable &&
       input.target.retaliatesWhenAttacked === true;
+    // Escorts and followers move toward a target but are not fighting, so they
+    // must never pick up the combat pursuit boost. Only genuine hostile
+    // engagement decisions qualify.
+    const isFightingDecision =
+      input.decision === "retaliate_to_recent_attacker" ||
+      input.decision === "engage_highest_threat" ||
+      input.decision.startsWith("muck_unprovoked:");
     const receivesFightSpeedBoost =
-      shouldChase &&
+      isFightingDecision &&
+      !isHarthmereCivilianNpcName(
+        `${input.entityId} ${input.target.species ?? ""}`
+      ) &&
       (input.kind === "mux" ||
         input.kind === "hex" ||
         isEligibleUnownedCombatAnimal);
@@ -10078,20 +10124,17 @@ export function reduceHarthmereLiveModeBackendState(
         )
       : baseSpeed;
     // Production combat AI normally ticks every two seconds. Integrate the
-    // authored speed across that interval, then cap the server step at exactly
-    // 20% above the previous 4m chase-step ceiling. This keeps the requested
-    // relative increase without allowing stale ticks to teleport an NPC.
+    // authored speed across that interval, then cap the server step. Only a
+    // boosted fighter gets the raised ceiling; everything else (escorts,
+    // followers, townsfolk) keeps the original 4m per-tick ceiling.
     const movementSeconds = Math.min(
       2,
       Math.max(0.25, input.thinkIntervalMs / 1000)
     );
-    const maxStep = Math.max(
-      0.05,
-      Math.min(
-        HARTHMERE_LIVE_ENTITY_CHASE_STEP_CAP_METERS,
-        speed * movementSeconds
-      )
-    );
+    const stepCap = receivesFightSpeedBoost
+      ? HARTHMERE_LIVE_ENTITY_CHASE_STEP_CAP_METERS
+      : HARTHMERE_LIVE_ENTITY_PREVIOUS_CHASE_STEP_CAP_METERS;
+    const maxStep = Math.max(0.05, Math.min(stepCap, speed * movementSeconds));
     if (shouldChase && targetPosition) {
       const dx = targetPosition.x - current.x;
       const dz = targetPosition.z - current.z;

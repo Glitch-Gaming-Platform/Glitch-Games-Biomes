@@ -11,8 +11,31 @@ output=$2
 duration=${3:-}
 
 duration_args=()
-video_filter="fps=30,format=yuv420p"
+# Headless capture preserves the game's 16:10 canvas and can produce an odd
+# height (for example 360x225). libx264/yuv420p require even dimensions; pad by
+# at most one transparent/black pixel instead of stretching or cropping the
+# authored frame.
+video_filter="fps=30,pad=ceil(iw/2)*2:ceil(ih/2)*2,format=yuv420p"
 audio_filter=""
+
+# FFmpeg's atempo accepts only 0.5..2.0 per stage. Software-WebGL capture can
+# run more than 2x slower than the authored timeline, so compose legal stages
+# instead of letting a long scene fail only during the final MP4 encode.
+build_atempo_filter() {
+  local speed=$1
+  local parts=()
+  while awk "BEGIN { exit !($speed > 2.0) }"; do
+    parts+=("atempo=2.0")
+    speed=$(awk "BEGIN { printf \"%.12f\", $speed / 2.0 }")
+  done
+  while awk "BEGIN { exit !($speed < 0.5) }"; do
+    parts+=("atempo=0.5")
+    speed=$(awk "BEGIN { printf \"%.12f\", $speed * 2.0 }")
+  done
+  parts+=("atempo=$speed")
+  local IFS=,
+  echo "${parts[*]}"
+}
 if [[ -n "$duration" ]]; then
   duration_args=(-t "$duration")
   # Browser capture can run slower than realtime when software WebGL is also
@@ -26,7 +49,7 @@ if [[ -n "$duration" ]]; then
     video_scale=$(awk "BEGIN { printf \"%.12f\", $duration / $source_duration }")
     audio_speed=$(awk "BEGIN { printf \"%.12f\", $source_duration / $duration }")
     video_filter="setpts=${video_scale}*PTS,${video_filter}"
-    audio_filter="atempo=${audio_speed}"
+    audio_filter=$(build_atempo_filter "$audio_speed")
   fi
 fi
 
@@ -37,7 +60,7 @@ has_audio=$(ffprobe -v error -select_streams a:0 \
   -show_entries stream=index -of csv=p=0 "$input")
 
 if [[ -n "$has_audio" && -n "$audio_filter" ]]; then
-  ffmpeg -y \
+  ffmpeg -y -nostdin \
     -i "$input" \
     -filter_complex "[0:v]${video_filter}[v];[0:a]${audio_filter}[a]" \
     -map "[v]" \
@@ -51,7 +74,7 @@ if [[ -n "$has_audio" && -n "$audio_filter" ]]; then
     -movflags +faststart \
     "$output"
 elif [[ -n "$has_audio" ]]; then
-  ffmpeg -y \
+  ffmpeg -y -nostdin \
     -i "$input" \
     "${duration_args[@]}" \
     -vf "$video_filter" \
@@ -63,7 +86,7 @@ elif [[ -n "$has_audio" ]]; then
     -movflags +faststart \
     "$output"
 else
-  ffmpeg -y \
+  ffmpeg -y -nostdin \
     -i "$input" \
     "${duration_args[@]}" \
     -vf "$video_filter" \

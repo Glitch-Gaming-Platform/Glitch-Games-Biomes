@@ -1,7 +1,7 @@
 {
   "version": "npc-voice-audio-cache-v1",
   "catalogVersion": "harthmere-npc-voice-catalog",
-  "generatedAt": "2026-07-23T19:43:19.695Z",
+  "generatedAt": "2026-07-25T04:02:56.142Z",
   "provider": "elevenlabs",
   "synthesisIdentity": "elevenlabs-natural-v3-speed-102-v1|eleven_v3|mp3_44100_128||||",
   "modelId": "eleven_v3",
@@ -2286,6 +2286,951 @@
         "11be03fd3882a352864cb1b2ea8578e871a54d476a5549ad9bdc6bee60cb1206",
         "5e2a2960accd06013533d0941c50ba38b9739bc95d273e5fa7900ad39c64f01c"
       ]
+    },
+    {
+      "cacheKey": "21761453f0eb0db8c2953c97674ec5157f2bfec3262ef872a288b8a6635f67c5",
+      "cacheKeys": [
+        "21761453f0eb0db8c2953c97674ec5157f2bfec3262ef872a288b8a6635f67c5",
+        "ad88792038d7b0bad5962c817e5a0c37e4ff8d123fd3fbe1cc955007dcf12101"
+      ],
+      "actorKey": "chapter_1_identity:augur9:8810000000020507:augur-9:augur-9",
+      "actorId": "augur9",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-augur9-augur-9/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-AlloyTurboMultilingualNeural|gender=neutral|kind=robot|rate=-2%25|pitch=-2%25|volume=default|break=115|actor=chapter_1_identity%3Aaugur9%3A8810000000020507%3Aaugur-9%3Aaugur-9",
+      "voiceId": "EXAVITQu4vr4xnSDxMaL",
+      "textHash": "4718b8142e386fa13705f2662510c97d27bf34bc4b1a789cb0b5f880ce41edc5",
+      "bytes": 150927
+    },
+    {
+      "cacheKey": "422696b3a06b3936112585693ec2770c0bda62fe11b5f51eb05ce069d48e33ff",
+      "cacheKeys": [
+        "422696b3a06b3936112585693ec2770c0bda62fe11b5f51eb05ce069d48e33ff",
+        "1911bbb20542862e481015ed3098de1f272f4f2be609e8c1b297a79ae18a6568"
+      ],
+      "actorKey": "chapter_1_identity:augur9:8810000000020507:augur-9:augur-9",
+      "actorId": "augur9",
+      "lineId": "line-02",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-augur9-augur-9/line-02.mp3",
+      "voice": "azure-speech|voice=en-US-AlloyTurboMultilingualNeural|gender=neutral|kind=robot|rate=-2%25|pitch=-2%25|volume=default|break=115|actor=chapter_1_identity%3Aaugur9%3A8810000000020507%3Aaugur-9%3Aaugur-9",
+      "voiceId": "EXAVITQu4vr4xnSDxMaL",
+      "textHash": "ad9e75af5e1035ff8e211845e8d637deac6128ab16534d849ebb0b13977166b4",
+      "bytes": 150927
+    },
+    {
+      "cacheKey": "ae0c8cc6bad57787afbc3eca80dca0d33347e90f3c76727c50397be1cb5a35a7",
+      "cacheKeys": [
+        "ae0c8cc6bad57787afbc3eca80dca0d33347e90f3c76727c50397be1cb5a35a7",
+        "89abbcd52d6f8bfcfbb67a8dd8c6d6bbf4efdbd8fa32ae8b79c13a46e13381da"
+      ],
+      "actorKey": "chapter_1_identity:cressa_vane:8810000000020502:arbiter cressa vane:arbiter cressa vane",
+      "actorId": "cressa_vane",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-cressa-vane-arbiter-cressa-vane/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-JaneNeural|gender=female|kind=humanoid|style=friendly|styleDegree=0.85|rate=-3%25|pitch=%2B0%25|volume=default|break=122|actor=chapter_1_identity%3Acressa_vane%3A8810000000020502%3Aarbiter%20cressa%20vane%3Aarbiter%20cressa%20vane",
+      "voiceId": "21m00Tcm4TlvDq8ikWAM",
+      "textHash": "a65b864a7f860d01d04fd776be0f3d879c4bb6d9224c8217fca5e705e86322fc",
+      "bytes": 218636
+    },
+    {
+      "cacheKey": "50ebf3c31b4105b177eb8ffb02d582a95a58fab18b85007b946578a3d26ff6f4",
+      "cacheKeys": [
+        "50ebf3c31b4105b177eb8ffb02d582a95a58fab18b85007b946578a3d26ff6f4",
+        "32996e541f997505491205a41bcf4a89def5aec63328278b58aaf56df2773c8f"
+      ],
+      "actorKey": "chapter_1_identity:halden_rook:8810000000020503:halden rook:halden rook",
+      "actorId": "halden_rook",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-halden-rook-halden-rook/line-01.mp3",
+      "voice": "azure-speech|voice=en-GB-RyanNeural|gender=male|kind=humanoid|style=chat|styleDegree=1.00|rate=-2%25|pitch=%2B3%25|volume=default|break=134|actor=chapter_1_identity%3Ahalden_rook%3A8810000000020503%3Ahalden%20rook%3Ahalden%20rook",
+      "voiceId": "TxGEqnHWrfWFTfGW9XjX",
+      "textHash": "b62f4f74bd9f1acbc30ad0414b8c1760065eb9019de9f5a03f7e53b8f4452a9c",
+      "bytes": 203172
+    },
+    {
+      "cacheKey": "dfa82c1d16896bd4526ae66f477ddf7062cfac99acd0596c0c8159ea49d2fc72",
+      "cacheKeys": [
+        "dfa82c1d16896bd4526ae66f477ddf7062cfac99acd0596c0c8159ea49d2fc72",
+        "14458ff35ef09aa3b8c49d1cbda43cce497227a03571250fbee00269247924ef"
+      ],
+      "actorKey": "chapter_1_identity:halden_rook:8810000000020503:halden rook:halden rook",
+      "actorId": "halden_rook",
+      "lineId": "line-02",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-halden-rook-halden-rook/line-02.mp3",
+      "voice": "azure-speech|voice=en-GB-RyanNeural|gender=male|kind=humanoid|style=chat|styleDegree=1.00|rate=-2%25|pitch=%2B3%25|volume=default|break=134|actor=chapter_1_identity%3Ahalden_rook%3A8810000000020503%3Ahalden%20rook%3Ahalden%20rook",
+      "voiceId": "TxGEqnHWrfWFTfGW9XjX",
+      "textHash": "abfc6c20f9a24472cffdf7325f5e0bd1261ffae7c23d048d5648e4e69b9bcf2f",
+      "bytes": 80292
+    },
+    {
+      "cacheKey": "4da2ac210afb8d4b4572276b5e6f3bb7b5764529b32e42ba54e0b245c87d4939",
+      "cacheKeys": [
+        "4da2ac210afb8d4b4572276b5e6f3bb7b5764529b32e42ba54e0b245c87d4939",
+        "16652cec6ffc39545f2ba9f2e304f7611c2d6fe5394d4a3957fadd3969302ff7"
+      ],
+      "actorKey": "chapter_1_identity:hallr_ironmouth:8810000000020510:jarl hallr ironmouth:jarl hallr ironmouth",
+      "actorId": "hallr_ironmouth",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-hallr-ironmouth-jarl-hallr-ironmouth/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-DavisMultilingualNeural|gender=male|kind=humanoid|style=empathetic|styleDegree=0.80|rate=-3%25|pitch=-2%25|volume=default|break=170|actor=chapter_1_identity%3Ahallr_ironmouth%3A8810000000020510%3Ajarl%20hallr%20ironmouth%3Ajarl%20hallr%20ironmouth",
+      "voiceId": "ErXwobaYiN019PkySvjV",
+      "textHash": "ea151481153ef9e39f654821e22b969457a7c8afdf6123d4d337800a85bea0e5",
+      "bytes": 112475
+    },
+    {
+      "cacheKey": "dfabed8fed498fc2f1eb8b259d9560acd5fa1f7d6fc33b023ed78a7fdf78f770",
+      "cacheKeys": [
+        "dfabed8fed498fc2f1eb8b259d9560acd5fa1f7d6fc33b023ed78a7fdf78f770",
+        "458936d9e7041818e4611f873210cc1f52fb06d1a9ebcdc5e00eaa74c3b9fb33"
+      ],
+      "actorKey": "chapter_1_identity:iris_fen:8810000000020505:iris fen:iris fen",
+      "actorId": "iris_fen",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-iris-fen-iris-fen/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-AriaNeural|gender=female|kind=humanoid|style=friendly|styleDegree=0.80|rate=-5%25|pitch=-1%25|volume=default|break=182|actor=chapter_1_identity%3Airis_fen%3A8810000000020505%3Airis%20fen%3Airis%20fen",
+      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "textHash": "e22793e7b6900356d8b83fff11d77e8213968d9b14fc22645373d8fde5a32452",
+      "bytes": 117490
+    },
+    {
+      "cacheKey": "c2bfc7ba1f6a5aa580095e92151a5787e81fa22735b7e5c820473e4d2fb3450f",
+      "cacheKeys": [
+        "c2bfc7ba1f6a5aa580095e92151a5787e81fa22735b7e5c820473e4d2fb3450f",
+        "af13efcc8ecacdd29b80cf7ed88ce526001a56331cc103cd50a7a7ceb3846348"
+      ],
+      "actorKey": "chapter_1_identity:lou_ardan:8810000000020501:dr. lucien ardan:dr. lucien ardan",
+      "actorId": "lou_ardan",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-lou-ardan-dr-lucien-ardan/line-01.mp3",
+      "voice": "azure-speech|voice=en-GB-RyanNeural|gender=male|kind=humanoid|style=chat|styleDegree=1.05|rate=-4%25|pitch=%2B3%25|volume=default|break=146|actor=chapter_1_identity%3Alou_ardan%3A8810000000020501%3Adr.%20lucien%20ardan%3Adr.%20lucien%20ardan",
+      "voiceId": "yoZ06aMxZJJ28mfd3POQ",
+      "textHash": "d7b47cd17e87e008f003e1e6913f024c1ace48da26314cbf220346782569a29a",
+      "bytes": 81546
+    },
+    {
+      "cacheKey": "ec03fb52ef88376d03e6af660e24e1f5af8d45859d87e156fdbb04fe3269ac8a",
+      "cacheKeys": [
+        "ec03fb52ef88376d03e6af660e24e1f5af8d45859d87e156fdbb04fe3269ac8a",
+        "48ec51a57b30f10d0212dabc77923e62734bb94886037213cbcce13101bcbdf5"
+      ],
+      "actorKey": "chapter_1_identity:lou_ardan:8810000000020501:dr. lucien ardan:dr. lucien ardan",
+      "actorId": "lou_ardan",
+      "lineId": "line-02",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-lou-ardan-dr-lucien-ardan/line-02.mp3",
+      "voice": "azure-speech|voice=en-GB-RyanNeural|gender=male|kind=humanoid|style=chat|styleDegree=1.05|rate=-4%25|pitch=%2B3%25|volume=default|break=146|actor=chapter_1_identity%3Alou_ardan%3A8810000000020501%3Adr.%20lucien%20ardan%3Adr.%20lucien%20ardan",
+      "voiceId": "yoZ06aMxZJJ28mfd3POQ",
+      "textHash": "7f0ee77d107a45e42e835f04d45a9496c255043db3dccf3823276f1540be09f0",
+      "bytes": 53542
+    },
+    {
+      "cacheKey": "e256452f4c275e9768dafba1bf50f65b7f716dae29176a6a60e4e991b38f7dea",
+      "cacheKeys": [
+        "e256452f4c275e9768dafba1bf50f65b7f716dae29176a6a60e4e991b38f7dea",
+        "60a81e4203ebb9f8479c7982a6b6f2a605b35316b0eb754e2f1938862ceef062"
+      ],
+      "actorKey": "chapter_1_identity:lou_ardan:8810000000020501:dr. lucien ardan:dr. lucien ardan",
+      "actorId": "lou_ardan",
+      "lineId": "line-03",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-lou-ardan-dr-lucien-ardan/line-03.mp3",
+      "voice": "azure-speech|voice=en-GB-RyanNeural|gender=male|kind=humanoid|style=chat|styleDegree=1.05|rate=-4%25|pitch=%2B3%25|volume=default|break=146|actor=chapter_1_identity%3Alou_ardan%3A8810000000020501%3Adr.%20lucien%20ardan%3Adr.%20lucien%20ardan",
+      "voiceId": "yoZ06aMxZJJ28mfd3POQ",
+      "textHash": "b3e7b20747b79ed8e391dbecbd8368e8cf4310d1fd5dcf3d91642758e58ac235",
+      "bytes": 69007
+    },
+    {
+      "cacheKey": "bba7ea5de458accac412addd1010b310d2730d37b0eba936088042b5eae4fff3",
+      "cacheKeys": [
+        "bba7ea5de458accac412addd1010b310d2730d37b0eba936088042b5eae4fff3",
+        "19530b658fa92611675e618e15ae50c3b1ecaf065f16f1af81d0a8446d9f9b62"
+      ],
+      "actorKey": "chapter_1_identity:lou_ardan:8810000000020501:dr. lucien ardan:dr. lucien ardan",
+      "actorId": "lou_ardan",
+      "lineId": "line-04",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-lou-ardan-dr-lucien-ardan/line-04.mp3",
+      "voice": "azure-speech|voice=en-GB-RyanNeural|gender=male|kind=humanoid|style=chat|styleDegree=1.05|rate=-4%25|pitch=%2B3%25|volume=default|break=146|actor=chapter_1_identity%3Alou_ardan%3A8810000000020501%3Adr.%20lucien%20ardan%3Adr.%20lucien%20ardan",
+      "voiceId": "yoZ06aMxZJJ28mfd3POQ",
+      "textHash": "7861d189b1f356894e10232ca766fa22ed4d847662b16b67e6dc7ec65819421b",
+      "bytes": 77784
+    },
+    {
+      "cacheKey": "5028b65d539e59bb4a2ae7c3ab69237693ad9802b641f6b5345cb7962198a2e4",
+      "cacheKeys": [
+        "5028b65d539e59bb4a2ae7c3ab69237693ad9802b641f6b5345cb7962198a2e4",
+        "738f9605fdf7e40a9b4cf0fddbd643dc2b3da037554f7f8215c0735b4205061d"
+      ],
+      "actorKey": "chapter_1_identity:lou_ardan:8810000000020501:dr. lucien ardan:dr. lucien ardan",
+      "actorId": "lou_ardan",
+      "lineId": "line-05",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-lou-ardan-dr-lucien-ardan/line-05.mp3",
+      "voice": "azure-speech|voice=en-GB-RyanNeural|gender=male|kind=humanoid|style=chat|styleDegree=1.05|rate=-4%25|pitch=%2B3%25|volume=default|break=146|actor=chapter_1_identity%3Alou_ardan%3A8810000000020501%3Adr.%20lucien%20ardan%3Adr.%20lucien%20ardan",
+      "voiceId": "yoZ06aMxZJJ28mfd3POQ",
+      "textHash": "d5e214f9ad0b3e40defd062694b6553cf6e654b527678f8f41a7ba6e788a9672",
+      "bytes": 54796
+    },
+    {
+      "cacheKey": "2eacff83961e98e4ed37e5ed0bbace75f088f90b16636f443fe003718a14f478",
+      "cacheKeys": [
+        "2eacff83961e98e4ed37e5ed0bbace75f088f90b16636f443fe003718a14f478",
+        "e18f1f2a6d66d0603b8f3955f749bbc629e9074cb861b7e0f0508a2407a47cce"
+      ],
+      "actorKey": "chapter_1_identity:lou_ardan:8810000000020501:dr. lucien ardan:dr. lucien ardan",
+      "actorId": "lou_ardan",
+      "lineId": "line-06",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-lou-ardan-dr-lucien-ardan/line-06.mp3",
+      "voice": "azure-speech|voice=en-GB-RyanNeural|gender=male|kind=humanoid|style=chat|styleDegree=1.05|rate=-4%25|pitch=%2B3%25|volume=default|break=146|actor=chapter_1_identity%3Alou_ardan%3A8810000000020501%3Adr.%20lucien%20ardan%3Adr.%20lucien%20ardan",
+      "voiceId": "yoZ06aMxZJJ28mfd3POQ",
+      "textHash": "c755141a778f5f0cf0bd8a96393b93d54af4f8ea9ed95ce0ecbe3c26acfcd354",
+      "bytes": 104951
+    },
+    {
+      "cacheKey": "297ec501e703bdb235311bf6b0e42fd857af15a6ded3e546e651a82bcc6ef868",
+      "cacheKeys": [
+        "297ec501e703bdb235311bf6b0e42fd857af15a6ded3e546e651a82bcc6ef868",
+        "7dbe1f5d80957eee24587ed90109c1e6200b52f48bc02a1e133a5f6e90bc1a3a"
+      ],
+      "actorKey": "chapter_1_identity:lou_ardan:8810000000020501:dr. lucien ardan:dr. lucien ardan",
+      "actorId": "lou_ardan",
+      "lineId": "line-07",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-lou-ardan-dr-lucien-ardan/line-07.mp3",
+      "voice": "azure-speech|voice=en-GB-RyanNeural|gender=male|kind=humanoid|style=chat|styleDegree=1.05|rate=-4%25|pitch=%2B3%25|volume=default|break=146|actor=chapter_1_identity%3Alou_ardan%3A8810000000020501%3Adr.%20lucien%20ardan%3Adr.%20lucien%20ardan",
+      "voiceId": "yoZ06aMxZJJ28mfd3POQ",
+      "textHash": "5fe085c78ab48eb55923fcef62b9f3e6fa02242c24e2f6601c6ad2034812eba7",
+      "bytes": 130447
+    },
+    {
+      "cacheKey": "94483b5f132bb2baf6a748a2480c4e5917c8d32fa5bdbb11253f4e3e13910a3b",
+      "cacheKeys": [
+        "94483b5f132bb2baf6a748a2480c4e5917c8d32fa5bdbb11253f4e3e13910a3b",
+        "52bedaba0ea93d90b7071fd93a081f51f4a87a555f77fe532d5f85712cff6cd2"
+      ],
+      "actorKey": "chapter_1_identity:lou_ardan:8810000000020501:dr. lucien ardan:dr. lucien ardan",
+      "actorId": "lou_ardan",
+      "lineId": "line-08",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-lou-ardan-dr-lucien-ardan/line-08.mp3",
+      "voice": "azure-speech|voice=en-GB-RyanNeural|gender=male|kind=humanoid|style=chat|styleDegree=1.05|rate=-4%25|pitch=%2B3%25|volume=default|break=146|actor=chapter_1_identity%3Alou_ardan%3A8810000000020501%3Adr.%20lucien%20ardan%3Adr.%20lucien%20ardan",
+      "voiceId": "yoZ06aMxZJJ28mfd3POQ",
+      "textHash": "7f561c2982ddcf4c916f7c845513c6590184a85afd4bdfbce8fb69f10a8c4af5",
+      "bytes": 157196
+    },
+    {
+      "cacheKey": "2858c032c269b1cf5b152dff99a68baf14532e609607cc4058a417aa27694ba4",
+      "cacheKeys": [
+        "2858c032c269b1cf5b152dff99a68baf14532e609607cc4058a417aa27694ba4",
+        "c56a31c4da85cb86ee8a0497ee57d3a3ebe930c3294fa41c678952663bcd09e4"
+      ],
+      "actorKey": "chapter_1_identity:lou_ardan:8810000000020501:dr. lucien ardan:dr. lucien ardan",
+      "actorId": "lou_ardan",
+      "lineId": "line-09",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-lou-ardan-dr-lucien-ardan/line-09.mp3",
+      "voice": "azure-speech|voice=en-GB-RyanNeural|gender=male|kind=humanoid|style=chat|styleDegree=1.05|rate=-4%25|pitch=%2B3%25|volume=default|break=146|actor=chapter_1_identity%3Alou_ardan%3A8810000000020501%3Adr.%20lucien%20ardan%3Adr.%20lucien%20ardan",
+      "voiceId": "yoZ06aMxZJJ28mfd3POQ",
+      "textHash": "3dbcbf32c3535d895ba8a8413e86b04400e43830c627c7bc222901ccf3eb4b5a",
+      "bytes": 84471
+    },
+    {
+      "cacheKey": "908f0ed7e1d7469901d2938d2ba21d00a1e3000facb4de50c6b21c4204b0c84c",
+      "cacheKeys": [
+        "908f0ed7e1d7469901d2938d2ba21d00a1e3000facb4de50c6b21c4204b0c84c",
+        "4db209c70ea3db4725415b41a67d90c9f683d29bce5ae484f70e806b4f8b8607"
+      ],
+      "actorKey": "chapter_1_identity:lou_ardan:8810000000020501:dr. lucien ardan:dr. lucien ardan",
+      "actorId": "lou_ardan",
+      "lineId": "line-10",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-lou-ardan-dr-lucien-ardan/line-10.mp3",
+      "voice": "azure-speech|voice=en-GB-RyanNeural|gender=male|kind=humanoid|style=chat|styleDegree=1.05|rate=-4%25|pitch=%2B3%25|volume=default|break=146|actor=chapter_1_identity%3Alou_ardan%3A8810000000020501%3Adr.%20lucien%20ardan%3Adr.%20lucien%20ardan",
+      "voiceId": "yoZ06aMxZJJ28mfd3POQ",
+      "textHash": "a464248ede91126e4287044957e40cbf9aa458c87898343759904a7797fde053",
+      "bytes": 88233
+    },
+    {
+      "cacheKey": "06f784d978df01e5480823c7bcfee248328a499048650afc7d50fe6b5e75c4e1",
+      "cacheKeys": [
+        "06f784d978df01e5480823c7bcfee248328a499048650afc7d50fe6b5e75c4e1",
+        "3018c56d3e20b8260e5210b6ef3f235bbce2e45461c68a4ebd0b7f6d6369c213"
+      ],
+      "actorKey": "chapter_1_identity:lou_ardan:8810000000020501:dr. lucien ardan:dr. lucien ardan",
+      "actorId": "lou_ardan",
+      "lineId": "line-11",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-lou-ardan-dr-lucien-ardan/line-11.mp3",
+      "voice": "azure-speech|voice=en-GB-RyanNeural|gender=male|kind=humanoid|style=chat|styleDegree=1.05|rate=-4%25|pitch=%2B3%25|volume=default|break=146|actor=chapter_1_identity%3Alou_ardan%3A8810000000020501%3Adr.%20lucien%20ardan%3Adr.%20lucien%20ardan",
+      "voiceId": "yoZ06aMxZJJ28mfd3POQ",
+      "textHash": "17660d2afbcb60b7e1aa27bf85d5d9ec6876baa969665c9f8e9519c689e7fed3",
+      "bytes": 58558
+    },
+    {
+      "cacheKey": "941f79e005eb47360abefd4e02b492710db9665f1dc9190191b2f9984fa813e5",
+      "cacheKeys": [
+        "941f79e005eb47360abefd4e02b492710db9665f1dc9190191b2f9984fa813e5",
+        "257ab2f192ab884e169f6781e90332cd015e1b85eaffc91ba0b816335672898b"
+      ],
+      "actorKey": "chapter_1_identity:lou_ardan:8810000000020501:dr. lucien ardan:dr. lucien ardan",
+      "actorId": "lou_ardan",
+      "lineId": "line-12",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-lou-ardan-dr-lucien-ardan/line-12.mp3",
+      "voice": "azure-speech|voice=en-GB-RyanNeural|gender=male|kind=humanoid|style=chat|styleDegree=1.05|rate=-4%25|pitch=%2B3%25|volume=default|break=146|actor=chapter_1_identity%3Alou_ardan%3A8810000000020501%3Adr.%20lucien%20ardan%3Adr.%20lucien%20ardan",
+      "voiceId": "yoZ06aMxZJJ28mfd3POQ",
+      "textHash": "3d83d2b9c0d423fc9d53ac08ab9f8d4c579962eedccd952e869206b8347a19bc",
+      "bytes": 25539
+    },
+    {
+      "cacheKey": "bc9ca1a6f24f5e42fa9aa71f0c6e1164acad0dc89f9325a95b94d50300a4317c",
+      "cacheKeys": [
+        "bc9ca1a6f24f5e42fa9aa71f0c6e1164acad0dc89f9325a95b94d50300a4317c",
+        "7b81c9fb3f85804f360c96ceda0d323372596b15bd509828a703e71b26920a8c"
+      ],
+      "actorKey": "chapter_1_identity:lou_ardan:8810000000020501:dr. lucien ardan:dr. lucien ardan",
+      "actorId": "lou_ardan",
+      "lineId": "line-13",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-lou-ardan-dr-lucien-ardan/line-13.mp3",
+      "voice": "azure-speech|voice=en-GB-RyanNeural|gender=male|kind=humanoid|style=chat|styleDegree=1.05|rate=-4%25|pitch=%2B3%25|volume=default|break=146|actor=chapter_1_identity%3Alou_ardan%3A8810000000020501%3Adr.%20lucien%20ardan%3Adr.%20lucien%20ardan",
+      "voiceId": "yoZ06aMxZJJ28mfd3POQ",
+      "textHash": "8db800005187976bf4db5087eb9072d41d6f46fddcdd09f5b27dc469b0a497a2",
+      "bytes": 35570
+    },
+    {
+      "cacheKey": "8f1f20ffae729d259d86e774b63239b7de05220127748ec0df99d240ec346f5e",
+      "cacheKeys": [
+        "8f1f20ffae729d259d86e774b63239b7de05220127748ec0df99d240ec346f5e",
+        "fdf2a0b370c6df6188b9aadbf62d07d551e6511f0322f0dcfb23fe5e1e4298e3"
+      ],
+      "actorKey": "chapter_1_identity:lou_ardan:8810000000020501:dr. lucien ardan:dr. lucien ardan",
+      "actorId": "lou_ardan",
+      "lineId": "line-14",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-lou-ardan-dr-lucien-ardan/line-14.mp3",
+      "voice": "azure-speech|voice=en-GB-RyanNeural|gender=male|kind=humanoid|style=chat|styleDegree=1.05|rate=-4%25|pitch=%2B3%25|volume=default|break=146|actor=chapter_1_identity%3Alou_ardan%3A8810000000020501%3Adr.%20lucien%20ardan%3Adr.%20lucien%20ardan",
+      "voiceId": "yoZ06aMxZJJ28mfd3POQ",
+      "textHash": "5256cc9b1d884f31da31fe9fdf0e983f3bb32982f5274293a588dca246222c43",
+      "bytes": 77784
+    },
+    {
+      "cacheKey": "f6169123b1202398673c649af2316e82e1a2c29729130e90fd29090a8f20c6df",
+      "cacheKeys": [
+        "f6169123b1202398673c649af2316e82e1a2c29729130e90fd29090a8f20c6df",
+        "781916feea48077f068b1dda9ab9145b52ad4b979822f08bf958212e8d048949"
+      ],
+      "actorKey": "chapter_1_identity:lou_ardan:8810000000020501:dr. lucien ardan:dr. lucien ardan",
+      "actorId": "lou_ardan",
+      "lineId": "line-15",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-lou-ardan-dr-lucien-ardan/line-15.mp3",
+      "voice": "azure-speech|voice=en-GB-RyanNeural|gender=male|kind=humanoid|style=chat|styleDegree=1.05|rate=-4%25|pitch=%2B3%25|volume=default|break=146|actor=chapter_1_identity%3Alou_ardan%3A8810000000020501%3Adr.%20lucien%20ardan%3Adr.%20lucien%20ardan",
+      "voiceId": "yoZ06aMxZJJ28mfd3POQ",
+      "textHash": "51b25da1ff1f90c2a09355194826f4acb8847eedba235cb47d4a89df37b23f2e",
+      "bytes": 26793
+    },
+    {
+      "cacheKey": "55b5c097ecec6b096084b45b770d555df3e01860412d1ae521092b24d97141d0",
+      "cacheKeys": [
+        "55b5c097ecec6b096084b45b770d555df3e01860412d1ae521092b24d97141d0",
+        "891bb7f90990d0867ea4f8eca39420697fefa198d05842db39c7ca1cbaf30bf7"
+      ],
+      "actorKey": "chapter_1_identity:lou_ardan:8810000000020501:dr. lucien ardan:dr. lucien ardan",
+      "actorId": "lou_ardan",
+      "lineId": "line-16",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-lou-ardan-dr-lucien-ardan/line-16.mp3",
+      "voice": "azure-speech|voice=en-GB-RyanNeural|gender=male|kind=humanoid|style=chat|styleDegree=1.05|rate=-4%25|pitch=%2B3%25|volume=default|break=146|actor=chapter_1_identity%3Alou_ardan%3A8810000000020501%3Adr.%20lucien%20ardan%3Adr.%20lucien%20ardan",
+      "voiceId": "yoZ06aMxZJJ28mfd3POQ",
+      "textHash": "2a2074f7da7114cd03c818a6132e831c9cb8522a8bc14566a8533a30e272e245",
+      "bytes": 135462
+    },
+    {
+      "cacheKey": "62e25510e21e1148d584d3c95540b636c6ca01696bb3bc94f7281045bd950543",
+      "cacheKeys": [
+        "62e25510e21e1148d584d3c95540b636c6ca01696bb3bc94f7281045bd950543",
+        "df3d464a91a59a8ba1d5aa1f1b21059f5e35c864f556300ec18c2a65442b21d2"
+      ],
+      "actorKey": "chapter_1_identity:lou_ardan:8810000000020501:dr. lucien ardan:dr. lucien ardan",
+      "actorId": "lou_ardan",
+      "lineId": "line-17",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-lou-ardan-dr-lucien-ardan/line-17.mp3",
+      "voice": "azure-speech|voice=en-GB-RyanNeural|gender=male|kind=humanoid|style=chat|styleDegree=1.05|rate=-4%25|pitch=%2B3%25|volume=default|break=146|actor=chapter_1_identity%3Alou_ardan%3A8810000000020501%3Adr.%20lucien%20ardan%3Adr.%20lucien%20ardan",
+      "voiceId": "yoZ06aMxZJJ28mfd3POQ",
+      "textHash": "92a75119cc7041e2c864ea223767eeb629254a51e24c621dea073a6b94eb274a",
+      "bytes": 62319
+    },
+    {
+      "cacheKey": "1e87377c764e15567616c9b132ab7c04d5fa5052668d380eecb643069221ade2",
+      "cacheKeys": [
+        "1e87377c764e15567616c9b132ab7c04d5fa5052668d380eecb643069221ade2",
+        "90043090ce5f8d444ec9ad182ca664c0bd69645d8bb0954e0530dadce3dbb0aa"
+      ],
+      "actorKey": "chapter_1_identity:lou_ardan:8810000000020501:dr. lucien ardan:dr. lucien ardan",
+      "actorId": "lou_ardan",
+      "lineId": "line-18",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-lou-ardan-dr-lucien-ardan/line-18.mp3",
+      "voice": "azure-speech|voice=en-GB-RyanNeural|gender=male|kind=humanoid|style=chat|styleDegree=1.05|rate=-4%25|pitch=%2B3%25|volume=default|break=146|actor=chapter_1_identity%3Alou_ardan%3A8810000000020501%3Adr.%20lucien%20ardan%3Adr.%20lucien%20ardan",
+      "voiceId": "yoZ06aMxZJJ28mfd3POQ",
+      "textHash": "0402fed73a3d9623ad1c08f3b46a10f3783b500abcacffeaba183f691e9cd612",
+      "bytes": 97010
+    },
+    {
+      "cacheKey": "752489a167f45758aeb8e93b0c656264b7b46b7088effa199c1ede18cc9d742d",
+      "cacheKeys": [
+        "752489a167f45758aeb8e93b0c656264b7b46b7088effa199c1ede18cc9d742d",
+        "2322b7f94a386925fb8543e02f4ba3cacada349cee356f86856c527c9505b94a"
+      ],
+      "actorKey": "chapter_1_identity:nadia_sorrel:8810000000020504:dr. nadia sorrel:dr. nadia sorrel",
+      "actorId": "nadia_sorrel",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-nadia-sorrel-dr-nadia-sorrel/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-PhoebeMultilingualNeural|gender=female|kind=humanoid|style=empathetic|styleDegree=1.05|rate=%2B2%25|pitch=%2B3%25|volume=default|break=122|actor=chapter_1_identity%3Anadia_sorrel%3A8810000000020504%3Adr.%20nadia%20sorrel%3Adr.%20nadia%20sorrel",
+      "voiceId": "MF3mGyEYCl7XYWbV9V6O",
+      "textHash": "2f57b309e4b38489b736d4b64d61d104c5b79ead04cf01568e836ea39c598200",
+      "bytes": 207351
+    },
+    {
+      "cacheKey": "19396051af0ce7212e446a6c2e1d8e622afdedd2a269bada61b483d857f651d2",
+      "cacheKeys": [
+        "19396051af0ce7212e446a6c2e1d8e622afdedd2a269bada61b483d857f651d2",
+        "1984154b015145b347dbbed5450a427e65e9eed689332cf5f94669b3e754f830"
+      ],
+      "actorKey": "chapter_1_identity:nadia_sorrel:8810000000020504:dr. nadia sorrel:dr. nadia sorrel",
+      "actorId": "nadia_sorrel",
+      "lineId": "line-02",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-nadia-sorrel-dr-nadia-sorrel/line-02.mp3",
+      "voice": "azure-speech|voice=en-US-PhoebeMultilingualNeural|gender=female|kind=humanoid|style=empathetic|styleDegree=1.05|rate=%2B2%25|pitch=%2B3%25|volume=default|break=122|actor=chapter_1_identity%3Anadia_sorrel%3A8810000000020504%3Adr.%20nadia%20sorrel%3Adr.%20nadia%20sorrel",
+      "voiceId": "MF3mGyEYCl7XYWbV9V6O",
+      "textHash": "ab5c4a95af87f0087c3490c14b0d8f9e3424b5abe716525571011cc64a0b60a7",
+      "bytes": 72768
+    },
+    {
+      "cacheKey": "76f6d19f22796d6b6e0e0b2b6cd65892d56070b37c646451054af5ad8bc0f1a5",
+      "cacheKeys": [
+        "76f6d19f22796d6b6e0e0b2b6cd65892d56070b37c646451054af5ad8bc0f1a5",
+        "714f5c2cfd5a7b33ba26fd0ba5bcd3d63da03096a78ec33631a9c046475f5090"
+      ],
+      "actorKey": "chapter_1_identity:nadia_sorrel:8810000000020504:dr. nadia sorrel:dr. nadia sorrel",
+      "actorId": "nadia_sorrel",
+      "lineId": "line-03",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-nadia-sorrel-dr-nadia-sorrel/line-03.mp3",
+      "voice": "azure-speech|voice=en-US-PhoebeMultilingualNeural|gender=female|kind=humanoid|style=empathetic|styleDegree=1.05|rate=%2B2%25|pitch=%2B3%25|volume=default|break=122|actor=chapter_1_identity%3Anadia_sorrel%3A8810000000020504%3Adr.%20nadia%20sorrel%3Adr.%20nadia%20sorrel",
+      "voiceId": "MF3mGyEYCl7XYWbV9V6O",
+      "textHash": "3c1f2ecebf81bdf6f6a193081dd12b21bab2275e75a4f6446899201f8c4d6fd1",
+      "bytes": 16344
+    },
+    {
+      "cacheKey": "17abbf839faddd730c5b00d1c50bcc4d333e029b6ea2bf7387f4dcdcc1125235",
+      "cacheKeys": [
+        "17abbf839faddd730c5b00d1c50bcc4d333e029b6ea2bf7387f4dcdcc1125235",
+        "303ca1f8b123fcd31a3be19ff2399e9610776a9ea3668ec82f134a1bf2f480b5"
+      ],
+      "actorKey": "chapter_1_identity:nadia_sorrel:8810000000020504:dr. nadia sorrel:dr. nadia sorrel",
+      "actorId": "nadia_sorrel",
+      "lineId": "line-04",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-nadia-sorrel-dr-nadia-sorrel/line-04.mp3",
+      "voice": "azure-speech|voice=en-US-PhoebeMultilingualNeural|gender=female|kind=humanoid|style=empathetic|styleDegree=1.05|rate=%2B2%25|pitch=%2B3%25|volume=default|break=122|actor=chapter_1_identity%3Anadia_sorrel%3A8810000000020504%3Adr.%20nadia%20sorrel%3Adr.%20nadia%20sorrel",
+      "voiceId": "MF3mGyEYCl7XYWbV9V6O",
+      "textHash": "4c56d3f91f06b058552ce4b36b00d9ce87c5e72f87dffe02c0f446620d20835d",
+      "bytes": 11328
+    },
+    {
+      "cacheKey": "aa12fd92113a9832cb34d68c16bc0d39ec7b0503c02adfd61d9fd31882834458",
+      "cacheKeys": [
+        "aa12fd92113a9832cb34d68c16bc0d39ec7b0503c02adfd61d9fd31882834458",
+        "592ff2dfa0397f5bc5989337c0c93fa218f7073bc6a5e7d9e3f64bf06dba6b38"
+      ],
+      "actorKey": "chapter_1_identity:nadia_sorrel:8810000000020504:dr. nadia sorrel:dr. nadia sorrel",
+      "actorId": "nadia_sorrel",
+      "lineId": "line-05",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-nadia-sorrel-dr-nadia-sorrel/line-05.mp3",
+      "voice": "azure-speech|voice=en-US-PhoebeMultilingualNeural|gender=female|kind=humanoid|style=empathetic|styleDegree=1.05|rate=%2B2%25|pitch=%2B3%25|volume=default|break=122|actor=chapter_1_identity%3Anadia_sorrel%3A8810000000020504%3Adr.%20nadia%20sorrel%3Adr.%20nadia%20sorrel",
+      "voiceId": "MF3mGyEYCl7XYWbV9V6O",
+      "textHash": "4a344f1139698958ce979d2b4b1ce7c7668288672e2d500f6ffc05ed0777ef16",
+      "bytes": 35570
+    },
+    {
+      "cacheKey": "f453749376398ba10974ba5eb018f47b38218cb9aff4f211e5010cb644379c0a",
+      "cacheKeys": [
+        "f453749376398ba10974ba5eb018f47b38218cb9aff4f211e5010cb644379c0a",
+        "f4de8bfaa9b81f24c08a46cacd44799f419add1d3de68cc50bbe583aeadaa893"
+      ],
+      "actorKey": "chapter_1_identity:nadia_sorrel:8810000000020504:dr. nadia sorrel:dr. nadia sorrel",
+      "actorId": "nadia_sorrel",
+      "lineId": "line-06",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-nadia-sorrel-dr-nadia-sorrel/line-06.mp3",
+      "voice": "azure-speech|voice=en-US-PhoebeMultilingualNeural|gender=female|kind=humanoid|style=empathetic|styleDegree=1.05|rate=%2B2%25|pitch=%2B3%25|volume=default|break=122|actor=chapter_1_identity%3Anadia_sorrel%3A8810000000020504%3Adr.%20nadia%20sorrel%3Adr.%20nadia%20sorrel",
+      "voiceId": "MF3mGyEYCl7XYWbV9V6O",
+      "textHash": "7373aee8d3624a994ede328ed55ce53fac19fbceb96bb54cc400dfeaf4a3ed4d",
+      "bytes": 25539
+    },
+    {
+      "cacheKey": "f24f69195986fe9ee119d06a14178baf020edd7d63d6359eb3febbc90e8abae5",
+      "cacheKeys": [
+        "f24f69195986fe9ee119d06a14178baf020edd7d63d6359eb3febbc90e8abae5",
+        "6f2120b37441f89e06a4c3881d172f9ff0e081b8b4cbd82cf7187b7c32ef30fe"
+      ],
+      "actorKey": "chapter_1_identity:nadia_sorrel:8810000000020504:dr. nadia sorrel:dr. nadia sorrel",
+      "actorId": "nadia_sorrel",
+      "lineId": "line-07",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-nadia-sorrel-dr-nadia-sorrel/line-07.mp3",
+      "voice": "azure-speech|voice=en-US-PhoebeMultilingualNeural|gender=female|kind=humanoid|style=empathetic|styleDegree=1.05|rate=%2B2%25|pitch=%2B3%25|volume=default|break=122|actor=chapter_1_identity%3Anadia_sorrel%3A8810000000020504%3Adr.%20nadia%20sorrel%3Adr.%20nadia%20sorrel",
+      "voiceId": "MF3mGyEYCl7XYWbV9V6O",
+      "textHash": "e11903f022dee7cdaf415def3b5dcc925aeaec6a307eb74b1bd9510f369d26fa",
+      "bytes": 39332
+    },
+    {
+      "cacheKey": "a482e773e7bf85ea4a6a3690cf9bc19848b0eceaa2876cdbf92f82dfe50c2eec",
+      "cacheKeys": [
+        "a482e773e7bf85ea4a6a3690cf9bc19848b0eceaa2876cdbf92f82dfe50c2eec",
+        "0d09e285bf197c147fd58d4e234adaab5240858cccf56687b9901600eb137d8b"
+      ],
+      "actorKey": "chapter_1_identity:nadia_sorrel:8810000000020504:dr. nadia sorrel:dr. nadia sorrel",
+      "actorId": "nadia_sorrel",
+      "lineId": "line-08",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-nadia-sorrel-dr-nadia-sorrel/line-08.mp3",
+      "voice": "azure-speech|voice=en-US-PhoebeMultilingualNeural|gender=female|kind=humanoid|style=empathetic|styleDegree=1.05|rate=%2B2%25|pitch=%2B3%25|volume=default|break=122|actor=chapter_1_identity%3Anadia_sorrel%3A8810000000020504%3Adr.%20nadia%20sorrel%3Adr.%20nadia%20sorrel",
+      "voiceId": "MF3mGyEYCl7XYWbV9V6O",
+      "textHash": "f4b800752bb56b0f6f1350a9fc47be7342e9624f6ffbc47783e5e4c5aab780be",
+      "bytes": 125431
+    },
+    {
+      "cacheKey": "0f7e0cbd0dbfa57a3372c4cccc98d7c8675587c990408c18f177ee7a59ce4b07",
+      "cacheKeys": [
+        "0f7e0cbd0dbfa57a3372c4cccc98d7c8675587c990408c18f177ee7a59ce4b07",
+        "3826bab15709d4defca96b10536d17f4d08620c76fda88b37ed454063f4b1a21"
+      ],
+      "actorKey": "snapshot_grove:jackie:8810000000019301:jackie:jackie",
+      "actorId": "returning_jackie",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-returning-jackie-jackie/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-SerenaMultilingualNeural|gender=female|kind=humanoid|style=serious|styleDegree=1.05|rate=-1%25|pitch=%2B2%25|volume=default|break=170|actor=snapshot_grove%3Ajackie%3A8810000000019301%3Ajackie%3Ajackie",
+      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "textHash": "616d7574dfc65bd0c44b7adbe4601af4f80f65e1667f9815ee9443f4cd6017a8",
+      "bytes": 21359
+    },
+    {
+      "cacheKey": "77140049f26c512c0b907af8cf3f100412c67497b7c1002f683d5fff5da28d56",
+      "cacheKeys": [
+        "77140049f26c512c0b907af8cf3f100412c67497b7c1002f683d5fff5da28d56",
+        "c59a1377ad92722e6315c5b409307300900a5e378871be62d48683208d8b26b6"
+      ],
+      "actorKey": "snapshot_grove:jackie:8810000000019301:jackie:jackie",
+      "actorId": "returning_jackie",
+      "lineId": "line-02",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-returning-jackie-jackie/line-02.mp3",
+      "voice": "azure-speech|voice=en-US-SerenaMultilingualNeural|gender=female|kind=humanoid|style=serious|styleDegree=1.05|rate=-1%25|pitch=%2B2%25|volume=default|break=170|actor=snapshot_grove%3Ajackie%3A8810000000019301%3Ajackie%3Ajackie",
+      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "textHash": "4c2853f15c32e1c0ba5e311b01215f1cacc6821902b137d3448f89f8f4120858",
+      "bytes": 29301
+    },
+    {
+      "cacheKey": "ef604a3b8eb701b591ea8be8990b691c62bc5bd8de3d43401c8d22325bdb3ee9",
+      "cacheKeys": [
+        "ef604a3b8eb701b591ea8be8990b691c62bc5bd8de3d43401c8d22325bdb3ee9",
+        "172b29748db956ac623371be5b3b6f996a0ca0a6270f6af35fb134411ef0e70c"
+      ],
+      "actorKey": "snapshot_grove:jackie:8810000000019301:jackie:jackie",
+      "actorId": "returning_jackie",
+      "lineId": "line-03",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-returning-jackie-jackie/line-03.mp3",
+      "voice": "azure-speech|voice=en-US-SerenaMultilingualNeural|gender=female|kind=humanoid|style=serious|styleDegree=1.05|rate=-1%25|pitch=%2B2%25|volume=default|break=170|actor=snapshot_grove%3Ajackie%3A8810000000019301%3Ajackie%3Ajackie",
+      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "textHash": "0eec6c14249543d4529187e0489b070c4b2fa8276f2a58cdd919bd1fb4a9ceb3",
+      "bytes": 26793
+    },
+    {
+      "cacheKey": "baf464d4bb229bd407d003f18c72409b25a5174949fd6d6ce3b66eb3e6340e76",
+      "cacheKeys": [
+        "baf464d4bb229bd407d003f18c72409b25a5174949fd6d6ce3b66eb3e6340e76",
+        "01aff8d48600cae668949cdda6a0202c14a1737f807692c76234fdec16a8c88b"
+      ],
+      "actorKey": "snapshot_grove:jackie:8810000000019301:jackie:jackie",
+      "actorId": "returning_jackie",
+      "lineId": "line-04",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-returning-jackie-jackie/line-04.mp3",
+      "voice": "azure-speech|voice=en-US-SerenaMultilingualNeural|gender=female|kind=humanoid|style=serious|styleDegree=1.05|rate=-1%25|pitch=%2B2%25|volume=default|break=170|actor=snapshot_grove%3Ajackie%3A8810000000019301%3Ajackie%3Ajackie",
+      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "textHash": "a4dbd4fbc2c7417ea6b8cc009530d6d80c21357539fe29c5cb06cfe47697d0da",
+      "bytes": 26793
+    },
+    {
+      "cacheKey": "a588d91258ce2bcffec83dd9a14054f02a62bbd7527e8ed1e6a81d415069d38b",
+      "cacheKeys": [
+        "a588d91258ce2bcffec83dd9a14054f02a62bbd7527e8ed1e6a81d415069d38b",
+        "b67d4dd8398be8aa8d945769591b7e48c2a065e247cc5d46a31c960c733992b0"
+      ],
+      "actorKey": "snapshot_grove:jackie:8810000000019301:jackie:jackie",
+      "actorId": "returning_jackie",
+      "lineId": "line-05",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-returning-jackie-jackie/line-05.mp3",
+      "voice": "azure-speech|voice=en-US-SerenaMultilingualNeural|gender=female|kind=humanoid|style=serious|styleDegree=1.05|rate=-1%25|pitch=%2B2%25|volume=default|break=170|actor=snapshot_grove%3Ajackie%3A8810000000019301%3Ajackie%3Ajackie",
+      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "textHash": "2552f8aae523d557c90fcc7848d892e58cc27fa3aa5671c3eeb8d3314cfdfc7c",
+      "bytes": 11328
+    },
+    {
+      "cacheKey": "da3eea6b1533171c40d58d98b01184550b0119060d72b6bcd888385fc11074e6",
+      "cacheKeys": [
+        "da3eea6b1533171c40d58d98b01184550b0119060d72b6bcd888385fc11074e6",
+        "b774edabb459c94e326e38457fdf2b79f981df8cad4abbda1f7df0c9cbd0468b"
+      ],
+      "actorKey": "snapshot_grove:jackie:8810000000019301:jackie:jackie",
+      "actorId": "returning_jackie",
+      "lineId": "line-06",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-returning-jackie-jackie/line-06.mp3",
+      "voice": "azure-speech|voice=en-US-SerenaMultilingualNeural|gender=female|kind=humanoid|style=serious|styleDegree=1.05|rate=-1%25|pitch=%2B2%25|volume=default|break=170|actor=snapshot_grove%3Ajackie%3A8810000000019301%3Ajackie%3Ajackie",
+      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "textHash": "1414c3771ae9338a6e80753ab6cc2319147f933f037620ccbbf3c1c2297a5683",
+      "bytes": 25539
+    },
+    {
+      "cacheKey": "7beb505611f7549c14f2e4efa956975ab52b2e53c98c0dfd7b3adfd646729ff4",
+      "cacheKeys": [
+        "7beb505611f7549c14f2e4efa956975ab52b2e53c98c0dfd7b3adfd646729ff4",
+        "15bff378fcfed581e74f2b87963a84dbae59cffdae3a72688daeeaed8c03b461"
+      ],
+      "actorKey": "snapshot_grove:jackie:8810000000019301:jackie:jackie",
+      "actorId": "returning_jackie",
+      "lineId": "line-07",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-returning-jackie-jackie/line-07.mp3",
+      "voice": "azure-speech|voice=en-US-SerenaMultilingualNeural|gender=female|kind=humanoid|style=serious|styleDegree=1.05|rate=-1%25|pitch=%2B2%25|volume=default|break=170|actor=snapshot_grove%3Ajackie%3A8810000000019301%3Ajackie%3Ajackie",
+      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "textHash": "657433338fbc74633fe9112d5a9bc83427f1123464ec122dc7e6af1bc676e82b",
+      "bytes": 24285
+    },
+    {
+      "cacheKey": "366d19f52e85e152b746a85697dd1aec56bf2512d3dd573d6004eefd0fd55a20",
+      "cacheKeys": [
+        "366d19f52e85e152b746a85697dd1aec56bf2512d3dd573d6004eefd0fd55a20",
+        "4a7de1f785b896f6bb28f29839e8fb3bde49bb6c2451a1e280be6117063d90b0"
+      ],
+      "actorKey": "snapshot_grove:jackie:8810000000019301:jackie:jackie",
+      "actorId": "returning_jackie",
+      "lineId": "line-08",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-returning-jackie-jackie/line-08.mp3",
+      "voice": "azure-speech|voice=en-US-SerenaMultilingualNeural|gender=female|kind=humanoid|style=serious|styleDegree=1.05|rate=-1%25|pitch=%2B2%25|volume=default|break=170|actor=snapshot_grove%3Ajackie%3A8810000000019301%3Ajackie%3Ajackie",
+      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "textHash": "4d38880fcd5ccf0ebeeea16ee4ac8fa14ca86c4105894e62e308cbfeecb6e031",
+      "bytes": 15090
+    },
+    {
+      "cacheKey": "4b21922cafde8fb0a66c95917d558a59c2366f2bc16f3fe8361be442982f2c40",
+      "cacheKeys": [
+        "4b21922cafde8fb0a66c95917d558a59c2366f2bc16f3fe8361be442982f2c40",
+        "9569a84359bbe307fdbff55d7619689d01da72daaefe9fcef2bebab62db09d4a"
+      ],
+      "actorKey": "snapshot_grove:jackie:8810000000019301:jackie:jackie",
+      "actorId": "returning_jackie",
+      "lineId": "line-09",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-returning-jackie-jackie/line-09.mp3",
+      "voice": "azure-speech|voice=en-US-SerenaMultilingualNeural|gender=female|kind=humanoid|style=serious|styleDegree=1.05|rate=-1%25|pitch=%2B2%25|volume=default|break=170|actor=snapshot_grove%3Ajackie%3A8810000000019301%3Ajackie%3Ajackie",
+      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "textHash": "03b25bed61dad2fc92bb7ca539a0f5abb89e97a767e3ca68789d47009f9fa5c3",
+      "bytes": 8821
+    },
+    {
+      "cacheKey": "0edbfc6d72a062a768d0d5ce3202bcb74fec6b4a623804d6fe7a8b2c36528628",
+      "cacheKeys": [
+        "0edbfc6d72a062a768d0d5ce3202bcb74fec6b4a623804d6fe7a8b2c36528628",
+        "48d0b83d0aea4de3771a0300d7afe05f20f155f8e2a12d52fc63f1cf26221238"
+      ],
+      "actorKey": "snapshot_grove:jackie:8810000000019301:jackie:jackie",
+      "actorId": "returning_jackie",
+      "lineId": "line-10",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-returning-jackie-jackie/line-10.mp3",
+      "voice": "azure-speech|voice=en-US-SerenaMultilingualNeural|gender=female|kind=humanoid|style=serious|styleDegree=1.05|rate=-1%25|pitch=%2B2%25|volume=default|break=170|actor=snapshot_grove%3Ajackie%3A8810000000019301%3Ajackie%3Ajackie",
+      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "textHash": "e322f03ef66974564b96b39762acd9a36118538d2132ea33548b15c062950575",
+      "bytes": 63991
+    },
+    {
+      "cacheKey": "0000858f49690767e4a52dc4f141acf3f642bf6c306f1b2fbefb053b563939d8",
+      "cacheKeys": [
+        "0000858f49690767e4a52dc4f141acf3f642bf6c306f1b2fbefb053b563939d8",
+        "09c04a942fbdd3fe9877cc597d0d49bd2aefce2ce39a66a7652153b0d2eea2f5"
+      ],
+      "actorKey": "snapshot_grove:jackie:8810000000019301:jackie:jackie",
+      "actorId": "returning_jackie",
+      "lineId": "line-11",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-returning-jackie-jackie/line-11.mp3",
+      "voice": "azure-speech|voice=en-US-SerenaMultilingualNeural|gender=female|kind=humanoid|style=serious|styleDegree=1.05|rate=-1%25|pitch=%2B2%25|volume=default|break=170|actor=snapshot_grove%3Ajackie%3A8810000000019301%3Ajackie%3Ajackie",
+      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "textHash": "b9b7a9da6f922cd981df36c4ca6c3e03b57d6f95b63139b64b53b580b8b6d58e",
+      "bytes": 126685
+    },
+    {
+      "cacheKey": "5e2dddec166038e5df02f2b945261afa16ff0384877a7dea9d68484d08c624ca",
+      "cacheKeys": [
+        "5e2dddec166038e5df02f2b945261afa16ff0384877a7dea9d68484d08c624ca",
+        "393b3050b94b50e1887aee4b3bc7dfd966efa3abd6cd6b3b8cc734cceb8efda6"
+      ],
+      "actorKey": "snapshot_grove:jackie:8810000000019301:jackie:jackie",
+      "actorId": "returning_jackie",
+      "lineId": "line-12",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-returning-jackie-jackie/line-12.mp3",
+      "voice": "azure-speech|voice=en-US-SerenaMultilingualNeural|gender=female|kind=humanoid|style=serious|styleDegree=1.05|rate=-1%25|pitch=%2B2%25|volume=default|break=170|actor=snapshot_grove%3Ajackie%3A8810000000019301%3Ajackie%3Ajackie",
+      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "textHash": "d1b0c481ae7d817307456a80754cca4ffdce242c67ca8f0d6032d239b5f8db73",
+      "bytes": 65245
+    },
+    {
+      "cacheKey": "f22664f272c17d13311b95ee22ef4c647767593feb3831247bfedf622d0de927",
+      "cacheKeys": [
+        "f22664f272c17d13311b95ee22ef4c647767593feb3831247bfedf622d0de927",
+        "814c750e7e28f46326ea7d3daae130d2151eb619694736d7cbe9157a212d52aa"
+      ],
+      "actorKey": "snapshot_grove:jackie:8810000000019301:jackie:jackie",
+      "actorId": "returning_jackie",
+      "lineId": "line-13",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-returning-jackie-jackie/line-13.mp3",
+      "voice": "azure-speech|voice=en-US-SerenaMultilingualNeural|gender=female|kind=humanoid|style=serious|styleDegree=1.05|rate=-1%25|pitch=%2B2%25|volume=default|break=170|actor=snapshot_grove%3Ajackie%3A8810000000019301%3Ajackie%3Ajackie",
+      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "textHash": "b76fd70c9014384185d35258a0132df8fbdf366ecc6ea63f4915d0535808a8e7",
+      "bytes": 95756
+    },
+    {
+      "cacheKey": "ae4355e0c18c7dc572a92c3cd7b6f8be5ba0d88e08b3c7720d932025beb121f7",
+      "cacheKeys": [
+        "ae4355e0c18c7dc572a92c3cd7b6f8be5ba0d88e08b3c7720d932025beb121f7",
+        "6ca86379cfa6034f9879be61438cd290c5b2002505cad2bc1b1afd5dde1f1a58"
+      ],
+      "actorKey": "snapshot_grove:jackie:8810000000019301:jackie:jackie",
+      "actorId": "returning_jackie",
+      "lineId": "line-14",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-returning-jackie-jackie/line-14.mp3",
+      "voice": "azure-speech|voice=en-US-SerenaMultilingualNeural|gender=female|kind=humanoid|style=serious|styleDegree=1.05|rate=-1%25|pitch=%2B2%25|volume=default|break=170|actor=snapshot_grove%3Ajackie%3A8810000000019301%3Ajackie%3Ajackie",
+      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "textHash": "5297953ab7a11b614f09b7f7c2605cb286eabbcc8af1119fbc9539996f1f6df6",
+      "bytes": 106205
+    },
+    {
+      "cacheKey": "e54b12a6093060e965920860c5315f11c209388a4eda54aa8d09b12eefb1ef4d",
+      "cacheKeys": [
+        "e54b12a6093060e965920860c5315f11c209388a4eda54aa8d09b12eefb1ef4d",
+        "8649cbb88649098ae38b004cac4389b127fc4dd1d2f626f4ba1358575adbe166"
+      ],
+      "actorKey": "snapshot_grove:jackie:8810000000019301:jackie:jackie",
+      "actorId": "returning_jackie",
+      "lineId": "line-15",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-returning-jackie-jackie/line-15.mp3",
+      "voice": "azure-speech|voice=en-US-SerenaMultilingualNeural|gender=female|kind=humanoid|style=serious|styleDegree=1.05|rate=-1%25|pitch=%2B2%25|volume=default|break=170|actor=snapshot_grove%3Ajackie%3A8810000000019301%3Ajackie%3Ajackie",
+      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "textHash": "520164b455dde58b3e773533c298cd7903f9dfd6f0050850f1bb17c75ea8cf8a",
+      "bytes": 104951
+    },
+    {
+      "cacheKey": "1dc093d5d2fbabf12e2c4675afe88bc71d868fade8c3eef12f49d0fd8e423b6f",
+      "cacheKeys": [
+        "1dc093d5d2fbabf12e2c4675afe88bc71d868fade8c3eef12f49d0fd8e423b6f",
+        "bbd7775d5f33853c11f1758684fbcc64d2465ab11c6d23b339263e08a3569177"
+      ],
+      "actorKey": "business_owner:npc_outpost_ashline_foreman:8810000000019601:foreman calla ashe:foreman calla ashe",
+      "actorId": "returning_npc_outpost_ashline_foreman",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-returning-npc-outpost-ashline-foreman-foreman-calla-ashe/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-DavisNeural|gender=male|kind=humanoid|style=chat|styleDegree=1.05|rate=%2B0%25|pitch=-2%25|volume=default|break=194|actor=business_owner%3Anpc_outpost_ashline_foreman%3A8810000000019601%3Aforeman%20calla%20ashe%3Aforeman%20calla%20ashe",
+      "voiceId": "JBFqnCBsd6RMkjVDRZzb",
+      "textHash": "eba3c48c81db512dc3df9da3efd59cbaffa34fae6d0c0b989b6aa6d1bbbe11d3",
+      "bytes": 18852
+    },
+    {
+      "cacheKey": "08e4868f66f579b092b90baa1d2dc3a696da3245fbecb465d49ff4b9485dbd1f",
+      "cacheKeys": [
+        "08e4868f66f579b092b90baa1d2dc3a696da3245fbecb465d49ff4b9485dbd1f",
+        "a73ac617f3aeefebcc55669857238dac5ecdb69b0776a2d4d3e75e7eb3602a98"
+      ],
+      "actorKey": "chapter_1_identity:teak_morrow:8810000000020506:teague \"teak\" morrow:teague \"teak\" morrow",
+      "actorId": "teak_morrow",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-teak-morrow-teague-teak-morrow/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-AndrewMultilingualNeural|gender=male|kind=humanoid|style=empathetic|styleDegree=0.95|rate=-2%25|pitch=-3%25|volume=default|break=134|actor=chapter_1_identity%3Ateak_morrow%3A8810000000020506%3Ateague%20%22teak%22%20morrow%3Ateague%20%22teak%22%20morrow",
+      "voiceId": "ErXwobaYiN019PkySvjV",
+      "textHash": "d29f18f935570273f67604f0fc23a3c60c0e4f42d1880c64684f021ea81341a1",
+      "bytes": 141732
+    },
+    {
+      "cacheKey": "9caa5c1ddfcaabf1f701f28aa5e804c0c7dcdd3bea7b26c41578b031338cfc20",
+      "cacheKeys": [
+        "9caa5c1ddfcaabf1f701f28aa5e804c0c7dcdd3bea7b26c41578b031338cfc20",
+        "def3ac7bd90208d346c1bed63bc0f3d1c03e51c7327594a6ec99307279683590"
+      ],
+      "actorKey": "snapshot_live_lore:allix:allix:allix",
+      "actorId": "testimony_allix",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-testimony-allix-allix/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-AriaNeural|gender=female|kind=humanoid|style=friendly|styleDegree=0.80|rate=%2B0%25|pitch=-2%25|volume=default|break=158|actor=snapshot_live_lore%3Aallix%3Aallix%3Aallix",
+      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "textHash": "61db0c225b74cb2f7f9b2d1cdd6c9a3821a76e438c54cb815ca0c258b0c9563d",
+      "bytes": 99518
+    },
+    {
+      "cacheKey": "c10389eccd7194930d1f939d041fd5ce869765129e28068827991abb94577b96",
+      "cacheKeys": [
+        "c10389eccd7194930d1f939d041fd5ce869765129e28068827991abb94577b96",
+        "35b60d24a8f4f8ca20c2bdd66e578a1ab37afd8497f36992eeee6ddfdf4fabec"
+      ],
+      "actorKey": "snapshot_live_lore:alva:alva:alva",
+      "actorId": "testimony_alva",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-testimony-alva-alva/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-AriaNeural|gender=female|kind=humanoid|style=friendly|styleDegree=1.05|rate=%2B1%25|pitch=%2B2%25|volume=default|break=182|actor=snapshot_live_lore%3Aalva%3Aalva%3Aalva",
+      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "textHash": "ddbcdaf65d04ff237860f2daf2042ba066c88b0e0b2afb7b7e6ce65d666592a4",
+      "bytes": 99518
+    },
+    {
+      "cacheKey": "a12d83de842a3a54b4ff1a227fea8000e6ce748f2e4ce90b12a85dde7b6c9368",
+      "cacheKeys": [
+        "a12d83de842a3a54b4ff1a227fea8000e6ce748f2e4ce90b12a85dde7b6c9368",
+        "4c9334ad37940d6906ccd4524208786b2847baa52c143e689afc9fa84167536c"
+      ],
+      "actorKey": "snapshot_live_lore:coretta:coretta:coretta",
+      "actorId": "testimony_coretta",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-testimony-coretta-coretta/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-SerenaMultilingualNeural|gender=female|kind=humanoid|style=friendly|styleDegree=1.05|rate=-4%25|pitch=%2B3%25|volume=default|break=110|actor=snapshot_live_lore%3Acoretta%3Acoretta%3Acoretta",
+      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "textHash": "7181b4cc33c3e485fca67f6801f8d02cf6d2e14ca97d0ef301dab8de4c3f27c5",
+      "bytes": 121252
+    },
+    {
+      "cacheKey": "5e4fa749fe2ab6364fedf80e6135d6839cab421cc27bc20fa64498c3338234ce",
+      "cacheKeys": [
+        "5e4fa749fe2ab6364fedf80e6135d6839cab421cc27bc20fa64498c3338234ce",
+        "3ac84a8911a0a2453bd3d68e1fb59fbaf3a0eb25d570b384ae7b37f2ddb8603b"
+      ],
+      "actorKey": "snapshot_live_lore:davi:davi:davi",
+      "actorId": "testimony_davi",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-testimony-davi-davi/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-AriaNeural|gender=female|kind=humanoid|style=chat|styleDegree=0.90|rate=-4%25|pitch=%2B2%25|volume=default|break=158|actor=snapshot_live_lore%3Adavi%3Adavi%3Adavi",
+      "voiceId": "21m00Tcm4TlvDq8ikWAM",
+      "textHash": "6da03d915e351e5c48bb9137b02def44d2001b73f920e0b4aead4e944f4b27e8",
+      "bytes": 52288
+    },
+    {
+      "cacheKey": "a97f695fb45a8687b0ac9cdb3929db016c70a8ef4da5d9c941fd702cd859a46a",
+      "cacheKeys": [
+        "a97f695fb45a8687b0ac9cdb3929db016c70a8ef4da5d9c941fd702cd859a46a",
+        "8efdc23ca688f98e7c772757a6f3815664406f0d0e11a7a10341ae2736958e6f"
+      ],
+      "actorKey": "snapshot_live_lore:drona:drona:drona",
+      "actorId": "testimony_drona",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-testimony-drona-drona/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-SerenaMultilingualNeural|gender=female|kind=humanoid|style=friendly|styleDegree=1.00|rate=%2B3%25|pitch=%2B0%25|volume=default|break=182|actor=snapshot_live_lore%3Adrona%3Adrona%3Adrona",
+      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "textHash": "7d388f426e643cc4f7335d46adb6995d917f8e3a9e962d005636d770cf21a2ec",
+      "bytes": 139224
+    },
+    {
+      "cacheKey": "f0af4666fea1d415b0f1b4447f62404810138748dada43fa4f0bf8ad17bda4fb",
+      "cacheKeys": [
+        "f0af4666fea1d415b0f1b4447f62404810138748dada43fa4f0bf8ad17bda4fb",
+        "9375cae4f354732b021456895a9ba911b03e28fb1adb5889145d06b5db1e9ded"
+      ],
+      "actorKey": "snapshot_live_lore:emily:emily:emily",
+      "actorId": "testimony_emily",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-testimony-emily-emily/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-AriaNeural|gender=female|kind=humanoid|style=friendly|styleDegree=0.90|rate=-5%25|pitch=%2B2%25|volume=default|break=110|actor=snapshot_live_lore%3Aemily%3Aemily%3Aemily",
+      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "textHash": "89027e0fef7ee0a5f930f536272d9e1473406dfbeec0127bf0b9f085fb83af3c",
+      "bytes": 89487
+    },
+    {
+      "cacheKey": "194d59ff2f2136f68eb2540a2e0e1905afb156b685fc7d84dfbf35121a721da0",
+      "cacheKeys": [
+        "194d59ff2f2136f68eb2540a2e0e1905afb156b685fc7d84dfbf35121a721da0",
+        "daaa26bca3019679b367a9d5cce9243de8f11aec0ccc1b1d4cdbb1e855bb4a25"
+      ],
+      "actorKey": "snapshot_live_lore:gizela:gizela:gizela",
+      "actorId": "testimony_gizela",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-testimony-gizela-gizela/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-JaneNeural|gender=female|kind=humanoid|style=friendly|styleDegree=1.00|rate=-4%25|pitch=%2B2%25|volume=default|break=182|actor=snapshot_live_lore%3Agizela%3Agizela%3Agizela",
+      "voiceId": "21m00Tcm4TlvDq8ikWAM",
+      "textHash": "64c63f3aa977db809bdd92d3deb4fe81908496aef98dce1d99e68a478aa94fdf",
+      "bytes": 108713
+    },
+    {
+      "cacheKey": "397a3f059a6400208caa759d717546dba1a2ddac10629e417b3aea7e0b5ba53d",
+      "cacheKeys": [
+        "397a3f059a6400208caa759d717546dba1a2ddac10629e417b3aea7e0b5ba53d",
+        "bf7e1d58da1c2ebc83d0cff363557a2815da269d11c349501ecea766a1ca2f71"
+      ],
+      "actorKey": "snapshot_live_lore:grover:grover:grover",
+      "actorId": "testimony_grover",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-testimony-grover-grover/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-JaneNeural|gender=female|kind=humanoid|style=friendly|styleDegree=1.05|rate=%2B2%25|pitch=-1%25|volume=default|break=170|actor=snapshot_live_lore%3Agrover%3Agrover%3Agrover",
+      "voiceId": "EXAVITQu4vr4xnSDxMaL",
+      "textHash": "3d9b2cb383cf1c20d4dd71c4020e54e53f1bb30798b328b522501c6de0756df6",
+      "bytes": 94502
+    },
+    {
+      "cacheKey": "a1e276ad9e205f14944e8de0d740a9062b421eadccc3178d948ba5e791cbcb7c",
+      "cacheKeys": [
+        "a1e276ad9e205f14944e8de0d740a9062b421eadccc3178d948ba5e791cbcb7c",
+        "e0f8c76ffd57764573487e74da1dc1783572d16054296ffb02c511858633ad33"
+      ],
+      "actorKey": "snapshot_live_lore:helsa:helsa:helsa",
+      "actorId": "testimony_helsa",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-testimony-helsa-helsa/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-JaneNeural|gender=female|kind=humanoid|style=hopeful|styleDegree=0.85|rate=-3%25|pitch=-2%25|volume=default|break=146|actor=snapshot_live_lore%3Ahelsa%3Ahelsa%3Ahelsa",
+      "voiceId": "MF3mGyEYCl7XYWbV9V6O",
+      "textHash": "4a70711973020130800cdd513b545d718b756155f231aef61cc894ad596ec0d1",
+      "bytes": 79038
+    },
+    {
+      "cacheKey": "8e491d6217a844ba2e7dcaebdf8abd338b34d21e919b2b0636452a1f37405810",
+      "cacheKeys": [
+        "8e491d6217a844ba2e7dcaebdf8abd338b34d21e919b2b0636452a1f37405810",
+        "aabf831ee74154decaec94f5bb2af3f240a6191237b1b8f75809326673a523a4"
+      ],
+      "actorKey": "snapshot_live_lore:patsy:patsy:patsy",
+      "actorId": "testimony_patsy",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-testimony-patsy-patsy/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-JaneNeural|gender=female|kind=humanoid|style=friendly|styleDegree=0.80|rate=-1%25|pitch=-1%25|volume=default|break=206|actor=snapshot_live_lore%3Apatsy%3Apatsy%3Apatsy",
+      "voiceId": "MF3mGyEYCl7XYWbV9V6O",
+      "textHash": "cefbfda5e9cdf0ceedb2c0a7283cbf822c83c7aef70c9fe3ccabec3cfbb92890",
+      "bytes": 80292
+    },
+    {
+      "cacheKey": "1fdef65e27c8d6d4c89af397d5a4e93438d12b19186c6de25fdffe10cd46c28c",
+      "cacheKeys": [
+        "1fdef65e27c8d6d4c89af397d5a4e93438d12b19186c6de25fdffe10cd46c28c",
+        "44f7b184b3a39174cb5d8f54a61acc5c696a687a2fed657965ad98c6ef0c37a1"
+      ],
+      "actorKey": "snapshot_live_lore:richard:richard:richard",
+      "actorId": "testimony_richard",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-testimony-richard-richard/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-DavisNeural|gender=male|kind=humanoid|style=chat|styleDegree=1.00|rate=%2B2%25|pitch=-2%25|volume=default|break=206|actor=snapshot_live_lore%3Arichard%3Arichard%3Arichard",
+      "voiceId": "VR6AewLTigWG4xSOukaG",
+      "textHash": "30181e02c9c01b4cb99e77849a2464216ef57889cd00c688755d075fb0e0ee44",
+      "bytes": 71515
+    },
+    {
+      "cacheKey": "7bcadf862a1ef246b69dcb7c2b49984b8fdb4eae9e1149e5ab50a104bc6b9a3d",
+      "cacheKeys": [
+        "7bcadf862a1ef246b69dcb7c2b49984b8fdb4eae9e1149e5ab50a104bc6b9a3d",
+        "e4e6d44b535c5d65fa511f198636b2c95b53f331c23e59e604039ffe5141e54e"
+      ],
+      "actorKey": "snapshot_live_lore:runna:runna:runna",
+      "actorId": "testimony_runna",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-testimony-runna-runna/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-AriaNeural|gender=female|kind=humanoid|style=friendly|styleDegree=0.95|rate=%2B0%25|pitch=%2B3%25|volume=default|break=194|actor=snapshot_live_lore%3Arunna%3Arunna%3Arunna",
+      "voiceId": "21m00Tcm4TlvDq8ikWAM",
+      "textHash": "5c384fe9550c7d9d8999c2ea9fb05e2d9016528bdfbb96cb93ee2bd6db7960d7",
+      "bytes": 81546
+    },
+    {
+      "cacheKey": "b28537a11adb1abc9c9d4623a3a178a0cdc2751816de504db4e4b8370a04098b",
+      "cacheKeys": [
+        "b28537a11adb1abc9c9d4623a3a178a0cdc2751816de504db4e4b8370a04098b",
+        "b7086ca7391e444da383819bd6d7a029baaa90d931d3a6133964aba19fa9fb3c"
+      ],
+      "actorKey": "chapter_1_identity:wen_halloway:8810000000020508:wen halloway:wen halloway",
+      "actorId": "wen_halloway",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-wen-halloway-wen-halloway/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-JennyNeural|gender=female|kind=humanoid|style=hopeful|styleDegree=0.95|rate=%2B0%25|pitch=-1%25|volume=default|break=170|actor=chapter_1_identity%3Awen_halloway%3A8810000000020508%3Awen%20halloway%3Awen%20halloway",
+      "voiceId": "21m00Tcm4TlvDq8ikWAM",
+      "textHash": "cdf4aaf7b02e7beaf5d67337fa7de0d151ac7f5e7cf50c3e8f7ad0db86ac3635",
+      "bytes": 141732
     },
     {
       "cacheKey": "85e47f77260943ba81c643e4b6de57abf43177f732ee027d9b9e4d6997e69e46",
@@ -16793,6 +17738,186 @@
       ]
     },
     {
+      "cacheKey": "c1148129f52794318eb2e54dee8e742979ca6561007fa6f5db700a45ee87bcbe",
+      "cacheKeys": [
+        "c1148129f52794318eb2e54dee8e742979ca6561007fa6f5db700a45ee87bcbe",
+        "1acee03bc3a10e8bc172ee24e438d27697d1fc75617c118693242a3e25d3f9c1"
+      ],
+      "actorKey": "live_entity_seed:ambient-muck-monster-northeast_wilds_headland-10081:8810000000020081:open wilds mucker 13:open wilds mucker 13",
+      "actorId": "ambient-muck-monster-northeast_wilds_headland-10081",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-ambient-muck-monster-northeast-wilds-headland-10081-open-wilds-/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-AlloyTurboMultilingualNeural|gender=neutral|kind=creature|rate=-8%25|pitch=-7%25|volume=default|break=210|actor=live_entity_seed%3Aambient-muck-monster-northeast_wilds_headland-10081%3A8810000000020081%3Aopen%20wilds%20mucker%2013%3Aopen%20wilds%20mucker%2013",
+      "voiceId": "EXAVITQu4vr4xnSDxMaL",
+      "textHash": "e7f70ae40443aa2ad5c54dc6247dd8fe519080a57da0f0a47ee4e520977587ad",
+      "bytes": 84471
+    },
+    {
+      "cacheKey": "57d82920bff3fd5fd98946198bae95a434e296555737be5c9eac2b6ae3768628",
+      "cacheKeys": [
+        "57d82920bff3fd5fd98946198bae95a434e296555737be5c9eac2b6ae3768628",
+        "8b26b11fee195b69326bdc1b1eee06c0e1c3bfaf89148c73dc3ec1bc2777bdf4"
+      ],
+      "actorKey": "live_entity_seed:ambient-muck-monster-northeast_wilds_headland-10082:8810000000020082:open wilds mucker 14:open wilds mucker 14",
+      "actorId": "ambient-muck-monster-northeast_wilds_headland-10082",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-ambient-muck-monster-northeast-wilds-headland-10082-open-wilds-/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-FableTurboMultilingualNeural|gender=neutral|kind=creature|rate=-7%25|pitch=-5%25|volume=default|break=250|actor=live_entity_seed%3Aambient-muck-monster-northeast_wilds_headland-10082%3A8810000000020082%3Aopen%20wilds%20mucker%2014%3Aopen%20wilds%20mucker%2014",
+      "voiceId": "TxGEqnHWrfWFTfGW9XjX",
+      "textHash": "e7f70ae40443aa2ad5c54dc6247dd8fe519080a57da0f0a47ee4e520977587ad",
+      "bytes": 98264
+    },
+    {
+      "cacheKey": "be1a78c1f390ff732ae8b89160e8dfe955cb11c7b86551eda261a2cbc856e55b",
+      "cacheKeys": [
+        "be1a78c1f390ff732ae8b89160e8dfe955cb11c7b86551eda261a2cbc856e55b",
+        "d195115439eb2c5095d6dfaacc2cf73c3bc25a93bf887f630b30ad76e6607e5f"
+      ],
+      "actorKey": "live_entity_seed:ambient-muck-monster-northeast_wilds_headland-10083:8810000000020083:open wilds mucker 15:open wilds mucker 15",
+      "actorId": "ambient-muck-monster-northeast_wilds_headland-10083",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-ambient-muck-monster-northeast-wilds-headland-10083-open-wilds-/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-DavisNeural|gender=neutral|kind=creature|style=whispering|styleDegree=0.90|rate=-10%25|pitch=-8%25|volume=default|break=290|actor=live_entity_seed%3Aambient-muck-monster-northeast_wilds_headland-10083%3A8810000000020083%3Aopen%20wilds%20mucker%2015%3Aopen%20wilds%20mucker%2015",
+      "voiceId": "EXAVITQu4vr4xnSDxMaL",
+      "textHash": "e7f70ae40443aa2ad5c54dc6247dd8fe519080a57da0f0a47ee4e520977587ad",
+      "bytes": 97010
+    },
+    {
+      "cacheKey": "fae2455cdde725962339b123310ee90ba2c69f674bf3e97a88e3cfed40fe24c6",
+      "cacheKeys": [
+        "fae2455cdde725962339b123310ee90ba2c69f674bf3e97a88e3cfed40fe24c6",
+        "cb06fa69b49a06a5154868456ad2ee93108a76be89541b2b777c88ef117844b3"
+      ],
+      "actorKey": "live_entity_seed:ambient-muck-monster-northeast_wilds_headland-10084:8810000000020084:open wilds mucker 16:open wilds mucker 16",
+      "actorId": "ambient-muck-monster-northeast_wilds_headland-10084",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-ambient-muck-monster-northeast-wilds-headland-10084-open-wilds-/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-FableTurboMultilingualNeural|gender=neutral|kind=creature|rate=-9%25|pitch=-8%25|volume=default|break=150|actor=live_entity_seed%3Aambient-muck-monster-northeast_wilds_headland-10084%3A8810000000020084%3Aopen%20wilds%20mucker%2016%3Aopen%20wilds%20mucker%2016",
+      "voiceId": "EXAVITQu4vr4xnSDxMaL",
+      "textHash": "e7f70ae40443aa2ad5c54dc6247dd8fe519080a57da0f0a47ee4e520977587ad",
+      "bytes": 86979
+    },
+    {
+      "cacheKey": "4d3d3bef3fafb796922567ba60d3be6870336993adacd43dc5a4ff2e0848d7c5",
+      "cacheKeys": [
+        "4d3d3bef3fafb796922567ba60d3be6870336993adacd43dc5a4ff2e0848d7c5",
+        "de0ff558d29206628bbfbec4fa2c64470a0b857dc3c4c9d4e42603b9d8db7334"
+      ],
+      "actorKey": "live_entity_seed:ambient-muck-monster-northeast_wilds_headland-10085:8810000000020085:open wilds mucker 17:open wilds mucker 17",
+      "actorId": "ambient-muck-monster-northeast_wilds_headland-10085",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-ambient-muck-monster-northeast-wilds-headland-10085-open-wilds-/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-AriaNeural|gender=neutral|kind=creature|style=whispering|styleDegree=0.85|rate=-12%25|pitch=-4%25|volume=default|break=230|actor=live_entity_seed%3Aambient-muck-monster-northeast_wilds_headland-10085%3A8810000000020085%3Aopen%20wilds%20mucker%2017%3Aopen%20wilds%20mucker%2017",
+      "voiceId": "TxGEqnHWrfWFTfGW9XjX",
+      "textHash": "e7f70ae40443aa2ad5c54dc6247dd8fe519080a57da0f0a47ee4e520977587ad",
+      "bytes": 95756
+    },
+    {
+      "cacheKey": "411edf0c053eb95e8bfb6951aba3cf4ec28e388015fe0611563513c47ada5769",
+      "cacheKeys": [
+        "411edf0c053eb95e8bfb6951aba3cf4ec28e388015fe0611563513c47ada5769",
+        "c8ad448b1f7b40ca5f2bb0252d84b01f42b9de004b8222feb18d05127bcbceae"
+      ],
+      "actorKey": "live_entity_seed:ambient-muck-monster-northeast_wilds_headland-10086:8810000000020086:open wilds hex 18:open wilds hex 18",
+      "actorId": "ambient-muck-monster-northeast_wilds_headland-10086",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-ambient-muck-monster-northeast-wilds-headland-10086-open-wilds-/line-01.mp3",
+      "voice": "azure-speech|voice=en-GB-RyanNeural|gender=male|kind=humanoid|style=chat|styleDegree=0.85|rate=-3%25|pitch=-1%25|volume=default|break=122|actor=live_entity_seed%3Aambient-muck-monster-northeast_wilds_headland-10086%3A8810000000020086%3Aopen%20wilds%20hex%2018%3Aopen%20wilds%20hex%2018",
+      "voiceId": "JBFqnCBsd6RMkjVDRZzb",
+      "textHash": "e7f70ae40443aa2ad5c54dc6247dd8fe519080a57da0f0a47ee4e520977587ad",
+      "bytes": 91995
+    },
+    {
+      "cacheKey": "ac1a12189b494f6e9bb5c22b33972d23cde4cc590ac23ec759548bb60ceee85e",
+      "cacheKeys": [
+        "ac1a12189b494f6e9bb5c22b33972d23cde4cc590ac23ec759548bb60ceee85e",
+        "b373a32b6a3eec4eba96303c76d02ebacec45448b9cd6caa1ad0fee418dbeaa2"
+      ],
+      "actorKey": "live_entity_seed:ambient-muck-monster-northwest_wilds_ridge-10069:8810000000020069:open wilds mucker 1:open wilds mucker 1",
+      "actorId": "ambient-muck-monster-northwest_wilds_ridge-10069",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-ambient-muck-monster-northwest-wilds-ridge-10069-open-wilds-muc/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-OnyxTurboMultilingualNeural|gender=neutral|kind=creature|rate=-13%25|pitch=-5%25|volume=default|break=290|actor=live_entity_seed%3Aambient-muck-monster-northwest_wilds_ridge-10069%3A8810000000020069%3Aopen%20wilds%20mucker%201%3Aopen%20wilds%20mucker%201",
+      "voiceId": "EXAVITQu4vr4xnSDxMaL",
+      "textHash": "abe1f31b93b9c310b4f0f3574c530f61a821d7af646b5c82193c7594d6894cc1",
+      "bytes": 85725
+    },
+    {
+      "cacheKey": "804abba6ba53cf34dec721800535aa4f56b0a162d03e3218703f14491890044a",
+      "cacheKeys": [
+        "804abba6ba53cf34dec721800535aa4f56b0a162d03e3218703f14491890044a",
+        "0b7699154c0ff9ae67aa4df9e23f626cf16a92ad90e6a714e30b08555e51a503"
+      ],
+      "actorKey": "live_entity_seed:ambient-muck-monster-northwest_wilds_ridge-10070:8810000000020070:open wilds mucker 2:open wilds mucker 2",
+      "actorId": "ambient-muck-monster-northwest_wilds_ridge-10070",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-ambient-muck-monster-northwest-wilds-ridge-10070-open-wilds-muc/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-GuyNeural|gender=neutral|kind=creature|style=whispering|styleDegree=0.90|rate=-12%25|pitch=-4%25|volume=default|break=190|actor=live_entity_seed%3Aambient-muck-monster-northwest_wilds_ridge-10070%3A8810000000020070%3Aopen%20wilds%20mucker%202%3Aopen%20wilds%20mucker%202",
+      "voiceId": "MF3mGyEYCl7XYWbV9V6O",
+      "textHash": "abe1f31b93b9c310b4f0f3574c530f61a821d7af646b5c82193c7594d6894cc1",
+      "bytes": 97010
+    },
+    {
+      "cacheKey": "2b617cce651a551191919f6a04a29ad28bf12e313658697b6112f93105ecf871",
+      "cacheKeys": [
+        "2b617cce651a551191919f6a04a29ad28bf12e313658697b6112f93105ecf871",
+        "a59f4a5315a1562a7beeca3286ba2a06f434f92e30cc83ff0bc4fe26042c1327"
+      ],
+      "actorKey": "live_entity_seed:ambient-muck-monster-northwest_wilds_ridge-10071:8810000000020071:open wilds mucker 3:open wilds mucker 3",
+      "actorId": "ambient-muck-monster-northwest_wilds_ridge-10071",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-ambient-muck-monster-northwest-wilds-ridge-10071-open-wilds-muc/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-GuyNeural|gender=neutral|kind=creature|style=whispering|styleDegree=0.90|rate=-13%25|pitch=-5%25|volume=default|break=230|actor=live_entity_seed%3Aambient-muck-monster-northwest_wilds_ridge-10071%3A8810000000020071%3Aopen%20wilds%20mucker%203%3Aopen%20wilds%20mucker%203",
+      "voiceId": "yoZ06aMxZJJ28mfd3POQ",
+      "textHash": "abe1f31b93b9c310b4f0f3574c530f61a821d7af646b5c82193c7594d6894cc1",
+      "bytes": 88233
+    },
+    {
+      "cacheKey": "c1a52ebfa30ce654c15c0b801e414ff9c7d5460b8817d4feaaff6d957bdceb62",
+      "cacheKeys": [
+        "c1a52ebfa30ce654c15c0b801e414ff9c7d5460b8817d4feaaff6d957bdceb62",
+        "55d6b87bdafa619e1b88d8dc829c448464f8a7c01ad2c0d94151000a03d2e706"
+      ],
+      "actorKey": "live_entity_seed:ambient-muck-monster-northwest_wilds_ridge-10072:8810000000020072:open wilds mucker 4:open wilds mucker 4",
+      "actorId": "ambient-muck-monster-northwest_wilds_ridge-10072",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-ambient-muck-monster-northwest-wilds-ridge-10072-open-wilds-muc/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-NovaTurboMultilingualNeural|gender=neutral|kind=creature|rate=-10%25|pitch=-5%25|volume=default|break=150|actor=live_entity_seed%3Aambient-muck-monster-northwest_wilds_ridge-10072%3A8810000000020072%3Aopen%20wilds%20mucker%204%3Aopen%20wilds%20mucker%204",
+      "voiceId": "EXAVITQu4vr4xnSDxMaL",
+      "textHash": "abe1f31b93b9c310b4f0f3574c530f61a821d7af646b5c82193c7594d6894cc1",
+      "bytes": 89487
+    },
+    {
+      "cacheKey": "21652e4d5e8601ea955771b9cbdac2b870b5268d7546acc2a1005e7a5668ad15",
+      "cacheKeys": [
+        "21652e4d5e8601ea955771b9cbdac2b870b5268d7546acc2a1005e7a5668ad15",
+        "6bb0f6391878eb636e3818c37399826b292c3d07827fe6d858eaa49259b397b2"
+      ],
+      "actorKey": "live_entity_seed:ambient-muck-monster-northwest_wilds_ridge-10073:8810000000020073:open wilds mucker 5:open wilds mucker 5",
+      "actorId": "ambient-muck-monster-northwest_wilds_ridge-10073",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-ambient-muck-monster-northwest-wilds-ridge-10073-open-wilds-muc/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-NovaTurboMultilingualNeural|gender=neutral|kind=creature|rate=-11%25|pitch=-6%25|volume=default|break=330|actor=live_entity_seed%3Aambient-muck-monster-northwest_wilds_ridge-10073%3A8810000000020073%3Aopen%20wilds%20mucker%205%3Aopen%20wilds%20mucker%205",
+      "voiceId": "yoZ06aMxZJJ28mfd3POQ",
+      "textHash": "abe1f31b93b9c310b4f0f3574c530f61a821d7af646b5c82193c7594d6894cc1",
+      "bytes": 98264
+    },
+    {
+      "cacheKey": "5a9312b74be5fd0a9de3048889e3e9297414793d97ce8c411e34ae966aa9aef6",
+      "cacheKeys": [
+        "5a9312b74be5fd0a9de3048889e3e9297414793d97ce8c411e34ae966aa9aef6",
+        "f3e630632dcf3ede6108f4b3bb3edd66b32ba578944dc6ef49210839d9c096f8"
+      ],
+      "actorKey": "live_entity_seed:ambient-muck-monster-northwest_wilds_ridge-10074:8810000000020074:open wilds hex 6:open wilds hex 6",
+      "actorId": "ambient-muck-monster-northwest_wilds_ridge-10074",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-ambient-muck-monster-northwest-wilds-ridge-10074-open-wilds-hex/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-PhoebeMultilingualNeural|gender=female|kind=humanoid|style=empathetic|styleDegree=1.05|rate=%2B0%25|pitch=%2B0%25|volume=default|break=134|actor=live_entity_seed%3Aambient-muck-monster-northwest_wilds_ridge-10074%3A8810000000020074%3Aopen%20wilds%20hex%206%3Aopen%20wilds%20hex%206",
+      "voiceId": "21m00Tcm4TlvDq8ikWAM",
+      "textHash": "abe1f31b93b9c310b4f0f3574c530f61a821d7af646b5c82193c7594d6894cc1",
+      "bytes": 81546
+    },
+    {
       "cacheKey": "40e0066ccb9b2b97e4a585fff3dc1e0ac89d3384147a598e446c586691e0c33a",
       "actorKey": "live_entity_seed:ambient-muck-monster-old_wood_muck_east_verge-10029:8810000000020029:old wood copse mucker 15:old wood copse mucker 15",
       "actorId": "ambient-muck-monster-old_wood_muck_east_verge-10029",
@@ -17496,6 +18621,186 @@
         "1ff8e04875d621bbbc66401539168195643551f5c7e825a4829aa700eb9bb7bf",
         "4c796940cda91d972123b00e7b035d66a2b14bc0cfacd469c1bf2bd7c8240199"
       ]
+    },
+    {
+      "cacheKey": "157394d0cf23af1331cdd7588ce65c71e086fa8ad2cc15b2b51fa817129150e0",
+      "cacheKeys": [
+        "157394d0cf23af1331cdd7588ce65c71e086fa8ad2cc15b2b51fa817129150e0",
+        "52d5482296b6ed1f01301add3beac7e5f56e5e92fb927f52b4d7c8652a34c873"
+      ],
+      "actorKey": "live_entity_seed:ambient-muck-monster-southeast_wilds_lowland-10087:8810000000020087:open wilds mucker 19:open wilds mucker 19",
+      "actorId": "ambient-muck-monster-southeast_wilds_lowland-10087",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-ambient-muck-monster-southeast-wilds-lowland-10087-open-wilds-m/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-OnyxTurboMultilingualNeural|gender=neutral|kind=creature|rate=-14%25|pitch=-4%25|volume=default|break=310|actor=live_entity_seed%3Aambient-muck-monster-southeast_wilds_lowland-10087%3A8810000000020087%3Aopen%20wilds%20mucker%2019%3Aopen%20wilds%20mucker%2019",
+      "voiceId": "ErXwobaYiN019PkySvjV",
+      "textHash": "27b17310b0b89b944a12d57a725112b999e1c36b7a6402eff7ab3dff11505759",
+      "bytes": 89487
+    },
+    {
+      "cacheKey": "2fbab8ee39586271ecb79d50c6c66b1ecdb18065072ea43afb1cbf9be6841bb1",
+      "cacheKeys": [
+        "2fbab8ee39586271ecb79d50c6c66b1ecdb18065072ea43afb1cbf9be6841bb1",
+        "bda71b6424252e24d7e745537db8c8ae0540b071d4c378266761488a6546f9cc"
+      ],
+      "actorKey": "live_entity_seed:ambient-muck-monster-southeast_wilds_lowland-10088:8810000000020088:open wilds mucker 20:open wilds mucker 20",
+      "actorId": "ambient-muck-monster-southeast_wilds_lowland-10088",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-ambient-muck-monster-southeast-wilds-lowland-10088-open-wilds-m/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-AriaNeural|gender=neutral|kind=creature|style=whispering|styleDegree=0.70|rate=-8%25|pitch=-3%25|volume=default|break=170|actor=live_entity_seed%3Aambient-muck-monster-southeast_wilds_lowland-10088%3A8810000000020088%3Aopen%20wilds%20mucker%2020%3Aopen%20wilds%20mucker%2020",
+      "voiceId": "MF3mGyEYCl7XYWbV9V6O",
+      "textHash": "27b17310b0b89b944a12d57a725112b999e1c36b7a6402eff7ab3dff11505759",
+      "bytes": 104951
+    },
+    {
+      "cacheKey": "f2cdb57a50490d67a3ed9f7d45c01fdd01eb635110b7d358d6dd2b67d163dfed",
+      "cacheKeys": [
+        "f2cdb57a50490d67a3ed9f7d45c01fdd01eb635110b7d358d6dd2b67d163dfed",
+        "01a0cd76e5ea63898e0259f0e5d965db8e71e82d2c84bf1efc2ce65ca41a3aad"
+      ],
+      "actorKey": "live_entity_seed:ambient-muck-monster-southeast_wilds_lowland-10089:8810000000020089:open wilds mucker 21:open wilds mucker 21",
+      "actorId": "ambient-muck-monster-southeast_wilds_lowland-10089",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-ambient-muck-monster-southeast-wilds-lowland-10089-open-wilds-m/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-OnyxTurboMultilingualNeural|gender=neutral|kind=creature|rate=-11%25|pitch=-8%25|volume=default|break=190|actor=live_entity_seed%3Aambient-muck-monster-southeast_wilds_lowland-10089%3A8810000000020089%3Aopen%20wilds%20mucker%2021%3Aopen%20wilds%20mucker%2021",
+      "voiceId": "MF3mGyEYCl7XYWbV9V6O",
+      "textHash": "27b17310b0b89b944a12d57a725112b999e1c36b7a6402eff7ab3dff11505759",
+      "bytes": 106205
+    },
+    {
+      "cacheKey": "d03323156fb2203c91250cfe351cc8f8713dd60ab15f23e1b0d2c1f02f4183d9",
+      "cacheKeys": [
+        "d03323156fb2203c91250cfe351cc8f8713dd60ab15f23e1b0d2c1f02f4183d9",
+        "3407e7eb0583ebe389d4be8574ae68b1897d9f24e05730690ae3dd2d5d1eb903"
+      ],
+      "actorKey": "live_entity_seed:ambient-muck-monster-southeast_wilds_lowland-10090:8810000000020090:open wilds mucker 22:open wilds mucker 22",
+      "actorId": "ambient-muck-monster-southeast_wilds_lowland-10090",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-ambient-muck-monster-southeast-wilds-lowland-10090-open-wilds-m/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-AlloyTurboMultilingualNeural|gender=neutral|kind=creature|rate=-8%25|pitch=-8%25|volume=default|break=250|actor=live_entity_seed%3Aambient-muck-monster-southeast_wilds_lowland-10090%3A8810000000020090%3Aopen%20wilds%20mucker%2022%3Aopen%20wilds%20mucker%2022",
+      "voiceId": "TxGEqnHWrfWFTfGW9XjX",
+      "textHash": "27b17310b0b89b944a12d57a725112b999e1c36b7a6402eff7ab3dff11505759",
+      "bytes": 95756
+    },
+    {
+      "cacheKey": "f8391b2f45ee591b2f4ec12b76ab146c74eef99f46dce96233db9b8bceb830c6",
+      "cacheKeys": [
+        "f8391b2f45ee591b2f4ec12b76ab146c74eef99f46dce96233db9b8bceb830c6",
+        "790860f5da8ec307cd500a90510c327836330019a48d5f538ec970efcceb2e14"
+      ],
+      "actorKey": "live_entity_seed:ambient-muck-monster-southeast_wilds_lowland-10091:8810000000020091:open wilds mucker 23:open wilds mucker 23",
+      "actorId": "ambient-muck-monster-southeast_wilds_lowland-10091",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-ambient-muck-monster-southeast-wilds-lowland-10091-open-wilds-m/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-AlloyTurboMultilingualNeural|gender=neutral|kind=creature|rate=-7%25|pitch=-6%25|volume=default|break=210|actor=live_entity_seed%3Aambient-muck-monster-southeast_wilds_lowland-10091%3A8810000000020091%3Aopen%20wilds%20mucker%2023%3Aopen%20wilds%20mucker%2023",
+      "voiceId": "yoZ06aMxZJJ28mfd3POQ",
+      "textHash": "27b17310b0b89b944a12d57a725112b999e1c36b7a6402eff7ab3dff11505759",
+      "bytes": 98264
+    },
+    {
+      "cacheKey": "1313b9157017c190a5ec502606d03421816c3574a46bd871903c46fdb74b5a6a",
+      "cacheKeys": [
+        "1313b9157017c190a5ec502606d03421816c3574a46bd871903c46fdb74b5a6a",
+        "11d2c454d6f02d8831a6352ef99387833bb0e218aa0b445d25b6dedd143f484e"
+      ],
+      "actorKey": "live_entity_seed:ambient-muck-monster-southeast_wilds_lowland-10092:8810000000020092:open wilds hex 24:open wilds hex 24",
+      "actorId": "ambient-muck-monster-southeast_wilds_lowland-10092",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-ambient-muck-monster-southeast-wilds-lowland-10092-open-wilds-h/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-JaneNeural|gender=female|kind=humanoid|style=friendly|styleDegree=1.05|rate=%2B3%25|pitch=-3%25|volume=default|break=206|actor=live_entity_seed%3Aambient-muck-monster-southeast_wilds_lowland-10092%3A8810000000020092%3Aopen%20wilds%20hex%2024%3Aopen%20wilds%20hex%2024",
+      "voiceId": "21m00Tcm4TlvDq8ikWAM",
+      "textHash": "27b17310b0b89b944a12d57a725112b999e1c36b7a6402eff7ab3dff11505759",
+      "bytes": 90741
+    },
+    {
+      "cacheKey": "f87db0166d7a40fbfbb6a7ddfcd97212634d766eab21b81a443473142ef0e8f9",
+      "cacheKeys": [
+        "f87db0166d7a40fbfbb6a7ddfcd97212634d766eab21b81a443473142ef0e8f9",
+        "15772014cd7ab1fbb1fbed1f19312a9e9d1cd62c2053cc6dc9da0b63e4a73a2c"
+      ],
+      "actorKey": "live_entity_seed:ambient-muck-monster-southwest_wilds_meadow-10075:8810000000020075:open wilds mucker 7:open wilds mucker 7",
+      "actorId": "ambient-muck-monster-southwest_wilds_meadow-10075",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-ambient-muck-monster-southwest-wilds-meadow-10075-open-wilds-mu/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-NovaTurboMultilingualNeural|gender=neutral|kind=creature|rate=-11%25|pitch=-4%25|volume=default|break=310|actor=live_entity_seed%3Aambient-muck-monster-southwest_wilds_meadow-10075%3A8810000000020075%3Aopen%20wilds%20mucker%207%3Aopen%20wilds%20mucker%207",
+      "voiceId": "yoZ06aMxZJJ28mfd3POQ",
+      "textHash": "5621ac4d1a6ec8a8319e98f730dc5567615f85053d9fd0a93632a3babb389cd3",
+      "bytes": 90741
+    },
+    {
+      "cacheKey": "8f35637c7ca39e22a16044142b7bc5a8167322c68a45f59187d3839b98cc977e",
+      "cacheKeys": [
+        "8f35637c7ca39e22a16044142b7bc5a8167322c68a45f59187d3839b98cc977e",
+        "04b432a17dbd447392164c376b945d546e6272e61b824cd830acd95a11d1d5ed"
+      ],
+      "actorKey": "live_entity_seed:ambient-muck-monster-southwest_wilds_meadow-10076:8810000000020076:open wilds mucker 8:open wilds mucker 8",
+      "actorId": "ambient-muck-monster-southwest_wilds_meadow-10076",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-ambient-muck-monster-southwest-wilds-meadow-10076-open-wilds-mu/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-OnyxTurboMultilingualNeural|gender=neutral|kind=creature|rate=-10%25|pitch=-5%25|volume=default|break=330|actor=live_entity_seed%3Aambient-muck-monster-southwest_wilds_meadow-10076%3A8810000000020076%3Aopen%20wilds%20mucker%208%3Aopen%20wilds%20mucker%208",
+      "voiceId": "TxGEqnHWrfWFTfGW9XjX",
+      "textHash": "5621ac4d1a6ec8a8319e98f730dc5567615f85053d9fd0a93632a3babb389cd3",
+      "bytes": 91995
+    },
+    {
+      "cacheKey": "fb69ef7190741f8449b17578d69a6f2a9d080a4ea664a1ce32b5f6cf993ca60e",
+      "cacheKeys": [
+        "fb69ef7190741f8449b17578d69a6f2a9d080a4ea664a1ce32b5f6cf993ca60e",
+        "96ababc5257e88d6cd227737b53aefd685ba64fa1465b4d627784a1dcd0aa115"
+      ],
+      "actorKey": "live_entity_seed:ambient-muck-monster-southwest_wilds_meadow-10077:8810000000020077:open wilds mucker 9:open wilds mucker 9",
+      "actorId": "ambient-muck-monster-southwest_wilds_meadow-10077",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-ambient-muck-monster-southwest-wilds-meadow-10077-open-wilds-mu/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-OnyxTurboMultilingualNeural|gender=neutral|kind=creature|rate=-13%25|pitch=-4%25|volume=default|break=250|actor=live_entity_seed%3Aambient-muck-monster-southwest_wilds_meadow-10077%3A8810000000020077%3Aopen%20wilds%20mucker%209%3Aopen%20wilds%20mucker%209",
+      "voiceId": "TxGEqnHWrfWFTfGW9XjX",
+      "textHash": "5621ac4d1a6ec8a8319e98f730dc5567615f85053d9fd0a93632a3babb389cd3",
+      "bytes": 93248
+    },
+    {
+      "cacheKey": "a8dbfc4eca004a35b03c50c39d6f8f4e23d04adc8868100720be2334122d1ce2",
+      "cacheKeys": [
+        "a8dbfc4eca004a35b03c50c39d6f8f4e23d04adc8868100720be2334122d1ce2",
+        "2bf8241ec73c97ba9c5ad6469b306c96cbd77c93d73ab4af494d59a4b99b199a"
+      ],
+      "actorKey": "live_entity_seed:ambient-muck-monster-southwest_wilds_meadow-10078:8810000000020078:open wilds mucker 10:open wilds mucker 10",
+      "actorId": "ambient-muck-monster-southwest_wilds_meadow-10078",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-ambient-muck-monster-southwest-wilds-meadow-10078-open-wilds-mu/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-FableTurboMultilingualNeural|gender=neutral|kind=creature|rate=-9%25|pitch=-7%25|volume=default|break=310|actor=live_entity_seed%3Aambient-muck-monster-southwest_wilds_meadow-10078%3A8810000000020078%3Aopen%20wilds%20mucker%2010%3Aopen%20wilds%20mucker%2010",
+      "voiceId": "EXAVITQu4vr4xnSDxMaL",
+      "textHash": "5621ac4d1a6ec8a8319e98f730dc5567615f85053d9fd0a93632a3babb389cd3",
+      "bytes": 81546
+    },
+    {
+      "cacheKey": "0860bd3f3b65e7d0e35f2e24d2c6815ba846980aba9df54225e13707055dcdf0",
+      "cacheKeys": [
+        "0860bd3f3b65e7d0e35f2e24d2c6815ba846980aba9df54225e13707055dcdf0",
+        "a7f77e36c60433b93aaac9aba81512d5fede076940ef0c41b96d28d085c15ab7"
+      ],
+      "actorKey": "live_entity_seed:ambient-muck-monster-southwest_wilds_meadow-10079:8810000000020079:open wilds mucker 11:open wilds mucker 11",
+      "actorId": "ambient-muck-monster-southwest_wilds_meadow-10079",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-ambient-muck-monster-southwest-wilds-meadow-10079-open-wilds-mu/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-AriaNeural|gender=neutral|kind=creature|style=whispering|styleDegree=0.95|rate=-8%25|pitch=-8%25|volume=default|break=230|actor=live_entity_seed%3Aambient-muck-monster-southwest_wilds_meadow-10079%3A8810000000020079%3Aopen%20wilds%20mucker%2011%3Aopen%20wilds%20mucker%2011",
+      "voiceId": "MF3mGyEYCl7XYWbV9V6O",
+      "textHash": "5621ac4d1a6ec8a8319e98f730dc5567615f85053d9fd0a93632a3babb389cd3",
+      "bytes": 109967
+    },
+    {
+      "cacheKey": "9647857ebad4bb92377dec64f1fee50de2b58ade79414612805e2356c35d2c24",
+      "cacheKeys": [
+        "9647857ebad4bb92377dec64f1fee50de2b58ade79414612805e2356c35d2c24",
+        "94a4ac30af6b219438d5a3b165c2af2d72316ad888cc4544f18de417bed8f987"
+      ],
+      "actorKey": "live_entity_seed:ambient-muck-monster-southwest_wilds_meadow-10080:8810000000020080:open wilds hex 12:open wilds hex 12",
+      "actorId": "ambient-muck-monster-southwest_wilds_meadow-10080",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-ambient-muck-monster-southwest-wilds-meadow-10080-open-wilds-he/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-DerekMultilingualNeural|gender=male|kind=humanoid|style=empathetic|styleDegree=1.00|rate=-5%25|pitch=%2B0%25|volume=default|break=206|actor=live_entity_seed%3Aambient-muck-monster-southwest_wilds_meadow-10080%3A8810000000020080%3Aopen%20wilds%20hex%2012%3Aopen%20wilds%20hex%2012",
+      "voiceId": "ErXwobaYiN019PkySvjV",
+      "textHash": "5621ac4d1a6ec8a8319e98f730dc5567615f85053d9fd0a93632a3babb389cd3",
+      "bytes": 89487
     },
     {
       "cacheKey": "b8a4f39bc7d1ae5ebe2ee123e233b55dce004451cf887c3393b25f9e36951d37",
@@ -18831,6 +20136,426 @@
         "794ac869b951bcd661727a457832282ab0c00a79290572a106224185de3dff0c",
         "ea6a3ad07314763b450bf6cfcd2656273fcf5b93f545ca6bf175781696e5960d"
       ]
+    },
+    {
+      "cacheKey": "199ffe63a7bd8ad3cd577d3fee9162d8e9ccfa655c1106e0b98dc64f838b03b0",
+      "cacheKeys": [
+        "199ffe63a7bd8ad3cd577d3fee9162d8e9ccfa655c1106e0b98dc64f838b03b0",
+        "c27ea36d3099dc52c74646962f76c7bfa8756a027037044aebb85033eb5e96f1"
+      ],
+      "actorKey": "live_entity_seed:open-wilds-livestock-cow-northeast_wilds_headland-10055:8810000000020055:open wilds muckmeadow cow 15:open wilds muckmeadow cow 15",
+      "actorId": "open-wilds-livestock-cow-northeast_wilds_headland-10055",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-open-wilds-livestock-cow-northeast-wilds-headland-10055-open-wi/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-OnyxTurboMultilingualNeural|gender=neutral|kind=animal|rate=-3%25|pitch=%2B0%25|volume=default|break=138|actor=live_entity_seed%3Aopen-wilds-livestock-cow-northeast_wilds_headland-10055%3A8810000000020055%3Aopen%20wilds%20muckmeadow%20cow%2015%3Aopen%20wilds%20muckmeadow%20cow%2015",
+      "voiceId": "VR6AewLTigWG4xSOukaG",
+      "textHash": "69dea118b9219e73504ea3eb31c1b821a4b2392fc7bacc04da23a0ee3da5f44e",
+      "bytes": 15090
+    },
+    {
+      "cacheKey": "641e62c2945bd4581448c8494fbcdc451d1bc6fa73e54bc8a714aa4e58d4a746",
+      "cacheKeys": [
+        "641e62c2945bd4581448c8494fbcdc451d1bc6fa73e54bc8a714aa4e58d4a746",
+        "8bc341e33661ff1d59cc93a916587b4ef877bac162cb0a5f1bd9718c0df74b12"
+      ],
+      "actorKey": "live_entity_seed:open-wilds-livestock-cow-northwest_wilds_ridge-10041:8810000000020041:open wilds muckmeadow cow 1:open wilds muckmeadow cow 1",
+      "actorId": "open-wilds-livestock-cow-northwest_wilds_ridge-10041",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-open-wilds-livestock-cow-northwest-wilds-ridge-10041-open-wilds/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-OnyxTurboMultilingualNeural|gender=neutral|kind=animal|rate=-7%25|pitch=%2B3%25|volume=default|break=120|actor=live_entity_seed%3Aopen-wilds-livestock-cow-northwest_wilds_ridge-10041%3A8810000000020041%3Aopen%20wilds%20muckmeadow%20cow%201%3Aopen%20wilds%20muckmeadow%20cow%201",
+      "voiceId": "VR6AewLTigWG4xSOukaG",
+      "textHash": "69dea118b9219e73504ea3eb31c1b821a4b2392fc7bacc04da23a0ee3da5f44e",
+      "bytes": 20106
+    },
+    {
+      "cacheKey": "ad3253cbf42a2e60d41c749f148cf139b89d7c2f6e6609abaae35d892b9fe180",
+      "cacheKeys": [
+        "ad3253cbf42a2e60d41c749f148cf139b89d7c2f6e6609abaae35d892b9fe180",
+        "ea27e90cbc9a355424d1e200e5f58380d23e7bb21337c44def6b1456d09955a3"
+      ],
+      "actorKey": "live_entity_seed:open-wilds-livestock-cow-southeast_wilds_lowland-10062:8810000000020062:open wilds muckmeadow cow 22:open wilds muckmeadow cow 22",
+      "actorId": "open-wilds-livestock-cow-southeast_wilds_lowland-10062",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-open-wilds-livestock-cow-southeast-wilds-lowland-10062-open-wil/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-FableTurboMultilingualNeural|gender=neutral|kind=animal|rate=-5%25|pitch=%2B2%25|volume=default|break=192|actor=live_entity_seed%3Aopen-wilds-livestock-cow-southeast_wilds_lowland-10062%3A8810000000020062%3Aopen%20wilds%20muckmeadow%20cow%2022%3Aopen%20wilds%20muckmeadow%20cow%2022",
+      "voiceId": "VR6AewLTigWG4xSOukaG",
+      "textHash": "69dea118b9219e73504ea3eb31c1b821a4b2392fc7bacc04da23a0ee3da5f44e",
+      "bytes": 17598
+    },
+    {
+      "cacheKey": "83dcde1471823fbe6ca1eac178001b3df0caf8aa7cd169a9b567854cbbd23193",
+      "cacheKeys": [
+        "83dcde1471823fbe6ca1eac178001b3df0caf8aa7cd169a9b567854cbbd23193",
+        "2b90546f2b9205bf3c4037f174c20887b1d819f1f00b619a26b3970769b6fab2"
+      ],
+      "actorKey": "live_entity_seed:open-wilds-livestock-cow-southwest_wilds_meadow-10048:8810000000020048:open wilds muckmeadow cow 8:open wilds muckmeadow cow 8",
+      "actorId": "open-wilds-livestock-cow-southwest_wilds_meadow-10048",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-open-wilds-livestock-cow-southwest-wilds-meadow-10048-open-wild/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-GuyNeural|gender=neutral|kind=animal|style=whispering|styleDegree=0.85|rate=-5%25|pitch=-1%25|volume=default|break=228|actor=live_entity_seed%3Aopen-wilds-livestock-cow-southwest_wilds_meadow-10048%3A8810000000020048%3Aopen%20wilds%20muckmeadow%20cow%208%3Aopen%20wilds%20muckmeadow%20cow%208",
+      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "textHash": "69dea118b9219e73504ea3eb31c1b821a4b2392fc7bacc04da23a0ee3da5f44e",
+      "bytes": 16344
+    },
+    {
+      "cacheKey": "a17c2d71caedfb5b171057eca5b279dcefc28c67ba5b90eaccc6725e4a4dbcc2",
+      "cacheKeys": [
+        "a17c2d71caedfb5b171057eca5b279dcefc28c67ba5b90eaccc6725e4a4dbcc2",
+        "760d10087a3894d0bb293764daa72c03f9585b6a0058ee8a7bd2d40182a3e69a"
+      ],
+      "actorKey": "live_entity_seed:open-wilds-livestock-rabbit-northeast_wilds_headland-10058:8810000000020058:open wilds muckmeadow rabbit 18:open wilds muckmeadow rabbit 18",
+      "actorId": "open-wilds-livestock-rabbit-northeast_wilds_headland-10058",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-open-wilds-livestock-rabbit-northeast-wilds-headland-10058-open/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-DavisNeural|gender=neutral|kind=animal|style=hopeful|styleDegree=0.90|rate=-3%25|pitch=-4%25|volume=default|break=192|actor=live_entity_seed%3Aopen-wilds-livestock-rabbit-northeast_wilds_headland-10058%3A8810000000020058%3Aopen%20wilds%20muckmeadow%20rabbit%2018%3Aopen%20wilds%20muckmeadow%20rabbit%2018",
+      "voiceId": "EXAVITQu4vr4xnSDxMaL",
+      "textHash": "9f42571e8f7f8e9b4412be8327e1e8b0ecf9a13ede5c9ab7ce260dfd4ad2b36d",
+      "bytes": 25539
+    },
+    {
+      "cacheKey": "3eb5691923b814cd6f1e4149369bad3bca365faac49e88296908efef447b8bd6",
+      "cacheKeys": [
+        "3eb5691923b814cd6f1e4149369bad3bca365faac49e88296908efef447b8bd6",
+        "c391f919ea0baadbcd804df04efc5d67910f32bca690f940350138c8304c68e4"
+      ],
+      "actorKey": "live_entity_seed:open-wilds-livestock-rabbit-northeast_wilds_headland-10059:8810000000020059:open wilds muckmeadow rabbit 19:open wilds muckmeadow rabbit 19",
+      "actorId": "open-wilds-livestock-rabbit-northeast_wilds_headland-10059",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-open-wilds-livestock-rabbit-northeast-wilds-headland-10059-open/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-GuyNeural|gender=neutral|kind=animal|style=whispering|styleDegree=0.80|rate=-1%25|pitch=-2%25|volume=default|break=120|actor=live_entity_seed%3Aopen-wilds-livestock-rabbit-northeast_wilds_headland-10059%3A8810000000020059%3Aopen%20wilds%20muckmeadow%20rabbit%2019%3Aopen%20wilds%20muckmeadow%20rabbit%2019",
+      "voiceId": "TxGEqnHWrfWFTfGW9XjX",
+      "textHash": "9f42571e8f7f8e9b4412be8327e1e8b0ecf9a13ede5c9ab7ce260dfd4ad2b36d",
+      "bytes": 21359
+    },
+    {
+      "cacheKey": "dd0aa5d0b8cfa38c3f9690eda5079fa8c8285c44fa27148f2ded3aaa8a409342",
+      "cacheKeys": [
+        "dd0aa5d0b8cfa38c3f9690eda5079fa8c8285c44fa27148f2ded3aaa8a409342",
+        "501f0c6b42029fc84dec7a812340860b01f1e29f2ba3caba9f24c5ae96c819e9"
+      ],
+      "actorKey": "live_entity_seed:open-wilds-livestock-rabbit-northeast_wilds_headland-10060:8810000000020060:open wilds muckmeadow rabbit 20:open wilds muckmeadow rabbit 20",
+      "actorId": "open-wilds-livestock-rabbit-northeast_wilds_headland-10060",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-open-wilds-livestock-rabbit-northeast-wilds-headland-10060-open/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-AlloyTurboMultilingualNeural|gender=neutral|kind=animal|rate=-7%25|pitch=%2B4%25|volume=default|break=210|actor=live_entity_seed%3Aopen-wilds-livestock-rabbit-northeast_wilds_headland-10060%3A8810000000020060%3Aopen%20wilds%20muckmeadow%20rabbit%2020%3Aopen%20wilds%20muckmeadow%20rabbit%2020",
+      "voiceId": "TxGEqnHWrfWFTfGW9XjX",
+      "textHash": "9f42571e8f7f8e9b4412be8327e1e8b0ecf9a13ede5c9ab7ce260dfd4ad2b36d",
+      "bytes": 20106
+    },
+    {
+      "cacheKey": "519c7da11abe9e0ea22d5c42937c3f3d0597af4cd24727c481a858120ec41685",
+      "cacheKeys": [
+        "519c7da11abe9e0ea22d5c42937c3f3d0597af4cd24727c481a858120ec41685",
+        "6d99404f7b18518f04239e067f10b8d9de2615ceb354af2df536a5bce61df887"
+      ],
+      "actorKey": "live_entity_seed:open-wilds-livestock-rabbit-northeast_wilds_headland-10061:8810000000020061:open wilds muckmeadow rabbit 21:open wilds muckmeadow rabbit 21",
+      "actorId": "open-wilds-livestock-rabbit-northeast_wilds_headland-10061",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-open-wilds-livestock-rabbit-northeast-wilds-headland-10061-open/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-DavisNeural|gender=neutral|kind=animal|style=hopeful|styleDegree=0.85|rate=-3%25|pitch=%2B0%25|volume=default|break=210|actor=live_entity_seed%3Aopen-wilds-livestock-rabbit-northeast_wilds_headland-10061%3A8810000000020061%3Aopen%20wilds%20muckmeadow%20rabbit%2021%3Aopen%20wilds%20muckmeadow%20rabbit%2021",
+      "voiceId": "EXAVITQu4vr4xnSDxMaL",
+      "textHash": "9f42571e8f7f8e9b4412be8327e1e8b0ecf9a13ede5c9ab7ce260dfd4ad2b36d",
+      "bytes": 25539
+    },
+    {
+      "cacheKey": "ee3ad9affaad8d1c5c6987f49caa4d3a6429194998e888965153a5bbd4a910ae",
+      "cacheKeys": [
+        "ee3ad9affaad8d1c5c6987f49caa4d3a6429194998e888965153a5bbd4a910ae",
+        "620ffa3e89c5e960c382c9a50fdfd2ab82c7c702a6bcf74aa9aca2e46f0cbfc6"
+      ],
+      "actorKey": "live_entity_seed:open-wilds-livestock-rabbit-northwest_wilds_ridge-10044:8810000000020044:open wilds muckmeadow rabbit 4:open wilds muckmeadow rabbit 4",
+      "actorId": "open-wilds-livestock-rabbit-northwest_wilds_ridge-10044",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-open-wilds-livestock-rabbit-northwest-wilds-ridge-10044-open-wi/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-NovaTurboMultilingualNeural|gender=neutral|kind=animal|rate=-5%25|pitch=%2B4%25|volume=default|break=156|actor=live_entity_seed%3Aopen-wilds-livestock-rabbit-northwest_wilds_ridge-10044%3A8810000000020044%3Aopen%20wilds%20muckmeadow%20rabbit%204%3Aopen%20wilds%20muckmeadow%20rabbit%204",
+      "voiceId": "MF3mGyEYCl7XYWbV9V6O",
+      "textHash": "9f42571e8f7f8e9b4412be8327e1e8b0ecf9a13ede5c9ab7ce260dfd4ad2b36d",
+      "bytes": 34316
+    },
+    {
+      "cacheKey": "f148853ab73c88421e6a5b20baeafd2ba884fd9915dabad44050d9100f930442",
+      "cacheKeys": [
+        "f148853ab73c88421e6a5b20baeafd2ba884fd9915dabad44050d9100f930442",
+        "19ac746ae659f29bb56247e72d41a60c4a1ae9c080bc4f881cda72417e9fc39e"
+      ],
+      "actorKey": "live_entity_seed:open-wilds-livestock-rabbit-northwest_wilds_ridge-10045:8810000000020045:open wilds muckmeadow rabbit 5:open wilds muckmeadow rabbit 5",
+      "actorId": "open-wilds-livestock-rabbit-northwest_wilds_ridge-10045",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-open-wilds-livestock-rabbit-northwest-wilds-ridge-10045-open-wi/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-GuyNeural|gender=neutral|kind=animal|style=whispering|styleDegree=1.00|rate=-7%25|pitch=-1%25|volume=default|break=210|actor=live_entity_seed%3Aopen-wilds-livestock-rabbit-northwest_wilds_ridge-10045%3A8810000000020045%3Aopen%20wilds%20muckmeadow%20rabbit%205%3Aopen%20wilds%20muckmeadow%20rabbit%205",
+      "voiceId": "yoZ06aMxZJJ28mfd3POQ",
+      "textHash": "9f42571e8f7f8e9b4412be8327e1e8b0ecf9a13ede5c9ab7ce260dfd4ad2b36d",
+      "bytes": 25539
+    },
+    {
+      "cacheKey": "58342122903fd2bb1d65df3d09a74ac76b4d172afc40e3dbb9516ff5d2bc3628",
+      "cacheKeys": [
+        "58342122903fd2bb1d65df3d09a74ac76b4d172afc40e3dbb9516ff5d2bc3628",
+        "84b955a8d168d8d2dc8b6e83bc1bf0d3545143335789a451c347f970ad44502c"
+      ],
+      "actorKey": "live_entity_seed:open-wilds-livestock-rabbit-northwest_wilds_ridge-10046:8810000000020046:open wilds muckmeadow rabbit 6:open wilds muckmeadow rabbit 6",
+      "actorId": "open-wilds-livestock-rabbit-northwest_wilds_ridge-10046",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-open-wilds-livestock-rabbit-northwest-wilds-ridge-10046-open-wi/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-NovaTurboMultilingualNeural|gender=neutral|kind=animal|rate=%2B1%25|pitch=%2B1%25|volume=default|break=138|actor=live_entity_seed%3Aopen-wilds-livestock-rabbit-northwest_wilds_ridge-10046%3A8810000000020046%3Aopen%20wilds%20muckmeadow%20rabbit%206%3Aopen%20wilds%20muckmeadow%20rabbit%206",
+      "voiceId": "MF3mGyEYCl7XYWbV9V6O",
+      "textHash": "9f42571e8f7f8e9b4412be8327e1e8b0ecf9a13ede5c9ab7ce260dfd4ad2b36d",
+      "bytes": 33062
+    },
+    {
+      "cacheKey": "32f80ce0e2f552bf7cfb1b3f29e312a01e2a0594812b7c887005697ce13d1de3",
+      "cacheKeys": [
+        "32f80ce0e2f552bf7cfb1b3f29e312a01e2a0594812b7c887005697ce13d1de3",
+        "ecc6c84ea217c97bc1f577116e611f34b809fd1b43c364d1be87efa298a21cf1"
+      ],
+      "actorKey": "live_entity_seed:open-wilds-livestock-rabbit-northwest_wilds_ridge-10047:8810000000020047:open wilds muckmeadow rabbit 7:open wilds muckmeadow rabbit 7",
+      "actorId": "open-wilds-livestock-rabbit-northwest_wilds_ridge-10047",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-open-wilds-livestock-rabbit-northwest-wilds-ridge-10047-open-wi/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-FableTurboMultilingualNeural|gender=neutral|kind=animal|rate=-7%25|pitch=-1%25|volume=default|break=120|actor=live_entity_seed%3Aopen-wilds-livestock-rabbit-northwest_wilds_ridge-10047%3A8810000000020047%3Aopen%20wilds%20muckmeadow%20rabbit%207%3Aopen%20wilds%20muckmeadow%20rabbit%207",
+      "voiceId": "MF3mGyEYCl7XYWbV9V6O",
+      "textHash": "9f42571e8f7f8e9b4412be8327e1e8b0ecf9a13ede5c9ab7ce260dfd4ad2b36d",
+      "bytes": 29301
+    },
+    {
+      "cacheKey": "ad5058ceacf7b4984704596da5be153fa79fa6c5622e0f64f732f6c9643dd4ba",
+      "cacheKeys": [
+        "ad5058ceacf7b4984704596da5be153fa79fa6c5622e0f64f732f6c9643dd4ba",
+        "a3ceff6c1f4afbaa5a166e7d827aab899c90e5089221937331d3bc1319dc4a18"
+      ],
+      "actorKey": "live_entity_seed:open-wilds-livestock-rabbit-southeast_wilds_lowland-10065:8810000000020065:open wilds muckmeadow rabbit 25:open wilds muckmeadow rabbit 25",
+      "actorId": "open-wilds-livestock-rabbit-southeast_wilds_lowland-10065",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-open-wilds-livestock-rabbit-southeast-wilds-lowland-10065-open-/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-FableTurboMultilingualNeural|gender=neutral|kind=animal|rate=%2B1%25|pitch=-1%25|volume=default|break=246|actor=live_entity_seed%3Aopen-wilds-livestock-rabbit-southeast_wilds_lowland-10065%3A8810000000020065%3Aopen%20wilds%20muckmeadow%20rabbit%2025%3Aopen%20wilds%20muckmeadow%20rabbit%2025",
+      "voiceId": "EXAVITQu4vr4xnSDxMaL",
+      "textHash": "9f42571e8f7f8e9b4412be8327e1e8b0ecf9a13ede5c9ab7ce260dfd4ad2b36d",
+      "bytes": 24285
+    },
+    {
+      "cacheKey": "16b98487768f6efd322f72f16daae4818539eb9338ebaad9ffdb6f92bec6309a",
+      "cacheKeys": [
+        "16b98487768f6efd322f72f16daae4818539eb9338ebaad9ffdb6f92bec6309a",
+        "c5b068f706ebc8ba82da47cd4cb8bf1b09b8487e1e12651a500e6a195d1ca32b"
+      ],
+      "actorKey": "live_entity_seed:open-wilds-livestock-rabbit-southeast_wilds_lowland-10066:8810000000020066:open wilds muckmeadow rabbit 26:open wilds muckmeadow rabbit 26",
+      "actorId": "open-wilds-livestock-rabbit-southeast_wilds_lowland-10066",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-open-wilds-livestock-rabbit-southeast-wilds-lowland-10066-open-/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-AriaNeural|gender=neutral|kind=animal|style=whispering|styleDegree=1.00|rate=-7%25|pitch=%2B2%25|volume=default|break=210|actor=live_entity_seed%3Aopen-wilds-livestock-rabbit-southeast_wilds_lowland-10066%3A8810000000020066%3Aopen%20wilds%20muckmeadow%20rabbit%2026%3Aopen%20wilds%20muckmeadow%20rabbit%2026",
+      "voiceId": "yoZ06aMxZJJ28mfd3POQ",
+      "textHash": "9f42571e8f7f8e9b4412be8327e1e8b0ecf9a13ede5c9ab7ce260dfd4ad2b36d",
+      "bytes": 28047
+    },
+    {
+      "cacheKey": "927dca89ec748438538ad5ccbe4051e4ac9b3b5fc8c3ee47660a7596d93f8322",
+      "cacheKeys": [
+        "927dca89ec748438538ad5ccbe4051e4ac9b3b5fc8c3ee47660a7596d93f8322",
+        "f31ed1b79d10cbff986d9f0b24db9c8bfd203d8b136c2934064edd890dc48808"
+      ],
+      "actorKey": "live_entity_seed:open-wilds-livestock-rabbit-southeast_wilds_lowland-10067:8810000000020067:open wilds muckmeadow rabbit 27:open wilds muckmeadow rabbit 27",
+      "actorId": "open-wilds-livestock-rabbit-southeast_wilds_lowland-10067",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-open-wilds-livestock-rabbit-southeast-wilds-lowland-10067-open-/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-GuyNeural|gender=neutral|kind=animal|style=whispering|styleDegree=0.85|rate=%2B1%25|pitch=%2B4%25|volume=default|break=156|actor=live_entity_seed%3Aopen-wilds-livestock-rabbit-southeast_wilds_lowland-10067%3A8810000000020067%3Aopen%20wilds%20muckmeadow%20rabbit%2027%3Aopen%20wilds%20muckmeadow%20rabbit%2027",
+      "voiceId": "MF3mGyEYCl7XYWbV9V6O",
+      "textHash": "9f42571e8f7f8e9b4412be8327e1e8b0ecf9a13ede5c9ab7ce260dfd4ad2b36d",
+      "bytes": 33062
+    },
+    {
+      "cacheKey": "d692f6ebddcd2cc3abb1854eae27e915575e02ad3ae899d18dd1777ef13fc454",
+      "cacheKeys": [
+        "d692f6ebddcd2cc3abb1854eae27e915575e02ad3ae899d18dd1777ef13fc454",
+        "dad464bb987d140e0adbd0cf2b62bdec58ce13fbad079241eba3d26205bd9d9c"
+      ],
+      "actorKey": "live_entity_seed:open-wilds-livestock-rabbit-southeast_wilds_lowland-10068:8810000000020068:open wilds muckmeadow rabbit 28:open wilds muckmeadow rabbit 28",
+      "actorId": "open-wilds-livestock-rabbit-southeast_wilds_lowland-10068",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-open-wilds-livestock-rabbit-southeast-wilds-lowland-10068-open-/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-FableTurboMultilingualNeural|gender=neutral|kind=animal|rate=-3%25|pitch=-2%25|volume=default|break=228|actor=live_entity_seed%3Aopen-wilds-livestock-rabbit-southeast_wilds_lowland-10068%3A8810000000020068%3Aopen%20wilds%20muckmeadow%20rabbit%2028%3Aopen%20wilds%20muckmeadow%20rabbit%2028",
+      "voiceId": "ErXwobaYiN019PkySvjV",
+      "textHash": "9f42571e8f7f8e9b4412be8327e1e8b0ecf9a13ede5c9ab7ce260dfd4ad2b36d",
+      "bytes": 21359
+    },
+    {
+      "cacheKey": "4f500aa3e15a6a5c561950c24202f0c3e6eb6251f3688728ad1d3a454d04f761",
+      "cacheKeys": [
+        "4f500aa3e15a6a5c561950c24202f0c3e6eb6251f3688728ad1d3a454d04f761",
+        "faa6a4093636502ce55379bc527aefa1426d4b603aae555e8a39517e21e66c08"
+      ],
+      "actorKey": "live_entity_seed:open-wilds-livestock-rabbit-southwest_wilds_meadow-10051:8810000000020051:open wilds muckmeadow rabbit 11:open wilds muckmeadow rabbit 11",
+      "actorId": "open-wilds-livestock-rabbit-southwest_wilds_meadow-10051",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-open-wilds-livestock-rabbit-southwest-wilds-meadow-10051-open-w/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-AriaNeural|gender=neutral|kind=animal|style=whispering|styleDegree=0.90|rate=-7%25|pitch=%2B2%25|volume=default|break=120|actor=live_entity_seed%3Aopen-wilds-livestock-rabbit-southwest_wilds_meadow-10051%3A8810000000020051%3Aopen%20wilds%20muckmeadow%20rabbit%2011%3Aopen%20wilds%20muckmeadow%20rabbit%2011",
+      "voiceId": "ErXwobaYiN019PkySvjV",
+      "textHash": "9f42571e8f7f8e9b4412be8327e1e8b0ecf9a13ede5c9ab7ce260dfd4ad2b36d",
+      "bytes": 23031
+    },
+    {
+      "cacheKey": "9db245e0b71ed4eb75e328507dead17fd1cb51d40f2c5dc1619bc40f2baf4d6c",
+      "cacheKeys": [
+        "9db245e0b71ed4eb75e328507dead17fd1cb51d40f2c5dc1619bc40f2baf4d6c",
+        "69fa9bbc2280f9def2bb092d72d1092bc1ede9dac15b388a544e88c4c118f6ae"
+      ],
+      "actorKey": "live_entity_seed:open-wilds-livestock-rabbit-southwest_wilds_meadow-10052:8810000000020052:open wilds muckmeadow rabbit 12:open wilds muckmeadow rabbit 12",
+      "actorId": "open-wilds-livestock-rabbit-southwest_wilds_meadow-10052",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-open-wilds-livestock-rabbit-southwest-wilds-meadow-10052-open-w/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-OnyxTurboMultilingualNeural|gender=neutral|kind=animal|rate=-3%25|pitch=%2B1%25|volume=default|break=210|actor=live_entity_seed%3Aopen-wilds-livestock-rabbit-southwest_wilds_meadow-10052%3A8810000000020052%3Aopen%20wilds%20muckmeadow%20rabbit%2012%3Aopen%20wilds%20muckmeadow%20rabbit%2012",
+      "voiceId": "MF3mGyEYCl7XYWbV9V6O",
+      "textHash": "9f42571e8f7f8e9b4412be8327e1e8b0ecf9a13ede5c9ab7ce260dfd4ad2b36d",
+      "bytes": 28047
+    },
+    {
+      "cacheKey": "3bd5960d54a5906a0cdb635636e356cc7e7a91a9099751aa55128a74d9e749cb",
+      "cacheKeys": [
+        "3bd5960d54a5906a0cdb635636e356cc7e7a91a9099751aa55128a74d9e749cb",
+        "19a9f5c867ce1c3f6eada29314f6fa10ad7f5c463e03c788646546bc060fbacd"
+      ],
+      "actorKey": "live_entity_seed:open-wilds-livestock-rabbit-southwest_wilds_meadow-10053:8810000000020053:open wilds muckmeadow rabbit 13:open wilds muckmeadow rabbit 13",
+      "actorId": "open-wilds-livestock-rabbit-southwest_wilds_meadow-10053",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-open-wilds-livestock-rabbit-southwest-wilds-meadow-10053-open-w/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-FableTurboMultilingualNeural|gender=neutral|kind=animal|rate=%2B1%25|pitch=%2B2%25|volume=default|break=156|actor=live_entity_seed%3Aopen-wilds-livestock-rabbit-southwest_wilds_meadow-10053%3A8810000000020053%3Aopen%20wilds%20muckmeadow%20rabbit%2013%3Aopen%20wilds%20muckmeadow%20rabbit%2013",
+      "voiceId": "ErXwobaYiN019PkySvjV",
+      "textHash": "9f42571e8f7f8e9b4412be8327e1e8b0ecf9a13ede5c9ab7ce260dfd4ad2b36d",
+      "bytes": 24285
+    },
+    {
+      "cacheKey": "e63e68a7ae40a570ffd8e5d8129ca846ca8912277bde3ca3f261ea70b6f506a7",
+      "cacheKeys": [
+        "e63e68a7ae40a570ffd8e5d8129ca846ca8912277bde3ca3f261ea70b6f506a7",
+        "664d063840f481733b1a973626bad4357b4d1752c380fafe0e4e4f76a17f350a"
+      ],
+      "actorKey": "live_entity_seed:open-wilds-livestock-rabbit-southwest_wilds_meadow-10054:8810000000020054:open wilds muckmeadow rabbit 14:open wilds muckmeadow rabbit 14",
+      "actorId": "open-wilds-livestock-rabbit-southwest_wilds_meadow-10054",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-open-wilds-livestock-rabbit-southwest-wilds-meadow-10054-open-w/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-GuyNeural|gender=neutral|kind=animal|style=whispering|styleDegree=0.80|rate=-3%25|pitch=%2B1%25|volume=default|break=228|actor=live_entity_seed%3Aopen-wilds-livestock-rabbit-southwest_wilds_meadow-10054%3A8810000000020054%3Aopen%20wilds%20muckmeadow%20rabbit%2014%3Aopen%20wilds%20muckmeadow%20rabbit%2014",
+      "voiceId": "ErXwobaYiN019PkySvjV",
+      "textHash": "9f42571e8f7f8e9b4412be8327e1e8b0ecf9a13ede5c9ab7ce260dfd4ad2b36d",
+      "bytes": 25539
+    },
+    {
+      "cacheKey": "c7fc20a09c7dde21f442104b7f088697383d5d86458cc32de49ea5bc45558785",
+      "cacheKeys": [
+        "c7fc20a09c7dde21f442104b7f088697383d5d86458cc32de49ea5bc45558785",
+        "1a1a39c767a3a54bf5f41fe9dd32ce9f0808c19c7dbad52166bba5c82129fdfb"
+      ],
+      "actorKey": "live_entity_seed:open-wilds-livestock-sheep-northeast_wilds_headland-10056:8810000000020056:open wilds muckmeadow sheep 16:open wilds muckmeadow sheep 16",
+      "actorId": "open-wilds-livestock-sheep-northeast_wilds_headland-10056",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-open-wilds-livestock-sheep-northeast-wilds-headland-10056-open-/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-NovaTurboMultilingualNeural|gender=neutral|kind=animal|rate=-1%25|pitch=%2B0%25|volume=default|break=120|actor=live_entity_seed%3Aopen-wilds-livestock-sheep-northeast_wilds_headland-10056%3A8810000000020056%3Aopen%20wilds%20muckmeadow%20sheep%2016%3Aopen%20wilds%20muckmeadow%20sheep%2016",
+      "voiceId": "21m00Tcm4TlvDq8ikWAM",
+      "textHash": "cfd76d0c62c0bc39b80f1a7bcbd4ba04339e56ab2a0336ce98e26f3dbca7519d",
+      "bytes": 16344
+    },
+    {
+      "cacheKey": "566382c8b06519641fe83bf230a0eec94a1ee193e349ff4520df94e40a721e31",
+      "cacheKeys": [
+        "566382c8b06519641fe83bf230a0eec94a1ee193e349ff4520df94e40a721e31",
+        "361bc63b5abf68ed352bdcf83ad7ea8de708f4303848125c8c9f947e093be3da"
+      ],
+      "actorKey": "live_entity_seed:open-wilds-livestock-sheep-northeast_wilds_headland-10057:8810000000020057:open wilds muckmeadow sheep 17:open wilds muckmeadow sheep 17",
+      "actorId": "open-wilds-livestock-sheep-northeast_wilds_headland-10057",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-open-wilds-livestock-sheep-northeast-wilds-headland-10057-open-/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-FableTurboMultilingualNeural|gender=neutral|kind=animal|rate=-7%25|pitch=-2%25|volume=default|break=210|actor=live_entity_seed%3Aopen-wilds-livestock-sheep-northeast_wilds_headland-10057%3A8810000000020057%3Aopen%20wilds%20muckmeadow%20sheep%2017%3Aopen%20wilds%20muckmeadow%20sheep%2017",
+      "voiceId": "VR6AewLTigWG4xSOukaG",
+      "textHash": "cfd76d0c62c0bc39b80f1a7bcbd4ba04339e56ab2a0336ce98e26f3dbca7519d",
+      "bytes": 15090
+    },
+    {
+      "cacheKey": "cdaecf1fbcbeb2e898dbf0388b523551993831c0d6e292375929458feecb5305",
+      "cacheKeys": [
+        "cdaecf1fbcbeb2e898dbf0388b523551993831c0d6e292375929458feecb5305",
+        "f538876ce92d85230fa4c224bfacd10a763050c118bfffb52853ce9ad00bddf4"
+      ],
+      "actorKey": "live_entity_seed:open-wilds-livestock-sheep-northwest_wilds_ridge-10042:8810000000020042:open wilds muckmeadow sheep 2:open wilds muckmeadow sheep 2",
+      "actorId": "open-wilds-livestock-sheep-northwest_wilds_ridge-10042",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-open-wilds-livestock-sheep-northwest-wilds-ridge-10042-open-wil/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-AriaNeural|gender=neutral|kind=animal|style=whispering|styleDegree=1.05|rate=-5%25|pitch=-2%25|volume=default|break=174|actor=live_entity_seed%3Aopen-wilds-livestock-sheep-northwest_wilds_ridge-10042%3A8810000000020042%3Aopen%20wilds%20muckmeadow%20sheep%202%3Aopen%20wilds%20muckmeadow%20sheep%202",
+      "voiceId": "pNInz6obpgDQGcFmaJgB",
+      "textHash": "cfd76d0c62c0bc39b80f1a7bcbd4ba04339e56ab2a0336ce98e26f3dbca7519d",
+      "bytes": 15090
+    },
+    {
+      "cacheKey": "300cd7b4b3d95a047ee2a23afbb2146a190e186c91a6aeaf1c2e3bf61eabb8ac",
+      "cacheKeys": [
+        "300cd7b4b3d95a047ee2a23afbb2146a190e186c91a6aeaf1c2e3bf61eabb8ac",
+        "57d99f257062b19e7ad9d1d6e6c47ecba1c2d9ed8552e6c6ddb8c002e3693800"
+      ],
+      "actorKey": "live_entity_seed:open-wilds-livestock-sheep-northwest_wilds_ridge-10043:8810000000020043:open wilds muckmeadow sheep 3:open wilds muckmeadow sheep 3",
+      "actorId": "open-wilds-livestock-sheep-northwest_wilds_ridge-10043",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-open-wilds-livestock-sheep-northwest-wilds-ridge-10043-open-wil/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-GuyNeural|gender=neutral|kind=animal|style=whispering|styleDegree=0.95|rate=-1%25|pitch=%2B4%25|volume=default|break=228|actor=live_entity_seed%3Aopen-wilds-livestock-sheep-northwest_wilds_ridge-10043%3A8810000000020043%3Aopen%20wilds%20muckmeadow%20sheep%203%3Aopen%20wilds%20muckmeadow%20sheep%203",
+      "voiceId": "VR6AewLTigWG4xSOukaG",
+      "textHash": "cfd76d0c62c0bc39b80f1a7bcbd4ba04339e56ab2a0336ce98e26f3dbca7519d",
+      "bytes": 13836
+    },
+    {
+      "cacheKey": "945b32ec05ed40070be9f6ebd9a3aa2b1cecbc710833428cbad15365e9ec1847",
+      "cacheKeys": [
+        "945b32ec05ed40070be9f6ebd9a3aa2b1cecbc710833428cbad15365e9ec1847",
+        "f5f505f3293d119f2fdf6417cd72129244de7f902e75ead789c02ffc5f382951"
+      ],
+      "actorKey": "live_entity_seed:open-wilds-livestock-sheep-southeast_wilds_lowland-10063:8810000000020063:open wilds muckmeadow sheep 23:open wilds muckmeadow sheep 23",
+      "actorId": "open-wilds-livestock-sheep-southeast_wilds_lowland-10063",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-open-wilds-livestock-sheep-southeast-wilds-lowland-10063-open-w/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-DavisNeural|gender=neutral|kind=animal|style=hopeful|styleDegree=0.90|rate=-7%25|pitch=-4%25|volume=default|break=192|actor=live_entity_seed%3Aopen-wilds-livestock-sheep-southeast_wilds_lowland-10063%3A8810000000020063%3Aopen%20wilds%20muckmeadow%20sheep%2023%3Aopen%20wilds%20muckmeadow%20sheep%2023",
+      "voiceId": "21m00Tcm4TlvDq8ikWAM",
+      "textHash": "cfd76d0c62c0bc39b80f1a7bcbd4ba04339e56ab2a0336ce98e26f3dbca7519d",
+      "bytes": 12582
+    },
+    {
+      "cacheKey": "171550e66a6a76be57baeda397388687c2d357e22cb6ca07be233a9d2fb8ae33",
+      "cacheKeys": [
+        "171550e66a6a76be57baeda397388687c2d357e22cb6ca07be233a9d2fb8ae33",
+        "dca3ff56a147a4eee89b15efc723050f938ca01566d7cfa11573082221d5c799"
+      ],
+      "actorKey": "live_entity_seed:open-wilds-livestock-sheep-southeast_wilds_lowland-10064:8810000000020064:open wilds muckmeadow sheep 24:open wilds muckmeadow sheep 24",
+      "actorId": "open-wilds-livestock-sheep-southeast_wilds_lowland-10064",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-open-wilds-livestock-sheep-southeast-wilds-lowland-10064-open-w/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-GuyNeural|gender=neutral|kind=animal|style=whispering|styleDegree=1.00|rate=-7%25|pitch=-4%25|volume=default|break=228|actor=live_entity_seed%3Aopen-wilds-livestock-sheep-southeast_wilds_lowland-10064%3A8810000000020064%3Aopen%20wilds%20muckmeadow%20sheep%2024%3Aopen%20wilds%20muckmeadow%20sheep%2024",
+      "voiceId": "pNInz6obpgDQGcFmaJgB",
+      "textHash": "cfd76d0c62c0bc39b80f1a7bcbd4ba04339e56ab2a0336ce98e26f3dbca7519d",
+      "bytes": 16344
+    },
+    {
+      "cacheKey": "b16f1770869073fbeb46305e4190afbc372e05e16647e21cb6aa0b9166aa2489",
+      "cacheKeys": [
+        "b16f1770869073fbeb46305e4190afbc372e05e16647e21cb6aa0b9166aa2489",
+        "d90b76a19f8e922f21a81682123d912eb99da8efca3e4b26ebdb7d56160ea8ae"
+      ],
+      "actorKey": "live_entity_seed:open-wilds-livestock-sheep-southwest_wilds_meadow-10049:8810000000020049:open wilds muckmeadow sheep 9:open wilds muckmeadow sheep 9",
+      "actorId": "open-wilds-livestock-sheep-southwest_wilds_meadow-10049",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-open-wilds-livestock-sheep-southwest-wilds-meadow-10049-open-wi/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-OnyxTurboMultilingualNeural|gender=neutral|kind=animal|rate=-5%25|pitch=%2B2%25|volume=default|break=138|actor=live_entity_seed%3Aopen-wilds-livestock-sheep-southwest_wilds_meadow-10049%3A8810000000020049%3Aopen%20wilds%20muckmeadow%20sheep%209%3Aopen%20wilds%20muckmeadow%20sheep%209",
+      "voiceId": "VR6AewLTigWG4xSOukaG",
+      "textHash": "cfd76d0c62c0bc39b80f1a7bcbd4ba04339e56ab2a0336ce98e26f3dbca7519d",
+      "bytes": 15090
+    },
+    {
+      "cacheKey": "39a75b1d95e3d3c805f56c8db34a6bc52688052b665e01901221174f5e248173",
+      "cacheKeys": [
+        "39a75b1d95e3d3c805f56c8db34a6bc52688052b665e01901221174f5e248173",
+        "459910bd2c309be23c92d3445fcd7bff4b80a8c7aae9efabca35d7629a1de223"
+      ],
+      "actorKey": "live_entity_seed:open-wilds-livestock-sheep-southwest_wilds_meadow-10050:8810000000020050:open wilds muckmeadow sheep 10:open wilds muckmeadow sheep 10",
+      "actorId": "open-wilds-livestock-sheep-southwest_wilds_meadow-10050",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-open-wilds-livestock-sheep-southwest-wilds-meadow-10050-open-wi/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-FableTurboMultilingualNeural|gender=neutral|kind=animal|rate=%2B1%25|pitch=%2B4%25|volume=default|break=228|actor=live_entity_seed%3Aopen-wilds-livestock-sheep-southwest_wilds_meadow-10050%3A8810000000020050%3Aopen%20wilds%20muckmeadow%20sheep%2010%3Aopen%20wilds%20muckmeadow%20sheep%2010",
+      "voiceId": "pNInz6obpgDQGcFmaJgB",
+      "textHash": "cfd76d0c62c0bc39b80f1a7bcbd4ba04339e56ab2a0336ce98e26f3dbca7519d",
+      "bytes": 16344
     },
     {
       "cacheKey": "04b86a869940f893505fde3e42b4a038bd786ad7dbdab723fe357f5e83d896ca",

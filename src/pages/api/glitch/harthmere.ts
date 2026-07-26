@@ -4,6 +4,16 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { ensurePlayerExists } from "@/server/logic/utils/players";
 import { readHarthmereRedisStrings } from "@/server/harthmere/live_mode_state_read_helpers";
+import {
+  adoptHarthmereActorStateIfTargetEmpty,
+  enrichHarthmereGlitchSnapshotWithServerState,
+  rehydrateHarthmereActorFromGlitchSaves,
+} from "@/server/harthmere/glitch_cloud_save_rehydration";
+import {
+  HarthmereCloudSavePayloadError,
+  makeHarthmereCloudSavePayload,
+  validateHarthmerePreEncodedCloudSavePayload,
+} from "@/server/harthmere/glitch_cloud_save_payload";
 import { connectToRedis } from "@/server/shared/redis/connection";
 import { editWorldWithRetry } from "@/server/shared/world/edit_retry";
 import {
@@ -29,7 +39,10 @@ import { BIOMES_GAME_NAME } from "@/shared/biomes/display_names";
 import {
   harthmereLiveModeInstallGameUserLinkKey,
   harthmereLiveModeInstallLinkKey,
+  planHarthmereLiveModeActorKey,
 } from "@/shared/harthmere/live_mode_actor_identity";
+import { harthmereLiveModePlayerStateKey } from "@/shared/harthmere/live_mode_backend";
+import { isAcceptedHarthmereCloudSavePayloadVersion } from "@/shared/harthmere/harthmere_cloud_save_rehydration";
 import { parseBiomesId, type BiomesId } from "@/shared/ids";
 import { log } from "@/shared/logging";
 import { Timer } from "@/shared/metrics/timer";
@@ -42,7 +55,10 @@ import {
 export const config = {
   api: {
     bodyParser: {
-      sizeLimit: "10mb",
+      // The live Glitch limit is 50 MB decoded (the pasted integration page
+      // still says 10 MB). Base64 expands that to ~66.7 MB, so leave JSON
+      // overhead while enforcing the decoded-byte limit below.
+      sizeLimit: "72mb",
     },
   },
 };
@@ -1123,16 +1139,6 @@ function decodeSavePayload(save: any) {
   }
 }
 
-function makeSavePayload(snapshot: unknown) {
-  const json = JSON.stringify(snapshot ?? {});
-  const bytes = Buffer.from(json, "utf8");
-  return {
-    payload: bytes.toString("base64"),
-    checksum: crypto.createHash("sha256").update(bytes).digest("hex"),
-    size_bytes: bytes.byteLength,
-  };
-}
-
 function biomesUserIdFromDecodedSavePayload(
   decodedPayload: unknown
 ): BiomesId | undefined {
@@ -1167,8 +1173,10 @@ async function latestBiomesUserIdFromGlitchSave(
     }
     const latest = collectionData(response.json)
       .map((save) => ({ ...save, decoded_payload: decodeSavePayload(save) }))
-      .filter(
-        (save) => save?.decoded_payload?.version === "harthmere-glitch-save"
+      .filter((save) =>
+        isAcceptedHarthmereCloudSavePayloadVersion(
+          save?.decoded_payload?.version
+        )
       )
       .sort((a, b) => Number(b.version ?? 0) - Number(a.version ?? 0))[0];
     return biomesUserIdFromDecodedSavePayload(latest?.decoded_payload);
@@ -1199,6 +1207,61 @@ async function rememberHarthmereLiveModeActorIdentity(
       String(biomesUserId)
     );
   }
+}
+
+async function authenticatedCloudSaveActor(
+  req: IncomingMessage,
+  installId: string
+) {
+  const webReq = req as WebServerRequest;
+  if (!webReq.context?.sessionStore) {
+    throw new Error("MISSING_BIOMES_WEB_CONTEXT");
+  }
+  const authResult = await verifyAuthenticatedRequest(
+    webReq.context.sessionStore,
+    req
+  );
+  if (authResult.error) {
+    throw new Error("CLOUD_SAVE_AUTH_REQUIRED");
+  }
+  const redis = await harthmereGlitchRedis();
+  const [linkedBiomesUserId, linkedGameUserId] =
+    await readHarthmereRedisStrings(redis.primary, [
+      harthmereLiveModeInstallLinkKey(installId),
+      harthmereLiveModeInstallGameUserLinkKey(installId),
+    ]);
+  if (
+    !linkedBiomesUserId ||
+    linkedBiomesUserId !== String(authResult.auth.userId)
+  ) {
+    throw new Error("CLOUD_SAVE_INSTALL_ACTOR_MISMATCH");
+  }
+
+  // Cloud Save and every live_mode_* endpoint must read and write the same
+  // Redis actor. A signed-in session has a numeric Biomes user id, but the
+  // durable gameplay actor is the stable Glitch account id when that link is
+  // present. Restoring into the numeric id made Redis look correct while the
+  // HUD, inventory, and quests continued reading an empty `glitch:<user>`
+  // actor. Keep the numeric link as the authorization boundary, then select
+  // the same actor-precedence rule used by the live-mode request resolver.
+  const actorPlan = planHarthmereLiveModeActorKey({
+    userId: String(authResult.auth.userId),
+    installId,
+    linkedUserId: linkedBiomesUserId,
+    linkedGameUserId,
+    anonymousFallback: String(authResult.auth.userId),
+  });
+  const actorAdoption = await adoptHarthmereActorStateIfTargetEmpty({
+    redis,
+    sourceActorId: linkedBiomesUserId,
+    targetActorId: actorPlan.actorId,
+    nowMs: Date.now(),
+  });
+  return {
+    actorId: actorPlan.actorId,
+    actorAdoption,
+    redis,
+  };
 }
 
 export function harthmereBiomesAuthSessionMatchesIdentity(input: {
@@ -1986,6 +2049,7 @@ export default async function handler(
 
     if (op === "listSaves") {
       const installId = installIdFromBody(body);
+      const cloudActor = await authenticatedCloudSaveActor(req, installId);
       const query = new URLSearchParams({ include_payload: "1" });
       const response = await callGlitchApi(
         `/titles/${encodeURIComponent(titleId)}/installs/${encodeURIComponent(
@@ -2002,12 +2066,63 @@ export default async function handler(
         ...save,
         decoded_payload: decodeSavePayload(save),
       }));
-      return res.status(200).json({ ok: true, saves, raw: response.json });
+      const rehydration = await rehydrateHarthmereActorFromGlitchSaves({
+        redis: cloudActor.redis,
+        actorId: cloudActor.actorId,
+        saves,
+        nowMs: Date.now(),
+      });
+      return res.status(200).json({
+        ok: true,
+        saves,
+        raw: response.json,
+        rehydration: {
+          restored: cloudActor.actorAdoption.adopted || rehydration.restored,
+          source: cloudActor.actorAdoption.adopted
+            ? "linked_biomes_actor"
+            : rehydration.source,
+          save_version: rehydration.saveVersion,
+          reason: cloudActor.actorAdoption.adopted
+            ? cloudActor.actorAdoption.reason
+            : rehydration.decision.rehydrate
+            ? "restored"
+            : rehydration.decision.reason,
+        },
+      });
     }
 
     if (op === "storeSave") {
       const installId = installIdFromBody(body);
-      const encoded = makeSavePayload(body.snapshot ?? {});
+      const cloudActor = await authenticatedCloudSaveActor(req, installId);
+      const usesPreEncodedPayload =
+        typeof body.payload === "string" &&
+        body.payload.length > 0 &&
+        typeof body.checksum === "string" &&
+        body.checksum.length > 0;
+      const rawPlayerState = usesPreEncodedPayload
+        ? null
+        : await cloudActor.redis.primary.get(
+            harthmereLiveModePlayerStateKey(cloudActor.actorId)
+          );
+      const snapshot = usesPreEncodedPayload
+        ? undefined
+        : enrichHarthmereGlitchSnapshotWithServerState({
+            snapshot: body.snapshot ?? {},
+            rawPlayerState,
+            actorId: cloudActor.actorId,
+            nowMs: Date.now(),
+          });
+      // Slot 90 is the portable key/value adapter and already supplies a
+      // correctly checksummed Base64 payload. Slot 0 supplies a structured
+      // snapshot, which the server enriches with the actor-owned live state and
+      // encodes itself. Treating slot 90 as a structured snapshot previously
+      // uploaded `{}` forever and kept its base_version pinned at zero.
+      const encoded = usesPreEncodedPayload
+        ? validateHarthmerePreEncodedCloudSavePayload({
+            payload: body.payload,
+            checksum: body.checksum,
+          })
+        : makeHarthmereCloudSavePayload(snapshot);
       const metadata =
         body.metadata && typeof body.metadata === "object" ? body.metadata : {};
       const saveBody = {
@@ -2052,7 +2167,7 @@ export default async function handler(
         }
       );
       return res
-        .status(response.ok ? 200 : response.status || 500)
+        .status(response.ok ? response.status || 200 : response.status || 500)
         .json(response.json ?? response);
     }
 
@@ -2220,7 +2335,13 @@ export default async function handler(
     const message = error?.message ?? String(error);
     routeError = message;
     const status =
-      message === "TITLE_ID_MISMATCH"
+      error instanceof HarthmereCloudSavePayloadError
+        ? error.status
+        : message === "TITLE_ID_MISMATCH"
+        ? 403
+        : message === "CLOUD_SAVE_AUTH_REQUIRED"
+        ? 401
+        : message === "CLOUD_SAVE_INSTALL_ACTOR_MISMATCH"
         ? 403
         : message === "MISSING_INSTALL_ID"
         ? 422

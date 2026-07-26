@@ -2,6 +2,8 @@ import { installSnapshotLiveNpcLoreDebug } from "@/client/components/challenges/
 import { HarthmereServerAuthorityPanel } from "@/client/components/challenges/LocalDevHarthmereServerAuthorityContracts";
 import { HarthmereCrimeLawPanel } from "@/client/components/challenges/LocalDevHarthmereCrimeLawSystem";
 import { HarthmereQuestGuidancePanel } from "@/client/components/challenges/LocalDevHarthmereQuestGuidanceSystem";
+import { Chapter1NativeObjectivePrompt } from "@/client/components/challenges/Chapter1NativeObjectivePrompt";
+import { Chapter1FractureGatePrompt } from "@/client/components/challenges/Chapter1FractureGatePrompt";
 import { HarthmereDialogueSafetyPanel } from "@/client/components/challenges/LocalDevHarthmereDialogueSafetySystem";
 import { HarthmereInventoryGuidancePanel } from "@/client/components/challenges/LocalDevHarthmereInventoryGuidance";
 import { HarthmereMountPetCollectionPanel } from "@/client/components/challenges/LocalDevHarthmereMountPetCollections";
@@ -110,6 +112,7 @@ import {
   useHarthmereMultiplayerCombatState,
 } from "@/client/components/challenges/LocalDevHarthmereMultiplayerCombatSystem";
 import {
+  completeHarthmereJobsBoardReadQuest,
   HarthmereQuestMapHUD,
   HarthmereQuestNavAidController,
 } from "@/client/components/challenges/LocalDevHarthmereQuests";
@@ -3149,6 +3152,10 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{
       // only object-semantic interactions could produce `open_jobs_board`, so
       // the authored "Read the Jobs Board" lesson stayed stuck when players
       // used the clearly advertised B shortcut.
+      // Keep the string-keyed compatibility twin in lockstep as well. Native
+      // Grove authority consumes the garden-hose event below, while legacy
+      // starter saves still own this local mission state.
+      completeHarthmereJobsBoardReadQuest("jobs_board_panel_opened");
       gardenHose.publish({ kind: "open_jobs_board" });
       setJobsBoardWorldContext(harthmereJobsBoardOpenContextFromInput(input));
       openHarthmereJobsBoardPointerLock(
@@ -3279,6 +3286,8 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{
   const runtimeControllers = (
     <>
       <HarthmereQuestNavAidController />
+      <Chapter1NativeObjectivePrompt />
+      <Chapter1FractureGatePrompt />
       {/* HARTHMERE_BIBLE_QUEST_WIRING (bible-wiring fix, 2026-07-14): hidden
           world-trigger quest acceptance + the Thaedryn encounter panel. */}
       <HarthmereBibleQuestRuntimeController />
@@ -3311,15 +3320,6 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{
     return (
       <>
         {runtimeControllers}
-        {/* The Biomes UI owns the standard objective card, but Snapshot Grove
-            lessons also require contextual world-action buttons. Keep that
-            narrow lesson surface mounted in production so accepting a lesson
-            cannot leave the player at a marker with no completable action. */}
-        {hudVisibility.objectives && (
-          <div className="pointer-events-auto fixed right-2 top-[20.25rem] z-[60] max-h-[calc(100vh-21rem)] w-[min(19rem,calc(100vw-1rem))] overflow-y-auto max-sm:hidden md:right-4 md:top-[20.75rem]">
-            <SnapshotGroveMapHUD />
-          </div>
-        )}
         {/* Contextual Grove objectives can open the focused tutorial chat; the
             controller alone records state but cannot render that interaction. */}
         <SnapshotGroveTutorChatPanel />
@@ -3366,16 +3366,6 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{
         <div className="fixed right-2 top-2 z-30 md:right-4 md:top-4">
           <MiniMapHUD />
         </div>
-      )}
-      {hudVisibility.objectives && (
-        <>
-          {/* Keep long multi-step lesson controls reachable on short desktop
-              viewports. Without an explicit scroll boundary the practice
-              action can render below the screen while its marker is in range. */}
-          <div className="pointer-events-auto fixed right-2 top-[20.25rem] z-[60] max-h-[calc(100vh-21rem)] w-[min(19rem,calc(100vw-1rem))] overflow-y-auto max-sm:hidden md:right-4 md:top-[20.75rem]">
-            <SnapshotGroveMapHUD />
-          </div>
-        </>
       )}
       {hudVisibility.helpButtons && <FightSideControls />}
       {hudVisibility.actionBar && <UtilityActionBar onAction={openHudAction} />}

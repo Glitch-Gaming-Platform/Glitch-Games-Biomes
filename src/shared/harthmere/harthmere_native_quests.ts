@@ -13,6 +13,7 @@ import { SNAPSHOT_GROVE_QUESTS } from "@/shared/harthmere/snapshot_grove_content
 import type { BiomesId } from "@/shared/ids";
 import type { Matcher } from "@/shared/triggers/matcher_schema";
 import type { StoredTriggerDefinition } from "@/shared/triggers/schema";
+import { allCh1NativeQuestBiscuits } from "@/shared/harthmere/ch1_native_quests";
 
 export const HARTHMERE_NATIVE_QUEST_OVERLAY_VERSION =
   "harthmere-native-authored-quests-v1" as const;
@@ -260,5 +261,6 @@ export function allHarthmereNativeQuestBiscuits(): Biscuit[] {
   return [
     ...SNAPSHOT_GROVE_QUESTS.map(groveQuestBiscuit),
     ...HARTHMERE_QUEST_CATALOG.map(bibleQuestBiscuit),
+    ...allCh1NativeQuestBiscuits(),
   ];
 }

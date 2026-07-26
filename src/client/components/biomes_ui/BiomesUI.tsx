@@ -37,6 +37,8 @@ import { LootTab } from "./tabs/LootTab";
 import { GuildsTab } from "./tabs/GuildsTab";
 import { BankingTab } from "./tabs/BankingTab";
 import { MapQuestsTab } from "./tabs/MapQuestsTab";
+import { QuestsTab } from "./tabs/QuestsTab";
+import { RecoveredTab } from "./tabs/RecoveredTab";
 import { CollectionsTab } from "./tabs/CollectionsTab";
 import { InboxTab } from "./tabs/InboxTab";
 import { OptionsTab } from "./tabs/OptionsTab";
@@ -248,7 +250,11 @@ export const BiomesUI: React.FunctionComponent<BiomesUIProps> = ({
               overflow: "auto",
             }}
           >
-            <ActiveTabPane tab={activeTab} adapters={adapters} />
+            <ActiveTabPane
+              tab={activeTab}
+              adapters={adapters}
+              onActiveTabChange={onActiveTabChange}
+            />
           </div>
         </div>
       )}
@@ -323,7 +329,8 @@ export const BiomesUI: React.FunctionComponent<BiomesUIProps> = ({
 const ActiveTabPane: React.FunctionComponent<{
   tab: TabKey;
   adapters?: BiomesUIAdapters;
-}> = ({ tab, adapters }) => {
+  onActiveTabChange: (next: TabKey | null) => void;
+}> = ({ tab, adapters, onActiveTabChange }) => {
   const desc = TAB_DESCRIPTORS[tab];
   return (
     <div>
@@ -359,6 +366,13 @@ const ActiveTabPane: React.FunctionComponent<{
       {tab === "loot" && <LootTab adapter={adapters?.loot} />}
       {tab === "guilds" && <GuildsTab adapter={adapters?.guilds} />}
       {tab === "banking" && <BankingTab adapter={adapters?.banking} />}
+      {tab === "quests" && (
+        <QuestsTab
+          adapter={adapters?.map}
+          onOpenMap={() => onActiveTabChange("map")}
+        />
+      )}
+      {tab === "recovered" && <RecoveredTab />}
       {tab === "map" && <MapQuestsTab adapter={adapters?.map} />}
       {tab === "collections" && (
         <CollectionsTab adapter={adapters?.collections} />

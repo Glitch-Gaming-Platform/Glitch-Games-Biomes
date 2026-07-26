@@ -1,6 +1,11 @@
 import { useEffect, useRef, useSyncExternalStore } from "react";
 
 export const WORLD_INTERACTION_PRIORITY = {
+  // An active Chapter 1 story prompt represents the exact server-validated
+  // objective at the player's current position. It must outrank tools and
+  // incidental overlapping players/NPCs; otherwise F can open an unrelated
+  // modal while the authored quest action remains stuck.
+  chapter1Story: 30_000,
   // A deliberately active tool mode (camera/fishing/wand) owns its controls
   // before any object behind the reticle. The player selected that mode and
   // its HUD is the visible contract for F.

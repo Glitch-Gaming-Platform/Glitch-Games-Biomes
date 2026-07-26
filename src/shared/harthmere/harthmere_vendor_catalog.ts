@@ -1119,6 +1119,8 @@ export function createHarthmereProductionVendorEntry(
     buyPrice,
     sellPrice,
     stock: stock.quantity,
+    bundleQuantity: stock.quantity,
+    bundlePrice: stock.price,
   };
 }
 
@@ -1161,6 +1163,8 @@ export function ensureHarthmereProductionVendorCatalog() {
       buyPrice: unitBuyPrice(stock),
       sellPrice: 0,
       stock: stock.quantity,
+      bundleQuantity: stock.quantity,
+      bundlePrice: stock.price,
     });
   }
 }

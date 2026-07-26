@@ -561,6 +561,99 @@ describe("Redis Apply Tests", () => {
     );
   });
 
+  it("records portable LT leaderboards for simple-race quest completion", async () => {
+    const RACER = 7788 as BiomesId;
+    const MINIGAME = 9002 as BiomesId;
+
+    const finishRace = async (
+      startTime: number,
+      finishTime: number,
+      instanceId: BiomesId
+    ) =>
+      world.apply(<ChangeToApply>{
+        events: [
+          {
+            kind: "minigame_simple_race_finish",
+            entityId: RACER,
+            duration: finishTime - startTime,
+            finishTime,
+            minigameCreatorId: 9001 as BiomesId,
+            startTime,
+            minigameId: MINIGAME,
+            minigameInstanceId: instanceId,
+          },
+        ],
+      });
+
+    // The first run creates the score, a slower run must not replace it, and a
+    // faster run must. Before the portable Lua comparison, the first LT write
+    // raised ERR syntax error on the local production Redis image and blocked
+    // Get the Muck Out before Muck vs. Machine could unlock.
+    await finishRace(100, 112, 9003 as BiomesId);
+    await finishRace(200, 215, 9004 as BiomesId);
+    await finishRace(300, 307, 9005 as BiomesId);
+
+    const leaderboard = world.leaderboard();
+    assert.equal(
+      (
+        await leaderboard.getValues([
+          {
+            category: `minigame:${MINIGAME}:simple_race:time`,
+            window: "alltime",
+            order: "ASC",
+            id: RACER,
+          },
+        ])
+      )[0]?.value,
+      7
+    );
+  });
+
+  it("records portable LT and GT values through the direct leaderboard API", async () => {
+    const id = 7799 as BiomesId;
+    const leaderboard = world.leaderboard();
+
+    await leaderboard.record("test:portable:low", "LT", id, 12);
+    await leaderboard.record("test:portable:low", "LT", id, 15);
+    await leaderboard.record("test:portable:low", "LT", id, 8);
+    await leaderboard.record("test:portable:high", "GT", id, 12);
+    await leaderboard.record("test:portable:high", "GT", id, 9);
+    await leaderboard.record("test:portable:high", "GT", id, 18);
+
+    assert.equal(
+      (
+        await leaderboard.getValues([
+          {
+            category: "test:portable:low",
+            window: "alltime",
+            order: "ASC",
+            id,
+          },
+          {
+            category: "test:portable:high",
+            window: "alltime",
+            order: "DESC",
+            id,
+          },
+        ])
+      )[0]?.value,
+      8
+    );
+    assert.equal(
+      (
+        await leaderboard.getValues([
+          {
+            category: "test:portable:high",
+            window: "alltime",
+            order: "DESC",
+            id,
+          },
+        ])
+      )[0]?.value,
+      18
+    );
+  });
+
   it("Can represent double-valued leaderboard values", async () => {
     const FISHER = 1231 as BiomesId;
     await fishItemWithLength(world, FISHER, BikkieIds.bigeye_tuna, 1.2);

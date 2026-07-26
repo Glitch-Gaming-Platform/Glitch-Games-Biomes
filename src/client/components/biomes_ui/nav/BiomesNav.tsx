@@ -4,7 +4,7 @@
 //   ←/→ : move focus between tabs (rolls over)
 //   Enter / Space : activate the focused tab
 //   Tab : moves focus out of the rail (standard browser behavior)
-//   Direct shortcut keys: R/I/P/B/K/Y/L/O/G/Q/M/C/V/, also activate.
+//   Direct shortcut keys: R/I/P/B/K/Y/L/O/G/Q/J/M/C/V/, also activate.
 //
 // Mouse: click a tab to activate. Hover shows tooltip with shortcut hint.
 
@@ -33,6 +33,8 @@ const tabIdMap: Record<TabKey, string> = {
   loot: UI_IDS.TAB_LOOT,
   guilds: UI_IDS.TAB_GUILDS,
   banking: UI_IDS.TAB_BANKING,
+  quests: UI_IDS.TAB_QUESTS,
+  recovered: UI_IDS.TAB_RECOVERED,
   map: UI_IDS.TAB_MAP,
   collections: UI_IDS.TAB_COLLECTIONS,
   inbox: UI_IDS.TAB_INBOX,

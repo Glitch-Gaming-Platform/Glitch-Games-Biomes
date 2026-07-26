@@ -11,6 +11,9 @@ const {
 const {
   harthmereVoiceProfileForActor,
 } = require("../../src/shared/harthmere/npc_voice_profiles");
+const {
+  HARTHMERE_NPC_VOICE_CATALOG,
+} = require("../../src/shared/harthmere/npc_voice_catalog");
 
 const root = path.resolve(process.argv[2] || path.join(__dirname, "../.."));
 const publicRoot = path.join(root, "public");
@@ -47,11 +50,17 @@ function main() {
   if (!manifest.synthesisIdentity) {
     fail("NPC voice manifest is missing synthesisIdentity");
   }
-  if ((manifest.recordings || []).length < 1536) {
+  const expectedCatalogPaths = new Set(
+    HARTHMERE_NPC_VOICE_CATALOG.flatMap((entry) =>
+      entry.staticLines.map((line) => line.recordingPath)
+    )
+  );
+  const expectedMinimum = expectedCatalogPaths.size + 139;
+  if ((manifest.recordings || []).length < expectedMinimum) {
     fail(
       `NPC voice manifest is incomplete: ${
         manifest.recordings?.length || 0
-      } recordings`
+      } recordings; expected at least ${expectedMinimum}`
     );
   }
 
@@ -96,6 +105,27 @@ function main() {
     );
   }
 
+  // Chapter 1 paths are actor-based rather than line-based so filenames never
+  // expose the chapter's protected reveal terms through static asset requests.
+  const chapterPaths = [...expectedCatalogPaths].filter((recordingPath) =>
+    recordingPath.includes("/chapter-1-identity-")
+  );
+  if (chapterPaths.length < 63) {
+    fail(`Chapter 1 voice catalog is incomplete: ${chapterPaths.length} lines`);
+  }
+  for (const chapterPath of chapterPaths) {
+    if (!paths.has(chapterPath)) {
+      fail(`Missing Chapter 1 voice MP3: ${chapterPath}`);
+    }
+    if (
+      /stillwater|riverbed|seven|anchor-zero|anchor_zero|ardan-betrayal/i.test(
+        chapterPath
+      )
+    ) {
+      fail(`Chapter 1 voice filename leaks protected lore: ${chapterPath}`);
+    }
+  }
+
   // Reproduce the exact production request from the attached HAR. It must map
   // to committed audio rather than a replica-local runtime filename.
   const jackieVoice = harthmereVoiceProfileForActor({
@@ -123,6 +153,7 @@ function main() {
 
   console.log(
     `PASS NPC voice recordings: ${manifest.recordings.length} MP3s, ` +
+      `${chapterPaths.length} Chapter 1 lines, ` +
       `${nativeRobotStoryCount} native robot-story lines, HAR cache hit ${harRecording.path}`
   );
 }

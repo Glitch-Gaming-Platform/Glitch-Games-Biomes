@@ -1,0 +1,68 @@
+/// <reference types="mocha" />
+
+import assert from "assert";
+import {
+  allCh1ObjectiveTargets,
+  ch1ObjectiveTarget,
+} from "@/shared/harthmere/ch1_objective_targets";
+import {
+  ch1DungeonBlockAt,
+  ch1DungeonWorldToAuthored,
+} from "@/shared/harthmere/ch1_dungeon_terrain";
+import { CH1_QUESTS } from "@/shared/harthmere/ch1_quests";
+
+describe("Chapter 1 objective targets", () => {
+  it("resolves every authored objective to a finite production target", () => {
+    const targets = allCh1ObjectiveTargets();
+    assert.equal(
+      targets.length,
+      CH1_QUESTS.reduce((count, quest) => count + quest.steps.length, 0)
+    );
+    for (const target of targets) {
+      assert.ok(target.label, `${target.questId}/${target.stepId}: no label`);
+      assert.ok(
+        target.position.every(Number.isFinite),
+        `${target.questId}/${target.stepId}: invalid position`
+      );
+      assert.ok(target.interactionRadius >= 8);
+      assert.ok(target.actionLabel);
+    }
+  });
+
+  it("uses walkable native terrain samples for every dungeon objective", () => {
+    for (const questId of [
+      "ch1_a3_d1_the_sand_that_remembers",
+      "ch1_a5_d2_the_long_winter_mouth",
+    ]) {
+      const quest = CH1_QUESTS.find((candidate) => candidate.id === questId)!;
+      const dungeonId = questId.includes("d1_")
+        ? "ch1_dungeon_desert"
+        : "ch1_dungeon_winter";
+      for (const step of quest.steps) {
+        const target = ch1ObjectiveTarget(quest.id, step.id)!;
+        assert.equal(target.source, "dungeon");
+        const local = ch1DungeonWorldToAuthored(dungeonId, target.position);
+        const x = Math.floor(local.x);
+        const y = Math.floor(local.y);
+        const z = Math.floor(local.z);
+        assert.ok(
+          ch1DungeonBlockAt(dungeonId, x, y - 1, z) !== undefined,
+          `${quest.id}/${step.id}: no floor`
+        );
+        assert.equal(ch1DungeonBlockAt(dungeonId, x, y, z), undefined);
+        assert.equal(ch1DungeonBlockAt(dungeonId, x, y + 1, z), undefined);
+      }
+    }
+  });
+
+  it("keeps named Chapter 1 NPC objectives on their real seeded identities", () => {
+    const lou = ch1ObjectiveTarget("ch1_a6_q01_the_case", "hear_him_out")!;
+    assert.equal(lou.source, "npc");
+    assert.ok(lou.entityId);
+    const sorrel = ch1ObjectiveTarget(
+      "ch1_a5_d2_the_long_winter_mouth",
+      "d2_sorrels_camp"
+    )!;
+    assert.equal(sorrel.source, "dungeon");
+  });
+});

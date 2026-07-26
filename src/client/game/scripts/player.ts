@@ -1931,6 +1931,8 @@ export class PlayerScript implements Script {
       }
     };
 
+    const wasPromoStreamingReady =
+      typeof win.__harthmereLivePlayerDebug?.teleportTo === "function";
     win.__harthmereLivePlayerDebug = {
       ...(win.__harthmereLivePlayerDebug ?? {}),
       version: "harthmere-dungeon-teleport-live-player-hook",
@@ -1938,6 +1940,11 @@ export class PlayerScript implements Script {
       teleportTo,
       consumeStoredTeleportTarget,
     };
+    // Promo capture must wait on the player script's authoritative mutation
+    // hook, not infer player readiness from renderer timing.
+    if (!wasPromoStreamingReady) {
+      window.dispatchEvent(new Event("biomes:promo-streaming-ready"));
+    }
 
     // Consume once per publishMove so old stored requests become useful after reload,
     // but never pretend success if the write path cannot mutate the live player.

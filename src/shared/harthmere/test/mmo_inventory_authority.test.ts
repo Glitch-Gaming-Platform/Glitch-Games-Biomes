@@ -186,6 +186,15 @@ before(() => {
     requiredFaction: "noble_guild",
     requiredReputationTier: 5,
   });
+  registerHarthmereVendorEntry({
+    vendorId: "bundle_vendor",
+    itemId: "health_potion",
+    buyPrice: 8,
+    sellPrice: 3,
+    stock: 5,
+    bundleQuantity: 5,
+    bundlePrice: 37,
+  });
 
   registerHarthmereCraftingRecipe({
     recipeId: "smelt_iron",
@@ -205,7 +214,7 @@ before(() => {
 // ---------------------------------------------------------------------------
 
 describe("Inventory utilities", () => {
-  it("countInventorySlots counts distinct item types", () => {
+  it("countInventorySlots counts stack-aware occupied slots", () => {
     assert.strictEqual(countInventorySlots({}), 0);
     assert.strictEqual(countInventorySlots({ iron_sword: 1 }), 1);
     assert.strictEqual(
@@ -216,6 +225,7 @@ describe("Inventory utilities", () => {
       countInventorySlots({ iron_sword: 0, health_potion: -1, iron_ore: 3 }),
       1
     );
+    assert.strictEqual(countInventorySlots({ iron_sword: 3 }), 3);
   });
 
   it("inventoryHasCapacity returns true when under limit", () => {
@@ -406,6 +416,37 @@ describe("Vendor buy", () => {
     const result = reduceHarthmereInventoryMutation(req, ctx);
     assert.ok(result.ok, result.errors?.join(", "));
     assert.strictEqual(result.itemDeltas["health_potion"], 10);
+  });
+
+  it("charges the exact server-owned bundle price", () => {
+    const snap = makeSnapshot({ gold: 100 });
+    const result = reduceHarthmereInventoryMutation(
+      makeReq({
+        kind: "buy_from_vendor",
+        vendorId: "bundle_vendor",
+        itemId: "health_potion",
+        count: 5,
+      }),
+      makeCtx(snap)
+    );
+    assert.ok(result.ok, result.errors?.join(", "));
+    assert.strictEqual(result.itemDeltas.health_potion, 5);
+    assert.strictEqual(result.goldDelta, -37);
+  });
+
+  it("rejects forged partial bundle quantities", () => {
+    const snap = makeSnapshot({ gold: 100 });
+    const result = reduceHarthmereInventoryMutation(
+      makeReq({
+        kind: "buy_from_vendor",
+        vendorId: "bundle_vendor",
+        itemId: "health_potion",
+        count: 1,
+      }),
+      makeCtx(snap)
+    );
+    assert.equal(result.ok, false);
+    assert.ok(result.errors.includes("invalid_vendor_bundle_count"));
   });
 });
 

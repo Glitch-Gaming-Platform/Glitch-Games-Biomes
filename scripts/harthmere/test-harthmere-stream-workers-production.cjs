@@ -154,6 +154,13 @@ function runStaticChecks() {
     "Glitch unified/web roles enable gameplay stream workers by default"
   );
   ok(
+    runner.includes("GLITCH_FOCUSED_NATIVE_E2E_STACK") &&
+      runner.includes("GLITCH_EMBED_ASK_IN_LOGIC=1") &&
+      runner.includes("notification stream worker is omitted") &&
+      deploy.includes("GLITCH_FOCUSED_NATIVE_E2E_STACK"),
+    "focused native E2E keeps Trigger while omitting duplicate Ask/Notify and nonessential replicas"
+  );
+  ok(
     runner.includes("GLITCH_STACK_ROLE") &&
       runner.includes("GLITCH_DEFAULT_ANIMA=1") &&
       runner.includes("GLITCH_DEFAULT_ANIMA=0") &&

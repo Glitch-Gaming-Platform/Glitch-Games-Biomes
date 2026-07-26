@@ -240,6 +240,9 @@ export const zCutsceneAction = z.discriminatedUnion("kind", [
     role: zCutsceneId.optional(),
     speaker: z.string().max(128).optional(),
     text: z.string().min(1).max(4096),
+    // Provider-neutral actor descriptor used by the same TTS route as normal
+    // NPC dialogue. Omitting it keeps player lines and narration text-only.
+    voice: z.string().max(4096).optional(),
     duration: zFinitePositive.max(MAX_CUTSCENE_SECONDS).optional(),
   }),
   z.object({
@@ -266,6 +269,9 @@ export const zCutsceneAction = z.discriminatedUnion("kind", [
     kind: z.literal("vfx"),
     at: zFiniteNonNegative.max(MAX_CUTSCENE_SECONDS).default(0),
     effect: z.enum(["exoticMatterCreation", "combatImpact"]),
+    // Scene-level art direction without forking particle definitions. The
+    // particle system remains engine-native; only its world transform grows.
+    scale: zFinitePositive.min(0.1).max(10).default(1),
     position: zCutsceneVec3.optional(),
     atRole: zCutsceneId.optional(),
   }),
@@ -304,6 +310,10 @@ export const zCutsceneAction = z.discriminatedUnion("kind", [
     height: zFinitePositive.int().max(MAX_CAPTURE_DIMENSION).default(2160),
     format: z.enum(["image/png", "image/jpeg"]).default("image/png"),
     filename: z.string().trim().min(1).max(256).optional(),
+    // Puppet records and asynchronously loaded VFX are published during the
+    // director tick. Waiting a few real renderer frames prevents a capture
+    // from freezing the previous scene graph before those visuals are drawn.
+    settleFrames: zFiniteNonNegative.int().max(10).default(2),
   }),
 ]);
 export type CutsceneAction = z.infer<typeof zCutsceneAction>;

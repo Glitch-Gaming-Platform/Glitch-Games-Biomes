@@ -31,6 +31,7 @@ import { NATIVE_ROAD_AHEAD_MUCKWAD_ITEM_ID } from "@/shared/harthmere/native_roa
 import { allHarthmereNativeQuestBiscuits } from "@/shared/harthmere/harthmere_native_quests";
 import { SNAPSHOT_GROVE_QUESTS } from "@/shared/harthmere/snapshot_grove_content";
 import { HARTHMERE_QUEST_CATALOG } from "@/shared/harthmere/quest_compendium";
+import { allCh1NativeQuestBiscuits } from "@/shared/harthmere/ch1_native_quests";
 import { zrpcWebDeserialize, zrpcWebSerialize } from "@/shared/zrpc/serde";
 
 function tray(contents: ReadonlyMap<number, Biscuit> = new Map()) {
@@ -109,7 +110,9 @@ describe("Harthmere exact native Bikkie overlay", function () {
     const quests = allHarthmereNativeQuestBiscuits();
     assert.equal(
       quests.length,
-      SNAPSHOT_GROVE_QUESTS.length + HARTHMERE_QUEST_CATALOG.length
+      SNAPSHOT_GROVE_QUESTS.length +
+        HARTHMERE_QUEST_CATALOG.length +
+        allCh1NativeQuestBiscuits().length
     );
     assert.equal(new Set(quests.map((quest) => quest.id)).size, quests.length);
     const augmented = withHarthmereNativeBikkieItems(tray());

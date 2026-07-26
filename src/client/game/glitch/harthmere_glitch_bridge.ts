@@ -23,6 +23,7 @@ import {
   HARTHMERE_GLITCH_STATE_CHANGE_BEHAVIORS,
 } from "@/client/game/glitch/harthmere_glitch_tracking_manifest";
 import { shouldApplyHarthmereCloudSave } from "@/client/game/glitch/harthmere_cloud_save_restore_policy";
+import { isAcceptedHarthmereCloudSavePayloadVersion } from "@/shared/harthmere/harthmere_cloud_save_rehydration";
 import { HARTHMERE_INVENTORY_EVENT } from "@/client/components/challenges/harthmereEvents";
 
 import { BIOMES_GAME_NAME } from "@/shared/biomes/display_names";
@@ -747,12 +748,58 @@ function migrateCloudSaveStorageKeyToCurrentScope(key: string) {
   return undefined;
 }
 
+function migrateLegacyVersionedCloudSaveKeyToCurrentScope(key: string) {
+  const scope = currentCloudSaveRestoreScope();
+  for (const baseKey of HARTHMERE_GLITCH_REQUIRED_SAVE_KEYS) {
+    if (!key.startsWith(`${baseKey}.v`)) continue;
+    const suffix = key.slice(baseKey.length);
+    const match = suffix.match(/^\.v\d+(?:\.user\.(.+))?$/);
+    if (!match) continue;
+    return match[1] && scope ? `${baseKey}.user.${scope}` : baseKey;
+  }
+  return undefined;
+}
+
+function cloudRestoreProgressScore(raw: string) {
+  try {
+    const value = JSON.parse(raw) as Record<string, any>;
+    const backpack = Array.isArray(value?.backpack?.items)
+      ? value.backpack.items.reduce(
+          (sum: number, item: any) =>
+            sum + Math.max(1, Number(item?.quantity) || 1),
+          0
+        )
+      : 0;
+    const questProgress =
+      Object.keys(value?.active ?? {}).length * 100 +
+      (Array.isArray(value?.completed) ? value.completed.length * 1_000 : 0) +
+      (Array.isArray(value?.completedQuestIds)
+        ? value.completedQuestIds.length * 1_000
+        : 0) +
+      (Array.isArray(value?.completedObjectiveIds)
+        ? value.completedObjectiveIds.length * 100
+        : 0) +
+      (Array.isArray(value?.completedStepIds)
+        ? value.completedStepIds.length * 100
+        : 0);
+    return (
+      Math.max(1, Number(value?.level) || 1) * 1_000_000_000 +
+      Math.max(0, Number(value?.xpCurrent) || 0) * 1_000_000 +
+      questProgress * 1_000 +
+      backpack +
+      Math.max(0, Number(value?.wallet?.gold) || 0)
+    );
+  } catch {
+    return 0;
+  }
+}
+
 function applySnapshot(snapshot: unknown, cloudSaveVersion?: number) {
   if (!isBrowser()) return false;
   const parsed = snapshot as Partial<HarthmereGlitchSnapshot> | undefined;
   if (
     !parsed ||
-    parsed.version !== "harthmere-glitch-save" ||
+    !isAcceptedHarthmereCloudSavePayloadVersion(parsed.version) ||
     !parsed.localStorage
   ) {
     return false;
@@ -760,6 +807,10 @@ function applySnapshot(snapshot: unknown, cloudSaveVersion?: number) {
   let restoredKeyCount = 0;
   let migratedKeyCount = 0;
   let hasCharacterCustomization = false;
+  const migrations = new Map<
+    string,
+    { value: string; score: number; sourceKey: string }
+  >();
   for (const [key, value] of Object.entries(parsed.localStorage)) {
     if (isHarthmereCloudSaveStorageKey(key) && typeof value === "string") {
       restoredKeyCount += 1;
@@ -777,12 +828,29 @@ function applySnapshot(snapshot: unknown, cloudSaveVersion?: number) {
           ? currentCloudSaveRestoreScope() ?? value
           : value
       );
-      const migratedKey = migrateCloudSaveStorageKeyToCurrentScope(key);
-      if (migratedKey) {
-        migratedKeyCount += 1;
-        window.localStorage.setItem(migratedKey, value);
+      const migratedKeys = [
+        migrateCloudSaveStorageKeyToCurrentScope(key),
+        migrateLegacyVersionedCloudSaveKeyToCurrentScope(key),
+      ].filter((candidate): candidate is string => Boolean(candidate));
+      for (const migratedKey of migratedKeys) {
+        const score = cloudRestoreProgressScore(value);
+        const current = migrations.get(migratedKey);
+        if (!current || score > current.score) {
+          migrations.set(migratedKey, { value, score, sourceKey: key });
+        }
       }
     }
+  }
+  for (const [migratedKey, candidate] of migrations) {
+    const direct = parsed.localStorage[migratedKey];
+    if (
+      typeof direct === "string" &&
+      cloudRestoreProgressScore(direct) > candidate.score
+    ) {
+      continue;
+    }
+    migratedKeyCount += 1;
+    window.localStorage.setItem(migratedKey, candidate.value);
   }
   dispatchHarthmereCloudRestoreEvents({
     restoredKeyCount,
@@ -1907,7 +1975,11 @@ class HarthmereGlitchBridgeController {
     return saves
       .filter(
         (save: any) =>
-          save?.decoded_payload?.version === "harthmere-glitch-save"
+          (save?.slot_index ?? CLOUD_SAVE_SLOT_INDEX) ===
+            CLOUD_SAVE_SLOT_INDEX &&
+          isAcceptedHarthmereCloudSavePayloadVersion(
+            save?.decoded_payload?.version
+          )
       )
       .sort(
         (a: any, b: any) => Number(b.version ?? 0) - Number(a.version ?? 0)

@@ -216,7 +216,15 @@ export class WebSocketZrpcServer implements WebSocketZrpcServerLike {
         }
       },
     };
-    this.app = App().get("/", (res) => res.send("OK"));
+    // uWebSockets.js exposes `HttpResponse.end`, not Express' `send`. Calling
+    // `send` here threw an uncaught TypeError whenever a health probe (or a
+    // developer's curl) touched the sync port's root path. In the unified
+    // Glitch stack, one sync-process exception intentionally shuts down every
+    // sibling service, so this harmless readiness request used to take the
+    // entire long-running browser-test environment offline.
+    this.app = App().get("/", (res) =>
+      res.writeHeader("Content-Type", "text/plain; charset=utf-8").end("OK")
+    );
     for (const path of paths) {
       this.app.ws(path, behaviour);
     }

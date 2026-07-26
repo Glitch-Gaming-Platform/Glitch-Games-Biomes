@@ -2,16 +2,20 @@ import { requestCutsceneScreenshot } from "@/client/game/cutscene/capture_servic
 import { sleep } from "@/shared/util/async";
 import { useEffect, useRef } from "react";
 
+type PromoCaptureRecord = {
+  dataUri: string;
+  rawDataUri: string;
+  filename: string;
+  cameraPosition: [number, number, number];
+  cameraOrientation: [number, number];
+};
+
 type PromoCaptureStatus =
-  | { status: "pending" }
-  | {
+  | { status: "pending"; completed?: number; total?: number; current?: string }
+  | ({
       status: "complete";
-      dataUri: string;
-      rawDataUri: string;
-      filename: string;
-      cameraPosition: [number, number, number];
-      cameraOrientation: [number, number];
-    }
+      captures?: PromoCaptureRecord[];
+    } & PromoCaptureRecord)
   | { status: "error"; error: string };
 
 declare global {
@@ -53,7 +57,10 @@ async function loadCaptureImage(dataUri: string): Promise<HTMLImageElement> {
   });
 }
 
-async function addBiomesBrand(dataUri: string): Promise<string> {
+async function addBiomesBrand(
+  dataUri: string,
+  brand: { title: string; subtitle: string; headline?: string }
+): Promise<string> {
   const image = await loadCaptureImage(dataUri);
   const canvas = document.createElement("canvas");
   canvas.width = image.naturalWidth;
@@ -69,7 +76,7 @@ async function addBiomesBrand(dataUri: string): Promise<string> {
   const width = canvas.width;
   const height = canvas.height;
   const margin = Math.round(width * 0.055);
-  const titleSize = Math.round(width * 0.072);
+  const titleSize = Math.round(width * (brand.headline ? 0.042 : 0.072));
   const subtitleSize = Math.round(width * 0.014);
   const gradient = context.createLinearGradient(0, 0, 0, height * 0.45);
   gradient.addColorStop(0, "rgba(3, 8, 18, 0.68)");
@@ -82,18 +89,217 @@ async function addBiomesBrand(dataUri: string): Promise<string> {
   context.shadowBlur = Math.round(titleSize * 0.22);
   context.fillStyle = "#ffffff";
   context.font = `900 ${titleSize}px ui-rounded, system-ui, sans-serif`;
-  context.fillText("Biomes", margin, Math.round(height * 0.065));
-
-  context.shadowBlur = Math.round(subtitleSize * 0.4);
-  context.fillStyle = "rgba(220, 250, 255, 0.95)";
-  context.font = `700 ${subtitleSize}px ui-monospace, SFMono-Regular, Menlo, monospace`;
   context.fillText(
-    "EXOTIC MATTER // ASHLINE CONTAINMENT WORKS",
-    margin + Math.round(titleSize * 0.04),
-    Math.round(height * 0.065) + Math.round(titleSize * 1.08)
+    brand.headline ?? brand.title,
+    margin,
+    Math.round(height * 0.065)
   );
+
+  if (!brand.headline) {
+    context.shadowBlur = Math.round(subtitleSize * 0.4);
+    context.fillStyle = "rgba(220, 250, 255, 0.95)";
+    context.font = `700 ${subtitleSize}px ui-monospace, SFMono-Regular, Menlo, monospace`;
+    context.fillText(
+      brand.subtitle,
+      margin + Math.round(titleSize * 0.04),
+      Math.round(height * 0.065) + Math.round(titleSize * 1.08)
+    );
+  }
   context.shadowBlur = 0;
   return canvas.toDataURL("image/png");
+}
+
+async function persistPromoStill(record: PromoCaptureRecord): Promise<void> {
+  const rawFilename = record.filename.replace(/\.png$/i, "-raw.png");
+  for (const [filename, dataUri] of [
+    [record.filename, record.dataUri],
+    [rawFilename, record.rawDataUri],
+  ] as const) {
+    const response = await fetch("/api/dev/cutscene_still", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ filename, dataUri }),
+    });
+    if (!response.ok) {
+      throw new Error(
+        `could not persist ${filename}: ${response.status} ${response.statusText}`
+      );
+    }
+  }
+}
+
+type PromoLivePlayerDebug = {
+  getPosition?: () => unknown;
+  teleportTo?: (target: Record<string, unknown>) => unknown;
+};
+
+type PromoObserverStreamingDebug = {
+  getPosition?: () => unknown;
+  moveTo?: (position: [number, number, number]) => Promise<unknown>;
+};
+
+type PromoStreamingSnapshot =
+  | { kind: "player"; position: [number, number, number] }
+  | { kind: "observer"; position: [number, number, number] };
+
+// Both the gameplay player script and `/at/` observer ClientIo publish this
+// only after their authoritative streaming control has been installed. Keep
+// renderer readiness separate: a drawable WebGL canvas says nothing about
+// which terrain/ECS interest set the server is currently streaming.
+const PROMO_STREAMING_READY_EVENT = "biomes:promo-streaming-ready";
+
+function promoLivePlayerDebug(): PromoLivePlayerDebug | undefined {
+  return (
+    window as typeof window & {
+      __harthmereLivePlayerDebug?: PromoLivePlayerDebug;
+    }
+  ).__harthmereLivePlayerDebug;
+}
+
+function promoObserverStreamingDebug():
+  | PromoObserverStreamingDebug
+  | undefined {
+  return (
+    window as typeof window & {
+      __biomesObserverStreamingDebug?: PromoObserverStreamingDebug;
+    }
+  ).__biomesObserverStreamingDebug;
+}
+
+function promoStreamingSnapshot(): PromoStreamingSnapshot | undefined {
+  const player = finiteVec3(promoLivePlayerDebug()?.getPosition?.());
+  if (player) {
+    return { kind: "player", position: player };
+  }
+  const observer = finiteVec3(
+    promoObserverStreamingDebug()?.getPosition?.()
+  );
+  return observer ? { kind: "observer", position: observer } : undefined;
+}
+
+function finiteVec3(value: unknown): [number, number, number] | undefined {
+  if (
+    !Array.isArray(value) ||
+    value.length < 3 ||
+    !value.slice(0, 3).every((part) => Number.isFinite(Number(part)))
+  ) {
+    return undefined;
+  }
+  return [Number(value[0]), Number(value[1]), Number(value[2])];
+}
+
+function hasPromoStreamingHook(): boolean {
+  return (
+    typeof promoLivePlayerDebug()?.teleportTo === "function" ||
+    typeof promoObserverStreamingDebug()?.moveTo === "function"
+  );
+}
+
+/**
+ * Wait for game authority, not elapsed wall time.
+ *
+ * Renderer readiness often wins the startup race. A fixed delay/timeout then
+ * either captures an unloaded land or fails a healthy but slowly bootstrapping
+ * stack. The owning player/observer controller publishes the event after its
+ * real mutation hook exists. The external browser runner retains its normal
+ * overall failure ceiling; that ceiling is not treated as a readiness signal.
+ */
+async function waitForPromoStreamingHook(): Promise<void> {
+  if (hasPromoStreamingHook()) {
+    return;
+  }
+  await new Promise<void>((resolve) => {
+    const onReady = () => {
+      if (!hasPromoStreamingHook()) {
+        return;
+      }
+      window.removeEventListener(PROMO_STREAMING_READY_EVENT, onReady);
+      resolve();
+    };
+    window.addEventListener(PROMO_STREAMING_READY_EVENT, onReady);
+    // Close the assignment/listener race if authority published between the
+    // first check and addEventListener.
+    onReady();
+  });
+}
+
+/**
+ * Move the real local streaming observer before starting a distant capture.
+ *
+ * A client-puppet teleport moves only the cinematic actor. Terrain/ECS shard
+ * subscriptions still follow the live player, so a warm batch that only moved
+ * the cutscene camera eventually photographed unloaded sky. This capture-only
+ * bridge moves the local observer first; the director's normal prewarm gate can
+ * then wait on the correct shards without paying another page bootstrap.
+ */
+async function stagePromoStreamingObserver(
+  position: [number, number, number]
+): Promise<void> {
+  await waitForPromoStreamingHook();
+  const playerDebug = promoLivePlayerDebug();
+  const observerDebug = promoObserverStreamingDebug();
+
+  let landed = false;
+  if (typeof playerDebug?.teleportTo === "function") {
+    const result = playerDebug.teleportTo({
+      x: position[0],
+      y: position[1],
+      z: position[2],
+      name: "cutscenePromoStreamingObserver",
+      reason: "Load the cinematic camera's terrain and ECS interest set",
+    }) as { teleported?: unknown; after?: unknown } | undefined;
+    const after = finiteVec3(result?.after ?? playerDebug.getPosition?.());
+    landed =
+      result?.teleported === true &&
+      after !== undefined &&
+      Math.abs(after[0] - position[0]) < 0.35 &&
+      Math.abs(after[2] - position[2]) < 0.35;
+  } else if (typeof observerDebug?.moveTo === "function") {
+    const result = (await observerDebug.moveTo(position)) as
+      | { ok?: unknown; position?: unknown }
+      | undefined;
+    const after = finiteVec3(
+      result?.position ?? observerDebug.getPosition?.()
+    );
+    landed =
+      result?.ok === true &&
+      after !== undefined &&
+      Math.abs(after[0] - position[0]) < 0.35 &&
+      Math.abs(after[2] - position[2]) < 0.35;
+  }
+  if (!landed) {
+    throw new Error(
+      `could not stage promo streaming observer at ${position.join(",")}`
+    );
+  }
+
+  // The player script publishes the new observer immediately, but one short
+  // beat avoids starting the director before the subscription request leaves.
+  await sleep(350);
+}
+
+async function restorePromoStreamingObserver(
+  snapshot: PromoStreamingSnapshot | undefined
+): Promise<void> {
+  if (!snapshot) {
+    return;
+  }
+  try {
+    if (snapshot.kind === "player") {
+      promoLivePlayerDebug()?.teleportTo?.({
+        x: snapshot.position[0],
+        y: snapshot.position[1],
+        z: snapshot.position[2],
+        name: "cutscenePromoStreamingObserverRestore",
+        reason: "Restore the local player after non-authoritative promo capture",
+      });
+    } else {
+      await promoObserverStreamingDebug()?.moveTo?.(snapshot.position);
+    }
+  } catch {
+    // Capture completion must remain visible even if a disposable local test
+    // page is closing while the best-effort restore runs.
+  }
 }
 
 async function exoticMatterCreationScene() {
@@ -230,7 +436,18 @@ async function exoticMatterCreationScene() {
   };
 }
 
-/** Runs only for the explicit local promo query; normal gameplay is untouched. */
+/**
+ * Runs only for the explicit local promo query; normal gameplay is untouched.
+ *
+ * SCENE SELECTION IS DATA. `?cutscenePromo=<id>` is looked up in
+ * `@/shared/cutscene/promo_scenes`. Adding a still means adding a registry
+ * entry, not editing this hook — the previous version hardcoded the id,
+ * subtitle, filename, shot id, and captureAt ceiling, so every new still was
+ * a client code change. See promo_scenes.ts for the framing lessons.
+ *
+ * The legacy `exotic-matter` id keeps its bespoke builder below for
+ * compatibility with the reference URLs already in docs/cutscenes.md.
+ */
 export function useCutscenePromoCapture(enabled: boolean): void {
   const started = useRef(false);
   useEffect(() => {
@@ -238,19 +455,103 @@ export function useCutscenePromoCapture(enabled: boolean): void {
       return;
     }
     const params = new URLSearchParams(window.location.search);
-    if (params.get("cutscenePromo") !== "exotic-matter") {
+    const promoId = params.get("cutscenePromo");
+    const promoBatch = params.get("cutscenePromoBatch");
+    if (!promoId && !promoBatch) {
       return;
     }
     started.current = true;
     publishPromoCapture({ status: "pending" });
     void (async () => {
+      let initialStreamingObserver: PromoStreamingSnapshot | undefined;
       try {
         await waitForEngineCaptureReady(120_000);
         // Give streamed ECS/placeable assets one extra beat after the renderer
         // readiness gate before the cutscene's own shard prewarm begins.
         await sleep(1_500);
-        // captureAt is intentionally query-tunable: art direction can bracket
-        // an animation's impact frame without recompiling or editing the scene.
+        initialStreamingObserver = promoStreamingSnapshot();
+
+        const { promoSceneById, promoCaptureAt, promoScenesInGroup } =
+          await import("@/shared/cutscene/promo_scenes");
+        const registered = promoId ? promoSceneById(promoId) : undefined;
+
+        const captureRegistered = async (
+          scene: NonNullable<ReturnType<typeof promoSceneById>>,
+          captureAtOverride: string | null
+        ): Promise<PromoCaptureRecord> => {
+          await stagePromoStreamingObserver(scene.observer.position);
+          const definition = await scene.build();
+          const capture = await requestCutsceneScreenshot(definition, {
+            shotId: scene.shotId,
+            at: promoCaptureAt(scene, captureAtOverride),
+            width: 1920,
+            height: 1080,
+            format: "image/png",
+            filename: scene.filename,
+            preempt: true,
+            timeoutMs: 150_000,
+          });
+          return {
+            dataUri: await addBiomesBrand(capture.dataUri, scene.brand),
+            rawDataUri: capture.dataUri,
+            filename: capture.filename,
+            cameraPosition: capture.cameraPosition,
+            cameraOrientation: capture.cameraOrientation,
+          };
+        };
+
+        // --- warm-page batch path --------------------------------------
+        // One game boot, one renderer, many cutscene captures. This is the
+        // release-proof path for all sectors and avoids paying a full Next +
+        // WebGL + ECS bootstrap seventeen times.
+        if (promoBatch) {
+          const scenes = promoScenesInGroup(promoBatch);
+          if (scenes.length === 0) {
+            throw new Error(
+              `unknown or empty cutscenePromoBatch "${promoBatch}"`
+            );
+          }
+          const captures: PromoCaptureRecord[] = [];
+          for (let index = 0; index < scenes.length; index += 1) {
+            const scene = scenes[index]!;
+            publishPromoCapture({
+              status: "pending",
+              completed: captures.length,
+              total: scenes.length,
+              current: scene.id,
+            });
+            const record = await captureRegistered(scene, null);
+            await persistPromoStill(record);
+            captures.push(record);
+            // Let texture disposal, React, and streamed resources settle before
+            // prewarming the next distant sector.
+            await sleep(250);
+          }
+          const last = captures[captures.length - 1]!;
+          publishPromoCapture({ status: "complete", ...last, captures });
+          return;
+        }
+
+        // --- registry path ---------------------------------------------
+        if (registered) {
+          const record = await captureRegistered(
+            registered,
+            params.get("captureAt")
+          );
+          if (params.get("capturePersist") === "1") {
+            await persistPromoStill(record);
+          }
+          publishPromoCapture({ status: "complete", ...record });
+          return;
+        }
+
+        // --- legacy bespoke scene --------------------------------------
+        if (promoId !== "exotic-matter") {
+          throw new Error(
+            `unknown cutscenePromo "${promoId}". Registered stills: ` +
+              `see PROMO_SCENES in @/shared/cutscene/promo_scenes.`
+          );
+        }
         const captureAtParam = params.get("captureAt");
         // Number(null) is zero, so distinguish an omitted/blank query from an
         // intentional captureAt=0 before parsing and clamping the art override.
@@ -276,7 +577,10 @@ export function useCutscenePromoCapture(enabled: boolean): void {
             timeoutMs: 150_000,
           }
         );
-        const dataUri = await addBiomesBrand(capture.dataUri);
+        const dataUri = await addBiomesBrand(capture.dataUri, {
+          title: "Biomes",
+          subtitle: "EXOTIC MATTER // ASHLINE CONTAINMENT WORKS",
+        });
         publishPromoCapture({
           status: "complete",
           dataUri,
@@ -290,6 +594,8 @@ export function useCutscenePromoCapture(enabled: boolean): void {
           status: "error",
           error: error instanceof Error ? error.message : String(error),
         });
+      } finally {
+        await restorePromoStreamingObserver(initialStreamingObserver);
       }
     })();
   }, [enabled]);

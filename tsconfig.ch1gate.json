@@ -1,0 +1,30 @@
+// Focused compile gate for the production Chapter 1 portal seam. Keep this
+// separate from tsconfig.ch1check.json: that broader slice also owns cloud-save
+// work and can report unrelated draft errors while portal iteration is green.
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "incremental": true,
+    "tsBuildInfoFile": "tmp/ch1gate.tsbuildinfo"
+  },
+  "include": [
+    "src/shared/harthmere/ch1_live_gate.ts",
+    "src/shared/harthmere/ch1_live_story.ts",
+    "src/shared/harthmere/ch1_live_items.ts",
+    "src/shared/harthmere/live_mode_backend.ts",
+    "src/pages/api/harthmere/chapter1_gate.ts",
+    "src/pages/api/harthmere/chapter1_progress.ts",
+    "src/pages/api/harthmere/chapter1_story.ts",
+    "src/pages/api/harthmere/visual_test_auth.ts",
+    "src/pages/dev/harthmere-visual-auth.tsx",
+    "src/client/game/renderers/ch1_fracture_gate.ts",
+    "src/client/game/renderers/ch1_fracture_gate_material.ts",
+    "src/client/components/challenges/Chapter1FractureGatePrompt.tsx",
+    "src/client/components/challenges/Chapter1NativeObjectivePrompt.tsx",
+    "src/client/components/biomes_ui/tabs/RecoveredTab.tsx",
+    "src/client/game/cutscene/harthmere_library.ts",
+    "src/shared/harthmere/test/ch1_live_story.test.ts",
+    "modules.d.ts"
+  ]
+}

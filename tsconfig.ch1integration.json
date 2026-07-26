@@ -1,0 +1,20 @@
+// Scoped typecheck for Chapter 1's live integration surfaces.
+//
+// The pure authoring/state modules use tsconfig.ch1check.json and the renderer
+// uses tsconfig.ch1renderer.json. This third slice covers the browser bridge,
+// promo compositor, and production terrain/NPC seeder added by the live E2E
+// campaign without paying for unrelated application entry points.
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "incremental": true,
+    "tsBuildInfoFile": "tmp/ch1integration.tsbuildinfo"
+  },
+  "include": [
+    "src/client/game/e2e/harthmere_native_ecs_e2e.ts",
+    "src/client/game/cutscene/promo_capture.ts",
+    "src/server/shim/main.ts",
+    "modules.d.ts"
+  ]
+}

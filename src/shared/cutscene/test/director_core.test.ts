@@ -620,6 +620,7 @@ describe("cutscene director core", () => {
                 at: 0.2,
                 speaker: "Elder",
                 text: "Short line.",
+                voice: "azure-speech|voice=en-US-LunaNeural",
                 duration: 2,
               },
             ],
@@ -632,6 +633,11 @@ describe("cutscene director core", () => {
     const subtitles = h.ofKind("subtitle");
     assert.ok(subtitles.some((s) => s.value?.text === "Short line."));
     assert.ok(subtitles.some((s) => s.value?.speaker === "Elder"));
+    assert.ok(
+      subtitles.some(
+        (s) => s.value?.voice === "azure-speech|voice=en-US-LunaNeural"
+      )
+    );
     // Cleared before finish.
     assert.strictEqual(subtitles[subtitles.length - 1].value, undefined);
     // Shot ended promptly after the line (0.2 + 2s + slack), not at maxDuration.

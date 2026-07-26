@@ -92,6 +92,13 @@ if [ -z "${DISTRIBUTED_NOTIFIER_KIND:-}" ]; then
 fi
 export GLITCH_ENABLE_STREAM_WORKERS="${GLITCH_ENABLE_STREAM_WORKERS:-$GLITCH_DEFAULT_STREAM_WORKERS}"
 export GLITCH_ENABLE_SINK_WORKER="${GLITCH_ENABLE_SINK_WORKER:-0}"
+export GLITCH_FOCUSED_NATIVE_E2E_STACK="${GLITCH_FOCUSED_NATIVE_E2E_STACK:-0}"
+if [ "$GLITCH_FOCUSED_NATIVE_E2E_STACK" = "1" ]; then
+  # Logic already owns the authoritative event replica. Install Ask's indexes
+  # and RPC surface there so focused browser gates do not pay for a duplicate
+  # 2.5 GiB Ask replica. Production and full rehearsals retain separate Ask.
+  export GLITCH_EMBED_ASK_IN_LOGIC=1
+fi
 
 # Anima is the authoritative native-ECS NPC simulation service. Without it,
 # NPC entities still render and retain health bars because sync can read their
@@ -208,7 +215,15 @@ wait_tcp() {
   local host="$1"
   local port="$2"
   local name="$3"
-  local tries="${4:-${GLITCH_STACK_TCP_WAIT_TRIES:-300}}"
+  local default_tries=300
+  if [ "${GLITCH_FOCUSED_NATIVE_E2E_STACK:-0}" = "1" ]; then
+    # The restored production-shaped Redis world currently exceeds 300k ECS
+    # rows. Web/trigger can legitimately spend more than five minutes loading
+    # it before opening their listeners. The old default killed the otherwise
+    # healthy unified stack and forced every browser batch to start over.
+    default_tries=1800
+  fi
+  local tries="${4:-${GLITCH_STACK_TCP_WAIT_TRIES:-$default_tries}}"
   local i
   for i in $(seq 1 "$tries"); do
     if node -e "const net=require('net');const s=net.connect(Number(process.argv[2]),process.argv[1]);s.setTimeout(750);s.on('connect',()=>{s.destroy();process.exit(0)});s.on('timeout',()=>process.exit(1));s.on('error',()=>process.exit(1));" "$host" "$port" >/dev/null 2>&1; then
@@ -693,6 +708,7 @@ log "  sync websocket: $SYNC_PORT -> same-origin /sync proxy"
 log "  sync rpc: $RPC_PORT"
 log "  chat distributor: 3300/3301"
 log "  stream workers: trigger/notify=$GLITCH_ENABLE_STREAM_WORKERS sink=$GLITCH_ENABLE_SINK_WORKER"
+log "  focused native E2E services: $GLITCH_FOCUSED_NATIVE_E2E_STACK"
 log "  npc simulation: anima=$GLITCH_ENABLE_ANIMA"
 log "  world simulation: gaia=$GLITCH_ENABLE_GAIA"
 log "  sync base: $NEXT_PUBLIC_GLITCH_SYNC_BASE_URL"
@@ -702,10 +718,14 @@ wait_tcp 127.0.0.1 3104 shim-rpc
 
 start_bg bikkie 127.0.0.1 3400 3404 3401 "$APP_ROOT/dist/bikkie.js" "${SERVICE_ARGS[@]}"
 start_bg logic 127.0.0.1 3500 3504 3501 "$APP_ROOT/dist/logic.js" "${SERVICE_ARGS[@]}"
-start_bg ask 127.0.0.1 3600 3604 3601 "$APP_ROOT/dist/ask.js" "${SERVICE_ARGS[@]}"
-start_bg chat 127.0.0.1 3300 3304 3301 "$APP_ROOT/dist/chat.js" "${SERVICE_ARGS[@]}"
-start_bg oob 127.0.0.1 4700 4704 4701 "$APP_ROOT/dist/oob.js" "${SERVICE_ARGS[@]}"
-start_bg sidefx 127.0.0.1 4600 4604 4601 "$APP_ROOT/dist/sidefx.js" "${SERVICE_ARGS[@]}"
+if [ "$GLITCH_FOCUSED_NATIVE_E2E_STACK" != "1" ]; then
+  start_bg ask 127.0.0.1 3600 3604 3601 "$APP_ROOT/dist/ask.js" "${SERVICE_ARGS[@]}"
+  start_bg chat 127.0.0.1 3300 3304 3301 "$APP_ROOT/dist/chat.js" "${SERVICE_ARGS[@]}"
+  start_bg oob 127.0.0.1 4700 4704 4701 "$APP_ROOT/dist/oob.js" "${SERVICE_ARGS[@]}"
+  start_bg sidefx 127.0.0.1 4600 4604 4601 "$APP_ROOT/dist/sidefx.js" "${SERVICE_ARGS[@]}"
+else
+  log "Focused native E2E: Ask is embedded in Logic; chat/oob/sidefx replicas are omitted."
+fi
 start_bg sync "$GLITCH_SYNC_BIND_HOST" "$BASE_PORT" "$RPC_PORT" "$METRICS_PORT" "$APP_ROOT/dist/sync.js" "${SERVICE_ARGS[@]}"
 
 # Bind the public ingress immediately after all core processes have launched.
@@ -719,13 +739,15 @@ PIDS="$PIDS $WEB_PID"
 log "PID web=$WEB_PID"
 wait_tcp 127.0.0.1 "$WEB_BASE_PORT" web-http
 
-if ! wait_tcp 127.0.0.1 4704 oob-rpc; then
-  echo "WARN oob-rpc not listening on 127.0.0.1:4704; continuing because oob-rpc is non-fatal for Container Apps web/sync startup" >&2
-fi
 wait_tcp 127.0.0.1 3504 logic-rpc
-wait_tcp 127.0.0.1 3604 ask-rpc
-wait_http_ready 127.0.0.1 3301 chat
-wait_redis_stream_group 4 chat-delivery redis-chat-distributor chat-distributor
+if [ "$GLITCH_FOCUSED_NATIVE_E2E_STACK" != "1" ]; then
+  if ! wait_tcp 127.0.0.1 4704 oob-rpc; then
+    echo "WARN oob-rpc not listening on 127.0.0.1:4704; continuing because oob-rpc is non-fatal for Container Apps web/sync startup" >&2
+  fi
+  wait_tcp 127.0.0.1 3604 ask-rpc
+  wait_http_ready 127.0.0.1 3301 chat
+  wait_redis_stream_group 4 chat-delivery redis-chat-distributor chat-distributor
+fi
 wait_tcp 127.0.0.1 "$SYNC_PORT" sync-websocket-base
 wait_tcp 127.0.0.1 "$RPC_PORT" sync-rpc
 
@@ -743,11 +765,15 @@ fi
 
 if [ "$GLITCH_ENABLE_STREAM_WORKERS" = "1" ]; then
   start_bg trigger 127.0.0.1 3700 3704 3701 "$APP_ROOT/dist/trigger.js" "${SERVICE_ARGS[@]}"
-  start_bg notify 127.0.0.1 3800 3804 3801 "$APP_ROOT/dist/notify.js" "${SERVICE_ARGS[@]}"
   wait_http_ready 127.0.0.1 3701 trigger
-  wait_http_ready 127.0.0.1 3801 notify
   wait_redis_stream_group 0 firehose trigger-server trigger-firehose
-  wait_redis_stream_group 0 firehose notifications-server notify-firehose
+  if [ "$GLITCH_FOCUSED_NATIVE_E2E_STACK" != "1" ]; then
+    start_bg notify 127.0.0.1 3800 3804 3801 "$APP_ROOT/dist/notify.js" "${SERVICE_ARGS[@]}"
+    wait_http_ready 127.0.0.1 3801 notify
+    wait_redis_stream_group 0 firehose notifications-server notify-firehose
+  else
+    log "Focused native E2E: notification stream worker is omitted."
+  fi
 else
   log "Stream workers disabled by GLITCH_ENABLE_STREAM_WORKERS=$GLITCH_ENABLE_STREAM_WORKERS"
 fi

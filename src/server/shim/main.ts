@@ -114,6 +114,7 @@ import {
   ShardMuck,
   ShardSeed,
   ShardShapes,
+  ShardWater,
   WorldMetadata,
   type ReadonlyWorldMetadata,
 } from "@/shared/ecs/gen/components";
@@ -135,6 +136,7 @@ import {
   isNpcTypeId,
 } from "@/shared/npc/bikkie";
 import type { Vec2, Vec3 } from "@/shared/math/types";
+import { Sparse3 } from "@/shared/util/sparse";
 import { saveBlock } from "@/shared/wasm/biomes";
 import { Tensor } from "@/shared/wasm/tensors";
 import { RegistryBuilder } from "@/shared/registry";
@@ -163,6 +165,20 @@ import {
 import { harthmereExoticMatterDepositAtBlock } from "@/shared/harthmere/exotic_matter_caves";
 import { createHarthmereBusinessOutpostRebuildMaterializationPlans } from "@/shared/harthmere/business_customer_simulator";
 import { HARTHMERE_NATIVE_QUEST_GIVER_MANIFEST } from "@/shared/harthmere/harthmere_native_quest_manifest";
+import { CH1_NEW_CAST } from "@/shared/harthmere/ch1_cast";
+import {
+  CH1_DUNGEON_TERRAIN_VERSION,
+  ch1DungeonBlockAt,
+  ch1DungeonAuthoredToWorld,
+  ch1DungeonShardSpecs,
+  ch1DungeonWaterAt,
+  ch1DungeonWorldToAuthored,
+} from "@/shared/harthmere/ch1_dungeon_terrain";
+import {
+  CH1_ELSEWHEN_BAND_END_X,
+  ch1ElsewhenSlotAt,
+  ch1ElsewhenTerrainEntityIdForShard,
+} from "@/shared/harthmere/ch1_elsewhen_region";
 import { findNearestHarthmereProductionPlacement } from "@/shared/harthmere/production_terrain_placement_map";
 import {
   HARTHMERE_ADDITIVE_TOWN_OFFSET_X,
@@ -6507,6 +6523,41 @@ function localDevTerrainShardSpecs() {
   return specs;
 }
 
+/**
+ * The Elsewhen dungeons own a small sparse shard set, not the whole 1,024 x
+ * 1,024 band. Keeping this list separate from the flat Harthmere foundation
+ * avoids both filling the deliberate void gap and paying to serialize empty
+ * terrain on every maintenance seed.
+ */
+function localDevChapter1TerrainShardSpecs() {
+  const specs = new Map<
+    string,
+    { id: BiomesId; shardX: number; shardY: number; shardZ: number }
+  >();
+  for (const dungeonId of ["ch1_dungeon_desert", "ch1_dungeon_winter"]) {
+    for (const spec of ch1DungeonShardSpecs(dungeonId, SHARD_DIM)) {
+      const id = ch1ElsewhenTerrainEntityIdForShard(
+        spec.shardX,
+        spec.shardY,
+        spec.shardZ
+      );
+      if (id === undefined) {
+        throw new Error(
+          `Chapter 1 terrain shard is outside the stable Elsewhen id grid: ` +
+            `${spec.shardX}:${spec.shardY}:${spec.shardZ}`
+        );
+      }
+      specs.set(`${spec.shardX}:${spec.shardY}:${spec.shardZ}`, {
+        id: id as BiomesId,
+        ...spec,
+      });
+    }
+  }
+  return [...specs.values()].sort(
+    (a, b) => a.shardX - b.shardX || a.shardY - b.shardY || a.shardZ - b.shardZ
+  );
+}
+
 function localDevLegacyTerrainShardIds() {
   return Array.from(
     { length: HARTHMERE_LEGACY_LOCAL_DEV_TERRAIN_SHARD_COUNT },
@@ -6802,6 +6853,108 @@ function makeLocalDevTerrainShard(
   };
 
   return kind === "create" ? { kind, tick, entity } : { kind, tick, entity };
+}
+
+/** Build one canonical Chapter 1 dungeon terrain shard. */
+function makeLocalDevChapter1TerrainShard(
+  voxeloo: VoxelooModule,
+  kind: "create" | "update",
+  id: BiomesId,
+  shardX: number,
+  shardY: number,
+  shardZ: number,
+  tick: number
+): Change {
+  const v0 = shardToVoxelPos(shardX, shardY, shardZ);
+  const v1 = [v0[0] + SHARD_DIM, v0[1] + SHARD_DIM, v0[2] + SHARD_DIM] as [
+    number,
+    number,
+    number
+  ];
+  const materials = localDevMaterials() as unknown as Record<string, TerrainID>;
+
+  const buffer = using(new voxeloo.VolumeBlock_U32(), (seedBlock) => {
+    for (let z = 0; z < SHARD_DIM; z += 1) {
+      for (let x = 0; x < SHARD_DIM; x += 1) {
+        const worldX = v0[0] + x;
+        const worldZ = v0[2] + z;
+        const slot = ch1ElsewhenSlotAt([worldX, 0, worldZ] as never);
+        if (!slot) {
+          continue;
+        }
+        for (let y = 0; y < SHARD_DIM; y += 1) {
+          const worldY = v0[1] + y;
+          const local = ch1DungeonWorldToAuthored(slot.dungeonId, [
+            worldX,
+            worldY,
+            worldZ,
+          ]);
+          const materialName = ch1DungeonBlockAt(
+            slot.dungeonId,
+            local.x,
+            local.y,
+            local.z
+          );
+          if (!materialName) {
+            continue;
+          }
+          const terrainId = materials[materialName];
+          if (!terrainId) {
+            throw new Error(
+              `Chapter 1 terrain material ${materialName} is not in localDevMaterials()`
+            );
+          }
+          seedBlock.set(x, y, z, terrainId);
+        }
+      }
+    }
+    return saveBlock(voxeloo, seedBlock);
+  });
+
+  // Water is a native shard tensor so swimming, camera environment, map tiles,
+  // and the water render pass all observe the same authored basin.
+  const shardWater = using(
+    Tensor.make(voxeloo, [SHARD_DIM, SHARD_DIM, SHARD_DIM], "U8"),
+    (water) => {
+      const values = new Sparse3<number>([SHARD_DIM, SHARD_DIM, SHARD_DIM]);
+      for (let z = 0; z < SHARD_DIM; z += 1) {
+        for (let x = 0; x < SHARD_DIM; x += 1) {
+          const worldX = v0[0] + x;
+          const worldZ = v0[2] + z;
+          const slot = ch1ElsewhenSlotAt([worldX, 0, worldZ] as never);
+          if (!slot) {
+            continue;
+          }
+          for (let y = 0; y < SHARD_DIM; y += 1) {
+            const local = ch1DungeonWorldToAuthored(slot.dungeonId, [
+              worldX,
+              v0[1] + y,
+              worldZ,
+            ]);
+            if (ch1DungeonWaterAt(slot.dungeonId, local.x, local.y, local.z)) {
+              values.set([x, y, z], 15);
+            }
+          }
+        }
+      }
+      water.assign(values);
+      return ShardWater.create(water.saveWrapped());
+    }
+  );
+  const muckBuffer = using(
+    Tensor.make(voxeloo, [SHARD_DIM, SHARD_DIM, SHARD_DIM], "U8"),
+    (muck) => muck.save()
+  );
+  const entity = {
+    id,
+    box: Box.create({ v0, v1 }),
+    shard_seed: ShardSeed.create({ buffer }),
+    shard_diff: ShardDiff.create(),
+    shard_shapes: ShardShapes.create(),
+    shard_muck: ShardMuck.create({ buffer: muckBuffer }),
+    shard_water: shardWater,
+  };
+  return { kind, tick, entity };
 }
 
 function resolveNpcTypeId(
@@ -7933,6 +8086,99 @@ function makeLocalDevSnapshotGroveNpcChanges(
   return changes;
 }
 
+function ch1SeedPlacement(member: (typeof CH1_NEW_CAST)[number]): Vec3 {
+  if (member.placement) {
+    return [...member.placement] as Vec3;
+  }
+  switch (member.key) {
+    case "iris_fen":
+      return ch1DungeonAuthoredToWorld("ch1_dungeon_desert", {
+        x: 344,
+        y: -21,
+        z: -56,
+      });
+    case "marrow":
+      return ch1DungeonAuthoredToWorld("ch1_dungeon_desert", {
+        x: 350,
+        y: -21,
+        z: -52,
+      });
+    case "nadia_sorrel":
+      return ch1DungeonAuthoredToWorld("ch1_dungeon_winter", {
+        x: 308,
+        y: 1,
+        z: -88,
+      });
+    case "hallr_ironmouth":
+      return ch1DungeonAuthoredToWorld("ch1_dungeon_winter", {
+        x: 384,
+        y: 1,
+        z: -88,
+      });
+  }
+  throw new Error(`Chapter 1 NPC ${member.key} has no seed placement`);
+}
+
+/** Seed the ten Chapter 1 identities as real synchronized NPC entities. */
+function makeLocalDevChapter1NpcChanges(
+  tick: number,
+  existingIds: Set<BiomesId>
+) {
+  const now = secondsSinceEpoch();
+  return CH1_NEW_CAST.map((member): Change => {
+    const kind = existingIds.has(member.entityId) ? "update" : "create";
+    const preferredTypes =
+      member.key === "augur9"
+        ? ["biomesRobot", "dRobot"]
+        : member.key === "marrow"
+        ? ["dog", "wolf", "rabbit"]
+        : ["local_dev_human"];
+    const fallbackTypes =
+      member.key === "augur9" && isNpcTypeId(BikkieIds.biomesRobot)
+        ? [BikkieIds.biomesRobot]
+        : [LOCAL_DEV_HUMAN_NPC_TYPE_ID];
+    const typeId =
+      resolveNpcTypeId(preferredTypes, fallbackTypes) ??
+      LOCAL_DEV_HUMAN_NPC_TYPE_ID;
+    let base = npcEntity(
+      {
+        id: member.entityId,
+        typeId,
+        position: ch1SeedPlacement(member),
+        orientation: [0, Math.PI],
+        velocity: [0, 0, 0],
+        displayName: member.displayName,
+        defaultDialog: npcDialog(member.sampleLine || member.role),
+      },
+      now
+    );
+    if (typeId === LOCAL_DEV_HUMAN_NPC_TYPE_ID) {
+      base = prepareHarthmerePlayerLikeNpcForUniqueAppearance(base, kind);
+    }
+    return {
+      kind,
+      tick,
+      entity: {
+        ...base,
+        entity_description: EntityDescription.create({
+          // Do not attach Harthmere's procedural voxel-face marker to Chapter
+          // 1 humans. `local_dev_human` is a player-like NPC type and must use
+          // the same snapshot appearance mesh path as the original May world.
+          text: `${CH1_DUNGEON_TERRAIN_VERSION} ${member.faction} ${member.role}`,
+        }),
+        quest_giver: QuestGiver.create({
+          concurrent_quests: 1,
+          concurrent_quest_dialog: npcDialog(member.sampleLine || member.role),
+        }),
+      },
+    };
+  });
+}
+
+function localDevChapter1NpcIds() {
+  return CH1_NEW_CAST.map((member) => member.entityId);
+}
+
 function localDevSnapshotGroveNpcIds() {
   return SNAPSHOT_GROVE_NPCS.filter((npc) => npc.seedServerNpc).map((npc) =>
     snapshotGroveNpcEntityId(npc)
@@ -7977,6 +8223,9 @@ function localDevPlayerLikeNpcCosmeticRepairIds() {
       ).map((npc) => snapshotGroveNpcEntityId(npc)),
       ...localDevBusinessOwnerNpcIds(),
       ...localDevBusinessCustomerNpcIds(),
+      ...CH1_NEW_CAST.filter(
+        (member) => member.key !== "augur9" && member.key !== "marrow"
+      ).map((member) => member.entityId),
     ]),
   ];
 }
@@ -8298,7 +8547,9 @@ function makeLocalDevObsoleteTerrainDeletionChanges(
 
 function makeLocalDevSeedFingerprint(input: {
   terrainIds: BiomesId[];
+  chapter1TerrainIds: BiomesId[];
   npcIds: BiomesId[];
+  chapter1NpcIds: BiomesId[];
   snapshotGroveNpcIds: BiomesId[];
   snapshotCombatNpcIds: BiomesId[];
   liveEntityProductionSeedIds: BiomesId[];
@@ -8316,6 +8567,7 @@ function makeLocalDevSeedFingerprint(input: {
       HARTHMERE_BUSINESS_CRAFTING_STATION_SEED_VERSION,
     contentPass: HARTHMERE_LOCAL_DEV_SEED_CONTENT_PASS,
     terrainBoundsVersion: HARTHMERE_LOCAL_DEV_TERRAIN_BOUNDS_VERSION,
+    chapter1DungeonTerrainVersion: CH1_DUNGEON_TERRAIN_VERSION,
     npcPositionOverrideVersion: HARTHMERE_NPC_POSITION_OVERRIDE_VERSION,
     perfAndPlacementVersion: HARTHMERE_PERF_AND_PLACEMENT_VERSION,
     performanceProfile: HARTHMERE_LOCAL_DEV_PERF_PROFILE,
@@ -8334,7 +8586,9 @@ function makeLocalDevSeedFingerprint(input: {
     },
     counts: {
       terrain: input.terrainIds.length,
+      chapter1Terrain: input.chapter1TerrainIds.length,
       npcs: input.npcIds.length,
+      chapter1Npcs: input.chapter1NpcIds.length,
       snapshotGroveNpcs: input.snapshotGroveNpcIds.length,
       snapshotCombatNpcs: input.snapshotCombatNpcIds.length,
       liveEntityProductionSeeds: input.liveEntityProductionSeedIds.length,
@@ -8350,8 +8604,13 @@ function makeLocalDevSeedFingerprint(input: {
     idRanges: {
       terrainFirst: input.terrainIds[0],
       terrainLast: input.terrainIds[input.terrainIds.length - 1],
+      chapter1TerrainFirst: input.chapter1TerrainIds[0],
+      chapter1TerrainLast:
+        input.chapter1TerrainIds[input.chapter1TerrainIds.length - 1],
       npcFirst: input.npcIds[0],
       npcLast: input.npcIds[input.npcIds.length - 1],
+      chapter1NpcFirst: input.chapter1NpcIds[0],
+      chapter1NpcLast: input.chapter1NpcIds[input.chapter1NpcIds.length - 1],
       snapshotGroveNpcFirst: input.snapshotGroveNpcIds[0],
       snapshotGroveNpcLast:
         input.snapshotGroveNpcIds[input.snapshotGroveNpcIds.length - 1],
@@ -8540,6 +8799,7 @@ async function reconcileLocalDevRuntimeContent(
   const cosmeticRepairIds = localDevPlayerLikeNpcCosmeticRepairIds();
   const candidate = [
     ...makeLocalDevNpcChanges(tick, emptyIds),
+    ...makeLocalDevChapter1NpcChanges(tick, emptyIds),
     ...buildHarthmereLiveEntityProductionSeedChanges({
       tick,
       nowSeconds: secondsSinceEpoch(),
@@ -8565,6 +8825,7 @@ async function reconcileLocalDevRuntimeContent(
   );
   const changes = [
     ...makeLocalDevNpcChanges(tick, existingIds),
+    ...makeLocalDevChapter1NpcChanges(tick, existingIds),
     ...buildHarthmereLiveEntityProductionSeedChanges({
       tick,
       nowSeconds: secondsSinceEpoch(),
@@ -8622,10 +8883,12 @@ function makeLocalDevMiniWorldChanges(
   tick: number,
   existingIds: Set<BiomesId>,
   seedFingerprint: string,
-  includeTerrain = true
+  includeTerrain = true,
+  terrainIdsToBuild?: ReadonlySet<BiomesId>
 ) {
   const changes: Change[] = [];
   const specs = localDevTerrainShardSpecs();
+  const chapter1Specs = localDevChapter1TerrainShardSpecs();
   const staleTerrainDeletes = makeLocalDevObsoleteTerrainDeletionChanges(
     tick,
     existingIds
@@ -8653,6 +8916,9 @@ function makeLocalDevMiniWorldChanges(
   if (includeTerrain) {
     for (let index = 0; index < specs.length; index += 1) {
       const spec = specs[index];
+      if (terrainIdsToBuild && !terrainIdsToBuild.has(spec.id)) {
+        continue;
+      }
       const shardStartedAt = Date.now();
       const terrainChange = makeLocalDevTerrainShard(
         voxeloo,
@@ -8684,6 +8950,22 @@ function makeLocalDevMiniWorldChanges(
         });
       }
     }
+    for (const spec of chapter1Specs) {
+      if (terrainIdsToBuild && !terrainIdsToBuild.has(spec.id)) {
+        continue;
+      }
+      changes.push(
+        makeLocalDevChapter1TerrainShard(
+          voxeloo,
+          existingIds.has(spec.id) ? "update" : "create",
+          spec.id,
+          spec.shardX,
+          spec.shardY,
+          spec.shardZ,
+          tick
+        )
+      );
+    }
   }
 
   // Apply the complete replacement foundation before stripping retired terrain
@@ -8693,6 +8975,7 @@ function makeLocalDevMiniWorldChanges(
 
   const npcStartedAt = Date.now();
   const npcChanges = makeLocalDevNpcChanges(tick, existingIds);
+  const chapter1NpcChanges = makeLocalDevChapter1NpcChanges(tick, existingIds);
   const groveNpcChanges = makeLocalDevSnapshotGroveNpcChanges(
     tick,
     existingIds
@@ -8734,6 +9017,7 @@ function makeLocalDevMiniWorldChanges(
     });
   changes.push(
     ...npcChanges,
+    ...chapter1NpcChanges,
     ...groveNpcChanges,
     ...combatNpcChanges,
     ...liveEntitySeedChanges,
@@ -8747,7 +9031,9 @@ function makeLocalDevMiniWorldChanges(
 
   log.warn("Built local dev starter town seed changes", {
     terrainShards: includeTerrain ? specs.length : 0,
+    chapter1TerrainShards: includeTerrain ? chapter1Specs.length : 0,
     npcs: npcChanges.length,
+    chapter1Npcs: chapter1NpcChanges.length,
     snapshotGroveNpcs: groveNpcChanges.length,
     snapshotCombatNpcs: combatNpcChanges.length,
     liveEntityProductionSeeds: liveEntitySeedChanges.length,
@@ -8775,9 +9061,19 @@ async function buildAndApplyLocalDevTerrainSeedBatches(
   voxeloo: VoxelooModule,
   tick: number,
   existingIds: Set<BiomesId>,
-  worldApi: WorldApi
+  worldApi: WorldApi,
+  terrainIdsToBuild?: ReadonlySet<BiomesId>
 ) {
-  const specs = localDevTerrainShardSpecs();
+  const specs = [
+    ...localDevTerrainShardSpecs().map((spec) => ({
+      ...spec,
+      chapter1: false as const,
+    })),
+    ...localDevChapter1TerrainShardSpecs().map((spec) => ({
+      ...spec,
+      chapter1: true as const,
+    })),
+  ].filter((spec) => !terrainIdsToBuild || terrainIdsToBuild.has(spec.id));
   const startedAt = Date.now();
   let appliedShardCount = 0;
   let batch: Change[] = [];
@@ -8794,15 +9090,25 @@ async function buildAndApplyLocalDevTerrainSeedBatches(
     const spec = specs[index];
     const shardStartedAt = Date.now();
     batch.push(
-      makeLocalDevTerrainShard(
-        voxeloo,
-        existingIds.has(spec.id) ? "update" : "create",
-        spec.id,
-        spec.shardX,
-        spec.shardY,
-        spec.shardZ,
-        tick
-      )
+      spec.chapter1
+        ? makeLocalDevChapter1TerrainShard(
+            voxeloo,
+            existingIds.has(spec.id) ? "update" : "create",
+            spec.id,
+            spec.shardX,
+            spec.shardY,
+            spec.shardZ,
+            tick
+          )
+        : makeLocalDevTerrainShard(
+            voxeloo,
+            existingIds.has(spec.id) ? "update" : "create",
+            spec.id,
+            spec.shardX,
+            spec.shardY,
+            spec.shardZ,
+            tick
+          )
     );
 
     const shardElapsedMs = Date.now() - shardStartedAt;
@@ -8909,6 +9215,7 @@ async function ensureHarthmereAdditiveWorldBoundary(
     // Create only that singleton component so the normal extension terrain can
     // seed itself; no existing terrain or entity is modified by this bootstrap.
     const initial = initialHarthmereWorldAabb();
+    initial.v1[0] = Math.max(initial.v1[0], CH1_ELSEWHEN_BAND_END_X);
     const tick = service ? service.table.tick + 1 : 1;
     const change: Change = {
       kind: currentEntityExists ? "update" : "create",
@@ -8943,7 +9250,8 @@ async function ensureHarthmereAdditiveWorldBoundary(
   if (
     !extensionTerrainAlreadyExists &&
     currentEastEdge > HARTHMERE_ORIGINAL_WORLD_EAST_EDGE_X &&
-    currentEastEdge !== HARTHMERE_EXPANDED_WORLD_EAST_EDGE_X
+    currentEastEdge !== HARTHMERE_EXPANDED_WORLD_EAST_EDGE_X &&
+    currentEastEdge !== CH1_ELSEWHEN_BAND_END_X
   ) {
     // A differently-expanded world may already own part of X=1792..2559.
     // Refuse to guess: automatic add-only seeding is safe only against the
@@ -8953,11 +9261,13 @@ async function ensureHarthmereAdditiveWorldBoundary(
       currentEastEdge,
       expectedOriginalEastEdge: HARTHMERE_ORIGINAL_WORLD_EAST_EDGE_X,
       expectedExtensionEastEdge: HARTHMERE_EXPANDED_WORLD_EAST_EDGE_X,
+      expectedChapter1EastEdge: CH1_ELSEWHEN_BAND_END_X,
     });
     return false;
   }
 
   const expanded = expandWorldAabbForHarthmere(current.aabb);
+  expanded.v1[0] = Math.max(expanded.v1[0], CH1_ELSEWHEN_BAND_END_X);
   if (
     expanded.v0.every((value, index) => value === current.aabb.v0[index]) &&
     expanded.v1.every((value, index) => value === current.aabb.v1[index])
@@ -9015,6 +9325,7 @@ async function seedMissingLocalDevContentIntoExistingWorld(
   const emptyIds = new Set<BiomesId>();
   const candidate: Change[] = [
     ...makeLocalDevNpcChanges(tick, emptyIds),
+    ...makeLocalDevChapter1NpcChanges(tick, emptyIds),
     ...makeLocalDevSnapshotGroveNpcChanges(tick, emptyIds),
     ...makeLocalDevSnapshotCombatNpcChanges(tick, emptyIds),
     ...buildHarthmereLiveEntityProductionSeedChanges({
@@ -9093,6 +9404,18 @@ async function seedLocalDevTerrainIfMissing(
   worldApi: WorldApi
 ) {
   if (!shouldSeedLocalDevTerrain()) {
+    if (shouldUseHarthmereExtraTownOffset()) {
+      // Production snapshot deployments deliberately disable generated terrain
+      // while still requiring newly authored NPCs, quest givers, businesses,
+      // and stations. Returning here used to skip that create-only content
+      // reconciliation too, leaving exact quest target IDs permanently absent.
+      // Keep terrain untouched, but self-heal missing additive content on boot.
+      log.info(
+        "Harthmere terrain generation is disabled; syncing missing authored content only."
+      );
+      await seedMissingLocalDevContentIntoExistingWorld(service, worldApi);
+      await reconcileLocalDevPlayerLikeNpcCosmetics(service, worldApi);
+    }
     return;
   }
 
@@ -9134,7 +9457,11 @@ async function seedLocalDevTerrainIfMissing(
   }
 
   const terrainIds = localDevTerrainShardSpecs().map((spec) => spec.id);
+  const chapter1TerrainIds = localDevChapter1TerrainShardSpecs().map(
+    (spec) => spec.id
+  );
   const npcIds = starterTownNpcs().map((npc) => npc.id);
+  const chapter1NpcIds = localDevChapter1NpcIds();
   const snapshotGroveNpcIds = localDevSnapshotGroveNpcIds();
   const snapshotCombatNpcIds = localDevSnapshotCombatNpcIds();
   const liveEntityProductionSeedIds = localDevLiveEntityProductionSeedIds();
@@ -9146,7 +9473,9 @@ async function seedLocalDevTerrainIfMissing(
   const activeTerrainIds = new Set(terrainIds);
   const expectedSeedIds = [
     ...terrainIds,
+    ...chapter1TerrainIds,
     ...npcIds,
+    ...chapter1NpcIds,
     ...snapshotGroveNpcIds,
     ...snapshotCombatNpcIds,
     ...liveEntityProductionSeedIds,
@@ -9157,7 +9486,9 @@ async function seedLocalDevTerrainIfMissing(
   ];
   const seedFingerprint = makeLocalDevSeedFingerprint({
     terrainIds,
+    chapter1TerrainIds,
     npcIds,
+    chapter1NpcIds,
     snapshotGroveNpcIds,
     snapshotCombatNpcIds,
     liveEntityProductionSeedIds,
@@ -9200,6 +9531,47 @@ async function seedLocalDevTerrainIfMissing(
   );
   const shouldForceReseed =
     process.env.BIOMES_FORCE_LOCAL_DEV_TOWN_RESEED === "1";
+  let previousFingerprint: Record<string, unknown> | undefined;
+  if (markerFingerprint) {
+    try {
+      previousFingerprint = JSON.parse(markerFingerprint) as Record<
+        string,
+        unknown
+      >;
+    } catch {
+      // A pre-fingerprint marker is treated as unknown. Missing ids are still
+      // seeded, while existing terrain remains untouched unless forced.
+    }
+  }
+  const terrainIdsToBuild = new Set<BiomesId>();
+  const addMissing = (ids: readonly BiomesId[]) => {
+    for (const id of ids) {
+      if (!existingIds.has(id)) {
+        terrainIdsToBuild.add(id);
+      }
+    }
+  };
+  addMissing(terrainIds);
+  addMissing(chapter1TerrainIds);
+  if (shouldForceReseed) {
+    for (const id of [...terrainIds, ...chapter1TerrainIds]) {
+      terrainIdsToBuild.add(id);
+    }
+  } else {
+    if (
+      previousFingerprint?.terrainBoundsVersion !== undefined &&
+      previousFingerprint.terrainBoundsVersion !==
+        HARTHMERE_LOCAL_DEV_TERRAIN_BOUNDS_VERSION
+    ) {
+      for (const id of terrainIds) terrainIdsToBuild.add(id);
+    }
+    if (
+      previousFingerprint?.chapter1DungeonTerrainVersion !==
+      CH1_DUNGEON_TERRAIN_VERSION
+    ) {
+      for (const id of chapter1TerrainIds) terrainIdsToBuild.add(id);
+    }
+  }
   if (
     !shouldForceReseed &&
     allExpectedSeedIdsExist &&
@@ -9212,8 +9584,10 @@ async function seedLocalDevTerrainIfMissing(
         fingerprintVersion: HARTHMERE_LOCAL_DEV_SEED_FINGERPRINT_VERSION,
         expectedSeedIds: expectedSeedIds.length,
         terrainShards: terrainIds.length,
+        chapter1TerrainShards: chapter1TerrainIds.length,
         npcs:
           npcIds.length +
+          chapter1NpcIds.length +
           snapshotGroveNpcIds.length +
           snapshotCombatNpcIds.length +
           liveEntityProductionSeedIds.length,
@@ -9245,8 +9619,10 @@ async function seedLocalDevTerrainIfMissing(
           fingerprintVersion: HARTHMERE_LOCAL_DEV_SEED_FINGERPRINT_VERSION,
           expectedSeedIds: expectedSeedIds.length,
           terrainShards: terrainIds.length,
+          chapter1TerrainShards: chapter1TerrainIds.length,
           npcs:
             npcIds.length +
+            chapter1NpcIds.length +
             snapshotGroveNpcIds.length +
             snapshotCombatNpcIds.length +
             liveEntityProductionSeedIds.length,
@@ -9291,7 +9667,8 @@ async function seedLocalDevTerrainIfMissing(
       voxeloo,
       tick,
       existingIds,
-      worldApi
+      worldApi,
+      terrainIdsToBuild
     );
     if (!applied) {
       return;
@@ -9303,7 +9680,8 @@ async function seedLocalDevTerrainIfMissing(
     tick,
     existingIds,
     seedFingerprint,
-    !terrainWasAppliedSeparately
+    !terrainWasAppliedSeparately,
+    terrainIdsToBuild
   );
   changes.push(
     ...makeLocalDevStaleTerrainDeletes(tick, new Set(terrainIds), existingIds)
@@ -9326,12 +9704,13 @@ async function seedLocalDevTerrainIfMissing(
   }
 
   const terrainUpdateCount = terrainWasAppliedSeparately
-    ? terrainIds.length
+    ? terrainIds.length + chapter1TerrainIds.length
     : changes.filter(
         (change) =>
           (change.kind === "create" || change.kind === "update") &&
-          change.entity.id >= LOCAL_DEV_TERRAIN_ID_BASE &&
-          change.entity.id < LOCAL_DEV_TERRAIN_ID_LIMIT
+          ((change.entity.id >= LOCAL_DEV_TERRAIN_ID_BASE &&
+            change.entity.id < LOCAL_DEV_TERRAIN_ID_LIMIT) ||
+            chapter1TerrainIds.includes(change.entity.id))
       ).length;
   const npcUpdates = changes.filter(
     (change) =>
@@ -9346,6 +9725,7 @@ async function seedLocalDevTerrainIfMissing(
     performanceProfile: HARTHMERE_LOCAL_DEV_PERF_PROFILE,
     fingerprintVersion: HARTHMERE_LOCAL_DEV_SEED_FINGERPRINT_VERSION,
     terrainShards: terrainUpdateCount,
+    chapter1TerrainShards: chapter1TerrainIds.length,
     npcs: npcUpdates.length,
     harvestableTreeCenters: HARTHMERE_HARVESTABLE_TREE_CENTERS.length,
     harvestableOreClusters: HARTHMERE_HARVESTABLE_ORE_CENTERS.length,
@@ -9357,7 +9737,7 @@ async function seedLocalDevTerrainIfMissing(
     runtimeOffsetZ: harthmereExtraTownOffsetZ(),
     x: [
       STARTER_TOWN_WILDS_X0 + harthmereExtraTownOffsetX(),
-      STARTER_TOWN_WILDS_X1 + harthmereExtraTownOffsetX(),
+      CH1_ELSEWHEN_BAND_END_X,
     ],
     y: [-64, 96],
     z: [

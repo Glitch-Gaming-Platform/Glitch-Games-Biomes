@@ -85,7 +85,11 @@ export class PassRenderer {
 
     this.threeRenderer.debug.checkShaderErrors = true;
     this.threeRenderer.debug.onShaderError = shaderErrorCallback;
-    this.threeRenderer.outputColorSpace = THREE.SRGBColorSpace;
+    // three@0.152 exposes outputColorSpace at runtime, while the repository's
+    // pinned @types/three@0.151 predates that property.
+    (
+      this.threeRenderer as THREE.WebGLRenderer & { outputColorSpace: string }
+    ).outputColorSpace = THREE.SRGBColorSpace;
     this.threeRenderer.autoClear = false;
 
     this.setPixelRatio(window.devicePixelRatio);

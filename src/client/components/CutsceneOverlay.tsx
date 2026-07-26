@@ -6,7 +6,9 @@
 // actually accepting input.
 
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
-import React, { useEffect } from "react";
+import { VoiceChat } from "@/client/components/system/VoiceChat";
+import type { CutsceneSubtitle } from "@/client/game/resources/cutscene";
+import React, { useEffect, useState } from "react";
 
 const BAR_STYLE: React.CSSProperties = {
   position: "fixed",
@@ -19,9 +21,43 @@ const BAR_STYLE: React.CSSProperties = {
   transition: "transform 400ms ease-in-out",
 };
 
+export function nextCutsceneSpokenSubtitleForTest(input: {
+  active: boolean;
+  current?: CutsceneSubtitle;
+  subtitle?: CutsceneSubtitle;
+}) {
+  if (!input.active) {
+    return undefined;
+  }
+  if (input.subtitle) {
+    // An explicit player/narration subtitle interrupts any prior NPC line.
+    return input.subtitle.voice ? input.subtitle : undefined;
+  }
+  // A short clear gap between shots should not cut off an otherwise valid MP3.
+  return input.current;
+}
+
 export const CutsceneOverlay: React.FunctionComponent = () => {
   const { reactResources } = useClientContext();
   const state = reactResources.use("/scene/cutscene");
+  const [spokenSubtitle, setSpokenSubtitle] = useState<
+    CutsceneSubtitle | undefined
+  >();
+
+  useEffect(() => {
+    setSpokenSubtitle((current) =>
+      nextCutsceneSpokenSubtitleForTest({
+        active: state.active,
+        current,
+        subtitle: state.subtitle,
+      })
+    );
+  }, [
+    state.active,
+    state.subtitle?.speaker,
+    state.subtitle?.text,
+    state.subtitle?.voice,
+  ]);
 
   useEffect(() => {
     if (!state.active) {
@@ -82,6 +118,15 @@ export const CutsceneOverlay: React.FunctionComponent = () => {
 
   return (
     <>
+      {spokenSubtitle?.voice && (
+        <VoiceChat
+          text={spokenSubtitle.text}
+          voice={spokenSubtitle.voice}
+          playbackKey={`cutscene:${state.defId ?? "unknown"}:${
+            spokenSubtitle.speaker ?? "npc"
+          }:${spokenSubtitle.text}`}
+        />
+      )}
       {state.letterbox && (
         <>
           <div style={{ ...BAR_STYLE, top: 0 }} />

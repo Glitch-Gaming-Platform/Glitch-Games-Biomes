@@ -208,6 +208,14 @@ export interface HarthmereVendorEntry {
   sellPrice: number;
   /** Current stock remaining; -1 = unlimited */
   stock: number;
+  /**
+   * Optional fixed bundle contract. Production catalogue lines use quantity as
+   * the bundle size and price as the total bundle price; keeping that contract
+   * server-side prevents clients from forging partial bundles or being charged
+   * a rounded per-unit price that differs from the store UI.
+   */
+  bundleQuantity?: number;
+  bundlePrice?: number;
   /** Required reputation faction, or undefined for no requirement */
   requiredFaction?: string;
   requiredReputationTier?: number;
@@ -714,7 +722,15 @@ export const HARTHMERE_DEFAULT_INVENTORY_SLOTS = 40;
 export const HARTHMERE_BANK_SLOTS = 80;
 
 export function countInventorySlots(items: Record<string, number>): number {
-  return Object.values(items).filter((count) => Number(count) > 0).length;
+  return Object.entries(items).reduce((slots, [itemId, rawCount]) => {
+    const count = Math.max(0, Math.trunc(Number(rawCount) || 0));
+    if (count <= 0) return slots;
+    const maxStack = Math.max(
+      1,
+      Math.trunc(getHarthmereItemDefinition(itemId)?.maxStackSize ?? count)
+    );
+    return slots + Math.ceil(count / maxStack);
+  }, 0);
 }
 
 export function inventoryHasCapacity(
@@ -877,23 +893,28 @@ function validateVendorBuy(
     fail(errors, "vendor_out_of_stock");
   }
 
+  if (entry.bundleQuantity !== undefined && count !== entry.bundleQuantity) {
+    fail(errors, "invalid_vendor_bundle_count");
+  }
+
   // Server-computed buy price — client cannot supply this
-  const totalCost = entry.buyPrice * count;
+  const totalCost =
+    entry.bundleQuantity !== undefined && entry.bundlePrice !== undefined
+      ? entry.bundlePrice
+      : entry.buyPrice * count;
   if (snapshot.gold < totalCost) {
     fail(errors, "insufficient_gold");
   }
 
   // Inventory capacity
-  const existingCount = snapshot.items[itemId] ?? 0;
+  const existingCount = Math.max(0, snapshot.items[itemId] ?? 0);
   const newCount = existingCount + count;
-  const slotsNeeded = existingCount === 0 ? 1 : 0;
+  const maxStackSize = Math.max(1, def.maxStackSize);
+  const slotsNeeded =
+    Math.ceil(newCount / maxStackSize) -
+    Math.ceil(existingCount / maxStackSize);
   if (!inventoryHasCapacity(snapshot.items, slotsNeeded)) {
     fail(errors, "inventory_full");
-  }
-
-  // Stack size
-  if (newCount > def.maxStackSize) {
-    fail(errors, "stack_size_exceeded");
   }
 
   if (errors.length > 0) return resultFail(requestId, kind, actorId, errors);

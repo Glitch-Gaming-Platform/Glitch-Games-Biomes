@@ -255,6 +255,35 @@ punctuation. The dialog UI already synthesizes one displayed NPC line at a time,
 so long conversations are naturally broken into short TTS requests rather than
 sent as a single drifting monologue.
 
+### Chapter 1 cinematic voices
+
+Chapter 1 cutscene dialogue uses the same provider selection, volume control,
+committed cache, and failure fallback as normal NPC conversations. The shared
+cutscene dialogue action carries an optional provider-neutral actor descriptor;
+the overlay sends only voiced NPC lines to `/api/voices/text_to_speech` and
+continues to show every subtitle if audio is disabled or unavailable.
+
+Voice casting for the chapter lives in
+`src/shared/harthmere/ch1_voice.ts`. New characters have explicit presentation
+and performance notes from the writer's journal. Returning Grove characters,
+including Jackie and the twelve testimony witnesses, reuse their established
+actor identity instead of being recast. Player choices, visual narration, the
+player's recovered recording, and the Custodian Key caption remain text-only so
+a generic NPC voice never speaks for the player.
+
+The runtime voice module contains only client-safe casting metadata. Private
+`writerNote` fields remain in the server-side catalog input and are neither
+serialized into the recording manifest nor imported by the cutscene bundle.
+
+The cutscene overlay retains an active NPC MP3 across the brief subtitle-clear
+gap between shots, interrupts it when a player/narration subtitle begins, and
+clears it when the scene ends. Skipping or closing a cutscene therefore cannot
+leave detached speech playing in the world.
+
+Chapter asset filenames are based only on safe actor IDs. The recording checker
+rejects filenames containing protected pre-reveal terms from the writer's
+journal, and the manifest stores text hashes rather than dialogue text.
+
 The June 7, 2026 Azure voice audit also found newer MAI voices and Azure OpenAI
 audio deployments. They remain available through the existing provider, while
 ElevenLabs is now the default player setting for dynamic NPC speech.
@@ -282,11 +311,11 @@ deployment filesystem is read-only, the endpoint returns the newly generated
 audio for that request and keeps written dialogue working; committed catalog
 audio remains the reliable production fast path.
 
-The catalog currently covers 492 Harthmere actors, all 1,397 catalog lines, and
-139 native robot-story segments from The Road Ahead, Busted, Get the Muck Out,
-and Muck vs. Machine. Username-dependent segments remain dynamic because their
-spoken text differs per player. Preview the complete plan without making paid
-requests:
+The catalog currently plans 1,512 static catalog lines, including 63 Chapter 1
+lines for 23 voiced new/returning actors, plus 139 native robot-story segments
+from The Road Ahead, Busted, Get the Muck Out, and Muck vs. Machine.
+Username-dependent segments remain dynamic because their spoken text differs
+per player. Preview the complete plan without making paid requests:
 
 ```bash
 node scripts/harthmere/generate-harthmere-npc-voice-recordings.cjs --dry-run

@@ -7,6 +7,7 @@
 import type { AudioManager } from "@/client/game/context_managers/audio_manager";
 import { getActiveRendererController } from "@/client/game/renderers/capture_bridge";
 import type { ClientResources } from "@/client/game/resources/types";
+import type { CutsceneUiState } from "@/client/game/resources/cutscene";
 import {
   cutsceneLibrary,
   requestCutsceneById,
@@ -16,6 +17,7 @@ import {
   type CutscenePlaybackEvent,
 } from "@/client/game/cutscene/playback_events";
 import type { CutsceneFinishReason } from "@/shared/cutscene/director_core";
+import { validateCutsceneDef } from "@/shared/cutscene/schema";
 import { sleep } from "@/shared/util/async";
 
 export interface CutsceneVideoCaptureResult {
@@ -37,6 +39,145 @@ export interface CutsceneVideoCaptureOptions {
   filename?: string;
   preempt?: boolean;
   timeoutMs?: number;
+}
+
+let videoSandboxSerial = 0;
+
+function evenPixels(value: number): number {
+  return Math.max(2, Math.round(value / 2) * 2);
+}
+
+/**
+ * Record at the displayed canvas size (capped at 1280px), not its temporary
+ * low-resolution WebGL backing store. Focused E2E profiles deliberately lower
+ * renderScale while loading; using canvas.width directly made the first page
+ * in a batch a 360x225 video while later pages happened to become 1280x800.
+ */
+export function cutsceneVideoOutputSize(source: {
+  width: number;
+  height: number;
+  clientWidth: number;
+  clientHeight: number;
+}): { width: number; height: number } {
+  const displayWidth = Math.max(source.width, source.clientWidth || 0);
+  const displayHeight = Math.max(source.height, source.clientHeight || 0);
+  const scale = Math.min(1, 1_280 / Math.max(1, displayWidth));
+  return {
+    width: evenPixels(displayWidth * scale),
+    height: evenPixels(displayHeight * scale),
+  };
+}
+
+function wrappedSubtitleLines(
+  context: CanvasRenderingContext2D,
+  text: string,
+  maxWidth: number
+): string[] {
+  const lines: string[] = [];
+  let line = "";
+  for (const word of text.trim().split(/\s+/)) {
+    const candidate = line ? `${line} ${word}` : word;
+    if (line && context.measureText(candidate).width > maxWidth) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = candidate;
+    }
+  }
+  if (line) {
+    lines.push(line);
+  }
+  return lines.length > 0 ? lines : [""];
+}
+
+/** Paint the DOM cutscene chrome into the MediaRecorder canvas. */
+function paintCutsceneOverlay(
+  context: CanvasRenderingContext2D,
+  canvas: HTMLCanvasElement,
+  state: CutsceneUiState
+): void {
+  context.save();
+  const width = canvas.width;
+  const height = canvas.height;
+  const barHeight = state.letterbox ? Math.round(height * 0.12) : 0;
+  if (barHeight > 0) {
+    context.fillStyle = "#000";
+    context.fillRect(0, 0, width, barHeight);
+    context.fillRect(0, height - barHeight, width, barHeight);
+  }
+
+  if (state.subtitle) {
+    const fontSize = Math.max(13, Math.min(30, Math.round(height * 0.032)));
+    const lineHeight = Math.round(fontSize * 1.35);
+    const paddingX = Math.round(fontSize * 0.9);
+    const paddingY = Math.round(fontSize * 0.55);
+    context.font = `600 ${fontSize}px sans-serif`;
+    context.textAlign = "center";
+    context.textBaseline = "middle";
+    const text = state.subtitle.speaker
+      ? `${state.subtitle.speaker}: ${state.subtitle.text}`
+      : state.subtitle.text;
+    const lines = wrappedSubtitleLines(context, text, width * 0.68);
+    const measuredWidth = Math.max(
+      ...lines.map((line) => context.measureText(line).width)
+    );
+    const boxWidth = Math.min(width * 0.76, measuredWidth + paddingX * 2);
+    const boxHeight = lines.length * lineHeight + paddingY * 2;
+    const bottomClearance = Math.max(barHeight + fontSize, height * 0.15);
+    const boxX = (width - boxWidth) / 2;
+    const boxY = height - bottomClearance - boxHeight;
+    context.fillStyle = "rgba(0, 0, 0, 0.72)";
+    context.fillRect(boxX, boxY, boxWidth, boxHeight);
+    context.fillStyle = "#fff";
+    lines.forEach((line, index) => {
+      context.fillText(
+        line,
+        width / 2,
+        boxY + paddingY + lineHeight * (index + 0.5)
+      );
+    });
+  }
+
+  // Resource opacity is the cinematic endpoint (CSS interpolates the DOM
+  // between endpoints). Capturing the covered endpoint preserves intentional
+  // black cuts without depending on browser-only DOM rasterization.
+  if (state.fadeOpacity >= 0.99) {
+    context.fillStyle = "#000";
+    context.fillRect(0, 0, width, height);
+  }
+  context.restore();
+}
+
+/**
+ * Video rendering must never advance quests, place actors, or stream shared
+ * NPC movement. Capture can be retried during visual QA, so playing the source
+ * definition directly would make an MP4 export a repeatable story mutation.
+ */
+function registerVideoSandbox(source: ReturnType<typeof cutsceneLibrary.get>) {
+  if (!source) {
+    throw new Error("cannot sandbox an unknown cutscene");
+  }
+  const suffix = `-video-${videoSandboxSerial++}`;
+  const id = `${source.id.slice(0, 128 - suffix.length)}${suffix}`;
+  const parsed = validateCutsceneDef({
+    ...source,
+    id,
+    name: `${source.name} Video Sandbox`,
+    settings: {
+      ...source.settings,
+      mode: "clientPuppet",
+      commitOn: [],
+    },
+    onEnd: { placements: [], commits: [] },
+  });
+  if (!parsed.ok) {
+    throw new Error(
+      `invalid cutscene video sandbox: ${parsed.issues
+        .map((issue) => `${issue.path}: ${issue.message}`)
+        .join("; ")}`
+    );
+  }
+  return cutsceneLibrary.register(parsed.def);
 }
 
 function recordingMimeType(): string | undefined {
@@ -132,6 +273,7 @@ export async function requestCutsceneVideoById(
   if (!def) {
     throw new Error(`unknown cutscene "${defId}"`);
   }
+  const sandbox = registerVideoSandbox(def);
   const sourceCanvas = gameCanvas();
   if (!sourceCanvas) {
     throw new Error("the game canvas cannot provide a recording stream");
@@ -147,15 +289,9 @@ export async function requestCutsceneVideoById(
   // its first frame; a 2D staging canvas produces reliable MediaRecorder frames
   // while still containing pixels rendered entirely by the game engine.
   const recordingCanvas = document.createElement("canvas");
-  const outputScale = Math.min(1, 1_280 / sourceCanvas.width);
-  recordingCanvas.width = Math.max(
-    2,
-    Math.round(sourceCanvas.width * outputScale)
-  );
-  recordingCanvas.height = Math.max(
-    2,
-    Math.round(sourceCanvas.height * outputScale)
-  );
+  const outputSize = cutsceneVideoOutputSize(sourceCanvas);
+  recordingCanvas.width = outputSize.width;
+  recordingCanvas.height = outputSize.height;
   const recordingContext = recordingCanvas.getContext("2d");
   if (
     !recordingContext ||
@@ -197,6 +333,11 @@ export async function requestCutsceneVideoById(
         recordingCanvas.width,
         recordingCanvas.height
       );
+      paintCutsceneOverlay(
+        recordingContext,
+        recordingCanvas,
+        resources.get("/scene/cutscene")
+      );
       canvasVideoTrack?.requestFrame?.();
       return;
     }
@@ -209,6 +350,11 @@ export async function requestCutsceneVideoById(
         0,
         recordingCanvas.width,
         recordingCanvas.height
+      );
+      paintCutsceneOverlay(
+        recordingContext,
+        recordingCanvas,
+        resources.get("/scene/cutscene")
       );
       canvasVideoTrack?.requestFrame?.();
       frameCaptureInFlight = false;
@@ -252,9 +398,9 @@ export async function requestCutsceneVideoById(
     15 * 60_000,
     Math.max(30_000, options.timeoutMs ?? 180_000)
   );
-  const started = waitForPlaybackEvent(defId, "started", timeoutMs);
-  const finished = waitForPlaybackEvent(defId, "finished", timeoutMs);
-  if (!requestCutsceneById(defId, { preempt: options.preempt ?? true })) {
+  const started = waitForPlaybackEvent(sandbox.id, "started", timeoutMs);
+  const finished = waitForPlaybackEvent(sandbox.id, "finished", timeoutMs);
+  if (!requestCutsceneById(sandbox.id, { preempt: options.preempt ?? true })) {
     started.cancel();
     finished.cancel();
     audioRecording?.dispose();

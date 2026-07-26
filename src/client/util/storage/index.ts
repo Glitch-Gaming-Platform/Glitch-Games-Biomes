@@ -93,11 +93,10 @@ class RegisterableBlobSaveTransport implements BlobSaveTransport {
     if (!this.impl) {
       return;
     }
-    try {
-      await this.impl.store(snapshot);
-    } catch {
-      /* best-effort */
-    }
+    // The adapter's flush boundary catches failures and keeps its snapshot
+    // dirty. Swallowing here incorrectly marked conflict-paused writes as
+    // successfully durable.
+    await this.impl.store(snapshot);
   }
 }
 

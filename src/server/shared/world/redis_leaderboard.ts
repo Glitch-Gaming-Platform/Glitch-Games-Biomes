@@ -22,6 +22,36 @@ export function leaderboardKey(category: LeaderboardCategory, key: string) {
   return `leaderboard:${category}:${key}`;
 }
 
+// Redis added the ZADD LT/GT options in 6.2, but Biomes' production-shaped
+// local test stack may intentionally use an older compatible Redis image. Keep
+// conditional leaderboard writes atomic and portable by doing the comparison
+// inside Lua. This is the direct LeaderboardApi counterpart to the same helper
+// embedded in world/lua/scripts/apply.lua.
+export const REDIS_PORTABLE_LEADERBOARD_UPDATE_LUA = `
+local key = KEYS[1]
+local op = ARGV[1]
+local amount = tonumber(ARGV[2])
+local member = ARGV[3]
+
+if op == 'INCR' then
+  return redis.call('ZINCRBY', key, amount, member)
+end
+
+local current = redis.call('ZSCORE', key, member)
+if current == false then
+  return redis.call('ZADD', key, amount, member)
+end
+
+current = tonumber(current)
+if (op == 'LT' and amount < current) or (op == 'GT' and amount > current) then
+  return redis.call('ZADD', key, amount, member)
+end
+if op ~= 'LT' and op ~= 'GT' then
+  return redis.error_reply('Unknown leaderboard operation: ' .. tostring(op))
+end
+return current
+`;
+
 export function redisUpdateLeaderboardCounters(
   pipeline: ChainableCommander,
   category: LeaderboardCategory,
@@ -30,10 +60,12 @@ export function redisUpdateLeaderboardCounters(
   id: BiomesId
 ) {
   for (const key of keysForNow()) {
-    pipeline.zadd(
+    pipeline.eval(
+      REDIS_PORTABLE_LEADERBOARD_UPDATE_LUA,
+      1,
       leaderboardKey(category, key),
       op,
-      amount ?? 1,
+      String(amount ?? 1),
       biomesIdToRedisKey(id)
     );
   }

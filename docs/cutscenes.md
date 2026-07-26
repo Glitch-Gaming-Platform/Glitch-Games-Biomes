@@ -317,6 +317,85 @@ loudly instead of silently replacing a Mucker with a generic humanoid.
 
 ## Promotional screenshots
 
+### Fast path: the promo scene registry
+
+A promotional still is now **data**, not client code. Register it in
+`src/shared/cutscene/promo_scenes.ts` and capture it with one command:
+
+```sh
+node scripts/cutscenes/capture-promo-still.cjs --list
+node scripts/cutscenes/capture-promo-still.cjs dungeon-portal
+node scripts/cutscenes/capture-promo-still.cjs dungeon-portal --at 3.8 --run 2
+```
+
+Writes `artifacts/cutscenes/<filename>` (branded) and `-raw.png` (unbranded
+engine frame), and exits non-zero if the capture did not happen.
+
+**Why this replaced the hand-driven URL.** `promo_capture.ts` used to hardcode
+the query id, the brand subtitle, the output filename, the shot id, and the
+`captureAt` ceiling as literals inside the React hook. Adding a second still
+meant editing client code — enough friction that stills stopped getting made.
+The registry entry carries all of it, and `promo_scenes.test.ts` validates the
+scene, the shot id, the capture window, and the framing contract **without a
+browser, a stack, or a GPU** — which matters because the capture itself needs
+all three.
+
+`?cutscenePromo=<id>` now dispatches through the registry. The legacy
+`exotic-matter` id keeps its bespoke builder so the reference URLs below still
+work.
+
+### Framing a promo still (learned making the portal shot)
+
+These are the mistakes that cost retakes. The portal still encodes each one,
+and `promo_scenes.test.ts` asserts the ones that are checkable:
+
+| Rule                                                  | Why                                                                                                                               |
+| ----------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| **Narrow FOV (35–45)**                                | At 70+ the subject drifts away from the hero object and the shot reads as "person in a place" instead of "person before a thing". |
+| **Camera below the object's centre, looking up**      | Looking _down_ at a portal makes it read as a puddle. Tested.                                                                     |
+| **Three-quarter rear, ~35° off-axis**                 | A pure back view makes the player a silhouette blocking the hero object; a pure side view loses the "standing before it" read.    |
+| **Push in across the shot (2+ dolly waypoints)**      | Every bracketed `--at` still lands on a composed frame, not just the default. Tested.                                             |
+| **Light the subject deliberately**                    | The gate is emissive, so it needs a dark sky (`timeOfDay` 0.78) or the shader has nothing to fight. Tested.                       |
+| **`commitOn: []`, `clientPuppet`, no end placements** | A screenshot must never write story state or move a real NPC. Tested.                                                             |
+| **`priority: 100_000`**                               | Otherwise an ambient scene can preempt the capture. Tested.                                                                       |
+
+### Capture gotchas that are now handled for you
+
+- **Always enter through visual auth.** Use `promoCaptureAuthUrl()` for a single
+  scene or `promoBatchCaptureAuthUrl()` / `e2e-jump.cjs promo-batch-url` for a
+  group. A raw observer URL may render while anonymous; `Login to Play` means
+  there is no valid distant streaming observer.
+- **Renderer-ready is necessary, not sufficient.** A valid promotional frame
+  requires the renderer-ready signal *and* the route-appropriate authoritative
+  streaming hook *and* a confirmed interest-set move to the scene. Gameplay
+  routes use the live-player teleport hook; `/at/` observer routes use
+  `ClientIo.swapSyncTarget` through `__biomesObserverStreamingDebug`. The
+  cinematic camera does not move the terrain/ECS interest set by itself.
+- **Never substitute elapsed time for streaming readiness.** Wait for
+  `biomes:promo-streaming-ready`, which is published only after the player or
+  observer owns its mutation hook. The runner's overall timeout is a failure
+  ceiling, not a readiness signal. This rule is source-tested because renderer
+  readiness repeatedly arrived before observer authority during Chapter 1.
+- **Wait for `status: "complete"`.** A queued request is not a started scene,
+  and a started scene is not a finished one. Polling for the tab to load is the
+  classic false pass.
+- **Split the data URI on `;base64,`, never on the first comma.** Codec MIME
+  types such as `codecs=vp9,opus` contain an earlier comma and corrupt the file.
+- **A cancelled scene publishes `status: "error"`.** Surface it; do not write a
+  blank PNG.
+- **Software WebGL is slow.** The runner's default timeout is deliberately
+  generous, and `--use-gl=swiftshader` is required on headless hosts.
+
+### Environment requirements (non-negotiable)
+
+Engine capture renders the real game, so it needs the real stack: **Redis, the
+unified app (web/sync/logic/trigger/notify), and a Chromium with working
+WebGL and its system libraries.** A sandbox without Redis, without Docker, or
+without root to install browser deps cannot produce a frame — validate the
+scene with `t.sh cutscene` there and capture on a machine with the stack.
+
+Check readiness first: `node scripts/harthmere/e2e-jump.cjs ready`.
+
 Any validated cutscene can run in a non-authoritative capture sandbox. The
 capture service injects a deterministic `capture` action at an exact shot time,
 forces `clientPuppet`, removes placements and commits, applies staged
@@ -533,6 +612,67 @@ final pose—not merely the first frame.
 - If the WebM is longer than the authored scene in wall time, preserve it and
   pass the authored duration to the MP4 helper. The helper retimes the complete
   sequence; it does not truncate it.
+
+### Chapter 1 batch-capture lessons
+
+The July 25 Chapter 1 campaign exposed several rules that make a long capture
+session both faster and more reliable:
+
+- Generate every fresh batch URL with
+  `node scripts/harthmere/e2e-jump.cjs promo-batch-url <group>`. This enforces
+  the gated visual login before `/at/` mounts. Do not manually reconstruct the
+  nested auth URL; a misplaced `&` changes the username/query and returns 400.
+- `__biomesCaptureReady` proves only that the renderer can draw. It does not
+  prove that the route can move its streaming authority. Wait for
+  `biomes:promo-streaming-ready`; then use
+  `__harthmereLivePlayerDebug.teleportTo` on gameplay routes or
+  `__biomesObserverStreamingDebug.moveTo` on `/at/` routes, and verify the
+  resulting position. That authoritative move is what causes the server to
+  stream the distant terrain and ECS set before the camera captures.
+- If the page says **Login to Play** or the route-appropriate hook is absent,
+  stop before capture. Re-authenticate once and resume the batch; do not take an
+  empty frame, do not overwrite passed outputs, and do not repeatedly restart
+  the stack.
+- Never add a fixed sleep/timeout to "fix" this startup race. The browser
+  runner's timeout may terminate a broken run, but only the player/observer
+  ready event can authorize capture. The source contract test rejects the old
+  30-second polling deadline so this mistake stays fixed.
+- Use one page at a time and rotate the page between scenes. A fresh page
+  clears cutscene lifecycle state without paying for a stack restart; parallel
+  software-WebGL pages exhaust memory and make every take slower.
+- Record a 2D staging canvas no wider than 1280 pixels, with even dimensions.
+  Composite letterbox bars, subtitles, fades, and the postprocessed engine
+  frame into that canvas so the MP4 matches what the player saw rather than a
+  raw WebGL surface.
+- Feed the staging canvas at the requested frame rate while limiting expensive
+  renderer readback. Repeated frames are preferable to stalling the authored
+  timeline. A roughly 4 Mbps MediaRecorder bitrate is sufficient for the
+  1280x720 capture path.
+- Prefer the localhost file sink and a bind-mounted `artifacts/cutscenes`
+  directory. Base64 payloads are a fallback; increasing API body limits is not
+  a substitute for writing large captures directly to disk.
+- Give asynchronous VFX/materials a settle frame before taking a still. For an
+  action image, bracket nearby authored times in one batch, inspect a contact
+  sheet, and keep the strongest frame instead of restarting the stack for each
+  attempt.
+- After increasing terrain/building density, validate the entire camera dolly
+  against canonical voxel terrain before rebuilding. A clear far waypoint is
+  not enough: the near waypoint or the segment between them can enter a newly
+  authored wall or roof. The Chapter 1 final-resume contract samples all three
+  unfinished winter dollies and rejects any solid voxel intersection.
+- The MP4 helper runs ffmpeg with `-nostdin`, uses the final packet timestamp
+  rather than container guesswork, applies matching `atempo` when audio exists,
+  forces even dimensions and `yuv420p`, and retimes the complete take. These
+  constraints prevent background ffmpeg jobs, clipped endings, and players
+  that reject odd-sized H.264 video.
+- Closing a capture page can abort its final request. Classify that exact
+  page-close cancellation separately, but keep other same-origin request
+  failures fatal; otherwise a real server error can be hidden as cleanup.
+
+Existing Chapter 1 MP4s and approved stills remain in
+`artifacts/cutscenes/`. Further screenshot and cutscene rendering was stopped
+at the user's request after those outputs were saved; do not regenerate the
+remaining scenes merely to refresh timestamps.
 
 ## Edge cases you get for free
 

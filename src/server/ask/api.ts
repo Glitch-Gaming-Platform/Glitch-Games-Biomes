@@ -95,11 +95,18 @@ export class AskApi {
   private readonly client: AskClient;
 
   constructor(client?: AskClient) {
+    // Production normally isolates Ask in its own replica/process. A focused
+    // local native-E2E stack can reuse Logic's already-hydrated replica and
+    // embedded zAskService instead, avoiding a second ~2.5 GiB world copy.
+    // The opt-in is intentionally ignored only when an explicit client is
+    // supplied; production defaults and deployed service topology do not
+    // change unless the local stack exports GLITCH_EMBED_ASK_IN_LOGIC=1.
+    const embedAskInLogic = process.env.GLITCH_EMBED_ASK_IN_LOGIC === "1";
     this.client =
       client ??
       makeClient(
         zAskService,
-        process.env.NODE_ENV === "production"
+        process.env.NODE_ENV === "production" && !embedAskInLogic
           ? HostPort.forAsk().rpc
           : HostPort.forLogic().rpc
       );

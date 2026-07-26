@@ -77,9 +77,12 @@ overrideMapMetadata: {}
 # Connectivity
 wsZrpcTtlMs: 120_000
 wsZrpcHeartbeatIntervalMs: 200
-wsZrpcHeartbeatTtlMs: 500
-wsZrpcHeartbeatReconnectMs: 3000
-wsZrpcHeartbeatStartupReconnectMs: 6000
+# Keep deployment aligned with the server defaults. Rendering and initial sync
+# can pause a browser main thread for multiple seconds without indicating a
+# dead socket; sub-second health thresholds create false disconnect overlays.
+wsZrpcHeartbeatTtlMs: 10_000
+wsZrpcHeartbeatReconnectMs: 30_000
+wsZrpcHeartbeatStartupReconnectMs: 30_000
 wsZrpcSoftBackpressure: 65536
 
 # Auto-build

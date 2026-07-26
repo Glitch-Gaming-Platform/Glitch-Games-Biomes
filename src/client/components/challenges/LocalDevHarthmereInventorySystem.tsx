@@ -14,11 +14,9 @@ import {
 } from "@/shared/harthmere/harthmere_business_tool_shop";
 import {
   HARTHMERE_VENDOR_STOCK,
-  decrementHarthmereVendorStock,
   getHarthmereCurrentVendorStockLine,
   receiveHarthmereVendorGold,
   receiveHarthmereVendorStock,
-  restoreHarthmereVendorStock,
   spendHarthmereVendorGold,
 } from "@/client/components/challenges/LocalDevHarthmereVendorCatalog";
 import {
@@ -62,6 +60,7 @@ import {
 import { harthmereNativeItemIdForBiomesId } from "@/shared/harthmere/harthmere_native_item_ids";
 import { HARTHMERE_LOCAL_DEV_ITEM_USE_EVENT } from "@/shared/harthmere/snapshot_grove_trigger_contract";
 import { nativeBiomesEcsAuthorityEnabled } from "@/shared/harthmere/native_road_ahead_contract";
+import { harthmereLiveServerAuthoritative } from "@/client/components/challenges/harthmereLiveAuthoritySignal";
 import { resolveAssetUrlUntyped } from "@/galois/interface/asset_paths";
 import { safeGetTerrainName } from "@/shared/asset_defs/terrain";
 import { BikkieIds } from "@/shared/bikkie/ids";
@@ -2188,6 +2187,7 @@ const CATEGORY_LABELS: Record<HarthmereItemCategory, string> = {
 const VENDOR_STOCK = HARTHMERE_VENDOR_STOCK as Record<
   number,
   {
+    vendorId: string;
     vendorName: string;
     stocks: { itemId: string; quantity: number; price: number }[];
     buys?: string[];
@@ -2414,10 +2414,36 @@ export function resetHarthmereLiveInventoryItemsSnapshotForTest() {
   lastKnownHarthmereLiveEquipmentInstances = {};
 }
 
+export function syncHarthmereLiveWalletProjectionForTest(gold: unknown) {
+  const numericGold = Number(gold);
+  if (!isBrowser() || !Number.isFinite(numericGold)) {
+    return false;
+  }
+  const normalizedGold = Math.max(0, Math.floor(numericGold));
+  const current = readHarthmereInventoryState();
+  if (current.wallet.gold === normalizedGold) {
+    return false;
+  }
+  writeHarthmereInventoryState({
+    ...current,
+    wallet: { ...current.wallet, gold: normalizedGold },
+  });
+  return true;
+}
+
 function dispatchHarthmereLiveInventorySync(body: unknown) {
   if (!isBrowser()) return;
   // Keep the module-level live-inventory snapshot current for quest bridges.
   recordHarthmereLiveInventoryItemsSnapshot(body);
+  const liveGold = Number((body as any)?.inventoryLootState?.actor?.gold);
+  if (Number.isFinite(liveGold)) {
+    syncHarthmereLiveWalletProjectionForTest(liveGold);
+    window.dispatchEvent(
+      new CustomEvent("biomes:live-mode-wallet-updated", {
+        detail: { gold: Math.max(0, Math.floor(liveGold)) },
+      })
+    );
+  }
   window.dispatchEvent(
     new CustomEvent(HARTHMERE_LIVE_INVENTORY_SYNC_EVENT, {
       detail: { body },
@@ -2552,6 +2578,85 @@ function submitHarthmereInventoryMutationToLiveMode(
     if (body) dispatchHarthmereLiveInventorySync(body);
     return body;
   });
+}
+
+export function submitHarthmereVendorPurchaseToLiveModeForTest(
+  offset: number,
+  itemId: string,
+  quantity: number,
+  reason = "Vendor purchase"
+) {
+  const vendor = VENDOR_STOCK[offset];
+  const count = Math.floor(Number(quantity) || 0);
+  if (
+    !isBrowser() ||
+    typeof window.fetch !== "function" ||
+    !vendor ||
+    !itemId ||
+    count <= 0
+  ) {
+    return undefined;
+  }
+
+  // One semantic purchase may be triggered by a pointer click, keyboard
+  // activation, or a React replay.  Share the in-flight request so the server
+  // sees exactly one idempotent transaction and the UI applies exactly one
+  // confirmation.
+  return runHarthmereLiveMutationOnce(
+    `vendor-buy:${vendor.vendorId}:${itemId}`,
+    () =>
+      runHarthmereLiveMutationSerially("inventory-equipment", async () => {
+        const requestId = `harthmere_vendor_buy_${Date.now()}_${Math.random()
+          .toString(36)
+          .slice(2)}`;
+        const response = await fetchHarthmereLiveWithTimeout(
+          window.fetch.bind(window),
+          "/api/harthmere/live_mode",
+          {
+            method: "POST",
+            credentials: "same-origin",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              requestId,
+              idempotencyKey: requestId,
+              actionKind: "request_vendor_transaction",
+              subsystem: "vendor",
+              actorEntityVersion: 1,
+              zoneId: "harthmere",
+              payload: {
+                vendorId: vendor.vendorId,
+                transactionKind: "buy",
+                itemId,
+                count,
+              },
+              includeSnapshots: [
+                "economyState",
+                "inventoryLootState",
+                "playerStatusState",
+                "bankingState",
+              ],
+              clientClaims: {
+                source: "harthmere_biomes_ui_vendor_store",
+                reason,
+              },
+            }),
+          }
+        );
+        const body = await parseHarthmereLiveMutationResponse(response);
+
+        // A rejected transaction still contains the authoritative inventory
+        // and wallet.  Publish it before surfacing the rejection so stale
+        // browser state cannot keep advertising gold or space the player does
+        // not actually have.
+        if (body) dispatchHarthmereLiveInventorySync(body);
+        assertHarthmereLiveMutationAppliedForTest(
+          body,
+          "inventory_items",
+          "vendor_rejected:"
+        );
+        return body;
+      })
+  );
 }
 
 export function submitHarthmereInventoryGrantToLiveModeForTest(
@@ -3406,7 +3511,13 @@ function insertBackpackItem(
   }
 
   let remaining = quantity;
-  let items = [...state.backpack.items];
+  // Clone every item before attempting a stack merge.  This function is also
+  // used for capacity preflight, so mutating the original item objects here
+  // could silently grant quantity even when the purchase was later rejected.
+  let items = state.backpack.items.map((item) => ({
+    ...item,
+    enchantments: [...item.enchantments],
+  }));
 
   if (def.stackable) {
     const incomingStack = makeItemInstance(itemId, 1, "backpack");
@@ -5261,6 +5372,12 @@ function finalVendorBuyPriceForPlayer(
     return 0;
   }
   const requested = Math.max(1, quantity);
+  // In live mode the shared vendor catalogue is server authority.  Display
+  // the exact bundle price the server will charge instead of independently
+  // re-pricing the same offer from browser-local reputation state.
+  if (harthmereLiveServerAuthoritative()) {
+    return Math.max(1, Math.ceil(stock.price));
+  }
   const unitPrice = stock.price / Math.max(1, stock.quantity);
   return Math.max(
     1,
@@ -5324,6 +5441,12 @@ function buyFitReason(
   if (stock.quantity <= 0 || stock.price <= 0) {
     return "This vendor listing has an invalid quantity or price.";
   }
+  // The server validates live gold, storage capacity, stack limits, carry
+  // weight, reputation, and catalogue quantity atomically.  Browser-local
+  // copies can lag behind a live response and must not block a valid request.
+  if (harthmereLiveServerAuthoritative()) {
+    return undefined;
+  }
   const price = finalVendorBuyPriceForPlayer(offset, itemId, stock.quantity);
   if ((state.wallet.gold ?? 0) < price) {
     return `Need ${price} gold; you have ${state.wallet.gold ?? 0}.`;
@@ -5337,7 +5460,36 @@ function buyFitReason(
   return undefined;
 }
 
-function buyFromVendor(offset: number, itemId: string) {
+function vendorPurchaseFailureMessage(error: unknown, itemName: string) {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  const knownFailures: Array<[string, string]> = [
+    ["insufficient_gold", "You do not have enough gold."],
+    ["vendor_out_of_stock", "The vendor is out of stock."],
+    ["inventory_full", "Your inventory is full."],
+    ["stack_size_exceeded", "That purchase would exceed the item stack limit."],
+    [
+      "carry_weight_limit_exceeded",
+      "That purchase would exceed your carry-weight limit.",
+    ],
+    [
+      "insufficient_reputation_for_vendor_item",
+      "Your reputation is not high enough for this item.",
+    ],
+    [
+      "invalid_vendor_bundle_count",
+      "The vendor only sells this item as the displayed bundle.",
+    ],
+    ["item_not_in_vendor_catalogue", "That listing is no longer available."],
+    ["unknown_item_id", "That item is no longer recognized by the server."],
+  ];
+  const failure = knownFailures.find(([code]) => message.includes(code));
+  if (failure) {
+    return `${itemName}: ${failure[1]}`;
+  }
+  return `${itemName}: Purchase was not confirmed. No item, gold, or listing was changed. Try again.`;
+}
+
+async function buyFromVendor(offset: number, itemId: string) {
   if (
     !claimHarthmereLocalDevRapidAction(
       `inventory:vendor-buy:${offset}:${itemId}`,
@@ -5370,6 +5522,41 @@ function buyFromVendor(offset: number, itemId: string) {
   }
 
   const price = finalVendorBuyPriceForPlayer(offset, itemId, stock.quantity);
+  if (harthmereLiveServerAuthoritative()) {
+    try {
+      const body = await submitHarthmereVendorPurchaseToLiveModeForTest(
+        offset,
+        itemId,
+        stock.quantity,
+        `${def.name} purchased from ${vendor.vendorName}`
+      );
+      if (!body) {
+        throw new Error("harthmere_vendor_live_mode_unavailable");
+      }
+      state = readHarthmereInventoryState();
+      writeHarthmereInventoryState(
+        appendLog(
+          { ...state, lastVendor: vendor.vendorName },
+          "Bought Item",
+          `${def.name} x${stock.quantity} bought from ${vendor.vendorName} for ${price} gold.`
+        )
+      );
+    } catch (error) {
+      // The live endpoint is atomic.  A rejection or network failure must only
+      // add an error message; it must never debit gold, grant an item, or hide
+      // the catalogue offer in browser state.
+      state = readHarthmereInventoryState();
+      writeHarthmereInventoryState(
+        appendLog(
+          state,
+          "Cannot Buy",
+          vendorPurchaseFailureMessage(error, def.name)
+        )
+      );
+    }
+    return;
+  }
+
   if ((state.wallet.gold ?? 0) < price) {
     writeHarthmereInventoryState(
       appendLog(
@@ -5383,20 +5570,8 @@ function buyFromVendor(offset: number, itemId: string) {
     return;
   }
 
-  if (!decrementHarthmereVendorStock(offset, itemId, stock.quantity)) {
-    writeHarthmereInventoryState(
-      appendLog(
-        state,
-        "Cannot Buy",
-        `${def.name} is out of stock until restock.`
-      )
-    );
-    return;
-  }
-
   const result = addItemByStorageRules(state, itemId, stock.quantity);
   if (result.added < stock.quantity || result.overflow > 0) {
-    restoreHarthmereVendorStock(offset, itemId, stock.quantity);
     writeHarthmereInventoryState(
       appendLog(
         state,
@@ -5416,6 +5591,10 @@ function buyFromVendor(offset: number, itemId: string) {
       `${def.name} x${stock.quantity} bought from ${vendor.vendorName} for ${price} gold.`
     )
   );
+}
+
+export function buyHarthmereVendorItemForTest(offset: number, itemId: string) {
+  return buyFromVendor(offset, itemId);
 }
 
 function sellQuote(item: HarthmereItemInstance) {
@@ -5669,13 +5848,23 @@ export function useHarthmereInventoryState() {
 
   useEffect(() => {
     const refresh = () => setState(readHarthmereInventoryState());
+    const syncLiveWallet = (event: Event) => {
+      syncHarthmereLiveWalletProjectionForTest(
+        (event as CustomEvent<{ gold?: unknown }>).detail?.gold
+      );
+    };
     const interval = window.setInterval(refresh, 750);
     window.addEventListener("storage", refresh);
     window.addEventListener(HARTHMERE_INVENTORY_EVENT, refresh);
+    window.addEventListener("biomes:live-mode-wallet-updated", syncLiveWallet);
     return () => {
       window.clearInterval(interval);
       window.removeEventListener("storage", refresh);
       window.removeEventListener(HARTHMERE_INVENTORY_EVENT, refresh);
+      window.removeEventListener(
+        "biomes:live-mode-wallet-updated",
+        syncLiveWallet
+      );
     };
   }, []);
 
@@ -5762,6 +5951,9 @@ export const HarthmereVendorTradePanel: React.FunctionComponent<{}> = () => {
   const [request, setRequest] = useState<
     HarthmereVendorTradeRequest | undefined
   >(undefined);
+  const [pendingBuyItemId, setPendingBuyItemId] = useState<string | undefined>(
+    undefined
+  );
 
   useEffect(() => {
     if (!isBrowser()) {
@@ -5796,6 +5988,7 @@ export const HarthmereVendorTradePanel: React.FunctionComponent<{}> = () => {
 
   const closePanel = () => {
     clearPendingVendorTradeRequest();
+    setPendingBuyItemId(undefined);
     setRequest(undefined);
   };
 
@@ -5995,13 +6188,28 @@ export const HarthmereVendorTradePanel: React.FunctionComponent<{}> = () => {
                             <button
                               type="button"
                               className="biomes-ui-action-button"
-                              disabled={Boolean(reason)}
+                              disabled={
+                                Boolean(reason) ||
+                                pendingBuyItemId === stock.itemId
+                              }
                               onClick={(event) => {
                                 event.stopPropagation();
-                                buyFromVendor(request.offset, stock.itemId);
+                                setPendingBuyItemId(stock.itemId);
+                                void buyFromVendor(
+                                  request.offset,
+                                  stock.itemId
+                                ).finally(() => {
+                                  setPendingBuyItemId((current) =>
+                                    current === stock.itemId
+                                      ? undefined
+                                      : current
+                                  );
+                                });
                               }}
                             >
-                              Buy for {dynamicPrice} Gold
+                              {pendingBuyItemId === stock.itemId
+                                ? "Buying…"
+                                : `Buy for ${dynamicPrice} Gold`}
                             </button>
                           </div>
                         </div>

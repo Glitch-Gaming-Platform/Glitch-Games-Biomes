@@ -1,0 +1,15 @@
+// Focused production-test-stack typecheck.
+//
+// The memory-bounded native E2E topology changes Ask/Logic wiring but does not
+// justify paying for the entire repository type graph during each quest UI
+// iteration. This config checks the two affected TypeScript entry points and
+// their imported contracts without emitting build artifacts.
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "noEmit": true, "incremental": false },
+  "include": [
+    "src/server/ask/api.ts",
+    "src/server/logic/main.ts",
+    "modules.d.ts"
+  ]
+}

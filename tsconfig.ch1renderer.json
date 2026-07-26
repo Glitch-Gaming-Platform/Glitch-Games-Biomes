@@ -1,0 +1,30 @@
+// CHAPTER_1_RENDERER_TYPECHECK
+//
+// The Fracture Gate renderer imports ClientResources, which transitively pulls
+// in most of the client. That makes it too heavy for tsconfig.ch1check.json's
+// few-second budget, so it gets its own incremental config:
+//
+//   NODE_OPTIONS="--max-old-space-size=8192" \
+//     node_modules/.bin/tsc -p tsconfig.ch1renderer.json
+//
+// Expect a slow first run (it builds the client graph) and fast runs after,
+// thanks to the persisted tsBuildInfoFile. If you are already running the full
+// `./b typecheck`, this file is redundant.
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "incremental": true,
+    "tsBuildInfoFile": "tmp/ch1renderer.tsbuildinfo"
+  },
+  "include": [
+    "src/client/game/renderers/ch1_fracture_gate.ts",
+    "src/client/game/renderers/ch1_fracture_gate_material.ts",
+    "src/client/game/renderers/ch1_dungeon_horizon_boundary.ts",
+    "src/client/game/renderers/harthmere_town_back_boundary.ts",
+    "src/client/components/challenges/Chapter1FractureGatePrompt.tsx",
+    "src/client/components/biomes_ui/tabs/QuestsTab.tsx",
+    "src/client/components/biomes_ui/__tests__/QuestsTab.test.tsx",
+    "modules.d.ts"
+  ]
+}

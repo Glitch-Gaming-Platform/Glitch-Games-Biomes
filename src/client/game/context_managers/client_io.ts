@@ -67,6 +67,25 @@ export interface ChangeConsumer {
   push(changes: Change[]): void;
 }
 
+declare global {
+  interface Window {
+    /**
+     * Capture-only bridge for `/at/` pages. Observer clients have no Player
+     * script, so moving a cutscene camera does not change their sync target.
+     */
+    __biomesObserverStreamingDebug?: {
+      getPosition: () => [number, number, number] | undefined;
+      moveTo: (
+        position: [number, number, number]
+      ) => Promise<{
+        ok: boolean;
+        position?: [number, number, number];
+        target: SyncTarget;
+      }>;
+    };
+  }
+}
+
 function determineSyncTarget(
   userId: BiomesId,
   config: ClientConfig
@@ -324,6 +343,54 @@ export class ClientIo extends (EventEmitter as {
     this.controller.runInBackground("update-radius", (signal) =>
       this.periodicRadiusUpdate(signal)
     );
+    this.installPromoObserverStreamingHook();
+  }
+
+  /**
+   * Keep warm-page cutscene captures on the same observer connection while
+   * still moving the server-side terrain/ECS interest set between distant
+   * scenes. `/at/` is an observer client even after visual-test login, so the
+   * player-only teleport hook is correctly absent there.
+   *
+   * This bridge exists only for explicit promo URLs. Ordinary observers and
+   * gameplay never receive a mutable global sync-target control.
+   */
+  private installPromoObserverStreamingHook() {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const params = new URLSearchParams(window.location.search);
+    if (!params.has("cutscenePromo") && !params.has("cutscenePromoBatch")) {
+      return;
+    }
+
+    window.__biomesObserverStreamingDebug = {
+      getPosition: () =>
+        this.syncTarget.kind === "position"
+          ? [...this.syncTarget.position]
+          : undefined,
+      moveTo: async (position) => {
+        const target: SyncTarget = { kind: "position", position };
+        if (!isEqual(this.syncTarget, target)) {
+          await this.swapSyncTarget(target);
+        }
+        const current =
+          this.syncTarget.kind === "position"
+            ? ([...this.syncTarget.position] as [number, number, number])
+            : undefined;
+        return {
+          ok:
+            current !== undefined &&
+            Math.abs(current[0] - position[0]) < 0.35 &&
+            Math.abs(current[2] - position[2]) < 0.35,
+          position: current,
+          target: { ...this.syncTarget },
+        };
+      },
+    };
+    // Do not make promo capture guess when observer authority is ready. The
+    // renderer can become drawable before ClientIo owns a usable sync target.
+    window.dispatchEvent(new Event("biomes:promo-streaming-ready"));
   }
 
   async hotHandoff(old: ClientIo) {

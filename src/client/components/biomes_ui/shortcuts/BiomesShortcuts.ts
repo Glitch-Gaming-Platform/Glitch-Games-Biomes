@@ -30,6 +30,7 @@ export const DEFAULT_TAB_SHORTCUTS: TabShortcut[] = [
   { key: "g", label: "G", tab: "guilds" },
   { key: "q", label: "Q", tab: "banking" },
   { key: "m", label: "M", tab: "map" },
+  { key: "z", label: "Z", tab: "recovered" },
   { key: "c", label: "C", tab: "collections" },
   { key: "v", label: "V", tab: "inbox" },
   { key: ",", label: ",", tab: "options" },

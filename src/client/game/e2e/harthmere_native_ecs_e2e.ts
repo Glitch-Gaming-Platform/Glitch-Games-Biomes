@@ -209,6 +209,55 @@ export interface HarthmereNativeEcsE2EBridge {
   }): Promise<HarthmereNativeEcsE2EJobsBoardProjection>;
   nativeQuestFrontendSnapshot(): Promise<HarthmereNativeEcsE2EQuestProjection>;
   refreshBibleQuestFrontendSnapshot(): Promise<unknown>;
+  /** Execute the complete Chapter 1 progression contract in this browser bundle. */
+  chapter1RuntimeAudit(): Promise<unknown>;
+  /** Verify Chapter 1 Bikkie challenges reached the live browser catalogue. */
+  chapter1NativeQuestCatalog(): Promise<unknown>;
+  /** Return every registered Chapter 1 scene and its authored running time. */
+  chapter1CutsceneCatalog(): Promise<
+    Array<{ id: string; shots: number; authoredSeconds: number }>
+  >;
+  /** Request a real registered cutscene through the production director queue. */
+  chapter1StartCutscene(id: string): Promise<{ accepted: boolean }>;
+  chapter1StopCutscene(): void;
+  /** Record and persist one real Chapter 1 cutscene without returning base64 over Playwright. */
+  chapter1CaptureCutsceneVideo(input: {
+    id: string;
+    promoId?: string;
+    filename: string;
+    frameRate?: number;
+    videoBitsPerSecond?: number;
+    timeoutMs?: number;
+  }): Promise<{
+    id: string;
+    filename: string;
+    width: number;
+    height: number;
+    frameRate: number;
+    durationSeconds: number;
+    finishReason: string;
+    hasAudio: boolean;
+    authoredSeconds: number;
+  }>;
+  /** Read the actual cutscene UI resource driven by the renderer/director. */
+  chapter1CutsceneSnapshot(): {
+    active: boolean;
+    defId?: string;
+    subtitle?: { speaker?: string; text: string };
+    canSkip: boolean;
+    lockInput: boolean;
+    fadeOpacity: number;
+  };
+  /** Publish the server-selected gate set to the production gate renderer. */
+  chapter1SetActiveGates(ids: string[]): Promise<void>;
+  /** Read frame-level diagnostics produced by the real gate renderer. */
+  chapter1GateRenderSnapshot(): Promise<unknown>;
+  /** Probe canonical terrain and water tensors currently synchronized to the client. */
+  chapter1TerrainSnapshot(
+    samples: Array<{ label: string; position: [number, number, number] }>
+  ): Promise<unknown>;
+  /** Read the ten Chapter 1 cast entities from the synchronized ECS table. */
+  chapter1NpcSnapshot(): Promise<unknown>;
 }
 
 declare global {
@@ -447,6 +496,246 @@ export function installHarthmereNativeEcsE2E(
         new CustomEvent(adapter.HARTHMERE_BIBLE_QUEST_EVENT)
       );
       return adapter.readHarthmereBibleQuestSnapshot({ maxAgeMs: 0 });
+    },
+    chapter1RuntimeAudit: async () => {
+      const { ch1RunBrowserAudit } = await import(
+        "@/shared/harthmere/ch1_browser_audit"
+      );
+      return ch1RunBrowserAudit();
+    },
+    chapter1NativeQuestCatalog: async () => {
+      const [{ CH1_QUESTS }, nativeQuests, bikkie] = await Promise.all([
+        import("@/shared/harthmere/ch1_quests"),
+        import("@/shared/harthmere/ch1_native_quests"),
+        import("@/shared/bikkie/active"),
+      ]);
+      // /challenges/all intentionally contains only available, active, and
+      // completed quests for this player. A catalog audit must inspect the
+      // browser's decoded Bikkie runtime directly or every locked quest looks
+      // missing even though it shipped successfully.
+      const bundles = context.resources.get("/challenges/all");
+      return CH1_QUESTS.map((quest) => {
+        const id = nativeQuests.ch1NativeQuestId(quest.id)!;
+        const bundle = bundles.find((candidate) => candidate.biscuit.id === id);
+        const biscuit = bikkie.BikkieRuntime.get().getBiscuitOnlyIfExists(id);
+        return {
+          authoredId: quest.id,
+          nativeId: String(id),
+          title: quest.title,
+          present: Boolean(biscuit?.isQuest),
+          state: bundle?.state,
+          questGiver: biscuit?.questGiver
+            ? String(biscuit.questGiver)
+            : undefined,
+          triggerKind: biscuit?.trigger?.kind,
+          stepCount:
+            biscuit?.trigger?.kind === "seq"
+              ? biscuit.trigger.triggers.length
+              : 0,
+        };
+      });
+    },
+    chapter1CutsceneCatalog: async () => {
+      const { ch1AllScenes } = await import("@/shared/cutscene/ch1_scenes");
+      return ch1AllScenes().map((scene) => ({
+        id: scene.id,
+        shots: scene.shots.length,
+        authoredSeconds: scene.shots.reduce(
+          (total, shot) => total + (shot.until?.maxDuration ?? shot.duration),
+          0
+        ),
+      }));
+    },
+    chapter1StartCutscene: async (id) => {
+      const cutsceneService = await import(
+        "@/client/game/cutscene/cutscene_service"
+      );
+      const source = cutsceneService.cutsceneLibrary.get(id);
+      if (!source) {
+        return { accepted: false, defId: id };
+      }
+      // Catalog playback is a render/lifecycle audit, not a story mutation.
+      // Register a unique high-priority clone with all end-state authority
+      // removed. Increasing priority guarantees that the next catalog scene
+      // hard-aborts the previous sandbox instead of waiting for a long authored
+      // dialogue hold, while the production definition remains untouched for
+      // normal gameplay.
+      const serial = Number(
+        (window as typeof window & { __ch1E2ECutsceneSerial?: number })
+          .__ch1E2ECutsceneSerial ?? 0
+      );
+      (
+        window as typeof window & { __ch1E2ECutsceneSerial?: number }
+      ).__ch1E2ECutsceneSerial = serial + 1;
+      const suffix = `-e2e-${serial}`;
+      const defId = `${source.id.slice(0, 128 - suffix.length)}${suffix}`;
+      cutsceneService.registerCutscene({
+        ...source,
+        id: defId,
+        name: `${source.name} E2E Sandbox`,
+        priority: 900_000 + Math.min(serial, 99_999),
+        settings: {
+          ...source.settings,
+          mode: "clientPuppet",
+          commitOn: [],
+        },
+        onEnd: { placements: [], commits: [] },
+      });
+      return {
+        accepted: cutsceneService.requestCutsceneById(defId, {
+          preempt: true,
+        }),
+        defId,
+      };
+    },
+    chapter1StopCutscene: () => {
+      context.resources.update("/scene/cutscene", (state) => {
+        state.skipRequested = true;
+      });
+    },
+    chapter1CaptureCutsceneVideo: async (input) => {
+      const [{ requestCutsceneVideoById }, cutsceneService] = await Promise.all(
+        [
+          import("@/client/game/cutscene/video_capture_service"),
+          import("@/client/game/cutscene/cutscene_service"),
+        ]
+      );
+      let captureId = input.id;
+      if (input.promoId) {
+        const { promoSceneById } = await import(
+          "@/shared/cutscene/promo_scenes"
+        );
+        const promo = promoSceneById(input.promoId);
+        if (!promo) {
+          throw new Error(`unknown Chapter 1 promo scene ${input.promoId}`);
+        }
+        const definition = await promo.build();
+        cutsceneService.registerCutscene(definition);
+        captureId = definition.id;
+      }
+      const definition = cutsceneService.cutsceneLibrary.get(captureId);
+      if (!definition) {
+        throw new Error(`unknown Chapter 1 cutscene ${captureId}`);
+      }
+      const authoredSeconds = definition.shots.reduce(
+        (total, shot) => total + (shot.until?.maxDuration ?? shot.duration),
+        0
+      );
+      const result = await requestCutsceneVideoById(
+        context.resources,
+        context.audioManager,
+        captureId,
+        {
+          frameRate: input.frameRate ?? 30,
+          videoBitsPerSecond: input.videoBitsPerSecond ?? 4_000_000,
+          filename: input.filename,
+          preempt: true,
+          timeoutMs:
+            input.timeoutMs ?? Math.max(180_000, authoredSeconds * 4_000),
+        }
+      );
+      // The local sink keeps multi-megabyte WebM payloads out of the browser
+      // automation protocol. This is materially faster and avoids exhausting
+      // Playwright's serialization memory during an eighteen-scene batch.
+      const response = await fetch("/api/dev/cutscene_video", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: captureId,
+          filename: result.filename,
+          dataUri: result.dataUri,
+        }),
+      });
+      if (!response.ok) {
+        throw new Error(
+          `local cutscene video save failed (${response.status})`
+        );
+      }
+      return {
+        id: captureId,
+        filename: result.filename,
+        width: result.width,
+        height: result.height,
+        frameRate: result.frameRate,
+        durationSeconds: result.durationSeconds,
+        finishReason: result.finishReason,
+        hasAudio: result.hasAudio,
+        authoredSeconds,
+      };
+    },
+    chapter1CutsceneSnapshot: () => {
+      const state = context.resources.get("/scene/cutscene");
+      return {
+        active: state.active,
+        defId: state.defId,
+        subtitle: state.subtitle
+          ? {
+              speaker: state.subtitle.speaker,
+              text: state.subtitle.text,
+            }
+          : undefined,
+        canSkip: state.canSkip,
+        lockInput: state.lockInput,
+        fadeOpacity: state.fadeOpacity,
+      };
+    },
+    chapter1SetActiveGates: async (ids) => {
+      const { setCh1ActiveGateIds } = await import(
+        "@/client/game/renderers/ch1_fracture_gate"
+      );
+      setCh1ActiveGateIds(ids);
+    },
+    chapter1GateRenderSnapshot: async () => {
+      const { ch1FractureGateRenderSnapshot } = await import(
+        "@/client/game/renderers/ch1_fracture_gate"
+      );
+      return ch1FractureGateRenderSnapshot();
+    },
+    chapter1TerrainSnapshot: async (samples) => {
+      const [{ voxelShard, blockPos }, { terrainIdToBlock }] =
+        await Promise.all([
+          import("@/shared/game/shard"),
+          import("@/shared/bikkie/terrain"),
+        ]);
+      return samples.map(({ label, position }) => {
+        const shardId = voxelShard(...position);
+        const local = blockPos(...position);
+        const terrainId =
+          context.resources.get("/terrain/volume", shardId)?.get(...local) ?? 0;
+        const water =
+          context.resources.get("/water/tensor", shardId)?.get(...local) ?? 0;
+        const terrainEntity = context.resources.get("/ecs/terrain", shardId);
+        return {
+          label,
+          position,
+          shardId,
+          terrainEntityId: terrainEntity?.id,
+          hasShardSeed: Boolean(terrainEntity?.shard_seed),
+          hasShardWater: Boolean(terrainEntity?.shard_water),
+          terrainId,
+          terrainName: terrainIdToBlock(terrainId)?.name,
+          water,
+        };
+      });
+    },
+    chapter1NpcSnapshot: async () => {
+      const { CH1_NEW_CAST } = await import("@/shared/harthmere/ch1_cast");
+      return CH1_NEW_CAST.map((member) => {
+        const entity = context.table.get(member.entityId);
+        return {
+          key: member.key,
+          entityId: String(member.entityId),
+          expectedName: member.displayName,
+          introducedAct: member.introducedAct,
+          present: Boolean(entity),
+          label: entity?.label?.text,
+          position: entity?.position?.v,
+          npcTypeId: entity?.npc_metadata?.type_id
+            ? String(entity.npc_metadata.type_id)
+            : undefined,
+          questGiver: Boolean(entity?.quest_giver),
+        };
+      });
     },
     farmingHoeQuestSnapshot: async (operation) => {
       const [{ buildNativeFarmingInterfaceModel }, farmingMapQuest] =

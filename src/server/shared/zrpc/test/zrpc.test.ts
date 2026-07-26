@@ -31,6 +31,7 @@ import { zservice } from "@/shared/zrpc/service";
 import { makeWebSocketClient } from "@/shared/zrpc/websocket_client";
 import assert from "assert";
 import { caching } from "cache-manager";
+import { get as httpGet } from "http";
 import { z } from "zod";
 
 interface Server<TContext extends RpcContext> {
@@ -289,6 +290,49 @@ zrpcTest({
   createTestClient: async (service, port) => {
     return makeClient(service, `127.0.0.1:${port}`);
   },
+});
+
+describe("WebSocket zRPC health route", () => {
+  it("answers HTTP probes without terminating the WebSocket server", async () => {
+    const db = createBdb(createInMemoryStorage());
+    const serverCache = new GenericCache(
+      caching({
+        store: "memory",
+        max: 1000,
+        ttl: 5 * 60,
+      })
+    );
+    const wss = new WebSocketZrpcServer(new SessionStore(db, serverCache), [
+      "/test",
+    ]);
+    await wss.start(0);
+    try {
+      const response = await new Promise<{ status?: number; body: string }>(
+        (resolve, reject) => {
+          const request = httpGet(
+            `http://127.0.0.1:${wss.port}/`,
+            (incoming) => {
+              incoming.setEncoding("utf8");
+              let body = "";
+              incoming.on("data", (chunk) => (body += chunk));
+              incoming.on("end", () =>
+                resolve({ status: incoming.statusCode, body })
+              );
+            }
+          );
+          request.on("error", reject);
+        }
+      );
+      assert.deepEqual(response, { status: 200, body: "OK" });
+      assert.equal(
+        wss.ready,
+        true,
+        "an HTTP readiness probe must leave WebSocket service running"
+      );
+    } finally {
+      await wss.stop();
+    }
+  });
 });
 
 zrpcTest({

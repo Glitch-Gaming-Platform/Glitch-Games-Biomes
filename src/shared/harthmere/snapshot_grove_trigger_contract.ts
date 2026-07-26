@@ -701,11 +701,13 @@ export function snapshotGroveTutorialInventoryGrantsForQuest(
         : undefined;
     const itemId = fixture?.itemId ?? placementItem?.itemId;
     const itemName = fixture?.itemName ?? placementItem?.label ?? itemId;
+    const completionKind =
+      fixture?.kind ?? (placementItem ? "place_voxel" : undefined);
     if (
       !itemId ||
-      (fixture.kind !== "harthmere_local_dev_item_use" &&
-        fixture.kind !== "equip" &&
-        fixture.kind !== "place_voxel")
+      (completionKind !== "harthmere_local_dev_item_use" &&
+        completionKind !== "equip" &&
+        completionKind !== "place_voxel")
     ) {
       continue;
     }
@@ -720,7 +722,9 @@ export function snapshotGroveTutorialInventoryGrantsForQuest(
     grantsByItemId.set(itemId, {
       questId: quest.id,
       itemId,
-      itemName,
+      // itemId is guaranteed above; use it as the final readable fallback for
+      // sparse authored placement fixtures.
+      itemName: itemName ?? itemId,
       quantity: 1,
       objectiveIndexes: [objectiveIndex],
       trigger,

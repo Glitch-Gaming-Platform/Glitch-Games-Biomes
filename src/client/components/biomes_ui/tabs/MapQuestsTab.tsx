@@ -93,7 +93,7 @@ export interface MapTerrainFeature {
   round?: boolean;
 }
 
-interface MissionStep {
+export interface MissionStep {
   id: string;
   title: string;
   objective: string;
@@ -145,7 +145,9 @@ export interface MapTrackableQuest {
   itemSource?: MapTrackableQuestItemSource;
 }
 
-interface MapAdapter {
+// Exported so the dedicated QuestsTab can consume the same live adapter
+// surface (quests, mission steps, main-quest selection) without the map.
+export interface MapAdapter {
   getMarkers?: () => MapMarker[];
   getPlayerMarker?: () => MapMarker | undefined;
   getMissionTitle?: () => string;

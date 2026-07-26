@@ -16,6 +16,8 @@ export const UI_IDS = {
   TAB_LOOT: "tab.loot",
   TAB_GUILDS: "tab.guilds",
   TAB_BANKING: "tab.banking",
+  TAB_QUESTS: "tab.quests",
+  TAB_RECOVERED: "tab.recovered",
   TAB_MAP: "tab.map",
   TAB_COLLECTIONS: "tab.collections",
   TAB_INBOX: "tab.inbox",

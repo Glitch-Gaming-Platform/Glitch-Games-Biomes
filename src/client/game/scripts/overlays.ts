@@ -89,6 +89,7 @@ import {
   type HarthmereWorldObjectCandidate,
 } from "@/shared/harthmere/harthmere_world_object_inspectable";
 import {
+  isNativeQuestContainerLabel,
   isNativeRoadAheadQuestObjectLabel,
   NATIVE_BUSTED_UNDERWATER_CONTAINER_SPEC,
   nativeRoadAheadEcsAuthorityEnabled,
@@ -1561,7 +1562,15 @@ export class OverlayScript implements Script {
         entity.robot_component ||
         (entity.placeable_component &&
           entity.placed_by &&
-          !this.isAuthoredHarthmereWorldObjectPlaceable(entity))
+          !this.isAuthoredHarthmereWorldObjectPlaceable(entity) &&
+          // NATIVE_QUEST_CONTAINER_PROXIMITY_EXEMPTION (2026-07-25):
+          // Busted's sunken chest is an original-snapshot container with
+          // `placed_by` set, so it was skipped here in favour of the aimed
+          // overlay — which never fires underwater because the cursor ray
+          // hits the hull/water first. Known native-quest containers must
+          // stay proximity-discoverable; the server still owns range and
+          // step validation on open.
+          !isNativeQuestContainerLabel(entity.label?.text))
       ) {
         return;
       }

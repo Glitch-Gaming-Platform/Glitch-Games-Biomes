@@ -12,9 +12,9 @@
 //
 // The two classic API bugs the guide warns about are handled explicitly:
 //   * the SHA-256 checksum is computed over the RAW payload, not the Base64 text;
-//   * the returned `version` is stored and sent back as `base_version` next time,
-//     and a 409 conflict is resolved (default keep_server) instead of blindly
-//     retried.
+//   * the returned `version` is stored and sent back as `base_version` next time;
+//   * a 409 pauses this compatibility-slot writer until a fresh load, rather
+//     than silently choosing server/client state on the player's behalf.
 //
 // The whole key/value store is serialized to ONE reserved save slot as a JSON
 // blob (Base64 payload), which matches the blob-snapshot model of
@@ -37,8 +37,8 @@ export interface CloudSaveSlotRecord {
 /**
  * HTTP surface for the Glitch save API, injected so the transport is testable
  * without a network and decoupled from the concrete fetch/`requestGlitch` path.
- * `op` maps to the game-server proxy operations ("listSaves", "storeSave",
- * "resolveSave") which forward to the documented REST endpoints.
+ * `op` maps to the game-server proxy operations ("listSaves", "storeSave")
+ * which forward to the documented REST endpoints.
  */
 export interface CloudSaveHttp {
   request<T = any>(
@@ -59,6 +59,17 @@ export interface GlitchCloudSaveConfig {
   sha256Hex?: (raw: string) => Promise<string>;
   base64Encode?: (raw: string) => string;
   base64Decode?: (b64: string) => string;
+}
+
+export class GlitchCloudSaveConflictError extends Error {
+  constructor(
+    readonly conflictId: string | undefined,
+    readonly saveId: string | undefined,
+    readonly serverVersion: number | undefined
+  ) {
+    super("Cloud Save conflict requires an explicit restore or resolution");
+    this.name = "GlitchCloudSaveConflictError";
+  }
 }
 
 /** SHA-256 hex of the RAW string (NOT the Base64), per the Cloud Save guide. */
@@ -93,6 +104,7 @@ export class GlitchCloudSaveBlobTransport implements BlobSaveTransport {
   /** Latest server version we know about; sent back as `base_version`. */
   private version = 0;
   private saveId: string | undefined;
+  private conflictPaused = false;
 
   constructor(
     private readonly http: CloudSaveHttp,
@@ -128,16 +140,23 @@ export class GlitchCloudSaveBlobTransport implements BlobSaveTransport {
     if (result.status !== 200) {
       return null;
     }
-    const slots: CloudSaveSlotRecord[] = result.json?.data ?? [];
+    // The direct Glitch API returns `data`; the same-origin game proxy returns
+    // decoded rows as `saves`. Accept both so the transport learns the real
+    // slot version instead of treating every load as a brand-new save and
+    // repeatedly uploading with base_version 0.
+    const slots: CloudSaveSlotRecord[] =
+      result.json?.saves ?? result.json?.data ?? [];
     const slot = slots.find((s) => s.slot_index === this.slotIndex);
     if (!slot) {
       // No blob yet; a brand-new slot uploads with base_version 0.
       this.version = 0;
       this.saveId = undefined;
+      this.conflictPaused = false;
       return {};
     }
     this.version = slot.version ?? 0;
     this.saveId = slot.id;
+    this.conflictPaused = false;
     if (!slot.payload) {
       return {};
     }
@@ -151,6 +170,13 @@ export class GlitchCloudSaveBlobTransport implements BlobSaveTransport {
 
   /** Persist the whole kv blob to the reserved slot with a correct checksum. */
   async store(snapshot: Record<string, string>): Promise<void> {
+    if (this.conflictPaused) {
+      throw new GlitchCloudSaveConflictError(
+        undefined,
+        this.saveId,
+        this.version
+      );
+    }
     const raw = JSON.stringify(snapshot);
     const payload = this.base64Encode(raw);
     const checksum = await this.sha256Hex(raw); // RAW payload, not Base64.
@@ -174,27 +200,20 @@ export class GlitchCloudSaveBlobTransport implements BlobSaveTransport {
     }
 
     if (status === 409) {
-      // A newer cloud version exists (another device saved). For shared-authority
-      // progress the safe, non-destructive default is keep_server: adopt the
-      // server version and let the next hydrate re-load it, rather than clobbering
-      // newer progress. (A future UI could offer use_client here.)
-      const conflictId = json?.conflict_id;
-      const saveId = json?.save_id ?? this.saveId;
-      this.version = json?.server_version ?? this.version;
-      if (conflictId && saveId) {
-        try {
-          await this.http.request("resolveSave", {
-            ...this.ids(),
-            save_id: saveId,
-            conflict_id: conflictId,
-            choice: "keep_server",
-          });
-        } catch {
-          // Even if resolve fails, our local version is now the server's, so the
-          // next store won't conflict and the next load reconciles.
-        }
-      }
-      return;
+      // The Glitch contract requires an explicit player choice. Do not silently
+      // discard local changes with keep_server or overwrite a newer device with
+      // use_client. Pause until the next load/restore cycle.
+      const serverVersion = Number.isFinite(Number(json?.server_version))
+        ? Math.max(0, Math.floor(Number(json.server_version)))
+        : undefined;
+      if (serverVersion !== undefined) this.version = serverVersion;
+      this.saveId = json?.save_id ?? this.saveId;
+      this.conflictPaused = true;
+      throw new GlitchCloudSaveConflictError(
+        json?.conflict_id,
+        this.saveId,
+        serverVersion
+      );
     }
 
     // Any other status: surface so GlitchCloudSaveAdapter keeps the snapshot dirty
