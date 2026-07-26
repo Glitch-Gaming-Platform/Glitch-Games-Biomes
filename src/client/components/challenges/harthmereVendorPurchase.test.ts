@@ -200,7 +200,6 @@ describe("Harthmere universal vendor purchase transaction", () => {
     const cases = [
       ["vendor_out_of_stock", /out of stock/i],
       ["inventory_full", /inventory is full/i],
-      ["carry_weight_limit_exceeded", /carry-weight limit/i],
       [
         "insufficient_reputation_for_vendor_item",
         /reputation is not high enough/i,

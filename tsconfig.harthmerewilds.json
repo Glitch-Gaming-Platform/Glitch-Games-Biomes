@@ -1,0 +1,23 @@
+// HARTHMERE_WILDS_AND_INTERIORS_TYPECHECK
+//
+// Scoped typecheck for the forest, the authored building table, and the
+// interior furnishing generator, plus their tests. All pure data and maths with
+// no client or server imports, so this finishes in a couple of seconds:
+//
+//   node_modules/.bin/tsc -p tsconfig.harthmerewilds.json
+//
+// The shim that consumes them (src/server/shim/main.ts) is far too heavy for
+// this budget — use the full `./b typecheck` for that file.
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "noEmit": true, "incremental": false },
+  "include": [
+    "src/shared/harthmere/harthmere_wilds_forest.ts",
+    "src/shared/harthmere/harthmere_town_buildings.ts",
+    "src/shared/harthmere/harthmere_building_interiors.ts",
+    "src/shared/harthmere/harthmere_horizon_noise.ts",
+    "src/shared/harthmere/test/harthmere_wilds_forest_gaia.test.ts",
+    "src/shared/harthmere/test/harthmere_building_interiors.test.ts",
+    "modules.d.ts"
+  ]
+}

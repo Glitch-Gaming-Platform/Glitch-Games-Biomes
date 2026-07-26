@@ -17,6 +17,8 @@ import {
   nativeQuestGiverUsesEcsDialogue,
   NATIVE_BUSTED_UNDERWATER_CONTAINER_SPEC,
   NATIVE_ROAD_AHEAD_CONTAINER_SPECS,
+  NATIVE_ROBOT_STORY_CRATE_DIALOG_SPECS,
+  shouldBypassGenericPlaceableOverlayForNativeQuestContainer,
 } from "../native_road_ahead_contract";
 import {
   selectNearestHarthmereWorldObjectInspectable,
@@ -128,6 +130,36 @@ describe("live fix - Busted underwater chest F prompt", () => {
     assert.equal(isNativeQuestContainerLabel("storage chest"), false);
   });
 
+  it("routes a direct hit on the sunken chest through quest-container UI", () => {
+    // overlays.ts uses this exact classification in both its nearby scanner
+    // and its direct placed-placeable branch. A direct ray hit must not return
+    // the generic placeable overlay: the reward inventory is per-player and is
+    // materialized only by the Harthmere object-container interaction.
+    assert.equal(
+      shouldBypassGenericPlaceableOverlayForNativeQuestContainer({
+        label: "Chest The Grove Underwater Main",
+        placedBy: { id: 8277444529729840 },
+      }),
+      true
+    );
+    assert.equal(
+      shouldBypassGenericPlaceableOverlayForNativeQuestContainer({
+        label: "my house chest",
+        placedBy: { id: 8277444529729840 },
+      }),
+      false,
+      "player storage must retain its ordinary placeable overlay"
+    );
+    assert.equal(
+      shouldBypassGenericPlaceableOverlayForNativeQuestContainer({
+        label: "Chest The Grove Underwater Main",
+        placedBy: undefined,
+      }),
+      false,
+      "the exemption is specifically for the placed snapshot-container path"
+    );
+  });
+
   it("does not let the snapshot quest-giver marker suppress container UI", () => {
     assert.equal(
       nativeQuestGiverUsesEcsDialogue(
@@ -137,6 +169,21 @@ describe("live fix - Busted underwater chest F prompt", () => {
       false,
       "the resolved chest inspectable must render Open Container, not Talk"
     );
+  });
+
+  it("keeps crate-shaped direct reward targets on ECS dialogue", () => {
+    for (const spec of Object.values(NATIVE_ROBOT_STORY_CRATE_DIALOG_SPECS)) {
+      assert.equal(
+        isNativeQuestContainerLabel(spec.label),
+        false,
+        `${spec.label} is a reward-dialogue prop, not private storage`
+      );
+      assert.equal(
+        nativeQuestGiverUsesEcsDialogue({ concurrent_quests: 1 }, spec.label),
+        true,
+        `${spec.label} must publish its authored quest claim`
+      );
+    }
   });
 
   it("audit: every physical quest container has prior steps and objectives", () => {

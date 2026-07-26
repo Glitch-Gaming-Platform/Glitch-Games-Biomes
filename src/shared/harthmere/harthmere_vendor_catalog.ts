@@ -1119,7 +1119,9 @@ export function createHarthmereProductionVendorEntry(
     buyPrice,
     sellPrice,
     stock: stock.quantity,
-    bundleQuantity: stock.quantity,
+    // An infinite stock line (quantity -1) describes availability, not a bundle
+    // size. Copying it into bundleQuantity made the item unbuyable.
+    bundleQuantity: stock.quantity > 0 ? stock.quantity : undefined,
     bundlePrice: stock.price,
   };
 }
@@ -1163,7 +1165,8 @@ export function ensureHarthmereProductionVendorCatalog() {
       buyPrice: unitBuyPrice(stock),
       sellPrice: 0,
       stock: stock.quantity,
-      bundleQuantity: stock.quantity,
+      // Same sentinel as above: -1 means unlimited, not "buy exactly -1".
+      bundleQuantity: stock.quantity > 0 ? stock.quantity : undefined,
       bundlePrice: stock.price,
     });
   }

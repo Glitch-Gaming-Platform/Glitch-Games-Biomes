@@ -553,6 +553,23 @@ function activeQuestForNpc(npcId: string, state: SnapshotGroveQuestState) {
   );
 }
 
+export function mostRecentlyCompletedSnapshotGroveQuestForNpcForTest(
+  npcId: string,
+  completedQuestIds: readonly string[]
+) {
+  // Completion dialogue must win the first conversation after a lesson ends.
+  // Walk the persisted completion order backwards so an NPC with several
+  // lessons acknowledges the one the player just finished, while its other
+  // available Start actions remain visible in the same dialog.
+  for (let index = completedQuestIds.length - 1; index >= 0; index -= 1) {
+    const quest = questById(completedQuestIds[index]);
+    if (quest?.giverNpcId === npcId) {
+      return quest;
+    }
+  }
+  return undefined;
+}
+
 function currentMarkerForQuest(
   quest: SnapshotGroveQuest,
   objectiveIndex: number
@@ -1929,9 +1946,15 @@ export function useSnapshotGroveNpcDialog(
       return undefined;
     }
     const activeQuest = activeQuestForNpc(npc.id, state);
+    const completedQuest = activeQuest
+      ? undefined
+      : mostRecentlyCompletedSnapshotGroveQuestForNpcForTest(
+          npc.id,
+          state.completedQuestIds
+        );
     const availableQuests = availableQuestsForNpc(npc.id, state);
     const availableQuest = availableQuests[0];
-    const quest = activeQuest ?? availableQuest;
+    const quest = activeQuest ?? completedQuest ?? availableQuest;
     const objectiveIndex =
       quest?.id === state.activeQuestId ? state.activeObjectiveIndex : 0;
     const marker = quest
@@ -1981,12 +2004,13 @@ export function useSnapshotGroveNpcDialog(
     const line = quest
       ? npcLineForLikeability(npc)
       : npcAmbientLineForLikeability(npc) ?? npcLineForLikeability(npc);
-    const questCopy =
-      !activeQuest && availableQuests.length > 1
-        ? `<text>I have a few short lessons set aside if you have a quiet minute. Pick whichever feels useful first.</text>`
-        : quest
-        ? npcQuestDialogueCopy(npc, quest, state, objectiveIndex)
-        : `<text>${defaultDialog || npc.shortDescription}</text>`;
+    const questCopy = completedQuest
+      ? npcQuestDialogueCopy(npc, completedQuest, state, objectiveIndex)
+      : !activeQuest && availableQuests.length > 1
+      ? `<text>I have a few short lessons set aside if you have a quiet minute. Pick whichever feels useful first.</text>`
+      : quest
+      ? npcQuestDialogueCopy(npc, quest, state, objectiveIndex)
+      : `<text>${defaultDialog || npc.shortDescription}</text>`;
 
     return {
       id: `${SNAPSHOT_GROVE_BIBLE_RUNTIME_VERSION}-${npc.id}-${

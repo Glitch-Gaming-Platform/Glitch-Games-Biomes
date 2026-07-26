@@ -1,6 +1,9 @@
 import assert from "assert";
 
-import { LIVE_ENTITY_HELPER_QUEST_TARGET_MARKERS } from "@/shared/harthmere/live_entity_helper_quests";
+import {
+  LIVE_ENTITY_HELPER_QUEST_TARGET_MARKERS,
+  LIVE_ENTITY_HELPER_WEST_MUCK_BREACH_AREA,
+} from "@/shared/harthmere/live_entity_helper_quests";
 import { resolveHarthmereProductionMarkerPosition } from "@/shared/harthmere/production_terrain_placement_map";
 import {
   HARTHMERE_ADDITIVE_TOWN_OFFSET_X,
@@ -318,15 +321,59 @@ describe("Harthmere additive world extension", () => {
     ]);
   });
 
-  it("does not let the retired placement map pull shifted markers back west", () => {
+  it("does not let the retired placement map relocate any marker", () => {
+    // This is the property the test exists for: the retired production
+    // placement map must never move a helper-quest marker away from where the
+    // catalog authored it.
     for (const marker of LIVE_ENTITY_HELPER_QUEST_TARGET_MARKERS) {
-      assert.ok(marker.position[0] >= HARTHMERE_ORIGINAL_WORLD_EAST_EDGE_X);
       assert.deepEqual(
         resolveHarthmereProductionMarkerPosition({
           markerId: marker.id,
           fallback: marker.position,
         }),
-        marker.position
+        marker.position,
+        `${marker.id} was pulled off its authored position`
+      );
+    }
+  });
+
+  it("keeps each marker inside the area it claims to be in", () => {
+    // The original assertion here demanded EVERY marker sit east of the old map
+    // edge. That was wrong, and it had been failing: the Muck-Scarred Helix
+    // belongs to the West Muck Breach, which is deliberately left on the
+    // original snapshot map — "hostile breach content remains on the original
+    // snapshot map. Harthmere's additive town is safe grassland and must not
+    // inherit this Muck territory."
+    //
+    // "Inside its own area" is the property that was actually wanted, and it is
+    // strictly stronger: it catches a marker pointing at the wrong place
+    // regardless of which side of the map boundary that place is on.
+    const breach = LIVE_ENTITY_HELPER_WEST_MUCK_BREACH_AREA;
+    const helix = LIVE_ENTITY_HELPER_QUEST_TARGET_MARKERS.find(
+      (marker) => marker.areaId === breach.id
+    );
+    assert.ok(helix, "the West Muck Breach lost its marker");
+    assert.ok(
+      helix.position[0] >= breach.minX &&
+        helix.position[0] <= breach.maxX &&
+        helix.position[2] >= breach.minZ &&
+        helix.position[2] <= breach.maxZ,
+      `${helix.id} at ${JSON.stringify(helix.position)} is outside the West ` +
+        `Muck Breach (X ${breach.minX}..${breach.maxX}, Z ${breach.minZ}..` +
+        `${breach.maxZ})`
+    );
+    assert.equal(helix.position[1], breach.groundY);
+
+    // Every OTHER marker belongs to the additive town and must have been
+    // shifted east with it.
+    for (const marker of LIVE_ENTITY_HELPER_QUEST_TARGET_MARKERS) {
+      if (marker.areaId === breach.id) {
+        continue;
+      }
+      assert.ok(
+        marker.position[0] >= HARTHMERE_ORIGINAL_WORLD_EAST_EDGE_X,
+        `${marker.id} sits west of the old map edge but belongs to ` +
+          `${marker.areaId} in the additive town`
       );
     }
   });

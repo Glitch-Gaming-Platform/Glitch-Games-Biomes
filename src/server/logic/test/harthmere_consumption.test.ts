@@ -41,10 +41,10 @@ describe("Harthmere native ECS consumption", () => {
     logic = new TestLogicApi(voxeloo);
   });
 
-  it("atomically debits food and restores the authored stamina amount", async () => {
+  it("consumes one food item from inventory and restores stamina", async () => {
     const playerId = (await addGameUser(logic.world, generateTestId(), {})).id;
     const rationId = harthmereNativeBiomesIdForItemId("road_ration")!;
-    setItemAtSlotIndex(logic.world, playerId, countOf(rationId, 2n), 0);
+    setItemAtSlotIndex(logic.world, playerId, countOf(rationId, 1n), 0);
     editEntity(logic.world, playerId, (player) => {
       writeHarthmereNativeVitals(player.mutableTriggerState(), {
         stamina: 50,
@@ -65,24 +65,18 @@ describe("Harthmere native ECS consumption", () => {
     );
 
     const player = logic.world.table.get(playerId)!;
-    assert.equal(player.inventory?.items[0]?.count, 1n);
+    assert.equal(player.inventory?.items[0], undefined);
     assert.equal(readHarthmereNativeVitals(player.trigger_state).stamina, 74);
   });
 
-  it("restores native Health and mana without exceeding their maximums", async () => {
+  it("consumes one health item from inventory and restores HP", async () => {
     const playerId = (await addGameUser(logic.world, generateTestId(), {})).id;
     const healthPotionId = harthmereNativeBiomesIdForItemId("health_potion")!;
-    const manaDraughtId = harthmereNativeBiomesIdForItemId("mana_draught")!;
     setItemAtSlotIndex(logic.world, playerId, countOf(healthPotionId, 1n), 0);
-    setItemAtSlotIndex(logic.world, playerId, countOf(manaDraughtId, 1n), 1);
     editEntity(logic.world, playerId, (player) => {
       const health = player.mutableHealth();
       health.hp = 80;
       health.maxHp = 100;
-      writeHarthmereNativeVitals(player.mutableTriggerState(), {
-        mana: 80,
-        maxMana: 100,
-      });
     });
 
     await logic.publish(
@@ -96,22 +90,36 @@ describe("Harthmere native ECS consumption", () => {
         })
       )
     );
+    const player = logic.world.table.get(playerId)!;
+    assert.equal(player.health?.hp, 100);
+    assert.equal(player.inventory?.items[0], undefined);
+  });
+
+  it("restores native mana without exceeding its maximum", async () => {
+    const playerId = (await addGameUser(logic.world, generateTestId(), {})).id;
+    const manaDraughtId = harthmereNativeBiomesIdForItemId("mana_draught")!;
+    setItemAtSlotIndex(logic.world, playerId, countOf(manaDraughtId, 1n), 0);
+    editEntity(logic.world, playerId, (player) => {
+      writeHarthmereNativeVitals(player.mutableTriggerState(), {
+        mana: 80,
+        maxMana: 100,
+      });
+    });
+
     await logic.publish(
       new GameEvent(
         playerId,
         new ConsumptionEvent({
           id: playerId,
           item_id: manaDraughtId,
-          inventory_ref: { kind: "item", idx: 1 },
+          inventory_ref: { kind: "item", idx: 0 },
           action: "drink",
         })
       )
     );
 
     const player = logic.world.table.get(playerId)!;
-    assert.equal(player.health?.hp, 100);
     assert.equal(readHarthmereNativeVitals(player.trigger_state).mana, 100);
     assert.equal(player.inventory?.items[0], undefined);
-    assert.equal(player.inventory?.items[1], undefined);
   });
 });

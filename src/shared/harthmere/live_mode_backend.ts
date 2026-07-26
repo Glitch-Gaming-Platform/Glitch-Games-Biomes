@@ -3697,20 +3697,35 @@ function dynamicBiomesBikkieLiveModeItemDefinition(
   } catch {
     item = undefined;
   }
-  const resolvedAsItem = item !== undefined;
+  // ...but it does not ALWAYS throw, and that was the other half of this bug.
+  // A raw terrain biscuit (grass, dirt, stone) resolves successfully to a
+  // PLACEHOLDER whose every item attribute falls back: `displayName` becomes
+  // "???" (the documented fallbackValue in bikkie/schema/attributes.ts), and
+  // `stackable`/`isBlock` are undefined. The old guard only caught the throwing
+  // case, so a mined block came back as maxStackSize 1, category "item", and
+  // therefore `uniqueInstance: true` — every mined block was a unique,
+  // non-stacking object, and throwing one produced a loot drop with an empty
+  // `itemStacks` that the claim path could not credit back.
+  const rawDisplayName =
+    typeof item?.displayName === "string" ? item.displayName.trim() : "";
+  const isPlaceholderBiscuit =
+    rawDisplayName.length === 0 || rawDisplayName === "???";
+  const resolvedAsItem = item !== undefined && !isPlaceholderBiscuit;
   const isCamera = biomesId === BikkieIds.camera;
   // When the biscuit could not be resolved as an item at all, treat the mined
   // `b:<id>` as a block (that is where these unknown ids come from) so it still
   // grants as a stackable material rather than being dropped.
-  const isBlock = item?.isBlock === true || !resolvedAsItem;
+  // The camera is explicitly special-cased below with a "tool" category and a
+  // main_hand slot, so it must never fall into the block inference — a block is
+  // a crafting material, and crafting materials are not equippable.
+  const isBlock = !isCamera && (item?.isBlock === true || !resolvedAsItem);
   const stackable = Number(item?.stackable ?? (isBlock ? 99n : 1n));
   const def: HarthmereItemDefinition = {
     itemId: canonicalItemId,
     displayName: isCamera
       ? "Camera"
-      : typeof item?.displayName === "string" &&
-        item.displayName.trim().length > 0
-      ? item.displayName
+      : !isPlaceholderBiscuit
+      ? rawDisplayName
       : isBlock
       ? `Biomes Block ${biomesId}`
       : `Biomes Item ${biomesId}`,
@@ -11949,14 +11964,8 @@ export function reduceHarthmereLiveModeBackendState(
           vendorItemId,
           next.banking.materialStorageMaxSlots
         );
-      if (
-        transactionKind !== "sell" &&
-        !buyRoutesToMaterialStorage &&
-        wouldExceedCarryWeight(snapshot.items, vendorItemId, vendorCount)
-      ) {
-        pushCarryWeightRejection(warnings, touchedModels, "vendor");
-        break;
-      }
+      // Carry weight is a soft encumbrance threshold for purchases. The item
+      // is still granted; the shared stamina system applies the heavier drain.
       const invReq: HarthmereInventoryMutationRequest = {
         requestId: envelope.requestId,
         actorId: envelope.actorId,
@@ -12096,17 +12105,7 @@ export function reduceHarthmereLiveModeBackendState(
         | HarthmereAuctionListing
         | undefined;
       const buyerSnapshot = buildInventorySnapshot();
-      if (
-        currentListing &&
-        wouldExceedCarryWeight(
-          buyerSnapshot.items,
-          currentListing.itemId,
-          currentListing.count
-        )
-      ) {
-        pushCarryWeightRejection(warnings, touchedModels, "auction_settle");
-        break;
-      }
+      // Auction purchases use the same soft-encumbrance rule as vendors.
       const auctionReq: HarthmereAuctionMutationRequest = {
         requestId: envelope.requestId,
         kind: "buy_listing",

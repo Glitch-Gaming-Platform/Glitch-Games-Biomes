@@ -48,6 +48,11 @@ import {
   type HarthmereCraftingRecipe,
 } from "../mmo_inventory_authority";
 import {
+  HARTHMERE_CARRY_WEIGHT_LIMIT,
+  harthmereInventoryCarryWeight,
+  harthmereInventoryEncumbranceStaminaMultiplier,
+} from "../mmo_carry_weight";
+import {
   HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS,
   HARTHMERE_BUSINESS_OUTPOST_REBUILD_REVISION,
   harthmereBusinessOutpostBusinessId,
@@ -541,6 +546,14 @@ before(function registerLiveModeCatalogue() {
     requiredReputationTier: 0,
   };
   registerHarthmereVendorEntry(blacksmithVendor);
+  registerHarthmereVendorEntry({
+    vendorId: "carry_weight_test_vendor",
+    itemId: "health_potion",
+    buyPrice: 10,
+    sellPrice: 2,
+    stock: 50,
+    requiredReputationTier: 0,
+  });
 
   // Crafting recipe: 3 iron_ore → 1 iron_sword
   const ironSwordRecipe: HarthmereCraftingRecipe = {
@@ -11377,21 +11390,33 @@ describe("reduceHarthmereLiveModeBackendState — banking current carry weight e
     );
   });
 
-  it("rejects vendor buy, auction buy, mail claim, and crafting output when overweight", function () {
+  it("allows vendor and auction purchases over the carry-weight threshold", function () {
     const s = freshState();
     s.inventory.gold = 1_000;
     s.inventory.items = { iron_sword: 5 };
 
     const vendor = applyOne(s, "request_vendor_transaction", {
-      vendorId: "blacksmith_vendor",
+      vendorId: "carry_weight_test_vendor",
       transactionKind: "buy",
       itemId: "health_potion",
       count: 1,
     });
+    assert.equal(vendor.state.inventory.items.health_potion, 1);
+    assert.equal(vendor.state.inventory.gold, 990);
     assert.ok(
-      vendor.summary.warnings.includes(
+      !vendor.summary.warnings.includes(
         "vendor_rejected:carry_weight_limit_exceeded"
-      )
+      ),
+      JSON.stringify(vendor.summary.warnings)
+    );
+    assert.ok(
+      harthmereInventoryCarryWeight(vendor.state.inventory.items) >
+        HARTHMERE_CARRY_WEIGHT_LIMIT
+    );
+    assert.ok(
+      harthmereInventoryEncumbranceStaminaMultiplier(
+        vendor.state.inventory.items
+      ) > 1
     );
 
     const auctionState = freshState();
@@ -11411,11 +11436,24 @@ describe("reduceHarthmereLiveModeBackendState — banking current carry weight e
     const auction = applyOne(auctionState, "request_auction_settle", {
       listingId: "listing_weight_test",
     });
+    assert.equal(auction.state.inventory.items.health_potion, 1);
+    assert.ok(auction.state.inventory.gold < 1_000);
     assert.ok(
-      auction.summary.warnings.includes(
+      !auction.summary.warnings.includes(
         "auction_settle_rejected:carry_weight_limit_exceeded"
-      )
+      ),
+      JSON.stringify(auction.summary.warnings)
     );
+    assert.ok(
+      harthmereInventoryEncumbranceStaminaMultiplier(
+        auction.state.inventory.items
+      ) > 1
+    );
+  });
+
+  it("continues rejecting overweight mail claims and crafting output", function () {
+    const s = freshState();
+    s.inventory.items = { iron_sword: 5 };
 
     s.mail.messages.mail_weight_test = {
       mailId: "mail_weight_test",

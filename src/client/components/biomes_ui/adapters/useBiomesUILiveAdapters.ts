@@ -125,7 +125,10 @@ import {
   harthmereHotbarCarriedCounts,
   mergeMirroredBiomesBackpackUiItemsForTest,
 } from "./inventoryAdapterHelpers";
-import { nativeConsumptionForBiomesUIForTest } from "./nativeConsumptionAdapter";
+import {
+  nativeConsumablePresentationForBiomesUIForTest,
+  nativeConsumptionForBiomesUIForTest,
+} from "./nativeConsumptionAdapter";
 import { shouldHydrateBiomesUILiveStateForTab } from "./liveStateHydrationPolicy";
 import {
   activeBiomesUIMapPinFromMarkerForTest,
@@ -793,6 +796,7 @@ function slotToInventoryUiItem(
     (nativeEquipSlot !== undefined ? String(nativeEquipSlot) : undefined) ??
     inferEquipSlot(item);
   const edibleFood = isHarthmereFoodItemPlayerEdible(base.id);
+  const nativeConsumable = nativeConsumablePresentationForBiomesUIForTest(item);
   const category = edibleFood
     ? "consumables"
     : display
@@ -817,8 +821,8 @@ function slotToInventoryUiItem(
     ref,
     source,
     storageLocation: source,
-    canUse: edibleFood ? true : display?.canUse ?? false,
-    useActionLabel: edibleFood ? "Eat" : undefined,
+    canUse: edibleFood || nativeConsumable.canUse || display?.canUse === true,
+    useActionLabel: edibleFood ? "Eat" : nativeConsumable.useActionLabel,
     canEquip: display?.canEquip ?? Boolean(equipSlot),
     hotbarEligible: isHotbarEligibleItemId(base.id),
     canMove: true,

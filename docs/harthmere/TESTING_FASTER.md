@@ -181,18 +181,36 @@ node scripts/harthmere/e2e-jump.cjs ready
 The helper uses the cheapest probe that is safe for each service:
 
 - web must answer HTTP with `200`, `401`, or `403`;
-- Redis and sync use TCP only — never curl the sync/WebSocket port;
-- the unified app logs must show the current container instance's lifecycle
-  markers for web, logic, sync, trigger, shim, and Bikkie.
+- Redis must answer a real RESP `PING`; a TCP proxy can remain listening after
+  its Redis upstream is removed, so connect-only produced a false green and a
+  three-minute browser bootstrap timeout. Sync remains TCP-only — never curl
+  the sync/WebSocket port;
+- after the external web check, the helper enters the current unified-app
+  container once and checks the remaining required services' metrics `/ready`
+  endpoints (logic, sync, trigger, shim, and Bikkie). Those endpoints turn
+  green only after registry/bootstrap completion. Web is not probed twice: its
+  external origin already proves both the process and the port mapping.
 
-The log scan is scoped to the container's current `StartedAt` timestamp **and**
-each structured lifecycle row's embedded application `time` must be at or
-after that `StartedAt`. Docker can replay buffered rows from an older process
-generation even when `logs --since` is supplied; matching message text alone
-caused a false green on July 25 and the first visual-auth request hit
-`ECONNRESET` while the replacement registry was still loading. A listening
-sync or HTTP port is not sufficient: in the measured production stack it
-accepted traffic well before every lifecycle service was ready.
+Do not restore whole-log lifecycle scraping. Asset-heavy browser sessions can
+produce more than 32 MB of request logs; on July 26 that overflowed the helper
+and reported `container-logs` even while the stack was healthy. Internal ready
+probes are bounded, belong to the current container generation automatically,
+and cannot combine stale lifecycle rows with newly opened sockets. A listening
+sync or HTTP port alone is still insufficient: the measured production stack
+accepts traffic well before every service registry is ready.
+
+The bounds include host scheduling headroom: 10 seconds for the external web
+probe and 20 seconds for the one `docker exec` that checks all internal ready
+ports in parallel (each internal HTTP request gets five seconds). The amd64
+production image and Chromium can briefly starve a three-second probe on Apple
+Silicon even though every service is healthy.
+
+Focused physical-interaction tests must also use short, local pose gates. A
+bad camera anchor is deterministic once collision settles; waiting the global
+two-minute scenario timeout only hides that the fixture itself is wrong. The
+Busted chest now gives player/chest synchronization and obstructed-cursor
+prompt routing 20 seconds each, then prints the authoritative and live scene
+poses so the anchor can be corrected without replaying the quest.
 
 After stack readiness, wait for the in-page game readiness signal before
 asserting on gameplay; React mounting alone does not prove that ECS resources
@@ -285,6 +303,21 @@ app container; the omitted processes accounted for roughly 6 GiB of RSS
 untouched; measure the focused topology after the next image build rather than
 restarting just to adopt it. Set `GLITCH_FOCUSED_NATIVE_E2E_STACK=0` for a full
 local rehearsal or any gate that explicitly needs those services.
+
+Focused stacks also start Trigger beside Sync. Both services independently
+hydrate the same 300k+ entity snapshot and neither requires the other's
+listener, so serializing them added an entire second multi-minute bootstrap to
+every cold browser batch. Their existing metrics readiness and Redis
+consumer-group gates still run before Chromium starts; only the independent
+work is overlapped. Full production rehearsals retain their historical stream-
+worker ordering.
+
+The focused Shim starts with `--bootstrapMode empty` and skips its player
+spatial observer. In this topology every gameplay authority already uses
+Redis/HFC, while separate Chat/Notify/OOB processes are intentionally omitted;
+loading the complete ECS snapshot into Shim's unused in-memory world and chat
+indexes only delayed Logic/Sync/Trigger startup. Full unified rehearsals keep
+Shim's normal synchronized bootstrap.
 
 For Chapter 1 portal work, compile and test the entire seam together with
 `tsconfig.ch1gate.json` plus the three-file fast Mocha batch documented in the
@@ -490,6 +523,46 @@ only stopped project containers, superseded project images, and non-shared
 BuildKit records from that ancestry. The July 25 cleanup reclaimed 98.94 GB of
 BuildKit cache and raised free disk from 4.2 GB to 117 GB without restarting the
 validated warm stack.
+
+### 4.10 Wait for ECS readiness, not merely HTTP completion
+
+Native object creation has two independently scheduled success points: the API
+can return after materializing an entity while the browser is still waiting for
+that entity's ECS components over sync. A fixed delay, or opening a modal as
+soon as HTTP returns, produces intermittent empty UI even though the server is
+correct.
+
+For native containers, wait until the exact private container id has a client
+`/ecs/c/container_inventory` component before opening StorageContainer. Keep
+the product wait bounded (15 seconds) so a broken sync path surfaces a real
+error. The focused browser assertion allows up to 30 seconds because that gate
+covers API materialization **plus** ECS delivery under the software-WebGL local
+stack; it still requires the visible Water-logged Muck Buster and real Take All
+button, so the larger budget does not weaken acceptance.
+
+The retained green proof is
+`artifacts/harthmere-native-ecs-e2e/1785051944333-63437-report.json` (37 focused
+Busted scenarios). Do not replay it unless the quest-container overlay,
+native-container API, ECS sync, StorageContainer, or Busted authority contract
+changes.
+
+### 4.11 Sweep old quest props without waiting for full snapshot hydration
+
+The focused empty-Shim stack intentionally reaches gameplay before Sync has
+hydrated all 335k snapshot entities. An old quest prop may therefore exist in
+authoritative Redis while being absent from the focused client's initial table;
+waiting longer or repeatedly teleporting the player does not make that a useful
+inner-loop test.
+
+For prop-model F-prompt sweeps, read and validate the exact authoritative source
+first. If that source is not synchronized, create a temporary nearby ECS entity
+with the source's unchanged label, placeable item, quest-giver, dialogue, and
+placement components; exercise the real overlay/input path, then delete the
+fixture immediately. Record both the shipped source id and whether the sync
+fixture was needed. This preserves content identity while avoiding a full-stack
+hydration wait. Do not use this fallback for reward/progression assertions:
+those still target the immutable shipped entity, as the Spare Robot Parts gate
+does.
 
 ---
 

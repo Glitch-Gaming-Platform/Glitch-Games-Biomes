@@ -893,7 +893,17 @@ function validateVendorBuy(
     fail(errors, "vendor_out_of_stock");
   }
 
-  if (entry.bundleQuantity !== undefined && count !== entry.bundleQuantity) {
+  // A non-positive bundleQuantity is the same "not applicable / unlimited"
+  // sentinel that `stock` uses four lines above, and it must be treated the
+  // same way. It was not: vendor entries built from an infinite stock line
+  // inherited bundleQuantity -1, so `count !== -1` was true for every possible
+  // purchase and the item could never be bought. That silently made all eleven
+  // Harthmere building materials unpurchasable.
+  if (
+    entry.bundleQuantity !== undefined &&
+    entry.bundleQuantity > 0 &&
+    count !== entry.bundleQuantity
+  ) {
     fail(errors, "invalid_vendor_bundle_count");
   }
 

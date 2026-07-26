@@ -2,9 +2,10 @@
 // Production grounding gate for every deterministic Harthmere/Grove actor and
 // seeded object. It intentionally uses two coordinate contracts:
 //
-//   1. Additive Harthmere outdoor content, including the separate town-animal
-//      herd and guarded prisoner, is flat and must stand at feet Y=53 inside
-//      the east extension.
+//   1. Additive Harthmere outdoor content starts from the legacy feet Y=53
+//      authoring plane, but authored buildings, interiors, roads, and wilds
+//      may raise or lower the real walkable surface. The production terrain is
+//      authoritative and the repair pass persists that resolved floor.
 //   2. Original snapshot/Grove content, including all Muckers/Hexes and
 //      Muck-area wildlife plus road/camp bandits, is hilly. Its real outdoor or
 //      indoor floor is resolved from production terrain at the entity's X/Z.
@@ -705,10 +706,13 @@ async function main() {
     })
   );
 
+  // A non-flat extension surface is diagnostic, not a failure. The extension
+  // now contains authored buildings, interiors, roads, river banks, and wilds
+  // terrain. Fail only when terrain cannot be resolved or the real floor could
+  // not be persisted by the repair pass.
   if (
     noTerrainData.length ||
     noSurface.length ||
-    unsupportedExtensionSurface.length ||
     uncorrectedOffGround.length
   ) {
     console.error(

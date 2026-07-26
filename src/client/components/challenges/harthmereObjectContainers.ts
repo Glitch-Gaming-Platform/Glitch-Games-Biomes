@@ -11,11 +11,13 @@ import { completeHarthmereDailyTaskSoon } from "@/client/components/challenges/h
 import { dispatchHarthmereWorldObjectInteractionEvent } from "@/client/components/challenges/harthmereObjectInteractions";
 import { harthmereUserScopedStorageKey } from "@/client/components/challenges/LocalDevHarthmereUserScope";
 import { defaultHarthmereLiveFetch } from "@/client/components/harthmere_live_fetch";
+import type { ClientResources } from "@/client/game/resources/types";
 import { harthmereLocalStorage } from "@/client/util/storage";
 import { nativeBiomesEcsAuthorityEnabled } from "@/shared/harthmere/native_road_ahead_contract";
 import { harthmereContainerLootForLabel } from "@/shared/harthmere/harthmere_container_loot_authority";
 import type { BiomesId } from "@/shared/ids";
 import { INVALID_BIOMES_ID } from "@/shared/ids";
+import { sleep } from "@/shared/util/async";
 
 export { harthmereContainerLootForLabel } from "@/shared/harthmere/harthmere_container_loot_authority";
 
@@ -645,16 +647,56 @@ export interface HarthmereObjectContainerOpenResult {
   containerItemId?: BiomesId;
 }
 
+export const HARTHMERE_NATIVE_CONTAINER_SYNC_TIMEOUT_MS = 15_000;
+
+interface HarthmereNativeContainerSyncOptions {
+  timeoutMs?: number;
+  pollIntervalMs?: number;
+  now?: () => number;
+  wait?: (ms: number) => Promise<unknown>;
+}
+
+// HARTHMERE_NATIVE_CONTAINER_SYNC_GATE (2026-07-26): the native-container API
+// materializes a private ECS container, then the sync service independently
+// delivers that entity to the browser. Opening StorageContainer immediately
+// after the HTTP response races that second hop: the modal renders a misleading
+// "0 storage slots" state and never exposes Take All even though Redis already
+// contains the quest reward. Wait on the authoritative client ECS component,
+// not a fixed post-request delay. The bounded timeout preserves an actionable
+// error surface if sync is unhealthy instead of opening an unusable modal.
+export async function waitForHarthmereNativeContainerInventory(
+  resources: Pick<ClientResources, "get">,
+  containerId: BiomesId,
+  {
+    timeoutMs = HARTHMERE_NATIVE_CONTAINER_SYNC_TIMEOUT_MS,
+    pollIntervalMs = 50,
+    now = () => performance.now(),
+    wait = sleep,
+  }: HarthmereNativeContainerSyncOptions = {}
+): Promise<void> {
+  const startedAt = now();
+  while (true) {
+    if (resources.get("/ecs/c/container_inventory", containerId)) {
+      return;
+    }
+    const elapsedMs = now() - startedAt;
+    if (elapsedMs >= timeoutMs) {
+      throw new Error("container_inventory_sync_timeout");
+    }
+    await wait(Math.min(pollIntervalMs, timeoutMs - elapsedMs));
+  }
+}
+
 export async function openHarthmereObjectContainer({
   entityId,
   objectId,
   label,
+  resources,
 }: {
   entityId: BiomesId;
   objectId?: string;
   label?: string | null;
-  // Accepted for call-site compatibility; the panel is the feedback surface.
-  resources?: unknown;
+  resources?: Pick<ClientResources, "get">;
 }) {
   const displayLabel = label?.trim() || "Container";
   if (nativeBiomesEcsAuthorityEnabled() && isBrowser()) {
@@ -682,6 +724,17 @@ export async function openHarthmereObjectContainer({
     ) {
       throw new Error(String(body?.error ?? "container_open_failed"));
     }
+    if (!resources) {
+      // Native browser callers must provide the live resource store so the
+      // modal cannot outrun ECS delivery. Keeping this explicit also prevents
+      // tests or future call sites from silently reintroducing the empty-modal
+      // race by treating the API response as sufficient readiness.
+      throw new Error("container_resources_unavailable");
+    }
+    await waitForHarthmereNativeContainerInventory(
+      resources,
+      body.containerId as BiomesId
+    );
     return {
       native: true,
       containerId: body.containerId as BiomesId,

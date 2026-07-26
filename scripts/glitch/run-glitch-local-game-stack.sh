@@ -713,7 +713,19 @@ log "  npc simulation: anima=$GLITCH_ENABLE_ANIMA"
 log "  world simulation: gaia=$GLITCH_ENABLE_GAIA"
 log "  sync base: $NEXT_PUBLIC_GLITCH_SYNC_BASE_URL"
 
-start_bg shim 127.0.0.1 3100 3104 3101 "$APP_ROOT/dist/shim.js" --bootstrapMode sync "${SHIM_ARGS[@]}"
+# FOCUSED_E2E_EMPTY_SHIM_BOOT (2026-07-26): focused stacks use Redis/HFC for
+# world, firehose, Bikkie, chat, and server cache. Shim supplies discovery and
+# lightweight in-memory coordination only; loading the entire 300k+ ECS world
+# into its unused bootstrap/player-spatial tables added several cold-start
+# minutes before Logic/Sync/Trigger could even begin. Keep full sync bootstrap
+# for ordinary unified rehearsals, but use the explicit empty mode and skip the
+# unused shim chat observer in focused native browser stacks.
+SHIM_BOOTSTRAP_MODE=sync
+if [ "$GLITCH_FOCUSED_NATIVE_E2E_STACK" = "1" ]; then
+  SHIM_BOOTSTRAP_MODE=empty
+  export BIOMES_SKIP_PLAYER_SPATIAL_OBSERVER=1
+fi
+start_bg shim 127.0.0.1 3100 3104 3101 "$APP_ROOT/dist/shim.js" --bootstrapMode "$SHIM_BOOTSTRAP_MODE" "${SHIM_ARGS[@]}"
 wait_tcp 127.0.0.1 3104 shim-rpc
 
 start_bg bikkie 127.0.0.1 3400 3404 3401 "$APP_ROOT/dist/bikkie.js" "${SERVICE_ARGS[@]}"
@@ -727,6 +739,17 @@ else
   log "Focused native E2E: Ask is embedded in Logic; chat/oob/sidefx replicas are omitted."
 fi
 start_bg sync "$GLITCH_SYNC_BIND_HOST" "$BASE_PORT" "$RPC_PORT" "$METRICS_PORT" "$APP_ROOT/dist/sync.js" "${SERVICE_ARGS[@]}"
+
+# FOCUSED_E2E_TRIGGER_PARALLEL_BOOT (2026-07-26): Sync and Trigger each hydrate
+# the same 300k+ entity snapshot and neither depends on the other's listener.
+# Starting Trigger only after Sync became ready serialized two multi-minute
+# bootstraps, making a two-object browser batch pay roughly twice the required
+# warm-up. Focused stacks launch Trigger beside Sync, then retain the exact same
+# readiness and Redis consumer-group gates below. Full production rehearsals
+# keep their historical ordering because they also coordinate Notify/Sidefx.
+if [ "$GLITCH_FOCUSED_NATIVE_E2E_STACK" = "1" ] && [ "$GLITCH_ENABLE_STREAM_WORKERS" = "1" ]; then
+  start_bg trigger 127.0.0.1 3700 3704 3701 "$APP_ROOT/dist/trigger.js" "${SERVICE_ARGS[@]}"
+fi
 
 # Bind the public ingress immediately after all core processes have launched.
 # Dependency readiness checks continue below, but Azure no longer sees port
@@ -764,7 +787,9 @@ else
 fi
 
 if [ "$GLITCH_ENABLE_STREAM_WORKERS" = "1" ]; then
-  start_bg trigger 127.0.0.1 3700 3704 3701 "$APP_ROOT/dist/trigger.js" "${SERVICE_ARGS[@]}"
+  if [ "$GLITCH_FOCUSED_NATIVE_E2E_STACK" != "1" ]; then
+    start_bg trigger 127.0.0.1 3700 3704 3701 "$APP_ROOT/dist/trigger.js" "${SERVICE_ARGS[@]}"
+  fi
   wait_http_ready 127.0.0.1 3701 trigger
   wait_redis_stream_group 0 firehose trigger-server trigger-firehose
   if [ "$GLITCH_FOCUSED_NATIVE_E2E_STACK" != "1" ]; then

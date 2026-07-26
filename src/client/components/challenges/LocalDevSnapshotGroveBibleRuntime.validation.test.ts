@@ -3,6 +3,7 @@ import assert from "assert";
 import {
   doesSnapshotGroveEventAdvanceQuestForTest,
   grantSnapshotGroveWorldObjectPickupItemForTest,
+  mostRecentlyCompletedSnapshotGroveQuestForNpcForTest,
   requestSnapshotGroveLandmarkOnMapForBiomesUI,
   snapshotGroveObjectiveIsCompletionTurnInForTest,
   snapshotGrovePracticeItemForObjectiveForTest,
@@ -170,6 +171,17 @@ describe("Snapshot Grove quest runtime validation current", () => {
         `${quest.title} must turn in on its final giver conversation`
       );
     }
+  });
+
+  it("acknowledges the latest completed lesson before offering another lesson", () => {
+    // Jackie owns several Grove lessons. Completion order, rather than catalog
+    // order, determines which finished lesson she acknowledges on return.
+    const completed = mostRecentlyCompletedSnapshotGroveQuestForNpcForTest(
+      "jackie",
+      ["read-the-jobs-board", "fountain_buttons_first"]
+    );
+
+    assert.equal(completed?.id, "fountain_buttons_first");
   });
 
   it("opens and centers BiomesUI map when a dialogue marker is shown on the map", () => {

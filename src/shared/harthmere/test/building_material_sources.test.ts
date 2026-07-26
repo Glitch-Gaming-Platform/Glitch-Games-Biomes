@@ -98,4 +98,52 @@ describe("building material source routing", () => {
     assert.equal(result.itemDeltas.rough_stone, 1);
     assert.ok(result.goldDelta < 0);
   });
+
+  it("lets a player actually buy every unlimited-stock building material", () => {
+    // The bug this guards: an infinite stock line (quantity -1) was copied into
+    // `bundleQuantity`, and the bundle check demanded `count === bundleQuantity`.
+    // No purchase count can equal -1, so all eleven building materials were
+    // silently unbuyable — a player could reach the vendor, see the stock, and
+    // never complete a sale.
+    ensureHarthmereProductionVendorCatalog();
+    for (const material of Object.keys(BUILDING_SYSTEM_MATERIAL_CATALOG)) {
+      const entry = getHarthmereVendorEntry(materialVendorId, material);
+      if (!entry) {
+        continue;
+      }
+      const result = reduceHarthmereInventoryMutation(
+        {
+          requestId: `buy_${material}`,
+          actorId: "builder",
+          kind: "buy_from_vendor",
+          itemId: material,
+          vendorId: materialVendorId,
+          count: 1,
+          nowMs: 1_800_000_000_000,
+        },
+        {
+          snapshot: {
+            actorId: "builder",
+            gold: 5_000,
+            equipment: {},
+            items: {},
+            bank: {},
+            escrow: {},
+            consumableCooldowns: {},
+            knownAbilities: [],
+            knownRecipes: [],
+          },
+          playerLevel: 1,
+          playerSkills: {},
+          reputation: {},
+        }
+      );
+      assert.equal(
+        result.ok,
+        true,
+        `${material} cannot be bought: ${result.errors.join(", ")}`
+      );
+      assert.equal(result.itemDeltas[material], 1);
+    }
+  });
 });

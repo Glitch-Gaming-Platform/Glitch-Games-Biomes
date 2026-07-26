@@ -89,10 +89,11 @@ import {
   type HarthmereWorldObjectCandidate,
 } from "@/shared/harthmere/harthmere_world_object_inspectable";
 import {
-  isNativeQuestContainerLabel,
   isNativeRoadAheadQuestObjectLabel,
   NATIVE_BUSTED_UNDERWATER_CONTAINER_SPEC,
+  NATIVE_ROBOT_STORY_CRATE_DIALOG_SPECS,
   nativeRoadAheadEcsAuthorityEnabled,
+  shouldBypassGenericPlaceableOverlayForNativeQuestContainer,
 } from "@/shared/harthmere/native_road_ahead_contract";
 import {
   HARTHMERE_CRAFTING_TABLE_PROMPT_RADIUS,
@@ -114,6 +115,28 @@ const PLAYER_PROJECTION_OFFSET: Vec3 = [0, 0.35, 0];
 const SNAPSHOT_OVERLAY_ENTITY_SIZE_COMPAT_VERSION =
   "snapshot-overlay-entity-size-compat";
 const snapshotOverlayMissingSizeLogged = new Set<BiomesId>();
+
+// Exact snapshot reward-dialogue props that must remain discoverable even when
+// their rendered voxel art belongs to a larger group. A terrain ray inside the
+// sunken ship resolves the ship group before generic proximity candidates, so
+// without this narrow exception the real Muck Buster Crate is synchronized and
+// in range but its F prompt can never win. Spare Robot Parts is included from
+// the same immutable contract so both reward crates keep identical routing if
+// its authored grouping changes in a later snapshot.
+const NATIVE_PRIORITY_QUEST_PROP_ENTITY_IDS = new Set<BiomesId>([
+  ...Object.values(NATIVE_ROBOT_STORY_CRATE_DIALOG_SPECS).map(
+    (spec) => spec.sourceEntityId
+  ),
+  // Remaining original-snapshot quest props whose model is embedded in a
+  // parent group. Spatial selectors can omit these children even though the
+  // synchronized ClientTable contains them, so exact lookup is required for a
+  // stable F prompt. Road Ahead's already-green props are intentionally absent.
+  3581242026396485 as BiomesId, // Blue Statue Inscription (floor plate)
+  6372088708496489 as BiomesId, // Greeen Statue Inscription (floor plate)
+  7136298330826795 as BiomesId, // Pink Statue Inscription (floor plate)
+  6644971495189655 as BiomesId, // Yellow Status Inscription (wall plate)
+  2172725824368913 as BiomesId, // Billy's Tools
+]);
 
 function getOverlayEntitySizeCompat(entity: ReadonlyEntity): ReadonlyVec3 {
   const resolved = getSizeForEntity(entity);
@@ -1297,7 +1320,21 @@ export class OverlayScript implements Script {
       } else if (
         entity.placeable_component &&
         entity.placed_by &&
-        !this.isAuthoredHarthmereWorldObjectPlaceable(entity)
+        !this.isAuthoredHarthmereWorldObjectPlaceable(entity) &&
+        // NATIVE_QUEST_CONTAINER_DIRECT_HIT_EXEMPTION (2026-07-26):
+        // Busted's sunken chest is a real snapshot container placeable, but
+        // its reward inventory is private and materialized only after the
+        // Harthmere object interaction runs. Returning the generic placeable
+        // overlay here lets a direct cursor hit preempt that interaction and
+        // produces no usable F shortcut. The proximity fallback worked only
+        // when the ray hit the surrounding hull, which made the old browser
+        // test pass while a player looking straight at the chest remained
+        // blocked. Native quest containers must fall through to the authored
+        // object overlay for both direct hits and nearby discovery.
+        !shouldBypassGenericPlaceableOverlayForNativeQuestContainer({
+          label: entity.label?.text,
+          placedBy: entity.placed_by,
+        })
       ) {
         // Player-placed placeable: keep the rich, item-type-specific overlay
         // (container / door / sign / crafting station / ...). Authored Harthmere
@@ -1351,6 +1388,25 @@ export class OverlayScript implements Script {
     if (hitExistingTerrain(hit)) {
       const groupId = groupOccupancyAt(this.resources, hit.pos);
       if (groupId) {
+        // GROUPED_REWARD_PROP_BEATS_PARENT_GROUP (2026-07-26): the Muck Buster
+        // Crate is a child of the sunken-ship group. The reticle therefore hits
+        // ship terrain and resolves a hidden `group` overlay before the nearby
+        // object selector can expose the crate. Let only the exact immutable
+        // reward/quest props listed above override their parent group; all
+        // ordinary groups, crops, and terrain retain their existing priority.
+        const localPlayer = this.resources.get("/scene/local_player");
+        const nearbyPriorityQuestProp =
+          this.getNearbyHarthmereObjectInspectableOverlay(
+            dist(hit.pos, localPlayer.player.position) + 1.25
+          );
+        if (
+          nearbyPriorityQuestProp &&
+          NATIVE_PRIORITY_QUEST_PROP_ENTITY_IDS.has(
+            nearbyPriorityQuestProp.entityId
+          )
+        ) {
+          return nearbyPriorityQuestProp;
+        }
         const label = this.resources.get("/ecs/c/label", groupId);
         if (label) {
           return {
@@ -1570,7 +1626,10 @@ export class OverlayScript implements Script {
           // hits the hull/water first. Known native-quest containers must
           // stay proximity-discoverable; the server still owns range and
           // step validation on open.
-          !isNativeQuestContainerLabel(entity.label?.text))
+          !shouldBypassGenericPlaceableOverlayForNativeQuestContainer({
+            label: entity.label?.text,
+            placedBy: entity.placed_by,
+          }))
       ) {
         return;
       }
@@ -1596,6 +1655,27 @@ export class OverlayScript implements Script {
       entityIdByCandidateId.set(id, entity.id);
       candidates.push(candidate);
     };
+    // GROUPED_QUEST_PROP_DIRECT_LOOKUP (2026-07-26): the authored Busted
+    // `Muck Buster Crate` is a child of the sunken-ship group. Group children
+    // are synchronized into the client table but are not guaranteed to appear
+    // in the spatial PlaceableSelector index, so the surrounding ship wins the
+    // cursor hit and the crate receives no F prompt. These two immutable
+    // snapshot reward props already have exact source ids in the shared quest
+    // contract. Feed their synchronized entities through the same candidate
+    // validator before the spatial scans; this is not a synthetic marker and
+    // cannot surface unless the real source entity is present in client ECS.
+    for (const spec of Object.values(NATIVE_ROBOT_STORY_CRATE_DIALOG_SPECS)) {
+      const entity = this.table.get(spec.sourceEntityId);
+      if (entity) {
+        consider(entity);
+      }
+    }
+    for (const entityId of NATIVE_PRIORITY_QUEST_PROP_ENTITY_IDS) {
+      const entity = this.table.get(entityId);
+      if (entity) {
+        consider(entity);
+      }
+    }
     for (const entity of this.table.scan(
       PlaceableSelector.query.spatial.inSphere({ center, radius })
     )) {

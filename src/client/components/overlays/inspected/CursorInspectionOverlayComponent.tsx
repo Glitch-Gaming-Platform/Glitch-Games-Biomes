@@ -146,7 +146,12 @@ export const CursorInspectionComponent: React.FunctionComponent<
     if (
       !isHarthmereWorldObject &&
       !suppressTalkShortcut &&
-      canTalk &&
+      // Reward-dialogue quest props are placeables rather than living NPCs, so
+      // useCanTalkToNpc can legitimately return false even though the exact ECS
+      // entity owns quest_giver/default_dialog and is the authored return target.
+      // Once nativeQuestGiverUsesEcsDialogue has classified that immutable
+      // source, expose the same real talk modal without requiring NPC metadata.
+      (canTalk || isNativeDialogueQuestObject) &&
       overlay?.entityId
     ) {
       contextualActions.push({

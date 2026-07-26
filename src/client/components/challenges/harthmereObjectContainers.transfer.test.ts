@@ -69,6 +69,7 @@ import {
   readHarthmereContainer,
   takeAllFromHarthmereContainer,
   takeFromHarthmereContainer,
+  waitForHarthmereNativeContainerInventory,
 } from "@/client/components/challenges/harthmereObjectContainers";
 import { setHarthmereLocalDevUserScope } from "@/client/components/challenges/LocalDevHarthmereUserScope";
 import {
@@ -145,6 +146,59 @@ describe("harthmere object container take/store interface", () => {
   // Billy/Muckwad handoff; pass questClothingReady so these transfer tests
   // exercise the filled crate.
   const READY = { questClothingReady: true } as const;
+
+  it("waits for the private native inventory to reach client ECS before opening", async () => {
+    const containerId = 4242001 as BiomesId;
+    let reads = 0;
+    let now = 0;
+    const resources = {
+      get: (path: string, id: BiomesId) => {
+        assert.equal(path, "/ecs/c/container_inventory");
+        assert.equal(id, containerId);
+        reads += 1;
+        return reads >= 3 ? { items: [] } : undefined;
+      },
+    };
+
+    await waitForHarthmereNativeContainerInventory(
+      resources as never,
+      containerId,
+      {
+        timeoutMs: 100,
+        pollIntervalMs: 10,
+        now: () => now,
+        wait: async (ms) => {
+          now += ms;
+        },
+      }
+    );
+
+    assert.equal(reads, 3, "readiness follows ECS delivery, not HTTP timing");
+    assert.equal(now, 20);
+  });
+
+  it("fails closed instead of opening a permanently empty native modal", async () => {
+    const containerId = 4242002 as BiomesId;
+    let now = 0;
+    const resources = { get: () => undefined };
+
+    await assert.rejects(
+      waitForHarthmereNativeContainerInventory(
+        resources as never,
+        containerId,
+        {
+          timeoutMs: 25,
+          pollIntervalMs: 10,
+          now: () => now,
+          wait: async (ms) => {
+            now += ms;
+          },
+        }
+      ),
+      /container_inventory_sync_timeout/
+    );
+    assert.equal(now, 25, "the final poll is capped at the timeout boundary");
+  });
 
   it("seeds the Clothing Crate with both clothing halves for The Road Ahead", () => {
     const entityId = 4242 as BiomesId;

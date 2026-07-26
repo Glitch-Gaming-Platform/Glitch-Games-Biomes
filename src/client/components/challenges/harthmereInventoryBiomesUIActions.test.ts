@@ -142,10 +142,18 @@ describe("Harthmere inventory BiomesUI presentation and actions", () => {
       /const edibleFood = isHarthmereFoodItemPlayerEdible\(itemId\);/
     );
     assert.match(source, /edibleFood\s*\?\s*"consumables"/);
-    assert.match(source, /useActionLabel:\s*edibleFood \? "Eat" : undefined/);
+    assert.match(
+      source,
+      /nativeConsumablePresentationForBiomesUIForTest\(item\)/
+    );
     assert.match(source, /submitHarthmereInventoryGrantToLiveModeForTest/);
     assert.match(source, /submitFarmingFoodLiveModeAction\("eat_food"/);
     assert.match(source, /biomes-ui-live-inventory-local-food-use/);
+    assert.match(
+      source,
+      /canUse:\s*edibleFood \|\| nativeConsumable\.canUse \|\| display\?\.canUse === true/
+    );
+    assert.match(source, /nativeConsumable\.useActionLabel/);
   });
 
   it("equips and unequips local clothing through the BiomesUI action bridge", () => {

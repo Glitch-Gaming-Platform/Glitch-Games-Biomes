@@ -1,8 +1,21 @@
-import { nativeConsumptionForBiomesUIForTest } from "@/client/components/biomes_ui/adapters/nativeConsumptionAdapter";
+import {
+  nativeConsumablePresentationForBiomesUIForTest,
+  nativeConsumptionForBiomesUIForTest,
+} from "@/client/components/biomes_ui/adapters/nativeConsumptionAdapter";
 import type { BiomesId } from "@/shared/ids";
 import assert from "assert";
 
 describe("BiomesUI native consumable adapter", () => {
+  it("presents a native inventory health item as an enabled Drink action", () => {
+    assert.deepEqual(
+      nativeConsumablePresentationForBiomesUIForTest({
+        isConsumable: true,
+        action: "drink",
+      }),
+      { canUse: true, useActionLabel: "Drink" }
+    );
+  });
+
   it("preserves the exact backpack or hotbar ref and native action", () => {
     const foodId = 8_650_000_000_000_001 as BiomesId;
     const manaId = 8_650_000_000_000_002 as BiomesId;

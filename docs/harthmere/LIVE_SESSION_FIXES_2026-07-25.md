@@ -129,6 +129,24 @@ snapshot `quest_giver` marker cannot suppress the real container modal.
 Discovery widens only — the server still enforces authoritative range and step
 validation on open.
 
+**2026-07-26 direct-hit follow-up.** The first repair covered the proximity
+scanner but missed overlay priority when the cursor ray landed directly on the
+chest. In that pose the generic placed-container branch returned before the
+Harthmere quest-container interaction could add its F shortcut. The direct-hit
+branch now exempts native quest containers too. The focused E2E no longer
+rewrites the chest's label, position, placeable item, or quest-giver marker
+before checking the prompt; it first asserts those untouched snapshot
+components and therefore cannot mask this class of regression again.
+
+**2026-07-26 inventory-sync follow-up.** A live KeyF run then exposed the next
+handoff race: the native-container HTTP request had successfully created and
+filled the private ECS chest, but the modal opened before sync delivered its
+`container_inventory` component to the browser. The result was a misleading
+"0 storage slots" modal with no usable Take All action. Native opening now
+waits on that authoritative client ECS component (bounded to 15 seconds) before
+publishing the modal. A sync failure stays an explicit open error instead of
+presenting an empty quest chest.
+
 Regression guard: a player-placed `"my house chest"` / `"storage chest"` is
 _not_ a quest container, so the proximity prompt doesn't start fighting the
 aimed overlay everywhere.
@@ -165,6 +183,12 @@ panels project existing authority.
 
 Live browser evidence:
 
+- `1785051944333-63437-report.json`: green focused Busted run (37 scenarios).
+  The untouched snapshot chest exposes `F Open Container`; KeyF opens the
+  synced 16-slot private chest with the Water-logged Muck Buster; Take All
+  advances `Recover some Muck Busters`; and every later authored Busted action,
+  item consumption, recipe reward, crafting, placement, collection, delivery,
+  and final quest transition passes.
 - `1784962944155-29904-report.json`: real underwater F prompt, accessible
   Water-logged Muck Buster icon, real Take All, every later Busted action, and
   final chapter completion all pass. Its outer red status is only three local

@@ -76,6 +76,51 @@ export const NATIVE_BUSTED_UNDERWATER_CONTAINER_SPEC = Object.freeze({
   returnNpcTypeId: 2345000310921173 as BiomesId,
 });
 
+/**
+ * Original-snapshot crates that LOOK like containers but complete their quest
+ * leaf through the stock ECS dialogue/reward flow. They must not be added to
+ * `isNativeQuestContainerLabel`: doing so would replace their authored
+ * `CompleteQuestStepAtEntityEvent` action with generic storage and strand the
+ * player at the reward objective.
+ *
+ * Busted deliberately has two physical routes to the same leaf: the restored
+ * underwater chest uses private native inventory, while the authored Muck
+ * Buster Crate remains a direct reward-dialogue target. Trigger idempotency
+ * prevents claiming both. Get the Muck Out's Spare Robot Parts crate is the
+ * only authored source of the Robot Power Supply.
+ */
+export const NATIVE_ROBOT_STORY_CRATE_DIALOG_SPECS = Object.freeze({
+  bustedMuckBusterCrate: {
+    questId: NATIVE_BUSTED_QUEST_ID,
+    stepId: 6798640337192760 as BiomesId,
+    sourceEntityId: 2345000310921173 as BiomesId,
+    label: "Muck Buster Crate",
+    placeableItemId: 6720083171323032 as BiomesId,
+    position: [846.5, 28, 319.5] as const,
+    rewardItemId: 7077725005403292 as BiomesId,
+    acceptText: "Collect Water-logged Muck Buster",
+  },
+  getTheMuckOutSpareRobotParts: {
+    questId: NATIVE_GET_THE_MUCK_OUT_QUEST_ID,
+    stepId: 3822426307564741 as BiomesId,
+    sourceEntityId: 7814370709884466 as BiomesId,
+    label: "Spare Robot Parts",
+    placeableItemId: 6720083171323032 as BiomesId,
+    position: [772.5, 32, -71.5] as const,
+    rewardItemId: 8767393169474251 as BiomesId,
+    acceptText: "Collect Robot Power Supply",
+  },
+} as const);
+
+export function isNativeRobotStoryCrateDialogueLabel(label?: string | null) {
+  const normalized = String(label ?? "")
+    .trim()
+    .toLowerCase();
+  return Object.values(NATIVE_ROBOT_STORY_CRATE_DIALOG_SPECS).some(
+    (spec) => spec.label.toLowerCase() === normalized
+  );
+}
+
 const NATIVE_BUSTED_UNDERWATER_PRIOR_STEPS = Object.freeze([
   310783173745175 as BiomesId,
   859994236864492 as BiomesId,
@@ -386,6 +431,21 @@ export function isNativeQuestContainerLabel(label?: string | null) {
   return false;
 }
 
+/**
+ * A snapshot quest container with `placed_by` must not use the ordinary rich
+ * placeable overlay. Those overlays assume the placeable owns its public
+ * container inventory, while native quest rewards are materialized privately
+ * per player by the Harthmere container API. This predicate is shared by the
+ * direct-hit and proximity routes so neither cursor geometry can preempt the F
+ * interaction again. Player-built storage remains on the ordinary path.
+ */
+export function shouldBypassGenericPlaceableOverlayForNativeQuestContainer(input: {
+  label?: string | null;
+  placedBy: unknown;
+}) {
+  return Boolean(input.placedBy) && isNativeQuestContainerLabel(input.label);
+}
+
 export function nativeBustedUnderwaterContainerClaimForItem(
   label: string | null | undefined,
   itemId: BiomesId
@@ -567,11 +627,17 @@ export function nativeQuestGiverUsesEcsDialogue(
   questGiver: unknown,
   label?: string | null
 ) {
-  return (
-    nativeBiomesEcsAuthorityEnabled() &&
-    Boolean(questGiver) &&
-    !isNativeQuestContainerLabel(label)
-  );
+  if (!nativeBiomesEcsAuthorityEnabled() || !questGiver) {
+    return false;
+  }
+  // Keep the two crate-shaped reward props explicitly on dialogue authority.
+  // Their label matches generic container semantics, so this named guard is a
+  // regression contract against accidentally opening empty storage instead of
+  // publishing the authored quest reward action.
+  if (isNativeRobotStoryCrateDialogueLabel(label)) {
+    return true;
+  }
+  return !isNativeQuestContainerLabel(label);
 }
 
 export function isNativeRoadAheadQuestId(id: unknown) {

@@ -95,6 +95,22 @@ async function main() {
       "chapter-to-chapter continuation",
     ],
     ["every authored action completed", "per-chapter exhaustive report"],
+    [
+      "NATIVE_ROBOT_STORY_CRATE_DIALOG_SPECS",
+      "authored Busted/Get-the-Muck-Out crate identities",
+    ],
+    [
+      "visible F Open prompt targets shipped crate",
+      "real prompt on both crate-shaped reward props",
+    ],
+    [
+      "clickTalkDialogButton(first, spec.acceptText",
+      "real crate reward dialogue action",
+    ],
+    [
+      "F/dialogue grants reward and advances quest",
+      "crate UI reaches authoritative reward and progress",
+    ],
     ["Snapshot Grove browser batch found", "non-fail-fast lesson batch"],
     ["Robot-story browser batch found", "non-fail-fast chapter batch"],
     ["road-ahead-selfie.png", "rendered Road Ahead selfie evidence"],

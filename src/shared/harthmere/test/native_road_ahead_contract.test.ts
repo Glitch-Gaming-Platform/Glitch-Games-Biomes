@@ -10,8 +10,10 @@ import {
   NATIVE_ROAD_AHEAD_QUEST_ID,
   NATIVE_ROAD_AHEAD_STEP_IDS,
   NATIVE_ROBOT_STORY_FINAL_HANDOFFS,
+  NATIVE_ROBOT_STORY_CRATE_DIALOG_SPECS,
   isNativeRoadAheadQuestObjectLabel,
   isNativeBustedUnderwaterContainerLabel,
+  isNativeRobotStoryCrateDialogueLabel,
   nativeBustedUnderwaterContainerClaimForItem,
   nativeQuestContainerClaimForItem,
   nativeQuestContainerFirstIncompletePriorStep,
@@ -173,6 +175,17 @@ describe("native Road Ahead snapshot contract", () => {
       false,
       "Busted's quest-giver chest must keep its container shortcut"
     );
+    for (const spec of Object.values(NATIVE_ROBOT_STORY_CRATE_DIALOG_SPECS)) {
+      assert.equal(isNativeRobotStoryCrateDialogueLabel(spec.label), true);
+      assert.equal(
+        nativeQuestGiverUsesEcsDialogue(
+          { concurrent_quests: 1 },
+          spec.label
+        ),
+        true,
+        `${spec.label} must open its authored reward dialogue, not storage`
+      );
+    }
     process.env.NEXT_PUBLIC_BIOMES_NATIVE_ECS_AUTHORITY = "0";
     assert.equal(
       nativeQuestGiverUsesEcsDialogue({ concurrent_quests: 1 }),

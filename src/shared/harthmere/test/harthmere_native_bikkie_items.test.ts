@@ -108,11 +108,46 @@ describe("Harthmere exact native Bikkie overlay", function () {
 
   it("publishes every authored Grove and Bible quest as a native challenge", () => {
     const quests = allHarthmereNativeQuestBiscuits();
+
+    // This used to compare quests.length against the sum of the three source
+    // catalogs. That assertion is tautological — allHarthmereNativeQuestBiscuits
+    // IS the concatenation of those three arrays — so the only way it could
+    // fail was if a catalog reported a different length on either side of the
+    // comparison, which is what happened: an intermittent "167 == 136".
+    //
+    // The suspected mechanism is mocha's ESM fallback. Under .mocharc.fast.json
+    // a test file occasionally fails to parse as CommonJS and Node re-loads it
+    // through the ESM loader, which instantiates a SECOND copy of everything it
+    // imports. Two copies of a quest catalog disagree, and the failure surfaces
+    // wherever the two instances happen to meet.
+    //
+    // Rather than assert a tautology, check the properties that actually
+    // matter, and name the offender if the counts ever disagree again.
+    const counts = {
+      grove: SNAPSHOT_GROVE_QUESTS.length,
+      bible: HARTHMERE_QUEST_CATALOG.length,
+      chapter1: allCh1NativeQuestBiscuits().length,
+    };
+    for (const [catalog, count] of Object.entries(counts)) {
+      assert.ok(
+        count > 0,
+        `the ${catalog} quest catalog is empty — if the other catalogs are ` +
+          `populated this is a duplicated-module-instance problem, not a ` +
+          `content problem`
+      );
+    }
     assert.equal(
       quests.length,
-      SNAPSHOT_GROVE_QUESTS.length +
-        HARTHMERE_QUEST_CATALOG.length +
-        allCh1NativeQuestBiscuits().length
+      counts.grove + counts.bible + counts.chapter1,
+      `published ${quests.length} quests but the catalogs report ` +
+        `${JSON.stringify(counts)} — the two sides read different module ` +
+        `instances of the same catalog`
+    );
+    // Stable across calls: catches lazily-mutated or memoised catalogs.
+    assert.equal(
+      allHarthmereNativeQuestBiscuits().length,
+      quests.length,
+      "quest publication is not idempotent"
     );
     assert.equal(new Set(quests.map((quest) => quest.id)).size, quests.length);
     const augmented = withHarthmereNativeBikkieItems(tray());

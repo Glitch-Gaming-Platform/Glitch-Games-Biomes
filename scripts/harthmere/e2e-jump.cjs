@@ -81,6 +81,26 @@ const REQUIRED_STACK_SERVICES = String(
 )
   .split(/\s+/)
   .filter(Boolean);
+// Every server publishes readiness on its metrics port only after its registry
+// and initializer finish. Probe these endpoints inside the current container
+// instead of scraping unbounded Docker logs; asset-heavy browser runs can add
+// tens of megabytes of request logs and used to overflow the readiness helper's
+// buffer even though the stack itself was healthy.
+const STACK_SERVICE_READY_PORTS = Object.freeze({
+  web: 3001,
+  shim: 3101,
+  bikkie: 3401,
+  logic: 3501,
+  trigger: 3701,
+  notify: 3801,
+  anima: 4101,
+  gaia: 4201,
+  sync: 4901,
+});
+// Web is already proven through the externally mapped HTTP origin in ready().
+// Requiring its in-container metrics endpoint as a second, same-process probe
+// only adds a false negative when the production image is busy serving assets.
+const EXTERNALLY_PROBED_STACK_SERVICES = new Set(["web"]);
 
 // ---------------------------------------------------------------------------
 // Checkpoints — authored anchors, kept in sync with the shipped contracts.
@@ -228,7 +248,39 @@ function tcpReady(host, port, timeoutMs = 1500) {
   });
 }
 
-function httpReady(urlValue, timeoutMs = 3000) {
+function redisReady(host, port, timeoutMs = 1500) {
+  return new Promise((resolve) => {
+    const socket = new net.Socket();
+    let response = "";
+    let settled = false;
+    const done = (ok) => {
+      if (settled) return;
+      settled = true;
+      socket.destroy();
+      resolve(ok);
+    };
+    socket.setTimeout(timeoutMs);
+    socket.once("connect", () => {
+      // RESP PING distinguishes a live Redis server from a TCP proxy whose
+      // upstream disappeared. The latter accepts connections, then drops them;
+      // a TCP-only readiness check let Chromium wait three minutes on a stack
+      // that could no longer create its player or load live state.
+      socket.write("*1\r\n$4\r\nPING\r\n");
+    });
+    socket.on("data", (chunk) => {
+      response += chunk.toString("utf8");
+      if (response.includes("\r\n")) {
+        done(response.startsWith("+PONG"));
+      }
+    });
+    socket.once("end", () => done(false));
+    socket.once("timeout", () => done(false));
+    socket.once("error", () => done(false));
+    socket.connect(port, host);
+  });
+}
+
+function httpReady(urlValue, timeoutMs = 10_000) {
   return new Promise((resolve) => {
     const url = new URL("/api/auth/check", urlValue);
     const transport = url.protocol === "https:" ? https : http;
@@ -249,12 +301,7 @@ function httpReady(urlValue, timeoutMs = 3000) {
 function lifecycleReady(containerName) {
   const inspect = spawnSync(
     "docker",
-    [
-      "inspect",
-      "-f",
-      "{{.State.Running}} {{.State.StartedAt}}",
-      containerName,
-    ],
+    ["inspect", "-f", "{{.State.Running}}", containerName],
     { encoding: "utf8" }
   );
   if (inspect.error || inspect.status !== 0) {
@@ -264,7 +311,7 @@ function lifecycleReady(containerName) {
       missing: REQUIRED_STACK_SERVICES,
     };
   }
-  const [running, startedAt] = inspect.stdout.trim().split(/\s+/, 2);
+  const running = inspect.stdout.trim();
   if (running !== "true") {
     return {
       available: true,
@@ -272,56 +319,86 @@ function lifecycleReady(containerName) {
       missing: ["container-running"],
     };
   }
-  // Docker retains logs across `docker restart`. Restrict lifecycle evidence
-  // to the current StartedAt generation so an old `sync now running` cannot
-  // combine with a newly-opened TCP socket and green-light Chromium early.
-  const logs = spawnSync("docker", ["logs", "--since", startedAt, containerName], {
-    encoding: "utf8",
-    maxBuffer: 32 * 1024 * 1024,
+  const requestedServices = REQUIRED_STACK_SERVICES.flatMap((name) => {
+    if (EXTERNALLY_PROBED_STACK_SERVICES.has(name)) {
+      return [];
+    }
+    const port = STACK_SERVICE_READY_PORTS[name];
+    return port ? [{ name, port }] : [];
   });
-  if (logs.error || logs.status !== 0) {
+  const unknownServices = REQUIRED_STACK_SERVICES.filter(
+    (name) =>
+      !EXTERNALLY_PROBED_STACK_SERVICES.has(name) &&
+      !STACK_SERVICE_READY_PORTS[name]
+  );
+  const probeScript = `
+const http = require("http");
+const services = JSON.parse(process.argv[1]);
+Promise.all(services.map(({ name, port }) => new Promise((resolve) => {
+  const request = http.get({ host: "127.0.0.1", port, path: "/ready", timeout: 5000 }, (response) => {
+    response.resume();
+    resolve([name, response.statusCode === 200]);
+  });
+  request.on("timeout", () => {
+    request.destroy();
+    resolve([name, false]);
+  });
+  request.on("error", () => resolve([name, false]));
+}))).then((rows) => process.stdout.write(JSON.stringify(rows)));
+`;
+  const probes = spawnSync(
+    "docker",
+    [
+      "exec",
+      containerName,
+      "node",
+      "-e",
+      probeScript,
+      JSON.stringify(requestedServices),
+    ],
+    // Docker exec startup itself can take several seconds while Chromium and
+    // the emulated amd64 server are busy. Keep the probe bounded, but do not
+    // confuse host scheduling delay with a dead stack.
+    { encoding: "utf8", timeout: 20000, maxBuffer: 1024 * 1024 }
+  );
+  if (probes.error || probes.status !== 0) {
     return {
       available: true,
       ready: false,
-      missing: ["container-logs"],
+      missing: ["container-ready-probes"],
     };
   }
-  const output = `${logs.stdout}\n${logs.stderr}`;
-  const startedAtMs = Date.parse(startedAt);
-  // Docker can replay buffered JSON lines whose embedded application time is
-  // older than the current container generation even when `logs --since`
-  // receives StartedAt. Matching message text alone therefore let an old
-  // `web now running` combine with a newly-opened HTTP socket and green-light
-  // authentication while the new registry was still loading. Require the
-  // structured lifecycle marker and its own timestamp from this generation.
-  const currentGenerationMessages = new Set();
-  for (const line of output.split(/\r?\n/)) {
-    try {
-      const entry = JSON.parse(line);
-      const entryTimeMs = Date.parse(entry.time);
-      if (
-        entry.lifecycle === true &&
-        typeof entry.message === "string" &&
-        Number.isFinite(entryTimeMs) &&
-        Number.isFinite(startedAtMs) &&
-        entryTimeMs >= startedAtMs
-      ) {
-        currentGenerationMessages.add(entry.message);
-      }
-    } catch {
-      // Startup traces are intentionally mixed with JSON lifecycle logs.
-    }
+  let rows;
+  try {
+    rows = JSON.parse(probes.stdout);
+  } catch {
+    return {
+      available: true,
+      ready: false,
+      missing: ["container-ready-probe-output"],
+    };
   }
-  const missing = REQUIRED_STACK_SERVICES.filter(
-    (service) => !currentGenerationMessages.has(`${service} now running`)
+  const readyServices = new Set(
+    rows.filter(([, ready]) => ready).map(([name]) => name)
   );
+  for (const service of EXTERNALLY_PROBED_STACK_SERVICES) {
+    readyServices.add(service);
+  }
+  const missing = [
+    ...unknownServices,
+    ...requestedServices
+      .map(({ name }) => name)
+      .filter((service) => !readyServices.has(service)),
+  ];
   return { available: true, ready: missing.length === 0, missing };
 }
 
 async function ready() {
   const webHttpReady = await httpReady(DEFAULT_ORIGIN);
-  // The sync port is intentionally probed by TCP only. Lifecycle logs prove
-  // its registry/bootstrap completed; TCP proves the external mapping works.
+  const redisPingReady = await redisReady("127.0.0.1", DEFAULT_REDIS_PORT);
+  // The sync port is intentionally probed by TCP only. Its internal metrics
+  // `/ready` endpoint proves registry/bootstrap completion; TCP proves the
+  // external mapping works without sending HTTP to the WebSocket listener.
   const services = [
     {
       name: "web",
@@ -334,7 +411,12 @@ async function ready() {
       port: DEFAULT_SYNC_PORT,
       note: "WebSocket — TCP probe only, never curl",
     },
-    { name: "redis", port: DEFAULT_REDIS_PORT, note: "TCP" },
+    {
+      name: "redis",
+      port: DEFAULT_REDIS_PORT,
+      note: "RESP PING",
+      up: redisPingReady,
+    },
   ];
   let allUp = true;
   for (const svc of services) {
@@ -349,7 +431,9 @@ async function ready() {
   const lifecycle = lifecycleReady(DEFAULT_STACK_CONTAINER);
   if (lifecycle.available) {
     console.log(
-      `${lifecycle.ready ? "UP  " : "DOWN"} lifecycle ${DEFAULT_STACK_CONTAINER}  (${
+      `${
+        lifecycle.ready ? "UP  " : "DOWN"
+      } lifecycle ${DEFAULT_STACK_CONTAINER}  (${
         lifecycle.ready
           ? REQUIRED_STACK_SERVICES.join(", ")
           : `missing: ${lifecycle.missing.join(", ")}`
@@ -360,7 +444,9 @@ async function ready() {
     const allowPortOnly =
       process.env.HARTHMERE_E2E_ALLOW_PORT_ONLY_READY === "1";
     console.log(
-      `${allowPortOnly ? "WARN" : "DOWN"} lifecycle ${DEFAULT_STACK_CONTAINER}  (Docker container unavailable)`
+      `${
+        allowPortOnly ? "WARN" : "DOWN"
+      } lifecycle ${DEFAULT_STACK_CONTAINER}  (Docker container unavailable)`
     );
     allUp = allUp && allowPortOnly;
   }

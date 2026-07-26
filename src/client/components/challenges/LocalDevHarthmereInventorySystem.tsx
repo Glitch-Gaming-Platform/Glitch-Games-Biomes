@@ -5441,9 +5441,9 @@ function buyFitReason(
   if (stock.quantity <= 0 || stock.price <= 0) {
     return "This vendor listing has an invalid quantity or price.";
   }
-  // The server validates live gold, storage capacity, stack limits, carry
-  // weight, reputation, and catalogue quantity atomically.  Browser-local
-  // copies can lag behind a live response and must not block a valid request.
+  // The server validates live gold, storage capacity, stack limits,
+  // reputation, and catalogue quantity atomically. Browser-local copies can
+  // lag behind a live response and must not block a valid request.
   if (harthmereLiveServerAuthoritative()) {
     return undefined;
   }
@@ -5467,10 +5467,6 @@ function vendorPurchaseFailureMessage(error: unknown, itemName: string) {
     ["vendor_out_of_stock", "The vendor is out of stock."],
     ["inventory_full", "Your inventory is full."],
     ["stack_size_exceeded", "That purchase would exceed the item stack limit."],
-    [
-      "carry_weight_limit_exceeded",
-      "That purchase would exceed your carry-weight limit.",
-    ],
     [
       "insufficient_reputation_for_vendor_item",
       "Your reputation is not high enough for this item.",

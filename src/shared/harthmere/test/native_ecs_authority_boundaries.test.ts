@@ -8,6 +8,11 @@ import {
   registerHarthmereItemDefinition,
   registerHarthmereVendorEntry,
 } from "@/shared/harthmere/mmo_inventory_authority";
+import {
+  HARTHMERE_CARRY_WEIGHT_LIMIT,
+  harthmereInventoryCarryWeight,
+  harthmereInventoryEncumbranceStaminaMultiplier,
+} from "@/shared/harthmere/mmo_carry_weight";
 import assert from "assert";
 
 const ACTOR = "123456789";
@@ -198,7 +203,7 @@ describe("Harthmere native ECS authority boundaries", () => {
       classRestriction: [],
       stats: {},
       tradeable: true,
-      weight: 1,
+      weight: 10,
     });
     registerHarthmereVendorEntry({
       vendorId,
@@ -225,6 +230,7 @@ describe("Harthmere native ECS authority boundaries", () => {
           requestId: `native-boundary:vendor-buy:${NOW}`,
           idempotencyKey: `native-boundary:vendor-buy:${NOW}`,
           serverActorGold: 100,
+          serverActorItemCounts: { [itemId]: 2 },
         }
       ),
       NOW
@@ -238,5 +244,15 @@ describe("Harthmere native ECS authority boundaries", () => {
     if (exchange?.kind !== "inventory_exchange") return;
     assert.deepEqual(exchange.rewardItemStacks, { [itemId]: 3 });
     assert.equal(exchange.goldDelta, -7);
+    assert.equal(result.state.inventory.items[itemId], 5);
+    assert.ok(
+      harthmereInventoryCarryWeight(result.state.inventory.items) >
+        HARTHMERE_CARRY_WEIGHT_LIMIT
+    );
+    assert.ok(
+      harthmereInventoryEncumbranceStaminaMultiplier(
+        result.state.inventory.items
+      ) > 1
+    );
   });
 });

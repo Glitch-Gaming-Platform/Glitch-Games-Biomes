@@ -39,7 +39,7 @@ export interface HarthmereObjectInteraction {
 // capabilities; route markers are navigation data unless they own a concrete
 // sign/post/board component or authored object label.
 const HARTHMERE_NON_LIVING_OBJECT_RE =
-  /\b(crates?|chests?|box(?:es)?|barrels?|containers?|caches|satchels?|mailbags?|toolbags?|bags?|baskets?|bins?|lockers?|wardrobes?|cabinets?|shelves|shelf|workbenches|workbench|anvils?|boards?|signs?|posts?|markers?|ledgers?|books?|notes?|carts?|wagons?|lockboxes|strongboxes|stashes|footlockers?|stakes?|stones?|dumm(?:y|ies)|rings?|ropes?|firefl(?:y|ies)|flags?|pots?|cook\s+pots?|cooking\s+pots?|soup\s+pots?|stew\s+pots?|kettles?|fences?|boundar(?:y|ies)|tables?|desks?|mirrors?|moss|towers?|platforms?|offices?|chapels?|materials?|berries|patch(?:es)?|plots?|branches?|softwood|harvests?|remains?|carcasses?|sounders?|stretch|spots?|overlooks?|corners?|ovens?|stoves?|beds?|stands?|cookpots?|campfires?|camp\s+fires?|firepits?|fire\s+pits?|fire\s+rings?|hearths?|cooking\s+fires?|pails?|mailboxes?|consoles?|terminals?|grates?|pillars?|candles?|altars?|shrines?|statues?|banners?|lamps?|braziers?|fountains?|wells?|gates?|doors?)\b/i;
+  /\b(crates?|chests?|box(?:es)?|barrels?|containers?|caches|satchels?|mailbags?|toolbags?|bags?|baskets?|bins?|lockers?|wardrobes?|cabinets?|shelves|shelf|workbenches|workbench|anvils?|tools?|boards?|signs?|posts?|markers?|inscriptions?|plates?|ledgers?|books?|notes?|carts?|wagons?|lockboxes|strongboxes|stashes|footlockers?|stakes?|stones?|dumm(?:y|ies)|rings?|ropes?|firefl(?:y|ies)|flags?|pots?|cook\s+pots?|cooking\s+pots?|soup\s+pots?|stew\s+pots?|kettles?|fences?|boundar(?:y|ies)|tables?|desks?|mirrors?|moss|towers?|platforms?|offices?|chapels?|materials?|berries|patch(?:es)?|plots?|branches?|softwood|harvests?|remains?|carcasses?|sounders?|stretch|spots?|overlooks?|corners?|ovens?|stoves?|beds?|stands?|cookpots?|campfires?|camp\s+fires?|firepits?|fire\s+pits?|fire\s+rings?|hearths?|cooking\s+fires?|pails?|mailboxes?|consoles?|terminals?|grates?|pillars?|candles?|altars?|shrines?|statues?|banners?|lamps?|braziers?|fountains?|wells?|gates?|doors?)\b/i;
 
 const HARTHMERE_CONTAINER_OBJECT_RE =
   /\b(crates?|chests?|box(?:es)?|barrels?|containers?|caches|satchels?|mailbags?|toolbags?|bags?|baskets?|bins?|lockers?|wardrobes?|cabinets?|lockboxes|strongboxes|stashes|footlockers?)\b/i;
@@ -53,7 +53,7 @@ const HARTHMERE_JOBS_BOARD_OBJECT_RE = /\bjobs?\s+boards?\b/i;
 const HARTHMERE_WANTED_BOARD_OBJECT_RE =
   /\b(?:wanted|bount(?:y|ies)|warrants?|patrol)\s+(?:boards?|posts?|notices?)\b|\b(?:boards?|posts?|notices?)\s+(?:wanted|bount(?:y|ies)|warrants?|patrol)\b/i;
 const HARTHMERE_READABLE_OBJECT_RE =
-  /\b(boards?|signs?|posts?|markers?|ledgers?|books?|notes?|mailboxes?|consoles?|terminals?)\b/i;
+  /\b(boards?|signs?|posts?|markers?|inscriptions?|plates?|ledgers?|books?|notes?|mailboxes?|consoles?|terminals?)\b/i;
 const HARTHMERE_CRAFT_STATION_OBJECT_RE =
   /\b(workbenches|workbench|anvils?|craft\s+tables?|crafting\s+tables?)\b/i;
 const HARTHMERE_COOKING_STATION_OBJECT_RE =

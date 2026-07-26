@@ -28,6 +28,10 @@ const dockerfile = fs.readFileSync(
   path.join(root, "Dockerfile.biomes"),
   "utf8"
 );
+const productionGroundingProbe = fs.readFileSync(
+  path.join(root, "scripts/harthmere/probe-production-terrain-grounding.cjs"),
+  "utf8"
+);
 const packageJson = JSON.parse(
   fs.readFileSync(path.join(root, "package.json"), "utf8")
 );
@@ -1073,6 +1077,15 @@ ok(
       "reconcile-production-live-creature-grounding.cjs"
     ),
   "in-VNet reconciliation audits terrain, applies map/ECS migration, writes the connector last, and verifies grounding"
+);
+ok(
+  productionGroundingProbe.includes(
+    "A non-flat extension surface is diagnostic, not a failure."
+  ) &&
+    !/noSurface\.length \|\|\s*unsupportedExtensionSurface\.length \|\|\s*uncorrectedOffGround\.length/.test(
+      productionGroundingProbe
+    ),
+  "production grounding accepts authored extension elevation while still requiring a persisted real floor"
 );
 ok(
   dockerfile.includes("ts-node@10.9.1") &&
