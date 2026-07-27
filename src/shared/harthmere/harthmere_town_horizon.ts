@@ -47,7 +47,7 @@ import {
 } from "@/shared/harthmere/harthmere_horizon_noise";
 
 export const HARTHMERE_TOWN_HORIZON_VERSION =
-  "harthmere-town-horizon-v1" as const;
+  "harthmere-town-horizon-v2-runtime-collision" as const;
 
 /** Materials, matching the shim's localDevMaterials() palette keys. */
 export type HarthmereHorizonMaterial =
@@ -151,14 +151,19 @@ export function harthmereTownBackBoundarySlabs(
   const boundaryWorldX = harthmereTownAuthoredToWorldX(
     HARTHMERE_TOWN_BACK_BOUNDARY_X
   );
-  const [, hi] = entityAabb;
-  if (hi[0] <= boundaryWorldX) {
+  const [lo, hi] = entityAabb;
+  if (
+    hi[0] <= boundaryWorldX ||
+    // The Elsewhen dungeon band begins east of the additive town's old world
+    // edge. Its own closed barriers must apply there; the town's back wall
+    // must not turn either teleported dungeon interior into one giant solid.
+    lo[0] >= HARTHMERE_EXPANDED_WORLD_EAST_EDGE_X
+  ) {
     return [];
   }
   // One slab, from the boundary east to well past the world edge, so nothing
   // can squeeze between this and the engine's own boundary.
-  const depth =
-    HARTHMERE_EXPANDED_WORLD_EAST_EDGE_X - boundaryWorldX + 256;
+  const depth = HARTHMERE_EXPANDED_WORLD_EAST_EDGE_X - boundaryWorldX + 256;
   return [
     [
       [boundaryWorldX, -64, HARTHMERE_EXTENSION_WORLD_BOUNDS.minZ - 64],

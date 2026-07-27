@@ -49,6 +49,7 @@ import {
   HARTHMERE_NATIVE_BANDIT_SEEDS,
   type HarthmereBanditRole,
 } from "./bandit_production_seed";
+import { harthmereForestWildlifePlacements } from "./harthmere_forest_wildlife";
 
 export const HARTHMERE_LIVE_ENTITY_PRODUCTION_SEED_VERSION =
   "harthmere-live-entity-production-seed" as const;
@@ -319,7 +320,11 @@ export const HARTHMERE_LIVE_ENTITY_ROBOT_SENTINEL_SEEDS =
     } satisfies HarthmereLiveEntityProductionSeed;
   });
 
-export const HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_PRODUCTION_COUNT = 140;
+// 140 originally; +36 on 2026-07-26 for the six scattered mixed encounters
+// (five Muckers and one Hex each). This is a checked-in bookkeeping figure that
+// several tests assert against, so it has to move whenever a monster layout is
+// added or removed.
+export const HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_PRODUCTION_COUNT = 176;
 
 export interface HarthmereGuardedWildlifeLocation {
   areaId: string;
@@ -395,6 +400,91 @@ export const HARTHMERE_LIVE_ENTITY_OPEN_WILDS_MIXED_GROUP_LOCATIONS: readonly Ha
       areaLabel: "Southeast Wilds Lowland",
       center: [1515, 40, 303],
       animalCounts: { cow: 1, sheep: 2, rabbit: 4 },
+    },
+  ] as const;
+
+// HARTHMERE_SCATTERED_MIXED_GROUPS
+//
+// Six more mixed encounters, spread far apart across the original map. Each is
+// one Hex, five Muckers, one cow, two sheep and three rabbits.
+//
+// GROUNDING — THE ONLY HARD PART
+// Harthmere's own terrain is dead flat, so a single feet Y works there. The
+// original map is hills, and these seeds ship their AUTHORED Y verbatim unless
+// the generated placement map has an entry for them: see
+// harthmereGroundedLivestockSeedsInTerritory, whose fallback for an open-wilds
+// group is the authored position. A guessed Y therefore buries or floats the
+// whole group.
+//
+// So every anchor below is a column the June production terrain scan actually
+// measured — its Y is a real surface, not an estimate — and each was chosen
+// because every other measured column within 40 blocks agrees on that height to
+// within two voxels. That is the flattest ground the scan can evidence, which
+// is what makes one shared Y safe across a group six blocks wide.
+//
+// Exact per-creature grounding is available and automatic: these seeds flow
+// through harthmereGroundedMuckMonsterSeedsInTerritory /
+// harthmereGroundedLivestockSeedsInTerritory, which
+// scripts/harthmere/build-production-terrain-placement-map.cjs enumerates. Re-run
+// that against production and every creature here gets a terrain-probed
+// recommendedPosition that the runtime prefers over the authored one.
+//
+// Each anchor also clears, by construction (all asserted in tests):
+//   * every muck territory, safe zone, robot-protected area and helper-quest
+//     exclusion — via harthmereOpenWildsMixedGroupPositionIsValid;
+//   * the additive Harthmere town and its forest, which live east of
+//     HARTHMERE_ORIGINAL_WORLD_EAST_EDGE_X;
+//   * every pre-existing Hex, Mucker, cow, sheep and rabbit, by at least
+//     HARTHMERE_SCATTERED_MIXED_GROUP_MIN_CREATURE_DISTANCE blocks.
+// Bands for the two families added on 2026-07-26. Chapter 1 owns 10500..10599
+// (see CH1_NPC_ID_OFFSET_BASE) and the highest previously used offset is 10505,
+// so both bands start clear of everything already claimed.
+//   forest wildlife   10601..10635  (35 animals)
+//   scattered monsters 10701..10736 (6 groups x 6)
+//   scattered animals  10741..10776 (6 groups x 6)
+const HARTHMERE_LIVE_ENTITY_FOREST_WILDLIFE_FIRST_OFFSET = 10601;
+const HARTHMERE_LIVE_ENTITY_SCATTERED_MIXED_MONSTER_FIRST_OFFSET = 10701;
+const HARTHMERE_LIVE_ENTITY_SCATTERED_MIXED_ANIMAL_FIRST_OFFSET = 10741;
+
+export const HARTHMERE_SCATTERED_MIXED_GROUP_MIN_CREATURE_DISTANCE = 60;
+
+export const HARTHMERE_LIVE_ENTITY_SCATTERED_MIXED_GROUP_LOCATIONS: readonly HarthmereGuardedWildlifeLocation[] =
+  [
+    {
+      areaId: "far_north_wilds_shelf",
+      areaLabel: "Far North Wilds Shelf",
+      center: [1123, 32, -945],
+      animalCounts: { cow: 1, sheep: 2, rabbit: 3 },
+    },
+    {
+      areaId: "north_reach_pinefall",
+      areaLabel: "North Reach Pinefall",
+      center: [1731, 32, -937],
+      animalCounts: { cow: 1, sheep: 2, rabbit: 3 },
+    },
+    {
+      areaId: "high_downs_terrace",
+      areaLabel: "High Downs Terrace",
+      center: [1347, 53, -777],
+      animalCounts: { cow: 1, sheep: 2, rabbit: 3 },
+    },
+    {
+      areaId: "east_marches_flat",
+      areaLabel: "East Marches Flat",
+      center: [1723, 48, -545],
+      animalCounts: { cow: 1, sheep: 2, rabbit: 3 },
+    },
+    {
+      areaId: "old_wood_west_clearing",
+      areaLabel: "Old Wood West Clearing",
+      center: [899, 48, -425],
+      animalCounts: { cow: 1, sheep: 2, rabbit: 3 },
+    },
+    {
+      areaId: "south_reach_meadow",
+      areaLabel: "South Reach Meadow",
+      center: [1411, 47, 63],
+      animalCounts: { cow: 1, sheep: 2, rabbit: 3 },
     },
   ] as const;
 
@@ -607,6 +697,33 @@ const HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_LAYOUTS: readonly HarthmereMuckMonsterS
         muckerName: "Open Wilds Mucker",
         hexerName: "Open Wilds Hex",
         // Exactly five Muckers and one Hex accompany every seven-animal group.
+        hexEvery: 6,
+        displayIndexBase: index * 6,
+      })
+    ),
+    // HARTHMERE_SCATTERED_MIXED_GROUPS: five Muckers and one Hex per group.
+    // `hexEvery: 6` makes the sixth of every six a Hex, so the split is exact.
+    // Radius 6 keeps the whole pack inside the flat ground the terrain scan
+    // evidenced around each anchor.
+    ...HARTHMERE_LIVE_ENTITY_SCATTERED_MIXED_GROUP_LOCATIONS.map(
+      (location, index) => ({
+        areaId: location.areaId,
+        areaLabel: location.areaLabel,
+        count: 6,
+        center: location.center,
+        radius: 6,
+        firstOffset:
+          HARTHMERE_LIVE_ENTITY_SCATTERED_MIXED_MONSTER_FIRST_OFFSET +
+          index * 6,
+        // ONE shared name across all six groups, deliberately. The native NPC
+        // type key is `monster_${slug(displayName)}`, so a per-area name would
+        // demand a per-area entry in HARTHMERE_NATIVE_NPC_ID_MANIFEST — and a
+        // missing entry emits an NPC biscuit with an undefined id, which fails
+        // the Bikkie overlay and blocks a clean server boot. The original
+        // open-wilds groups share "Open Wilds Mucker"/"Open Wilds Hex" for
+        // exactly this reason.
+        muckerName: "Wilds Pack Mucker",
+        hexerName: "Wilds Pack Hex",
         hexEvery: 6,
         displayIndexBase: index * 6,
       })
@@ -933,6 +1050,69 @@ export const HARTHMERE_LIVE_ENTITY_OPEN_WILDS_MIXED_ANIMAL_SEEDS: HarthmereLiveE
     }
   );
 
+// HARTHMERE_SCATTERED_MIXED_GROUPS: the animal half of each new group.
+//
+// Every creature inherits its anchor's measured surface Y, and the radial
+// layout is capped at radius 6 so the whole group stays on the flat ground the
+// terrain scan evidenced. Note this deliberately does NOT call
+// openWildsTerrainGroundedPosition: that helper reads a hand-probed per-offset
+// table built for the original four groups, and returning `position` unchanged
+// for an unknown offset would look like grounding without doing any.
+export const HARTHMERE_LIVE_ENTITY_SCATTERED_MIXED_ANIMAL_SEEDS: HarthmereLiveEntityProductionSeed[] =
+  HARTHMERE_LIVE_ENTITY_SCATTERED_MIXED_GROUP_LOCATIONS.flatMap(
+    (location, locationIndex) => {
+      const speciesOrder = HARTHMERE_LIVE_ENTITY_LIVESTOCK_SPECIES.flatMap(
+        (config) =>
+          Array.from(
+            { length: location.animalCounts[config.species] },
+            () => config
+          )
+      );
+      return speciesOrder.map((config, localIndex) => {
+        const idOffset =
+          HARTHMERE_LIVE_ENTITY_SCATTERED_MIXED_ANIMAL_FIRST_OFFSET +
+          locationIndex * speciesOrder.length +
+          localIndex;
+        const speciesName =
+          config.species[0].toUpperCase() + config.species.slice(1);
+        return {
+          seedId: `scattered-mixed-${config.species}-${location.areaId}-${idOffset}`,
+          kind: "ambient_livestock" as const,
+          entityId: entityIdFromOffset(idOffset),
+          idOffset,
+          displayName: `${location.areaLabel} ${speciesName} ${localIndex + 1}`,
+          areaId: location.areaId,
+          areaLabel: location.areaLabel,
+          position: guardedWildlifePosition(
+            location,
+            localIndex,
+            speciesOrder.length
+          ),
+          orientation: [0, 0] as Vec2,
+          dialog: config.dialog,
+          description: `A ${config.displayName.toLowerCase()} grazes in ${
+            location.areaLabel
+          } beside a Mucker and Hex pack.`,
+          combatKind: "mux" as const,
+          combatLevel: 1,
+          combatHp: config.combatHp,
+          species: config.species,
+          sizeTier: config.sizeTier,
+          meatUnits: config.meatUnits,
+          attackDamage: config.attackDamage,
+          killXp: config.killXp,
+        } satisfies HarthmereLiveEntityProductionSeed;
+      });
+    }
+  );
+
+export const HARTHMERE_LIVE_ENTITY_SCATTERED_MIXED_MONSTER_SEEDS =
+  HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS.filter((seed) =>
+    HARTHMERE_LIVE_ENTITY_SCATTERED_MIXED_GROUP_LOCATIONS.some(
+      (location) => location.areaId === seed.areaId
+    )
+  );
+
 export const HARTHMERE_LIVE_ENTITY_OPEN_WILDS_MIXED_MONSTER_SEEDS =
   HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS.filter((seed) =>
     HARTHMERE_LIVE_ENTITY_OPEN_WILDS_MIXED_GROUP_LOCATIONS.some(
@@ -1025,9 +1205,61 @@ export const HARTHMERE_LIVE_ENTITY_TOWN_LIVESTOCK_SEEDS: HarthmereLiveEntityProd
     );
   });
 
+// HARTHMERE_FOREST_WILDLIFE: 20 rabbits, 10 sheep and 5 cows scattered through
+// the wilds forest outside town.
+//
+// Grounding is trivial here and that is the point: the additive extension is
+// dead flat at HARTHMERE_EXTENSION_FEET_Y, so there is no hill to bury or float
+// an animal on. The hard part was the horizontal placement — every position
+// comes from harthmereForestWildlifePlacements(), which rejects any column that
+// is inside a trunk or bush, has no trees nearby, or sits in the town, on a
+// road, or in a muck patch. Treated as town livestock by
+// harthmereLiveEntityIsTownLivestock so grounding preserves the authored
+// position rather than dragging it to the muck floor.
+export const HARTHMERE_LIVE_ENTITY_FOREST_WILDLIFE_SEEDS: HarthmereLiveEntityProductionSeed[] =
+  harthmereForestWildlifePlacements().map((placement) => {
+    const config = HARTHMERE_LIVE_ENTITY_LIVESTOCK_SPECIES.find(
+      (candidate) => candidate.species === placement.species
+    )!;
+    const idOffset =
+      HARTHMERE_LIVE_ENTITY_FOREST_WILDLIFE_FIRST_OFFSET + placement.index;
+    const speciesName =
+      placement.species[0].toUpperCase() + placement.species.slice(1);
+    return {
+      seedId: `harthmere_town_forest-wildlife-${placement.species}-${idOffset}`,
+      kind: "ambient_livestock" as const,
+      entityId: entityIdFromOffset(idOffset),
+      idOffset,
+      displayName: `Harthmere Forest ${speciesName} ${placement.index + 1}`,
+      areaId: "harthmere_town_wilds_forest",
+      areaLabel: "Harthmere Wilds Forest",
+      position: normalizeHarthmereExtensionOutdoorFeetPosition(
+        shiftHarthmereAuthoredPositionToWorld([
+          placement.authoredX,
+          HARTHMERE_EXTENSION_FEET_Y,
+          placement.authoredZ,
+        ]),
+        2
+      ),
+      orientation: [0, 0] as Vec2,
+      dialog: config.dialog,
+      description: `A ${config.displayName.toLowerCase()} browses among the trees of the Harthmere wilds forest.`,
+      combatKind: "mux" as const,
+      combatLevel: 1,
+      combatHp: config.combatHp,
+      species: config.species,
+      sizeTier: config.sizeTier,
+      meatUnits: config.meatUnits,
+      attackDamage: config.attackDamage,
+      killXp: config.killXp,
+    } satisfies HarthmereLiveEntityProductionSeed;
+  });
+
 export const HARTHMERE_LIVE_ENTITY_LIVESTOCK_SEEDS = [
   ...HARTHMERE_LIVE_ENTITY_MUCK_WILDLIFE_SEEDS,
   ...HARTHMERE_LIVE_ENTITY_OPEN_WILDS_MIXED_ANIMAL_SEEDS,
+  ...HARTHMERE_LIVE_ENTITY_SCATTERED_MIXED_ANIMAL_SEEDS,
+  ...HARTHMERE_LIVE_ENTITY_FOREST_WILDLIFE_SEEDS,
   ...HARTHMERE_LIVE_ENTITY_TOWN_LIVESTOCK_SEEDS,
 ];
 
@@ -1097,8 +1329,16 @@ export function harthmereLiveEntityIsGuardedWildlife(
 export function harthmereLiveEntityIsOpenWildsMixedGroup(
   seed: HarthmereLiveEntityProductionSeed
 ): boolean {
-  return HARTHMERE_LIVE_ENTITY_OPEN_WILDS_MIXED_GROUP_LOCATIONS.some(
-    (location) => location.areaId === seed.areaId
+  return (
+    HARTHMERE_LIVE_ENTITY_OPEN_WILDS_MIXED_GROUP_LOCATIONS.some(
+      (location) => location.areaId === seed.areaId
+    ) ||
+    // The scattered groups share every rule of the open-wilds groups: authored
+    // position preserved (no muck-floor flattening), and the same validity gate
+    // applied at grounding time.
+    HARTHMERE_LIVE_ENTITY_SCATTERED_MIXED_GROUP_LOCATIONS.some(
+      (location) => location.areaId === seed.areaId
+    )
   );
 }
 

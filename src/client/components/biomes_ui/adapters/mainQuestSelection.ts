@@ -3,6 +3,8 @@ import { nativeRobotStoryQuestOrder } from "@/shared/harthmere/native_road_ahead
 
 export const BIOMES_UI_MAIN_QUEST_STORAGE_KEY = "biomes_ui_main_quest";
 export const BIOMES_UI_MAIN_QUEST_EVENT = "biomes-ui-main-quest";
+const BIOMES_UI_MAIN_QUEST_CLEARED_ID = "__biomes_ui_main_quest_cleared__";
+const BIOMES_UI_MAIN_QUEST_CLEARED_TITLE = "No tracked quest";
 
 export interface BiomesUIMainQuestSelection {
   questId: string;
@@ -10,6 +12,29 @@ export interface BiomesUIMainQuestSelection {
   firstMarkerId?: string;
   objective?: string;
   setAtMs: number;
+}
+
+/**
+ * A missing storage entry means "the player has never chosen", which is when
+ * the onboarding story should be selected automatically. The old clear action
+ * removed that entry, so the next render immediately selected Busted again.
+ * Persist this private sentinel to distinguish the player's explicit clear
+ * from the initial default without introducing a second drifting storage key.
+ */
+export function biomesUIMainQuestClearedSelectionForTest(
+  nowMs = Date.now()
+): BiomesUIMainQuestSelection {
+  return {
+    questId: BIOMES_UI_MAIN_QUEST_CLEARED_ID,
+    title: BIOMES_UI_MAIN_QUEST_CLEARED_TITLE,
+    setAtMs: nowMs,
+  };
+}
+
+export function isBiomesUIMainQuestClearedSelection(
+  selection: BiomesUIMainQuestSelection | undefined
+): boolean {
+  return selection?.questId === BIOMES_UI_MAIN_QUEST_CLEARED_ID;
 }
 
 function cleanText(value: unknown): string | undefined {
@@ -59,6 +84,7 @@ export function mainQuestFromTrackableQuestsForTest(
   quests: MapTrackableQuest[],
   selection: BiomesUIMainQuestSelection | undefined
 ): MapTrackableQuest | undefined {
+  if (isBiomesUIMainQuestClearedSelection(selection)) return undefined;
   if (!selection) return defaultMainQuestFromTrackableQuestsForTest(quests);
   const quest = quests.find((entry) => entry.questId === selection.questId);
   if (!quest || quest.status === "completed" || quest.status === "failed") {
@@ -147,20 +173,18 @@ export function writeBiomesUIMainQuestSelection(
   selection: BiomesUIMainQuestSelection | undefined
 ): void {
   if (typeof window === "undefined") return;
+  const storedSelection =
+    selection ?? biomesUIMainQuestClearedSelectionForTest();
   try {
-    if (selection) {
-      window.localStorage?.setItem(
-        BIOMES_UI_MAIN_QUEST_STORAGE_KEY,
-        JSON.stringify(selection)
-      );
-    } else {
-      window.localStorage?.removeItem(BIOMES_UI_MAIN_QUEST_STORAGE_KEY);
-    }
+    window.localStorage?.setItem(
+      BIOMES_UI_MAIN_QUEST_STORAGE_KEY,
+      JSON.stringify(storedSelection)
+    );
   } catch {
     // In-memory UI state still updates when localStorage is unavailable.
   }
   window.dispatchEvent(
-    new CustomEvent(BIOMES_UI_MAIN_QUEST_EVENT, { detail: selection })
+    new CustomEvent(BIOMES_UI_MAIN_QUEST_EVENT, { detail: storedSelection })
   );
 }
 

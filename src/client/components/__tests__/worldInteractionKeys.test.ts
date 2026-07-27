@@ -80,5 +80,15 @@ describe("world interaction F/E keys", () => {
       1,
       "the Grove tracker should only render inside the opened map panel"
     );
+
+    const biomesUiSource = fs.readFileSync(
+      path.join(ROOT, "src/client/components/biomes_ui/BiomesUI.tsx"),
+      "utf8"
+    );
+    assert.match(
+      biomesUiSource,
+      /contextualQuestPanel=\{<SnapshotGroveMapHUD \/>\}/,
+      "the production BiomesUI map must expose Grove contextual actions"
+    );
   });
 });

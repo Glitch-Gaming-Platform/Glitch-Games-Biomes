@@ -393,6 +393,27 @@ export function snapshotGrovePracticeItemFixtureForObjective(
   if (/bright berr|berries|berry/.test(text)) {
     return { itemId: "wild_berries", quantity: 1, label: "Bright Berries" };
   }
+  if (/fresh paint|painted route flags?|route flags?/.test(text)) {
+    // Paint is represented by a placeable practice marker block so the lesson
+    // can exercise the real voxel-placement path instead of granting a
+    // non-placeable cosmetic or silently leaving the objective impossible.
+    return {
+      itemId: "rough_stone",
+      quantity: 1,
+      label: "Painted Route Marker",
+    };
+  }
+  if (/loaves?|bread/.test(text)) {
+    // The current native tray has no independently placeable bread biscuit.
+    // Give the delivery a placeable sealed token so the player can perform the
+    // authored voxel action at the satchel instead of receiving a food item
+    // that can only be eaten and can never complete the delivery objective.
+    return {
+      itemId: "rough_stone",
+      quantity: 1,
+      label: "Sealed Warm-Loaf Delivery",
+    };
+  }
   if (/ration|food|snack|eat/.test(text)) {
     return { itemId: "road_ration", quantity: 1, label: "Road Ration" };
   }

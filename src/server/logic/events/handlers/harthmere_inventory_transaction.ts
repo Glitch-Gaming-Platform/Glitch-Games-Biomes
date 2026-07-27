@@ -142,7 +142,20 @@ export const harthmereInventoryTransactionEventHandler = makeEventHandler(
         throw new RollbackError("Not enough gold");
       }
       player.inventory.takeOrThrow(event.take);
-      player.inventory.giveWithInventoryOverflow(event.give);
+      // HARTHMERE_PAID_GRANT_NEVER_OVERFLOWS (2026-07-26): the player is paying
+      // for this bag. `giveWithInventoryOverflow` diverts anything it cannot
+      // slot into `inventory.overflow`, which the Harthmere live-mode reader
+      // does not project (it reads `inventory.items` + `inventory.hotbar`), so
+      // the next Redis rebase erased the item while the gold debit stayed
+      // committed — a vendor purchase that charged and delivered nothing.
+      // Rolling back keeps the wallet honest and surfaces `inventory_full` to
+      // the store UI. Unpaid grants (loot, quest rewards) still overflow so a
+      // reward is never destroyed by a full backpack.
+      if (event.gold_delta < 0n) {
+        player.inventory.giveOrThrow(event.give);
+      } else {
+        player.inventory.giveWithInventoryOverflow(event.give);
+      }
       if (event.gold_delta > 0n) {
         player.inventory.giveCurrency(BikkieIds.bling, event.gold_delta);
       }

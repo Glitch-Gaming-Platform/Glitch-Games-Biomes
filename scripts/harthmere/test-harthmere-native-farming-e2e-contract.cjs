@@ -53,6 +53,9 @@ for (const proof of [
   "grown crop returns to JavaScript farming journal",
   "grown crop returns to JavaScript My Crops map layer",
   "native hoe permanently completes JavaScript farming guide",
+  "bought Hoe reaches native backpack without overflow",
+  "bought Hoe can be assigned to native hotbar",
+  "bought Hoe can be selected for tilling",
   "Gaia harvest materializes native drop",
 ]) {
   assert(runner.includes(proof), `missing farming proof: ${proof}`);
@@ -61,6 +64,7 @@ assert(bridge.includes("findTillableVoxelNear"));
 assert(bridge.includes("farmingFrontendSnapshot"));
 assert(bridge.includes("farmingMapFrontendSnapshot"));
 assert(bridge.includes("farmingHoeQuestSnapshot"));
+assert(bridge.includes("vendorPurchase"));
 assert(bridge.includes("harthmereNativeCropMapLandmarks"));
 assert(bridge.includes("reconcileHarthmereHoeQuestState"));
 assert(farmingMapQuest.includes("shiftHarthmereAuthoredPositionToWorld"));

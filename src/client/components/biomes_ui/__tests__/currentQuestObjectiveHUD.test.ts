@@ -1,6 +1,9 @@
 import assert from "assert";
 import { currentQuestObjectiveForHUDForTest } from "../CurrentQuestObjectiveHUD";
-import { biomesUIMainQuestSelectionFromQuestForTest } from "../adapters/mainQuestSelection";
+import {
+  biomesUIMainQuestClearedSelectionForTest,
+  biomesUIMainQuestSelectionFromQuestForTest,
+} from "../adapters/mainQuestSelection";
 import type { MapTrackableQuest } from "../tabs/MapQuestsTab";
 
 describe("CurrentQuestObjectiveHUD", () => {
@@ -60,6 +63,24 @@ describe("CurrentQuestObjectiveHUD", () => {
       currentQuestObjectiveForHUDForTest({
         quests: [quest],
         mainQuestSelection: selection,
+      }),
+      undefined
+    );
+  });
+
+  it("hides automatic story guidance after the player stops tracking quests", () => {
+    const busted: MapTrackableQuest = {
+      questId: "7405046529843322",
+      title: "Busted",
+      area: "Biomes",
+      status: "active",
+      objective: "Talk to Jackie",
+    };
+
+    assert.equal(
+      currentQuestObjectiveForHUDForTest({
+        quests: [busted],
+        mainQuestSelection: biomesUIMainQuestClearedSelectionForTest(),
       }),
       undefined
     );

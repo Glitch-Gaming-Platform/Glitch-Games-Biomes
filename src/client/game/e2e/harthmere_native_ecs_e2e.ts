@@ -177,6 +177,12 @@ export interface HarthmereNativeEcsE2EBridge {
   farmingHoeQuestSnapshot(
     operation: "read" | "reset" | "accept" | "reconcile"
   ): Promise<unknown>;
+  vendorPurchase(input: {
+    offset: number;
+    itemId: string;
+    quantity: number;
+    reason?: string;
+  }): Promise<unknown>;
   findTillableVoxelNear(
     origin: readonly [number, number, number],
     radius?: number
@@ -441,6 +447,17 @@ export function installHarthmereNativeEcsE2E(
         plants: model.plants,
         markers: farmingMapQuest.harthmereNativeCropMapLandmarks(model),
       };
+    },
+    vendorPurchase: async (input) => {
+      const { submitHarthmereVendorPurchaseToLiveModeForTest } = await import(
+        "@/client/components/challenges/LocalDevHarthmereInventorySystem"
+      );
+      return submitHarthmereVendorPurchaseToLiveModeForTest(
+        input.offset,
+        input.itemId,
+        input.quantity,
+        input.reason ?? "Native ECS browser E2E vendor purchase"
+      );
     },
     nativeQuestFrontendSnapshot: async () => {
       const [nativeAdapter, mainQuestSelection] = await Promise.all([

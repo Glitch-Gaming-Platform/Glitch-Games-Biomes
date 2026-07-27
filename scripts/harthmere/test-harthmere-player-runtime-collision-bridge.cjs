@@ -81,6 +81,16 @@ check(
 );
 
 check(
+  "purple dungeon and town barriers are fed into player collision",
+  player.includes("HARTHMERE_PURPLE_BARRIER_PLAYER_COLLISION") &&
+    player.includes("ch1ElsewhenSlotAt([centerX, 0, centerZ])") &&
+    player.includes("ch1HorizonBoundarySlabs(") &&
+    player.includes("harthmereTownBackBoundarySlabs([") &&
+    player.includes("collisionFilter(collisionAabb)"),
+  "Expected both dungeon boxes and Harthmere's east/back wall to reach player physics"
+);
+
+check(
   "collision enablement is based on exported obstacles, not build mode",
   obstacleGetter.includes("__harthmereNpcCollisionObstacles") &&
     !/process\.env\.NODE_ENV/.test(obstacleGetter),

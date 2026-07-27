@@ -19,6 +19,7 @@ import {
   readHarthmereNativeCombatProgression,
   writeHarthmereNativeCombatProgression,
 } from "@/shared/harthmere/harthmere_native_combat";
+import { syncHarthmereNativeLevelStats } from "@/shared/harthmere/harthmere_native_level_stats";
 import {
   harthmereNativeBiomesIdForItemId,
   harthmereNativeBiomesIdForRecipeId,
@@ -469,6 +470,10 @@ export default biomesApiHandler(
             migrationVersion: HARTHMERE_NATIVE_COMBAT_MIGRATION_VERSION,
           })
         : current;
+      // Re-derive every level-owned stat on login as well as on XP awards. This
+      // repairs older saves immediately and expands newly earned backpack slots
+      // without waiting for the next kill or quest step.
+      syncHarthmereNativeLevelStats(player);
       return {
         ok: true,
         migrated: combatNeedsMigration || vitalsNeedMigration,

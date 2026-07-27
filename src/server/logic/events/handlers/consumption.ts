@@ -7,6 +7,8 @@ import { secondsSinceEpoch } from "@/shared/ecs/config";
 import { buffExpirationTime, buffTimeRemaining } from "@/shared/game/buffs";
 import { countOf } from "@/shared/game/items";
 import { isEqual, minBy } from "lodash";
+import { readHarthmereNativeCombatProgression } from "@/shared/harthmere/harthmere_native_combat";
+import { harthmereNativeHealingAmount } from "@/shared/harthmere/harthmere_native_level_stats";
 import {
   applyHarthmereNativeConsumableToVitals,
   harthmereNativeConsumableProfile,
@@ -69,9 +71,12 @@ export const consumptionEventHandler = makeEventHandler("consumptionEvent", {
       Number(slot.item.givesHealth ?? harthmereProfile?.healthRestore ?? 0) || 0
     );
     if (healthRestore > 0) {
+      const progression = readHarthmereNativeCombatProgression(
+        player.triggerState()
+      );
       modifyPlayerHealth(
         player,
-        healthRestore,
+        harthmereNativeHealingAmount(progression.level, healthRestore),
         {
           kind: "heal",
         },

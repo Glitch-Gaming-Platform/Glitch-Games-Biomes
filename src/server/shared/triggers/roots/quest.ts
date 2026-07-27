@@ -20,6 +20,8 @@ import {
   isNativeRobotStoryAutoContinuationQuestId,
   nativeRobotStoryPredecessorQuestId,
 } from "@/shared/harthmere/native_road_ahead_contract";
+import { awardHarthmereNativeQuestCompletionXp } from "@/shared/harthmere/harthmere_native_quest_xp_award";
+import { log } from "@/shared/logging";
 
 export class QuestExecutor extends RootExecutor {
   constructor(
@@ -166,6 +168,35 @@ export class QuestExecutor extends RootExecutor {
           questId: this.id,
         },
       });
+
+      // HARTHMERE_NATIVE_QUEST_STEP_XP: one-time chapter bonus on top of the
+      // per-step awards paid by BaseTrigger. Placed on the `completed`
+      // transition (not on the final leaf) so it survives quests whose last
+      // node is an aggregate, and so the item rewards and the progression
+      // reward land in the same ECS transaction.
+      //
+      // Repeatable quests re-enter `available` immediately below and clear
+      // their trigger root, so the reward table restricts this to the four
+      // one-shot onboarding chapters rather than trusting the caller.
+      try {
+        const progression = awardHarthmereNativeQuestCompletionXp(
+          context.entity,
+          this.id
+        );
+        if (progression?.leveledUp) {
+          context.publish({
+            kind: "skillLevelUp",
+            entityId: context.entity.id,
+            skill: "character_level",
+            level: progression.levelAfter,
+          });
+        }
+      } catch (error: any) {
+        log.warn("Failed to award native quest completion XP", {
+          error,
+          questId: this.id,
+        });
+      }
 
       // Award rewards
       giveRewardsFromTriggerContext({ context, bag: this.rewards });

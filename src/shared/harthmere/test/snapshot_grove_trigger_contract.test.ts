@@ -6,9 +6,12 @@
 
 import assert from "assert";
 import {
+  SNAPSHOT_GROVE_LANDMARKS,
+  SNAPSHOT_GROVE_NPCS,
   SNAPSHOT_GROVE_QUESTS,
   type SnapshotGroveTrigger,
 } from "@/shared/harthmere/snapshot_grove_content";
+import { HARTHMERE_NATIVE_QUEST_GIVER_MANIFEST } from "@/shared/harthmere/harthmere_native_quest_manifest";
 import {
   HARTHMERE_LOCAL_DEV_ITEM_USE_EVENT,
   SNAPSHOT_GROVE_TRIGGER_COMPLETION_EVENTS,
@@ -66,6 +69,12 @@ function collectRows() {
   return allGroveObjectiveRows().filter((row) => row.trigger === "collect");
 }
 
+function placementRows() {
+  return allGroveObjectiveRows().filter(
+    (row) => row.trigger === "place_voxel"
+  );
+}
+
 const WRONG_ITEM_BY_FAMILY: Record<string, Record<string, string>> = {
   food: { itemId: "iron_key_blank", itemName: "Practice Key", subtype: "key" },
   healing: { itemId: "road_ration", itemName: "Road Ration", subtype: "food" },
@@ -88,6 +97,27 @@ if (
   typeof (test as any) === "function"
 ) {
   (describe as any)("Snapshot Grove tutorial trigger contract current", () => {
+    (test as any)(
+      "every Grove talk target resolves to a Grove or native Harthmere NPC",
+      () => {
+        const knownNpcIds = new Set([
+          ...SNAPSHOT_GROVE_NPCS.map((npc) => npc.id),
+          ...Object.keys(HARTHMERE_NATIVE_QUEST_GIVER_MANIFEST),
+        ]);
+        for (const quest of SNAPSHOT_GROVE_QUESTS) {
+          (expect as any)(knownNpcIds.has(quest.giverNpcId)).toBe(true);
+          for (const markerId of quest.markerIds) {
+            const marker = SNAPSHOT_GROVE_LANDMARKS.find(
+              (candidate) => candidate.id === markerId
+            );
+            if (marker?.npcId) {
+              (expect as any)(knownNpcIds.has(marker.npcId)).toBe(true);
+            }
+          }
+        }
+      }
+    );
+
     const report = validateSnapshotGroveTriggerContracts(SNAPSHOT_GROVE_QUESTS);
 
     (test as any)(
@@ -231,19 +261,52 @@ if (
     );
 
     (test as any)(
-      "voxel-placement lessons grant the exact practice material",
+      "every voxel-placement lesson grants an authored placeable material",
       () => {
-        const quest = SNAPSHOT_GROVE_QUESTS.find(
-          (entry) => entry.id === "tools_before_treasure"
+        for (const row of placementRows()) {
+          const fixture = snapshotGroveObjectiveCompletionFixture(
+            row.quest,
+            row.objectiveIndex
+          );
+          const grant = snapshotGroveTutorialInventoryGrantsForQuest(
+            row.quest
+          ).find((entry) =>
+            entry.objectiveIndexes.includes(row.objectiveIndex)
+          );
+          (expect as any)(fixture?.kind).toBe("place_voxel");
+          (expect as any)(grant?.itemId).toBeTruthy();
+          (expect as any)(grant?.quantity).toBeGreaterThanOrEqual(1);
+          // One starter stack can satisfy more than one objective (the hotbar
+          // lesson first holds and then drops the same stone), so its summary
+          // keeps the first trigger. Membership in objectiveIndexes is the
+          // authoritative proof that this placement step receives the grant.
+          (expect as any)(grant?.objectiveIndexes.includes(row.objectiveIndex)).toBe(
+            true
+          );
+        }
+
+        const paintedRouteQuest = SNAPSHOT_GROVE_QUESTS.find(
+          (entry) => entry.id === "color_that_still_points_home"
         )!;
-        const fixture = snapshotGroveObjectiveCompletionFixture(quest, 3);
-        const grant = snapshotGroveTutorialInventoryGrantsForQuest(quest).find(
-          (entry) => entry.objectiveIndexes.includes(3)
-        );
-        (expect as any)(fixture?.kind).toBe("place_voxel");
-        (expect as any)(grant?.itemId).toBe("rough_stone");
-        (expect as any)(grant?.quantity).toBe(1);
-        (expect as any)(grant?.trigger).toBe("place_voxel");
+        const paintedRouteGrant =
+          snapshotGroveTutorialInventoryGrantsForQuest(
+            paintedRouteQuest
+          ).find((entry) => entry.objectiveIndexes.includes(3));
+        // The route-flag objective must use a native placeable block, not its
+        // cosmetic completion reward, which cannot drive a voxel event.
+        (expect as any)(paintedRouteGrant?.itemId).toBe("rough_stone");
+
+        const freshLoavesQuest = SNAPSHOT_GROVE_QUESTS.find(
+          (entry) => entry.id === "econ_gus_fresh_loaves_to_fountain"
+        )!;
+        const freshLoavesGrant =
+          snapshotGroveTutorialInventoryGrantsForQuest(
+            freshLoavesQuest
+          ).find((entry) => entry.objectiveIndexes.includes(2));
+        // Bread is edible, not placeable. The delivery step therefore grants
+        // a sealed placeable token rather than stranding the player with an
+        // inventory item that can never emit the required voxel event.
+        (expect as any)(freshLoavesGrant?.itemId).toBe("rough_stone");
       }
     );
 

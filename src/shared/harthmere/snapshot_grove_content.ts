@@ -39,6 +39,27 @@ export const SNAPSHOT_GROVE_BIBLE_CONTENT_VERSION =
 export const SNAPSHOT_GROVE_NPC_GROUNDING_VERSION =
   "snapshot-grove-npc-grounding";
 
+// SNAPSHOT_GROVE_FOUNTAIN_TUTORIAL_IDS:
+// Graduation, NPC offer ordering, browser fixtures, and journal grouping must
+// all count the exact same fountain lessons. Keep this list in shared content
+// instead of reconstructing it from optional categories, because older Grove
+// quests intentionally have no category and are not graduation prerequisites.
+export const SNAPSHOT_GROVE_FOUNTAIN_TUTORIAL_QUEST_IDS = [
+  "fountain_buttons_first",
+  "painted_path_language",
+  "road_ready_bag_check",
+  "tools_before_treasure",
+  "safe_sparring_not_pvp",
+  "ready_check_at_fountain",
+  "lost_found_and_mail",
+  "fountain_chat_channels",
+  "fountain_food_keeps_you_moving",
+  "fountain_first_aid_before_road",
+  "fountain_hotbar_and_dropping",
+  "fountain_first_recipe_torch",
+  "fountain_trade_table_promises",
+] as const;
+
 // The authored snapshot bible used y=52/53, but the installed production
 // snapshot terrain that the browser actually loads places the visible Grove
 // courtyard around y=69/70. The broken-courtyard logs showed the player at

@@ -19,6 +19,7 @@ import {
   harthmereNativeItemIdForBiomesId,
 } from "@/shared/harthmere/harthmere_native_item_ids";
 import { allHarthmereNativeNpcCombatProfiles } from "@/shared/harthmere/harthmere_native_combat_catalog";
+import { listHarthmereProductionVendorEntries } from "@/shared/harthmere/harthmere_vendor_catalog";
 import { HARTHMERE_FOOD_DEFINITIONS } from "@/shared/harthmere/mmo_farming_food_stamina";
 import { HARTHMERE_MEDICAL_ITEM_DEFINITIONS } from "@/shared/harthmere/mmo_medical_health";
 import {
@@ -470,6 +471,97 @@ describe("Harthmere exact native Bikkie overlay", function () {
     assert.equal(wateringCan?.isTool, true);
     assert.equal(wateringCan?.action, "waterPlant");
     assert.ok((wateringCan?.waterAmount ?? 0) >= 1);
+  });
+
+  // HARTHMERE_NATIVE_STORABLE_IDENTITY: `maxInventoryStack` is
+  // `item.stackable || 0n`, so a biscuit published without `stackable` can
+  // never occupy an inventory slot. The native transaction handler then routes
+  // the whole grant into the ECS overflow bag, which live mode does not
+  // project — the item vanishes on the next Redis rebase while the gold debit
+  // stays committed. This is precisely how a bought Hoe charged 22 gold and
+  // delivered nothing.
+  it("keeps every published Harthmere item physically storable", () => {
+    const augmented = withHarthmereNativeBikkieItems(tray());
+    const unstorable: string[] = [];
+    for (const definition of ensureHarthmereNativeItemCatalogue()) {
+      const id = harthmereNativeBiomesIdForItemId(definition.itemId);
+      if (id === undefined) continue;
+      const biscuit = augmented.contents.get(id);
+      if (!biscuit) continue;
+      if ((biscuit.stackable ?? 0n) <= 0n) {
+        unstorable.push(`${definition.itemId} (${id})`);
+      }
+    }
+    assert.deepEqual(unstorable, []);
+  });
+
+  // A vendor purchase is atomic in ECS: gold out, item in. If the item cannot
+  // occupy an inventory slot the player pays and receives nothing, so every
+  // sellable listing must resolve to a storable biscuit.
+  it("keeps every vendor-sellable item storable", () => {
+    const augmented = withHarthmereNativeBikkieItems(tray());
+    const unsellable = new Set<string>();
+    for (const entry of listHarthmereProductionVendorEntries()) {
+      const id = harthmereNativeBiomesIdForItemId(entry.itemId);
+      if (id === undefined) continue;
+      const biscuit = augmented.contents.get(id);
+      if (!biscuit) continue;
+      if ((biscuit.stackable ?? 0n) <= 0n) {
+        unsellable.add(`${entry.itemId} (${id})`);
+      }
+    }
+    assert.deepEqual([...unsellable], []);
+  });
+
+  it("repairs a sparse snapshot biscuit that a farming tool binds to", () => {
+    // The live tray carried exactly this record for the Hoe: a name and
+    // nothing else. The overlay used to merge only {isTool, action,
+    // hardnessClass} on top of it and publish a stack-size-zero item.
+    const sparseHoe = {
+      id: harthmereNativeBiomesIdForItemId("7539420629350046")!,
+      name: "harthmere_7539420629350046",
+    } as Biscuit;
+    const augmented = withHarthmereNativeBikkieItems(
+      tray(new Map([[Number(sparseHoe.id), sparseHoe]]))
+    );
+    const hoe = augmented.contents.get(sparseHoe.id);
+    assert.ok(hoe, "hoe biscuit is published");
+    assert.ok(
+      (hoe?.stackable ?? 0n) > 0n,
+      `hoe must be storable, got stackable=${hoe?.stackable}`
+    );
+    assert.equal(hoe?.isDroppable, true);
+    assert.ok(hoe?.displayName);
+    assert.equal(hoe?.isTool, true);
+    assert.equal(hoe?.action, "till");
+  });
+
+  it("borrows the authored Wooden Hoe art for the vendor Hoe", () => {
+    const woodenHoe = {
+      id: 1_534_621_126_189_388 as BiomesId,
+      name: "woodenHoe",
+      displayName: "Wooden Hoe",
+      stackable: 1n,
+      isDroppable: true,
+      galoisPath: "items/wooden_hoe",
+    } as unknown as Biscuit;
+    const sparseHoe = {
+      id: harthmereNativeBiomesIdForItemId("7539420629350046")!,
+      name: "harthmere_7539420629350046",
+    } as Biscuit;
+    const augmented = withHarthmereNativeBikkieItems(
+      tray(
+        new Map([
+          [Number(woodenHoe.id), woodenHoe],
+          [Number(sparseHoe.id), sparseHoe],
+        ])
+      )
+    );
+    const hoe = augmented.contents.get(sparseHoe.id);
+    assert.equal(hoe?.galoisPath, "items/wooden_hoe");
+    // Borrowing art must never rewrite the donor or the tool's own action.
+    assert.equal(hoe?.action, "till");
+    assert.equal(augmented.contents.get(woodenHoe.id)?.action, undefined);
   });
 
   it("copies only presentation assets while preserving exact wearable ids", () => {

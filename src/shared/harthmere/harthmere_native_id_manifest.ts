@@ -1137,6 +1137,11 @@ export const HARTHMERE_NATIVE_NPC_ID_MANIFEST = {
   // clean snapshot-backed server boot.
   monster_open_wilds_mucker: id(8722087466111624),
   monster_open_wilds_hex: id(8722087466111625),
+  // The six scattered mixed encounters added 2026-07-26. Same reasoning as the
+  // open-wilds pair above: all six groups share one monster name so they share
+  // one checked-in type identity each.
+  monster_wilds_pack_mucker: id(8722087466111626),
+  monster_wilds_pack_hex: id(8722087466111627),
   bandit_scout: id(8722087466111630),
   bandit_archer: id(8722087466111631),
   bandit_skirmisher: id(8722087466111632),

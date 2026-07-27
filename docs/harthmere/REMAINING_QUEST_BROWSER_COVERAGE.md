@@ -4,6 +4,50 @@ This document is the catalog checklist for production-shaped browser testing.
 It exists so a future pass enumerates the whole authored catalog first, runs
 independent rows in batches, and does not stop after the first failure.
 
+## July 26, 2026 wrap: Grove paused; Bible catalog started
+
+The user explicitly moved browser execution off Snapshot Grove before its
+remaining retries were closed. Preserve all Grove reports from
+`1785094439045-14879-report.json` through
+`1785105634711-14351-report.json`; do not replay their completed rows. The
+current report campaign contains 22 unambiguous full quest completions,
+including the successful retries for `songline_under_the_lawn` and
+`cove_keeps_pictures`. These ten IDs still need a failure-only Grove rerun if
+that catalog is resumed:
+
+- `letter_for_the_north_gate`
+- `antlers_for_the_watch`
+- `tone_beneath_the_road`
+- `fountain_trade_table_promises`
+- `grove_road_graduation`
+- `econ_billys_map_pin_run`
+- `econ_gus_fresh_loaves_to_fountain`
+- `econ_fern_water_the_sprout_beds`
+- `econ_kit_heavy_parcel_to_crossroads`
+- `econ_mel_broken_hinge_hunt`
+
+The Fresh Loaves placeable-item contract and Grove graduation prerequisite
+fixture are patched and contract-tested, but remain on that browser retry list.
+
+The 76-row Bible catalog then started on the existing warm stack, with no
+rebuild. No Bible row is yet a retained pass. The interrupted reports are:
+
+- `1785106199829-19870-report.json`: `bellbound_q01_cracks_in_bridge` exposed
+  the shared placeholder-Y movement defect.
+- `1785106826493-26381-report.json`: movement advanced past that defect;
+  `bellbound_q01_cracks_in_bridge` then hit a transient live-state read timeout,
+  and `bellbound_q02_whispers_at_well` exposed a dialogue-action mismatch.
+  `bellbound_q02_5_rat_girl_knows` closed only because the run was interrupted
+  and is not a product failure.
+
+The host-side browser runner now treats authored marker `Y=0` as unresolved,
+lets the production teleport hook choose its grounded height, and publishes
+that exact accepted pose to ECS. It also retries the read-only Bible snapshot
+refresh on `harthmere_live_fetch_timeout`. Both runner changes pass syntax and
+diff checks but were not browser-reverified before this wrap. Resume with one
+group containing the first eight Bible IDs; after it passes, continue the other
+nine groups and rerun only genuine failures.
+
 ## July 25, 2026 final wrap: client catalog closed, Grove/Bible remain
 
 Do not repeat the 11 client compatibility quests. Every ID now has retained

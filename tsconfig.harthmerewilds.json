@@ -1,8 +1,8 @@
 // HARTHMERE_WILDS_AND_INTERIORS_TYPECHECK
 //
-// Scoped typecheck for the forest, the authored building table, and the
-// interior furnishing generator, plus their tests. All pure data and maths with
-// no client or server imports, so this finishes in a couple of seconds:
+// Scoped typecheck for the forest, the authored building table, the interior
+// furnishing generator and the new wildlife spawn families, plus their tests.
+// All pure data and maths, so this finishes in seconds:
 //
 //   node_modules/.bin/tsc -p tsconfig.harthmerewilds.json
 //
@@ -15,9 +15,11 @@
     "src/shared/harthmere/harthmere_wilds_forest.ts",
     "src/shared/harthmere/harthmere_town_buildings.ts",
     "src/shared/harthmere/harthmere_building_interiors.ts",
+    "src/shared/harthmere/harthmere_forest_wildlife.ts",
     "src/shared/harthmere/harthmere_horizon_noise.ts",
     "src/shared/harthmere/test/harthmere_wilds_forest_gaia.test.ts",
     "src/shared/harthmere/test/harthmere_building_interiors.test.ts",
+    "src/shared/harthmere/test/harthmere_new_wildlife_spawns.test.ts",
     "modules.d.ts"
   ]
 }

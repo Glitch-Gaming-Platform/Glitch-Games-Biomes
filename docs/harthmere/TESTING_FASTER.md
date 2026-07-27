@@ -216,6 +216,13 @@ After stack readiness, wait for the in-page game readiness signal before
 asserting on gameplay; React mounting alone does not prove that ECS resources
 and the route's player or observer streaming authority are ready.
 
+Never point a focused E2E run at the bare site root. `/` is a splash route that
+redirects to `/at` while dropping `syncBaseUrl`, `e2e_run`, and the native-ECS
+flag; the page can look healthy while connecting to remote Sync and waiting
+forever for the local actor hook. The shared runner normalizes `/` to `/at`
+before adding query parameters. Keep that normalization in the harness instead
+of relying on every shell invocation to remember the route suffix.
+
 The unified launcher's listener watchdog is controlled by
 `GLITCH_STACK_TCP_WAIT_TRIES`, not `GLITCH_STACK_HTTP_READY_WAIT_TRIES`.
 Raising only the latter does not protect web startup. A restored 300k+ entity
@@ -312,6 +319,13 @@ consumer-group gates still run before Chromium starts; only the independent
 work is overlapped. Full production rehearsals retain their historical stream-
 worker ordering.
 
+Start focused Web only after Logic RPC is listening. On the July 26 warm-stack
+repair, Logic still had to index 335,834 entities; opening Web earlier cached a
+failed Logic channel and made the first browser page wait several additional
+minutes even though the remaining services were healthy. The focused launcher
+now waits for port 3504 before binding Web. Full production rehearsals retain
+early ingress because their availability contract is different.
+
 The focused Shim starts with `--bootstrapMode empty` and skips its player
 spatial observer. In this topology every gameplay authority already uses
 Redis/HFC, while separate Chat/Notify/OOB processes are intentionally omitted;
@@ -333,6 +347,15 @@ and preserve the Redis container. This avoids rebuilding and loading a
 multi-gigabyte Docker image after every fix. Once the browser campaign is
 green, package those exact validated outputs into one final image; do not make
 an image rebuild part of every browser iteration.
+
+Do not replace or delete the bind-mounted `.next` directory while the app
+container is running. Docker keeps the old directory inode mounted, so a new
+host directory with the same path can look complete to the shell while the
+container still sees an empty or stale tree. Before restarting the warm app,
+verify `.next/BUILD_ID`, `.next/server`, and `.next/static` both on the host and
+through the existing mount. Build or copy contents in place; if the directory
+inode was replaced, recreate only the app container against the finished
+build. Repeated browser reloads cannot repair a stale bind mount.
 
 The July 25 Chapter 1 packaging run measured why this matters. Even with the
 dependency layers cached, Docker transferred a **695.77 MB** build context,
@@ -425,6 +448,16 @@ firehose, and subscription state; July 25 measured a correct 9.5-second warp.
 The 15-second gate adds no delay to faster runs and prevents valid state from
 being rejected by the old 8-second assertion.
 
+Use that same 15-second failure ceiling for deterministic quest-target fixture
+creation. A July 26 warm-stack run delivered a correct target through the same
+admin ECS -> Logic -> Firehose -> Sync -> browser path in 12.16 seconds; the
+former 10-second target gate rejected it before any quest action ran. This is a
+maximum bound, not a fixed sleep, so faster deliveries still continue at once.
+The robot-story batch now applies that ceiling to all origin-sync fixtures,
+including the initial player fixture; leaving the generic one-second gate in
+place caused a correct 1.88-second synchronization to fail before Road Ahead
+started.
+
 Resume seeding marks no-giver quests `in_progress` and giver-backed quests
 `available`, matching their production start contracts. The browser still
 completes every remaining objective through the real prompt and API route; it
@@ -437,6 +470,94 @@ uses a synchronous busy ref so slow production requests cannot overlap and
 double-submit. Reports include the route action, challenge id, and step id so
 a timeout says which authority request failed rather than only saying that a
 button stayed visible.
+
+Storage-container cells are icon-first. Item names appear in hover tooltips,
+not as permanently rendered text, so browser gates must not wait for a label
+such as `T-Shirt` to become visible after the container opens. Assert one
+visible non-empty cell icon per authored item, then prove the exact item ids
+through the authoritative inventory delta. The July 26 Road Ahead failure
+screenshot showed all six correct clothing icons while the obsolete text
+locator waited for two minutes. For the Clothing Crate, do not use Take All as
+the release proof: click-transfer one of the three tops and one of the three
+bottoms, require both choice leaves to fire, and assert the four unchosen
+variants remain in the crate. Billy's single-item toolbag can still use Take
+All.
+
+The BiomesUI backpack follows the same visual pattern but exposes each item as
+an accessible button named with the player-facing label (and optional `xN`
+count). Road Ahead deliberately has three buttons named `T-Shirt` and three
+named `Jeans`, so `.first()` is not a stable selector after Take All. Resolve
+one eligible item from authoritative inventory and select its exact
+`data-inventory-ref="item:<index>"`; then prove that exact ID reached Wearing.
+The quest requires one top and one bottom to be equipped. Keep the separate
+container assertion that all six authored variants are present and transfer,
+but do not equip every cosmetic variant or replay the quest per variant.
+
+If Road Ahead has passed through `Return to Billy with your new clothing`, use
+the checkpoint below for Billy's Toolbag onward. It seeds the exact prior
+trigger leaves plus their 210 XP, so final level/stat assertions remain honest
+without replaying the clothing crate:
+
+```sh
+HARTHMERE_E2E_ROBOT_STORY_EXHAUSTIVE=1 \
+HARTHMERE_E2E_ROBOT_STORY_CHAPTER_ID=6193612340426932 \
+HARTHMERE_E2E_ROAD_AHEAD_TOOLBAG_ONWARD=1 \
+  node scripts/harthmere/test-harthmere-native-ecs-roundtrip-e2e.cjs
+```
+
+Before sending an in-world `F` interaction after a modal/dialogue sequence,
+focus `canvas.biomes-canvas`, the pointer-lock manager's authoritative target.
+Do not use `canvas.first()`; inventory/profile previews can render an earlier
+off-screen Three.js canvas that accepts focus but never receives gameplay
+shortcuts. A visible prompt proves proximity and facing, but
+headless Chromium may still leave keyboard focus on the closed inventory UI.
+The same rule applies after entering Camera mode: refocus the canvas before the
+`F` selfie flip. If the toolbag, pick return, Robot Shell, and Camera reward are
+already green, resume at the selfie with the exact prior 270 XP and required
+inventory instead of replaying them:
+
+```sh
+HARTHMERE_E2E_ROBOT_STORY_EXHAUSTIVE=1 \
+HARTHMERE_E2E_ROBOT_STORY_CHAPTER_ID=6193612340426932 \
+HARTHMERE_E2E_ROAD_AHEAD_SELFIE_ONWARD=1 \
+  node scripts/harthmere/test-harthmere-native-ecs-roundtrip-e2e.cjs
+```
+
+Focused headless mode deliberately removes Pointer Lock. The camera HUD only
+registers its top-priority `F` world-interaction candidate while Pointer Lock is
+held, so a nearby NPC candidate can consume `F` before HotBar's bubble listener
+receives it. The runner attempts the real key for five seconds. Only when it
+also proves `document.exitPointerLock` is absent may it publish the exact
+production `ChangeCameraModeEvent` through the browser event queue. Do not add
+a second global timeout waiting for synchronized `player_behavior`: the
+authoritative quest input is the validated `/api/upload/photo` payload and its
+`postPhoto` firehose event with `cameraMode: "selfie"`. Continue immediately to
+that upload, quest-leaf, XP, and completion proof. Never use this fallback in a
+pointer-lock-capable browser; a real key failure there is a product regression.
+
+After the selfie upload has fired its native photo leaf, use the final-handoff
+checkpoint instead of replaying Camera mode. It carries the proven 285 XP and
+Robot Shell, then runs only Jackie's final handoff, completion bonus, and level
+UI assertions:
+
+```sh
+HARTHMERE_E2E_ROBOT_STORY_EXHAUSTIVE=1 \
+HARTHMERE_E2E_ROBOT_STORY_CHAPTER_ID=6193612340426932 \
+HARTHMERE_E2E_ROAD_AHEAD_FINAL_HANDOFF_ONLY=1 \
+  node scripts/harthmere/test-harthmere-native-ecs-roundtrip-e2e.cjs
+```
+
+Use the visible `Exit Camera` button for no-pointer-lock cleanup. It exercises
+the supported recovery control without letting a capture-phase keyboard
+listener turn a completed photo objective into a two-minute `X` timeout.
+
+Level-stat verification must remain mounted for several client ticks after the
+server award. `PlayerScript.updateMaxHealth()` is another authoritative writer:
+its base must come from native progression before adding equipment modifiers.
+A hard-coded `100 + modifier` can make the trigger transaction briefly write
+140 HP and then silently reset it to 100 before the browser assertion. The
+release gate therefore checks the settled ECS Health value and the Skills UI,
+not only the immediate XP/level delta.
 
 ### 4.7 Batch browser assertions in one context
 
@@ -463,6 +584,16 @@ timestamp.
 Do not run `next build` and `next dev` against the same checkout — both write
 `.next` and a mixed tree produces `Cannot find module './undefined'` errors
 that no amount of reloading will fix.
+
+When a browser case targets an actor seeded directly in Redis/ECS, authenticate
+the visual-test bridge with the actor's numeric Biomes ID, not only its label.
+Username lookup goes through the user database; if that database does not
+contain the Redis-seeded actor, the bridge can create a second "shadow" player
+with the same requested name. The UI then looks authenticated but shows the
+wrong quest state. A numeric ID binds the HTTP cookie and sync-session mirror
+to the exact authoritative actor. The browser gate must compare the visible
+quest/state to the seed before making assertions; do not clear caches or replay
+the test until that identity check passes.
 
 ### 4.8 Cloud Save rollout gate (one browser batch)
 
@@ -546,6 +677,14 @@ Busted scenarios). Do not replay it unless the quest-container overlay,
 native-container API, ECS sync, StorageContainer, or Busted authority contract
 changes.
 
+A Redis-only restart can leave DB 3 empty while the already-running Bikkie
+service and game processes still hold the loaded snapshot tray. Do not rebuild,
+restart the app, or reload the 1.2 GB world merely to let the host-side E2E
+inspect quest trigger trees. The robot-story runner first reads Redis and, only
+when that tray is empty, streams the `bikkie` entry from
+`snapshot_backup.json` into its own in-process `BikkieRuntime`. This fallback is
+read-only: it must never save the tray or mutate the shared warm Redis.
+
 ### 4.11 Sweep old quest props without waiting for full snapshot hydration
 
 The focused empty-Shim stack intentionally reaches gameplay before Sync has
@@ -563,6 +702,29 @@ fixture was needed. This preserves content identity while avoiding a full-stack
 hydration wait. Do not use this fallback for reward/progression assertions:
 those still target the immutable shipped entity, as the Spare Robot Parts gate
 does.
+
+### 4.12 Batch Bible rows without repeating shared three-minute failures
+
+Bible and cross-map Grove markers can carry `Y=0` as an unresolved authored map
+height even though the live terrain is near `Y=53`. The production teleport
+hook already chooses a safe default height when Y is omitted. The browser
+runner must reuse the hook's returned `after` pose for the ECS fixture and
+movement event; writing the original zero afterward strands the player below
+terrain and turns every row into a three-minute movement timeout.
+
+The Bible fixture's frontend refresh is a read-only operation. Retry only
+`harthmere_live_fetch_timeout`, with a small bounded backoff, rather than
+failing a quest because a saturated warm Redis/API read exceeded one browser
+fetch. Do not retry assertions, dialogue actions, quest mutations, or unknown
+errors under this rule.
+
+Run the 76 rows as ten serial groups (eight IDs per group, four in the final
+group), retain each checkpoint report, and aggregate failures before changing
+code. Verify the first full group after a shared runner repair before launching
+the remaining nine; this still tests in batches but prevents one common defect
+from consuming the whole catalog timeout budget. A wrapper loop must propagate
+SIGINT instead of treating exit 130 as an ordinary failed group and starting
+the next batch.
 
 ---
 

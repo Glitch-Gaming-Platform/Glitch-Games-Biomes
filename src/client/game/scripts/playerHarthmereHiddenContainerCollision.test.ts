@@ -20,4 +20,15 @@ describe("Harthmere hidden container movement collision", () => {
       /entity\?\.id === this\.userId \|\|\s*ruleset\.playerCollisionFilter/
     );
   });
+
+  it("keeps native level HP as the client max-health base", () => {
+    assert.match(source, /const nativeBaseMaxHealth =/);
+    assert.match(source, /readHarthmereNativeCombatProgression\(/);
+    assert.match(source, /harthmereNativeLevelStats\(/);
+    assert.match(
+      source,
+      /const newMaxHealth = nativeBaseMaxHealth \+ maxHealthMod/
+    );
+    assert.doesNotMatch(source, /const newMaxHealth = 100 \+ maxHealthMod/);
+  });
 });

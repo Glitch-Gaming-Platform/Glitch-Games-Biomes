@@ -2528,6 +2528,12 @@ cleanup() {
       echo "ERROR automatic simulation restoration failed; manual intervention is required." >&2
     fi
   fi
+  # Image-only builds do not own an already-running local rehearsal stack.
+  # Removing the default container names here destroyed a warm Redis/world
+  # even though this invocation never started local smoke at all.
+  if [ "$RUN_LOCAL_SMOKE" != "1" ]; then
+    return
+  fi
   if [ "$KEEP_LOCAL_SMOKE" = "1" ]; then
     log "Keeping local smoke containers: $LOCAL_APP_CONTAINER, $LOCAL_REDIS_CONTAINER"
     return
@@ -2611,6 +2617,13 @@ ensure_harthmere_runtime_assets() {
 
 ensure_harthmere_voice_assets() {
   local manifest="public/harthmere/voices/generated/current/manifest.json"
+  # Focused local browser builds may proceed with the already-hydrated voice
+  # subset while the separate recording task updates its catalog. Production
+  # builds remain strict because this opt-out is disabled by default.
+  if [ "${HARTHMERE_SKIP_VOICE_ASSET_CHECK:-0}" = "1" ]; then
+    log "Skipping Harthmere voice-manifest completeness for targeted local build."
+    return
+  fi
   if [ -f "$manifest" ] &&
      node scripts/harthmere/check-harthmere-npc-voice-recordings.cjs . >/dev/null 2>&1; then
     log "Harthmere NPC voice recordings are present and hydrated."

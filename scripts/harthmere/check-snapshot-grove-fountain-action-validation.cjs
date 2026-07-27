@@ -40,7 +40,11 @@ const tutorialIds = [
 ];
 
 for (const id of tutorialIds) {
-  ok(runtime.includes(`"${id}"`), `${id} is registered as a Fountain/Grove tutorial lesson in runtime`);
+  ok(
+    runtime.includes("SNAPSHOT_GROVE_FOUNTAIN_TUTORIAL_QUEST_IDS") &&
+      shared.includes(`"${id}"`),
+    `${id} is registered through the canonical Fountain/Grove tutorial registry`,
+  );
   const block = questBlockById(shared, id);
   ok(Boolean(block), `${id} exists in shared Grove quest content`);
   if (!block) continue;

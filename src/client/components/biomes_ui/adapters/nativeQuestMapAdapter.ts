@@ -4,6 +4,8 @@ import type {
 } from "@/client/game/resources/challenges";
 import type { MapMarker, MapTrackableQuest } from "../tabs/MapQuestsTab";
 import { isHarthmereNativeGroveQuestId } from "@/shared/harthmere/harthmere_native_quests";
+import type { NavigationAid } from "@/shared/game/types";
+import type { BiomesId } from "@/shared/ids";
 
 /**
  * A native challenge is complete only after the server-authored trigger tree
@@ -88,6 +90,15 @@ function nativeQuestMarkerId(questId: number, triggerId: number): string {
 }
 
 /**
+ * Marker id for the quest-level fallback anchor. Uses the quest id in the
+ * trigger slot so `nativeQuestTrackableQuests`' `native_quest:<questId>:...`
+ * parsing keeps working unchanged.
+ */
+function nativeQuestAnchorMarkerId(questId: number): string {
+  return nativeQuestMarkerId(questId, questId);
+}
+
+/**
  * Older players may already have a giver-less hidden quest in `in_progress`
  * from before its discovery unlock was added. Suppress that stale state when
  * the biscuit explicitly says its own challenge-unlocked event is the gate.
@@ -110,14 +121,9 @@ function nativeQuestIsWaitingForDiscovery(quest: QuestBundle): boolean {
     : false;
 }
 
-function nativePosition(
-  progress: TriggerProgress
+function validWorldPosition(
+  pos: unknown
 ): [number, number, number] | undefined {
-  const aid = progress.navigationAid;
-  if (aid?.kind !== "position") {
-    return undefined;
-  }
-  const pos = aid.pos;
   if (
     !Array.isArray(pos) ||
     pos.length < 3 ||
@@ -126,6 +132,52 @@ function nativePosition(
     return undefined;
   }
   return [Number(pos[0]), Number(pos[1]), Number(pos[2])];
+}
+
+/**
+ * Turns a native navigation aid into a world position.
+ *
+ * WHY A RESOLVER (live bug, 2026-07-26 session): only `kind: "position"` aids
+ * carry coordinates. The onboarding chain almost never uses them — "Talk to
+ * Jackie" is an `npc` aid, "Deliver to Doc" is an `entity` aid, and a pure
+ * crafting step ("Handcraft 0/8 Muck Busters") authors no aid at all. The map
+ * tab therefore produced ZERO markers for whole chapters, which is what
+ * disabled Set Main / Center on Busted and made the objective marker vanish
+ * whenever the player switched tracked quests.
+ *
+ * The in-world beacon never had this problem because `MapManager.addNavigationAid`
+ * already resolves npc/entity/group/robot aids asynchronously (NPC location
+ * fetch, ECS entity lookup, group AABB). The resolver injected here reads those
+ * ALREADY-RESOLVED positions instead of re-implementing the lookups, so the map
+ * pin and the world beacon can never point at different places.
+ */
+export type NativeQuestNavAidPositionResolver = (input: {
+  questId: BiomesId;
+  /** Trigger leaf id, or the quest id itself for the quest-level anchor. */
+  triggerId: BiomesId;
+  /** The authored aid, when the leaf declares one. */
+  navigationAid?: NavigationAid;
+  /** True for the fallback lookup made when no leaf resolved. */
+  questAnchor?: boolean;
+}) => readonly [number, number, number] | undefined;
+
+function nativePosition(
+  progress: TriggerProgress,
+  questId: BiomesId,
+  resolve?: NativeQuestNavAidPositionResolver
+): [number, number, number] | undefined {
+  const aid = progress.navigationAid;
+  if (aid?.kind === "position") {
+    const authored = validWorldPosition(aid.pos);
+    if (authored) return authored;
+  }
+  // Every other aid kind — and a leaf with no aid at all — goes through the
+  // client resolver. Passing the aid through lets it use the same npc/entity id
+  // the world beacon used; passing the trigger id lets it hit the already
+  // resolved `localNavigationAids` entry keyed by that same id.
+  return validWorldPosition(
+    resolve?.({ questId, triggerId: progress.id, navigationAid: aid })
+  );
 }
 
 export interface NativeQuestMissionStep {
@@ -185,7 +237,8 @@ export function activeNativeQuest(
 }
 
 export function nativeQuestMapMarkers(
-  nativeQuestBundles: readonly QuestBundle[] | undefined
+  nativeQuestBundles: readonly QuestBundle[] | undefined,
+  resolve?: NativeQuestNavAidPositionResolver
 ): Array<Omit<MapMarker, "x" | "y">> {
   const markers: Array<Omit<MapMarker, "x" | "y">> = [];
   for (const quest of nativeQuestBundles ?? []) {
@@ -196,11 +249,14 @@ export function nativeQuestMapMarkers(
     ) {
       continue;
     }
-    for (const leaf of activeNativeQuestTriggerLeaves(quest.progress)) {
-      const worldPosition = nativePosition(leaf);
+    const activeLeaves = activeNativeQuestTriggerLeaves(quest.progress);
+    let resolvedForQuest = 0;
+    for (const leaf of activeLeaves) {
+      const worldPosition = nativePosition(leaf, quest.biscuit.id, resolve);
       if (!worldPosition) {
         continue;
       }
+      resolvedForQuest += 1;
       markers.push({
         id: nativeQuestMarkerId(quest.biscuit.id, leaf.id),
         label:
@@ -218,15 +274,52 @@ export function nativeQuestMapMarkers(
           }.`,
       });
     }
+    if (resolvedForQuest > 0) {
+      continue;
+    }
+    // QUEST-LEVEL FALLBACK. Some authored steps genuinely have nowhere to go —
+    // crafting and inventory checks complete wherever the player is standing.
+    // Without an anchor those chapters had no marker at all, so the journal
+    // could not be tracked, centred, or set as the main quest until the player
+    // happened to reach a step with a position. Anchoring on the quest giver /
+    // last known objective keeps the row actionable while still telling the
+    // truth: the label carries the real current objective text.
+    const anchor = validWorldPosition(
+      resolve?.({
+        questId: quest.biscuit.id,
+        triggerId: quest.biscuit.id,
+        questAnchor: true,
+      })
+    );
+    if (!anchor) {
+      continue;
+    }
+    const objective =
+      activeLeaves[0]?.progressString || activeLeaves[0]?.name || undefined;
+    markers.push({
+      id: nativeQuestAnchorMarkerId(quest.biscuit.id),
+      label: objective || quest.biscuit.displayName || "Quest objective",
+      kind: "objective",
+      active: true,
+      worldPosition: anchor,
+      description: objective
+        ? `${objective} — no fixed location; shown at ${
+            quest.biscuit.displayName ?? "the quest"
+          }'s anchor.`
+        : `Current objective for ${
+            quest.biscuit.displayName ?? "the active quest"
+          }.`,
+    });
   }
   return markers;
 }
 
 export function nativeQuestTrackableQuests(
-  nativeQuestBundles: readonly QuestBundle[] | undefined
+  nativeQuestBundles: readonly QuestBundle[] | undefined,
+  resolve?: NativeQuestNavAidPositionResolver
 ): MapTrackableQuest[] {
   const markersByQuest = new Map<string, string>();
-  for (const marker of nativeQuestMapMarkers(nativeQuestBundles)) {
+  for (const marker of nativeQuestMapMarkers(nativeQuestBundles, resolve)) {
     const [, questId] = marker.id.split(":");
     if (questId && !markersByQuest.has(questId)) {
       markersByQuest.set(questId, marker.id);

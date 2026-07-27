@@ -1,5 +1,6 @@
 import assert from "assert";
 import {
+  biomesUIMainQuestClearedSelectionForTest,
   biomesUIMainQuestSelectionFromQuestForTest,
   defaultMainQuestFromTrackableQuestsForTest,
   mainQuestFromTrackableQuestsForTest,
@@ -80,6 +81,24 @@ describe("Biomes UI main quest selection", () => {
       mainQuestFromTrackableQuestsForTest([sideQuest, roadAhead], undefined)
         ?.questId,
       "native_road_ahead"
+    );
+  });
+
+  it("does not reselect the story after the player explicitly clears tracking", () => {
+    const busted: MapTrackableQuest = {
+      questId: "7405046529843322",
+      title: "Busted",
+      area: "Biomes",
+      status: "active",
+      kindLabel: "Story Quest",
+    };
+
+    assert.equal(
+      mainQuestFromTrackableQuestsForTest(
+        [busted],
+        biomesUIMainQuestClearedSelectionForTest(4000)
+      ),
+      undefined
     );
   });
 

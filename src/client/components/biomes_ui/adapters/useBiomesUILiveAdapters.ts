@@ -85,6 +85,11 @@ import {
 } from "@/shared/harthmere/harthmere_biomes_ecs_bridge";
 import { harthmereEquipmentSlotToBikkieWearableSlot } from "@/shared/harthmere/harthmere_bikkie_wearables";
 import {
+  harthmereNativeXpForNextLevel,
+  readHarthmereNativeCombatProgression,
+} from "@/shared/harthmere/harthmere_native_combat";
+import { harthmereNativeLevelStats } from "@/shared/harthmere/harthmere_native_level_stats";
+import {
   createBiomesUIGuildsAdapter,
   fetchBiomesUIGuildState,
 } from "./guildsLiveAdapter";
@@ -186,6 +191,9 @@ import {
 } from "./farmingFoodInterfaceAdapter";
 import { buildNativeFarmingInterfaceModel } from "./nativeFarmingInterfaceAdapter";
 import { buildBiomesUIMapAdapter } from "./mapLiveAdapter";
+import { buildNativeQuestNavAidResolver } from "./nativeQuestNavAidResolver";
+import type { QuestBundle } from "@/client/game/resources/challenges";
+import { getNpcBehavior, idToNpcType } from "@/shared/npc/bikkie";
 import {
   HARTHMERE_HOE_QUEST_EVENT,
   HARTHMERE_HOE_VENDOR_MARKER_ID,
@@ -2017,10 +2025,12 @@ export function useBiomesUILiveAdapters({
     socialManager,
     gardenHose,
     resources,
+    mapManager,
   } = clientContext;
   const pointerLockManager = usePointerLockManager();
   const inventory = reactResources.use("/ecs/c/inventory", userId) as any;
   const wearing = reactResources.use("/ecs/c/wearing", userId) as any;
+  const nativeTriggerState = reactResources.use("/ecs/c/trigger_state", userId);
   const hotbarIndex = reactResources.use("/hotbar/index") as { value: number };
   const gameModal = reactResources.use("/game_modal") as GameModal;
   const dmMessages =
@@ -2031,6 +2041,29 @@ export function useBiomesUILiveAdapters({
     (reactResources.use("/nuxes/state_active") as { value?: unknown[] })
       ?.value ?? [];
   const nativeQuestBundles = reactResources.use("/challenges/all");
+  // BIOMES_UI_MAP_TAB quest markers: subscribe to MapManager's resolved
+  // navigation aids so an npc/entity/group objective produces a map marker at
+  // the same place its in-world beacon points. `useNavigationAids` re-renders
+  // on `onNavigationAidsUpdated`, which is what makes an async NPC location
+  // fetch land on the map without a manual refresh.
+  const resolvedNavigationAids = mapManager.react.useNavigationAids();
+  const resolveNativeQuestNavAidPosition = React.useMemo(
+    () =>
+      buildNativeQuestNavAidResolver({
+        navigationAids: resolvedNavigationAids,
+        questBundles: nativeQuestBundles as readonly QuestBundle[] | undefined,
+        questGiverBeamPosition: (npcTypeId) => {
+          try {
+            return getNpcBehavior(idToNpcType(npcTypeId))?.questGiver
+              ?.beamPosition;
+          } catch {
+            // An unknown/retired npc type must not take the whole map down.
+            return undefined;
+          }
+        },
+      }),
+    [resolvedNavigationAids, nativeQuestBundles]
+  );
   const [snapshotRevision, setSnapshotRevision] = React.useState(0);
   const [hoeQuestState, setHoeQuestState] =
     React.useState<HarthmereHoeQuestState>("loading");
@@ -3251,6 +3284,11 @@ export function useBiomesUILiveAdapters({
   ]);
 
   const adapters = React.useMemo<BiomesUIAdapters>(() => {
+    const nativeProgression =
+      readHarthmereNativeCombatProgression(nativeTriggerState);
+    const nativeCharacterStats = harthmereNativeLevelStats(
+      nativeProgression.level
+    );
     const hotbarItems = normalizeContainer(inventory?.hotbar);
     const backpackItems = normalizeContainer(inventory?.items);
     const currencyItems = normalizeContainer(inventory?.currencies);
@@ -3280,7 +3318,11 @@ export function useBiomesUILiveAdapters({
         playerPosition: playerWorldPos,
       });
 
-    const publishSwap = (src: InventoryUiRef, dst: InventoryUiRef) => {
+    const publishSwap = (
+      src: InventoryUiRef,
+      dst: InventoryUiRef,
+      onPublished?: () => void
+    ) => {
       try {
         fireAndForget(
           events.publish(
@@ -3292,7 +3334,7 @@ export function useBiomesUILiveAdapters({
               dst: normalizeUiRef(dst),
               positions: localPlayerPositionList(reactResources),
             })
-          )
+          ).then(() => onPublished?.())
         );
       } catch {}
     };
@@ -3605,7 +3647,7 @@ export function useBiomesUILiveAdapters({
               sum + itemWeightForUiItem(item),
             0
           );
-        const maxWeight = 25;
+        const maxWeight = nativeCharacterStats.carryCapacity;
         const baseMaxSlots = Number(
           backendActor?.maxInventorySlots ??
             Math.max(32, backpackItems.length || 0)
@@ -4195,6 +4237,9 @@ export function useBiomesUILiveAdapters({
         });
       },
       moveItem: (src: InventoryUiRef, dst: InventoryUiRef) => {
+        let nativeHotbarEquipEvent:
+          | { itemId: string; itemName: string }
+          | undefined;
         // Dragging a harthmere quick-slot OFF the hotbar (onto the backpack)
         // clears the shortcut assignment — publishSwap below only understands
         // real ECS slots and would silently no-op for these refs.
@@ -4272,6 +4317,16 @@ export function useBiomesUILiveAdapters({
             ) {
               return;
             }
+            const nativeUiItem = slotToInventoryUiItem(
+              nativeSlot,
+              "native_hotbar_quest_equip",
+              src,
+              src.kind === "hotbar" ? "hotbar" : "backpack"
+            );
+            nativeHotbarEquipEvent = {
+              itemId: String(nativeItemId),
+              itemName: nativeUiItem?.label ?? String(nativeItemId),
+            };
           }
           // A native ECS source must always publish the native swap, even when
           // the optional Redis inventory is hydrated. Blocking this mutation was
@@ -4279,7 +4334,29 @@ export function useBiomesUILiveAdapters({
           // native wearable quest trigger never advanced.
           if (liveInventoryAuthoritative && !isNativeInventoryRef(src)) return;
         }
-        publishSwap(src, dst);
+        publishSwap(
+          src,
+          dst,
+          nativeHotbarEquipEvent
+            ? () => {
+                // A native tool/camera becomes the player's equipped hand item
+                // by entering the hotbar, not by entering a wearable slot.
+                // Publish the shared equip signal only after ECS accepts the
+                // swap so Grove lessons and every other inventory consumer see
+                // the same authoritative action the HUD now displays.
+                window.dispatchEvent(new Event(HARTHMERE_INVENTORY_EVENT));
+                gardenHose.publish({
+                  kind: "equip",
+                  source: "biomes-ui-native-hotbar-equip",
+                  itemId: nativeHotbarEquipEvent.itemId,
+                  itemName: nativeHotbarEquipEvent.itemName,
+                  slot: "main_hand",
+                  operation: "equip",
+                  authority: "native_ecs",
+                } as any);
+              }
+            : undefined
+        );
       },
       splitStack: (src: InventoryUiRef, dst: InventoryUiRef, count: number) => {
         try {
@@ -4472,9 +4549,14 @@ export function useBiomesUILiveAdapters({
           );
         } catch {}
       },
-      sortInventory: () => {
+      sortInventory: async () => {
         try {
-          fireAndForget(events.publish(new InventorySortEvent({ id: userId })));
+          await events.publish(new InventorySortEvent({ id: userId }));
+          // Sorting is an inventory mutation even when item counts do not
+          // change. Notify every inventory consumer after native authority
+          // accepts it so Grove lessons and other systems observe the same
+          // completed action as the production Inventory tab.
+          window.dispatchEvent(new Event(HARTHMERE_INVENTORY_EVENT));
         } catch {}
       },
     };
@@ -4755,10 +4837,24 @@ export function useBiomesUILiveAdapters({
       },
       skills: {
         isHydrated: () => progressionHydrated,
-        getSkills: () =>
-          Array.isArray(progressionState?.skills)
+        getSkills: () => {
+          const skills = Array.isArray(progressionState?.skills)
             ? progressionState.skills
-            : [],
+            : [];
+          return skills.map((skill: any) =>
+            skill?.id === "character_level"
+              ? {
+                  ...skill,
+                  level: nativeProgression.level,
+                  xp: nativeProgression.xp,
+                  nextLevel: harthmereNativeXpForNextLevel(
+                    nativeProgression.level
+                  ),
+                }
+              : skill
+          );
+        },
+        getCharacterStats: () => nativeCharacterStats,
       },
       abilities: {
         isHydrated: () => progressionHydrated,
@@ -4827,6 +4923,16 @@ export function useBiomesUILiveAdapters({
         {
           getModel: getNativeFarmingModel,
           hoeQuestState,
+        },
+        {
+          resolveNavAidPosition: resolveNativeQuestNavAidPosition,
+          trackQuest: (questId) => {
+            // Only native ECS quest ids are meaningful to MapManager; the
+            // journal also lists live-mode/bible quests whose ids are strings.
+            mapManager.trackingQuestId = questId
+              ? safeParseBiomesId(questId)
+              : undefined;
+          },
         }
       ),
       questInvites: questInvitesAdapter,
@@ -4992,6 +5098,7 @@ export function useBiomesUILiveAdapters({
     inventory?.selected,
     jobsBoardState,
     nativeQuestBundles,
+    nativeTriggerState,
     progressionHydrated,
     progressionState,
     questState,

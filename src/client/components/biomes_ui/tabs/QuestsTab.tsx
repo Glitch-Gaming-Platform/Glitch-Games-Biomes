@@ -19,8 +19,10 @@ import type {
 } from "./MapQuestsTab";
 import { questMapMarkerCandidatesForTest } from "./MapQuestsTab";
 import {
+  biomesUIMainQuestClearedSelectionForTest,
   readBiomesUIMainQuestSelection,
   setBiomesUIMainQuestFromTrackableQuest,
+  writeBiomesUIMainQuestSelection,
   type BiomesUIMainQuestSelection,
 } from "../adapters/mainQuestSelection";
 import {
@@ -196,6 +198,16 @@ export const QuestsTab: React.FunctionComponent<{
     },
     [adapter]
   );
+
+  const deactivate = React.useCallback(() => {
+    const cleared = biomesUIMainQuestClearedSelectionForTest();
+    if (adapter?.clearMainQuest) {
+      adapter.clearMainQuest();
+    } else {
+      writeBiomesUIMainQuestSelection(undefined);
+    }
+    setMainQuest(cleared);
+  }, [adapter]);
 
   const counts = React.useMemo(
     () => questsTabStatusCountsForTest(quests),
@@ -446,16 +458,25 @@ export const QuestsTab: React.FunctionComponent<{
                 <button
                   type="button"
                   data-testid="biomes-ui-quest-set-active"
-                  onClick={() => activate(selected)}
-                  disabled={selected.questId === mainQuest?.questId}
+                  // Toggle, not a one-way door. Disabling this once a quest was
+                  // active left no way to stop tracking it — the player could
+                  // only swap to a different quest, never clear the selection.
+                  onClick={() =>
+                    selected.questId === mainQuest?.questId
+                      ? deactivate()
+                      : activate(selected)
+                  }
+                  aria-pressed={selected.questId === mainQuest?.questId}
+                  title={
+                    selected.questId === mainQuest?.questId
+                      ? "Stop tracking this quest"
+                      : "Track this quest"
+                  }
                   style={{
                     padding: "7px 12px",
                     fontSize: 12,
                     borderRadius: 6,
-                    cursor:
-                      selected.questId === mainQuest?.questId
-                        ? "default"
-                        : "pointer",
+                    cursor: "pointer",
                     border: "1px solid var(--biomes-edge-cyan)",
                     background:
                       selected.questId === mainQuest?.questId
@@ -465,7 +486,7 @@ export const QuestsTab: React.FunctionComponent<{
                   }}
                 >
                   {selected.questId === mainQuest?.questId
-                    ? "★ Active quest"
+                    ? "★ Active quest — stop tracking"
                     : "Set as active quest"}
                 </button>
               )}

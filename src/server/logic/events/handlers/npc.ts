@@ -25,6 +25,7 @@ import { getAabbForEntity } from "@/shared/game/entity_sizes";
 import { attackIntervalSeconds } from "@/shared/game/damage";
 import { distSqToAABB } from "@/shared/math/linear";
 import {
+  applyHarthmereNativeAttackStats,
   awardHarthmereNativeCombatXp,
   harthmereNativeItemCombatProfile,
   harthmereNativeItemDefinitionForBiomesId,
@@ -32,6 +33,10 @@ import {
   writeHarthmereNativeCombatProgression,
 } from "@/shared/harthmere/harthmere_native_combat";
 import { harthmereNativeNpcCombatProfileForTypeId } from "@/shared/harthmere/harthmere_native_combat_catalog";
+import {
+  harthmereNativeLevelStats,
+  syncHarthmereNativeLevelStats,
+} from "@/shared/harthmere/harthmere_native_level_stats";
 import { log } from "@/shared/logging";
 import {
   readHarthmereNativeVitals,
@@ -162,11 +167,25 @@ const updateNpcHealthEventHandler = makeEventHandler("updateNpcHealthEvent", {
             1,
             Math.round(((selected?.item.dps ?? 16) * intervalMs) / 1000)
           );
+        const attackerStats = harthmereNativeLevelStats(progression.level);
+        const targetStats = harthmereNativeLevelStats(nativeProfile.level);
+        const statDamage = applyHarthmereNativeAttackStats({
+          baseDamage,
+          kind: itemProfile?.kind ?? "unarmed",
+          stats: attackerStats,
+          targetEvasion: targetStats.evasion,
+          criticalSeed: [
+            attacker.id,
+            npc.id,
+            progression.lastAttackMs,
+            selected?.item.id,
+          ],
+        });
         const levelFactor = Math.max(
           0.65,
           Math.min(1.75, 1 + (progression.level - nativeProfile.level) * 0.04)
         );
-        hpDelta = -Math.max(1, Math.round(baseDamage * levelFactor));
+        hpDelta = -Math.max(1, Math.round(statDamage.damage * levelFactor));
         writeHarthmereNativeCombatProgression(
           attacker.delta().mutableTriggerState(),
           { lastAttackMs: nowMs }
@@ -236,6 +255,9 @@ const updateNpcHealthEventHandler = makeEventHandler("updateNpcHealthEvent", {
           nativeProfile.killXp,
           nativeProfile.isBoss
         );
+        // A kill that crosses a level boundary must update every persistent
+        // level-owned value too (resource ceilings and backpack slots).
+        syncHarthmereNativeLevelStats(attacker.delta());
       }
       context.publish({
         kind: "npcKilled",

@@ -751,9 +751,18 @@ if [ "$GLITCH_FOCUSED_NATIVE_E2E_STACK" = "1" ] && [ "$GLITCH_ENABLE_STREAM_WORK
   start_bg trigger 127.0.0.1 3700 3704 3701 "$APP_ROOT/dist/trigger.js" "${SERVICE_ARGS[@]}"
 fi
 
-# Bind the public ingress immediately after all core processes have launched.
-# Dependency readiness checks continue below, but Azure no longer sees port
-# 3000 closed while chat and stream workers create their Redis groups.
+# FOCUSED_E2E_LOGIC_BEFORE_WEB (2026-07-26): a focused warm browser run values
+# a stable first page more than early public ingress. Logic can spend minutes
+# indexing the 335k-entity snapshot; starting Web before its RPC listener was
+# ready cached a failed zRPC channel and made the browser wait again after the
+# stack was otherwise usable. Full production rehearsals retain early ingress.
+if [ "$GLITCH_FOCUSED_NATIVE_E2E_STACK" = "1" ]; then
+  wait_tcp 127.0.0.1 3504 logic-rpc-before-web
+fi
+
+# Bind the public ingress after core processes have launched (and, for the
+# focused browser topology, after Logic RPC is authoritative). Remaining
+# dependency readiness checks continue below.
 log "START web HOST=$GLITCH_WEB_BIND_HOST BASE_PORT=$WEB_BASE_PORT RPC_PORT=$WEB_RPC_PORT METRICS_PORT=$WEB_METRICS_PORT heapMb=$GLITCH_WEB_MAX_OLD_SPACE_MB file=$APP_ROOT/dist/web.js assetServerMode=lazy GLITCH_PROD_LOCAL_PARITY"
 HOST="$GLITCH_WEB_BIND_HOST" BASE_PORT="$WEB_BASE_PORT" RPC_PORT="$WEB_RPC_PORT" METRICS_PORT="$WEB_METRICS_PORT" \
   node --max-old-space-size="$GLITCH_WEB_MAX_OLD_SPACE_MB" "$APP_ROOT/dist/web.js" "${SERVICE_ARGS[@]}" --assetServerMode lazy &

@@ -454,6 +454,76 @@ function nativeFarmingToolAttributes(definition: HarthmereItemDefinition) {
   return undefined;
 }
 
+// ---------------------------------------------------------------------------
+// HARTHMERE_NATIVE_STORABLE_IDENTITY (2026-07-26)
+//
+// `maxInventoryStack(item)` is `item.stackable || 0n`. A biscuit published
+// WITHOUT `stackable` therefore has a maximum stack of ZERO: the native
+// inventory editor can never find a slot for it, so
+// `giveWithInventoryOverflow` silently diverts the whole grant into the ECS
+// overflow bag. The Harthmere live-mode reader only projects `inventory.items`
+// and `inventory.hotbar`, so such an item disappears on the next Redis rebase
+// while the transaction's gold debit stays committed.
+//
+// That is exactly what happened to the Hoe (7539420629350046): the snapshot
+// biscuit it binds to only carried {name, isTool}, and the farming/consumable
+// overlays below merged their handful of attributes on top of it, so the
+// published biscuit never gained `stackable`. Buying a Hoe charged 22 gold and
+// delivered nothing, every single time.
+//
+// Every overlay that patches an EXISTING snapshot biscuit now goes through
+// this helper so a physical Harthmere item is always storable, droppable and
+// nameable, no matter how sparse the record it inherits from.
+// ---------------------------------------------------------------------------
+export function harthmereStorableBiscuitIdentity(
+  existing: Biscuit,
+  definition: HarthmereItemDefinition
+): Partial<Biscuit> {
+  const identity: Partial<Biscuit> = {};
+  const stackable = existing.stackable ?? 0n;
+  if (stackable <= 0n) {
+    identity.stackable = BigInt(
+      Math.max(1, Math.trunc(definition.maxStackSize) || 1)
+    );
+  }
+  if (existing.isDroppable === undefined) {
+    identity.isDroppable = true;
+  }
+  if (!existing.displayName) {
+    identity.displayName = definition.displayName;
+  }
+  // Deliberately narrow: only the attributes an item cannot physically exist
+  // without. Cosmetic fields stay exactly as the authored snapshot published
+  // them so this overlay never rewrites unrelated presentation data.
+  return identity;
+}
+
+// A snapshot id a Harthmere tool binds to may carry no art at all. The Hoe
+// (7539420629350046) is the case in point: no vox, no mesh, no icon, so even
+// once it is storable it would sit in the backpack and hand as a blank. Borrow
+// the authored Wooden Hoe's presentation rather than minting a second hoe
+// identity that existing recipes, vendors and quests do not reference.
+const HARTHMERE_NATIVE_TOOL_PRESENTATION_DONORS: Readonly<
+  Record<string, BiomesId>
+> = {
+  "7539420629350046": 1_534_621_126_189_388 as BiomesId,
+};
+
+function harthmereBorrowedPresentation(
+  existing: Biscuit,
+  donor: Biscuit | undefined
+): Partial<Biscuit> {
+  if (!donor) return {};
+  return Object.fromEntries(
+    HARTHMERE_NATIVE_PRESENTATION_ATTRIBUTES.flatMap((attribute) => {
+      // Never override art the snapshot already authored.
+      if (existing[attribute] !== undefined) return [];
+      const value = donor[attribute];
+      return value === undefined ? [] : [[attribute, value]];
+    })
+  ) as Partial<Biscuit>;
+}
+
 export function harthmereBiscuitForItemDefinition(
   definition: HarthmereItemDefinition,
   presentationSource?: Biscuit
@@ -636,8 +706,15 @@ export function withHarthmereNativeBikkieItems(
       if (safeParseBiomesId(definition.itemId) !== undefined) {
         const farmingToolAttributes = nativeFarmingToolAttributes(definition);
         if (farmingToolAttributes) {
+          const donorId =
+            HARTHMERE_NATIVE_TOOL_PRESENTATION_DONORS[definition.itemId];
           contents.set(id, {
             ...existing,
+            ...harthmereBorrowedPresentation(
+              existing,
+              donorId === undefined ? undefined : contents.get(donorId)
+            ),
+            ...harthmereStorableBiscuitIdentity(existing, definition),
             isTool: true,
             ...farmingToolAttributes,
           });
@@ -658,6 +735,7 @@ export function withHarthmereNativeBikkieItems(
           // the exact voxel/presentation identity or its world-use action.
           contents.set(id, {
             ...existing,
+            ...harthmereStorableBiscuitIdentity(existing, definition),
             isConsumable: true,
             ...(existing.action === undefined
               ? { action: profile.action }
@@ -666,6 +744,18 @@ export function withHarthmereNativeBikkieItems(
               ? { givesHealth: profile.healthRestore }
               : {}),
           });
+          hashes.set(id, overlayHash);
+          continue;
+        }
+        // Nothing else about this snapshot biscuit needs changing, but it still
+        // has to be physically storable. A `stackable`-less record is a
+        // gold-eating black hole in every vendor/loot/quest grant.
+        const storableIdentity = harthmereStorableBiscuitIdentity(
+          existing,
+          definition
+        );
+        if (Object.keys(storableIdentity).length > 0) {
+          contents.set(id, { ...existing, ...storableIdentity });
           hashes.set(id, overlayHash);
         }
         continue;

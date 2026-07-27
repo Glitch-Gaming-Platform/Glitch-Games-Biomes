@@ -801,10 +801,30 @@ describe("Biomes UI progression tabs", () => {
               title: "Novice",
             },
           ],
+          getCharacterStats: () => ({
+            level: 12,
+            strength: 21,
+            dexterity: 21,
+            intelligence: 21,
+            defense: 22,
+            armor: 17,
+            evasion: 2.75,
+            accuracy: 77.2,
+            criticalChance: 0.0165,
+            spellPower: 22,
+            healingPower: 17,
+            movementSpeed: 1.0275,
+            carryCapacity: 62,
+            inventorySlots: 27,
+          }),
         }}
       />
     );
     assert.ok(html.includes("Business Operations"));
+    assert.ok(html.includes("Character Stats"));
+    assert.ok(html.includes("Strength"));
+    assert.ok(html.includes("Critical chance"));
+    assert.ok(html.includes("Backpack slots"));
     assert.equal(html.includes("Sword"), false);
   });
 

@@ -1,7 +1,7 @@
 {
   "version": "npc-voice-audio-cache-v1",
   "catalogVersion": "harthmere-npc-voice-catalog",
-  "generatedAt": "2026-07-25T04:02:56.142Z",
+  "generatedAt": "2026-07-26T23:32:06.322Z",
   "provider": "elevenlabs",
   "synthesisIdentity": "elevenlabs-natural-v3-speed-102-v1|eleven_v3|mp3_44100_128||||",
   "modelId": "eleven_v3",
@@ -17468,6 +17468,186 @@
       ]
     },
     {
+      "cacheKey": "1d002cc8d71ac6e88e1cc9f160374ffbf9b79fe697d4e512479c7ff19e702912",
+      "cacheKeys": [
+        "1d002cc8d71ac6e88e1cc9f160374ffbf9b79fe697d4e512479c7ff19e702912",
+        "28c3f32c7272bd41bee483ae0ae8d6609a260cd28351bcea87c55e9d4b014237"
+      ],
+      "actorKey": "live_entity_seed:ambient-muck-monster-east_marches_flat-10719:8810000000020719:wilds pack mucker 19:wilds pack mucker 19",
+      "actorId": "ambient-muck-monster-east_marches_flat-10719",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-ambient-muck-monster-east-marches-flat-10719-wilds-pack-mucker-/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-OnyxTurboMultilingualNeural|gender=neutral|kind=creature|rate=-7%25|pitch=-7%25|volume=default|break=330|actor=live_entity_seed%3Aambient-muck-monster-east_marches_flat-10719%3A8810000000020719%3Awilds%20pack%20mucker%2019%3Awilds%20pack%20mucker%2019",
+      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "textHash": "ca3a19ec69b53c57c37a0f4fa4b1b5a9312ecf989122fff3a1fa4d9e907f9403",
+      "bytes": 99518
+    },
+    {
+      "cacheKey": "e0810e5b27eba30fe6d5b238c5a00dfa0910b5bc2a7348fc5445874f869250fd",
+      "cacheKeys": [
+        "e0810e5b27eba30fe6d5b238c5a00dfa0910b5bc2a7348fc5445874f869250fd",
+        "2b2156c1cf0877ab3e6ee404b8da02b776c608d0a46bf31b902e905657275f45"
+      ],
+      "actorKey": "live_entity_seed:ambient-muck-monster-east_marches_flat-10720:8810000000020720:wilds pack mucker 20:wilds pack mucker 20",
+      "actorId": "ambient-muck-monster-east_marches_flat-10720",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-ambient-muck-monster-east-marches-flat-10720-wilds-pack-mucker-/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-OnyxTurboMultilingualNeural|gender=neutral|kind=creature|rate=-11%25|pitch=-7%25|volume=default|break=230|actor=live_entity_seed%3Aambient-muck-monster-east_marches_flat-10720%3A8810000000020720%3Awilds%20pack%20mucker%2020%3Awilds%20pack%20mucker%2020",
+      "voiceId": "21m00Tcm4TlvDq8ikWAM",
+      "textHash": "ca3a19ec69b53c57c37a0f4fa4b1b5a9312ecf989122fff3a1fa4d9e907f9403",
+      "bytes": 86979
+    },
+    {
+      "cacheKey": "8697c2646d80cdbf64455ca224d2823582f674aad30c5f7a5f4d7a12974f6165",
+      "cacheKeys": [
+        "8697c2646d80cdbf64455ca224d2823582f674aad30c5f7a5f4d7a12974f6165",
+        "5fa173b13f30fddcfcf89100462576c9ab43a1bbc940f26928e7c54c56812509"
+      ],
+      "actorKey": "live_entity_seed:ambient-muck-monster-east_marches_flat-10721:8810000000020721:wilds pack mucker 21:wilds pack mucker 21",
+      "actorId": "ambient-muck-monster-east_marches_flat-10721",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-ambient-muck-monster-east-marches-flat-10721-wilds-pack-mucker-/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-FableTurboMultilingualNeural|gender=neutral|kind=creature|rate=-12%25|pitch=-4%25|volume=default|break=150|actor=live_entity_seed%3Aambient-muck-monster-east_marches_flat-10721%3A8810000000020721%3Awilds%20pack%20mucker%2021%3Awilds%20pack%20mucker%2021",
+      "voiceId": "21m00Tcm4TlvDq8ikWAM",
+      "textHash": "ca3a19ec69b53c57c37a0f4fa4b1b5a9312ecf989122fff3a1fa4d9e907f9403",
+      "bytes": 88233
+    },
+    {
+      "cacheKey": "70134351d179c899fb0ef4b2d0ddfa0ddc24012989d5e16c87355054e29c6f06",
+      "cacheKeys": [
+        "70134351d179c899fb0ef4b2d0ddfa0ddc24012989d5e16c87355054e29c6f06",
+        "88a3e235a0ece3b65f24e671037a5c2fefe4412627f48da2581d65738fcb8916"
+      ],
+      "actorKey": "live_entity_seed:ambient-muck-monster-east_marches_flat-10722:8810000000020722:wilds pack mucker 22:wilds pack mucker 22",
+      "actorId": "ambient-muck-monster-east_marches_flat-10722",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-ambient-muck-monster-east-marches-flat-10722-wilds-pack-mucker-/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-OnyxTurboMultilingualNeural|gender=neutral|kind=creature|rate=-13%25|pitch=-7%25|volume=default|break=330|actor=live_entity_seed%3Aambient-muck-monster-east_marches_flat-10722%3A8810000000020722%3Awilds%20pack%20mucker%2022%3Awilds%20pack%20mucker%2022",
+      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "textHash": "ca3a19ec69b53c57c37a0f4fa4b1b5a9312ecf989122fff3a1fa4d9e907f9403",
+      "bytes": 95756
+    },
+    {
+      "cacheKey": "d97094f1e3c3a1d0eee89543107fccdb145c4468e1dc7d5236e1e580b12750d5",
+      "cacheKeys": [
+        "d97094f1e3c3a1d0eee89543107fccdb145c4468e1dc7d5236e1e580b12750d5",
+        "f9c0584916df3d6fdc8e89b24dd1adbdf9dd146050a145fdefe9984a8dac4921"
+      ],
+      "actorKey": "live_entity_seed:ambient-muck-monster-east_marches_flat-10723:8810000000020723:wilds pack mucker 23:wilds pack mucker 23",
+      "actorId": "ambient-muck-monster-east_marches_flat-10723",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-ambient-muck-monster-east-marches-flat-10723-wilds-pack-mucker-/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-GuyNeural|gender=neutral|kind=creature|style=whispering|styleDegree=0.85|rate=-14%25|pitch=-5%25|volume=default|break=290|actor=live_entity_seed%3Aambient-muck-monster-east_marches_flat-10723%3A8810000000020723%3Awilds%20pack%20mucker%2023%3Awilds%20pack%20mucker%2023",
+      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "textHash": "ca3a19ec69b53c57c37a0f4fa4b1b5a9312ecf989122fff3a1fa4d9e907f9403",
+      "bytes": 90741
+    },
+    {
+      "cacheKey": "3e525e8b6784cfb835aafc957fd82e2c49cf248718b794f7330dab58a0825894",
+      "cacheKeys": [
+        "3e525e8b6784cfb835aafc957fd82e2c49cf248718b794f7330dab58a0825894",
+        "3b6499b715e64658b44a84fe87d5ca3a27a828f711794b8d829971e855eca619"
+      ],
+      "actorKey": "live_entity_seed:ambient-muck-monster-east_marches_flat-10724:8810000000020724:wilds pack hex 24:wilds pack hex 24",
+      "actorId": "ambient-muck-monster-east_marches_flat-10724",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-ambient-muck-monster-east-marches-flat-10724-wilds-pack-hex-24/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-SerenaMultilingualNeural|gender=female|kind=humanoid|style=friendly|styleDegree=0.85|rate=-3%25|pitch=-2%25|volume=default|break=170|actor=live_entity_seed%3Aambient-muck-monster-east_marches_flat-10724%3A8810000000020724%3Awilds%20pack%20hex%2024%3Awilds%20pack%20hex%2024",
+      "voiceId": "MF3mGyEYCl7XYWbV9V6O",
+      "textHash": "ca3a19ec69b53c57c37a0f4fa4b1b5a9312ecf989122fff3a1fa4d9e907f9403",
+      "bytes": 113728
+    },
+    {
+      "cacheKey": "f889703c5e54492e3c86ccdd36998b2e834e179ad0e04891546c98adbeba7a93",
+      "cacheKeys": [
+        "f889703c5e54492e3c86ccdd36998b2e834e179ad0e04891546c98adbeba7a93",
+        "327846318949d4de213f7aab0f9211839c7aeaeb9f66a16b0abc4985f9929a03"
+      ],
+      "actorKey": "live_entity_seed:ambient-muck-monster-far_north_wilds_shelf-10701:8810000000020701:wilds pack mucker 1:wilds pack mucker 1",
+      "actorId": "ambient-muck-monster-far_north_wilds_shelf-10701",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-ambient-muck-monster-far-north-wilds-shelf-10701-wilds-pack-muc/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-DavisNeural|gender=neutral|kind=creature|style=whispering|styleDegree=0.80|rate=-9%25|pitch=-3%25|volume=default|break=330|actor=live_entity_seed%3Aambient-muck-monster-far_north_wilds_shelf-10701%3A8810000000020701%3Awilds%20pack%20mucker%201%3Awilds%20pack%20mucker%201",
+      "voiceId": "MF3mGyEYCl7XYWbV9V6O",
+      "textHash": "8d93e9ebc8546cf316c24afe78f3a4d011345e56b6e871a09db0628eb26730fc",
+      "bytes": 119998
+    },
+    {
+      "cacheKey": "cdd553945967257a4e9e9d976b79615a21f47bac4cd089e3c82a774e58effaab",
+      "cacheKeys": [
+        "cdd553945967257a4e9e9d976b79615a21f47bac4cd089e3c82a774e58effaab",
+        "94db6ba1d002827f0b6445fbd6603126419f193da756e8fd1d59517f05fef85c"
+      ],
+      "actorKey": "live_entity_seed:ambient-muck-monster-far_north_wilds_shelf-10702:8810000000020702:wilds pack mucker 2:wilds pack mucker 2",
+      "actorId": "ambient-muck-monster-far_north_wilds_shelf-10702",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-ambient-muck-monster-far-north-wilds-shelf-10702-wilds-pack-muc/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-AlloyTurboMultilingualNeural|gender=neutral|kind=creature|rate=-14%25|pitch=-4%25|volume=default|break=250|actor=live_entity_seed%3Aambient-muck-monster-far_north_wilds_shelf-10702%3A8810000000020702%3Awilds%20pack%20mucker%202%3Awilds%20pack%20mucker%202",
+      "voiceId": "EXAVITQu4vr4xnSDxMaL",
+      "textHash": "8d93e9ebc8546cf316c24afe78f3a4d011345e56b6e871a09db0628eb26730fc",
+      "bytes": 86979
+    },
+    {
+      "cacheKey": "58c2e5f071430772a233be162147e4b7f3afba81dda33aea00590cba204825ed",
+      "cacheKeys": [
+        "58c2e5f071430772a233be162147e4b7f3afba81dda33aea00590cba204825ed",
+        "7ebdd1ba012d1e8c190d27fbcc457e4db634241865d17f514bc318133c976ef9"
+      ],
+      "actorKey": "live_entity_seed:ambient-muck-monster-far_north_wilds_shelf-10703:8810000000020703:wilds pack mucker 3:wilds pack mucker 3",
+      "actorId": "ambient-muck-monster-far_north_wilds_shelf-10703",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-ambient-muck-monster-far-north-wilds-shelf-10703-wilds-pack-muc/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-NovaTurboMultilingualNeural|gender=neutral|kind=creature|rate=-7%25|pitch=-8%25|volume=default|break=210|actor=live_entity_seed%3Aambient-muck-monster-far_north_wilds_shelf-10703%3A8810000000020703%3Awilds%20pack%20mucker%203%3Awilds%20pack%20mucker%203",
+      "voiceId": "ErXwobaYiN019PkySvjV",
+      "textHash": "8d93e9ebc8546cf316c24afe78f3a4d011345e56b6e871a09db0628eb26730fc",
+      "bytes": 89487
+    },
+    {
+      "cacheKey": "69c1f8e9c07a8af527a9b1243ef51ac38d0924fb910cf1d5c62965041afe851e",
+      "cacheKeys": [
+        "69c1f8e9c07a8af527a9b1243ef51ac38d0924fb910cf1d5c62965041afe851e",
+        "6cb7e89315ba93f0ccb502249b17934416a952be6d8e72e65a206f991b5e4ed6"
+      ],
+      "actorKey": "live_entity_seed:ambient-muck-monster-far_north_wilds_shelf-10704:8810000000020704:wilds pack mucker 4:wilds pack mucker 4",
+      "actorId": "ambient-muck-monster-far_north_wilds_shelf-10704",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-ambient-muck-monster-far-north-wilds-shelf-10704-wilds-pack-muc/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-NovaTurboMultilingualNeural|gender=neutral|kind=creature|rate=-12%25|pitch=-4%25|volume=default|break=290|actor=live_entity_seed%3Aambient-muck-monster-far_north_wilds_shelf-10704%3A8810000000020704%3Awilds%20pack%20mucker%204%3Awilds%20pack%20mucker%204",
+      "voiceId": "yoZ06aMxZJJ28mfd3POQ",
+      "textHash": "8d93e9ebc8546cf316c24afe78f3a4d011345e56b6e871a09db0628eb26730fc",
+      "bytes": 85725
+    },
+    {
+      "cacheKey": "5b86c9829c3dff930062be3bbd7bf0f4743a7d1761c6ae71e35cbb017a333b51",
+      "cacheKeys": [
+        "5b86c9829c3dff930062be3bbd7bf0f4743a7d1761c6ae71e35cbb017a333b51",
+        "2752c36a2db08a9980be3921168c45aa93b5540a275de155edc854886a0f99c6"
+      ],
+      "actorKey": "live_entity_seed:ambient-muck-monster-far_north_wilds_shelf-10705:8810000000020705:wilds pack mucker 5:wilds pack mucker 5",
+      "actorId": "ambient-muck-monster-far_north_wilds_shelf-10705",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-ambient-muck-monster-far-north-wilds-shelf-10705-wilds-pack-muc/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-GuyNeural|gender=neutral|kind=creature|style=whispering|styleDegree=0.95|rate=-13%25|pitch=-6%25|volume=default|break=290|actor=live_entity_seed%3Aambient-muck-monster-far_north_wilds_shelf-10705%3A8810000000020705%3Awilds%20pack%20mucker%205%3Awilds%20pack%20mucker%205",
+      "voiceId": "yoZ06aMxZJJ28mfd3POQ",
+      "textHash": "8d93e9ebc8546cf316c24afe78f3a4d011345e56b6e871a09db0628eb26730fc",
+      "bytes": 109967
+    },
+    {
+      "cacheKey": "b6b07232752097d901342405417a74dfec29da244423e9c516d6918e5438b129",
+      "cacheKeys": [
+        "b6b07232752097d901342405417a74dfec29da244423e9c516d6918e5438b129",
+        "a05e21654eaa133b45ae3ae3cda13d75241640d75888956902a5e10e02aed940"
+      ],
+      "actorKey": "live_entity_seed:ambient-muck-monster-far_north_wilds_shelf-10706:8810000000020706:wilds pack hex 6:wilds pack hex 6",
+      "actorId": "ambient-muck-monster-far_north_wilds_shelf-10706",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-ambient-muck-monster-far-north-wilds-shelf-10706-wilds-pack-hex/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-JennyNeural|gender=female|kind=humanoid|style=chat|styleDegree=0.80|rate=-1%25|pitch=%2B1%25|volume=default|break=134|actor=live_entity_seed%3Aambient-muck-monster-far_north_wilds_shelf-10706%3A8810000000020706%3Awilds%20pack%20hex%206%3Awilds%20pack%20hex%206",
+      "voiceId": "21m00Tcm4TlvDq8ikWAM",
+      "textHash": "8d93e9ebc8546cf316c24afe78f3a4d011345e56b6e871a09db0628eb26730fc",
+      "bytes": 85725
+    },
+    {
       "cacheKey": "e3b6febdb3bbe2a8eb27338a4b9f0c626c847bd0eb9e0323e8d59ab50f7eb2dd",
       "actorKey": "live_entity_seed:ambient-muck-monster-gravewood_pale_muck-9537:8810000000019537:gravewood pale muckling 1:gravewood pale muckling 1",
       "actorId": "ambient-muck-monster-gravewood_pale_muck-9537",
@@ -17736,6 +17916,186 @@
         "7800fa1ddc4761317037937dda538358d85433cc1138505ab698f8e2302225ec",
         "43881b21f8e4ec0a23b51ed3c63da2a3e5da3f532bc29291f799d927006c1b2e"
       ]
+    },
+    {
+      "cacheKey": "3dc8f14dd274d23e5f3c1577a1b43d0aa88064de8d38fa780ebc29b28bd6c633",
+      "cacheKeys": [
+        "3dc8f14dd274d23e5f3c1577a1b43d0aa88064de8d38fa780ebc29b28bd6c633",
+        "0ee1e7688f42f48d8bead6ffd7cb7b7c3da383576ec16a338f9ceeaf654e3abc"
+      ],
+      "actorKey": "live_entity_seed:ambient-muck-monster-high_downs_terrace-10713:8810000000020713:wilds pack mucker 13:wilds pack mucker 13",
+      "actorId": "ambient-muck-monster-high_downs_terrace-10713",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-ambient-muck-monster-high-downs-terrace-10713-wilds-pack-mucker/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-NovaTurboMultilingualNeural|gender=neutral|kind=creature|rate=-13%25|pitch=-8%25|volume=default|break=230|actor=live_entity_seed%3Aambient-muck-monster-high_downs_terrace-10713%3A8810000000020713%3Awilds%20pack%20mucker%2013%3Awilds%20pack%20mucker%2013",
+      "voiceId": "21m00Tcm4TlvDq8ikWAM",
+      "textHash": "2388f53ab2dcc8ce4a339c2c8bd42b2b1b30fee5c45a9ab2d2115ab6d037f171",
+      "bytes": 79038
+    },
+    {
+      "cacheKey": "5fa145db119c1d9809b09208991c51901c0d91f5c0099cc14ff3f59a39d9d0e7",
+      "cacheKeys": [
+        "5fa145db119c1d9809b09208991c51901c0d91f5c0099cc14ff3f59a39d9d0e7",
+        "ece40533fcfe5fecd36adda9bc630c3fbd7e2fd226ef7bcbd47bd7dbcd63cb6f"
+      ],
+      "actorKey": "live_entity_seed:ambient-muck-monster-high_downs_terrace-10714:8810000000020714:wilds pack mucker 14:wilds pack mucker 14",
+      "actorId": "ambient-muck-monster-high_downs_terrace-10714",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-ambient-muck-monster-high-downs-terrace-10714-wilds-pack-mucker/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-DavisNeural|gender=neutral|kind=creature|style=whispering|styleDegree=0.70|rate=-14%25|pitch=-5%25|volume=default|break=330|actor=live_entity_seed%3Aambient-muck-monster-high_downs_terrace-10714%3A8810000000020714%3Awilds%20pack%20mucker%2014%3Awilds%20pack%20mucker%2014",
+      "voiceId": "21m00Tcm4TlvDq8ikWAM",
+      "textHash": "2388f53ab2dcc8ce4a339c2c8bd42b2b1b30fee5c45a9ab2d2115ab6d037f171",
+      "bytes": 82799
+    },
+    {
+      "cacheKey": "84f3ddc293cb2b6d4531040f54832e02974b66f91b9201e3789fea7476c31fca",
+      "cacheKeys": [
+        "84f3ddc293cb2b6d4531040f54832e02974b66f91b9201e3789fea7476c31fca",
+        "47599e8d5d8444055619a796651a6d8c9d5e458365edda9c5784ad4b9aa9e2a4"
+      ],
+      "actorKey": "live_entity_seed:ambient-muck-monster-high_downs_terrace-10715:8810000000020715:wilds pack mucker 15:wilds pack mucker 15",
+      "actorId": "ambient-muck-monster-high_downs_terrace-10715",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-ambient-muck-monster-high-downs-terrace-10715-wilds-pack-mucker/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-NovaTurboMultilingualNeural|gender=neutral|kind=creature|rate=-11%25|pitch=-8%25|volume=default|break=170|actor=live_entity_seed%3Aambient-muck-monster-high_downs_terrace-10715%3A8810000000020715%3Awilds%20pack%20mucker%2015%3Awilds%20pack%20mucker%2015",
+      "voiceId": "21m00Tcm4TlvDq8ikWAM",
+      "textHash": "2388f53ab2dcc8ce4a339c2c8bd42b2b1b30fee5c45a9ab2d2115ab6d037f171",
+      "bytes": 85725
+    },
+    {
+      "cacheKey": "ec4e6de13bb459862d145e7b7b060437c8bdc3c30b5a0ae3f7ca95c5338ecff1",
+      "cacheKeys": [
+        "ec4e6de13bb459862d145e7b7b060437c8bdc3c30b5a0ae3f7ca95c5338ecff1",
+        "32bfbbd1459e79954b87d3a78215a9d5a5c1952e38e0f5a233c9b38083c7ff9b"
+      ],
+      "actorKey": "live_entity_seed:ambient-muck-monster-high_downs_terrace-10716:8810000000020716:wilds pack mucker 16:wilds pack mucker 16",
+      "actorId": "ambient-muck-monster-high_downs_terrace-10716",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-ambient-muck-monster-high-downs-terrace-10716-wilds-pack-mucker/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-GuyNeural|gender=neutral|kind=creature|style=whispering|styleDegree=0.80|rate=-12%25|pitch=-7%25|volume=default|break=250|actor=live_entity_seed%3Aambient-muck-monster-high_downs_terrace-10716%3A8810000000020716%3Awilds%20pack%20mucker%2016%3Awilds%20pack%20mucker%2016",
+      "voiceId": "pNInz6obpgDQGcFmaJgB",
+      "textHash": "2388f53ab2dcc8ce4a339c2c8bd42b2b1b30fee5c45a9ab2d2115ab6d037f171",
+      "bytes": 82799
+    },
+    {
+      "cacheKey": "75276b5bfc36340a97a9b142d4b8aaf70e487ac80482bfc7385428a5def89f93",
+      "cacheKeys": [
+        "75276b5bfc36340a97a9b142d4b8aaf70e487ac80482bfc7385428a5def89f93",
+        "0b53488cd8a29e3127897c129f32ef71b8a5910fbfe2e6ab07ec0d0dc8b7d493"
+      ],
+      "actorKey": "live_entity_seed:ambient-muck-monster-high_downs_terrace-10717:8810000000020717:wilds pack mucker 17:wilds pack mucker 17",
+      "actorId": "ambient-muck-monster-high_downs_terrace-10717",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-ambient-muck-monster-high-downs-terrace-10717-wilds-pack-mucker/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-NovaTurboMultilingualNeural|gender=neutral|kind=creature|rate=-9%25|pitch=-8%25|volume=default|break=270|actor=live_entity_seed%3Aambient-muck-monster-high_downs_terrace-10717%3A8810000000020717%3Awilds%20pack%20mucker%2017%3Awilds%20pack%20mucker%2017",
+      "voiceId": "VR6AewLTigWG4xSOukaG",
+      "textHash": "2388f53ab2dcc8ce4a339c2c8bd42b2b1b30fee5c45a9ab2d2115ab6d037f171",
+      "bytes": 82799
+    },
+    {
+      "cacheKey": "24967ff1c0351dec23eea6d1cf37a6b020d54c311804791f678172855b445a88",
+      "cacheKeys": [
+        "24967ff1c0351dec23eea6d1cf37a6b020d54c311804791f678172855b445a88",
+        "5cd6a1a41c002c3796e843fbc05dc9d74b391d8a724d16fa4a813a99d2c9b816"
+      ],
+      "actorKey": "live_entity_seed:ambient-muck-monster-high_downs_terrace-10718:8810000000020718:wilds pack hex 18:wilds pack hex 18",
+      "actorId": "ambient-muck-monster-high_downs_terrace-10718",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-ambient-muck-monster-high-downs-terrace-10718-wilds-pack-hex-18/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-GuyNeural|gender=male|kind=humanoid|style=friendly|styleDegree=0.95|rate=-2%25|pitch=-1%25|volume=default|break=170|actor=live_entity_seed%3Aambient-muck-monster-high_downs_terrace-10718%3A8810000000020718%3Awilds%20pack%20hex%2018%3Awilds%20pack%20hex%2018",
+      "voiceId": "TxGEqnHWrfWFTfGW9XjX",
+      "textHash": "2388f53ab2dcc8ce4a339c2c8bd42b2b1b30fee5c45a9ab2d2115ab6d037f171",
+      "bytes": 91995
+    },
+    {
+      "cacheKey": "6d3dcb25e89b87fc7a0ce2f9fa4733e946801830eea07b095c0a70fe98548f11",
+      "cacheKeys": [
+        "6d3dcb25e89b87fc7a0ce2f9fa4733e946801830eea07b095c0a70fe98548f11",
+        "ced091210fb615ecd76b1a8a8a78284bfc53e7db096fde21f69cafb68916515d"
+      ],
+      "actorKey": "live_entity_seed:ambient-muck-monster-north_reach_pinefall-10707:8810000000020707:wilds pack mucker 7:wilds pack mucker 7",
+      "actorId": "ambient-muck-monster-north_reach_pinefall-10707",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-ambient-muck-monster-north-reach-pinefall-10707-wilds-pack-muck/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-AlloyTurboMultilingualNeural|gender=neutral|kind=creature|rate=-12%25|pitch=-6%25|volume=default|break=270|actor=live_entity_seed%3Aambient-muck-monster-north_reach_pinefall-10707%3A8810000000020707%3Awilds%20pack%20mucker%207%3Awilds%20pack%20mucker%207",
+      "voiceId": "pNInz6obpgDQGcFmaJgB",
+      "textHash": "b14d005e0bd67ff73d865f2f4b79534ed290d815fafb0102cc9ceb40ef789d1d",
+      "bytes": 89487
+    },
+    {
+      "cacheKey": "71daf17370ec7b7b27e52fdef4d84c99e83fdfaf4959a252eca92ac77fbe36f4",
+      "cacheKeys": [
+        "71daf17370ec7b7b27e52fdef4d84c99e83fdfaf4959a252eca92ac77fbe36f4",
+        "8d433b631babd8e20e13f3445545dc161cbfecc5be9af2585c996b42bdb7926c"
+      ],
+      "actorKey": "live_entity_seed:ambient-muck-monster-north_reach_pinefall-10708:8810000000020708:wilds pack mucker 8:wilds pack mucker 8",
+      "actorId": "ambient-muck-monster-north_reach_pinefall-10708",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-ambient-muck-monster-north-reach-pinefall-10708-wilds-pack-muck/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-DavisNeural|gender=neutral|kind=creature|style=whispering|styleDegree=0.90|rate=-13%25|pitch=-3%25|volume=default|break=330|actor=live_entity_seed%3Aambient-muck-monster-north_reach_pinefall-10708%3A8810000000020708%3Awilds%20pack%20mucker%208%3Awilds%20pack%20mucker%208",
+      "voiceId": "JBFqnCBsd6RMkjVDRZzb",
+      "textHash": "b14d005e0bd67ff73d865f2f4b79534ed290d815fafb0102cc9ceb40ef789d1d",
+      "bytes": 91995
+    },
+    {
+      "cacheKey": "e73b0c90bf6d099128817b490def28dd362e5adaea3e81818b776d337445b7e1",
+      "cacheKeys": [
+        "e73b0c90bf6d099128817b490def28dd362e5adaea3e81818b776d337445b7e1",
+        "08bb0049926578e6228ba8f558b41e137ef151c7a20b388024ac4d6e8b5fd32e"
+      ],
+      "actorKey": "live_entity_seed:ambient-muck-monster-north_reach_pinefall-10709:8810000000020709:wilds pack mucker 9:wilds pack mucker 9",
+      "actorId": "ambient-muck-monster-north_reach_pinefall-10709",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-ambient-muck-monster-north-reach-pinefall-10709-wilds-pack-muck/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-FableTurboMultilingualNeural|gender=neutral|kind=creature|rate=-14%25|pitch=-3%25|volume=default|break=250|actor=live_entity_seed%3Aambient-muck-monster-north_reach_pinefall-10709%3A8810000000020709%3Awilds%20pack%20mucker%209%3Awilds%20pack%20mucker%209",
+      "voiceId": "VR6AewLTigWG4xSOukaG",
+      "textHash": "b14d005e0bd67ff73d865f2f4b79534ed290d815fafb0102cc9ceb40ef789d1d",
+      "bytes": 81546
+    },
+    {
+      "cacheKey": "031af08c6fde97fc6278c8c63f17d1590379d3c51566290dc150c4a72a8747d2",
+      "cacheKeys": [
+        "031af08c6fde97fc6278c8c63f17d1590379d3c51566290dc150c4a72a8747d2",
+        "641dcc77577490172e68604c6d5c792c5b287364762a02e565e8c4128432d2c0"
+      ],
+      "actorKey": "live_entity_seed:ambient-muck-monster-north_reach_pinefall-10710:8810000000020710:wilds pack mucker 10:wilds pack mucker 10",
+      "actorId": "ambient-muck-monster-north_reach_pinefall-10710",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-ambient-muck-monster-north-reach-pinefall-10710-wilds-pack-muck/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-OnyxTurboMultilingualNeural|gender=neutral|kind=creature|rate=-14%25|pitch=-7%25|volume=default|break=170|actor=live_entity_seed%3Aambient-muck-monster-north_reach_pinefall-10710%3A8810000000020710%3Awilds%20pack%20mucker%2010%3Awilds%20pack%20mucker%2010",
+      "voiceId": "JBFqnCBsd6RMkjVDRZzb",
+      "textHash": "b14d005e0bd67ff73d865f2f4b79534ed290d815fafb0102cc9ceb40ef789d1d",
+      "bytes": 90741
+    },
+    {
+      "cacheKey": "ae201b7833ba91b37bfd54cfda7cdcfefe71bd96773febf2ba5b24aaea0a7b97",
+      "cacheKeys": [
+        "ae201b7833ba91b37bfd54cfda7cdcfefe71bd96773febf2ba5b24aaea0a7b97",
+        "771f627e6ffb7176a6c5677230e0a360ae367143eefded46ee61df2afcb2ab3e"
+      ],
+      "actorKey": "live_entity_seed:ambient-muck-monster-north_reach_pinefall-10711:8810000000020711:wilds pack mucker 11:wilds pack mucker 11",
+      "actorId": "ambient-muck-monster-north_reach_pinefall-10711",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-ambient-muck-monster-north-reach-pinefall-10711-wilds-pack-muck/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-DavisNeural|gender=neutral|kind=creature|style=whispering|styleDegree=0.85|rate=-11%25|pitch=-6%25|volume=default|break=230|actor=live_entity_seed%3Aambient-muck-monster-north_reach_pinefall-10711%3A8810000000020711%3Awilds%20pack%20mucker%2011%3Awilds%20pack%20mucker%2011",
+      "voiceId": "pNInz6obpgDQGcFmaJgB",
+      "textHash": "b14d005e0bd67ff73d865f2f4b79534ed290d815fafb0102cc9ceb40ef789d1d",
+      "bytes": 84471
+    },
+    {
+      "cacheKey": "6c9d1c743a193aac325c598c71078af3e4672645ed52888eeaed1de13b94af96",
+      "cacheKeys": [
+        "6c9d1c743a193aac325c598c71078af3e4672645ed52888eeaed1de13b94af96",
+        "748841f6ade60c489ecd4b86f98dd067e79363bfe139ba6ad6375b5dc0bdf536"
+      ],
+      "actorKey": "live_entity_seed:ambient-muck-monster-north_reach_pinefall-10712:8810000000020712:wilds pack hex 12:wilds pack hex 12",
+      "actorId": "ambient-muck-monster-north_reach_pinefall-10712",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-ambient-muck-monster-north-reach-pinefall-10712-wilds-pack-hex-/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-KaiNeural|gender=male|kind=humanoid|style=conversation|styleDegree=0.95|rate=-2%25|pitch=%2B1%25|volume=default|break=122|actor=live_entity_seed%3Aambient-muck-monster-north_reach_pinefall-10712%3A8810000000020712%3Awilds%20pack%20hex%2012%3Awilds%20pack%20hex%2012",
+      "voiceId": "pNInz6obpgDQGcFmaJgB",
+      "textHash": "b14d005e0bd67ff73d865f2f4b79534ed290d815fafb0102cc9ceb40ef789d1d",
+      "bytes": 84471
     },
     {
       "cacheKey": "c1148129f52794318eb2e54dee8e742979ca6561007fa6f5db700a45ee87bcbe",
@@ -18398,6 +18758,96 @@
       ]
     },
     {
+      "cacheKey": "a73dec8dfae84cf2e0e3b740c64ff3a039fe5409bae02c41a190d08b300d399c",
+      "cacheKeys": [
+        "a73dec8dfae84cf2e0e3b740c64ff3a039fe5409bae02c41a190d08b300d399c",
+        "9337465df66a735e3d2ba8eb0a41646d3bff275cdd6e32488c9f1319a4a84dc1"
+      ],
+      "actorKey": "live_entity_seed:ambient-muck-monster-old_wood_west_clearing-10725:8810000000020725:wilds pack mucker 25:wilds pack mucker 25",
+      "actorId": "ambient-muck-monster-old_wood_west_clearing-10725",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-ambient-muck-monster-old-wood-west-clearing-10725-wilds-pack-mu/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-DavisNeural|gender=neutral|kind=creature|style=whispering|styleDegree=0.95|rate=-9%25|pitch=-3%25|volume=default|break=170|actor=live_entity_seed%3Aambient-muck-monster-old_wood_west_clearing-10725%3A8810000000020725%3Awilds%20pack%20mucker%2025%3Awilds%20pack%20mucker%2025",
+      "voiceId": "JBFqnCBsd6RMkjVDRZzb",
+      "textHash": "b78004c6fb805a8b5add4052c3818f56f0edffd013642c66b3fb584d4db6d7d2",
+      "bytes": 93248
+    },
+    {
+      "cacheKey": "0fdd48ec9654755543dff0c8b85a49cdcbcc343e4772da440d41fd42dd4eba19",
+      "cacheKeys": [
+        "0fdd48ec9654755543dff0c8b85a49cdcbcc343e4772da440d41fd42dd4eba19",
+        "1249d686930e36862a1a85c714f430a356513112f44b816dc18fee0b0e61087d"
+      ],
+      "actorKey": "live_entity_seed:ambient-muck-monster-old_wood_west_clearing-10726:8810000000020726:wilds pack mucker 26:wilds pack mucker 26",
+      "actorId": "ambient-muck-monster-old_wood_west_clearing-10726",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-ambient-muck-monster-old-wood-west-clearing-10726-wilds-pack-mu/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-NovaTurboMultilingualNeural|gender=neutral|kind=creature|rate=-10%25|pitch=-4%25|volume=default|break=210|actor=live_entity_seed%3Aambient-muck-monster-old_wood_west_clearing-10726%3A8810000000020726%3Awilds%20pack%20mucker%2026%3Awilds%20pack%20mucker%2026",
+      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "textHash": "b78004c6fb805a8b5add4052c3818f56f0edffd013642c66b3fb584d4db6d7d2",
+      "bytes": 91995
+    },
+    {
+      "cacheKey": "13eb1a57b2e46b839d12934cb49c7c2430b87997c8c12d7bd408d812ff9bd44f",
+      "cacheKeys": [
+        "13eb1a57b2e46b839d12934cb49c7c2430b87997c8c12d7bd408d812ff9bd44f",
+        "cd6556e9de24c22b8cd789fa36c01f46e614f53965de5de1b2aec9d7b6333805"
+      ],
+      "actorKey": "live_entity_seed:ambient-muck-monster-old_wood_west_clearing-10727:8810000000020727:wilds pack mucker 27:wilds pack mucker 27",
+      "actorId": "ambient-muck-monster-old_wood_west_clearing-10727",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-ambient-muck-monster-old-wood-west-clearing-10727-wilds-pack-mu/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-NovaTurboMultilingualNeural|gender=neutral|kind=creature|rate=-7%25|pitch=-4%25|volume=default|break=290|actor=live_entity_seed%3Aambient-muck-monster-old_wood_west_clearing-10727%3A8810000000020727%3Awilds%20pack%20mucker%2027%3Awilds%20pack%20mucker%2027",
+      "voiceId": "pNInz6obpgDQGcFmaJgB",
+      "textHash": "b78004c6fb805a8b5add4052c3818f56f0edffd013642c66b3fb584d4db6d7d2",
+      "bytes": 81546
+    },
+    {
+      "cacheKey": "9c8950015ef8cc881bc0bcea4857beb7eaf4381eee55fe1db861c6e484658c01",
+      "cacheKeys": [
+        "9c8950015ef8cc881bc0bcea4857beb7eaf4381eee55fe1db861c6e484658c01",
+        "4d3d5161a8c6b3bd137a32cd640498f4e8c0d2e7e0548e5392a0eb324251beef"
+      ],
+      "actorKey": "live_entity_seed:ambient-muck-monster-old_wood_west_clearing-10728:8810000000020728:wilds pack mucker 28:wilds pack mucker 28",
+      "actorId": "ambient-muck-monster-old_wood_west_clearing-10728",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-ambient-muck-monster-old-wood-west-clearing-10728-wilds-pack-mu/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-FableTurboMultilingualNeural|gender=neutral|kind=creature|rate=-8%25|pitch=-8%25|volume=default|break=190|actor=live_entity_seed%3Aambient-muck-monster-old_wood_west_clearing-10728%3A8810000000020728%3Awilds%20pack%20mucker%2028%3Awilds%20pack%20mucker%2028",
+      "voiceId": "JBFqnCBsd6RMkjVDRZzb",
+      "textHash": "b78004c6fb805a8b5add4052c3818f56f0edffd013642c66b3fb584d4db6d7d2",
+      "bytes": 95756
+    },
+    {
+      "cacheKey": "2f3db4b4f88c721eb821edbc9f9d742a6e105e014457115234fe99253867cb42",
+      "cacheKeys": [
+        "2f3db4b4f88c721eb821edbc9f9d742a6e105e014457115234fe99253867cb42",
+        "3b786db55eadec1a5e8c25a2a90069e33e44918a27ee72bcc65966efbbe4c6b3"
+      ],
+      "actorKey": "live_entity_seed:ambient-muck-monster-old_wood_west_clearing-10729:8810000000020729:wilds pack mucker 29:wilds pack mucker 29",
+      "actorId": "ambient-muck-monster-old_wood_west_clearing-10729",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-ambient-muck-monster-old-wood-west-clearing-10729-wilds-pack-mu/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-NovaTurboMultilingualNeural|gender=neutral|kind=creature|rate=-13%25|pitch=-3%25|volume=default|break=250|actor=live_entity_seed%3Aambient-muck-monster-old_wood_west_clearing-10729%3A8810000000020729%3Awilds%20pack%20mucker%2029%3Awilds%20pack%20mucker%2029",
+      "voiceId": "21m00Tcm4TlvDq8ikWAM",
+      "textHash": "b78004c6fb805a8b5add4052c3818f56f0edffd013642c66b3fb584d4db6d7d2",
+      "bytes": 85725
+    },
+    {
+      "cacheKey": "e58c3680605511da0412ceb8eb36c89501ba34a5ad343984a7557bf78540a4c9",
+      "cacheKeys": [
+        "e58c3680605511da0412ceb8eb36c89501ba34a5ad343984a7557bf78540a4c9",
+        "c04dba1819026a2600d210e88ec571d25d98f898a5bef2a9aa8fd930f904cdfb"
+      ],
+      "actorKey": "live_entity_seed:ambient-muck-monster-old_wood_west_clearing-10730:8810000000020730:wilds pack hex 30:wilds pack hex 30",
+      "actorId": "ambient-muck-monster-old_wood_west_clearing-10730",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-ambient-muck-monster-old-wood-west-clearing-10730-wilds-pack-he/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-AriaNeural|gender=female|kind=humanoid|style=chat|styleDegree=0.85|rate=-3%25|pitch=%2B2%25|volume=default|break=182|actor=live_entity_seed%3Aambient-muck-monster-old_wood_west_clearing-10730%3A8810000000020730%3Awilds%20pack%20hex%2030%3Awilds%20pack%20hex%2030",
+      "voiceId": "MF3mGyEYCl7XYWbV9V6O",
+      "textHash": "b78004c6fb805a8b5add4052c3818f56f0edffd013642c66b3fb584d4db6d7d2",
+      "bytes": 98264
+    },
+    {
       "cacheKey": "b77bb2ca77fa4f31d722d5ec00bd43bdc89b5f1f684a486fb82fd7e5c9f50000",
       "actorKey": "live_entity_seed:ambient-muck-monster-road_muckwad_patch-9466:8810000000019466:road muckwad 1:road muckwad 1",
       "actorId": "ambient-muck-monster-road_muckwad_patch-9466",
@@ -18621,6 +19071,96 @@
         "1ff8e04875d621bbbc66401539168195643551f5c7e825a4829aa700eb9bb7bf",
         "4c796940cda91d972123b00e7b035d66a2b14bc0cfacd469c1bf2bd7c8240199"
       ]
+    },
+    {
+      "cacheKey": "f7e2c24acad048bc57c22980c2ccf6d89b140dddbf6b16c225bd4d6b24238f58",
+      "cacheKeys": [
+        "f7e2c24acad048bc57c22980c2ccf6d89b140dddbf6b16c225bd4d6b24238f58",
+        "c3720feab2ba060af36eebaa1ab3ec8456943fe7be9a66ebdd2c7fb2a0cb8409"
+      ],
+      "actorKey": "live_entity_seed:ambient-muck-monster-south_reach_meadow-10731:8810000000020731:wilds pack mucker 31:wilds pack mucker 31",
+      "actorId": "ambient-muck-monster-south_reach_meadow-10731",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-ambient-muck-monster-south-reach-meadow-10731-wilds-pack-mucker/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-DavisNeural|gender=neutral|kind=creature|style=whispering|styleDegree=0.90|rate=-9%25|pitch=-8%25|volume=default|break=250|actor=live_entity_seed%3Aambient-muck-monster-south_reach_meadow-10731%3A8810000000020731%3Awilds%20pack%20mucker%2031%3Awilds%20pack%20mucker%2031",
+      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "textHash": "766db7434e883ffbcc9e801e0680a81011adc2b1ae48072a4801ea39261a99ef",
+      "bytes": 93248
+    },
+    {
+      "cacheKey": "4315c78853a5d9dd98726d1082e78b364cd3c9e6f6b44c7d66821d92cb452db4",
+      "cacheKeys": [
+        "4315c78853a5d9dd98726d1082e78b364cd3c9e6f6b44c7d66821d92cb452db4",
+        "29f8d6333659ae15547907b7adb89cc8a4e6d3b5e9524e2614bef085f74bcc79"
+      ],
+      "actorKey": "live_entity_seed:ambient-muck-monster-south_reach_meadow-10732:8810000000020732:wilds pack mucker 32:wilds pack mucker 32",
+      "actorId": "ambient-muck-monster-south_reach_meadow-10732",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-ambient-muck-monster-south-reach-meadow-10732-wilds-pack-mucker/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-AlloyTurboMultilingualNeural|gender=neutral|kind=creature|rate=-14%25|pitch=-3%25|volume=default|break=190|actor=live_entity_seed%3Aambient-muck-monster-south_reach_meadow-10732%3A8810000000020732%3Awilds%20pack%20mucker%2032%3Awilds%20pack%20mucker%2032",
+      "voiceId": "pNInz6obpgDQGcFmaJgB",
+      "textHash": "766db7434e883ffbcc9e801e0680a81011adc2b1ae48072a4801ea39261a99ef",
+      "bytes": 80292
+    },
+    {
+      "cacheKey": "8c7c1066306edc97171e2f72640e87877c0a9939013d6c75a77ab22bd7492a40",
+      "cacheKeys": [
+        "8c7c1066306edc97171e2f72640e87877c0a9939013d6c75a77ab22bd7492a40",
+        "40bb3943d8f8f82854b3b35043811a666914e0e37b8d274e1b784e7bb1d71513"
+      ],
+      "actorKey": "live_entity_seed:ambient-muck-monster-south_reach_meadow-10733:8810000000020733:wilds pack mucker 33:wilds pack mucker 33",
+      "actorId": "ambient-muck-monster-south_reach_meadow-10733",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-ambient-muck-monster-south-reach-meadow-10733-wilds-pack-mucker/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-GuyNeural|gender=neutral|kind=creature|style=whispering|styleDegree=0.75|rate=-11%25|pitch=-6%25|volume=default|break=210|actor=live_entity_seed%3Aambient-muck-monster-south_reach_meadow-10733%3A8810000000020733%3Awilds%20pack%20mucker%2033%3Awilds%20pack%20mucker%2033",
+      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "textHash": "766db7434e883ffbcc9e801e0680a81011adc2b1ae48072a4801ea39261a99ef",
+      "bytes": 88233
+    },
+    {
+      "cacheKey": "4700f97dcde6b53b14ab99791bfe6b9ce4162167a7a9ebf5abfa1b7ae3f3448d",
+      "cacheKeys": [
+        "4700f97dcde6b53b14ab99791bfe6b9ce4162167a7a9ebf5abfa1b7ae3f3448d",
+        "60667df49566093176cc8cccb3c742874be54add13327a6ffbb434048291a174"
+      ],
+      "actorKey": "live_entity_seed:ambient-muck-monster-south_reach_meadow-10734:8810000000020734:wilds pack mucker 34:wilds pack mucker 34",
+      "actorId": "ambient-muck-monster-south_reach_meadow-10734",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-ambient-muck-monster-south-reach-meadow-10734-wilds-pack-mucker/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-GuyNeural|gender=neutral|kind=creature|style=whispering|styleDegree=0.80|rate=-8%25|pitch=-4%25|volume=default|break=170|actor=live_entity_seed%3Aambient-muck-monster-south_reach_meadow-10734%3A8810000000020734%3Awilds%20pack%20mucker%2034%3Awilds%20pack%20mucker%2034",
+      "voiceId": "VR6AewLTigWG4xSOukaG",
+      "textHash": "766db7434e883ffbcc9e801e0680a81011adc2b1ae48072a4801ea39261a99ef",
+      "bytes": 85725
+    },
+    {
+      "cacheKey": "79860a37d7cbe69f20a8a92ade6842b6ee769452799be1c94f5166500b6303be",
+      "cacheKeys": [
+        "79860a37d7cbe69f20a8a92ade6842b6ee769452799be1c94f5166500b6303be",
+        "f5c6950bd57291bd6736b9bd20e986a3a946ca779da1dc6aa9037f0f43f8b09d"
+      ],
+      "actorKey": "live_entity_seed:ambient-muck-monster-south_reach_meadow-10735:8810000000020735:wilds pack mucker 35:wilds pack mucker 35",
+      "actorId": "ambient-muck-monster-south_reach_meadow-10735",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-ambient-muck-monster-south-reach-meadow-10735-wilds-pack-mucker/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-DavisNeural|gender=neutral|kind=creature|style=whispering|styleDegree=0.80|rate=-13%25|pitch=-4%25|volume=default|break=210|actor=live_entity_seed%3Aambient-muck-monster-south_reach_meadow-10735%3A8810000000020735%3Awilds%20pack%20mucker%2035%3Awilds%20pack%20mucker%2035",
+      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "textHash": "766db7434e883ffbcc9e801e0680a81011adc2b1ae48072a4801ea39261a99ef",
+      "bytes": 84471
+    },
+    {
+      "cacheKey": "c5c42039c8f0bde0b4b7932184181632d9892926a05a90f5272464d01c2c617f",
+      "cacheKeys": [
+        "c5c42039c8f0bde0b4b7932184181632d9892926a05a90f5272464d01c2c617f",
+        "2c243fc0e1a74357c22b404b1795ac88aa4852dcfacd5a0fd6fd0d27326d6324"
+      ],
+      "actorKey": "live_entity_seed:ambient-muck-monster-south_reach_meadow-10736:8810000000020736:wilds pack hex 36:wilds pack hex 36",
+      "actorId": "ambient-muck-monster-south_reach_meadow-10736",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-ambient-muck-monster-south-reach-meadow-10736-wilds-pack-hex-36/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-GuyNeural|gender=male|kind=humanoid|style=friendly|styleDegree=0.85|rate=-5%25|pitch=%2B3%25|volume=default|break=146|actor=live_entity_seed%3Aambient-muck-monster-south_reach_meadow-10736%3A8810000000020736%3Awilds%20pack%20hex%2036%3Awilds%20pack%20hex%2036",
+      "voiceId": "TxGEqnHWrfWFTfGW9XjX",
+      "textHash": "766db7434e883ffbcc9e801e0680a81011adc2b1ae48072a4801ea39261a99ef",
+      "bytes": 89487
     },
     {
       "cacheKey": "157394d0cf23af1331cdd7588ce65c71e086fa8ad2cc15b2b51fa817129150e0",
@@ -20138,6 +20678,531 @@
       ]
     },
     {
+      "cacheKey": "83898af8f27e566cf6929784f41d57274ba5a8023abb53c5f045c48dcd111bfa",
+      "cacheKeys": [
+        "83898af8f27e566cf6929784f41d57274ba5a8023abb53c5f045c48dcd111bfa",
+        "8718ed2b076593d5be91e12d2d79d7a70546529869f9159d463fa7efcecf311c"
+      ],
+      "actorKey": "live_entity_seed:harthmere_town_forest-wildlife-cow-10601:8810000000020601:harthmere forest cow 1:harthmere forest cow 1",
+      "actorId": "harthmere_town_forest-wildlife-cow-10601",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-harthmere-town-forest-wildlife-cow-10601-harthmere-forest-cow-1/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-GuyNeural|gender=neutral|kind=animal|style=whispering|styleDegree=0.80|rate=-6%25|pitch=%2B2%25|volume=default|break=246|actor=live_entity_seed%3Aharthmere_town_forest-wildlife-cow-10601%3A8810000000020601%3Aharthmere%20forest%20cow%201%3Aharthmere%20forest%20cow%201",
+      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "textHash": "69dea118b9219e73504ea3eb31c1b821a4b2392fc7bacc04da23a0ee3da5f44e",
+      "bytes": 11328
+    },
+    {
+      "cacheKey": "edaa2265ef4021426e75b00baad986a8d5b3f5902215ac2b4dfddd3591b1e93b",
+      "cacheKeys": [
+        "edaa2265ef4021426e75b00baad986a8d5b3f5902215ac2b4dfddd3591b1e93b",
+        "5cab5314d5ab350de4767bcfa487efec1acfec057a67a95d86e2fb47e2ba2789"
+      ],
+      "actorKey": "live_entity_seed:harthmere_town_forest-wildlife-cow-10602:8810000000020602:harthmere forest cow 2:harthmere forest cow 2",
+      "actorId": "harthmere_town_forest-wildlife-cow-10602",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-harthmere-town-forest-wildlife-cow-10602-harthmere-forest-cow-2/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-AriaNeural|gender=neutral|kind=animal|style=whispering|styleDegree=0.90|rate=-4%25|pitch=-2%25|volume=default|break=246|actor=live_entity_seed%3Aharthmere_town_forest-wildlife-cow-10602%3A8810000000020602%3Aharthmere%20forest%20cow%202%3Aharthmere%20forest%20cow%202",
+      "voiceId": "pNInz6obpgDQGcFmaJgB",
+      "textHash": "69dea118b9219e73504ea3eb31c1b821a4b2392fc7bacc04da23a0ee3da5f44e",
+      "bytes": 15090
+    },
+    {
+      "cacheKey": "1e6df6c83ca57f42956df3fc9e8501602aac32f1af4d361aea3e6ec0a6ceac70",
+      "cacheKeys": [
+        "1e6df6c83ca57f42956df3fc9e8501602aac32f1af4d361aea3e6ec0a6ceac70",
+        "a492128b2ed6ec4d0f89f2876d00641634bd7956c3ec70ab647b3fc4a38a647b"
+      ],
+      "actorKey": "live_entity_seed:harthmere_town_forest-wildlife-cow-10603:8810000000020603:harthmere forest cow 3:harthmere forest cow 3",
+      "actorId": "harthmere_town_forest-wildlife-cow-10603",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-harthmere-town-forest-wildlife-cow-10603-harthmere-forest-cow-3/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-AlloyTurboMultilingualNeural|gender=neutral|kind=animal|rate=-8%25|pitch=-2%25|volume=default|break=192|actor=live_entity_seed%3Aharthmere_town_forest-wildlife-cow-10603%3A8810000000020603%3Aharthmere%20forest%20cow%203%3Aharthmere%20forest%20cow%203",
+      "voiceId": "21m00Tcm4TlvDq8ikWAM",
+      "textHash": "69dea118b9219e73504ea3eb31c1b821a4b2392fc7bacc04da23a0ee3da5f44e",
+      "bytes": 12582
+    },
+    {
+      "cacheKey": "9a24d58ff912c6417ec8e1bf53ab3e1d0e5e3185c0e0e0a5033e8ca161e57403",
+      "cacheKeys": [
+        "9a24d58ff912c6417ec8e1bf53ab3e1d0e5e3185c0e0e0a5033e8ca161e57403",
+        "1ba88ef775476661891f90dc4f89702aabf9c6c93a181d41c4d00905ace8c622"
+      ],
+      "actorKey": "live_entity_seed:harthmere_town_forest-wildlife-cow-10604:8810000000020604:harthmere forest cow 4:harthmere forest cow 4",
+      "actorId": "harthmere_town_forest-wildlife-cow-10604",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-harthmere-town-forest-wildlife-cow-10604-harthmere-forest-cow-4/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-GuyNeural|gender=neutral|kind=animal|style=whispering|styleDegree=1.05|rate=%2B0%25|pitch=-4%25|volume=default|break=174|actor=live_entity_seed%3Aharthmere_town_forest-wildlife-cow-10604%3A8810000000020604%3Aharthmere%20forest%20cow%204%3Aharthmere%20forest%20cow%204",
+      "voiceId": "21m00Tcm4TlvDq8ikWAM",
+      "textHash": "69dea118b9219e73504ea3eb31c1b821a4b2392fc7bacc04da23a0ee3da5f44e",
+      "bytes": 13836
+    },
+    {
+      "cacheKey": "1dbb710ab0f1508351fba0d0cd2358405a30cb93a4676b36828862b5c40b7001",
+      "cacheKeys": [
+        "1dbb710ab0f1508351fba0d0cd2358405a30cb93a4676b36828862b5c40b7001",
+        "bbba0b25d12571bd65c2a194704448fdc434ca6ebeab0c4ae6070e3c5e89608f"
+      ],
+      "actorKey": "live_entity_seed:harthmere_town_forest-wildlife-cow-10605:8810000000020605:harthmere forest cow 5:harthmere forest cow 5",
+      "actorId": "harthmere_town_forest-wildlife-cow-10605",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-harthmere-town-forest-wildlife-cow-10605-harthmere-forest-cow-5/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-AlloyTurboMultilingualNeural|gender=neutral|kind=animal|rate=%2B0%25|pitch=%2B4%25|volume=default|break=246|actor=live_entity_seed%3Aharthmere_town_forest-wildlife-cow-10605%3A8810000000020605%3Aharthmere%20forest%20cow%205%3Aharthmere%20forest%20cow%205",
+      "voiceId": "pNInz6obpgDQGcFmaJgB",
+      "textHash": "69dea118b9219e73504ea3eb31c1b821a4b2392fc7bacc04da23a0ee3da5f44e",
+      "bytes": 18852
+    },
+    {
+      "cacheKey": "e3f99893237760cb5d186a77fcafd856b54f78e5da63f79881c94d3a23fb6da4",
+      "cacheKeys": [
+        "e3f99893237760cb5d186a77fcafd856b54f78e5da63f79881c94d3a23fb6da4",
+        "38378d17c6fad696e2cfbcd76354de18e2c268bf2a2df962b3405fab3fb6500c"
+      ],
+      "actorKey": "live_entity_seed:harthmere_town_forest-wildlife-rabbit-10616:8810000000020616:harthmere forest rabbit 16:harthmere forest rabbit 16",
+      "actorId": "harthmere_town_forest-wildlife-rabbit-10616",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-harthmere-town-forest-wildlife-rabbit-10616-harthmere-forest-ra/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-FableTurboMultilingualNeural|gender=neutral|kind=animal|rate=-2%25|pitch=-1%25|volume=default|break=210|actor=live_entity_seed%3Aharthmere_town_forest-wildlife-rabbit-10616%3A8810000000020616%3Aharthmere%20forest%20rabbit%2016%3Aharthmere%20forest%20rabbit%2016",
+      "voiceId": "TxGEqnHWrfWFTfGW9XjX",
+      "textHash": "9f42571e8f7f8e9b4412be8327e1e8b0ecf9a13ede5c9ab7ce260dfd4ad2b36d",
+      "bytes": 18852
+    },
+    {
+      "cacheKey": "827fba96c80c52cc00d4ed631bc883f5478bb006f393bf12fb90a7e2ffd62ec2",
+      "cacheKeys": [
+        "827fba96c80c52cc00d4ed631bc883f5478bb006f393bf12fb90a7e2ffd62ec2",
+        "75cdbbf47e6e81cbd603fa7c887172b3d95912a4c65d9af559b49e29baa5a2c7"
+      ],
+      "actorKey": "live_entity_seed:harthmere_town_forest-wildlife-rabbit-10617:8810000000020617:harthmere forest rabbit 17:harthmere forest rabbit 17",
+      "actorId": "harthmere_town_forest-wildlife-rabbit-10617",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-harthmere-town-forest-wildlife-rabbit-10617-harthmere-forest-ra/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-NovaTurboMultilingualNeural|gender=neutral|kind=animal|rate=%2B0%25|pitch=-4%25|volume=default|break=192|actor=live_entity_seed%3Aharthmere_town_forest-wildlife-rabbit-10617%3A8810000000020617%3Aharthmere%20forest%20rabbit%2017%3Aharthmere%20forest%20rabbit%2017",
+      "voiceId": "TxGEqnHWrfWFTfGW9XjX",
+      "textHash": "9f42571e8f7f8e9b4412be8327e1e8b0ecf9a13ede5c9ab7ce260dfd4ad2b36d",
+      "bytes": 20106
+    },
+    {
+      "cacheKey": "d5b4912a8d95c3d0db1964b844005bd09698bba1f394bfc63a3270ebd3c978f3",
+      "cacheKeys": [
+        "d5b4912a8d95c3d0db1964b844005bd09698bba1f394bfc63a3270ebd3c978f3",
+        "ca119bc997ab3fa6fdaf4d96f8ff1d82a6aa63bc40faa6d17c836805b52fb914"
+      ],
+      "actorKey": "live_entity_seed:harthmere_town_forest-wildlife-rabbit-10618:8810000000020618:harthmere forest rabbit 18:harthmere forest rabbit 18",
+      "actorId": "harthmere_town_forest-wildlife-rabbit-10618",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-harthmere-town-forest-wildlife-rabbit-10618-harthmere-forest-ra/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-NovaTurboMultilingualNeural|gender=neutral|kind=animal|rate=-2%25|pitch=%2B1%25|volume=default|break=174|actor=live_entity_seed%3Aharthmere_town_forest-wildlife-rabbit-10618%3A8810000000020618%3Aharthmere%20forest%20rabbit%2018%3Aharthmere%20forest%20rabbit%2018",
+      "voiceId": "MF3mGyEYCl7XYWbV9V6O",
+      "textHash": "9f42571e8f7f8e9b4412be8327e1e8b0ecf9a13ede5c9ab7ce260dfd4ad2b36d",
+      "bytes": 34316
+    },
+    {
+      "cacheKey": "76e3c4a06b8ebcd422a1b73558d9f1ea1801e977ba2064968b1595c8a833217e",
+      "cacheKeys": [
+        "76e3c4a06b8ebcd422a1b73558d9f1ea1801e977ba2064968b1595c8a833217e",
+        "c3feae7ca3a9950af69000b0502137045e0c19696f5fd8d7f63c9acb88d7e3fe"
+      ],
+      "actorKey": "live_entity_seed:harthmere_town_forest-wildlife-rabbit-10619:8810000000020619:harthmere forest rabbit 19:harthmere forest rabbit 19",
+      "actorId": "harthmere_town_forest-wildlife-rabbit-10619",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-harthmere-town-forest-wildlife-rabbit-10619-harthmere-forest-ra/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-FableTurboMultilingualNeural|gender=neutral|kind=animal|rate=-8%25|pitch=%2B3%25|volume=default|break=156|actor=live_entity_seed%3Aharthmere_town_forest-wildlife-rabbit-10619%3A8810000000020619%3Aharthmere%20forest%20rabbit%2019%3Aharthmere%20forest%20rabbit%2019",
+      "voiceId": "MF3mGyEYCl7XYWbV9V6O",
+      "textHash": "9f42571e8f7f8e9b4412be8327e1e8b0ecf9a13ede5c9ab7ce260dfd4ad2b36d",
+      "bytes": 33062
+    },
+    {
+      "cacheKey": "747922e49dda6fb64b13f52d71c5b7fe7cc6acd30e1a98b0ff60844a747b4ddb",
+      "cacheKeys": [
+        "747922e49dda6fb64b13f52d71c5b7fe7cc6acd30e1a98b0ff60844a747b4ddb",
+        "ef86d899208e6b76b52067617bd6971d1c2118dcde502489988bfdc0a9769615"
+      ],
+      "actorKey": "live_entity_seed:harthmere_town_forest-wildlife-rabbit-10620:8810000000020620:harthmere forest rabbit 20:harthmere forest rabbit 20",
+      "actorId": "harthmere_town_forest-wildlife-rabbit-10620",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-harthmere-town-forest-wildlife-rabbit-10620-harthmere-forest-ra/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-DavisNeural|gender=neutral|kind=animal|style=hopeful|styleDegree=0.90|rate=%2B0%25|pitch=-2%25|volume=default|break=138|actor=live_entity_seed%3Aharthmere_town_forest-wildlife-rabbit-10620%3A8810000000020620%3Aharthmere%20forest%20rabbit%2020%3Aharthmere%20forest%20rabbit%2020",
+      "voiceId": "yoZ06aMxZJJ28mfd3POQ",
+      "textHash": "9f42571e8f7f8e9b4412be8327e1e8b0ecf9a13ede5c9ab7ce260dfd4ad2b36d",
+      "bytes": 24285
+    },
+    {
+      "cacheKey": "7aef127edbf5c784111dda9b4f3b8e1f0a47748a52ac25c4136deccd09bcf33c",
+      "cacheKeys": [
+        "7aef127edbf5c784111dda9b4f3b8e1f0a47748a52ac25c4136deccd09bcf33c",
+        "250ca278e5615353c10e46b769106388ea6230cd82608d33350f820da8c06b70"
+      ],
+      "actorKey": "live_entity_seed:harthmere_town_forest-wildlife-rabbit-10621:8810000000020621:harthmere forest rabbit 21:harthmere forest rabbit 21",
+      "actorId": "harthmere_town_forest-wildlife-rabbit-10621",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-harthmere-town-forest-wildlife-rabbit-10621-harthmere-forest-ra/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-DavisNeural|gender=neutral|kind=animal|style=hopeful|styleDegree=0.80|rate=%2B0%25|pitch=%2B3%25|volume=default|break=156|actor=live_entity_seed%3Aharthmere_town_forest-wildlife-rabbit-10621%3A8810000000020621%3Aharthmere%20forest%20rabbit%2021%3Aharthmere%20forest%20rabbit%2021",
+      "voiceId": "EXAVITQu4vr4xnSDxMaL",
+      "textHash": "9f42571e8f7f8e9b4412be8327e1e8b0ecf9a13ede5c9ab7ce260dfd4ad2b36d",
+      "bytes": 26793
+    },
+    {
+      "cacheKey": "2d83c7d6ee461b682ab99ee40f9a9bd12a3a6193d227fbddfab56437d0035379",
+      "cacheKeys": [
+        "2d83c7d6ee461b682ab99ee40f9a9bd12a3a6193d227fbddfab56437d0035379",
+        "75770fb0e561364e03268f3220970644d377bebe2d1047f2b69a53abcd0016c9"
+      ],
+      "actorKey": "live_entity_seed:harthmere_town_forest-wildlife-rabbit-10622:8810000000020622:harthmere forest rabbit 22:harthmere forest rabbit 22",
+      "actorId": "harthmere_town_forest-wildlife-rabbit-10622",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-harthmere-town-forest-wildlife-rabbit-10622-harthmere-forest-ra/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-OnyxTurboMultilingualNeural|gender=neutral|kind=animal|rate=-4%25|pitch=-4%25|volume=default|break=156|actor=live_entity_seed%3Aharthmere_town_forest-wildlife-rabbit-10622%3A8810000000020622%3Aharthmere%20forest%20rabbit%2022%3Aharthmere%20forest%20rabbit%2022",
+      "voiceId": "ErXwobaYiN019PkySvjV",
+      "textHash": "9f42571e8f7f8e9b4412be8327e1e8b0ecf9a13ede5c9ab7ce260dfd4ad2b36d",
+      "bytes": 25539
+    },
+    {
+      "cacheKey": "e706713a0cf53371446c1b1455f445e0d34ad770905366e206813fb31e50790b",
+      "cacheKeys": [
+        "e706713a0cf53371446c1b1455f445e0d34ad770905366e206813fb31e50790b",
+        "a394586289ef2bc16a9e7c40816601e4c0255e3d9869e291189f4bea094aa435"
+      ],
+      "actorKey": "live_entity_seed:harthmere_town_forest-wildlife-rabbit-10623:8810000000020623:harthmere forest rabbit 23:harthmere forest rabbit 23",
+      "actorId": "harthmere_town_forest-wildlife-rabbit-10623",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-harthmere-town-forest-wildlife-rabbit-10623-harthmere-forest-ra/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-GuyNeural|gender=neutral|kind=animal|style=whispering|styleDegree=0.95|rate=-2%25|pitch=%2B4%25|volume=default|break=138|actor=live_entity_seed%3Aharthmere_town_forest-wildlife-rabbit-10623%3A8810000000020623%3Aharthmere%20forest%20rabbit%2023%3Aharthmere%20forest%20rabbit%2023",
+      "voiceId": "yoZ06aMxZJJ28mfd3POQ",
+      "textHash": "9f42571e8f7f8e9b4412be8327e1e8b0ecf9a13ede5c9ab7ce260dfd4ad2b36d",
+      "bytes": 28047
+    },
+    {
+      "cacheKey": "cf4a6abc9aebdd1dcabbf03a0cbc2ad13ba0ef3b09f1a1d1ea6f64cb131b7732",
+      "cacheKeys": [
+        "cf4a6abc9aebdd1dcabbf03a0cbc2ad13ba0ef3b09f1a1d1ea6f64cb131b7732",
+        "87135022647449e371636ad487cc27355b8e518adc55a545075c4cb39d7cb2e8"
+      ],
+      "actorKey": "live_entity_seed:harthmere_town_forest-wildlife-rabbit-10624:8810000000020624:harthmere forest rabbit 24:harthmere forest rabbit 24",
+      "actorId": "harthmere_town_forest-wildlife-rabbit-10624",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-harthmere-town-forest-wildlife-rabbit-10624-harthmere-forest-ra/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-DavisNeural|gender=neutral|kind=animal|style=hopeful|styleDegree=0.95|rate=%2B0%25|pitch=%2B2%25|volume=default|break=120|actor=live_entity_seed%3Aharthmere_town_forest-wildlife-rabbit-10624%3A8810000000020624%3Aharthmere%20forest%20rabbit%2024%3Aharthmere%20forest%20rabbit%2024",
+      "voiceId": "yoZ06aMxZJJ28mfd3POQ",
+      "textHash": "9f42571e8f7f8e9b4412be8327e1e8b0ecf9a13ede5c9ab7ce260dfd4ad2b36d",
+      "bytes": 28047
+    },
+    {
+      "cacheKey": "c3c7fcdf6558760a99b2a9ffae9a59aff28fc2076055abc57e829e2c8c19ea91",
+      "cacheKeys": [
+        "c3c7fcdf6558760a99b2a9ffae9a59aff28fc2076055abc57e829e2c8c19ea91",
+        "fdb2d6cebed571574e16e33bcf4bb487f22a23bc57cdb71ff21aca2cfb1666cf"
+      ],
+      "actorKey": "live_entity_seed:harthmere_town_forest-wildlife-rabbit-10625:8810000000020625:harthmere forest rabbit 25:harthmere forest rabbit 25",
+      "actorId": "harthmere_town_forest-wildlife-rabbit-10625",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-harthmere-town-forest-wildlife-rabbit-10625-harthmere-forest-ra/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-NovaTurboMultilingualNeural|gender=neutral|kind=animal|rate=-8%25|pitch=%2B3%25|volume=default|break=246|actor=live_entity_seed%3Aharthmere_town_forest-wildlife-rabbit-10625%3A8810000000020625%3Aharthmere%20forest%20rabbit%2025%3Aharthmere%20forest%20rabbit%2025",
+      "voiceId": "TxGEqnHWrfWFTfGW9XjX",
+      "textHash": "9f42571e8f7f8e9b4412be8327e1e8b0ecf9a13ede5c9ab7ce260dfd4ad2b36d",
+      "bytes": 21359
+    },
+    {
+      "cacheKey": "7ffa53de0db3e99601cdc5a25ef320bb76f58a5a1926bb0ea7f0a92cb5c8e07e",
+      "cacheKeys": [
+        "7ffa53de0db3e99601cdc5a25ef320bb76f58a5a1926bb0ea7f0a92cb5c8e07e",
+        "baa7eea3db8fe12c98e45468244e6f42334fecd7f6c678691492fe89874b2d6f"
+      ],
+      "actorKey": "live_entity_seed:harthmere_town_forest-wildlife-rabbit-10626:8810000000020626:harthmere forest rabbit 26:harthmere forest rabbit 26",
+      "actorId": "harthmere_town_forest-wildlife-rabbit-10626",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-harthmere-town-forest-wildlife-rabbit-10626-harthmere-forest-ra/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-AlloyTurboMultilingualNeural|gender=neutral|kind=animal|rate=%2B0%25|pitch=-4%25|volume=default|break=246|actor=live_entity_seed%3Aharthmere_town_forest-wildlife-rabbit-10626%3A8810000000020626%3Aharthmere%20forest%20rabbit%2026%3Aharthmere%20forest%20rabbit%2026",
+      "voiceId": "MF3mGyEYCl7XYWbV9V6O",
+      "textHash": "9f42571e8f7f8e9b4412be8327e1e8b0ecf9a13ede5c9ab7ce260dfd4ad2b36d",
+      "bytes": 33062
+    },
+    {
+      "cacheKey": "6556bbad288078bdd2afb568aea8587a5fd46f39fa62fcd7c9222ca51b449d97",
+      "cacheKeys": [
+        "6556bbad288078bdd2afb568aea8587a5fd46f39fa62fcd7c9222ca51b449d97",
+        "8f32fb353311c6e163e0c538429fe19add4222d4440510e17bedf9a61ca824ac"
+      ],
+      "actorKey": "live_entity_seed:harthmere_town_forest-wildlife-rabbit-10627:8810000000020627:harthmere forest rabbit 27:harthmere forest rabbit 27",
+      "actorId": "harthmere_town_forest-wildlife-rabbit-10627",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-harthmere-town-forest-wildlife-rabbit-10627-harthmere-forest-ra/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-AlloyTurboMultilingualNeural|gender=neutral|kind=animal|rate=-2%25|pitch=-4%25|volume=default|break=192|actor=live_entity_seed%3Aharthmere_town_forest-wildlife-rabbit-10627%3A8810000000020627%3Aharthmere%20forest%20rabbit%2027%3Aharthmere%20forest%20rabbit%2027",
+      "voiceId": "ErXwobaYiN019PkySvjV",
+      "textHash": "9f42571e8f7f8e9b4412be8327e1e8b0ecf9a13ede5c9ab7ce260dfd4ad2b36d",
+      "bytes": 23031
+    },
+    {
+      "cacheKey": "516385ef3eda8bd0ced96f32c09357fa16ce73c35af3db86c38d6c2cc837a080",
+      "cacheKeys": [
+        "516385ef3eda8bd0ced96f32c09357fa16ce73c35af3db86c38d6c2cc837a080",
+        "4909c8b89435bd5926a56d42443494f5e07e2a6994ee5f6cb2af3bfa3c229c55"
+      ],
+      "actorKey": "live_entity_seed:harthmere_town_forest-wildlife-rabbit-10628:8810000000020628:harthmere forest rabbit 28:harthmere forest rabbit 28",
+      "actorId": "harthmere_town_forest-wildlife-rabbit-10628",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-harthmere-town-forest-wildlife-rabbit-10628-harthmere-forest-ra/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-AriaNeural|gender=neutral|kind=animal|style=whispering|styleDegree=1.05|rate=-4%25|pitch=-3%25|volume=default|break=156|actor=live_entity_seed%3Aharthmere_town_forest-wildlife-rabbit-10628%3A8810000000020628%3Aharthmere%20forest%20rabbit%2028%3Aharthmere%20forest%20rabbit%2028",
+      "voiceId": "ErXwobaYiN019PkySvjV",
+      "textHash": "9f42571e8f7f8e9b4412be8327e1e8b0ecf9a13ede5c9ab7ce260dfd4ad2b36d",
+      "bytes": 25539
+    },
+    {
+      "cacheKey": "d1e16083d8e89a6f275884eaebbf96ff39ff35b241752e7a1f82dcc9d8bcbf7f",
+      "cacheKeys": [
+        "d1e16083d8e89a6f275884eaebbf96ff39ff35b241752e7a1f82dcc9d8bcbf7f",
+        "74060d606d13050e8c2c45f2232f09c45d04dc1bfd4257a4595770194725668d"
+      ],
+      "actorKey": "live_entity_seed:harthmere_town_forest-wildlife-rabbit-10629:8810000000020629:harthmere forest rabbit 29:harthmere forest rabbit 29",
+      "actorId": "harthmere_town_forest-wildlife-rabbit-10629",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-harthmere-town-forest-wildlife-rabbit-10629-harthmere-forest-ra/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-FableTurboMultilingualNeural|gender=neutral|kind=animal|rate=-4%25|pitch=-4%25|volume=default|break=192|actor=live_entity_seed%3Aharthmere_town_forest-wildlife-rabbit-10629%3A8810000000020629%3Aharthmere%20forest%20rabbit%2029%3Aharthmere%20forest%20rabbit%2029",
+      "voiceId": "TxGEqnHWrfWFTfGW9XjX",
+      "textHash": "9f42571e8f7f8e9b4412be8327e1e8b0ecf9a13ede5c9ab7ce260dfd4ad2b36d",
+      "bytes": 21359
+    },
+    {
+      "cacheKey": "e71247ec77f386d8eab35bc13dc9b0e025553778964ef8f44f5a314ce0731037",
+      "cacheKeys": [
+        "e71247ec77f386d8eab35bc13dc9b0e025553778964ef8f44f5a314ce0731037",
+        "891ef3b2cca2a5f56ef3389b33e2f27bba3d01c30f63cbcaa435e52aa3ce1cda"
+      ],
+      "actorKey": "live_entity_seed:harthmere_town_forest-wildlife-rabbit-10630:8810000000020630:harthmere forest rabbit 30:harthmere forest rabbit 30",
+      "actorId": "harthmere_town_forest-wildlife-rabbit-10630",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-harthmere-town-forest-wildlife-rabbit-10630-harthmere-forest-ra/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-GuyNeural|gender=neutral|kind=animal|style=whispering|styleDegree=1.00|rate=-4%25|pitch=%2B1%25|volume=default|break=138|actor=live_entity_seed%3Aharthmere_town_forest-wildlife-rabbit-10630%3A8810000000020630%3Aharthmere%20forest%20rabbit%2030%3Aharthmere%20forest%20rabbit%2030",
+      "voiceId": "MF3mGyEYCl7XYWbV9V6O",
+      "textHash": "9f42571e8f7f8e9b4412be8327e1e8b0ecf9a13ede5c9ab7ce260dfd4ad2b36d",
+      "bytes": 30555
+    },
+    {
+      "cacheKey": "fde2630f2a8f0095496d26fe3fe750bbde222fdc7d54b883c8ef525df1893fee",
+      "cacheKeys": [
+        "fde2630f2a8f0095496d26fe3fe750bbde222fdc7d54b883c8ef525df1893fee",
+        "4e8e64c5c1ecbf4e9a52a3f4d0d9db39f308a05f625b4d3d4235d975403aef45"
+      ],
+      "actorKey": "live_entity_seed:harthmere_town_forest-wildlife-rabbit-10631:8810000000020631:harthmere forest rabbit 31:harthmere forest rabbit 31",
+      "actorId": "harthmere_town_forest-wildlife-rabbit-10631",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-harthmere-town-forest-wildlife-rabbit-10631-harthmere-forest-ra/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-NovaTurboMultilingualNeural|gender=neutral|kind=animal|rate=%2B0%25|pitch=%2B1%25|volume=default|break=210|actor=live_entity_seed%3Aharthmere_town_forest-wildlife-rabbit-10631%3A8810000000020631%3Aharthmere%20forest%20rabbit%2031%3Aharthmere%20forest%20rabbit%2031",
+      "voiceId": "EXAVITQu4vr4xnSDxMaL",
+      "textHash": "9f42571e8f7f8e9b4412be8327e1e8b0ecf9a13ede5c9ab7ce260dfd4ad2b36d",
+      "bytes": 29301
+    },
+    {
+      "cacheKey": "61677b0477ee72c7955f8138776d60032b37a9680af78384fff1ce853c7adca7",
+      "cacheKeys": [
+        "61677b0477ee72c7955f8138776d60032b37a9680af78384fff1ce853c7adca7",
+        "3f1a8386ed353e2149f24d3890ad59eb5fda10164f76fc0adc1549097e6a0d92"
+      ],
+      "actorKey": "live_entity_seed:harthmere_town_forest-wildlife-rabbit-10632:8810000000020632:harthmere forest rabbit 32:harthmere forest rabbit 32",
+      "actorId": "harthmere_town_forest-wildlife-rabbit-10632",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-harthmere-town-forest-wildlife-rabbit-10632-harthmere-forest-ra/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-GuyNeural|gender=neutral|kind=animal|style=whispering|styleDegree=0.90|rate=-2%25|pitch=-1%25|volume=default|break=228|actor=live_entity_seed%3Aharthmere_town_forest-wildlife-rabbit-10632%3A8810000000020632%3Aharthmere%20forest%20rabbit%2032%3Aharthmere%20forest%20rabbit%2032",
+      "voiceId": "yoZ06aMxZJJ28mfd3POQ",
+      "textHash": "9f42571e8f7f8e9b4412be8327e1e8b0ecf9a13ede5c9ab7ce260dfd4ad2b36d",
+      "bytes": 25539
+    },
+    {
+      "cacheKey": "a3ddf73fc1cb7a07aa900ee3d0db413ca4f05dcb105890fe5aadedd7141360fc",
+      "cacheKeys": [
+        "a3ddf73fc1cb7a07aa900ee3d0db413ca4f05dcb105890fe5aadedd7141360fc",
+        "3f4c710e08aba6a12031eb8558890a9c9d1c979af259a9b907851770b16de312"
+      ],
+      "actorKey": "live_entity_seed:harthmere_town_forest-wildlife-rabbit-10633:8810000000020633:harthmere forest rabbit 33:harthmere forest rabbit 33",
+      "actorId": "harthmere_town_forest-wildlife-rabbit-10633",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-harthmere-town-forest-wildlife-rabbit-10633-harthmere-forest-ra/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-OnyxTurboMultilingualNeural|gender=neutral|kind=animal|rate=%2B0%25|pitch=-4%25|volume=default|break=120|actor=live_entity_seed%3Aharthmere_town_forest-wildlife-rabbit-10633%3A8810000000020633%3Aharthmere%20forest%20rabbit%2033%3Aharthmere%20forest%20rabbit%2033",
+      "voiceId": "TxGEqnHWrfWFTfGW9XjX",
+      "textHash": "9f42571e8f7f8e9b4412be8327e1e8b0ecf9a13ede5c9ab7ce260dfd4ad2b36d",
+      "bytes": 18852
+    },
+    {
+      "cacheKey": "63e8e6abdb292044952e540b36e7c1bc0a6ac6c5ffa00b5bd6475854e7e8836b",
+      "cacheKeys": [
+        "63e8e6abdb292044952e540b36e7c1bc0a6ac6c5ffa00b5bd6475854e7e8836b",
+        "860878e3d81675af2a31fa2f400986f06db2bffaa059a53953f76e6b639d7b8c"
+      ],
+      "actorKey": "live_entity_seed:harthmere_town_forest-wildlife-rabbit-10634:8810000000020634:harthmere forest rabbit 34:harthmere forest rabbit 34",
+      "actorId": "harthmere_town_forest-wildlife-rabbit-10634",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-harthmere-town-forest-wildlife-rabbit-10634-harthmere-forest-ra/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-FableTurboMultilingualNeural|gender=neutral|kind=animal|rate=-4%25|pitch=%2B0%25|volume=default|break=138|actor=live_entity_seed%3Aharthmere_town_forest-wildlife-rabbit-10634%3A8810000000020634%3Aharthmere%20forest%20rabbit%2034%3Aharthmere%20forest%20rabbit%2034",
+      "voiceId": "EXAVITQu4vr4xnSDxMaL",
+      "textHash": "9f42571e8f7f8e9b4412be8327e1e8b0ecf9a13ede5c9ab7ce260dfd4ad2b36d",
+      "bytes": 25539
+    },
+    {
+      "cacheKey": "2348ea9c3a717bfb1f91d59f0dfd73724a3d420c9ae21214c7ca8e15d896e7c8",
+      "cacheKeys": [
+        "2348ea9c3a717bfb1f91d59f0dfd73724a3d420c9ae21214c7ca8e15d896e7c8",
+        "bcf1f79970ded19658a3dfbe3c1f6c0e4b22a5d670a19bc5cd76cec0d5373388"
+      ],
+      "actorKey": "live_entity_seed:harthmere_town_forest-wildlife-rabbit-10635:8810000000020635:harthmere forest rabbit 35:harthmere forest rabbit 35",
+      "actorId": "harthmere_town_forest-wildlife-rabbit-10635",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-harthmere-town-forest-wildlife-rabbit-10635-harthmere-forest-ra/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-AriaNeural|gender=neutral|kind=animal|style=whispering|styleDegree=0.85|rate=-8%25|pitch=%2B0%25|volume=default|break=192|actor=live_entity_seed%3Aharthmere_town_forest-wildlife-rabbit-10635%3A8810000000020635%3Aharthmere%20forest%20rabbit%2035%3Aharthmere%20forest%20rabbit%2035",
+      "voiceId": "MF3mGyEYCl7XYWbV9V6O",
+      "textHash": "9f42571e8f7f8e9b4412be8327e1e8b0ecf9a13ede5c9ab7ce260dfd4ad2b36d",
+      "bytes": 33062
+    },
+    {
+      "cacheKey": "12bd2b54b0b0335fda2d081f0de3497c7494b9317347483428e0230c7d35b7d0",
+      "cacheKeys": [
+        "12bd2b54b0b0335fda2d081f0de3497c7494b9317347483428e0230c7d35b7d0",
+        "3554a3b87cd28f7250aae8003cd7fc04746d517cfab21a1130d62b4873207855"
+      ],
+      "actorKey": "live_entity_seed:harthmere_town_forest-wildlife-sheep-10606:8810000000020606:harthmere forest sheep 6:harthmere forest sheep 6",
+      "actorId": "harthmere_town_forest-wildlife-sheep-10606",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-harthmere-town-forest-wildlife-sheep-10606-harthmere-forest-she/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-AlloyTurboMultilingualNeural|gender=neutral|kind=animal|rate=-2%25|pitch=-3%25|volume=default|break=156|actor=live_entity_seed%3Aharthmere_town_forest-wildlife-sheep-10606%3A8810000000020606%3Aharthmere%20forest%20sheep%206%3Aharthmere%20forest%20sheep%206",
+      "voiceId": "pNInz6obpgDQGcFmaJgB",
+      "textHash": "cfd76d0c62c0bc39b80f1a7bcbd4ba04339e56ab2a0336ce98e26f3dbca7519d",
+      "bytes": 17598
+    },
+    {
+      "cacheKey": "9c9109457dda5ba1442f68c1820f37049989284697210a0309462916104c07f1",
+      "cacheKeys": [
+        "9c9109457dda5ba1442f68c1820f37049989284697210a0309462916104c07f1",
+        "6f95a78da1116f0ae02d45de3291e865716e2450dd836ddf469fc1dece7ed5df"
+      ],
+      "actorKey": "live_entity_seed:harthmere_town_forest-wildlife-sheep-10607:8810000000020607:harthmere forest sheep 7:harthmere forest sheep 7",
+      "actorId": "harthmere_town_forest-wildlife-sheep-10607",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-harthmere-town-forest-wildlife-sheep-10607-harthmere-forest-she/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-NovaTurboMultilingualNeural|gender=neutral|kind=animal|rate=-4%25|pitch=%2B4%25|volume=default|break=228|actor=live_entity_seed%3Aharthmere_town_forest-wildlife-sheep-10607%3A8810000000020607%3Aharthmere%20forest%20sheep%207%3Aharthmere%20forest%20sheep%207",
+      "voiceId": "JBFqnCBsd6RMkjVDRZzb",
+      "textHash": "cfd76d0c62c0bc39b80f1a7bcbd4ba04339e56ab2a0336ce98e26f3dbca7519d",
+      "bytes": 13836
+    },
+    {
+      "cacheKey": "6ad066d9dd888fb345882e02249bc3dc8af5f6a77e102282ed2303d181782dbc",
+      "cacheKeys": [
+        "6ad066d9dd888fb345882e02249bc3dc8af5f6a77e102282ed2303d181782dbc",
+        "50a611f8a8e2e9c5953fac9b7aaf7f86f638646b598ab7cb822e4d7e1b315af8"
+      ],
+      "actorKey": "live_entity_seed:harthmere_town_forest-wildlife-sheep-10608:8810000000020608:harthmere forest sheep 8:harthmere forest sheep 8",
+      "actorId": "harthmere_town_forest-wildlife-sheep-10608",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-harthmere-town-forest-wildlife-sheep-10608-harthmere-forest-she/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-DavisNeural|gender=neutral|kind=animal|style=hopeful|styleDegree=0.80|rate=-6%25|pitch=-1%25|volume=default|break=174|actor=live_entity_seed%3Aharthmere_town_forest-wildlife-sheep-10608%3A8810000000020608%3Aharthmere%20forest%20sheep%208%3Aharthmere%20forest%20sheep%208",
+      "voiceId": "pNInz6obpgDQGcFmaJgB",
+      "textHash": "cfd76d0c62c0bc39b80f1a7bcbd4ba04339e56ab2a0336ce98e26f3dbca7519d",
+      "bytes": 15090
+    },
+    {
+      "cacheKey": "b878a397c181e58eedf1f4c047c1bd5a57a2a72d7e251cf7081d5986ca2b089e",
+      "cacheKeys": [
+        "b878a397c181e58eedf1f4c047c1bd5a57a2a72d7e251cf7081d5986ca2b089e",
+        "c4935ea9f9fba46d9ef36b7cf2b08c14b7c71c96d904e351915da75ae45bb8fa"
+      ],
+      "actorKey": "live_entity_seed:harthmere_town_forest-wildlife-sheep-10609:8810000000020609:harthmere forest sheep 9:harthmere forest sheep 9",
+      "actorId": "harthmere_town_forest-wildlife-sheep-10609",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-harthmere-town-forest-wildlife-sheep-10609-harthmere-forest-she/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-GuyNeural|gender=neutral|kind=animal|style=whispering|styleDegree=0.90|rate=-4%25|pitch=%2B3%25|volume=default|break=174|actor=live_entity_seed%3Aharthmere_town_forest-wildlife-sheep-10609%3A8810000000020609%3Aharthmere%20forest%20sheep%209%3Aharthmere%20forest%20sheep%209",
+      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "textHash": "cfd76d0c62c0bc39b80f1a7bcbd4ba04339e56ab2a0336ce98e26f3dbca7519d",
+      "bytes": 12582
+    },
+    {
+      "cacheKey": "8412cedb875a355604e45a2b694daf398ad6620ba37eed4a58d3908ac680b967",
+      "cacheKeys": [
+        "8412cedb875a355604e45a2b694daf398ad6620ba37eed4a58d3908ac680b967",
+        "33c13b8a5d1423c6f6a0beda482fbb8bfce8023852f5e94773ed6417f9aaf9d4"
+      ],
+      "actorKey": "live_entity_seed:harthmere_town_forest-wildlife-sheep-10610:8810000000020610:harthmere forest sheep 10:harthmere forest sheep 10",
+      "actorId": "harthmere_town_forest-wildlife-sheep-10610",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-harthmere-town-forest-wildlife-sheep-10610-harthmere-forest-she/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-AriaNeural|gender=neutral|kind=animal|style=whispering|styleDegree=1.05|rate=-4%25|pitch=-3%25|volume=default|break=246|actor=live_entity_seed%3Aharthmere_town_forest-wildlife-sheep-10610%3A8810000000020610%3Aharthmere%20forest%20sheep%2010%3Aharthmere%20forest%20sheep%2010",
+      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "textHash": "cfd76d0c62c0bc39b80f1a7bcbd4ba04339e56ab2a0336ce98e26f3dbca7519d",
+      "bytes": 17598
+    },
+    {
+      "cacheKey": "a0f4044f0c43d48383d11c582acc15d3e5bb339e9ec71551247f822ca09a6087",
+      "cacheKeys": [
+        "a0f4044f0c43d48383d11c582acc15d3e5bb339e9ec71551247f822ca09a6087",
+        "268bb33cfe8d00deddf689e198691ec6edf5958f174038ef04274c3b0a220e63"
+      ],
+      "actorKey": "live_entity_seed:harthmere_town_forest-wildlife-sheep-10611:8810000000020611:harthmere forest sheep 11:harthmere forest sheep 11",
+      "actorId": "harthmere_town_forest-wildlife-sheep-10611",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-harthmere-town-forest-wildlife-sheep-10611-harthmere-forest-she/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-OnyxTurboMultilingualNeural|gender=neutral|kind=animal|rate=%2B0%25|pitch=%2B0%25|volume=default|break=192|actor=live_entity_seed%3Aharthmere_town_forest-wildlife-sheep-10611%3A8810000000020611%3Aharthmere%20forest%20sheep%2011%3Aharthmere%20forest%20sheep%2011",
+      "voiceId": "pNInz6obpgDQGcFmaJgB",
+      "textHash": "cfd76d0c62c0bc39b80f1a7bcbd4ba04339e56ab2a0336ce98e26f3dbca7519d",
+      "bytes": 15090
+    },
+    {
+      "cacheKey": "1cf153662213310a1b067d3bf9fc7d6e0e37b2d97a24a9457cc94a04861c285a",
+      "cacheKeys": [
+        "1cf153662213310a1b067d3bf9fc7d6e0e37b2d97a24a9457cc94a04861c285a",
+        "141e0821e9f2d989bb36b5d788b870c1e602bd62147e9ba8b8cc10dd4eeedf1b"
+      ],
+      "actorKey": "live_entity_seed:harthmere_town_forest-wildlife-sheep-10612:8810000000020612:harthmere forest sheep 12:harthmere forest sheep 12",
+      "actorId": "harthmere_town_forest-wildlife-sheep-10612",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-harthmere-town-forest-wildlife-sheep-10612-harthmere-forest-she/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-AriaNeural|gender=neutral|kind=animal|style=whispering|styleDegree=0.80|rate=-2%25|pitch=-4%25|volume=default|break=246|actor=live_entity_seed%3Aharthmere_town_forest-wildlife-sheep-10612%3A8810000000020612%3Aharthmere%20forest%20sheep%2012%3Aharthmere%20forest%20sheep%2012",
+      "voiceId": "21m00Tcm4TlvDq8ikWAM",
+      "textHash": "cfd76d0c62c0bc39b80f1a7bcbd4ba04339e56ab2a0336ce98e26f3dbca7519d",
+      "bytes": 21359
+    },
+    {
+      "cacheKey": "e35e7b0c198cd375142f5b08cdb2c56969b3e39f7886ac3e92619a3b97ee5c4c",
+      "cacheKeys": [
+        "e35e7b0c198cd375142f5b08cdb2c56969b3e39f7886ac3e92619a3b97ee5c4c",
+        "f11348da0bf29eed6a40bbd5b4fc877e4532e3d959766ecda6b5c650278b4109"
+      ],
+      "actorKey": "live_entity_seed:harthmere_town_forest-wildlife-sheep-10613:8810000000020613:harthmere forest sheep 13:harthmere forest sheep 13",
+      "actorId": "harthmere_town_forest-wildlife-sheep-10613",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-harthmere-town-forest-wildlife-sheep-10613-harthmere-forest-she/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-NovaTurboMultilingualNeural|gender=neutral|kind=animal|rate=-8%25|pitch=-1%25|volume=default|break=120|actor=live_entity_seed%3Aharthmere_town_forest-wildlife-sheep-10613%3A8810000000020613%3Aharthmere%20forest%20sheep%2013%3Aharthmere%20forest%20sheep%2013",
+      "voiceId": "pNInz6obpgDQGcFmaJgB",
+      "textHash": "cfd76d0c62c0bc39b80f1a7bcbd4ba04339e56ab2a0336ce98e26f3dbca7519d",
+      "bytes": 16344
+    },
+    {
+      "cacheKey": "1242f8a0d1a350c8a682dc4558b418d31347cd8099ef7b7f2bb7e2e0c9ecf8ea",
+      "cacheKeys": [
+        "1242f8a0d1a350c8a682dc4558b418d31347cd8099ef7b7f2bb7e2e0c9ecf8ea",
+        "b114427554fb4a7fae71b634376345f2c9df216bdf0bf57b97a17bc0348d118e"
+      ],
+      "actorKey": "live_entity_seed:harthmere_town_forest-wildlife-sheep-10614:8810000000020614:harthmere forest sheep 14:harthmere forest sheep 14",
+      "actorId": "harthmere_town_forest-wildlife-sheep-10614",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-harthmere-town-forest-wildlife-sheep-10614-harthmere-forest-she/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-FableTurboMultilingualNeural|gender=neutral|kind=animal|rate=-8%25|pitch=-4%25|volume=default|break=192|actor=live_entity_seed%3Aharthmere_town_forest-wildlife-sheep-10614%3A8810000000020614%3Aharthmere%20forest%20sheep%2014%3Aharthmere%20forest%20sheep%2014",
+      "voiceId": "VR6AewLTigWG4xSOukaG",
+      "textHash": "cfd76d0c62c0bc39b80f1a7bcbd4ba04339e56ab2a0336ce98e26f3dbca7519d",
+      "bytes": 17598
+    },
+    {
+      "cacheKey": "4ca3769dbbc411693905f1abc4bae5ea48d491b590d37f8f345f3d66bca1c02f",
+      "cacheKeys": [
+        "4ca3769dbbc411693905f1abc4bae5ea48d491b590d37f8f345f3d66bca1c02f",
+        "d84495ee3f2a73751659d606fcbde8a6392ba6187e288ff26c1c0e7e6db65b34"
+      ],
+      "actorKey": "live_entity_seed:harthmere_town_forest-wildlife-sheep-10615:8810000000020615:harthmere forest sheep 15:harthmere forest sheep 15",
+      "actorId": "harthmere_town_forest-wildlife-sheep-10615",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-harthmere-town-forest-wildlife-sheep-10615-harthmere-forest-she/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-AlloyTurboMultilingualNeural|gender=neutral|kind=animal|rate=-8%25|pitch=%2B3%25|volume=default|break=228|actor=live_entity_seed%3Aharthmere_town_forest-wildlife-sheep-10615%3A8810000000020615%3Aharthmere%20forest%20sheep%2015%3Aharthmere%20forest%20sheep%2015",
+      "voiceId": "VR6AewLTigWG4xSOukaG",
+      "textHash": "cfd76d0c62c0bc39b80f1a7bcbd4ba04339e56ab2a0336ce98e26f3dbca7519d",
+      "bytes": 16344
+    },
+    {
       "cacheKey": "199ffe63a7bd8ad3cd577d3fee9162d8e9ccfa655c1106e0b98dc64f838b03b0",
       "cacheKeys": [
         "199ffe63a7bd8ad3cd577d3fee9162d8e9ccfa655c1106e0b98dc64f838b03b0",
@@ -20616,6 +21681,546 @@
         "1210524a5bea2ca11e163b0cd855e8e6dd1aab5fb0d38ecdd902f038313a0ebf",
         "253a7586bedace4292a0c9231ae0dba018e911c9a00b6b1a093804e0f192731b"
       ]
+    },
+    {
+      "cacheKey": "91e4be8b08376f9f9642ce1c3f155ff789dafc44ca1cde4cf41932d73480d206",
+      "cacheKeys": [
+        "91e4be8b08376f9f9642ce1c3f155ff789dafc44ca1cde4cf41932d73480d206",
+        "7be285f1dca2fdd7023da0bdf46667a0644daca87ceb57de7079b23bc8f875b5"
+      ],
+      "actorKey": "live_entity_seed:scattered-mixed-cow-east_marches_flat-10759:8810000000020759:east marches flat cow 1:east marches flat cow 1",
+      "actorId": "scattered-mixed-cow-east_marches_flat-10759",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-scattered-mixed-cow-east-marches-flat-10759-east-marches-flat-c/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-DavisNeural|gender=neutral|kind=animal|style=hopeful|styleDegree=0.95|rate=-7%25|pitch=-3%25|volume=default|break=138|actor=live_entity_seed%3Ascattered-mixed-cow-east_marches_flat-10759%3A8810000000020759%3Aeast%20marches%20flat%20cow%201%3Aeast%20marches%20flat%20cow%201",
+      "voiceId": "MF3mGyEYCl7XYWbV9V6O",
+      "textHash": "69dea118b9219e73504ea3eb31c1b821a4b2392fc7bacc04da23a0ee3da5f44e",
+      "bytes": 23031
+    },
+    {
+      "cacheKey": "2934ed5b232194974859a0292475fc2e44ea4eb905ec45feef98a3cee3b65e1f",
+      "cacheKeys": [
+        "2934ed5b232194974859a0292475fc2e44ea4eb905ec45feef98a3cee3b65e1f",
+        "805c343eee78c97d160aba2c83e92b7091b8ff0b0c5ca220451ef324e67c2efa"
+      ],
+      "actorKey": "live_entity_seed:scattered-mixed-cow-far_north_wilds_shelf-10741:8810000000020741:far north wilds shelf cow 1:far north wilds shelf cow 1",
+      "actorId": "scattered-mixed-cow-far_north_wilds_shelf-10741",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-scattered-mixed-cow-far-north-wilds-shelf-10741-far-north-wilds/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-FableTurboMultilingualNeural|gender=neutral|kind=animal|rate=-6%25|pitch=%2B4%25|volume=default|break=228|actor=live_entity_seed%3Ascattered-mixed-cow-far_north_wilds_shelf-10741%3A8810000000020741%3Afar%20north%20wilds%20shelf%20cow%201%3Afar%20north%20wilds%20shelf%20cow%201",
+      "voiceId": "pNInz6obpgDQGcFmaJgB",
+      "textHash": "69dea118b9219e73504ea3eb31c1b821a4b2392fc7bacc04da23a0ee3da5f44e",
+      "bytes": 15090
+    },
+    {
+      "cacheKey": "fa7a54018d1da1111072088184788b7420180b690d60d4f71915662b99ab31ab",
+      "cacheKeys": [
+        "fa7a54018d1da1111072088184788b7420180b690d60d4f71915662b99ab31ab",
+        "12744125fe1b9a8461aba8383352826efc9bbce21a155d812f9bef1d154c7955"
+      ],
+      "actorKey": "live_entity_seed:scattered-mixed-cow-high_downs_terrace-10753:8810000000020753:high downs terrace cow 1:high downs terrace cow 1",
+      "actorId": "scattered-mixed-cow-high_downs_terrace-10753",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-scattered-mixed-cow-high-downs-terrace-10753-high-downs-terrace/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-OnyxTurboMultilingualNeural|gender=neutral|kind=animal|rate=-5%25|pitch=%2B1%25|volume=default|break=228|actor=live_entity_seed%3Ascattered-mixed-cow-high_downs_terrace-10753%3A8810000000020753%3Ahigh%20downs%20terrace%20cow%201%3Ahigh%20downs%20terrace%20cow%201",
+      "voiceId": "TxGEqnHWrfWFTfGW9XjX",
+      "textHash": "69dea118b9219e73504ea3eb31c1b821a4b2392fc7bacc04da23a0ee3da5f44e",
+      "bytes": 21359
+    },
+    {
+      "cacheKey": "feb660f5f1b8530906cb4a88bcb35820283bd851d944408bf5180657651cbed2",
+      "cacheKeys": [
+        "feb660f5f1b8530906cb4a88bcb35820283bd851d944408bf5180657651cbed2",
+        "e93925f953fb451d0cf784f1f7193c925f46308cb6b6fecb3fd3c3d0403168de"
+      ],
+      "actorKey": "live_entity_seed:scattered-mixed-cow-north_reach_pinefall-10747:8810000000020747:north reach pinefall cow 1:north reach pinefall cow 1",
+      "actorId": "scattered-mixed-cow-north_reach_pinefall-10747",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-scattered-mixed-cow-north-reach-pinefall-10747-north-reach-pine/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-FableTurboMultilingualNeural|gender=neutral|kind=animal|rate=%2B1%25|pitch=-4%25|volume=default|break=228|actor=live_entity_seed%3Ascattered-mixed-cow-north_reach_pinefall-10747%3A8810000000020747%3Anorth%20reach%20pinefall%20cow%201%3Anorth%20reach%20pinefall%20cow%201",
+      "voiceId": "EXAVITQu4vr4xnSDxMaL",
+      "textHash": "69dea118b9219e73504ea3eb31c1b821a4b2392fc7bacc04da23a0ee3da5f44e",
+      "bytes": 13836
+    },
+    {
+      "cacheKey": "6a99906eea0d3e682e8d7e10017ada66fbb2dc4234bb14e91651a42bdf0d2f32",
+      "cacheKeys": [
+        "6a99906eea0d3e682e8d7e10017ada66fbb2dc4234bb14e91651a42bdf0d2f32",
+        "84469aab7693f0a6a55c75ba80930193a262936ed42c541956004aa16fdfb0c7"
+      ],
+      "actorKey": "live_entity_seed:scattered-mixed-cow-old_wood_west_clearing-10765:8810000000020765:old wood west clearing cow 1:old wood west clearing cow 1",
+      "actorId": "scattered-mixed-cow-old_wood_west_clearing-10765",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-scattered-mixed-cow-old-wood-west-clearing-10765-old-wood-west-/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-DavisNeural|gender=neutral|kind=animal|style=hopeful|styleDegree=0.85|rate=-6%25|pitch=%2B1%25|volume=default|break=138|actor=live_entity_seed%3Ascattered-mixed-cow-old_wood_west_clearing-10765%3A8810000000020765%3Aold%20wood%20west%20clearing%20cow%201%3Aold%20wood%20west%20clearing%20cow%201",
+      "voiceId": "MF3mGyEYCl7XYWbV9V6O",
+      "textHash": "69dea118b9219e73504ea3eb31c1b821a4b2392fc7bacc04da23a0ee3da5f44e",
+      "bytes": 21359
+    },
+    {
+      "cacheKey": "965a778252909ffe877eaefd1ee791dd3d1518476c68af3bb5cbd31f39718366",
+      "cacheKeys": [
+        "965a778252909ffe877eaefd1ee791dd3d1518476c68af3bb5cbd31f39718366",
+        "fc48daf879416916244f8de1dd4855fb3c50a0b2aa99c2436712c9d1b84519da"
+      ],
+      "actorKey": "live_entity_seed:scattered-mixed-cow-south_reach_meadow-10771:8810000000020771:south reach meadow cow 1:south reach meadow cow 1",
+      "actorId": "scattered-mixed-cow-south_reach_meadow-10771",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-scattered-mixed-cow-south-reach-meadow-10771-south-reach-meadow/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-FableTurboMultilingualNeural|gender=neutral|kind=animal|rate=-5%25|pitch=%2B4%25|volume=default|break=174|actor=live_entity_seed%3Ascattered-mixed-cow-south_reach_meadow-10771%3A8810000000020771%3Asouth%20reach%20meadow%20cow%201%3Asouth%20reach%20meadow%20cow%201",
+      "voiceId": "EXAVITQu4vr4xnSDxMaL",
+      "textHash": "69dea118b9219e73504ea3eb31c1b821a4b2392fc7bacc04da23a0ee3da5f44e",
+      "bytes": 17598
+    },
+    {
+      "cacheKey": "a7c38cdf1cb291fe39556bc1ed63dc4d7c3a61371af46aff331eb06154f4ce31",
+      "cacheKeys": [
+        "a7c38cdf1cb291fe39556bc1ed63dc4d7c3a61371af46aff331eb06154f4ce31",
+        "d42ae49613441013b251eebc1f8f4e872d0df6c6b706c31ddd7463feebb19f63"
+      ],
+      "actorKey": "live_entity_seed:scattered-mixed-rabbit-east_marches_flat-10762:8810000000020762:east marches flat rabbit 4:east marches flat rabbit 4",
+      "actorId": "scattered-mixed-rabbit-east_marches_flat-10762",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-scattered-mixed-rabbit-east-marches-flat-10762-east-marches-fla/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-AlloyTurboMultilingualNeural|gender=neutral|kind=animal|rate=-5%25|pitch=%2B2%25|volume=default|break=120|actor=live_entity_seed%3Ascattered-mixed-rabbit-east_marches_flat-10762%3A8810000000020762%3Aeast%20marches%20flat%20rabbit%204%3Aeast%20marches%20flat%20rabbit%204",
+      "voiceId": "21m00Tcm4TlvDq8ikWAM",
+      "textHash": "9f42571e8f7f8e9b4412be8327e1e8b0ecf9a13ede5c9ab7ce260dfd4ad2b36d",
+      "bytes": 20106
+    },
+    {
+      "cacheKey": "5bb27cbecc874c8edd4b72dadad2a818b96d2abab65cf118c9c16985f2ec514d",
+      "cacheKeys": [
+        "5bb27cbecc874c8edd4b72dadad2a818b96d2abab65cf118c9c16985f2ec514d",
+        "096da0bb885d68ea3bf6ed39ff1a8ad79bfc788e8600f9edb3257fb1082fd450"
+      ],
+      "actorKey": "live_entity_seed:scattered-mixed-rabbit-east_marches_flat-10763:8810000000020763:east marches flat rabbit 5:east marches flat rabbit 5",
+      "actorId": "scattered-mixed-rabbit-east_marches_flat-10763",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-scattered-mixed-rabbit-east-marches-flat-10763-east-marches-fla/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-NovaTurboMultilingualNeural|gender=neutral|kind=animal|rate=-1%25|pitch=%2B3%25|volume=default|break=120|actor=live_entity_seed%3Ascattered-mixed-rabbit-east_marches_flat-10763%3A8810000000020763%3Aeast%20marches%20flat%20rabbit%205%3Aeast%20marches%20flat%20rabbit%205",
+      "voiceId": "pNInz6obpgDQGcFmaJgB",
+      "textHash": "9f42571e8f7f8e9b4412be8327e1e8b0ecf9a13ede5c9ab7ce260dfd4ad2b36d",
+      "bytes": 24285
+    },
+    {
+      "cacheKey": "2f877df0606bfbf8b1a630d0788c940eb8591bcb56b8b762d1cb1eab50ed9469",
+      "cacheKeys": [
+        "2f877df0606bfbf8b1a630d0788c940eb8591bcb56b8b762d1cb1eab50ed9469",
+        "4970d5f3229d5e0c7b4d906aa5ec6a9be9e33a1c680b807130d7653662d7abf9"
+      ],
+      "actorKey": "live_entity_seed:scattered-mixed-rabbit-east_marches_flat-10764:8810000000020764:east marches flat rabbit 6:east marches flat rabbit 6",
+      "actorId": "scattered-mixed-rabbit-east_marches_flat-10764",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-scattered-mixed-rabbit-east-marches-flat-10764-east-marches-fla/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-OnyxTurboMultilingualNeural|gender=neutral|kind=animal|rate=-3%25|pitch=%2B0%25|volume=default|break=246|actor=live_entity_seed%3Ascattered-mixed-rabbit-east_marches_flat-10764%3A8810000000020764%3Aeast%20marches%20flat%20rabbit%206%3Aeast%20marches%20flat%20rabbit%206",
+      "voiceId": "pNInz6obpgDQGcFmaJgB",
+      "textHash": "9f42571e8f7f8e9b4412be8327e1e8b0ecf9a13ede5c9ab7ce260dfd4ad2b36d",
+      "bytes": 26793
+    },
+    {
+      "cacheKey": "d41de39b01e83cbbf23a97f42a6e9e9f92ae1c923622da0b880061ca9973d195",
+      "cacheKeys": [
+        "d41de39b01e83cbbf23a97f42a6e9e9f92ae1c923622da0b880061ca9973d195",
+        "4cec9cb553aff6c683b792c6cbd8a7ca4eae415f0eff2da47fe5edfc1d62de62"
+      ],
+      "actorKey": "live_entity_seed:scattered-mixed-rabbit-far_north_wilds_shelf-10744:8810000000020744:far north wilds shelf rabbit 4:far north wilds shelf rabbit 4",
+      "actorId": "scattered-mixed-rabbit-far_north_wilds_shelf-10744",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-scattered-mixed-rabbit-far-north-wilds-shelf-10744-far-north-wi/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-NovaTurboMultilingualNeural|gender=neutral|kind=animal|rate=%2B0%25|pitch=-4%25|volume=default|break=210|actor=live_entity_seed%3Ascattered-mixed-rabbit-far_north_wilds_shelf-10744%3A8810000000020744%3Afar%20north%20wilds%20shelf%20rabbit%204%3Afar%20north%20wilds%20shelf%20rabbit%204",
+      "voiceId": "MF3mGyEYCl7XYWbV9V6O",
+      "textHash": "9f42571e8f7f8e9b4412be8327e1e8b0ecf9a13ede5c9ab7ce260dfd4ad2b36d",
+      "bytes": 33062
+    },
+    {
+      "cacheKey": "fa97ad12d17b853c5779b2b74f7669c0d63d9f1575918f493ad057e5dbadbb56",
+      "cacheKeys": [
+        "fa97ad12d17b853c5779b2b74f7669c0d63d9f1575918f493ad057e5dbadbb56",
+        "0f55034484e9cf862c71e64d7492996601a5ed1684104a54b29e8d6ed19ba27b"
+      ],
+      "actorKey": "live_entity_seed:scattered-mixed-rabbit-far_north_wilds_shelf-10745:8810000000020745:far north wilds shelf rabbit 5:far north wilds shelf rabbit 5",
+      "actorId": "scattered-mixed-rabbit-far_north_wilds_shelf-10745",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-scattered-mixed-rabbit-far-north-wilds-shelf-10745-far-north-wi/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-FableTurboMultilingualNeural|gender=neutral|kind=animal|rate=%2B0%25|pitch=-4%25|volume=default|break=120|actor=live_entity_seed%3Ascattered-mixed-rabbit-far_north_wilds_shelf-10745%3A8810000000020745%3Afar%20north%20wilds%20shelf%20rabbit%205%3Afar%20north%20wilds%20shelf%20rabbit%205",
+      "voiceId": "TxGEqnHWrfWFTfGW9XjX",
+      "textHash": "9f42571e8f7f8e9b4412be8327e1e8b0ecf9a13ede5c9ab7ce260dfd4ad2b36d",
+      "bytes": 20106
+    },
+    {
+      "cacheKey": "7b665781317fc5f74fc920694c54f7567f69abdaf9aa8bf97cba00e74972ba73",
+      "cacheKeys": [
+        "7b665781317fc5f74fc920694c54f7567f69abdaf9aa8bf97cba00e74972ba73",
+        "407c99a52f2879011f17b25364da5d80b0cd42dc031a1202f73a32bd7b491c6b"
+      ],
+      "actorKey": "live_entity_seed:scattered-mixed-rabbit-far_north_wilds_shelf-10746:8810000000020746:far north wilds shelf rabbit 6:far north wilds shelf rabbit 6",
+      "actorId": "scattered-mixed-rabbit-far_north_wilds_shelf-10746",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-scattered-mixed-rabbit-far-north-wilds-shelf-10746-far-north-wi/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-OnyxTurboMultilingualNeural|gender=neutral|kind=animal|rate=%2B0%25|pitch=%2B1%25|volume=default|break=120|actor=live_entity_seed%3Ascattered-mixed-rabbit-far_north_wilds_shelf-10746%3A8810000000020746%3Afar%20north%20wilds%20shelf%20rabbit%206%3Afar%20north%20wilds%20shelf%20rabbit%206",
+      "voiceId": "MF3mGyEYCl7XYWbV9V6O",
+      "textHash": "9f42571e8f7f8e9b4412be8327e1e8b0ecf9a13ede5c9ab7ce260dfd4ad2b36d",
+      "bytes": 34316
+    },
+    {
+      "cacheKey": "18d5f82ca2ee7b1f0bf7abbe4fb2ca9b63ea8f165e1c5bf24993dd2e5c5e4a3d",
+      "cacheKeys": [
+        "18d5f82ca2ee7b1f0bf7abbe4fb2ca9b63ea8f165e1c5bf24993dd2e5c5e4a3d",
+        "f9df55b88815644b5c1d27ceb55c0f3500526039af68bb3c17257c9dc163e50b"
+      ],
+      "actorKey": "live_entity_seed:scattered-mixed-rabbit-high_downs_terrace-10756:8810000000020756:high downs terrace rabbit 4:high downs terrace rabbit 4",
+      "actorId": "scattered-mixed-rabbit-high_downs_terrace-10756",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-scattered-mixed-rabbit-high-downs-terrace-10756-high-downs-terr/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-GuyNeural|gender=neutral|kind=animal|style=whispering|styleDegree=0.90|rate=-7%25|pitch=-1%25|volume=default|break=138|actor=live_entity_seed%3Ascattered-mixed-rabbit-high_downs_terrace-10756%3A8810000000020756%3Ahigh%20downs%20terrace%20rabbit%204%3Ahigh%20downs%20terrace%20rabbit%204",
+      "voiceId": "JBFqnCBsd6RMkjVDRZzb",
+      "textHash": "9f42571e8f7f8e9b4412be8327e1e8b0ecf9a13ede5c9ab7ce260dfd4ad2b36d",
+      "bytes": 30555
+    },
+    {
+      "cacheKey": "79e93b3ae66ccdd93b72597d6ad62c81e7174ada81ebec3ca3724c5151420e6d",
+      "cacheKeys": [
+        "79e93b3ae66ccdd93b72597d6ad62c81e7174ada81ebec3ca3724c5151420e6d",
+        "0e9eb2b720ac1f5b6396ed53743bc0d01de3adb05be21903ca8f17ad7095ad73"
+      ],
+      "actorKey": "live_entity_seed:scattered-mixed-rabbit-high_downs_terrace-10757:8810000000020757:high downs terrace rabbit 5:high downs terrace rabbit 5",
+      "actorId": "scattered-mixed-rabbit-high_downs_terrace-10757",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-scattered-mixed-rabbit-high-downs-terrace-10757-high-downs-terr/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-AlloyTurboMultilingualNeural|gender=neutral|kind=animal|rate=-1%25|pitch=%2B1%25|volume=default|break=246|actor=live_entity_seed%3Ascattered-mixed-rabbit-high_downs_terrace-10757%3A8810000000020757%3Ahigh%20downs%20terrace%20rabbit%205%3Ahigh%20downs%20terrace%20rabbit%205",
+      "voiceId": "VR6AewLTigWG4xSOukaG",
+      "textHash": "9f42571e8f7f8e9b4412be8327e1e8b0ecf9a13ede5c9ab7ce260dfd4ad2b36d",
+      "bytes": 25539
+    },
+    {
+      "cacheKey": "d854b3e45f91f398a3526f4cc475e3ba0d5f836573ca180ba1afc546b97ffcc8",
+      "cacheKeys": [
+        "d854b3e45f91f398a3526f4cc475e3ba0d5f836573ca180ba1afc546b97ffcc8",
+        "9ff63872919424294568fca7182d15357b083604ef25e65995445632639b9ab1"
+      ],
+      "actorKey": "live_entity_seed:scattered-mixed-rabbit-high_downs_terrace-10758:8810000000020758:high downs terrace rabbit 6:high downs terrace rabbit 6",
+      "actorId": "scattered-mixed-rabbit-high_downs_terrace-10758",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-scattered-mixed-rabbit-high-downs-terrace-10758-high-downs-terr/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-AlloyTurboMultilingualNeural|gender=neutral|kind=animal|rate=-3%25|pitch=%2B2%25|volume=default|break=156|actor=live_entity_seed%3Ascattered-mixed-rabbit-high_downs_terrace-10758%3A8810000000020758%3Ahigh%20downs%20terrace%20rabbit%206%3Ahigh%20downs%20terrace%20rabbit%206",
+      "voiceId": "VR6AewLTigWG4xSOukaG",
+      "textHash": "9f42571e8f7f8e9b4412be8327e1e8b0ecf9a13ede5c9ab7ce260dfd4ad2b36d",
+      "bytes": 24285
+    },
+    {
+      "cacheKey": "decd61993b552d42ec0d39b020bc1b06149e77ad0abc99fbdf9c1fbbbb068e65",
+      "cacheKeys": [
+        "decd61993b552d42ec0d39b020bc1b06149e77ad0abc99fbdf9c1fbbbb068e65",
+        "63f8b9d2a8bf2f98d604e70a15945212c0336cc385e254dbe15e13fd918d4b88"
+      ],
+      "actorKey": "live_entity_seed:scattered-mixed-rabbit-north_reach_pinefall-10750:8810000000020750:north reach pinefall rabbit 4:north reach pinefall rabbit 4",
+      "actorId": "scattered-mixed-rabbit-north_reach_pinefall-10750",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-scattered-mixed-rabbit-north-reach-pinefall-10750-north-reach-p/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-AriaNeural|gender=neutral|kind=animal|style=whispering|styleDegree=0.95|rate=%2B1%25|pitch=%2B2%25|volume=default|break=120|actor=live_entity_seed%3Ascattered-mixed-rabbit-north_reach_pinefall-10750%3A8810000000020750%3Anorth%20reach%20pinefall%20rabbit%204%3Anorth%20reach%20pinefall%20rabbit%204",
+      "voiceId": "21m00Tcm4TlvDq8ikWAM",
+      "textHash": "9f42571e8f7f8e9b4412be8327e1e8b0ecf9a13ede5c9ab7ce260dfd4ad2b36d",
+      "bytes": 21359
+    },
+    {
+      "cacheKey": "7340936b144560f5935ca08317df924b8fa494d669328e9b2410f29c4c814648",
+      "cacheKeys": [
+        "7340936b144560f5935ca08317df924b8fa494d669328e9b2410f29c4c814648",
+        "3336138c8af9660604a263faa9a83911f2457e5ccb71690515aaf445d1238fbc"
+      ],
+      "actorKey": "live_entity_seed:scattered-mixed-rabbit-north_reach_pinefall-10751:8810000000020751:north reach pinefall rabbit 5:north reach pinefall rabbit 5",
+      "actorId": "scattered-mixed-rabbit-north_reach_pinefall-10751",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-scattered-mixed-rabbit-north-reach-pinefall-10751-north-reach-p/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-AriaNeural|gender=neutral|kind=animal|style=whispering|styleDegree=1.05|rate=-5%25|pitch=%2B1%25|volume=default|break=246|actor=live_entity_seed%3Ascattered-mixed-rabbit-north_reach_pinefall-10751%3A8810000000020751%3Anorth%20reach%20pinefall%20rabbit%205%3Anorth%20reach%20pinefall%20rabbit%205",
+      "voiceId": "pNInz6obpgDQGcFmaJgB",
+      "textHash": "9f42571e8f7f8e9b4412be8327e1e8b0ecf9a13ede5c9ab7ce260dfd4ad2b36d",
+      "bytes": 21359
+    },
+    {
+      "cacheKey": "7e54120d6133b28cdae99d98bd998d32a2dccd1bbc01027a410b2a7057773246",
+      "cacheKeys": [
+        "7e54120d6133b28cdae99d98bd998d32a2dccd1bbc01027a410b2a7057773246",
+        "8d2ab867ba8d5e74463002b623c9641ad244a492e00164b8f8e7c23b20b2333d"
+      ],
+      "actorKey": "live_entity_seed:scattered-mixed-rabbit-north_reach_pinefall-10752:8810000000020752:north reach pinefall rabbit 6:north reach pinefall rabbit 6",
+      "actorId": "scattered-mixed-rabbit-north_reach_pinefall-10752",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-scattered-mixed-rabbit-north-reach-pinefall-10752-north-reach-p/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-AriaNeural|gender=neutral|kind=animal|style=whispering|styleDegree=0.95|rate=-7%25|pitch=%2B3%25|volume=default|break=156|actor=live_entity_seed%3Ascattered-mixed-rabbit-north_reach_pinefall-10752%3A8810000000020752%3Anorth%20reach%20pinefall%20rabbit%206%3Anorth%20reach%20pinefall%20rabbit%206",
+      "voiceId": "JBFqnCBsd6RMkjVDRZzb",
+      "textHash": "9f42571e8f7f8e9b4412be8327e1e8b0ecf9a13ede5c9ab7ce260dfd4ad2b36d",
+      "bytes": 34316
+    },
+    {
+      "cacheKey": "a33b650d7997a80d28bcea90a274cc5863524638caaab4d0390c8175d885cf26",
+      "cacheKeys": [
+        "a33b650d7997a80d28bcea90a274cc5863524638caaab4d0390c8175d885cf26",
+        "ab9e64a790c6a882c4b6765efc4ec0cd331ba5f11eb0d699b2ceb29bdb830b6b"
+      ],
+      "actorKey": "live_entity_seed:scattered-mixed-rabbit-old_wood_west_clearing-10768:8810000000020768:old wood west clearing rabbit 4:old wood west clearing rabbit 4",
+      "actorId": "scattered-mixed-rabbit-old_wood_west_clearing-10768",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-scattered-mixed-rabbit-old-wood-west-clearing-10768-old-wood-we/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-AlloyTurboMultilingualNeural|gender=neutral|kind=animal|rate=%2B0%25|pitch=%2B4%25|volume=default|break=174|actor=live_entity_seed%3Ascattered-mixed-rabbit-old_wood_west_clearing-10768%3A8810000000020768%3Aold%20wood%20west%20clearing%20rabbit%204%3Aold%20wood%20west%20clearing%20rabbit%204",
+      "voiceId": "VR6AewLTigWG4xSOukaG",
+      "textHash": "9f42571e8f7f8e9b4412be8327e1e8b0ecf9a13ede5c9ab7ce260dfd4ad2b36d",
+      "bytes": 21359
+    },
+    {
+      "cacheKey": "7930188c6a276897d6b8260384bf8ea8310184fbfe5e2f96a1405654f679323c",
+      "cacheKeys": [
+        "7930188c6a276897d6b8260384bf8ea8310184fbfe5e2f96a1405654f679323c",
+        "d93e1fcdcb2f2167521d3948827939a122efca003562410e226b2df1941d089a"
+      ],
+      "actorKey": "live_entity_seed:scattered-mixed-rabbit-old_wood_west_clearing-10769:8810000000020769:old wood west clearing rabbit 5:old wood west clearing rabbit 5",
+      "actorId": "scattered-mixed-rabbit-old_wood_west_clearing-10769",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-scattered-mixed-rabbit-old-wood-west-clearing-10769-old-wood-we/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-OnyxTurboMultilingualNeural|gender=neutral|kind=animal|rate=-2%25|pitch=-3%25|volume=default|break=246|actor=live_entity_seed%3Ascattered-mixed-rabbit-old_wood_west_clearing-10769%3A8810000000020769%3Aold%20wood%20west%20clearing%20rabbit%205%3Aold%20wood%20west%20clearing%20rabbit%205",
+      "voiceId": "21m00Tcm4TlvDq8ikWAM",
+      "textHash": "9f42571e8f7f8e9b4412be8327e1e8b0ecf9a13ede5c9ab7ce260dfd4ad2b36d",
+      "bytes": 20106
+    },
+    {
+      "cacheKey": "f92f717a2ac374f5b09e03c875a58f235e0cc11b8d8256a2025fb53097fbb07d",
+      "cacheKeys": [
+        "f92f717a2ac374f5b09e03c875a58f235e0cc11b8d8256a2025fb53097fbb07d",
+        "803ebb0b9e724f3611bf8a149f89271527b2f95fb9e122d6dd7d4547cd6e6625"
+      ],
+      "actorKey": "live_entity_seed:scattered-mixed-rabbit-old_wood_west_clearing-10770:8810000000020770:old wood west clearing rabbit 6:old wood west clearing rabbit 6",
+      "actorId": "scattered-mixed-rabbit-old_wood_west_clearing-10770",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-scattered-mixed-rabbit-old-wood-west-clearing-10770-old-wood-we/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-AriaNeural|gender=neutral|kind=animal|style=whispering|styleDegree=0.85|rate=%2B0%25|pitch=%2B4%25|volume=default|break=138|actor=live_entity_seed%3Ascattered-mixed-rabbit-old_wood_west_clearing-10770%3A8810000000020770%3Aold%20wood%20west%20clearing%20rabbit%206%3Aold%20wood%20west%20clearing%20rabbit%206",
+      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "textHash": "9f42571e8f7f8e9b4412be8327e1e8b0ecf9a13ede5c9ab7ce260dfd4ad2b36d",
+      "bytes": 24285
+    },
+    {
+      "cacheKey": "430c362dd2983753d72c40baf2f6e863fadc3bf5c638bf2d677e0d3c3920e186",
+      "cacheKeys": [
+        "430c362dd2983753d72c40baf2f6e863fadc3bf5c638bf2d677e0d3c3920e186",
+        "ebf6bff29c2283ae2caf268d90b4011b3e3b11dedf73e617643905986316752b"
+      ],
+      "actorKey": "live_entity_seed:scattered-mixed-rabbit-south_reach_meadow-10774:8810000000020774:south reach meadow rabbit 4:south reach meadow rabbit 4",
+      "actorId": "scattered-mixed-rabbit-south_reach_meadow-10774",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-scattered-mixed-rabbit-south-reach-meadow-10774-south-reach-mea/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-FableTurboMultilingualNeural|gender=neutral|kind=animal|rate=-7%25|pitch=%2B4%25|volume=default|break=192|actor=live_entity_seed%3Ascattered-mixed-rabbit-south_reach_meadow-10774%3A8810000000020774%3Asouth%20reach%20meadow%20rabbit%204%3Asouth%20reach%20meadow%20rabbit%204",
+      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "textHash": "9f42571e8f7f8e9b4412be8327e1e8b0ecf9a13ede5c9ab7ce260dfd4ad2b36d",
+      "bytes": 23031
+    },
+    {
+      "cacheKey": "5b3ef1a6f1f8f7d38f3c8a736d1ca6a59eae8b9be7ed96b519069e3155314792",
+      "cacheKeys": [
+        "5b3ef1a6f1f8f7d38f3c8a736d1ca6a59eae8b9be7ed96b519069e3155314792",
+        "933b8af7a336169209952faae676b5ad1e799660241cb94ffa522dc0b5cb248b"
+      ],
+      "actorKey": "live_entity_seed:scattered-mixed-rabbit-south_reach_meadow-10775:8810000000020775:south reach meadow rabbit 5:south reach meadow rabbit 5",
+      "actorId": "scattered-mixed-rabbit-south_reach_meadow-10775",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-scattered-mixed-rabbit-south-reach-meadow-10775-south-reach-mea/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-AriaNeural|gender=neutral|kind=animal|style=whispering|styleDegree=1.00|rate=-1%25|pitch=%2B4%25|volume=default|break=192|actor=live_entity_seed%3Ascattered-mixed-rabbit-south_reach_meadow-10775%3A8810000000020775%3Asouth%20reach%20meadow%20rabbit%205%3Asouth%20reach%20meadow%20rabbit%205",
+      "voiceId": "pNInz6obpgDQGcFmaJgB",
+      "textHash": "9f42571e8f7f8e9b4412be8327e1e8b0ecf9a13ede5c9ab7ce260dfd4ad2b36d",
+      "bytes": 25539
+    },
+    {
+      "cacheKey": "5a4046d77fe94ff6bdbe7173b368d40aac7142ae04720773945cba231f3921de",
+      "cacheKeys": [
+        "5a4046d77fe94ff6bdbe7173b368d40aac7142ae04720773945cba231f3921de",
+        "10a7b7c8f62b960a18e3ba668ff8553db0becd7ec246a7bed2d594d9ee1c0e79"
+      ],
+      "actorKey": "live_entity_seed:scattered-mixed-rabbit-south_reach_meadow-10776:8810000000020776:south reach meadow rabbit 6:south reach meadow rabbit 6",
+      "actorId": "scattered-mixed-rabbit-south_reach_meadow-10776",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-scattered-mixed-rabbit-south-reach-meadow-10776-south-reach-mea/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-GuyNeural|gender=neutral|kind=animal|style=whispering|styleDegree=0.80|rate=-5%25|pitch=%2B0%25|volume=default|break=210|actor=live_entity_seed%3Ascattered-mixed-rabbit-south_reach_meadow-10776%3A8810000000020776%3Asouth%20reach%20meadow%20rabbit%206%3Asouth%20reach%20meadow%20rabbit%206",
+      "voiceId": "VR6AewLTigWG4xSOukaG",
+      "textHash": "9f42571e8f7f8e9b4412be8327e1e8b0ecf9a13ede5c9ab7ce260dfd4ad2b36d",
+      "bytes": 23031
+    },
+    {
+      "cacheKey": "64a6f1b83faac0a4aeca2e6c5730e2c1cbae5cfbe78a360458d1634c896baae9",
+      "cacheKeys": [
+        "64a6f1b83faac0a4aeca2e6c5730e2c1cbae5cfbe78a360458d1634c896baae9",
+        "a79650c8f3bb94ee3d5dc2549d41474553acacc35ca1bb8fb61717e1892c6f24"
+      ],
+      "actorKey": "live_entity_seed:scattered-mixed-sheep-east_marches_flat-10760:8810000000020760:east marches flat sheep 2:east marches flat sheep 2",
+      "actorId": "scattered-mixed-sheep-east_marches_flat-10760",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-scattered-mixed-sheep-east-marches-flat-10760-east-marches-flat/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-DavisNeural|gender=neutral|kind=animal|style=hopeful|styleDegree=1.00|rate=-3%25|pitch=%2B4%25|volume=default|break=174|actor=live_entity_seed%3Ascattered-mixed-sheep-east_marches_flat-10760%3A8810000000020760%3Aeast%20marches%20flat%20sheep%202%3Aeast%20marches%20flat%20sheep%202",
+      "voiceId": "MF3mGyEYCl7XYWbV9V6O",
+      "textHash": "cfd76d0c62c0bc39b80f1a7bcbd4ba04339e56ab2a0336ce98e26f3dbca7519d",
+      "bytes": 12582
+    },
+    {
+      "cacheKey": "157ddc9586e0449434f35dd7c465a7b92837170fb06975d1d72f9e5ebfdb0809",
+      "cacheKeys": [
+        "157ddc9586e0449434f35dd7c465a7b92837170fb06975d1d72f9e5ebfdb0809",
+        "8377492c39d6cbf04cc8779c33bdfa5bf1bf1a657c834fd489a37b3ac2e0561a"
+      ],
+      "actorKey": "live_entity_seed:scattered-mixed-sheep-east_marches_flat-10761:8810000000020761:east marches flat sheep 3:east marches flat sheep 3",
+      "actorId": "scattered-mixed-sheep-east_marches_flat-10761",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-scattered-mixed-sheep-east-marches-flat-10761-east-marches-flat/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-OnyxTurboMultilingualNeural|gender=neutral|kind=animal|rate=%2B1%25|pitch=%2B2%25|volume=default|break=174|actor=live_entity_seed%3Ascattered-mixed-sheep-east_marches_flat-10761%3A8810000000020761%3Aeast%20marches%20flat%20sheep%203%3Aeast%20marches%20flat%20sheep%203",
+      "voiceId": "ErXwobaYiN019PkySvjV",
+      "textHash": "cfd76d0c62c0bc39b80f1a7bcbd4ba04339e56ab2a0336ce98e26f3dbca7519d",
+      "bytes": 11328
+    },
+    {
+      "cacheKey": "447c6a8f7410cee2f80b5cb00461c78dcea4722eaa34423af66625da0a20fb8d",
+      "cacheKeys": [
+        "447c6a8f7410cee2f80b5cb00461c78dcea4722eaa34423af66625da0a20fb8d",
+        "7744b3cab990185751a6c8455a512f90c24bfecead19d37c5f27f92769d7c05e"
+      ],
+      "actorKey": "live_entity_seed:scattered-mixed-sheep-far_north_wilds_shelf-10742:8810000000020742:far north wilds shelf sheep 2:far north wilds shelf sheep 2",
+      "actorId": "scattered-mixed-sheep-far_north_wilds_shelf-10742",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-scattered-mixed-sheep-far-north-wilds-shelf-10742-far-north-wil/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-GuyNeural|gender=neutral|kind=animal|style=whispering|styleDegree=0.80|rate=-4%25|pitch=%2B0%25|volume=default|break=192|actor=live_entity_seed%3Ascattered-mixed-sheep-far_north_wilds_shelf-10742%3A8810000000020742%3Afar%20north%20wilds%20shelf%20sheep%202%3Afar%20north%20wilds%20shelf%20sheep%202",
+      "voiceId": "JBFqnCBsd6RMkjVDRZzb",
+      "textHash": "cfd76d0c62c0bc39b80f1a7bcbd4ba04339e56ab2a0336ce98e26f3dbca7519d",
+      "bytes": 11328
+    },
+    {
+      "cacheKey": "46aa0d3bee785b488753d3cc6442d2e7a556f6e9eaabfbe9d7f13d33c81d90ac",
+      "cacheKeys": [
+        "46aa0d3bee785b488753d3cc6442d2e7a556f6e9eaabfbe9d7f13d33c81d90ac",
+        "273c7b251bd705e496d41fdd5f0cce3c705047a015404db6a55ce19697323a7f"
+      ],
+      "actorKey": "live_entity_seed:scattered-mixed-sheep-far_north_wilds_shelf-10743:8810000000020743:far north wilds shelf sheep 3:far north wilds shelf sheep 3",
+      "actorId": "scattered-mixed-sheep-far_north_wilds_shelf-10743",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-scattered-mixed-sheep-far-north-wilds-shelf-10743-far-north-wil/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-OnyxTurboMultilingualNeural|gender=neutral|kind=animal|rate=-4%25|pitch=%2B2%25|volume=default|break=210|actor=live_entity_seed%3Ascattered-mixed-sheep-far_north_wilds_shelf-10743%3A8810000000020743%3Afar%20north%20wilds%20shelf%20sheep%203%3Afar%20north%20wilds%20shelf%20sheep%203",
+      "voiceId": "VR6AewLTigWG4xSOukaG",
+      "textHash": "cfd76d0c62c0bc39b80f1a7bcbd4ba04339e56ab2a0336ce98e26f3dbca7519d",
+      "bytes": 17598
+    },
+    {
+      "cacheKey": "233ae406ce178cf34ccdcc8b5b97662d1d4322bfc20de1bbef5e5ba6e0a797c3",
+      "cacheKeys": [
+        "233ae406ce178cf34ccdcc8b5b97662d1d4322bfc20de1bbef5e5ba6e0a797c3",
+        "d7f5bd28129c0bae5e71541469fdafff00fc7a8ab09ea485167feff86fc6d539"
+      ],
+      "actorKey": "live_entity_seed:scattered-mixed-sheep-high_downs_terrace-10754:8810000000020754:high downs terrace sheep 2:high downs terrace sheep 2",
+      "actorId": "scattered-mixed-sheep-high_downs_terrace-10754",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-scattered-mixed-sheep-high-downs-terrace-10754-high-downs-terra/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-DavisNeural|gender=neutral|kind=animal|style=hopeful|styleDegree=0.95|rate=-1%25|pitch=-2%25|volume=default|break=210|actor=live_entity_seed%3Ascattered-mixed-sheep-high_downs_terrace-10754%3A8810000000020754%3Ahigh%20downs%20terrace%20sheep%202%3Ahigh%20downs%20terrace%20sheep%202",
+      "voiceId": "ErXwobaYiN019PkySvjV",
+      "textHash": "cfd76d0c62c0bc39b80f1a7bcbd4ba04339e56ab2a0336ce98e26f3dbca7519d",
+      "bytes": 16344
+    },
+    {
+      "cacheKey": "92c84c0a773bea7d4aa3ef727e531d1b39e4f1e7abd237ae0e1645925ada9845",
+      "cacheKeys": [
+        "92c84c0a773bea7d4aa3ef727e531d1b39e4f1e7abd237ae0e1645925ada9845",
+        "ea136d97b624609a11ec2ab48b94fc3cb3733398a82d59bf19151601f9c44f62"
+      ],
+      "actorKey": "live_entity_seed:scattered-mixed-sheep-high_downs_terrace-10755:8810000000020755:high downs terrace sheep 3:high downs terrace sheep 3",
+      "actorId": "scattered-mixed-sheep-high_downs_terrace-10755",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-scattered-mixed-sheep-high-downs-terrace-10755-high-downs-terra/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-GuyNeural|gender=neutral|kind=animal|style=whispering|styleDegree=0.85|rate=-5%25|pitch=%2B1%25|volume=default|break=246|actor=live_entity_seed%3Ascattered-mixed-sheep-high_downs_terrace-10755%3A8810000000020755%3Ahigh%20downs%20terrace%20sheep%203%3Ahigh%20downs%20terrace%20sheep%203",
+      "voiceId": "ErXwobaYiN019PkySvjV",
+      "textHash": "cfd76d0c62c0bc39b80f1a7bcbd4ba04339e56ab2a0336ce98e26f3dbca7519d",
+      "bytes": 16344
+    },
+    {
+      "cacheKey": "eacf73a5495405c1d01449623ca81090eeb2c3b8f26e0ec61475c08fac73467b",
+      "cacheKeys": [
+        "eacf73a5495405c1d01449623ca81090eeb2c3b8f26e0ec61475c08fac73467b",
+        "166f61e6f583e8a7b9fcc0f9b716c31e79dd00a01166d4d06836315d537b9ee9"
+      ],
+      "actorKey": "live_entity_seed:scattered-mixed-sheep-north_reach_pinefall-10748:8810000000020748:north reach pinefall sheep 2:north reach pinefall sheep 2",
+      "actorId": "scattered-mixed-sheep-north_reach_pinefall-10748",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-scattered-mixed-sheep-north-reach-pinefall-10748-north-reach-pi/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-OnyxTurboMultilingualNeural|gender=neutral|kind=animal|rate=-3%25|pitch=-3%25|volume=default|break=246|actor=live_entity_seed%3Ascattered-mixed-sheep-north_reach_pinefall-10748%3A8810000000020748%3Anorth%20reach%20pinefall%20sheep%202%3Anorth%20reach%20pinefall%20sheep%202",
+      "voiceId": "TxGEqnHWrfWFTfGW9XjX",
+      "textHash": "cfd76d0c62c0bc39b80f1a7bcbd4ba04339e56ab2a0336ce98e26f3dbca7519d",
+      "bytes": 15090
+    },
+    {
+      "cacheKey": "d853b93fede8d86923c4a8ec0b1b42442bcc2971be1295b0b00b3a8dfd710ba9",
+      "cacheKeys": [
+        "d853b93fede8d86923c4a8ec0b1b42442bcc2971be1295b0b00b3a8dfd710ba9",
+        "88d3ffef4cd62ce2206ddfa4f242f2c14415be3357b77ecb453dfa65ca5011a2"
+      ],
+      "actorKey": "live_entity_seed:scattered-mixed-sheep-north_reach_pinefall-10749:8810000000020749:north reach pinefall sheep 3:north reach pinefall sheep 3",
+      "actorId": "scattered-mixed-sheep-north_reach_pinefall-10749",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-scattered-mixed-sheep-north-reach-pinefall-10749-north-reach-pi/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-FableTurboMultilingualNeural|gender=neutral|kind=animal|rate=-7%25|pitch=-3%25|volume=default|break=228|actor=live_entity_seed%3Ascattered-mixed-sheep-north_reach_pinefall-10749%3A8810000000020749%3Anorth%20reach%20pinefall%20sheep%203%3Anorth%20reach%20pinefall%20sheep%203",
+      "voiceId": "EXAVITQu4vr4xnSDxMaL",
+      "textHash": "cfd76d0c62c0bc39b80f1a7bcbd4ba04339e56ab2a0336ce98e26f3dbca7519d",
+      "bytes": 13836
+    },
+    {
+      "cacheKey": "67ab148d96c29c2f8bda4ac09de10fb92814ff7de3ce40510eaf8e5144fc4ff4",
+      "cacheKeys": [
+        "67ab148d96c29c2f8bda4ac09de10fb92814ff7de3ce40510eaf8e5144fc4ff4",
+        "32a7540d669ac61545e4f69d36c0de066696170488496e94fc896559e41a573f"
+      ],
+      "actorKey": "live_entity_seed:scattered-mixed-sheep-old_wood_west_clearing-10766:8810000000020766:old wood west clearing sheep 2:old wood west clearing sheep 2",
+      "actorId": "scattered-mixed-sheep-old_wood_west_clearing-10766",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-scattered-mixed-sheep-old-wood-west-clearing-10766-old-wood-wes/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-DavisNeural|gender=neutral|kind=animal|style=hopeful|styleDegree=1.05|rate=-4%25|pitch=-4%25|volume=default|break=246|actor=live_entity_seed%3Ascattered-mixed-sheep-old_wood_west_clearing-10766%3A8810000000020766%3Aold%20wood%20west%20clearing%20sheep%202%3Aold%20wood%20west%20clearing%20sheep%202",
+      "voiceId": "TxGEqnHWrfWFTfGW9XjX",
+      "textHash": "cfd76d0c62c0bc39b80f1a7bcbd4ba04339e56ab2a0336ce98e26f3dbca7519d",
+      "bytes": 17598
+    },
+    {
+      "cacheKey": "13c70b387fc86605d5ab409ac1fb61766eb418d54735da947b417f125737241a",
+      "cacheKeys": [
+        "13c70b387fc86605d5ab409ac1fb61766eb418d54735da947b417f125737241a",
+        "5d9d98aad08c5dfd6ab94c94d12f21388dac38e35781e64c651a31d3b308cb89"
+      ],
+      "actorKey": "live_entity_seed:scattered-mixed-sheep-old_wood_west_clearing-10767:8810000000020767:old wood west clearing sheep 3:old wood west clearing sheep 3",
+      "actorId": "scattered-mixed-sheep-old_wood_west_clearing-10767",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-scattered-mixed-sheep-old-wood-west-clearing-10767-old-wood-wes/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-AlloyTurboMultilingualNeural|gender=neutral|kind=animal|rate=-2%25|pitch=%2B0%25|volume=default|break=120|actor=live_entity_seed%3Ascattered-mixed-sheep-old_wood_west_clearing-10767%3A8810000000020767%3Aold%20wood%20west%20clearing%20sheep%203%3Aold%20wood%20west%20clearing%20sheep%203",
+      "voiceId": "yoZ06aMxZJJ28mfd3POQ",
+      "textHash": "cfd76d0c62c0bc39b80f1a7bcbd4ba04339e56ab2a0336ce98e26f3dbca7519d",
+      "bytes": 12582
+    },
+    {
+      "cacheKey": "e17cf71fa82a2e35c1bb8d1199d6a86222ea354f49ada54d4840cb9d4e5c9e55",
+      "cacheKeys": [
+        "e17cf71fa82a2e35c1bb8d1199d6a86222ea354f49ada54d4840cb9d4e5c9e55",
+        "a425a020480bf5af7482cf114c486c835983f09c80201b83b75ddb5275a9adac"
+      ],
+      "actorKey": "live_entity_seed:scattered-mixed-sheep-south_reach_meadow-10772:8810000000020772:south reach meadow sheep 2:south reach meadow sheep 2",
+      "actorId": "scattered-mixed-sheep-south_reach_meadow-10772",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-scattered-mixed-sheep-south-reach-meadow-10772-south-reach-mead/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-AriaNeural|gender=neutral|kind=animal|style=whispering|styleDegree=0.80|rate=-5%25|pitch=%2B4%25|volume=default|break=120|actor=live_entity_seed%3Ascattered-mixed-sheep-south_reach_meadow-10772%3A8810000000020772%3Asouth%20reach%20meadow%20sheep%202%3Asouth%20reach%20meadow%20sheep%202",
+      "voiceId": "yoZ06aMxZJJ28mfd3POQ",
+      "textHash": "cfd76d0c62c0bc39b80f1a7bcbd4ba04339e56ab2a0336ce98e26f3dbca7519d",
+      "bytes": 11328
+    },
+    {
+      "cacheKey": "f99f4d92f3e9c3e283916abaea254fb444713ae1bec61d24b0f4a74682a35907",
+      "cacheKeys": [
+        "f99f4d92f3e9c3e283916abaea254fb444713ae1bec61d24b0f4a74682a35907",
+        "8511055765d586dc6ffd25426e4fd4bae47c6b8e0f120234a70acc9414b2a6f8"
+      ],
+      "actorKey": "live_entity_seed:scattered-mixed-sheep-south_reach_meadow-10773:8810000000020773:south reach meadow sheep 3:south reach meadow sheep 3",
+      "actorId": "scattered-mixed-sheep-south_reach_meadow-10773",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/live-entity-seed-scattered-mixed-sheep-south-reach-meadow-10773-south-reach-mead/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-GuyNeural|gender=neutral|kind=animal|style=whispering|styleDegree=0.85|rate=-3%25|pitch=-2%25|volume=default|break=246|actor=live_entity_seed%3Ascattered-mixed-sheep-south_reach_meadow-10773%3A8810000000020773%3Asouth%20reach%20meadow%20sheep%203%3Asouth%20reach%20meadow%20sheep%203",
+      "voiceId": "ErXwobaYiN019PkySvjV",
+      "textHash": "cfd76d0c62c0bc39b80f1a7bcbd4ba04339e56ab2a0336ce98e26f3dbca7519d",
+      "bytes": 17598
     },
     {
       "cacheKey": "a747892be8ade7f5ba31fdacf3a3c39a00bc745216e419e0f33ff642d860d2aa",

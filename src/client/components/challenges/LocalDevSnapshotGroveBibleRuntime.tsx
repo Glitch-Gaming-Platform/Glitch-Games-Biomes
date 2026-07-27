@@ -23,6 +23,7 @@ import type { BiomesId } from "@/shared/ids";
 import type { Vec3 } from "@/shared/math/types";
 import {
   SNAPSHOT_GROVE_BIBLE_CONTENT_VERSION,
+  SNAPSHOT_GROVE_FOUNTAIN_TUTORIAL_QUEST_IDS,
   SNAPSHOT_GROVE_LANDMARKS,
   SNAPSHOT_GROVE_NPCS,
   SNAPSHOT_GROVE_LIVE_NPC_FEET_Y,
@@ -90,22 +91,6 @@ function snapshotGroveAllStepNavAidIds() {
     (_unused, index) => SNAPSHOT_GROVE_NAV_AID_BASE + index
   );
 }
-
-const SNAPSHOT_GROVE_FOUNTAIN_TUTORIAL_QUEST_IDS = [
-  "fountain_buttons_first",
-  "painted_path_language",
-  "road_ready_bag_check",
-  "tools_before_treasure",
-  "safe_sparring_not_pvp",
-  "ready_check_at_fountain",
-  "lost_found_and_mail",
-  "fountain_chat_channels",
-  "fountain_food_keeps_you_moving",
-  "fountain_first_aid_before_road",
-  "fountain_hotbar_and_dropping",
-  "fountain_first_recipe_torch",
-  "fountain_trade_table_promises",
-] as const;
 
 const SNAPSHOT_GROVE_FOUNTAIN_TUTORIAL_QUEST_ID_SET = new Set<string>(
   SNAPSHOT_GROVE_FOUNTAIN_TUTORIAL_QUEST_IDS

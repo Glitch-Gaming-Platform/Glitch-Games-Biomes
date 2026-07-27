@@ -30,6 +30,7 @@ import {
 import {
   CH1_DUNGEON_TERRAIN,
   ch1DungeonBlockAt,
+  ch1DungeonAuthoredToWorld,
   ch1DungeonTerrain,
 } from "../ch1_dungeon_terrain";
 import { CH1_DUNGEON_DECOR } from "../ch1_dungeon_decor";
@@ -156,21 +157,12 @@ describe("ch1 horizon - boundary", () => {
   it("synthesises no slabs while the player is inside", () => {
     for (const terrain of CH1_DUNGEON_TERRAIN) {
       const inside = ch1DungeonTerrain(terrain.dungeonId)!.arrival;
-      const world: [number, number, number] = [0, 0, 0];
+      const world = ch1DungeonAuthoredToWorld(terrain.dungeonId, inside);
       // Use the arrival, converted, as a known-inside point.
       const slabs = ch1HorizonBoundarySlabs(terrain.dungeonId, [
-        [
-          ch1WorldX(terrain.dungeonId, inside.x) - 0.4,
-          64 + inside.y - 0.4,
-          -256 + inside.z - 0.4,
-        ],
-        [
-          ch1WorldX(terrain.dungeonId, inside.x) + 0.4,
-          64 + inside.y + 1.8,
-          -256 + inside.z + 0.4,
-        ],
+        [world[0] - 0.4, world[1] - 0.4, world[2] - 0.4],
+        [world[0] + 0.4, world[1] + 1.8, world[2] + 0.4],
       ]);
-      void world;
       assert.deepEqual(
         slabs,
         [],
@@ -179,24 +171,55 @@ describe("ch1 horizon - boundary", () => {
     }
   });
 
-  it("blocks every axis that is exceeded, including the ceiling", () => {
-    const id = "ch1_dungeon_desert";
-    const far = 1e6;
-    const east = ch1HorizonBoundarySlabs(id, [
-      [far, 64, -300],
-      [far + 1, 66, -299],
-    ]);
-    assert.equal(east.length, 1, "crossing +X must synthesise one slab");
-    const up = ch1HorizonBoundarySlabs(id, [
-      [2700, far, -300],
-      [2701, far + 1, -299],
-    ]);
-    assert.equal(up.length, 1, "there is a ceiling, not just walls");
-    const corner = ch1HorizonBoundarySlabs(id, [
-      [far, far, far],
-      [far + 1, far + 1, far + 1],
-    ]);
-    assert.equal(corner.length, 3, "a corner produces overlapping slabs");
+  it("blocks every face around both dungeons, including floor and ceiling", () => {
+    for (const terrain of CH1_DUNGEON_TERRAIN) {
+      const bounds = ch1PlayableBounds(terrain);
+      const min = ch1DungeonAuthoredToWorld(terrain.dungeonId, {
+        x: bounds.x0,
+        y: bounds.y0,
+        z: bounds.z0,
+      });
+      const max = ch1DungeonAuthoredToWorld(terrain.dungeonId, {
+        x: bounds.x1,
+        y: bounds.y1,
+        z: bounds.z1,
+      });
+      const mid = [
+        (min[0] + max[0]) / 2,
+        (min[1] + max[1]) / 2,
+        (min[2] + max[2]) / 2,
+      ] as const;
+      const probes = [
+        ["-X", [min[0] - 2, mid[1], mid[2]]],
+        ["+X", [max[0] + 2, mid[1], mid[2]]],
+        ["-Y", [mid[0], min[1] - 2, mid[2]]],
+        ["+Y", [mid[0], max[1] + 2, mid[2]]],
+        ["-Z", [mid[0], mid[1], min[2] - 2]],
+        ["+Z", [mid[0], mid[1], max[2] + 2]],
+      ] as const;
+
+      for (const [face, point] of probes) {
+        const slabs = ch1HorizonBoundarySlabs(terrain.dungeonId, [
+          [point[0] - 0.4, point[1] - 0.4, point[2] - 0.4],
+          [point[0] + 0.4, point[1] + 1.8, point[2] + 0.4],
+        ]);
+        assert.equal(
+          slabs.length,
+          1,
+          `${terrain.dungeonId}: crossing ${face} must synthesise one slab`
+        );
+      }
+
+      const corner = ch1HorizonBoundarySlabs(terrain.dungeonId, [
+        [max[0] + 2, max[1] + 2, max[2] + 2],
+        [max[0] + 3, max[1] + 3, max[2] + 3],
+      ]);
+      assert.equal(
+        corner.length,
+        3,
+        `${terrain.dungeonId}: a corner must produce three overlapping slabs`
+      );
+    }
   });
 
   it("makes each slab as deep as the dungeon is wide", () => {
@@ -223,13 +246,6 @@ describe("ch1 horizon - boundary", () => {
     );
   });
 });
-
-function ch1WorldX(dungeonId: string, authoredX: number): number {
-  // Local helper mirroring the transform without importing the slot table.
-  return dungeonId === "ch1_dungeon_desert"
-    ? 2624 + authoredX
-    : 3136 + authoredX;
-}
 
 // ---------------------------------------------------------------------------
 // The backdrop reads as land

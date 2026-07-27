@@ -186,7 +186,15 @@ export function harthmereNativeNpcCombatProfileForSeed(
             kind: "proximity",
             distance: boss ? 18 : bandit ? 14 : hex ? 12 : 10.5,
           },
-    disengageDistance: boss ? 42 : prisoner ? 8 : livestock ? 16 : bandit ? 32 : 34,
+    disengageDistance: boss
+      ? 42
+      : prisoner
+      ? 8
+      : livestock
+      ? 16
+      : bandit
+      ? 32
+      : 34,
     walkSpeed:
       sentinel || thaedryn || prisoner
         ? 0
@@ -526,11 +534,103 @@ export function nativeCombatArmorStats(items: Iterable<ReadonlyItem | Item>) {
   return { armor, defense, evasion };
 }
 
+export interface HarthmereNativeOffensiveStats {
+  strength: number;
+  dexterity: number;
+  intelligence: number;
+  accuracy: number;
+  criticalChance: number;
+  spellPower: number;
+}
+
+export interface HarthmereNativeAttackStatResult {
+  damage: number;
+  critical: boolean;
+  attributeMultiplier: number;
+  accuracyMultiplier: number;
+  criticalMultiplier: number;
+}
+
+function nativeCombatDeterministicRoll(
+  seed: ReadonlyArray<string | number | bigint | undefined>
+) {
+  // FNV-1a over stable server-owned attack inputs. The previous committed
+  // attack timestamp changes after every accepted swing, while transaction
+  // retries see the same seed and therefore resolve the same critical result.
+  let hash = 0x811c9dc5;
+  const text = seed.map((part) => String(part ?? "")).join(":");
+  for (let i = 0; i < text.length; i += 1) {
+    hash ^= text.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return (hash >>> 0) / 0x1_0000_0000;
+}
+
+/**
+ * Applies the level-derived offensive attributes before target-level and armor
+ * mitigation. Level 1 is deliberately neutral: its 10/10/10 attributes,
+ * 75 accuracy, zero spell power, and zero critical chance reproduce the
+ * historical native damage exactly.
+ */
+export function applyHarthmereNativeAttackStats(input: {
+  baseDamage: number;
+  kind: HarthmereNativeItemCombatProfile["kind"];
+  stats: HarthmereNativeOffensiveStats;
+  targetEvasion?: number;
+  criticalSeed: ReadonlyArray<string | number | bigint | undefined>;
+}): HarthmereNativeAttackStatResult {
+  const strengthBonus = Math.max(0, input.stats.strength - 10);
+  const dexterityBonus = Math.max(0, input.stats.dexterity - 10);
+  const intelligenceBonus = Math.max(0, input.stats.intelligence - 10);
+  const attributeMultiplier =
+    input.kind === "spell"
+      ? 1 + intelligenceBonus * 0.004 + input.stats.spellPower * 0.001
+      : input.kind === "ranged"
+      ? 1 + dexterityBonus * 0.005
+      : input.kind === "heavy"
+      ? 1 + strengthBonus * 0.006
+      : input.kind === "melee"
+      ? 1 + strengthBonus * 0.005
+      : 1 + strengthBonus * 0.004;
+
+  const accuracyBonus = Math.max(0, input.stats.accuracy - 75);
+  const accuracyPressure =
+    accuracyBonus - Math.max(0, input.targetEvasion ?? 0);
+  const accuracyMultiplier = Math.max(
+    0.9,
+    Math.min(1.1, 1 + accuracyPressure * 0.002)
+  );
+  const criticalChance = Math.max(
+    0,
+    Math.min(0.75, input.stats.criticalChance)
+  );
+  const critical =
+    criticalChance > 0 &&
+    nativeCombatDeterministicRoll(input.criticalSeed) < criticalChance;
+  const criticalMultiplier = critical ? 1.5 : 1;
+  return {
+    damage: Math.max(
+      1,
+      Math.round(
+        Math.max(0, input.baseDamage) *
+          attributeMultiplier *
+          accuracyMultiplier *
+          criticalMultiplier
+      )
+    ),
+    critical,
+    attributeMultiplier,
+    accuracyMultiplier,
+    criticalMultiplier,
+  };
+}
+
 export function mitigateHarthmereNativeIncomingDamage(input: {
   rawDamage: number;
   armor: number;
   defense: number;
   evasion?: number;
+  accuracy?: number;
   attackerLevel: number;
   defenderLevel: number;
 }) {
@@ -546,9 +646,14 @@ export function mitigateHarthmereNativeIncomingDamage(input: {
   // Resolve evasion deterministically on the server. A random client-side miss
   // would disagree between observers; this bounded reduction preserves the stat
   // while keeping replayed native events deterministic.
+  const accuracyPressure = Math.max(0, (input.accuracy ?? 75) - 75) * 0.5;
+  const effectiveEvasion = Math.max(
+    0,
+    Math.max(0, input.evasion ?? 0) - accuracyPressure
+  );
   const evasionReduction = Math.min(
     0.35,
-    Math.max(0, input.evasion ?? 0) / (Math.max(0, input.evasion ?? 0) + 200)
+    effectiveEvasion / (effectiveEvasion + 200)
   );
   return Math.max(
     1,

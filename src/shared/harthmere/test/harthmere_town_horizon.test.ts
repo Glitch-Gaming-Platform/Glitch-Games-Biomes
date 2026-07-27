@@ -34,6 +34,7 @@ import {
   HARTHMERE_EXPANDED_WORLD_EAST_EDGE_X,
   HARTHMERE_ORIGINAL_WORLD_EAST_EDGE_X,
 } from "../world_extension";
+import { CH1_ELSEWHEN_SLOTS } from "../ch1_elsewhen_region";
 
 // ---------------------------------------------------------------------------
 // THE CRITICAL PROPERTY
@@ -392,6 +393,21 @@ describe("harthmere town horizon - the back boundary blocks", () => {
       hi[2] - lo[2] > 700,
       "the slab must span the whole extension so you cannot walk around it"
     );
+  });
+
+  it("does not leak the town wall into either Elsewhen dungeon", () => {
+    for (const slot of CH1_ELSEWHEN_SLOTS) {
+      for (const position of [slot.arrival, slot.departure]) {
+        assert.deepEqual(
+          harthmereTownBackBoundarySlabs([
+            [position[0] - 0.4, position[1], position[2] - 0.4],
+            [position[0] + 0.4, position[1] + 1.8, position[2] + 0.4],
+          ]),
+          [],
+          `${slot.dungeonId} must use its own closed boundary, not the town wall`
+        );
+      }
+    }
   });
 });
 

@@ -1,6 +1,7 @@
 import { TriggerState } from "@/shared/ecs/gen/components";
 import { anItem } from "@/shared/game/item";
 import {
+  applyHarthmereNativeAttackStats,
   awardHarthmereNativeCombatXp,
   harthmereNativeItemCombatProfile,
   mitigateHarthmereNativeIncomingDamage,
@@ -9,6 +10,7 @@ import {
   writeHarthmereNativeCombatProgression,
   harthmereNativeNpcCombatProfileForSeed,
 } from "@/shared/harthmere/harthmere_native_combat";
+import { harthmereNativeLevelStats } from "@/shared/harthmere/harthmere_native_level_stats";
 import { ensureHarthmereNativeItemCatalogue } from "@/shared/harthmere/harthmere_native_bikkie_items";
 import { harthmereNativeBiomesIdForItemId } from "@/shared/harthmere/harthmere_native_item_ids";
 import assert from "assert";
@@ -107,6 +109,53 @@ describe("Harthmere native ECS combat rules", () => {
         defenderLevel: 3,
       })
     );
+  });
+
+  it("applies strength, dexterity, intelligence, spell power, accuracy, and crits", () => {
+    const levelOne = harthmereNativeLevelStats(1);
+    const neutral = applyHarthmereNativeAttackStats({
+      baseDamage: 20,
+      kind: "melee",
+      stats: levelOne,
+      criticalSeed: [1, 2, 0],
+    });
+    assert.equal(neutral.damage, 20);
+    assert.equal(neutral.critical, false);
+
+    const levelTwenty = {
+      ...harthmereNativeLevelStats(20),
+      criticalChance: 0,
+    };
+    const melee = applyHarthmereNativeAttackStats({
+      baseDamage: 20,
+      kind: "melee",
+      stats: levelTwenty,
+      criticalSeed: [1, 2, 0],
+    });
+    const ranged = applyHarthmereNativeAttackStats({
+      baseDamage: 20,
+      kind: "ranged",
+      stats: levelTwenty,
+      criticalSeed: [1, 2, 0],
+    });
+    const spell = applyHarthmereNativeAttackStats({
+      baseDamage: 20,
+      kind: "spell",
+      stats: levelTwenty,
+      criticalSeed: [1, 2, 0],
+    });
+    assert.ok(melee.damage > neutral.damage);
+    assert.ok(ranged.damage > neutral.damage);
+    assert.ok(spell.damage > neutral.damage);
+
+    const critical = applyHarthmereNativeAttackStats({
+      baseDamage: 20,
+      kind: "melee",
+      stats: { ...levelOne, criticalChance: 1 },
+      criticalSeed: [1, 2, 0],
+    });
+    assert.equal(critical.critical, true);
+    assert.equal(critical.damage, 30);
   });
 
   it("keeps the Road Ahead Muckwad patch retaliation-only", () => {

@@ -55,6 +55,11 @@ import { getPlayerBuffs } from "@/shared/game/players";
 import { friendlyShardId, shardsForAABB } from "@/shared/game/shard";
 import { blockIsEmpty } from "@/shared/game/terrain_helper";
 import type { BiomesId } from "@/shared/ids";
+import { ch1HorizonBoundarySlabs } from "@/shared/harthmere/ch1_dungeon_horizon";
+import { ch1ElsewhenSlotAt } from "@/shared/harthmere/ch1_elsewhen_region";
+import { readHarthmereNativeCombatProgression } from "@/shared/harthmere/harthmere_native_combat";
+import { harthmereNativeLevelStats } from "@/shared/harthmere/harthmere_native_level_stats";
+import { harthmereTownBackBoundarySlabs } from "@/shared/harthmere/harthmere_town_horizon";
 import {
   nativeBiomesEcsAuthorityEnabled,
   playerHealthAutoRegenerationEnabled,
@@ -1741,6 +1746,42 @@ export class PlayerScript implements Script {
       collisionFilter
     );
 
+    // HARTHMERE_PURPLE_BARRIER_PLAYER_COLLISION
+    // Dungeon horizon fields are closed on every face. Resolve the dungeon
+    // from the query's world position so only the slot the player occupies can
+    // contribute collision; otherwise each distant dungeon box would treat
+    // the main map as being outside its walls.
+    const centerX = (boxMin[0] + boxMax[0]) / 2;
+    const centerZ = (boxMin[2] + boxMax[2]) / 2;
+    const dungeonSlot = ch1ElsewhenSlotAt([centerX, 0, centerZ]);
+    if (dungeonSlot) {
+      for (const boundary of ch1HorizonBoundarySlabs(dungeonSlot.dungeonId, [
+        boxMin,
+        boxMax,
+      ])) {
+        const collisionAabb: AABB = [
+          [...boundary[0]],
+          [...boundary[1]],
+        ];
+        if (collisionFilter(collisionAabb)) {
+          break;
+        }
+      }
+    }
+
+    // Harthmere is open at the west connector to the main map, but its east
+    // back field is solid. The shared helper returns no slab on the connector
+    // side and is explicitly scoped out of the Elsewhen dungeon band.
+    for (const boundary of harthmereTownBackBoundarySlabs([boxMin, boxMax])) {
+      const collisionAabb: AABB = [
+        [...boundary[0]],
+        [...boundary[1]],
+      ];
+      if (collisionFilter(collisionAabb)) {
+        break;
+      }
+    }
+
     // Harthmere's renderer-authored props/buildings are not ECS placeables.
     // Do NOT feed them into the vertical AABB collision solver by default:
     // that path can push the avatar upward and leave it stuck above town.
@@ -2077,7 +2118,19 @@ export class PlayerScript implements Script {
   private updateMaxHealth() {
     const mods = this.resources.get("/player/modifiers");
     const maxHealthMod = mods.maxHealth.increase;
-    const newMaxHealth = 100 + maxHealthMod;
+    // Native level progression owns the player's base HP ceiling. The legacy
+    // client reconciliation used a hard-coded 100 every tick, so it immediately
+    // overwrote the 120/140/... value written by quest or combat level-ups.
+    // Equipment/buff modifiers remain additive on top of the level-derived
+    // base; non-native worlds retain the original 100 HP behavior.
+    const nativeBaseMaxHealth = nativeBiomesEcsAuthorityEnabled()
+      ? harthmereNativeLevelStats(
+          readHarthmereNativeCombatProgression(
+            this.resources.get("/ecs/c/trigger_state", this.userId)
+          ).level
+        ).maxHp
+      : 100;
+    const newMaxHealth = nativeBaseMaxHealth + maxHealthMod;
     const currentHealth = this.resources.get("/ecs/c/health", this.userId);
     if (currentHealth?.maxHp !== newMaxHealth) {
       fireAndForget(
@@ -2397,6 +2450,14 @@ export class PlayerScript implements Script {
     // Figure out what direction the player is moving.
     const [pitch, yaw] = player.orientation;
 
+    const nativeMovementSpeed = nativeBiomesEcsAuthorityEnabled()
+      ? harthmereNativeLevelStats(
+          readHarthmereNativeCombatProgression(
+            this.resources.get("/ecs/c/trigger_state", this.userId)
+          ).level
+        ).movementSpeed
+      : 1;
+
     const speed =
       // Moving backwards is slower.
       (forward < 0
@@ -2408,7 +2469,8 @@ export class PlayerScript implements Script {
       (running ? this.tweaks.playerPhysics.runMultiplier : 1) *
       // Moving sideways is slower.
       (lateral === 0 ? 1 : this.tweaks.playerPhysics.lateralMultiplier) *
-      this.smoothedSpeedModifier.get();
+      this.smoothedSpeedModifier.get() *
+      nativeMovementSpeed;
 
     // Assemble the list of input forces.
     let forces: Force[] = [];

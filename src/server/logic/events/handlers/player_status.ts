@@ -12,6 +12,7 @@ import { getAabbForEntity } from "@/shared/game/entity_sizes";
 import { attackIntervalSeconds } from "@/shared/game/damage";
 import { distSqToAABB } from "@/shared/math/linear";
 import {
+  applyHarthmereNativeAttackStats,
   harthmereNativeItemCombatProfile,
   harthmereNativeItemDefinitionForBiomesId,
   mitigateHarthmereNativeIncomingDamage,
@@ -20,6 +21,7 @@ import {
   writeHarthmereNativeCombatProgression,
 } from "@/shared/harthmere/harthmere_native_combat";
 import { harthmereNativeNpcCombatProfileForTypeId } from "@/shared/harthmere/harthmere_native_combat_catalog";
+import { harthmereNativeLevelStats } from "@/shared/harthmere/harthmere_native_level_stats";
 import { log } from "@/shared/logging";
 import {
   readHarthmereNativeVitals,
@@ -121,11 +123,14 @@ export const updatePlayerHealthEventHandler = makeEventHandler(
           const defender = readHarthmereNativeCombatProgression(
             player.triggerState()
           );
+          const defenderStats = harthmereNativeLevelStats(defender.level);
+          const attackerStats = harthmereNativeLevelStats(nativeProfile.level);
           const damage = mitigateHarthmereNativeIncomingDamage({
             rawDamage: nativeProfile.attackDamage,
-            armor: armor.armor,
-            defense: armor.defense,
-            evasion: armor.evasion,
+            armor: armor.armor + defenderStats.armor,
+            defense: armor.defense + defenderStats.defense,
+            evasion: armor.evasion + defenderStats.evasion,
+            accuracy: attackerStats.accuracy,
             attackerLevel: nativeProfile.level,
             defenderLevel: defender.level,
           });
@@ -214,11 +219,27 @@ export const updatePlayerHealthEventHandler = makeEventHandler(
             const defender = readHarthmereNativeCombatProgression(
               player.triggerState()
             );
+            const attackerStats = harthmereNativeLevelStats(
+              attackerProgress.level
+            );
+            const defenderStats = harthmereNativeLevelStats(defender.level);
+            const statDamage = applyHarthmereNativeAttackStats({
+              baseDamage: itemProfile.damagePerHit,
+              kind: itemProfile.kind,
+              stats: attackerStats,
+              criticalSeed: [
+                attacker.id,
+                player.id,
+                attackerProgress.lastAttackMs,
+                selected?.item.id,
+              ],
+            });
             const damage = mitigateHarthmereNativeIncomingDamage({
-              rawDamage: itemProfile.damagePerHit,
-              armor: armor.armor,
-              defense: armor.defense,
-              evasion: armor.evasion,
+              rawDamage: statDamage.damage,
+              armor: armor.armor + defenderStats.armor,
+              defense: armor.defense + defenderStats.defense,
+              evasion: armor.evasion + defenderStats.evasion,
+              accuracy: attackerStats.accuracy,
               attackerLevel: attackerProgress.level,
               defenderLevel: defender.level,
             });

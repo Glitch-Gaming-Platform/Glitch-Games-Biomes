@@ -7,6 +7,7 @@ import {
 import {
   BIOMES_UI_MAIN_QUEST_EVENT,
   type BiomesUIMainQuestSelection,
+  isBiomesUIMainQuestClearedSelection,
   mainQuestFromTrackableQuestsForTest,
   readBiomesUIMainQuestSelection,
 } from "./adapters/mainQuestSelection";
@@ -98,6 +99,9 @@ export function currentQuestObjectiveForHUDForTest(input: {
   activeMapPin?: BiomesUIActiveMapPin;
   mainQuestSelection?: BiomesUIMainQuestSelection;
 }): string | undefined {
+  const explicitlyCleared = isBiomesUIMainQuestClearedSelection(
+    input.mainQuestSelection
+  );
   const mainQuest = mainQuestFromTrackableQuestsForTest(
     input.quests,
     input.mainQuestSelection
@@ -137,9 +141,11 @@ export function currentQuestObjectiveForHUDForTest(input: {
     (input.quests.length === 0
       ? cleanObjectiveText(input.mainQuestSelection?.objective)
       : undefined) ??
-    questObjectiveForHUD(activeRoadAheadQuest) ??
-    questObjectiveForHUD(activeQuest) ??
-    cleanObjectiveText(currentMissionStep?.objective)
+    (explicitlyCleared
+      ? undefined
+      : questObjectiveForHUD(activeRoadAheadQuest) ??
+        questObjectiveForHUD(activeQuest) ??
+        cleanObjectiveText(currentMissionStep?.objective))
   );
 }
 

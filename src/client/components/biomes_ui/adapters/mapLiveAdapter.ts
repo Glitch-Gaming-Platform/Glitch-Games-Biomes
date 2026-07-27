@@ -62,6 +62,7 @@ import {
   nativeQuestMapMarkers,
   nativeQuestMissionSteps,
   nativeQuestTrackableQuests,
+  type NativeQuestNavAidPositionResolver,
 } from "./nativeQuestMapAdapter";
 import { legacySyntheticRoadAheadEnabled } from "@/shared/harthmere/native_road_ahead_contract";
 import { dedupeTrackableQuestProjections } from "./questProjectionDedupe";
@@ -207,8 +208,29 @@ export function buildBiomesUIMapAdapter(
   farming?: {
     getModel: () => NativeFarmingInterfaceModel;
     hoeQuestState: HarthmereHoeQuestState;
+  },
+  // Live-client bridge for native ECS quests. Optional so tests and the
+  // local-dev bridge can build the adapter without a client context; without it
+  // the map degrades to the old position-aid-only behaviour rather than
+  // breaking.
+  nativeQuestBridge?: {
+    /** MapManager's already-resolved navigation aid positions. */
+    resolveNavAidPosition?: NativeQuestNavAidPositionResolver;
+    /**
+     * Point MapManager's quest tracking at the newly chosen main quest.
+     *
+     * Quest beacons are gated on `isTrackingQuest(challengeId)` — see
+     * `navigationAidShowsOnCircle` / `navigationAidMiniMapShouldPin`. Setting a
+     * main quest in the BiomesUI journal used to write only localStorage, so
+     * MapManager kept tracking whatever quest it had picked at load and the
+     * on-screen "where to go" indicator vanished the moment the player switched
+     * quests. This keeps the two in step.
+     */
+    trackQuest?: (questId: string | undefined) => void;
   }
 ) {
+  const resolveNativeQuestNavAidPosition =
+    nativeQuestBridge?.resolveNavAidPosition;
   const includeSyntheticRoadAhead = legacySyntheticRoadAheadEnabled();
   const NormalizeWorldXZ = (
     worldX: number,
@@ -423,7 +445,10 @@ export function buildBiomesUIMapAdapter(
         syntheticRoadAheadQuest?.status === "active"
           ? syntheticRoadAheadQuest.firstMarkerId
           : undefined;
-      const nativeMarkers = nativeQuestMapMarkers(nativeQuestBundles);
+      const nativeMarkers = nativeQuestMapMarkers(
+        nativeQuestBundles,
+        resolveNativeQuestNavAidPosition
+      );
       const activeMarkerIds: string[] = Array.isArray(activeQuest?.markerIds)
         ? activeQuest.markerIds
         : [];
@@ -776,7 +801,10 @@ export function buildBiomesUIMapAdapter(
               roadAheadChallengeStepHints
             )
           : []),
-        ...nativeQuestTrackableQuests(nativeQuestBundles),
+        ...nativeQuestTrackableQuests(
+          nativeQuestBundles,
+          resolveNativeQuestNavAidPosition
+        ),
         ...liveEntityHelperTrackableQuestsForBiomesUI(
           mergeLiveEntityHelperQuestStatesForBiomesUI(
             readLiveEntityHelperQuestState(),
@@ -805,8 +833,16 @@ export function buildBiomesUIMapAdapter(
       ]);
     },
     getMainQuestSelection: () => readBiomesUIMainQuestSelection(),
-    setMainQuest: (quest: any) => setBiomesUIMainQuestFromTrackableQuest(quest),
-    clearMainQuest: () => writeBiomesUIMainQuestSelection(undefined),
+    setMainQuest: (quest: any) => {
+      const selection = setBiomesUIMainQuestFromTrackableQuest(quest);
+      // Keep the world beacon on the same quest the journal now calls "main".
+      nativeQuestBridge?.trackQuest?.(selection.questId);
+      return selection;
+    },
+    clearMainQuest: () => {
+      writeBiomesUIMainQuestSelection(undefined);
+      nativeQuestBridge?.trackQuest?.(undefined);
+    },
     getActiveMapPin: () => {
       const pin = readActiveBiomesUIMapPin();
       if (!pin) {
@@ -820,7 +856,10 @@ export function buildBiomesUIMapAdapter(
         String(landmark?.id ?? "")
       );
       visibleMarkerIds.push(
-        ...nativeQuestMapMarkers(nativeQuestBundles).map((marker) => marker.id)
+        ...nativeQuestMapMarkers(
+          nativeQuestBundles,
+          resolveNativeQuestNavAidPosition
+        ).map((marker) => marker.id)
       );
       if (shouldClearStaleActiveMapPin({ pin, visibleMarkerIds })) {
         writeActiveBiomesUIMapPin(undefined);

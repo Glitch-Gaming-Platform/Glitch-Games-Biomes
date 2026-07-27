@@ -31,6 +31,8 @@ import {
 import {
   BIOMES_UI_MAIN_QUEST_EVENT,
   type BiomesUIMainQuestSelection,
+  biomesUIMainQuestClearedSelectionForTest,
+  isBiomesUIMainQuestClearedSelection,
   mainQuestFromTrackableQuestsForTest,
   readBiomesUIMainQuestSelection,
   setBiomesUIMainQuestFromTrackableQuest,
@@ -808,7 +810,8 @@ function ensureMapTabStyles() {
 
 export const MapQuestsTab: React.FunctionComponent<{
   adapter?: MapAdapter;
-}> = ({ adapter }) => {
+  contextualQuestPanel?: React.ReactNode;
+}> = ({ adapter, contextualQuestPanel }) => {
   const [zoom, setZoom] = React.useState(1);
   const [pan, setPan] = React.useState({ x: 0, y: 0 });
   const [focusedMarkerId, setFocusedMarkerId] = React.useState<string | null>(
@@ -984,6 +987,10 @@ export const MapQuestsTab: React.FunctionComponent<{
   }, [adapter]);
   React.useEffect(() => {
     if (!mainQuestSelection || trackableQuests.length === 0) return;
+    // This sentinel is a valid user preference, not a stale quest id. Without
+    // the guard the cleanup effect called clearMainQuest repeatedly and the
+    // default story selector immediately put Busted back into tracking.
+    if (isBiomesUIMainQuestClearedSelection(mainQuestSelection)) return;
     if (mainQuest) return;
     if (adapter?.clearMainQuest) {
       adapter.clearMainQuest();
@@ -1224,6 +1231,25 @@ export const MapQuestsTab: React.FunctionComponent<{
     },
     [adapter, centerQuestOnMap]
   );
+  /**
+   * Un-track the main quest. Previously the only way out of a main-quest
+   * selection was to pick a different one, so a player who set "Busted" as main
+   * could never go back to no selection — and the adapter's `clearMainQuest`
+   * (which also releases MapManager's quest tracking) had no caller.
+   */
+  const clearMainQuest = React.useCallback(() => {
+    const cleared = biomesUIMainQuestClearedSelectionForTest();
+    if (adapter?.clearMainQuest) {
+      adapter.clearMainQuest();
+    } else {
+      writeBiomesUIMainQuestSelection(undefined);
+    }
+    // Keep the in-memory state on the same explicit-clear sentinel written by
+    // the adapter. Setting undefined here would immediately invoke the default
+    // story selection again before the storage event could settle.
+    setMainQuestSelection(cleared);
+    clearActiveDestination();
+  }, [adapter, clearActiveDestination]);
   const activeMapPinMarkerId = activeMapPin?.markerId;
   // Center on (and set the active destination to) a marker resolved by id — used
   // by the quest detail's "Locate tool shop on map" button.
@@ -1748,6 +1774,7 @@ export const MapQuestsTab: React.FunctionComponent<{
         ) : null}
       </section>
       <section aria-label="Map panels" style={sidePanelStyle}>
+        {contextualQuestPanel}
         {enabledLayers.size === 0 ? (
           <p style={mutedTextStyle}>
             No layers selected. Turn on a layer above (Quests, People,
@@ -1838,9 +1865,13 @@ export const MapQuestsTab: React.FunctionComponent<{
                           quest.status === "active");
                       const isSelected = selectedQuestId === quest.questId;
                       const questMarker = questMarkerForMap(quest);
-                      const canSetMain =
-                        quest.status === "active" &&
-                        Boolean(questMarker?.worldPosition);
+                      // Tracking a quest is a journal decision, not a map
+                      // decision. Requiring a resolved world marker meant a
+                      // chapter whose current step is "Handcraft 0/8 Muck
+                      // Busters" — which has no location by design — could
+                      // never be set as the main quest at all. Centring still
+                      // needs a marker; choosing what to track does not.
+                      const canSetMain = quest.status === "active";
                       const accent = isMainQuest
                         ? "var(--biomes-warn-amber)"
                         : quest.status === "active"
@@ -1891,18 +1922,34 @@ export const MapQuestsTab: React.FunctionComponent<{
                                 data-testid={`biomes-map-quest-set-main-${quest.questId}`}
                                 aria-pressed={isMainQuest}
                                 disabled={!canSetMain}
-                                onClick={() => setMainQuest(quest)}
+                                title={
+                                  isMainQuest
+                                    ? "Stop tracking this as your main quest"
+                                    : canSetMain
+                                    ? "Track this as your main quest"
+                                    : "Only active quests can be tracked"
+                                }
+                                onClick={() =>
+                                  isMainQuest
+                                    ? clearMainQuest()
+                                    : setMainQuest(quest)
+                                }
                                 style={questActionButtonStyle(
                                   isMainQuest,
                                   !canSetMain
                                 )}
                               >
-                                {isMainQuest ? "Main Quest" : "Set Main"}
+                                {isMainQuest ? "Main Quest ✕" : "Set Main"}
                               </button>
                               <button
                                 type="button"
                                 data-testid={`biomes-map-quest-center-${quest.questId}`}
                                 disabled={!questMarker}
+                                title={
+                                  questMarker
+                                    ? "Centre the map on this objective"
+                                    : "This step has no fixed location yet"
+                                }
                                 onClick={() => centerQuestOnMap(quest)}
                                 style={questActionButtonStyle(
                                   false,

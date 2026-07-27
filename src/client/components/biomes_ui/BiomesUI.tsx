@@ -21,6 +21,7 @@ import type { TabShortcut } from "./shortcuts/BiomesShortcuts";
 import { BiomesUIOpenPrompt } from "./BiomesUIOpenPrompt";
 import { CurrentQuestObjectiveHUD } from "./CurrentQuestObjectiveHUD";
 import { QuestInviteHUD } from "./quest_invites/QuestInviteHUD";
+import { SnapshotGroveMapHUD } from "@/client/components/challenges/LocalDevSnapshotGroveBibleRuntime";
 import {
   type BiomesHUDVisibilitySnapshot,
   useBiomesHUDVisibilitySnapshot,
@@ -373,7 +374,15 @@ const ActiveTabPane: React.FunctionComponent<{
         />
       )}
       {tab === "recovered" && <RecoveredTab />}
-      {tab === "map" && <MapQuestsTab adapter={adapters?.map} />}
+      {tab === "map" && (
+        <MapQuestsTab
+          adapter={adapters?.map}
+          // Production hides the legacy Harthmere map. Reuse its universal
+          // Grove objective card inside the replacement map so every authored
+          // contextual action remains reachable from the shipped UI.
+          contextualQuestPanel={<SnapshotGroveMapHUD />}
+        />
+      )}
       {tab === "collections" && (
         <CollectionsTab adapter={adapters?.collections} />
       )}
