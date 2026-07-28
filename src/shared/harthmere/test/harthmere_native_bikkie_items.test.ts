@@ -33,7 +33,10 @@ import { allHarthmereNativeQuestBiscuits } from "@/shared/harthmere/harthmere_na
 import { SNAPSHOT_GROVE_QUESTS } from "@/shared/harthmere/snapshot_grove_content";
 import { HARTHMERE_QUEST_CATALOG } from "@/shared/harthmere/quest_compendium";
 import { allCh1NativeQuestBiscuits } from "@/shared/harthmere/ch1_native_quests";
+import { CH1_ITEMS } from "@/shared/harthmere/ch1_items";
 import { zrpcWebDeserialize, zrpcWebSerialize } from "@/shared/zrpc/serde";
+import { harthmereBusinessToolListings } from "@/shared/harthmere/harthmere_business_tool_shop";
+import { harthmereBusinessStorefrontListingsForType } from "@/shared/harthmere/harthmere_business_storefront_goods";
 
 function tray(contents: ReadonlyMap<number, Biscuit> = new Map()) {
   return {
@@ -105,6 +108,18 @@ describe("Harthmere exact native Bikkie overlay", function () {
       harthmereNativeBiomesIdForNpcType("monster_road_muckwadd"),
       undefined
     );
+  });
+
+  it("publishes every Chapter 1 plot item with native quest-item rules", () => {
+    const augmented = withHarthmereNativeBikkieItems(tray());
+    for (const item of CH1_ITEMS) {
+      const nativeId = harthmereNativeBiomesIdForItemId(item.id);
+      assert.ok(nativeId, `${item.id} has no native identity`);
+      const biscuit = augmented.contents.get(nativeId);
+      assert.ok(biscuit, `${item.id} has no native biscuit`);
+      assert.ok((biscuit.stackable ?? 0n) > 0n, `${item.id} is not storable`);
+      assert.equal(Boolean(biscuit.isDroppable), item.droppable, item.id);
+    }
   });
 
   it("publishes every authored Grove and Bible quest as a native challenge", () => {
@@ -511,6 +526,68 @@ describe("Harthmere exact native Bikkie overlay", function () {
       }
     }
     assert.deepEqual([...unsellable], []);
+  });
+
+  it("publishes every business tool as a storable, visible native tool", () => {
+    const presentationDonors = new Map<number, Biscuit>();
+    for (const id of [
+      BikkieIds.axe,
+      BikkieIds.pickaxe,
+      BikkieIds.muckBuster,
+      BikkieIds.camera,
+    ]) {
+      presentationDonors.set(id, {
+        id,
+        name: `business_tool_presentation_${id}`,
+        galoisPath: `items/business_tool_presentation_${id}`,
+      } as Biscuit);
+    }
+    const augmented = withHarthmereNativeBikkieItems(tray(presentationDonors));
+    const missing: string[] = [];
+    for (const listing of harthmereBusinessToolListings()) {
+      const definition = getHarthmereItemDefinition(listing.toolItemId);
+      const nativeId = harthmereNativeBiomesIdForItemId(listing.toolItemId);
+      const biscuit = nativeId ? augmented.contents.get(nativeId) : undefined;
+      if (
+        !definition ||
+        !nativeId ||
+        !biscuit ||
+        (biscuit.stackable ?? 0n) <= 0n ||
+        biscuit.isTool !== true ||
+        !(
+          biscuit.icon ||
+          biscuit.galoisPath ||
+          biscuit.mesh ||
+          biscuit.meshGaloisPath ||
+          biscuit.vox ||
+          biscuit.worldMesh
+        )
+      ) {
+        missing.push(listing.toolItemId);
+      }
+    }
+    assert.deepEqual(missing, []);
+  });
+
+  it("keeps every inventory-delivering business storefront good native and storable", () => {
+    const augmented = withHarthmereNativeBikkieItems(tray());
+    const missing: string[] = [];
+    const businessTypes = new Set(
+      harthmereBusinessToolListings().map((listing) => listing.businessType)
+    );
+    for (const businessType of businessTypes) {
+      for (const listing of harthmereBusinessStorefrontListingsForType(
+        businessType
+      )) {
+        if (listing.kind === "recipe_book") continue;
+        const nativeId = harthmereNativeBiomesIdForItemId(listing.itemId);
+        const biscuit = nativeId ? augmented.contents.get(nativeId) : undefined;
+        if (!nativeId || !biscuit || (biscuit.stackable ?? 0n) <= 0n) {
+          missing.push(`${businessType}:${listing.itemId}`);
+        }
+      }
+    }
+    assert.deepEqual(missing, []);
   });
 
   it("repairs a sparse snapshot biscuit that a farming tool binds to", () => {

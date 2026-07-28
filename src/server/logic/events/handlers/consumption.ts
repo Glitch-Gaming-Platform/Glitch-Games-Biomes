@@ -10,6 +10,10 @@ import { isEqual, minBy } from "lodash";
 import { readHarthmereNativeCombatProgression } from "@/shared/harthmere/harthmere_native_combat";
 import { harthmereNativeHealingAmount } from "@/shared/harthmere/harthmere_native_level_stats";
 import {
+  awardHarthmereNativeSkillXp,
+  harthmereNativeMedicalSkillAwards,
+} from "@/shared/harthmere/harthmere_skill_progression";
+import {
   applyHarthmereNativeConsumableToVitals,
   harthmereNativeConsumableProfile,
 } from "@/shared/harthmere/harthmere_native_vitals";
@@ -74,15 +78,33 @@ export const consumptionEventHandler = makeEventHandler("consumptionEvent", {
       const progression = readHarthmereNativeCombatProgression(
         player.triggerState()
       );
+      const scaledHealthRestore = harthmereNativeHealingAmount(
+        progression.level,
+        healthRestore
+      );
+      const health = player.health();
+      const healthRestored = health
+        ? Math.max(
+            0,
+            Math.min(health.maxHp, health.hp + scaledHealthRestore) - health.hp
+          )
+        : 0;
       modifyPlayerHealth(
         player,
-        harthmereNativeHealingAmount(progression.level, healthRestore),
+        scaledHealthRestore,
         {
           kind: "heal",
         },
         playerActiveMinigame,
         playerActiveMinigameInstance,
         context
+      );
+      awardHarthmereNativeSkillXp(
+        player.mutableTriggerState(),
+        harthmereNativeMedicalSkillAwards({
+          itemId: harthmereProfile?.itemId,
+          healthRestored,
+        })
       );
     }
 

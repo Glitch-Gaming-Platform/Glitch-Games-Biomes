@@ -1,14 +1,21 @@
 import { authorizeHarthmereQuestProgress } from "@/server/harthmere/native_quest_progress_token";
 import { authorizeHarthmereInventoryTransaction } from "@/server/harthmere/native_inventory_transaction_token";
 import { acquireHarthmereActorStateLock } from "@/server/harthmere/live_mode_actor_state_authority";
+import { readCh1NativeInventoryCounts } from "@/server/harthmere/ch1_native_inventory";
 import { resolveHarthmereLiveModeActorId } from "@/server/harthmere/live_mode_actor_resolution";
 import { disableHarthmereLiveModeHttpCaching } from "@/server/harthmere/live_mode_http_cache";
+import {
+  ch1CloneDialogue,
+  ch1ObjectiveCompletionDialogue,
+  ch1ObjectiveDialogue,
+} from "@/server/harthmere/ch1_dialogue";
 import { GameEvent } from "@/server/shared/api/game_event";
 import { connectToRedis } from "@/server/shared/redis/connection";
 import { editWorldWithRetry } from "@/server/shared/world/edit_retry";
 import { isTriggerFired } from "@/server/logic/events/handlers/quest_step_validation";
 import { biomesApiHandler } from "@/server/web/util/api_middleware";
 import { secondsSinceEpoch } from "@/shared/ecs/config";
+import { NpcState, type ReadonlyInventory } from "@/shared/ecs/gen/components";
 import {
   HarthmereInventoryTransactionEvent,
   HarthmereQuestProgressEvent,
@@ -26,7 +33,7 @@ import {
   isCh1NativeQuestId,
 } from "@/shared/harthmere/ch1_native_quests";
 import { ch1ObjectiveTarget } from "@/shared/harthmere/ch1_objective_targets";
-import { CH1_QUESTS } from "@/shared/harthmere/ch1_quests";
+import { CH1_IGNITION, CH1_QUESTS } from "@/shared/harthmere/ch1_quests";
 import {
   ch1ApplyLiveObjectiveEffects,
   ch1ObjectiveChoiceSpec,
@@ -43,7 +50,20 @@ import {
 import { harthmereInventoryCarryWeight } from "@/shared/harthmere/mmo_carry_weight";
 import { harthmereNativeBiomesIdForItemId } from "@/shared/harthmere/harthmere_native_item_ids";
 import { nativeBiomesEcsAuthorityEnabled } from "@/shared/harthmere/native_road_ahead_contract";
+import {
+  CH1_DUNGEON_ENCOUNTER_NPCS,
+  ch1GildedBullPhase,
+  ch1NinthWinterLoopRemainingMs,
+  ch1NinthWinterPhase,
+  ch1RequiredEncounterNpcsForObjective,
+  ch1RequiredEscortNpcsForObjective,
+} from "@/shared/harthmere/ch1_dungeon_encounters";
 import { zBiomesId, type BiomesId } from "@/shared/ids";
+import {
+  deserializeNpcCustomState,
+  serializeNpcCustomState,
+} from "@/shared/npc/serde";
+import type { WorldApi } from "@/server/shared/world/api";
 import { z } from "zod";
 
 const zBody = z.discriminatedUnion("action", [
@@ -54,7 +74,24 @@ const zBody = z.discriminatedUnion("action", [
     stepId: zBiomesId,
     choice: z.string().min(1).max(80).optional(),
   }),
+  z.object({
+    action: z.literal("prepare"),
+    challengeId: zBiomesId,
+    stepId: zBiomesId,
+    choice: z.string().min(1).max(80),
+  }),
 ]);
+
+const zDialogue = z.object({
+  title: z.string(),
+  completionLabel: z.string().optional(),
+  pages: z.array(
+    z.object({
+      speaker: z.string(),
+      text: z.string(),
+    })
+  ),
+});
 
 const zResponse = z.object({
   ok: z.boolean(),
@@ -73,11 +110,23 @@ const zResponse = z.object({
   interactionRadius: z.number().optional(),
   distance: z.number().optional(),
   withinRange: z.boolean().optional(),
+  introCutsceneId: z.string().optional(),
+  cutsceneId: z.string().optional(),
+  dialogue: zDialogue.optional(),
+  completionDialogue: zDialogue.optional(),
   choice: z
     .object({
       title: z.string(),
       prompt: z.string(),
       cancellable: z.boolean(),
+      textInput: z
+        .object({
+          label: z.string(),
+          placeholder: z.string(),
+          submitLabel: z.string(),
+          maxLength: z.number(),
+        })
+        .optional(),
       options: z.array(
         z.object({
           id: z.string(),
@@ -87,6 +136,7 @@ const zResponse = z.object({
       ),
     })
     .optional(),
+  preparedChoice: z.string().optional(),
   survival: z
     .object({
       resourceKey: z.enum(["water", "fuel"]),
@@ -97,7 +147,53 @@ const zResponse = z.object({
       lastOutcome: z.string().optional(),
     })
     .optional(),
+  experience: z
+    .object({
+      kind: z.enum(["combat", "sound_hunt", "boss", "sandstorm", "thin_ice"]),
+      title: z.string(),
+      phase: z.string(),
+      detail: z.string(),
+      hp: z.number().optional(),
+      maxHp: z.number().optional(),
+      timerMs: z.number().optional(),
+      loopCount: z.number().optional(),
+      carryWeight: z.number().optional(),
+      carryLimit: z.number().optional(),
+      aliveEnemies: z.number().optional(),
+    })
+    .optional(),
 });
+
+export function chapter1NativeInventoryPlanForTest(args: {
+  itemConsumes: readonly string[];
+  itemGrants: readonly string[];
+  resourceConsumes?: Readonly<Record<string, number>>;
+}) {
+  const takeCounts = new Map<string, number>();
+  const giveCounts = new Map<string, number>();
+  const add = (target: Map<string, number>, itemId: string, count: number) => {
+    const normalized = Math.max(0, Math.trunc(count));
+    if (normalized === 0) return;
+    target.set(itemId, (target.get(itemId) ?? 0) + normalized);
+  };
+  for (const itemId of args.itemConsumes) add(takeCounts, itemId, 1);
+  for (const [itemId, count] of Object.entries(args.resourceConsumes ?? {})) {
+    add(takeCounts, itemId, count);
+  }
+  for (const itemId of args.itemGrants) add(giveCounts, itemId, 1);
+
+  const rows = (counts: ReadonlyMap<string, number>) =>
+    [...counts.entries()].map(([itemId, count]) => {
+      const nativeId = harthmereNativeBiomesIdForItemId(itemId);
+      if (nativeId === undefined) {
+        throw new Error(
+          `Chapter 1 item ${itemId} has no native inventory identity.`
+        );
+      }
+      return { itemId, nativeId, count };
+    });
+  return { take: rows(takeCounts), give: rows(giveCounts) };
+}
 
 type Chapter1ProgressState = z.infer<typeof zResponse>;
 
@@ -142,10 +238,7 @@ function stateForPlayer(player: {
   challenges(): { in_progress: ReadonlySet<BiomesId> } | undefined;
   triggerState():
     | {
-        by_root: ReadonlyMap<
-          BiomesId,
-          ReadonlyMap<BiomesId, string | number>
-        >;
+        by_root: ReadonlyMap<BiomesId, ReadonlyMap<BiomesId, string | number>>;
       }
     | undefined;
   position(): { v: readonly [number, number, number] } | undefined;
@@ -186,11 +279,181 @@ function stateForPlayer(player: {
     interactionRadius: target.interactionRadius,
     distance,
     withinRange: distance <= target.interactionRadius,
+    introCutsceneId:
+      active.step.id === "wake_up" ? CH1_IGNITION.cutsceneId : undefined,
+    dialogue: ch1CloneDialogue(ch1ObjectiveDialogue(active.step.id)),
     choice: (() => {
       const choice = ch1ObjectiveChoiceSpec(active.step);
       return choice ? { ...choice, options: [...choice.options] } : undefined;
     })(),
   };
+}
+
+async function addChapter1Experience(
+  state: Chapter1ProgressState,
+  player: { inventory(): ReadonlyInventory | undefined },
+  worldApi: WorldApi,
+  nowMs: number
+): Promise<Chapter1ProgressState> {
+  const stepId = state.authoredStepId;
+  if (!stepId || state.status !== "active") return state;
+  const encounterSpecs = CH1_DUNGEON_ENCOUNTER_NPCS.filter(
+    (npc) => npc.objectiveId === stepId
+  );
+  const encounterEntities = encounterSpecs.length
+    ? await worldApi.get(encounterSpecs.map((npc) => npc.entityId))
+    : [];
+  const aliveEnemies = encounterEntities.filter(
+    (entity) => Number(entity?.health()?.hp ?? 0) > 0
+  ).length;
+  const preparedChoice = encounterEntities
+    .map(
+      (entity) =>
+        deserializeNpcCustomState(entity?.npcState()?.data).chapter1Encounter
+          ?.routeChoice
+    )
+    .find((choice): choice is string => Boolean(choice));
+
+  if (stepId === "d1_salt_market") {
+    return {
+      ...state,
+      ...(preparedChoice ? { preparedChoice } : {}),
+      experience: {
+        kind: "combat",
+        title: "Salt Market",
+        phase: aliveEnemies > 0 ? "muckers_active" : "market_clear",
+        detail:
+          aliveEnemies > 0
+            ? "Use the bazaar cover or defeat the Salt-Cured Muckers in native combat."
+            : "The market has gone still.",
+        aliveEnemies,
+      },
+    };
+  }
+  if (["d1_cistern_stair", "d2_longhouse", "d2_hanged_wood"].includes(stepId)) {
+    return {
+      ...state,
+      ...(preparedChoice ? { preparedChoice } : {}),
+      experience: {
+        kind: "sound_hunt",
+        title:
+          stepId === "d2_hanged_wood"
+            ? "The Hanged Wood"
+            : stepId === "d2_longhouse"
+            ? "The Drowned Longhouse"
+            : "The Cistern Stair",
+        phase: aliveEnemies > 0 ? "listening" : "quiet",
+        detail:
+          aliveEnemies > 0
+            ? "Sound-hunters acquire moving players. Slow movement and broken sight are the stealth route."
+            : "Nothing nearby is listening now.",
+        aliveEnemies,
+      },
+    };
+  }
+  if (stepId === "d1_sun_court") {
+    const bull = encounterEntities[0];
+    const health = bull?.health();
+    const npcState = deserializeNpcCustomState(bull?.npcState()?.data);
+    const phase = ch1GildedBullPhase({
+      hp: Number(health?.hp ?? 0),
+      maxHp: Number(health?.maxHp ?? 0),
+      attackTarget: bull?.npcCombatState()?.attack_target,
+      brokenPartIds: npcState.chapter1Encounter?.brokenPartIds,
+    });
+    return {
+      ...state,
+      ...(preparedChoice ? { preparedChoice } : {}),
+      experience: {
+        kind: "boss",
+        title: "The Gilded Bull",
+        phase,
+        detail:
+          phase === "patrol"
+            ? "It has not noticed you. The lore cache route remains open."
+            : phase === "charge"
+            ? "Its horned charge is fast and narrow. Use the court's pillars and keep moving."
+            : phase === "unbalanced"
+            ? "The horns are gone. It turns slowly and fights badly now."
+            : "The guardian is still.",
+        hp: Number(health?.hp ?? 0),
+        maxHp: Number(health?.maxHp ?? 0),
+      },
+    };
+  }
+  if (stepId === "d1_the_long_walk") {
+    return {
+      ...state,
+      ...(preparedChoice ? { preparedChoice } : {}),
+      experience: {
+        kind: "sandstorm",
+        title: "The Long Walk",
+        phase: "pursuit",
+        detail:
+          "Keep Iris and Marrow close and keep moving. The shape in the storm follows the Grain, not you.",
+      },
+    };
+  }
+  if (["d2_whale_road", "d2_the_breaking_year"].includes(stepId)) {
+    const carryLimit = stepId === "d2_whale_road" ? 55 : 45;
+    const carryWeight = harthmereInventoryCarryWeight(
+      readCh1NativeInventoryCounts(player)
+    );
+    return {
+      ...state,
+      experience: {
+        kind: "thin_ice",
+        title:
+          stepId === "d2_whale_road" ? "The Whale Road" : "The Breaking Year",
+        phase: carryWeight > carryLimit ? "cracking" : "holding",
+        detail:
+          carryWeight > carryLimit
+            ? "The ice is failing under the load. Abandon gear before advancing."
+            : "The carried load is within the ice's limit.",
+        carryWeight,
+        carryLimit,
+      },
+    };
+  }
+  if (stepId === "d2_ash_hall") {
+    const winter = encounterEntities[0];
+    const health = winter?.health();
+    const npcState = deserializeNpcCustomState(winter?.npcState()?.data);
+    const phase = ch1NinthWinterPhase({
+      hp: Number(health?.hp ?? 0),
+      maxHp: Number(health?.maxHp ?? 0),
+      cycleStartedAtMs: npcState.chapter1Encounter?.cycleStartedAtMs,
+      nowMs,
+    });
+    return {
+      ...state,
+      ...(preparedChoice ? { preparedChoice } : {}),
+      experience: {
+        kind: "boss",
+        title: "The Ninth Winter",
+        phase,
+        detail:
+          phase === "hearth_fails"
+            ? "The hearth is dying. Darkness makes every hit worse."
+            : phase === "same_day_again"
+            ? "The hall resets every ninety seconds, but damage to the Winter persists."
+            : phase === "year_breaks"
+            ? "The loop has broken. Snow is becoming rain inside the hall."
+            : "The stopped year has ended.",
+        hp: Number(health?.hp ?? 0),
+        maxHp: Number(health?.maxHp ?? 0),
+        timerMs:
+          phase === "same_day_again" || phase === "hearth_fails"
+            ? ch1NinthWinterLoopRemainingMs({
+                cycleStartedAtMs: npcState.chapter1Encounter?.cycleStartedAtMs,
+                nowMs,
+              })
+            : undefined,
+        loopCount: npcState.chapter1Encounter?.loopCount ?? 0,
+      },
+    };
+  }
+  return state;
 }
 
 export default biomesApiHandler(
@@ -219,7 +482,8 @@ export default biomesApiHandler(
         reason: "Native player entity is unavailable.",
       };
     }
-    const state = stateForPlayer(player);
+    let state = stateForPlayer(player);
+    state = await addChapter1Experience(state, player, worldApi, Date.now());
     if (body.action === "state" || state.status !== "active") {
       return state;
     }
@@ -252,6 +516,133 @@ export default biomesApiHandler(
       fired: (challengeId, stepId) =>
         isTriggerFired(player.triggerState()!.by_root.get(challengeId), stepId),
     })!;
+    const choiceSpec = ch1ObjectiveChoiceSpec(active.step);
+    const requestedChoice =
+      body.choice ??
+      (body.action === "complete" ? state.preparedChoice : undefined);
+    if (body.action === "prepare") {
+      if (
+        !choiceSpec?.options.some((option) => option.id === requestedChoice)
+      ) {
+        return {
+          ...state,
+          ok: false,
+          status: "rejected" as const,
+          reason: "That route is not available for the active objective.",
+        };
+      }
+      const encounterSpecs = ch1RequiredEncounterNpcsForObjective(
+        active.step.id,
+        requestedChoice
+      );
+      if (encounterSpecs.length === 0) {
+        return {
+          ...state,
+          ok: false,
+          status: "rejected" as const,
+          reason: "That route does not require an encounter commitment.",
+        };
+      }
+      const encounterEntities = await worldApi.get(
+        encounterSpecs.map((npc) => npc.entityId)
+      );
+      const changes = encounterSpecs.flatMap((spec) => {
+        const entity = encounterEntities.find(
+          (candidate) => candidate?.id === spec.entityId
+        );
+        if (!entity) return [];
+        const decoded = deserializeNpcCustomState(entity.npcState()?.data);
+        const encounter = (decoded.chapter1Encounter ??= {});
+        if (
+          encounter.routeChoice &&
+          encounter.routeChoice !== requestedChoice
+        ) {
+          return [];
+        }
+        encounter.routeChoice = requestedChoice;
+        if (active.step.id === "d2_ash_hall") {
+          encounter.hearthFed = requestedChoice === "feed_hearth";
+        }
+        return [
+          {
+            kind: "update" as const,
+            entity: {
+              id: spec.entityId,
+              npc_state: NpcState.create({
+                data: serializeNpcCustomState(decoded),
+              }),
+            },
+          },
+        ];
+      });
+      if (changes.length !== encounterSpecs.length) {
+        return {
+          ...state,
+          ok: false,
+          status: "rejected" as const,
+          reason: "The encounter route is already committed or unavailable.",
+        };
+      }
+      await worldApi.apply({ changes });
+      return {
+        ...state,
+        ok: true,
+        status: "active" as const,
+        preparedChoice: requestedChoice,
+        choice: undefined,
+      };
+    }
+    const requiredEncounterNpcs = ch1RequiredEncounterNpcsForObjective(
+      active.step.id,
+      requestedChoice
+    );
+    if (requiredEncounterNpcs.length > 0) {
+      const encounterEntities = await worldApi.get(
+        requiredEncounterNpcs.map((npc) => npc.entityId)
+      );
+      const alive = requiredEncounterNpcs.filter((npc) => {
+        const entity = encounterEntities.find(
+          (candidate) => candidate?.id === npc.entityId
+        );
+        return !entity || Number(entity.health()?.hp ?? 0) > 0;
+      });
+      if (alive.length > 0) {
+        return {
+          ...state,
+          ok: false,
+          status: "rejected" as const,
+          reason:
+            alive.length === 1
+              ? `${alive[0].displayName} is still standing.`
+              : `${alive.length} encounter enemies are still standing.`,
+        };
+      }
+    }
+    const requiredEscortNpcs = ch1RequiredEscortNpcsForObjective(
+      active.step.id
+    );
+    if (requiredEscortNpcs.length > 0 && state.targetPosition) {
+      const escortEntities = await worldApi.get(
+        requiredEscortNpcs.map((npc) => npc.entityId)
+      );
+      const missing = requiredEscortNpcs.filter((npc) => {
+        const position = escortEntities
+          .find((candidate) => candidate?.id === npc.entityId)
+          ?.position()?.v;
+        return !position || distance3(position, state.targetPosition!) > 22;
+      });
+      if (missing.length > 0) {
+        return {
+          ...state,
+          ok: false,
+          status: "rejected" as const,
+          reason: `Wait for ${missing
+            .map((npc) => npc.displayName)
+            .join(" and ")} at the aperture.`,
+        };
+      }
+    }
+    const nativeInventoryCounts = readCh1NativeInventoryCounts(player);
     const redis = await chapter1ProgressRedis();
     const actorId = await resolveHarthmereLiveModeActorId(
       redis,
@@ -273,11 +664,7 @@ export default biomesApiHandler(
     try {
       const nowMs = Date.now();
       const raw = await redis.primary.get(stateKey);
-      const liveState = parseHarthmereLiveModeBackendState(
-        raw,
-        actorId,
-        nowMs
-      );
+      const liveState = parseHarthmereLiveModeBackendState(raw, actorId, nowMs);
       let dungeonMechanicEffect: Ch1DungeonMechanicEffect | undefined;
       let effects: ReturnType<typeof ch1ApplyLiveObjectiveEffects>;
       try {
@@ -286,7 +673,7 @@ export default biomesApiHandler(
           quest: active.quest,
           step: active.step,
           stepIndex: active.stepIndex,
-          choice: body.choice,
+          choice: requestedChoice,
           nowMs,
         });
         const mechanic = ch1DungeonMechanicForObjective(active.step.id);
@@ -296,7 +683,7 @@ export default biomesApiHandler(
           // consequence. Dropping fuel on the Whale Road is meaningful; it
           // cannot remain available merely because it existed at gate entry.
           const carried = ch1ProvisioningCarriedFromInventory(
-            liveState.inventory.items
+            nativeInventoryCounts
           );
           const reconciledSurvival = {
             ...survival,
@@ -313,10 +700,8 @@ export default biomesApiHandler(
             survival: reconciledSurvival,
             augur9: effects.runtime.augur9,
             stepId: active.step.id,
-            choice: body.choice,
-            carryWeight: harthmereInventoryCarryWeight(
-              liveState.inventory.items
-            ),
+            choice: requestedChoice,
+            carryWeight: harthmereInventoryCarryWeight(nativeInventoryCounts),
           });
           if (!mechanicResult.ok) {
             return {
@@ -346,7 +731,7 @@ export default biomesApiHandler(
       }
 
       for (const itemId of effects.itemConsumes) {
-        if ((liveState.inventory.items[itemId] ?? 0) < 1) {
+        if ((nativeInventoryCounts[itemId] ?? 0) < 1) {
           return {
             ...state,
             ok: false,
@@ -365,16 +750,30 @@ export default biomesApiHandler(
           (liveState.inventory.items[itemId] ?? 0) + 1;
       }
       const consumedDungeonResources: Record<string, number> = {};
+      const nativeResourceCounts = { ...nativeInventoryCounts };
       for (const [resourceKey, count] of Object.entries(
         dungeonMechanicEffect?.resourceConsumes ?? {}
       )) {
-        const consumed = ch1ConsumeProvisioningResourceFromInventory(
+        const nativeConsumed = ch1ConsumeProvisioningResourceFromInventory(
+          nativeResourceCounts,
+          resourceKey as "water" | "fuel" | "light",
+          count
+        );
+        if (nativeConsumed.missingCount > 0) {
+          return {
+            ...state,
+            ok: false,
+            status: "rejected" as const,
+            reason: `Your native inventory is missing ${nativeConsumed.missingCount} ${resourceKey}.`,
+          };
+        }
+        ch1ConsumeProvisioningResourceFromInventory(
           liveState.inventory.items,
           resourceKey as "water" | "fuel" | "light",
           count
         );
         for (const [itemId, consumedCount] of Object.entries(
-          consumed.consumed
+          nativeConsumed.consumed
         )) {
           consumedDungeonResources[itemId] =
             (consumedDungeonResources[itemId] ?? 0) + consumedCount;
@@ -430,27 +829,33 @@ export default biomesApiHandler(
           );
         }
         const nativeEvents: GameEvent[] = [];
-        const consumedNativeStacks = Object.entries(
-          consumedDungeonResources
-        ).map(([itemId, count]) => {
-          const nativeId = harthmereNativeBiomesIdForItemId(itemId);
-          if (nativeId === undefined) {
-            throw new Error(
-              `Dungeon provisioning item ${itemId} has no native inventory identity.`
-            );
-          }
-          return countOf(nativeId, BigInt(count));
+        const nativeInventoryPlan = chapter1NativeInventoryPlanForTest({
+          itemConsumes: effects.itemConsumes,
+          itemGrants: effects.itemGrants,
+          resourceConsumes: consumedDungeonResources,
         });
-        if (consumedNativeStacks.length > 0) {
+        if (
+          nativeInventoryPlan.take.length > 0 ||
+          nativeInventoryPlan.give.length > 0
+        ) {
           const storage = player.harthmereMaterialStorage();
-          const take = createBag(...consumedNativeStacks);
+          const take = createBag(
+            ...nativeInventoryPlan.take.map(({ nativeId, count }) =>
+              countOf(nativeId, BigInt(count))
+            )
+          );
+          const give = createBag(
+            ...nativeInventoryPlan.give.map(({ nativeId, count }) =>
+              countOf(nativeId, BigInt(count))
+            )
+          );
           const inventoryTransactionInput = {
             id: auth.userId,
-            // Stable per objective: if native progress contends after this
-            // debit, a retry is an exactly-once no-op in the ECS ledger.
-            transaction_id: `chapter1:dungeon:${body.challengeId}:${body.stepId}:resources:v1`,
+            // Stable per objective: plot-item grants/turn-ins and dungeon
+            // supplies are one exactly-once ECS transaction with progress.
+            transaction_id: `chapter1:objective:${body.challengeId}:${body.stepId}:inventory:v1`,
             take,
-            give: createBag(),
+            give,
             storage_take: createBag(),
             storage_give: createBag(),
             storage_max_slots: Math.max(1, storage?.max_slots ?? 32),
@@ -503,8 +908,7 @@ export default biomesApiHandler(
         );
         // Both events involve the same player, so the logic batch merges them
         // into one native world transaction. Quest progress cannot commit
-        // without the real water/fuel/light debit, and a failed debit cannot
-        // advance the quest leaf.
+        // without its real item grant/turn-in and survival-resource debit.
         await logicApi.publish(...nativeEvents);
       } catch (error) {
         // Native survival effects carry their own last-effect marker. If the
@@ -518,6 +922,10 @@ export default biomesApiHandler(
         ...state,
         ok: true,
         status: "completed" as const,
+        cutsceneId: active.step.cutsceneId,
+        completionDialogue: ch1CloneDialogue(
+          ch1ObjectiveCompletionDialogue(active.step.id, requestedChoice)
+        ),
         ...(survival
           ? {
               survival: {

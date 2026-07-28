@@ -1574,6 +1574,130 @@ button.biomes-ui-card:disabled {
   overflow-wrap: anywhere;
 }
 
+.biomes-ui-current-objective-hud__recipe-hint {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 9px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(105, 231, 255, 0.2);
+  color: rgba(188, 239, 255, 0.96);
+  font-size: 11px;
+  font-weight: 750;
+  line-height: 1.25;
+}
+
+.biomes-ui-current-objective-hud__recipe-key {
+  display: inline-grid;
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  border: 1px solid rgba(105, 231, 255, 0.58);
+  border-radius: 5px;
+  background: rgba(105, 231, 255, 0.12);
+  color: #eafcff;
+  font-size: 12px;
+  font-weight: 900;
+  box-shadow: 0 0 12px rgba(105, 231, 255, 0.14);
+}
+
+.biomes-ui-level-up {
+  position: fixed;
+  top: clamp(92px, 16vh, 180px);
+  left: 50%;
+  z-index: 10080;
+  min-width: min(430px, calc(100vw - 32px));
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 18px 34px 20px;
+  overflow: visible;
+  border: 1px solid rgba(255, 226, 138, 0.68);
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 245, 174, 0.42), transparent 54%),
+    linear-gradient(135deg, rgba(24, 12, 47, 0.95), rgba(6, 22, 47, 0.94));
+  box-shadow:
+    0 0 24px rgba(255, 221, 105, 0.55),
+    0 0 70px rgba(105, 231, 255, 0.28),
+    inset 0 0 28px rgba(255, 255, 255, 0.08);
+  color: white;
+  text-align: center;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
+  pointer-events: none;
+  isolation: isolate;
+}
+
+.biomes-ui-level-up::before,
+.biomes-ui-level-up::after {
+  content: "✦";
+  position: absolute;
+  top: 50%;
+  color: #fff1a8;
+  font-size: 34px;
+  filter: drop-shadow(0 0 10px rgba(255, 226, 138, 0.9));
+  animation: biomes-ui-level-up-sparkle 900ms ease-in-out infinite alternate;
+}
+
+.biomes-ui-level-up::before { left: 20px; }
+.biomes-ui-level-up::after { right: 20px; animation-delay: 180ms; }
+
+.biomes-ui-level-up__burst {
+  position: absolute;
+  inset: -50px -90px;
+  z-index: -1;
+  background: repeating-conic-gradient(
+    from 4deg,
+    rgba(255, 230, 125, 0.38) 0deg 4deg,
+    transparent 4deg 20deg
+  );
+  mask-image: radial-gradient(circle, transparent 0 25%, #000 46%, transparent 72%);
+  animation: biomes-ui-level-up-burst 3.4s ease-out both;
+}
+
+.biomes-ui-level-up__eyebrow {
+  color: #8deeff;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+}
+
+.biomes-ui-level-up__title {
+  margin-top: 2px;
+  color: #fff0a3;
+  font-size: clamp(30px, 5vw, 48px);
+  font-weight: 1000;
+  line-height: 1;
+  letter-spacing: -0.035em;
+  text-transform: uppercase;
+  text-shadow:
+    0 2px 0 rgba(122, 72, 14, 0.9),
+    0 0 16px rgba(255, 231, 139, 0.85),
+    0 0 38px rgba(255, 183, 66, 0.48);
+}
+
+.biomes-ui-level-up__subtitle {
+  margin-top: 8px;
+  color: rgba(226, 248, 255, 0.92);
+  font-size: 13px;
+  font-weight: 750;
+  letter-spacing: 0.06em;
+}
+
+@keyframes biomes-ui-level-up-burst {
+  0% { opacity: 0; transform: rotate(-12deg) scale(0.45); }
+  18% { opacity: 1; transform: rotate(2deg) scale(1); }
+  100% { opacity: 0; transform: rotate(14deg) scale(1.28); }
+}
+
+@keyframes biomes-ui-level-up-sparkle {
+  from { opacity: 0.45; transform: translateY(-50%) rotate(-14deg) scale(0.72); }
+  to { opacity: 1; transform: translateY(-50%) rotate(14deg) scale(1.12); }
+}
+
 @keyframes biomes-ui-open-prompt-breathe {
   0%, 100% {
     opacity: 0.86;

@@ -60,7 +60,15 @@ const giverIdsByNormalizedName: Map<string, string> = (() => {
     if (name) map.set(name, giverId);
     // The quest catalog's own giverName can differ slightly from the
     // compendium name ("Sergeant Bram Holt" vs "Sergeant Bramwell Holt");
-    // index both spellings so either label form matches.
+    // index every authored spelling so the shorter snapshot display label
+    // (for example "Father Aldren") still resolves to the canonical giver.
+    for (const quest of HARTHMERE_QUEST_CATALOG as readonly any[]) {
+      if (quest.giverId !== giverId) continue;
+      const catalogName = String(quest.giverName ?? "")
+        .toLowerCase()
+        .trim();
+      if (catalogName) map.set(catalogName, giverId);
+    }
     map.set(giverId.replace(/_/g, " "), giverId);
   }
   return map;
@@ -102,16 +110,23 @@ function liveModeUrl(search?: string) {
     : endpoint;
 }
 
-function liveModeQuestStateUrl(search?: string) {
+function liveModeQuestStateUrl(search?: string, readGeneration?: number) {
   const rawSearch =
     search ??
     (typeof window !== "undefined" ? window.location?.search ?? "" : "");
   const params = new URLSearchParams(rawSearch);
   const installId = params.get("install_id") ?? params.get("installId");
   const endpoint = "/api/harthmere/live_mode_quest_state";
-  return installId
-    ? `${endpoint}?install_id=${encodeURIComponent(installId)}`
-    : endpoint;
+  const endpointParams = new URLSearchParams();
+  if (installId) endpointParams.set("install_id", installId);
+  // The shared live-fetch layer deliberately coalesces identical GETs. A
+  // forced refresh after fixture invalidation therefore needs a distinct URL
+  // or it can inherit the exact pre-reset request we are trying to replace.
+  if (readGeneration !== undefined) {
+    endpointParams.set("bible_read_generation", String(readGeneration));
+  }
+  const query = endpointParams.toString();
+  return query ? `${endpoint}?${query}` : endpoint;
 }
 
 function liveModeHeaders(search?: string) {
@@ -147,6 +162,10 @@ let cachedBibleQuestSnapshot:
 let bibleQuestSnapshotReadInFlight:
   | Promise<HarthmereBibleQuestClientSnapshot>
   | undefined;
+// A reset cannot cancel a fetch that is already inside the browser network
+// stack. Track cache generations so an older response can never overwrite a
+// newer fixture, mutation response, or poll result after invalidation.
+let bibleQuestSnapshotGeneration = 0;
 
 function rememberBibleQuestSnapshot(
   snapshot: HarthmereBibleQuestClientSnapshot,
@@ -157,6 +176,7 @@ function rememberBibleQuestSnapshot(
 }
 
 export function resetHarthmereBibleQuestReadCacheForTest() {
+  bibleQuestSnapshotGeneration += 1;
   cachedBibleQuestSnapshot = undefined;
   bibleQuestSnapshotReadInFlight = undefined;
 }
@@ -250,6 +270,11 @@ export async function submitHarthmereBibleQuestOperation(
   if (rejections.length) {
     throw new HarthmereBibleQuestRejectionError(rejections);
   }
+  // The mutation response is newer than every GET already in flight. Advance
+  // the generation before remembering it so a slower read cannot restore the
+  // pre-action quest list after accept, objective, or turn-in succeeds.
+  bibleQuestSnapshotGeneration += 1;
+  bibleQuestSnapshotReadInFlight = undefined;
   rememberBibleQuestSnapshot(snapshot);
   if (typeof window !== "undefined") {
     window.dispatchEvent(new CustomEvent(HARTHMERE_BIBLE_QUEST_EVENT));
@@ -278,10 +303,14 @@ export async function readHarthmereBibleQuestSnapshot(
   }
 
   const fetchImpl = options.fetchImpl ?? fetch;
+  const requestGeneration = bibleQuestSnapshotGeneration;
   const request = (async () => {
     const response = await fetchHarthmereLiveWithTimeout(
       fetchImpl,
-      liveModeQuestStateUrl(options.locationSearch),
+      liveModeQuestStateUrl(
+        options.locationSearch,
+        maxAgeMs <= 0 ? requestGeneration : undefined
+      ),
       {
         method: "GET",
         credentials: "same-origin",
@@ -293,14 +322,30 @@ export async function readHarthmereBibleQuestSnapshot(
     if (!response.ok || body?.ok === false) {
       throw new Error(body?.error ?? "bible_quest_read_failed");
     }
-    return rememberBibleQuestSnapshot(
-      harthmereBibleQuestSnapshotFromResponse(body),
-      options.nowMs ?? Date.now()
-    );
+    return harthmereBibleQuestSnapshotFromResponse(body);
   })();
   bibleQuestSnapshotReadInFlight = request;
   try {
-    return await request;
+    const snapshot = await request;
+    if (requestGeneration !== bibleQuestSnapshotGeneration) {
+      // A newer generation owns the cache. Consumers awaiting this older
+      // promise must also receive the newest snapshot; returning the stale
+      // body would still let a React hook temporarily erase current actions.
+      if (cachedBibleQuestSnapshot) {
+        return cachedBibleQuestSnapshot.snapshot;
+      }
+      if (bibleQuestSnapshotReadInFlight === request) {
+        bibleQuestSnapshotReadInFlight = undefined;
+      }
+      return readHarthmereBibleQuestSnapshot({
+        ...options,
+        maxAgeMs: 0,
+      });
+    }
+    return rememberBibleQuestSnapshot(
+      snapshot,
+      options.nowMs ?? Date.now()
+    );
   } finally {
     if (bibleQuestSnapshotReadInFlight === request) {
       bibleQuestSnapshotReadInFlight = undefined;
@@ -374,26 +419,12 @@ export function harthmereBibleDialogModelForGiver(input: {
       continue;
     }
     if (offer.state === "active") {
-      const record = input.snapshot.bible.runtime[offer.questId];
-      const objective = harthmereBibleQuestCurrentObjective(
-        offer.questId,
-        record
-      );
-      if (objective) {
-        actions.push({
-          kind: "objective",
-          questId: offer.questId,
-          objectiveId: objective.id,
-          name: objective.label,
-          followUpText: quest.dialogue?.active ?? "",
-          tooltip: `Objective ${objective.id.slice(-2)} of ${
-            quest.objectives.length
-          }`,
-          choice: objective.type === "choice" ? objective.targetId : undefined,
-          combatResult:
-            objective.type === "combat" ? "encounter_cleared" : undefined,
-        });
-      }
+      // Active objective mutations belong at their server-validated world
+      // waypoint, not in the giver's dialog. Many authored objective sites are
+      // tens or hundreds of metres from the giver; exposing the action here
+      // made the visible button deterministically fail with player_too_far.
+      // HarthmereBibleQuestRuntimeController renders the shared contextual
+      // world panel for these active objectives instead.
       continue;
     }
     if (offer.state === "ready_to_complete") {
@@ -437,83 +468,118 @@ export function harthmereBibleOperationPayloadForAction(
   };
 }
 
-export interface HarthmereBibleHiddenQuestInteractionModel {
+export interface HarthmereBibleQuestInteractionModel {
   questId: string;
   title: string;
   objective?: string;
   nearObjective: boolean;
+  hidden: boolean;
   action?: HarthmereBibleDialogAction;
 }
 
-/**
- * Hidden quests have no giver dialog by design. This model gives them the
- * same objective/turn-in action contract at their authored world waypoint,
- * preventing an accepted discovery quest from becoming impossible to finish.
- * Q12 remains on its dedicated encounter panel.
- */
-export function harthmereBibleHiddenQuestInteractionModel(input: {
+function harthmereBibleQuestInteractionCandidates(input: {
   snapshot: HarthmereBibleQuestClientSnapshot;
   playerPosition: readonly [number, number, number] | undefined;
-}): HarthmereBibleHiddenQuestInteractionModel | undefined {
-  const active = (HARTHMERE_QUEST_CATALOG as readonly any[]).find((quest) => {
-    const state = input.snapshot.bible.runtime[quest.id]?.state;
-    if (!quest.hidden) return false;
+  hiddenOnly?: boolean;
+}): Array<HarthmereBibleQuestInteractionModel & { distance: number }> {
+  const candidates: Array<
+    HarthmereBibleQuestInteractionModel & { distance: number }
+  > = [];
+  for (const active of HARTHMERE_QUEST_CATALOG as readonly any[]) {
+    const state = input.snapshot.bible.runtime[active.id]?.state;
+    if (input.hiddenOnly && !active.hidden) continue;
     // Q12 owns a dedicated encounter HUD while active, but after resolution
     // it still needs the ordinary giver-less completion button.
     if (
-      quest.id === HARTHMERE_BIBLE_DRAGON_QUEST_ID &&
+      active.id === HARTHMERE_BIBLE_DRAGON_QUEST_ID &&
       state !== "ready_to_complete"
     ) {
-      return false;
+      continue;
     }
-    return state === "active" || state === "ready_to_complete";
-  });
-  if (!active) return undefined;
+    if (
+      state !== "active" &&
+      !(active.hidden && state === "ready_to_complete")
+    ) {
+      continue;
+    }
 
-  const record = input.snapshot.bible.runtime[active.id];
-  const objective = harthmereBibleQuestCurrentObjective(active.id, record);
-  const waypoint = getHarthmereQuestResolvedWaypoint(active.id, objective);
-  const maxDistance = Math.max(
-    HARTHMERE_BIBLE_HIDDEN_TRIGGER_RADIUS,
-    Number(objective?.validation?.maxDistance) || 0
-  );
-  const nearObjective = Boolean(
-    input.playerPosition &&
-      waypoint &&
-      Math.hypot(
-        input.playerPosition[0] - waypoint[0],
-        input.playerPosition[2] - waypoint[2]
-      ) <= maxDistance
-  );
-  const action: HarthmereBibleDialogAction | undefined =
-    record?.state === "ready_to_complete"
-      ? {
-          kind: "turn_in",
-          questId: active.id,
-          name: `Complete: ${active.title}`,
-          followUpText: active.dialogue?.complete ?? "",
-          tooltip: active.rewards?.previewText,
-        }
-      : objective
-      ? {
-          kind: "objective",
-          questId: active.id,
-          objectiveId: objective.id,
-          name: objective.label,
-          followUpText: active.dialogue?.active ?? "",
-          tooltip: `Objective ${objective.id.slice(-2)} of ${active.objectives.length}`,
-          choice: objective.type === "choice" ? objective.targetId : undefined,
-          combatResult:
-            objective.type === "combat" ? "encounter_cleared" : undefined,
-        }
-      : undefined;
-  return {
-    questId: active.id,
-    title: active.title,
-    objective: objective?.label,
-    nearObjective,
-    action,
-  };
+    const record = input.snapshot.bible.runtime[active.id];
+    const objective = harthmereBibleQuestCurrentObjective(active.id, record);
+    const waypoint = getHarthmereQuestResolvedWaypoint(active.id, objective);
+    const maxDistance = Math.max(
+      active.hidden ? HARTHMERE_BIBLE_HIDDEN_TRIGGER_RADIUS : 0,
+      Number(objective?.validation?.maxDistance) || 6
+    );
+    const distance =
+      input.playerPosition && waypoint
+        ? Math.hypot(
+            input.playerPosition[0] - waypoint[0],
+            input.playerPosition[2] - waypoint[2]
+          )
+        : Number.POSITIVE_INFINITY;
+    const action: HarthmereBibleDialogAction | undefined =
+      record?.state === "ready_to_complete"
+        ? {
+            kind: "turn_in",
+            questId: active.id,
+            name: `Complete: ${active.title}`,
+            followUpText: active.dialogue?.complete ?? "",
+            tooltip: active.rewards?.previewText,
+          }
+        : objective
+        ? {
+            kind: "objective",
+            questId: active.id,
+            objectiveId: objective.id,
+            name: objective.label,
+            followUpText: active.dialogue?.active ?? "",
+            tooltip: `Objective ${objective.id.slice(-2)} of ${active.objectives.length}`,
+            choice:
+              objective.type === "choice" ? objective.targetId : undefined,
+            combatResult:
+              objective.type === "combat" ? "encounter_cleared" : undefined,
+          }
+        : undefined;
+    candidates.push({
+      questId: active.id,
+      title: active.title,
+      objective: objective?.label,
+      nearObjective: distance <= maxDistance,
+      hidden: Boolean(active.hidden),
+      action,
+      distance,
+    });
+  }
+  return candidates.sort((left, right) => left.distance - right.distance);
+}
+
+/**
+ * Every active Bible objective is completed at its server-validated world
+ * waypoint. Hidden quests additionally use this surface for giver-less turn-in.
+ */
+export function harthmereBibleQuestInteractionModel(input: {
+  snapshot: HarthmereBibleQuestClientSnapshot;
+  playerPosition: readonly [number, number, number] | undefined;
+}): HarthmereBibleQuestInteractionModel | undefined {
+  const candidate = harthmereBibleQuestInteractionCandidates(input)[0];
+  if (!candidate) return undefined;
+  const { distance: _distance, ...model } = candidate;
+  return model;
+}
+
+/** Compatibility helper retained for callers/tests specifically auditing the
+ * three giver-less hidden quests. */
+export function harthmereBibleHiddenQuestInteractionModel(input: {
+  snapshot: HarthmereBibleQuestClientSnapshot;
+  playerPosition: readonly [number, number, number] | undefined;
+}): HarthmereBibleQuestInteractionModel | undefined {
+  const candidate = harthmereBibleQuestInteractionCandidates({
+    ...input,
+    hiddenOnly: true,
+  })[0];
+  if (!candidate) return undefined;
+  const { distance: _distance, ...model } = candidate;
+  return model;
 }
 
 // ---------------------------------------------------------------------------

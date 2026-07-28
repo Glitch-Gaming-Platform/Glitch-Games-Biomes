@@ -7,6 +7,7 @@
 // and asks the server to perform enter/exit.
 
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
+import { defaultHarthmereLiveFetch } from "@/client/components/harthmere_live_fetch";
 import {
   useWorldInteractionCandidate,
   WORLD_INTERACTION_PRIORITY,
@@ -46,6 +47,19 @@ interface Chapter1GateState {
     lightRemaining: number;
     lastOutcome?: string;
   };
+  /** Delivered on exit only. Never before: dilation is dread, not a budget. */
+  elapsedSummary?: string;
+  /** The player is standing inside Elsewhen without an admitted run. */
+  evicted?: boolean;
+  party?: Array<{
+    id: number;
+    name: string;
+    hp: number;
+    maxHp: number;
+    distance: number;
+    downed: boolean;
+    reviveAvailable: boolean;
+  }>;
 }
 
 function gateApiUrl() {
@@ -61,8 +75,10 @@ async function requestGate(
     | { action: "state" }
     | { action: "enter"; gateId: string }
     | { action: "exit" }
+    | { action: "admission" }
+    | { action: "revive"; targetId: number }
 ): Promise<Chapter1GateState> {
-  const response = await fetch(gateApiUrl(), {
+  const response = await defaultHarthmereLiveFetch(gateApiUrl(), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -80,8 +96,10 @@ export const Chapter1FractureGatePrompt: React.FunctionComponent = () => {
   const [state, setState] = useState<Chapter1GateState>();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
+  const [elapsed, setElapsed] = useState<string>();
   const inFlight = useRef<Promise<void>>();
   const busyRef = useRef(false);
+  const evictingRef = useRef(false);
 
   const applyState = useCallback((next: Chapter1GateState) => {
     setState(next);
@@ -99,7 +117,20 @@ export const Chapter1FractureGatePrompt: React.FunctionComponent = () => {
       try {
         const next = await requestGate({ action: "state" });
         applyState(next);
-        setError(undefined);
+        setError(next.evicted ? next.reason : undefined);
+        // The state poll only REPORTS an illegal Elsewhen position; the server
+        // will not publish a warp from a poll or it would fire one per tick.
+        // Ask for the eviction exactly once, then let the next poll confirm.
+        if (next.evicted && !evictingRef.current) {
+          evictingRef.current = true;
+          try {
+            applyState(await requestGate({ action: "admission" }));
+          } finally {
+            window.setTimeout(() => {
+              evictingRef.current = false;
+            }, 3_000);
+          }
+        }
       } catch (caught) {
         setError(caught instanceof Error ? caught.message : String(caught));
       }
@@ -144,6 +175,10 @@ export const Chapter1FractureGatePrompt: React.FunctionComponent = () => {
       );
       applyState(next);
       setError(next.ok ? undefined : next.reason);
+      if (next.elapsedSummary) {
+        setElapsed(next.elapsedSummary);
+        window.setTimeout(() => setElapsed(undefined), 9_000);
+      }
       // WarpHomeEvent is asynchronous. Poll after the local player consumes it
       // instead of assuming the response itself proves the avatar moved.
       window.setTimeout(() => void refresh(), 350);
@@ -154,6 +189,26 @@ export const Chapter1FractureGatePrompt: React.FunctionComponent = () => {
       setBusy(false);
     }
   }, [applyState, refresh, state]);
+
+  const revive = useCallback(
+    async (targetId: number) => {
+      if (busyRef.current) return;
+      busyRef.current = true;
+      setBusy(true);
+      try {
+        const next = await requestGate({ action: "revive", targetId });
+        applyState(next);
+        setError(next.ok ? undefined : next.reason);
+        window.setTimeout(() => void refresh(), 250);
+      } catch (caught) {
+        setError(caught instanceof Error ? caught.message : String(caught));
+      } finally {
+        busyRef.current = false;
+        setBusy(false);
+      }
+    },
+    [applyState, refresh]
+  );
 
   const candidate = useMemo(
     () =>
@@ -208,6 +263,19 @@ export const Chapter1FractureGatePrompt: React.FunctionComponent = () => {
             )}
           </div>
         )}
+      {elapsed && (
+        <div
+          className="border-amber-200/45 bg-slate-950/92 pointer-events-none fixed left-1/2 top-28 z-[77] w-[min(28rem,84vw)] -translate-x-1/2 rounded-lg border px-4 py-3 text-center text-white shadow-[0_0_28px_rgba(251,191,36,0.2)] backdrop-blur"
+          role="status"
+          aria-live="polite"
+          data-chapter1-elapsed-summary="present"
+        >
+          <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-amber-200/80">
+            While you were gone
+          </div>
+          <div className="mt-1 text-sm font-semibold">{elapsed}</div>
+        </div>
+      )}
       {state?.activeDungeonRunId && state.survival && (
         <div
           className="border-cyan-200/35 bg-slate-950/90 pointer-events-none fixed right-4 top-24 z-[74] w-[min(19rem,44vw)] rounded-lg border px-3 py-2 text-white shadow-[0_0_24px_rgba(34,211,238,0.16)] backdrop-blur"
@@ -242,6 +310,46 @@ export const Chapter1FractureGatePrompt: React.FunctionComponent = () => {
               {state.survival.lastOutcome}
             </div>
           )}
+        </div>
+      )}
+      {state?.activeDungeonRunId && (state.party?.length ?? 0) > 1 && (
+        <div
+          className="border-emerald-200/30 bg-slate-950/90 fixed bottom-24 right-4 z-[78] w-[min(20rem,46vw)] rounded-lg border px-3 py-2 text-white shadow-xl backdrop-blur"
+          data-chapter1-party-runtime="active"
+        >
+          <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-200">
+            Elsewhen party
+          </div>
+          <div className="mt-2 grid gap-2">
+            {state.party!.map((member) => (
+              <div
+                key={member.id}
+                className="flex items-center justify-between gap-3 text-xs"
+                data-chapter1-party-member={member.id}
+                data-downed={member.downed ? "true" : "false"}
+              >
+                <div className="min-w-0">
+                  <div className="truncate font-semibold">{member.name}</div>
+                  <div className={member.downed ? "text-rose-200" : "text-white/55"}>
+                    {member.downed
+                      ? `Downed · ${member.distance.toFixed(0)}m`
+                      : `${member.hp.toFixed(0)} / ${member.maxHp.toFixed(0)} HP`}
+                  </div>
+                </div>
+                {member.reviveAvailable && (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void revive(member.id)}
+                    className="rounded border border-emerald-200/50 bg-emerald-200/10 px-2 py-1 font-semibold text-emerald-100 disabled:opacity-50"
+                    data-chapter1-revive={member.id}
+                  >
+                    Revive
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </>

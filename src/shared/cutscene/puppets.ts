@@ -19,8 +19,12 @@ import type { HarthmereLiveCreatureBridgeRecord } from "@/shared/harthmere/live_
 export interface CutscenePuppetOverride {
   /** Real (positive) entity id to override, or negative ghost id to add. */
   id: number;
-  at: [number, number, number];
+  at?: [number, number, number];
   yaw: number;
+  /** Per-player story projection may suppress a shared ECS body entirely. */
+  hidden?: boolean;
+  /** Per-player presented identity without mutating the shared ECS label. */
+  label?: string;
   /** Best-effort animation hint for the renderer (e.g. "talkGesture"). */
   animation?: string;
   animationTime?: number;
@@ -58,25 +62,31 @@ export function mergeCutscenePuppetOverrides(
   for (const override of overrides) {
     byId.set(override.id, override);
   }
-  const merged: HarthmereLiveCreatureBridgeRecord[] = base.map((record) => {
+  const merged: HarthmereLiveCreatureBridgeRecord[] = base.flatMap((record) => {
     const override = byId.get(record.id);
     if (!override) {
-      return record;
+      return [record];
     }
     byId.delete(record.id);
-    return {
-      ...record,
-      at: [...override.at],
-      yaw: override.yaw,
-      animation: override.animation,
-      animationTime: override.animationTime,
-      moving: override.moving,
-      motionTime: override.motionTime,
-      cinematic: true,
-    };
+    if (override.hidden) return [];
+    return [
+      {
+        ...record,
+        ...(override.at
+          ? { at: [...override.at] as [number, number, number] }
+          : {}),
+        yaw: override.yaw,
+        ...(override.label ? { label: override.label } : {}),
+        animation: override.animation,
+        animationTime: override.animationTime,
+        moving: override.moving,
+        motionTime: override.motionTime,
+        cinematic: true,
+      },
+    ];
   });
   for (const override of byId.values()) {
-    if (!isGhostPuppetId(override.id) || !override.ghost) {
+    if (!isGhostPuppetId(override.id) || !override.ghost || !override.at) {
       // Override for an entity that isn't currently rendered (despawned or
       // out of range): nothing to draw — drop it rather than invent a record
       // with a guessed asset.
@@ -106,12 +116,14 @@ export function mergeCutscenePuppetOverrides(
 // ---------------------------------------------------------------------------
 
 export const CUTSCENE_PUPPET_BRIDGE_KEY = "__harthmereCutscenePuppets";
+export const CHAPTER1_PUPPET_BRIDGE_KEY = "__harthmereChapter1Puppets";
 
 type PuppetWindow = typeof globalThis & {
   __harthmereCutscenePuppets?: {
     at: number;
     overrides: CutscenePuppetOverride[];
   };
+  __harthmereChapter1Puppets?: CutscenePuppetOverride[];
 };
 
 export function publishCutscenePuppetOverrides(
@@ -147,4 +159,44 @@ export function readCutscenePuppetOverrides(): CutscenePuppetOverride[] {
     return [];
   }
   return bridge.overrides;
+}
+
+export function publishChapter1PuppetOverrides(
+  overrides: CutscenePuppetOverride[]
+): void {
+  if (typeof window === "undefined") return;
+  (window as PuppetWindow).__harthmereChapter1Puppets = overrides;
+}
+
+export function clearChapter1PuppetOverrides(): void {
+  if (typeof window === "undefined") return;
+  delete (window as PuppetWindow).__harthmereChapter1Puppets;
+}
+
+export function readChapter1PuppetOverrides(): CutscenePuppetOverride[] {
+  if (typeof window === "undefined") return [];
+  const overrides = (window as PuppetWindow).__harthmereChapter1Puppets;
+  return Array.isArray(overrides) ? overrides : [];
+}
+
+/** Persistent chapter staging first; active cutscene direction wins per id. */
+export function readRenderablePuppetOverrides(): CutscenePuppetOverride[] {
+  const byId = new Map<number, CutscenePuppetOverride>();
+  for (const override of readChapter1PuppetOverrides()) {
+    byId.set(override.id, override);
+  }
+  for (const override of readCutscenePuppetOverrides()) {
+    byId.set(override.id, override);
+  }
+  return [...byId.values()];
+}
+
+export function chapter1PresentedNpcLabel(
+  entityId: number,
+  fallback: string
+): string {
+  return (
+    readChapter1PuppetOverrides().find((entry) => entry.id === entityId)
+      ?.label ?? fallback
+  );
 }

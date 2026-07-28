@@ -111,6 +111,14 @@ const FIXTURE_LANDMARKS = [
     visibleOnWorldMap: true,
   },
   {
+    id: "grove_coop_dropped_feed",
+    label: "Coop's Dropped Feed",
+    position: [382, 71, -202],
+    kind: "resource",
+    area: "the_grove",
+    visibleOnWorldMap: true,
+  },
+  {
     id: "coop_supply_box",
     label: "Old Supply Box",
     position: [384, 71, -198],
@@ -206,7 +214,7 @@ const FIXTURE_QUESTS = [
   {
     id: "coops_key_hen",
     title: "Coop's Key Hen",
-    markerIds: ["npc_old_coop", "npc_old_coop", "coop_supply_box"],
+    markerIds: ["npc_old_coop", "grove_coop_dropped_feed", "coop_supply_box"],
     objectives: [
       "Talk to Old Coop by the fountain.",
       "Follow Old Coop's hen.",
@@ -566,12 +574,9 @@ describe("biomes_ui map adapter (V141)", () => {
     assert.equal(active?.reward, "25 XP");
   });
 
-  // QUEST_JOURNAL_ONLY_STARTED regression: a brand-new player's journal must not
-  // be flooded with the entire authored Snapshot Grove catalog. The real adapter
-  // surfaces only authored quests the player has started (active) or finished
-  // (completed); not-yet-started ("available") authored quests are discovered
-  // in-world and must be excluded from the trackable list.
-  it("excludes not-yet-started (available) authored quests from the journal", () => {
+  // The map is a navigation surface, not quest history. Finished, failed, and
+  // not-yet-started quests stay out; only active work contributes rows/pins.
+  it("excludes available and completed authored quests from the map", () => {
     installFixture({
       activeQuestId: "fountain_buttons_first",
       activeObjectiveIndex: 0,
@@ -579,9 +584,9 @@ describe("biomes_ui map adapter (V141)", () => {
     });
     const quests = buildBiomesUIMapAdapterForTest(1).getTrackableQuests();
     const byId = (id: string) => quests.find((q) => q.questId === id);
-    // Started + finished quests still appear.
+    // Only the active quest appears.
     assert.equal(byId("fountain_buttons_first")?.status, "active");
-    assert.equal(byId("loans_responsibly")?.status, "completed");
+    assert.equal(byId("loans_responsibly"), undefined);
     // Purely-available authored catalog quests must NOT flood the journal.
     assert.equal(byId("moss_that_went_quiet"), undefined);
     assert.equal(byId("coops_key_hen"), undefined);
@@ -593,6 +598,50 @@ describe("biomes_ui map adapter (V141)", () => {
       ),
       false,
       "no authored catalog quest should surface as merely 'available'"
+    );
+    assert.equal(
+      quests.some((q) => q.status === "completed" || q.status === "failed"),
+      false,
+      "the map must not render historical quest rows"
+    );
+  });
+
+  it("uses each accepted quest's own objective index while only beaconing the selected quest", () => {
+    installFixture({
+      acceptedQuestIds: ["fountain_buttons_first", "coops_key_hen"],
+      activeQuestId: "fountain_buttons_first",
+      // Deliberately stale compatibility value; the per-quest map is authority.
+      activeObjectiveIndex: 0,
+      objectiveIndexByQuestId: {
+        fountain_buttons_first: 1,
+        coops_key_hen: 2,
+      },
+      objectiveProgressByQuestId: {},
+      completedQuestIds: [],
+    });
+
+    const adapter = buildBiomesUIMapAdapterForTest(1);
+    const markers = adapter.getMarkers();
+    const selected = markers.find(
+      (marker) => marker.id === "harthmere_market_posting_board"
+    );
+    const otherActive = markers.find(
+      (marker) => marker.id === "coop_supply_box"
+    );
+
+    assert.equal(selected?.kind, "objective");
+    assert.equal(selected?.active, true);
+    assert.equal(otherActive?.active, true);
+    assert.notEqual(
+      otherActive?.kind,
+      "objective",
+      "only the selected quest should own the map beacon"
+    );
+    assert.equal(adapter.getMissionTitle(), "Buttons Before the Road");
+    assert.equal(adapter.getMissionSteps()[0]?.done, true);
+    assert.equal(
+      adapter.getMissionSteps()[1]?.objective,
+      "Find the jobs board"
     );
   });
 
@@ -622,7 +671,11 @@ describe("biomes_ui map adapter (V141)", () => {
     assert.equal(board?.kind, "objective");
     assert.equal(board?.active, true);
     const jackie = markers.find((marker) => marker.id === "jackie");
-    assert.equal(jackie?.active, true);
+    assert.notEqual(
+      jackie?.active,
+      true,
+      "completed steps must not leave extra map pins behind"
+    );
   });
 
   it("projects the original Road Ahead directly from native ECS challenge progress", () => {
@@ -975,6 +1028,38 @@ describe("biomes_ui map adapter (V141)", () => {
       .find((entry) => entry.id === "old_coop");
     assert.equal(marker?.active, true);
     assert.equal(marker?.kind, "objective");
+  });
+
+  it("marks the exact retrieval item as the current map objective", () => {
+    installFixture({
+      activeObjectiveIndex: 0,
+      completedQuestIds: [],
+      acceptedQuestIds: [],
+    });
+
+    const adapter = buildBiomesUIMapAdapterForTest(1, undefined, undefined, {
+      active: {
+        coops_key_hen: {
+          stepId: "coops_key_hen:1:collect",
+          progress: 2,
+          source: "snapshot_grove",
+        },
+      },
+      completed: {},
+    });
+    const quest = adapter
+      .getTrackableQuests()
+      .find((entry) => entry.questId === "coops_key_hen");
+    assert.equal(quest?.firstMarkerId, "coop_dropped_feed");
+    assert.equal(quest?.objective, quest?.objectives?.[1]);
+
+    const feed = adapter
+      .getMarkers()
+      .find((marker) => marker.id === "coop_dropped_feed");
+    assert.equal(feed?.label, "Coop's Dropped Feed");
+    assert.equal(feed?.active, true);
+    assert.equal(feed?.kind, "objective");
+    assert.deepEqual(feed?.worldPosition, [382, 71, -202]);
   });
 
   it("surfaces every active mission source in the real BiomesUI missions list", () => {

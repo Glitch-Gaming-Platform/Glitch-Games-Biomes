@@ -134,8 +134,36 @@ const seedIfMissingBody = fnBody(shim, "seedLocalDevTerrainIfMissing");
 ok(
   seedIfMissingBody.includes("seedMissingLocalDevContentIntoExistingWorld") &&
     seedIfMissingBody.indexOf("seedMissingLocalDevContentIntoExistingWorld") <
-      seedIfMissingBody.indexOf("return;"),
+      seedIfMissingBody.indexOf("reconcileLocalDevPlayerLikeNpcCosmetics"),
   "terrain-disabled snapshot boots still create missing authored NPC/content entities"
+);
+ok(
+  seedIfMissingBody.includes("ensureHarthmereAdditiveWorldBoundary") &&
+    seedIfMissingBody.includes("seedMissingChapter1TerrainIntoExistingWorld") &&
+    seedIfMissingBody.indexOf("seedMissingChapter1TerrainIntoExistingWorld") <
+      seedIfMissingBody.indexOf("reconcileLocalDevPlayerLikeNpcCosmetics"),
+  "terrain-disabled snapshot boots preserve the ordinary boundary and create detached Elsewhen shards"
+);
+const chapter1TerrainSyncBody = fnBody(
+  shim,
+  "seedMissingChapter1TerrainIntoExistingWorld"
+);
+ok(
+  chapter1TerrainSyncBody.includes("localDevChapter1TerrainShardSpecs") &&
+    chapter1TerrainSyncBody.includes('"create"') &&
+    chapter1TerrainSyncBody.includes("makeLocalDevChapter1TerrainShard") &&
+    !chapter1TerrainSyncBody.includes('"update"'),
+  "production Chapter 1 terrain reconciliation is create-only"
+);
+const chapter1Seed = read("scripts/harthmere/seed-chapter1-native-e2e.cjs");
+ok(
+  chapter1Seed.includes("WorldMetadataId") &&
+    chapter1Seed.includes("CH1_ELSEWHEN_BAND_END_X") &&
+    chapter1Seed.includes("chapter1WorldBoundaryPlan") &&
+    chapter1Seed.includes("ch1NormalizeOrdinaryWorldEastEdge") &&
+    chapter1Seed.includes("portalOnlyWorldBoundary") &&
+    !chapter1Seed.includes("aabb.v1[0] = CH1_ELSEWHEN_BAND_END_X"),
+  "focused Chapter 1 seeder keeps Elsewhen detached from WorldMetadata"
 );
 const extraTownOffsetPatchInstalled = shim.includes(
   "HARTHMERE_EXTRA_TOWN_OFFSET"

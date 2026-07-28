@@ -12,6 +12,8 @@ interface Skill {
   xp: number;
   nextLevel: number;
   title: string;
+  description?: string;
+  trainingActions?: readonly string[];
 }
 interface CharacterStats {
   level: number;
@@ -184,6 +186,18 @@ export const SkillsTab: React.FunctionComponent<{
                 >
                   {s.xp} / {s.nextLevel} xp
                 </div>
+                {s.trainingActions && s.trainingActions.length > 0 && (
+                  <div
+                    data-skill-training-actions={s.id}
+                    style={{
+                      marginTop: 5,
+                      fontSize: 10,
+                      color: "var(--biomes-fg-muted)",
+                    }}
+                  >
+                    Train by: {s.trainingActions.join(" · ")}
+                  </div>
+                )}
               </div>
             </Highlightable>
           ))}

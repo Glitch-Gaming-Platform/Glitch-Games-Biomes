@@ -265,6 +265,32 @@ export function harthmereNativeNpcCombatProfileForSeed(
   };
 }
 
+/**
+ * Canonical Anima combat behavior for a native Harthmere NPC type.
+ *
+ * The production Bikkie tray can temporarily lag a code-authored combat
+ * profile during a rolling data migration. Keep the conversion in one place so
+ * both the biscuit overlay and Anima derive exactly the same attack parameters
+ * instead of letting a stale legacy `attackable: false` shape disable combat.
+ */
+export function harthmereNativeNpcChaseAttackParams(
+  profile: HarthmereNativeNpcCombatProfile
+): NonNullable<Behavior["chaseAttack"]> | undefined {
+  if (profile.attackDamage <= 0) {
+    return undefined;
+  }
+  return {
+    aggroTrigger: profile.aggroTrigger,
+    disengageDistance: profile.disengageDistance,
+    attackDistance: profile.attackDistance,
+    attackAnimationMultiplier: 1,
+    attackStrikeMomentSecs: profile.attackStrikeMomentSecs,
+    attackIntervalSecs: profile.attackIntervalSecs,
+    attackFovDeg: profile.attackFovDeg,
+    attackDamage: profile.attackDamage,
+  };
+}
+
 export function harthmereNativeNpcBiscuit(
   profile: HarthmereNativeNpcCombatProfile,
   presentation?: Biscuit
@@ -305,19 +331,7 @@ export function harthmereNativeNpcBiscuit(
         maxHp: profile.maxHp,
         attackable: profile.behaviorKind !== "sentinel",
       },
-      chaseAttack:
-        profile.attackDamage > 0
-          ? {
-              aggroTrigger: profile.aggroTrigger,
-              disengageDistance: profile.disengageDistance,
-              attackDistance: profile.attackDistance,
-              attackAnimationMultiplier: 1,
-              attackStrikeMomentSecs: profile.attackStrikeMomentSecs,
-              attackIntervalSecs: profile.attackIntervalSecs,
-              attackFovDeg: profile.attackFovDeg,
-              attackDamage: profile.attackDamage,
-            }
-          : undefined,
+      chaseAttack: harthmereNativeNpcChaseAttackParams(profile),
       meander:
         profile.behaviorKind === "sentinel" ||
         profile.behaviorKind === "prisoner"

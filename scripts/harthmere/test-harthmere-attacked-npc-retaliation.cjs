@@ -48,8 +48,9 @@ check(
 
 // ── Authored aggression takes priority ──────────────────────────────────────
 check(
-  logic.includes("if (behavior.chaseAttack)") &&
-    logic.includes("return behavior.chaseAttack"),
+  logic.includes("return behavior.chaseAttack") &&
+    logic.includes("if (configuredChaseAttack)") &&
+    logic.includes("return configuredChaseAttack"),
   "authored proactive aggression remains authoritative"
 );
 

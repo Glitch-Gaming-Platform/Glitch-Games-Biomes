@@ -2,6 +2,8 @@ import assert from "assert";
 
 import {
   HARTHMERE_MUCK_FLOOR_FEET_Y,
+  HARTHMERE_MOSSY_MUCKLING_ANCHOR,
+  HARTHMERE_MOSSY_MUCKLING_COUNT,
   HARTHMERE_LIVE_ENTITY_GUARDED_WILDLIFE_LOCATIONS,
   HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_PRODUCTION_COUNT,
   HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS,
@@ -16,7 +18,19 @@ import { muckMonsterAreaForPosition } from "@/shared/harthmere/muck_monster_aggr
 import { HARTHMERE_ORIGINAL_WORLD_EAST_EDGE_X } from "@/shared/harthmere/world_extension";
 
 describe("muck monster placement", () => {
-  it("keeps all 140 muckers/hexes — none dropped", () => {
+  it("keeps at least six visible Mucklings at the quest-marked hunt cluster", () => {
+    const mucklings = harthmereGroundedMuckMonsterSeedsInTerritory().filter(
+      (seed) =>
+        /^Mossy Muckling/i.test(seed.displayName) &&
+        Math.hypot(
+          seed.position[0] - HARTHMERE_MOSSY_MUCKLING_ANCHOR[0],
+          seed.position[2] - HARTHMERE_MOSSY_MUCKLING_ANCHOR[2]
+        ) <= 20
+    );
+    assert.equal(mucklings.length, HARTHMERE_MOSSY_MUCKLING_COUNT);
+  });
+
+  it("keeps every authored mucker/hex — none dropped", () => {
     const placed = harthmereGroundedMuckMonsterSeedsInTerritory();
     assert.equal(
       placed.length,

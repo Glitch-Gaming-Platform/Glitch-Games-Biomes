@@ -38,6 +38,12 @@ class HighFrequencyValue<T> {
     this.lastUpdate = now;
     this.dirty = true;
   }
+
+  force(value: T) {
+    this.lastValue = value;
+    this.lastUpdate = getNowMs();
+    this.dirty = true;
+  }
 }
 
 export class ShortCircuit {
@@ -64,6 +70,15 @@ export class ShortCircuit {
     this.rigid_body.dirty = false;
     this.orientation.dirty = false;
     this.emote.dirty = false;
+  }
+
+  get proposedPosition(): ReadonlyVec3f | undefined {
+    return this.position.value;
+  }
+
+  forcePosition(position: Vec3f) {
+    this.position.force(position);
+    this.rigid_body.force([0, 0, 0]);
   }
 
   maybeUpdate(ev: AnyEvent): boolean {

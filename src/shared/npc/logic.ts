@@ -1,6 +1,11 @@
 import { secondsSinceEpoch } from "@/shared/ecs/config";
+import type { ReadonlyWorldMetadata } from "@/shared/ecs/gen/components";
 import type { ReadonlyEntity } from "@/shared/ecs/gen/entities";
 import { CollisionHelper } from "@/shared/game/collision";
+import { ch1DetachedWorldBoundsAt } from "@/shared/harthmere/ch1_elsewhen_region";
+import { harthmereNativeNpcCombatProfileForTypeId } from "@/shared/harthmere/harthmere_native_combat_catalog";
+import { harthmereNativeNpcChaseAttackParams } from "@/shared/harthmere/harthmere_native_combat";
+import type { BiomesId } from "@/shared/ids";
 import {
   add,
   anchorAndSizeToAABB,
@@ -11,13 +16,20 @@ import {
 } from "@/shared/math/linear";
 import type { AABB, ReadonlyVec3 } from "@/shared/math/types";
 import {
+  applyCreatureLevelToChaseAttackParams,
   boundedHarthmereNpcChaseSpeed,
+  chapter1EncounterChaseAttackParams,
   chaseAttackTargetTick,
   isHarthmereFightSpeedBoostNpc,
   nightMuckerHexMovementMultiplier,
   nightMuckerHexUnprovokedAggroParams,
   updateAttackTarget,
 } from "@/shared/npc/behavior/chase_attack";
+import {
+  escortTick,
+  npcHasEscortAssignment,
+  updateEscortCombatTarget,
+} from "@/shared/npc/behavior/escort_tick";
 import { scheduleFollowTick } from "@/shared/npc/behavior/schedule_follow";
 import { drownTick } from "@/shared/npc/behavior/drown";
 import { farFromHomeTick } from "@/shared/npc/behavior/far_from_home";
@@ -73,17 +85,55 @@ function effectiveChaseAttackParams(
   npc: SimulatedNpc,
   behavior: ReturnType<typeof getNpcBehavior>
 ): BehaviorChaseAttackParams | undefined {
+  const base = baseChaseAttackParams(npc, behavior);
+  // HARTHMERE_CREATURE_LEVELING: the shared NPC type supplies the level 1
+  // baseline; the entity's own level scales it. Applied last so every authored
+  // Chapter 1 / night-aggro override is itself levelled rather than bypassed.
+  return base ? applyCreatureLevelToChaseAttackParams(npc, base) : undefined;
+}
+
+/**
+ * Native Harthmere combat profiles are authoritative over a stale Bikkie
+ * behavior. The July road-pack tray still had the legacy human fallback
+ * (`attackable: false`, no `chaseAttack`), which left Anima managing and ticking
+ * the creatures without ever giving them a combat policy.
+ */
+export function configuredChaseAttackParamsForNpcType(
+  typeId: BiomesId,
+  behavior: Pick<ReturnType<typeof getNpcBehavior>, "chaseAttack">
+): BehaviorChaseAttackParams | undefined {
+  const nativeProfile = harthmereNativeNpcCombatProfileForTypeId(typeId);
+  if (nativeProfile) {
+    return harthmereNativeNpcChaseAttackParams(nativeProfile);
+  }
+  return behavior.chaseAttack;
+}
+
+function baseChaseAttackParams(
+  npc: SimulatedNpc,
+  behavior: ReturnType<typeof getNpcBehavior>
+): BehaviorChaseAttackParams | undefined {
+  const configuredChaseAttack = configuredChaseAttackParamsForNpcType(
+    npc.metadata.type_id,
+    behavior
+  );
+  const chapter1Params = chapter1EncounterChaseAttackParams(
+    npc,
+    configuredChaseAttack,
+    ATTACKED_NPC_RETALIATION_CHASE_ATTACK_PARAMS
+  );
+  if (chapter1Params) return chapter1Params;
   const nightAggroChaseAttack = nightMuckerHexUnprovokedAggroParams(
     npc,
-    behavior.chaseAttack,
+    configuredChaseAttack,
     ATTACKED_NPC_RETALIATION_CHASE_ATTACK_PARAMS
   );
   if (nightAggroChaseAttack) {
     return nightAggroChaseAttack;
   }
 
-  if (behavior.chaseAttack) {
-    return behavior.chaseAttack;
+  if (configuredChaseAttack) {
+    return configuredChaseAttack;
   }
 
   // ATTACKED_NPC_RETALIATION_FALLBACK:
@@ -124,6 +174,7 @@ export type NpcLocomotionChoice =
   | "flee"
   | "returnHome"
   | "chaseAttack"
+  | "escort"
   | "schedule"
   | "meander"
   | "socialize"
@@ -138,6 +189,8 @@ export interface NpcLocomotionInputs {
   hasActiveSchedule: boolean;
   hasChaseAttack: boolean;
   hasAttackTarget: boolean;
+  /** HARTHMERE_ESCORT: this NPC has a live `npc_state.escort` assignment. */
+  hasEscortAssignment?: boolean;
   canMeander: boolean;
   canSocialize: boolean;
 }
@@ -158,11 +211,23 @@ export function selectNpcLocomotion(
   if (inputs.hasFleeOutput) {
     return "flee";
   }
-  if (inputs.isQuestGiver && !inputs.hasActiveSchedule) {
-    return "returnHome";
-  }
+  // HARTHMERE_ESCORT: an escort assignment outranks the quest-giver "stay home"
+  // fallback and any authored schedule, because an escorted companion that walks
+  // back to its spawn is the whole failure the escort system exists to prevent.
+  // Live combat still outranks the escort itself, so a combat-capable escort
+  // interrupts following, fights, and then resumes formation.
+  //
+  // Moving the combat branch above `returnHome` also fixes a smaller pre-existing
+  // problem: a quest giver with no schedule used to walk home while being hit,
+  // because the stay-home branch short-circuited before combat was considered.
   if (inputs.hasChaseAttack && inputs.hasAttackTarget) {
     return "chaseAttack";
+  }
+  if (inputs.hasEscortAssignment) {
+    return "escort";
+  }
+  if (inputs.isQuestGiver && !inputs.hasActiveSchedule) {
+    return "returnHome";
   }
   if (inputs.hasActiveSchedule) {
     return "schedule";
@@ -219,6 +284,19 @@ export function npcCinematicPauseActive(
   );
 }
 
+export function npcIsInsideWorldBounds(
+  worldMetadata: ReadonlyWorldMetadata,
+  position: ReadonlyVec3
+) {
+  const detachedBounds = ch1DetachedWorldBoundsAt(position);
+  return containsAABB(
+    detachedBounds
+      ? [detachedBounds.v0, detachedBounds.v1]
+      : [worldMetadata.aabb.v0, worldMetadata.aabb.v1],
+    position
+  );
+}
+
 // The tick context that drives most of the NPCs based on their data-driven
 // behavioral definitions.
 export function npcTickLogic(
@@ -242,12 +320,7 @@ export function npcTickLogic(
     return;
   }
 
-  if (
-    !containsAABB(
-      [env.worldMetadata.aabb.v0, env.worldMetadata.aabb.v1],
-      npc.position
-    )
-  ) {
+  if (!npcIsInsideWorldBounds(env.worldMetadata, npc.position)) {
     npc.kill({ kind: "npc", type: { kind: "outOfWorldBounds" } });
     return;
   }
@@ -258,7 +331,15 @@ export function npcTickLogic(
   const behavior = getNpcBehavior(npc.type);
   const chaseAttack = effectiveChaseAttackParams(npc, behavior);
 
-  if (chaseAttack) {
+  // HARTHMERE_ESCORT: an escort's target comes from its combat POLICY, never from
+  // proximity aggro. An escort that picks its own fights turns a delivery quest
+  // into an unwinnable brawl, and one that can hit livestock or civilians is a
+  // griefing tool. `updateEscortCombatTarget` writes into the same `chaseAttack`
+  // slot, so the ordinary chase/attack tick executes the fight.
+  const hasEscortAssignment = npcHasEscortAssignment(npc);
+  if (hasEscortAssignment) {
+    updateEscortCombatTarget(env, npc);
+  } else if (chaseAttack) {
     updateAttackTarget(env, npc, chaseAttack);
   }
 
@@ -283,8 +364,11 @@ export function npcTickLogic(
     hasFleeOutput: Boolean(fleeOutput),
     isQuestGiver: Boolean(npc.questGiver),
     hasActiveSchedule,
-    hasChaseAttack: Boolean(chaseAttack),
+    // An escort with a policy target must be able to fight even if its authored
+    // biscuit never declared chaseAttack (the Chapter 1 companions do not).
+    hasChaseAttack: Boolean(chaseAttack) || hasEscortAssignment,
     hasAttackTarget: Boolean(npc.state.chaseAttack?.attackTarget),
+    hasEscortAssignment,
     canMeander: Boolean(behavior.meander),
     canSocialize: Boolean(behavior.socialize),
   });
@@ -305,7 +389,14 @@ export function npcTickLogic(
       forwardSpeed = returnHomeTick(npc).forwardSpeed;
       break;
     case "chaseAttack":
-      ({ forwardSpeed } = chaseAttackTargetTick(env, npc, chaseAttack!));
+      ({ forwardSpeed } = chaseAttackTargetTick(
+        env,
+        npc,
+        chaseAttack ?? ATTACKED_NPC_RETALIATION_CHASE_ATTACK_PARAMS
+      ));
+      break;
+    case "escort":
+      ({ forwardSpeed } = escortTick(env, npc));
       break;
     case "schedule":
       forwardSpeed = scheduleFollowTick(env, npc).forwardSpeed;

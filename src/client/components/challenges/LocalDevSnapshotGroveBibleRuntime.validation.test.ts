@@ -1,11 +1,16 @@
 import assert from "assert";
 
 import {
+  SNAPSHOT_GROVE_QUEST_STATE_KEY,
+  activeSnapshotGroveQuestMarkerIds,
   doesSnapshotGroveEventAdvanceQuestForTest,
   grantSnapshotGroveWorldObjectPickupItemForTest,
   mostRecentlyCompletedSnapshotGroveQuestForNpcForTest,
+  readSnapshotGroveQuestState,
   requestSnapshotGroveLandmarkOnMapForBiomesUI,
+  selectSnapshotGroveQuest,
   snapshotGroveObjectiveIsCompletionTurnInForTest,
+  snapshotGroveObjectiveIndexForQuest,
   snapshotGrovePracticeItemForObjectiveForTest,
   snapshotGroveQuestEventFromWorldObjectInteractionForTest,
   validateSnapshotGroveQuestEventContext,
@@ -23,7 +28,10 @@ import {
   snapshotGroveLandmarkById,
   snapshotGroveNpcEntityId,
 } from "@/shared/harthmere/snapshot_grove_content";
-import { snapshotGroveObjectiveCompletionFixture } from "@/shared/harthmere/snapshot_grove_trigger_contract";
+import {
+  snapshotGroveObjectiveCompletionFixture,
+  snapshotGroveObjectiveMarkerIdForProgress,
+} from "@/shared/harthmere/snapshot_grove_trigger_contract";
 
 function questById(id: string) {
   const quest = SNAPSHOT_GROVE_QUESTS.find((entry) => entry.id === id);
@@ -140,7 +148,12 @@ function snapshotGrovePhysicalPickupCases() {
       if (!isPickupTrigger) {
         return [];
       }
-      const marker = snapshotGroveLandmarkById(quest.markerIds[objectiveIndex]);
+      const markerId = snapshotGroveObjectiveMarkerIdForProgress(
+        quest,
+        objectiveIndex,
+        0
+      );
+      const marker = markerId ? snapshotGroveLandmarkById(markerId) : undefined;
       if (
         !marker ||
         marker.kind === "npc" ||
@@ -253,7 +266,7 @@ describe("Snapshot Grove quest runtime validation current", () => {
       questId: quest.id,
       objectiveIndex: 1,
       trigger: "destroy",
-      markerId: "muckwad_patch",
+      markerId: "muckwad_pigment_clump_west",
     };
 
     assert.equal(
@@ -715,5 +728,90 @@ describe("Snapshot Grove quest runtime validation current", () => {
     } finally {
       restoreBrowserStorage();
     }
+  });
+
+  it("migrates the legacy single objective index without losing per-quest progress", () => {
+    const restoreBrowserStorage = installBrowserStorageShim();
+    localStorageMock.clear();
+
+    try {
+      localStorageMock.setItem(
+        SNAPSHOT_GROVE_QUEST_STATE_KEY,
+        JSON.stringify({
+          acceptedQuestIds: [
+            "fountain_buttons_first",
+            "color_that_still_points_home",
+          ],
+          activeQuestId: "color_that_still_points_home",
+          activeObjectiveIndex: 1,
+          completedQuestIds: [],
+          completedObjectiveIds: [],
+          rewards: [],
+        })
+      );
+
+      const migrated = readSnapshotGroveQuestState();
+      assert.equal(
+        snapshotGroveObjectiveIndexForQuest(
+          migrated,
+          "color_that_still_points_home"
+        ),
+        1
+      );
+      assert.equal(
+        snapshotGroveObjectiveIndexForQuest(migrated, "fountain_buttons_first"),
+        0
+      );
+
+      assert.equal(selectSnapshotGroveQuest("fountain_buttons_first"), true);
+      const selected = readSnapshotGroveQuestState();
+      assert.equal(selected.activeQuestId, "fountain_buttons_first");
+      assert.equal(selected.activeObjectiveIndex, 0);
+      assert.equal(
+        snapshotGroveObjectiveIndexForQuest(
+          selected,
+          "color_that_still_points_home"
+        ),
+        1,
+        "changing the selected quest must not rewind another active quest"
+      );
+    } finally {
+      restoreBrowserStorage();
+    }
+  });
+
+  it("keeps one current physical target visible for every accepted quest", () => {
+    const markerIds = activeSnapshotGroveQuestMarkerIds({
+      acceptedQuestIds: [
+        "color_that_still_points_home",
+        "moss_that_went_quiet",
+      ],
+      activeQuestId: "color_that_still_points_home",
+      activeObjectiveIndex: 1,
+      objectiveIndexByQuestId: {
+        color_that_still_points_home: 1,
+        moss_that_went_quiet: 2,
+      },
+      objectiveProgressByQuestId: {
+        color_that_still_points_home: {
+          objectiveIndex: 1,
+          count: 1,
+          evidenceKeys: ["muckwad_pigment_clump_west"],
+        },
+        moss_that_went_quiet: {
+          objectiveIndex: 2,
+          count: 1,
+          evidenceKeys: ["mosslawn_warning_moss_west"],
+        },
+      },
+      completedQuestIds: [],
+      completedObjectiveIds: [],
+      rewards: [],
+    });
+
+    assert.deepEqual([...markerIds].sort(), [
+      "mosslawn_warning_moss_center",
+      "muckwad_pigment_clump_east",
+    ]);
   });
 });

@@ -12,6 +12,11 @@ import { countOf } from "@/shared/game/items";
 import { log } from "@/shared/logging";
 import { nativeBiomesEcsAuthorityEnabled } from "@/shared/harthmere/native_road_ahead_contract";
 import {
+  ch1ElsewhenSlot,
+  isInsideCh1PortalOnlyRegion,
+} from "@/shared/harthmere/ch1_elsewhen_region";
+import { readCh1NativeRunAdmission } from "@/shared/harthmere/ch1_native_run";
+import {
   HARTHMERE_GROVE_RESPAWN_POSITION,
   restoreHarthmereNativeVitalsForRespawn,
 } from "@/shared/harthmere/harthmere_native_vitals";
@@ -23,6 +28,15 @@ export const warpEventHandler = makeEventHandler("warpEvent", {
     royaltyTarget: q.optional(event.royaltyTarget)?.includeIced(),
   }),
   apply: ({ player, royaltyTarget }, event, context) => {
+    if (
+      isInsideCh1PortalOnlyRegion(event.position) ||
+      isInsideCh1PortalOnlyRegion(player.position()?.v ?? [0, 0, 0]) ||
+      readCh1NativeRunAdmission(player.triggerState())
+    ) {
+      throw new RollbackError(
+        "Elsewhen transitions are possible only through a Chapter 1 fracture gate"
+      );
+    }
     const playerInventory = new PlayerInventoryEditor(context, player);
     if (!playerInventory.trySpendCurrency(BikkieIds.bling, event.cost)) {
       throw new RollbackError("Tried to warp but didn't have enough dough");
@@ -67,11 +81,33 @@ export const warpHomeEventHandler = makeEventHandler("warpHomeEvent", {
     { reason, position, orientation },
     context
   ) => {
+    const currentChapter1Run = readCh1NativeRunAdmission(player.triggerState());
+    if (
+      isInsideCh1PortalOnlyRegion(position) ||
+      (reason !== "respawn" &&
+        (isInsideCh1PortalOnlyRegion(
+          player.position()?.v ?? [0, 0, 0]
+        ) ||
+          currentChapter1Run))
+    ) {
+      throw new RollbackError(
+        "Elsewhen transitions are possible only through a Chapter 1 fracture gate"
+      );
+    }
     const nativeHarthmereRespawn =
       reason === "respawn" && nativeBiomesEcsAuthorityEnabled();
+    const chapter1Run = currentChapter1Run;
+    const chapter1Respawn =
+      reason === "respawn" && chapter1Run
+        ? ch1ElsewhenSlot(chapter1Run.dungeonId)?.arrival
+        : undefined;
     forcePlayerWarp(
       player,
-      nativeHarthmereRespawn ? [...HARTHMERE_GROVE_RESPAWN_POSITION] : position,
+      chapter1Respawn
+        ? [...chapter1Respawn]
+        : nativeHarthmereRespawn
+        ? [...HARTHMERE_GROVE_RESPAWN_POSITION]
+        : position,
       orientation
     );
     onWarpHomeHook(player, playerActiveMinigameInstance, reason);

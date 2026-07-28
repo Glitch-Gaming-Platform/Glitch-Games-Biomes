@@ -5,6 +5,7 @@ import {
   runHarthmereLiveMutationOnce,
   runHarthmereLiveMutationSerially,
 } from "@/client/components/harthmere_live_fetch";
+import { submitHarthmereBuildingLiveModeAction } from "@/client/components/harthmere_building_live_mode";
 import { addToast } from "@/client/components/toast/helpers";
 import {
   BIOMES_UI_OPTIMISTIC_PLAYER_STATUS_EVENT,
@@ -89,22 +90,19 @@ import {
   readHarthmereNativeCombatProgression,
 } from "@/shared/harthmere/harthmere_native_combat";
 import { harthmereNativeLevelStats } from "@/shared/harthmere/harthmere_native_level_stats";
+import { createHarthmereSkillClientProjection } from "@/shared/harthmere/harthmere_skill_progression";
 import {
   createBiomesUIGuildsAdapter,
   fetchBiomesUIGuildState,
 } from "./guildsLiveAdapter";
 import * as React from "react";
 import type { BiomesUIAdapters } from "../BiomesUI";
-import {
-  BIOMES_UI_OPEN_MENU_KEY_CODE,
-  BIOMES_UI_OPEN_MENU_TAB,
-  BIOMES_UI_QUESTS_KEY_CODE,
-  type TabKey,
-} from "../BiomesUITypes";
+import type { TabKey } from "../BiomesUITypes";
 import {
   DEFAULT_TAB_SHORTCUTS,
   type TabShortcut,
 } from "../shortcuts/BiomesShortcuts";
+import { biomesUITabForKeyboardCodeForTest } from "../shortcuts/BiomesUIKeyRouting";
 import type { HotbarSlotItem } from "../hotbar/BiomesHotbar";
 import {
   describeHotbarPrimaryAction,
@@ -137,6 +135,7 @@ import {
 import { shouldHydrateBiomesUILiveStateForTab } from "./liveStateHydrationPolicy";
 import {
   activeBiomesUIMapPinFromMarkerForTest,
+  automaticQuestDestinationMarkerForTest,
   readActiveBiomesUIMapPin,
   writeActiveBiomesUIMapPin,
 } from "./mapPinnedDestination";
@@ -191,7 +190,18 @@ import {
 } from "./farmingFoodInterfaceAdapter";
 import { buildNativeFarmingInterfaceModel } from "./nativeFarmingInterfaceAdapter";
 import { buildBiomesUIMapAdapter } from "./mapLiveAdapter";
-import { buildNativeQuestNavAidResolver } from "./nativeQuestNavAidResolver";
+import {
+  buildNativeQuestNavAidResolver,
+  nativeQuestNavigationAidsRevisionForTest,
+} from "./nativeQuestNavAidResolver";
+import {
+  nativeQuestMapMarkers,
+  nativeQuestTrackableQuests,
+} from "./nativeQuestMapAdapter";
+import {
+  mainQuestFromTrackableQuestsForTest,
+  readBiomesUIMainQuestSelection,
+} from "./mainQuestSelection";
 import type { QuestBundle } from "@/client/game/resources/challenges";
 import { getNpcBehavior, idToNpcType } from "@/shared/npc/bikkie";
 import {
@@ -207,27 +217,6 @@ import {
   type HarthmerePropertyMapBuildingState,
 } from "./propertyMapMarkers";
 export const BIOMES_UI_OPEN_TAB_EVENT = "biomes-ui-open-tab";
-
-const BIOMES_UI_KEY_TO_TAB: Record<string, TabKey> = {
-  [BIOMES_UI_OPEN_MENU_KEY_CODE]: BIOMES_UI_OPEN_MENU_TAB,
-  KeyI: "inventory",
-  KeyP: "farming",
-  KeyB: "abilities",
-  KeyK: "skills",
-  KeyY: "classes",
-  KeyL: "land",
-  KeyO: "loot",
-  KeyG: "guilds",
-  KeyQ: "banking",
-  KeyM: "map",
-  KeyU: "map",
-  KeyZ: "recovered",
-  // J opens the dedicated Quests tab (2026-07-24); the map keeps M.
-  [BIOMES_UI_QUESTS_KEY_CODE]: "quests",
-  KeyC: "collections",
-  KeyV: "inbox",
-  Comma: "options",
-};
 
 const BIOMES_UI_TAB_TO_GARDEN_HOSE_TABS: Partial<Record<TabKey, string[]>> = {
   daily: ["daily"],
@@ -1047,38 +1036,7 @@ export async function submitBuildingSystemLiveModeAction(
   action: string,
   payload: Record<string, unknown>
 ): Promise<any> {
-  if (action === "read_state") {
-    const response = await defaultHarthmereLiveFetch(
-      "/api/harthmere/live_mode_building_state",
-      {
-        method: "GET",
-        credentials: "same-origin",
-      }
-    );
-    return response.json();
-  }
-  const requestId = `biomes_ui_building_${action}_${Date.now()}_${Math.random()
-    .toString(36)
-    .slice(2)}`;
-  const response = await defaultHarthmereLiveFetch("/api/harthmere/live_mode", {
-    method: "POST",
-    credentials: "same-origin",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      requestId,
-      idempotencyKey: requestId,
-      actionKind: "request_property_building_mutation",
-      subsystem: "building",
-      actorEntityVersion: 1,
-      zoneId: "the_grove",
-      payload: {
-        buildingAction: action,
-        ...payload,
-      },
-      clientClaims: {},
-    }),
-  });
-  return response.json();
+  return submitHarthmereBuildingLiveModeAction(action, payload);
 }
 
 function dispatchHarthmereBuildingStateUpdate(
@@ -2047,6 +2005,8 @@ export function useBiomesUILiveAdapters({
   // on `onNavigationAidsUpdated`, which is what makes an async NPC location
   // fetch land on the map without a manual refresh.
   const resolvedNavigationAids = mapManager.react.useNavigationAids();
+  const resolvedNavigationAidsRevision =
+    nativeQuestNavigationAidsRevisionForTest(resolvedNavigationAids);
   const resolveNativeQuestNavAidPosition = React.useMemo(
     () =>
       buildNativeQuestNavAidResolver({
@@ -2061,9 +2021,87 @@ export function useBiomesUILiveAdapters({
             return undefined;
           }
         },
+        npcTypePosition: (npcTypeId) => {
+          const player = reactResources.get("/scene/local_player") as any;
+          const playerPosition = player?.player?.position as
+            | readonly number[]
+            | undefined;
+          let best:
+            | { distanceSquared: number; position: [number, number, number] }
+            | undefined;
+          for (const entity of clientContext.table.contents()) {
+            if (
+              Number(entity.npc_metadata?.type_id) !== Number(npcTypeId) ||
+              !entity.position?.v
+            ) {
+              continue;
+            }
+            const [x, y, z] = entity.position.v.map(Number);
+            if (![x, y, z].every(Number.isFinite)) continue;
+            const dx = x - Number(playerPosition?.[0] ?? x);
+            const dz = z - Number(playerPosition?.[2] ?? z);
+            const distanceSquared = dx * dx + dz * dz;
+            if (!best || distanceSquared < best.distanceSquared) {
+              best = { distanceSquared, position: [x, y, z] };
+            }
+          }
+          return best?.position;
+        },
+        fallbackPosition: () => {
+          const player = reactResources.get("/scene/local_player") as any;
+          const position = player?.player?.position;
+          if (!Array.isArray(position) || position.length < 3) return undefined;
+          const [x, y, z] = position.map(Number);
+          return [x, y, z].every(Number.isFinite)
+            ? ([x, y, z] as const)
+            : undefined;
+        },
       }),
-    [resolvedNavigationAids, nativeQuestBundles]
+    [
+      clientContext.table,
+      nativeQuestBundles,
+      reactResources,
+      resolvedNavigationAids,
+      resolvedNavigationAidsRevision,
+    ]
   );
+  const nativeQuestMarkersForAutoDestination = React.useMemo(
+    () =>
+      nativeQuestMapMarkers(
+        nativeQuestBundles,
+        resolveNativeQuestNavAidPosition
+      ),
+    [nativeQuestBundles, resolveNativeQuestNavAidPosition]
+  );
+  const nativeTrackableQuestsForAutoDestination = React.useMemo(
+    () =>
+      nativeQuestTrackableQuests(
+        nativeQuestBundles,
+        resolveNativeQuestNavAidPosition
+      ),
+    [nativeQuestBundles, resolveNativeQuestNavAidPosition]
+  );
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    const quest = mainQuestFromTrackableQuestsForTest(
+      nativeTrackableQuestsForAutoDestination,
+      readBiomesUIMainQuestSelection()
+    );
+    const marker = automaticQuestDestinationMarkerForTest({
+      existingPin: readActiveBiomesUIMapPin(),
+      quest,
+      markers: nativeQuestMarkersForAutoDestination,
+    });
+    if (!marker) return;
+    const pin = activeBiomesUIMapPinFromMarkerForTest(marker);
+    if (pin) {
+      writeActiveBiomesUIMapPin(pin);
+    }
+  }, [
+    nativeQuestMarkersForAutoDestination,
+    nativeTrackableQuestsForAutoDestination,
+  ]);
   const [snapshotRevision, setSnapshotRevision] = React.useState(0);
   const [hoeQuestState, setHoeQuestState] =
     React.useState<HarthmereHoeQuestState>("loading");
@@ -2395,9 +2433,11 @@ export function useBiomesUILiveAdapters({
   const refreshProgressionState = React.useCallback(async () => {
     try {
       const nextState = await fetchProgressionState();
-      setProgressionState(nextState);
+      if (nextState) {
+        setProgressionState(nextState);
+      }
     } catch {
-      setProgressionState(undefined);
+      // Keep the last authoritative snapshot during a transient refresh error.
     } finally {
       setProgressionHydrated(true);
     }
@@ -2878,7 +2918,7 @@ export function useBiomesUILiveAdapters({
       ) {
         return;
       }
-      const tab = BIOMES_UI_KEY_TO_TAB[event.code];
+      const tab = biomesUITabForKeyboardCodeForTest(event.code);
       if (!tab) return;
       event.preventDefault();
       event.stopPropagation();
@@ -2912,7 +2952,8 @@ export function useBiomesUILiveAdapters({
         return;
       }
       // F is exclusively owned by a concrete inspected/proximity target. This
-      // listener retains only the non-world R/T food and cooking shortcuts.
+      // listener retains only the non-world T cooking shortcut. R is owned by
+      // the native Recipes modal and must reach the recipes-only ShortcutsHUD.
       if (event.code === "KeyF") return;
       const action = farmingFoodQuickActionForKey(
         farmingFoodQuickModel,
@@ -2940,6 +2981,16 @@ export function useBiomesUILiveAdapters({
 
   React.useEffect(() => {
     if (!replacementMode) return;
+    // Crafting remains the native Biomes modal. If R is pressed while a
+    // replacement tab is open, close that tab instead of leaving it stacked
+    // over Recipes; the mounted recipes-only ShortcutsHUD owns the actual
+    // modal toggle and its drag/audio cleanup.
+    if (gameModal.kind === "crafting") {
+      if (activeTab !== null) {
+        setActiveTabFromUi(null);
+      }
+      return;
+    }
     const modalToTab: Partial<Record<GameModal["kind"], TabKey>> = {
       inventory: "inventory",
       map: "map",
@@ -2952,7 +3003,13 @@ export function useBiomesUILiveAdapters({
     if (!tab) return;
     setActiveTabFromUi(tab);
     reactResources.set("/game_modal", { kind: "empty" });
-  }, [gameModal.kind, reactResources, replacementMode, setActiveTabFromUi]);
+  }, [
+    activeTab,
+    gameModal.kind,
+    reactResources,
+    replacementMode,
+    setActiveTabFromUi,
+  ]);
 
   const selectedIndex = clampHotbarIndex(
     Number(hotbarIndex?.value ?? inventory?.selected?.idx ?? 0),
@@ -3325,16 +3382,18 @@ export function useBiomesUILiveAdapters({
     ) => {
       try {
         fireAndForget(
-          events.publish(
-            new InventorySwapEvent({
-              player_id: userId,
-              src_id: userId,
-              src: normalizeUiRef(src),
-              dst_id: userId,
-              dst: normalizeUiRef(dst),
-              positions: localPlayerPositionList(reactResources),
-            })
-          ).then(() => onPublished?.())
+          events
+            .publish(
+              new InventorySwapEvent({
+                player_id: userId,
+                src_id: userId,
+                src: normalizeUiRef(src),
+                dst_id: userId,
+                dst: normalizeUiRef(dst),
+                positions: localPlayerPositionList(reactResources),
+              })
+            )
+            .then(() => onPublished?.())
         );
       } catch {}
     };
@@ -4837,23 +4896,18 @@ export function useBiomesUILiveAdapters({
       },
       skills: {
         isHydrated: () => progressionHydrated,
-        getSkills: () => {
-          const skills = Array.isArray(progressionState?.skills)
-            ? progressionState.skills
-            : [];
-          return skills.map((skill: any) =>
-            skill?.id === "character_level"
-              ? {
-                  ...skill,
-                  level: nativeProgression.level,
-                  xp: nativeProgression.xp,
-                  nextLevel: harthmereNativeXpForNextLevel(
-                    nativeProgression.level
-                  ),
-                }
-              : skill
-          );
-        },
+        getSkills: () =>
+          createHarthmereSkillClientProjection({
+            triggerState: nativeTriggerState,
+            progressionSkills: Array.isArray(progressionState?.skills)
+              ? progressionState.skills
+              : undefined,
+            characterProgression: {
+              level: nativeProgression.level,
+              xp: nativeProgression.xp,
+              nextLevel: harthmereNativeXpForNextLevel(nativeProgression.level),
+            },
+          }),
         getCharacterStats: () => nativeCharacterStats,
       },
       abilities: {
@@ -5111,6 +5165,7 @@ export function useBiomesUILiveAdapters({
     refreshProgressionState,
     refreshQuestState,
     roadAheadChallengeStepHints,
+    resolveNativeQuestNavAidPosition,
     snapshotRevision,
     socialManager,
     submitBuildingSystemLiveModeActionAndStore,

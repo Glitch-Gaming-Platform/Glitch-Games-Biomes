@@ -18,6 +18,7 @@ import {
   readHarthmereNativeVitals,
   writeHarthmereNativeVitals,
 } from "@/shared/harthmere/harthmere_native_vitals";
+import { readHarthmereNativeSkillTotalXp } from "@/shared/harthmere/harthmere_skill_progression";
 import { generateTestId } from "@/shared/test_helpers";
 import type { VoxelooModule } from "@/shared/wasm/types";
 import assert from "assert";
@@ -93,6 +94,36 @@ describe("Harthmere native ECS consumption", () => {
     const player = logic.world.table.get(playerId)!;
     assert.equal(player.health?.hp, 100);
     assert.equal(player.inventory?.items[0], undefined);
+    assert.ok(
+      readHarthmereNativeSkillTotalXp(player.trigger_state, "medicine") > 0,
+      "restoring health with a native medical item must award Medicine XP"
+    );
+  });
+
+  it("does not award Medicine when a health item cannot restore HP", async () => {
+    const playerId = (await addGameUser(logic.world, generateTestId(), {})).id;
+    const healthPotionId = harthmereNativeBiomesIdForItemId("health_potion")!;
+    setItemAtSlotIndex(logic.world, playerId, countOf(healthPotionId, 1n), 0);
+
+    await logic.publish(
+      new GameEvent(
+        playerId,
+        new ConsumptionEvent({
+          id: playerId,
+          item_id: healthPotionId,
+          inventory_ref: { kind: "item", idx: 0 },
+          action: "drink",
+        })
+      )
+    );
+
+    const player = logic.world.table.get(playerId)!;
+    assert.equal(player.health?.hp, player.health?.maxHp);
+    assert.equal(player.inventory?.items[0], undefined);
+    assert.equal(
+      readHarthmereNativeSkillTotalXp(player.trigger_state, "medicine"),
+      0
+    );
   });
 
   it("restores native mana without exceeding its maximum", async () => {

@@ -15,6 +15,7 @@ import {
   type HarthmereCraftingOutcome,
   type HarthmereCraftingRecipe,
 } from "@/shared/harthmere/mmo_inventory_authority";
+import { HARTHMERE_CRAFT_COMPLETED_EVENT } from "@/client/components/challenges/harthmereEvents";
 
 export interface HarthmereCraftingStationClientJob {
   jobId: string;
@@ -138,9 +139,7 @@ function recipeStationOk(
   return true;
 }
 
-export function formatHarthmereCraftingPlayerLabel(
-  value: string | undefined
-) {
+export function formatHarthmereCraftingPlayerLabel(value: string | undefined) {
   if (!value) return "";
   return String(value)
     .replace(/^harthmere[_\s-]+/i, "")
@@ -259,8 +258,6 @@ function playerMessageFromCraftingWarning(warning: string) {
     case "prepaid_crafting_inputs_not_allowed":
     case "repair_requires_repair_workflow":
       return "That crafting action is unavailable.";
-    case "carry_weight_limit_exceeded":
-      return "Your pack is too heavy.";
     default:
       return "Crafting is unavailable right now.";
   }
@@ -322,9 +319,7 @@ export function createHarthmereCraftingVisibleRecipes(
         );
         if (!hasActionTool) missing.push("Tool");
       }
-      const outputDefinition = getHarthmereItemDefinition(
-        recipe.outputItemId
-      );
+      const outputDefinition = getHarthmereItemDefinition(recipe.outputItemId);
       const outputName =
         outputDefinition?.displayName ??
         formatHarthmereCraftingPlayerLabel(recipe.outputItemId);
@@ -348,7 +343,8 @@ export function createHarthmereCraftingVisibleRecipes(
           label: outputName,
           kind: outputDefinition?.category,
           objectMetadata: outputDefinition?.objectMetadata,
-          bikkieGraphicHints: outputDefinition?.objectMetadata?.bikkieGraphicHints,
+          bikkieGraphicHints:
+            outputDefinition?.objectMetadata?.bikkieGraphicHints,
         }),
       };
     })
@@ -408,11 +404,17 @@ export function harthmereCraftingMaxCraftable(
   let max = Number.POSITIVE_INFINITY;
   for (const input of [...recipe.inputs, ...(recipe.fuelInputs ?? [])]) {
     if (input.count > 0) {
-      max = Math.min(max, Math.floor(countAvailable(snapshot, input.itemId) / input.count));
+      max = Math.min(
+        max,
+        Math.floor(countAvailable(snapshot, input.itemId) / input.count)
+      );
     }
   }
   if ((recipe.goldCost ?? 0) > 0) {
-    max = Math.min(max, Math.floor(snapshot.gold / (recipe.goldCost as number)));
+    max = Math.min(
+      max,
+      Math.floor(snapshot.gold / (recipe.goldCost as number))
+    );
   }
   // No consumable inputs and no gold cost: cap at a sane batch ceiling.
   return Number.isFinite(max) ? Math.max(0, max) : 99;
@@ -442,7 +444,9 @@ export function harthmereCraftingRecipeDetail(
   const ingredients: HarthmereCraftingIngredientLine[] = [
     ...recipe.inputs.map((i) => line(i.itemId, i.count, "input")),
     ...(recipe.fuelInputs ?? []).map((i) => line(i.itemId, i.count, "fuel")),
-    ...(recipe.optionalReagents ?? []).map((i) => line(i.itemId, i.count, "reagent")),
+    ...(recipe.optionalReagents ?? []).map((i) =>
+      line(i.itemId, i.count, "reagent")
+    ),
   ];
   const toolItemIds = availableCraftingToolItemIds(snapshot);
   const requiredTools = [
@@ -486,7 +490,8 @@ export function harthmereCraftingRecipeDetail(
     requiredStationOk: recipeStationOk(recipe, snapshot),
     requiredSkillId: recipe.requiredSkillId,
     requiredSkillLevel: recipe.requiredSkillLevel,
-    skillMet: !recipe.requiredSkillId || skillLevel >= (recipe.requiredSkillLevel ?? 1),
+    skillMet:
+      !recipe.requiredSkillId || skillLevel >= (recipe.requiredSkillLevel ?? 1),
     toolDurabilityCost: recipe.toolDurabilityCost ?? 0,
     qualityLabel:
       recipe.successChance !== undefined
@@ -525,7 +530,10 @@ export function harthmereCraftingAlternativeRecipes(
 // "Handcraft" / "All Recipes" segmented control.
 export function harthmereCraftingHandcraftPartition(
   recipes: HarthmereCraftingVisibleRecipe[]
-): { handcraft: HarthmereCraftingVisibleRecipe[]; station: HarthmereCraftingVisibleRecipe[] } {
+): {
+  handcraft: HarthmereCraftingVisibleRecipe[];
+  station: HarthmereCraftingVisibleRecipe[];
+} {
   const handcraft: HarthmereCraftingVisibleRecipe[] = [];
   const station: HarthmereCraftingVisibleRecipe[] = [];
   for (const entry of recipes) {
@@ -580,6 +588,31 @@ export function createHarthmereCraftingStationAdapter({
     if (body.craftingState) {
       setState?.(
         normalizeHarthmereCraftingStationClientSnapshot(body.craftingState)
+      );
+    }
+    const completedRecipeId =
+      payload.jobAction === "complete" && payload.craftingJobId
+        ? snapshot?.activeJobs.find(
+            (job) => job.jobId === payload.craftingJobId
+          )?.recipeId
+        : payload.jobAction === "instant"
+        ? payload.recipeId
+        : undefined;
+    if (completedRecipeId && typeof window !== "undefined") {
+      ensureHarthmereProductionCraftingCatalogue();
+      const recipe = listHarthmereCraftingRecipes().find(
+        (entry) => entry.recipeId === completedRecipeId
+      );
+      window.dispatchEvent(
+        new CustomEvent(HARTHMERE_CRAFT_COMPLETED_EVENT, {
+          detail: {
+            kind: "craft",
+            recipeId: completedRecipeId,
+            outputItemId: recipe?.outputItemId,
+            count: Math.max(1, Math.trunc(payload.count ?? 1)),
+            stationId: payload.stationId ?? snapshot?.stationId,
+          },
+        })
       );
     }
   };

@@ -7,7 +7,10 @@
 // docs/harthmere/CHAPTER_1_IDENTITY_WRITERS_JOURNAL.md.
 
 import type { BiomesId } from "@/shared/ids";
-import { SNAPSHOT_GROVE_LOCAL_DEV_NPC_BASE } from "@/shared/harthmere/snapshot_grove_ids";
+import {
+  SNAPSHOT_GROVE_LOCAL_DEV_NPC_BASE,
+  SNAPSHOT_GROVE_MUCKED_ROBOT_ENTITY_ID,
+} from "@/shared/harthmere/snapshot_grove_ids";
 
 export const CHAPTER_1_VERSION = 1 as const;
 export const CHAPTER_1_ID = "ch1_identity" as const;
@@ -20,6 +23,7 @@ export const CHAPTER_1_ID = "ch1_identity" as const;
 // ---------------------------------------------------------------------------
 
 export const CH1_NPC_ID_OFFSET_BASE = 10500;
+export const CH1_NPC_ID_OFFSET_LIMIT_EXCLUSIVE = 10600;
 
 export const CH1_NPC_ID_OFFSETS = {
   lou_ardan: 10501,
@@ -36,9 +40,36 @@ export const CH1_NPC_ID_OFFSETS = {
 
 export type Ch1NpcKey = keyof typeof CH1_NPC_ID_OFFSETS;
 
+/**
+ * Characters who are an EXISTING world entity rather than a new body.
+ *
+ * AUGUR-9 is the writer's journal's single most important retcon (§3.1): the
+ * Mucked Robot the player repairs in Muck vs. Machine *is* the custodian unit.
+ * The first pass implemented that by seeding a second robot at offset 10507,
+ * so the retconned character and the character it retcons could stand in the
+ * Grove at the same time. That is not a retcon; it is a twin.
+ *
+ * Chapter 1 therefore claims the snapshot Grove entity instead of creating one.
+ * The offset below stays reserved so it can never be handed to a new character,
+ * and the prologue keeps targeting the same id under the same ECS display name
+ * (the AUGUR-9 presentation is per-player and lives in ch1_staging.ts).
+ */
+export const CH1_PROMOTED_ENTITY_IDS: Partial<Record<Ch1NpcKey, BiomesId>> =
+  Object.freeze({
+    augur9: SNAPSHOT_GROVE_MUCKED_ROBOT_ENTITY_ID,
+  });
+
 export function ch1NpcEntityId(key: Ch1NpcKey): BiomesId {
+  const promoted = CH1_PROMOTED_ENTITY_IDS[key];
+  if (promoted !== undefined) {
+    return promoted;
+  }
   return (Number(SNAPSHOT_GROVE_LOCAL_DEV_NPC_BASE) +
     CH1_NPC_ID_OFFSETS[key]) as BiomesId;
+}
+
+export function ch1PromotesExistingEntity(key: Ch1NpcKey): boolean {
+  return CH1_PROMOTED_ENTITY_IDS[key] !== undefined;
 }
 
 export const CH1_NPC_ENTITY_IDS = Object.freeze(
@@ -152,6 +183,8 @@ export const CH1_FLAGS = {
   believesJackieHostile: "ch1_believes_jackie_hostile",
 
   jackieExpelled: "ch1_jackie_expelled",
+  jackieReported: "ch1_jackie_reported",
+  jackieStatementWithheld: "ch1_jackie_statement_withheld",
   dosingStopped: "ch1_dosing_stopped",
   dosingResumed: "ch1_dosing_resumed",
   teakDetained: "ch1_teak_detained",
@@ -159,6 +192,7 @@ export const CH1_FLAGS = {
   collectiveConfirmedIdentity: "ch1_collective_confirmed_identity",
 
   act5Linking: "ch1_act5_linking",
+  sorrelLetterRead: "ch1_sorrel_letter_read",
   sorrelOathGiven: "ch1_sorrel_oath_given",
   knowsDesignation: "ch1_knows_designation_seven",
   hasLedger: "ch1_has_ledger",

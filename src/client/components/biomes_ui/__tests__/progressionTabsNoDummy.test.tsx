@@ -7,7 +7,12 @@ import {
   chunkBiomesAbilityRowsForTest,
 } from "../tabs/AbilitiesTab";
 import { BiomesUI } from "../BiomesUI";
-import { TAB_DESCRIPTORS, TAB_ORDER } from "../BiomesUITypes";
+import {
+  BIOMES_UI_RECIPES_KEY_CODE,
+  BIOMES_UI_RECIPES_SHORTCUT,
+  TAB_DESCRIPTORS,
+  TAB_ORDER,
+} from "../BiomesUITypes";
 import { abilityVisibleInBiomesLibraryForTest } from "../adapters/abilityLibraryVisibility";
 import {
   DAILY_TODO_RULES,
@@ -180,7 +185,9 @@ describe("Biomes UI progression tabs", () => {
 
   it("opens with the daily checklist first", () => {
     assert.equal(TAB_ORDER[0], "daily");
-    assert.equal(TAB_DESCRIPTORS.daily.shortcut, "R");
+    assert.equal(TAB_DESCRIPTORS.daily.shortcut, undefined);
+    assert.equal(BIOMES_UI_RECIPES_SHORTCUT, "R");
+    assert.equal(BIOMES_UI_RECIPES_KEY_CODE, "KeyR");
     assert.equal(
       DEFAULT_TAB_SHORTCUTS.some((shortcut) => shortcut.tab === "daily"),
       false
@@ -799,6 +806,7 @@ describe("Biomes UI progression tabs", () => {
               xp: 75,
               nextLevel: 400,
               title: "Novice",
+              trainingActions: ["Complete a validated market transaction"],
             },
           ],
           getCharacterStats: () => ({
@@ -825,6 +833,11 @@ describe("Biomes UI progression tabs", () => {
     assert.ok(html.includes("Strength"));
     assert.ok(html.includes("Critical chance"));
     assert.ok(html.includes("Backpack slots"));
+    assert.ok(html.includes("Train by:"));
+    assert.ok(html.includes("Complete a validated market transaction"));
+    assert.ok(
+      html.includes('data-skill-training-actions="business_operations"')
+    );
     assert.equal(html.includes("Sword"), false);
   });
 
@@ -1116,8 +1129,9 @@ describe("Biomes UI progression tabs", () => {
       { plotId: "farm_plot_001" }
     );
     assert.equal(
-      farmingFoodQuickActionForKey(model, "KeyR")?.id,
-      "eat_best_food"
+      farmingFoodQuickActionForKey(model, "KeyR"),
+      undefined,
+      "R is exclusively the native Recipes shortcut"
     );
     assert.equal(
       farmingFoodQuickActionForKey(model, "KeyT")?.id,

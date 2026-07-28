@@ -489,7 +489,9 @@ export const SNAPSHOT_STRUCTURED_REWARDS: readonly SnapshotStructuredReward[] =
     bling: questRewardBling(quest),
     items: structuredItemsForQuest(quest),
     recipes:
-      quest.id === "toll_ledger_problem" ? ["recipe_road_repair_kit"] : [],
+      quest.id === "toll_ledger_problem"
+        ? ["harthmere_carpentry_road_repair_kit"]
+        : [],
     codex: structuredCodexForQuest(quest),
     reputation: [
       quest.connectorToHarthmere ? "harthmere_bridge" : "grove_trust",

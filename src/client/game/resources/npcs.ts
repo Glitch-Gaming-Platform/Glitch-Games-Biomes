@@ -33,7 +33,7 @@ import {
   setFrustumCulling,
 } from "@/client/game/resources/player_mesh";
 import {
-  readCutscenePuppetOverrides,
+  readRenderablePuppetOverrides,
   type CutscenePuppetOverride,
 } from "@/shared/cutscene/puppets";
 import type { SkyParams } from "@/client/game/resources/sky";
@@ -1502,10 +1502,10 @@ export class NpcRenderState {
     // Must do this on the client and not modify the entity on the server so
     // that only this player sees the NPC turn and nobody else.
     const becomeNPC = resources.get("/scene/npc/become_npc");
-    const cutsceneOverride = readCutscenePuppetOverrides().find(
+    const cutsceneOverride = readRenderablePuppetOverrides().find(
       (override) => override.id === Number(entity.id)
     );
-    const cutsceneMotionOverrides = cutsceneOverride
+    const cutsceneMotionOverrides = cutsceneOverride?.at
       ? {
           position: [...cutsceneOverride.at] as Vec3,
           velocity: [0, 0, 0] as Vec3,

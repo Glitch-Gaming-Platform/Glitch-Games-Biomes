@@ -29,7 +29,12 @@ import {
   harthmereJobsBoardQuestMarkerRuntimePosition,
   harthmereJobsBoardQuestMarkerRuntimePositionForId,
 } from "@/shared/harthmere/jobs_board_quest_marker_positions";
-import { readSnapshotGroveQuestState } from "@/client/components/challenges/LocalDevSnapshotGroveBibleRuntime";
+import {
+  activeSnapshotGroveQuestMarkerIds,
+  readSnapshotGroveQuestState,
+  snapshotGroveObjectiveIndexForQuest,
+  type SnapshotGroveQuestState,
+} from "@/client/components/challenges/LocalDevSnapshotGroveBibleRuntime";
 import { readActiveBiomesUIMapPin } from "@/client/components/biomes_ui/adapters/mapPinnedDestination";
 import {
   SNAPSHOT_GROVE_LANDMARKS,
@@ -37,6 +42,7 @@ import {
   type SnapshotGroveLandmark,
 } from "@/shared/harthmere/snapshot_grove_content";
 import { isHarthmereContainerObjectLabel } from "@/shared/harthmere/object_interaction_semantics";
+import { snapshotGroveObjectiveMarkerIdForProgress } from "@/shared/harthmere/snapshot_grove_trigger_contract";
 import * as THREE from "three";
 
 export const HARTHMERE_QUEST_OBJECT_MARKER_VERSION =
@@ -115,8 +121,14 @@ export interface HarthmereQuestObjectMarker {
 }
 
 export interface HarthmereQuestObjectMarkerState {
+  acceptedQuestIds?: readonly string[];
   activeQuestId?: string;
   activeObjectiveIndex?: number;
+  objectiveIndexByQuestId?: Record<string, number>;
+  objectiveProgressByQuestId?: Record<
+    string,
+    { objectiveIndex: number; count: number; evidenceKeys?: readonly string[] }
+  >;
   completedQuestIds?: readonly string[];
 }
 
@@ -216,6 +228,7 @@ export function shouldRenderHarthmereQuestObjectMarkerMesh(
 ): boolean {
   if (typeof markerOrId !== "string") {
     return (
+      markerOrId.dynamic === undefined ||
       isVisibleHarthmereWorldObjectMarker(markerOrId) ||
       isHarthmereContainerObjectLabel({ label: markerOrId.label })
     );
@@ -227,8 +240,35 @@ export function shouldRenderHarthmereQuestObjectMarkerMesh(
     (candidate) => candidate.id === markerOrId
   );
   return marker
-    ? isHarthmereContainerObjectLabel({ label: marker.label })
+    ? marker.dynamic === undefined ||
+        isHarthmereContainerObjectLabel({ label: marker.label })
     : false;
+}
+
+export function activeHarthmereQuestMarkerIds(
+  state: HarthmereQuestObjectMarkerState
+): ReadonlySet<string> {
+  return activeSnapshotGroveQuestMarkerIds({
+    acceptedQuestIds: [...(state.acceptedQuestIds ?? [])],
+    activeQuestId: state.activeQuestId,
+    activeObjectiveIndex: state.activeObjectiveIndex ?? 0,
+    objectiveIndexByQuestId: state.objectiveIndexByQuestId ?? {},
+    objectiveProgressByQuestId: Object.fromEntries(
+      Object.entries(state.objectiveProgressByQuestId ?? {}).map(
+        ([questId, progress]) => [
+          questId,
+          {
+            objectiveIndex: progress.objectiveIndex,
+            count: progress.count,
+            evidenceKeys: [...(progress.evidenceKeys ?? [])],
+          },
+        ]
+      )
+    ),
+    completedQuestIds: [...(state.completedQuestIds ?? [])],
+    completedObjectiveIds: [],
+    rewards: [],
+  });
 }
 
 export function activeHarthmereQuestMarkerId(
@@ -249,16 +289,20 @@ export function activeHarthmereQuestMarkerId(
     return undefined;
   }
 
-  const rawIndex =
-    typeof state.activeObjectiveIndex === "number" &&
-    Number.isFinite(state.activeObjectiveIndex)
-      ? Math.trunc(state.activeObjectiveIndex)
-      : 0;
+  const rawIndex = snapshotGroveObjectiveIndexForQuest(
+    state as SnapshotGroveQuestState,
+    activeQuestId
+  );
   const clampedIndex = Math.max(
     0,
     Math.min(quest.markerIds.length - 1, rawIndex)
   );
-  return quest.markerIds[clampedIndex];
+  const partial = state.objectiveProgressByQuestId?.[quest.id];
+  return snapshotGroveObjectiveMarkerIdForProgress(
+    quest,
+    clampedIndex,
+    partial?.objectiveIndex === clampedIndex ? partial.count : 0
+  );
 }
 
 const colorForMarker = (marker: HarthmereQuestObjectMarker) => {
@@ -280,10 +324,7 @@ const colorForMarker = (marker: HarthmereQuestObjectMarker) => {
   return 0x8fd3ff;
 };
 
-const mesh = (
-  geometry: THREE.BufferGeometry,
-  color: number
-): THREE.Mesh => {
+const mesh = (geometry: THREE.BufferGeometry, color: number): THREE.Mesh => {
   const material = new THREE.MeshBasicMaterial({ color });
   const mesh = new THREE.Mesh(geometry, material);
   mesh.castShadow = false;
@@ -377,6 +418,13 @@ export function createHarthmereQuestObjectMarkerMesh(
     addBox(group, [0.26, 1.35, 0.26], [0, 0.72, 0], wood);
     addBox(group, [1.0, 0.18, 0.18], [0, 1.18, 0], darkWood);
     addBox(group, [0.42, 0.42, 0.14], [0, 0.58, 0.18], accent);
+  } else if (/lunch pail|\bpail\b/.test(text)) {
+    addCylinder(group, 0.38, 0.5, [0, 0.32, 0], accent, 14);
+    const handle = mesh(new THREE.TorusGeometry(0.34, 0.045, 7, 18), darkWood);
+    handle.rotation.x = Math.PI / 2;
+    handle.position.y = 0.66;
+    group.add(handle);
+    addBox(group, [0.5, 0.08, 0.5], [0, 0.6, 0], parchment);
   } else if (/drop post|road post|post|marker/.test(text)) {
     addBox(group, [0.16, 1.28, 0.16], [-0.22, 0.68, 0], wood);
     addBox(group, [0.82, 0.36, 0.1], [0.14, 1.12, 0], parchment);
@@ -428,27 +476,15 @@ export function createHarthmereQuestObjectMarkerMesh(
     /antihydrogen|antihelium|antiboron|exotic|antimatter|deposit/.test(text)
   ) {
     addCylinder(group, 0.32, 0.92, [0, 0.52, 0], 0x151927, 9);
-    addBox(
-      group,
-      [0.92, 0.16, 0.16],
-      [0, 0.82, 0],
-      accent
-    ).rotation.z = 0.72;
-    addBox(group, [0.92, 0.16, 0.16], [0, 0.44, 0], accent).rotation.z =
-      -0.72;
+    addBox(group, [0.92, 0.16, 0.16], [0, 0.82, 0], accent).rotation.z = 0.72;
+    addBox(group, [0.92, 0.16, 0.16], [0, 0.44, 0], accent).rotation.z = -0.72;
     addBox(group, [0.22, 0.22, 0.22], [0.28, 1.08, 0.18], 0xffffff);
     addBox(group, [0.16, 0.16, 0.16], [-0.26, 0.94, -0.2], accent);
     addStoneCluster(group, accent, marker.id.length);
   } else if (/helix|boss/.test(text)) {
     addCylinder(group, 0.34, 1.05, [0, 0.58, 0], 0x25304a, 9);
-    addBox(
-      group,
-      [0.92, 0.22, 0.22],
-      [0, 0.92, 0],
-      accent
-    ).rotation.z = 0.68;
-    addBox(group, [0.92, 0.22, 0.22], [0, 0.48, 0], accent).rotation.z =
-      -0.68;
+    addBox(group, [0.92, 0.22, 0.22], [0, 0.92, 0], accent).rotation.z = 0.68;
+    addBox(group, [0.92, 0.22, 0.22], [0, 0.48, 0], accent).rotation.z = -0.68;
     addBox(group, [0.28, 0.28, 0.28], [0.28, 1.22, 0.18], 0xffffff);
     addBox(group, [0.18, 0.18, 0.18], [0.4, 1.24, 0.32], 0xff7a7a);
     addStoneCluster(group, accent, marker.id.length);
@@ -530,14 +566,14 @@ export class HarthmereQuestObjectMarkersRenderer implements Renderer {
   // buried at the flat authored Y) while its terrain shard streams in.
   private readonly groundedFeetYByColumn = new Map<string, number>();
   private activeMarkerId: string | undefined;
+  private visibleSnapshotGroveMarkerIds = new Set<string>();
   private activeQuestStateRefreshSeconds = 0;
   private elapsedSeconds = 0;
 
   constructor(private readonly resources?: ClientResources) {
     this.root.name = `harthmere-quest-object-markers root ${HARTHMERE_QUEST_OBJECT_MARKER_VERSION}`;
     for (const marker of HARTHMERE_QUEST_OBJECT_MARKERS) {
-      const isVisibleWorldObject =
-        isVisibleHarthmereWorldObjectMarker(marker);
+      const isVisibleWorldObject = isVisibleHarthmereWorldObjectMarker(marker);
       const shouldRenderMesh =
         shouldRenderHarthmereQuestObjectMarkerMesh(marker);
       const mesh = shouldRenderMesh
@@ -574,7 +610,9 @@ export class HarthmereQuestObjectMarkersRenderer implements Renderer {
       return;
     }
     for (const [id, mesh] of this.markerMeshes) {
-      const isActive = id === this.activeMarkerId;
+      const isActive =
+        id === this.activeMarkerId ||
+        this.visibleSnapshotGroveMarkerIds.has(id);
       const isAlwaysVisible =
         mesh.userData.harthmereQuestObjectMarkerAlwaysVisible === true;
       // Process visible meshes, plus the active marker even if it was deferred
@@ -622,8 +660,7 @@ export class HarthmereQuestObjectMarkersRenderer implements Renderer {
     // Tests and local-dev quest events can push a known active marker directly.
     // The next render still polls local state, but this short grace period keeps
     // explicit updates from being immediately overwritten in non-browser tests.
-    this.activeQuestStateRefreshSeconds =
-      ACTIVE_QUEST_BEACON_REFRESH_SECONDS;
+    this.activeQuestStateRefreshSeconds = ACTIVE_QUEST_BEACON_REFRESH_SECONDS;
     const marker = HARTHMERE_QUEST_OBJECT_MARKERS.find(
       (candidate) => candidate.id === markerId
     );
@@ -632,6 +669,9 @@ export class HarthmereQuestObjectMarkersRenderer implements Renderer {
         markerId ? new Set([markerId]) : new Set()
       );
     }
+    this.visibleSnapshotGroveMarkerIds = markerId
+      ? new Set([markerId])
+      : new Set();
     this.applyActiveQuestMarkerId(markerId);
   }
 
@@ -643,8 +683,11 @@ export class HarthmereQuestObjectMarkersRenderer implements Renderer {
     this.applyLiveEntityHelperMarkerVisibility(
       activeLiveEntityHelperQuestMarkerIds(liveEntityHelperState)
     );
-    const snapshotGroveMarkerId = activeHarthmereQuestMarkerId(
-      readSnapshotGroveQuestState()
+    const snapshotGroveState = readSnapshotGroveQuestState();
+    const snapshotGroveMarkerId =
+      activeHarthmereQuestMarkerId(snapshotGroveState);
+    this.visibleSnapshotGroveMarkerIds = new Set(
+      activeHarthmereQuestMarkerIds(snapshotGroveState)
     );
     this.applyActiveQuestMarkerId(
       harthmereResolveWorldQuestBeaconMarkerId({
@@ -674,9 +717,6 @@ export class HarthmereQuestObjectMarkersRenderer implements Renderer {
   }
 
   private applyActiveQuestMarkerId(markerId: string | undefined): void {
-    if (this.activeMarkerId === markerId) {
-      return;
-    }
     this.activeMarkerId = markerId;
     for (const [id, beacon] of this.activeBeacons) {
       const active = id === markerId;
@@ -684,6 +724,7 @@ export class HarthmereQuestObjectMarkersRenderer implements Renderer {
       if (markerGroup) {
         markerGroup.visible =
           active ||
+          this.visibleSnapshotGroveMarkerIds.has(id) ||
           markerGroup.userData.harthmereQuestObjectMarkerAlwaysVisible === true;
       }
       beacon.visible = active;
@@ -710,13 +751,13 @@ export class HarthmereQuestObjectMarkersRenderer implements Renderer {
     (window as any).__harthmereQuestObjectMarkerDebug = {
       version: HARTHMERE_QUEST_OBJECT_MARKER_VERSION,
       activeMarkerId: this.activeMarkerId,
+      visibleSnapshotGroveMarkerIds: [...this.visibleSnapshotGroveMarkerIds],
       markers: () =>
         Array.from(this.markerMeshes.entries()).map(([id, mesh]) => ({
           id,
           label:
-            HARTHMERE_QUEST_OBJECT_MARKERS.find(
-              (marker) => marker.id === id
-            )?.label ?? id,
+            HARTHMERE_QUEST_OBJECT_MARKERS.find((marker) => marker.id === id)
+              ?.label ?? id,
           visible: mesh.visible,
           position: [mesh.position.x, mesh.position.y, mesh.position.z],
           dynamic: HARTHMERE_QUEST_OBJECT_MARKERS.find(
@@ -733,8 +774,7 @@ export class HarthmereQuestObjectMarkersRenderer implements Renderer {
     addToScenes(scenes, this.root);
     this.activeQuestStateRefreshSeconds -= dt;
     if (this.activeQuestStateRefreshSeconds <= 0) {
-      this.activeQuestStateRefreshSeconds =
-        ACTIVE_QUEST_BEACON_REFRESH_SECONDS;
+      this.activeQuestStateRefreshSeconds = ACTIVE_QUEST_BEACON_REFRESH_SECONDS;
       this.refreshActiveQuestMarkerFromLocalState();
     }
     this.animateActiveBeacons(dt);

@@ -6,7 +6,13 @@ import type { BiomesId } from "@/shared/ids";
 import type { Vec2, Vec3 } from "@/shared/math/types";
 
 export const HARTHMERE_NATIVE_BANDIT_SEED_VERSION =
-  "harthmere-native-bandit-ecs-anima-v1" as const;
+  "harthmere-native-bandit-ecs-anima-v2-ch1-id-remap" as const;
+
+// 10500..10599 belongs to Chapter 1. A late bandit pass accidentally reused
+// 10501..10505 and let Anima turn Lou, Cressa, Rook, Sorrel, and Iris back into
+// ambient bandits after the Chapter 1 seeder wrote them. Road groups end at
+// 10868, so 10901..10905 is the next clear authored band.
+export const HARTHMERE_NATIVE_BANDIT_REMAP_FIRST_OFFSET = 10901;
 
 export type HarthmereBanditRole =
   | "scout"
@@ -150,7 +156,7 @@ const AUTHORED_BANDIT_SEEDS: HarthmereBanditProductionSeed[] = [
     orientation: [0, Math.PI],
   }),
   banditSeed({
-    idOffset: 10501,
+    idOffset: HARTHMERE_NATIVE_BANDIT_REMAP_FIRST_OFFSET,
     seedId: "bandit-connector-road-scout",
     displayName: "Connector Road Bandit Scout",
     areaId: "snapshot_edge_road",
@@ -159,7 +165,7 @@ const AUTHORED_BANDIT_SEEDS: HarthmereBanditProductionSeed[] = [
     orientation: [0, -Math.PI / 2],
   }),
   banditSeed({
-    idOffset: 10502,
+    idOffset: HARTHMERE_NATIVE_BANDIT_REMAP_FIRST_OFFSET + 1,
     seedId: "bandit-watchtower-ridge-scout",
     displayName: "Watchtower Ridge Scout",
     areaId: "northwest_watchtower_ridge",
@@ -168,7 +174,7 @@ const AUTHORED_BANDIT_SEEDS: HarthmereBanditProductionSeed[] = [
     orientation: [0, -Math.PI / 2],
   }),
   banditSeed({
-    idOffset: 10503,
+    idOffset: HARTHMERE_NATIVE_BANDIT_REMAP_FIRST_OFFSET + 2,
     seedId: "bandit-watchtower-ridge-bruiser",
     displayName: "Watchtower Ridge Bruiser",
     areaId: "northwest_watchtower_ridge",
@@ -177,7 +183,7 @@ const AUTHORED_BANDIT_SEEDS: HarthmereBanditProductionSeed[] = [
     orientation: [0, Math.PI / 2],
   }),
   banditSeed({
-    idOffset: 10504,
+    idOffset: HARTHMERE_NATIVE_BANDIT_REMAP_FIRST_OFFSET + 3,
     seedId: "bandit-briarfen-road-thief",
     displayName: "Briarfen Road Thief",
     areaId: "east_briarfen_wood",
@@ -186,7 +192,7 @@ const AUTHORED_BANDIT_SEEDS: HarthmereBanditProductionSeed[] = [
     orientation: [0, Math.PI / 2],
   }),
   banditSeed({
-    idOffset: 10505,
+    idOffset: HARTHMERE_NATIVE_BANDIT_REMAP_FIRST_OFFSET + 4,
     seedId: "bandit-guard-yard-prisoner",
     displayName: "Captured Bandit Prisoner",
     areaId: "guard_yard_prisoner_cage",

@@ -1751,12 +1751,41 @@ audit_production_authored_content() {
     done
     prod_redis_cli --raw EXISTS "${keys[@]}" 2>/dev/null | tr -d '\r' || true
   }
-  local grove_npcs muckers livestock owners customers stations robots
+  count_present_live_seed_family() {
+    local family="$1" id present
+    local keys=()
+    while IFS= read -r id; do
+      [ -n "$id" ] && keys+=("b:$id")
+    done < <(
+      IS_SERVER=1 HARTHMERE_AUDIT_SEED_FAMILY="$family" \
+        node -r ts-node/register/transpile-only -r tsconfig-paths/register - <<'NODE'
+const {
+  harthmereGroundedLivestockSeedsInTerritory,
+  harthmereGroundedMuckMonsterSeedsInTerritory,
+} = require("./src/shared/harthmere/live_entity_production_seed");
+const family = process.env.HARTHMERE_AUDIT_SEED_FAMILY;
+const seeds =
+  family === "muckers"
+    ? harthmereGroundedMuckMonsterSeedsInTerritory()
+    : harthmereGroundedLivestockSeedsInTerritory();
+for (const seed of seeds) console.log(Number(seed.entityId));
+NODE
+    )
+    if [ "${#keys[@]}" -eq 0 ]; then
+      printf '0 0\n'
+      return
+    fi
+    present="$(prod_redis_cli --raw EXISTS "${keys[@]}" 2>/dev/null | tr -d '\r' | tr -d '[:space:]' || true)"
+    printf '%s %s\n' "${present:-0}" "${#keys[@]}"
+  }
+  local grove_npcs muckers expected_muckers livestock expected_livestock owners customers stations robots
   grove_npcs="$(count_present_id_range 9301 9320 | tr -d '[:space:]')"
-  muckers="$(count_present_id_range 9451 9550 | tr -d '[:space:]')"
-  # Wildlife (cows/sheep/rabbits): 24 animals, offsets 9551..9574. MUST stay
-  # clear of business owners (9601-9619) — an earlier overlap dropped 19 of them.
-  livestock="$(count_present_id_range 9551 9574 | tr -d '[:space:]')"
+  # Derive every active Mucker/Hex and animal id from the canonical grounded
+  # seed manifest. Fixed legacy ranges missed late open-Wilds groups and the
+  # Mossy hunt, so an audit could pass while new or relocated creatures were
+  # absent from production.
+  read -r muckers expected_muckers < <(count_present_live_seed_family muckers)
+  read -r livestock expected_livestock < <(count_present_live_seed_family livestock)
   owners="$(count_present_id_range 9601 9619 | tr -d '[:space:]')"
   # Business crafting stations: one per business, 19 total, offsets 9651..9669
   # (clear of owners 9601-9619 and customers 9701+).
@@ -1764,11 +1793,11 @@ audit_production_authored_content() {
   # Business customers: 19 businesses x 3 patrons = 57, offsets 9701..9757.
   customers="$(count_present_id_range 9701 9757 | tr -d '[:space:]')"
   robots="$(count_present_id_range 9401 9420 | tr -d '[:space:]')"
-  log "Production authored-content audit: groveNpcs=${grove_npcs} muckers=${muckers}/100 wildlife=${livestock}/24 businessOwners=${owners}/19 businessCraftingStations=${stations}/19 businessCustomers=${customers}/57 robots=${robots}"
+  log "Production authored-content audit: groveNpcs=${grove_npcs} muckers=${muckers}/${expected_muckers} wildlife=${livestock}/${expected_livestock} businessOwners=${owners}/19 businessCraftingStations=${stations}/19 businessCustomers=${customers}/57 robots=${robots}"
 
   local failed=0
-  if [ "${livestock:-0}" -lt 24 ]; then
-    echo "ERROR wildlife (cows/sheep/rabbits) missing in production: ${livestock}/24 — check the 9551-9574 id band does not collide." >&2
+  if [ "${livestock:-0}" -lt "${expected_livestock:-0}" ]; then
+    echo "ERROR wildlife (cows/sheep/rabbits) missing in production: ${livestock}/${expected_livestock}." >&2
     failed=1
   fi
   if [ "${owners:-0}" -lt 19 ]; then
@@ -1783,8 +1812,8 @@ audit_production_authored_content() {
     echo "ERROR business customer NPCs missing in production: ${customers}/57 — the reconciler did not materialize them." >&2
     failed=1
   fi
-  if [ "${muckers:-0}" -lt 100 ]; then
-    echo "ERROR muck monsters missing in production: ${muckers}/100." >&2
+  if [ "${muckers:-0}" -lt "${expected_muckers:-0}" ]; then
+    echo "ERROR muck monsters missing in production: ${muckers}/${expected_muckers}." >&2
     failed=1
   fi
   if [ "${grove_npcs:-0}" -lt 1 ]; then
@@ -3093,6 +3122,10 @@ smoke_local_image() {
     # effect on the next local image run after the updated launcher is built.
     optional_env_args+=(
       -e "GLITCH_FOCUSED_NATIVE_E2E_STACK=${GLITCH_FOCUSED_NATIVE_E2E_STACK:-1}"
+      -e "GLITCH_ASSET_EXPORT_WORKERS=${GLITCH_ASSET_EXPORT_WORKERS:-1}"
+      -e "GLITCH_ANIMA_MAX_OLD_SPACE_MB=${GLITCH_ANIMA_MAX_OLD_SPACE_MB:-1536}"
+      -e "GLITCH_GAIA_WASM_MEMORY_MB=${GLITCH_GAIA_WASM_MEMORY_MB:-3072}"
+      -e "GLITCH_WEB_MAX_OLD_SPACE_MB=${GLITCH_WEB_MAX_OLD_SPACE_MB:-4096}"
     )
   fi
   fetch_title_token_if_needed

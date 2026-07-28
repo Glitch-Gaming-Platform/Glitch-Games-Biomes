@@ -29,6 +29,30 @@ function cleanObjectiveText(value: unknown): string | undefined {
   return text.length > 0 ? text : undefined;
 }
 
+/**
+ * Keep recipe guidance semantic rather than quest-id-specific. Native Bikkie,
+ * jobs-board, and future authored quests all feed objective prose into this
+ * HUD, so an imperative creation verb is the stable common contract. Avoid
+ * broad words such as "get" or "obtain": those objectives may point to a
+ * crate, vendor, or drop and should not incorrectly send the player to R.
+ */
+export function objectiveRequiresRecipesForTest(objective: unknown) {
+  const text = cleanObjectiveText(objective)?.toLowerCase();
+  return Boolean(
+    text &&
+      /\b(?:handcraft|craft|mix|brew|cook|bake|smelt|forge|assemble)\b/.test(
+        text
+      )
+  );
+}
+
+export function shouldShowRecipeObjectiveHintForTest(
+  objective: unknown,
+  isOpen: boolean
+) {
+  return !isOpen && objectiveRequiresRecipesForTest(objective);
+}
+
 function questToolSourceMatchesActivePin(
   quest: MapTrackableQuest,
   pin: BiomesUIActiveMapPin | undefined
@@ -220,6 +244,11 @@ export const CurrentQuestObjectiveHUD: React.FunctionComponent<{
     return null;
   }
 
+  const showRecipeHint = shouldShowRecipeObjectiveHintForTest(
+    objective,
+    isOpen
+  );
+
   return (
     <aside
       className="biomes-ui-current-objective-hud"
@@ -228,6 +257,15 @@ export const CurrentQuestObjectiveHUD: React.FunctionComponent<{
     >
       <div className="biomes-ui-current-objective-hud__label">Objective</div>
       <div className="biomes-ui-current-objective-hud__text">{objective}</div>
+      {showRecipeHint && (
+        <div
+          className="biomes-ui-current-objective-hud__recipe-hint"
+          data-biomes-recipe-objective-hint="visible"
+        >
+          <span className="biomes-ui-current-objective-hud__recipe-key">R</span>
+          Press R to open Recipes and create the required item.
+        </div>
+      )}
     </aside>
   );
 };

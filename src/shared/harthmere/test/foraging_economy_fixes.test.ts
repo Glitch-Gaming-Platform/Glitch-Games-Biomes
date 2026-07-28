@@ -185,11 +185,10 @@ describe("foraging economy fixes (F-A/F-B/F-C/F-D/F-E)", () => {
     assert.equal(third.state.inventory.items.seed_wheat, 2);
   });
 
-  // F-D: forage/hunt respect the carry-weight cap other actions enforce.
-  it("F-D: forage is rejected when it would exceed the carry-weight cap", () => {
+  it("allows forage rewards while overweight and still records depletion", () => {
     const state = defaultHarthmereLiveModeBackendState(ACTOR, NOW);
-    // Preload the inventory to the carry-weight limit (25 lbs) with heavy tools
-    // (5 lbs each): the next forage would push it over.
+    // Five heavy tools reach the soft encumbrance threshold; the forage reward
+    // must still be collected because weight only changes stamina drain.
     state.inventory.items.harthmere_iron_longsword = 5;
 
     const result = reduceHarthmereLiveModeBackendState(
@@ -201,17 +200,10 @@ describe("foraging economy fixes (F-A/F-B/F-C/F-D/F-E)", () => {
       }),
       NOW
     );
-    assert.ok(
-      result.summary.warnings.some((w) => w.includes("carry")),
-      `expected carry-weight rejection, got ${JSON.stringify(
-        result.summary.warnings
-      )}`
-    );
-    // The bush is NOT depleted when the grant is weight-rejected.
-    assert.equal(result.state.inventory.items.wild_berries, undefined);
-    const afterReject = reduceHarthmereLiveModeBackendState(
-      // drop the heavy load so the forage can now succeed
-      { ...result.state, inventory: { ...result.state.inventory, items: {} } },
+    assert.deepEqual(result.summary.warnings, []);
+    assert.equal(result.state.inventory.items.wild_berries, 1);
+    const duplicate = reduceHarthmereLiveModeBackendState(
+      result.state,
       farmEnv({
         operation: "forage_food",
         spawnId: "forage_bush_heavy",
@@ -219,14 +211,10 @@ describe("foraging economy fixes (F-A/F-B/F-C/F-D/F-E)", () => {
       }),
       NOW + 1_000
     );
-    assert.equal(
-      afterReject.summary.warnings.length,
-      0,
-      `bush should not have been depleted by the weight-rejected forage, got ${JSON.stringify(
-        afterReject.summary.warnings
-      )}`
+    assert.ok(
+      duplicate.summary.warnings.includes("forage_rejected:spawn_depleted"),
+      JSON.stringify(duplicate.summary.warnings)
     );
-    assert.equal(afterReject.state.inventory.items.wild_berries, 1);
   });
 
   // F-B: the old deployment switch is retained only for compatibility and can

@@ -1,6 +1,9 @@
 /// <reference types="mocha" />
 import assert from "assert";
-import { biomesUIActiveMapPinNavigationAidKindForTest } from "@/client/components/biomes_ui/adapters/mapPinnedDestination";
+import {
+  automaticQuestDestinationMarkerForTest,
+  biomesUIActiveMapPinNavigationAidKindForTest,
+} from "@/client/components/biomes_ui/adapters/mapPinnedDestination";
 import { biomesUIActiveMiniMapPinDistanceLabelForTest } from "@/client/components/map/markers/biomes_ui_active_minimap_pin";
 import {
   isQuestNavigationAidKind,
@@ -24,6 +27,57 @@ function navAid(kind: any): NavigationAid {
 }
 
 describe("active map pin navigation aid", () => {
+  const mossyMarker = {
+    id: "native_quest:817959262145055:4794743509650569",
+    label: "Defeat 0/6 Mossy Mucklings with your Whacker",
+    kind: "objective",
+    worldPosition: [531, 68, -33] as [number, number, number],
+  };
+  const mossyQuest = {
+    questId: "817959262145055",
+    status: "active",
+    firstMarkerId: mossyMarker.id,
+  };
+
+  it("automatically pins a newly active native story destination", () => {
+    assert.deepEqual(
+      automaticQuestDestinationMarkerForTest({
+        quest: mossyQuest,
+        markers: [mossyMarker],
+      }),
+      mossyMarker
+    );
+  });
+
+  it("advances an old quest-step pin but preserves a valid manual destination", () => {
+    assert.deepEqual(
+      automaticQuestDestinationMarkerForTest({
+        existingPin: {
+          markerId: "native_quest:817959262145055:previous-step",
+        },
+        quest: mossyQuest,
+        markers: [mossyMarker],
+      }),
+      mossyMarker
+    );
+    assert.equal(
+      automaticQuestDestinationMarkerForTest({
+        existingPin: { markerId: "player-chosen-market" },
+        quest: mossyQuest,
+        markers: [
+          mossyMarker,
+          {
+            id: "player-chosen-market",
+            label: "Market",
+            kind: "store",
+            worldPosition: [600, 54, -220],
+          },
+        ],
+      }),
+      undefined
+    );
+  });
+
   it("maps any active map pin to the non-quest 'map_pin' kind", () => {
     assert.strictEqual(
       biomesUIActiveMapPinNavigationAidKindForTest("resource"),

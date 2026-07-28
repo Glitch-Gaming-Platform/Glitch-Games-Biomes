@@ -10,6 +10,7 @@ import {
   harthmereBibleGiverIdForNpcLabel,
   harthmereBibleHiddenQuestInteractionModel,
   harthmereBibleHiddenQuestToTrigger,
+  harthmereBibleQuestInteractionModel,
   harthmereBibleOperationPayloadForAction,
   harthmereBibleQuestSnapshotFromResponse,
   harthmereThaedrynEncounterModel,
@@ -88,6 +89,49 @@ describe("bible quest client adapter", () => {
     assert.equal(calls, 1, "fresh snapshots should be shared across hooks");
   });
 
+  it("does not let an invalidated slow read restore stale giver actions", async () => {
+    const releases: Array<() => void> = [];
+    const snapshots = [
+      { ...emptySnapshot(), actorId: "stale-player" },
+      { ...emptySnapshot(), actorId: "current-player" },
+    ];
+    let calls = 0;
+    const fetchImpl = (async () => {
+      const index = calls++;
+      await new Promise<void>((resolve) => releases.push(resolve));
+      return new Response(
+        JSON.stringify({ ok: true, questState: snapshots[index] }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
+    }) as typeof fetch;
+
+    const stale = readHarthmereBibleQuestSnapshot({
+      fetchImpl,
+      locationSearch: "?install_id=stale-generation-test",
+      nowMs: 1_000,
+    });
+    resetHarthmereBibleQuestReadCacheForTest();
+    const current = readHarthmereBibleQuestSnapshot({
+      fetchImpl,
+      locationSearch: "?install_id=stale-generation-test",
+      nowMs: 2_000,
+      maxAgeMs: 0,
+    });
+
+    while (releases.length < 2) {
+      await new Promise<void>((resolve) => setImmediate(resolve));
+    }
+    releases[1]();
+    assert.equal((await current).actorId, "current-player");
+    releases[0]();
+    assert.equal(
+      (await stale).actorId,
+      "current-player",
+      "the older hook must converge on the current cache generation"
+    );
+    assert.equal(calls, 2);
+  });
+
   it("matches rendered NPC labels to catalog givers (compendium names)", () => {
     assert.equal(
       harthmereBibleGiverIdForNpcLabel("Reeve Caldus Merrow"),
@@ -97,6 +141,11 @@ describe("bible quest client adapter", () => {
     assert.equal(
       harthmereBibleGiverIdForNpcLabel("Father Aldren Mell — Chapel of Bells"),
       "father_aldren_mell"
+    );
+    assert.equal(
+      harthmereBibleGiverIdForNpcLabel("Father Aldren"),
+      "father_aldren_mell",
+      "the shorter snapshot label must resolve through the catalog giver name"
     );
     assert.equal(
       harthmereBibleGiverIdForNpcLabel("Random Villager"),
@@ -115,6 +164,24 @@ describe("bible quest client adapter", () => {
         harthmereBibleGiverIdForNpcLabel(giverId.replace(/_/g, " ")),
         giverId,
         `giver ${giverId} must be resolvable from its id spelling`
+      );
+    }
+  });
+
+  it("matches every authored catalog giver name", () => {
+    const bibleGiverIds = new Set(Object.keys(harthmereBibleQuestsByGiver()));
+    for (const quest of HARTHMERE_QUEST_CATALOG) {
+      if (
+        !quest.giverId ||
+        !quest.giverName ||
+        !bibleGiverIds.has(quest.giverId)
+      ) {
+        continue;
+      }
+      assert.equal(
+        harthmereBibleGiverIdForNpcLabel(quest.giverName),
+        quest.giverId,
+        `${quest.id} must resolve its rendered giver name`
       );
     }
   });
@@ -192,14 +259,16 @@ describe("bible quest client adapter", () => {
         ])
       ),
     } as any;
-    const combatModel = harthmereBibleDialogModelForGiver({
-      giverId: combatQuest.giverId,
+    delete snapshot.bible.runtime[hidden.id];
+    const combatModel = harthmereBibleQuestInteractionModel({
       snapshot,
-      playerLevel: combatQuest.levelBand.min,
+      playerPosition: getHarthmereQuestResolvedWaypoint(
+        combatQuest.id,
+        combatQuest.objectives[1]
+      ),
     });
-    const combatAction = combatModel.actions.find(
-      (action) => action.objectiveId === combatQuest.objectives[1].id
-    );
+    const combatAction = combatModel?.action;
+    assert.equal(combatAction?.objectiveId, combatQuest.objectives[1].id);
     assert.equal(combatAction?.combatResult, "encounter_cleared");
     assert.equal(
       harthmereBibleOperationPayloadForAction(combatAction as any)
@@ -208,7 +277,7 @@ describe("bible quest client adapter", () => {
     );
   });
 
-  it("shows the current objective while active and turn-in when ready", () => {
+  it("moves active objectives to the world panel and keeps turn-in at the giver", () => {
     const snapshot = emptySnapshot();
     const quest = (HARTHMERE_QUEST_CATALOG as readonly any[]).find(
       (q) => q.id === "bellbound_q01_cracks_in_bridge"
@@ -229,9 +298,24 @@ describe("bible quest client adapter", () => {
       snapshot,
       playerLevel: 8,
     });
-    const objectiveAction = model.actions.find((a) => a.kind === "objective");
-    assert.ok(objectiveAction);
-    assert.equal(objectiveAction!.objectiveId, quest.objectives[0].id);
+    assert.equal(
+      model.actions.some((action) => action.kind === "objective"),
+      false,
+      "giver dialogue must not expose a remote world objective action"
+    );
+    const worldInteraction = harthmereBibleQuestInteractionModel({
+      snapshot,
+      playerPosition: getHarthmereQuestResolvedWaypoint(
+        quest.id,
+        quest.objectives[0]
+      ),
+    });
+    assert.equal(worldInteraction?.questId, quest.id);
+    assert.equal(worldInteraction?.nearObjective, true);
+    assert.equal(
+      worldInteraction?.action?.objectiveId,
+      quest.objectives[0].id
+    );
     // Ready: all objectives complete -> turn-in.
     snapshot.bible.runtime[quest.id].state = "ready_to_complete" as any;
     for (const key of Object.keys(
@@ -245,6 +329,17 @@ describe("bible quest client adapter", () => {
       playerLevel: 8,
     });
     assert.ok(model.actions.some((a) => a.kind === "turn_in"));
+    assert.equal(
+      harthmereBibleQuestInteractionModel({
+        snapshot,
+        playerPosition: getHarthmereQuestResolvedWaypoint(
+          quest.id,
+          quest.objectives[0]
+        ),
+      }),
+      undefined,
+      "non-hidden ready quests return to their giver for completion"
+    );
   });
 
   it("journal trackables include only bible-sourced active quests", () => {

@@ -75,6 +75,7 @@ import {
   type HarthmereHoeQuestState,
 } from "@/client/components/biomes_ui/adapters/farmingMapQuest";
 import type { NativeFarmingInterfaceModel } from "@/client/components/biomes_ui/adapters/nativeFarmingInterfaceAdapter";
+import { snapshotGroveObjectiveMarkerIdForProgress } from "@/shared/harthmere/snapshot_grove_trigger_contract";
 
 function readSnapshotGroveApi(): any | undefined {
   if (typeof window === "undefined") return undefined;
@@ -161,6 +162,29 @@ function liveModeActiveQuestObjectiveIndex(
     return Math.max(0, Math.floor(record.progress) - 1);
   }
   return undefined;
+}
+
+function localSnapshotGroveObjectiveIndex(state: any, questId: string) {
+  const indexed = Number(state?.objectiveIndexByQuestId?.[questId]);
+  if (Number.isFinite(indexed)) return Math.max(0, Math.trunc(indexed));
+  const legacySelectedQuestId =
+    typeof state?.activeQuestId === "string"
+      ? state.activeQuestId
+      : questIds(state?.acceptedQuestIds)[0];
+  return legacySelectedQuestId === questId
+    ? Math.max(0, Math.trunc(Number(state?.activeObjectiveIndex) || 0))
+    : undefined;
+}
+
+function localSnapshotGroveObjectiveCompletedCount(
+  state: any,
+  questId: string,
+  objectiveIndex: number
+) {
+  const progress = state?.objectiveProgressByQuestId?.[questId];
+  return Number(progress?.objectiveIndex) === objectiveIndex
+    ? Math.max(0, Math.trunc(Number(progress?.count) || 0))
+    : 0;
 }
 
 function humanizeQuestKindLabel(value: unknown) {
@@ -449,29 +473,75 @@ export function buildBiomesUIMapAdapter(
         nativeQuestBundles,
         resolveNativeQuestNavAidPosition
       );
-      const activeMarkerIds: string[] = Array.isArray(activeQuest?.markerIds)
-        ? activeQuest.markerIds
-        : [];
+      const completedQuestIds = new Set([
+        ...questIds(state?.completedQuestIds),
+        ...liveModeCompletedQuestIds(liveQuestState),
+      ]);
+      const acceptedQuestIds = new Set([
+        ...questIds(state?.acceptedQuestIds),
+        ...liveModeActiveQuestIds(liveQuestState),
+      ]);
+      const activeMarkerIds = quests.flatMap((quest: any) => {
+        if (
+          !quest?.id ||
+          completedQuestIds.has(String(quest.id)) ||
+          !acceptedQuestIds.has(String(quest.id))
+        ) {
+          return [];
+        }
+        const localObjectiveIndex = localSnapshotGroveObjectiveIndex(
+          state,
+          String(quest.id)
+        );
+        const liveObjectiveIndex = liveModeActiveQuestObjectiveIndex(
+          liveQuestState,
+          String(quest.id)
+        );
+        const objectiveIndex = Math.max(
+          localObjectiveIndex ?? 0,
+          liveObjectiveIndex ?? 0
+        );
+        const markerId = snapshotGroveObjectiveMarkerIdForProgress(
+          quest,
+          objectiveIndex,
+          localSnapshotGroveObjectiveCompletedCount(
+            state,
+            String(quest.id),
+            objectiveIndex
+          )
+        );
+        return markerId ? [markerId] : [];
+      });
       const normalizedActiveMarkerIds = activeMarkerIds.map(normalizeMarkerId);
       const liveObjectiveIndex = activeQuest?.id
         ? liveModeActiveQuestObjectiveIndex(liveQuestState, activeQuest.id)
         : undefined;
-      const localObjectiveIndex = Number(state?.activeObjectiveIndex ?? 0);
+      const localObjectiveIndex = activeQuest?.id
+        ? localSnapshotGroveObjectiveIndex(state, String(activeQuest.id))
+        : undefined;
       const activeObjectiveIndex =
-        state?.activeQuestId === activeQuest?.id
-          ? localObjectiveIndex
-          : liveObjectiveIndex ?? localObjectiveIndex;
-      const activeObjectiveMarker =
-        activeMarkerIds[
-          Math.max(
-            0,
-            Math.min(activeMarkerIds.length - 1, activeObjectiveIndex)
+        localObjectiveIndex ?? liveObjectiveIndex ?? 0;
+      const activeObjectiveMarker = activeQuest
+        ? snapshotGroveObjectiveMarkerIdForProgress(
+            activeQuest,
+            Math.max(0, activeObjectiveIndex),
+            localSnapshotGroveObjectiveCompletedCount(
+              state,
+              String(activeQuest.id),
+              Math.max(0, activeObjectiveIndex)
+            )
           )
-        ];
+        : undefined;
       const normalizedActiveObjectiveMarker = activeObjectiveMarker
         ? normalizeMarkerId(activeObjectiveMarker)
         : undefined;
-      const visibleLandmarks = VisibleMapLandmarks(landmarks);
+      const activeMarkerSet = new Set(activeMarkerIds);
+      const visibleLandmarks = landmarks.filter(
+        (landmark: any) =>
+          landmark &&
+          (landmark.visibleOnWorldMap !== false ||
+            activeMarkerSet.has(String(landmark.id)))
+      );
       // Native position navigation aids participate in the same bounds as
       // authored landmarks. Otherwise an objective outside the Grove's local
       // bounds is clamped to the map edge and appears to point at the wrong
@@ -656,11 +726,11 @@ export function buildBiomesUIMapAdapter(
       const liveObjectiveIndex = activeQuest?.id
         ? liveModeActiveQuestObjectiveIndex(liveQuestState, activeQuest.id)
         : undefined;
-      const localObjectiveIndex = Number(state?.activeObjectiveIndex ?? 0);
+      const localObjectiveIndex = activeQuest?.id
+        ? localSnapshotGroveObjectiveIndex(state, String(activeQuest.id))
+        : undefined;
       const activeObjectiveIndex =
-        state?.activeQuestId === activeQuest?.id
-          ? localObjectiveIndex
-          : liveObjectiveIndex ?? localObjectiveIndex;
+        localObjectiveIndex ?? liveObjectiveIndex ?? 0;
       const authoredSteps = activeQuest
         ? objectives.map((objective: string, index: number) => {
             return {
@@ -747,13 +817,16 @@ export function buildBiomesUIMapAdapter(
             liveQuestState,
             String(quest.id)
           );
-          const localObjectiveIndex = Number(state?.activeObjectiveIndex ?? 0);
-          const rawObjectiveIndex =
-            state?.activeQuestId === quest.id
-              ? localObjectiveIndex
-              : liveObjectiveIndex ?? localObjectiveIndex;
+          const localObjectiveIndex = localSnapshotGroveObjectiveIndex(
+            state,
+            String(quest.id)
+          );
+          const rawObjectiveIndex = Math.max(
+            localObjectiveIndex ?? 0,
+            liveObjectiveIndex ?? 0
+          );
           const objectiveIndex =
-            status === "active" && quest.id === activeQuestId
+            status === "active"
               ? Math.max(
                   0,
                   Math.min(
@@ -771,7 +844,15 @@ export function buildBiomesUIMapAdapter(
               Array.isArray(quest.markerIds) && quest.markerIds.length
                 ? normalizeMarkerId(
                     String(
-                      quest.markerIds[objectiveIndex] ?? quest.markerIds[0]
+                      snapshotGroveObjectiveMarkerIdForProgress(
+                        quest,
+                        objectiveIndex,
+                        localSnapshotGroveObjectiveCompletedCount(
+                          state,
+                          String(quest.id),
+                          objectiveIndex
+                        )
+                      ) ?? quest.markerIds[0]
                     )
                   )
                 : undefined,
@@ -828,13 +909,14 @@ export function buildBiomesUIMapAdapter(
         // as "available" floods a brand-new player's journal. Available quests are
         // discovered in-world (NPCs/markers), not pre-listed in the journal.
         ...authoredQuests.filter(
-          (quest: { status?: string }) => quest.status !== "available"
+          (quest: { status?: string }) => quest.status === "active"
         ),
       ]);
     },
     getMainQuestSelection: () => readBiomesUIMainQuestSelection(),
     setMainQuest: (quest: any) => {
       const selection = setBiomesUIMainQuestFromTrackableQuest(quest);
+      readSnapshotGroveApi()?.selectQuest?.(selection.questId);
       // Keep the world beacon on the same quest the journal now calls "main".
       nativeQuestBridge?.trackQuest?.(selection.questId);
       return selection;

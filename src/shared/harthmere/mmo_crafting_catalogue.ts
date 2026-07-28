@@ -16,6 +16,11 @@ import {
 import { ensureHarthmereSpecializedBlocksCatalogue } from "./mmo_specialized_blocks_catalogue";
 import { ensureHarthmerePlaceableDecorCatalogue } from "./mmo_placeable_decor_catalogue";
 import { ensureHarthmereBusinessStorefrontGoods } from "./harthmere_business_storefront_goods";
+import { HARTHMERE_BUSINESS_TOOL_SHOP_NEW_TOOL_DEFS } from "./harthmere_business_tool_shop";
+import {
+  SNAPSHOT_GROVE_TUTORIAL_ITEM_IDS,
+  SNAPSHOT_GROVE_TUTORIAL_RECIPE_IDS,
+} from "./snapshot_grove_trigger_contract";
 
 export const HARTHMERE_CRAFTING_STATIONS = {
   anglersTable: "65464304897922",
@@ -664,6 +669,56 @@ function exoticItemMetadata(
 const ITEMS: HarthmereItemDefinition[] = [
   ...STATION_ITEMS,
   ...HOME_DECORATION_ITEMS,
+  item(SNAPSHOT_GROVE_TUTORIAL_ITEM_IDS.roadTorch, "Grove Road Torch", {
+    maxStackSize: 20,
+    baseValue: 6,
+    isCraftingMaterial: false,
+    category: "tool",
+    equipmentSlots: ["main_hand"],
+    description: "A small Grove practice torch made at the fountain workbench.",
+  }),
+  item(
+    SNAPSHOT_GROVE_TUTORIAL_ITEM_IDS.festivalSkewer,
+    "Carlo's Festival Skewer",
+    {
+      maxStackSize: 20,
+      baseValue: 8,
+      isCraftingMaterial: false,
+      category: "food",
+      description: "A hot festival skewer prepared for Carlo's cookpot.",
+    }
+  ),
+  item(
+    SNAPSHOT_GROVE_TUTORIAL_ITEM_IDS.festivalSkewerIngredients,
+    "Festival Skewer Ingredients",
+    {
+      maxStackSize: 20,
+      baseValue: 3,
+      isQuestItem: true,
+      tradeable: false,
+      description: "The marked ingredients for Carlo's Grove cooking lesson.",
+    }
+  ),
+  item(SNAPSHOT_GROVE_TUTORIAL_ITEM_IDS.warmLoafTray, "Warm Loaf Tray", {
+    maxStackSize: 1,
+    baseValue: 5,
+    isQuestItem: true,
+    tradeable: false,
+  }),
+  item(SNAPSHOT_GROVE_TUTORIAL_ITEM_IDS.heavyParcel, "Kit's Heavy Parcel", {
+    maxStackSize: 1,
+    baseValue: 5,
+    isQuestItem: true,
+    tradeable: false,
+    weight: 20,
+  }),
+  item(SNAPSHOT_GROVE_TUTORIAL_ITEM_IDS.boltCrate, "Luis's Bolt Crate", {
+    maxStackSize: 1,
+    baseValue: 5,
+    isQuestItem: true,
+    tradeable: false,
+    weight: 12,
+  }),
   item("iron_ore", "Iron Ore", { baseValue: 5 }),
   item("coal", "Coal", { baseValue: 3 }),
   item("iron_ingot", "Iron Ingot", { baseValue: 12 }),
@@ -1520,6 +1575,47 @@ const ITEMS: HarthmereItemDefinition[] = [
 ];
 
 const RECIPES: HarthmereCraftingRecipe[] = [
+  {
+    recipeId: SNAPSHOT_GROVE_TUTORIAL_RECIPE_IDS.roadTorch,
+    outputItemId: SNAPSHOT_GROVE_TUTORIAL_ITEM_IDS.roadTorch,
+    outputCount: 1,
+    inputs: [{ itemId: "softwood_log", count: 2 }],
+    requiredLevel: 1,
+    requiredSkillId: "carpentry",
+    requiredSkillLevel: 1,
+    professionId: "carpentry",
+    requiredProfessionLevel: 1,
+    requiredStationId: HARTHMERE_CRAFTING_STATIONS.workbench,
+    craftingTimeMs: 750,
+    xpReward: 8,
+    recipeTier: 1,
+    materialTier: 1,
+    qualityFloor: 40,
+    workOrderTag: "grove_tutorial",
+  },
+  {
+    recipeId: SNAPSHOT_GROVE_TUTORIAL_RECIPE_IDS.festivalSkewer,
+    outputItemId: SNAPSHOT_GROVE_TUTORIAL_ITEM_IDS.festivalSkewer,
+    outputCount: 1,
+    inputs: [
+      {
+        itemId: SNAPSHOT_GROVE_TUTORIAL_ITEM_IDS.festivalSkewerIngredients,
+        count: 1,
+      },
+    ],
+    requiredLevel: 1,
+    requiredSkillId: "cooking",
+    requiredSkillLevel: 1,
+    professionId: "cooking",
+    requiredProfessionLevel: 1,
+    requiredStationId: HARTHMERE_CRAFTING_STATIONS.workbench,
+    craftingTimeMs: 900,
+    xpReward: 10,
+    recipeTier: 1,
+    materialTier: 1,
+    qualityFloor: 40,
+    workOrderTag: "grove_tutorial",
+  },
   {
     recipeId: HARTHMERE_CRAFTING_STATION_RECIPE_IDS.workbench,
     outputItemId: HARTHMERE_CRAFTING_STATIONS.workbench,
@@ -2684,6 +2780,25 @@ export function ensureHarthmereProductionCraftingCatalogue() {
             ? { cleanupPower: tool.cleanupPower }
             : {}),
         },
+      })
+    );
+  }
+  // Business-exclusive tools used to exist only in the browser's display
+  // table. A shop could therefore deduct local gold and then ask the native
+  // server to grant an item it did not know. Register the same definitions in
+  // the authoritative catalogue so every business tool can cross the signed
+  // Native ECS inventory transaction boundary.
+  for (const tool of HARTHMERE_BUSINESS_TOOL_SHOP_NEW_TOOL_DEFS) {
+    registerHarthmereItemDefinition(
+      item(tool.itemId, tool.name, {
+        maxStackSize: 1,
+        baseValue: tool.baseValue,
+        binding: "none",
+        isCraftingMaterial: false,
+        category: "tool",
+        durabilityMax: 60,
+        equipmentSlots: ["main_hand"],
+        description: tool.description,
       })
     );
   }

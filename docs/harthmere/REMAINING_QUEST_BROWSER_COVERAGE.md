@@ -301,10 +301,12 @@ changed.
 ## Batch execution
 
 Run one catalog at a time so Chromium and the production image stay within the
-local memory limit. The Grove runner uses a fresh actor/context per quest but
-keeps contexts serial. Bible and Jobs Board runners reuse one actor where the
-fixture can safely isolate server state. Every catalog records all independently
-fixtureable failures before returning a failed status.
+local memory limit. The Grove runner covers all 51 authored quests in one
+serial batch, reusing one warm browser actor while resetting its native ECS,
+Cloud Save, inventory, RecipeBook, and local lesson state between rows. Bible
+and Jobs Board runners use the same deterministic reset principle where their
+authority allows it. Every catalog records all independently fixtureable
+failures before returning a failed status.
 
 ```bash
 COMMON_ENV=(
@@ -332,6 +334,11 @@ env "${COMMON_ENV[@]}" HARTHMERE_E2E_REMAINING_QUESTS_ONLY=1 \
   HARTHMERE_E2E_CONTROL_TOKEN="$HARTHMERE_E2E_CONTROL_TOKEN" \
   node scripts/harthmere/test-harthmere-native-ecs-roundtrip-e2e.cjs
 
+# Despite the retained environment-variable name, this is the complete
+# Snapshot Grove catalog gate (51 quests), not only the old uncovered subset.
+# Narrow repair runs may set HARTHMERE_E2E_GROVE_QUEST_IDS to a comma-separated
+# list, but release evidence must omit that filter.
+
 env "${COMMON_ENV[@]}" HARTHMERE_E2E_REMAINING_BIBLE_ONLY=1 \
   HARTHMERE_E2E_CONTROL_TOKEN="$HARTHMERE_E2E_CONTROL_TOKEN" \
   node scripts/harthmere/test-harthmere-native-ecs-roundtrip-e2e.cjs
@@ -350,6 +357,15 @@ HARTHMERE_E2E_SKIP_JOB_TEMPLATE_IDS=template_a,template_b
 
 Keep both report paths as the combined evidence; never mark a skipped template
 as passed without a retained browser report from the same code revision.
+
+Bible repair runs use the same retained-evidence rule:
+
+```bash
+HARTHMERE_E2E_SKIP_BIBLE_QUEST_IDS=quest_a,quest_b
+```
+
+Only skip IDs with complete browser reports covering acceptance, every
+objective, native ECS/frontend convergence, turn-in, and rewards.
 
 The Bible batch uses a deterministic local-only clock/weather fixture so night,
 dusk, and storm-gated rows can run together without waiting in real time:

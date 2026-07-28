@@ -7,6 +7,7 @@ import {
   makeCh1FractureGateRenderer,
 } from "@/client/game/renderers/ch1_fracture_gate";
 import { makeCh1DungeonHorizonBoundaryRenderer } from "@/client/game/renderers/ch1_dungeon_horizon_boundary";
+import { makeCh1WorldPhaseRenderer } from "@/client/game/renderers/ch1_world_phase";
 import { makeHarthmereTownBackBoundaryRenderer } from "@/client/game/renderers/harthmere_town_back_boundary";
 import { BlueprintsRenderer } from "@/client/game/renderers/blueprints";
 import { BoundaryRenderer } from "@/client/game/renderers/boundary";
@@ -130,6 +131,7 @@ export async function buildRenderers(loader: RegistryLoader<ClientContext>) {
     // NPC, and never edits terrain. Entry is a server-validated warp into the
     // unreachable Elsewhen band (src/shared/harthmere/ch1_elsewhen_region.ts).
     makeCh1FractureGateRenderer(resources, () => ch1ActiveGateIdsForRender()),
+    makeCh1WorldPhaseRenderer(resources),
     // CHAPTER_1_DUNGEON_HORIZON: the wall at the edge of a dungeon. Drawn only
     // while inside a run and only near a face; disposed the moment the player
     // leaves, so the Grove never pays for dungeon geometry.

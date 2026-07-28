@@ -16,6 +16,7 @@ import {
   harthmereResolveWorldQuestBeaconMarkerId,
   HARTHMERE_VISIBLE_WORLD_OBJECT_MARKER_RENDER_POLICY,
   activeHarthmereQuestMarkerId,
+  activeHarthmereQuestMarkerIds,
   createHarthmereActiveQuestMarkerBeacon,
   createHarthmereQuestObjectMarkerAnchor,
   createHarthmereQuestObjectMarkerMesh,
@@ -389,7 +390,7 @@ describe("Harthmere quest object procedural markers current", () => {
     }
   });
 
-  it("uses invisible active-beacon anchors in the live renderer except for authored visible props", () => {
+  it("prebuilds geometry for every Snapshot Grove objective prop and keeps inactive props hidden", () => {
     const marker = HARTHMERE_QUEST_OBJECT_MARKERS[0];
     const anchor = createHarthmereQuestObjectMarkerAnchor(marker);
     assert.equal(anchor.visible, false);
@@ -435,7 +436,7 @@ describe("Harthmere quest object procedural markers current", () => {
         );
         assert.ok(
           child.children.length > 1,
-          "active-only container props should keep hidden geometry for the active quest step"
+          "active-only Grove props should keep hidden geometry for the active quest step"
         );
       } else {
         assert.equal(
@@ -448,6 +449,21 @@ describe("Harthmere quest object procedural markers current", () => {
           "renderer anchors should only carry the hidden active beacon"
         );
       }
+    }
+
+    const groveObjectiveMarkerIds = new Set(
+      SNAPSHOT_GROVE_QUESTS.flatMap((quest) => quest.markerIds)
+    );
+    for (const markerId of groveObjectiveMarkerIds) {
+      const marker = HARTHMERE_QUEST_OBJECT_MARKERS.find(
+        (candidate) => candidate.id === markerId
+      );
+      if (!marker || marker.kind === "npc") continue;
+      assert.equal(
+        shouldRenderHarthmereQuestObjectMarkerMesh(marker),
+        true,
+        `${markerId} must have real geometry instead of a beacon-only anchor`
+      );
     }
   });
 
@@ -634,6 +650,29 @@ describe("Harthmere quest object procedural markers current", () => {
       undefined,
       "unknown quest ids should fail closed"
     );
+  });
+
+  it("keeps every accepted quest's current objective prop visible and only one selected beacon", () => {
+    const quests = SNAPSHOT_GROVE_QUESTS.filter(
+      (candidate) => candidate.markerIds.length > 2
+    ).slice(0, 2);
+    assert.equal(quests.length, 2);
+    const state = {
+      acceptedQuestIds: quests.map((quest) => quest.id),
+      activeQuestId: quests[1].id,
+      activeObjectiveIndex: 2,
+      objectiveIndexByQuestId: {
+        [quests[0].id]: 1,
+        [quests[1].id]: 2,
+      },
+      objectiveProgressByQuestId: {},
+      completedQuestIds: [],
+    };
+    assert.deepEqual(
+      [...activeHarthmereQuestMarkerIds(state)].sort(),
+      [quests[0].markerIds[1], quests[1].markerIds[2]].sort()
+    );
+    assert.equal(activeHarthmereQuestMarkerId(state), quests[1].markerIds[2]);
   });
 
   it("only shows the blue pole and white cap for the current user's active quest marker", () => {

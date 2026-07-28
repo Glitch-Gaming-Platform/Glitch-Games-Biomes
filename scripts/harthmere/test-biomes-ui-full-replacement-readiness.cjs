@@ -73,6 +73,12 @@ const mount = read("src/client/components/biomes_ui/BiomesUIMount.tsx");
 const liveAdapters = read(
   "src/client/components/biomes_ui/adapters/useBiomesUILiveAdapters.ts"
 );
+const keyRouting = read(
+  "src/client/components/biomes_ui/shortcuts/BiomesUIKeyRouting.ts"
+);
+const mapQuestsTab = read(
+  "src/client/components/biomes_ui/tabs/MapQuestsTab.tsx"
+);
 const uniqueIds = read("src/client/components/biomes_ui/uniqueIds.ts");
 const tutorial = read(
   "src/client/components/biomes_ui/tutorial/tutorialMissionMap.ts"
@@ -263,15 +269,15 @@ contains(
   "deriveSnapshotTutorialStep",
   "tutorial step is derived from live quest state"
 );
-contains(
+notContains(
+  liveAdapters,
+  'KeyR: "daily"',
+  "replacement mode does not steal the native Recipes key"
+);
+notContains(
   liveAdapters,
   "BIOMES_UI_OPEN_MENU_KEY_CODE",
-  "replacement mode uses the configured menu key"
-);
-contains(
-  liveAdapters,
-  "[BIOMES_UI_OPEN_MENU_KEY_CODE]: BIOMES_UI_OPEN_MENU_TAB",
-  "configured menu key opens the replacement menu tab"
+  "obsolete replacement-menu KeyR ownership is removed"
 );
 notContains(
   liveAdapters,
@@ -284,19 +290,29 @@ notContains(
   "E no longer opens replacement inventory tab"
 );
 contains(
-  liveAdapters,
+  keyRouting,
   'KeyU: "map"',
   "U key opens map/quests through replacement UI"
 );
 notContains(
-  liveAdapters,
+  keyRouting,
   'KeyQ: "map"',
   "Q no longer opens map/quests through replacement UI"
 );
 contains(
-  liveAdapters,
+  keyRouting,
   'KeyO: "loot"',
   "O key is owned by replacement UI shortcut map"
+);
+notContains(
+  mapQuestsTab,
+  'event.key.toLowerCase() === "r"',
+  "map reset does not steal the native Recipes key"
+);
+contains(
+  mapQuestsTab,
+  'event.key === "End"',
+  "map reset uses End instead of R"
 );
 contains(
   liveAdapters,

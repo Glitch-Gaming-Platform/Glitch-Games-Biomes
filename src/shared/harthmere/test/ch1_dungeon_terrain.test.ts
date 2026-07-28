@@ -168,6 +168,7 @@ describe("ch1 dungeon terrain - structure", () => {
           case "building":
             assert.ok(known.has(feature.wallMaterial));
             assert.ok(known.has(feature.roofMaterial));
+            if (feature.snowMaterial) assert.ok(known.has(feature.snowMaterial));
             break;
           case "wall":
           case "column":
@@ -386,6 +387,53 @@ describe("ch1 dungeon terrain - voxel queries", () => {
     assert.equal(ch1DungeonBlockAt("ch1_dungeon_winter", 31, 5, -107), "stone");
   });
 
+  it("uses native snow, ice, and ShardWater semantics for the winter terrain", () => {
+    const winter = ch1DungeonTerrain("ch1_dungeon_winter")!;
+    assert.ok(CH1_TERRAIN_MATERIALS.includes("snow"));
+    assert.ok(CH1_TERRAIN_MATERIALS.includes("ice"));
+    assert.equal(
+      winter.volumes.find((volume) => volume.name === "ice_shelf_landing")
+        ?.floor,
+      "ice"
+    );
+    assert.equal(
+      winter.volumes.find((volume) => volume.name === "longhouse_underice")
+        ?.shell,
+      "ice"
+    );
+    assert.equal(
+      winter.volumes.find((volume) => volume.name === "whale_road")?.floor,
+      "ice"
+    );
+    assert.ok(
+      winter.landscape.every(
+        (feature) =>
+          feature.kind !== "tree" ||
+          feature.snowMaterial === undefined ||
+          feature.snowMaterial === "snow"
+      )
+    );
+    assert.ok(
+      winter.landscape.every(
+        (feature) =>
+          feature.kind !== "building" ||
+          feature.snowMaterial === undefined ||
+          feature.snowMaterial === "snow"
+      )
+    );
+    assert.ok(winter.water.length >= 3, "winter water must stay in ShardWater");
+
+    // Snow is a cap over a structural roof, not a white-wool replacement.
+    assert.equal(
+      ch1DungeonBlockAt("ch1_dungeon_winter", 35, 11, -103),
+      "thatch"
+    );
+    assert.equal(
+      ch1DungeonBlockAt("ch1_dungeon_winter", 35, 12, -103),
+      "snow"
+    );
+  });
+
   it("punches doorways clean through the shell", () => {
     for (const terrain of CH1_DUNGEON_TERRAIN) {
       for (const cut of terrain.cuts) {
@@ -585,6 +633,21 @@ describe("ch1 dungeon decor - the layer rule", () => {
     assert.doesNotMatch(focusedSeeder, /makeHarthmereNpcAppearanceConfig/);
     assert.match(focusedSeeder, /CH1_SEED_CAST_ONLY/);
     assert.match(focusedSeeder, /CH1_SEED_TERRAIN_ONLY/);
+    assert.match(focusedSeeder, /CH1_SEEDED_CAST/);
+    assert.match(focusedSeeder, /CH1_RECLAIMED_CAST/);
+    assert.doesNotMatch(
+      focusedSeeder,
+      /CH1_NEW_CAST/,
+      "focused seeding must not overwrite the promoted Mucked Robot with AUGUR-9"
+    );
+    assert.match(focusedSeeder, /ch1NormalizeOrdinaryWorldEastEdge/);
+    assert.match(focusedSeeder, /portalOnlyWorldBoundary/);
+    assert.match(focusedSeeder, /terrainByDungeon/);
+    assert.doesNotMatch(
+      focusedSeeder,
+      /aabb\.v1\[0\] = CH1_ELSEWHEN_BAND_END_X/,
+      "focused seeding must not make detached dungeons walkable world terrain"
+    );
   });
 
   it("lights every enclosed zone", () => {

@@ -61,7 +61,9 @@ describe("BiomesUI quests tab registration", () => {
       codes.length,
       "two tabs share a rail code"
     );
-    const shortcuts = TAB_ORDER.map((k) => TAB_DESCRIPTORS[k].shortcut);
+    const shortcuts = TAB_ORDER.map((k) => TAB_DESCRIPTORS[k].shortcut).filter(
+      (shortcut): shortcut is string => Boolean(shortcut)
+    );
     assert.equal(
       new Set(shortcuts).size,
       shortcuts.length,

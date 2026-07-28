@@ -19,6 +19,18 @@ export type AudioPath = AssetPath | `/${string}`;
 export const HARTHMERE_BATTLE_MUSIC_PATH =
   "/assets/harthmere/audio/hauntsync-rpg-battle-chiptune.webm" as const;
 
+export const HARTHMERE_BOSS_BATTLE_MUSIC_PATH =
+  "/assets/harthmere/audio/11-no-crown-above-the-storm-loop.mp3" as const;
+
+export const HARTHMERE_EXPLORATION_MUSIC_PATH =
+  "/assets/harthmere/audio/08-banners-at-first-light-loop.mp3" as const;
+
+export const CH1_SAND_DUNGEON_MUSIC_PATH =
+  "/assets/harthmere/audio/09-embers-test-the-oath-loop.mp3" as const;
+
+export const CH1_WINTER_DUNGEON_MUSIC_PATH =
+  "/assets/harthmere/audio/09-embers-test-the-oath-loop.mp3" as const;
+
 export function resolveAudioUrl(path: AudioPath) {
   return path.startsWith("/") ? path : resolveAssetUrl(path as AssetPath);
 }

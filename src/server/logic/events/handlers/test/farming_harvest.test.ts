@@ -1,8 +1,10 @@
 import { FarmingGrowthPlantTicker } from "@/server/gaia/simulations/farming/plant_growth_ticker";
 import { harvestPlantEventHandler } from "@/server/logic/events/handlers/farming";
 import { BikkieIds } from "@/shared/bikkie/ids";
+import { TriggerState } from "@/shared/ecs/gen/components";
 import { HarvestPlantEvent } from "@/shared/ecs/gen/events";
 import { EventSerde } from "@/shared/ecs/gen/json_serde";
+import { readHarthmereNativeSkillTotalXp } from "@/shared/harthmere/harthmere_skill_progression";
 import { generateTestId } from "@/shared/test_helpers";
 import assert from "assert";
 
@@ -33,8 +35,11 @@ function fakeHarvestPlant({
 }
 
 function fakeHarvestPlayer(position: [number, number, number] = [1, 2, 3]) {
+  const triggerState = TriggerState.create();
   return {
     staleOk: () => ({ position: () => ({ v: position }) }),
+    mutableTriggerState: () => triggerState,
+    triggerState: () => triggerState,
   };
 }
 
@@ -58,10 +63,11 @@ describe("harvestPlantEventHandler", () => {
 
   it("queues harvest for fully grown non-tree plants", () => {
     const { component, plant } = fakeHarvestPlant();
+    const player = fakeHarvestPlayer();
     harvestPlantEventHandler.apply(
       {
         plant,
-        player: fakeHarvestPlayer(),
+        player,
       } as any,
       new HarvestPlantEvent({
         id: generateTestId(),
@@ -73,6 +79,14 @@ describe("harvestPlantEventHandler", () => {
 
     assert.equal(component.player_actions.length, 1);
     assert.equal(component.player_actions[0].kind, "harvest");
+    assert.equal(
+      readHarthmereNativeSkillTotalXp(player.triggerState(), "farming"),
+      12
+    );
+    assert.equal(
+      readHarthmereNativeSkillTotalXp(player.triggerState(), "nature_magic"),
+      4
+    );
   });
 
   it("lets the planter harvest their own fully grown non-tree crop", () => {

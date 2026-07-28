@@ -65,6 +65,18 @@ export interface HarthmereNativeEcsE2EQuestProjection {
   };
   activeQuestId?: string;
   mainQuestId?: string;
+  activeMapPin?: {
+    markerId: string;
+    label: string;
+    worldPosition: [number, number, number];
+  };
+  markers: Array<{
+    id: string;
+    label: string;
+    questId: string;
+    triggerId: string;
+    worldPosition: [number, number, number];
+  }>;
   quests: Array<{
     questId: string;
     title: string;
@@ -143,6 +155,17 @@ export interface HarthmereNativeEcsE2EBridge {
       acceptedAt: number;
     }>;
   };
+  skillProgressionSnapshot(): Promise<{
+    initialized: boolean;
+    skills: Array<{
+      id: string;
+      level: number;
+      xp: number;
+      nextLevel: number;
+      totalXp: number;
+      trainingActions: readonly string[];
+    }>;
+  }>;
   audioDiagnostics(): BackgroundMusicDiagnostics;
   resumeAudio(): Promise<BackgroundMusicDiagnostics>;
   combatRenderSnapshot(): {
@@ -320,6 +343,44 @@ export function installHarthmereNativeEcsE2E(
       tableSize: context.table.recordSize,
       publishedEvents: [...publishedEvents],
     }),
+    skillProgressionSnapshot: async () => {
+      const [combat, skills] = await Promise.all([
+        import("@/shared/harthmere/harthmere_native_combat"),
+        import("@/shared/harthmere/harthmere_skill_progression"),
+      ]);
+      const triggerState = context.table.get(context.userId)?.trigger_state;
+      const character =
+        combat.readHarthmereNativeCombatProgression(triggerState);
+      return {
+        initialized: skills.hasHarthmereNativeSkillProgression(triggerState),
+        skills: skills.HARTHMERE_SKILL_IDS.map((skillId) => {
+          if (skillId === "character_level") {
+            return {
+              id: skillId,
+              level: character.level,
+              xp: character.xp,
+              nextLevel: combat.harthmereNativeXpForNextLevel(character.level),
+              totalXp: character.xp,
+              trainingActions:
+                skills.HARTHMERE_SKILL_ACTION_COVERAGE[skillId] ?? [],
+            };
+          }
+          const progress = skills.readHarthmereNativeSkillProgress(
+            triggerState,
+            skillId
+          )!;
+          return {
+            id: skillId,
+            level: progress.level,
+            xp: progress.xp,
+            nextLevel: progress.nextLevel,
+            totalXp: progress.totalXp,
+            trainingActions:
+              skills.HARTHMERE_SKILL_ACTION_COVERAGE[skillId] ?? [],
+          };
+        }),
+      };
+    },
     audioDiagnostics: () =>
       context.audioManager.getBackgroundMusicDiagnostics(),
     resumeAudio: async () => {
@@ -460,19 +521,29 @@ export function installHarthmereNativeEcsE2E(
       );
     },
     nativeQuestFrontendSnapshot: async () => {
-      const [nativeAdapter, mainQuestSelection] = await Promise.all([
-        import("@/client/components/biomes_ui/adapters/nativeQuestMapAdapter"),
-        import("@/client/components/biomes_ui/adapters/mainQuestSelection"),
-      ]);
+      const [nativeAdapter, mainQuestSelection, mapPinnedDestination] =
+        await Promise.all([
+          import(
+            "@/client/components/biomes_ui/adapters/nativeQuestMapAdapter"
+          ),
+          import("@/client/components/biomes_ui/adapters/mainQuestSelection"),
+          import("@/client/components/biomes_ui/adapters/mapPinnedDestination"),
+        ]);
       const challenges = context.resources.get(
         "/ecs/c/challenges",
         context.userId
       );
       const bundles = context.resources.get("/challenges/all");
       const quests = nativeAdapter.nativeQuestTrackableQuests(bundles);
+      // Expose the same inferred native markers consumed by the real Map tab.
+      // Position-routed combat objectives need no async NPC resolver, so this
+      // is a deterministic live-browser assertion without opening a second
+      // renderer or duplicating map logic in the E2E runner.
+      const markers = nativeAdapter.nativeQuestMapMarkers(bundles);
       const active = nativeAdapter.activeNativeQuest(bundles);
       const main =
         mainQuestSelection.defaultMainQuestFromTrackableQuestsForTest(quests);
+      const activeMapPin = mapPinnedDestination.readActiveBiomesUIMapPin();
       return {
         ecs: {
           available: [...(challenges?.available ?? [])].map(String),
@@ -481,6 +552,27 @@ export function installHarthmereNativeEcsE2E(
         },
         activeQuestId: active ? String(active.biscuit.id) : undefined,
         mainQuestId: main?.questId,
+        activeMapPin: activeMapPin
+          ? {
+              markerId: activeMapPin.markerId,
+              label: activeMapPin.label,
+              worldPosition: [...activeMapPin.worldPosition] as [
+                number,
+                number,
+                number
+              ],
+            }
+          : undefined,
+        markers: markers.map((marker) => {
+          const [, questId = "", triggerId = ""] = marker.id.split(":");
+          return {
+            id: marker.id,
+            label: marker.label,
+            questId,
+            triggerId,
+            worldPosition: [...marker.worldPosition],
+          };
+        }),
         quests: quests.map((quest) => {
           const bundle = bundles.find(
             (candidate) => String(candidate.biscuit.id) === quest.questId

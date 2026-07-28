@@ -1,6 +1,3 @@
-import { serverTestInit } from "@/server/test/init";
-import { prepareBikkieForTest } from "@/shared/bikkie/test_helpers";
-import { log } from "@/shared/logging";
 import Module from "module";
 import path from "path";
 import { register } from "prom-client";
@@ -69,10 +66,31 @@ function installBrowserEventConstructors(force = false) {
   });
 }
 
+function installBrowserNavigator() {
+  if (typeof globalThis.navigator !== "undefined") return;
+  Object.defineProperty(globalThis, "navigator", {
+    configurable: true,
+    value: {
+      userAgent: "node-test-runtime",
+      platform: "node",
+      maxTouchPoints: 0,
+    },
+  });
+}
+
 installStaticAssetImports();
 installBrowserEventConstructors();
+installBrowserNavigator();
 
 export async function mochaGlobalSetup() {
+  // Load the server bootstrap only after the browser shims above are installed.
+  // Some transitive client modules inspect `window.navigator` at import time.
+  const [{ serverTestInit }, { prepareBikkieForTest }, { log }] =
+    await Promise.all([
+      import("@/server/test/init"),
+      import("@/shared/bikkie/test_helpers"),
+      import("@/shared/logging"),
+    ]);
   register.clear(); // So we don't get dupe metrics
   prepareBikkieForTest();
   if (!global.__serverBootstraped) {

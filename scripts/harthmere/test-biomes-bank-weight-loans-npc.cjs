@@ -34,20 +34,16 @@ contains(groveContent, 'Merl Voss, Grove Banker', 'Grove banker NPC has player-f
 contains(groveContent, 'idOffset: 9316', 'Grove banker NPC uses a unique seeded id offset');
 contains(groveRuntime, 'groveBankerProgressiveQuestionActions', 'Grove banker has progressive Q&A actions');
 contains(groveRuntime, 'What can I store here?', 'Grove banker teaches storage');
-contains(groveRuntime, 'Why is my backpack limited?', 'Grove banker teaches carry weight');
+contains(groveRuntime, 'Does weight limit my backpack?', 'Grove banker teaches soft carry-weight encumbrance');
 contains(groveRuntime, 'How do loans work?', 'Grove banker teaches loans');
 contains(groveRuntime, 'What happens if I do not repay?', 'Grove banker teaches loan consequences');
 
 contains(backend, 'HARTHMERE_CARRY_WEIGHT_LIMIT', 'Backend has server carry-weight limit');
 contains(backend, 'harthmereInventoryCarryWeight', 'Backend computes inventory carry weight');
-contains(backend, 'wouldExceedCarryWeight', 'Backend checks incoming weight');
-contains(backend, 'wouldDirectInventoryPayloadExceedCarryWeight', 'Backend checks direct inventory item-delta weight');
-contains(backend, 'wouldCraftExceedCarryWeight', 'Backend checks post-craft weight');
-contains(backend, 'pushCarryWeightRejection(warnings, touchedModels, "bank_withdraw")', 'Backend rejects overweight bank withdraws');
-notContains(backend, 'pushCarryWeightRejection(warnings, touchedModels, "vendor")', 'Backend permits overweight vendor purchases');
-notContains(backend, 'pushCarryWeightRejection(warnings, touchedModels, "auction_settle")', 'Backend permits overweight auction purchases');
-contains(backend, 'pushCarryWeightRejection(warnings, touchedModels, "mail_claim")', 'Backend rejects overweight mail claims');
-contains(backend, 'pushCarryWeightRejection(warnings, touchedModels, "crafting")', 'Backend rejects overweight crafting output');
+notContains(backend, 'wouldExceedCarryWeight', 'Backend does not reject incoming items by weight');
+notContains(backend, 'wouldDirectInventoryPayloadExceedCarryWeight', 'Backend does not reject direct inventory deltas by weight');
+notContains(backend, 'wouldCraftExceedCarryWeight', 'Backend does not reject crafting output by weight');
+notContains(backend, 'carry_weight_limit_exceeded', 'Backend emits no carry-weight capacity rejection');
 contains(backend, 'applyHarthmereBankLoanConsequences', 'Backend applies loan consequences');
 contains(backend, 'bank_loan_defaulted', 'Backend logs loan defaults');
 contains(backend, 'HARTHMERE_BANK_CREDIT_HOLD_FLAG', 'Backend enforces bank credit hold');
@@ -56,9 +52,9 @@ contains(backend, 'defaultPenaltyGold', 'Backend records default penalties');
 contains(bankRoute, 'state.updatedAtMs = input.nowMs', 'Bank state GET uses current server time for loan consequences');
 contains(bankRoute, 'applyHarthmereBankLoanConsequences', 'Bank state GET applies overdue loan consequences');
 
-contains(reducerTests, 'banking current carry weight enforcement', 'Reducer tests cover carry weight enforcement');
+contains(reducerTests, 'soft carry-weight encumbrance', 'Reducer tests cover soft carry-weight behavior');
 contains(reducerTests, 'loan default consequences', 'Reducer tests cover loan consequences');
-contains(reducerTests, 'bank_withdraw_rejected:carry_weight_limit_exceeded', 'Tests verify overweight bank withdraw rejection');
+contains(reducerTests, 'allows personal, account, and material withdrawals while overweight', 'Tests verify overweight bank withdrawals succeed');
 contains(reducerTests, 'bank_rejected:credit_hold_until_defaulted_loan_paid', 'Tests verify credit hold blocks new loans');
 
 if (failures) process.exit(1);

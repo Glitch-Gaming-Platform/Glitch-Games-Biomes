@@ -9,6 +9,13 @@ import { log } from "@/shared/logging";
 import type { RegistryLoader } from "@/shared/registry";
 import { sleep } from "@/shared/util/async";
 import { mapMap } from "@/shared/util/collections";
+import {
+  CH1_ELSEWHEN_EVICTION_ANCHOR,
+  ch1ElsewhenSlotAt,
+  isInsideCh1ElsewhenBand,
+  isInsideCh1VoidGap,
+} from "@/shared/harthmere/ch1_elsewhen_region";
+import { readCh1NativeRunAdmission } from "@/shared/harthmere/ch1_native_run";
 
 export type EventCallback = (error?: unknown) => void;
 export type EventCb = [GameEvent, EventCallback];
@@ -65,6 +72,38 @@ export class CrossClientEventBatcher {
       return;
     }
     try {
+      const entities = await this.worldApi.get([...batch.keys()]);
+      for (const entity of entities) {
+        if (!entity) continue;
+        const shortCircuit = batch.get(entity.id);
+        const proposed = shortCircuit?.proposedPosition;
+        if (!shortCircuit || !proposed) continue;
+        const current = entity.position()?.v;
+        const currentSlot = current ? ch1ElsewhenSlotAt(current) : undefined;
+        const proposedSlot = ch1ElsewhenSlotAt(proposed);
+        const admission = readCh1NativeRunAdmission(entity.triggerState());
+
+        if (proposedSlot) {
+          if (
+            admission?.dungeonId !== proposedSlot.dungeonId ||
+            currentSlot?.dungeonId !== proposedSlot.dungeonId
+          ) {
+            shortCircuit.forcePosition([...CH1_ELSEWHEN_EVICTION_ANCHOR]);
+          }
+        } else if (
+          currentSlot &&
+          admission?.dungeonId === currentSlot.dungeonId
+        ) {
+          // An admitted run may leave its authored slot only through the
+          // signed exit event, which clears the native marker atomically.
+          shortCircuit.forcePosition([...current!]);
+        } else if (
+          isInsideCh1ElsewhenBand(proposed) ||
+          isInsideCh1VoidGap(proposed)
+        ) {
+          shortCircuit.forcePosition([...CH1_ELSEWHEN_EVICTION_ANCHOR]);
+        }
+      }
       await this.worldApi.apply(
         mapMap(batch, (sc, id) => sc.toChangeToApply(id))
       );

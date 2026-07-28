@@ -14,6 +14,17 @@ export const SNAPSHOT_GROVE_JACKIE_ENTITY_ID = (Number(
   SNAPSHOT_GROVE_LOCAL_DEV_NPC_BASE
 ) + SNAPSHOT_GROVE_JACKIE_ID_OFFSET) as BiomesId;
 
+/**
+ * The Mucked Robot. Chapter 1 promotes this exact entity into AUGUR-9 rather
+ * than seeding a second robot beside it, so the id is published here where a
+ * lightweight consumer can reach it without importing the Grove catalogue.
+ * snapshot_grove_content.test.ts asserts the offset still matches the entry.
+ */
+export const SNAPSHOT_GROVE_MUCKED_ROBOT_ID_OFFSET = 9312;
+export const SNAPSHOT_GROVE_MUCKED_ROBOT_ENTITY_ID = (Number(
+  SNAPSHOT_GROVE_LOCAL_DEV_NPC_BASE
+) + SNAPSHOT_GROVE_MUCKED_ROBOT_ID_OFFSET) as BiomesId;
+
 export const SNAPSHOT_GROVE_LIVE_WORLD_GROUND_Y = 69;
 export const SNAPSHOT_GROVE_LIVE_NPC_FEET_Y =
   SNAPSHOT_GROVE_LIVE_WORLD_GROUND_Y + 1;

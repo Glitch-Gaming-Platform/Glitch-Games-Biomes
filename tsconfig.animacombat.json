@@ -1,0 +1,46 @@
+// ANIMA_COMBAT_TYPECHECK
+//
+// Scoped typecheck for the shared half of the Anima hill-combat, creature
+// leveling, creature-group, escort, and Road-to-Harthmere group work, plus their
+// tests:
+//
+//   node_modules/.bin/tsc -p tsconfig.animacombat.json
+//
+// The SERVER half (ECS seeding and the two escort schedulers) lives in
+// `tsconfig.animaserver.json`. It is split out deliberately: those files pull in
+// the world API and Redis graph, which roughly doubles the check time, and
+// keeping the shared lane fast is what makes it usable on every edit.
+//
+// Same rationale as tsconfig.ch1check.json: `./b typecheck` builds the whole
+// program and needs minutes plus ~8 GB of heap, while ts-node runs with
+// transpileOnly + swc, so `./b test` does NOT typecheck. Green tests are not a
+// substitute for running this.
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "noEmit": true, "incremental": false },
+  "include": [
+    "src/shared/npc/creature_level.ts",
+    "src/shared/npc/creature_group.ts",
+    "src/shared/npc/serde.ts",
+    "src/shared/npc/logic.ts",
+    "src/shared/npc/behavior/combat_geometry.ts",
+    "src/shared/npc/behavior/pathfinding_geometry.ts",
+    "src/shared/npc/behavior/pathfinding.ts",
+    "src/shared/npc/behavior/chase_attack.ts",
+    "src/shared/npc/behavior/escort.ts",
+    "src/shared/npc/behavior/escort_tick.ts",
+    "src/shared/harthmere/road_to_harthmere_groups.ts",
+    "src/shared/harthmere/creature_groups.ts",
+    "src/shared/harthmere/live_entity_production_seed.ts",
+    "src/shared/npc/test/creature_level.test.ts",
+    "src/shared/npc/test/creature_group.test.ts",
+    "src/shared/npc/behavior/test/combat_geometry.test.ts",
+    "src/shared/npc/behavior/test/pathfinding_geometry.test.ts",
+    "src/shared/npc/behavior/test/escort_policy.test.ts",
+    "src/shared/npc/behavior/test/chase_attack_logic.test.ts",
+    "src/shared/npc/behavior/test/npc_locomotion_selection.test.ts",
+    "src/shared/harthmere/test/road_to_harthmere_groups.test.ts",
+    "src/shared/harthmere/test/anima_hill_combat_e2e.test.ts",
+    "modules.d.ts"
+  ]
+}

@@ -305,7 +305,28 @@ export function buildHarthmereNpcVoiceCatalog(): HarthmereNpcVoiceCatalogEntry[]
     );
   }
 
-  return entries;
+  // Chapter-specific lines deliberately reuse returning actors' established
+  // profiles. Merge those rows by actor identity so one person keeps one
+  // voice while still contributing every new static recording.
+  const merged = new Map<string, HarthmereNpcVoiceCatalogEntry>();
+  for (const entry of entries) {
+    const existing = merged.get(entry.profile.actorKey);
+    if (!existing) {
+      merged.set(entry.profile.actorKey, {
+        ...entry,
+        staticLines: [...entry.staticLines],
+      });
+      continue;
+    }
+    const seen = new Set(existing.staticLines.map((line) => line.text));
+    for (const line of entry.staticLines) {
+      if (!seen.has(line.text)) {
+        existing.staticLines.push(line);
+        seen.add(line.text);
+      }
+    }
+  }
+  return [...merged.values()];
 }
 
 export const HARTHMERE_NPC_VOICE_CATALOG = buildHarthmereNpcVoiceCatalog();

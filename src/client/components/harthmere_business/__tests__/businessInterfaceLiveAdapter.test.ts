@@ -475,6 +475,33 @@ describe("Harthmere in-world business interface live adapter", () => {
     );
   });
 
+  it("throws when live mode returns a failed native validation body", async () => {
+    const fetchImpl = (async () => ({
+      ok: true,
+      json: async () => ({
+        ok: false,
+        persisted: false,
+        validation: {
+          ok: false,
+          errors: ["native_ecs_authority_required:request_loot_roll"],
+        },
+      }),
+    })) as any;
+    await assert.rejects(
+      () =>
+        submitHarthmereBusinessEconomyMutation(
+          "buy_business_tool",
+          {
+            businessId: "business_clinic",
+            itemId: "field_surgeon_kit",
+            count: 1,
+          },
+          { fetchImpl, requestId: "failed_native_tool_purchase" }
+        ),
+      /native_ecs_authority_required/
+    );
+  });
+
   it("only exposes the interface while the world says the player is inside a real business", () => {
     const state = sampleSnapshot();
     assert.equal(
@@ -1135,6 +1162,16 @@ describe("Harthmere in-world business interface live adapter", () => {
         businessId: "business_clinic",
         itemId: "worker_meal",
         count: 2,
+      },
+    });
+
+    await adapter.buyBusinessTool("business_clinic", "field_surgeon_kit");
+    assert.deepEqual(operations[1], {
+      operation: "buy_business_tool",
+      payload: {
+        businessId: "business_clinic",
+        itemId: "field_surgeon_kit",
+        count: 1,
       },
     });
 
@@ -1874,6 +1911,9 @@ describe("Harthmere in-world business interface current screens", () => {
     const miniGameJson = JSON.stringify(
       initialAdapter.getCustomerMiniGame("business_clinic")
     );
+    const shopfrontJson = JSON.stringify(
+      initialAdapter.getShopfront("business_clinic")
+    );
     const activeState = sampleSnapshot();
     const firstOfferId =
       initialAdapter.getCustomerMiniGame("business_clinic").offers[0]?.offerId;
@@ -1938,7 +1978,9 @@ describe("Harthmere in-world business interface current screens", () => {
         const businessType = ${businessTypeJson};
         const miniGame = ${miniGameJson};
         const activeMiniGame = ${activeMiniGameJson};
+        const shopfront = ${shopfrontJson};
         window.__businessOperations = [];
+        window.__businessInventory = {};
 
         function Harness() {
           const [ready, setReady] = React.useState(false);
@@ -1955,6 +1997,7 @@ describe("Harthmere in-world business interface current screens", () => {
               getBusinessType: (businessId) => businessId === "business_clinic" ? businessType : undefined,
               getMode: () => "customer",
               getCustomerMiniGame: () => currentMiniGame,
+              getShopfront: () => shopfront,
               getBikkieGraphics: () => [],
               startCustomerSession: async (businessId) => {
                 window.__businessOperations.push({
@@ -1971,6 +2014,15 @@ describe("Harthmere in-world business interface current screens", () => {
                 });
                 await new Promise((resolve) => window.setTimeout(resolve, 5));
                 throw new Error("economy_rejected:business_customer_session_not_active");
+              },
+              buyBusinessTool: async (businessId, itemId) => {
+                window.__businessOperations.push({
+                  operation: "buy_business_tool",
+                  payload: { businessId, itemId, count: 1 },
+                });
+                await new Promise((resolve) => window.setTimeout(resolve, 5));
+                window.__businessInventory[itemId] =
+                  (window.__businessInventory[itemId] ?? 0) + 1;
               },
             };
           }, [ready, currentMiniGame]);
@@ -2145,6 +2197,7 @@ describe("Harthmere in-world business interface current screens", () => {
                 contents: [
                   "export const HARTHMERE_BUSINESS_OUTPOSTS = [];",
                   "export const HARTHMERE_BUSINESS_OUTPOST_SAFE_SITES = [];",
+                  "export function isPointInsideHarthmereBusinessSafeSite() { return false; }",
                   "export function createHarthmereBusinessMiniGameDecisionForOffer(offer) { return { actionId: offer?.actionId ?? 'test_action' }; }",
                 ].join("\n"),
                 loader: "js",
@@ -2368,6 +2421,41 @@ describe("Harthmere in-world business interface current screens", () => {
         ),
         1
       );
+      await page.getByRole("button", { name: "Shopfront" }).click();
+      const buySurgeonKit = page.getByRole("button", {
+        name: "Buy Field Surgeon's Kit",
+      });
+      await buySurgeonKit.waitFor({ timeout: 15_000 });
+      await buySurgeonKit.click();
+      await page
+        .getByText("Field Surgeon's Kit was added to your inventory.")
+        .waitFor({ timeout: 15_000 });
+      assert.equal(
+        await page.evaluate(
+          () => (window as any).__businessInventory.field_surgeon_kit
+        ),
+        1
+      );
+      assert.deepEqual(
+        await page.evaluate(() =>
+          (window as any).__businessOperations.find(
+            (row: any) => row.operation === "buy_business_tool"
+          )
+        ),
+        {
+          operation: "buy_business_tool",
+          payload: {
+            businessId: "business_clinic",
+            itemId: "field_surgeon_kit",
+            count: 1,
+          },
+        }
+      );
+      await page.screenshot({
+        path: path.join(tmpdir(), "biomes-field-surgeon-kit-purchase.png"),
+        fullPage: true,
+      });
+      assert.deepEqual(browserErrors, []);
     } finally {
       await browser.close();
       await rm(tempDir, { recursive: true, force: true });
@@ -2395,6 +2483,24 @@ describe("Harthmere in-world business interface current screens", () => {
       assert.equal(/[a-z][A-Z]/.test(message), false);
       assert.ok(message.length > 8);
     }
+    assert.equal(
+      formatHarthmereBusinessPlayerWarning(
+        "economy_rejected:insufficient_customer_gold_for_sale"
+      ),
+      "You do not have enough gold for that purchase."
+    );
+    assert.equal(
+      formatHarthmereBusinessPlayerWarning(
+        "economy_rejected:business_tool_already_owned"
+      ),
+      "You already own this tool."
+    );
+    assert.equal(
+      formatHarthmereBusinessPlayerWarning(
+        "native_ecs_materialization_deferred:inventory_full"
+      ),
+      "Your inventory is full. Free a slot and try again."
+    );
   });
 
   it("derives owner dashboard, shopfront, contract board, finance, staff, and compliance panels from backend data", () => {

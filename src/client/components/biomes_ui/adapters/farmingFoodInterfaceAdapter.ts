@@ -42,7 +42,7 @@ export interface FarmingFoodInterfaceModel {
   actions: FarmingFoodInterfaceAction[];
 }
 
-export type FarmingFoodQuickActionKey = "KeyF" | "KeyR" | "KeyT";
+export type FarmingFoodQuickActionKey = "KeyF" | "KeyT";
 
 const COOKING_RECIPE_ACTION_IDS: Record<string, FarmingFoodActionKind> = {
   grilled_meat: "cook_raw_meat",
@@ -349,11 +349,9 @@ export function farmingFoodQuickActionForKey(
     // F is a world-target interaction. Choosing the first global plot/animal
     // action can harvest, feed, collect from, or hunt an entity the player is
     // not facing. Targeted plant/NPC/loot overlays own F; this adapter retains
-    // only non-world R/T shortcuts until a concrete ECS target is supplied.
+    // only the non-world T cooking shortcut until a concrete ECS target is
+    // supplied. R is exclusively reserved for the native Recipes modal.
     return undefined;
-  }
-  if (code === "KeyR") {
-    return firstEnabledAction(model, ["eat_best_food"]);
   }
   if (code === "KeyT") {
     return (

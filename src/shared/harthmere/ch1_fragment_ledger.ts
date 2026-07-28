@@ -102,9 +102,32 @@ export const CH1_FRAGMENTS: readonly Ch1FragmentDef[] = Object.freeze([
     act: 1,
     confidence: 88,
     chargeCost: 6,
-    body: "Twenty-two seconds off the robot. A voice reading a measurement aloud, sounding bored. Then it stops. A long pause. Then, quietly: \"Run it again.\"\n\nIt is your voice. You are certain of that and nothing else.",
+    body: 'Twenty-two seconds off the robot. A voice reading a measurement aloud, sounding bored. Then it stops. A long pause. Then, quietly: "Run it again."\n\nIt is your voice. You are certain of that and nothing else.',
     triggerNote:
       "First AUGUR-9 log playback, offered by Luis once the chassis walks.",
+  },
+  {
+    id: "frag_a1_play_patrol_loop",
+    title: "Eleven Years Of Tuesdays",
+    type: "playback",
+    trigger: "object",
+    act: 1,
+    confidence: 84,
+    chargeCost: 6,
+    body: "A patrol log. The same circuit, timestamped, unbroken, for eleven years.\n\nThere is no entry anywhere in it for being given the route, and no entry anywhere in it for being told to stop.",
+    triggerNote:
+      "AUGUR-9's own record rather than the player's. Establishes the eleven years before the player has any way to date themselves.",
+  },
+  {
+    id: "frag_a1_echo_the_kettle",
+    title: "Twice, In The Same Room",
+    type: "echo",
+    trigger: "sleep",
+    act: 1,
+    confidence: 24,
+    body: "Water coming to the boil. Then, a little later, water coming to the boil again, in the same room, with nobody saying anything in between.\n\nIt is the most ordinary sound in the world and you wake up with your jaw aching.",
+    triggerNote:
+      "The scheduled sleep channel. Deliberately worthless on first hearing. It is Jackie making a second pot because the first one went cold while she waited to see whether you would drink it.",
   },
   {
     id: "frag_a1_echo_get_back",
@@ -113,7 +136,7 @@ export const CH1_FRAGMENTS: readonly Ch1FragmentDef[] = Object.freeze([
     trigger: "stress",
     act: 1,
     confidence: 90,
-    body: "A woman's voice, from a long way off, urgent enough to crack:\n\n\"—get back from it—\"\n\nNo picture. No room. Just the shape of someone running.",
+    body: 'A woman\'s voice, from a long way off, urgent enough to crack:\n\n"—get back from it—"\n\nNo picture. No room. Just the shape of someone running.',
     triggerNote:
       "Fires the instant the first Fracture Gate closes at the fence line.",
     revisedConfidence: 100,
@@ -159,6 +182,17 @@ export const CH1_FRAGMENTS: readonly Ch1FragmentDef[] = Object.freeze([
     triggerNote: "AUGUR-9 log, available once the ledger tab opens.",
   },
   {
+    id: "frag_a2_overlay_the_cove_glass",
+    title: "What The Water Gives",
+    type: "overlay",
+    trigger: "place",
+    act: 2,
+    confidence: 49,
+    body: "Shutter Cove, with a second cove drawn faintly over it: the same waterline, the same shelf of returned junk, and a lattice of thin warm lines running through both of them and out to sea.\n\nDimmi has been collecting the places where the lines cross. She calls it luck.",
+    triggerNote:
+      "Place trigger at the cove. First evidence the Card is instrumentation rather than jewellery, delivered by a side character about junk on a beach.",
+  },
+  {
     id: "frag_a2_recon_arrival",
     title: "The Night You Came",
     type: "reconstruction",
@@ -187,14 +221,37 @@ export const CH1_FRAGMENTS: readonly Ch1FragmentDef[] = Object.freeze([
     triggerNote: "Hall of Weights, after the balance solution.",
   },
   {
+    id: "frag_a3_overlay_the_balance",
+    title: "Two Standards",
+    type: "overlay",
+    trigger: "skill",
+    act: 3,
+    confidence: 68,
+    body: "A modern calibration lattice drawn over a bronze balance beam, and the two of them agreeing perfectly.\n\nEverything you carried in here disagrees with everything else you carried in here. The beam does not disagree with anything. It only compares.",
+    triggerNote:
+      "Skill trigger, Hall of Weights. States the chapter's thesis in one image: you cannot measure anything against the present.",
+  },
+  {
+    id: "frag_a3_recon_the_evacuation",
+    title: "They Left The Seed",
+    type: "reconstruction",
+    trigger: "place",
+    act: 3,
+    confidence: 54,
+    body: "You walk the city out, six weeks late, and your head fills in the rest without being asked.\n\nThe meals on the tables. The doors left open. The vault behind you still full, because whoever gave the order believed they were coming back before planting.\n\nThis one is a reconstruction and it is not about you at all, which is possibly why it is one of the few you get right the first time.",
+    triggerNote:
+      "A TRUE reconstruction, and the only demonstration in the chapter that the reconstructor works fine on evidence it has no stake in. Fair play: it teaches the mechanism without teaching the answer.",
+  },
+  {
     id: "frag_a3_echo_cold_to_stand_next_to",
     title: "Cold To Stand Next To",
     type: "echo",
     trigger: "sound",
     act: 3,
     confidence: 31,
-    body: "A child describing a woman who comes and goes and never stays long. \"Cold to stand next to.\" She has been visiting the grain vault for weeks. She is not from here.",
-    triggerNote: "Iris Fen, in the Seed Vault. Sets up Act 5 without naming it.",
+    body: 'A child describing a woman who comes and goes and never stays long. "Cold to stand next to." She has been visiting the grain vault for weeks. She is not from here.',
+    triggerNote:
+      "Iris Fen, in the Seed Vault. Sets up Act 5 without naming it.",
   },
   {
     id: "frag_a3_recon_corridor",
@@ -257,6 +314,40 @@ export const CH1_FRAGMENTS: readonly Ch1FragmentDef[] = Object.freeze([
     triggerNote:
       "Seeded quietly. This is the fair-play key to why Jackie cannot simply explain. Doc says the same thing out loud in Act 2.",
   },
+  {
+    id: "frag_a4_play_the_bibliography",
+    title: "Nine Papers",
+    type: "playback",
+    trigger: "object",
+    act: 4,
+    confidence: 90,
+    chargeCost: 6,
+    body: "AUGUR-9 reads a citation list in a flat voice. Nine papers, in order, by year.\n\nThe ninth has no journal beside it. The record says withdrawn, and the record does not say by whom.",
+    triggerNote:
+      "The bibliography behind the Hall of Weights citation. Sets up the Act 5 link without naming anyone.",
+  },
+  {
+    id: "frag_a4_echo_ask_me_in_a_month",
+    title: "Ask Me In A Month",
+    type: "echo",
+    trigger: "face",
+    act: 4,
+    confidence: 33,
+    body: "Four words, in a room you cannot place, in a voice you can.\n\nYou have heard her say this before today. You have heard her say it before the Grove.",
+    triggerNote:
+      "TRUE and low confidence, on purpose. She said it to him, eleven years ago, at the door of a facility. The player will file it as a verbal tic.",
+  },
+  {
+    id: "frag_a4_recon_the_hearing",
+    title: "Thank You. Wait Outside.",
+    type: "reconstruction",
+    trigger: "place",
+    act: 4,
+    confidence: 79,
+    body: "A committee room. You present the model. Nobody argues with the arithmetic, which is how you know how bad it is.\n\nThey thank you. They ask you to wait outside while they discuss it. You wait, and the corridor is long and warm, and eventually somebody comes out and tells you it will be handled.\n\nYou remember believing them, which is the part you would like to take back.",
+    triggerNote:
+      "PARTIAL. Every frame happened. It ends at the door because that is where the material ends, and the reconstructor supplies a polite ending rather than admitting the gap. Nobody came out. Nobody told you anything.",
+  },
 
   // --- Act 5 -------------------------------------------------------------
   {
@@ -281,18 +372,41 @@ export const CH1_FRAGMENTS: readonly Ch1FragmentDef[] = Object.freeze([
     triggerNote: "Sorrel's camp, on the wall of charcoal notation.",
   },
   {
+    id: "frag_a5_play_custodian_roll",
+    title: "The Custodian Roll",
+    type: "playback",
+    trigger: "object",
+    act: 5,
+    confidence: 93,
+    chargeCost: 6,
+    body: "A key register, read out by an administrator who is plainly reading it for the last time.\n\nNine keys. Six returned. Three signed out and never signed back in, and one of those three is the thing in your pocket.",
+    triggerNote:
+      "Card + Custodian Key 3. Confirms the Card is instrumentation the player was ISSUED, not something they found.",
+  },
+  {
+    id: "frag_a5_recon_the_gantry",
+    title: "Four Minutes At The Gantry",
+    type: "reconstruction",
+    trigger: "place",
+    act: 5,
+    confidence: 72,
+    body: "Her charcoal wall gives you the numbers and your own head gives you the rest.\n\nThe Ashfall test gantry. A packed bag, which is the detail that tells you it was not an accident. An argument you were losing before you started, conducted quietly because there were technicians nearby.\n\nShe went in on purpose so that the person who went in would be someone who understood what they were looking at. You said that was a stupid reason. She agreed and went anyway.",
+    triggerNote:
+      "TRUE. The player reconstructs the last four minutes before Sorrel stepped through. It hurts because it is accurate.",
+  },
+  {
     id: "frag_a5_echo_the_name",
     title: "The Attending",
     type: "echo",
     trigger: "sound",
     act: 5,
     confidence: 18,
-    body: "Shouted over wind, at a run, on ice that is coming apart. A surname. Three syllables at most. The weather takes most of it.\n\n\"—the attending was a man named—\"",
+    body: 'Shouted over wind, at a run, on ice that is coming apart. A surname. Three syllables at most. The weather takes most of it.\n\n"—the attending was a man named—"',
     triggerNote:
       "MIX NOTE: audible on headphones at volume; ~10-15% catch rate is the target. Never subtitle this line in full before Act 6.",
     revisedConfidence: 100,
     revisedBody:
-      "Cleaned up and played back at full clarity, with nothing added:\n\n\"—the attending was a man named Ardan—\"\n\nYou were told. You were told two days ago, at a run, on the ice.",
+      'Cleaned up and played back at full clarity, with nothing added:\n\n"—the attending was a man named Ardan—"\n\nYou were told. You were told two days ago, at a run, on the ice.',
   },
   {
     id: "frag_a5_link_the_recommendation",
@@ -305,6 +419,28 @@ export const CH1_FRAGMENTS: readonly Ch1FragmentDef[] = Object.freeze([
     triggerNote:
       "First derived fragment. Awarded for correctly linking three entries.",
   },
+  {
+    id: "frag_a5_link_the_walk",
+    title: "The Same Woman",
+    type: "derived",
+    trigger: "link",
+    act: 5,
+    confidence: 64,
+    body: "Linked from the lamps, the night you came, and the corridor.\n\nThe woman on the Grove road and the woman in the corridor are one person. Same build. Same trained, trailless walk. Same refusal to be seen.\n\nThe link tells you who. It does not tell you which side of the door she was trying to reach, and you should notice that it does not.",
+    triggerNote:
+      "Second derived fragment, and the chapter's fairest single sentence. Correct deduction, deliberately silent on the thing the player has already decided.",
+  },
+  {
+    id: "frag_a5_link_the_custodian",
+    title: "Whose Custodian",
+    type: "derived",
+    trigger: "link",
+    act: 5,
+    confidence: 88,
+    body: "Linked from the patrol log, the bibliography, and the key register.\n\nThe robot was not wandering. It was assigned. The papers were not read; they were written. The key was not found; it was issued.\n\nYou were not a patient who used to be somebody. You were somebody who was made into a patient.",
+    triggerNote:
+      "Third derived fragment. This is the one that makes the Act 6 handover a tragedy rather than a mistake: the player already knows this much and gives the ledger away anyway.",
+  },
 
   // --- Act 6 -------------------------------------------------------------
   {
@@ -315,7 +451,7 @@ export const CH1_FRAGMENTS: readonly Ch1FragmentDef[] = Object.freeze([
     act: 6,
     confidence: 100,
     cutsceneId: "ch1-recon-intake",
-    body: "The fourteen hours that were never in his case notes. Recovered whole, in order, at the worst possible moment.\n\nThe room. The consent form you did not sign. The argument, which you lost. The needle. The alarm that was not a fire.\n\nAnd his face, and his voice, exactly as gentle as it has been every single day since:\n\n\"I'm sorry. This is the kind version.\"",
+    body: 'The fourteen hours that were never in his case notes. Recovered whole, in order, at the worst possible moment.\n\nThe room. The consent form you did not sign. The argument, which you lost. The needle. The alarm that was not a fire.\n\nAnd his face, and his voice, exactly as gentle as it has been every single day since:\n\n"I\'m sorry. This is the kind version."',
     triggerNote:
       "The final revision entry. Fires on the word 'Seven' during the handover.",
   },
@@ -389,7 +525,12 @@ export interface Ch1LedgerState {
 }
 
 export function ch1EmptyLedger(): Ch1LedgerState {
-  return { entries: [], links: [], linkingUnlocked: false, consolidated: false };
+  return {
+    entries: [],
+    links: [],
+    linkingUnlocked: false,
+    consolidated: false,
+  };
 }
 
 export function ch1HasFragment(
@@ -487,7 +628,48 @@ export const CH1_LINK_RECIPES: readonly Ch1LinkRecipe[] = Object.freeze([
     derives: "frag_a5_link_the_recommendation",
     xp: 250,
   },
+  {
+    // Two reconstructions plus the echo that dates them. The deduction is
+    // correct and says nothing about intent, which is the whole trick.
+    sources: [
+      "frag_a2_echo_lamps_out",
+      "frag_a2_recon_arrival",
+      "frag_a3_recon_corridor",
+    ],
+    derives: "frag_a5_link_the_walk",
+    xp: 200,
+  },
+  {
+    // Three playbacks. Playbacks never lie, so this link is unimpeachable —
+    // and it is still not enough to point at the right person.
+    sources: [
+      "frag_a1_play_patrol_loop",
+      "frag_a4_play_the_bibliography",
+      "frag_a5_play_custodian_roll",
+    ],
+    derives: "frag_a5_link_the_custodian",
+    xp: 300,
+  },
 ]);
+
+/**
+ * Every recipe whose sources the player already holds. The Act 5 screen offers
+ * these as buildable timelines; a recipe whose derived fragment is already in
+ * the ledger is not offered again.
+ */
+export function ch1AvailableLinkRecipes(
+  state: Ch1LedgerState
+): readonly Ch1LinkRecipe[] {
+  if (!state.linkingUnlocked) {
+    return [];
+  }
+  const held = new Set(state.entries.map((entry) => entry.fragmentId));
+  return CH1_LINK_RECIPES.filter(
+    (recipe) =>
+      !held.has(recipe.derives) &&
+      recipe.sources.every((fragmentId) => held.has(fragmentId))
+  );
+}
 
 export function ch1LinkRecipeFor(
   fragmentIds: readonly string[]

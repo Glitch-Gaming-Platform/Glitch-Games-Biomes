@@ -79,6 +79,7 @@ import { GROVE_ECONOMY_STARTER_LANDMARKS } from "@/shared/harthmere/grove_econom
 import { readSnapshotGroveQuestState } from "@/client/components/challenges/LocalDevSnapshotGroveBibleRuntime";
 import {
   activeHarthmereQuestMarkerId,
+  activeHarthmereQuestMarkerIds,
   isVisibleHarthmereWorldObjectMarker,
 } from "@/client/game/renderers/local_dev/harthmere_quest_object_markers";
 import {
@@ -313,12 +314,10 @@ function harthmereWorldObjectInspectCandidates(): HarthmereWorldObjectCandidate[
   return candidates;
 }
 
-function activeHarthmereStaticWorldObjectMarkerId(): string | undefined {
-  return activeHarthmereQuestMarkerId(readSnapshotGroveQuestState());
-}
-
 function harthmereVisibleStaticWorldObjectInspectCandidates(): HarthmereWorldObjectCandidate[] {
-  const activeMarkerId = activeHarthmereStaticWorldObjectMarkerId();
+  const questState = readSnapshotGroveQuestState();
+  const activeMarkerId = activeHarthmereQuestMarkerId(questState);
+  const activeMarkerIds = activeHarthmereQuestMarkerIds(questState);
   const activePin = readActiveBiomesUIMapPin();
   return harthmereWorldObjectInspectCandidates().filter((candidate) =>
     harthmereWorldObjectCandidateIsVisibleForInteraction({
@@ -326,7 +325,9 @@ function harthmereVisibleStaticWorldObjectInspectCandidates(): HarthmereWorldObj
       activeMarkerId,
       activePinMarkerId: activePin?.markerId,
       activePinPosition: activePin?.worldPosition,
-      alwaysVisible: isVisibleHarthmereWorldObjectMarker(candidate.id),
+      alwaysVisible:
+        activeMarkerIds.has(candidate.id) ||
+        isVisibleHarthmereWorldObjectMarker(candidate.id),
     })
   );
 }

@@ -1,5 +1,6 @@
 import type { ClientResources } from "@/client/game/resources/types";
 import { SHARD_DIM, shardCenter, shardsForAABB } from "@/shared/game/shard";
+import { ch1DetachedWorldBoundsAt } from "@/shared/harthmere/ch1_elsewhen_region";
 import { containsAABB, growAABB } from "@/shared/math/linear";
 import type { AABB, ReadonlyAABB } from "@/shared/math/types";
 
@@ -19,6 +20,23 @@ export function shouldRequestPlayerShardRecovery(input: {
   );
 }
 
+/**
+ * Elsewhen dungeons intentionally sit outside ordinary WorldMetadata and are
+ * reachable only through signed fracture-gate warps. Once there, shard health
+ * must use the occupied dungeon slot's finite detached bounds; filtering
+ * against the mainland AABB makes every valid dungeon shard look missing and
+ * causes an unnecessary recovery reload.
+ */
+export function playerShardLoadWorldAabb(
+  ordinaryWorldAabb: ReadonlyAABB,
+  playerAabb: ReadonlyAABB
+): ReadonlyAABB {
+  const centerX = (playerAabb[0][0] + playerAabb[1][0]) / 2;
+  const centerZ = (playerAabb[0][2] + playerAabb[1][2]) / 2;
+  const detached = ch1DetachedWorldBoundsAt([centerX, 0, centerZ]);
+  return detached ? [detached.v0, detached.v1] : ordinaryWorldAabb;
+}
+
 function nearbyAabbShards(
   resources: ClientResources,
   aabb: AABB | undefined,
@@ -29,10 +47,14 @@ function nearbyAabbShards(
   }
 
   const metadata = resources.get("/ecs/metadata");
-  const worldAabb: ReadonlyAABB = [metadata.aabb.v0, metadata.aabb.v1];
+  const ordinaryWorldAabb: ReadonlyAABB = [
+    metadata.aabb.v0,
+    metadata.aabb.v1,
+  ];
   if (grow) {
     aabb = growAABB(aabb, grow);
   }
+  const worldAabb = playerShardLoadWorldAabb(ordinaryWorldAabb, aabb);
   return Array.from(shardsForAABB(...aabb)).filter((shard) =>
     containsAABB(worldAabb, shardCenter(shard))
   );

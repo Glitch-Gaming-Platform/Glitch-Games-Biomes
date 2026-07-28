@@ -6,6 +6,12 @@ import type { MapMarker, MapTrackableQuest } from "../tabs/MapQuestsTab";
 import { isHarthmereNativeGroveQuestId } from "@/shared/harthmere/harthmere_native_quests";
 import type { NavigationAid } from "@/shared/game/types";
 import type { BiomesId } from "@/shared/ids";
+import {
+  NATIVE_GET_THE_MUCK_OUT_QUEST_ID,
+  NATIVE_GET_THE_MUCK_OUT_MUCKLING_HUNT_POSITION,
+  NATIVE_GET_THE_MUCK_OUT_MUCKLING_STEP_ID,
+} from "@/shared/harthmere/native_road_ahead_contract";
+import { nativeLegacyCombatQuestNavigationPosition } from "@/shared/harthmere/native_combat_quest_routing";
 
 /**
  * A native challenge is complete only after the server-authored trigger tree
@@ -99,6 +105,86 @@ function nativeQuestAnchorMarkerId(questId: number): string {
 }
 
 /**
+ * Supply navigation only where the restored world has a stable production
+ * destination but the original Bikkie leaf did not author one. Every legacy
+ * combat route is keyed by quest and leaf together because two original Jobs
+ * Board quests reuse the same trigger id for different enemy families.
+ */
+export function nativeQuestInferredNavigationAidForTest(
+  questId: BiomesId,
+  progress: TriggerProgress
+): NavigationAid | undefined {
+  if (progress.navigationAid) return progress.navigationAid;
+  if (
+    Number(questId) === Number(NATIVE_GET_THE_MUCK_OUT_QUEST_ID) &&
+    Number(progress.id) === Number(NATIVE_GET_THE_MUCK_OUT_MUCKLING_STEP_ID)
+  ) {
+    return {
+      kind: "position",
+      pos: [...NATIVE_GET_THE_MUCK_OUT_MUCKLING_HUNT_POSITION],
+    };
+  }
+  const legacyCombatPosition = nativeLegacyCombatQuestNavigationPosition({
+    questId,
+    triggerId: progress.id,
+    progressPercentage: progress.progressPercentage,
+  });
+  if (legacyCombatPosition) {
+    return { kind: "position", pos: [...legacyCombatPosition] };
+  }
+  return undefined;
+}
+
+/**
+ * Find the nearest authored place associated with a location-less objective.
+ * Inventory/craft leaves intentionally have no navigation aid, but they often
+ * sit between two NPC steps (for example Busted asks Huck, collects Muckwad,
+ * handcrafts Muck Busters, then returns to Huck). Prefer the next contact, then
+ * the previous one, so the map remains useful without claiming the craft itself
+ * can only happen at that NPC.
+ */
+export function nativeQuestLocationlessAnchorAidForTest(
+  questId: BiomesId,
+  progress: TriggerProgress,
+  activeLeaf: TriggerProgress | undefined
+): NavigationAid | undefined {
+  if (!activeLeaf) return undefined;
+  const leaves = nativeQuestTriggerLeaves(progress);
+  const activeIndex = leaves.findIndex((leaf) => leaf.id === activeLeaf.id);
+  if (activeIndex < 0) return undefined;
+
+  const aidForLeaf = (leaf: TriggerProgress): NavigationAid | undefined => {
+    const inferred = nativeQuestInferredNavigationAidForTest(questId, leaf);
+    if (inferred) return inferred;
+    if (
+      leaf.payload.kind === "challengeClaimRewards" &&
+      leaf.payload.returnQuestGiverId
+    ) {
+      return {
+        kind: "npc",
+        npcTypeId: leaf.payload.returnQuestGiverId,
+      };
+    }
+    return undefined;
+  };
+
+  for (let distance = 0; distance < leaves.length; distance += 1) {
+    const next = leaves[activeIndex + distance];
+    if (next) {
+      const aid = aidForLeaf(next);
+      if (aid) return aid;
+    }
+    if (distance === 0) continue;
+    const previous = leaves[activeIndex - distance];
+    if (previous) {
+      const aid = aidForLeaf(previous);
+      if (aid) return aid;
+    }
+  }
+  return undefined;
+}
+
+/**
  * Older players may already have a giver-less hidden quest in `in_progress`
  * from before its discovery unlock was added. Suppress that stale state when
  * the biscuit explicitly says its own challenge-unlocked event is the gate.
@@ -166,7 +252,7 @@ function nativePosition(
   questId: BiomesId,
   resolve?: NativeQuestNavAidPositionResolver
 ): [number, number, number] | undefined {
-  const aid = progress.navigationAid;
+  const aid = nativeQuestInferredNavigationAidForTest(questId, progress);
   if (aid?.kind === "position") {
     const authored = validWorldPosition(aid.pos);
     if (authored) return authored;
@@ -288,6 +374,11 @@ export function nativeQuestMapMarkers(
       resolve?.({
         questId: quest.biscuit.id,
         triggerId: quest.biscuit.id,
+        navigationAid: nativeQuestLocationlessAnchorAidForTest(
+          quest.biscuit.id,
+          quest.progress,
+          activeLeaves[0]
+        ),
         questAnchor: true,
       })
     );

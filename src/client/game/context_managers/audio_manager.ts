@@ -1,6 +1,10 @@
 import type { ClientContext } from "@/client/game/context";
 import {
+  CH1_SAND_DUNGEON_MUSIC_PATH,
+  CH1_WINTER_DUNGEON_MUSIC_PATH,
   HARTHMERE_BATTLE_MUSIC_PATH,
+  HARTHMERE_BOSS_BATTLE_MUSIC_PATH,
+  HARTHMERE_EXPLORATION_MUSIC_PATH,
   type AudioPath,
 } from "@/client/game/resources/audio";
 import type { ClientResources } from "@/client/game/resources/types";
@@ -46,7 +50,14 @@ function fixVolume(volume: number) {
   return isFinite(rounded) ? rounded : 0;
 }
 
-export type AudioTrackType = "music" | "muck_music" | "battle_music";
+export type AudioTrackType =
+  | "music"
+  | "muck_music"
+  | "battle_music"
+  | "boss_battle_music"
+  | "harthmere_music"
+  | "ch1_sand_music"
+  | "ch1_winter_music";
 
 export interface BackgroundMusicDiagnostics {
   running: boolean;
@@ -65,12 +76,18 @@ export interface AudioRecordingStream {
 
 export const DEFAULT_BACKGROUND_MUSIC_CROSSFADE_SECONDS = 5;
 export const COMBAT_MUSIC_CROSSFADE_SECONDS = 0.75;
+const COMBAT_MUSIC_TRACKS: ReadonlySet<AudioTrackType> = new Set([
+  "battle_music",
+  "boss_battle_music",
+]);
 
 export function backgroundMusicCrossfadeSeconds(
   previousTrack: AudioTrackType | undefined,
   nextTrack: AudioTrackType
 ) {
-  return previousTrack === "battle_music" || nextTrack === "battle_music"
+  return (previousTrack !== undefined &&
+    COMBAT_MUSIC_TRACKS.has(previousTrack)) ||
+    COMBAT_MUSIC_TRACKS.has(nextTrack)
     ? COMBAT_MUSIC_CROSSFADE_SECONDS
     : DEFAULT_BACKGROUND_MUSIC_CROSSFADE_SECONDS;
 }
@@ -226,6 +243,10 @@ export class AudioManager {
       loadTrack("music", sample(getAudioAssetPaths("music"))!),
       loadTrack("muck_music", sample(getAudioAssetPaths("muck_music"))!),
       loadTrack("battle_music", HARTHMERE_BATTLE_MUSIC_PATH),
+      loadTrack("boss_battle_music", HARTHMERE_BOSS_BATTLE_MUSIC_PATH),
+      loadTrack("harthmere_music", HARTHMERE_EXPLORATION_MUSIC_PATH),
+      loadTrack("ch1_sand_music", CH1_SAND_DUNGEON_MUSIC_PATH),
+      loadTrack("ch1_winter_music", CH1_WINTER_DUNGEON_MUSIC_PATH),
     ]);
 
     this.setBackgroundMusicTrack("music");

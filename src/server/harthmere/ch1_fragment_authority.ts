@@ -39,6 +39,8 @@ const CH1_FRAGMENT_TRUTH: Readonly<Record<string, Ch1FragmentTruth>> =
   Object.freeze({
     // Act 1
     frag_a1_play_run_it_again: "true",
+    frag_a1_play_patrol_loop: "true",
+    frag_a1_echo_the_kettle: "true",
     frag_a1_echo_get_back: "true",
 
     // Act 2
@@ -46,11 +48,15 @@ const CH1_FRAGMENT_TRUTH: Readonly<Record<string, Ch1FragmentTruth>> =
     // He really did carry the player out. He carried them out afterwards.
     frag_a2_overlay_ive_got_you: "partial",
     frag_a2_play_the_ninth_signature: "true",
+    frag_a2_overlay_the_cove_glass: "true",
     // The player assembles this from twelve true sentences and gets it wrong.
     frag_a2_recon_arrival: "false",
 
     // Act 3
     frag_a3_play_ninth_paper: "true",
+    frag_a3_overlay_the_balance: "true",
+    // A reconstruction the player gets RIGHT, because it is not about them.
+    frag_a3_recon_the_evacuation: "true",
     frag_a3_echo_cold_to_stand_next_to: "true",
     // THE BIG ONE. Every frame literally happened. The assembly is inverted.
     frag_a3_recon_corridor: "false",
@@ -60,16 +66,52 @@ const CH1_FRAGMENT_TRUTH: Readonly<Record<string, Ch1FragmentTruth>> =
     frag_a4_overlay_thirty_one_seconds: "true",
     frag_a4_play_twenty_two: "true",
     frag_a4_echo_defends_itself: "true",
+    frag_a4_play_the_bibliography: "true",
+    frag_a4_echo_ask_me_in_a_month: "true",
+    // Accurate to the door, then politely finished by the reconstructor.
+    frag_a4_recon_the_hearing: "partial",
 
     // Act 5
     frag_a5_play_decimal_place: "true",
     frag_a5_overlay_ashfall: "true",
+    frag_a5_play_custodian_roll: "true",
+    frag_a5_recon_the_gantry: "true",
     frag_a5_echo_the_name: "true",
     frag_a5_link_the_recommendation: "true",
+    frag_a5_link_the_walk: "true",
+    frag_a5_link_the_custodian: "true",
 
     // Act 6
     frag_a6_the_intake_window: "true",
   });
+
+/**
+ * RULE 5: the ledger must not become a truth oracle by TYPE either.
+ *
+ * If every reconstruction in the chapter were false, "reconstruction" would be
+ * a label meaning "ignore this", and the Act 3 corridor would carry no risk.
+ * At least one reconstruction must be true and at least one must be false, and
+ * the same must hold for the fragment classes the player is told to trust.
+ */
+export function ch1TypeIsNotTruth(): string[] {
+  const errors: string[] = [];
+  const reconstructions = CH1_FRAGMENTS.filter(
+    (f) => f.type === "reconstruction"
+  );
+  if (!reconstructions.some((f) => CH1_FRAGMENT_TRUTH[f.id] === "false")) {
+    errors.push(
+      "no reconstruction is false; the chapter's central misdirection has no " +
+        "delivery mechanism"
+    );
+  }
+  if (!reconstructions.some((f) => CH1_FRAGMENT_TRUTH[f.id] === "true")) {
+    errors.push(
+      "every reconstruction is unreliable; 'reconstruction' has become a " +
+        "label the player can safely ignore"
+    );
+  }
+  return errors;
+}
 
 export function ch1FragmentTruth(
   fragmentId: string
@@ -204,6 +246,7 @@ export function ch1ValidateFairPlay(): string[] {
     ...ch1OnlyReconstructionsLie(),
     ...ch1ConfidenceIsNotTruth(),
     ...ch1RevisionsOnlyCorrectErrors(),
+    ...ch1TypeIsNotTruth(),
   ];
 }
 

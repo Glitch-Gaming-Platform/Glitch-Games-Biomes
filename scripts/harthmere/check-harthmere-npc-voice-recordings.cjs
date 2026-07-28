@@ -14,6 +14,13 @@ const {
 const {
   HARTHMERE_NPC_VOICE_CATALOG,
 } = require("../../src/shared/harthmere/npc_voice_catalog");
+const {
+  ch1VoiceActorForSpeaker,
+} = require("../../src/shared/harthmere/ch1_voice");
+const {
+  CH1_OBJECTIVE_DIALOGUE,
+  CH1_COMPLETION_DIALOGUE,
+} = require("../../src/server/harthmere/ch1_dialogue");
 
 const root = path.resolve(process.argv[2] || path.join(__dirname, "../.."));
 const publicRoot = path.join(root, "public");
@@ -33,6 +40,52 @@ function isGitLfsPointer(filePath) {
 
 function cacheKeysFor(recording) {
   return new Set([recording.cacheKey, ...(recording.cacheKeys || [])]);
+}
+
+function slugForVoicePath(text) {
+  return String(text)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 96);
+}
+
+function expectedChapter1ObjectivePaths() {
+  const linesByActor = new Map();
+  const sequences = [
+    ...Object.values(CH1_OBJECTIVE_DIALOGUE),
+    ...Object.values(CH1_COMPLETION_DIALOGUE).flatMap((byChoice) =>
+      Object.values(byChoice)
+    ),
+  ];
+  for (const sequence of sequences) {
+    for (const page of sequence.pages) {
+      const actor = ch1VoiceActorForSpeaker(page.speaker);
+      if (!actor) continue;
+      const current = linesByActor.get(actor.profile.actorKey) ?? {
+        actor,
+        lines: [],
+        seen: new Set(),
+      };
+      const text = String(page.text || "").trim();
+      if (text && !current.seen.has(text)) {
+        current.seen.add(text);
+        current.lines.push(text);
+      }
+      linesByActor.set(actor.profile.actorKey, current);
+    }
+  }
+  return [...linesByActor.values()].flatMap(({ actor, lines }) => {
+    const actorSlug = slugForVoicePath(
+      `chapter-1-identity-objective-${actor.id}-${actor.displayName}`
+    );
+    return lines.map(
+      (_text, index) =>
+        `harthmere/voices/generated/current/${actorSlug}/line-${String(
+          index + 1
+        ).padStart(2, "0")}.mp3`
+    );
+  });
 }
 
 function main() {
@@ -55,7 +108,9 @@ function main() {
       entry.staticLines.map((line) => line.recordingPath)
     )
   );
-  const expectedMinimum = expectedCatalogPaths.size + 139;
+  const objectivePaths = expectedChapter1ObjectivePaths();
+  const expectedMinimum =
+    expectedCatalogPaths.size + objectivePaths.length + 139;
   if ((manifest.recordings || []).length < expectedMinimum) {
     fail(
       `NPC voice manifest is incomplete: ${
@@ -125,6 +180,11 @@ function main() {
       fail(`Chapter 1 voice filename leaks protected lore: ${chapterPath}`);
     }
   }
+  for (const objectivePath of objectivePaths) {
+    if (!paths.has(objectivePath)) {
+      fail(`Missing voiced Chapter 1 objective MP3: ${objectivePath}`);
+    }
+  }
 
   // Reproduce the exact production request from the attached HAR. It must map
   // to committed audio rather than a replica-local runtime filename.
@@ -153,7 +213,8 @@ function main() {
 
   console.log(
     `PASS NPC voice recordings: ${manifest.recordings.length} MP3s, ` +
-      `${chapterPaths.length} Chapter 1 lines, ` +
+      `${chapterPaths.length} Chapter 1 cutscene lines, ` +
+      `${objectivePaths.length} Chapter 1 objective lines, ` +
       `${nativeRobotStoryCount} native robot-story lines, HAR cache hit ${harRecording.path}`
   );
 }

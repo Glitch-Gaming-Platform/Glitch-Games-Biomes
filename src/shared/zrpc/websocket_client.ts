@@ -75,9 +75,14 @@ function prepareUri(
   authSessionId?: string,
   desireAnon?: boolean
 ): string {
+  // `IS_SERVER` is a bundling hint, not a reliable runtime capability test.
+  // Shared server tests can import this module before that environment flag is
+  // installed; consulting `window` in that process leaves every WebSocket RPC
+  // client stuck until its timeout. Relative browser URLs still resolve from
+  // the live page, while absolute Node/test URLs need no base at all.
   const url = new URL(
     raw,
-    process.env.IS_SERVER ? undefined : window.location.href
+    typeof window === "undefined" ? undefined : window.location.href
   );
   url.searchParams.set(ZRPC_PROTOCOL_ARG, ZRPC_PROTOCOL_VERSION);
   url.searchParams.set(ZRPC_CLIENT_SESSION_ARG, clientSessionId);

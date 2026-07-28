@@ -7,6 +7,7 @@ import {
 } from "../live_mode_backend";
 import type { HarthmereLiveModeAuthorityEnvelope } from "../live_mode_readiness";
 import { snapshotGroveLandmarkById } from "../snapshot_grove_content";
+import { ensureHarthmereNativeItemCatalogue } from "../harthmere_native_bikkie_items";
 
 const NOW_MS = 1_700_000_000_000;
 const ACTOR = "world_object_actor";
@@ -54,6 +55,8 @@ function positionFor(objectId: string) {
 }
 
 describe("authoritative authored world-object interactions", () => {
+  before(() => ensureHarthmereNativeItemCatalogue());
+
   it("records a faced fallback interaction in server-owned state", () => {
     const objectId = "grove_fountain_lesson_board";
     const result = reduceHarthmereLiveModeBackendState(
@@ -179,6 +182,56 @@ describe("authoritative authored world-object interactions", () => {
       result.summary.warnings.includes(
         "world_object_rejected:native_or_typed_capability_required"
       )
+    );
+  });
+
+  it("grants an active Grove pickup once through native ECS", () => {
+    const objectId = "econ_billy_lunch_pail";
+    const initial = defaultHarthmereLiveModeBackendState(ACTOR, NOW_MS);
+    initial.quests.active.econ_billys_lost_lunch_pail = {
+      stepId: "econ_billys_lost_lunch_pail:2:collect",
+      progress: 3,
+      source: "snapshot_grove",
+      title: "Billy's Lost Lunch Pail",
+    };
+
+    const pickedUp = reduceHarthmereLiveModeBackendState(
+      initial,
+      envelope({
+        objectId,
+        interactionKind: "gather",
+        label: "Billy's Lunch Pail",
+        position: positionFor(objectId),
+      }),
+      NOW_MS
+    );
+
+    assert.deepEqual(pickedUp.summary.warnings, []);
+    assert.equal(pickedUp.state.inventory.items.billys_lunch_pail, 1);
+    assert.ok(
+      pickedUp.summary.nativeEcsMaterializationPlans?.some(
+        (plan) =>
+          plan.kind === "inventory_exchange" &&
+          plan.rewardItemStacks.billys_lunch_pail === 1
+      )
+    );
+
+    const repeated = reduceHarthmereLiveModeBackendState(
+      pickedUp.state,
+      envelope({
+        objectId,
+        interactionKind: "gather",
+        label: "Billy's Lunch Pail",
+        position: positionFor(objectId),
+      }),
+      NOW_MS + 1
+    );
+    assert.equal(repeated.state.inventory.items.billys_lunch_pail, 1);
+    assert.equal(
+      repeated.summary.nativeEcsMaterializationPlans?.filter(
+        (plan) => plan.kind === "inventory_exchange"
+      ).length ?? 0,
+      0
     );
   });
 });

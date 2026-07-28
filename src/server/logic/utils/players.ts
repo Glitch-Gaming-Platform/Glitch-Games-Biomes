@@ -47,6 +47,7 @@ import {
   HARTHMERE_ADDITIVE_TOWN_OFFSET_Z,
   shouldEnableHarthmereAdditiveWorldExtension,
 } from "@/shared/harthmere/world_extension";
+import { ch1NativeRunAdmitsPosition } from "@/shared/harthmere/ch1_native_run";
 import {
   PLAYER_HOTBAR_SLOTS,
   PLAYER_INVENTORY_SLOTS,
@@ -514,6 +515,12 @@ export function setPlayerHealth(
     health.lastDamageAmount = newHp - oldHp;
   }
   health.hp = newHp;
+  if (newHp > 0 && oldHp <= 0) {
+    // Native health events are also the authoritative revive path. Leaving a
+    // stale death marker behind would keep the map marker and death UI active
+    // even though the ECS health component says the player is alive.
+    player.clearDeathInfo();
+  }
   if (newHp <= 0 && oldHp > 0) {
     const inventory = new PlayerInventoryEditor(context, player);
     const bling = inventory.get(currencyRefTo(BikkieIds.bling));
@@ -610,6 +617,13 @@ export function ensurePlayerHasReasonablePosition(
       player.setOrientation(Orientation.create({ v: [...startOrientation] }));
       player.setRigidBody(RigidBody.create());
     }
+    return;
+  }
+
+  if (ch1NativeRunAdmitsPosition(player.triggerState(), position)) {
+    // The signed fracture-gate event deliberately places admitted players in
+    // detached terrain outside ordinary WorldMetadata. Keepalive repair must
+    // not undo that native-ECS transition.
     return;
   }
 

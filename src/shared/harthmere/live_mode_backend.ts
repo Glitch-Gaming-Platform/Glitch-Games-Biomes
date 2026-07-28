@@ -29,6 +29,8 @@ import {
   getHarthmereCraftingRecipe,
   getHarthmereCraftingStation,
   getHarthmereCraftingTool,
+  countInventorySlots,
+  HARTHMERE_DEFAULT_INVENTORY_SLOTS,
   harthmereCleanupToolGate,
   harthmereRepairToolGate,
   normalizeHarthmereCraftingStationId,
@@ -143,10 +145,17 @@ import {
 import { HARTHMERE_WORLD_OBJECT_INSPECT_RADIUS } from "./harthmere_world_object_inspectable";
 import {
   snapshotGroveCollectEventMatchesObjective,
+  snapshotGroveCraftEventMatchesObjective,
   snapshotGroveInventoryEventMatchesObjective,
   snapshotGroveItemUseEventMatchesObjective,
+  snapshotGroveObjectiveInventoryRequirement,
+  snapshotGroveObjectiveRequiredCount,
+  snapshotGroveObjectiveTargetMarkerIds,
+  snapshotGrovePracticeItemFixtureForObjective,
+  SNAPSHOT_GROVE_TUTORIAL_RECIPE_IDS,
   snapshotGroveTutorialInventoryGrantsForQuest,
 } from "./snapshot_grove_trigger_contract";
+import { SNAPSHOT_STRUCTURED_REWARDS } from "./snapshot_complete_port";
 // HARTHMERE_BIBLE_QUEST_WIRING (bible-wiring fix, 2026-07-14): the seam that
 // makes the 85-quest bible catalog (Q1–Q12 dragon arc + side quests) playable
 // through live mode, and drives the Thaedryn encounter. See the header of
@@ -173,6 +182,7 @@ import {
   harthmereJobsBoardQuestMarkerRuntimePositionForId,
   harthmereJobsBoardQuestMarkerRuntimePositionForTodo,
 } from "./jobs_board_quest_marker_positions";
+import { harthmereJobsBoardMuckBountyTargetForId } from "./jobs_board_muck_bounty_targets";
 import {
   harthmereJobMarkerPlan,
   type HarthmereJobProgress,
@@ -263,6 +273,14 @@ import {
   normalizeHarthmereProgressionCollectionsState,
   type HarthmereProgressionCollectionsState,
 } from "./mmo_class_ability_collectibles";
+import {
+  HARTHMERE_SKILL_IDS,
+  harthmereCraftingSkillAwards,
+  harthmereNativeGatheringSkillAwards,
+  harthmereWorldInteractionSkillAwards,
+  normalizeHarthmereSkillId,
+  type HarthmereSkillXpAward,
+} from "./harthmere_skill_progression";
 import { HARTHMERE_VOXEL_INTERACTION_ATTACK_REACH_UNITS } from "./combat_reach";
 import {
   createHarthmereCareLoopClientSnapshot,
@@ -1306,6 +1324,11 @@ export interface HarthmereLiveModeBackendState {
         entityId?: string;
         giverName?: string;
         giverPosition?: [number, number, number];
+        objectiveProgress?: {
+          objectiveIndex: number;
+          count: number;
+          evidenceKeys: string[];
+        };
       }
     >;
     completed: Record<string, number>;
@@ -2054,6 +2077,32 @@ export interface HarthmereNativeEcsInventoryExchangeMaterializationPlan {
   sourceKind: string;
 }
 
+/**
+ * Absolute specialized-skill totals written to the player's native TriggerState.
+ * Absolute values make reducer retries and materializer replays idempotent.
+ */
+export interface HarthmereNativeEcsSkillProgressMaterializationPlan {
+  kind: "skill_progress";
+  materializationKey: string;
+  actorId: string;
+  skillXp: Record<string, number>;
+  sourceKind: string;
+}
+
+/**
+ * One replay-protected character XP award. Character level uses the native
+ * combat/quest progression root, not the specialized-skill ledger above, so
+ * the authored reward remains a delta and native level-up arithmetic stays in
+ * its single existing authority.
+ */
+export interface HarthmereNativeEcsCharacterProgressMaterializationPlan {
+  kind: "character_progress";
+  materializationKey: string;
+  actorId: string;
+  xpDelta: number;
+  sourceKind: string;
+}
+
 export interface HarthmereNativeEcsQuestAcceptMaterializationPlan {
   kind: "quest_accept";
   materializationKey: string;
@@ -2066,7 +2115,7 @@ export interface HarthmereNativeEcsQuestAcceptMaterializationPlan {
    * tells the native materializer to begin the already server-approved
    * challenge directly instead of silently dropping the ECS half of accept.
    */
-  giverEntityId?: number;
+  giverEntityId?: number | string;
   sourceKind: string;
 }
 
@@ -2135,6 +2184,8 @@ export interface HarthmereNativeEcsDeedMaterializationPlan {
 export type HarthmereNativeEcsMaterializationPlan =
   | HarthmereNativeEcsDropMaterializationPlan
   | HarthmereNativeEcsInventoryExchangeMaterializationPlan
+  | HarthmereNativeEcsSkillProgressMaterializationPlan
+  | HarthmereNativeEcsCharacterProgressMaterializationPlan
   | HarthmereNativeEcsQuestAcceptMaterializationPlan
   | HarthmereNativeEcsQuestProgressMaterializationPlan
   | HarthmereNativeEcsQuestResetMaterializationPlan
@@ -2168,6 +2219,8 @@ export function bindHarthmereNativeEcsMaterializationPlansToActorForTest(
           ownerActorIds: plan.ownerActorIds.map(bindActor),
         };
       case "inventory_exchange":
+      case "skill_progress":
+      case "character_progress":
       case "quest_accept":
       case "quest_progress":
       case "quest_reset":
@@ -2200,6 +2253,10 @@ export function projectHarthmereNativeEcsPlansOntoClientStateForTest(
   const exchanges = plans.filter(
     (plan): plan is HarthmereNativeEcsInventoryExchangeMaterializationPlan =>
       plan.kind === "inventory_exchange"
+  );
+  const skillPlans = plans.filter(
+    (plan): plan is HarthmereNativeEcsSkillProgressMaterializationPlan =>
+      plan.kind === "skill_progress"
   );
   const normalizedCounts = (counts: Record<string, number> | undefined) =>
     Object.fromEntries(
@@ -2261,6 +2318,18 @@ export function projectHarthmereNativeEcsPlansOntoClientStateForTest(
     next.law.standing[envelope.serverActorStanding.scopeId] =
       normalizeReputationStanding(envelope.serverActorStanding);
   }
+  if (envelope.serverActorSkillXp) {
+    for (const [skillId, totalXp] of Object.entries(
+      envelope.serverActorSkillXp
+    )) {
+      if (!HARTHMERE_SKILL_DEFINITIONS[skillId]) continue;
+      const xp = Math.max(0, Math.trunc(Number(totalXp) || 0));
+      next.classMagic.skills[skillId] = {
+        xp,
+        level: harthmereSkillLevelFromTotalXp(skillId, xp),
+      };
+    }
+  }
 
   for (const exchange of exchanges) {
     applyStacks(
@@ -2309,6 +2378,19 @@ export function projectHarthmereNativeEcsPlansOntoClientStateForTest(
     if (exchange.standing) {
       next.law.standing[exchange.standing.scopeId] =
         normalizeReputationStanding(exchange.standing);
+    }
+  }
+  for (const plan of skillPlans) {
+    for (const [skillId, totalXp] of Object.entries(plan.skillXp)) {
+      if (!HARTHMERE_SKILL_DEFINITIONS[skillId]) continue;
+      const xp = Math.max(
+        next.classMagic.skills[skillId]?.xp ?? 0,
+        Math.max(0, Math.trunc(Number(totalXp) || 0))
+      );
+      next.classMagic.skills[skillId] = {
+        xp,
+        level: harthmereSkillLevelFromTotalXp(skillId, xp),
+      };
     }
   }
   return next;
@@ -3294,80 +3376,6 @@ function ensurePlayerOwnedBusinessOwnerNpcMarkers(
   }
 }
 
-function wouldExceedCarryWeight(
-  items: Record<string, number>,
-  itemId: string | undefined,
-  count: number
-) {
-  if (!itemId || count <= 0) {
-    return false;
-  }
-  const nextWeight =
-    harthmereInventoryCarryWeight(items) +
-    harthmereItemUnitWeight(itemId) * Math.max(1, Math.trunc(count));
-  return nextWeight > HARTHMERE_CARRY_WEIGHT_LIMIT;
-}
-
-function wouldStacksExceedCarryWeight(
-  items: Record<string, number>,
-  stacks: Record<string, number>
-) {
-  const projected = { ...items };
-  for (const [itemId, count] of Object.entries(stacks)) {
-    applyBankRecordDelta(projected, itemId, Math.trunc(Number(count) || 0));
-  }
-  return (
-    harthmereInventoryCarryWeight(projected) > HARTHMERE_CARRY_WEIGHT_LIMIT
-  );
-}
-
-function wouldCraftExceedCarryWeight(
-  items: Record<string, number>,
-  recipe: HarthmereCraftingRecipe | undefined,
-  craftCount = 1
-) {
-  if (!recipe) {
-    return false;
-  }
-  const count = Math.max(1, Math.trunc(craftCount));
-  const projected = { ...items };
-  for (const input of recipe.inputs) {
-    applyBankRecordDelta(projected, input.itemId, -input.count * count);
-  }
-  applyBankRecordDelta(
-    projected,
-    recipe.outputItemId,
-    recipe.outputCount * count
-  );
-  return (
-    harthmereInventoryCarryWeight(projected) > HARTHMERE_CARRY_WEIGHT_LIMIT
-  );
-}
-
-function wouldCraftCompletionExceedCarryWeight(
-  items: Record<string, number>,
-  recipe: HarthmereCraftingRecipe | undefined,
-  craftCount = 1,
-  targetItemId?: string
-) {
-  if (!recipe) {
-    return false;
-  }
-  const count = Math.max(1, Math.trunc(craftCount));
-  const projected = { ...items };
-  if (recipe.consumeTargetOnSuccess && targetItemId) {
-    applyBankRecordDelta(projected, targetItemId, -1);
-  }
-  applyBankRecordDelta(
-    projected,
-    recipe.outputItemId,
-    recipe.outputCount * count
-  );
-  return (
-    harthmereInventoryCarryWeight(projected) > HARTHMERE_CARRY_WEIGHT_LIMIT
-  );
-}
-
 function carriedItemsForWeight(
   items: Record<string, number>,
   materialStorage: Record<string, number> | undefined
@@ -3559,15 +3567,6 @@ function nextCraftingJobId(state: HarthmereLiveModeBackendState) {
     jobId = `craft_${state.actorId}_${state.crafting.nextJobNumber++}`;
   } while (state.crafting.activeJobs[jobId]);
   return jobId;
-}
-
-function pushCarryWeightRejection(
-  warnings: string[],
-  touchedModels: Set<string>,
-  source: string
-) {
-  warnings.push(`${source}_rejected:carry_weight_limit_exceeded`);
-  touchedModels.add("inventory_weight_rejection");
 }
 
 function clearBankCreditHoldIfSettled(
@@ -5439,7 +5438,51 @@ const HARTHMERE_AUTHORITATIVE_FALLBACK_INTERACTIONS =
     "check_outfit",
     "take_photo",
     "inspect",
+    "gather",
   ]);
+
+function activeSnapshotGroveWorldPickup(input: {
+  state: HarthmereLiveModeBackendState;
+  objectId: string;
+}) {
+  for (const [questId, active] of Object.entries(input.state.quests.active)) {
+    if (active.source !== "snapshot_grove") continue;
+    const quest = SNAPSHOT_GROVE_QUESTS.find(
+      (candidate) => candidate.id === questId
+    );
+    if (!quest?.objectives.length) continue;
+    const objectiveIndex = Math.max(
+      0,
+      Math.min(quest.objectives.length - 1, Math.max(0, active.progress - 1))
+    );
+    if (
+      !snapshotGroveObjectiveTargetMarkerIds(quest, objectiveIndex).includes(
+        input.objectId
+      )
+    ) {
+      continue;
+    }
+    const trigger = quest.triggers[objectiveIndex];
+    const pickupLikeInteract =
+      trigger === "interact" &&
+      /\b(take|pick up|collect|gather|retrieve|recover|dig)\b/i.test(
+        quest.objectives[objectiveIndex] ?? ""
+      );
+    if (
+      trigger !== "collect" &&
+      trigger !== "item_grant" &&
+      !pickupLikeInteract
+    ) {
+      continue;
+    }
+    const item = snapshotGrovePracticeItemFixtureForObjective(
+      quest,
+      objectiveIndex
+    );
+    if (item) return { quest, objectiveIndex, item };
+  }
+  return undefined;
+}
 
 function normalizeWorldObjectText(value: unknown) {
   return String(value ?? "")
@@ -5548,22 +5591,24 @@ function nativeJobsBoardEquippedToolActions(
 }
 
 /**
- * Treat the completion request itself as the interaction, but derive the
- * target from the authored job and the server-read player position. Client
- * target/recipient strings never become completion evidence.
+ * Derive completion from server-owned evidence. Ordinary service/delivery
+ * targets still use server-read proximity, while hunt targets require the
+ * exact seeded NPC entity in the player's native TriggerState kill ledger.
  */
-function nativeJobsBoardObservedTargetIds(input: {
+export function nativeJobsBoardObservedTargetIdsForTest(input: {
   job?: HarthmereJobsBoardPosting;
   actorPosition?: { x: number; y: number; z: number };
+  killedEntityAtMs?: Record<string, number>;
 }) {
   const observed = new Set<string>();
-  if (!input.job || !input.actorPosition) return [];
+  if (!input.job) return [];
   const radiusSq = HARTHMERE_JOBS_BOARD_FIELD_COMPLETION_RADIUS ** 2;
   const authoredFieldMarker = harthmereJobsBoardQuestMarkerRuntimePositionForId(
     input.job.mapMarkerId ?? input.job.targetId
   );
   const atAuthoredFieldMarker = Boolean(
-    authoredFieldMarker &&
+    input.actorPosition &&
+      authoredFieldMarker &&
       distanceSq3(input.actorPosition, {
         x: authoredFieldMarker.position[0],
         y: authoredFieldMarker.position[1],
@@ -5571,6 +5616,17 @@ function nativeJobsBoardObservedTargetIds(input: {
       }) <= radiusSq
   );
   for (const requirement of input.job.requirements) {
+    const bountyTarget = harthmereJobsBoardMuckBountyTargetForId(
+      requirement.targetId
+    );
+    if (bountyTarget) {
+      const killedAtMs =
+        input.killedEntityAtMs?.[String(bountyTarget.entityId)] ?? 0;
+      if (killedAtMs >= (input.job.acceptedAtMs ?? input.job.createdAtMs)) {
+        observed.add(bountyTarget.targetId);
+      }
+      continue;
+    }
     const candidates = new Set<string>();
     if (requirement.targetId) candidates.add(requirement.targetId);
     if (requirement.recipientNpcId) {
@@ -5589,7 +5645,7 @@ function nativeJobsBoardObservedTargetIds(input: {
     for (const candidate of candidates) {
       const marker =
         harthmereJobsBoardQuestMarkerRuntimePositionForId(candidate);
-      if (!marker) continue;
+      if (!marker || !input.actorPosition) continue;
       if (
         distanceSq3(input.actorPosition, {
           x: marker.position[0],
@@ -6545,36 +6601,6 @@ function applyDirectInventoryItemPayload(
   }
 
   return applied;
-}
-
-function wouldDirectInventoryPayloadExceedCarryWeight(
-  items: Record<string, number>,
-  envelope: HarthmereLiveModeAuthorityEnvelope,
-  options: { includePrimaryItem: boolean }
-) {
-  const projected = { ...items };
-  let touched = false;
-  if (options.includePrimaryItem) {
-    const itemId = payloadString(envelope, "itemId");
-    const count = payloadPositiveWholeCount(envelope);
-    if (itemId && count !== undefined) {
-      applyBankRecordDelta(projected, itemId, count);
-      touched = true;
-    }
-  }
-  const itemDeltas = payloadRecord(envelope, "itemDeltas");
-  if (itemDeltas) {
-    for (const [itemId, rawDelta] of Object.entries(itemDeltas)) {
-      if (typeof rawDelta === "number" && Number.isFinite(rawDelta)) {
-        applyBankRecordDelta(projected, itemId, rawDelta);
-        touched = true;
-      }
-    }
-  }
-  return (
-    touched &&
-    harthmereInventoryCarryWeight(projected) > HARTHMERE_CARRY_WEIGHT_LIMIT
-  );
 }
 
 const HARTHMERE_STARTER_KNOWN_RECIPE_IDS = [
@@ -8513,6 +8539,19 @@ export function reduceHarthmereLiveModeBackendState(
     actorId === envelope.actorId && envelope.serverActorEntityId
       ? String(envelope.serverActorEntityId)
       : actorId;
+  const applyUnifiedSkillAwards = (
+    awards: readonly HarthmereSkillXpAward[]
+  ) => {
+    for (const award of awards) {
+      const progress = upsertSkill(
+        next.classMagic.skills,
+        award.skillId,
+        award.xp
+      );
+      if (progress.warning) warnings.push(progress.warning);
+      if (progress.ok) touchedModels.add("skill_xp");
+    }
+  };
   const queueNativeDeed = (input: {
     plot: BuildingSystemPlotDefinition;
     ownerActorId: string;
@@ -8557,6 +8596,35 @@ export function reduceHarthmereLiveModeBackendState(
   // RecipeBook. This is idempotent and removes module import order from the
   // crafting authority boundary.
   ensureHarthmereProductionCraftingCatalogue();
+
+  const nativeSkillXpBaseline = envelope.serverActorSkillXp
+    ? Object.fromEntries(
+        HARTHMERE_SKILL_IDS.filter(
+          (skillId) => skillId !== "character_level"
+        ).map((skillId) => [
+          skillId,
+          Math.max(
+            0,
+            Math.trunc(Number(envelope.serverActorSkillXp?.[skillId]) || 0)
+          ),
+        ])
+      )
+    : undefined;
+  if (nativeSkillXpBaseline) {
+    for (const [skillId, nativeXp] of Object.entries(nativeSkillXpBaseline)) {
+      const legacyXp = Math.max(
+        0,
+        Math.trunc(Number(next.classMagic.skills[skillId]?.xp) || 0)
+      );
+      const totalXp = envelope.serverActorSkillProgressionInitialized
+        ? nativeXp
+        : Math.max(nativeXp, legacyXp);
+      next.classMagic.skills[skillId] = {
+        xp: totalXp,
+        level: harthmereSkillLevelFromTotalXp(skillId, totalXp),
+      };
+    }
+  }
 
   const nativePlayerInventoryBaseline =
     nativeBiomesEcsAuthorityEnabled() &&
@@ -8747,6 +8815,20 @@ export function reduceHarthmereLiveModeBackendState(
       knownAbilities: [...next.classMagic.knownAbilities],
       knownRecipes: [...next.classMagic.knownRecipes],
     };
+  }
+
+  function hasLiveInventoryCapacityForDeltas(
+    items: Record<string, number>,
+    deltas: Record<string, number>
+  ) {
+    const projected = { ...items };
+    for (const [itemId, delta] of Object.entries(deltas)) {
+      applyBankRecordDelta(projected, itemId, Math.trunc(Number(delta) || 0));
+    }
+    const maxSlots =
+      next.inventoryLoot.actors[next.actorId]?.maxInventorySlots ??
+      HARTHMERE_DEFAULT_INVENTORY_SLOTS;
+    return countInventorySlots(projected) <= maxSlots;
   }
 
   // ---------------------------------------------------------------------------
@@ -9731,29 +9813,6 @@ export function reduceHarthmereLiveModeBackendState(
     return { itemDefinitions, lootTables: {} };
   }
 
-  function liveLootDropBackpackStacksForCarry(stacks: Record<string, number>) {
-    const backpackStacks: Record<string, number> = {};
-    for (const [itemId, count] of Object.entries(stacks)) {
-      const safeCount = Math.max(0, Math.trunc(Number(count) || 0));
-      if (safeCount <= 0) continue;
-      const def = getHarthmereItemDefinition(itemId);
-      const category = itemCategoryFromDefinition(def, itemId);
-      if (category === "currency") continue;
-      if (
-        category === "materials" &&
-        bankRecordHasCapacity(
-          next.banking.materialStorage,
-          itemId,
-          next.banking.materialStorageMaxSlots
-        )
-      ) {
-        continue;
-      }
-      backpackStacks[itemId] = safeCount;
-    }
-    return backpackStacks;
-  }
-
   function routeInventoryLootActorMaterialsToLiveStorage(
     stacks: Record<string, number>
   ) {
@@ -10511,7 +10570,7 @@ export function reduceHarthmereLiveModeBackendState(
   }
 
   function advanceSnapshotGroveQuestsFromAuthoritativeEvent(
-    kind: "inventory" | "item_use" | "collect",
+    kind: "inventory" | "item_use" | "collect" | "craft",
     event: Record<string, unknown>
   ) {
     for (const [questId, active] of Object.entries(next.quests.active)) {
@@ -10538,6 +10597,13 @@ export function reduceHarthmereLiveModeBackendState(
               quest,
               objectiveIndex
             )
+          : kind === "craft"
+          ? trigger === "craft" &&
+            snapshotGroveCraftEventMatchesObjective(
+              event,
+              quest,
+              objectiveIndex
+            )
           : (trigger === "collect" || trigger === "item_grant") &&
             snapshotGroveCollectEventMatchesObjective(
               event,
@@ -10546,10 +10612,23 @@ export function reduceHarthmereLiveModeBackendState(
             );
       if (!matches) continue;
 
+      if (nativeBiomesEcsAuthorityEnabled()) {
+        nativeEcsMaterializationPlans.push({
+          kind: "quest_progress",
+          materializationKey: `quest_progress:${envelope.actorId}:grove:${questId}:${objectiveIndex}`,
+          actorId: envelope.actorId,
+          questSource: "grove",
+          questId,
+          objectiveIdOrIndex: objectiveIndex,
+          sourceKind: `harthmere_snapshot_grove_${kind}_progress`,
+        });
+      }
+
       const nextObjectiveIndex = objectiveIndex + 1;
       if (nextObjectiveIndex >= quest.objectives.length) {
         next.quests.completed[questId] = nowMs;
         delete next.quests.active[questId];
+        grantSnapshotGroveQuestReward(questId);
       } else {
         active.progress = nextObjectiveIndex + 1;
         active.stepId =
@@ -10558,9 +10637,151 @@ export function reduceHarthmereLiveModeBackendState(
           nextObjectiveIndex +
           ":" +
           (quest.triggers[nextObjectiveIndex] ?? "step");
+        active.objectiveProgress = undefined;
       }
       touchedModels.add("quest_state");
     }
+  }
+
+  function grantSnapshotGroveQuestReward(questId: string) {
+    const reward = SNAPSHOT_STRUCTURED_REWARDS.find(
+      (entry) => entry.questId === questId
+    );
+    if (!reward) return;
+    const rewardGrantId = `snapshot_grove_reward:${questId}`;
+    // The economy ledger is actor-local, but native ECS materialization
+    // receipts are global Redis keys. Include the actor in native reward keys
+    // so one player's completion can never suppress another player's XP or
+    // inventory write for the same Grove quest.
+    const nativeRewardMaterializationId = `snapshot_grove_reward:${envelope.actorId}:${questId}`;
+    if (next.economy.ledger.some((entry) => entry.id === rewardGrantId)) {
+      return;
+    }
+
+    if (reward.xp > 0) {
+      const skillProgress = upsertSkill(
+        next.classMagic.skills,
+        "character_level",
+        reward.xp
+      );
+      if (skillProgress.warning) warnings.push(skillProgress.warning);
+      touchedModels.add("skill_xp");
+      if (nativeBiomesEcsAuthorityEnabled()) {
+        nativeEcsMaterializationPlans.push({
+          kind: "character_progress",
+          materializationKey: `${nativeRewardMaterializationId}:xp`,
+          actorId: envelope.actorId,
+          xpDelta: reward.xp,
+          sourceKind: "harthmere_snapshot_grove_quest_reward",
+        });
+        touchedModels.add("native_ecs_character_progress");
+      }
+    }
+
+    const rewardItemStacks: Record<string, number> = {};
+    for (const itemId of reward.items) {
+      if (!getHarthmereItemDefinition(itemId)) {
+        registerHarthmereItemDefinition(
+          harthmereBibleRewardItemDefinition(itemId)
+        );
+      }
+      recordDelta(next.inventory.items, itemId, 1);
+      rewardItemStacks[itemId] = (rewardItemStacks[itemId] ?? 0) + 1;
+    }
+    if (Object.keys(rewardItemStacks).length > 0) {
+      touchedModels.add("inventory_items");
+    }
+
+    if (reward.recipes.length) {
+      next.classMagic.knownRecipes = [
+        ...new Set([...next.classMagic.knownRecipes, ...reward.recipes]),
+      ];
+      touchedModels.add("known_recipes");
+    }
+    for (const codexId of reward.codex) {
+      next.collections.discovered[codexId] ??= nowMs;
+    }
+    if (reward.codex.length) touchedModels.add("collections");
+    for (const reputationId of reward.reputation) {
+      next.law.reputation[reputationId] =
+        (next.law.reputation[reputationId] ?? 0) + 1;
+    }
+    if (reward.reputation.length) touchedModels.add("reputation");
+
+    if (reward.bling > 0) {
+      next.inventory.gold = Math.max(0, next.inventory.gold + reward.bling);
+      touchedModels.add("wallet");
+    }
+    next.economy.ledger.push({
+      id: rewardGrantId,
+      kind: "snapshot_grove_quest_reward",
+      amount: reward.bling,
+      atMs: nowMs,
+    });
+    touchedModels.add("economy_ledger");
+
+    if (
+      nativeBiomesEcsAuthorityEnabled() &&
+      envelope.serverActorPosition &&
+      (reward.bling > 0 || Object.keys(rewardItemStacks).length > 0)
+    ) {
+      nativeEcsMaterializationPlans.push({
+        kind: "inventory_exchange",
+        materializationKey: `${nativeRewardMaterializationId}:inventory`,
+        actorId: envelope.actorId,
+        position: envelope.serverActorPosition,
+        consumeItemStacks: {},
+        rewardItemStacks,
+        goldDelta: reward.bling,
+        expiresAtMs: nowMs + 30 * 24 * 60 * 60 * 1000,
+        sourceKind: "harthmere_snapshot_grove_quest_reward",
+      });
+      touchedModels.add("native_ecs_inventory_exchange");
+    }
+  }
+
+  function applySnapshotGroveObjectiveInventoryRequirement(
+    quest: (typeof SNAPSHOT_GROVE_QUESTS)[number],
+    objectiveIndex: number
+  ) {
+    const requirement = snapshotGroveObjectiveInventoryRequirement(
+      quest,
+      objectiveIndex
+    );
+    if (!requirement) return true;
+    const authoritativeCount = Math.max(
+      0,
+      Math.trunc(
+        Number(
+          envelope.serverActorItemCounts?.[requirement.itemId] ??
+            next.inventory.items[requirement.itemId]
+        ) || 0
+      )
+    );
+    if (authoritativeCount < requirement.count) {
+      warnings.push(
+        `snapshot_grove_quest_rejected:required_item:${requirement.itemId}`
+      );
+      touchedModels.add("quest_state_rejection");
+      return false;
+    }
+    if (!requirement.consumeOnComplete) return true;
+    recordDelta(next.inventory.items, requirement.itemId, -requirement.count);
+    touchedModels.add("inventory_items");
+    if (nativeBiomesEcsAuthorityEnabled() && envelope.serverActorPosition) {
+      nativeEcsMaterializationPlans.push({
+        kind: "inventory_exchange",
+        materializationKey: `snapshot_grove_turn_in:${envelope.actorId}:${quest.id}:${objectiveIndex}`,
+        actorId: envelope.actorId,
+        position: envelope.serverActorPosition,
+        consumeItemStacks: { [requirement.itemId]: requirement.count },
+        rewardItemStacks: {},
+        expiresAtMs: nowMs + 30 * 24 * 60 * 60 * 1000,
+        sourceKind: "harthmere_snapshot_grove_turn_in",
+      });
+      touchedModels.add("native_ecs_inventory_exchange");
+    }
+    return true;
   }
 
   // ---------------------------------------------------------------------------
@@ -10889,6 +11110,22 @@ export function reduceHarthmereLiveModeBackendState(
       school.illegal =
         school.illegal || payloadString(envelope, "legalStatus") === "illegal";
       next.classMagic.magicSchools[schoolId] = school;
+      const magicSkillId = /holy|radiant|bless|healing/.test(schoolId)
+        ? "holy_magic"
+        : /shadow|death|necrom|curse/.test(schoolId)
+        ? "shadow_magic"
+        : /nature|druid|growth|wild/.test(schoolId)
+        ? "nature_magic"
+        : /fire|flame|pyro/.test(schoolId)
+        ? "fire_magic"
+        : "arcane_literacy";
+      applyUnifiedSkillAwards([
+        {
+          skillId: magicSkillId,
+          xp: Math.max(1, xpDelta),
+          source: `live_magic:${schoolId}`,
+        },
+      ]);
       next.combat.cooldowns[abilityId] =
         nowMs + Math.max(250, payloadNumber(envelope, "cooldownMs") ?? 1000);
       touchedModels.add("magic_progression");
@@ -11684,15 +11921,6 @@ export function reduceHarthmereLiveModeBackendState(
           touchedModels.add("loot_rejection");
           break;
         }
-        const backpackStacks = liveLootDropBackpackStacksForCarry(
-          drop.itemStacks
-        );
-        if (
-          wouldStacksExceedCarryWeight(next.inventory.items, backpackStacks)
-        ) {
-          pushCarryWeightRejection(warnings, touchedModels, "loot");
-          break;
-        }
         ensureInventoryLootActorSynced();
         const lootResult = reduceHarthmereInventoryLootMutation(
           next.inventoryLoot,
@@ -11797,28 +12025,6 @@ export function reduceHarthmereLiveModeBackendState(
           itemName: definition?.displayName,
         });
         touchedModels.add("loot_claims");
-        break;
-      }
-      if (
-        envelope.actionKind === "request_inventory_mutation"
-          ? wouldDirectInventoryPayloadExceedCarryWeight(
-              snapshot.items,
-              envelope,
-              { includePrimaryItem: true }
-            )
-          : wouldExceedCarryWeight(
-              snapshot.items,
-              invReq.itemId,
-              invReq.count ?? 1
-            )
-      ) {
-        pushCarryWeightRejection(
-          warnings,
-          touchedModels,
-          envelope.actionKind === "request_inventory_mutation"
-            ? "inventory"
-            : "loot"
-        );
         break;
       }
       const invResult = reduceHarthmereInventoryMutation(invReq, {
@@ -12384,13 +12590,6 @@ export function reduceHarthmereLiveModeBackendState(
         }
         const isDeposit = operation !== "withdraw";
         if (
-          !isDeposit &&
-          wouldExceedCarryWeight(next.inventory.items, itemId, count ?? 1)
-        ) {
-          pushCarryWeightRejection(warnings, touchedModels, "bank_withdraw");
-          break;
-        }
-        if (
           isDeposit &&
           itemId &&
           !bankRecordHasCapacity(
@@ -12525,13 +12724,12 @@ export function reduceHarthmereLiveModeBackendState(
             break;
           }
           if (
-            wouldExceedCarryWeight(next.inventory.items, itemId, transferCount)
+            !hasLiveInventoryCapacityForDeltas(next.inventory.items, {
+              [itemId]: transferCount,
+            })
           ) {
-            pushCarryWeightRejection(
-              warnings,
-              touchedModels,
-              "account_bank_withdraw"
-            );
+            warnings.push("bank_rejected:inventory_full");
+            touchedModels.add("bank_rejection");
             break;
           }
           applyBankRecordDelta(
@@ -12605,13 +12803,12 @@ export function reduceHarthmereLiveModeBackendState(
             break;
           }
           if (
-            wouldExceedCarryWeight(next.inventory.items, itemId, transferCount)
+            !hasLiveInventoryCapacityForDeltas(next.inventory.items, {
+              [itemId]: transferCount,
+            })
           ) {
-            pushCarryWeightRejection(
-              warnings,
-              touchedModels,
-              "material_storage_withdraw"
-            );
+            warnings.push("bank_rejected:inventory_full");
+            touchedModels.add("bank_rejection");
             break;
           }
           applyBankRecordDelta(
@@ -12812,24 +13009,21 @@ export function reduceHarthmereLiveModeBackendState(
           touchedModels.add("mail_rejection");
           break;
         }
-        const projectedItems = { ...next.inventory.items };
-        for (const [attachmentItemId, attachmentCount] of claimEntries) {
+        for (const [attachmentItemId] of claimEntries) {
           ensureLiveModeItemDefinition(
             attachmentItemId,
             buildInventorySnapshot()
           );
-          applyBankRecordDelta(
-            projectedItems,
-            attachmentItemId,
-            attachmentCount
-          );
         }
         if (
-          harthmereInventoryCarryWeight(projectedItems) >
-          HARTHMERE_CARRY_WEIGHT_LIMIT
+          !hasLiveInventoryCapacityForDeltas(
+            next.inventory.items,
+            Object.fromEntries(claimEntries)
+          )
         ) {
-          pushCarryWeightRejection(warnings, touchedModels, "mail_claim");
+          warnings.push("mail_claim_rejected:inventory_full");
           sharedStateKeys.add(harthmereLiveModeSharedStateKey("mail", mailId));
+          touchedModels.add("mail_rejection");
           break;
         }
         for (const [attachmentItemId, attachmentCount] of claimEntries) {
@@ -12935,11 +13129,9 @@ export function reduceHarthmereLiveModeBackendState(
             );
           },
           canWithdrawToInventory: (candidateItemId, count) =>
-            !wouldExceedCarryWeight(
-              next.inventory.items,
-              candidateItemId,
-              count
-            ),
+            hasLiveInventoryCapacityForDeltas(next.inventory.items, {
+              [candidateItemId]: count,
+            }),
           guildBankHasCapacity: (items, candidateItemId, maxSlots) =>
             bankRecordHasCapacity(items, candidateItemId, maxSlots),
           canLinkGuildHallProperty: ({ guildId, actorId, propertyId }) => {
@@ -13065,12 +13257,14 @@ export function reduceHarthmereLiveModeBackendState(
           actorGuildId: next.guild.memberGuildId,
           actorPosition,
           authoritativeEquippedToolActions,
-          authoritativeCompletedTargetIds: nativeJobsBoardObservedTargetIds({
-            job: requestedJobId
-              ? next.jobsBoard.postings[requestedJobId]
-              : undefined,
-            actorPosition,
-          }),
+          authoritativeCompletedTargetIds:
+            nativeJobsBoardObservedTargetIdsForTest({
+              job: requestedJobId
+                ? next.jobsBoard.postings[requestedJobId]
+                : undefined,
+              actorPosition,
+              killedEntityAtMs: envelope.serverActorKilledEntityAtMs,
+            }),
           nearbyBoardId,
           economy: next.economy.production,
           canManageBusinessJobs: (business: any) =>
@@ -14263,9 +14457,10 @@ export function reduceHarthmereLiveModeBackendState(
                     next.inventory.equipment
                   ),
                 authoritativeCompletedTargetIds:
-                  nativeJobsBoardObservedTargetIds({
+                  nativeJobsBoardObservedTargetIdsForTest({
                     job,
                     actorPosition,
+                    killedEntityAtMs: envelope.serverActorKilledEntityAtMs,
                   }),
                 economy: next.economy.production,
               }
@@ -14349,6 +14544,8 @@ export function reduceHarthmereLiveModeBackendState(
                 ? authoredQuest.objectives.length - 1
                 : -1;
               const objectiveIndex = payloadNumber(envelope, "objectiveIndex");
+              const completionRepair =
+                payloadString(envelope, "reason") === "completion_repair";
               const active = next.quests.active[questId];
               if (!authoredQuest) {
                 warnings.push("snapshot_grove_quest_rejected:unknown_quest");
@@ -14358,11 +14555,20 @@ export function reduceHarthmereLiveModeBackendState(
                 );
               } else if (
                 objectiveIndex !== finalObjectiveIndex ||
-                active.progress < authoredQuest.objectives.length
+                active.progress <
+                  authoredQuest.objectives.length - (completionRepair ? 1 : 0)
               ) {
                 warnings.push(
                   "snapshot_grove_quest_rejected:prior_objective_incomplete"
                 );
+              } else if (
+                !completionRepair &&
+                !applySnapshotGroveObjectiveInventoryRequirement(
+                  authoredQuest,
+                  finalObjectiveIndex
+                )
+              ) {
+                // The shared helper records the exact rejection.
               } else {
                 const giver =
                   HARTHMERE_NATIVE_QUEST_GIVER_MANIFEST[
@@ -14396,6 +14602,7 @@ export function reduceHarthmereLiveModeBackendState(
                 });
                 next.quests.completed[questId] = nowMs;
                 delete next.quests.active[questId];
+                grantSnapshotGroveQuestReward(questId);
               }
               if (
                 warnings.some((warning) =>
@@ -14412,8 +14619,28 @@ export function reduceHarthmereLiveModeBackendState(
               touchedModels.add("quest_state_rejection");
             }
           } else {
+            if (questSource === "snapshot_grove") {
+              const authoredQuest = SNAPSHOT_GROVE_QUESTS.find(
+                (quest) => quest.id === questId
+              );
+              const finalObjectiveIndex = authoredQuest
+                ? authoredQuest.objectives.length - 1
+                : -1;
+              if (
+                authoredQuest &&
+                !applySnapshotGroveObjectiveInventoryRequirement(
+                  authoredQuest,
+                  finalObjectiveIndex
+                )
+              ) {
+                break;
+              }
+            }
             next.quests.completed[questId] = nowMs;
             delete next.quests.active[questId];
+            if (questSource === "snapshot_grove") {
+              grantSnapshotGroveQuestReward(questId);
+            }
           }
         } else {
           if (questSource === "snapshot_grove") {
@@ -14425,8 +14652,15 @@ export function reduceHarthmereLiveModeBackendState(
               touchedModels.add("quest_state_rejection");
               break;
             }
+            if (next.quests.completed[questId] !== undefined) {
+              // A stale browser cache may replay acceptance after another tab
+              // or device completed the quest. Completion is monotonic.
+              touchedModels.add("quest_state");
+              break;
+            }
+            const existingActive = next.quests.active[questId];
             const firstAcceptance =
-              next.quests.active[questId] === undefined &&
+              existingActive === undefined &&
               next.quests.completed[questId] === undefined;
             if (nativeBiomesEcsAuthorityEnabled()) {
               const giver =
@@ -14446,6 +14680,23 @@ export function reduceHarthmereLiveModeBackendState(
               });
             }
             if (firstAcceptance) {
+              if (questId === "fountain_first_recipe_torch") {
+                next.classMagic.knownRecipes = [
+                  ...new Set([
+                    ...next.classMagic.knownRecipes,
+                    SNAPSHOT_GROVE_TUTORIAL_RECIPE_IDS.roadTorch,
+                  ]),
+                ];
+                touchedModels.add("known_recipes");
+              } else if (questId === "econ_carlo_festival_skewers") {
+                next.classMagic.knownRecipes = [
+                  ...new Set([
+                    ...next.classMagic.knownRecipes,
+                    SNAPSHOT_GROVE_TUTORIAL_RECIPE_IDS.festivalSkewer,
+                  ]),
+                ];
+                touchedModels.add("known_recipes");
+              }
               ensureInventoryLootActorSynced();
               const lootActor = next.inventoryLoot.actors[next.actorId];
               for (const grant of snapshotGroveTutorialInventoryGrantsForQuest(
@@ -14502,10 +14753,46 @@ export function reduceHarthmereLiveModeBackendState(
               }
             }
             const objectiveIndex = payloadNumber(envelope, "objectiveIndex");
-            if (
-              nativeBiomesEcsAuthorityEnabled() &&
+            const requestedProgress = Math.max(
+              1,
+              Math.min(
+                authoredQuest.objectives.length,
+                Math.trunc(payloadNumber(envelope, "progress") ?? 1)
+              )
+            );
+            const currentProgress = Math.max(
+              1,
+              Math.trunc(existingActive?.progress ?? 1)
+            );
+            const expectedObjectiveIndex = currentProgress - 1;
+            const objectiveAdvancesCurrentStep =
               objectiveIndex !== undefined &&
               Number.isInteger(objectiveIndex) &&
+              objectiveIndex === expectedObjectiveIndex;
+            if (
+              objectiveIndex !== undefined &&
+              Number.isInteger(objectiveIndex) &&
+              objectiveIndex > expectedObjectiveIndex
+            ) {
+              warnings.push(
+                "snapshot_grove_quest_rejected:prior_objective_incomplete"
+              );
+              touchedModels.add("quest_state_rejection");
+              break;
+            }
+            if (
+              objectiveAdvancesCurrentStep &&
+              objectiveIndex !== undefined &&
+              !applySnapshotGroveObjectiveInventoryRequirement(
+                authoredQuest,
+                objectiveIndex
+              )
+            ) {
+              break;
+            }
+            if (
+              nativeBiomesEcsAuthorityEnabled() &&
+              objectiveAdvancesCurrentStep &&
               objectiveIndex >= 0 &&
               objectiveIndex < authoredQuest.objectives.length
             ) {
@@ -14519,6 +14806,77 @@ export function reduceHarthmereLiveModeBackendState(
                 sourceKind: "harthmere_snapshot_grove_quest_progress",
               });
             }
+            const resultingProgress = Math.max(
+              currentProgress,
+              requestedProgress
+            );
+            const resultingObjectiveIndex = resultingProgress - 1;
+            const existingObjectiveProgress =
+              existingActive?.objectiveProgress?.objectiveIndex ===
+              resultingObjectiveIndex
+                ? existingActive.objectiveProgress
+                : undefined;
+            const rawObjectiveProgress = (envelope.payload as any)
+              ?.objectiveProgress;
+            const requestedObjectiveProgress =
+              rawObjectiveProgress &&
+              Number.isInteger(Number(rawObjectiveProgress.objectiveIndex)) &&
+              Number(rawObjectiveProgress.objectiveIndex) ===
+                resultingObjectiveIndex
+                ? {
+                    objectiveIndex: resultingObjectiveIndex,
+                    count: Math.max(
+                      0,
+                      Math.min(
+                        Math.max(
+                          0,
+                          snapshotGroveObjectiveRequiredCount(
+                            authoredQuest,
+                            resultingObjectiveIndex
+                          ) - 1
+                        ),
+                        Math.trunc(Number(rawObjectiveProgress.count) || 0)
+                      )
+                    ),
+                    evidenceKeys: Array.isArray(
+                      rawObjectiveProgress.evidenceKeys
+                    )
+                      ? rawObjectiveProgress.evidenceKeys.filter(
+                          (item: unknown): item is string =>
+                            typeof item === "string"
+                        )
+                      : [],
+                  }
+                : undefined;
+            const objectiveProgress =
+              existingObjectiveProgress || requestedObjectiveProgress
+                ? {
+                    objectiveIndex: resultingObjectiveIndex,
+                    count: Math.max(
+                      existingObjectiveProgress?.count ?? 0,
+                      requestedObjectiveProgress?.count ?? 0
+                    ),
+                    evidenceKeys: [
+                      ...new Set([
+                        ...(existingObjectiveProgress?.evidenceKeys ?? []),
+                        ...(requestedObjectiveProgress?.evidenceKeys ?? []),
+                      ]),
+                    ],
+                  }
+                : undefined;
+            next.quests.active[questId] = {
+              ...existingActive,
+              stepId:
+                requestedProgress >= currentProgress
+                  ? payloadString(envelope, "stepId") ?? existingActive?.stepId
+                  : existingActive?.stepId,
+              progress: resultingProgress,
+              source: questSource,
+              title: authoredQuest.title,
+              objectiveProgress,
+            };
+            touchedModels.add("quest_state");
+            break;
           }
           next.quests.active[questId] = {
             stepId: payloadString(envelope, "stepId"),
@@ -14671,16 +15029,19 @@ export function reduceHarthmereLiveModeBackendState(
           touchedModels.add("terrain_materialization");
           sharedStateKeys.add(harthmereLiveModeSharedWorldStateKey());
         }
-        // A Redis commit can outlive a transient ECS/materializer outage. Retry
-        // only unapplied solid-building plans; this is idempotent terrain work
-        // and does not charge the actor or recreate the construction project.
+        // A Redis commit can outlive a transient ECS/materializer outage. Solid
+        // structures carry an explicit materializedInEcs acknowledgement.
+        // Non-solid terrain/deed/decoration plans are removed from this pending
+        // map only after a successful world write, so their continued presence
+        // is itself the retry signal. Replaying either kind is idempotent and
+        // never charges the actor or recreates the construction project.
         for (const plan of Object.values(next.building.materializationPlans)) {
-          if (!plan.materializesSolidVoxelBuilding) continue;
-          const structureId = plan.projectId ?? plan.requestId;
-          const structure = next.building.placedStructures[structureId];
+          const pending = plan.materializesSolidVoxelBuilding
+            ? next.building.placedStructures[plan.projectId ?? plan.requestId]
+                ?.materializedInEcs !== true
+            : true;
           if (
-            structure &&
-            structure.materializedInEcs !== true &&
+            pending &&
             !buildingMaterializationPlans.some(
               (queued) => queued.requestId === plan.requestId
             )
@@ -17291,17 +17652,6 @@ export function reduceHarthmereLiveModeBackendState(
         }
         const snapshot = buildInventorySnapshot();
         const recipe = getHarthmereCraftingRecipe(job.recipeId);
-        if (
-          wouldCraftCompletionExceedCarryWeight(
-            snapshot.items,
-            recipe,
-            job.count,
-            job.targetItemId
-          )
-        ) {
-          pushCarryWeightRejection(warnings, touchedModels, "crafting");
-          break;
-        }
         const craftReq: HarthmereInventoryMutationRequest = {
           requestId: envelope.requestId,
           actorId: envelope.actorId,
@@ -17351,22 +17701,13 @@ export function reduceHarthmereLiveModeBackendState(
           applyToolCosts: false,
         });
         if (craftResult.xpDelta > 0) {
-          const skillId =
-            craftResult.craftingOutcome?.professionId ?? "crafting";
-          const skillProgress = upsertSkill(
-            next.classMagic.skills,
-            skillId,
-            craftResult.xpDelta
+          applyUnifiedSkillAwards(
+            harthmereCraftingSkillAwards({
+              professionId: craftResult.craftingOutcome?.professionId,
+              xp: craftResult.xpDelta,
+              source: "live_crafting_job_complete",
+            })
           );
-          if (skillProgress.warning) warnings.push(skillProgress.warning);
-          if (skillId !== "crafting") {
-            const genericProgress = upsertSkill(
-              next.classMagic.skills,
-              "crafting",
-              Math.max(1, Math.floor(craftResult.xpDelta / 2))
-            );
-            if (genericProgress.warning) warnings.push(genericProgress.warning);
-          }
         }
         delete next.crafting.activeJobs[jobId];
         const completedJob: HarthmereLiveModeCraftingJob = {
@@ -17398,6 +17739,13 @@ export function reduceHarthmereLiveModeBackendState(
           touchedModels.add("material_storage");
         }
         if (craftResult.goldDelta !== 0) touchedModels.add("wallet");
+        if (craftResult.craftingOutcome?.success !== false && recipe) {
+          advanceSnapshotGroveQuestsFromAuthoritativeEvent("craft", {
+            recipeId: job.recipeId,
+            outputItemId: recipe.outputItemId,
+            count: job.count,
+          });
+        }
         break;
       }
 
@@ -17442,10 +17790,6 @@ export function reduceHarthmereLiveModeBackendState(
         touchedModels.add("tool_durability");
         break;
       }
-      if (wouldCraftExceedCarryWeight(snapshot.items, recipe, craftCount)) {
-        pushCarryWeightRejection(warnings, touchedModels, "crafting");
-        break;
-      }
       const craftReq: HarthmereInventoryMutationRequest = {
         requestId: envelope.requestId,
         actorId: envelope.actorId,
@@ -17486,22 +17830,13 @@ export function reduceHarthmereLiveModeBackendState(
           applyToolCosts: true,
         });
         if (craftResult.xpDelta > 0) {
-          const skillId =
-            craftResult.craftingOutcome?.professionId ?? "crafting";
-          const skillProgress = upsertSkill(
-            next.classMagic.skills,
-            skillId,
-            craftResult.xpDelta
+          applyUnifiedSkillAwards(
+            harthmereCraftingSkillAwards({
+              professionId: craftResult.craftingOutcome?.professionId,
+              xp: craftResult.xpDelta,
+              source: "live_crafting",
+            })
           );
-          if (skillProgress.warning) warnings.push(skillProgress.warning);
-          if (skillId !== "crafting") {
-            const genericProgress = upsertSkill(
-              next.classMagic.skills,
-              "crafting",
-              Math.max(1, Math.floor(craftResult.xpDelta / 2))
-            );
-            if (genericProgress.warning) warnings.push(genericProgress.warning);
-          }
         }
         if (jobAction === "start" && craftResult.craftingOutcome?.readyAtMs) {
           const jobId = nextCraftingJobId(next);
@@ -17575,6 +17910,17 @@ export function reduceHarthmereLiveModeBackendState(
         if (craftResult.goldDelta !== 0) {
           touchedModels.add("wallet");
         }
+        if (
+          jobAction === "instant" &&
+          craftResult.craftingOutcome?.success !== false &&
+          recipe
+        ) {
+          advanceSnapshotGroveQuestsFromAuthoritativeEvent("craft", {
+            recipeId,
+            outputItemId: recipe.outputItemId,
+            count: craftCount,
+          });
+        }
       } else {
         warnings.push(
           ...craftResult.errors.map((e) => `crafting_rejected:${e}`)
@@ -17641,6 +17987,9 @@ export function reduceHarthmereLiveModeBackendState(
             break;
           }
           const gatheringNode = harthmereGatheringAuthorityNode(nodeId);
+          const gatheringSkillId = normalizeHarthmereSkillId(
+            gatheringNode?.profession
+          );
           const authorityAttempt = resolveHarthmereGatheringAuthorityAttempt({
             nodeId,
             actorPosition: actorWorldPositionFromAuthority(envelope),
@@ -17648,7 +17997,8 @@ export function reduceHarthmereLiveModeBackendState(
             equippedBiomesItemIds: envelope.serverActorItemIds,
             professionLevel:
               (gatheringNode &&
-                next.classMagic.skills[gatheringNode.profession]?.level) ??
+                next.classMagic.skills[gatheringSkillId ?? "gathering"]
+                  ?.level) ??
               1,
             nowMs,
             randomSeed: envelope.requestId,
@@ -17658,9 +18008,11 @@ export function reduceHarthmereLiveModeBackendState(
             touchedModels.add("farming_rejection");
             break;
           }
+          const professionSkillId =
+            normalizeHarthmereSkillId(authorityAttempt.node.profession) ??
+            "gathering";
           const professionLevel =
-            next.classMagic.skills[authorityAttempt.node.profession]?.level ??
-            1;
+            next.classMagic.skills[professionSkillId]?.level ?? 1;
           if (professionLevel < authorityAttempt.node.requiredSkill) {
             warnings.push(
               `gathering_rejected:profession_level_too_low:${authorityAttempt.node.profession}:${authorityAttempt.node.requiredSkill}`
@@ -17702,12 +18054,26 @@ export function reduceHarthmereLiveModeBackendState(
             }
           }
           next.combat.lootClaims[respawnKey] = authorityAttempt.respawnAtMs;
-          const skillProgress = upsertSkill(
-            next.classMagic.skills,
-            authorityAttempt.node.profession,
-            Math.max(5, authorityAttempt.node.requiredSkill * 8)
+          const professionXp = Math.max(
+            5,
+            authorityAttempt.node.requiredSkill * 8
           );
-          if (skillProgress.warning) warnings.push(skillProgress.warning);
+          applyUnifiedSkillAwards([
+            {
+              skillId: professionSkillId,
+              xp: professionXp,
+              source: `live_gathering:${nodeId}`,
+            },
+            ...(professionSkillId === "gathering"
+              ? []
+              : [
+                  {
+                    skillId: "gathering",
+                    xp: Math.max(1, Math.floor(professionXp / 2)),
+                    source: `live_gathering:${nodeId}`,
+                  },
+                ]),
+          ]);
           if (authorityAttempt.illegal) {
             warnings.push(
               `gathering_illegal:${authorityAttempt.node.ownership}`
@@ -17765,16 +18131,6 @@ export function reduceHarthmereLiveModeBackendState(
             seed.yieldItemId,
             buildInventorySnapshot()
           );
-          if (
-            wouldExceedCarryWeight(
-              next.inventory.items,
-              seed.yieldItemId,
-              yieldCount
-            )
-          ) {
-            pushCarryWeightRejection(warnings, touchedModels, "farming");
-            break;
-          }
           recordDelta(next.inventory.items, seed.yieldItemId, yieldCount);
           advanceSnapshotGroveQuestsFromAuthoritativeEvent("collect", {
             itemId: seed.yieldItemId,
@@ -17927,18 +18283,6 @@ export function reduceHarthmereLiveModeBackendState(
             nowMs,
           });
           if (authorityResult.warnings.length === 0) {
-            // (foraging fix F-D, 2026-07-14): weight-gate the gathered seed.
-            const seedYield = authorityResult.inventoryDeltas[seedItemId] ?? 1;
-            if (
-              wouldExceedCarryWeight(
-                next.inventory.items,
-                seedItemId,
-                seedYield
-              )
-            ) {
-              pushCarryWeightRejection(warnings, touchedModels, "farming");
-              break;
-            }
             // Stamp the cooldown so the next gather of this pair is rate-limited.
             next.combat.lootClaims[
               gatherSeedCooldownKey(seedSource, seedItemId)
@@ -17996,22 +18340,6 @@ export function reduceHarthmereLiveModeBackendState(
             nowMs,
           });
           if (authorityResult.warnings.length === 0) {
-            // (foraging fix F-D, 2026-07-14): gate the grant on carry weight the
-            // same way native_plant_harvest / vendor / loot paths do. Reject
-            // BEFORE writing the claim so a weight-blocked forage does not also
-            // (wrongly) deplete the bush.
-            const forageYield =
-              authorityResult.inventoryDeltas[forageItemId] ?? 1;
-            if (
-              wouldExceedCarryWeight(
-                next.inventory.items,
-                forageItemId,
-                forageYield
-              )
-            ) {
-              pushCarryWeightRejection(warnings, touchedModels, "farming");
-              break;
-            }
             // Persist under the prefixed key (and drop any legacy raw-id claim)
             // and project into shared world state so depletion is WORLD-shared.
             next.combat.lootClaims[wildSpawnClaimKey(spawnId)] = nowMs;
@@ -18053,18 +18381,6 @@ export function reduceHarthmereLiveModeBackendState(
             nowMs,
           });
           if (authorityResult.warnings.length === 0) {
-            // (foraging fix F-D, 2026-07-14): carry-weight gate on the meat yield.
-            const huntYield = authorityResult.inventoryDeltas["raw_meat"] ?? 2;
-            if (
-              wouldExceedCarryWeight(
-                next.inventory.items,
-                "raw_meat",
-                huntYield
-              )
-            ) {
-              pushCarryWeightRejection(warnings, touchedModels, "farming");
-              break;
-            }
             next.combat.lootClaims[wildSpawnClaimKey(animalId)] = nowMs;
             delete next.combat.lootClaims[animalId];
             touchedModels.add("loot_claims");
@@ -18096,21 +18412,6 @@ export function reduceHarthmereLiveModeBackendState(
             livestockId: payloadString(envelope, "livestockId") ?? "",
             nowMs,
           });
-          // (foraging fix F-D, 2026-07-14): the collected product falls through
-          // to applyLiveFarmingAuthorityResult with no weight gate — enforce the
-          // carry cap here so livestock collection can't push the player over a
-          // limit that native_plant_harvest / vendor / loot already respect.
-          if (
-            authorityResult.warnings.length === 0 &&
-            Object.entries(authorityResult.inventoryDeltas).some(
-              ([itemId, delta]) =>
-                delta > 0 &&
-                wouldExceedCarryWeight(next.inventory.items, itemId, delta)
-            )
-          ) {
-            pushCarryWeightRejection(warnings, touchedModels, "farming");
-            break;
-          }
         } else if (operation === "cook_enqueue") {
           authorityResult = enqueueHarthmereCook(authority, {
             stationId: payloadString(envelope, "stationId") ?? "",
@@ -18140,6 +18441,23 @@ export function reduceHarthmereLiveModeBackendState(
 
         warnings.push(...authorityResult.warnings);
         if (authorityResult.warnings.length > 0) {
+          touchedModels.add("farming_rejection");
+          break;
+        }
+        const farmingInventoryBeforeOperation = nativeInventoryExchange
+          ? { ...(envelope.serverActorItemCounts ?? {}) }
+          : next.inventory.items;
+        if (
+          !hasLiveInventoryCapacityForDeltas(
+            farmingInventoryBeforeOperation,
+            authorityResult.inventoryDeltas
+          )
+        ) {
+          warnings.push(
+            `${
+              operation.startsWith("cook_") ? "cooking" : "farming"
+            }_rejected:inventory_full`
+          );
           touchedModels.add("farming_rejection");
           break;
         }
@@ -18340,6 +18658,23 @@ export function reduceHarthmereLiveModeBackendState(
           operation.includes("doctor") ? 18 : 8
         );
         touchedModels.add("skill_xp");
+        const holyContext = [
+          operation,
+          payloadString(envelope, "itemId"),
+          payloadString(envelope, "businessId"),
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+        if (/holy|bless|radiant|chapel|prayer|reviv|sanct/.test(holyContext)) {
+          applyUnifiedSkillAwards([
+            {
+              skillId: "holy_magic",
+              xp: operation.includes("doctor") ? 8 : 4,
+              source: "live_holy_medical_action",
+            },
+          ]);
+        }
       }
       break;
     }
@@ -18367,6 +18702,56 @@ export function reduceHarthmereLiveModeBackendState(
           touchedModels.add("world_object_interaction_rejection");
           break;
         }
+        const pickup = activeSnapshotGroveWorldPickup({
+          state: next,
+          objectId,
+        });
+        if (pickup) {
+          const pickupReceiptKey = `snapshot_grove_pickup:${pickup.quest.id}:${pickup.objectiveIndex}:${objectId}`;
+          if (!next.careLoops.worldInteractions[pickupReceiptKey]) {
+            const definition = ensureLiveModeItemDefinition(
+              pickup.item.itemId,
+              buildInventorySnapshot()
+            );
+            if (!definition) {
+              warnings.push(
+                `world_object_rejected:unknown_pickup_item:${pickup.item.itemId}`
+              );
+              touchedModels.add("world_object_interaction_rejection");
+              break;
+            }
+            recordDelta(
+              next.inventory.items,
+              pickup.item.itemId,
+              pickup.item.quantity
+            );
+            next.careLoops.worldInteractions[pickupReceiptKey] = {
+              objectId,
+              kind: "gather",
+              label: validation.landmark.label,
+              count: 1,
+              lastAtMs: nowMs,
+              lastRequestId: envelope.requestId,
+            };
+            touchedModels.add("inventory_items");
+            touchedModels.add("snapshot_grove_world_pickup");
+            if (nativeBiomesEcsAuthorityEnabled()) {
+              nativeEcsMaterializationPlans.push({
+                kind: "inventory_exchange",
+                materializationKey: pickupReceiptKey,
+                actorId: envelope.actorId,
+                position: envelope.serverActorPosition!,
+                consumeItemStacks: {},
+                rewardItemStacks: {
+                  [pickup.item.itemId]: pickup.item.quantity,
+                },
+                expiresAtMs: nowMs + 30 * 24 * 60 * 60 * 1000,
+                sourceKind: "harthmere_snapshot_grove_world_pickup",
+              });
+              touchedModels.add("native_ecs_inventory_exchange");
+            }
+          }
+        }
         const previous = next.careLoops.worldInteractions[objectId];
         // This receipt is deliberately actor-owned server state. It gives
         // authored fallback props a durable mutation while native ECS objects
@@ -18382,6 +18767,12 @@ export function reduceHarthmereLiveModeBackendState(
         touchedModels.add("world_object_interactions");
         touchedModels.add(
           `world_object_interaction:${validation.interaction.kind}`
+        );
+        applyUnifiedSkillAwards(
+          harthmereWorldInteractionSkillAwards({
+            kind: validation.interaction.kind,
+            label: validation.landmark.label,
+          })
         );
         break;
       }
@@ -18407,7 +18798,13 @@ export function reduceHarthmereLiveModeBackendState(
         next.inventory.gold + careResult.goldDelta
       );
       if (careResult.xpDelta > 0) {
-        upsertSkill(next.classMagic.skills, "care", careResult.xpDelta);
+        applyUnifiedSkillAwards([
+          {
+            skillId: "care",
+            xp: careResult.xpDelta,
+            source: `live_care:${operation}`,
+          },
+        ]);
       }
       touchedModels.add("care_loops");
       careResult.touchedModels.forEach((model) => touchedModels.add(model));
@@ -18870,6 +19267,51 @@ export function reduceHarthmereLiveModeBackendState(
     }
   }
 
+  const actionRejected = [...touchedModels].some((model) =>
+    model.includes("rejection")
+  );
+  if (!actionRejected) {
+    if (
+      envelope.actionKind === "request_vendor_transaction" ||
+      envelope.actionKind.startsWith("request_auction_") ||
+      envelope.actionKind === "request_economy_mutation" ||
+      envelope.actionKind === "request_jobs_board_mutation"
+    ) {
+      applyUnifiedSkillAwards([
+        {
+          skillId: "business_operations",
+          xp: 5,
+          source: `live_business:${envelope.actionKind}`,
+        },
+      ]);
+    }
+    if (envelope.actionKind === "request_care_loop_action") {
+      const operation = payloadString(envelope, "operation");
+      const targetId = payloadString(envelope, "targetId");
+      if (
+        operation === "npc_talk" ||
+        (operation === "daily_task_completed" && targetId === "talk_neighbor")
+      ) {
+        applyUnifiedSkillAwards([
+          {
+            skillId: "persuasion",
+            xp: 6,
+            source: `live_social:${operation}`,
+          },
+        ]);
+      }
+      if (operation === "production_sale") {
+        applyUnifiedSkillAwards([
+          {
+            skillId: "business_operations",
+            xp: 6,
+            source: "live_business:production_sale",
+          },
+        ]);
+      }
+    }
+  }
+
   if (nativeBiomesEcsAuthorityEnabled()) {
     nativeEcsMaterializationPlans.push(
       ...harthmereNativeEcsPlansForAvailableInventoryLoot(next, nowMs)
@@ -19186,6 +19628,31 @@ export function reduceHarthmereLiveModeBackendState(
           nativeEcsMaterializationPlans.splice(index, 1);
         }
       }
+    }
+  }
+
+  if (nativeBiomesEcsAuthorityEnabled() && nativeSkillXpBaseline) {
+    const changedSkillXp = Object.fromEntries(
+      Object.entries(nativeSkillXpBaseline).flatMap(([skillId, baselineXp]) => {
+        const currentXp = Math.max(
+          0,
+          Math.trunc(Number(next.classMagic.skills[skillId]?.xp) || 0)
+        );
+        return !envelope.serverActorSkillProgressionInitialized ||
+          currentXp > baselineXp
+          ? [[skillId, currentXp]]
+          : [];
+      })
+    );
+    if (Object.keys(changedSkillXp).length > 0) {
+      nativeEcsMaterializationPlans.push({
+        kind: "skill_progress",
+        materializationKey: `skill_progress:${envelope.actorId}:${envelope.idempotencyKey}`,
+        actorId: envelope.actorId,
+        skillXp: changedSkillXp,
+        sourceKind: `harthmere_live_mode_${envelope.actionKind}`,
+      });
+      touchedModels.add("native_ecs_skill_progress");
     }
   }
 

@@ -12,9 +12,33 @@ import type { BiomesId } from "@/shared/ids";
 import {
   CH1_ANCHORS,
   ch1NpcEntityId,
+  ch1PromotesExistingEntity,
   type Ch1NpcKey,
   type Ch1Vec3,
 } from "@/shared/harthmere/ch1_ids";
+import {
+  SNAPSHOT_GROVE_NPCS,
+  snapshotGroveGroundedPosition,
+} from "@/shared/harthmere/snapshot_grove_content";
+
+/**
+ * AUGUR-9 has no placement of its own: it *is* the snapshot Mucked Robot, and
+ * that entity's grounded world position is the single source of truth for
+ * where the chapter's playback device is standing.
+ */
+function snapshotMuckedRobotPlacement(): Ch1Vec3 {
+  const npc = SNAPSHOT_GROVE_NPCS.find(
+    (candidate) => candidate.id === "mucked_robot"
+  );
+  if (!npc) {
+    throw new Error(
+      "Chapter 1 promotes the snapshot Mucked Robot, which is no longer in " +
+        "SNAPSHOT_GROVE_NPCS. Restore the entry or repoint the promotion."
+    );
+  }
+  const grounded = snapshotGroveGroundedPosition(npc.authoredPosition);
+  return [grounded[0], grounded[1], grounded[2]];
+}
 
 export const CH1_CAST_VERSION = 1 as const;
 
@@ -43,6 +67,12 @@ export interface Ch1CastMember {
   writerNote: string;
   /** Combat participation. Several of these must never be in an encounter. */
   combatant: boolean;
+  /**
+   * True when this character is an EXISTING world entity that Chapter 1 claims
+   * rather than a new body it seeds. The Chapter 1 seeder must skip these; the
+   * owning seeder keeps writing them.
+   */
+  promotesExistingEntity?: boolean;
 }
 
 export const CH1_NEW_CAST: readonly Ch1CastMember[] = Object.freeze([
@@ -145,7 +175,8 @@ export const CH1_NEW_CAST: readonly Ch1CastMember[] = Object.freeze([
     displayName: "AUGUR-9",
     role: "Autonomous research custodian unit. The Mucked Robot.",
     faction: "unaffiliated",
-    placement: CH1_ANCHORS.old_grove_road_post,
+    placement: snapshotMuckedRobotPlacement(),
+    promotesExistingEntity: true,
     introducedAct: 1,
     voice:
       "The player's own recorded voice, degraded and artifacted. Cannot lie; can only be incomplete.",
@@ -208,6 +239,64 @@ export function ch1CastMember(key: Ch1NpcKey): Ch1CastMember | undefined {
 
 export function ch1CastForAct(act: number): readonly Ch1CastMember[] {
   return CH1_NEW_CAST.filter((c) => c.introducedAct === act);
+}
+
+/**
+ * Characters Chapter 1 seeds a body for. Promoted characters are deliberately
+ * absent: seeding them would create the duplicate this promotion exists to
+ * remove.
+ */
+export const CH1_SEEDED_CAST: readonly Ch1CastMember[] = Object.freeze(
+  CH1_NEW_CAST.filter((member) => !member.promotesExistingEntity)
+);
+
+/**
+ * Cast IDs that were briefly shipped as ambient bandits. Explicit seed and
+ * migration tools must replace these entities instead of merging an update,
+ * otherwise bandit-only components such as `expires`, locked-in-place state,
+ * or an old Anima destination can survive under the corrected cast label.
+ */
+export const CH1_RECLAIMED_CAST: readonly Ch1CastMember[] = Object.freeze(
+  CH1_SEEDED_CAST.filter((member) =>
+    [
+      "lou_ardan",
+      "cressa_vane",
+      "halden_rook",
+      "nadia_sorrel",
+      "iris_fen",
+    ].includes(member.key)
+  )
+);
+
+export const CH1_PROMOTED_CAST: readonly Ch1CastMember[] = Object.freeze(
+  CH1_NEW_CAST.filter((member) => member.promotesExistingEntity)
+);
+
+/**
+ * Structural validation, run by test. Two Chapter 1 characters may never share
+ * an entity id, and a promoted character's declared id must actually be the
+ * entity it claims to promote.
+ */
+export function ch1ValidateCastIdentity(): string[] {
+  const errors: string[] = [];
+  const seen = new Map<number, Ch1NpcKey>();
+  for (const member of CH1_NEW_CAST) {
+    const id = Number(member.entityId);
+    const other = seen.get(id);
+    if (other !== undefined) {
+      errors.push(`${member.key} and ${other} share entity id ${id}`);
+    }
+    seen.set(id, member.key);
+    if (
+      ch1PromotesExistingEntity(member.key) !==
+      (member.promotesExistingEntity === true)
+    ) {
+      errors.push(
+        `${member.key}: promotesExistingEntity disagrees with the id manifest`
+      );
+    }
+  }
+  return errors;
 }
 
 /** Characters who must never appear in a combat encounter in Chapter 1. */

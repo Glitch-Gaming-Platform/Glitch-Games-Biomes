@@ -1223,7 +1223,7 @@ export function reduceHarthmereGuildMutation(
     } else {
       if (!hasHarthmereGuildPermission(guild, request.actorId, "withdraw_bank", request.nowMs)) reject(result, "missing_permission:withdraw_bank");
       else if ((guild.bank.items[itemId] ?? 0) < count) reject(result, "guild_bank_insufficient_item_count");
-      else if (context.canWithdrawToInventory && !context.canWithdrawToInventory(itemId, count)) reject(result, "carry_weight_limit_exceeded");
+      else if (context.canWithdrawToInventory && !context.canWithdrawToInventory(itemId, count)) reject(result, "inventory_full");
       else {
         const member = guild.members[request.actorId];
         const rank = member ? guild.ranks[member.rankId] : undefined;

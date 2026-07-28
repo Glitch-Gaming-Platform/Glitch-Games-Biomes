@@ -134,7 +134,7 @@ describe("native hidden quest materialization", () => {
     assert.ok(!triggerState.by_root.has(challengeId));
   });
 
-  it("records and completes a Grove objective even when accept needs repair", async () => {
+  it("records a Grove objective and repairs missing accept state", async () => {
     const actorId = 8290811499731980 as any;
     const questId = "read-the-jobs-board";
     const challengeId = harthmereNativeQuestId("grove", questId)!;
@@ -159,9 +159,10 @@ describe("native hidden quest materialization", () => {
     });
 
     const { challenges, triggerState } = fixture.state();
-    assert.ok(challenges.complete.has(challengeId));
-    assert.ok(challenges.finished_at.has(challengeId));
-    assert.ok(!triggerState.by_root.has(challengeId));
-    assert.ok(stepId);
+    assert.ok(challenges.in_progress.has(challengeId));
+    assert.ok(!challenges.complete.has(challengeId));
+    assert.ok(challenges.started_at.has(challengeId));
+    assert.ok(!challenges.finished_at.has(challengeId));
+    assert.ok(triggerState.by_root.get(challengeId)?.has(stepId));
   });
 });

@@ -39,6 +39,7 @@ export interface HarthmereNpcVoiceProfile {
   displayName: string;
   inferredGender: HarthmereVoiceGender;
   actorKind: HarthmereVoiceActorKind;
+  deliveryStyle?: string;
   azureVoiceName: string;
   style?: string;
   styleDegree?: string;
@@ -57,6 +58,7 @@ export interface ParsedHarthmereAzureVoice {
   // fields so ElevenLabs can reuse the same deterministic NPC profile.
   gender?: HarthmereVoiceGender;
   actorKind?: HarthmereVoiceActorKind;
+  deliveryStyle?: string;
   style?: string;
   styleDegree?: string;
   role?: string;
@@ -364,6 +366,7 @@ function inferGender(
       "gus",
       "hadrin",
       "harlo",
+      "huck",
       "marl",
       "nilo",
       "orren",
@@ -511,6 +514,7 @@ export function buildHarthmereAzureVoiceParameterId(input: {
   voiceName: string;
   gender?: HarthmereVoiceGender;
   actorKind?: HarthmereVoiceActorKind;
+  deliveryStyle?: string;
   style?: string;
   styleDegree?: string;
   role?: string;
@@ -526,6 +530,7 @@ export function buildHarthmereAzureVoiceParameterId(input: {
     ["voice", input.voiceName],
     ["gender", input.gender],
     ["kind", input.actorKind],
+    ["delivery", input.deliveryStyle],
     ["style", input.style],
     ["styleDegree", input.styleDegree],
     ["role", input.role],
@@ -593,6 +598,7 @@ export function parseHarthmereAzureVoiceId(
     voiceName: values.voice,
     ...(gender ? { gender } : {}),
     ...(actorKind ? { actorKind } : {}),
+    ...(values.delivery ? { deliveryStyle: values.delivery } : {}),
     style: values.style,
     styleDegree: values.styleDegree,
     role: values.role,
@@ -626,6 +632,14 @@ export function harthmereVoiceProfileForActor(
   );
   const actorKind = inferActorKind(input);
   const inferredGender = inferGender(input, actorKind);
+  const deliveryStyle =
+    actorKind === "humanoid" &&
+    (displayNameForVoiceInput(input).toLowerCase() === "huck" ||
+      /\b(country|southern|country drawl|southern drawl)\b/i.test(
+        input.voiceStyle ?? ""
+      ))
+      ? "country"
+      : undefined;
   const voicePool = voicePoolForProfile(inferredGender, actorKind);
   const voiceCandidate = pickStable(voicePool, hash);
   const azureVoiceName = voiceCandidate.voiceName;
@@ -643,6 +657,7 @@ export function harthmereVoiceProfileForActor(
     voiceName: azureVoiceName,
     gender: inferredGender,
     actorKind,
+    deliveryStyle,
     style,
     styleDegree,
     rate: prosody.rate,
@@ -658,6 +673,7 @@ export function harthmereVoiceProfileForActor(
     displayName,
     inferredGender,
     actorKind,
+    deliveryStyle,
     azureVoiceName,
     style,
     styleDegree,
@@ -668,7 +684,8 @@ export function harthmereVoiceProfileForActor(
     voiceParameterId,
     assignmentRationale:
       `${displayName} is treated as ${actorKind}; voice casting uses ` +
-      `${inferredGender} presentation when authored sex is not explicit.`,
+      `${inferredGender} presentation when authored sex is not explicit.` +
+      (deliveryStyle ? ` Delivery is ${deliveryStyle}.` : ""),
   };
 }
 

@@ -197,23 +197,23 @@ contains(
 );
 contains(
   types,
-  'BIOMES_UI_OPEN_MENU_SHORTCUT = "R"',
-  "menu HUD shortcut uses the Tab fallback key R"
+  'BIOMES_UI_RECIPES_SHORTCUT = "R"',
+  "R remains the native Recipes shortcut"
 );
 contains(
   types,
-  'BIOMES_UI_OPEN_MENU_KEY_CODE = "KeyR"',
-  "menu key code is KeyR because Tab is reserved"
+  'BIOMES_UI_RECIPES_KEY_CODE = "KeyR"',
+  "native Recipes key code remains KeyR"
 );
-contains(
+notContains(
+  adapters,
+  'KeyR: "daily"',
+  "replacement mode does not route R to Today"
+);
+notContains(
   adapters,
   "BIOMES_UI_OPEN_MENU_KEY_CODE",
-  "replacement mode handles configured menu key"
-);
-contains(
-  adapters,
-  "[BIOMES_UI_OPEN_MENU_KEY_CODE]: BIOMES_UI_OPEN_MENU_TAB",
-  "configured menu key opens the menu tab"
+  "obsolete replacement-menu KeyR ownership is removed"
 );
 notContains(
   adapters,
@@ -281,8 +281,8 @@ assert(
 );
 contains(
   chrome,
-  "!replaceLegacyBiomesUI && <ShortcutsHUD",
-  "BiomesChrome hides old ShortcutsHUD shortcuts in replacement mode so BiomesUI owns replacement keys"
+  "<ShortcutsHUD recipesOnly={replaceLegacyBiomesUI}",
+  "replacement mode keeps only the native Recipes shortcut mounted"
 );
 
 assert(
@@ -383,10 +383,10 @@ notContains(
   'toLowerCase() === "e"',
   "hotbar does not capture E/interact"
 );
-contains(
+notContains(
   adapters,
-  "[BIOMES_UI_OPEN_MENU_KEY_CODE]: BIOMES_UI_OPEN_MENU_TAB",
-  "replacement key bridge, not hotbar, captures the menu key"
+  'KeyR: "daily"',
+  "replacement key bridge leaves R to native Recipes"
 );
 
 contains(

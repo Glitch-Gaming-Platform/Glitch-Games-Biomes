@@ -542,7 +542,11 @@ export const TalkToNpcDefaultDialog: React.FunctionComponent<{
     onTranscript: handleVoiceTranscript,
   };
 
-  if (!voiceConversationActive && liveEntityHelperDialog) {
+  if (
+    !voiceConversationActive &&
+    liveEntityHelperDialog &&
+    !snapshotGroveNpcDialog
+  ) {
     return (
       <TalkToNpc
         talkingToNpcId={talkingToNPCId}

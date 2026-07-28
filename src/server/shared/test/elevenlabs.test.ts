@@ -2,6 +2,7 @@ import {
   ELEVENLABS_DEFAULT_MODEL_ID,
   ELEVENLABS_DEFAULT_OUTPUT_FORMAT,
   clearElevenLabsVoiceCacheForTest,
+  elevenLabsDeliveryTextForTest,
   elevenLabsNaturalVoiceSettingsForTest,
   elevenLabsConfigFromEnv,
   elevenLabsSpokenTextForTest,
@@ -112,6 +113,20 @@ describe("ElevenLabs NPC speech", () => {
     assert.deepEqual(
       elevenLabsNaturalVoiceSettingsForTest({
         actorKind: "humanoid",
+        deliveryStyle: "country",
+        rate: "+3%",
+      }),
+      {
+        stability: 0.5,
+        similarity_boost: 0.82,
+        style: 0,
+        use_speaker_boost: true,
+        speed: 0.98,
+      }
+    );
+    assert.deepEqual(
+      elevenLabsNaturalVoiceSettingsForTest({
+        actorKind: "humanoid",
         rate: "-3%",
       }),
       {
@@ -134,6 +149,28 @@ describe("ElevenLabs NPC speech", () => {
         use_speaker_boost: true,
         speed: 1.05,
       }
+    );
+  });
+
+  it("gives country actors a natural drawl without changing robot delivery", () => {
+    assert.equal(
+      elevenLabsDeliveryTextForTest({
+        text: "Muck Busters oughta do the trick.",
+        actorKind: "humanoid",
+        deliveryStyle: "country",
+        modelId: "eleven_v3",
+      }),
+      "[warm country drawl, relaxed, natural conversation]\n" +
+        "Muck Busters oughta do the trick."
+    );
+    assert.equal(
+      elevenLabsDeliveryTextForTest({
+        text: "SYSTEM READY.",
+        actorKind: "robot",
+        deliveryStyle: "country",
+        modelId: "eleven_v3",
+      }),
+      "[robotic, precise, lightly degraded transmission]\nSYSTEM READY."
     );
   });
 

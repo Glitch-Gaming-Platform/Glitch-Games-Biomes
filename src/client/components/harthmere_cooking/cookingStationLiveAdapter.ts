@@ -232,8 +232,6 @@ export function playerMessageFromCookingWarning(warning: string): string {
       return "That dish isn't ready yet.";
     case "collect_only":
       return "That dish is done — collect it instead.";
-    case "carry_weight_limit_exceeded":
-      return "Your pack is too heavy to take that.";
     case "unknown_station":
     case "unknown_job":
       return "That cooking job is no longer here.";

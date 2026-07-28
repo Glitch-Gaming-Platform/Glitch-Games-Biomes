@@ -21,16 +21,53 @@ import {
   yaw,
 } from "@/shared/math/linear";
 import type { ReadonlyVec3, Vec3 } from "@/shared/math/types";
+import { zVec3f } from "@/shared/math/types";
 import { isSafeZone } from "@/shared/npc/behavior/common";
 import {
   AStarPathfinder,
   GraphImpl,
   findNextTargetOnPath,
+  pathDestination,
+  repairPathDestinationIfConnected,
   stuckWhilePathfinding,
   updatePathfindingPosition,
   zPathfindingComponent,
   type Path,
 } from "@/shared/npc/behavior/pathfinding";
+import {
+  evaluatePathDestination,
+  PATHFINDING_REBUILD_COOLDOWN_SECONDS,
+} from "@/shared/npc/behavior/pathfinding_geometry";
+import {
+  bodyVerticalGap,
+  chaseApproachDecision,
+  chaseRepositionYawOffset,
+  evaluateChaseTargetRetention,
+  horizontalDistance,
+  lineOfSightEyeHeight,
+  lineOfSightTargetSamples,
+  withinAttackReach,
+  ATTACK_VERTICAL_REACH_METERS,
+  CHASE_LOST_SIGHT_GRACE_SECONDS,
+  TARGET_HITBOX_ATTACK_RANGE_CUSHION_METERS,
+} from "@/shared/npc/behavior/combat_geometry";
+import {
+  assistFactionJoinsCombat,
+  decodeCreatureGroupMembership,
+  evaluateGroupAlert,
+  groupAlertClearReason,
+  groupResponderPlan,
+  shouldFleeGroupAlert,
+  type CreatureGroupMembership,
+  type GroupAlert,
+  type GroupAlertCandidate,
+  type GroupResponderPlanMember,
+} from "@/shared/npc/creature_group";
+import {
+  creatureLevelMultipliers,
+  creatureMilestoneAbilities,
+  readCreatureProgression,
+} from "@/shared/npc/creature_level";
 import { getNpcRunSpeed } from "@/shared/npc/bikkie";
 import type { Environment } from "@/shared/npc/environment";
 import type { BehaviorChaseAttackParams } from "@/shared/npc/npc_types";
@@ -43,6 +80,7 @@ import {
 } from "@/shared/npc/threat";
 import { ok } from "assert";
 import { z } from "zod";
+import { ch1NinthWinterPhase } from "@/shared/harthmere/ch1_dungeon_encounters";
 
 // If the chase target drifts more than this far (meters) from the destination
 // of the cached A* path, the path is stale and must be rebuilt instead of
@@ -73,6 +111,8 @@ const CHASE_STUCK_DIRECT_PURSUIT_SECONDS = 1.0;
 const LINE_OF_SIGHT_SAMPLE_STEP_METERS = 0.45;
 const LINE_OF_SIGHT_SAMPLE_BOX_METERS = 0.18;
 const DEFAULT_PLAYER_EYE_HEIGHT_METERS = 1.45;
+export const CH1_SOUND_HUNTER_HEARING_DISTANCE = 28;
+export const CH1_SOUND_HUNTER_MIN_SPEED = 1.35;
 
 // The strike of a swing lands `attackStrikeMomentSecs / attackAnimationMultiplier`
 // seconds in. If that delay is >= the attack interval, every new swing restarts
@@ -94,6 +134,36 @@ export function effectiveAttackStrikeDelaySecs(params: {
   // Keep the strike strictly before the interval boundary (95% of it) so the
   // damage branch is always reachable.
   return Math.min(rawDelay, params.attackIntervalSecs * 0.95);
+}
+
+export type AttackTimingDecision = "start" | "strike" | "wait";
+
+/**
+ * Advance one melee swing without assuming Anima revisits the NPC inside the
+ * authored attack interval. A loaded shard can legitimately skip from before
+ * the strike moment to after the interval; that must land the pending strike,
+ * not restart the animation forever.
+ */
+export function attackTimingDecision(input: {
+  now: number;
+  attackTime?: number;
+  strikeTime?: number;
+  strikeDelaySecs: number;
+  attackIntervalSecs: number;
+}): AttackTimingDecision {
+  if (input.attackTime === undefined) {
+    return "start";
+  }
+  const elapsed = input.now - input.attackTime;
+  const hasStruck =
+    input.strikeTime !== undefined && input.strikeTime >= input.attackTime;
+  if (!hasStruck && elapsed >= input.strikeDelaySecs) {
+    return "strike";
+  }
+  if (hasStruck && elapsed >= input.attackIntervalSecs) {
+    return "start";
+  }
+  return "wait";
 }
 
 // True when the cached path's destination no longer matches where the target is
@@ -150,6 +220,97 @@ export function isHarthmereSightBoundChaserName(
     ) ||
     /\b(cow|sheep|rabbit)\b/.test(text)
   );
+}
+
+export function isChapter1SoundHunterName(name: string | undefined): boolean {
+  return /\b(cistern hexer|under-ice hexer|unfinished stalker)\b/i.test(
+    String(name ?? "")
+  );
+}
+
+export function chapter1SoundHunterCanHear(input: {
+  velocity?: ReadonlyVec3;
+  threat: number;
+}): boolean {
+  if (input.threat > 0) return true;
+  const velocity = input.velocity;
+  if (!velocity) return false;
+  return Math.hypot(velocity[0], velocity[2]) >= CH1_SOUND_HUNTER_MIN_SPEED;
+}
+
+export function chapter1EncounterChaseAttackParams(
+  npc: SimulatedNpc,
+  baseParams: BehaviorChaseAttackParams | undefined,
+  fallbackParams: BehaviorChaseAttackParams
+): BehaviorChaseAttackParams | undefined {
+  const name = harthmereNpcCombatName(npc).toLowerCase();
+  if (name.includes("gilded bull")) {
+    const base = baseParams ?? fallbackParams;
+    const horned =
+      (npc.state.chapter1Encounter?.brokenPartIds?.length ?? 0) < 2;
+    return {
+      ...base,
+      aggroTrigger: { kind: "proximity", distance: 24 },
+      disengageDistance: Math.max(base.disengageDistance, 42),
+      attackDistance: horned
+        ? Math.max(base.attackDistance, 3.6)
+        : Math.max(base.attackDistance, 2.4),
+      attackFovDeg: horned ? 70 : 150,
+      attackIntervalSecs: horned
+        ? Math.max(0.8, base.attackIntervalSecs * 0.7)
+        : base.attackIntervalSecs * 1.45,
+      attackDamage: horned
+        ? Math.max(base.attackDamage + 4, Math.ceil(base.attackDamage * 1.4))
+        : Math.max(1, Math.floor(base.attackDamage * 0.65)),
+    };
+  }
+  if (name.includes("ninth winter")) {
+    const base = baseParams ?? fallbackParams;
+    const phase = ch1NinthWinterPhase({
+      hp: npc.hp,
+      maxHp: npc.health.maxHp,
+      cycleStartedAtMs: npc.state.chapter1Encounter?.cycleStartedAtMs,
+      nowMs: Date.now(),
+    });
+    const hearthFed = npc.state.chapter1Encounter?.hearthFed === true;
+    const phaseDamage = phase === "year_breaks" ? 1.25 : 1;
+    const darknessDamage = hearthFed ? 1 : 1.35;
+    return {
+      ...base,
+      aggroTrigger: { kind: "proximity", distance: 28 },
+      disengageDistance: Math.max(base.disengageDistance, 50),
+      attackDistance: Math.max(base.attackDistance, 3),
+      attackFovDeg: Math.max(base.attackFovDeg, 180),
+      attackIntervalSecs:
+        phase === "year_breaks"
+          ? Math.max(0.65, base.attackIntervalSecs * 0.72)
+          : base.attackIntervalSecs,
+      attackDamage: Math.max(
+        1,
+        Math.ceil(base.attackDamage * phaseDamage * darknessDamage)
+      ),
+    };
+  }
+  if (isChapter1SoundHunterName(name)) {
+    const base = baseParams ?? fallbackParams;
+    return {
+      ...base,
+      aggroTrigger: {
+        kind: "proximity",
+        distance: Math.max(
+          base.aggroTrigger.kind === "proximity"
+            ? base.aggroTrigger.distance
+            : 0,
+          CH1_SOUND_HUNTER_HEARING_DISTANCE
+        ),
+      },
+      disengageDistance: Math.max(
+        base.disengageDistance,
+        CH1_SOUND_HUNTER_HEARING_DISTANCE + 12
+      ),
+    };
+  }
+  return undefined;
 }
 
 // Movement acceleration is intentionally narrower than sight-bound combat.
@@ -297,14 +458,66 @@ function isHarthmereSightBoundChaserNpc(npc: SimulatedNpc): boolean {
   return isHarthmereSightBoundChaserName(harthmereNpcCombatName(npc));
 }
 
+/**
+ * HARTHMERE_CREATURE_LEVELING: applies this entity's level to the shared-type
+ * combat parameters.
+ *
+ * Everything that scales lives in `creature_level.ts`; note what does NOT appear
+ * here — `attackDistance`, `attackFovDeg`, `aggroTrigger`, and
+ * `disengageDistance` are all level invariant on purpose. Growing a creature's
+ * reach or aggro bubble with level makes encounters feel arbitrary and silently
+ * breaks every encounter-density assumption in the seed data.
+ *
+ * Level 1 (every migrated creature) returns `params` unchanged.
+ */
+export function applyCreatureLevelToChaseAttackParams(
+  npc: SimulatedNpc,
+  params: BehaviorChaseAttackParams
+): BehaviorChaseAttackParams {
+  const level = readCreatureProgression(npc.state).level;
+  if (level <= 1) {
+    return params;
+  }
+  const multipliers = creatureLevelMultipliers(level);
+  return {
+    ...params,
+    attackDamage: Math.max(
+      params.attackDamage > 0 ? 1 : 0,
+      Math.round(params.attackDamage * multipliers.damage)
+    ),
+    attackIntervalSecs: Math.max(
+      0.4,
+      params.attackIntervalSecs * multipliers.attackInterval
+    ),
+  };
+}
+
+/** The per-entity movement multiplier from level, capped in `creature_level.ts`. */
+export function creatureLevelSpeedMultiplier(npc: SimulatedNpc): number {
+  return creatureLevelMultipliers(readCreatureProgression(npc.state).level)
+    .speed;
+}
+
 export function boundedHarthmereNpcChaseSpeed(
   npc: SimulatedNpc,
   requestedSpeed: number
 ): number {
-  return boundedHarthmereChaseSpeedForName(
-    harthmereNpcCombatName(npc),
-    requestedSpeed
-  );
+  // Level scaling is applied to the REQUEST, before every existing cap, so a
+  // high-level creature can never exceed the tuned pursuit ceiling.
+  requestedSpeed = requestedSpeed * creatureLevelSpeedMultiplier(npc);
+  const name = harthmereNpcCombatName(npc).toLowerCase();
+  if (name.includes("gilded bull")) {
+    const horned =
+      (npc.state.chapter1Encounter?.brokenPartIds?.length ?? 0) < 2;
+    return horned
+      ? Math.min(requestedSpeed * 1.55, 8.2)
+      : Math.max(0, requestedSpeed * 0.58);
+  }
+  if (name.includes("ninth winter")) {
+    const breaking = npc.health.maxHp > 0 && npc.hp / npc.health.maxHp <= 0.3;
+    return Math.min(requestedSpeed * (breaking ? 1.35 : 1.08), 7.8);
+  }
+  return boundedHarthmereChaseSpeedForName(name, requestedSpeed);
 }
 
 export function nightMuckerHexUnprovokedAggroParams(
@@ -378,6 +591,13 @@ function eyePosition(
   position: ReadonlyVec3,
   height = DEFAULT_PLAYER_EYE_HEIGHT_METERS
 ): Vec3 {
+  // A height of exactly 0 means "this point is already the sample point" and is
+  // used by the multi-sample body visibility test, which computes its own head /
+  // torso / feet offsets. Any other value keeps the historical 0.4 m floor so an
+  // eye is never placed inside the ground.
+  if (height === 0) {
+    return [position[0], position[1], position[2]];
+  }
   return add(position, [0, Math.max(0.4, height), 0]);
 }
 
@@ -415,6 +635,34 @@ export function hasTerrainLineOfSight(
   return true;
 }
 
+/**
+ * HARTHMERE_HILL_COMBAT: visibility of a target body, not of a single eye point.
+ *
+ * The old test traced exactly one ray, eye to eye. On rolling ground a one-block
+ * crest sits squarely on that line while leaving the target's head (or feet)
+ * plainly visible, so creatures repeatedly "lost" a player they could see. We now
+ * trace up to three samples — head, torso, feet — and stop at the first clear
+ * line, so the common fully-visible case still costs exactly one trace.
+ */
+export function hasTerrainLineOfSightToBody(
+  env: Environment,
+  from: ReadonlyVec3,
+  fromEyeHeight: number,
+  to: ReadonlyVec3,
+  toBodyHeight: number
+): boolean {
+  for (const sample of lineOfSightTargetSamples(to, toBodyHeight)) {
+    // `hasTerrainLineOfSight` adds its own eye offset to `to`; pass the already
+    // offset sample with a zero-height offset so the sample point is exact.
+    if (
+      hasTerrainLineOfSight(env, from, sample, fromEyeHeight, 0)
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
 function hasLineOfSightToPlayer(
   env: Environment,
   npc: SimulatedNpc,
@@ -425,19 +673,17 @@ function hasLineOfSightToPlayer(
   }
   const npcEyeHeight =
     Array.isArray(npc.size) && Number.isFinite(npc.size[1])
-      ? Math.max(0.5, npc.size[1] * 0.72)
+      ? lineOfSightEyeHeight(npc.size[1])
       : DEFAULT_PLAYER_EYE_HEIGHT_METERS;
   const playerSize = player.size?.v;
-  const playerEyeHeight =
-    playerSize && Number.isFinite(playerSize[1])
-      ? Math.max(0.5, playerSize[1] * 0.72)
-      : DEFAULT_PLAYER_EYE_HEIGHT_METERS;
-  return hasTerrainLineOfSight(
+  const playerBodyHeight =
+    playerSize && Number.isFinite(playerSize[1]) ? playerSize[1] : 1.8;
+  return hasTerrainLineOfSightToBody(
     env,
     npc.position,
-    player.position.v,
     npcEyeHeight,
-    playerEyeHeight
+    player.position.v,
+    playerBodyHeight
   );
 }
 
@@ -456,6 +702,19 @@ export const zChaseAttackComponent = z.object({
       // collision climbing carry an NPC over small ledges instead of instantly
       // rebuilding the same blocked path.
       pathfindingRetryTime: z.number().optional(),
+      // HARTHMERE_HILL_COMBAT: last confirmed sighting of the current target and
+      // where it was. These back the lost-sight grace window that replaced the
+      // old "one failed line-of-sight ray clears the target" rule.
+      lastSeenTargetAtSeconds: z.number().optional(),
+      lastKnownTargetPosition: zVec3f.optional(),
+      // Whether the current sight-bound target was visible during the latest
+      // target-selection tick. Retention may keep an occluded target, but a
+      // retained target must not be struck through terrain.
+      targetVisible: z.boolean().optional(),
+      // Rate limits full A* rebuilds while chasing a moving target, and records
+      // where the last search actually routed to so tail repairs cannot compound.
+      lastPathSearchAtSeconds: z.number().optional(),
+      lastPathSearchDestination: zVec3f.optional(),
     })
     .default({}),
 });
@@ -488,20 +747,64 @@ export function chaseAttackTargetTick(
   // Always set our rotation target toward the next path node, not blindly at
   // the target origin. This lets NPCs chase around walls/obstacles while still
   // falling back to direct pursuit if pathfinding cannot produce a route.
-  const vecToPlayer = sub(target.position.v, npc.position);
-  const distToPlayer = length(vecToPlayer);
-  const chaseTarget =
-    nextChasePathTarget(env, npc, target.position.v) ?? target.position.v;
+  //
+  // HARTHMERE_HILL_COMBAT: range is now decomposed. Horizontal distance decides
+  // approach; vertical body overlap decides whether a strike plane exists. The
+  // previous full-3D `length(vecToPlayer)` let four metres of hill consume a
+  // 2.4 m melee budget, which is why Muckers and Hexes could not connect on the
+  // Watchtower slopes even while standing next to the player.
+  const targetVisible = npc.state.chaseAttack.targetVisible !== false;
+  const pursuitPosition = targetVisible
+    ? target.position.v
+    : npc.state.chaseAttack.lastKnownTargetPosition ?? target.position.v;
+  const pathNode = nextChasePathTarget(env, npc, pursuitPosition);
+  const chaseTarget = pathNode ?? pursuitPosition;
   const vecToChaseTarget = sub(chaseTarget, npc.position);
   const angleToPlayer = yaw(vecToChaseTarget);
 
-  if (angleToPlayer !== npc.state.rotateTarget) {
-    npc.mutableState().rotateTarget = angleToPlayer;
+  const horizontalToPlayer = horizontalDistance(
+    target.position.v,
+    npc.position
+  );
+  const verticalGap = bodyVerticalGap({
+    attackerFeetY: npc.position[1],
+    attackerHeight: Number.isFinite(npc.size?.[1]) ? npc.size[1] : 1.8,
+    targetFeetY: target.position.v[1],
+    targetHeight: Number.isFinite(target.size?.v[1]) ? target.size!.v[1] : 1.8,
+  });
+  const horizontalToPursuit = horizontalDistance(pursuitPosition, npc.position);
+  const pursuitVerticalGap = bodyVerticalGap({
+    attackerFeetY: npc.position[1],
+    attackerHeight: Number.isFinite(npc.size?.[1]) ? npc.size[1] : 1.8,
+    targetFeetY: pursuitPosition[1],
+    targetHeight: Number.isFinite(target.size?.v[1]) ? target.size!.v[1] : 1.8,
+  });
+  const approach = chaseApproachDecision({
+    horizontalDistance: horizontalToPursuit,
+    verticalGap: pursuitVerticalGap,
+    attackRadius: params.attackDistance,
+    hasPathNode: pathNode !== undefined,
+  });
+
+  // While repositioning we deliberately face across the obstacle rather than
+  // into it, so a creature stuck under a ledge circles the base looking for a
+  // ramp instead of grinding its face into the cliff.
+  const desiredYaw =
+    approach === "reposition"
+      ? angleToPlayer + chaseRepositionYawOffset(npc.id)
+      : angleToPlayer;
+  if (desiredYaw !== npc.state.rotateTarget) {
+    npc.mutableState().rotateTarget = desiredYaw;
   }
 
-  if (distToPlayer >= params.attackDistance) {
+  if (approach !== "attack" || !targetVisible) {
+    // Reaching the last known position while the player is still occluded is a
+    // hold-and-search state, not permission to swing through the wall.
+    if (!targetVisible && approach === "attack") {
+      return out;
+    }
     const diffAngleToPlayer = Math.abs(
-      diffAngle(angleToPlayer, npc.orientation[1])
+      diffAngle(desiredYaw, npc.orientation[1])
     );
     // Keep chasing even while turning. The old cosine multiplier hit zero
     // whenever the target was behind the NPC, which made combatants pivot in
@@ -519,28 +822,29 @@ export function chaseAttackTargetTick(
   out.forwardSpeed = 0;
 
   if (
-    !canAttackTarget(
-      distToPlayer,
-      diffAngle(angleToPlayer, npc.orientation[1]),
-      params.attackDistance,
-      params.attackFovDeg
-    )
+    !canAttackTarget({
+      horizontalDistance: horizontalToPlayer,
+      verticalGap,
+      targetOrientationDiff: diffAngle(angleToPlayer, npc.orientation[1]),
+      attackRadius: params.attackDistance,
+      attackFovDeg: params.attackFovDeg,
+    })
   ) {
     // Wait until we're able to hit the target before proceeding to the attack
     // logic.
     return out;
   }
 
-  const maybeDiff = (a?: number, b?: number) =>
-    a === undefined || b === undefined ? undefined : a - b;
-
   const now = secondsSinceEpoch();
   const strikeDelaySecs = effectiveAttackStrikeDelaySecs(params);
-  const timeSinceLastAttack = maybeDiff(now, npc.state.chaseAttack.attackTime);
-  if (
-    timeSinceLastAttack === undefined ||
-    timeSinceLastAttack > params.attackIntervalSecs
-  ) {
+  const timing = attackTimingDecision({
+    now,
+    attackTime: npc.state.chaseAttack.attackTime,
+    strikeTime: npc.state.chaseAttack.strikeTime,
+    strikeDelaySecs,
+    attackIntervalSecs: params.attackIntervalSecs,
+  });
+  if (timing === "start") {
     // We haven't started an attack, but we can attack, so attack.
     const attackTime = now;
     npc.mutableState().chaseAttack!.attackTime = attackTime;
@@ -569,25 +873,31 @@ export function chaseAttackTargetTick(
         emote_expiry_time: attackTime + strikeDelaySecs,
       })
     );
-  } else if (timeSinceLastAttack > strikeDelaySecs) {
-    // We're in the middle of an attack, check if we cross over the moment
-    // when we should trigger damage.
-    if (
-      npc.state.chaseAttack.strikeTime === undefined ||
-      npc.state.chaseAttack.strikeTime < npc.state.chaseAttack.attackTime!
-    ) {
-      npc.mutableState().chaseAttack!.strikeTime = now;
-      // We've advanced past the point of the attack where we
-      // will deal damage, emit an event for this.
-      npc.attack(target.id, params.attackDamage);
-    }
+  } else if (timing === "strike") {
+    npc.mutableState().chaseAttack!.strikeTime = now;
+    // We crossed the strike moment, possibly in one coarse Anima step. Emit the
+    // damage before allowing a later tick to start the next swing.
+    npc.attack(target.id, params.attackDamage);
   }
 
   return out;
 }
 
-const TARGET_HITBOX_ATTACK_RANGE_CUSHION_METERS = 0.55;
-
+/**
+ * Resolves the next waypoint toward `targetPosition`, maintaining the cached A*
+ * path.
+ *
+ * HARTHMERE_HILL_PATHFINDING changes three things here:
+ *
+ *  1. Small target drift REPAIRS the path tail instead of discarding a route that
+ *     is still perfectly good. The old rule threw away every node the moment the
+ *     player moved 3 m.
+ *  2. Full rebuilds are rate limited, so a sprinting player cannot pin every
+ *     pursuing NPC inside A* on every tick.
+ *  3. Both endpoints resolve through the terrain-aware nearest-standing-voxel
+ *     search. Rounding a fractional hill Y into solid rock used to make the
+ *     destination unexpandable, which looked exactly like "pathfinding failed".
+ */
 function nextChasePathTarget(
   env: Environment,
   npc: SimulatedNpc,
@@ -595,22 +905,41 @@ function nextChasePathTarget(
 ): Vec3 | undefined {
   const state = npc.mutableState().chaseAttack!;
   const now = secondsSinceEpoch();
+
+  const rebuildPath = () => {
+    state.pathfinding = undefined;
+    state.lastPathSearchAtSeconds = now;
+    const graph = new GraphImpl();
+    const srcNode = graph.closestNode(npc.position, env.resources);
+    const destNode = graph.closestNode(targetPosition, env.resources);
+    if (!srcNode || !destNode) {
+      state.lastPathSearchDestination = undefined;
+      return;
+    }
+    // Persist the destination A* actually searched, not the raw player feet.
+    // On hills those can differ by a voxel, and repair drift must be measured
+    // from the graph node or the anti-compounding invariant is inaccurate.
+    state.lastPathSearchDestination = [...destNode.position] as Vec3;
+    const path = new AStarPathfinder(
+      graph,
+      srcNode,
+      destNode,
+      env.resources
+    ).findPath();
+    if (path) {
+      state.pathfinding = {
+        path,
+        searchTime: now,
+        position: npc.position as Vec3,
+      };
+    }
+  };
+
   if (state.pathfinding) {
     updatePathfindingPosition(state.pathfinding, npc.position);
     if (stuckWhilePathfinding(state.pathfinding, now)) {
       state.pathfinding = undefined;
       state.pathfindingRetryTime = now + CHASE_STUCK_DIRECT_PURSUIT_SECONDS;
-    } else if (
-      chasePathTargetIsStale(
-        state.pathfinding.path,
-        targetPosition,
-        CHASE_PATH_TARGET_DRIFT_SQ
-      )
-    ) {
-      // Either we've made no progress for a while, or the target has moved far
-      // enough that the cached route no longer leads to it. Drop the path so a
-      // fresh one is computed toward the target's current position below.
-      state.pathfinding = undefined;
     }
   }
 
@@ -619,24 +948,58 @@ function nextChasePathTarget(
   }
   state.pathfindingRetryTime = undefined;
 
-  if (!state.pathfinding) {
-    const graph = new GraphImpl();
-    const srcNode = graph.closestNode(npc.position);
-    const destNode = graph.closestNode(targetPosition);
-    if (srcNode && destNode) {
-      const path = new AStarPathfinder(
-        graph,
-        srcNode,
-        destNode,
-        env.resources
-      ).findPath();
-      if (path) {
-        state.pathfinding = {
-          path,
-          searchTime: now,
-          position: npc.position as Vec3,
-        };
+  const decision = evaluatePathDestination({
+    destination: state.pathfinding
+      ? pathDestination(state.pathfinding.path)
+      : undefined,
+    // Drift is measured from where A* actually routed to, not from the last
+    // repaired tail. Otherwise repairs compound and the tail follows a sprinting
+    // player forever while the route behind it still leads somewhere else.
+    searchDestination: state.lastPathSearchDestination,
+    targetPosition,
+    maxDriftMeters: CHASE_PATH_TARGET_DRIFT_METERS,
+    nowSeconds: now,
+    lastSearchAtSeconds: state.lastPathSearchAtSeconds,
+  });
+
+  switch (decision.kind) {
+    case "keep":
+      break;
+    case "repair":
+      if (state.pathfinding) {
+        const graph = new GraphImpl();
+        const repairedDestination = graph.closestNode(
+          decision.destination,
+          env.resources
+        )?.position;
+        const repaired = repairedDestination
+          ? repairPathDestinationIfConnected(
+              state.pathfinding.path,
+              repairedDestination,
+              graph,
+              env.resources
+            )
+          : undefined;
+        if (repaired) {
+          state.pathfinding.path = repaired;
+        } else if (
+          now - (state.lastPathSearchAtSeconds ?? Number.NEGATIVE_INFINITY) >=
+          PATHFINDING_REBUILD_COOLDOWN_SECONDS
+        ) {
+          // A nearby target is not necessarily a valid tail edge. If terrain
+          // rejects the repair, rebuild rather than installing a non-adjacent or
+          // solid final node and steering directly through the hill.
+          rebuildPath();
+        }
       }
+      break;
+    case "wait_for_cooldown":
+      // Keep walking the stale route rather than standing still; the next tick
+      // past the cooldown rebuilds it.
+      break;
+    case "rebuild": {
+      rebuildPath();
+      break;
     }
   }
 
@@ -645,20 +1008,31 @@ function nextChasePathTarget(
     : undefined;
 }
 
-function canAttackTarget(
-  targetDistance: number,
-  targetOrientationDiff: number,
-  attackRadius: number,
-  attackFovDeg: number
-) {
-  // Approximate the target collision capsule instead of requiring origin-to-origin
-  // overlap. This keeps large NPCs and player-sized targets from missing because
-  // their centers cannot get close enough without the bodies already touching.
-  const effectiveAttackRadius =
-    attackRadius + TARGET_HITBOX_ATTACK_RANGE_CUSHION_METERS;
+/**
+ * Whether a swing would connect right now.
+ *
+ * HARTHMERE_HILL_COMBAT: the hitbox cushion still widens the HORIZONTAL budget
+ * (that is what it was always for — approximating collision capsules so bodies
+ * do not have to overlap at the origin), but vertical separation is validated
+ * separately against a real strike plane. Raising a single 3D radius to
+ * compensate for hills would also have let creatures hit through floors.
+ */
+export function canAttackTarget(input: {
+  horizontalDistance: number;
+  verticalGap: number;
+  targetOrientationDiff: number;
+  attackRadius: number;
+  attackFovDeg: number;
+  verticalReach?: number;
+}): boolean {
   return (
-    targetDistance <= effectiveAttackRadius &&
-    Math.abs(targetOrientationDiff) <= degToRad(attackFovDeg / 2)
+    withinAttackReach({
+      horizontalDistance: input.horizontalDistance,
+      verticalGap: input.verticalGap,
+      attackRadius: input.attackRadius,
+      hitboxCushion: TARGET_HITBOX_ATTACK_RANGE_CUSHION_METERS,
+      verticalReach: input.verticalReach ?? ATTACK_VERTICAL_REACH_METERS,
+    }) && Math.abs(input.targetOrientationDiff) <= degToRad(input.attackFovDeg / 2)
   );
 }
 
@@ -936,14 +1310,64 @@ function mixedCreatureEntityIsEligible(entity: ReadonlyEntity | undefined) {
   });
 }
 
-function nearbyMixedCreatureGroupAttackerId(
+/**
+ * Membership for one NPC, preferring the runtime override in its own serialized
+ * state. Written at seed time by `live_entity_ecs_seed.ts` from the authored
+ * registry in `@/shared/harthmere/creature_groups`.
+ */
+function creatureGroupMembershipForEntity(
+  entity: ReadonlyEntity | undefined
+): CreatureGroupMembership | undefined {
+  return decodeCreatureGroupMembership(entity?.npc_state?.data);
+}
+
+function lookupGroupAlertAttacker(env: Environment, attackerId: BiomesId) {
+  const attacker = env.resources.get("/ecs/entity", attackerId);
+  if (!Entity.has(attacker, "health", "position", "player_status")) {
+    return undefined;
+  }
+  const buffs = getPlayerBuffs(env.voxeloo, env.resources, attacker.id);
+  const atPeace = Boolean(getPlayerModifiersFromBuffs(buffs)?.peace.enabled);
+  const inSafeZone = isSafeZone(
+    env.voxeloo,
+    attacker.position.v,
+    env.ecsMetaIndex,
+    env.resources
+  );
+  return {
+    position: attacker.position.v,
+    hp: attacker.health.hp,
+    isPlayer: true,
+    canBeTargeted: !atPeace && !inSafeZone,
+  };
+}
+
+/**
+ * HARTHMERE_CREATURE_GROUPS: the group-identity replacement for
+ * `nearbyMixedCreatureGroupAttackerId`.
+ *
+ * Differences that matter in play:
+ *   * Membership is an authored `groupId`, so two unrelated packs standing in the
+ *     same clearing no longer merge into one swarm.
+ *   * There is no terrain line-of-sight gate. Pack-mates know they are pack-mates;
+ *     a one-block crest between them is not evidence of anything. This is the
+ *     direct fix for authored groups failing to assist on hills.
+ *   * Livestock never joins Muck aggression as a bystander (it flees instead);
+ *     it retains its own direct retaliation, which is a separate damage event.
+ *   * Responder caps and role staggering mean a six-monster pack rotates into
+ *     melee instead of landing six simultaneous 70-120 damage hits on a 140 HP
+ *     player.
+ */
+function nearbyGroupAlertAttackerId(
   env: Environment,
   npc: SimulatedNpc,
   deAggroDistanceSq: number,
   now: number
 ): BiomesId | undefined {
-  const recipient = env.resources.get("/ecs/entity", npc.id);
-  if (!mixedCreatureEntityIsEligible(recipient)) {
+  const membership =
+    (npc.state.creatureGroup as CreatureGroupMembership | undefined) ??
+    creatureGroupMembershipForEntity(env.resources.get("/ecs/entity", npc.id));
+  if (!membership || !assistFactionJoinsCombat(membership.assistFaction)) {
     return undefined;
   }
   if (isSafeZone(env.voxeloo, npc.position, env.ecsMetaIndex, env.resources)) {
@@ -953,92 +1377,106 @@ function nearbyMixedCreatureGroupAttackerId(
     return undefined;
   }
 
-  const candidates: MixedCreatureGroupAlertCandidate[] = [];
+  const candidates: GroupAlertCandidate[] = [];
+  const members: GroupResponderPlanMember[] = [];
   for (const candidateId of env.ecsMetaIndex.npc_selector.scanSphere({
     center: npc.position,
-    // The spatial index uses a 3D sphere. Scan the diagonal of the horizontal
-    // and vertical limits, then let the pure evaluator enforce each axis.
-    radius: Math.hypot(
-      MIXED_CREATURE_GROUP_ALERT_RADIUS,
-      MIXED_CREATURE_GROUP_ALERT_MAX_VERTICAL_DISTANCE
-    ),
+    radius: membership.leashRadius,
   })) {
-    if (candidateId === npc.id) {
-      continue;
-    }
     const candidate = env.resources.get("/ecs/entity", candidateId);
     if (!Entity.has(candidate, "health", "position", "npc_metadata")) {
       continue;
     }
-    const eligible = mixedCreatureEntityIsEligible(candidate);
-    if (
-      !eligible ||
-      candidate.health.lastDamageSource?.kind !== "attack" ||
-      candidate.health.lastDamageTime === undefined ||
-      !(
-        candidate.health.lastDamageAmount !== undefined &&
-        candidate.health.lastDamageAmount < 0
-      )
-    ) {
-      // Most nearby NPCs have not been hit. Skip the terrain raycast unless
-      // this entity could actually raise a valid group alert.
+    const candidateMembership =
+      candidateId === npc.id
+        ? membership
+        : creatureGroupMembershipForEntity(candidate);
+    if (candidateMembership?.groupId !== membership.groupId) {
       continue;
     }
-    const npcEyeHeight = Math.max(0.5, npc.size[1] * 0.72);
-    const candidateEyeHeight = Math.max(
-      0.5,
-      (candidate.size?.v[1] ?? DEFAULT_PLAYER_EYE_HEIGHT_METERS) * 0.72
-    );
+    members.push({
+      id: candidate.id,
+      role: candidateMembership.role,
+      memberIndex: candidateMembership.memberIndex,
+      distanceToAttacker: Number.POSITIVE_INFINITY,
+      alive: candidate.health.hp > 0,
+    });
+    if (candidateId === npc.id) {
+      continue;
+    }
     candidates.push({
       id: candidate.id,
       position: candidate.position.v,
-      eligible,
-      hasLineOfSight: hasTerrainLineOfSight(
-        env,
-        npc.position,
-        candidate.position.v,
-        npcEyeHeight,
-        candidateEyeHeight
-      ),
+      membership: candidateMembership,
       lastDamageSource: candidate.health.lastDamageSource as
         | { kind: string; attacker: BiomesId }
         | undefined,
-      lastDamageTime: candidate.health.lastDamageTime,
+      lastDamageTimeSeconds: candidate.health.lastDamageTime,
       lastDamageAmount: candidate.health.lastDamageAmount,
+      alive: candidate.health.hp > 0,
     });
   }
 
-  return evaluateMixedCreatureGroupRetaliationTarget({
+  const alert = evaluateGroupAlert({
     recipientId: npc.id,
-    recipientEligible: true,
     recipientPosition: npc.position,
+    recipientMembership: membership,
     candidates,
-    lookupAttacker: (attackerId) => {
-      const attacker = env.resources.get("/ecs/entity", attackerId);
-      if (!Entity.has(attacker, "health", "position", "player_status")) {
-        return undefined;
-      }
-      const buffs = getPlayerBuffs(env.voxeloo, env.resources, attacker.id);
-      const atPeace = Boolean(
-        getPlayerModifiersFromBuffs(buffs)?.peace.enabled
-      );
-      const inSafeZone = isSafeZone(
-        env.voxeloo,
-        attacker.position.v,
-        env.ecsMetaIndex,
-        env.resources
-      );
-      return {
-        position: attacker.position.v,
-        hp: attacker.health.hp,
-        isPlayer: true,
-        canBeTargeted: !atPeace && !inSafeZone,
-      };
-    },
-    now,
+    lookupAttacker: (attackerId) => lookupGroupAlertAttacker(env, attackerId),
+    nowSeconds: now,
     memorySeconds: ATTACK_MEMORY_SECONDS,
     deAggroDistanceSq,
   });
+
+  const state = npc.mutableState();
+  const existing = state.groupAlert as GroupAlert | undefined;
+  const active = alert ?? existing;
+  if (!active || active.groupId !== membership.groupId) {
+    if (existing) state.groupAlert = undefined;
+    return undefined;
+  }
+
+  const attacker = lookupGroupAlertAttacker(env, active.attackerId);
+  const clearReason = groupAlertClearReason({
+    alert: active,
+    nowSeconds: now,
+    attackerAlive: (attacker?.hp ?? 0) > 0,
+    attackerInSafeZone: Boolean(attacker && !attacker.canBeTargeted),
+    attackerDistanceFromAnchor: attacker
+      ? horizontalDistance(attacker.position, active.sourcePosition)
+      : Number.POSITIVE_INFINITY,
+    groupLeashRadius: membership.leashRadius,
+  });
+  if (clearReason || !attacker) {
+    state.groupAlert = undefined;
+    return undefined;
+  }
+
+  // Rank responders locally. The plan is a deterministic function of quantized
+  // distance plus authored member index, so every member computes the same order
+  // without a shared alert bus.
+  for (const member of members) {
+    const entity = env.resources.get("/ecs/entity", member.id);
+    member.distanceToAttacker = entity?.position
+      ? horizontalDistance(entity.position.v, attacker.position)
+      : Number.POSITIVE_INFINITY;
+  }
+  const assignment = groupResponderPlan({ members }).find(
+    (candidate) => candidate.id === npc.id
+  );
+  const alertAgeSeconds = now - active.raisedAtSeconds;
+  const committed =
+    assignment !== undefined &&
+    assignment.mode !== "hold" &&
+    Number.isFinite(assignment.engageDelaySeconds) &&
+    alertAgeSeconds >= assignment.engageDelaySeconds;
+
+  state.groupAlert = {
+    ...active,
+    responderRank: assignment?.rank,
+  };
+
+  return committed ? active.attackerId : undefined;
 }
 
 function decayNpcThreat(npc: SimulatedNpc) {
@@ -1066,6 +1504,7 @@ function chooseProximityTarget(
   options: {
     requireLineOfSight?: boolean;
     allowNearestFallback?: boolean;
+    isCandidateValid?: (player: ReadonlyEntity) => boolean;
   } = {}
 ): BiomesId | undefined {
   const candidates: ThreatTargetCandidate[] = [];
@@ -1100,6 +1539,9 @@ function chooseProximityTarget(
     ) {
       continue;
     }
+    if (options.isCandidateValid && !options.isCandidateValid(player)) {
+      continue;
+    }
     candidates.push({
       id: player.id,
       distanceSq: distSq(player.position.v, npc.position),
@@ -1130,7 +1572,11 @@ export function updateAttackTarget(
   const deAggroDistanceSq = params.disengageDistance ** 2;
   const now = secondsSinceEpoch();
   const usesNightMuckerHexAggro = isMuckerOrHexerNpcForNightAggro(npc);
-  const usesSightBoundHarthmereChase = isHarthmereSightBoundChaserNpc(npc);
+  const usesSoundHunting = isChapter1SoundHunterName(
+    harthmereNpcCombatName(npc)
+  );
+  const usesSightBoundHarthmereChase =
+    !usesSoundHunting && isHarthmereSightBoundChaserNpc(npc);
   const isNight = isNightForNpcAggro(now);
 
   // HARTHMERE_NPC_RETALIATION_SAFE_ZONE:
@@ -1148,12 +1594,12 @@ export function updateAttackTarget(
     deAggroDistanceSq,
     now
   );
-  // A direct hit on this NPC always wins. Otherwise, a nearby cow, sheep,
-  // rabbit, Mucker, or Hex can share its real recent player attacker with this
-  // NPC. Alert state is not itself shared, so propagation cannot fan out.
+  // A direct hit on this NPC always wins. Otherwise a member of this NPC's OWN
+  // authored group can share its real recent player attacker. Alert state is
+  // never itself the evidence, so propagation cannot fan out into a second ring.
   const groupAttackerId = recentAttackerId
     ? undefined
-    : nearbyMixedCreatureGroupAttackerId(env, npc, deAggroDistanceSq, now);
+    : nearbyGroupAlertAttackerId(env, npc, deAggroDistanceSq, now);
   const provokedAttackerId = recentAttackerId ?? groupAttackerId;
 
   if (
@@ -1182,6 +1628,23 @@ export function updateAttackTarget(
       // commit to a fight should not get ignored in favor of a stranger
       // wandering into aggro range.
       targetId = provokedAttackerId;
+    } else if (usesSoundHunting) {
+      targetId = chooseProximityTarget(
+        env,
+        npc,
+        params.aggroTrigger.kind === "proximity"
+          ? params.aggroTrigger.distance
+          : CH1_SOUND_HUNTER_HEARING_DISTANCE,
+        npc.state.threat?.table,
+        {
+          allowNearestFallback: true,
+          isCandidateValid: (player) =>
+            chapter1SoundHunterCanHear({
+              velocity: player.rigid_body?.velocity,
+              threat: npc.state.threat?.table?.[String(player.id)] ?? 0,
+            }),
+        }
+      );
     } else if (usesNightMuckerHexAggro && !isNight) {
       // Hexes/muckers are only proactively hostile at night. During the day
       // they can still fight back through recent-attacker/threat paths, but a
@@ -1248,22 +1711,76 @@ export function updateAttackTarget(
       targetId = undefined;
     } else if (usesNightMuckerHexAggro && !targetIsProvoked && !isNight) {
       targetId = undefined;
-    } else if (
-      usesSightBoundHarthmereChase &&
-      shouldDropHarthmereChaseTargetForLineOfSight(
-        harthmereNpcCombatName(npc),
-        hasLineOfSightToPlayer(env, npc, attackTarget)
-      )
-    ) {
-      // Harthmere fights remain visual and fair: Muckers, Hexes, bandits, and
-      // retaliating herd animals pursue while they can see the player, then
-      // immediately release the target once terrain breaks line of sight.
-      targetId = undefined;
+    } else if (usesSightBoundHarthmereChase) {
+      // HARTHMERE_HILL_COMBAT: Harthmere fights stay visual and fair, but the old
+      // rule dropped the target the instant a SINGLE eye-to-eye ray failed. On
+      // rolling ground that produced continuous aggro flicker: crest, lose,
+      // reacquire, crest, lose. A creature that has actually seen the player now
+      // keeps hunting through a short grace window, then keeps hunting the last
+      // known position only while it remains reachable.
+      const chaseState = npc.mutableState().chaseAttack!;
+      const milestone = creatureMilestoneAbilities(
+        readCreatureProgression(npc.state).level
+      );
+      const hasLineOfSight = hasLineOfSightToPlayer(env, npc, attackTarget);
+      const retention = evaluateChaseTargetRetention({
+        hasLineOfSight,
+        nowSeconds: now,
+        lastSeenAtSeconds:
+          targetId === npc.state.chaseAttack.attackTarget
+            ? chaseState.lastSeenTargetAtSeconds
+            : undefined,
+        // Navigation reachability: a cached path means we know a route exists.
+        // `undefined` (no path yet) is treated as reachable so a creature is not
+        // punished for having just acquired the target.
+        targetReachable: chaseState.pathfinding
+          ? chaseState.pathfinding.path.nodes.length > 0
+          : undefined,
+        graceSeconds:
+          CHASE_LOST_SIGHT_GRACE_SECONDS +
+          milestone.targetRetentionBonusSeconds,
+      });
+      chaseState.targetVisible = hasLineOfSight;
+      chaseState.lastSeenTargetAtSeconds = retention.lastSeenAtSeconds;
+      if (retention.reason === "visible") {
+        chaseState.lastKnownTargetPosition = [
+          ...attackTarget.position.v,
+        ] as Vec3;
+      }
+      if (!retention.retain) {
+        chaseState.lastKnownTargetPosition = undefined;
+        chaseState.targetVisible = undefined;
+        targetId = undefined;
+      }
     }
+  }
+
+  // Prey never joins an aggression alert; it flees and keeps only its own direct
+  // retaliation. Clearing a proactive target here makes that explicit rather than
+  // relying on the assist-faction filter alone.
+  const preyMembership = npc.state.creatureGroup as
+    | CreatureGroupMembership
+    | undefined;
+  if (
+    targetId &&
+    targetId !== recentAttackerId &&
+    preyMembership &&
+    shouldFleeGroupAlert({
+      faction: preyMembership.assistFaction,
+      directlyAttacked: recentAttackerId !== undefined,
+    })
+  ) {
+    targetId = undefined;
   }
 
   if (targetId !== npc.state.chaseAttack.attackTarget) {
     npc.mutableState().chaseAttack!.attackTarget = targetId;
+  }
+  if (!targetId) {
+    const chaseState = npc.mutableState().chaseAttack!;
+    chaseState.lastSeenTargetAtSeconds = undefined;
+    chaseState.lastKnownTargetPosition = undefined;
+    chaseState.targetVisible = undefined;
   }
   npc.setPublicCombatTarget(targetId);
 }

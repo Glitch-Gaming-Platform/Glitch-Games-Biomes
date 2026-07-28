@@ -33,8 +33,10 @@ import {
   snapshotCombatGroundedPosition,
 } from "./snapshot_runtime_rules";
 import {
+  HARTHMERE_PRODUCTION_PLACEMENT_MAP,
   getHarthmereProductionPlacementByKey,
   harthmereProductionPlacementKey,
+  type HarthmereProductionPlacementRecord,
 } from "./production_terrain_placement_map";
 import {
   HARTHMERE_NATIVE_THAEDRYN_ENTITY_ID,
@@ -49,7 +51,18 @@ import {
   HARTHMERE_NATIVE_BANDIT_SEEDS,
   type HarthmereBanditRole,
 } from "./bandit_production_seed";
+import {
+  CH1_NPC_ID_OFFSET_BASE,
+  CH1_NPC_ID_OFFSET_LIMIT_EXCLUSIVE,
+} from "./ch1_ids";
 import { harthmereForestWildlifePlacements } from "./harthmere_forest_wildlife";
+import {
+  HARTHMERE_ROAD_GROUP_ANIMAL_SEEDS,
+  HARTHMERE_ROAD_GROUP_MONSTER_SEEDS,
+  isHarthmereRoadGroupAreaId,
+} from "./road_to_harthmere_groups";
+import { isPointInsideHarthmereBusinessSafeSite } from "./business_customer_simulator";
+import { BUILDING_SYSTEM_PLOTS } from "./building_system";
 
 export const HARTHMERE_LIVE_ENTITY_PRODUCTION_SEED_VERSION =
   "harthmere-live-entity-production-seed" as const;
@@ -93,6 +106,47 @@ export interface HarthmereLiveEntityProductionSeed {
   robotId?: string;
   energy?: number;
   maxEnergy?: number;
+  /**
+   * HARTHMERE_CREATURE_GROUPS: explicit authored pack membership. When present it
+   * overrides the area-derived group id, which lets one area hold several
+   * independent encounters without them merging into a single swarm.
+   */
+  groupId?: string;
+  /** Exact seeded creature rank used by Jobs Board hunt contracts. */
+  bountyTier?: "elite" | "boss";
+  /**
+   * HARTHMERE_MUCK_PACK_RELOCATION (2026-07-28): this monster belongs to a pack
+   * that was deliberately re-homed OUT of Muck territory into the open Wilds.
+   *
+   * It is a per-seed flag rather than an areaId list because the areaId has to
+   * stay put: `road_muckwad_patch` drives the tutorial retaliation-only combat
+   * profile, and `watchtower_muck_clearing` / `old_wood_mucker_copse` are also
+   * livestock areaIds whose animals legitimately remain on the Muck edge. Only
+   * the monster seeds carry this flag, so the two families cannot be confused.
+   *
+   * Seeds with this flag follow the open-Wilds contract: authored position wins
+   * (no Muck-floor flattening, no Muck redistribution) and
+   * `harthmereOpenWildsMixedGroupPositionIsValid` gates them.
+   */
+  wildsRelocatedPack?: boolean;
+  /**
+   * HARTHMERE_AUTHORED_MUCK_PACK: keep the authored position verbatim while
+   * REMAINING inside a Muck territory. Used by the one pack left in the
+   * Watchtower clearing, whose members sit on individually terrain-probed
+   * columns; the random in-area spread would throw that measurement away.
+   */
+  authoredMuckPack?: boolean;
+  /**
+   * HARTHMERE_CREATURE_LEVELING: authored PER-ENTITY progression level.
+   *
+   * Deliberately separate from `combatLevel`. `combatLevel` selects which shared
+   * NPC type (and therefore which base HP/damage curve) a creature gets, and
+   * every existing creature's production stats already encode it. Reusing it as
+   * a progression level would buff the whole world a second time on the first
+   * boot after this change. Omitting `progressionLevel` means "level 1, stats
+   * exactly as authored" — the inert migration.
+   */
+  progressionLevel?: number;
 }
 
 export interface HarthmereLiveEntityGroundingOptions {
@@ -291,6 +345,12 @@ export function harthmereLiveEntitySizeForSeed(
   if (seed.kind === "ambient_bandit") {
     return [0.72, 1.8, 0.72];
   }
+  if (seed.bountyTier === "boss") {
+    return seed.combatKind === "hex" ? [1.45, 2.5, 1.45] : [1.9, 2.25, 1.9];
+  }
+  if (seed.bountyTier === "elite") {
+    return seed.combatKind === "hex" ? [1.15, 2.05, 1.15] : [1.45, 1.7, 1.45];
+  }
   if (seed.combatKind === "hex" || /hex|hexer/.test(text)) {
     return [0.85, 1.75, 0.85];
   }
@@ -321,10 +381,16 @@ export const HARTHMERE_LIVE_ENTITY_ROBOT_SENTINEL_SEEDS =
   });
 
 // 140 originally; +36 on 2026-07-26 for the six scattered mixed encounters
-// (five Muckers and one Hex each). This is a checked-in bookkeeping figure that
+// (five Muckers and one Hex each); +24 on 2026-07-27 for the four Road to
+// Harthmere groups (two Hexes and four Mucklings each); +6 on 2026-07-28 for the
+// named Mossy Muckling hunt pack. This is a checked-in bookkeeping figure that
 // several tests assert against, so it has to move whenever a monster layout is
 // added or removed.
-export const HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_PRODUCTION_COUNT = 176;
+//
+// The 2026-07-28 Muck pack relocation deliberately does NOT change this figure:
+// the three re-homed families keep their exact counts, ids and names and are
+// only split across more anchors.
+export const HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_PRODUCTION_COUNT = 206;
 
 export interface HarthmereGuardedWildlifeLocation {
   areaId: string;
@@ -349,10 +415,17 @@ export const HARTHMERE_LIVE_ENTITY_GUARDED_WILDLIFE_LOCATIONS: readonly Harthmer
       center: [203.172, 53, -518.17],
       animalCounts: { cow: 1, sheep: 2, rabbit: 2 },
     },
+    // HARTHMERE_MUCK_PACK_RELOCATION (2026-07-28): this pocket used to sit at
+    // [307, 44, -385] — 25 blocks from the centre of the Watchtower Muck
+    // Clearing, which put a second four-Mucker guard pack inside the clearing
+    // the player is sent to for their first fight. Re-homed to a measured
+    // production surface column in the southern meadow so the clearing holds
+    // exactly one pack. Its areaId moved with it, which also drops the stale
+    // "Watchtower" label from the guards' area text.
     {
-      areaId: "watchtower_muck_north_hollow",
-      areaLabel: "Watchtower Muck North Hollow",
-      center: [307, 44, -385],
+      areaId: "south_meadow_guarded_hollow",
+      areaLabel: "East Downs Guarded Hollow",
+      center: [1115, 69, 31],
       animalCounts: { cow: 1, sheep: 2, rabbit: 2 },
     },
     {
@@ -437,8 +510,9 @@ export const HARTHMERE_LIVE_ENTITY_OPEN_WILDS_MIXED_GROUP_LOCATIONS: readonly Ha
 //   * every pre-existing Hex, Mucker, cow, sheep and rabbit, by at least
 //     HARTHMERE_SCATTERED_MIXED_GROUP_MIN_CREATURE_DISTANCE blocks.
 // Bands for the two families added on 2026-07-26. Chapter 1 owns 10500..10599
-// (see CH1_NPC_ID_OFFSET_BASE) and the highest previously used offset is 10505,
-// so both bands start clear of everything already claimed.
+// (see CH1_NPC_ID_OFFSET_BASE), forest/scattered creatures use 10601..10776,
+// road groups use 10801..10868, and the remapped late bandits use 10901..10905.
+// Every family must remain clear of those declared ranges.
 //   forest wildlife   10601..10635  (35 animals)
 //   scattered monsters 10701..10736 (6 groups x 6)
 //   scattered animals  10741..10776 (6 groups x 6)
@@ -574,9 +648,242 @@ interface HarthmereMuckMonsterSeedLayout {
   firstOffset: number;
   muckerName: string;
   hexerName: string;
+  /**
+   * Every `hexEvery`-th member is a Hexer. `0` means the pack has NO Hexers at
+   * all — `hexerName` is then unreachable and only kept for readability.
+   */
   hexEvery: number;
   displayIndexBase?: number;
+  /**
+   * HARTHMERE_MUCK_PACK_RELOCATION: pack was re-homed into the open Wilds. See
+   * `wildsRelocatedPack` on the seed for why this is not an areaId list.
+   */
+  relocatedToWilds?: boolean;
+  /**
+   * HARTHMERE_AUTHORED_MUCK_PACK: exact per-member positions, used instead of
+   * the sunflower spread. Each entry must be a real measured surface column;
+   * `authoredMuckPack` then stops the runtime from re-rolling them.
+   */
+  authoredPositions?: readonly ReadonlyVec3[];
+  authoredMuckPack?: boolean;
 }
+
+// HARTHMERE_WATCHTOWER_MUCKLING_PACK (2026-07-28)
+//
+// The ONE pack that stays in the Watchtower Muck Clearing, centred on the column
+// the player actually died on (HAR `mukcig_movie.har`: local player at
+// [349.4, 39, -378.7], death chat message spatial position
+// [337.594, 26, -391.652], killed by "a Old Wood Mucker").
+//
+// Why every position is written out instead of generated
+// ------------------------------------------------------
+// This ground is NOT flat: the fourteen columns below span feet Y 31..40 inside a
+// 14-block radius. The generated sunflower spread shares ONE Y across the whole
+// pack, which here would bury or float most of it. Each entry is instead a
+// `recommendedPosition` that the June production terrain scan measured directly
+// (`generated/production_terrain_placement_map.ts`, `source:
+// "live_muck_monster"`), i.e. a real standable surface — the same evidence
+// standard the road packs use, just reused rather than re-probed.
+//
+// These are the columns previously occupied by the eight different Mucker, Hexer
+// and Muckling families that the map-wide redistribution piled into this one
+// clearing. They are now held by a single Muckling family, so the clearing reads
+// as one encounter and the Old Wood / Gravewood / West Breach / Road families
+// are back in (or relocated away from) their own territory.
+const HARTHMERE_WATCHTOWER_MUCKLING_AUTHORED_POSITIONS: readonly ReadonlyVec3[] =
+  [
+    [335.059, 35, -393.185],
+    [333.365, 38, -391.303],
+    [334.862, 34, -395.472],
+    [339.188, 31, -386.628],
+    [331.06, 37, -392.854],
+    [343.036, 38, -387.655],
+    [345.371, 38, -389.842],
+    [342.239, 38, -384.744],
+    [345.532, 31, -395.887],
+    [339.997, 33, -402.35],
+    [329.331, 39, -399.425],
+    [328.015, 39, -385.424],
+    [337.539, 40, -379.776],
+    [331.769, 40, -378.893],
+  ] as const;
+
+// HARTHMERE_MUCK_PACK_RELOCATION (2026-07-28)
+//
+// Where the three homeless Muck families went, and why they had to move.
+//
+// The bug: `harthmereGroundedMuckMonsterSeedsInTerritory` used to pool ALL ~100
+// authored Muck monsters and scatter them at random across every non-safe Muck
+// containment area. There are six such areas but only FOUR distinct centres —
+// `watchtower_muck_patch` / `watchtower_muck_clearing` share [332, -390] and
+// `old_wood_muck_patch` / `old_wood_mucker_copse` share [640, -455]. So the pool
+// collapsed onto four points at ~25 monsters each. Measured from the HAR above:
+// 32 hostiles from EIGHT families within 60 blocks of one death column.
+//
+// The fix is two-part: each remaining family now spreads inside ITS OWN Muck
+// area (see `harthmereOwnMuckContainmentAreaForSeed`), and the three families
+// left without an area of their own move out here:
+//
+//   * `road_muckwad_patch` (15) — its own Muck zone overlaps the Grove/town safe
+//     radius, so it never had a legal home and was pure overflow. Splits 3x5.
+//   * `watchtower_muck_clearing` (14) — nested on the Watchtower patch. Splits 2x7.
+//   * `old_wood_mucker_copse` (14) — nested on the Old Wood patch. Splits 2x7.
+//
+// Grounding: every anchor is a measured outdoor surface column from the June
+// production terrain scan. Members start in a compact radius around it, then the
+// required production live-creature grounding pass probes each complete body
+// footprint and persists the exact supported feet position and respawn anchor.
+//
+// Placement: each anchor clears, by construction and asserted in tests, every
+// safe zone, business safe site, authored building plot, Muck territory,
+// robot-protected area and helper-quest exclusion; it stays west of
+// `HARTHMERE_ORIGINAL_WORLD_EAST_EDGE_X` so nothing lands in the additive
+// Harthmere town or woods; and it sits at least
+// `HARTHMERE_SCATTERED_MIXED_GROUP_MIN_CREATURE_DISTANCE` blocks from any other
+// creature in the world, with the anchors themselves 80+ blocks apart.
+//
+// Ids, names and composition are deliberately UNCHANGED. Sub-packs reuse the
+// original contiguous idOffset ranges, keep the original display names (so the
+// NPC type manifest needs no new entry) and keep the original `hexEvery`, which
+// at these sizes reproduces the original Hexer count exactly: 15 @ hexEvery 5
+// -> 3 Hexers as 3x(5 @ 5); 14 @ hexEvery 7 -> 2 Hexers as 2x(7 @ 7).
+interface HarthmereRelocatedMuckPackAnchor {
+  areaId: string;
+  areaLabel: string;
+  center: ReadonlyVec3;
+  count: number;
+  firstOffset: number;
+  muckerName: string;
+  hexerName: string;
+  hexEvery: number;
+  displayIndexBase: number;
+}
+
+export const HARTHMERE_RELOCATED_MUCK_PACK_RADIUS = 5;
+
+/** areaId of the guarded wildlife pocket moved out of the Watchtower clearing. */
+export const HARTHMERE_RELOCATED_GUARDED_WILDLIFE_AREA_ID =
+  "south_meadow_guarded_hollow";
+
+/** The six ordinary Watchtower livestock moved out with the crowded encounters. */
+export const HARTHMERE_RELOCATED_WATCHTOWER_LIVESTOCK_AREA_ID =
+  "watchtower_livestock_western_meadow";
+export const HARTHMERE_RELOCATED_WATCHTOWER_LIVESTOCK_LOCATION: HarthmereGuardedWildlifeLocation =
+  {
+    areaId: HARTHMERE_RELOCATED_WATCHTOWER_LIVESTOCK_AREA_ID,
+    areaLabel: "Watchtower Western Meadow",
+    center: [1163, 43, -585],
+    animalCounts: { cow: 2, sheep: 2, rabbit: 2 },
+  };
+
+export const HARTHMERE_RELOCATED_MUCK_PACK_ANCHORS: readonly HarthmereRelocatedMuckPackAnchor[] =
+  [
+    {
+      areaId: "road_muckwad_patch",
+      areaLabel: "North Shelf Muckwads",
+      center: [643, 25, -905],
+      count: 5,
+      firstOffset: HARTHMERE_ROAD_MUCKWAD_FIRST_OFFSET,
+      muckerName: "Road Muckwad",
+      hexerName: "Road Lesser Hexer",
+      hexEvery: 5,
+      displayIndexBase: 0,
+    },
+    {
+      areaId: "road_muckwad_patch",
+      areaLabel: "South Reach Muckwads",
+      center: [1027, 37, 295],
+      count: 5,
+      firstOffset: HARTHMERE_ROAD_MUCKWAD_FIRST_OFFSET + 5,
+      muckerName: "Road Muckwad",
+      hexerName: "Road Lesser Hexer",
+      hexEvery: 5,
+      displayIndexBase: 5,
+    },
+    {
+      areaId: "road_muckwad_patch",
+      areaLabel: "Western Lowland Muckwads",
+      center: [67, 37, -105],
+      count: 5,
+      firstOffset: HARTHMERE_ROAD_MUCKWAD_FIRST_OFFSET + 10,
+      muckerName: "Road Muckwad",
+      hexerName: "Road Lesser Hexer",
+      hexEvery: 5,
+      displayIndexBase: 10,
+    },
+    {
+      areaId: "watchtower_muck_clearing",
+      areaLabel: "Southwest Clearing Pack",
+      center: [371, 48, 303],
+      count: 7,
+      firstOffset: 9495,
+      muckerName: "Watchtower Clearing Mucker",
+      hexerName: "Watchtower Clearing Hexer",
+      hexEvery: 7,
+      displayIndexBase: 0,
+    },
+    {
+      areaId: "watchtower_muck_clearing",
+      areaLabel: "Eastern Wilds Clearing Pack",
+      center: [1419, 55, -489],
+      count: 7,
+      firstOffset: 9502,
+      muckerName: "Watchtower Clearing Mucker",
+      hexerName: "Watchtower Clearing Hexer",
+      hexEvery: 7,
+      displayIndexBase: 7,
+    },
+    {
+      areaId: "old_wood_mucker_copse",
+      areaLabel: "Northwest Pine Copse Pack",
+      center: [899, 38, -697],
+      count: 7,
+      firstOffset: 9523,
+      muckerName: "Old Wood Copse Mucker",
+      hexerName: "Old Wood Copse Hexer",
+      hexEvery: 7,
+      displayIndexBase: 0,
+    },
+    {
+      areaId: "old_wood_mucker_copse",
+      areaLabel: "Western Pine Copse Pack",
+      center: [451, 39, -673],
+      count: 7,
+      firstOffset: 9530,
+      muckerName: "Old Wood Copse Mucker",
+      hexerName: "Old Wood Copse Hexer",
+      hexEvery: 7,
+      displayIndexBase: 7,
+    },
+  ] as const;
+
+// HARTHMERE_MOSSY_MUCKLING_HUNT (2026-07-28)
+//
+// "Get the Muck Out" asks the player to defeat 6 Mossy Mucklings with their
+// Whacker, and until now NO creature in the world was called that. The quest
+// leaf accepted West Breach and Gravewood Pale Mucklings as stand-ins and its
+// map marker pointed at [334, 40, -389] — the Watchtower clearing — where the
+// redistribution happened to leave a handful of them among 32 other hostiles.
+// The objective was therefore unreadable: the right enemies were unnamed, in the
+// wrong place, and buried in a crowd.
+//
+// This is a real six-strong "Mossy Muckling" pack of its own, on the closest
+// production-scanned outdoor point to the Grove that is outside every authored
+// safe zone, business safe site, building plot, Muck territory and robot field;
+// west of the additive Harthmere town/woods; and clear of every other creature
+// encounter. `NATIVE_GET_THE_MUCK_OUT_MUCKLING_HUNT_POSITION` points the map
+// marker here.
+//
+// Grounding: [531, 68, -33] is a production-scanned outdoor surface. The
+// deploy-time live-creature grounding pass probes every member's complete body
+// footprint and persists its exact supported feet position.
+export const HARTHMERE_MOSSY_MUCKLING_AREA_ID = "grove_east_mossy_hollow";
+export const HARTHMERE_MOSSY_MUCKLING_AREA_LABEL = "Grove East Mossy Hollow";
+export const HARTHMERE_MOSSY_MUCKLING_NAME = "Mossy Muckling";
+export const HARTHMERE_MOSSY_MUCKLING_COUNT = 6;
+export const HARTHMERE_MOSSY_MUCKLING_FIRST_OFFSET = 10951;
+export const HARTHMERE_MOSSY_MUCKLING_ANCHOR: ReadonlyVec3 = [531, 68, -33];
+export const HARTHMERE_MOSSY_MUCKLING_RADIUS = 4;
 
 const HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_LAYOUTS: readonly HarthmereMuckMonsterSeedLayout[] =
   [
@@ -591,38 +898,22 @@ const HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_LAYOUTS: readonly HarthmereMuckMonsterS
       hexerName: "West Breach Lesser Hexer",
       hexEvery: 5,
     },
-    {
-      areaId: "road_muckwad_patch",
-      areaLabel: "Road Muckwad Patch",
-      count: 15,
-      center: [512, 54, -152],
-      radius: 8,
-      firstOffset: HARTHMERE_ROAD_MUCKWAD_FIRST_OFFSET,
-      muckerName: "Road Muckwad",
-      hexerName: "Road Lesser Hexer",
-      hexEvery: 5,
-    },
+    // HARTHMERE_WATCHTOWER_MUCKLING_PACK: the one pack left in the clearing the
+    // player is sent to for their first fight. Renamed from "Watchtower Mucker"
+    // to a Muckling family and stripped of its Hexer (`hexEvery: 0`) so the
+    // area holds exactly one kind of enemy, on individually probed columns.
     {
       areaId: "watchtower_muck_patch",
       areaLabel: "Watchtower Muck Patch",
-      count: 14,
-      center: [332, 54, -390],
-      radius: 14,
+      count: HARTHMERE_WATCHTOWER_MUCKLING_AUTHORED_POSITIONS.length,
+      center: [337.594, 35, -391.652],
+      radius: 15,
       firstOffset: 9481,
-      muckerName: "Watchtower Mucker",
-      hexerName: "Watchtower Lesser Hexer",
-      hexEvery: 7,
-    },
-    {
-      areaId: "watchtower_muck_clearing",
-      areaLabel: "Watchtower Muck Clearing",
-      count: 14,
-      center: [332, 54, -390],
-      radius: 32,
-      firstOffset: 9495,
-      muckerName: "Watchtower Clearing Mucker",
-      hexerName: "Watchtower Clearing Hexer",
-      hexEvery: 7,
+      muckerName: "Watchtower Muckling",
+      hexerName: "Watchtower Muckling",
+      hexEvery: 0,
+      authoredPositions: HARTHMERE_WATCHTOWER_MUCKLING_AUTHORED_POSITIONS,
+      authoredMuckPack: true,
     },
     {
       areaId: "old_wood_muck_patch",
@@ -635,16 +926,34 @@ const HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_LAYOUTS: readonly HarthmereMuckMonsterS
       hexerName: "Old Wood Lesser Hexer",
       hexEvery: 7,
     },
+    // HARTHMERE_MUCK_PACK_RELOCATION: the three families with no Muck area of
+    // their own, split into seven small packs out in the open Wilds.
+    ...HARTHMERE_RELOCATED_MUCK_PACK_ANCHORS.map((anchor) => ({
+      areaId: anchor.areaId,
+      areaLabel: anchor.areaLabel,
+      count: anchor.count,
+      center: anchor.center,
+      radius: HARTHMERE_RELOCATED_MUCK_PACK_RADIUS,
+      firstOffset: anchor.firstOffset,
+      muckerName: anchor.muckerName,
+      hexerName: anchor.hexerName,
+      hexEvery: anchor.hexEvery,
+      displayIndexBase: anchor.displayIndexBase,
+      relocatedToWilds: true,
+    })),
+    // HARTHMERE_MOSSY_MUCKLING_HUNT: the named pack "Get the Muck Out" asks for.
     {
-      areaId: "old_wood_mucker_copse",
-      areaLabel: "Old Wood Mucker Copse",
-      count: 14,
-      center: [640, 54, -455],
-      radius: 46,
-      firstOffset: 9523,
-      muckerName: "Old Wood Copse Mucker",
-      hexerName: "Old Wood Copse Hexer",
-      hexEvery: 7,
+      areaId: HARTHMERE_MOSSY_MUCKLING_AREA_ID,
+      areaLabel: HARTHMERE_MOSSY_MUCKLING_AREA_LABEL,
+      count: HARTHMERE_MOSSY_MUCKLING_COUNT,
+      center: HARTHMERE_MOSSY_MUCKLING_ANCHOR,
+      radius: HARTHMERE_MOSSY_MUCKLING_RADIUS,
+      firstOffset: HARTHMERE_MOSSY_MUCKLING_FIRST_OFFSET,
+      muckerName: HARTHMERE_MOSSY_MUCKLING_NAME,
+      // A starter Whacker hunt must not hide a Hexer in the objective count.
+      hexerName: HARTHMERE_MOSSY_MUCKLING_NAME,
+      hexEvery: 0,
+      relocatedToWilds: true,
     },
     {
       areaId: "gravewood_pale_muck",
@@ -734,6 +1043,11 @@ function muckMonsterPositionForLayout(
   layout: HarthmereMuckMonsterSeedLayout,
   index: number
 ): Vec3 {
+  const authored = layout.authoredPositions?.[index];
+  if (authored) {
+    // Individually terrain-probed column: never re-derive it from the centre.
+    return [Number(authored[0]), Number(authored[1]), Number(authored[2])];
+  }
   const radius = layout.radius * Math.sqrt((index + 0.5) / layout.count);
   const angle = index * 2.399963229728653;
   return [
@@ -747,9 +1061,21 @@ const HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SOURCE_SEEDS =
   HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_LAYOUTS.flatMap((layout) =>
     Array.from({ length: layout.count }, (_, index) => {
       const idOffset = layout.firstOffset + index;
-      const isHexer = (index + 1) % layout.hexEvery === 0;
+      // `hexEvery: 0` means the pack has no Hexers at all.
+      const isHexer =
+        layout.hexEvery > 0 && (index + 1) % layout.hexEvery === 0;
       const displayName = isHexer ? layout.hexerName : layout.muckerName;
       const position = muckMonsterPositionForLayout(layout, index);
+      const bountyEligible =
+        layout.areaId !== "road_muckwad_patch" &&
+        Boolean(muckMonsterAreaForPosition(position, 1.5));
+      const bountyTier = !bountyEligible
+        ? undefined
+        : isHexer || index === 0
+        ? ("boss" as const)
+        : index === 1
+        ? ("elite" as const)
+        : undefined;
       return {
         areaId: layout.areaId,
         areaLabel: layout.areaLabel,
@@ -758,30 +1084,50 @@ const HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SOURCE_SEEDS =
           (layout.displayIndexBase ?? 0) + index + 1
         }`,
         position: openWildsTerrainGroundedPosition(position, idOffset),
+        bountyTier,
+        wildsRelocatedPack: layout.relocatedToWilds === true,
+        authoredMuckPack: layout.authoredMuckPack === true,
       };
     })
   );
 
-export const HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS =
-  HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SOURCE_SEEDS.map((seed) => {
-    const combat = combatDefaultsForMonster(seed.displayName);
-    return {
-      seedId: `ambient-muck-monster-${seed.areaId}-${seed.idOffset}`,
-      kind: "ambient_muck_monster",
-      entityId: entityIdFromOffset(seed.idOffset),
-      idOffset: seed.idOffset,
-      displayName: seed.displayName,
-      areaId: seed.areaId,
-      areaLabel: seed.areaLabel,
-      position: seed.position,
-      orientation: [0, 0] as Vec2,
-      dialog: monsterDialog(seed.areaLabel)
-        .map((line) => `<text>${line}</text>`)
-        .join("{break}"),
-      description: `${seed.displayName} prowls the Muck edge near ${seed.areaLabel}.`,
-      ...combat,
-    } satisfies HarthmereLiveEntityProductionSeed;
-  });
+export const HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS: HarthmereLiveEntityProductionSeed[] =
+  [
+    ...HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SOURCE_SEEDS.map((seed) => {
+      const combat = combatDefaultsForMonster(seed.displayName);
+      return {
+        seedId: `ambient-muck-monster-${seed.areaId}-${seed.idOffset}`,
+        kind: "ambient_muck_monster",
+        entityId: entityIdFromOffset(seed.idOffset),
+        idOffset: seed.idOffset,
+        displayName: seed.displayName,
+        areaId: seed.areaId,
+        areaLabel: seed.areaLabel,
+        position: seed.position,
+        bountyTier: seed.bountyTier,
+        wildsRelocatedPack: seed.wildsRelocatedPack || undefined,
+        authoredMuckPack: seed.authoredMuckPack || undefined,
+        orientation: [0, 0] as Vec2,
+        dialog: monsterDialog(seed.areaLabel)
+          .map((line) => `<text>${line}</text>`)
+          .join("{break}"),
+        description: `${seed.displayName} prowls the Muck edge near ${seed.areaLabel}.`,
+        progressionLevel:
+          seed.bountyTier === "boss"
+            ? 8
+            : seed.bountyTier === "elite"
+            ? 5
+            : undefined,
+        ...combat,
+      } satisfies HarthmereLiveEntityProductionSeed;
+    }),
+    // HARTHMERE_ROAD_TO_HARTHMERE_GROUPS: the monster half of the four road
+    // packs. Joining this array (rather than the layout table) is what puts them
+    // through the normal grounding, respawn, reconciliation, and validation
+    // paths; the open-Wilds gate below then keeps them out of the map-wide Muck
+    // redistribution so a pack can never be scattered away from its animals.
+    ...HARTHMERE_ROAD_GROUP_MONSTER_SEEDS,
+  ];
 
 // Huntable, passive-but-retaliating wildlife spread across the muck areas.
 // Cows, sheep, and rabbits graze the muck edge, ignore travelers until attacked,
@@ -792,9 +1138,14 @@ export const HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS =
 const HARTHMERE_LIVE_ENTITY_LIVESTOCK_AREAS: ReadonlyArray<{
   areaId: string;
   areaLabel: string;
+  relocatedLocation?: HarthmereGuardedWildlifeLocation;
 }> = [
   { areaId: "west_muck_breach", areaLabel: "West Muck Breach" },
-  { areaId: "watchtower_muck_clearing", areaLabel: "Watchtower Muck Clearing" },
+  {
+    areaId: "watchtower_muck_clearing",
+    areaLabel: "Watchtower Muck Clearing",
+    relocatedLocation: HARTHMERE_RELOCATED_WATCHTOWER_LIVESTOCK_LOCATION,
+  },
   { areaId: "old_wood_mucker_copse", areaLabel: "Old Wood Mucker Copse" },
   { areaId: "gravewood_pale_muck", areaLabel: "Gravewood Pale Muck" },
 ];
@@ -886,10 +1237,11 @@ function livestockPositionInMuckArea(
 
 const HARTHMERE_LIVE_ENTITY_BASE_MUCK_WILDLIFE_SEEDS: HarthmereLiveEntityProductionSeed[] =
   HARTHMERE_LIVE_ENTITY_LIVESTOCK_AREAS.flatMap((livestockArea, areaIndex) => {
+    const relocatedLocation = livestockArea.relocatedLocation;
     const area = HARTHMERE_MUCK_CONTAINMENT_AREAS.find(
       (candidate) => candidate.id === livestockArea.areaId
     );
-    if (!area) {
+    if (!area && !relocatedLocation) {
       return [];
     }
     let indexInArea = 0;
@@ -900,22 +1252,32 @@ const HARTHMERE_LIVE_ENTITY_BASE_MUCK_WILDLIFE_SEEDS: HarthmereLiveEntityProduct
           HARTHMERE_LIVE_ENTITY_LIVESTOCK_FIRST_OFFSET +
           areaIndex * HARTHMERE_LIVE_ENTITY_LIVESTOCK_PER_AREA +
           localIndex;
+        const outputAreaId = relocatedLocation?.areaId ?? livestockArea.areaId;
+        const outputAreaLabel =
+          relocatedLocation?.areaLabel ?? livestockArea.areaLabel;
         return {
-          seedId: `ambient-livestock-${config.species}-${livestockArea.areaId}-${idOffset}`,
+          // The entity id is unchanged, but the seed id moves with the authored
+          // area so the old production placement-map entry cannot pull this
+          // animal back into the Watchtower clearing.
+          seedId: `ambient-livestock-${config.species}-${outputAreaId}-${idOffset}`,
           kind: "ambient_livestock" as const,
           entityId: entityIdFromOffset(idOffset),
           idOffset,
           displayName: `${config.displayName} ${
             idOffset - HARTHMERE_LIVE_ENTITY_LIVESTOCK_FIRST_OFFSET + 1
           }`,
-          areaId: livestockArea.areaId,
-          areaLabel: livestockArea.areaLabel,
-          position: livestockPositionInMuckArea(area, localIndex),
+          areaId: outputAreaId,
+          areaLabel: outputAreaLabel,
+          position: relocatedLocation
+            ? guardedWildlifePosition(
+                relocatedLocation,
+                localIndex,
+                HARTHMERE_LIVE_ENTITY_LIVESTOCK_PER_AREA
+              )
+            : livestockPositionInMuckArea(area!, localIndex),
           orientation: [0, 0] as Vec2,
           dialog: config.dialog,
-          description: `A ${config.displayName.toLowerCase()} grazes the muck near ${
-            livestockArea.areaLabel
-          }. It ignores travelers until struck, then defends itself.`,
+          description: `A ${config.displayName.toLowerCase()} grazes near ${outputAreaLabel}. It ignores travelers until struck, then defends itself.`,
           combatKind: "mux" as const,
           combatLevel: 1,
           combatHp: config.combatHp,
@@ -1255,13 +1617,16 @@ export const HARTHMERE_LIVE_ENTITY_FOREST_WILDLIFE_SEEDS: HarthmereLiveEntityPro
     } satisfies HarthmereLiveEntityProductionSeed;
   });
 
-export const HARTHMERE_LIVE_ENTITY_LIVESTOCK_SEEDS = [
-  ...HARTHMERE_LIVE_ENTITY_MUCK_WILDLIFE_SEEDS,
-  ...HARTHMERE_LIVE_ENTITY_OPEN_WILDS_MIXED_ANIMAL_SEEDS,
-  ...HARTHMERE_LIVE_ENTITY_SCATTERED_MIXED_ANIMAL_SEEDS,
-  ...HARTHMERE_LIVE_ENTITY_FOREST_WILDLIFE_SEEDS,
-  ...HARTHMERE_LIVE_ENTITY_TOWN_LIVESTOCK_SEEDS,
-];
+export const HARTHMERE_LIVE_ENTITY_LIVESTOCK_SEEDS: HarthmereLiveEntityProductionSeed[] =
+  [
+    ...HARTHMERE_LIVE_ENTITY_MUCK_WILDLIFE_SEEDS,
+    ...HARTHMERE_LIVE_ENTITY_OPEN_WILDS_MIXED_ANIMAL_SEEDS,
+    ...HARTHMERE_LIVE_ENTITY_SCATTERED_MIXED_ANIMAL_SEEDS,
+    ...HARTHMERE_LIVE_ENTITY_FOREST_WILDLIFE_SEEDS,
+    ...HARTHMERE_LIVE_ENTITY_TOWN_LIVESTOCK_SEEDS,
+    // HARTHMERE_ROAD_TO_HARTHMERE_GROUPS: the animal half of the four road packs.
+    ...HARTHMERE_ROAD_GROUP_ANIMAL_SEEDS,
+  ];
 
 // HARTHMERE_MUCK_FLOOR_FEET_Y: local-dev fallback used while regenerating
 // the production terrain placement map. Runtime callers use the generated
@@ -1338,7 +1703,23 @@ export function harthmereLiveEntityIsOpenWildsMixedGroup(
     // applied at grounding time.
     HARTHMERE_LIVE_ENTITY_SCATTERED_MIXED_GROUP_LOCATIONS.some(
       (location) => location.areaId === seed.areaId
-    )
+    ) ||
+    // HARTHMERE_ROAD_TO_HARTHMERE_GROUPS: same contract again. This is what keeps
+    // the four road packs OUT of the ordinary Muck redistribution — without it,
+    // `harthmereGroundedMuckMonsterSeedsInTerritory` would deterministically
+    // scatter each Hex and Muckling into an unrelated Muck region, leaving their
+    // cow, sheep, and rabbits alone on the roadside.
+    isHarthmereRoadGroupAreaId(seed.areaId) ||
+    // HARTHMERE_MUCK_PACK_RELOCATION: the seven re-homed Muck packs and the
+    // Mossy Muckling hunt pack. Keyed off the per-seed flag, NOT the areaId,
+    // because their areaIds are still shared with livestock that legitimately
+    // stays on the Muck edge (and with the tutorial combat profile).
+    seed.wildsRelocatedPack === true ||
+    // The relocated guarded pocket moves its monsters AND its herd together, so
+    // both sides have to leave the Muck-territory gate behind. Its areaId is
+    // unique to that pocket, which is why an areaId test is safe here.
+    seed.areaId === HARTHMERE_RELOCATED_GUARDED_WILDLIFE_AREA_ID ||
+    seed.areaId === HARTHMERE_RELOCATED_WATCHTOWER_LIVESTOCK_AREA_ID
   );
 }
 
@@ -1357,12 +1738,18 @@ export function harthmereGroundedLivestockSeedsInTerritory(
     const authoredFallback = isOpenWildsGroup
       ? ([...seed.position] as Vec3)
       : groundMuckEntityFeet(seed.position);
-    const grounded = runtimeWorldSpace
-      ? productionPlacedLiveEntityPosition(seed, "live_livestock", options) ??
-        (harthmereLiveEntityIsGuardedWildlife(seed) || isOpenWildsGroup
+    const productionPosition = runtimeWorldSpace
+      ? productionPlacedLiveEntityPosition(seed, "live_livestock", options)
+      : undefined;
+    const grounded = isOpenWildsGroup
+      ? productionPosition &&
+        harthmereOpenWildsMixedGroupPositionIsValid(productionPosition)
+        ? productionPosition
+        : authoredFallback
+      : productionPosition ??
+        (harthmereLiveEntityIsGuardedWildlife(seed)
           ? ([...seed.position] as Vec3)
-          : authoredFallback)
-      : authoredFallback;
+          : authoredFallback);
     if (isOpenWildsGroup) {
       return harthmereOpenWildsMixedGroupPositionIsValid(grounded)
         ? [{ ...seed, position: grounded }]
@@ -1407,12 +1794,43 @@ export function harthmereMuckMonsterPositionIsInSafeZone(
 export function harthmereOpenWildsMixedGroupPositionIsValid(
   position: ReadonlyVec3
 ): boolean {
+  const point = { x: Number(position[0]), z: Number(position[2]) };
+  const insideAuthoredBuildingPlot = BUILDING_SYSTEM_PLOTS.some(
+    (plot) =>
+      point.x >= plot.bounds.xMin &&
+      point.x <= plot.bounds.xMax &&
+      point.z >= plot.bounds.zMin &&
+      point.z <= plot.bounds.zMax
+  );
   return (
     position[0] < HARTHMERE_ORIGINAL_WORLD_EAST_EDGE_X &&
     !harthmereMuckMonsterPositionIsInSafeZone(position) &&
     !muckMonsterAreaForPosition(position, 1.5) &&
     !isLiveEntityHelperQuestExcludedPosition(position) &&
-    !liveEntityRobotProtectionAreaForPosition(position)
+    !liveEntityRobotProtectionAreaForPosition(position) &&
+    !isPointInsideHarthmereBusinessSafeSite(point) &&
+    !insideAuthoredBuildingPlot
+  );
+}
+
+/**
+ * Production terrain reconciliation may adjust an authored open-world creature
+ * a few columns to find complete body support, but it must keep the creature in
+ * the same legal encounter footprint and never walk it into protection or a
+ * building while searching.
+ */
+export function harthmereOpenWildsGroundingPositionIsValidForSeed(
+  seed: HarthmereLiveEntityProductionSeed,
+  position: ReadonlyVec3,
+  maxHorizontalAdjustment = 16
+): boolean {
+  return (
+    harthmereLiveEntityIsOpenWildsMixedGroup(seed) &&
+    Math.hypot(
+      Number(position[0]) - Number(seed.position[0]),
+      Number(position[2]) - Number(seed.position[2])
+    ) <= maxHorizontalAdjustment &&
+    harthmereOpenWildsMixedGroupPositionIsValid(position)
   );
 }
 
@@ -1457,20 +1875,200 @@ function harthmereNonSafeMuckAreas(): HarthmereMuckContainmentArea[] {
   );
 }
 
+// HARTHMERE_MEASURED_MUCK_COLUMNS (2026-07-28)
+//
+// Per-Muck-area pools of REAL, terrain-probed surface columns.
+//
+// Why this is needed at all: the per-area spread below computes an X/Z inside the
+// right territory, but it has no way to know the surface height there — the
+// authored fallback is the flat `HARTHMERE_MUCK_FLOOR_FEET_Y` (53), and the Muck
+// ground around the Watchtower alone runs from feet Y 31 to 45. Shipping that
+// fallback would bury or float most of the world's Muck monsters. Meanwhile the
+// generated placement map DOES hold a probed column per seed — but keyed by
+// seedId, i.e. pinned to wherever the old map-wide pooling happened to put that
+// creature. Consulting it directly is what silently re-created the pile-up.
+//
+// So this re-uses the same measurements, sorted into the territory each column
+// physically sits in. Assignment below is then a pure permutation of columns the
+// June production scan actually measured: no new terrain guesses, no flat-floor
+// fallback, and a monster can only ever stand where something already stood.
+//
+// A column is pooled under an area only if it is strictly inside that area's
+// containment radius. Nested areas therefore share columns, which is harmless
+// today because only ONE of each nested pair still holds monsters — the two
+// nested outer zones (`watchtower_muck_clearing`, `old_wood_mucker_copse`) were
+// the families relocated to the open Wilds.
+function harthmereMeasuredMuckColumnPools(): ReadonlyMap<
+  string,
+  readonly Vec3[]
+> {
+  const claimed = new Set(
+    HARTHMERE_WATCHTOWER_MUCKLING_AUTHORED_POSITIONS.map(
+      (position) => `${position[0]}|${position[2]}`
+    )
+  );
+  const pools = new Map<string, Vec3[]>();
+  const records =
+    HARTHMERE_PRODUCTION_PLACEMENT_MAP.placements as readonly HarthmereProductionPlacementRecord[];
+  for (const record of records) {
+    if (record.placementMode !== "outdoor_surface") continue;
+    if (
+      record.source !== "live_muck_monster" &&
+      record.source !== "live_livestock"
+    ) {
+      continue;
+    }
+    const column = finiteVec3(record.recommendedPosition);
+    if (!column) continue;
+    // Columns held by an authored pack are off the table, so the spread can
+    // never stack a monster on top of one of them.
+    if (claimed.has(`${column[0]}|${column[2]}`)) continue;
+    for (const area of HARTHMERE_MUCK_CONTAINMENT_AREAS) {
+      const distance = Math.hypot(
+        column[0] - Number(area.center[0]),
+        column[2] - Number(area.center[2])
+      );
+      if (distance > area.radius) continue;
+      const pool = pools.get(area.id);
+      if (pool) {
+        pool.push(column);
+      } else {
+        pools.set(area.id, [column]);
+      }
+    }
+  }
+  // Deterministic order so the assignment is reproducible across processes and
+  // by the deploy reconciler.
+  for (const pool of pools.values()) {
+    pool.sort((a, b) => a[0] - b[0] || a[2] - b[2] || a[1] - b[1]);
+  }
+  return pools;
+}
+
+let MEASURED_MUCK_COLUMN_POOLS:
+  | ReadonlyMap<string, readonly Vec3[]>
+  | undefined;
+
+function measuredMuckColumnPool(areaId: string): readonly Vec3[] {
+  MEASURED_MUCK_COLUMN_POOLS ??= harthmereMeasuredMuckColumnPools();
+  return MEASURED_MUCK_COLUMN_POOLS.get(areaId) ?? [];
+}
+
+/** Measured-column supply vs. demand, asserted by the containment tests. */
+export function harthmereMeasuredMuckColumnPoolSizes(): Record<string, number> {
+  MEASURED_MUCK_COLUMN_POOLS ??= harthmereMeasuredMuckColumnPools();
+  return Object.fromEntries(
+    [...MEASURED_MUCK_COLUMN_POOLS].map(([areaId, pool]) => [
+      areaId,
+      pool.length,
+    ])
+  );
+}
+
+// HARTHMERE_MUCK_PACK_RELOCATION: the Muck area a seed actually belongs to.
+//
+// This replaced a map-wide random pick. The pick looked like it spread monsters
+// evenly over six areas, but `watchtower_muck_patch`/`watchtower_muck_clearing`
+// and `old_wood_muck_patch`/`old_wood_mucker_copse` are nested pairs sharing one
+// centre, so the ~100 pooled monsters actually collapsed onto four points at
+// ~25 each — eight different families stacked on top of one another. Keeping a
+// family inside its own declared territory is what makes each Muck zone read as
+// a single encounter.
+//
+// Returns undefined when the seed's own area is missing or safe (the Grove-
+// overlapping `road_muckwad_patch`); those families are relocated to the open
+// Wilds instead and never reach this path.
+function harthmereOwnMuckContainmentAreaForSeed(
+  seed: HarthmereLiveEntityProductionSeed,
+  areas: readonly HarthmereMuckContainmentArea[]
+): HarthmereMuckContainmentArea | undefined {
+  return areas.find((area) => area.id === seed.areaId);
+}
+
+/**
+ * Every ordinary in-Muck monster of an area, in authored order. Used to give each
+ * member a distinct rank, so the column assignment below is a permutation rather
+ * than a lottery that can seat two monsters on one column.
+ */
+function harthmereOrdinaryMuckSeedRanks(): ReadonlyMap<number, number> {
+  const ranks = new Map<number, number>();
+  const nextRankByArea = new Map<string, number>();
+  for (const seed of HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS) {
+    if (
+      seed.authoredMuckPack ||
+      seed.wildsRelocatedPack ||
+      harthmereLiveEntityIsGuardedWildlife(seed) ||
+      harthmereLiveEntityIsOpenWildsMixedGroup(seed)
+    ) {
+      continue;
+    }
+    const rank = nextRankByArea.get(seed.areaId) ?? 0;
+    nextRankByArea.set(seed.areaId, rank + 1);
+    ranks.set(seed.idOffset, rank);
+  }
+  return ranks;
+}
+
+let ORDINARY_MUCK_SEED_RANKS: ReadonlyMap<number, number> | undefined;
+
+/**
+ * A measured surface column inside `area` for this seed.
+ *
+ * Deterministic: the pool is rotated by a hash of the area id so the mapping is
+ * not simply "authored order = west to east", then indexed by the seed's rank.
+ * Falls back to the random in-area point (flat Muck floor Y) only if an area has
+ * fewer measured columns than members, which
+ * `harthmere_muck_monster_containment.test.ts` asserts never happens.
+ */
+function measuredMuckPositionForSeed(
+  seed: HarthmereLiveEntityProductionSeed,
+  area: HarthmereMuckContainmentArea,
+  stableSeed: number
+): Vec3 {
+  const pool = measuredMuckColumnPool(area.id);
+  ORDINARY_MUCK_SEED_RANKS ??= harthmereOrdinaryMuckSeedRanks();
+  const rank = ORDINARY_MUCK_SEED_RANKS.get(seed.idOffset);
+  if (pool.length === 0 || rank === undefined || rank >= pool.length) {
+    return muckMonsterRandomPosition(area, stableSeed);
+  }
+  const rotation = Math.floor(
+    harthmereSpawnRng(
+      [...area.id].reduce((hash, ch) => (hash * 31 + ch.charCodeAt(0)) | 0, 7)
+    )() * pool.length
+  );
+  const column = pool[(rank + rotation) % pool.length];
+  return [column[0], column[1], column[2]];
+}
+
 // Ordinary authored muck monsters are randomly (but deterministically) spread
-// across all non-safe muck regions. The four guarded-herd packs retain their
-// authored local positions. A final hard guard re-rolls any position that
-// resolves into a safe zone — a monster can NEVER end up in the Grove.
+// inside THEIR OWN non-safe muck region. The guarded-herd packs, the open-Wilds
+// groups and the relocated packs retain their authored local positions. A final
+// hard guard re-rolls any position that resolves into a safe zone — a monster
+// can NEVER end up in the Grove.
 export function harthmereGroundedMuckMonsterSeedsInTerritory(
   options: HarthmereLiveEntityGroundingOptions = {}
 ): HarthmereLiveEntityProductionSeed[] {
   const areas = harthmereNonSafeMuckAreas();
   const fallbackArea = areas[0];
+  const runtimeWorldSpace = options.useProductionPlacementMap !== false;
   return HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS.flatMap((seed, index) => {
     const stableSeed = Number.isFinite(seed.idOffset) ? seed.idOffset : index;
     const isOpenWildsGroup = harthmereLiveEntityIsOpenWildsMixedGroup(seed);
     let position: Vec3;
-    if (harthmereLiveEntityIsGuardedWildlife(seed) || isOpenWildsGroup) {
+    // True once the position is already a terrain-probed column, which means the
+    // seedId-keyed placement map must not be consulted — see below. Only ever set
+    // in runtime world space: with `useProductionPlacementMap: false` the caller
+    // is either the placement-map generator or local dev, whose terrain is the
+    // flat `HARTHMERE_MUCK_FLOOR_FEET_Y` plane, and a real production Y would
+    // bury the whole world there.
+    let measuredColumn = false;
+    if (seed.authoredMuckPack) {
+      // HARTHMERE_AUTHORED_MUCK_PACK: every member sits on its own measured
+      // surface column. Re-rolling inside the area would discard that and hand
+      // the whole pack one shared Y over ground that spans nine voxels.
+      position = [...seed.position] as Vec3;
+      measuredColumn = runtimeWorldSpace;
+    } else if (harthmereLiveEntityIsGuardedWildlife(seed) || isOpenWildsGroup) {
       // These four packs were authored as guards for specific new herds. Do
       // not feed them through the legacy map-wide Mucker redistribution or the
       // animals and their supposed guards end up hundreds of blocks apart.
@@ -1480,12 +2078,17 @@ export function harthmereGroundedMuckMonsterSeedsInTerritory(
     } else if (areas.length === 0) {
       position = snapshotCombatGroundedPosition(seed.position);
     } else {
-      // Deterministically choose a muck region for this creature, then a random
-      // point inside it.
-      const areaPick = harthmereSpawnRng(stableSeed ^ 0x9e3779b9)();
+      // A measured surface column inside this creature's OWN muck region.
+      // Falling back to the first non-safe area only covers a seed whose declared
+      // area was deleted; every shipped family has its own entry.
       const area =
-        areas[Math.min(areas.length - 1, Math.floor(areaPick * areas.length))];
-      position = muckMonsterRandomPosition(area, stableSeed);
+        harthmereOwnMuckContainmentAreaForSeed(seed, areas) ?? fallbackArea;
+      if (runtimeWorldSpace) {
+        position = measuredMuckPositionForSeed(seed, area, stableSeed);
+        measuredColumn = true;
+      } else {
+        position = muckMonsterRandomPosition(area, stableSeed);
+      }
     }
     // Hard guard: if a placement ever lands in a safe zone (it shouldn't, since
     // every source area is non-safe), re-roll it deep inside the fallback area.
@@ -1504,16 +2107,25 @@ export function harthmereGroundedMuckMonsterSeedsInTerritory(
     }
     // Keep an authored/local-dev fallback for placement-map generation, then
     // prefer the generated production surface when runtime callers spawn them.
-    const runtimeWorldSpace = options.useProductionPlacementMap !== false;
     const authoredFallbackPosition = groundMuckEntityFeet(position);
     const fallbackPosition =
       isOpenWildsGroup ||
+      measuredColumn ||
       (runtimeWorldSpace && harthmereLiveEntityIsGuardedWildlife(seed))
         ? ([...position] as Vec3)
         : authoredFallbackPosition;
-    const productionPosition = runtimeWorldSpace
-      ? productionPlacedLiveEntityPosition(seed, "live_muck_monster", options)
-      : undefined;
+    // HARTHMERE_MEASURED_MUCK_COLUMNS: the generated placement map is keyed by
+    // seedId, and these seedIds are unchanged, so it still holds the column each
+    // member occupied under the OLD map-wide pooling — for most of the world that
+    // is a different Muck region entirely. Consulting it would silently undo the
+    // whole relocation, which is exactly how the eight-family pile-up survived a
+    // first attempt at this fix. Skipping it costs nothing: the position above is
+    // ALREADY one of this map's probed columns, just re-seated into the territory
+    // the creature is authored to belong to.
+    const productionPosition =
+      runtimeWorldSpace && !measuredColumn
+        ? productionPlacedLiveEntityPosition(seed, "live_muck_monster", options)
+        : undefined;
     if (
       productionPosition &&
       (isOpenWildsGroup
@@ -1611,6 +2223,12 @@ export function validateHarthmereLiveEntityProductionSeeds() {
       errors.push(`${seed.seedId}:duplicate_id_offset`);
     }
     offsets.add(seed.idOffset);
+    if (
+      seed.idOffset >= CH1_NPC_ID_OFFSET_BASE &&
+      seed.idOffset < CH1_NPC_ID_OFFSET_LIMIT_EXCLUSIVE
+    ) {
+      errors.push(`${seed.seedId}:uses_reserved_chapter1_id_offset`);
+    }
     if (seed.displayName.includes("_") || seed.description.includes("_")) {
       errors.push(`${seed.seedId}:player_copy_contains_internal_case`);
     }

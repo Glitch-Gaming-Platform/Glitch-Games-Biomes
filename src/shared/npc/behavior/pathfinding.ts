@@ -10,6 +10,13 @@ import { getTerrainIdAndIsomorphismAtPosition } from "@/shared/game/terrain_help
 import { add, dist, equals } from "@/shared/math/linear";
 import type { ReadonlyVec3, Vec3 } from "@/shared/math/types";
 import { zVec3f } from "@/shared/math/types";
+import {
+  movementOffsetIsTraversable,
+  nearestStandingVoxel,
+  npcMovementOffsets,
+  pathfindingEdgeWeight,
+  PATHFINDING_MAX_EXPANDED_NODES,
+} from "@/shared/npc/behavior/pathfinding_geometry";
 import FastPriorityQueue from "fastpriorityqueue";
 import { z } from "zod";
 
@@ -76,7 +83,15 @@ export interface Edge {
 
 export interface Graph {
   neighbors: (node: Node, resources: BlockResources) => [Edge, Node][];
-  closestNode: (src: ReadonlyVec3) => Node | undefined;
+  /**
+   * `resources` is optional so existing callers keep the historical rounding
+   * behaviour; passing it enables terrain-aware nearest-standing-voxel
+   * resolution, which is what hilly terrain requires.
+   */
+  closestNode: (
+    src: ReadonlyVec3,
+    resources?: BlockResources
+  ) => Node | undefined;
 }
 
 export class GraphImpl implements Graph {
@@ -93,31 +108,11 @@ export class GraphImpl implements Graph {
   }
 
   movementOffsets(onFullBlock: boolean): Vec3[] {
-    const offsets: Vec3[] = [];
-    const options = [-1, 0, 1];
-
-    for (const x of options) {
-      for (const y of options) {
-        if (!onFullBlock && y === 1) {
-          // NPCs can only climb 1 block so if they are not standing on a full block they
-          // will not be able to climb 1 block upwards.
-          continue;
-        }
-        for (const z of options) {
-          if (x !== 0 && z !== 0) {
-            // No diagonals
-            continue;
-          }
-          if (x === 0 && z === 0) {
-            // No vertical jumps
-            continue;
-          }
-          offsets.push([x, y, z]);
-        }
-      }
-    }
-
-    return offsets;
+    // HARTHMERE_HILL_PATHFINDING: cardinal-only movement forced an L-shaped
+    // detour around every diagonal step, which on rolling ground turned into
+    // permanent zig-zag and repeated "no progress" stuck declarations. Diagonals
+    // are same-height only and additionally corner-checked in `neighbors`.
+    return npcMovementOffsets({ onFullBlock });
   }
 
   neighbors(node: Node, resources: BlockResources): [Edge, Node][] {
@@ -131,26 +126,49 @@ export class GraphImpl implements Graph {
       resources,
       add(node.position, [0, -1, 0])
     );
+    const canOccupy = (position: Vec3) =>
+      this.canOccupyBlock(position, resources);
     const offsets = this.movementOffsets(onFullBlock);
     for (const offset of offsets) {
-      const offsetPos = add(offset, node.position);
-      if (this.canOccupyBlock(offsetPos, resources)) {
-        const adjNode: Node = { position: offsetPos };
-        let weight = 1;
-        if (offset[1] !== 0) {
-          weight = 3;
-        }
-        edges.push([{ weight }, adjNode]);
+      if (
+        !movementOffsetIsTraversable({ node: node.position, offset, canOccupy })
+      ) {
+        continue;
       }
+      edges.push([
+        { weight: pathfindingEdgeWeight(offset) },
+        { position: add(offset, node.position) },
+      ]);
     }
     this.adj.set(key, edges);
     return edges;
   }
 
-  closestNode(pos: ReadonlyVec3): Node | undefined {
-    return {
-      position: [Math.round(pos[0]), Math.round(pos[1]), Math.round(pos[2])],
-    };
+  /**
+   * Resolves a world position to a graph node.
+   *
+   * HARTHMERE_HILL_PATHFINDING: this used to round all three axes blindly. On the
+   * original map's hills a player standing at Y=34.6 rounds to Y=35, and if that
+   * voxel is solid the destination node can never be expanded — A* exhausts its
+   * budget and returns `undefined`, leaving the NPC in blind direct pursuit. We
+   * now search the nearby column for a voxel a body can actually occupy and
+   * return `undefined` when there is none, so "unreachable" is reported honestly
+   * instead of being disguised as a failed search.
+   */
+  closestNode(
+    pos: ReadonlyVec3,
+    resources?: BlockResources
+  ): Node | undefined {
+    if (!resources) {
+      return {
+        position: [Math.round(pos[0]), Math.round(pos[1]), Math.round(pos[2])],
+      };
+    }
+    const position = nearestStandingVoxel({
+      position: pos,
+      canOccupy: (candidate) => this.canOccupyBlock(candidate, resources),
+    });
+    return position ? { position } : undefined;
   }
 }
 
@@ -251,7 +269,7 @@ export class AStarPathfinder extends Pathfinder {
   }
 
   findPath(): Path | undefined {
-    while (this.closedSet.size < 2000) {
+    while (this.closedSet.size < PATHFINDING_MAX_EXPANDED_NODES) {
       if (this.openSet.size === 0) {
         break;
       }
@@ -306,6 +324,50 @@ export function stuckWhilePathfinding(
 ): boolean {
   const timeElapsed = nowSeconds - state.searchTime;
   return timeElapsed >= PATHFINDING_STUCK_DURATION_SECONDS;
+}
+
+/**
+ * Replaces the final node of a cached path in place.
+ *
+ * HARTHMERE_HILL_PATHFINDING: a player who steps one voxel sideways used to
+ * invalidate an entire multi-node route, forcing a fresh A* on the next tick for
+ * every pursuing NPC. Repairing the tail preserves all the work behind it. The
+ * caller decides when a repair is legitimate (see `evaluatePathDestination`).
+ */
+export function repairPathDestination(path: Path, destination: Vec3): Path {
+  if (path.nodes.length === 0) {
+    return { nodes: [{ position: destination }] };
+  }
+  const nodes = path.nodes.slice(0, -1);
+  nodes.push({ position: destination });
+  return { nodes };
+}
+
+/**
+ * Repairs a cached path only when the new destination is a real graph neighbour
+ * of its penultimate node. Replacing the tail with an arbitrary nearby point can
+ * create a two- or three-voxel jump through a wall, so the same graph that built
+ * the route must approve the replacement edge.
+ */
+export function repairPathDestinationIfConnected(
+  path: Path,
+  destination: Vec3,
+  graph: Graph,
+  resources: BlockResources
+): Path | undefined {
+  if (path.nodes.length < 2) {
+    return undefined;
+  }
+  const predecessor = path.nodes[path.nodes.length - 2];
+  const connected = graph
+    .neighbors(predecessor, resources)
+    .some(([, node]) => equals(node.position, destination));
+  return connected ? repairPathDestination(path, destination) : undefined;
+}
+
+/** Final node of a path, or `undefined` for an empty path. */
+export function pathDestination(path: Path): Vec3 | undefined {
+  return path.nodes.length ? path.nodes[path.nodes.length - 1].position : undefined;
 }
 
 function isFullHeightBlockAtPosition(

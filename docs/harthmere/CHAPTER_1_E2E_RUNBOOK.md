@@ -278,23 +278,23 @@ portal flow or unrelated Chapter 1 objectives:
 
 Current production coverage after that repair:
 
-| Dungeon section | Proven now | Still requires implementation plus live browser E2E |
-| --- | --- | --- |
-| Both whole dungeons | terrain/decor, traversal, gates, quest lifecycle, retrievals, persistent survival HUD contract, exact native resource debits, per-zone native HP/stamina effects, breath authority, and heat/cold AUGUR drain | full physical enemy/follower choreography and player-visible failure/recovery presentation |
-| Dune Threshold | landscape/route plus signed water/stamina/3x AUGUR consequence | shade interaction and visible exhaustion/death/recovery UX |
-| Salt Market | authored route choice, water/stamina cost, and open-fight damage alternative | physical Mucker battle, collapsing awning world interaction, vertical combat, death/retry and loot |
-| Cistern Stair | three-light debit, water/stamina cost, lit-stair/no-air consequences, native breath/drowning authority | changing water, full drowning presentation/retry, and sound-hunting Hexer AI |
-| Hall of Weights | comparative-measurement contract; wrong instruments rejected; temple balance succeeds; water/stamina and rewards commit | animated instrument disagreement, complete puzzle presentation, and playback purchase UI |
-| Sun Court | stealth/fight route contract, fight damage/stamina, core only on the fight route | Bull detection, three physical phases, breakable pillars/horns, death/retry and physical drop |
-| Seed Vault | water debit, stamina recovery, retrieval/reward/cutscene state | full-inventory collection UX and in-place cutscene handoff |
-| Long Walk | final water debit, HP/stamina storm consequence, escort/retrieval/portal state | Iris/Marrow follower AI, storm visuals, pursuit, companion down/disconnect recovery |
-| Ice Shelf Landing | signed fuel/stamina/half-speed AUGUR consequence | warmth HUD art, slow cold-death presentation and recovery |
-| Drowned Longhouse | signed fuel/stamina interval plus native breath authority | furniture wayfinding, drowning/retry presentation and physical reward pickup |
-| Hanged Wood | stealth/fight choice with distinct HP/stamina consequences and fuel debit | sound-driven perception, stealth feedback and physical combat alternative |
-| Whale Road | real live inventory carry-weight calculation, 55 lb hard gate, fuel/stamina debit | visible cracking, fall/recovery and an item-abandon UI |
-| Sorrel's Camp | fuel debit, stamina recovery, key/ledger and oath state | locked-door staging and remembered-player presentation in place |
-| Ash Hall | six-fuel debit, feed-hearth/fight-dark consequences, native HP/stamina, Hallr choice state | Ninth Winter's three physical phases and visible 90-second reset/year-break choreography |
-| Breaking Year | 45 lb return gate, final fuel/HP/stamina consequence, escort/extraction state | Sorrel follower AI, collapsing weather/timeline, movement dialogue and disconnect recovery |
+| Dungeon section     | Proven now                                                                                                                                                                                                    | Still requires implementation plus live browser E2E                                                |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| Both whole dungeons | terrain/decor, traversal, gates, quest lifecycle, retrievals, persistent survival HUD contract, exact native resource debits, per-zone native HP/stamina effects, breath authority, and heat/cold AUGUR drain | full physical enemy/follower choreography and player-visible failure/recovery presentation         |
+| Dune Threshold      | landscape/route plus signed water/stamina/3x AUGUR consequence                                                                                                                                                | shade interaction and visible exhaustion/death/recovery UX                                         |
+| Salt Market         | authored route choice, water/stamina cost, and open-fight damage alternative                                                                                                                                  | physical Mucker battle, collapsing awning world interaction, vertical combat, death/retry and loot |
+| Cistern Stair       | three-light debit, water/stamina cost, lit-stair/no-air consequences, native breath/drowning authority                                                                                                        | changing water, full drowning presentation/retry, and sound-hunting Hexer AI                       |
+| Hall of Weights     | comparative-measurement contract; wrong instruments rejected; temple balance succeeds; water/stamina and rewards commit                                                                                       | animated instrument disagreement, complete puzzle presentation, and playback purchase UI           |
+| Sun Court           | stealth/fight route contract, fight damage/stamina, core only on the fight route                                                                                                                              | Bull detection, three physical phases, breakable pillars/horns, death/retry and physical drop      |
+| Seed Vault          | water debit, stamina recovery, retrieval/reward/cutscene state                                                                                                                                                | full-inventory collection UX and in-place cutscene handoff                                         |
+| Long Walk           | final water debit, HP/stamina storm consequence, escort/retrieval/portal state                                                                                                                                | Iris/Marrow follower AI, storm visuals, pursuit, companion down/disconnect recovery                |
+| Ice Shelf Landing   | signed fuel/stamina/half-speed AUGUR consequence                                                                                                                                                              | warmth HUD art, slow cold-death presentation and recovery                                          |
+| Drowned Longhouse   | signed fuel/stamina interval plus native breath authority                                                                                                                                                     | furniture wayfinding, drowning/retry presentation and physical reward pickup                       |
+| Hanged Wood         | stealth/fight choice with distinct HP/stamina consequences and fuel debit                                                                                                                                     | sound-driven perception, stealth feedback and physical combat alternative                          |
+| Whale Road          | real live inventory carry-weight calculation, 55 lb hard gate, fuel/stamina debit                                                                                                                             | visible cracking, fall/recovery and an item-abandon UI                                             |
+| Sorrel's Camp       | fuel debit, stamina recovery, key/ledger and oath state                                                                                                                                                       | locked-door staging and remembered-player presentation in place                                    |
+| Ash Hall            | six-fuel debit, feed-hearth/fight-dark consequences, native HP/stamina, Hallr choice state                                                                                                                    | Ninth Winter's three physical phases and visible 90-second reset/year-break choreography           |
+| Breaking Year       | 45 lb return gate, final fuel/HP/stamina consequence, escort/extraction state                                                                                                                                 | Sorrel follower AI, collapsing weather/timeline, movement dialogue and disconnect recovery         |
 
 For each unfinished row, test the complete interaction family in one warm
 browser batch: success, failure, recovery, UI/vitals feedback, authoritative
@@ -309,6 +309,14 @@ run these flows in one warm-stack campaign. Keep one Chromium context active at
 a time for memory safety, but collect and fix the campaign's failures as a
 batch instead of rebuilding or restarting after each failed assertion. Gaia
 and Anima stay disabled unless a step says otherwise.
+
+Before the first dungeon campaign on an older warm snapshot, run the Elsewhen
+terrain preflight from `TESTING_FASTER.md`. All 109 stable Chapter 1 terrain
+shards must exist in Native ECS (`create: 0`, with zero missing for each
+dungeon), while WorldMetadata must stop at the ordinary Harthmere edge
+(`portalOnlyWorldBoundary: true`). Current boots reconcile missing immutable
+dungeon shards without advertising the detached Elsewhen band as continuous
+world terrain or rewriting pre-existing terrain.
 
 ### 1. Ignition
 

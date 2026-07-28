@@ -1,5 +1,5 @@
 // GENERATED: This file is generated from json_serde.ts.j2. Do not modify directly.
-// Content Hash: fce43ffe20cf7fcd4cb10f43da3a5a16
+// Content Hash: da5f94501ee12989497de4b4003f1af8
 
 import * as c from "@/shared/ecs/gen/components";
 import * as e from "@/shared/ecs/gen/entities";
@@ -8657,6 +8657,36 @@ class HarthmereInventoryTransactionEventSerde {
     });
   }
 }
+class HarthmereChapter1WarpEventSerde {
+  static serialize(event: ev.HarthmereChapter1WarpEvent) {
+    return {
+      kind: "harthmereChapter1WarpEvent",
+      id: t.serializeBiomesId(event.id),
+      action: event.action,
+      dungeon_id: event.dungeon_id,
+      run_id: event.run_id,
+      party_id: event.party_id,
+      reset_encounters: event.reset_encounters,
+      position: event.position,
+      orientation: event.orientation,
+      authorization: event.authorization,
+    };
+  }
+
+  static deserialize(data: any) {
+    return new ev.HarthmereChapter1WarpEvent({
+      id: t.deserializeBiomesId(data.id),
+      action: t.deserializeString(data.action),
+      dungeon_id: t.deserializeString(data.dungeon_id),
+      run_id: t.deserializeString(data.run_id),
+      party_id: t.deserializeString(data.party_id),
+      reset_encounters: t.deserializeBool(data.reset_encounters),
+      position: t.deserializeVec3f(data.position),
+      orientation: t.deserializeVec2f(data.orientation),
+      authorization: t.deserializeString(data.authorization),
+    });
+  }
+}
 class HarthmereQuestProgressEventSerde {
   static serialize(event: ev.HarthmereQuestProgressEvent) {
     return {
@@ -11271,6 +11301,10 @@ export class EventSerde {
         return HarthmereInventoryTransactionEventSerde.serialize(
           event as ev.HarthmereInventoryTransactionEvent
         );
+      case "harthmereChapter1WarpEvent":
+        return HarthmereChapter1WarpEventSerde.serialize(
+          event as ev.HarthmereChapter1WarpEvent
+        );
       case "harthmereQuestProgressEvent":
         return HarthmereQuestProgressEventSerde.serialize(
           event as ev.HarthmereQuestProgressEvent
@@ -11767,6 +11801,8 @@ export class EventSerde {
         return InternalInventorySetEventSerde.deserialize(data);
       case "harthmereInventoryTransactionEvent":
         return HarthmereInventoryTransactionEventSerde.deserialize(data);
+      case "harthmereChapter1WarpEvent":
+        return HarthmereChapter1WarpEventSerde.deserialize(data);
       case "harthmereQuestProgressEvent":
         return HarthmereQuestProgressEventSerde.deserialize(data);
       case "harthmerePlaceableTransactionEvent":

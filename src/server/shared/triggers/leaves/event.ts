@@ -1,6 +1,7 @@
 import type { TriggerContext } from "@/server/shared/triggers/core";
 import { BaseTrigger } from "@/server/shared/triggers/trigger";
 import type { FirehoseEvent } from "@/shared/firehose/events";
+import type { BiomesId } from "@/shared/ids";
 import type {
   BaseStoredTriggerDefinition,
   MetaState,
@@ -9,6 +10,13 @@ import { matches } from "@/shared/triggers/matcher";
 import type { Matcher } from "@/shared/triggers/matcher_schema";
 import type { StoredTriggerDefinition } from "@/shared/triggers/schema";
 import { zEventStoredTriggerDefinition } from "@/shared/triggers/schema";
+import {
+  NATIVE_GET_THE_MUCK_OUT_QUEST_ID,
+  NATIVE_GET_THE_MUCK_OUT_MOSSY_MUCKLING_TYPE_ID,
+  NATIVE_GET_THE_MUCK_OUT_MUCKLING_STEP_ID,
+  isNativeGetTheMuckOutCompatibleMucklingTypeId,
+} from "@/shared/harthmere/native_road_ahead_contract";
+import { nativeLegacyCombatQuestCanonicalNpcTypeId } from "@/shared/harthmere/native_combat_quest_routing";
 import type { ZodNumber } from "zod";
 import { z } from "zod";
 
@@ -52,11 +60,18 @@ export class EventTrigger extends BaseEventTrigger {
   }
 
   protected countForEvent(
-    _context: TriggerContext,
+    context: TriggerContext,
     event: FirehoseEvent
   ): number {
-    return event.kind === this.eventKind &&
-      (this.predicate === undefined || matches(this.predicate, event))
+    return eventTriggerMatchesEventForTest(
+      {
+        questId: context.rootId,
+        triggerId: this.spec.id,
+        eventKind: this.eventKind,
+        predicate: this.predicate,
+      },
+      event
+    )
       ? 1
       : 0;
   }
@@ -75,4 +90,52 @@ export class EventTrigger extends BaseEventTrigger {
       predicate: this.predicate,
     };
   }
+}
+
+/**
+ * Match a firehose event against an authored event leaf.
+ *
+ * Original combat quests predate the restored Harthmere native NPC families
+ * and name exact legacy Bikkie ids. For a narrowly routed quest+leaf pair,
+ * retry its unchanged authored predicate with the corresponding legacy id.
+ * This avoids duplicate npcKilled events (which would double-count generic
+ * kill objectives) while preserving exact matching everywhere else.
+ */
+export function eventTriggerMatchesEventForTest(
+  trigger: {
+    questId: BiomesId;
+    triggerId: BiomesId;
+    eventKind: FirehoseEvent["kind"];
+    predicate?: Matcher;
+  },
+  event: FirehoseEvent
+) {
+  if (event.kind !== trigger.eventKind) return false;
+  if (trigger.predicate === undefined || matches(trigger.predicate, event)) {
+    return true;
+  }
+  if (
+    Number(trigger.questId) !== Number(NATIVE_GET_THE_MUCK_OUT_QUEST_ID) ||
+    Number(trigger.triggerId) !==
+      Number(NATIVE_GET_THE_MUCK_OUT_MUCKLING_STEP_ID) ||
+    event.kind !== "npcKilled" ||
+    !isNativeGetTheMuckOutCompatibleMucklingTypeId(event.npcTypeId)
+  ) {
+    if (event.kind !== "npcKilled") return false;
+    const canonicalNpcTypeId = nativeLegacyCombatQuestCanonicalNpcTypeId({
+      questId: trigger.questId,
+      triggerId: trigger.triggerId,
+      npcTypeId: event.npcTypeId,
+    });
+    return canonicalNpcTypeId === undefined
+      ? false
+      : matches(trigger.predicate!, {
+          ...event,
+          npcTypeId: canonicalNpcTypeId,
+        });
+  }
+  return matches(trigger.predicate, {
+    ...event,
+    npcTypeId: NATIVE_GET_THE_MUCK_OUT_MOSSY_MUCKLING_TYPE_ID,
+  });
 }

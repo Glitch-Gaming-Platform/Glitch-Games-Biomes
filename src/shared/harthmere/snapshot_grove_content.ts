@@ -897,6 +897,54 @@ export const SNAPSHOT_GROVE_LANDMARKS: SnapshotGroveLandmark[] = [
     })
   ),
   {
+    id: "grove_jackie_sealed_letter",
+    label: "Jackie's Sealed Letter",
+    position: snapshotGroveMarkerPosition(snapshotGroveFountainPosition(2, 1)),
+    kind: "resource",
+    area: "the_grove",
+    questIds: ["letter_for_the_north_gate"],
+    visibleOnWorldMap: true,
+  },
+  {
+    id: "grove_coop_dropped_feed",
+    label: "Coop's Dropped Feed",
+    position: snapshotGroveMarkerPosition([
+      382,
+      SNAPSHOT_GROVE_NPC_FEET_Y,
+      -202,
+    ]),
+    kind: "resource",
+    area: "the_grove",
+    questIds: ["coops_key_hen"],
+    visibleOnWorldMap: true,
+  },
+  {
+    id: "grove_luis_bolt_order",
+    label: "Luis's Bolt Order",
+    position: snapshotGroveMarkerPosition([
+      488,
+      SNAPSHOT_GROVE_NPC_FEET_Y,
+      -208,
+    ]),
+    kind: "resource",
+    area: "genesis_crossroads",
+    questIds: ["toll_ledger_problem"],
+    visibleOnWorldMap: true,
+  },
+  {
+    id: "mosslawn_sil_tuning_strip",
+    label: "Sil's Tuning Strip",
+    position: snapshotGroveMarkerPosition([
+      464,
+      SNAPSHOT_GROVE_NPC_FEET_Y,
+      -251,
+    ]),
+    kind: "resource",
+    area: "mosslawn",
+    questIds: ["tone_beneath_the_road"],
+    visibleOnWorldMap: true,
+  },
+  {
     id: "grove_fountain_lesson_board",
     label: "Fountain Lesson Board",
     position: snapshotGroveMarkerPosition(
@@ -1078,6 +1126,26 @@ export const SNAPSHOT_GROVE_LANDMARKS: SnapshotGroveLandmark[] = [
     visibleOnWorldMap: true,
   },
   {
+    id: "muckwad_pigment_clump_west",
+    label: "West Pigment Muck Clump",
+    position: snapshotGroveMarkerPosition([509, SNAPSHOT_GROVE_MARKER_Y, -151]),
+    kind: "resource",
+    area: "muck_edges",
+    questIds: ["color_that_still_points_home"],
+    visibleOnWorldMap: false,
+    activeQuestOnly: true,
+  },
+  {
+    id: "muckwad_pigment_clump_east",
+    label: "East Pigment Muck Clump",
+    position: snapshotGroveMarkerPosition([515, SNAPSHOT_GROVE_MARKER_Y, -154]),
+    kind: "resource",
+    area: "muck_edges",
+    questIds: ["color_that_still_points_home"],
+    visibleOnWorldMap: false,
+    activeQuestOnly: true,
+  },
+  {
     id: "building_practice_spot",
     label: "Building Practice Spot",
     position: snapshotGroveMarkerPosition([528, SNAPSHOT_GROVE_MARKER_Y, -152]),
@@ -1197,12 +1265,118 @@ export const SNAPSHOT_GROVE_LANDMARKS: SnapshotGroveLandmark[] = [
     visibleOnWorldMap: true,
   },
   {
+    id: "mosslawn_warning_moss_west",
+    label: "West Warning Moss Patch",
+    position: snapshotGroveMarkerPosition([451, SNAPSHOT_GROVE_MARKER_Y, -258]),
+    kind: "interactable",
+    area: "mosslawn",
+    questIds: ["moss_that_went_quiet"],
+    visibleOnWorldMap: false,
+    activeQuestOnly: true,
+  },
+  {
+    id: "mosslawn_warning_moss_center",
+    label: "Center Warning Moss Patch",
+    position: snapshotGroveMarkerPosition([456, SNAPSHOT_GROVE_MARKER_Y, -260]),
+    kind: "interactable",
+    area: "mosslawn",
+    questIds: ["moss_that_went_quiet"],
+    visibleOnWorldMap: false,
+    activeQuestOnly: true,
+  },
+  {
+    id: "mosslawn_warning_moss_east",
+    label: "Silent Warning Moss Patch",
+    position: snapshotGroveMarkerPosition([461, SNAPSHOT_GROVE_MARKER_Y, -263]),
+    kind: "interactable",
+    area: "mosslawn",
+    questIds: ["moss_that_went_quiet"],
+    visibleOnWorldMap: false,
+    activeQuestOnly: true,
+  },
+  {
+    id: "mosslawn_silent_muckling_nest",
+    label: "Silent Moss Muckling Nest",
+    // Production-grounded muckling nest revealed by the silent warning moss. The
+    // original marker pointed at the Mucked Robot, which neither identified the
+    // nest nor put the player near an enemy. Since the 2026-07-28 Muck pack
+    // relocation this column is held by the 14-strong Watchtower Muckling pack —
+    // the one pack left in the clearing — rather than by whichever Road Muckwads
+    // the old map-wide pooling happened to scatter here.
+    position: snapshotGroveMarkerPosition([334.621, 35, -394.393]),
+    kind: "danger",
+    area: "mosslawn",
+    questIds: ["moss_that_went_quiet"],
+    visibleOnWorldMap: true,
+    activeQuestOnly: true,
+  },
+  {
     id: "mosslawn_song_stones",
     label: "Mosslawn Song Stones",
     position: snapshotGroveMarkerPosition([468, SNAPSHOT_GROVE_MARKER_Y, -250]),
     kind: "interactable",
     area: "mosslawn",
     visibleOnWorldMap: true,
+  },
+  {
+    id: "mosslawn_song_stone_low",
+    label: "Low Moss Song Stone",
+    position: snapshotGroveMarkerPosition([464, SNAPSHOT_GROVE_MARKER_Y, -252]),
+    kind: "interactable",
+    area: "mosslawn",
+    questIds: ["songline_under_the_lawn"],
+    visibleOnWorldMap: false,
+    activeQuestOnly: true,
+  },
+  {
+    id: "mosslawn_song_stone_middle",
+    label: "Middle Moss Song Stone",
+    position: snapshotGroveMarkerPosition([468, SNAPSHOT_GROVE_MARKER_Y, -250]),
+    kind: "interactable",
+    area: "mosslawn",
+    questIds: ["songline_under_the_lawn"],
+    visibleOnWorldMap: false,
+    activeQuestOnly: true,
+  },
+  {
+    id: "mosslawn_song_stone_high",
+    label: "High Moss Song Stone",
+    position: snapshotGroveMarkerPosition([472, SNAPSHOT_GROVE_MARKER_Y, -247]),
+    kind: "interactable",
+    area: "mosslawn",
+    questIds: ["songline_under_the_lawn"],
+    visibleOnWorldMap: false,
+    activeQuestOnly: true,
+  },
+  {
+    id: "mosslawn_track_rubbing_hoof",
+    label: "Hoof Track Rubbing",
+    position: snapshotGroveMarkerPosition([448, SNAPSHOT_GROVE_MARKER_Y, -266]),
+    kind: "interactable",
+    area: "mosslawn",
+    questIds: ["antlers_for_the_watch"],
+    visibleOnWorldMap: false,
+    activeQuestOnly: true,
+  },
+  {
+    id: "mosslawn_track_rubbing_antler",
+    label: "Antler Track Rubbing",
+    position: snapshotGroveMarkerPosition([454, SNAPSHOT_GROVE_MARKER_Y, -270]),
+    kind: "interactable",
+    area: "mosslawn",
+    questIds: ["antlers_for_the_watch"],
+    visibleOnWorldMap: false,
+    activeQuestOnly: true,
+  },
+  {
+    id: "mosslawn_track_rubbing_claw",
+    label: "Claw Track Rubbing",
+    position: snapshotGroveMarkerPosition([460, SNAPSHOT_GROVE_MARKER_Y, -274]),
+    kind: "interactable",
+    area: "mosslawn",
+    questIds: ["antlers_for_the_watch"],
+    visibleOnWorldMap: false,
+    activeQuestOnly: true,
   },
   {
     id: "doc_field_table",
@@ -1272,6 +1446,20 @@ export const SNAPSHOT_GROVE_LANDMARKS: SnapshotGroveLandmark[] = [
     kind: "interactable",
     area: "harthmere",
     visibleOnWorldMap: true,
+  },
+  {
+    id: "harthmere_market_bolt_materials",
+    label: "Marked Bolt Materials",
+    position: snapshotHarthmereAuthoredMarkerPosition([
+      534,
+      SNAPSHOT_GROVE_MARKER_Y,
+      -207,
+    ]),
+    kind: "resource",
+    area: "harthmere",
+    questIds: ["toll_ledger_problem"],
+    visibleOnWorldMap: false,
+    activeQuestOnly: true,
   },
   {
     id: "harthmere_chapel_stone",
@@ -1432,7 +1620,7 @@ export function snapshotGroveLandmarkById(id: string) {
   return SNAPSHOT_GROVE_LANDMARKS.find((landmark) => landmark.id === id);
 }
 
-export const SNAPSHOT_GROVE_QUESTS: SnapshotGroveQuest[] = [
+const SNAPSHOT_GROVE_QUESTS_WITHOUT_REQUIRED_TURN_INS: SnapshotGroveQuest[] = [
   {
     id: "read-the-jobs-board",
     title: "Read the Jobs Board",
@@ -1528,7 +1716,7 @@ export const SNAPSHOT_GROVE_QUESTS: SnapshotGroveQuest[] = [
       "Open the inventory panel from the HUD.",
       "Equip or confirm one road-ready clothing piece.",
       "Use the Lovely Locks mirror to check your silhouette from the front.",
-      "Check the health, stamina, and quick-action bars before walking away.",
+      "Inspect the HUD compass ring and confirm health, stamina, and quick-action bars are visible.",
       "Return to Rosalyn for one final adjustment.",
     ],
     triggers: [
@@ -1536,7 +1724,7 @@ export const SNAPSHOT_GROVE_QUESTS: SnapshotGroveQuest[] = [
       "open_tab",
       "inventory_change",
       "interact",
-      "status_check",
+      "interact",
       "talk_npc",
     ],
     markerIds: [
@@ -1562,7 +1750,7 @@ export const SNAPSHOT_GROVE_QUESTS: SnapshotGroveQuest[] = [
       "Inspect the Road Kit Crate before touching nearby supplies.",
       "Collect only from the marked practice materials basket.",
       "Place or use one repair piece on the Fountain Repair Post.",
-      "Check the safe-zone marker so you know what belongs to the town.",
+      "Inspect the safe-zone boundary stones so you know what belongs to the town.",
       "Choose the rule you will follow: ask, claim, or gather only from marked nodes.",
       "Return to Jackie with the kit intact.",
     ],
@@ -1571,7 +1759,7 @@ export const SNAPSHOT_GROVE_QUESTS: SnapshotGroveQuest[] = [
       "interact",
       "collect",
       "place_voxel",
-      "status_check",
+      "interact",
       "choice",
       "talk_npc",
     ],
@@ -1635,7 +1823,7 @@ export const SNAPSHOT_GROVE_QUESTS: SnapshotGroveQuest[] = [
       "Ask Nia to run the fountain ready check.",
       "Stand by the Party Rope Marker where everyone can see you.",
       "Open the guild or party panel from the HUD.",
-      "Mark yourself ready at the firefly ring.",
+      "Interact with the firefly ring to mark yourself ready.",
       "Inspect the practice guild bank crate without taking everything from it.",
       "Choose a first group role: scout, builder, fighter, healer, or quartermaster.",
       "Return to Nia so she can clear the drill.",
@@ -1644,7 +1832,7 @@ export const SNAPSHOT_GROVE_QUESTS: SnapshotGroveQuest[] = [
       "talk_npc",
       "near_location",
       "open_tab",
-      "status_check",
+      "interact",
       "interact",
       "choice",
       "talk_npc",
@@ -1811,9 +1999,9 @@ export const SNAPSHOT_GROVE_QUESTS: SnapshotGroveQuest[] = [
       "Collect bright berries near the garden edge.",
       "Break 2 dull muck-stained clumps for pigment.",
       "Use the paint pot at Taye's table.",
-      "Apply fresh paint to the painted route flags.",
+      "Apply the fresh paint at the painted route flags.",
     ],
-    triggers: ["collect", "destroy", "interact", "place_voxel"],
+    triggers: ["collect", "destroy", "interact", "interact"],
     markerIds: [
       "grove_garden_edge_berries",
       "muckwad_patch",
@@ -1839,7 +2027,7 @@ export const SNAPSHOT_GROVE_QUESTS: SnapshotGroveQuest[] = [
     triggers: ["near_location", "collect", "place_voxel", "interact"],
     markerIds: [
       "luis_cart",
-      "grove_tool_crate",
+      "grove_resource_basket",
       "building_practice_spot",
       "luis_cart",
     ],
@@ -1887,7 +2075,7 @@ export const SNAPSHOT_GROVE_QUESTS: SnapshotGroveQuest[] = [
       "mosslawn_warning_moss",
       "mosslawn_warning_moss",
       "mosslawn_warning_moss",
-      "npc_mucked_robot",
+      "mosslawn_silent_muckling_nest",
     ],
     reward: "60 XP, ranger token, Mosslawn danger zone revealed.",
     sampleDialogue:
@@ -1926,12 +2114,12 @@ export const SNAPSHOT_GROVE_QUESTS: SnapshotGroveQuest[] = [
     objectives: [
       "Collect one clean root sample at the muck edge.",
       "Collect one mucked root sample further in.",
-      "Avoid standing in heavy muck for more than a few seconds.",
+      "Return along the safe edge to Doc's field table without lingering in heavy muck.",
       "Bring both samples to Doc's field table.",
     ],
-    triggers: ["collect", "collect", "status_check", "interact"],
+    triggers: ["collect", "collect", "near_location", "interact"],
     markerIds: [
-      "muckwad_patch",
+      "doc_field_table",
       "muckwad_patch",
       "muckwad_patch",
       "doc_field_table",
@@ -1978,15 +2166,15 @@ export const SNAPSHOT_GROVE_QUESTS: SnapshotGroveQuest[] = [
     area: "Grove Farm Edge",
     hook: "Old Coop's favorite hen has found a key, swallowed a ribbon, and led three people into the wrong garden.",
     objectives: [
-      "Follow the hen without sprinting (she spooks easy).",
+      "Follow the hen's marked trail to the dropped feed without sprinting.",
       "Collect dropped feed along the chase.",
       "Dig at the scratch mark the hen left.",
       "Use the recovered key on the old supply box.",
     ],
-    triggers: ["escort", "collect", "interact", "item_use"],
+    triggers: ["near_location", "collect", "interact", "item_use"],
     markerIds: [
-      "npc_old_coop",
-      "npc_old_coop",
+      "grove_coop_dropped_feed",
+      "grove_coop_dropped_feed",
       "coop_supply_box",
       "coop_supply_box",
     ],
@@ -2030,7 +2218,7 @@ export const SNAPSHOT_GROVE_QUESTS: SnapshotGroveQuest[] = [
     ],
     triggers: ["item_grant", "near_location", "talk_npc", "talk_npc"],
     markerIds: [
-      "npc_jackie",
+      "grove_jackie_sealed_letter",
       "harthmere_connector",
       "sergeant_bram_holt",
       "npc_jackie",
@@ -2074,14 +2262,14 @@ export const SNAPSHOT_GROVE_QUESTS: SnapshotGroveQuest[] = [
     objectives: [
       "Pick up Luis's bolt order from the cart.",
       "Speak with the Harthmere toll clerk at the market office.",
-      "Find the missing ledger line in the market office.",
+      "Pick up the bolt crates after the clerk finds the missing ledger line.",
       "Carry the bolt crates back to Luis for road repairs.",
     ],
-    triggers: ["item_grant", "talk_npc", "interact", "carry"],
+    triggers: ["item_grant", "talk_npc", "collect", "near_location"],
     markerIds: [
-      "npc_luis",
+      "grove_luis_bolt_order",
       "harthmere_market_office",
-      "harthmere_market_office",
+      "harthmere_market_bolt_materials",
       "npc_luis",
     ],
     reward: "85 XP, road repair kit recipe, Merchant Compact intro flag.",
@@ -2125,9 +2313,9 @@ export const SNAPSHOT_GROVE_QUESTS: SnapshotGroveQuest[] = [
       "Ask a Black Anvil crafter to mark the strip with bell-resonant ink.",
       "Report the marked result to Sil at Mosslawn.",
     ],
-    triggers: ["item_grant", "near_location", "talk_npc", "item_update"],
+    triggers: ["item_grant", "near_location", "talk_npc", "talk_npc"],
     markerIds: [
-      "npc_sil",
+      "mosslawn_sil_tuning_strip",
       "harthmere_bridge_center",
       "harthmere_bridge_center",
       "npc_sil",
@@ -2317,7 +2505,7 @@ export const SNAPSHOT_GROVE_QUESTS: SnapshotGroveQuest[] = [
       "Talk to Nia at the charter table about safe trading.",
       "Open the trade window at the practice trade desk.",
       "Place one practice item into your side of the trade slot.",
-      "Wait for Nia's clerk to place their side before you confirm.",
+      "Inspect the clerk's side of the trade desk before you confirm.",
       "Choose the trade rule worth keeping: equal value, confirmed both sides, or no rushed accepts.",
       "Return to Nia to stamp the trade habit into your charter.",
     ],
@@ -2325,7 +2513,7 @@ export const SNAPSHOT_GROVE_QUESTS: SnapshotGroveQuest[] = [
       "talk_npc",
       "interact",
       "item_grant",
-      "status_check",
+      "interact",
       "choice",
       "talk_npc",
     ],
@@ -2480,6 +2668,45 @@ export const SNAPSHOT_GROVE_QUESTS: SnapshotGroveQuest[] = [
   // Farming / Cook / Guide / Repair Person archetypes).
   ...GROVE_ECONOMY_STARTER_QUESTS,
 ];
+
+function snapshotGroveRequiredTurnInMarkerId(quest: SnapshotGroveQuest) {
+  return (
+    SNAPSHOT_GROVE_LANDMARKS.find(
+      (landmark) =>
+        landmark.kind === "npc" && landmark.npcId === quest.giverNpcId
+    )?.id ?? `npc_${quest.giverNpcId}`
+  );
+}
+
+function withRequiredSnapshotGroveTurnIn(
+  quest: SnapshotGroveQuest
+): SnapshotGroveQuest {
+  if (quest.triggers[quest.triggers.length - 1] === "talk_npc") {
+    return quest;
+  }
+  const giver = SNAPSHOT_GROVE_NPCS.find(
+    (npc) => npc.id === quest.giverNpcId
+  )?.displayName;
+  return {
+    ...quest,
+    objectives: [
+      ...quest.objectives,
+      `Return to ${
+        giver ?? "the quest giver"
+      } to report the result and collect the reward.`,
+    ],
+    triggers: [...quest.triggers, "talk_npc"],
+    markerIds: [...quest.markerIds, snapshotGroveRequiredTurnInMarkerId(quest)],
+  };
+}
+
+// Every Grove quest closes through the same visible conversation/reward path.
+// Keeping this normalization at the catalog boundary avoids thirteen bespoke
+// completion branches in the client, backend, native quest biscuit, and E2E.
+export const SNAPSHOT_GROVE_QUESTS: SnapshotGroveQuest[] =
+  SNAPSHOT_GROVE_QUESTS_WITHOUT_REQUIRED_TURN_INS.map(
+    withRequiredSnapshotGroveTurnIn
+  );
 
 export const SNAPSHOT_GROVE_PLAYER_BUILDER_PRESETS = [
   {

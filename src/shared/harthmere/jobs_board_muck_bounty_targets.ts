@@ -59,12 +59,14 @@ function safeIdPart(value: string) {
 function pickMuckBountySeed(input: {
   areaId: string;
   monsterId: HarthmereJobsBoardMuckBountyMonsterId;
+  monsterTier: HarthmereJobsBoardMuckBountyTier;
   preferredName: RegExp;
 }): HarthmereLiveEntityProductionSeed {
   const seed = HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS.find(
     (candidate) =>
       candidate.areaId === input.areaId &&
       candidate.combatKind === seedCombatKind(input.monsterId) &&
+      candidate.bountyTier === input.monsterTier &&
       input.preferredName.test(candidate.displayName)
   );
   if (seed) {
@@ -73,7 +75,8 @@ function pickMuckBountySeed(input: {
   const fallback = HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS.find(
     (candidate) =>
       candidate.areaId === input.areaId &&
-      candidate.combatKind === seedCombatKind(input.monsterId)
+      candidate.combatKind === seedCombatKind(input.monsterId) &&
+      candidate.bountyTier === input.monsterTier
   );
   if (!fallback) {
     throw new Error(
@@ -118,9 +121,12 @@ function generatedTargetFromSeed(input: {
   monsterId: HarthmereJobsBoardMuckBountyMonsterId;
   monsterTier: HarthmereJobsBoardMuckBountyTier;
   seed: HarthmereLiveEntityProductionSeed;
+  identitySeed?: HarthmereLiveEntityProductionSeed;
+  legacyTarget?: boolean;
 }): HarthmereJobsBoardMuckBountyTarget {
+  const identitySeed = input.identitySeed ?? input.seed;
   const id = `muck_bounty_${input.monsterId}_${input.monsterTier}_${safeIdPart(
-    input.seed.seedId
+    identitySeed.seedId
   )}`;
   const tierLabel = input.monsterTier === "boss" ? "Boss" : "Elite";
   const monsterLabel = input.monsterId === "hex" ? "Hex" : "Mucker";
@@ -132,23 +138,50 @@ function generatedTargetFromSeed(input: {
     monsterId: input.monsterId,
     monsterTier: input.monsterTier,
     seed: input.seed,
+    legacyTarget: input.legacyTarget,
   });
+}
+
+function rankedReplacementSeed(input: {
+  original: HarthmereLiveEntityProductionSeed;
+  monsterId: HarthmereJobsBoardMuckBountyMonsterId;
+  monsterTier: HarthmereJobsBoardMuckBountyTier;
+}) {
+  const candidates = HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS.filter(
+    (seed) =>
+      seed.combatKind === seedCombatKind(input.monsterId) &&
+      seed.bountyTier === input.monsterTier
+  );
+  return (
+    candidates.find((seed) => seed.areaId === input.original.areaId) ??
+    candidates[0]
+  );
 }
 
 const eliteMuckerSeed = pickMuckBountySeed({
   areaId: "west_muck_breach",
   monsterId: "mucker",
+  monsterTier: "elite",
   preferredName: /west breach/i,
 });
 const hexWraithSeed = pickMuckBountySeed({
   areaId: "gravewood_pale_muck",
   monsterId: "hex",
+  monsterTier: "boss",
   preferredName: /pale hexer/i,
 });
+// HARTHMERE_MUCK_PACK_RELOCATION (2026-07-28): the Old Wood Mucker Copse family
+// was re-homed to the open Wilds, and `GENERATED_MUCK_BOUNTY_TARGETS` below
+// deliberately keeps Muck bounties pinned to real Muck territory — so no
+// `old_wood_mucker_copse` seed carries a `bountyTier` any more and this lookup
+// would throw at module load. Point the legacy Alpha Mucker bounty at the Old
+// Wood Muck Patch instead: same locale, still inside Muck, and its index-0 seed
+// is the family's boss.
 const alphaMuckerSeed = pickMuckBountySeed({
-  areaId: "old_wood_mucker_copse",
+  areaId: "old_wood_muck_patch",
   monsterId: "mucker",
-  preferredName: /old wood copse/i,
+  monsterTier: "boss",
+  preferredName: /old wood/i,
 });
 
 const LEGACY_MUCK_BOUNTY_TARGETS: readonly HarthmereJobsBoardMuckBountyTarget[] =
@@ -191,14 +224,34 @@ const GENERATED_MUCK_BOUNTY_TARGETS: readonly HarthmereJobsBoardMuckBountyTarget
     // are intentionally outside Muck. Keep Muck bounty jobs pinned to actual
     // Muck territory instead of mislabeling those encounters on the job map.
     Boolean(muckMonsterAreaForPosition(seed.position, 1.5))
-  ).flatMap((seed) => {
+  ).flatMap((identitySeed) => {
     const monsterId =
-      seed.combatKind === "hex" ? ("hex" as const) : ("mucker" as const);
+      identitySeed.combatKind === "hex"
+        ? ("hex" as const)
+        : ("mucker" as const);
     const tiers: readonly HarthmereJobsBoardMuckBountyTier[] =
       monsterId === "hex" ? ["boss"] : ["elite", "boss"];
-    return tiers.map((monsterTier) =>
-      generatedTargetFromSeed({ monsterId, monsterTier, seed })
-    );
+    return tiers.flatMap((monsterTier) => {
+      const seed =
+        identitySeed.bountyTier === monsterTier
+          ? identitySeed
+          : rankedReplacementSeed({
+              original: identitySeed,
+              monsterId,
+              monsterTier,
+            });
+      return seed
+        ? [
+            generatedTargetFromSeed({
+              monsterId,
+              monsterTier,
+              seed,
+              identitySeed,
+              legacyTarget: seed.entityId !== identitySeed.entityId,
+            }),
+          ]
+        : [];
+    });
   });
 
 export const HARTHMERE_JOBS_BOARD_MUCK_BOUNTY_TARGETS: readonly HarthmereJobsBoardMuckBountyTarget[] =
@@ -290,6 +343,9 @@ export function validateHarthmereJobsBoardMuckBountyTargets() {
       }
       if (seed.combatKind !== seedCombatKind(target.monsterId)) {
         errors.push(`${target.markerId}:monster_kind_mismatch`);
+      }
+      if (seed.bountyTier !== target.monsterTier) {
+        errors.push(`${target.markerId}:monster_tier_mismatch`);
       }
     }
     if (/grove|town|board|placeholder/i.test(target.markerId)) {

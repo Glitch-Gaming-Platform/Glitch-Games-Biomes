@@ -22,11 +22,14 @@ import { loadVoxeloo } from "@/server/shared/voxeloo";
 import { registerWorldApi } from "@/server/shared/world/register";
 import { startHarthmereLiveModeRobotEnergyScheduler } from "@/server/harthmere/live_mode_robot_energy_scheduler";
 import { startHarthmereLiveModeEscortScheduler } from "@/server/harthmere/live_mode_escort_scheduler";
+import { startChapter1EscortScheduler } from "@/server/harthmere/ch1_escort_scheduler";
+import { startChapter1EncounterScheduler } from "@/server/harthmere/ch1_encounter_scheduler";
 import { startHarthmereNativeVitalsScheduler } from "@/server/harthmere/native_vitals_scheduler";
 import { registerApp } from "@/server/web/app";
 import { installGlitchSameOriginSyncWebSocketProxy } from "@/server/web/glitch_sync_ws_proxy";
 import { registerBigQueryClient } from "@/server/web/bigquery";
 import {
+  assetExportWorkerPoolSize,
   registerWebServerConfig,
   shouldForceLocalAssetRuntime,
 } from "@/server/web/config";
@@ -129,10 +132,7 @@ async function registerAssetServer<C extends WebServerContext>(
   const createAssetServer = async () => {
     // In production we're running the asset server as its own service
     // so we want to use all the CPUs available to it.
-    const workerPoolSize =
-      process.env.NODE_ENV === "production"
-        ? numCpus()
-        : Math.max(1, numCpus() - 1);
+    const workerPoolSize = assetExportWorkerPoolSize(numCpus());
     log.info(`Initializing asset server with ${workerPoolSize} workers.`);
     const bakery = await loader.get("bakery");
     return new AssetExportsServerImpl(bakery.binaries, workerPoolSize);
@@ -241,6 +241,13 @@ void runServer("web", webServerContext, async (context) => {
   const harthmereEscortScheduler = startHarthmereLiveModeEscortScheduler({
     worldApi: context.worldApi,
   });
+  const chapter1EscortScheduler = startChapter1EscortScheduler({
+    worldApi: context.worldApi,
+  });
+  const chapter1EncounterScheduler = startChapter1EncounterScheduler({
+    worldApi: context.worldApi,
+    logicApi: context.logicApi,
+  });
   const harthmereNativeVitalsScheduler = startHarthmereNativeVitalsScheduler({
     askApi: context.askApi,
     worldApi: context.worldApi,
@@ -259,6 +266,8 @@ void runServer("web", webServerContext, async (context) => {
     shutdownHook: async () => {
       harthmereRobotEnergyScheduler.stop();
       harthmereEscortScheduler.stop();
+      chapter1EscortScheduler.stop();
+      chapter1EncounterScheduler.stop();
       harthmereNativeVitalsScheduler.stop();
       await sleep(CONFIG.webServerLameDuckMs);
       await context.app.stop();

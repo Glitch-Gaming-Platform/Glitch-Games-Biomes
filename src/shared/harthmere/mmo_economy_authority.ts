@@ -9,6 +9,8 @@ import {
   harthmereBusinessStorefrontListingsForType,
   harthmereBusinessStorefrontRecipeBookForItem,
 } from "./harthmere_business_storefront_goods";
+import { harthmereBusinessToolForType } from "./harthmere_business_tool_shop";
+import { harthmereNativeBiomesIdForItemId } from "./harthmere_native_item_ids";
 import type { BuildingSystemAnyMaterializationPlan } from "./building_system";
 import {
   businessMissedDays,
@@ -1107,6 +1109,15 @@ function reject(
   result.touched.add(model);
 }
 
+function rejectUnmappablePurchasedItem(
+  result: MutableResult,
+  itemId: string
+): boolean {
+  if (harthmereNativeBiomesIdForItemId(itemId) !== undefined) return false;
+  reject(result, "economy_rejected:item_not_purchasable");
+  return true;
+}
+
 function ensureRegion(
   state: HarthmereProductionEconomyState,
   regionId: string,
@@ -1466,10 +1477,7 @@ function licenseFeeGold(
   return Math.max(25, Math.round(level * level * (risky ? 120 : 60)));
 }
 
-function calculateLoanBalance(
-  loan: HarthmereEconomyLoanRecord,
-  nowMs: number
-) {
+function calculateLoanBalance(loan: HarthmereEconomyLoanRecord, nowMs: number) {
   const days = Math.max(
     0,
     Math.ceil((nowMs - loan.openedAtMs) / HARTHMERE_ECONOMY_DAY_MS)
@@ -1499,9 +1507,7 @@ function makeResult(state: HarthmereProductionEconomyState): MutableResult {
   };
 }
 
-function finalizeResult(
-  result: MutableResult
-): HarthmereEconomyMutationResult {
+function finalizeResult(result: MutableResult): HarthmereEconomyMutationResult {
   return {
     economy: normalizeHarthmereProductionEconomyState(result.next),
     inventoryGoldDelta: result.goldDelta,
@@ -1859,6 +1865,7 @@ function recordCustomerSale(
   if (itemId) {
     if (inventoryCount(business.inventory, itemId) < count)
       return reject(result, "economy_rejected:sale_inventory_insufficient");
+    if (rejectUnmappablePurchasedItem(result, itemId)) return;
     const listedGross =
       economyPriceForItem({
         state: result.next,
@@ -1902,8 +1909,7 @@ function recordCustomerSale(
     if (missedDays > 0) {
       const factor = businessNeglectRevenueFactor(missedDays);
       earning = fullEarning * factor;
-      const checkIn =
-        business.dailyCheckIn ?? initBusinessDailyCheckInState();
+      const checkIn = business.dailyCheckIn ?? initBusinessDailyCheckInState();
       business.dailyCheckIn = {
         ...checkIn,
         totalRevenueLostToNeglect:
@@ -1934,6 +1940,76 @@ function recordCustomerSale(
   );
   result.touched.add("economy_sale");
   result.touched.add("economy_tax");
+  result.shared.add(businessSharedKey(business.businessId));
+  result.shared.add(townSharedKey(town.townId));
+}
+
+// Business tool listings are catalog stock, like storefront materials, but
+// they are single-copy equipment. Keep the gold debit and item grant in the
+// economy mutation so native mode turns both into one signed ECS exchange.
+// The former client-only path deducted gold first and then attempted an
+// unauthorized request_loot_roll, which is how the Field Surgeon's Kit could
+// charge 38 gold without ever entering the player's native inventory.
+function buyBusinessTool(
+  result: MutableResult,
+  request: HarthmereEconomyMutationRequest,
+  context: HarthmereEconomyMutationContext
+) {
+  const business = getBusiness(result, request.businessId);
+  if (!business) return reject(result, "economy_rejected:business_not_found");
+  if (business.status !== "open") {
+    return reject(result, "economy_rejected:business_not_open");
+  }
+  const listing = harthmereBusinessToolForType(business.typeId);
+  if (!listing) {
+    return reject(result, "economy_rejected:business_tool_not_available");
+  }
+  if (request.itemId && request.itemId !== listing.toolItemId) {
+    return reject(result, "economy_rejected:business_tool_listing_mismatch");
+  }
+  if (rejectUnmappablePurchasedItem(result, listing.toolItemId)) return;
+  const count = positiveInt(request.count, 1);
+  if (count !== 1) {
+    return reject(
+      result,
+      "economy_rejected:business_tool_single_purchase_only"
+    );
+  }
+  if ((context.actorInventoryItems[listing.toolItemId] ?? 0) > 0) {
+    return reject(result, "economy_rejected:business_tool_already_owned");
+  }
+  if (context.actorGold + result.goldDelta < listing.priceGold) {
+    return reject(
+      result,
+      "economy_rejected:insufficient_customer_gold_for_sale"
+    );
+  }
+
+  recordItemDelta(result.itemDeltas, listing.toolItemId, 1);
+  result.goldDelta -= listing.priceGold;
+  const town = ensureTown(
+    result.next,
+    business.townId ?? HARTHMERE_ECONOMY_DEFAULT_TOWN_ID,
+    business.regionId,
+    request.nowMs
+  );
+  const tax = collectSalesTax(town, listing.priceGold, business.salesTaxRate);
+  business.balanceGold += listing.priceGold - tax;
+  pushLedger(
+    result,
+    {
+      id: request.requestId,
+      kind: "business_tool_purchased",
+      businessId: business.businessId,
+      amountGold: listing.priceGold,
+      itemDeltas: { [listing.toolItemId]: 1 },
+      townId: town.townId,
+    },
+    request
+  );
+  result.touched.add("economy_sale");
+  result.touched.add("economy_tax");
+  result.touched.add("economy_business_tool_purchase");
   result.shared.add(businessSharedKey(business.businessId));
   result.shared.add(townSharedKey(town.townId));
 }
@@ -1971,6 +2047,12 @@ function buyStorefrontGood(
   const count = positiveInt(request.count, 1);
   if (listing?.kind === "recipe_book" && count !== 1) {
     return reject(result, "economy_rejected:recipe_book_single_purchase_only");
+  }
+  if (
+    listing?.kind !== "recipe_book" &&
+    rejectUnmappablePurchasedItem(result, itemId)
+  ) {
+    return;
   }
   const unitPrice = positiveInt(listing?.buyPrice, 0);
   const gross = unitPrice * count;
@@ -2379,9 +2461,9 @@ function generateTownContracts(
     }
     town.publicBudgetGold -= reward;
     const contractId = `econ_contract_${result.next.nextContractNumber++}`;
-    const businessType = Object.values(
-      HARTHMERE_ECONOMY_BUSINESS_TYPES
-    ).find((def) => def.serviceNeeds.includes(row.need))?.typeId;
+    const businessType = Object.values(HARTHMERE_ECONOMY_BUSINESS_TYPES).find(
+      (def) => def.serviceNeeds.includes(row.need)
+    )?.typeId;
     result.next.contracts[contractId] = {
       contractId,
       issuerKind: "town",
@@ -2867,8 +2949,7 @@ function takeBusinessLoan(
     interestPaid: 0,
     dailyInterestRate: rate,
     openedAtMs: request.nowMs,
-    dueAtMs:
-      request.dueAtMs ?? request.nowMs + 14 * HARTHMERE_ECONOMY_DAY_MS,
+    dueAtMs: request.dueAtMs ?? request.nowMs + 14 * HARTHMERE_ECONOMY_DAY_MS,
     status: "active",
   };
   business.balanceGold += principal;
@@ -3393,6 +3474,9 @@ export function reduceHarthmereEconomyMutation(
       break;
     case "record_customer_sale":
       recordCustomerSale(result, request, context);
+      break;
+    case "buy_business_tool":
+      buyBusinessTool(result, request, context);
       break;
     case "buy_storefront_good":
       buyStorefrontGood(result, request, context);

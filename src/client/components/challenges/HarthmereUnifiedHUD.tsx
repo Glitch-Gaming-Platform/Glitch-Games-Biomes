@@ -4,6 +4,9 @@ import { HarthmereCrimeLawPanel } from "@/client/components/challenges/LocalDevH
 import { HarthmereQuestGuidancePanel } from "@/client/components/challenges/LocalDevHarthmereQuestGuidanceSystem";
 import { Chapter1NativeObjectivePrompt } from "@/client/components/challenges/Chapter1NativeObjectivePrompt";
 import { Chapter1FractureGatePrompt } from "@/client/components/challenges/Chapter1FractureGatePrompt";
+import { Chapter1AmbientMemoryProbe } from "@/client/components/challenges/Chapter1AmbientMemoryProbe";
+import { Chapter1WorldProjectionController } from "@/client/components/challenges/Chapter1WorldProjectionController";
+import { Chapter1LatentSkillController } from "@/client/components/challenges/Chapter1LatentSkillController";
 import { HarthmereDialogueSafetyPanel } from "@/client/components/challenges/LocalDevHarthmereDialogueSafetySystem";
 import { HarthmereInventoryGuidancePanel } from "@/client/components/challenges/LocalDevHarthmereInventoryGuidance";
 import { HarthmereMountPetCollectionPanel } from "@/client/components/challenges/LocalDevHarthmereMountPetCollections";
@@ -3288,6 +3291,9 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{
       <HarthmereQuestNavAidController />
       <Chapter1NativeObjectivePrompt />
       <Chapter1FractureGatePrompt />
+      <Chapter1AmbientMemoryProbe />
+      <Chapter1WorldProjectionController />
+      <Chapter1LatentSkillController />
       {/* HARTHMERE_BIBLE_QUEST_WIRING (bible-wiring fix, 2026-07-14): hidden
           world-trigger quest acceptance + the Thaedryn encounter panel. */}
       <HarthmereBibleQuestRuntimeController />

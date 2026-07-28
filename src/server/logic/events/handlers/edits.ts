@@ -21,7 +21,10 @@ import {
 import { decrementItemDurability } from "@/server/logic/utils/durability";
 import { serverRuleset } from "@/server/shared/minigames/util";
 import type { TerrainID } from "@/shared/asset_defs/terrain";
-import { terrainIdToBlock, terrainIdToBlockOrDie } from "@/shared/bikkie/terrain";
+import {
+  terrainIdToBlock,
+  terrainIdToBlockOrDie,
+} from "@/shared/bikkie/terrain";
 import { secondsSinceEpoch } from "@/shared/ecs/config";
 import type { EditEvent, HandlerEditEvent } from "@/shared/ecs/gen/events";
 import type { GrabBagFilter, Vec3f } from "@/shared/ecs/gen/types";
@@ -37,6 +40,10 @@ import { log } from "@/shared/logging";
 import type { GameStateContext } from "@/shared/loot_tables/indexing";
 import { add } from "@/shared/math/linear";
 import { createCounter } from "@/shared/metrics/metrics";
+import {
+  awardHarthmereNativeSkillXp,
+  harthmereNativeGatheringSkillAwards,
+} from "@/shared/harthmere/harthmere_skill_progression";
 
 const worldVoxelsPlaced = createCounter({
   name: "game_world_voxels_placed",
@@ -256,6 +263,19 @@ export const editEventHandler = makeEventHandler("editEvent", {
               //timeOfDay
             }
           );
+          if (!isUserPlacedBlock) {
+            const resourceText = `${block.id} ${block.displayName ?? ""}`;
+            awardHarthmereNativeSkillXp(
+              player.delta().mutableTriggerState(),
+              harthmereNativeGatheringSkillAwards({
+                sourceId: String(block.id),
+                mining:
+                  /ore|stone|rock|metal|crystal|gem|coal|iron|copper|silver|gold/i.test(
+                    resourceText
+                  ),
+              })
+            );
+          }
         } else {
           log.warn("Skipping drops for non-block terrain", {
             terrainId: existingTerrainId,

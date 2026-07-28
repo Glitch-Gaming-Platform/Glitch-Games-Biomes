@@ -9,6 +9,22 @@ export interface WebServerConfig extends BaseServerConfig {
   assetServerMode: AssetServerMode;
 }
 
+export function assetExportWorkerPoolSize(
+  cpuCount: number,
+  env: Record<string, string | undefined> = process.env,
+  nodeEnv = process.env.NODE_ENV
+): number {
+  const available = Math.max(1, Math.floor(cpuCount));
+  const configured = Number.parseInt(
+    env.GLITCH_ASSET_EXPORT_WORKERS ?? "",
+    10
+  );
+  if (Number.isFinite(configured) && configured > 0) {
+    return Math.max(1, Math.min(available, configured));
+  }
+  return nodeEnv === "production" ? available : Math.max(1, available - 1);
+}
+
 function truthyEnv(name: string): boolean {
   const raw = process.env[name];
   return raw === "1" || raw === "true" || raw === "yes" || raw === "on";

@@ -1,13 +1,15 @@
 #!/usr/bin/env node
 // SNAPSHOT_GROVE_QUEST_MARKER_VISIBILITY:
-// Verifies that the Grove tutorial pin system shows EVERY step marker of the
-// active quest, not just the current step. Each step gets its own nav-aid id,
-// the active marker is emphasized, past markers are cleared as steps complete,
-// and ALL markers are cleared when the quest finishes.
+// Verifies that the Grove tutorial pin system shows one navigation aid for the
+// selected quest's current objective. Other accepted quests remain represented
+// by their current physical props/map rows, while past/future navigation pins
+// are cleared to avoid map clutter.
 const fs = require("fs");
 const path = require("path");
 const root = process.argv[2] || process.cwd();
-function read(rel) { return fs.readFileSync(path.join(root, rel), "utf8"); }
+function read(rel) {
+  return fs.readFileSync(path.join(root, rel), "utf8");
+}
 let failures = 0;
 function ok(cond, msg) {
   if (cond) {
@@ -17,79 +19,95 @@ function ok(cond, msg) {
     console.error(`FAIL ${msg}`);
   }
 }
-function failIf(cond, msg) { ok(!cond, msg); }
+function failIf(cond, msg) {
+  ok(!cond, msg);
+}
 
-const runtime = read("src/client/components/challenges/LocalDevSnapshotGroveBibleRuntime.tsx");
+const runtime = read(
+  "src/client/components/challenges/LocalDevSnapshotGroveBibleRuntime.tsx"
+);
 const shared = read("src/shared/harthmere/snapshot_grove_content.ts");
 
 // 1. Per-step nav-aid id range exists.
 ok(
   runtime.includes("SNAPSHOT_GROVE_NAV_AID_BASE"),
-  "Grove runtime defines a per-step nav-aid id base for current marker visibility",
+  "Grove runtime defines a per-step nav-aid id base for current marker visibility"
 );
 ok(
   runtime.includes("SNAPSHOT_GROVE_NAV_AID_MAX_STEPS"),
-  "Grove runtime defines a max-step ceiling so the nav-aid id range is bounded",
+  "Grove runtime defines a max-step ceiling so the nav-aid id range is bounded"
 );
 ok(
   /function\s+snapshotGroveStepNavAidId\s*\(/.test(runtime),
-  "Grove runtime exposes snapshotGroveStepNavAidId for per-step ids",
+  "Grove runtime exposes snapshotGroveStepNavAidId for per-step ids"
 );
 ok(
   /function\s+snapshotGroveAllStepNavAidIds\s*\(/.test(runtime),
-  "Grove runtime exposes snapshotGroveAllStepNavAidIds for sweeping clears",
+  "Grove runtime exposes snapshotGroveAllStepNavAidIds for sweeping clears"
 );
 
 // 2. The legacy single nav-aid id is no longer used as a hard pin target.
 failIf(
   /addNavigationAid\s*\([\s\S]{0,160}SNAPSHOT_GROVE_NAV_AID_ID/.test(runtime),
-  "Legacy SNAPSHOT_GROVE_NAV_AID_ID is not used to pin step markers anymore",
+  "Legacy SNAPSHOT_GROVE_NAV_AID_ID is not used to pin step markers anymore"
 );
 
-// 3. A helper exists that pins every step marker for the active quest.
+// 3. One shared helper owns selected-quest pin synchronization.
 ok(
   /function\s+pinAllSnapshotGroveQuestMarkers\s*\(/.test(runtime),
-  "pinAllSnapshotGroveQuestMarkers exists to show every step's marker",
+  "pinAllSnapshotGroveQuestMarkers remains the selected-quest pin owner"
 );
 ok(
   /function\s+clearAllSnapshotGroveQuestMarkers\s*\(/.test(runtime),
-  "clearAllSnapshotGroveQuestMarkers exists to clear every step's marker",
+  "clearAllSnapshotGroveQuestMarkers exists to clear every step's marker"
 );
 ok(
   /function\s+syncSnapshotGroveQuestMarkers\s*\(/.test(runtime),
-  "syncSnapshotGroveQuestMarkers exists as the single source of marker state",
+  "syncSnapshotGroveQuestMarkers exists as the single source of marker state"
 );
 
-// 4. The active-step marker is added last so it draws on top.
+// 4. Only the selected quest's current counted/subtarget marker is pinned.
 ok(
-  /Pin upcoming\/future steps first[\s\S]{0,400}active step last/.test(runtime),
-  "Active-step marker is pinned last so it visually emphasizes the current stop",
+  /currentMarkerForQuest\([\s\S]{0,220}snapshotGroveObjectiveCompletedCountForQuest[\s\S]{0,260}snapshotGroveStepNavAidId\(0\)/.test(
+    runtime
+  ),
+  "Selected quest pins only its current counted/subtarget marker"
 );
 
-// 5. On quest completion, all markers are cleared (not just the active one).
+// 5. Completion switches to the next selected quest, or clears the pin range.
 ok(
-  /completedQuest\s*\)\s*{[\s\S]{0,200}clearAllSnapshotGroveQuestMarkers\(mapManager\)/.test(runtime),
-  "Completing a Grove quest clears every step marker, not just the active pin",
+  /const selectedQuest = questById\(next\.activeQuestId\);[\s\S]{0,260}syncSnapshotGroveQuestMarkers\(/.test(
+    runtime
+  ) &&
+    /if \(!quest\) \{[\s\S]{0,120}clearAllSnapshotGroveQuestMarkers\(mapManager\)/.test(
+      runtime
+    ),
+  "Completing a Grove quest switches the selected pin or clears it"
 );
 
-// 6. On advance, the previously active step's pin is removed so past markers
-//    do not stack up.
+// 6. Every refresh clears the bounded stale pin range before adding current.
 ok(
-  /mapManager\.removeNavigationAid\?\.\(\s*snapshotGroveStepNavAidId\(\s*safeObjectiveIndex\s*\)\s*\)/.test(runtime),
-  "Advancing a step removes the just-finished step's pin",
+  /for \(const id of snapshotGroveAllStepNavAidIds\(\)\) \{[\s\S]{0,100}removeNavigationAid/.test(
+    runtime
+  ),
+  "Refreshing a Grove marker clears every stale step pin first"
 );
 
 // 7. The controller useEffect uses the multi-marker sync function.
 ok(
-  /useEffect\(\s*\(\)\s*=>\s*{[\s\S]{0,500}syncSnapshotGroveQuestMarkers\(\s*mapManager\s*,\s*quest\s*,\s*state\.activeObjectiveIndex\s*\)/.test(runtime),
-  "Grove controller useEffect syncs all markers on activeQuestId/objective change",
+  /useEffect\(\s*\(\)\s*=>\s*{[\s\S]{0,500}syncSnapshotGroveQuestMarkers\(\s*mapManager\s*,\s*quest\s*,\s*state\.activeObjectiveIndex\s*\)/.test(
+    runtime
+  ),
+  "Grove controller syncs the selected marker on activeQuestId/objective change"
 );
 
 // 8. The Map HUD's Pin button uses the active step's nav-aid id, not the
 //    legacy single id, so player taps refresh the right pin slot.
 ok(
-  /onClick=\{\(\)\s*=>\s*\n?\s*pinSnapshotGroveLandmark\(\s*mapManager,\s*marker\.position,\s*snapshotGroveStepNavAidId\(objectiveIndex\)/.test(runtime),
-  "Map HUD Pin button uses the active step's per-step nav-aid id",
+  /onClick=\{\(\)\s*=>\s*\n?\s*pinSnapshotGroveLandmark\(\s*mapManager,\s*marker\.position,\s*snapshotGroveStepNavAidId\(objectiveIndex\)/.test(
+    runtime
+  ),
+  "Map HUD Pin button uses the active step's per-step nav-aid id"
 );
 
 // 9. Every fountain tutorial declares one marker per objective (regression
@@ -128,18 +146,19 @@ for (const id of tutorialIds) {
   const markers = extractArray(block, "markerIds");
   ok(
     markers.length === objectives.length,
-    `Fountain tutorial ${id} has one marker per objective (${markers.length}/${objectives.length})`,
+    `Fountain tutorial ${id} has one marker per objective (${markers.length}/${objectives.length})`
   );
   ok(
     markers.length > 0 && markers.length <= 12,
-    `Fountain tutorial ${id} stays within current nav-aid id ceiling (12 steps)`,
+    `Fountain tutorial ${id} stays within current nav-aid id ceiling (12 steps)`
   );
   for (const marker of markers) {
     const staticLandmark = shared.includes(`id: "${marker}"`);
-    const npcMarker = marker.startsWith("npc_") && shared.includes(`id: "${marker.slice(4)}"`);
+    const npcMarker =
+      marker.startsWith("npc_") && shared.includes(`id: "${marker.slice(4)}"`);
     ok(
       staticLandmark || npcMarker,
-      `${id} marker ${marker} resolves to a real landmark or NPC marker`,
+      `${id} marker ${marker} resolves to a real landmark or NPC marker`
     );
   }
 }
@@ -149,12 +168,15 @@ ok(
   runtime.includes("snapshot-grove-bible-onboarding-polish") ||
     runtime.includes("snapshot-grove-bible-graduation-chain") ||
     runtime.includes("snapshot-grove-bible-tutor-highlights") ||
-    (runtime.includes("snapshot-grove-mission-critical") || runtime.includes("snapshot-grove-mission-critical")),
-  "Grove runtime marker records the onboarding-polish update",
+    runtime.includes("snapshot-grove-mission-critical") ||
+    runtime.includes("snapshot-grove-mission-critical"),
+  "Grove runtime marker records the onboarding-polish update"
 );
 
 if (failures) {
-  console.error(`current Grove quest marker visibility check failed: ${failures} failure(s)`);
+  console.error(
+    `current Grove quest marker visibility check failed: ${failures} failure(s)`
+  );
   process.exit(1);
 }
 console.log("current Grove quest marker visibility check passed");

@@ -10,6 +10,7 @@ import {
   ch1DungeonWorldToAuthored,
 } from "@/shared/harthmere/ch1_dungeon_terrain";
 import { CH1_QUESTS } from "@/shared/harthmere/ch1_quests";
+import { CH1_ANCHORS } from "@/shared/harthmere/ch1_ids";
 
 describe("Chapter 1 objective targets", () => {
   it("resolves every authored objective to a finite production target", () => {
@@ -64,5 +65,15 @@ describe("Chapter 1 objective targets", () => {
       "d2_sorrels_camp"
     )!;
     assert.equal(sorrel.source, "dungeon");
+  });
+
+  it("takes the Act 4 statement at the live Grove watch house", () => {
+    const statement = ch1ObjectiveTarget(
+      "ch1_a4_q07_ask_me_in_a_month",
+      "report_or_not"
+    )!;
+    assert.equal(statement.label, "Grove Watch House");
+    assert.deepEqual(statement.position, CH1_ANCHORS.grove_watch_house);
+    assert.ok(statement.position[0] < 1792);
   });
 });

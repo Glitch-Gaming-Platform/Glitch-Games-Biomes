@@ -1,5 +1,9 @@
 import assert from "assert";
-import { currentQuestObjectiveForHUDForTest } from "../CurrentQuestObjectiveHUD";
+import {
+  currentQuestObjectiveForHUDForTest,
+  objectiveRequiresRecipesForTest,
+  shouldShowRecipeObjectiveHintForTest,
+} from "../CurrentQuestObjectiveHUD";
 import {
   biomesUIMainQuestClearedSelectionForTest,
   biomesUIMainQuestSelectionFromQuestForTest,
@@ -7,6 +11,45 @@ import {
 import type { MapTrackableQuest } from "../tabs/MapQuestsTab";
 
 describe("CurrentQuestObjectiveHUD", () => {
+  it("shows the Recipes cue only for objectives that require creating an item", () => {
+    for (const objective of [
+      "Craft a Wooden Whacker",
+      "Handcraft 0/8 Muck Busters",
+      "Mix the antidote recipe",
+      "Brew a warming tonic",
+      "Forge the replacement gear",
+    ]) {
+      assert.equal(objectiveRequiresRecipesForTest(objective), true, objective);
+    }
+    for (const objective of [
+      "Obtain a Wooden Whacker",
+      "Defeat 0/6 Mossy Mucklings",
+      "Collect the Robot Power Supply",
+      "Make your way back to Moe",
+    ]) {
+      assert.equal(
+        objectiveRequiresRecipesForTest(objective),
+        false,
+        objective
+      );
+    }
+  });
+
+  it("keeps the Recipes cue visible while its crafting objective is active", () => {
+    assert.equal(
+      shouldShowRecipeObjectiveHintForTest("Craft a Wooden Whacker", false),
+      true
+    );
+    assert.equal(
+      shouldShowRecipeObjectiveHintForTest("Craft a Wooden Whacker", true),
+      false
+    );
+    assert.equal(
+      shouldShowRecipeObjectiveHintForTest("Talk to Moe Chi", false),
+      false
+    );
+  });
+
   it("prioritizes an explicit active destination over the selected main quest", () => {
     const mainQuest: MapTrackableQuest = {
       questId: "muck_breach_boss",

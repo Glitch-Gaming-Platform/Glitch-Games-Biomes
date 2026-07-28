@@ -10,6 +10,20 @@ import type {
 } from "@/shared/harthmere/snapshot_grove_content";
 import { BikkieIds } from "@/shared/bikkie/ids";
 
+export const SNAPSHOT_GROVE_TUTORIAL_ITEM_IDS = {
+  roadTorch: "grove_road_torch",
+  festivalSkewer: "grove_festival_skewer",
+  festivalSkewerIngredients: "grove_festival_skewer_ingredients",
+  warmLoafTray: "grove_warm_loaf_tray",
+  heavyParcel: "grove_heavy_parcel",
+  boltCrate: "grove_bolt_crate",
+} as const;
+
+export const SNAPSHOT_GROVE_TUTORIAL_RECIPE_IDS = {
+  roadTorch: "harthmere_grove_road_torch",
+  festivalSkewer: "harthmere_grove_festival_skewer",
+} as const;
+
 // Keep the event name ununified so a mixed local patch state where one file
 // imports the current symbol and another imports a current alias still dispatches and
 // listens on the same browser event.
@@ -120,19 +134,7 @@ export const SNAPSHOT_GROVE_TRIGGER_COMPLETION_EVENTS = {
 >;
 
 export const SNAPSHOT_GROVE_CONTEXTUAL_PRACTICE_TRIGGER_KIND_SET =
-  new Set<SnapshotGroveTrigger>([
-    "interact",
-    "choice",
-    "collect",
-    "craft",
-    "photo_post",
-    "item_grant",
-    "status_check",
-    "item_use",
-    "item_update",
-    "escort",
-    "carry",
-  ]);
+  new Set<SnapshotGroveTrigger>(["choice"]);
 
 export type SnapshotGroveItemUseObjectiveKind =
   | "food"
@@ -160,6 +162,183 @@ function objectiveText(
   );
   const objective = quest.objectives[safeIndex];
   return `${quest.id} ${quest.title} ${objective ?? ""}`.toLowerCase();
+}
+
+const SNAPSHOT_GROVE_REQUIRED_COUNT_OVERRIDES: Readonly<
+  Record<string, number>
+> = {
+  "color_that_still_points_home:1": 2,
+  "cart_that_forgot_its_wheel:1": 3,
+  "moss_that_went_quiet:2": 3,
+  "songline_under_the_lawn:0": 3,
+  "antlers_for_the_watch:0": 3,
+  "fountain_first_recipe_torch:1": 2,
+};
+
+const SNAPSHOT_GROVE_OBJECTIVE_TARGET_MARKER_OVERRIDES: Readonly<
+  Record<string, readonly string[]>
+> = {
+  "color_that_still_points_home:1": [
+    "muckwad_pigment_clump_west",
+    "muckwad_pigment_clump_east",
+  ],
+  "moss_that_went_quiet:2": [
+    "mosslawn_warning_moss_west",
+    "mosslawn_warning_moss_center",
+    "mosslawn_warning_moss_east",
+  ],
+  "songline_under_the_lawn:0": [
+    "mosslawn_song_stone_low",
+    "mosslawn_song_stone_middle",
+    "mosslawn_song_stone_high",
+  ],
+  "antlers_for_the_watch:0": [
+    "mosslawn_track_rubbing_hoof",
+    "mosslawn_track_rubbing_antler",
+    "mosslawn_track_rubbing_claw",
+  ],
+};
+
+export function snapshotGroveObjectiveRequiredCount(
+  quest: Pick<SnapshotGroveQuest, "id" | "objectives">,
+  objectiveIndex: number
+) {
+  return (
+    SNAPSHOT_GROVE_REQUIRED_COUNT_OVERRIDES[`${quest.id}:${objectiveIndex}`] ??
+    1
+  );
+}
+
+export function snapshotGroveObjectiveTargetMarkerIds(
+  quest: Pick<SnapshotGroveQuest, "id" | "markerIds">,
+  objectiveIndex: number
+): readonly string[] {
+  const override =
+    SNAPSHOT_GROVE_OBJECTIVE_TARGET_MARKER_OVERRIDES[
+      `${quest.id}:${objectiveIndex}`
+    ];
+  if (override?.length) {
+    return override;
+  }
+  const markerId = quest.markerIds[objectiveIndex];
+  return markerId ? [markerId] : [];
+}
+
+export function snapshotGroveObjectiveMarkerIdForProgress(
+  quest: Pick<SnapshotGroveQuest, "id" | "markerIds">,
+  objectiveIndex: number,
+  completedCount = 0
+) {
+  const markerIds = snapshotGroveObjectiveTargetMarkerIds(
+    quest,
+    objectiveIndex
+  );
+  if (!markerIds.length) return undefined;
+  return markerIds[
+    Math.max(0, Math.min(markerIds.length - 1, Math.trunc(completedCount)))
+  ];
+}
+
+export function snapshotGroveEventCompletionCount(event: {
+  count?: unknown;
+  quantity?: unknown;
+}) {
+  const raw = Number(event.count ?? event.quantity ?? 1);
+  return Number.isFinite(raw) ? Math.max(1, Math.trunc(raw)) : 1;
+}
+
+export function snapshotGroveCraftEventMatchesObjective(
+  event: {
+    recipeId?: unknown;
+    outputItemId?: unknown;
+    itemId?: unknown;
+  },
+  quest: Pick<SnapshotGroveQuest, "id">,
+  objectiveIndex: number
+) {
+  const expected =
+    quest.id === "fountain_first_recipe_torch" && objectiveIndex === 3
+      ? {
+          recipeId: SNAPSHOT_GROVE_TUTORIAL_RECIPE_IDS.roadTorch,
+          outputItemId: SNAPSHOT_GROVE_TUTORIAL_ITEM_IDS.roadTorch,
+        }
+      : quest.id === "econ_carlo_festival_skewers" && objectiveIndex === 2
+      ? {
+          recipeId: SNAPSHOT_GROVE_TUTORIAL_RECIPE_IDS.festivalSkewer,
+          outputItemId: SNAPSHOT_GROVE_TUTORIAL_ITEM_IDS.festivalSkewer,
+        }
+      : undefined;
+  if (!expected) return false;
+  const recipeId = String(event.recipeId ?? "");
+  const outputItemId = String(event.outputItemId ?? event.itemId ?? "");
+  return (
+    recipeId === expected.recipeId || outputItemId === expected.outputItemId
+  );
+}
+
+export interface SnapshotGroveObjectiveInventoryRequirement {
+  itemId: string;
+  count: number;
+  consumeOnComplete: boolean;
+}
+
+const SNAPSHOT_GROVE_OBJECTIVE_INVENTORY_REQUIREMENTS: Readonly<
+  Record<string, SnapshotGroveObjectiveInventoryRequirement>
+> = {
+  "econ_billys_lost_lunch_pail:3": {
+    itemId: "billys_lunch_pail",
+    count: 1,
+    consumeOnComplete: true,
+  },
+  "sticky_medicine:3": {
+    itemId: "mudroot",
+    count: 2,
+    consumeOnComplete: true,
+  },
+  "toll_ledger_problem:3": {
+    itemId: SNAPSHOT_GROVE_TUTORIAL_ITEM_IDS.boltCrate,
+    count: 1,
+    consumeOnComplete: true,
+  },
+  "econ_gus_fresh_loaves_to_fountain:2": {
+    itemId: SNAPSHOT_GROVE_TUTORIAL_ITEM_IDS.warmLoafTray,
+    count: 1,
+    consumeOnComplete: true,
+  },
+  "econ_gus_grain_run:2": {
+    itemId: "field_wheat",
+    count: 1,
+    consumeOnComplete: true,
+  },
+  "econ_kit_heavy_parcel_to_crossroads:3": {
+    itemId: SNAPSHOT_GROVE_TUTORIAL_ITEM_IDS.heavyParcel,
+    count: 1,
+    consumeOnComplete: true,
+  },
+  "econ_mel_bench_repair:2": {
+    itemId: "scrap_metal",
+    count: 1,
+    consumeOnComplete: true,
+  },
+  "econ_rin_mushroom_pickup:3": {
+    itemId: "forest_mushroom",
+    count: 1,
+    consumeOnComplete: true,
+  },
+  "econ_carlo_festival_skewers:3": {
+    itemId: SNAPSHOT_GROVE_TUTORIAL_ITEM_IDS.festivalSkewer,
+    count: 1,
+    consumeOnComplete: true,
+  },
+};
+
+export function snapshotGroveObjectiveInventoryRequirement(
+  quest: Pick<SnapshotGroveQuest, "id">,
+  objectiveIndex: number
+) {
+  return SNAPSHOT_GROVE_OBJECTIVE_INVENTORY_REQUIREMENTS[
+    `${quest.id}:${objectiveIndex}`
+  ];
 }
 
 export function snapshotGroveItemUseObjectiveKind(
@@ -360,10 +539,15 @@ export interface SnapshotGroveObjectiveFixture {
   slot?: string;
   operation?: string;
   running?: boolean;
+  count?: number;
+  recipeId?: string;
+  outputItemId?: string;
+  targetMarkerIds?: readonly string[];
 }
 
 export function snapshotGrovePracticeItemFixtureForObjective(
-  quest: Pick<SnapshotGroveQuest, "objectives">,
+  quest: Pick<SnapshotGroveQuest, "objectives"> &
+    Partial<Pick<SnapshotGroveQuest, "id">>,
   objectiveIndex: number
 ): { itemId: string; quantity: number; label: string } | undefined {
   const text = (
@@ -371,6 +555,76 @@ export function snapshotGrovePracticeItemFixtureForObjective(
       Math.max(0, Math.min(quest.objectives.length - 1, objectiveIndex))
     ] ?? ""
   ).toLowerCase();
+  if (quest.id === "econ_billys_lost_lunch_pail" && objectiveIndex === 2) {
+    return {
+      itemId: "billys_lunch_pail",
+      quantity: 1,
+      label: "Billy's Lunch Pail",
+    };
+  }
+  if (quest.id === "fountain_first_recipe_torch" && objectiveIndex === 1) {
+    return {
+      itemId: "softwood_log",
+      quantity: 2,
+      label: "Two Practice Sticks",
+    };
+  }
+  if (quest.id === "econ_carlo_festival_skewers" && objectiveIndex === 1) {
+    return {
+      itemId: SNAPSHOT_GROVE_TUTORIAL_ITEM_IDS.festivalSkewerIngredients,
+      quantity: 1,
+      label: "Festival Skewer Ingredients",
+    };
+  }
+  if (quest.id === "econ_gus_fresh_loaves_to_fountain") {
+    return {
+      itemId: SNAPSHOT_GROVE_TUTORIAL_ITEM_IDS.warmLoafTray,
+      quantity: 1,
+      label: "Warm Loaf Tray",
+    };
+  }
+  if (quest.id === "econ_kit_heavy_parcel_to_crossroads") {
+    return {
+      itemId: SNAPSHOT_GROVE_TUTORIAL_ITEM_IDS.heavyParcel,
+      quantity: 1,
+      label: "Kit's Heavy Parcel",
+    };
+  }
+  if (quest.id === "toll_ledger_problem" && objectiveIndex === 2) {
+    return {
+      itemId: SNAPSHOT_GROVE_TUTORIAL_ITEM_IDS.boltCrate,
+      quantity: 1,
+      label: "Luis's Bolt Crate",
+    };
+  }
+  if (quest.id === "coops_key_hen" && objectiveIndex === 1) {
+    return {
+      itemId: "field_wheat",
+      quantity: 1,
+      label: "Coop's Dropped Feed",
+    };
+  }
+  if (quest.id === "letter_for_the_north_gate" && objectiveIndex === 0) {
+    return {
+      itemId: "jackies_sealed_letter",
+      quantity: 1,
+      label: "Jackie's Sealed Letter",
+    };
+  }
+  if (quest.id === "toll_ledger_problem" && objectiveIndex === 0) {
+    return {
+      itemId: "bolt_order",
+      quantity: 1,
+      label: "Luis's Bolt Order",
+    };
+  }
+  if (quest.id === "tone_beneath_the_road" && objectiveIndex === 0) {
+    return {
+      itemId: "sils_tuning_strip",
+      quantity: 1,
+      label: "Sil's Tuning Strip",
+    };
+  }
   if (
     /clean root|mucked root|root sample|muck sample|sealed muck|mudroot/.test(
       text
@@ -429,9 +683,15 @@ export function snapshotGrovePracticeItemFixtureForObjective(
       text
     )
   ) {
+    const quantity =
+      text.includes("three") || text.includes("3")
+        ? 3
+        : text.includes("two") || text.includes("2")
+        ? 2
+        : 1;
     return {
       itemId: "softwood_log",
-      quantity: text.includes("three") || text.includes("3") ? 3 : 1,
+      quantity,
       label: "Practice Wood",
     };
   }
@@ -454,7 +714,7 @@ export function snapshotGrovePracticeItemFixtureForObjective(
   if (/rubbings?|track rubbings?/.test(text)) {
     return {
       itemId: "cloth_scrap",
-      quantity: text.includes("three") || text.includes("3") ? 3 : 1,
+      quantity: 1,
       label: "Track Rubbings",
     };
   }
@@ -519,7 +779,22 @@ export function snapshotGroveObjectiveCompletionFixture(
 
   const markerId = quest.markerIds[objectiveIndex];
   const objective = quest.objectives[objectiveIndex];
-  const base = { questId: quest.id, objectiveIndex, trigger, markerId };
+  const targetMarkerIds = snapshotGroveObjectiveTargetMarkerIds(
+    quest,
+    objectiveIndex
+  );
+  const requiredCount = snapshotGroveObjectiveRequiredCount(
+    quest,
+    objectiveIndex
+  );
+  const base = {
+    questId: quest.id,
+    objectiveIndex,
+    trigger,
+    markerId: targetMarkerIds[0] ?? markerId,
+    targetMarkerIds,
+    count: requiredCount,
+  };
 
   switch (trigger) {
     case "talk_npc":
@@ -589,7 +864,23 @@ export function snapshotGroveObjectiveCompletionFixture(
     case "photo_post":
       return { ...base, kind: "photo_post" };
     case "craft":
-      return { ...base, kind: "craft" };
+      if (quest.id === "fountain_first_recipe_torch" && objectiveIndex === 3) {
+        return {
+          ...base,
+          kind: "craft",
+          recipeId: SNAPSHOT_GROVE_TUTORIAL_RECIPE_IDS.roadTorch,
+          outputItemId: SNAPSHOT_GROVE_TUTORIAL_ITEM_IDS.roadTorch,
+        };
+      }
+      if (quest.id === "econ_carlo_festival_skewers" && objectiveIndex === 2) {
+        return {
+          ...base,
+          kind: "craft",
+          recipeId: SNAPSHOT_GROVE_TUTORIAL_RECIPE_IDS.festivalSkewer,
+          outputItemId: SNAPSHOT_GROVE_TUTORIAL_ITEM_IDS.festivalSkewer,
+        };
+      }
+      return undefined;
     case "combat":
       return { ...base, kind: "npc_damage" };
     case "collect": {
@@ -603,6 +894,7 @@ export function snapshotGroveObjectiveCompletionFixture(
             kind: "inventory_change",
             itemId: collectItem.itemId,
             itemName: collectItem.label,
+            count: collectItem.quantity,
           }
         : undefined;
     }

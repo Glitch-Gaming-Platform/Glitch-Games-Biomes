@@ -61,6 +61,7 @@ import {
   validateHarthmereLiveModeAuthorityEnvelope,
 } from "@/shared/harthmere/live_mode_readiness";
 import { HARTHMERE_JOBS_BOARD_LOCATIONS } from "@/shared/harthmere/mmo_jobs_board_authority";
+import { readHarthmereJobsBoardNativeKillLedger } from "@/shared/harthmere/jobs_board_native_kill_ledger";
 import { EditEvent, PlaceGroupEvent } from "@/shared/ecs/gen/events";
 import { getSlotByRef } from "@/shared/game/inventory";
 import { bagCount } from "@/shared/game/items";
@@ -71,11 +72,12 @@ import {
 } from "@/shared/harthmere/harthmere_biomes_ecs_bridge";
 import { ensureHarthmereNativeItemCatalogue } from "@/shared/harthmere/harthmere_native_bikkie_items";
 import { harthmereNativeRecipeIdForBiomesId } from "@/shared/harthmere/harthmere_native_item_ids";
-import { blockPos, voxelShard } from "@/shared/game/shard";
+import { blockPos, SHARD_SHAPE, voxelShard } from "@/shared/game/shard";
 import { shiftHarthmereAuthoredPositionToWorld } from "@/shared/harthmere/coordinate_transform";
 import { safeParseBiomesId, type BiomesId } from "@/shared/ids";
 import type { Vec3 } from "@/shared/math/types";
 import { loadBlockWrapper, saveBlockWrapper } from "@/shared/wasm/biomes";
+import { Tensor, TensorUpdate } from "@/shared/wasm/tensors";
 import { z } from "zod";
 import { readHarthmerePlayerAndSharedStateStrings } from "@/server/harthmere/live_mode_state_read_helpers";
 import { disableHarthmereLiveModeHttpCaching } from "@/server/harthmere/live_mode_http_cache";
@@ -90,6 +92,10 @@ import {
 } from "@/server/harthmere/live_mode_actor_state_authority";
 import { nativeBiomesEcsAuthorityEnabled } from "@/shared/harthmere/native_road_ahead_contract";
 import { readHarthmereNativeVitals } from "@/shared/harthmere/harthmere_native_vitals";
+import {
+  hasHarthmereNativeSkillProgression,
+  readAllHarthmereNativeSkillTotalXp,
+} from "@/shared/harthmere/harthmere_skill_progression";
 import {
   HARTHMERE_BIBLE_DRAGON_QUEST_ID,
   HARTHMERE_NATIVE_THAEDRYN_ENTITY_ID,
@@ -383,12 +389,26 @@ const zHarthmereNativeEcsMaterializationPlan = z.discriminatedUnion("kind", [
     sourceKind: z.string(),
   }),
   z.object({
+    kind: z.literal("skill_progress"),
+    materializationKey: z.string(),
+    actorId: z.string(),
+    skillXp: z.record(z.number()),
+    sourceKind: z.string(),
+  }),
+  z.object({
+    kind: z.literal("character_progress"),
+    materializationKey: z.string(),
+    actorId: z.string(),
+    xpDelta: z.number(),
+    sourceKind: z.string(),
+  }),
+  z.object({
     kind: z.literal("quest_accept"),
     materializationKey: z.string(),
     actorId: z.string(),
     questSource: z.enum(["grove", "bible"]),
     questId: z.string(),
-    giverEntityId: z.number(),
+    giverEntityId: z.union([z.number(), z.string()]).optional(),
     sourceKind: z.string(),
   }),
   z.object({
@@ -990,12 +1010,14 @@ function slimBuildingMaterializationPlanForClient(
     operation: raw.operation,
     decorationId: raw.decorationId,
     materializesSolidVoxelBuilding: raw.materializesSolidVoxelBuilding,
-    editCount: Array.isArray(raw.edits) ? raw.edits.length : 0,
+    editCount: Array.isArray(raw.edits)
+      ? raw.edits.length
+      : Math.max(0, Math.trunc(Number(raw.editCount ?? 0))),
     inWorldMarkerCount: Array.isArray(raw.inWorldMarkers)
       ? raw.inWorldMarkers.length
-      : 0,
-    hasSafeZone: Boolean(raw.safeZone),
-    hasPlaceGroup: Boolean(raw.placeGroup),
+      : Math.max(0, Math.trunc(Number(raw.inWorldMarkerCount ?? 0))),
+    hasSafeZone: Boolean(raw.safeZone ?? raw.hasSafeZone),
+    hasPlaceGroup: Boolean(raw.placeGroup ?? raw.hasPlaceGroup),
   };
 }
 
@@ -1214,14 +1236,24 @@ export async function markBuildingMaterializationPlansAppliedForTest(input: {
   plans: readonly BuildingSystemAnyMaterializationPlan[];
   nowMs?: number;
 }) {
-  const structureIds = [
+  const solidStructureIds = [
     ...new Set(
       input.plans
         .filter((plan) => plan.materializesSolidVoxelBuilding)
         .map((plan) => plan.projectId ?? plan.requestId)
     ),
   ];
-  if (structureIds.length === 0) return 0;
+  const completedNonSolidRequestIds = new Set(
+    input.plans
+      .filter((plan) => !plan.materializesSolidVoxelBuilding)
+      .map((plan) => plan.requestId)
+  );
+  if (
+    solidStructureIds.length === 0 &&
+    completedNonSolidRequestIds.size === 0
+  ) {
+    return 0;
+  }
 
   for (let attempt = 0; attempt < 5; attempt += 1) {
     await input.redisPrimary.watch(input.sharedWorldStateKey);
@@ -1235,10 +1267,26 @@ export async function markBuildingMaterializationPlansAppliedForTest(input: {
       return 0;
     }
     let changed = 0;
-    for (const structureId of structureIds) {
+    for (const structureId of solidStructureIds) {
       const structure = shared.building.placedStructures[structureId];
       if (structure && structure.materializedInEcs !== true) {
         structure.materializedInEcs = true;
+        changed += 1;
+      }
+    }
+    // Non-solid plans (safe-ground claims, deed/boundary markers, cleanup,
+    // and decoration edits) have no placedStructure record to acknowledge.
+    // Their continued presence is therefore the durable "pending" marker.
+    // Remove every matching stored entry only after the world write succeeds;
+    // a failed write remains queued for exact-idempotency replay or read_state.
+    for (const [storedKey, plan] of Object.entries(
+      shared.building.materializationPlans
+    )) {
+      if (
+        !plan.materializesSolidVoxelBuilding &&
+        completedNonSolidRequestIds.has(plan.requestId)
+      ) {
+        delete shared.building.materializationPlans[storedKey];
         changed += 1;
       }
     }
@@ -1336,6 +1384,9 @@ function wire_network_requests_to_validateHarthmereLiveModeAuthorityEnvelope(
   serverActorAccountBankItemCounts?: Record<string, number>,
   serverActorAccountBankMaxSlots?: number,
   serverActorStanding?: HarthmereLiveModeAuthorityEnvelope["serverActorStanding"],
+  serverActorKilledEntityAtMs?: Record<string, number>,
+  serverActorSkillXp?: Record<string, number>,
+  serverActorSkillProgressionInitialized?: boolean,
   serverNativeThaedrynHealthPct?: number
 ): HarthmereLiveModeAuthorityEnvelope {
   const now = Date.now();
@@ -1364,6 +1415,9 @@ function wire_network_requests_to_validateHarthmereLiveModeAuthorityEnvelope(
     serverActorAccountBankItemCounts,
     serverActorAccountBankMaxSlots,
     serverActorStanding,
+    serverActorKilledEntityAtMs,
+    serverActorSkillXp,
+    serverActorSkillProgressionInitialized,
     serverTargetPosition,
     clientSentAtMs: body.clientSentAtMs,
     serverReceivedAtMs: now,
@@ -1423,6 +1477,13 @@ export async function readServerActorNativeContextForLiveMode(
     let standing:
       | NonNullable<HarthmereLiveModeAuthorityEnvelope["serverActorStanding"]>
       | undefined;
+    let killedEntityAtMs: Record<string, number> = {};
+    const skillXp = readAllHarthmereNativeSkillTotalXp(
+      entity?.triggerState?.()
+    );
+    const skillProgressionInitialized = hasHarthmereNativeSkillProgression(
+      entity?.triggerState?.()
+    );
     let gold = 0;
     if (includeItemIds) {
       const inventory = entity?.inventory?.();
@@ -1551,6 +1612,9 @@ export async function readServerActorNativeContextForLiveMode(
         notoriety: nativeVitals.notoriety,
         notorietyFloor: nativeVitals.notorietyFloor,
       };
+      killedEntityAtMs = readHarthmereJobsBoardNativeKillLedger(
+        entity?.triggerState?.()
+      );
       // Wearing is evidence that an item is equipped, not spendable inventory.
       // Excluding it prevents a delivery/cooking exchange from consuming armor
       // or clothing merely because it shares the requested item identity.
@@ -1576,6 +1640,9 @@ export async function readServerActorNativeContextForLiveMode(
       accountBankItemCounts: includeItemIds ? accountBankItemCounts : undefined,
       accountBankMaxSlots: includeItemIds ? accountBankMaxSlots : undefined,
       standing: includeItemIds ? standing : undefined,
+      killedEntityAtMs: includeItemIds ? killedEntityAtMs : undefined,
+      skillXp,
+      skillProgressionInitialized,
     };
   } catch {
     return {
@@ -1593,6 +1660,9 @@ export async function readServerActorNativeContextForLiveMode(
       accountBankItemCounts: includeItemIds ? {} : undefined,
       accountBankMaxSlots: undefined,
       standing: undefined,
+      killedEntityAtMs: includeItemIds ? {} : undefined,
+      skillXp: {},
+      skillProgressionInitialized: false,
     };
   }
 }
@@ -2403,13 +2473,20 @@ export async function materializeBuildingSystemMaterializationPlansToTerrain(inp
         }
         const seed = new voxeloo.VolumeBlock_U32();
         const diff = new voxeloo.SparseBlock_U32();
-        const placer = new voxeloo.SparseBlock_U32();
-        const occupancy = new voxeloo.SparseBlock_U32();
+        // Terrain placer and occupancy components are serialized F64 tensors,
+        // not SparseBlock_U32 values. Decoding production tensor buffers as
+        // sparse blocks trips Voxeloo's transport "size" assertion and leaves
+        // the Redis property committed while its physical terrain write is
+        // deferred. Keep diff as a sparse terrain override, but use the
+        // canonical tensor representation for ownership/collision metadata.
+        const placer = Tensor.make(voxeloo, SHARD_SHAPE, "F64");
+        const occupancy = Tensor.make(voxeloo, SHARD_SHAPE, "F64");
         try {
           loadBlockWrapper(voxeloo, seed, terrainEntity.shardSeed());
           loadBlockWrapper(voxeloo, diff, terrainEntity.shardDiff());
-          loadBlockWrapper(voxeloo, placer, terrainEntity.shardPlacer());
-          loadBlockWrapper(voxeloo, occupancy, terrainEntity.shardOccupancy());
+          placer.load(terrainEntity.shardPlacer()?.buffer);
+          occupancy.load(terrainEntity.shardOccupancy()?.buffer);
+          const placerUpdate = new TensorUpdate(placer);
           for (const edit of shardEdits) {
             const localPosition = blockPos(...edit.position);
             const currentValue =
@@ -2425,7 +2502,7 @@ export async function materializeBuildingSystemMaterializationPlansToTerrain(inp
             }
             if (edit.value === 0) {
               if (currentValue === 0) {
-                placer.del(...localPosition);
+                placerUpdate.set(localPosition, 0);
                 continue;
               }
               if (
@@ -2443,13 +2520,13 @@ export async function materializeBuildingSystemMaterializationPlansToTerrain(inp
               } else {
                 diff.set(...localPosition, 0);
               }
-              placer.del(...localPosition);
+              placerUpdate.set(localPosition, 0);
             } else {
               if (currentValue === edit.value) {
                 // Idempotent retry. Preserve another actor's placer metadata rather
                 // than silently taking ownership of an already-materialized voxel.
                 if (!currentPlacer) {
-                  placer.set(...localPosition, edit.placerId);
+                  placerUpdate.set(localPosition, edit.placerId);
                 }
                 continue;
               }
@@ -2464,17 +2541,15 @@ export async function materializeBuildingSystemMaterializationPlansToTerrain(inp
                 );
               }
               diff.set(...localPosition, edit.value);
-              placer.set(...localPosition, edit.placerId);
+              placerUpdate.set(localPosition, edit.placerId);
             }
           }
+          placerUpdate.apply();
           terrainEntity.mutableShardDiff().buffer = saveBlockWrapper(
             voxeloo,
             diff
           ).buffer;
-          terrainEntity.mutableShardPlacer().buffer = saveBlockWrapper(
-            voxeloo,
-            placer
-          ).buffer;
+          terrainEntity.mutableShardPlacer().buffer = placer.save();
           changedShardCount += 1;
         } finally {
           seed.delete();
@@ -2549,6 +2624,102 @@ export async function materializeHarthmereEscortCompanionsToEcs(input: {
   return { changeCount: changes.length, outcome: applied.outcome };
 }
 
+async function pendingBuildingMaterializationPlansForReplay(input: {
+  redisPrimary: any;
+  response: LiveModeResponse;
+}) {
+  const storedPlanRefs =
+    input.response.backendMutation?.buildingMaterializationPlans;
+  if (!storedPlanRefs?.length) {
+    return [] as BuildingSystemAnyMaterializationPlan[];
+  }
+  const requestedPlanIds = new Set(
+    storedPlanRefs.map((plan) => plan.requestId).filter(Boolean)
+  );
+  const rawSharedState = await input.redisPrimary.get(
+    harthmereLiveModeSharedWorldStateKey()
+  );
+  const shared = parseHarthmereLiveModeSharedWorldState(
+    rawSharedState,
+    Date.now()
+  );
+  if (!shared) return [] as BuildingSystemAnyMaterializationPlan[];
+  return Object.values(shared.building.materializationPlans).filter((plan) => {
+    if (!requestedPlanIds.has(plan.requestId)) return false;
+    if (!plan.materializesSolidVoxelBuilding) return true;
+    return (
+      shared.building.placedStructures[plan.projectId ?? plan.requestId]
+        ?.materializedInEcs !== true
+    );
+  });
+}
+
+async function materializeCommittedBuildingPlans(input: {
+  redisPrimary: any;
+  askApi?: Pick<AskApi, "scanForExport">;
+  logicApi: LogicApi;
+  worldApi?: WorldApi;
+  userId?: BiomesId;
+  plans: BuildingSystemAnyMaterializationPlan[];
+}) {
+  const warnings: string[] = [];
+  const materializerUserId =
+    input.userId ?? HARTHMERE_WORLD_MATERIALIZER_USER_ID;
+  if (input.userId === undefined) {
+    if (input.worldApi) {
+      await ensureHarthmereWorldMaterializerPlayerExists(input.worldApi);
+      warnings.push("building_materializer_player_ensured");
+    } else {
+      warnings.push("building_materializer_player_not_ensured:no_world_api");
+    }
+  }
+  const counts =
+    input.worldApi && input.askApi
+      ? await materializeBuildingSystemMaterializationPlansToTerrain({
+          askApi: input.askApi,
+          logicApi: input.logicApi,
+          userId: materializerUserId,
+          worldApi: input.worldApi,
+          plans: input.plans,
+        })
+      : await publishBuildingSystemMaterializationPlansToEcs({
+          askApi: input.askApi,
+          logicApi: input.logicApi,
+          userId: materializerUserId,
+          plans: input.plans,
+        });
+  const acknowledgedPlans =
+    await markBuildingMaterializationPlansAppliedForTest({
+      redisPrimary: input.redisPrimary,
+      sharedWorldStateKey: harthmereLiveModeSharedWorldStateKey(),
+      plans: input.plans,
+      nowMs: Date.now(),
+    });
+  warnings.push(
+    `building_materialized:edit_events:${counts.editEventCount}:place_group_events:${counts.placeGroupEventCount}:publish_batches:${counts.publishBatchCount}`
+  );
+  if (acknowledgedPlans > 0) {
+    warnings.push(`building_materialization_acknowledged:${acknowledgedPlans}`);
+  }
+  if (counts.directTerrainEditCount > 0) {
+    warnings.push(
+      `building_materialized_direct_terrain:terrain_edits:${counts.directTerrainEditCount}:terrain_shards:${counts.directTerrainShardCount}`
+    );
+  }
+  if (counts.shiftedOutpostEditEventCount > 0) {
+    warnings.push(
+      `building_materialized_harthmere_outpost_world_shifted:edit_events:${counts.shiftedOutpostEditEventCount}`
+    );
+  }
+  if (counts.usedLegacyShardIds) {
+    warnings.push("building_materialized_without_terrain_entity_resolution");
+  }
+  if (input.userId === undefined) {
+    warnings.push("building_materialized_with_world_materializer_user");
+  }
+  return warnings;
+}
+
 async function hydrateAndRepairHarthmereLiveModeIdempotencyReplay(input: {
   redisPrimary: any;
   idempotencyRedisKey: string;
@@ -2557,103 +2728,144 @@ async function hydrateAndRepairHarthmereLiveModeIdempotencyReplay(input: {
   worldApi?: WorldApi;
   idGenerator?: IdGenerator;
   logicApi: LogicApi;
+  askApi?: Pick<AskApi, "scanForExport">;
+  userId?: BiomesId;
 }) {
   const hydrated = await hydrateHarthmereLiveModeIdempotencyReplay(input);
-  const storedPlans = hydrated.backendMutation?.nativeEcsMaterializationPlans;
-  const plans = storedPlans?.length
+  const storedNativePlans =
+    hydrated.backendMutation?.nativeEcsMaterializationPlans;
+  const nativePlans = storedNativePlans?.length
     ? bindHarthmereNativeEcsMaterializationPlansToActorForTest(
-        storedPlans,
+        storedNativePlans,
         input.response.actorId,
         input.envelope.serverActorEntityId
       )
     : undefined;
-  if (!plans?.length) return hydrated;
-  if (hydrated.backendMutation) {
-    hydrated.backendMutation.nativeEcsMaterializationPlans = plans;
+  if (nativePlans?.length && hydrated.backendMutation) {
+    hydrated.backendMutation.nativeEcsMaterializationPlans = nativePlans;
   }
-  const requiresAtomicNativeMaterialization = plans.some(
-    (plan) => plan.kind !== "drop"
+  const requiresAtomicNativeMaterialization = Boolean(
+    nativePlans?.some((plan) => plan.kind !== "drop")
   );
-  let repairError: unknown;
+  let nativeRepairError: unknown;
+  let buildingRepairError: unknown;
+  let repaired = false;
 
-  try {
-    if (!input.worldApi || !input.idGenerator) {
-      throw new Error(!input.worldApi ? "no_world_api" : "no_id_generator");
-    } else {
-      const result = await materializeHarthmereNativeEcsPlans({
+  if (nativePlans?.length) {
+    repaired = true;
+    try {
+      if (!input.worldApi || !input.idGenerator) {
+        throw new Error(!input.worldApi ? "no_world_api" : "no_id_generator");
+      } else {
+        const result = await materializeHarthmereNativeEcsPlans({
+          redisPrimary: input.redisPrimary,
+          worldApi: input.worldApi,
+          idGenerator: input.idGenerator,
+          logicApi: input.logicApi,
+          plans: nativePlans,
+        });
+        hydrated.backendMutation?.warnings.push(
+          `native_ecs_replay_repaired:created:${result.created}:existing:${result.alreadyMaterialized}`
+        );
+        if (result.created > 0) {
+          const now = Date.now();
+          const { rawState, rawSharedState } =
+            await readHarthmerePlayerAndSharedStateStrings(
+              input.redisPrimary,
+              harthmereLiveModePlayerStateKey(input.response.actorId),
+              harthmereLiveModeSharedWorldStateKey()
+            );
+          const replayState = parseHarthmereLiveModeBackendState(
+            rawState,
+            input.response.actorId,
+            now
+          );
+          mergeHarthmereLiveModeSharedWorldStateIntoBackend(
+            replayState,
+            parseHarthmereLiveModeSharedWorldState(rawSharedState, now),
+            now
+          );
+          const projectedState =
+            projectHarthmereNativeEcsPlansOntoClientStateForTest(
+              replayState,
+              input.envelope,
+              nativePlans
+            );
+          const includedSnapshotSet = new Set(
+            (hydrated.includedSnapshots ?? []).filter(
+              isHarthmereLiveModeMutationSnapshotKey
+            )
+          );
+          populateHarthmereLiveModeResponseSnapshots({
+            response: hydrated,
+            state: projectedState,
+            includedSnapshots: includedSnapshotSet,
+            requestedCraftingStationId:
+              typeof input.envelope.payload.stationId === "string"
+                ? input.envelope.payload.stationId
+                : typeof input.envelope.payload.stationId === "number"
+                ? String(Math.trunc(input.envelope.payload.stationId))
+                : undefined,
+            requestedCraftingStationType:
+              typeof input.envelope.payload.stationType === "string"
+                ? input.envelope.payload.stationType
+                : undefined,
+            nowMs: now,
+          });
+        }
+      }
+    } catch (error) {
+      nativeRepairError = error;
+      hydrated.backendMutation?.warnings.push(
+        `native_ecs_replay_repair_deferred:${String(
+          error instanceof Error ? error.message : error
+        ).slice(0, 240)}`
+      );
+    }
+  }
+
+  const buildingPlans = await pendingBuildingMaterializationPlansForReplay({
+    redisPrimary: input.redisPrimary,
+    response: input.response,
+  });
+  if (buildingPlans.length > 0) {
+    repaired = true;
+    try {
+      const warnings = await materializeCommittedBuildingPlans({
         redisPrimary: input.redisPrimary,
-        worldApi: input.worldApi,
-        idGenerator: input.idGenerator,
+        askApi: input.askApi,
         logicApi: input.logicApi,
-        plans,
+        worldApi: input.worldApi,
+        userId: input.userId,
+        plans: buildingPlans,
       });
       hydrated.backendMutation?.warnings.push(
-        `native_ecs_replay_repaired:created:${result.created}:existing:${result.alreadyMaterialized}`
+        ...warnings,
+        `building_materialization_replay_repaired:plans:${buildingPlans.length}`
       );
-      if (result.created > 0) {
-        const now = Date.now();
-        const { rawState, rawSharedState } =
-          await readHarthmerePlayerAndSharedStateStrings(
-            input.redisPrimary,
-            harthmereLiveModePlayerStateKey(input.response.actorId),
-            harthmereLiveModeSharedWorldStateKey()
-          );
-        const replayState = parseHarthmereLiveModeBackendState(
-          rawState,
-          input.response.actorId,
-          now
-        );
-        mergeHarthmereLiveModeSharedWorldStateIntoBackend(
-          replayState,
-          parseHarthmereLiveModeSharedWorldState(rawSharedState, now),
-          now
-        );
-        const projectedState =
-          projectHarthmereNativeEcsPlansOntoClientStateForTest(
-            replayState,
-            input.envelope,
-            plans
-          );
-        const includedSnapshotSet = new Set(
-          (hydrated.includedSnapshots ?? []).filter(
-            isHarthmereLiveModeMutationSnapshotKey
-          )
-        );
-        populateHarthmereLiveModeResponseSnapshots({
-          response: hydrated,
-          state: projectedState,
-          includedSnapshots: includedSnapshotSet,
-          requestedCraftingStationId:
-            typeof input.envelope.payload.stationId === "string"
-              ? input.envelope.payload.stationId
-              : typeof input.envelope.payload.stationId === "number"
-              ? String(Math.trunc(input.envelope.payload.stationId))
-              : undefined,
-          requestedCraftingStationType:
-            typeof input.envelope.payload.stationType === "string"
-              ? input.envelope.payload.stationType
-              : undefined,
-          nowMs: now,
-        });
-      }
+    } catch (error) {
+      buildingRepairError = error;
+      hydrated.backendMutation?.warnings.push(
+        `building_materialization_replay_deferred:${String(
+          error instanceof Error ? error.message : error
+        ).slice(0, 240)}`
+      );
     }
-  } catch (error) {
-    repairError = error;
-    hydrated.backendMutation?.warnings.push(
-      `native_ecs_replay_repair_deferred:${String(
-        error instanceof Error ? error.message : error
-      ).slice(0, 240)}`
-    );
   }
 
-  await input.redisPrimary.set(
-    input.idempotencyRedisKey,
-    JSON.stringify(slimHarthmereLiveModeIdempotencyResponse(hydrated)),
-    "EX",
-    24 * 60 * 60
-  );
-  if (requiresAtomicNativeMaterialization && repairError) {
-    throw repairError;
+  if (repaired) {
+    await input.redisPrimary.set(
+      input.idempotencyRedisKey,
+      JSON.stringify(slimHarthmereLiveModeIdempotencyResponse(hydrated)),
+      "EX",
+      24 * 60 * 60
+    );
+  }
+  if (requiresAtomicNativeMaterialization && nativeRepairError) {
+    throw nativeRepairError;
+  }
+  if (buildingRepairError) {
+    throw buildingRepairError;
   }
   return hydrated;
 }
@@ -3043,6 +3255,8 @@ export async function persistHarthmereLiveModeResponse(
       worldApi: deps.worldApi,
       idGenerator: deps.idGenerator,
       logicApi: deps.logicApi,
+      askApi: deps.askApi,
+      userId: deps.userId,
     });
   }
   const stateAdoption = normalizeHarthmereLiveModeActorStateAdoption({
@@ -3560,72 +3774,20 @@ export async function persistHarthmereLiveModeResponse(
       // commit succeeds. This keeps ECS side effects downstream of durable state.
       if (reduced.summary.buildingMaterializationPlans?.length) {
         stageStartedAt = Date.now();
-        const materializerUserId =
-          deps.userId ?? HARTHMERE_WORLD_MATERIALIZER_USER_ID;
+        let buildingMaterializationError: unknown;
         try {
-          if (deps.userId === undefined) {
-            if (deps.worldApi) {
-              await ensureHarthmereWorldMaterializerPlayerExists(deps.worldApi);
-              persistedResponse.backendMutation?.warnings.push(
-                "building_materializer_player_ensured"
-              );
-            } else {
-              persistedResponse.backendMutation?.warnings.push(
-                "building_materializer_player_not_ensured:no_world_api"
-              );
-            }
-          }
-          const materializationCounts =
-            deps.worldApi && deps.askApi
-              ? await materializeBuildingSystemMaterializationPlansToTerrain({
-                  askApi: deps.askApi,
-                  logicApi: deps.logicApi,
-                  userId: materializerUserId,
-                  worldApi: deps.worldApi,
-                  plans: reduced.summary.buildingMaterializationPlans,
-                })
-              : await publishBuildingSystemMaterializationPlansToEcs({
-                  askApi: deps.askApi,
-                  logicApi: deps.logicApi,
-                  userId: materializerUserId,
-                  plans: reduced.summary.buildingMaterializationPlans,
-                });
-          const acknowledgedStructures =
-            await markBuildingMaterializationPlansAppliedForTest({
-              redisPrimary: txPrimary,
-              sharedWorldStateKey,
-              plans: reduced.summary.buildingMaterializationPlans,
-              nowMs: Date.now(),
-            });
           persistedResponse.backendMutation?.warnings.push(
-            `building_materialized:edit_events:${materializationCounts.editEventCount}:place_group_events:${materializationCounts.placeGroupEventCount}:publish_batches:${materializationCounts.publishBatchCount}`
+            ...(await materializeCommittedBuildingPlans({
+              redisPrimary: txPrimary,
+              askApi: deps.askApi,
+              logicApi: deps.logicApi,
+              worldApi: deps.worldApi,
+              userId: deps.userId,
+              plans: reduced.summary.buildingMaterializationPlans,
+            }))
           );
-          if (acknowledgedStructures > 0) {
-            persistedResponse.backendMutation?.warnings.push(
-              `building_materialization_acknowledged:${acknowledgedStructures}`
-            );
-          }
-          if (materializationCounts.directTerrainEditCount > 0) {
-            persistedResponse.backendMutation?.warnings.push(
-              `building_materialized_direct_terrain:terrain_edits:${materializationCounts.directTerrainEditCount}:terrain_shards:${materializationCounts.directTerrainShardCount}`
-            );
-          }
-          if (materializationCounts.shiftedOutpostEditEventCount > 0) {
-            persistedResponse.backendMutation?.warnings.push(
-              `building_materialized_harthmere_outpost_world_shifted:edit_events:${materializationCounts.shiftedOutpostEditEventCount}`
-            );
-          }
-          if (materializationCounts.usedLegacyShardIds) {
-            persistedResponse.backendMutation?.warnings.push(
-              "building_materialized_without_terrain_entity_resolution"
-            );
-          }
-          if (deps.userId === undefined) {
-            persistedResponse.backendMutation?.warnings.push(
-              "building_materialized_with_world_materializer_user"
-            );
-          }
         } catch (error) {
+          buildingMaterializationError = error;
           persistedResponse.backendMutation?.warnings.push(
             `building_materialization_deferred:${String(
               error instanceof Error ? error.message : error
@@ -3641,6 +3803,13 @@ export async function persistHarthmereLiveModeResponse(
           24 * 60 * 60
         );
         mark("materialization_ms", stageStartedAt);
+        if (buildingMaterializationError) {
+          // The durable decision is safe to replay, but a 2xx response must not
+          // tell the browser that a home/business exists before its approved
+          // world write succeeds. The client retries this exact idempotency key;
+          // the replay path above rematerializes the full plan from shared state.
+          throw buildingMaterializationError;
+        }
       }
 
       if (
@@ -3887,6 +4056,9 @@ export default biomesApiHandler(
             accountBankItemCounts: undefined,
             accountBankMaxSlots: undefined,
             standing: undefined,
+            killedEntityAtMs: undefined,
+            skillXp: undefined,
+            skillProgressionInitialized: undefined,
           }),
       readServerTargetPositionForQuestInvite(worldApi, body),
       readServerNativeThaedrynHealthPct(worldApi, body),
@@ -3911,6 +4083,9 @@ export default biomesApiHandler(
         serverActorContext.accountBankItemCounts,
         serverActorContext.accountBankMaxSlots,
         serverActorContext.standing,
+        serverActorContext.killedEntityAtMs,
+        serverActorContext.skillXp,
+        serverActorContext.skillProgressionInitialized,
         serverNativeThaedrynHealthPct
       );
     const validation = validateHarthmereLiveModeAuthorityEnvelope(envelope);

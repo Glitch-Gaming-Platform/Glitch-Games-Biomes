@@ -488,17 +488,39 @@ export function elevenLabsSpokenTextForTest(text: string | undefined) {
 
 export function elevenLabsNaturalVoiceSettingsForTest(input: {
   actorKind?: HarthmereVoiceActorKind;
+  deliveryStyle?: string;
   rate?: string;
 }) {
+  const countryDelivery = input.deliveryStyle === "country";
   return {
-    stability: stabilityForActorKind(input.actorKind),
+    // A little more variation and a slightly slower pace keeps a country
+    // drawl human without becoming theatrical or slurred.
+    stability: countryDelivery ? 0.5 : stabilityForActorKind(input.actorKind),
     similarity_boost: 0.82,
     // Style exaggeration frequently causes artifacts and uneven pacing. The
     // voice and punctuation provide expression without this extra control.
     style: 0,
     use_speaker_boost: true,
-    speed: speedForVoiceRate(input.rate),
+    speed: countryDelivery ? 0.98 : speedForVoiceRate(input.rate),
   };
+}
+
+export function elevenLabsDeliveryTextForTest(input: {
+  text: string;
+  actorKind?: HarthmereVoiceActorKind;
+  deliveryStyle?: string;
+  modelId: string;
+}) {
+  if (input.modelId !== "eleven_v3") {
+    return input.text;
+  }
+  if (input.actorKind === "robot") {
+    return `[robotic, precise, lightly degraded transmission]\n${input.text}`;
+  }
+  if (input.deliveryStyle === "country") {
+    return `[warm country drawl, relaxed, natural conversation]\n${input.text}`;
+  }
+  return input.text;
 }
 
 function languageCodeForModel(language: string | undefined, modelId: string) {
@@ -562,6 +584,12 @@ export async function synthesizeElevenLabsSpeech(input: {
 
   const parsed = parseHarthmereAzureVoiceId(input.voiceProfileId);
   const languageCode = languageCodeForModel(input.language, config.modelId);
+  const synthesisText = elevenLabsDeliveryTextForTest({
+    text,
+    actorKind: parsed?.actorKind,
+    deliveryStyle: parsed?.deliveryStyle,
+    modelId: config.modelId,
+  });
   const url = new URL(
     `${config.apiBaseUrl}/v1/text-to-speech/${encodeURIComponent(
       voice.voice_id
@@ -569,7 +597,7 @@ export async function synthesizeElevenLabsSpeech(input: {
   );
   url.searchParams.set("output_format", config.outputFormat);
   const body = {
-    text,
+    text: synthesisText,
     model_id: config.modelId,
     ...(languageCode ? { language_code: languageCode } : {}),
     // Normalize dates, numbers, and abbreviations before synthesis so they are
@@ -577,6 +605,7 @@ export async function synthesizeElevenLabsSpeech(input: {
     apply_text_normalization: "on",
     voice_settings: elevenLabsNaturalVoiceSettingsForTest({
       actorKind: parsed?.actorKind,
+      deliveryStyle: parsed?.deliveryStyle,
       rate: parsed?.rate,
     }),
     seed: stableHarthmereVoiceHash(

@@ -6,6 +6,11 @@ import {
   type HarthmereLiveModeBackendState,
 } from "../live_mode_backend";
 import { HARTHMERE_COOKING_RECIPES } from "../mmo_farming_food_stamina";
+import {
+  HARTHMERE_CARRY_WEIGHT_LIMIT,
+  harthmereInventoryCarryWeight,
+} from "../mmo_carry_weight";
+import { HARTHMERE_DEFAULT_INVENTORY_SLOTS } from "../mmo_inventory_authority";
 import type {
   HarthmereLiveModeActionKind,
   HarthmereLiveModeAuthorityEnvelope,
@@ -152,6 +157,88 @@ describe("Harthmere live-mode cooking backend", () => {
       (collected.state.classMagic.skills.cooking?.xp ?? 0) >=
         HARTHMERE_COOKING_RECIPES.grilled_meat.xp,
       JSON.stringify(collected.state.classMagic.skills.cooking)
+    );
+  });
+
+  it("end-to-end: collects cooked meat while overweight when one backpack slot is free", () => {
+    const beforeCooking = Object.fromEntries(
+      Array.from(
+        { length: HARTHMERE_DEFAULT_INVENTORY_SLOTS - 1 },
+        (_, index) => [`heavy_fixture_${index}`, 1]
+      )
+    );
+    beforeCooking.raw_meat = 1;
+    const state = freshState();
+    state.inventory.items = { ...beforeCooking };
+
+    const enqueued = reduce(
+      state,
+      {
+        operation: "cook_enqueue",
+        stationId: "ecs:overweight-campfire",
+        stationKind: "campfire",
+        label: "Campfire",
+        recipeId: "grilled_meat",
+        count: 1,
+      },
+      NOW,
+      beforeCooking
+    );
+    assert.deepEqual(
+      enqueued.summary.warnings.filter((warning) =>
+        warning.startsWith("cooking_rejected")
+      ),
+      []
+    );
+    const enqueuePlan = enqueued.summary.nativeEcsMaterializationPlans?.find(
+      (plan) => plan.kind === "inventory_exchange"
+    );
+    assert.equal(enqueuePlan?.kind, "inventory_exchange");
+    if (enqueuePlan?.kind === "inventory_exchange") {
+      assert.deepEqual(enqueuePlan.consumeItemStacks, { raw_meat: 1 });
+    }
+
+    const afterIngredientReservation = { ...beforeCooking };
+    delete afterIngredientReservation.raw_meat;
+    assert.equal(
+      Object.keys(afterIngredientReservation).length,
+      HARTHMERE_DEFAULT_INVENTORY_SLOTS - 1,
+      "ingredient reservation should leave one backpack slot free"
+    );
+    assert.ok(
+      harthmereInventoryCarryWeight(afterIngredientReservation) >
+        HARTHMERE_CARRY_WEIGHT_LIMIT,
+      "fixture must remain overweight after reserving the raw meat"
+    );
+
+    const jobId =
+      enqueued.state.farming.cooking["ecs:overweight-campfire"].jobs[0].jobId;
+    const collected = reduce(
+      enqueued.state,
+      {
+        operation: "cook_collect",
+        stationId: "ecs:overweight-campfire",
+        jobId,
+      },
+      READY_AT,
+      afterIngredientReservation
+    );
+    assert.deepEqual(
+      collected.summary.warnings.filter((warning) =>
+        warning.startsWith("cooking_rejected")
+      ),
+      []
+    );
+    const collectPlan = collected.summary.nativeEcsMaterializationPlans?.find(
+      (plan) => plan.kind === "inventory_exchange"
+    );
+    assert.equal(collectPlan?.kind, "inventory_exchange");
+    if (collectPlan?.kind === "inventory_exchange") {
+      assert.deepEqual(collectPlan.rewardItemStacks, { grilled_meat: 1 });
+    }
+    assert.equal(
+      collected.state.farming.cooking["ecs:overweight-campfire"],
+      undefined
     );
   });
 

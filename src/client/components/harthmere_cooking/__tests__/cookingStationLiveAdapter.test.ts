@@ -146,12 +146,6 @@ describe("cookingStationLiveAdapter — warnings", () => {
       /queue is full/i,
     );
     assert.match(
-      playerMessageFromCookingWarning(
-        "cooking_rejected:carry_weight_limit_exceeded",
-      ),
-      /too heavy/i,
-    );
-    assert.match(
       playerMessageFromCookingWarning("cooking_rejected:missing_input:fresh_carrot"),
       /ingredients/i,
     );

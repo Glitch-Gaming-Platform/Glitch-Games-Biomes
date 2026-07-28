@@ -422,8 +422,8 @@ describe("mmo_guild_authority — bank, treasury, tax, and leveling", function (
     const tooMuch = mutate(withdrawn.guild, APPLICANT, "guild_bank_withdraw", { guildId, itemId: "iron_ore", count: 2, itemGoldValue: 1_000 });
     assert.ok(tooMuch.warnings.includes("guild_rejected:daily_withdraw_limit_exceeded"));
 
-    const blockedWeight = mutate(withdrawn.guild, APPLICANT, "guild_bank_withdraw", { guildId, itemId: "iron_ore", count: 1, itemGoldValue: 1 }, ctx({ canWithdraw: false }));
-    assert.ok(blockedWeight.warnings.includes("guild_rejected:carry_weight_limit_exceeded"));
+    const fullInventory = mutate(withdrawn.guild, APPLICANT, "guild_bank_withdraw", { guildId, itemId: "iron_ore", count: 1, itemGoldValue: 1 }, ctx({ canWithdraw: false }));
+    assert.ok(fullInventory.warnings.includes("guild_rejected:inventory_full"));
   });
 
   it("values guild bank withdrawal limits by count times item value", function () {

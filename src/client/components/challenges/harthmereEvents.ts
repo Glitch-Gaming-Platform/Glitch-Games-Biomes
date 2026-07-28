@@ -11,6 +11,8 @@ export const HARTHMERE_LIVE_EQUIPMENT_EVENT =
   "biomes:harthmere-live-equipment-updated" as const;
 export const HARTHMERE_BUSINESS_INVENTORY_LOOT_UPDATED_EVENT =
   "biomes:harthmere-business-inventory-loot-updated" as const;
+export const HARTHMERE_CRAFT_COMPLETED_EVENT =
+  "biomes:harthmere-craft-completed" as const;
 
 export const HARTHMERE_JOBS_BOARD_OPEN_EVENT =
   "biomes:harthmere-jobs-board-open" as const;

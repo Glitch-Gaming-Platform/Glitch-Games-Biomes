@@ -8,13 +8,11 @@ import assert from "assert";
 
 describe("Chapter 1 NPC voices", () => {
   it("assigns a stable voice and at least one committed line to every voiced actor", () => {
-    const chapterEntries = HARTHMERE_NPC_VOICE_CATALOG.filter(
-      (entry) => entry.source === "chapter_1_identity"
-    );
-    assert.strictEqual(chapterEntries.length, CH1_VOICE_ACTORS.length);
     for (const actor of CH1_VOICE_ACTORS) {
-      const entry = chapterEntries.find(
-        (candidate) => candidate.id === actor.id
+      const entry = HARTHMERE_NPC_VOICE_CATALOG.find(
+        (candidate) =>
+          candidate.displayName === actor.displayName &&
+          candidate.profile.voiceParameterId === actor.profile.voiceParameterId
       );
       assert.ok(
         entry,

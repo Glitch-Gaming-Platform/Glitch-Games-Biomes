@@ -43,6 +43,23 @@ async function actorPosition(worldApi: WorldApi, actorId: BiomesId) {
     : undefined;
 }
 
+async function companionNativeSnapshot(
+  worldApi: WorldApi,
+  companionId: BiomesId
+) {
+  const entity = await worldApi.get(companionId);
+  const position = entity?.position()?.v;
+  const health = entity?.health();
+  if (!position) return undefined;
+  const [x, y, z] = position.map(Number);
+  if (![x, y, z].every(Number.isFinite)) return undefined;
+  return {
+    position: { x, y, z },
+    hp: Number(health?.hp ?? 20),
+    maxHp: Number(health?.maxHp ?? 20),
+  };
+}
+
 async function syncEscortCompanionsToEcs(input: {
   worldApi: WorldApi;
   state: ReturnType<typeof defaultHarthmereLiveModeBackendState>;
@@ -57,9 +74,20 @@ async function syncEscortCompanionsToEcs(input: {
   const existingIds = new Set(
     await input.worldApi.has(companions.map((companion) => companion.entityId))
   );
+  // HARTHMERE_ESCORT: read each existing companion's serialized Anima state so the
+  // escort assignment is MERGED into it rather than replacing it. Anima owns
+  // status, last-seen, and path-failure tracking; the scheduler owns only leader,
+  // policy, formation, leash, and destination.
+  const existingNpcState = new Map<BiomesId, Uint8Array | undefined>();
+  for (const companion of companions) {
+    if (!existingIds.has(companion.entityId)) continue;
+    const entity = await input.worldApi.get(companion.entityId);
+    existingNpcState.set(companion.entityId, entity?.npcState()?.data);
+  }
   const changes = buildHarthmereEscortCompanionNpcProposedChanges({
     companions,
     existingIds,
+    existingNpcState,
     nowSeconds: input.nowMs / 1000,
   });
   if (!changes.length) return 0;
@@ -104,6 +132,10 @@ export async function runHarthmereLiveModeEscortSchedulerTick(input: {
     if (!acceptedActorId) continue;
     const position = await actorPosition(input.worldApi, acceptedActorId);
     if (!position) continue;
+    const nativeCompanion = await companionNativeSnapshot(
+      input.worldApi,
+      companion.entityId
+    );
     const before = JSON.stringify(companion);
     // The reducer's NPC follow path compares the escort's actor to the
     // backend state's actor and resolves that actor's authoritative position
@@ -114,11 +146,22 @@ export async function runHarthmereLiveModeEscortSchedulerTick(input: {
     // Combat snapshots are intentionally actor-private and therefore absent
     // from the shared Redis projection. Reconstruct only this escort's server
     // AI input from the shared companion record before invoking the reducer.
+    //
+    // HARTHMERE_ESCORT: these non-combat values are the LIVE-MODE mirror only.
+    // They exist so the reducer can advance arrival/quest state, and they match
+    // `JOBS_BOARD_ESCORT_DEFAULT_COMBAT_POLICY` ("noncombatant"). Authoritative
+    // combat capability now lives in the ECS escort record this scheduler writes
+    // (see `escort_companion_npc_ecs.ts`), which Anima executes; if a future
+    // contract raises the jobs-board policy, that field is the one to change,
+    // and this mirror must be derived from it rather than hard-coded.
     state.combat.entitySnapshots[String(companion.entityId)] = {
-      hp: 20,
-      maxHp: 20,
-      position: { ...companion.position },
-      homePosition: { ...companion.position },
+      hp: nativeCompanion?.hp ?? 20,
+      maxHp: nativeCompanion?.maxHp ?? 20,
+      // Native ECS/Anima owns movement. The live-mode reducer is now fed the
+      // authoritative observed position so it can mirror progress and complete
+      // arrival, rather than simulating a second companion several metres ahead.
+      position: { ...(nativeCompanion?.position ?? companion.position) },
+      homePosition: { ...(nativeCompanion?.position ?? companion.position) },
       isHostile: false,
       isAlive: true,
       isAttackable: false,
@@ -129,7 +172,10 @@ export async function runHarthmereLiveModeEscortSchedulerTick(input: {
       aggroRange: 0,
       leashRange: 5_000,
       requiresLineOfSight: false,
-      aiEnabled: true,
+      // Force the reducer's movement step to hold. It still runs the arrival
+      // check against this observed ECS position, but it cannot move the mirror
+      // independently of Anima.
+      aiEnabled: false,
       animationState: "idle",
       animationStartedAtMs: input.nowMs,
       animationMoving: false,
@@ -176,7 +222,17 @@ export async function runHarthmereLiveModeEscortSchedulerTick(input: {
 
   if (!changedCompanionIds.length) {
     await input.redis.primary.unwatch();
-    return { changedCompanionIds, syncedEcsCount: 0 };
+    return {
+      changedCompanionIds,
+      // Assignment creation/repair must not depend on the Redis mirror moving.
+      // The ECS builder performs a byte comparison and emits no update when the
+      // assignment is already current.
+      syncedEcsCount: await syncEscortCompanionsToEcs({
+        worldApi: input.worldApi,
+        state,
+        nowMs: input.nowMs,
+      }),
+    };
   }
   const tx = input.redis.primary.multi();
   tx.set(

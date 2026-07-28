@@ -89,7 +89,7 @@ describe("Harthmere stable save actor -> native ECS binding", () => {
         source: "snapshot_grove",
         stepId: `${questId}:1:near_location`,
         progress: 2,
-        objectiveIndex: 0,
+        objectiveIndex: 1,
       }),
       NOW_MS
     );

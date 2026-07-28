@@ -27,6 +27,7 @@ import {
   harthmereNativeRecipeBiscuit,
 } from "@/shared/harthmere/harthmere_native_bikkie_items";
 import { listHarthmereCraftingRecipes } from "@/shared/harthmere/mmo_inventory_authority";
+import { ensureHarthmereProductionCraftingCatalogue } from "@/shared/harthmere/mmo_crafting_catalogue";
 import assert from "assert";
 import { writeHarthmereNativeVitals } from "@/shared/harthmere/harthmere_native_vitals";
 import {
@@ -37,6 +38,7 @@ import { bagCount, countOf } from "@/shared/game/items";
 
 describe("native combat API migration helpers", () => {
   before(() => {
+    ensureHarthmereProductionCraftingCatalogue();
     const definitions = ensureHarthmereNativeItemCatalogue();
     const fixtures = new Map();
     for (const itemId of ["iron_longsword", "leather_armor", "wooden_shield"]) {
@@ -44,11 +46,13 @@ describe("native combat API migration helpers", () => {
       const biscuit = harthmereBiscuitForItemDefinition(definition);
       fixtures.set(biscuit.id, biscuit);
     }
-    const recipe = listHarthmereCraftingRecipes().find(
-      (candidate) =>
-        !candidate.workflowKind || candidate.workflowKind === "craft"
-    )!;
-    const recipeBiscuit = harthmereNativeRecipeBiscuit(recipe)!;
+    const recipeBiscuit = listHarthmereCraftingRecipes()
+      .filter(
+        (candidate) =>
+          !candidate.workflowKind || candidate.workflowKind === "craft"
+      )
+      .map((recipe) => harthmereNativeRecipeBiscuit(recipe))
+      .find((biscuit) => biscuit !== undefined)!;
     fixtures.set(recipeBiscuit.id, recipeBiscuit);
     BikkieRuntime.get().registerBiscuits(fixtures);
   });
@@ -130,7 +134,8 @@ describe("native combat API migration helpers", () => {
   it("migrates compatible recipe ownership into native RecipeBook once", () => {
     const compatible = listHarthmereCraftingRecipes().find(
       (candidate) =>
-        !candidate.workflowKind || candidate.workflowKind === "craft"
+        (!candidate.workflowKind || candidate.workflowKind === "craft") &&
+        harthmereNativeRecipeBiscuit(candidate) !== undefined
     )!;
     const customWorkflow = listHarthmereCraftingRecipes().find(
       (candidate) =>

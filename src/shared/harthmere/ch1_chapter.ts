@@ -34,7 +34,10 @@ import {
   ch1DungeonRunComplete,
 } from "@/shared/harthmere/ch1_dungeons";
 import { ch1ElsewhenSlot } from "@/shared/harthmere/ch1_elsewhen_region";
-import { ch1ActCloseQuest, ch1QuestsForAct } from "@/shared/harthmere/ch1_quests";
+import {
+  ch1ActCloseQuest,
+  ch1QuestsForAct,
+} from "@/shared/harthmere/ch1_quests";
 
 export const CH1_CHAPTER_VERSION = CHAPTER_1_VERSION;
 export const CH1_CHAPTER_ID = CHAPTER_1_ID;
@@ -220,7 +223,10 @@ export function ch1EnterGate(args: {
 
   const slot = ch1ElsewhenSlot(gate.dungeonId);
   if (!slot) {
-    return { ok: false, reason: "no Elsewhen slot is reserved for this dungeon" };
+    return {
+      ok: false,
+      reason: "no Elsewhen slot is reserved for this dungeon",
+    };
   }
 
   return { ok: true, dungeonId: gate.dungeonId, arrival: slot.arrival };
@@ -386,6 +392,8 @@ export const CH1_CARRY_FORWARD_KEYS: readonly string[] = Object.freeze([
   CH1_FLAGS.irisRescued,
   CH1_FLAGS.marrowSaved,
   CH1_FLAGS.rookToken,
+  CH1_FLAGS.jackieReported,
+  CH1_FLAGS.jackieStatementWithheld,
   "ch1_jackie_trust",
   "ch1_lou_trust",
   "augur9_alive",

@@ -4,7 +4,8 @@
 //   ←/→ : move focus between tabs (rolls over)
 //   Enter / Space : activate the focused tab
 //   Tab : moves focus out of the rail (standard browser behavior)
-//   Direct shortcut keys: R/I/P/B/K/Y/L/O/G/Q/J/M/C/V/, also activate.
+//   Direct shortcut keys: I/P/B/K/Y/L/O/G/Q/J/M/C/V/, also activate.
+//   R remains reserved for the native Recipes / handcraft modal.
 //
 // Mouse: click a tab to activate. Hover shows tooltip with shortcut hint.
 
@@ -123,7 +124,11 @@ export const BiomesNav: React.FunctionComponent<BiomesNavProps> = ({
               }}
               role="tab"
               aria-selected={selected}
-              aria-label={`${desc.label} — shortcut ${desc.shortcut}`}
+              aria-label={
+                desc.shortcut
+                  ? `${desc.label} — shortcut ${desc.shortcut}`
+                  : desc.label
+              }
               tabIndex={selected ? 0 : -1}
               data-focused={focused ? "true" : undefined}
               data-tab={tab}
@@ -133,23 +138,27 @@ export const BiomesNav: React.FunctionComponent<BiomesNavProps> = ({
                 onTabChange(tab);
               }}
               onFocus={() => setFocusedIndex(idx)}
-              title={`${desc.label} (${desc.shortcut}) — ${desc.subtitle}`}
+              title={`${desc.label}${
+                desc.shortcut ? ` (${desc.shortcut})` : ""
+              } — ${desc.subtitle}`}
             >
               <span
                 style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
               >
                 {desc.code}
-                <span
-                  style={{
-                    fontSize: 9,
-                    opacity: 0.55,
-                    padding: "1px 4px",
-                    border: "1px solid rgba(232,244,255,0.25)",
-                    borderRadius: 3,
-                  }}
-                >
-                  {desc.shortcut}
-                </span>
+                {desc.shortcut && (
+                  <span
+                    style={{
+                      fontSize: 9,
+                      opacity: 0.55,
+                      padding: "1px 4px",
+                      border: "1px solid rgba(232,244,255,0.25)",
+                      borderRadius: 3,
+                    }}
+                  >
+                    {desc.shortcut}
+                  </span>
+                )}
                 {badge > 0 && (
                   <span
                     aria-label={`${badge} new`}

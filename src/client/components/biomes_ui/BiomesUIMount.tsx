@@ -13,6 +13,7 @@ import { useBiomesUILiveAdapters } from "./adapters/useBiomesUILiveAdapters";
 import { TutorialDirector } from "./tutorial/TutorialDirector";
 import { BiomesUITutorialCueBar } from "./tutorial/BiomesUITutorialCueBar";
 import { BiomesUIVitalsPanel } from "./BiomesUIVitalsPanel";
+import { HarthmereLevelUpCelebration } from "./HarthmereLevelUpCelebration";
 import { HarthmereJobsBoardWorldInteraction } from "@/client/components/harthmere_jobs_board/HarthmereJobsBoardWorldInteraction";
 import { HarthmereWantedBoardWorldInteraction } from "@/client/components/harthmere_wanted_board/HarthmereWantedBoardWorldInteraction";
 import { HarthmereBusinessWorldInteraction } from "@/client/components/harthmere_business/HarthmereBusinessWorldInteraction";
@@ -121,6 +122,7 @@ export const BiomesUIMount: React.FunctionComponent<{
   return (
     <>
       {hudVisibility.vitals && <BiomesUIVitalsPanel />}
+      <HarthmereLevelUpCelebration />
       <BiomesUI
         activeTab={activeTab}
         onActiveTabChange={live.onActiveTabChange}

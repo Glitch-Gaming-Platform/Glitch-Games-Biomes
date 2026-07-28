@@ -30,8 +30,10 @@ const { blockPos, voxelShard } = require("../../src/shared/game/shard");
 const { loadTerrain } = require("../../src/shared/game/terrain");
 const {
   harthmereLiveEntityIsTownLivestock,
+  harthmereLiveEntityIsOpenWildsMixedGroup,
   harthmereLiveEntitySizeForSeed,
   harthmereMuckMonsterPositionIsInSafeZone,
+  harthmereOpenWildsGroundingPositionIsValidForSeed,
   harthmereRespawningLiveCreatureSeeds,
 } = require("../../src/shared/harthmere/live_entity_production_seed");
 const {
@@ -106,6 +108,15 @@ function validCreatureXZ(seed, position) {
   if (!position) return false;
   if (creatureUsesFlatExtensionSurface(seed)) {
     return isHarthmereExtensionWorldPosition(position);
+  }
+  // Open-world groups deliberately live outside Muck containment. Their legal
+  // contract is geometric: stay near the authored encounter, outside every
+  // protected/business/building area, west of additive Harthmere, and away from
+  // Muck territories occupied by the resident families. Requiring these seeds
+  // to be inside Muck made the required deploy grounding pass reject every
+  // relocation before it could probe terrain support.
+  if (harthmereLiveEntityIsOpenWildsMixedGroup(seed)) {
+    return harthmereOpenWildsGroundingPositionIsValidForSeed(seed, position);
   }
   if (seed.kind === "ambient_bandit") {
     return (
@@ -274,6 +285,10 @@ function footprintColumns(position, size) {
   ];
 }
 
+function positionColumnKey(position) {
+  return `${Math.floor(position[0])}:${Math.floor(position[2])}`;
+}
+
 function bodyCanStandAt(solid, position, feetY, size) {
   const bodyBlocks = Math.max(1, Math.ceil(size[1]));
   for (const [x, z] of footprintColumns(position, size)) {
@@ -285,7 +300,13 @@ function bodyCanStandAt(solid, position, feetY, size) {
   return true;
 }
 
-function supportedSurfaceTargetNear(seed, position, size, solid) {
+function supportedSurfaceTargetNear(
+  seed,
+  position,
+  size,
+  solid,
+  targetColumnIsAvailable
+) {
   const offsets = [];
   for (let dx = -10; dx <= 10; dx += 1) {
     for (let dz = -10; dz <= 10; dz += 1) {
@@ -303,6 +324,7 @@ function supportedSurfaceTargetNear(seed, position, size, solid) {
       const target = [x, HARTHMERE_EXTENSION_FEET_Y, z];
       if (
         validCreatureXZ(seed, target) &&
+        targetColumnIsAvailable(target) &&
         bodyCanStandAt(solid, target, HARTHMERE_EXTENSION_FEET_Y, size)
       ) {
         return target;
@@ -317,6 +339,7 @@ function supportedSurfaceTargetNear(seed, position, size, solid) {
       const target = [x, feetY, z];
       if (
         validCreatureXZ(seed, target) &&
+        targetColumnIsAvailable(target) &&
         bodyCanStandAt(solid, target, feetY, size)
       ) {
         return target;
@@ -326,7 +349,7 @@ function supportedSurfaceTargetNear(seed, position, size, solid) {
   return undefined;
 }
 
-function resolveTarget(row, solid) {
+function resolveTarget(row, solid, targetColumnIsAvailable) {
   const size = harthmereLiveEntitySizeForSeed(row.seed);
   const candidates = [row.sourcePosition, row.seed.position];
   for (let index = 0; index < candidates.length; index += 1) {
@@ -334,7 +357,8 @@ function resolveTarget(row, solid) {
       row.seed,
       candidates[index],
       size,
-      solid
+      solid,
+      targetColumnIsAvailable
     );
     if (target) {
       return {
@@ -481,7 +505,31 @@ async function main() {
       targetShardsForRows(rows)
     );
     const solid = makeSolidSampler(terrainByShard);
-    const resolutions = rows.map((row) => resolveTarget(row, solid));
+    // Resolve in manifest order (all Muckers/Hexes before livestock) and reserve
+    // their final columns as we go. A terrain probe may move a creature by a few
+    // blocks to find complete body support, but that search must never move an
+    // open-Wilds relocation onto a Mucker/Hexer column. The reverse reservation
+    // also protects an earlier open-Wilds monster from a later hostile family.
+    const hostileColumns = new Set();
+    const openWildsColumns = new Set();
+    const resolutions = [];
+    for (const row of rows) {
+      const isHostile = row.seed.kind === "ambient_muck_monster";
+      const isOpenWilds = harthmereLiveEntityIsOpenWildsMixedGroup(row.seed);
+      const resolution = resolveTarget(row, solid, (target) => {
+        const column = positionColumnKey(target);
+        return !(
+          (isOpenWilds && hostileColumns.has(column)) ||
+          (isHostile && openWildsColumns.has(column))
+        );
+      });
+      resolutions.push(resolution);
+      if (resolution.target) {
+        const column = positionColumnKey(resolution.target);
+        if (isHostile) hostileColumns.add(column);
+        if (isOpenWilds) openWildsColumns.add(column);
+      }
+    }
     const targetById = new Map(
       rows.map((row, index) => [
         Number(row.seed.entityId),

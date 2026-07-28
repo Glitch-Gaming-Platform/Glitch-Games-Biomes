@@ -10,6 +10,11 @@ import {
   NpcMetadataSelector,
 } from "@/shared/ecs/gen/selectors";
 import type { ReadonlyHealth } from "@/shared/ecs/gen/components";
+import type { ReadonlyEntity } from "@/shared/ecs/gen/entities";
+import { anItem } from "@/shared/game/item";
+import { ch1ElsewhenSlotAt } from "@/shared/harthmere/ch1_elsewhen_region";
+import { isHarthmereBossMusicEncounter } from "@/shared/harthmere/boss_music";
+import { HARTHMERE_EXTENSION_WORLD_BOUNDS } from "@/shared/harthmere/world_extension";
 import type { BiomesId } from "@/shared/ids";
 import { dist } from "@/shared/math/linear";
 import { clamp } from "lodash";
@@ -52,12 +57,45 @@ export function healthIndicatesRecentCombatDamage(
 
 export function selectBackgroundMusicTrack(
   muckyness: number,
-  activeCombat: boolean
+  activeCombat: boolean,
+  position?: { readonly [0]: number; readonly [2]: number },
+  activeBossCombat = false
 ): AudioTrackType {
+  // Regional cues replace only ordinary exploration music. Combat and Muck
+  // preserve their existing priority and restore the current region on exit.
+  if (activeBossCombat) {
+    return "boss_battle_music";
+  }
   if (activeCombat) {
     return "battle_music";
   }
-  return muckyness > 0 ? "muck_music" : "music";
+  if (muckyness > 0) {
+    return "muck_music";
+  }
+  if (!position) {
+    return "music";
+  }
+
+  const elsewhenSlot = ch1ElsewhenSlotAt(position);
+  if (elsewhenSlot?.dungeonId === "ch1_dungeon_desert") {
+    return "ch1_sand_music";
+  }
+  if (elsewhenSlot?.dungeonId === "ch1_dungeon_winter") {
+    return "ch1_winter_music";
+  }
+
+  const x = position[0];
+  const z = position[2];
+  if (
+    x >= HARTHMERE_EXTENSION_WORLD_BOUNDS.minX &&
+    x < HARTHMERE_EXTENSION_WORLD_BOUNDS.maxX &&
+    z >= HARTHMERE_EXTENSION_WORLD_BOUNDS.minZ &&
+    z < HARTHMERE_EXTENSION_WORLD_BOUNDS.maxZ
+  ) {
+    return "harthmere_music";
+  }
+
+  return "music";
 }
 
 export class AudioScript implements Script {
@@ -70,16 +108,35 @@ export class AudioScript implements Script {
     private readonly audioManager: AudioManager
   ) {}
 
-  private isPlayerInActiveCombat(
+  private usesBossBattleMusic(entity: ReadonlyEntity | undefined) {
+    return entity
+      ? isHarthmereBossMusicEncounter({
+          entityId: entity.id,
+          label: entity.label?.text,
+          npcTypeDisplayName: entity.npc_metadata
+            ? anItem(entity.npc_metadata.type_id).displayName
+            : undefined,
+        })
+      : false;
+  }
+
+  private playerCombatMusicState(
     center: [number, number, number],
     nowSeconds: number
   ) {
     const playerHealth = this.table.get(this.userId)?.health;
     if (playerHealth && playerHealth.hp <= 0) {
-      return false;
+      return { activeCombat: false, activeBossCombat: false };
     }
+    let activeCombat = false;
+    let activeBossCombat = false;
     if (healthIndicatesRecentCombatDamage(playerHealth, nowSeconds)) {
-      return true;
+      activeCombat = true;
+      if (playerHealth?.lastDamageSource?.kind === "attack") {
+        activeBossCombat = this.usesBossBattleMusic(
+          this.table.get(playerHealth.lastDamageSource.attacker)
+        );
+      }
     }
 
     for (const npc of this.table.scan(
@@ -88,19 +145,20 @@ export class AudioScript implements Script {
         { approx: true }
       )
     )) {
-      if (
+      const engaged =
         (npc.health?.hp ?? 0) > 0 &&
         (npc.npc_combat_state?.attack_target === this.userId ||
           healthIndicatesRecentCombatDamage(
             npc.health,
             nowSeconds,
             this.userId
-          ))
-      ) {
-        return true;
+          ));
+      if (engaged) {
+        activeCombat = true;
+        activeBossCombat ||= this.usesBossBattleMusic(npc);
       }
     }
-    return false;
+    return { activeCombat, activeBossCombat };
   }
 
   tick(_dt: number) {
@@ -143,15 +201,21 @@ export class AudioScript implements Script {
       );
 
     const { inWater, muckyness } = this.resources.get("/camera/environment");
-    // Cutscene music override wins over the contextual selection (combat/muck)
-    // for the duration of the scene, same precedence as combat music.
+    // Cutscene music override wins over combat, Muck, and regional exploration
+    // for the duration of the scene.
     const cutscene = this.resources.get("/scene/cutscene");
+    const combatMusicState = this.playerCombatMusicState(
+      [...playerPos],
+      nowSeconds
+    );
     this.audioManager.setBackgroundMusicTrack(
       cutscene.active && cutscene.musicOverride
         ? (cutscene.musicOverride as AudioTrackType)
         : selectBackgroundMusicTrack(
             muckyness.get(),
-            this.isPlayerInActiveCombat([...playerPos], nowSeconds)
+            combatMusicState.activeCombat,
+            playerPos,
+            combatMusicState.activeBossCombat
           )
     );
 

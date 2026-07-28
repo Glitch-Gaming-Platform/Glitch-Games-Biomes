@@ -27,8 +27,7 @@ import type {
 } from "@/shared/harthmere/snapshot_grove_content";
 import type { Vec3 } from "@/shared/math/types";
 
-export const GROVE_ECONOMY_STARTER_VERSION =
-  "grove-economy-starter" as const;
+export const GROVE_ECONOMY_STARTER_VERSION = "grove-economy-starter" as const;
 
 // GROVE_ECONOMY_STARTER_CIRCULAR_IMPORT_FIX:
 // Keep this module independent of snapshot_grove_content runtime exports.
@@ -43,10 +42,7 @@ export const GROVE_ECONOMY_STARTER_NPC_FEET_Y =
 export const GROVE_ECONOMY_STARTER_FOUNTAIN_CENTER_X = 496;
 export const GROVE_ECONOMY_STARTER_FOUNTAIN_CENTER_Z = -126;
 
-function groveEconomyFountainPosition(
-  dx: number,
-  dz: number,
-): Vec3 {
+function groveEconomyFountainPosition(dx: number, dz: number): Vec3 {
   return [
     GROVE_ECONOMY_STARTER_FOUNTAIN_CENTER_X + dx,
     GROVE_ECONOMY_STARTER_NPC_FEET_Y,
@@ -54,8 +50,7 @@ function groveEconomyFountainPosition(
   ];
 }
 
-const groveEconomyStarterFountainPosition =
-  groveEconomyFountainPosition;
+const groveEconomyStarterFountainPosition = groveEconomyFountainPosition;
 
 // ---------------------------------------------------------------------------
 // 6 new Grove NPCs — early-economy archetypes from the economy PDF.
@@ -262,6 +257,20 @@ export const GROVE_ECONOMY_STARTER_NPCS: GroveTownsfolkNpc[] = [
 
 export const GROVE_ECONOMY_STARTER_LANDMARKS: SnapshotGroveLandmark[] = [
   {
+    id: "econ_gus_loaf_tray",
+    label: "Gus's Marked Loaf Basket",
+    position: [
+      groveEconomyStarterFountainPosition(-9, 1)[0],
+      groveEconomyStarterFountainPosition(-9, 1)[1] + 1,
+      groveEconomyStarterFountainPosition(-9, 1)[2],
+    ],
+    kind: "resource",
+    area: "the_grove",
+    questIds: ["econ_gus_fresh_loaves_to_fountain"],
+    visibleOnWorldMap: false,
+    activeQuestOnly: true,
+  },
+  {
     id: "econ_gus_oven",
     label: "Gus's Oven",
     position: [
@@ -346,6 +355,15 @@ export const GROVE_ECONOMY_STARTER_LANDMARKS: SnapshotGroveLandmark[] = [
     visibleOnWorldMap: true,
   },
   {
+    id: "econ_billy_lunch_pail",
+    label: "Billy's Lunch Pail",
+    position: [499, FEET_Y + 1, -143],
+    kind: "resource",
+    area: "old_grove_road",
+    questIds: ["econ_billys_lost_lunch_pail"],
+    visibleOnWorldMap: true,
+  },
+  {
     id: "econ_grove_billy_toolbag",
     label: "Billy's Toolbag",
     position: [501, FEET_Y + 1, -139],
@@ -404,8 +422,7 @@ export const GROVE_ECONOMY_STARTER_QUESTS: SnapshotGroveQuest[] = [
     title: "Billy's Lost Lunch Pail",
     giverNpcId: "billy",
     area: "Old Grove Road",
-    hook:
-      "Billy dropped his lunch pail somewhere along his shortcut and now the muck flies are interested.",
+    hook: "Billy dropped his lunch pail somewhere along his shortcut and now the muck flies are interested.",
     objectives: [
       "Hear Billy out about the missing pail.",
       "Search the Old Grove Road post for the dropped pail.",
@@ -416,7 +433,7 @@ export const GROVE_ECONOMY_STARTER_QUESTS: SnapshotGroveQuest[] = [
     markerIds: [
       "npc_billy",
       "old_grove_road_post",
-      "econ_grove_billy_post",
+      "econ_billy_lunch_pail",
       "npc_billy",
     ],
     reward: "8 bling, light-snack note, Billy friendship +1.",
@@ -429,8 +446,7 @@ export const GROVE_ECONOMY_STARTER_QUESTS: SnapshotGroveQuest[] = [
     title: "Billy's Roof Patch Run",
     giverNpcId: "billy",
     area: "Old Grove Road",
-    hook:
-      "Billy needs wood scraps carried from the road kit crate to a leaking shed before the rain returns.",
+    hook: "Billy needs wood scraps carried from the road kit crate to a leaking shed before the rain returns.",
     objectives: [
       "Take the patch order from Billy.",
       "Collect scrap wood from the marked materials basket.",
@@ -454,8 +470,7 @@ export const GROVE_ECONOMY_STARTER_QUESTS: SnapshotGroveQuest[] = [
     title: "Billy's Map Pin Run to Luis",
     giverNpcId: "billy",
     area: "Old Grove Road -> Genesis Crossroads",
-    hook:
-      "Billy wants Luis to know the bent sign is back. He needs a runner who will not get distracted by the cove.",
+    hook: "Billy wants Luis to know the bent sign is back. He needs a runner who will not get distracted by the cove.",
     objectives: [
       "Pick up the map pin from Billy.",
       "Run the Old Grove Road to Luis's repair cart.",
@@ -475,8 +490,7 @@ export const GROVE_ECONOMY_STARTER_QUESTS: SnapshotGroveQuest[] = [
     title: "Merl's Coin Sorting Apprenticeship",
     giverNpcId: "grove_banker_merl",
     area: "The Grove Fountain",
-    hook:
-      "Merl needs a careful hand to sort a day's deposits into the bank satchel without dropping a single coin.",
+    hook: "Merl needs a careful hand to sort a day's deposits into the bank satchel without dropping a single coin.",
     objectives: [
       "Take the deposit slip from Merl.",
       "Open the deposit at the Mail and Bank Satchel.",
@@ -500,8 +514,7 @@ export const GROVE_ECONOMY_STARTER_QUESTS: SnapshotGroveQuest[] = [
     title: "Merl's Vault Inventory Day",
     giverNpcId: "grove_banker_merl",
     area: "The Grove Fountain",
-    hook:
-      "Merl needs the lost-and-found stone inventoried before he opens the vault for the morning's depositors.",
+    hook: "Merl needs the lost-and-found stone inventoried before he opens the vault for the morning's depositors.",
     objectives: [
       "Hear Merl's inventory plan.",
       "Inspect the Lost-and-Found Stone.",
@@ -526,18 +539,17 @@ export const GROVE_ECONOMY_STARTER_QUESTS: SnapshotGroveQuest[] = [
     title: "Fresh Loaves to the Fountain",
     giverNpcId: "gus_the_baker",
     area: "The Grove Fountain",
-    hook:
-      "Gus needs a warm-handed runner to deliver loaves to the fountain before the morning crowd arrives.",
+    hook: "Gus needs a warm-handed runner to deliver loaves to the fountain before the morning crowd arrives.",
     objectives: [
       "Pick up the loaf tray from Gus.",
-      "Carry the tray to the Fountain Food Satchel.",
-      "Place the loaves in the satchel before they cool.",
+      "Pick up the warm loaf tray at Gus's oven.",
+      "Deliver the warm loaves to the Fountain Food Satchel.",
       "Confirm the delivery with Gus.",
     ],
-    triggers: ["talk_npc", "carry", "place_voxel", "talk_npc"],
+    triggers: ["talk_npc", "collect", "interact", "talk_npc"],
     markerIds: [
       "npc_gus_the_baker",
-      "grove_food_satchel",
+      "econ_gus_loaf_tray",
       "grove_food_satchel",
       "npc_gus_the_baker",
     ],
@@ -551,15 +563,14 @@ export const GROVE_ECONOMY_STARTER_QUESTS: SnapshotGroveQuest[] = [
     title: "Gus's Grain Run from the Field",
     giverNpcId: "gus_the_baker",
     area: "The Grove Fountain",
-    hook:
-      "Gus is out of grain and Fern's field has a basket waiting. He'll pay anyone who can run a sack back before noon.",
+    hook: "Gus is out of grain and Fern's field has a basket waiting. He'll pay anyone who can run a sack back before noon.",
     objectives: [
       "Take Gus's empty grain sack.",
       "Collect grain from the marked practice materials.",
-      "Drop the full sack at Gus's oven.",
+      "Deliver the full grain sack at Gus's oven.",
       "Tell Gus the oven is fed.",
     ],
-    triggers: ["talk_npc", "collect", "place_voxel", "talk_npc"],
+    triggers: ["talk_npc", "collect", "interact", "talk_npc"],
     markerIds: [
       "npc_gus_the_baker",
       "grove_resource_basket",
@@ -577,8 +588,7 @@ export const GROVE_ECONOMY_STARTER_QUESTS: SnapshotGroveQuest[] = [
     title: "Water the Sprout Beds",
     giverNpcId: "fern_the_grower",
     area: "The Grove Fountain",
-    hook:
-      "Fern's sprout beds are dry and she needs hands at the basket to carry water before the sun finishes the job.",
+    hook: "Fern's sprout beds are dry and she needs hands at the basket to carry water before the sun finishes the job.",
     objectives: [
       "Get the watering plan from Fern.",
       "Reach Fern's sprout beds.",
@@ -593,8 +603,7 @@ export const GROVE_ECONOMY_STARTER_QUESTS: SnapshotGroveQuest[] = [
       "npc_fern_the_grower",
     ],
     reward: "12 bling, gardener's mark, Fern friendship +1.",
-    sampleDialogue:
-      "A watered row pays in stems. A dry row pays in lectures.",
+    sampleDialogue: "A watered row pays in stems. A dry row pays in lectures.",
     category: "road_story",
   },
   {
@@ -602,8 +611,7 @@ export const GROVE_ECONOMY_STARTER_QUESTS: SnapshotGroveQuest[] = [
     title: "Fern's Berry Patch Harvest",
     giverNpcId: "fern_the_grower",
     area: "The Grove Fountain",
-    hook:
-      "The berry patch ripened overnight and Fern needs them in a basket before the birds find them.",
+    hook: "The berry patch ripened overnight and Fern needs them in a basket before the birds find them.",
     objectives: [
       "Take the basket from Fern.",
       "Pick berries at the patch.",
@@ -628,8 +636,7 @@ export const GROVE_ECONOMY_STARTER_QUESTS: SnapshotGroveQuest[] = [
     title: "Kit's Letters Around the Fountain",
     giverNpcId: "kit_the_courier",
     area: "The Grove Fountain",
-    hook:
-      "Kit has three letters that need to go to three fountain workstations and a runner who can keep them in order.",
+    hook: "Kit has three letters that need to go to three fountain workstations and a runner who can keep them in order.",
     objectives: [
       "Take Kit's letter packet.",
       "Drop the first at the Fountain Lesson Board.",
@@ -637,13 +644,7 @@ export const GROVE_ECONOMY_STARTER_QUESTS: SnapshotGroveQuest[] = [
       "Drop the third at the Mail and Bank Satchel.",
       "Return to Kit for the wage.",
     ],
-    triggers: [
-      "talk_npc",
-      "interact",
-      "interact",
-      "interact",
-      "talk_npc",
-    ],
+    triggers: ["talk_npc", "interact", "interact", "interact", "talk_npc"],
     markerIds: [
       "npc_kit_the_courier",
       "grove_fountain_lesson_board",
@@ -661,16 +662,21 @@ export const GROVE_ECONOMY_STARTER_QUESTS: SnapshotGroveQuest[] = [
     title: "Kit's Heavy Parcel to the Crossroads",
     giverNpcId: "kit_the_courier",
     area: "The Grove Fountain -> Genesis Crossroads",
-    hook:
-      "Kit has a heavy parcel for Luis that nobody wants to carry. Whoever does it gets the best wage on the board.",
+    hook: "Kit has a heavy parcel for Luis that nobody wants to carry. Whoever does it gets the best wage on the board.",
     objectives: [
       "Hear Kit's parcel terms.",
       "Pick up the parcel at Kit's mailbag stand.",
-      "Carry the parcel down the Old Grove Road.",
+      "Carry the parcel down the Old Grove Road to Luis's cart.",
       "Hand the parcel to Luis at his cart.",
       "Return the receipt to Kit.",
     ],
-    triggers: ["talk_npc", "item_grant", "carry", "talk_npc", "talk_npc"],
+    triggers: [
+      "talk_npc",
+      "item_grant",
+      "near_location",
+      "talk_npc",
+      "talk_npc",
+    ],
     markerIds: [
       "npc_kit_the_courier",
       "econ_kit_mailbag",
@@ -689,15 +695,14 @@ export const GROVE_ECONOMY_STARTER_QUESTS: SnapshotGroveQuest[] = [
     title: "Mel's Bench Repair",
     giverNpcId: "mel_the_handyman",
     area: "Genesis Crossroads",
-    hook:
-      "Mel has a bench with a wobbly leg and a customer who will not sit on it again. She'll pay for steady hands.",
+    hook: "Mel has a bench with a wobbly leg and a customer who will not sit on it again. She'll pay for steady hands.",
     objectives: [
       "Take the repair order from Mel.",
       "Pick up the part at Mel's workbench.",
-      "Set the part on the broken safe-zone fence.",
+      "Install the part on the broken safe-zone fence.",
       "Report the fix to Mel.",
     ],
-    triggers: ["talk_npc", "interact", "place_voxel", "talk_npc"],
+    triggers: ["talk_npc", "interact", "interact", "talk_npc"],
     markerIds: [
       "npc_mel_the_handyman",
       "econ_mel_workbench",
@@ -713,8 +718,7 @@ export const GROVE_ECONOMY_STARTER_QUESTS: SnapshotGroveQuest[] = [
     title: "Mel's Broken Hinge Hunt",
     giverNpcId: "mel_the_handyman",
     area: "Genesis Crossroads / Old Grove Road",
-    hook:
-      "Three hinges in town are squealing. Mel will pay double if a runner can inspect all three before sunset.",
+    hook: "Three hinges in town are squealing. Mel will pay double if a runner can inspect all three before sunset.",
     objectives: [
       "Get the hinge list from Mel.",
       "Inspect the Old Grove Road post.",
@@ -741,19 +745,18 @@ export const GROVE_ECONOMY_STARTER_QUESTS: SnapshotGroveQuest[] = [
     title: "Rin's Wild Mushroom Pickup",
     giverNpcId: "rin_the_forager",
     area: "Muck Edges",
-    hook:
-      "Rin marked a safe ring of mushrooms by the muck and needs a runner to harvest before the fog moves them.",
+    hook: "Rin marked a safe ring of mushrooms by the muck and needs a runner to harvest before the fog moves them.",
     objectives: [
       "Meet Rin at the muck edge.",
       "Collect mushrooms from her marked basket.",
-      "Avoid standing in heavy muck while gathering.",
+      "Return to Rin's safe edge without lingering in heavy muck.",
       "Drop the basket back at Rin.",
     ],
-    triggers: ["talk_npc", "collect", "status_check", "talk_npc"],
+    triggers: ["talk_npc", "collect", "near_location", "talk_npc"],
     markerIds: [
       "npc_rin_the_forager",
       "econ_rin_basket",
-      "muckwad_patch",
+      "npc_rin_the_forager",
       "npc_rin_the_forager",
     ],
     reward: "18 bling, safe-harvest note, Rin friendship +1.",
@@ -767,16 +770,15 @@ export const GROVE_ECONOMY_STARTER_QUESTS: SnapshotGroveQuest[] = [
     title: "Carlo's Festival Skewers",
     giverNpcId: "carlo_the_cook",
     area: "The Grove Fountain",
-    hook:
-      "Carlo has a festival cook order and needs a runner-cook to grill skewers at the fountain workbench. Pays the best wage on the starter board.",
+    hook: "Carlo has a festival cook order and needs a runner-cook to grill skewers at the fountain workbench. Pays the best wage on the starter board.",
     objectives: [
       "Take Carlo's skewer recipe.",
       "Gather the ingredients at the marked materials basket.",
       "Cook the skewers at the Fountain Workbench.",
-      "Deliver the tray to Carlo's cookpot.",
+      "Deliver the cooked skewer to Carlo's cookpot.",
       "Settle the wage with Carlo.",
     ],
-    triggers: ["talk_npc", "collect", "craft", "place_voxel", "talk_npc"],
+    triggers: ["talk_npc", "collect", "craft", "interact", "talk_npc"],
     markerIds: [
       "npc_carlo_the_cook",
       "grove_resource_basket",

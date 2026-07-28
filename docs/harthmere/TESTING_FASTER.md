@@ -122,6 +122,45 @@ wrong **inner loop**. The slow parts are not the browser:
 
 `scripts/harthmere/e2e-jump.cjs` attacks both.
 
+### 4.0 Incident log: do not repeat the July 27 environment mistakes
+
+These mistakes extended one Chapter 1 verification pass by hours. Treat this
+as an operational checklist, not background history:
+
+- **Do not test source changes against an old production image.** Record the
+  image tag and digest before starting E2E. Rebuild once after the complete
+  fix batch, replace the local smoke container once, then run all affected
+  checkpoints against that exact image.
+- **Do not start duplicate scoped typechecks.** `t.sh gate` already includes
+  `tsconfig.ch1check.json`. Run either `t.sh gate`, or an explicit parallel
+  batch that omits the separate `t.sh types`; never both at once.
+- **Do not use obsolete Mocha bootstrap paths.** The supported single-file
+  command is `scripts/harthmere/t.sh file <path>`. Do not invent a direct
+  `mocha --require src/server/test/register.ts` command.
+- **A failed or interrupted dungeon browser leaves the one-party slot claimed
+  for up to three minutes.** Before rerunning, inspect
+  `harthmere:ch1:slot:<dungeonId>` and its TTL. Prefer a clean product exit;
+  otherwise wait for expiry or perform an explicitly scoped test cleanup.
+  Do not mistake `Another party is inside` for a new gameplay regression.
+- **Wait for both halves of a signed portal warp.** Authoritative ECS can show
+  the slot arrival before the browser consumes `WarpHomeEvent`. A test that
+  immediately teleports to the next objective races the legitimate portal
+  warp and is invalid. Gate E2E must wait for authoritative position and the
+  live `/scene/local_player` or `/sim/player` position.
+- **Do not switch between Docker and host-native stacks mid-batch.** Pick one
+  owner for ports 3017/4907 and verify it with `docker ps`, `lsof`, and the
+  image digest. Mixed ownership produced disappearing containers, stale
+  sessions, and misleading network failures.
+- **Do not run one checkpoint, fix one symptom, and rebuild again.** Run the
+  desert and winter slices in one non-fail-fast batch, save both reports,
+  group failures by root cause, apply one fix batch, and rebuild once.
+- **When an interrupted tool session becomes unknown, inspect OS/container
+  state before restarting anything.** The process may still own Redis or game
+  ports even though the tool session id is gone.
+
+The release report must distinguish product failures from environment failures
+and must list the exact report path, image tag/digest, and slot-cleanup state.
+
 ### 4.0 Do not confuse contract coverage with live experience coverage
 
 Chapter 1 dungeon data can describe a battle, escort, puzzle, attrition rule,
@@ -319,6 +358,81 @@ consumer-group gates still run before Chromium starts; only the independent
 work is overlapped. Full production rehearsals retain their historical stream-
 worker ordering.
 
+#### Chapter 1 Elsewhen terrain preflight
+
+The Chapter 1 quest and dungeon browser lanes require the 109 authored
+Elsewhen terrain shards in Native ECS. Current production-shaped boots create
+any missing Chapter 1 shard IDs even when broad Harthmere town terrain
+generation is disabled; existing terrain is never overwritten.
+
+For a warm stack created before that reconciliation was installed, inventory
+the dedicated shard set without changing state:
+
+```sh
+GLITCH_REDIS_PORT=6390 CH1_SEED_TERRAIN_ONLY=1 \
+  node scripts/harthmere/seed-chapter1-native-e2e.cjs
+```
+
+If the report shows missing rows, install the complete set once, in bounded
+batches, while preserving the warm Redis snapshot:
+
+```sh
+GLITCH_REDIS_PORT=6390 APPLY=1 CH1_SEED_TERRAIN_ONLY=1 \
+  node scripts/harthmere/seed-chapter1-native-e2e.cjs
+```
+
+Rerun the read-only command and require `create: 0`, both per-dungeon `missing`
+counts to be zero, `portalOnlyWorldBoundary: true`, and
+`repairRetiredElsewhenBoundary: false` before launching the dungeon campaign.
+WorldMetadata must end at the ordinary Harthmere edge (X=2560); the detached
+Elsewhen shards beyond it are reachable only through signed fracture-gate
+warps. An open web port is not evidence that either dungeon's terrain or its
+authoritative sync bounds are present.
+
+When a production-shaped container is recreated manually, the browser runner
+does not inherit its control token or Redis port automatically. Export
+`HARTHMERE_E2E_CONTROL_TOKEN` from the active container without printing it,
+and set all Redis host/port aliases to the warm snapshot before launching the
+batch. A missing token fails before Chromium opens; an omitted port silently
+targets the historical 6389 default and wastes a run on the wrong environment.
+
+Treat these as executable preconditions, not notes: require a nonempty token,
+`PING` the selected Redis port, verify the active image tag, and require the web
+runtime endpoint before changing world state. Also read `WorldMetadataId`
+through `RedisWorld` and require a `world_metadata` component whose east edge is
+X=2560. A Redis `DBSIZE` or TCP success is insufficient: on July 27 DB 0 held
+336,849 entities while the metadata ID had been overwritten by a temporary
+Mucker fixture.
+
+That overwrite exposed a second hard rule. Test fixtures must obtain entity IDs
+through the ECS-collision-aware allocator, never the raw database allocator.
+The raw `/api/admin/allocate_id` path once returned the occupied
+`WorldMetadataId`; creating and killing a fixture at that ID let the respawn
+service replace world metadata with a D-Mucker. The route now filters every
+candidate through authoritative `worldApi.has`. Keep the focused allocator
+unit test and do not bypass it with a locally invented fixture ID.
+
+When remapping a deterministic NPC ID from one authored family to another, an
+ECS update is not a complete migration. Components absent from the new entity
+payload remain on the old row. The Chapter 1 cast/bandit collision left
+`expires`, prisoner locks, and old Anima movement state attached to correctly
+renamed actors. Reclaim those IDs with an explicit delete followed by create,
+then verify label, spawn position, health, and the absence of stale components.
+
+Detached Elsewhen bounds apply to Anima as well as player collision. NPC tick
+logic must test an actor inside a Chapter 1 slot against that slot's local AABB;
+testing every NPC only against ordinary WorldMetadata kills escorts and bosses
+as `outOfWorldBounds` even though their portal-only terrain is valid. Keep both
+the positive slot assertion and the negative unassigned-gap assertion in the
+fast Chapter 1 suite.
+
+Large warm worlds need a world-size-aware readiness budget. The July 27 stack
+had to index more than 300,000 entities and became healthy after the original
+three-minute container-swap loop expired. When logs show the indexed entity
+count increasing and the container remains running, continue the same bounded
+readiness poll; do not restart a healthy bootstrap or rebuild the image. The
+post-ready browser gate still decides whether the stack is usable.
+
 Start focused Web only after Logic RPC is listening. On the July 26 warm-stack
 repair, Logic still had to index 335,834 entities; opening Web earlier cached a
 failed Logic channel and made the first browser page wait several additional
@@ -401,7 +515,7 @@ HARTHMERE_E2E_CHAPTER_1_STOP_AFTER=ch1_a5_d2_the_long_winter_mouth/d2_the_breaki
   node scripts/harthmere/test-harthmere-native-ecs-roundtrip-e2e.cjs
 ```
 
-The runner derives Redis port `6389` before loading the Redis connection module
+The runner derives Redis port `6390` before loading the Redis connection module
 when the web base URL uses port `3017`. Do not add another command-line Redis
 override to every invocation; the module captures its port during import, so a
 late override is ineffective.
@@ -726,6 +840,205 @@ from consuming the whole catalog timeout budget. A wrapper loop must propagate
 SIGINT instead of treating exit 130 as an ordinary failed group and starting
 the next batch.
 
+### 4.13 Test Recipes-key ownership and location-less markers as one UI seam
+
+The July 26 production HAR made the `R` failure deterministic: immediately
+after the key press the game fetched `live_mode_daily_state`, proving the
+replacement tab rail captured `KeyR` and opened Today before native
+`ShortcutsHUD` could open Recipes. `R` now has one owner everywhere: the native
+Recipes/handcraft modal. Today has no direct key; the replacement HUD says
+`Open Recipes`, farming quick actions do not consume `R`, and the map uses
+`Home`/`End` for center/reset instead of advertising another `R` binding.
+
+Keep the recipes-only shortcut controller mounted in replacement mode. The
+full legacy shortcut controller would revive E/I/M/C/V/O conflicts, while
+hiding it entirely makes Busted's `Handcraft 0/8 Muck Busters` instruction
+impossible. A browser acceptance check is one key press: the authoritative
+result is a visible dialog named `Recipes`, not a Today-tab fetch or a merely
+highlighted tutorial cue.
+
+Location-less native objectives still require a map row. Resolve them in this
+order: the exact active aid; any live aid for the same quest; the nearest
+authored adjacent NPC/position (next contact before previous); the quest giver;
+then the player's current position as an honest “can be completed here” anchor.
+Original-snapshot quest-giver biscuits frequently have no `beamPosition`, so a
+quest-giver-only fallback is not sufficient. Also fingerprint
+`MapManager.localNavigationAids`: it mutates the same `Map` in place after async
+NPC/entity resolution, and React memoization by Map identity alone leaves the
+map panel stale until reload.
+
+For fast tests, keep shortcut ownership and navigation-aid revision helpers in
+data-only modules. Importing `ShortcutsHUD` or the full live adapter under
+`.mocharc.fast.json` pulls PNG assets that intentionally need the normal test
+bootstrap. Run pure key/marker contracts in one fast batch; use the normal
+Mocha bootstrap only for the narrow rendered-component assertions that need
+client assets.
+
+### 4.14 Focus recipe and hunt objectives without replaying the story
+
+When a browser repair targets Get the Muck Out's recipe or Muckling steps, do
+not replay Road Ahead, Busted, or the opening Moe dialogue. Create one ordinary
+visual-test player, then move that exact numeric actor to the unfinished step:
+
+```sh
+GLITCH_REDIS_PORT=<active-redis-port> \
+  node scripts/harthmere/seed-get-muck-out-browser-step.cjs \
+    <player-id> craft
+
+GLITCH_REDIS_PORT=<active-redis-port> \
+  node scripts/harthmere/seed-get-muck-out-browser-step.cjs \
+    <player-id> mucklings
+```
+
+The fixture marks only predecessor leaves as fired and leaves the target leaf
+unfinished. Authenticate the browser with the same numeric player id, wait for
+the authoritative player/HUD-ready state, and then test the visible prompt,
+map marker, synchronized NPCs, and gameplay mutation. Renderer readiness or a
+fixed timeout is not player readiness; starting assertions before the live
+player hook arrives repeats the same false failure across every test surface.
+
+The matching automated regression stops after the production Muckling leaf:
+
+```sh
+HARTHMERE_E2E_ROBOT_STORY_EXHAUSTIVE=1 \
+HARTHMERE_E2E_ROBOT_STORY_CHAPTER_ID=817959262145055 \
+HARTHMERE_E2E_GET_MUCK_OUT_RECIPE_HUNT_ONLY=1 \
+  node scripts/harthmere/test-harthmere-native-ecs-roundtrip-e2e.cjs
+```
+
+It still performs the two opening claims through the real browser, observes
+the persistent Recipes hint, crafts the Whacker, verifies the hunt is the active
+map/minimap destination with six live Mossy Mucklings outside protected areas,
+rejects an unrelated NPC type, kills both restored production Muckling families,
+and audits quest plus combat XP. It deliberately does not replay the ten
+already-green objectives after the hunt.
+
+The May 2026 quest biscuit exact-matches the legacy Mossy Muckling type, while
+the restored world visibly spawns West Breach and Gravewood Pale Mucklings.
+Compatibility belongs only on this exact quest leaf. Keep the original event
+predicate unchanged for every other `npcKilled` objective, and make the E2E
+kill at least one restored type so a legacy-only synthetic fixture cannot pass
+while production enemies fail to count.
+
+Place the marker at a production-grounded cluster containing at least six
+compatible live entities, not at an old authored area center. Verify both the
+map row and authoritative ECS rows (label, type id, position, and positive
+health). A source seed list alone does not prove the warm world actually
+materialized those enemies.
+
+Restored Mucklings also award normal combat XP. The quest E2E must account for
+that separately from per-step quest XP: two production kills can legitimately
+change progression by combat XP plus the one-shot quest award. Do not weaken
+the total-XP assertion or mistake the combat award for duplicate quest XP.
+
+After a client or trigger repair, validate the exact built marker in `.next`
+and `dist`. Webpack's persistent server cache can report a successful build
+while reusing a stale bundle; rerun the server bundle with `--no-cache` when
+the expected symbol is absent. Keep `.next`, `dist`, and `public` bind-mounted
+read-only into the warm app container so this swap never requires rebuilding
+the full image or replacing Redis.
+
+The focused software-WebGL stack has capacity for one browser campaign, not an
+interactive in-app renderer plus a second headless release gate. Close the live
+inspection tabs before starting the automated browser batch. July 27 proved
+that leaving both renderers active let background live-mode reads reach 14–17
+seconds and prevented the second client from installing its ready bridge within
+120 seconds, even though the web and sync ports stayed healthy. This is
+resource contention, not permission to increase every timeout or rerun passed
+quest actions.
+
+### 4.15 Route restored combat quests by quest id plus step id
+
+Original-snapshot combat biscuits can reuse a trigger leaf id across unrelated
+quests. `Combat · Seedy Sappers` and `Combat · Juggment Day`, for example, both
+use step `8176836229585103` while requiring different enemy families. Never add
+enemy compatibility or an inferred marker by trigger id alone. Use the
+composite `(questId, triggerId)` in the server matcher, client map adapter, and
+test fixture, and include a negative cross-quest assertion.
+
+Before choosing a marker, batch-inventory the grounded production seeds by
+native type and rendered creature family. The marked pack must contain enough
+live targets to finish the objective. When one pack is intentionally smaller
+than the required count, advance the marker from the first pack to the next
+using authoritative leaf progress; the eight-Juggermucker route points at its
+first verified four-pack until `4/8`, then at the second four-pack. This is
+faster and more
+honest than adding synthetic enemies or leaving the marker on an exhausted
+location.
+
+Keep dungeon fights out of this compatibility table. Dungeon encounters are
+linear, scoped lands with their own objective routing; adding mainland world-
+map pins for those fights creates a second, conflicting navigation authority.
+
+After a warm app restart, open TCP ports are only a process-liveness signal.
+Web can accept the socket while Logic is still loading the Redis entity index,
+and the first `/api/harthmere/visual_test_auth` request may reset. The browser
+runner now retries that authoritative auth endpoint with bounded attempts under
+the existing global timeout, then continues to the live-player hook. Do not add
+a fixed sleep or rerun a quest batch after this pre-action readiness failure;
+no gameplay assertion has started until visual auth succeeds.
+
+During the same warm-start window Chromium can abort one initial `POST
+/sync/oob` while replacing its startup subscription. The legacy combat runner
+records that exact `net::ERR_ABORTED` as transient and continues only while its
+marker, authoritative actor, and live-pack gates still succeed. Broader OOB
+errors remain fatal, and a persistent sync problem still times out the real
+functional assertion.
+
+The freshly loaded client may also cancel its best-effort `POST
+/api/client_error` telemetry request during that same startup navigation. The
+legacy combat runner treats only that exact aborted telemetry request as a
+transient; the marker and live-enemy assertions remain authoritative, and all
+other failed same-origin requests remain fatal.
+
+Marker-only combat audits do not inspect placeable rendering. In low-memory
+mode, synchronizing a distant production pack can surface an unrelated
+`/init/scene/placeable/mesh` resource assertion from nearby scenery. That exact
+console error is transient only in marker-only mode; the same error stays fatal
+for combat and ordinary gameplay runs, while the marker and synchronized NPC
+row gates still have to pass.
+
+The four-route legacy combat batch intentionally teleports one low-memory
+client among distant production packs. Its frontend marker/entity sync gate is
+20 seconds rather than the one-second ordinary-origin SLO; a July 27 warm
+restart measured the first valid marker at 13.4 seconds. This remains a bounded
+gate, but it prevents a correct cross-world synchronization from being reported
+as a quest failure.
+
+If an earlier routed quest has already passed before a later live-pack audit
+finds drift, resume the same batch without replaying it:
+
+```sh
+HARTHMERE_E2E_LEGACY_COMBAT_ROUTES_ONLY=1 \
+HARTHMERE_E2E_LEGACY_COMBAT_RESUME_AT=7520814984799849 \
+  node scripts/harthmere/test-harthmere-native-ecs-roundtrip-e2e.cjs
+```
+
+The resume value is the first quest that still needs coverage, not the last
+passing quest.
+
+Synthetic kill targets in this marker/compatibility batch use one HP. Their
+purpose is to emit one real authoritative `npcKilled` event for the restored
+type, not to measure weapon DPS. A ten-HP fixture requires two unarmed hits;
+firing the second immediately tests attack cooldown instead and can stall a
+correct quest behind an intentionally rejected hit.
+
+For a final map/content audit that must not replay passed combat, use the
+marker-only mode:
+
+```sh
+HARTHMERE_E2E_LEGACY_COMBAT_MARKERS_ONLY=1 \
+  node scripts/harthmere/test-harthmere-native-ecs-roundtrip-e2e.cjs
+```
+
+One browser actor activates all four quests serially, verifies each exact map
+projection, moves through every production pack, and requires the synchronized
+live enemy count. Juggement Day receives an unfinished `4/8` fixture payload so
+its second marker is checked without emitting kills or completing the leaf.
+The marker-only assertion does not require the routed quest to replace Road
+Ahead as the selected main quest: it requires the quest to be in progress and
+its map marker to remain available, which is the switching-quests contract.
+
 ---
 
 ## 5. Suggested loop
@@ -746,12 +1059,13 @@ cost a full stack boot plus a manual walk to discover.
 
 ## 6. Files
 
-| Path                                | What                                                 |
-| ----------------------------------- | ---------------------------------------------------- |
-| `.mocharc.fast.json`                | Bootstrap-free mocha config                          |
-| `scripts/harthmere/t.sh`            | Test presets, watch mode, scoped typecheck           |
-| `scripts/harthmere/e2e-jump.cjs`    | Browser deep links, Cloud Save URL, seeds, readiness |
-| `tsconfig.ch1check.json`            | Fast scoped typecheck (~3 s)                         |
-| `tsconfig.ch1renderer.json`         | Client-graph typecheck (slow, incremental)           |
-| `NATIVE_ECS_BROWSER_E2E_RUNBOOK.md` | The release gate (unchanged)                         |
-| `CHAPTER_1_E2E_RUNBOOK.md`          | Chapter 1 browser checklist                          |
+| Path                                                   | What                                                 |
+| ------------------------------------------------------ | ---------------------------------------------------- |
+| `.mocharc.fast.json`                                   | Bootstrap-free mocha config                          |
+| `scripts/harthmere/t.sh`                               | Test presets, watch mode, scoped typecheck           |
+| `scripts/harthmere/e2e-jump.cjs`                       | Browser deep links, Cloud Save URL, seeds, readiness |
+| `scripts/harthmere/seed-get-muck-out-browser-step.cjs` | Focus Get the Muck Out recipe/hunt steps             |
+| `tsconfig.ch1check.json`                               | Fast scoped typecheck (~3 s)                         |
+| `tsconfig.ch1renderer.json`                            | Client-graph typecheck (slow, incremental)           |
+| `NATIVE_ECS_BROWSER_E2E_RUNBOOK.md`                    | The release gate (unchanged)                         |
+| `CHAPTER_1_E2E_RUNBOOK.md`                             | Chapter 1 browser checklist                          |

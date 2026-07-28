@@ -197,6 +197,12 @@ export interface HarthmereLiveModeAuthorityEnvelope {
     notoriety: number;
     notorietyFloor: number;
   };
+  /** Exact native NPC entity kills recorded on the player's TriggerState. */
+  serverActorKilledEntityAtMs?: Record<string, number>;
+  /** Native TriggerState total XP for every specialized skill row. */
+  serverActorSkillXp?: Record<string, number>;
+  /** Distinguishes a migrated zero-XP ledger from a legacy player with no ledger. */
+  serverActorSkillProgressionInitialized?: boolean;
   serverTargetPosition?: { x: number; y: number; z: number };
   clientSentAtMs?: number;
   serverReceivedAtMs: number;
@@ -1213,7 +1219,7 @@ export const HARTHMERE_LIVE_MODE_REQUIRED_PIPELINES: HarthmereLiveModePipelineDe
       serverValidated: [
         "item_exists",
         "ownership",
-        "carry_weight",
+        "inventory_slots",
         "stack_limit",
         "binding",
         "escrow_not_double_spent",
@@ -1264,12 +1270,11 @@ export const HARTHMERE_LIVE_MODE_REQUIRED_PIPELINES: HarthmereLiveModePipelineDe
         "public_admin_inventory_grant",
         "auction_double_settlement",
         "vendor_price_spoof",
-        "carry_weight_bypass",
       ],
       edgeCasesCovered: [
         "public_inventory_mutation_rejected",
         "unknown_item",
-        "overweight_claim",
+        "overweight_items_remain_collectable",
         "duplicate_auction_buy",
         "seller_buyer_same_account",
       ],

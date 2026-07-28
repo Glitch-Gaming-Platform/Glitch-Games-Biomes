@@ -19,13 +19,21 @@ import {
   readServerActorNativeContextForLiveMode,
   readServerActorPositionForLiveMode,
 } from "../live_mode";
-import { createEmptyTerrainShard } from "@/server/test/test_helpers";
+import {
+  createEmptyTerrainShard,
+  editEntity,
+} from "@/server/test/test_helpers";
 import { InMemoryWorld } from "@/server/shared/world/shim/in_memory_world";
 import { ShimWorldApi } from "@/server/shared/world/shim/api";
 import { loadVoxeloo } from "@/server/shared/voxeloo";
 import { HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID } from "@/shared/harthmere/mmo_jobs_board_authority";
 import { HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS } from "@/shared/harthmere/business_customer_simulator";
-import { SHARD_DIM, blockPos, shardAlign } from "@/shared/game/shard";
+import {
+  SHARD_DIM,
+  SHARD_SHAPE,
+  blockPos,
+  shardAlign,
+} from "@/shared/game/shard";
 import {
   createHarthmereLiveModeSharedWorldState,
   bindHarthmereNativeEcsMaterializationPlansToActorForTest,
@@ -44,15 +52,25 @@ import {
   type HarthmereLiveModeAuthorityEnvelope,
 } from "@/shared/harthmere/live_mode_readiness";
 import { loadBlockWrapper } from "@/shared/wasm/biomes";
+import { loadPlacer } from "@/shared/game/terrain";
+import { Tensor } from "@/shared/wasm/tensors";
 import { harthmereJobsBoardQuestMarkerRuntimePositionForId } from "@/shared/harthmere/jobs_board_quest_marker_positions";
 import { harthmereItemIdToBiomesId } from "@/shared/harthmere/harthmere_biomes_ecs_bridge";
-import { Challenges, Inventory, Wearing } from "@/shared/ecs/gen/components";
+import {
+  Challenges,
+  Inventory,
+  ShardOccupancy,
+  ShardPlacer,
+  TriggerState,
+  Wearing,
+} from "@/shared/ecs/gen/components";
 import { BikkieIds } from "@/shared/bikkie/ids";
 import { countOf, createBag } from "@/shared/game/items";
 import {
   harthmereNativeQuestId,
   harthmereNativeQuestStepId,
 } from "@/shared/harthmere/harthmere_native_quests";
+import { recordHarthmereJobsBoardNativeKill } from "@/shared/harthmere/jobs_board_native_kill_ledger";
 
 const ACTOR = "player_live_api_persist_001";
 const NOW_MS = 1_700_400_000_000;
@@ -1009,6 +1027,12 @@ describe("live_mode API Redis persistence", () => {
     const wearing = Wearing.create({
       items: new Map([[BikkieIds.hands, countOf(wornTool, 1n).item]]),
     });
+    const triggerState = TriggerState.create({ by_root: new Map() });
+    recordHarthmereJobsBoardNativeKill(
+      triggerState,
+      8_810_000_000_019_512 as any,
+      1_800_000_000_123
+    );
     let reads = 0;
     const context = await readServerActorNativeContextForLiveMode(
       {
@@ -1018,6 +1042,7 @@ describe("live_mode API Redis persistence", () => {
             position: () => ({ v: [503, 53, -270] }),
             inventory: () => inventory,
             wearing: () => wearing,
+            triggerState: () => triggerState,
           };
         },
       } as any,
@@ -1042,6 +1067,9 @@ describe("live_mode API Redis persistence", () => {
     assert.deepEqual(context.equipment, {
       main_hand: "rusty_pickaxe",
       hands: "repair_mallet",
+    });
+    assert.deepEqual(context.killedEntityAtMs, {
+      "8810000000019512": 1_800_000_000_123,
     });
   });
 
@@ -2165,7 +2193,7 @@ describe("live_mode API Redis persistence", () => {
     );
   });
 
-  it("returns committed live-mode responses when post-commit materialization fails", async () => {
+  it("keeps the committed decision pending and repairs building materialization on exact replay", async () => {
     const redisPrimary = new FakeRedisPrimary();
     (globalThis as any).__harthmereLiveModeRedis = { primary: redisPrimary };
 
@@ -2212,23 +2240,16 @@ describe("live_mode API Redis persistence", () => {
       uiEvents: [],
     };
 
-    const persisted = await persistHarthmereLiveModeResponse(env, response, {
-      logicApi: {
-        publish: async () => {
-          throw new Error("simulated ECS publish outage");
-        },
-      } as any,
-      userId: 1 as any,
-    });
-
-    assert.equal(persisted.ok, true);
-    assert.equal(persisted.persisted, true);
-    assert.ok(
-      persisted.backendMutation?.warnings.some((warning) =>
-        warning.includes(
-          "building_materialization_deferred:simulated ECS publish outage"
-        )
-      )
+    await assert.rejects(
+      persistHarthmereLiveModeResponse(env, response, {
+        logicApi: {
+          publish: async () => {
+            throw new Error("simulated ECS publish outage");
+          },
+        } as any,
+        userId: 1 as any,
+      }),
+      /simulated ECS publish outage/
     );
     const actorState = parseHarthmereLiveModeBackendState(
       redisPrimary.store.get(harthmereLiveModePlayerStateKey(ACTOR)),
@@ -2238,6 +2259,34 @@ describe("live_mode API Redis persistence", () => {
     assert.ok(
       actorState.building.materializationPlans
         .outpost_restaurant_redpot_backend_materialization
+    );
+
+    const publishedEvents: unknown[] = [];
+    const replay = await persistHarthmereLiveModeResponse(env, response, {
+      logicApi: {
+        publish: async (...events: unknown[]) => {
+          publishedEvents.push(...events);
+        },
+      } as any,
+      userId: 1 as any,
+    });
+    assert.equal(replay.ok, true);
+    assert.equal(replay.duplicate, true);
+    assert.equal(replay.replayed, true);
+    assert.ok(publishedEvents.length > 0);
+    assert.ok(
+      replay.backendMutation?.warnings.some((warning) =>
+        warning.includes("building_materialization_replay_repaired")
+      )
+    );
+    const shared = parseHarthmereLiveModeSharedWorldState(
+      redisPrimary.store.get(harthmereLiveModeSharedWorldStateKey()),
+      NOW_MS
+    );
+    assert.equal(
+      shared?.building.placedStructures
+        .outpost_restaurant_redpot_backend_materialization.materializedInEcs,
+      true
     );
   });
 
@@ -2309,6 +2358,24 @@ describe("live_mode API Redis persistence", () => {
       world,
       shardAlign(...worldPosition)
     );
+    const initialPlacer = Tensor.make(voxeloo, SHARD_SHAPE, "F64");
+    const initialOccupancy = Tensor.make(voxeloo, SHARD_SHAPE, "F64");
+    try {
+      // Production terrain carries tensor-encoded placer/occupancy buffers.
+      // The old materializer test omitted both components, so decoding them
+      // with the wrong SparseBlock codec never exercised the production path.
+      editEntity(world, terrainId, (entity) => {
+        entity.setShardPlacer(
+          ShardPlacer.create({ buffer: initialPlacer.save() })
+        );
+        entity.setShardOccupancy(
+          ShardOccupancy.create({ buffer: initialOccupancy.save() })
+        );
+      });
+    } finally {
+      initialPlacer.delete();
+      initialOccupancy.delete();
+    }
     const askApi = {
       scanForExport: async function* () {
         yield [
@@ -2344,10 +2411,9 @@ describe("live_mode API Redis persistence", () => {
     const terrain = world.table.get(terrainId);
     assert.ok(terrain?.shard_diff);
     const diff = new voxeloo.SparseBlock_U32();
-    const placer = new voxeloo.SparseBlock_U32();
+    const placer = loadPlacer(voxeloo, terrain);
     try {
       loadBlockWrapper(voxeloo, diff, terrain.shard_diff);
-      loadBlockWrapper(voxeloo, placer, terrain.shard_placer);
       assert.equal(diff.get(...blockPos(...worldPosition)), floorEdit.value);
       assert.equal(placer.get(...blockPos(...worldPosition)), 1);
     } finally {
@@ -2433,6 +2499,43 @@ describe("live_mode API Redis persistence", () => {
     assert.equal(
       shared?.building.placedStructures[plan.requestId].materializedInEcs,
       true
+    );
+  });
+
+  it("removes successfully applied non-solid plans so failed ones remain retryable", async () => {
+    const redis = new FakeRedisPrimary();
+    const state = defaultHarthmereLiveModeBackendState(ACTOR, NOW_MS);
+    const sourcePlan =
+      HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS.outpost_refinery_ashline
+        .materializationPlan;
+    const pendingPlan = {
+      ...sourcePlan,
+      requestId: "non-solid-safe-ground-plan",
+      materializesSolidVoxelBuilding: false,
+    } as any;
+    state.building.materializationPlans.pending_non_solid = pendingPlan;
+    const sharedKey = harthmereLiveModeSharedWorldStateKey();
+    redis.store.set(
+      sharedKey,
+      JSON.stringify(createHarthmereLiveModeSharedWorldState(state, NOW_MS))
+    );
+
+    const count = await markBuildingMaterializationPlansAppliedForTest({
+      redisPrimary: redis as any,
+      sharedWorldStateKey: sharedKey,
+      plans: [pendingPlan],
+      nowMs: NOW_MS + 1,
+    });
+    assert.equal(count, 1);
+    const shared = parseHarthmereLiveModeSharedWorldState(
+      redis.store.get(sharedKey),
+      NOW_MS + 1
+    );
+    assert.equal(
+      Object.values(shared?.building.materializationPlans ?? {}).some(
+        (plan) => plan.requestId === pendingPlan.requestId
+      ),
+      false
     );
   });
 

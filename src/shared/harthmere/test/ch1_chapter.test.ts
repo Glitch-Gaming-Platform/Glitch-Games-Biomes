@@ -318,11 +318,20 @@ describe("ch1 - fracture gates", () => {
   });
 
   it("time dilation is per-gate and inconsistent on purpose", () => {
-    // Ninety minutes in the desert becomes about three days in the Grove.
+    // The authored beat is that Act 3 closes on a Grove that has had THREE
+    // DAYS. The old assertion here encoded the multiplier instead of the
+    // fiction and accepted half a day-cycle for a ninety-minute run, which is
+    // why the audit found the story and the arithmetic disagreeing. Gates now
+    // carry a Grove-side floor; the multiplier still governs longer stays.
     const insideMs = 90 * 60 * 1000;
     const grove = ch1GroveSideElapsedMs("ch1_gate_desert", insideMs);
     const days = grove / (24 * 60 * 60 * 1000);
-    assert.ok(days > 0.4 && days < 0.7, `expected ~half a day-cycle, got ${days}`);
+    assert.ok(days >= 3, `expected at least three Grove days, got ${days}`);
+    const longStay = 24 * 60 * 60 * 1000;
+    assert.ok(
+      ch1GroveSideElapsedMs("ch1_gate_desert", longStay) > grove,
+      "a longer stay must still cost more than the authored floor"
+    );
     assert.notEqual(
       ch1GroveSideElapsedMs("ch1_gate_desert", insideMs),
       ch1GroveSideElapsedMs("ch1_gate_winter", insideMs),

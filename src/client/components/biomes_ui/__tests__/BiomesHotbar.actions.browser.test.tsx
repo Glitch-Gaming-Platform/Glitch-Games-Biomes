@@ -35,7 +35,9 @@ describe("BiomesHotbar rendered actions", () => {
 
         window.__hotbarUses = 0;
         window.__hotbarThrows = 0;
-        const delay = () => new Promise((resolve) => window.setTimeout(resolve, 80));
+        // Keep the pending state visible long enough to observe it reliably
+        // when this browser test runs inside the larger client batch.
+        const delay = () => new Promise((resolve) => window.setTimeout(resolve, 250));
 
         function Harness() {
           const [selectedIndex, setSelectedIndex] = React.useState(0);
@@ -92,6 +94,9 @@ describe("BiomesHotbar rendered actions", () => {
       });
       assert.equal(await place.isVisible(), true);
       assert.equal(await throwOne.isVisible(), true);
+
+      await page.keyboard.press("Space");
+      assert.equal(await page.evaluate(() => window.__hotbarUses), 0);
 
       await place.click();
       assert.equal(

@@ -43,6 +43,11 @@ export const CH1_EXIT_INTERACTION_RADIUS = 9;
 
 export interface Ch1LiveGateRuntimeState {
   activeDungeonRunId?: string;
+  /** Unique logical run shared by every admitted member of the native team. */
+  activeDungeonInstanceId?: string;
+  activeDungeonPartyId?: string;
+  /** Diegetic board name chosen with Taye; profile identity is unchanged. */
+  chosenName?: string;
   activeGateId?: string;
   activeRunStartedMs?: number;
   /** Exact Grove-side position used for the return warp. */
@@ -54,6 +59,12 @@ export interface Ch1LiveGateRuntimeState {
   tracks: Record<string, number>;
   ledger: Ch1LedgerState;
   latentSkills: Ch1LatentSkillState;
+  latentSkillLastUsedAtMs: Partial<Record<Ch1LatentSkillId, number>>;
+  lastLatentSkillUse?: {
+    skillId: Ch1LatentSkillId;
+    usedAtMs: number;
+    result: string;
+  };
   testimonies: string[];
   augur9: Ch1Augur9State;
   /** Playback logs discovered by story beats but not yet bought with charge. */
@@ -73,6 +84,7 @@ export function defaultCh1LiveGateRuntimeState(): Ch1LiveGateRuntimeState {
     tracks: { ...CH1_TRACK_DEFAULTS },
     ledger: ch1EmptyLedger(),
     latentSkills: ch1EmptyLatentSkills(),
+    latentSkillLastUsedAtMs: {},
     testimonies: [],
     augur9: ch1Augur9Initial(),
     availablePlaybackIds: [],
@@ -141,7 +153,10 @@ export function normalizeCh1LiveGateRuntimeState(
           const row = entry as Record<string, unknown>;
           const fragmentId = String(row.fragmentId ?? "");
           const recoveredAtMs = Number(row.recoveredAtMs);
-          if (!knownFragmentIds.has(fragmentId) || !Number.isFinite(recoveredAtMs)) {
+          if (
+            !knownFragmentIds.has(fragmentId) ||
+            !Number.isFinite(recoveredAtMs)
+          ) {
             return undefined;
           }
           return {
@@ -156,8 +171,9 @@ export function normalizeCh1LiveGateRuntimeState(
         )
         .filter(
           (entry, index, all) =>
-            all.findIndex((candidate) => candidate.fragmentId === entry.fragmentId) ===
-            index
+            all.findIndex(
+              (candidate) => candidate.fragmentId === entry.fragmentId
+            ) === index
         )
     : [];
   const links: Ch1LedgerState["links"] = Array.isArray(rawLedger.links)
@@ -179,6 +195,25 @@ export function normalizeCh1LiveGateRuntimeState(
   const unlocked = uniqueStrings(rawSkills.unlocked).filter(
     (skill): skill is Ch1LatentSkillId => knownSkillIds.has(skill)
   );
+  const rawSkillUses =
+    value.latentSkillLastUsedAtMs &&
+    typeof value.latentSkillLastUsedAtMs === "object"
+      ? (value.latentSkillLastUsedAtMs as Record<string, unknown>)
+      : {};
+  const latentSkillLastUsedAtMs: Partial<Record<Ch1LatentSkillId, number>> = {};
+  for (const skillId of CH1_LATENT_SKILL_IDS) {
+    const usedAtMs = Number(rawSkillUses[skillId]);
+    if (Number.isFinite(usedAtMs) && usedAtMs > 0) {
+      latentSkillLastUsedAtMs[skillId] = usedAtMs;
+    }
+  }
+  const rawLastSkillUse =
+    value.lastLatentSkillUse && typeof value.lastLatentSkillUse === "object"
+      ? (value.lastLatentSkillUse as Record<string, unknown>)
+      : undefined;
+  const lastSkillId = String(rawLastSkillUse?.skillId ?? "");
+  const lastSkillUsedAtMs = Number(rawLastSkillUse?.usedAtMs);
+  const lastSkillResult = String(rawLastSkillUse?.result ?? "");
   const rawAugur =
     value.augur9 && typeof value.augur9 === "object"
       ? (value.augur9 as Record<string, unknown>)
@@ -194,8 +229,16 @@ export function normalizeCh1LiveGateRuntimeState(
   const dungeonSurvival = normalizeCh1DungeonSurvivalState(
     value.dungeonSurvival
   );
+  const activeDungeonInstanceId = stringOrUndefined(
+    value.activeDungeonInstanceId
+  );
+  const activeDungeonPartyId = stringOrUndefined(value.activeDungeonPartyId);
+  const chosenName = stringOrUndefined(value.chosenName);
   return {
     activeDungeonRunId: stringOrUndefined(value.activeDungeonRunId),
+    ...(activeDungeonInstanceId ? { activeDungeonInstanceId } : {}),
+    ...(activeDungeonPartyId ? { activeDungeonPartyId } : {}),
+    ...(chosenName ? { chosenName } : {}),
     activeGateId: stringOrUndefined(value.activeGateId),
     activeRunStartedMs: Number.isFinite(started) ? started : undefined,
     returnPosition: finiteVec3(value.returnPosition),
@@ -209,6 +252,18 @@ export function normalizeCh1LiveGateRuntimeState(
       consolidated: rawLedger.consolidated === true,
     },
     latentSkills: { unlocked },
+    latentSkillLastUsedAtMs,
+    ...(knownSkillIds.has(lastSkillId) &&
+    Number.isFinite(lastSkillUsedAtMs) &&
+    lastSkillResult
+      ? {
+          lastLatentSkillUse: {
+            skillId: lastSkillId as Ch1LatentSkillId,
+            usedAtMs: lastSkillUsedAtMs,
+            result: lastSkillResult,
+          },
+        }
+      : {}),
     testimonies: uniqueStrings(value.testimonies),
     augur9: {
       charge: Number.isFinite(charge)
@@ -398,10 +453,7 @@ export function ch1LiveRetrievalIds(
   const flags = new Set(runtime.flags);
   if (flags.has(CH1_FLAGS.irisRescued)) ids.add("npc_iris_fen");
   if (flags.has(CH1_FLAGS.marrowSaved)) ids.add("npc_marrow");
-  if (
-    flags.has(CH1_FLAGS.hasLedger) &&
-    flags.has(CH1_FLAGS.sorrelOathGiven)
-  ) {
+  if (flags.has(CH1_FLAGS.hasLedger) && flags.has(CH1_FLAGS.sorrelOathGiven)) {
     ids.add("npc_nadia_sorrel");
   }
   return [...ids];

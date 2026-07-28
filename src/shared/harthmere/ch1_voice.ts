@@ -10,6 +10,7 @@ import {
 } from "@/shared/cutscene/schema";
 import { HARTHMERE_BUSINESS_OWNER_NPC_SEEDS } from "@/shared/harthmere/business_owner_npc_seed";
 import { CH1_NPC_ENTITY_IDS, type Ch1NpcKey } from "@/shared/harthmere/ch1_ids";
+import { HARTHMERE_NAMED_NPCS } from "@/shared/harthmere/npc_compendium";
 import {
   SNAPSHOT_GROVE_NPCS,
   snapshotGroveNpcEntityId,
@@ -188,10 +189,20 @@ const TESTIMONY_SPEAKERS = new Set([
   "Allix",
 ]);
 
-const RETURNING_GROVE_VOICE_ACTORS = SNAPSHOT_GROVE_NPCS.filter(
-  // Jackie speaks throughout the chapter; use her existing Grove identity so
-  // the new scenes do not unexpectedly recast a familiar character.
-  (npc) => npc.displayName === "Jackie"
+const CH1_RETURNING_GROVE_SPEAKERS = new Set([
+  "Jackie",
+  "Billy",
+  "Ranger Jane",
+  "Luis",
+  "Taye",
+  "Sil",
+  "Dimmi",
+  "Doc",
+  "Kit the Courier",
+]);
+
+const RETURNING_GROVE_VOICE_ACTORS = SNAPSHOT_GROVE_NPCS.filter((npc) =>
+  CH1_RETURNING_GROVE_SPEAKERS.has(npc.displayName)
 ).map((npc) =>
   chapterActor({
     id: `returning_${npc.id}`,
@@ -234,7 +245,10 @@ const TESTIMONY_VOICE_ACTORS = SNAPSHOT_LIVE_NPC_LORE.filter((npc) =>
   })
 );
 
-const CH1_BUSINESS_SPEAKER_NAMES = new Set(["Foreman Calla Ashe"]);
+const CH1_BUSINESS_SPEAKER_NAMES = new Set([
+  "Foreman Calla Ashe",
+  "Doctor Hana Greenlamp",
+]);
 
 const RETURNING_BUSINESS_VOICE_ACTORS =
   HARTHMERE_BUSINESS_OWNER_NPC_SEEDS.filter((npc) =>
@@ -259,12 +273,38 @@ const RETURNING_BUSINESS_VOICE_ACTORS =
     })
   );
 
+const CH1_NAMED_SPEAKER_NAMES = new Set(["Sergeant Bramwell Holt"]);
+
+const RETURNING_NAMED_VOICE_ACTORS = HARTHMERE_NAMED_NPCS.filter((npc) =>
+  CH1_NAMED_SPEAKER_NAMES.has(npc.name)
+).map((npc) =>
+  chapterActor({
+    id: `returning_${npc.id}`,
+    displayName: npc.name,
+    role: npc.role,
+    background: npc.bibleBackstory,
+    voiceStyle: npc.voiceStyle,
+    aliases: ["Sergeant Bram Holt"],
+    profileInput: {
+      source: "harthmere_named",
+      id: npc.id,
+      displayName: npc.name,
+      name: npc.name,
+      role: npc.role,
+      kind: npc.kind,
+      background: npc.bibleBackstory,
+      voiceStyle: npc.voiceStyle,
+    },
+  })
+);
+
 export const CH1_VOICE_ACTORS: readonly Ch1VoiceActorDefinition[] =
   Object.freeze([
     ...NEW_CAST_VOICE_ACTORS,
     ...RETURNING_GROVE_VOICE_ACTORS,
     ...TESTIMONY_VOICE_ACTORS,
     ...RETURNING_BUSINESS_VOICE_ACTORS,
+    ...RETURNING_NAMED_VOICE_ACTORS,
   ]);
 
 const ACTOR_BY_ENTITY_ID = new Map(

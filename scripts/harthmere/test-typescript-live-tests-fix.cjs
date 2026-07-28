@@ -39,7 +39,7 @@ assert.ok(!buildingBlock.includes('building_project:grove_muckstead_cottage_lot'
 assert.ok(buildingBlock.includes('plotId: "grove_muckstead_cottage_lot"'), 'building test should use the real Grove plot');
 assert.ok(buildingBlock.includes('blueprintId: "grove_voxel_cottage_tier_1"'), 'building test should use the real Grove blueprint');
 
-const bankingBlock = block(liveTest, 'describe("reduceHarthmereLiveModeBackendState — production bank expansion"', '// ===========================================================================\n// Banking current carry weight enforcement');
+const bankingBlock = block(liveTest, 'describe("reduceHarthmereLiveModeBackendState — production bank expansion"', '// ===========================================================================\n// Banking current: carry weight is soft encumbrance');
 assert.ok(bankingBlock.includes('s.inventory.items = { iron_ore: 10, practice_sword: 1 };'), 'material storage test should use a material and a non-material fixture');
 assert.ok(bankingBlock.includes('itemId: "practice_sword"'), 'material rejection should test a genuinely non-material item id');
 assert.ok(!bankingBlock.includes('itemId: "iron_sword"'), 'iron_sword includes iron and is intentionally treated as material-like by the fallback matcher');

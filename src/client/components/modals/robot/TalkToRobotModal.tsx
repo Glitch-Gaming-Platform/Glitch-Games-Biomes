@@ -31,6 +31,7 @@ import type { RobotVisitorMessageRequest } from "@/pages/api/social/robot_visito
 import { BikkieIds } from "@/shared/bikkie/ids";
 import { UpdateRobotNameEvent } from "@/shared/ecs/gen/events";
 import type { BiomesId } from "@/shared/ids";
+import { chapter1PresentedNpcLabel } from "@/shared/cutscene/puppets";
 import { idToNpcType, relevantBiscuitForEntityId } from "@/shared/npc/bikkie";
 import { fireAndForget } from "@/shared/util/async";
 import { jsonPost } from "@/shared/util/fetch_helpers";
@@ -75,7 +76,10 @@ export const TalkToRobotModal: React.FunctionComponent<{
     ["/ecs/c/label", entityId],
     ["/ecs/c/created_by", entityId]
   );
-  const name = label?.text;
+  const name = chapter1PresentedNpcLabel(
+    Number(entityId),
+    label?.text ?? "Robot"
+  );
 
   const [completedSetup, setCompletedSetup] = useState(false);
 
@@ -246,8 +250,7 @@ const RobotSelectAction: React.FunctionComponent<{
     QuestStepBundle | undefined
   >();
   const trueAllRelevantSteps = useRelevantStepsForEntity(entityId);
-  const liveEntityHelperDialog =
-    useLiveEntityHelperQuestDialog(entityId);
+  const liveEntityHelperDialog = useLiveEntityHelperQuestDialog(entityId);
   const allRelevantSteps = useWithUnseenEmptyTransition(
     trueAllRelevantSteps,
     trueAllRelevantSteps.length === 0,

@@ -5,8 +5,6 @@ import {
   type HarthmereBikkieItemMetadata,
 } from "./mmo_bikkie_farming_food_catalog";
 import {
-  HARTHMERE_CARRY_WEIGHT_LIMIT,
-  harthmereInventoryCarryWeight,
   harthmereInventoryEncumbranceStaminaMultiplier,
 } from "./mmo_carry_weight";
 
@@ -1280,9 +1278,8 @@ export function enqueueHarthmereCook(
   return cookingResult(state, [], inventory, cooking, inventoryDeltas);
 }
 
-/** Collects a finished (ready) job's outputs into inventory. Blocks if the
- *  outputs would push the player over the carry-weight limit. Returns the
- *  cooking XP to award. Prunes the station once its last job is gone. */
+/** Collects a finished (ready) job's outputs into inventory, returns the
+ *  cooking XP to award, and prunes the station once its last job is gone. */
 export function collectHarthmereCook(
   state: HarthmereFoodStaminaState,
   input: { stationId: string; jobId: string; nowMs: number },
@@ -1299,15 +1296,6 @@ export function collectHarthmereCook(
   }
   const recipe = HARTHMERE_COOKING_RECIPES[job.recipeId];
   if (!recipe) return cookingResult(state, ["cooking_rejected:unknown_recipe"]);
-  let projected = { ...state.inventory };
-  for (const [itemId, itemCount] of Object.entries(recipe.outputs)) {
-    projected = addItem(projected, itemId, itemCount * job.count);
-  }
-  if (harthmereInventoryCarryWeight(projected) > HARTHMERE_CARRY_WEIGHT_LIMIT) {
-    return cookingResult(state, [
-      "cooking_rejected:carry_weight_limit_exceeded",
-    ]);
-  }
   let inventory = { ...state.inventory };
   const inventoryDeltas: Record<string, number> = {};
   for (const [itemId, itemCount] of Object.entries(recipe.outputs)) {
@@ -1339,9 +1327,7 @@ export function collectHarthmereCook(
 
 /** Cancels a job. A pending/cooking job refunds its reserved ingredients and
  *  re-chains the remaining pending jobs earlier. A finished (ready) dish is
- *  DISCARDED instead — its ingredients were already cooked so nothing is
- *  refunded; this is the escape hatch when a dish can't be collected (e.g. the
- *  pack is over the carry-weight limit). */
+ *  DISCARDED instead because its ingredients were already cooked. */
 export function cancelHarthmereCook(
   state: HarthmereFoodStaminaState,
   input: { stationId: string; jobId: string; nowMs: number },

@@ -16,6 +16,10 @@ import {
   HARTHMERE_RECIPE_BOOKS,
   validateHarthmereRecipeBooks,
 } from "../harthmere_recipe_books";
+import {
+  harthmereBusinessToolForType,
+  harthmereBusinessToolListings,
+} from "../harthmere_business_tool_shop";
 
 const NOW_MS = 1_763_000_000_000;
 const ACTOR = "storefront_buyer";
@@ -67,7 +71,10 @@ function openBusiness(type = "food_service_restaurant") {
     (id) => !before.has(id)
   )!;
   assert.ok(businessId);
-  r = run(r.economy, "issue_license", { businessId, licenseLevel: 1 });
+  // The matrix includes regulated businesses such as the clinic. Use the
+  // highest authored license tier so this helper tests the sale rather than
+  // failing during setup on a type-specific licensing prerequisite.
+  r = run(r.economy, "issue_license", { businessId, licenseLevel: 3 });
   assert.deepStrictEqual(r.warnings, []);
   r = run(r.economy, "open_business", {
     businessId,
@@ -237,6 +244,157 @@ describe("Harthmere business storefront purchase (buy_storefront_good)", () => {
     assert.ok(
       r.warnings.some((w: string) => w.includes("insufficient_customer_gold")),
       JSON.stringify(r.warnings)
+    );
+  });
+});
+
+describe("Harthmere business tool purchase (buy_business_tool)", function () {
+  this.timeout(60_000);
+  before(() => {
+    ensureHarthmereProductionCraftingCatalogue();
+  });
+
+  it("atomically sells the Field Surgeon's Kit for its exact listed price", () => {
+    const listing = harthmereBusinessToolForType("medical_doctor")!;
+    const { state, businessId } = openBusiness("medical_doctor");
+    const balanceBefore = state.businesses[businessId].balanceGold;
+    const ledgerBefore = state.ledger.length;
+    const result = run(state, "buy_business_tool", {
+      businessId,
+      itemId: listing.toolItemId,
+      count: 1,
+    });
+
+    assert.deepStrictEqual(
+      result.warnings.filter((warning) =>
+        warning.startsWith("economy_rejected")
+      ),
+      []
+    );
+    assert.equal(result.inventoryItemDeltas.field_surgeon_kit, 1);
+    assert.equal(result.inventoryGoldDelta, -38);
+    assert.equal(result.economy.ledger.length, ledgerBefore + 1);
+    assert.equal(result.economy.ledger.at(-1)?.kind, "business_tool_purchased");
+    assert.ok(
+      result.economy.businesses[businessId].balanceGold > balanceBefore,
+      "the shop should receive the sale proceeds after tax"
+    );
+  });
+
+  it("delivers every one of the 19 business tools to inventory", () => {
+    const listings = harthmereBusinessToolListings();
+    assert.equal(listings.length, 19);
+    for (const listing of listings) {
+      const { state, businessId } = openBusiness(listing.businessType);
+      const result = run(state, "buy_business_tool", {
+        businessId,
+        itemId: listing.toolItemId,
+        count: 1,
+      });
+      assert.deepStrictEqual(
+        result.warnings.filter((warning) =>
+          warning.startsWith("economy_rejected")
+        ),
+        [],
+        `${listing.businessType} rejected ${listing.toolItemId}`
+      );
+      assert.equal(
+        result.inventoryItemDeltas[listing.toolItemId],
+        1,
+        listing.toolItemId
+      );
+      assert.equal(
+        result.inventoryGoldDelta,
+        -listing.priceGold,
+        listing.toolItemId
+      );
+    }
+  });
+
+  it("leaves gold, inventory, stock, and ledger unchanged when a tool purchase fails", () => {
+    const listing = harthmereBusinessToolForType("medical_doctor")!;
+    const cases = [
+      {
+        name: "insufficient gold",
+        payload: { itemId: listing.toolItemId, count: 1 },
+        context: ctx({ actorGold: listing.priceGold - 1 }),
+        warning: "economy_rejected:insufficient_customer_gold_for_sale",
+      },
+      {
+        name: "already owned",
+        payload: { itemId: listing.toolItemId, count: 1 },
+        context: ctx({ actorInventoryItems: { [listing.toolItemId]: 1 } }),
+        warning: "economy_rejected:business_tool_already_owned",
+      },
+      {
+        name: "wrong listing",
+        payload: { itemId: "ward_hammer", count: 1 },
+        context: ctx(),
+        warning: "economy_rejected:business_tool_listing_mismatch",
+      },
+      {
+        name: "multiple copies",
+        payload: { itemId: listing.toolItemId, count: 2 },
+        context: ctx(),
+        warning: "economy_rejected:business_tool_single_purchase_only",
+      },
+    ] as const;
+
+    for (const testCase of cases) {
+      const { state, businessId } = openBusiness("medical_doctor");
+      const businessBefore = structuredClone(state.businesses[businessId]);
+      const ledgerBefore = structuredClone(state.ledger);
+      const result = run(
+        state,
+        "buy_business_tool",
+        { businessId, ...testCase.payload },
+        testCase.context
+      );
+      assert.ok(
+        result.warnings.includes(testCase.warning),
+        `${testCase.name}: ${JSON.stringify(result.warnings)}`
+      );
+      assert.equal(result.inventoryGoldDelta, 0, testCase.name);
+      assert.deepStrictEqual(result.inventoryItemDeltas, {}, testCase.name);
+      assert.deepStrictEqual(
+        result.economy.businesses[businessId],
+        businessBefore,
+        testCase.name
+      );
+      assert.deepStrictEqual(
+        result.economy.ledger,
+        ledgerBefore,
+        testCase.name
+      );
+    }
+  });
+
+  it("rejects legacy stock with no native item identity before charging or removing it", () => {
+    const { state, businessId } = openBusiness("medical_doctor");
+    state.businesses[businessId].inventory.legacy_unmapped_surgical_tool = {
+      itemId: "legacy_unmapped_surgical_tool",
+      count: 1,
+    };
+    const balanceBefore = state.businesses[businessId].balanceGold;
+    const result = run(state, "record_customer_sale", {
+      businessId,
+      itemId: "legacy_unmapped_surgical_tool",
+      count: 1,
+    });
+
+    assert.ok(
+      result.warnings.includes("economy_rejected:item_not_purchasable")
+    );
+    assert.equal(result.inventoryGoldDelta, 0);
+    assert.deepStrictEqual(result.inventoryItemDeltas, {});
+    assert.equal(
+      result.economy.businesses[businessId].inventory
+        .legacy_unmapped_surgical_tool.count,
+      1
+    );
+    assert.equal(
+      result.economy.businesses[businessId].balanceGold,
+      balanceBefore
     );
   });
 });

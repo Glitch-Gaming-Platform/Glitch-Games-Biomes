@@ -13,6 +13,7 @@ import {
   HARTHMERE_LIVE_ENTITY_OPEN_WILDS_MIXED_MONSTER_SEEDS,
   HARTHMERE_LIVE_ENTITY_OPEN_WILDS_TERRAIN_PROBE_REVISION,
   HARTHMERE_LIVE_ENTITY_TOWN_LIVESTOCK_SEEDS,
+  HARTHMERE_RELOCATED_GUARDED_WILDLIFE_AREA_ID,
   harthmereGroundedLivestockSeedsInTerritory,
   harthmereGroundedMuckMonsterSeedsInTerritory,
   harthmereLiveEntityIsOpenWildsMixedGroup,
@@ -69,6 +70,25 @@ describe("Muck-area wildlife (cows, sheep, rabbits)", () => {
       );
       assert.equal(animals.length, 5, `${location.areaId} animal count`);
       for (const animal of animals) {
+        if (
+          location.areaId === HARTHMERE_RELOCATED_GUARDED_WILDLIFE_AREA_ID
+        ) {
+          // HARTHMERE_MUCK_PACK_RELOCATION (2026-07-28): this pocket used to sit
+          // 25 blocks from the centre of the Watchtower Muck Clearing, putting a
+          // second four-Mucker guard pack inside the clearing the player is sent
+          // to for their first fight. Herd and guards moved out together, so this
+          // one pocket is deliberately OUTSIDE Muck territory — and must be, or
+          // the open-Wilds gate would drop it.
+          assert.ok(
+            !muckMonsterAreaForPosition(animal.position, 1.5),
+            `${animal.seedId} must be clear of Muck territory`
+          );
+          assert.ok(
+            harthmereOpenWildsMixedGroupPositionIsValid(animal.position),
+            `${animal.seedId} must be a valid open-Wilds position`
+          );
+          continue;
+        }
         assert.ok(
           muckMonsterAreaForPosition(animal.position, 1.5),
           `${animal.seedId} must remain in Muck territory`

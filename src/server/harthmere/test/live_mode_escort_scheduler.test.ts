@@ -44,7 +44,7 @@ class FakeRedis implements HarthmereLiveModeEscortRedis {
 }
 
 describe("Harthmere native escort scheduler", () => {
-  it("uses the player's ECS position to complete one shared escort and update its ECS entity", async () => {
+  it("mirrors Anima's ECS position to complete one shared escort", async () => {
     const target = harthmereJobsBoardQuestMarkerPositionForId(
       "old_grove_road_post"
     )!;
@@ -124,17 +124,46 @@ describe("Harthmere native escort scheduler", () => {
     ]);
     const worldApi = ShimWorldApi.createForWorld(world);
 
-    const result = await runHarthmereLiveModeEscortSchedulerTick({
+    const created = await runHarthmereLiveModeEscortSchedulerTick({
       redis,
       worldApi,
       nowMs: NOW + 1_000,
     });
-    assert.deepEqual(result.changedCompanionIds, [companion.entityId]);
-    assert.equal(result.syncedEcsCount, 1);
+    assert.deepEqual(created.changedCompanionIds, [companion.entityId]);
+    assert.equal(created.syncedEcsCount, 1);
 
-    const shared = parseHarthmereLiveModeSharedWorldState(
+    let shared = parseHarthmereLiveModeSharedWorldState(
       redis.store.get(harthmereLiveModeSharedWorldStateKey()),
       NOW + 1_000
+    )!;
+    assert.equal(
+      shared.jobsBoard.postings.escort_scheduler_job.escortCompanion?.status,
+      "following"
+    );
+
+    // Model the authoritative Anima movement. The scheduler must observe this
+    // ECS position; it may not advance a second Redis-only companion ahead of it.
+    world.applyChanges([
+      {
+        kind: "update",
+        entity: {
+          id: companion.entityId,
+          position: Position.create({ v: target.position }),
+        },
+      },
+    ]);
+
+    const arrived = await runHarthmereLiveModeEscortSchedulerTick({
+      redis,
+      worldApi,
+      nowMs: NOW + 2_000,
+    });
+    assert.deepEqual(arrived.changedCompanionIds, [companion.entityId]);
+    assert.equal(arrived.syncedEcsCount, 0);
+
+    shared = parseHarthmereLiveModeSharedWorldState(
+      redis.store.get(harthmereLiveModeSharedWorldStateKey()),
+      NOW + 2_000
     )!;
     assert.equal(
       shared.jobsBoard.postings.escort_scheduler_job.escortCompanion?.status,

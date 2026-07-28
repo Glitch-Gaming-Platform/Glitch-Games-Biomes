@@ -2,6 +2,7 @@ import { useClientContext } from "@/client/components/contexts/ClientContextReac
 import { usePointerLockManager } from "@/client/components/contexts/PointerLockContext";
 import { useInventoryDraggerContext } from "@/client/components/inventory/InventoryDragger";
 import { shouldFocusAndLockForGameplayMovementKey } from "@/client/components/shortcutsHudMovementFocus";
+import { shortcutsHUDHandlesKeyForModeForTest } from "@/client/components/shortcutsHudKeyOwnership";
 import type { GameModal } from "@/client/game/resources/game_modal";
 import type { GlobalKeyCode } from "@/client/game/util/keyboard";
 import { cleanListener } from "@/client/util/helpers";
@@ -33,7 +34,14 @@ function isLocalDevHarthmereReservedKey(code: string) {
   );
 }
 
-export const ShortcutsHUD: React.FunctionComponent<{}> = ({}) => {
+export const ShortcutsHUD: React.FunctionComponent<{
+  /**
+   * Replacement BiomesUI owns its tab keys at capture phase, but R must still
+   * reach the original native crafting modal. Keeping only that handler mounted
+   * avoids reviving legacy E/I/M/C/V/O shortcuts behind the new tab rail.
+   */
+  recipesOnly?: boolean;
+}> = ({ recipesOnly = false }) => {
   const { userId, reactResources, audioManager } = useClientContext();
 
   const pointerLockManager = usePointerLockManager();
@@ -53,6 +61,7 @@ export const ShortcutsHUD: React.FunctionComponent<{}> = ({}) => {
         keydown: (event: KeyboardEvent) => {
           const lk = event.code as GlobalKeyCode;
           if (event.repeat) return;
+          if (!shortcutsHUDHandlesKeyForModeForTest(lk, recipesOnly)) return;
           if (isLocalDevHarthmereReservedKey(lk)) return;
           if (event.altKey || event.ctrlKey || event.metaKey) return;
 
@@ -110,7 +119,7 @@ export const ShortcutsHUD: React.FunctionComponent<{}> = ({}) => {
           }
         },
       }),
-    []
+    [recipesOnly]
   );
 
   const doCloseModal = () => {

@@ -28,6 +28,9 @@ import {
 
 export const CH1_FRACTURE_GATES_VERSION = 1 as const;
 
+/** One Grove-side day, in milliseconds. */
+export const CH1_GROVE_DAY_MS = 24 * 60 * 60 * 1000;
+
 export type Ch1GateBehavior =
   /** Opens, holds for a fixed window, closes on its own. */
   | "transient"
@@ -56,6 +59,23 @@ export interface Ch1FractureGateDef {
    * never before. Inconsistent between gates on purpose.
    */
   timeDilation: number;
+  /**
+   * The authored beat, in Grove-side milliseconds, that the fiction requires
+   * regardless of how fast the player was.
+   *
+   * The multiplier alone cannot deliver it. Act 3 closes on a Grove that has
+   * had THREE DAYS and Act 5 on a Grove that has had TWO; a brisk two-hour
+   * desert run at x9 produces eighteen hours, and a player who sprints the
+   * fjord produces less than one day. Rather than inflate the multiplier until
+   * a slow player loses a month, the elapsed time is
+   *
+   *     max(insideMs * timeDilation, groveSideFloorMs)
+   *
+   * which keeps "time inside runs differently AND INCONSISTENTLY" (journal
+   * §5.2 rule 5) honest in both directions: fast players get the authored
+   * dread, slow players get worse.
+   */
+  groveSideFloorMs?: number;
   /** Can the player enter it in Chapter 1? */
   enterable: boolean;
   description: string;
@@ -89,6 +109,7 @@ export const CH1_FRACTURE_GATES: readonly Ch1FractureGateDef[] = Object.freeze([
     setsFlag: CH1_FLAGS.gatePersistentOpen,
     // Ninety seconds inside becomes three days in the Grove.
     timeDilation: 9,
+    groveSideFloorMs: CH1_GROVE_DAY_MS * 3,
     enterable: true,
     description:
       "It did not close. It is still there in the morning, and a single set of sandal-leather footprints walks north out of it and stops halfway.",
@@ -103,6 +124,7 @@ export const CH1_FRACTURE_GATES: readonly Ch1FractureGateDef[] = Object.freeze([
     act: 5,
     requiresFlag: CH1_FLAGS.act4Complete,
     timeDilation: 6,
+    groveSideFloorMs: CH1_GROVE_DAY_MS * 2,
     enterable: true,
     description:
       "At the far edge of the anchor field, past the muck flats. It has been there for weeks and everybody has been ignoring it because it is unpleasant to stand near.",
@@ -165,6 +187,12 @@ export function ch1ValidateGatePlacement(gate: Ch1FractureGateDef): string[] {
   if (gate.timeDilation <= 0) {
     errors.push(`${gate.id}: timeDilation must be positive`);
   }
+  if (gate.dungeonId && !gate.groveSideFloorMs) {
+    errors.push(
+      `${gate.id}: an enterable gate needs a groveSideFloorMs, or the authored ` +
+        `"the Grove has had N days" beat depends on how slowly the player played`
+    );
+  }
   return errors;
 }
 
@@ -184,7 +212,29 @@ export function ch1GroveSideElapsedMs(
   if (!gate) {
     throw new Error(`unknown chapter 1 gate: ${gateId}`);
   }
-  return insideMs * gate.timeDilation;
+  const elapsed = Math.max(0, insideMs) * gate.timeDilation;
+  return Math.max(elapsed, gate.groveSideFloorMs ?? 0);
+}
+
+/**
+ * The line the game says on the way out. Never before: the dilation is dread,
+ * not a puzzle input, and the player must not be able to budget against it.
+ */
+export function ch1GroveSideElapsedSummary(
+  gateId: string,
+  insideMs: number
+): string {
+  const elapsed = ch1GroveSideElapsedMs(gateId, insideMs);
+  const days = Math.floor(elapsed / CH1_GROVE_DAY_MS);
+  if (days >= 1) {
+    return days === 1
+      ? "The Grove has had a day."
+      : `The Grove has had ${days} days.`;
+  }
+  const hours = Math.max(1, Math.round(elapsed / (60 * 60 * 1000)));
+  return hours === 1
+    ? "The Grove has had an hour."
+    : `The Grove has had ${hours} hours.`;
 }
 
 // ---------------------------------------------------------------------------

@@ -109,6 +109,7 @@ import type { Change, ProposedChange } from "@/shared/ecs/change";
 import {
   Box,
   EntityDescription,
+  Health,
   QuestGiver,
   ShardDiff,
   ShardMuck,
@@ -165,7 +166,8 @@ import {
 import { harthmereExoticMatterDepositAtBlock } from "@/shared/harthmere/exotic_matter_caves";
 import { createHarthmereBusinessOutpostRebuildMaterializationPlans } from "@/shared/harthmere/business_customer_simulator";
 import { HARTHMERE_NATIVE_QUEST_GIVER_MANIFEST } from "@/shared/harthmere/harthmere_native_quest_manifest";
-import { CH1_NEW_CAST } from "@/shared/harthmere/ch1_cast";
+import { CH1_NEW_CAST, CH1_SEEDED_CAST } from "@/shared/harthmere/ch1_cast";
+import { CH1_DUNGEON_ENCOUNTER_NPCS } from "@/shared/harthmere/ch1_dungeon_encounters";
 import {
   CH1_DUNGEON_TERRAIN_VERSION,
   ch1DungeonBlockAt,
@@ -176,6 +178,7 @@ import {
 } from "@/shared/harthmere/ch1_dungeon_terrain";
 import {
   CH1_ELSEWHEN_BAND_END_X,
+  ch1NormalizeOrdinaryWorldEastEdge,
   ch1ElsewhenSlotAt,
   ch1ElsewhenTerrainEntityIdForShard,
 } from "@/shared/harthmere/ch1_elsewhen_region";
@@ -1423,6 +1426,8 @@ function localDevMaterials() {
     moss: terrainId("moss", grass),
     muckwad: terrainId("muckwad", terrainId("moss", grass)),
     sand: terrainId("sand", dirt),
+    snow: terrainId("snow", stone),
+    ice: terrainId("ice", terrainId("simple_glass", stone)),
     whiteWool: terrainId("white_wool", stone),
     yellowWool: terrainId("yellow_wool", dirt),
     redWool: terrainId("red_wool", dirt),
@@ -2431,7 +2436,6 @@ const HARTHMERE_SERVER_VOXEL_ALL_BUILDINGS_DUNGEONS_VERSION =
 // unchanged.
 type HarthmereMat = HarthmereBuildingMat;
 
-
 // HARTHMERE_SERVER_VOXEL_OCCUPANCY_STRUCTURES_START
 // HARTHMERE_SERVER_VOXEL_OCCUPANCY_STRUCTURES_VERSION
 // Extra server-owned structures that replace the remaining large runtime OBJ/GLB
@@ -2439,7 +2443,6 @@ type HarthmereMat = HarthmereBuildingMat;
 // homes, and NPC trade/home annexes. These are terrain blocks, not prop shells.
 const HARTHMERE_SERVER_VOXEL_OCCUPANCY_STRUCTURES_VERSION =
   "harthmere-server-voxel-occupancy-structures";
-
 
 // HARTHMERE_SERVER_VOXEL_OCCUPANCY_STRUCTURES_END
 
@@ -6980,14 +6983,14 @@ function ch1SeedPlacement(member: (typeof CH1_NEW_CAST)[number]): Vec3 {
   switch (member.key) {
     case "iris_fen":
       return ch1DungeonAuthoredToWorld("ch1_dungeon_desert", {
-        x: 344,
-        y: -21,
+        x: 386,
+        y: -20,
         z: -56,
       });
     case "marrow":
       return ch1DungeonAuthoredToWorld("ch1_dungeon_desert", {
-        x: 350,
-        y: -21,
+        x: 391,
+        y: -20,
         z: -52,
       });
     case "nadia_sorrel":
@@ -7006,13 +7009,19 @@ function ch1SeedPlacement(member: (typeof CH1_NEW_CAST)[number]): Vec3 {
   throw new Error(`Chapter 1 NPC ${member.key} has no seed placement`);
 }
 
-/** Seed the ten Chapter 1 identities as real synchronized NPC entities. */
+/**
+ * Seed the Chapter 1 identities as real synchronized NPC entities.
+ *
+ * AUGUR-9 is deliberately NOT in this set. It is the snapshot Mucked Robot,
+ * already seeded by the Grove seeder, and writing a second body here is exactly
+ * the duplicate the promotion exists to remove.
+ */
 function makeLocalDevChapter1NpcChanges(
   tick: number,
   existingIds: Set<BiomesId>
 ) {
   const now = secondsSinceEpoch();
-  return CH1_NEW_CAST.map((member): Change => {
+  const castChanges = CH1_SEEDED_CAST.map((member): Change => {
     const kind = existingIds.has(member.entityId) ? "update" : "create";
     const preferredTypes =
       member.key === "augur9"
@@ -7060,10 +7069,48 @@ function makeLocalDevChapter1NpcChanges(
       },
     };
   });
+  const hostileTypeId = isNpcTypeId(BikkieIds.dMucker)
+    ? BikkieIds.dMucker
+    : LOCAL_DEV_WALKER_NPC_TYPE_ID;
+  const encounterChanges = CH1_DUNGEON_ENCOUNTER_NPCS.map(
+    (encounter): Change => {
+      const kind = existingIds.has(encounter.entityId) ? "update" : "create";
+      const base = npcEntity(
+        {
+          id: encounter.entityId,
+          typeId: hostileTypeId,
+          position: [...encounter.position],
+          orientation: [0, Math.PI],
+          velocity: [0, 0, 0],
+          displayName: encounter.displayName,
+          defaultDialog: npcDialog("It does not answer."),
+        },
+        now
+      );
+      return {
+        kind,
+        tick,
+        entity: {
+          ...base,
+          health: Health.create({
+            hp: encounter.maxHp,
+            maxHp: encounter.maxHp,
+          }),
+          entity_description: EntityDescription.create({
+            text: `${CH1_DUNGEON_TERRAIN_VERSION} CH1_ENCOUNTER ${encounter.dungeonId} ${encounter.encounterId} ${encounter.objectiveId}`,
+          }),
+        },
+      };
+    }
+  );
+  return [...castChanges, ...encounterChanges];
 }
 
 function localDevChapter1NpcIds() {
-  return CH1_NEW_CAST.map((member) => member.entityId);
+  return [
+    ...CH1_SEEDED_CAST.map((member) => member.entityId),
+    ...CH1_DUNGEON_ENCOUNTER_NPCS.map((encounter) => encounter.entityId),
+  ];
 }
 
 function localDevSnapshotGroveNpcIds() {
@@ -8102,7 +8149,6 @@ async function ensureHarthmereAdditiveWorldBoundary(
     // Create only that singleton component so the normal extension terrain can
     // seed itself; no existing terrain or entity is modified by this bootstrap.
     const initial = initialHarthmereWorldAabb();
-    initial.v1[0] = Math.max(initial.v1[0], CH1_ELSEWHEN_BAND_END_X);
     const tick = service ? service.table.tick + 1 : 1;
     const change: Change = {
       kind: currentEntityExists ? "update" : "create",
@@ -8154,7 +8200,10 @@ async function ensureHarthmereAdditiveWorldBoundary(
   }
 
   const expanded = expandWorldAabbForHarthmere(current.aabb);
-  expanded.v1[0] = Math.max(expanded.v1[0], CH1_ELSEWHEN_BAND_END_X);
+  // v2 incorrectly advertised detached Elsewhen instances as continuous world
+  // terrain. Migrate that exact known boundary back to Harthmere's real east
+  // edge; other pre-existing world sizes remain untouched.
+  expanded.v1[0] = ch1NormalizeOrdinaryWorldEastEdge(expanded.v1[0]);
   if (
     expanded.v0.every((value, index) => value === current.aabb.v0[index]) &&
     expanded.v1.every((value, index) => value === current.aabb.v1[index])
@@ -8286,6 +8335,63 @@ async function seedMissingLocalDevContentIntoExistingWorld(
   }
 }
 
+// CHAPTER_1_PRODUCTION_TERRAIN_SYNC:
+// Existing production snapshots deliberately disable the broad local-dev town
+// terrain generator, but the two Elsewhen dungeons live in a new, reserved
+// additive band and have no legacy snapshot terrain to preserve. Create only
+// missing stable Chapter 1 shard ids; never update or delete an existing shard.
+async function seedMissingChapter1TerrainIntoExistingWorld(
+  service: ShimWorldService | undefined,
+  worldApi: WorldApi
+) {
+  const specs = localDevChapter1TerrainShardSpecs();
+  const present = await existingLocalDevIds(
+    specs.map((spec) => spec.id),
+    service,
+    worldApi
+  );
+  const missing = specs.filter((spec) => !present.has(spec.id));
+  if (missing.length === 0) {
+    log.info(
+      "CHAPTER_1_PRODUCTION_TERRAIN_SYNC: all Elsewhen terrain already present."
+    );
+    return;
+  }
+
+  const voxeloo = await loadVoxeloo();
+  const tick = service ? service.table.tick + 1 : 1;
+  const changes = missing.map((spec) =>
+    makeLocalDevChapter1TerrainShard(
+      voxeloo,
+      "create",
+      spec.id,
+      spec.shardX,
+      spec.shardY,
+      spec.shardZ,
+      tick
+    )
+  );
+  log.warn(
+    "CHAPTER_1_PRODUCTION_TERRAIN_SYNC: creating missing Elsewhen terrain",
+    {
+      created: changes.length,
+      totalAuthoredShards: specs.length,
+      ...firstAndLastLocalDevSeedIds(changes),
+    }
+  );
+
+  if (service) {
+    for (const batch of localDevSeedChangeBatches(
+      changes,
+      LOCAL_DEV_TERRAIN_BUILD_APPLY_BATCH_SIZE
+    )) {
+      service.writeableTable.apply(batch);
+    }
+  } else {
+    await applyLocalDevSeedChangesInDebugBatches(worldApi, changes);
+  }
+}
+
 async function seedLocalDevTerrainIfMissing(
   service: ShimWorldService | undefined,
   worldApi: WorldApi
@@ -8298,9 +8404,29 @@ async function seedLocalDevTerrainIfMissing(
       // reconciliation too, leaving exact quest target IDs permanently absent.
       // Keep terrain untouched, but self-heal missing additive content on boot.
       log.info(
-        "Harthmere terrain generation is disabled; syncing missing authored content only."
+        "Harthmere town terrain generation is disabled; syncing missing authored content and additive Chapter 1 terrain."
       );
+      const firstExtensionTerrainId = localDevTerrainShardSpecs()[0]?.id;
+      const extensionTerrainAlreadyExists = firstExtensionTerrainId
+        ? (
+            await existingLocalDevIds(
+              [firstExtensionTerrainId],
+              service,
+              worldApi
+            )
+          ).has(firstExtensionTerrainId)
+        : false;
+      if (
+        !(await ensureHarthmereAdditiveWorldBoundary(
+          service,
+          worldApi,
+          extensionTerrainAlreadyExists
+        ))
+      ) {
+        return;
+      }
       await seedMissingLocalDevContentIntoExistingWorld(service, worldApi);
+      await seedMissingChapter1TerrainIntoExistingWorld(service, worldApi);
       await reconcileLocalDevPlayerLikeNpcCosmetics(service, worldApi);
     }
     return;
@@ -8624,7 +8750,7 @@ async function seedLocalDevTerrainIfMissing(
     runtimeOffsetZ: harthmereExtraTownOffsetZ(),
     x: [
       STARTER_TOWN_WILDS_X0 + harthmereExtraTownOffsetX(),
-      CH1_ELSEWHEN_BAND_END_X,
+      HARTHMERE_EXPANDED_WORLD_EAST_EDGE_X,
     ],
     y: [-64, 96],
     z: [

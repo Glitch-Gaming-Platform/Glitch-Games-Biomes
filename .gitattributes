@@ -43,3 +43,12 @@ public/assets/harthmere/**/*.ogg filter=lfs diff=lfs merge=lfs -text
 public/assets/harthmere/**/*.mp4 filter=lfs diff=lfs merge=lfs -text
 public/harthmere/voices/generated/current/** -text -filter -merge -diff
 public/assets/harthmere/audio/hauntsync-rpg-battle-chiptune.webm -text -filter -merge -diff
+# Keep these small Harthmere audio assets and build metadata available when the
+# repository's Git LFS quota is exhausted.
+.harthmere-live-build-decor-25f687dd-9ebe-4c31-8810-719ddfafe66b-live-build-decor-2026-07-27T21-50-44-927Z.json -text -filter -merge -diff
+public/assets/harthmere/audio/05-the-sand-that-remembers-loop.mp3 -text -filter -merge -diff
+public/assets/harthmere/audio/06-the-long-winter-mouth-loop.mp3 -text -filter -merge -diff
+public/assets/harthmere/audio/08-banners-at-first-light-loop.mp3 -text -filter -merge -diff
+public/assets/harthmere/audio/09-embers-test-the-oath-loop.mp3 -text -filter -merge -diff
+public/assets/harthmere/audio/11-no-crown-above-the-storm-loop.mp3 -text -filter -merge -diff
+public/assets/harthmere/audio/freesound-gamestudio-drop-coin-384921.mp3 -text -filter -merge -diff

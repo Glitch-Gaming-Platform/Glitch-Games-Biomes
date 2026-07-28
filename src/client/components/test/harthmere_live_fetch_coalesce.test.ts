@@ -11,6 +11,7 @@ import {
   runHarthmereLiveMutationSerially,
   resetHarthmereLiveInstallIdForTest,
 } from "@/client/components/harthmere_live_fetch";
+import { submitHarthmereBuildingLiveModeAction } from "@/client/components/harthmere_building_live_mode";
 
 // HARTHMERE_LIVE_FETCH_COALESCE
 // Locks the invariant that duplicate, near-simultaneous GETs of the same
@@ -148,6 +149,51 @@ describe("harthmere live fetch coalescing", () => {
       "drop",
     ]);
     assert.deepEqual(order, ["crate:start", "crate:end", "equip", "drop"]);
+  });
+
+  it("coalesces duplicate Building System actions and rejects non-2xx responses", async () => {
+    const previousFetch = globalThis.fetch;
+    let callCount = 0;
+    let releaseResponse!: (response: Response) => void;
+    const responseGate = new Promise<Response>((resolve) => {
+      releaseResponse = resolve;
+    });
+    globalThis.fetch = (async () => {
+      callCount += 1;
+      return responseGate;
+    }) as typeof fetch;
+
+    try {
+      const first = submitHarthmereBuildingLiveModeAction("claim_plot", {
+        plotId: "grove_muckstead_cottage_lot",
+        blueprintId: "muckstead_cottage",
+      });
+      const duplicate = submitHarthmereBuildingLiveModeAction("claim_plot", {
+        blueprintId: "muckstead_cottage",
+        plotId: "grove_muckstead_cottage_lot",
+      });
+      await Promise.resolve();
+      assert.equal(callCount, 1);
+
+      releaseResponse(
+        new Response(JSON.stringify({ error: "claim_conflict" }), {
+          status: 409,
+          headers: { "Content-Type": "application/json" },
+        })
+      );
+      const [firstResult, duplicateResult] = await Promise.all([
+        first,
+        duplicate,
+      ]);
+      for (const result of [firstResult, duplicateResult]) {
+        assert.equal(result.ok, false);
+        assert.ok(result.errors.includes("building_action_http_409"));
+        assert.ok(result.errors.includes("claim_conflict"));
+      }
+      assert.equal(callCount, 1);
+    } finally {
+      globalThis.fetch = previousFetch;
+    }
   });
   afterEach(() => {
     if (originalWindow === undefined) {

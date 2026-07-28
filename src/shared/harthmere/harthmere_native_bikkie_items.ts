@@ -6,6 +6,7 @@ import {
   type HarthmereGatheringAuthorityNode,
 } from "@/shared/harthmere/gathering_node_authority";
 import { ensureHarthmereProductionVendorCatalog } from "@/shared/harthmere/harthmere_vendor_catalog";
+import { registerCh1LiveItemDefinitions } from "@/shared/harthmere/ch1_live_items";
 import { LIVE_ENTITY_HELPER_QUEST_ITEM_COPY } from "@/shared/harthmere/live_entity_helper_quests";
 import {
   HARTHMERE_FOOD_DEFINITIONS,
@@ -69,6 +70,12 @@ const HARTHMERE_NATIVE_PRESENTATION_SOURCE_IDS: Readonly<
   rusty_pickaxe: BikkieIds.pickaxe,
   muck_rake: BikkieIds.muckBuster,
   repair_mallet: BikkieIds.axe,
+  herbalist_sickle: BikkieIds.axe,
+  simple_fishing_rod: BikkieIds.muckBuster,
+  skinning_knife: BikkieIds.axe,
+  scavenger_hook: BikkieIds.muckBuster,
+  clay_shovel: BikkieIds.pickaxe,
+  arcane_extractor: BikkieIds.muckBuster,
   training_dagger: BikkieIds.muckBuster,
   iron_longsword: BikkieIds.muckBuster,
   two_handed_sword: BikkieIds.muckBuster,
@@ -86,6 +93,19 @@ const HARTHMERE_NATIVE_PRESENTATION_SOURCE_IDS: Readonly<
   mana_essence: BikkieIds.powerCell,
   wild_berries: BikkieIds.fruit,
   raw_meat: BikkieIds.muckerMeat,
+  billys_lunch_pail: BikkieIds.bucket,
+  jackies_sealed_letter: BikkieIds.parcel,
+  bolt_order: BikkieIds.recipePaper,
+  sils_tuning_strip: BikkieIds.recordPlayer,
+  containment_tongs: BikkieIds.axe,
+  anchor_wrench: BikkieIds.axe,
+  drafting_compass: BikkieIds.camera,
+  ward_hammer: BikkieIds.axe,
+  portal_calibrator: BikkieIds.muckBuster,
+  field_surgeon_kit: BikkieIds.camera,
+  beacon_attuner: BikkieIds.muckBuster,
+  carving_cleaver: BikkieIds.axe,
+  hearth_broom: BikkieIds.muckBuster,
 };
 
 const HARTHMERE_NATIVE_PRESENTATION_ATTRIBUTES = [
@@ -270,6 +290,10 @@ function registerGatheringDefinitions(
  * its own BiomesId and therefore its own recipe/quest/collect identity.
  */
 export function ensureHarthmereNativeItemCatalogue() {
+  // Chapter 1 rewards and turn-ins cross the same native inventory boundary as
+  // every other Harthmere item. Register them explicitly here so browser and
+  // server Bikkie overlays do not depend on live-mode module import order.
+  registerCh1LiveItemDefinitions();
   // Crafting owns many combat weapons/armor that are not vendor starters.
   // Register it explicitly so Bikkie overlay contents never depend on module
   // import order at process startup.
@@ -308,6 +332,34 @@ export function ensureHarthmereNativeItemCatalogue() {
       tradeable: false,
     })
   );
+  ensureDefinition(
+    defaultHarthmereItemDefinition({
+      itemId: "billys_lunch_pail",
+      displayName: "Billy's Lunch Pail",
+      category: "quest_item",
+      maxStackSize: 1,
+      isCraftingMaterial: false,
+      isQuestItem: true,
+      tradeable: false,
+    })
+  );
+  for (const [itemId, displayName] of [
+    ["jackies_sealed_letter", "Jackie's Sealed Letter"],
+    ["bolt_order", "Luis's Bolt Order"],
+    ["sils_tuning_strip", "Sil's Tuning Strip"],
+  ] as const) {
+    ensureDefinition(
+      defaultHarthmereItemDefinition({
+        itemId,
+        displayName,
+        category: "quest_item",
+        maxStackSize: 1,
+        isCraftingMaterial: false,
+        isQuestItem: true,
+        tradeable: false,
+      })
+    );
+  }
   ensureDefinition(
     defaultHarthmereItemDefinition({
       // Bind the semantic inventory registry to the authored snapshot item;
@@ -479,23 +531,21 @@ export function harthmereStorableBiscuitIdentity(
   existing: Biscuit,
   definition: HarthmereItemDefinition
 ): Partial<Biscuit> {
-  const identity: Partial<Biscuit> = {};
   const stackable = existing.stackable ?? 0n;
-  if (stackable <= 0n) {
-    identity.stackable = BigInt(
-      Math.max(1, Math.trunc(definition.maxStackSize) || 1)
-    );
-  }
-  if (existing.isDroppable === undefined) {
-    identity.isDroppable = true;
-  }
-  if (!existing.displayName) {
-    identity.displayName = definition.displayName;
-  }
   // Deliberately narrow: only the attributes an item cannot physically exist
   // without. Cosmetic fields stay exactly as the authored snapshot published
   // them so this overlay never rewrites unrelated presentation data.
-  return identity;
+  return {
+    ...(stackable <= 0n
+      ? {
+          stackable: BigInt(
+            Math.max(1, Math.trunc(definition.maxStackSize) || 1)
+          ),
+        }
+      : {}),
+    ...(existing.isDroppable === undefined ? { isDroppable: true } : {}),
+    ...(!existing.displayName ? { displayName: definition.displayName } : {}),
+  };
 }
 
 // A snapshot id a Harthmere tool binds to may carry no art at all. The Hoe
@@ -573,7 +623,9 @@ export function harthmereBiscuitForItemDefinition(
     displayDescription: definition.description,
     craftingCategory: category,
     stackable: BigInt(Math.max(1, Math.trunc(definition.maxStackSize))),
-    isDroppable: true,
+    ...(definition.binding === "none" && !definition.isQuestItem
+      ? { isDroppable: true }
+      : {}),
     ...(nativePlaceable && placeableSize
       ? {
           isPlaceable: true,

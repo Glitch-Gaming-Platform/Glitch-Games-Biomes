@@ -12,6 +12,16 @@ import { getAabbForEntity } from "@/shared/game/entity_sizes";
 import { attackIntervalSeconds } from "@/shared/game/damage";
 import { distSqToAABB } from "@/shared/math/linear";
 import {
+  bodyVerticalGap,
+  horizontalDistance,
+  withinAttackReach,
+} from "@/shared/npc/behavior/combat_geometry";
+import {
+  readCreatureProgression,
+  scaleCreatureCombatStats,
+} from "@/shared/npc/creature_level";
+import { deserializeNpcCustomState } from "@/shared/npc/serde";
+import {
   applyHarthmereNativeAttackStats,
   harthmereNativeItemCombatProfile,
   harthmereNativeItemDefinitionForBiomesId,
@@ -27,6 +37,11 @@ import {
   readHarthmereNativeVitals,
   writeHarthmereNativeVitals,
 } from "@/shared/harthmere/harthmere_native_vitals";
+import {
+  awardHarthmereNativeSkillXp,
+  harthmereNativeCombatSkillAwards,
+  harthmereNativeShieldSkillAwards,
+} from "@/shared/harthmere/harthmere_skill_progression";
 
 export const playerInitEventHandler = makeEventHandler("playerInitEvent", {
   mergeKey: (event) => event.id,
@@ -103,12 +118,29 @@ export const updatePlayerHealthEventHandler = makeEventHandler(
         if (nativeProfile) {
           if (nativeProfile.attackDamage <= 0) return;
           const attackerPosition = attacker?.position()?.v;
+          const playerPosition = player.position()?.v;
           const playerAabb = getAabbForEntity(player.asReadonlyEntity());
+          const attackerHeight = attacker?.size()?.v[1] ?? 1.8;
+          const playerHeight = playerAabb
+            ? playerAabb[1][1] - playerAabb[0][1]
+            : 1.8;
           if (
             !attackerPosition ||
+            !playerPosition ||
             !playerAabb ||
-            distSqToAABB(attackerPosition, playerAabb) >
-              nativeProfile.attackDistance * nativeProfile.attackDistance
+            !withinAttackReach({
+              horizontalDistance: horizontalDistance(
+                attackerPosition,
+                playerPosition
+              ),
+              verticalGap: bodyVerticalGap({
+                attackerFeetY: attackerPosition[1],
+                attackerHeight,
+                targetFeetY: playerAabb[0][1],
+                targetHeight: playerHeight,
+              }),
+              attackRadius: nativeProfile.attackDistance,
+            })
           ) {
             log.debug("Rejected out-of-range native NPC damage", {
               attackerId: attacker?.id,
@@ -123,10 +155,27 @@ export const updatePlayerHealthEventHandler = makeEventHandler(
           const defender = readHarthmereNativeCombatProgression(
             player.triggerState()
           );
+          const serializedNpcState = attacker?.npcState()?.data;
+          const creatureProgression = readCreatureProgression(
+            serializedNpcState?.length
+              ? deserializeNpcCustomState(serializedNpcState)
+              : undefined
+          );
+          const scaledNpcStats = scaleCreatureCombatStats(
+            {
+              maxHp: nativeProfile.maxHp,
+              attackDamage: nativeProfile.attackDamage,
+              attackIntervalSecs: nativeProfile.attackIntervalSecs,
+              walkSpeed: nativeProfile.walkSpeed,
+              runSpeed: nativeProfile.runSpeed,
+              killXp: nativeProfile.killXp,
+            },
+            creatureProgression.level
+          );
           const defenderStats = harthmereNativeLevelStats(defender.level);
           const attackerStats = harthmereNativeLevelStats(nativeProfile.level);
           const damage = mitigateHarthmereNativeIncomingDamage({
-            rawDamage: nativeProfile.attackDamage,
+            rawDamage: scaledNpcStats.attackDamage,
             armor: armor.armor + defenderStats.armor,
             defense: armor.defense + defenderStats.defense,
             evasion: armor.evasion + defenderStats.evasion,
@@ -245,6 +294,14 @@ export const updatePlayerHealthEventHandler = makeEventHandler(
             });
             authoritativeHp = undefined;
             authoritativeHpDelta = -damage;
+            awardHarthmereNativeSkillXp(
+              attacker.mutableTriggerState(),
+              harthmereNativeCombatSkillAwards({
+                itemId: itemProfile.itemId,
+                kind: itemProfile.kind,
+                damage,
+              })
+            );
             if (selected && itemProfile.durabilityCostMs > 0) {
               decrementItemDurability(
                 attackerInventory,
@@ -254,6 +311,25 @@ export const updatePlayerHealthEventHandler = makeEventHandler(
             }
           }
         }
+      }
+
+      if (
+        event.damageSource?.kind === "attack" &&
+        authoritativeHpDelta !== undefined &&
+        authoritativeHpDelta < 0
+      ) {
+        awardHarthmereNativeSkillXp(
+          player.mutableTriggerState(),
+          harthmereNativeShieldSkillAwards({
+            equippedItemIds: [...(player.wearing()?.items.values() ?? [])]
+              .map(
+                (item) =>
+                  harthmereNativeItemDefinitionForBiomesId(item.id)?.itemId
+              )
+              .filter((itemId): itemId is string => Boolean(itemId)),
+            damageTaken: -authoritativeHpDelta,
+          })
+        );
       }
 
       if (authoritativeHp !== undefined) {

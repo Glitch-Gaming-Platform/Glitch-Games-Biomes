@@ -4,6 +4,7 @@ import { getAabbForEntity } from "@/shared/game/entity_sizes";
 import { anItem } from "@/shared/game/item";
 import * as Shards from "@/shared/game/shard";
 import type { SpatialTable } from "@/shared/game/spatial";
+import { ch1DetachedWorldBoundsAt } from "@/shared/harthmere/ch1_elsewhen_region";
 import { add, shiftAABB, sizeAABB, sub } from "@/shared/math/linear";
 import type { AABB, ReadonlyVec3, Vec3 } from "@/shared/math/types";
 
@@ -121,8 +122,11 @@ export class CollisionHelper {
     // Solid half-space walls fix this: each breached axis emits a giant
     // box that fills the entire outside region for that axis, regardless
     // of how far past the edge the entity is.
-    const v0 = worldMetadata.aabb.v0;
-    const v1 = worldMetadata.aabb.v1;
+    const centerX = (aabb[0][0] + aabb[1][0]) / 2;
+    const centerZ = (aabb[0][2] + aabb[1][2]) / 2;
+    const detachedBounds = ch1DetachedWorldBoundsAt([centerX, 0, centerZ]);
+    const v0 = detachedBounds?.v0 ?? worldMetadata.aabb.v0;
+    const v1 = detachedBounds?.v1 ?? worldMetadata.aabb.v1;
     const FAR = 1_000_000; // engineering "infinity" — larger than any world
     const wallNegX: AABB = [
       [-FAR, -FAR, -FAR],

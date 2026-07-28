@@ -3,6 +3,7 @@
 #
 #   scripts/harthmere/t.sh ch1            # Chapter 1 suite      (~4 s)
 #   scripts/harthmere/t.sh quests         # quest/container path (~2 s)
+#   scripts/harthmere/t.sh grove:e2e       # all 51 Grove authority rows
 #   scripts/harthmere/t.sh ui             # BiomesUI tabs        (~2 s)
 #   scripts/harthmere/t.sh gate           # quest + UI + types in one batch
 #   scripts/harthmere/t.sh cutscene       # cutscene generator   (~2 s)
@@ -46,6 +47,12 @@ QUESTS=(
   'src/shared/harthmere/test/harthmere_world_object_*.test.ts'
   'src/shared/harthmere/test/world_object_f_interaction_all_props.test.ts'
   'src/shared/harthmere/test/native_road_ahead_contract.test.ts'
+  'src/shared/harthmere/test/snapshot_grove_trigger_contract.test.ts'
+  'src/shared/harthmere/test/snapshot_grove_live_mode_backend.test.ts'
+  'src/client/components/challenges/LocalDevSnapshotGroveBibleRuntime.validation.test.ts'
+  'src/client/game/renderers/local_dev/test/harthmere_quest_object_markers.test.ts'
+  'src/client/components/biomes_ui/adapters/__tests__/mapAdapter.test.ts'
+  'src/client/components/biomes_ui/__tests__/MapQuestsTab.activeOnly.test.ts'
 )
 UI=('src/client/components/biomes_ui/__tests__/QuestsTab*.ts*')
 CLIENT_CONFIG=('src/client/game/client_config.test.ts')
@@ -65,6 +72,10 @@ shift || true
 case "$cmd" in
   ch1)      "${FAST[@]}" "${CH1[@]}" ;;
   quests)   "${FAST[@]}" "${QUESTS[@]}" ;;
+  grove:e2e)
+    HARTHMERE_GROVE_CATALOG_E2E=1 "${FAST[@]}" \
+      src/shared/harthmere/test/snapshot_grove_live_mode_backend.test.ts
+    ;;
   ui)       "${FAST[@]}" "${UI[@]}" ;;
   gate)
     # One Mocha process means one ts-node startup for the whole changed

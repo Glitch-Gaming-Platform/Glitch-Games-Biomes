@@ -32,6 +32,7 @@ import {
 import {
   CH1_ENDINGS,
   CH1_FLAGS,
+  CH1_TRACKS,
   type Ch1Ending,
 } from "@/shared/harthmere/ch1_ids";
 import {
@@ -39,10 +40,7 @@ import {
   type Ch1LatentSkillId,
 } from "@/shared/harthmere/ch1_latent_skills";
 import type { Ch1LiveGateRuntimeState } from "@/shared/harthmere/ch1_live_gate";
-import type {
-  Ch1QuestDef,
-  Ch1QuestStep,
-} from "@/shared/harthmere/ch1_quests";
+import type { Ch1QuestDef, Ch1QuestStep } from "@/shared/harthmere/ch1_quests";
 
 export interface Ch1ObjectiveChoiceOption {
   id: string;
@@ -54,6 +52,12 @@ export interface Ch1ObjectiveChoiceSpec {
   title: string;
   prompt: string;
   options: readonly Ch1ObjectiveChoiceOption[];
+  textInput?: {
+    label: string;
+    placeholder: string;
+    submitLabel: string;
+    maxLength: number;
+  };
   /** Closing the prompt leaves the objective active indefinitely. */
   cancellable: boolean;
 }
@@ -61,7 +65,8 @@ export interface Ch1ObjectiveChoiceSpec {
 const IMPORTANT_CHOICES: Readonly<Record<string, Ch1ObjectiveChoiceSpec>> = {
   d1_salt_market: {
     title: "The Salt Market",
-    prompt: "The awnings are rotten enough to drop. How do you cross the bazaar?",
+    prompt:
+      "The awnings are rotten enough to drop. How do you cross the bazaar?",
     options: [
       {
         id: "drop_awnings",
@@ -103,14 +108,16 @@ const IMPORTANT_CHOICES: Readonly<Record<string, Ch1ObjectiveChoiceSpec>> = {
       {
         id: "temple_balance",
         label: "Use the temple balance",
-        description: "Compare the unknown directly to the local reference mass.",
+        description:
+          "Compare the unknown directly to the local reference mass.",
       },
     ],
     cancellable: true,
   },
   d1_sun_court: {
     title: "The Gilded Bull",
-    prompt: "It has not noticed you. The pillars can break its horns if it charges.",
+    prompt:
+      "It has not noticed you. The pillars can break its horns if it charges.",
     options: [
       {
         id: "stealth_bypass",
@@ -154,7 +161,8 @@ const IMPORTANT_CHOICES: Readonly<Record<string, Ch1ObjectiveChoiceSpec>> = {
       {
         id: "fight_dark",
         label: "Fight in darkness",
-        description: "The fuel interval remains lost to exposure and the fight becomes brutal.",
+        description:
+          "The fuel interval remains lost to exposure and the fight becomes brutal.",
       },
     ],
     cancellable: true,
@@ -163,6 +171,85 @@ const IMPORTANT_CHOICES: Readonly<Record<string, Ch1ObjectiveChoiceSpec>> = {
     title: "A Name for the Board",
     prompt: "Tell Taye what to paint. Your chosen profile name remains yours.",
     options: [{ id: "keep_name", label: "Use my current name" }],
+    textInput: {
+      label: "Name for the board",
+      placeholder: "Enter a name",
+      submitLabel: "Paint this name",
+      maxLength: 24,
+    },
+    cancellable: false,
+  },
+  not_this_small: {
+    title: "The Answer You Did Not Choose",
+    prompt: "The words arrive before the memory that taught them to you.",
+    options: [{ id: "not_this_small", label: "Not this small." }],
+    cancellable: false,
+  },
+  say_the_sentence: {
+    title: "Say the Obvious Sentence",
+    prompt: "Rook waits for the conclusion nobody in the Grove wants to own.",
+    options: [
+      {
+        id: "biomes_make_gates",
+        label: "The gates open where Biomes are used.",
+      },
+    ],
+    cancellable: false,
+  },
+  tell_sil_why: {
+    title: "Explain It",
+    prompt: "The knowledge is complete. The explanation is missing.",
+    options: [
+      { id: "dont_know_heard_it", label: "I don't know. I heard it." },
+      { id: "hands_know", label: "My hands know. I don't." },
+      {
+        id: "bedrock",
+        label: "The answer is in the bedrock. I can't explain it.",
+      },
+      { id: "cannot_explain", label: "I know I'm right. I don't know why." },
+    ],
+    cancellable: false,
+  },
+  how_did_you_do_that: {
+    title: "How Did You Do That?",
+    prompt: "Calla wants a method. You have only the result.",
+    options: [
+      { id: "dont_know", label: "I don't know." },
+      { id: "hands_moved", label: "My hands moved before I thought." },
+      { id: "already_knew", label: "It felt like I already knew." },
+      {
+        id: "cannot_teach_it",
+        label: "I can't explain it well enough to teach.",
+      },
+    ],
+    cancellable: false,
+  },
+  call_the_collapse: {
+    title: "Call the Collapse",
+    prompt: "The Mouth has a rhythm. Name the second when it will close.",
+    options: [{ id: "seventeen_seconds", label: "Seventeen seconds." }],
+    cancellable: false,
+  },
+  confront: {
+    title: "Ask Her",
+    prompt:
+      "Every version of the question leads to the same three true answers.",
+    options: [
+      { id: "what_is_it", label: "What have you been giving me?" },
+      { id: "why_the_tea", label: "Why put it in the tea?" },
+      { id: "why_trust_you", label: "Why should I trust you now?" },
+    ],
+    cancellable: true,
+  },
+  report_or_not: {
+    title: "Your Statement",
+    prompt:
+      "Holt already has Teak's materials. Decide whether your accusation joins the file and whether the tea stops.",
+    options: [
+      { id: "report", label: "Report her" },
+      { id: "stop_tea", label: "Withhold the accusation and stop the tea" },
+      { id: "both", label: "Report her and stop the tea" },
+    ],
     cancellable: false,
   },
   d2_the_oath: {
@@ -213,6 +300,23 @@ const IMPORTANT_CHOICES: Readonly<Record<string, Ch1ObjectiveChoiceSpec>> = {
     prompt: "Sorrel needs a doctor. Lou represents the Collective.",
     options: [{ id: "tell", label: "Tell him" }],
     cancellable: true,
+  },
+  watch_him_go: {
+    title: "The Better Answer",
+    prompt: "Lou asks for the answer you could not give eleven years ago.",
+    options: [
+      { id: "dont_know", label: "I don't know." },
+      { id: "there_wasnt_one", label: "There wasn't a better answer." },
+      { id: "not_yours", label: "It was not yours to choose." },
+      { id: "i_would_have_failed", label: "I might have failed too." },
+    ],
+    cancellable: false,
+  },
+  did_he_take_it: {
+    title: "Did He Take It?",
+    prompt: "Jackie asks for the only fact that matters first.",
+    options: [{ id: "yes", label: "Yes." }],
+    cancellable: false,
   },
   the_final_choice: {
     title: "Decide",
@@ -340,7 +444,11 @@ export function ch1PlayLiveLog(
   nowMs: number
 ): Ch1LiveStoryActionResult {
   if (!runtime.availablePlaybackIds.includes(fragmentId)) {
-    return { ok: false, runtime, reason: "That playback has not been recovered." };
+    return {
+      ok: false,
+      runtime,
+      reason: "That playback has not been recovered.",
+    };
   }
   const played = ch1Augur9PlayLog(runtime.augur9, fragmentId);
   if (!played.ok) return { ok: false, runtime, reason: played.reason };
@@ -354,6 +462,34 @@ export function ch1PlayLiveLog(
   };
 }
 
+/**
+ * Ambient (non-quest) fragment recovery. The caller has already validated the
+ * trigger against real position/inventory/health via ch1EvaluateAmbientTrigger;
+ * this reducer only applies the durable consequence, and it is idempotent, so a
+ * player standing in a trigger radius for a minute recovers one memory.
+ */
+export function ch1TriggerLiveFragment(
+  runtime: Ch1LiveGateRuntimeState,
+  fragmentId: string,
+  nowMs: number
+): Ch1LiveStoryActionResult {
+  const fragment = ch1Fragment(fragmentId);
+  if (!fragment) {
+    return { ok: false, runtime, reason: "Unknown Chapter 1 fragment." };
+  }
+  const already =
+    fragment.type === "playback"
+      ? runtime.availablePlaybackIds.includes(fragmentId)
+      : runtime.ledger.entries.some((entry) => entry.fragmentId === fragmentId);
+  if (already) {
+    return { ok: true, runtime };
+  }
+  return {
+    ok: true,
+    runtime: ch1RecoverLiveFragment(runtime, fragmentId, nowMs),
+  };
+}
+
 export function ch1RechargeLiveAugur9(
   runtime: Ch1LiveGateRuntimeState,
   itemId: string
@@ -361,7 +497,10 @@ export function ch1RechargeLiveAugur9(
   try {
     return {
       ok: true,
-      runtime: { ...runtime, augur9: ch1Augur9Recharge(runtime.augur9, itemId) },
+      runtime: {
+        ...runtime,
+        augur9: ch1Augur9Recharge(runtime.augur9, itemId),
+      },
       consumedItemId: itemId,
     };
   } catch (error) {
@@ -371,6 +510,51 @@ export function ch1RechargeLiveAugur9(
       reason: error instanceof Error ? error.message : String(error),
     };
   }
+}
+
+export const CH1_LATENT_SKILL_COOLDOWN_MS = 5_000;
+
+const LATENT_SKILL_USE_RESULTS: Readonly<Record<Ch1LatentSkillId, string>> = {
+  ls_anchor_read:
+    "Stress lines resolve across the nearby ground. The heaviest displaced load is now obvious.",
+  ls_containment_triage:
+    "You sort the fault into vent, lattice, anchor pressure, and reseat order before you can name any of them.",
+  ls_field_calibration:
+    "You reject the absolute reading and compare every instrument against the local reference.",
+  ls_gate_timing:
+    "The aperture's rhythm resolves into a collapse window you can call to within twenty seconds.",
+};
+
+export function ch1UseLiveLatentSkill(
+  runtime: Ch1LiveGateRuntimeState,
+  skillId: Ch1LatentSkillId,
+  nowMs: number
+): Ch1LiveStoryActionResult {
+  if (!runtime.latentSkills.unlocked.includes(skillId)) {
+    return { ok: false, runtime, reason: "Your hands do not know this yet." };
+  }
+  const lastUsedAtMs = runtime.latentSkillLastUsedAtMs[skillId] ?? 0;
+  if (nowMs - lastUsedAtMs < CH1_LATENT_SKILL_COOLDOWN_MS) {
+    return { ok: false, runtime, reason: "Give the recognition a moment." };
+  }
+  const result = LATENT_SKILL_USE_RESULTS[skillId];
+  let next: Ch1LiveGateRuntimeState = {
+    ...runtime,
+    latentSkillLastUsedAtMs: {
+      ...runtime.latentSkillLastUsedAtMs,
+      [skillId]: nowMs,
+    },
+    lastLatentSkillUse: { skillId, usedAtMs: nowMs, result },
+  };
+  if (skillId === "ls_field_calibration") {
+    const recovered = ch1TriggerLiveFragment(
+      next,
+      "frag_a3_overlay_the_balance",
+      nowMs
+    );
+    if (recovered.ok) next = recovered.runtime;
+  }
+  return { ok: true, runtime: next };
 }
 
 export function ch1LinkLiveFragments(
@@ -391,12 +575,16 @@ export function ch1LinkLiveFragments(
   }
   const recipe = ch1LinkRecipeFor(fragmentIds);
   if (!recipe) {
-    return { ok: false, runtime, reason: "Those fragments do not form a valid link." };
+    return {
+      ok: false,
+      runtime,
+      reason: "Those fragments do not form a valid link.",
+    };
   }
   const sorted = [...recipe.sources].sort();
-  const linkPairs = sorted.slice(1).map(
-    (fragmentId) => [sorted[0], fragmentId] as const
-  );
+  const linkPairs = sorted
+    .slice(1)
+    .map((fragmentId) => [sorted[0], fragmentId] as const);
   const existing = new Set(
     runtime.ledger.links.map((pair) => [...pair].sort().join("|"))
   );
@@ -427,7 +615,21 @@ function acceptedChoice(step: Ch1QuestStep, choice: string | undefined) {
   const spec = ch1ObjectiveChoiceSpec(step);
   if (!spec) return true;
   if (step.id === "give_the_ledger" && choice === "not_yet") return false;
+  if (step.id === "choose_a_name" && normalizedChosenName(choice)) return true;
   return spec.options.some((option) => option.id === choice);
+}
+
+function normalizedChosenName(choice: string | undefined) {
+  if (!choice?.startsWith("name:")) return undefined;
+  const name = choice.slice(5).trim().replace(/\s+/g, " ");
+  if (
+    name.length < 2 ||
+    name.length > 24 ||
+    !/^[\p{L}\p{N}][\p{L}\p{N} .'-]*$/u.test(name)
+  ) {
+    return undefined;
+  }
+  return name;
 }
 
 export function ch1ApplyLiveObjectiveEffects(args: {
@@ -467,7 +669,17 @@ export function ch1ApplyLiveObjectiveEffects(args: {
   }
 
   if (args.step.id === "collect_testimonies") {
-    player = { ...player, testimonies: CH1_TESTIMONIES.map((entry) => entry.id) };
+    player = {
+      ...player,
+      testimonies: CH1_TESTIMONIES.map((entry) => entry.id),
+    };
+  }
+  if (args.step.id === "choose_a_name") {
+    const chosenName = normalizedChosenName(args.choice);
+    runtime = {
+      ...runtime,
+      chosenName: chosenName ?? runtime.chosenName,
+    };
   }
   if (args.step.id === "put_it_together") {
     player = {
@@ -497,7 +709,18 @@ export function ch1ApplyLiveObjectiveEffects(args: {
       player,
       args.choice as "let_run" | "hold_stall"
     );
-    runtime = { ...runtime, hallrChoice: args.choice as "let_run" | "hold_stall" };
+    runtime = {
+      ...runtime,
+      hallrChoice: args.choice as "let_run" | "hold_stall",
+    };
+  }
+  if (args.step.id === "report_or_not") {
+    if (args.choice === "report" || args.choice === "both") {
+      player = ch1SetFlag(player, CH1_FLAGS.jackieReported);
+      player = ch1AdjustTrack(player, CH1_TRACKS.jackieTrust, -5);
+    } else if (args.choice === "stop_tea") {
+      player = ch1SetFlag(player, CH1_FLAGS.jackieStatementWithheld);
+    }
   }
   if (args.step.id === "the_final_choice") {
     player = ch1ChooseEnding(player, args.choice as Ch1Ending);

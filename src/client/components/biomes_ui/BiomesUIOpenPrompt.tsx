@@ -2,8 +2,8 @@ import { useBiomesUIReplaceLegacyFlag } from "@/client/components/biomes_ui/Biom
 import { usePointerLockUnlockWhileOpenActive } from "@/client/components/contexts/usePointerLockUnlockWhileOpenActive";
 import React from "react";
 import {
-  BIOMES_UI_OPEN_MENU_SHORTCUT,
   BIOMES_UI_QUESTS_SHORTCUT,
+  BIOMES_UI_RECIPES_SHORTCUT,
 } from "./BiomesUITypes";
 import { Highlightable } from "./highlight/HighlightOverlay";
 import { UI_IDS } from "./uniqueIds";
@@ -106,16 +106,16 @@ export const BiomesUIOpenPrompt: React.FunctionComponent<{
         className="biomes-ui-open-prompt"
         data-ui-id={UI_IDS.HUD_PROMPT_OPEN_MENU}
         data-biomes-ui-open={isOpen ? "true" : "false"}
-        aria-label={`Press ${BIOMES_UI_OPEN_MENU_SHORTCUT} to open menu. Press ${BIOMES_UI_QUESTS_SHORTCUT} to open quests`}
+        aria-label={`Press ${BIOMES_UI_RECIPES_SHORTCUT} to open Recipes. Press ${BIOMES_UI_QUESTS_SHORTCUT} to open quests`}
       >
         <div className="biomes-ui-open-prompt__row">
           <div className="biomes-ui-open-prompt__key">
-            {BIOMES_UI_OPEN_MENU_SHORTCUT}
+            {BIOMES_UI_RECIPES_SHORTCUT}
           </div>
           <div className="biomes-ui-open-prompt__text">
-            <div className="biomes-ui-open-prompt__label">Open Menu</div>
+            <div className="biomes-ui-open-prompt__label">Open Recipes</div>
             <div className="biomes-ui-open-prompt__hint">
-              Press {BIOMES_UI_OPEN_MENU_SHORTCUT}
+              Press {BIOMES_UI_RECIPES_SHORTCUT}
             </div>
           </div>
         </div>

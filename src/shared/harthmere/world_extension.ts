@@ -8,7 +8,7 @@ import type { ReadonlyVec3, Vec3 } from "@/shared/math/types";
 // production shard. The extra 192 blocks before X=2560 leave room for roads,
 // walls, and future bible additions without another metadata migration.
 export const HARTHMERE_ADDITIVE_WORLD_EXTENSION_VERSION =
-  "harthmere-additive-world-extension-v2" as const;
+  "harthmere-additive-world-extension-v3-portal-only-elsewhen" as const;
 export const HARTHMERE_ORIGINAL_WORLD_EAST_EDGE_X = 1792;
 export const HARTHMERE_EXPANDED_WORLD_EAST_EDGE_X = 2560;
 export const HARTHMERE_ADDITIVE_TOWN_OFFSET_X = 1600;

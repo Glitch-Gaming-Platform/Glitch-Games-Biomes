@@ -19,7 +19,11 @@ import {
   snapshotGroveInventoryEventMatchesObjective,
   snapshotGroveItemUseEventMatchesObjective,
   snapshotGroveItemUseObjectiveKind,
+  snapshotGroveObjectiveInventoryRequirement,
   snapshotGroveObjectiveCompletionFixture,
+  snapshotGroveObjectiveRequiredCount,
+  snapshotGroveObjectiveTargetMarkerIds,
+  snapshotGroveCraftEventMatchesObjective,
   snapshotGroveTutorialInventoryGrantsForQuest,
   validateSnapshotGroveTriggerContracts,
 } from "@/shared/harthmere/snapshot_grove_trigger_contract";
@@ -70,9 +74,7 @@ function collectRows() {
 }
 
 function placementRows() {
-  return allGroveObjectiveRows().filter(
-    (row) => row.trigger === "place_voxel"
-  );
+  return allGroveObjectiveRows().filter((row) => row.trigger === "place_voxel");
 }
 
 const WRONG_ITEM_BY_FAMILY: Record<string, Record<string, string>> = {
@@ -118,6 +120,25 @@ if (
       }
     );
 
+    (test as any)(
+      "The Moss That Went Quiet points its combat step at the live seedy nest",
+      () => {
+        const quest = SNAPSHOT_GROVE_QUESTS.find(
+          (candidate) => candidate.id === "moss_that_went_quiet"
+        );
+        const marker = SNAPSHOT_GROVE_LANDMARKS.find(
+          (candidate) => candidate.id === quest?.markerIds[3]
+        );
+        (expect as any)(quest?.markerIds[3]).toBe(
+          "mosslawn_silent_muckling_nest"
+        );
+        (expect as any)(marker?.label).toBe("Silent Moss Muckling Nest");
+        (expect as any)(marker?.kind).toBe("danger");
+        (expect as any)(marker?.visibleOnWorldMap).toBe(true);
+        (expect as any)(marker?.position).toEqual([334.621, 71, -394.393]);
+      }
+    );
+
     const report = validateSnapshotGroveTriggerContracts(SNAPSHOT_GROVE_QUESTS);
 
     (test as any)(
@@ -153,6 +174,130 @@ if (
     (test as any)("every Grove objective has a marker id", () => {
       (expect as any)(report.markerViolations).toEqual([]);
     });
+
+    (test as any)(
+      "every Grove quest ends in a visible return-to-giver conversation",
+      () => {
+        const missing = SNAPSHOT_GROVE_QUESTS.filter(
+          (quest) => quest.triggers[quest.triggers.length - 1] !== "talk_npc"
+        ).map((quest) => quest.id);
+        (expect as any)(missing).toEqual([]);
+      }
+    );
+
+    (test as any)(
+      "all counted and ordered objectives resolve every physical subtarget",
+      () => {
+        const markerIds = new Set(
+          SNAPSHOT_GROVE_LANDMARKS.map((marker) => marker.id)
+        );
+        const failures: string[] = [];
+        for (const row of allGroveObjectiveRows()) {
+          const targets = snapshotGroveObjectiveTargetMarkerIds(
+            row.quest,
+            row.objectiveIndex
+          );
+          const required = snapshotGroveObjectiveRequiredCount(
+            row.quest,
+            row.objectiveIndex
+          );
+          if (required > 1 && targets.length !== required) {
+            // Collection quantities may intentionally come from one physical
+            // basket in a single authoritative pickup.
+            const fixture = snapshotGroveObjectiveCompletionFixture(
+              row.quest,
+              row.objectiveIndex
+            );
+            if ((fixture?.count ?? 0) < required) {
+              failures.push(
+                `${row.quest.id}[${row.objectiveIndex}]: ${targets.length}/${required} targets`
+              );
+            }
+          }
+          for (const markerId of targets) {
+            if (!markerIds.has(markerId)) {
+              failures.push(
+                `${row.quest.id}[${row.objectiveIndex}]: missing ${markerId}`
+              );
+            }
+          }
+        }
+        (expect as any)(failures).toEqual([]);
+      }
+    );
+
+    (test as any)(
+      "no Grove objective uses the old any-move or generic-status proxies",
+      () => {
+        const forbidden = new Set([
+          "status_check",
+          "escort",
+          "carry",
+          "item_update",
+        ]);
+        const violations = allGroveObjectiveRows()
+          .filter((row) => forbidden.has(row.trigger))
+          .map((row) => `${row.quest.id}[${row.objectiveIndex}]`);
+        (expect as any)(violations).toEqual([]);
+      }
+    );
+
+    (test as any)("craft objectives require their exact shipped recipe", () => {
+      const craftRows = allGroveObjectiveRows().filter(
+        (row) => row.trigger === "craft"
+      );
+      (expect as any)(craftRows.length).toBe(2);
+      for (const row of craftRows) {
+        const fixture = snapshotGroveObjectiveCompletionFixture(
+          row.quest,
+          row.objectiveIndex
+        );
+        (expect as any)(fixture?.recipeId).toBeTruthy();
+        (expect as any)(fixture?.outputItemId).toBeTruthy();
+        (expect as any)(
+          snapshotGroveCraftEventMatchesObjective(
+            fixture ?? {},
+            row.quest,
+            row.objectiveIndex
+          )
+        ).toBe(true);
+        (expect as any)(
+          snapshotGroveCraftEventMatchesObjective(
+            { recipeId: "wrong_recipe", outputItemId: "wrong_output" },
+            row.quest,
+            row.objectiveIndex
+          )
+        ).toBe(false);
+      }
+    });
+
+    (test as any)(
+      "physical handoffs have an authoritative inventory requirement",
+      () => {
+        const expected = [
+          "econ_billys_lost_lunch_pail:3",
+          "sticky_medicine:3",
+          "toll_ledger_problem:3",
+          "econ_gus_fresh_loaves_to_fountain:2",
+          "econ_gus_grain_run:2",
+          "econ_kit_heavy_parcel_to_crossroads:3",
+          "econ_mel_bench_repair:2",
+          "econ_rin_mushroom_pickup:3",
+          "econ_carlo_festival_skewers:3",
+        ];
+        const actual = allGroveObjectiveRows()
+          .filter((row) =>
+            Boolean(
+              snapshotGroveObjectiveInventoryRequirement(
+                row.quest,
+                row.objectiveIndex
+              )
+            )
+          )
+          .map((row) => `${row.quest.id}:${row.objectiveIndex}`);
+        (expect as any)(actual.sort()).toEqual(expected.sort());
+      }
+    );
 
     (test as any)(
       "every Grove objective has a synthetic completion fixture",
@@ -280,33 +425,28 @@ if (
           // lesson first holds and then drops the same stone), so its summary
           // keeps the first trigger. Membership in objectiveIndexes is the
           // authoritative proof that this placement step receives the grant.
-          (expect as any)(grant?.objectiveIndexes.includes(row.objectiveIndex)).toBe(
-            true
-          );
+          (expect as any)(
+            grant?.objectiveIndexes.includes(row.objectiveIndex)
+          ).toBe(true);
         }
 
-        const paintedRouteQuest = SNAPSHOT_GROVE_QUESTS.find(
-          (entry) => entry.id === "color_that_still_points_home"
-        )!;
-        const paintedRouteGrant =
-          snapshotGroveTutorialInventoryGrantsForQuest(
-            paintedRouteQuest
-          ).find((entry) => entry.objectiveIndexes.includes(3));
-        // The route-flag objective must use a native placeable block, not its
-        // cosmetic completion reward, which cannot drive a voxel event.
-        (expect as any)(paintedRouteGrant?.itemId).toBe("rough_stone");
-
-        const freshLoavesQuest = SNAPSHOT_GROVE_QUESTS.find(
-          (entry) => entry.id === "econ_gus_fresh_loaves_to_fountain"
-        )!;
-        const freshLoavesGrant =
-          snapshotGroveTutorialInventoryGrantsForQuest(
-            freshLoavesQuest
-          ).find((entry) => entry.objectiveIndexes.includes(2));
-        // Bread is edible, not placeable. The delivery step therefore grants
-        // a sealed placeable token rather than stranding the player with an
-        // inventory item that can never emit the required voxel event.
-        (expect as any)(freshLoavesGrant?.itemId).toBe("rough_stone");
+        // Route painting and delivery handoffs are object interactions now;
+        // they must not receive a duplicate rough-stone placement workaround.
+        for (const [questId, objectiveIndex] of [
+          ["color_that_still_points_home", 3],
+          ["econ_gus_fresh_loaves_to_fountain", 2],
+        ] as const) {
+          const quest = SNAPSHOT_GROVE_QUESTS.find(
+            (entry) => entry.id === questId
+          )!;
+          (expect as any)(quest.triggers[objectiveIndex]).toBe("interact");
+          assert.notEqual(
+            snapshotGroveTutorialInventoryGrantsForQuest(quest).find((entry) =>
+              entry.objectiveIndexes.includes(objectiveIndex)
+            )?.itemId,
+            "rough_stone"
+          );
+        }
       }
     );
 

@@ -21,10 +21,18 @@ TS_MOCHA=(
   --require tsconfig-paths/register
   --project tsconfig.json
 )
-SERVER_TS_MOCHA=(
+CLIENT_TS_MOCHA=(
   "${TS_MOCHA[@]}"
   --require src/server/test/global_setup.ts
   --timeout 10000
+)
+SERVER_TS_MOCHA=(
+  "${TS_MOCHA[@]}"
+  --require src/server/test/global_setup.ts
+  # This gate deliberately batches Redis, world-edit, and ECS suites. A few
+  # valid integration cases take 5-15 seconds under parallel CPU contention,
+  # so use a batch-safe ceiling while preserving each test's own assertions.
+  --timeout 30000
   --parallel
   --jobs 4
 )
@@ -42,7 +50,7 @@ node scripts/harthmere/test-harthmere-native-chase-e2e-contract.cjs "$ROOT"
 echo "== Visible frontend interaction contracts =="
 # Keep onboarding, active-leaf notifications, and their real completion
 # fixtures inside the release gate rather than relying on ad-hoc local runs.
-"${TS_MOCHA[@]}" \
+"${CLIENT_TS_MOCHA[@]}" \
   src/client/game/scripts/audio.test.ts \
   src/client/components/challenges/worldInteractionDispatcher.browser.test.tsx \
   src/client/components/challenges/TalkDialogModalStep.browser.test.tsx \
@@ -96,11 +104,14 @@ echo "== Native ECS handler and authority contracts =="
   src/server/shared/triggers/test/engine_cleanup.test.ts \
   src/server/harthmere/test/native_vitals_scheduler.test.ts \
   src/server/harthmere/test/native_vitals_environment.test.ts \
+  src/server/harthmere/test/native_skill_materialization.test.ts \
   src/server/harthmere/test/live_mode_escort_scheduler.test.ts \
   src/shared/physics/movement.test.ts \
   src/shared/npc/behavior/test/chase_attack_logic.test.ts \
   src/shared/harthmere/test/harthmere_native_combat.test.ts \
   src/shared/harthmere/test/harthmere_native_vitals.test.ts \
+  src/shared/harthmere/test/harthmere_skill_progression.test.ts \
+  src/shared/harthmere/test/live_mode_skill_progression.test.ts \
   src/shared/harthmere/test/inventory_system_full_stack.test.ts \
   src/shared/harthmere/test/native_road_ahead_contract.test.ts \
   src/shared/harthmere/test/mmo_building_authority.test.ts \
@@ -136,6 +147,9 @@ if [ -z "${HARTHMERE_E2E_CONTROL_TOKEN:-}" ]; then
 fi
 
 echo "== Browser -> logic -> native ECS -> sync round trips =="
+HARTHMERE_E2E_SKILLS_ONLY=1 \
+  node scripts/harthmere/test-harthmere-native-ecs-roundtrip-e2e.cjs
+
 HARTHMERE_E2E_SNAPSHOT_GROVE_ONBOARDING_ONLY=1 \
   node scripts/harthmere/test-harthmere-native-ecs-roundtrip-e2e.cjs
 

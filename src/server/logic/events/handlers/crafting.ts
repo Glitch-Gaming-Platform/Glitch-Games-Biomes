@@ -35,6 +35,12 @@ import {
   itemCountToApproximateNumber,
 } from "@/shared/game/items";
 import { relevantBiscuitForEntity } from "@/shared/npc/bikkie";
+import { harthmereNativeRecipeIdForBiomesId } from "@/shared/harthmere/harthmere_native_item_ids";
+import { getHarthmereCraftingRecipe } from "@/shared/harthmere/mmo_inventory_authority";
+import {
+  awardHarthmereNativeSkillXp,
+  harthmereCraftingSkillAwards,
+} from "@/shared/harthmere/harthmere_skill_progression";
 
 const BLING_PER_COMPOST = 0.1;
 const COMPOST_FOR_SUPER_FERTILIZER = 6;
@@ -100,6 +106,22 @@ const inventoryCraftEventHandler = makeEventHandler("inventoryCraftEvent", {
       respectPayload: false,
     });
     player.inventory.giveOrThrow(output);
+
+    const harthmereRecipeId = harthmereNativeRecipeIdForBiomesId(
+      event.recipe.id
+    );
+    const harthmereRecipe = harthmereRecipeId
+      ? getHarthmereCraftingRecipe(harthmereRecipeId)
+      : undefined;
+    awardHarthmereNativeSkillXp(
+      player.delta().mutableTriggerState(),
+      harthmereCraftingSkillAwards({
+        professionId:
+          harthmereRecipe?.professionId ?? harthmereRecipe?.requiredSkillId,
+        xp: harthmereRecipe?.xpReward ?? 10,
+        source: `native_craft:${harthmereRecipeId ?? event.recipe.id}`,
+      })
+    );
 
     context.publish({
       kind: "craft",
@@ -196,6 +218,9 @@ const inventoryCookEventHandler = makeEventHandler("inventoryCookEvent", {
     );
     maybePayRoyalties(royalties, player, stationOwner);
     player.inventory.giveOrThrow(output);
+    awardHarthmereNativeSkillXp(player.delta().mutableTriggerState(), [
+      { skillId: "cooking", xp: 10, source: "native_cooking" },
+    ]);
 
     context.publish({
       kind: "craft",

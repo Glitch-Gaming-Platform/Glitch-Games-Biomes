@@ -32,7 +32,7 @@ import {
 } from "@/shared/harthmere/ch1_elsewhen_region";
 
 export const CH1_DUNGEON_TERRAIN_VERSION =
-  "ch1-dungeon-terrain-v4-settlement-spines" as const;
+  "ch1-dungeon-terrain-v5-native-winter-snow-ice" as const;
 
 // ---------------------------------------------------------------------------
 // Materials
@@ -65,6 +65,8 @@ export const CH1_TERRAIN_MATERIALS = [
   "moss",
   "muckwad",
   "sand",
+  "snow",
+  "ice",
   "whiteWool",
   "blueWool",
   "blackWool",
@@ -259,6 +261,8 @@ export type Ch1DungeonLandscapeFeature =
       wallHeight: number;
       wallMaterial: Ch1TerrainMaterial;
       roofMaterial: Ch1TerrainMaterial;
+      /** Native snow cap above the structural roof; never a wool substitute. */
+      snowMaterial?: Ch1TerrainMaterial;
       roof: "flat" | "gableX" | "gableZ" | "open";
       roofRise?: number;
       door?: {
@@ -1127,8 +1131,8 @@ const WINTER_VOLUMES: readonly Ch1DungeonVolume[] = [
     z1: -64,
     y0: 0,
     y1: 12,
-    shell: "whiteWool",
-    floor: "whiteWool",
+    shell: "ice",
+    floor: "ice",
     openAir: true,
     openSides: true,
   },
@@ -1142,8 +1146,8 @@ const WINTER_VOLUMES: readonly Ch1DungeonVolume[] = [
     z1: -76,
     y0: -12,
     y1: 12,
-    shell: "whiteWool",
-    floor: "whiteWool",
+    shell: "ice",
+    floor: "ice",
   },
   {
     name: "drowned_longhouse",
@@ -1183,7 +1187,7 @@ const WINTER_VOLUMES: readonly Ch1DungeonVolume[] = [
     z1: -76,
     y0: -12,
     y1: -6,
-    shell: "simpleGlass",
+    shell: "ice",
     floor: "oakLumber",
   },
   {
@@ -1209,8 +1213,8 @@ const WINTER_VOLUMES: readonly Ch1DungeonVolume[] = [
     z1: -68,
     y0: 0,
     y1: 8,
-    shell: "simpleGlass",
-    floor: "simpleGlass",
+    shell: "ice",
+    floor: "ice",
     openAir: true,
     openSides: true,
   },
@@ -1267,8 +1271,8 @@ const WINTER_VOLUMES: readonly Ch1DungeonVolume[] = [
     z1: -72,
     y0: 0,
     y1: 10,
-    shell: "whiteWool",
-    floor: "whiteWool",
+    shell: "snow",
+    floor: "snow",
     openAir: true,
     openSides: true,
   },
@@ -1429,7 +1433,7 @@ const WINTER_STAIRS: readonly Ch1DungeonStairs[] = [
     fromY: 1,
     toY: -11,
     width: 3,
-    material: "whiteWool",
+    material: "ice",
   },
   {
     name: "underice_climb",
@@ -1514,7 +1518,7 @@ const WINTER_LANDSCAPE: readonly Ch1DungeonLandscapeFeature[] = [
     radiusZ: 8,
     height: 8,
     material: "stone",
-    capMaterial: "whiteWool",
+    capMaterial: "snow",
   },
   {
     kind: "mound",
@@ -1527,7 +1531,7 @@ const WINTER_LANDSCAPE: readonly Ch1DungeonLandscapeFeature[] = [
     radiusZ: 7,
     height: 7,
     material: "stone",
-    capMaterial: "whiteWool",
+    capMaterial: "snow",
   },
   ...[
     [144, -112, 7],
@@ -1546,7 +1550,7 @@ const WINTER_LANDSCAPE: readonly Ch1DungeonLandscapeFeature[] = [
       canopyRadius: 3,
       trunkMaterial: "oakLog",
       leafMaterial: "oakLeaf",
-      snowMaterial: "whiteWool",
+      snowMaterial: "snow",
     })
   ),
   {
@@ -1560,7 +1564,7 @@ const WINTER_LANDSCAPE: readonly Ch1DungeonLandscapeFeature[] = [
     radiusZ: 2,
     height: 6,
     material: "stone",
-    capMaterial: "whiteWool",
+    capMaterial: "snow",
   },
   {
     kind: "mound",
@@ -1573,7 +1577,7 @@ const WINTER_LANDSCAPE: readonly Ch1DungeonLandscapeFeature[] = [
     radiusZ: 2,
     height: 5,
     material: "stone",
-    capMaterial: "whiteWool",
+    capMaterial: "snow",
   },
   {
     kind: "tree",
@@ -1589,7 +1593,7 @@ const WINTER_LANDSCAPE: readonly Ch1DungeonLandscapeFeature[] = [
     canopyRadius: 3,
     trunkMaterial: "oakLog",
     leafMaterial: "oakLeaf",
-    snowMaterial: "whiteWool",
+    snowMaterial: "snow",
   },
   {
     kind: "mound",
@@ -1602,7 +1606,7 @@ const WINTER_LANDSCAPE: readonly Ch1DungeonLandscapeFeature[] = [
     radiusZ: 4,
     height: 5,
     material: "stone",
-    capMaterial: "whiteWool",
+    capMaterial: "snow",
   },
   {
     kind: "mound",
@@ -1615,7 +1619,7 @@ const WINTER_LANDSCAPE: readonly Ch1DungeonLandscapeFeature[] = [
     radiusZ: 5,
     height: 6,
     material: "stone",
-    capMaterial: "whiteWool",
+    capMaterial: "snow",
   },
   // --- Ice Shelf: fishing settlement silhouette, snow, and sparse pines ---
   building({
@@ -1628,7 +1632,8 @@ const WINTER_LANDSCAPE: readonly Ch1DungeonLandscapeFeature[] = [
     baseY: 1,
     wallHeight: 6,
     wallMaterial: "oakLog",
-    roofMaterial: "whiteWool",
+    roofMaterial: "thatch",
+    snowMaterial: "snow",
     roof: "gableX",
     roofRise: 4,
     door: { side: "south", center: 35, width: 2, height: 3 },
@@ -1644,7 +1649,8 @@ const WINTER_LANDSCAPE: readonly Ch1DungeonLandscapeFeature[] = [
     baseY: 1,
     wallHeight: 5,
     wallMaterial: "oakLog",
-    roofMaterial: "whiteWool",
+    roofMaterial: "thatch",
+    snowMaterial: "snow",
     roof: "gableX",
     roofRise: 3,
     door: { side: "north", center: 63, width: 2, height: 3 },
@@ -1666,7 +1672,7 @@ const WINTER_LANDSCAPE: readonly Ch1DungeonLandscapeFeature[] = [
     canopyRadius: 3,
     trunkMaterial: "oakLog",
     leafMaterial: "oakLeaf",
-    snowMaterial: "whiteWool",
+    snowMaterial: "snow",
   })),
   wall({
     name: "landing_broken_sledge_run",
@@ -1678,7 +1684,7 @@ const WINTER_LANDSCAPE: readonly Ch1DungeonLandscapeFeature[] = [
     baseY: 1,
     height: 1,
     material: "oakLumber",
-    capMaterial: "whiteWool",
+    capMaterial: "snow",
     ruined: true,
   }),
 
@@ -1711,7 +1717,7 @@ const WINTER_LANDSCAPE: readonly Ch1DungeonLandscapeFeature[] = [
         height: 7,
         radius: 0,
         material: "oakLog",
-        capMaterial: "whiteWool",
+        capMaterial: "snow",
       })
     )
   ),
@@ -1725,7 +1731,7 @@ const WINTER_LANDSCAPE: readonly Ch1DungeonLandscapeFeature[] = [
     baseY: -10,
     height: 2,
     material: "oakLumber",
-    capMaterial: "whiteWool",
+    capMaterial: "snow",
   }),
 
   // --- Hanged Wood: dense black-pine horror landscape and old rite gate ---
@@ -1754,7 +1760,7 @@ const WINTER_LANDSCAPE: readonly Ch1DungeonLandscapeFeature[] = [
     canopyRadius: index % 3 === 0 ? 4 : 3,
     trunkMaterial: "oakLog",
     leafMaterial: index % 2 === 0 ? "blackWool" : "oakLeaf",
-    snowMaterial: "whiteWool",
+    snowMaterial: "snow",
   })),
   ...[
     [151, -101, 5],
@@ -1799,7 +1805,8 @@ const WINTER_LANDSCAPE: readonly Ch1DungeonLandscapeFeature[] = [
     baseY: 1,
     wallHeight: 5,
     wallMaterial: "oakLog",
-    roofMaterial: "whiteWool",
+    roofMaterial: "thatch",
+    snowMaterial: "snow",
     roof: "gableX",
     roofRise: 3,
     door: { side: "south", center: 216, width: 3, height: 3 },
@@ -1815,7 +1822,8 @@ const WINTER_LANDSCAPE: readonly Ch1DungeonLandscapeFeature[] = [
     baseY: 1,
     wallHeight: 5,
     wallMaterial: "oakLog",
-    roofMaterial: "whiteWool",
+    roofMaterial: "thatch",
+    snowMaterial: "snow",
     roof: "gableX",
     roofRise: 3,
     door: { side: "north", center: 281, width: 3, height: 3 },
@@ -1831,7 +1839,7 @@ const WINTER_LANDSCAPE: readonly Ch1DungeonLandscapeFeature[] = [
         height: 4 + (index % 2),
         radius: 0,
         material: "oakLog",
-        capMaterial: "whiteWool",
+        capMaterial: "snow",
       })
     )
   ),
@@ -1845,8 +1853,8 @@ const WINTER_LANDSCAPE: readonly Ch1DungeonLandscapeFeature[] = [
       z1: -83,
       baseY: 1,
       height: 1,
-      material: "simpleGlass",
-      capMaterial: "whiteWool",
+      material: "ice",
+      capMaterial: "snow",
       ruined: true,
     })
   ),
@@ -1862,7 +1870,8 @@ const WINTER_LANDSCAPE: readonly Ch1DungeonLandscapeFeature[] = [
     baseY: 1,
     wallHeight: 7,
     wallMaterial: "oakLog",
-    roofMaterial: "whiteWool",
+    roofMaterial: "thatch",
+    snowMaterial: "snow",
     roof: "gableX",
     roofRise: 4,
     door: { side: "west", center: -90, width: 2, height: 3 },
@@ -1878,7 +1887,8 @@ const WINTER_LANDSCAPE: readonly Ch1DungeonLandscapeFeature[] = [
     baseY: 1,
     wallHeight: 5,
     wallMaterial: "oakLumber",
-    roofMaterial: "whiteWool",
+    roofMaterial: "oakLumber",
+    snowMaterial: "snow",
     roof: "flat",
     door: { side: "west", center: -78, width: 2, height: 3 },
   }),
@@ -1892,7 +1902,7 @@ const WINTER_LANDSCAPE: readonly Ch1DungeonLandscapeFeature[] = [
     baseY: 1,
     height: 4,
     material: "oakLog",
-    capMaterial: "whiteWool",
+    capMaterial: "snow",
     ruined: true,
   }),
   wall({
@@ -1905,7 +1915,7 @@ const WINTER_LANDSCAPE: readonly Ch1DungeonLandscapeFeature[] = [
     baseY: 1,
     height: 4,
     material: "oakLog",
-    capMaterial: "whiteWool",
+    capMaterial: "snow",
     ruined: true,
   }),
   column({
@@ -1931,7 +1941,8 @@ const WINTER_LANDSCAPE: readonly Ch1DungeonLandscapeFeature[] = [
     baseY: 1,
     wallHeight: 5,
     wallMaterial: "oakLog",
-    roofMaterial: "whiteWool",
+    roofMaterial: "thatch",
+    snowMaterial: "snow",
     roof: "gableX",
     roofRise: 3,
     door: { side: "south", center: 333, width: 2, height: 3 },
@@ -1946,7 +1957,8 @@ const WINTER_LANDSCAPE: readonly Ch1DungeonLandscapeFeature[] = [
     baseY: 1,
     wallHeight: 5,
     wallMaterial: "oakLog",
-    roofMaterial: "whiteWool",
+    roofMaterial: "thatch",
+    snowMaterial: "snow",
     roof: "gableX",
     roofRise: 3,
     door: { side: "north", center: 347, width: 2, height: 3 },
@@ -1963,6 +1975,7 @@ const WINTER_LANDSCAPE: readonly Ch1DungeonLandscapeFeature[] = [
     wallHeight: 11,
     wallMaterial: "oakLog",
     roofMaterial: "stoneShingles",
+    snowMaterial: "snow",
     roof: "gableX",
     roofRise: 9,
     door: { side: "west", center: -88, width: 6, height: 5 },
@@ -2015,7 +2028,8 @@ const WINTER_LANDSCAPE: readonly Ch1DungeonLandscapeFeature[] = [
       baseY: 1,
       wallHeight: Number(height),
       wallMaterial: "oakLog",
-      roofMaterial: "whiteWool",
+      roofMaterial: "thatch",
+      snowMaterial: "snow",
       roof: "gableX",
       roofRise: 3 + (index % 2),
       windowSpacing: 6,
@@ -2040,7 +2054,7 @@ const WINTER_LANDSCAPE: readonly Ch1DungeonLandscapeFeature[] = [
     canopyRadius: 3,
     trunkMaterial: "oakLog",
     leafMaterial: "oakLeaf",
-    snowMaterial: "whiteWool",
+    snowMaterial: "snow",
   })),
 ];
 
@@ -2417,9 +2431,13 @@ function ch1LandscapeBlockAt(
     return undefined;
   }
   if (feature.roof === "flat") {
+    const roofPresent = !(feature.ruined && (x * 5 + z * 7) % 11 <= 1);
+    if (feature.snowMaterial && y === eaveY + 2 && roofPresent) {
+      return feature.snowMaterial;
+    }
     if (
       y === eaveY + 1 &&
-      !(feature.ruined && (x * 5 + z * 7) % 11 <= 1)
+      roofPresent
     ) {
       return feature.roofMaterial;
     }
@@ -2436,9 +2454,14 @@ function ch1LandscapeBlockAt(
     0,
     Math.round((feature.roofRise ?? 3) * (1 - distanceFromRidge / halfSpan))
   );
+  const roofY = eaveY + 1 + rise;
+  const roofPresent = !(feature.ruined && (x * 5 + z * 7) % 13 <= 1);
+  if (feature.snowMaterial && y === roofY + 1 && roofPresent) {
+    return feature.snowMaterial;
+  }
   if (
-    y === eaveY + 1 + rise &&
-    !(feature.ruined && (x * 5 + z * 7) % 13 <= 1)
+    y === roofY &&
+    roofPresent
   ) {
     return feature.roofMaterial;
   }

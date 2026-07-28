@@ -51,6 +51,8 @@ export interface HarthmereWorldObjectInteractionEventDetail {
   label?: string | null;
   kind: HarthmereObjectInteraction["kind"];
   title: string;
+  /** The signed world-object receipt already granted this quest pickup. */
+  serverAuthoritativePickup?: boolean;
 }
 
 const HARTHMERE_SERVER_RECEIPT_INTERACTION_KINDS = new Set<
@@ -67,6 +69,7 @@ const HARTHMERE_SERVER_RECEIPT_INTERACTION_KINDS = new Set<
   "check_outfit",
   "take_photo",
   "inspect",
+  "gather",
 ]);
 
 export function harthmereWorldObjectInteractionNeedsServerReceiptForTest(
@@ -527,13 +530,14 @@ export async function performHarthmereObjectInteraction(input: {
   resources: Parameters<typeof addToast>[0];
   gardenHose: { publish: (event: { kind: "inspect_frame" }) => void };
 }) {
-  const recordConfirmedInteraction = () => {
+  const recordConfirmedInteraction = (serverAuthoritativePickup = false) => {
     dispatchHarthmereWorldObjectInteractionEvent({
       entityId: input.entityId,
       objectId: input.objectId,
       label: input.label,
       kind: input.interaction.kind,
       title: input.interaction.title,
+      serverAuthoritativePickup,
     });
     completeHarthmereJobsBoardFieldObjectiveForObjectSoon({
       objectId: input.objectId,
@@ -617,9 +621,29 @@ export async function performHarthmereObjectInteraction(input: {
       }
       return;
     }
-    throw new HarthmereWorldObjectInteractionError([
-      "world_object_rejected:gathering_node_required",
-    ]);
+    // Grove quest pickups are authored world props, not profession nodes. The
+    // server validates the exact landmark, active quest step, and actor range,
+    // then grants the objective item through native ECS.
+    if (!input.objectId) {
+      throw new HarthmereWorldObjectInteractionError([
+        "world_object_rejected:missing_object",
+      ]);
+    }
+    await submitHarthmereWorldObjectInteraction({
+      objectId: input.objectId,
+      label: input.label,
+      interaction: input.interaction,
+    });
+    recordConfirmedInteraction(true);
+    addToast(input.resources, {
+      kind: "basic",
+      id: `harthmere-pickup:${input.objectId}`,
+      message: harthmereObjectInteractionToastMessage({
+        label: input.label,
+        interaction: input.interaction,
+      }),
+    });
+    return;
   }
 
   if (

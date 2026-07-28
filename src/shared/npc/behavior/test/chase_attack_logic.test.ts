@@ -2,6 +2,7 @@ import assert from "assert";
 
 import {
   ATTACK_MEMORY_SECONDS,
+  attackTimingDecision,
   boundedHarthmereChaseSpeedForName,
   chasePathTargetIsStale,
   enhancedNightMuckerHexCombatParams,
@@ -34,12 +35,71 @@ import {
   stuckWhilePathfinding,
 } from "@/shared/npc/behavior/pathfinding";
 import type { BiomesId } from "@/shared/ids";
+import { HARTHMERE_NATIVE_NPC_ID_MANIFEST } from "@/shared/harthmere/harthmere_native_id_manifest";
+import { configuredChaseAttackParamsForNpcType } from "@/shared/npc/logic";
 
 const pathTo = (dest: [number, number, number]): Path => ({
   nodes: [{ position: [0, 0, 0] }, { position: dest }],
 });
 
 describe("chase attack: strike timing", () => {
+  it("starts a swing when no attack is active", () => {
+    assert.equal(
+      attackTimingDecision({
+        now: 100,
+        strikeDelaySecs: 0.5,
+        attackIntervalSecs: 2,
+      }),
+      "start"
+    );
+  });
+
+  it("waits before the strike moment and strikes after crossing it", () => {
+    assert.equal(
+      attackTimingDecision({
+        now: 100.4,
+        attackTime: 100,
+        strikeDelaySecs: 0.5,
+        attackIntervalSecs: 2,
+      }),
+      "wait"
+    );
+    assert.equal(
+      attackTimingDecision({
+        now: 100.5,
+        attackTime: 100,
+        strikeDelaySecs: 0.5,
+        attackIntervalSecs: 2,
+      }),
+      "strike"
+    );
+  });
+
+  it("REGRESSION: lands a pending strike even when a coarse tick skips the whole interval", () => {
+    assert.equal(
+      attackTimingDecision({
+        now: 130,
+        attackTime: 100,
+        strikeDelaySecs: 0.5,
+        attackIntervalSecs: 2,
+      }),
+      "strike"
+    );
+  });
+
+  it("starts the next swing only after the previous one has struck", () => {
+    assert.equal(
+      attackTimingDecision({
+        now: 130,
+        attackTime: 100,
+        strikeTime: 100.5,
+        strikeDelaySecs: 0.5,
+        attackIntervalSecs: 2,
+      }),
+      "start"
+    );
+  });
+
   it("returns the raw strike delay when it already fits inside the interval", () => {
     assert.equal(
       effectiveAttackStrikeDelaySecs({
@@ -139,6 +199,43 @@ describe("chase attack: stale path detection", () => {
 });
 
 describe("chase attack: night muck/hex aggression helpers", () => {
+  it("uses the native road-pack profile when the persisted Bikkie behavior is stale", () => {
+    const staleBehavior = {
+      damageable: { maxHp: 20, attackable: false },
+      chaseAttack: undefined,
+    };
+    const params = configuredChaseAttackParamsForNpcType(
+      HARTHMERE_NATIVE_NPC_ID_MANIFEST.monster_road_pack_muckling,
+      staleBehavior
+    );
+    assert.ok(params);
+    assert.deepEqual(params.aggroTrigger, {
+      kind: "proximity",
+      distance: 10.5,
+    });
+    assert.equal(params.attackDamage, 70);
+    assert.equal(params.attackDistance, 2.4);
+  });
+
+  it("keeps native non-combat sentinels disabled even if a stale tray says otherwise", () => {
+    const params = configuredChaseAttackParamsForNpcType(
+      HARTHMERE_NATIVE_NPC_ID_MANIFEST.robot_sentinel,
+      {
+        chaseAttack: {
+          aggroTrigger: { kind: "proximity", distance: 99 },
+          disengageDistance: 99,
+          attackDistance: 99,
+          attackAnimationMultiplier: 1,
+          attackStrikeMomentSecs: 0,
+          attackIntervalSecs: 1,
+          attackFovDeg: 360,
+          attackDamage: 999,
+        },
+      }
+    );
+    assert.equal(params, undefined);
+  });
+
   it("classifies muckers and hexes without matching protected robots or wards", () => {
     assert.equal(isMuckerOrHexerNameForNightAggro("Mossy Muckling"), true);
     assert.equal(isMuckerOrHexerNameForNightAggro("Old Wood Mucker"), true);

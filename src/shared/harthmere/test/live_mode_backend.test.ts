@@ -1184,6 +1184,94 @@ describe("parseHarthmereLiveModeBackendState", function () {
     );
   });
 
+  it("buys a business tool through one native inventory-and-gold exchange", function () {
+    const state = freshState();
+    state.inventory.gold = 100;
+    addOpenProductionBusiness(state, "business_clinic_tool_sale", {
+      typeId: "medical_doctor",
+      marker: [100, 65, 100],
+    });
+
+    const bought = applyOne(
+      state,
+      "request_economy_mutation",
+      {
+        operation: "buy_business_tool",
+        businessId: "business_clinic_tool_sale",
+        itemId: "field_surgeon_kit",
+        count: 1,
+      },
+      {
+        subsystem: "economy",
+        serverActorEntityId: NATIVE_ACTOR_ID,
+        serverActorGold: 100,
+        serverActorPosition: { x: 100, y: 65, z: 100 },
+      }
+    );
+
+    assert.deepEqual(
+      bought.summary.warnings.filter((warning) =>
+        warning.startsWith("economy_rejected")
+      ),
+      []
+    );
+    assert.equal(bought.state.inventory.items.field_surgeon_kit, 1);
+    assert.equal(bought.state.inventory.gold, 62);
+    const exchange = bought.summary.nativeEcsMaterializationPlans?.find(
+      (plan) => plan.kind === "inventory_exchange"
+    );
+    assert.equal(exchange?.kind, "inventory_exchange");
+    if (exchange?.kind !== "inventory_exchange") return;
+    assert.deepEqual(exchange.rewardItemStacks, { field_surgeon_kit: 1 });
+    assert.equal(exchange.goldDelta, -38);
+  });
+
+  it("does not debit gold or remove a business tool listing after a rejected purchase", function () {
+    const state = freshState();
+    state.inventory.gold = 37;
+    addOpenProductionBusiness(state, "business_clinic_tool_rejected", {
+      typeId: "medical_doctor",
+      marker: [100, 65, 100],
+    });
+
+    const rejected = applyOne(
+      state,
+      "request_economy_mutation",
+      {
+        operation: "buy_business_tool",
+        businessId: "business_clinic_tool_rejected",
+        itemId: "field_surgeon_kit",
+        count: 1,
+      },
+      {
+        subsystem: "economy",
+        serverActorEntityId: NATIVE_ACTOR_ID,
+        serverActorGold: 37,
+        serverActorPosition: { x: 100, y: 65, z: 100 },
+      }
+    );
+
+    assert.ok(
+      rejected.summary.warnings.includes(
+        "economy_rejected:insufficient_customer_gold_for_sale"
+      )
+    );
+    assert.equal(rejected.state.inventory.gold, 37);
+    assert.equal(rejected.state.inventory.items.field_surgeon_kit ?? 0, 0);
+    assert.equal(
+      rejected.summary.nativeEcsMaterializationPlans?.some(
+        (plan) => plan.kind === "inventory_exchange"
+      ) ?? false,
+      false
+    );
+    assert.equal(
+      rejected.state.economy.production.businesses[
+        "business_clinic_tool_rejected"
+      ].status,
+      "open"
+    );
+  });
+
   it("accepts business customer sessions through a server-known interaction marker payload", function () {
     const state = freshState();
     addOpenProductionBusiness(state, "business_clinic_marker_payload", {
@@ -4304,8 +4392,12 @@ describe("reduceHarthmereLiveModeBackendState — combat target authority", func
     );
     assert.deepEqual(
       s.combat.entitySnapshots[muckerId].position,
-      muckerCanonical.position,
-      "legacy combat positions should migrate to the additive world"
+      {
+        x: muckerCanonical.position.x - 1600,
+        y: muckerCanonical.position.y,
+        z: muckerCanonical.position.z,
+      },
+      "retained-world combat positions should preserve live roaming state"
     );
 
     const [rabbitId, rabbitCanonical] = Object.entries(seedSnapshots).find(
@@ -4484,7 +4576,7 @@ describe("reduceHarthmereLiveModeBackendState — combat target authority", func
     );
   });
 
-  it("rejects invalid, ineligible, expired, duplicate, and overweight live loot drop claims", function () {
+  it("rejects invalid, ineligible, expired, and duplicate live loot drop claims while allowing overweight pickup", function () {
     {
       const { state, dropId } = createDefeatedLiveEntityDropState(
         { health_potion: 1 },
@@ -4602,8 +4694,8 @@ describe("reduceHarthmereLiveModeBackendState — combat target authority", func
         { health_potion: 1 },
         "loot_weight_hit"
       );
-      state.inventory.items = { health_potion: 25 };
-      const rejected = applyOne(
+      state.inventory.items = { iron_sword: 5 };
+      const claimed = applyOne(
         state,
         "request_loot_claim",
         {
@@ -4616,15 +4708,16 @@ describe("reduceHarthmereLiveModeBackendState — combat target authority", func
         }
       );
       assert.ok(
-        rejected.summary.warnings.includes(
-          "loot_rejected:carry_weight_limit_exceeded"
+        !claimed.summary.warnings.some((warning) =>
+          warning.includes("carry_weight")
         ),
-        JSON.stringify(rejected.summary.warnings)
+        JSON.stringify(claimed.summary.warnings)
       );
       assert.equal(
-        rejected.state.inventoryLoot.lootDrops[dropId].status,
-        "available"
+        claimed.state.inventoryLoot.lootDrops[dropId].status,
+        "claimed"
       );
+      assert.equal(claimed.state.inventory.items.health_potion, 1);
     }
   });
 
@@ -6203,14 +6296,14 @@ describe("reduceHarthmereLiveModeBackendState — quest state", function () {
       accepted.state.quests.active["moss_that_went_quiet"]?.source,
       "snapshot_grove"
     );
-    accepted.state.quests.active["moss_that_went_quiet"]!.progress = 4;
+    accepted.state.quests.active["moss_that_went_quiet"]!.progress = 5;
 
     const completed = applyOne(accepted.state, "request_quest_state_update", {
       questId: "moss_that_went_quiet",
       source: "snapshot_grove",
-      stepId: "moss_that_went_quiet:3:talk_npc",
-      progress: 4,
-      objectiveIndex: 3,
+      stepId: "moss_that_went_quiet:4:talk_npc",
+      progress: 5,
+      objectiveIndex: 4,
       completed: true,
     });
     assert.deepEqual(completed.summary.warnings, []);
@@ -6226,7 +6319,7 @@ describe("reduceHarthmereLiveModeBackendState — quest state", function () {
         (plan) =>
           plan.kind === "quest_progress" &&
           plan.questId === "moss_that_went_quiet" &&
-          plan.objectiveIdOrIndex === 3
+          plan.objectiveIdOrIndex === 4
       )
     );
   });
@@ -6276,7 +6369,7 @@ describe("reduceHarthmereLiveModeBackendState — quest state", function () {
         source: "snapshot_grove",
         stepId: `${questId}:1:near_location`,
         progress: 2,
-        objectiveIndex: 0,
+        objectiveIndex: 1,
       },
       { serverActorEntityId: NATIVE_ACTOR_ID }
     );
@@ -7070,7 +7163,7 @@ describe("reduceHarthmereLiveModeBackendState — guild mutation", function () {
     assert.strictEqual(xpAttempt.state.guild.guilds[guildId].xp, 0);
   });
 
-  it("rejects guild bank withdrawal when the actor would exceed carry weight", function () {
+  it("allows guild bank withdrawal when the actor is overweight", function () {
     const { state: created, guildId } = createTestGuild();
     created.inventory.items = { iron_sword: 5 };
     created.guild.guilds[guildId].bank.items.health_potion = 1;
@@ -7082,10 +7175,14 @@ describe("reduceHarthmereLiveModeBackendState — guild mutation", function () {
       count: 1,
     });
 
-    assert.strictEqual(state.guild.guilds[guildId].bank.items.health_potion, 1);
-    assert.strictEqual(state.inventory.items.health_potion ?? 0, 0);
+    assert.strictEqual(
+      state.guild.guilds[guildId].bank.items.health_potion ?? 0,
+      0
+    );
+    assert.strictEqual(state.inventory.items.health_potion, 1);
     assert.ok(
-      summary.warnings.includes("guild_rejected:carry_weight_limit_exceeded")
+      !summary.warnings.some((warning) => warning.includes("carry_weight")),
+      JSON.stringify(summary.warnings)
     );
   });
 
@@ -11306,91 +11403,96 @@ describe("reduceHarthmereLiveModeBackendState — production bank expansion", fu
 });
 
 // ===========================================================================
-// Banking current: server-side carry-weight enforcement and loan consequences
+// Banking current: carry weight is soft encumbrance, not inventory capacity
 // ===========================================================================
 
-describe("reduceHarthmereLiveModeBackendState — banking current carry weight enforcement", function () {
-  it("rejects personal bank withdraw when it would exceed carry weight", function () {
+describe("reduceHarthmereLiveModeBackendState — soft carry-weight encumbrance", function () {
+  it("allows personal, account, and material withdrawals while overweight", function () {
     const s = freshState();
     s.inventory.items = { iron_sword: 5 };
     s.inventory.bank = { health_potion: 1 };
-    const { state, summary } = applyOne(s, "request_bank_transaction", {
+    s.banking.accountBank = { health_potion: 1 };
+    s.banking.materialStorage = { iron_ore: 1 };
+
+    const personal = applyOne(s, "request_bank_transaction", {
       operation: "withdraw",
       itemId: "health_potion",
       count: 1,
     });
-    assert.strictEqual(state.inventory.bank.health_potion, 1);
-    assert.strictEqual(state.inventory.items.health_potion ?? 0, 0);
+    assert.strictEqual(personal.state.inventory.bank.health_potion ?? 0, 0);
+    assert.strictEqual(personal.state.inventory.items.health_potion, 1);
     assert.ok(
-      summary.warnings.includes(
-        "bank_withdraw_rejected:carry_weight_limit_exceeded"
-      )
+      !personal.summary.warnings.some((warning) =>
+        warning.includes("carry_weight")
+      ),
+      JSON.stringify(personal.summary.warnings)
     );
-  });
 
-  it("rejects account vault withdraw when it would exceed carry weight", function () {
-    const s = freshState();
-    s.inventory.items = { iron_sword: 5 };
-    s.banking.accountBank = { health_potion: 1 };
-    const { state, summary } = applyOne(s, "request_bank_transaction", {
+    const account = applyOne(personal.state, "request_bank_transaction", {
       operation: "account_withdraw",
       itemId: "health_potion",
       count: 1,
     });
-    assert.strictEqual(state.banking.accountBank.health_potion, 1);
+    assert.strictEqual(account.state.banking.accountBank.health_potion ?? 0, 0);
+    assert.strictEqual(account.state.inventory.items.health_potion, 2);
     assert.ok(
-      summary.warnings.includes(
-        "account_bank_withdraw_rejected:carry_weight_limit_exceeded"
-      )
+      !account.summary.warnings.some((warning) =>
+        warning.includes("carry_weight")
+      ),
+      JSON.stringify(account.summary.warnings)
     );
-  });
 
-  it("rejects material storage withdraw when it would exceed carry weight", function () {
-    const s = freshState();
-    s.inventory.items = { iron_sword: 5 };
-    s.banking.materialStorage = { iron_ore: 1 };
-    const { state, summary } = applyOne(s, "request_bank_transaction", {
+    const material = applyOne(account.state, "request_bank_transaction", {
       operation: "material_withdraw",
       itemId: "iron_ore",
       count: 1,
     });
-    assert.strictEqual(state.banking.materialStorage.iron_ore, 1);
+    assert.strictEqual(material.state.banking.materialStorage.iron_ore ?? 0, 0);
+    assert.strictEqual(material.state.inventory.items.iron_ore, 1);
     assert.ok(
-      summary.warnings.includes(
-        "material_storage_withdraw_rejected:carry_weight_limit_exceeded"
-      )
+      !material.summary.warnings.some((warning) =>
+        warning.includes("carry_weight")
+      ),
+      JSON.stringify(material.summary.warnings)
+    );
+    assert.ok(
+      harthmereInventoryEncumbranceStaminaMultiplier(
+        material.state.inventory.items
+      ) > 1
     );
   });
 
-  it("rejects loot pickup and authorized admin inventory grant when they exceed carry weight", function () {
+  it("allows loot pickup and authorized admin grants while overweight", function () {
     const s = freshState();
     s.inventory.items = { iron_sword: 5 };
     const loot = applyOne(s, "request_loot_claim", {
       itemId: "health_potion",
       count: 1,
     });
-    assert.strictEqual(loot.state.inventory.items.health_potion ?? 0, 0);
+    assert.strictEqual(loot.state.inventory.items.health_potion, 1);
     assert.ok(
-      loot.summary.warnings.includes(
-        "loot_rejected:carry_weight_limit_exceeded"
-      )
+      !loot.summary.warnings.some((warning) =>
+        warning.includes("carry_weight")
+      ),
+      JSON.stringify(loot.summary.warnings)
     );
 
     const grant = applyOne(
-      s,
+      loot.state,
       "request_inventory_mutation",
       { itemId: "health_potion", count: 1 },
       { source: "admin_tool", subsystem: "inventory" }
     );
-    assert.strictEqual(grant.state.inventory.items.health_potion ?? 0, 0);
+    assert.strictEqual(grant.state.inventory.items.health_potion, 2);
     assert.ok(
-      grant.summary.warnings.includes(
-        "inventory_rejected:carry_weight_limit_exceeded"
-      )
+      !grant.summary.warnings.some((warning) =>
+        warning.includes("carry_weight")
+      ),
+      JSON.stringify(grant.summary.warnings)
     );
   });
 
-  it("allows vendor and auction purchases over the carry-weight threshold", function () {
+  it("allows vendor, auction, mail, and crafting outputs while overweight", function () {
     const s = freshState();
     s.inventory.gold = 1_000;
     s.inventory.items = { iron_sword: 5 };
@@ -11403,12 +11505,6 @@ describe("reduceHarthmereLiveModeBackendState — banking current carry weight e
     });
     assert.equal(vendor.state.inventory.items.health_potion, 1);
     assert.equal(vendor.state.inventory.gold, 990);
-    assert.ok(
-      !vendor.summary.warnings.includes(
-        "vendor_rejected:carry_weight_limit_exceeded"
-      ),
-      JSON.stringify(vendor.summary.warnings)
-    );
     assert.ok(
       harthmereInventoryCarryWeight(vendor.state.inventory.items) >
         HARTHMERE_CARRY_WEIGHT_LIMIT
@@ -11439,21 +11535,10 @@ describe("reduceHarthmereLiveModeBackendState — banking current carry weight e
     assert.equal(auction.state.inventory.items.health_potion, 1);
     assert.ok(auction.state.inventory.gold < 1_000);
     assert.ok(
-      !auction.summary.warnings.includes(
-        "auction_settle_rejected:carry_weight_limit_exceeded"
-      ),
-      JSON.stringify(auction.summary.warnings)
-    );
-    assert.ok(
       harthmereInventoryEncumbranceStaminaMultiplier(
         auction.state.inventory.items
       ) > 1
     );
-  });
-
-  it("continues rejecting overweight mail claims and crafting output", function () {
-    const s = freshState();
-    s.inventory.items = { iron_sword: 5 };
 
     s.mail.messages.mail_weight_test = {
       mailId: "mail_weight_test",
@@ -11468,22 +11553,31 @@ describe("reduceHarthmereLiveModeBackendState — banking current carry weight e
       itemId: "health_potion",
       count: 1,
     });
-    assert.ok(
-      mail.summary.warnings.includes(
-        "mail_claim_rejected:carry_weight_limit_exceeded"
-      )
+    assert.strictEqual(mail.state.inventory.items.health_potion, 1);
+    assert.strictEqual(
+      mail.state.mail.messages.mail_weight_test.status,
+      "claimed"
     );
 
     const craftState = freshState();
     craftState.classMagic.knownRecipes = ["recipe_iron_sword"];
-    craftState.inventory.items = { iron_sword: 5, iron_ore: 3 };
+    craftState.inventory.items = { health_potion: 25, iron_ore: 3 };
     const crafted = applyOne(craftState, "request_crafting", {
       recipeId: "recipe_iron_sword",
     });
+    assert.strictEqual(crafted.state.inventory.items.iron_sword, 1);
+    for (const result of [vendor, auction, mail, crafted]) {
+      assert.ok(
+        !result.summary.warnings.some((warning) =>
+          warning.includes("carry_weight")
+        ),
+        JSON.stringify(result.summary.warnings)
+      );
+    }
     assert.ok(
-      crafted.summary.warnings.includes(
-        "crafting_rejected:carry_weight_limit_exceeded"
-      )
+      harthmereInventoryEncumbranceStaminaMultiplier(
+        crafted.state.inventory.items
+      ) > 1
     );
   });
 });

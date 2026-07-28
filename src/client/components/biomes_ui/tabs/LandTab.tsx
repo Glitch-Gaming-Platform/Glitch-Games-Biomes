@@ -36,7 +36,7 @@ import {
   type BuildingSystemStage,
 } from "@/shared/harthmere/building_system";
 import * as React from "react";
-import { defaultHarthmereLiveFetch } from "@/client/components/harthmere_live_fetch";
+import { submitHarthmereBuildingLiveModeAction } from "@/client/components/harthmere_building_live_mode";
 import { requestBiomesUILocateOnMap } from "@/client/components/biomes_ui/adapters/mapPinnedDestination";
 import {
   landTabPlotCategory,
@@ -562,46 +562,7 @@ async function submitBuildingActionThroughLiveModeRoute(
   action: BuildingSystemAction,
   payload: Record<string, unknown>
 ): Promise<BuildingActionResponse> {
-  if (typeof fetch !== "function") {
-    return { ok: false, errors: ["fetch_unavailable"] };
-  }
-  if (action === "read_state") {
-    const response = await defaultHarthmereLiveFetch(
-      "/api/harthmere/live_mode_building_state",
-      {
-        method: "GET",
-        credentials: "same-origin",
-      }
-    );
-    const body = await response.json();
-    return {
-      ok: response.ok && body?.ok !== false,
-      buildingState: body?.buildingState,
-      errors: response.ok ? [] : [`building_state_http_${response.status}`],
-    } as BuildingActionResponse;
-  }
-  const requestId = `biomes_ui_building_${action}_${Date.now()}_${Math.random()
-    .toString(36)
-    .slice(2)}`;
-  const response = await defaultHarthmereLiveFetch("/api/harthmere/live_mode", {
-    method: "POST",
-    credentials: "same-origin",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      requestId,
-      idempotencyKey: requestId,
-      actionKind: "request_property_building_mutation",
-      subsystem: "building",
-      actorEntityVersion: 1,
-      zoneId: "the_grove",
-      payload: {
-        buildingAction: action,
-        ...payload,
-      },
-      clientClaims: {},
-    }),
-  });
-  return (await response.json()) as BuildingActionResponse;
+  return submitHarthmereBuildingLiveModeAction(action, payload);
 }
 
 function useBuildingSystemBackend(
@@ -814,8 +775,11 @@ export const LandTab: React.FunctionComponent<{
           state: serverState,
         })
       : [];
+  const requestedInitialBuildingState = React.useRef(false);
 
   React.useEffect(() => {
+    if (requestedInitialBuildingState.current) return;
+    requestedInitialBuildingState.current = true;
     void submit("read_state", {});
   }, [submit]);
 

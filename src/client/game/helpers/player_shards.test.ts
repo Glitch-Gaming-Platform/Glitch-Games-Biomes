@@ -1,7 +1,12 @@
 /// <reference types="mocha" />
 
 import assert from "assert";
-import { shouldRequestPlayerShardRecovery } from "@/client/game/helpers/player_shards";
+import {
+  playerShardLoadWorldAabb,
+  shouldRequestPlayerShardRecovery,
+} from "@/client/game/helpers/player_shards";
+import { ch1ElsewhenSlot } from "@/shared/harthmere/ch1_elsewhen_region";
+import type { ReadonlyAABB } from "@/shared/math/types";
 
 describe("player shard recovery", () => {
   it("waits for a sustained missing-shard window before recovery", () => {
@@ -34,5 +39,34 @@ describe("player shard recovery", () => {
       }),
       false
     );
+  });
+
+  it("uses detached dungeon bounds without expanding ordinary WorldMetadata", () => {
+    const ordinary: ReadonlyAABB = [
+      [-1792, -224, -1792],
+      [2560, 288, 1792],
+    ];
+    const winter = ch1ElsewhenSlot("ch1_dungeon_winter")!;
+    const player: ReadonlyAABB = [
+      [winter.arrival[0] - 0.5, winter.arrival[1], winter.arrival[2] - 0.5],
+      [winter.arrival[0] + 0.5, winter.arrival[1] + 2, winter.arrival[2] + 0.5],
+    ];
+
+    const selected = playerShardLoadWorldAabb(ordinary, player);
+    assert.deepEqual(selected[0], [winter.minX, -64, -512]);
+    assert.deepEqual(selected[1], [winter.maxX, 192, 512]);
+    assert.deepEqual(ordinary[1], [2560, 288, 1792]);
+  });
+
+  it("keeps ordinary players on the ordinary WorldMetadata bounds", () => {
+    const ordinary: ReadonlyAABB = [
+      [-1792, -224, -1792],
+      [2560, 288, 1792],
+    ];
+    const player: ReadonlyAABB = [
+      [2300, 52, -300],
+      [2301, 54, -299],
+    ];
+    assert.equal(playerShardLoadWorldAabb(ordinary, player), ordinary);
   });
 });

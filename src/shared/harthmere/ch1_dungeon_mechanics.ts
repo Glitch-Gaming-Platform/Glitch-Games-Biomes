@@ -462,9 +462,9 @@ export function ch1ApplyDungeonObjectiveMechanic(input: {
 }
 
 export const CH1_DUNGEON_NATIVE_EFFECT_TRIGGER_ROOT =
-  8_740_000_000_000_201 as BiomesId;
+  8_740_000_000_000_301 as BiomesId;
 const CH1_DUNGEON_NATIVE_LAST_EFFECT_KEY =
-  8_740_000_000_000_202 as BiomesId;
+  8_740_000_000_000_302 as BiomesId;
 
 /**
  * Apply one objective's survival consequence to native ECS state. The last

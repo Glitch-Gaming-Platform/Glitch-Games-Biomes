@@ -21,6 +21,11 @@ import {
   deserializeNpcCustomState,
   serializeNpcCustomState,
 } from "@/shared/npc/serde";
+import {
+  applyCreatureLevelResistance,
+  readCreatureProgression,
+  scaleCreatureCombatStats,
+} from "@/shared/npc/creature_level";
 import { getAabbForEntity } from "@/shared/game/entity_sizes";
 import { attackIntervalSeconds } from "@/shared/game/damage";
 import { distSqToAABB } from "@/shared/math/linear";
@@ -47,6 +52,12 @@ import { ok } from "assert";
 import { HARTHMERE_NATIVE_NPC_MELEE_MAX_CENTER_DISTANCE } from "@/shared/harthmere/combat_reach";
 import { harthmereRespawningLiveCreatureSeedIds } from "@/shared/harthmere/live_entity_production_seed";
 import { harthmereSharedLiveCreatureRespawnRegistry } from "@/shared/harthmere/live_creature_respawn_registry";
+import { recordHarthmereJobsBoardNativeKill } from "@/shared/harthmere/jobs_board_native_kill_ledger";
+import {
+  awardHarthmereNativeSkillXp,
+  harthmereNativeCombatSkillAwards,
+  harthmereNativeGatheringSkillAwards,
+} from "@/shared/harthmere/harthmere_skill_progression";
 
 const HARTHMERE_RESPAWNING_CREATURE_IDS = new Set(
   harthmereRespawningLiveCreatureSeedIds()
@@ -78,6 +89,14 @@ const updateNpcHealthEventHandler = makeEventHandler("updateNpcHealthEvent", {
 
     const npcTypeId = npc.npcMetadata().type_id;
     const nativeProfile = harthmereNativeNpcCombatProfileForTypeId(npcTypeId);
+    const serializedNpcState = npc.npcState()?.data;
+    const creatureProgression = nativeProfile
+      ? readCreatureProgression(
+          serializedNpcState?.length
+            ? deserializeNpcCustomState(serializedNpcState)
+            : undefined
+        )
+      : undefined;
     let hpDelta = event.hp;
 
     if (event.damageSource?.kind === "attack") {
@@ -190,6 +209,14 @@ const updateNpcHealthEventHandler = makeEventHandler("updateNpcHealthEvent", {
           attacker.delta().mutableTriggerState(),
           { lastAttackMs: nowMs }
         );
+        awardHarthmereNativeSkillXp(
+          attacker.delta().mutableTriggerState(),
+          harthmereNativeCombatSkillAwards({
+            itemId: itemProfile?.itemId,
+            kind: itemProfile?.kind ?? "unarmed",
+            damage: -hpDelta,
+          })
+        );
         const manaCost = itemProfile?.manaCost ?? 0;
         if (manaCost > 0) {
           writeHarthmereNativeVitals(attacker.delta().mutableTriggerState(), {
@@ -216,6 +243,18 @@ const updateNpcHealthEventHandler = makeEventHandler("updateNpcHealthEvent", {
           return;
         }
       }
+    }
+
+    if (
+      nativeProfile &&
+      creatureProgression &&
+      event.damageSource?.kind === "attack" &&
+      hpDelta < 0
+    ) {
+      hpDelta = -applyCreatureLevelResistance(
+        -hpDelta,
+        creatureProgression.level
+      );
     }
 
     // Native Health is authoritative for every NPC, including Harthmere's
@@ -249,12 +288,55 @@ const updateNpcHealthEventHandler = makeEventHandler("updateNpcHealthEvent", {
     // Emit an event for the trigger server to track, if this mucker was
     // killed by an attack
     if (event.damageSource?.kind === "attack") {
+      if (attacker?.has("player_status")) {
+        recordHarthmereJobsBoardNativeKill(
+          attacker.delta().mutableTriggerState(),
+          npc.id,
+          secondsSinceEpoch() * 1000
+        );
+      }
       if (nativeProfile && attacker?.has("player_status")) {
+        // HARTHMERE_CREATURE_LEVELING: reward the creature that was actually
+        // fought, not its shared type baseline. A level 9 road-pack Hex has more
+        // HP and hits harder than the level 1 profile, so paying the level 1 XP
+        // would make the road ramp strictly worse value than the flats it
+        // replaces. Level 1 (every migrated creature) returns the profile XP
+        // unchanged, and the multiplier is capped in `creature_level.ts`.
+        const creatureLevel = creatureProgression?.level ?? 1;
         awardHarthmereNativeCombatXp(
           attacker.delta().mutableTriggerState(),
-          nativeProfile.killXp,
+          scaleCreatureCombatStats(
+            {
+              maxHp: nativeProfile.maxHp,
+              attackDamage: nativeProfile.attackDamage,
+              attackIntervalSecs: nativeProfile.attackIntervalSecs,
+              walkSpeed: nativeProfile.walkSpeed,
+              runSpeed: nativeProfile.runSpeed,
+              killXp: nativeProfile.killXp,
+            },
+            creatureLevel
+          ).killXp,
           nativeProfile.isBoss
         );
+        awardHarthmereNativeSkillXp(attacker.delta().mutableTriggerState(), [
+          ...(nativeProfile.key.startsWith("livestock_")
+            ? harthmereNativeGatheringSkillAwards({
+                sourceId: nativeProfile.key,
+                tracking: true,
+              })
+            : []),
+          ...(/undead|grave|death|spirit|thaedryn/i.test(
+            `${nativeProfile.key} ${nativeProfile.displayName}`
+          )
+            ? [
+                {
+                  skillId: "death_lore",
+                  xp: 10,
+                  source: "native_death_creature_kill",
+                },
+              ]
+            : []),
+        ]);
         // A kill that crosses a level boundary must update every persistent
         // level-owned value too (resource ceilings and backpack slots).
         syncHarthmereNativeLevelStats(attacker.delta());

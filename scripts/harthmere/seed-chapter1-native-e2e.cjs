@@ -10,6 +10,10 @@
  * stack stays warm. It is safe to rerun after an interrupted seed: existing
  * rows are updated and missing rows are created.
  *
+ * Elsewhen stays outside ordinary WorldMetadata. The only metadata mutation
+ * this script may perform is repairing the retired X=3648 boundary back to the
+ * real Harthmere edge at X=2560; dungeon access remains fracture-gate-only.
+ *
  * Run inside the production test image so Voxeloo, Redis configuration, and the
  * baked Bikkie tray exactly match the browser under test:
  *
@@ -57,9 +61,14 @@ const {
   ShardSeed,
   ShardShapes,
   ShardWater,
+  WorldMetadata,
 } = require("../../src/shared/ecs/gen/components");
+const { WorldMetadataId } = require("../../src/shared/ecs/ids");
 const { SHARD_DIM, shardToVoxelPos } = require("../../src/shared/game/shard");
-const { CH1_NEW_CAST } = require("../../src/shared/harthmere/ch1_cast");
+const {
+  CH1_RECLAIMED_CAST,
+  CH1_SEEDED_CAST,
+} = require("../../src/shared/harthmere/ch1_cast");
 const {
   CH1_DUNGEON_TERRAIN_VERSION,
   ch1DungeonAuthoredToWorld,
@@ -69,8 +78,14 @@ const {
   ch1DungeonWorldToAuthored,
 } = require("../../src/shared/harthmere/ch1_dungeon_terrain");
 const {
+  CH1_ELSEWHEN_BAND_START_X,
+  CH1_ELSEWHEN_BAND_END_X,
+  ch1NormalizeOrdinaryWorldEastEdge,
   ch1ElsewhenTerrainEntityIdForShard,
 } = require("../../src/shared/harthmere/ch1_elsewhen_region");
+const {
+  HARTHMERE_EXPANDED_WORLD_EAST_EDGE_X,
+} = require("../../src/shared/harthmere/world_extension");
 const {
   LOCAL_DEV_HUMAN_NPC_TYPE_ID,
   isNpcTypeId,
@@ -128,6 +143,8 @@ function chapter1Materials() {
     moss: terrainId("moss", grass),
     muckwad: terrainId("muckwad", terrainId("moss", grass)),
     sand: terrainId("sand", dirt),
+    snow: terrainId("snow", stone),
+    ice: terrainId("ice", terrainId("simple_glass", stone)),
     whiteWool: terrainId("white_wool", stone),
     yellowWool: terrainId("yellow_wool", dirt),
     redWool: terrainId("red_wool", dirt),
@@ -368,6 +385,37 @@ async function applyChanges(world, changes) {
   }
 }
 
+async function chapter1WorldBoundaryPlan(world) {
+  const metadataEntity = await world.get(WorldMetadataId);
+  const metadata = metadataEntity?.worldMetadata();
+  if (!metadata) {
+    throw new Error(
+      "Chapter 1 native seed requires an existing WorldMetadata entity"
+    );
+  }
+  const currentEastEdge = metadata.aabb.v1[0];
+  const effectiveEastEdge = ch1NormalizeOrdinaryWorldEastEdge(currentEastEdge);
+  if (effectiveEastEdge === currentEastEdge) {
+    return { currentEastEdge, effectiveEastEdge, change: undefined };
+  }
+  const aabb = {
+    v0: [...metadata.aabb.v0],
+    v1: [...metadata.aabb.v1],
+  };
+  aabb.v1[0] = effectiveEastEdge;
+  return {
+    currentEastEdge,
+    effectiveEastEdge,
+    change: {
+      kind: "update",
+      entity: {
+        id: WorldMetadataId,
+        world_metadata: WorldMetadata.create({ aabb }),
+      },
+    },
+  };
+}
+
 async function main() {
   const startedAt = Date.now();
   await scriptInit();
@@ -375,19 +423,44 @@ async function main() {
   const terrainPlan = CAST_ONLY ? [] : chapter1TerrainPlan();
   const targetIds = [
     ...terrainPlan.map((spec) => spec.id),
-    ...(TERRAIN_ONLY ? [] : CH1_NEW_CAST.map((member) => member.entityId)),
+    ...(TERRAIN_ONLY ? [] : CH1_SEEDED_CAST.map((member) => member.entityId)),
   ];
   const world = new RedisWorld(await connectToRedisWithLua("ecs"));
   await world.waitForHealthy();
   try {
+    const boundary = await chapter1WorldBoundaryPlan(world);
     const existingIds = new Set(await world.has(targetIds));
+    const terrainByDungeon = Object.fromEntries(
+      DUNGEON_IDS.map((dungeonId) => {
+        const specs = terrainPlan.filter((spec) => spec.dungeonId === dungeonId);
+        const existing = specs.filter((spec) => existingIds.has(spec.id)).length;
+        return [
+          dungeonId,
+          {
+            terrainShards: specs.length,
+            existing,
+            missing: specs.length - existing,
+          },
+        ];
+      })
+    );
     const summary = {
       apply: APPLY,
       bikkieCount,
       terrainOnly: TERRAIN_ONLY,
       castOnly: CAST_ONLY,
       terrainShards: terrainPlan.length,
-      castMembers: TERRAIN_ONLY ? 0 : CH1_NEW_CAST.length,
+      castMembers: TERRAIN_ONLY ? 0 : CH1_SEEDED_CAST.length,
+      worldBoundaryEast: boundary.currentEastEdge,
+      effectiveWorldBoundaryEast: boundary.effectiveEastEdge,
+      expectedOrdinaryWorldBoundaryEast:
+        HARTHMERE_EXPANDED_WORLD_EAST_EDGE_X,
+      elsewhenBandStart: CH1_ELSEWHEN_BAND_START_X,
+      elsewhenBandEnd: CH1_ELSEWHEN_BAND_END_X,
+      portalOnlyWorldBoundary:
+        boundary.effectiveEastEdge <= HARTHMERE_EXPANDED_WORLD_EAST_EDGE_X,
+      repairRetiredElsewhenBoundary: Boolean(boundary.change),
+      terrainByDungeon,
       create: targetIds.length - existingIds.size,
       update: existingIds.size,
       batchSize: APPLY_BATCH_SIZE,
@@ -396,6 +469,10 @@ async function main() {
     if (!APPLY) {
       console.log("Read-only inventory complete. Set APPLY=1 to install.");
       return;
+    }
+
+    if (boundary.change) {
+      await applyChanges(world, [boundary.change]);
     }
 
     const voxeloo = await loadVoxeloo();
@@ -423,8 +500,23 @@ async function main() {
 
     if (!TERRAIN_ONLY) {
       const nowSeconds = secondsSinceEpoch();
-      const npcChanges = CH1_NEW_CAST.map((member) => {
-        const kind = existingIds.has(member.entityId) ? "update" : "create";
+      const reclaimedExistingIds = new Set(
+        CH1_RECLAIMED_CAST.filter((member) =>
+          existingIds.has(member.entityId)
+        ).map((member) => member.entityId)
+      );
+      if (reclaimedExistingIds.size > 0) {
+        await applyChanges(
+          world,
+          [...reclaimedExistingIds].map((id) => ({ kind: "delete", id }))
+        );
+      }
+      const npcChanges = CH1_SEEDED_CAST.map((member) => {
+        const kind =
+          existingIds.has(member.entityId) &&
+          !reclaimedExistingIds.has(member.entityId)
+            ? "update"
+            : "create";
         return {
           kind,
           entity: buildNpcEntity(member, kind, nowSeconds),

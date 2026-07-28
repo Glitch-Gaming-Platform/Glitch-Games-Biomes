@@ -8,6 +8,10 @@ import type { FishedEvent } from "@/shared/firehose/events";
 import type { ItemPayload } from "@/shared/game/item";
 import { countOf, fishingBagTransform } from "@/shared/game/items";
 import { itemBagToString } from "@/shared/game/items_serde";
+import {
+  awardHarthmereNativeSkillXp,
+  harthmereNativeGatheringSkillAwards,
+} from "@/shared/harthmere/harthmere_skill_progression";
 
 // TODO: these handlers are insecure (client orchestrated) and should be moved
 //       to a model where the server handles the time-to-bite and drop roll.
@@ -19,6 +23,13 @@ const fishingClaimEventHandler = makeEventHandler("fishingClaimEvent", {
     const inventory = new PlayerInventoryEditor(context, player);
     decrementItemDurability(inventory, event.tool_ref, event.catch_time * 1000);
     inventory.giveOrThrow(fishingBagTransform(event.bag));
+    awardHarthmereNativeSkillXp(
+      player.mutableTriggerState(),
+      harthmereNativeGatheringSkillAwards({
+        sourceId: "native_fishing_claim",
+        fishing: true,
+      })
+    );
   },
 });
 

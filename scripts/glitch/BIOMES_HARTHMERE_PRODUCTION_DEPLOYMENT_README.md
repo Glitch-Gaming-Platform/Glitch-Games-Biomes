@@ -1317,8 +1317,9 @@ After deploy:
 - [ ] Revision is `Running`.
 - [ ] Revision is `Healthy`.
 - [ ] `audit_production_authored_content` passes: business owners `19/19`,
-      business crafting stations `19/19`, business customers `57/57`, muckers
-      `100/100`, and wildlife `24/24`.
+      business crafting stations `19/19`, business customers `57/57`, and the
+      dynamically derived complete Mucker/Hex and wildlife seed manifests are
+      present (including open-Wilds, road-group, relocated and Mossy ids).
 - [ ] Business outpost terrain materialization logs
       `processed 19/19 outposts` and no `missingShardCount` failures. NPCs/boards
       without the voxel building means this step was skipped or killed.
@@ -1333,10 +1334,10 @@ After deploy:
       surface-hole, and retired-terrain counts.
 - [ ] Snapshot combat NPC reconciliation reports all Muckers outside Grove and
       town safe zones; the first combat Muckling is in the watchtower clearing.
-- [ ] The persisted live-creature grounding pass reports all `116`
-      Muckers/Hexes and `56` animals alive with body-supported feet, exact
-      grounded respawn anchors, species-correct sizes, and zero unresolved
-      readback failures.
+- [ ] The persisted live-creature grounding pass reports every canonical
+      Mucker/Hex and animal alive with body-supported feet, exact grounded
+      respawn anchors, species-correct sizes, legal protected/building geometry,
+      and zero unresolved readback failures.
 - [ ] Logs show `/api/assets/player_mesh.glb` responses without automatic redirects to the Harthmere static body fallback.
 - [ ] Logs show `WebSocket listening on port 4900`.
 - [ ] Logs show `web now running`.

@@ -176,7 +176,7 @@ export function ch1IgnitionCutscene(): CutsceneDef {
             at: 0.4,
             role: "augur9",
             speaker: "AUGUR-9",
-            text: "…custodian recognized. Resuming log playback. Entry four hundred and… entry four hundred and… entry—",
+            text: "…custodian recognized. Resuming log entry four hundred and—",
           },
         ],
       },
@@ -439,7 +439,7 @@ export function ch1OverlayIveGotYouCutscene(): CutsceneDef {
             kind: "dialogue",
             at: 0.4,
             speaker: "A voice behind you",
-            text: "I've got you. I've got you. Walk.",
+            text: "I've got you. Walk.",
           },
           { kind: "fade", at: 4.2, direction: "out", duration: 0.7 },
         ],
@@ -491,7 +491,7 @@ export function ch1CorridorCutscene(opts: Ch1CorridorOptions): CutsceneDef {
   // What is in her hand. Act 3 never names it. Act 6 names it and names
   // nothing else.
   const handLine = revised
-    ? "It is the vial. The one you had analysed. The one you reported her for."
+    ? "It is the vial you had analysed. The one you reported her for."
     : "There is something in her hand.";
 
   const behindSpeaker = revised ? "Dr. Lucien Ardan" : "A voice behind you";
@@ -736,7 +736,7 @@ export function ch1ReconArrivalCutscene(): CutsceneDef {
             kind: "dialogue",
             at: 0.3,
             speaker: "Alva",
-            text: "She didn't stop to rest. Not once. People who are helping stop to rest.",
+            text: "She didn't stop to rest. People who are helping stop to rest.",
           },
         ],
       },
@@ -755,7 +755,7 @@ export function ch1ReconArrivalCutscene(): CutsceneDef {
             kind: "dialogue",
             at: 0.2,
             speaker: "Helsa",
-            text: "She asked me to put the lamps out. Not down. Out.",
+            text: "She asked me to put the lamps out, not down.",
           },
         ],
       },
@@ -777,7 +777,7 @@ export function ch1ReconArrivalCutscene(): CutsceneDef {
             kind: "dialogue",
             at: 0.2,
             speaker: "Allix",
-            text: "From up top? She took the long way. Not the fast way. The way with no windows on it.",
+            text: "From up top, she took the long way. She chose the way with no windows.",
           },
           { kind: "fade", at: 3.4, direction: "out", duration: 0.7 },
         ],
@@ -836,7 +836,7 @@ export function ch1TheFlinchCutscene(): CutsceneDef {
           emote: "talkGesture",
         },
         { speaker: "a", text: "Three. Days." },
-        { speaker: "a", text: "Right. Okay. Yeah." },
+        { speaker: "a", text: "Right. Okay." },
       ],
       settings: { letterbox: true, timeOfDay: 0.25 },
     })
@@ -879,10 +879,10 @@ export function ch1SorrelDoorCutscene(): CutsceneDef {
         { speaker: "a", text: "Say it again." },
         { speaker: "a", text: "Eleven years. You look — " },
         { speaker: "a", text: "You don't know who I am." },
-        { speaker: "a", text: "Right. Fine. Right." },
+        { speaker: "a", text: "Right. Fine." },
         {
           speaker: "a",
-          text: "Then we'll do it the slow way. Sit down. I have four months of notes and you have a hole where your head used to be.",
+          text: "Then we'll do it the slow way. I have four months of notes, and you have a hole where your head used to be.",
         },
       ],
       settings: { letterbox: true, timeOfDay: 0.3 },
@@ -913,11 +913,11 @@ export function ch1TheCaseCutscene(): CutsceneDef {
         },
         {
           speaker: "a",
-          text: "And then the shutdown happens the way shutdowns happen. Not in a sequence. In a panic. In about eleven days.",
+          text: "Then the shutdown happens in a panic, not a sequence. In about eleven days.",
         },
         {
           speaker: "a",
-          text: "Four hundred million homes. Not houses. Homes, in pockets, with no doors on the other side once the anchors drop.",
+          text: "Four hundred million homes, not houses. Homes in pockets, with no doors once the anchors drop.",
         },
         {
           speaker: "a",
@@ -948,7 +948,7 @@ export function ch1TooLateCutscene(): CutsceneDef {
         { speaker: "a", text: "I chose a third thing." },
         {
           speaker: "a",
-          text: "You are alive. You are unhurt. You are standing in front of me. And every one of those homes still has power.",
+          text: "You are alive and unhurt. Every one of those homes still has power.",
         },
         {
           speaker: "a",
@@ -956,7 +956,7 @@ export function ch1TooLateCutscene(): CutsceneDef {
         },
         {
           speaker: "a",
-          text: "You couldn't tell me eleven years ago either. That's not a taunt. I really did wait for it.",
+          text: "You could not answer eleven years ago either. I really did wait for it.",
         },
       ],
       settings: { letterbox: true, skipAfterSeconds: 8 },
@@ -980,7 +980,7 @@ export function ch1WatchHouseCutscene(): CutsceneDef {
         },
         {
           speaker: "a",
-          text: "And then it would have made me a liar in your own head, and you'd have walked to him on your own anyway. Except angrier. And alone.",
+          text: "Then it would have made me a liar in your own head. You would have walked to him anyway, except angrier and alone.",
         },
         {
           speaker: "a",
@@ -988,7 +988,7 @@ export function ch1WatchHouseCutscene(): CutsceneDef {
         },
         {
           speaker: "a",
-          text: "That was the plan. That was the whole plan. It wasn't a good one.",
+          text: "That was the whole plan. It was not a good one.",
         },
         {
           speaker: "a",
@@ -1075,7 +1075,7 @@ export function ch1ConsolidationRevisionCutscene(): CutsceneDef {
             kind: "dialogue",
             at: 0.2,
             speaker: "Dr. Lucien Ardan",
-            text: "Thank you. Truly. You've done the right thing here, Seven.",
+            text: "Thank you. You've done the right thing here, Seven.",
           },
           { kind: "music", at: 0.0, track: null },
           { kind: "sfx", at: 2.4, name: "snapshot.memory.consolidate" },

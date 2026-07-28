@@ -1,7 +1,11 @@
 /// <reference types="mocha" />
 
 import assert from "assert";
-import { activeChapter1ObjectiveForTest } from "@/pages/api/harthmere/chapter1_progress";
+import {
+  activeChapter1ObjectiveForTest,
+  chapter1NativeInventoryPlanForTest,
+} from "@/pages/api/harthmere/chapter1_progress";
+import { harthmereNativeBiomesIdForItemId } from "@/shared/harthmere/harthmere_native_item_ids";
 import {
   ch1NativeQuestId,
   ch1NativeQuestStepId,
@@ -46,5 +50,36 @@ describe("Chapter 1 native progress API", () => {
       fired: () => true,
     });
     assert.equal(active, undefined);
+  });
+
+  it("commits plot items and dungeon supplies through one native plan", () => {
+    const plan = chapter1NativeInventoryPlanForTest({
+      itemConsumes: ["item_ch1_compound_b"],
+      itemGrants: ["item_sorrel_field_ledger"],
+      resourceConsumes: { clean_water: 2 },
+    });
+    assert.deepEqual(plan, {
+      take: [
+        {
+          itemId: "item_ch1_compound_b",
+          nativeId: harthmereNativeBiomesIdForItemId("item_ch1_compound_b"),
+          count: 1,
+        },
+        {
+          itemId: "clean_water",
+          nativeId: harthmereNativeBiomesIdForItemId("clean_water"),
+          count: 2,
+        },
+      ],
+      give: [
+        {
+          itemId: "item_sorrel_field_ledger",
+          nativeId: harthmereNativeBiomesIdForItemId(
+            "item_sorrel_field_ledger"
+          ),
+          count: 1,
+        },
+      ],
+    });
   });
 });

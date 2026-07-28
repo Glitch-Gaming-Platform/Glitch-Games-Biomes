@@ -119,7 +119,7 @@ const ACT_1: readonly Ch1QuestDef[] = [
         id: "wake_up",
         title: "Wake Up",
         objective: "Get out of bed.",
-        trigger: "interact",
+        trigger: "sleep",
         targetLabel: "Bed",
       },
       {
@@ -256,7 +256,7 @@ const ACT_1: readonly Ch1QuestDef[] = [
       },
       {
         id: "not_this_small",
-        title: "\"Not This Small\"",
+        title: '"Not This Small"',
         objective: "Answer Jackie.",
         trigger: "dialogue_choice",
         targetLabel: "Jackie",
@@ -538,8 +538,7 @@ const ACT_3: readonly Ch1QuestDef[] = [
       {
         id: "ch1_a3_d1_hall_of_weights",
         title: "The Hall of Weights",
-        objective:
-          "Produce an exact mass against the temple's own standard.",
+        objective: "Produce an exact mass against the temple's own standard.",
         trigger: "minigame",
         targetLabel: "Temple balance beam",
         latentSkillId: "ls_field_calibration",
@@ -682,7 +681,7 @@ const ACT_4: readonly Ch1QuestDef[] = [
       },
       {
         id: "how_did_you_do_that",
-        title: "\"How Did You Do That?\"",
+        title: '"How Did You Do That?"',
         objective: "Answer Calla Ashe.",
         trigger: "dialogue_choice",
         targetLabel: "Foreman Calla Ashe",
@@ -789,7 +788,7 @@ const ACT_4: readonly Ch1QuestDef[] = [
         title: "Ask Him",
         objective: "Question Teak Morrow.",
         trigger: "talk_npc",
-        targetLabel: "Teague \"Teak\" Morrow",
+        targetLabel: 'Teague "Teak" Morrow',
       },
     ],
   },
@@ -822,7 +821,8 @@ const ACT_4: readonly Ch1QuestDef[] = [
         title: "Decide",
         objective: "Report her to the watch, stop taking the tea, or both.",
         trigger: "dialogue_choice",
-        targetLabel: "Sergeant Bram Holt",
+        targetLabel: "Grove Watch House",
+        note: "Holt takes the statement at the Grove watch house where Jackie is being held. The imported snapshot does not guarantee his old North Gate entity or additive-town terrain.",
       },
       {
         id: "sleep_alone",
@@ -846,8 +846,7 @@ const ACT_5: readonly Ch1QuestDef[] = [
     title: "The Ledger Goes Quiet",
     giver: "—",
     district: "The Grove",
-    summary:
-      "Three acts of steady recovery, and now nothing. Work out why.",
+    summary: "Three acts of steady recovery, and now nothing. Work out why.",
     requiresFlags: [CH1_FLAGS.act4Complete],
     setsFlags: [CH1_FLAGS.dosingResumed, CH1_FLAGS.act5Linking],
     note: "THE TRAP THAT MAKES ACT 5 WORK: the player figures out the vials were HELPING and revises nothing else. They conclude Jackie was drugging them with something that happened to help, or managing them, or that TT wanted them functional for TT's own reasons. The correct conclusion — she was curing you — requires an assumption of good faith the Act 3 reconstruction has made impossible. So they take the remaining vials without asking, from a woman who would have given them freely, and feel clever.",
@@ -901,6 +900,7 @@ const ACT_5: readonly Ch1QuestDef[] = [
         trigger: "interact",
         targetLabel: "A letter addressed to no one",
         fragmentId: "frag_a5_play_decimal_place",
+        setsFlags: [CH1_FLAGS.sorrelLetterRead],
       },
     ],
   },
@@ -1164,7 +1164,7 @@ const ACT_6: readonly Ch1QuestDef[] = [
     steps: [
       {
         id: "did_he_take_it",
-        title: "\"Did He Take It?\"",
+        title: '"Did He Take It?"',
         objective: "Answer her.",
         trigger: "dialogue_choice",
         targetLabel: "Jackie",

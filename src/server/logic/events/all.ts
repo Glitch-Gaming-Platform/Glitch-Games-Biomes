@@ -95,6 +95,7 @@ import {
   warpEventHandler,
   warpHomeEventHandler,
 } from "@/server/logic/events/handlers/warps";
+import { harthmereChapter1WarpEventHandler } from "@/server/logic/events/handlers/harthmere_chapter1_warp";
 import {
   dumpWaterEventHandler,
   scoopWaterEventHandler,
@@ -130,6 +131,7 @@ export function eventHandlerMapFor(serverMods: ServerMods) {
     // Handle things that can move the player, this may
     // affect validity of later events.
     moveEventHandler,
+    harthmereChapter1WarpEventHandler,
     warpEventHandler,
     warpHomeEventHandler,
 

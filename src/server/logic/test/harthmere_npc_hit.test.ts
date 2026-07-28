@@ -45,9 +45,14 @@ import {
   readHarthmereNativeCombatProgression,
   writeHarthmereNativeCombatProgression,
 } from "@/shared/harthmere/harthmere_native_combat";
+import { harthmereNativeLevelStats } from "@/shared/harthmere/harthmere_native_level_stats";
 import { addToBag, bagContains, countOf, createBag } from "@/shared/game/items";
 import { anItem } from "@/shared/game/item";
 import { findItemEquippableSlot } from "@/shared/game/wearables";
+import { buildCreatureProgression } from "@/shared/npc/creature_level";
+import { serializeNpcCustomState } from "@/shared/npc/serde";
+import { readHarthmereJobsBoardNativeKillLedger } from "@/shared/harthmere/jobs_board_native_kill_ledger";
+import { readHarthmereNativeSkillTotalXp } from "@/shared/harthmere/harthmere_skill_progression";
 
 // Native NPC health is the one combat authority for Harthmere seeds. The handler
 // also verifies melee reach so a voxel interaction or forged client event cannot
@@ -130,7 +135,8 @@ describe("Harthmere mucker hit (updateNpcHealthEvent)", () => {
   function spawnNativeNpc(
     seed: Parameters<typeof harthmereNativeNpcCombatProfileForSeed>[0],
     position: [number, number, number],
-    hp?: number
+    hp?: number,
+    progressionLevel?: number
   ) {
     const profile = harthmereNativeNpcCombatProfileForSeed(seed);
     const id = generateTestId();
@@ -145,7 +151,19 @@ describe("Harthmere mucker hit (updateNpcHealthEvent)", () => {
           rigid_body: RigidBody.create({ velocity: [0, 0, 0] }),
           size: Size.create({ v: [1, 2, 1] }),
           health: Health.create({ hp: maxHp, maxHp }),
-          npc_state: NpcState.create(),
+          npc_state:
+            progressionLevel === undefined
+              ? NpcState.create()
+              : NpcState.create({
+                  data: serializeNpcCustomState({
+                    creatureProgression: buildCreatureProgression({
+                      assignment: {
+                        level: progressionLevel,
+                        levelSource: "authored",
+                      },
+                    }),
+                  }),
+                }),
           npc_metadata: NpcMetadata.create({
             type_id: profile.id,
             created_time: 0,
@@ -351,6 +369,41 @@ describe("Harthmere mucker hit (updateNpcHealthEvent)", () => {
     );
 
     assert.equal(logic.world.table.get(target.id)?.health?.hp, 83);
+    const attackerState = logic.world.table.get(attacker)?.trigger_state;
+    assert.ok(readHarthmereNativeSkillTotalXp(attackerState, "combat") > 0);
+    assert.ok(
+      readHarthmereNativeSkillTotalXp(attackerState, "melee_combat") > 0
+    );
+  });
+
+  it("applies creature-level resistance in the authoritative NPC damage transaction", async () => {
+    const attacker = (
+      await addGameUser(logic.world, generateTestId(), {
+        position: [0, 0, 0],
+      })
+    ).id;
+    equipNativeItem(attacker, "iron_longsword", 2);
+    const target = spawnNativeNpc(
+      harthmereGroundedMuckMonsterSeedsInTerritory()[0],
+      [2, 0, 0],
+      100,
+      20
+    );
+
+    await logic.publish(
+      new GameEvent(
+        attacker,
+        new UpdateNpcHealthEvent({
+          id: target.id,
+          hp: -999,
+          damageSource: { kind: "attack", attacker, dir: [1, 0, 0] },
+        })
+      )
+    );
+
+    // The same level-2 sword deals 17 in the baseline case above. Level 20's
+    // 10% resistance rounds that authoritative damage to 15.
+    assert.equal(logic.world.table.get(target.id)?.health?.hp, 85);
   });
 
   it("rejects non-combat hotbar items and under-level weapons", async () => {
@@ -460,6 +513,12 @@ describe("Harthmere mucker hit (updateNpcHealthEvent)", () => {
       logic.world.table.get(attacker)?.inventory?.hotbar[0]?.item
         .lifetimeDurabilityMs;
     assert.ok(before && after && after < before);
+    const attackerState = logic.world.table.get(attacker)?.trigger_state;
+    assert.ok(readHarthmereNativeSkillTotalXp(attackerState, "combat") > 0);
+    assert.ok(
+      readHarthmereNativeSkillTotalXp(attackerState, "ranged_combat") > 0
+    );
+    assert.ok(readHarthmereNativeSkillTotalXp(attackerState, "archery") > 0);
   });
 
   it("awards native XP and boss credit in the same death transaction", async () => {
@@ -497,6 +556,12 @@ describe("Harthmere mucker hit (updateNpcHealthEvent)", () => {
     );
     assert.equal(progression.bossKills, 1);
     assert.ok(progression.xp > 0 || progression.level > 5);
+    assert.ok(
+      readHarthmereJobsBoardNativeKillLedger(
+        logic.world.table.get(attacker)?.trigger_state
+      )[String(boss.id)] > 0,
+      "the exact killed NPC entity must be recorded for bounty completion"
+    );
 
     const dropped = createBag();
     for (const entity of getEntitiesWithComponent(logic.world, "grab_bag")) {
@@ -539,9 +604,14 @@ describe("Harthmere mucker hit (updateNpcHealthEvent)", () => {
       [2, 0, 0]
     );
     const armor = nativeCombatArmorStats([leather, shield]);
+    const defenderStats = harthmereNativeLevelStats(3);
+    const attackerStats = harthmereNativeLevelStats(attacker.profile.level);
     const expectedDamage = mitigateHarthmereNativeIncomingDamage({
       rawDamage: attacker.profile.attackDamage,
-      ...armor,
+      armor: armor.armor + defenderStats.armor,
+      defense: armor.defense + defenderStats.defense,
+      evasion: armor.evasion + defenderStats.evasion,
+      accuracy: attackerStats.accuracy,
       attackerLevel: attacker.profile.level,
       defenderLevel: 3,
     });
@@ -565,6 +635,12 @@ describe("Harthmere mucker hit (updateNpcHealthEvent)", () => {
       logic.world.table.get(player)?.health?.hp,
       100 - expectedDamage
     );
+    assert.ok(
+      readHarthmereNativeSkillTotalXp(
+        logic.world.table.get(player)?.trigger_state,
+        "shield_mastery"
+      ) > 0
+    );
     const worn = [
       ...(logic.world.table.get(player)?.wearing?.items.values() ?? []),
     ];
@@ -575,6 +651,87 @@ describe("Harthmere mucker hit (updateNpcHealthEvent)", () => {
           (item.lifetimeDurabilityMs ?? 0) < (leather.lifetimeDurabilityMs ?? 0)
       )
     );
+  });
+
+  it("uses the same body-aware vertical melee reach as Anima", async () => {
+    const player = (
+      await addGameUser(logic.world, generateTestId(), {
+        position: [0.65, 2, 0],
+      })
+    ).id;
+    const attacker = spawnNativeNpc(
+      harthmereGroundedMuckMonsterSeedsInTerritory()[0],
+      [0, 0, 0]
+    );
+    editEntity(logic.world, attacker.id, (entity) => {
+      entity.setSize(Size.create({ v: [1, 1.2, 1] }));
+    });
+
+    const attack = () =>
+      logic.publish(
+        new GameEvent(
+          player,
+          new UpdatePlayerHealthEvent({
+            id: player,
+            hpDelta: -999,
+            damageSource: {
+              kind: "attack",
+              attacker: attacker.id,
+              dir: [1, 0, 0],
+            },
+          })
+        )
+      );
+
+    // Feet differ by 2 m, but the 1.2 m attacker body leaves only a 0.8 m
+    // vertical gap. This is the reachable ledge case Anima already accepts.
+    await attack();
+    assert.ok((logic.world.table.get(player)?.health?.hp ?? 100) < 100);
+
+    editEntity(logic.world, player, (entity) => {
+      entity.setPosition(Position.create({ v: [0.65, 3, 0] }));
+      entity.setHealth(Health.create({ hp: 100, maxHp: 100 }));
+    });
+    // A 3 m feet offset leaves 1.8 m of empty vertical space and must remain
+    // unhittable through the floor/ledge.
+    await attack();
+    assert.equal(logic.world.table.get(player)?.health?.hp, 100);
+  });
+
+  it("applies per-entity creature level to authoritative outgoing NPC damage", async () => {
+    const player = (
+      await addGameUser(logic.world, generateTestId(), {
+        position: [1, 0, 0],
+      })
+    ).id;
+    const seed = harthmereGroundedMuckMonsterSeedsInTerritory()[0];
+    const levelOne = spawnNativeNpc(seed, [0, 0, 0], undefined, 1);
+    const levelFive = spawnNativeNpc(seed, [0, 0, 0], undefined, 5);
+
+    const attackFrom = (attacker: BiomesId) =>
+      logic.publish(
+        new GameEvent(
+          player,
+          new UpdatePlayerHealthEvent({
+            id: player,
+            hpDelta: -999,
+            damageSource: { kind: "attack", attacker, dir: [1, 0, 0] },
+          })
+        )
+      );
+
+    await attackFrom(levelOne.id);
+    const levelOneDamage =
+      100 - (logic.world.table.get(player)?.health?.hp ?? 100);
+    editEntity(logic.world, player, (entity) => {
+      entity.setHealth(Health.create({ hp: 100, maxHp: 100 }));
+    });
+    await attackFrom(levelFive.id);
+    const levelFiveDamage =
+      100 - (logic.world.table.get(player)?.health?.hp ?? 100);
+
+    assert.ok(levelOneDamage > 0);
+    assert.ok(levelFiveDamage > levelOneDamage);
   });
 
   it("uses the same selected weapon, level, range, and cooldown authority for PvP", async () => {
@@ -616,5 +773,10 @@ describe("Harthmere mucker hit (updateNpcHealthEvent)", () => {
 
     // The forged -999 is ignored and the immediate replay is cooldown-blocked.
     assert.equal(logic.world.table.get(defender)?.health?.hp, 82);
+    const attackerState = logic.world.table.get(attacker)?.trigger_state;
+    assert.ok(readHarthmereNativeSkillTotalXp(attackerState, "combat") > 0);
+    assert.ok(
+      readHarthmereNativeSkillTotalXp(attackerState, "melee_combat") > 0
+    );
   });
 });

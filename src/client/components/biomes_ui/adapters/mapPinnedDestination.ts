@@ -1,4 +1,8 @@
-import type { NavigationAidKind, NavigationAidSpec } from "@/client/game/helpers/navigation_aids";
+import type {
+  NavigationAidKind,
+  NavigationAidSpec,
+} from "@/client/game/helpers/navigation_aids";
+import { nativeRobotStoryQuestOrder } from "@/shared/harthmere/native_road_ahead_contract";
 import { resolveHarthmereProductionMarkerPosition } from "@/shared/harthmere/production_terrain_placement_map";
 
 export const BIOMES_UI_ACTIVE_MAP_PIN_STORAGE_KEY = "biomes_ui_active_map_pin";
@@ -31,14 +35,68 @@ export interface BiomesUIMapPinSourceMarker {
   description?: string;
 }
 
-function finiteWorldPosition(position: BiomesUIMapPinSourceMarker["worldPosition"]): [number, number, number] | undefined {
+export interface BiomesUIAutoDestinationQuest {
+  questId: string;
+  status: string;
+  firstMarkerId?: string;
+}
+
+/**
+ * Advance story guidance without stealing a destination the player deliberately
+ * selected. Native quest steps can synthesize a marker even when the original
+ * Bikkie leaf had no navigation aid; promoting that marker to the active pin is
+ * what makes it appear on the HUD minimap and directional overlay.
+ */
+export function automaticQuestDestinationMarkerForTest(input: {
+  existingPin?: Pick<BiomesUIActiveMapPin, "markerId">;
+  quest?: BiomesUIAutoDestinationQuest;
+  markers: readonly BiomesUIMapPinSourceMarker[];
+}): BiomesUIMapPinSourceMarker | undefined {
+  const markerId = String(input.quest?.firstMarkerId ?? "").trim();
+  if (input.quest?.status !== "active" || !markerId) {
+    return undefined;
+  }
+  const marker = input.markers.find((candidate) => candidate.id === markerId);
+  if (!marker || !finiteWorldPosition(marker.worldPosition)) {
+    return undefined;
+  }
+  const existingMarkerId = String(input.existingPin?.markerId ?? "").trim();
+  if (existingMarkerId === markerId) {
+    return undefined;
+  }
+  if (!existingMarkerId) {
+    return marker;
+  }
+
+  const existingIsEarlierStepOfQuest = existingMarkerId.startsWith(
+    `native_quest:${input.quest.questId}:`
+  );
+  const existingQuestId = /^native_quest:([^:]+):/.exec(existingMarkerId)?.[1];
+  const existingStoryOrder = existingQuestId
+    ? nativeRobotStoryQuestOrder(existingQuestId)
+    : -1;
+  const nextStoryOrder = nativeRobotStoryQuestOrder(input.quest.questId);
+  const existingIsPreviousStoryChapter =
+    existingStoryOrder >= 0 &&
+    nextStoryOrder >= 0 &&
+    existingStoryOrder < nextStoryOrder;
+  return existingIsEarlierStepOfQuest || existingIsPreviousStoryChapter
+    ? marker
+    : undefined;
+}
+
+function finiteWorldPosition(
+  position: BiomesUIMapPinSourceMarker["worldPosition"]
+): [number, number, number] | undefined {
   if (!Array.isArray(position) || position.length < 3) {
     return undefined;
   }
   const x = Number(position[0]);
   const y = Number(position[1]);
   const z = Number(position[2]);
-  return Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(z) ? [x, y, z] : undefined;
+  return Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(z)
+    ? [x, y, z]
+    : undefined;
 }
 
 export function biomesUIActiveMapPinNavigationAidKindForTest(
@@ -52,7 +110,9 @@ export function biomesUIActiveMapPinNavigationAidKindForTest(
   return "map_pin";
 }
 
-export function biomesUIActiveMapPinNavigationAidSpecForTest(pin: BiomesUIActiveMapPin | undefined): NavigationAidSpec | undefined {
+export function biomesUIActiveMapPinNavigationAidSpecForTest(
+  pin: BiomesUIActiveMapPin | undefined
+): NavigationAidSpec | undefined {
   const worldPosition = finiteWorldPosition(pin?.worldPosition);
   if (!pin || !worldPosition) {
     return undefined;
@@ -67,7 +127,10 @@ export function biomesUIActiveMapPinNavigationAidSpecForTest(pin: BiomesUIActive
   };
 }
 
-export function activeBiomesUIMapPinFromMarkerForTest(marker: BiomesUIMapPinSourceMarker, nowMs = Date.now()): BiomesUIActiveMapPin | undefined {
+export function activeBiomesUIMapPinFromMarkerForTest(
+  marker: BiomesUIMapPinSourceMarker,
+  nowMs = Date.now()
+): BiomesUIActiveMapPin | undefined {
   const worldPosition = finiteWorldPosition(marker.worldPosition);
   const markerId = String(marker.id ?? "").trim();
   const label = String(marker.label ?? "").trim();
@@ -83,7 +146,10 @@ export function activeBiomesUIMapPinFromMarkerForTest(marker: BiomesUIMapPinSour
     label,
     kind: String(marker.kind ?? "objective"),
     worldPosition: resolvedWorldPosition,
-    description: typeof marker.description === "string" && marker.description.trim() ? marker.description.trim() : undefined,
+    description:
+      typeof marker.description === "string" && marker.description.trim()
+        ? marker.description.trim()
+        : undefined,
     setAtMs: nowMs,
   };
 }
@@ -108,7 +174,9 @@ export function shouldClearStaleActiveMapPin(input: {
   return !input.visibleMarkerIds.includes(input.pin.markerId);
 }
 
-function parseActiveBiomesUIMapPin(value: string | null): BiomesUIActiveMapPin | undefined {
+function parseActiveBiomesUIMapPin(
+  value: string | null
+): BiomesUIActiveMapPin | undefined {
   if (!value) return undefined;
   try {
     const parsed = JSON.parse(value) as BiomesUIActiveMapPin;
@@ -130,24 +198,33 @@ function parseActiveBiomesUIMapPin(value: string | null): BiomesUIActiveMapPin |
 export function readActiveBiomesUIMapPin(): BiomesUIActiveMapPin | undefined {
   if (typeof window === "undefined") return undefined;
   try {
-    return parseActiveBiomesUIMapPin(window.localStorage?.getItem(BIOMES_UI_ACTIVE_MAP_PIN_STORAGE_KEY) ?? null);
+    return parseActiveBiomesUIMapPin(
+      window.localStorage?.getItem(BIOMES_UI_ACTIVE_MAP_PIN_STORAGE_KEY) ?? null
+    );
   } catch {
     return undefined;
   }
 }
 
-export function writeActiveBiomesUIMapPin(pin: BiomesUIActiveMapPin | undefined): void {
+export function writeActiveBiomesUIMapPin(
+  pin: BiomesUIActiveMapPin | undefined
+): void {
   if (typeof window === "undefined") return;
   try {
     if (pin) {
-      window.localStorage?.setItem(BIOMES_UI_ACTIVE_MAP_PIN_STORAGE_KEY, JSON.stringify(pin));
+      window.localStorage?.setItem(
+        BIOMES_UI_ACTIVE_MAP_PIN_STORAGE_KEY,
+        JSON.stringify(pin)
+      );
     } else {
       window.localStorage?.removeItem(BIOMES_UI_ACTIVE_MAP_PIN_STORAGE_KEY);
     }
   } catch {
     // The map still updates in-memory when storage is unavailable.
   }
-  window.dispatchEvent(new CustomEvent(BIOMES_UI_ACTIVE_MAP_PIN_EVENT, { detail: pin }));
+  window.dispatchEvent(
+    new CustomEvent(BIOMES_UI_ACTIVE_MAP_PIN_EVENT, { detail: pin })
+  );
 }
 
 // BIOMES_UI_LOCATE_ON_MAP:

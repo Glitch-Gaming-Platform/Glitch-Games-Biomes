@@ -19,6 +19,12 @@ import {
   readHarthmereNativeCombatProgression,
   writeHarthmereNativeCombatProgression,
 } from "@/shared/harthmere/harthmere_native_combat";
+import {
+  HARTHMERE_SKILL_IDS,
+  hasHarthmereNativeSkillProgression,
+  readHarthmereNativeSkillTotalXp,
+  writeHarthmereNativeSkillTotalXp,
+} from "@/shared/harthmere/harthmere_skill_progression";
 import { syncHarthmereNativeLevelStats } from "@/shared/harthmere/harthmere_native_level_stats";
 import {
   harthmereNativeBiomesIdForItemId,
@@ -326,6 +332,8 @@ export default biomesApiHandler(
         player.triggerState()
       );
       const currentVitals = readHarthmereNativeVitals(player.triggerState());
+      const skillProgressionNeedsMigration =
+        !hasHarthmereNativeSkillProgression(player.triggerState());
       const combatNeedsMigration =
         current.migrationVersion < HARTHMERE_NATIVE_COMBAT_MIGRATION_VERSION;
       const vitalsNeedMigration =
@@ -459,6 +467,23 @@ export default biomesApiHandler(
           statusProjectionUpdatedAtMs: legacy.updatedAtMs,
         });
       }
+      if (skillProgressionNeedsMigration) {
+        for (const skillId of HARTHMERE_SKILL_IDS) {
+          if (skillId === "character_level") continue;
+          const legacyXp = Math.max(
+            0,
+            Math.trunc(Number(legacy.classMagic.skills[skillId]?.xp) || 0)
+          );
+          writeHarthmereNativeSkillTotalXp(
+            player.mutableTriggerState(),
+            skillId,
+            Math.max(
+              readHarthmereNativeSkillTotalXp(player.triggerState(), skillId),
+              legacyXp
+            )
+          );
+        }
+      }
       player.setInventory(inventory);
       player.setWearing(wearing);
       player.setRecipeBook(recipeBook);
@@ -476,7 +501,10 @@ export default biomesApiHandler(
       syncHarthmereNativeLevelStats(player);
       return {
         ok: true,
-        migrated: combatNeedsMigration || vitalsNeedMigration,
+        migrated:
+          combatNeedsMigration ||
+          vitalsNeedMigration ||
+          skillProgressionNeedsMigration,
         level: progression.level,
         xp: progression.xp,
       };

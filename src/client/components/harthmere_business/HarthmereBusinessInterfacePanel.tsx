@@ -1,6 +1,5 @@
 import * as React from "react";
 import { usePointerLockManager } from "../contexts/PointerLockContext";
-import { purchaseHarthmereBusinessTool } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
 import {
   closePointerLockUnlockWhileOpen,
   openPointerLockUnlockWhileOpen,
@@ -772,6 +771,7 @@ const BUSINESS_BACKEND_MUTATION_METHODS = new Set<string>([
   "acceptContract",
   "fulfillContract",
   "grantPermission",
+  "buyBusinessTool",
   "purchaseShopItem",
   "buyStorefrontGood",
   "runServiceAction",
@@ -2566,6 +2566,40 @@ const ShopfrontPane: React.FunctionComponent<{
   const [count, setCount] = React.useState("1");
   const [priceItemId, setPriceItemId] = React.useState("");
   const [priceModifier, setPriceModifier] = React.useState("1");
+  const [feedback, setFeedback] = React.useState<
+    ShopfrontPurchaseFeedback | undefined
+  >();
+  const feedbackSeq = React.useRef(0);
+  React.useEffect(() => {
+    if (!feedback) return;
+    const timer = window.setTimeout(() => setFeedback(undefined), 4200);
+    return () => window.clearTimeout(timer);
+  }, [feedback?.id]);
+  const runPurchase = React.useCallback(
+    (action: () => Promise<unknown>, successMessage: string) => {
+      void action()
+        .then((result) => {
+          if (isBusinessBackendRequestSkipped(result)) return;
+          feedbackSeq.current += 1;
+          setFeedback({
+            id: feedbackSeq.current,
+            kind: "success",
+            message: successMessage,
+          });
+        })
+        .catch((error) => {
+          const message =
+            error instanceof Error ? error.message : String(error ?? "");
+          feedbackSeq.current += 1;
+          setFeedback({
+            id: feedbackSeq.current,
+            kind: "error",
+            message: formatHarthmereBusinessPlayerWarning(message),
+          });
+        });
+    },
+    []
+  );
   const parsedCount = parseShopfrontPurchaseCount(count);
   const storefrontGoods = shop.storefrontGoods ?? [];
   const buildingMaterials = storefrontGoods.filter(
@@ -2590,7 +2624,13 @@ const ShopfrontPane: React.FunctionComponent<{
         merchKind={merchKind}
         backendPending={backendPending}
         onBuy={(purchaseCount) =>
-          void adapter.buyStorefrontGood(businessId, good.itemId, purchaseCount)
+          runPurchase(
+            () =>
+              adapter.buyStorefrontGood(businessId, good.itemId, purchaseCount),
+            `${purchaseCount} ${itemLabel}${
+              purchaseCount === 1 ? "" : "s"
+            } added to your inventory.`
+          )
         }
       />
     );
@@ -2614,6 +2654,20 @@ const ShopfrontPane: React.FunctionComponent<{
           Secure trade
         </span>
       </div>
+      {feedback ? (
+        <div
+          key={feedback.id}
+          role={feedback.kind === "error" ? "alert" : "status"}
+          style={
+            feedback.kind === "success" ? toastSuccessStyle : toastErrorStyle
+          }
+          data-testid="biomes-business-purchase-feedback"
+          data-business-purchase-feedback={feedback.kind}
+        >
+          <span style={toastDotStyle} aria-hidden="true" />
+          {feedback.message}
+        </div>
+      ) : null}
       {mode === "owner" ? (
         <>
           <div style={formRowStyle}>
@@ -2738,7 +2792,16 @@ const ShopfrontPane: React.FunctionComponent<{
               aria-label={`Buy ${shop.toolForSale.toolName}`}
               data-business-backend-action="true"
               disabled={backendPending}
-              onClick={() => purchaseHarthmereBusinessTool(shop.businessType)}
+              onClick={() =>
+                runPurchase(
+                  () =>
+                    adapter.buyBusinessTool(
+                      businessId,
+                      shop.toolForSale!.toolItemId
+                    ),
+                  `${shop.toolForSale!.toolName} was added to your inventory.`
+                )
+              }
               style={backendActionStyle(
                 shopfrontToolBuyButtonStyle,
                 backendPending
@@ -2809,10 +2872,16 @@ const ShopfrontPane: React.FunctionComponent<{
             itemKind="stock"
             onActivate={(item, purchaseCount) =>
               !backendPending &&
-              void adapter.purchaseShopItem(
-                businessId,
-                item.itemId,
-                purchaseCount
+              runPurchase(
+                () =>
+                  adapter.purchaseShopItem(
+                    businessId,
+                    item.itemId,
+                    purchaseCount
+                  ),
+                `${purchaseCount} ${
+                  item.displayName ?? displayLabel(item.itemId)
+                }${purchaseCount === 1 ? "" : "s"} added to your inventory.`
               )
             }
           />
@@ -2825,6 +2894,12 @@ const ShopfrontPane: React.FunctionComponent<{
       )}
     </section>
   );
+};
+
+type ShopfrontPurchaseFeedback = {
+  id: number;
+  kind: "success" | "error";
+  message: string;
 };
 
 const ShopfrontGoodPurchaseCard: React.FunctionComponent<{

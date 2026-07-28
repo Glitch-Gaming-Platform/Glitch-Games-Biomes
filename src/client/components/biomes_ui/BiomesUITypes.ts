@@ -37,9 +37,11 @@ export const TAB_ORDER: TabKey[] = [
   "options",
 ];
 
-export const BIOMES_UI_OPEN_MENU_TAB: TabKey = "daily";
-export const BIOMES_UI_OPEN_MENU_SHORTCUT = "R";
-export const BIOMES_UI_OPEN_MENU_KEY_CODE = "KeyR";
+// R belongs to the original handcraft/Recipes modal. Do not route it through
+// the replacement tab rail: doing so captures the event before ShortcutsHUD
+// can open crafting and strands native quests such as Busted's Muck Busters.
+export const BIOMES_UI_RECIPES_SHORTCUT = "R";
+export const BIOMES_UI_RECIPES_KEY_CODE = "KeyR";
 export const BIOMES_UI_QUESTS_SHORTCUT = "J";
 export const BIOMES_UI_QUESTS_KEY_CODE = "KeyJ";
 
@@ -48,7 +50,8 @@ export interface TabDescriptor {
   label: string;
   /** Short uppercase code displayed beneath the icon, e.g. "INV" */
   code: string;
-  shortcut: string;
+  /** Direct tab shortcut. Omitted when the key belongs to gameplay UI. */
+  shortcut?: string;
   /** Lore-flavored subtitle for the tab header */
   subtitle: string;
 }
@@ -58,7 +61,6 @@ export const TAB_DESCRIPTORS: Record<TabKey, TabDescriptor> = {
     key: "daily",
     label: "Today",
     code: "DAY",
-    shortcut: BIOMES_UI_OPEN_MENU_SHORTCUT,
     subtitle: "Daily check-in, cozy errands, and small rewards",
   },
   inventory: {

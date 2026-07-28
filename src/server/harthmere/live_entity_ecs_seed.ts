@@ -5,6 +5,7 @@ import {
   Health,
   LockedInPlace,
   NpcMetadata,
+  NpcState,
   QuestGiver,
   RobotComponent,
   Size,
@@ -24,6 +25,13 @@ import {
 import { HARTHMERE_NATIVE_BANDIT_SEEDS } from "@/shared/harthmere/bandit_production_seed";
 import { harthmereNativeNpcCombatProfileForSeed } from "@/shared/harthmere/harthmere_native_combat";
 import { harthmereVoiceProfileForActor } from "@/shared/harthmere/npc_voice_profiles";
+import { harthmereCreatureGroupForSeed } from "@/shared/harthmere/creature_groups";
+import {
+  assignCreatureLevel,
+  buildCreatureProgression,
+  scaleCreatureCombatStats,
+} from "@/shared/npc/creature_level";
+import { serializeNpcCustomState } from "@/shared/npc/serde";
 
 function changeKindForSeed(
   seed: HarthmereLiveEntityProductionSeed,
@@ -62,11 +70,70 @@ function exactSpawnMetadata(
   });
 }
 
+/**
+ * HARTHMERE_CREATURE_LEVELING: the entity's authoritative level.
+ *
+ * A seed without `progressionLevel` migrates to level 1, whose multipliers are
+ * all exactly 1.0 — so an existing world's creatures keep the stats they already
+ * had. Only content that explicitly opts in (today: the four Road to Harthmere
+ * groups) ships above level 1.
+ */
+export function harthmereCreatureProgressionForSeed(
+  seed: HarthmereLiveEntityProductionSeed
+) {
+  if (seed.progressionLevel === undefined) {
+    return buildCreatureProgression({ migrate: true });
+  }
+  return buildCreatureProgression({
+    assignment: assignCreatureLevel({ authoredLevel: seed.progressionLevel }),
+  });
+}
+
+/**
+ * The serialized Anima state a freshly seeded creature starts with: its level and
+ * its authored group membership. Anima reads both straight off the entity, so
+ * there is no registry lookup in the combat hot path and no boot-order coupling.
+ */
+export function harthmereLiveCreatureNpcState(
+  seed: HarthmereLiveEntityProductionSeed
+) {
+  return NpcState.create({
+    data: serializeNpcCustomState({
+      creatureProgression: harthmereCreatureProgressionForSeed(seed),
+      creatureGroup: harthmereCreatureGroupForSeed(seed),
+    }),
+  });
+}
+
+export function harthmereLiveCreatureDisplayName(
+  seed: HarthmereLiveEntityProductionSeed
+) {
+  if (!seed.bountyTier) return seed.displayName;
+  return `${seed.bountyTier === "boss" ? "Boss" : "Elite"} ${
+    seed.displayName
+  }`;
+}
+
 export function buildHarthmereLiveCreatureEntity(
   seed: HarthmereLiveEntityProductionSeed,
   nowSeconds: number
 ) {
   const combatProfile = harthmereNativeNpcCombatProfileForSeed(seed);
+  const progression = harthmereCreatureProgressionForSeed(seed);
+  // Max HP is the one scalable stat that is entity-owned, so it is baked in here
+  // rather than derived per tick. Damage, cadence, and speed stay type-owned and
+  // are scaled at runtime by Anima (see `applyCreatureLevelToChaseAttackParams`).
+  const maxHp = scaleCreatureCombatStats(
+    {
+      maxHp: combatProfile.maxHp,
+      attackDamage: combatProfile.attackDamage,
+      attackIntervalSecs: combatProfile.attackIntervalSecs,
+      walkSpeed: combatProfile.walkSpeed,
+      runSpeed: combatProfile.runSpeed,
+      killXp: combatProfile.killXp,
+    },
+    progression.level
+  ).maxHp;
   const base = npcEntity(
     {
       id: seed.entityId,
@@ -74,7 +141,7 @@ export function buildHarthmereLiveCreatureEntity(
       position: seed.position,
       orientation: seed.orientation,
       velocity: [0, 0, 0],
-      displayName: seed.displayName,
+      displayName: harthmereLiveCreatureDisplayName(seed),
     },
     nowSeconds
   );
@@ -83,10 +150,8 @@ export function buildHarthmereLiveCreatureEntity(
   return {
     ...base,
     npc_metadata: exactSpawnMetadata(base, seed),
-    health: Health.create({
-      hp: combatProfile.maxHp,
-      maxHp: combatProfile.maxHp,
-    }),
+    npc_state: harthmereLiveCreatureNpcState(seed),
+    health: Health.create({ hp: maxHp, maxHp }),
     size: Size.create({ v: harthmereLiveEntitySizeForSeed(seed) }),
     entity_description: EntityDescription.create({
       text: seed.description,

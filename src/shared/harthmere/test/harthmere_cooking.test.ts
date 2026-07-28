@@ -337,26 +337,23 @@ describe("harthmere cooking — collect", () => {
     assert.equal(collected.state.cooking.s1, undefined);
   });
 
-  it("blocks collection that would exceed the carry-weight limit", () => {
-    // 5 steel swords = 25 lb (at the limit). raw_meat is reserved away on
-    // enqueue; collecting grilled_meat (+1 lb) would push past 25.
+  it("collects into a free backpack slot even when already overweight", () => {
+    // Five steel swords reach the soft 25 lb encumbrance threshold. Cooking
+    // reserves raw_meat away, leaving a slot for grilled_meat even though the
+    // resulting carried weight is above the threshold.
     const enq = enqueueHarthmereCook(
       baseState({ steel_sword: 5, raw_meat: 1 }),
       { stationId: "s1", recipeId: "grilled_meat", nowMs: NOW },
     );
     const jobId = enq.state.cooking.s1.jobs[0].jobId;
-    const blocked = collectHarthmereCook(enq.state, {
+    const collected = collectHarthmereCook(enq.state, {
       stationId: "s1",
       jobId,
       nowMs: NOW + GRILLED_DURATION,
     });
-    assert.ok(
-      blocked.warnings.includes(
-        "cooking_rejected:carry_weight_limit_exceeded",
-      ),
-    );
-    assert.equal(blocked.state.inventory.grilled_meat ?? 0, 0);
-    assert.ok(blocked.state.cooking.s1, "job should remain for later collection");
+    assert.deepEqual(collected.warnings, []);
+    assert.equal(collected.state.inventory.grilled_meat, 1);
+    assert.equal(collected.state.cooking.s1, undefined);
   });
 });
 

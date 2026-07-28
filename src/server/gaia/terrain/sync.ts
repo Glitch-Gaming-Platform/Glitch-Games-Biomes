@@ -11,6 +11,7 @@ import { Entity } from "@/shared/ecs/gen/entities";
 import { TerrainShardSelector } from "@/shared/ecs/gen/selectors";
 import type { ListenerKey } from "@/shared/events";
 import { ReadonlyTerrain } from "@/shared/game/terrain/terrain";
+import { ch1GaiaManagesTerrainAt } from "@/shared/harthmere/ch1_elsewhen_region";
 import type { BiomesId } from "@/shared/ids";
 import { log } from "@/shared/logging";
 import type { RegistryLoader } from "@/shared/registry";
@@ -38,6 +39,12 @@ export class TerrainSync {
 
     const shard = this.replica.table.get(change.entity.id);
     if (!Entity.has(shard, "shard_seed", "box")) {
+      return;
+    }
+    if (!ch1GaiaManagesTerrainAt(shard.box.v0)) {
+      // Elsewhen is immutable, portal-only encounter terrain. It is native ECS
+      // content, but it is intentionally detached from Gaia's continuous world
+      // simulation and must not enlarge Gaia's sparse terrain AABB.
       return;
     }
 
@@ -77,6 +84,9 @@ export class TerrainSync {
     for await (const shardId of asyncYieldForEach(shardIds, 100)) {
       const entity = this.replica.table.get(shardId);
       if (!entity?.box) {
+        continue;
+      }
+      if (!ch1GaiaManagesTerrainAt(entity.box.v0)) {
         continue;
       }
       try {

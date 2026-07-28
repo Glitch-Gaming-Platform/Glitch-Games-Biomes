@@ -714,8 +714,8 @@ export const InventoryTab: React.FunctionComponent<{
               color: "var(--biomes-fg-danger, #ff7777)",
             }}
           >
-            Carry weight is over the field limit. Store heavy items in homes,
-            shops, or approved storage before taking more.
+            You are over the comfortable carry weight, so stamina drains faster.
+            Backpack slots—not weight—determine whether you can take more items.
           </p>
         ) : null}
         <MaterialStorageShelf

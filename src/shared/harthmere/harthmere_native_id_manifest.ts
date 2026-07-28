@@ -158,6 +158,20 @@ export const HARTHMERE_NATIVE_ITEM_ID_MANIFEST = {
   iron_ore: id(8681655317169139),
   iron_sword: id(8686589963594454),
   iron_sword_reinforced: id(8680959933055104),
+  item_augur9_core_cell: id(8761900000000001),
+  item_bulls_core: id(8761900000000002),
+  item_ch1_compound_a: id(8761900000000003),
+  item_ch1_compound_b: id(8761900000000004),
+  item_custodian_key_3: id(8761900000000005),
+  item_first_grain: id(8761900000000006),
+  item_grey_card: id(8761900000000007),
+  item_hnefatafl_piece: id(8761900000000008),
+  item_iris_button: id(8761900000000009),
+  item_jackies_tin: id(8761900000000010),
+  item_lou_case_notes: id(8761900000000011),
+  item_marrow_collar: id(8761900000000012),
+  item_rook_bell_iron_token: id(8761900000000013),
+  item_sorrel_field_ledger: id(8761900000000014),
   large_oak_frame: id(8662483897047697),
   leather_armor: id(8662030926044651),
   led: id(8659138313773103),
@@ -1103,6 +1117,16 @@ export const HARTHMERE_NATIVE_ITEM_ID_MANIFEST = {
   watch_tabard_pin_or_merchant_favor_token: id(8754000000000434),
   whispering_crate_splinter: id(8754000000000435),
   witchlight_sample: id(8754000000000436),
+  billys_lunch_pail: id(8754000000000437),
+  containment_tongs: id(8754000000000438),
+  anchor_wrench: id(8754000000000439),
+  drafting_compass: id(8754000000000440),
+  ward_hammer: id(8754000000000441),
+  portal_calibrator: id(8754000000000442),
+  field_surgeon_kit: id(8754000000000443),
+  beacon_attuner: id(8754000000000444),
+  carving_cleaver: id(8754000000000445),
+  hearth_broom: id(8754000000000446),
 } as const satisfies Readonly<Record<string, BiomesId>>;
 
 /**
@@ -1142,12 +1166,29 @@ export const HARTHMERE_NATIVE_NPC_ID_MANIFEST = {
   // one checked-in type identity each.
   monster_wilds_pack_mucker: id(8722087466111626),
   monster_wilds_pack_hex: id(8722087466111627),
+  // HARTHMERE_ROAD_TO_HARTHMERE_GROUPS (2026-07-27): the four road packs share
+  // one display name per creature kind across all four groups, for the same
+  // reason as the pairs above — the native type key is
+  // `monster_${slug(displayName)}`, so a per-group name would need a per-group
+  // entry here, and a missing entry ships a biscuit with an undefined id.
+  monster_road_pack_muckling: id(8722087466111628),
+  monster_road_pack_hex: id(8722087466111629),
   bandit_scout: id(8722087466111630),
   bandit_archer: id(8722087466111631),
   bandit_skirmisher: id(8722087466111632),
   bandit_brute: id(8722087466111633),
   bandit_captain: id(8722087466111634),
   bandit_prisoner: id(8722087466111635),
+  // HARTHMERE_MUCK_PACK_RELOCATION / HARTHMERE_MOSSY_MUCKLING_HUNT (2026-07-28).
+  // Two new display names, so two new checked-in type identities:
+  //   * the single pack left in the Watchtower Muck Clearing is now a Muckling
+  //     family ("Watchtower Muckling") rather than a Mucker + Hexer mix;
+  //   * "Get the Muck Out" asks for six Mossy Mucklings, and until now no
+  //     creature in the world carried that name.
+  // A missing entry here emits an NPC biscuit with an undefined id, which fails
+  // the Bikkie overlay and blocks a clean snapshot-backed boot.
+  monster_watchtower_muckling: id(8722087466111636),
+  monster_mossy_muckling: id(8722087466111637),
 } as const satisfies Readonly<Record<string, BiomesId>>;
 
 /**

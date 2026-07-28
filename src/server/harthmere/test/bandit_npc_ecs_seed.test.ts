@@ -1,6 +1,7 @@
 import assert from "assert";
 import { buildHarthmereLiveEntityProductionSeedChanges } from "@/server/harthmere/live_entity_ecs_seed";
 import { HARTHMERE_NATIVE_BANDIT_SEEDS } from "@/shared/harthmere/bandit_production_seed";
+import { CH1_NPC_ENTITY_IDS } from "@/shared/harthmere/ch1_ids";
 import { HARTHMERE_BUSINESS_CUSTOMER_NPC_SEEDS } from "@/shared/harthmere/business_customer_npc_seed";
 import { harthmereNativeNpcCombatProfileForSeed } from "@/shared/harthmere/harthmere_native_combat";
 
@@ -20,6 +21,14 @@ describe("native Harthmere bandit ECS seeds", () => {
       ).length,
       0,
       "bandits must not reuse deterministic business-customer ECS ids"
+    );
+    const chapter1Ids = new Set(Object.values(CH1_NPC_ENTITY_IDS));
+    assert.equal(
+      HARTHMERE_NATIVE_BANDIT_SEEDS.filter((seed) =>
+        chapter1Ids.has(seed.entityId)
+      ).length,
+      0,
+      "bandits must not reuse the reserved Chapter 1 cast ECS ids"
     );
     assert.deepEqual(
       new Set(HARTHMERE_NATIVE_BANDIT_SEEDS.map((seed) => seed.banditRole)),

@@ -36,7 +36,10 @@ import {
   ch1CheckProvisioning,
   ch1Gate,
 } from "@/shared/harthmere/ch1_fracture_gates";
-import { ch1Dungeon, ch1DungeonRunComplete } from "@/shared/harthmere/ch1_dungeons";
+import {
+  ch1Dungeon,
+  ch1DungeonRunComplete,
+} from "@/shared/harthmere/ch1_dungeons";
 import { ch1ElsewhenSlot } from "@/shared/harthmere/ch1_elsewhen_region";
 import { CH1_FLAGS } from "@/shared/harthmere/ch1_ids";
 
@@ -44,6 +47,17 @@ export const CH1_PARTY_VERSION = 1 as const;
 
 export const CH1_PARTY_MIN_SIZE = 1;
 export const CH1_PARTY_MAX_SIZE = 4;
+export const CH1_SOLO_OR_WIPE_RECOVERY_MS = 2_000;
+export const CH1_PARTY_SELF_RECOVERY_MS = 30_000;
+
+export function ch1DownedRecoveryDelayMs(input: {
+  memberCount: number;
+  allPresentMembersDown: boolean;
+}) {
+  return input.memberCount <= 1 || input.allPresentMembersDown
+    ? CH1_SOLO_OR_WIPE_RECOVERY_MS
+    : CH1_PARTY_SELF_RECOVERY_MS;
+}
 
 export interface Ch1PartyMember {
   playerId: string;
@@ -268,19 +282,20 @@ export interface Ch1PartyExitOutcome {
 }
 
 /** Flags every member of a successful run receives, story-position permitting. */
-const PARTY_SHARED_COMPLETION_FLAGS: Readonly<Record<string, readonly string[]>> =
-  {
-    ch1_dungeon_desert: [
-      CH1_FLAGS.irisRescued,
-      CH1_FLAGS.hasFirstGrain,
-      CH1_FLAGS.believesJackieHostile,
-    ],
-    ch1_dungeon_winter: [
-      CH1_FLAGS.knowsDesignation,
-      CH1_FLAGS.hasLedger,
-      CH1_FLAGS.sorrelOathGiven,
-    ],
-  };
+const PARTY_SHARED_COMPLETION_FLAGS: Readonly<
+  Record<string, readonly string[]>
+> = {
+  ch1_dungeon_desert: [
+    CH1_FLAGS.irisRescued,
+    CH1_FLAGS.hasFirstGrain,
+    CH1_FLAGS.believesJackieHostile,
+  ],
+  ch1_dungeon_winter: [
+    CH1_FLAGS.knowsDesignation,
+    CH1_FLAGS.hasLedger,
+    CH1_FLAGS.sorrelOathGiven,
+  ],
+};
 
 export function ch1PartyExitGate(args: {
   run: Ch1PartyRun;
@@ -311,7 +326,7 @@ export function ch1PartyExitGate(args: {
     // future matchmaking bug) gets NOTHING — their own run must earn it.
     const eligible = !gate?.requiresFlag || flags.has(gate.requiresFlag);
     memberFlags[member.playerId] = eligible
-      ? (PARTY_SHARED_COMPLETION_FLAGS[dungeon.id] ?? [])
+      ? PARTY_SHARED_COMPLETION_FLAGS[dungeon.id] ?? []
       : [];
   }
   return { ok: true, memberFlags };

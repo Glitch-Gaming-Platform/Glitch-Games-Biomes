@@ -31,6 +31,7 @@ import {
   harthmereVoiceProfileForActor,
 } from "@/shared/harthmere/npc_voice_profiles";
 import type { BiomesId } from "@/shared/ids";
+import { chapter1PresentedNpcLabel } from "@/shared/cutscene/puppets";
 import { log } from "@/shared/logging";
 import { relevantBiscuitForEntityId } from "@/shared/npc/bikkie";
 import { AnimatePresence, motion } from "framer-motion";
@@ -128,12 +129,13 @@ export const TalkDialogModalStep: React.FunctionComponent<
   return (
     <GenericTalkDialogModalStep
       entityId={entityId}
-      title={
+      title={chapter1PresentedNpcLabel(
+        Number(entityId),
         label?.text ??
-        npcType?.displayName ??
-        relevantBiscuit?.displayName ??
-        "Entity"
-      }
+          npcType?.displayName ??
+          relevantBiscuit?.displayName ??
+          "Entity"
+      )}
       dialog={dialog}
       buttonLayout={buttonLayout}
       id={id}

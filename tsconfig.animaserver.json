@@ -1,0 +1,38 @@
+// ANIMA_COMBAT_SERVER_TYPECHECK
+//
+// The server half of the Anima combat / escort / creature-leveling work:
+//
+//   node_modules/.bin/tsc -p tsconfig.animaserver.json
+//
+// Split from `tsconfig.animacombat.json` because these files pull in the world
+// API and Redis graph, which roughly doubles the check time. Run the shared lane
+// on every edit and this one before a handoff.
+//
+// KNOWN SCOPED-CHECK ARTIFACT — do not "fix" it in application code.
+//
+// `src/server/shared/config.ts` declares the global `CONFIG`. Because it is not
+// in this program, a small fixed set of transitive modules reports a spurious
+// TS2304:
+//
+//   src/server/shared/redis/connection.ts    Cannot find name 'CONFIG'
+//   src/server/shared/world/lua/apply.ts     Cannot find name 'CONFIG'
+//   src/server/logic/utils/drops.ts           Cannot find name 'CONFIG'
+//
+// Pulling `config.ts` in resolves them but roughly triples the check time, which
+// defeats the purpose of a scoped lane. Use the wrapper, which filters exactly
+// those files and nothing else:
+//
+//   scripts/harthmere/typecheck-anima-combat.sh
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "noEmit": true, "incremental": false },
+  "include": [
+    "src/server/harthmere/live_entity_ecs_seed.ts",
+    "src/server/harthmere/ch1_escort_scheduler.ts",
+    "src/server/harthmere/escort_companion_npc_ecs.ts",
+    "src/server/harthmere/live_mode_escort_scheduler.ts",
+    "src/server/logic/events/handlers/npc.ts",
+    "src/server/harthmere/test/escort_system.test.ts",
+    "modules.d.ts"
+  ]
+}

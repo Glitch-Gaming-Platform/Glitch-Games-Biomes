@@ -7,8 +7,21 @@ import type {
 } from "@/client/game/resources/challenges";
 import type { NavigationAid as ClientNavigationAid } from "@/client/game/helpers/navigation_aids";
 import type { BiomesId } from "@/shared/ids";
-import { nativeQuestMapMarkers, nativeQuestTrackableQuests } from "../nativeQuestMapAdapter";
-import { buildNativeQuestNavAidResolver } from "../nativeQuestNavAidResolver";
+import {
+  NATIVE_LEGACY_COMBAT_QUEST_IDS,
+  NATIVE_LEGACY_COMBAT_ROUTE_POSITIONS,
+  NATIVE_LEGACY_COMBAT_STEP_IDS,
+} from "@/shared/harthmere/native_combat_quest_routing";
+import {
+  nativeQuestInferredNavigationAidForTest,
+  nativeQuestLocationlessAnchorAidForTest,
+  nativeQuestMapMarkers,
+  nativeQuestTrackableQuests,
+} from "../nativeQuestMapAdapter";
+import {
+  buildNativeQuestNavAidResolver,
+  nativeQuestNavigationAidsRevisionForTest,
+} from "../nativeQuestNavAidResolver";
 
 /**
  * Regression coverage for the 2026-07-26 live report: "the steps don't seem to
@@ -85,6 +98,106 @@ function aid(
 }
 
 describe("native quest nav-aid map markers", () => {
+  it("points the unaided Mossy Muckling hunt at the seeded Mossy Muckling pack", () => {
+    const hunt = leaf(
+      4794743509650569,
+      "Defeat 0/6 Mossy Mucklings with your Whacker",
+      0
+    );
+    hunt.payload = { kind: "event" };
+    const bundle = quest(
+      817959262145055,
+      seq(190, [hunt], 0),
+      8997551883502307
+    );
+
+    assert.deepStrictEqual(
+      nativeQuestInferredNavigationAidForTest(
+        817959262145055 as BiomesId,
+        hunt
+      ),
+      { kind: "position", pos: [531, 68, -33] }
+    );
+    const markers = nativeQuestMapMarkers([bundle]);
+    assert.equal(
+      markers[0].id,
+      "native_quest:817959262145055:4794743509650569"
+    );
+    assert.deepStrictEqual(markers[0].worldPosition, [531, 68, -33]);
+    assert.match(markers[0].label, /Mossy Mucklings/);
+  });
+
+  it("routes the four legacy combat quests to populated restored enemy packs", () => {
+    const rows = [
+      {
+        questId: NATIVE_LEGACY_COMBAT_QUEST_IDS.NUTHIN_TO_MUCK_WITH,
+        stepId: NATIVE_LEGACY_COMBAT_STEP_IDS.COBBLED_MUCKLING,
+        position: NATIVE_LEGACY_COMBAT_ROUTE_POSITIONS.COBBLED_PACK,
+      },
+      {
+        questId: NATIVE_LEGACY_COMBAT_QUEST_IDS.SEEDY_SAPPERS,
+        stepId: NATIVE_LEGACY_COMBAT_STEP_IDS.SHARED_BOARD_COMBAT,
+        position: NATIVE_LEGACY_COMBAT_ROUTE_POSITIONS.SEEDY_PACK,
+      },
+      {
+        questId: NATIVE_LEGACY_COMBAT_QUEST_IDS.JUGGEMENT_DAY,
+        stepId: NATIVE_LEGACY_COMBAT_STEP_IDS.EIGHT_JUGGERMUCKERS,
+        position: NATIVE_LEGACY_COMBAT_ROUTE_POSITIONS.JUGGER_PACK_FOUR_NORTH,
+      },
+      {
+        questId: NATIVE_LEGACY_COMBAT_QUEST_IDS.COMBAT_JUGGMENT_DAY,
+        stepId: NATIVE_LEGACY_COMBAT_STEP_IDS.SHARED_BOARD_COMBAT,
+        position: NATIVE_LEGACY_COMBAT_ROUTE_POSITIONS.JUGGER_PACK_THREE,
+      },
+    ] as const;
+
+    for (const row of rows) {
+      const combat = leaf(row.stepId, "Defeat the marked enemies", 0);
+      combat.payload = { kind: "event" };
+      assert.deepStrictEqual(
+        nativeQuestInferredNavigationAidForTest(row.questId, combat),
+        { kind: "position", pos: [...row.position] }
+      );
+      assert.deepStrictEqual(
+        nativeQuestMapMarkers([quest(row.questId, seq(191, [combat], 0))])[0]
+          .worldPosition,
+        [...row.position]
+      );
+    }
+  });
+
+  it("moves the eight-Juggermucker marker between two verified four-packs", () => {
+    const combat = leaf(
+      NATIVE_LEGACY_COMBAT_STEP_IDS.EIGHT_JUGGERMUCKERS,
+      "Defeat 4/8 Juggermuckers",
+      4 / 8
+    );
+    combat.payload = { kind: "event" };
+    assert.deepStrictEqual(
+      nativeQuestInferredNavigationAidForTest(
+        NATIVE_LEGACY_COMBAT_QUEST_IDS.JUGGEMENT_DAY,
+        combat
+      ),
+      {
+        kind: "position",
+        pos: [...NATIVE_LEGACY_COMBAT_ROUTE_POSITIONS.JUGGER_PACK_FOUR_SOUTH],
+      }
+    );
+  });
+
+  it("does not infer a route from the duplicated combat step id without the matching quest", () => {
+    const combat = leaf(
+      NATIVE_LEGACY_COMBAT_STEP_IDS.SHARED_BOARD_COMBAT,
+      "Defeat an enemy",
+      0
+    );
+    combat.payload = { kind: "event" };
+    assert.equal(
+      nativeQuestInferredNavigationAidForTest(999 as BiomesId, combat),
+      undefined
+    );
+  });
+
   it("resolves an npc objective that carries no authored position", () => {
     // "Talk to Jackie" is an npc aid. Before the fix this produced no marker.
     const bundle = quest(
@@ -130,16 +243,35 @@ describe("native quest nav-aid map markers", () => {
 
   it("anchors a location-less crafting step on the quest giver", () => {
     // Exactly the reported case: Busted, "Handcraft 0/8 Muck Busters".
+    const askHuck = leaf(299, "Ask Huck how to make Muck Busters", 1);
+    askHuck.payload = {
+      kind: "challengeClaimRewards",
+      returnQuestGiverId: 3282862615696657 as BiomesId,
+      allowDefaultNavigationAid: true,
+    };
+    const returnToHuck = leaf(302, "Head back to Huck", 0);
+    returnToHuck.payload = {
+      kind: "challengeClaimRewards",
+      returnQuestGiverId: 3282862615696657 as BiomesId,
+      allowDefaultNavigationAid: true,
+    };
     const bundle = quest(
       7405046529843322,
-      seq(300, [leaf(301, "Handcraft 0/8 Muck Busters", 0)], 0),
-      999
+      seq(
+        300,
+        [askHuck, leaf(301, "Handcraft 0/8 Muck Busters", 0), returnToHuck],
+        0
+      ),
+      // The real original-snapshot Busted giver has no beamPosition, which is
+      // why the old quest-giver-only fallback still produced no map marker.
+      8997551883502307
     );
     const resolve = buildNativeQuestNavAidResolver({
       navigationAids: new Map(),
       questBundles: [bundle],
-      questGiverBeamPosition: (npcTypeId) =>
-        Number(npcTypeId) === 999 ? [500, 70, -120] : undefined,
+      questGiverBeamPosition: () => undefined,
+      npcTypePosition: (npcTypeId) =>
+        Number(npcTypeId) === 3282862615696657 ? [842, 29, 318] : undefined,
     });
 
     const markers = nativeQuestMapMarkers([bundle], resolve);
@@ -149,14 +281,51 @@ describe("native quest nav-aid map markers", () => {
       markers[0].id,
       "native_quest:7405046529843322:7405046529843322"
     );
-    assert.deepStrictEqual(markers[0].worldPosition, [500, 70, -120]);
+    assert.deepStrictEqual(markers[0].worldPosition, [842, 29, 318]);
     assert.equal(markers[0].label, "Handcraft 0/8 Muck Busters");
+    assert.deepStrictEqual(
+      nativeQuestLocationlessAnchorAidForTest(
+        bundle.biscuit.id,
+        bundle.progress!,
+        bundle.progress!.children![1]
+      ),
+      { kind: "npc", npcTypeId: 3282862615696657 }
+    );
 
     // ...which is what re-enables Center for that quest row.
     assert.equal(
       nativeQuestTrackableQuests([bundle], resolve)[0].firstMarkerId,
       "native_quest:7405046529843322:7405046529843322"
     );
+  });
+
+  it("uses the player as an honest final anchor when no NPC location is synchronized", () => {
+    const bundle = quest(
+      7405046529843322,
+      seq(350, [leaf(351, "Handcraft 0/8 Muck Busters", 0)], 0),
+      8997551883502307
+    );
+    const resolve = buildNativeQuestNavAidResolver({
+      navigationAids: new Map(),
+      questBundles: [bundle],
+      questGiverBeamPosition: () => undefined,
+      npcTypePosition: () => undefined,
+      fallbackPosition: () => [12, 34, 56],
+    });
+    assert.deepStrictEqual(
+      nativeQuestMapMarkers([bundle], resolve)[0].worldPosition,
+      [12, 34, 56]
+    );
+  });
+
+  it("changes revision when MapManager resolves an in-place navigation aid", () => {
+    const aids = new Map<number, ClientNavigationAid>([
+      [101, aid(101, [0, 0, 0], 7405046529843322)],
+    ]);
+    const before = nativeQuestNavigationAidsRevisionForTest(aids);
+    aids.set(101, aid(101, [640, 64, -268], 7405046529843322));
+    const after = nativeQuestNavigationAidsRevisionForTest(aids);
+    assert.notEqual(after, before);
   });
 
   it("still produces nothing when the client cannot resolve anything", () => {
@@ -211,10 +380,7 @@ describe("native quest nav-aid map markers", () => {
     });
     assert.deepStrictEqual(
       nativeQuestMapMarkers([busted, muckOut], resolve).map((m) => m.id),
-      [
-        "native_quest:7405046529843322:601",
-        "native_quest:817959262145055:701",
-      ]
+      ["native_quest:7405046529843322:601", "native_quest:817959262145055:701"]
     );
   });
 });

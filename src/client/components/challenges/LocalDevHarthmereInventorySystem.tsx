@@ -49,6 +49,7 @@ import { readHarthmereReputationState } from "@/client/components/challenges/Loc
 import { SNAPSHOT_GROVE_QUESTS } from "@/shared/harthmere/snapshot_grove_content";
 import { harthmereLocalItemBikkieWearable } from "@/shared/harthmere/harthmere_bikkie_wearables";
 import { ensureHarthmereProductionVendorCatalog } from "@/shared/harthmere/harthmere_vendor_catalog";
+import { ensureHarthmereProductionCraftingCatalogue } from "@/shared/harthmere/mmo_crafting_catalogue";
 import {
   getHarthmereItemDefinition as getAuthoritativeHarthmereItemDefinition,
   type HarthmereItemDefinition as AuthoritativeHarthmereItemDefinition,
@@ -58,6 +59,12 @@ import {
   createHarthmereBiomesEcsInventory,
 } from "@/shared/harthmere/harthmere_biomes_ecs_bridge";
 import { harthmereNativeItemIdForBiomesId } from "@/shared/harthmere/harthmere_native_item_ids";
+import {
+  chapter1RevealedItemDescription,
+  chapter1RevealedItemName,
+  ensureChapter1RevealLoaded,
+  isChapter1RevealableItem,
+} from "@/client/components/challenges/chapter1ItemRevealStore";
 import { HARTHMERE_LOCAL_DEV_ITEM_USE_EVENT } from "@/shared/harthmere/snapshot_grove_trigger_contract";
 import { nativeBiomesEcsAuthorityEnabled } from "@/shared/harthmere/native_road_ahead_contract";
 import { harthmereLiveServerAuthoritative } from "@/client/components/challenges/harthmereLiveAuthoritySignal";
@@ -293,6 +300,62 @@ export interface HarthmereInventoryState {
 }
 
 const ITEM_DEFINITIONS: Record<string, HarthmereItemDefinition> = {
+  billys_lunch_pail: {
+    id: "billys_lunch_pail",
+    name: "Billy's Lunch Pail",
+    category: "quest_item",
+    subtype: "lost_property",
+    quality: "common",
+    icon: "🪣",
+    stackable: false,
+    maxStack: 1,
+    bindType: "quest_bound",
+    baseValue: 0,
+    description:
+      "Billy's dented lunch pail, recovered from the Old Grove Road.",
+  },
+  jackies_sealed_letter: {
+    id: "jackies_sealed_letter",
+    name: "Jackie's Sealed Letter",
+    category: "quest_item",
+    subtype: "delivery",
+    quality: "quest",
+    icon: "✉",
+    stackable: false,
+    maxStack: 1,
+    bindType: "quest_bound",
+    baseValue: 0,
+    questUsage: "Letter for the North Gate",
+    description: "Jackie's sealed letter for the North Gate watch.",
+  },
+  bolt_order: {
+    id: "bolt_order",
+    name: "Luis's Bolt Order",
+    category: "quest_item",
+    subtype: "work_order",
+    quality: "quest",
+    icon: "▤",
+    stackable: false,
+    maxStack: 1,
+    bindType: "quest_bound",
+    baseValue: 0,
+    questUsage: "Toll Ledger Problem",
+    description: "Luis's written order for the market bolt crates.",
+  },
+  sils_tuning_strip: {
+    id: "sils_tuning_strip",
+    name: "Sil's Tuning Strip",
+    category: "quest_item",
+    subtype: "audio_clue",
+    quality: "quest",
+    icon: "♫",
+    stackable: false,
+    maxStack: 1,
+    bindType: "quest_bound",
+    baseValue: 0,
+    questUsage: "Tone Beneath the Road",
+    description: "Sil's marked tuning strip from the Mosslawn song stones.",
+  },
   training_dagger: {
     id: "training_dagger",
     name: "Training Dagger",
@@ -2789,6 +2852,7 @@ function authoritativeHarthmereItemDefinition(
     // names, categories, descriptions and stack rules. Bikkie remains the
     // source for native identity, actions and authored presentation assets.
     ensureHarthmereProductionVendorCatalog();
+    ensureHarthmereProductionCraftingCatalogue();
     authoritativeHarthmerePresentationCatalogueReady = true;
   }
   const strippedItemId = itemId.replace(/^b:/, "");
@@ -2803,7 +2867,28 @@ function authoritativeHarthmereItemDefinition(
   ]) {
     if (!candidate) continue;
     const definition = getAuthoritativeHarthmereItemDefinition(candidate);
-    if (definition) return definition;
+    if (!definition) continue;
+    // The Chapter 1 plot items rename themselves at the consolidation. The
+    // shared registry holds one static name for every player, so the per-player
+    // reveal is applied here, as presentation, over the authoritative row.
+    if (isChapter1RevealableItem(definition.itemId)) {
+      ensureChapter1RevealLoaded();
+      const revealedName = chapter1RevealedItemName(definition.itemId);
+      const revealedDescription = chapter1RevealedItemDescription(
+        definition.itemId
+      );
+      if (
+        (revealedName && revealedName !== definition.displayName) ||
+        (revealedDescription && revealedDescription !== definition.description)
+      ) {
+        return {
+          ...definition,
+          displayName: revealedName ?? definition.displayName,
+          description: revealedDescription ?? definition.description,
+        };
+      }
+    }
+    return definition;
   }
   return undefined;
 }
@@ -3074,8 +3159,38 @@ function dynamicBiomesItemDefinition(
 // Biomes block/item ids are data-driven, so they cannot all live in the static
 // Harthmere item table. Generate a display definition on demand and keep the
 // canonical `b:<id>` key that Cloud Save and BiomesUI both understand.
-function itemDef(itemId: string) {
-  return ITEM_DEFINITIONS[itemId] ?? dynamicBiomesItemDefinition(itemId);
+function itemDef(itemId: string): HarthmereItemDefinition | undefined {
+  const staticDefinition = ITEM_DEFINITIONS[itemId];
+  if (staticDefinition) return staticDefinition;
+  const authoritative = authoritativeHarthmereItemDefinition(itemId, undefined);
+  if (authoritative) {
+    const category = localCategoryForAuthoritativeItem(authoritative);
+    const stackable = authoritative.maxStackSize > 1;
+    const definition: HarthmereItemDefinition = {
+      id: itemId,
+      name: authoritative.displayName,
+      category,
+      subtype: authoritative.category ?? `harthmere_${category}`,
+      quality: "common",
+      icon: authoritativeHarthmereItemGlyph(authoritative),
+      stackable,
+      maxStack: stackable ? authoritative.maxStackSize : 1,
+      requiredLevel: authoritative.levelRequirement,
+      bindType:
+        authoritative.binding === "on_pickup"
+          ? "bind_on_pickup"
+          : authoritative.binding === "on_equip"
+          ? "bind_on_equip"
+          : authoritative.binding === "quest"
+          ? "quest_bound"
+          : "unbound",
+      baseValue: authoritative.baseValue,
+      durabilityMax: authoritative.durabilityMax,
+      description: authoritativeHarthmereItemDescription(authoritative),
+    };
+    return definition;
+  }
+  return dynamicBiomesItemDefinition(itemId);
 }
 
 // HARTHMERE_OBJECT_CONTAINER_UI:
@@ -3257,6 +3372,9 @@ function makeItemInstance(
   location: HarthmereStorageLocation = "backpack"
 ): HarthmereItemInstance {
   const def = itemDef(itemId);
+  if (!def) {
+    throw new Error(`Unknown Harthmere inventory item: ${itemId}`);
+  }
   return {
     instanceId: instanceId(itemId),
     itemId,
@@ -3365,10 +3483,13 @@ function normalizeInstance(
   raw: Partial<HarthmereItemInstance>,
   fallbackLocation: HarthmereStorageLocation
 ): HarthmereItemInstance | undefined {
-  if (!raw.itemId || !itemDef(raw.itemId)) {
+  if (!raw.itemId) {
     return undefined;
   }
   const def = itemDef(raw.itemId);
+  if (!def) {
+    return undefined;
+  }
   return {
     instanceId: raw.instanceId ?? instanceId(raw.itemId),
     itemId: raw.itemId,

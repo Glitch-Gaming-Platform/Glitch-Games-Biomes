@@ -2442,6 +2442,24 @@ def define_events(g: Generator):
         ),
     )
 
+    # Server-authorized Chapter 1 portal transition. The run admission marker
+    # and physical warp are committed in one native ECS transaction so a
+    # browser cannot enter Elsewhen by publishing an ordinary warp or move.
+    g.add_event(
+        "HarthmereChapter1Warp",
+        OrderedDict(
+            id=s.BiomesId,
+            action=s.String,
+            dungeon_id=s.String,
+            run_id=s.String,
+            party_id=s.String,
+            reset_encounters=s.Bool,
+            position=s.Vec3f,
+            orientation=s.Vec2f,
+            authorization=s.String,
+        ),
+    )
+
     # Internal bridge from server-validated authored quest objectives into the
     # native Challenges/TriggerState engine.
     g.add_event(

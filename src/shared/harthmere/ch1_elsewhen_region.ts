@@ -54,6 +54,8 @@ export const CH1_ELSEWHEN_BAND_MIN_Z = -512;
 export const CH1_ELSEWHEN_BAND_MAX_Z = 512;
 export const CH1_ELSEWHEN_GROUND_Y = 64;
 export const CH1_ELSEWHEN_FEET_Y = CH1_ELSEWHEN_GROUND_Y + 1;
+export const CH1_ELSEWHEN_BAND_MIN_Y = -64;
+export const CH1_ELSEWHEN_BAND_MAX_Y = 192;
 
 /**
  * Stable ECS identity grid for Elsewhen terrain. Disjoint from:
@@ -154,6 +156,35 @@ export function isInsideCh1VoidGap(position: { readonly [0]: number }): boolean 
   );
 }
 
+/**
+ * The void gap and detached dungeon band are both portal-only space. Generic
+ * movement and warp paths must reject both; only the signed fracture-gate
+ * event is allowed to cross the ordinary world boundary.
+ */
+export function isInsideCh1PortalOnlyRegion(position: {
+  readonly [0]: number;
+  readonly [2]: number;
+}): boolean {
+  return isInsideCh1VoidGap(position) || isInsideCh1ElsewhenBand(position);
+}
+
+/** Detached dungeon terrain is immutable encounter geometry, not Gaia land. */
+export function ch1GaiaManagesTerrainAt(position: {
+  readonly [0]: number;
+  readonly [2]: number;
+}): boolean {
+  return !isInsideCh1ElsewhenBand(position);
+}
+
+/** Repairs the retired v2 metadata expansion without cropping other worlds. */
+export function ch1NormalizeOrdinaryWorldEastEdge(
+  currentEastEdge: number
+): number {
+  return currentEastEdge === CH1_ELSEWHEN_BAND_END_X
+    ? HARTHMERE_EXPANDED_WORLD_EAST_EDGE_X
+    : currentEastEdge;
+}
+
 export function ch1ElsewhenSlotAt(position: {
   readonly [0]: number;
   readonly [2]: number;
@@ -164,6 +195,24 @@ export function ch1ElsewhenSlotAt(position: {
   return CH1_ELSEWHEN_SLOTS.find(
     (s) => position[0] >= s.minX && position[0] < s.maxX
   );
+}
+
+/**
+ * Elsewhen is deliberately outside the ordinary WorldMetadata AABB. Physics
+ * still needs a finite local boundary after a signed portal warp, so collision
+ * resolves against the occupied slot instead of treating the entire dungeon
+ * as the main world's positive-X wall.
+ */
+export function ch1DetachedWorldBoundsAt(position: {
+  readonly [0]: number;
+  readonly [2]: number;
+}): { v0: Vec3; v1: Vec3 } | undefined {
+  const slot = ch1ElsewhenSlotAt(position);
+  if (!slot) return undefined;
+  return {
+    v0: [slot.minX, CH1_ELSEWHEN_BAND_MIN_Y, CH1_ELSEWHEN_BAND_MIN_Z],
+    v1: [slot.maxX, CH1_ELSEWHEN_BAND_MAX_Y, CH1_ELSEWHEN_BAND_MAX_Z],
+  };
 }
 
 export type Ch1ElsewhenAdmission =

@@ -301,7 +301,7 @@ export const BiomesChrome: React.FunctionComponent<{}> = React.memo(({}) => {
           <QuestSideEffects />
 
           {!replaceLegacyBiomesUI && showHotbar && <HotBar />}
-          {!replaceLegacyBiomesUI && <ShortcutsHUD />}
+          <ShortcutsHUD recipesOnly={replaceLegacyBiomesUI} />
           {/* Underwater breath meter. In legacy mode the HotBar already carries
               its own breath bar; under BiomesUI that HotBar is hidden, so render
               this standalone one instead (avoids a duplicate). */}

@@ -21,6 +21,64 @@ export const NATIVE_GET_THE_MUCK_OUT_QUEST_ID = 817959262145055 as BiomesId;
 export const NATIVE_MUCK_VS_MACHINE_QUEST_ID = 5739496793885069 as BiomesId;
 
 /**
+ * The May 2026 Get the Muck Out biscuit requires six kills of the original
+ * Mossy Muckling type. The restored Harthmere world uses dedicated native
+ * combat types for its visible West Breach and Gravewood Muckling packs, so
+ * this compatibility contract keeps that original quest completable without
+ * weakening unrelated npcKilled objectives.
+ */
+export const NATIVE_GET_THE_MUCK_OUT_MUCKLING_STEP_ID =
+  4794743509650569 as BiomesId;
+export const NATIVE_GET_THE_MUCK_OUT_MOSSY_MUCKLING_TYPE_ID =
+  2992752380341653 as BiomesId;
+export const NATIVE_GET_THE_MUCK_OUT_WEST_BREACH_MUCKLING_TYPE_ID =
+  8700372047004309 as BiomesId;
+export const NATIVE_GET_THE_MUCK_OUT_GRAVEWOOD_MUCKLING_TYPE_ID =
+  8722418610125863 as BiomesId;
+
+/**
+ * HARTHMERE_MOSSY_MUCKLING_HUNT (2026-07-28): the restored world now seeds a real
+ * six-strong "Mossy Muckling" pack, so the objective names an enemy the player
+ * can actually find. Keyed here as its own restored type for the same reason as
+ * the two packs above — it keeps its own stats, drops, respawn and visuals.
+ * Manifest key `monster_mossy_muckling`.
+ */
+export const NATIVE_GET_THE_MUCK_OUT_RESTORED_MOSSY_MUCKLING_TYPE_ID =
+  8722087466111637 as BiomesId;
+
+/**
+ * Map marker for the six-Muckling hunt.
+ *
+ * Was [334, 40, -389] — the Watchtower Muck Clearing, where the old map-wide
+ * Muck redistribution had piled 32 hostiles from eight families and where no
+ * creature was actually named "Mossy Muckling". It now points at the seeded
+ * Mossy Muckling pack just east of the Grove/Harthmere safe ring. Keep this in
+ * lockstep with `HARTHMERE_MOSSY_MUCKLING_ANCHOR` in
+ * `live_entity_production_seed.ts`; `native_combat_quest_routing.test.ts` and
+ * `nativeQuestNavAidMarkers.test.ts` assert the pairing.
+ */
+export const NATIVE_GET_THE_MUCK_OUT_MUCKLING_HUNT_POSITION = [
+  531, 68, -33,
+] as const;
+
+const NATIVE_GET_THE_MUCK_OUT_COMPATIBLE_MUCKLING_TYPE_IDS = new Set<number>([
+  Number(NATIVE_GET_THE_MUCK_OUT_MOSSY_MUCKLING_TYPE_ID),
+  // The named restored pack the marker now points at.
+  Number(NATIVE_GET_THE_MUCK_OUT_RESTORED_MOSSY_MUCKLING_TYPE_ID),
+  // Restored production packs. These remain distinct native combat types for
+  // stats, drops, respawn, and visuals; only this exact legacy quest leaf
+  // treats them as the Mossy Muckling family it describes. Kept so a player
+  // mid-quest who already found a West Breach or Gravewood pack still gets
+  // credit.
+  Number(NATIVE_GET_THE_MUCK_OUT_WEST_BREACH_MUCKLING_TYPE_ID),
+  Number(NATIVE_GET_THE_MUCK_OUT_GRAVEWOOD_MUCKLING_TYPE_ID),
+]);
+
+export function isNativeGetTheMuckOutCompatibleMucklingTypeId(id: unknown) {
+  return NATIVE_GET_THE_MUCK_OUT_COMPATIBLE_MUCKLING_TYPE_IDS.has(Number(id));
+}
+
+/**
  * Original May 16 main-story order, ending with the assembled robot reward.
  * Road Ahead is giver-less and already auto-starts in the stock trigger
  * engine. Busted and Get the Muck Out have Jackie as their authored giver, but

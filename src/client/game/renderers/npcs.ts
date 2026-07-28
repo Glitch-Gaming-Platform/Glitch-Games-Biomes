@@ -8,7 +8,7 @@ import { harthmereEnsureRenderableNpcEntity } from "@/client/game/resources/hart
 import type { ClientResources } from "@/client/game/resources/types";
 import { NpcMetadataSelector } from "@/shared/ecs/gen/selectors";
 import type { BiomesId } from "@/shared/ids";
-import { readCutscenePuppetOverrides } from "@/shared/cutscene/puppets";
+import { readRenderablePuppetOverrides } from "@/shared/cutscene/puppets";
 import { Cval } from "@/shared/util/cvals";
 
 const numNpcsCval = new Cval({
@@ -44,9 +44,15 @@ export const makeNpcsRenderer = (
       numNpcsRenderedCval.value = 0;
 
       const becomeNpc = resources.get("/scene/npc/become_npc");
+      const puppetOverrides = readRenderablePuppetOverrides();
+      const hiddenNpcIds = new Set(
+        puppetOverrides
+          .filter((override) => override.id > 0 && override.hidden)
+          .map((override) => override.id)
+      );
       const cutsceneNpcIds = new Set<BiomesId>(
-        readCutscenePuppetOverrides()
-          .filter((override) => override.id > 0)
+        puppetOverrides
+          .filter((override) => override.id > 0 && !override.hidden)
           .map((override) => override.id as BiomesId)
       );
       const mustKeepNpcIds = new Set(cutsceneNpcIds);
@@ -67,6 +73,9 @@ export const makeNpcsRenderer = (
           mustKeep: mustKeepNpcIds.size > 0 ? mustKeepNpcIds : undefined,
         }
       );
+      for (let i = entities.length - 1; i >= 0; i -= 1) {
+        if (hiddenNpcIds.has(Number(entities[i].id))) entities.splice(i, 1);
+      }
       if (
         becomeNpc.kind === "active" &&
         !entities.find((x) => x.id === becomeNpc.entityId)

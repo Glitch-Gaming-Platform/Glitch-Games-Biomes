@@ -71,7 +71,7 @@ const DEFAULT_REDIS_PORT = Number(
   process.env.HARTHMERE_E2E_REDIS_PORT ||
     process.env.GLITCH_REDIS_PORT ||
     process.env.REDIS_PORT ||
-    (DEFAULT_WEB_PORT === 3017 ? 6389 : 6379)
+    (DEFAULT_WEB_PORT === 3017 ? 6390 : 6379)
 );
 const DEFAULT_STACK_CONTAINER =
   process.env.HARTHMERE_E2E_STACK_CONTAINER || "biomes-prod-smoke-app";

@@ -97,11 +97,7 @@ describe("Chapter 1 live story authority", () => {
     const runtime = defaultCh1LiveGateRuntimeState();
     assert.throws(
       () =>
-        apply(
-          runtime,
-          "ch1_a5_d2_the_long_winter_mouth",
-          "d2_hallrs_choice"
-        ),
+        apply(runtime, "ch1_a5_d2_the_long_winter_mouth", "d2_hallrs_choice"),
       /valid response/
     );
     const hallr = apply(
@@ -159,10 +155,42 @@ describe("Chapter 1 live story authority", () => {
     assert.equal(fight.itemGrants.includes("item_bulls_core"), true);
   });
 
+  it("records whether the player personally reported Jackie", () => {
+    const reported = apply(
+      defaultCh1LiveGateRuntimeState(),
+      "ch1_a4_q07_ask_me_in_a_month",
+      "report_or_not",
+      "report"
+    );
+    assert.ok(reported.runtime.flags.includes(CH1_FLAGS.jackieReported));
+    assert.equal(
+      reported.runtime.flags.includes(CH1_FLAGS.jackieStatementWithheld),
+      false
+    );
+
+    const withheld = apply(
+      defaultCh1LiveGateRuntimeState(),
+      "ch1_a4_q07_ask_me_in_a_month",
+      "report_or_not",
+      "stop_tea"
+    );
+    assert.ok(
+      withheld.runtime.flags.includes(CH1_FLAGS.jackieStatementWithheld)
+    );
+    assert.equal(
+      withheld.runtime.flags.includes(CH1_FLAGS.jackieReported),
+      false
+    );
+  });
+
   it("makes the desert retrieval exit completable without the E2E bypass", () => {
     let runtime = defaultCh1LiveGateRuntimeState();
     const inventory: Record<string, number> = {};
-    for (const stepId of ["d1_seed_vault", "d1_find_iris", "d1_the_long_walk"]) {
+    for (const stepId of [
+      "d1_seed_vault",
+      "d1_find_iris",
+      "d1_the_long_walk",
+    ]) {
       const result = apply(
         runtime,
         "ch1_a3_d1_the_sand_that_remembers",

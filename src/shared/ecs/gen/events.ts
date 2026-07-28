@@ -1,5 +1,5 @@
 // GENERATED: This file is generated from events.ts.j2. Do not modify directly.
-// Content Hash: 1f48aaf0ff1972ba8b51359c108adbcd
+// Content Hash: b3fce33963a65e341afa16f0709a1397
 
 import * as t from "@/shared/ecs/gen/types";
 import type { BiomesId } from "@/shared/ids";
@@ -27,6 +27,7 @@ export interface EventSet {
   readonly unmuckerEvent?: UnmuckerEvent[];
   readonly internalInventorySetEvent?: InternalInventorySetEvent[];
   readonly harthmereInventoryTransactionEvent?: HarthmereInventoryTransactionEvent[];
+  readonly harthmereChapter1WarpEvent?: HarthmereChapter1WarpEvent[];
   readonly harthmereQuestProgressEvent?: HarthmereQuestProgressEvent[];
   readonly harthmerePlaceableTransactionEvent?: HarthmerePlaceableTransactionEvent[];
   readonly inventoryCraftEvent?: InventoryCraftEvent[];
@@ -186,6 +187,7 @@ interface SuperEventSet {
   readonly unmuckerEvent: UnmuckerEvent[];
   readonly internalInventorySetEvent: InternalInventorySetEvent[];
   readonly harthmereInventoryTransactionEvent: HarthmereInventoryTransactionEvent[];
+  readonly harthmereChapter1WarpEvent: HarthmereChapter1WarpEvent[];
   readonly harthmereQuestProgressEvent: HarthmereQuestProgressEvent[];
   readonly harthmerePlaceableTransactionEvent: HarthmerePlaceableTransactionEvent[];
   readonly inventoryCraftEvent: InventoryCraftEvent[];
@@ -1127,6 +1129,64 @@ export class HarthmereInventoryTransactionEvent implements Event {
     this.standing_legal = standing_legal;
     this.standing_notoriety = standing_notoriety;
     this.standing_notoriety_floor = standing_notoriety_floor;
+    this.authorization = authorization;
+  }
+}
+
+export interface HandlerHarthmereChapter1WarpEvent {
+  readonly kind: "harthmereChapter1WarpEvent";
+  readonly id: BiomesId;
+  action: t.String;
+  dungeon_id: t.String;
+  run_id: t.String;
+  party_id: t.String;
+  reset_encounters: t.Bool;
+  position: t.Vec3f;
+  orientation: t.Vec2f;
+  authorization: t.String;
+}
+
+export class HarthmereChapter1WarpEvent implements Event {
+  readonly kind = "harthmereChapter1WarpEvent";
+  readonly id: BiomesId;
+  action: t.ReadonlyString;
+  dungeon_id: t.ReadonlyString;
+  run_id: t.ReadonlyString;
+  party_id: t.ReadonlyString;
+  reset_encounters: t.ReadonlyBool;
+  position: t.ReadonlyVec3f;
+  orientation: t.ReadonlyVec2f;
+  authorization: t.ReadonlyString;
+
+  constructor({
+    id = t.defaultBiomesId,
+    action = t.defaultString,
+    dungeon_id = t.defaultString,
+    run_id = t.defaultString,
+    party_id = t.defaultString,
+    reset_encounters = t.defaultBool,
+    position = t.defaultVec3f(),
+    orientation = t.defaultVec2f(),
+    authorization = t.defaultString,
+  }: {
+    id?: BiomesId;
+    action?: t.ReadonlyString;
+    dungeon_id?: t.ReadonlyString;
+    run_id?: t.ReadonlyString;
+    party_id?: t.ReadonlyString;
+    reset_encounters?: t.ReadonlyBool;
+    position?: t.ReadonlyVec3f;
+    orientation?: t.ReadonlyVec2f;
+    authorization?: t.ReadonlyString;
+  }) {
+    this.id = id;
+    this.action = action;
+    this.dungeon_id = dungeon_id;
+    this.run_id = run_id;
+    this.party_id = party_id;
+    this.reset_encounters = reset_encounters;
+    this.position = position;
+    this.orientation = orientation;
     this.authorization = authorization;
   }
 }
@@ -5133,6 +5193,7 @@ export type AnyHandlerEvent =
   | HandlerUnmuckerEvent
   | HandlerInternalInventorySetEvent
   | HandlerHarthmereInventoryTransactionEvent
+  | HandlerHarthmereChapter1WarpEvent
   | HandlerHarthmereQuestProgressEvent
   | HandlerHarthmerePlaceableTransactionEvent
   | HandlerInventoryCraftEvent
@@ -5291,6 +5352,7 @@ export type AnyEvent =
   | UnmuckerEvent
   | InternalInventorySetEvent
   | HarthmereInventoryTransactionEvent
+  | HarthmereChapter1WarpEvent
   | HarthmereQuestProgressEvent
   | HarthmerePlaceableTransactionEvent
   | InventoryCraftEvent

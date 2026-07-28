@@ -730,6 +730,12 @@ export function filterMapTrackableQuestsForTest(
   );
 }
 
+export function activeMapTrackableQuestsForTest(
+  quests: MapTrackableQuest[]
+): MapTrackableQuest[] {
+  return quests.filter((quest) => quest.status === "active");
+}
+
 export function filterMapMarkersForTest(
   markers: MapMarker[],
   filter: string
@@ -917,7 +923,11 @@ export const MapQuestsTab: React.FunctionComponent<{
   const adapterMissionTitle =
     adapter?.getMissionTitle?.() ?? "No active mission";
   const steps = adapter?.getMissionSteps?.() ?? [];
-  const trackableQuests = adapter?.getTrackableQuests?.() ?? [];
+  // The map is an active-navigation surface, not quest history. Completed and
+  // failed rows remain available in the dedicated quest journal only.
+  const trackableQuests = activeMapTrackableQuestsForTest(
+    adapter?.getTrackableQuests?.() ?? []
+  );
   const mainQuest = React.useMemo(
     () =>
       mainQuestFromTrackableQuestsForTest(trackableQuests, mainQuestSelection),
@@ -1397,10 +1407,10 @@ export const MapQuestsTab: React.FunctionComponent<{
     } else if (event.key === "-") {
       zoomOut();
       event.preventDefault();
-    } else if (event.key.toLowerCase() === "c") {
+    } else if (event.key === "Home") {
       centerOnPlayer();
       event.preventDefault();
-    } else if (event.key.toLowerCase() === "r") {
+    } else if (event.key === "End") {
       resetView();
       event.preventDefault();
     }
@@ -1698,7 +1708,7 @@ export const MapQuestsTab: React.FunctionComponent<{
               ))
             : null}
           <span style={{ marginLeft: "auto", color: "var(--biomes-fg-dim)" }}>
-            wheel to zoom · drag to pan · C center · R reset
+            wheel to zoom · drag to pan · Home center · End reset
           </span>
         </div>
 

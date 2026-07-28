@@ -29,6 +29,7 @@ import { squareVector } from "@/shared/math/linear";
 import type { ReadonlyVec3 } from "@/shared/math/types";
 import type { ImageSizes } from "@/shared/util/urls";
 import { imageUrlForSize } from "@/shared/util/urls";
+import { hideUnresolvedPictureFrame } from "./picture_frame_visibility";
 import { ok } from "assert";
 import {
   BoxGeometry,
@@ -64,7 +65,7 @@ async function setPictureFrameUrl(
       error,
     });
     pictureFrameInfo.picturePlane.visible = false;
-    return;
+    return false;
   }
   const texture = new CanvasTexture(pictureFrameInfo.imageBitmap);
   texture.encoding = sRGBEncoding;
@@ -73,6 +74,7 @@ async function setPictureFrameUrl(
     map: texture,
   });
   pictureFrameInfo.picturePlane.visible = true;
+  return true;
 }
 
 async function loadImageBitmap(url: string): Promise<ImageBitmap> {
@@ -201,17 +203,30 @@ export async function updatePictureFrameInfo(
         postContents.imageUrls
       );
       if (imageSizeURL) {
-        await setPictureFrameUrl(pictureFrameInfo, imageSizeURL);
+        mesh.three.visible = await setPictureFrameUrl(
+          pictureFrameInfo,
+          imageSizeURL
+        );
+        return;
       }
     }
+    // An unresolved photo otherwise renders as a large black rectangle that
+    // can be mistaken for a quest creature.
+    hideUnresolvedPictureFrame(mesh);
   } else if (frameComponent && frameComponent.minigame_id) {
     const minigame = await context.table.oob.oobFetchSingle(
       frameComponent.minigame_id
     );
 
-    if (!minigame) return;
+    if (!minigame) {
+      hideUnresolvedPictureFrame(mesh);
+      return;
+    }
 
-    if (!minigame?.minigame_component?.hero_photo_id) return;
+    if (!minigame?.minigame_component?.hero_photo_id) {
+      hideUnresolvedPictureFrame(mesh);
+      return;
+    }
     pictureFrameInfo.pictureComponentVersion =
       minigame?.minigame_component?.hero_photo_id;
     const postContents = await context.socialManager.postBundle(
@@ -223,8 +238,13 @@ export async function updatePictureFrameInfo(
         postContents.imageUrls
       );
       if (imageSizeURL) {
-        await setPictureFrameUrl(pictureFrameInfo, imageSizeURL);
+        mesh.three.visible = await setPictureFrameUrl(
+          pictureFrameInfo,
+          imageSizeURL
+        );
+        return;
       }
     }
+    hideUnresolvedPictureFrame(mesh);
   }
 }

@@ -50,7 +50,7 @@ describe("cutscene client integration contract", () => {
     const source = read(
       "src/client/game/scripts/harthmere_live_creature_bridge_script.ts"
     );
-    assert.match(source, /readCutscenePuppetOverrides\(\)/);
+    assert.match(source, /readRenderablePuppetOverrides\(\)/);
     assert.match(source, /mergeCutscenePuppetOverrides\(/);
     assert.match(source, /cutsceneOverrides\.length === 0/);
   });
@@ -65,7 +65,7 @@ describe("cutscene client integration contract", () => {
     const playerMesh = read("src/client/game/resources/player_mesh.ts");
     assert.match(bridge, /nativeNpcRenderer/);
     assert.match(assets, /!record\.nativeNpcRenderer/);
-    assert.match(npcs, /readCutscenePuppetOverrides\(\)/);
+    assert.match(npcs, /readRenderablePuppetOverrides\(\)/);
     assert.match(npcs, /cutsceneHeldItemAttachment/);
     assert.match(npcs, /cutsceneNpcAnimationAction/);
     assert.match(npcRenderer, /cutsceneNpcIds/);

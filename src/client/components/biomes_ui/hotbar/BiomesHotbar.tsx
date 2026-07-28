@@ -104,7 +104,7 @@ export const BiomesHotbar: React.FunctionComponent<BiomesHotbarProps> = ({
       } else if (e.key === "ArrowRight" || e.key === "ArrowUp") {
         e.preventDefault();
         onSelect(Math.min(slots.length - 1, selectedIndex + 1));
-      } else if (e.key === "Enter" || e.key === " ") {
+      } else if (e.key === "Enter") {
         e.preventDefault();
         void runAction("use", () => onUse?.(selectedIndex));
       } else if (e.key.toLowerCase() === "q") {

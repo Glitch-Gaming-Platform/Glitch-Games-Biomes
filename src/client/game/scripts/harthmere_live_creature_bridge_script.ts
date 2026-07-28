@@ -16,7 +16,7 @@ import type { Script } from "@/client/game/scripts/script_controller";
 import { NpcMetadataSelector } from "@/shared/ecs/gen/selectors";
 import {
   mergeCutscenePuppetOverrides,
-  readCutscenePuppetOverrides,
+  readRenderablePuppetOverrides,
 } from "@/shared/cutscene/puppets";
 import {
   harthmereLiveCreatureBridgeRecord,
@@ -28,7 +28,7 @@ import {
 const PUBLISH_INTERVAL_SECONDS = 0.25;
 
 export function publishHarthmereLiveCreatureSnapshot(table: ClientTable): void {
-  const cutsceneOverrides = readCutscenePuppetOverrides();
+  const cutsceneOverrides = readRenderablePuppetOverrides();
   const records: HarthmereLiveCreatureBridgeRecord[] = [];
   for (const entity of table.scan(NpcMetadataSelector.query.all())) {
     const record = harthmereLiveCreatureBridgeRecord(
@@ -53,7 +53,7 @@ export class HarthmereLiveCreatureBridgeScript implements Script {
     this.sincePublish += Number.isFinite(dt) ? dt : 0;
     // While a cutscene is puppeteering creatures we publish every tick so
     // puppets and ghosts move smoothly; otherwise the throttled cadence.
-    const cutsceneOverrides = readCutscenePuppetOverrides();
+    const cutsceneOverrides = readRenderablePuppetOverrides();
     if (
       cutsceneOverrides.length === 0 &&
       this.sincePublish < PUBLISH_INTERVAL_SECONDS

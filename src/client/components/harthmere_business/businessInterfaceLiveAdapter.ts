@@ -956,6 +956,52 @@ export function formatHarthmereBusinessPlayerWarning(
 ): string {
   const warning = String(rawWarning ?? "").trim();
   if (!warning) return "Something needs attention.";
+  if (warning.includes("insufficient_customer_gold_for_sale")) {
+    return "You do not have enough gold for that purchase.";
+  }
+  if (warning.includes("business_not_open")) {
+    return "This shop is currently closed.";
+  }
+  if (warning.includes("business_not_found")) {
+    return "This shop is no longer available.";
+  }
+  if (warning.includes("sale_inventory_insufficient")) {
+    return "The shop does not have enough of that item in stock.";
+  }
+  if (warning.includes("business_tool_already_owned")) {
+    return "You already own this tool.";
+  }
+  if (warning.includes("business_tool_not_available")) {
+    return "This shop does not currently sell a tool.";
+  }
+  if (warning.includes("business_tool_listing_mismatch")) {
+    return "That tool listing changed. Reopen the shop and try again.";
+  }
+  if (warning.includes("business_tool_single_purchase_only")) {
+    return "Tools are sold one at a time.";
+  }
+  if (warning.includes("item_not_in_storefront")) {
+    return "That item is no longer sold by this shop.";
+  }
+  if (warning.includes("item_not_purchasable")) {
+    return "That item is temporarily unavailable. Your gold and the listing were left unchanged.";
+  }
+  if (warning.includes("recipe_book_already_learned")) {
+    return "You already know every recipe in that book.";
+  }
+  if (warning.includes("recipe_book_single_purchase_only")) {
+    return "Recipe books are purchased one at a time.";
+  }
+  if (warning.includes("inventory_full")) {
+    return "Your inventory is full. Free a slot and try again.";
+  }
+  if (
+    warning.includes("business_economy_mutation_http_") ||
+    warning.includes("native_ecs_materialization") ||
+    warning.includes("native_ecs_authority_required")
+  ) {
+    return "The purchase was not completed. Your gold and the listing were left unchanged; try again.";
+  }
   if (warning.includes("business_item_required:")) {
     const item = warning.split(":").pop() ?? "stock";
     return `Stock is missing ${titleCaseBusinessText(item)}.`;
@@ -1151,6 +1197,18 @@ export async function submitHarthmereBusinessEconomyMutation(
     String(warning).includes("economy_rejected:")
   );
   if (rejection) throw new Error(rejection);
+  const validationError = body.validation?.errors?.[0];
+  if (body.ok === false || validationError) {
+    throw new Error(
+      String(validationError ?? "business_economy_mutation_not_confirmed")
+    );
+  }
+  const nativeMaterializationFailure = warnings.find((warning) =>
+    String(warning).includes("native_ecs_materialization_deferred:")
+  );
+  if (nativeMaterializationFailure) {
+    throw new Error(String(nativeMaterializationFailure));
+  }
   return body;
 }
 
@@ -2561,6 +2619,7 @@ export interface HarthmereBusinessInterfaceAdapter {
     targetActorId: string,
     permissions: string[]
   ): Promise<void>;
+  buyBusinessTool(businessId: string, itemId: string): Promise<void>;
   purchaseShopItem(
     businessId: string,
     itemId: string,
@@ -2835,6 +2894,25 @@ export function createHarthmereBusinessInterfaceAdapter(options: {
         targetActorId,
         permissions,
       }),
+    buyBusinessTool: async (businessId, itemId) => {
+      const business = requireState().businesses[businessId];
+      if (!business) throw new Error("economy_rejected:business_not_found");
+      if (!canCustomerUseHarthmereBusiness(business)) {
+        throw new Error("economy_rejected:business_not_open");
+      }
+      const listing = harthmereBusinessToolForType(business.typeId);
+      if (!listing) {
+        throw new Error("economy_rejected:business_tool_not_available");
+      }
+      if (listing.toolItemId !== itemId) {
+        throw new Error("economy_rejected:business_tool_listing_mismatch");
+      }
+      await submit("buy_business_tool", {
+        businessId,
+        itemId,
+        count: 1,
+      });
+    },
     purchaseShopItem: async (businessId, itemId, count) => {
       const business = requireState().businesses[businessId];
       if (!business) throw new Error("business_not_found");

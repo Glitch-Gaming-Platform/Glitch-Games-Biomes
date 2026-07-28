@@ -30,6 +30,10 @@ import type { BiomesId } from "@/shared/ids";
 import { log } from "@/shared/logging";
 import { sub } from "@/shared/math/linear";
 import { ok } from "assert";
+import {
+  awardHarthmereNativeSkillXp,
+  harthmereNativeFarmingSkillAwards,
+} from "@/shared/harthmere/harthmere_skill_progression";
 
 const TREE_SEED_IDS = new Set<BiomesId>([
   BikkieIds.oakSeed,
@@ -53,7 +57,9 @@ export const tillSoilEventHandler = makeEventHandler("tillSoilEvent", {
   involves: (event) => {
     return {
       terrain: q.ids(event.shard_ids).terrain(),
-      player: q.id(event.id).with("inventory", "player_behavior"),
+      player: q
+        .id(event.id)
+        .with("inventory", "player_behavior", "trigger_state"),
       occupiedBy: q.ids(event.occupancy_ids)?.includeIced(),
       acl: aclChecker({ kind: "points", points: event.positions }, event.id),
     };
@@ -149,6 +155,10 @@ export const tillSoilEventHandler = makeEventHandler("tillSoilEvent", {
       time: secondsSinceEpoch(),
       position: event.positions[0],
     };
+    awardHarthmereNativeSkillXp(
+      player.mutableTriggerState(),
+      harthmereNativeFarmingSkillAwards("till")
+    );
     log.info(`Tilled soil at ${event.positions}`);
   },
 });
@@ -158,7 +168,9 @@ export const plantSeedEventHandler = makeEventHandler("plantSeedEvent", {
   involves: (event) => {
     return {
       terrain: q.terrain(event.id),
-      player: q.id(event.user_id).with("inventory", "player_behavior"),
+      player: q
+        .id(event.user_id)
+        .with("inventory", "player_behavior", "trigger_state"),
       occupiedBy: q.optional(event.occupancy_id)?.includeIced(),
       plantIds: newIds(1),
       acl: aclChecker({ kind: "point", point: event.position }, event.user_id),
@@ -254,6 +266,10 @@ export const plantSeedEventHandler = makeEventHandler("plantSeedEvent", {
 
     context.create(plant);
     terrain.mutableFarming.set(...shardPos, id);
+    awardHarthmereNativeSkillXp(
+      player.mutableTriggerState(),
+      harthmereNativeFarmingSkillAwards("plant")
+    );
     log.info(`Farming seed planted: ${slot.item.id} at ${event.position}`);
 
     context.publish(<PlantSeedEvent>{
@@ -268,7 +284,9 @@ export const waterPlantsEventHandler = makeEventHandler("waterPlantsEvent", {
   mergeKey: (event) => event.id,
   involves: (event) => ({
     plants: q.ids(event.plant_ids).with("farming_plant_component", "position"),
-    player: q.id(event.id).with("inventory", "player_behavior", "position"),
+    player: q
+      .id(event.id)
+      .with("inventory", "player_behavior", "position", "trigger_state"),
   }),
   apply({ plants, player }, event, context) {
     const inventory = new PlayerInventoryEditor(context, player);
@@ -276,6 +294,7 @@ export const waterPlantsEventHandler = makeEventHandler("waterPlantsEvent", {
     if (!toolSlot || toolSlot.item.action !== "waterPlant") {
       return;
     }
+    let watered = false;
     for (const plant of plants) {
       if (staleOkDistance(plant, player) > CONFIG.gameDropPickupDistance + 1) {
         continue;
@@ -292,6 +311,7 @@ export const waterPlantsEventHandler = makeEventHandler("waterPlantsEvent", {
         amount: waterFromCan,
         timestamp: secondsSinceEpoch(),
       });
+      watered ||= waterFromCan > 0;
 
       context.publish(<WaterPlantEvent>{
         kind: "waterPlant",
@@ -299,6 +319,12 @@ export const waterPlantsEventHandler = makeEventHandler("waterPlantsEvent", {
         seed: plant.farmingPlantComponent().seed,
         amount: waterFromCan,
       });
+    }
+    if (watered) {
+      awardHarthmereNativeSkillXp(
+        player.mutableTriggerState(),
+        harthmereNativeFarmingSkillAwards("water")
+      );
     }
   },
 });
@@ -309,7 +335,9 @@ export const replenishWateringCanEventHandler = makeEventHandler(
     mergeKey: (event) => event.id,
     involves: (event) => ({
       terrain: q.terrain(event.id),
-      player: q.id(event.user_id).with("inventory", "player_behavior"),
+      player: q
+        .id(event.user_id)
+        .with("inventory", "player_behavior", "trigger_state"),
     }),
     apply({ player, terrain }, event, context) {
       const inventory = new PlayerInventoryEditor(context, player);
@@ -349,6 +377,10 @@ export const fertilizePlantEventHandler = makeEventHandler(
         fertilizer: fertilizer.item,
         timestamp: secondsSinceEpoch(),
       });
+      awardHarthmereNativeSkillXp(
+        player.mutableTriggerState(),
+        harthmereNativeFarmingSkillAwards("fertilize")
+      );
       log.info(`Farming plant fertilized: ${plant.id}`);
     },
   }
@@ -358,7 +390,7 @@ export const harvestPlantEventHandler = makeEventHandler("harvestPlantEvent", {
   mergeKey: (event) => event.id,
   involves: (event) => ({
     plant: q.id(event.plant_id).with("farming_plant_component", "position"),
-    player: q.id(event.id).with("position"),
+    player: q.id(event.id).with("position", "trigger_state"),
   }),
   apply({ plant, player }, event) {
     const position = plant.position()?.v;
@@ -391,6 +423,10 @@ export const harvestPlantEventHandler = makeEventHandler("harvestPlantEvent", {
       kind: "harvest",
       timestamp: secondsSinceEpoch(),
     });
+    awardHarthmereNativeSkillXp(
+      player.mutableTriggerState(),
+      harthmereNativeFarmingSkillAwards("harvest")
+    );
     log.info(`Player ${event.id} harvesting plant ${plant.id}`);
   },
 });

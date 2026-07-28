@@ -70,6 +70,7 @@ import {
   takeAllFromHarthmereContainer,
   takeFromHarthmereContainer,
   waitForHarthmereNativeContainerInventory,
+  openHarthmereObjectContainer,
 } from "@/client/components/challenges/harthmereObjectContainers";
 import { setHarthmereLocalDevUserScope } from "@/client/components/challenges/LocalDevHarthmereUserScope";
 import {
@@ -198,6 +199,44 @@ describe("harthmere object container take/store interface", () => {
       /container_inventory_sync_timeout/
     );
     assert.equal(now, 25, "the final poll is capped at the timeout boundary");
+  });
+
+  it("publishes the quest interaction after native ECS container sync", async () => {
+    const originalFetch = globalThis.fetch;
+    const dispatched: Event[] = [];
+    const originalDispatch = windowMock.dispatchEvent;
+    windowMock.dispatchEvent = (event: Event) => {
+      dispatched.push(event);
+      return true;
+    };
+    globalThis.fetch = (async () =>
+      new Response(
+        JSON.stringify({ ok: true, containerId: 4242002, containerItemId: 55 }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )) as typeof fetch;
+    try {
+      const result = await openHarthmereObjectContainer({
+        entityId: 41 as BiomesId,
+        objectId: "grove_tool_crate",
+        label: "Road Kit Crate",
+        resources: {
+          get: (path: string, id: BiomesId) => {
+            assert.equal(path, "/ecs/c/container_inventory");
+            assert.equal(id, 4242002);
+            return { items: [] };
+          },
+        } as never,
+      });
+      assert.equal(result.native, true);
+      const interaction = dispatched.find(
+        (event) => event.type === "biomes:harthmere-world-object-interaction"
+      ) as CustomEvent | undefined;
+      assert.equal(interaction?.detail.objectId, "grove_tool_crate");
+      assert.equal(interaction?.detail.kind, "open_container");
+    } finally {
+      globalThis.fetch = originalFetch;
+      windowMock.dispatchEvent = originalDispatch;
+    }
   });
 
   it("seeds the Clothing Crate with both clothing halves for The Road Ahead", () => {

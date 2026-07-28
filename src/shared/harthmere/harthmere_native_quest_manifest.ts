@@ -441,6 +441,21 @@ export const HARTHMERE_NATIVE_QUEST_STEP_ID_MANIFEST = {
   "grove:econ_carlo_festival_skewers:objective:2": id(8761000000000291),
   "grove:econ_carlo_festival_skewers:objective:3": id(8761000000000292),
   "grove:econ_carlo_festival_skewers:objective:4": id(8761000000000293),
+  // Required completion conversations added without renumbering any shipped
+  // native challenge or Bible step id.
+  "grove:read-the-jobs-board:objective:1": id(8761000000090001),
+  "grove:color_that_still_points_home:objective:4": id(8761000000090002),
+  "grove:cart_that_forgot_its_wheel:objective:4": id(8761000000090003),
+  "grove:road_ready_not_fancy:objective:4": id(8761000000090004),
+  "grove:moss_that_went_quiet:objective:4": id(8761000000090005),
+  "grove:songline_under_the_lawn:objective:4": id(8761000000090006),
+  "grove:sticky_medicine:objective:4": id(8761000000090007),
+  "grove:coops_key_hen:objective:4": id(8761000000090008),
+  "grove:tower_with_a_headache:objective:4": id(8761000000090009),
+  "grove:antlers_for_the_watch:objective:4": id(8761000000090010),
+  "grove:toll_ledger_problem:objective:4": id(8761000000090011),
+  "grove:samples_for_the_chapel:objective:4": id(8761000000090012),
+  "grove:tone_beneath_the_road:objective:4": id(8761000000090013),
   "bible:bellbound_q01_cracks_in_bridge:root": id(8761000000000294),
   "bible:bellbound_q01_cracks_in_bridge:objective:bellbound_q01_cracks_in_bridge_obj_01":
     id(8761000000000295),

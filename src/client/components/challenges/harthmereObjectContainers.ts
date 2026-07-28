@@ -735,6 +735,15 @@ export async function openHarthmereObjectContainer({
       resources,
       body.containerId as BiomesId
     );
+    // Opening the stock native container is also the signed interaction proof
+    // consumed by Grove objectives such as inspecting the Road Kit Crate.
+    dispatchHarthmereWorldObjectInteractionEvent({
+      entityId,
+      objectId,
+      label: displayLabel,
+      kind: "open_container",
+      title: "Open Container",
+    });
     return {
       native: true,
       containerId: body.containerId as BiomesId,

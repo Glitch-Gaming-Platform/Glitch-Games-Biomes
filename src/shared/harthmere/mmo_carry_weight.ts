@@ -3,8 +3,8 @@ import {
   type HarthmereItemDefinition,
 } from "./mmo_inventory_authority";
 
-/** Maximum total inventory weight (in pounds) a player can carry before they are
- *  encumbered. Carrying at or below this limit incurs no penalty. */
+/** Soft inventory-weight threshold (in pounds) before a player is encumbered.
+ *  Carrying at or below this threshold incurs no stamina penalty. */
 export const HARTHMERE_CARRY_WEIGHT_LIMIT = 25;
 
 /** Stamina-drain penalty applied per pound carried over the limit. The penalty

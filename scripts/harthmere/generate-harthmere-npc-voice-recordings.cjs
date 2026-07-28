@@ -21,6 +21,13 @@ const {
   harthmereVoiceProfileForActor,
   parseHarthmereAzureVoiceId,
 } = require("../../src/shared/harthmere/npc_voice_profiles");
+const {
+  ch1VoiceActorForSpeaker,
+} = require("../../src/shared/harthmere/ch1_voice");
+const {
+  CH1_OBJECTIVE_DIALOGUE,
+  CH1_COMPLETION_DIALOGUE,
+} = require("../../src/server/harthmere/ch1_dialogue");
 const { iterBackupEntriesFromFile } = require("../../src/server/backup/serde");
 const { biscuitToJson } = require("../../src/shared/bikkie/schema/attributes");
 const {
@@ -54,6 +61,7 @@ const force = args.has("--force");
 const limit = valueArg("limit") ? Number(valueArg("limit")) : Infinity;
 const actorFilter = valueArg("actor");
 const nativeRobotStoryOnly = args.has("--native-robot-story-only");
+const chapter1ObjectiveOnly = args.has("--chapter1-objective-only");
 const concurrency = valueArg("concurrency")
   ? Number(valueArg("concurrency"))
   : 4;
@@ -79,6 +87,8 @@ Options:
   --actor=ID         Generate only one catalog actor id or actor key.
   --native-robot-story-only
                      Generate only Road Ahead through Muck vs. Machine.
+  --chapter1-objective-only
+                     Generate only voiced Chapter 1 objective dialogue.
   --force            Replace recordings for the current synthesis policy.
 `);
 }
@@ -256,16 +266,72 @@ async function nativeRobotStoryRecordings() {
   return rows;
 }
 
+function chapter1ObjectiveRecordings() {
+  const sequences = [
+    ...Object.values(CH1_OBJECTIVE_DIALOGUE),
+    ...Object.values(CH1_COMPLETION_DIALOGUE).flatMap((byChoice) =>
+      Object.values(byChoice)
+    ),
+  ];
+  const linesByActor = new Map();
+  for (const sequence of sequences) {
+    for (const page of sequence.pages) {
+      const actor = ch1VoiceActorForSpeaker(page.speaker);
+      if (!actor) continue;
+      const current = linesByActor.get(actor.profile.actorKey) ?? {
+        actor,
+        lines: [],
+        seen: new Set(),
+      };
+      const text = String(page.text || "").trim();
+      if (text && !current.seen.has(text)) {
+        current.seen.add(text);
+        current.lines.push(text);
+      }
+      linesByActor.set(actor.profile.actorKey, current);
+    }
+  }
+
+  return [...linesByActor.values()].flatMap(({ actor, lines }) => {
+    const actorSlug = slugForVoicePath(
+      `chapter-1-identity-objective-${actor.id}-${actor.displayName}`
+    );
+    const entry = {
+      source: "chapter_1_identity_objective",
+      id: `chapter1-objective:${actor.id}`,
+      displayName: actor.displayName,
+      profile: actor.profile,
+    };
+    return lines.map((text, index) => {
+      const lineId = `line-${String(index + 1).padStart(2, "0")}`;
+      return {
+        entry,
+        language: "en-US",
+        line: {
+          lineId,
+          text,
+          recordingPath: `harthmere/voices/generated/current/${actorSlug}/${lineId}.mp3`,
+        },
+      };
+    });
+  });
+}
+
 async function plannedRecordings() {
   const rows = [];
-  if (!nativeRobotStoryOnly) {
+  if (!nativeRobotStoryOnly && !chapter1ObjectiveOnly) {
     for (const entry of HARTHMERE_NPC_VOICE_CATALOG) {
       for (const line of entry.staticLines) {
         rows.push({ entry, line, language: "en-US" });
       }
     }
   }
-  rows.push(...(await nativeRobotStoryRecordings()));
+  if (!nativeRobotStoryOnly) {
+    rows.push(...chapter1ObjectiveRecordings());
+  }
+  if (!chapter1ObjectiveOnly) {
+    rows.push(...(await nativeRobotStoryRecordings()));
+  }
   const filtered = rows.filter(({ entry }) => {
     if (
       actorFilter &&

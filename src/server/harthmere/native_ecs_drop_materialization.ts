@@ -6,6 +6,7 @@ import { GameEvent } from "@/server/shared/api/game_event";
 import type { LogicApi } from "@/server/shared/api/logic";
 import type { IdGenerator } from "@/server/shared/ids/generator";
 import type { WorldApi } from "@/server/shared/world/api";
+import { editWorldWithRetry } from "@/server/shared/world/edit_retry";
 import {
   AclComponent,
   Box,
@@ -32,6 +33,7 @@ import { harthmereNativeBiomesIdForRecipeId } from "@/shared/harthmere/harthmere
 import { HARTHMERE_NATIVE_THAEDRYN_ENTITY_ID } from "@/shared/harthmere/bible_quest_live_authority";
 import type {
   HarthmereNativeEcsBossEntityMaterializationPlan,
+  HarthmereNativeEcsCharacterProgressMaterializationPlan,
   HarthmereNativeEcsDeedMaterializationPlan,
   HarthmereNativeEcsDropMaterializationPlan,
   HarthmereNativeEcsInventoryExchangeMaterializationPlan,
@@ -40,7 +42,15 @@ import type {
   HarthmereNativeEcsQuestAcceptMaterializationPlan,
   HarthmereNativeEcsQuestProgressMaterializationPlan,
   HarthmereNativeEcsQuestResetMaterializationPlan,
+  HarthmereNativeEcsSkillProgressMaterializationPlan,
 } from "@/shared/harthmere/live_mode_backend";
+import { awardHarthmereNativeCombatXp } from "@/shared/harthmere/harthmere_native_combat";
+import { syncHarthmereNativeLevelStats } from "@/shared/harthmere/harthmere_native_level_stats";
+import {
+  hasHarthmereNativeSkillEntry,
+  readHarthmereNativeSkillTotalXp,
+  writeHarthmereNativeSkillTotalXp,
+} from "@/shared/harthmere/harthmere_skill_progression";
 import {
   harthmereNativeQuestId,
   harthmereNativeQuestStepId,
@@ -71,6 +81,69 @@ function actorBiomesId(value: unknown): BiomesId | undefined {
   return Number.isSafeInteger(numeric) && numeric > 0
     ? (numeric as BiomesId)
     : undefined;
+}
+
+async function materializeSkillProgress(input: {
+  worldApi: WorldApi;
+  plan: HarthmereNativeEcsSkillProgressMaterializationPlan;
+}) {
+  const actorId = actorBiomesId(input.plan.actorId);
+  if (!actorId) {
+    throw new Error(
+      `Native skill progression ${input.plan.materializationKey} has invalid actor ${input.plan.actorId}`
+    );
+  }
+  return editWorldWithRetry(input.worldApi, async (editor) => {
+    const player = await editor.get(actorId);
+    if (!player) {
+      throw new Error(
+        `Native skill progression ${input.plan.materializationKey} has no player ${actorId}`
+      );
+    }
+    const triggerState = player.mutableTriggerState();
+    let changed = false;
+    for (const [skillId, targetXp] of Object.entries(input.plan.skillXp)) {
+      const currentXp = readHarthmereNativeSkillTotalXp(triggerState, skillId);
+      const safeTargetXp = Math.max(0, Math.trunc(Number(targetXp) || 0));
+      if (
+        hasHarthmereNativeSkillEntry(triggerState, skillId) &&
+        safeTargetXp <= currentXp
+      ) {
+        continue;
+      }
+      writeHarthmereNativeSkillTotalXp(
+        triggerState,
+        skillId,
+        Math.max(currentXp, safeTargetXp)
+      );
+      changed = true;
+    }
+    return changed;
+  });
+}
+
+async function materializeCharacterProgress(input: {
+  worldApi: WorldApi;
+  plan: HarthmereNativeEcsCharacterProgressMaterializationPlan;
+}) {
+  const actorId = actorBiomesId(input.plan.actorId);
+  const xpDelta = Math.max(0, Math.trunc(Number(input.plan.xpDelta) || 0));
+  if (!actorId || xpDelta <= 0) {
+    throw new Error(
+      `Native character progression ${input.plan.materializationKey} is invalid`
+    );
+  }
+  return editWorldWithRetry(input.worldApi, async (editor) => {
+    const player = await editor.get(actorId);
+    if (!player) {
+      throw new Error(
+        `Native character progression ${input.plan.materializationKey} has no player ${actorId}`
+      );
+    }
+    awardHarthmereNativeCombatXp(player.mutableTriggerState(), xpDelta);
+    syncHarthmereNativeLevelStats(player);
+    return true;
+  });
 }
 
 function nativeItems(
@@ -436,7 +509,7 @@ async function materializeQuestAccept(input: {
 function nativeQuestObjectiveStepIds(
   plan: HarthmereNativeEcsQuestProgressMaterializationPlan
 ) {
-  const objectiveKeys =
+  const objectiveKeys: Array<string | number> | undefined =
     plan.questSource === "grove"
       ? SNAPSHOT_GROVE_QUESTS.find(
           (quest) => quest.id === plan.questId
@@ -449,14 +522,14 @@ function nativeQuestObjectiveStepIds(
       `Native quest progress ${plan.materializationKey} has no authored objectives`
     );
   }
-  const stepIds = objectiveKeys.map((objectiveIdOrIndex) =>
+  const stepIds = objectiveKeys.map((objectiveIdOrIndex: string | number) =>
     harthmereNativeQuestStepId(
       plan.questSource,
       plan.questId,
       objectiveIdOrIndex
     )
   );
-  if (stepIds.some((stepId) => !stepId)) {
+  if (stepIds.some((stepId: BiomesId | undefined) => !stepId)) {
     throw new Error(
       `Native quest progress ${plan.materializationKey} has an unresolved objective`
     );
@@ -835,6 +908,16 @@ export async function materializeHarthmereNativeEcsPlans(input: {
         case "inventory_exchange":
           return materializeInventoryExchange({
             logicApi: input.logicApi,
+            plan,
+          });
+        case "skill_progress":
+          return materializeSkillProgress({
+            worldApi: input.worldApi,
+            plan,
+          });
+        case "character_progress":
+          return materializeCharacterProgress({
+            worldApi: input.worldApi,
             plan,
           });
         case "quest_accept":

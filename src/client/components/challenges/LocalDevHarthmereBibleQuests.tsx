@@ -24,7 +24,7 @@ import {
   harthmereBibleDialogModelForGiver,
   harthmereBibleGiverIdForNpcLabel,
   harthmereBibleHiddenQuestToTrigger,
-  harthmereBibleHiddenQuestInteractionModel,
+  harthmereBibleQuestInteractionModel,
   harthmereBibleOperationPayloadForAction,
   harthmereThaedrynEncounterModel,
   readHarthmereBibleQuestSnapshot,
@@ -210,10 +210,10 @@ export const HarthmereBibleQuestRuntimeController: React.FunctionComponent<{}> =
           : undefined,
       [snapshot, playerPosition?.[0], playerPosition?.[2]]
     );
-    const hiddenInteraction = useMemo(
+    const questInteraction = useMemo(
       () =>
         snapshot
-          ? harthmereBibleHiddenQuestInteractionModel({
+          ? harthmereBibleQuestInteractionModel({
               snapshot,
               playerPosition,
             })
@@ -233,23 +233,28 @@ export const HarthmereBibleQuestRuntimeController: React.FunctionComponent<{}> =
       []
     );
 
-    const performHiddenAction = useCallback(
-      (action: NonNullable<typeof hiddenInteraction>["action"]) => {
+    const performContextualAction = useCallback(
+      (action: NonNullable<typeof questInteraction>["action"]) => {
         if (!action) return;
-        setBusyActionId(`hidden:${action.questId}:${action.objectiveId ?? action.kind}`);
+        setBusyActionId(
+          `contextual:${action.questId}:${action.objectiveId ?? action.kind}`
+        );
         submitHarthmereBibleQuestOperation(
           harthmereBibleOperationPayloadForAction(action)
         )
           .catch((error) =>
-            log.warn("hidden bible quest action rejected", { error, action })
+            log.warn("contextual bible quest action rejected", {
+              error,
+              action,
+            })
           )
           .finally(() => setBusyActionId(undefined));
       },
-      [hiddenInteraction]
+      [questInteraction]
     );
 
-    if (hiddenInteraction?.action) {
-      const action = hiddenInteraction.action;
+    if (questInteraction?.action) {
+      const action = questInteraction.action;
       return (
         <div
           style={{
@@ -266,40 +271,41 @@ export const HarthmereBibleQuestRuntimeController: React.FunctionComponent<{}> =
             fontSize: 12,
             pointerEvents: "auto",
           }}
-          data-testid={`hidden-bible-quest-panel-${hiddenInteraction.questId}`}
+          data-testid={`bible-quest-objective-panel-${questInteraction.questId}`}
         >
           <div style={{ fontWeight: 700, marginBottom: 4 }}>
-            {hiddenInteraction.title}
+            {questInteraction.title}
           </div>
           <div style={{ opacity: 0.85, marginBottom: 8 }}>
-            {hiddenInteraction.objective ?? "The discovery is ready to finish."}
+            {questInteraction.objective ??
+              "The discovery is ready to finish."}
           </div>
           <button
             disabled={
-              !hiddenInteraction.nearObjective || busyActionId !== undefined
+              !questInteraction.nearObjective || busyActionId !== undefined
             }
             title={
-              hiddenInteraction.nearObjective
+              questInteraction.nearObjective
                 ? action.tooltip
                 : "Follow the quest marker and stand near the objective."
             }
-            onClick={() => performHiddenAction(action)}
+            onClick={() => performContextualAction(action)}
             style={{
               width: "100%",
               padding: "7px 9px",
-              background: hiddenInteraction.nearObjective
+              background: questInteraction.nearObjective
                 ? "rgba(190, 242, 100, 0.25)"
                 : "rgba(255,255,255,0.08)",
               border: "1px solid rgba(255,255,255,0.25)",
               borderRadius: 6,
               color: "inherit",
-              cursor: hiddenInteraction.nearObjective
+              cursor: questInteraction.nearObjective
                 ? "pointer"
                 : "not-allowed",
-              opacity: hiddenInteraction.nearObjective ? 1 : 0.55,
+              opacity: questInteraction.nearObjective ? 1 : 0.55,
             }}
           >
-            {hiddenInteraction.nearObjective
+            {questInteraction.nearObjective
               ? action.name
               : "Move closer to the marked objective"}
           </button>

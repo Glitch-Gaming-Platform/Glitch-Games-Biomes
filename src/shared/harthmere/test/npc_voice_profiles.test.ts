@@ -163,6 +163,20 @@ describe("Harthmere Azure NPC voice profiles", () => {
     assert.equal(creature.actorKind, "creature");
   });
 
+  it("casts Huck as a human country voice", () => {
+    const huck = harthmereVoiceProfileForActor({
+      source: "runtime_entity",
+      entityId: 3282862615696657,
+      displayName: "Huck",
+    });
+    assert.equal(huck.inferredGender, "male");
+    assert.equal(huck.actorKind, "humanoid");
+    assert.equal(huck.deliveryStyle, "country");
+    const parsed = parseHarthmereAzureVoiceId(huck.voiceParameterId);
+    assert.equal(parsed?.deliveryStyle, "country");
+    assert.equal(parsed?.gender, "male");
+  });
+
   it("builds escaped SSML using the assigned Azure voice", () => {
     const profile = harthmereVoiceProfileForActor({
       source: "test",

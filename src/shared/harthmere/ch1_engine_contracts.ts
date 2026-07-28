@@ -21,6 +21,15 @@ import {
   CH1_ELSEWHEN_SLOTS,
   isInsideCh1ElsewhenBand,
 } from "@/shared/harthmere/ch1_elsewhen_region";
+import { CH1_ANCHORS } from "@/shared/harthmere/ch1_ids";
+import {
+  CH1_STAGE_DIRECTIONS,
+  ch1ValidateStaging,
+  type Ch1StageDirection,
+} from "@/shared/harthmere/ch1_staging";
+import { ch1ValidateAmbientTriggers } from "@/shared/harthmere/ch1_fragment_triggers";
+import { ch1ValidateCastIdentity } from "@/shared/harthmere/ch1_cast";
+import { ch1ValidateDocuments } from "@/shared/harthmere/ch1_documents";
 
 export const CH1_ENGINE_CONTRACTS_VERSION = 1 as const;
 
@@ -32,8 +41,10 @@ export const CH1_ENGINE_CONTRACTS_VERSION = 1 as const;
  * ECS RULE 1 — Biomes ECS is the sole gameplay authority.
  *
  * Everything Chapter 1 adds that is physical or authored has a native home:
- *   * NPCs (Lou, Vane, Rook, Sorrel, Iris, Teak, AUGUR-9, ...) are real ECS
- *     entities with reserved ids from the 10500 offset band.
+ *   * NPCs (Lou, Vane, Rook, Sorrel, Iris, Teak, ...) are real ECS entities
+ *     with reserved ids from the 10500 offset band. AUGUR-9 is the exception
+ *     and deliberately so: it is the already-seeded snapshot Mucked Robot,
+ *     claimed rather than duplicated (ch1_ids.ts, CH1_PROMOTED_ENTITY_IDS).
  *   * Chapter items are Bikkie items in the native Inventory, moved only by
  *     the signed HarthmereInventoryTransactionEvent.
  *   * Quest progress is native Challenges + trigger tree, not Redis.
@@ -184,6 +195,52 @@ export function ch1ValidateNonCombatants(): string[] {
   return errors;
 }
 
+/**
+ * ANIMA RULE 4 — story staging is a projection, never a move.
+ *
+ * ch1_staging.ts answers "where should this character be in YOUR story". It
+ * must never become an ECS write: Chapter 1 state is per-player and the NPC set
+ * is shared, so relocating Rook's entity when one player finishes Act 3 would
+ * move him for everyone and would take position authority away from Anima's
+ * brain and return-home anchor.
+ *
+ * The checks below are the machine-readable form of that:
+ *   * every character resolves to something in every story state (validated in
+ *     ch1_staging.ts itself);
+ *   * a staged puppet position is a Grove-side anchor, never inside the
+ *     Elsewhen band — a puppet there would be visible to a player who has no
+ *     admission and is standing in the ordinary world;
+ *   * characters who live inside authored dungeon terrain stay on their seeded
+ *     body, because that terrain IS their correct position.
+ */
+export function ch1ValidateStagingAnimaSafety(): string[] {
+  const errors: string[] = [];
+  for (const [key, directions] of Object.entries(CH1_STAGE_DIRECTIONS) as Array<
+    [string, readonly Ch1StageDirection[]]
+  >) {
+    for (const direction of directions) {
+      if (direction.place.kind !== "anchor") continue;
+      const position = CH1_ANCHORS[direction.place.anchor];
+      if (isInsideCh1ElsewhenBand(position)) {
+        errors.push(
+          `${key}: staged at "${direction.place.anchor}", which is inside the ` +
+            `Elsewhen band — a puppet there is visible without admission`
+        );
+      }
+      const anyDirection = direction as unknown as Record<string, unknown>;
+      for (const forbidden of ["publish", "ecsMove", "entityUpdate"]) {
+        if (anyDirection[forbidden] !== undefined) {
+          errors.push(
+            `${key}: stage direction carries "${forbidden}" — staging is a ` +
+              `projection and must never publish an ECS move`
+          );
+        }
+      }
+    }
+  }
+  return errors;
+}
+
 // ---------------------------------------------------------------------------
 // Gaia
 // ---------------------------------------------------------------------------
@@ -286,5 +343,10 @@ export function ch1ValidateEngineContracts(): string[] {
     ...ch1ValidateNonCombatants(),
     ...ch1ValidateElsewhenIsolation(),
     ...ch1ValidateCommitHooks(),
+    ...ch1ValidateStagingAnimaSafety(),
+    ...ch1ValidateStaging(),
+    ...ch1ValidateAmbientTriggers(),
+    ...ch1ValidateCastIdentity(),
+    ...ch1ValidateDocuments(),
   ];
 }

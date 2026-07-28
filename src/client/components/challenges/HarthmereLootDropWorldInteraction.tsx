@@ -122,10 +122,7 @@ async function claimLootDrop(drop: HarthmereInventoryLootDrop) {
       : []),
     ...(Array.isArray(body?.warnings) ? body.warnings : []),
   ].map(String);
-  const rejection = warnings.find(
-    (warning) =>
-      warning.includes("_rejected:") || warning.includes("carry_weight")
-  );
+  const rejection = warnings.find((warning) => warning.includes("_rejected:"));
   if (!response.ok || body?.ok === false || rejection) {
     throw new Error(rejection ?? "loot_claim_failed");
   }
@@ -151,9 +148,6 @@ function installHarthmereLootDropPromptStyles() {
 }
 
 function lootClaimErrorLabel(message: string) {
-  if (message.includes("carry_weight")) {
-    return "Too much carried weight to salvage this.";
-  }
   if (message.includes("invalid_pickup_token")) {
     return "That loot marker expired. Step away and back.";
   }

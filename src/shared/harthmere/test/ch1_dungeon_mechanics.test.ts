@@ -11,6 +11,10 @@ import {
   ch1ConsumeProvisioningResourceFromInventory,
   ch1ProvisioningCarriedFromInventory,
 } from "../ch1_live_gate";
+import {
+  readCh1NativeRunAdmission,
+  writeCh1NativeRunAdmission,
+} from "../ch1_native_run";
 import { CH1_QUESTS } from "../ch1_quests";
 
 describe("Chapter 1 dungeon survival mechanics", () => {
@@ -170,6 +174,30 @@ describe("Chapter 1 dungeon survival mechanics", () => {
     assert.equal(health.hp, 92);
     assert.equal(first.vitals.stamina, 90);
     assert.equal(second.vitals.stamina, 90);
+  });
+
+  it("keeps signed portal admission when a dungeon consequence is applied", () => {
+    const triggerState = TriggerState.create({ by_root: new Map() });
+    const admission = {
+      dungeonId: "ch1_dungeon_desert",
+      runId: "run-1",
+      partyId: "solo:1",
+    };
+    writeCh1NativeRunAdmission(triggerState, admission);
+
+    applyCh1DungeonNativeEffectForTest({
+      triggerState,
+      health: { hp: 100, maxHp: 100 },
+      effect: {
+        effectKey: "ch1_dungeon_desert/d1_dune_threshold",
+        staminaDelta: -8,
+        healthDamage: 0,
+        resourceConsumes: { water: 1 },
+        outcome: "test",
+      },
+    });
+
+    assert.deepEqual(readCh1NativeRunAdmission(triggerState), admission);
   });
 
   it("consumes heterogeneous real inventory stacks deterministically", () => {

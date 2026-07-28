@@ -10,6 +10,7 @@ import {
   requestCutsceneById,
 } from "@/client/game/cutscene/cutscene_service";
 import { subscribeCutscenePlayback } from "@/client/game/cutscene/playback_events";
+import { defaultHarthmereLiveFetch } from "@/client/components/harthmere_live_fetch";
 import { requestCutsceneVideoById } from "@/client/game/cutscene/video_capture_service";
 import type { ClientContext } from "@/client/game/context";
 import {
@@ -32,11 +33,14 @@ const HARTHMERE_SCENE_FACTORIES = new Map<string, () => unknown>([
 let chapter1HooksRegistered = false;
 
 async function syncChapter1StoryState(): Promise<void> {
-  const response = await fetch("/api/harthmere/chapter1_story", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ action: "sync" }),
-  });
+  const response = await defaultHarthmereLiveFetch(
+    "/api/harthmere/chapter1_story",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "sync" }),
+    }
+  );
   if (!response.ok) {
     throw new Error(`Chapter 1 story sync failed (${response.status})`);
   }
@@ -117,7 +121,7 @@ async function persistLocalCutsceneVideo(
   if (window.__biomesPersistedCutsceneVideoKey === key) {
     return;
   }
-  const response = await fetch("/api/dev/cutscene_video", {
+  const response = await defaultHarthmereLiveFetch("/api/dev/cutscene_video", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({

@@ -39,7 +39,7 @@ export interface HarthmereObjectInteraction {
 // capabilities; route markers are navigation data unless they own a concrete
 // sign/post/board component or authored object label.
 const HARTHMERE_NON_LIVING_OBJECT_RE =
-  /\b(crates?|chests?|box(?:es)?|barrels?|containers?|caches|satchels?|mailbags?|toolbags?|bags?|baskets?|bins?|lockers?|wardrobes?|cabinets?|shelves|shelf|workbenches|workbench|anvils?|tools?|boards?|signs?|posts?|markers?|inscriptions?|plates?|ledgers?|books?|notes?|carts?|wagons?|lockboxes|strongboxes|stashes|footlockers?|stakes?|stones?|dumm(?:y|ies)|rings?|ropes?|firefl(?:y|ies)|flags?|pots?|cook\s+pots?|cooking\s+pots?|soup\s+pots?|stew\s+pots?|kettles?|fences?|boundar(?:y|ies)|tables?|desks?|mirrors?|moss|towers?|platforms?|offices?|chapels?|materials?|berries|patch(?:es)?|plots?|branches?|softwood|harvests?|remains?|carcasses?|sounders?|stretch|spots?|overlooks?|corners?|ovens?|stoves?|beds?|stands?|cookpots?|campfires?|camp\s+fires?|firepits?|fire\s+pits?|fire\s+rings?|hearths?|cooking\s+fires?|pails?|mailboxes?|consoles?|terminals?|grates?|pillars?|candles?|altars?|shrines?|statues?|banners?|lamps?|braziers?|fountains?|wells?|gates?|doors?)\b/i;
+  /\b(crates?|chests?|box(?:es)?|barrels?|containers?|caches|satchels?|mailbags?|toolbags?|bags?|baskets?|bins?|lockers?|wardrobes?|cabinets?|shelves|shelf|workbenches|workbench|anvils?|tools?|boards?|signs?|posts?|markers?|inscriptions?|plates?|ledgers?|books?|notes?|letters?|orders?|strips?|feed|carts?|wagons?|lockboxes|strongboxes|stashes|footlockers?|stakes?|stones?|rubbings?|dumm(?:y|ies)|rings?|ropes?|firefl(?:y|ies)|flags?|pots?|cook\s+pots?|cooking\s+pots?|soup\s+pots?|stew\s+pots?|kettles?|fences?|boundar(?:y|ies)|tables?|desks?|mirrors?|moss|towers?|platforms?|offices?|chapels?|materials?|berries|patch(?:es)?|plots?|branches?|softwood|harvests?|remains?|carcasses?|sounders?|stretch|spots?|overlooks?|corners?|ovens?|stoves?|beds?|stands?|cookpots?|campfires?|camp\s+fires?|firepits?|fire\s+pits?|fire\s+rings?|hearths?|cooking\s+fires?|pails?|mailboxes?|consoles?|terminals?|grates?|pillars?|candles?|altars?|shrines?|statues?|banners?|lamps?|braziers?|fountains?|wells?|gates?|doors?)\b/i;
 
 const HARTHMERE_CONTAINER_OBJECT_RE =
   /\b(crates?|chests?|box(?:es)?|barrels?|containers?|caches|satchels?|mailbags?|toolbags?|bags?|baskets?|bins?|lockers?|wardrobes?|cabinets?|lockboxes|strongboxes|stashes|footlockers?)\b/i;
@@ -258,6 +258,15 @@ const HARTHMERE_AUTHORED_OBJECT_INTERACTIONS: ReadonlyMap<
       "Gather",
       "Gathered"
     ),
+    "billy's lunch pail": objectInteraction("gather", "Pick Up", "Picked up"),
+    "coop's dropped feed": objectInteraction("gather", "Pick Up", "Picked up"),
+    "jackie's sealed letter": objectInteraction(
+      "gather",
+      "Pick Up",
+      "Picked up"
+    ),
+    "luis's bolt order": objectInteraction("gather", "Pick Up", "Picked up"),
+    "sil's tuning strip": objectInteraction("gather", "Pick Up", "Picked up"),
     "mel's workbench": objectInteraction(
       "craft",
       "Craft",
@@ -308,9 +317,9 @@ const HARTHMERE_AUTHORED_OBJECT_INTERACTIONS: ReadonlyMap<
       "Practiced at"
     ),
     "rin's forage basket": objectInteraction(
-      "open_container",
-      "Open Container",
-      "Opened"
+      "gather",
+      "Gather Mushrooms",
+      "Gathered from"
     ),
     "road jump stretch": objectInteraction(
       "practice",
@@ -439,18 +448,20 @@ export function harthmereObjectInteractionForLabel(input: {
   if (!isHarthmereNonLivingObjectLabel(input)) {
     return undefined;
   }
+  // Exact authored semantics win over the broad shape classifier. This lets a
+  // quest basket be a harvest target while ordinary baskets remain containers.
+  const authoredInteraction = HARTHMERE_AUTHORED_OBJECT_INTERACTIONS.get(
+    normalizedLabel(input.label)
+  );
+  if (authoredInteraction) {
+    return authoredInteraction;
+  }
   if (isHarthmereContainerObjectLabel(input)) {
     return {
       kind: "open_container",
       title: "Open Container",
       toastVerb: "Opened",
     };
-  }
-  const authoredInteraction = HARTHMERE_AUTHORED_OBJECT_INTERACTIONS.get(
-    normalizedLabel(input.label)
-  );
-  if (authoredInteraction) {
-    return authoredInteraction;
   }
   if (HARTHMERE_DOOR_OBJECT_RE.test(text)) {
     return { kind: "open_door", title: "Open Door", toastVerb: "Opened" };

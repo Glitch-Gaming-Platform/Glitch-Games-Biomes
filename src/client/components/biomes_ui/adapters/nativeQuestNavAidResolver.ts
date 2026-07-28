@@ -33,6 +33,14 @@ export interface NativeQuestNavAidResolverDeps {
   questGiverBeamPosition?: (
     npcTypeId: BiomesId
   ) => readonly [number, number, number] | undefined;
+  /** Position of a live NPC instance already synchronized into the client. */
+  npcTypePosition?: (
+    npcTypeId: BiomesId
+  ) => readonly [number, number, number] | undefined;
+  /** Final honest fallback for objectives that can be completed anywhere. */
+  fallbackPosition?: () =>
+    | readonly [number, number, number]
+    | undefined;
 }
 
 function finitePosition(
@@ -78,6 +86,12 @@ export function nativeQuestNavAidPositionFromAidsForTest(
   if (!input.questAnchor) {
     return undefined;
   }
+  const authoredAnchor =
+    input.navigationAid?.kind === "position"
+      ? finitePosition((input.navigationAid as { pos?: unknown }).pos)
+      : undefined;
+  if (authoredAnchor) return authoredAnchor;
+
   const npcTypeId =
     (input.navigationAid?.kind === "npc"
       ? input.navigationAid.npcTypeId
@@ -86,10 +100,36 @@ export function nativeQuestNavAidPositionFromAidsForTest(
       (quest) => Number(quest.biscuit.id) === Number(input.questId)
     )?.biscuit.questGiver;
   if (npcTypeId !== undefined) {
+    // Most original-snapshot NPC biscuits do not carry a quest-giver beam
+    // position. Prefer the synchronized ECS instance before consulting that
+    // optional metadata; this is what fixes Busted's Huck crafting anchor.
+    const liveNpc = finitePosition(deps.npcTypePosition?.(npcTypeId));
+    if (liveNpc) return liveNpc;
     const beam = finitePosition(deps.questGiverBeamPosition?.(npcTypeId));
     if (beam) return beam;
   }
-  return undefined;
+  return finitePosition(deps.fallbackPosition?.());
+}
+
+/**
+ * `MapManager.localNavigationAids` is mutated in place. React therefore sees
+ * the same Map identity after an async NPC/entity position resolves. This
+ * compact value changes with the actual marker data and lets the map adapter
+ * rebuild once instead of requiring a reload.
+ */
+export function nativeQuestNavigationAidsRevisionForTest(
+  navigationAids: ReadonlyMap<number, ClientNavigationAid>
+): string {
+  return [...navigationAids.entries()]
+    .map(([id, aid]) =>
+      [
+        id,
+        aid.challengeId ?? "",
+        aid.target.kind,
+        ...aid.pos.map((value) => Number(value).toFixed(3)),
+      ].join(":")
+    )
+    .join("|");
 }
 
 export function buildNativeQuestNavAidResolver(
