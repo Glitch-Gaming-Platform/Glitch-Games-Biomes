@@ -5,11 +5,13 @@ import {
   harthmereNativeQuestId,
   harthmereNativeQuestStepId,
 } from "@/shared/harthmere/harthmere_native_quests";
+import { bootstrapGlobalSecrets } from "@/server/shared/secrets";
 
 function questMaterializationFixture(actorId: number) {
   let challenges = Challenges.create();
   let triggerState = TriggerState.create();
   const receipts = new Map<string, string>();
+  const published: any[] = [];
   const actor = {
     challenges: () => challenges,
     triggerState: () => triggerState,
@@ -40,11 +42,19 @@ function questMaterializationFixture(actorId: number) {
   return {
     state: () => ({ challenges, triggerState }),
     worldApi,
+    logicApi: {
+      publish: async (event: any) => {
+        published.push(event);
+      },
+    },
+    published: () => published,
     redisPrimary,
   };
 }
 
 describe("native hidden quest materialization", () => {
+  before(async () => bootstrapGlobalSecrets());
+
   it("starts a server-approved giver-less quest without a fake NPC", async () => {
     const actorId = 8290811499731977 as any;
     const questId = "harthmere_sq_041_the_doorway_that_wasnt";
@@ -100,7 +110,7 @@ describe("native hidden quest materialization", () => {
     assert.ok(fixture.state().challenges.in_progress.has(challengeId));
   });
 
-  it("atomically records every Bible objective and completes the challenge", async () => {
+  it("publishes every Bible objective through the signed native path", async () => {
     const actorId = 8290811499731979 as any;
     const questId = "bellbound_q01_cracks_in_bridge";
     const challengeId = harthmereNativeQuestId("bible", questId)!;
@@ -115,6 +125,7 @@ describe("native hidden quest materialization", () => {
     await materializeHarthmereNativeEcsPlans({
       redisPrimary: fixture.redisPrimary,
       worldApi: fixture.worldApi,
+      logicApi: fixture.logicApi,
       idGenerator: {} as any,
       plans: objectiveIds.map((objectiveId) => ({
         kind: "quest_progress" as const,
@@ -127,11 +138,27 @@ describe("native hidden quest materialization", () => {
       })),
     });
 
-    const { challenges, triggerState } = fixture.state();
-    assert.ok(challenges.complete.has(challengeId));
-    assert.ok(!challenges.in_progress.has(challengeId));
-    assert.ok(challenges.finished_at.has(challengeId));
-    assert.ok(!triggerState.by_root.has(challengeId));
+    const published = fixture.published();
+    assert.equal(published.length, objectiveIds.length);
+    assert.deepEqual(
+      published.map((entry) => String(entry.event.challenge_id)),
+      objectiveIds.map(() => String(challengeId))
+    );
+    assert.deepEqual(
+      published.map((entry) => String(entry.event.step_id)),
+      objectiveIds.map((objectiveId) =>
+        String(harthmereNativeQuestStepId("bible", questId, objectiveId))
+      )
+    );
+    assert(
+      published.every(
+        (entry) =>
+          entry.event.kind === "harthmereQuestProgressEvent" &&
+          typeof entry.event.authorization === "string" &&
+          entry.event.authorization.length > 0
+      ),
+      "every Bible objective must carry a signed progress authorization"
+    );
   });
 
   it("records a Grove objective and repairs missing accept state", async () => {

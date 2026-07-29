@@ -6,6 +6,7 @@
 
 import type { BiomesId } from "@/shared/ids";
 import type { Vec3 } from "@/shared/math/types";
+import { groveLandmarkWorldPosition } from "@/shared/harthmere/grove/grove_waypoints";
 import {
   SNAPSHOT_GROVE_LANDMARKS,
   SNAPSHOT_GROVE_NPCS,
@@ -806,7 +807,7 @@ export function snapshotMissionTestCases(): SnapshotMissionTestCase[] {
         trigger: challenge.trigger,
         markerId: challenge.markerId,
         expectedMarkerLabel: marker.label,
-        expectedMarkerPosition: marker.position,
+        expectedMarkerPosition: groveLandmarkWorldPosition(marker),
         expectedMarkerAppears: true,
         expectedMarkerRemovesOnComplete: true,
         expectedStateBefore: index === 0 ? "accepted" : "active",
@@ -838,7 +839,7 @@ export function snapshotMissionTestCases(): SnapshotMissionTestCase[] {
         trigger: triggerForGroveQuest(quest, stepIndex),
         markerId: marker.id,
         expectedMarkerLabel: marker.label,
-        expectedMarkerPosition: marker.position,
+        expectedMarkerPosition: groveLandmarkWorldPosition(marker),
         expectedMarkerAppears: true,
         expectedMarkerRemovesOnComplete: true,
         expectedStateBefore: stepIndex === 0 ? "accepted" : "active",

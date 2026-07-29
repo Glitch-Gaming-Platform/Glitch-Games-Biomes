@@ -57,6 +57,7 @@ export interface HarthmereWorldObjectInspectable {
   position: HarthmereWorldObjectVec3;
   interaction: HarthmereObjectInteraction;
   isContainer: boolean;
+  isPriority: boolean;
   score: number;
 }
 
@@ -79,6 +80,15 @@ export interface SelectHarthmereWorldObjectInspectableInput {
   minViewDot?: number;
   closeMinViewDot?: number;
   maxVerticalDistance?: number;
+  /**
+   * Exact live ECS candidates whose authored anchor can sit behind their own
+   * grouped terrain. They keep the caller's normal facing gate, but may use a
+   * full interaction radius instead of a shallow cursor-hit depth.
+   */
+  priorityCandidateIds?: ReadonlySet<string>;
+  priorityRadius?: number;
+  /** Active quest targets win over unrelated nearby props once both pass range/facing. */
+  preferredCandidateIds?: ReadonlySet<string>;
 }
 
 export const HARTHMERE_WORLD_OBJECT_ACTIVE_PIN_MARKER_PREFIX =
@@ -198,7 +208,8 @@ export function selectNearestHarthmereWorldObjectInspectable(
       continue;
     }
     const isContainer = isHarthmereContainerObjectLabel(labelInput);
-    const score = harthmereWorldObjectCandidateScore({
+    const isPriority = input.priorityCandidateIds?.has(candidate.id) ?? false;
+    const baseScore = harthmereWorldObjectCandidateScore({
       playerPosition: input.playerPosition,
       facingView: input.facingView,
       objectPosition: candidate.position,
@@ -209,6 +220,8 @@ export function selectNearestHarthmereWorldObjectInspectable(
       // range check before opening anything.
       radius: isContainer
         ? input.containerRadius ?? input.radius
+        : isPriority
+        ? input.priorityRadius ?? input.radius
         : input.radius,
       closeRadius: input.closeRadius,
       minViewDot: input.minViewDot,
@@ -226,9 +239,11 @@ export function selectNearestHarthmereWorldObjectInspectable(
           ? HARTHMERE_CONTAINER_INSPECT_MAX_VERTICAL_DISTANCE
           : undefined),
     });
-    if (score === undefined) {
+    if (baseScore === undefined) {
       continue;
     }
+    const score =
+      baseScore - (input.preferredCandidateIds?.has(candidate.id) ? 1_000 : 0);
     if (best && score >= best.score) {
       continue;
     }
@@ -244,6 +259,7 @@ export function selectNearestHarthmereWorldObjectInspectable(
       position: candidate.position,
       interaction,
       isContainer,
+      isPriority,
       score,
     };
   }

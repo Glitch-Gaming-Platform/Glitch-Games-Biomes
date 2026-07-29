@@ -5,6 +5,7 @@ import { getUserOrCreateIfNotExists } from "@/server/web/db/users";
 import { usernameOrIdToUser } from "@/server/web/util/admin";
 import { biomesApiHandler } from "@/server/web/util/api_middleware";
 import { editWorldWithRetry } from "@/server/shared/world/edit_retry";
+import { HybridWorldApi } from "@/server/shared/world/hfc/hybrid";
 import { UserRoles } from "@/shared/ecs/gen/components";
 import { LabelChangeEvent, PlayerInitEvent } from "@/shared/ecs/gen/events";
 import { APIError } from "@/shared/api/errors";
@@ -56,6 +57,24 @@ function requireNativeEcsE2EAdmin(
   ) {
     throw new APIError("unauthorized", "Native ECS E2E access is disabled.");
   }
+}
+
+export function harthmereNativeE2EHfcPlayerCleanup(userId: BiomesId) {
+  return {
+    kind: "update" as const,
+    entity: {
+      id: userId,
+      // These five components are the complete HFC-owned set. Snapshot id
+      // reuse can leave an old NPC's pose/brain here even after the regular
+      // entity has been converted to a player; HybridWorldApi merges that stale
+      // secondary row over the player's primary components on every read.
+      position: null,
+      orientation: null,
+      rigid_body: null,
+      emote: null,
+      npc_state: null,
+    },
+  };
 }
 
 export const zHarthmereVisualTestAuthResponse = z.object({
@@ -118,7 +137,25 @@ export default biomesApiHandler(
         const roles = new Set(player.userRoles()?.roles ?? []);
         roles.add("admin");
         player.setUserRoles(UserRoles.create({ roles }));
+        // A restored snapshot can recycle a disposable NPC id for this new
+        // authenticated test user. Remove every NPC-only regular component so
+        // Anima cannot keep treating the browser actor as that old NPC.
+        player.clearNpcMetadata();
+        player.clearNpcState();
+        player.clearDefaultDialog();
+        player.clearQuestGiver();
+        player.clearExpires();
       });
+      if (worldApi instanceof HybridWorldApi) {
+        // HybridWorldApi writes ordinary admin edits to primary Redis only;
+        // high-frequency position/npc_state live in its HFC side store. Clear
+        // the recycled row there explicitly, after which the player's normal
+        // MoveEvent recreates a clean HFC pose. This is test-gated and never
+        // runs for production login traffic.
+        await worldApi.hfc.apply({
+          changes: [harthmereNativeE2EHfcPlayerCleanup(user.id)],
+        });
+      }
     }
     await logicApi.publish(
       new GameEvent(user.id, new PlayerInitEvent({ id: user.id })),

@@ -32,12 +32,15 @@ import {
   SNAPSHOT_HARTHMERE_HOSTILE_SPAWNS,
   isAuthoredPointInSnapshotSafeZone,
 } from "@/shared/harthmere/snapshot_runtime_rules";
-import { HARTHMERE_QUEST_CATALOG } from "@/shared/harthmere/quest_compendium";
+import { BIBLE_QUEST_CATALOG as HARTHMERE_QUEST_CATALOG } from "@/shared/harthmere/bible/bible_quest_catalog";
 import {
   HARTHMERE_ESCORT_COMPANION_ENTITY_ID_BASE,
   HARTHMERE_ESCORT_COMPANION_ENTITY_ID_SPAN,
 } from "@/shared/harthmere/mmo_jobs_board_authority";
-import { getHarthmereQuestResolvedWaypoint } from "@/shared/harthmere/quest_runtime";
+import {
+  bibleQuestWorldWaypoint,
+  bibleStepWorldWaypoint,
+} from "@/shared/harthmere/bible/bible_waypoints";
 import {
   SNAPSHOT_GROVE_NPC_FEET_Y,
   snapshotGroveGroundedPosition,
@@ -209,43 +212,49 @@ describe("Harthmere additive world extension", () => {
     let checked = 0;
     for (const quest of HARTHMERE_QUEST_CATALOG) {
       const targets = [
-        { objective: undefined, source: quest.location },
-        ...(quest.objectives ?? []).map((objective: any) => ({
-          objective,
-          source: objective.location,
+        { step: undefined, authored: quest.authoredWaypoint },
+        ...quest.steps.map((step) => ({
+          step,
+          authored: step.authoredWaypoint,
         })),
       ];
-      for (const { objective, source } of targets) {
-        if (!source?.waypoint) continue;
-        const resolved = getHarthmereQuestResolvedWaypoint(quest.id, objective);
-        assert.ok(resolved, `${quest.id}:${objective?.id ?? "location"}`);
-        if (!resolved) throw new Error("asserted quest waypoint was missing");
-        const authoredX = Number(source.waypoint[0]);
-        const authoredY = Number(source.waypoint[1]);
-        const authoredZ = Number(source.waypoint[2]);
+      for (const { step, authored } of targets) {
+        // Q12 resolves to the canonical Thaedryn arena anchor rather than its
+        // authored point — the catalog authored three conflicting Wyrm's Bed
+        // locations and one of them is ~113 blocks below the arena the
+        // renderer draws. That override is asserted in bible_waypoints.test.ts.
+        if (quest.id === "bellbound_q12_thaedryn_bellbound") continue;
+        const resolved = step
+          ? bibleStepWorldWaypoint(quest, step)
+          : bibleQuestWorldWaypoint(quest);
+        assert.ok(resolved, `${quest.id}:${step?.id ?? "location"}`);
+        const authoredX = Number(authored[0]);
+        const authoredY = Number(authored[1]);
+        const authoredZ = Number(authored[2]);
         assert.equal(resolved[0], authoredX + HARTHMERE_ADDITIVE_TOWN_OFFSET_X);
         assert.equal(resolved[2], authoredZ);
         assert.equal(
           resolved[1],
           authoredY === 0 ? HARTHMERE_EXTENSION_FEET_Y : authoredY,
-          `${quest.id}:${objective?.id ?? "location"} Y`
+          `${quest.id}:${step?.id ?? "location"} Y`
         );
         checked += 1;
       }
     }
-    assert.equal(checked, 425);
+    // 85 quest markers + 340 steps, less Q12's 1 marker + 4 steps.
+    assert.equal(checked, 420);
   });
 
   it("keeps every negative-Y quest anchor inside the seeded Bellbinder descent", () => {
     const negativeQuestPositions = new Set<string>();
     for (const quest of HARTHMERE_QUEST_CATALOG) {
       const locations = [
-        quest.location,
-        ...(quest.objectives ?? []).map((objective: any) => objective.location),
+        quest.authoredWaypoint,
+        ...quest.steps.map((step) => step.authoredWaypoint),
       ];
-      for (const location of locations) {
-        if (location?.waypoint && Number(location.waypoint[1]) < 0) {
-          negativeQuestPositions.add(location.waypoint.map(Number).join(","));
+      for (const waypoint of locations) {
+        if (Number(waypoint[1]) < 0) {
+          negativeQuestPositions.add(waypoint.map(Number).join(","));
         }
       }
     }

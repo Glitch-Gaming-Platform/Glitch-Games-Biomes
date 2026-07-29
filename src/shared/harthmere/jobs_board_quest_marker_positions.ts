@@ -25,6 +25,7 @@ import {
 } from "@/shared/harthmere/jobs_board_muck_bounty_targets";
 import { resolveHarthmereProductionMarkerPosition } from "@/shared/harthmere/production_terrain_placement_map";
 import { harthmereGatheringAuthorityNode } from "@/shared/harthmere/gathering_node_authority";
+import { groveLandmarkWorldPosition } from "@/shared/harthmere/grove/grove_waypoints";
 import {
   SNAPSHOT_GROVE_LANDMARKS,
   type SnapshotGroveLandmark,
@@ -59,7 +60,10 @@ function markerFromSnapshotLandmark(
   return {
     markerId: landmark.id,
     label: landmark.label,
-    position: [...landmark.position] as Vec3,
+    // RESOLVED, not raw. 15 Grove-area landmarks are still authored at the
+    // retired Y=54 while the terrain the browser loads is at Y=71; a raw read
+    // puts the jobs-board pin 17 blocks under the courtyard.
+    position: groveLandmarkWorldPosition(landmark),
     source: "snapshot_landmark",
   };
 }

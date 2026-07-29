@@ -6,6 +6,8 @@ Every number below is measured in this checkout, not estimated.
 
 ```sh
 scripts/harthmere/t.sh ch1        # 196 tests, 4.6 s   (was 8.1 s)
+scripts/harthmere/t.sh bible      # 105 tests, 2.9 s   — Bellbound Dragon catalog
+scripts/harthmere/t.sh bible:e2e  # all 85 quests / 340 steps, ~10 ms
 scripts/harthmere/t.sh quests     # focused quest/container contracts
 scripts/harthmere/t.sh ui         #   9 tests, 1.1 s
 scripts/harthmere/t.sh gate       # quest + UI + client config + contract + types
@@ -433,6 +435,22 @@ count increasing and the container remains running, continue the same bounded
 readiness poll; do not restart a healthy bootstrap or rebuild the image. The
 post-ready browser gate still decides whether the stack is usable.
 
+Do not create a second full-snapshot Redis/app pair merely to isolate a long
+catalog on a memory-constrained workstation. The July 28 Bible attempt loaded
+the 335k-entity snapshot twice and the isolated Redis was OOM-killed with exit
+137 during final Sync/Trigger indexing. Reuse the already-ready production
+stack, cache unrelated read-only HUD polls in the focused browser harness, and
+retain completed row IDs instead. A second stack is only cheaper when memory
+headroom has been measured before importing the snapshot.
+
+NPC catalog fixtures must wait for `.npc-quest-dialog-container` to mount
+before dispatching a snapshot-refresh event. Setting `/game_modal` schedules
+React work but does not prove that the talk hook has registered its listener;
+refreshing immediately can lose the event and falsely report a missing offer.
+After refresh, prove the target offer against the returned authoritative
+snapshot before waiting on its rendered button. This separates server
+activation defects from React timing failures in seconds.
+
 Start focused Web only after Logic RPC is listening. On the July 26 warm-stack
 repair, Logic still had to index 335,834 entities; opening Web earlier cached a
 failed Logic channel and made the first browser page wait several additional
@@ -840,6 +858,39 @@ from consuming the whole catalog timeout budget. A wrapper loop must propagate
 SIGINT instead of treating exit 130 as an ordinary failed group and starting
 the next batch.
 
+#### Do the catalog walk at tier 1 and 2 first
+
+Most of what those ten browser groups used to discover is now decidable from
+authored data. Run these before opening a browser:
+
+```sh
+scripts/harthmere/t.sh bible        # 105 tests, ~2.9 s wall
+scripts/harthmere/t.sh bible:e2e    # all 85 quests, 340 steps, ~10 ms
+scripts/harthmere/t.sh types:bible  # ~13-15 s; t.sh bible does NOT typecheck
+```
+
+`bible_waypoints.test.ts` asserts that **no** shipped waypoint resolves to
+`Y=0`, across all 340. That is the specific defect this section was written
+about, and it now fails in about a second instead of costing three minutes per
+affected row. `bible_e2e_playthrough.test.ts` additionally proves every quest
+is reachable, every prerequisite chain terminates, every objective has an
+addressable native step id, and the Q1–Q12 spine cannot be played out of order.
+
+The browser tier's remaining job is the physical interactions those cannot
+cover: prompts, dialogue buttons, real movement, and authoritative mutation.
+Seed straight to the row instead of replaying:
+
+```sh
+node scripts/harthmere/seed-bible-quest-step.cjs <questId> [stepId]
+node scripts/harthmere/seed-bible-quest-step.cjs --arc main   # list with grounded coords
+```
+
+Because Bible progress is now native `Challenges`/`TriggerState`, a checkpoint
+is two integers per completed leaf — the seeder emits them, and its
+`targetWorldPosition` is already grounded, so the strand described above cannot
+be reintroduced by the fixture. It is print-only by design: review, then POST
+it through the live-mode writer. A GET must never mutate state.
+
 ### 4.13 Test Recipes-key ownership and location-less markers as one UI seam
 
 The July 26 production HAR made the `R` failure deterministic: immediately
@@ -912,6 +963,25 @@ map/minimap destination with six live Mossy Mucklings outside protected areas,
 rejects an unrelated NPC type, kills both restored production Muckling families,
 and audits quest plus combat XP. It deliberately does not replay the ten
 already-green objectives after the hunt.
+
+For a grouped Mucker-statue inscription repair, skip the recipe, hunt, later
+NPC handoffs, race, and reward crate. The focused checkpoint seeds only the six
+completed predecessor leaves, then requires the real four canonical snapshot
+plates to expose `F Read`, complete through their authored dialogue buttons,
+and advance the exact native trigger ids:
+
+```sh
+HARTHMERE_E2E_ROBOT_STORY_EXHAUSTIVE=1 \
+HARTHMERE_E2E_ROBOT_STORY_CHAPTER_ID=817959262145055 \
+HARTHMERE_E2E_GET_MUCK_OUT_INSCRIPTIONS_ONLY=1 \
+  node scripts/harthmere/test-harthmere-native-ecs-roundtrip-e2e.cjs
+```
+
+Do not substitute a nearby duplicate inscription or synthetic NPC target in
+this gate. The production defect is specifically that each canonical plate is
+embedded in parent statue geometry, so its own group can be the nearer cursor
+hit and occluder. The browser proof must target source ids `6372088708496489`,
+`3581242026396485`, `7136298330826795`, and `6644971495189655`.
 
 The May 2026 quest biscuit exact-matches the legacy Mossy Muckling type, while
 the restored world visibly spawns West Breach and Gravewood Pale Mucklings.
@@ -1066,6 +1136,9 @@ cost a full stack boot plus a manual walk to discover.
 | `scripts/harthmere/e2e-jump.cjs`                       | Browser deep links, Cloud Save URL, seeds, readiness |
 | `scripts/harthmere/seed-get-muck-out-browser-step.cjs` | Focus Get the Muck Out recipe/hunt steps             |
 | `tsconfig.ch1check.json`                               | Fast scoped typecheck (~3 s)                         |
+| `tsconfig.biblecheck.json`                             | Bible catalog typecheck (~13-15 s)                   |
+| `scripts/harthmere/seed-bible-quest-step.cjs`          | Jump to any Bible objective, grounded coords         |
+| `docs/harthmere/BIBLE_TO_CH1_MIGRATION.md`             | Why the Bible catalog is shaped like Chapter 1       |
 | `tsconfig.ch1renderer.json`                            | Client-graph typecheck (slow, incremental)           |
 | `NATIVE_ECS_BROWSER_E2E_RUNBOOK.md`                    | The release gate (unchanged)                         |
 | `CHAPTER_1_E2E_RUNBOOK.md`                             | Chapter 1 browser checklist                          |

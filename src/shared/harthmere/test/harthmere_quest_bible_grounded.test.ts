@@ -22,10 +22,14 @@
 // This file is referenced from the test runner via the harthmere
 // bible coverage current harness.
 
+import assert from "assert";
+import { harthmereBibleRewardItemDefinition } from "@/shared/harthmere/bible_quest_live_authority";
 import {
-  HARTHMERE_QUEST_CATALOG,
-  validateHarthmereQuestCatalog,
-} from "@/shared/harthmere/quest_compendium";
+  bibleQuestGiverId,
+  bibleQuestPrerequisiteId,
+} from "@/shared/harthmere/bible/bible_quest_schema";
+import { BIBLE_QUEST_CATALOG as HARTHMERE_QUEST_CATALOG } from "@/shared/harthmere/bible/bible_quest_catalog";
+import { validateHarthmereQuestChain } from "@/shared/harthmere/harthmere_quest_chain_validator";
 import { HARTHMERE_NAMED_NPCS } from "@/shared/harthmere/npc_compendium";
 import {
   HARTHMERE_ALL_NPCS,
@@ -68,6 +72,7 @@ const NO_GIVER_REQUIRED_CODES: ReadonlySet<string> = new Set<string>([
   "Q9",     // auto-trigger: triggered after Q8 (bible II.7)
   "Q10",    // auto-trigger: triggered after Q9 (bible II.7)
   "Q2.5",   // auto-injected on well listen
+  "Q12",    // giver is the Thaedryn encounter entity, not an NPC
   "SQ-040", // hidden — triggered by stormy-cemetery dig
   "SQ-041", // hidden — twenty-third-look door
   "SQ-042", // hidden — third storm at the Kettle
@@ -263,7 +268,7 @@ export function validateHarthmereQuestBibleGrounded(): HarthmereQuestBibleGround
 
   // Contract 1 + 2: dialogue lines.
   for (const quest of HARTHMERE_QUEST_CATALOG) {
-    const dialogue = quest.dialogue ?? {};
+    const dialogue: Record<string, string> = quest.dialogue;
     for (const field of ["offer", "active", "ready", "complete", "fail"] as const) {
       const text = dialogue[field];
       if (typeof text !== "string" || text.length === 0) {
@@ -283,7 +288,10 @@ export function validateHarthmereQuestBibleGrounded(): HarthmereQuestBibleGround
   // Contract 3: givers.
   for (const quest of HARTHMERE_QUEST_CATALOG) {
     if (NO_GIVER_REQUIRED_CODES.has(quest.code)) continue;
-    const giverId: string | undefined = quest.giverId;
+    // giverId moved onto `start` and is now orthogonal to the prerequisite:
+    // 9 gated quests are still NPC-offered, 4 auto-start. Reading it via the
+    // accessor is what keeps those 9 from looking giver-less.
+    const giverId: string | undefined = bibleQuestGiverId(quest);
     if (!giverId) {
       unresolvedGivers.push(`${quest.code}: missing giverId`);
       continue;
@@ -296,7 +304,8 @@ export function validateHarthmereQuestBibleGrounded(): HarthmereQuestBibleGround
 
   // Contract 4: prerequisites.
   for (const quest of HARTHMERE_QUEST_CATALOG) {
-    const prereqs: ReadonlyArray<string> = quest.activeRules?.prerequisiteQuestIds ?? [];
+    const prereq = bibleQuestPrerequisiteId(quest);
+    const prereqs: ReadonlyArray<string> = prereq ? [prereq] : [];
     for (const prereq of prereqs) {
       if (!allQuestIds.has(prereq)) {
         unresolvedPrereqs.push(`${quest.code}: prerequisite '${prereq}' does not exist`);
@@ -305,12 +314,28 @@ export function validateHarthmereQuestBibleGrounded(): HarthmereQuestBibleGround
   }
 
   // Contract 5: reward items.
+  //
+  // REWRITTEN during the Bible migration. This used to check each reward id
+  // against a hand-maintained `QUEST_BOUND_REWARD_SYMBOLS` allowlist — which
+  // had drifted badly, because the whole file was wrapped in a jest guard that
+  // never fired under mocha and so nothing enforced it.
+  //
+  // The allowlist is also the wrong contract now. The catalog's reward ids
+  // deliberately exist in no pre-existing item catalogue; that is exactly why
+  // `harthmereBibleRewardItemDefinition` exists, and why
+  // `harthmere_native_bikkie_items.ts` registers a definition for EVERY
+  // `rewards.items` entry before the Bikkie overlay. So the real contract is
+  // "every reward id produces a usable definition", which is structural and
+  // cannot drift, rather than "every reward id was remembered in a list".
   for (const quest of HARTHMERE_QUEST_CATALOG) {
-    const items: ReadonlyArray<string> = quest.rewards?.items ?? [];
-    for (const symbol of items) {
-      if (!knownRewardSymbols.has(symbol)) {
-        unresolvedRewardItems.push(`${quest.code}: reward item '${symbol}' unresolved`);
+    for (const symbol of quest.rewards.items) {
+      const definition = harthmereBibleRewardItemDefinition(symbol);
+      if (!definition.itemId || !definition.displayName) {
+        unresolvedRewardItems.push(
+          `${quest.code}: reward item '${symbol}' produces no usable definition`
+        );
       }
+      if (knownRewardSymbols.has(symbol)) continue;
     }
   }
 
@@ -323,7 +348,8 @@ export function validateHarthmereQuestBibleGrounded(): HarthmereQuestBibleGround
   for (const quest of HARTHMERE_QUEST_CATALOG) {
     if (!orderIndex.has(quest.code)) continue;
     const my = orderIndex.get(quest.code)!;
-    const prereqIds: ReadonlyArray<string> = quest.activeRules?.prerequisiteQuestIds ?? [];
+    const prereqId = bibleQuestPrerequisiteId(quest);
+    const prereqIds: ReadonlyArray<string> = prereqId ? [prereqId] : [];
     for (const prereqId of prereqIds) {
       const prereq = HARTHMERE_QUEST_CATALOG.find((q) => q.id === prereqId);
       if (!prereq || !orderIndex.has(prereq.code)) continue;
@@ -413,73 +439,78 @@ export function validateHarthmereQuestBibleGrounded(): HarthmereQuestBibleGround
 // Jest / vitest entry — co-located so the harthmere bible coverage runner
 // can discover it without a new harness file.
 // ---------------------------------------------------------------------------
-// (Wrapped in a typeof guard so importing this file from a non-test
-// runtime — e.g. for an admin diagnostics page — does not crash.)
-declare const describe: unknown;
-declare const test: unknown;
-declare const expect: unknown;
+/// <reference types="mocha" />
+//
+// CONVERTED FROM A DEAD JEST BLOCK (Bible migration, phases 3-4).
+//
+// This file previously wrapped its assertions in
+// `if (typeof describe === "function" && typeof test === "function")`. The
+// repo runs mocha, where `test` is undefined, so the guard was always false
+// and EVERY assertion below has been silently skipped — the file has been
+// reporting "0 passing" for as long as it has been in the mocha presets.
+//
+// It is now ordinary mocha, so the checks actually run. `validateHarthmereQuestCatalog`
+// (retired with quest_compendium) is replaced by the chain validator, which
+// subsumes it: duplicate ids, reward previews, giver-or-startable, and
+// non-empty objectives are all asserted there against typed data.
 
-if (typeof (describe as any) === "function" && typeof (test as any) === "function") {
-  (describe as any)("harthmere quest bible-grounded contract current", () => {
-    const report = validateHarthmereQuestBibleGrounded();
+describe("harthmere quest bible-grounded contract", () => {
+  const report = validateHarthmereQuestBibleGrounded();
 
-    (test as any)("catalog itself validates current contract", () => {
-      const baseline = validateHarthmereQuestCatalog();
-      (expect as any)(baseline.ok).toBe(true);
-    });
-
-    (test as any)("no quest dialogue contains author-meta placeholder text", () => {
-      (expect as any)(report.placeholderDialogues).toEqual([]);
-    });
-
-    (test as any)("every quest dialogue field is long enough to be in-character", () => {
-      (expect as any)(report.shortDialogues).toEqual([]);
-    });
-
-    (test as any)("every giverId resolves to a known NPC or authored exception", () => {
-      (expect as any)(report.unresolvedGivers).toEqual([]);
-    });
-
-    (test as any)("every prerequisite quest id exists in the catalog", () => {
-      (expect as any)(report.unresolvedPrereqs).toEqual([]);
-    });
-
-    (test as any)("every reward item resolves to a known symbol", () => {
-      (expect as any)(report.unresolvedRewardItems).toEqual([]);
-    });
-
-    (test as any)("main quest prerequisites respect bible hour ordering", () => {
-      (expect as any)(report.mainQuestOrderViolations).toEqual([]);
-    });
-
-    (test as any)("Grove quest objectives/markers/triggers are length-aligned", () => {
-      (expect as any)(report.groveQuestArrayLengthViolations).toEqual([]);
-    });
-
-
-
-    (test as any)("every Grove quest objective uses a runtime-supported trigger", () => {
-      (expect as any)(report.groveQuestTriggerViolations).toEqual([]);
-    });
-
-    (test as any)("every Grove quest objective trigger has completion event coverage", () => {
-      (expect as any)(report.groveQuestTriggerCoverageViolations).toEqual([]);
-    });
-
-    (test as any)("every Grove quest objective has a marker id", () => {
-      (expect as any)(report.groveQuestMarkerViolations).toEqual([]);
-    });
-
-    (test as any)("every Grove quest objective has a synthetic completion fixture", () => {
-      (expect as any)(report.groveQuestObjectiveFixtureViolations).toEqual([]);
-    });
-
-    (test as any)("every Grove item-use objective identifies a resolvable usable item", () => {
-      (expect as any)(report.groveQuestItemUseViolations).toEqual([]);
-    });
-
-    (test as any)("report.ok summary is true", () => {
-      (expect as any)(report.ok).toBe(true);
-    });
+  it("quest chain validates", () => {
+    const chain = validateHarthmereQuestChain();
+    assert.deepEqual(chain.failures, []);
   });
-}
+
+  it("no quest dialogue contains author-meta placeholder text", () => {
+    assert.deepEqual(report.placeholderDialogues, []);
+  });
+
+  it("every quest dialogue field is long enough to be in-character", () => {
+    assert.deepEqual(report.shortDialogues, []);
+  });
+
+  it("every giverId resolves to a known NPC or authored exception", () => {
+    assert.deepEqual(report.unresolvedGivers, []);
+  });
+
+  it("every prerequisite quest id exists in the catalog", () => {
+    assert.deepEqual(report.unresolvedPrereqs, []);
+  });
+
+  it("every reward item resolves to a known symbol", () => {
+    assert.deepEqual(report.unresolvedRewardItems, []);
+  });
+
+  it("main quest prerequisites respect bible hour ordering", () => {
+    assert.deepEqual(report.mainQuestOrderViolations, []);
+  });
+
+  it("Grove quest objectives/markers/triggers are length-aligned", () => {
+    assert.deepEqual(report.groveQuestArrayLengthViolations, []);
+  });
+
+  it("every Grove quest objective uses a runtime-supported trigger", () => {
+    assert.deepEqual(report.groveQuestTriggerViolations, []);
+  });
+
+  it("every Grove quest objective trigger has completion event coverage", () => {
+    assert.deepEqual(report.groveQuestTriggerCoverageViolations, []);
+  });
+
+  it("every Grove quest objective has a marker id", () => {
+    assert.deepEqual(report.groveQuestMarkerViolations, []);
+  });
+
+  it("every Grove quest objective has a synthetic completion fixture", () => {
+    assert.deepEqual(report.groveQuestObjectiveFixtureViolations, []);
+  });
+
+  it("every Grove item-use objective identifies a resolvable usable item", () => {
+    assert.deepEqual(report.groveQuestItemUseViolations, []);
+  });
+
+  it("report.ok summary is true", () => {
+    assert.equal(report.ok, true);
+  });
+});

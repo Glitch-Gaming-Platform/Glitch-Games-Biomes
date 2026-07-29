@@ -3,6 +3,8 @@ import {
   NATIVE_BUSTED_QUEST_ID,
   NATIVE_BUSTED_UNDERWATER_CONTAINER_SPEC,
   NATIVE_GET_THE_MUCK_OUT_QUEST_ID,
+  NATIVE_GET_THE_MUCK_OUT_INSCRIPTION_ENTITY_IDS,
+  NATIVE_GET_THE_MUCK_OUT_INSCRIPTION_SPECS,
   NATIVE_MUCK_VS_MACHINE_QUEST_ID,
   NATIVE_ROAD_AHEAD_CONTAINER_SPECS,
   NATIVE_ROAD_AHEAD_MUCKWAD_ITEM_ID,
@@ -89,6 +91,29 @@ describe("native Road Ahead snapshot contract", () => {
       3
     );
     assert.equal(nativeRobotStoryQuestOrder(123), -1);
+  });
+
+  it("pins all four Get the Muck Out inscription leaves to their canonical snapshot props", () => {
+    assert.deepEqual(
+      Object.values(NATIVE_GET_THE_MUCK_OUT_INSCRIPTION_SPECS).map(
+        ({ stepId, sourceEntityId }) => [stepId, sourceEntityId]
+      ),
+      [
+        [8726047292702638, 6372088708496489],
+        [8381498319603962, 3581242026396485],
+        [3688052208056569, 7136298330826795],
+        [1177668390064029, 6644971495189655],
+      ]
+    );
+    assert.deepEqual(
+      NATIVE_GET_THE_MUCK_OUT_INSCRIPTION_ENTITY_IDS,
+      [6372088708496489, 3581242026396485, 7136298330826795, 6644971495189655]
+    );
+    assert.equal(
+      new Set(NATIVE_GET_THE_MUCK_OUT_INSCRIPTION_ENTITY_IDS).size,
+      4,
+      "duplicate legacy inscription props must not replace canonical targets"
+    );
   });
 
   it("records composite trigger nodes required by final-step validation", () => {
@@ -178,10 +203,7 @@ describe("native Road Ahead snapshot contract", () => {
     for (const spec of Object.values(NATIVE_ROBOT_STORY_CRATE_DIALOG_SPECS)) {
       assert.equal(isNativeRobotStoryCrateDialogueLabel(spec.label), true);
       assert.equal(
-        nativeQuestGiverUsesEcsDialogue(
-          { concurrent_quests: 1 },
-          spec.label
-        ),
+        nativeQuestGiverUsesEcsDialogue({ concurrent_quests: 1 }, spec.label),
         true,
         `${spec.label} must open its authored reward dialogue, not storage`
       );

@@ -1,0 +1,27 @@
+// BIBLE_TYPECHECK
+//
+// Scoped typecheck for the migrated Bellbound Dragon quest catalog and its
+// tests.
+//
+//   node_modules/.bin/tsc -p tsconfig.biblecheck.json
+//   scripts/harthmere/t.sh types:bible
+//
+// IMPORTANT: ts-node runs with transpileOnly + swc (see the "ts-node" block in
+// tsconfig.json), so `./b test` and `t.sh bible` do NOT typecheck. 105 green
+// Bible tests say nothing about type correctness. This config is the other
+// half and takes a few seconds.
+//
+// Everything under src/shared/harthmere/bible/ is intentionally in scope: the
+// module set is closed (pure data + pure functions, no server/client/ECS-gen
+// value imports), which is exactly what makes both this typecheck and the fast
+// test preset cheap. If adding a file here makes this config slow, that file
+// has pulled in a heavy graph and belongs outside the directory.
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "noEmit": true, "incremental": false },
+  "include": [
+    "src/shared/harthmere/bible/*.ts",
+    "src/shared/harthmere/test/bible_*.test.ts",
+    "modules.d.ts"
+  ]
+}

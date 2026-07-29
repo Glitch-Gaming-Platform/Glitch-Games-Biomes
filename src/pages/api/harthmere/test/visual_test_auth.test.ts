@@ -1,4 +1,7 @@
-import { harthmereE2EControlTokenMatches } from "@/pages/api/harthmere/visual_test_auth";
+import {
+  harthmereE2EControlTokenMatches,
+  harthmereNativeE2EHfcPlayerCleanup,
+} from "@/pages/api/harthmere/visual_test_auth";
 import assert from "assert";
 
 describe("Harthmere visual-test native ECS authorization", () => {
@@ -15,5 +18,19 @@ describe("Harthmere visual-test native ECS authorization", () => {
       harthmereE2EControlTokenMatches("secret", ["secret", "secret"]),
       false
     );
+  });
+
+  it("clears every HFC component when a test-player id was recycled from an NPC", () => {
+    assert.deepEqual(harthmereNativeE2EHfcPlayerCleanup(123 as any), {
+      kind: "update",
+      entity: {
+        id: 123,
+        position: null,
+        orientation: null,
+        rigid_body: null,
+        emote: null,
+        npc_state: null,
+      },
+    });
   });
 });

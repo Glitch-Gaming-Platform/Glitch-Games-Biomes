@@ -187,14 +187,21 @@ describe("Snapshot Grove quest runtime validation current", () => {
   });
 
   it("acknowledges the latest completed lesson before offering another lesson", () => {
-    // Jackie owns several Grove lessons. Completion order, rather than catalog
-    // order, determines which finished lesson she acknowledges on return.
-    const completed = mostRecentlyCompletedSnapshotGroveQuestForNpcForTest(
-      "jackie",
-      ["read-the-jobs-board", "fountain_buttons_first"]
-    );
+    // Completion acknowledgement follows the authoritative typed-catalog
+    // giver reassignment, not the retired array's stale Jackie id.
+    const rosalynCompleted =
+      mostRecentlyCompletedSnapshotGroveQuestForNpcForTest("rosalyn", [
+        "read-the-jobs-board",
+        "fountain_buttons_first",
+      ]);
+    const jackieCompleted =
+      mostRecentlyCompletedSnapshotGroveQuestForNpcForTest("jackie", [
+        "read-the-jobs-board",
+        "fountain_buttons_first",
+      ]);
 
-    assert.equal(completed?.id, "fountain_buttons_first");
+    assert.equal(rosalynCompleted?.id, "fountain_buttons_first");
+    assert.equal(jackieCompleted?.id, "read-the-jobs-board");
   });
 
   it("opens and centers BiomesUI map when a dialogue marker is shown on the map", () => {
@@ -370,6 +377,61 @@ describe("Snapshot Grove quest runtime validation current", () => {
         0
       ),
       true
+    );
+  });
+
+  it("advances only the exact real chat action for each chat lesson step", () => {
+    const quest = questById("fountain_chat_channels");
+    const event = (objectiveIndex: number, practiceAction: string) => ({
+      kind: "snapshot_grove_practice_action",
+      questId: quest.id,
+      objectiveIndex,
+      trigger: "interact",
+      markerId: quest.markerIds[objectiveIndex],
+      practiceAction,
+    });
+
+    assert.equal(
+      doesSnapshotGroveEventAdvanceQuestForTest(
+        event(2, "chat_say") as any,
+        quest,
+        2
+      ),
+      true
+    );
+    assert.equal(
+      doesSnapshotGroveEventAdvanceQuestForTest(
+        event(3, "chat_whisper") as any,
+        quest,
+        3
+      ),
+      true
+    );
+    assert.equal(
+      doesSnapshotGroveEventAdvanceQuestForTest(
+        event(3, "chat_say") as any,
+        quest,
+        3
+      ),
+      false
+    );
+
+    const tools = questById("tools_before_treasure");
+    assert.equal(
+      doesSnapshotGroveEventAdvanceQuestForTest(
+        {
+          kind: "snapshot_grove_practice_action",
+          questId: tools.id,
+          objectiveIndex: 1,
+          trigger: "interact",
+          markerId: tools.markerIds[1],
+          practiceAction: "chat_say",
+        } as any,
+        tools,
+        1
+      ),
+      false,
+      "chat support must not re-enable synthetic completion for other interactions"
     );
   });
 

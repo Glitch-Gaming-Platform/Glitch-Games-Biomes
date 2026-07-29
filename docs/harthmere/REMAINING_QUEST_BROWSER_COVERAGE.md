@@ -4,6 +4,31 @@ This document is the catalog checklist for production-shaped browser testing.
 It exists so a future pass enumerates the whole authored catalog first, runs
 independent rows in batches, and does not stop after the first failure.
 
+## July 28, 2026 Get the Muck Out inscription repair
+
+The four canonical Mucker-statue inscription entities are now explicit native
+quest contracts: green `6372088708496489`, blue `3581242026396485`, pink
+`7136298330826795`, and yellow `6644971495189655`. The object selector gives
+those exact grouped children the full interaction radius, does not reject them
+as occluded by their own parent statue, and redirects direct hits on nearby
+legacy duplicate inscriptions to the canonical source id.
+
+No image, app, Redis, or client-output rebuild was performed during this fix.
+The fast quest batch passed (184 passing, one pre-existing pending), the scoped
+typecheck passed, and the static robot-story browser contract passed. The
+currently mounted `.next`/`dist` outputs predate the grouped-priority marker, so
+do not claim a production-browser pass from the warm stack yet. After the next
+planned client-output build, run only this checkpoint—do not replay Road Ahead,
+Busted, the recipe/hunt steps, later NPC handoffs, Mucker Den race, or reward
+crate:
+
+```sh
+HARTHMERE_E2E_ROBOT_STORY_EXHAUSTIVE=1 \
+HARTHMERE_E2E_ROBOT_STORY_CHAPTER_ID=817959262145055 \
+HARTHMERE_E2E_GET_MUCK_OUT_INSCRIPTIONS_ONLY=1 \
+  node scripts/harthmere/test-harthmere-native-ecs-roundtrip-e2e.cjs
+```
+
 ## July 26, 2026 wrap: Grove paused; Bible catalog started
 
 The user explicitly moved browser execution off Snapshot Grove before its
@@ -366,6 +391,37 @@ HARTHMERE_E2E_SKIP_BIBLE_QUEST_IDS=quest_a,quest_b
 
 Only skip IDs with complete browser reports covering acceptance, every
 objective, native ECS/frontend convergence, turn-in, and rewards.
+
+### Bible catalog timing lessons (July 28)
+
+- Wait for the real NPC dialog container before refreshing Bible state. A
+  `/game_modal` write alone does not mean the dialog hook is listening yet.
+- Validate the target giver offer from the returned refresh snapshot before
+  waiting for the button. If the offer is available there but absent in the
+  DOM, debug React composition rather than quest prerequisites.
+- Keep one production-shaped stack and one browser context. A second 335k-row
+  snapshot stack exceeded local memory and OOM-killed Redis during indexing.
+- Retain full-pass IDs with `HARTHMERE_E2E_SKIP_BIBLE_QUEST_IDS`; interrupted
+  rows do not count as passes and must remain in the next batch.
+- Treat the focused actor's position as HFC-owned. A regular admin ECS update
+  writes primary Redis only; HybridWorldApi can then merge the old HFC pose
+  over it and correctly reject the Bible step as `player_too_far`. The fast
+  catalog fixture writes the grounded step pose to the HFC world and waits on
+  the same hybrid read used by `live_mode` before submitting the browser
+  operation.
+- Keep the browser simulation in its warm scene while moving only the
+  authoritative HFC pose for catalog validation. Teleporting the focused
+  browser through distant underground Bible coordinates can move its Sync
+  interest set away from the player entity, making a valid native challenge
+  look absent from the frontend projection.
+- Visual-test authentication must normalize recycled snapshot ids in both
+  stores. Clearing `npc_metadata` in primary Redis is insufficient when an old
+  NPC `npc_state` and position still exist in HFC; the test-gated auth route
+  clears all five HFC components before the new player's first MoveEvent.
+- Run ordinary rows independently of clock-gated rows. Retain the ungated
+  report, then run all dusk/night/storm rows as one final batch inside a valid
+  game-clock window instead of allowing wall-clock timing to create false
+  activation failures throughout a long catalog run.
 
 The Bible batch uses a deterministic local-only clock/weather fixture so night,
 dusk, and storm-gated rows can run together without waiting in real time:

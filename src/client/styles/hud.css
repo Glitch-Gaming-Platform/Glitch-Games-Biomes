@@ -2049,14 +2049,46 @@ select.minimal {
 }
 
 .inspect-overlay.plant-inspect .progress-bar-container {
-  width: 5vmin;
+  width: 12vmin;
 }
 
 .inspect-overlay.plant-inspect .water-details {
   display: flex;
   flex-direction: column;
-  gap: 0.5vmin;
+  gap: 0.65vmin;
   font-weight: 500;
+}
+
+.inspect-overlay.plant-inspect .plant-progress-name {
+  font-size: var(--font-size-large);
+  font-weight: 700;
+}
+
+.inspect-overlay.plant-inspect .plant-progress-meter {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2vmin;
+}
+
+.inspect-overlay.plant-inspect .plant-progress-meter-label {
+  display: flex;
+  justify-content: space-between;
+  width: 12vmin;
+  font-size: var(--font-size-small);
+}
+
+.inspect-overlay.plant-inspect .plant-progress-meter-detail {
+  color: var(--white);
+  font-size: var(--font-size-small);
+  opacity: 0.85;
+}
+
+.inspect-overlay.plant-inspect .plant-progress-meter.growth .progress-bar-fill {
+  background-color: var(--green);
+}
+
+.inspect-overlay.plant-inspect .plant-progress-meter.water .progress-bar-fill {
+  background-color: var(--blue);
 }
 
 /*

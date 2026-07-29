@@ -1,0 +1,18 @@
+// GROVE_TYPECHECK
+//
+// Scoped typecheck for the migrated Snapshot Grove onboarding catalog.
+//
+//   scripts/harthmere/t.sh types:grove
+//
+// `./b test` and `t.sh grove` do NOT typecheck (ts-node runs transpileOnly +
+// swc), so green Grove tests say nothing about type correctness. This is the
+// other half.
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "noEmit": true, "incremental": false },
+  "include": [
+    "src/shared/harthmere/grove/*.ts",
+    "src/shared/harthmere/test/grove_*.test.ts",
+    "modules.d.ts"
+  ]
+}

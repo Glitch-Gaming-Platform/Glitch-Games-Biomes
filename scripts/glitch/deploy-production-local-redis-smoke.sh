@@ -2754,6 +2754,10 @@ run_build_checks() {
   node scripts/harthmere/test-harthmere-live-mode-backend-production.cjs .
   node scripts/harthmere/test-harthmere-live-mode-backend-reducer.cjs .
   node scripts/harthmere/test-harthmere-live-entity-production-smoke.cjs .
+  ./node_modules/.bin/mocha --config .mocharc.fast.json \
+    src/client/game/helpers/player_shards.test.ts \
+    src/client/components/system/test/load_progress_recovery.test.ts \
+    src/client/game/test/load_progress.test.ts
   ./b test -b -p "src/shared/harthmere/test/harthmere_native_bikkie_items.test.ts"
   node scripts/harthmere/test-snapshot-grove-quest-marker-acceptance.cjs .
   node scripts/harthmere/check-biomes-snapshot-bucket-conversion.cjs .

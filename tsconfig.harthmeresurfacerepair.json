@@ -1,0 +1,18 @@
+// HARTHMERE_EXTENSION_SURFACE_REPAIR_TYPECHECK
+//
+// Scoped typecheck for the sunken-forest repair math and its tests. Pure data
+// and arithmetic, so this finishes in seconds:
+//
+//   node_modules/.bin/tsc -p tsconfig.harthmeresurfacerepair.json
+//
+// The shim that consumes it (src/server/shim/main.ts) is far too heavy for this
+// budget — use the full `./b typecheck` for that file.
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "noEmit": true, "incremental": false },
+  "include": [
+    "src/shared/harthmere/extension_surface_repair.ts",
+    "src/shared/harthmere/test/extension_surface_repair.test.ts",
+    "modules.d.ts"
+  ]
+}

@@ -41,6 +41,7 @@ import {
   SNAPSHOT_GROVE_QUESTS,
   type SnapshotGroveLandmark,
 } from "@/shared/harthmere/snapshot_grove_content";
+import { groveLandmarkWorldPosition } from "@/shared/harthmere/grove/grove_waypoints";
 import { isHarthmereContainerObjectLabel } from "@/shared/harthmere/object_interaction_semantics";
 import { snapshotGroveObjectiveMarkerIdForProgress } from "@/shared/harthmere/snapshot_grove_trigger_contract";
 import * as THREE from "three";
@@ -183,12 +184,16 @@ function harthmereQuestObjectLandmarkRuntimePosition(
   if (resolved) {
     return [...resolved.position] as [number, number, number];
   }
+  // RESOLVED, not raw: 15 Grove-area landmarks are still authored at the
+  // retired Y=54 while live terrain is Y=71, so a raw read sinks the prop 17
+  // blocks under the courtyard.
+  const world = groveLandmarkWorldPosition(landmark);
   return [
-    landmark.position[0],
+    world[0],
     // Landmark pins hover above the target. Procedural props sit at the
     // player's feet/ground height so they do not float over the plaza.
-    landmark.position[1] - 1,
-    landmark.position[2],
+    world[1] - 1,
+    world[2],
   ];
 }
 

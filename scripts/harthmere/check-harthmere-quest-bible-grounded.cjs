@@ -19,7 +19,7 @@ function ok(condition, message) {
 }
 function countMatches(text, re) { return [...text.matchAll(re)].length; }
 
-const catalogFile = read('src/shared/harthmere/quest_compendium.ts');
+const catalogFile = read('src/shared/harthmere/bible/bible_quest_catalog.ts');
 
 // Extract the JSON catalog literal.
 // Audit fix (2026-07-13): the catalog now contains template-literal escape

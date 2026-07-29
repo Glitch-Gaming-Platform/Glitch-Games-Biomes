@@ -8,6 +8,35 @@ import {
 import assert from "assert";
 
 describe("harthmere world object inspectable selection", () => {
+  it("prefers the active quest target over a closer unrelated prop", () => {
+    const candidates = [
+      {
+        id: "grove_tool_crate",
+        label: "Road Kit Crate",
+        position: [4, 0, 0] as const,
+      },
+      {
+        id: "grove_food_satchel",
+        label: "Fountain Food Satchel",
+        position: [2, 0, 0] as const,
+      },
+    ];
+    const ordinary = selectNearestHarthmereWorldObjectInspectable({
+      playerPosition: [0, 0, 0],
+      facingView: facingPlusX,
+      candidates,
+    });
+    assert.equal(ordinary?.id, "grove_food_satchel");
+
+    const questTarget = selectNearestHarthmereWorldObjectInspectable({
+      playerPosition: [0, 0, 0],
+      facingView: facingPlusX,
+      candidates,
+      preferredCandidateIds: new Set(["grove_tool_crate"]),
+    });
+    assert.equal(questTarget?.id, "grove_tool_crate");
+  });
+
   const facingPlusX: readonly [number, number, number] = [1, 0, 0];
 
   it("recognizes authored non-living props and rejects living NPCs", () => {
@@ -191,6 +220,50 @@ describe("harthmere world object inspectable selection", () => {
       board,
       undefined,
       "ordinary props retain terrain-depth gating"
+    );
+  });
+
+  it("keeps an exact grouped quest prop selectable behind its shallow parent terrain hit", () => {
+    const canonicalId = "ecs:6372088708496489";
+    const selected = selectNearestHarthmereWorldObjectInspectable({
+      playerPosition: [680.5, 77, -103.5],
+      facingView: facingPlusX,
+      candidates: [
+        {
+          id: canonicalId,
+          label: "Greeen Statue Inscription",
+          position: [686.5, 77, -103.5],
+        },
+      ],
+      // The reticle hits the statue wall near the player. The quest's exact
+      // child plate is six metres away at the back of the grouped geometry.
+      radius: 1.25,
+      priorityCandidateIds: new Set([canonicalId]),
+      priorityRadius: 6.5,
+    });
+    assert.ok(
+      selected,
+      "the canonical grouped inscription should remain readable"
+    );
+    assert.equal(selected!.id, canonicalId);
+    assert.equal(selected!.interaction.kind, "read");
+    assert.equal(selected!.isPriority, true);
+
+    assert.equal(
+      selectNearestHarthmereWorldObjectInspectable({
+        playerPosition: [680.5, 77, -103.5],
+        facingView: facingPlusX,
+        candidates: [
+          {
+            id: canonicalId,
+            label: "Greeen Statue Inscription",
+            position: [686.5, 77, -103.5],
+          },
+        ],
+        radius: 1.25,
+      }),
+      undefined,
+      "ordinary props must retain the shallow terrain-depth gate"
     );
   });
 

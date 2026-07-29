@@ -1,5 +1,10 @@
 import type { ClientResources } from "@/client/game/resources/types";
-import { SHARD_DIM, shardCenter, shardsForAABB } from "@/shared/game/shard";
+import {
+  SHARD_DIM,
+  shardCenter,
+  shardsForAABB,
+  voxelShard,
+} from "@/shared/game/shard";
 import { ch1DetachedWorldBoundsAt } from "@/shared/harthmere/ch1_elsewhen_region";
 import { containsAABB, growAABB } from "@/shared/math/linear";
 import type { AABB, ReadonlyAABB } from "@/shared/math/types";
@@ -47,10 +52,7 @@ function nearbyAabbShards(
   }
 
   const metadata = resources.get("/ecs/metadata");
-  const ordinaryWorldAabb: ReadonlyAABB = [
-    metadata.aabb.v0,
-    metadata.aabb.v1,
-  ];
+  const ordinaryWorldAabb: ReadonlyAABB = [metadata.aabb.v0, metadata.aabb.v1];
   if (grow) {
     aabb = growAABB(aabb, grow);
   }
@@ -62,7 +64,18 @@ function nearbyAabbShards(
 
 function nearbyPlayerShards(resources: ClientResources, grow?: number) {
   const player = resources.get("/scene/local_player");
-  return nearbyAabbShards(resources, player.player.aabb(), grow);
+  const aabb = player.player.aabb();
+  // Player positions describe their feet. Include the voxel immediately below
+  // the body so a player standing exactly on a vertical shard boundary can use
+  // the supporting terrain shard instead of appearing to be in empty space.
+  return nearbyAabbShards(
+    resources,
+    [
+      [aabb[0][0], aabb[0][1] - 1, aabb[0][2]],
+      [aabb[1][0], aabb[1][1], aabb[1][2]],
+    ],
+    grow
+  );
 }
 
 export function allAabbShardsLoaded(
@@ -71,6 +84,11 @@ export function allAabbShardsLoaded(
 ) {
   let numShards = 0;
   for (const shard of nearbyAabbShards(resources, aabb)) {
+    // The additive Harthmere world is intentionally sparse vertically. Missing
+    // terrain entities are empty space, not terrain that is still loading.
+    if (!resources.get("/ecs/terrain", shard)) {
+      continue;
+    }
     numShards += 1;
     if (!resources.get("/physics/boxes", shard)) {
       return false;
@@ -80,13 +98,35 @@ export function allAabbShardsLoaded(
 }
 
 export function allPlayerShardsLoaded(resources: ClientResources) {
-  const player = resources.get("/scene/local_player");
-  return allAabbShardsLoaded(resources, player.player.aabb());
+  let numShards = 0;
+  for (const shard of nearbyPlayerShards(resources)) {
+    if (!resources.get("/ecs/terrain", shard)) {
+      continue;
+    }
+    numShards += 1;
+    if (!resources.get("/physics/boxes", shard)) {
+      return false;
+    }
+  }
+  return numShards > 0;
 }
 
 export function allPlayerShardsMeshed(resources: ClientResources) {
+  const player = resources.get("/scene/local_player");
+  const [x, y, z] = player.player.position;
+  const supportingShard = voxelShard(x, y - 1, z);
+  if (!resources.get("/ecs/terrain", supportingShard)) {
+    return false;
+  }
+
   let numShards = 0;
   for (const shard of nearbyPlayerShards(resources, SHARD_DIM)) {
+    // Do not block startup on absent neighboring shards. This is especially
+    // important above the flat Harthmere extension, where the old all-shards
+    // gate waited forever for an intentionally empty vertical shard.
+    if (!resources.get("/ecs/terrain", shard)) {
+      continue;
+    }
     numShards += 1;
     if (!resources.get("/physics/boxes", shard)) {
       return false;
@@ -100,8 +140,8 @@ export function allPlayerShardsMeshed(resources: ClientResources) {
 
 export async function triggerPlayerShardsMesh(resources: ClientResources) {
   await Promise.all(
-    nearbyPlayerShards(resources, SHARD_DIM).map((shard) =>
-      resources.get("/terrain/combined_mesh", shard)
-    )
+    nearbyPlayerShards(resources, SHARD_DIM)
+      .filter((shard) => resources.get("/ecs/terrain", shard) !== undefined)
+      .map((shard) => resources.get("/terrain/combined_mesh", shard))
   );
 }

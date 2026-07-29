@@ -8,8 +8,8 @@ const fs = require("fs");
 const path = require("path");
 
 const {
-  HARTHMERE_QUEST_CATALOG,
-} = require("../../src/shared/harthmere/quest_compendium.ts");
+  BIBLE_QUEST_CATALOG: HARTHMERE_QUEST_CATALOG,
+} = require("../../src/shared/harthmere/bible/bible_quest_catalog.ts");
 const {
   SNAPSHOT_ROAD_AHEAD_MISSION,
 } = require("../../src/shared/harthmere/snapshot_complete_port.ts");

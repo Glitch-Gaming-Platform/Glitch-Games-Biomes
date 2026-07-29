@@ -121,6 +121,11 @@ import {
 } from "@/shared/ecs/gen/components";
 import { WorldMetadataId } from "@/shared/ecs/ids";
 import { isPlayer } from "@/shared/game/players";
+import { loadTerrain } from "@/shared/game/terrain";
+import {
+  HARTHMERE_EXTENSION_SURFACE_REPAIR_VERSION,
+  harthmereSurfaceRepairShardSpecs,
+} from "@/shared/harthmere/extension_surface_repair";
 import {
   SHARD_DIM,
   shardDecode,
@@ -246,8 +251,14 @@ async function registerShimWorldService(
   return new ShimWorldService(new InMemoryWorld(true, firehose));
 }
 
+// v3 (2026-07-28): the 2026-07-28 HAR capture proved that some SURFACE shards
+// (the shardY=1 layer that owns the flat cap at Y=52) never made it into the
+// live ECS, so those columns fell through to the foundation top at Y=31 and
+// read as 32x32 black pits in the wilds forest. Bumping this version forces
+// the next guarded maintenance seed to rewrite every extension shard from the
+// generator, which is also what puts the forest back over the repaired ground.
 const HARTHMERE_LOCAL_DEV_TERRAIN_BOUNDS_VERSION =
-  "harthmere-local-dev-terrain-complete-foundation-v2";
+  "harthmere-local-dev-terrain-complete-foundation-v3-surface-solidity";
 const HARTHMERE_LOCAL_DEV_SEED_CONTENT_PASS =
   "harthmere-additive-east-extension-complete-foundation-flat-town";
 const HARTHMERE_LOCAL_DEV_SEED_FINGERPRINT_VERSION =
@@ -8121,6 +8132,108 @@ async function existingLocalDevIds(
   return existingIds;
 }
 
+/**
+ * HARTHMERE_EXTENSION_SURFACE_SOLIDITY (sunken-forest fix, 2026-07-28)
+ *
+ * Terrain seeding used to decide "this shard is fine" purely from whether the
+ * ENTITY ID EXISTS. That test cannot see a shard whose record is present but
+ * whose tensor has no ground at Y=52, and — worse — it treats a shard that was
+ * never written as fine as soon as some later pass creates the record. The
+ * 2026-07-28 capture showed the consequence in the live world: surface shards
+ * absent or holed, columns falling to the foundation top at Y=31, and 32x32
+ * black pits in the wilds forest with NPCs and livestock grounded on the floor.
+ *
+ * This asks the question the old test should have asked: is the flat plane
+ * actually solid? Any surface shard that answers no is added to the rebuild
+ * set, so a boot with terrain seeding enabled self-heals instead of skipping.
+ *
+ * The read is bounded — one tensor per surface shard, and it only runs on the
+ * maintenance revision where terrain creation is enabled at all.
+ */
+async function harthmereUnsolidSurfaceTerrainIds(
+  voxeloo: VoxelooModule,
+  service: ShimWorldService | undefined,
+  worldApi: WorldApi,
+  existingIds: Set<BiomesId>
+): Promise<Set<BiomesId>> {
+  const unsolid = new Set<BiomesId>();
+  if (!shouldUseHarthmereExtraTownOffset()) {
+    return unsolid;
+  }
+  const specs = harthmereSurfaceRepairShardSpecs().filter((spec) =>
+    existingIds.has(spec.id as BiomesId)
+  );
+  const readEntity = async (id: BiomesId) => {
+    if (service) {
+      return service.table.get(id);
+    }
+    const [entity] = await worldApi.get([id]);
+    return entity;
+  };
+  for (const spec of specs) {
+    const id = spec.id as BiomesId;
+    let entity: any;
+    try {
+      entity = await readEntity(id);
+    } catch {
+      unsolid.add(id);
+      continue;
+    }
+    const seed = entity?.shardSeed?.() ?? entity?.shard_seed;
+    if (!seed) {
+      unsolid.add(id);
+      continue;
+    }
+    const v0 = shardToVoxelPos(spec.shardX, spec.shardY, spec.shardZ);
+    const localGroundY = STARTER_TOWN_GROUND_Y - v0[1];
+    let terrain: ReturnType<typeof loadTerrain> | undefined;
+    try {
+      terrain = loadTerrain(voxeloo, {
+        id,
+        shard_seed: seed,
+        shard_diff: entity?.shardDiff?.() ?? entity?.shard_diff,
+      });
+      let holed = false;
+      for (let localZ = 0; localZ < SHARD_DIM && !holed; localZ += 1) {
+        for (let localX = 0; localX < SHARD_DIM; localX += 1) {
+          const worldX = v0[0] + localX;
+          const worldZ = v0[2] + localZ;
+          if (
+            harthmereIsBellbinderSurfaceOpening(
+              harthmereAuthoredWorldX(worldX),
+              STARTER_TOWN_GROUND_Y,
+              harthmereAuthoredWorldZ(worldZ)
+            )
+          ) {
+            continue;
+          }
+          if (!Number(terrain.get(localX, localGroundY, localZ))) {
+            holed = true;
+            break;
+          }
+        }
+      }
+      if (holed) {
+        unsolid.add(id);
+      }
+    } catch {
+      unsolid.add(id);
+    } finally {
+      terrain?.delete?.();
+    }
+  }
+  if (unsolid.size) {
+    log.warn("Harthmere surface shards are not solid at the flat plane", {
+      version: HARTHMERE_EXTENSION_SURFACE_REPAIR_VERSION,
+      groundY: STARTER_TOWN_GROUND_Y,
+      checkedSurfaceShards: specs.length,
+      unsolidSurfaceShards: unsolid.size,
+      sample: [...unsolid].slice(0, 8),
+    });
+  }
+  return unsolid;
+}
+
 async function ensureHarthmereAdditiveWorldBoundary(
   service: ShimWorldService | undefined,
   worldApi: WorldApi,
@@ -8566,6 +8679,19 @@ async function seedLocalDevTerrainIfMissing(
   };
   addMissing(terrainIds);
   addMissing(chapter1TerrainIds);
+  // HARTHMERE_EXTENSION_SURFACE_SOLIDITY: an existing shard id is not proof of
+  // ground. Rebuild every surface shard whose flat plane at Y=52 is not solid,
+  // so a boot with terrain seeding enabled closes a sunken pit instead of
+  // skipping past it.
+  const unsolidSurfaceIds = await harthmereUnsolidSurfaceTerrainIds(
+    await loadVoxeloo(),
+    service,
+    worldApi,
+    existingIds
+  );
+  for (const id of unsolidSurfaceIds) {
+    terrainIdsToBuild.add(id);
+  }
   if (shouldForceReseed) {
     for (const id of [...terrainIds, ...chapter1TerrainIds]) {
       terrainIdsToBuild.add(id);
@@ -8588,6 +8714,9 @@ async function seedLocalDevTerrainIfMissing(
   if (
     !shouldForceReseed &&
     allExpectedSeedIdsExist &&
+    // A current fingerprint over holed terrain is exactly how the sunken-forest
+    // pits survived every boot. Solid ground is now part of "already seeded".
+    unsolidSurfaceIds.size === 0 &&
     obsoleteLocalDevIds.length === 0 &&
     markerFingerprint === seedFingerprint
   ) {
@@ -8615,6 +8744,7 @@ async function seedLocalDevTerrainIfMissing(
   if (
     !shouldForceReseed &&
     allExpectedSeedIdsExist &&
+    unsolidSurfaceIds.size === 0 &&
     obsoleteLocalDevIds.length === 0 &&
     !markerFingerprint &&
     process.env.BIOMES_ENABLE_MARKERLESS_LOCAL_DEV_SEED_ADOPTION === "1"

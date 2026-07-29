@@ -19,7 +19,7 @@ const files = {
   wildContract: "src/shared/harthmere/wilds_bible_implementation.ts",
   npc44: "src/shared/harthmere/npc_compendium.ts",
   npc45: "src/shared/harthmere/npc_compendium.ts",
-  quests: "src/shared/harthmere/quest_compendium.ts",
+  quests: "src/shared/harthmere/bible/bible_quest_catalog.ts",
   mainQuestSpaces: "src/shared/harthmere/main_quest_spaces.ts",
 };
 const renderer = read(files.renderer);

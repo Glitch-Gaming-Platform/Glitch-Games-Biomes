@@ -29,6 +29,42 @@ interface AbilitiesAdapter {
   assign?: (slot: number, abilityId: string) => void;
 }
 
+function playerFacingAbilityStatus(ability: Ability) {
+  return ability.known
+    ? "Learned"
+    : ability.unlocked
+    ? "Ready to learn"
+    : "Locked";
+}
+
+function playerFacingAbilityWait(cooldown: number) {
+  const seconds = Math.max(0, Math.round(cooldown));
+  if (seconds === 0) return "No wait time";
+  if (seconds < 60) {
+    return `Ready again in ${seconds} ${seconds === 1 ? "second" : "seconds"}`;
+  }
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+  return `Ready again in ${minutes} ${
+    minutes === 1 ? "minute" : "minutes"
+  }${
+    remainingSeconds > 0
+      ? ` ${remainingSeconds} ${
+          remainingSeconds === 1 ? "second" : "seconds"
+        }`
+      : ""
+  }`;
+}
+
+function playerFacingAbilityDetails(ability: Ability) {
+  const wait = playerFacingAbilityWait(ability.cooldown);
+  const cost =
+    ability.cost > 0
+      ? `Uses ${ability.cost} ${biomesPlayerTitle(ability.resource)}`
+      : "No resource cost";
+  return `${playerFacingAbilityStatus(ability)} · ${wait} · ${cost}`;
+}
+
 export function chunkBiomesAbilityRowsForTest<T>(items: T[], columns = 3): T[][] {
   const safeColumns = Math.max(1, Math.floor(columns));
   const rows: T[][] = [];
@@ -67,13 +103,13 @@ export const AbilitiesTab: React.FunctionComponent<{ adapter?: AbilitiesAdapter 
     <div style={{ display: "grid", gap: 18 }}>
       <section aria-label="Equipped abilities" style={sectionStyle}>
         <div style={sectionHeaderStyle}>
-          <h3 style={titleStyle}>Loadout — Active Slots</h3>
-          <span style={metaStyle}>8 slots</span>
+          <h3 style={titleStyle}>Equipped Abilities</h3>
+          <span style={metaStyle}>8 ability spaces</span>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(8, 56px)", gap: 8, overflowX: "auto", paddingBottom: 2 }}>
           {equipped.map((ab, i) => (
             <Highlightable key={i} uniqueId={UI_IDS.ABILITY_SLOT(i + 1)} showCaption>
-              <button type="button" className="biomes-ui-slot" aria-label={ab ? `Ability ${i + 1}: ${ab.name}` : `Ability slot ${i + 1}: empty`}>
+              <button type="button" className="biomes-ui-slot" aria-label={ab ? `Equipped ability ${i + 1}: ${ab.name}` : `Ability space ${i + 1}: empty`}>
                 {ab ? (
                   <span aria-hidden style={{ fontSize: 22, fontWeight: 800 }}>{ab.icon}</span>
                 ) : (
@@ -84,9 +120,9 @@ export const AbilitiesTab: React.FunctionComponent<{ adapter?: AbilitiesAdapter 
           ))}
         </div>
       </section>
-      <section aria-label="Ability library" style={sectionStyle}>
+      <section aria-label="Available abilities" style={sectionStyle}>
         <div style={sectionHeaderStyle}>
-          <h3 style={titleStyle}>Library</h3>
+          <h3 style={titleStyle}>Available Abilities</h3>
           <span style={metaStyle}>{library.length} available</span>
         </div>
         {library.length === 0 && (
@@ -95,7 +131,7 @@ export const AbilitiesTab: React.FunctionComponent<{ adapter?: AbilitiesAdapter 
           </p>
         )}
         <RovingGrid
-          ariaLabel="Ability library"
+          ariaLabel="Available abilities"
           items={libraryRows}
           onActivate={(_r, _c, item) => assignOrLearn(item)}
           style={{ display: "grid", gap: 8 }}
@@ -103,7 +139,7 @@ export const AbilitiesTab: React.FunctionComponent<{ adapter?: AbilitiesAdapter 
             React.createElement("div", {
               ref: cell.ref, tabIndex: cell.tabIndex, onFocus: cell.onFocus, onClick: cell.onClick, onKeyDown: cell.onKeyDown,
               role: "button", "data-focused": focused ? "true" : undefined,
-              "aria-label": `${ab.name} — ${ab.known ? "known" : ab.unlocked ? "learnable" : "locked"} — ${biomesPlayerSentence(ab.description)}`,
+              "aria-label": `${ab.name} — ${playerFacingAbilityStatus(ab)} — ${biomesPlayerSentence(ab.description)}`,
               style: {
                 width: "clamp(218px, 28vw, 320px)",
                 minHeight: 148,
@@ -126,7 +162,7 @@ export const AbilitiesTab: React.FunctionComponent<{ adapter?: AbilitiesAdapter 
                 React.createElement("strong", { style: { fontSize: 13, lineHeight: 1.16, overflowWrap: "anywhere" } }, ab.name),
               ),
               React.createElement("div", { style: { marginTop: 9, fontSize: 11, color: "var(--biomes-fg-muted)", lineHeight: 1.25 } },
-                `${ab.known ? "Known" : ab.unlocked ? "Learnable" : "Locked"} · Cooldown ${ab.cooldown}s · Cost ${ab.cost} ${biomesPlayerTitle(ab.resource)}`),
+                playerFacingAbilityDetails(ab)),
               React.createElement("p", { style: { margin: "7px 0 0", fontSize: 11, lineHeight: 1.35, color: "rgba(232, 244, 255, 0.84)" } }, biomesPlayerSentence(ab.description)),
             )
           }

@@ -61,6 +61,52 @@ export const NATIVE_GET_THE_MUCK_OUT_MUCKLING_HUNT_POSITION = [
   531, 68, -33,
 ] as const;
 
+/**
+ * Canonical original-snapshot inscription props for Get the Muck Out.
+ *
+ * The four readable plates are children of larger Mucker-statue groups. Their
+ * rendered statue terrain can therefore be closer to the player than the
+ * plate's ECS anchor, and the plate can be occluded by its own parent group.
+ * Runtime interaction code must keep these exact source ids authoritative:
+ * nearby duplicate/legacy inscription props do not satisfy the quest leaves.
+ */
+export const NATIVE_GET_THE_MUCK_OUT_INSCRIPTION_SPECS = Object.freeze({
+  green: {
+    questId: NATIVE_GET_THE_MUCK_OUT_QUEST_ID,
+    stepId: 8726047292702638 as BiomesId,
+    sourceEntityId: 6372088708496489 as BiomesId,
+    label: "Greeen Statue Inscription",
+    position: [686.5, 77, -103.5] as const,
+  },
+  blue: {
+    questId: NATIVE_GET_THE_MUCK_OUT_QUEST_ID,
+    stepId: 8381498319603962 as BiomesId,
+    sourceEntityId: 3581242026396485 as BiomesId,
+    label: "Blue Statue Inscription",
+    position: [705.5, 75, -162.5] as const,
+  },
+  pink: {
+    questId: NATIVE_GET_THE_MUCK_OUT_QUEST_ID,
+    stepId: 3688052208056569 as BiomesId,
+    sourceEntityId: 7136298330826795 as BiomesId,
+    label: "Pink Statue Inscription",
+    position: [742.5, 78, -51.5] as const,
+  },
+  yellow: {
+    questId: NATIVE_GET_THE_MUCK_OUT_QUEST_ID,
+    stepId: 1177668390064029 as BiomesId,
+    sourceEntityId: 6644971495189655 as BiomesId,
+    label: "Yellow Status Inscription",
+    position: [746.5, 81, -101.5] as const,
+  },
+} as const);
+
+export const NATIVE_GET_THE_MUCK_OUT_INSCRIPTION_ENTITY_IDS = Object.freeze(
+  Object.values(NATIVE_GET_THE_MUCK_OUT_INSCRIPTION_SPECS).map(
+    (spec) => spec.sourceEntityId
+  )
+);
+
 const NATIVE_GET_THE_MUCK_OUT_COMPATIBLE_MUCKLING_TYPE_IDS = new Set<number>([
   Number(NATIVE_GET_THE_MUCK_OUT_MOSSY_MUCKLING_TYPE_ID),
   // The named restored pack the marker now points at.

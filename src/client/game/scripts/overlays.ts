@@ -25,7 +25,6 @@ import type {
 } from "@/client/game/resources/overlays";
 import type { ClientResources } from "@/client/game/resources/types";
 import type { Script } from "@/client/game/scripts/script_controller";
-import { getTerrainID } from "@/shared/asset_defs/terrain";
 import type { ReadonlyEntity } from "@/shared/ecs/gen/entities";
 import {
   DropSelector,
@@ -75,6 +74,7 @@ import {
   SNAPSHOT_GROVE_LANDMARKS,
   type SnapshotGroveLandmark,
 } from "@/shared/harthmere/snapshot_grove_content";
+import { groveLandmarkWorldPosition } from "@/shared/harthmere/grove/grove_waypoints";
 import { GROVE_ECONOMY_STARTER_LANDMARKS } from "@/shared/harthmere/grove_economy_starter";
 import { readSnapshotGroveQuestState } from "@/client/components/challenges/LocalDevSnapshotGroveBibleRuntime";
 import {
@@ -92,6 +92,7 @@ import {
 import {
   isNativeRoadAheadQuestObjectLabel,
   NATIVE_BUSTED_UNDERWATER_CONTAINER_SPEC,
+  NATIVE_GET_THE_MUCK_OUT_INSCRIPTION_ENTITY_IDS,
   NATIVE_ROBOT_STORY_CRATE_DIALOG_SPECS,
   nativeRoadAheadEcsAuthorityEnabled,
   shouldBypassGenericPlaceableOverlayForNativeQuestContainer,
@@ -132,12 +133,12 @@ const NATIVE_PRIORITY_QUEST_PROP_ENTITY_IDS = new Set<BiomesId>([
   // parent group. Spatial selectors can omit these children even though the
   // synchronized ClientTable contains them, so exact lookup is required for a
   // stable F prompt. Road Ahead's already-green props are intentionally absent.
-  3581242026396485 as BiomesId, // Blue Statue Inscription (floor plate)
-  6372088708496489 as BiomesId, // Greeen Statue Inscription (floor plate)
-  7136298330826795 as BiomesId, // Pink Statue Inscription (floor plate)
-  6644971495189655 as BiomesId, // Yellow Status Inscription (wall plate)
+  ...NATIVE_GET_THE_MUCK_OUT_INSCRIPTION_ENTITY_IDS,
   2172725824368913 as BiomesId, // Billy's Tools
 ]);
+const NATIVE_GET_THE_MUCK_OUT_INSCRIPTION_ENTITY_ID_SET = new Set<BiomesId>(
+  NATIVE_GET_THE_MUCK_OUT_INSCRIPTION_ENTITY_IDS
+);
 
 function getOverlayEntitySizeCompat(entity: ReadonlyEntity): ReadonlyVec3 {
   const resolved = getSizeForEntity(entity);
@@ -300,14 +301,13 @@ function harthmereWorldObjectInspectCandidates(): HarthmereWorldObjectCandidate[
       continue;
     }
     seen.add(landmark.id);
+    // RESOLVED, not raw — see grove_waypoints.ts. An in-world overlay anchored
+    // at the retired Y=54 sits under the courtyard floor.
+    const world = groveLandmarkWorldPosition(landmark);
     candidates.push({
       id: landmark.id,
       label: landmark.label,
-      position: [
-        landmark.position[0],
-        landmark.position[1],
-        landmark.position[2],
-      ],
+      position: [world[0], world[1], world[2]],
     });
   }
   harthmereWorldObjectCandidateCache = candidates;
@@ -1360,6 +1360,19 @@ export class OverlayScript implements Script {
       // toaster straight from this entity. This is what makes "look at the
       // chest -> Open Container" work without the object having to be listed in
       // any static landmark table.
+      if (/\binscriptions?\b/i.test(entity.label?.text ?? "")) {
+        // Old snapshots contain readable duplicate plates beside the four
+        // quest-authored children. A direct ray on a duplicate must still
+        // resolve the nearby canonical source id, otherwise the dialogue looks
+        // correct but server validation cannot advance the exact quest leaf.
+        const canonicalInscription =
+          this.getNearbyPriorityHarthmereObjectInspectableOverlay(
+            NATIVE_GET_THE_MUCK_OUT_INSCRIPTION_ENTITY_ID_SET
+          );
+        if (canonicalInscription) {
+          return canonicalInscription;
+        }
+      }
       const directObjectOverlay =
         this.harthmereWorldObjectOverlayForEntity(entity);
       if (directObjectOverlay) {
@@ -1395,17 +1408,9 @@ export class OverlayScript implements Script {
         // object selector can expose the crate. Let only the exact immutable
         // reward/quest props listed above override their parent group; all
         // ordinary groups, crops, and terrain retain their existing priority.
-        const localPlayer = this.resources.get("/scene/local_player");
         const nearbyPriorityQuestProp =
-          this.getNearbyHarthmereObjectInspectableOverlay(
-            dist(hit.pos, localPlayer.player.position) + 1.25
-          );
-        if (
-          nearbyPriorityQuestProp &&
-          NATIVE_PRIORITY_QUEST_PROP_ENTITY_IDS.has(
-            nearbyPriorityQuestProp.entityId
-          )
-        ) {
+          this.getNearbyPriorityHarthmereObjectInspectableOverlay();
+        if (nearbyPriorityQuestProp) {
           return nearbyPriorityQuestProp;
         }
         const label = this.resources.get("/ecs/c/label", groupId);
@@ -1425,7 +1430,7 @@ export class OverlayScript implements Script {
           add(hit.pos, [0.5, 1.0, 0.5]),
           camera
         );
-        if (projection && hit.terrainId !== getTerrainID("soil")) {
+        if (projection) {
           return {
             kind: "plant",
             key: `inspect:plant:${plantId}`,
@@ -1586,6 +1591,63 @@ export class OverlayScript implements Script {
       label,
       entityDescription: candidate.entityDescription,
       pos: candidate.position,
+    };
+  }
+
+  /**
+   * Select only immutable snapshot quest props that are allowed to beat their
+   * parent group terrain. Filtering before scoring prevents a nearby duplicate
+   * inscription or unrelated live object from winning merely because its
+   * legacy anchor is a little closer than the canonical quest child.
+   */
+  private getNearbyPriorityHarthmereObjectInspectableOverlay(
+    entityIds: ReadonlySet<BiomesId> = NATIVE_PRIORITY_QUEST_PROP_ENTITY_IDS
+  ): InspectableOverlay | undefined {
+    const localPlayer = this.resources.get("/scene/local_player");
+    const candidates: HarthmereWorldObjectCandidate[] = [];
+    const entityIdByCandidateId = new Map<string, BiomesId>();
+    for (const entityId of entityIds) {
+      const entity = this.table.get(entityId);
+      const position = entity?.position?.v;
+      if (!entity || !position || !this.isHarthmereWorldObjectEntity(entity)) {
+        continue;
+      }
+      const id = `ecs:${entityId}`;
+      entityIdByCandidateId.set(id, entityId);
+      candidates.push({
+        id,
+        label: entity.label?.text ?? "",
+        position: [position[0], position[1], position[2]],
+        entityDescription: entity.entity_description?.text,
+      });
+    }
+    const selected = selectNearestHarthmereWorldObjectInspectable({
+      playerPosition: [...localPlayer.player.position] as [
+        number,
+        number,
+        number
+      ],
+      facingView: viewDir([0, localPlayer.player.orientation[1]]) as [
+        number,
+        number,
+        number
+      ],
+      candidates,
+      radius: HARTHMERE_WORLD_OBJECT_INSPECT_RADIUS,
+    });
+    if (!selected) {
+      return undefined;
+    }
+    const entityId =
+      entityIdByCandidateId.get(selected.id) ?? INVALID_BIOMES_ID;
+    return {
+      kind: "harthmere_object",
+      key: `inspect:harthmere_object:entity:${entityId}`,
+      entityId,
+      objectId: selected.id,
+      label: selected.label,
+      entityDescription: selected.entityDescription,
+      pos: [selected.position[0], selected.position[1], selected.position[2]],
     };
   }
 
@@ -1797,6 +1859,14 @@ export class OverlayScript implements Script {
       localPlayer.player.position,
       entityIdByCandidateId
     );
+    const priorityCandidateIds = new Set(
+      [...NATIVE_PRIORITY_QUEST_PROP_ENTITY_IDS].map(
+        (entityId) => `ecs:${entityId}`
+      )
+    );
+    const activeQuestMarkerIds = activeHarthmereQuestMarkerIds(
+      readSnapshotGroveQuestState()
+    );
     const selected = selectNearestHarthmereWorldObjectInspectable({
       playerPosition,
       facingView: viewDir([0, localPlayer.player.orientation[1]]) as [
@@ -1827,6 +1897,12 @@ export class OverlayScript implements Script {
       // A reticle hit on the ship hull or the chest's voxel art must not shrink
       // the container prompt to the terrain-hit depth.
       containerRadius: HARTHMERE_WORLD_OBJECT_INSPECT_RADIUS,
+      // Grouped quest plates/crates use immutable source ids. Their own parent
+      // terrain may be the shallow cursor hit, so keep the normal 6.5m facing
+      // gate for those exact candidates instead of clipping them to the hit.
+      priorityCandidateIds,
+      priorityRadius: HARTHMERE_WORLD_OBJECT_INSPECT_RADIUS,
+      preferredCandidateIds: activeQuestMarkerIds,
     });
     if (!selected) {
       return undefined;
@@ -1844,6 +1920,7 @@ export class OverlayScript implements Script {
     // prompt. Other object types keep the stricter visible-target behavior.
     if (
       !selected.isContainer &&
+      !selected.isPriority &&
       (!screenCoordinateProjection(targetPosition, camera) ||
         this.isOccluded(targetPosition, camera))
     ) {

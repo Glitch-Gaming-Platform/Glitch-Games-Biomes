@@ -55,6 +55,17 @@ describe("Harthmere placeable crafting-station F fallback", () => {
     );
   });
 
+  it("shows the planted crop overlay while the cursor is over its soil plot", () => {
+    assert.match(
+      source,
+      /const plantId = plantExperimentalAt\([\s\S]*?if \(projection\) \{[\s\S]*?kind: "plant"/
+    );
+    assert.doesNotMatch(
+      source,
+      /projection && hit\.terrainId !== getTerrainID\("soil"\)/
+    );
+  });
+
   it("keeps hidden static quest containers gated without suppressing visible live crates", () => {
     assert.match(source, /harthmereVisibleStaticWorldObjectInspectCandidates/);
     assert.match(

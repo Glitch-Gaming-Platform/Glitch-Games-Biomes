@@ -1,10 +1,11 @@
 import { sizeAABB } from "@/shared/math/linear";
 import type { AABB } from "@/shared/math/types";
 import { Sparse3, SparseBimap3, SparseSet3 } from "@/shared/util/sparse";
+import { HARTHMERE_EXPANDED_WORLD_EAST_EDGE_X } from "@/shared/harthmere/world_extension";
 
 const DEFAULT_GAIA_SHARD_AABB: AABB = [
-  [-2048, -224, -2048],
-  [2048, 288, 2048],
+  [-2048, -256, -2048],
+  [HARTHMERE_EXPANDED_WORLD_EAST_EDGE_X, 512, 2048],
 ];
 
 export function makeWorldMap<T>(aabb: AABB = DEFAULT_GAIA_SHARD_AABB) {

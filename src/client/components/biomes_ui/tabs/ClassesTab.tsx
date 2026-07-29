@@ -17,6 +17,20 @@ interface ClassesAdapter {
   chooseSpecialization?: (id: string) => void;
 }
 
+const CLASS_ROLE_LABELS: Record<string, string> = {
+  tank: "Defense",
+  damage: "Damage",
+  support: "Support",
+  scout: "Scouting",
+  controller: "Control",
+  healer: "Healing",
+  summoner: "Summoning",
+};
+
+function playerFacingClassRole(role: string) {
+  return CLASS_ROLE_LABELS[role] ?? biomesPlayerTitle(role);
+}
+
 export function activateBiomesClassCardForTest(adapter: ClassesAdapter | undefined, id: string): string | null {
   if (adapter?.classChoiceLocked?.() && adapter.getCurrent?.() !== id) {
     return null;
@@ -64,7 +78,7 @@ export const ClassesTab: React.FunctionComponent<{ adapter?: ClassesAdapter }> =
             React.createElement("div", {
               ref: cell.ref, tabIndex: cell.tabIndex, onFocus: cell.onFocus, onClick: cell.onClick, onKeyDown: cell.onKeyDown,
               role: "button",
-              "aria-label": `${c.name} class — ${c.tagline}${current === c.id ? " (current)" : lockedClassChange ? " (requires respec)" : ""}`,
+              "aria-label": `${c.name} class — ${c.tagline}${current === c.id ? " (current class)" : lockedClassChange ? " (class reset required)" : ""}`,
               "data-selected": current === c.id ? "true" : undefined,
               "data-focused": focused ? "true" : undefined,
               "aria-disabled": lockedClassChange ? "true" : undefined,
@@ -80,14 +94,14 @@ export const ClassesTab: React.FunctionComponent<{ adapter?: ClassesAdapter }> =
                 current === c.id
                   ? React.createElement("span", { style: statusPillStyle }, "Selected")
                   : lockedClassChange
-                  ? React.createElement("span", { style: statusPillStyle }, "Respec")
+                  ? React.createElement("span", { style: statusPillStyle }, "Reset Needed")
                   : pendingChoice === c.id
                   ? React.createElement("span", { style: statusPillStyle }, "Saving")
                   : null
               ),
               React.createElement("p", { style: { margin: "6px 0 0", fontSize: 11, color: "var(--biomes-fg-muted)", lineHeight: 1.4 } }, c.tagline),
               React.createElement("div", { style: { marginTop: 8, fontSize: 10, letterSpacing: "0.1em", color: "var(--biomes-fg-dim)" } },
-                `Resource: ${biomesPlayerTitle(c.resource)} · ${c.roles.map((role) => biomesPlayerTitle(role)).join(" / ")}`)
+                `Uses ${biomesPlayerTitle(c.resource)} · Roles: ${c.roles.map(playerFacingClassRole).join(" / ")}`)
             )
           )
           );
@@ -100,9 +114,9 @@ export const ClassesTab: React.FunctionComponent<{ adapter?: ClassesAdapter }> =
           {pendingChoice && pendingChoice !== current
             ? `${classes.find((entry) => entry.id === pendingChoice)?.name ?? "Class"} is being saved.`
             : current && classChoiceMade
-            ? "Your selected class controls starting abilities, resource type, and skill unlocks."
+            ? "Your class determines your starting abilities and available skills."
             : current
-            ? "This is your starter preview. Choose a class card to save your path."
+            ? "Choose a class to save your choice."
             : "Choose a class card to save it."}
         </p>
         {currentClass?.specializations?.length ? (
@@ -139,7 +153,7 @@ export const ClassesTab: React.FunctionComponent<{ adapter?: ClassesAdapter }> =
           </div>
         ) : null}
         {classChoiceLocked ? (
-          <p style={mutedStyle}>Changing class after selection requires a respec service.</p>
+          <p style={mutedStyle}>Changing class after selection requires a class reset.</p>
         ) : null}
       </aside>
     </div>

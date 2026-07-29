@@ -1,6 +1,10 @@
 import type { LoadProgress } from "@/client/game/load_progress";
 import { progressSummary } from "@/client/game/load_progress";
-import { shouldAutoReloadForPartialTerrainRecovery } from "@/client/components/system/load_progress_recovery";
+import {
+  armPartialTerrainRecovery,
+  hasPartialTerrainRecoveryMarker,
+  shouldAutoReloadForPartialTerrainRecovery,
+} from "@/client/components/system/load_progress_recovery";
 import { reportClientError } from "@/client/util/request_helpers";
 import LoadingContentPreview from "@/pages/new-loading";
 import { choose } from "@/shared/util/helpers";
@@ -37,8 +41,6 @@ function progressDetails(loadProgress: LoadProgress): string[] {
 }
 
 const MEGABYTE = 1024 * 1024;
-const PARTIAL_TERRAIN_RECOVERY_KEY =
-  "biomes.harthmere.partialTerrainRecoveryReloaded";
 function prettyMb(bytes: number) {
   return `${(bytes / MEGABYTE).toFixed(2)} MB`;
 }
@@ -171,14 +173,14 @@ export const LoadingProgress: React.FunctionComponent<{
     if (typeof window === "undefined" || !currentlyStale) {
       return;
     }
-    const alreadyReloaded =
-      window.sessionStorage.getItem(PARTIAL_TERRAIN_RECOVERY_KEY) === "1";
+    const alreadyReloaded = hasPartialTerrainRecoveryMarker();
     if (
       shouldAutoReloadForPartialTerrainRecovery({
         progress,
         staleProgress,
         alreadyReloaded,
-      })
+      }) &&
+      armPartialTerrainRecovery()
     ) {
       reportClientError(
         "LongLoad",
@@ -193,7 +195,6 @@ export const LoadingProgress: React.FunctionComponent<{
           sceneRendered: (staleProgress ?? progress).sceneRendered,
         }
       );
-      window.sessionStorage.setItem(PARTIAL_TERRAIN_RECOVERY_KEY, "1");
       window.location.reload();
     }
   }, [currentlyStale, progress, staleProgress]);

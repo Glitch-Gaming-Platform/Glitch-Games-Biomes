@@ -43,7 +43,7 @@ import {
   allHarthmereNativeQuestBiscuits,
   HARTHMERE_NATIVE_QUEST_OVERLAY_VERSION,
 } from "@/shared/harthmere/harthmere_native_quests";
-import { HARTHMERE_QUEST_CATALOG } from "@/shared/harthmere/quest_compendium";
+import { BIBLE_QUEST_CATALOG } from "@/shared/harthmere/bible/bible_quest_catalog";
 import {
   harthmereBibleObjectiveItemDefinition,
   harthmereBibleRewardItemDefinition,
@@ -93,6 +93,9 @@ const HARTHMERE_NATIVE_PRESENTATION_SOURCE_IDS: Readonly<
   mana_essence: BikkieIds.powerCell,
   wild_berries: BikkieIds.fruit,
   raw_meat: BikkieIds.muckerMeat,
+  grove_festival_skewer: BikkieIds.muckerMeat,
+  grove_festival_skewer_ingredients: BikkieIds.muckerMeat,
+  grove_road_torch: BikkieIds.log,
   billys_lunch_pail: BikkieIds.bucket,
   jackies_sealed_letter: BikkieIds.parcel,
   bolt_order: BikkieIds.recipePaper,
@@ -438,17 +441,15 @@ export function ensureHarthmereNativeItemCatalogue() {
   // Quest rewards and objective proofs are physical items too. Register the
   // complete authored set before the Bikkie overlay so a reward can never
   // create a string-only Redis stack with no native inventory identity.
-  for (const quest of HARTHMERE_QUEST_CATALOG) {
-    for (const rewardItemId of quest.rewards?.items ?? []) {
+  for (const quest of BIBLE_QUEST_CATALOG) {
+    for (const rewardItemId of quest.rewards.items) {
       ensureDefinition(harthmereBibleRewardItemDefinition(rewardItemId));
     }
-    for (const objective of quest.objectives ?? []) {
+    for (const step of quest.steps) {
       ensureDefinition(
         harthmereBibleObjectiveItemDefinition({
-          itemId: `quest_objective_item:${quest.id}:${objective.id}`,
-          displayName: String(
-            objective.targetName ?? objective.label ?? "Quest Item"
-          ),
+          itemId: `quest_objective_item:${quest.id}:${step.id}`,
+          displayName: step.targetName || step.label || "Quest Item",
         })
       );
     }

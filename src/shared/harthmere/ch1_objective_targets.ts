@@ -22,6 +22,7 @@ import {
   type Ch1StepTrigger,
 } from "@/shared/harthmere/ch1_quests";
 import { SNAPSHOT_GROVE_LANDMARKS } from "@/shared/harthmere/snapshot_grove_content";
+import { groveLandmarkWorldPosition } from "@/shared/harthmere/grove/grove_waypoints";
 import type { BiomesId } from "@/shared/ids";
 
 export interface Ch1ObjectiveTarget {
@@ -82,7 +83,9 @@ function ch1CastPosition(key: string): Ch1Vec3 | undefined {
 const LANDMARKS = SNAPSHOT_GROVE_LANDMARKS.map((landmark) => ({
   label: landmark.label,
   normalized: normalized(landmark.label),
-  position: vec3(landmark.position),
+  // RESOLVED, not raw: a Chapter 1 objective that resolves to a Grove landmark
+  // must not inherit the retired Y=54 datum.
+  position: vec3(groveLandmarkWorldPosition(landmark)),
 }));
 
 const TARGET_ALIASES = new Map<string, Ch1Vec3>([

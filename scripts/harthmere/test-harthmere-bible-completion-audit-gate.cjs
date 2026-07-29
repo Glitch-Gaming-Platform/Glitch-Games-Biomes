@@ -4,14 +4,14 @@ const path = require("path");
 function check(label, condition) { if (condition) console.log(`OK ${label}`); else { console.error(`FAIL ${label}`); process.exitCode = 1; } }
 const root = process.argv[2] ? path.resolve(process.argv[2]) : process.cwd();
 const requiredFiles = [
-  "src/shared/harthmere/quest_runtime.ts",
+  "src/shared/harthmere/bible_quest_live_authority.ts",
   "src/shared/harthmere/main_quest_spaces.ts",
   "src/shared/harthmere/thaedryn_boss.ts",
   "src/shared/harthmere/wilds_gameplay_loops.ts",
   "src/client/components/challenges/LocalDevHarthmereQuestRuntime.tsx",
 ];
 for (const file of requiredFiles) check(`required current file exists: ${file}`, fs.existsSync(path.join(root, file)));
-const runtime = fs.readFileSync(path.join(root, "src/shared/harthmere/quest_runtime.ts"), "utf8");
+const runtime = fs.readFileSync(path.join(root, "src/shared/harthmere/bible_quest_live_authority.ts"), "utf8");
 const spaces = fs.readFileSync(path.join(root, "src/shared/harthmere/main_quest_spaces.ts"), "utf8");
 const boss = fs.readFileSync(path.join(root, "src/shared/harthmere/thaedryn_boss.ts"), "utf8");
 const wilds = fs.readFileSync(path.join(root, "src/shared/harthmere/wilds_gameplay_loops.ts"), "utf8");

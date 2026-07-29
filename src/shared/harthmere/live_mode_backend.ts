@@ -138,6 +138,8 @@ import {
 } from "./snapshot_grove_content";
 import { HARTHMERE_NATIVE_QUEST_GIVER_MANIFEST } from "./harthmere_native_quest_manifest";
 import { getHarthmereQuestById } from "./quest_compendium";
+import { bibleQuest } from "./bible/bible_quest_catalog";
+import { bibleQuestGiverId } from "./bible/bible_quest_schema";
 import {
   harthmereObjectInteractionForLabel,
   type HarthmereObjectInteractionKind,
@@ -169,6 +171,7 @@ import {
   defaultHarthmereBibleQuestLiveSlice,
   harthmereBibleRewardItemDefinition,
   harthmereBibleObjectiveItemDefinition,
+  harthmereBibleNativeSnapshotFromMirror,
   harthmereBibleQuestEvaluationNowMs,
   harthmereBibleQuestEvaluationWeather,
   harthmereThaedrynCombatSnapshot,
@@ -1668,6 +1671,13 @@ function isHarthmereActorJobMarkerId(markerId: string) {
   );
 }
 
+function isHarthmereActorPrivateMarkerId(markerId: string) {
+  return (
+    isHarthmereActorJobMarkerId(markerId) ||
+    markerId.startsWith("bible_quest:")
+  );
+}
+
 function jobsBoardTodoIdFromActorMarker(markerId: string) {
   if (markerId.startsWith("jobs_board_marker:")) {
     return markerId.slice("jobs_board_marker:".length);
@@ -1822,7 +1832,7 @@ function publicSharedInWorldMarkers(
 ) {
   return Object.fromEntries(
     Object.entries(markers).filter(
-      ([markerId]) => !isHarthmereActorJobMarkerId(markerId)
+      ([markerId]) => !isHarthmereActorPrivateMarkerId(markerId)
     )
   );
 }
@@ -8496,7 +8506,7 @@ export function createHarthmereLiveModeQuestClientSnapshot(
     // the real actor level.
     playerLevel: state.classMagic.skills.character_level?.level ?? 1,
     serverNowMs: harthmereBibleQuestEvaluationNowMs(state.updatedAtMs),
-    weatherClaim: harthmereBibleQuestEvaluationWeather(),
+    weatherClaim: harthmereBibleQuestEvaluationWeather(undefined),
     active: JSON.parse(JSON.stringify(activeQuestEntriesForActor(state))),
     completed: { ...state.quests.completed },
     pendingReceivedInvites,
@@ -10725,6 +10735,12 @@ export function reduceHarthmereLiveModeBackendState(
       envelope.serverActorPosition &&
       (reward.bling > 0 || Object.keys(rewardItemStacks).length > 0)
     ) {
+      // The reward exchange below is folded into the final native transaction.
+      // Mark item changes already represented by that plan so the generic
+      // next-vs-ECS reconciliation does not add the same reward a second time.
+      for (const [itemId, count] of Object.entries(rewardItemStacks)) {
+        recordNativeHandledItemDelta(itemId, count);
+      }
       nativeEcsMaterializationPlans.push({
         kind: "inventory_exchange",
         materializationKey: `${nativeRewardMaterializationId}:inventory`,
@@ -10769,6 +10785,13 @@ export function reduceHarthmereLiveModeBackendState(
     recordDelta(next.inventory.items, requirement.itemId, -requirement.count);
     touchedModels.add("inventory_items");
     if (nativeBiomesEcsAuthorityEnabled() && envelope.serverActorPosition) {
+      // This explicit exchange is later folded into the one signed native
+      // inventory transaction. Exclude its matching Redis projection delta
+      // from generic reconciliation or the hand-in item is consumed twice.
+      recordNativeHandledItemDelta(
+        requirement.itemId,
+        -requirement.count
+      );
       nativeEcsMaterializationPlans.push({
         kind: "inventory_exchange",
         materializationKey: `snapshot_grove_turn_in:${envelope.actorId}:${quest.id}:${objectiveIndex}`,
@@ -13879,6 +13902,19 @@ export function reduceHarthmereLiveModeBackendState(
             );
           }
         }
+        // Native progress is reconstructed from the journal mirror's current
+        // step cursor, not stored separately — see
+        // harthmereBibleNativeSnapshotFromMirror. Authoritative validation
+        // still happens downstream in harthmere_quest_progress.ts.
+        const bibleNative = requestedQuestId
+          ? harthmereBibleNativeSnapshotFromMirror({
+              questId: requestedQuestId,
+              activeStepId: next.quests.active[requestedQuestId]?.stepId,
+              activeProgress: next.quests.active[requestedQuestId]?.progress,
+              active: next.quests.active[requestedQuestId] !== undefined,
+              completed: next.quests.completed[requestedQuestId] !== undefined,
+            })
+          : undefined;
         const result = reduceHarthmereBibleQuestOperation({
           slice: next.quests.bible,
           actorId: envelope.actorId,
@@ -13895,6 +13931,7 @@ export function reduceHarthmereLiveModeBackendState(
           combatResult: payloadString(envelope, "combatResult") as any,
           requestId: envelope.requestId,
           weatherClaim: payloadString(envelope, "weather"),
+          native: bibleNative,
           bossEventType: payloadString(envelope, "bossEventType"),
           bossEventAmount: payloadNumber(envelope, "bossEventAmount"),
           bossEventPath: payloadString(envelope, "bossEventPath"),
@@ -13911,12 +13948,13 @@ export function reduceHarthmereLiveModeBackendState(
             requestedQuestId &&
             liveEntityHelperOperation === "bible_quest_accept"
           ) {
-            const authoredQuest = getHarthmereQuestById(requestedQuestId) as
-              | any
-              | undefined;
-            const giver = authoredQuest?.giverId
+            const authoredQuest = bibleQuest(requestedQuestId);
+            const giverId = authoredQuest
+              ? bibleQuestGiverId(authoredQuest)
+              : undefined;
+            const giver = giverId
               ? HARTHMERE_NATIVE_QUEST_GIVER_MANIFEST[
-                  authoredQuest.giverId as keyof typeof HARTHMERE_NATIVE_QUEST_GIVER_MANIFEST
+                  giverId as keyof typeof HARTHMERE_NATIVE_QUEST_GIVER_MANIFEST
                 ]
               : undefined;
             const giverEntityId =
@@ -13977,12 +14015,13 @@ export function reduceHarthmereLiveModeBackendState(
             requestedQuestId &&
             liveEntityHelperOperation === "bible_quest_retry"
           ) {
-            const authoredQuest = getHarthmereQuestById(requestedQuestId) as
-              | any
-              | undefined;
-            const giver = authoredQuest?.giverId
+            const authoredQuest = bibleQuest(requestedQuestId);
+            const giverId = authoredQuest
+              ? bibleQuestGiverId(authoredQuest)
+              : undefined;
+            const giver = giverId
               ? HARTHMERE_NATIVE_QUEST_GIVER_MANIFEST[
-                  authoredQuest.giverId as keyof typeof HARTHMERE_NATIVE_QUEST_GIVER_MANIFEST
+                  giverId as keyof typeof HARTHMERE_NATIVE_QUEST_GIVER_MANIFEST
                 ]
               : undefined;
             const giverEntityId =
@@ -14060,6 +14099,31 @@ export function reduceHarthmereLiveModeBackendState(
             if (lootActor) {
               lootActor.items = { ...next.inventory.items };
             }
+            // Objective proof is a physical quest item, not merely a Redis
+            // journal annotation. Mirror the same validated grant through the
+            // signed native inventory transaction so ECS and the inventory UI
+            // converge on one stack. The checked-in native item manifest owns
+            // every generated Bible objective item id.
+            if (
+              nativeBiomesEcsAuthorityEnabled() &&
+              envelope.serverActorPosition
+            ) {
+              nativeEcsMaterializationPlans.push({
+                kind: "inventory_exchange",
+                materializationKey: `bible_objective_item:${envelope.actorId}:${requestedQuestId}:${payloadString(
+                  envelope,
+                  "objectiveId"
+                )}:${envelope.requestId}`,
+                actorId: envelope.actorId,
+                position: envelope.serverActorPosition,
+                consumeItemStacks: {},
+                rewardItemStacks: { [grant.itemId]: grant.count },
+                goldDelta: 0,
+                expiresAtMs: nowMs + 30 * 24 * 60 * 60 * 1000,
+                sourceKind: "harthmere_bible_quest_objective_item",
+              });
+              touchedModels.add("native_ecs_inventory_exchange");
+            }
             touchedModels.add("inventory_items");
           } else {
             next.inventory.overflow.push({
@@ -14117,6 +14181,43 @@ export function reduceHarthmereLiveModeBackendState(
             touchedModels,
             nowMs
           );
+          // Bible completion rewards use the same native writers as Grove:
+          // character XP goes through the replay-protected progression event,
+          // while wallet/items share one signed inventory transaction. Redis
+          // retains only the live-mode projection and narrative residuals.
+          if (nativeBiomesEcsAuthorityEnabled()) {
+            const nativeRewardKey = `bible_quest_reward:${envelope.actorId}:${result.rewards.questId}:${envelope.requestId}`;
+            if (result.rewards.xpDelta > 0) {
+              nativeEcsMaterializationPlans.push({
+                kind: "character_progress",
+                materializationKey: `${nativeRewardKey}:xp`,
+                actorId: envelope.actorId,
+                xpDelta: result.rewards.xpDelta,
+                sourceKind: "harthmere_bible_quest_reward",
+              });
+              touchedModels.add("native_ecs_character_progress");
+            }
+            if (
+              envelope.serverActorPosition &&
+              (result.rewards.goldDelta > 0 ||
+                result.rewards.items.length > 0)
+            ) {
+              nativeEcsMaterializationPlans.push({
+                kind: "inventory_exchange",
+                materializationKey: `${nativeRewardKey}:inventory`,
+                actorId: envelope.actorId,
+                position: envelope.serverActorPosition,
+                consumeItemStacks: {},
+                rewardItemStacks: Object.fromEntries(
+                  result.rewards.items.map((item) => [item.itemId, item.count])
+                ),
+                goldDelta: result.rewards.goldDelta,
+                expiresAtMs: nowMs + 30 * 24 * 60 * 60 * 1000,
+                sourceKind: "harthmere_bible_quest_reward",
+              });
+              touchedModels.add("native_ecs_inventory_exchange");
+            }
+          }
         }
         if (result.thaedrynSnapshot) {
           syncHarthmereThaedrynCombatSnapshot(

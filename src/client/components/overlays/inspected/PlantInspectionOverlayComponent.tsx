@@ -4,6 +4,10 @@ import type { InspectShortcuts } from "@/client/components/overlays/inspected/Cu
 import { CursorInspectionComponent } from "@/client/components/overlays/inspected/CursorInspectionOverlayComponent";
 import { plantInspectionCanHarvest } from "@/client/components/overlays/inspected/plantInspectionShortcuts";
 import {
+  plantGrowthProgress,
+  plantWaterProgress,
+} from "@/client/components/overlays/inspected/plantInspectionProgress";
+import {
   acquiredInventoryCountForBag,
   snapshotInventoryCountsForBag,
 } from "@/client/components/overlays/inspected/nativeEcsAcquisitionFeedback";
@@ -51,12 +55,11 @@ export const PlantInspectionOverlayComponent: React.FunctionComponent<{
   const destroyPermitted =
     authManager.currentUser.hasSpecialRole("farmingAdmin");
   const adminDetails = authManager.currentUser.hasSpecialRole("farmingAdmin");
-  // Only show growth time if less than water time, since the growth time will pause if unwatered.
-  const showGrowthTime =
-    waterTime === undefined || fullyGrownInSeconds < waterInSeconds;
-
   const plantBiscuit =
     plant && plant.seed ? getBiscuit(plant?.seed) : undefined;
+  const displayName = name ?? plantBiscuit?.displayName ?? "Plant";
+  const growthProgress = plantGrowthProgress(plant, plantBiscuit?.farming);
+  const waterProgress = plantWaterProgress(plant);
   const harvestPermitted = plantInspectionCanHarvest(
     plant?.status,
     plantBiscuit?.farming?.kind
@@ -68,39 +71,45 @@ export const PlantInspectionOverlayComponent: React.FunctionComponent<{
 
   const header = (
     <div className="water-details">
-      {plant?.status === "fully_grown" &&
-        plantBiscuit?.farming?.kind !== "tree" && <>{name} is fully grown</>}
-      {plant?.status === "halted_water" && <>{name} needs water</>}
-      {plant?.status === "halted_sun" && <>{name} needs sunlight</>}
-      {plant?.status === "halted_shade" && <>{name} needs shade</>}
-      {plant?.status === "growing" &&
-        (showGrowthTime ? (
-          <>
-            {name} fully grown in{" "}
-            {fullyGrownInSeconds > 60 ? (
-              plantTimeString(fullyGrownInSeconds)
-            ) : (
-              <>less than a minute</>
-            )}
-          </>
-        ) : waterTime ? (
-          plant?.status === "growing" &&
-          (waterInSeconds > 0 ? (
-            <>
-              {name} needs water in {plantTimeString(waterInSeconds)}
-              <ProgressBar progress={waterLevel} />
-            </>
-          ) : (
-            <>{name} needs water</>
-          ))
-        ) : (
-          <>
-            {name} doesn&apos;t need water
-            <ProgressBar progress={1} />
-          </>
-        ))}
-      {plant?.status === "dead" && <>{name} perished...</>}
-      {plant?.status === "planted" && <>{name} is planted</>}
+      <div className="plant-progress-name">{displayName}</div>
+      <div className="plant-progress-meter growth">
+        <div className="plant-progress-meter-label">
+          <span>Growth</span>
+          <span>{Math.round(growthProgress * 100)}%</span>
+        </div>
+        <ProgressBar progress={growthProgress} />
+        <div className="plant-progress-meter-detail">
+          {plant?.status === "fully_grown"
+            ? "Ready to harvest"
+            : plant?.status === "dead"
+            ? "Plant has perished"
+            : plant?.status === "halted_water"
+            ? "Growth paused: needs water"
+            : plant?.status === "halted_sun"
+            ? "Growth paused: needs sunlight"
+            : plant?.status === "halted_shade"
+            ? "Growth paused: needs shade"
+            : fullyGrownInSeconds > 60
+            ? `${plantTimeString(fullyGrownInSeconds)} remaining`
+            : fullyGrownInSeconds > 0
+            ? "Less than a minute remaining"
+            : "Growing"}
+        </div>
+      </div>
+      <div className="plant-progress-meter water">
+        <div className="plant-progress-meter-label">
+          <span>Water</span>
+          <span>{Math.round(waterProgress * 100)}%</span>
+        </div>
+        <ProgressBar progress={waterProgress} />
+        <div className="plant-progress-meter-detail">
+          {waterTime === undefined
+            ? "No watering needed"
+            : waterProgress <= 0 || waterInSeconds <= 0
+            ? "Needs water"
+            : `${plantTimeString(waterInSeconds)} remaining`}
+        </div>
+      </div>
     </div>
   );
 

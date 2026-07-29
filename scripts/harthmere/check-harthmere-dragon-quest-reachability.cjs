@@ -37,7 +37,7 @@ const visibleTarget = read("src/shared/harthmere/visible_combat_target.ts");
 const mapAdapter = read(
   "src/client/components/biomes_ui/adapters/mapLiveAdapter.ts"
 );
-const catalog = read("src/shared/harthmere/quest_compendium.ts");
+const catalog = read("src/shared/harthmere/bible/bible_quest_catalog.ts");
 
 // 1. The catalog still authors the dragon quest and its chain.
 ok(

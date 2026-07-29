@@ -71,14 +71,21 @@ export class Sparse3<T> {
     ok(shape[0] * shape[1] * shape[2] < Number.MAX_SAFE_INTEGER);
   }
 
+  inBounds(pos: ReadonlyVec3) {
+    const [x, y, z] = sub(pos, this.origin);
+    return (
+      x >= 0 &&
+      y >= 0 &&
+      z >= 0 &&
+      x < this.shape[0] &&
+      y < this.shape[1] &&
+      z < this.shape[2]
+    );
+  }
+
   private key(pos: ReadonlyVec3) {
     const [x, y, z] = sub(pos, this.origin);
-    ok(x >= 0);
-    ok(y >= 0);
-    ok(z >= 0);
-    ok(x < this.shape[0]);
-    ok(y < this.shape[1]);
-    ok(z < this.shape[2]);
+    ok(this.inBounds(pos));
     return x + (y + z * this.shape[1]) * this.shape[0];
   }
 

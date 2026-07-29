@@ -6,6 +6,7 @@ import type { MapMarker, MapTrackableQuest } from "../tabs/MapQuestsTab";
 import { isHarthmereNativeGroveQuestId } from "@/shared/harthmere/harthmere_native_quests";
 import type { NavigationAid } from "@/shared/game/types";
 import type { BiomesId } from "@/shared/ids";
+import { isBibleNativeQuestId } from "@/shared/harthmere/bible/bible_quest_ids";
 import {
   NATIVE_GET_THE_MUCK_OUT_QUEST_ID,
   NATIVE_GET_THE_MUCK_OUT_MUCKLING_HUNT_POSITION,
@@ -193,6 +194,12 @@ export function nativeQuestLocationlessAnchorAidForTest(
  */
 function nativeQuestIsWaitingForDiscovery(quest: QuestBundle): boolean {
   if (quest.state !== "in_progress" || quest.biscuit.questGiver) return false;
+  // Bible world-trigger quests enter in_progress only after the live Bible
+  // authority has validated their authored discovery gate. Treating their
+  // circular self-unlock as stale here hid a legitimately accepted quest from
+  // the journal even though native ECS already owned it. Keep the legacy-save
+  // suppression below for other quest families that lack that server gate.
+  if (isBibleNativeQuestId(quest.biscuit.id)) return false;
   const unlock = quest.biscuit.unlock;
   if (unlock?.kind !== "event" || unlock.eventKind !== "challengeUnlocked") {
     return false;

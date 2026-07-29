@@ -17,7 +17,7 @@ function ok(condition, label) {
 
 const resolver = read("src/shared/harthmere/production_terrain_placement_map.ts");
 const generated = read("src/shared/harthmere/generated/production_terrain_placement_map.ts");
-const runtime = read("src/shared/harthmere/quest_runtime.ts");
+const runtime = read("src/shared/harthmere/bible_quest_live_authority.ts");
 const jobsBoard = read("src/shared/harthmere/jobs_board_quest_marker_positions.ts");
 const mapPinned = read("src/client/components/biomes_ui/adapters/mapPinnedDestination.ts");
 const jobsBoardMap = read("src/client/components/biomes_ui/adapters/jobsBoardQuestMapAdapter.ts");

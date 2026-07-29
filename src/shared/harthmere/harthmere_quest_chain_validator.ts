@@ -20,10 +20,12 @@
 // Tests assert these invariants so a future quest edit can't silently break
 // mission progression.
 
+import { BIBLE_QUEST_CATALOG } from "@/shared/harthmere/bible/bible_quest_catalog";
 import {
-  HARTHMERE_QUEST_CATALOG,
-  validateHarthmereQuestCatalog,
-} from "@/shared/harthmere/quest_compendium";
+  bibleQuestGiverId,
+  bibleQuestPrerequisiteId,
+  type BibleQuestDef,
+} from "@/shared/harthmere/bible/bible_quest_schema";
 
 export const HARTHMERE_QUEST_CHAIN_VALIDATOR_VERSION =
   "harthmere-quest-chain-validator" as const;
@@ -58,7 +60,7 @@ function codeRank(code: string | undefined): number {
 
 export function buildHarthmereQuestChain(): HarthmereQuestChain {
   const warnings: string[] = [];
-  const quests = HARTHMERE_QUEST_CATALOG as readonly any[];
+  const quests: readonly BibleQuestDef[] = BIBLE_QUEST_CATALOG;
   const byId = new Map<string, any>();
   for (const q of quests) {
     if (byId.has(q.id)) warnings.push(`duplicate quest id: ${q.id}`);
@@ -69,7 +71,8 @@ export function buildHarthmereQuestChain(): HarthmereQuestChain {
   for (const q of quests) {
     forward[q.id] ??= [];
     backward[q.id] ??= [];
-    const prereqs: string[] = q.activeRules?.prerequisiteQuestIds ?? [];
+    const prereq = bibleQuestPrerequisiteId(q);
+    const prereqs: string[] = prereq ? [prereq] : [];
     for (const p of prereqs) {
       if (!byId.has(p)) {
         warnings.push(`quest ${q.id} references missing prerequisite ${p}`);
@@ -103,10 +106,16 @@ export function validateHarthmereQuestChain(opts?: {
 }): HarthmereQuestChainValidation {
   const failures: string[] = [];
   const knownNpcIds = opts?.knownNpcIds;
-  const quests = HARTHMERE_QUEST_CATALOG as readonly any[];
-  const catalogCheck = validateHarthmereQuestCatalog();
-  for (const failure of catalogCheck.failures) {
-    failures.push(`catalog: ${failure}`);
+  const quests: readonly BibleQuestDef[] = BIBLE_QUEST_CATALOG;
+  // The retired `validateHarthmereQuestCatalog` checked duplicate ids, reward
+  // previews, giver-or-hidden, non-empty objectives and activation test cases.
+  // The first four are asserted below against typed data; the fifth checked a
+  // prose field that no longer ships (migration doc section 4). Duplicate ids
+  // are now structurally impossible to miss, so they are checked here once.
+  const seenIds = new Set<string>();
+  for (const quest of BIBLE_QUEST_CATALOG) {
+    if (seenIds.has(quest.id)) failures.push(`duplicate quest id: ${quest.id}`);
+    seenIds.add(quest.id);
   }
 
   const chain = buildHarthmereQuestChain();
@@ -136,26 +145,25 @@ export function validateHarthmereQuestChain(opts?: {
       continue;
     }
     if (!q.title) failures.push(`quest ${q.id} missing title`);
-    if (!q.rewards?.previewText) {
+    if (!q.rewards.previewText) {
       failures.push(`quest ${q.id} missing rewards.previewText`);
     }
-    if (!q.hidden && (!q.giverId || typeof q.giverId !== "string")) {
-      failures.push(`quest ${q.id} not hidden but has no giverId`);
+    const giverId = bibleQuestGiverId(q);
+    // An auto-starting quest legitimately has no giver, so "not hidden" is no
+    // longer sufficient — the real rule is that a quest must be startable by
+    // SOME means. `start.kind` says which, exhaustively.
+    if (q.start.kind === "giver" && !giverId) {
+      failures.push(`quest ${q.id} has a giver start but no giverId`);
     }
-    if (!q.hidden && knownNpcIds && q.giverId && !knownNpcIds.has(q.giverId)) {
-      failures.push(`quest ${q.id} giverId '${q.giverId}' is not a known NPC`);
+    if (giverId && knownNpcIds && !knownNpcIds.has(giverId)) {
+      failures.push(`quest ${q.id} giverId '${giverId}' is not a known NPC`);
     }
-    const objectives: any[] = q.objectives ?? [];
-    if (!objectives.length) {
+    if (!q.steps.length) {
       failures.push(`quest ${q.id} has no objectives`);
     }
-    for (const objective of objectives) {
-      if (!objective?.targetId || typeof objective.targetId !== "string") {
-        failures.push(`quest ${q.id} objective missing targetId`);
-      }
-      if (!objective?.id || typeof objective.id !== "string") {
-        failures.push(`quest ${q.id} objective missing id`);
-      }
+    for (const step of q.steps) {
+      if (!step.targetId) failures.push(`quest ${q.id} objective missing targetId`);
+      if (!step.id) failures.push(`quest ${q.id} objective missing id`);
     }
   }
 
@@ -189,13 +197,14 @@ export function nextSuggestedHarthmereQuest(input: {
     }
   }
   // 2. Otherwise, surface the first side quest whose prereqs are satisfied.
-  const quests = HARTHMERE_QUEST_CATALOG as readonly any[];
+  const quests: readonly BibleQuestDef[] = BIBLE_QUEST_CATALOG;
   for (const q of quests) {
     if (q.category === "main") continue;
     if (q.hidden) continue;
     if (input.completedQuestIds.has(q.id)) continue;
     if (input.activeQuestIds.has(q.id)) continue;
-    const prereqs: string[] = q.activeRules?.prerequisiteQuestIds ?? [];
+    const prereq = bibleQuestPrerequisiteId(q);
+    const prereqs: string[] = prereq ? [prereq] : [];
     if (prereqs.every((p) => input.completedQuestIds.has(p))) {
       return { questId: q.id, reason: "unlocked_side" };
     }

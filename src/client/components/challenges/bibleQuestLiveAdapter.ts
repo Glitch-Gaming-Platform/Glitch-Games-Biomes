@@ -20,14 +20,19 @@ import {
 } from "@/shared/harthmere/bible_quest_live_authority";
 import { fetchHarthmereLiveWithTimeout } from "@/client/components/harthmere_live_fetch";
 import {
-  HARTHMERE_QUEST_CATALOG,
-  getHarthmereQuestById,
-} from "@/shared/harthmere/quest_compendium";
-import { getHarthmereQuestResolvedWaypoint } from "@/shared/harthmere/quest_runtime";
+  BIBLE_QUEST_CATALOG as HARTHMERE_QUEST_CATALOG,
+  bibleQuest as getHarthmereQuestById,
+} from "@/shared/harthmere/bible/bible_quest_catalog";
+import {
+  bibleQuestWorldWaypoint,
+  bibleStepWorldWaypoint,
+} from "@/shared/harthmere/bible/bible_waypoints";
+import { harthmereBibleNativeSnapshotFromMirror } from "@/shared/harthmere/bible_quest_live_authority";
 import {
   HARTHMERE_ALL_NPCS,
   harthmereNamedNpcById,
 } from "@/shared/harthmere/npc_compendium";
+import { bibleQuestGiverId } from "@/shared/harthmere/bible/bible_quest_schema";
 
 export const HARTHMERE_BIBLE_QUEST_CLIENT_VERSION =
   "harthmere-bible-quest-client" as const;
@@ -62,8 +67,8 @@ const giverIdsByNormalizedName: Map<string, string> = (() => {
     // compendium name ("Sergeant Bram Holt" vs "Sergeant Bramwell Holt");
     // index every authored spelling so the shorter snapshot display label
     // (for example "Father Aldren") still resolves to the canonical giver.
-    for (const quest of HARTHMERE_QUEST_CATALOG as readonly any[]) {
-      if (quest.giverId !== giverId) continue;
+    for (const quest of HARTHMERE_QUEST_CATALOG) {
+      if (bibleQuestGiverId(quest) !== giverId) continue;
       const catalogName = String(quest.giverName ?? "")
         .toLowerCase()
         .trim();
@@ -153,6 +158,58 @@ export interface HarthmereBibleQuestClientSnapshot {
   completed: Record<string, number>;
   bible: HarthmereBibleQuestLiveSlice;
   warnings: string[];
+}
+
+
+// ---------------------------------------------------------------------------
+// Quest state, derived from the native mirrors.
+//
+// `bible.runtime` is gone: native `Challenges`/`TriggerState` own progress
+// after the Chapter 1-shape migration, and the client sees that through the
+// `quests.active` / `quests.completed` mirrors it already receives. This
+// helper is the ONE place that translates them, so no call site re-invents a
+// state enum.
+// ---------------------------------------------------------------------------
+type BibleClientQuestState =
+  | "unknown"
+  | "active"
+  | "ready_to_complete"
+  | "completed";
+
+function bibleClientQuestState(
+  snapshot: HarthmereBibleQuestClientSnapshot,
+  questId: string
+): BibleClientQuestState {
+  if (snapshot.completed[questId] !== undefined) return "completed";
+  const active = snapshot.active[questId];
+  if (active === undefined) return "unknown";
+  const quest = getHarthmereQuestById(questId);
+  if (!quest) return "active";
+  const native = harthmereBibleNativeSnapshotFromMirror({
+    questId,
+    activeStepId: active?.stepId,
+    activeProgress: active?.progress,
+    active: true,
+    completed: false,
+  });
+  return native.firedStepIds.length >= quest.steps.length
+    ? "ready_to_complete"
+    : "active";
+}
+
+function bibleClientFiredStepIds(
+  snapshot: HarthmereBibleQuestClientSnapshot,
+  questId: string
+): ReadonlySet<string> {
+  return new Set(
+    harthmereBibleNativeSnapshotFromMirror({
+      questId,
+      activeStepId: snapshot.active[questId]?.stepId,
+      activeProgress: snapshot.active[questId]?.progress,
+      active: snapshot.active[questId] !== undefined,
+      completed: snapshot.completed[questId] !== undefined,
+    }).firedStepIds
+  );
 }
 
 const HARTHMERE_BIBLE_QUEST_READ_CACHE_MS = 14_000;
@@ -376,7 +433,11 @@ export interface HarthmereBibleDialogModel {
   /** Flavor line prepended to the NPC's normal dialog when quests exist. */
   introText?: string;
   actions: HarthmereBibleDialogAction[];
-  offers: HarthmereBibleQuestOffer[];
+  offers: Array<
+    HarthmereBibleQuestOffer & {
+      state: "available" | "active" | "ready_to_complete" | "locked";
+    }
+  >;
 }
 
 /**
@@ -403,7 +464,38 @@ export function harthmereBibleDialogModelForGiver(input: {
     nowMs,
     weatherClaim: input.snapshot.weatherClaim,
   });
-  const offers = harthmereBibleQuestOffersForGiver(input.giverId, context);
+  const inProgressQuestIds = new Set(
+    Object.keys(input.snapshot.active).filter(
+      (questId) => input.snapshot.active[questId]?.source === "bible_catalog"
+    )
+  );
+  const availableOffers = harthmereBibleQuestOffersForGiver({
+    giverId: input.giverId,
+    context,
+    inProgressQuestIds,
+  });
+  const offers: HarthmereBibleDialogModel["offers"] = availableOffers.map(
+    (offer) => ({
+      ...offer,
+      state: offer.blockedReasons?.length ? "locked" : "available",
+    })
+  );
+  for (const questId of harthmereBibleQuestsByGiver()[input.giverId] ?? []) {
+    const state = bibleClientQuestState(input.snapshot, questId);
+    if (state !== "active" && state !== "ready_to_complete") continue;
+    const quest = getHarthmereQuestById(questId);
+    if (!quest) continue;
+    offers.push({
+      questId,
+      title: quest.title,
+      premise: quest.premise,
+      offerText: quest.dialogue.offer,
+      rewardPreview: quest.rewards.previewText,
+      levelBand: { ...quest.gate.levelBand },
+      estimatedMinutes: quest.estimatedMinutes,
+      state,
+    });
+  }
   const actions: HarthmereBibleDialogAction[] = [];
   for (const offer of offers) {
     const quest = getHarthmereQuestById(offer.questId) as any;
@@ -485,8 +577,8 @@ function harthmereBibleQuestInteractionCandidates(input: {
   const candidates: Array<
     HarthmereBibleQuestInteractionModel & { distance: number }
   > = [];
-  for (const active of HARTHMERE_QUEST_CATALOG as readonly any[]) {
-    const state = input.snapshot.bible.runtime[active.id]?.state;
+  for (const active of HARTHMERE_QUEST_CATALOG) {
+    const state = bibleClientQuestState(input.snapshot, active.id);
     if (input.hiddenOnly && !active.hidden) continue;
     // Q12 owns a dedicated encounter HUD while active, but after resolution
     // it still needs the ordinary giver-less completion button.
@@ -503,12 +595,18 @@ function harthmereBibleQuestInteractionCandidates(input: {
       continue;
     }
 
-    const record = input.snapshot.bible.runtime[active.id];
-    const objective = harthmereBibleQuestCurrentObjective(active.id, record);
-    const waypoint = getHarthmereQuestResolvedWaypoint(active.id, objective);
+    const objective = harthmereBibleQuestCurrentObjective(
+      active.id,
+      bibleClientFiredStepIds(input.snapshot, active.id)
+    );
+    // Grounded. The authored Y is 0 on 312 of 340 steps and would put this
+    // proximity check underground.
+    const waypoint = objective
+      ? bibleStepWorldWaypoint(active, objective)
+      : bibleQuestWorldWaypoint(active);
     const maxDistance = Math.max(
       active.hidden ? HARTHMERE_BIBLE_HIDDEN_TRIGGER_RADIUS : 0,
-      Number(objective?.validation?.maxDistance) || 6
+      objective?.validation.maxDistance ?? 6
     );
     const distance =
       input.playerPosition && waypoint
@@ -518,13 +616,13 @@ function harthmereBibleQuestInteractionCandidates(input: {
           )
         : Number.POSITIVE_INFINITY;
     const action: HarthmereBibleDialogAction | undefined =
-      record?.state === "ready_to_complete"
+      state === "ready_to_complete"
         ? {
             kind: "turn_in",
             questId: active.id,
             name: `Complete: ${active.title}`,
-            followUpText: active.dialogue?.complete ?? "",
-            tooltip: active.rewards?.previewText,
+            followUpText: active.dialogue.complete,
+            tooltip: active.rewards.previewText,
           }
         : objective
         ? {
@@ -532,8 +630,8 @@ function harthmereBibleQuestInteractionCandidates(input: {
             questId: active.id,
             objectiveId: objective.id,
             name: objective.label,
-            followUpText: active.dialogue?.active ?? "",
-            tooltip: `Objective ${objective.id.slice(-2)} of ${active.objectives.length}`,
+            followUpText: active.dialogue.active,
+            tooltip: `Objective ${objective.id.slice(-2)} of ${active.steps.length}`,
             choice:
               objective.type === "choice" ? objective.targetId : undefined,
             combatResult:
@@ -592,14 +690,14 @@ export function bibleQuestTrackableQuestsForBiomesUI(snapshot: {
   const entries: Array<Record<string, unknown>> = [];
   for (const [questId, activeEntry] of Object.entries(snapshot.active ?? {})) {
     if ((activeEntry as any)?.source !== "bible_catalog") continue;
-    const quest = getHarthmereQuestById(questId) as any;
+    const quest = getHarthmereQuestById(questId);
     if (!quest) continue;
-    const objectives = (quest.objectives ?? []).map((o: any) => o.label);
+    const objectives = quest.steps.map((step) => step.label);
     const progress = Number((activeEntry as any)?.progress ?? 0);
     entries.push({
       questId,
       title: quest.title,
-      area: quest.location?.district ?? "Harthmere",
+      area: quest.district ?? "Harthmere",
       status: "active",
       // Marker: the backend mirrors the resolved waypoint into giverPosition.
       markerWorldPosition: (activeEntry as any)?.giverPosition,
@@ -610,7 +708,7 @@ export function bibleQuestTrackableQuestsForBiomesUI(snapshot: {
       objective:
         objectives[Math.min(progress, Math.max(0, objectives.length - 1))],
       objectives,
-      description: quest.hook ?? quest.dialogue?.active,
+      description: quest.premise ?? quest.dialogue.active,
     });
   }
   return entries;
@@ -631,14 +729,14 @@ export function harthmereBibleHiddenQuestToTrigger(input: {
   nowMs?: number;
 }): string | undefined {
   if (!input.playerPosition) return undefined;
-  for (const quest of HARTHMERE_QUEST_CATALOG as readonly any[]) {
+  for (const quest of HARTHMERE_QUEST_CATALOG) {
     if (!quest.hidden) continue;
-    if (input.snapshot.bible.runtime[quest.id]) continue; // already known
+    // already known
+    if (bibleClientQuestState(input.snapshot, quest.id) !== "unknown") continue;
     if (input.snapshot.completed[quest.id]) continue;
-    const waypoint = getHarthmereQuestResolvedWaypoint(
-      quest.id,
-      quest.objectives?.[0]
-    );
+    const waypoint = quest.steps[0]
+      ? bibleStepWorldWaypoint(quest, quest.steps[0])
+      : bibleQuestWorldWaypoint(quest);
     if (!waypoint) continue;
     const dx = input.playerPosition[0] - waypoint[0];
     const dz = input.playerPosition[2] - waypoint[2];
@@ -676,7 +774,10 @@ export function harthmereThaedrynEncounterModel(input: {
   snapshot: HarthmereBibleQuestClientSnapshot;
   playerPosition: readonly [number, number, number] | undefined;
 }): HarthmereThaedrynEncounterModel {
-  const record = input.snapshot.bible.runtime[HARTHMERE_BIBLE_DRAGON_QUEST_ID];
+  const dragonState = bibleClientQuestState(
+    input.snapshot,
+    HARTHMERE_BIBLE_DRAGON_QUEST_ID
+  );
   const machine = input.snapshot.bible.thaedryn;
   const anchor = harthmereThaedrynArenaWorldAnchor();
   const nearArena = input.playerPosition
@@ -685,7 +786,7 @@ export function harthmereThaedrynEncounterModel(input: {
         input.playerPosition[2] - anchor[2]
       ) <= HARTHMERE_THAEDRYN_ENCOUNTER_UI_RADIUS
     : false;
-  const active = record?.state === "active" && !!machine && !machine.completed;
+  const active = dragonState === "active" && !!machine && !machine.completed;
   if (!active || !nearArena) {
     return { active, nearArena, actions: [] };
   }
@@ -694,6 +795,10 @@ export function harthmereThaedrynEncounterModel(input: {
     extra: Record<string, unknown> = {}
   ) => ({
     operation: "bible_quest_boss_event",
+    // The backend needs the quest id to materialize Q12's resolved objectives
+    // into native ECS. Omitting it let the live boss machine finish while the
+    // synchronized native challenge remained active.
+    questId: HARTHMERE_BIBLE_DRAGON_QUEST_ID,
     bossEventType,
     ...extra,
   });

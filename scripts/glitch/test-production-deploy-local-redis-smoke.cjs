@@ -232,6 +232,12 @@ ok(
   "script runs its own production deploy guardrail assertions"
 );
 ok(
+  runBuildChecks.includes("player_shards.test.ts") &&
+    runBuildChecks.includes("load_progress_recovery.test.ts") &&
+    runBuildChecks.includes("load_progress.test.ts"),
+  "production source checks run the client load-readiness regression suite"
+);
+ok(
   script.includes("ensure_generated_ts_deps") &&
     script.includes("./b --no-check-ts-deps ts-deps build"),
   "script generates ignored TypeScript deps before import-based guardrails"

@@ -2097,7 +2097,7 @@ const SNAPSHOT_GROVE_QUESTS_WITHOUT_REQUIRED_TURN_INS: SnapshotGroveQuest[] = [
     markerIds: [
       "mosslawn_song_stones",
       "mosslawn_song_stones",
-      "npc_sil",
+      "mosslawn_sil_tuning_strip",
       "npc_sil",
     ],
     reward:

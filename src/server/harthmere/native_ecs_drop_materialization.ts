@@ -1,4 +1,5 @@
 import { authorizeHarthmereInventoryTransaction } from "@/server/harthmere/native_inventory_transaction_token";
+import { authorizeHarthmereQuestProgress } from "@/server/harthmere/native_quest_progress_token";
 import { authorizeHarthmerePlaceableTransaction } from "@/server/harthmere/native_placeable_transaction_token";
 import { buildHarthmereNativeThaedrynEntity } from "@/server/harthmere/live_entity_ecs_seed";
 import { newDrop } from "@/server/logic/utils/drops";
@@ -21,6 +22,7 @@ import {
 import {
   HarthmereInventoryTransactionEvent,
   HarthmerePlaceableTransactionEvent,
+  HarthmereQuestProgressEvent,
   ResetChallengeEvent,
 } from "@/shared/ecs/gen/events";
 import { secondsSinceEpoch } from "@/shared/ecs/config";
@@ -55,7 +57,7 @@ import {
   harthmereNativeQuestId,
   harthmereNativeQuestStepId,
 } from "@/shared/harthmere/harthmere_native_quests";
-import { HARTHMERE_QUEST_CATALOG } from "@/shared/harthmere/quest_compendium";
+import { bibleQuest } from "@/shared/harthmere/bible/bible_quest_catalog";
 import { SNAPSHOT_GROVE_QUESTS } from "@/shared/harthmere/snapshot_grove_content";
 import type { BiomesId } from "@/shared/ids";
 import { safeParseBiomesId } from "@/shared/ids";
@@ -514,9 +516,7 @@ function nativeQuestObjectiveStepIds(
       ? SNAPSHOT_GROVE_QUESTS.find(
           (quest) => quest.id === plan.questId
         )?.objectives.map((_, index) => index)
-      : HARTHMERE_QUEST_CATALOG.find(
-          (quest) => quest.id === plan.questId
-        )?.objectives.map((objective: { id: string }) => objective.id);
+      : bibleQuest(plan.questId)?.steps.map((step) => step.id);
   if (!objectiveKeys?.length) {
     throw new Error(
       `Native quest progress ${plan.materializationKey} has no authored objectives`
@@ -539,6 +539,7 @@ function nativeQuestObjectiveStepIds(
 
 async function materializeQuestProgress(input: {
   worldApi: WorldApi;
+  logicApi?: Pick<LogicApi, "publish">;
   plan: HarthmereNativeEcsQuestProgressMaterializationPlan;
 }) {
   const actorId = actorBiomesId(input.plan.actorId);
@@ -556,6 +557,43 @@ async function materializeQuestProgress(input: {
       `Native quest progress ${input.plan.materializationKey} is unresolved`
     );
   }
+
+  // BIBLE: signed path only.
+  //
+  // Bible objective progress goes through HarthmereQuestProgressEvent, the
+  // same route Chapter 1 uses. `harthmere_quest_progress.ts` then re-validates
+  // it three ways — JWT signature, challenge actually in `in_progress`, and
+  // step actually present in the biscuit's trigger tree — and the TRIGGER
+  // ENGINE advances the tree. That leaves exactly one writer of Bible
+  // Challenges/TriggerState.
+  //
+  // The direct-write branch below stays for GROVE, which has no signed route
+  // yet; converting it is a separate migration with its own risk. Do not
+  // "simplify" the two branches back together.
+  if (input.plan.questSource === "bible") {
+    if (!input.logicApi) {
+      throw new Error(
+        `Native bible quest progress ${input.plan.materializationKey} has no logic API`
+      );
+    }
+    await input.logicApi.publish(
+      new GameEvent(
+        actorId,
+        new HarthmereQuestProgressEvent({
+          id: actorId,
+          challenge_id: challengeId,
+          step_id: stepId,
+          authorization: authorizeHarthmereQuestProgress({
+            id: actorId,
+            challenge_id: challengeId,
+            step_id: stepId,
+          }),
+        })
+      )
+    );
+    return true;
+  }
+
   const actor = await input.worldApi.get(actorId);
   if (!actor) {
     throw new Error(
@@ -928,6 +966,9 @@ export async function materializeHarthmereNativeEcsPlans(input: {
         case "quest_progress":
           return materializeQuestProgress({
             worldApi: input.worldApi,
+            // Required for the bible branch, which publishes a signed
+            // HarthmereQuestProgressEvent instead of writing ECS directly.
+            logicApi: input.logicApi,
             plan,
           });
         case "quest_reset":

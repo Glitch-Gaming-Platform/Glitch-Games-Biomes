@@ -40,6 +40,15 @@ import {
   type SnapshotGroveNpc,
   type SnapshotGroveQuest,
 } from "@/shared/harthmere/snapshot_grove_content";
+import {
+  groveQuest,
+  groveQuestIdsForGiver,
+} from "@/shared/harthmere/grove/grove_quest_catalog";
+import {
+  groveQuestGate,
+  groveQuestGateReasons,
+} from "@/shared/harthmere/grove/grove_quest_gate";
+import { groveLandmarkWorldPosition } from "@/shared/harthmere/grove/grove_waypoints";
 import { snapshotGroveAmbientLineForNpc } from "@/shared/harthmere/snapshot_grove_ambient_dialogue";
 import {
   HARTHMERE_LOCAL_DEV_ITEM_USE_EVENT,
@@ -693,6 +702,10 @@ function questById(id: string | undefined) {
   return SNAPSHOT_GROVE_QUESTS.find((quest) => quest.id === id);
 }
 
+function snapshotGroveQuestGiverId(quest: SnapshotGroveQuest): string {
+  return groveQuest(quest.id)?.start.giverNpcId ?? quest.giverNpcId;
+}
+
 // SNAPSHOT_GROVE_GRADUATION_CHAIN:
 // The graduation tour (Jackie) and three road-neighbor intros (Alexis, Luis,
 // Ranger Jane) declare an `unlockedBy` predicate in the shared content. The
@@ -704,30 +717,38 @@ function countCompletedFountainLessons(state: SnapshotGroveQuestState): number {
   ).length;
 }
 
+/**
+ * Unlock check for a Grove quest.
+ *
+ * NOW A THIN DELEGATION to `groveQuestGate`, which is the single enforcement
+ * point. The signature is unchanged so callers did not have to move, but the
+ * three-branch switch that used to live here is gone: two implementations of
+ * the same rule is how the graduation gate and the dialogue quietly disagree.
+ *
+ * ONE DELIBERATE DIFFERENCE. `groveQuestGate` also reports `already_completed`;
+ * this function historically did not, because its callers filter completed
+ * quests themselves. That reason is dropped here so the delegation is
+ * behaviour-preserving — changing it would silently alter what the journal
+ * shows for a finished lesson.
+ */
 export function isSnapshotGroveQuestUnlocked(
   quest: SnapshotGroveQuest,
   state: SnapshotGroveQuestState
 ): boolean {
-  const prerequisite = quest.unlockedBy;
-  if (!prerequisite) {
+  const definition = groveQuest(quest.id);
+  if (!definition) {
+    // A quest present in the retired array but absent from the new catalog
+    // would be unreachable content; fail open rather than hiding it, and let
+    // the catalog contract tests be the place that notices.
     return true;
   }
-  switch (prerequisite.kind) {
-    case "fountain_completion_count":
-      return (
-        countCompletedFountainLessons(state) >=
-        prerequisite.minCompletedFountainLessons
-      );
-    case "quest_accepted":
-      return (
-        state.acceptedQuestIds.includes(prerequisite.questId) ||
-        state.completedQuestIds.includes(prerequisite.questId)
-      );
-    case "quest_completed":
-      return state.completedQuestIds.includes(prerequisite.questId);
-    default:
-      return true;
-  }
+  const result = groveQuestGate(definition, {
+    completedQuestIds: new Set(state.completedQuestIds),
+    acceptedQuestIds: new Set(state.acceptedQuestIds),
+  });
+  return groveQuestGateReasons(result).every(
+    (reason) => reason === "already_completed"
+  );
 }
 
 function snapshotGroveQuestCategoryRank(quest: SnapshotGroveQuest): number {
@@ -745,9 +766,16 @@ function snapshotGroveQuestCategoryRank(quest: SnapshotGroveQuest): number {
 }
 
 function availableQuestsForNpc(npcId: string, state: SnapshotGroveQuestState) {
+  // GIVER COMES FROM THE NEW CATALOG, not `quest.giverNpcId`.
+  //
+  // The retired array still records Jackie as the giver of the four fountain
+  // lessons that moved to Rosalyn. Filtering on it would have left the
+  // reassignment invisible to the live dialogue — Rosalyn would offer nothing
+  // and Jackie would still offer all eight — while every catalog test passed.
+  const questIdsForGiver = new Set(groveQuestIdsForGiver(npcId));
   return SNAPSHOT_GROVE_QUESTS.filter(
     (quest) =>
-      quest.giverNpcId === npcId &&
+      questIdsForGiver.has(quest.id) &&
       !state.completedQuestIds.includes(quest.id) &&
       !state.acceptedQuestIds.includes(quest.id) &&
       isSnapshotGroveQuestUnlocked(quest, state)
@@ -766,12 +794,12 @@ function firstAvailableQuestForNpc(
 
 function activeQuestForNpc(npcId: string, state: SnapshotGroveQuestState) {
   const active = questById(state.activeQuestId);
-  if (active?.giverNpcId === npcId) {
+  if (active && snapshotGroveQuestGiverId(active) === npcId) {
     return active;
   }
   return SNAPSHOT_GROVE_QUESTS.find(
     (quest) =>
-      quest.giverNpcId === npcId &&
+      snapshotGroveQuestGiverId(quest) === npcId &&
       state.acceptedQuestIds.includes(quest.id) &&
       !state.completedQuestIds.includes(quest.id)
   );
@@ -787,7 +815,7 @@ export function mostRecentlyCompletedSnapshotGroveQuestForNpcForTest(
   // available Start actions remain visible in the same dialog.
   for (let index = completedQuestIds.length - 1; index >= 0; index -= 1) {
     const quest = questById(completedQuestIds[index]);
-    if (quest?.giverNpcId === npcId) {
+    if (quest && snapshotGroveQuestGiverId(quest) === npcId) {
       return quest;
     }
   }
@@ -839,7 +867,11 @@ export function requestSnapshotGroveLandmarkOnMapForBiomesUI(
     id: marker.id,
     label: marker.label,
     kind: marker.kind,
-    worldPosition: marker.position,
+    // RESOLVED, not raw. 15 Grove-area landmarks are still authored at the
+    // retired Y=54 while live terrain is Y=71; pinning the raw value drops the
+    // map destination 17 blocks under the courtyard, which is the
+    // "mission cast buried" incident in snapshot_grove_content.ts.
+    worldPosition: groveLandmarkWorldPosition(marker),
     description: `${marker.area} - ${marker.kind}`,
   });
   if (pin) {
@@ -882,7 +914,7 @@ function pinAllSnapshotGroveQuestMarkers(
   if (activeMarker) {
     pinSnapshotGroveLandmark(
       mapManager,
-      activeMarker.position,
+      groveLandmarkWorldPosition(activeMarker),
       snapshotGroveStepNavAidId(0),
       true
     );
@@ -1147,7 +1179,7 @@ async function advanceSnapshotGroveQuest(
   }
   writeSnapshotGroveQuestState(next);
   if (completedQuest) {
-    recordSnapshotGroveLikeability(quest.giverNpcId, 1);
+    recordSnapshotGroveLikeability(snapshotGroveQuestGiverId(quest), 1);
   }
   if (next.activeQuestId === quest.id && !completedQuest) {
     // Remove the marker for the step we just completed so past pins do not
@@ -1655,14 +1687,26 @@ function isSnapshotGroveContextualPracticeEvent(
   objectiveIndex: number,
   trigger: string | undefined
 ) {
-  if (
-    !trigger ||
-    !SNAPSHOT_GROVE_CONTEXTUAL_PRACTICE_TRIGGERS.has(trigger as any)
-  ) {
+  if (!trigger) {
     return false;
   }
   const detail = event as any;
   if (detail.kind !== "snapshot_grove_practice_action") {
+    return false;
+  }
+  const expectedChatAction =
+    quest.id === "fountain_chat_channels" && objectiveIndex === 2
+      ? "chat_say"
+      : quest.id === "fountain_chat_channels" && objectiveIndex === 3
+      ? "chat_whisper"
+      : undefined;
+  if (
+    !SNAPSHOT_GROVE_CONTEXTUAL_PRACTICE_TRIGGERS.has(trigger as any) &&
+    detail.practiceAction !== expectedChatAction
+  ) {
+    return false;
+  }
+  if (expectedChatAction && detail.practiceAction !== expectedChatAction) {
     return false;
   }
   const targetMarkerIds = snapshotGroveObjectiveTargetMarkerIds(
@@ -1772,7 +1816,7 @@ function doesEventMatchSnapshotGroveTrigger(
   switch (trigger) {
     case "talk_npc": {
       const actualNpcId = snapshotGroveNpcIdFromTalkEvent(event);
-      const expectedNpcId = marker?.npcId ?? quest.giverNpcId;
+      const expectedNpcId = marker?.npcId ?? snapshotGroveQuestGiverId(quest);
       return Boolean(
         actualNpcId && expectedNpcId && actualNpcId === expectedNpcId
       );
@@ -2377,7 +2421,7 @@ export function useSnapshotGroveNpcDialog(
         onPerformed: () => {
           pinSnapshotGroveLandmark(
             mapManager,
-            marker.position,
+            groveLandmarkWorldPosition(marker),
             snapshotGroveStepNavAidId(objectiveIndex)
           );
           requestSnapshotGroveLandmarkOnMapForBiomesUI(marker);
@@ -2840,7 +2884,9 @@ const SnapshotGroveMapHUDWithClientContext: React.FunctionComponent<{
     state.acceptedQuestIds.includes(quest.id) &&
     needsSnapshotGroveContextualPracticeButton(currentTrigger);
   const practiceIsInRange = !marker || distance === undefined || distance <= 10;
-  const giver = SNAPSHOT_GROVE_NPCS.find((npc) => npc.id === quest.giverNpcId);
+  const giver = SNAPSHOT_GROVE_NPCS.find(
+    (npc) => npc.id === snapshotGroveQuestGiverId(quest)
+  );
   const isFountainLesson = SNAPSHOT_GROVE_FOUNTAIN_TUTORIAL_QUEST_ID_SET.has(
     quest.id
   );
@@ -3087,7 +3133,7 @@ export const SnapshotGroveJournalPanel: React.FunctionComponent<{}> = () => {
       ? "open"
       : "soon";
     const giver = SNAPSHOT_GROVE_NPCS.find(
-      (npc) => npc.id === quest.giverNpcId
+      (npc) => npc.id === snapshotGroveQuestGiverId(quest)
     );
     const lockHint =
       !isUnlocked && quest.unlockedBy

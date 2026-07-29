@@ -9,6 +9,11 @@ import type {
   SnapshotGroveTrigger,
 } from "@/shared/harthmere/snapshot_grove_content";
 import { BikkieIds } from "@/shared/bikkie/ids";
+import { groveQuest } from "@/shared/harthmere/grove/grove_quest_catalog";
+import {
+  groveStepRequiredCount,
+  groveStepTargetMarkerIds,
+} from "@/shared/harthmere/grove/grove_quest_schema";
 
 export const SNAPSHOT_GROVE_TUTORIAL_ITEM_IDS = {
   roadTorch: "grove_road_torch",
@@ -164,62 +169,44 @@ function objectiveText(
   return `${quest.id} ${quest.title} ${objective ?? ""}`.toLowerCase();
 }
 
-const SNAPSHOT_GROVE_REQUIRED_COUNT_OVERRIDES: Readonly<
-  Record<string, number>
-> = {
-  "color_that_still_points_home:1": 2,
-  "cart_that_forgot_its_wheel:1": 3,
-  "moss_that_went_quiet:2": 3,
-  "songline_under_the_lawn:0": 3,
-  "antlers_for_the_watch:0": 3,
-  "fountain_first_recipe_torch:1": 2,
-};
 
-const SNAPSHOT_GROVE_OBJECTIVE_TARGET_MARKER_OVERRIDES: Readonly<
-  Record<string, readonly string[]>
-> = {
-  "color_that_still_points_home:1": [
-    "muckwad_pigment_clump_west",
-    "muckwad_pigment_clump_east",
-  ],
-  "moss_that_went_quiet:2": [
-    "mosslawn_warning_moss_west",
-    "mosslawn_warning_moss_center",
-    "mosslawn_warning_moss_east",
-  ],
-  "songline_under_the_lawn:0": [
-    "mosslawn_song_stone_low",
-    "mosslawn_song_stone_middle",
-    "mosslawn_song_stone_high",
-  ],
-  "antlers_for_the_watch:0": [
-    "mosslawn_track_rubbing_hoof",
-    "mosslawn_track_rubbing_antler",
-    "mosslawn_track_rubbing_claw",
-  ],
-};
 
+/**
+ * DELEGATES TO THE STEP.
+ *
+ * This used to read `SNAPSHOT_GROVE_REQUIRED_COUNT_OVERRIDES[`${id}:${index}`]`
+ * — a fourth positional index living outside the quest type, so inserting an
+ * objective silently re-pointed every override after it. The requirement now
+ * lives on the step; the signature is unchanged so callers did not move.
+ */
 export function snapshotGroveObjectiveRequiredCount(
   quest: Pick<SnapshotGroveQuest, "id" | "objectives">,
   objectiveIndex: number
 ) {
-  return (
-    SNAPSHOT_GROVE_REQUIRED_COUNT_OVERRIDES[`${quest.id}:${objectiveIndex}`] ??
-    1
-  );
+  const step = groveQuest(quest.id)?.steps[objectiveIndex];
+  return step ? groveStepRequiredCount(step) : 1;
 }
 
+/**
+ * Target markers for an objective.
+ *
+ * READS THE STEP FOR THE OVERRIDE ONLY, and still honours the PASSED quest for
+ * the base case. That split matters: the multi-target override is authored
+ * data owned by the catalog, but `markerIds` is an argument, and callers —
+ * including every map-adapter fixture — legitimately pass a quest whose
+ * markers differ from the shipped ones.
+ *
+ * An earlier version delegated wholesale and ignored `quest.markerIds`, which
+ * silently returned catalog markers for a caller-supplied quest and moved the
+ * first objective's marker onto the second one's.
+ */
 export function snapshotGroveObjectiveTargetMarkerIds(
   quest: Pick<SnapshotGroveQuest, "id" | "markerIds">,
   objectiveIndex: number
 ): readonly string[] {
-  const override =
-    SNAPSHOT_GROVE_OBJECTIVE_TARGET_MARKER_OVERRIDES[
-      `${quest.id}:${objectiveIndex}`
-    ];
-  if (override?.length) {
-    return override;
-  }
+  const step = groveQuest(quest.id)?.steps[objectiveIndex];
+  // Explicit multi-target list: authored, catalog-owned, not caller-supplied.
+  if (step?.targetMarkerIds?.length) return step.targetMarkerIds;
   const markerId = quest.markerIds[objectiveIndex];
   return markerId ? [markerId] : [];
 }
@@ -256,18 +243,10 @@ export function snapshotGroveCraftEventMatchesObjective(
   quest: Pick<SnapshotGroveQuest, "id">,
   objectiveIndex: number
 ) {
-  const expected =
-    quest.id === "fountain_first_recipe_torch" && objectiveIndex === 3
-      ? {
-          recipeId: SNAPSHOT_GROVE_TUTORIAL_RECIPE_IDS.roadTorch,
-          outputItemId: SNAPSHOT_GROVE_TUTORIAL_ITEM_IDS.roadTorch,
-        }
-      : quest.id === "econ_carlo_festival_skewers" && objectiveIndex === 2
-      ? {
-          recipeId: SNAPSHOT_GROVE_TUTORIAL_RECIPE_IDS.festivalSkewer,
-          outputItemId: SNAPSHOT_GROVE_TUTORIAL_ITEM_IDS.festivalSkewer,
-        }
-      : undefined;
+  // READS THE STEP. This used to be two hardcoded
+  // `quest.id === ... && objectiveIndex === ...` branches — the exact recipe
+  // requirement keyed by position, outside the quest type.
+  const expected = groveQuest(quest.id)?.steps[objectiveIndex]?.craft;
   if (!expected) return false;
   const recipeId = String(event.recipeId ?? "");
   const outputItemId = String(event.outputItemId ?? event.itemId ?? "");
@@ -282,63 +261,13 @@ export interface SnapshotGroveObjectiveInventoryRequirement {
   consumeOnComplete: boolean;
 }
 
-const SNAPSHOT_GROVE_OBJECTIVE_INVENTORY_REQUIREMENTS: Readonly<
-  Record<string, SnapshotGroveObjectiveInventoryRequirement>
-> = {
-  "econ_billys_lost_lunch_pail:3": {
-    itemId: "billys_lunch_pail",
-    count: 1,
-    consumeOnComplete: true,
-  },
-  "sticky_medicine:3": {
-    itemId: "mudroot",
-    count: 2,
-    consumeOnComplete: true,
-  },
-  "toll_ledger_problem:3": {
-    itemId: SNAPSHOT_GROVE_TUTORIAL_ITEM_IDS.boltCrate,
-    count: 1,
-    consumeOnComplete: true,
-  },
-  "econ_gus_fresh_loaves_to_fountain:2": {
-    itemId: SNAPSHOT_GROVE_TUTORIAL_ITEM_IDS.warmLoafTray,
-    count: 1,
-    consumeOnComplete: true,
-  },
-  "econ_gus_grain_run:2": {
-    itemId: "field_wheat",
-    count: 1,
-    consumeOnComplete: true,
-  },
-  "econ_kit_heavy_parcel_to_crossroads:3": {
-    itemId: SNAPSHOT_GROVE_TUTORIAL_ITEM_IDS.heavyParcel,
-    count: 1,
-    consumeOnComplete: true,
-  },
-  "econ_mel_bench_repair:2": {
-    itemId: "scrap_metal",
-    count: 1,
-    consumeOnComplete: true,
-  },
-  "econ_rin_mushroom_pickup:3": {
-    itemId: "forest_mushroom",
-    count: 1,
-    consumeOnComplete: true,
-  },
-  "econ_carlo_festival_skewers:3": {
-    itemId: SNAPSHOT_GROVE_TUTORIAL_ITEM_IDS.festivalSkewer,
-    count: 1,
-    consumeOnComplete: true,
-  },
-};
 
+/** DELEGATES TO THE STEP. See `snapshotGroveObjectiveRequiredCount`. */
 export function snapshotGroveObjectiveInventoryRequirement(
   quest: Pick<SnapshotGroveQuest, "id">,
   objectiveIndex: number
 ) {
-  return SNAPSHOT_GROVE_OBJECTIVE_INVENTORY_REQUIREMENTS[
-    `${quest.id}:${objectiveIndex}`
-  ];
+  return groveQuest(quest.id)?.steps[objectiveIndex]?.inventory;
 }
 
 export function snapshotGroveItemUseObjectiveKind(

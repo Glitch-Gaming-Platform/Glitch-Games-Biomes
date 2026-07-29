@@ -75,7 +75,7 @@ function CharacterStatsPanel({ stats }: { stats: CharacterStats }) {
         <div>
           <h3 style={{ ...titleStyle, marginBottom: 4 }}>Character Stats</h3>
           <div style={statsHintStyle}>
-            These values are derived from your authoritative character level.
+            Your character level determines these base stats.
           </div>
         </div>
         <strong style={levelPillStyle}>Level {stats.level}</strong>
@@ -116,7 +116,7 @@ export const SkillsTab: React.FunctionComponent<{
       {skills.length === 0 && (
         <p style={{ color: "var(--biomes-fg-muted)", fontSize: 12 }}>
           {adapter?.isHydrated?.()
-            ? "No mastery skills are available yet."
+            ? "No skills are available yet."
             : "Finding your skills..."}
         </p>
       )}
@@ -135,7 +135,7 @@ export const SkillsTab: React.FunctionComponent<{
             >
               <div
                 role="group"
-                aria-label={`${s.name} skill — level ${s.level}, ${s.title}, ${s.xp} of ${s.nextLevel} xp`}
+                aria-label={`${s.name} skill — level ${s.level}, ${s.title}, ${s.xp} of ${s.nextLevel} experience points`}
                 tabIndex={0}
                 style={{
                   padding: "8px 10px",
@@ -156,7 +156,7 @@ export const SkillsTab: React.FunctionComponent<{
                   <span
                     style={{ fontSize: 11, color: "var(--biomes-fg-muted)" }}
                   >
-                    Lvl {s.level} · {s.title}
+                    Level {s.level} · {s.title}
                   </span>
                 </div>
                 <div
@@ -184,7 +184,7 @@ export const SkillsTab: React.FunctionComponent<{
                     color: "var(--biomes-fg-dim)",
                   }}
                 >
-                  {s.xp} / {s.nextLevel} xp
+                  {s.xp} / {s.nextLevel} XP
                 </div>
                 {s.trainingActions && s.trainingActions.length > 0 && (
                   <div
@@ -195,7 +195,7 @@ export const SkillsTab: React.FunctionComponent<{
                       color: "var(--biomes-fg-muted)",
                     }}
                   >
-                    Train by: {s.trainingActions.join(" · ")}
+                    How to improve: {s.trainingActions.join(" · ")}
                   </div>
                 )}
               </div>

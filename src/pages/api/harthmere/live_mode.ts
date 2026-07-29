@@ -79,6 +79,7 @@ import type { Vec3 } from "@/shared/math/types";
 import { loadBlockWrapper, saveBlockWrapper } from "@/shared/wasm/biomes";
 import { Tensor, TensorUpdate } from "@/shared/wasm/tensors";
 import { z } from "zod";
+import { timingSafeEqual } from "crypto";
 import { readHarthmerePlayerAndSharedStateStrings } from "@/server/harthmere/live_mode_state_read_helpers";
 import { disableHarthmereLiveModeHttpCaching } from "@/server/harthmere/live_mode_http_cache";
 import {
@@ -105,9 +106,74 @@ export { materializeHarthmereNativeEcsPlans } from "@/server/harthmere/native_ec
 
 const HARTHMERE_LIVE_MODE_SERVER_ROUTE =
   "HARTHMERE_LIVE_MODE_SERVER_ROUTE" as const;
+const HARTHMERE_BIBLE_E2E_GAME_DAY_MS = 20 * 60 * 1000;
+const HARTHMERE_BIBLE_E2E_NOW_MS_KEY = "__serverBibleE2ENowMs";
 const HARTHMERE_WORLD_MATERIALIZER_USER_ID = 8810000000099191 as BiomesId;
 const HARTHMERE_WORLD_MATERIALIZER_USERNAME = "HarthmereWorldMaterializer";
 export const HARTHMERE_BUILDING_MATERIALIZATION_ECS_PUBLISH_CHUNK_SIZE = 1000;
+
+/**
+ * Convert a requested Bible game hour into the current 20-minute game day,
+ * but only for the explicitly enabled loopback native-ECS browser harness.
+ * The caller removes the client request field before envelope validation and
+ * injects only the returned server-owned timestamp, so ordinary clients can
+ * never choose the reducer clock.
+ */
+export function harthmereLiveModeBibleE2ENowMsForTest(input: {
+  requestedHour: unknown;
+  nowMs: number;
+  nativeEcsE2EEnabled: boolean;
+  configuredToken: string | undefined;
+  suppliedToken: string | string[] | undefined;
+  hostHeader: string | string[] | undefined;
+}) {
+  const hour = Number(input.requestedHour);
+  const host = Array.isArray(input.hostHeader)
+    ? input.hostHeader[0]
+    : input.hostHeader;
+  const hostname = host?.split(":")[0]?.toLowerCase();
+  const supplied =
+    typeof input.suppliedToken === "string" ? input.suppliedToken : undefined;
+  const configured = input.configuredToken;
+  if (
+    !input.nativeEcsE2EEnabled ||
+    !Number.isFinite(hour) ||
+    hour < 0 ||
+    hour >= 24 ||
+    !configured ||
+    !supplied ||
+    (hostname !== "localhost" &&
+      hostname !== "127.0.0.1" &&
+      hostname !== "::1")
+  ) {
+    return undefined;
+  }
+  const configuredBytes = Buffer.from(configured);
+  const suppliedBytes = Buffer.from(supplied);
+  if (
+    configuredBytes.length !== suppliedBytes.length ||
+    !timingSafeEqual(configuredBytes, suppliedBytes)
+  ) {
+    return undefined;
+  }
+  const currentDayStart =
+    Math.floor(input.nowMs / HARTHMERE_BIBLE_E2E_GAME_DAY_MS) *
+    HARTHMERE_BIBLE_E2E_GAME_DAY_MS;
+  return (
+    currentDayStart + (hour / 24) * HARTHMERE_BIBLE_E2E_GAME_DAY_MS
+  );
+}
+
+function harthmereLiveModeMutationNowMs(
+  envelope: HarthmereLiveModeAuthorityEnvelope
+) {
+  const serverBibleE2ENowMs = Number(
+    envelope.payload?.[HARTHMERE_BIBLE_E2E_NOW_MS_KEY]
+  );
+  return Number.isFinite(serverBibleE2ENowMs)
+    ? serverBibleE2ENowMs
+    : Date.now();
+}
 
 const HARTHMERE_SHARED_WORLD_TOUCH_MODELS = new Set([
   "auction_listing",
@@ -3341,7 +3407,7 @@ export async function persistHarthmereLiveModeResponse(
         sharedWorldIsInitialAuthority ? sharedWorldStateKey : undefined,
         adoptionSourceStateKey,
       ]);
-      const now = Date.now();
+      const now = harthmereLiveModeMutationNowMs(envelope);
       if (supportsWatch) {
         stageStartedAt = Date.now();
         await txPrimary.watch(...watchKeys);
@@ -4063,6 +4129,13 @@ export default biomesApiHandler(
       readServerTargetPositionForQuestInvite(worldApi, body),
       readServerNativeThaedrynHealthPct(worldApi, body),
     ]);
+    // The browser catalog may pin the Bible clock only through the local E2E
+    // control channel. Remove both public and server-owned fields before the
+    // client body becomes an authority envelope, then add back only the
+    // validated server timestamp after normal envelope validation succeeds.
+    const requestedBibleE2EGameHour = body.payload.e2eBibleGameHour;
+    delete body.payload.e2eBibleGameHour;
+    delete body.payload[HARTHMERE_BIBLE_E2E_NOW_MS_KEY];
     const envelope =
       wire_network_requests_to_validateHarthmereLiveModeAuthorityEnvelope(
         actorId,
@@ -4101,6 +4174,18 @@ export default biomesApiHandler(
         events: [],
         uiEvents: [],
       };
+    }
+    const bibleE2ENowMs = harthmereLiveModeBibleE2ENowMsForTest({
+      requestedHour: requestedBibleE2EGameHour,
+      nowMs: Date.now(),
+      nativeEcsE2EEnabled:
+        process.env.HARTHMERE_NATIVE_ECS_E2E === "1",
+      configuredToken: process.env.HARTHMERE_E2E_CONTROL_TOKEN,
+      suppliedToken: unsafeRequest.headers["x-harthmere-e2e-token"],
+      hostHeader: unsafeRequest.headers.host,
+    });
+    if (bibleE2ENowMs !== undefined) {
+      envelope.payload[HARTHMERE_BIBLE_E2E_NOW_MS_KEY] = bibleE2ENowMs;
     }
 
     const mutationPlan =

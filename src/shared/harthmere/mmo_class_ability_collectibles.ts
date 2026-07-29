@@ -23,11 +23,7 @@ export type HarthmereClassId =
   | "druid"
   | "bard";
 
-export type HarthmereAbilityKind =
-  | "combat"
-  | "utility"
-  | "social"
-  | "business";
+export type HarthmereAbilityKind = "combat" | "utility" | "social" | "business";
 
 export interface HarthmereClassDefinition {
   id: HarthmereClassId;
@@ -87,7 +83,7 @@ const CLASS_DEFS: Record<HarthmereClassId, HarthmereClassDefinition> = {
   warrior: {
     id: "warrior",
     name: "Warrior",
-    tagline: "Front-line protector who turns discipline into momentum.",
+    tagline: "Front-line fighter who protects allies and controls the battle.",
     resource: "Stamina",
     roles: ["tank", "damage", "support"],
     specializations: ["arms", "fury", "protection"],
@@ -97,7 +93,7 @@ const CLASS_DEFS: Record<HarthmereClassId, HarthmereClassDefinition> = {
   rogue: {
     id: "rogue",
     name: "Rogue",
-    tagline: "Mobile infiltrator for locks, traps, and fast exits.",
+    tagline: "Quick infiltrator skilled at locks, traps, and fast escapes.",
     resource: "Energy",
     roles: ["damage", "scout", "controller"],
     specializations: ["assassin", "trickster", "shadowblade"],
@@ -107,7 +103,7 @@ const CLASS_DEFS: Record<HarthmereClassId, HarthmereClassDefinition> = {
   ranger: {
     id: "ranger",
     name: "Ranger",
-    tagline: "Road-wise scout who reads tracks before maps do.",
+    tagline: "Wilderness scout skilled at tracking and ranged combat.",
     resource: "Focus",
     roles: ["damage", "scout", "support"],
     specializations: ["marksman", "beast_warden", "pathfinder"],
@@ -117,7 +113,7 @@ const CLASS_DEFS: Record<HarthmereClassId, HarthmereClassDefinition> = {
   mage: {
     id: "mage",
     name: "Mage",
-    tagline: "Arcane problem solver for seals, wards, and controlled force.",
+    tagline: "Spellcaster who uses fire, wards, and arcane knowledge.",
     resource: "Mana",
     roles: ["damage", "controller", "support"],
     specializations: ["pyromancer", "cryomancer", "arcanist"],
@@ -127,7 +123,7 @@ const CLASS_DEFS: Record<HarthmereClassId, HarthmereClassDefinition> = {
   priest: {
     id: "priest",
     name: "Priest",
-    tagline: "Healer and witness who keeps people useful through trouble.",
+    tagline: "Healer who protects and supports allies.",
     resource: "Faith",
     roles: ["healer", "support"],
     specializations: ["life_priest", "lightbearer", "oracle"],
@@ -137,19 +133,24 @@ const CLASS_DEFS: Record<HarthmereClassId, HarthmereClassDefinition> = {
   paladin: {
     id: "paladin",
     name: "Paladin",
-    tagline: "Legal defender whose oath protects people and property.",
+    tagline: "Holy defender who protects people and property.",
     resource: "Conviction",
     roles: ["tank", "healer", "damage"],
     specializations: ["protection", "devotion", "wrath"],
     startingAbilities: ["smite", "shield_of_faith", "judgment"],
     // judgment requires persuasion 1; grant it so the Paladin's own starting ability is
     // re-learnable (e.g. after a respec/class re-pick), not just bestowed once.
-    startingSkills: { character_level: 1, melee_combat: 1, holy_magic: 1, persuasion: 1 },
+    startingSkills: {
+      character_level: 1,
+      melee_combat: 1,
+      holy_magic: 1,
+      persuasion: 1,
+    },
   },
   necromancer: {
     id: "necromancer",
     name: "Necromancer",
-    tagline: "Forbidden specialist for death, memory, and difficult truths.",
+    tagline: "Forbidden spellcaster who studies death, spirits, and memory.",
     resource: "Souls",
     roles: ["summoner", "damage", "controller"],
     specializations: ["bonecaller", "soulweaver", "lichbinder"],
@@ -159,7 +160,7 @@ const CLASS_DEFS: Record<HarthmereClassId, HarthmereClassDefinition> = {
   druid: {
     id: "druid",
     name: "Druid",
-    tagline: "Restores damaged land and turns ecology into leverage.",
+    tagline: "Nature healer who restores land and protects living things.",
     resource: "Mana",
     roles: ["healer", "tank", "support"],
     specializations: ["guardian", "restoration", "wildshape", "naturecaller"],
@@ -173,7 +174,7 @@ const CLASS_DEFS: Record<HarthmereClassId, HarthmereClassDefinition> = {
   bard: {
     id: "bard",
     name: "Bard",
-    tagline: "Social specialist for morale, rumors, and public trust.",
+    tagline: "Performer who inspires allies and learns from rumors.",
     resource: "Inspiration",
     roles: ["support", "healer", "controller"],
     specializations: ["maestro", "skald", "trick_singer"],
@@ -192,119 +193,129 @@ export const HARTHMERE_SKILL_DEFINITIONS: Record<
     id: "character_level",
     name: "Character Level",
     category: "Core",
-    description: "Overall adventuring progression.",
+    description: "Your overall experience as an adventurer.",
     maxLevel: 100,
   },
   combat: {
     id: "combat",
     name: "Combat",
     category: "Combat",
-    description: "General battle participation across weapon and spell roles.",
+    description: "Your experience fighting enemies with weapons and magic.",
     maxLevel: 100,
   },
   melee_combat: {
     id: "melee_combat",
     name: "Melee Combat",
     category: "Combat",
-    description: "Close combat reliability, blocking, and weapon pressure.",
+    description:
+      "Your skill with close-range attacks, blocking, and melee weapons.",
     maxLevel: 100,
   },
   ranged_combat: {
     id: "ranged_combat",
     name: "Ranged Combat",
     category: "Combat",
-    description: "Bow, crossbow, thrown, and careful distance pressure.",
+    description:
+      "Your skill with bows, crossbows, thrown weapons, and other ranged attacks.",
     maxLevel: 100,
   },
   shield_mastery: {
     id: "shield_mastery",
     name: "Shield Mastery",
     category: "Combat",
-    description: "Guarding allies, bracing, and shield control.",
+    description:
+      "Your skill at blocking attacks and protecting yourself or allies with a shield.",
     maxLevel: 100,
   },
   dagger_mastery: {
     id: "dagger_mastery",
     name: "Dagger Mastery",
     category: "Weapon",
-    description: "Fast blade work, opening strikes, and precision cuts.",
+    description:
+      "Your skill with daggers, knives, and quick precision strikes.",
     maxLevel: 100,
   },
   lockpicking: {
     id: "lockpicking",
     name: "Lockpicking",
     category: "Exploration",
-    description: "Opening legal quest locks and disarming lock traps.",
+    description: "Your ability to open locks and disarm traps.",
     maxLevel: 100,
   },
   archery: {
     id: "archery",
     name: "Archery",
     category: "Weapon",
-    description: "Bow, crossbow, and careful ranged pressure.",
+    description: "Your skill with bows and crossbows.",
     maxLevel: 100,
   },
   tracking: {
     id: "tracking",
     name: "Tracking",
     category: "Exploration",
-    description: "Reading footprints, safe paths, and animal signs.",
+    description: "Your ability to follow footprints, trails, and animal signs.",
     maxLevel: 100,
   },
   fire_magic: {
     id: "fire_magic",
     name: "Fire Magic",
     category: "Magic",
-    description: "Controlled heat, sparks, and destructive spellcraft.",
+    description: "Your command of fire spells for combat and utility.",
     maxLevel: 100,
   },
   arcane_literacy: {
     id: "arcane_literacy",
     name: "Arcane Literacy",
     category: "Magic",
-    description: "Reading seals, runes, wards, and magical machinery.",
+    description:
+      "Your understanding of runes, wards, magical writing, and enchanted devices.",
     maxLevel: 100,
   },
   holy_magic: {
     id: "holy_magic",
     name: "Holy Magic",
     category: "Magic",
-    description: "Healing, cleansing, blessing, and radiant protection.",
+    description:
+      "Your skill with healing, blessings, cleansing, and protective light.",
     maxLevel: 100,
   },
   medicine: {
     id: "medicine",
     name: "Medicine",
     category: "Profession",
-    description: "Treatment, triage, antidotes, and field care.",
+    description:
+      "Your ability to treat injuries, use remedies, and care for patients.",
     maxLevel: 100,
   },
   death_lore: {
     id: "death_lore",
     name: "Death Lore",
     category: "Magic",
-    description: "Spirits, graves, curses, and memory left behind.",
+    description: "Your knowledge of spirits, graves, curses, and the dead.",
     maxLevel: 100,
   },
   shadow_magic: {
     id: "shadow_magic",
     name: "Shadow Magic",
     category: "Magic",
-    description: "Curses, drains, concealment, and risky bargains.",
+    description:
+      "Your command of curses, draining spells, concealment, and shadow magic.",
     maxLevel: 100,
   },
   nature_magic: {
     id: "nature_magic",
     name: "Nature Magic",
     category: "Magic",
-    description: "Plants, animals, soil restoration, and living wards.",
+    description:
+      "Your connection to plants, animals, soil, and protective nature magic.",
     maxLevel: 100,
   },
   farming: {
     id: "farming",
     name: "Farming",
     category: "Profession",
-    description: "Growing, harvesting, watering, and yield care.",
+    description:
+      "Your skill at planting, watering, tending, and harvesting crops.",
     maxLevel: 100,
   },
   mining: {
@@ -312,7 +323,7 @@ export const HARTHMERE_SKILL_DEFINITIONS: Record<
     name: "Mining",
     category: "Gathering",
     description:
-      "Extracting ore, stone, gems, and underground resources safely.",
+      "Your skill at extracting ore, stone, gems, and other underground materials.",
     maxLevel: 100,
   },
   gathering: {
@@ -320,7 +331,7 @@ export const HARTHMERE_SKILL_DEFINITIONS: Record<
     name: "Gathering",
     category: "Gathering",
     description:
-      "Harvesting legal world resources without damaging ownership or ecology.",
+      "Your skill at collecting plants, wood, stone, fish, and other natural resources.",
     maxLevel: 100,
   },
   cooking: {
@@ -328,7 +339,7 @@ export const HARTHMERE_SKILL_DEFINITIONS: Record<
     name: "Cooking",
     category: "Profession",
     description:
-      "Preparing stamina food from hunted, farmed, foraged, and livestock ingredients.",
+      "Your skill at preparing meals from farmed, hunted, and gathered ingredients.",
     maxLevel: 100,
   },
   crafting: {
@@ -336,7 +347,7 @@ export const HARTHMERE_SKILL_DEFINITIONS: Record<
     name: "Crafting",
     category: "Crafting",
     description:
-      "Turning materials into useful gear, tools, repairs, and services.",
+      "Your ability to turn materials into useful items, tools, and repairs.",
     maxLevel: 100,
   },
   blacksmithing: {
@@ -344,7 +355,7 @@ export const HARTHMERE_SKILL_DEFINITIONS: Record<
     name: "Blacksmithing",
     category: "Crafting",
     description:
-      "Smelting metal, forging weapons, repairing gear, and fulfilling forge commissions.",
+      "Your skill at smelting metal, forging equipment, and repairing metal gear.",
     maxLevel: 100,
   },
   leatherworking: {
@@ -352,7 +363,7 @@ export const HARTHMERE_SKILL_DEFINITIONS: Record<
     name: "Leatherworking",
     category: "Crafting",
     description:
-      "Curing hides, making armor, and repairing flexible field gear.",
+      "Your skill at curing hides and making or repairing leather gear.",
     maxLevel: 100,
   },
   carpentry: {
@@ -360,7 +371,7 @@ export const HARTHMERE_SKILL_DEFINITIONS: Record<
     name: "Carpentry",
     category: "Crafting",
     description:
-      "Milling wood, shaping bows, building repair kits, and supporting town projects.",
+      "Your skill at working wood, making bows and repair kits, and helping with construction.",
     maxLevel: 100,
   },
   tailoring: {
@@ -368,7 +379,7 @@ export const HARTHMERE_SKILL_DEFINITIONS: Record<
     name: "Tailoring",
     category: "Crafting",
     description:
-      "Weaving cloth, sewing clothing, and producing soft armor and travel goods.",
+      "Your skill at weaving cloth and sewing clothing, armor, and travel gear.",
     maxLevel: 100,
   },
   alchemy: {
@@ -376,15 +387,14 @@ export const HARTHMERE_SKILL_DEFINITIONS: Record<
     name: "Alchemy",
     category: "Crafting",
     description:
-      "Preparing extracts, potions, antidotes, and unstable magical reagents.",
+      "Your skill at making extracts, potions, antidotes, and magical mixtures.",
     maxLevel: 100,
   },
   enchanting: {
     id: "enchanting",
     name: "Enchanting",
     category: "Crafting",
-    description:
-      "Stabilizing arcane materials and binding magical effects into durable items.",
+    description: "Your skill at adding magical effects to items.",
     maxLevel: 100,
   },
   exotic_refining: {
@@ -392,15 +402,14 @@ export const HARTHMERE_SKILL_DEFINITIONS: Record<
     name: "Exotic Refining",
     category: "Crafting",
     description:
-      "Stabilizing antimatter components into Exotic Matter, power cells, portal fuel, and drive cores.",
+      "Your skill at refining rare materials into power cells, portal fuel, and advanced components.",
     maxLevel: 100,
   },
   bell_forging: {
     id: "bell_forging",
     name: "Bell Forging",
     category: "Crafting",
-    description:
-      "Working bell bronze, meteoric trace, and dragon-binding ritual alloys.",
+    description: "Your skill at refining bell metals and forging ritual bells.",
     maxLevel: 100,
   },
   fishing: {
@@ -408,7 +417,7 @@ export const HARTHMERE_SKILL_DEFINITIONS: Record<
     name: "Fishing",
     category: "Gathering",
     description:
-      "Catching river fish and preparing lures, lines, and angler supplies.",
+      "Your skill at catching fish and preparing bait, lines, and fishing supplies.",
     maxLevel: 100,
   },
   care: {
@@ -416,21 +425,23 @@ export const HARTHMERE_SKILL_DEFINITIONS: Record<
     name: "Care",
     category: "Profession",
     description:
-      "Animal, plant, patient, and upkeep routines that reward meaningful maintenance.",
+      "Your skill at caring for animals, plants, patients, and shared spaces.",
     maxLevel: 100,
   },
   persuasion: {
     id: "persuasion",
     name: "Persuasion",
     category: "Social",
-    description: "Negotiation, de-escalation, and better public outcomes.",
+    description:
+      "Your ability to negotiate, calm disputes, and convince others.",
     maxLevel: 100,
   },
   performance: {
     id: "performance",
     name: "Performance",
     category: "Social",
-    description: "Crowd work, morale, story, and rumor handling.",
+    description:
+      "Your ability to entertain crowds, raise morale, and share stories and songs.",
     maxLevel: 100,
   },
   business_operations: {
@@ -438,16 +449,14 @@ export const HARTHMERE_SKILL_DEFINITIONS: Record<
     name: "Business Operations",
     category: "Business",
     description:
-      "Pricing, staff, contracts, storage, safety, and service quality.",
+      "Your ability to set prices, manage staff and stock, fulfill contracts, and serve customers.",
     maxLevel: 100,
   },
 };
 
 export const HARTHMERE_SKILL_XP_PER_LEVEL = 1000;
 
-export function isHarthmereSkillId(
-  value: string | undefined
-): value is string {
+export function isHarthmereSkillId(value: string | undefined): value is string {
   return !!value && value in HARTHMERE_SKILL_DEFINITIONS;
 }
 
@@ -503,7 +512,7 @@ const CORE_ABILITIES: Record<string, HarthmereAbilityDefinition> = {
     cooldown: 1,
     cost: 0,
     resource: "Stamina",
-    description: "A reliable weapon attack with the equipped main-hand item.",
+    description: "Attack with the weapon in your main hand.",
   },
   power_strike: {
     id: "power_strike",
@@ -513,7 +522,7 @@ const CORE_ABILITIES: Record<string, HarthmereAbilityDefinition> = {
     cooldown: 4,
     cost: 18,
     resource: "Stamina",
-    description: "A heavy melee attack for breaking guard.",
+    description: "Make a heavy melee attack that can break an enemy's guard.",
     classRequirements: ["warrior", "paladin"],
     skillRequirements: { melee_combat: 1 },
   },
@@ -525,7 +534,7 @@ const CORE_ABILITIES: Record<string, HarthmereAbilityDefinition> = {
     cooldown: 8,
     cost: 10,
     resource: "Stamina",
-    description: "Brace and reduce incoming pressure.",
+    description: "Brace to reduce incoming damage.",
     classRequirements: ["warrior", "paladin"],
     skillRequirements: { shield_mastery: 1 },
   },
@@ -537,7 +546,7 @@ const CORE_ABILITIES: Record<string, HarthmereAbilityDefinition> = {
     cooldown: 6,
     cost: 25,
     resource: "Energy",
-    description: "A precise strike that rewards position and timing.",
+    description: "Make a precise attack from a favorable position.",
     classRequirements: ["rogue"],
     skillRequirements: { dagger_mastery: 1 },
   },
@@ -549,7 +558,7 @@ const CORE_ABILITIES: Record<string, HarthmereAbilityDefinition> = {
     cooldown: 3,
     cost: 8,
     resource: "Energy",
-    description: "Open valid quest locks and legal utility locks.",
+    description: "Open locked doors, chests, and other objects.",
     classRequirements: ["rogue"],
     skillRequirements: { lockpicking: 1 },
   },
@@ -561,7 +570,8 @@ const CORE_ABILITIES: Record<string, HarthmereAbilityDefinition> = {
     cooldown: 10,
     cost: 15,
     resource: "Focus",
-    description: "Mark a target so allies can track and pressure it.",
+    description:
+      "Mark an enemy so allies can track it and focus their attacks.",
     classRequirements: ["ranger"],
     skillRequirements: { tracking: 1 },
   },
@@ -573,7 +583,7 @@ const CORE_ABILITIES: Record<string, HarthmereAbilityDefinition> = {
     cooldown: 8,
     cost: 5,
     resource: "Focus",
-    description: "Reveal nearby animal signs and safer approach lines.",
+    description: "Reveal nearby animal tracks and safer paths.",
     classRequirements: ["ranger"],
     skillRequirements: { tracking: 1 },
   },
@@ -585,7 +595,7 @@ const CORE_ABILITIES: Record<string, HarthmereAbilityDefinition> = {
     cooldown: 2,
     cost: 8,
     resource: "Mana",
-    description: "A small controlled flame for combat and utility.",
+    description: "Cast a small, controlled flame.",
     classRequirements: ["mage"],
     skillRequirements: { fire_magic: 1 },
   },
@@ -597,7 +607,7 @@ const CORE_ABILITIES: Record<string, HarthmereAbilityDefinition> = {
     cooldown: 18,
     cost: 25,
     resource: "Mana",
-    description: "Convert mana into short-lived protection.",
+    description: "Spend mana to protect yourself for a short time.",
     classRequirements: ["mage"],
     skillRequirements: { arcane_literacy: 1 },
   },
@@ -609,7 +619,7 @@ const CORE_ABILITIES: Record<string, HarthmereAbilityDefinition> = {
     cooldown: 4,
     cost: 4,
     resource: "Mana",
-    description: "Decode seals, wards, and magical signs.",
+    description: "Read magical seals, wards, and runes.",
     classRequirements: ["mage"],
     skillRequirements: { arcane_literacy: 1 },
   },
@@ -621,7 +631,7 @@ const CORE_ABILITIES: Record<string, HarthmereAbilityDefinition> = {
     cooldown: 5,
     cost: 18,
     resource: "Faith",
-    description: "Restore a small amount of health to an ally.",
+    description: "Restore some health to an ally.",
     classRequirements: ["priest"],
     skillRequirements: { holy_magic: 1 },
   },
@@ -633,7 +643,7 @@ const CORE_ABILITIES: Record<string, HarthmereAbilityDefinition> = {
     cooldown: 20,
     cost: 20,
     resource: "Faith",
-    description: "Improve ally resolve and reduce panic.",
+    description: "Help an ally resist fear and stay focused.",
     classRequirements: ["priest", "paladin"],
     skillRequirements: { holy_magic: 1 },
   },
@@ -645,7 +655,7 @@ const CORE_ABILITIES: Record<string, HarthmereAbilityDefinition> = {
     cooldown: 12,
     cost: 16,
     resource: "Faith",
-    description: "Remove minor corruption or contamination effects.",
+    description: "Remove minor corruption or contamination from an ally.",
     classRequirements: ["priest"],
     skillRequirements: { holy_magic: 1 },
   },
@@ -657,7 +667,7 @@ const CORE_ABILITIES: Record<string, HarthmereAbilityDefinition> = {
     cooldown: 5,
     cost: 18,
     resource: "Conviction",
-    description: "A lawful radiant strike.",
+    description: "Strike an enemy with holy light.",
     classRequirements: ["paladin"],
     skillRequirements: { holy_magic: 1 },
   },
@@ -669,7 +679,7 @@ const CORE_ABILITIES: Record<string, HarthmereAbilityDefinition> = {
     cooldown: 15,
     cost: 24,
     resource: "Conviction",
-    description: "Protect an ally with oath-backed warding.",
+    description: "Protect an ally with a holy ward.",
     classRequirements: ["paladin"],
     skillRequirements: { holy_magic: 1 },
   },
@@ -682,7 +692,7 @@ const CORE_ABILITIES: Record<string, HarthmereAbilityDefinition> = {
     cost: 20,
     resource: "Conviction",
     description:
-      "Call out a hostile or unlawful act in a way guards understand.",
+      "Call attention to an enemy or unlawful act so nearby guards understand the threat.",
     classRequirements: ["paladin"],
     skillRequirements: { persuasion: 1 },
   },
@@ -694,7 +704,7 @@ const CORE_ABILITIES: Record<string, HarthmereAbilityDefinition> = {
     cooldown: 8,
     cost: 12,
     resource: "Souls",
-    description: "Pull vitality from a hostile target.",
+    description: "Steal health from an enemy.",
     classRequirements: ["necromancer"],
     skillRequirements: { shadow_magic: 1 },
   },
@@ -706,7 +716,7 @@ const CORE_ABILITIES: Record<string, HarthmereAbilityDefinition> = {
     cooldown: 12,
     cost: 16,
     resource: "Souls",
-    description: "Reduce a target's pressure for a short window.",
+    description: "Weaken an enemy's attacks for a short time.",
     classRequirements: ["necromancer"],
     skillRequirements: { shadow_magic: 1 },
   },
@@ -718,7 +728,7 @@ const CORE_ABILITIES: Record<string, HarthmereAbilityDefinition> = {
     cooldown: 60,
     cost: 25,
     resource: "Souls",
-    description: "Ask a memory-bound spirit for one useful clue.",
+    description: "Ask a spirit for a useful clue.",
     classRequirements: ["necromancer"],
     skillRequirements: { death_lore: 1 },
   },
@@ -730,7 +740,7 @@ const CORE_ABILITIES: Record<string, HarthmereAbilityDefinition> = {
     cooldown: 6,
     cost: 15,
     resource: "Mana",
-    description: "Encourage living tissue to recover over time.",
+    description: "Help an ally recover health over time.",
     classRequirements: ["druid"],
     skillRequirements: { nature_magic: 1 },
   },
@@ -742,7 +752,7 @@ const CORE_ABILITIES: Record<string, HarthmereAbilityDefinition> = {
     cooldown: 14,
     cost: 20,
     resource: "Mana",
-    description: "Snare a hostile target with nearby roots.",
+    description: "Trap an enemy with nearby roots.",
     classRequirements: ["druid"],
     skillRequirements: { nature_magic: 1 },
   },
@@ -754,7 +764,7 @@ const CORE_ABILITIES: Record<string, HarthmereAbilityDefinition> = {
     cooldown: 20,
     cost: 10,
     resource: "Mana",
-    description: "Read animal behavior as usable information.",
+    description: "Learn useful information from an animal's behavior.",
     classRequirements: ["druid"],
     skillRequirements: { nature_magic: 1 },
   },
@@ -766,7 +776,7 @@ const CORE_ABILITIES: Record<string, HarthmereAbilityDefinition> = {
     cooldown: 20,
     cost: 18,
     resource: "Inspiration",
-    description: "Raise group morale and reduce fear.",
+    description: "Help nearby allies resist fear.",
     classRequirements: ["bard"],
     skillRequirements: { performance: 1 },
   },
@@ -778,7 +788,7 @@ const CORE_ABILITIES: Record<string, HarthmereAbilityDefinition> = {
     cooldown: 8,
     cost: 10,
     resource: "Inspiration",
-    description: "Distract an enemy with a sharply timed insult.",
+    description: "Distract an enemy with a well-timed insult.",
     classRequirements: ["bard"],
     skillRequirements: { performance: 1 },
   },
@@ -790,7 +800,7 @@ const CORE_ABILITIES: Record<string, HarthmereAbilityDefinition> = {
     cooldown: 30,
     cost: 16,
     resource: "Inspiration",
-    description: "Turn public chatter into actionable local knowledge.",
+    description: "Learn useful local information from nearby conversations.",
     classRequirements: ["bard"],
     skillRequirements: { persuasion: 1 },
   },
@@ -803,7 +813,7 @@ const BUSINESS_ABILITY_PATTERNS = [
   ],
   [
     "Supplier Contract",
-    "Create a cleaner recurring supply plan with fewer stock gaps.",
+    "Set up regular deliveries to avoid running out of stock.",
   ],
   [
     "Quality Inspection",
@@ -813,15 +823,18 @@ const BUSINESS_ABILITY_PATTERNS = [
     "Staff Rotation",
     "Assign workers to the right shift while keeping morale steady.",
   ],
-  ["Price Tuning", "Adjust prices to demand without damaging reputation."],
+  [
+    "Price Tuning",
+    "Adjust prices as demand changes without harming your reputation.",
+  ],
   [
     "Safety Protocol",
-    "Reduce operational risk, injuries, contamination, or travel losses.",
+    "Reduce injuries, contamination, travel losses, and other business risks.",
   ],
-  ["Waste Recovery", "Recover reusable inputs and lower cleanup costs."],
+  ["Waste Recovery", "Recover reusable materials and lower cleanup costs."],
   [
     "Customer Promise",
-    "Turn a clear service guarantee into better satisfaction.",
+    "Offer a clear service guarantee to improve customer satisfaction.",
   ],
   [
     "Route Coordination",
@@ -838,6 +851,10 @@ function businessAbilityId(typeId: string, suffix: string) {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "_")
     .replace(/^_|_$/g, "")}`;
+}
+
+function playerFacingBusinessTerm(value: string) {
+  return value.replace(/[_-]+/g, " ").trim();
 }
 
 export const HARTHMERE_BUSINESS_ABILITY_DEFINITIONS: Record<
@@ -871,7 +888,11 @@ export const HARTHMERE_BUSINESS_ABILITY_DEFINITIONS: Record<
             Math.min(10, business.minimumLicenseLevel)
           ),
         },
-        description: `${description} Uses ${input} to improve ${output} for ${need} work.`,
+        description: `${description} Uses ${playerFacingBusinessTerm(
+          input
+        )} to improve ${playerFacingBusinessTerm(
+          output
+        )} and support ${playerFacingBusinessTerm(need)}.`,
       };
       return [ability.id, ability];
     })
@@ -953,10 +974,7 @@ export function normalizeHarthmereProgressionCollectionsState(
 ): HarthmereProgressionCollectionsState {
   const discovered: Record<string, number> = {};
   for (const [id, at] of Object.entries(raw?.discovered ?? {})) {
-    if (
-      HARTHMERE_COLLECTIBLE_DEFINITIONS[id] &&
-      Number.isFinite(Number(at))
-    ) {
+    if (HARTHMERE_COLLECTIBLE_DEFINITIONS[id] && Number.isFinite(Number(at))) {
       discovered[id] = Number(at);
     }
   }
@@ -1184,26 +1202,24 @@ export function createHarthmereProgressionClientSnapshot(input: {
             : "Untrained",
       };
     }),
-    abilities: Object.values(HARTHMERE_ABILITY_DEFINITIONS).map(
-      (ability) => {
-        const known = knownAbilityIds.includes(ability.id);
-        const businessUnlocked =
-          !ability.businessTypeId ||
-          ownedBusinessTypes.has(ability.businessTypeId);
-        const learnable = canLearnHarthmereAbility({
-          classMagic: input.classMagic,
-          economy: input.economy,
-          actorId: input.actorId,
-          abilityId: ability.id,
-        }).ok;
-        return {
-          ...ability,
-          known,
-          unlocked: known || learnable,
-          businessUnlocked,
-        };
-      }
-    ),
+    abilities: Object.values(HARTHMERE_ABILITY_DEFINITIONS).map((ability) => {
+      const known = knownAbilityIds.includes(ability.id);
+      const businessUnlocked =
+        !ability.businessTypeId ||
+        ownedBusinessTypes.has(ability.businessTypeId);
+      const learnable = canLearnHarthmereAbility({
+        classMagic: input.classMagic,
+        economy: input.economy,
+        actorId: input.actorId,
+        abilityId: ability.id,
+      }).ok;
+      return {
+        ...ability,
+        known,
+        unlocked: known || learnable,
+        businessUnlocked,
+      };
+    }),
     equipped: Array.from(
       { length: 8 },
       (_unused, index) =>

@@ -168,6 +168,79 @@ describe("Snapshot Grove live-mode authority", () => {
     );
   });
 
+  it("does not double-consume final hand-in items during native reconciliation", () => {
+    const questId = "econ_billys_lost_lunch_pail";
+    const quest = SNAPSHOT_GROVE_QUESTS.find((entry) => entry.id === questId)!;
+    const finalObjectiveIndex = quest.objectives.length - 1;
+    const requirement = snapshotGroveObjectiveInventoryRequirement(
+      quest,
+      finalObjectiveIndex
+    )!;
+    const state = freshState();
+    state.quests.active[questId] = {
+      source: "snapshot_grove",
+      stepId: `${questId}:${finalObjectiveIndex}:${quest.triggers[finalObjectiveIndex]}`,
+      progress: quest.objectives.length,
+    };
+    state.inventory.items[requirement.itemId] = requirement.count;
+
+    const completed = applyQuestMutation(
+      state,
+      snapshotQuestPayload(
+        questId,
+        finalObjectiveIndex,
+        quest.objectives.length,
+        true
+      ),
+      { serverActorGold: 0 }
+    );
+    const exchange = completed.summary.nativeEcsMaterializationPlans?.find(
+      (plan) =>
+        plan.kind === "inventory_exchange" &&
+        plan.materializationKey.startsWith(`live_mode:${ACTOR_ID}:`)
+    );
+    assert.ok(exchange && exchange.kind === "inventory_exchange");
+    assert.equal(
+      exchange.consumeItemStacks[requirement.itemId],
+      requirement.count
+    );
+  });
+
+  it("does not double-grant Grove reward items during native reconciliation", () => {
+    const questId = "road_signs_and_small_lies";
+    const quest = SNAPSHOT_GROVE_QUESTS.find((entry) => entry.id === questId)!;
+    const reward = SNAPSHOT_STRUCTURED_REWARDS.find(
+      (entry) => entry.questId === questId
+    )!;
+    const finalObjectiveIndex = quest.objectives.length - 1;
+    const state = freshState();
+    state.quests.active[questId] = {
+      source: "snapshot_grove",
+      stepId: `${questId}:${finalObjectiveIndex}:${quest.triggers[finalObjectiveIndex]}`,
+      progress: quest.objectives.length,
+    };
+
+    const completed = applyQuestMutation(
+      state,
+      snapshotQuestPayload(
+        questId,
+        finalObjectiveIndex,
+        quest.objectives.length,
+        true
+      ),
+      { serverActorGold: 0 }
+    );
+    const exchange = completed.summary.nativeEcsMaterializationPlans?.find(
+      (plan) =>
+        plan.kind === "inventory_exchange" &&
+        plan.materializationKey.startsWith(`live_mode:${ACTOR_ID}:`)
+    );
+    assert.ok(exchange && exchange.kind === "inventory_exchange");
+    for (const itemId of reward.items) {
+      assert.equal(exchange.rewardItemStacks[itemId], 1);
+    }
+  });
+
   it("grants quest rewards once and materializes native progression", () => {
     const questId = "fountain_buttons_first";
     const quest = SNAPSHOT_GROVE_QUESTS.find((entry) => entry.id === questId)!;

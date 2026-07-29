@@ -100,6 +100,18 @@ async function main() {
       "authored Busted/Get-the-Muck-Out crate identities",
     ],
     [
+      "NATIVE_GET_THE_MUCK_OUT_INSCRIPTION_SPECS",
+      "canonical Get-the-Muck-Out inscription identities",
+    ],
+    [
+      "visible F Read prompt targets canonical grouped plate",
+      "real grouped inscription F/Read prompt",
+    ],
+    [
+      "HARTHMERE_E2E_GET_MUCK_OUT_INSCRIPTIONS_ONLY",
+      "focused grouped-inscription browser checkpoint",
+    ],
+    [
       "visible F Open prompt targets shipped crate",
       "real prompt on both crate-shaped reward props",
     ],

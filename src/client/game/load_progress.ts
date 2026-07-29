@@ -1,14 +1,12 @@
 import type { InitConfigOptions } from "@/client/game/client_config";
+import { clearPartialTerrainRecoveryMarker } from "@/client/components/system/load_progress_recovery";
 import type { ClientContext, EarlyClientContext } from "@/client/game/context";
 import {
   allPlayerShardsMeshed,
   triggerPlayerShardsMesh,
 } from "@/client/game/helpers/player_shards";
 import { initializeClient } from "@/client/game/init";
-import {
-  REQUIRED_FRAMES,
-  progressSummary,
-} from "@/client/game/load_progress_summary";
+import { progressSummary } from "@/client/game/load_progress_summary";
 import { BackgroundTaskController } from "@/shared/abort";
 import type { BiomesId } from "@/shared/ids";
 import type { RegistryLoader } from "@/shared/registry";
@@ -125,6 +123,7 @@ export class ClientLoader {
                 pollRate = PROGRESS_RENDER_POLL_RATE_MS;
                 resolve(clientContext);
               } else if (summary === "ready") {
+                clearPartialTerrainRecoveryMarker();
                 this.onProgressUpdate(latestProgress);
                 break;
               }

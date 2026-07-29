@@ -2,7 +2,7 @@ const fs = require("fs");
 const path = require("path");
 
 function readQuestModule(root) {
-  const questPath = path.join(root, "src/shared/harthmere/quest_compendium.ts");
+  const questPath = path.join(root, "src/shared/harthmere/bible/bible_quest_catalog.ts");
   const src = fs.readFileSync(questPath, "utf8");
 
   // Import the generated TypeScript module instead of scraping template literals.

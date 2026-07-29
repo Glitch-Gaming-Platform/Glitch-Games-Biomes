@@ -13,28 +13,45 @@ import { Tensor, TensorUpdate } from "@/shared/wasm/tensors";
 import type { VoxelooModule } from "@/shared/wasm/types";
 import { makeWorldMap } from "@/server/gaia/simulations/farming/map";
 import { voxelShard } from "@/shared/game/shard";
+import type { Sparse3 } from "@/shared/util/sparse";
+
+interface FarmingTerrainChange {
+  block: number;
+  farming: number;
+  growth?: number;
+  moisture?: number;
+  shape?: number;
+}
 
 export class FarmingPlantTerrainModifier {
-  changes = makeWorldMap<{
-    block: number;
-    farming: number;
-    growth?: number;
-    moisture?: number;
-    shape?: number;
-  }>();
+  readonly changes: Sparse3<FarmingTerrainChange>;
+
   constructor(
     private readonly voxeloo: VoxelooModule,
     public readonly plant: Plant,
     public readonly changeBatcher: FarmingChangeBatcher,
     public readonly tensorShape: Vec3i,
     public readonly tensorAnchor: Vec3i
-  ) {}
+  ) {
+    const worldAabb = changeBatcher.getWorldMetadata()?.aabb;
+    this.changes = makeWorldMap<FarmingTerrainChange>(
+      worldAabb
+        ? [[...worldAabb.v0] as Vec3i, [...worldAabb.v1] as Vec3i]
+        : undefined
+    );
+  }
 
   get entity() {
     return this.plant.entity;
   }
 
   canModify(pos: ReadonlyVec3i) {
+    // A plant tensor can extend beyond the world edge (for example a crop
+    // planted in the final east-side Harthmere shard). Treat those voxels as
+    // unavailable rather than letting Sparse3.key assert and restart Gaia.
+    if (!this.changes.inBounds(pos)) {
+      return false;
+    }
     if (this.changes.has(pos)) {
       // We've already determined we can change this voxel
       return true;
@@ -69,6 +86,9 @@ export class FarmingPlantTerrainModifier {
     using(this.expectedBlocks(), (tensor) => {
       for (const [tensorPos] of tensor) {
         const pos = farmTensorToWorld(tensorPos, this.tensorAnchor);
+        if (!this.changes.inBounds(pos)) {
+          continue;
+        }
         if (!this.canModify(pos)) {
           // If we think we can modify this, then this is incorrect and we fix this here:
           this.changes.set(pos, {
@@ -136,6 +156,9 @@ export class FarmingPlantTerrainModifier {
     moisture?: number,
     shape?: number
   ) {
+    if (!this.changes.inBounds(pos)) {
+      return false;
+    }
     farming ??= this.entity.id;
     if (farming === this.entity.id && !this.canModify(pos)) {
       return false;
@@ -151,7 +174,7 @@ export class FarmingPlantTerrainModifier {
   }
 
   get(pos: ReadonlyVec3) {
-    if (this.changes.has(pos)) {
+    if (this.changes.inBounds(pos) && this.changes.has(pos)) {
       return this.changes.get(pos);
     }
     return {

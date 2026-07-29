@@ -1,7 +1,12 @@
 import type { LoadProgress } from "@/client/game/load_progress";
+import {
+  armPartialTerrainRecovery,
+  clearPartialTerrainRecoveryMarker,
+  hasPartialTerrainRecoveryMarker,
+  shouldAutoReloadForPartialTerrainRecovery,
+} from "@/client/components/system/load_progress_recovery";
 import { emptyChannelStats } from "@/shared/zrpc/core";
 import assert from "assert";
-import { shouldAutoReloadForPartialTerrainRecovery } from "../load_progress_recovery";
 
 function progress(overrides: Partial<LoadProgress> = {}): LoadProgress {
   return {
@@ -47,6 +52,42 @@ describe("partial terrain load recovery", () => {
         alreadyReloaded: true,
       }),
       false
+    );
+  });
+
+  it("arms once per tab and clears the marker after a successful load", () => {
+    const values = new Map<string, string>();
+    const storage = {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => values.set(key, value),
+      removeItem: (key: string) => values.delete(key),
+    };
+
+    assert.equal(hasPartialTerrainRecoveryMarker(storage), false);
+    assert.equal(armPartialTerrainRecovery(storage), true);
+    assert.equal(hasPartialTerrainRecoveryMarker(storage), true);
+    assert.equal(armPartialTerrainRecovery(storage), false);
+    clearPartialTerrainRecoveryMarker(storage);
+    assert.equal(hasPartialTerrainRecoveryMarker(storage), false);
+  });
+
+  it("fails closed when an embedded browser blocks session storage", () => {
+    const blockedStorage = {
+      getItem: () => {
+        throw new Error("blocked");
+      },
+      setItem: () => {
+        throw new Error("blocked");
+      },
+      removeItem: () => {
+        throw new Error("blocked");
+      },
+    };
+
+    assert.equal(hasPartialTerrainRecoveryMarker(blockedStorage), false);
+    assert.equal(armPartialTerrainRecovery(blockedStorage), false);
+    assert.doesNotThrow(() =>
+      clearPartialTerrainRecoveryMarker(blockedStorage)
     );
   });
 });

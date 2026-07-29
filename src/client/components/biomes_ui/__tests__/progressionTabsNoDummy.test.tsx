@@ -696,7 +696,7 @@ describe("Biomes UI progression tabs", () => {
     assert.ok(html.includes("Current Class"));
     assert.ok(html.includes("Selected"));
     assert.ok(html.includes("Caravan Guard"));
-    assert.ok(html.includes("requires a respec service"));
+    assert.ok(html.includes("requires a class reset"));
     assert.equal(html.includes("Front-line frame"), false);
   });
 
@@ -725,7 +725,7 @@ describe("Biomes UI progression tabs", () => {
     assert.ok(html.includes("None selected"));
   });
 
-  it("renders AbilitiesTab from adapter data and exposes learnable state", () => {
+  it("renders AbilitiesTab from adapter data and exposes ready-to-learn state", () => {
     const html = renderToStaticMarkup(
       <AbilitiesTab
         adapter={{
@@ -748,7 +748,7 @@ describe("Biomes UI progression tabs", () => {
       />
     );
     assert.ok(html.includes("Courier: Route Coordination"));
-    assert.ok(html.includes("Learnable"));
+    assert.ok(html.includes("Ready to learn"));
     assert.equal(html.includes("Rift Step"), false);
   });
 
@@ -806,7 +806,7 @@ describe("Biomes UI progression tabs", () => {
               xp: 75,
               nextLevel: 400,
               title: "Novice",
-              trainingActions: ["Complete a validated market transaction"],
+              trainingActions: ["Trade at a market"],
             },
           ],
           getCharacterStats: () => ({
@@ -833,8 +833,8 @@ describe("Biomes UI progression tabs", () => {
     assert.ok(html.includes("Strength"));
     assert.ok(html.includes("Critical chance"));
     assert.ok(html.includes("Backpack slots"));
-    assert.ok(html.includes("Train by:"));
-    assert.ok(html.includes("Complete a validated market transaction"));
+    assert.ok(html.includes("How to improve:"));
+    assert.ok(html.includes("Trade at a market"));
     assert.ok(
       html.includes('data-skill-training-actions="business_operations"')
     );

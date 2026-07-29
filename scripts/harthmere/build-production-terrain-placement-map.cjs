@@ -33,8 +33,8 @@ const {
   terrainCollides,
 } = require("../../src/shared/asset_defs/quirk_helpers");
 const {
-  HARTHMERE_QUEST_CATALOG,
-} = require("../../src/shared/harthmere/quest_compendium");
+  BIBLE_QUEST_CATALOG: HARTHMERE_QUEST_CATALOG,
+} = require("../../src/shared/harthmere/bible/bible_quest_catalog");
 const {
   HARTHMERE_MAIN_QUEST_SPACES,
 } = require("../../src/shared/harthmere/main_quest_spaces");

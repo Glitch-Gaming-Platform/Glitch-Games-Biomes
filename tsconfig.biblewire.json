@@ -1,0 +1,13 @@
+// BIBLE_REWIRE_TYPECHECK — scoped check for the phase 3/4 rewire surface.
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "noEmit": true, "incremental": false },
+  "include": [
+    "src/shared/harthmere/bible/*.ts",
+    "src/shared/harthmere/bible_quest_live_authority.ts",
+    "src/shared/harthmere/harthmere_native_quests.ts",
+    "src/shared/harthmere/harthmere_quest_chain_validator.ts",
+    "src/shared/harthmere/test/bible_*.test.ts",
+    "modules.d.ts"
+  ]
+}

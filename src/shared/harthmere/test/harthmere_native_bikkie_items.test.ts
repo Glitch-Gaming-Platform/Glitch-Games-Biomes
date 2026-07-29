@@ -13,6 +13,7 @@ import {
 import {
   HARTHMERE_NATIVE_ITEM_ID_MANIFEST,
   HARTHMERE_NATIVE_NPC_ID_MANIFEST,
+  HARTHMERE_NATIVE_RECIPE_ID_MANIFEST,
 } from "@/shared/harthmere/harthmere_native_id_manifest";
 import {
   harthmereNativeBiomesIdForNpcType,
@@ -31,12 +32,16 @@ import type { BiomesId } from "@/shared/ids";
 import { NATIVE_ROAD_AHEAD_MUCKWAD_ITEM_ID } from "@/shared/harthmere/native_road_ahead_contract";
 import { allHarthmereNativeQuestBiscuits } from "@/shared/harthmere/harthmere_native_quests";
 import { SNAPSHOT_GROVE_QUESTS } from "@/shared/harthmere/snapshot_grove_content";
-import { HARTHMERE_QUEST_CATALOG } from "@/shared/harthmere/quest_compendium";
+import { BIBLE_QUEST_CATALOG as HARTHMERE_QUEST_CATALOG } from "@/shared/harthmere/bible/bible_quest_catalog";
 import { allCh1NativeQuestBiscuits } from "@/shared/harthmere/ch1_native_quests";
 import { CH1_ITEMS } from "@/shared/harthmere/ch1_items";
 import { zrpcWebDeserialize, zrpcWebSerialize } from "@/shared/zrpc/serde";
 import { harthmereBusinessToolListings } from "@/shared/harthmere/harthmere_business_tool_shop";
 import { harthmereBusinessStorefrontListingsForType } from "@/shared/harthmere/harthmere_business_storefront_goods";
+import {
+  SNAPSHOT_GROVE_TUTORIAL_ITEM_IDS,
+  SNAPSHOT_GROVE_TUTORIAL_RECIPE_IDS,
+} from "@/shared/harthmere/snapshot_grove_trigger_contract";
 
 function tray(contents: ReadonlyMap<number, Biscuit> = new Map()) {
   return {
@@ -108,6 +113,36 @@ describe("Harthmere exact native Bikkie overlay", function () {
       harthmereNativeBiomesIdForNpcType("monster_road_muckwadd"),
       undefined
     );
+  });
+
+  it("publishes both Grove tutorial crafts as exact native recipes and items", () => {
+    const augmented = withHarthmereNativeBikkieItems(tray());
+    for (const [recipeId, outputItemId] of [
+      [
+        SNAPSHOT_GROVE_TUTORIAL_RECIPE_IDS.roadTorch,
+        SNAPSHOT_GROVE_TUTORIAL_ITEM_IDS.roadTorch,
+      ],
+      [
+        SNAPSHOT_GROVE_TUTORIAL_RECIPE_IDS.festivalSkewer,
+        SNAPSHOT_GROVE_TUTORIAL_ITEM_IDS.festivalSkewer,
+      ],
+    ] as const) {
+      const nativeRecipeId =
+        HARTHMERE_NATIVE_RECIPE_ID_MANIFEST[
+          recipeId as keyof typeof HARTHMERE_NATIVE_RECIPE_ID_MANIFEST
+        ];
+      const nativeOutputId = harthmereNativeBiomesIdForItemId(outputItemId);
+      assert.ok(nativeRecipeId, `${recipeId} needs a checked-in recipe id`);
+      assert.ok(nativeOutputId, `${outputItemId} needs a checked-in item id`);
+      assert.equal(augmented.contents.get(nativeRecipeId)?.isRecipe, true);
+      assert.ok(augmented.contents.get(nativeOutputId));
+    }
+
+    const ingredientId = harthmereNativeBiomesIdForItemId(
+      SNAPSHOT_GROVE_TUTORIAL_ITEM_IDS.festivalSkewerIngredients
+    );
+    assert.ok(ingredientId, "festival ingredients need a checked-in item id");
+    assert.ok(augmented.contents.get(ingredientId));
   });
 
   it("publishes every Chapter 1 plot item with native quest-item rules", () => {

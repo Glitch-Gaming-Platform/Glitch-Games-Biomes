@@ -6,6 +6,7 @@ import type {
   TriggerProgress,
 } from "@/client/game/resources/challenges";
 import type { BiomesId } from "@/shared/ids";
+import { bibleNativeQuestId } from "@/shared/harthmere/bible/bible_quest_ids";
 import {
   activeNativeQuest,
   activeNativeQuestTriggerLeaves,
@@ -207,6 +208,42 @@ describe("nativeQuestMapAdapter", () => {
         (entry) => entry.questId
       ),
       ["70"]
+    );
+  });
+
+  it("keeps an explicitly accepted hidden Bible quest in the native journal", () => {
+    const challengeId = bibleNativeQuestId(
+      "harthmere_sq_041_the_doorway_that_wasnt"
+    ) as BiomesId;
+    const hiddenBase = quest(
+      challengeId,
+      "in_progress",
+      leaf(8761000000000586, "Inspect the doorway repeatedly", 0)
+    );
+    const hidden: QuestBundle = {
+      ...hiddenBase,
+      biscuit: {
+        ...hiddenBase.biscuit,
+        displayName: "The Doorway That Wasn't",
+        unlock: {
+          kind: "event",
+          id: 8762000000000187 as BiomesId,
+          eventKind: "challengeUnlocked",
+          count: 1,
+          predicate: {
+            kind: "object",
+            fields: [
+              ["challenge", { kind: "value", value: challengeId }],
+            ],
+          },
+        },
+      },
+    };
+
+    assert.equal(activeNativeQuest([hidden])?.biscuit.id, challengeId);
+    assert.deepEqual(
+      nativeQuestTrackableQuests([hidden]).map((entry) => entry.questId),
+      [String(challengeId)]
     );
   });
 });

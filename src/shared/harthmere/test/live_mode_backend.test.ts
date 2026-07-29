@@ -10686,6 +10686,14 @@ describe("reduceHarthmereLiveModeBackendState — physical jobs board and live t
       label: "Public Marker",
       createdAtMs: NOW_MS,
     };
+    s.building.inWorldMarkers["bible_quest:harthmere_sq_001_the_gate_ledger"] = {
+      markerId: "bible_quest:harthmere_sq_001_the_gate_ledger",
+      plotId: "harthmere",
+      kind: "npc_map_marker",
+      position: [2076, 53, -212],
+      label: "The Gate Ledger",
+      createdAtMs: NOW_MS,
+    };
 
     const shared = createHarthmereLiveModeSharedWorldState(s, NOW_MS);
     assert.equal(
@@ -10693,6 +10701,13 @@ describe("reduceHarthmereLiveModeBackendState — physical jobs board and live t
         "jobs_board_marker:harthmere_job_todo_active"
       ],
       undefined
+    );
+    assert.equal(
+      shared.building.inWorldMarkers[
+        "bible_quest:harthmere_sq_001_the_gate_ledger"
+      ],
+      undefined,
+      "one player's active Bible waypoint must not enter multiplayer shared state"
     );
     assert.ok(shared.building.inWorldMarkers.public_marker);
 
@@ -10711,6 +10726,14 @@ describe("reduceHarthmereLiveModeBackendState — physical jobs board and live t
               label: "Stale Shared Job Marker",
               createdAtMs: NOW_MS,
             },
+            "bible_quest:harthmere_sq_001_the_gate_ledger": {
+              markerId: "bible_quest:harthmere_sq_001_the_gate_ledger",
+              plotId: "harthmere",
+              kind: "npc_map_marker",
+              position: [2076, 53, -212],
+              label: "Stale Shared Bible Marker",
+              createdAtMs: NOW_MS,
+            },
           },
         },
       }),
@@ -10723,6 +10746,13 @@ describe("reduceHarthmereLiveModeBackendState — physical jobs board and live t
         "jobs_board_marker:harthmere_job_todo_stale"
       ],
       undefined
+    );
+    assert.equal(
+      next.building.inWorldMarkers[
+        "bible_quest:harthmere_sq_001_the_gate_ledger"
+      ],
+      undefined,
+      "legacy shared blobs must drop another actor's Bible waypoint on read"
     );
   });
 

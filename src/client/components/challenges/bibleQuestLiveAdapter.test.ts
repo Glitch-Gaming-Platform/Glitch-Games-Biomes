@@ -29,8 +29,12 @@ import {
   harthmereVisibleCombatTargetForActor,
 } from "@/shared/harthmere/visible_combat_target";
 import { createThaedrynBossState } from "@/shared/harthmere/thaedryn_boss";
-import { HARTHMERE_QUEST_CATALOG } from "@/shared/harthmere/quest_compendium";
-import { getHarthmereQuestResolvedWaypoint } from "@/shared/harthmere/quest_runtime";
+import {
+  BIBLE_QUEST_CATALOG,
+  bibleQuest,
+} from "@/shared/harthmere/bible/bible_quest_catalog";
+import { bibleQuestGiverId } from "@/shared/harthmere/bible/bible_quest_schema";
+import { bibleStepWorldWaypoint } from "@/shared/harthmere/bible/bible_waypoints";
 
 function emptySnapshot() {
   return {
@@ -41,6 +45,18 @@ function emptySnapshot() {
     completed: {},
     bible: defaultHarthmereBibleQuestLiveSlice(),
     warnings: [],
+  };
+}
+
+function activateQuest(
+  snapshot: ReturnType<typeof emptySnapshot>,
+  quest: NonNullable<ReturnType<typeof bibleQuest>>,
+  completedSteps = 0
+) {
+  snapshot.active[quest.id] = {
+    source: "bible_catalog",
+    stepId: quest.steps[completedSteps]?.id,
+    progress: completedSteps / quest.steps.length,
   };
 }
 
@@ -170,17 +186,14 @@ describe("bible quest client adapter", () => {
 
   it("matches every authored catalog giver name", () => {
     const bibleGiverIds = new Set(Object.keys(harthmereBibleQuestsByGiver()));
-    for (const quest of HARTHMERE_QUEST_CATALOG) {
-      if (
-        !quest.giverId ||
-        !quest.giverName ||
-        !bibleGiverIds.has(quest.giverId)
-      ) {
+    for (const quest of BIBLE_QUEST_CATALOG) {
+      const giverId = bibleQuestGiverId(quest);
+      if (!giverId || !quest.giverName || !bibleGiverIds.has(giverId)) {
         continue;
       }
       assert.equal(
         harthmereBibleGiverIdForNpcLabel(quest.giverName),
-        quest.giverId,
+        giverId,
         `${quest.id} must resolve its rendered giver name`
       );
     }
@@ -222,53 +235,27 @@ describe("bible quest client adapter", () => {
 
   it("supplies combat evidence and a completable world panel for hidden quests", () => {
     const snapshot = emptySnapshot();
-    const hidden = (HARTHMERE_QUEST_CATALOG as readonly any[]).find(
-      (quest) => quest.id === "bellbound_q08_voices_in_stone"
-    );
-    snapshot.bible.runtime[hidden.id] = {
-      questId: hidden.id,
-      state: "active",
-      objectiveProgress: Object.fromEntries(
-        hidden.objectives.map((objective: any) => [
-          objective.id,
-          { current: 0, target: 1, completed: false },
-        ])
-      ),
-    } as any;
+    const hidden = BIBLE_QUEST_CATALOG.find((quest) => quest.hidden)!;
+    activateQuest(snapshot, hidden);
     const model = harthmereBibleHiddenQuestInteractionModel({
       snapshot,
-      playerPosition: getHarthmereQuestResolvedWaypoint(
-        hidden.id,
-        hidden.objectives[0]
-      ),
+      playerPosition: bibleStepWorldWaypoint(hidden, hidden.steps[0]),
     });
     assert.equal(model?.questId, hidden.id);
     assert.equal(model?.nearObjective, true);
     assert.equal(model?.action?.kind, "objective");
 
-    const combatQuest = (HARTHMERE_QUEST_CATALOG as readonly any[]).find(
-      (quest) => quest.id === "bellbound_q05_beneath_the_stones"
-    );
-    snapshot.bible.runtime[combatQuest.id] = {
-      questId: combatQuest.id,
-      state: "active",
-      objectiveProgress: Object.fromEntries(
-        combatQuest.objectives.map((objective: any, index: number) => [
-          objective.id,
-          { current: index === 0 ? 1 : 0, target: 1, completed: index === 0 },
-        ])
-      ),
-    } as any;
-    delete snapshot.bible.runtime[hidden.id];
+    const combatQuest = BIBLE_QUEST_CATALOG.find(
+      (quest) => quest.steps[1]?.type === "combat"
+    )!;
+    activateQuest(snapshot, combatQuest, 1);
+    delete snapshot.active[hidden.id];
     const combatModel = harthmereBibleQuestInteractionModel({
       snapshot,
-      playerPosition: getHarthmereQuestResolvedWaypoint(
-        combatQuest.id,
-        combatQuest.objectives[1]
-      ),
+      playerPosition: bibleStepWorldWaypoint(combatQuest, combatQuest.steps[1]),
     });
     const combatAction = combatModel?.action;
-    assert.equal(combatAction?.objectiveId, combatQuest.objectives[1].id);
+    assert.equal(combatAction?.objectiveId, combatQuest.steps[1].id);
     assert.equal(combatAction?.combatResult, "encounter_cleared");
     assert.equal(
       harthmereBibleOperationPayloadForAction(combatAction as any)
@@ -279,20 +266,9 @@ describe("bible quest client adapter", () => {
 
   it("moves active objectives to the world panel and keeps turn-in at the giver", () => {
     const snapshot = emptySnapshot();
-    const quest = (HARTHMERE_QUEST_CATALOG as readonly any[]).find(
-      (q) => q.id === "bellbound_q01_cracks_in_bridge"
-    );
+    const quest = bibleQuest("bellbound_q01_cracks_in_bridge")!;
     // Active with first objective open.
-    snapshot.bible.runtime[quest.id] = {
-      questId: quest.id,
-      state: "active",
-      objectiveProgress: Object.fromEntries(
-        quest.objectives.map((o: any) => [
-          o.id,
-          { current: 0, target: 1, completed: false },
-        ])
-      ),
-    } as any;
+    activateQuest(snapshot, quest);
     let model = harthmereBibleDialogModelForGiver({
       giverId: "reeve_caldus_merrow",
       snapshot,
@@ -305,24 +281,16 @@ describe("bible quest client adapter", () => {
     );
     const worldInteraction = harthmereBibleQuestInteractionModel({
       snapshot,
-      playerPosition: getHarthmereQuestResolvedWaypoint(
-        quest.id,
-        quest.objectives[0]
-      ),
+      playerPosition: bibleStepWorldWaypoint(quest, quest.steps[0]),
     });
     assert.equal(worldInteraction?.questId, quest.id);
     assert.equal(worldInteraction?.nearObjective, true);
     assert.equal(
       worldInteraction?.action?.objectiveId,
-      quest.objectives[0].id
+      quest.steps[0].id
     );
     // Ready: all objectives complete -> turn-in.
-    snapshot.bible.runtime[quest.id].state = "ready_to_complete" as any;
-    for (const key of Object.keys(
-      snapshot.bible.runtime[quest.id].objectiveProgress
-    )) {
-      snapshot.bible.runtime[quest.id].objectiveProgress[key].completed = true;
-    }
+    activateQuest(snapshot, quest, quest.steps.length);
     model = harthmereBibleDialogModelForGiver({
       giverId: "reeve_caldus_merrow",
       snapshot,
@@ -332,10 +300,7 @@ describe("bible quest client adapter", () => {
     assert.equal(
       harthmereBibleQuestInteractionModel({
         snapshot,
-        playerPosition: getHarthmereQuestResolvedWaypoint(
-          quest.id,
-          quest.objectives[0]
-        ),
+        playerPosition: bibleStepWorldWaypoint(quest, quest.steps[0]),
       }),
       undefined,
       "non-hidden ready quests return to their giver for completion"
@@ -368,7 +333,7 @@ describe("bible quest client adapter", () => {
     });
     assert.deepEqual(snapshot.active, {});
     assert.deepEqual(snapshot.completed, {});
-    assert.deepEqual(snapshot.bible.runtime, {});
+    assert.deepEqual(snapshot.bible.lastCompletedAtMs, {});
   });
 
   it("parses server actor context used by offer gating", () => {
@@ -385,7 +350,7 @@ describe("bible quest client adapter", () => {
   });
 
   it("selects a hidden quest to trigger only within the radius", () => {
-    const hidden = (HARTHMERE_QUEST_CATALOG as readonly any[]).find(
+    const hidden = BIBLE_QUEST_CATALOG.find(
       (q) => q.hidden
     );
     assert.ok(hidden, "catalog must have hidden quests");
@@ -402,11 +367,7 @@ describe("bible quest client adapter", () => {
   describe("thaedryn encounter model", () => {
     function q12Snapshot() {
       const snapshot = emptySnapshot();
-      snapshot.bible.runtime[HARTHMERE_BIBLE_DRAGON_QUEST_ID] = {
-        questId: HARTHMERE_BIBLE_DRAGON_QUEST_ID,
-        state: "active",
-        objectiveProgress: {},
-      } as any;
+      activateQuest(snapshot, bibleQuest(HARTHMERE_BIBLE_DRAGON_QUEST_ID)!);
       snapshot.bible.thaedryn = createThaedrynBossState("group");
       return snapshot;
     }
