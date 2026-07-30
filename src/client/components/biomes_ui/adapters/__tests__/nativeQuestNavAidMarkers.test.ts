@@ -8,10 +8,21 @@ import type {
 import type { NavigationAid as ClientNavigationAid } from "@/client/game/helpers/navigation_aids";
 import type { BiomesId } from "@/shared/ids";
 import {
+  NATIVE_GIMME_SHELTER_QUEST_ID,
+  NATIVE_GIMME_SHELTER_ROBOT_SETUP_STEP_IDS,
+  NATIVE_ROBOT_SETUP_MUCK_PLACEMENT_POSITION,
+} from "@/shared/harthmere/native_road_ahead_contract";
+import {
   NATIVE_LEGACY_COMBAT_QUEST_IDS,
   NATIVE_LEGACY_COMBAT_ROUTE_POSITIONS,
   NATIVE_LEGACY_COMBAT_STEP_IDS,
 } from "@/shared/harthmere/native_combat_quest_routing";
+import {
+  NATIVE_IN_STORAGE_MUCKER_TOOTH_HUNT_POSITION,
+  NATIVE_IN_STORAGE_QUEST_ID,
+  NATIVE_IN_STORAGE_STEP_IDS,
+  NATIVE_POST_GIMME_GIVER_ENTITY_IDS,
+} from "@/shared/harthmere/native_post_gimme_contract";
 import {
   nativeQuestInferredNavigationAidForTest,
   nativeQuestLocationlessAnchorAidForTest,
@@ -98,6 +109,36 @@ function aid(
 }
 
 describe("native quest nav-aid map markers", () => {
+  it("routes Gimme Shelter robot placement outside the Grove reserve", () => {
+    const placement = leaf(
+      NATIVE_GIMME_SHELTER_ROBOT_SETUP_STEP_IDS.PLACE_ROBOT_IN_MUCK,
+      "Place your Robot in the marked Muck clearing outside the Grove",
+      0,
+      {
+        kind: "position",
+        pos: [512, 54, -152],
+      }
+    );
+    placement.payload = { kind: "event" };
+
+    assert.deepStrictEqual(
+      nativeQuestInferredNavigationAidForTest(
+        NATIVE_GIMME_SHELTER_QUEST_ID,
+        placement
+      ),
+      {
+        kind: "position",
+        pos: [...NATIVE_ROBOT_SETUP_MUCK_PLACEMENT_POSITION],
+      }
+    );
+    assert.deepStrictEqual(
+      nativeQuestMapMarkers([
+        quest(NATIVE_GIMME_SHELTER_QUEST_ID, seq(189, [placement], 0)),
+      ])[0].worldPosition,
+      [...NATIVE_ROBOT_SETUP_MUCK_PLACEMENT_POSITION]
+    );
+  });
+
   it("points the unaided Mossy Muckling hunt at the seeded Mossy Muckling pack", () => {
     const hunt = leaf(
       4794743509650569,
@@ -382,5 +423,38 @@ describe("native quest nav-aid map markers", () => {
       nativeQuestMapMarkers([busted, muckOut], resolve).map((m) => m.id),
       ["native_quest:7405046529843322:601", "native_quest:817959262145055:701"]
     );
+  });
+
+  /**
+   * HARTHMERE_COBBLED_MUCKLING_HUNT: "Collect 6 Mucker Teeth" is an
+   * `inventoryHas` leaf. The snapshot cannot author navigation on that leaf
+   * kind at all, so before the Cobbled Muckling pack existed the objective
+   * pointed nowhere AND named a creature the world did not contain.
+   */
+  it("points In Storage's Mucker Teeth objective at the Cobbled Muckling pack", () => {
+    const teeth = leaf(
+      NATIVE_IN_STORAGE_STEP_IDS.COLLECT_SIX_MUCKER_TEETH,
+      "Collect 0/6 Mucker Teeth from the Cobbled Mucklings up Muckerhorn",
+      0
+    );
+    teeth.payload = { kind: "inventoryHas" };
+    const bundle = quest(
+      Number(NATIVE_IN_STORAGE_QUEST_ID),
+      seq(800, [teeth], 0),
+      Number(NATIVE_POST_GIMME_GIVER_ENTITY_IDS.OL_COOP)
+    );
+
+    assert.deepStrictEqual(
+      nativeQuestInferredNavigationAidForTest(NATIVE_IN_STORAGE_QUEST_ID, teeth),
+      {
+        kind: "position",
+        pos: [...NATIVE_IN_STORAGE_MUCKER_TOOTH_HUNT_POSITION],
+      }
+    );
+    const markers = nativeQuestMapMarkers([bundle]);
+    assert.deepStrictEqual(markers[0].worldPosition, [
+      ...NATIVE_IN_STORAGE_MUCKER_TOOTH_HUNT_POSITION,
+    ]);
+    assert.match(markers[0].label, /Mucker Teeth/);
   });
 });

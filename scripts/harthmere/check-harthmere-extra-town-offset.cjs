@@ -82,9 +82,9 @@ ok(
   "terrain fingerprint fast path still runs runtime-content migration"
 );
 ok(
-  shim.includes(
-    "const obsoleteLocalDevIds = shouldUseHarthmereExtraTownOffset()"
-  ),
+  shim.includes('terrainMigrationMode === "additive"') &&
+    shim.includes("? []") &&
+    shim.includes("[...previousAdditiveTerrainIds]"),
   "additive fingerprint checks ignore intentionally preserved legacy terrain ids"
 );
 ok(

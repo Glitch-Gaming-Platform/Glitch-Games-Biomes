@@ -26,6 +26,7 @@ import {
   submitHarthmereDrowningDamageLiveMode,
   submitHarthmereFallDamageLiveMode,
 } from "@/client/game/util/harthmere_live_environment_damage";
+import { MOBILE_JOYSTICK_RUN_SOURCE } from "@/client/game/util/mobile_joystick";
 import { fixedConstantScalarTransition } from "@/client/game/util/transitions";
 import { respawn } from "@/client/game/util/warping";
 import { reportClientError } from "@/client/util/request_helpers";
@@ -1759,10 +1760,7 @@ export class PlayerScript implements Script {
         boxMin,
         boxMax,
       ])) {
-        const collisionAabb: AABB = [
-          [...boundary[0]],
-          [...boundary[1]],
-        ];
+        const collisionAabb: AABB = [[...boundary[0]], [...boundary[1]]];
         if (collisionFilter(collisionAabb)) {
           break;
         }
@@ -1773,10 +1771,7 @@ export class PlayerScript implements Script {
     // back field is solid. The shared helper returns no slab on the connector
     // side and is explicitly scoped out of the Elsewhen dungeon band.
     for (const boundary of harthmereTownBackBoundarySlabs([boxMin, boxMax])) {
-      const collisionAabb: AABB = [
-        [...boundary[0]],
-        [...boundary[1]],
-      ];
+      const collisionAabb: AABB = [[...boundary[0]], [...boundary[1]]];
       if (collisionFilter(collisionAabb)) {
         break;
       }
@@ -2350,12 +2345,19 @@ export class PlayerScript implements Script {
       .get("/ruleset/current")
       .flying({ resources: this.resources });
 
-    let running = !!this.input.motion("run");
+    const mobileJoystickRunState = this.input.syntheticMotion(
+      "run",
+      MOBILE_JOYSTICK_RUN_SOURCE
+    );
+    const nonMobileRunPressed = Boolean(
+      this.input.motionWithoutSyntheticSource("run", MOBILE_JOYSTICK_RUN_SOURCE)
+    );
+    let running = nonMobileRunPressed;
     let crouching = !!this.input.motion("crouch");
 
     // Handle when toggle to run/swim.
     if (getTypedStorageItem("settings.keyboard.toggleRunSwimBool")) {
-      if (running) {
+      if (nonMobileRunPressed) {
         if (!this.runToggleDebouncing) {
           this.runToggle = !this.runToggle;
         }
@@ -2369,6 +2371,14 @@ export class PlayerScript implements Script {
       if (this.runToggle) {
         running = true;
       }
+    }
+
+    // An active mobile joystick owns walk-vs-run directly. A negative named
+    // source means partial deflection (walk), while a positive source means
+    // outer-ring deflection (run). This deliberately overrides a latched
+    // keyboard toggle without changing the desktop keyboard behavior.
+    if (mobileJoystickRunState !== 0) {
+      running = mobileJoystickRunState > 0;
     }
 
     // Handle when toggle to crouch.

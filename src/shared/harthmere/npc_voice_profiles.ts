@@ -274,6 +274,172 @@ function inferActorKind(
   return "humanoid";
 }
 
+// Keep this cast list intentionally curated from authored character sources;
+// unreviewed fantasy names continue through the stable unknown-name fallback.
+const FEMALE_VOICE_GIVEN_NAMES = new Set([
+  "ada",
+  "andriana",
+  "anse",
+  "anwen",
+  "avelina",
+  "bessa",
+  "bree",
+  "brenna",
+  "briony",
+  "calla",
+  "cinta",
+  "coralie",
+  "coretta",
+  "cressa",
+  "dawn",
+  "edda",
+  "elowen",
+  "emily",
+  "erena",
+  "esa",
+  "gizela",
+  "greta",
+  "hana",
+  "helsa",
+  "helna",
+  "henrietta",
+  "iris",
+  "iselle",
+  "iva",
+  "jackie",
+  "jane",
+  "julienne",
+  "lila",
+  "lina",
+  "liss",
+  "lune",
+  "mab",
+  "maelle",
+  "mara",
+  "mira",
+  "nadia",
+  "nel",
+  "nessa",
+  "nia",
+  "odette",
+  "patsy",
+  "pera",
+  "rinna",
+  "rosalyn",
+  "saff",
+  "selka",
+  "sella",
+  "sera",
+  "sophia",
+  "sora",
+  "tamsin",
+  "tisa",
+  "veneth",
+  "veska",
+  "wen",
+  "yenna",
+  "ysabet",
+]);
+
+// The matching male list follows the same evidence rule as the female list.
+const MALE_VOICE_GIVEN_NAMES = new Set([
+  "alen",
+  "billy",
+  "bram",
+  "bramwell",
+  "bren",
+  "cael",
+  "carlo",
+  "cob",
+  "corvin",
+  "doran",
+  "dov",
+  "drake",
+  "edrik",
+  "eli",
+  "garr",
+  "garrik",
+  "goran",
+  "greb",
+  "gus",
+  "hadrin",
+  "halden",
+  "hallr",
+  "halpen",
+  "harlo",
+  "henrick",
+  "hob",
+  "huck",
+  "hul",
+  "jax",
+  "jory",
+  "lon",
+  "lucien",
+  "luis",
+  "marl",
+  "merl",
+  "mott",
+  "nilo",
+  "nyle",
+  "orren",
+  "osric",
+  "ovis",
+  "pell",
+  "ren",
+  "richard",
+  "rolf",
+  "ruel",
+  "rusk",
+  "sael",
+  "selwyn",
+  "taye",
+  "teague",
+  "teak",
+  "teo",
+  "tomas",
+  "tovin",
+  "vance",
+  "walt",
+  "wat",
+]);
+
+function genderFromStrongTitle(text: string): HarthmereVoiceGender | undefined {
+  const normalized = text.toLowerCase();
+  const female =
+    /\b(mother|daughter|sister|wife|widow|lady|madam|mistress|matron|aunt|girl|woman|priestess|forewoman|queen|goodwife|patroness|mrs|ms)\b/.test(
+      normalized
+    );
+  const male =
+    /\b(father|son|brother|husband|widower|lord|sir|boy|man|jarl|king|mr)\b/.test(
+      normalized
+    );
+  return female === male ? undefined : female ? "female" : "male";
+}
+
+/** Strong, auditable evidence from a displayed name; undefined means unknown. */
+export function harthmereStrongVoiceGenderForNameForTest(
+  displayName: string | undefined
+): HarthmereVoiceGender | undefined {
+  const normalized = normalizeVoiceText(displayName).toLowerCase();
+  if (!normalized) {
+    return undefined;
+  }
+  const titled = genderFromStrongTitle(normalized);
+  if (titled) {
+    return titled;
+  }
+  const tokens = normalized.match(/[a-z][a-z'-]*/g) ?? [];
+  for (const token of tokens) {
+    if (FEMALE_VOICE_GIVEN_NAMES.has(token)) {
+      return "female";
+    }
+    if (MALE_VOICE_GIVEN_NAMES.has(token)) {
+      return "male";
+    }
+  }
+  return undefined;
+}
+
 function inferGender(
   input: HarthmereVoiceActorInput,
   actorKind: HarthmereVoiceActorKind
@@ -290,7 +456,42 @@ function inferGender(
     return "male";
   }
 
-  const text = [
+  // Displayed identity is stronger evidence than incidental relatives or
+  // pronouns in a backstory. This prevents, for example, a widower mentioning
+  // his wife from being cast as female, and lets titled names such as
+  // "Foreman Calla" reach the actual given-name dictionary.
+  const identityGender = harthmereStrongVoiceGenderForNameForTest(
+    displayNameForVoiceInput(input)
+  );
+  if (identityGender) {
+    return identityGender;
+  }
+
+  const roleText = [input.role, input.voiceStyle]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  // Roles describe the actor; family nouns in prose often describe somebody
+  // else and must not recast an otherwise ambiguous character.
+  const contextualTitleGender = genderFromStrongTitle(roleText);
+  if (contextualTitleGender) {
+    return contextualTitleGender;
+  }
+
+  const contextualText = [input.role, input.background, input.voiceStyle]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+  const femalePronoun = /\b(she|her|hers)\b/.test(contextualText);
+  const malePronoun = /\b(he|him|his)\b/.test(contextualText);
+  if (femalePronoun !== malePronoun) {
+    return femalePronoun ? "female" : "male";
+  }
+
+  // Keep unknown fantasy names stable across inference improvements. This is
+  // intentionally the same complete identity seed used by the legacy caster.
+  const fallbackSeed = [
     input.displayName,
     input.name,
     input.role,
@@ -300,87 +501,7 @@ function inferGender(
     .filter(Boolean)
     .join(" ")
     .toLowerCase();
-
-  if (
-    /\b(mother|daughter|sister|wife|widow|lady|madam|matron|aunt|girl|woman|her|she|priestess|forewoman|nurse|seamstress)\b/.test(
-      text
-    )
-  ) {
-    return "female";
-  }
-  if (
-    /\b(father|son|brother|husband|lord|sir|sergeant|captain|foreman|smith|boy|man|his|he|watchman|bargeman|ferryman)\b/.test(
-      text
-    )
-  ) {
-    return "male";
-  }
-
-  const firstName = displayNameForVoiceInput(input)
-    .split(/\s+/)[0]
-    .toLowerCase();
-  if (
-    [
-      "ada",
-      "avelina",
-      "bree",
-      "calla",
-      "coralie",
-      "elowen",
-      "greta",
-      "hana",
-      "helsa",
-      "iselle",
-      "iva",
-      "jane",
-      "jackie",
-      "lune",
-      "mara",
-      "mira",
-      "nia",
-      "odette",
-      "rinna",
-      "rosalyn",
-      "saff",
-      "sera",
-      "tamsin",
-      "veska",
-      "yenna",
-    ].includes(firstName)
-  ) {
-    return "female";
-  }
-  if (
-    [
-      "alen",
-      "bram",
-      "bramwell",
-      "bren",
-      "cael",
-      "carlo",
-      "corvin",
-      "doran",
-      "dov",
-      "eli",
-      "goran",
-      "gus",
-      "hadrin",
-      "harlo",
-      "huck",
-      "marl",
-      "nilo",
-      "orren",
-      "osric",
-      "pell",
-      "rolf",
-      "selwyn",
-      "taye",
-    ].includes(firstName)
-  ) {
-    return "male";
-  }
-
-  return stableHarthmereVoiceHash(text) % 2 === 0 ? "female" : "male";
+  return stableHarthmereVoiceHash(fallbackSeed) % 2 === 0 ? "female" : "male";
 }
 
 function voicePoolForProfile(

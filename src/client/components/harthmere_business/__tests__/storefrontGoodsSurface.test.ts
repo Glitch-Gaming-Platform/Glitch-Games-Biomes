@@ -7,7 +7,10 @@ import {
   getHarthmereBusinessShopfront,
   normalizeHarthmereBusinessEconomySnapshot,
 } from "../businessInterfaceLiveAdapter";
-import { harthmereBusinessStorefrontTypes } from "@/shared/harthmere/harthmere_business_storefront_goods";
+import {
+  harthmereBusinessJobMaterialListings,
+  harthmereBusinessStorefrontTypes,
+} from "@/shared/harthmere/harthmere_business_storefront_goods";
 import { HARTHMERE_RECIPE_BOOKS } from "@/shared/harthmere/harthmere_recipe_books";
 
 function openBusiness(id: string, typeId: string) {
@@ -88,7 +91,11 @@ describe("business shopfront surfaces blocks, furnishings, and recipe books", ()
         "customer"
       );
       const goods = shop.storefrontGoods ?? [];
-      assert.equal(goods.length, 10, `${businessType} should sell 10 goods`);
+      assert.equal(
+        goods.length,
+        10 + harthmereBusinessJobMaterialListings(businessType).length,
+        `${businessType} should sell themed goods plus its material stock`
+      );
       for (const good of goods) {
         assert.ok(good.displayName, `${businessType}:${good.itemId} label`);
         assert.ok(good.visual, `${businessType}:${good.itemId} visual`);

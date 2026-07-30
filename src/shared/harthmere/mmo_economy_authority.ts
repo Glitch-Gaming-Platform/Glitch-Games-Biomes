@@ -4,7 +4,6 @@ import {
   validateHarthmereEconomyBalance,
 } from "./mmo_economy_business_systems";
 import {
-  harthmereBusinessStorefrontGoodsForType,
   harthmereBusinessStorefrontLearnableRecipeIds,
   harthmereBusinessStorefrontListingsForType,
   harthmereBusinessStorefrontRecipeBookForItem,
@@ -2032,16 +2031,11 @@ function buyStorefrontGood(
   const itemId = request.itemId;
   if (!itemId)
     return reject(result, "economy_rejected:missing_storefront_item");
-  const goods = harthmereBusinessStorefrontGoodsForType(business.typeId);
   const listing = harthmereBusinessStorefrontListingsForType(
     business.typeId
   ).find((entry) => entry.itemId === itemId);
   const recipeBook = harthmereBusinessStorefrontRecipeBookForItem(itemId);
-  const inCatalog =
-    !!goods &&
-    (goods.blocks.includes(itemId) ||
-      goods.interior.includes(itemId) ||
-      listing?.kind === "recipe_book");
+  const inCatalog = Boolean(listing);
   if (!inCatalog)
     return reject(result, "economy_rejected:item_not_in_storefront");
   const count = positiveInt(request.count, 1);

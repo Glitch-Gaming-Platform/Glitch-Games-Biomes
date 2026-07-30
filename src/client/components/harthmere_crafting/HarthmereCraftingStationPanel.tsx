@@ -21,6 +21,7 @@ import {
   formatHarthmereCraftingRecipeName,
   formatHarthmereCraftingStationTypeLabel,
 } from "./craftingStationLiveAdapter";
+import { HarthmereMaterialAcquisitionGuide } from "../harthmere_materials/HarthmereMaterialAcquisitionGuide";
 
 export interface HarthmereCraftingStationPanelProps {
   adapter: HarthmereCraftingStationAdapter;
@@ -29,10 +30,7 @@ export interface HarthmereCraftingStationPanelProps {
   initialTab?: HarthmereCraftingStationPanelTab;
 }
 
-export type HarthmereCraftingStationPanelTab =
-  | "recipes"
-  | "jobs"
-  | "services";
+export type HarthmereCraftingStationPanelTab = "recipes" | "jobs" | "services";
 
 const TABS: HarthmereCraftingStationPanelTab[] = [
   "recipes",
@@ -266,9 +264,9 @@ export const HarthmereCraftingStationPanel: React.FunctionComponent<
             </span>
             <span>
               <strong>How to craft:</strong> pick a recipe below, make sure you
-              have the listed materials (they turn green when you do), then press{" "}
-              <strong>Craft</strong>. Missing an ingredient? Gather or buy it, then
-              come back — the recipe stays in your list.
+              have the listed materials (they turn green when you do), then
+              press <strong>Craft</strong>. Missing an ingredient? Gather or buy
+              it, then come back — the recipe stays in your list.
             </span>
           </div>
           <RecipePane
@@ -315,50 +313,69 @@ const RecipePane: React.FunctionComponent<{
           if (busy || !entry.canCraft) return;
           onRunAction(() => adapter.craft(entry.recipe.recipeId));
         }}
-        renderCell={(entry, coords, cellProps) => (
-          <button
-            {...cellProps}
-            type="button"
-            role="gridcell"
-            className="biomes-ui-card"
-            disabled={busy || !entry.canCraft}
-            aria-disabled={busy || !entry.canCraft}
-            aria-label={`${entry.outputName} recipe`}
-            data-crafting-recipe-id={entry.recipe.recipeId}
-            data-crafting-backend-action="true"
-            data-focused={coords.focused ? "true" : "false"}
-            style={{
-              ...recipeButtonStyle,
-              opacity: busy ? 0.45 : entry.canCraft ? 1 : 0.58,
-              filter: busy ? "grayscale(0.65)" : undefined,
-              cursor: busy
-                ? "wait"
-                : entry.canCraft
-                ? "pointer"
-                : "not-allowed",
-              outline: coords.focused
-                ? "2px solid rgba(255,255,255,0.72)"
-                : "none",
-            }}
-          >
-            <span style={recipeHeaderStyle}>
-              <CraftingOutputVisual recipe={entry} />
-              <span style={{ minWidth: 0 }}>
-                <span style={recipeTitleStyle}>{entry.outputName}</span>
-                <span style={recipeMetaStyle}>
-                  {entry.workflowLabel} · {entry.qualityLabel}
+        renderCell={(entry, coords, cellProps) => {
+          const detail = adapter.getRecipeDetail(entry.recipe.recipeId);
+          const missingIngredients =
+            detail?.ingredients.filter(
+              (ingredient) =>
+                !ingredient.enough && ingredient.kind !== "reagent"
+            ) ?? [];
+          return (
+            <div style={{ display: "grid", gap: 5 }}>
+              <button
+                {...cellProps}
+                type="button"
+                role="gridcell"
+                className="biomes-ui-card"
+                disabled={busy || !entry.canCraft}
+                aria-disabled={busy || !entry.canCraft}
+                aria-label={`${entry.outputName} recipe`}
+                data-crafting-recipe-id={entry.recipe.recipeId}
+                data-crafting-backend-action="true"
+                data-focused={coords.focused ? "true" : "false"}
+                style={{
+                  ...recipeButtonStyle,
+                  opacity: busy ? 0.45 : entry.canCraft ? 1 : 0.58,
+                  filter: busy ? "grayscale(0.65)" : undefined,
+                  cursor: busy
+                    ? "wait"
+                    : entry.canCraft
+                    ? "pointer"
+                    : "not-allowed",
+                  outline: coords.focused
+                    ? "2px solid rgba(255,255,255,0.72)"
+                    : "none",
+                }}
+              >
+                <span style={recipeHeaderStyle}>
+                  <CraftingOutputVisual recipe={entry} />
+                  <span style={{ minWidth: 0 }}>
+                    <span style={recipeTitleStyle}>{entry.outputName}</span>
+                    <span style={recipeMetaStyle}>
+                      {entry.workflowLabel} · {entry.qualityLabel}
+                    </span>
+                  </span>
                 </span>
-              </span>
-            </span>
-            <span style={recipeSmallLineStyle}>
-              {busy
-                ? "Updating..."
-                : entry.canCraft
-                ? "Ready"
-                : entry.missing.slice(0, 3).join(", ")}
-            </span>
-          </button>
-        )}
+                <span style={recipeSmallLineStyle}>
+                  {busy
+                    ? "Updating..."
+                    : entry.canCraft
+                    ? "Ready"
+                    : entry.missing.slice(0, 3).join(", ")}
+                </span>
+              </button>
+              {missingIngredients.map((ingredient) => (
+                <HarthmereMaterialAcquisitionGuide
+                  key={ingredient.itemId}
+                  itemId={ingredient.itemId}
+                  itemName={ingredient.name}
+                  count={Math.max(1, ingredient.need - ingredient.have)}
+                  compact
+                />
+              ))}
+            </div>
+          );
+        }}
       />
     </section>
   );
@@ -383,9 +400,7 @@ const JobsPane: React.FunctionComponent<{
         jobs.map((job) => (
           <div key={job.jobId} className="biomes-ui-card" style={jobRowStyle}>
             <div>
-              <strong>
-                {formatHarthmereCraftingRecipeName(job.recipeId)}
-              </strong>
+              <strong>{formatHarthmereCraftingRecipeName(job.recipeId)}</strong>
               <p style={mutedStyle}>
                 {formatMs(job.readyAtMs - snapshot.nowMs)}
               </p>

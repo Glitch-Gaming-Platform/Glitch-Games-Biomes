@@ -101,6 +101,7 @@ import {
   HARTHMERE_BIBLE_DRAGON_QUEST_ID,
   HARTHMERE_NATIVE_THAEDRYN_ENTITY_ID,
 } from "@/shared/harthmere/bible_quest_live_authority";
+import { HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS } from "@/shared/harthmere/business_customer_simulator";
 
 export { materializeHarthmereNativeEcsPlans } from "@/server/harthmere/native_ecs_drop_materialization";
 
@@ -142,9 +143,7 @@ export function harthmereLiveModeBibleE2ENowMsForTest(input: {
     hour >= 24 ||
     !configured ||
     !supplied ||
-    (hostname !== "localhost" &&
-      hostname !== "127.0.0.1" &&
-      hostname !== "::1")
+    (hostname !== "localhost" && hostname !== "127.0.0.1" && hostname !== "::1")
   ) {
     return undefined;
   }
@@ -159,9 +158,7 @@ export function harthmereLiveModeBibleE2ENowMsForTest(input: {
   const currentDayStart =
     Math.floor(input.nowMs / HARTHMERE_BIBLE_E2E_GAME_DAY_MS) *
     HARTHMERE_BIBLE_E2E_GAME_DAY_MS;
-  return (
-    currentDayStart + (hour / 24) * HARTHMERE_BIBLE_E2E_GAME_DAY_MS
-  );
+  return currentDayStart + (hour / 24) * HARTHMERE_BIBLE_E2E_GAME_DAY_MS;
 }
 
 function harthmereLiveModeMutationNowMs(
@@ -2699,9 +2696,6 @@ async function pendingBuildingMaterializationPlansForReplay(input: {
   if (!storedPlanRefs?.length) {
     return [] as BuildingSystemAnyMaterializationPlan[];
   }
-  const requestedPlanIds = new Set(
-    storedPlanRefs.map((plan) => plan.requestId).filter(Boolean)
-  );
   const rawSharedState = await input.redisPrimary.get(
     harthmereLiveModeSharedWorldStateKey()
   );
@@ -2709,14 +2703,38 @@ async function pendingBuildingMaterializationPlansForReplay(input: {
     rawSharedState,
     Date.now()
   );
-  if (!shared) return [] as BuildingSystemAnyMaterializationPlan[];
-  return Object.values(shared.building.materializationPlans).filter((plan) => {
-    if (!requestedPlanIds.has(plan.requestId)) return false;
-    if (!plan.materializesSolidVoxelBuilding) return true;
-    return (
-      shared.building.placedStructures[plan.projectId ?? plan.requestId]
-        ?.materializedInEcs !== true
-    );
+  const sharedPlans = new Map(
+    Object.values(shared?.building.materializationPlans ?? {}).map((plan) => [
+      plan.requestId,
+      plan,
+    ])
+  );
+  // Procedural outpost plans are intentionally omitted from Redis because the
+  // complete voxel edit lists are static, code-authored data. Idempotency
+  // responses are also slimmed before storage, so replay must rehydrate those
+  // references from the same checked-in authority instead of requiring the
+  // 15 MB plans to be duplicated in every shared-world document.
+  const proceduralPlans = new Map(
+    Object.values(HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS).map(
+      (record) => [
+        record.materializationPlan.requestId,
+        record.materializationPlan,
+      ]
+    )
+  );
+  return storedPlanRefs.flatMap((storedRef) => {
+    const plan =
+      sharedPlans.get(storedRef.requestId) ??
+      proceduralPlans.get(storedRef.requestId) ??
+      (Array.isArray((storedRef as any).edits)
+        ? (storedRef as BuildingSystemAnyMaterializationPlan)
+        : undefined);
+    if (!plan) return [];
+    if (!plan.materializesSolidVoxelBuilding) return [plan];
+    return shared?.building.placedStructures[plan.projectId ?? plan.requestId]
+      ?.materializedInEcs === true
+      ? []
+      : [plan];
   });
 }
 
@@ -4178,8 +4196,7 @@ export default biomesApiHandler(
     const bibleE2ENowMs = harthmereLiveModeBibleE2ENowMsForTest({
       requestedHour: requestedBibleE2EGameHour,
       nowMs: Date.now(),
-      nativeEcsE2EEnabled:
-        process.env.HARTHMERE_NATIVE_ECS_E2E === "1",
+      nativeEcsE2EEnabled: process.env.HARTHMERE_NATIVE_ECS_E2E === "1",
       configuredToken: process.env.HARTHMERE_E2E_CONTROL_TOKEN,
       suppliedToken: unsafeRequest.headers["x-harthmere-e2e-token"],
       hostHeader: unsafeRequest.headers.host,

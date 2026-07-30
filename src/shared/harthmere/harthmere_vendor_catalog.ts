@@ -934,7 +934,7 @@ const HARTHMERE_VENDOR_ITEM_DEFINITIONS: Record<
     description: "Sturdy branch stock for roof braces and utility repairs.",
   },
   iron_ore: {
-    displayName: "Metal Ore",
+    displayName: "Iron Ore",
     category: "crafting_material",
     maxStackSize: 200,
     baseValue: 4,

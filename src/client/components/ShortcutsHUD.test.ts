@@ -11,6 +11,12 @@ describe("ShortcutsHUD gameplay movement focus recovery", () => {
       "the replacement rail must not capture R before native Recipes"
     );
     assert.equal(biomesUITabForKeyboardCodeForTest("KeyJ"), "quests");
+    assert.equal(biomesUITabForKeyboardCodeForTest("KeyG"), "guilds");
+    assert.equal(
+      biomesUITabForKeyboardCodeForTest("KeyG", true),
+      undefined,
+      "a visible robot Settings prompt must own G before the Guilds tab"
+    );
     assert.equal(shortcutsHUDHandlesKeyForModeForTest("KeyR", true), true);
     for (const code of [
       "KeyW",

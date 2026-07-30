@@ -15,6 +15,8 @@
  *   - spacing between structures for players / NPCs / mounts / carts
  */
 
+import { harthmereBoundsOverlapGroveBuildReserve } from "@/shared/harthmere/grove_build_placement_policy";
+
 export const MMO_BUILDING_AUTHORITY_VERSION = "mmo-building-authority";
 
 // ---------------------------------------------------------------------------
@@ -420,6 +422,21 @@ export function validateHarthmereBuildingPlacement(
   const minZ = req.origin.z;
   const maxZ = req.origin.z + footprint.depth;
   const baseY = req.origin.y;
+
+  // Robot placement already rejects the Grove protection footprint plus its
+  // neighboring protection-grid cell. Apply the same reserve server-side to
+  // ordinary structures so wilderness placement and future plots cannot make
+  // the Grove's safety boundary inconsistent by construction type.
+  if (
+    harthmereBoundsOverlapGroveBuildReserve({
+      xMin: minX,
+      xMax: maxX,
+      zMin: minZ,
+      zMax: maxZ,
+    })
+  ) {
+    fail(errors, "inside_grove_build_reserve");
+  }
 
   // --- Terrain checks ---
   let foundationCount = 0;

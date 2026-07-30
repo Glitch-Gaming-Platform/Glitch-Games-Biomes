@@ -8,11 +8,22 @@ import { createContext, useContext, useEffect, useState } from "react";
 import type TypedEventEmitter from "typed-emitter";
 
 export function isTouchDevice() {
-  return "ontouchstart" in window || navigator.maxTouchPoints > 0;
+  return (
+    typeof window !== "undefined" &&
+    typeof navigator !== "undefined" &&
+    ("ontouchstart" in window || navigator.maxTouchPoints > 0)
+  );
 }
 
 export function supportsPointerLock() {
-  return typeof document.exitPointerLock === "function";
+  return (
+    typeof document !== "undefined" &&
+    typeof document.exitPointerLock === "function"
+  );
+}
+
+export function shouldUsePointerLock() {
+  return supportsPointerLock() && !isTouchDevice();
 }
 
 export function tryExitPointerLock() {
@@ -33,9 +44,8 @@ function isWebKitEngine(): boolean {
   }
   const ua = navigator.userAgent;
   // Apple desktop Safari: has "Safari" but none of the other-engine markers.
-  const isAppleSafari = /^((?!chrome|chromium|android|crios|fxios|edg).)*safari/i.test(
-    ua
-  );
+  const isAppleSafari =
+    /^((?!chrome|chromium|android|crios|fxios|edg).)*safari/i.test(ua);
   // iOS/iPadOS — every browser there is WebKit regardless of branding.
   const isIOS =
     /iphone|ipad|ipod/i.test(ua) ||
@@ -152,6 +162,7 @@ export class PointerLockManager {
 
   isEntering = false;
   private lockInterval?: ReturnType<typeof setInterval>;
+  private pointerLockDisabled = false;
 
   constructor() {
     makeCvalHook({
@@ -176,13 +187,19 @@ export class PointerLockManager {
     });
   }
 
-  attachToElementRef(elementRef: React.RefObject<HTMLCanvasElement>) {
+  attachToElementRef(
+    elementRef: React.RefObject<HTMLCanvasElement>,
+    options: { disablePointerLock?: boolean } = {}
+  ) {
     this.lockElementRef = elementRef;
+    this.pointerLockDisabled = options.disablePointerLock === true;
     this.emitter.emit("onAttach");
   }
 
   detach() {
+    this.stopLockRetry();
     this.lockElementRef = undefined;
+    this.pointerLockDisabled = false;
     this.emitter.emit("onDetach");
   }
 
@@ -216,17 +233,32 @@ export class PointerLockManager {
   }
 
   focusAndLock() {
-    if (this.lockInterval || !this.lockElementRef?.current) {
+    const element = this.lockElementRef?.current;
+    if (!element) {
+      return;
+    }
+
+    // Touch/virtual-joystick gameplay must never be gated on Pointer Lock.
+    // Android browsers can expose the API even when the request is unusable,
+    // which previously left the full-screen "Entering..." wash over the game
+    // while the player had no working movement controls.
+    if (this.pointerLockDisabled || !shouldUsePointerLock()) {
+      this.stopLockRetry();
+      element.focus();
+      return;
+    }
+
+    if (this.lockInterval) {
       return;
     }
 
     if (this.isLocked()) {
-      this.lockElementRef?.current?.focus();
+      element.focus();
     } else {
       // First attempt runs synchronously within the user gesture that called
       // focusAndLock(), which is the only attempt Safari will honor.
-      this.tryLock(this.lockElementRef.current);
-      this.lockElementRef?.current?.focus();
+      this.tryLock(element);
+      element.focus();
 
       const start = performance.now();
       this.lockInterval = setInterval(() => {

@@ -2,7 +2,7 @@ import { getTerrainID } from "@/shared/asset_defs/terrain";
 import type { BiomesId } from "@/shared/ids";
 
 export const HARTHMERE_CONNECTOR_ROUTE_VERSION =
-  "harthmere-protected-additive-town-entry-route-v6" as const;
+  "harthmere-protected-additive-town-entry-route-v7" as const;
 
 export type HarthmereConnectorPoint = readonly [x: number, z: number];
 
@@ -474,7 +474,8 @@ function engineeredConnectorSegment(
   end: HarthmereConnectorPoint,
   description: string,
   sample: (x: number, z: number) => HarthmereConnectorColumn,
-  authoredPath?: readonly HarthmereConnectorPoint[]
+  authoredPath?: readonly HarthmereConnectorPoint[],
+  fixedHeights?: { startY?: number; endY?: number }
 ): {
   path: HarthmereConnectorPoint[];
   traversal: HarthmereConnectorTraversalPoint[];
@@ -528,9 +529,9 @@ function engineeredConnectorSegment(
       };
     }
   }
-  const startY = sample(start[0], start[1]).surfaceY;
-  const endY = sample(end[0], end[1]).surfaceY;
-  if (startY === undefined || endY === undefined) {
+  const sampledStartY = sample(start[0], start[1]).surfaceY;
+  const sampledEndY = sample(end[0], end[1]).surfaceY;
+  if (sampledStartY === undefined || sampledEndY === undefined) {
     return {
       path: [],
       traversal: [],
@@ -538,6 +539,8 @@ function engineeredConnectorSegment(
       failures: [`${description} is missing start or end terrain`],
     };
   }
+  const startY = fixedHeights?.startY ?? sampledStartY;
+  const endY = fixedHeights?.endY ?? sampledEndY;
   const run = Math.max(1, path.length - 1);
   const rise = endY - startY;
   if (Math.abs(rise) > run) {
@@ -738,7 +741,9 @@ export function planHarthmereConnectorRoute(input: {
   if (
     !isWalkableColumn(descentLanding) ||
     descentLanding.canResurface === false ||
-    descentLanding.surfaceY !== HARTHMERE_CONNECTOR_DESCENT_LANDING_Y
+    descentLanding.surfaceY === undefined ||
+    Math.abs(descentLanding.surfaceY - HARTHMERE_CONNECTOR_DESCENT_LANDING_Y) >
+      HARTHMERE_CONNECTOR_MAX_APPROACH_CUT_OR_FILL
   ) {
     failures.push(
       `Harthmere descent landing is not usable at ${HARTHMERE_CONNECTOR_DESCENT_LANDING.join(
@@ -751,13 +756,30 @@ export function planHarthmereConnectorRoute(input: {
     HARTHMERE_CONNECTOR_DESCENT_LANDING,
     "Harthmere floor descent",
     input.sample,
-    HARTHMERE_CONNECTOR_DESCENT_PATH
+    HARTHMERE_CONNECTOR_DESCENT_PATH,
+    { endY: HARTHMERE_CONNECTOR_DESCENT_LANDING_Y }
   );
   failures.push(...descent.failures);
+  const descentSurfaceByColumn = new Map(
+    descent.traversal.map(([x, y, z]) => [pointKey([x, z]), y])
+  );
+  const sampleAfterDescent = (x: number, z: number) => {
+    const column = input.sample(x, z);
+    const plannedSurfaceY = descentSurfaceByColumn.get(pointKey([x, z]));
+    return plannedSurfaceY === undefined
+      ? column
+      : {
+          ...column,
+          surfaceY: plannedSurfaceY,
+          blocked: false,
+          canTraverse: true,
+          canResurface: true,
+        };
+  };
   const lowerSurfacePath = findWalkableSegment(
     HARTHMERE_CONNECTOR_DESCENT_LANDING,
     HARTHMERE_CONNECTOR_BOUNDARY_APPROACH_START,
-    input.sample
+    sampleAfterDescent
   );
   if (!lowerSurfacePath) {
     failures.push(
@@ -784,7 +806,11 @@ export function planHarthmereConnectorRoute(input: {
     };
   }
   const lowerSurfaceTraversal: HarthmereConnectorTraversalPoint[] =
-    lowerSurfacePath!.map(([x, z]) => [x, input.sample(x, z).surfaceY!, z]);
+    lowerSurfacePath!.map(([x, z]) => [
+      x,
+      sampleAfterDescent(x, z).surfaceY!,
+      z,
+    ]);
   return {
     path: [
       ...path,

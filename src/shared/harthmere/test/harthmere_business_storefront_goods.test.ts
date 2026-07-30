@@ -1,6 +1,7 @@
 import assert from "assert";
 import {
   ensureHarthmereBusinessStorefrontGoods,
+  harthmereBusinessJobMaterialListings,
   harthmereBusinessStorefrontListingsForType,
   harthmereBusinessStorefrontTypes,
   validateHarthmereBusinessStorefrontGoods,
@@ -75,9 +76,12 @@ describe("Harthmere business storefront goods", () => {
 
   it("registers repeat-buy goods, but not one-time recipe books, as unlimited vendor entries", () => {
     for (const businessType of harthmereBusinessStorefrontTypes()) {
-      const listings =
-        harthmereBusinessStorefrontListingsForType(businessType);
-      assert.equal(listings.length, 10, `${businessType} should sell 10 goods`);
+      const listings = harthmereBusinessStorefrontListingsForType(businessType);
+      assert.equal(
+        listings.length,
+        10 + harthmereBusinessJobMaterialListings(businessType).length,
+        `${businessType} should sell its 10 themed goods plus real material stock`
+      );
       assert.equal(
         listings.filter((listing) => listing.kind === "recipe_book").length,
         1,
@@ -132,8 +136,7 @@ describe("Harthmere business storefront goods", () => {
 
   it("sells a block from a business with truly unlimited supply (many buys never deplete)", () => {
     const businessType = "biome_farming_rare_foods";
-    const listing =
-      harthmereBusinessStorefrontListingsForType(businessType)[0];
+    const listing = harthmereBusinessStorefrontListingsForType(businessType)[0];
     let state = snapshot();
     // Buy a large quantity repeatedly — stock -1 means it never runs out.
     for (let i = 0; i < 50; i++) {
@@ -161,5 +164,25 @@ describe("Harthmere business storefront goods", () => {
     const result = buy(snapshot(), businessType, interior.itemId, 1);
     assert.ok(result.ok, result.errors.join(","));
     assert.equal(result.itemDeltas[interior.itemId], 1);
+  });
+
+  it("exposes finished Workbench materials through the businesses that make them", () => {
+    const iron = harthmereBusinessStorefrontListingsForType(
+      "weapons_tools"
+    ).find((listing) => listing.itemId === "iron_ingot");
+    const planks = harthmereBusinessStorefrontListingsForType(
+      "custom_home_property_development"
+    ).find((listing) => listing.itemId === "wood_plank");
+    assert.equal(iron?.kind, "material");
+    assert.equal(planks?.kind, "material");
+    assert.equal(
+      getHarthmereVendorEntry("weapons_tools", "iron_ingot")?.stock,
+      -1
+    );
+    assert.equal(
+      getHarthmereVendorEntry("custom_home_property_development", "wood_plank")
+        ?.stock,
+      -1
+    );
   });
 });

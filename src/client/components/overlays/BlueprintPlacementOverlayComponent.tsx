@@ -16,6 +16,7 @@ import {
 import type { BiomesId } from "@/shared/ids";
 import pluralize from "@/shared/plural";
 import { sortBy, startCase } from "lodash";
+import { HarthmereMaterialAcquisitionGuide } from "@/client/components/harthmere_materials/HarthmereMaterialAcquisitionGuide";
 
 import { useEffect, useState } from "react";
 
@@ -87,6 +88,12 @@ const ItemCountDisplay: React.FunctionComponent<{
             <div className="name">{`${needed} ${
               owned > 1 ? "more" : ""
             } ${pluralize(startCase(itemName), needed + owned)}`}</div>
+            <HarthmereMaterialAcquisitionGuide
+              itemId={Number(itemId)}
+              itemName={itemName}
+              count={needed}
+              compact
+            />
           </div>,
         ];
       })}

@@ -52,6 +52,7 @@ import {
   PLAYER_HOTBAR_SLOTS,
   PLAYER_INVENTORY_SLOTS,
   currencyRefTo,
+  ensurePlayerInventorySlotCapacity,
 } from "@/shared/game/inventory";
 import { anItem } from "@/shared/game/item";
 import { countOf, createBag } from "@/shared/game/items";
@@ -722,11 +723,13 @@ function extendPlayerLifetime(player: Delta, isGremlin: boolean) {
 }
 
 export function repairPlayer(player: Delta) {
-  if (
-    !player.staleOk().inventory()?.items.length ||
-    !player.staleOk().inventory()?.hotbar.length
-  ) {
+  const existingInventory = player.staleOk().inventory();
+  if (!existingInventory?.items.length || !existingInventory.hotbar.length) {
     player.setInventory(newPlayerInventory());
+  } else {
+    // Grow legacy 25/26-slot saves in place. Never shrink a larger backpack:
+    // progression may have already awarded slots beyond the 40-slot baseline.
+    ensurePlayerInventorySlotCapacity(player.mutableInventory());
   }
   if (!player.staleOk().health()?.maxHp) {
     player.mutableHealth().hp = 100;

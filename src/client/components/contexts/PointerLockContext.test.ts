@@ -1,7 +1,7 @@
 /// <reference types="mocha" />
 
 import assert from "assert";
-import { PointerLockManager } from "./PointerLockContext";
+import { PointerLockManager, shouldUsePointerLock } from "./PointerLockContext";
 
 function withDocument<T>(
   documentValue: {
@@ -35,7 +35,77 @@ function managerForCanvas(canvas: unknown) {
   return manager;
 }
 
+function withWindowAndNavigator<T>(
+  windowValue: unknown,
+  navigatorValue: unknown,
+  fn: () => T
+): T {
+  const previousWindow = (globalThis as any).window;
+  const previousNavigator = (globalThis as any).navigator;
+  Object.defineProperty(globalThis, "window", {
+    configurable: true,
+    value: windowValue,
+  });
+  Object.defineProperty(globalThis, "navigator", {
+    configurable: true,
+    value: navigatorValue,
+  });
+  try {
+    return fn();
+  } finally {
+    Object.defineProperty(globalThis, "window", {
+      configurable: true,
+      value: previousWindow,
+    });
+    Object.defineProperty(globalThis, "navigator", {
+      configurable: true,
+      value: previousNavigator,
+    });
+  }
+}
+
 describe("PointerLockManager HUD input recovery", () => {
+  it("never requires Pointer Lock on a touch device", () => {
+    withDocument(
+      {
+        exitPointerLock() {},
+      },
+      () =>
+        withWindowAndNavigator(
+          { ontouchstart() {} },
+          { maxTouchPoints: 1 },
+          () => assert.equal(shouldUsePointerLock(), false)
+        )
+    );
+  });
+
+  it("focuses virtual-joystick gameplay without requesting Pointer Lock", () => {
+    let focusCalls = 0;
+    let pointerLockCalls = 0;
+    const canvas = {
+      focus: () => {
+        focusCalls += 1;
+      },
+      requestPointerLock: () => {
+        pointerLockCalls += 1;
+      },
+    };
+    withDocument(
+      {
+        activeElement: undefined,
+        pointerLockElement: undefined,
+        exitPointerLock() {},
+      },
+      () => {
+        const manager = managerForCanvas(canvas);
+        (manager as any).pointerLockDisabled = true;
+        manager.focusAndLock();
+      }
+    );
+    assert.equal(focusCalls, 1);
+    assert.equal(pointerLockCalls, 0);
+  });
+
   it("allows HUD interaction keys when pointer locked even if the canvas is not activeElement", () => {
     const canvas = { tagName: "CANVAS" };
     const body = { tagName: "BODY" };

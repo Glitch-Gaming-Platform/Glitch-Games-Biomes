@@ -1597,3 +1597,105 @@ Redis-persisted manifest.
 After the live fix is verified, always back-port the same change into source,
 add or update tests, and remove the Redis hotfix once a normal deployment
 contains the fix.
+
+# Connector terrain validation and repair
+
+The Grove-to-Harthmere connector is the final authored terrain writer in a
+full reconciliation. Its materializer must run with `APPLY=1`; a dry-run pass
+does not repair production terrain.
+
+The route planner may cut or refill only the explicitly known pre-existing
+connector-cap corridors. This exception exists so stale stone-brick caps and
+their padded structure bounds cannot permanently prevent the Y=56 descent and
+the X=1780–1792 boundary stair from repairing themselves. Occupied voxels and
+unrelated placeables, groups, crops, buildings, and player structures remain
+fail-closed.
+
+Do not skip a connector validation failure during the next deployment. A
+successful reconciliation must emit `HARTHMERE_PRODUCTION_RECONCILIATION_READY`
+after the connector materializer reports a complete traversal to the marked
+town entrance. If the connector requires edits, the same run must apply and
+read back those edits before traffic promotion.
+
+## Next deployment: all Harthmere water requires an explicit migration
+
+The current source adds four real `shard_water` systems:
+
+- the Brell river, including its riverbed, bridge crossing, plank-road
+  crossings, Briarfen fishing pool, and vegetation exclusion;
+- the rebuilt Market Plaza fountain;
+- the relocated and walled stable trough;
+- the relocated, cut, and banked watermill race.
+
+This is not an ordinary additive-only terrain change for an already-seeded
+production world. The migration must replace the current non-water authored
+terrain in these footprints as well as install their water tensors. A migration
+that writes only `shard_water` would leave the old solid blue-wool surfaces,
+missing basins, and incorrect mill-race terrain in place.
+
+Important migration constraint:
+
+- `shard_water` mutable defaults are written when a shard is created or when an
+  explicitly acknowledged destructive reseed is used.
+- Ordinary `additive` mode will preserve the existing extension shards and
+  therefore will not install the river's water tensor.
+- `--migrate-existing-terrain` selects `preserve-overlays`. It updates the
+  authored seed while deliberately omitting `shard_water`, so it is not enough
+  to make the Brell wet.
+- Do not assume a successful ordinary terrain audit proves that the river was
+  installed. The existing audit is primarily an authored `shard_seed` audit.
+
+Before the next deployment, choose and review one of these paths:
+
+1. Prefer a dedicated Harthmere-water migration that updates only canonical
+   shards intersecting the four water masks, preserves unrelated `shard_diff`,
+   occupancy, farming, growth, muck, placer, shapes, moisture, restoration
+   state, and concurrent writes, replaces the obsolete authored wool/flat
+   terrain inside those masks, and installs authored `shard_water` only inside
+   those masks.
+2. Use destructive terrain reseeding only if deliberately accepting the loss
+   of live terrain/water overlays across every rewritten shard. It requires
+   `BIOMES_ALLOW_DESTRUCTIVE_TERRAIN_RESEED=1` and must not be enabled merely
+   to make a normal deployment pass.
+
+Required water rollout checks before traffic promotion:
+
+- Force Redis `BGSAVE`, then pause Gaia before modifying terrain or water.
+- Dry-run the exact migration and report the affected shard IDs and component
+  write set. It must not include unrelated extension shards.
+- Apply in bounded shard batches with version/concurrency checks and read every
+  changed shard back.
+- Confirm real nonzero `shard_water` level-15 source voxels along the Brell,
+  beneath the east bridge, in the Briarfen pool, inside both fountain tiers,
+  inside the stable trough, and through the watermill race.
+- Confirm the former 27×61 blue-wool river slab and Briarfen blue-wool speckle
+  are absent from the authored seed without deleting unrelated player edits.
+- Confirm the fountain's wool disc and floating wool pillar, the trough's wool
+  rectangle, and the mill's wool surface patch are absent. Search the generated
+  source/build for a reintroduced `materials.water` key or call site and fail
+  if one exists.
+- Confirm the riverbed remains sealed, the three road crossings remain
+  traversable, and the two non-bridge crossings do not dam the water.
+- Confirm both fountain tiers are rimmed and supported, the trough has walls
+  around its 3×3 water well, and the mill race has a sealed floor and banks.
+- Confirm the stable trough remains one row south of the
+  `traveler_hearth_player_house` boundary and that the watermill race remains
+  alongside—not beneath—the mill's west wall.
+- Run the engine-rule containment proof for every source voxel and require zero
+  spread outside each feature's declared footprint, including vertically. Keep
+  the negative control proving an unwalled source escapes fourteen voxels.
+- Confirm no authored building, business safe site, seeded creature, crop,
+  occupied voxel, or protected connector column intersects the channel.
+- Run local rendered checks for swimming/water rendering and fishing from the
+  Brell's open-sky bank. Confirm shallow and normal-depth fishing are both
+  reachable. Visually inspect the Market Plaza fountain, stable trough, and
+  watermill race for the intended silhouette, dry surroundings, correct wheel
+  contact, and no floating blocks.
+- Resume Gaia only after the water readback passes. Then verify Gaia does not
+  drain, flood, or spread any of the four features outside its authored banks
+  or basin and that the simulation revision has zero restarts.
+- Force a final Redis `BGSAVE` after the active-Gaia water audit.
+
+Thornbridge's separate stream is not part of this migration. Do not extend the
+Brell or add a new level-15 source there opportunistically; it requires its own
+authored course, containment proof, migration mask, and rendered validation.

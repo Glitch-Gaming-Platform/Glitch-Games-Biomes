@@ -81,6 +81,7 @@ echo "== Visible frontend interaction contracts =="
   src/shared/harthmere/test/snapshot_grove_trigger_contract.test.ts \
   src/shared/harthmere/test/gathering_node_authority.test.ts \
   src/shared/harthmere/test/harthmere_item_source_reachability.test.ts \
+  src/shared/harthmere/test/jobs_board_field_targets.test.ts \
   src/shared/harthmere/test/world_object_interaction_authority.test.ts
 
 echo "== Native ECS handler and authority contracts =="
@@ -121,6 +122,7 @@ echo "== Native ECS handler and authority contracts =="
   src/shared/harthmere/test/mmo_inventory_loot_authority.test.ts \
   src/shared/harthmere/test/mmo_jobs_board_authority.test.ts \
   src/shared/harthmere/test/mmo_jobs_board_auto_seed.test.ts \
+  src/shared/harthmere/test/mmo_jobs_board_business_outposts.test.ts \
   src/shared/harthmere/test/harthmere_native_bikkie_items.test.ts \
   src/shared/harthmere/test/live_mode_native_actor_binding.test.ts \
   src/client/game/glitch/harthmere_cloud_save_restore_policy.test.ts \

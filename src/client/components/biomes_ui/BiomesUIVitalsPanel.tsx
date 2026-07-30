@@ -122,7 +122,15 @@ function VitalsBar({
       }
     >
       <div className="biomes-ui-vitals-bar__meta">
-        <span>{label}</span>
+        <span className="biomes-ui-vitals-bar__label">
+          <span className="biomes-ui-vitals-bar__label-text">{label}</span>
+          <span
+            className={`biomes-ui-vitals-bar__icon biomes-ui-vitals-bar__icon--${tone}`}
+            aria-hidden
+          >
+            {tone === "health" ? "♥" : tone === "mana" ? "✦" : "⚡"}
+          </span>
+        </span>
         <span className="biomes-ui-vitals-bar__value">
           {displayValue}/{safeMax}
         </span>
@@ -243,7 +251,7 @@ function useLiveModeGoldBalance(): number {
 }
 
 export const BiomesUIVitalsPanel: React.FunctionComponent<{}> = () => {
-  const { reactResources, userId } = useClientContext();
+  const { clientConfig, reactResources, userId } = useClientContext();
   const nativeHealth = reactResources.use("/ecs/c/health", userId);
   const nativeTriggerState = reactResources.use("/ecs/c/trigger_state", userId);
   const nativeInventory = reactResources.use("/ecs/c/inventory", userId);
@@ -414,7 +422,9 @@ export const BiomesUIVitalsPanel: React.FunctionComponent<{}> = () => {
   return (
     <aside
       ref={panelHighlight.ref}
-      className={`biomes-ui-vitals-panel ${highlightClassName(
+      className={`biomes-ui-vitals-panel ${
+        clientConfig.showVirtualJoystick ? "biomes-ui-vitals-panel--mobile" : ""
+      } ${highlightClassName(
         panelHighlight.blinking,
         panelHighlight.style
       )}`.trim()}

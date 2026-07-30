@@ -14,6 +14,10 @@ import { anItem } from "@/shared/game/item";
 import { bagSpecToItemBag } from "@/shared/game/items_serde";
 import type { RawItem } from "@/shared/game/raw_item";
 import type { ItemBag, NavigationAid } from "@/shared/game/types";
+import {
+  nativeQuestProjectedNavigationAid,
+  nativeQuestProjectedTriggerName,
+} from "@/shared/harthmere/native_road_ahead_contract";
 import type { BiomesId } from "@/shared/ids";
 import { INVALID_BIOMES_ID } from "@/shared/ids";
 import type { ReadonlyVec2, ReadonlyVec3 } from "@/shared/math/types";
@@ -145,7 +149,10 @@ function replaceKeys(
 
 function triggerDefDefaults(triggerDef: StoredTriggerDefinition) {
   return <TriggerProgress>{
-    navigationAid: triggerDef.navigationAid,
+    navigationAid: nativeQuestProjectedNavigationAid(
+      triggerDef.id,
+      triggerDef.navigationAid
+    ),
     icon: triggerDef.icon && getTriggerIconUrl(triggerDef.icon),
     id: triggerDef.id,
     name: triggerDef.name,
@@ -232,9 +239,20 @@ export function computeTriggerProgress(
   userId: BiomesId | undefined,
   table: ClientTable | undefined,
   deps: ClientResourceDeps | undefined,
-  triggerDef: StoredTriggerDefinition,
+  authoredTriggerDef: StoredTriggerDefinition,
   stateProvider: (id: BiomesId) => MetaState | undefined
 ): TriggerProgress {
+  // Keep immutable snapshot data authoritative for IDs and trigger semantics,
+  // but project narrowly scoped restored-world wording before any quest UI,
+  // marker, notification, or HUD consumes the progress tree.
+  const projectedName = nativeQuestProjectedTriggerName(
+    authoredTriggerDef.id,
+    authoredTriggerDef.name
+  );
+  const triggerDef =
+    projectedName === authoredTriggerDef.name
+      ? authoredTriggerDef
+      : { ...authoredTriggerDef, name: projectedName };
   const state = stateProvider(triggerDef.id);
   switch (triggerDef.kind) {
     case "all": {

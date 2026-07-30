@@ -6,6 +6,7 @@ import {
   type PointerLockUnlockWhileOpenReturnRef,
 } from "@/client/components/contexts/pointerLockModalPolicy";
 import { usePointerLockManager } from "@/client/components/contexts/PointerLockContext";
+import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
 import { emitHarthmereGlitchBehaviorEvent } from "@/client/game/glitch/harthmere_glitch_behavior_events";
 import { installBiomesUITheme } from "./theme/biomesUITheme";
 import { BiomesNav } from "./nav/BiomesNav";
@@ -100,6 +101,7 @@ export const BiomesUI: React.FunctionComponent<BiomesUIProps> = ({
   paneMode = "overlay",
   hudVisibilityOverride,
 }) => {
+  const { clientConfig } = useClientContext();
   const pointerLockManager = usePointerLockManager();
   const shouldReturnPointerLock = useRef<PointerLockUnlockWhileOpenReturnRef>({
     current: false,
@@ -170,7 +172,10 @@ export const BiomesUI: React.FunctionComponent<BiomesUIProps> = ({
   return (
     <>
       {hudVisibility.helpButtons && (
-        <BiomesUIOpenPrompt isOpen={activeTab !== null} />
+        <BiomesUIOpenPrompt
+          isOpen={activeTab !== null}
+          onOpenMenu={() => onActiveTabChange("inventory")}
+        />
       )}
       {hudVisibility.objectives && (
         <CurrentQuestObjectiveHUD
@@ -202,6 +207,7 @@ export const BiomesUI: React.FunctionComponent<BiomesUIProps> = ({
               position: "absolute",
               top: 18,
               right: 18,
+              zIndex: clientConfig.showVirtualJoystick ? 5 : undefined,
               display: "inline-flex",
               alignItems: "center",
               gap: 8,

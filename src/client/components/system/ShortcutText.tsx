@@ -1,9 +1,11 @@
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
 import { usePointerLockManager } from "@/client/components/contexts/PointerLockContext";
 import {
+  invokeSelectedWorldInteractionForKey,
   useWorldInteractionCandidate,
   WORLD_INTERACTION_PRIORITY,
 } from "@/client/components/challenges/worldInteractionDispatcher";
+import { containMobileControlEvent } from "@/client/components/mobileControlEvents";
 import type { KeyCode } from "@/client/game/util/keyboard";
 import { cleanListener } from "@/client/util/helpers";
 import { getTypedStorageItem } from "@/client/util/typed_local_storage";
@@ -61,7 +63,7 @@ export const ShortcutText: React.FunctionComponent<
   }>
 > = ({ ...props }) => {
   const [keydown, setKeydown] = useState(false);
-  const { audioManager } = useClientContext();
+  const { audioManager, clientConfig } = useClientContext();
   const pointerLockManager = usePointerLockManager();
 
   const runShortcut = useCallback(
@@ -132,22 +134,66 @@ export const ShortcutText: React.FunctionComponent<
       });
     }
   }, [centralizedWorldCandidate, props.disabled, props.keyCode, runShortcut]);
+
+  const isMobileActionButton = Boolean(
+    clientConfig.showVirtualJoystick && props.keyCode && props.onKeyDown
+  );
+  const mobileActionLabel = props.keyCode?.replace(/^Key/, "") ?? "Action";
+  const activateMobileAction = useCallback(() => {
+    if (centralizedWorldCandidate && props.keyCode) {
+      invokeSelectedWorldInteractionForKey(props.keyCode);
+    } else {
+      runShortcut();
+    }
+    window.setTimeout(() => setKeydown(false), 120);
+  }, [centralizedWorldCandidate, props.keyCode, runShortcut]);
+  const keyContents = (
+    <>
+      {props.shortcut}
+      {!!props.progressPercent && (
+        <div
+          className={`progress ${
+            props.progressPercent >= 100 ? "complete" : ""
+          }`}
+          style={{ width: `${props.progressPercent}%` }}
+        ></div>
+      )}
+    </>
+  );
+
   return (
-    <span className={`key-hint ${props.disabled ? "disabled" : ""}`}>
-      <motion.span
-        className={`key ${props.extraClassName ?? ""}`}
-        animate={{ scale: keydown ? 0.9 : 1 }}
-      >
-        {props.shortcut}
-        {!!props.progressPercent && (
-          <div
-            className={`progress ${
-              props.progressPercent >= 100 ? "complete" : ""
-            }`}
-            style={{ width: `${props.progressPercent}%` }}
-          ></div>
-        )}
-      </motion.span>{" "}
+    <span
+      className={`key-hint ${props.disabled ? "disabled" : ""} ${
+        isMobileActionButton ? "key-hint-mobile-action" : ""
+      }`.trim()}
+    >
+      {isMobileActionButton ? (
+        <motion.button
+          type="button"
+          tabIndex={-1}
+          disabled={props.disabled}
+          aria-label={`Activate ${mobileActionLabel} action`}
+          className={`key key-mobile-action ${props.extraClassName ?? ""}`}
+          animate={{ scale: keydown ? 0.9 : 1 }}
+          onPointerDown={(event) => {
+            containMobileControlEvent(event);
+            activateMobileAction();
+          }}
+          onClick={(event) => {
+            containMobileControlEvent(event);
+            if (event.detail === 0) activateMobileAction();
+          }}
+        >
+          {keyContents}
+        </motion.button>
+      ) : (
+        <motion.span
+          className={`key ${props.extraClassName ?? ""}`}
+          animate={{ scale: keydown ? 0.9 : 1 }}
+        >
+          {keyContents}
+        </motion.span>
+      )}{" "}
       {props.children}
     </span>
   );

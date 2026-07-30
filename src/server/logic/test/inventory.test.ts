@@ -14,7 +14,11 @@ import {
   InventorySplitEvent,
   InventorySwapEvent,
 } from "@/shared/ecs/gen/events";
-import { countOf, createBag } from "@/shared/game/items";
+import { bagCount, countOf, createBag } from "@/shared/game/items";
+import {
+  PLAYER_HOTBAR_SLOTS,
+  PLAYER_INVENTORY_SLOTS,
+} from "@/shared/game/inventory";
 import type { BiomesId } from "@/shared/ids";
 import { generateTestId } from "@/shared/test_helpers";
 import type { VoxelooModule } from "@/shared/wasm/types";
@@ -61,6 +65,10 @@ describe("Inventory", () => {
   };
 
   describe("swapping", () => {
+    it("creates players with a real 40-slot native backpack", () => {
+      assert.equal(tommyd.inventory?.items.length, PLAYER_INVENTORY_SLOTS);
+    });
+
     it("should work between empty slots", async () => {
       assert.ok(tommyd.inventory?.items.length ?? 0 > 0);
       assert.ok(tommyd.inventory!.items[0] === undefined);
@@ -141,6 +149,43 @@ describe("Inventory", () => {
   });
 
   describe("Inventory Overflow", () => {
+    it("keeps a quest-style unpaid reward recoverable until a slot is freed", () => {
+      editEntity(logic.world, tommyd.id, (entity) => {
+        const editor = testInventoryEditor(entity);
+        for (let i = 0; i < PLAYER_INVENTORY_SLOTS; i += 1) {
+          editor.set({ kind: "item", idx: i }, countOf(BikkieIds.dirt, 99n));
+        }
+        for (let i = 0; i < PLAYER_HOTBAR_SLOTS; i += 1) {
+          editor.set({ kind: "hotbar", idx: i }, countOf(BikkieIds.dirt, 99n));
+        }
+        const reward = createBag(countOf(BikkieIds.grass, 1n));
+        editor.giveWithInventoryOverflow(reward);
+        assert.equal(
+          entity
+            .inventory()
+            ?.items.some((slot) => slot?.item.id === BikkieIds.grass),
+          false
+        );
+        assert.equal(
+          bagCount(entity.inventory()?.overflow, { id: BikkieIds.grass }),
+          1n
+        );
+
+        // The game never chooses an item to delete. The player frees one slot,
+        // then claims the protected reward from overflow exactly once.
+        editor.set({ kind: "item", idx: 0 }, undefined);
+        assert.equal(
+          editor.moveFromOverflow(reward, { kind: "item", idx: 0 }),
+          true
+        );
+        assert.equal(entity.inventory()?.items[0]?.item.id, BikkieIds.grass);
+        assert.equal(
+          bagCount(entity.inventory()?.overflow, { id: BikkieIds.grass }),
+          0n
+        );
+      });
+    });
+
     it("Should overflow when needed", () => {
       editEntity(logic.world, tommyd.id, (entity) => {
         const editor = testInventoryEditor(entity);

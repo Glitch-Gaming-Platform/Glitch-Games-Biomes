@@ -11,7 +11,6 @@ import { BiomesUI } from "./BiomesUI";
 import { useBiomesUIReplaceLegacyFlag } from "./BiomesUIFlags";
 import { useBiomesUILiveAdapters } from "./adapters/useBiomesUILiveAdapters";
 import { TutorialDirector } from "./tutorial/TutorialDirector";
-import { BiomesUITutorialCueBar } from "./tutorial/BiomesUITutorialCueBar";
 import { BiomesUIVitalsPanel } from "./BiomesUIVitalsPanel";
 import { HarthmereLevelUpCelebration } from "./HarthmereLevelUpCelebration";
 import { HarthmereJobsBoardWorldInteraction } from "@/client/components/harthmere_jobs_board/HarthmereJobsBoardWorldInteraction";
@@ -130,15 +129,11 @@ export const BiomesUIMount: React.FunctionComponent<{
         adapters={live.adapters}
         shortcutOverrides={live.shortcuts}
       />
-      <HarthmereJobsBoardWorldInteraction
-        suppressPrompt={activeTab !== null}
-      />
+      <HarthmereJobsBoardWorldInteraction suppressPrompt={activeTab !== null} />
       <HarthmereWantedBoardWorldInteraction
         suppressPrompt={activeTab !== null}
       />
-      <HarthmereBusinessWorldInteraction
-        suppressPrompt={activeTab !== null}
-      />
+      <HarthmereBusinessWorldInteraction suppressPrompt={activeTab !== null} />
       <HarthmerePropertyForSaleWorldInteraction
         suppressPrompt={activeTab !== null}
       />
@@ -147,7 +142,6 @@ export const BiomesUIMount: React.FunctionComponent<{
       />
       <HarthmereObjectContainerPanel />
       <HarthmereCookingStationPanel />
-      {hudVisibility.helpButtons && <BiomesUITutorialCueBar />}
       <TutorialDirector step={live.tutorialStep} />
     </>
   );

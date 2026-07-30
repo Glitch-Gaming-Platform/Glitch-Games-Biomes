@@ -124,7 +124,7 @@ wrong **inner loop**. The slow parts are not the browser:
 
 `scripts/harthmere/e2e-jump.cjs` attacks both.
 
-### 4.0 Incident log: do not repeat the July 27 environment mistakes
+### 4.0 Incident log: do not repeat the July 27/29 environment mistakes
 
 These mistakes extended one Chapter 1 verification pass by hours. Treat this
 as an operational checklist, not background history:
@@ -139,6 +139,22 @@ as an operational checklist, not background history:
 - **Do not use obsolete Mocha bootstrap paths.** The supported single-file
   command is `scripts/harthmere/t.sh file <path>`. Do not invent a direct
   `mocha --require src/server/test/register.ts` command.
+- **Do not use a bare `next dev` or `next start` process as the game browser
+  harness.** The `/at` route and `/api/harthmere/visual_test_auth` require the
+  initialized Biomes web context; a standalone Next process leaves
+  `req.context.sessionStore` undefined and can spend minutes compiling before
+  failing during authentication or server-side props. Use one exact-source
+  production image and the documented unified/warm stack, wait for the complete
+  `e2e-jump.cjs ready` contract, and only then open the browser.
+- **Use real touch input for mobile-only controls.** A mouse `click()` is not a
+  valid substitute for a phone tap when the control intentionally cancels
+  compatibility mouse events to prevent an accidental primary attack. Launch
+  a mobile context with touch + mobile UA, use `tap()` for buttons, and dispatch
+  touch start/move/end for joystick drags.
+- **Do not assert responsive `rem` widths with desktop pixel constants.** The
+  game scales the root font on phone viewports. Compare the computed width to
+  the authored `rem` value times the live root font size (and viewport cap), or
+  assert the mobile class plus a relative width increase.
 - **A failed or interrupted dungeon browser leaves the one-party slot claimed
   for up to three minutes.** Before rerunning, inspect
   `harthmere:ch1:slot:<dungeonId>` and its TTL. Prefer a clean product exit;
@@ -159,6 +175,435 @@ as an operational checklist, not background history:
 - **When an interrupted tool session becomes unknown, inspect OS/container
   state before restarting anything.** The process may still own Redis or game
   ports even though the tool session id is gone.
+
+July 29 robot-story follow-up added four more concrete traps:
+
+- **`e2e-jump.cjs ready` derives the web port from `HARTHMERE_E2E_URL`, not
+  `HARTHMERE_E2E_BASE_URL`.** Setting only the base URL made a healthy `3017`
+  stack print `DOWN web :3000`. Use the complete readiness contract:
+
+  ```sh
+  HARTHMERE_E2E_STACK_CONTAINER=<container> \
+  HARTHMERE_E2E_URL=http://127.0.0.1:3017/at \
+  HARTHMERE_E2E_SYNC_BASE_URL=http://127.0.0.1:4907 \
+  HARTHMERE_E2E_REDIS_PORT=6390 \
+    node scripts/harthmere/e2e-jump.cjs ready
+  ```
+
+- **A fresh test username is not proof of a clean player entity in a reused
+  snapshot Redis world.** An allocated id can still belong to a disposable
+  snapshot NPC. The July 29 failure kept the authoritative actor near
+  `x=3517`, while Sync correctly reset the browser to the Grove; quest targets
+  were then created outside the browser subscription and never appeared. A
+  focused robot-story run now first moves the actor to the production-shaped
+  stack's canonical safe start `[484.24980838010384, 53,
+-207.51197432867897]` and clears `npc_metadata`/`npc_state`, then waits for
+  that exact local pose before creating targets. Do not substitute the visible
+  fountain surface `[496, 70, -126]`: collision/warp recovery can legitimately
+  return it to the canonical start, turning an exact-pose assertion into a
+  two-minute timeout. Other reusable focused actors must do the same kind of
+  stable-position normalization before relying on their current position.
+
+- **The exact-image cold boot can legitimately spend several minutes loading
+  a large reused Redis world.** This run loaded roughly 300,000 entities before
+  Sync became ready. Do not launch Chromium when TCP alone is up, and do not
+  restart the container while entity counts are still increasing. Wait until
+  `e2e-jump.cjs ready` reports web, Sync, Redis, and every required lifecycle
+  service as `UP`; subsequent browser batches should reuse that warm stack.
+
+- **Focused robot-story fixtures can cancel background Chapter 1 polling while
+  replacing the actor state.** Chromium reports the canceled
+  `chapter1_progress`, `chapter1_story`, `chapter1_gate?e2e=1`, or queued
+  Chapter 1 voice request as `net::ERR_ABORTED` even when the server completed
+  the API with HTTP 200. Treat only those exact same-origin requests as focused
+  robot-story transients. Keep other failed requests fatal; a 4xx/5xx response
+  or a non-aborted Chapter 1 request is still product evidence.
+
+Jobs Board catalog follow-up on July 29 added two more mandatory preflights:
+
+- **Normalize a Jobs Board browser actor before moving it.** A new username in
+  a reused snapshot selected entity `1033646919295501`, which still had
+  `npc_state`; NPC steering held it near `[3320, 65, -333]` while the test
+  waited for a board warp. The runner now clears NPC-only components and proves
+  the authoritative row is a player before installing/running the catalog.
+  Do not diagnose the resulting movement timeout as a Jobs Board regression.
+- **Repeated service jobs require repeated real interactions, each with a new
+  idempotency key.** `Clear the Muckwad Patch` requires five server-owned
+  interaction receipts after acceptance. The old browser harness performed no
+  visible F interaction for Grove landmarks, while the client reused the first
+  completion request id and could replay its expected `0/5` rejection forever.
+  The player path now sends a distinct completion attempt for each F action;
+  the catalog resolves both shared Grove landmarks and business field targets,
+  presses F the authored number of times, and waits for every receipt.
+- **Do not reinterpret item-source map markers as hand-in objects.** The first
+  post-fix catalog run tried to press `F Gather` at Garden Edge Berries for the
+  road-rations job. That marker tells the player where to obtain the six
+  berries; native inventory is the completion evidence. Only registered field
+  targets and repeated service requirements should enter the physical F helper.
+- **Accepting a job must not steal the player's existing main-quest pin.** The
+  runner cannot wait for automatic pin replacement: the UI deliberately keeps
+  the player's current Road Ahead destination. For a pin-gated Grove service
+  prop, the E2E must open Quests with `J`, select the accepted job, click
+  `Show on map`, prove that destination became active, then return to gameplay.
+  This is the real player path and does not mutate localStorage.
+- **A focused all-jobs stack with `GLITCH_ENABLE_ANIMA=0` cannot wait for an
+  escort to walk itself.** Production escort movement belongs to native
+  ECS/Anima; the Jobs Board scheduler mirrors the companion's authoritative ECS
+  position and completes arrival. The focused browser gate must prove companion
+  assignment/materialization, place that native ECS companion at the authored
+  destination (the same boundary the scheduler unit uses), then prove scheduler
+  completion and payout. Do not classify a no-Anima movement timeout as an
+  escort gameplay failure, and do not weaken production to Redis-only movement.
+- **Physical repair semantics and job requirements must agree.** A visible
+  repair prompt is server-rejected unless a repair tool is equipped. The
+  business catalog had two repair targets whose templates supplied parts but
+  did not declare or explain the tool: `biome_repair_anchor_patch` and
+  `repair_person_fixture_fix`. The field-target test now audits every business
+  template label and requires any target resolving to `repair` to declare
+  `requiredToolAction: repair` and tell the player to equip the tool.
+- **A bounty marker is navigation, not kill evidence.** The public catalog
+  reached the exact Elite Mucker marker and then called `completeQuest`, but
+  the native authority correctly rejected it with
+  `wrong_quest_target:muck_bounty_elite_mucker`: no post-accept kill existed in
+  the player's server-owned TriggerState ledger. The catalog must attack the
+  exact ranked production entity id, wait for its player-attributed native kill
+  receipt, return to the authored map marker's eight-metre submission zone, and
+  only then submit the objective. A ranked creature can stand or patrol more
+  than eight metres from that marker, so submitting directly at the corpse can
+  correctly fail `field_target_out_of_range`. On a reused exact-image world,
+  revive that same fixed-id entity's combat row if its corpse is still inside
+  the respawn window; never substitute a synthetic or different creature id.
+- **Ground each bounty attack approach independently.** A ranked NPC's grounded
+  feet Y is valid for its exact X/Z column, not automatically for a player two
+  metres beside it. Reusing the creature Y for the neighboring Hex approach
+  made the actor fall 22 metres and reset to the Grove before the kill receipt.
+  Probe the candidate approach columns with the shared terrain grounder and use
+  the first loaded, standable result. After a late fail-fast catalog error,
+  resume the remaining public batch with `HARTHMERE_E2E_JOBS_RESUME_AT`; retain
+  the earlier passing report rather than replaying already-green lifecycles.
+- **Use the established live-player relocation helper for every Jobs Board
+  warp, not only robot/Grove catalog fixtures.** On the current-source warm
+  stack, the Hex bounty passed end to end. Before the next Harthmere mining job,
+  two retryable jobs-board reads returned 504 while direct `/sim/player` plus
+  ECS placement sat on sparse terrain; fall recovery moved the actor back to
+  the Grove, so the later accept correctly rejected `must_be_at_jobs_board`.
+  Jobs Board movement now uses `moveSnapshotGrovePlayer`, which moves camera,
+  simulation, interest set, authoritative ECS, movement publication, nonlethal
+  fixture health, and the temporary pose pin as one established path. Focused
+  public and business catalogs may also abort exact background Chapter 1
+  progress/story/gate polls during those relocations; classify only those exact
+  `net::ERR_ABORTED` requests as transients, never a 4xx/5xx response.
+- **Ground underground Jobs Board fixture feet before teleporting.** The first
+  five current-source Exotic Matter jobs passed, including two Deep Spindle
+  deposits. The third deep marker resolved to the cave's lower edge at Y=-36;
+  placing the player exactly there opened DeathModal and exposed a React hook
+  exception before the job action. The catalog now asks the existing
+  `groundedHarthmerePosition` bridge for the nearest standable feet position at
+  the same X/Z with `requireOpenSky: false`, then uses the stable relocation
+  helper. If the terrain is not yet loaded it retains the established live
+  relocation fallback. Do not add a cave-specific Y constant or reinterpret
+  the map marker; objective authority remains the exact target and horizontal
+  completion radius.
+- **A native tool fixture must also refresh the client equipment projection.**
+  Directly writing `Inventory.selected` and `selected_item` correctly gives the
+  live-mode server authoritative repair/cleanup evidence, but it bypasses the
+  player's Inventory UI. On July 29 the repair receipt therefore succeeded
+  while the same visible F handler returned before submitting its Jobs Board
+  completion because its local display projection still had an empty main
+  hand. Fixture setup now aligns that client projection and dispatches the
+  canonical inventory-change event; the server still independently validates
+  the native selected item for both mutations. Product tool checks also prefer
+  the server-reported live equipment snapshot once live authority is active,
+  preventing stale local equipment after a real equip or unequip. Do not weaken
+  the server gate or count the local projection itself as completion evidence.
+- **Aim at a procedural prop's body, not the terrain beneath it.** The security
+  watch post is a narrow, tall prop. The browser harness faced its authored
+  anchor at `Y - 0.25`, so the cursor ray hit the ground before the post and
+  clipped the proximity selector's allowed distance; the correct permanent
+  prop existed, but `F Report Patrol` never appeared. Jobs Board interactions
+  now face roughly chest height and retain a bounded overlay-refresh window.
+  Keep failure diagnostics showing the last inspectable/overlay snapshot so a
+  future missing prompt can be separated from placement, facing, and loading
+  failures without replaying previously passed jobs.
+- **Try a close stance before declaring a narrow prop unreachable.** The
+  security post still produced a one-metre terrain cursor hit after the camera
+  aimed at its body. The world-object fallback deliberately clips ordinary
+  candidates to that hit depth, while the first catalog stance was 2.25 metres
+  away. Jobs Board E2E now tries 0.65-metre cardinal stances before the ordinary
+  approaches, matching what a player can do around a slim post without
+  changing the product's occlusion policy or the server's authoritative range.
+- **Retained test actors can physically shadow a resumed prop.** A failed
+  security-post run left `NativeECS-A-6631575250` standing on the final
+  approach. The next actor's cursor selected that old player and showed
+  `F View Profile / G Follow` instead of the post action. Production now lets a
+  tightly faced nearby world object beat an overlapping player-profile prompt,
+  matching the existing object-over-NPC rule. The browser harness also moves
+  only encountered `NativeECS-A-*` blockers out of the interaction cone; it
+  never deletes or repositions ordinary players. Retain passed reports, but do
+  not assume failed-run player positions are harmless fixture state.
+- **Re-inventory active exact-image containers immediately before Chromium.**
+  During this continuation the canonical Jobs Board v2 stack started on
+  3017/4907 while an older 3047 stack remained active. Running both unified
+  stacks exhausted Docker memory and the older one was OOM-killed after the
+  browser exited. Do not rebuild or restart blindly: select the canonical warm
+  container, require full lifecycle readiness, and leave the obsolete stopped
+  container stopped. One browser lane also implies one heavy unified stack.
+- **Ground the overlay candidate with the same live surface as its rendered
+  prop.** The Redoubt target was authored at Y=46, but authoritative player
+  placement at its exact X/Z resolved to the built apron at Y=53. The marker
+  renderer already moved the visible post to Y=53; the overlay candidate stayed
+  at Y=46 and rejected the correctly grounded player on its 3.5-metre vertical
+  gate. Every permanent Jobs Board field target now uses the renderer's shared
+  live grounder before entering overlay selection. When finishing a catalog on
+  an already-built pre-fix image, the runner may use
+  `HARTHMERE_E2E_ALLOW_PRE_DYNAMIC_FIELD_TARGET_IMAGE=1` only after proving the
+  mismatch exceeds 3.5 metres; every such server-authoritative compatibility
+  interaction is listed in `report.gates.preDynamicFieldTargetFallbacks` and is
+  not evidence that the old image rendered the repaired prompt.
+- **A visible prompt does not prove the key reached its handler.** On the
+  retained farm-crate row the correct `F Deliver Crop Bundles` prompt rendered,
+  but one `KeyF` produced no server receipt for two minutes. The catalog now
+  retries the same real keyboard path up to three times, reasserting player pose
+  and facing between attempts. A pre-fix-image compatibility interaction is
+  allowed only after all three visible-prompt attempts lack a receipt, and is
+  recorded with reason `visible_prompt_no_receipt_after_three_keypresses`.
+  Current-source release evidence must still come from the repaired prompt/key
+  path; never silently convert a missed key into a pass.
+
+Retained failure evidence:
+
+- `artifacts/harthmere-native-ecs-e2e/1785360953074-3012-report.json`
+  (stale snapshot NPC/player collision prevented the first board warp);
+- `artifacts/harthmere-native-ecs-e2e/1785361417997-4732-report.json`
+  (first two public jobs passed; repeated cleanup exposed missing service-unit
+  fixture actions and the client idempotency-key defect);
+- `artifacts/harthmere-native-ecs-e2e/1785363796088-12398-report.json`
+  (the harness incorrectly treated an item-source marker as a hand-in object);
+- `artifacts/harthmere-native-ecs-e2e/1785364128630-13433-report.json`
+  (the cleanup prop was not visible without its player-selected job pin);
+- `artifacts/harthmere-native-ecs-e2e/1785364938213-15638-report.json`
+  (the harness incorrectly waited for accepting work to steal the existing
+  Road Ahead main-quest pin);
+- `artifacts/harthmere-native-ecs-e2e/1785365643049-16252-report.json`
+  (five complete public lifecycles passed; focused stack omitted Anima, so the
+  native escort companion never received production movement evidence);
+- `artifacts/harthmere-native-ecs-e2e/1785366910603-19948-report.json`
+  (first business lifecycle passed; the next physical repair target exposed a
+  missing repair-tool requirement shared by two business templates);
+- `artifacts/harthmere-native-ecs-e2e/1785367569323-21209-report.json`
+  (six public lifecycles plus escort passed; the first bounty exposed that the
+  harness had navigation evidence but no exact native kill receipt);
+- `artifacts/harthmere-native-ecs-e2e/1785368143238-25380-report.json`
+  (the exact ranked kill and native receipt passed, then objective submission
+  from the creature's position exposed the marker-radius return requirement);
+- `artifacts/harthmere-native-ecs-e2e/1785368957680-28751-report.json`
+  (the first seven public jobs, including the Elite Mucker kill, passed; the
+  Hex approach reused the creature column's Y and the actor fell/reset before
+  the player-attributed kill receipt);
+- `artifacts/harthmere-native-ecs-e2e/1785381426210-68479-report.json`
+  (the first remaining Hex bounty passed; retryable background 504s then
+  exposed direct Jobs Board movement losing its board pose to fall recovery
+  before the next Harthmere job accept);
+- `artifacts/harthmere-native-ecs-e2e/1785381897488-71998-report.json`
+  (five remaining Exotic Matter lifecycles passed; the final Deep Spindle
+  marker placed the fixture at a non-standable cave-floor edge and opened the
+  Death modal before the objective action).
+- `artifacts/harthmere-native-ecs-e2e/1785382677802-73108-report.json`
+  (the server accepted the visible repair and recorded its native receipt, but
+  the fixture had bypassed the client equipment projection, so the F handler
+  never submitted the matching Jobs Board completion).
+- `artifacts/harthmere-native-ecs-e2e/1785383342964-74305-report.json`
+  (the repaired anchor and design-studio jobs passed; the next narrow security
+  post exposed the harness aiming below the prop and clipping its own prompt
+  selection against the terrain hit).
+- `artifacts/harthmere-native-ecs-e2e/1785383966315-75250-report.json`
+  (the canonical v2 stack confirmed the cursor still hit terrain at one metre;
+  the original 2.25-metre stance was outside the fallback's clipped radius).
+- `artifacts/harthmere-native-ecs-e2e/1785384149065-75483-report.json`
+  (a retained failed-run E2E player physically occupied the security-post
+  approach and its profile overlay shadowed the job prop).
+- `artifacts/harthmere-native-ecs-e2e/1785384459161-75859-report.json`
+  (after stale actors were displaced, Redis proved the real blocker: the actor
+  stood at Y=53 beside a target whose overlay candidate remained at Y=46).
+- `artifacts/harthmere-native-ecs-e2e/1785384959691-76734-report.json`
+  (security and portal-fuel passed; the farm crate rendered its correct prompt,
+  but one keyboard attempt produced no server interaction receipt).
+
+- **`node --check` does not catch missing runtime destructured imports.** The
+  July 29 marker assertion referenced
+  `NATIVE_ROBOT_SETUP_MUCK_PLACEMENT_POSITION` without adding it to the CJS
+  `require(...)` destructuring. Syntax and the static action-family contract
+  both passed; the browser found the `ReferenceError` only after replaying the
+  quest. When adding a new shared constant to the E2E runner, search for both
+  its use and its import name before launching Chromium. Keep the failed report
+  so a late harness error is not confused with a gameplay regression.
+
+- **A world object created at a quest marker will not synchronize to a browser
+  still standing hundreds of meters away.** The robot placement event and
+  quest step succeeded, but the July 29 harness waited two minutes for the
+  placed robot in a client whose subscription was still at the Grove start,
+  roughly 230 meters from the Watchtower clearing. A physical E2E must move
+  both `/sim/player` and authoritative `Position` to the marker first, wait for
+  the local/scene poses, then perform the placement. Do not “fix” this by
+  enlarging draw distance or weakening the mesh assertion—the player following
+  the marker is part of the functionality being tested.
+
+- **Use the existing Harthmere terrain grounder; never derive placement Y from
+  an authored zone or a settled browser pose.** The canonical path is
+  `groundHarthmereLiveEntityFeetYWithStatus` →
+  `findHarthmereGroundFeetY`, with open-sky terrain checks and explicit
+  `not-loaded` handling. The E2E bridge exposes that path as
+  `groundedHarthmerePosition`. First stream the marker X/Z, wait until the
+  grounder returns `grounded` for both approach and object columns, then use
+  those exact positions. The July 29 attempts using authored Y=54 and later the
+  player's settled Y=37 duplicated an existing system and were incorrect—the
+  robot's column can have a different surface than the player's approach
+  column.
+
+- **A prompt assertion must prove which entity owns the prompt.** The first
+  robot-setup rerun reached the placed robot, canonical mesh, setup objective,
+  and marker, but then searched the DOM for any overlay containing Talk and
+  Settings. A nearby NPC could own Talk while the direct native fixture had not
+  mirrored the local placement-preview cleanup, and a post-placement approach
+  reused the robot column's Y. The focused flow now clears only the local tail
+  that the real primary-click placement path clears after `EndPlaceRobotEvent`,
+  grounds every approach X/Z through `groundedHarthmerePosition`, and requires
+  `/overlays` to report the placed robot's exact entity id before asserting one
+  Talk and one Settings action. Do not infer interaction success from generic
+  text elsewhere on screen.
+
+- **Use the established live-player relocation helper for sparse terrain.** A
+  later rerun correctly grounded the interaction column and synchronized both
+  authoritative and local ECS at `[332, 38, -388.25]`, but direct `/sim/player`
+  mutation let collision/fall recovery respawn the rendered player at the
+  fountain. `moveSnapshotGrovePlayer` already solves this exact production-
+  shaped test problem: it uses the product live-player teleport hook, persists
+  the accepted pose, zeros velocity, gives the fixture nonlethal health,
+  republishes movement, reasserts the scene, and pins only while the real
+  interaction runs. Reuse it for distant robot interactions; do not create a
+  third teleport/physics path.
+
+- **Reconcile the robot id at the real post-placement interaction.** A reused
+  snapshot world can briefly expose more than one owner-matched robot around a
+  direct native placement, so the first `robot_component` scan is not a stable
+  final identity. The July 29 evidence already showed the real cursor on
+  `Biomes Bot` with exactly `F Talk / G Settings`, but the harness rejected it
+  against its earlier id. After `EndPlaceRobotEvent`, accept only the inspected
+  entity that authoritatively has `robot_component`, is created by the current
+  user, is at the placement position, and routes to `npcs/helping_robot`; use
+  that reconciled id for G, naming, and progression assertions.
+
+- **Do not re-read already-proven robot invariants inside the prompt poll.** The
+  next run showed the expected placed id and inspected id were both
+  `1456753058260464`, with exactly `F Talk / G Settings`; a redundant group of
+  ownership/mesh/position reads still rejected it because those reads can land
+  on different HFC ticks. Placement already proves owner, `robot_component`,
+  marker position, and `npcs/helping_robot`, while Settings itself is owner-
+  gated. The final prompt poll should require the exact established entity id
+  and exact actions, then move on to the G and naming behavior.
+
+- **Resume durable state instead of replaying passed robot chapters.** Set
+  `HARTHMERE_E2E_ROBOT_SETUP_CONTINUE_ONLY=1` together with
+  `HARTHMERE_E2E_USERNAME_A=<saved actor>` and
+  `HARTHMERE_E2E_ROBOT_SETUP_ROBOT_ID=<saved robot>` after the report has proven
+  Muck vs. Machine, Gimme Shelter's Sophia handoff, placement, grounding, and
+  mesh. The continuation lane refuses to reseed or normalize the actor. It
+  requires that prior state, finds the already placed owner robot, and tests
+  only the unfinished exact prompt, G→Settings, F→name, setup completion, map
+  marker, and Chapter 1 main-quest handoff.
+
+  Restore the browser-owned live player to the saved authoritative checkpoint
+  before scanning its local `robot_component` interest set. A resumed actor can
+  initially render at Grove spawn while ECS remains beside the Muck robot; a
+  pre-warp local scan then returns no robot even though placement already
+  passed. This is subscription setup, not a reason to replay placement.
+
+  Take the numeric actor id and reconciled robot id from the same retained
+  interaction report. Do not combine an actor from a later Redis inspection
+  with an earlier pre-settlement robot id merely because both rows occupy the
+  placement coordinate. The July 29 continuation retries mixed actor
+  `8318790406490185` with robot `7524949572471247`, while the retained prompt
+  proof belonged to actor `696678023605168` and reconciled robot
+  `1456753058260464`; the mixed pair selected an overlapping non-owned robot
+  and displayed only `F Talk`. Authenticate the retained actor by numeric id,
+  verify the robot's `created_by` matches it, and never move either durable
+  entity just to make cursor selection easier.
+
+- **Local browser E2E tests functionality, not machine performance.** Docker
+  scheduling, host load, software WebGL, asset work, and Redis size vary by
+  computer. The July 29 run completed Muck vs. Machine, started Gimme Shelter
+  and Chapter 1, then observed Sophia's correct authoritative handoff in 2.295
+  seconds and 4.926 seconds on two runs. Rejecting that state because it crossed
+  a 2-second budget was a harness mistake. The browser harness now records all
+  timings but does not fail latency budgets by default. Its long operation and
+  scenario timeouts remain hang guards: an extremely slow or missing state
+  still times out and fails functionally.
+
+  Run a latency benchmark only by explicit opt-in:
+
+  ```sh
+  HARTHMERE_E2E_PERFORMANCE_ASSERTIONS=1 \
+    node scripts/harthmere/test-harthmere-native-ecs-roundtrip-e2e.cjs
+  ```
+
+  Never use that flag for ordinary local functionality sign-off. Do not change
+  gameplay code, rebuild, or widen production behavior because a local timing
+  number varies. A missing placement step, marker, robot, quest transition, or
+  Chapter 1 continuation remains a functional failure regardless of timing.
+
+- **Do not let the per-probe guard reintroduce a local performance gate.** A
+  July 29 focused rerun had no browser failure and had already completed the
+  first Muck vs. Machine leaf, but its next authoritative read exceeded the
+  generic 30-second operation guard while the exact-image container was using
+  roughly 629% CPU and generating local meshes. That is not evidence that
+  “Meet with Sophia” failed. Robot-story functionality runs now use the same
+  120-second per-probe ceiling as the other large snapshot batches; the full
+  scenario timeout remains the hang guard. Keep the shorter 30-second probe
+  guard for ordinary small batches.
+
+The failed reports that established these rules are retained as:
+
+- `artifacts/harthmere-native-ecs-e2e/1785347251435-63200-report.json`
+  (stale NPC/player identity put targets outside the subscription);
+- `artifacts/harthmere-native-ecs-e2e/1785347709825-63617-report.json`
+  (functional progression passed; the old harness incorrectly failed a local
+  timing budget by 295 ms);
+- `artifacts/harthmere-native-ecs-e2e/1785348075881-65269-report.json`
+  (warm repeat of the same correct fan-out at 4.926 seconds, establishing that
+  local functionality runs must not enforce performance budgets);
+- `artifacts/harthmere-native-ecs-e2e/1785348246642-66079-report.json`
+  (focused actor replacement canceled a successful background Chapter 1 gate
+  poll with `net::ERR_ABORTED`; server logs recorded HTTP 200);
+- `artifacts/harthmere-native-ecs-e2e/1785348485548-67571-report.json`
+  (the fountain anchor was legitimately corrected to the canonical stack
+  start, so the exact-pose fixture waited for two minutes);
+- `artifacts/harthmere-native-ecs-e2e/1785349165588-71333-report.json`
+  (the functional flow reached the placement marker assertion, where a missing
+  CJS destructured import caused a harness `ReferenceError`);
+- `artifacts/harthmere-native-ecs-e2e/1785349541117-72164-report.json`
+  (robot placement and quest progress passed, but the browser remained at the
+  Grove and could not stream the robot created at the Watchtower marker);
+- `artifacts/harthmere-native-ecs-e2e/1785350098467-73139-report.json`
+  (the player reached the correct Watchtower X/Z but live physics settled at
+  Y=37 instead of the authored zone metadata Y=54);
+- `artifacts/harthmere-native-ecs-e2e/1785352454911-80916-report.json`
+  (placement, quest progression, and canonical mesh passed; the harness then
+  failed to prove the placed robot itself owned the Talk/Settings prompt);
+- `artifacts/harthmere-native-ecs-e2e/1785353798079-85558-report.json`
+  (no browser failure; one authoritative read hit the generic 30-second probe
+  ceiling while the local exact-image stack was CPU-saturated);
+- `artifacts/harthmere-native-ecs-e2e/1785354356872-86501-report.json`
+  (canonical ground and ECS pose passed, but direct simulation mutation fell
+  through sparse local terrain and respawned the rendered player at Grove);
+- `artifacts/harthmere-native-ecs-e2e/1785355178445-87633-report.json`
+  (real robot overlay rendered exactly one Talk and one Settings, but the
+  harness compared it to an earlier pre-settlement robot id);
+- `artifacts/harthmere-native-ecs-e2e/1785356171988-90582-report.json`
+  (expected and inspected robot ids matched and the exact prompt rendered; a
+  redundant multi-read validation layer rejected the already-proven state);
+- `artifacts/harthmere-native-ecs-e2e/1785357496953-92584-report.json`
+  (resume-only lane scanned the Grove-spawn subscription before restoring the
+  saved Muck approach pose, so the already placed robot was not local yet).
 
 The release report must distinguish product failures from environment failures
 and must list the exact report path, image tag/digest, and slot-cleanup state.
@@ -924,6 +1369,31 @@ data-only modules. Importing `ShortcutsHUD` or the full live adapter under
 bootstrap. Run pure key/marker contracts in one fast batch; use the normal
 Mocha bootstrap only for the narrow rendered-component assertions that need
 client assets.
+
+**Recorded mishap (2026-07-29, material-guidance batch):** do not mix one
+asset-importing rendered component test into a `.mocharc.fast.json` batch of
+pure shared tests. The missing `/public/...png` require aborts module loading
+before any assertions run, so the whole batch produces no useful pass/fail
+signal. Split it up front: shared/data tests in one fast process, rendered
+client tests in one normal-bootstrap process.
+
+For that rendered process, use `./b test -p '<brace-glob>' ...`; it supplies
+the required `TS_NODE_COMPILER_OPTIONS={"module":"commonjs"}` and
+`MOCHA_TEST=1`. Calling `mocha --config .mocharc.json` directly under the
+current Node runtime loads `global_setup.ts` as ESM and fails at its
+`require.extensions` asset hook before any tests execute.
+
+**Recorded mishaps (2026-07-29, current-source live-browser retest):**
+
+- Do not name a zsh shell variable `status`; zsh reserves it as read-only. A
+  Redis-clone readiness loop that assigns `status=...` exits before the copy is
+  made. Use a descriptive name such as `bgsave_result`.
+- Do not launch asset-importing TypeScript tests with raw
+  `node -r ts-node/register... mocha`. That bypasses the repository's
+  CommonJS test environment and loads `global_setup.ts` as ESM, failing at
+  `require.extensions` before any assertion. Use the documented
+  `./b test -p '<brace-glob>'` wrapper; the corrected material batch passed 11
+  assertions in one process.
 
 ### 4.14 Focus recipe and hunt objectives without replaying the story
 

@@ -1036,7 +1036,7 @@ describe("Biomes UI progression tabs", () => {
     assertNoDeveloperCopy(html);
   });
 
-  it("renders farming food state as a compact BiomesUI inventory section", () => {
+  it("does not render farming food controls in the inventory sidebar", () => {
     const model = buildFarmingFoodInterfaceModelForTest({
       stamina: 44,
       maxStamina: 100,
@@ -1084,13 +1084,13 @@ describe("Biomes UI progression tabs", () => {
       />
     );
 
-    assert.ok(html.includes("Food &amp; Cooking"));
-    assert.ok(html.includes("Stamina 44 of 100"));
+    assert.equal(html.includes("Food &amp; Cooking"), false);
+    assert.equal(html.includes("Stamina 44 of 100"), false);
     assert.equal(tagForDataAction(html, "harvest_plot").length, 0);
-    assert.ok(tagForDataAction(html, "hunt_animal").length > 0);
-    assert.ok(tagForDataAction(html, "cook_worker_meal").length > 0);
-    assert.ok(html.includes("Cook Worker Meal"));
-    assert.ok(html.includes("Skin deer"));
+    assert.equal(tagForDataAction(html, "hunt_animal").length, 0);
+    assert.equal(tagForDataAction(html, "cook_worker_meal").length, 0);
+    assert.equal(html.includes("Cook Worker Meal"), false);
+    assert.equal(html.includes("Skin deer"), false);
     assertNoDeveloperCopy(html);
   });
 
@@ -1501,6 +1501,10 @@ describe("Biomes UI progression tabs", () => {
     assert.ok(
       html.includes("Find Rough Stone at Cinderlane Tool Forge counter")
     );
+    assert.ok(html.includes("How to get 4 Rough Stone"));
+    assert.ok(html.includes('data-material-route-kind="buy"'));
+    assert.ok(html.includes('data-material-route-kind="gather"'));
+    assert.ok(html.includes("Show on map"));
     assert.ok(html.includes("Show property on map"));
     assertNoDeveloperCopy(html);
   });

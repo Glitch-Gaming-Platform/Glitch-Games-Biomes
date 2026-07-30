@@ -124,7 +124,7 @@ function makePlacementReq(
 before(function registerTestStructures() {
   // A "road_stall" that requires commercial plot and road access
   const roadStall: HarthmereStructureDefinition = {
-    structureTypeId: "shop",        // reuse an existing type slot; just override
+    structureTypeId: "shop", // reuse an existing type slot; just override
     displayName: "Test Road Stall",
     footprint: { width: 6, depth: 6, height: 4 },
     maxSlopeDegrees: 5,
@@ -163,7 +163,9 @@ describe("validateHarthmereBuildingPlacement — success", function () {
     const result = validateHarthmereBuildingPlacement(req, ctx);
     // Should still be ok (warning only)
     assert.ok(result.ok, result.errors.join(", "));
-    assert.ok(result.warnings.includes("wilderness_placement_no_plot_ownership"));
+    assert.ok(
+      result.warnings.includes("wilderness_placement_no_plot_ownership")
+    );
   });
 
   it("allows a fence with no plot, steep slope is within fence max (25°)", function () {
@@ -189,6 +191,35 @@ describe("validateHarthmereBuildingPlacement — success", function () {
     const result = validateHarthmereBuildingPlacement(req, ctx);
     assert.ok(result.ok, result.errors.join(", "));
     assert.strictEqual(result.resolvedRotationDegrees, 90);
+  });
+});
+
+describe("validateHarthmereBuildingPlacement — Grove reserve", function () {
+  it("rejects ordinary wilderness construction inside the robot clearance ring", function () {
+    const req = makePlacementReq({
+      plotId: undefined,
+      origin: { x: 420, y: 64, z: -100 },
+    });
+    const ctx = makeValidPlacementCtx({
+      plot: undefined,
+      terrainColumns: makeGrassColumns(420, -100, 5, 5),
+    });
+    const result = validateHarthmereBuildingPlacement(req, ctx);
+    assert.equal(result.ok, false);
+    assert.ok(result.errors.includes("inside_grove_build_reserve"));
+  });
+
+  it("allows ordinary wilderness construction immediately outside the ring", function () {
+    const req = makePlacementReq({
+      plotId: undefined,
+      origin: { x: 383, y: 64, z: -100 },
+    });
+    const ctx = makeValidPlacementCtx({
+      plot: undefined,
+      terrainColumns: makeGrassColumns(383, -100, 5, 5),
+    });
+    const result = validateHarthmereBuildingPlacement(req, ctx);
+    assert.equal(result.ok, true, result.errors.join(", "));
   });
 });
 
@@ -234,7 +265,9 @@ describe("validateHarthmereBuildingPlacement — unbuildable terrain", function 
       assert.strictEqual(result.ok, false);
       assert.ok(
         result.errors.some((e) => e.startsWith("terrain_not_buildable:")),
-        `Expected terrain_not_buildable error for ${tt}, got: ${result.errors.join(", ")}`
+        `Expected terrain_not_buildable error for ${tt}, got: ${result.errors.join(
+          ", "
+        )}`
       );
     });
   }
@@ -250,7 +283,9 @@ describe("validateHarthmereBuildingPlacement — unbuildable terrain", function 
     assert.strictEqual(result.ok, false);
     assert.ok(
       result.errors.some((e) => e.startsWith("terrain_type_not_allowed:")),
-      `Expected terrain_type_not_allowed error, got: ${result.errors.join(", ")}`
+      `Expected terrain_type_not_allowed error, got: ${result.errors.join(
+        ", "
+      )}`
     );
   });
 });
@@ -318,7 +353,9 @@ describe("validateHarthmereBuildingPlacement — foundation support", function (
     const ctx = makeValidPlacementCtx({ terrainColumns: cols });
     const result = validateHarthmereBuildingPlacement(makePlacementReq(), ctx);
     assert.strictEqual(result.ok, false);
-    assert.ok(result.errors.some((e) => e.startsWith("insufficient_foundation:")));
+    assert.ok(
+      result.errors.some((e) => e.startsWith("insufficient_foundation:"))
+    );
   });
 
   it("accepts when foundation count meets exactly required threshold", function () {
@@ -360,7 +397,9 @@ describe("validateHarthmereBuildingPlacement — plot boundary", function () {
     const result = validateHarthmereBuildingPlacement(req, ctx);
     assert.strictEqual(result.ok, false);
     assert.ok(
-      result.errors.some((e) => e.startsWith("structure_outside_plot_boundary:")),
+      result.errors.some((e) =>
+        e.startsWith("structure_outside_plot_boundary:")
+      ),
       `Expected outside boundary error, got: ${result.errors.join(", ")}`
     );
   });
@@ -454,7 +493,12 @@ describe("validateHarthmereBuildingPlacement — clipping", function () {
       nearbyStructures: [
         {
           structureId: "existing_house_1",
-          minX: 10, maxX: 15, minY: 64, maxY: 70, minZ: 5, maxZ: 12,
+          minX: 10,
+          maxX: 15,
+          minY: 64,
+          maxY: 70,
+          minZ: 5,
+          maxZ: 12,
           isProtectedInfrastructure: false,
         },
       ],
@@ -473,7 +517,12 @@ describe("validateHarthmereBuildingPlacement — clipping", function () {
       nearbyStructures: [
         {
           structureId: "npc_bridge_001",
-          minX: 9, maxX: 14, minY: 64, maxY: 70, minZ: 5, maxZ: 12,
+          minX: 9,
+          maxX: 14,
+          minY: 64,
+          maxY: 70,
+          minZ: 5,
+          maxZ: 12,
           isProtectedInfrastructure: true,
         },
       ],
@@ -481,8 +530,12 @@ describe("validateHarthmereBuildingPlacement — clipping", function () {
     const result = validateHarthmereBuildingPlacement(req, ctx);
     assert.strictEqual(result.ok, false);
     assert.ok(
-      result.errors.some((e) => e.startsWith("clips_protected_infrastructure:")),
-      `Expected clips_protected_infrastructure, got: ${result.errors.join(", ")}`
+      result.errors.some((e) =>
+        e.startsWith("clips_protected_infrastructure:")
+      ),
+      `Expected clips_protected_infrastructure, got: ${result.errors.join(
+        ", "
+      )}`
     );
   });
 
@@ -493,7 +546,12 @@ describe("validateHarthmereBuildingPlacement — clipping", function () {
       nearbyStructures: [
         {
           structureId: "far_house",
-          minX: 14, maxX: 20, minY: 64, maxY: 70, minZ: 5, maxZ: 12,
+          minX: 14,
+          maxX: 20,
+          minY: 64,
+          maxY: 70,
+          minZ: 5,
+          maxZ: 12,
           isProtectedInfrastructure: false,
         },
       ],
@@ -506,14 +564,37 @@ describe("validateHarthmereBuildingPlacement — clipping", function () {
     const req = makePlacementReq();
     const ctx = makeValidPlacementCtx({
       nearbyStructures: [
-        { structureId: "house_a", minX: 9, maxX: 15, minY: 64, maxY: 70, minZ: 5, maxZ: 12, isProtectedInfrastructure: false },
-        { structureId: "house_b", minX: 5, maxX: 9, minY: 64, maxY: 70, minZ: 9, maxZ: 14, isProtectedInfrastructure: false },
+        {
+          structureId: "house_a",
+          minX: 9,
+          maxX: 15,
+          minY: 64,
+          maxY: 70,
+          minZ: 5,
+          maxZ: 12,
+          isProtectedInfrastructure: false,
+        },
+        {
+          structureId: "house_b",
+          minX: 5,
+          maxX: 9,
+          minY: 64,
+          maxY: 70,
+          minZ: 9,
+          maxZ: 14,
+          isProtectedInfrastructure: false,
+        },
       ],
     });
     const result = validateHarthmereBuildingPlacement(req, ctx);
     assert.strictEqual(result.ok, false);
-    const clipErrors = result.errors.filter((e) => e.startsWith("clips_existing_structure:"));
-    assert.ok(clipErrors.length >= 2, `Expected ≥2 clip errors, got: ${result.errors.join(", ")}`);
+    const clipErrors = result.errors.filter((e) =>
+      e.startsWith("clips_existing_structure:")
+    );
+    assert.ok(
+      clipErrors.length >= 2,
+      `Expected ≥2 clip errors, got: ${result.errors.join(", ")}`
+    );
   });
 });
 
@@ -556,8 +637,13 @@ describe("validateHarthmereBuildingPlacement — NPC route clearance", function 
     });
     const result = validateHarthmereBuildingPlacement(req, ctx);
     assert.strictEqual(result.ok, false);
-    const wpErrors = result.errors.filter((e) => e.startsWith("blocks_npc_route_waypoint:"));
-    assert.ok(wpErrors.length >= 2, `Expected ≥2 waypoint errors, got: ${result.errors.join(", ")}`);
+    const wpErrors = result.errors.filter((e) =>
+      e.startsWith("blocks_npc_route_waypoint:")
+    );
+    assert.ok(
+      wpErrors.length >= 2,
+      `Expected ≥2 waypoint errors, got: ${result.errors.join(", ")}`
+    );
   });
 });
 
@@ -611,7 +697,12 @@ describe("validateHarthmereBuildingPlacement — entrance clearance", function (
       nearbyStructures: [
         {
           structureId: "blocker_001",
-          minX: 3, maxX: 12, minY: 60, maxY: 70, minZ: 0, maxZ: 5,
+          minX: 3,
+          maxX: 12,
+          minY: 60,
+          maxY: 70,
+          minZ: 0,
+          maxZ: 5,
           isProtectedInfrastructure: false,
         },
       ],
@@ -619,7 +710,11 @@ describe("validateHarthmereBuildingPlacement — entrance clearance", function (
     const result = validateHarthmereBuildingPlacement(req, ctx);
     assert.strictEqual(result.ok, false);
     assert.ok(
-      result.errors.some((e) => e.startsWith("entrance_clearance_blocked_by:") || e.startsWith("clips_existing_structure:")),
+      result.errors.some(
+        (e) =>
+          e.startsWith("entrance_clearance_blocked_by:") ||
+          e.startsWith("clips_existing_structure:")
+      ),
       `Expected entrance or clip error, got: ${result.errors.join(", ")}`
     );
   });
@@ -643,11 +738,16 @@ describe("validateHarthmereBuildingPlacement — road access", function () {
       questTriggerAreas: [],
       hasRoadAccess: false,
       minRoadDistanceVoxels: 10,
-      plot: makeResidentialPlot({ plotType: "commercial", totalAreaVoxels: 2500 }),
+      plot: makeResidentialPlot({
+        plotType: "commercial",
+        totalAreaVoxels: 2500,
+      }),
     };
     const result = validateHarthmereBuildingPlacement(req, ctx);
     assert.strictEqual(result.ok, false);
-    assert.ok(result.errors.includes("no_road_access_within_required_distance"));
+    assert.ok(
+      result.errors.includes("no_road_access_within_required_distance")
+    );
   });
 
   it("allows small_house placement without road access (not required)", function () {
@@ -658,7 +758,10 @@ describe("validateHarthmereBuildingPlacement — road access", function () {
   });
 
   it("allows shop placement when road access is available", function () {
-    const req = makePlacementReq({ structureTypeId: "shop", origin: { x: 5, y: 64, z: 5 } });
+    const req = makePlacementReq({
+      structureTypeId: "shop",
+      origin: { x: 5, y: 64, z: 5 },
+    });
     const ctx: HarthmereBuildingPlacementContext = {
       terrainColumns: makeGrassColumns(5, 5, 6, 6),
       nearbyStructures: [],
@@ -666,7 +769,10 @@ describe("validateHarthmereBuildingPlacement — road access", function () {
       questTriggerAreas: [],
       hasRoadAccess: true,
       minRoadDistanceVoxels: 10,
-      plot: makeResidentialPlot({ plotType: "commercial", totalAreaVoxels: 2500 }),
+      plot: makeResidentialPlot({
+        plotType: "commercial",
+        totalAreaVoxels: 2500,
+      }),
     };
     const result = validateHarthmereBuildingPlacement(req, ctx);
     assert.ok(result.ok, result.errors.join(", "));
@@ -684,7 +790,16 @@ describe("validateHarthmereBuildingPlacement — multiple violations", function 
     const ctx: HarthmereBuildingPlacementContext = {
       terrainColumns: cols,
       nearbyStructures: [
-        { structureId: "blocker", minX: 9, maxX: 15, minY: 64, maxY: 70, minZ: 5, maxZ: 12, isProtectedInfrastructure: false },
+        {
+          structureId: "blocker",
+          minX: 9,
+          maxX: 15,
+          minY: 64,
+          maxY: 70,
+          minZ: 5,
+          maxZ: 12,
+          isProtectedInfrastructure: false,
+        },
       ],
       npcRouteWaypoints: [{ x: 6, z: 7, clearanceRadiusVoxels: 1 }],
       questTriggerAreas: [{ minX: 6, maxX: 9, minZ: 6, maxZ: 9 }],
@@ -694,7 +809,10 @@ describe("validateHarthmereBuildingPlacement — multiple violations", function 
     };
     const result = validateHarthmereBuildingPlacement(req, ctx);
     assert.strictEqual(result.ok, false);
-    assert.ok(result.errors.length >= 3, `Expected ≥3 errors, got: ${result.errors.join(", ")}`);
+    assert.ok(
+      result.errors.length >= 3,
+      `Expected ≥3 errors, got: ${result.errors.join(", ")}`
+    );
   });
 });
 
@@ -798,7 +916,9 @@ describe("validateHarthmereBuildingDemolition", function () {
       hasActiveQuestNpcs: false,
     });
     assert.strictEqual(result.ok, false);
-    assert.ok(result.errors.includes("cannot_demolish_with_active_vendor_inside"));
+    assert.ok(
+      result.errors.includes("cannot_demolish_with_active_vendor_inside")
+    );
   });
 
   it("allows demolition but emits warning when active quest NPCs are present", function () {
@@ -810,7 +930,11 @@ describe("validateHarthmereBuildingDemolition", function () {
       hasActiveQuestNpcs: true,
     });
     assert.ok(result.ok, result.errors.join(", "));
-    assert.ok(result.warnings.includes("demolition_may_break_active_quest_check_with_gm"));
+    assert.ok(
+      result.warnings.includes(
+        "demolition_may_break_active_quest_check_with_gm"
+      )
+    );
   });
 
   it("accumulates both active-residents and active-vendor errors together", function () {
@@ -823,7 +947,9 @@ describe("validateHarthmereBuildingDemolition", function () {
     });
     assert.strictEqual(result.ok, false);
     assert.ok(result.errors.includes("cannot_demolish_with_active_residents"));
-    assert.ok(result.errors.includes("cannot_demolish_with_active_vendor_inside"));
+    assert.ok(
+      result.errors.includes("cannot_demolish_with_active_vendor_inside")
+    );
   });
 });
 
@@ -858,7 +984,10 @@ describe("validateHarthmerePlotClaim", function () {
   }
 
   it("succeeds when plot is unclaimed and actor has gold", function () {
-    const result = validateHarthmerePlotClaim(makePlotClaimReq(), makePlotClaimCtx());
+    const result = validateHarthmerePlotClaim(
+      makePlotClaimReq(),
+      makePlotClaimCtx()
+    );
     assert.ok(result.ok, result.errors.join(", "));
     assert.strictEqual(result.goldCost, 200);
     assert.ok(result.auditTags.includes("plot_claim_approved"));
@@ -895,7 +1024,10 @@ describe("validateHarthmerePlotClaim", function () {
     const result = validateHarthmerePlotClaim(
       makePlotClaimReq(),
       makePlotClaimCtx({
-        plot: makeResidentialPlot({ ownerId: "player_1", plotId: "plot_res_99" }),
+        plot: makeResidentialPlot({
+          ownerId: "player_1",
+          plotId: "plot_res_99",
+        }),
         actorOwnedPlotCount: 1, // already owns 1 (this very plot)
       })
     );

@@ -1,6 +1,5 @@
 import {
   HARTHMERE_BUSINESS_OUTPOSTS,
-  HARTHMERE_BUSINESS_OUTPOST_MAP_MARKERS,
   harthmereBusinessOutpostJobsBoardPosition,
   harthmereBusinessOutpostMapMarkerId,
   type HarthmereBusinessOutpost,
@@ -14,7 +13,10 @@ import {
   harthmereExoticMatterDepositQuestMarkers,
   type HarthmereExoticMatterQuestMarker,
 } from "@/shared/harthmere/exotic_matter_caves";
-import { HARTHMERE_JOBS_BOARD_BUSINESS_TEMPLATES } from "@/shared/harthmere/jobs_board_business_templates";
+import {
+  harthmereJobsBoardFieldTargets,
+  type HarthmereJobsBoardFieldTarget,
+} from "@/shared/harthmere/jobs_board_field_targets";
 import {
   LIVE_ENTITY_HELPER_QUEST_TARGET_MARKERS,
   type LiveEntityHelperQuestTargetMarker,
@@ -24,7 +26,7 @@ import {
   type HarthmereJobsBoardMuckBountyTarget,
 } from "@/shared/harthmere/jobs_board_muck_bounty_targets";
 import { resolveHarthmereProductionMarkerPosition } from "@/shared/harthmere/production_terrain_placement_map";
-import { harthmereGatheringAuthorityNode } from "@/shared/harthmere/gathering_node_authority";
+import { HARTHMERE_GATHERING_AUTHORITY_NODES } from "@/shared/harthmere/gathering_node_authority";
 import { groveLandmarkWorldPosition } from "@/shared/harthmere/grove/grove_waypoints";
 import {
   SNAPSHOT_GROVE_LANDMARKS,
@@ -43,6 +45,7 @@ export type HarthmereJobsBoardQuestMarkerSource =
   | "business_outpost_jobs_board"
   | "business_owner"
   | "business_template_target"
+  | "business_outpost_work_station"
   | "exotic_matter_deposit"
   | "muck_bounty_target"
   | "fallback";
@@ -79,27 +82,19 @@ function markerFromLiveEntityHelper(
   };
 }
 
+// HARTHMERE_JOB_ITEM_SOURCE_MARKERS (2026-07-29):
+// Only two gathering nodes used to be registered here, so any job whose item
+// source resolved to a different node (farm crops, temple herbs, hunting
+// grounds, ward scrap) produced an acquisition hint pointing at a marker id
+// that no map surface could resolve — the player got told where to go and got
+// no pin. Register the whole authored gathering catalogue.
 const HARTHMERE_JOBS_BOARD_ITEM_SOURCE_MARKERS: readonly HarthmereJobsBoardQuestMarkerPosition[] =
-  [
-    {
-      markerId: "harthmere_orchard_softwood",
-      label: "Orchard Softwood Branches",
-      position: [
-        ...(harthmereGatheringAuthorityNode("harthmere_orchard_softwood")
-          ?.position ?? [2068, 53, -118]),
-      ] as Vec3,
-      source: "job_item_source",
-    },
-    {
-      markerId: "harthmere_north_iron_vein",
-      label: "North Road Iron Vein",
-      position: [
-        ...(harthmereGatheringAuthorityNode("harthmere_north_iron_vein")
-          ?.position ?? [2103, 53, -270]),
-      ] as Vec3,
-      source: "job_item_source",
-    },
-  ];
+  HARTHMERE_GATHERING_AUTHORITY_NODES.map((node) => ({
+    markerId: node.id,
+    label: node.name,
+    position: [...node.position] as Vec3,
+    source: "job_item_source" as const,
+  }));
 
 function businessOutpostJobsBoardMarkerId(outpost: HarthmereBusinessOutpost) {
   return `${outpost.outpostId}_job_board`;
@@ -128,35 +123,31 @@ function markerFromBusinessOutpostJobsBoard(
   };
 }
 
-function businessOutpostForTemplate(
-  template: (typeof HARTHMERE_JOBS_BOARD_BUSINESS_TEMPLATES)[number]
-) {
-  return HARTHMERE_BUSINESS_OUTPOSTS.find(
-    (outpost) => outpost.businessType === template.businessType
-  );
-}
-
-function markerFromBusinessTemplate(
-  template: (typeof HARTHMERE_JOBS_BOARD_BUSINESS_TEMPLATES)[number]
-): HarthmereJobsBoardQuestMarkerPosition | undefined {
-  const outpost = businessOutpostForTemplate(template);
-  const marker = outpost
-    ? HARTHMERE_BUSINESS_OUTPOST_MAP_MARKERS.find(
-        (entry) => entry.outpostId === outpost.outpostId
-      )
-    : undefined;
-  if (!marker || !template.mapMarkerId) {
-    return undefined;
-  }
-  const targetName =
-    template.requirements.find((requirement) => requirement.targetName)
-      ?.targetName ?? template.label;
-  return {
-    markerId: template.mapMarkerId,
-    label: targetName,
-    position: [...marker.position] as Vec3,
-    source: "business_template_target",
+// HARTHMERE_JOBS_BOARD_FIELD_TARGET_MARKERS
+// Business job-template targets and outpost starter work stations resolve to
+// the PHYSICAL prop on the shop apron (jobs_board_field_targets), not to the
+// outpost's centre marker. Both the marker id and the requirement target id are
+// registered so the server's field-proximity check and the client's map pin
+// agree with the object the player actually presses F on.
+function markersFromFieldTarget(
+  target: HarthmereJobsBoardFieldTarget
+): HarthmereJobsBoardQuestMarkerPosition[] {
+  const source: HarthmereJobsBoardQuestMarkerSource =
+    target.source === "business_outpost_work_station"
+      ? "business_outpost_work_station"
+      : "business_template_target";
+  const base = {
+    label: target.label,
+    position: [...target.position] as Vec3,
+    source,
   };
+  const markers: HarthmereJobsBoardQuestMarkerPosition[] = [
+    { markerId: target.mapMarkerId, ...base },
+  ];
+  if (target.targetId !== target.mapMarkerId) {
+    markers.push({ markerId: target.targetId, ...base });
+  }
+  return markers;
 }
 
 // HARTHMERE_DELIVERY_RECIPIENT: a delivery whose recipient is a PERSON
@@ -195,7 +186,33 @@ function markerFromMuckBountyTarget(
   };
 }
 
-export function harthmereJobsBoardQuestMarkerPositions(): readonly HarthmereJobsBoardQuestMarkerPosition[] {
+// HARTHMERE_MARKER_TABLE_MEMOIZATION (2026-07-29):
+// This table is derived entirely from static module data, but it used to be
+// rebuilt from scratch on EVERY lookup — including inside the jobs-board
+// completion reducer, which resolves a marker per requirement. With ~1.5k
+// landmarks, outposts, owners, deposits, bounty targets and field targets that
+// turned a single job turn-in into hundreds of thousands of allocations and was
+// the dominant cost in both the authority tests and the browser E2E run.
+// Build once, then serve from an id index.
+let cachedMarkerPositions:
+  | readonly HarthmereJobsBoardQuestMarkerPosition[]
+  | undefined;
+let cachedMarkerIndex:
+  | ReadonlyMap<string, HarthmereJobsBoardQuestMarkerPosition>
+  | undefined;
+const cachedRuntimeMarkerById = new Map<
+  string,
+  HarthmereJobsBoardQuestMarkerPosition
+>();
+
+/** Test-only: drop the memoized marker tables. */
+export function resetHarthmereJobsBoardQuestMarkerCachesForTest() {
+  cachedMarkerPositions = undefined;
+  cachedMarkerIndex = undefined;
+  cachedRuntimeMarkerById.clear();
+}
+
+function buildHarthmereJobsBoardQuestMarkerPositions(): readonly HarthmereJobsBoardQuestMarkerPosition[] {
   return [
     ...SNAPSHOT_GROVE_LANDMARKS.map(markerFromSnapshotLandmark),
     ...LIVE_ENTITY_HELPER_QUEST_TARGET_MARKERS.map(markerFromLiveEntityHelper),
@@ -205,16 +222,33 @@ export function harthmereJobsBoardQuestMarkerPositions(): readonly HarthmereJobs
       markerFromBusinessOutpostJobsBoard(outpost),
     ]),
     ...HARTHMERE_BUSINESS_OWNER_NPC_SEEDS.map(markerFromBusinessOwner),
-    ...HARTHMERE_JOBS_BOARD_BUSINESS_TEMPLATES.map(
-      markerFromBusinessTemplate
-    ).filter((marker): marker is HarthmereJobsBoardQuestMarkerPosition =>
-      Boolean(marker)
-    ),
+    ...harthmereJobsBoardFieldTargets().flatMap(markersFromFieldTarget),
     ...harthmereExoticMatterDepositQuestMarkers().map(
       markerFromExoticMatterDeposit
     ),
     ...HARTHMERE_JOBS_BOARD_MUCK_BOUNTY_TARGETS.map(markerFromMuckBountyTarget),
   ];
+}
+
+export function harthmereJobsBoardQuestMarkerPositions(): readonly HarthmereJobsBoardQuestMarkerPosition[] {
+  if (!cachedMarkerPositions) {
+    cachedMarkerPositions = buildHarthmereJobsBoardQuestMarkerPositions();
+  }
+  return cachedMarkerPositions;
+}
+
+function harthmereJobsBoardQuestMarkerIndex() {
+  if (!cachedMarkerIndex) {
+    const index = new Map<string, HarthmereJobsBoardQuestMarkerPosition>();
+    // First writer wins, matching the previous `Array.find` semantics.
+    for (const marker of harthmereJobsBoardQuestMarkerPositions()) {
+      if (!index.has(marker.markerId)) {
+        index.set(marker.markerId, marker);
+      }
+    }
+    cachedMarkerIndex = index;
+  }
+  return cachedMarkerIndex;
 }
 
 export function harthmereJobsBoardQuestMarkerPositionForId(
@@ -223,14 +257,25 @@ export function harthmereJobsBoardQuestMarkerPositionForId(
   if (!markerId) {
     return undefined;
   }
-  return harthmereJobsBoardQuestMarkerPositions().find(
-    (marker) => marker.markerId === markerId
-  );
+  return harthmereJobsBoardQuestMarkerIndex().get(markerId);
 }
 
 export function harthmereJobsBoardQuestMarkerRuntimePosition(
   marker: HarthmereJobsBoardQuestMarkerPosition
 ): HarthmereJobsBoardQuestMarkerPosition {
+  // Registered jobs-board field targets are physical procedural props. Their
+  // authored position is therefore the runtime authority: applying an older
+  // production-placement recommendation here can move the map/completion
+  // target 20+ metres away from the object the player actually interacts with.
+  if (
+    marker.source === "business_template_target" ||
+    marker.source === "business_outpost_work_station"
+  ) {
+    return {
+      ...marker,
+      position: [...marker.position] as Vec3,
+    };
+  }
   return {
     ...marker,
     position: resolveHarthmereProductionMarkerPosition({
@@ -243,10 +288,20 @@ export function harthmereJobsBoardQuestMarkerRuntimePosition(
 export function harthmereJobsBoardQuestMarkerRuntimePositionForId(
   markerId: string | undefined
 ): HarthmereJobsBoardQuestMarkerPosition | undefined {
+  if (!markerId) {
+    return undefined;
+  }
+  const cached = cachedRuntimeMarkerById.get(markerId);
+  if (cached) {
+    return cached;
+  }
   const marker = harthmereJobsBoardQuestMarkerPositionForId(markerId);
-  return marker
-    ? harthmereJobsBoardQuestMarkerRuntimePosition(marker)
-    : undefined;
+  if (!marker) {
+    return undefined;
+  }
+  const runtime = harthmereJobsBoardQuestMarkerRuntimePosition(marker);
+  cachedRuntimeMarkerById.set(markerId, runtime);
+  return runtime;
 }
 
 export function harthmereJobsBoardQuestMarkerPositionForTodo(input: {

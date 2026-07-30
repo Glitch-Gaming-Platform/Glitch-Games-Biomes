@@ -666,11 +666,14 @@ describe("mmo_jobs_board_authority — issuers and abuse protections", () => {
       for (const req of template.requirements) {
         if (req.itemId) actorInventoryItems[req.itemId] = req.count ?? 1;
       }
+      const authoritativeEquippedToolActions = template.requirements
+        .map((requirement) => requirement.requiredToolAction)
+        .filter((action): action is string => Boolean(action));
       const questDone = mutate(
         accepted.jobsBoard,
         "complete_job_quest",
         { jobId: job.jobId, completedTargetId: template.targetId },
-        { actorInventoryItems },
+        { actorInventoryItems, authoritativeEquippedToolActions },
         "seeker"
       );
       assert.deepEqual(questDone.warnings, [], `${template.templateId}:quest`);
@@ -1149,8 +1152,15 @@ describe("mmo_jobs_board_authority — field target proximity", () => {
       },
       "seeker"
     );
-    assert.equal(completed.warnings.length, 0, JSON.stringify(completed.warnings));
-    assert.equal(Object.values(completed.jobsBoard.todos)[0].status, "completed");
+    assert.equal(
+      completed.warnings.length,
+      0,
+      JSON.stringify(completed.warnings)
+    );
+    assert.equal(
+      Object.values(completed.jobsBoard.todos)[0].status,
+      "completed"
+    );
   });
 });
 

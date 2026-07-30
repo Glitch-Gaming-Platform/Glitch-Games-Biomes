@@ -10,6 +10,7 @@ import {
   harthmereJobsBoardQuestMarkerRuntimePositionForId,
   harthmereJobsBoardQuestMarkerRuntimePositionForTodo,
 } from "@/shared/harthmere/jobs_board_quest_marker_positions";
+import { harthmereJobsBoardFieldTargetForId } from "@/shared/harthmere/jobs_board_field_targets";
 import {
   harthmereJobMarkerPlan,
   harthmereJobItemSourceGuidance,
@@ -278,6 +279,48 @@ function jobsBoardTodoMarkerPlanForBiomesUI(
   job: HarthmereJobsBoardPosting | undefined
 ): HarthmereJobMarkerPlan {
   const kind = todo.kind ?? job?.kind;
+  const boardMarkerId = jobsBoardTodoBoardMarkerId(snapshot, todo);
+  // Business gather jobs do not finish merely because the materials are in the
+  // backpack: the player must carry them to the registered physical hand-in
+  // prop and interact with it. Keep the field target active until the server
+  // marks the todo complete, while the separate item-source pin continues to
+  // guide any materials that are still missing.
+  if (kind === "gather" && !jobsBoardTodoIsClaimable(todo, job)) {
+    const target = [
+      todo.targetId,
+      job?.targetId,
+      todo.mapMarkerId,
+      job?.mapMarkerId,
+      ...(job?.requirements ?? []).flatMap((requirement) => [
+        requirement.targetId,
+        requirement.mapMarkerId,
+      ]),
+    ]
+      .map((id) => harthmereJobsBoardFieldTargetForId(id))
+      .find(Boolean);
+    if (target) {
+      const targetName =
+        job?.requirements.find(
+          (requirement) =>
+            requirement.targetId === target.targetId ||
+            requirement.mapMarkerId === target.mapMarkerId
+        )?.targetName ?? target.label;
+      const itemsReady = itemRequirementsSatisfied(
+        job,
+        snapshot.inventoryItems
+      );
+      return {
+        kind,
+        phase: "field",
+        activeMarkerId: target.mapMarkerId,
+        boardMarkerId,
+        objectiveMet: false,
+        hint: itemsReady
+          ? `Take the required materials to ${targetName} and press F to complete the job.`
+          : `Gather all required materials, then take them to ${targetName} and press F to complete the job.`,
+      };
+    }
+  }
   const progress: HarthmereJobProgress = {};
   if (jobsBoardTodoIsClaimable(todo, job)) {
     Object.assign(progress, completedJobsBoardTodoProgress(kind, job));
@@ -307,7 +350,7 @@ function jobsBoardTodoMarkerPlanForBiomesUI(
     requirements: job?.requirements,
     fieldMarkerId:
       todo.mapMarkerId ?? job?.mapMarkerId ?? todo.targetId ?? job?.targetId,
-    boardMarkerId: jobsBoardTodoBoardMarkerId(snapshot, todo),
+    boardMarkerId,
     progress,
   });
 }

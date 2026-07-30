@@ -2,6 +2,7 @@
 
 import assert from "assert";
 import type { TriggerState } from "@/shared/ecs/gen/components";
+import { PLAYER_INVENTORY_SLOTS } from "@/shared/game/inventory";
 import type { BiomesId } from "@/shared/ids";
 import {
   NATIVE_QUEST_COMPLETION_BONUS_XP,
@@ -41,10 +42,13 @@ function emptyTriggerState(): TriggerState {
  * `hp` is exposed separately from the `health()` accessor so assertions can
  * read the mutated record directly.
  */
-function carrier(initialHealth?: { hp: number; maxHp: number }) {
+function carrier(
+  initialHealth?: { hp: number; maxHp: number },
+  inventorySlots = PLAYER_INVENTORY_SLOTS
+) {
   const state = emptyTriggerState();
   const hp = initialHealth ? { ...initialHealth } : undefined;
-  const inventory = { items: new Array<unknown>(25) };
+  const inventory = { items: new Array<unknown>(inventorySlots) };
   return {
     state,
     hp,
@@ -194,7 +198,7 @@ describe("native quest step XP", () => {
     assert.equal(levelOne.healingPower, 0);
     assert.equal(levelOne.movementSpeed, 1);
     assert.equal(levelOne.carryCapacity, 25);
-    assert.equal(levelOne.inventorySlots, 25);
+    assert.equal(levelOne.inventorySlots, PLAYER_INVENTORY_SLOTS);
   });
 
   it("raises every requested attribute as level increases", () => {
@@ -244,6 +248,13 @@ describe("native quest step XP", () => {
       entity.inventoryState.items.length,
       harthmereNativeLevelStats(5).inventorySlots
     );
+  });
+
+  it("repairs legacy 26-slot saves to the 40-slot native baseline", () => {
+    const entity = carrier({ hp: 100, maxHp: 100 }, 26);
+    const sync = syncHarthmereNativeLevelStats(entity);
+    assert.equal(sync.inventorySlotsGained, PLAYER_INVENTORY_SLOTS - 26);
+    assert.equal(entity.inventoryState.items.length, PLAYER_INVENTORY_SLOTS);
   });
 
   it("does not resurrect a dead player through a level-up", () => {

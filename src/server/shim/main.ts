@@ -94,6 +94,11 @@ import {
 } from "@/server/shared/world/shim/api";
 import { InMemoryWorld } from "@/server/shared/world/shim/in_memory_world";
 import { loadVoxeloo } from "@/server/shared/voxeloo";
+import {
+  terrainSeedEntityForWrite,
+  terrainSeedMigrationMode,
+  terrainSeedModeRewritesExistingShards,
+} from "@/server/shim/terrain_seed_migration";
 import type { ZrpcServer } from "@/server/shared/zrpc/server";
 import { registerRpcServer } from "@/server/shared/zrpc/server";
 import {
@@ -121,7 +126,7 @@ import {
 } from "@/shared/ecs/gen/components";
 import { WorldMetadataId } from "@/shared/ecs/ids";
 import { isPlayer } from "@/shared/game/players";
-import { loadTerrain } from "@/shared/game/terrain";
+import { loadSeed } from "@/shared/game/terrain";
 import {
   HARTHMERE_EXTENSION_SURFACE_REPAIR_VERSION,
   harthmereSurfaceRepairShardSpecs,
@@ -202,7 +207,27 @@ import {
   harthmereWildsForestBlockAt,
   harthmereWildsGroundCoverAt,
 } from "@/shared/harthmere/harthmere_wilds_forest";
+import {
+  HARTHMERE_STILL_WATER_MAX_REL_Y,
+  HARTHMERE_STILL_WATER_MIN_REL_Y,
+  harthmereStillWaterBlockAt,
+  harthmereStillWaterContains,
+  harthmereStillWaterCarvesAirAt,
+  harthmereStillWaterLevelAt,
+  harthmereStillWaterTouchesAuthoredSpan,
+} from "@/shared/harthmere/harthmere_still_water";
+import {
+  HARTHMERE_RIVER_MAX_CARVE_DEPTH,
+  harthmereRiverBedMaterialAt,
+  harthmereRiverCarvesAirAt,
+  harthmereRiverContains,
+  harthmereRiverCrossingDeckAt,
+  harthmereRiverExcludesVegetation,
+  harthmereRiverTouchesAuthoredSpan,
+  harthmereRiverWaterLevelAt,
+} from "@/shared/harthmere/harthmere_river";
 import { HARTHMERE_TOWN_BACK_BOUNDARY_X } from "@/shared/harthmere/harthmere_town_horizon";
+import { HARTHMERE_ICED_BOARD_ENTITY_IDS } from "@/shared/harthmere/native_request_boards";
 import {
   HARTHMERE_ADDITIVE_TOWN_OFFSET_X,
   HARTHMERE_ADDITIVE_TOWN_OFFSET_Z,
@@ -254,9 +279,10 @@ async function registerShimWorldService(
 // v3 (2026-07-28): the 2026-07-28 HAR capture proved that some SURFACE shards
 // (the shardY=1 layer that owns the flat cap at Y=52) never made it into the
 // live ECS, so those columns fell through to the foundation top at Y=31 and
-// read as 32x32 black pits in the wilds forest. Bumping this version forces
-// the next guarded maintenance seed to rewrite every extension shard from the
-// generator, which is also what puts the forest back over the repaired ground.
+// read as 32x32 black pits in the wilds forest. Bumping this version records a
+// new authored baseline. Ordinary additive deployments still repair only
+// missing/invalid authored seeds; applying a changed baseline to existing
+// shards requires the explicit overlay-preserving terrain migration mode.
 const HARTHMERE_LOCAL_DEV_TERRAIN_BOUNDS_VERSION =
   "harthmere-local-dev-terrain-complete-foundation-v3-surface-solidity";
 const HARTHMERE_LOCAL_DEV_SEED_CONTENT_PASS =
@@ -1451,7 +1477,17 @@ function localDevMaterials() {
     silverOre: terrainId("silver_ore", stone),
     goldOre: terrainId("gold_ore", stone),
     diamondOre: terrainId("diamond_ore", stone),
-    water: terrainId("water", terrainId("blue_wool", stone)),
+    // NOTE: there is deliberately no `water` entry here.
+    //
+    // There is no water block in Biomes — water is the parallel `ShardWater`
+    // field (world-anatomy doc §5.1), and there is no `water.json` under
+    // src/galois/data/blocks. The entry that used to sit here,
+    // `terrainId("water", terrainId("blue_wool", stone))`, therefore always
+    // resolved to its fallback, and every "water" feature in Harthmere — the
+    // river, the Briarfen, the fountain, the trough, the mill race — was
+    // rendered in blue wool. Water is now authored by `harthmere_river.ts` and
+    // `harthmere_still_water.ts` and written into shard_water. Do not add this
+    // key back; a block cannot be water.
   };
 }
 
@@ -2970,8 +3006,13 @@ function harthmereSurfaceMaterial(
 ): TerrainID | undefined {
   const marketDistance = Math.hypot(worldX - 486, worldZ + 209);
 
-  if (inRange(worldX, 604, 630) && inRange(worldZ, -206, -146))
-    return materials.water;
+  // HARTHMERE_RIVER: this rectangle (604..630, -206..-146) used to return
+  // `materials.water` — a sketch of the river's course below the docks, drawn
+  // as flat blocks. Because there is no water block in Biomes it resolved to
+  // its blue_wool fallback, so the "river" was a 27x61 slab of wool. The real
+  // channel now runs through exactly this ground, carved and filled with
+  // ShardWater by `harthmere_river.ts`, so the sketch is removed rather than
+  // left to sit as wool inside the water.
 
   if (marketDistance <= 34)
     return marketDistance <= 9 ? materials.stonePolished : materials.stoneBrick;
@@ -3537,8 +3578,8 @@ function harthmereWildsServerStructureBlockAt(
   const wheelD = Math.hypot(worldX - 374, worldZ + 404);
   if (wheelD >= 3.2 && wheelD <= 4.4 && inRange(relY, 1, 6))
     return materials.oakLog;
-  if (inRect(worldX, worldZ, 370, 378, -407, -401) && relY === 0)
-    return materials.water;
+  // HARTHMERE_STILL_WATER: the mill race. Was a wool patch half-buried under
+  // the mill building; now a real channel alongside its west wall.
 
   // Orchard windmill cross arms, terrain replacement for arch_windmill.
   if (worldZ === 171 && inRange(worldX, 150, 174) && relY === 13)
@@ -3737,11 +3778,17 @@ function harthmereLandmarkBlockAt(
     if (wellD >= 2.6 && wellD <= 4.25) return materials.stoneBrick;
   }
 
-  if (inRect(worldX, worldZ, 482, 490, -213, -205)) {
-    const d = Math.hypot(worldX - 486, worldZ + 209);
-    if (relY === 1 && d <= 4.5)
-      return d <= 2 ? materials.water : materials.stonePolished;
-    if (relY === 2 && d <= 1.5) return materials.water;
+  // HARTHMERE_STILL_WATER: the Market Plaza fountain and the farmyard trough.
+  //
+  // The fountain used to be a wool disc (`materials.water` resolving to
+  // blue_wool) with a floating wool column on top; the trough was a bare 5x5
+  // wool patch on the grass. Both are now real masonry — basin wall, plinth,
+  // bowl rim, trough walls — with the water itself written into shard_water by
+  // the same module. Nothing floats and every basin is proven watertight in
+  // `harthmere_still_water.test.ts`.
+  const stillWaterBlock = harthmereStillWaterBlockAt(worldX, relY, worldZ);
+  if (stillWaterBlock) {
+    return harthmereMat(materials, stillWaterBlock);
   }
 
   const serviceSigns = [
@@ -3791,8 +3838,8 @@ function harthmereLandmarkBlockAt(
 
   if (inRect(worldX, worldZ, 435, 443, -224, -222) && inRange(relY, 1, 2))
     return materials.hay;
-  if (inRect(worldX, worldZ, 455, 459, -246, -242) && relY === 1)
-    return materials.water;
+  // HARTHMERE_STILL_WATER: the farmyard trough beside the hayrack. Was a bare
+  // 5x5 wool patch on the grass; now a walled trough with real water.
   if (worldX === 444 && worldZ === -242 && inRange(relY, 1, 5))
     return relY === 5 ? materials.yellowWool : materials.oakLog;
   if (inRange(worldX, 442, 446) && worldZ === -242 && relY === 4)
@@ -3998,11 +4045,15 @@ function harthmereWideWildsSurfaceMaterial(
     return materials.grass;
   }
 
-  // Briarfen and river extension to the east/south-east.
+  // HARTHMERE_RIVER: the Briarfen wetland the Brell runs through.
+  //
+  // This used to scatter `materials.water` at 1-in-17 across the whole
+  // rectangle. There is no water *block* in Biomes — water is the separate
+  // `ShardWater` field — so `terrainId("water", ...)` fell through to its
+  // blue_wool fallback and speckled the wetland with wool. The real river is
+  // now carved and filled by `harthmere_river.ts`; what is left here is the
+  // damp ground around it.
   if (worldX > 630 && worldZ > -360 && worldZ < 180) {
-    if (hash % 17 === 0) {
-      return materials.water;
-    }
     if (hash % 5 === 0) {
       return materials.moss;
     }
@@ -4052,6 +4103,16 @@ function harthmereWideWildsSurfaceMaterial(
 // which both live east of the town's back boundary.
 function harthmereWildsForestAllowed(authoredX: number, authoredZ: number) {
   if (isInsideAuthoredHarthmereTown(authoredX, authoredZ, 22)) return false;
+  // HARTHMERE_RIVER: nothing grows in the channel or close enough to lean over
+  // it. A trunk in the water has no soil beneath it and Gaia's tree_growth
+  // would decay the whole tree two minutes after load; a canopy overhanging the
+  // water would raise skyOcclusion above the fishing `inOpen` threshold and
+  // silently make the river's fish unrollable.
+  if (harthmereRiverExcludesVegetation(authoredX, authoredZ)) return false;
+  // Same reasoning for the mill race, the fountain and the trough: a trunk in
+  // the water has no soil under it, and undergrowth inside a basin looks like
+  // a bug.
+  if (harthmereStillWaterContains(authoredX, authoredZ)) return false;
   // Roads keep a nine-voxel margin. This is the rule the old (dead)
   // isWideWildsTreeCenter used, and it is why a forest this dense still leaves
   // every route across the map open.
@@ -4969,8 +5030,14 @@ function harthmereWideWildsBlockAt(
   }
 
   // Small wilderness harvest markers. These are sparse and never placed on the
-  // road so the player can cross the whole map without getting wedged.
-  if (relY === 1 && !isHarthmereWideWildsRoad(worldX, worldZ, 9)) {
+  // road so the player can cross the whole map without getting wedged, nor over
+  // the river, where they would float above the water.
+  if (
+    relY === 1 &&
+    !isHarthmereWideWildsRoad(worldX, worldZ, 9) &&
+    !harthmereRiverContains(worldX, worldZ) &&
+    !harthmereStillWaterContains(worldX, worldZ)
+  ) {
     const hash = localDevWildsHash(worldX, worldZ, 47);
     if (hash % 863 === 0) {
       return materials.woodCrate;
@@ -5596,6 +5663,44 @@ function makeLocalDevTerrainShard(
                 ? materials.stone
                 : materials.dirt;
 
+            // HARTHMERE_RIVER: the Brell is cut out of the flat plane. The
+            // authored bridge deck and the module's own plank crossings are
+            // excluded from the carve, so every route across the map survives.
+            // `relY` here is negative going down, matching the river module.
+            const riverRelY = worldY - STARTER_TOWN_GROUND_Y;
+            // HARTHMERE_STILL_WATER: the mill race is cut into the surface.
+            // The fountain and trough sit ABOVE grade and are authored through
+            // `starterTownAboveGroundBlockAt` instead, like the rest of the
+            // town's props.
+            if (
+              harthmereStillWaterCarvesAirAt(
+                authoredWorldX,
+                riverRelY,
+                authoredWorldZ
+              )
+            ) {
+              continue;
+            }
+            const riverBed = harthmereRiverBedMaterialAt(
+              authoredWorldX,
+              riverRelY,
+              authoredWorldZ
+            );
+            if (riverBed) {
+              seedBlock.set(x, y, z, harthmereMat(materials, riverBed));
+              continue;
+            }
+            if (
+              harthmereRiverCarvesAirAt(
+                authoredWorldX,
+                riverRelY,
+                authoredWorldZ
+              )
+            ) {
+              // The volume block starts empty, so air needs no write.
+              continue;
+            }
+
             if (depth === 0) {
               if (
                 harthmereIsBellbinderSurfaceOpening(
@@ -5606,6 +5711,15 @@ function makeLocalDevTerrainShard(
               ) {
                 // Leave the chapel stair mouth as real air. The volume block
                 // starts empty, so no explicit zero write is required.
+                continue;
+              }
+              const riverDeck = harthmereRiverCrossingDeckAt(
+                authoredWorldX,
+                riverRelY,
+                authoredWorldZ
+              );
+              if (riverDeck) {
+                seedBlock.set(x, y, z, harthmereMat(materials, riverDeck));
                 continue;
               }
               const authoredGround = starterTownAboveGroundBlockAt(
@@ -5734,24 +5848,104 @@ function makeLocalDevTerrainShard(
     }
     return saveBlock(voxeloo, seedBlock);
   });
-  // A terrain-only rewrite leaves an existing shard_muck tensor untouched.
-  // Production can therefore show purple Muck air over perfectly clean
-  // grass/dirt voxels after a reseed. Every additive Harthmere terrain update
-  // explicitly resets the environmental field to zero as part of the same ECS
-  // change, so the town is clean both materially and atmospherically.
+  // New shards start with a clean atmospheric field. Existing shards keep
+  // their live shard_muck component because it represents simulation/player
+  // state (including robot-protected areas), not authored baseline terrain.
   const muckBuffer = using(
     Tensor.make(voxeloo, [SHARD_DIM, SHARD_DIM, SHARD_DIM], "U8"),
     (muck) => muck.save()
   );
 
-  const entity = {
+  // HARTHMERE_RIVER: the Brell's at-rest body, written as real ShardWater.
+  //
+  // Water is not a block in Biomes (see the world-anatomy doc §5.1) — it is
+  // this parallel field, and it is what `TerrainHelper.getWater`,
+  // `isWaterAtPosition`, `marchWaterDepth`, the swim physics and the water
+  // mesher all read. Level 15 is a source and never depletes (§5.3), which is
+  // exactly the semantics an authored river wants; Gaia's WaterSimulation then
+  // owns spread, falling water and the player's bucket from here.
+  //
+  // The same pass also fills the town's three still-water features — the
+  // Market Plaza fountain, the farmyard trough and the watermill race — which
+  // were all blue wool for the same reason. Shards nowhere near any of it skip
+  // the inner loop entirely.
+  const authoredX0 = harthmereAuthoredWorldX(v0[0]);
+  const authoredX1 = harthmereAuthoredWorldX(v1[0] - 1);
+  const authoredZ0 = harthmereAuthoredWorldZ(v0[2]);
+  const authoredZ1 = harthmereAuthoredWorldZ(v1[2] - 1);
+  const spanX0 = Math.min(authoredX0, authoredX1);
+  const spanX1 = Math.max(authoredX0, authoredX1);
+  const spanZ0 = Math.min(authoredZ0, authoredZ1);
+  const spanZ1 = Math.max(authoredZ0, authoredZ1);
+  const shardHasAuthoredRiver =
+    v0[1] <= STARTER_TOWN_GROUND_Y &&
+    v1[1] > STARTER_TOWN_GROUND_Y - HARTHMERE_RIVER_MAX_CARVE_DEPTH &&
+    harthmereRiverTouchesAuthoredSpan(spanX0, spanX1, spanZ0, spanZ1);
+  const shardHasAuthoredStillWater =
+    v0[1] <= STARTER_TOWN_GROUND_Y + HARTHMERE_STILL_WATER_MAX_REL_Y &&
+    v1[1] > STARTER_TOWN_GROUND_Y + HARTHMERE_STILL_WATER_MIN_REL_Y &&
+    harthmereStillWaterTouchesAuthoredSpan(spanX0, spanX1, spanZ0, spanZ1);
+  const shardHasAuthoredWater =
+    shardHasAuthoredRiver || shardHasAuthoredStillWater;
+  const shardWater = using(
+    Tensor.make(voxeloo, [SHARD_DIM, SHARD_DIM, SHARD_DIM], "U8"),
+    (water) => {
+      // The river's column lives in the handful of voxels directly below the
+      // flat ground plane; the still-water features sit in a small band just
+      // above and below it. Only a shard owning one of those bands can hold
+      // anything.
+      const hasRiver = shardHasAuthoredRiver;
+      const hasStillWater = shardHasAuthoredStillWater;
+      if (hasRiver || hasStillWater) {
+        const values = new Sparse3<number>([SHARD_DIM, SHARD_DIM, SHARD_DIM]);
+        for (let z = 0; z < SHARD_DIM; z += 1) {
+          for (let x = 0; x < SHARD_DIM; x += 1) {
+            const authoredX = harthmereAuthoredWorldX(v0[0] + x);
+            const authoredZ = harthmereAuthoredWorldZ(v0[2] + z);
+            const inRiver =
+              hasRiver && harthmereRiverContains(authoredX, authoredZ);
+            if (!inRiver && !hasStillWater) {
+              continue;
+            }
+            for (let y = 0; y < SHARD_DIM; y += 1) {
+              const relY = v0[1] + y - STARTER_TOWN_GROUND_Y;
+              const level = inRiver
+                ? harthmereRiverWaterLevelAt(authoredX, relY, authoredZ)
+                : harthmereStillWaterLevelAt(authoredX, relY, authoredZ);
+              if (level > 0) {
+                values.set([x, y, z], level);
+              }
+            }
+          }
+        }
+        water.assign(values);
+      }
+      return ShardWater.create(water.saveWrapped());
+    }
+  );
+
+  const authored = {
     id,
     box: Box.create({ v0, v1 }),
     shard_seed: ShardSeed.create({ buffer }),
+    ...(kind === "update" &&
+    process.env.BIOMES_MIGRATE_HARTHMERE_AUTHORED_WATER === "1" &&
+    shardHasAuthoredWater
+      ? { shard_water: shardWater }
+      : {}),
+  };
+  const mutableDefaults = {
     shard_diff: ShardDiff.create(),
     shard_shapes: ShardShapes.create(),
     shard_muck: ShardMuck.create({ buffer: muckBuffer }),
+    shard_water: shardWater,
   };
+  const entity = terrainSeedEntityForWrite({
+    kind,
+    mode: terrainSeedMigrationMode(),
+    authored,
+    mutableDefaults,
+  });
 
   return kind === "create" ? { kind, tick, entity } : { kind, tick, entity };
 }
@@ -5812,8 +6006,8 @@ function makeLocalDevChapter1TerrainShard(
     return saveBlock(voxeloo, seedBlock);
   });
 
-  // Water is a native shard tensor so swimming, camera environment, map tiles,
-  // and the water render pass all observe the same authored basin.
+  // New dungeon shards receive authored water. Existing shards retain their
+  // live water component during overlay-preserving seed migrations.
   const shardWater = using(
     Tensor.make(voxeloo, [SHARD_DIM, SHARD_DIM, SHARD_DIM], "U8"),
     (water) => {
@@ -5846,15 +6040,23 @@ function makeLocalDevChapter1TerrainShard(
     Tensor.make(voxeloo, [SHARD_DIM, SHARD_DIM, SHARD_DIM], "U8"),
     (muck) => muck.save()
   );
-  const entity = {
+  const authored = {
     id,
     box: Box.create({ v0, v1 }),
     shard_seed: ShardSeed.create({ buffer }),
+  };
+  const mutableDefaults = {
     shard_diff: ShardDiff.create(),
     shard_shapes: ShardShapes.create(),
     shard_muck: ShardMuck.create({ buffer: muckBuffer }),
     shard_water: shardWater,
   };
+  const entity = terrainSeedEntityForWrite({
+    kind,
+    mode: terrainSeedMigrationMode(),
+    authored,
+    mutableDefaults,
+  });
   return { kind, tick, entity };
 }
 
@@ -7456,6 +7658,12 @@ function makeLocalDevObsoleteTerrainDeletionChanges(
   tick: number,
   existingIds: Set<BiomesId>
 ) {
+  if (terrainSeedMigrationMode() === "additive") {
+    // Ordinary deployments are append-only. Retired terrain can contain
+    // durable player diffs, buildings, farming ownership, or other overlays;
+    // removing it requires an explicit reviewed migration.
+    return [];
+  }
   const wantedTerrainIds = new Set(
     localDevTerrainShardSpecs().map((spec) => spec.id)
   );
@@ -7913,9 +8121,9 @@ function makeLocalDevMiniWorldChanges(
     }
   }
 
-  // Apply the complete replacement foundation before stripping retired terrain
-  // components. Production clients share Redis during this maintenance pass;
-  // create-first ordering prevents even a temporary hole between batches.
+  // Apply any new or explicitly migrated foundation before stripping retired
+  // terrain components. Production clients share Redis during this maintenance
+  // pass; create-first ordering prevents even a temporary hole between batches.
   changes.push(...staleTerrainDeletes);
 
   const npcStartedAt = Date.now();
@@ -8186,13 +8394,16 @@ async function harthmereUnsolidSurfaceTerrainIds(
     }
     const v0 = shardToVoxelPos(spec.shardX, spec.shardY, spec.shardZ);
     const localGroundY = STARTER_TOWN_GROUND_Y - v0[1];
-    let terrain: ReturnType<typeof loadTerrain> | undefined;
+    let seedTerrain: ReturnType<typeof loadSeed> | undefined;
     try {
-      terrain = loadTerrain(voxeloo, {
+      seedTerrain = loadSeed(voxeloo, {
         id,
         shard_seed: seed,
-        shard_diff: entity?.shardDiff?.() ?? entity?.shard_diff,
       });
+      if (!seedTerrain) {
+        unsolid.add(id);
+        continue;
+      }
       let holed = false;
       for (let localZ = 0; localZ < SHARD_DIM && !holed; localZ += 1) {
         for (let localX = 0; localX < SHARD_DIM; localX += 1) {
@@ -8207,7 +8418,7 @@ async function harthmereUnsolidSurfaceTerrainIds(
           ) {
             continue;
           }
-          if (!Number(terrain.get(localX, localGroundY, localZ))) {
+          if (!Number(seedTerrain.get(localX, localGroundY, localZ))) {
             holed = true;
             break;
           }
@@ -8219,7 +8430,7 @@ async function harthmereUnsolidSurfaceTerrainIds(
     } catch {
       unsolid.add(id);
     } finally {
-      terrain?.delete?.();
+      seedTerrain?.delete?.();
     }
   }
   if (unsolid.size) {
@@ -8426,7 +8637,31 @@ async function seedMissingLocalDevContentIntoExistingWorld(
     .filter((id) => presentExcludedMuck.has(id))
     .map((id) => ({ kind: "delete", tick, id }));
 
-  const toApply: Change[] = [...missing, ...obsoleteDeletes];
+  // HARTHMERE_REQUEST_BOARDS: thaw the four snapshot request boards.
+  //
+  // Fishing, Collective Research, Farming Bounties and Industrial Job Board
+  // all survive in the snapshot complete with their quest_giver components and
+  // their twenty listings — but every one of them carries `iced`, so the whole
+  // catalogue is unreachable. Clearing that one component is the entire
+  // restore; nothing else about them needs rebuilding.
+  //
+  // `iced: null` is how this ECS clears a component on an update, and the pass
+  // is idempotent: a board that is already thawed simply is not in the set.
+  const icedBoardIds = [...HARTHMERE_ICED_BOARD_ENTITY_IDS];
+  const presentBoards = await existingLocalDevIds(
+    icedBoardIds,
+    service,
+    worldApi
+  );
+  const boardThaws: Change[] = icedBoardIds
+    .filter((id) => presentBoards.has(id))
+    .map((id) => ({
+      kind: "update",
+      tick,
+      entity: { id, iced: null },
+    })) as Change[];
+
+  const toApply: Change[] = [...missing, ...obsoleteDeletes, ...boardThaws];
   if (toApply.length === 0) {
     log.info(
       "PRODUCTION_CONTENT_SYNC: all authored content already present; nothing to seed."
@@ -8438,6 +8673,7 @@ async function seedMissingLocalDevContentIntoExistingWorld(
     {
       created: missing.length,
       deletedObsoleteMuck: obsoleteDeletes.length,
+      thawedRequestBoards: boardThaws.length,
       ...firstAndLastLocalDevSeedIds(missing),
     }
   );
@@ -8642,11 +8878,17 @@ async function seedLocalDevTerrainIfMissing(
   for (const id of previousAdditiveTerrainIds) {
     existingIds.add(id);
   }
-  const obsoleteLocalDevIds = shouldUseHarthmereExtraTownOffset()
-    ? [...previousAdditiveTerrainIds]
-    : legacyTerrainIds.filter(
-        (id) => existingIds.has(id) && !activeTerrainIds.has(id)
-      );
+  const terrainMigrationMode = terrainSeedMigrationMode();
+  const shouldRewriteExistingTerrain =
+    terrainSeedModeRewritesExistingShards(terrainMigrationMode);
+  const obsoleteLocalDevIds =
+    terrainMigrationMode === "additive"
+      ? []
+      : shouldUseHarthmereExtraTownOffset()
+      ? [...previousAdditiveTerrainIds]
+      : legacyTerrainIds.filter(
+          (id) => existingIds.has(id) && !activeTerrainIds.has(id)
+        );
   const allExpectedSeedIdsExist = allExpectedLocalDevSeedIdsExist(
     expectedSeedIds,
     existingIds
@@ -8655,20 +8897,6 @@ async function seedLocalDevTerrainIfMissing(
     service,
     worldApi
   );
-  const shouldForceReseed =
-    process.env.BIOMES_FORCE_LOCAL_DEV_TOWN_RESEED === "1";
-  let previousFingerprint: Record<string, unknown> | undefined;
-  if (markerFingerprint) {
-    try {
-      previousFingerprint = JSON.parse(markerFingerprint) as Record<
-        string,
-        unknown
-      >;
-    } catch {
-      // A pre-fingerprint marker is treated as unknown. Missing ids are still
-      // seeded, while existing terrain remains untouched unless forced.
-    }
-  }
   const terrainIdsToBuild = new Set<BiomesId>();
   const addMissing = (ids: readonly BiomesId[]) => {
     for (const id of ids) {
@@ -8680,9 +8908,8 @@ async function seedLocalDevTerrainIfMissing(
   addMissing(terrainIds);
   addMissing(chapter1TerrainIds);
   // HARTHMERE_EXTENSION_SURFACE_SOLIDITY: an existing shard id is not proof of
-  // ground. Rebuild every surface shard whose flat plane at Y=52 is not solid,
-  // so a boot with terrain seeding enabled closes a sunken pit instead of
-  // skipping past it.
+  // authored ground. Inspect shard_seed only: a player's deliberate hole in
+  // shard_diff must never turn into a request to rebuild their terrain.
   const unsolidSurfaceIds = await harthmereUnsolidSurfaceTerrainIds(
     await loadVoxeloo(),
     service,
@@ -8692,27 +8919,13 @@ async function seedLocalDevTerrainIfMissing(
   for (const id of unsolidSurfaceIds) {
     terrainIdsToBuild.add(id);
   }
-  if (shouldForceReseed) {
+  if (shouldRewriteExistingTerrain) {
     for (const id of [...terrainIds, ...chapter1TerrainIds]) {
       terrainIdsToBuild.add(id);
     }
-  } else {
-    if (
-      previousFingerprint?.terrainBoundsVersion !== undefined &&
-      previousFingerprint.terrainBoundsVersion !==
-        HARTHMERE_LOCAL_DEV_TERRAIN_BOUNDS_VERSION
-    ) {
-      for (const id of terrainIds) terrainIdsToBuild.add(id);
-    }
-    if (
-      previousFingerprint?.chapter1DungeonTerrainVersion !==
-      CH1_DUNGEON_TERRAIN_VERSION
-    ) {
-      for (const id of chapter1TerrainIds) terrainIdsToBuild.add(id);
-    }
   }
   if (
-    !shouldForceReseed &&
+    !shouldRewriteExistingTerrain &&
     allExpectedSeedIdsExist &&
     // A current fingerprint over holed terrain is exactly how the sunken-forest
     // pits survived every boot. Solid ground is now part of "already seeded".
@@ -8742,7 +8955,7 @@ async function seedLocalDevTerrainIfMissing(
     return;
   }
   if (
-    !shouldForceReseed &&
+    !shouldRewriteExistingTerrain &&
     allExpectedSeedIdsExist &&
     unsolidSurfaceIds.size === 0 &&
     obsoleteLocalDevIds.length === 0 &&
@@ -8779,6 +8992,21 @@ async function seedLocalDevTerrainIfMissing(
     }
   }
 
+  if (
+    terrainMigrationMode === "additive" &&
+    markerFingerprint &&
+    markerFingerprint !== seedFingerprint
+  ) {
+    log.warn(
+      "Local dev seed content changed; additive terrain mode will preserve every existing terrain shard.",
+      {
+        action:
+          "Use the reviewed --migrate-existing-terrain deployment option only when the authored seed itself must change on existing shards.",
+        terrainShardsToCreateOrRepair: terrainIdsToBuild.size,
+      }
+    );
+  }
+
   const voxeloo = await loadVoxeloo();
   log.warn("Seeding local dev starter town terrain", {
     contentPass: HARTHMERE_LOCAL_DEV_SEED_CONTENT_PASS,
@@ -8787,7 +9015,8 @@ async function seedLocalDevTerrainIfMissing(
     fingerprintVersion: HARTHMERE_LOCAL_DEV_SEED_FINGERPRINT_VERSION,
     markerFingerprintMatched: markerFingerprint === seedFingerprint,
     markerFingerprintPresent: Boolean(markerFingerprint),
-    forceReseed: shouldForceReseed,
+    terrainMigrationMode,
+    rewritesExistingTerrain: shouldRewriteExistingTerrain,
     obsoleteLocalDevIds: obsoleteLocalDevIds.length,
     terrainShardSpecs: terrainIds.length,
     harvestableTreeCenters: HARTHMERE_HARVESTABLE_TREE_CENTERS.length,
@@ -8847,7 +9076,7 @@ async function seedLocalDevTerrainIfMissing(
   }
 
   const terrainUpdateCount = terrainWasAppliedSeparately
-    ? terrainIds.length + chapter1TerrainIds.length
+    ? terrainIdsToBuild.size
     : changes.filter(
         (change) =>
           (change.kind === "create" || change.kind === "update") &&

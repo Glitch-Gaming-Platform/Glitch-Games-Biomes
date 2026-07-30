@@ -38,9 +38,16 @@ import {
   randomHarthmereJobsBoardMuckBountyTarget,
 } from "./jobs_board_muck_bounty_targets";
 import { harthmereJobsBoardQuestMarkerRuntimePositionForId } from "./jobs_board_quest_marker_positions";
+import {
+  harthmereJobsBoardFieldTargets,
+  harthmereOutpostWorkStationAction,
+  harthmereOutpostWorkStationForOutpost,
+  isHarthmereJobsBoardFieldTargetId,
+} from "./jobs_board_field_targets";
 import type { BiomesId } from "@/shared/ids";
 import { shiftHarthmereAuthoredPositionToWorld } from "@/shared/harthmere/coordinate_transform";
 import { HARTHMERE_EXTENSION_FEET_Y } from "@/shared/harthmere/world_extension";
+import { harthmereRequestBoardJobsBoardLocations } from "@/shared/harthmere/native_request_board_locations";
 
 export const HARTHMERE_JOBS_BOARD_AUTHORITY_VERSION =
   "harthmere-jobs-board-authority" as const;
@@ -151,6 +158,17 @@ export interface HarthmereJobsBoardRecord {
   acceptedKinds: HarthmereJobsBoardJobKind[];
   requiresPhysicalInteraction: true;
   createdAtMs: number;
+  /**
+   * HARTHMERE_REQUEST_BOARDS: this board carries authored townsfolk requests
+   * rather than a player posting queue.
+   *
+   * The four original-snapshot boards (Fishing, Farming, Industrial,
+   * Collective Research) are physical boards with the same interaction, marker
+   * and panel as the jobs boards, but their listings come from the native ECS
+   * quest system. Players read and fill them; they do not post to them, and
+   * nothing escrows. `native_request_boards.ts` owns the catalogue.
+   */
+  readOnlyRequestBoard?: true;
 }
 
 export interface HarthmereJobsBoardRequirement {
@@ -350,6 +368,13 @@ export interface HarthmereJobsBoardTodo {
   createdAtMs: number;
   dueAtMs: number;
   questBoardTodo: true;
+  /**
+   * HARTHMERE_SERVICE_UNIT_BASELINE (2026-07-29): repeated-work objectives
+   * ("clear five muckwad clumps") are proven by the server's world-interaction
+   * receipt counter, which is lifetime. This snapshots the counter at accept
+   * time so only work done AFTER accepting counts toward serviceUnits.
+   */
+  serviceProgressBaseline?: Record<string, number>;
 }
 
 export interface HarthmereJobsBoardAuditEntry {
@@ -437,6 +462,12 @@ export interface HarthmereJobsBoardMutationContext {
   authoritativeEquippedToolActions?: string[];
   /** Target ids proven by server position against authored ECS/world markers. */
   authoritativeCompletedTargetIds?: string[];
+  /**
+   * Lifetime server-owned counters of repeatable field work per target id
+   * (world-object interaction receipts). Used with the todo's accept-time
+   * baseline to enforce multi-unit service objectives.
+   */
+  authoritativeServiceProgressCounts?: Record<string, number>;
   economy?: HarthmereProductionEconomyState;
   allowNpcJobPosting?: boolean;
   canManageGuildJobs?: (guildId: string) => boolean;
@@ -621,6 +652,12 @@ export const HARTHMERE_JOBS_BOARD_LOCATIONS: Record<
     createdAtMs: 0,
   },
   ...HARTHMERE_BUSINESS_OUTPOST_JOB_BOARD_LOCATIONS,
+  // HARTHMERE_REQUEST_BOARDS: the four snapshot request boards plus the
+  // Harthmere quay Fishing Board. Registered here so they get exactly the same
+  // physical interaction, map marker and BiomesUI panel as every other board —
+  // and with `acceptedKinds` narrowed to their own single kind, so a Farming
+  // board can never show industrial work.
+  ...harthmereRequestBoardJobsBoardLocations(),
 };
 
 export function defaultHarthmereJobsBoardState(
@@ -675,6 +712,32 @@ function cloneJobsState(state: HarthmereJobsBoardState) {
   return normalizeHarthmereJobsBoardState(JSON.parse(JSON.stringify(state)));
 }
 
+// HARTHMERE_JOBS_ECONOMY_COPY_ON_WRITE (2026-07-29):
+// `makeResult` used to deep-clone the WHOLE production economy with a JSON
+// round-trip on every single jobs-board mutation. In production that object is
+// ~15 MB — almost all of it `businessSystems`, which this reducer never reads
+// or writes — so post/accept/complete each burned ~200 ms of pure serialization
+// before doing any work. The reducer only mutates `businesses[*].balanceGold`
+// and `businesses[*].inventory`, so clone exactly that and share the rest.
+function cloneEconomyForJobsReducer(
+  economy: HarthmereProductionEconomyState
+): HarthmereProductionEconomyState {
+  const businesses: Record<string, HarthmereEconomyBusinessRecord> = {};
+  for (const [businessId, business] of Object.entries(
+    economy.businesses ?? {}
+  )) {
+    const inventory: Record<string, { itemId: string; count: number }> = {};
+    for (const [itemId, stack] of Object.entries(business.inventory ?? {})) {
+      inventory[itemId] = { ...(stack as { itemId: string; count: number }) };
+    }
+    businesses[businessId] = {
+      ...business,
+      inventory,
+    } as HarthmereEconomyBusinessRecord;
+  }
+  return { ...economy, businesses };
+}
+
 function makeResult(
   state: HarthmereJobsBoardState,
   context: HarthmereJobsBoardMutationContext
@@ -682,7 +745,7 @@ function makeResult(
   return {
     next: cloneJobsState(state),
     economy: context.economy
-      ? JSON.parse(JSON.stringify(context.economy))
+      ? cloneEconomyForJobsReducer(context.economy)
       : undefined,
     goldDelta: 0,
     itemDeltas: {},
@@ -1291,11 +1354,45 @@ function createJobPosting(
   result.shared.add(sharedJobKey(jobId));
 }
 
+// HARTHMERE_SERVICE_UNIT_BASELINE: snapshot the lifetime world-interaction
+// counters for every repeated-work target this job names, so progress made
+// before accepting can never satisfy the objective.
+function serviceProgressBaselineForJob(
+  job: HarthmereJobsBoardPosting,
+  context: HarthmereJobsBoardMutationContext
+): Record<string, number> | undefined {
+  const counters = context.authoritativeServiceProgressCounts;
+  if (!counters) return undefined;
+  const baseline: Record<string, number> = {};
+  for (const req of job.requirements) {
+    const targetId = repeatedServiceTargetId(req);
+    if (!targetId) continue;
+    baseline[targetId] = Math.max(0, Math.floor(counters[targetId] ?? 0));
+  }
+  return Object.keys(baseline).length ? baseline : undefined;
+}
+
+/** The target id of a requirement that demands N repeated field actions. */
+function repeatedServiceTargetId(
+  req: HarthmereJobsBoardRequirement
+): string | undefined {
+  if (req.itemId) return undefined;
+  if (!req.targetId) return undefined;
+  const units = Math.max(1, Math.floor(Number(req.serviceUnits ?? 1)));
+  if (units <= 1) return undefined;
+  if (!String(req.serviceKind ?? "").startsWith("cleanup")) return undefined;
+  return req.targetId;
+}
+
 function createTodoForJob(
   result: MutableJobsResult,
   request: HarthmereJobsBoardMutationRequest,
-  job: HarthmereJobsBoardPosting
+  job: HarthmereJobsBoardPosting,
+  context?: HarthmereJobsBoardMutationContext
 ) {
+  const serviceProgressBaseline = context
+    ? serviceProgressBaselineForJob(job, context)
+    : undefined;
   const existing = Object.values(result.next.todos).find(
     (todo) => todo.jobId === job.jobId && todo.actorId === request.actorId
   );
@@ -1315,6 +1412,7 @@ function createTodoForJob(
       existing.createdAtMs = request.nowMs;
       existing.dueAtMs = job.deadlineAtMs;
       existing.questBoardTodo = true;
+      existing.serviceProgressBaseline = serviceProgressBaseline;
       result.touched.add("jobs_board_quest_todo");
       result.shared.add(sharedTodoKey(existing.todoId));
     }
@@ -1339,6 +1437,7 @@ function createTodoForJob(
     createdAtMs: request.nowMs,
     dueAtMs: job.deadlineAtMs,
     questBoardTodo: true,
+    serviceProgressBaseline,
   };
   result.touched.add("jobs_board_quest_todo");
   result.shared.add(sharedTodoKey(todoId));
@@ -1409,7 +1508,7 @@ function acceptJobPosting(
     ...cooldown,
     lastAcceptAtMs: request.nowMs,
   };
-  createTodoForJob(result, request, job);
+  createTodoForJob(result, request, job, context);
   const deliveryPlan = harthmereDeliveryPlan(job);
   if (
     deliveryPlan?.grantOnAccept &&
@@ -1632,6 +1731,51 @@ function completeJobQuest(
       req.targetId &&
       !context.authoritativeCompletedTargetIds?.includes(req.targetId)
     ) {
+      return reject(
+        result,
+        `jobs_board_rejected:wrong_quest_target:${req.targetId}`
+      );
+    }
+    // HARTHMERE_SERVICE_UNITS_ENFORCED (2026-07-29): "clear five muckwad
+    // clumps" used to complete on the FIRST cleanup because nothing counted
+    // the repeats. Count the server's own world-interaction receipts for the
+    // target since this todo was accepted.
+    const repeatedTargetId = repeatedServiceTargetId(req);
+    if (repeatedTargetId && context.authoritativeServiceProgressCounts) {
+      const required = Math.max(1, Math.floor(Number(req.serviceUnits ?? 1)));
+      const current = Math.max(
+        0,
+        Math.floor(
+          Number(
+            context.authoritativeServiceProgressCounts[repeatedTargetId] ?? 0
+          )
+        )
+      );
+      const baseline = Math.max(
+        0,
+        Math.floor(Number(todo.serviceProgressBaseline?.[repeatedTargetId] ?? 0))
+      );
+      if (current - baseline < required) {
+        return reject(
+          result,
+          `jobs_board_rejected:service_units_incomplete:${repeatedTargetId}:${Math.max(
+            0,
+            current - baseline
+          )}/${required}`
+        );
+      }
+    }
+  }
+  // HARTHMERE_ITEM_REQUIREMENT_FIELD_TARGET (2026-07-29):
+  // An item requirement that names a registered physical field target (the
+  // refinery intake, the clinic supply shelf, the inn linen shelf, ...) must
+  // ALSO be handed in AT that object. Previously only requirements without an
+  // itemId were target-verified, so a delivery could be turned in from anywhere
+  // inside the marker's 8m field radius without touching the drop-off.
+  for (const req of job.requirements) {
+    if (!req.itemId || !req.targetId) continue;
+    if (!isHarthmereJobsBoardFieldTargetId(req.targetId)) continue;
+    if (!context.authoritativeCompletedTargetIds?.includes(req.targetId)) {
       return reject(
         result,
         `jobs_board_rejected:wrong_quest_target:${req.targetId}`
@@ -2257,11 +2401,20 @@ function templateBoardScopeMatches(
 // satisfy `actorHasCompletionRequirements`, so we exclude it from auto-seeding.
 // Target-only requirements (no itemId) are always allowed.
 export function harthmereAutoSeedTemplateRequirementsObtainable(
-  requirements: ReadonlyArray<{ itemId?: string }>
+  requirements: ReadonlyArray<{ itemId?: string }> | undefined
 ): boolean {
+  // HARTHMERE_OBTAINABLE_REQUIREMENTS_ROBUSTNESS (2026-07-29): this used to
+  // call `.every` unconditionally. A template with no requirements array made
+  // it throw `requirements.every is not a function`, which is what crashed the
+  // all-jobs browser E2E *after* all 20 job scenarios had already passed and
+  // turned a green run into a red report. A requirement-free template is
+  // trivially obtainable.
+  if (!Array.isArray(requirements)) {
+    return true;
+  }
   return requirements.every(
     (req) =>
-      !req.itemId || isKnownHarthmereJobsBoardExecutableItemId(req.itemId)
+      !req?.itemId || isKnownHarthmereJobsBoardExecutableItemId(req.itemId)
   );
 }
 
@@ -2306,7 +2459,7 @@ export const HARTHMERE_JOBS_BOARD_AUTO_SEED_TEMPLATES: AutoSeedTemplate[] = [
     kind: "repair",
     title: "Patch the Safe-Zone Fence",
     description:
-      "The eastern fence post split again. Replace 3 softwood planks before the next muck flush — bring a repair tool.",
+      "The eastern fence post split again. Bring 3 softwood logs and a repair tool before the next muck flush.",
     requirements: [
       {
         itemId: "softwood_log",
@@ -2675,12 +2828,15 @@ export const HARTHMERE_JOBS_BOARD_AUTO_SEED_TEMPLATES: AutoSeedTemplate[] = [
     kind: "repair",
     title: "Restore the Chapel Stone Engravings",
     description:
-      "Wind and muck have dulled the chapel stone. Bring 4 chisel-grade stones and an etcher's mallet to repair the etchings.",
+      "Wind and muck have dulled the chapel stone. Bring 4 chisel-grade stones and an equipped repair tool to restore the etchings.",
     requirements: [
       {
         itemId: "rough_stone",
         count: 4,
         mapMarkerId: "harthmere_chapel_stone",
+        // The copy has always promised a mallet; the server now enforces it,
+        // and the tool-source guidance routes an unarmed player to Hingehall.
+        requiredToolAction: "repair",
       },
     ],
     rewardGold: { min: 80, max: 150 },
@@ -2896,6 +3052,18 @@ function repeatableDeliveryDropoffCandidatesForBoard(input: {
     return ownerDrops;
   }
 
+  // HARTHMERE_BUSINESS_INTAKE_DROPOFFS (2026-07-29): the business intakes
+  // (refinery intake terminal, forge material bin, trader ration crate, ...)
+  // are now real, always-interactable props on each outpost apron, so a town
+  // delivery can legitimately terminate at the business that ordered it rather
+  // than always being rerouted to a Grove satchel.
+  const businessIntakeDrops = harthmereJobsBoardFieldTargets()
+    .filter((target) => target.source === "business_template_target")
+    .map((target) => ({
+      markerId: target.mapMarkerId,
+      targetId: target.targetId,
+      targetName: target.label,
+    }));
   const placeMarkers =
     input.boardId === HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID
       ? HARTHMERE_GROVE_DELIVERY_DROPOFF_MARKERS
@@ -2903,10 +3071,15 @@ function repeatableDeliveryDropoffCandidatesForBoard(input: {
           ...HARTHMERE_TOWN_DELIVERY_DROPOFF_MARKERS,
           ...HARTHMERE_GROVE_DELIVERY_DROPOFF_MARKERS,
         ];
-  return placeMarkers.map((markerId) => ({
-    markerId,
-    targetId: markerId,
-  }));
+  return [
+    ...placeMarkers.map((markerId) => ({
+      markerId,
+      targetId: markerId,
+    })),
+    ...(input.boardId === HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID
+      ? []
+      : businessIntakeDrops),
+  ];
 }
 
 function randomRepeatableDeliveryPickupMarker(input: {
@@ -3116,7 +3289,8 @@ function hasOpenOutpostStarterJob(
   return Object.values(state.postings).some(
     (job) =>
       job.boardId === boardId &&
-      job.targetId === outpostId &&
+      // Dedupe on the template id only: the starter job's targetId now points
+      // at the outpost work station, not at the outpost itself.
       job.templateId === `business_outpost_starter:${outpostId}` &&
       (job.status === "open" || job.status === "active")
   );
@@ -3145,6 +3319,14 @@ function economyAutoSeedBusinessOutpostStarterJob(
   while (result.next.postings[jobId]) {
     jobId = `harthmere_outpost_starter_${result.next.nextJobNumber++}`;
   }
+  // HARTHMERE_OUTPOST_STARTER_WORK_STATION (2026-07-29):
+  // The starter requirement used to point at the outpost's OWN jobs board
+  // marker, so "sort refinery stock" / "prepare bandages" / "wrap meat" were
+  // satisfied by re-opening the board that issued the job. It now points at the
+  // physical work station on the shop apron, and the server's observed-target
+  // gate requires a real world-object receipt for that station.
+  const workStation = harthmereOutpostWorkStationForOutpost(outpost.outpostId);
+  const workAction = harthmereOutpostWorkStationAction(outpost.businessType);
   const posting: HarthmereJobsBoardPosting = {
     jobId,
     boardId: board.boardId,
@@ -3152,15 +3334,23 @@ function economyAutoSeedBusinessOutpostStarterJob(
     issuerId: outpost.ownerNpcId,
     issuerBusinessType: outpost.businessType,
     title: `${outpost.job.title} at ${outpost.displayName}`,
-    description: `${outpost.job.starterTask} Teaches: ${outpost.job.teaches}`,
+    description: workStation
+      ? `${outpost.job.starterTask} ${
+          workAction ?? "Do the work"
+        } at the ${workStation.label}, then return to the board. Teaches: ${
+          outpost.job.teaches
+        }`
+      : `${outpost.job.starterTask} Teaches: ${outpost.job.teaches}`,
     kind,
     requirements: [
       {
         serviceKind: outpost.businessType,
         serviceUnits: 1,
-        targetId: outpost.outpostId,
-        targetName: outpost.displayName,
-        mapMarkerId: harthmereBusinessOutpostJobMarkerId(outpost),
+        targetId: workStation?.targetId ?? outpost.outpostId,
+        targetName: workStation?.label ?? outpost.displayName,
+        mapMarkerId:
+          workStation?.mapMarkerId ??
+          harthmereBusinessOutpostJobMarkerId(outpost),
       },
     ],
     templateId: `business_outpost_starter:${outpost.outpostId}`,
@@ -3174,8 +3364,9 @@ function economyAutoSeedBusinessOutpostStarterJob(
     deadlineAtMs: request.nowMs + 7 * 24 * 60 * 60 * 1000,
     failurePenaltyGold: Math.round(rewardGold * 0.1),
     requiresFieldWork: true,
-    mapMarkerId: harthmereBusinessOutpostJobMarkerId(outpost),
-    targetId: outpost.outpostId,
+    mapMarkerId:
+      workStation?.mapMarkerId ?? harthmereBusinessOutpostJobMarkerId(outpost),
+    targetId: workStation?.targetId ?? outpost.outpostId,
     abuseFlags: [],
     logs: [
       `auto_seeded_business_outpost_starter:${outpost.outpostId}:${request.nowMs}`,

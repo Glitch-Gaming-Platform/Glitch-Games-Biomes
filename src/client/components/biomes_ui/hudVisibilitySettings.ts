@@ -51,7 +51,7 @@ export const BIOMES_HUD_VISIBILITY_OPTIONS: readonly {
   {
     id: "helpButtons",
     label: "Help Buttons",
-    description: "On-screen shortcut prompts and tutorial cue buttons.",
+    description: "On-screen shortcut prompts for recipes and quests.",
     storageKey: "settings.hud.showHelpButtons",
   },
   {

@@ -144,4 +144,127 @@ describe("Biomes UI main quest selection", () => {
       busted.questId
     );
   });
+
+  it("continues Muck vs. Machine through robot setup before Chapter 1", () => {
+    const completedMuckVsMachine: MapTrackableQuest = {
+      questId: "5739496793885069",
+      title: "Muck vs. Machine",
+      area: "Biomes",
+      status: "completed",
+      kindLabel: "Story Quest",
+    };
+    const gimmeShelter: MapTrackableQuest = {
+      questId: "3741112749915015",
+      title: "Gimme Shelter",
+      area: "Biomes",
+      status: "active",
+      objective: "Place your Robot in the Muck",
+      kindLabel: "Story Quest",
+    };
+    const chapter1: MapTrackableQuest = {
+      questId: "8762000000000000",
+      title: "The Morning After",
+      area: "Biomes",
+      status: "active",
+      kindLabel: "Story Quest",
+    };
+    const selection = biomesUIMainQuestSelectionFromQuestForTest(
+      completedMuckVsMachine,
+      5000
+    );
+
+    assert.equal(
+      mainQuestFromTrackableQuestsForTest(
+        [completedMuckVsMachine, chapter1, gimmeShelter],
+        selection
+      )?.questId,
+      gimmeShelter.questId
+    );
+    assert.equal(
+      defaultMainQuestFromTrackableQuestsForTest([
+        completedMuckVsMachine,
+        chapter1,
+        gimmeShelter,
+      ])?.questId,
+      gimmeShelter.questId
+    );
+    assert.equal(
+      mainQuestFromTrackableQuestsForTest(
+        [{ ...gimmeShelter, status: "completed" }, chapter1],
+        biomesUIMainQuestSelectionFromQuestForTest(gimmeShelter, 6000)
+      )?.questId,
+      chapter1.questId
+    );
+  });
+
+  /**
+   * Battery Not Included is the first post-Gimme snapshot quest the tray marks
+   * `main`, so it becomes available in parallel with an already-running Chapter
+   * 1. It must be selectable and must carry forward like the rest of the main
+   * story, but it must never displace Chapter 1 automatically.
+   */
+  describe("Battery Not Included alongside Chapter 1", () => {
+    const chapter1: MapTrackableQuest = {
+      questId: "8801000000000001",
+      title: "The Morning After",
+      area: "Biomes",
+      status: "active",
+      kindLabel: "Story Quest",
+    };
+    const batteryNotIncluded: MapTrackableQuest = {
+      questId: "4902242789258042",
+      title: "Battery Not Included",
+      area: "The Grove",
+      status: "available",
+      kindLabel: "Story Quest",
+    };
+
+    it("leaves an in-progress Chapter 1 as the automatic default", () => {
+      assert.equal(
+        defaultMainQuestFromTrackableQuestsForTest([
+          batteryNotIncluded,
+          chapter1,
+        ])?.questId,
+        chapter1.questId
+      );
+    });
+
+    it("honours an explicit player selection of Battery Not Included", () => {
+      const selection = biomesUIMainQuestSelectionFromQuestForTest(
+        batteryNotIncluded,
+        7000
+      );
+      assert.equal(
+        mainQuestFromTrackableQuestsForTest(
+          [chapter1, batteryNotIncluded],
+          selection
+        )?.questId,
+        batteryNotIncluded.questId
+      );
+    });
+
+    it("carries tracking forward once Battery Not Included is finished", () => {
+      const selection = biomesUIMainQuestSelectionFromQuestForTest(
+        batteryNotIncluded,
+        8000
+      );
+      assert.equal(
+        mainQuestFromTrackableQuestsForTest(
+          [{ ...batteryNotIncluded, status: "completed" }, chapter1],
+          selection
+        )?.questId,
+        chapter1.questId
+      );
+    });
+
+    it("becomes the default only when no story quest is left ahead of it", () => {
+      assert.equal(
+        defaultMainQuestFromTrackableQuestsForTest([
+          { ...chapter1, status: "completed" },
+          batteryNotIncluded,
+        ])?.questId,
+        batteryNotIncluded.questId
+      );
+    });
+  });
 });

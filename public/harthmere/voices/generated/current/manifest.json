@@ -1,7 +1,7 @@
 {
   "version": "npc-voice-audio-cache-v1",
   "catalogVersion": "harthmere-npc-voice-catalog",
-  "generatedAt": "2026-07-28T09:32:25.111Z",
+  "generatedAt": "2026-07-29T16:15:33.186Z",
   "provider": "elevenlabs",
   "synthesisIdentity": "elevenlabs-natural-v3-speed-102-v1|eleven_v3|mp3_44100_128||||",
   "modelId": "eleven_v3",
@@ -1238,34 +1238,34 @@
       ]
     },
     {
-      "cacheKey": "9581f224f69228e3dfa3b3fffd06048fd8bd50bc5f921cbf1346706a4fec9879",
+      "cacheKey": "0bc7f0e7e76a3d1eea58ceea04fcc5c58dec7e59e6c7c3698ef3f55c0ea55dd6",
+      "cacheKeys": [
+        "0bc7f0e7e76a3d1eea58ceea04fcc5c58dec7e59e6c7c3698ef3f55c0ea55dd6",
+        "1056e3f3d12d1de26986eee944c63fc864e7a6b4bdce2e321b00a11af0fee0b9"
+      ],
       "actorKey": "business_customer:customer_outpost_restaurant_redpot_widower_sael_munn:8810000000019751:widower sael munn:widower sael munn",
       "actorId": "customer_outpost_restaurant_redpot_widower_sael_munn",
       "lineId": "line-01",
       "path": "harthmere/voices/generated/current/business-customer-customer-outpost-restaurant-redpot-widower-sael-munn-widower-s/line-01.mp3",
-      "voice": "azure-speech|voice=en-US-JaneNeural|gender=female|kind=humanoid|style=friendly|styleDegree=1.05|rate=%2B2%25|pitch=-2%25|volume=default|break=182|actor=business_customer%3Acustomer_outpost_restaurant_redpot_widower_sael_munn%3A8810000000019751%3Awidower%20sael%20munn%3Awidower%20sael%20munn",
-      "voiceId": "21m00Tcm4TlvDq8ikWAM",
+      "voice": "azure-speech|voice=en-US-TonyNeural|gender=male|kind=humanoid|style=friendly|styleDegree=1.05|rate=%2B2%25|pitch=-2%25|volume=default|break=182|actor=business_customer%3Acustomer_outpost_restaurant_redpot_widower_sael_munn%3A8810000000019751%3Awidower%20sael%20munn%3Awidower%20sael%20munn",
+      "voiceId": "yoZ06aMxZJJ28mfd3POQ",
       "textHash": "fc76b526eca54353d595906c96eeeefc6e8764a7e7818ecd1e4dca9a1e6e63eb",
-      "bytes": 116236,
-      "cacheKeys": [
-        "9581f224f69228e3dfa3b3fffd06048fd8bd50bc5f921cbf1346706a4fec9879",
-        "b14055ef49c37fdf274c124a01568f676234ea8a1b3ea5a87aeb044c6a0791b6"
-      ]
+      "bytes": 122506
     },
     {
-      "cacheKey": "910187f2a5ebb1bf903ffbd3e19fed2d03d7126de8336577738cfc9a2a6ec608",
+      "cacheKey": "789bbacd32c8bfcf0485b2d1504c4f99415a440f7cae2983df0043339e20d0cb",
+      "cacheKeys": [
+        "789bbacd32c8bfcf0485b2d1504c4f99415a440f7cae2983df0043339e20d0cb",
+        "46e7bb03e2cf32362e23f60855c951fee0636864d39bad4ab74ecdc61d4cc05c"
+      ],
       "actorKey": "business_customer:customer_outpost_restaurant_redpot_widower_sael_munn:8810000000019751:widower sael munn:widower sael munn",
       "actorId": "customer_outpost_restaurant_redpot_widower_sael_munn",
       "lineId": "line-02",
       "path": "harthmere/voices/generated/current/business-customer-customer-outpost-restaurant-redpot-widower-sael-munn-widower-s/line-02.mp3",
-      "voice": "azure-speech|voice=en-US-JaneNeural|gender=female|kind=humanoid|style=friendly|styleDegree=1.05|rate=%2B2%25|pitch=-2%25|volume=default|break=182|actor=business_customer%3Acustomer_outpost_restaurant_redpot_widower_sael_munn%3A8810000000019751%3Awidower%20sael%20munn%3Awidower%20sael%20munn",
-      "voiceId": "21m00Tcm4TlvDq8ikWAM",
+      "voice": "azure-speech|voice=en-US-TonyNeural|gender=male|kind=humanoid|style=friendly|styleDegree=1.05|rate=%2B2%25|pitch=-2%25|volume=default|break=182|actor=business_customer%3Acustomer_outpost_restaurant_redpot_widower_sael_munn%3A8810000000019751%3Awidower%20sael%20munn%3Awidower%20sael%20munn",
+      "voiceId": "yoZ06aMxZJJ28mfd3POQ",
       "textHash": "c61459e2cbcb88d67a8c4d5420bc588772aea6c256182320aadda3fed1f29a53",
-      "bytes": 162212,
-      "cacheKeys": [
-        "910187f2a5ebb1bf903ffbd3e19fed2d03d7126de8336577738cfc9a2a6ec608",
-        "fbd11c7f635df8054b47fb32fa6f1772c0ef1f23d1499099a5777ddd5c379f08"
-      ]
+      "bytes": 132955
     },
     {
       "cacheKey": "cba054ba55d2e0842954f24692c6923b7dc6d9922dbe5466d97e0030e3c05d4c",
@@ -1658,34 +1658,34 @@
       ]
     },
     {
-      "cacheKey": "4f2c80e8a667390ca38936318bd0f1aed6b79107ac749001255d57c3431477ee",
+      "cacheKey": "886aa97315c98ae994b2cabdd511ffc7aae8ca2896038b92f9b1578d814a7d4c",
+      "cacheKeys": [
+        "886aa97315c98ae994b2cabdd511ffc7aae8ca2896038b92f9b1578d814a7d4c",
+        "d46ebaebb8510412800ba1f6e3c16812a2820778f15bfc03a10b56664138a975"
+      ],
       "actorKey": "business_customer:customer_outpost_trader_brightcart_peddler_lon_carrow:8810000000019732:peddler lon carrow:peddler lon carrow",
       "actorId": "customer_outpost_trader_brightcart_peddler_lon_carrow",
       "lineId": "line-01",
       "path": "harthmere/voices/generated/current/business-customer-customer-outpost-trader-brightcart-peddler-lon-carrow-peddler-/line-01.mp3",
-      "voice": "azure-speech|voice=en-US-LunaNeural|gender=female|kind=humanoid|style=conversation|styleDegree=1.00|rate=%2B3%25|pitch=%2B3%25|volume=default|break=158|actor=business_customer%3Acustomer_outpost_trader_brightcart_peddler_lon_carrow%3A8810000000019732%3Apeddler%20lon%20carrow%3Apeddler%20lon%20carrow",
-      "voiceId": "MF3mGyEYCl7XYWbV9V6O",
+      "voice": "azure-speech|voice=en-US-KaiNeural|gender=male|kind=humanoid|style=conversation|styleDegree=1.00|rate=%2B3%25|pitch=%2B3%25|volume=default|break=158|actor=business_customer%3Acustomer_outpost_trader_brightcart_peddler_lon_carrow%3A8810000000019732%3Apeddler%20lon%20carrow%3Apeddler%20lon%20carrow",
+      "voiceId": "pNInz6obpgDQGcFmaJgB",
       "textHash": "6967fa61394b22899f04bd3b0d448e89362877f1c555ec619e42d3aa4586b389",
-      "bytes": 102026,
-      "cacheKeys": [
-        "4f2c80e8a667390ca38936318bd0f1aed6b79107ac749001255d57c3431477ee",
-        "11492433801cdfabdfab9c2ca0ae815b3d8ac95e1c76a20502d920d0bf00872a"
-      ]
+      "bytes": 107459
     },
     {
-      "cacheKey": "ba72ac7a8ce7c12dc1f37ca2d9097fa3fe8c937144255f3cfd8d19c86ef91037",
+      "cacheKey": "d18d403d58ea2f3c32b5cb28ef7670594f42d65fd54a916c353b7043fc718ad8",
+      "cacheKeys": [
+        "d18d403d58ea2f3c32b5cb28ef7670594f42d65fd54a916c353b7043fc718ad8",
+        "19f1ff1f772bbe5e7d06a6ffe9b30c68f81443c95b898ff0aadf5cd3ed876849"
+      ],
       "actorKey": "business_customer:customer_outpost_trader_brightcart_peddler_lon_carrow:8810000000019732:peddler lon carrow:peddler lon carrow",
       "actorId": "customer_outpost_trader_brightcart_peddler_lon_carrow",
       "lineId": "line-02",
       "path": "harthmere/voices/generated/current/business-customer-customer-outpost-trader-brightcart-peddler-lon-carrow-peddler-/line-02.mp3",
-      "voice": "azure-speech|voice=en-US-LunaNeural|gender=female|kind=humanoid|style=conversation|styleDegree=1.00|rate=%2B3%25|pitch=%2B3%25|volume=default|break=158|actor=business_customer%3Acustomer_outpost_trader_brightcart_peddler_lon_carrow%3A8810000000019732%3Apeddler%20lon%20carrow%3Apeddler%20lon%20carrow",
-      "voiceId": "MF3mGyEYCl7XYWbV9V6O",
+      "voice": "azure-speech|voice=en-US-KaiNeural|gender=male|kind=humanoid|style=conversation|styleDegree=1.00|rate=%2B3%25|pitch=%2B3%25|volume=default|break=158|actor=business_customer%3Acustomer_outpost_trader_brightcart_peddler_lon_carrow%3A8810000000019732%3Apeddler%20lon%20carrow%3Apeddler%20lon%20carrow",
+      "voiceId": "pNInz6obpgDQGcFmaJgB",
       "textHash": "b0cb02e808de88bd5fef176c6aa20844bc731dd977f926405034e7ee28cbf0fd",
-      "bytes": 129193,
-      "cacheKeys": [
-        "ba72ac7a8ce7c12dc1f37ca2d9097fa3fe8c937144255f3cfd8d19c86ef91037",
-        "05c2d974e050fd077a12c6debcb9490402f469b8e2afad244305a93d208b51fb"
-      ]
+      "bytes": 116236
     },
     {
       "cacheKey": "63932749410bf5f8ce69f4d38f45ac472061b41aeb7f7cb331fc47616aa8360f",
@@ -1718,64 +1718,64 @@
       ]
     },
     {
-      "cacheKey": "3486b1fd197c6899ea6cff172fac9afad8c2cbba119b574bc89e1adc631ad505",
+      "cacheKey": "6738d9d4f7a0e75a27dc2af92c3e3faba5788f2996982dc7e984e37f689e83f0",
+      "cacheKeys": [
+        "6738d9d4f7a0e75a27dc2af92c3e3faba5788f2996982dc7e984e37f689e83f0",
+        "2f129fa2e193c8a8c513bbb688003be3db3a84bb40ab79d8a36903e39e9369f6"
+      ],
       "actorKey": "business_owner:npc_outpost_anchorwright:8810000000019602:anchorwright doran vell:anchorwright doran vell",
       "actorId": "npc_outpost_anchorwright",
       "lineId": "line-01",
       "path": "harthmere/voices/generated/current/business-owner-npc-outpost-anchorwright-anchorwright-doran-vell/line-01.mp3",
-      "voice": "azure-speech|voice=en-US-AriaNeural|gender=female|kind=humanoid|style=chat|styleDegree=1.05|rate=-3%25|pitch=-2%25|volume=default|break=206|actor=business_owner%3Anpc_outpost_anchorwright%3A8810000000019602%3Aanchorwright%20doran%20vell%3Aanchorwright%20doran%20vell",
-      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "voice": "azure-speech|voice=en-US-DavisNeural|gender=male|kind=humanoid|style=chat|styleDegree=1.05|rate=-3%25|pitch=-2%25|volume=default|break=206|actor=business_owner%3Anpc_outpost_anchorwright%3A8810000000019602%3Aanchorwright%20doran%20vell%3Aanchorwright%20doran%20vell",
+      "voiceId": "yoZ06aMxZJJ28mfd3POQ",
       "textHash": "0772b6e936487955661f9a144e5975fa6735d02533ee7c124b1dfd929a91ef90",
-      "bytes": 70261,
-      "cacheKeys": [
-        "3486b1fd197c6899ea6cff172fac9afad8c2cbba119b574bc89e1adc631ad505",
-        "940c5699fb6cfcc85fbbf6ce788a230cdbf215dc8d6380abd420691b9b521707"
-      ]
+      "bytes": 63991
     },
     {
-      "cacheKey": "f64c9c59f357b3d6a427edee26cd0728c62c3f2355785f3d408cbb909ff02d6e",
+      "cacheKey": "539913ae079ebdec4041c1fd572a85a30543082d0361e280da3d59e6fb5728f7",
+      "cacheKeys": [
+        "539913ae079ebdec4041c1fd572a85a30543082d0361e280da3d59e6fb5728f7",
+        "347012542d7fe789d2e02b8390290a6415b9e7345e2dd614508360007d991f9b"
+      ],
       "actorKey": "business_owner:npc_outpost_anchorwright:8810000000019602:anchorwright doran vell:anchorwright doran vell",
       "actorId": "npc_outpost_anchorwright",
       "lineId": "line-02",
       "path": "harthmere/voices/generated/current/business-owner-npc-outpost-anchorwright-anchorwright-doran-vell/line-02.mp3",
-      "voice": "azure-speech|voice=en-US-AriaNeural|gender=female|kind=humanoid|style=chat|styleDegree=1.05|rate=-3%25|pitch=-2%25|volume=default|break=206|actor=business_owner%3Anpc_outpost_anchorwright%3A8810000000019602%3Aanchorwright%20doran%20vell%3Aanchorwright%20doran%20vell",
-      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "voice": "azure-speech|voice=en-US-DavisNeural|gender=male|kind=humanoid|style=chat|styleDegree=1.05|rate=-3%25|pitch=-2%25|volume=default|break=206|actor=business_owner%3Anpc_outpost_anchorwright%3A8810000000019602%3Aanchorwright%20doran%20vell%3Aanchorwright%20doran%20vell",
+      "voiceId": "yoZ06aMxZJJ28mfd3POQ",
       "textHash": "5a20138435c1a434f1cca0bb1bf4dd6e28126ba65a8d97cd696043fcad2b23fa",
-      "bytes": 61066,
-      "cacheKeys": [
-        "f64c9c59f357b3d6a427edee26cd0728c62c3f2355785f3d408cbb909ff02d6e",
-        "2c3c6da237617b30019b0309b7aadce603a6c15a0242a6b2f980fc2492f2946a"
-      ]
+      "bytes": 70261
     },
     {
-      "cacheKey": "a19b1d842209d200b05f71d7b58b7c37c051f935251d2d58a3c2be05f1834e2a",
+      "cacheKey": "80871bf3d2e18c34d94edb4914e7d842f8d211ff2d83d41b3d78a6b249d837e9",
+      "cacheKeys": [
+        "80871bf3d2e18c34d94edb4914e7d842f8d211ff2d83d41b3d78a6b249d837e9",
+        "7802afd55301be25cd84b232aadab1f4e4d5028e83f59011d41fb29d8c3c5368"
+      ],
       "actorKey": "business_owner:npc_outpost_ashline_foreman:8810000000019601:foreman calla ashe:foreman calla ashe",
       "actorId": "npc_outpost_ashline_foreman",
       "lineId": "line-01",
       "path": "harthmere/voices/generated/current/business-owner-npc-outpost-ashline-foreman-foreman-calla-ashe/line-01.mp3",
-      "voice": "azure-speech|voice=en-US-DavisNeural|gender=male|kind=humanoid|style=chat|styleDegree=1.05|rate=%2B0%25|pitch=-2%25|volume=default|break=194|actor=business_owner%3Anpc_outpost_ashline_foreman%3A8810000000019601%3Aforeman%20calla%20ashe%3Aforeman%20calla%20ashe",
-      "voiceId": "JBFqnCBsd6RMkjVDRZzb",
+      "voice": "azure-speech|voice=en-US-AriaNeural|gender=female|kind=humanoid|style=chat|styleDegree=1.05|rate=%2B0%25|pitch=-2%25|volume=default|break=194|actor=business_owner%3Anpc_outpost_ashline_foreman%3A8810000000019601%3Aforeman%20calla%20ashe%3Aforeman%20calla%20ashe",
+      "voiceId": "AZnzlk1XvdvUeBnXmlld",
       "textHash": "efeea1e38eaef75bd8aed2470c44815999274f5e93f3ca48e831bae44843ccdb",
-      "bytes": 88233,
-      "cacheKeys": [
-        "a19b1d842209d200b05f71d7b58b7c37c051f935251d2d58a3c2be05f1834e2a",
-        "31db1bda84a4c975b5918d3742da7a9b455c2846635e50131256219c8a55f599"
-      ]
+      "bytes": 98264
     },
     {
-      "cacheKey": "50ec0c35009a7456488b556d86aa4587b5ce74e3a0744c51dc7b98d8b5b0f8f3",
+      "cacheKey": "f3536ca72bbbea5b2e80519e266895798d87f51539b21797c052cb6abdae3135",
+      "cacheKeys": [
+        "f3536ca72bbbea5b2e80519e266895798d87f51539b21797c052cb6abdae3135",
+        "a79743b17d70b722e7eca44293caf1e736fab428e4a45a2ef9737dcbfb54836a"
+      ],
       "actorKey": "business_owner:npc_outpost_ashline_foreman:8810000000019601:foreman calla ashe:foreman calla ashe",
       "actorId": "npc_outpost_ashline_foreman",
       "lineId": "line-02",
       "path": "harthmere/voices/generated/current/business-owner-npc-outpost-ashline-foreman-foreman-calla-ashe/line-02.mp3",
-      "voice": "azure-speech|voice=en-US-DavisNeural|gender=male|kind=humanoid|style=chat|styleDegree=1.05|rate=%2B0%25|pitch=-2%25|volume=default|break=194|actor=business_owner%3Anpc_outpost_ashline_foreman%3A8810000000019601%3Aforeman%20calla%20ashe%3Aforeman%20calla%20ashe",
-      "voiceId": "JBFqnCBsd6RMkjVDRZzb",
+      "voice": "azure-speech|voice=en-US-AriaNeural|gender=female|kind=humanoid|style=chat|styleDegree=1.05|rate=%2B0%25|pitch=-2%25|volume=default|break=194|actor=business_owner%3Anpc_outpost_ashline_foreman%3A8810000000019601%3Aforeman%20calla%20ashe%3Aforeman%20calla%20ashe",
+      "voiceId": "AZnzlk1XvdvUeBnXmlld",
       "textHash": "3d2c8a6250c29d866c9ca8ad3611d7f8ad77ead62b65207f81d09ad00ee8007d",
-      "bytes": 79038,
-      "cacheKeys": [
-        "50ec0c35009a7456488b556d86aa4587b5ce74e3a0744c51dc7b98d8b5b0f8f3",
-        "2bb56690b58d8c4e48a6e33a394012608a7b601d920c3fe229ba7d560f85046b"
-      ]
+      "bytes": 77784
     },
     {
       "cacheKey": "566a6409476df7bd98f9950e8138c1463f28e188dd62b6dac4fc03955bf5d1e2",
@@ -1838,34 +1838,34 @@
       ]
     },
     {
-      "cacheKey": "5b27d44d7f775e8ee7a191fd15933b9ccf34224cc0ba0d5c75ee01a5d526f23b",
+      "cacheKey": "c8ca9f744150cb859a29201649d0796f44f3405f47d85bc1f28b32b46d485f10",
+      "cacheKeys": [
+        "c8ca9f744150cb859a29201649d0796f44f3405f47d85bc1f28b32b46d485f10",
+        "270b118fb353ed38d103b55891f6bcabce963d0307f5654fe63ef7d005a2f981"
+      ],
       "actorKey": "business_owner:npc_outpost_clearbarrel_boss:8810000000019615:boss greta clearbarrel:boss greta clearbarrel",
       "actorId": "npc_outpost_clearbarrel_boss",
       "lineId": "line-01",
       "path": "harthmere/voices/generated/current/business-owner-npc-outpost-clearbarrel-boss-boss-greta-clearbarrel/line-01.mp3",
-      "voice": "azure-speech|voice=en-US-AndrewMultilingualNeural|gender=male|kind=humanoid|style=empathetic|styleDegree=0.85|rate=%2B1%25|pitch=%2B0%25|volume=default|break=110|actor=business_owner%3Anpc_outpost_clearbarrel_boss%3A8810000000019615%3Aboss%20greta%20clearbarrel%3Aboss%20greta%20clearbarrel",
-      "voiceId": "pNInz6obpgDQGcFmaJgB",
+      "voice": "azure-speech|voice=en-US-SerenaMultilingualNeural|gender=female|kind=humanoid|style=friendly|styleDegree=0.85|rate=%2B1%25|pitch=%2B0%25|volume=default|break=110|actor=business_owner%3Anpc_outpost_clearbarrel_boss%3A8810000000019615%3Aboss%20greta%20clearbarrel%3Aboss%20greta%20clearbarrel",
+      "voiceId": "MF3mGyEYCl7XYWbV9V6O",
       "textHash": "f42d183c5f9c99a8e89642e38889b1d1dbd1eef6bfa71cbbb5ffc3e94d019112",
-      "bytes": 74022,
-      "cacheKeys": [
-        "5b27d44d7f775e8ee7a191fd15933b9ccf34224cc0ba0d5c75ee01a5d526f23b",
-        "723decf716ce67b99b333f43e444ec52eb4bc9b4d65380a7abb7720baae0337f"
-      ]
+      "bytes": 72768
     },
     {
-      "cacheKey": "1cbac6dea2d5ed042d90a5abc60cca5909d330aab4ef996642eba3570663fb26",
+      "cacheKey": "aa033271dceefafff48723711eaf22c38b6dd5af43f7d94f16c9b20bd720c106",
+      "cacheKeys": [
+        "aa033271dceefafff48723711eaf22c38b6dd5af43f7d94f16c9b20bd720c106",
+        "9ab84b01bb322aeaa60814f4aab43c64d962a1bf3695b02fa0974240f5836c86"
+      ],
       "actorKey": "business_owner:npc_outpost_clearbarrel_boss:8810000000019615:boss greta clearbarrel:boss greta clearbarrel",
       "actorId": "npc_outpost_clearbarrel_boss",
       "lineId": "line-02",
       "path": "harthmere/voices/generated/current/business-owner-npc-outpost-clearbarrel-boss-boss-greta-clearbarrel/line-02.mp3",
-      "voice": "azure-speech|voice=en-US-AndrewMultilingualNeural|gender=male|kind=humanoid|style=empathetic|styleDegree=0.85|rate=%2B1%25|pitch=%2B0%25|volume=default|break=110|actor=business_owner%3Anpc_outpost_clearbarrel_boss%3A8810000000019615%3Aboss%20greta%20clearbarrel%3Aboss%20greta%20clearbarrel",
-      "voiceId": "pNInz6obpgDQGcFmaJgB",
+      "voice": "azure-speech|voice=en-US-SerenaMultilingualNeural|gender=female|kind=humanoid|style=friendly|styleDegree=0.85|rate=%2B1%25|pitch=%2B0%25|volume=default|break=110|actor=business_owner%3Anpc_outpost_clearbarrel_boss%3A8810000000019615%3Aboss%20greta%20clearbarrel%3Aboss%20greta%20clearbarrel",
+      "voiceId": "MF3mGyEYCl7XYWbV9V6O",
       "textHash": "37a9a2a752123f4aa5f3a23c77d4fce13d14ede9a9a92a39a672acb32c3d0176",
-      "bytes": 49781,
-      "cacheKeys": [
-        "1cbac6dea2d5ed042d90a5abc60cca5909d330aab4ef996642eba3570663fb26",
-        "58bc9b5461ef599ab45167a8fc2695dfbe557bd2d457047ed0bdcabdfe3b9034"
-      ]
+      "bytes": 65245
     },
     {
       "cacheKey": "7378db461ecc765451c08a91695c5125050417b557a58f949fd6a6eabcb0c1cc",
@@ -1898,34 +1898,34 @@
       ]
     },
     {
-      "cacheKey": "681e5738379b557f738bf69dbe0d4bf0bcd9ac2a9152a697941418263a8fc165",
+      "cacheKey": "4177fa02920103b23cad5e470857dca54fe9365c41929d7e8a8e67013d670fd5",
+      "cacheKeys": [
+        "4177fa02920103b23cad5e470857dca54fe9365c41929d7e8a8e67013d670fd5",
+        "42a9a3c7e0ab698a37771a3f930d42bbed755d78c6b88d808b31dfbd4bcabc7d"
+      ],
       "actorKey": "business_owner:npc_outpost_glassyard_designer:8810000000019603:designer mira glass:designer mira glass",
       "actorId": "npc_outpost_glassyard_designer",
       "lineId": "line-01",
       "path": "harthmere/voices/generated/current/business-owner-npc-outpost-glassyard-designer-designer-mira-glass/line-01.mp3",
-      "voice": "azure-speech|voice=en-US-AndrewMultilingualNeural|gender=male|kind=humanoid|style=empathetic|styleDegree=0.80|rate=-4%25|pitch=%2B3%25|volume=default|break=170|actor=business_owner%3Anpc_outpost_glassyard_designer%3A8810000000019603%3Adesigner%20mira%20glass%3Adesigner%20mira%20glass",
-      "voiceId": "TxGEqnHWrfWFTfGW9XjX",
+      "voice": "azure-speech|voice=en-US-SerenaMultilingualNeural|gender=female|kind=humanoid|style=friendly|styleDegree=0.80|rate=-4%25|pitch=%2B3%25|volume=default|break=170|actor=business_owner%3Anpc_outpost_glassyard_designer%3A8810000000019603%3Adesigner%20mira%20glass%3Adesigner%20mira%20glass",
+      "voiceId": "MF3mGyEYCl7XYWbV9V6O",
       "textHash": "a13dc7bfca2b30d4b3baa295cfc165143263f5a2a85849844497e22019e822d2",
-      "bytes": 58558,
-      "cacheKeys": [
-        "681e5738379b557f738bf69dbe0d4bf0bcd9ac2a9152a697941418263a8fc165",
-        "01b30d455a2b8790240b130a2066c11e5ca2b057517ef675b910776bad3b5c21"
-      ]
+      "bytes": 63991
     },
     {
-      "cacheKey": "6a78797b107508e5299e77dcbc6b53a7b0c022e557293eb3aa33255c4aa53d94",
+      "cacheKey": "9cf59d78c64028c9e5b113e258e3b1e33da5a2f84bd996b99eda207127d770f5",
+      "cacheKeys": [
+        "9cf59d78c64028c9e5b113e258e3b1e33da5a2f84bd996b99eda207127d770f5",
+        "845a3b43a7d12ba3097f7cb3da5b5a151510c88fcc4be0cf749667e3744730b2"
+      ],
       "actorKey": "business_owner:npc_outpost_glassyard_designer:8810000000019603:designer mira glass:designer mira glass",
       "actorId": "npc_outpost_glassyard_designer",
       "lineId": "line-02",
       "path": "harthmere/voices/generated/current/business-owner-npc-outpost-glassyard-designer-designer-mira-glass/line-02.mp3",
-      "voice": "azure-speech|voice=en-US-AndrewMultilingualNeural|gender=male|kind=humanoid|style=empathetic|styleDegree=0.80|rate=-4%25|pitch=%2B3%25|volume=default|break=170|actor=business_owner%3Anpc_outpost_glassyard_designer%3A8810000000019603%3Adesigner%20mira%20glass%3Adesigner%20mira%20glass",
-      "voiceId": "TxGEqnHWrfWFTfGW9XjX",
+      "voice": "azure-speech|voice=en-US-SerenaMultilingualNeural|gender=female|kind=humanoid|style=friendly|styleDegree=0.80|rate=-4%25|pitch=%2B3%25|volume=default|break=170|actor=business_owner%3Anpc_outpost_glassyard_designer%3A8810000000019603%3Adesigner%20mira%20glass%3Adesigner%20mira%20glass",
+      "voiceId": "MF3mGyEYCl7XYWbV9V6O",
       "textHash": "65402cf704def721605b8bd71427398ff08513b8e6b55412fb80e9b8f39b0fd9",
-      "bytes": 62319,
-      "cacheKeys": [
-        "6a78797b107508e5299e77dcbc6b53a7b0c022e557293eb3aa33255c4aa53d94",
-        "4ca2fed6102822c6410868b0ce53c8efa0f7ba78c703979a8ffacc1b0162c886"
-      ]
+      "bytes": 76530
     },
     {
       "cacheKey": "ae808269a70f59bd2ef4e006b153f912398311f2223b5b5e3ddfef43f2f31066",
@@ -1958,34 +1958,34 @@
       ]
     },
     {
-      "cacheKey": "2762e44ac527a6e240d9801708554882f552f73f0a4b10121b7b71abd56a250d",
+      "cacheKey": "171b44669ff153e0af5f2d889406b8c23fb7a967869d0265231c91d43c61dd30",
+      "cacheKeys": [
+        "171b44669ff153e0af5f2d889406b8c23fb7a967869d0265231c91d43c61dd30",
+        "09e541e7eef7f34f18403d71f8246843d608e53bd953bb7110507d63901eea94"
+      ],
       "actorKey": "business_owner:npc_outpost_hingehall_fixer:8810000000019616:fixer tomas hinge:fixer tomas hinge",
       "actorId": "npc_outpost_hingehall_fixer",
       "lineId": "line-01",
       "path": "harthmere/voices/generated/current/business-owner-npc-outpost-hingehall-fixer-fixer-tomas-hinge/line-01.mp3",
-      "voice": "azure-speech|voice=en-US-SerenaMultilingualNeural|gender=female|kind=humanoid|style=friendly|styleDegree=1.00|rate=-4%25|pitch=-2%25|volume=default|break=134|actor=business_owner%3Anpc_outpost_hingehall_fixer%3A8810000000019616%3Afixer%20tomas%20hinge%3Afixer%20tomas%20hinge",
-      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "voice": "azure-speech|voice=en-US-AndrewMultilingualNeural|gender=male|kind=humanoid|style=relieved|styleDegree=1.00|rate=-4%25|pitch=-2%25|volume=default|break=134|actor=business_owner%3Anpc_outpost_hingehall_fixer%3A8810000000019616%3Afixer%20tomas%20hinge%3Afixer%20tomas%20hinge",
+      "voiceId": "yoZ06aMxZJJ28mfd3POQ",
       "textHash": "39f480518040dbd9e87835179cb1477c6978d436b2df657301a4c641fd40e42f",
-      "bytes": 82799,
-      "cacheKeys": [
-        "2762e44ac527a6e240d9801708554882f552f73f0a4b10121b7b71abd56a250d",
-        "54d6a490002fd2155cae6ac48e18fcddce1ad0620c17cf4c13d3701b4ae5217c"
-      ]
+      "bytes": 81546
     },
     {
-      "cacheKey": "cce0f00b07554d0fc566301162b24b403ce16a3516335c10c015b645912e5a79",
+      "cacheKey": "091a13a8879457ac15ddc23c3463f8db1b6cd259c847385e84cc51b7fd449136",
+      "cacheKeys": [
+        "091a13a8879457ac15ddc23c3463f8db1b6cd259c847385e84cc51b7fd449136",
+        "634eba495c36855ea0b31216d1e9aaad8b73ddd1775854af2b19e7393421f4bc"
+      ],
       "actorKey": "business_owner:npc_outpost_hingehall_fixer:8810000000019616:fixer tomas hinge:fixer tomas hinge",
       "actorId": "npc_outpost_hingehall_fixer",
       "lineId": "line-02",
       "path": "harthmere/voices/generated/current/business-owner-npc-outpost-hingehall-fixer-fixer-tomas-hinge/line-02.mp3",
-      "voice": "azure-speech|voice=en-US-SerenaMultilingualNeural|gender=female|kind=humanoid|style=friendly|styleDegree=1.00|rate=-4%25|pitch=-2%25|volume=default|break=134|actor=business_owner%3Anpc_outpost_hingehall_fixer%3A8810000000019616%3Afixer%20tomas%20hinge%3Afixer%20tomas%20hinge",
-      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "voice": "azure-speech|voice=en-US-AndrewMultilingualNeural|gender=male|kind=humanoid|style=relieved|styleDegree=1.00|rate=-4%25|pitch=-2%25|volume=default|break=134|actor=business_owner%3Anpc_outpost_hingehall_fixer%3A8810000000019616%3Afixer%20tomas%20hinge%3Afixer%20tomas%20hinge",
+      "voiceId": "yoZ06aMxZJJ28mfd3POQ",
       "textHash": "021cc14eef99147a654b881b8bdda20bcd64f96acf7743b2729a5dd9555d2822",
-      "bytes": 52288,
-      "cacheKeys": [
-        "cce0f00b07554d0fc566301162b24b403ce16a3516335c10c015b645912e5a79",
-        "c38d49e7f9ad678e61a85bd3d83dafa4258c82149a12ed0f8c6b8a66c592892e"
-      ]
+      "bytes": 56050
     },
     {
       "cacheKey": "a73ca81a7e8b2e30a25f550f979198a8eee114851d763400553db1ff1f301ee1",
@@ -2108,124 +2108,124 @@
       ]
     },
     {
-      "cacheKey": "60f378d8a2473c6c66e1e4ff7f6e87a6a55cb6c752eb1315a4b2d0389ba31465",
+      "cacheKey": "d83d3ce88dc0c42326e43704a49af0decdc477b465386dfd6c83fc3a7837ecd0",
+      "cacheKeys": [
+        "d83d3ce88dc0c42326e43704a49af0decdc477b465386dfd6c83fc3a7837ecd0",
+        "9f046e721b7206e25cdf55640a9dc7f7626e2af306351e5681a655eb5c308c5f"
+      ],
       "actorKey": "business_owner:npc_outpost_redpot_cook:8810000000019617:cook bessa redpot:cook bessa redpot",
       "actorId": "npc_outpost_redpot_cook",
       "lineId": "line-01",
       "path": "harthmere/voices/generated/current/business-owner-npc-outpost-redpot-cook-cook-bessa-redpot/line-01.mp3",
-      "voice": "azure-speech|voice=en-US-AndrewMultilingualNeural|gender=male|kind=humanoid|style=relieved|styleDegree=1.00|rate=-2%25|pitch=%2B1%25|volume=default|break=194|actor=business_owner%3Anpc_outpost_redpot_cook%3A8810000000019617%3Acook%20bessa%20redpot%3Acook%20bessa%20redpot",
-      "voiceId": "VR6AewLTigWG4xSOukaG",
+      "voice": "azure-speech|voice=en-US-SerenaMultilingualNeural|gender=female|kind=humanoid|style=friendly|styleDegree=1.00|rate=-2%25|pitch=%2B1%25|volume=default|break=194|actor=business_owner%3Anpc_outpost_redpot_cook%3A8810000000019617%3Acook%20bessa%20redpot%3Acook%20bessa%20redpot",
+      "voiceId": "MF3mGyEYCl7XYWbV9V6O",
       "textHash": "2020cbd2710fbc84ff76fef446b677e8c7bf68b520b6301d0259e87594628b7e",
-      "bytes": 72768,
-      "cacheKeys": [
-        "60f378d8a2473c6c66e1e4ff7f6e87a6a55cb6c752eb1315a4b2d0389ba31465",
-        "84147a053ad7465ae1cdbfae1566221f81ffdf93b33830d5be6d90146880004f"
-      ]
+      "bytes": 76530
     },
     {
-      "cacheKey": "eb7e06288ac74760a3063823b79260a3c3e4784403470ab862a08794eac8e51e",
+      "cacheKey": "0cce75da59b2e5ecd8ecb245c2c0422597c3c21f78cc4ae0fccdeb8e25d10ba6",
+      "cacheKeys": [
+        "0cce75da59b2e5ecd8ecb245c2c0422597c3c21f78cc4ae0fccdeb8e25d10ba6",
+        "93bfaaf592a5fc7bc011002a1fb212c0f9b76fa48c9bbdf693cb9bb26e59dde8"
+      ],
       "actorKey": "business_owner:npc_outpost_redpot_cook:8810000000019617:cook bessa redpot:cook bessa redpot",
       "actorId": "npc_outpost_redpot_cook",
       "lineId": "line-02",
       "path": "harthmere/voices/generated/current/business-owner-npc-outpost-redpot-cook-cook-bessa-redpot/line-02.mp3",
-      "voice": "azure-speech|voice=en-US-AndrewMultilingualNeural|gender=male|kind=humanoid|style=relieved|styleDegree=1.00|rate=-2%25|pitch=%2B1%25|volume=default|break=194|actor=business_owner%3Anpc_outpost_redpot_cook%3A8810000000019617%3Acook%20bessa%20redpot%3Acook%20bessa%20redpot",
-      "voiceId": "VR6AewLTigWG4xSOukaG",
+      "voice": "azure-speech|voice=en-US-SerenaMultilingualNeural|gender=female|kind=humanoid|style=friendly|styleDegree=1.00|rate=-2%25|pitch=%2B1%25|volume=default|break=194|actor=business_owner%3Anpc_outpost_redpot_cook%3A8810000000019617%3Acook%20bessa%20redpot%3Acook%20bessa%20redpot",
+      "voiceId": "MF3mGyEYCl7XYWbV9V6O",
       "textHash": "73c80abcf17fcec79f462c833c0c928008ad2909da595f9ea267b8f717736997",
-      "bytes": 44765,
-      "cacheKeys": [
-        "eb7e06288ac74760a3063823b79260a3c3e4784403470ab862a08794eac8e51e",
-        "c6d82e6946980b46d8fb38c6523398aca4699de3bc4c28bf632138dbad24dd5c"
-      ]
+      "bytes": 52288
     },
     {
-      "cacheKey": "8f606251c763badab14163e6d23f6fcd14432ded297b2c1a56647cdb30782593",
+      "cacheKey": "d80968391b555c245742fd03f2435419ce9d6197c4dfee88785d71f063105b0c",
+      "cacheKeys": [
+        "d80968391b555c245742fd03f2435419ce9d6197c4dfee88785d71f063105b0c",
+        "9efb1ffc395486c0e09446df95375bf3a4112b51918e5d08b3dd8fec7438e4d9"
+      ],
       "actorKey": "business_owner:npc_outpost_returnstone_keeper:8810000000019614:keeper eli stonewell:keeper eli stonewell",
       "actorId": "npc_outpost_returnstone_keeper",
       "lineId": "line-01",
       "path": "harthmere/voices/generated/current/business-owner-npc-outpost-returnstone-keeper-keeper-eli-stonewell/line-01.mp3",
-      "voice": "azure-speech|voice=en-US-JaneNeural|gender=female|kind=humanoid|style=friendly|styleDegree=0.85|rate=%2B1%25|pitch=-2%25|volume=default|break=146|actor=business_owner%3Anpc_outpost_returnstone_keeper%3A8810000000019614%3Akeeper%20eli%20stonewell%3Akeeper%20eli%20stonewell",
-      "voiceId": "MF3mGyEYCl7XYWbV9V6O",
+      "voice": "azure-speech|voice=en-US-TonyNeural|gender=male|kind=humanoid|style=friendly|styleDegree=0.85|rate=%2B1%25|pitch=-2%25|volume=default|break=146|actor=business_owner%3Anpc_outpost_returnstone_keeper%3A8810000000019614%3Akeeper%20eli%20stonewell%3Akeeper%20eli%20stonewell",
+      "voiceId": "pNInz6obpgDQGcFmaJgB",
       "textHash": "692eb59c7d523a605e3d80f54355e97a7549666e6d9548b58cddd47d44d93d76",
-      "bytes": 53542,
-      "cacheKeys": [
-        "8f606251c763badab14163e6d23f6fcd14432ded297b2c1a56647cdb30782593",
-        "ba7d116712519cb5af9403377950f0883349226a6fa14d8ec766a05107d1ff32"
-      ]
+      "bytes": 46019
     },
     {
-      "cacheKey": "ca5a8afd89263929efa20f3d3b490d14c44ea8d6137ccb89d28ee82ffc2850b7",
+      "cacheKey": "58ac1e0db75d23cd4d11de567a09b8ce15ee3de2fa498b7ca92d60a086efa5f8",
+      "cacheKeys": [
+        "58ac1e0db75d23cd4d11de567a09b8ce15ee3de2fa498b7ca92d60a086efa5f8",
+        "790431d145839a772d8d7a3106cf211898bdc147c3ecd9dde12e8232c93e7fd7"
+      ],
       "actorKey": "business_owner:npc_outpost_returnstone_keeper:8810000000019614:keeper eli stonewell:keeper eli stonewell",
       "actorId": "npc_outpost_returnstone_keeper",
       "lineId": "line-02",
       "path": "harthmere/voices/generated/current/business-owner-npc-outpost-returnstone-keeper-keeper-eli-stonewell/line-02.mp3",
-      "voice": "azure-speech|voice=en-US-JaneNeural|gender=female|kind=humanoid|style=friendly|styleDegree=0.85|rate=%2B1%25|pitch=-2%25|volume=default|break=146|actor=business_owner%3Anpc_outpost_returnstone_keeper%3A8810000000019614%3Akeeper%20eli%20stonewell%3Akeeper%20eli%20stonewell",
-      "voiceId": "MF3mGyEYCl7XYWbV9V6O",
+      "voice": "azure-speech|voice=en-US-TonyNeural|gender=male|kind=humanoid|style=friendly|styleDegree=0.85|rate=%2B1%25|pitch=-2%25|volume=default|break=146|actor=business_owner%3Anpc_outpost_returnstone_keeper%3A8810000000019614%3Akeeper%20eli%20stonewell%3Akeeper%20eli%20stonewell",
+      "voiceId": "pNInz6obpgDQGcFmaJgB",
       "textHash": "ecc080a7545767868d2b2c96d36b507d40620ca22283cbf56fd42fa1c95e1cbb",
-      "bytes": 69007,
-      "cacheKeys": [
-        "ca5a8afd89263929efa20f3d3b490d14c44ea8d6137ccb89d28ee82ffc2850b7",
-        "4b44468a0f2fe89363d4d17adc11c803471036ee2902aec12a1686e9cdb2361a"
-      ]
+      "bytes": 65245
     },
     {
-      "cacheKey": "9a59580b5a2842bd4dd5f1ed8a0b57107c2b1b94ed51ccdf635e4a97ceba735d",
+      "cacheKey": "e5674313bacb4518f47772f34fe4f0c7f46a69e723aed254a3bc7f3d760c6843",
+      "cacheKeys": [
+        "e5674313bacb4518f47772f34fe4f0c7f46a69e723aed254a3bc7f3d760c6843",
+        "e97f3c58f06cfe2a18286f203eedd712292641da930b0607baa831063461f25c"
+      ],
       "actorKey": "business_owner:npc_outpost_ridgecooler_hunter:8810000000019612:hunter marl ridge:hunter marl ridge",
       "actorId": "npc_outpost_ridgecooler_hunter",
       "lineId": "line-01",
       "path": "harthmere/voices/generated/current/business-owner-npc-outpost-ridgecooler-hunter-hunter-marl-ridge/line-01.mp3",
-      "voice": "azure-speech|voice=en-US-LunaNeural|gender=female|kind=humanoid|style=conversation|styleDegree=0.95|rate=%2B1%25|pitch=%2B1%25|volume=default|break=134|actor=business_owner%3Anpc_outpost_ridgecooler_hunter%3A8810000000019612%3Ahunter%20marl%20ridge%3Ahunter%20marl%20ridge",
-      "voiceId": "EXAVITQu4vr4xnSDxMaL",
+      "voice": "azure-speech|voice=en-US-KaiNeural|gender=male|kind=humanoid|style=conversation|styleDegree=0.95|rate=%2B1%25|pitch=%2B1%25|volume=default|break=134|actor=business_owner%3Anpc_outpost_ridgecooler_hunter%3A8810000000019612%3Ahunter%20marl%20ridge%3Ahunter%20marl%20ridge",
+      "voiceId": "VR6AewLTigWG4xSOukaG",
       "textHash": "d996228862a6d85d2aee7d3bafcf08d97dfbadd16d3657e117945d2457343286",
-      "bytes": 84471,
-      "cacheKeys": [
-        "9a59580b5a2842bd4dd5f1ed8a0b57107c2b1b94ed51ccdf635e4a97ceba735d",
-        "70db023bcbb728657c7dc12e5072be704221c1dc11270a779189cd6c43d5b70d"
-      ]
+      "bytes": 88233
     },
     {
-      "cacheKey": "1f1bfdaf1f664d304e876af7cad06d8aa3cbefb5944b803132df7cb173569532",
+      "cacheKey": "9de7f90829e2dfc032327ef4d27fabe56631fd94af441a0eec6d31647f97bf79",
+      "cacheKeys": [
+        "9de7f90829e2dfc032327ef4d27fabe56631fd94af441a0eec6d31647f97bf79",
+        "d3a75d77193b92138546b6c70d3b53ad6e4d22cc57d28e0fd24a02d6a357c2c5"
+      ],
       "actorKey": "business_owner:npc_outpost_ridgecooler_hunter:8810000000019612:hunter marl ridge:hunter marl ridge",
       "actorId": "npc_outpost_ridgecooler_hunter",
       "lineId": "line-02",
       "path": "harthmere/voices/generated/current/business-owner-npc-outpost-ridgecooler-hunter-hunter-marl-ridge/line-02.mp3",
-      "voice": "azure-speech|voice=en-US-LunaNeural|gender=female|kind=humanoid|style=conversation|styleDegree=0.95|rate=%2B1%25|pitch=%2B1%25|volume=default|break=134|actor=business_owner%3Anpc_outpost_ridgecooler_hunter%3A8810000000019612%3Ahunter%20marl%20ridge%3Ahunter%20marl%20ridge",
-      "voiceId": "EXAVITQu4vr4xnSDxMaL",
+      "voice": "azure-speech|voice=en-US-KaiNeural|gender=male|kind=humanoid|style=conversation|styleDegree=0.95|rate=%2B1%25|pitch=%2B1%25|volume=default|break=134|actor=business_owner%3Anpc_outpost_ridgecooler_hunter%3A8810000000019612%3Ahunter%20marl%20ridge%3Ahunter%20marl%20ridge",
+      "voiceId": "VR6AewLTigWG4xSOukaG",
       "textHash": "98857e01c1d8fe0712affdf3aa19b65cd32472356b18ba37783d0fe1ad3f2995",
-      "bytes": 47273,
-      "cacheKeys": [
-        "1f1bfdaf1f664d304e876af7cad06d8aa3cbefb5944b803132df7cb173569532",
-        "b986564345c260c9d6017b4f7243aee8fab07d7b68c2a8ff889236e7f746e64f"
-      ]
+      "bytes": 53542
     },
     {
-      "cacheKey": "db6e5ae58be5db244d975f74cb859518ef4e1595579c35b772ed48310fbcd678",
+      "cacheKey": "8bf92303d752b0690c8cfcc476be943cb27edda578f4f7f2690a6af22b7036c7",
+      "cacheKeys": [
+        "8bf92303d752b0690c8cfcc476be943cb27edda578f4f7f2690a6af22b7036c7",
+        "26f4b879faa721139689e3464b6a01ca44211da4275bce67cf6896a880b9f945"
+      ],
       "actorKey": "business_owner:npc_outpost_southplot_grower:8810000000019606:grower pell soren:grower pell soren",
       "actorId": "npc_outpost_southplot_grower",
       "lineId": "line-01",
       "path": "harthmere/voices/generated/current/business-owner-npc-outpost-southplot-grower-grower-pell-soren/line-01.mp3",
-      "voice": "azure-speech|voice=en-US-LunaNeural|gender=female|kind=humanoid|style=conversation|styleDegree=0.85|rate=%2B3%25|pitch=-2%25|volume=default|break=194|actor=business_owner%3Anpc_outpost_southplot_grower%3A8810000000019606%3Agrower%20pell%20soren%3Agrower%20pell%20soren",
-      "voiceId": "EXAVITQu4vr4xnSDxMaL",
+      "voice": "azure-speech|voice=en-US-KaiNeural|gender=male|kind=humanoid|style=conversation|styleDegree=0.85|rate=%2B3%25|pitch=-2%25|volume=default|break=194|actor=business_owner%3Anpc_outpost_southplot_grower%3A8810000000019606%3Agrower%20pell%20soren%3Agrower%20pell%20soren",
+      "voiceId": "pNInz6obpgDQGcFmaJgB",
       "textHash": "a5e9d044a57d67ca22c475c6aabc394904121a9711ce0f5b9291654f6e7345c6",
-      "bytes": 75276,
-      "cacheKeys": [
-        "db6e5ae58be5db244d975f74cb859518ef4e1595579c35b772ed48310fbcd678",
-        "3fe502d4bc9f673dfbb4d797b34ee9ac498bfc7ba66daeaf272860484904e5d9"
-      ]
+      "bytes": 65245
     },
     {
-      "cacheKey": "49ec2d81a94bc55c7262afab4ab457a6cb4318840036ee44a6047bba72a3728a",
+      "cacheKey": "9c677626f70db3d10532764e7e78a89fc4d0e5da34e29ee1234506219498b2b0",
+      "cacheKeys": [
+        "9c677626f70db3d10532764e7e78a89fc4d0e5da34e29ee1234506219498b2b0",
+        "5ea3287f5275e118a2a53cb1b3d7433466b92b4c131fd485e053e63665c03516"
+      ],
       "actorKey": "business_owner:npc_outpost_southplot_grower:8810000000019606:grower pell soren:grower pell soren",
       "actorId": "npc_outpost_southplot_grower",
       "lineId": "line-02",
       "path": "harthmere/voices/generated/current/business-owner-npc-outpost-southplot-grower-grower-pell-soren/line-02.mp3",
-      "voice": "azure-speech|voice=en-US-LunaNeural|gender=female|kind=humanoid|style=conversation|styleDegree=0.85|rate=%2B3%25|pitch=-2%25|volume=default|break=194|actor=business_owner%3Anpc_outpost_southplot_grower%3A8810000000019606%3Agrower%20pell%20soren%3Agrower%20pell%20soren",
-      "voiceId": "EXAVITQu4vr4xnSDxMaL",
+      "voice": "azure-speech|voice=en-US-KaiNeural|gender=male|kind=humanoid|style=conversation|styleDegree=0.85|rate=%2B3%25|pitch=-2%25|volume=default|break=194|actor=business_owner%3Anpc_outpost_southplot_grower%3A8810000000019606%3Agrower%20pell%20soren%3Agrower%20pell%20soren",
+      "voiceId": "pNInz6obpgDQGcFmaJgB",
       "textHash": "de019c9c21dc3dadb0b1c2c0b768b5e2bc8bd86caa7a5ae910a4cb600b06231e",
-      "bytes": 66499,
-      "cacheKeys": [
-        "49ec2d81a94bc55c7262afab4ab457a6cb4318840036ee44a6047bba72a3728a",
-        "8b135214813f4789c2acdc459c446c3fef982fc7af965438cfdc75c9422eafb6"
-      ]
+      "bytes": 56050
     },
     {
       "cacheKey": "b25d796b0e68e3232bdc3aacb98f454b395d9d3d699c375d7b35f89abf1478f7",
@@ -3323,19 +3323,19 @@
       "bytes": 54796
     },
     {
-      "cacheKey": "b1d0e1c16680ee1a8cde2cfe7b6acb36b409257c3fbc50e52005c42923ada945",
+      "cacheKey": "2db3ea998335144c6c279ae05fbdb68419920be6a458bd4c09737efca9d72504",
       "cacheKeys": [
-        "b1d0e1c16680ee1a8cde2cfe7b6acb36b409257c3fbc50e52005c42923ada945",
-        "c77bb51c2b2eeeea80996bacc0d7b55349cff7bbce5c50e5a9172d3d4e49cfcf"
+        "2db3ea998335144c6c279ae05fbdb68419920be6a458bd4c09737efca9d72504",
+        "1963f24b7d342ee55684726710af9837aed202522d389187819e3e8bb8098062"
       ],
       "actorKey": "snapshot_grove:billy:8810000000019302:billy:billy",
       "actorId": "chapter1-objective:returning_billy",
       "lineId": "line-01",
       "path": "harthmere/voices/generated/current/chapter-1-identity-objective-returning-billy-billy/line-01.mp3",
-      "voice": "azure-speech|voice=en-US-SaraNeural|gender=female|kind=humanoid|style=friendly|styleDegree=0.85|rate=-4%25|pitch=%2B2%25|volume=default|break=110|actor=snapshot_grove%3Abilly%3A8810000000019302%3Abilly%3Abilly",
-      "voiceId": "21m00Tcm4TlvDq8ikWAM",
+      "voice": "azure-speech|voice=en-GB-RyanNeural|gender=male|kind=humanoid|style=chat|styleDegree=0.85|rate=-4%25|pitch=%2B2%25|volume=default|break=110|actor=snapshot_grove%3Abilly%3A8810000000019302%3Abilly%3Abilly",
+      "voiceId": "yoZ06aMxZJJ28mfd3POQ",
       "textHash": "160083abb215535b5fd64306acbc5c3285ba5c7c4dd30a481b19b5cdd12c472b",
-      "bytes": 75276
+      "bytes": 81546
     },
     {
       "cacheKey": "7fcc8ec0312612eaf1328640209fd31b7100ca33538ec88b099d54d337da14ff",
@@ -3833,34 +3833,34 @@
       "bytes": 117490
     },
     {
-      "cacheKey": "64d7735a03d5e69aaf2336504c39d16be78322827025e1c11b0e667980e98a92",
+      "cacheKey": "54efa6aa23772d510bf9c2386641a5d351b15d21affd8d9edc95a398bcb5ce29",
       "cacheKeys": [
-        "64d7735a03d5e69aaf2336504c39d16be78322827025e1c11b0e667980e98a92",
-        "a1f1340c9409e5222fd95d284f9d03a3442ed15d9f19d59cb9edc747230e521c"
+        "54efa6aa23772d510bf9c2386641a5d351b15d21affd8d9edc95a398bcb5ce29",
+        "62283aadc220cd656a430400a582816865a8b240e48cf384bf093cae39680650"
       ],
       "actorKey": "business_owner:npc_outpost_ashline_foreman:8810000000019601:foreman calla ashe:foreman calla ashe",
       "actorId": "chapter1-objective:returning_npc_outpost_ashline_foreman",
       "lineId": "line-01",
       "path": "harthmere/voices/generated/current/chapter-1-identity-objective-returning-npc-outpost-ashline-foreman-foreman-calla-ashe/line-01.mp3",
-      "voice": "azure-speech|voice=en-US-DavisNeural|gender=male|kind=humanoid|style=chat|styleDegree=1.05|rate=%2B0%25|pitch=-2%25|volume=default|break=194|actor=business_owner%3Anpc_outpost_ashline_foreman%3A8810000000019601%3Aforeman%20calla%20ashe%3Aforeman%20calla%20ashe",
-      "voiceId": "JBFqnCBsd6RMkjVDRZzb",
+      "voice": "azure-speech|voice=en-US-AriaNeural|gender=female|kind=humanoid|style=chat|styleDegree=1.05|rate=%2B0%25|pitch=-2%25|volume=default|break=194|actor=business_owner%3Anpc_outpost_ashline_foreman%3A8810000000019601%3Aforeman%20calla%20ashe%3Aforeman%20calla%20ashe",
+      "voiceId": "AZnzlk1XvdvUeBnXmlld",
       "textHash": "4d0946723c07647dd697d47ee9240d0eeb1246d0222e7726d1114fcb6a3e5d87",
-      "bytes": 100772
+      "bytes": 121252
     },
     {
-      "cacheKey": "a8340d57051733196b049d23aef8dc64e4188f716685b93615670bc0e1ec3f24",
+      "cacheKey": "aa1b407dda843b33b0aa5421ff29270f442572130276a2ab959c74501d1cf9ed",
       "cacheKeys": [
-        "a8340d57051733196b049d23aef8dc64e4188f716685b93615670bc0e1ec3f24",
-        "e13e07bb26ea8d478101d6c6473012bcaa3d1dc10ff375cb75762c8961e3e67c"
+        "aa1b407dda843b33b0aa5421ff29270f442572130276a2ab959c74501d1cf9ed",
+        "7ebe8662750cc742a30d3561b33218b650730d5f0d8e663b3dc26506ec4b8d17"
       ],
       "actorKey": "business_owner:npc_outpost_ashline_foreman:8810000000019601:foreman calla ashe:foreman calla ashe",
       "actorId": "chapter1-objective:returning_npc_outpost_ashline_foreman",
       "lineId": "line-02",
       "path": "harthmere/voices/generated/current/chapter-1-identity-objective-returning-npc-outpost-ashline-foreman-foreman-calla-ashe/line-02.mp3",
-      "voice": "azure-speech|voice=en-US-DavisNeural|gender=male|kind=humanoid|style=chat|styleDegree=1.05|rate=%2B0%25|pitch=-2%25|volume=default|break=194|actor=business_owner%3Anpc_outpost_ashline_foreman%3A8810000000019601%3Aforeman%20calla%20ashe%3Aforeman%20calla%20ashe",
-      "voiceId": "JBFqnCBsd6RMkjVDRZzb",
+      "voice": "azure-speech|voice=en-US-AriaNeural|gender=female|kind=humanoid|style=chat|styleDegree=1.05|rate=%2B0%25|pitch=-2%25|volume=default|break=194|actor=business_owner%3Anpc_outpost_ashline_foreman%3A8810000000019601%3Aforeman%20calla%20ashe%3Aforeman%20calla%20ashe",
+      "voiceId": "AZnzlk1XvdvUeBnXmlld",
       "textHash": "86198295d12abf548b99e374a64173bbb57010d087cfe3fc515677648c30c781",
-      "bytes": 69007
+      "bytes": 71515
     },
     {
       "cacheKey": "01909bfd83fa60a4eed5fd6b41c8336d4f41ef849f4e4dd7826d574c4fcae63a",
@@ -4613,19 +4613,19 @@
       "bytes": 104951
     },
     {
-      "cacheKey": "1dc093d5d2fbabf12e2c4675afe88bc71d868fade8c3eef12f49d0fd8e423b6f",
+      "cacheKey": "f5567c37b84610f5d402c21fe5584c93c7357a941b279aba81c5e03fea4af79a",
       "cacheKeys": [
-        "1dc093d5d2fbabf12e2c4675afe88bc71d868fade8c3eef12f49d0fd8e423b6f",
-        "bbd7775d5f33853c11f1758684fbcc64d2465ab11c6d23b339263e08a3569177"
+        "f5567c37b84610f5d402c21fe5584c93c7357a941b279aba81c5e03fea4af79a",
+        "d22b53cefb25861d3096f39d633432c3cd1014691b1a20593d2291a8370ebe51"
       ],
       "actorKey": "business_owner:npc_outpost_ashline_foreman:8810000000019601:foreman calla ashe:foreman calla ashe",
-      "actorId": "returning_npc_outpost_ashline_foreman",
+      "actorId": "npc_outpost_ashline_foreman",
       "lineId": "line-01",
       "path": "harthmere/voices/generated/current/chapter-1-identity-returning-npc-outpost-ashline-foreman-foreman-calla-ashe/line-01.mp3",
-      "voice": "azure-speech|voice=en-US-DavisNeural|gender=male|kind=humanoid|style=chat|styleDegree=1.05|rate=%2B0%25|pitch=-2%25|volume=default|break=194|actor=business_owner%3Anpc_outpost_ashline_foreman%3A8810000000019601%3Aforeman%20calla%20ashe%3Aforeman%20calla%20ashe",
-      "voiceId": "JBFqnCBsd6RMkjVDRZzb",
+      "voice": "azure-speech|voice=en-US-AriaNeural|gender=female|kind=humanoid|style=chat|styleDegree=1.05|rate=%2B0%25|pitch=-2%25|volume=default|break=194|actor=business_owner%3Anpc_outpost_ashline_foreman%3A8810000000019601%3Aforeman%20calla%20ashe%3Aforeman%20calla%20ashe",
+      "voiceId": "AZnzlk1XvdvUeBnXmlld",
       "textHash": "eba3c48c81db512dc3df9da3efd59cbaffa34fae6d0c0b989b6aa6d1bbbe11d3",
-      "bytes": 18852
+      "bytes": 21359
     },
     {
       "cacheKey": "08e4868f66f579b092b90baa1d2dc3a696da3245fbecb465d49ff4b9485dbd1f",
@@ -4958,79 +4958,79 @@
       ]
     },
     {
-      "cacheKey": "671b8c0a3a36232405719a5de0065c591ba0318adab2bf1e4b8b0cc09933cf1d",
+      "cacheKey": "65f1303e9476e4860fe8bb64acd1cfad6b8e78011f71ec606d30c59db949f12b",
+      "cacheKeys": [
+        "65f1303e9476e4860fe8bb64acd1cfad6b8e78011f71ec606d30c59db949f12b",
+        "2a283b6d79436a0523d8d7a40498981f983b6e9267b96a948e5cfe45968806fc"
+      ],
       "actorKey": "harthmere_named:auction_pell_marsten:auction clerk pell marsten:auction clerk pell marsten",
       "actorId": "auction_pell_marsten",
       "lineId": "line-01",
       "path": "harthmere/voices/generated/current/harthmere-named-auction-pell-marsten-auction-clerk-pell-marsten/line-01.mp3",
-      "voice": "azure-speech|voice=en-US-SaraNeural|gender=female|kind=humanoid|style=hopeful|styleDegree=0.90|rate=%2B2%25|pitch=%2B1%25|volume=default|break=134|actor=harthmere_named%3Aauction_pell_marsten%3Aauction%20clerk%20pell%20marsten%3Aauction%20clerk%20pell%20marsten",
-      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "voice": "azure-speech|voice=en-GB-RyanNeural|gender=male|kind=humanoid|style=chat|styleDegree=0.90|rate=%2B2%25|pitch=%2B1%25|volume=default|break=134|actor=harthmere_named%3Aauction_pell_marsten%3Aauction%20clerk%20pell%20marsten%3Aauction%20clerk%20pell%20marsten",
+      "voiceId": "yoZ06aMxZJJ28mfd3POQ",
       "textHash": "15b228c0a0d2fec2cd2b95a72f0e542849df2bcb20502a5ac162961df5736b3e",
-      "bytes": 126685,
-      "cacheKeys": [
-        "671b8c0a3a36232405719a5de0065c591ba0318adab2bf1e4b8b0cc09933cf1d",
-        "d1b7c88024397e9f7fb85e638cca13dfa05b6b3b654302bc46e55f23b3b5a263"
-      ]
+      "bytes": 127939
     },
     {
-      "cacheKey": "38664cd7bdf79bdeab331f270a1669c2a161cf087f777a1ed2c64f06b12b145d",
+      "cacheKey": "68acefb07f7b28c16c9f309460a4ef2afe03e91cff8691a490745e9ca68c8ef4",
+      "cacheKeys": [
+        "68acefb07f7b28c16c9f309460a4ef2afe03e91cff8691a490745e9ca68c8ef4",
+        "2d13be5c41cb58ff0cd0cafef86bcc91d9956f9d784a7f07cc54b59a723d4b34"
+      ],
       "actorKey": "harthmere_named:auction_pell_marsten:auction clerk pell marsten:auction clerk pell marsten",
       "actorId": "auction_pell_marsten",
       "lineId": "line-02",
       "path": "harthmere/voices/generated/current/harthmere-named-auction-pell-marsten-auction-clerk-pell-marsten/line-02.mp3",
-      "voice": "azure-speech|voice=en-US-SaraNeural|gender=female|kind=humanoid|style=hopeful|styleDegree=0.90|rate=%2B2%25|pitch=%2B1%25|volume=default|break=134|actor=harthmere_named%3Aauction_pell_marsten%3Aauction%20clerk%20pell%20marsten%3Aauction%20clerk%20pell%20marsten",
-      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "voice": "azure-speech|voice=en-GB-RyanNeural|gender=male|kind=humanoid|style=chat|styleDegree=0.90|rate=%2B2%25|pitch=%2B1%25|volume=default|break=134|actor=harthmere_named%3Aauction_pell_marsten%3Aauction%20clerk%20pell%20marsten%3Aauction%20clerk%20pell%20marsten",
+      "voiceId": "yoZ06aMxZJJ28mfd3POQ",
       "textHash": "a547a4aeb467358c20020c40ad0ac0c70061d2afc19facd2eee66e19adf7db12",
-      "bytes": 272553,
-      "cacheKeys": [
-        "38664cd7bdf79bdeab331f270a1669c2a161cf087f777a1ed2c64f06b12b145d",
-        "2f7a5d567cc9c1c540ce265093949652e070882e83eef1957d1cf4b2e034d808"
-      ]
+      "bytes": 276315
     },
     {
-      "cacheKey": "0e5684e9276d7c3600e91db1cb45206b805b02e85b3cac51a0cbe1331f981aa9",
+      "cacheKey": "eec72649d7ad4b0c194d6c7e65e212340a37cf87bfe5b2362626ea1681dd5816",
+      "cacheKeys": [
+        "eec72649d7ad4b0c194d6c7e65e212340a37cf87bfe5b2362626ea1681dd5816",
+        "faef06cb7ebaa3dfa6449d6ff7221518a51b7ef90976289417363414400364b7"
+      ],
       "actorKey": "harthmere_named:auction_pell_marsten:auction clerk pell marsten:auction clerk pell marsten",
       "actorId": "auction_pell_marsten",
       "lineId": "line-03",
       "path": "harthmere/voices/generated/current/harthmere-named-auction-pell-marsten-auction-clerk-pell-marsten/line-03.mp3",
-      "voice": "azure-speech|voice=en-US-SaraNeural|gender=female|kind=humanoid|style=hopeful|styleDegree=0.90|rate=%2B2%25|pitch=%2B1%25|volume=default|break=134|actor=harthmere_named%3Aauction_pell_marsten%3Aauction%20clerk%20pell%20marsten%3Aauction%20clerk%20pell%20marsten",
-      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "voice": "azure-speech|voice=en-GB-RyanNeural|gender=male|kind=humanoid|style=chat|styleDegree=0.90|rate=%2B2%25|pitch=%2B1%25|volume=default|break=134|actor=harthmere_named%3Aauction_pell_marsten%3Aauction%20clerk%20pell%20marsten%3Aauction%20clerk%20pell%20marsten",
+      "voiceId": "yoZ06aMxZJJ28mfd3POQ",
       "textHash": "6de8629491fa15ca935339522f3b14f7a400b8a3cfb6f83a68ed74a5533fad71",
-      "bytes": 277568,
-      "cacheKeys": [
-        "0e5684e9276d7c3600e91db1cb45206b805b02e85b3cac51a0cbe1331f981aa9",
-        "a2e7378a961d55b06f9c09ab4048be84aa4061bb21ebcfa1c306bb9671458b8f"
-      ]
+      "bytes": 300556
     },
     {
-      "cacheKey": "598fe30f3a30626134c532e02aea65068522068a7c1af7e59ea4c45fef17509a",
+      "cacheKey": "0e4b63360244c96a5c90663c9d2b5e4997b5388c5106b3ceb2295d434fee7aa9",
+      "cacheKeys": [
+        "0e4b63360244c96a5c90663c9d2b5e4997b5388c5106b3ceb2295d434fee7aa9",
+        "db5c75189a3572bce232ef1ff72a47d699df0bc6ac6ae854c6f02463eeb778c5"
+      ],
       "actorKey": "harthmere_named:auction_pell_marsten:auction clerk pell marsten:auction clerk pell marsten",
       "actorId": "auction_pell_marsten",
       "lineId": "line-04",
       "path": "harthmere/voices/generated/current/harthmere-named-auction-pell-marsten-auction-clerk-pell-marsten/line-04.mp3",
-      "voice": "azure-speech|voice=en-US-SaraNeural|gender=female|kind=humanoid|style=hopeful|styleDegree=0.90|rate=%2B2%25|pitch=%2B1%25|volume=default|break=134|actor=harthmere_named%3Aauction_pell_marsten%3Aauction%20clerk%20pell%20marsten%3Aauction%20clerk%20pell%20marsten",
-      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "voice": "azure-speech|voice=en-GB-RyanNeural|gender=male|kind=humanoid|style=chat|styleDegree=0.90|rate=%2B2%25|pitch=%2B1%25|volume=default|break=134|actor=harthmere_named%3Aauction_pell_marsten%3Aauction%20clerk%20pell%20marsten%3Aauction%20clerk%20pell%20marsten",
+      "voiceId": "yoZ06aMxZJJ28mfd3POQ",
       "textHash": "37d3be1c382a92e81a4b12bfa9f0bd39359ebcd4f4689186bbb745f5d8c52b4b",
-      "bytes": 263358,
-      "cacheKeys": [
-        "598fe30f3a30626134c532e02aea65068522068a7c1af7e59ea4c45fef17509a",
-        "9c212b09e4017bca53d030c3ce60b294516e3059e1d409e2686b1479df7010a4"
-      ]
+      "bytes": 264612
     },
     {
-      "cacheKey": "4b1ec85686560d84205f734ca30925308a2cca841303100b9cb8721a0f18de9b",
+      "cacheKey": "91a2cc965ee6b7621721d64ebcb5fe8ffd495243a52bff54fd3be4e794e133e8",
+      "cacheKeys": [
+        "91a2cc965ee6b7621721d64ebcb5fe8ffd495243a52bff54fd3be4e794e133e8",
+        "3f2b08335bd962cd0dd5020d4d184a1311a4f644627d4c89e3240b7abd70e593"
+      ],
       "actorKey": "harthmere_named:auction_pell_marsten:auction clerk pell marsten:auction clerk pell marsten",
       "actorId": "auction_pell_marsten",
       "lineId": "line-05",
       "path": "harthmere/voices/generated/current/harthmere-named-auction-pell-marsten-auction-clerk-pell-marsten/line-05.mp3",
-      "voice": "azure-speech|voice=en-US-SaraNeural|gender=female|kind=humanoid|style=hopeful|styleDegree=0.90|rate=%2B2%25|pitch=%2B1%25|volume=default|break=134|actor=harthmere_named%3Aauction_pell_marsten%3Aauction%20clerk%20pell%20marsten%3Aauction%20clerk%20pell%20marsten",
-      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "voice": "azure-speech|voice=en-GB-RyanNeural|gender=male|kind=humanoid|style=chat|styleDegree=0.90|rate=%2B2%25|pitch=%2B1%25|volume=default|break=134|actor=harthmere_named%3Aauction_pell_marsten%3Aauction%20clerk%20pell%20marsten%3Aauction%20clerk%20pell%20marsten",
+      "voiceId": "yoZ06aMxZJJ28mfd3POQ",
       "textHash": "eb456222830af9ebe4cb986253f8ddda6ed539ff3e5428599f3137ef1a9ffcd1",
-      "bytes": 150927,
-      "cacheKeys": [
-        "4b1ec85686560d84205f734ca30925308a2cca841303100b9cb8721a0f18de9b",
-        "e9f795eb70a2e4eb2bcdfe04b4f5e4caf539677147d709d245874d4020d9d417"
-      ]
+      "bytes": 166391
     },
     {
       "cacheKey": "4b7225f7cf18c6fe24d4dfcb45026a31fb75026e39a9d2acd1045680381fb6de",
@@ -5333,79 +5333,79 @@
       ]
     },
     {
-      "cacheKey": "cb683453cc2115723169cd87693074810ef7e0b9d5afd9bab49d38e196d8add2",
+      "cacheKey": "2883e425945fea0091bc16c68875e7e86b99b6f71860467a10c8546c47ee8152",
+      "cacheKeys": [
+        "2883e425945fea0091bc16c68875e7e86b99b6f71860467a10c8546c47ee8152",
+        "db6624eb570acd78f2baf3dc8471c0429897e08df977672101cc8cf09d2b75c1"
+      ],
       "actorKey": "harthmere_named:brother_vance_holt:brother vance holt:brother vance holt",
       "actorId": "brother_vance_holt",
       "lineId": "line-01",
       "path": "harthmere/voices/generated/current/harthmere-named-brother-vance-holt-brother-vance-holt/line-01.mp3",
-      "voice": "azure-speech|voice=en-US-JaneNeural|gender=female|kind=humanoid|style=friendly|styleDegree=0.85|rate=-3%25|pitch=%2B0%25|volume=default|break=110|actor=harthmere_named%3Abrother_vance_holt%3Abrother%20vance%20holt%3Abrother%20vance%20holt",
-      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "voice": "azure-speech|voice=en-US-TonyNeural|gender=male|kind=humanoid|style=friendly|styleDegree=0.85|rate=-3%25|pitch=%2B0%25|volume=default|break=110|actor=harthmere_named%3Abrother_vance_holt%3Abrother%20vance%20holt%3Abrother%20vance%20holt",
+      "voiceId": "ErXwobaYiN019PkySvjV",
       "textHash": "8b4a74791834e4739425cc1261e86aaaa883db9b8b98fb149200523de8edd2c4",
-      "bytes": 108713,
-      "cacheKeys": [
-        "cb683453cc2115723169cd87693074810ef7e0b9d5afd9bab49d38e196d8add2",
-        "b6902899de2823ce66418419d0ada2544f309f9f029c5b8f9dc8e8092016c213"
-      ]
+      "bytes": 94502
     },
     {
-      "cacheKey": "3a4dfd965b451c3ccbb4f8dd624f442553c128a74c8ee4721d744e3a5abc5f67",
+      "cacheKey": "11ab235f1a9bd090e1eb0dc33fb88ae84adff40d96b639357aaa2d8e1bb6eb90",
+      "cacheKeys": [
+        "11ab235f1a9bd090e1eb0dc33fb88ae84adff40d96b639357aaa2d8e1bb6eb90",
+        "5a8f5f6f3c08600020dbfd4fabb0150203db033838dd4541ecad106ffb14f76e"
+      ],
       "actorKey": "harthmere_named:brother_vance_holt:brother vance holt:brother vance holt",
       "actorId": "brother_vance_holt",
       "lineId": "line-02",
       "path": "harthmere/voices/generated/current/harthmere-named-brother-vance-holt-brother-vance-holt/line-02.mp3",
-      "voice": "azure-speech|voice=en-US-JaneNeural|gender=female|kind=humanoid|style=friendly|styleDegree=0.85|rate=-3%25|pitch=%2B0%25|volume=default|break=110|actor=harthmere_named%3Abrother_vance_holt%3Abrother%20vance%20holt%3Abrother%20vance%20holt",
-      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "voice": "azure-speech|voice=en-US-TonyNeural|gender=male|kind=humanoid|style=friendly|styleDegree=0.85|rate=-3%25|pitch=%2B0%25|volume=default|break=110|actor=harthmere_named%3Abrother_vance_holt%3Abrother%20vance%20holt%3Abrother%20vance%20holt",
+      "voiceId": "ErXwobaYiN019PkySvjV",
       "textHash": "5a06244c057bafbc4681943a789626cc0e91f7922e4668b2d4ed6b1d053fb96b",
-      "bytes": 287599,
-      "cacheKeys": [
-        "3a4dfd965b451c3ccbb4f8dd624f442553c128a74c8ee4721d744e3a5abc5f67",
-        "ed5fed313527589dd3f3fc0b7c1685bfc1ab7f567ec72e20c4f4a5706e3c40fa"
-      ]
+      "bytes": 254581
     },
     {
-      "cacheKey": "184f4bc513effb76ad7ad40e8023a20de1cb203f832222e3efb4f50941315cc2",
+      "cacheKey": "6ddad98ef85bf5f278aad0ca7f4483a0041d78e36c51c78a85649b72c24ccf6d",
+      "cacheKeys": [
+        "6ddad98ef85bf5f278aad0ca7f4483a0041d78e36c51c78a85649b72c24ccf6d",
+        "5d9fe55c59cccbd0abec31906b8d4ab42660e3c79fdc04ac351811bc70896808"
+      ],
       "actorKey": "harthmere_named:brother_vance_holt:brother vance holt:brother vance holt",
       "actorId": "brother_vance_holt",
       "lineId": "line-03",
       "path": "harthmere/voices/generated/current/harthmere-named-brother-vance-holt-brother-vance-holt/line-03.mp3",
-      "voice": "azure-speech|voice=en-US-JaneNeural|gender=female|kind=humanoid|style=friendly|styleDegree=0.85|rate=-3%25|pitch=%2B0%25|volume=default|break=110|actor=harthmere_named%3Abrother_vance_holt%3Abrother%20vance%20holt%3Abrother%20vance%20holt",
-      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "voice": "azure-speech|voice=en-US-TonyNeural|gender=male|kind=humanoid|style=friendly|styleDegree=0.85|rate=-3%25|pitch=%2B0%25|volume=default|break=110|actor=harthmere_named%3Abrother_vance_holt%3Abrother%20vance%20holt%3Abrother%20vance%20holt",
+      "voiceId": "ErXwobaYiN019PkySvjV",
       "textHash": "202c1d88592dcb7e0d61435b54e817da621f2ef51eef4f908a2f6c9e4c4bedf8",
-      "bytes": 245386,
-      "cacheKeys": [
-        "184f4bc513effb76ad7ad40e8023a20de1cb203f832222e3efb4f50941315cc2",
-        "575f221fca53c74152ff92b1d1cdab5c246ad2419c86c618e0a36d81aa85767e"
-      ]
+      "bytes": 226159
     },
     {
-      "cacheKey": "c4c3735be84867d8992f1aa328378e662f49a7915a5d60efdcd6cf4b6d6a31ed",
+      "cacheKey": "a3c84eb70fa699c5f47d5f198206997630c9fc508b6f77584734ba23ae7f4e44",
+      "cacheKeys": [
+        "a3c84eb70fa699c5f47d5f198206997630c9fc508b6f77584734ba23ae7f4e44",
+        "b76210891420821a9ed49aeadfb3d2d480a128c02fe51309b92df82f77fcb18f"
+      ],
       "actorKey": "harthmere_named:brother_vance_holt:brother vance holt:brother vance holt",
       "actorId": "brother_vance_holt",
       "lineId": "line-04",
       "path": "harthmere/voices/generated/current/harthmere-named-brother-vance-holt-brother-vance-holt/line-04.mp3",
-      "voice": "azure-speech|voice=en-US-JaneNeural|gender=female|kind=humanoid|style=friendly|styleDegree=0.85|rate=-3%25|pitch=%2B0%25|volume=default|break=110|actor=harthmere_named%3Abrother_vance_holt%3Abrother%20vance%20holt%3Abrother%20vance%20holt",
-      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "voice": "azure-speech|voice=en-US-TonyNeural|gender=male|kind=humanoid|style=friendly|styleDegree=0.85|rate=-3%25|pitch=%2B0%25|volume=default|break=110|actor=harthmere_named%3Abrother_vance_holt%3Abrother%20vance%20holt%3Abrother%20vance%20holt",
+      "voiceId": "ErXwobaYiN019PkySvjV",
       "textHash": "9d61ecc122d7ad6fd00b39f00ef16b6ca1e227bdbbabc5708902a747577665db",
-      "bytes": 223652,
-      "cacheKeys": [
-        "c4c3735be84867d8992f1aa328378e662f49a7915a5d60efdcd6cf4b6d6a31ed",
-        "0eb2c56e7ce660cfd372941d72d40433f9ae1b49255c1873cd4036ee6e934415"
-      ]
+      "bytes": 207351
     },
     {
-      "cacheKey": "51e64e51bef1920c14eeb3420c9330d869a806ea886c0003ff3627b8c843fe2d",
+      "cacheKey": "5a7615e567dce15f97d44cab6595c50e1fd330914a5830f12b5c5f1e82fce813",
+      "cacheKeys": [
+        "5a7615e567dce15f97d44cab6595c50e1fd330914a5830f12b5c5f1e82fce813",
+        "77722f92d71ddd4b957ecac3a3af332b6e353b2eae8b91ca9484d5dbfd87fdb8"
+      ],
       "actorKey": "harthmere_named:brother_vance_holt:brother vance holt:brother vance holt",
       "actorId": "brother_vance_holt",
       "lineId": "line-05",
       "path": "harthmere/voices/generated/current/harthmere-named-brother-vance-holt-brother-vance-holt/line-05.mp3",
-      "voice": "azure-speech|voice=en-US-JaneNeural|gender=female|kind=humanoid|style=friendly|styleDegree=0.85|rate=-3%25|pitch=%2B0%25|volume=default|break=110|actor=harthmere_named%3Abrother_vance_holt%3Abrother%20vance%20holt%3Abrother%20vance%20holt",
-      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "voice": "azure-speech|voice=en-US-TonyNeural|gender=male|kind=humanoid|style=friendly|styleDegree=0.85|rate=-3%25|pitch=%2B0%25|volume=default|break=110|actor=harthmere_named%3Abrother_vance_holt%3Abrother%20vance%20holt%3Abrother%20vance%20holt",
+      "voiceId": "ErXwobaYiN019PkySvjV",
       "textHash": "430255712280c9262c079f85c831d6f664221e3c8a47d13654f60b95c828a29e",
-      "bytes": 139224,
-      "cacheKeys": [
-        "51e64e51bef1920c14eeb3420c9330d869a806ea886c0003ff3627b8c843fe2d",
-        "6eef21b5b86a7d1e58ed1776130f3dd9a872fbd68b2a27ca068f1f57cba84b78"
-      ]
+      "bytes": 117490
     },
     {
       "cacheKey": "4d854add6ead054751de5304b6b161f3c23bcf36743571b70ab0b7ca9308ccc2",
@@ -5483,154 +5483,154 @@
       ]
     },
     {
-      "cacheKey": "fbf6160ffdb2716fbd71b454c4fdd23c94a28dc11d4b70d458cc562b270ed6eb",
+      "cacheKey": "ff5e1312507ce73f9d125af42b8fd66a099fcb95d87e863de002779b63f4b1fb",
+      "cacheKeys": [
+        "ff5e1312507ce73f9d125af42b8fd66a099fcb95d87e863de002779b63f4b1fb",
+        "f75b82ec9180b4fa807cca37b04029e883070fa643da1ff10008be639ebff530"
+      ],
       "actorKey": "harthmere_named:courier_anwen_mell:courier anwen mell:courier anwen mell",
       "actorId": "courier_anwen_mell",
       "lineId": "line-01",
       "path": "harthmere/voices/generated/current/harthmere-named-courier-anwen-mell-courier-anwen-mell/line-01.mp3",
-      "voice": "azure-speech|voice=en-US-TonyNeural|gender=male|kind=humanoid|style=friendly|styleDegree=0.95|rate=-5%25|pitch=-2%25|volume=default|break=134|actor=harthmere_named%3Acourier_anwen_mell%3Acourier%20anwen%20mell%3Acourier%20anwen%20mell",
-      "voiceId": "ErXwobaYiN019PkySvjV",
+      "voice": "azure-speech|voice=en-US-JaneNeural|gender=female|kind=humanoid|style=friendly|styleDegree=0.95|rate=-5%25|pitch=-2%25|volume=default|break=134|actor=harthmere_named%3Acourier_anwen_mell%3Acourier%20anwen%20mell%3Acourier%20anwen%20mell",
+      "voiceId": "21m00Tcm4TlvDq8ikWAM",
       "textHash": "33789a3c303322c9fd340e49203faed7e615f31875f2512b5f1d8d7583ea1438",
-      "bytes": 104951,
-      "cacheKeys": [
-        "fbf6160ffdb2716fbd71b454c4fdd23c94a28dc11d4b70d458cc562b270ed6eb",
-        "5b53043606345013d7c6e3695cf52e4e83322613e8f6e2c5ce6dd858d83df144"
-      ]
+      "bytes": 117490
     },
     {
-      "cacheKey": "b0b16e795adb4ca460f821d55ea9ecb6e1ec61317f9fb996d14d02c612b4bb24",
+      "cacheKey": "055d2ba0cc925a9e6c33e4de95f4df1bac7ff6c657f43758910b7ab520d40d01",
+      "cacheKeys": [
+        "055d2ba0cc925a9e6c33e4de95f4df1bac7ff6c657f43758910b7ab520d40d01",
+        "e6b1d5524cf60f0a58d2cb4aac615dbeacb75f9943701525517ebabd62d84a3c"
+      ],
       "actorKey": "harthmere_named:courier_anwen_mell:courier anwen mell:courier anwen mell",
       "actorId": "courier_anwen_mell",
       "lineId": "line-02",
       "path": "harthmere/voices/generated/current/harthmere-named-courier-anwen-mell-courier-anwen-mell/line-02.mp3",
-      "voice": "azure-speech|voice=en-US-TonyNeural|gender=male|kind=humanoid|style=friendly|styleDegree=0.95|rate=-5%25|pitch=-2%25|volume=default|break=134|actor=harthmere_named%3Acourier_anwen_mell%3Acourier%20anwen%20mell%3Acourier%20anwen%20mell",
-      "voiceId": "ErXwobaYiN019PkySvjV",
+      "voice": "azure-speech|voice=en-US-JaneNeural|gender=female|kind=humanoid|style=friendly|styleDegree=0.95|rate=-5%25|pitch=-2%25|volume=default|break=134|actor=harthmere_named%3Acourier_anwen_mell%3Acourier%20anwen%20mell%3Acourier%20anwen%20mell",
+      "voiceId": "21m00Tcm4TlvDq8ikWAM",
       "textHash": "f0e0a4bad8d3bea3a5a40a58207b753eb05b44d418c0832dd45fc8f0c15e828f",
-      "bytes": 296795,
-      "cacheKeys": [
-        "b0b16e795adb4ca460f821d55ea9ecb6e1ec61317f9fb996d14d02c612b4bb24",
-        "a170487413bb32de2621768a8caab49064d224a2177244832961fc5e142bf000"
-      ]
+      "bytes": 280076
     },
     {
-      "cacheKey": "bd41d918433aaa81844cbefd5bda0a13185850a2f22ae88031ab11f340c61b81",
+      "cacheKey": "eb269e50c5d1e8cc68805142f523d6d15c0377c1e3e622d765336dc9bb76a1af",
+      "cacheKeys": [
+        "eb269e50c5d1e8cc68805142f523d6d15c0377c1e3e622d765336dc9bb76a1af",
+        "96b3ba2c9ae7dd8ee17d89c119991e53851a3a947b4f0e5477fe0685657d3a24"
+      ],
       "actorKey": "harthmere_named:courier_anwen_mell:courier anwen mell:courier anwen mell",
       "actorId": "courier_anwen_mell",
       "lineId": "line-03",
       "path": "harthmere/voices/generated/current/harthmere-named-courier-anwen-mell-courier-anwen-mell/line-03.mp3",
-      "voice": "azure-speech|voice=en-US-TonyNeural|gender=male|kind=humanoid|style=friendly|styleDegree=0.95|rate=-5%25|pitch=-2%25|volume=default|break=134|actor=harthmere_named%3Acourier_anwen_mell%3Acourier%20anwen%20mell%3Acourier%20anwen%20mell",
-      "voiceId": "ErXwobaYiN019PkySvjV",
+      "voice": "azure-speech|voice=en-US-JaneNeural|gender=female|kind=humanoid|style=friendly|styleDegree=0.95|rate=-5%25|pitch=-2%25|volume=default|break=134|actor=harthmere_named%3Acourier_anwen_mell%3Acourier%20anwen%20mell%3Acourier%20anwen%20mell",
+      "voiceId": "21m00Tcm4TlvDq8ikWAM",
       "textHash": "b52d9f085b0d4307561f1da1142f8f80daa1b692fcbc6a3f7d53f119dbc9dfc9",
-      "bytes": 255835,
-      "cacheKeys": [
-        "bd41d918433aaa81844cbefd5bda0a13185850a2f22ae88031ab11f340c61b81",
-        "49d2e200411391b96bac2e879e189097e062b3a55f3e17889578e27eda31f239"
-      ]
+      "bytes": 234101
     },
     {
-      "cacheKey": "fabaef09fae90e8d02202c9f9a0011ca9437dd6651f85377c038227479be8a46",
+      "cacheKey": "745fc53358e5c84ebb69d0f10ab159733bd9ef78c49a539c78a6bd8a93d15a5b",
+      "cacheKeys": [
+        "745fc53358e5c84ebb69d0f10ab159733bd9ef78c49a539c78a6bd8a93d15a5b",
+        "df95abd1e7e721c3640bc30838d625f70ad9333ff76bd17da94025a30692b674"
+      ],
       "actorKey": "harthmere_named:courier_anwen_mell:courier anwen mell:courier anwen mell",
       "actorId": "courier_anwen_mell",
       "lineId": "line-04",
       "path": "harthmere/voices/generated/current/harthmere-named-courier-anwen-mell-courier-anwen-mell/line-04.mp3",
-      "voice": "azure-speech|voice=en-US-TonyNeural|gender=male|kind=humanoid|style=friendly|styleDegree=0.95|rate=-5%25|pitch=-2%25|volume=default|break=134|actor=harthmere_named%3Acourier_anwen_mell%3Acourier%20anwen%20mell%3Acourier%20anwen%20mell",
-      "voiceId": "ErXwobaYiN019PkySvjV",
+      "voice": "azure-speech|voice=en-US-JaneNeural|gender=female|kind=humanoid|style=friendly|styleDegree=0.95|rate=-5%25|pitch=-2%25|volume=default|break=134|actor=harthmere_named%3Acourier_anwen_mell%3Acourier%20anwen%20mell%3Acourier%20anwen%20mell",
+      "voiceId": "21m00Tcm4TlvDq8ikWAM",
       "textHash": "3e0d6b60903b8cb03a36621388fefac0046bb744306186e49c0b11b7866a6b2a",
-      "bytes": 227831,
-      "cacheKeys": [
-        "fabaef09fae90e8d02202c9f9a0011ca9437dd6651f85377c038227479be8a46",
-        "b90bcee84e44d04976dad6629586229eba4b10327f20bc0a268323cf4050a34c"
-      ]
+      "bytes": 227831
     },
     {
-      "cacheKey": "62c424c777c558b768e9fee3d3d151f0f7c113303aeb0056d6a38d163fc2bad7",
+      "cacheKey": "20c5f61c199096d9b83fcbe7b574aec0cc108ec20c6eea13240454787515b45b",
+      "cacheKeys": [
+        "20c5f61c199096d9b83fcbe7b574aec0cc108ec20c6eea13240454787515b45b",
+        "50238a72ce4a4132ff84b641cb3d36c15699170357bca523f0624a0e6ff7826a"
+      ],
       "actorKey": "harthmere_named:courier_anwen_mell:courier anwen mell:courier anwen mell",
       "actorId": "courier_anwen_mell",
       "lineId": "line-05",
       "path": "harthmere/voices/generated/current/harthmere-named-courier-anwen-mell-courier-anwen-mell/line-05.mp3",
-      "voice": "azure-speech|voice=en-US-TonyNeural|gender=male|kind=humanoid|style=friendly|styleDegree=0.95|rate=-5%25|pitch=-2%25|volume=default|break=134|actor=harthmere_named%3Acourier_anwen_mell%3Acourier%20anwen%20mell%3Acourier%20anwen%20mell",
-      "voiceId": "ErXwobaYiN019PkySvjV",
+      "voice": "azure-speech|voice=en-US-JaneNeural|gender=female|kind=humanoid|style=friendly|styleDegree=0.95|rate=-5%25|pitch=-2%25|volume=default|break=134|actor=harthmere_named%3Acourier_anwen_mell%3Acourier%20anwen%20mell%3Acourier%20anwen%20mell",
+      "voiceId": "21m00Tcm4TlvDq8ikWAM",
       "textHash": "db1cdb5a9b29c578e3d5fd42ade2a457ab53f159de1c90baa58a4024b7d428ce",
-      "bytes": 100772,
-      "cacheKeys": [
-        "62c424c777c558b768e9fee3d3d151f0f7c113303aeb0056d6a38d163fc2bad7",
-        "dd7a2764a8ac87ff53ecd42d5447fc105752e042dc35dc95367242906d9c9d2f"
-      ]
+      "bytes": 103279
     },
     {
-      "cacheKey": "4f8676fd4a08bebec7e3480d224eb769ad43e0b5c604ce52e2e2288f573609ee",
+      "cacheKey": "a0fd75f9df7916868bf20e23aebeee3f9e993f76163b31fd70281bdccfa36260",
+      "cacheKeys": [
+        "a0fd75f9df7916868bf20e23aebeee3f9e993f76163b31fd70281bdccfa36260",
+        "858d5713f2777ce7aacf412a86568f3e8a8eacc1a0cd09bad12a2e3d28e5bc4a"
+      ],
       "actorKey": "harthmere_named:dawn_loaf:mistress dawn loaf:mistress dawn loaf",
       "actorId": "dawn_loaf",
       "lineId": "line-01",
       "path": "harthmere/voices/generated/current/harthmere-named-dawn-loaf-mistress-dawn-loaf/line-01.mp3",
-      "voice": "azure-speech|voice=en-GB-RyanNeural|gender=male|kind=humanoid|style=chat|styleDegree=0.85|rate=-3%25|pitch=%2B0%25|volume=default|break=206|actor=harthmere_named%3Adawn_loaf%3Amistress%20dawn%20loaf%3Amistress%20dawn%20loaf",
-      "voiceId": "TxGEqnHWrfWFTfGW9XjX",
+      "voice": "azure-speech|voice=en-US-SaraNeural|gender=female|kind=humanoid|style=friendly|styleDegree=0.85|rate=-3%25|pitch=%2B0%25|volume=default|break=206|actor=harthmere_named%3Adawn_loaf%3Amistress%20dawn%20loaf%3Amistress%20dawn%20loaf",
+      "voiceId": "MF3mGyEYCl7XYWbV9V6O",
       "textHash": "4ddcfdbf2deb0414dfb190c1cf3624ebbb893ef9469bd9f6361d6cb18c0f199d",
-      "bytes": 111221,
-      "cacheKeys": [
-        "4f8676fd4a08bebec7e3480d224eb769ad43e0b5c604ce52e2e2288f573609ee",
-        "64d07987a6dbbb184e6742fb87f4aec7b25b45bc440a7bf5d8e67f4a57e1be9a"
-      ]
+      "bytes": 127939
     },
     {
-      "cacheKey": "8afa3680d874be3093b8e612b1f4650c2e110bf5c3832ab1cee47b1987f792e2",
+      "cacheKey": "f65fbb9afcd3276b64f3bb708a656de20be8bd523483c873ccbce0d94b619624",
+      "cacheKeys": [
+        "f65fbb9afcd3276b64f3bb708a656de20be8bd523483c873ccbce0d94b619624",
+        "2d04cc0aac5bc405d8ee3805d01edfb6ec5cd259e8db3c122be4e244ffc16746"
+      ],
       "actorKey": "harthmere_named:dawn_loaf:mistress dawn loaf:mistress dawn loaf",
       "actorId": "dawn_loaf",
       "lineId": "line-02",
       "path": "harthmere/voices/generated/current/harthmere-named-dawn-loaf-mistress-dawn-loaf/line-02.mp3",
-      "voice": "azure-speech|voice=en-GB-RyanNeural|gender=male|kind=humanoid|style=chat|styleDegree=0.85|rate=-3%25|pitch=%2B0%25|volume=default|break=206|actor=harthmere_named%3Adawn_loaf%3Amistress%20dawn%20loaf%3Amistress%20dawn%20loaf",
-      "voiceId": "TxGEqnHWrfWFTfGW9XjX",
+      "voice": "azure-speech|voice=en-US-SaraNeural|gender=female|kind=humanoid|style=friendly|styleDegree=0.85|rate=-3%25|pitch=%2B0%25|volume=default|break=206|actor=harthmere_named%3Adawn_loaf%3Amistress%20dawn%20loaf%3Amistress%20dawn%20loaf",
+      "voiceId": "MF3mGyEYCl7XYWbV9V6O",
       "textHash": "bbad47ae69bcd0da31fa0793c84af9924911b67bc7b55a03005f5f98a020dd72",
-      "bytes": 290525,
-      "cacheKeys": [
-        "8afa3680d874be3093b8e612b1f4650c2e110bf5c3832ab1cee47b1987f792e2",
-        "8d170dab27d0c05334b303292f881c6d86de0cd2afe3e7a14c1af0e894f0bf32"
-      ]
+      "bytes": 289271
     },
     {
-      "cacheKey": "9414f6f4dd202d794399c48c280c1a81799705c1afff30a4d2a348a61aaab1af",
+      "cacheKey": "ffdbac8bc6e4befd7a65325347b304caf20ec482f7c64c1eefcb8ebf31f8a647",
+      "cacheKeys": [
+        "ffdbac8bc6e4befd7a65325347b304caf20ec482f7c64c1eefcb8ebf31f8a647",
+        "6b3276c7de8177e3d860024bf30e7cac065cf326497c1ef19c4aeed5342c1767"
+      ],
       "actorKey": "harthmere_named:dawn_loaf:mistress dawn loaf:mistress dawn loaf",
       "actorId": "dawn_loaf",
       "lineId": "line-03",
       "path": "harthmere/voices/generated/current/harthmere-named-dawn-loaf-mistress-dawn-loaf/line-03.mp3",
-      "voice": "azure-speech|voice=en-GB-RyanNeural|gender=male|kind=humanoid|style=chat|styleDegree=0.85|rate=-3%25|pitch=%2B0%25|volume=default|break=206|actor=harthmere_named%3Adawn_loaf%3Amistress%20dawn%20loaf%3Amistress%20dawn%20loaf",
-      "voiceId": "TxGEqnHWrfWFTfGW9XjX",
+      "voice": "azure-speech|voice=en-US-SaraNeural|gender=female|kind=humanoid|style=friendly|styleDegree=0.85|rate=-3%25|pitch=%2B0%25|volume=default|break=206|actor=harthmere_named%3Adawn_loaf%3Amistress%20dawn%20loaf%3Amistress%20dawn%20loaf",
+      "voiceId": "MF3mGyEYCl7XYWbV9V6O",
       "textHash": "e564e412cbc6463e717fbf6a84d97e85b7e2d3dbf8b50dde19f43a4a4fd2e828",
-      "bytes": 271299,
-      "cacheKeys": [
-        "9414f6f4dd202d794399c48c280c1a81799705c1afff30a4d2a348a61aaab1af",
-        "1a4d5e33170b85b0354b1cce5d3589a2de846a280916ac983ed46a75314eedb1"
-      ]
+      "bytes": 277568
     },
     {
-      "cacheKey": "510b57b85cec08c1be1a4259b42f6bd092072ddb533be667aa2027debe67e7fe",
+      "cacheKey": "1700384a678cd19e56706880bc71419b639c7b6b6ac0f5c0d9a70c7c5171d60d",
+      "cacheKeys": [
+        "1700384a678cd19e56706880bc71419b639c7b6b6ac0f5c0d9a70c7c5171d60d",
+        "95bbe81829bc3f9a799cdc7496ec4bf7fb2f65777fb330307c33f491873e80c5"
+      ],
       "actorKey": "harthmere_named:dawn_loaf:mistress dawn loaf:mistress dawn loaf",
       "actorId": "dawn_loaf",
       "lineId": "line-04",
       "path": "harthmere/voices/generated/current/harthmere-named-dawn-loaf-mistress-dawn-loaf/line-04.mp3",
-      "voice": "azure-speech|voice=en-GB-RyanNeural|gender=male|kind=humanoid|style=chat|styleDegree=0.85|rate=-3%25|pitch=%2B0%25|volume=default|break=206|actor=harthmere_named%3Adawn_loaf%3Amistress%20dawn%20loaf%3Amistress%20dawn%20loaf",
-      "voiceId": "TxGEqnHWrfWFTfGW9XjX",
+      "voice": "azure-speech|voice=en-US-SaraNeural|gender=female|kind=humanoid|style=friendly|styleDegree=0.85|rate=-3%25|pitch=%2B0%25|volume=default|break=206|actor=harthmere_named%3Adawn_loaf%3Amistress%20dawn%20loaf%3Amistress%20dawn%20loaf",
+      "voiceId": "MF3mGyEYCl7XYWbV9V6O",
       "textHash": "48f410bfc5c6508c549e449693ef8670baf7769d91d33cb34f31cf78a937b28a",
-      "bytes": 260850,
-      "cacheKeys": [
-        "510b57b85cec08c1be1a4259b42f6bd092072ddb533be667aa2027debe67e7fe",
-        "fac264016a889f37429fbf779f4908ae9f0a842262fcef4cdb29c9823c7a410b"
-      ]
+      "bytes": 235355
     },
     {
-      "cacheKey": "86805f932a02b14199eefce1175594c9bb1d95c4c6ac757d751d07c12a6d6f08",
+      "cacheKey": "a19923b0b0d95abc3f0143bdb4ba23193f5840f0dedf2ac49c122cec7d26fca5",
+      "cacheKeys": [
+        "a19923b0b0d95abc3f0143bdb4ba23193f5840f0dedf2ac49c122cec7d26fca5",
+        "3f8535c2fb581c265c64f211466799937c0358080f4be887d2e23e39e67001cb"
+      ],
       "actorKey": "harthmere_named:dawn_loaf:mistress dawn loaf:mistress dawn loaf",
       "actorId": "dawn_loaf",
       "lineId": "line-05",
       "path": "harthmere/voices/generated/current/harthmere-named-dawn-loaf-mistress-dawn-loaf/line-05.mp3",
-      "voice": "azure-speech|voice=en-GB-RyanNeural|gender=male|kind=humanoid|style=chat|styleDegree=0.85|rate=-3%25|pitch=%2B0%25|volume=default|break=206|actor=harthmere_named%3Adawn_loaf%3Amistress%20dawn%20loaf%3Amistress%20dawn%20loaf",
-      "voiceId": "TxGEqnHWrfWFTfGW9XjX",
+      "voice": "azure-speech|voice=en-US-SaraNeural|gender=female|kind=humanoid|style=friendly|styleDegree=0.85|rate=-3%25|pitch=%2B0%25|volume=default|break=206|actor=harthmere_named%3Adawn_loaf%3Amistress%20dawn%20loaf%3Amistress%20dawn%20loaf",
+      "voiceId": "MF3mGyEYCl7XYWbV9V6O",
       "textHash": "a7e4ea31c0ad5a31a04a175ac9da262e032f1916a8f1ea6d5de0173942334641",
-      "bytes": 149673,
-      "cacheKeys": [
-        "86805f932a02b14199eefce1175594c9bb1d95c4c6ac757d751d07c12a6d6f08",
-        "a3690527892543250a97a84ed9b2cf775af1c119608eb7f201d1f8f5f3c2e09d"
-      ]
+      "bytes": 129193
     },
     {
       "cacheKey": "84a68442578bcd6aac95430f36b9b70a78066d992b0cfa3634136f905aafa908",
@@ -6008,154 +6008,154 @@
       ]
     },
     {
-      "cacheKey": "b9f14a4168406131d0c2aa1bf2cf7da5d25a6144f6578b4bea95884d8305e7f3",
+      "cacheKey": "793e82db6cd11eee7f637c7b7ce1360713efe113e65106661247184cf60fbcff",
+      "cacheKeys": [
+        "793e82db6cd11eee7f637c7b7ce1360713efe113e65106661247184cf60fbcff",
+        "893a70809c4eecc909c64c45a6728b132bb31ce6c400a0e73316b9ec3e4b0636"
+      ],
       "actorKey": "harthmere_named:helna_voss:mistress helna voss:mistress helna voss",
       "actorId": "helna_voss",
       "lineId": "line-01",
       "path": "harthmere/voices/generated/current/harthmere-named-helna-voss-mistress-helna-voss/line-01.mp3",
-      "voice": "azure-speech|voice=en-US-TonyNeural|gender=male|kind=humanoid|style=friendly|styleDegree=1.05|rate=%2B2%25|pitch=-3%25|volume=default|break=134|actor=harthmere_named%3Ahelna_voss%3Amistress%20helna%20voss%3Amistress%20helna%20voss",
-      "voiceId": "JBFqnCBsd6RMkjVDRZzb",
+      "voice": "azure-speech|voice=en-US-JaneNeural|gender=female|kind=humanoid|style=friendly|styleDegree=1.05|rate=%2B2%25|pitch=-3%25|volume=default|break=134|actor=harthmere_named%3Ahelna_voss%3Amistress%20helna%20voss%3Amistress%20helna%20voss",
+      "voiceId": "AZnzlk1XvdvUeBnXmlld",
       "textHash": "f785db09df5e73ea3f57958154a39f21709f5f8b55adf5192e24cacc0e5c5c2f",
-      "bytes": 122506,
-      "cacheKeys": [
-        "b9f14a4168406131d0c2aa1bf2cf7da5d25a6144f6578b4bea95884d8305e7f3",
-        "ee153d9e91edee68b74972d46ef07ba25582e32f91243a29eb7737cc606ba55d"
-      ]
+      "bytes": 114982
     },
     {
-      "cacheKey": "debb31396dd3306a24362788d5f5795b592319c3651689621e38010e2180c072",
+      "cacheKey": "d7f5eb34ae2e7f06e6b9f255f738dc35ff4f8c910f390396c2c1334b8f3f7e4c",
+      "cacheKeys": [
+        "d7f5eb34ae2e7f06e6b9f255f738dc35ff4f8c910f390396c2c1334b8f3f7e4c",
+        "4ff7ef7d0c668ff98ce39d0c976ff5c9b92812c0d24a29c1d06d9e2f9b506adb"
+      ],
       "actorKey": "harthmere_named:helna_voss:mistress helna voss:mistress helna voss",
       "actorId": "helna_voss",
       "lineId": "line-02",
       "path": "harthmere/voices/generated/current/harthmere-named-helna-voss-mistress-helna-voss/line-02.mp3",
-      "voice": "azure-speech|voice=en-US-TonyNeural|gender=male|kind=humanoid|style=friendly|styleDegree=1.05|rate=%2B2%25|pitch=-3%25|volume=default|break=134|actor=harthmere_named%3Ahelna_voss%3Amistress%20helna%20voss%3Amistress%20helna%20voss",
-      "voiceId": "JBFqnCBsd6RMkjVDRZzb",
+      "voice": "azure-speech|voice=en-US-JaneNeural|gender=female|kind=humanoid|style=friendly|styleDegree=1.05|rate=%2B2%25|pitch=-3%25|volume=default|break=134|actor=harthmere_named%3Ahelna_voss%3Amistress%20helna%20voss%3Amistress%20helna%20voss",
+      "voiceId": "AZnzlk1XvdvUeBnXmlld",
       "textHash": "2cf28d9e9e2d17e133d8fa96674d809dfbb380263500082ffdd81377fc03da17",
-      "bytes": 295541,
-      "cacheKeys": [
-        "debb31396dd3306a24362788d5f5795b592319c3651689621e38010e2180c072",
-        "2636800e8eaad0ad644af543f34a0c2b066fa7f1e92d89e8aefbb5ae8a9c5877"
-      ]
+      "bytes": 327306
     },
     {
-      "cacheKey": "3f23dc5af2b1f4b1aca71cca0c6ff3fc12a3053b65144092a8b7a8e1b3882ce5",
+      "cacheKey": "4da9912793defbe317a4307fee6a549c97dbfb063e4f1d55391b0dff68e18853",
+      "cacheKeys": [
+        "4da9912793defbe317a4307fee6a549c97dbfb063e4f1d55391b0dff68e18853",
+        "76c465c1c4d7a692a6cbbc35a8845f4cd75589c3d0c8c9b3993ddbb68aa247c0"
+      ],
       "actorKey": "harthmere_named:helna_voss:mistress helna voss:mistress helna voss",
       "actorId": "helna_voss",
       "lineId": "line-03",
       "path": "harthmere/voices/generated/current/harthmere-named-helna-voss-mistress-helna-voss/line-03.mp3",
-      "voice": "azure-speech|voice=en-US-TonyNeural|gender=male|kind=humanoid|style=friendly|styleDegree=1.05|rate=%2B2%25|pitch=-3%25|volume=default|break=134|actor=harthmere_named%3Ahelna_voss%3Amistress%20helna%20voss%3Amistress%20helna%20voss",
-      "voiceId": "JBFqnCBsd6RMkjVDRZzb",
+      "voice": "azure-speech|voice=en-US-JaneNeural|gender=female|kind=humanoid|style=friendly|styleDegree=1.05|rate=%2B2%25|pitch=-3%25|volume=default|break=134|actor=harthmere_named%3Ahelna_voss%3Amistress%20helna%20voss%3Amistress%20helna%20voss",
+      "voiceId": "AZnzlk1XvdvUeBnXmlld",
       "textHash": "a8f91fabd2faa08420f6c2ced5548277510973c216fb13b26026bfe05372fd1e",
-      "bytes": 227831,
-      "cacheKeys": [
-        "3f23dc5af2b1f4b1aca71cca0c6ff3fc12a3053b65144092a8b7a8e1b3882ce5",
-        "559c99c18ce843cca178ce7844e2a1955046874594b0547b957631e03ecdc1c7"
-      ]
+      "bytes": 242878
     },
     {
-      "cacheKey": "7b99644736f0e9b7782699aabf14986c611394f05414eac045bd095d1c48a547",
+      "cacheKey": "e1b11eff0642f4f03ecf62696a08903f557b0dafaf576dfbec85b2a09b7dea3d",
+      "cacheKeys": [
+        "e1b11eff0642f4f03ecf62696a08903f557b0dafaf576dfbec85b2a09b7dea3d",
+        "242eb1d595561dccd768f87b1a32741340456fba11f43107c58c630401715fb4"
+      ],
       "actorKey": "harthmere_named:helna_voss:mistress helna voss:mistress helna voss",
       "actorId": "helna_voss",
       "lineId": "line-04",
       "path": "harthmere/voices/generated/current/harthmere-named-helna-voss-mistress-helna-voss/line-04.mp3",
-      "voice": "azure-speech|voice=en-US-TonyNeural|gender=male|kind=humanoid|style=friendly|styleDegree=1.05|rate=%2B2%25|pitch=-3%25|volume=default|break=134|actor=harthmere_named%3Ahelna_voss%3Amistress%20helna%20voss%3Amistress%20helna%20voss",
-      "voiceId": "JBFqnCBsd6RMkjVDRZzb",
+      "voice": "azure-speech|voice=en-US-JaneNeural|gender=female|kind=humanoid|style=friendly|styleDegree=1.05|rate=%2B2%25|pitch=-3%25|volume=default|break=134|actor=harthmere_named%3Ahelna_voss%3Amistress%20helna%20voss%3Amistress%20helna%20voss",
+      "voiceId": "AZnzlk1XvdvUeBnXmlld",
       "textHash": "112395f33a7596d99833c81b4b410b749876f083026df13be8b62ccf242d0619",
-      "bytes": 183946,
-      "cacheKeys": [
-        "7b99644736f0e9b7782699aabf14986c611394f05414eac045bd095d1c48a547",
-        "c9083c002662bdbb185722f233c56f090c78713fee7a533fec13bf79ffe70bea"
-      ]
+      "bytes": 182692
     },
     {
-      "cacheKey": "c255e204ee86219632ada3c64b5a0546cb0924d36f432bb597bdce444ee4e7f3",
+      "cacheKey": "7176646094e05c7068c6d0d54c9c83a656d5a3a974bbe7f0b407fe8bfef8276f",
+      "cacheKeys": [
+        "7176646094e05c7068c6d0d54c9c83a656d5a3a974bbe7f0b407fe8bfef8276f",
+        "edef64361c14522020011f4cc489e95d31faadcd3dea189934348b1eb12cad39"
+      ],
       "actorKey": "harthmere_named:helna_voss:mistress helna voss:mistress helna voss",
       "actorId": "helna_voss",
       "lineId": "line-05",
       "path": "harthmere/voices/generated/current/harthmere-named-helna-voss-mistress-helna-voss/line-05.mp3",
-      "voice": "azure-speech|voice=en-US-TonyNeural|gender=male|kind=humanoid|style=friendly|styleDegree=1.05|rate=%2B2%25|pitch=-3%25|volume=default|break=134|actor=harthmere_named%3Ahelna_voss%3Amistress%20helna%20voss%3Amistress%20helna%20voss",
-      "voiceId": "JBFqnCBsd6RMkjVDRZzb",
+      "voice": "azure-speech|voice=en-US-JaneNeural|gender=female|kind=humanoid|style=friendly|styleDegree=1.05|rate=%2B2%25|pitch=-3%25|volume=default|break=134|actor=harthmere_named%3Ahelna_voss%3Amistress%20helna%20voss%3Amistress%20helna%20voss",
+      "voiceId": "AZnzlk1XvdvUeBnXmlld",
       "textHash": "faf540429e7370164ac5c7e60816b097576c5052830df1655f1794cb9d157060",
-      "bytes": 131701,
-      "cacheKeys": [
-        "c255e204ee86219632ada3c64b5a0546cb0924d36f432bb597bdce444ee4e7f3",
-        "c7591793153ee6d108bcde90e1e4b643dcab0db809109ab483cee57b09beedb3"
-      ]
+      "bytes": 137970
     },
     {
-      "cacheKey": "b54822d647b2bc2cfaf4ce2bd9bd1cf02e86ada213f607d2412c4a7948ce3237",
+      "cacheKey": "ccab8761d4a942e0d9b5f031e0cfa86b45a05ed28fc5c7563f0a0d21ed529860",
+      "cacheKeys": [
+        "ccab8761d4a942e0d9b5f031e0cfa86b45a05ed28fc5c7563f0a0d21ed529860",
+        "fceca132ef35153b63d27ed48a22f76aed61177a6df876a5a0149a250aa19394"
+      ],
       "actorKey": "harthmere_named:henrick_brell:ferry master henrick brell:ferry master henrick brell",
       "actorId": "henrick_brell",
       "lineId": "line-01",
       "path": "harthmere/voices/generated/current/harthmere-named-henrick-brell-ferry-master-henrick-brell/line-01.mp3",
-      "voice": "azure-speech|voice=en-US-SaraNeural|gender=female|kind=humanoid|style=friendly|styleDegree=1.05|rate=-1%25|pitch=-1%25|volume=default|break=110|actor=harthmere_named%3Ahenrick_brell%3Aferry%20master%20henrick%20brell%3Aferry%20master%20henrick%20brell",
-      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "voice": "azure-speech|voice=en-GB-RyanNeural|gender=male|kind=humanoid|style=chat|styleDegree=1.05|rate=-1%25|pitch=-1%25|volume=default|break=110|actor=harthmere_named%3Ahenrick_brell%3Aferry%20master%20henrick%20brell%3Aferry%20master%20henrick%20brell",
+      "voiceId": "yoZ06aMxZJJ28mfd3POQ",
       "textHash": "fb2e11c6a5f76dd980bbc254d7ded5d75ca312d0cdd8b9ee57f9ae95bd4c84d5",
-      "bytes": 127939,
-      "cacheKeys": [
-        "b54822d647b2bc2cfaf4ce2bd9bd1cf02e86ada213f607d2412c4a7948ce3237",
-        "85e2371910e7864adf035a0304b1ea27c7c5f84e40bac9198be59965e0f52ae3"
-      ]
+      "bytes": 122506
     },
     {
-      "cacheKey": "7c28e74ee67a6a4f741c3a8834bccdc321332e7d97d38884a67b23698b9c76b6",
+      "cacheKey": "31982c0b19f0fc67ca22f3d9eb061f212bd96eb3641f7af433906ad7842dd6a5",
+      "cacheKeys": [
+        "31982c0b19f0fc67ca22f3d9eb061f212bd96eb3641f7af433906ad7842dd6a5",
+        "93378ab1358f2fb00685a8ef482f30a0a45ea6e8e25813a4bc1d6f591618d3ae"
+      ],
       "actorKey": "harthmere_named:henrick_brell:ferry master henrick brell:ferry master henrick brell",
       "actorId": "henrick_brell",
       "lineId": "line-02",
       "path": "harthmere/voices/generated/current/harthmere-named-henrick-brell-ferry-master-henrick-brell/line-02.mp3",
-      "voice": "azure-speech|voice=en-US-SaraNeural|gender=female|kind=humanoid|style=friendly|styleDegree=1.05|rate=-1%25|pitch=-1%25|volume=default|break=110|actor=harthmere_named%3Ahenrick_brell%3Aferry%20master%20henrick%20brell%3Aferry%20master%20henrick%20brell",
-      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "voice": "azure-speech|voice=en-GB-RyanNeural|gender=male|kind=humanoid|style=chat|styleDegree=1.05|rate=-1%25|pitch=-1%25|volume=default|break=110|actor=harthmere_named%3Ahenrick_brell%3Aferry%20master%20henrick%20brell%3Aferry%20master%20henrick%20brell",
+      "voiceId": "yoZ06aMxZJJ28mfd3POQ",
       "textHash": "2438234ba6d5af9307abbdc24e9012be8b8897c7d3cee29e4c45d4999b5130c4",
-      "bytes": 321036,
-      "cacheKeys": [
-        "7c28e74ee67a6a4f741c3a8834bccdc321332e7d97d38884a67b23698b9c76b6",
-        "a7adb8fe2ee5b0bc383752fd7f66508815adf82976bb1840b656c5b66bb7faef"
-      ]
+      "bytes": 322290
     },
     {
-      "cacheKey": "39dc4ab8a336cadfc74d376d7349eff0ba7003e7d98b9cf0e20e01312c5ea986",
+      "cacheKey": "b95f70aedd0b8387f4b09da939dd128150c00520bdffa3c933275643edac0fb8",
+      "cacheKeys": [
+        "b95f70aedd0b8387f4b09da939dd128150c00520bdffa3c933275643edac0fb8",
+        "e07e47476d87c03c000178dc93eccc8c33e818a05218d4757521b7417b9e1e8c"
+      ],
       "actorKey": "harthmere_named:henrick_brell:ferry master henrick brell:ferry master henrick brell",
       "actorId": "henrick_brell",
       "lineId": "line-03",
       "path": "harthmere/voices/generated/current/harthmere-named-henrick-brell-ferry-master-henrick-brell/line-03.mp3",
-      "voice": "azure-speech|voice=en-US-SaraNeural|gender=female|kind=humanoid|style=friendly|styleDegree=1.05|rate=-1%25|pitch=-1%25|volume=default|break=110|actor=harthmere_named%3Ahenrick_brell%3Aferry%20master%20henrick%20brell%3Aferry%20master%20henrick%20brell",
-      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "voice": "azure-speech|voice=en-GB-RyanNeural|gender=male|kind=humanoid|style=chat|styleDegree=1.05|rate=-1%25|pitch=-1%25|volume=default|break=110|actor=harthmere_named%3Ahenrick_brell%3Aferry%20master%20henrick%20brell%3Aferry%20master%20henrick%20brell",
+      "voiceId": "yoZ06aMxZJJ28mfd3POQ",
       "textHash": "9cc504ffb70f70a6c3d2341c55a6c66b6e32417f90810745bd874e58e5027225",
-      "bytes": 270045,
-      "cacheKeys": [
-        "39dc4ab8a336cadfc74d376d7349eff0ba7003e7d98b9cf0e20e01312c5ea986",
-        "bd2479cb35b3a268647a9864533c19c626a4e5d6bbb4cf1f2a5906619a4fb882"
-      ]
+      "bytes": 255835
     },
     {
-      "cacheKey": "58e70da2eaa6f75f0c91e53d69163e22766bd377257c878685f7bdbe5c429f7a",
+      "cacheKey": "a189ffed4cc2d6cf7b74acb09dcd30f0806e272bc7170f0cf7face9b0185218f",
+      "cacheKeys": [
+        "a189ffed4cc2d6cf7b74acb09dcd30f0806e272bc7170f0cf7face9b0185218f",
+        "f160bdaf353a68c334e938bf75daa6b79ca6a9f79c483cb69d35b122668d9dab"
+      ],
       "actorKey": "harthmere_named:henrick_brell:ferry master henrick brell:ferry master henrick brell",
       "actorId": "henrick_brell",
       "lineId": "line-04",
       "path": "harthmere/voices/generated/current/harthmere-named-henrick-brell-ferry-master-henrick-brell/line-04.mp3",
-      "voice": "azure-speech|voice=en-US-SaraNeural|gender=female|kind=humanoid|style=friendly|styleDegree=1.05|rate=-1%25|pitch=-1%25|volume=default|break=110|actor=harthmere_named%3Ahenrick_brell%3Aferry%20master%20henrick%20brell%3Aferry%20master%20henrick%20brell",
-      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "voice": "azure-speech|voice=en-GB-RyanNeural|gender=male|kind=humanoid|style=chat|styleDegree=1.05|rate=-1%25|pitch=-1%25|volume=default|break=110|actor=harthmere_named%3Ahenrick_brell%3Aferry%20master%20henrick%20brell%3Aferry%20master%20henrick%20brell",
+      "voiceId": "yoZ06aMxZJJ28mfd3POQ",
       "textHash": "eb4d065994f204ecec09eae914f5809aa2cdb029b7e8577dab0345ea4d8b3700",
-      "bytes": 239116,
-      "cacheKeys": [
-        "58e70da2eaa6f75f0c91e53d69163e22766bd377257c878685f7bdbe5c429f7a",
-        "94508f69f814e1faf299db9dd46aab55b8d44814bebb9c649b6b9ef5f41048f3"
-      ]
+      "bytes": 249565
     },
     {
-      "cacheKey": "638651ced6ea45d41a17c4079e20f08a15d4233ff35691f17860fe109543b400",
+      "cacheKey": "2645525b5771b250e1e4e85e85402b09fc0bf96313991367febc681471e9ab0f",
+      "cacheKeys": [
+        "2645525b5771b250e1e4e85e85402b09fc0bf96313991367febc681471e9ab0f",
+        "bb994edc5792ccbeedbe1ef05836407265ec55d6e8d3e89bd5bcdbf88525ddff"
+      ],
       "actorKey": "harthmere_named:henrick_brell:ferry master henrick brell:ferry master henrick brell",
       "actorId": "henrick_brell",
       "lineId": "line-05",
       "path": "harthmere/voices/generated/current/harthmere-named-henrick-brell-ferry-master-henrick-brell/line-05.mp3",
-      "voice": "azure-speech|voice=en-US-SaraNeural|gender=female|kind=humanoid|style=friendly|styleDegree=1.05|rate=-1%25|pitch=-1%25|volume=default|break=110|actor=harthmere_named%3Ahenrick_brell%3Aferry%20master%20henrick%20brell%3Aferry%20master%20henrick%20brell",
-      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "voice": "azure-speech|voice=en-GB-RyanNeural|gender=male|kind=humanoid|style=chat|styleDegree=1.05|rate=-1%25|pitch=-1%25|volume=default|break=110|actor=harthmere_named%3Ahenrick_brell%3Aferry%20master%20henrick%20brell%3Aferry%20master%20henrick%20brell",
+      "voiceId": "yoZ06aMxZJJ28mfd3POQ",
       "textHash": "e98b54ab65d918119ad0fd8c21cbc8d04bb70cb01d4ef9785da7dfd70579e33e",
-      "bytes": 112475,
-      "cacheKeys": [
-        "638651ced6ea45d41a17c4079e20f08a15d4233ff35691f17860fe109543b400",
-        "00a4bdeeb40807f289adab9e3bd2da8e5af18e9c0eb4ad1128e6b59ea9c262c4"
-      ]
+      "bytes": 112475
     },
     {
       "cacheKey": "d293dbd24dafa0c05134407a4784eeb2b536771e669ed1a1ad99fb716276c0dc",
@@ -6533,154 +6533,154 @@
       ]
     },
     {
-      "cacheKey": "08b5098fa7bf1026787226728866289b48d70db3398818d7abe69c7d86c21cc5",
+      "cacheKey": "9ffbe714ff66b1e73178242da062938df379b5b892c86b2951ec144b67676ce5",
+      "cacheKeys": [
+        "9ffbe714ff66b1e73178242da062938df379b5b892c86b2951ec144b67676ce5",
+        "36a8e05f95a04667c0f2e47e42dbd2e6661c3a14f8e2367af2ee97d7673a8076"
+      ],
       "actorKey": "harthmere_named:master_garrik_fen:master garrik fen:master garrik fen",
       "actorId": "master_garrik_fen",
       "lineId": "line-01",
       "path": "harthmere/voices/generated/current/harthmere-named-master-garrik-fen-master-garrik-fen/line-01.mp3",
-      "voice": "azure-speech|voice=en-US-JaneNeural|gender=female|kind=humanoid|style=friendly|styleDegree=0.85|rate=%2B2%25|pitch=-1%25|volume=default|break=158|actor=harthmere_named%3Amaster_garrik_fen%3Amaster%20garrik%20fen%3Amaster%20garrik%20fen",
-      "voiceId": "MF3mGyEYCl7XYWbV9V6O",
+      "voice": "azure-speech|voice=en-US-TonyNeural|gender=male|kind=humanoid|style=friendly|styleDegree=0.85|rate=%2B2%25|pitch=-1%25|volume=default|break=158|actor=harthmere_named%3Amaster_garrik_fen%3Amaster%20garrik%20fen%3Amaster%20garrik%20fen",
+      "voiceId": "VR6AewLTigWG4xSOukaG",
       "textHash": "41f592457dcd9e98df589ecb04d32b2a40db707ce56fcb6c432bb952655fef03",
-      "bytes": 129193,
-      "cacheKeys": [
-        "08b5098fa7bf1026787226728866289b48d70db3398818d7abe69c7d86c21cc5",
-        "286a4073341da72603bd6e1ea6f024f0e777dc90433094071194571f87a026a3"
-      ]
+      "bytes": 109967
     },
     {
-      "cacheKey": "d6977cc14e4a7a22d37bab807432ac4d55624c211dd2febc2d7fd54c7c76e4aa",
+      "cacheKey": "bba8877c4bb0a0bd415a75ef17ef8e61d7ef046f731f1fcd26d193cc0f062308",
+      "cacheKeys": [
+        "bba8877c4bb0a0bd415a75ef17ef8e61d7ef046f731f1fcd26d193cc0f062308",
+        "e473881c46b29207721e17fa772378e515a2b8ca1638ec8990cf034cc990f027"
+      ],
       "actorKey": "harthmere_named:master_garrik_fen:master garrik fen:master garrik fen",
       "actorId": "master_garrik_fen",
       "lineId": "line-02",
       "path": "harthmere/voices/generated/current/harthmere-named-master-garrik-fen-master-garrik-fen/line-02.mp3",
-      "voice": "azure-speech|voice=en-US-JaneNeural|gender=female|kind=humanoid|style=friendly|styleDegree=0.85|rate=%2B2%25|pitch=-1%25|volume=default|break=158|actor=harthmere_named%3Amaster_garrik_fen%3Amaster%20garrik%20fen%3Amaster%20garrik%20fen",
-      "voiceId": "MF3mGyEYCl7XYWbV9V6O",
+      "voice": "azure-speech|voice=en-US-TonyNeural|gender=male|kind=humanoid|style=friendly|styleDegree=0.85|rate=%2B2%25|pitch=-1%25|volume=default|break=158|actor=harthmere_named%3Amaster_garrik_fen%3Amaster%20garrik%20fen%3Amaster%20garrik%20fen",
+      "voiceId": "VR6AewLTigWG4xSOukaG",
       "textHash": "68321b5faacf64582df3b3382836b103a8dbaf1cb26d9f1022259e27c1c5f9d9",
-      "bytes": 278822,
-      "cacheKeys": [
-        "d6977cc14e4a7a22d37bab807432ac4d55624c211dd2febc2d7fd54c7c76e4aa",
-        "c84424b3751fb582114c1fd4ad5736da7d07acbeeea2ea5841561f1834809963"
-      ]
+      "bytes": 285092
     },
     {
-      "cacheKey": "834a6b7e5d741f3d9406259161bb3d774cc98d999960c807f3c5e0492db33d64",
+      "cacheKey": "6796e6431b3166bdbd3948d11b5f362d99c922e66dc08c3a75aaa89d4c6fa52b",
+      "cacheKeys": [
+        "6796e6431b3166bdbd3948d11b5f362d99c922e66dc08c3a75aaa89d4c6fa52b",
+        "95d9bbd1158043df3ef4153684a6adc84c288dd92633bbf128a0b54531468ae3"
+      ],
       "actorKey": "harthmere_named:master_garrik_fen:master garrik fen:master garrik fen",
       "actorId": "master_garrik_fen",
       "lineId": "line-03",
       "path": "harthmere/voices/generated/current/harthmere-named-master-garrik-fen-master-garrik-fen/line-03.mp3",
-      "voice": "azure-speech|voice=en-US-JaneNeural|gender=female|kind=humanoid|style=friendly|styleDegree=0.85|rate=%2B2%25|pitch=-1%25|volume=default|break=158|actor=harthmere_named%3Amaster_garrik_fen%3Amaster%20garrik%20fen%3Amaster%20garrik%20fen",
-      "voiceId": "MF3mGyEYCl7XYWbV9V6O",
+      "voice": "azure-speech|voice=en-US-TonyNeural|gender=male|kind=humanoid|style=friendly|styleDegree=0.85|rate=%2B2%25|pitch=-1%25|volume=default|break=158|actor=harthmere_named%3Amaster_garrik_fen%3Amaster%20garrik%20fen%3Amaster%20garrik%20fen",
+      "voiceId": "VR6AewLTigWG4xSOukaG",
       "textHash": "bf661a1b799585c5c1588d0d4e840da97ce5b25bae2f5b61abe8443bb6e760f8",
-      "bytes": 235355,
-      "cacheKeys": [
-        "834a6b7e5d741f3d9406259161bb3d774cc98d999960c807f3c5e0492db33d64",
-        "0d1b37fc4b400cda7b6f56368f9f4695c12c8bf9fddde8b3d25b9a7b6510320f"
-      ]
+      "bytes": 223652
     },
     {
-      "cacheKey": "2df2e1887368cd74c4ccfd55642f469fa2419e1b35c934aa203a3148b15d5f0f",
+      "cacheKey": "da124a67e13dda9299ac82945b7dd695bc4fb3563a7fe81022ed5a28a44118c9",
+      "cacheKeys": [
+        "da124a67e13dda9299ac82945b7dd695bc4fb3563a7fe81022ed5a28a44118c9",
+        "b5d12fad79090368eeb7fde92068d9b922c9b02a33566e739b338d832bed2e00"
+      ],
       "actorKey": "harthmere_named:master_garrik_fen:master garrik fen:master garrik fen",
       "actorId": "master_garrik_fen",
       "lineId": "line-04",
       "path": "harthmere/voices/generated/current/harthmere-named-master-garrik-fen-master-garrik-fen/line-04.mp3",
-      "voice": "azure-speech|voice=en-US-JaneNeural|gender=female|kind=humanoid|style=friendly|styleDegree=0.85|rate=%2B2%25|pitch=-1%25|volume=default|break=158|actor=harthmere_named%3Amaster_garrik_fen%3Amaster%20garrik%20fen%3Amaster%20garrik%20fen",
-      "voiceId": "MF3mGyEYCl7XYWbV9V6O",
+      "voice": "azure-speech|voice=en-US-TonyNeural|gender=male|kind=humanoid|style=friendly|styleDegree=0.85|rate=%2B2%25|pitch=-1%25|volume=default|break=158|actor=harthmere_named%3Amaster_garrik_fen%3Amaster%20garrik%20fen%3Amaster%20garrik%20fen",
+      "voiceId": "VR6AewLTigWG4xSOukaG",
       "textHash": "7276699f4c377a10e35dae7f47be8e2b6ef2b10f19b46fcb33a414685a548b62",
-      "bytes": 224906,
-      "cacheKeys": [
-        "2df2e1887368cd74c4ccfd55642f469fa2419e1b35c934aa203a3148b15d5f0f",
-        "788f3cc238179bd60af32b2c3624142d0a6bf89f7bba492e8308e8a0a0c2e992"
-      ]
+      "bytes": 213621
     },
     {
-      "cacheKey": "26e4ef24be09027c82990e0d8b060b827fddd9edf6536189374f67580a5414c4",
+      "cacheKey": "696857fe3417007d84b27ac4d55df352f4d6d407570894f0395a91193217c43b",
+      "cacheKeys": [
+        "696857fe3417007d84b27ac4d55df352f4d6d407570894f0395a91193217c43b",
+        "bc15dfd6e66f9cfe700bb7ad8110e02460ea09131d16b4b6206dd2680c15c476"
+      ],
       "actorKey": "harthmere_named:master_garrik_fen:master garrik fen:master garrik fen",
       "actorId": "master_garrik_fen",
       "lineId": "line-05",
       "path": "harthmere/voices/generated/current/harthmere-named-master-garrik-fen-master-garrik-fen/line-05.mp3",
-      "voice": "azure-speech|voice=en-US-JaneNeural|gender=female|kind=humanoid|style=friendly|styleDegree=0.85|rate=%2B2%25|pitch=-1%25|volume=default|break=158|actor=harthmere_named%3Amaster_garrik_fen%3Amaster%20garrik%20fen%3Amaster%20garrik%20fen",
-      "voiceId": "MF3mGyEYCl7XYWbV9V6O",
+      "voice": "azure-speech|voice=en-US-TonyNeural|gender=male|kind=humanoid|style=friendly|styleDegree=0.85|rate=%2B2%25|pitch=-1%25|volume=default|break=158|actor=harthmere_named%3Amaster_garrik_fen%3Amaster%20garrik%20fen%3Amaster%20garrik%20fen",
+      "voiceId": "VR6AewLTigWG4xSOukaG",
       "textHash": "b948b2197184135eac6a68a6acd80619fd7a86de44a4e26dc9cd41372eb53a5e",
-      "bytes": 136716,
-      "cacheKeys": [
-        "26e4ef24be09027c82990e0d8b060b827fddd9edf6536189374f67580a5414c4",
-        "53c47caf77956a1f2b212c5e962bfda27387e2753e26f5f5c094d4b68e9e7bd0"
-      ]
+      "bytes": 123759
     },
     {
-      "cacheKey": "e4fd0852a11ea7d67c577767fa12818eb00935b583f27545e823e38687f4daa5",
+      "cacheKey": "5f7f749a1ebc0916de76c2e291f27a7ae09fc6677d501d72961f070a688734df",
+      "cacheKeys": [
+        "5f7f749a1ebc0916de76c2e291f27a7ae09fc6677d501d72961f070a688734df",
+        "0aa8835aba5a78dd7bbaae7fda94b5b417941f8306c7246cb7bce9c7c8f25b4f"
+      ],
       "actorKey": "harthmere_named:master_osric_vale:master osric vale:master osric vale",
       "actorId": "master_osric_vale",
       "lineId": "line-01",
       "path": "harthmere/voices/generated/current/harthmere-named-master-osric-vale-master-osric-vale/line-01.mp3",
-      "voice": "azure-speech|voice=en-US-NancyMultilingualNeural|gender=female|kind=humanoid|style=shy|styleDegree=0.95|rate=-3%25|pitch=-2%25|volume=default|break=170|actor=harthmere_named%3Amaster_osric_vale%3Amaster%20osric%20vale%3Amaster%20osric%20vale",
-      "voiceId": "21m00Tcm4TlvDq8ikWAM",
+      "voice": "azure-speech|voice=en-US-DerekMultilingualNeural|gender=male|kind=humanoid|style=shy|styleDegree=0.95|rate=-3%25|pitch=-2%25|volume=default|break=170|actor=harthmere_named%3Amaster_osric_vale%3Amaster%20osric%20vale%3Amaster%20osric%20vale",
+      "voiceId": "JBFqnCBsd6RMkjVDRZzb",
       "textHash": "a947c8abcad8ccaa7b5062edf4788592cd58bc49941939cddf7fc0af99a94a82",
-      "bytes": 104951,
-      "cacheKeys": [
-        "e4fd0852a11ea7d67c577767fa12818eb00935b583f27545e823e38687f4daa5",
-        "1690f8abf90b902f37ec0df0160fe3345be37b2fbcdc200af6e8c74a28b398a4"
-      ]
+      "bytes": 111221
     },
     {
-      "cacheKey": "cc752cea6ce4a7c78855ea6a04979ba71998d39e8b289b38585efc5d9c5001f4",
+      "cacheKey": "0de8caf61d83cdb1e3d50e9b8c6473f61375362051c7e63888bd947449507ec3",
+      "cacheKeys": [
+        "0de8caf61d83cdb1e3d50e9b8c6473f61375362051c7e63888bd947449507ec3",
+        "a1232e5cbf7b3da5f416bf1efa0663a76aa7aa796d2e5b095e55d02f44ac826b"
+      ],
       "actorKey": "harthmere_named:master_osric_vale:master osric vale:master osric vale",
       "actorId": "master_osric_vale",
       "lineId": "line-02",
       "path": "harthmere/voices/generated/current/harthmere-named-master-osric-vale-master-osric-vale/line-02.mp3",
-      "voice": "azure-speech|voice=en-US-NancyMultilingualNeural|gender=female|kind=humanoid|style=shy|styleDegree=0.95|rate=-3%25|pitch=-2%25|volume=default|break=170|actor=harthmere_named%3Amaster_osric_vale%3Amaster%20osric%20vale%3Amaster%20osric%20vale",
-      "voiceId": "21m00Tcm4TlvDq8ikWAM",
+      "voice": "azure-speech|voice=en-US-DerekMultilingualNeural|gender=male|kind=humanoid|style=shy|styleDegree=0.95|rate=-3%25|pitch=-2%25|volume=default|break=170|actor=harthmere_named%3Amaster_osric_vale%3Amaster%20osric%20vale%3Amaster%20osric%20vale",
+      "voiceId": "JBFqnCBsd6RMkjVDRZzb",
       "textHash": "2e98ec65df36d19adc677b528ebfd53716edd6190bf0e0bcdb9a50655b7aac9c",
-      "bytes": 281330,
-      "cacheKeys": [
-        "cc752cea6ce4a7c78855ea6a04979ba71998d39e8b289b38585efc5d9c5001f4",
-        "173d240eebc5d18ee805d2b6d15ccbbdd8698fbedcd29b1314f8752cb1ec96a5"
-      ]
+      "bytes": 286346
     },
     {
-      "cacheKey": "6533545d896d870909bf02d785596452a30050e74deadf063e989288cc63694b",
+      "cacheKey": "626f1972fc4c929cabe8c543d82bdae54f04890e3647684af913473ebef76cf3",
+      "cacheKeys": [
+        "626f1972fc4c929cabe8c543d82bdae54f04890e3647684af913473ebef76cf3",
+        "9141641945482170e974ea92d32ff32729a9ce184391aa2da7b89f56864eef0e"
+      ],
       "actorKey": "harthmere_named:master_osric_vale:master osric vale:master osric vale",
       "actorId": "master_osric_vale",
       "lineId": "line-03",
       "path": "harthmere/voices/generated/current/harthmere-named-master-osric-vale-master-osric-vale/line-03.mp3",
-      "voice": "azure-speech|voice=en-US-NancyMultilingualNeural|gender=female|kind=humanoid|style=shy|styleDegree=0.95|rate=-3%25|pitch=-2%25|volume=default|break=170|actor=harthmere_named%3Amaster_osric_vale%3Amaster%20osric%20vale%3Amaster%20osric%20vale",
-      "voiceId": "21m00Tcm4TlvDq8ikWAM",
+      "voice": "azure-speech|voice=en-US-DerekMultilingualNeural|gender=male|kind=humanoid|style=shy|styleDegree=0.95|rate=-3%25|pitch=-2%25|volume=default|break=170|actor=harthmere_named%3Amaster_osric_vale%3Amaster%20osric%20vale%3Amaster%20osric%20vale",
+      "voiceId": "JBFqnCBsd6RMkjVDRZzb",
       "textHash": "f2c7dd0badac37005adabc41c81da7a765aac9415ea7e8b3d8542ee183baa870",
-      "bytes": 242878,
-      "cacheKeys": [
-        "6533545d896d870909bf02d785596452a30050e74deadf063e989288cc63694b",
-        "922dd56280e3ea60b2dd1e62249fbec20eccbd6a2bfdcae861ab8913ad7547d0"
-      ]
+      "bytes": 232847
     },
     {
-      "cacheKey": "ef8b9ecdc953b85d223329a410d1fe1c5eb473b3b696bfe7755a71aab641420d",
+      "cacheKey": "bd8b6a35b9abbc0f60b449df26937840af0f310ce39c104a1b20c59744a2ed29",
+      "cacheKeys": [
+        "bd8b6a35b9abbc0f60b449df26937840af0f310ce39c104a1b20c59744a2ed29",
+        "f0e772a68e8083a88bec816a761479f1d560b4272367835fd9e3f3695d066461"
+      ],
       "actorKey": "harthmere_named:master_osric_vale:master osric vale:master osric vale",
       "actorId": "master_osric_vale",
       "lineId": "line-04",
       "path": "harthmere/voices/generated/current/harthmere-named-master-osric-vale-master-osric-vale/line-04.mp3",
-      "voice": "azure-speech|voice=en-US-NancyMultilingualNeural|gender=female|kind=humanoid|style=shy|styleDegree=0.95|rate=-3%25|pitch=-2%25|volume=default|break=170|actor=harthmere_named%3Amaster_osric_vale%3Amaster%20osric%20vale%3Amaster%20osric%20vale",
-      "voiceId": "21m00Tcm4TlvDq8ikWAM",
+      "voice": "azure-speech|voice=en-US-DerekMultilingualNeural|gender=male|kind=humanoid|style=shy|styleDegree=0.95|rate=-3%25|pitch=-2%25|volume=default|break=170|actor=harthmere_named%3Amaster_osric_vale%3Amaster%20osric%20vale%3Amaster%20osric%20vale",
+      "voiceId": "JBFqnCBsd6RMkjVDRZzb",
       "textHash": "99cf1ca01424a059cdad9bc39fba496ff91e3ee6381146eaa7e95d75ed72bc1f",
-      "bytes": 173915,
-      "cacheKeys": [
-        "ef8b9ecdc953b85d223329a410d1fe1c5eb473b3b696bfe7755a71aab641420d",
-        "de00315a293dca2dc8fa830e936aacda23b4a952c7dc3fe5c18e552c1641adbb"
-      ]
+      "bytes": 194395
     },
     {
-      "cacheKey": "f000a87b7a9a7e8dedae8e71543eb631ee63088c75afaef0059a360d470e156e",
+      "cacheKey": "815254fdc81dc80966153d00c363971976cbd979ecf427b72d1aee363374991f",
+      "cacheKeys": [
+        "815254fdc81dc80966153d00c363971976cbd979ecf427b72d1aee363374991f",
+        "3f51c61f07edbfbafe48fddd2fe0dc57439421d3cf9b75c54a80c13549fc892d"
+      ],
       "actorKey": "harthmere_named:master_osric_vale:master osric vale:master osric vale",
       "actorId": "master_osric_vale",
       "lineId": "line-05",
       "path": "harthmere/voices/generated/current/harthmere-named-master-osric-vale-master-osric-vale/line-05.mp3",
-      "voice": "azure-speech|voice=en-US-NancyMultilingualNeural|gender=female|kind=humanoid|style=shy|styleDegree=0.95|rate=-3%25|pitch=-2%25|volume=default|break=170|actor=harthmere_named%3Amaster_osric_vale%3Amaster%20osric%20vale%3Amaster%20osric%20vale",
-      "voiceId": "21m00Tcm4TlvDq8ikWAM",
+      "voice": "azure-speech|voice=en-US-DerekMultilingualNeural|gender=male|kind=humanoid|style=shy|styleDegree=0.95|rate=-3%25|pitch=-2%25|volume=default|break=170|actor=harthmere_named%3Amaster_osric_vale%3Amaster%20osric%20vale%3Amaster%20osric%20vale",
+      "voiceId": "JBFqnCBsd6RMkjVDRZzb",
       "textHash": "ac1e96e0f807cd4c8865c49838ef5ca3c8706d98821b2ce090fe72544032ba7e",
-      "bytes": 108713,
-      "cacheKeys": [
-        "f000a87b7a9a7e8dedae8e71543eb631ee63088c75afaef0059a360d470e156e",
-        "5293e9c9774384d8455b13910af2936685730c85857b71ac64f5808eb9ef3821"
-      ]
+      "bytes": 107459
     },
     {
       "cacheKey": "906a14932edb0a57e47832c582c94179c62321bef37bd0af2fe105812aec2f81",
@@ -6833,154 +6833,154 @@
       ]
     },
     {
-      "cacheKey": "4214e95afb7f00be6542fba59ec7cf935469052c5d92da26bbb34e631eb9cee1",
+      "cacheKey": "24919ac67d36811a44c295a7724ca7895a1be494005c3ee5977f6db80d03f7b2",
+      "cacheKeys": [
+        "24919ac67d36811a44c295a7724ca7895a1be494005c3ee5977f6db80d03f7b2",
+        "3a192df9aa9909ba7584467059a07e882af36e0fac07b32a7e4d53c250166ea6"
+      ],
       "actorKey": "harthmere_named:nessa_crowe:nessa crowe:nessa crowe",
       "actorId": "nessa_crowe",
       "lineId": "line-01",
       "path": "harthmere/voices/generated/current/harthmere-named-nessa-crowe-nessa-crowe/line-01.mp3",
-      "voice": "azure-speech|voice=en-US-DavisNeural|gender=male|kind=humanoid|style=chat|styleDegree=1.05|rate=-2%25|pitch=-3%25|volume=default|break=146|actor=harthmere_named%3Anessa_crowe%3Anessa%20crowe%3Anessa%20crowe",
-      "voiceId": "TxGEqnHWrfWFTfGW9XjX",
+      "voice": "azure-speech|voice=en-US-AriaNeural|gender=female|kind=humanoid|style=chat|styleDegree=1.05|rate=-2%25|pitch=-3%25|volume=default|break=146|actor=harthmere_named%3Anessa_crowe%3Anessa%20crowe%3Anessa%20crowe",
+      "voiceId": "EXAVITQu4vr4xnSDxMaL",
       "textHash": "ea8bfc4a79b8a9bb93e8794bfb6d11c08821bd68bda1521c72d4a6afd4fd8c92",
-      "bytes": 113728,
-      "cacheKeys": [
-        "4214e95afb7f00be6542fba59ec7cf935469052c5d92da26bbb34e631eb9cee1",
-        "6eb40a14a9c538df74384bcbe21c622edc671e97056b70aa84836b080d6cef73"
-      ]
+      "bytes": 113728
     },
     {
-      "cacheKey": "9b3b41a16cdcb9de8638ca4a3aa67c40c0f8570583bba8fe390f2d0cb47690b2",
+      "cacheKey": "dd86dd82f7bc1280ac2aa6980b9f3d6d6a14ae59430b2df71c60e1257242d0f4",
+      "cacheKeys": [
+        "dd86dd82f7bc1280ac2aa6980b9f3d6d6a14ae59430b2df71c60e1257242d0f4",
+        "08e84be0a40723e792fdf2f3444a39b587b881ebcefc258ee6edf867ca13b8f3"
+      ],
       "actorKey": "harthmere_named:nessa_crowe:nessa crowe:nessa crowe",
       "actorId": "nessa_crowe",
       "lineId": "line-02",
       "path": "harthmere/voices/generated/current/harthmere-named-nessa-crowe-nessa-crowe/line-02.mp3",
-      "voice": "azure-speech|voice=en-US-DavisNeural|gender=male|kind=humanoid|style=chat|styleDegree=1.05|rate=-2%25|pitch=-3%25|volume=default|break=146|actor=harthmere_named%3Anessa_crowe%3Anessa%20crowe%3Anessa%20crowe",
-      "voiceId": "TxGEqnHWrfWFTfGW9XjX",
+      "voice": "azure-speech|voice=en-US-AriaNeural|gender=female|kind=humanoid|style=chat|styleDegree=1.05|rate=-2%25|pitch=-3%25|volume=default|break=146|actor=harthmere_named%3Anessa_crowe%3Anessa%20crowe%3Anessa%20crowe",
+      "voiceId": "EXAVITQu4vr4xnSDxMaL",
       "textHash": "6e1968932fc50e0db660f3ccc20093e6d87fb002086cb0ae75b1b436b7c9889b",
-      "bytes": 304318,
-      "cacheKeys": [
-        "9b3b41a16cdcb9de8638ca4a3aa67c40c0f8570583bba8fe390f2d0cb47690b2",
-        "a0c417acfeb047002a1a833f818328bde8fc7a51f2c7ce55c39925cfcf9fc34e"
-      ]
+      "bytes": 291779
     },
     {
-      "cacheKey": "ead51aa6a709b810f28ae7bc52ad8c2515a31d7449c6e7c8035503688b1d7e23",
+      "cacheKey": "f34d31359d2daadbd5551afb52af23b41244f76368b211b8f83e9ac00e865c28",
+      "cacheKeys": [
+        "f34d31359d2daadbd5551afb52af23b41244f76368b211b8f83e9ac00e865c28",
+        "38226478d4ad08a0b9729d820a43df56dd70f41c95569882e2aefef380a4ec36"
+      ],
       "actorKey": "harthmere_named:nessa_crowe:nessa crowe:nessa crowe",
       "actorId": "nessa_crowe",
       "lineId": "line-03",
       "path": "harthmere/voices/generated/current/harthmere-named-nessa-crowe-nessa-crowe/line-03.mp3",
-      "voice": "azure-speech|voice=en-US-DavisNeural|gender=male|kind=humanoid|style=chat|styleDegree=1.05|rate=-2%25|pitch=-3%25|volume=default|break=146|actor=harthmere_named%3Anessa_crowe%3Anessa%20crowe%3Anessa%20crowe",
-      "voiceId": "TxGEqnHWrfWFTfGW9XjX",
+      "voice": "azure-speech|voice=en-US-AriaNeural|gender=female|kind=humanoid|style=chat|styleDegree=1.05|rate=-2%25|pitch=-3%25|volume=default|break=146|actor=harthmere_named%3Anessa_crowe%3Anessa%20crowe%3Anessa%20crowe",
+      "voiceId": "EXAVITQu4vr4xnSDxMaL",
       "textHash": "3f3b2dea27983214930a5c8682c26e909974020a9ca8e18d820dffac2262c6ba",
-      "bytes": 231593,
-      "cacheKeys": [
-        "ead51aa6a709b810f28ae7bc52ad8c2515a31d7449c6e7c8035503688b1d7e23",
-        "c5274344b2a78b9fdf00f35143e16740cdac4ef4f86d10bc5710e019a64131bc"
-      ]
+      "bytes": 224906
     },
     {
-      "cacheKey": "17ae3b4b756c7c5d78acd7fdc34c8b848382cec5381aef1b335d1c93f096039f",
+      "cacheKey": "21af9c5b681d90869cd344596373f3178752dcadb8bc0f2b93b1d5932c56d5ef",
+      "cacheKeys": [
+        "21af9c5b681d90869cd344596373f3178752dcadb8bc0f2b93b1d5932c56d5ef",
+        "b709015b32fc63ee31625f509ac21abd40aad7b1254a04867d2cd428b3e9efe0"
+      ],
       "actorKey": "harthmere_named:nessa_crowe:nessa crowe:nessa crowe",
       "actorId": "nessa_crowe",
       "lineId": "line-04",
       "path": "harthmere/voices/generated/current/harthmere-named-nessa-crowe-nessa-crowe/line-04.mp3",
-      "voice": "azure-speech|voice=en-US-DavisNeural|gender=male|kind=humanoid|style=chat|styleDegree=1.05|rate=-2%25|pitch=-3%25|volume=default|break=146|actor=harthmere_named%3Anessa_crowe%3Anessa%20crowe%3Anessa%20crowe",
-      "voiceId": "TxGEqnHWrfWFTfGW9XjX",
+      "voice": "azure-speech|voice=en-US-AriaNeural|gender=female|kind=humanoid|style=chat|styleDegree=1.05|rate=-2%25|pitch=-3%25|volume=default|break=146|actor=harthmere_named%3Anessa_crowe%3Anessa%20crowe%3Anessa%20crowe",
+      "voiceId": "EXAVITQu4vr4xnSDxMaL",
       "textHash": "c8ea969ab0f0cdd1d8eb27882d105d233796ae43e6065176fbb28031a3110b6c",
-      "bytes": 237862,
-      "cacheKeys": [
-        "17ae3b4b756c7c5d78acd7fdc34c8b848382cec5381aef1b335d1c93f096039f",
-        "dd096b89d395068a151fa0c063826df1649e96c99e95a297914c36aecc6585bd"
-      ]
+      "bytes": 231593
     },
     {
-      "cacheKey": "a42560502d0bf6390cd44f47ae6447a4cfc167c0b9b99c15b7ea6af3facdbfaf",
+      "cacheKey": "aaca17bf9af6228e67a7f4ae099f661c37e7f7381b1a2955d5c2bb6a5cbe9906",
+      "cacheKeys": [
+        "aaca17bf9af6228e67a7f4ae099f661c37e7f7381b1a2955d5c2bb6a5cbe9906",
+        "14f7f294552d26720013543386c9a2a7792585a4d801693c398da52f4c0db8a8"
+      ],
       "actorKey": "harthmere_named:nessa_crowe:nessa crowe:nessa crowe",
       "actorId": "nessa_crowe",
       "lineId": "line-05",
       "path": "harthmere/voices/generated/current/harthmere-named-nessa-crowe-nessa-crowe/line-05.mp3",
-      "voice": "azure-speech|voice=en-US-DavisNeural|gender=male|kind=humanoid|style=chat|styleDegree=1.05|rate=-2%25|pitch=-3%25|volume=default|break=146|actor=harthmere_named%3Anessa_crowe%3Anessa%20crowe%3Anessa%20crowe",
-      "voiceId": "TxGEqnHWrfWFTfGW9XjX",
+      "voice": "azure-speech|voice=en-US-AriaNeural|gender=female|kind=humanoid|style=chat|styleDegree=1.05|rate=-2%25|pitch=-3%25|volume=default|break=146|actor=harthmere_named%3Anessa_crowe%3Anessa%20crowe%3Anessa%20crowe",
+      "voiceId": "EXAVITQu4vr4xnSDxMaL",
       "textHash": "94d26416edcfb1027e0316d3653fa3cb47961bfab1182c50c062e15aab3c7012",
-      "bytes": 119998,
-      "cacheKeys": [
-        "a42560502d0bf6390cd44f47ae6447a4cfc167c0b9b99c15b7ea6af3facdbfaf",
-        "8429234db8248a78141a716e2d5e772f1866f29afc539ee82e94bd9b41c4aa25"
-      ]
+      "bytes": 121252
     },
     {
-      "cacheKey": "302aabf38b15dbdde183306d39d5bf13bf1a833468038403ae7c2211247813ec",
+      "cacheKey": "c74988e2d7c1b81aef075138fd030bab805d6ca9a1338f22c29e151508477584",
+      "cacheKeys": [
+        "c74988e2d7c1b81aef075138fd030bab805d6ca9a1338f22c29e151508477584",
+        "8cbe7bc6865d09b741dcd57fcdacd1804ef969cc81aed49e77ba4ab135db1552"
+      ],
       "actorKey": "harthmere_named:old_jory_brann:old jory brann:old jory brann",
       "actorId": "old_jory_brann",
       "lineId": "line-01",
       "path": "harthmere/voices/generated/current/harthmere-named-old-jory-brann-old-jory-brann/line-01.mp3",
-      "voice": "azure-speech|voice=en-US-SerenaMultilingualNeural|gender=female|kind=humanoid|style=friendly|styleDegree=0.90|rate=-4%25|pitch=%2B3%25|volume=default|break=170|actor=harthmere_named%3Aold_jory_brann%3Aold%20jory%20brann%3Aold%20jory%20brann",
-      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "voice": "azure-speech|voice=en-US-AndrewMultilingualNeural|gender=male|kind=humanoid|style=empathetic|styleDegree=0.90|rate=-4%25|pitch=%2B3%25|volume=default|break=170|actor=harthmere_named%3Aold_jory_brann%3Aold%20jory%20brann%3Aold%20jory%20brann",
+      "voiceId": "ErXwobaYiN019PkySvjV",
       "textHash": "a38d652d07fdea1c56c81a5084b1a709c2910dbbe8e2653ec24800b248010e75",
-      "bytes": 117490,
-      "cacheKeys": [
-        "302aabf38b15dbdde183306d39d5bf13bf1a833468038403ae7c2211247813ec",
-        "fe99690afbdbf1b72c6c1dbb461b62ac8613e94fe6c74b6ef0aba090fd577ff6"
-      ]
+      "bytes": 93248
     },
     {
-      "cacheKey": "aac9ac493536e0e84a24f4dac645cf256b44eb77e7ec1c4d8798a1c801da8701",
+      "cacheKey": "906f5af416f1bb55a1b85dee51002774d1774edaa5cec5ca937bd0dbbda298fb",
+      "cacheKeys": [
+        "906f5af416f1bb55a1b85dee51002774d1774edaa5cec5ca937bd0dbbda298fb",
+        "5ed946da3ae5f22ef8526a7a292cddb8362519925decb737f0522225f7a4fac6"
+      ],
       "actorKey": "harthmere_named:old_jory_brann:old jory brann:old jory brann",
       "actorId": "old_jory_brann",
       "lineId": "line-02",
       "path": "harthmere/voices/generated/current/harthmere-named-old-jory-brann-old-jory-brann/line-02.mp3",
-      "voice": "azure-speech|voice=en-US-SerenaMultilingualNeural|gender=female|kind=humanoid|style=friendly|styleDegree=0.90|rate=-4%25|pitch=%2B3%25|volume=default|break=170|actor=harthmere_named%3Aold_jory_brann%3Aold%20jory%20brann%3Aold%20jory%20brann",
-      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "voice": "azure-speech|voice=en-US-AndrewMultilingualNeural|gender=male|kind=humanoid|style=empathetic|styleDegree=0.90|rate=-4%25|pitch=%2B3%25|volume=default|break=170|actor=harthmere_named%3Aold_jory_brann%3Aold%20jory%20brann%3Aold%20jory%20brann",
+      "voiceId": "ErXwobaYiN019PkySvjV",
       "textHash": "f9e43d7d311fc6023fda6684ab648703f440ff3dd29fda6c902220915dee2c7d",
-      "bytes": 309751,
-      "cacheKeys": [
-        "aac9ac493536e0e84a24f4dac645cf256b44eb77e7ec1c4d8798a1c801da8701",
-        "372ac0d5ade9e1a25c7fe31e2480d996440af7a2a20360dbd2ebea9805aeb124"
-      ]
+      "bytes": 283838
     },
     {
-      "cacheKey": "eecf3df092cf3ca1a764889d4f58b01eb2305e42a1064a515812e946ea7971d0",
+      "cacheKey": "c794fb72f95b26d6f42ffd2051d0ad0aa4afcd31524f173dd81743d0b3d525dc",
+      "cacheKeys": [
+        "c794fb72f95b26d6f42ffd2051d0ad0aa4afcd31524f173dd81743d0b3d525dc",
+        "fc67b41d05191b458818012cef83a9137f03f3d8fbc55fdbf68b4d4591b745f2"
+      ],
       "actorKey": "harthmere_named:old_jory_brann:old jory brann:old jory brann",
       "actorId": "old_jory_brann",
       "lineId": "line-03",
       "path": "harthmere/voices/generated/current/harthmere-named-old-jory-brann-old-jory-brann/line-03.mp3",
-      "voice": "azure-speech|voice=en-US-SerenaMultilingualNeural|gender=female|kind=humanoid|style=friendly|styleDegree=0.90|rate=-4%25|pitch=%2B3%25|volume=default|break=170|actor=harthmere_named%3Aold_jory_brann%3Aold%20jory%20brann%3Aold%20jory%20brann",
-      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "voice": "azure-speech|voice=en-US-AndrewMultilingualNeural|gender=male|kind=humanoid|style=empathetic|styleDegree=0.90|rate=-4%25|pitch=%2B3%25|volume=default|break=170|actor=harthmere_named%3Aold_jory_brann%3Aold%20jory%20brann%3Aold%20jory%20brann",
+      "voiceId": "ErXwobaYiN019PkySvjV",
       "textHash": "44796d539e7fbdf663dca2ca62bc0c534630b8909e740e51684e987570ea081a",
-      "bytes": 240370,
-      "cacheKeys": [
-        "eecf3df092cf3ca1a764889d4f58b01eb2305e42a1064a515812e946ea7971d0",
-        "7aff0ce64f73c08276150a41b6aaf28f90afd5c758541b4ae56995dd579e4487"
-      ]
+      "bytes": 222398
     },
     {
-      "cacheKey": "77dea88de49fb0fef27214d8f750beddb861f44a506ec974ab84a948c5eefbb9",
+      "cacheKey": "d648e63f986d4447aac02d26c74f7712e54a01f608fbe3506cbaea18ebbb6925",
+      "cacheKeys": [
+        "d648e63f986d4447aac02d26c74f7712e54a01f608fbe3506cbaea18ebbb6925",
+        "cfa6a57519eb74ffada91137c13f50b1616b36f48095615c22d42c9cb30eec18"
+      ],
       "actorKey": "harthmere_named:old_jory_brann:old jory brann:old jory brann",
       "actorId": "old_jory_brann",
       "lineId": "line-04",
       "path": "harthmere/voices/generated/current/harthmere-named-old-jory-brann-old-jory-brann/line-04.mp3",
-      "voice": "azure-speech|voice=en-US-SerenaMultilingualNeural|gender=female|kind=humanoid|style=friendly|styleDegree=0.90|rate=-4%25|pitch=%2B3%25|volume=default|break=170|actor=harthmere_named%3Aold_jory_brann%3Aold%20jory%20brann%3Aold%20jory%20brann",
-      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "voice": "azure-speech|voice=en-US-AndrewMultilingualNeural|gender=male|kind=humanoid|style=empathetic|styleDegree=0.90|rate=-4%25|pitch=%2B3%25|volume=default|break=170|actor=harthmere_named%3Aold_jory_brann%3Aold%20jory%20brann%3Aold%20jory%20brann",
+      "voiceId": "ErXwobaYiN019PkySvjV",
       "textHash": "6e771763c818096a26bb3a6180aab4c8cbc6cc313937577013361b6bafbb8981",
-      "bytes": 185199,
-      "cacheKeys": [
-        "77dea88de49fb0fef27214d8f750beddb861f44a506ec974ab84a948c5eefbb9",
-        "d11ceaf47da20d1c90c6c1ba925296d291d6fa06e0c39cb5675aa0fc28d09115"
-      ]
+      "bytes": 171407
     },
     {
-      "cacheKey": "76cfd52caed86d9b6d3b2aeb7825f8ef7eb9119812628a10df77e6eda9962c09",
+      "cacheKey": "9d3937e42d5391ae9d4ff5684345bcced4e5e11fd4508bc1420df14ece79ba8d",
+      "cacheKeys": [
+        "9d3937e42d5391ae9d4ff5684345bcced4e5e11fd4508bc1420df14ece79ba8d",
+        "22c25a35216a4dede74fb6977aa685d06c46e8a6f55893248e7ed7292f5c97c2"
+      ],
       "actorKey": "harthmere_named:old_jory_brann:old jory brann:old jory brann",
       "actorId": "old_jory_brann",
       "lineId": "line-05",
       "path": "harthmere/voices/generated/current/harthmere-named-old-jory-brann-old-jory-brann/line-05.mp3",
-      "voice": "azure-speech|voice=en-US-SerenaMultilingualNeural|gender=female|kind=humanoid|style=friendly|styleDegree=0.90|rate=-4%25|pitch=%2B3%25|volume=default|break=170|actor=harthmere_named%3Aold_jory_brann%3Aold%20jory%20brann%3Aold%20jory%20brann",
-      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "voice": "azure-speech|voice=en-US-AndrewMultilingualNeural|gender=male|kind=humanoid|style=empathetic|styleDegree=0.90|rate=-4%25|pitch=%2B3%25|volume=default|break=170|actor=harthmere_named%3Aold_jory_brann%3Aold%20jory%20brann%3Aold%20jory%20brann",
+      "voiceId": "ErXwobaYiN019PkySvjV",
       "textHash": "8f2ff081d67cd21575a112d6c92dff986751faab6785a9a935be83d1a56b3d3b",
-      "bytes": 109967,
-      "cacheKeys": [
-        "76cfd52caed86d9b6d3b2aeb7825f8ef7eb9119812628a10df77e6eda9962c09",
-        "a5ceaf358f8f99c40030fdfd39b771cde753601ac61615e9651face01e84706e"
-      ]
+      "bytes": 98264
     },
     {
       "cacheKey": "41f03011fd7d101b749e08ce1af3291aa2054fde7b2c24d363aeeebd565b7ef5",
@@ -7133,79 +7133,79 @@
       ]
     },
     {
-      "cacheKey": "075169946bed2d920ccc26dd8c49d65330c59b6b47d9941dc271a9296e9d36e4",
+      "cacheKey": "8a0dbc3149b5c560f12b93cd68d619aa34a8d850366c26d8d7bf93e416a4d8b0",
+      "cacheKeys": [
+        "8a0dbc3149b5c560f12b93cd68d619aa34a8d850366c26d8d7bf93e416a4d8b0",
+        "3bfc5115d836a9c54c5dfdc7aff9835b4e3a33ddad16c5c6e47d2bb410078b48"
+      ],
       "actorKey": "harthmere_named:ren_skell:ren skell:ren skell",
       "actorId": "ren_skell",
       "lineId": "line-01",
       "path": "harthmere/voices/generated/current/harthmere-named-ren-skell-ren-skell/line-01.mp3",
-      "voice": "azure-speech|voice=en-US-JaneNeural|gender=female|kind=humanoid|style=sad|styleDegree=0.80|rate=-5%25|pitch=%2B0%25|volume=default|break=146|actor=harthmere_named%3Aren_skell%3Aren%20skell%3Aren%20skell",
-      "voiceId": "EXAVITQu4vr4xnSDxMaL",
+      "voice": "azure-speech|voice=en-US-TonyNeural|gender=male|kind=humanoid|style=sad|styleDegree=0.80|rate=-5%25|pitch=%2B0%25|volume=default|break=146|actor=harthmere_named%3Aren_skell%3Aren%20skell%3Aren%20skell",
+      "voiceId": "TxGEqnHWrfWFTfGW9XjX",
       "textHash": "9f9638f2805313c97e0492dc4b81c2b6852ee1265ff3e19d8183609f6d1734ac",
-      "bytes": 102026,
-      "cacheKeys": [
-        "075169946bed2d920ccc26dd8c49d65330c59b6b47d9941dc271a9296e9d36e4",
-        "6e3aa6a3fc5177e6f3993c0a4e9fa9f2cccfafacd313eeb5cf0c956aa9ad5378"
-      ]
+      "bytes": 104951
     },
     {
-      "cacheKey": "4e1f9f6b64ed3eea31f6cfc83e4ac90d84341ca11335ee94df37db1a18349e1f",
+      "cacheKey": "ab72981aa51e0f599990545d8fb34365f50ce7d9fd35c68b3ed0dbdce9ef65d6",
+      "cacheKeys": [
+        "ab72981aa51e0f599990545d8fb34365f50ce7d9fd35c68b3ed0dbdce9ef65d6",
+        "ef7443ba227d5b9e511fe0ce2277559c5070627646491d4f0260adf789509bb9"
+      ],
       "actorKey": "harthmere_named:ren_skell:ren skell:ren skell",
       "actorId": "ren_skell",
       "lineId": "line-02",
       "path": "harthmere/voices/generated/current/harthmere-named-ren-skell-ren-skell/line-02.mp3",
-      "voice": "azure-speech|voice=en-US-JaneNeural|gender=female|kind=humanoid|style=sad|styleDegree=0.80|rate=-5%25|pitch=%2B0%25|volume=default|break=146|actor=harthmere_named%3Aren_skell%3Aren%20skell%3Aren%20skell",
-      "voiceId": "EXAVITQu4vr4xnSDxMaL",
+      "voice": "azure-speech|voice=en-US-TonyNeural|gender=male|kind=humanoid|style=sad|styleDegree=0.80|rate=-5%25|pitch=%2B0%25|volume=default|break=146|actor=harthmere_named%3Aren_skell%3Aren%20skell%3Aren%20skell",
+      "voiceId": "TxGEqnHWrfWFTfGW9XjX",
       "textHash": "121ea7913ff04edd6d3666f3d57235883463af75a7365ec3d0281fd6f6dea12f",
-      "bytes": 281330,
-      "cacheKeys": [
-        "4e1f9f6b64ed3eea31f6cfc83e4ac90d84341ca11335ee94df37db1a18349e1f",
-        "daedf33106cb51015e359101c5d6e5cb1102ed54e6f3e56d3079830950c3584d"
-      ]
+      "bytes": 322290
     },
     {
-      "cacheKey": "f688e48d797a81428d788706833cc34286f7268d8ae12239ec367d72deb185a5",
+      "cacheKey": "3ef504abdb897afef2b2d335db890e43d77c4d136af143dd14c3af3e9a85665e",
+      "cacheKeys": [
+        "3ef504abdb897afef2b2d335db890e43d77c4d136af143dd14c3af3e9a85665e",
+        "5abcad9c03e62555df924a8bd89e14929d79a4fa252885dde4037ff5b0027768"
+      ],
       "actorKey": "harthmere_named:ren_skell:ren skell:ren skell",
       "actorId": "ren_skell",
       "lineId": "line-03",
       "path": "harthmere/voices/generated/current/harthmere-named-ren-skell-ren-skell/line-03.mp3",
-      "voice": "azure-speech|voice=en-US-JaneNeural|gender=female|kind=humanoid|style=sad|styleDegree=0.80|rate=-5%25|pitch=%2B0%25|volume=default|break=146|actor=harthmere_named%3Aren_skell%3Aren%20skell%3Aren%20skell",
-      "voiceId": "EXAVITQu4vr4xnSDxMaL",
+      "voice": "azure-speech|voice=en-US-TonyNeural|gender=male|kind=humanoid|style=sad|styleDegree=0.80|rate=-5%25|pitch=%2B0%25|volume=default|break=146|actor=harthmere_named%3Aren_skell%3Aren%20skell%3Aren%20skell",
+      "voiceId": "TxGEqnHWrfWFTfGW9XjX",
       "textHash": "adf57fe6c2e0cfb082ec555196db002bc8369635ce192158c6aa66597610e4dd",
-      "bytes": 209859,
-      "cacheKeys": [
-        "f688e48d797a81428d788706833cc34286f7268d8ae12239ec367d72deb185a5",
-        "c77db93818208ae1ea6c21fcc8263d052294d6760584b7f67ae96fb0f2e7ca54"
-      ]
+      "bytes": 212367
     },
     {
-      "cacheKey": "20664c0770a41482e0818f168f72a3fd984c831513dd1145d9648221d2b3cc3a",
+      "cacheKey": "94a059f6b6d106ed0964ee726468a347fce420f6efcfa05d90936563dee292c6",
+      "cacheKeys": [
+        "94a059f6b6d106ed0964ee726468a347fce420f6efcfa05d90936563dee292c6",
+        "889d15940b529d5e02b9b1abbbff97a355e81c2e13febd14d28ad2a96a67248a"
+      ],
       "actorKey": "harthmere_named:ren_skell:ren skell:ren skell",
       "actorId": "ren_skell",
       "lineId": "line-04",
       "path": "harthmere/voices/generated/current/harthmere-named-ren-skell-ren-skell/line-04.mp3",
-      "voice": "azure-speech|voice=en-US-JaneNeural|gender=female|kind=humanoid|style=sad|styleDegree=0.80|rate=-5%25|pitch=%2B0%25|volume=default|break=146|actor=harthmere_named%3Aren_skell%3Aren%20skell%3Aren%20skell",
-      "voiceId": "EXAVITQu4vr4xnSDxMaL",
+      "voice": "azure-speech|voice=en-US-TonyNeural|gender=male|kind=humanoid|style=sad|styleDegree=0.80|rate=-5%25|pitch=%2B0%25|volume=default|break=146|actor=harthmere_named%3Aren_skell%3Aren%20skell%3Aren%20skell",
+      "voiceId": "TxGEqnHWrfWFTfGW9XjX",
       "textHash": "5f4a18b6e9b9ec78e27e1180bc2ef819ad6c156f7e0ef34504ff72f5e2a6ed28",
-      "bytes": 221144,
-      "cacheKeys": [
-        "20664c0770a41482e0818f168f72a3fd984c831513dd1145d9648221d2b3cc3a",
-        "bcf99dffeeb3e0603fe58785f670fe0493e1d09466a41ffcb3565e29e0455f93"
-      ]
+      "bytes": 232847
     },
     {
-      "cacheKey": "d762b30ffae3a6e90c44c374a94e7cedb79f4d8efdd310e9d46e752972eac3f4",
+      "cacheKey": "d0fccbf65512ffbb5b097eeb511d8e8ef8ad8e5989f93b701efe3422f3c4846d",
+      "cacheKeys": [
+        "d0fccbf65512ffbb5b097eeb511d8e8ef8ad8e5989f93b701efe3422f3c4846d",
+        "119e755236e06f8098f584997a959273c62b97e9f2bf0955ff531bfe4d16d8ee"
+      ],
       "actorKey": "harthmere_named:ren_skell:ren skell:ren skell",
       "actorId": "ren_skell",
       "lineId": "line-05",
       "path": "harthmere/voices/generated/current/harthmere-named-ren-skell-ren-skell/line-05.mp3",
-      "voice": "azure-speech|voice=en-US-JaneNeural|gender=female|kind=humanoid|style=sad|styleDegree=0.80|rate=-5%25|pitch=%2B0%25|volume=default|break=146|actor=harthmere_named%3Aren_skell%3Aren%20skell%3Aren%20skell",
-      "voiceId": "EXAVITQu4vr4xnSDxMaL",
+      "voice": "azure-speech|voice=en-US-TonyNeural|gender=male|kind=humanoid|style=sad|styleDegree=0.80|rate=-5%25|pitch=%2B0%25|volume=default|break=146|actor=harthmere_named%3Aren_skell%3Aren%20skell%3Aren%20skell",
+      "voiceId": "TxGEqnHWrfWFTfGW9XjX",
       "textHash": "0939064c2cb5361451fdb536405aa20b689d6d28741dd1f88fe2374b06ff1dc2",
-      "bytes": 119998,
-      "cacheKeys": [
-        "d762b30ffae3a6e90c44c374a94e7cedb79f4d8efdd310e9d46e752972eac3f4",
-        "4d4cbeaaf7689eac8aaa63da6d3f01c472f2c879ace1d149b253552b15cb71ae"
-      ]
+      "bytes": 116236
     },
     {
       "cacheKey": "133f083c367e2748a88f5d447b22cf2ef6c30db134c3c697bcc48e899b9aaa43",
@@ -7583,79 +7583,79 @@
       ]
     },
     {
-      "cacheKey": "77e1abde1d795e306b09c62ae54bd1e7bd4d13b492bdfe1ed5e6d416a9322124",
+      "cacheKey": "675f7590da607ff118020bbdec8521ff4f89b0283de8c88a903a97a631e57c13",
+      "cacheKeys": [
+        "675f7590da607ff118020bbdec8521ff4f89b0283de8c88a903a97a631e57c13",
+        "67b3ba0a5fc2cf126fdba7d9aa91d9abb143e3936e4d5323051ab53181947532"
+      ],
       "actorKey": "harthmere_named:sora_reed:sora reed:sora reed",
       "actorId": "sora_reed",
       "lineId": "line-01",
       "path": "harthmere/voices/generated/current/harthmere-named-sora-reed-sora-reed/line-01.mp3",
-      "voice": "azure-speech|voice=en-US-DavisMultilingualNeural|gender=male|kind=humanoid|style=empathetic|styleDegree=0.85|rate=%2B2%25|pitch=%2B2%25|volume=default|break=158|actor=harthmere_named%3Asora_reed%3Asora%20reed%3Asora%20reed",
-      "voiceId": "JBFqnCBsd6RMkjVDRZzb",
+      "voice": "azure-speech|voice=en-US-PhoebeMultilingualNeural|gender=female|kind=humanoid|style=empathetic|styleDegree=0.85|rate=%2B2%25|pitch=%2B2%25|volume=default|break=158|actor=harthmere_named%3Asora_reed%3Asora%20reed%3Asora%20reed",
+      "voiceId": "21m00Tcm4TlvDq8ikWAM",
       "textHash": "c34b4423dc6d3a8262ea8f3c0bc8c9013a41b0554f57cbf3c70cdaf11dbc8d92",
-      "bytes": 103279,
-      "cacheKeys": [
-        "77e1abde1d795e306b09c62ae54bd1e7bd4d13b492bdfe1ed5e6d416a9322124",
-        "1d61612defcd20b86cd408b602153ebe8b3954b5aafc971c7a05f885201f4aa4"
-      ]
+      "bytes": 93248
     },
     {
-      "cacheKey": "fadb3aa0dd6901fe10c78167800d4857e3cc80af730da5147adf31d0fb6bd8cf",
+      "cacheKey": "5e50dab18006a0b25cf968cc0395e13df06cc096204ad18126ebb730a4a98302",
+      "cacheKeys": [
+        "5e50dab18006a0b25cf968cc0395e13df06cc096204ad18126ebb730a4a98302",
+        "caf084dc8c0c34e83eb4d984a36b80831920165b0757be2b3eb909d16287b540"
+      ],
       "actorKey": "harthmere_named:sora_reed:sora reed:sora reed",
       "actorId": "sora_reed",
       "lineId": "line-02",
       "path": "harthmere/voices/generated/current/harthmere-named-sora-reed-sora-reed/line-02.mp3",
-      "voice": "azure-speech|voice=en-US-DavisMultilingualNeural|gender=male|kind=humanoid|style=empathetic|styleDegree=0.85|rate=%2B2%25|pitch=%2B2%25|volume=default|break=158|actor=harthmere_named%3Asora_reed%3Asora%20reed%3Asora%20reed",
-      "voiceId": "JBFqnCBsd6RMkjVDRZzb",
+      "voice": "azure-speech|voice=en-US-PhoebeMultilingualNeural|gender=female|kind=humanoid|style=empathetic|styleDegree=0.85|rate=%2B2%25|pitch=%2B2%25|volume=default|break=158|actor=harthmere_named%3Asora_reed%3Asora%20reed%3Asora%20reed",
+      "voiceId": "21m00Tcm4TlvDq8ikWAM",
       "textHash": "9f02e9a20d512d831dea3b383436c79c898fbd6e4ae08880db90bb669b6fab07",
-      "bytes": 285092,
-      "cacheKeys": [
-        "fadb3aa0dd6901fe10c78167800d4857e3cc80af730da5147adf31d0fb6bd8cf",
-        "cc5c045d352bd35d2fce5ca193493b1e6cc4423899a572c87cdd3cdb12b943c0"
-      ]
+      "bytes": 252073
     },
     {
-      "cacheKey": "6bdd9d517ba5a803a7ebd6730806bbcdb612aa04f352e24665eff2ee53cd2bf0",
+      "cacheKey": "63b7465c5f8d47d38242325d836ba458cae38663533c6e29b95b98e7dc8b9b1c",
+      "cacheKeys": [
+        "63b7465c5f8d47d38242325d836ba458cae38663533c6e29b95b98e7dc8b9b1c",
+        "04b83c607c14bc2aea55502c782a9731ea7b95470703e85fe7caa0561c584a0c"
+      ],
       "actorKey": "harthmere_named:sora_reed:sora reed:sora reed",
       "actorId": "sora_reed",
       "lineId": "line-03",
       "path": "harthmere/voices/generated/current/harthmere-named-sora-reed-sora-reed/line-03.mp3",
-      "voice": "azure-speech|voice=en-US-DavisMultilingualNeural|gender=male|kind=humanoid|style=empathetic|styleDegree=0.85|rate=%2B2%25|pitch=%2B2%25|volume=default|break=158|actor=harthmere_named%3Asora_reed%3Asora%20reed%3Asora%20reed",
-      "voiceId": "JBFqnCBsd6RMkjVDRZzb",
+      "voice": "azure-speech|voice=en-US-PhoebeMultilingualNeural|gender=female|kind=humanoid|style=empathetic|styleDegree=0.85|rate=%2B2%25|pitch=%2B2%25|volume=default|break=158|actor=harthmere_named%3Asora_reed%3Asora%20reed%3Asora%20reed",
+      "voiceId": "21m00Tcm4TlvDq8ikWAM",
       "textHash": "deb652189372566c9b1ca03d854f0978df2b653789b50d2a9afd1ce0c2515e00",
-      "bytes": 227831,
-      "cacheKeys": [
-        "6bdd9d517ba5a803a7ebd6730806bbcdb612aa04f352e24665eff2ee53cd2bf0",
-        "33d2e910098450f3f0b5e1bf3dfbf70e907d1da4757d4e4a8bc33301ef1b2234"
-      ]
+      "bytes": 224906
     },
     {
-      "cacheKey": "97bd1b5d792bd1bc80491d429f51fc6f52428cd7770b8cceb069b6c552fd9851",
+      "cacheKey": "343e927af6291cc6e070872ce176645a37216ab5b5a400af3d3ba45bbd01816f",
+      "cacheKeys": [
+        "343e927af6291cc6e070872ce176645a37216ab5b5a400af3d3ba45bbd01816f",
+        "05919dd4a60e7f98425c9b1f1c6cd7dbd392e992b6e06333382ed267d12acaee"
+      ],
       "actorKey": "harthmere_named:sora_reed:sora reed:sora reed",
       "actorId": "sora_reed",
       "lineId": "line-04",
       "path": "harthmere/voices/generated/current/harthmere-named-sora-reed-sora-reed/line-04.mp3",
-      "voice": "azure-speech|voice=en-US-DavisMultilingualNeural|gender=male|kind=humanoid|style=empathetic|styleDegree=0.85|rate=%2B2%25|pitch=%2B2%25|volume=default|break=158|actor=harthmere_named%3Asora_reed%3Asora%20reed%3Asora%20reed",
-      "voiceId": "JBFqnCBsd6RMkjVDRZzb",
+      "voice": "azure-speech|voice=en-US-PhoebeMultilingualNeural|gender=female|kind=humanoid|style=empathetic|styleDegree=0.85|rate=%2B2%25|pitch=%2B2%25|volume=default|break=158|actor=harthmere_named%3Asora_reed%3Asora%20reed%3Asora%20reed",
+      "voiceId": "21m00Tcm4TlvDq8ikWAM",
       "textHash": "ad76d5069687ce78151a4aa395ce004fcf36fbce811b0c909bf5aa8ab006d3d1",
-      "bytes": 163466,
-      "cacheKeys": [
-        "97bd1b5d792bd1bc80491d429f51fc6f52428cd7770b8cceb069b6c552fd9851",
-        "4db61ff02a6884a514885eab71dfb70a8c4895e0c150facf9e9cb290419236ca"
-      ]
+      "bytes": 170153
     },
     {
-      "cacheKey": "522ab5ec11b126f3c003edb1a9420928249ac18ac476d15436041516ac358e89",
+      "cacheKey": "8558b514d7c1fc99b232fa711573fd36a46fa4617a8b2f8aa20ad2deae4fb533",
+      "cacheKeys": [
+        "8558b514d7c1fc99b232fa711573fd36a46fa4617a8b2f8aa20ad2deae4fb533",
+        "54d0c798f19e9e140b7c94168213e7ec0b8e6b8e344b96b2fb7584624ccd3538"
+      ],
       "actorKey": "harthmere_named:sora_reed:sora reed:sora reed",
       "actorId": "sora_reed",
       "lineId": "line-05",
       "path": "harthmere/voices/generated/current/harthmere-named-sora-reed-sora-reed/line-05.mp3",
-      "voice": "azure-speech|voice=en-US-DavisMultilingualNeural|gender=male|kind=humanoid|style=empathetic|styleDegree=0.85|rate=%2B2%25|pitch=%2B2%25|volume=default|break=158|actor=harthmere_named%3Asora_reed%3Asora%20reed%3Asora%20reed",
-      "voiceId": "JBFqnCBsd6RMkjVDRZzb",
+      "voice": "azure-speech|voice=en-US-PhoebeMultilingualNeural|gender=female|kind=humanoid|style=empathetic|styleDegree=0.85|rate=%2B2%25|pitch=%2B2%25|volume=default|break=158|actor=harthmere_named%3Asora_reed%3Asora%20reed%3Asora%20reed",
+      "voiceId": "21m00Tcm4TlvDq8ikWAM",
       "textHash": "4cc96e71a63d970702b205c3b23b6dd67c839e8b1e3cbfe661d164868d72a602",
-      "bytes": 121252,
-      "cacheKeys": [
-        "522ab5ec11b126f3c003edb1a9420928249ac18ac476d15436041516ac358e89",
-        "63d7c044ec54019a136a82cd3ea42a112836ad311c4db7a5dea895bac6106edd"
-      ]
+      "bytes": 116236
     },
     {
       "cacheKey": "6eaa5240ed315e1677cc8c490b6c35debe9f540ccfc8c3b83b04912be82028c8",
@@ -7733,154 +7733,154 @@
       ]
     },
     {
-      "cacheKey": "8bf2b5168836ea170bc66cc772881c807abf290568aacd26d1859b451a19b5ee",
+      "cacheKey": "bc9032e81c39a25d41f9eae93bbd0316e76caa47601b32bff75cfae04b7682bf",
+      "cacheKeys": [
+        "bc9032e81c39a25d41f9eae93bbd0316e76caa47601b32bff75cfae04b7682bf",
+        "22e1a887b6f427685197114cb8c70cfad6469525effab36c30358f7329d2db8a"
+      ],
       "actorKey": "harthmere_named:tisa_pike:tisa pike:tisa pike",
       "actorId": "tisa_pike",
       "lineId": "line-01",
       "path": "harthmere/voices/generated/current/harthmere-named-tisa-pike-tisa-pike/line-01.mp3",
-      "voice": "azure-speech|voice=en-US-AndrewMultilingualNeural|gender=male|kind=humanoid|style=empathetic|styleDegree=0.85|rate=-5%25|pitch=%2B1%25|volume=default|break=122|actor=harthmere_named%3Atisa_pike%3Atisa%20pike%3Atisa%20pike",
-      "voiceId": "TxGEqnHWrfWFTfGW9XjX",
+      "voice": "azure-speech|voice=en-US-SerenaMultilingualNeural|gender=female|kind=humanoid|style=friendly|styleDegree=0.85|rate=-5%25|pitch=%2B1%25|volume=default|break=122|actor=harthmere_named%3Atisa_pike%3Atisa%20pike%3Atisa%20pike",
+      "voiceId": "EXAVITQu4vr4xnSDxMaL",
       "textHash": "740cc19e552d2fa515ed3ec2a8cbcacc83f25e7343732f558e205d6d0efd0106",
-      "bytes": 99518,
-      "cacheKeys": [
-        "8bf2b5168836ea170bc66cc772881c807abf290568aacd26d1859b451a19b5ee",
-        "1d8da02388f8732a6cdb9af9449f5f16c33346b7d8e569b9ac37d6dd60363623"
-      ]
+      "bytes": 107459
     },
     {
-      "cacheKey": "cc13a32cc222847705c2ce93778894dd7e2b9f0aeaaa5d070ec32ef28965e2e0",
+      "cacheKey": "d1da532f59878e64b47e48bcf9d8e10345c86245f3f8f0522c3a63a080e34070",
+      "cacheKeys": [
+        "d1da532f59878e64b47e48bcf9d8e10345c86245f3f8f0522c3a63a080e34070",
+        "d5d77d6f6237ca18e5a25ff70608c7ed5f1c61a6d848e8f042c0105d1fa7b0fb"
+      ],
       "actorKey": "harthmere_named:tisa_pike:tisa pike:tisa pike",
       "actorId": "tisa_pike",
       "lineId": "line-02",
       "path": "harthmere/voices/generated/current/harthmere-named-tisa-pike-tisa-pike/line-02.mp3",
-      "voice": "azure-speech|voice=en-US-AndrewMultilingualNeural|gender=male|kind=humanoid|style=empathetic|styleDegree=0.85|rate=-5%25|pitch=%2B1%25|volume=default|break=122|actor=harthmere_named%3Atisa_pike%3Atisa%20pike%3Atisa%20pike",
-      "voiceId": "TxGEqnHWrfWFTfGW9XjX",
+      "voice": "azure-speech|voice=en-US-SerenaMultilingualNeural|gender=female|kind=humanoid|style=friendly|styleDegree=0.85|rate=-5%25|pitch=%2B1%25|volume=default|break=122|actor=harthmere_named%3Atisa_pike%3Atisa%20pike%3Atisa%20pike",
+      "voiceId": "EXAVITQu4vr4xnSDxMaL",
       "textHash": "b44e60dfb4b47122f92f800b1ae3af9c66dee24122eb9b8f79d842831217af13",
-      "bytes": 249565,
-      "cacheKeys": [
-        "cc13a32cc222847705c2ce93778894dd7e2b9f0aeaaa5d070ec32ef28965e2e0",
-        "e2dd6904ac8a2b059dfb833d7ff59e0c8b8c005ea557f050f66184ffecf5a4bc"
-      ]
+      "bytes": 234101
     },
     {
-      "cacheKey": "c9debc08544717e7f69391ac5fdd14dea72b945327e98cf35bac21ae8d045702",
+      "cacheKey": "b81ab0b7cb88f7af9aadd565ffac137403b99623c0dd0583dbe6fd6681ed4e53",
+      "cacheKeys": [
+        "b81ab0b7cb88f7af9aadd565ffac137403b99623c0dd0583dbe6fd6681ed4e53",
+        "605a286a6af3ef67a1a2d6c2776afddf4d1f37ec133c00db7d85d6a554dcb9cd"
+      ],
       "actorKey": "harthmere_named:tisa_pike:tisa pike:tisa pike",
       "actorId": "tisa_pike",
       "lineId": "line-03",
       "path": "harthmere/voices/generated/current/harthmere-named-tisa-pike-tisa-pike/line-03.mp3",
-      "voice": "azure-speech|voice=en-US-AndrewMultilingualNeural|gender=male|kind=humanoid|style=empathetic|styleDegree=0.85|rate=-5%25|pitch=%2B1%25|volume=default|break=122|actor=harthmere_named%3Atisa_pike%3Atisa%20pike%3Atisa%20pike",
-      "voiceId": "TxGEqnHWrfWFTfGW9XjX",
+      "voice": "azure-speech|voice=en-US-SerenaMultilingualNeural|gender=female|kind=humanoid|style=friendly|styleDegree=0.85|rate=-5%25|pitch=%2B1%25|volume=default|break=122|actor=harthmere_named%3Atisa_pike%3Atisa%20pike%3Atisa%20pike",
+      "voiceId": "EXAVITQu4vr4xnSDxMaL",
       "textHash": "0c620847f2495ceadc8baeff31e050a076decfa4d3128b4a2cab2b110f0fb3af",
-      "bytes": 226159,
-      "cacheKeys": [
-        "c9debc08544717e7f69391ac5fdd14dea72b945327e98cf35bac21ae8d045702",
-        "c6ab02decda05ef60b3d68abaedecbc760fd69e5c44c2d237fa1d507da2274eb"
-      ]
+      "bytes": 234101
     },
     {
-      "cacheKey": "c83488e4231364d40553e1c7e8bf931c8e33da103805f91a8ba51d3ee0567346",
+      "cacheKey": "3081f175a558a35dc12ba29429e1c698d42a4d0cfde32e0af21845eeb74471f1",
+      "cacheKeys": [
+        "3081f175a558a35dc12ba29429e1c698d42a4d0cfde32e0af21845eeb74471f1",
+        "7cddaf294ad24ff36880023acad11f8b47008e566746cbff797b718803d91168"
+      ],
       "actorKey": "harthmere_named:tisa_pike:tisa pike:tisa pike",
       "actorId": "tisa_pike",
       "lineId": "line-04",
       "path": "harthmere/voices/generated/current/harthmere-named-tisa-pike-tisa-pike/line-04.mp3",
-      "voice": "azure-speech|voice=en-US-AndrewMultilingualNeural|gender=male|kind=humanoid|style=empathetic|styleDegree=0.85|rate=-5%25|pitch=%2B1%25|volume=default|break=122|actor=harthmere_named%3Atisa_pike%3Atisa%20pike%3Atisa%20pike",
-      "voiceId": "TxGEqnHWrfWFTfGW9XjX",
+      "voice": "azure-speech|voice=en-US-SerenaMultilingualNeural|gender=female|kind=humanoid|style=friendly|styleDegree=0.85|rate=-5%25|pitch=%2B1%25|volume=default|break=122|actor=harthmere_named%3Atisa_pike%3Atisa%20pike%3Atisa%20pike",
+      "voiceId": "EXAVITQu4vr4xnSDxMaL",
       "textHash": "314ca544a8e46d6816fed97e67e1b8b568fb6003ef95f58b5d6abb73a0510fb3",
-      "bytes": 204426,
-      "cacheKeys": [
-        "c83488e4231364d40553e1c7e8bf931c8e33da103805f91a8ba51d3ee0567346",
-        "33ba8ef2424f853409a85c5aae4513b06ba99ad41da5a96af4694247deb55d9c"
-      ]
+      "bytes": 195648
     },
     {
-      "cacheKey": "33ca9ff2d6910c4aebca8a2242d42c8dea23a16b844f92793a1095ba03dc6eca",
+      "cacheKey": "eee181382c7b6998d2c9499a09bc1bc1919a11d3caa286e7bb63415d4e46c991",
+      "cacheKeys": [
+        "eee181382c7b6998d2c9499a09bc1bc1919a11d3caa286e7bb63415d4e46c991",
+        "a53801cd360a9c279bcdf777fedd6e758b9a8bcb65a62033bf28f9a68bad632e"
+      ],
       "actorKey": "harthmere_named:tisa_pike:tisa pike:tisa pike",
       "actorId": "tisa_pike",
       "lineId": "line-05",
       "path": "harthmere/voices/generated/current/harthmere-named-tisa-pike-tisa-pike/line-05.mp3",
-      "voice": "azure-speech|voice=en-US-AndrewMultilingualNeural|gender=male|kind=humanoid|style=empathetic|styleDegree=0.85|rate=-5%25|pitch=%2B1%25|volume=default|break=122|actor=harthmere_named%3Atisa_pike%3Atisa%20pike%3Atisa%20pike",
-      "voiceId": "TxGEqnHWrfWFTfGW9XjX",
+      "voice": "azure-speech|voice=en-US-SerenaMultilingualNeural|gender=female|kind=humanoid|style=friendly|styleDegree=0.85|rate=-5%25|pitch=%2B1%25|volume=default|break=122|actor=harthmere_named%3Atisa_pike%3Atisa%20pike%3Atisa%20pike",
+      "voiceId": "EXAVITQu4vr4xnSDxMaL",
       "textHash": "a9ccb05ac860e9a59f5f1bbce0dd75fab69cfb042941c280a3ea3f4c2bb73a78",
-      "bytes": 122506,
-      "cacheKeys": [
-        "33ca9ff2d6910c4aebca8a2242d42c8dea23a16b844f92793a1095ba03dc6eca",
-        "7c1f105831852adbf6bf544e2fa37551218ffde88196952b9845a8911a4be331"
-      ]
+      "bytes": 117490
     },
     {
-      "cacheKey": "c29e8b5b70a37e0d199377b50d8622bd35cfad835507c4fe1f91db626cd9026f",
+      "cacheKey": "3d460429f7d75b8d9a89c908628428d8ce307fe237626ec1691b3852d7231d75",
+      "cacheKeys": [
+        "3d460429f7d75b8d9a89c908628428d8ce307fe237626ec1691b3852d7231d75",
+        "b8b9f91395dea5166fe34f41f700c345c53ad337315c5ffe2b854739d361bcab"
+      ],
       "actorKey": "harthmere_named:tovin_reed:master tovin reed:master tovin reed",
       "actorId": "tovin_reed",
       "lineId": "line-01",
       "path": "harthmere/voices/generated/current/harthmere-named-tovin-reed-master-tovin-reed/line-01.mp3",
-      "voice": "azure-speech|voice=en-US-LunaNeural|gender=female|kind=humanoid|style=conversation|styleDegree=1.05|rate=-3%25|pitch=-3%25|volume=default|break=146|actor=harthmere_named%3Atovin_reed%3Amaster%20tovin%20reed%3Amaster%20tovin%20reed",
-      "voiceId": "MF3mGyEYCl7XYWbV9V6O",
+      "voice": "azure-speech|voice=en-US-KaiNeural|gender=male|kind=humanoid|style=conversation|styleDegree=1.05|rate=-3%25|pitch=-3%25|volume=default|break=146|actor=harthmere_named%3Atovin_reed%3Amaster%20tovin%20reed%3Amaster%20tovin%20reed",
+      "voiceId": "pNInz6obpgDQGcFmaJgB",
       "textHash": "b3afc0ad9bbbf89106d9ee66271a47e09e3cb1a704aed1f2e6356c1d36085175",
-      "bytes": 98264,
-      "cacheKeys": [
-        "c29e8b5b70a37e0d199377b50d8622bd35cfad835507c4fe1f91db626cd9026f",
-        "053b1f36df3c13bdc4d7f84dc3ebfc97ec9d2508ab481f72b6ee0a53bc2379af"
-      ]
+      "bytes": 93248
     },
     {
-      "cacheKey": "961c913b955f4cd1d96c32d9a60b94f07a7091a862f59590b12dba411b2ea723",
+      "cacheKey": "b926fa2e2f656e40a00fc9c66cf433e3385c3071a6bec6eb4053a244c09988fb",
+      "cacheKeys": [
+        "b926fa2e2f656e40a00fc9c66cf433e3385c3071a6bec6eb4053a244c09988fb",
+        "fe66f98f43a6e97eeddf465838f7e4583ab893a45769f71047992de8db494f73"
+      ],
       "actorKey": "harthmere_named:tovin_reed:master tovin reed:master tovin reed",
       "actorId": "tovin_reed",
       "lineId": "line-02",
       "path": "harthmere/voices/generated/current/harthmere-named-tovin-reed-master-tovin-reed/line-02.mp3",
-      "voice": "azure-speech|voice=en-US-LunaNeural|gender=female|kind=humanoid|style=conversation|styleDegree=1.05|rate=-3%25|pitch=-3%25|volume=default|break=146|actor=harthmere_named%3Atovin_reed%3Amaster%20tovin%20reed%3Amaster%20tovin%20reed",
-      "voiceId": "MF3mGyEYCl7XYWbV9V6O",
+      "voice": "azure-speech|voice=en-US-KaiNeural|gender=male|kind=humanoid|style=conversation|styleDegree=1.05|rate=-3%25|pitch=-3%25|volume=default|break=146|actor=harthmere_named%3Atovin_reed%3Amaster%20tovin%20reed%3Amaster%20tovin%20reed",
+      "voiceId": "pNInz6obpgDQGcFmaJgB",
       "textHash": "5eacb8cbf931c66706f64214ea6632acedd6be61334f4777842435833f17f299",
-      "bytes": 316021,
-      "cacheKeys": [
-        "961c913b955f4cd1d96c32d9a60b94f07a7091a862f59590b12dba411b2ea723",
-        "62f3f117b6d51786e70efbd4e8ccaa47f935461c547c6d996180e6b168bdfc9a"
-      ]
+      "bytes": 271299
     },
     {
-      "cacheKey": "2678e8c6073c637fbe06daa52c76f95ed12ec47b98fb02ec564f57cd5fd21dc6",
+      "cacheKey": "0ae0f223e352075d72dfb6e351056f26cb07180edd7625ef671a215d0dae289d",
+      "cacheKeys": [
+        "0ae0f223e352075d72dfb6e351056f26cb07180edd7625ef671a215d0dae289d",
+        "c28a028435718c3d1daafe6e99a28f74c16fa39cc78ed948cb6edf7abe63b7b1"
+      ],
       "actorKey": "harthmere_named:tovin_reed:master tovin reed:master tovin reed",
       "actorId": "tovin_reed",
       "lineId": "line-03",
       "path": "harthmere/voices/generated/current/harthmere-named-tovin-reed-master-tovin-reed/line-03.mp3",
-      "voice": "azure-speech|voice=en-US-LunaNeural|gender=female|kind=humanoid|style=conversation|styleDegree=1.05|rate=-3%25|pitch=-3%25|volume=default|break=146|actor=harthmere_named%3Atovin_reed%3Amaster%20tovin%20reed%3Amaster%20tovin%20reed",
-      "voiceId": "MF3mGyEYCl7XYWbV9V6O",
+      "voice": "azure-speech|voice=en-US-KaiNeural|gender=male|kind=humanoid|style=conversation|styleDegree=1.05|rate=-3%25|pitch=-3%25|volume=default|break=146|actor=harthmere_named%3Atovin_reed%3Amaster%20tovin%20reed%3Amaster%20tovin%20reed",
+      "voiceId": "pNInz6obpgDQGcFmaJgB",
       "textHash": "feedff0dc3c1d24a25eedc5b495b7a1f00f9ec70ed7d8401656cc486e2fd2267",
-      "bytes": 265866,
-      "cacheKeys": [
-        "2678e8c6073c637fbe06daa52c76f95ed12ec47b98fb02ec564f57cd5fd21dc6",
-        "a90ea5c2772f61dd9669cc5232ba1f4aa66f2afc2d19cd36f511463ac6eee4b3"
-      ]
+      "bytes": 246639
     },
     {
-      "cacheKey": "b5f78d1aa044a693d372ad1a5380fee00088d04a44c11c4a99661b20b387f9ab",
+      "cacheKey": "1b8f5881c21108ad869cbb8bde0ca2fdf85e8d5f6138c4ffee9d39f9ef95c2ad",
+      "cacheKeys": [
+        "1b8f5881c21108ad869cbb8bde0ca2fdf85e8d5f6138c4ffee9d39f9ef95c2ad",
+        "cb1f1a70a8ca5a1510d3475e2b62693858e42b337c426fabae160e329fc57087"
+      ],
       "actorKey": "harthmere_named:tovin_reed:master tovin reed:master tovin reed",
       "actorId": "tovin_reed",
       "lineId": "line-04",
       "path": "harthmere/voices/generated/current/harthmere-named-tovin-reed-master-tovin-reed/line-04.mp3",
-      "voice": "azure-speech|voice=en-US-LunaNeural|gender=female|kind=humanoid|style=conversation|styleDegree=1.05|rate=-3%25|pitch=-3%25|volume=default|break=146|actor=harthmere_named%3Atovin_reed%3Amaster%20tovin%20reed%3Amaster%20tovin%20reed",
-      "voiceId": "MF3mGyEYCl7XYWbV9V6O",
+      "voice": "azure-speech|voice=en-US-KaiNeural|gender=male|kind=humanoid|style=conversation|styleDegree=1.05|rate=-3%25|pitch=-3%25|volume=default|break=146|actor=harthmere_named%3Atovin_reed%3Amaster%20tovin%20reed%3Amaster%20tovin%20reed",
+      "voiceId": "pNInz6obpgDQGcFmaJgB",
       "textHash": "3bb7901b54edee336cedab0e6c6a5000f17706bfad5cf3b20eb94904a41942d6",
-      "bytes": 230339,
-      "cacheKeys": [
-        "b5f78d1aa044a693d372ad1a5380fee00088d04a44c11c4a99661b20b387f9ab",
-        "4be636e93ecd1d881232d91579e96d0a0ecf15a7a22b22fc730405435bbf6a79"
-      ]
+      "bytes": 208605
     },
     {
-      "cacheKey": "0fc678a390cdf74007a9a30529954e6106bf30c8e3ec0d697ed5521760fb49de",
+      "cacheKey": "481f0ecfd2c12b2926269bad3a9813f4b9668c05f96b77e15407143c9facaa5c",
+      "cacheKeys": [
+        "481f0ecfd2c12b2926269bad3a9813f4b9668c05f96b77e15407143c9facaa5c",
+        "4e9142bbf58d050b8f34f0815b287b6ee5d80eff0c1d6e7eff7a9af588233c0f"
+      ],
       "actorKey": "harthmere_named:tovin_reed:master tovin reed:master tovin reed",
       "actorId": "tovin_reed",
       "lineId": "line-05",
       "path": "harthmere/voices/generated/current/harthmere-named-tovin-reed-master-tovin-reed/line-05.mp3",
-      "voice": "azure-speech|voice=en-US-LunaNeural|gender=female|kind=humanoid|style=conversation|styleDegree=1.05|rate=-3%25|pitch=-3%25|volume=default|break=146|actor=harthmere_named%3Atovin_reed%3Amaster%20tovin%20reed%3Amaster%20tovin%20reed",
-      "voiceId": "MF3mGyEYCl7XYWbV9V6O",
+      "voice": "azure-speech|voice=en-US-KaiNeural|gender=male|kind=humanoid|style=conversation|styleDegree=1.05|rate=-3%25|pitch=-3%25|volume=default|break=146|actor=harthmere_named%3Atovin_reed%3Amaster%20tovin%20reed%3Amaster%20tovin%20reed",
+      "voiceId": "pNInz6obpgDQGcFmaJgB",
       "textHash": "558e2778b4472e0bd3a24a2cf097d12343532c95a5981ba175489dd6dabf6cfa",
-      "bytes": 142986,
-      "cacheKeys": [
-        "0fc678a390cdf74007a9a30529954e6106bf30c8e3ec0d697ed5521760fb49de",
-        "65c11ca9c846bc6c285fd9f8ede8a5083a96f24ede52d347d14c7918a62f9dbf"
-      ]
+      "bytes": 127939
     },
     {
       "cacheKey": "aefb47016dc730b79b96be19d8510182d7c3832bc6cfea88561aafc295e68141",
@@ -26378,49 +26378,49 @@
       "bytes": 54796
     },
     {
-      "cacheKey": "eb0699f88f8ad79884aea2cbf830bbb9c71f3eb3cef9039eeb47393f50508f67",
+      "cacheKey": "896d96491da4fda44d747c2ced8536024eb797eaf4dd0ac8f65d01c9896b5182",
       "cacheKeys": [
-        "eb0699f88f8ad79884aea2cbf830bbb9c71f3eb3cef9039eeb47393f50508f67",
-        "25d5a6856b5cda8861c125fd0024db007c43eb2f6ac1e9926e61e5306ad3f187"
+        "896d96491da4fda44d747c2ced8536024eb797eaf4dd0ac8f65d01c9896b5182",
+        "145f0f3c6bfe99be2aebd07c72e1472470b021efb1e48f65738226a79aa0284e"
       ],
       "actorKey": "runtime_entity:7976997825186729:sophia",
       "actorId": "native-robot-story:5739496793885069:7976997825186729",
       "lineId": "4851249541237155-02",
       "path": "harthmere/voices/generated/current/native-robot-story/muck-vs-machine-5739496793885069/7976997825186729/4851249541237155-02.mp3",
-      "voice": "azure-speech|voice=en-US-DavisNeural|gender=male|kind=humanoid|style=chat|styleDegree=1.00|rate=-4%25|pitch=-1%25|volume=default|break=170|actor=runtime_entity%3A7976997825186729%3Asophia",
-      "voiceId": "ErXwobaYiN019PkySvjV",
+      "voice": "azure-speech|voice=en-US-AriaNeural|gender=female|kind=humanoid|style=chat|styleDegree=1.00|rate=-4%25|pitch=-1%25|volume=default|break=170|actor=runtime_entity%3A7976997825186729%3Asophia",
+      "voiceId": "AZnzlk1XvdvUeBnXmlld",
       "textHash": "ba0f040a49f155702aa4734ccd5fde0eeadaebbe4040d0fab3f07e8792edf854",
-      "bytes": 20106
+      "bytes": 21359
     },
     {
-      "cacheKey": "5ebabceb37f50887bc104215e71fd1fa29a99eaef02068ff6acebe2bf835367d",
+      "cacheKey": "a9a9b72f7098b4e550bddbef40c20b188ac8451b4223a4391994f7647fb2c7be",
       "cacheKeys": [
-        "5ebabceb37f50887bc104215e71fd1fa29a99eaef02068ff6acebe2bf835367d",
-        "fe29617877967ad2b8955c2e3316127791f6ba16e4c3bd09fe214216c8f9e4aa"
+        "a9a9b72f7098b4e550bddbef40c20b188ac8451b4223a4391994f7647fb2c7be",
+        "41ea7f04c8e6736a684d8c716f44062e91b809d7118c9a8924acfc39e8c69d16"
       ],
       "actorKey": "runtime_entity:7976997825186729:sophia",
       "actorId": "native-robot-story:5739496793885069:7976997825186729",
       "lineId": "731822018871376-01",
       "path": "harthmere/voices/generated/current/native-robot-story/muck-vs-machine-5739496793885069/7976997825186729/731822018871376-01.mp3",
-      "voice": "azure-speech|voice=en-US-DavisNeural|gender=male|kind=humanoid|style=chat|styleDegree=1.00|rate=-4%25|pitch=-1%25|volume=default|break=170|actor=runtime_entity%3A7976997825186729%3Asophia",
-      "voiceId": "ErXwobaYiN019PkySvjV",
+      "voice": "azure-speech|voice=en-US-AriaNeural|gender=female|kind=humanoid|style=chat|styleDegree=1.00|rate=-4%25|pitch=-1%25|volume=default|break=170|actor=runtime_entity%3A7976997825186729%3Asophia",
+      "voiceId": "AZnzlk1XvdvUeBnXmlld",
       "textHash": "70f4e3c69cceedc076c60476e6e720280ef8886d18349a85678b45f33f8ac79a",
-      "bytes": 36824
+      "bytes": 40586
     },
     {
-      "cacheKey": "49e0d3d140c8e2d81150079535b78640545ccf6a995350ccc2ce891af9c90e30",
+      "cacheKey": "6cfc24ca4a63d00c1b3a69bc481b6c1314c7e38b15ced0b143f9fea99d06d4f5",
       "cacheKeys": [
-        "49e0d3d140c8e2d81150079535b78640545ccf6a995350ccc2ce891af9c90e30",
-        "76b8950c00405bdb2725f3fd6b3fbd6c2ad174b9c65f11a723dab1dcb9cb95ef"
+        "6cfc24ca4a63d00c1b3a69bc481b6c1314c7e38b15ced0b143f9fea99d06d4f5",
+        "4052ff29ac55c904f8de2fbea7c73d53bedd4700140435fd88b2d8832f6f699d"
       ],
       "actorKey": "runtime_entity:7976997825186729:sophia",
       "actorId": "native-robot-story:5739496793885069:7976997825186729",
       "lineId": "731822018871376-03",
       "path": "harthmere/voices/generated/current/native-robot-story/muck-vs-machine-5739496793885069/7976997825186729/731822018871376-03.mp3",
-      "voice": "azure-speech|voice=en-US-DavisNeural|gender=male|kind=humanoid|style=chat|styleDegree=1.00|rate=-4%25|pitch=-1%25|volume=default|break=170|actor=runtime_entity%3A7976997825186729%3Asophia",
-      "voiceId": "ErXwobaYiN019PkySvjV",
+      "voice": "azure-speech|voice=en-US-AriaNeural|gender=female|kind=humanoid|style=chat|styleDegree=1.00|rate=-4%25|pitch=-1%25|volume=default|break=170|actor=runtime_entity%3A7976997825186729%3Asophia",
+      "voiceId": "AZnzlk1XvdvUeBnXmlld",
       "textHash": "4d35f459095c39156a562e26a865de27fb33f906be03657e2f46b289ce5eaf51",
-      "bytes": 17598
+      "bytes": 24285
     },
     {
       "cacheKey": "17318201bd3c7b83f0b8528890e660a5a902a7d557323f2f6eaef3e003351c69",
@@ -27293,49 +27293,49 @@
       ]
     },
     {
-      "cacheKey": "e12d0e88ce68d43b598b89418abfc0e4be5c250f203597d4294aa1b777cc3573",
+      "cacheKey": "c2c83e8a011136e43d9fcbf272dbb3520026b7cf102bbb0a12110e8e21fb262f",
+      "cacheKeys": [
+        "c2c83e8a011136e43d9fcbf272dbb3520026b7cf102bbb0a12110e8e21fb262f",
+        "9b2fedc8b5c54a583fc8ad5aa12507ac6d68b665cce4e155b052f1e3a66bf5fe"
+      ],
       "actorKey": "snapshot_grove:billy:8810000000019302:billy:billy",
       "actorId": "billy",
       "lineId": "line-01",
       "path": "harthmere/voices/generated/current/snapshot-grove-billy-billy/line-01.mp3",
-      "voice": "azure-speech|voice=en-US-SaraNeural|gender=female|kind=humanoid|style=friendly|styleDegree=0.85|rate=-4%25|pitch=%2B2%25|volume=default|break=110|actor=snapshot_grove%3Abilly%3A8810000000019302%3Abilly%3Abilly",
-      "voiceId": "21m00Tcm4TlvDq8ikWAM",
+      "voice": "azure-speech|voice=en-GB-RyanNeural|gender=male|kind=humanoid|style=chat|styleDegree=0.85|rate=-4%25|pitch=%2B2%25|volume=default|break=110|actor=snapshot_grove%3Abilly%3A8810000000019302%3Abilly%3Abilly",
+      "voiceId": "yoZ06aMxZJJ28mfd3POQ",
       "textHash": "d8a4ec98b480d7de0d3ea031bcc5650eb34ee003b5a915c5ee9f00ef623a6445",
-      "bytes": 168899,
-      "cacheKeys": [
-        "e12d0e88ce68d43b598b89418abfc0e4be5c250f203597d4294aa1b777cc3573",
-        "d9a0f97667436020b3b2be4844d02a7bf193d033b66fa2cb71dd9227f1d6a4f1"
-      ]
+      "bytes": 178930
     },
     {
-      "cacheKey": "65ce2b4576c0b3784dd1954d574cf12e26c5355444b437b54e03fab25fe86764",
+      "cacheKey": "9eeef327f19b9a10e51a582ca2abd3cd099e93807a4721a24c62578d6397a82d",
+      "cacheKeys": [
+        "9eeef327f19b9a10e51a582ca2abd3cd099e93807a4721a24c62578d6397a82d",
+        "20e9701a4a55c4e478b2e89a032757084d29f0e29765b987c1e76fc2e7a7b883"
+      ],
       "actorKey": "snapshot_grove:billy:8810000000019302:billy:billy",
       "actorId": "billy",
       "lineId": "line-02",
       "path": "harthmere/voices/generated/current/snapshot-grove-billy-billy/line-02.mp3",
-      "voice": "azure-speech|voice=en-US-SaraNeural|gender=female|kind=humanoid|style=friendly|styleDegree=0.85|rate=-4%25|pitch=%2B2%25|volume=default|break=110|actor=snapshot_grove%3Abilly%3A8810000000019302%3Abilly%3Abilly",
-      "voiceId": "21m00Tcm4TlvDq8ikWAM",
+      "voice": "azure-speech|voice=en-GB-RyanNeural|gender=male|kind=humanoid|style=chat|styleDegree=0.85|rate=-4%25|pitch=%2B2%25|volume=default|break=110|actor=snapshot_grove%3Abilly%3A8810000000019302%3Abilly%3Abilly",
+      "voiceId": "yoZ06aMxZJJ28mfd3POQ",
       "textHash": "5a5d2681758733c47080e2848d4e35901d408567659c18656044877ce1a8018a",
-      "bytes": 109967,
-      "cacheKeys": [
-        "65ce2b4576c0b3784dd1954d574cf12e26c5355444b437b54e03fab25fe86764",
-        "e1ff20c589a21b7fc4a4ed47d5f1ae4df5301d0ac3a97d8ac229d66a5ad6c579"
-      ]
+      "bytes": 108713
     },
     {
-      "cacheKey": "d49829b96ba5789cadc95fb77fce8a049e2d6260a21abfb635f729bdf3b147cd",
+      "cacheKey": "6bb0df39804c96ed941c51b2ae4a7a4cd5bf2e919fb8dae7ac8f0db8252566c1",
+      "cacheKeys": [
+        "6bb0df39804c96ed941c51b2ae4a7a4cd5bf2e919fb8dae7ac8f0db8252566c1",
+        "bba1f03bb83833a3d33ccb02a23125f9efe03cb48e016f6db80328d3c3c7c4d4"
+      ],
       "actorKey": "snapshot_grove:billy:8810000000019302:billy:billy",
       "actorId": "billy",
       "lineId": "line-03",
       "path": "harthmere/voices/generated/current/snapshot-grove-billy-billy/line-03.mp3",
-      "voice": "azure-speech|voice=en-US-SaraNeural|gender=female|kind=humanoid|style=friendly|styleDegree=0.85|rate=-4%25|pitch=%2B2%25|volume=default|break=110|actor=snapshot_grove%3Abilly%3A8810000000019302%3Abilly%3Abilly",
-      "voiceId": "21m00Tcm4TlvDq8ikWAM",
+      "voice": "azure-speech|voice=en-GB-RyanNeural|gender=male|kind=humanoid|style=chat|styleDegree=0.85|rate=-4%25|pitch=%2B2%25|volume=default|break=110|actor=snapshot_grove%3Abilly%3A8810000000019302%3Abilly%3Abilly",
+      "voiceId": "yoZ06aMxZJJ28mfd3POQ",
       "textHash": "37ac545f88ede28c6a6aa6feed226accd8541a538017574a888e61e123967472",
-      "bytes": 103279,
-      "cacheKeys": [
-        "d49829b96ba5789cadc95fb77fce8a049e2d6260a21abfb635f729bdf3b147cd",
-        "50a380b838f0b689114e44ec121f51a12a9be9751a4b20e55d69d22a40002eff"
-      ]
+      "bytes": 103279
     },
     {
       "cacheKey": "d158a88ac53b81b9a52c36fa20008d484e2ca95ba9099f66c9aff525b708e592",
@@ -27563,49 +27563,49 @@
       ]
     },
     {
-      "cacheKey": "623da81f22ef732f6c9eeff87c438e5e5040dd6b91c5be1d73b7cac5247b74fd",
+      "cacheKey": "d7b1c0ba30031444f5389b800e8d4bd8952e16e3de7ec0d87d54a6c1ba604fd9",
+      "cacheKeys": [
+        "d7b1c0ba30031444f5389b800e8d4bd8952e16e3de7ec0d87d54a6c1ba604fd9",
+        "917500aea79ac9e7396382d2501a7b977e681ceb1c1a28717aec044e10674a2d"
+      ],
       "actorKey": "snapshot_grove:grove_banker_merl:8810000000019316:merl voss, grove banker:merl voss, grove banker",
       "actorId": "grove_banker_merl",
       "lineId": "line-01",
       "path": "harthmere/voices/generated/current/snapshot-grove-grove-banker-merl-merl-voss-grove-banker/line-01.mp3",
-      "voice": "azure-speech|voice=en-US-JaneNeural|gender=female|kind=humanoid|style=hopeful|styleDegree=0.85|rate=-2%25|pitch=%2B3%25|volume=default|break=122|actor=snapshot_grove%3Agrove_banker_merl%3A8810000000019316%3Amerl%20voss%2C%20grove%20banker%3Amerl%20voss%2C%20grove%20banker",
-      "voiceId": "EXAVITQu4vr4xnSDxMaL",
+      "voice": "azure-speech|voice=en-US-TonyNeural|gender=male|kind=humanoid|style=hopeful|styleDegree=0.85|rate=-2%25|pitch=%2B3%25|volume=default|break=122|actor=snapshot_grove%3Agrove_banker_merl%3A8810000000019316%3Amerl%20voss%2C%20grove%20banker%3Amerl%20voss%2C%20grove%20banker",
+      "voiceId": "VR6AewLTigWG4xSOukaG",
       "textHash": "8e945444b2653b3b3535615bb2323550f02dbf7494a43438304a2c9f3b249eb5",
-      "bytes": 167645,
-      "cacheKeys": [
-        "623da81f22ef732f6c9eeff87c438e5e5040dd6b91c5be1d73b7cac5247b74fd",
-        "724c95a0fc16511b0e1fe924368f7412a9261790cd190487b0a5720c2343acbf"
-      ]
+      "bytes": 182692
     },
     {
-      "cacheKey": "91aff2722da78b749f643069de06ad9c3ac2072f489ed4a08e288d00c2d582de",
+      "cacheKey": "6a0b14e9eb37a7385e93fb18d03dc29e9de55d811ad92c0720caaa6970f87c13",
+      "cacheKeys": [
+        "6a0b14e9eb37a7385e93fb18d03dc29e9de55d811ad92c0720caaa6970f87c13",
+        "66befa7cd33770650c3c09a5f712f24b8c6ac82366afc0178e6096d78324f3a0"
+      ],
       "actorKey": "snapshot_grove:grove_banker_merl:8810000000019316:merl voss, grove banker:merl voss, grove banker",
       "actorId": "grove_banker_merl",
       "lineId": "line-02",
       "path": "harthmere/voices/generated/current/snapshot-grove-grove-banker-merl-merl-voss-grove-banker/line-02.mp3",
-      "voice": "azure-speech|voice=en-US-JaneNeural|gender=female|kind=humanoid|style=hopeful|styleDegree=0.85|rate=-2%25|pitch=%2B3%25|volume=default|break=122|actor=snapshot_grove%3Agrove_banker_merl%3A8810000000019316%3Amerl%20voss%2C%20grove%20banker%3Amerl%20voss%2C%20grove%20banker",
-      "voiceId": "EXAVITQu4vr4xnSDxMaL",
+      "voice": "azure-speech|voice=en-US-TonyNeural|gender=male|kind=humanoid|style=hopeful|styleDegree=0.85|rate=-2%25|pitch=%2B3%25|volume=default|break=122|actor=snapshot_grove%3Agrove_banker_merl%3A8810000000019316%3Amerl%20voss%2C%20grove%20banker%3Amerl%20voss%2C%20grove%20banker",
+      "voiceId": "VR6AewLTigWG4xSOukaG",
       "textHash": "df9545144ac5c74ed8e123e1b8ca00c5fcec327c0409584f35498a42180b6c2b",
-      "bytes": 170153,
-      "cacheKeys": [
-        "91aff2722da78b749f643069de06ad9c3ac2072f489ed4a08e288d00c2d582de",
-        "d280a5529b32af76529bf4840d20de260b25b7f56c4aa5669212c76129bce224"
-      ]
+      "bytes": 171407
     },
     {
-      "cacheKey": "d3212d8a801a045f0d7f5232c216e0d7f38a807a27d3aa7a9e4972ac0be153b9",
+      "cacheKey": "1206c22962f973260ef250a239283fe80eb12ddec9393003dc6c1a8deb5e73a6",
+      "cacheKeys": [
+        "1206c22962f973260ef250a239283fe80eb12ddec9393003dc6c1a8deb5e73a6",
+        "1bf490253e73eb858ba7f229f096670a4a99b185171c2b4eaa9767bfb3f08ad8"
+      ],
       "actorKey": "snapshot_grove:grove_banker_merl:8810000000019316:merl voss, grove banker:merl voss, grove banker",
       "actorId": "grove_banker_merl",
       "lineId": "line-03",
       "path": "harthmere/voices/generated/current/snapshot-grove-grove-banker-merl-merl-voss-grove-banker/line-03.mp3",
-      "voice": "azure-speech|voice=en-US-JaneNeural|gender=female|kind=humanoid|style=hopeful|styleDegree=0.85|rate=-2%25|pitch=%2B3%25|volume=default|break=122|actor=snapshot_grove%3Agrove_banker_merl%3A8810000000019316%3Amerl%20voss%2C%20grove%20banker%3Amerl%20voss%2C%20grove%20banker",
-      "voiceId": "EXAVITQu4vr4xnSDxMaL",
+      "voice": "azure-speech|voice=en-US-TonyNeural|gender=male|kind=humanoid|style=hopeful|styleDegree=0.85|rate=-2%25|pitch=%2B3%25|volume=default|break=122|actor=snapshot_grove%3Agrove_banker_merl%3A8810000000019316%3Amerl%20voss%2C%20grove%20banker%3Amerl%20voss%2C%20grove%20banker",
+      "voiceId": "VR6AewLTigWG4xSOukaG",
       "textHash": "0ac551026f12ad7e1b051915e30ef856ba987f5a18233fb98e28e8f12caac4ab",
-      "bytes": 150927,
-      "cacheKeys": [
-        "d3212d8a801a045f0d7f5232c216e0d7f38a807a27d3aa7a9e4972ac0be153b9",
-        "83bc4cbaa30d07817e2f154a724e7277d6902375641e822d32fd8c49d3bb30e7"
-      ]
+      "bytes": 157196
     },
     {
       "cacheKey": "e8882d53decb3e2966ead9b47ce8b92241f7f83d9ba0f7d234a5cd3b49b50cb3",

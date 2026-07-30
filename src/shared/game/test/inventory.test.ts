@@ -5,10 +5,13 @@ import {
   createInventorySafeBag,
   determineGivePattern,
   determineTakePattern,
+  ensurePlayerInventorySlotCapacity,
   getMaxCombinable,
   inventoryCount,
   isValidInventoryItemCount,
   maxInventoryStack,
+  PLAYER_HOTBAR_SLOTS,
+  PLAYER_INVENTORY_SLOTS,
 } from "@/shared/game/inventory";
 import { anItem } from "@/shared/game/item";
 import { bagContains, countOf, createBag } from "@/shared/game/items";
@@ -16,6 +19,35 @@ import { permutations } from "@/shared/util/collections";
 import assert from "assert";
 
 describe("Inventory helpers", () => {
+  it("grows legacy player containers to the 40-slot backpack baseline", () => {
+    const inventory = {
+      items: new Array<unknown>(26),
+      hotbar: new Array<unknown>(8),
+    };
+    inventory.items[0] = "kept";
+    const result = ensurePlayerInventorySlotCapacity(inventory);
+    assert.equal(inventory.items.length, PLAYER_INVENTORY_SLOTS);
+    assert.equal(inventory.hotbar.length, PLAYER_HOTBAR_SLOTS);
+    assert.equal(inventory.items[0], "kept");
+    assert.deepEqual(result, {
+      inventorySlotsAdded: PLAYER_INVENTORY_SLOTS - 26,
+      hotbarSlotsAdded: 1,
+    });
+  });
+
+  it("never shrinks progression-expanded player containers", () => {
+    const inventory = {
+      items: new Array<unknown>(PLAYER_INVENTORY_SLOTS + 2),
+      hotbar: new Array<unknown>(PLAYER_HOTBAR_SLOTS + 1),
+    };
+    assert.deepEqual(ensurePlayerInventorySlotCapacity(inventory), {
+      inventorySlotsAdded: 0,
+      hotbarSlotsAdded: 0,
+    });
+    assert.equal(inventory.items.length, PLAYER_INVENTORY_SLOTS + 2);
+    assert.equal(inventory.hotbar.length, PLAYER_HOTBAR_SLOTS + 1);
+  });
+
   it("can count contents", () => {
     const inventory = Inventory.create();
 

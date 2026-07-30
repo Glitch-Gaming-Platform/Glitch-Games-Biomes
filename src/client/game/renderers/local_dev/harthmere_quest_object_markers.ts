@@ -29,6 +29,7 @@ import {
   harthmereJobsBoardQuestMarkerRuntimePosition,
   harthmereJobsBoardQuestMarkerRuntimePositionForId,
 } from "@/shared/harthmere/jobs_board_quest_marker_positions";
+import { harthmereJobsBoardFieldTargets } from "@/shared/harthmere/jobs_board_field_targets";
 import {
   activeSnapshotGroveQuestMarkerIds,
   readSnapshotGroveQuestState,
@@ -96,10 +97,42 @@ export const HARTHMERE_ACTIVE_QUEST_MARKER_CAP = 0xffffff;
 
 const ACTIVE_QUEST_BEACON_REFRESH_SECONDS = 0.25;
 
+// HARTHMERE_JOBS_BOARD_FIELD_TARGET_PROPS
+// Business job-template targets and outpost starter work stations are permanent
+// shop fixtures. They must always be drawn (and therefore always interactable),
+// unlike quest containers which stay hidden until their quest is active.
+// The registry publishes each field target twice (map-marker id + requirement
+// target id) so a pin resolves either way. Draw the map-marker id — the
+// historical marker naming — and skip the target-id alias so the outpost apron
+// does not get two identical props stacked on one column.
+const HARTHMERE_FIELD_TARGET_MARKER_IDS: ReadonlySet<string> = new Set(
+  harthmereJobsBoardFieldTargets().map((target) => target.mapMarkerId)
+);
+
+const HARTHMERE_FIELD_TARGET_ALIAS_MARKER_IDS: ReadonlySet<string> = new Set(
+  harthmereJobsBoardFieldTargets()
+    .filter((target) => target.mapMarkerId !== target.targetId)
+    .map((target) => target.targetId)
+);
+
+/** True for the permanent business/outpost job fixtures (not quest loot). */
+export function isHarthmereJobsBoardFieldTargetMarkerId(markerId: string) {
+  return (
+    HARTHMERE_FIELD_TARGET_MARKER_IDS.has(markerId) ||
+    HARTHMERE_FIELD_TARGET_ALIAS_MARKER_IDS.has(markerId)
+  );
+}
+
+/** The requirement-target-id alias of a field target (never drawn on its own). */
+export function isHarthmereJobsBoardFieldTargetAliasId(markerId: string) {
+  return HARTHMERE_FIELD_TARGET_ALIAS_MARKER_IDS.has(markerId);
+}
+
 export const HARTHMERE_VISIBLE_WORLD_OBJECT_MARKER_IDS: ReadonlySet<string> =
   new Set([
     // Non-container authored props that must stay physically visible in world.
     "econ_grove_billy_post",
+    ...HARTHMERE_FIELD_TARGET_MARKER_IDS,
   ]);
 
 const QUEST_OBJECT_MARKER_SKIP_IDS = new Set([
@@ -156,6 +189,10 @@ const resolvedJobsBoardQuestMarkers = () => {
         !existing.has(marker.markerId) &&
         marker.source !== "live_entity_helper" &&
         marker.source !== "business_outpost_jobs_board" &&
+        // A field target registers BOTH its target id and its map-marker alias
+        // so pins resolve either way. Render only the target id so the outpost
+        // apron does not get two identical props stacked on one column.
+        !HARTHMERE_FIELD_TARGET_ALIAS_MARKER_IDS.has(marker.markerId) &&
         !QUEST_OBJECT_MARKER_SKIP_IDS.has(marker.markerId)
     )
     .map(harthmereJobsBoardQuestMarkerRuntimePosition)
@@ -167,6 +204,7 @@ const resolvedJobsBoardQuestMarkers = () => {
           ? ("resource" as const)
           : marker.source === "business_outpost" ||
             marker.source === "business_outpost_jobs_board" ||
+            marker.source === "business_outpost_work_station" ||
             marker.source === "business_template_target"
           ? ("business" as const)
           : ("interactable" as const),

@@ -19,7 +19,7 @@ import React, { useEffect, useState } from "react";
 
 export const EscGameMenu: React.FunctionComponent<{}> = React.memo(({}) => {
   const clientContext = useClientContext();
-  const { clientMods, reactResources, userId } = clientContext;
+  const { clientConfig, clientMods, reactResources, userId } = clientContext;
   const tweaks = reactResources.use("/tweaks");
   const [isEntering] = usePointerLockEnteringStatus();
   const [isLocked, setIsLocked] = usePointerLockStatus();
@@ -54,12 +54,16 @@ export const EscGameMenu: React.FunctionComponent<{}> = React.memo(({}) => {
     }
   }, [isLocked]);
   const hideReturnToGameButton = getTypedStorageItem(
-    "settings.hud.hideReturnToGame",
+    "settings.hud.hideReturnToGame"
   );
 
   const hideChrome = reactResources.use("/canvas_effects/hide_chrome").value;
 
-  if (!supportsPointerLock() || hideChrome) {
+  if (
+    clientConfig.showVirtualJoystick ||
+    !supportsPointerLock() ||
+    hideChrome
+  ) {
     return <></>;
   }
 
@@ -96,7 +100,7 @@ export const EscGameMenu: React.FunctionComponent<{}> = React.memo(({}) => {
   const clientMod = minigame
     ? clientModFor(
         clientMods,
-        minigame.minigame_component?.metadata.kind ?? "simple_race",
+        minigame.minigame_component?.metadata.kind ?? "simple_race"
       )
     : undefined;
 
@@ -104,7 +108,7 @@ export const EscGameMenu: React.FunctionComponent<{}> = React.memo(({}) => {
     ...(clientMod?.escapeActions?.(
       clientContext,
       activeMinigame?.minigame_id ?? INVALID_BIOMES_ID,
-      activeMinigame?.minigame_instance_id ?? INVALID_BIOMES_ID,
+      activeMinigame?.minigame_instance_id ?? INVALID_BIOMES_ID
     ) ?? []),
   ].map((e) => ({
     ...e,
@@ -123,8 +127,8 @@ export const EscGameMenu: React.FunctionComponent<{}> = React.memo(({}) => {
           handleQuitMinigame(
             clientContext,
             activeMinigame.minigame_id,
-            activeMinigame.minigame_instance_id,
-          ),
+            activeMinigame.minigame_instance_id
+          )
         );
       },
     });

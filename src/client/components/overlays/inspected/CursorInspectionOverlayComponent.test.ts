@@ -24,4 +24,16 @@ describe("cursor inspection F-action precedence", () => {
     );
     assert.equal(ordered[0].title, "Open Container");
   });
+
+  it("does not append a contextual duplicate of a typed robot action", () => {
+    const ordered = mergeInspectShortcutLayers(
+      [action("Talk"), action("Settings")],
+      [],
+      [action("Talk")]
+    );
+    assert.deepEqual(
+      ordered.map((entry) => entry.title),
+      ["Talk", "Settings"]
+    );
+  });
 });

@@ -6,6 +6,7 @@ import {
   HARTHMERE_WANTED_BOARD_OPEN_EVENT,
 } from "@/client/components/challenges/harthmereEvents";
 import {
+  harthmereJobsBoardFieldCompletionRequestIdForTest,
   harthmereJobsBoardObjectMatchesFieldTarget,
   performHarthmereObjectInteraction,
 } from "./harthmereObjectInteractions";
@@ -99,6 +100,27 @@ describe("harthmere object interactions wanted board dispatch", () => {
 });
 
 describe("harthmere jobs board object target matching", () => {
+  it("uses a distinct idempotency key for every repeated field interaction", () => {
+    const base = {
+      operation: "complete_job_quest" as const,
+      jobId: "cleanup_job",
+      todoId: "cleanup_todo",
+      acceptedAtMs: 100,
+    };
+    const first = harthmereJobsBoardFieldCompletionRequestIdForTest({
+      ...base,
+      nonce: "interaction_1",
+    });
+    const second = harthmereJobsBoardFieldCompletionRequestIdForTest({
+      ...base,
+      nonce: "interaction_2",
+    });
+
+    assert.notEqual(first, second);
+    assert.match(first, /cleanup_job:cleanup_todo:100:interaction_1$/);
+    assert.match(second, /cleanup_job:cleanup_todo:100:interaction_2$/);
+  });
+
   it("matches visible lockbox objects to delivery drop-off jobs by id or label", () => {
     const todo = {
       todoId: "todo_delivery",

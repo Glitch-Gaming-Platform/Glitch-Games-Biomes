@@ -25,7 +25,7 @@ describe("HarthmereCraftingStationPanel", () => {
       stationId: HARTHMERE_CRAFTING_STATIONS.workbench,
       gold: 20,
       inventoryItems: { [HARTHMERE_CRAFTING_TOOLS.simpleAxe]: 1 },
-      materialStorage: { wood_log: 4 },
+      materialStorage: { softwood_log: 4 },
       knownRecipes: ["harthmere_carpentry_wood_plank"],
       skills: { carpentry: { level: 2 } },
       nowMs: 1000,
@@ -71,19 +71,38 @@ describe("HarthmereCraftingStationPanel", () => {
     assert.ok(plank);
     assert.strictEqual(plank?.stationOk, true);
     assert.strictEqual(plank?.canCraft, false);
-    assert.ok(plank?.missing.some((entry) => /Wood Log/i.test(entry)));
+    assert.ok(plank?.missing.some((entry) => /Softwood Log/i.test(entry)));
     assert.ok(plank?.missing.includes("Tool"));
     assert.ok(plank?.outputVisual.primaryHex);
     assert.equal(plank?.outputVisual.procedural.canGenerateWithVoxels, true);
+  });
+
+  it("shows Buy, Craft, Gather, and map guidance for a missing recipe material", () => {
+    ensureHarthmereProductionCraftingCatalogue();
+    const snapshot = normalizeHarthmereCraftingStationClientSnapshot({
+      actorId: "craft_guidance_actor",
+      stationId: HARTHMERE_CRAFTING_STATIONS.workbench,
+      materialStorage: {},
+      knownRecipes: ["harthmere_carpentry_wood_plank"],
+      skills: { carpentry: { level: 2 } },
+    });
+    const html = renderToStaticMarkup(
+      React.createElement(HarthmereCraftingStationPanel, {
+        adapter: createHarthmereCraftingStationAdapter({ state: snapshot }),
+      })
+    );
+    assert.ok(html.includes("How to get 2 Softwood Log"));
+    assert.ok(html.includes('data-material-route-kind="buy"'));
+    assert.ok(html.includes('data-material-route-kind="gather"'));
+    assert.ok(html.includes("Show on map"));
+    assert.ok(html.includes("Head to Orchard Softwood Branches"));
   });
 
   it("exposes Exotic Matter recipe outputs as voxel block visuals", () => {
     ensureHarthmereProductionCraftingCatalogue();
     const snapshot = normalizeHarthmereCraftingStationClientSnapshot({
       stationId: HARTHMERE_CRAFTING_STATIONS.thermoblaster,
-      knownRecipes: [
-        HARTHMERE_EXOTIC_MATTER_RECIPE_IDS.stabilizedExoticMatter,
-      ],
+      knownRecipes: [HARTHMERE_EXOTIC_MATTER_RECIPE_IDS.stabilizedExoticMatter],
       skills: { exotic_refining: { level: 6 } },
     });
     const recipes = createHarthmereCraftingVisibleRecipes(snapshot);
@@ -95,7 +114,10 @@ describe("HarthmereCraftingStationPanel", () => {
     assert.ok(exoticBlock);
     assert.equal(exoticBlock?.outputVisual.shape, "block");
     assert.equal(exoticBlock?.outputVisual.source, "procedural_voxel");
-    assert.equal(exoticBlock?.outputVisual.procedural.canGenerateWithVoxels, true);
+    assert.equal(
+      exoticBlock?.outputVisual.procedural.canGenerateWithVoxels,
+      true
+    );
   });
 
   it("surfaces Thermoblaster recipes when opened from its placed Bikkie station id", () => {

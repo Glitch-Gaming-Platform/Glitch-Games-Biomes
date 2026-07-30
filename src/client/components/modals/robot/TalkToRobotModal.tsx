@@ -22,6 +22,7 @@ import { questCategoryToIconSource } from "@/client/components/map/helpers";
 import { EntityProfilePic } from "@/client/components/social/EntityProfilePic";
 import { useLiveEntityHelperQuestDialog } from "@/client/components/challenges/LocalDevLiveEntityHelperQuests";
 import { robotTalkDialogSectionsWithLiveEntityHelper } from "@/client/components/modals/robot/liveEntityRobotDialogPresentation";
+import { activeRobotSetupStepForNaming } from "@/client/components/modals/robot/robotSetupProgression";
 import { useWithUnseenEmptyTransition } from "@/client/util/hooks";
 import {
   useCachedUserInfo,
@@ -29,14 +30,17 @@ import {
 } from "@/client/util/social_manager_hooks";
 import type { RobotVisitorMessageRequest } from "@/pages/api/social/robot_visitor_message";
 import { BikkieIds } from "@/shared/bikkie/ids";
-import { UpdateRobotNameEvent } from "@/shared/ecs/gen/events";
+import {
+  CompleteQuestStepAtEntityEvent,
+  UpdateRobotNameEvent,
+} from "@/shared/ecs/gen/events";
 import type { BiomesId } from "@/shared/ids";
 import { chapter1PresentedNpcLabel } from "@/shared/cutscene/puppets";
 import { idToNpcType, relevantBiscuitForEntityId } from "@/shared/npc/bikkie";
 import { fireAndForget } from "@/shared/util/async";
 import { jsonPost } from "@/shared/util/fetch_helpers";
 import { compact } from "lodash";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 
 export const ImmersiveSignModal: React.FunctionComponent<{
   entityId: BiomesId;
@@ -397,22 +401,40 @@ const RobotIntroduction: React.FunctionComponent<{
   const { socialManager, events, userId } = clientContext;
   const user = useCachedUserInfo(socialManager, userId);
   const [robotName, setRobotName] = useState("");
+  const setupSteps = useRelevantStepsForEntity(entityId);
+  const setupStep = activeRobotSetupStepForNaming(setupSteps);
+  const namingPending = useRef(false);
 
   useEffect(() => {
     setRobotName(`${user?.user.username}’s Robot`);
   }, [user]);
 
-  const updateRobotName = () => {
-    fireAndForget(
-      events.publish(
+  const updateRobotName = async () => {
+    const nextName = robotName.trim();
+    if (!nextName || namingPending.current) return;
+    namingPending.current = true;
+    try {
+      await events.publish(
         new UpdateRobotNameEvent({
           id: userId,
           player_id: userId,
           entity_id: entityId,
-          name: robotName,
+          name: nextName,
         })
-      )
-    );
+      );
+      if (setupStep) {
+        await events.publish(
+          new CompleteQuestStepAtEntityEvent({
+            id: userId,
+            challenge_id: setupStep.questBundle.biscuit.id,
+            entity_id: entityId,
+            step_id: setupStep.step.id,
+          })
+        );
+      }
+    } finally {
+      namingPending.current = false;
+    }
   };
 
   const dialog: TalkDialogInfo[] = [
@@ -440,7 +462,7 @@ const RobotIntroduction: React.FunctionComponent<{
           extraClassName={"text-center"}
           value={robotName}
           onChange={(e) => setRobotName(e.target.value)}
-          onEnter={updateRobotName}
+          onEnter={() => fireAndForget(updateRobotName())}
         />
       ),
     },

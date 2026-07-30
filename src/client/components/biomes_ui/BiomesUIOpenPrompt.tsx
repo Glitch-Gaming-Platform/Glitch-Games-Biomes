@@ -1,5 +1,7 @@
 import { useBiomesUIReplaceLegacyFlag } from "@/client/components/biomes_ui/BiomesUIFlags";
+import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
 import { usePointerLockUnlockWhileOpenActive } from "@/client/components/contexts/usePointerLockUnlockWhileOpenActive";
+import { containMobileControlEvent } from "@/client/components/mobileControlEvents";
 import React from "react";
 import {
   BIOMES_UI_QUESTS_SHORTCUT,
@@ -23,9 +25,7 @@ type BiomesUINonGameplayStyleReader = (
   element: Element
 ) => Pick<CSSStyleDeclaration, "display" | "visibility">;
 
-function defaultBiomesUINonGameplayRoot():
-  | BiomesUINonGameplayRoot
-  | undefined {
+function defaultBiomesUINonGameplayRoot(): BiomesUINonGameplayRoot | undefined {
   return typeof document === "undefined" ? undefined : document;
 }
 
@@ -38,9 +38,7 @@ function defaultBiomesUINonGameplayStyleReader():
 }
 
 export function biomesUIIsNonGameplayScreenVisible(
-  root:
-    | BiomesUINonGameplayRoot
-    | undefined = defaultBiomesUINonGameplayRoot(),
+  root: BiomesUINonGameplayRoot | undefined = defaultBiomesUINonGameplayRoot(),
   readStyle:
     | BiomesUINonGameplayStyleReader
     | undefined = defaultBiomesUINonGameplayStyleReader()
@@ -91,13 +89,71 @@ function useBiomesUINonGameplayScreenVisible() {
 
 export const BiomesUIOpenPrompt: React.FunctionComponent<{
   isOpen?: boolean;
-}> = ({ isOpen = false }) => {
+  onOpenMenu?: () => void;
+}> = ({ isOpen = false, onOpenMenu }) => {
+  const { audioManager, clientConfig, reactResources } = useClientContext();
   const replaceLegacy = useBiomesUIReplaceLegacyFlag();
   const nonGameplayScreenVisible = useBiomesUINonGameplayScreenVisible();
   const uiOpen = usePointerLockUnlockWhileOpenActive();
 
   if (!replaceLegacy || isOpen || uiOpen || nonGameplayScreenVisible) {
     return null;
+  }
+
+  if (clientConfig.showVirtualJoystick) {
+    const openMenu = () => {
+      audioManager.playSound("button_click");
+      onOpenMenu?.();
+    };
+    const openRecipes = () => {
+      const existingModal = reactResources.get("/game_modal");
+      if (existingModal.kind !== "empty") {
+        existingModal.onClose?.();
+      }
+      reactResources.set("/game_modal", { kind: "crafting" });
+      audioManager.playSound("button_click");
+    };
+
+    return (
+      <div
+        className="biomes-ui-mobile-menu"
+        data-biomes-mobile-menu="true"
+        aria-label="Mobile game menu"
+      >
+        <button
+          type="button"
+          className="biomes-ui-mobile-menu__button biomes-ui-mobile-menu__button--menu"
+          onPointerDown={(event) => {
+            containMobileControlEvent(event);
+            openMenu();
+          }}
+          onClick={(event) => {
+            containMobileControlEvent(event);
+            if (event.detail === 0) openMenu();
+          }}
+        >
+          Menu
+        </button>
+        <button
+          type="button"
+          className="biomes-ui-mobile-menu__button biomes-ui-mobile-menu__button--recipes"
+          aria-label="Open Recipes"
+          onPointerDown={(event) => {
+            containMobileControlEvent(event);
+            openRecipes();
+          }}
+          onClick={(event) => {
+            containMobileControlEvent(event);
+            if (event.detail === 0) openRecipes();
+          }}
+        >
+          <span className="biomes-ui-mobile-menu__key" aria-hidden>
+            R
+          </span>
+          <span>Recipes</span>
+        </button>
+      </div>
+    );
   }
 
   return (

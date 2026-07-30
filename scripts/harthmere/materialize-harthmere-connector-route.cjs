@@ -129,8 +129,12 @@ function isExistingConnectorCapColumn(x, z) {
     // The generated additive road owns the exact old/new-world boundary.
     // Reusing its stone-brick lane lets the protected transition stair meet
     // the extension without treating the West Gate road as a building.
-    (x === 1792 && z >= -214 && z <= -204)
+    (x >= 1780 && x <= 1792 && z >= -214 && z <= -204)
   );
+}
+
+function isReusableExistingConnectorCap(x, z, terrainName) {
+  return terrainName === "stone_brick" && isExistingConnectorCapColumn(x, z);
 }
 
 function component(entity, field, method) {
@@ -406,12 +410,17 @@ function makeTerrainSamplers(
       return missing;
     }
     const terrainName = safeGetTerrainName(surfaceId);
-    let blocked = structureIndex.blocked(
-      x,
-      surfaceY - 2,
-      surfaceY + HARTHMERE_CONNECTOR_MIN_HEADROOM + 1,
-      z
-    );
+    const reusableExistingCap =
+      allowExistingConnectorCaps &&
+      isReusableExistingConnectorCap(x, z, terrainName);
+    let blocked =
+      !reusableExistingCap &&
+      structureIndex.blocked(
+        x,
+        surfaceY - 2,
+        surfaceY + HARTHMERE_CONNECTOR_MIN_HEADROOM + 1,
+        z
+      );
     for (
       let y = surfaceY - 1;
       !blocked && y <= surfaceY + HARTHMERE_CONNECTOR_MIN_HEADROOM;
@@ -429,10 +438,7 @@ function makeTerrainSamplers(
         ? SAFE_TRAVERSABLE_NAMES.has(terrainName)
         : false,
       canResurface: terrainName
-        ? SAFE_SURFACE_NAMES.has(terrainName) ||
-          (allowExistingConnectorCaps &&
-            terrainName === "stone_brick" &&
-            isExistingConnectorCapColumn(x, z))
+        ? SAFE_SURFACE_NAMES.has(terrainName) || reusableExistingCap
         : false,
     };
     cache.set(key, value);
@@ -452,7 +458,13 @@ function validateEdits(
     const [x, y, z] = edit.position;
     const current = samplers.terrainIdAt(x, y, z);
     const currentName = safeGetTerrainName(current);
-    if (structureIndex.blocked(x, y, y + HARTHMERE_CONNECTOR_MIN_HEADROOM, z)) {
+    const reusableExistingCap =
+      allowExistingConnectorCaps &&
+      isReusableExistingConnectorCap(x, z, currentName);
+    if (
+      !reusableExistingCap &&
+      structureIndex.blocked(x, y, y + HARTHMERE_CONNECTOR_MIN_HEADROOM, z)
+    ) {
       failures.push(`${edit.label}@${x},${y},${z}:protected_structure`);
       continue;
     }
@@ -468,11 +480,7 @@ function validateEdits(
         failures.push(`${edit.label}@${x},${y},${z}:fill_not_clear`);
       continue;
     }
-    if (
-      currentName === "stone_brick" &&
-      allowExistingConnectorCaps &&
-      isExistingConnectorCapColumn(x, z)
-    ) {
+    if (reusableExistingCap) {
       continue;
     }
     if (edit.label === "passage_clearance") {

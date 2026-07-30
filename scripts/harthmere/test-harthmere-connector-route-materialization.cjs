@@ -12,6 +12,9 @@ const materializer = read(
   "scripts/harthmere/materialize-harthmere-connector-route.cjs"
 );
 const deploy = read("scripts/glitch/deploy-production-local-redis-smoke.sh");
+const reconciliation = read(
+  "scripts/glitch/run-harthmere-production-reconciliation.sh"
+);
 
 function check(message, condition) {
   if (!condition) throw new Error(`FAIL: ${message}`);
@@ -82,6 +85,13 @@ check(
       materializer.indexOf("const editFailures = validateEdits(")
 );
 check(
+  "materializer can repair only known pre-existing connector caps despite their stale padded structure bounds",
+  materializer.includes("isReusableExistingConnectorCap") &&
+    materializer.includes("x >= 1780 && x <= 1792") &&
+    route.includes("harthmere-protected-additive-town-entry-route-v7") &&
+    route.includes("{ endY: HARTHMERE_CONNECTOR_DESCENT_LANDING_Y }")
+);
+check(
   "materializer supports a read-only packaged-snapshot audit",
   materializer.includes("SNAPSHOT_PATH=snapshot_backup.json") &&
     materializer.includes("APPLY=1 is not supported with SNAPSHOT_PATH")
@@ -89,7 +99,10 @@ check(
 check(
   "production reconciliation applies the connector route",
   deploy.includes("materialize_production_harthmere_connector_route") &&
-    deploy.includes("materialize-harthmere-connector-route.cjs")
+    deploy.includes("materialize-harthmere-connector-route.cjs") &&
+    /APPLY=1[\s\\]+[\s\S]*materialize-harthmere-connector-route\.cjs/.test(
+      reconciliation
+    )
 );
 check(
   "connector terrain is the final writer after Harthmere world sync",

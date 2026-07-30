@@ -17,11 +17,54 @@ import { bagSpecToBag } from "@/shared/game/items";
 import type { ItemBag } from "@/shared/game/types";
 import type { BiomesId } from "@/shared/ids";
 import {
+  isNativeCh1PrologueHandoffQuestId,
+  NATIVE_CH1_FIRST_QUEST_ID,
+} from "@/shared/harthmere/ch1_native_quests";
+import {
   isNativeRobotStoryAutoContinuationQuestId,
+  NATIVE_GIMME_SHELTER_QUEST_ID,
+  NATIVE_MUCK_VS_MACHINE_QUEST_ID,
   nativeRobotStoryPredecessorQuestId,
 } from "@/shared/harthmere/native_road_ahead_contract";
 import { awardHarthmereNativeQuestCompletionXp } from "@/shared/harthmere/harthmere_native_quest_xp_award";
 import { log } from "@/shared/logging";
+
+const POST_MUCK_VS_MACHINE_PARALLEL_QUEST_IDS = [
+  NATIVE_GIMME_SHELTER_QUEST_ID,
+  NATIVE_CH1_FIRST_QUEST_ID,
+] as const;
+
+/**
+ * Muck vs. Machine fans out into two independent playable paths:
+ * Gimme Shelter finishes the player's robot setup, while The Morning After
+ * begins Chapter 1. Start both in the same ECS transaction so executor order,
+ * a missed challengeCompleted event, or a stale "available" save cannot leave
+ * Chapter 1 invisible until some unrelated later action.
+ */
+function startPostMuckVsMachineParallelQuests(context: {
+  entity: Delta;
+  publish: (event: FirehoseEvent) => void;
+}) {
+  const challenges = context.entity.mutableChallenges();
+  if (!challenges.complete.has(NATIVE_MUCK_VS_MACHINE_QUEST_ID)) return;
+  for (const questId of POST_MUCK_VS_MACHINE_PARALLEL_QUEST_IDS) {
+    if (
+      challenges.complete.has(questId) ||
+      challenges.in_progress.has(questId)
+    ) {
+      continue;
+    }
+    challenges.available.delete(questId);
+    challenges.in_progress.add(questId);
+    challenges.started_at.set(questId, secondsSinceEpoch());
+    challenges.finished_at.delete(questId);
+    context.publish({
+      kind: "challengeUnlocked",
+      entityId: context.entity.id,
+      challenge: questId,
+    });
+  }
+}
 
 export class QuestExecutor extends RootExecutor {
   constructor(
@@ -146,6 +189,9 @@ export class QuestExecutor extends RootExecutor {
         entityId: context.entity.id,
         challenge: this.id,
       });
+      if (this.id === NATIVE_MUCK_VS_MACHINE_QUEST_ID) {
+        startPostMuckVsMachineParallelQuests(context);
+      }
       // Award points
       for (const { metaquest, points } of this.biscuit.metaquestPoints ?? []) {
         const metaquestBiscuit = getBiscuit(metaquest);
@@ -222,9 +268,13 @@ export class QuestExecutor extends RootExecutor {
         // saves can already have Busted/Get the Muck Out stranded in available
         // from before automatic continuation existed, so promote those offers
         // idempotently on the next trigger pass as well as on first unlock.
-        const predecessor = nativeRobotStoryPredecessorQuestId(this.id);
+        const ch1PrologueHandoff = isNativeCh1PrologueHandoffQuestId(this.id);
+        const predecessor = ch1PrologueHandoff
+          ? NATIVE_MUCK_VS_MACHINE_QUEST_ID
+          : nativeRobotStoryPredecessorQuestId(this.id);
         if (
-          isNativeRobotStoryAutoContinuationQuestId(this.id) &&
+          (isNativeRobotStoryAutoContinuationQuestId(this.id) ||
+            ch1PrologueHandoff) &&
           predecessor !== undefined &&
           context.entity.challenges()?.complete.has(predecessor)
         ) {
@@ -242,7 +292,8 @@ export class QuestExecutor extends RootExecutor {
 
         if (
           this.biscuit.questGiver &&
-          !isNativeRobotStoryAutoContinuationQuestId(this.id)
+          !isNativeRobotStoryAutoContinuationQuestId(this.id) &&
+          !isNativeCh1PrologueHandoffQuestId(this.id)
         ) {
           this.transitionState(context, "available");
         } else {

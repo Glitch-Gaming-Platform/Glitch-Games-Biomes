@@ -1,23 +1,37 @@
 import assert from "assert";
-import { mergeInventoryAndHotbarForBiomesBackpackForTest } from "../inventoryAdapterHelpers";
+import {
+  nativeBackpackGridItemsForBiomesUiForTest,
+  nativeBackpackMaxSlotsForBiomesUiForTest,
+} from "../inventoryAdapterHelpers";
 import { anItem } from "@/shared/game/item";
 import { NATIVE_ROAD_AHEAD_MUCKWAD_ITEM_ID } from "@/shared/harthmere/native_road_ahead_contract";
 
 describe("native Road Ahead Muckwad inventory projection", () => {
-  it("shows the real hotbar stack count in inventory and reflects one throw", () => {
-    const item = anItem(NATIVE_ROAD_AHEAD_MUCKWAD_ITEM_ID);
-    const before = mergeInventoryAndHotbarForBiomesBackpackForTest(
-      [],
-      [{ item, count: 6n }]
-    );
-    const after = mergeInventoryAndHotbarForBiomesBackpackForTest(
-      [],
-      [{ item, count: 5n }]
+  it("does not count a native hotbar stack as a 41st backpack slot", () => {
+    const backpack = Array.from({ length: 40 }, (_, index) => ({
+      item: anItem(index + 1),
+      count: 1n,
+    }));
+    const hotbar = [
+      { item: anItem(NATIVE_ROAD_AHEAD_MUCKWAD_ITEM_ID), count: 6n },
+    ];
+
+    const projected = nativeBackpackGridItemsForBiomesUiForTest(
+      backpack,
+      hotbar
     );
 
-    assert.equal(before.length, 1);
-    assert.equal(before[0].item.id, NATIVE_ROAD_AHEAD_MUCKWAD_ITEM_ID);
-    assert.equal(before[0].count, 6n);
-    assert.equal(after[0].count, 5n);
+    assert.equal(projected.length, 40);
+    assert.equal(
+      projected.some(
+        (slot) => slot.item.id === NATIVE_ROAD_AHEAD_MUCKWAD_ITEM_ID
+      ),
+      false
+    );
+    assert.equal(nativeBackpackMaxSlotsForBiomesUiForTest(40), 40);
+  });
+
+  it("preserves backpack capacity earned above the 40-slot baseline", () => {
+    assert.equal(nativeBackpackMaxSlotsForBiomesUiForTest(42), 42);
   });
 });

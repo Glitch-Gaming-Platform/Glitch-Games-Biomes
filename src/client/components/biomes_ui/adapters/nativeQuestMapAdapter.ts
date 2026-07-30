@@ -8,11 +8,15 @@ import type { NavigationAid } from "@/shared/game/types";
 import type { BiomesId } from "@/shared/ids";
 import { isBibleNativeQuestId } from "@/shared/harthmere/bible/bible_quest_ids";
 import {
+  NATIVE_GIMME_SHELTER_QUEST_ID,
+  NATIVE_GIMME_SHELTER_ROBOT_SETUP_STEP_IDS,
   NATIVE_GET_THE_MUCK_OUT_QUEST_ID,
   NATIVE_GET_THE_MUCK_OUT_MUCKLING_HUNT_POSITION,
   NATIVE_GET_THE_MUCK_OUT_MUCKLING_STEP_ID,
+  NATIVE_ROBOT_SETUP_MUCK_PLACEMENT_POSITION,
 } from "@/shared/harthmere/native_road_ahead_contract";
 import { nativeLegacyCombatQuestNavigationPosition } from "@/shared/harthmere/native_combat_quest_routing";
+import { nativePostGimmeProjectedNavigationAid } from "@/shared/harthmere/native_post_gimme_contract";
 
 /**
  * A native challenge is complete only after the server-authored trigger tree
@@ -115,6 +119,19 @@ export function nativeQuestInferredNavigationAidForTest(
   questId: BiomesId,
   progress: TriggerProgress
 ): NavigationAid | undefined {
+  // The snapshot's default fallback sits inside the Grove protection robot.
+  // Override it before consulting authored navigation so the journal, map pin,
+  // and world beacon all lead to a place where the robot can actually be put.
+  if (
+    Number(questId) === Number(NATIVE_GIMME_SHELTER_QUEST_ID) &&
+    Number(progress.id) ===
+      Number(NATIVE_GIMME_SHELTER_ROBOT_SETUP_STEP_IDS.PLACE_ROBOT_IN_MUCK)
+  ) {
+    return {
+      kind: "position",
+      pos: [...NATIVE_ROBOT_SETUP_MUCK_PLACEMENT_POSITION],
+    };
+  }
   if (progress.navigationAid) return progress.navigationAid;
   if (
     Number(questId) === Number(NATIVE_GET_THE_MUCK_OUT_QUEST_ID) &&
@@ -125,6 +142,13 @@ export function nativeQuestInferredNavigationAidForTest(
       pos: [...NATIVE_GET_THE_MUCK_OUT_MUCKLING_HUNT_POSITION],
     };
   }
+  // HARTHMERE_COBBLED_MUCKLING_HUNT: In Storage's six-teeth objective is an
+  // `inventoryHas` leaf, which the snapshot cannot author navigation on at all.
+  // `computeTriggerProgress` normally projects the aid before the map ever sees
+  // the tree, but repeat the routing here so a bundle rebuilt from cached
+  // progress still produces a marker rather than a dead objective row.
+  const postGimmeAid = nativePostGimmeProjectedNavigationAid(progress.id);
+  if (postGimmeAid) return postGimmeAid;
   const legacyCombatPosition = nativeLegacyCombatQuestNavigationPosition({
     questId,
     triggerId: progress.id,

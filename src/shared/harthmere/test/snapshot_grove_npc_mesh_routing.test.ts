@@ -61,4 +61,29 @@ describe("snapshot Grove NPC mesh routing", () => {
     assert.equal(SNAPSHOT_GROVE_NPC_ASSET_KEYS.sil, "npcs/sil");
     assert.equal(SNAPSHOT_GROVE_NPC_ASSET_KEYS.doc, "npcs/doc");
   });
+
+  it("uses the compact helping-robot mesh for every robot identity and helper label", () => {
+    const buddy = SNAPSHOT_GROVE_NPCS.find((npc) => npc.id === "buddy");
+    assert.ok(buddy, "Buddy should be seeded into the Grove cast");
+
+    assert.equal(
+      snapshotGroveNpcAssetKeyForEntity(
+        snapshotGroveNpcEntityId(buddy!),
+        buddy!.displayName
+      ),
+      "npcs/helping_robot"
+    );
+    assert.equal(
+      snapshotGroveNpcAssetKeyForEntity(
+        998 as BiomesId,
+        "Biomes Bot",
+        { isRobot: true }
+      ),
+      "npcs/helping_robot"
+    );
+    assert.equal(
+      snapshotGroveNpcAssetKeyForEntity(999 as BiomesId, "West Sentinel"),
+      "npcs/helping_robot"
+    );
+  });
 });

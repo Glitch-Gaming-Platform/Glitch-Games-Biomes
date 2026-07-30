@@ -1633,7 +1633,7 @@ export interface HarthmereBusinessShopfront {
   storefrontGoods?: Array<{
     itemId: string;
     displayName?: string;
-    kind: "block" | "interior" | "recipe_book";
+    kind: "block" | "interior" | "material" | "recipe_book";
     priceGold: number;
     recipeIds?: readonly string[];
     learned?: boolean;
@@ -2110,6 +2110,8 @@ export function getHarthmereBusinessShopfront(
                   ? "block"
                   : listing.kind === "recipe_book"
                   ? "document"
+                  : listing.kind === "material"
+                  ? "crafting material"
                   : "furnishing"
               ),
             })

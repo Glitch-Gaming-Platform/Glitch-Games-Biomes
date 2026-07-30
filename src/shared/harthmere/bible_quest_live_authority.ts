@@ -86,7 +86,6 @@ import {
   completeThaedrynBoss,
   createThaedrynBossState,
   getThaedrynPhaseForState,
-  resolveThaedrynPath,
   type HarthmereThaedrynBossState,
   type HarthmereThaedrynPath,
 } from "@/shared/harthmere/thaedryn_boss";
@@ -393,13 +392,46 @@ function rewardInstructionsForQuest(
     // model. Persist them in the same residual flag ledger as story unlocks so
     // they are durable, queryable, and never silently dropped at turn-in.
     unlockFlags: [
-      ...new Set([
-        ...quest.rewards.unlocks,
-        ...quest.rewards.permanentBuffs,
-      ]),
+      ...new Set([...quest.rewards.unlocks, ...quest.rewards.permanentBuffs]),
     ],
     reputation: { ...quest.rewards.reputation },
     previewText: quest.rewards.previewText,
+  };
+}
+
+function thaedrynRewardSymbol(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
+function rewardInstructionsForThaedrynPath(input: {
+  pathId: HarthmereThaedrynPath;
+  rewards: any;
+  previewText: string;
+}): HarthmereBibleQuestRewardInstructions {
+  const rewards = input.rewards ?? {};
+  return {
+    questId: BIBLE_DRAGON_QUEST_ID,
+    rewardGrantId: `reward:${BIBLE_DRAGON_QUEST_ID}:path:${input.pathId}`,
+    xpDelta: Math.max(0, Math.trunc(Number(rewards.xp ?? 0) || 0)),
+    goldDelta: Math.max(0, Math.trunc(Number(rewards.silver ?? 0) || 0)),
+    items: (Array.isArray(rewards.items) ? rewards.items : [])
+      .filter((item: unknown): item is string => typeof item === "string")
+      .map((displayName: string) => ({
+        itemId: thaedrynRewardSymbol(displayName),
+        count: 1,
+        displayName,
+      })),
+    titles: (Array.isArray(rewards.titles) ? rewards.titles : []).filter(
+      (title: unknown): title is string => typeof title === "string"
+    ),
+    unlockFlags: (Array.isArray(rewards.unlocks) ? rewards.unlocks : [])
+      .filter((unlock: unknown): unlock is string => typeof unlock === "string")
+      .map(thaedrynRewardSymbol),
+    reputation: {},
+    previewText: input.previewText,
   };
 }
 
@@ -956,10 +988,23 @@ function reduceThaedrynBossEvent(
     return { ok: true, warnings, slice, thaedrynSnapshot: "sync" };
   }
 
+  // The persisted completed machine is the idempotency record for path
+  // rewards. A retried resolve may still arrive while the native challenge is
+  // in progress, but it must not grant the path payout twice.
+  if (state.completed) {
+    const quest = bibleQuest(BIBLE_DRAGON_QUEST_ID);
+    return {
+      ok: true,
+      warnings,
+      slice,
+      thaedrynSnapshot: "sync",
+      activeMirror: quest ? activeMirrorEntry(quest, undefined, 1) : undefined,
+    };
+  }
+
   // The path is chosen by an earlier `choose_path` event and lives on the
-  // state; `resolveThaedrynPath` reads `state.chosenPath` rather than taking
-  // it as an argument. Apply a late path claim first so a client that sends
-  // choose_path and resolve in one breath still resolves.
+  // state. Apply a late path claim first so a client that sends choose_path
+  // and resolve in one breath still resolves.
   const resolving =
     input.bossEventPath && state.chosenPath !== input.bossEventPath
       ? applyThaedrynBossEvent(state, {
@@ -977,8 +1022,23 @@ function reduceThaedrynBossEvent(
   }
   slice.thaedryn = completion.state;
   slice.townPhase = completion.townPhase;
-  if (input.bossEventPath) {
-    slice.choices[BIBLE_DRAGON_QUEST_ID] = input.bossEventPath;
+  const pathId = (completion.path?.id ?? resolving.chosenPath) as
+    | HarthmereThaedrynPath
+    | undefined;
+  if (!pathId) {
+    return fail("missing_path_choice");
+  }
+  slice.choices[BIBLE_DRAGON_QUEST_ID] = pathId;
+  const pathRewards = rewardInstructionsForThaedrynPath({
+    pathId,
+    rewards: completion.rewards,
+    previewText: completion.path?.cinematic ?? "",
+  });
+  for (const title of pathRewards.titles) {
+    if (!slice.titles.includes(title)) slice.titles.push(title);
+  }
+  for (const flag of pathRewards.unlockFlags) {
+    if (!slice.flags.includes(flag)) slice.flags.push(flag);
   }
 
   // Resolving the encounter advances Q12's remaining objectives. Each still
@@ -994,6 +1054,7 @@ function reduceThaedrynBossEvent(
     ok: true,
     warnings,
     slice,
+    rewards: pathRewards,
     thaedrynSnapshot: "sync",
     nativeProgress:
       challengeId !== undefined && stepId !== undefined
@@ -1004,9 +1065,7 @@ function reduceThaedrynBossEvent(
     // to its final state in the same mutation so the subsequent reward turn-in
     // reconstructs all steps as fired instead of rejecting with
     // `objectives_incomplete`.
-    activeMirror: quest
-      ? activeMirrorEntry(quest, undefined, 1)
-      : undefined,
+    activeMirror: quest ? activeMirrorEntry(quest, undefined, 1) : undefined,
   };
 }
 

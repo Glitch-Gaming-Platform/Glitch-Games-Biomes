@@ -11,6 +11,7 @@ const root = path.resolve(process.argv[2] || process.cwd());
 const read = (relativePath) =>
   fs.readFileSync(path.join(root, relativePath), "utf8");
 const bridge = read("src/client/game/e2e/harthmere_native_ecs_e2e.ts");
+const overlays = read("src/client/game/scripts/overlays.ts");
 const runner = read(
   "scripts/harthmere/test-harthmere-native-ecs-roundtrip-e2e.cjs"
 );
@@ -55,22 +56,105 @@ check(
   "every job returns through objective, board-return, and completed frontend projections"
 );
 check(
+  runner.includes("performJobsE2EFieldInteraction") &&
+    runner.includes('keyboard.press("KeyF")') &&
+    runner.includes("no visible F") &&
+    runner.includes("[0, 0.65]") &&
+    runner.includes("approachPosition,\n        0.9") &&
+    runner.includes(
+      "visible F interaction completes the accepted job objective"
+    ),
+  "registered field jobs face the prop body, prove the visible F prompt, and use player keyboard interaction"
+);
+check(
+  overlays.includes("A player standing on a repair post") &&
+    overlays.includes("nearbyHarthmereObjectOverlay") &&
+    runner.includes("displacedRetainedActorIds") &&
+    runner.includes('startsWith("NativeECS-A-")') &&
+    runner.includes("never delete or move an ordinary player"),
+  "overlapping players cannot shadow a faced job prop, and retained E2E actors are safely displaced"
+);
+check(
+  overlays.includes("harthmereFieldTargetGroundedFeetYByColumn") &&
+    overlays.includes("harthmereGroundedFeetYWithMemory") &&
+    overlays.includes("The procedural renderer grounds these same permanent props") &&
+    runner.includes("HARTHMERE_E2E_ALLOW_PRE_DYNAMIC_FIELD_TARGET_IMAGE") &&
+    runner.includes("preDynamicFieldTargetFallbacks") &&
+    runner.includes("compatibility path requires a live-ground/authored-height mismatch") &&
+    runner.includes("visible_prompt_no_receipt_after_three_keypresses") &&
+    runner.includes("key attempt ${keyAttempt}/3"),
+  "field-target overlays share renderer grounding, with an explicit reported old-image compatibility path"
+);
+check(
+  runner.includes("Fixture writes bypass the player's Inventory UI") &&
+    runner.includes("biomes.localDev.harthmere.inventoryState") &&
+    runner.includes("biomes:harthmere-inventory-changed") &&
+    runner.includes("server still independently verifies the native selected item"),
+  "tool-gated fixture jobs align the client equipment projection while retaining native server authority"
+);
+check(
+  runner.includes("snapshotGroveLandmarkById") &&
+    runner.includes("requiredInteractionCount") &&
+    runner.includes("Number(requiredInteractionCount) > 1") &&
+    runner.includes("serviceProgressCount") &&
+    runner.includes('keyboard.press("KeyJ")') &&
+    runner.includes("biomes-ui-quests-tab") &&
+    runner.includes('name: "Show on map"') &&
+    runner.includes("Show on map selects the jobs-board destination") &&
+    runner.includes("server records interaction"),
+  "Grove landmarks and repeated service-unit jobs prove every required visible F interaction"
+);
+check(
+  runner.includes("jobs-board actor is normalized as a player") &&
+    runner.includes("npc_metadata: null") &&
+    runner.includes("npc_state: null"),
+  "reused-snapshot Jobs Board actors are normalized before browser movement"
+);
+check(
+  runner.includes("await moveSnapshotGrovePlayer(first, safePosition, label)") &&
+    runner.includes('bridgeCall(first.page, "groundedHarthmerePosition"') &&
+    runner.includes("requireOpenSky: false") &&
+    runner.includes("jobsCatalogOnly = jobsOnly || remainingJobsOnly") &&
+    runner.includes("`${baseUrl}/api/harthmere/chapter1_story`") &&
+    runner.includes("`${baseUrl}/api/harthmere/chapter1_gate?e2e=1`"),
+  "all Jobs Board catalog warps ground their feet, use the stable live-player relocation path, and ignore only exact aborted background polls"
+);
+check(
   runner.includes('operation: "pickup"') &&
     runner.includes("marker did not advance to drop-off") &&
     runner.includes("parcel was not created in native inventory") &&
-    runner.includes("delivered parcel was not consumed natively"),
-  "delivery E2E proves pickup marker, native parcel exchange, drop-off marker, and consumption"
+    runner.includes("delivered parcel was not consumed natively") &&
+    runner.includes("JOBS_BOARD_E2E_SECONDARY_DELIVERY_REQUIREMENTS"),
+  "delivery E2E proves pickup, all secondary cargo, native parcel exchange, drop-off, and consumption"
 );
 check(
   runner.includes("server escort scheduler completed todo") &&
+    runner.includes("scheduler materializes native escort ECS") &&
+    runner.includes("supply the one") &&
+    runner.includes("authoritative ECS arrival") &&
     runner.includes("reward was not paid through native wallet"),
-  "escort waits for server scheduler and every completed job verifies native payout"
+  "focused-stack escort proves native companion materialization, authoritative arrival, scheduler completion, and payout"
+);
+check(
+  runner.includes("performJobsE2ENativeBountyKill") &&
+    runner.includes("harthmereJobsBoardMuckBountyTargetForId") &&
+    runner.includes("readHarthmereJobsBoardNativeKillLedger") &&
+    runner.includes("exact ranked native bounty synchronizes alive") &&
+    runner.includes("shared grounder resolves a safe attack approach") &&
+    runner.includes("HARTHMERE_E2E_JOBS_RESUME_AT") &&
+    runner.includes("native player kill receipt records exact ranked bounty") &&
+    runner.includes("bounty submission") &&
+    runner.includes("new UpdateNpcHealthEvent") &&
+    runner.includes('attacker: first.userId'),
+  "bounty jobs use a grounded approach, kill the exact ranked creature, prove the native receipt, and support batched resume"
 );
 check(
   releaseGate.includes("jobsBoardQuestMapAdapter.test.ts") &&
     releaseGate.includes("jobsBoardLiveAdapter.test.ts") &&
+    releaseGate.includes("jobs_board_field_targets.test.ts") &&
+    releaseGate.includes("mmo_jobs_board_business_outposts.test.ts") &&
     releaseGate.includes("test-harthmere-native-ecs-all-jobs-e2e-contract.cjs"),
-  "native ECS release gate includes all-jobs frontend contracts"
+  "native ECS release gate includes all-jobs frontend and physical-target contracts"
 );
 
 if (failures) {

@@ -26,7 +26,7 @@ function snapshotWith(overrides = {}) {
     stationId: HARTHMERE_CRAFTING_STATIONS.workbench,
     gold: 100,
     inventoryItems: {},
-    materialStorage: { wood_log: 8 },
+    materialStorage: { softwood_log: 8 },
     knownRecipes: ["harthmere_carpentry_wood_plank"],
     skills: { carpentry: { level: 5 } },
     nowMs: 1000,
@@ -62,19 +62,31 @@ describe("crafting UI parity (V151)", () => {
     // Use the recipe's own required station so it is station-OK here.
     const atStation = (overrides = {}) =>
       snapshotWith({ stationId: recipe.requiredStationId, ...overrides });
-    // Plenty of wood -> can batch several (2 wood_log per plank, 20 wood -> 10).
-    const plenty = harthmereCraftingMaxCraftable(recipe, atStation({ materialStorage: { wood_log: 20 } }));
+    // Plenty of wood -> can batch several (2 softwood_log per batch, 20 wood -> 10).
+    const plenty = harthmereCraftingMaxCraftable(
+      recipe,
+      atStation({ materialStorage: { softwood_log: 20 } })
+    );
     assert.ok(plenty >= 1, `plenty: ${plenty}`);
     // No materials -> zero.
-    const none = harthmereCraftingMaxCraftable(recipe, atStation({ materialStorage: {} }));
+    const none = harthmereCraftingMaxCraftable(
+      recipe,
+      atStation({ materialStorage: {} })
+    );
     assert.equal(none, 0);
     // Unknown recipe -> zero (can't craft any here).
-    const unknown = harthmereCraftingMaxCraftable(recipe, atStation({ knownRecipes: [] }));
+    const unknown = harthmereCraftingMaxCraftable(
+      recipe,
+      atStation({ knownRecipes: [] })
+    );
     assert.equal(unknown, 0);
     // Wrong station (kitchen, not the recipe's workbench) -> zero even with materials.
     const wrongStation = harthmereCraftingMaxCraftable(
       recipe,
-      snapshotWith({ stationId: HARTHMERE_CRAFTING_STATIONS.kitchen, materialStorage: { wood_log: 20 } })
+      snapshotWith({
+        stationId: HARTHMERE_CRAFTING_STATIONS.kitchen,
+        materialStorage: { softwood_log: 20 },
+      })
     );
     assert.equal(wrongStation, 0);
   });
@@ -85,15 +97,23 @@ describe("crafting UI parity (V151)", () => {
     assert.ok(all >= 1);
     const hits = filterHarthmereCraftingRecipes(recipes, "plank");
     assert.ok(hits.length >= 1 && hits.length <= all);
-    assert.equal(filterHarthmereCraftingRecipes(recipes, "zzz_no_match").length, 0);
+    assert.equal(
+      filterHarthmereCraftingRecipes(recipes, "zzz_no_match").length,
+      0
+    );
     assert.equal(filterHarthmereCraftingRecipes(recipes, "  ").length, all);
   });
 
   it("alternative recipes group by output item", () => {
     const recipes = createHarthmereCraftingVisibleRecipes(snapshotWith());
     const first = recipes[0];
-    const alts = harthmereCraftingAlternativeRecipes(recipes, first.recipe.outputItemId);
-    assert.ok(alts.every((a) => a.recipe.outputItemId === first.recipe.outputItemId));
+    const alts = harthmereCraftingAlternativeRecipes(
+      recipes,
+      first.recipe.outputItemId
+    );
+    assert.ok(
+      alts.every((a) => a.recipe.outputItemId === first.recipe.outputItemId)
+    );
     assert.ok(alts.some((a) => a.recipe.recipeId === first.recipe.recipeId));
   });
 

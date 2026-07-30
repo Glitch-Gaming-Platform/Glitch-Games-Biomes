@@ -24,6 +24,7 @@ import type {
   ProjectionMap,
 } from "@/client/game/resources/overlays";
 import type { ClientResources } from "@/client/game/resources/types";
+import { harthmereGroundedFeetYWithMemory } from "@/client/game/util/harthmere_entity_grounding";
 import type { Script } from "@/client/game/scripts/script_controller";
 import type { ReadonlyEntity } from "@/shared/ecs/gen/entities";
 import {
@@ -82,6 +83,7 @@ import {
   activeHarthmereQuestMarkerIds,
   isVisibleHarthmereWorldObjectMarker,
 } from "@/client/game/renderers/local_dev/harthmere_quest_object_markers";
+import { harthmereJobsBoardFieldTargets } from "@/shared/harthmere/jobs_board_field_targets";
 import {
   HARTHMERE_WORLD_OBJECT_INSPECT_RADIUS,
   harthmereWorldObjectCandidateIsVisibleForInteraction,
@@ -314,22 +316,84 @@ function harthmereWorldObjectInspectCandidates(): HarthmereWorldObjectCandidate[
   return candidates;
 }
 
-function harthmereVisibleStaticWorldObjectInspectCandidates(): HarthmereWorldObjectCandidate[] {
+// HARTHMERE_JOBS_BOARD_FIELD_TARGET_CANDIDATES
+// The 19 business job-template targets (refinery intake, farm supply crate,
+// clinic supply shelf, inn linen shelf, ...) and the 19 outpost starter work
+// stations are permanent shop fixtures, not quest-gated props: they must offer
+// their "F" prompt whenever the player is standing at them, exactly like the
+// jobs board itself. Without this the player could walk to the marker and find
+// nothing to interact with, which made every business job uncompletable.
+let harthmereFieldTargetCandidateCache:
+  | HarthmereWorldObjectCandidate[]
+  | undefined;
+const harthmereFieldTargetGroundedFeetYByColumn = new Map<string, number>();
+
+function harthmereJobsBoardFieldTargetInspectCandidates(
+  resources: ClientResources
+): HarthmereWorldObjectCandidate[] {
+  if (!harthmereFieldTargetCandidateCache) {
+    harthmereFieldTargetCandidateCache = harthmereJobsBoardFieldTargets().map(
+      (target) => ({
+        id: target.targetId,
+        label: target.label,
+        position: [
+          target.position[0],
+          target.position[1],
+          target.position[2],
+        ] as [number, number, number],
+      })
+    );
+  }
+  return harthmereFieldTargetCandidateCache.flatMap((candidate) => {
+    // The procedural renderer grounds these same permanent props against live
+    // terrain. Resolve the overlay candidate through the same shared grounder;
+    // otherwise a built apron or platform can put the visible prop several
+    // metres above its authored hint and the proximity selector rejects a
+    // player who is standing directly beside it.
+    const feetY = harthmereGroundedFeetYWithMemory(
+      resources,
+      harthmereFieldTargetGroundedFeetYByColumn,
+      candidate.position[0],
+      candidate.position[2],
+      candidate.position[1],
+      true
+    );
+    return feetY === undefined
+      ? []
+      : [
+          {
+            ...candidate,
+            position: [
+              candidate.position[0],
+              feetY,
+              candidate.position[2],
+            ] as [number, number, number],
+          },
+        ];
+  });
+}
+
+function harthmereVisibleStaticWorldObjectInspectCandidates(
+  resources: ClientResources
+): HarthmereWorldObjectCandidate[] {
   const questState = readSnapshotGroveQuestState();
   const activeMarkerId = activeHarthmereQuestMarkerId(questState);
   const activeMarkerIds = activeHarthmereQuestMarkerIds(questState);
   const activePin = readActiveBiomesUIMapPin();
-  return harthmereWorldObjectInspectCandidates().filter((candidate) =>
-    harthmereWorldObjectCandidateIsVisibleForInteraction({
-      candidate,
-      activeMarkerId,
-      activePinMarkerId: activePin?.markerId,
-      activePinPosition: activePin?.worldPosition,
-      alwaysVisible:
-        activeMarkerIds.has(candidate.id) ||
-        isVisibleHarthmereWorldObjectMarker(candidate.id),
-    })
-  );
+  return [
+    ...harthmereWorldObjectInspectCandidates().filter((candidate) =>
+      harthmereWorldObjectCandidateIsVisibleForInteraction({
+        candidate,
+        activeMarkerId,
+        activePinMarkerId: activePin?.markerId,
+        activePinPosition: activePin?.worldPosition,
+        alwaysVisible:
+          activeMarkerIds.has(candidate.id) ||
+          isVisibleHarthmereWorldObjectMarker(candidate.id),
+      })
+    ),
+    ...harthmereJobsBoardFieldTargetInspectCandidates(resources),
+  ];
 }
 
 const HARTHMERE_ECS_NPC_COMBAT_REGISTRY = "harthmere-ecs-npc-combat-registry";
@@ -1285,6 +1349,16 @@ export class OverlayScript implements Script {
       }
       ok(entity.position);
       if (entity.player_behavior) {
+        // A player standing on a repair post, terminal, crate, or other
+        // authored world object must not make that object unusable. Keep the
+        // same tight range/facing/occlusion gates as every other nearby-object
+        // fallback, but let the object win when the reticle-facing evidence
+        // says the user is genuinely trying to interact with it.
+        const nearbyHarthmereObjectOverlay =
+          this.getNearbyHarthmereObjectInspectableOverlay();
+        if (nearbyHarthmereObjectOverlay) {
+          return nearbyHarthmereObjectOverlay;
+        }
         return {
           kind: "player",
           key: `inspect:player:${entity.id}`,
@@ -1875,7 +1949,9 @@ export class OverlayScript implements Script {
         number
       ],
       candidates: [
-        ...harthmereVisibleStaticWorldObjectInspectCandidates().filter(
+        ...harthmereVisibleStaticWorldObjectInspectCandidates(
+          this.resources
+        ).filter(
           (candidate) =>
             !nativeRoadAheadEcsAuthorityEnabled() ||
             !isNativeRoadAheadQuestObjectLabel(candidate.label)

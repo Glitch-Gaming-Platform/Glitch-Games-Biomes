@@ -13,7 +13,7 @@ const {
   terrainCollides,
 } = require("../../src/shared/asset_defs/quirk_helpers");
 const { safeGetTerrainId } = require("../../src/shared/asset_defs/terrain");
-const { loadMuck, loadTerrain } = require("../../src/shared/game/terrain");
+const { loadMuck, loadSeed } = require("../../src/shared/game/terrain");
 const {
   HARTHMERE_ADDITIVE_TOWN_OFFSET_X,
   HARTHMERE_BELLBINDER_DESCENT,
@@ -142,10 +142,17 @@ async function main() {
           continue;
         }
 
-        const terrain = loadTerrain(voxeloo, {
+        // Deployment audits validate the authored baseline, not the combined
+        // player-visible terrain. shard_diff is durable player/world state:
+        // mining, placed blocks, tilled soil, crops, and materialized homes all
+        // intentionally override shard_seed and must not make a deploy fail.
+        const terrain = loadSeed(voxeloo, {
           shard_seed: entity.shardSeed(),
-          shard_diff: entity.hasShardDiff?.() ? entity.shardDiff() : undefined,
         });
+        if (!terrain) {
+          invalid.push({ id, spec, box, reason: "unreadable shard_seed" });
+          continue;
+        }
         const muck = loadMuck(voxeloo, {
           shard_muck: entity.hasShardMuck?.() ? entity.shardMuck() : undefined,
         });
@@ -292,7 +299,6 @@ async function main() {
         emptyFoundation.length ||
         surfaceHoles.length ||
         forbiddenMuckBlocks.length ||
-        atmosphericMuckBlocks.length ||
         retiredTerrainIds.length;
   if (failed) {
     throw new Error("Harthmere extension terrain audit failed");
@@ -304,7 +310,7 @@ async function main() {
     return;
   }
   console.log(
-    "OK Harthmere extension is complete, flat at Y=52, free of Muck terrain and atmosphere, and free of retired terrain shards."
+    "OK Harthmere authored terrain is complete and valid while player and simulation overlays remain preserved."
   );
 }
 

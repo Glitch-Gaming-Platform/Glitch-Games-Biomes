@@ -175,4 +175,25 @@ describe("world interaction dispatcher", () => {
     assert.equal(invokeSelectedWorldInteractionForKey(), false);
     assert.equal(invoked, false);
   });
+
+  it("invokes F and G independently for mobile action buttons", () => {
+    const invoked: string[] = [];
+    registerWorldInteractionCandidate({
+      id: "talk",
+      priority: 10,
+      keyCodes: ["KeyF"],
+      onInteract: () => invoked.push("F"),
+    });
+    registerWorldInteractionCandidate({
+      id: "settings",
+      priority: 10,
+      keyCodes: ["KeyG"],
+      onInteract: () => invoked.push("G"),
+    });
+
+    assert.equal(invokeSelectedWorldInteractionForKey("KeyG"), true);
+    assert.deepEqual(invoked, ["G"]);
+    assert.equal(invokeSelectedWorldInteractionForKey("KeyF"), true);
+    assert.deepEqual(invoked, ["G", "F"]);
+  });
 });

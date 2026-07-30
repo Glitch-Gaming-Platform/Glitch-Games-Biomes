@@ -20,6 +20,8 @@
  * reducer calls this instead of blindly applying payload deltas.
  */
 
+import { PLAYER_INVENTORY_SLOTS } from "@/shared/game/inventory";
+
 export const MMO_INVENTORY_AUTHORITY_VERSION = "mmo-inventory-authority";
 
 // ---------------------------------------------------------------------------
@@ -718,7 +720,7 @@ export function harthmereCleanupToolGate(
 // Inventory capacity helpers
 // ---------------------------------------------------------------------------
 
-export const HARTHMERE_DEFAULT_INVENTORY_SLOTS = 40;
+export const HARTHMERE_DEFAULT_INVENTORY_SLOTS = PLAYER_INVENTORY_SLOTS;
 export const HARTHMERE_BANK_SLOTS = 80;
 
 export function countInventorySlots(items: Record<string, number>): number {

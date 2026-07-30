@@ -363,6 +363,26 @@ workflow includes `public/harthmere/**` in its filtered LFS checkout, and the
 production Docker image copies only `voices/generated/current`; replica-local
 runtime recordings are deliberately not treated as public static assets.
 
+Run the casting audit after adding or renaming characters:
+
+```bash
+node scripts/harthmere/audit-harthmere-npc-voice-casting.cjs
+```
+
+The audit verifies that strong authored identity evidence (explicit sex,
+gendered titles, and reviewed given names) matches the provider-neutral voice
+profile, that the selected known ElevenLabs fallback voice has the same sex,
+and that every robot/construct is neutral-cast and receives the Eleven v3
+robotic delivery direction. Incidental backstory words no longer override the
+character's own identity; for example, mentioning a wife cannot turn a widower
+into a feminine voice.
+
+The July 29, 2026 full-cache audit passed for 1,942 MP3s and 741 unique actors:
+97 humanoid actors use female voices, 106 use male voices, and all seven robot
+actors (17 recordings) use the robot profile and delivery treatment. Sophia is
+explicitly female-cast, and her three `Muck vs. Machine` recordings were
+regenerated with a verified female ElevenLabs voice.
+
 ## Hold-To-Talk And Speak Button Flow
 
 When speech input is available, NPC dialogue shows a small microphone button and

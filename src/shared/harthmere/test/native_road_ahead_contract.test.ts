@@ -5,6 +5,7 @@ import {
   NATIVE_GET_THE_MUCK_OUT_QUEST_ID,
   NATIVE_GET_THE_MUCK_OUT_INSCRIPTION_ENTITY_IDS,
   NATIVE_GET_THE_MUCK_OUT_INSCRIPTION_SPECS,
+  NATIVE_GIMME_SHELTER_ROBOT_SETUP_STEP_IDS,
   NATIVE_MUCK_VS_MACHINE_QUEST_ID,
   NATIVE_ROAD_AHEAD_CONTAINER_SPECS,
   NATIVE_ROAD_AHEAD_MUCKWAD_ITEM_ID,
@@ -19,6 +20,9 @@ import {
   nativeBustedUnderwaterContainerClaimForItem,
   nativeQuestContainerClaimForItem,
   nativeQuestContainerFirstIncompletePriorStep,
+  nativeGetTheMuckOutInscriptionObjectiveText,
+  nativeQuestProjectedNavigationAid,
+  nativeQuestProjectedTriggerName,
   nativeRoadAheadFirstIncompletePriorStep,
   nativeRoadAheadContainerClaimForItem,
   nativeRoadAheadContainerItemIds,
@@ -113,6 +117,49 @@ describe("native Road Ahead snapshot contract", () => {
       new Set(NATIVE_GET_THE_MUCK_OUT_INSCRIPTION_ENTITY_IDS).size,
       4,
       "duplicate legacy inscription props must not replace canonical targets"
+    );
+    assert.deepEqual(
+      Object.values(NATIVE_GET_THE_MUCK_OUT_INSCRIPTION_SPECS).map(
+        ({ objective }) => objective
+      ),
+      [
+        "Find the inscription on top of the Green Statue",
+        "Find the inscription on top of the Blue Statue",
+        "Find the inscription on top of the Pink Statue",
+        "Find the inscription on top of the Yellow Statue",
+      ]
+    );
+    for (const spec of Object.values(
+      NATIVE_GET_THE_MUCK_OUT_INSCRIPTION_SPECS
+    )) {
+      assert.equal(
+        nativeGetTheMuckOutInscriptionObjectiveText(spec.stepId),
+        spec.objective
+      );
+      assert.equal(
+        nativeQuestProjectedTriggerName(spec.stepId, spec.label),
+        spec.objective
+      );
+    }
+    assert.equal(
+      nativeQuestProjectedTriggerName(123, "Keep authored objective"),
+      "Keep authored objective",
+      "unrelated native quest wording must remain authored"
+    );
+    assert.equal(
+      nativeQuestProjectedTriggerName(
+        NATIVE_GIMME_SHELTER_ROBOT_SETUP_STEP_IDS.PLACE_ROBOT_IN_MUCK,
+        "Place your Robot in the Muck"
+      ),
+      "Place your Robot in the marked Muck clearing outside the Grove"
+    );
+    assert.deepEqual(
+      nativeQuestProjectedNavigationAid(
+        NATIVE_GIMME_SHELTER_ROBOT_SETUP_STEP_IDS.PLACE_ROBOT_IN_MUCK,
+        { kind: "position", pos: [512, 54, -152] }
+      ),
+      { kind: "position", pos: [332, 54, -390] },
+      "the in-world beacon must not retain the protected Grove fallback"
     );
   });
 

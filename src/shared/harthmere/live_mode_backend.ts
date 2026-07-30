@@ -133,11 +133,15 @@ import {
 } from "./mmo_jobs_board_authority";
 import { isKnownHarthmereJobsBoardExecutableItemId } from "./jobs_board_business_templates";
 import {
+  harthmereJobsBoardFieldTargetForId,
+  isHarthmereJobsBoardFieldTargetId,
+} from "./jobs_board_field_targets";
+import { stripHarthmereProceduralOutpostBuildings } from "./mmo_economy_business_systems";
+import {
   SNAPSHOT_GROVE_QUESTS,
   snapshotGroveLandmarkById,
 } from "./snapshot_grove_content";
 import { HARTHMERE_NATIVE_QUEST_GIVER_MANIFEST } from "./harthmere_native_quest_manifest";
-import { getHarthmereQuestById } from "./quest_compendium";
 import { bibleQuest } from "./bible/bible_quest_catalog";
 import { bibleQuestGiverId } from "./bible/bible_quest_schema";
 import {
@@ -1632,6 +1636,39 @@ function normalizeHarthmereLiveModeSharedInventoryLootWorldState(
   };
 }
 
+// HARTHMERE_PROCEDURAL_MATERIALIZATION_PLANS_ARE_DERIVED (2026-07-29):
+// The 19 outpost building materialization plans are ~15 MB of static,
+// code-authored voxel edits. Every read path re-merges them from
+// HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS, so persisting or cloning
+// them is pure waste — and it was the other half of the multi-second live-mode
+// mutation cost. Strip them on the way out; the merge puts them back.
+let proceduralMaterializationPlanIds: ReadonlySet<string> | undefined;
+
+function harthmereProceduralMaterializationPlanIds(): ReadonlySet<string> {
+  if (!proceduralMaterializationPlanIds) {
+    proceduralMaterializationPlanIds = new Set(
+      Object.values(HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS).map(
+        (record) => record.materializationPlan.requestId
+      )
+    );
+  }
+  return proceduralMaterializationPlanIds;
+}
+
+export function stripHarthmereProceduralMaterializationPlans<T>(
+  plans: Record<string, T> | undefined
+): Record<string, T> {
+  if (!plans) return {};
+  const derived = harthmereProceduralMaterializationPlanIds();
+  const stored: Record<string, T> = {};
+  for (const [requestId, plan] of Object.entries(plans)) {
+    if (!derived.has(requestId)) {
+      stored[requestId] = plan;
+    }
+  }
+  return stored;
+}
+
 function normalizeHarthmereLiveModeSharedBuildingState(
   raw: unknown,
   nowMs: number
@@ -1642,7 +1679,9 @@ function normalizeHarthmereLiveModeSharedBuildingState(
     customPlots: { ...(value.customPlots ?? {}) },
     safeZones: { ...(value.safeZones ?? {}) },
     inWorldMarkers: publicSharedInWorldMarkers(value.inWorldMarkers ?? {}),
-    materializationPlans: { ...(value.materializationPlans ?? {}) },
+    materializationPlans: stripHarthmereProceduralMaterializationPlans(
+      value.materializationPlans
+    ),
     storageContainers: { ...(value.storageContainers ?? {}) },
     doorLocks: { ...(value.doorLocks ?? {}) },
     plotOwners: { ...(value.plotOwners ?? {}) },
@@ -2248,6 +2287,67 @@ export function bindHarthmereNativeEcsMaterializationPlansToActorForTest(
   });
 }
 
+// HARTHMERE_LIVE_STATE_CLONE (2026-07-29):
+// The live-mode reducer deep-cloned the entire backend state with a JSON round
+// trip on EVERY request. ~15 MB of that is `economy.production.businessSystems
+// .outpostBuildings`, which is static code-authored data that nothing mutates —
+// so each mutation paid a few hundred milliseconds of serialization before
+// doing any work, and paid it again writing the shared world back to Redis.
+// Detach that subtree, clone the rest, and re-attach it by reference.
+export function harthmereEconomyProductionForPersistence(
+  economy: HarthmereProductionEconomyState
+): HarthmereProductionEconomyState {
+  const systems = (economy as any)?.businessSystems;
+  if (!systems) {
+    return economy;
+  }
+  return {
+    ...economy,
+    businessSystems: stripHarthmereProceduralOutpostBuildings(systems),
+  } as HarthmereProductionEconomyState;
+}
+
+export function cloneHarthmereLiveModeBackendState(
+  state: HarthmereLiveModeBackendState
+): HarthmereLiveModeBackendState {
+  const systems = (state.economy?.production as any)?.businessSystems;
+  const proceduralBuildings = systems?.outpostBuildings;
+  if (!proceduralBuildings) {
+    return JSON.parse(JSON.stringify(state));
+  }
+  const detached: HarthmereLiveModeBackendState = {
+    ...state,
+    economy: {
+      ...state.economy,
+      production: harthmereEconomyProductionForPersistence(
+        state.economy.production
+      ),
+    },
+    building: {
+      ...state.building,
+      materializationPlans: stripHarthmereProceduralMaterializationPlans(
+        state.building?.materializationPlans
+      ),
+    },
+  };
+  const next: HarthmereLiveModeBackendState = JSON.parse(
+    JSON.stringify(detached)
+  );
+  (next.economy.production as any).businessSystems.outpostBuildings = {
+    ...proceduralBuildings,
+  };
+  next.building.materializationPlans = {
+    ...next.building.materializationPlans,
+    ...Object.fromEntries(
+      Object.entries(state.building?.materializationPlans ?? {}).filter(
+        ([requestId]) =>
+          harthmereProceduralMaterializationPlanIds().has(requestId)
+      )
+    ),
+  };
+  return next;
+}
+
 /**
  * Build the frontend-facing post-transaction projection from the same native
  * baseline and exchange plan sent to ECS. Redis intentionally persists only
@@ -2259,7 +2359,8 @@ export function projectHarthmereNativeEcsPlansOntoClientStateForTest(
   envelope: HarthmereLiveModeAuthorityEnvelope,
   plans: readonly HarthmereNativeEcsMaterializationPlan[]
 ): HarthmereLiveModeBackendState {
-  const next: HarthmereLiveModeBackendState = JSON.parse(JSON.stringify(state));
+  const next: HarthmereLiveModeBackendState =
+    cloneHarthmereLiveModeBackendState(state);
   const exchanges = plans.filter(
     (plan): plan is HarthmereNativeEcsInventoryExchangeMaterializationPlan =>
       plan.kind === "inventory_exchange"
@@ -5513,7 +5614,23 @@ function validateHarthmereFallbackWorldObjectInteraction(input: {
   label?: string;
   fallbackEquipment: HarthmereLiveModeBackendState["inventory"]["equipment"];
 }) {
-  const landmark = snapshotGroveLandmarkById(input.objectId);
+  // HARTHMERE_JOBS_BOARD_FIELD_TARGET_RECEIPT (2026-07-29):
+  // Jobs-board field targets (business template targets + outpost starter work
+  // stations) are authored world props that are NOT Grove landmarks. They were
+  // rejected here as `unknown_object`, so the client could render the "F"
+  // prompt but the server would never issue a receipt — every business job was
+  // uncompletable. Resolve them from the shared field-target authority using
+  // the SAME position/label/interaction contract as a landmark.
+  const fieldTarget = harthmereJobsBoardFieldTargetForId(input.objectId);
+  const landmark =
+    snapshotGroveLandmarkById(input.objectId) ??
+    (fieldTarget
+      ? {
+          id: fieldTarget.targetId,
+          label: fieldTarget.label,
+          position: fieldTarget.position,
+        }
+      : undefined);
   if (!landmark) {
     return {
       ok: false as const,
@@ -5605,14 +5722,52 @@ function nativeJobsBoardEquippedToolActions(
  * targets still use server-read proximity, while hunt targets require the
  * exact seeded NPC entity in the player's native TriggerState kill ledger.
  */
+/**
+ * Lifetime per-target counters of repeatable field work, read from the server's
+ * own world-object interaction receipts. Feeds the jobs-board service-unit gate
+ * ("clear five muckwad clumps") together with the todo's accept-time baseline.
+ */
+export function nativeJobsBoardServiceProgressCounts(
+  state: Pick<HarthmereLiveModeBackendState, "careLoops">
+): Record<string, number> {
+  const counts: Record<string, number> = {};
+  for (const [objectId, receipt] of Object.entries(
+    state.careLoops.worldInteractions ?? {}
+  )) {
+    counts[objectId] = Math.max(0, Math.floor(Number(receipt?.count ?? 0)));
+  }
+  return counts;
+}
+
 export function nativeJobsBoardObservedTargetIdsForTest(input: {
   job?: HarthmereJobsBoardPosting;
   actorPosition?: { x: number; y: number; z: number };
   killedEntityAtMs?: Record<string, number>;
+  /**
+   * Server-owned world-object interaction receipts (careLoops.worldInteractions).
+   * HARTHMERE_FIELD_TARGET_RECEIPT_GATE (2026-07-29): a registered jobs-board
+   * field target is only "observed" when the player actually interacted with
+   * the physical prop AFTER accepting the job. Standing next to the marker used
+   * to be enough, which is why the outpost starter jobs could be completed by
+   * re-opening the very board that issued them.
+   */
+  worldInteractions?: Record<string, { lastAtMs?: number } | undefined>;
 }) {
   const observed = new Set<string>();
   if (!input.job) return [];
   const radiusSq = HARTHMERE_JOBS_BOARD_FIELD_COMPLETION_RADIUS ** 2;
+  const acceptedAtMs = input.job.acceptedAtMs ?? input.job.createdAtMs ?? 0;
+  const hasFieldTargetReceipt = (candidate: string) => {
+    const target = harthmereJobsBoardFieldTargetForId(candidate);
+    if (!target) return false;
+    for (const key of [target.targetId, target.mapMarkerId]) {
+      const receipt = input.worldInteractions?.[key];
+      if (receipt && (receipt.lastAtMs ?? 0) >= acceptedAtMs) {
+        return true;
+      }
+    }
+    return false;
+  };
   const authoredFieldMarker = harthmereJobsBoardQuestMarkerRuntimePositionForId(
     input.job.mapMarkerId ?? input.job.targetId
   );
@@ -5644,6 +5799,23 @@ export function nativeJobsBoardObservedTargetIdsForTest(input: {
       candidates.add(
         `${HARTHMERE_BUSINESS_OWNER_MARKER_PREFIX}${requirement.recipientNpcId}`
       );
+    }
+    // A registered field target must be USED, not merely stood next to. Any
+    // other candidate keeps the legacy proximity proof.
+    const requiresReceipt = [...candidates].some((candidate) =>
+      isHarthmereJobsBoardFieldTargetId(candidate)
+    );
+    if (requiresReceipt) {
+      for (const candidate of candidates) {
+        if (!isHarthmereJobsBoardFieldTargetId(candidate)) {
+          continue;
+        }
+        if (hasFieldTargetReceipt(candidate)) {
+          observed.add(candidate);
+          if (requirement.targetId) observed.add(requirement.targetId);
+        }
+      }
+      continue;
     }
     // Some authored creature/service targets deliberately point the player at
     // a shared field-area marker rather than publishing every spawned entity's
@@ -7434,8 +7606,11 @@ export function createHarthmereLiveModeSharedWorldState(
     sharedAuthoritySchemaVersion: 2,
     worldId: HARTHMERE_LIVE_MODE_SHARED_WORLD_ID,
     updatedAtMs: nowMs,
-    economyProduction: normalizeHarthmereProductionEconomyState(
-      state.economy.production
+    // Derived procedural outpost buildings are re-injected by
+    // normalizeHarthmereProductionEconomyState on read, so they are stripped
+    // here instead of being written to Redis on every shared-world update.
+    economyProduction: harthmereEconomyProductionForPersistence(
+      normalizeHarthmereProductionEconomyState(state.economy.production)
     ),
     jobsBoard: normalizeHarthmereJobsBoardState(state.jobsBoard, nowMs),
     inventoryLootWorld: {
@@ -8530,7 +8705,8 @@ export function reduceHarthmereLiveModeBackendState(
   state: HarthmereLiveModeBackendState;
   summary: HarthmereLiveModeBackendMutationSummary;
 } {
-  const next: HarthmereLiveModeBackendState = JSON.parse(JSON.stringify(state));
+  const next: HarthmereLiveModeBackendState =
+    cloneHarthmereLiveModeBackendState(state);
   next.updatedAtMs = nowMs;
   const touchedModels = new Set<string>();
   const sharedStateKeys = new Set<string>();
@@ -13287,7 +13463,10 @@ export function reduceHarthmereLiveModeBackendState(
                 : undefined,
               actorPosition,
               killedEntityAtMs: envelope.serverActorKilledEntityAtMs,
+              worldInteractions: next.careLoops.worldInteractions,
             }),
+          authoritativeServiceProgressCounts:
+            nativeJobsBoardServiceProgressCounts(next),
           nearbyBoardId,
           economy: next.economy.production,
           canManageBusinessJobs: (business: any) =>

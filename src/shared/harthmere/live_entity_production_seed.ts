@@ -137,6 +137,16 @@ export interface HarthmereLiveEntityProductionSeed {
    */
   authoredMuckPack?: boolean;
   /**
+   * HARTHMERE_QUEST_GUARANTEED_DROP: original-snapshot Bikkie items this
+   * creature always drops, on top of its family loot. See the identically
+   * named field on `HarthmereNativeCombatSeedLike` for why these are BiomesIds
+   * rather than Harthmere item slugs.
+   */
+  questDropBikkieItems?: ReadonlyArray<{
+    bikkieItemId: BiomesId;
+    count: number;
+  }>;
+  /**
    * HARTHMERE_CREATURE_LEVELING: authored PER-ENTITY progression level.
    *
    * Deliberately separate from `combatLevel`. `combatLevel` selects which shared
@@ -383,14 +393,15 @@ export const HARTHMERE_LIVE_ENTITY_ROBOT_SENTINEL_SEEDS =
 // 140 originally; +36 on 2026-07-26 for the six scattered mixed encounters
 // (five Muckers and one Hex each); +24 on 2026-07-27 for the four Road to
 // Harthmere groups (two Hexes and four Mucklings each); +6 on 2026-07-28 for the
-// named Mossy Muckling hunt pack. This is a checked-in bookkeeping figure that
+// named Mossy Muckling hunt pack; +6 on 2026-07-29 for the Cobbled Muckling
+// tooth-drop pack. This is a checked-in bookkeeping figure that
 // several tests assert against, so it has to move whenever a monster layout is
 // added or removed.
 //
 // The 2026-07-28 Muck pack relocation deliberately does NOT change this figure:
 // the three re-homed families keep their exact counts, ids and names and are
 // only split across more anchors.
-export const HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_PRODUCTION_COUNT = 206;
+export const HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_PRODUCTION_COUNT = 212;
 
 export interface HarthmereGuardedWildlifeLocation {
   areaId: string;
@@ -666,6 +677,16 @@ interface HarthmereMuckMonsterSeedLayout {
    */
   authoredPositions?: readonly ReadonlyVec3[];
   authoredMuckPack?: boolean;
+  /**
+   * HARTHMERE_QUEST_GUARANTEED_DROP: original-snapshot Bikkie items every
+   * member of this pack drops on death, in addition to its family loot. Used
+   * where a snapshot quest checks `inventoryHas` for an item the restored world
+   * has no other source of.
+   */
+  questDropBikkieItems?: ReadonlyArray<{
+    bikkieItemId: BiomesId;
+    count: number;
+  }>;
 }
 
 // HARTHMERE_WATCHTOWER_MUCKLING_PACK (2026-07-28)
@@ -885,6 +906,61 @@ export const HARTHMERE_MOSSY_MUCKLING_FIRST_OFFSET = 10951;
 export const HARTHMERE_MOSSY_MUCKLING_ANCHOR: ReadonlyVec3 = [531, 68, -33];
 export const HARTHMERE_MOSSY_MUCKLING_RADIUS = 4;
 
+// HARTHMERE_COBBLED_MUCKLING_HUNT (2026-07-29)
+//
+// "In Storage" (snapshot quest 1543579399492851) opens with Ol' Coop telling
+// the player that *Cobbled Mucklings* stormed down from Muckerhorn and wrecked
+// his storage, then asks for six **Mucker Teeth** from them. The objective is
+// an `inventoryHas` leaf, so — unlike "Nuthin' to Muck With", which is a kill
+// count and is already served by the type aliases in
+// `native_combat_quest_routing.ts` — no amount of kill-id aliasing can satisfy
+// it. Nothing in the restored world drops a Mucker Tooth at all, and no
+// creature carries the name the dialogue uses. The quest is unfinishable.
+//
+// The repair follows HARTHMERE_MOSSY_MUCKLING_HUNT exactly: a real, named,
+// six-strong "Cobbled Muckling" pack of its own, with a guaranteed Mucker Tooth
+// drop, so six kills yield exactly the six teeth the leaf asks for.
+//
+// Grounding: these six columns are the positions the ORIGINAL May 2026 snapshot
+// placed Cobbled Muckling entities on (source entities 7730989858431516,
+// 4798878097356869, 7316152894825690, 3830695482962746, 4547357347013313 and
+// 8158919683013070) — the Muckerhorn slope 70–85 blocks west-north-west of
+// Ol' Coop at [190.7, 80, 94.7], on the way up to Lauriel and the mine. Because
+// each member keeps its own measured Y, the pack follows the slope instead of
+// inheriting one centre Y across eleven voxels of relief; `authoredMuckPack`
+// stops the in-area re-roll from throwing that measurement away.
+//
+// Placement, all asserted in `native_post_gimme_world.test.ts`: every column is
+// outside every safe zone, Muck containment area, business safe site, authored
+// building plot and robot-protected area; west of
+// HARTHMERE_ORIGINAL_WORLD_EAST_EDGE_X so it cannot land in the additive
+// Harthmere town; and more than
+// HARTHMERE_SCATTERED_MIXED_GROUP_MIN_CREATURE_DISTANCE from any other seeded
+// creature, so the pack is never buried in a crowd the way the pre-relocation
+// Watchtower pile-up was.
+export const HARTHMERE_COBBLED_MUCKLING_AREA_ID = "muckerhorn_cobbled_slope";
+export const HARTHMERE_COBBLED_MUCKLING_AREA_LABEL = "Muckerhorn Cobbled Slope";
+export const HARTHMERE_COBBLED_MUCKLING_NAME = "Cobbled Muckling";
+export const HARTHMERE_COBBLED_MUCKLING_FIRST_OFFSET = 10961;
+export const HARTHMERE_COBBLED_MUCKLING_ANCHOR: ReadonlyVec3 = [
+  115.5, 73, 121.5,
+];
+/** Snapshot Bikkie id of Mucker Tooth; the only item In Storage accepts. */
+export const HARTHMERE_MUCKER_TOOTH_BIKKIE_ITEM_ID =
+  1534621126189454 as BiomesId;
+/** Six members, one guaranteed tooth each, six teeth required. */
+export const HARTHMERE_COBBLED_MUCKLING_AUTHORED_POSITIONS: readonly ReadonlyVec3[] =
+  [
+    [115.5, 73, 121.5],
+    [120.5, 76, 122.5],
+    [112.5, 72, 122.5],
+    [109.5, 71, 121.5],
+    [110.0, 69, 117.5],
+    [127.5, 80, 125.5],
+  ] as const;
+export const HARTHMERE_COBBLED_MUCKLING_COUNT =
+  HARTHMERE_COBBLED_MUCKLING_AUTHORED_POSITIONS.length;
+
 const HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_LAYOUTS: readonly HarthmereMuckMonsterSeedLayout[] =
   [
     {
@@ -954,6 +1030,27 @@ const HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_LAYOUTS: readonly HarthmereMuckMonsterS
       hexerName: HARTHMERE_MOSSY_MUCKLING_NAME,
       hexEvery: 0,
       relocatedToWilds: true,
+    },
+    // HARTHMERE_COBBLED_MUCKLING_HUNT: the named pack "In Storage" asks for.
+    // Authored (not relocated) because every column is an individually measured
+    // snapshot surface; `authoredMuckPack` keeps each member's own Y.
+    {
+      areaId: HARTHMERE_COBBLED_MUCKLING_AREA_ID,
+      areaLabel: HARTHMERE_COBBLED_MUCKLING_AREA_LABEL,
+      count: HARTHMERE_COBBLED_MUCKLING_COUNT,
+      center: HARTHMERE_COBBLED_MUCKLING_ANCHOR,
+      radius: 8,
+      firstOffset: HARTHMERE_COBBLED_MUCKLING_FIRST_OFFSET,
+      muckerName: HARTHMERE_COBBLED_MUCKLING_NAME,
+      // A six-kill, six-tooth contract must not hide a Hexer in the count.
+      hexerName: HARTHMERE_COBBLED_MUCKLING_NAME,
+      hexEvery: 0,
+      authoredPositions: HARTHMERE_COBBLED_MUCKLING_AUTHORED_POSITIONS,
+      authoredMuckPack: true,
+      relocatedToWilds: true,
+      questDropBikkieItems: [
+        { bikkieItemId: HARTHMERE_MUCKER_TOOTH_BIKKIE_ITEM_ID, count: 1 },
+      ],
     },
     {
       areaId: "gravewood_pale_muck",
@@ -1087,6 +1184,7 @@ const HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SOURCE_SEEDS =
         bountyTier,
         wildsRelocatedPack: layout.relocatedToWilds === true,
         authoredMuckPack: layout.authoredMuckPack === true,
+        questDropBikkieItems: layout.questDropBikkieItems,
       };
     })
   );
@@ -1107,6 +1205,7 @@ export const HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS: HarthmereLiveEntityProduc
         bountyTier: seed.bountyTier,
         wildsRelocatedPack: seed.wildsRelocatedPack || undefined,
         authoredMuckPack: seed.authoredMuckPack || undefined,
+        questDropBikkieItems: seed.questDropBikkieItems,
         orientation: [0, 0] as Vec2,
         dialog: monsterDialog(seed.areaLabel)
           .map((line) => `<text>${line}</text>`)

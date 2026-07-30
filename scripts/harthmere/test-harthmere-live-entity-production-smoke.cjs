@@ -115,7 +115,7 @@ async function main() {
   check(
     HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS.length ===
       HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_PRODUCTION_COUNT,
-    "production has exactly 140 ambient Muck/Hex hostile seeds"
+    `production has exactly ${HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_PRODUCTION_COUNT} ambient Muck/Hex hostile seeds`
   );
   check(
     HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS.some(

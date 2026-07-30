@@ -28,8 +28,12 @@ import {
   type HarthmereBibleNativeSnapshot,
 } from "../bible_quest_live_authority";
 import { bibleQuest } from "../bible/bible_quest_catalog";
-import { bibleNativeQuestId, bibleNativeStepId } from "../bible/bible_quest_ids";
+import {
+  bibleNativeQuestId,
+  bibleNativeStepId,
+} from "../bible/bible_quest_ids";
 import { bibleStepWorldWaypoint } from "../bible/bible_waypoints";
+import { createThaedrynBossState } from "../thaedryn_boss";
 
 const NOW = Date.UTC(2026, 6, 27, 12, 0, 0);
 const Q1 = bibleQuest("bellbound_q01_cracks_in_bridge")!;
@@ -37,7 +41,12 @@ const Q1 = bibleQuest("bellbound_q01_cracks_in_bridge")!;
 function native(
   overrides: Partial<HarthmereBibleNativeSnapshot> = {}
 ): HarthmereBibleNativeSnapshot {
-  return { inProgress: false, completed: false, firedStepIds: [], ...overrides };
+  return {
+    inProgress: false,
+    completed: false,
+    firedStepIds: [],
+    ...overrides,
+  };
 }
 
 function reduce(overrides: Record<string, unknown>) {
@@ -278,6 +287,46 @@ describe("Bible reducer — retired operations", () => {
     const result = reduce({ operation: "bible_quest_retry", questId: Q1.id });
     assert.equal(result.ok, false);
     assert(result.warnings.some((w) => w.includes("unknown_operation")));
+  });
+});
+
+describe("Bible reducer — Thaedryn path rewards", () => {
+  it("grants the selected path once without restoring a reward ledger", () => {
+    const slice = defaultHarthmereBibleQuestLiveSlice();
+    slice.thaedryn = {
+      ...createThaedrynBossState("solo_story"),
+      chainsRemaining: 0,
+      healthPct: 0,
+      chosenPath: "slay",
+    };
+    const result = reduce({
+      slice,
+      operation: "bible_quest_boss_event",
+      questId: HARTHMERE_BIBLE_DRAGON_QUEST_ID,
+      bossEventType: "resolve",
+      native: native({ inProgress: true }),
+    });
+
+    assert.equal(result.ok, true);
+    assert.equal(result.rewards?.xpDelta, 1200);
+    assert.equal(result.rewards?.goldDelta, 650);
+    assert.deepEqual(
+      result.rewards?.items.map((item) => item.itemId),
+      ["thaedryn_s_tooth", "bronze_scale_trophy"]
+    );
+    assert(result.slice.titles.includes("Wyrm-Slayer"));
+    assert(result.slice.flags.includes("murvath_omen"));
+    assert.equal((result.slice as any).grantedRewardIds, undefined);
+
+    const duplicate = reduce({
+      slice: result.slice,
+      operation: "bible_quest_boss_event",
+      questId: HARTHMERE_BIBLE_DRAGON_QUEST_ID,
+      bossEventType: "resolve",
+      native: native({ inProgress: true }),
+    });
+    assert.equal(duplicate.ok, true);
+    assert.equal(duplicate.rewards, undefined);
   });
 });
 

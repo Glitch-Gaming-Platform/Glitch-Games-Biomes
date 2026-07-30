@@ -151,8 +151,35 @@ interface HarthmereJobItemSourceDefinition {
   hint: (itemName: string, missingCount: number) => string;
 }
 
+// Material names are quantities rather than individual nouns. They should not
+// acquire a synthetic plural when a requirement asks for more than one unit.
+const HARTHMERE_UNCOUNTABLE_JOB_ITEM_NAMES = new Set([
+  "Clean Water",
+  "Iron Ore",
+  "Mixed Waste",
+  "Portal Fuel",
+  "Raw Exotic Matter",
+  "Tree Resin",
+  "Wild Meat",
+]);
+
 function pluralItem(itemName: string, count: number) {
-  return count === 1 ? itemName : `${itemName}s`;
+  if (count === 1) return itemName;
+  // Some item display names are already plural. Keep those natural instead of
+  // producing copy such as "Clean Waters", "Tree Resins", or "Wild Berriess".
+  if (
+    HARTHMERE_UNCOUNTABLE_JOB_ITEM_NAMES.has(itemName) ||
+    /s$/i.test(itemName)
+  ) {
+    return itemName;
+  }
+  if (/[^aeiou]y$/i.test(itemName)) {
+    return `${itemName.slice(0, -1)}ies`;
+  }
+  if (/(?:s|x|z|ch|sh)$/i.test(itemName)) {
+    return `${itemName}es`;
+  }
+  return `${itemName}s`;
 }
 
 function displayNameForItemId(itemId: string) {
@@ -291,10 +318,98 @@ const HARTHMERE_JOB_ITEM_SOURCE_DEFINITIONS: Record<
     sourceName: "Hingehall Repair Shop",
     markerId: "harthmere_owner:npc_outpost_hingehall_fixer",
     hint: (itemName, missing) =>
-      `Buy or craft ${missing} ${pluralItem(
+      `Buy ${missing} ${pluralItem(
         itemName,
         missing
-      )} through Hingehall Repair Shop before returning to the job.`,
+      )} from Hingehall Repair Shop, or craft them at a workbench from 1 Iron Ingot + 1 Wood Plank (makes 2).`,
+  },
+  crop_bundle: {
+    sourceKind: "gather",
+    sourceName: "Farm Crop Row",
+    markerId: "harthmere_farm_crops",
+    markerPosition: gatheringNodePosition("harthmere_farm_crops"),
+    hint: (itemName, missing) =>
+      `Harvest ${missing} ${pluralItem(
+        itemName,
+        missing
+      )} at the Farm Crop Row, buy them from the rare-foods farm, or bundle 2 Field Wheat + 1 Fresh Carrot in a kitchen.`,
+  },
+  herb_bundle: {
+    sourceKind: "gather",
+    sourceName: "Temple Peacebloom Bed",
+    markerId: "harthmere_temple_peacebloom",
+    markerPosition: gatheringNodePosition("harthmere_temple_peacebloom"),
+    hint: (itemName, missing) =>
+      `Cut ${missing} ${pluralItem(
+        itemName,
+        missing
+      )} at the Temple Peacebloom Bed, buy them from the clinic, or bundle 2 Peacebloom + 1 Willow Bark.`,
+  },
+  linen_bundle: {
+    sourceKind: "craft",
+    sourceName: "Tailoring Booth",
+    markerId: "harthmere_owner:npc_outpost_lanternrest_host",
+    hint: (itemName, missing) =>
+      `Weave ${missing} ${pluralItem(
+        itemName,
+        missing
+      )} from 2 Linen Cloth at a tailoring booth, or buy them from the shelter.`,
+  },
+  wild_meat: {
+    sourceKind: "gather",
+    sourceName: "Hunting Grounds",
+    markerId: "boar_sounder_harvest",
+    markerPosition: gatheringNodePosition("boar_sounder_harvest"),
+    hint: (itemName, missing) =>
+      `Harvest ${missing} ${pluralItem(
+        itemName,
+        missing
+      )} at the Boar Sounder Harvest or the Deer Hunting Trail (skinning knife required), or buy it from the hunter.`,
+  },
+  // Exotic-matter chain items: the refinery / portal / teleport / magic jobs all
+  // ask for these, and none of them had acquisition guidance, so the player got
+  // the generic "gathering, crafting, vendors, or loot" non-answer.
+  raw_exotic_matter: {
+    sourceKind: "gather",
+    sourceName: "Old Well Essence Seep",
+    markerId: "harthmere_old_well_essence",
+    markerPosition: gatheringNodePosition("harthmere_old_well_essence"),
+    hint: (itemName, missing) =>
+      `Draw ${missing} ${pluralItem(
+        itemName,
+        missing
+      )} at the Old Well essence seep or a marked exotic-matter deposit, then bring it to the refinery.`,
+  },
+  portal_fuel: {
+    sourceKind: "craft",
+    sourceName: "Ashline Refinery",
+    markerId: "harthmere_owner:npc_outpost_ashline_foreman",
+    hint: (itemName, missing) =>
+      `Refine ${missing} ${pluralItem(
+        itemName,
+        missing
+      )} at a thermoblaster from a Power Cell + Coolant + Containment Filter, or buy it at the Ashline refinery.`,
+  },
+  destination_crystal: {
+    sourceKind: "craft",
+    sourceName: "Returnstone Pads",
+    markerId: "harthmere_owner:npc_outpost_returnstone_keeper",
+    hint: (itemName, missing) =>
+      `Grow ${missing} ${pluralItem(
+        itemName,
+        missing
+      )} at a thermoblaster from a Stabilizing Crystal + Stabilized Exotic Matter + 2 Crystal Shards, or buy one at the teleport office.`,
+  },
+  relic_fragment: {
+    sourceKind: "loot",
+    sourceName: "Chapel Relic Dig",
+    markerId: "harthmere_chapel_relic_dig",
+    markerPosition: gatheringNodePosition("harthmere_chapel_relic_dig"),
+    hint: (itemName, missing) =>
+      `Dig ${missing} ${pluralItem(
+        itemName,
+        missing
+      )} at the Chapel Relic Dig, or recover them from the marked safe ruin cache.`,
   },
   field_medkit: {
     sourceKind: "vendor",
@@ -328,13 +443,14 @@ const HARTHMERE_JOB_ITEM_SOURCE_DEFINITIONS: Record<
   },
   mixed_waste: {
     sourceKind: "gather",
-    sourceName: "Cleanup Yards",
-    markerId: "harthmere_owner:npc_outpost_clearbarrel_boss",
+    sourceName: "Mudden Ward Scrap Pile",
+    markerId: "harthmere_mudden_scrap",
+    markerPosition: gatheringNodePosition("harthmere_mudden_scrap"),
     hint: (itemName, missing) =>
-      `Collect ${missing} ${pluralItem(
+      `Scavenge ${missing} ${pluralItem(
         itemName,
         missing
-      )} through cleanup work, or ask Clearbarrel Depot for sanitation work.`,
+      )} at the Mudden Ward Scrap Pile (scavenger hook required).`,
   },
 };
 
@@ -611,13 +727,14 @@ export function harthmereJobMarkerPlan(input: {
     const req = firstItemRequirement(input.requirements);
     const required = requiredCount(req);
     const have = Math.max(0, Math.floor(progress.gatheredCount ?? 0));
+    const itemName = req?.itemId
+      ? pluralItem(displayNameForItemId(req.itemId), required)
+      : "materials";
     if (have >= required) {
       // Distinct messaging for the "already had them" shortcut so it is obvious
       // and never looks like the job auto-completed by mistake.
       const hint = progress.satisfiedOnAccept
-        ? `You already have ${required} ${
-            req?.itemId ?? "materials"
-          } — no gathering needed. Return to the jobs board to hand them in.`
+        ? `You already have ${required} ${itemName} — no gathering needed. Return to the jobs board to hand them in.`
         : `Gathered ${required}/${required}. Return to the jobs board to hand them in.`;
       return boardPhase(kind, board, hint, {
         requiredCount: required,
@@ -630,9 +747,7 @@ export function harthmereJobMarkerPlan(input: {
       activeMarkerId: req?.mapMarkerId ?? fieldMarker,
       boardMarkerId: board,
       objectiveMet: false,
-      hint: `Gather ${have}/${required} ${
-        req?.itemId ?? "materials"
-      } at the marked spot.`,
+      hint: `Gather ${have}/${required} ${itemName} at the marked spot.`,
       requiredCount: required,
       currentCount: have,
     };

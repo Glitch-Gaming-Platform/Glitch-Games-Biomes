@@ -101,7 +101,8 @@ materialize_connector_route() {
   # The connector is the final authored terrain writer so later town work
   # cannot bury or cut the protected player route.
   log "START protected Grove-to-Harthmere connector"
-  SCAN_COUNT="${HARTHMERE_CONNECTOR_ROUTE_SCAN_COUNT:-5000}" \
+  APPLY=1 \
+    SCAN_COUNT="${HARTHMERE_CONNECTOR_ROUTE_SCAN_COUNT:-5000}" \
     APPLY_SHARD_BATCH_SIZE="${HARTHMERE_CONNECTOR_ROUTE_APPLY_SHARD_BATCH_SIZE:-4}" \
     node scripts/harthmere/materialize-harthmere-connector-route.cjs
   log "PASS protected Grove-to-Harthmere connector"

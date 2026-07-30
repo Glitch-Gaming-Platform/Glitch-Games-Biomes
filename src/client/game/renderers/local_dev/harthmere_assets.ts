@@ -116,6 +116,7 @@ import { MTLLoader } from "three/examples/jsm/loaders/MTLLoader";
 import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader";
 import { clone as cloneSkeleton } from "three/examples/jsm/utils/SkeletonUtils";
 import { loadGltf } from "@/client/game/util/gltf_helpers";
+import { resolveAssetUrlUntyped } from "@/galois/interface/asset_paths";
 import { HARTHMERE_MAIN_QUEST_SPACES } from "../../../../shared/harthmere/main_quest_spaces";
 import {
   HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS,
@@ -1925,6 +1926,12 @@ const CH1_DUNGEON_DECOR_RUNTIME_ASSETS: RuntimeAsset[] = [
 // plus the best older OBJ props. Do not load the whole asset library; the full
 // library is too noisy for a playable town pass.
 const ASSETS: RuntimeAsset[] = [
+  {
+    key: "native_helping_robot",
+    format: "gltf",
+    path: resolveAssetUrlUntyped("npcs/helping_robot"),
+    defaultScale: 1,
+  },
   // Market, exterior, and district readability.
   gltf("stall", "glb/props/market/stall.glb", 0.95),
   gltf("stall_red", "glb/props/market/stall-red.glb", 0.95),
@@ -11309,7 +11316,7 @@ const PLACEMENTS: RuntimePlacement[] = [
   // hit, and death clips do not depend on fuzzy name matching.
   ...LIVE_ENTITY_ROBOT_PROTECTION_AREAS.map((area, index) =>
     A(
-      "townsperson_guard",
+      "native_helping_robot",
       area.anchor[0],
       area.anchor[2],
       Math.PI / 2,
@@ -23487,7 +23494,11 @@ function isProceduralTownspersonKey(key: string) {
 }
 
 function isProceduralLifeKey(key: string) {
-  return isProceduralAnimalKey(key) || isProceduralTownspersonKey(key);
+  return (
+    isProceduralAnimalKey(key) ||
+    isProceduralTownspersonKey(key) ||
+    key === "native_helping_robot"
+  );
 }
 
 let harthmereRuntimeToonGradientMap: THREE.DataTexture | undefined;
@@ -33732,7 +33743,7 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
         eagerRobotAdded += 1;
       }
     }
-    if (eagerRobotPlacements.length > 0) {
+    if (eagerRobotAdded > 0) {
       this.ready = true;
     }
     const debugWindowForEagerRobots = harthmereRendererDebugWindow();
@@ -33797,9 +33808,6 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
         );
       }
       placementsStarted += 1;
-      if (authoredPlacement.robotProtectionAreaId) {
-        continue;
-      }
       // HARTHMERE_ECS_CREATURE_RENDER: ECS-only static suppression is now
       // opt-in. In production embed sessions the ECS bridge can briefly be empty
       // or stale, and default suppression made creatures flicker or disappear

@@ -293,6 +293,22 @@ export class Input<ActionsAndMotions extends string> {
     return motion.fixed + motion.delta + synthetic;
   }
 
+  syntheticMotion(name: ActionsAndMotions, source: string) {
+    return this.synthetic_motions.get(name)?.get(source) ?? 0;
+  }
+
+  motionWithoutSyntheticSource(name: ActionsAndMotions, source: string) {
+    const motion = this.motions.get(name)!;
+    const synthetic = [
+      ...(this.synthetic_motions.get(name)?.entries() ?? []),
+    ].reduce(
+      (sum, [candidateSource, value]) =>
+        candidateSource === source ? sum : sum + value,
+      0
+    );
+    return motion.fixed + motion.delta + synthetic;
+  }
+
   /**
    * Set or clear a named synthetic motion source. Sources are independent, so
    * releasing a hotbar button cannot cancel a physical mouse button or another

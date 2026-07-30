@@ -21,12 +21,13 @@ import {
   HARTHMERE_THAEDRYN_MAX_HP,
   harthmereThaedrynArenaWorldAnchor,
 } from "../bible_quest_live_authority";
+import { BIBLE_QUEST_CATALOG, bibleQuest } from "../bible/bible_quest_catalog";
+import type {
+  BibleQuestDef,
+  BibleQuestStep,
+} from "../bible/bible_quest_schema";
+import { bibleStepWorldWaypoint } from "../bible/bible_waypoints";
 import { getHarthmereItemDefinition } from "../mmo_inventory_authority";
-import {
-  HARTHMERE_QUEST_CATALOG,
-  getHarthmereQuestById,
-} from "../quest_compendium";
-import { getHarthmereQuestResolvedWaypoint } from "../quest_runtime";
 import type { HarthmereLiveModeAuthorityEnvelope } from "../live_mode_readiness";
 
 const ACTOR = "player_bible_quests";
@@ -79,11 +80,16 @@ function reduce(
   );
 }
 
-/** Actor position standing exactly on an objective's resolved waypoint. */
-function positionOnObjective(questId: string, objective: any) {
-  const waypoint = getHarthmereQuestResolvedWaypoint(questId, objective);
-  assert.ok(waypoint, `objective ${objective?.id} must resolve a waypoint`);
-  return { x: waypoint![0], y: waypoint![1], z: waypoint![2] };
+function requiredQuest(questId: string): BibleQuestDef {
+  const quest = bibleQuest(questId);
+  assert.ok(quest, `quest ${questId} must exist`);
+  return quest;
+}
+
+/** Actor position standing exactly on a step's grounded world waypoint. */
+function positionOnStep(quest: BibleQuestDef, step: BibleQuestStep) {
+  const waypoint = bibleStepWorldWaypoint(quest, step);
+  return { x: waypoint[0], y: waypoint[1], z: waypoint[2] };
 }
 
 /** Drive a quest from accept to ready_to_complete via real mutations. */
@@ -95,25 +101,24 @@ function acceptAndFinishObjectives(
     operation: "bible_quest_accept",
     questId,
   }).state;
-  const quest = getHarthmereQuestById(questId) as any;
-  for (const objective of quest.objectives) {
+  const quest = requiredQuest(questId);
+  for (const step of quest.steps) {
     const reduced = reduce(
       current,
       {
         operation: "bible_quest_advance",
         questId,
-        objectiveId: objective.id,
-        choice: objective.type === "choice" ? "integration_choice" : undefined,
-        combatResult:
-          objective.type === "combat" ? "encounter_cleared" : undefined,
+        objectiveId: step.id,
+        choice: step.type === "choice" ? "integration_choice" : undefined,
+        combatResult: step.type === "combat" ? "encounter_cleared" : undefined,
       },
-      { serverActorPosition: positionOnObjective(questId, objective) }
+      { serverActorPosition: positionOnStep(quest, step) }
     );
     assert.ok(
       !reduced.summary.warnings.some((w: string) =>
         w.startsWith("bible_quest_rejected")
       ),
-      `advance ${objective.id}: ${reduced.summary.warnings.join(",")}`
+      `advance ${step.id}: ${reduced.summary.warnings.join(",")}`
     );
     current = reduced.state;
   }
@@ -132,7 +137,14 @@ describe("Harthmere live-mode bible quest wiring", () => {
     assert.equal(active.source, "bible_catalog");
     assert.equal(active.title, "Cracks in the Bridge");
     assert.ok(active.giverPosition, "journal mirror needs a map position");
-    assert.equal(reduced.state.quests.bible.runtime[Q1].state, "active");
+    assert.equal(active.stepId, requiredQuest(Q1).steps[0].id);
+    assert.equal(active.progress, 0);
+    assert.equal(
+      (reduced.state.quests.bible as unknown as Record<string, unknown>)
+        .runtime,
+      undefined,
+      "the retired Redis quest runtime must not be recreated"
+    );
   });
 
   it("rejects advancing an objective from across the map (distance rule)", () => {
@@ -141,13 +153,14 @@ describe("Harthmere live-mode bible quest wiring", () => {
       operation: "bible_quest_accept",
       questId: Q1,
     }).state;
-    const quest = getHarthmereQuestById(Q1) as any;
+    const quest = requiredQuest(Q1);
+    const step = quest.steps[0];
     const reduced = reduce(
       state,
       {
         operation: "bible_quest_advance",
         questId: Q1,
-        objectiveId: quest.objectives[0].id,
+        objectiveId: step.id,
       },
       // 10km away — far beyond the talk-objective 5m limit.
       { serverActorPosition: { x: 99_999, y: 0, z: 99_999 } }
@@ -158,12 +171,8 @@ describe("Harthmere live-mode bible quest wiring", () => {
       ),
       reduced.summary.warnings.join(",")
     );
-    assert.equal(
-      reduced.state.quests.bible.runtime[Q1].objectiveProgress[
-        quest.objectives[0].id
-      ].completed,
-      false
-    );
+    assert.equal(reduced.state.quests.active[Q1]?.stepId, step.id);
+    assert.equal(reduced.state.quests.active[Q1]?.progress, 0);
   });
 
   it("grants collection proof into the canonical live inventory", () => {
@@ -174,18 +183,18 @@ describe("Harthmere live-mode bible quest wiring", () => {
       operation: "bible_quest_accept",
       questId,
     }).state;
-    const quest = getHarthmereQuestById(questId) as any;
-    const objective = quest.objectives[0];
-    const proofItemId = `quest_objective_item:${questId}:${objective.id}`;
+    const quest = requiredQuest(questId);
+    const step = quest.steps[0];
+    const proofItemId = `quest_objective_item:${questId}:${step.id}`;
 
     const advanced = reduce(
       state,
       {
         operation: "bible_quest_advance",
         questId,
-        objectiveId: objective.id,
+        objectiveId: step.id,
       },
-      { serverActorPosition: positionOnObjective(questId, objective) }
+      { serverActorPosition: positionOnStep(quest, step) }
     );
     assert.equal(advanced.state.inventory.items[proofItemId], 1);
     assert.equal(
@@ -197,7 +206,8 @@ describe("Harthmere live-mode bible quest wiring", () => {
 
   it("completes Q1: grants xp + gold, registers reward item definitions", () => {
     const ready = acceptAndFinishObjectives(leveledState(), Q1);
-    assert.equal(ready.quests.bible.runtime[Q1].state, "ready_to_complete");
+    assert.equal(ready.quests.active[Q1]?.stepId, undefined);
+    assert.equal(ready.quests.active[Q1]?.progress, 1);
     const goldBefore = ready.inventory.gold;
     const xpBefore = ready.classMagic.skills["character_level"]?.xp ?? 0;
     const done = reduce(ready, {
@@ -210,10 +220,10 @@ describe("Harthmere live-mode bible quest wiring", () => {
       ),
       done.summary.warnings.join(",")
     );
-    assert.equal(done.state.quests.bible.runtime[Q1].state, "completed");
     assert.ok(done.state.quests.completed[Q1], "completion must mirror");
     assert.equal(done.state.quests.active[Q1], undefined);
-    const quest = getHarthmereQuestById(Q1) as any;
+    assert.equal(done.state.quests.bible.lastCompletedAtMs[Q1], NOW_MS);
+    const quest = requiredQuest(Q1);
     if (quest.rewards.silver > 0) {
       assert.ok(done.state.inventory.gold > goldBefore, "gold must grant");
     }
@@ -242,9 +252,10 @@ describe("Harthmere live-mode bible quest wiring", () => {
   });
 
   it("keeps the prerequisite chain: a quest gated on Q1 unlocks after it", () => {
-    const dependent = (HARTHMERE_QUEST_CATALOG as readonly any[]).find(
+    const dependent = BIBLE_QUEST_CATALOG.find(
       (quest) =>
-        (quest.activeRules?.prerequisiteQuestIds ?? []).includes(Q1) &&
+        quest.start.kind === "after" &&
+        quest.start.questId === Q1 &&
         !quest.hidden
     );
     assert.ok(dependent, "catalog must chain something off Q1");
@@ -275,17 +286,17 @@ describe("Harthmere live-mode bible quest wiring", () => {
       unlocked.summary.warnings.join(",")
     );
     assert.equal(
-      unlocked.state.quests.bible.runtime[dependent.id]?.state,
-      "active"
+      unlocked.state.quests.active[dependent.id]?.stepId,
+      dependent.steps[0]?.id
     );
   });
 
   describe("thaedryn encounter through the combat loop", () => {
     function q12ActiveState(): HarthmereLiveModeBackendState {
       let state = leveledState();
-      // Complete every main-chain prerequisite through the real slice (the
-      // reducer unions slice completions into prerequisite checks).
-      for (const quest of HARTHMERE_QUEST_CATALOG as readonly any[]) {
+      // Complete every main-chain prerequisite in the journal mirror consumed
+      // by the typed gate.
+      for (const quest of BIBLE_QUEST_CATALOG) {
         if (
           quest.category === "main" &&
           quest.id !== HARTHMERE_BIBLE_DRAGON_QUEST_ID
@@ -368,6 +379,7 @@ describe("Harthmere live-mode bible quest wiring", () => {
       const boss = (payload: Record<string, unknown>) => {
         const reduced = reduce(state, {
           operation: "bible_quest_boss_event",
+          questId: HARTHMERE_BIBLE_DRAGON_QUEST_ID,
           ...payload,
         });
         assert.ok(
@@ -390,8 +402,12 @@ describe("Harthmere live-mode bible quest wiring", () => {
         "slay trophy must land in inventory"
       );
       assert.equal(
-        state.quests.bible.runtime[HARTHMERE_BIBLE_DRAGON_QUEST_ID].state,
-        "ready_to_complete"
+        state.quests.active[HARTHMERE_BIBLE_DRAGON_QUEST_ID]?.stepId,
+        undefined
+      );
+      assert.equal(
+        state.quests.active[HARTHMERE_BIBLE_DRAGON_QUEST_ID]?.progress,
+        1
       );
       // Turn in Q12: quest rewards on top, boss snapshot removed.
       const done = reduce(state, {

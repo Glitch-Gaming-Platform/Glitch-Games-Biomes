@@ -329,8 +329,8 @@ export const CursorInspectionComponent: React.FunctionComponent<
               }
               onKeyDown={shortcut.onKeyDown}
               worldInteractionCandidateId={
-                i === 0 && overlay
-                  ? `native:${overlay.kind}:${maybeEntityId}`
+                overlay
+                  ? `native:${overlay.kind}:${maybeEntityId}:${i}`
                   : undefined
               }
             >

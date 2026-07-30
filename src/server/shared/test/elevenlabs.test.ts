@@ -3,6 +3,7 @@ import {
   ELEVENLABS_DEFAULT_OUTPUT_FORMAT,
   clearElevenLabsVoiceCacheForTest,
   elevenLabsDeliveryTextForTest,
+  elevenLabsKnownVoiceGenderForTest,
   elevenLabsNaturalVoiceSettingsForTest,
   elevenLabsConfigFromEnv,
   elevenLabsSpokenTextForTest,
@@ -88,6 +89,18 @@ describe("ElevenLabs NPC speech", () => {
     const second = selectElevenLabsVoiceForActor({ voices, voiceProfileId });
     assert.equal(first?.voice_id, "female-studio");
     assert.equal(second?.voice_id, first?.voice_id);
+  });
+
+  it("keeps the restricted-key fallback cast labeled by sex", () => {
+    assert.equal(
+      elevenLabsKnownVoiceGenderForTest("EXAVITQu4vr4xnSDxMaL"),
+      "female"
+    );
+    assert.equal(
+      elevenLabsKnownVoiceGenderForTest("ErXwobaYiN019PkySvjV"),
+      "male"
+    );
+    assert.equal(elevenLabsKnownVoiceGenderForTest("unknown"), undefined);
   });
 
   it("prepares written dialogue for natural spoken pacing", () => {

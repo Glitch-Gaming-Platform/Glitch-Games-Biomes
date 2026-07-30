@@ -44,6 +44,23 @@ export interface HarthmereNativeCombatSeedLike {
     | "brute"
     | "captain"
     | "prisoner";
+  /**
+   * HARTHMERE_QUEST_GUARANTEED_DROP: extra guaranteed drops carried by an
+   * original-snapshot Bikkie item id.
+   *
+   * Deliberately typed as a BiomesId rather than a Harthmere item slug. The
+   * items these seeds owe are authored in the immutable May 2026 tray (e.g.
+   * Mucker Tooth 1534621126189454) and must NOT be re-minted as Harthmere
+   * native items: doing so would put a second identity into
+   * `HARTHMERE_NATIVE_ITEM_ID_MANIFEST`, give it a reverse projection, and let
+   * the live-mode inventory bridge treat a snapshot item as a Harthmere one.
+   *
+   * These merge with, and never replace, the generic family drops.
+   */
+  questDropBikkieItems?: ReadonlyArray<{
+    bikkieItemId: BiomesId;
+    count: number;
+  }>;
 }
 
 export interface HarthmereNativeNpcCombatProfile {
@@ -66,6 +83,8 @@ export interface HarthmereNativeNpcCombatProfile {
   rotateSpeed: number;
   behaviorKind: "hostile" | "retaliate" | "sentinel" | "prisoner";
   dropItems: ReadonlyArray<{ itemId: string; count: number }>;
+  /** See `questDropBikkieItems` on the seed; carried through verbatim. */
+  questDropBikkieItems: ReadonlyArray<{ bikkieItemId: BiomesId; count: number }>;
   killXp: number;
   isBoss: boolean;
 }
@@ -257,6 +276,7 @@ export function harthmereNativeNpcCombatProfileForSeed(
       : hex
       ? [{ itemId: "mana_essence", count: Math.max(1, level - 1) }]
       : [{ itemId: "raw_meat", count: Math.max(1, Math.floor(level / 2)) }],
+    questDropBikkieItems: seed.questDropBikkieItems ?? [],
     killXp: Math.max(
       1,
       Math.trunc(seed.killXp ?? (boss ? 500 : 20 + level * 15))
@@ -315,17 +335,27 @@ export function harthmereNativeNpcBiscuit(
         : profile.isBoss
         ? 30 * 60
         : 5 * 60,
-    drop: profile.dropItems.length
-      ? ([
-          [
-            "guaranteed",
-            profile.dropItems.map(({ itemId, count }) => [
-              harthmereNativeBiomesIdForItemId(itemId)!,
-              count,
-            ]),
-          ],
-        ] as Biscuit["drop"])
-      : undefined,
+    // HARTHMERE_QUEST_GUARANTEED_DROP: quest items join the SAME "guaranteed"
+    // bucket as the family drop. `rollSpec` in the npc kill handler rolls each
+    // bucket independently, so a separate bucket would make the quest item
+    // probabilistic and turn "Collect 6 Mucker Teeth" into an open-ended grind.
+    drop:
+      profile.dropItems.length || profile.questDropBikkieItems.length
+        ? ([
+            [
+              "guaranteed",
+              [
+                ...profile.dropItems.map(({ itemId, count }) => [
+                  harthmereNativeBiomesIdForItemId(itemId)!,
+                  count,
+                ]),
+                ...profile.questDropBikkieItems.map(
+                  ({ bikkieItemId, count }) => [bikkieItemId, count]
+                ),
+              ],
+            ],
+          ] as Biscuit["drop"])
+        : undefined,
     behavior: {
       damageable: {
         maxHp: profile.maxHp,

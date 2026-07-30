@@ -1,4 +1,7 @@
-import { resolveGlitchLocalSyncBaseUrl } from "@/client/game/client_config";
+import {
+  resolveGlitchLocalSyncBaseUrl,
+  shouldShowVirtualJoystick,
+} from "@/client/game/client_config";
 import assert from "assert";
 
 describe("Glitch runtime sync URL resolution", () => {
@@ -37,6 +40,44 @@ describe("Glitch runtime sync URL resolution", () => {
         reason: "runtime_e2e_override_is_remote",
         fallback: "http://127.0.0.1:3018",
       }
+    );
+  });
+});
+
+describe("mobile control selection", () => {
+  it("uses the virtual joystick on touch devices even when Pointer Lock exists", () => {
+    assert.equal(
+      shouldShowVirtualJoystick({
+        pointerLockSupported: true,
+        touchDevice: true,
+        deviceType: "mobile",
+        osName: "Android",
+      }),
+      true
+    );
+  });
+
+  it("uses the virtual joystick for iPhone and iPad user agents", () => {
+    assert.equal(
+      shouldShowVirtualJoystick({
+        pointerLockSupported: true,
+        touchDevice: false,
+        deviceType: "tablet",
+        osName: "iOS",
+      }),
+      true
+    );
+  });
+
+  it("keeps Pointer Lock controls on a desktop browser", () => {
+    assert.equal(
+      shouldShowVirtualJoystick({
+        pointerLockSupported: true,
+        touchDevice: false,
+        deviceType: undefined,
+        osName: "macOS",
+      }),
+      false
     );
   });
 });

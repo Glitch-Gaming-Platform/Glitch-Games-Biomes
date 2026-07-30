@@ -106,6 +106,37 @@ describe("harthmere protected connector route", () => {
     );
   });
 
+  it("repairs an existing elevated connector cap down to the fixed Y=56 landing", () => {
+    const sample = syntheticSample({
+      surfaceY: (x, z) =>
+        z === HARTHMERE_CONNECTOR_DESCENT_LANDING[1] &&
+        x >= HARTHMERE_CONNECTOR_DESCENT_START[0] &&
+        x <= HARTHMERE_CONNECTOR_DESCENT_LANDING[0]
+          ? 62
+          : syntheticSample()(x, z).surfaceY!,
+    });
+    const plan = planHarthmereConnectorRoute({ sample });
+
+    assert.deepEqual(validateHarthmereConnectorRoutePlan(plan, sample), []);
+    const landingIndex = plan.path.findIndex(
+      ([x, z]) =>
+        x === HARTHMERE_CONNECTOR_DESCENT_LANDING[0] &&
+        z === HARTHMERE_CONNECTOR_DESCENT_LANDING[1]
+    );
+    assert.equal(
+      plan.traversal[landingIndex]?.[1],
+      HARTHMERE_CONNECTOR_DESCENT_LANDING_Y
+    );
+    assert.ok(
+      plan.edits.some(
+        (edit) =>
+          edit.label === "passage_clearance" &&
+          edit.position[0] === HARTHMERE_CONNECTOR_DESCENT_LANDING[0] &&
+          edit.position[1] > HARTHMERE_CONNECTOR_DESCENT_LANDING_Y
+      )
+    );
+  });
+
   it("detours around a building footprint instead of editing through it", () => {
     const blocked = (x: number, z: number) =>
       x >= 700 && x <= 714 && z >= -216 && z <= -202;

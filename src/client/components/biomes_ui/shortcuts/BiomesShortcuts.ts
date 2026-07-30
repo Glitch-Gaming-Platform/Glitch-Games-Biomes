@@ -11,6 +11,7 @@
 // (see OptionsTab.tsx).
 
 import type { TabKey } from "../BiomesUITypes";
+import { hasSelectedWorldInteractionCandidate } from "@/client/components/challenges/worldInteractionDispatcher";
 
 export interface TabShortcut {
   key: string;
@@ -50,12 +51,16 @@ export function installTabShortcuts(
   isTypingInInput: () => boolean
 ): () => void {
   function onKeyDown(e: KeyboardEvent) {
+    if (e.defaultPrevented) return;
     if (e.repeat) return;
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     if (isTypingInInput()) return;
     const key = e.key.toLowerCase();
     const match = shortcuts.find((s) => s.key === key);
     if (!match) return;
+    const keyCode =
+      e.code || (key.length === 1 ? `Key${key.toUpperCase()}` : "");
+    if (keyCode && hasSelectedWorldInteractionCandidate(keyCode)) return;
     e.preventDefault();
     onToggle(match.tab);
   }

@@ -356,7 +356,11 @@ function slugifyHarthmereId(value: string | undefined, fallback: string) {
 }
 
 export function isHarthmereLifeAsset(asset: string) {
-  return asset.startsWith("townsperson_") || asset.startsWith("animal_");
+  return (
+    asset.startsWith("townsperson_") ||
+    asset.startsWith("animal_") ||
+    asset === "native_helping_robot"
+  );
 }
 
 export function inferHarthmerePhysicalSupport(asset: string, name?: string): HarthmerePlacementMetadata["physicalSupport"] {

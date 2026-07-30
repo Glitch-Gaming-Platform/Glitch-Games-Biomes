@@ -14,7 +14,6 @@ import type {
   FarmingFoodInterfaceAction,
   FarmingFoodInterfaceModel,
 } from "../adapters/farmingFoodInterfaceAdapter";
-import { biomesUIStaminaWarningLevelForTest } from "../staminaWarning";
 
 export type InventoryContainerKey =
   | "backpack"
@@ -361,7 +360,6 @@ export const InventoryTab: React.FunctionComponent<{
   };
   const hotbar = adapter?.getHotbar?.() ?? { items: [], selectedIndex: -1 };
   const currencies = adapter?.getCurrencies?.() ?? [];
-  const farmingFood = adapter?.getFarmingFood?.();
   const equipment = normalizeEquipment(adapter?.getEquipment?.());
   const materialStorage = backpack.materialStorage;
   const materialItems =
@@ -620,13 +618,6 @@ export const InventoryTab: React.FunctionComponent<{
             ))
           )}
         </div>
-
-        {farmingFood ? (
-          <FarmingFoodSection
-            model={farmingFood}
-            onAction={(action) => adapter?.performFarmingFoodAction?.(action)}
-          />
-        ) : null}
 
         <CompactInventoryList
           title="Material Storage"
@@ -1468,90 +1459,6 @@ const CompactInventoryList: React.FunctionComponent<{
     )}
   </div>
 );
-
-const FarmingFoodSection: React.FunctionComponent<{
-  model: FarmingFoodInterfaceModel;
-  onAction: (action: FarmingFoodInterfaceAction) => void;
-}> = ({ model, onAction }) => {
-  const staminaPct = Math.max(
-    0,
-    Math.min(100, (model.stamina / Math.max(1, model.maxStamina)) * 100)
-  );
-  const staminaWarning = biomesUIStaminaWarningLevelForTest(
-    model.stamina,
-    model.maxStamina
-  );
-  const staminaWarns = staminaWarning !== "none";
-  const visibleActions = model.actions.filter(
-    (action) =>
-      !["gather_seed", "plant_seed", "water_plot", "harvest_plot"].includes(
-        action.id
-      ) &&
-      (action.id !== "forage_food" ||
-        !action.disabled ||
-        model.actions.some(
-          (entry) => entry.id === "forage_food" && !entry.disabled
-        ))
-  );
-  return (
-    <div aria-label="Farming hunting cattle and food" style={{ marginTop: 16 }}>
-      <h3 style={{ ...titleStyle, marginBottom: 8 }}>Food & Cooking</h3>
-      <div
-        aria-label={`Stamina ${model.stamina} of ${model.maxStamina}`}
-        data-stamina-warning={staminaWarns ? staminaWarning : undefined}
-        style={{
-          height: 8,
-          overflow: "hidden",
-          borderRadius: 4,
-          border: staminaWarns
-            ? "1px solid rgba(255, 82, 82, 0.78)"
-            : "1px solid var(--biomes-edge-cyan-soft)",
-          background: staminaWarns
-            ? "rgba(70, 0, 0, 0.46)"
-            : "rgba(0,0,0,0.35)",
-          marginBottom: 8,
-          boxShadow: staminaWarns
-            ? "0 0 14px rgba(255, 54, 54, 0.62)"
-            : undefined,
-          animation: staminaWarns
-            ? `biomes-ui-stamina-warning-pulse ${
-                staminaWarning === "critical" ? "0.58s" : "1.05s"
-              } ease-in-out infinite`
-            : undefined,
-        }}
-      >
-        <span
-          style={{
-            display: "block",
-            height: "100%",
-            width: `${staminaPct}%`,
-            background: staminaWarns
-              ? "linear-gradient(90deg, #ff2e4f, #ff744a, #ffc14d)"
-              : "linear-gradient(90deg, #1f9d72, #d9e76c)",
-          }}
-        />
-      </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
-        {visibleActions.map((action) => (
-          <button
-            key={action.id}
-            type="button"
-            className="biomes-ui-action-button"
-            disabled={action.disabled}
-            title={action.blockedReason ?? action.label}
-            data-farming-food-action={action.id}
-            onClick={() => onAction(action)}
-          >
-            {action.label}
-          </button>
-        ))}
-      </div>
-      <p style={{ ...mutedTextStyle, marginTop: 8 }}>
-        {model.livestock.length} livestock · {model.wildlife.length} wildlife
-      </p>
-    </div>
-  );
-};
 
 const titleStyle: React.CSSProperties = {
   margin: "0 0 10px",

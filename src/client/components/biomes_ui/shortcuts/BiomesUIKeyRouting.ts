@@ -26,6 +26,9 @@ const BIOMES_UI_KEY_TO_TAB: Readonly<Record<string, TabKey>> = {
   Comma: "options",
 };
 
-export function biomesUITabForKeyboardCodeForTest(code: string) {
-  return BIOMES_UI_KEY_TO_TAB[code];
+export function biomesUITabForKeyboardCodeForTest(
+  code: string,
+  worldInteractionOwnsKey = false
+) {
+  return worldInteractionOwnsKey ? undefined : BIOMES_UI_KEY_TO_TAB[code];
 }

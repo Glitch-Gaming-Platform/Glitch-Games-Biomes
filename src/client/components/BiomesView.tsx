@@ -10,7 +10,8 @@ import { ok } from "assert";
 import React, { useEffect, useRef } from "react";
 
 function BiomesCanvas({}: {}) {
-  const { input, audioManager, rendererController } = useClientContext();
+  const { input, audioManager, rendererController, clientConfig } =
+    useClientContext();
   const lastTouchPosRef = useRef<Vec2 | undefined>();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const pointerLockManager = usePointerLockManager();
@@ -20,7 +21,21 @@ function BiomesCanvas({}: {}) {
     const canvas = canvasRef.current;
     ok(canvas, "Canvas should exist.");
     canvas.focus();
-    pointerLockManager.attachToElementRef(canvasRef);
+    pointerLockManager.attachToElementRef(canvasRef, {
+      disablePointerLock: clientConfig.showVirtualJoystick,
+    });
+
+    if (clientConfig.showVirtualJoystick) {
+      // Pointer-lock changes never fire on the touch control path, so attach
+      // input immediately. The virtual joystick writes into this same input
+      // manager and player physics can consume it without a mouse lock.
+      input.attach(canvas);
+    }
+
+    const focusTouchGameplay = () => {
+      canvas.focus();
+      void audioManager.resumeAudio();
+    };
 
     const cleanup = composeCleanups(
       cleanListener(canvas, {
@@ -37,6 +52,7 @@ function BiomesCanvas({}: {}) {
           }
         },
         touchstart: (e) => {
+          focusTouchGameplay();
           if (e.touches.length > 0) {
             const touch = e.touches[0];
             lastTouchPosRef.current = [touch.clientX, touch.clientY];
@@ -49,6 +65,10 @@ function BiomesCanvas({}: {}) {
           lastTouchPosRef.current = undefined;
         },
         click: (e) => {
+          if (clientConfig.showVirtualJoystick) {
+            focusTouchGameplay();
+            return;
+          }
           if (!pointerLockManager.isLocked()) {
             pointerLockManager.focusAndLock();
             e.stopImmediatePropagation();
@@ -57,6 +77,9 @@ function BiomesCanvas({}: {}) {
       }),
       cleanListener(canvas.ownerDocument, {
         pointerlockchange: () => {
+          if (clientConfig.showVirtualJoystick) {
+            return;
+          }
           if (pointerLockManager.isLocked()) {
             input.attach(canvas);
             // AudioContext is only available after a user gesture.
@@ -87,14 +110,14 @@ const MemoCanvas = React.memo(BiomesCanvas);
 
 export function BiomesView({}: {}) {
   const [locked] = usePointerLockStatus();
-  const { resources } = useClientContext();
+  const { resources, clientConfig } = useClientContext();
 
   useEffect(() => {
     document.querySelector("body")?.classList.add("game");
     resources.update("/focus", (focus) => {
-      focus.focused = locked;
+      focus.focused = locked || clientConfig.showVirtualJoystick;
     });
-  }, [locked]);
+  }, [clientConfig.showVirtualJoystick, locked, resources]);
 
   return (
     <div className={`biomes-root`}>

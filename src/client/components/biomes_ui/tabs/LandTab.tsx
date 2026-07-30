@@ -38,6 +38,7 @@ import {
 import * as React from "react";
 import { submitHarthmereBuildingLiveModeAction } from "@/client/components/harthmere_building_live_mode";
 import { requestBiomesUILocateOnMap } from "@/client/components/biomes_ui/adapters/mapPinnedDestination";
+import { HarthmereMaterialAcquisitionGuide } from "@/client/components/harthmere_materials/HarthmereMaterialAcquisitionGuide";
 import {
   landTabPlotCategory,
   landTabPlotCenter,
@@ -2050,6 +2051,14 @@ const MaterialAvailabilityList: React.FunctionComponent<{
               >
                 Find
               </button>
+            ) : null}
+            {line.missing > 0 ? (
+              <HarthmereMaterialAcquisitionGuide
+                itemId={line.material}
+                itemName={line.displayName}
+                count={line.missing}
+                compact
+              />
             ) : null}
           </div>
         );

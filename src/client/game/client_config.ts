@@ -1,4 +1,7 @@
-import { supportsPointerLock } from "@/client/components/contexts/PointerLockContext";
+import {
+  isTouchDevice,
+  supportsPointerLock,
+} from "@/client/components/contexts/PointerLockContext";
 import type { ObserverMode } from "@/client/game/util/observer";
 import type { GraphicsQuality } from "@/client/util/typed_local_storage";
 import { zGraphicsQuality } from "@/client/util/typed_local_storage";
@@ -251,22 +254,23 @@ function doURLOverrides(clientConfig: ClientConfig) {
 
 export function doBrowserOverrides(ret: ClientConfig) {
   const uaParser = new UAParser(window.navigator.userAgent);
+  const deviceType = uaParser.getDevice().type?.toLowerCase();
+  const osName = uaParser.getOS().name?.toLowerCase() ?? "";
 
-  ret.showVirtualJoystick = !supportsPointerLock();
+  ret.showVirtualJoystick = shouldShowVirtualJoystick({
+    pointerLockSupported: supportsPointerLock(),
+    touchDevice: isTouchDevice(),
+    deviceType,
+    osName,
+  });
 
-  if (uaParser.getDevice().type === "mobile") {
+  if (deviceType === "mobile" || deviceType === "tablet") {
     log.info("Mobile device detected, forcing low memory config.");
     ret.lowMemory = true;
   }
 
-  if (
-    uaParser.getOS().name?.toLowerCase().includes("Android") &&
-    !ret.showVirtualJoystick
-  ) {
-    // Android devices support pointer lock for some reason, so use
-    // another method to pop the virtual joystick.
-    log.info("Android detected, forcing virtual joystick.");
-    ret.showVirtualJoystick = true;
+  if (ret.showVirtualJoystick) {
+    log.info("Touch/mobile controls detected, forcing virtual joystick.");
   }
 
   const browserName = uaParser.getBrowser().name?.toLowerCase() ?? "";
@@ -280,6 +284,31 @@ export function doBrowserOverrides(ret: ClientConfig) {
     //   https://linear.app/ill-inc/issue/GI-3562/terrain-collisions-arent-working-on-safari
     ret.wasmBinary.simd = WasmSimd.Normal;
   }
+}
+
+export function shouldShowVirtualJoystick({
+  pointerLockSupported,
+  touchDevice,
+  deviceType,
+  osName,
+}: {
+  pointerLockSupported: boolean;
+  touchDevice: boolean;
+  deviceType?: string;
+  osName?: string;
+}) {
+  const normalizedDeviceType = deviceType?.toLowerCase();
+  const normalizedOsName = osName?.toLowerCase() ?? "";
+  return (
+    !pointerLockSupported ||
+    touchDevice ||
+    normalizedDeviceType === "mobile" ||
+    normalizedDeviceType === "tablet" ||
+    normalizedOsName.includes("android") ||
+    normalizedOsName.includes("ios") ||
+    normalizedOsName.includes("ipad") ||
+    normalizedOsName.includes("iphone")
+  );
 }
 
 export async function genGPUTier() {

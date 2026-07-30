@@ -44,8 +44,32 @@ import { DefaultMap } from "@/shared/util/collections";
 import { assertNever } from "@/shared/util/type_helpers";
 import { compact } from "lodash";
 
-export const PLAYER_INVENTORY_SLOTS = 25;
+// The player-facing backpack is a 40-cell grid. Keep the native ECS container
+// at the same capacity so UI-empty cells are real InventorySwapEvent targets,
+// not synthetic space that silently rejects hotbar removal or store rewards.
+export const PLAYER_INVENTORY_SLOTS = 40;
 export const PLAYER_HOTBAR_SLOTS = 9;
+
+export function ensurePlayerInventorySlotCapacity(inventory: {
+  items: unknown[];
+  hotbar: unknown[];
+}) {
+  const inventorySlotsAdded = Math.max(
+    0,
+    PLAYER_INVENTORY_SLOTS - inventory.items.length
+  );
+  const hotbarSlotsAdded = Math.max(
+    0,
+    PLAYER_HOTBAR_SLOTS - inventory.hotbar.length
+  );
+  if (inventorySlotsAdded > 0) {
+    inventory.items.length = PLAYER_INVENTORY_SLOTS;
+  }
+  if (hotbarSlotsAdded > 0) {
+    inventory.hotbar.length = PLAYER_HOTBAR_SLOTS;
+  }
+  return { inventorySlotsAdded, hotbarSlotsAdded };
+}
 
 export function maxInventoryStack(item: Item): bigint {
   return item.stackable || 0n;

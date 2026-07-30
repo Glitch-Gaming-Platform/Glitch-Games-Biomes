@@ -1,8 +1,7 @@
 // HARTHMERE_QUEST_CHAIN_VALIDATOR
 //
-// The bible quest catalog in `quest_compendium.ts` stores quests with
-// `activeRules.prerequisiteQuestIds` (the quests that must be completed
-// first), but nothing builds the *forward* chain. This file does — and uses
+// The typed bible quest catalog stores prerequisites on an `after` start, but
+// nothing builds the *forward* chain. This file does — and uses
 // the resulting graph to check:
 //
 //   1. Every prerequisite references an existing quest.
@@ -162,7 +161,8 @@ export function validateHarthmereQuestChain(opts?: {
       failures.push(`quest ${q.id} has no objectives`);
     }
     for (const step of q.steps) {
-      if (!step.targetId) failures.push(`quest ${q.id} objective missing targetId`);
+      if (!step.targetId)
+        failures.push(`quest ${q.id} objective missing targetId`);
       if (!step.id) failures.push(`quest ${q.id} objective missing id`);
     }
   }
@@ -184,7 +184,9 @@ export function validateHarthmereQuestChain(opts?: {
 export function nextSuggestedHarthmereQuest(input: {
   completedQuestIds: ReadonlySet<string>;
   activeQuestIds: ReadonlySet<string>;
-}): { questId: string; reason: "next_main_chain" | "unlocked_side" } | undefined {
+}):
+  | { questId: string; reason: "next_main_chain" | "unlocked_side" }
+  | undefined {
   const chain = buildHarthmereQuestChain();
   // 1. Walk the main chain for the first one that is neither completed nor active.
   for (const id of chain.mainChain) {

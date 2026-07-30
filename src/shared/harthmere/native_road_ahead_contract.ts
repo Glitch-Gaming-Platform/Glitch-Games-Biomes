@@ -1,5 +1,14 @@
 import type { BiomesId } from "@/shared/ids";
 import { BikkieIds } from "@/shared/bikkie/ids";
+import type { NavigationAid } from "@/shared/game/types";
+import { NATIVE_ROBOT_SETUP_MUCK_PLACEMENT_POSITION } from "@/shared/harthmere/grove_build_placement_policy";
+import {
+  nativePostGimmeProjectedNavigationAid,
+  nativePostGimmeProjectedTriggerName,
+} from "@/shared/harthmere/native_post_gimme_contract";
+import { harthmereBoardProjectedTriggerName } from "@/shared/harthmere/native_request_boards";
+
+export { NATIVE_ROBOT_SETUP_MUCK_PLACEMENT_POSITION };
 
 /**
  * Native ECS contract for the original Biomes onboarding quest.
@@ -19,6 +28,19 @@ export const NATIVE_ROAD_AHEAD_QUEST_ID = 6193612340426932 as BiomesId;
 export const NATIVE_BUSTED_QUEST_ID = 7405046529843322 as BiomesId;
 export const NATIVE_GET_THE_MUCK_OUT_QUEST_ID = 817959262145055 as BiomesId;
 export const NATIVE_MUCK_VS_MACHINE_QUEST_ID = 5739496793885069 as BiomesId;
+export const NATIVE_GIMME_SHELTER_QUEST_ID = 3741112749915015 as BiomesId;
+
+/**
+ * The original post-Muck-vs.-Machine robot setup bridge. The immutable
+ * snapshot keeps this as a separate quest, but from the player's perspective
+ * collecting the assembled robot must continue directly into placement and
+ * setup rather than falling back to an unrelated default objective.
+ */
+export const NATIVE_GIMME_SHELTER_ROBOT_SETUP_STEP_IDS = Object.freeze({
+  TALK_TO_SOPHIA: 3766609373923510 as BiomesId,
+  PLACE_ROBOT_IN_MUCK: 1987358476842908 as BiomesId,
+  SET_UP_ROBOT: 3932681978957249 as BiomesId,
+});
 
 /**
  * The May 2026 Get the Muck Out biscuit requires six kills of the original
@@ -76,6 +98,7 @@ export const NATIVE_GET_THE_MUCK_OUT_INSCRIPTION_SPECS = Object.freeze({
     stepId: 8726047292702638 as BiomesId,
     sourceEntityId: 6372088708496489 as BiomesId,
     label: "Greeen Statue Inscription",
+    objective: "Find the inscription on top of the Green Statue",
     position: [686.5, 77, -103.5] as const,
   },
   blue: {
@@ -83,6 +106,7 @@ export const NATIVE_GET_THE_MUCK_OUT_INSCRIPTION_SPECS = Object.freeze({
     stepId: 8381498319603962 as BiomesId,
     sourceEntityId: 3581242026396485 as BiomesId,
     label: "Blue Statue Inscription",
+    objective: "Find the inscription on top of the Blue Statue",
     position: [705.5, 75, -162.5] as const,
   },
   pink: {
@@ -90,6 +114,7 @@ export const NATIVE_GET_THE_MUCK_OUT_INSCRIPTION_SPECS = Object.freeze({
     stepId: 3688052208056569 as BiomesId,
     sourceEntityId: 7136298330826795 as BiomesId,
     label: "Pink Statue Inscription",
+    objective: "Find the inscription on top of the Pink Statue",
     position: [742.5, 78, -51.5] as const,
   },
   yellow: {
@@ -97,6 +122,7 @@ export const NATIVE_GET_THE_MUCK_OUT_INSCRIPTION_SPECS = Object.freeze({
     stepId: 1177668390064029 as BiomesId,
     sourceEntityId: 6644971495189655 as BiomesId,
     label: "Yellow Status Inscription",
+    objective: "Find the inscription on top of the Yellow Statue",
     position: [746.5, 81, -101.5] as const,
   },
 } as const);
@@ -106,6 +132,59 @@ export const NATIVE_GET_THE_MUCK_OUT_INSCRIPTION_ENTITY_IDS = Object.freeze(
     (spec) => spec.sourceEntityId
   )
 );
+
+/**
+ * The immutable May 2026 Bikkie snapshot says only "Find the X Statue
+ * Inscription", but the restored props place every readable plate on top of
+ * its statue. Project the more precise instruction from the canonical step id
+ * so every client quest surface agrees without rewriting the 1.2 GB snapshot.
+ */
+export function nativeGetTheMuckOutInscriptionObjectiveText(stepId: unknown) {
+  return Object.values(NATIVE_GET_THE_MUCK_OUT_INSCRIPTION_SPECS).find(
+    (spec) => Number(spec.stepId) === Number(stepId)
+  )?.objective;
+}
+
+export function nativeQuestProjectedTriggerName(
+  stepId: unknown,
+  authoredName: string | undefined
+) {
+  if (
+    Number(stepId) ===
+    Number(NATIVE_GIMME_SHELTER_ROBOT_SETUP_STEP_IDS.PLACE_ROBOT_IN_MUCK)
+  ) {
+    return "Place your Robot in the marked Muck clearing outside the Grove";
+  }
+  return (
+    nativeGetTheMuckOutInscriptionObjectiveText(stepId) ??
+    // Quests after Gimme Shelter own their own projection table. Two of their
+    // snapshot leaves ship with no authored `name` at all, so this fallback
+    // chain runs before `authoredName` rather than after it.
+    nativePostGimmeProjectedTriggerName(stepId) ??
+    // The request boards' shared pick-up leaf carries only a description, so
+    // every Bling bounty opens on a blank objective row without this.
+    harthmereBoardProjectedTriggerName(stepId) ??
+    authoredName
+  );
+}
+
+export function nativeQuestProjectedNavigationAid(
+  stepId: unknown,
+  authoredAid: NavigationAid | undefined
+): NavigationAid | undefined {
+  if (
+    Number(stepId) ===
+    Number(NATIVE_GIMME_SHELTER_ROBOT_SETUP_STEP_IDS.PLACE_ROBOT_IN_MUCK)
+  ) {
+    return {
+      kind: "position",
+      pos: [...NATIVE_ROBOT_SETUP_MUCK_PLACEMENT_POSITION],
+    };
+  }
+  // Authored navigation still wins everywhere it exists; the post-Gimme table
+  // only fills leaves the snapshot could not author an aid on (`inventoryHas`).
+  return authoredAid ?? nativePostGimmeProjectedNavigationAid(stepId);
+}
 
 const NATIVE_GET_THE_MUCK_OUT_COMPATIBLE_MUCKLING_TYPE_IDS = new Set<number>([
   Number(NATIVE_GET_THE_MUCK_OUT_MOSSY_MUCKLING_TYPE_ID),
@@ -138,14 +217,18 @@ export const NATIVE_ROBOT_STORY_QUEST_IDS = Object.freeze([
   NATIVE_MUCK_VS_MACHINE_QUEST_ID,
 ]);
 
-const NATIVE_ROBOT_STORY_AUTO_CONTINUATION_IDS = new Set<BiomesId>([
-  NATIVE_BUSTED_QUEST_ID,
-  NATIVE_GET_THE_MUCK_OUT_QUEST_ID,
-  NATIVE_MUCK_VS_MACHINE_QUEST_ID,
+const NATIVE_ROBOT_STORY_AUTO_CONTINUATION_PREDECESSORS = new Map<
+  BiomesId,
+  BiomesId
+>([
+  [NATIVE_BUSTED_QUEST_ID, NATIVE_ROAD_AHEAD_QUEST_ID],
+  [NATIVE_GET_THE_MUCK_OUT_QUEST_ID, NATIVE_BUSTED_QUEST_ID],
+  [NATIVE_MUCK_VS_MACHINE_QUEST_ID, NATIVE_GET_THE_MUCK_OUT_QUEST_ID],
+  [NATIVE_GIMME_SHELTER_QUEST_ID, NATIVE_MUCK_VS_MACHINE_QUEST_ID],
 ]);
 
 export function isNativeRobotStoryAutoContinuationQuestId(id: BiomesId) {
-  return NATIVE_ROBOT_STORY_AUTO_CONTINUATION_IDS.has(id);
+  return NATIVE_ROBOT_STORY_AUTO_CONTINUATION_PREDECESSORS.has(id);
 }
 
 export function nativeRobotStoryQuestOrder(id: unknown) {
@@ -155,6 +238,13 @@ export function nativeRobotStoryQuestOrder(id: unknown) {
 }
 
 export function nativeRobotStoryPredecessorQuestId(id: unknown) {
+  const continuationPredecessor =
+    NATIVE_ROBOT_STORY_AUTO_CONTINUATION_PREDECESSORS.get(
+      Number(id) as BiomesId
+    );
+  if (continuationPredecessor !== undefined) {
+    return continuationPredecessor;
+  }
   const order = nativeRobotStoryQuestOrder(id);
   return order > 0 ? NATIVE_ROBOT_STORY_QUEST_IDS[order - 1] : undefined;
 }

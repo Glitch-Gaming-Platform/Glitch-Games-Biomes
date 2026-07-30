@@ -1,43 +1,23 @@
 import type { InventoryUiItem } from "../tabs/InventoryTab";
-import { itemPk } from "@/shared/game/items";
+import { PLAYER_INVENTORY_SLOTS } from "@/shared/game/inventory";
 
-export function mergeInventoryAndHotbarForBiomesBackpackForTest(
-  inventoryItems: any[],
-  hotbarItems: any[]
-): any[] {
-  const merged = inventoryItems.slice();
-  const countsByPk = new Map<string, bigint>();
+export function nativeBackpackGridItemsForBiomesUiForTest<T>(
+  backpackItems: readonly T[],
+  _hotbarItems: readonly unknown[]
+): T[] {
+  // Native hotbar slots own their item stacks. They are rendered separately in
+  // the hotbar section and must not be projected into the physical backpack
+  // grid, otherwise a full 40-slot backpack is incorrectly displayed as 41/41.
+  return [...backpackItems];
+}
 
-  for (const slot of merged) {
-    if (!slot?.item) continue;
-    countsByPk.set(itemPk(slot.item), BigInt(slot.count ?? 1n));
-  }
-
-  for (const slot of hotbarItems) {
-    if (!slot?.item) continue;
-    const pk = itemPk(slot.item);
-    const hotbarCount = BigInt(slot.count ?? 1n);
-    const seen = countsByPk.get(pk);
-    if (seen === undefined) {
-      merged.push(slot);
-      countsByPk.set(pk, hotbarCount);
-      continue;
-    }
-    if (hotbarCount > seen) {
-      const existingIndex = merged.findIndex(
-        (candidate) => candidate?.item && itemPk(candidate.item) === pk
-      );
-      if (existingIndex >= 0) {
-        merged[existingIndex] = {
-          ...merged[existingIndex],
-          count: hotbarCount,
-        };
-      }
-      countsByPk.set(pk, hotbarCount);
-    }
-  }
-
-  return merged;
+export function nativeBackpackMaxSlotsForBiomesUiForTest(
+  nativeBackpackSlotCount: number
+): number {
+  return Math.max(
+    PLAYER_INVENTORY_SLOTS,
+    Math.max(0, Math.trunc(nativeBackpackSlotCount))
+  );
 }
 
 export function harthmereHotbarCarriedCounts(

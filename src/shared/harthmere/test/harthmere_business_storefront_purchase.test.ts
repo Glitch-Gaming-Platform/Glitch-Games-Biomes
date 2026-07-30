@@ -142,6 +142,26 @@ describe("Harthmere business storefront purchase (buy_storefront_good)", () => {
     assert.strictEqual(r.inventoryItemDeltas[interior], 1);
   });
 
+  it("sells a finished Workbench material from the matching business", () => {
+    const { state, businessId } = openBusiness("weapons_tools");
+    const listing = harthmereBusinessStorefrontListingsForType(
+      "weapons_tools"
+    ).find((entry) => entry.itemId === "iron_ingot")!;
+    assert.equal(listing.kind, "material");
+    const r = run(state, "buy_storefront_good", {
+      businessId,
+      itemId: listing.itemId,
+      count: 2,
+    });
+    assert.deepStrictEqual(
+      r.warnings.filter((warning: string) =>
+        warning.startsWith("economy_rejected")
+      ),
+      []
+    );
+    assert.equal(r.inventoryItemDeltas.iron_ingot, 2);
+  });
+
   it("sells a recipe book once, teaches its recipes, and does not add inventory stock", () => {
     const book = HARTHMERE_RECIPE_BOOKS.find(
       (entry) => entry.businessType === "weapons_tools"

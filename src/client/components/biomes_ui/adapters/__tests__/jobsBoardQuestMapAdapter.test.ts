@@ -22,6 +22,7 @@ import {
   HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID,
   harthmereAutoSeedTemplateRequirementsObtainable,
 } from "@/shared/harthmere/mmo_jobs_board_authority";
+import { HARTHMERE_JOBS_BOARD_BUSINESS_TEMPLATES } from "@/shared/harthmere/jobs_board_business_templates";
 import { muckMonsterAreaForPosition } from "@/shared/harthmere/muck_monster_aggression_ai";
 import {
   HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
@@ -662,7 +663,7 @@ describe("BiomesUI jobs board gather progression", () => {
     const [fieldMarker] = jobsBoardAcceptedJobLandmarksForBiomesUI(missing);
     assert.equal(fieldMarker.mapMarkerId, "grove_garden_edge_berries");
     assert.deepEqual(fieldMarker.position, [486, 70, -120]);
-    assert.ok(/Gather 2\/6 wild_berries/i.test(fieldMarker.description));
+    assert.ok(/Gather 2\/6 Wild Berries/i.test(fieldMarker.description));
 
     const ready = gatherRoadRationsSnapshot({ wild_berries: 6 });
     const [turnInMarker] = jobsBoardAcceptedJobLandmarksForBiomesUI(ready);
@@ -679,6 +680,102 @@ describe("BiomesUI jobs board gather progression", () => {
     assert.ok(quest.objective);
     assert.ok(/Return to the jobs board/i.test(quest.objective));
     assert.equal(jobsBoardItemSourceLandmarksForBiomesUI(ready).length, 0);
+  });
+
+  it("keeps business gather jobs on their physical hand-in target until the player interacts there", () => {
+    for (const [templateId, inventoryItems] of [
+      ["farm_crop_harvest", { crop_bundle: 3 }],
+      ["design_studio_decor_materials", { tree_resin: 1, oak_branch: 2 }],
+    ] as const) {
+      const template = HARTHMERE_JOBS_BOARD_BUSINESS_TEMPLATES.find(
+        (candidate) => candidate.templateId === templateId
+      );
+      assert.ok(template, `${templateId} fixture missing`);
+      const snapshot = acceptedJobsBoardSnapshot() as any;
+      snapshot.inventoryItems = inventoryItems;
+      snapshot.myAcceptedJobs = [
+        {
+          ...snapshot.myAcceptedJobs[0],
+          jobId: `job_${templateId}`,
+          templateId,
+          title: template!.title,
+          description: template!.description,
+          kind: template!.kind,
+          requirements: template!.requirements,
+          requiresFieldWork: true,
+          mapMarkerId: template!.mapMarkerId,
+          targetId: template!.targetId,
+        },
+      ];
+      snapshot.myTodos = [
+        {
+          ...snapshot.myTodos[0],
+          todoId: `todo_${templateId}`,
+          jobId: `job_${templateId}`,
+          title: template!.title,
+          kind: template!.kind,
+          mapMarkerId: template!.mapMarkerId,
+          targetId: template!.targetId,
+        },
+      ];
+
+      const [marker] = jobsBoardAcceptedJobLandmarksForBiomesUI(snapshot);
+      assert.equal(marker.mapMarkerId, template!.mapMarkerId);
+      assert.ok(/press F to complete the job/i.test(marker.description));
+      assert.doesNotMatch(marker.description, /return to the jobs board/i);
+      assert.equal(jobsBoardItemSourceLandmarksForBiomesUI(snapshot).length, 0);
+
+      const [quest] = jobsBoardTrackableQuestsForBiomesUI(snapshot, NOW_MS);
+      assert.equal(quest.firstMarkerId, `jobs_board_marker:todo_${templateId}`);
+      assert.ok(/press F to complete the job/i.test(quest.objective ?? ""));
+      assert.doesNotMatch(quest.objective ?? "", /return to the jobs board/i);
+    }
+  });
+
+  it("guides each missing material in a multi-item business gather job before the physical hand-in", () => {
+    const template = HARTHMERE_JOBS_BOARD_BUSINESS_TEMPLATES.find(
+      (candidate) => candidate.templateId === "design_studio_decor_materials"
+    );
+    assert.ok(template);
+    const snapshot = acceptedJobsBoardSnapshot() as any;
+    snapshot.inventoryItems = { tree_resin: 1, oak_branch: 0 };
+    snapshot.myAcceptedJobs = [
+      {
+        ...snapshot.myAcceptedJobs[0],
+        jobId: "job_design_materials",
+        templateId: template!.templateId,
+        title: template!.title,
+        description: template!.description,
+        kind: template!.kind,
+        requirements: template!.requirements,
+        requiresFieldWork: true,
+        mapMarkerId: template!.mapMarkerId,
+        targetId: template!.targetId,
+      },
+    ];
+    snapshot.myTodos = [
+      {
+        ...snapshot.myTodos[0],
+        todoId: "todo_design_materials",
+        jobId: "job_design_materials",
+        title: template!.title,
+        kind: template!.kind,
+        mapMarkerId: template!.mapMarkerId,
+        targetId: template!.targetId,
+      },
+    ];
+
+    const [source] = jobsBoardItemSourceLandmarksForBiomesUI(snapshot);
+    assert.equal(source.mapMarkerId, "harthmere_orchard_softwood");
+    assert.match(source.description, /2 Oak Branches/i);
+    const [quest] = jobsBoardTrackableQuestsForBiomesUI(snapshot, NOW_MS);
+    assert.equal(
+      quest.firstMarkerId,
+      "jobs_board_item_source:todo_design_materials"
+    );
+    assert.equal(quest.itemSource?.itemId, "oak_branch");
+    assert.match(quest.objective ?? "", /Gather all required materials/i);
+    assert.doesNotMatch(quest.objective ?? "", /return to the jobs board/i);
   });
 });
 

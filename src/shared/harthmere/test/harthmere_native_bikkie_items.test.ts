@@ -236,7 +236,7 @@ describe("Harthmere exact native Bikkie overlay", function () {
     }
   });
 
-  it("covers every authored gathering node and all 79 exact yield identities", () => {
+  it("covers every authored gathering node and all 83 exact yield identities", () => {
     const definitions = new Map(
       ensureHarthmereNativeItemCatalogue().map((definition) => [
         definition.itemId,
@@ -250,7 +250,7 @@ describe("Harthmere exact native Bikkie overlay", function () {
     );
 
     assert.equal(HARTHMERE_GATHERING_AUTHORITY_NODES.length, 29);
-    assert.equal(yieldIds.size, 79);
+    assert.equal(yieldIds.size, 83);
     for (const node of HARTHMERE_GATHERING_AUTHORITY_NODES) {
       for (const row of [...node.baseYield, ...node.rareYield]) {
         assert.ok(
@@ -264,7 +264,7 @@ describe("Harthmere exact native Bikkie overlay", function () {
       const id = harthmereNativeBiomesIdForItemId(itemId);
       assert.ok(id, `${itemId} needs an exact native id`);
       assert.ok(Number.isSafeInteger(id));
-      assert.ok(id >= 8_650_000_000_000_000 && id < 8_690_000_000_000_000);
+      assert.ok(id >= 8_650_000_000_000_000 && id < 8_700_000_000_000_000);
       return id;
     });
     assert.equal(new Set(exactIds).size, yieldIds.size);

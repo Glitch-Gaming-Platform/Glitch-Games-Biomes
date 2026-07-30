@@ -38,11 +38,15 @@ export interface HarthmereObjectInteraction {
 // living entities. Do not classify bare road/trailhead words as object
 // capabilities; route markers are navigation data unless they own a concrete
 // sign/post/board component or authored object label.
+// HARTHMERE_SINGULAR_CONTAINER_NOUNS (2026-07-29): `caches`, `lockboxes`,
+// `strongboxes`, and `stashes` were plural-only, so a world object literally
+// labelled "Lockbox" (a real decor item id) or "Safe Ruin Cache" failed the
+// non-living gate and could never surface an F prompt. Both forms now match.
 const HARTHMERE_NON_LIVING_OBJECT_RE =
-  /\b(crates?|chests?|box(?:es)?|barrels?|containers?|caches|satchels?|mailbags?|toolbags?|bags?|baskets?|bins?|lockers?|wardrobes?|cabinets?|shelves|shelf|workbenches|workbench|anvils?|tools?|boards?|signs?|posts?|markers?|inscriptions?|plates?|ledgers?|books?|notes?|letters?|orders?|strips?|feed|carts?|wagons?|lockboxes|strongboxes|stashes|footlockers?|stakes?|stones?|rubbings?|dumm(?:y|ies)|rings?|ropes?|firefl(?:y|ies)|flags?|pots?|cook\s+pots?|cooking\s+pots?|soup\s+pots?|stew\s+pots?|kettles?|fences?|boundar(?:y|ies)|tables?|desks?|mirrors?|moss|towers?|platforms?|offices?|chapels?|materials?|berries|patch(?:es)?|plots?|branches?|softwood|harvests?|remains?|carcasses?|sounders?|stretch|spots?|overlooks?|corners?|ovens?|stoves?|beds?|stands?|cookpots?|campfires?|camp\s+fires?|firepits?|fire\s+pits?|fire\s+rings?|hearths?|cooking\s+fires?|pails?|mailboxes?|consoles?|terminals?|grates?|pillars?|candles?|altars?|shrines?|statues?|banners?|lamps?|braziers?|fountains?|wells?|gates?|doors?)\b/i;
+  /\b(crates?|chests?|box(?:es)?|barrels?|containers?|caches?|satchels?|mailbags?|toolbags?|bags?|baskets?|bins?|lockers?|wardrobes?|cabinets?|shelves|shelf|workbenches|workbench|anvils?|tools?|boards?|signs?|posts?|markers?|inscriptions?|plates?|ledgers?|books?|notes?|letters?|orders?|strips?|feed|carts?|wagons?|lockbox(?:es)?|strongbox(?:es)?|stash(?:es)?|footlockers?|stakes?|stones?|rubbings?|dumm(?:y|ies)|rings?|ropes?|firefl(?:y|ies)|flags?|pots?|cook\s+pots?|cooking\s+pots?|soup\s+pots?|stew\s+pots?|kettles?|fences?|boundar(?:y|ies)|tables?|desks?|mirrors?|moss|towers?|platforms?|offices?|chapels?|materials?|berries|patch(?:es)?|plots?|branches?|softwood|harvests?|remains?|carcasses?|sounders?|stretch|spots?|overlooks?|corners?|ovens?|stoves?|beds?|stands?|cookpots?|campfires?|camp\s+fires?|firepits?|fire\s+pits?|fire\s+rings?|hearths?|cooking\s+fires?|pails?|mailboxes?|consoles?|terminals?|grates?|pillars?|candles?|altars?|shrines?|statues?|banners?|lamps?|braziers?|fountains?|wells?|gates?|doors?)\b/i;
 
 const HARTHMERE_CONTAINER_OBJECT_RE =
-  /\b(crates?|chests?|box(?:es)?|barrels?|containers?|caches|satchels?|mailbags?|toolbags?|bags?|baskets?|bins?|lockers?|wardrobes?|cabinets?|lockboxes|strongboxes|stashes|footlockers?)\b/i;
+  /\b(crates?|chests?|box(?:es)?|barrels?|containers?|caches?|satchels?|mailbags?|toolbags?|bags?|baskets?|bins?|lockers?|wardrobes?|cabinets?|lockbox(?:es)?|strongbox(?:es)?|stash(?:es)?|footlockers?)\b/i;
 
 const HARTHMERE_LIVING_OBJECT_EXEMPTION_RE =
   /\b(robot|bot|construct|golem|person|traveler|runner|ranger|doctor|medic|clerk|banker|baker|cook|forager|courier|guard|wayfinder|farmer|merchant|vendor|mucker|hex|npc|human)\b/i;
@@ -350,6 +354,177 @@ const HARTHMERE_AUTHORED_OBJECT_INTERACTIONS: ReadonlyMap<
     ),
     "taye's paint pot": objectInteraction("use", "Use Pot", "Used"),
     "warning moss patch": objectInteraction("gather", "Gather", "Gathered"),
+
+    // HARTHMERE_JOBS_BOARD_FIELD_TARGET_SEMANTICS
+    // The 19 business job-template targets and the 19 outpost starter work
+    // stations (see jobs_board_field_targets.ts). Authored entries win over the
+    // shape classifier, so a "Farm Supply Crate" delivery point is a hand-in
+    // action rather than a lootable container, and every one of these resolves
+    // to a kind the authoritative world-object receipt validator accepts.
+    "refinery intake terminal": objectInteraction(
+      "use",
+      "Deliver Exotic Matter",
+      "Delivered to"
+    ),
+    "biome anchor leak pillar": objectInteraction(
+      "repair",
+      "Patch Anchor",
+      "Patched"
+    ),
+    "design studio workbench": objectInteraction(
+      "use",
+      "Hand In Materials",
+      "Delivered to"
+    ),
+    "trade route watch post": objectInteraction(
+      "inspect",
+      "Report Patrol",
+      "Reported at"
+    ),
+    "portal gate office terminal": objectInteraction(
+      "use",
+      "Deliver Portal Fuel",
+      "Delivered to"
+    ),
+    "farm supply crate": objectInteraction(
+      "use",
+      "Deliver Crop Bundles",
+      "Delivered to"
+    ),
+    "forge material bin": objectInteraction(
+      "use",
+      "Deliver Iron Ore",
+      "Delivered to"
+    ),
+    "safe ruin cache": objectInteraction(
+      "gather",
+      "Recover Relic Fragment",
+      "Recovered from"
+    ),
+    "old route marker stone": objectInteraction(
+      "inspect",
+      "Survey Route",
+      "Surveyed"
+    ),
+    "property material crate": objectInteraction(
+      "use",
+      "Deliver Building Materials",
+      "Delivered to"
+    ),
+    "trader ration crate": objectInteraction(
+      "use",
+      "Stock Rations",
+      "Stocked"
+    ),
+    "hunter larder shelf": objectInteraction(
+      "use",
+      "Deliver Wild Meat",
+      "Delivered to"
+    ),
+    "clinic supply shelf": objectInteraction(
+      "use",
+      "Deliver Herb Bundles",
+      "Delivered to"
+    ),
+    "teleport pad terminal": objectInteraction(
+      "use",
+      "Deliver Destination Crystals",
+      "Delivered to"
+    ),
+    "sanitation barrels": objectInteraction(
+      "use",
+      "Return Mixed Waste",
+      "Returned to"
+    ),
+    "broken market fixture stand": objectInteraction(
+      "repair",
+      "Repair Fixture",
+      "Repaired"
+    ),
+    "restaurant kitchen prep table": objectInteraction(
+      "use",
+      "Deliver Ingredients",
+      "Delivered to"
+    ),
+    "clinic delivery lockbox": objectInteraction(
+      "use",
+      "Deliver Sealed Package",
+      "Delivered to"
+    ),
+    "inn linen shelf": objectInteraction(
+      "use",
+      "Deliver Linen Bundles",
+      "Delivered to"
+    ),
+
+    // Outpost starter work stations — the actual described shift work.
+    "refinery stock shelf": objectInteraction("use", "Sort Stock", "Sorted"),
+    "anchor parts table": objectInteraction(
+      "use",
+      "Prep Anchor Parts",
+      "Prepped"
+    ),
+    "design sample table": objectInteraction(
+      "use",
+      "Lay Out Samples",
+      "Laid out"
+    ),
+    "patrol duty board": objectInteraction(
+      "use",
+      "Sign On For Patrol",
+      "Signed on at"
+    ),
+    "transit manifest desk": objectInteraction(
+      "use",
+      "Check Manifests",
+      "Checked"
+    ),
+    "seed sorting table": objectInteraction(
+      "use",
+      "Sort Seed Trays",
+      "Sorted"
+    ),
+    "tool order bin": objectInteraction("use", "Fill Tool Orders", "Filled"),
+    "ward component shelf": objectInteraction(
+      "use",
+      "Sort Ward Components",
+      "Sorted"
+    ),
+    "route planning table": objectInteraction("use", "Plot Routes", "Plotted"),
+    "build order table": objectInteraction(
+      "use",
+      "Check Build Orders",
+      "Checked"
+    ),
+    "market stock shelf": objectInteraction("use", "Restock Shelf", "Restocked"),
+    "meat wrapping table": objectInteraction("use", "Wrap Meat", "Wrapped"),
+    "bandage prep table": objectInteraction(
+      "use",
+      "Prepare Bandages",
+      "Prepared"
+    ),
+    "pad calibration terminal": objectInteraction(
+      "use",
+      "Calibrate Pad",
+      "Calibrated"
+    ),
+    "hazard marking post": objectInteraction("use", "Mark Hazards", "Marked"),
+    "fixture labelling table": objectInteraction(
+      "use",
+      "Label Fixtures",
+      "Labelled"
+    ),
+    "service line prep table": objectInteraction(
+      "use",
+      "Prep Service Line",
+      "Prepped"
+    ),
+    "parcel sorting table": objectInteraction("use", "Sort Parcels", "Sorted"),
+    "guest room linen shelf": objectInteraction(
+      "use",
+      "Reset Guest Rooms",
+      "Reset"
+    ),
   })
 );
 

@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
 import {
   BIOMES_UI_ACTIVE_MAP_PIN_EVENT,
   readActiveBiomesUIMapPin,
@@ -177,6 +178,7 @@ export const CurrentQuestObjectiveHUD: React.FunctionComponent<{
   adapter?: CurrentQuestObjectiveMapAdapter;
   isOpen?: boolean;
 }> = ({ adapter, isOpen = false }) => {
+  const { clientConfig } = useClientContext();
   const [activeMapPin, setActiveMapPin] = React.useState<
     BiomesUIActiveMapPin | undefined
   >(() => adapter?.getActiveMapPin?.() ?? readActiveBiomesUIMapPin());
@@ -263,7 +265,9 @@ export const CurrentQuestObjectiveHUD: React.FunctionComponent<{
           data-biomes-recipe-objective-hint="visible"
         >
           <span className="biomes-ui-current-objective-hud__recipe-key">R</span>
-          Press R to open Recipes and create the required item.
+          {clientConfig.showVirtualJoystick
+            ? "Tap Recipes to create the required item."
+            : "Press R to open Recipes and create the required item."}
         </div>
       )}
     </aside>

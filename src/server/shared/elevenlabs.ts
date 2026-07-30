@@ -304,6 +304,16 @@ function normalizedVoiceGender(voice: ElevenLabsVoice) {
   return undefined;
 }
 
+/** Audit helper for the verified fallback cast used by restricted API keys. */
+export function elevenLabsKnownVoiceGenderForTest(
+  voiceId: string | undefined
+): HarthmereVoiceGender | undefined {
+  const voice = FALLBACK_ELEVENLABS_VOICES.find(
+    (candidate) => candidate.voice_id === voiceId
+  );
+  return voice ? normalizedVoiceGender(voice) : undefined;
+}
+
 function voiceQualityScore(voice: ElevenLabsVoice, modelId: string) {
   // Prefer model-compatible professional/studio voices while retaining a wide
   // enough top-quality pool for NPC-to-NPC variation.

@@ -1,0 +1,32 @@
+// Focused typecheck for the shared Buy / Craft / Gather guidance and the
+// crafting, blueprint, business, and staged-building surfaces that consume it.
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "incremental": true,
+    "tsBuildInfoFile": "tmp/materialguidance.tsbuildinfo"
+  },
+  "include": [
+    "src/shared/harthmere/material_acquisition_guidance.ts",
+    "src/shared/harthmere/harthmere_business_storefront_goods.ts",
+    "src/shared/harthmere/harthmere_vendor_catalog.ts",
+    "src/shared/harthmere/mmo_crafting_catalogue.ts",
+    "src/shared/harthmere/mmo_economy_authority.ts",
+    "src/client/components/harthmere_materials/HarthmereMaterialAcquisitionGuide.tsx",
+    "src/client/components/inventory/crafting/CraftingDetail.tsx",
+    "src/client/components/overlays/BlueprintPlacementOverlayComponent.tsx",
+    "src/client/components/harthmere_crafting/HarthmereCraftingStationPanel.tsx",
+    "src/client/components/harthmere_business/businessInterfaceLiveAdapter.ts",
+    "src/client/components/harthmere_business/HarthmereBusinessInterfacePanel.tsx",
+    "src/client/components/biomes_ui/tabs/LandTab.tsx",
+    "src/shared/harthmere/test/material_acquisition_guidance.test.ts",
+    "src/shared/harthmere/test/harthmere_business_storefront_goods.test.ts",
+    "src/shared/harthmere/test/harthmere_business_storefront_purchase.test.ts",
+    "src/client/components/harthmere_business/__tests__/storefrontGoodsSurface.test.ts",
+    "src/client/components/harthmere_crafting/__tests__/craftingStationPanel.test.tsx",
+    "src/client/components/harthmere_crafting/__tests__/craftingStationParity.test.ts",
+    "src/client/components/biomes_ui/__tests__/progressionTabsNoDummy.test.tsx",
+    "modules.d.ts"
+  ]
+}

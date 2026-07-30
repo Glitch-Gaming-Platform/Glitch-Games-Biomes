@@ -6,6 +6,7 @@ import {
   ch1NativeQuestId,
   ch1NativeQuestRootId,
   ch1NativeQuestStepId,
+  NATIVE_CH1_FIRST_QUEST_ID,
 } from "../ch1_native_quests";
 import { CH1_QUESTS } from "../ch1_quests";
 import { NATIVE_MUCK_VS_MACHINE_QUEST_ID } from "../native_road_ahead_contract";
@@ -14,7 +15,10 @@ describe("Chapter 1 native Bikkie quests", () => {
   it("projects every authored quest and objective exactly once", () => {
     const biscuits = allCh1NativeQuestBiscuits();
     assert.equal(biscuits.length, CH1_QUESTS.length);
-    assert.equal(new Set(biscuits.map((quest) => quest.id)).size, biscuits.length);
+    assert.equal(
+      new Set(biscuits.map((quest) => quest.id)).size,
+      biscuits.length
+    );
     for (const [index, quest] of CH1_QUESTS.entries()) {
       const biscuit = biscuits[index];
       assert.equal(biscuit.id, ch1NativeQuestId(quest.id));
@@ -36,10 +40,16 @@ describe("Chapter 1 native Bikkie quests", () => {
 
   it("continues from the retained Muck vs. Machine prerequisite", () => {
     const first = allCh1NativeQuestBiscuits()[0];
+    assert.equal(first.id, NATIVE_CH1_FIRST_QUEST_ID);
     assert.equal(first.unlock?.kind, "challengeComplete");
     if (first.unlock?.kind === "challengeComplete") {
       assert.equal(first.unlock.challenge, NATIVE_MUCK_VS_MACHINE_QUEST_ID);
     }
+    assert.equal(
+      first.questGiver,
+      undefined,
+      "the wake-up quest must auto-start at the prologue handoff"
+    );
   });
 
   it("chains later quests without an orphaned unlock", () => {

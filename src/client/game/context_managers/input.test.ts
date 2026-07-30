@@ -57,6 +57,7 @@ function fakeInputSetup() {
   bindings.bindKey("KeyW").toMotion("forward", 1);
   bindings.bindKey("KeyW").toAction("jump");
   bindings.bindKey("ShiftLeft").toMotion("run", 1);
+  bindings.bindVirtualJoyconMove("left", "y").toMotion("forward", 1, "render");
   const input = new Input(bindings);
   input.attach(canvasTarget as unknown as HTMLElement);
 
@@ -64,6 +65,16 @@ function fakeInputSetup() {
 }
 
 describe("Input", () => {
+  it("translates the mobile movement joystick into forward motion", () => {
+    const { input } = fakeInputSetup();
+
+    input.moveVirtualJoycon("left", 0, 0.75);
+    assert.equal(input.motion("forward"), 0.75);
+
+    input.tick("render");
+    assert.equal(input.motion("forward"), 0);
+  });
+
   it("combines independent synthetic motion sources with physical input", () => {
     const { documentTarget, input } = fakeInputSetup();
 
@@ -75,6 +86,20 @@ describe("Input", () => {
 
     input.setSyntheticMotion("forward", "hotbar", 0);
     assert.equal(input.motion("forward"), 1);
+  });
+
+  it("can isolate one named synthetic source from the combined motion", () => {
+    const { documentTarget, input } = fakeInputSetup();
+
+    documentTarget.emit("keydown", fakeKeyboardEvent("ShiftLeft"));
+    input.setSyntheticMotion("run", "mobile-joystick", -1);
+    input.setSyntheticMotion("run", "accessibility", 0.5);
+
+    assert.equal(input.syntheticMotion("run", "mobile-joystick"), -1);
+    assert.equal(
+      input.motionWithoutSyntheticSource("run", "mobile-joystick"),
+      1.5
+    );
   });
 
   it("pulses a synthetic motion and releases it after the requested duration", async () => {

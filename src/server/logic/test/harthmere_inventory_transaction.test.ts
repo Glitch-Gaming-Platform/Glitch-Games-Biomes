@@ -11,6 +11,10 @@ import {
 } from "@/server/test/test_helpers";
 import { BikkieIds } from "@/shared/bikkie/ids";
 import { HarthmereInventoryTransactionEvent } from "@/shared/ecs/gen/events";
+import {
+  PLAYER_HOTBAR_SLOTS,
+  PLAYER_INVENTORY_SLOTS,
+} from "@/shared/game/inventory";
 import { bagCount, countOf, createBag } from "@/shared/game/items";
 import { readHarthmereNativeVitals } from "@/shared/harthmere/harthmere_native_vitals";
 import type { BiomesId } from "@/shared/ids";
@@ -197,6 +201,51 @@ describe("Harthmere native inventory transaction", () => {
     assert.equal(
       player.harthmere_ecs_transaction_ledger?.transaction_ids.length,
       0
+    );
+  });
+
+  it("does not charge a store purchase when all 40 backpack slots are full", async () => {
+    for (let i = 0; i < PLAYER_INVENTORY_SLOTS; i += 1) {
+      setItemAtSlotIndex(
+        logic.world,
+        playerId,
+        countOf(BikkieIds.dirt, 99n),
+        i
+      );
+    }
+    editEntity(logic.world, playerId, (player) => {
+      const inventory = testInventoryEditor(player);
+      for (let i = 0; i < PLAYER_HOTBAR_SLOTS; i += 1) {
+        inventory.set({ kind: "hotbar", idx: i }, countOf(BikkieIds.dirt, 99n));
+      }
+    });
+    await logic.publish(
+      event({
+        transactionId: "test:inventory:paid-full:1",
+        give: createBag(countOf(BikkieIds.grass, 1n)),
+        goldDelta: -4n,
+      })
+    );
+
+    const player = logic.world.table.get(playerId)!;
+    assert.equal(player.inventory?.items.length, PLAYER_INVENTORY_SLOTS);
+    assert.equal(
+      player.inventory?.items.some((slot) => slot?.item.id === BikkieIds.grass),
+      false
+    );
+    assert.equal(
+      bagCount(player.inventory?.currencies, { id: BikkieIds.bling }),
+      10n
+    );
+    assert.equal(
+      bagCount(player.inventory?.overflow, { id: BikkieIds.grass }),
+      0n
+    );
+    assert.equal(
+      player.harthmere_ecs_transaction_ledger?.transaction_ids.includes(
+        "test:inventory:paid-full:1"
+      ),
+      false
     );
   });
 

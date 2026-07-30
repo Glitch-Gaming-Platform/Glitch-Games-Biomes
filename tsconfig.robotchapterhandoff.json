@@ -1,0 +1,18 @@
+// Focused typecheck for the Muck vs. Machine fan-out and legacy-save repair
+// that keep Gimme Shelter playable while Chapter 1 starts automatically.
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "incremental": true,
+    "tsBuildInfoFile": "tmp/robotchapterhandoff.tsbuildinfo"
+  },
+  "include": [
+    "src/shared/harthmere/ch1_native_quests.ts",
+    "src/shared/harthmere/native_road_ahead_contract.ts",
+    "src/server/shared/triggers/roots/quest.ts",
+    "src/shared/harthmere/test/ch1_native_quests.test.ts",
+    "src/server/shared/triggers/test/native_robot_story_continuation.test.ts",
+    "modules.d.ts"
+  ]
+}

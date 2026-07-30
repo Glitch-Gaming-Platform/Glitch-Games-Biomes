@@ -1684,6 +1684,7 @@ describe("business_customer_simulator", () => {
       `business siting errors: ${siting.errors.join(", ")}`
     );
     assert.equal(siting.checkedSites, 19);
+    assert.ok(siting.auditTags.includes("clear_of_grove_build_reserve"));
   });
 
   it("relocates muck to a real nearby muck area for every business safe site", () => {

@@ -21,13 +21,16 @@
  * should load the item catalogue and loot tables from canonical server config/DB.
  */
 
+import { PLAYER_INVENTORY_SLOTS } from "@/shared/game/inventory";
+
 export const HARTHMERE_INVENTORY_LOOT_AUTHORITY_VERSION =
   "harthmere-inventory-loot-authority" as const;
 
 export const HARTHMERE_INVENTORY_LOOT_MAX_AUDIT = 500;
 export const HARTHMERE_INVENTORY_LOOT_DEFAULT_DROP_TTL_MS = 10 * 60 * 1000;
 export const HARTHMERE_INVENTORY_LOOT_GUILD_PROTECTED_CLAIM_MS = 5 * 60 * 1000;
-export const HARTHMERE_INVENTORY_LOOT_DEFAULT_ACTOR_SLOTS = 40;
+export const HARTHMERE_INVENTORY_LOOT_DEFAULT_ACTOR_SLOTS =
+  PLAYER_INVENTORY_SLOTS;
 export const HARTHMERE_INVENTORY_LOOT_DEFAULT_BANK_SLOTS = 80;
 export const HARTHMERE_INVENTORY_LOOT_DEFAULT_BUSINESS_SLOTS = 240;
 export const HARTHMERE_INVENTORY_LOOT_DEFAULT_GUILD_SLOTS = 320;

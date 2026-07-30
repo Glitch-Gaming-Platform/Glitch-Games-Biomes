@@ -36,6 +36,7 @@ import {
   type HarthmereRecipeBookDefinition,
 } from "@/shared/harthmere/harthmere_recipe_books";
 import { HARTHMERE_BUSINESS_OUTPOSTS } from "@/shared/harthmere/business_customer_simulator";
+import { ensureHarthmereProductionVendorCatalog } from "@/shared/harthmere/harthmere_vendor_catalog";
 import type { HarthmereEconomyBusinessTypeId } from "@/shared/harthmere/mmo_economy_authority";
 
 export const HARTHMERE_BUSINESS_STOREFRONT_GOODS_VERSION =
@@ -238,10 +239,85 @@ const HARTHMERE_BUSINESS_STOREFRONT_GOODS: Readonly<
   },
 };
 
+// HARTHMERE_BUSINESS_JOB_MATERIAL_STOCK (2026-07-29)
+// Jobs Board requirements must always have a reachable source. Gathering nodes
+// and the bundle recipes cover the "earn it" path; these listings cover the
+// "buy it" path so the job's own acquisition hint ("buy or craft through
+// Hingehall Repair Shop") is literally true. Stock is unlimited (-1), matching
+// the tool shop and the block/decor storefront.
+export interface HarthmereBusinessJobMaterialListing {
+  itemId: string;
+  /** Authored floor price. Registration prices are never below this, so the
+   *  listing cannot become a 1g exploit if item definitions register later. */
+  buyPrice: number;
+}
+
+const HARTHMERE_BUSINESS_JOB_MATERIAL_STOCK: Readonly<
+  Partial<
+    Record<
+      HarthmereEconomyBusinessTypeId,
+      readonly HarthmereBusinessJobMaterialListing[]
+    >
+  >
+> = {
+  weapons_tools: [
+    { itemId: "iron_ingot", buyPrice: 14 },
+    { itemId: "iron_ore", buyPrice: 6 },
+    { itemId: "coal", buyPrice: 4 },
+  ],
+  custom_home_property_development: [
+    { itemId: "wood_plank", buyPrice: 6 },
+    { itemId: "softwood_log", buyPrice: 3 },
+  ],
+  repair_maintenance_person: [{ itemId: "repair_part", buyPrice: 14 }],
+  biome_maintenance_repair: [{ itemId: "repair_part", buyPrice: 16 }],
+  hospitality_inn_hotel_shelter: [
+    { itemId: "linen_bundle", buyPrice: 20 },
+    { itemId: "clean_water", buyPrice: 6 },
+  ],
+  medical_doctor: [{ itemId: "herb_bundle", buyPrice: 18 }],
+  biome_farming_rare_foods: [{ itemId: "crop_bundle", buyPrice: 15 }],
+  hunter_wild_meat: [{ itemId: "wild_meat", buyPrice: 14 }],
+  food_service_restaurant: [
+    { itemId: "crop_bundle", buyPrice: 17 },
+    { itemId: "clean_water", buyPrice: 6 },
+  ],
+  general_trader: [
+    { itemId: "road_ration", buyPrice: 10 },
+    { itemId: "clean_water", buyPrice: 7 },
+  ],
+};
+
+export function harthmereBusinessJobMaterialListings(
+  businessType: string | undefined
+): readonly HarthmereBusinessJobMaterialListing[] {
+  if (!businessType) return [];
+  return (
+    HARTHMERE_BUSINESS_JOB_MATERIAL_STOCK[
+      businessType as HarthmereEconomyBusinessTypeId
+    ] ?? []
+  );
+}
+
+/** businessType that sells a given job material, if any. */
+export function harthmereBusinessTypeSellingJobMaterial(
+  itemId: string | undefined
+): HarthmereEconomyBusinessTypeId | undefined {
+  if (!itemId) return undefined;
+  for (const [businessType, listings] of Object.entries(
+    HARTHMERE_BUSINESS_JOB_MATERIAL_STOCK
+  )) {
+    if (listings?.some((listing) => listing.itemId === itemId)) {
+      return businessType as HarthmereEconomyBusinessTypeId;
+    }
+  }
+  return undefined;
+}
+
 export interface HarthmereBusinessStorefrontListing {
   businessType: HarthmereEconomyBusinessTypeId;
   itemId: string;
-  kind: "block" | "interior" | "recipe_book";
+  kind: "block" | "interior" | "material" | "recipe_book";
   buyPrice: number;
   recipeIds?: readonly string[];
 }
@@ -277,6 +353,7 @@ export function harthmereBusinessStorefrontListingsForType(
   ensureHarthmereRecipeBookItems();
   const type = businessType as HarthmereEconomyBusinessTypeId;
   const recipeBook = harthmereRecipeBookForBusinessType(type);
+  const materialListings = harthmereBusinessJobMaterialListings(type);
   return [
     ...goods.blocks.map(
       (itemId): HarthmereBusinessStorefrontListing => ({
@@ -292,6 +369,17 @@ export function harthmereBusinessStorefrontListingsForType(
         itemId,
         kind: "interior",
         buyPrice: storefrontBuyPrice(itemId),
+      })
+    ),
+    ...materialListings.map(
+      (listing): HarthmereBusinessStorefrontListing => ({
+        businessType: type,
+        itemId: listing.itemId,
+        kind: "material",
+        buyPrice: Math.max(
+          listing.buyPrice,
+          storefrontBuyPrice(listing.itemId)
+        ),
       })
     ),
     ...(recipeBook
@@ -329,10 +417,15 @@ let registered = false;
  *  enforce one purchase per player. Idempotent + guarded against circular import. */
 export function ensureHarthmereBusinessStorefrontGoods(): void {
   if (registered) return;
+  // Set the guard before initializing the vendor catalogue: that catalogue
+  // initializes crafting, and crafting initializes storefronts. Raw building
+  // materials (Softwood Logs, Rough Stone, etc.) get their item definitions
+  // from the vendor catalogue, so storefront material listings need it too.
+  registered = true;
   ensureHarthmereSpecializedBlocksCatalogue();
   ensureHarthmerePlaceableDecorCatalogue();
   ensureHarthmereRecipeBookItems();
-  registered = true;
+  ensureHarthmereProductionVendorCatalog();
 
   for (const businessType of Object.keys(
     HARTHMERE_BUSINESS_STOREFRONT_GOODS
@@ -351,6 +444,22 @@ export function ensureHarthmereBusinessStorefrontGoods(): void {
         itemId: listing.itemId,
         buyPrice: listing.buyPrice,
         sellPrice: Math.max(1, Math.floor(listing.buyPrice * 0.45)),
+        stock: -1, // unlimited / self-replenishing
+      });
+    }
+    for (const listing of harthmereBusinessJobMaterialListings(businessType)) {
+      if (getHarthmereVendorEntry(businessType, listing.itemId)) {
+        continue;
+      }
+      const buyPrice = Math.max(
+        listing.buyPrice,
+        storefrontBuyPrice(listing.itemId)
+      );
+      registerHarthmereVendorEntry({
+        vendorId: businessType,
+        itemId: listing.itemId,
+        buyPrice,
+        sellPrice: Math.max(1, Math.floor(buyPrice * 0.45)),
         stock: -1, // unlimited / self-replenishing
       });
     }

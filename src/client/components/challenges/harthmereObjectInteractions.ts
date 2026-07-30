@@ -342,6 +342,27 @@ function isDeliveryPickupTarget(input: {
 
 const inFlightJobsBoardFieldCompletions = new Set<string>();
 
+export function harthmereJobsBoardFieldCompletionRequestIdForTest(input: {
+  operation: "pickup_delivery_parcel" | "complete_job_quest";
+  jobId: string;
+  todoId: string;
+  acceptedAtMs: number;
+  nonce?: string;
+}) {
+  const nonce =
+    input.nonce ??
+    globalThis.crypto?.randomUUID?.() ??
+    `${Date.now()}_${Math.random().toString(36).slice(2)}`;
+  return [
+    "jobs_board_field",
+    input.operation,
+    input.jobId,
+    input.todoId,
+    input.acceptedAtMs,
+    nonce,
+  ].join(":");
+}
+
 async function completeHarthmereJobsBoardFieldObjectiveForObject(input: {
   objectId?: string;
   label?: string | null;
@@ -391,13 +412,16 @@ async function completeHarthmereJobsBoardFieldObjectiveForObject(input: {
     const operation = isDeliveryPickupTarget({ completedTargetId, job })
       ? "pickup_delivery_parcel"
       : "complete_job_quest";
-    const requestId = [
-      "jobs_board_field",
+    // Every real F interaction is a distinct completion attempt. Reusing one
+    // idempotency key made a repeated-service job permanently replay the first
+    // expected `service_units_incomplete` response, even after the player had
+    // performed all remaining cleanup actions.
+    const requestId = harthmereJobsBoardFieldCompletionRequestIdForTest({
       operation,
-      todo.jobId,
-      todo.todoId,
-      job?.acceptedAtMs ?? 0,
-    ].join(":");
+      jobId: todo.jobId,
+      todoId: todo.todoId,
+      acceptedAtMs: job?.acceptedAtMs ?? 0,
+    });
     const snapshotAfter = await submitHarthmereJobsBoardMutation(
       operation,
       {

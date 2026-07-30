@@ -91,6 +91,14 @@ const harthmereTerrainAudit = fs.readFileSync(
   path.join(root, "scripts/harthmere/audit-production-extension-terrain.cjs"),
   "utf8"
 );
+const terrainSeedMigration = fs.readFileSync(
+  path.join(root, "src/server/shim/terrain_seed_migration.ts"),
+  "utf8"
+);
+const shimMain = fs.readFileSync(
+  path.join(root, "src/server/shim/main.ts"),
+  "utf8"
+);
 const harthmereCreatureGrounding = fs.readFileSync(
   path.join(
     root,
@@ -1115,10 +1123,34 @@ ok(
     ) &&
     script.includes("az containerapp revision copy") &&
     script.includes("BIOMES_CREATE_LOCAL_DEV_TERRAIN=1") &&
-    script.includes("BIOMES_FORCE_LOCAL_DEV_TOWN_RESEED=1") &&
+    script.includes(
+      'HARTHMERE_TERRAIN_SEED_MODE="${HARTHMERE_TERRAIN_SEED_MODE:-additive}"'
+    ) &&
+    script.includes("BIOMES_FORCE_LOCAL_DEV_TOWN_RESEED=0") &&
+    script.includes(
+      'BIOMES_TERRAIN_SEED_MODE="$HARTHMERE_TERRAIN_SEED_MODE"'
+    ) &&
+    script.includes("--migrate-existing-terrain") &&
     script.includes("--min-replicas 1") &&
     script.includes("--max-replicas 1"),
-  "production deploy seeds additive terrain in one isolated maintenance replica"
+  "production deploy adds missing terrain by default and requires an explicit overlay-preserving existing-shard migration"
+);
+ok(
+  terrainSeedMigration.includes('"additive"') &&
+    terrainSeedMigration.includes('"preserve-overlays"') &&
+    terrainSeedMigration.includes(
+      "BIOMES_ALLOW_DESTRUCTIVE_TERRAIN_RESEED=1"
+    ) &&
+    terrainSeedMigration.includes("return input.authored"),
+  "terrain seed updates omit mutable player/world components unless destructive recovery is explicitly acknowledged"
+);
+ok(
+  shimMain.includes("terrainSeedEntityForWrite({") &&
+    shimMain.includes("mode: terrainSeedMigrationMode()") &&
+    shimMain.includes("seedTerrain = loadSeed") &&
+    shimMain.includes("a player's deliberate hole") &&
+    shimMain.includes("shard_diff must never turn into a request"),
+  "Harthmere seed wiring updates authored terrain only and audits seed solidity without interpreting player diffs as corruption"
 );
 ok(
   script.includes("run_azure_terrain_seed_job") &&
@@ -1129,14 +1161,24 @@ ok(
 );
 ok(
   script.includes("run_azure_terrain_audit_job") &&
-    script.includes("post-simulation terrain audit") &&
+    script.includes("post-simulation authored-terrain audit") &&
+    script.includes("HARTHMERE_TERRAIN_AUDIT_MODE=authored") &&
     pushAndDeploy.indexOf("deploy_simulation_container_app") <
       pushAndDeploy.indexOf("run_azure_terrain_audit_job") &&
     pushAndDeploy.indexOf("run_azure_terrain_audit_job") <
       pushAndDeploy.indexOf(
         'force_production_redis_bgsave "post-simulation Harthmere terrain verification"'
       ),
-  "production deploy proves active Gaia leaves Harthmere Muck-free before the final Redis save"
+  "production deploy re-audits authored terrain without classifying dynamic Muck or player edits as corruption"
+);
+ok(
+  pushAndDeploy.indexOf(
+    'force_production_redis_bgsave "pre-terrain maintenance checkpoint"'
+  ) <
+    pushAndDeploy.indexOf(
+      'seed_production_harthmere_extension_terrain "$latest_revision"'
+    ),
+  "production deploy persists a Redis checkpoint before terrain maintenance"
 );
 ok(
   script.includes(
@@ -1246,12 +1288,14 @@ ok(
   harthmereTerrainAudit.includes("harthmereExtensionFoundationShardSpecs") &&
     harthmereTerrainAudit.includes("HARTHMERE_TERRAIN_AUDIT_MODE") &&
     harthmereTerrainAudit.includes('AUDIT_MODE === "muck-only"') &&
+    harthmereTerrainAudit.includes("loadSeed") &&
+    !harthmereTerrainAudit.includes("shard_diff: entity.hasShardDiff") &&
     harthmereTerrainAudit.includes("emptyFoundationCount") &&
     harthmereTerrainAudit.includes("surfaceHoleShardCount") &&
     harthmereTerrainAudit.includes("forbiddenMuckBlockCount") &&
     harthmereTerrainAudit.includes("atmosphericMuckBlockCount") &&
     harthmereTerrainAudit.includes("retiredTerrainCount"),
-  "production terrain audit verifies foundation content, flat support, zero Muck terrain/atmosphere, and retired cleanup"
+  "production terrain audit validates authored seeds without rejecting durable player terrain overlays"
 );
 ok(
   script.includes("run_production_live_creature_grounding_reconcile") &&

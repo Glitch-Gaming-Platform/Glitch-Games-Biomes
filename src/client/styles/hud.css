@@ -2952,13 +2952,25 @@ ul.bullet-points {
 .joysticks {
   display: flex;
   width: 100%;
-  padding: 5vmin;
+  box-sizing: border-box;
+  align-items: flex-end;
+  padding: 0 max(16px, 5vmin);
   position: absolute;
-  top: 50%;
+  bottom: max(88px, calc(env(safe-area-inset-bottom) + 76px));
   left: 50%;
-  transform: translate(-50%, -50%);
+  transform: translateX(-50%);
+  z-index: 1095;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .joysticks .spacer {
   width: 100%;
+}
+
+.joysticks .joystick {
+  flex: 0 0 auto;
+  pointer-events: auto;
+  touch-action: none;
 }

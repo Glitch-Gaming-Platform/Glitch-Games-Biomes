@@ -129,6 +129,12 @@ const HARTHMERE_GATHERING_AUTHORED_AUTHORITY_NODES = [
         min: 1,
         max: 2,
       },
+      // HARTHMERE_JOB_MATERIAL_SOURCE: clinic herb-run jobs require bundles.
+      {
+        itemId: "herb_bundle",
+        min: 1,
+        max: 2,
+      },
     ],
     rareYield: [
       {
@@ -192,6 +198,13 @@ const HARTHMERE_GATHERING_AUTHORED_AUTHORITY_NODES = [
         min: 1,
         max: 3,
       },
+      // HARTHMERE_JOB_MATERIAL_SOURCE: the farm job asks for crop bundles, so
+      // the farm row must actually produce them.
+      {
+        itemId: "crop_bundle",
+        min: 1,
+        max: 2,
+      },
     ],
     rareYield: [
       {
@@ -221,6 +234,13 @@ const HARTHMERE_GATHERING_AUTHORED_AUTHORITY_NODES = [
       },
       {
         itemId: "cloth_scrap",
+        min: 1,
+        max: 3,
+      },
+      // HARTHMERE_JOB_MATERIAL_SOURCE: sanitation cleanup jobs require mixed
+      // waste; scavenging the ward scrap pile is the player-facing source.
+      {
+        itemId: "mixed_waste",
         min: 1,
         max: 3,
       },
@@ -862,6 +882,12 @@ const HARTHMERE_GATHERING_AUTHORED_AUTHORITY_NODES = [
         min: 1,
         max: 3,
       },
+      // HARTHMERE_JOB_MATERIAL_SOURCE: hunter jobs require wild meat.
+      {
+        itemId: "wild_meat",
+        min: 1,
+        max: 2,
+      },
     ],
     rareYield: [
       {
@@ -898,6 +924,12 @@ const HARTHMERE_GATHERING_AUTHORED_AUTHORITY_NODES = [
         itemId: "raw_meat",
         min: 1,
         max: 3,
+      },
+      // HARTHMERE_JOB_MATERIAL_SOURCE: hunter jobs require wild meat.
+      {
+        itemId: "wild_meat",
+        min: 1,
+        max: 2,
       },
     ],
     rareYield: [

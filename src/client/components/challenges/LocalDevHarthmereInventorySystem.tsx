@@ -74,6 +74,7 @@ import { BikkieIds } from "@/shared/bikkie/ids";
 import { terrainIdToBlock } from "@/shared/bikkie/terrain";
 import type { AnyBinaryAttribute } from "@/shared/bikkie/schema/binary";
 import { staticUrlForAttribute } from "@/shared/bikkie/schema/binary";
+import { PLAYER_INVENTORY_SLOTS } from "@/shared/game/inventory";
 import { anItem } from "@/shared/game/item";
 import { findItemEquippableSlot } from "@/shared/game/wearables";
 import { safeParseBiomesId } from "@/shared/ids";
@@ -3418,7 +3419,7 @@ function emptyState(): HarthmereInventoryState {
   return {
     version: 1,
     backpack: {
-      maxSlots: 24,
+      maxSlots: PLAYER_INVENTORY_SLOTS,
       items: [
         makeItemInstance("iron_longsword", 1, "backpack"),
         makeItemInstance("minor_healing_salve", 3, "backpack"),
@@ -3520,6 +3521,10 @@ function normalizeInstance(
 
 function normalizeState(raw?: Partial<HarthmereInventoryState>) {
   const fallback = emptyState();
+  const backpackMaxSlots = Math.max(
+    PLAYER_INVENTORY_SLOTS,
+    Number(raw?.backpack?.maxSlots ?? fallback.backpack.maxSlots)
+  );
   const backpackItems = (raw?.backpack?.items ?? fallback.backpack.items)
     .map((item) => normalizeInstance(item, "backpack"))
     .filter((item): item is HarthmereItemInstance => Boolean(item));
@@ -3544,8 +3549,8 @@ function normalizeState(raw?: Partial<HarthmereInventoryState>) {
   return {
     version: 1 as const,
     backpack: {
-      maxSlots: raw?.backpack?.maxSlots ?? fallback.backpack.maxSlots,
-      items: backpackItems.slice(0, raw?.backpack?.maxSlots ?? 24),
+      maxSlots: backpackMaxSlots,
+      items: backpackItems.slice(0, backpackMaxSlots),
     },
     equipment,
     questPouch,
@@ -4173,7 +4178,14 @@ export function isHarthmereRepairToolItemId(
 export function equippedHarthmereRepairToolItemId(
   state: HarthmereInventoryState = readHarthmereInventoryState()
 ): string | undefined {
-  const itemId = state.equipment.main_hand?.itemId;
+  // In a live-authoritative session the native selected item is the source of
+  // truth. The local Harthmere inventory may still contain an older main-hand
+  // projection, so using it here can prevent the real F repair interaction
+  // from submitting its matching Jobs Board objective (or falsely keep a tool
+  // equipped after the player switched away from it).
+  const itemId = harthmereLiveServerAuthoritative()
+    ? readHarthmereLiveEquipmentSnapshot().equipment.main_hand
+    : state.equipment.main_hand?.itemId;
   return isHarthmereRepairToolItemId(itemId) ? itemId : undefined;
 }
 
@@ -4197,7 +4209,9 @@ export function isHarthmereCleanupToolItemId(
 export function equippedHarthmereCleanupToolItemId(
   state: HarthmereInventoryState = readHarthmereInventoryState()
 ): string | undefined {
-  const itemId = state.equipment.main_hand?.itemId;
+  const itemId = harthmereLiveServerAuthoritative()
+    ? readHarthmereLiveEquipmentSnapshot().equipment.main_hand
+    : state.equipment.main_hand?.itemId;
   return isHarthmereCleanupToolItemId(itemId) ? itemId : undefined;
 }
 

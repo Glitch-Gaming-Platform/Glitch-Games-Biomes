@@ -5188,7 +5188,9 @@ async function makeSnapshotGroveNpcAssetMesh(
   id: BiomesId
 ): Promise<GLTF | undefined> {
   const label = deps.get("/ecs/c/label", id)?.text;
-  const assetKey = snapshotGroveNpcAssetKeyForEntity(id, label);
+  const assetKey = snapshotGroveNpcAssetKeyForEntity(id, label, {
+    isRobot: Boolean(deps.get("/ecs/c/robot_component", id)),
+  });
   if (!assetKey) {
     return undefined;
   }

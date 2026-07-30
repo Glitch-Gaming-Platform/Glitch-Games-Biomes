@@ -32,7 +32,11 @@ import {
   type HarthmereItemInstance,
 } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
 import { performHarthmereMousePrimaryAttack } from "@/client/components/challenges/LocalDevHarthmereMultiplayerCombatSystem";
-import { invokeSelectedWorldInteractionForKey } from "@/client/components/challenges/worldInteractionDispatcher";
+import { emitHarthmereGlitchBehaviorEvent } from "@/client/game/glitch/harthmere_glitch_behavior_events";
+import {
+  hasSelectedWorldInteractionCandidate,
+  invokeSelectedWorldInteractionForKey,
+} from "@/client/components/challenges/worldInteractionDispatcher";
 import {
   HARTHMERE_BUSINESS_INVENTORY_LOOT_UPDATED_EVENT,
   HARTHMERE_INVENTORY_EVENT,
@@ -79,6 +83,7 @@ import {
   InventorySwapEvent,
 } from "@/shared/ecs/gen/events";
 import type { OwnedItemReference } from "@/shared/ecs/gen/types";
+import { PLAYER_INVENTORY_SLOTS } from "@/shared/game/inventory";
 import { fireAndForget } from "@/shared/util/async";
 import {
   harthmereItemIdToBiomesEcsItem,
@@ -127,6 +132,8 @@ import { abilityVisibleInBiomesLibraryForTest } from "./abilityLibraryVisibility
 import {
   harthmereHotbarCarriedCounts,
   mergeMirroredBiomesBackpackUiItemsForTest,
+  nativeBackpackGridItemsForBiomesUiForTest,
+  nativeBackpackMaxSlotsForBiomesUiForTest,
 } from "./inventoryAdapterHelpers";
 import {
   nativeConsumablePresentationForBiomesUIForTest,
@@ -908,6 +915,89 @@ function normalizeContainer(container: unknown): any[] {
   if (typeof container === "object")
     return Object.values(container as Record<string, unknown>);
   return [];
+}
+
+export type NativeHotbarRemovalFailureReason =
+  | "player_not_ready"
+  | "slot_empty"
+  | "backpack_full"
+  | "publish_failed";
+
+export type NativeHotbarRemovalPlan =
+  | { ok: true; destinationIndex: number }
+  | {
+      ok: false;
+      reason: Exclude<NativeHotbarRemovalFailureReason, "publish_failed">;
+    };
+
+export function planNativeHotbarRemoval(input: {
+  backpackItems: readonly unknown[];
+  hotbarSlotPresent: boolean;
+  playerReady: boolean;
+}): NativeHotbarRemovalPlan {
+  if (!input.hotbarSlotPresent) {
+    return { ok: false, reason: "slot_empty" };
+  }
+  if (!input.playerReady) {
+    return { ok: false, reason: "player_not_ready" };
+  }
+  const destinationIndex = input.backpackItems.findIndex((slot) => !slot);
+  if (destinationIndex < 0) {
+    return { ok: false, reason: "backpack_full" };
+  }
+  return { ok: true, destinationIndex };
+}
+
+export function nativeHotbarRemovalFailureFeedback(input: {
+  slotIndex: number;
+  reason: NativeHotbarRemovalFailureReason;
+  backpackItems: readonly unknown[];
+}) {
+  const backpackSlots = Math.max(
+    PLAYER_INVENTORY_SLOTS,
+    input.backpackItems.length
+  );
+  const occupiedBackpackSlots = input.backpackItems.filter(Boolean).length;
+  const message =
+    input.reason === "backpack_full"
+      ? `Backpack full. Free one of your ${backpackSlots} backpack slots before removing a hotbar item.`
+      : input.reason === "player_not_ready"
+      ? "Your character inventory is still loading. Try removing the hotbar item again."
+      : input.reason === "slot_empty"
+      ? "That hotbar slot changed before it could be removed. Try again."
+      : "The hotbar item could not be moved to your backpack. Try again.";
+  return {
+    message,
+    telemetry: {
+      slot: input.slotIndex + 1,
+      reason: input.reason,
+      backpack_slots: backpackSlots,
+      occupied_backpack_slots: occupiedBackpackSlots,
+    },
+  };
+}
+
+function reportNativeHotbarRemovalFailure(input: {
+  resources: unknown;
+  slotIndex: number;
+  reason: NativeHotbarRemovalFailureReason;
+  backpackItems: readonly unknown[];
+}) {
+  const feedback = nativeHotbarRemovalFailureFeedback(input);
+  try {
+    addToast(input.resources as any, {
+      kind: "basic",
+      id: `hotbar-remove-failed:${input.slotIndex}:${input.reason}`,
+      message: feedback.message,
+    });
+  } catch {
+    // Telemetry still records the reason if the toast surface is unavailable.
+  }
+  emitHarthmereGlitchBehaviorEvent(
+    "hotbar",
+    "remove_slot_failed",
+    feedback.telemetry
+  );
 }
 
 function readSnapshotGroveApi(): any | undefined {
@@ -2918,7 +3008,10 @@ export function useBiomesUILiveAdapters({
       ) {
         return;
       }
-      const tab = biomesUITabForKeyboardCodeForTest(event.code);
+      const tab = biomesUITabForKeyboardCodeForTest(
+        event.code,
+        hasSelectedWorldInteractionCandidate(event.code)
+      );
       if (!tab) return;
       event.preventDefault();
       event.stopPropagation();
@@ -3296,31 +3389,55 @@ export function useBiomesUILiveAdapters({
           return;
         }
         const slot = hotbarSlots[idx];
-        if (!slot?.item) {
+        const backpackItems = normalizeContainer(inventory?.items);
+        const localPlayer = reactResources.get("/scene/local_player");
+        const plan = planNativeHotbarRemoval({
+          backpackItems,
+          hotbarSlotPresent: Boolean(slot?.item),
+          playerReady: Boolean(localPlayer?.id),
+        });
+        if (!plan.ok) {
+          reportNativeHotbarRemovalFailure({
+            resources: clientContext.resources,
+            slotIndex: idx,
+            reason: plan.reason,
+            backpackItems,
+          });
           return;
         }
         try {
-          const localPlayer = reactResources.get("/scene/local_player");
-          if (!localPlayer?.id) return;
-          const backpackItems = normalizeContainer(inventory?.items);
-          const emptyIndex = backpackItems.findIndex((s: any) => !s);
-          if (emptyIndex < 0) return;
           fireAndForget(
-            events.publish(
-              new InventorySwapEvent({
-                player_id: localPlayer.id,
-                src_id: localPlayer.id,
-                src: { kind: "hotbar", idx } as OwnedItemReference,
-                dst_id: localPlayer.id,
-                dst: {
-                  kind: "item",
-                  idx: emptyIndex,
-                } as OwnedItemReference,
-                positions: localPlayerPositionList(reactResources),
-              })
-            )
+            events
+              .publish(
+                new InventorySwapEvent({
+                  player_id: localPlayer!.id,
+                  src_id: localPlayer!.id,
+                  src: { kind: "hotbar", idx } as OwnedItemReference,
+                  dst_id: localPlayer!.id,
+                  dst: {
+                    kind: "item",
+                    idx: plan.destinationIndex,
+                  } as OwnedItemReference,
+                  positions: localPlayerPositionList(reactResources),
+                })
+              )
+              .catch(() =>
+                reportNativeHotbarRemovalFailure({
+                  resources: clientContext.resources,
+                  slotIndex: idx,
+                  reason: "publish_failed",
+                  backpackItems,
+                })
+              )
           );
-        } catch {}
+        } catch {
+          reportNativeHotbarRemovalFailure({
+            resources: clientContext.resources,
+            slotIndex: idx,
+            reason: "publish_failed",
+            backpackItems,
+          });
+        }
       },
     };
   }, [
@@ -3378,7 +3495,8 @@ export function useBiomesUILiveAdapters({
     const publishSwap = (
       src: InventoryUiRef,
       dst: InventoryUiRef,
-      onPublished?: () => void
+      onPublished?: () => void,
+      onRejected?: (error: unknown) => void
     ) => {
       try {
         fireAndForget(
@@ -3394,8 +3512,11 @@ export function useBiomesUILiveAdapters({
               })
             )
             .then(() => onPublished?.())
+            .catch((error) => onRejected?.(error))
         );
-      } catch {}
+      } catch (error) {
+        onRejected?.(error);
+      }
     };
 
     const backendActor = inventoryLootState?.actor;
@@ -3435,22 +3556,11 @@ export function useBiomesUILiveAdapters({
         return item ? [item] : [];
       }
     );
-    // A native hotbar contains the real item stack rather than a shortcut. Show
-    // those stacks in the inventory list too, while preserving hotbar refs so a
-    // drop/equip/select mutation still reaches the ECS-owned stack.
-    const ecsHotbarBackpackProjection = hotbarItems.flatMap(
-      (slot: any, index: number) => {
-        const item = slotToInventoryUiItem(
-          slot,
-          `hotbar_bag_${index + 1}`,
-          { kind: "hotbar", idx: index },
-          "backpack"
-        );
-        return item ? [item] : [];
-      }
-    );
     const baseBackpackUiItems = mergeMirroredBiomesBackpackUiItemsForTest(
-      [...ecsBackpackUiItems, ...ecsHotbarBackpackProjection],
+      nativeBackpackGridItemsForBiomesUiForTest(
+        ecsBackpackUiItems,
+        hotbarItems
+      ),
       [...liveBackpackStackItems, ...liveBackpackInstanceItems].filter(
         (item) =>
           !nativeBiomesEcsAuthorityEnabled() || !isNativeBikkieItemId(item.id)
@@ -3707,13 +3817,12 @@ export function useBiomesUILiveAdapters({
             0
           );
         const maxWeight = nativeCharacterStats.carryCapacity;
-        const baseMaxSlots = Number(
-          backendActor?.maxInventorySlots ??
-            Math.max(32, backpackItems.length || 0)
+        const baseMaxSlots = nativeBackpackMaxSlotsForBiomesUiForTest(
+          backpackItems.length
         );
         return {
           items: uiItems,
-          maxSlots: Math.max(baseMaxSlots, uiItems.length),
+          maxSlots: baseMaxSlots,
           usedSlots: uiItems.filter(Boolean).length,
           capacityLabel: inventoryLootHydrated ? "Backpack" : "World backpack",
           weight: {
@@ -4288,12 +4397,35 @@ export function useBiomesUILiveAdapters({
           performHarthmereHotbarClearForBiomesUI(idx);
           return;
         }
-        const emptyIndex = backpackItems.findIndex((slot: any) => !slot);
-        if (emptyIndex < 0) return;
-        publishSwap(ref, {
-          kind: "item",
-          idx: emptyIndex,
+        const plan = planNativeHotbarRemoval({
+          backpackItems,
+          hotbarSlotPresent: Boolean(hotbarItems[idx]?.item),
+          playerReady: Boolean(userId),
         });
+        if (!plan.ok) {
+          reportNativeHotbarRemovalFailure({
+            resources: clientContext.resources,
+            slotIndex: idx,
+            reason: plan.reason,
+            backpackItems,
+          });
+          return;
+        }
+        publishSwap(
+          ref,
+          {
+            kind: "item",
+            idx: plan.destinationIndex,
+          },
+          undefined,
+          () =>
+            reportNativeHotbarRemovalFailure({
+              resources: clientContext.resources,
+              slotIndex: idx,
+              reason: "publish_failed",
+              backpackItems,
+            })
+        );
       },
       moveItem: (src: InventoryUiRef, dst: InventoryUiRef) => {
         let nativeHotbarEquipEvent:

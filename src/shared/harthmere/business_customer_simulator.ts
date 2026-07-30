@@ -22,6 +22,7 @@ import {
   getHarthmereBusinessMiniGameSpec,
   type HarthmereBusinessMiniGameSpec,
 } from "./business_minigame_specs";
+import { harthmereBoundsOverlapGroveBuildReserve } from "./grove_build_placement_policy";
 
 export type {
   HarthmereBusinessMiniGameDecisionResult,
@@ -7402,7 +7403,10 @@ const HARTHMERE_BUSINESS_REQUEST_COMPLICATIONS: readonly {
   { id: "measurements_off", line: "My measurements might be slightly off." },
   { id: "allergy_note", line: "Watch out — I react badly to some materials." },
   { id: "label_smudged", line: "The label smudged, so double-check it." },
-  { id: "warranty_question", line: "I want to know what's covered if it fails." },
+  {
+    id: "warranty_question",
+    line: "I want to know what's covered if it fails.",
+  },
   { id: "trade_in", line: "I'd trade in the old one if you take it." },
   { id: "noise_sensitive", line: "Keep it quiet if you can; I get headaches." },
   { id: "gift_wrap", line: "It needs to look presentable as a gift." },
@@ -7416,7 +7420,10 @@ const HARTHMERE_BUSINESS_REQUEST_COMPLICATIONS: readonly {
   { id: "test_first", line: "Can we test it before I commit?" },
   { id: "eco_concern", line: "Try not to waste materials on this." },
   { id: "urgent_but_cheap", line: "It's urgent, but I'm watching the cost." },
-  { id: "recurring_contract", line: "Do this well and it becomes regular work." },
+  {
+    id: "recurring_contract",
+    line: "Do this well and it becomes regular work.",
+  },
   { id: "third_attempt", line: "This is my third try getting it right." },
 ];
 
@@ -8110,18 +8117,32 @@ export function harthmereBusinessOutpostTerrainGrounding(
   };
 }
 
-export function harthmereBusinessOutpostJobsBoardPosition(
-  outpost: HarthmereBusinessOutpost
+// HARTHMERE_BUSINESS_OUTPOST_FRONT_POSITION
+// One resolver for "a spot on the apron in front of this outpost". `forwardPad`
+// is the gap past the building footprint; `lateral` steps right (+) or left (-)
+// along the building's facing. The jobs board, the business job-template field
+// target, and the outpost starter work station all derive from this so they can
+// never drift apart or land inside the wall.
+export function harthmereBusinessOutpostFrontPosition(
+  outpost: HarthmereBusinessOutpost,
+  options: { forwardPad?: number; lateral?: number } = {}
 ) {
   const c = Math.cos(outpost.position.rot);
   const s = Math.sin(outpost.position.rot);
   const footprint = harthmereBusinessOutpostMinigameFootprint(outpost);
-  const dz = footprint.depth * 0.5 + 2.2;
+  const dz = footprint.depth * 0.5 + (options.forwardPad ?? 2.2);
+  const dx = options.lateral ?? 0;
   return {
-    x: outpost.position.x - dz * s,
+    x: outpost.position.x - dz * s + dx * c,
     y: harthmereBusinessOutpostGroundY(outpost),
-    z: outpost.position.z + dz * c,
+    z: outpost.position.z + dz * c + dx * s,
   };
+}
+
+export function harthmereBusinessOutpostJobsBoardPosition(
+  outpost: HarthmereBusinessOutpost
+) {
+  return harthmereBusinessOutpostFrontPosition(outpost);
 }
 
 export function getHarthmereBusinessOutpostForType(
@@ -12537,6 +12558,9 @@ export function validateHarthmereBusinessOutpostSafeSiting() {
   }
 
   for (const site of sites) {
+    if (harthmereBoundsOverlapGroveBuildReserve(site.footprint)) {
+      errors.push(`outpost_inside_grove_build_reserve:${site.outpostId}`);
+    }
     for (const coord of HARTHMERE_GROVE_BUSINESS_BUILDING_REFERENCE_COORDINATES) {
       if (
         harthmereBusinessRectContains(
@@ -12576,6 +12600,7 @@ export function validateHarthmereBusinessOutpostSafeSiting() {
       "no_building_on_building",
       "no_building_over_road",
       "clear_of_reference_buildings",
+      "clear_of_grove_build_reserve",
       "muck_relocated_to_nearby_muck_area",
       "graded_green_safe_site",
     ],

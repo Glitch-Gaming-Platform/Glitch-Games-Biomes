@@ -13,6 +13,8 @@ import {
   HARTHMERE_QUEST_OBJECT_MARKER_VERSION,
   HARTHMERE_QUEST_OBJECT_MARKER_RENDER_POLICY,
   HARTHMERE_QUEST_OBJECT_MARKERS,
+  isHarthmereJobsBoardFieldTargetAliasId,
+  isHarthmereJobsBoardFieldTargetMarkerId,
   harthmereResolveWorldQuestBeaconMarkerId,
   HARTHMERE_VISIBLE_WORLD_OBJECT_MARKER_RENDER_POLICY,
   activeHarthmereQuestMarkerId,
@@ -151,7 +153,10 @@ describe("Harthmere quest object procedural markers current", () => {
             (landmark) => landmark.id === marker.markerId
           ) &&
           marker.source !== "live_entity_helper" &&
-          marker.source !== "business_outpost_jobs_board"
+          marker.source !== "business_outpost_jobs_board" &&
+          // Field targets publish a map-marker id AND a requirement target-id
+          // alias; only the map-marker id is drawn.
+          !isHarthmereJobsBoardFieldTargetAliasId(marker.markerId)
       );
     assert.equal(
       HARTHMERE_QUEST_OBJECT_MARKERS.length,
@@ -532,6 +537,19 @@ describe("Harthmere quest object procedural markers current", () => {
     );
 
     for (const marker of containerMarkers) {
+      // Business intake props (refinery intake, farm supply crate, sanitation
+      // barrels, ...) are permanent public shop fixtures with the same policy
+      // as the jobs board itself: always drawn, always interactable. The
+      // hidden-until-active rule exists so another player's QUEST loot box does
+      // not read as public loot, which does not apply to them.
+      if (isHarthmereJobsBoardFieldTargetMarkerId(marker.id)) {
+        assert.equal(
+          isVisibleHarthmereWorldObjectMarker(marker),
+          true,
+          `${marker.id} (${marker.label}) is a permanent business fixture and must stay visible`
+        );
+        continue;
+      }
       assert.equal(
         isVisibleHarthmereWorldObjectMarker(marker),
         false,

@@ -1,4 +1,5 @@
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
+import { HarthmereMaterialAcquisitionGuide } from "@/client/components/harthmere_materials/HarthmereMaterialAcquisitionGuide";
 import type { CraftingBundle } from "@/client/components/inventory/crafting/helpers";
 import {
   getCraftingBundle,
@@ -311,6 +312,17 @@ export const CraftingDetailIngredient: React.FunctionComponent<{
             }}
             disabled={!craftableCraftingBundle}
             size="small"
+          />
+        )}
+        {needed > 0 && (
+          <HarthmereMaterialAcquisitionGuide
+            itemId={item.item.id}
+            itemName={item.item.displayName}
+            count={itemCountToApproximateNumber({
+              item: item.item,
+              count: needed,
+            })}
+            compact
           />
         )}
       </div>

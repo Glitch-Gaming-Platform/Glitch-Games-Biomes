@@ -5,10 +5,15 @@ import {
   DEFAULT_TAB_SHORTCUTS,
   installTabShortcuts,
 } from "../shortcuts/BiomesShortcuts";
+import {
+  registerWorldInteractionCandidate,
+  resetWorldInteractionDispatcherForTest,
+} from "@/client/components/challenges/worldInteractionDispatcher";
 
 function dispatchKey(key: string, opts: KeyboardEventInit = {}) {
   const e = new KeyboardEvent("keydown", {
     key,
+    code: key.length === 1 ? `Key${key.toUpperCase()}` : undefined,
     bubbles: true,
     cancelable: true,
     ...opts,
@@ -26,6 +31,8 @@ describe("BiomesUI tab shortcuts", () => {
       this.skip();
     }
   });
+
+  afterEach(() => resetWorldInteractionDispatcherForTest());
 
   it("toggles the matched tab when its key is pressed", () => {
     const seen: string[] = [];
@@ -85,6 +92,25 @@ describe("BiomesUI tab shortcuts", () => {
     );
     cleanup();
     dispatchKey("i");
+    assert.deepEqual(seen, []);
+  });
+
+  it("lets a visible world Settings action own G before the Guilds tab", () => {
+    const seen: string[] = [];
+    registerWorldInteractionCandidate({
+      id: "robot-settings",
+      priority: 100,
+      keyCodes: ["KeyG"],
+      onInteract: () => undefined,
+    });
+    const cleanup = installTabShortcuts(
+      DEFAULT_TAB_SHORTCUTS,
+      (tab) => seen.push(tab),
+      () => false
+    );
+
+    dispatchKey("g");
+    cleanup();
     assert.deepEqual(seen, []);
   });
 });

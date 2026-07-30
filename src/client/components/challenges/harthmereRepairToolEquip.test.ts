@@ -8,12 +8,23 @@ import {
   isHarthmereCleanupToolItemId,
   isHarthmereRepairToolEquipped,
   isHarthmereRepairToolItemId,
+  recordHarthmereLiveInventoryItemsSnapshot,
+  resetHarthmereLiveInventoryItemsSnapshotForTest,
 } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
+import {
+  markHarthmereLiveSnapshotSeen,
+  resetHarthmereLiveSnapshotForTest,
+} from "@/client/components/challenges/harthmereLiveAuthoritySignal";
 
 const stateWithMainHand = (itemId?: string) =>
   ({ equipment: itemId ? { main_hand: { itemId } } : {} } as any);
 
 describe("HARTHMERE_REPAIR_TOOL_EQUIP — equipped repair tool detection", () => {
+  beforeEach(() => {
+    resetHarthmereLiveInventoryItemsSnapshotForTest();
+    resetHarthmereLiveSnapshotForTest();
+  });
+
   it("recognizes the repair mallet item as a repair tool", () => {
     assert.equal(isHarthmereRepairToolItemId("repair_mallet"), true);
   });
@@ -69,6 +80,52 @@ describe("HARTHMERE_REPAIR_TOOL_EQUIP — equipped repair tool detection", () =>
     assert.equal(
       isHarthmereRepairToolEquipped(stateWithMainHand("muck_rake")),
       false
+    );
+  });
+
+  it("uses server-reported native equipment in live-authoritative sessions", () => {
+    markHarthmereLiveSnapshotSeen();
+    recordHarthmereLiveInventoryItemsSnapshot({
+      inventoryLootState: {
+        actor: {
+          items: { repair_mallet: 1 },
+          equipment: { main_hand: "repair_mallet" },
+        },
+      },
+    });
+    assert.equal(
+      isHarthmereRepairToolEquipped(stateWithMainHand(undefined)),
+      true
+    );
+    assert.equal(
+      isHarthmereCleanupToolEquipped(stateWithMainHand("muck_rake")),
+      false
+    );
+
+    recordHarthmereLiveInventoryItemsSnapshot({
+      inventoryLootState: {
+        actor: {
+          items: { muck_rake: 1 },
+          equipment: { main_hand: "muck_rake" },
+        },
+      },
+    });
+    assert.equal(
+      isHarthmereRepairToolEquipped(stateWithMainHand("repair_mallet")),
+      false
+    );
+    assert.equal(
+      isHarthmereCleanupToolEquipped(stateWithMainHand(undefined)),
+      true
+    );
+
+    recordHarthmereLiveInventoryItemsSnapshot({
+      inventoryLootState: { actor: { items: {}, equipment: {} } },
+    });
+    assert.equal(
+      isHarthmereRepairToolEquipped(stateWithMainHand("repair_mallet")),
+      false,
+      "an authoritative unequip must not fall back to stale local equipment"
     );
   });
 });

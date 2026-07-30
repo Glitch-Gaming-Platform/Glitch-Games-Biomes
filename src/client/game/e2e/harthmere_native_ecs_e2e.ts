@@ -236,6 +236,20 @@ export interface HarthmereNativeEcsE2EBridge {
     completedTargetId?: string;
     requestId?: string;
   }): Promise<HarthmereNativeEcsE2EJobsBoardProjection>;
+  robotFrontendSnapshot(robotId: BiomesId): Promise<{
+    id: string;
+    label?: string;
+    isRobot: boolean;
+    meshAssetKey?: string;
+    position?: [number, number, number];
+  }>;
+  groundedHarthmerePosition(input: {
+    position: readonly [number, number, number];
+    requireOpenSky?: boolean;
+  }): Promise<{
+    status: "grounded" | "no-surface" | "not-loaded";
+    position?: [number, number, number];
+  }>;
   nativeQuestFrontendSnapshot(): Promise<HarthmereNativeEcsE2EQuestProjection>;
   refreshBibleQuestFrontendSnapshot(): Promise<unknown>;
   /** Execute the complete Chapter 1 progression contract in this browser bundle. */
@@ -521,25 +535,69 @@ export function installHarthmereNativeEcsE2E(
       );
     },
     nativeQuestFrontendSnapshot: async () => {
-      const [nativeAdapter, mainQuestSelection, mapPinnedDestination] =
-        await Promise.all([
-          import(
-            "@/client/components/biomes_ui/adapters/nativeQuestMapAdapter"
-          ),
-          import("@/client/components/biomes_ui/adapters/mainQuestSelection"),
-          import("@/client/components/biomes_ui/adapters/mapPinnedDestination"),
-        ]);
+      const [
+        nativeAdapter,
+        navAidResolver,
+        mainQuestSelection,
+        mapPinnedDestination,
+      ] = await Promise.all([
+        import("@/client/components/biomes_ui/adapters/nativeQuestMapAdapter"),
+        import(
+          "@/client/components/biomes_ui/adapters/nativeQuestNavAidResolver"
+        ),
+        import("@/client/components/biomes_ui/adapters/mainQuestSelection"),
+        import("@/client/components/biomes_ui/adapters/mapPinnedDestination"),
+      ]);
       const challenges = context.resources.get(
         "/ecs/c/challenges",
         context.userId
       );
       const bundles = context.resources.get("/challenges/all");
-      const quests = nativeAdapter.nativeQuestTrackableQuests(bundles);
+      const resolveNavAidPosition =
+        navAidResolver.buildNativeQuestNavAidResolver({
+          navigationAids: context.mapManager.localNavigationAids,
+          questBundles: bundles,
+          npcTypePosition: (npcTypeId) => {
+            const playerPosition = context.table.get(context.userId)?.position
+              ?.v;
+            let best:
+              | {
+                  distanceSquared: number;
+                  position: [number, number, number];
+                }
+              | undefined;
+            for (const entity of context.table.contents()) {
+              if (
+                Number(entity.npc_metadata?.type_id) !== Number(npcTypeId) ||
+                !entity.position?.v
+              ) {
+                continue;
+              }
+              const [x, y, z] = entity.position.v.map(Number);
+              const dx = x - Number(playerPosition?.[0] ?? x);
+              const dz = z - Number(playerPosition?.[2] ?? z);
+              const distanceSquared = dx * dx + dz * dz;
+              if (!best || distanceSquared < best.distanceSquared) {
+                best = { distanceSquared, position: [x, y, z] };
+              }
+            }
+            return best?.position;
+          },
+          fallbackPosition: () =>
+            context.table.get(context.userId)?.position?.v,
+        });
+      const quests = nativeAdapter.nativeQuestTrackableQuests(
+        bundles,
+        resolveNavAidPosition
+      );
       // Expose the same inferred native markers consumed by the real Map tab.
       // Position-routed combat objectives need no async NPC resolver, so this
       // is a deterministic live-browser assertion without opening a second
       // renderer or duplicating map logic in the E2E runner.
-      const markers = nativeAdapter.nativeQuestMapMarkers(bundles);
+      const markers = nativeAdapter.nativeQuestMapMarkers(
+        bundles,
+        resolveNavAidPosition
+      );
       const active = nativeAdapter.activeNativeQuest(bundles);
       const main =
         mainQuestSelection.defaultMainQuestFromTrackableQuestsForTest(quests);
@@ -592,6 +650,45 @@ export function installHarthmereNativeEcsE2E(
             })),
           };
         }),
+      };
+    },
+    robotFrontendSnapshot: async (robotId) => {
+      const routing = await import(
+        "@/shared/harthmere/snapshot_grove_npc_mesh_routing"
+      );
+      const entity = context.table.get(robotId);
+      const position = entity?.position?.v;
+      return {
+        id: String(robotId),
+        label: entity?.label?.text,
+        isRobot: Boolean(entity?.robot_component),
+        meshAssetKey: routing.snapshotGroveNpcAssetKeyForEntity(
+          robotId,
+          entity?.label?.text,
+          { isRobot: Boolean(entity?.robot_component) }
+        ),
+        position: position
+          ? ([...position] as [number, number, number])
+          : undefined,
+      };
+    },
+    groundedHarthmerePosition: async ({ position, requireOpenSky = true }) => {
+      const { groundHarthmereLiveEntityFeetYWithStatus } = await import(
+        "@/client/game/util/harthmere_entity_grounding"
+      );
+      const result = groundHarthmereLiveEntityFeetYWithStatus(
+        context.resources,
+        position[0],
+        position[2],
+        position[1],
+        requireOpenSky
+      );
+      return {
+        status: result.status,
+        position:
+          result.status === "grounded" && result.feetY !== undefined
+            ? [position[0], result.feetY, position[2]]
+            : undefined,
       };
     },
     refreshBibleQuestFrontendSnapshot: async () => {

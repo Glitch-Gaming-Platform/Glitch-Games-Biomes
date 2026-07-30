@@ -16,6 +16,7 @@ BOOTSTRAP_PROD_REDIS_SNAPSHOT=0
 RUN_LOCAL_SMOKE="${RUN_LOCAL_SMOKE:-0}"
 RUN_LOCAL_FULL_REHEARSAL="${RUN_LOCAL_FULL_REHEARSAL:-0}"
 HARTHMERE_RUN_LOCAL_BROWSER_E2E="${HARTHMERE_RUN_LOCAL_BROWSER_E2E:-$RUN_LOCAL_FULL_REHEARSAL}"
+HARTHMERE_TERRAIN_SEED_MODE="${HARTHMERE_TERRAIN_SEED_MODE:-additive}"
 DOCKER_BUILD_DIRECT_PUSH="${DOCKER_BUILD_DIRECT_PUSH:-1}"
 DOCKER_BUILD_MIN_FREE_MB="${DOCKER_BUILD_MIN_FREE_MB:-18432}"
 DOCKER_CACHE_EXPORT_MIN_FREE_MB="${DOCKER_CACHE_EXPORT_MIN_FREE_MB:-32768}"
@@ -46,6 +47,9 @@ Options:
   --bootstrap-prod-redis-snapshot
                  Explicitly flush and reload production Redis from snapshot_backup.json
                  before updating Azure. Normal deploys fail fast on snapshot mismatch.
+  --migrate-existing-terrain
+                 Update existing authored shard seeds while preserving every
+                 player/world overlay. Ordinary deploys only add missing shards.
   --redis-health-check-only
                  Only check/repair production Redis AOF/write health, then exit.
   -h, --help     Show this help.
@@ -96,6 +100,10 @@ while [ "$#" -gt 0 ]; do
       BOOTSTRAP_PROD_REDIS_SNAPSHOT=1
       shift
       ;;
+    --migrate-existing-terrain)
+      HARTHMERE_TERRAIN_SEED_MODE=preserve-overlays
+      shift
+      ;;
     --redis-health-check-only)
       REDIS_HEALTH_CHECK_ONLY=1
       shift
@@ -111,6 +119,20 @@ while [ "$#" -gt 0 ]; do
       ;;
   esac
 done
+
+case "$HARTHMERE_TERRAIN_SEED_MODE" in
+  additive|preserve-overlays) ;;
+  destructive)
+    if [ "${BIOMES_ALLOW_DESTRUCTIVE_TERRAIN_RESEED:-0}" != "1" ]; then
+      echo "ERROR destructive terrain reseeding requires BIOMES_ALLOW_DESTRUCTIVE_TERRAIN_RESEED=1." >&2
+      exit 2
+    fi
+    ;;
+  *)
+    echo "ERROR unknown HARTHMERE_TERRAIN_SEED_MODE=$HARTHMERE_TERRAIN_SEED_MODE; expected additive, preserve-overlays, or destructive." >&2
+    exit 2
+    ;;
+esac
 
 if [ "$STOP_BEFORE_DOCKER_BUILD" = "1" ] && [ "$PUSH_PRODUCTION" = "1" ]; then
   echo "ERROR --stop-before-docker-build cannot be combined with --push." >&2
@@ -1234,6 +1256,8 @@ deploy_simulation_container_app() {
     BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN=1
     BIOMES_FORCE_LOCAL_DEV_TOWN=0
     BIOMES_CREATE_LOCAL_DEV_TERRAIN=0
+    BIOMES_FORCE_LOCAL_DEV_TOWN_RESEED=0
+    BIOMES_TERRAIN_SEED_MODE=additive
     BIOMES_START_IN_HARTHMERE=0
     BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X=1600
     BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_Z=0
@@ -2029,7 +2053,7 @@ run_azure_terrain_audit_job() {
 
   registry_username="$(az acr credential show --name "$ACR_NAME" --query username -o tsv)"
   registry_password="$(az acr credential show --name "$ACR_NAME" --query 'passwords[0].value' -o tsv)"
-  log "Creating post-simulation terrain audit job to prove Gaia does not recontaminate Harthmere."
+  log "Creating post-simulation authored-terrain audit; dynamic player and Gaia overlays are preserved."
   az containerapp job create \
     --resource-group "$AZURE_RESOURCE_GROUP" \
     --name "$HARTHMERE_TERRAIN_AUDIT_JOB_NAME" \
@@ -2064,7 +2088,7 @@ run_azure_terrain_audit_job() {
       BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN=1 \
       BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X=1600 \
       BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_Z=0 \
-      HARTHMERE_TERRAIN_AUDIT_MODE=muck-only \
+      HARTHMERE_TERRAIN_AUDIT_MODE=authored \
     --output none
   unset registry_password
   HARTHMERE_TERRAIN_AUDIT_JOB_CREATED=1
@@ -2094,12 +2118,12 @@ run_azure_terrain_audit_job() {
     --format text 2>&1 || true)"
   printf '%s\n' "$logs"
   if [ "$status" != "Succeeded" ] ||
-     ! printf '%s\n' "$logs" | grep -Fq "OK active Gaia leaves Harthmere free of Muck terrain and atmosphere."; then
+     ! printf '%s\n' "$logs" | grep -Fq "OK Harthmere authored terrain is complete and valid while player and simulation overlays remain preserved."; then
     echo "ERROR post-simulation terrain audit failed: execution=$execution status=${status:-unknown}." >&2
     delete_azure_terrain_audit_job
     return 1
   fi
-  log "Post-simulation terrain audit passed with zero missing, invalid, empty, holed, Muck, and retired shards."
+  log "Post-simulation authored-terrain audit passed without treating player edits or dynamic Muck as corruption."
   delete_azure_terrain_audit_job
 }
 
@@ -2121,7 +2145,7 @@ run_azure_terrain_seed_job() {
   # The shim performs the exact production terrain seed. A Container Apps Job
   # avoids inheriting the web revision's 15-minute startup probe, which would
   # restart this intentional ~30-minute maintenance operation. The wrapper
-  # exits only after the shim's completion log and a full 2,362-shard audit.
+  # exits only after the shim's completion log and an authored-seed audit.
   # Azure CLI treats dash-prefixed values after --args as CLI options. Pass a
   # single --eval=<wrapper> Node argument instead, with the wrapper encoded so
   # its shell metacharacters and newlines survive CLI and ARM serialization.
@@ -2231,7 +2255,10 @@ const readLog = () => {
       GLITCH_REQUIRE_SNAPSHOT_REDIS=1 \
       BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN=1 \
       BIOMES_CREATE_LOCAL_DEV_TERRAIN=1 \
-      BIOMES_FORCE_LOCAL_DEV_TOWN_RESEED=1 \
+      BIOMES_FORCE_LOCAL_DEV_TOWN_RESEED=0 \
+      BIOMES_TERRAIN_SEED_MODE="$HARTHMERE_TERRAIN_SEED_MODE" \
+      BIOMES_MIGRATE_HARTHMERE_AUTHORED_WATER="${BIOMES_MIGRATE_HARTHMERE_AUTHORED_WATER:-0}" \
+      BIOMES_ALLOW_DESTRUCTIVE_TERRAIN_RESEED="${BIOMES_ALLOW_DESTRUCTIVE_TERRAIN_RESEED:-0}" \
       BIOMES_SKIP_RETIRED_TERRAIN_SCAN=1 \
       BIOMES_SKIP_BIKKIE_NAMES_WRITE=1 \
       BIOMES_SKIP_PLAYER_SPATIAL_OBSERVER=1 \
@@ -2417,6 +2444,8 @@ seed_production_harthmere_extension_terrain() {
     return
   fi
 
+  log "Running Harthmere terrain maintenance in $HARTHMERE_TERRAIN_SEED_MODE mode (additive is the ordinary deployment default)."
+
   if use_azure_world_sync_job; then
     run_azure_terrain_seed_job
     return
@@ -2446,7 +2475,9 @@ seed_production_harthmere_extension_terrain() {
     --max-replicas 1 \
     --set-env-vars \
       BIOMES_CREATE_LOCAL_DEV_TERRAIN=1 \
-      BIOMES_FORCE_LOCAL_DEV_TOWN_RESEED=1 \
+      BIOMES_FORCE_LOCAL_DEV_TOWN_RESEED=0 \
+      BIOMES_TERRAIN_SEED_MODE="$HARTHMERE_TERRAIN_SEED_MODE" \
+      BIOMES_ALLOW_DESTRUCTIVE_TERRAIN_RESEED="${BIOMES_ALLOW_DESTRUCTIVE_TERRAIN_RESEED:-0}" \
       GLITCH_ENABLE_STREAM_WORKERS=0 \
     --query properties.latestRevisionName \
     -o tsv)"
@@ -2755,6 +2786,7 @@ run_build_checks() {
   node scripts/harthmere/test-harthmere-live-mode-backend-reducer.cjs .
   node scripts/harthmere/test-harthmere-live-entity-production-smoke.cjs .
   ./node_modules/.bin/mocha --config .mocharc.fast.json \
+    src/server/shim/terrain_seed_migration.test.ts \
     src/client/game/helpers/player_shards.test.ts \
     src/client/components/system/test/load_progress_recovery.test.ts \
     src/client/game/test/load_progress.test.ts
@@ -3336,6 +3368,8 @@ push_and_deploy() {
       # Production terrain is reconciled once by this deploy script. Rebuilding
       # it in every web replica caused concurrent startup memory spikes.
       BIOMES_CREATE_LOCAL_DEV_TERRAIN=0
+      BIOMES_FORCE_LOCAL_DEV_TOWN_RESEED=0
+      BIOMES_TERRAIN_SEED_MODE=additive
       BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X=1600
       BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_Z=0
       NEXT_PUBLIC_BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN=1
@@ -3374,6 +3408,9 @@ push_and_deploy() {
   ensure_azure_revision_active "$latest_revision"
   free_azure_capacity_for_maintenance "$latest_revision"
   if [ "${HARTHMERE_SKIP_WORLD_SYNC_RECONCILIATION:-0}" != "1" ]; then
+    # Start maintenance from a freshly persisted pre-terrain checkpoint. This
+    # reduces recovery exposure if a later maintenance gate fails.
+    force_production_redis_bgsave "pre-terrain maintenance checkpoint"
     pause_simulation_container_app_for_world_maintenance
   fi
   seed_production_harthmere_extension_terrain "$latest_revision"

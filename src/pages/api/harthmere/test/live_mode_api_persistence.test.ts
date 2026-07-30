@@ -2187,9 +2187,17 @@ describe("live_mode API Redis persistence", () => {
       NOW_MS
     );
     assert.ok(shared);
-    assert.ok(
+    assert.equal(
       shared.building.materializationPlans
-        .outpost_restaurant_redpot_backend_materialization
+        .outpost_restaurant_redpot_backend_materialization,
+      undefined,
+      "static procedural plans should be derived from source instead of duplicated in Redis"
+    );
+    assert.equal(
+      shared.building.placedStructures
+        .outpost_restaurant_redpot_backend_materialization?.materializedInEcs,
+      true,
+      "the durable structure acknowledgement should record successful ECS materialization"
     );
   });
 

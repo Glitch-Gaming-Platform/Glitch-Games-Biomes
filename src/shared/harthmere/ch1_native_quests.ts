@@ -25,6 +25,15 @@ function id(value: number): BiomesId {
   return value as BiomesId;
 }
 
+/** The Chapter 1 quest that must run in parallel with Gimme Shelter after the
+ * prologue completes. Exported so the trigger lifecycle can repair older saves
+ * that completed Muck vs. Machine before this native projection was present. */
+export const NATIVE_CH1_FIRST_QUEST_ID = id(CH1_NATIVE_QUEST_ID_BASE);
+
+export function isNativeCh1PrologueHandoffQuestId(id: unknown) {
+  return Number(id) === Number(NATIVE_CH1_FIRST_QUEST_ID);
+}
+
 /**
  * Stable numeric ids are derived from the frozen authored quest order. New
  * quests must append; reordering is a migration and is guarded by tests. Each
@@ -64,9 +73,7 @@ export function ch1NativeQuestRootId(questId: string): BiomesId | undefined {
   const questIndex = CH1_QUESTS.findIndex((quest) => quest.id === questId);
   return questIndex < 0
     ? undefined
-    : id(
-        CH1_NATIVE_STEP_ID_BASE + questIndex * CH1_NATIVE_STEPS_PER_QUEST
-      );
+    : id(CH1_NATIVE_STEP_ID_BASE + questIndex * CH1_NATIVE_STEPS_PER_QUEST);
 }
 
 function progressPredicate(challengeId: BiomesId, stepId: BiomesId): Matcher {
@@ -119,6 +126,15 @@ function unlockTrigger(index: number): StoredTriggerDefinition {
 }
 
 function questGiverId(quest: Ch1QuestDef): BiomesId | undefined {
+  if (quest.id === CH1_QUESTS[0].id) {
+    // Muck vs. Machine's ignition beat is the Chapter 1 acceptance. The first
+    // objective is literally to wake up, so parking it as an available Jackie
+    // offer leaves the player with no active chapter objective or marker after
+    // the prologue completes. A giver-less first biscuit auto-starts from the
+    // existing challengeComplete unlock; Jackie remains the authored narrative
+    // giver and the later Kit Check target.
+    return undefined;
+  }
   if (quest.id === "ch1_a4_q06_teak") {
     // The narrative referral comes from Sergeant Bram Holt, but the imported
     // production snapshot does not guarantee the old local-dev Holt entity

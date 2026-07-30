@@ -14,6 +14,7 @@ import {
   buildHarthmereAzureVoiceParameterId,
   buildAzureSpeechSsml,
   harthmereAzureVoiceIdOrFallback,
+  harthmereStrongVoiceGenderForNameForTest,
   harthmereVoiceProfileForActor,
   parseHarthmereAzureVoiceId,
 } from "@/shared/harthmere/npc_voice_profiles";
@@ -58,9 +59,7 @@ describe("Harthmere Azure NPC voice profiles", () => {
       voiceIds.add(entry.profile.voiceParameterId);
       genders.add(entry.profile.inferredGender);
       kinds.add(entry.profile.actorKind);
-      const parsed = parseHarthmereAzureVoiceId(
-        entry.profile.voiceParameterId
-      );
+      const parsed = parseHarthmereAzureVoiceId(entry.profile.voiceParameterId);
       assert.ok(parsed, `${entry.id} has an unparsable voice id`);
       assert.ok(parsed!.voiceName.includes("Neural"));
       assert.match(parsed!.rate, /^[+-]\d+%$/);
@@ -161,6 +160,45 @@ describe("Harthmere Azure NPC voice profiles", () => {
     });
     assert.equal(creature.inferredGender, "neutral");
     assert.equal(creature.actorKind, "creature");
+  });
+
+  it("prioritizes character identity over incidental backstory relatives", () => {
+    const expected = [
+      ["Sophia", "female"],
+      ["Foreman Calla Ashe", "female"],
+      ["Designer Mira Glass", "female"],
+      ["Cook Bessa Redpot", "female"],
+      ["Mistress Helna Voss", "female"],
+      ["Sora Reed", "female"],
+      ["Veneth of the Green Threshold", "female"],
+      ["Brother Vance Holt", "male"],
+      ["Widower Sael Munn", "male"],
+      ["Anchorwright Doran Vell", "male"],
+      ["Master Osric Vale", "male"],
+      ["Billy", "male"],
+    ] as const;
+    for (const [displayName, gender] of expected) {
+      assert.equal(
+        harthmereStrongVoiceGenderForNameForTest(displayName),
+        gender,
+        displayName
+      );
+      assert.equal(
+        harthmereVoiceProfileForActor({
+          source: "test",
+          displayName,
+          role: "humanoid",
+          // Deliberately include opposite-sex family words. The actor's own
+          // displayed identity must win over incidental story relationships.
+          background:
+            gender === "female"
+              ? "Her father and brother are part of the story."
+              : "His mother and wife are part of the story.",
+        }).inferredGender,
+        gender,
+        displayName
+      );
+    }
   });
 
   it("casts Huck as a human country voice", () => {
@@ -357,10 +395,7 @@ describe("Harthmere Azure NPC voice profiles", () => {
     });
 
     assert.equal(parseHarthmereAzureVoiceId(""), undefined);
-    assert.equal(
-      parseHarthmereAzureVoiceId("MF3mGyEYCl7XYWbV9"),
-      undefined
-    );
+    assert.equal(parseHarthmereAzureVoiceId("MF3mGyEYCl7XYWbV9"), undefined);
   });
 
   it("falls back to Azure when legacy non-Azure voice ids are encountered", () => {

@@ -94,6 +94,7 @@ declare global {
 type ShopfrontMerchKind =
   | "tool"
   | "block"
+  | "material"
   | "interior"
   | "recipe_book"
   | "stock";
@@ -2608,6 +2609,9 @@ const ShopfrontPane: React.FunctionComponent<{
   const furnishings = storefrontGoods.filter(
     (good) => good.kind === "interior"
   );
+  const craftingMaterials = storefrontGoods.filter(
+    (good) => good.kind === "material"
+  );
   const recipeBooks = storefrontGoods.filter(
     (good) => good.kind === "recipe_book"
   );
@@ -2840,6 +2844,19 @@ const ShopfrontPane: React.FunctionComponent<{
               <div style={shopfrontGoodsGridStyle}>
                 {furnishings.map((good) =>
                   renderStorefrontGood(good, "interior")
+                )}
+              </div>
+            </ShopfrontMerchSection>
+          ) : null}
+          {craftingMaterials.length ? (
+            <ShopfrontMerchSection
+              kind="material"
+              title="Crafting Materials"
+              countLabel={`${craftingMaterials.length} materials`}
+            >
+              <div style={shopfrontGoodsGridStyle}>
+                {craftingMaterials.map((good) =>
+                  renderStorefrontGood(good, "material")
                 )}
               </div>
             </ShopfrontMerchSection>
@@ -4778,6 +4795,16 @@ const shopfrontMerchTones: Record<
     surfaceBottom: "rgba(9, 20, 36, 0.98)",
     badgeBg: "rgba(88, 199, 255, 0.18)",
     badgeText: "#b9ecff",
+  },
+  material: {
+    label: "Crafting Material",
+    accent: "#8ee6a8",
+    border: "rgba(142, 230, 168, 0.76)",
+    glow: "rgba(92, 214, 130, 0.24)",
+    surfaceTop: "rgba(26, 75, 48, 0.82)",
+    surfaceBottom: "rgba(9, 24, 31, 0.98)",
+    badgeBg: "rgba(142, 230, 168, 0.18)",
+    badgeText: "#c9ffda",
   },
   interior: {
     label: "Furnishing",

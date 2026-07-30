@@ -56,9 +56,74 @@ requireForTest.extensions[".png"] = (module: any, filename: string) => {
 
 const {
   harthmereHotbarItemIdFromRefKey,
+  nativeHotbarRemovalFailureFeedback,
+  planNativeHotbarRemoval,
   rememberHarthmereHotbarAutoAssignOptOut,
   resetHarthmereHotbarAutoAssignOptOutForTest,
 } = requireForTest("../useBiomesUILiveAdapters");
+
+describe("planNativeHotbarRemoval", () => {
+  it("uses a real empty destination in the 40-slot native backpack", () => {
+    const backpack = new Array<unknown>(40).fill({ occupied: true });
+    backpack[39] = undefined;
+    assert.deepEqual(
+      planNativeHotbarRemoval({
+        backpackItems: backpack,
+        hotbarSlotPresent: true,
+        playerReady: true,
+      }),
+      { ok: true, destinationIndex: 39 }
+    );
+  });
+
+  it("reports backpack_full instead of silently no-oping", () => {
+    const backpack = new Array(40).fill({ occupied: true });
+    assert.deepEqual(
+      planNativeHotbarRemoval({
+        backpackItems: backpack,
+        hotbarSlotPresent: true,
+        playerReady: true,
+      }),
+      { ok: false, reason: "backpack_full" }
+    );
+    assert.deepEqual(
+      nativeHotbarRemovalFailureFeedback({
+        slotIndex: 2,
+        reason: "backpack_full",
+        backpackItems: backpack,
+      }),
+      {
+        message:
+          "Backpack full. Free one of your 40 backpack slots before removing a hotbar item.",
+        telemetry: {
+          slot: 3,
+          reason: "backpack_full",
+          backpack_slots: 40,
+          occupied_backpack_slots: 40,
+        },
+      }
+    );
+  });
+
+  it("distinguishes stale slots from an inventory that is still loading", () => {
+    assert.deepEqual(
+      planNativeHotbarRemoval({
+        backpackItems: new Array(40),
+        hotbarSlotPresent: false,
+        playerReady: true,
+      }),
+      { ok: false, reason: "slot_empty" }
+    );
+    assert.deepEqual(
+      planNativeHotbarRemoval({
+        backpackItems: new Array(40),
+        hotbarSlotPresent: true,
+        playerReady: false,
+      }),
+      { ok: false, reason: "player_not_ready" }
+    );
+  });
+});
 
 describe("harthmereHotbarItemIdFromRefKey", () => {
   it("extracts item ids that themselves contain colons", () => {
@@ -146,7 +211,10 @@ describe("applyOptimisticStaminaToStatusForTest", () => {
   });
 
   it("is a no-op without a snapshot or without a delta", () => {
-    assert.equal(applyOptimisticStaminaToStatusForTest(undefined, 5), undefined);
+    assert.equal(
+      applyOptimisticStaminaToStatusForTest(undefined, 5),
+      undefined
+    );
     const status = baseStatus();
     assert.equal(applyOptimisticStaminaToStatusForTest(status, 0), status);
     assert.equal(

@@ -1192,6 +1192,19 @@ export const HARTHMERE_NATIVE_NPC_ID_MANIFEST = {
   // the Bikkie overlay and blocks a clean snapshot-backed boot.
   monster_watchtower_muckling: id(8722087466111636),
   monster_mossy_muckling: id(8722087466111637),
+  // HARTHMERE_COBBLED_MUCKLING_HUNT (2026-07-29): "In Storage" asks for six
+  // Mucker Teeth from Cobbled Mucklings, and no creature in the restored world
+  // carried that name or dropped that item. One new display name, so one new
+  // checked-in type identity — a missing entry here emits an NPC biscuit with
+  // an undefined id, which fails the Bikkie overlay and blocks a clean
+  // snapshot-backed boot.
+  //
+  // NOTE: this is deliberately NOT the original snapshot's Cobbled Muckling
+  // type id (8997551883502319). That legacy type keeps its own identity and its
+  // own kill-count aliases in `native_combat_quest_routing.ts`; the restored
+  // pack is a Harthmere-native creature with Harthmere stats, respawn and
+  // visuals, exactly like the restored Mossy Muckling pack.
+  monster_cobbled_muckling: id(8722087466111638),
 } as const satisfies Readonly<Record<string, BiomesId>>;
 
 /**
@@ -1307,6 +1320,7 @@ export const HARTHMERE_NATIVE_RECIPE_ID_MANIFEST = {
   harthmere_exotic_antihelium_block: id(8770000000000104),
   harthmere_exotic_antihydrogen_block: id(8770000000000105),
   harthmere_exotic_certified_portal_fuel: id(8770000000000106),
+  harthmere_exotic_destination_crystal: id(8770000000000148),
   harthmere_exotic_portal_fuel_cell: id(8770000000000107),
   harthmere_exotic_power_cell: id(8770000000000108),
   harthmere_exotic_raw_matter_block: id(8770000000000109),
@@ -1315,6 +1329,13 @@ export const HARTHMERE_NATIVE_RECIPE_ID_MANIFEST = {
   harthmere_exotic_utility_core: id(8770000000000112),
   harthmere_grove_festival_skewer: id(8770000000000142),
   harthmere_grove_road_torch: id(8770000000000143),
+  // HARTHMERE_JOB_MATERIAL_RECIPES: native identities for the Jobs Board
+  // bundle recipes, so crafting them goes through the signed ECS inventory
+  // transaction like every other Harthmere recipe.
+  harthmere_job_crop_bundle: id(8770000000000144),
+  harthmere_job_herb_bundle: id(8770000000000145),
+  harthmere_job_linen_bundle: id(8770000000000146),
+  harthmere_job_repair_part: id(8770000000000147),
   harthmere_leatherworking_armor: id(8770000000000113),
   harthmere_leatherworking_boiled_leather: id(8770000000000114),
   harthmere_refine_copper_ingot: id(8770000000000115),

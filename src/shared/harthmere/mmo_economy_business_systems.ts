@@ -459,6 +459,31 @@ function defaultBusinessSystemsState(nowMs = 0): HarthmereEconomyBusinessSystems
   };
 }
 
+// HARTHMERE_PROCEDURAL_OUTPOST_BUILDINGS_ARE_DERIVED (2026-07-29):
+// `outpostBuildings` is ~15 MB of static, code-authored voxel records for the
+// 19 outposts. `normalizeHarthmereEconomyBusinessSystemsState` re-injects them
+// on EVERY parse, so persisting or cloning them is pure waste — and it was
+// being paid on every live-mode request (deep clone) and every shared-world
+// write (JSON.stringify to Redis). Strip them before serializing; normalize
+// puts them back, so the round trip is lossless. Any key NOT in the static
+// table (a genuinely stored building) is preserved.
+export function stripHarthmereProceduralOutpostBuildings<
+  T extends { outpostBuildings?: Record<string, unknown> }
+>(systems: T): T {
+  if (!systems?.outpostBuildings) {
+    return systems;
+  }
+  const stored: Record<string, unknown> = {};
+  for (const [outpostId, building] of Object.entries(
+    systems.outpostBuildings
+  )) {
+    if (!(outpostId in HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS)) {
+      stored[outpostId] = building;
+    }
+  }
+  return { ...systems, outpostBuildings: stored };
+}
+
 export function normalizeHarthmereEconomyBusinessSystemsState(raw: unknown): HarthmereEconomyBusinessSystemsState {
   const defaults = defaultBusinessSystemsState();
   const value = (raw && typeof raw === "object" ? raw : {}) as Partial<HarthmereEconomyBusinessSystemsState>;
