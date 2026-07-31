@@ -128,7 +128,8 @@ describe("harthmere extension surface repair", () => {
 
   it("reports rather than fills a column deeper than any pit this bug makes", () => {
     const result = harthmereSurfaceRepairColumnEdits(WILDS_X, WILDS_Z, {
-      surfaceY: HARTHMERE_SURFACE_REPAIR_TARGET_Y -
+      surfaceY:
+        HARTHMERE_SURFACE_REPAIR_TARGET_Y -
         HARTHMERE_SURFACE_REPAIR_MAX_DROP -
         1,
     });
@@ -249,7 +250,7 @@ describe("harthmere extension surface repair", () => {
     assert.strictEqual(
       harthmereSunkenActorRegroundTarget({
         position: [900, 31, -209],
-        }).sunken,
+      }).sunken,
       false
     );
     assert.strictEqual(

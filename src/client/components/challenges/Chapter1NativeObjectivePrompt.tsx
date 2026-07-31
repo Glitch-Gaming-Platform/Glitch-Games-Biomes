@@ -11,8 +11,9 @@
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
 import { defaultHarthmereLiveFetch } from "@/client/components/harthmere_live_fetch";
 import { usePointerLockManager } from "@/client/components/contexts/PointerLockContext";
-import { VoiceChat } from "@/client/components/system/VoiceChat";
 import { Chapter1ContainmentTriage } from "@/client/components/challenges/Chapter1ContainmentTriage";
+import { TalkDialogModal } from "@/client/components/challenges/TalkDialogModal";
+import { GenericTalkDialogModalStep } from "@/client/components/challenges/TalkDialogModalStep";
 import {
   closePointerLockUnlockWhileOpen,
   openPointerLockUnlockWhileOpen,
@@ -22,10 +23,11 @@ import {
   useWorldInteractionCandidate,
   WORLD_INTERACTION_PRIORITY,
 } from "@/client/components/challenges/worldInteractionDispatcher";
-import { requestCutsceneById } from "@/client/game/cutscene/cutscene_service";
+import { requestChapter1CutsceneById } from "@/client/game/cutscene/ch1_playback";
 import { ch1AmbientTriggersOfKind } from "@/shared/harthmere/ch1_fragment_triggers";
 import { ch1VoiceActorForSpeaker } from "@/shared/harthmere/ch1_voice";
 import { nativeBiomesEcsAuthorityEnabled } from "@/shared/harthmere/native_road_ahead_contract";
+import type { BiomesId } from "@/shared/ids";
 import React, {
   useCallback,
   useEffect,
@@ -51,6 +53,15 @@ interface Chapter1ObjectiveState {
   interactionRadius?: number;
   distance?: number;
   withinRange?: boolean;
+  showNavigationAid?: boolean;
+  requirement?: {
+    ready: boolean;
+    current: number;
+    total: number;
+    reason?: string;
+    blocksChapterInteraction: boolean;
+    autoCompleteWhenReady: boolean;
+  };
   introCutsceneId?: string;
   cutsceneId?: string;
   dialogue?: Chapter1DialogueSequence;
@@ -160,7 +171,7 @@ async function reportChapter1SleepTriggers() {
 }
 
 export const Chapter1NativeObjectivePrompt: React.FunctionComponent = () => {
-  const { reactResources } = useClientContext();
+  const { reactResources, mapManager } = useClientContext();
   const pointerLockManager = usePointerLockManager();
   const cutscene = reactResources.use("/scene/cutscene");
   const [state, setState] = useState<Chapter1ObjectiveState>();
@@ -171,6 +182,7 @@ export const Chapter1NativeObjectivePrompt: React.FunctionComponent = () => {
   const [dialogue, setDialogue] = useState<OpenChapter1Dialogue>();
   const [dialoguePageIndex, setDialoguePageIndex] = useState(0);
   const [containmentOpen, setContainmentOpen] = useState(false);
+  const [sleepTransition, setSleepTransition] = useState(false);
   const autoCompletedKey = useRef<string>();
   const introCutsceneRequested = useRef<string>();
   const busyRef = useRef(false);
@@ -249,7 +261,7 @@ export const Chapter1NativeObjectivePrompt: React.FunctionComponent = () => {
           } else {
             if (
               next.cutsceneId &&
-              !requestCutsceneById(next.cutsceneId, { preempt: true })
+              !requestChapter1CutsceneById(next.cutsceneId, { preempt: true })
             ) {
               setError(`Could not start story scene ${next.cutsceneId}.`);
             }
@@ -298,6 +310,15 @@ export const Chapter1NativeObjectivePrompt: React.FunctionComponent = () => {
     [state]
   );
 
+  const beginSleepTransition = useCallback(async () => {
+    if (sleepTransition || busyRef.current) return;
+    setSleepTransition(true);
+    await new Promise<void>((resolve) => window.setTimeout(resolve, 900));
+    await complete();
+    await new Promise<void>((resolve) => window.setTimeout(resolve, 350));
+    setSleepTransition(false);
+  }, [complete, sleepTransition]);
+
   useEffect(() => {
     setChoiceOpen(false);
     setDialogue(undefined);
@@ -306,7 +327,8 @@ export const Chapter1NativeObjectivePrompt: React.FunctionComponent = () => {
   }, [state?.challengeId, state?.stepId]);
 
   useEffect(() => {
-    const modalOpen = choiceOpen || Boolean(dialogue) || containmentOpen;
+    const modalOpen =
+      choiceOpen || Boolean(dialogue) || containmentOpen || sleepTransition;
     modalOpenRef.current = modalOpen;
     if (!modalOpen) {
       closePointerLockUnlockWhileOpen(
@@ -324,7 +346,48 @@ export const Chapter1NativeObjectivePrompt: React.FunctionComponent = () => {
         pointerLockManager,
         shouldReturnPointerLock.current
       );
-  }, [choiceOpen, containmentOpen, dialogue, pointerLockManager]);
+  }, [
+    choiceOpen,
+    containmentOpen,
+    dialogue,
+    pointerLockManager,
+    sleepTransition,
+  ]);
+
+  useEffect(() => {
+    if (
+      state?.status !== "active" ||
+      !state.showNavigationAid ||
+      !state.targetPosition ||
+      state.challengeId === undefined ||
+      state.stepId === undefined
+    ) {
+      return;
+    }
+    const aidId = mapManager.addNavigationAid(
+      {
+        kind: "quest",
+        autoremoveWhenNear: false,
+        challengeId: state.challengeId as BiomesId,
+        triggerId: state.stepId as BiomesId,
+        target: {
+          kind: "position",
+          position: [...state.targetPosition],
+        },
+      },
+      state.stepId
+    );
+    return () => mapManager.removeNavigationAid(aidId);
+  }, [
+    mapManager,
+    state?.challengeId,
+    state?.showNavigationAid,
+    state?.stepId,
+    state?.targetPosition?.[0],
+    state?.targetPosition?.[1],
+    state?.targetPosition?.[2],
+    state?.status,
+  ]);
 
   useEffect(() => {
     const id = state?.introCutsceneId;
@@ -339,7 +402,7 @@ export const Chapter1NativeObjectivePrompt: React.FunctionComponent = () => {
     } catch {
       // Presentation still works when storage is unavailable.
     }
-    if (!requestCutsceneById(id, { preempt: true })) {
+    if (!requestChapter1CutsceneById(id, { preempt: true })) {
       return;
     }
     introCutsceneRequested.current = id;
@@ -368,8 +431,10 @@ export const Chapter1NativeObjectivePrompt: React.FunctionComponent = () => {
   useEffect(() => {
     if (
       state?.status !== "active" ||
-      state.trigger !== "near_location" ||
-      !state.withinRange ||
+      !(
+        (state.trigger === "near_location" && state.withinRange) ||
+        (state.requirement?.autoCompleteWhenReady && state.requirement.ready)
+      ) ||
       busy
     ) {
       return;
@@ -385,6 +450,9 @@ export const Chapter1NativeObjectivePrompt: React.FunctionComponent = () => {
       state?.status === "active" &&
       state.withinRange &&
       state.trigger !== "near_location" &&
+      !(
+        state.requirement?.blocksChapterInteraction && !state.requirement.ready
+      ) &&
       !(state.preparedChoice && (state.experience?.aliveEnemies ?? 0) > 0) &&
       !choiceOpen &&
       !containmentOpen &&
@@ -393,12 +461,14 @@ export const Chapter1NativeObjectivePrompt: React.FunctionComponent = () => {
         ? {
             id: `chapter1-native-objective:${objectiveKey(state)}`,
             priority: WORLD_INTERACTION_PRIORITY.chapter1Story,
-            disabled: busy,
+            disabled: busy || sleepTransition,
             // The central dispatcher owns repeat/modifier/editable-target
             // guards and consumes the winning key. Registering here avoids a
             // second window listener racing native ECS/container prompts.
             onInteract: () => {
-              if (state.dialogue) {
+              if (state.authoredStepId === "sleep_alone") {
+                void beginSleepTransition();
+              } else if (state.dialogue) {
                 setDialogue({ sequence: state.dialogue, mode: "objective" });
                 setDialoguePageIndex(0);
               } else if (state.authoredStepId === "the_procedure") {
@@ -415,11 +485,13 @@ export const Chapter1NativeObjectivePrompt: React.FunctionComponent = () => {
         : undefined,
     [
       busy,
+      beginSleepTransition,
       choiceOpen,
       complete,
       containmentOpen,
       cutscene.active,
       dialogue,
+      sleepTransition,
       state,
     ]
   );
@@ -435,11 +507,35 @@ export const Chapter1NativeObjectivePrompt: React.FunctionComponent = () => {
     return null;
   }
 
-  const distance = Math.max(0, Math.round(state.distance ?? 0));
   const activeDialoguePage = dialogue?.sequence.pages[dialoguePageIndex];
   const activeDialogueVoice = ch1VoiceActorForSpeaker(
     activeDialoguePage?.speaker
   );
+  const activeDialogueEntityId = (activeDialogueVoice?.entityId ??
+    state.challengeId ??
+    state.stepId) as BiomesId;
+  const advanceDialogue = () => {
+    if (!dialogue) return;
+    const finalPage = dialoguePageIndex >= dialogue.sequence.pages.length - 1;
+    if (!finalPage) {
+      setDialoguePageIndex((index) => index + 1);
+      return;
+    }
+    setDialogue(undefined);
+    setDialoguePageIndex(0);
+    if (dialogue.mode === "objective") {
+      if (state.choice) setChoiceOpen(true);
+      else void complete();
+      return;
+    }
+    if (
+      dialogue.cutsceneId &&
+      !requestChapter1CutsceneById(dialogue.cutsceneId, { preempt: true })
+    ) {
+      setError(`Could not start story scene ${dialogue.cutsceneId}.`);
+    }
+    window.setTimeout(() => void refresh(), 650);
+  };
   return (
     <>
       {containmentOpen && state.authoredStepId === "the_procedure" && (
@@ -450,6 +546,18 @@ export const Chapter1NativeObjectivePrompt: React.FunctionComponent = () => {
             void complete(automatic ? "hands_finish" : "stabilized");
           }}
         />
+      )}
+      {sleepTransition && (
+        <div
+          className="pointer-events-auto fixed inset-0 z-[1300] flex items-center justify-center bg-black text-white transition-opacity duration-700"
+          role="status"
+          aria-live="polite"
+          data-chapter1-sleep-transition="active"
+        >
+          <div className="text-white/65 text-sm uppercase tracking-[0.22em]">
+            The road-house goes quiet
+          </div>
+        </div>
       )}
       {state.experience?.kind === "sandstorm" && (
         <div
@@ -515,125 +623,81 @@ export const Chapter1NativeObjectivePrompt: React.FunctionComponent = () => {
           </div>
         </div>
       )}
-      <div
-        className="rounded-lg border-amber-200/40 bg-black/85 pointer-events-none fixed bottom-[9.5rem] left-1/2 z-[75] w-[min(34rem,88vw)] -translate-x-1/2 border px-3 py-2 text-center text-white shadow-xl backdrop-blur"
-        role="status"
-        aria-live="polite"
-        data-chapter1-native-objective={state.authoredStepId}
-      >
-        <div className="text-amber-200 text-[11px] font-semibold uppercase tracking-[0.16em]">
-          {state.questTitle}
-        </div>
-        <div className="mt-0.5 text-sm font-semibold">{state.objective}</div>
-        <div className="mt-1 text-xs text-white/70">
-          {state.targetLabel}
-          {state.withinRange ? "" : ` · ${distance}m away`}
-        </div>
-        {state.withinRange &&
-          state.trigger !== "near_location" &&
-          ownsInteraction && (
-            <div className="text-amber-100 mt-1 text-sm font-bold">
+      {/*
+        CHAPTER_1_OBJECTIVE_PROMPT_SCOPE
+        This used to be a permanent banner that printed the quest title, the
+        objective text and a live metre count for as long as a Chapter 1 step
+        was active. That duplicated the standard objective tray (which already
+        shows the quest and the active step) and it was a second, inconsistent
+        wayfinding system: every other quest in the game — Road Ahead, Busted,
+        Get the Muck Out, Muck vs. Machine — routes distance and direction
+        through the map, minimap and beam. Chapter 1 now publishes the current
+        server-resolved target into that same MapManager path, including the
+        next witness or supplier, so the banner's job is done elsewhere.
+
+        What remains is only what the map cannot express: the in-range
+        interaction affordance, and a server refusal reason. Both appear only
+        when the player is actually at the objective, which is how every other
+        world interaction in the game behaves.
+      */}
+      {state.withinRange &&
+        state.trigger !== "near_location" &&
+        ownsInteraction && (
+          <div
+            className="rounded-lg border-amber-200/40 bg-black/85 pointer-events-none fixed bottom-[9.5rem] left-1/2 z-[75] -translate-x-1/2 border px-3 py-2 text-center text-white shadow-xl backdrop-blur"
+            role="status"
+            aria-live="polite"
+            data-chapter1-native-objective={state.authoredStepId}
+          >
+            <div className="text-amber-100 text-sm font-bold">
               {busy ? "Confirming…" : `F — ${state.actionLabel ?? "Continue"}`}
             </div>
-          )}
-        {(error || state.reason) && (
-          <div className="text-red-200 mt-1 text-xs">
-            {error ?? state.reason}
+            <div className="mt-0.5 text-xs text-white/70">
+              {state.targetLabel}
+            </div>
+            {state.requirement && !state.requirement.ready && (
+              <div className="text-amber-100/80 mt-1 max-w-sm text-xs">
+                {state.requirement.reason ??
+                  `${state.requirement.current}/${state.requirement.total}`}
+              </div>
+            )}
           </div>
         )}
-      </div>
+      {(error || state.reason) && state.withinRange && (
+        <div
+          className="rounded-lg border-red-300/40 bg-black/85 py-1.5 text-red-200 pointer-events-none fixed bottom-[8rem] left-1/2 z-[75] w-[min(28rem,88vw)] -translate-x-1/2 border px-3 text-center text-xs shadow-xl backdrop-blur"
+          role="status"
+          aria-live="polite"
+          data-chapter1-objective-error={state.authoredStepId}
+        >
+          {error ?? state.reason}
+        </div>
+      )}
       {dialogue && activeDialoguePage && (
         <div
-          className="fixed inset-0 z-[1200] flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm"
-          role="dialog"
-          aria-modal="true"
-          aria-label={dialogue.sequence.title}
           data-chapter1-dialogue-objective={state.authoredStepId}
           data-chapter1-dialogue-mode={dialogue.mode}
-          onKeyDown={(event) => {
-            if (event.key === "Enter" || event.key === " ") {
-              event.preventDefault();
-              (
-                event.currentTarget.querySelector(
-                  "[data-chapter1-dialogue-next]"
-                ) as HTMLButtonElement | null
-              )?.click();
-            }
-          }}
+          data-chapter1-dialogue-page={dialoguePageIndex + 1}
+          data-chapter1-dialogue-final={
+            dialoguePageIndex >= dialogue.sequence.pages.length - 1
+              ? "true"
+              : "false"
+          }
         >
-          <div className="border-amber-200/40 rounded-xl bg-slate-950/95 w-full max-w-xl border p-5 text-white shadow-2xl">
-            <div className="text-amber-200 text-xs font-bold uppercase tracking-[0.18em]">
-              {dialogue.sequence.title}
-            </div>
-            <div
-              className="mt-4"
-              data-chapter1-dialogue-page={dialoguePageIndex + 1}
-            >
-              {activeDialogueVoice && (
-                <VoiceChat
-                  text={activeDialoguePage.text}
-                  voice={activeDialogueVoice.profile.voiceParameterId}
-                  language="en-US"
-                  playbackKey={`${state.authoredStepId}:${dialogue.mode}:${dialoguePageIndex}`}
-                />
-              )}
-              <div className="text-white/65 text-sm font-semibold">
-                {activeDialoguePage.speaker}
-              </div>
-              <p className="text-base mt-2 leading-relaxed text-white/95">
-                {activeDialoguePage.text}
-              </p>
-            </div>
-            <div className="mt-5 flex items-center justify-between gap-3">
-              <span className="text-white/45 text-xs">
-                {dialoguePageIndex + 1} / {dialogue.sequence.pages.length}
-              </span>
-              <button
-                type="button"
-                autoFocus
-                disabled={busy}
-                data-chapter1-dialogue-next
-                data-chapter1-dialogue-final={
-                  dialoguePageIndex >= dialogue.sequence.pages.length - 1
-                    ? "true"
-                    : "false"
-                }
-                className="border-amber-100/40 bg-amber-100/10 hover:border-amber-100/80 rounded-lg border px-4 py-2 text-sm font-semibold transition disabled:opacity-50"
-                onClick={() => {
-                  const finalPage =
-                    dialoguePageIndex >= dialogue.sequence.pages.length - 1;
-                  if (!finalPage) {
-                    setDialoguePageIndex((index) => index + 1);
-                    return;
-                  }
-                  setDialogue(undefined);
-                  setDialoguePageIndex(0);
-                  if (dialogue.mode === "objective") {
-                    if (state.choice) setChoiceOpen(true);
-                    else void complete();
-                    return;
-                  }
-                  if (
-                    dialogue.cutsceneId &&
-                    !requestCutsceneById(dialogue.cutsceneId, { preempt: true })
-                  ) {
-                    setError(
-                      `Could not start story scene ${dialogue.cutsceneId}.`
-                    );
-                  }
-                  window.setTimeout(() => void refresh(), 650);
-                }}
-              >
-                {dialoguePageIndex >= dialogue.sequence.pages.length - 1
-                  ? dialogue.sequence.completionLabel ??
-                    (dialogue.mode === "objective" && state.choice
-                      ? "Choose"
-                      : "Continue")
-                  : "Next"}
-              </button>
-            </div>
-            {error && <div className="text-red-200 mt-3 text-sm">{error}</div>}
-          </div>
+          <TalkDialogModal entityId={activeDialogueEntityId}>
+            <GenericTalkDialogModalStep
+              id={`${state.authoredStepId}:${dialogue.mode}:${dialoguePageIndex}`}
+              entityId={activeDialogueEntityId}
+              title={activeDialoguePage.speaker}
+              dialog={[{ text: activeDialoguePage.text }]}
+              onClose={advanceDialogue}
+              voiceOverride={
+                activeDialogueVoice
+                  ? { voice: activeDialogueVoice.profile.voiceParameterId }
+                  : undefined
+              }
+            />
+          </TalkDialogModal>
         </div>
       )}
       {choiceOpen && state.choice && (

@@ -253,7 +253,11 @@ export const CurrentQuestObjectiveHUD: React.FunctionComponent<{
 
   return (
     <aside
-      className="biomes-ui-current-objective-hud"
+      className={`biomes-ui-current-objective-hud ${
+        clientConfig.showVirtualJoystick
+          ? "biomes-ui-current-objective-hud--mobile"
+          : ""
+      }`.trim()}
       aria-label="Current objective"
       aria-live="polite"
     >

@@ -166,6 +166,9 @@ describe("harthmere crafting-table proximity gating", () => {
       facingView: facingPlusX,
       tablePosition: [0, 0, 1.5], // close, 90 degrees off
     });
-    assert.ok(score !== undefined, "close table is offered regardless of facing");
+    assert.ok(
+      score !== undefined,
+      "close table is offered regardless of facing"
+    );
   });
 });

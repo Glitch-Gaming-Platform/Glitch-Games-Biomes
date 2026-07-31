@@ -171,7 +171,7 @@ export const BiomesUI: React.FunctionComponent<BiomesUIProps> = ({
 
   return (
     <>
-      {hudVisibility.helpButtons && (
+      {(hudVisibility.helpButtons || clientConfig.showVirtualJoystick) && (
         <BiomesUIOpenPrompt
           isOpen={activeTab !== null}
           onOpenMenu={() => onActiveTabChange("inventory")}
@@ -267,23 +267,20 @@ export const BiomesUI: React.FunctionComponent<BiomesUIProps> = ({
       )}
       {hudVisibility.hotbar && (
         <div
-          style={{
-            position: "fixed",
-            left: 0,
-            right: 0,
-            bottom: 16,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: 8,
-            zIndex: 1090,
-            pointerEvents: "none",
-          }}
+          className={`biomes-ui-hotbar-hud ${
+            clientConfig.showVirtualJoystick
+              ? "biomes-ui-hotbar-hud--mobile"
+              : ""
+          }`.trim()}
+          data-biomes-mobile-hotbar={
+            clientConfig.showVirtualJoystick ? "true" : undefined
+          }
         >
-          <div style={{ pointerEvents: "auto" }}>
+          <div className="biomes-ui-hotbar-hud__content">
             <BiomesHotbar
               slots={hotbar.slots}
               selectedIndex={hotbar.selectedIndex}
+              mobile={clientConfig.showVirtualJoystick}
               onSelect={(i) => {
                 emitHarthmereGlitchBehaviorEvent("hotbar", "select_slot", {
                   slot: i + 1,

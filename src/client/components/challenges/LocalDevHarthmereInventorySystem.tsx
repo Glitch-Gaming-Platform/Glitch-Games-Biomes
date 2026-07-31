@@ -67,9 +67,15 @@ import {
 } from "@/client/components/challenges/chapter1ItemRevealStore";
 import { HARTHMERE_LOCAL_DEV_ITEM_USE_EVENT } from "@/shared/harthmere/snapshot_grove_trigger_contract";
 import { nativeBiomesEcsAuthorityEnabled } from "@/shared/harthmere/native_road_ahead_contract";
+import {
+  HARTHMERE_HOTBAR_HELD_ITEM_EVENT,
+  HARTHMERE_PREMIUM_WEAPONS,
+  getHarthmerePremiumWeapon,
+} from "@/shared/harthmere/premium_weapon_catalog";
 import { harthmereLiveServerAuthoritative } from "@/client/components/challenges/harthmereLiveAuthoritySignal";
 import { resolveAssetUrlUntyped } from "@/galois/interface/asset_paths";
 import { safeGetTerrainName } from "@/shared/asset_defs/terrain";
+import { harthmereGeneratedInventoryIconUrl } from "@/shared/harthmere/generated/harthmere_inventory_icon_manifest";
 import { BikkieIds } from "@/shared/bikkie/ids";
 import { terrainIdToBlock } from "@/shared/bikkie/terrain";
 import type { AnyBinaryAttribute } from "@/shared/bikkie/schema/binary";
@@ -2103,6 +2109,35 @@ const ITEM_DEFINITIONS: Record<string, HarthmereItemDefinition> = {
   },
 };
 
+for (const weapon of HARTHMERE_PREMIUM_WEAPONS) {
+  ITEM_DEFINITIONS[weapon.id] = {
+    id: weapon.id,
+    name: weapon.label,
+    category: "weapon",
+    subtype: weapon.family,
+    quality: weapon.quality,
+    icon: weapon.inventoryIconUrl,
+    stackable: false,
+    maxStack: 1,
+    slot: weapon.slot,
+    requiredLevel: weapon.requiredLevel,
+    bindType: "bind_on_equip",
+    baseValue: weapon.baseValue,
+    durabilityMax: weapon.durabilityMax,
+    stats: {
+      attackPoints: weapon.attackPoints,
+      accuracy: weapon.accuracy,
+      criticalChance: weapon.criticalChance,
+      defense: weapon.defense,
+      armor: weapon.armor,
+      magicResistance: weapon.magicResistance,
+    },
+    hotbarEligible: true,
+    throwable: weapon.profile === "thrown",
+    description: weapon.description,
+  };
+}
+
 function harthmereResourceIconForItem(def: HarthmereItemDefinition): string {
   const text =
     `${def.id} ${def.name} ${def.subtype} ${def.description}`.toLowerCase();
@@ -3055,6 +3090,7 @@ function dynamicBiomesItemDefinition(
   const semanticDefinition = semanticItemId
     ? ITEM_DEFINITIONS[semanticItemId]
     : undefined;
+  const premiumWeapon = getHarthmerePremiumWeapon(semanticItemId);
   const authoritative = authoritativeHarthmereItemDefinition(itemId, biomesId);
   const nativeWearableSlot =
     findItemEquippableSlot(item) ??
@@ -3095,6 +3131,7 @@ function dynamicBiomesItemDefinition(
   );
   const isStackable = Number.isFinite(stackable) && stackable > 1;
   const name =
+    premiumWeapon?.label ??
     readableNativeItemName(item?.displayName) ??
     readableNativeItemName(authoritative?.displayName) ??
     readableNativeItemName(semanticDefinition?.name) ??
@@ -3110,6 +3147,7 @@ function dynamicBiomesItemDefinition(
     ? "armor"
     : "trade_good";
   const icon =
+    premiumWeapon?.inventoryIconUrl ??
     dynamicBiomesItemIcon(item, canonicalItemId) ??
     semanticDefinition?.icon ??
     (authoritative
@@ -3250,7 +3288,7 @@ export function getHarthmereItemDisplay(
   return {
     id: def.id,
     name: def.name,
-    icon: def.icon,
+    icon: harthmereGeneratedInventoryIconUrl(def.id) ?? def.icon,
     category: def.category,
     quality: def.quality,
     description: def.description,
@@ -5179,6 +5217,39 @@ export function quickEquipHarthmereWeapon(itemId?: string) {
   }
 
   equipBackpackItem(backpackWeapon.instanceId);
+}
+
+export function equipHarthmereHotbarItem(itemId: string) {
+  const state = readHarthmereInventoryState();
+  const def = itemDef(itemId);
+  if (!def?.slot || !["weapon", "tool"].includes(def.category)) {
+    return false;
+  }
+  if (state.equipment[def.slot]?.itemId === itemId) {
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent(HARTHMERE_HOTBAR_HELD_ITEM_EVENT, {
+          detail: { itemId },
+        })
+      );
+    }
+    return true;
+  }
+  const backpackItem = state.backpack.items.find(
+    (item) => item.itemId === itemId
+  );
+  if (!backpackItem) {
+    return false;
+  }
+  equipBackpackItem(backpackItem.instanceId);
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(
+      new CustomEvent(HARTHMERE_HOTBAR_HELD_ITEM_EVENT, {
+        detail: { itemId },
+      })
+    );
+  }
+  return true;
 }
 
 export function cycleHarthmereWeapon() {

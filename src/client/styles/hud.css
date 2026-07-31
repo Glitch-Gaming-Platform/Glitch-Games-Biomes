@@ -2969,8 +2969,62 @@ ul.bullet-points {
   width: 100%;
 }
 
+.joysticks .mobile-movement-controls {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+}
+
 .joysticks .joystick {
   flex: 0 0 auto;
   pointer-events: auto;
   touch-action: none;
+}
+
+.joysticks .mobile-crouch-button {
+  display: flex;
+  min-width: 58px;
+  min-height: 42px;
+  box-sizing: border-box;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 5px 9px;
+  border: 2px solid rgba(146, 174, 255, 0.9);
+  border-radius: 10px;
+  background: rgba(0, 0, 51, 0.9);
+  box-shadow: 0 3px 0 rgba(0, 0, 20, 0.75),
+    inset 0 0 10px rgba(61, 89, 171, 0.34);
+  color: white;
+  font: inherit;
+  pointer-events: auto;
+  touch-action: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.joysticks .mobile-crouch-button--held,
+.joysticks .mobile-crouch-button:active {
+  transform: translateY(2px);
+  border-color: rgb(192, 208, 255);
+  background: rgba(61, 89, 171, 0.96);
+  box-shadow: 0 1px 0 rgba(0, 0, 20, 0.8),
+    inset 0 0 12px rgba(219, 228, 255, 0.35);
+}
+
+.joysticks .mobile-crouch-button__key {
+  font-size: 18px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.joysticks .mobile-crouch-button__label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  text-transform: uppercase;
 }

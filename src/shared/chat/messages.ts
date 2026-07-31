@@ -1,3 +1,4 @@
+import { zHarthmereCinematicExpression } from "@/shared/cutscene/cinematic_expressions";
 import { zLifetimeStatsType, zOptionalBiomesId } from "@/shared/ecs/gen/types";
 import {
   zAddedToInventoryOverflowEvent,
@@ -29,18 +30,21 @@ export const zErrorMessage = z.object({
 });
 export type ErrorMessage = z.infer<typeof zErrorMessage>;
 
-export const zEmoteMessageEmoteType = z.enum([
-  "applause",
-  "dance",
-  "drink",
-  "eat",
-  "flex",
-  "laugh",
-  "point",
-  "sit",
-  "warp",
-  "warpHome",
-  "wave",
+export const zEmoteMessageEmoteType = z.union([
+  z.enum([
+    "applause",
+    "dance",
+    "drink",
+    "eat",
+    "flex",
+    "laugh",
+    "point",
+    "sit",
+    "warp",
+    "warpHome",
+    "wave",
+  ]),
+  zHarthmereCinematicExpression,
 ]);
 export type EmoteMessageEmoteType = z.infer<typeof zEmoteMessageEmoteType>;
 

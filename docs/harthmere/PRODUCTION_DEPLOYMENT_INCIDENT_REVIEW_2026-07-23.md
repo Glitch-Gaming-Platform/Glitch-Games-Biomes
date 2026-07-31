@@ -246,3 +246,20 @@ must remain private and must not be opened to the internet for testing.
   writes or automatically disqualify a healthy candidate.
 - Do not clean up the last known-good revision until web, reconciliation,
   simulation, active-Gaia terrain audit, and Redis persistence have all passed.
+
+## July 31 interior-clear process lifecycle incident
+
+`clear-harthmere-building-interior-vegetation.cjs` completed its Redis writes
+and printed a successful summary, but retained its `RedisWorld`/Redis handles.
+The Azure reconciliation execution therefore remained `Running` indefinitely
+and never advanced to business outposts. The script must always stop the world
+and disconnect Redis on both success and failure. The reconciliation wrapper
+also applies a five-minute bounded timeout to this phase, with a 30-second TERM
+grace period, so a future leaked handle becomes an explicit phase failure
+instead of consuming the full deployment timeout.
+
+For diagnosis, compare the last phase success line with the process status. A
+success summary followed by no next-phase `START` line is a process-lifecycle
+failure, not evidence that the completed world mutation failed. These
+maintenance operations must remain idempotent so they can be rerun after a
+lifecycle defect is corrected.

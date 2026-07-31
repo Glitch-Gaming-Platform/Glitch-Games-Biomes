@@ -10,6 +10,10 @@ import type {
   CutsceneEntityView,
   CutsceneWorldIndex,
 } from "@/shared/cutscene/binding";
+import {
+  readChapter1PuppetOverrides,
+  type CutscenePuppetOverride,
+} from "@/shared/cutscene/puppets";
 import type { CutsceneVec3 } from "@/shared/cutscene/schema";
 import { NpcMetadataSelector } from "@/shared/ecs/gen/selectors";
 import { getSizeForEntity } from "@/shared/game/entity_sizes";
@@ -51,6 +55,36 @@ function toView(entity: {
   };
 }
 
+function applyChapter1Staging(
+  view: CutsceneEntityView | undefined,
+  override: CutscenePuppetOverride | undefined
+): CutsceneEntityView | undefined {
+  if (override?.hidden) {
+    return undefined;
+  }
+  if (!override) {
+    return view;
+  }
+  const position = override.at
+    ? ([...override.at] as CutsceneVec3)
+    : view?.position;
+  if (!position) {
+    return view;
+  }
+  return {
+    ...(view ?? {
+      id: override.id,
+      alive: true,
+      isNpc: true,
+    }),
+    position,
+    ...(override.label ? { label: override.label } : {}),
+    orientation: view?.orientation
+      ? [view.orientation[0], override.yaw]
+      : [0, override.yaw],
+  };
+}
+
 export function buildCutsceneWorldIndex(
   userId: BiomesId,
   resources: ClientResources,
@@ -58,22 +92,45 @@ export function buildCutsceneWorldIndex(
 ): CutsceneWorldIndex {
   const scenePlayer = resources.get("/scene/player", userId);
   const playerPosition = [...scenePlayer.position] as CutsceneVec3;
+  const stagingById = new Map(
+    readChapter1PuppetOverrides().map((override) => [override.id, override])
+  );
   return {
     playerId: userId,
     playerPosition,
     playerHeight: 1.8,
     entity: (id: number) => {
       const entity = resources.get("/ecs/entity", id as BiomesId);
-      return entity ? toView(entity as never) : undefined;
+      return applyChapter1Staging(
+        entity ? toView(entity as never) : undefined,
+        stagingById.get(id)
+      );
     },
     npcsNear: (position: CutsceneVec3, radius: number) => {
       const views: CutsceneEntityView[] = [];
+      const seen = new Set<number>();
       for (const entity of table.scan(NpcMetadataSelector.query.all())) {
-        const view = toView(entity as never);
+        const base = toView(entity as never);
+        if (base) {
+          seen.add(base.id);
+        }
+        const view = applyChapter1Staging(
+          base,
+          base ? stagingById.get(base.id) : undefined
+        );
         if (!view?.position) {
           continue;
         }
         if (dist(view.position, position) <= radius) {
+          views.push(view);
+        }
+      }
+      for (const [id, override] of stagingById) {
+        if (seen.has(id)) {
+          continue;
+        }
+        const view = applyChapter1Staging(undefined, override);
+        if (view?.position && dist(view.position, position) <= radius) {
           views.push(view);
         }
       }

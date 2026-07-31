@@ -6,6 +6,7 @@ import {
   defaultCh1LiveGateRuntimeState,
   normalizeCh1LiveGateRuntimeState,
 } from "@/shared/harthmere/ch1_live_gate";
+import { ch1CheckProvisioning } from "@/shared/harthmere/ch1_fracture_gates";
 import { ch1NativeQuestId } from "@/shared/harthmere/ch1_native_quests";
 
 describe("Chapter 1 live gate projection", () => {
@@ -57,28 +58,46 @@ describe("Chapter 1 live gate projection", () => {
     });
   });
 
+  it("accepts the canonical economy items for both authored pack checks", () => {
+    const carried = ch1ProvisioningCarriedFromInventory({
+      clean_water: 12,
+      road_ration: 20,
+      worker_meal: 12,
+      herb_bundle: 8,
+      wall_lantern: 10,
+      road_repair_kit: 3,
+      field_medkit: 10,
+      coal: 18,
+      travel_cloak: 1,
+      rope: 4,
+      iron_ingot: 6,
+    });
+    assert.equal(ch1CheckProvisioning("ch1_gate_desert", carried).ok, true);
+    assert.equal(ch1CheckProvisioning("ch1_gate_winter", carried).ok, true);
+  });
+
   it("normalizes old or malformed save branches without accepting bad warps", () => {
     assert.deepEqual(
       normalizeCh1LiveGateRuntimeState(undefined).completionFlags,
       defaultCh1LiveGateRuntimeState().completionFlags
     );
     const normalized = normalizeCh1LiveGateRuntimeState({
-        activeDungeonRunId: "ch1_dungeon_desert",
-        activeGateId: "ch1_gate_desert",
-        activeRunStartedMs: 10,
-        returnPosition: [648, 59, -462],
-        completionFlags: ["one", "one", 3],
-      });
+      activeDungeonRunId: "ch1_dungeon_desert",
+      activeGateId: "ch1_gate_desert",
+      activeRunStartedMs: 10,
+      returnPosition: [648, 59, -462],
+      completionFlags: ["one", "one", 3],
+    });
     assert.deepEqual(normalized, {
-        ...defaultCh1LiveGateRuntimeState(),
-        ending: undefined,
-        hallrChoice: undefined,
-        activeDungeonRunId: "ch1_dungeon_desert",
-        activeGateId: "ch1_gate_desert",
-        activeRunStartedMs: 10,
-        returnPosition: [648, 59, -462],
-        completionFlags: ["one"],
-      });
+      ...defaultCh1LiveGateRuntimeState(),
+      ending: undefined,
+      hallrChoice: undefined,
+      activeDungeonRunId: "ch1_dungeon_desert",
+      activeGateId: "ch1_gate_desert",
+      activeRunStartedMs: 10,
+      returnPosition: [648, 59, -462],
+      completionFlags: ["one"],
+    });
     assert.equal(
       normalizeCh1LiveGateRuntimeState({ returnPosition: [1, "bad", 3] })
         .returnPosition,

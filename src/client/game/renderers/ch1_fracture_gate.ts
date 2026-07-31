@@ -22,6 +22,8 @@
 import type { Renderer } from "@/client/game/renderers/renderer_controller";
 import type { Scenes } from "@/client/game/renderers/scenes";
 import { addToScenes } from "@/client/game/renderers/scenes";
+import type { AudioManager } from "@/client/game/context_managers/audio_manager";
+import type { AudioPath } from "@/client/game/resources/audio";
 import type { ClientResources } from "@/client/game/resources/types";
 import {
   ch1GateOpenAmount,
@@ -38,6 +40,12 @@ import {
 } from "@/shared/harthmere/ch1_fracture_gates";
 import { ch1Dungeon } from "@/shared/harthmere/ch1_dungeons";
 import { ch1ElsewhenSlot } from "@/shared/harthmere/ch1_elsewhen_region";
+import {
+  getHarthmereSoundEffect,
+  HARTHMERE_CH1_PORTAL_AMBIENCE_RADIUS_METERS,
+  HARTHMERE_CH1_PORTAL_AMBIENCE_SOUND_ID,
+  harthmereProximityAmbienceIsAudible,
+} from "@/shared/harthmere/sound_effect_manifest";
 import * as THREE from "three";
 
 /** Beyond this the gate is not drawn at all. Mouths are landmarks, not fog. */
@@ -217,9 +225,23 @@ export function ch1FractureGateRenderSnapshot() {
 
 export const makeCh1FractureGateRenderer = (
   resources: ClientResources,
+  audioManager: AudioManager,
   activeGateIds: Ch1ActiveGateIds
 ): Renderer => {
   const objects = new Map<string, GateSceneObject>();
+  let audibleGateLoopKeys = new Set<string>();
+  const portalAmbiencePath = getHarthmereSoundEffect(
+    HARTHMERE_CH1_PORTAL_AMBIENCE_SOUND_ID
+  )?.path as AudioPath | undefined;
+
+  const reconcileAudibleGateLoops = (next: Set<string>) => {
+    for (const key of audibleGateLoopKeys) {
+      if (!next.has(key)) {
+        audioManager.stopProximityLoop(key);
+      }
+    }
+    audibleGateLoopKeys = next;
+  };
 
   return {
     name: "ch1FractureGate",
@@ -241,6 +263,7 @@ export const makeCh1FractureGateRenderer = (
       // session. Keep staged meshes out of the scene until the authoritative
       // active-id set arrives, matching the contract above this renderer.
       if (!active) {
+        reconcileAudibleGateLoops(new Set());
         for (const stale of objects.values()) {
           disposeCh1FractureGateMaterials(stale.materials);
         }
@@ -257,6 +280,7 @@ export const makeCh1FractureGateRenderer = (
       // synthetic render projection, so it is not present in the authored gate
       // list on the next frame and would otherwise remain cached forever.
       const renderIds = new Set(renderGates.map((gate) => gate.id));
+      const nextAudibleGateLoopKeys = new Set<string>();
       for (const [id, stale] of objects) {
         if (!renderIds.has(id)) {
           disposeCh1FractureGateMaterials(stale.materials);
@@ -352,6 +376,28 @@ export const makeCh1FractureGateRenderer = (
         );
 
         addToScenes(scenes, obj.group);
+        if (
+          portalAmbiencePath &&
+          open > 0.05 &&
+          harthmereProximityAmbienceIsAudible(
+            distanceMeters,
+            HARTHMERE_CH1_PORTAL_AMBIENCE_RADIUS_METERS
+          )
+        ) {
+          const loopKey = `ch1-portal:${gate.id}`;
+          audioManager.setProximityLoop(
+            loopKey,
+            portalAmbiencePath,
+            gate.position,
+            {
+              volumeMultiplier: 0.32,
+              refDistance: 3,
+              maxDistance: HARTHMERE_CH1_PORTAL_AMBIENCE_RADIUS_METERS,
+              rolloffFactor: 1.7,
+            }
+          );
+          nextAudibleGateLoopKeys.add(loopKey);
+        }
         frame.push({
           id: gate.id,
           kind,
@@ -363,6 +409,8 @@ export const makeCh1FractureGateRenderer = (
           position: gate.position,
         });
       }
+
+      reconcileAudibleGateLoops(nextAudibleGateLoopKeys);
 
       lastRenderSnapshot = {
         atMs: performance.now(),

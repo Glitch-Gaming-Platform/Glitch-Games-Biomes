@@ -30,7 +30,7 @@ export type HarthmereLiveCreatureRenderInput = {
 };
 
 const ANIMAL_LABEL_RE =
-  /\b(wolf|bear|boar|deer|stag|doe|buck|fox|dog|hound|cat|rat|pig|cow|sheep|goat|horse|chicken|pigeon|crow|rabbit|bunny|snake|frog)\b/;
+  /\b(wolf|bear|boar|deer|stag|doe|buck|fox|dog|hound|cat|rat|pig|cow|sheep|goat|horse|chicken|pigeon|crow|rabbit|bunny|snake|frog|fish|turtle)\b/;
 
 /**
  * Decide the render family for a live creature from its structured ECS/seed
@@ -52,7 +52,10 @@ export function harthmereLiveCreatureRenderFamily(
   if (input.combatKind === "mux") {
     return "mucker";
   }
-  if (input.kind === "ambient_livestock" || (input.species && input.species.trim())) {
+  if (
+    input.kind === "ambient_livestock" ||
+    (input.species && input.species.trim())
+  ) {
     return "animal";
   }
   if (input.kind === "ambient_muck_monster") {
@@ -113,7 +116,5 @@ export function harthmereLiveCreatureShouldRespawn(input: {
   nowMs: number;
   respawnAtMs: number;
 }): boolean {
-  return (
-    Number.isFinite(input.respawnAtMs) && input.nowMs >= input.respawnAtMs
-  );
+  return Number.isFinite(input.respawnAtMs) && input.nowMs >= input.respawnAtMs;
 }

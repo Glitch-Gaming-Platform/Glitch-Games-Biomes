@@ -7,6 +7,8 @@ import {
   type HarthmereItemDefinition,
   type HarthmereVendorEntry,
 } from "./mmo_inventory_authority";
+import { HARTHMERE_MAGIC_VENDOR_ID } from "@/shared/harthmere/harthmere_vendor_chapter_gates";
+import { HARTHMERE_PREMIUM_WEAPON_VENDOR_STOCK } from "@/shared/harthmere/premium_weapon_catalog";
 
 export type HarthmereVendorCategory =
   | "weapon"
@@ -47,7 +49,7 @@ export interface HarthmereVendorProfile {
   name: string;
   businessOutpostId?: string;
   vendorType: string;
-  region: "harthmere";
+  region: "harthmere" | "the_grove";
   stocks: HarthmereVendorStockLine[];
   sells: Array<{ itemId: string; quantity: number }>;
   buys: HarthmereVendorCategory[];
@@ -185,11 +187,10 @@ export const HARTHMERE_VENDOR_CATALOG: Record<number, HarthmereVendorProfile> =
       stocks: [
         { itemId: "training_dagger", quantity: 1, price: 24 },
         { itemId: "woodsman_axe", quantity: 1, price: 70 },
-        { itemId: "iron_longsword", quantity: 1, price: 125 },
-        { itemId: "two_handed_sword", quantity: 1, price: 175 },
         { itemId: "wooden_shield", quantity: 1, price: 45 },
         { itemId: "rusty_pickaxe", quantity: 1, price: 30 },
         { itemId: "repair_voucher", quantity: 1, price: 20 },
+        ...HARTHMERE_PREMIUM_WEAPON_VENDOR_STOCK,
       ],
       buys: [
         "weapon",
@@ -236,19 +237,14 @@ export const HARTHMERE_VENDOR_CATALOG: Record<number, HarthmereVendorProfile> =
     }),
     9: vendor({
       offset: 9,
-      vendorId: "wyrm_candle_magic_shop",
+      vendorId: HARTHMERE_MAGIC_VENDOR_ID,
       vendorName: "Wyrm & Candle Magic Shop",
       name: "Wyrm & Candle Magic Shop",
       vendorType: "magic_vendor",
       region: "harthmere",
-      stocks: [
-        { itemId: "scroll_of_spark", quantity: 1, price: 45 },
-        { itemId: "field_revival_scroll", quantity: 1, price: 110 },
-        { itemId: "arcane_extractor", quantity: 1, price: 42 },
-        { itemId: "mana_draught", quantity: 3, price: 36 },
-        { itemId: "mana_essence", quantity: 3, price: 28 },
-        { itemId: "stabilized_exotic_matter", quantity: 1, price: 240 },
-      ],
+      // Chapter 1 intentionally exposes an empty shop. Chapter 2 owns the
+      // first purchasable magic inventory and the authority gate that opens it.
+      stocks: [],
       buys: [
         "spell_scroll",
         "book",
@@ -305,8 +301,6 @@ export const HARTHMERE_VENDOR_CATALOG: Record<number, HarthmereVendorProfile> =
       stocks: [
         { itemId: "training_dagger", quantity: 1, price: 24 },
         { itemId: "woodsman_axe", quantity: 1, price: 70 },
-        { itemId: "iron_longsword", quantity: 1, price: 125 },
-        { itemId: "two_handed_sword", quantity: 1, price: 175 },
         { itemId: "wooden_shield", quantity: 1, price: 45 },
         { itemId: "rusty_pickaxe", quantity: 1, price: 28 },
         { itemId: "woodcutters_axe", quantity: 1, price: 28 },
@@ -315,6 +309,7 @@ export const HARTHMERE_VENDOR_CATALOG: Record<number, HarthmereVendorProfile> =
         // "go get a repair/cleanup tool" objective is never a dead end.
         { itemId: "repair_mallet", quantity: 2, price: 30 },
         { itemId: "muck_rake", quantity: 2, price: 30 },
+        ...HARTHMERE_PREMIUM_WEAPON_VENDOR_STOCK,
         // Building material counter: every staged home/business material has at
         // least one real vendor route in addition to its gathering route.
         { itemId: "rough_stone", quantity: 24, price: 2 },
@@ -593,6 +588,126 @@ export const HARTHMERE_VENDOR_CATALOG: Record<number, HarthmereVendorProfile> =
       baseBuyModifier: 0.5,
       goldSupply: 300,
       restockHours: 12,
+      buysStolenGoods: false,
+    }),
+    // Snapshot Grove provisioning loop. These offsets are the canonical Grove
+    // NPC offsets, so the existing NPC vendor interaction opens the same
+    // server-authoritative transaction path as Harthmere's shops.
+    9304: vendor({
+      offset: 9304,
+      vendorId: "grove_luis_repairs",
+      vendorName: "Luis",
+      name: "Luis's Repair Cart",
+      vendorType: "repair_vendor",
+      region: "the_grove",
+      stocks: [
+        { itemId: "road_repair_kit", quantity: 8, price: 16 },
+        { itemId: "iron_ingot", quantity: 12, price: 8 },
+        { itemId: "oak_lumber", quantity: 16, price: 4 },
+        { itemId: "scrap_metal", quantity: 16, price: 5 },
+      ],
+      buys: ["tool", "crafting_material", "trade_good", "junk"],
+      baseSellModifier: 1,
+      baseBuyModifier: 0.55,
+      goldSupply: 450,
+      restockHours: 8,
+      buysStolenGoods: false,
+    }),
+    9320: vendor({
+      offset: 9320,
+      vendorId: "grove_gus_baker",
+      vendorName: "Gus the Baker",
+      name: "Gus's Bread Basket",
+      vendorType: "food_vendor",
+      region: "the_grove",
+      stocks: [
+        { itemId: "road_ration", quantity: 16, price: 6 },
+        { itemId: "apple_tart", quantity: 8, price: 5 },
+        { itemId: "field_wheat", quantity: 20, price: 2 },
+      ],
+      buys: ["food", "crafting_material", "trade_good"],
+      baseSellModifier: 0.95,
+      baseBuyModifier: 0.5,
+      goldSupply: 300,
+      restockHours: 6,
+      buysStolenGoods: false,
+    }),
+    9321: vendor({
+      offset: 9321,
+      vendorId: "grove_fern_grower",
+      vendorName: "Fern the Grower",
+      name: "Fern's Produce Stand",
+      vendorType: "produce_vendor",
+      region: "the_grove",
+      stocks: [
+        { itemId: "clean_water", quantity: 24, price: 3 },
+        { itemId: "peacebloom", quantity: 12, price: 4 },
+        { itemId: "herb_bundle", quantity: 16, price: 4 },
+        { itemId: "field_wheat", quantity: 16, price: 2 },
+      ],
+      buys: ["food", "crafting_material", "trade_good"],
+      baseSellModifier: 0.95,
+      baseBuyModifier: 0.52,
+      goldSupply: 260,
+      restockHours: 6,
+      buysStolenGoods: false,
+    }),
+    9323: vendor({
+      offset: 9323,
+      vendorId: "grove_mel_handyman",
+      vendorName: "Mel the Handyman",
+      name: "Mel's Workbench",
+      vendorType: "tool_vendor",
+      region: "the_grove",
+      stocks: [
+        { itemId: "wall_lantern", quantity: 12, price: 12 },
+        { itemId: "repair_mallet", quantity: 4, price: 24 },
+        { itemId: "rope", quantity: 16, price: 5 },
+        { itemId: "scrap_metal", quantity: 16, price: 5 },
+      ],
+      buys: ["tool", "crafting_material", "trade_good", "junk"],
+      baseSellModifier: 1,
+      baseBuyModifier: 0.52,
+      goldSupply: 360,
+      restockHours: 8,
+      buysStolenGoods: false,
+    }),
+    9324: vendor({
+      offset: 9324,
+      vendorId: "grove_rin_forager",
+      vendorName: "Rin the Forager",
+      name: "Rin's Forage Satchel",
+      vendorType: "forage_vendor",
+      region: "the_grove",
+      stocks: [
+        { itemId: "herb_bundle", quantity: 18, price: 4 },
+        { itemId: "peacebloom", quantity: 10, price: 4 },
+        { itemId: "tree_resin", quantity: 8, price: 7 },
+      ],
+      buys: ["food", "crafting_material", "trade_good", "junk"],
+      baseSellModifier: 0.95,
+      baseBuyModifier: 0.55,
+      goldSupply: 280,
+      restockHours: 6,
+      buysStolenGoods: false,
+    }),
+    9325: vendor({
+      offset: 9325,
+      vendorId: "grove_carlo_cook",
+      vendorName: "Carlo the Cook",
+      name: "Carlo's Cookpot",
+      vendorType: "food_vendor",
+      region: "the_grove",
+      stocks: [
+        { itemId: "hearty_stew", quantity: 12, price: 8 },
+        { itemId: "road_ration", quantity: 12, price: 6 },
+        { itemId: "clean_water", quantity: 12, price: 3 },
+      ],
+      buys: ["food", "drink", "crafting_material", "trade_good"],
+      baseSellModifier: 0.95,
+      baseBuyModifier: 0.48,
+      goldSupply: 320,
+      restockHours: 6,
       buysStolenGoods: false,
     }),
   };

@@ -126,7 +126,10 @@ describe("Bible live slice — migration reader", () => {
 
   it("preserves choices, flags, titles and completion stamps", () => {
     const { slice } = migrateRetiredBibleQuestState(legacy, NOW);
-    assert.equal(slice.choices.bellbound_q02_whispers_at_well, "tell_the_reeve");
+    assert.equal(
+      slice.choices.bellbound_q02_whispers_at_well,
+      "tell_the_reeve"
+    );
     assert(slice.flags.includes("significant_cracks_highlighted"));
     assert(slice.titles.includes("Bridgewalker"));
     assert.equal(

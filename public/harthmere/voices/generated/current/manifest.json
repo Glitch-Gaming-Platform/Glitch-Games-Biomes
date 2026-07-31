@@ -1,7 +1,7 @@
 {
   "version": "npc-voice-audio-cache-v1",
   "catalogVersion": "harthmere-npc-voice-catalog",
-  "generatedAt": "2026-07-29T16:15:33.186Z",
+  "generatedAt": "2026-07-30T14:42:38.957Z",
   "provider": "elevenlabs",
   "synthesisIdentity": "elevenlabs-natural-v3-speed-102-v1|eleven_v3|mp3_44100_128||||",
   "modelId": "eleven_v3",
@@ -4388,19 +4388,34 @@
       "bytes": 89487
     },
     {
+      "cacheKey": "d81cb6fadf950be90ac4f318b3e8a172d2d8e89be8f7154a00a36fd7e7de005f",
+      "cacheKeys": [
+        "d81cb6fadf950be90ac4f318b3e8a172d2d8e89be8f7154a00a36fd7e7de005f",
+        "354484a6ac04ee190b51b079d1eabf3e8d6fe602970914900fb3c854088612de"
+      ],
+      "actorKey": "snapshot_grove:jackie:8810000000019301:jackie:jackie",
+      "actorId": "jackie",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-returning-jackie-jackie/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-SerenaMultilingualNeural|gender=female|kind=humanoid|style=serious|styleDegree=1.05|rate=-1%25|pitch=%2B2%25|volume=default|break=170|actor=snapshot_grove%3Ajackie%3A8810000000019301%3Ajackie%3Ajackie",
+      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "textHash": "d64ec0c3250cce0dbc7b4969bcf6e4e67adb4602a9aa71af1f5bb65ed6c6e684",
+      "bytes": 71515
+    },
+    {
       "cacheKey": "0f7e0cbd0dbfa57a3372c4cccc98d7c8675587c990408c18f177ee7a59ce4b07",
       "cacheKeys": [
         "0f7e0cbd0dbfa57a3372c4cccc98d7c8675587c990408c18f177ee7a59ce4b07",
         "3826bab15709d4defca96b10536d17f4d08620c76fda88b37ed454063f4b1a21"
       ],
       "actorKey": "snapshot_grove:jackie:8810000000019301:jackie:jackie",
-      "actorId": "returning_jackie",
-      "lineId": "line-01",
-      "path": "harthmere/voices/generated/current/chapter-1-identity-returning-jackie-jackie/line-01.mp3",
+      "actorId": "jackie",
+      "lineId": "line-02",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-returning-jackie-jackie/line-02.mp3",
       "voice": "azure-speech|voice=en-US-SerenaMultilingualNeural|gender=female|kind=humanoid|style=serious|styleDegree=1.05|rate=-1%25|pitch=%2B2%25|volume=default|break=170|actor=snapshot_grove%3Ajackie%3A8810000000019301%3Ajackie%3Ajackie",
       "voiceId": "AZnzlk1XvdvUeBnXmlld",
       "textHash": "616d7574dfc65bd0c44b7adbe4601af4f80f65e1667f9815ee9443f4cd6017a8",
-      "bytes": 21359
+      "bytes": 71515
     },
     {
       "cacheKey": "77140049f26c512c0b907af8cf3f100412c67497b7c1002f683d5fff5da28d56",
@@ -4409,13 +4424,13 @@
         "c59a1377ad92722e6315c5b409307300900a5e378871be62d48683208d8b26b6"
       ],
       "actorKey": "snapshot_grove:jackie:8810000000019301:jackie:jackie",
-      "actorId": "returning_jackie",
-      "lineId": "line-02",
-      "path": "harthmere/voices/generated/current/chapter-1-identity-returning-jackie-jackie/line-02.mp3",
+      "actorId": "jackie",
+      "lineId": "line-03",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-returning-jackie-jackie/line-03.mp3",
       "voice": "azure-speech|voice=en-US-SerenaMultilingualNeural|gender=female|kind=humanoid|style=serious|styleDegree=1.05|rate=-1%25|pitch=%2B2%25|volume=default|break=170|actor=snapshot_grove%3Ajackie%3A8810000000019301%3Ajackie%3Ajackie",
       "voiceId": "AZnzlk1XvdvUeBnXmlld",
       "textHash": "4c2853f15c32e1c0ba5e311b01215f1cacc6821902b137d3448f89f8f4120858",
-      "bytes": 29301
+      "bytes": 71515
     },
     {
       "cacheKey": "ef604a3b8eb701b591ea8be8990b691c62bc5bd8de3d43401c8d22325bdb3ee9",
@@ -4424,13 +4439,13 @@
         "172b29748db956ac623371be5b3b6f996a0ca0a6270f6af35fb134411ef0e70c"
       ],
       "actorKey": "snapshot_grove:jackie:8810000000019301:jackie:jackie",
-      "actorId": "returning_jackie",
-      "lineId": "line-03",
-      "path": "harthmere/voices/generated/current/chapter-1-identity-returning-jackie-jackie/line-03.mp3",
+      "actorId": "jackie",
+      "lineId": "line-04",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-returning-jackie-jackie/line-04.mp3",
       "voice": "azure-speech|voice=en-US-SerenaMultilingualNeural|gender=female|kind=humanoid|style=serious|styleDegree=1.05|rate=-1%25|pitch=%2B2%25|volume=default|break=170|actor=snapshot_grove%3Ajackie%3A8810000000019301%3Ajackie%3Ajackie",
       "voiceId": "AZnzlk1XvdvUeBnXmlld",
       "textHash": "0eec6c14249543d4529187e0489b070c4b2fa8276f2a58cdd919bd1fb4a9ceb3",
-      "bytes": 26793
+      "bytes": 71515
     },
     {
       "cacheKey": "188ea2ec4f4f8a4075e07c6318c4fd0a006522f540148d27b461af8f42e7f26a",
@@ -4440,12 +4455,12 @@
       ],
       "actorKey": "snapshot_grove:jackie:8810000000019301:jackie:jackie",
       "actorId": "jackie",
-      "lineId": "line-04",
-      "path": "harthmere/voices/generated/current/chapter-1-identity-returning-jackie-jackie/line-04.mp3",
+      "lineId": "line-05",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-returning-jackie-jackie/line-05.mp3",
       "voice": "azure-speech|voice=en-US-SerenaMultilingualNeural|gender=female|kind=humanoid|style=serious|styleDegree=1.05|rate=-1%25|pitch=%2B2%25|volume=default|break=170|actor=snapshot_grove%3Ajackie%3A8810000000019301%3Ajackie%3Ajackie",
       "voiceId": "AZnzlk1XvdvUeBnXmlld",
       "textHash": "67da1acf0c89e2b4628b8503d10f43513d0cc662f9275db47cd2ddb0315bd5ab",
-      "bytes": 16344
+      "bytes": 71515
     },
     {
       "cacheKey": "a588d91258ce2bcffec83dd9a14054f02a62bbd7527e8ed1e6a81d415069d38b",
@@ -4454,13 +4469,13 @@
         "b67d4dd8398be8aa8d945769591b7e48c2a065e247cc5d46a31c960c733992b0"
       ],
       "actorKey": "snapshot_grove:jackie:8810000000019301:jackie:jackie",
-      "actorId": "returning_jackie",
-      "lineId": "line-05",
-      "path": "harthmere/voices/generated/current/chapter-1-identity-returning-jackie-jackie/line-05.mp3",
+      "actorId": "jackie",
+      "lineId": "line-06",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-returning-jackie-jackie/line-06.mp3",
       "voice": "azure-speech|voice=en-US-SerenaMultilingualNeural|gender=female|kind=humanoid|style=serious|styleDegree=1.05|rate=-1%25|pitch=%2B2%25|volume=default|break=170|actor=snapshot_grove%3Ajackie%3A8810000000019301%3Ajackie%3Ajackie",
       "voiceId": "AZnzlk1XvdvUeBnXmlld",
       "textHash": "2552f8aae523d557c90fcc7848d892e58cc27fa3aa5671c3eeb8d3314cfdfc7c",
-      "bytes": 11328
+      "bytes": 71515
     },
     {
       "cacheKey": "da3eea6b1533171c40d58d98b01184550b0119060d72b6bcd888385fc11074e6",
@@ -4469,13 +4484,28 @@
         "b774edabb459c94e326e38457fdf2b79f981df8cad4abbda1f7df0c9cbd0468b"
       ],
       "actorKey": "snapshot_grove:jackie:8810000000019301:jackie:jackie",
-      "actorId": "returning_jackie",
-      "lineId": "line-06",
-      "path": "harthmere/voices/generated/current/chapter-1-identity-returning-jackie-jackie/line-06.mp3",
+      "actorId": "jackie",
+      "lineId": "line-07",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-returning-jackie-jackie/line-07.mp3",
       "voice": "azure-speech|voice=en-US-SerenaMultilingualNeural|gender=female|kind=humanoid|style=serious|styleDegree=1.05|rate=-1%25|pitch=%2B2%25|volume=default|break=170|actor=snapshot_grove%3Ajackie%3A8810000000019301%3Ajackie%3Ajackie",
       "voiceId": "AZnzlk1XvdvUeBnXmlld",
       "textHash": "1414c3771ae9338a6e80753ab6cc2319147f933f037620ccbbf3c1c2297a5683",
-      "bytes": 25539
+      "bytes": 71515
+    },
+    {
+      "cacheKey": "6c6859466f767ce9a656d860ca98d942ea86ad7353276e51185f41eb4390af5a",
+      "cacheKeys": [
+        "6c6859466f767ce9a656d860ca98d942ea86ad7353276e51185f41eb4390af5a",
+        "e76a7ef5cadcce5b769d906a03a6a3a3b8d2a20b8b0593b7326e9052fe6df02f"
+      ],
+      "actorKey": "snapshot_grove:jackie:8810000000019301:jackie:jackie",
+      "actorId": "jackie",
+      "lineId": "line-08",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-returning-jackie-jackie/line-08.mp3",
+      "voice": "azure-speech|voice=en-US-SerenaMultilingualNeural|gender=female|kind=humanoid|style=serious|styleDegree=1.05|rate=-1%25|pitch=%2B2%25|volume=default|break=170|actor=snapshot_grove%3Ajackie%3A8810000000019301%3Ajackie%3Ajackie",
+      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "textHash": "0fdc6d43abb8f602970271927d2ce1d338a574e8824c5fe446e75624b382dfc9",
+      "bytes": 34316
     },
     {
       "cacheKey": "7beb505611f7549c14f2e4efa956975ab52b2e53c98c0dfd7b3adfd646729ff4",
@@ -4484,28 +4514,13 @@
         "15bff378fcfed581e74f2b87963a84dbae59cffdae3a72688daeeaed8c03b461"
       ],
       "actorKey": "snapshot_grove:jackie:8810000000019301:jackie:jackie",
-      "actorId": "returning_jackie",
-      "lineId": "line-07",
-      "path": "harthmere/voices/generated/current/chapter-1-identity-returning-jackie-jackie/line-07.mp3",
+      "actorId": "jackie",
+      "lineId": "line-09",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-returning-jackie-jackie/line-09.mp3",
       "voice": "azure-speech|voice=en-US-SerenaMultilingualNeural|gender=female|kind=humanoid|style=serious|styleDegree=1.05|rate=-1%25|pitch=%2B2%25|volume=default|break=170|actor=snapshot_grove%3Ajackie%3A8810000000019301%3Ajackie%3Ajackie",
       "voiceId": "AZnzlk1XvdvUeBnXmlld",
       "textHash": "657433338fbc74633fe9112d5a9bc83427f1123464ec122dc7e6af1bc676e82b",
-      "bytes": 24285
-    },
-    {
-      "cacheKey": "366d19f52e85e152b746a85697dd1aec56bf2512d3dd573d6004eefd0fd55a20",
-      "cacheKeys": [
-        "366d19f52e85e152b746a85697dd1aec56bf2512d3dd573d6004eefd0fd55a20",
-        "4a7de1f785b896f6bb28f29839e8fb3bde49bb6c2451a1e280be6117063d90b0"
-      ],
-      "actorKey": "snapshot_grove:jackie:8810000000019301:jackie:jackie",
-      "actorId": "returning_jackie",
-      "lineId": "line-08",
-      "path": "harthmere/voices/generated/current/chapter-1-identity-returning-jackie-jackie/line-08.mp3",
-      "voice": "azure-speech|voice=en-US-SerenaMultilingualNeural|gender=female|kind=humanoid|style=serious|styleDegree=1.05|rate=-1%25|pitch=%2B2%25|volume=default|break=170|actor=snapshot_grove%3Ajackie%3A8810000000019301%3Ajackie%3Ajackie",
-      "voiceId": "AZnzlk1XvdvUeBnXmlld",
-      "textHash": "4d38880fcd5ccf0ebeeea16ee4ac8fa14ca86c4105894e62e308cbfeecb6e031",
-      "bytes": 15090
+      "bytes": 71515
     },
     {
       "cacheKey": "4b21922cafde8fb0a66c95917d558a59c2366f2bc16f3fe8361be442982f2c40",
@@ -4514,13 +4529,13 @@
         "9569a84359bbe307fdbff55d7619689d01da72daaefe9fcef2bebab62db09d4a"
       ],
       "actorKey": "snapshot_grove:jackie:8810000000019301:jackie:jackie",
-      "actorId": "returning_jackie",
-      "lineId": "line-09",
-      "path": "harthmere/voices/generated/current/chapter-1-identity-returning-jackie-jackie/line-09.mp3",
+      "actorId": "jackie",
+      "lineId": "line-10",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-returning-jackie-jackie/line-10.mp3",
       "voice": "azure-speech|voice=en-US-SerenaMultilingualNeural|gender=female|kind=humanoid|style=serious|styleDegree=1.05|rate=-1%25|pitch=%2B2%25|volume=default|break=170|actor=snapshot_grove%3Ajackie%3A8810000000019301%3Ajackie%3Ajackie",
       "voiceId": "AZnzlk1XvdvUeBnXmlld",
       "textHash": "03b25bed61dad2fc92bb7ca539a0f5abb89e97a767e3ca68789d47009f9fa5c3",
-      "bytes": 8821
+      "bytes": 71515
     },
     {
       "cacheKey": "0edbfc6d72a062a768d0d5ce3202bcb74fec6b4a623804d6fe7a8b2c36528628",
@@ -4529,13 +4544,13 @@
         "48d0b83d0aea4de3771a0300d7afe05f20f155f8e2a12d52fc63f1cf26221238"
       ],
       "actorKey": "snapshot_grove:jackie:8810000000019301:jackie:jackie",
-      "actorId": "returning_jackie",
-      "lineId": "line-10",
-      "path": "harthmere/voices/generated/current/chapter-1-identity-returning-jackie-jackie/line-10.mp3",
+      "actorId": "jackie",
+      "lineId": "line-11",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-returning-jackie-jackie/line-11.mp3",
       "voice": "azure-speech|voice=en-US-SerenaMultilingualNeural|gender=female|kind=humanoid|style=serious|styleDegree=1.05|rate=-1%25|pitch=%2B2%25|volume=default|break=170|actor=snapshot_grove%3Ajackie%3A8810000000019301%3Ajackie%3Ajackie",
       "voiceId": "AZnzlk1XvdvUeBnXmlld",
       "textHash": "e322f03ef66974564b96b39762acd9a36118538d2132ea33548b15c062950575",
-      "bytes": 63991
+      "bytes": 71515
     },
     {
       "cacheKey": "3dac905265347cafd3949b02746e7d47a5da8fe3fb31d4f68f5abc19884c74dc",
@@ -4545,12 +4560,12 @@
       ],
       "actorKey": "snapshot_grove:jackie:8810000000019301:jackie:jackie",
       "actorId": "jackie",
-      "lineId": "line-11",
-      "path": "harthmere/voices/generated/current/chapter-1-identity-returning-jackie-jackie/line-11.mp3",
+      "lineId": "line-12",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-returning-jackie-jackie/line-12.mp3",
       "voice": "azure-speech|voice=en-US-SerenaMultilingualNeural|gender=female|kind=humanoid|style=serious|styleDegree=1.05|rate=-1%25|pitch=%2B2%25|volume=default|break=170|actor=snapshot_grove%3Ajackie%3A8810000000019301%3Ajackie%3Ajackie",
       "voiceId": "AZnzlk1XvdvUeBnXmlld",
       "textHash": "201f9012110c5a36c75b7d927ddc6f192b0698133de1834421aa28105b5dbaa1",
-      "bytes": 111221
+      "bytes": 71515
     },
     {
       "cacheKey": "5e2dddec166038e5df02f2b945261afa16ff0384877a7dea9d68484d08c624ca",
@@ -4559,13 +4574,13 @@
         "393b3050b94b50e1887aee4b3bc7dfd966efa3abd6cd6b3b8cc734cceb8efda6"
       ],
       "actorKey": "snapshot_grove:jackie:8810000000019301:jackie:jackie",
-      "actorId": "returning_jackie",
-      "lineId": "line-12",
-      "path": "harthmere/voices/generated/current/chapter-1-identity-returning-jackie-jackie/line-12.mp3",
+      "actorId": "jackie",
+      "lineId": "line-13",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-returning-jackie-jackie/line-13.mp3",
       "voice": "azure-speech|voice=en-US-SerenaMultilingualNeural|gender=female|kind=humanoid|style=serious|styleDegree=1.05|rate=-1%25|pitch=%2B2%25|volume=default|break=170|actor=snapshot_grove%3Ajackie%3A8810000000019301%3Ajackie%3Ajackie",
       "voiceId": "AZnzlk1XvdvUeBnXmlld",
       "textHash": "d1b0c481ae7d817307456a80754cca4ffdce242c67ca8f0d6032d239b5f8db73",
-      "bytes": 65245
+      "bytes": 71515
     },
     {
       "cacheKey": "7a0c768d5dfd34186c71e9e5b7738f44034cb447b46a26b40c21bc27966086c6",
@@ -4575,12 +4590,12 @@
       ],
       "actorKey": "snapshot_grove:jackie:8810000000019301:jackie:jackie",
       "actorId": "jackie",
-      "lineId": "line-13",
-      "path": "harthmere/voices/generated/current/chapter-1-identity-returning-jackie-jackie/line-13.mp3",
+      "lineId": "line-14",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-returning-jackie-jackie/line-14.mp3",
       "voice": "azure-speech|voice=en-US-SerenaMultilingualNeural|gender=female|kind=humanoid|style=serious|styleDegree=1.05|rate=-1%25|pitch=%2B2%25|volume=default|break=170|actor=snapshot_grove%3Ajackie%3A8810000000019301%3Ajackie%3Ajackie",
       "voiceId": "AZnzlk1XvdvUeBnXmlld",
       "textHash": "2c9ececa6cc2f3e93825aefc60ce67e8fcf540d9c9b56ad4c11b774fa1696f60",
-      "bytes": 59812
+      "bytes": 71515
     },
     {
       "cacheKey": "ae4355e0c18c7dc572a92c3cd7b6f8be5ba0d88e08b3c7720d932025beb121f7",
@@ -4589,13 +4604,13 @@
         "6ca86379cfa6034f9879be61438cd290c5b2002505cad2bc1b1afd5dde1f1a58"
       ],
       "actorKey": "snapshot_grove:jackie:8810000000019301:jackie:jackie",
-      "actorId": "returning_jackie",
-      "lineId": "line-14",
-      "path": "harthmere/voices/generated/current/chapter-1-identity-returning-jackie-jackie/line-14.mp3",
+      "actorId": "jackie",
+      "lineId": "line-15",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-returning-jackie-jackie/line-15.mp3",
       "voice": "azure-speech|voice=en-US-SerenaMultilingualNeural|gender=female|kind=humanoid|style=serious|styleDegree=1.05|rate=-1%25|pitch=%2B2%25|volume=default|break=170|actor=snapshot_grove%3Ajackie%3A8810000000019301%3Ajackie%3Ajackie",
       "voiceId": "AZnzlk1XvdvUeBnXmlld",
       "textHash": "5297953ab7a11b614f09b7f7c2605cb286eabbcc8af1119fbc9539996f1f6df6",
-      "bytes": 106205
+      "bytes": 71515
     },
     {
       "cacheKey": "e54b12a6093060e965920860c5315f11c209388a4eda54aa8d09b12eefb1ef4d",
@@ -4604,13 +4619,13 @@
         "8649cbb88649098ae38b004cac4389b127fc4dd1d2f626f4ba1358575adbe166"
       ],
       "actorKey": "snapshot_grove:jackie:8810000000019301:jackie:jackie",
-      "actorId": "returning_jackie",
-      "lineId": "line-15",
-      "path": "harthmere/voices/generated/current/chapter-1-identity-returning-jackie-jackie/line-15.mp3",
+      "actorId": "jackie",
+      "lineId": "line-16",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-returning-jackie-jackie/line-16.mp3",
       "voice": "azure-speech|voice=en-US-SerenaMultilingualNeural|gender=female|kind=humanoid|style=serious|styleDegree=1.05|rate=-1%25|pitch=%2B2%25|volume=default|break=170|actor=snapshot_grove%3Ajackie%3A8810000000019301%3Ajackie%3Ajackie",
       "voiceId": "AZnzlk1XvdvUeBnXmlld",
       "textHash": "520164b455dde58b3e773533c298cd7903f9dfd6f0050850f1bb17c75ea8cf8a",
-      "bytes": 104951
+      "bytes": 71515
     },
     {
       "cacheKey": "f5567c37b84610f5d402c21fe5584c93c7357a941b279aba81c5e03fea4af79a",
@@ -4703,19 +4718,34 @@
       "bytes": 72768
     },
     {
+      "cacheKey": "7efc0189b2e0286470d965cb744a22740ef3463b84120507f8f5ca636f268a7f",
+      "cacheKeys": [
+        "7efc0189b2e0286470d965cb744a22740ef3463b84120507f8f5ca636f268a7f",
+        "950e2bd10f260cb846e1a994454bb1dbe61880deccc6e41a5c347ae393ee4872"
+      ],
+      "actorKey": "snapshot_live_lore:coretta:coretta:coretta",
+      "actorId": "coretta",
+      "lineId": "line-01",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-testimony-coretta-coretta/line-01.mp3",
+      "voice": "azure-speech|voice=en-US-SerenaMultilingualNeural|gender=female|kind=humanoid|style=friendly|styleDegree=1.05|rate=-4%25|pitch=%2B3%25|volume=default|break=110|actor=snapshot_live_lore%3Acoretta%3Acoretta%3Acoretta",
+      "voiceId": "AZnzlk1XvdvUeBnXmlld",
+      "textHash": "3a252083518bb42fb594758bf546bc7b7248b5920e87799cea7bfa3883eed648",
+      "bytes": 117490
+    },
+    {
       "cacheKey": "a12d83de842a3a54b4ff1a227fea8000e6ce748f2e4ce90b12a85dde7b6c9368",
       "cacheKeys": [
         "a12d83de842a3a54b4ff1a227fea8000e6ce748f2e4ce90b12a85dde7b6c9368",
         "4c9334ad37940d6906ccd4524208786b2847baa52c143e689afc9fa84167536c"
       ],
       "actorKey": "snapshot_live_lore:coretta:coretta:coretta",
-      "actorId": "testimony_coretta",
-      "lineId": "line-01",
-      "path": "harthmere/voices/generated/current/chapter-1-identity-testimony-coretta-coretta/line-01.mp3",
+      "actorId": "coretta",
+      "lineId": "line-02",
+      "path": "harthmere/voices/generated/current/chapter-1-identity-testimony-coretta-coretta/line-02.mp3",
       "voice": "azure-speech|voice=en-US-SerenaMultilingualNeural|gender=female|kind=humanoid|style=friendly|styleDegree=1.05|rate=-4%25|pitch=%2B3%25|volume=default|break=110|actor=snapshot_live_lore%3Acoretta%3Acoretta%3Acoretta",
       "voiceId": "AZnzlk1XvdvUeBnXmlld",
       "textHash": "7181b4cc33c3e485fca67f6801f8d02cf6d2e14ca97d0ef301dab8de4c3f27c5",
-      "bytes": 121252
+      "bytes": 117490
     },
     {
       "cacheKey": "5e4fa749fe2ab6364fedf80e6135d6839cab421cc27bc20fa64498c3338234ce",

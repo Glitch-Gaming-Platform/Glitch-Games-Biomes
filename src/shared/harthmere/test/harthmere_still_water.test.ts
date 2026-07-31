@@ -3,10 +3,16 @@ import assert from "assert";
 import { HARTHMERE_BUILDINGS } from "@/shared/harthmere/harthmere_town_buildings";
 import {
   HARTHMERE_FOUNTAIN_BASIN_RADIUS,
+  HARTHMERE_FOUNTAIN_BOWL_REL_Y,
   HARTHMERE_FOUNTAIN_CENTRE,
   HARTHMERE_FOUNTAIN_OUTER_RADIUS,
   HARTHMERE_FOUNTAIN_PLINTH_RADIUS,
+  HARTHMERE_FOUNTAIN_POST_TOP_REL_Y,
+  HARTHMERE_FOUNTAIN_WALL_TOP_REL_Y,
+  HARTHMERE_MILL_BANK_TOP_REL_Y,
   HARTHMERE_MILL_BUILDING_WEST_X,
+  HARTHMERE_MILL_HOUSING_POST_Z,
+  HARTHMERE_MILL_HOUSING_TOP_REL_Y,
   HARTHMERE_MILL_RACE_BOUNDS,
   HARTHMERE_MILL_WHEEL_CENTRE,
   HARTHMERE_MILL_WHEEL_INNER_RADIUS,
@@ -184,7 +190,11 @@ describe("Harthmere still water", () => {
       for (const feature of HARTHMERE_STILL_WATER_FEATURES) {
         for (let x = feature.bounds.x0; x <= feature.bounds.x1; x += 1) {
           for (let z = feature.bounds.z0; z <= feature.bounds.z1; z += 1) {
-            for (let y = feature.relYRange[0]; y <= feature.relYRange[1]; y += 1) {
+            for (
+              let y = feature.relYRange[0];
+              y <= feature.relYRange[1];
+              y += 1
+            ) {
               if (harthmereStillWaterBlockAt(x, y, z) === undefined) continue;
               assert.ok(
                 isSolid(x, y - 1, z),
@@ -200,7 +210,11 @@ describe("Harthmere still water", () => {
       for (const feature of HARTHMERE_STILL_WATER_FEATURES) {
         for (let x = feature.bounds.x0; x <= feature.bounds.x1; x += 1) {
           for (let z = feature.bounds.z0; z <= feature.bounds.z1; z += 1) {
-            for (let y = feature.relYRange[0]; y <= feature.relYRange[1]; y += 1) {
+            for (
+              let y = feature.relYRange[0];
+              y <= feature.relYRange[1];
+              y += 1
+            ) {
               const block = harthmereStillWaterBlockAt(x, y, z);
               const water = harthmereStillWaterLevelAt(x, y, z);
               assert.ok(
@@ -294,10 +308,15 @@ describe("Harthmere still water", () => {
       );
     });
 
-    it("stands a spout in a rimmed bowl on top of the plinth", () => {
+    it("stands a spout in the bell's mouth on top of the plinth", () => {
       const [cx, cz] = HARTHMERE_FOUNTAIN_CENTRE;
       assert.equal(harthmereStillWaterBlockAt(cx, 2, cz), "stonePolished");
-      assert.equal(harthmereStillWaterLevelAt(cx, 3, cz), 15, "no spout");
+      assert.equal(harthmereStillWaterBlockAt(cx, 3, cz), "stonePolished");
+      assert.equal(
+        harthmereStillWaterLevelAt(cx, HARTHMERE_FOUNTAIN_BOWL_REL_Y, cz),
+        15,
+        "no spout"
+      );
       // Every horizontal neighbour of the spout is rim.
       for (const [dx, dz] of [
         [1, 0],
@@ -306,19 +325,110 @@ describe("Harthmere still water", () => {
         [0, -1],
       ] as const) {
         assert.equal(
-          harthmereStillWaterBlockAt(cx + dx, 3, cz + dz),
+          harthmereStillWaterBlockAt(
+            cx + dx,
+            HARTHMERE_FOUNTAIN_BOWL_REL_Y,
+            cz + dz
+          ),
           "stoneBrick",
           `spout is open at ${dx},${dz}`
         );
       }
+    });
+
+    // HARTHMERE_FOUNTAIN_STRUCTURE: the player's report was that the fountain
+    // read as "just water in the centre of town". These pin the courses that
+    // give it a built silhouette, so a future simplification has to argue with
+    // a failing test rather than quietly flatten it again.
+    it("raises the basin wall to bench height with a coping course", () => {
+      const [cx, cz] = HARTHMERE_FOUNTAIN_CENTRE;
+      assert.equal(
+        harthmereStillWaterBlockAt(
+          cx + 4,
+          HARTHMERE_FOUNTAIN_WALL_TOP_REL_Y,
+          cz
+        ),
+        "stoneBrick",
+        "no coping course"
+      );
+      // The coping rings the whole basin, not just one side.
+      let coping = 0;
+      for (let x = cx - 5; x <= cx + 5; x += 1) {
+        for (let z = cz - 5; z <= cz + 5; z += 1) {
+          if (
+            harthmereStillWaterBlockAt(
+              x,
+              HARTHMERE_FOUNTAIN_WALL_TOP_REL_Y,
+              z
+            ) === "stoneBrick"
+          ) {
+            coping += 1;
+          }
+        }
+      }
+      assert.ok(coping >= 20, `coping is only ${coping} voxels`);
+    });
+
+    it("stands four posts at the compass points", () => {
+      const [cx, cz] = HARTHMERE_FOUNTAIN_CENTRE;
+      const posts: Array<[number, number]> = [
+        [cx + 4, cz],
+        [cx - 4, cz],
+        [cx, cz + 4],
+        [cx, cz - 4],
+      ];
+      for (const [x, z] of posts) {
+        assert.equal(
+          harthmereStillWaterBlockAt(x, HARTHMERE_FOUNTAIN_POST_TOP_REL_Y, z),
+          "stoneBrick",
+          `no post at ${x},${z}`
+        );
+      }
+      // Exactly four — a full ring at this height would be a wall, not posts.
+      let ringAtPostHeight = 0;
+      for (let x = cx - 5; x <= cx + 5; x += 1) {
+        for (let z = cz - 5; z <= cz + 5; z += 1) {
+          const d = Math.hypot(x - cx, z - cz);
+          if (d <= HARTHMERE_FOUNTAIN_BASIN_RADIUS) continue;
+          if (
+            harthmereStillWaterBlockAt(
+              x,
+              HARTHMERE_FOUNTAIN_POST_TOP_REL_Y,
+              z
+            ) !== undefined
+          ) {
+            ringAtPostHeight += 1;
+          }
+        }
+      }
+      assert.equal(ringAtPostHeight, 4);
+    });
+
+    it("is tall enough to read as a structure", () => {
+      const feature = HARTHMERE_STILL_WATER_FEATURES.find(
+        (candidate) => candidate.id === "market_fountain"
+      );
+      assert.ok(feature);
+      assert.ok(
+        feature!.relYRange[1] >= 4,
+        `fountain only reaches relY ${feature!.relYRange[1]}`
+      );
     });
   });
 
   describe("the stable trough", () => {
     it("is a walled trough, not a puddle", () => {
       // Authored, this was five by five of bare wool on open grass.
-      for (let x = HARTHMERE_TROUGH_BOUNDS.x0; x <= HARTHMERE_TROUGH_BOUNDS.x1; x += 1) {
-        for (let z = HARTHMERE_TROUGH_BOUNDS.z0; z <= HARTHMERE_TROUGH_BOUNDS.z1; z += 1) {
+      for (
+        let x = HARTHMERE_TROUGH_BOUNDS.x0;
+        x <= HARTHMERE_TROUGH_BOUNDS.x1;
+        x += 1
+      ) {
+        for (
+          let z = HARTHMERE_TROUGH_BOUNDS.z0;
+          z <= HARTHMERE_TROUGH_BOUNDS.z1;
+          z += 1
+        ) {
           const border =
             x === HARTHMERE_TROUGH_BOUNDS.x0 ||
             x === HARTHMERE_TROUGH_BOUNDS.x1 ||
@@ -400,6 +510,65 @@ describe("Harthmere still water", () => {
         HARTHMERE_MILL_RACE_BOUNDS.x1 < HARTHMERE_MILL_BUILDING_WEST_X,
         "the race runs under the mill building"
       );
+    });
+
+    // HARTHMERE_MILL_STRUCTURE: the race held water but read as a ditch.
+    it("dresses the west bank and both ends", () => {
+      const b = HARTHMERE_MILL_RACE_BOUNDS;
+      for (let z = b.z0; z <= b.z1; z += 1) {
+        assert.equal(
+          harthmereStillWaterBlockAt(b.x0, HARTHMERE_MILL_BANK_TOP_REL_Y, z),
+          "stoneBrick",
+          `west bank is bare at z=${z}`
+        );
+      }
+      for (let x = b.x0; x < b.x1; x += 1) {
+        for (const z of [b.z0, b.z1]) {
+          assert.equal(
+            harthmereStillWaterBlockAt(x, HARTHMERE_MILL_BANK_TOP_REL_Y, z),
+            "stoneBrick",
+            `end wall is bare at ${x},${z}`
+          );
+        }
+      }
+    });
+
+    it("leaves the mill bank bare so the wheel can turn", () => {
+      const b = HARTHMERE_MILL_RACE_BOUNDS;
+      const [cx, cz] = HARTHMERE_MILL_WHEEL_CENTRE;
+      for (let z = b.z0; z <= b.z1; z += 1) {
+        const withinArc =
+          Math.hypot(b.x1 - cx, z - cz) <= HARTHMERE_MILL_WHEEL_OUTER_RADIUS;
+        if (!withinArc) continue;
+        for (
+          let relY = 0;
+          relY <= HARTHMERE_MILL_HOUSING_TOP_REL_Y;
+          relY += 1
+        ) {
+          assert.equal(
+            harthmereStillWaterBlockAt(b.x1, relY, z),
+            undefined,
+            `something stands inside the wheel arc at ${b.x1},${relY},${z}`
+          );
+        }
+      }
+    });
+
+    it("flanks the wheel with housing posts", () => {
+      const b = HARTHMERE_MILL_RACE_BOUNDS;
+      for (const z of HARTHMERE_MILL_HOUSING_POST_Z) {
+        for (
+          let relY = 1;
+          relY <= HARTHMERE_MILL_HOUSING_TOP_REL_Y;
+          relY += 1
+        ) {
+          assert.equal(
+            harthmereStillWaterBlockAt(b.x1, relY, z),
+            "oakLumber",
+            `no housing post at ${b.x1},${relY},${z}`
+          );
+        }
+      }
     });
   });
 

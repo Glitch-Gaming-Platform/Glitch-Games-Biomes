@@ -37,6 +37,6 @@ export function emptyFilter(filter?: EntityFilter): boolean {
 export function couldAffectPassing(change: LazyUpdate, filter: EntityFilter) {
   return (
     (filter.anyOf && filter.anyOf.some((r) => change.entity.alters(r))) ||
-    (filter.noneOf && filter.noneOf.every((r) => change.entity.alters(r)))
+    (filter.noneOf && filter.noneOf.some((r) => change.entity.alters(r)))
   );
 }

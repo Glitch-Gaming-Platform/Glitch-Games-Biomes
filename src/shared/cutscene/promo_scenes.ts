@@ -178,8 +178,11 @@ function sandThatRemembersScene(): CutsceneDef {
   const playerGoal = world("ch1_dungeon_desert", [184, 3, -55]);
   const marketFocus = world("ch1_dungeon_desert", [181, 5, -58]);
   const sandImpact = world("ch1_dungeon_desert", [198, 4, -42]);
-  const cameraFar = world("ch1_dungeon_desert", [151, 10, -25]);
-  const cameraNear = world("ch1_dungeon_desert", [157, 8, -31]);
+  // Stay inside the authored market court. The old camera began on the south
+  // volume boundary, so the still was mostly foreground floor and unloaded
+  // horizon instead of the player, oasis court, and market architecture.
+  const cameraFar = world("ch1_dungeon_desert", [157, 9, -44]);
+  const cameraNear = world("ch1_dungeon_desert", [163, 7, -49]);
 
   return validPromoScene(
     {
@@ -259,8 +262,11 @@ function longWinterMouthScene(): CutsceneDef {
   const playerGoal = world("ch1_dungeon_winter", [247, 1, -88]);
   const iceFocus = world("ch1_dungeon_winter", [250, 3, -88]);
   const offAxisImpact = world("ch1_dungeon_winter", [274, 2, -98]);
-  const cameraFar = world("ch1_dungeon_winter", [211, 10, -62]);
-  const cameraNear = world("ch1_dungeon_winter", [218, 8, -67]);
+  // Look down the Whale Road itself. Shooting from the south volume boundary
+  // made the player microscopic and exposed the un-authored void beyond the
+  // fjord shell.
+  const cameraFar = world("ch1_dungeon_winter", [210, 7, -88]);
+  const cameraNear = world("ch1_dungeon_winter", [218, 6, -88]);
 
   return validPromoScene(
     {
@@ -376,8 +382,8 @@ export const CH1_DUNGEON_SECTOR_PROOFS: readonly DungeonSectorProofSpec[] =
       zoneName: "The Salt Market",
       focus: [179, 5, -58],
       player: [166, 3, -54],
-      cameraFar: [151, 10, -24],
-      cameraNear: [157, 8, -31],
+      cameraFar: [157, 9, -44],
+      cameraNear: [163, 7, -49],
       timeOfDay: 0.31,
       fov: 40,
     },
@@ -389,8 +395,8 @@ export const CH1_DUNGEON_SECTOR_PROOFS: readonly DungeonSectorProofSpec[] =
       zoneName: "The Cistern Stair",
       focus: [249, -18, -56],
       player: [239, -21, -54],
-      cameraFar: [228, -14, -36],
-      cameraNear: [233, -15, -41],
+      cameraFar: [230, -16, -49],
+      cameraNear: [234, -17, -51],
       timeOfDay: 0.58,
       fov: 41,
     },
@@ -402,8 +408,8 @@ export const CH1_DUNGEON_SECTOR_PROOFS: readonly DungeonSectorProofSpec[] =
       zoneName: "The Hall of Weights",
       focus: [296, -19, -56],
       player: [286, -21, -52],
-      cameraFar: [278, -16, -38],
-      cameraNear: [282, -17, -43],
+      cameraFar: [280, -17, -56],
+      cameraNear: [284, -18, -56],
       timeOfDay: 0.52,
       fov: 39,
     },
@@ -415,8 +421,8 @@ export const CH1_DUNGEON_SECTOR_PROOFS: readonly DungeonSectorProofSpec[] =
       zoneName: "The Sun Court",
       focus: [342, -18, -56],
       player: [329, -21, -52],
-      cameraFar: [319, -14, -34],
-      cameraNear: [325, -15, -39],
+      cameraFar: [322, -14, -48],
+      cameraNear: [327, -16, -51],
       timeOfDay: 0.38,
       fov: 40,
     },
@@ -428,8 +434,8 @@ export const CH1_DUNGEON_SECTOR_PROOFS: readonly DungeonSectorProofSpec[] =
       zoneName: "The Seed Vault",
       focus: [386, -18, -56],
       player: [377, -21, -53],
-      cameraFar: [370, -16, -42],
-      cameraNear: [374, -17, -46],
+      cameraFar: [370, -17, -56],
+      cameraNear: [374, -18, -56],
       timeOfDay: 0.61,
       fov: 38,
     },
@@ -441,8 +447,8 @@ export const CH1_DUNGEON_SECTOR_PROOFS: readonly DungeonSectorProofSpec[] =
       zoneName: "The Long Walk",
       focus: [463, 3, -54],
       player: [441, 1, -53],
-      cameraFar: [421, 9, -25],
-      cameraNear: [429, 7, -31],
+      cameraFar: [423, 7, -52],
+      cameraNear: [431, 5, -53],
       timeOfDay: 0.72,
       fov: 43,
     },
@@ -454,8 +460,8 @@ export const CH1_DUNGEON_SECTOR_PROOFS: readonly DungeonSectorProofSpec[] =
       zoneName: "The Ice Shelf Landing",
       focus: [53, 4, -88],
       player: [42, 1, -89],
-      cameraFar: [26, 10, -63],
-      cameraNear: [32, 8, -69],
+      cameraFar: [30, 8, -78],
+      cameraNear: [36, 7, -82],
       timeOfDay: 0.79,
       fov: 42,
     },
@@ -465,10 +471,12 @@ export const CH1_DUNGEON_SECTOR_PROOFS: readonly DungeonSectorProofSpec[] =
       dungeonId: "ch1_dungeon_winter",
       dungeonName: "The Long Winter Mouth",
       zoneName: "The Drowned Longhouse",
-      focus: [106, -8, -88],
-      player: [94, -11, -88],
-      cameraFar: [82, -5, -73],
-      cameraNear: [87, -6, -77],
+      focus: [117, -6, -88],
+      // The feast dais is the only supported surface above the flooded floor;
+      // placing the actor at floor level hid the whole body under the ice.
+      player: [116, -8, -88],
+      cameraFar: [87, -4, -88],
+      cameraNear: [92, -5, -88],
       timeOfDay: 0.88,
       fov: 40,
     },
@@ -478,10 +486,10 @@ export const CH1_DUNGEON_SECTOR_PROOFS: readonly DungeonSectorProofSpec[] =
       dungeonId: "ch1_dungeon_winter",
       dungeonName: "The Long Winter Mouth",
       zoneName: "The Hanged Wood",
-      focus: [171, 5, -88],
-      player: [157, 1, -88],
-      cameraFar: [136, 11, -58],
-      cameraNear: [143, 9, -64],
+      focus: [179, 7, -111],
+      player: [166, 1, -99],
+      cameraFar: [145, 8, -88],
+      cameraNear: [151, 7, -92],
       timeOfDay: 0.83,
       fov: 42,
     },
@@ -493,8 +501,8 @@ export const CH1_DUNGEON_SECTOR_PROOFS: readonly DungeonSectorProofSpec[] =
       zoneName: "The Whale Road",
       focus: [250, 3, -88],
       player: [231, 1, -88],
-      cameraFar: [211, 10, -61],
-      cameraNear: [218, 8, -67],
+      cameraFar: [210, 7, -88],
+      cameraNear: [218, 6, -88],
       timeOfDay: 0.84,
       fov: 40,
     },
@@ -506,11 +514,10 @@ export const CH1_DUNGEON_SECTOR_PROOFS: readonly DungeonSectorProofSpec[] =
       zoneName: "Sorrel's Camp",
       focus: [308, 5, -88],
       player: [294, 1, -88],
-      // Establish the whole fortified camp from across the fjord shoulder.
-      // A camera only a few blocks outside the palisade reads as a wall, even
-      // when its exact voxel is technically clear.
-      cameraFar: [260, 22, -35],
-      cameraNear: [270, 18, -43],
+      // Frame the west entrance, actor, shed front, and weather mast from
+      // inside the authored camp instead of placing the camera across void.
+      cameraFar: [292, 7, -88],
+      cameraNear: [294, 6, -88],
       timeOfDay: 0.76,
       fov: 39,
     },
@@ -520,12 +527,12 @@ export const CH1_DUNGEON_SECTOR_PROOFS: readonly DungeonSectorProofSpec[] =
       dungeonId: "ch1_dungeon_winter",
       dungeonName: "The Long Winter Mouth",
       zoneName: "The Ash Hall",
-      focus: [386, 7, -88],
-      player: [349, 1, -89],
-      // Keep enough south-west stand-off to read the approach houses, roofline,
-      // and monumental hall in one layered silhouette.
-      cameraFar: [326, 24, -30],
-      cameraNear: [336, 20, -38],
+      focus: [390, 4, -88],
+      player: [375, 1, -92],
+      // The hall's story is inside: roof posts, hearth dais, and occupied
+      // scale. The previous distant exterior angle was mostly dark void.
+      cameraFar: [362, 5, -88],
+      cameraNear: [368, 5, -88],
       timeOfDay: 0.9,
       fov: 39,
     },
@@ -537,10 +544,10 @@ export const CH1_DUNGEON_SECTOR_PROOFS: readonly DungeonSectorProofSpec[] =
       zoneName: "The Breaking Year",
       focus: [449, 3, -88],
       player: [434, 1, -88],
-      // The final village needs an establishing view down its central lane,
-      // not a close-up of the first south-row roof.
-      cameraFar: [392, 22, -45],
-      cameraNear: [402, 18, -52],
+      // Look east along the complete surfaced village lane so houses frame the
+      // player on both sides and no un-authored horizon enters the shot.
+      cameraFar: [418, 8, -88],
+      cameraNear: [426, 6, -88],
       timeOfDay: 0.68,
       fov: 42,
     },
@@ -602,7 +609,9 @@ const SECTOR_PROMO_SCENES: readonly PromoSceneDef[] =
   CH1_DUNGEON_SECTOR_PROOFS.map((spec) => ({
     id: `sector-${spec.id}`,
     shotId: "sector-proof",
-    captureAt: 1.75,
+    // Static sector proofs still need enough time for the real player body and
+    // the closer native-terrain interest set to settle before capture.
+    captureAt: 2.6,
     captureAtMax: 3.8,
     filename: spec.filename,
     brand: {
@@ -657,7 +666,7 @@ export const PROMO_SCENES: readonly PromoSceneDef[] = Object.freeze([
       headline: "The Sand That Remembers | Biomes",
     },
     observer: {
-      position: world("ch1_dungeon_desert", [151, 10, -25]),
+      position: world("ch1_dungeon_desert", [157, 9, -44]),
       orientation: [-0.1, 2.35],
     },
     build: sandThatRemembersScene,
@@ -680,7 +689,7 @@ export const PROMO_SCENES: readonly PromoSceneDef[] = Object.freeze([
       headline: "The Long Winter Mouth | Biomes",
     },
     observer: {
-      position: world("ch1_dungeon_winter", [211, 10, -62]),
+      position: world("ch1_dungeon_winter", [210, 7, -88]),
       orientation: [-0.08, 2.35],
     },
     build: longWinterMouthScene,

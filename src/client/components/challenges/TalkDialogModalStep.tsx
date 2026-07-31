@@ -156,6 +156,7 @@ export const GenericTalkDialogModalStep: React.FunctionComponent<
     onClose?: () => any;
     id: string | BiomesId | number;
     voiceInput?: TalkDialogVoiceInput;
+    voiceOverride?: Voice;
   }>
 > = ({
   entityId,
@@ -165,6 +166,7 @@ export const GenericTalkDialogModalStep: React.FunctionComponent<
   buttonLayout = "horizontal-rectangle",
   id,
   voiceInput,
+  voiceOverride,
   children,
 }) => {
   const { reactResources } = useClientContext();
@@ -193,10 +195,12 @@ export const GenericTalkDialogModalStep: React.FunctionComponent<
       background: entityDescription?.text,
     }).voiceParameterId,
   };
-  const voice = resolveTalkDialogAzureVoiceForTest({
-    voiceComponent,
-    fallbackVoice,
-  });
+  const voice =
+    voiceOverride ??
+    resolveTalkDialogAzureVoiceForTest({
+      voiceComponent,
+      fallbackVoice,
+    });
 
   const currentDialog =
     actionFollowUp ?? (dialog[dialogIndex] as TalkDialogInfo | undefined);

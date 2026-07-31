@@ -2,8 +2,18 @@ import { secondsSinceEpoch } from "@/shared/ecs/config";
 import type { ReadonlyWorldMetadata } from "@/shared/ecs/gen/components";
 import type { ReadonlyEntity } from "@/shared/ecs/gen/entities";
 import { CollisionHelper } from "@/shared/game/collision";
+import {
+  createMovementActionState,
+  lateralEvadeDirection,
+  movementActionIsActive,
+  movementActionIsOnCooldown,
+  npcEvadeProfileForDescriptor,
+} from "@/shared/game/movement_actions";
 import { ch1DetachedWorldBoundsAt } from "@/shared/harthmere/ch1_elsewhen_region";
-import { harthmereNativeNpcCombatProfileForTypeId } from "@/shared/harthmere/harthmere_native_combat_catalog";
+import {
+  harthmereNativeNpcCombatProfileForEntity,
+  harthmereNativeNpcCombatProfileForTypeId,
+} from "@/shared/harthmere/harthmere_native_combat_catalog";
 import { harthmereNativeNpcChaseAttackParams } from "@/shared/harthmere/harthmere_native_combat";
 import type { BiomesId } from "@/shared/ids";
 import {
@@ -13,6 +23,7 @@ import {
   normalizev,
   pitchAndYaw,
   scale,
+  sub,
 } from "@/shared/math/linear";
 import type { AABB, ReadonlyVec3 } from "@/shared/math/types";
 import {
@@ -63,11 +74,37 @@ import {
 } from "@/shared/physics/forces";
 import { moveBodyFluid, moveBodyWithClimbing } from "@/shared/physics/movement";
 import type { Force, HitFn } from "@/shared/physics/types";
-import { toClimbableIndex } from "@/shared/physics/utils";
+import { toClimbableIndex, yawVector } from "@/shared/physics/utils";
 import _ from "lodash";
 
 export const ATTACKED_NPC_RETALIATION_FALLBACK =
   "ATTACKED_NPC_RETALIATION_FALLBACK";
+
+/**
+ * Anima owns the timing of persistent NPC status effects. Damage remains a
+ * Native ECS transaction: the NPC handler validates this stored burn record,
+ * advances it, applies creature resistance, and credits the original player.
+ */
+export function tickHarthmereEnergyWeaponStatuses(
+  npc: SimulatedNpc,
+  nowMs = Date.now()
+) {
+  const burn = npc.state.energyWeapon?.burn;
+  if (
+    npc.hp <= 0 ||
+    !burn ||
+    burn.ticksRemaining <= 0 ||
+    nowMs < burn.nextTickAtMs
+  ) {
+    return false;
+  }
+  npc.damage(burn.tickDamage, {
+    kind: "attack",
+    attacker: burn.source,
+    dir: undefined,
+  });
+  return true;
+}
 
 const ATTACKED_NPC_RETALIATION_CHASE_ATTACK_PARAMS: BehaviorChaseAttackParams =
   {
@@ -113,10 +150,16 @@ function baseChaseAttackParams(
   npc: SimulatedNpc,
   behavior: ReturnType<typeof getNpcBehavior>
 ): BehaviorChaseAttackParams | undefined {
-  const configuredChaseAttack = configuredChaseAttackParamsForNpcType(
-    npc.metadata.type_id,
-    behavior
-  );
+  const concreteProfile = harthmereNativeNpcCombatProfileForEntity({
+    typeId: npc.metadata.type_id,
+    displayName: [npc.label, npc.type.displayName, npc.type.name]
+      .filter(Boolean)
+      .join(" "),
+    maxHp: npc.health.maxHp,
+  });
+  const configuredChaseAttack = concreteProfile
+    ? harthmereNativeNpcChaseAttackParams(concreteProfile)
+    : configuredChaseAttackParamsForNpcType(npc.metadata.type_id, behavior);
   const chapter1Params = chapter1EncounterChaseAttackParams(
     npc,
     configuredChaseAttack,
@@ -169,6 +212,7 @@ function baseChaseAttackParams(
 // The single locomotion behavior an NPC runs this tick. Exactly one is chosen
 // per tick by strict priority; see `selectNpcLocomotion`.
 export type NpcLocomotionChoice =
+  | "evade"
   | "swim"
   | "fly"
   | "flee"
@@ -182,6 +226,7 @@ export type NpcLocomotionChoice =
   | "idle";
 
 export interface NpcLocomotionInputs {
+  hasActiveEvade?: boolean;
   swim: boolean;
   fly: boolean;
   hasFleeOutput: boolean;
@@ -202,6 +247,9 @@ export interface NpcLocomotionInputs {
 export function selectNpcLocomotion(
   inputs: NpcLocomotionInputs
 ): NpcLocomotionChoice {
+  if (inputs.hasActiveEvade) {
+    return "evade";
+  }
   if (inputs.swim) {
     return "swim";
   }
@@ -242,6 +290,88 @@ export function selectNpcLocomotion(
     return "hostileIdleWander";
   }
   return "idle";
+}
+
+export function npcShouldStartCombatEvade({
+  nowSeconds,
+  targetEmoteType,
+  targetEmoteStartTime,
+  lastDamageTime,
+}: {
+  nowSeconds: number;
+  targetEmoteType?: string;
+  targetEmoteStartTime?: number;
+  lastDamageTime?: number;
+}) {
+  const attackAge =
+    nowSeconds - (targetEmoteStartTime ?? Number.NEGATIVE_INFINITY);
+  const targetIsAttacking =
+    (targetEmoteType === "attack1" || targetEmoteType === "attack2") &&
+    attackAge >= 0 &&
+    attackAge <= 0.65;
+  const damageAge = nowSeconds - (lastDamageTime ?? Number.NEGATIVE_INFINITY);
+  const wasJustHit = damageAge >= 0 && damageAge <= 0.2;
+  return targetIsAttacking || wasJustHit;
+}
+
+function maybeStartNpcCombatEvade(
+  env: Environment,
+  npc: SimulatedNpc,
+  nowSeconds: number
+) {
+  const targetId = npc.state.chaseAttack?.attackTarget;
+  const target = targetId
+    ? env.resources.get("/ecs/entity", targetId)
+    : undefined;
+  if (!target?.position || (target.health?.hp ?? 0) <= 0) {
+    return;
+  }
+  if (
+    !npcShouldStartCombatEvade({
+      nowSeconds,
+      targetEmoteType: target.emote?.emote_type,
+      targetEmoteStartTime: target.emote?.emote_start_time,
+      lastDamageTime: npc.health.lastDamageTime,
+    })
+  ) {
+    return;
+  }
+
+  const previous = npc.movementState;
+  if (
+    movementActionIsActive(previous, nowSeconds) ||
+    movementActionIsOnCooldown(previous, nowSeconds)
+  ) {
+    return;
+  }
+
+  const movementType = getMovementTypeByNpcType(npc.type);
+  const profile = npcEvadeProfileForDescriptor(
+    npc.label,
+    npc.type.name,
+    npc.type.displayName,
+    movementType
+  );
+  const away = normalizev(sub(npc.position, target.position.v));
+  const direction =
+    profile.directionMode === "away"
+      ? away
+      : lateralEvadeDirection({
+          awayFromAttacker: away,
+          seed: Number(npc.id) + Math.floor(nowSeconds),
+        });
+  npc.setMovementState(
+    createMovementActionState({
+      previous,
+      action: "evade",
+      direction,
+      nonce: nowSeconds + (Number(npc.id) % 997) / 997,
+      nowSeconds,
+      durationSeconds: profile.durationSeconds,
+      invulnerabilitySeconds: profile.invulnerabilitySeconds,
+      cooldownSeconds: profile.cooldownSeconds,
+    })
+  );
 }
 
 export function npcGroundWalkingForceCoefficient(input: {
@@ -308,6 +438,7 @@ export function npcTickLogic(
     npc.setVelocity([0, 0, 0]);
     return;
   }
+  tickHarthmereEnergyWeaponStatuses(npc);
   if (npc.lockedInPlace) {
     // Currently this primarily applies for robots, but if they are locked
     // in place, then we will not apply any physics at all to them.
@@ -343,6 +474,10 @@ export function npcTickLogic(
     updateAttackTarget(env, npc, chaseAttack);
   }
 
+  const nowSeconds = secondsSinceEpoch();
+  maybeStartNpcCombatEvade(env, npc, nowSeconds);
+  const activeEvade = movementActionIsActive(npc.movementState, nowSeconds);
+
   let forwardSpeed = 0;
   const homePoint: ReadonlyVec3 = npc.metadata.spawn_position;
 
@@ -359,6 +494,7 @@ export function npcTickLogic(
   );
 
   const locomotion = selectNpcLocomotion({
+    hasActiveEvade: activeEvade,
     swim: Boolean(behavior.swim),
     fly: Boolean(behavior.fly),
     hasFleeOutput: Boolean(fleeOutput),
@@ -374,6 +510,30 @@ export function npcTickLogic(
   });
 
   switch (locomotion) {
+    case "evade": {
+      const profile = npcEvadeProfileForDescriptor(
+        npc.label,
+        npc.type.name,
+        npc.type.displayName,
+        getMovementTypeByNpcType(npc.type)
+      );
+      const movementType = getMovementTypeByNpcType(npc.type);
+      const movementEnvironment =
+        movementType === "swimming"
+          ? NPC_SWIMMING_ENVIRONMENT_PARAMS
+          : movementType === "flying"
+          ? NPC_FLYING_ENVIRONMENT_PARAMS
+          : DEFAULT_ENVIRONMENT_PARAMS;
+      const forceCoefficient = horizontalForceForTargetSpeed(
+        profile.speedMetersPerSecond,
+        movementEnvironment
+      );
+      const direction = normalizev(
+        npc.movementState?.direction ?? yawVector(npc.orientation[1])
+      );
+      force = addForce(force, (dt) => scale(dt * forceCoefficient, direction));
+      break;
+    }
     case "swim":
       force = addForce(force, swimTick(env, npc).force);
       break;

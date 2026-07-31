@@ -24,6 +24,7 @@ import { hitExistingTerrain } from "@/shared/game/spatial";
 import { TerrainHelper } from "@/shared/game/terrain_helper";
 import type { ReadonlyVec3 } from "@/shared/math/types";
 import { fireAndForget } from "@/shared/util/async";
+import { emitHarthmereSoundEffect } from "@/shared/harthmere/sound_effect_manifest";
 
 interface ShapeRequest {
   pos: ReadonlyVec3;
@@ -151,6 +152,7 @@ export class ShaperItemSpec implements AttackDestroyDelegateSpec {
     }
 
     player.eagerEmote(this.deps.events, this.deps.resources, "place");
+    emitHarthmereSoundEffect("shape_terrain", { position: pos });
     return true;
   }
 

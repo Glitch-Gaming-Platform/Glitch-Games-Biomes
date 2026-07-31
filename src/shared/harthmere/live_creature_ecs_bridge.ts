@@ -18,8 +18,25 @@ import {
   type HarthmereLiveCreatureRenderFamily,
 } from "@/shared/harthmere/live_creature_render";
 import { harthmereMuckCreatureAssetKeyForLabel } from "@/shared/harthmere/muck_creature_assets";
-import { LOCAL_DEV_HUMAN_NPC_TYPE_ID } from "@/shared/npc/bikkie";
+import { harthmereBossVisualForEntity } from "@/shared/harthmere/boss_visual_assets";
 import { harthmereLiveModeCombatTargetIdForEcsEntity } from "@/shared/harthmere/visible_combat_target";
+import {
+  npcEvadeFamilyForDescriptor,
+  type NpcEvadeFamily,
+} from "@/shared/game/movement_actions";
+
+export type HarthmereBridgedMovementAction = {
+  action: "dodge" | "evade";
+  startTime: number;
+  expiryTime: number;
+  direction: [number, number, number];
+  nonce?: number;
+};
+
+export type HarthmereLiveCreatureEvadeVisual = {
+  family: NpcEvadeFamily;
+  preferredClipNames: string[];
+};
 
 export type HarthmereLiveCreatureBridgeRecord = {
   id: number;
@@ -32,6 +49,7 @@ export type HarthmereLiveCreatureBridgeRecord = {
   species?: string;
   hp?: number;
   maxHp?: number;
+  movementAction?: HarthmereBridgedMovementAction;
   /** Optional deterministic cinematic animation state. */
   animation?: string;
   animationTime?: number;
@@ -41,6 +59,8 @@ export type HarthmereLiveCreatureBridgeRecord = {
   cinematic?: boolean;
   /** Humans and authored Muck GLTFs render through the native NPC renderer. */
   nativeNpcRenderer?: boolean;
+  /** Synthetic cutscene actor rendered with the snapshot player mesh pipeline. */
+  nativeSnapshotAvatar?: boolean;
 };
 
 // Minimal structural view of an ECS entity so this stays decoupled from the
@@ -51,6 +71,15 @@ export type HarthmereLiveCreatureEntityView = {
   position?: { v?: readonly [number, number, number] } | undefined;
   orientation?: { v?: readonly [number, number] } | undefined;
   health?: { hp?: number; maxHp?: number } | undefined;
+  movement_state?:
+    | {
+        action?: "dodge" | "evade";
+        action_start_time?: number;
+        action_expiry_time?: number;
+        direction?: readonly [number, number, number];
+        action_nonce?: number;
+      }
+    | undefined;
   npc_metadata?: { type_id?: number } | undefined;
   robot_component?: unknown;
   player_status?: unknown;
@@ -61,28 +90,108 @@ export type HarthmereLiveCreatureEntityView = {
   harthmere_quest_creature?: boolean;
 };
 
-// Exactly the species the renderer's procedural-animal factory can build
-// (isProceduralAnimalKey). Anything else must normalize into this set or fall
-// back, otherwise the mesh silently fails to instantiate.
-const PROCEDURAL_ANIMAL_SPECIES = new Set<string>([
-  "snake",
-  "frog",
-  "chicken",
-  "bunny",
-  "pigeon",
-  "cat",
-  "dog",
-  "pig",
-  "sheep",
-  "cow",
-  "horse",
-  "deer",
-  "wolf",
-  "boar",
-  "bear",
-  "fox",
-  "crow",
-]);
+export function harthmereLiveCreatureEvadeVisual(
+  record: Pick<
+    HarthmereLiveCreatureBridgeRecord,
+    "asset" | "label" | "species" | "movementAction"
+  >
+): HarthmereLiveCreatureEvadeVisual {
+  const family = npcEvadeFamilyForDescriptor(
+    record.asset,
+    record.label,
+    record.species
+  );
+  const lateralNames =
+    (record.movementAction?.direction[0] ?? 0) +
+      (record.movementAction?.direction[2] ?? 0) >=
+    0
+      ? ["SidestepRight", "SidestepLeft"]
+      : ["SidestepLeft", "SidestepRight"];
+  switch (family) {
+    case "mucker":
+      return {
+        family,
+        preferredClipNames: ["MuckerEvade", "Jump", "Dodging", "Run"],
+      };
+    case "robot":
+      return {
+        family,
+        preferredClipNames: ["RobotEvade", "Dodging", ...lateralNames],
+      };
+    case "sideLeap":
+      return {
+        family,
+        preferredClipNames: ["SideLeap", ...lateralNames, "Sidestep", "Jump"],
+      };
+    case "heavy":
+      return {
+        family,
+        preferredClipNames: [
+          "HeavyEvade",
+          "Sidestep",
+          ...lateralNames,
+          "HitReact",
+        ],
+      };
+    case "rabbit":
+      return {
+        family,
+        preferredClipNames: ["QuickHop", "Jump", "Dodging", ...lateralNames],
+      };
+    case "bird":
+      return {
+        family,
+        preferredClipNames: ["WingEvade", "Fly", "Jump", ...lateralNames],
+      };
+    case "swim":
+      return {
+        family,
+        preferredClipNames: ["SwimBurst", "Swim", "Dodging", "Idle"],
+      };
+    case "hexer":
+      return {
+        family,
+        preferredClipNames: [
+          "HexerEvade",
+          "Dodging",
+          ...lateralNames,
+          "BasicMagic",
+        ],
+      };
+    case "generic":
+      return {
+        family,
+        preferredClipNames: ["Evade", "Dodging", ...lateralNames, "Jump"],
+      };
+  }
+}
+
+const NATIVE_ANIMAL_ASSET_BY_SPECIES: Record<string, string> = {
+  bear: "npcs/cow",
+  bird: "npcs/bird",
+  boar: "npcs/cow",
+  bunny: "npcs/rabbit",
+  cat: "npcs/cat",
+  chicken: "npcs/chicken",
+  cow: "npcs/cow",
+  crow: "npcs/bird",
+  deer: "npcs/cow",
+  dog: "npcs/dog_1",
+  fish: "npcs/fish",
+  fox: "npcs/dog_1",
+  frog: "npcs/mouse",
+  goat: "npcs/sheep",
+  horse: "npcs/cow",
+  mouse: "npcs/mouse",
+  pigeon: "npcs/bird",
+  pig: "npcs/cow",
+  rabbit: "npcs/rabbit",
+  rat: "npcs/mouse",
+  sheep: "npcs/sheep",
+  snake: "npcs/mouse",
+  turtle: "npcs/turtle",
+  wolf: "npcs/dog_1",
+};
 
 // Map common species names onto the nearest supported procedural mesh.
 const ANIMAL_SPECIES_ALIASES: Record<string, string> = {
@@ -110,15 +219,15 @@ const ANIMAL_SPECIES_ALIASES: Record<string, string> = {
 
 function normalizeAnimalSpecies(raw: string): string | undefined {
   const s = raw.toLowerCase().trim();
-  if (PROCEDURAL_ANIMAL_SPECIES.has(s)) {
+  if (NATIVE_ANIMAL_ASSET_BY_SPECIES[s]) {
     return s;
   }
   const alias = ANIMAL_SPECIES_ALIASES[s];
-  return alias && PROCEDURAL_ANIMAL_SPECIES.has(alias) ? alias : undefined;
+  return alias && NATIVE_ANIMAL_ASSET_BY_SPECIES[alias] ? alias : undefined;
 }
 
 const ANIMAL_SPECIES_FROM_LABEL_RE =
-  /\b(wolf|bear|boar|deer|stag|doe|fox|dog|hound|cat|rat|pig|hog|cow|bull|sheep|goat|ram|horse|pony|chicken|pigeon|crow|rabbit|hare|bunny|snake|frog)\b/;
+  /\b(wolf|bear|boar|deer|stag|doe|fox|dog|hound|cat|rat|pig|hog|cow|bull|sheep|goat|ram|horse|pony|chicken|pigeon|crow|rabbit|hare|bunny|snake|frog|fish|turtle)\b/;
 
 // Every living NPC is now driven from ECS so the visible mesh sits on its real
 // entity: muck monsters, hexes, animals, quest/escort/hired creatures AND town
@@ -126,30 +235,6 @@ const ANIMAL_SPECIES_FROM_LABEL_RE =
 // they already render co-located via their own path. Rendering humans here too
 // removes the static-placement-vs-ECS duplication that made town NPCs flicker.
 //
-// Pick a town-human body variant from the NPC's name/role so the appearance
-// system (which keys off asset + name) produces a believable look instead of a
-// generic one. Falls back to a neutral market-goer.
-function humanTownspersonAssetFromLabel(label: string | undefined): string {
-  const text = (label ?? "").toLowerCase();
-  if (/guard|watch|sentry|soldier|warden|knight/.test(text))
-    return "townsperson_guard";
-  if (/courier|messenger|runner|page/.test(text)) return "townsperson_courier";
-  if (/dock|sailor|fisher|wharf/.test(text)) return "townsperson_dockhand";
-  if (/farm|field|shepherd|herd|grange/.test(text)) return "townsperson_farmer";
-  if (/priest|cleric|clergy|monk|nun|chaplain|verena|chapel/.test(text))
-    return "townsperson_clergy";
-  if (/hunt|ranger|trapper|forester/.test(text)) return "townsperson_hunter";
-  if (/bandit|outlaw|thief|brigand|rogue/.test(text))
-    return "townsperson_bandit";
-  if (/smuggler|fence|dealer/.test(text)) return "townsperson_smuggler";
-  if (/charcoal|collier|smith|forge|coal/.test(text))
-    return "townsperson_charcoal";
-  if (/mud|peasant|laborer|labourer|digger/.test(text))
-    return "townsperson_mudden";
-  // Doctors, chefs, merchants, innkeepers, vendors, generic townsfolk.
-  return "townsperson_market";
-}
-
 export function harthmereLiveCreatureFamilyForEntity(
   entity: HarthmereLiveCreatureEntityView
 ): HarthmereLiveCreatureRenderFamily {
@@ -198,34 +283,50 @@ export function isHarthmereLiveCreatureEntity(
 export function harthmereLiveCreatureAssetFor(
   family: HarthmereLiveCreatureRenderFamily,
   species: string | undefined,
-  label: string | undefined
+  label: string | undefined,
+  entityId?: number
 ): string {
+  const bossVisual = harthmereBossVisualForEntity(label, entityId);
+  if (bossVisual) {
+    return bossVisual.assetUrl;
+  }
   if (family === "animal") {
+    const rawSpecies = (species ?? "").toLowerCase().trim();
+    if (NATIVE_ANIMAL_ASSET_BY_SPECIES[rawSpecies]) {
+      return NATIVE_ANIMAL_ASSET_BY_SPECIES[rawSpecies];
+    }
+    const labelSpecies = (label ?? "")
+      .toLowerCase()
+      .match(ANIMAL_SPECIES_FROM_LABEL_RE)?.[1];
+    if (labelSpecies && NATIVE_ANIMAL_ASSET_BY_SPECIES[labelSpecies]) {
+      return NATIVE_ANIMAL_ASSET_BY_SPECIES[labelSpecies];
+    }
     const fromSpecies = normalizeAnimalSpecies(species ?? "");
     if (fromSpecies) {
-      return `animal_${fromSpecies}`;
+      return NATIVE_ANIMAL_ASSET_BY_SPECIES[fromSpecies];
     }
     const m = (label ?? "").toLowerCase().match(ANIMAL_SPECIES_FROM_LABEL_RE);
     if (m) {
       const fromLabel = normalizeAnimalSpecies(m[1]);
       if (fromLabel) {
-        return `animal_${fromLabel}`;
+        return NATIVE_ANIMAL_ASSET_BY_SPECIES[fromLabel];
       }
     }
-    return "animal_boar";
+    return "npcs/cow";
   }
   if (family === "mucker" || family === "hex") {
-    // Prefer the original authored Biomes creature GLTF selected from the ECS
-    // label. The procedural undead body is only a last-resort compatibility
-    // fallback for old unlabeled entities.
-    return harthmereMuckCreatureAssetKeyForLabel(label) ?? "townsperson_undead";
+    return harthmereMuckCreatureAssetKeyForLabel(label) ?? "npcs/mossy_mucker";
   }
   if (family === "quest_creature") {
-    return harthmereMuckCreatureAssetKeyForLabel(label) ?? "townsperson_undead";
+    return harthmereMuckCreatureAssetKeyForLabel(label) ?? "npcs/mossy_mucker";
   }
-  // Town humans / escort followers / generic live NPCs (the Doc, the Chef,
-  // guards, merchants): a believable human body variant chosen from the name.
-  return humanTownspersonAssetFromLabel(label);
+  if (family === "robot") {
+    return "npcs/helping_robot";
+  }
+  // Town humans / escort followers / generic live NPCs use the same generated
+  // snapshot player mesh as real players. No procedural townsperson key leaves
+  // this authority bridge.
+  return "snapshot/player_mesh";
 }
 
 function yawFromOrientation(
@@ -255,8 +356,27 @@ export function harthmereLiveCreatureBridgeRecord(
   const asset = harthmereLiveCreatureAssetFor(
     family,
     species,
-    entity.label?.text
+    entity.label?.text,
+    entity.id
   );
+  const movement = entity.movement_state;
+  const movementAction =
+    movement?.action &&
+    Number.isFinite(movement.action_start_time) &&
+    Number.isFinite(movement.action_expiry_time) &&
+    movement.direction?.length === 3
+      ? {
+          action: movement.action,
+          startTime: movement.action_start_time!,
+          expiryTime: movement.action_expiry_time!,
+          direction: [
+            Number(movement.direction[0]),
+            Number(movement.direction[1]),
+            Number(movement.direction[2]),
+          ] as [number, number, number],
+          nonce: movement.action_nonce,
+        }
+      : undefined;
   return {
     id: entity.id,
     at: [pos[0], pos[1], pos[2]],
@@ -268,12 +388,11 @@ export function harthmereLiveCreatureBridgeRecord(
     species,
     hp: entity.health?.hp,
     maxHp: entity.health?.maxHp,
-    // NpcRenderState already knows how to load the canonical Mucker/Hex GLTFs
-    // and applies cutscene transform/animation/item overrides. Do not cover
-    // those meshes with the local-dev procedural undead compatibility body.
-    nativeNpcRenderer:
-      entity.npc_metadata?.type_id === Number(LOCAL_DEV_HUMAN_NPC_TYPE_ID) ||
-      asset.startsWith("npcs/"),
+    movementAction,
+    // Every real ECS NPC now renders through the original NpcRenderState path.
+    // The bridge is transform/diagnostic state only; it must never instantiate
+    // a second procedural Three.js body over the authoritative actor.
+    nativeNpcRenderer: true,
   };
 }
 
@@ -345,6 +464,15 @@ type LiveCreatureBridgeWindow = typeof globalThis & {
   };
 };
 
+export type HarthmereLiveCreatureBridgeSnapshot = {
+  /**
+   * Publication marker. A negative value means the last publication expired,
+   * allowing renderers to reconcile the empty snapshot exactly once.
+   */
+  at: number;
+  records: HarthmereLiveCreatureBridgeRecord[];
+};
+
 export function publishHarthmereLiveCreatureBridge(
   records: HarthmereLiveCreatureBridgeRecord[]
 ): void {
@@ -358,17 +486,21 @@ export function publishHarthmereLiveCreatureBridge(
 }
 
 export function readHarthmereLiveCreatureBridge(): HarthmereLiveCreatureBridgeRecord[] {
+  return readHarthmereLiveCreatureBridgeSnapshot().records;
+}
+
+export function readHarthmereLiveCreatureBridgeSnapshot(): HarthmereLiveCreatureBridgeSnapshot {
   if (typeof window === "undefined") {
-    return [];
+    return { at: 0, records: [] };
   }
   const bridge = (window as LiveCreatureBridgeWindow)
     .__harthmereLiveCreatureEcsBridge;
   if (!bridge || !Array.isArray(bridge.records)) {
-    return [];
+    return { at: 0, records: [] };
   }
   // Stale guard: if the publisher stopped (e.g. teardown), don't keep ghosts.
   if (Number.isFinite(bridge.at) && Date.now() - bridge.at > 5_000) {
-    return [];
+    return { at: -Math.abs(bridge.at), records: [] };
   }
-  return bridge.records;
+  return { at: bridge.at, records: bridge.records };
 }

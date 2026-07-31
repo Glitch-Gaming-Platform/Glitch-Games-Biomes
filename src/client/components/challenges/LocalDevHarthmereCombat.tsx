@@ -41,6 +41,7 @@ import { useClientContext } from "@/client/components/contexts/ClientContextReac
 import { isPlayer } from "@/shared/game/players";
 import { fallDamageForBlocks, FEET_PER_BLOCK } from "@/shared/game/fall_damage";
 import { HARTHMERE_VOXEL_INTERACTION_ATTACK_REACH_UNITS } from "@/shared/harthmere/combat_reach";
+import { getHarthmereProjectileVisual } from "@/shared/harthmere/projectile_visual_manifest";
 import { nativeBiomesEcsAuthorityEnabled } from "@/shared/harthmere/native_road_ahead_contract";
 import {
   HARTHMERE_BIOMES_ECS_HEALTH_UPDATED_EVENT,
@@ -189,6 +190,8 @@ type HitResult =
 interface CombatAbility {
   id: string;
   name: string;
+  projectileVisualId?: string;
+  itemId?: string;
   damageType: DamageType;
   abilityMultiplier: number;
   range: number;
@@ -249,6 +252,9 @@ export interface HarthmereCombatLogEntry {
   attacker: string;
   target: string;
   ability: string;
+  abilityId?: string;
+  projectileVisualId?: string;
+  itemId?: string;
   result: HitResult;
   rawDamage: number;
   mitigatedDamage: number;
@@ -1220,6 +1226,15 @@ const WEAPON_CONTEXTS: Record<
     rangeBonus: 0.25,
     damageType: "slashing",
   },
+  hunter_bow: {
+    itemId: "hunter_bow",
+    name: "Hunter Bow",
+    attackBonus: 8,
+    accuracyBonus: 5,
+    critBonus: 0.025,
+    rangeBonus: 21.5,
+    damageType: "piercing",
+  },
 };
 
 function equippedWeaponContext(): EquippedWeaponContext {
@@ -1292,6 +1307,13 @@ function abilityWithWeapon(
         : `${weapon.name} Strike`,
     damageType: weapon.damageType,
     range: Math.max(1.1, ability.range + weapon.rangeBonus),
+    itemId: weapon.itemId,
+    projectileVisualId:
+      weapon.itemId === "hunter_bow"
+        ? ability.id === "heavy_strike"
+          ? "aimed_shot"
+          : "hunter_bow_shot"
+        : ability.projectileVisualId,
   };
 }
 
@@ -2793,11 +2815,19 @@ function applyAttack(
       : `${attacker.name}'s ${ability.name} ${resultLabel(result)} ${
           target.name
         }.`;
+  const projectileVisual = getHarthmereProjectileVisual(
+    ability.projectileVisualId ?? ability.id
+  );
+  const projectileIsMagic =
+    projectileVisual !== undefined && projectileVisual.family !== "physical";
 
   const nextState = appendCombatLog(state, {
     attacker: attacker.name,
     target: target.name,
     ability: ability.name,
+    abilityId: ability.id,
+    projectileVisualId: projectileVisual?.id,
+    itemId: ability.itemId,
     result: updatedTarget.combatState === "dead" ? "dead" : result,
     rawDamage,
     mitigatedDamage,
@@ -2807,6 +2837,22 @@ function applyAttack(
     detail,
     targetOffset,
     attackerOffset,
+    animationKind: projectileIsMagic ? "magic" : undefined,
+    effectKind: projectileIsMagic
+      ? "magic"
+      : projectileVisual
+      ? "physical"
+      : undefined,
+    vfxKind: projectileIsMagic
+      ? "magic"
+      : projectileVisual
+      ? "physical"
+      : undefined,
+    visualKind: projectileIsMagic
+      ? "magic"
+      : projectileVisual
+      ? "physical"
+      : undefined,
   });
 
   debugHarthmereCombat("combat.attack.resolved", {
@@ -3032,6 +3078,8 @@ type HarthmereRetaliationAttackOptions = {
   contactDistance?: number;
   contactReason?: string;
   debugLabel?: string;
+  projectileVisualId?: string;
+  projectileAbilityName?: string;
 };
 
 function ambientThreatForPosition(position: readonly number[]) {
@@ -6026,7 +6074,14 @@ export function performHarthmereCombatAttack(
   const weapon = equippedWeaponContext();
   const playerAbility =
     ability === "spark"
-      ? PLAYER_SPARK_ATTACK
+      ? {
+          ...PLAYER_SPARK_ATTACK,
+          id: retaliationOptions.projectileVisualId ?? PLAYER_SPARK_ATTACK.id,
+          name:
+            retaliationOptions.projectileAbilityName ??
+            PLAYER_SPARK_ATTACK.name,
+          projectileVisualId: retaliationOptions.projectileVisualId ?? "spark",
+        }
       : abilityWithWeapon(
           ability === "heavy" ? PLAYER_HEAVY_ATTACK : PLAYER_BASIC_ATTACK,
           weapon

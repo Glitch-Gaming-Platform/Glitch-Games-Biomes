@@ -214,6 +214,57 @@ describe("promo scenes - capture URL", () => {
 });
 
 describe("promo scenes - framing contract", () => {
+  it("keeps every sector-proof camera inside its authored zone instead of shooting across void", () => {
+    const volumeBounds: Record<
+      string,
+      readonly [number, number, number, number]
+    > = {
+      "d1-dune-threshold": [32, 96, -80, -24],
+      "d1-salt-market": [148, 208, -84, -24],
+      "d1-cistern-stair": [224, 276, -80, -32],
+      "d1-hall-of-weights": [276, 316, -72, -40],
+      "d1-sun-court": [316, 368, -80, -32],
+      "d1-seed-vault": [368, 404, -70, -42],
+      "d1-long-walk": [416, 504, -80, -24],
+      "d2-ice-shelf": [24, 80, -112, -64],
+      "d2-drowned-longhouse": [80, 132, -104, -72],
+      "d2-hanged-wood": [132, 204, -120, -56],
+      "d2-whale-road": [204, 292, -108, -68],
+      "d2-sorrels-camp": [292, 324, -100, -76],
+      "d2-ash-hall": [356, 416, -112, -64],
+      "d2-breaking-year": [416, 476, -104, -72],
+    } as const;
+    for (const proof of CH1_DUNGEON_SECTOR_PROOFS) {
+      const bounds = volumeBounds[proof.id];
+      assert.ok(bounds, `${proof.id} has no authored volume framing contract`);
+      const [x0, x1, z0, z1] = bounds;
+      for (const [label, point] of [
+        ["far", proof.cameraFar],
+        ["near", proof.cameraNear],
+      ] as const) {
+        assert.ok(
+          point[0] >= x0 && point[0] <= x1,
+          `${proof.id} ${label} camera x=${point[0]} leaves [${x0}, ${x1}]`
+        );
+        assert.ok(
+          point[2] >= z0 && point[2] <= z1,
+          `${proof.id} ${label} camera z=${point[2]} leaves [${z0}, ${z1}]`
+        );
+      }
+    }
+  });
+
+  it("captures repaired sector proofs after the live actor has settled", () => {
+    for (const scene of promoScenesInGroup("chapter1-visual-repair").filter(
+      (candidate) => candidate.id.startsWith("sector-")
+    )) {
+      assert.ok(
+        scene.captureAt >= 2.5,
+        `${scene.id} captures too early for a real streamed player body`
+      );
+    }
+  });
+
   it("keeps the portal still framed the way a portal reads", async () => {
     const def = await promoSceneById("dungeon-portal")!.build();
     const shot = def.shots.find((s) => s.id === "portal-crossing")!;

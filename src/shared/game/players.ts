@@ -42,14 +42,132 @@ import type { VoxelooModule } from "@/shared/wasm/types";
 import { ok } from "assert";
 
 const DEFAULT_PLAYER_SCALE = 1;
-const PLAYER_MESH_BOX_SIZE: Vec3 = [0.75, 1.8, 0.75];
+export const PLAYER_VISUAL_BOX_SIZE: Readonly<Vec3> = [0.75, 1.8, 0.75];
+export const PLAYER_CROUCH_COLLISION_BOX_SIZE: Readonly<Vec3> = [
+  0.75, 1.3, 0.75,
+];
+const PLAYER_STANCE_CLEARANCE_EPSILON = 1e-4;
+export const PLAYER_CROUCH_COLLISION_TRANSITION_SECONDS = 0.18;
 export const MAX_VOXELS_TO_CHECK_FOR_BUFF_BLOCKS = 3;
 
+export function playerVisualAABB(
+  position: Readonly<Vec3>,
+  scale: number = DEFAULT_PLAYER_SCALE
+): AABB {
+  return anchorAndSizeToAABB(position, mul(scale, PLAYER_VISUAL_BOX_SIZE));
+}
+
+export function playerCollisionAABB(
+  position: Readonly<Vec3>,
+  crouching: boolean,
+  scale: number = DEFAULT_PLAYER_SCALE
+): AABB {
+  return anchorAndSizeToAABB(
+    position,
+    mul(
+      scale,
+      crouching ? PLAYER_CROUCH_COLLISION_BOX_SIZE : PLAYER_VISUAL_BOX_SIZE
+    )
+  );
+}
+
+// Only the volume added above the crouched body needs to be clear before the
+// player can stand. Keeping this as a thin, disjoint headroom query avoids
+// treating the floor or a wall already touching the crouched body as an
+// obstruction to standing.
+export function playerStandingHeadroomAABB(
+  position: Readonly<Vec3>,
+  scale: number = DEFAULT_PLAYER_SCALE
+): AABB {
+  const crouched = playerCollisionAABB(position, true, scale);
+  const standing = playerVisualAABB(position, scale);
+  const epsilon = Math.min(
+    PLAYER_STANCE_CLEARANCE_EPSILON,
+    Math.max(0, (standing[1][1] - crouched[1][1]) * 0.25)
+  );
+  return [
+    [standing[0][0], crouched[1][1] + epsilon, standing[0][2]],
+    [standing[1][0], standing[1][1] - epsilon, standing[1][2]],
+  ];
+}
+
+export function resolveEffectiveCrouching({
+  requestedCrouching,
+  wasCrouching,
+  standingHeadroomClear,
+}: {
+  requestedCrouching: boolean;
+  wasCrouching: boolean;
+  standingHeadroomClear: boolean;
+}): boolean {
+  return requestedCrouching || (wasCrouching && !standingHeadroomClear);
+}
+
+export function resolvePlayerEffectiveCrouching({
+  requestedCrouching,
+  wasCrouching,
+  standingHeadroomClear,
+  movementActionActive,
+  flying,
+  swimming,
+}: {
+  requestedCrouching: boolean;
+  wasCrouching: boolean;
+  standingHeadroomClear: boolean;
+  movementActionActive: boolean;
+  flying: boolean;
+  swimming: boolean;
+}): boolean {
+  if (movementActionActive || flying || swimming) {
+    return false;
+  }
+  return resolveEffectiveCrouching({
+    requestedCrouching,
+    wasCrouching,
+    standingHeadroomClear,
+  });
+}
+
+export function canStartStandingMovementAction({
+  crouching,
+  standingHeadroomClear,
+}: {
+  crouching: boolean;
+  standingHeadroomClear: boolean;
+}): boolean {
+  return !crouching || standingHeadroomClear;
+}
+
+export function updateCrouchCollisionTransition({
+  effectiveCrouching,
+  wasEffectiveCrouching,
+  nowSeconds,
+  readyAtSeconds,
+}: {
+  effectiveCrouching: boolean;
+  wasEffectiveCrouching: boolean;
+  nowSeconds: number;
+  readyAtSeconds?: number;
+}): { collisionCrouching: boolean; readyAtSeconds?: number } {
+  if (!effectiveCrouching) {
+    return { collisionCrouching: false };
+  }
+  const nextReadyAt = !wasEffectiveCrouching
+    ? nowSeconds + PLAYER_CROUCH_COLLISION_TRANSITION_SECONDS
+    : readyAtSeconds ?? nowSeconds;
+  return {
+    collisionCrouching: nowSeconds >= nextReadyAt,
+    readyAtSeconds: nextReadyAt,
+  };
+}
+
+// Compatibility alias: existing rendering, targeting, and interaction code
+// expects this to describe the full player, not the terrain collision stance.
 export function playerAABB(
   position: Readonly<Vec3>,
   scale: number = DEFAULT_PLAYER_SCALE
 ): AABB {
-  return anchorAndSizeToAABB(position, mul(scale, PLAYER_MESH_BOX_SIZE));
+  return playerVisualAABB(position, scale);
 }
 
 export const PLAYER_NEEDED_COMPONENTS = ["remote_connection"] as const;

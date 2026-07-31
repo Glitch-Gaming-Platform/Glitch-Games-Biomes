@@ -10,6 +10,7 @@ import { anItem } from "@/shared/game/item";
 import type { BlueprintHit, TerrainHit } from "@/shared/game/spatial";
 import { hitExistingTerrain } from "@/shared/game/spatial";
 import { compactMap } from "@/shared/util/collections";
+import { emitHarthmereSoundEffect } from "@/shared/harthmere/sound_effect_manifest";
 
 export class PlantSeedItemSpec implements AttackDestroyDelegateSpec {
   constructor(
@@ -83,5 +84,6 @@ export class PlantSeedItemSpec implements AttackDestroyDelegateSpec {
     const player = this.deps.resources.get("/scene/local_player").player;
     player.eagerEmote(this.deps.events, this.deps.resources, "diggingHand");
     plantSeed(this.deps, pos, itemInfo.itemRef);
+    emitHarthmereSoundEffect("plant_seed", { position: pos });
   }
 }

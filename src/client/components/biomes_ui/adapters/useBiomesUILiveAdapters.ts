@@ -12,6 +12,7 @@ import {
   type BiomesUIOptimisticPlayerStatusDetail,
 } from "@/client/components/biomes_ui/adapters/playerStatusAdapter";
 import {
+  equipHarthmereHotbarItem,
   getHarthmereItemDisplay,
   harthmereJobToolOwnedState,
   performHarthmereHotbarAssignForBiomesUI,
@@ -31,6 +32,7 @@ import {
   assertHarthmereLiveMutationAppliedForTest,
   type HarthmereItemInstance,
 } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
+import { HARTHMERE_HOTBAR_HELD_ITEM_EVENT } from "@/shared/harthmere/premium_weapon_catalog";
 import { performHarthmereMousePrimaryAttack } from "@/client/components/challenges/LocalDevHarthmereMultiplayerCombatSystem";
 import { emitHarthmereGlitchBehaviorEvent } from "@/client/game/glitch/harthmere_glitch_behavior_events";
 import {
@@ -105,6 +107,7 @@ import type { BiomesUIAdapters } from "../BiomesUI";
 import type { TabKey } from "../BiomesUITypes";
 import {
   DEFAULT_TAB_SHORTCUTS,
+  isReservedGameplayShortcutKey,
   type TabShortcut,
 } from "../shortcuts/BiomesShortcuts";
 import { biomesUITabForKeyboardCodeForTest } from "../shortcuts/BiomesUIKeyRouting";
@@ -342,7 +345,9 @@ function slotToUiItem(slot: any, fallback: string): HotbarSlotItem | null {
     label: readableItemName(slot, fallback),
     icon,
     count: countToNumber(slot.count),
-    quality: item?.isQuest ? "quest" : "common",
+    quality: item?.isQuest
+      ? "quest"
+      : harthmereDisplayQualityForBiomesUI(harthmereDisplay?.quality),
     primaryActionLabel: primaryAction.label,
     canDrop: item?.isDroppable !== false && item?.isQuest !== true,
   };
@@ -471,6 +476,21 @@ function harthmereDisplayCategoryForBiomesUI(
   return normalized || "item";
 }
 
+function harthmereDisplayQualityForBiomesUI(quality: string | undefined) {
+  switch (quality) {
+    case "uncommon":
+    case "rare":
+    case "epic":
+    case "legendary":
+      return quality;
+    case "quest":
+    case "event":
+      return "quest" as const;
+    default:
+      return "common" as const;
+  }
+}
+
 function localHarthmereBackpackItemToUiItem(
   item: HarthmereItemInstance,
   index: number
@@ -488,7 +508,9 @@ function localHarthmereBackpackItemToUiItem(
     label: display?.name ?? humanizeRealItemId(itemId, itemId),
     icon: display?.icon ?? biomesInventoryItemIcon(itemId),
     count: Math.max(1, Number(item.quantity ?? 1) || 1),
-    quality: item.bound ? "quest" : "common",
+    quality: item.bound
+      ? "quest"
+      : harthmereDisplayQualityForBiomesUI(display?.quality),
     category,
     description: display?.description ?? "Prepared for the active tutorial.",
     weight: inventoryUiItemWeight(itemId, item.quantity ?? 1, category),
@@ -546,7 +568,7 @@ function localHarthmereHotbarItemToUiItem(
     label: display.name,
     icon: display.icon ?? biomesInventoryItemIcon(itemId),
     count: Math.max(0, Math.trunc(Number(count) || 0)),
-    quality: "common",
+    quality: harthmereDisplayQualityForBiomesUI(display.quality),
     category,
     description: display.description,
     weight: inventoryUiItemWeight(itemId, 1, category, display.name),
@@ -588,7 +610,9 @@ function localHarthmereEquipmentItemToUiItem(
     label: display?.name ?? humanizeRealItemId(itemId, itemId),
     icon: display?.icon ?? biomesInventoryItemIcon(itemId),
     count: 1,
-    quality: item.bound ? "quest" : "common",
+    quality: item.bound
+      ? "quest"
+      : harthmereDisplayQualityForBiomesUI(display?.quality),
     category: harthmereDisplayCategoryForBiomesUI(display?.category, equipSlot),
     description: display?.description ?? "Equipped from your Harthmere pack.",
     weight: inventoryUiItemWeight(
@@ -2028,7 +2052,9 @@ function readPersistedTabShortcuts(): TabShortcut[] {
     const overrides = JSON.parse(raw) as Record<string, string>;
     return DEFAULT_TAB_SHORTCUTS.map((shortcut) => {
       const key = overrides?.[shortcut.tab];
-      return typeof key === "string" && key
+      return typeof key === "string" &&
+        key &&
+        !isReservedGameplayShortcutKey(key)
         ? { ...shortcut, key: key.toLowerCase(), label: key.toUpperCase() }
         : shortcut;
     });
@@ -2039,6 +2065,9 @@ function readPersistedTabShortcuts(): TabShortcut[] {
 
 function persistTabShortcut(tab: string, key: string): void {
   if (typeof window === "undefined") {
+    return;
+  }
+  if (isReservedGameplayShortcutKey(key)) {
     return;
   }
   try {
@@ -3287,6 +3316,11 @@ export function useBiomesUILiveAdapters({
           : localHotbarItemIds[slotIndex];
 
         if (localItemId) {
+          window.dispatchEvent(
+            new CustomEvent(HARTHMERE_HOTBAR_HELD_ITEM_EVENT, {
+              detail: { itemId: undefined },
+            })
+          );
           const localBackpackItem =
             readHarthmereInventoryState().backpack.items.find(
               (item) => item.itemId === localItemId
@@ -3342,13 +3376,20 @@ export function useBiomesUILiveAdapters({
             await applyLiveModeInventoryResponse(body);
             return;
           }
-          if (isThrowableHotbarItemId(localItemId)) {
-            await dropHotbarItem(slotIndex);
-            return;
-          }
           const display = getHarthmereItemDisplay(localItemId);
           if (display?.category === "weapon") {
-            performHarthmereMousePrimaryAttack();
+            if (!equipHarthmereHotbarItem(localItemId)) {
+              throw new Error(
+                "Move this weapon into your backpack before equipping it."
+              );
+            }
+            if (display.slot === "main_hand") {
+              performHarthmereMousePrimaryAttack();
+            }
+            return;
+          }
+          if (isThrowableHotbarItemId(localItemId)) {
+            await dropHotbarItem(slotIndex);
             return;
           }
           if (
@@ -3367,6 +3408,11 @@ export function useBiomesUILiveAdapters({
         if (!item) {
           throw new Error("That hotbar slot is empty.");
         }
+        window.dispatchEvent(
+          new CustomEvent(HARTHMERE_HOTBAR_HELD_ITEM_EVENT, {
+            detail: { itemId: undefined },
+          })
+        );
         await activateNativeHotbarPrimaryAction({
           gameInput: clientContext.input,
           item,

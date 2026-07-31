@@ -2,6 +2,7 @@ import { ch1DungeonAuthoredToWorld } from "@/shared/harthmere/ch1_dungeon_terrai
 import type { BiomesId } from "@/shared/ids";
 import type { Vec3 } from "@/shared/math/types";
 import { CH1_NPC_ENTITY_IDS } from "@/shared/harthmere/ch1_ids";
+import { harthmereBossWorldSizeForLabel } from "@/shared/harthmere/boss_visual_assets";
 
 export interface Ch1DungeonEncounterNpc {
   entityId: BiomesId;
@@ -11,6 +12,7 @@ export interface Ch1DungeonEncounterNpc {
   displayName: string;
   position: Vec3;
   maxHp: number;
+  size?: Vec3;
 }
 
 const BASE = 8_810_000_003_000_000;
@@ -30,6 +32,7 @@ const encounter = (
   displayName,
   position: ch1DungeonAuthoredToWorld(dungeonId, local),
   maxHp,
+  size: harthmereBossWorldSizeForLabel(displayName),
 });
 
 export const CH1_DUNGEON_ENCOUNTER_NPCS: readonly Ch1DungeonEncounterNpc[] =
@@ -268,10 +271,24 @@ export function ch1DungeonEscortNpcsForDungeon(dungeonId: string) {
   return CH1_DUNGEON_ESCORT_NPCS.filter((npc) => npc.dungeonId === dungeonId);
 }
 
+/**
+ * Escorts that MUST be at the aperture for an objective to complete.
+ *
+ * MARROW IS OPTIONAL, AND THIS FUNCTION USED TO DISAGREE.
+ * ch1_dungeons.ts marks Marrow `required: false` with the note "Optional and
+ * cruel to make optional. MUST BE UNKILLABLE." This function returned every
+ * desert escort, so the gate demanded Marrow too — and since `d1_the_long_walk`
+ * is what sets `ch1_iris_rescued`, and the desert exit needs that flag, a dead
+ * or stuck dog was an unrecoverable soft-lock inside the dungeon.
+ *
+ * Iris is required because she is the retrieval the act is about. Marrow is
+ * carried by `ch1OptionalEscortNpcsForObjective` instead: present, tracked, and
+ * rewarded, but never a gate.
+ */
 export function ch1RequiredEscortNpcsForObjective(objectiveId: string) {
   if (objectiveId === "d1_the_long_walk") {
     return CH1_DUNGEON_ESCORT_NPCS.filter(
-      (npc) => npc.dungeonId === "ch1_dungeon_desert"
+      (npc) => npc.entityId === CH1_NPC_ENTITY_IDS.iris_fen
     );
   }
   if (objectiveId === "d2_the_breaking_year") {
@@ -280,4 +297,36 @@ export function ch1RequiredEscortNpcsForObjective(objectiveId: string) {
     );
   }
   return [];
+}
+
+/** Escorts whose arrival is recorded but never required. */
+export function ch1OptionalEscortNpcsForObjective(objectiveId: string) {
+  if (objectiveId === "d1_the_long_walk") {
+    return CH1_DUNGEON_ESCORT_NPCS.filter(
+      (npc) => npc.entityId === CH1_NPC_ENTITY_IDS.marrow
+    );
+  }
+  return [];
+}
+
+/**
+ * ANIMA RULE 3 made enforceable.
+ *
+ * ch1_engine_contracts.ts states that Iris, Sorrel and Marrow are "unkillable,
+ * non-negotiable" — but the only check was `ch1ValidateNonCombatants`, which
+ * greps encounter STRINGS for their names. Nothing touched the ECS, the shim
+ * seeded them with ordinary Health and no invulnerability, and their escort
+ * combat policies (`defend_leader`, `defend_self`, `fight_muck`) put them in
+ * front of 90 HP Salt-Cured Muckers and a 420 HP Gilded Bull. `escortStatusFor`
+ * returns "down" at hp<=0 and Chapter 1 has no revive for escort NPCs, so one
+ * dead companion ended the chapter.
+ *
+ * This is the machine-readable list the seeder and the vitals path consult.
+ */
+export const CH1_UNKILLABLE_ESCORT_ENTITY_IDS: ReadonlySet<BiomesId> = new Set(
+  CH1_DUNGEON_ESCORT_NPCS.map((npc) => npc.entityId)
+);
+
+export function ch1EscortIsUnkillable(id: BiomesId | number): boolean {
+  return CH1_UNKILLABLE_ESCORT_ENTITY_IDS.has(Number(id) as BiomesId);
 }

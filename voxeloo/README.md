@@ -1,8 +1,24 @@
-# Building WASM
+# Voxeloo
 
-Run from Biomes repository root, `scripts/build_wasm.sh -t all`
+Voxeloo is the native C++ library behind Biomes voxel storage, tensors, geometry, terrain simulation, mapping, Anima surface extraction, and asset processing. It is consumed through native C++ APIs, Emscripten/Embind WebAssembly bindings, and a pybind11 Python extension.
 
-# Working in C++
+Architecture and upgrade documentation:
+
+- `docs/docs/basics/voxeloo.md`: system overview and application integration;
+- `docs/docs/voxeloo/native-modules.md`: package ownership and native invariants;
+- `docs/docs/voxeloo/bindings-and-testing.md`: Embind, pybind, memory ownership, and the test matrix.
+
+## Building WebAssembly
+
+From the Biomes repository root:
+
+```shell
+scripts/build_wasm.sh -t all
+```
+
+This builds the normal and SIMD variants used by the generated TypeScript loaders. Treat the C++ implementation, Embind registration, generated loader, `.wasm` file, TypeScript declarations, and wrappers as one compatibility unit.
+
+## Working in C++
 
 ## Setup
 
@@ -33,16 +49,27 @@ Run from Biomes repository root, `scripts/build_wasm.sh -t all`
 2. Install the VSCode 'clangd' extension
 3. When prompted, disable Intellisense in favour of clangd.
 
-Following instructions are to be run from voxeloo.
+The following commands are run from the repository root.
 
-## Running tests
+### Running tests
 
-`bazel test //...`
+```shell
+bazel test //voxeloo/...
+./b test -p 'src/shared/wasm/test/*.test.ts'
+```
 
-## Building everything
+The Bazel suite includes native Catch2 tests and three Python boundary tests that load the built `py_ext.so` and cover every exported submodule. The TypeScript suite loads both WebAssembly variants and checks runtime exports, behavior parity, mapping integration, and native-object cleanup.
 
-`bazel build //...`
+### Building everything
 
-## Installing Python extension
+```shell
+bazel build //voxeloo/...
+```
 
-Run from Biomes repository root, `pip install ./voxeloo`
+### Installing the Python extension
+
+```shell
+pip install ./voxeloo
+```
+
+The Python boundary uses NumPy arrays and binary Python `bytes`. Tensor arrays use `[z, y, x]` shape order and native tensor conversion pads dimensions to 32-voxel chunk boundaries. See the binding documentation before changing layouts or return types.

@@ -69,6 +69,7 @@ import { harthmereQuestProgressEventHandler } from "@/server/logic/events/handle
 import { labelChangeEventHandler } from "@/server/logic/events/handlers/labels";
 import { minigameEventHandlers } from "@/server/logic/events/handlers/minigames";
 import { moveEventHandler } from "@/server/logic/events/handlers/motion";
+import { movementActionEventHandlers } from "@/server/logic/events/handlers/movement_actions";
 import { npcEventHandlers } from "@/server/logic/events/handlers/npc";
 import {
   changePictureFrameContentsEventHandler,
@@ -235,6 +236,7 @@ export function eventHandlerMapFor(serverMods: ServerMods) {
     playerSetNUXStatusEventHandler,
     emoteEventHandler,
     updatePlayerHealthEventHandler,
+    ...movementActionEventHandlers,
 
     // Consumption
     consumptionEventHandler,

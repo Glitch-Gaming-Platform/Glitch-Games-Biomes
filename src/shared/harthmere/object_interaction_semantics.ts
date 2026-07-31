@@ -43,7 +43,7 @@ export interface HarthmereObjectInteraction {
 // labelled "Lockbox" (a real decor item id) or "Safe Ruin Cache" failed the
 // non-living gate and could never surface an F prompt. Both forms now match.
 const HARTHMERE_NON_LIVING_OBJECT_RE =
-  /\b(crates?|chests?|box(?:es)?|barrels?|containers?|caches?|satchels?|mailbags?|toolbags?|bags?|baskets?|bins?|lockers?|wardrobes?|cabinets?|shelves|shelf|workbenches|workbench|anvils?|tools?|boards?|signs?|posts?|markers?|inscriptions?|plates?|ledgers?|books?|notes?|letters?|orders?|strips?|feed|carts?|wagons?|lockbox(?:es)?|strongbox(?:es)?|stash(?:es)?|footlockers?|stakes?|stones?|rubbings?|dumm(?:y|ies)|rings?|ropes?|firefl(?:y|ies)|flags?|pots?|cook\s+pots?|cooking\s+pots?|soup\s+pots?|stew\s+pots?|kettles?|fences?|boundar(?:y|ies)|tables?|desks?|mirrors?|moss|towers?|platforms?|offices?|chapels?|materials?|berries|patch(?:es)?|plots?|branches?|softwood|harvests?|remains?|carcasses?|sounders?|stretch|spots?|overlooks?|corners?|ovens?|stoves?|beds?|stands?|cookpots?|campfires?|camp\s+fires?|firepits?|fire\s+pits?|fire\s+rings?|hearths?|cooking\s+fires?|pails?|mailboxes?|consoles?|terminals?|grates?|pillars?|candles?|altars?|shrines?|statues?|banners?|lamps?|braziers?|fountains?|wells?|gates?|doors?)\b/i;
+  /\b(crates?|chests?|box(?:es)?|barrels?|containers?|caches?|satchels?|mailbags?|toolbags?|bags?|baskets?|bins?|lockers?|wardrobes?|cabinets?|shelves|shelf|workbenches|workbench|anvils?|tools?|boards?|signs?|posts?|markers?|inscriptions?|plates?|ledgers?|books?|notes?|letters?|orders?|strips?|feed|carts?|wagons?|lockbox(?:es)?|strongbox(?:es)?|stash(?:es)?|footlockers?|stakes?|stones?|rubbings?|dumm(?:y|ies)|rings?|ropes?|firefl(?:y|ies)|flags?|pots?|cook\s+pots?|cooking\s+pots?|soup\s+pots?|stew\s+pots?|kettles?|fences?|boundar(?:y|ies)|tables?|desks?|mirrors?|moss|towers?|platforms?|offices?|chapels?|materials?|berries|patch(?:es)?|clumps?|plots?|branches?|softwood|harvests?|remains?|carcasses?|sounders?|stretch|spots?|overlooks?|corners?|ovens?|stoves?|beds?|stands?|cookpots?|campfires?|camp\s+fires?|firepits?|fire\s+pits?|fire\s+rings?|hearths?|cooking\s+fires?|pails?|mailboxes?|consoles?|terminals?|grates?|pillars?|candles?|altars?|shrines?|statues?|banners?|lamps?|braziers?|fountains?|wells?|gates?|doors?)\b/i;
 
 const HARTHMERE_CONTAINER_OBJECT_RE =
   /\b(crates?|chests?|box(?:es)?|barrels?|containers?|caches?|satchels?|mailbags?|toolbags?|bags?|baskets?|bins?|lockers?|wardrobes?|cabinets?|lockbox(?:es)?|strongbox(?:es)?|stash(?:es)?|footlockers?)\b/i;
@@ -64,7 +64,7 @@ const HARTHMERE_COOKING_STATION_OBJECT_RE =
   /\b(ovens?|stoves?|cookpots?|cook\s+pots?|cooking\s+pots?|soup\s+pots?|stew\s+pots?|kitchen\s+pots?|kettles?|campfires?|camp\s+fires?|firepits?|fire\s+pits?|fire\s+rings?|hearths?|cooking\s+fires?|pots?)\b/i;
 const HARTHMERE_USE_OBJECT_RE = /\b(pots?|tables?|desks?)\b/i;
 const HARTHMERE_RESOURCE_OBJECT_RE =
-  /\b(berries|berry|muckwad|materials?|patch(?:es)?|branches?|softwood|harvests?|remains?|carcasses?|sounders?)\b/i;
+  /\b(berries|berry|muckwad|materials?|patch(?:es)?|clumps?|branches?|softwood|harvests?|remains?|carcasses?|sounders?)\b/i;
 const HARTHMERE_REPAIR_OBJECT_RE = /\b(repair|broken|scratch|fences?)\b/i;
 const HARTHMERE_PRACTICE_OBJECT_RE =
   /\b(practice|dumm(?:y|ies)|rings?|ropes?|firefl(?:y|ies)|flags?|stakes?|stretch|spots?)\b/i;
@@ -354,6 +354,19 @@ const HARTHMERE_AUTHORED_OBJECT_INTERACTIONS: ReadonlyMap<
     ),
     "taye's paint pot": objectInteraction("use", "Use Pot", "Used"),
     "warning moss patch": objectInteraction("gather", "Gather", "Gathered"),
+    "west warning moss patch": objectInteraction("gather", "Gather", "Gathered"),
+    "center warning moss patch": objectInteraction("gather", "Gather", "Gathered"),
+    "silent warning moss patch": objectInteraction("gather", "Gather", "Gathered"),
+    "west pigment muck clump": objectInteraction("gather", "Gather", "Gathered"),
+    "east pigment muck clump": objectInteraction("gather", "Gather", "Gathered"),
+    "low moss song stone": objectInteraction("inspect", "Inspect", "Inspected"),
+    "middle moss song stone": objectInteraction("inspect", "Inspect", "Inspected"),
+    "high moss song stone": objectInteraction("inspect", "Inspect", "Inspected"),
+    "hoof track rubbing": objectInteraction("gather", "Take Rubbing", "Took rubbing from"),
+    "antler track rubbing": objectInteraction("gather", "Take Rubbing", "Took rubbing from"),
+    "claw track rubbing": objectInteraction("gather", "Take Rubbing", "Took rubbing from"),
+    "gus's marked loaf basket": objectInteraction("gather", "Pick Up", "Picked up"),
+    "marked bolt materials": objectInteraction("gather", "Pick Up", "Picked up"),
 
     // HARTHMERE_JOBS_BOARD_FIELD_TARGET_SEMANTICS
     // The 19 business job-template targets and the 19 outpost starter work

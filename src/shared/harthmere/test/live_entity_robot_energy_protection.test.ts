@@ -20,10 +20,7 @@ import {
   isLiveEntityHelperQuestExcludedPosition,
 } from "../live_entity_helper_quests";
 import { muckMonsterAreaForPosition } from "../muck_monster_aggression_ai";
-import {
-  HARTHMERE_EXTENSION_FEET_Y,
-  HARTHMERE_EXTENSION_WORLD_BOUNDS,
-} from "../world_extension";
+import { HARTHMERE_ORIGINAL_WORLD_EAST_EDGE_X } from "../world_extension";
 
 const NOW_MS = 1_700_000_000_000;
 const ONE_HOUR_MS = 3_600_000;
@@ -42,11 +39,8 @@ describe("live_entity_robot_energy_protection", () => {
     assert.deepEqual(validateLiveEntityRobotProtectionAreas(), []);
     assert.equal(LIVE_ENTITY_ROBOT_PROTECTION_AREAS.length, 4);
     for (const area of LIVE_ENTITY_ROBOT_PROTECTION_AREAS) {
-      assert.equal(area.groundY, HARTHMERE_EXTENSION_FEET_Y);
-      assert.ok(area.bounds.minX >= HARTHMERE_EXTENSION_WORLD_BOUNDS.minX);
-      assert.ok(area.bounds.maxX < HARTHMERE_EXTENSION_WORLD_BOUNDS.maxX);
-      assert.ok(area.bounds.minZ >= HARTHMERE_EXTENSION_WORLD_BOUNDS.minZ);
-      assert.ok(area.bounds.maxZ < HARTHMERE_EXTENSION_WORLD_BOUNDS.maxZ);
+      assert.equal(area.anchor[1], area.groundY);
+      assert.ok(area.bounds.maxX < HARTHMERE_ORIGINAL_WORLD_EAST_EDGE_X);
       assert.equal(
         isLiveEntityHelperQuestExcludedPosition(area.anchor),
         false,

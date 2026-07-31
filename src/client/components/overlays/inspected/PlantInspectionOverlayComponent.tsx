@@ -23,6 +23,7 @@ import type { BiomesId } from "@/shared/ids";
 import { fireAndForget, sleep } from "@/shared/util/async";
 import { createBag } from "@/shared/game/items";
 import { plantTimeString } from "@/shared/util/helpers";
+import { emitHarthmereSoundEffect } from "@/shared/harthmere/sound_effect_manifest";
 import { useAnimationFrame } from "framer-motion";
 import { compact } from "lodash";
 import { useState } from "react";
@@ -173,6 +174,19 @@ export const PlantInspectionOverlayComponent: React.FunctionComponent<{
                 if (acquired > 0n) break;
                 await sleep(250);
               }
+              const cropText = `${name ?? ""} ${
+                plantBiscuit?.displayName ?? ""
+              }`.toLowerCase();
+              emitHarthmereSoundEffect(
+                /carrot|turnip|radish|onion|potato/.test(cropText)
+                  ? "harvest_root"
+                  : /wheat|grain|corn|barley/.test(cropText)
+                  ? "harvest_grain"
+                  : /berry|fruit|apple|grape|tomato/.test(cropText)
+                  ? "harvest_fruit"
+                  : "harvest_crop",
+                { position: authoritativeRoot ?? overlay.pos }
+              );
             }
             addToast(resources, {
               kind: "basic",

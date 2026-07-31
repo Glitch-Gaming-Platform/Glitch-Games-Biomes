@@ -9,6 +9,7 @@ import {
   readHarthmereNativeCombatProgression,
   writeHarthmereNativeCombatProgression,
   harthmereNativeNpcCombatProfileForSeed,
+  harthmereNativeNpcBiscuit,
 } from "@/shared/harthmere/harthmere_native_combat";
 import { harthmereNativeLevelStats } from "@/shared/harthmere/harthmere_native_level_stats";
 import { ensureHarthmereNativeItemCatalogue } from "@/shared/harthmere/harthmere_native_bikkie_items";
@@ -111,6 +112,40 @@ describe("Harthmere native ECS combat rules", () => {
     );
   });
 
+  it("routes magical boss damage through magic resistance instead of physical armor", () => {
+    const physical = mitigateHarthmereNativeIncomingDamage({
+      rawDamage: 100,
+      armor: 120,
+      defense: 0,
+      magicResistance: 0,
+      damageType: "blunt",
+      attackerLevel: 10,
+      defenderLevel: 10,
+    });
+    const unresistedMagic = mitigateHarthmereNativeIncomingDamage({
+      rawDamage: 100,
+      armor: 120,
+      defense: 0,
+      magicResistance: 0,
+      damageType: "arcane",
+      attackerLevel: 10,
+      defenderLevel: 10,
+    });
+    const resistedMagic = mitigateHarthmereNativeIncomingDamage({
+      rawDamage: 100,
+      armor: 120,
+      defense: 0,
+      magicResistance: 120,
+      damageType: "arcane",
+      attackerLevel: 10,
+      defenderLevel: 10,
+    });
+
+    assert.ok(physical < unresistedMagic);
+    assert.ok(resistedMagic < unresistedMagic);
+    assert.equal(resistedMagic, physical);
+  });
+
   it("applies strength, dexterity, intelligence, spell power, accuracy, and crits", () => {
     const levelOne = harthmereNativeLevelStats(1);
     const neutral = applyHarthmereNativeAttackStats({
@@ -183,11 +218,39 @@ describe("Harthmere native ECS combat rules", () => {
       assert.equal(profile.runSpeed, 3.5);
       assert.equal(profile.behaviorKind, "retaliate");
       assert.deepEqual(profile.aggroTrigger, { kind: "onlyIfAttacked" });
+      assert.equal(profile.galoisPath, `npcs/${species}`);
     }
 
     const rabbit = profileFor("rabbit");
     assert.equal(rabbit.attackIntervalSecs, 2.4);
     assert.equal(rabbit.walkSpeed, 2.4);
     assert.equal(rabbit.runSpeed, 4.4);
+    assert.equal(rabbit.galoisPath, "npcs/rabbit");
+  });
+
+  it("keeps native humans on player meshes and creatures on snapshot GLTFs", () => {
+    const bandit = harthmereNativeNpcCombatProfileForSeed({
+      seedId: "test-bandit",
+      displayName: "Road Scout",
+      kind: "ambient_bandit",
+      banditRole: "scout",
+    });
+    const banditBiscuit = harthmereNativeNpcBiscuit(bandit);
+    assert.equal(bandit.isPlayerLikeAppearance, true);
+    assert.equal(bandit.galoisPath, undefined);
+    assert.equal(banditBiscuit.isPlayerLikeAppearance, true);
+
+    const mucker = harthmereNativeNpcCombatProfileForSeed({
+      seedId: "test-mucker",
+      displayName: "Old Wood Mucker",
+      kind: "ambient_muck_monster",
+      combatKind: "mux",
+    });
+    assert.equal(mucker.isPlayerLikeAppearance, undefined);
+    assert.equal(mucker.galoisPath, "npcs/tree_mucker");
+    assert.equal(
+      harthmereNativeNpcBiscuit(mucker).galoisPath,
+      "npcs/tree_mucker"
+    );
   });
 });

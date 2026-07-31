@@ -74,7 +74,10 @@ describe("business daily check-in: revenue lost", () => {
 
 describe("business daily check-in: missed days", () => {
   it("is zero for a brand-new business and for next-day check-ins", () => {
-    assert.strictEqual(businessMissedDays({ lastCheckInDay: undefined }, 10), 0);
+    assert.strictEqual(
+      businessMissedDays({ lastCheckInDay: undefined }, 10),
+      0
+    );
     assert.strictEqual(businessMissedDays({ lastCheckInDay: 10 }, 11), 0);
     assert.strictEqual(businessMissedDays({ lastCheckInDay: 10 }, 10), 0);
   });
@@ -116,7 +119,11 @@ describe("business daily check-in: processing", () => {
     assert.strictEqual(r.streak, 3);
     assert.strictEqual(r.state.longestStreak, 3);
     assert.strictEqual(r.state.totalGoldFromCheckIns, 1500);
-    assert.strictEqual(r.state.totalRevenueLostToNeglect, 0, "no neglect when daily");
+    assert.strictEqual(
+      r.state.totalRevenueLostToNeglect,
+      0,
+      "no neglect when daily"
+    );
   });
 
   it("resets the streak and banks the revenue lost after skipped days", () => {

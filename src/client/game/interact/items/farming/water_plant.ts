@@ -16,6 +16,7 @@ import { hitExistingTerrain } from "@/shared/game/spatial";
 import type { BiomesId } from "@/shared/ids";
 import type { Vec3 } from "@/shared/math/types";
 import { compactMap } from "@/shared/util/collections";
+import { emitHarthmereSoundEffect } from "@/shared/harthmere/sound_effect_manifest";
 
 export class WaterPlantItemSpec implements AttackDestroyDelegateSpec {
   constructor(
@@ -77,6 +78,10 @@ export class WaterPlantItemSpec implements AttackDestroyDelegateSpec {
     player.eagerEmote(this.deps.events, this.deps.resources, "watering");
 
     waterPlants(this.deps, Array.from(plants), itemInfo.itemRef);
+    emitHarthmereSoundEffect("water_plant", {
+      position: pos,
+      idempotent: true,
+    });
     return true;
   }
 
@@ -104,6 +109,10 @@ export class WaterPlantItemSpec implements AttackDestroyDelegateSpec {
     const player = this.deps.resources.get("/scene/local_player").player;
     player.eagerEmote(this.deps.events, this.deps.resources, "watering");
     replenishWater(this.deps, waterHit, itemInfo.itemRef);
+    emitHarthmereSoundEffect("refill_watering_can", {
+      position: waterHit,
+      idempotent: true,
+    });
     return true;
   }
 }

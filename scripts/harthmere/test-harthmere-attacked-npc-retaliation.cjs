@@ -72,7 +72,9 @@ check(
 // Confirm the old broken check is not used as live code (may appear in comments)
 // We verify this by checking the actual if-condition block does NOT contain it.
 // The if-condition block starts with "if (" and ends with ") {" — we extract it.
-const retaliationIfMatch = logic.match(/if\s*\(\s*!behavior\.damageable[\s\S]*?\)\s*\{/);
+const retaliationIfMatch = logic.match(
+  /if\s*\(\s*!behavior\.damageable[\s\S]*?\)\s*\{/
+);
 check(
   retaliationIfMatch
     ? !retaliationIfMatch[0].includes("attackable !== true")
@@ -96,8 +98,25 @@ check(
 );
 
 // ── No name-whitelist gatekeeping ────────────────────────────────────────────
+// Other NPC systems may legitimately inspect labels to select species-specific
+// visuals or movement profiles. Scope this guard to the retaliation fallback so
+// those unrelated features cannot create a false positive.
+const retaliationFallbackStart = logic.indexOf(
+  "// ATTACKED_NPC_RETALIATION_FALLBACK:"
+);
+const retaliationFallbackEnd = logic.indexOf(
+  "// The single locomotion behavior",
+  retaliationFallbackStart
+);
+const retaliationFallback = logic.slice(
+  retaliationFallbackStart,
+  retaliationFallbackEnd
+);
 check(
-  !logic.includes("npc.label") && !logic.includes("displayName"),
+  retaliationFallbackStart >= 0 &&
+    retaliationFallbackEnd > retaliationFallbackStart &&
+    !retaliationFallback.includes("npc.label") &&
+    !retaliationFallback.includes("displayName"),
   "retaliation is not limited to a name whitelist"
 );
 

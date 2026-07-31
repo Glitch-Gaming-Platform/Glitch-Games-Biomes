@@ -7,6 +7,8 @@
 // a static recording manifest.
 
 import { harthmereSpeechDeliveryForActor } from "@/shared/harthmere/npc_speech_delivery";
+import { snapshotGroveNpcStableVoiceEntityId } from "@/shared/harthmere/snapshot_grove_ids";
+import type { BiomesId } from "@/shared/ids";
 
 export const HARTHMERE_NPC_VOICE_PROFILES_VERSION =
   "harthmere-npc-voice-profiles" as const;
@@ -234,7 +236,12 @@ function pickStable<T>(values: readonly T[], hash: number): T {
 }
 
 function actorKeyForVoiceInput(input: HarthmereVoiceActorInput) {
-  return [input.source, input.id, input.entityId, input.displayName, input.name]
+  const numericEntityId = Number(input.entityId);
+  const stableEntityId =
+    input.source === "runtime_entity" && Number.isSafeInteger(numericEntityId)
+      ? snapshotGroveNpcStableVoiceEntityId(numericEntityId as BiomesId)
+      : input.entityId;
+  return [input.source, input.id, stableEntityId, input.displayName, input.name]
     .filter((value) => value !== undefined && String(value).trim().length > 0)
     .map((value) => String(value).trim().toLowerCase())
     .join(":");

@@ -12,6 +12,7 @@ import {
   NATIVE_GIMME_SHELTER_ROBOT_SETUP_STEP_IDS,
   NATIVE_ROBOT_SETUP_MUCK_PLACEMENT_POSITION,
 } from "@/shared/harthmere/native_road_ahead_contract";
+import { SNAPSHOT_GROVE_JACKIE_ENTITY_ID } from "@/shared/harthmere/snapshot_grove_ids";
 import {
   NATIVE_LEGACY_COMBAT_QUEST_IDS,
   NATIVE_LEGACY_COMBAT_ROUTE_POSITIONS,
@@ -149,7 +150,7 @@ describe("native quest nav-aid map markers", () => {
     const bundle = quest(
       817959262145055,
       seq(190, [hunt], 0),
-      8997551883502307
+      SNAPSHOT_GROVE_JACKIE_ENTITY_ID
     );
 
     assert.deepStrictEqual(
@@ -305,7 +306,7 @@ describe("native quest nav-aid map markers", () => {
       ),
       // The real original-snapshot Busted giver has no beamPosition, which is
       // why the old quest-giver-only fallback still produced no map marker.
-      8997551883502307
+      SNAPSHOT_GROVE_JACKIE_ENTITY_ID
     );
     const resolve = buildNativeQuestNavAidResolver({
       navigationAids: new Map(),
@@ -344,7 +345,7 @@ describe("native quest nav-aid map markers", () => {
     const bundle = quest(
       7405046529843322,
       seq(350, [leaf(351, "Handcraft 0/8 Muck Busters", 0)], 0),
-      8997551883502307
+      SNAPSHOT_GROVE_JACKIE_ENTITY_ID
     );
     const resolve = buildNativeQuestNavAidResolver({
       navigationAids: new Map(),
@@ -445,7 +446,10 @@ describe("native quest nav-aid map markers", () => {
     );
 
     assert.deepStrictEqual(
-      nativeQuestInferredNavigationAidForTest(NATIVE_IN_STORAGE_QUEST_ID, teeth),
+      nativeQuestInferredNavigationAidForTest(
+        NATIVE_IN_STORAGE_QUEST_ID,
+        teeth
+      ),
       {
         kind: "position",
         pos: [...NATIVE_IN_STORAGE_MUCKER_TOOTH_HUNT_POSITION],

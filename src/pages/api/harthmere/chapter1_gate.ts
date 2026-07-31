@@ -31,6 +31,14 @@ import {
   ch1InitialPlayerState,
 } from "@/shared/harthmere/ch1_chapter";
 import { ch1Dungeon } from "@/shared/harthmere/ch1_dungeons";
+import {
+  ch1DungeonFinalStepId,
+  ch1DungeonQuestForDungeonId,
+} from "@/shared/harthmere/ch1_quests";
+import { ch1NativeQuestId } from "@/shared/harthmere/ch1_native_quests";
+import { ch1ObjectiveTarget } from "@/shared/harthmere/ch1_objective_targets";
+import { isTriggerFired } from "@/server/logic/events/handlers/quest_step_validation";
+import { activeChapter1ObjectiveForTest } from "@/pages/api/harthmere/chapter1_progress";
 import { ch1InitialDungeonSurvivalState } from "@/shared/harthmere/ch1_dungeon_mechanics";
 import {
   CH1_ELSEWHEN_EVICTION_ANCHOR,
@@ -66,7 +74,9 @@ const zVec3 = z.tuple([z.number(), z.number(), z.number()]);
 const zBody = z.discriminatedUnion("action", [
   z.object({ action: z.literal("state") }),
   z.object({ action: z.literal("enter"), gateId: z.string().min(1).max(80) }),
-  z.object({ action: z.literal("exit") }),
+  // `abandon` forfeits the run instead of requiring the retrievals. See the
+  // CHAPTER_1_ABANDON_RUN note at the exit branch.
+  z.object({ action: z.literal("exit"), abandon: z.boolean().optional() }),
   z.object({ action: z.literal("revive"), targetId: zBiomesId }),
   // Explicit, single-flight eviction. `state` only REPORTS an illegal
   // position; publishing a warp from a poll would fire one per poll tick.
@@ -102,6 +112,10 @@ const zResponse = z.object({
   elapsedSummary: z.string().optional(),
   /** True when the player was standing somewhere they are not admitted. */
   evicted: z.boolean().optional(),
+  /** The exit was refused but forfeiting the run is available. */
+  canAbandon: z.boolean().optional(),
+  /** The run was forfeited; no completion flags were granted. */
+  abandoned: z.boolean().optional(),
   party: z
     .array(
       z.object({
@@ -234,11 +248,78 @@ function activeGateIdsForRuntime(
   return [...ids];
 }
 
+/**
+ * CHAPTER_1_GATE_STORY_PREEMPTION
+ *
+ * Five authored beats put a character AT a Mouth and then ask the player to
+ * talk to them:
+ *
+ *   the_footprints      Rook at the Old Wood aperture
+ *   say_the_sentence    Rook at the Old Wood aperture
+ *   the_flinch          Jackie waiting at the return aperture
+ *   call_the_collapse   Rook, who must watch the gate close
+ *   rooks_rope          Rook at the Cold Gate with a coil of rope
+ *
+ * All five are correct staging — the scene only works at the aperture. But the
+ * gate also offers its own "F — Enter <dungeon>" there, and the two prompts
+ * then race. The F-priority table already ranks story above gate, yet the two
+ * prompts poll on different intervals, so there is a window where the gate has
+ * refreshed and the story objective has not. In that window the gate owns F and
+ * renders its banner, which is exactly what live testing hit at
+ * `say_the_sentence` — and four more instances were waiting in Acts 3, 4 and 5.
+ *
+ * Losing a race is the wrong model for this. While a story objective is staged
+ * at a Mouth, the Mouth should not be offering entry at all. Deciding that HERE
+ * rather than in the client means the HUD, the F dispatcher, the browser E2E and
+ * the API all read one answer instead of three.
+ *
+ * Dungeon-interior objectives cannot trigger this: their targets resolve inside
+ * the Elsewhen band, kilometres from any Grove-side gate.
+ */
+const CH1_GATE_STORY_PREEMPT_RADIUS = CH1_GATE_INTERACTION_RADIUS + 4;
+
+export function storyPreemptedGateId(input: {
+  player: {
+    challenges(): { in_progress: ReadonlySet<BiomesId> } | undefined;
+    triggerState():
+      | {
+          by_root: ReadonlyMap<BiomesId, ReadonlyMap<BiomesId, string | number>>;
+        }
+      | undefined;
+  };
+  activeGateIds: readonly string[];
+}): string | undefined {
+  const challenges = input.player.challenges();
+  const triggerState = input.player.triggerState();
+  if (!challenges || !triggerState) return undefined;
+  const active = activeChapter1ObjectiveForTest({
+    inProgress: challenges.in_progress,
+    fired: (challengeId, stepId) =>
+      isTriggerFired(triggerState.by_root.get(challengeId), stepId),
+  });
+  if (!active) return undefined;
+  const target = ch1ObjectiveTarget(active.quest.id, active.stepIndex);
+  if (!target || target.source === "dungeon") return undefined;
+  for (const gateId of input.activeGateIds) {
+    const gate = ch1Gate(gateId);
+    if (!gate?.enterable) continue;
+    if (
+      distance3(target.position, gate.position) <=
+      CH1_GATE_STORY_PREEMPT_RADIUS
+    ) {
+      return gateId;
+    }
+  }
+  return undefined;
+}
+
 function interactionState(input: {
   position: Vec3;
   activeGateIds: readonly string[];
   activeDungeonRunId?: string;
   activeGateId?: string;
+  /** A story objective is staged on this gate; it must not offer entry. */
+  storyPreemptedGateId?: string;
   survival?: {
     resourceKey: "water" | "fuel";
     resourceInitial: number;
@@ -279,6 +360,7 @@ function interactionState(input: {
   }
 
   const candidates = input.activeGateIds
+    .filter((gateId) => gateId !== input.storyPreemptedGateId)
     .map((gateId) => ch1Gate(gateId))
     .filter((gate) => gate?.enterable && gate.dungeonId)
     .map((gate) => ({
@@ -364,6 +446,10 @@ export default biomesApiHandler(
         activeDungeonRunId: state.chapter1.activeDungeonRunId,
         activeGateId: state.chapter1.activeGateId,
         survival: state.chapter1.dungeonSurvival,
+        storyPreemptedGateId: storyPreemptedGateId({
+          player,
+          activeGateIds: worldGates,
+        }),
       });
       const slotClaim = state.chapter1.activeDungeonRunId
         ? parseSlotClaim(
@@ -431,6 +517,10 @@ export default biomesApiHandler(
         activeDungeonRunId: dungeonId,
         activeGateId: state.chapter1.activeGateId,
         survival: state.chapter1.dungeonSurvival,
+        storyPreemptedGateId: storyPreemptedGateId({
+          player,
+          activeGateIds: worldGates,
+        }),
       });
       if (!dungeonId || !runId || !activePartyId) {
         return {
@@ -530,6 +620,10 @@ export default biomesApiHandler(
         activeDungeonRunId: state.chapter1.activeDungeonRunId,
         activeGateId: state.chapter1.activeGateId,
         survival: state.chapter1.dungeonSurvival,
+        storyPreemptedGateId: storyPreemptedGateId({
+          player,
+          activeGateIds: worldGates,
+        }),
       });
 
       let warpPosition: Vec3;
@@ -605,6 +699,39 @@ export default biomesApiHandler(
             ...current,
             ok: false,
             reason: "Move to the open Mouth before entering it.",
+          };
+        }
+        // CHAPTER_1_DUNGEON_ENTRY_GUARD
+        //
+        // Gate visibility and dungeon-quest activation were decoupled. A gate
+        // opens as soon as `highestReachedAct` reaches its act, which happens
+        // when the FIRST quest of that act goes in progress — five objectives
+        // before the dungeon quest itself starts. A player who provisioned early
+        // could walk in during that window and be trapped permanently: the exit
+        // needs retrievals they cannot obtain, the dungeon objectives are not
+        // servable because their challenge is not in progress, death warps them
+        // back to the arrival, and eviction does not fire because their
+        // admission is legitimately valid.
+        //
+        // The dungeon's own challenge being in progress is the precondition that
+        // was missing, so require it here rather than inferring it from an act.
+        const gateForEntry = ch1Gate(body.gateId);
+        const dungeonQuest = gateForEntry?.dungeonId
+          ? ch1DungeonQuestForDungeonId(gateForEntry.dungeonId)
+          : undefined;
+        const dungeonChallengeId = dungeonQuest
+          ? ch1NativeQuestId(dungeonQuest.id)
+          : undefined;
+        if (
+          dungeonChallengeId !== undefined &&
+          !player.challenges()?.in_progress.has(dungeonChallengeId)
+        ) {
+          return {
+            ...current,
+            ok: false,
+            reason: `${
+              dungeonQuest?.title ?? "The expedition"
+            } has not begun. Finish the preparations before going through.`,
           };
         }
         const gate = ch1Gate(body.gateId)!;
@@ -688,6 +815,29 @@ export default biomesApiHandler(
         chapterState.flags = [...state.chapter1.completionFlags];
         chapterState.activeDungeonRunId = state.chapter1.activeDungeonRunId;
         chapterState.activeRunStartedMs = state.chapter1.activeRunStartedMs;
+        // CHAPTER_1_DUNGEON_RUN_COMPLETION
+        //
+        // The retrieval check is necessary but not sufficient. Winter's three
+        // required retrievals all land at `d2_the_oath` (step 6 of 9), so the
+        // retrieval rule alone permitted a legal exit before the boss, Hallr's
+        // choice and the escort out — three objectives that can only be done
+        // inside the band. Require the run's final authored step as well.
+        const finalStepId = ch1DungeonFinalStepId(dungeon.id);
+        const runFinished =
+          finalStepId === undefined ||
+          state.chapter1.appliedObjectiveEffects.some((key) =>
+            key.endsWith(`/${finalStepId}`)
+          );
+        if (!runFinished && body.abandon !== true) {
+          return {
+            ...current,
+            ok: false,
+            reason:
+              "You are not finished in here yet. Something still has to come " +
+              "back with you.",
+            canAbandon: true,
+          };
+        }
         const exited = ch1ExitGate({
           state: chapterState,
           carriedOut: e2e
@@ -698,7 +848,113 @@ export default biomesApiHandler(
           nowMs,
         });
         if (!exited.ok) {
-          return { ...current, ok: false, reason: exited.reason };
+          // CHAPTER_1_ABANDON_RUN
+          //
+          // "A dungeon is a retrieval, not a clear" is the right rule and it
+          // stays the default. But it was also the ONLY way out, which made a
+          // refused exit indistinguishable from a soft-lock: any state where the
+          // required retrievals became unobtainable — a dead escort, an
+          // inventory transaction that dropped a key item, entry before the
+          // quest activated — stranded the player in an unreachable band with no
+          // recourse but an admin teleport.
+          //
+          // Abandoning is deliberately expensive rather than impossible: the run
+          // is forfeited, no completion flags are granted, and the dungeon's
+          // encounters reset on the next entry. The player keeps their body.
+          if (body.abandon !== true) {
+            return {
+              ...current,
+              ok: false,
+              reason: exited.reason,
+              canAbandon: true,
+            };
+          }
+          warpAction = "exit";
+          warpDungeonId = dungeon.id;
+          warpRunId = state.chapter1.activeDungeonInstanceId ?? "";
+          warpPartyId = state.chapter1.activeDungeonPartyId ?? partyId;
+          if (state.chapter1.activeDungeonPartyId) {
+            releaseAfterPublish = {
+              dungeonId: dungeon.id,
+              partyId: state.chapter1.activeDungeonPartyId,
+              actorId: nativeActorId,
+            };
+          }
+          warpPosition = state.chapter1.returnPosition ?? [
+            ...(CH1_ELSEWHEN_EVICTION_ANCHOR as Vec3),
+          ];
+          state.chapter1 = {
+            ...state.chapter1,
+            activeDungeonRunId: undefined,
+            activeDungeonInstanceId: undefined,
+            activeDungeonPartyId: undefined,
+            activeGateId: undefined,
+            activeRunStartedMs: undefined,
+            returnPosition: undefined,
+            dungeonSurvival: undefined,
+            // No completionFlags. Abandoning is not completing.
+          };
+          state.updatedAtMs = nowMs;
+          const abandonPrevious =
+            raw ??
+            stringifyHarthmereLiveModePlayerPersistenceState(
+              parseHarthmereLiveModeBackendState(undefined, actorId, nowMs)
+            );
+          try {
+            await redis.primary.set(
+              stateKey,
+              stringifyHarthmereLiveModePlayerPersistenceState(state)
+            );
+            const abandonOrientation = player.orientation()?.v ?? [0, 0];
+            const abandonWarpInput = {
+              id: auth.userId,
+              action: warpAction,
+              dungeon_id: warpDungeonId,
+              run_id: warpRunId,
+              party_id: warpPartyId,
+              reset_encounters: false,
+              position: warpPosition,
+              orientation: [...abandonOrientation] as [number, number],
+            } as const;
+            await logicApi.publish(
+              new GameEvent(
+                auth.userId,
+                new HarthmereChapter1WarpEvent({
+                  ...abandonWarpInput,
+                  authorization: authorizeCh1Warp(abandonWarpInput),
+                })
+              )
+            );
+          } catch (error) {
+            await redis.primary.set(stateKey, abandonPrevious);
+            throw error;
+          }
+          if (releaseAfterPublish) {
+            try {
+              await releaseCh1Slot(
+                redis,
+                releaseAfterPublish.dungeonId,
+                releaseAfterPublish.partyId,
+                releaseAfterPublish.actorId
+              );
+            } catch (error) {
+              log.error("Failed to release abandoned Chapter 1 slot", {
+                error,
+                releaseAfterPublish,
+              });
+            }
+          }
+          return {
+            ...current,
+            ok: true,
+            abandoned: true,
+            reason:
+              "You came back out with nothing. The Mouth is still open when " +
+              "you are ready to try again.",
+            activeDungeonRunId: undefined,
+            activeDungeonInstanceId: undefined,
+            warpPosition,
+          };
         }
         // The dread beat, delivered here and only here.
         if (state.chapter1.activeGateId && state.chapter1.activeRunStartedMs) {
@@ -718,7 +974,14 @@ export default biomesApiHandler(
             actorId: nativeActorId,
           };
         }
-        warpPosition = state.chapter1.returnPosition ?? [496, 71, -126];
+        // Was a hardcoded [496, 71, -126] — the fountain centre at MARKER height,
+        // one block above the surface the scan measures there. Use the shared
+        // eviction anchor, which is the one position this chapter guarantees is
+        // outside the band and on the ground.
+        warpPosition =
+          state.chapter1.returnPosition ?? [
+            ...(CH1_ELSEWHEN_EVICTION_ANCHOR as Vec3),
+          ];
         state.chapter1 = {
           ...state.chapter1,
           activeDungeonRunId: undefined,

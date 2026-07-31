@@ -10,6 +10,8 @@ import {
   ch1GildedBullBrokenPartIds,
   ch1GildedBullPhase,
   ch1NinthWinterPhase,
+  ch1EscortIsUnkillable,
+  ch1OptionalEscortNpcsForObjective,
   ch1RequiredEncounterNpcsForObjective,
   ch1RequiredEscortNpcsForObjective,
 } from "@/shared/harthmere/ch1_dungeon_encounters";
@@ -144,14 +146,40 @@ describe("Chapter 1 remaining implementation contracts", () => {
       CH1_DUNGEON_ESCORT_NPCS.map((npc) => npc.displayName),
       ["Iris Fen", "Marrow", "Dr. Nadia Sorrel"]
     );
-    assert.equal(
-      ch1RequiredEscortNpcsForObjective("d1_the_long_walk").length,
-      2
+    // MARROW IS OPTIONAL. ch1_dungeons.ts marks the Marrow retrieval
+    // `required: false` ("Optional and cruel to make optional"), and this
+    // assertion used to demand both desert escorts at the aperture — which made
+    // the dog mandatory in the runtime and, because `d1_the_long_walk` is what
+    // sets `ch1_iris_rescued`, made a lost dog an unrecoverable soft-lock.
+    assert.deepEqual(
+      ch1RequiredEscortNpcsForObjective("d1_the_long_walk").map(
+        (npc) => npc.displayName
+      ),
+      ["Iris Fen"]
+    );
+    assert.deepEqual(
+      ch1OptionalEscortNpcsForObjective("d1_the_long_walk").map(
+        (npc) => npc.displayName
+      ),
+      ["Marrow"]
     );
     assert.equal(
       ch1RequiredEscortNpcsForObjective("d2_the_breaking_year").length,
       1
     );
+  });
+
+  it("makes every dungeon escort unkillable, not just documented as such", () => {
+    // ANIMA RULE 3 in ch1_engine_contracts.ts calls Iris, Sorrel and Marrow
+    // "unkillable, non-negotiable". Before this, the only enforcement was a
+    // name-substring scan over encounter strings; the ECS had no idea.
+    for (const npc of CH1_DUNGEON_ESCORT_NPCS) {
+      assert.ok(
+        ch1EscortIsUnkillable(npc.entityId),
+        `${npc.displayName} must be unkillable`
+      );
+    }
+    assert.equal(ch1EscortIsUnkillable(1 as never), false);
   });
 
   it("drives sound-hunting enemies from movement noise or native threat", () => {

@@ -102,7 +102,17 @@ function env(
   };
 }
 
-describe("mmo_economy_authority — catalog and lifecycle", () => {
+function describeEconomyIntegration(title: string, define: () => void) {
+  describe(title, function () {
+    // Every case in this file exercises synchronous, clone-heavy economy
+    // reductions. Individual cases are usually quick, but the 5s repository
+    // default is too tight under sustained suite and CI load.
+    this.timeout(30_000);
+    define();
+  });
+}
+
+describeEconomyIntegration("mmo_economy_authority — catalog and lifecycle", () => {
   it("starts with no runtime businesses/contracts but exposes the full economy business catalog", () => {
     const state = defaultHarthmereProductionEconomyState();
     assert.strictEqual(Object.keys(state.businesses).length, 0);
@@ -185,7 +195,7 @@ describe("mmo_economy_authority — catalog and lifecycle", () => {
   });
 });
 
-describe("mmo_economy_authority — inventory, pricing, taxes, and sales", () => {
+describeEconomyIntegration("mmo_economy_authority — inventory, pricing, taxes, and sales", () => {
   it("moves real player inventory into and out of business storage with slot checks", () => {
     const setup = createBusiness();
     let state = licenseAndOpen(setup.state, setup.businessId, 1);
@@ -299,7 +309,7 @@ describe("mmo_economy_authority — inventory, pricing, taxes, and sales", () =>
   });
 });
 
-describe("mmo_economy_authority — contracts and town demand", () => {
+describeEconomyIntegration("mmo_economy_authority — contracts and town demand", () => {
   it("creates escrowed contracts, accepts them, fulfills requirements, and rejects missing goods", () => {
     const setup = createBusiness();
     let state = licenseAndOpen(setup.state, setup.businessId, 1);
@@ -349,7 +359,7 @@ describe("mmo_economy_authority — contracts and town demand", () => {
   });
 });
 
-describe("mmo_economy_authority — production, workers, payroll, and upkeep", () => {
+describeEconomyIntegration("mmo_economy_authority — production, workers, payroll, and upkeep", () => {
   it("requires recipe inputs, license, worker skill, and business funds before production", () => {
     const setup = createBusiness(defaultHarthmereProductionEconomyState(), "food_service_restaurant", "Meal Works");
     let state = licenseAndOpen(setup.state, setup.businessId, 1);
@@ -509,7 +519,7 @@ describe("mmo_economy_authority — production, workers, payroll, and upkeep", (
   });
 });
 
-describe("mmo_economy_authority — banking, loans, insurance, and failures", () => {
+describeEconomyIntegration("mmo_economy_authority — banking, loans, insurance, and failures", () => {
   it("issues capped business loans, records repayment, and rejects over-cap loans", () => {
     const setup = createBusiness();
     let state = licenseAndOpen(setup.state, setup.businessId, 1);
@@ -568,7 +578,7 @@ describe("mmo_economy_authority — banking, loans, insurance, and failures", ()
   });
 });
 
-describe("mmo_economy_authority — money-conservation edge cases (audit hardening)", () => {
+describeEconomyIntegration("mmo_economy_authority — money-conservation edge cases (audit hardening)", () => {
   it("does not burn gold when a loan is overpaid beyond its outstanding balance", () => {
     const setup = createBusiness();
     let state = licenseAndOpen(setup.state, setup.businessId, 1);
@@ -672,7 +682,7 @@ describe("mmo_economy_authority — money-conservation edge cases (audit hardeni
   });
 });
 
-describe("mmo_economy_authority — logistics, market, town simulation, and NPC competition", () => {
+describeEconomyIntegration("mmo_economy_authority — logistics, market, town simulation, and NPC competition", () => {
   it("ships goods only over safe funded routes and creates a failure on unsafe routes", () => {
     const seller = createBusiness(defaultHarthmereProductionEconomyState(), "general_trader", "Sender Shop");
     let state = licenseAndOpen(seller.state, seller.businessId, 1, "town_a");
@@ -773,7 +783,7 @@ describe("mmo_economy_authority — logistics, market, town simulation, and NPC 
   });
 });
 
-describe("live_mode_backend — production economy integration", () => {
+describeEconomyIntegration("live_mode_backend — production economy integration", () => {
   it("persists economy mutations through request_economy_mutation and returns a client snapshot", () => {
     const state = defaultHarthmereLiveModeBackendState(ACTOR, NOW_MS);
     state.inventory.gold = 1000;
@@ -898,7 +908,7 @@ describe("live_mode_backend — production economy integration", () => {
   });
 });
 
-describe("mmo_economy_authority — business-specific production systems", () => {
+describeEconomyIntegration("mmo_economy_authority — business-specific production systems", () => {
   function createOpenBusiness(
     type: HarthmereEconomyMutationRequest["businessType"],
     name: string,
@@ -1301,7 +1311,7 @@ describe("mmo_economy_authority — business-specific production systems", () =>
   });
 });
 
-describe("mmo_economy_authority — business banks, permissions, and balance guards", () => {
+describeEconomyIntegration("mmo_economy_authority — business banks, permissions, and balance guards", () => {
   it("creates business bank accounts, supports owner transfers, audit logs, and permission-scoped accountants", () => {
     const setup = createBusiness(defaultHarthmereProductionEconomyState(), "general_trader", "Ledger Market");
     let state = licenseAndOpen(setup.state, setup.businessId, 1);
@@ -1464,7 +1474,7 @@ describe("mmo_economy_authority — business banks, permissions, and balance gua
   });
 });
 
-describe("business daily check-in (live economy integration)", () => {
+describeEconomyIntegration("business daily check-in (live economy integration)", () => {
   const DAY = 86_400_000;
 
   function ownedOpenBusiness() {

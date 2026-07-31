@@ -34,11 +34,14 @@ const NOW = 1_800_000_000_000;
 describe("Harthmere Exotic Matter cave deposits current", () => {
   it("uses the lore materials and existing crafting item ids", () => {
     assert.equal(HARTHMERE_EXOTIC_MATTER_POWER_MW_PER_UNIT, 100_400);
-    assert.deepEqual(HARTHMERE_EXOTIC_MATTER_MATERIAL_ITEM_IDS.sort(), [
-      HARTHMERE_EXOTIC_MATTER_ITEM_IDS.antiboronBlock,
-      HARTHMERE_EXOTIC_MATTER_ITEM_IDS.antiheliumBlock,
-      HARTHMERE_EXOTIC_MATTER_ITEM_IDS.antihydrogenBlock,
-    ].sort());
+    assert.deepEqual(
+      HARTHMERE_EXOTIC_MATTER_MATERIAL_ITEM_IDS.sort(),
+      [
+        HARTHMERE_EXOTIC_MATTER_ITEM_IDS.antiboronBlock,
+        HARTHMERE_EXOTIC_MATTER_ITEM_IDS.antiheliumBlock,
+        HARTHMERE_EXOTIC_MATTER_ITEM_IDS.antihydrogenBlock,
+      ].sort()
+    );
     assert.equal(
       harthmereExoticMatterComponentForItemId("antihydrogen_block"),
       "antihydrogen"
@@ -79,7 +82,10 @@ describe("Harthmere Exotic Matter cave deposits current", () => {
       for (const deposit of deposits) {
         const [x, y, z] = deposit.position;
         assert.ok(x > cave.bounds.x0 && x < cave.bounds.x1, deposit.depositId);
-        assert.ok(y >= cave.bounds.y0 && y <= cave.bounds.y1, deposit.depositId);
+        assert.ok(
+          y >= cave.bounds.y0 && y <= cave.bounds.y1,
+          deposit.depositId
+        );
         assert.ok(z > cave.bounds.z0 && z < cave.bounds.z1, deposit.depositId);
         const key = deposit.position.join(",");
         assert.equal(positions.has(key), false, `duplicate deposit ${key}`);
@@ -89,9 +95,7 @@ describe("Harthmere Exotic Matter cave deposits current", () => {
   });
 
   it("keeps the light cave material-only and loads the massive cave with job-ready deposits", () => {
-    const lightCave = harthmereExoticMatterCaveById(
-      "windowlight_little_cave"
-    );
+    const lightCave = harthmereExoticMatterCaveById("windowlight_little_cave");
     assert.ok(lightCave);
     assert.deepEqual(
       lightCave!.entrancePosition,
@@ -101,7 +105,10 @@ describe("Harthmere Exotic Matter cave deposits current", () => {
       "windowlight_little_cave"
     );
     assert.equal(lightDeposits.length, 4);
-    assert.equal(lightDeposits.every((deposit) => !deposit.jobEligible), true);
+    assert.equal(
+      lightDeposits.every((deposit) => !deposit.jobEligible),
+      true
+    );
     assert.equal(
       harthmereExoticMatterDepositAtBlock({
         x: HARTHMERE_LIGHT_EXOTIC_MATTER_CAVE_ANCHOR[0],
@@ -131,7 +138,10 @@ describe("Harthmere Exotic Matter cave deposits current", () => {
       "deep_spindle_massive_cave"
     );
     assert.equal(massiveDeposits.length, 24);
-    assert.equal(massiveDeposits.every((deposit) => deposit.jobEligible), true);
+    assert.equal(
+      massiveDeposits.every((deposit) => deposit.jobEligible),
+      true
+    );
     assert.deepEqual(
       new Set(massiveDeposits.map((deposit) => deposit.componentId)),
       new Set(["antihydrogen", "antihelium", "antiboron"])
@@ -162,16 +172,12 @@ describe("Harthmere Exotic Matter cave deposits current", () => {
       HARTHMERE_USER_CONFIRMED_EXOTIC_MATTER_CAVE_ANCHOR
     );
     assert.ok(
-      HARTHMERE_USER_CONFIRMED_EXOTIC_MATTER_CAVE_ANCHOR[0] >
-        cave!.bounds.x0 &&
-        HARTHMERE_USER_CONFIRMED_EXOTIC_MATTER_CAVE_ANCHOR[0] <
-          cave!.bounds.x1
+      HARTHMERE_USER_CONFIRMED_EXOTIC_MATTER_CAVE_ANCHOR[0] > cave!.bounds.x0 &&
+        HARTHMERE_USER_CONFIRMED_EXOTIC_MATTER_CAVE_ANCHOR[0] < cave!.bounds.x1
     );
     assert.ok(
-      HARTHMERE_USER_CONFIRMED_EXOTIC_MATTER_CAVE_ANCHOR[2] >
-        cave!.bounds.z0 &&
-        HARTHMERE_USER_CONFIRMED_EXOTIC_MATTER_CAVE_ANCHOR[2] <
-          cave!.bounds.z1
+      HARTHMERE_USER_CONFIRMED_EXOTIC_MATTER_CAVE_ANCHOR[2] > cave!.bounds.z0 &&
+        HARTHMERE_USER_CONFIRMED_EXOTIC_MATTER_CAVE_ANCHOR[2] < cave!.bounds.z1
     );
 
     const deposits = harthmereExoticMatterDepositsForCave(
@@ -201,9 +207,7 @@ describe("Harthmere Exotic Matter cave deposits current", () => {
   });
 
   it("loads the user-confirmed massive cave coordinate with a lot of mineable deposits", () => {
-    const cave = harthmereExoticMatterCaveById(
-      "harthmere_core_massive_cave"
-    );
+    const cave = harthmereExoticMatterCaveById("harthmere_core_massive_cave");
     assert.ok(cave);
     assert.deepEqual(
       cave!.entrancePosition,
@@ -214,7 +218,10 @@ describe("Harthmere Exotic Matter cave deposits current", () => {
       "harthmere_core_massive_cave"
     );
     assert.equal(deposits.length, 81);
-    assert.equal(deposits.every((deposit) => deposit.jobEligible), true);
+    assert.equal(
+      deposits.every((deposit) => deposit.jobEligible),
+      true
+    );
     assert.deepEqual(
       Object.fromEntries(
         ["antihydrogen", "antihelium", "antiboron"].map((componentId) => [
@@ -258,7 +265,10 @@ describe("Harthmere Exotic Matter cave deposits current", () => {
       "harthmere_far_hollow_massive_cave"
     );
     assert.equal(deposits.length, 81);
-    assert.equal(deposits.every((deposit) => deposit.jobEligible), true);
+    assert.equal(
+      deposits.every((deposit) => deposit.jobEligible),
+      true
+    );
     assert.deepEqual(
       Object.fromEntries(
         ["antihydrogen", "antihelium", "antiboron"].map((componentId) => [
@@ -302,7 +312,10 @@ describe("Harthmere Exotic Matter cave deposits current", () => {
       "harthmere_high_vault_massive_cave"
     );
     assert.equal(deposits.length, 81);
-    assert.equal(deposits.every((deposit) => deposit.jobEligible), true);
+    assert.equal(
+      deposits.every((deposit) => deposit.jobEligible),
+      true
+    );
     assert.deepEqual(
       Object.fromEntries(
         ["antihydrogen", "antihelium", "antiboron"].map((componentId) => [
@@ -381,7 +394,9 @@ describe("Harthmere Exotic Matter cave deposits current", () => {
       depositId: deposit.depositId,
       nowMs: NOW + HARTHMERE_EXOTIC_MATTER_DEPOSIT_REPLENISH_MS - 1,
     });
-    assert.ok(early.warnings.includes("exotic_matter_rejected:deposit_replenishing"));
+    assert.ok(
+      early.warnings.includes("exotic_matter_rejected:deposit_replenishing")
+    );
     assert.deepEqual(early.inventoryItemDeltas, {});
 
     state = replenishHarthmereExoticMatterDeposits({
@@ -408,7 +423,9 @@ describe("Harthmere Exotic Matter cave deposits current", () => {
       depositId: "missing_deposit",
       nowMs: NOW,
     });
-    assert.ok(result.warnings.includes("exotic_matter_rejected:unknown_deposit"));
+    assert.ok(
+      result.warnings.includes("exotic_matter_rejected:unknown_deposit")
+    );
     assert.equal(result.deposits[knownId].available, false);
   });
 

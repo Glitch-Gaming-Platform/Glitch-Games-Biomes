@@ -42,6 +42,10 @@ class FakeSharder implements QueueSharder {
     this.#emitter.off(event, listener);
     return this;
   }
+
+  listenerCount() {
+    return this.#emitter.listenerCount("change");
+  }
 }
 
 const A = "a" as ShardId;
@@ -130,5 +134,35 @@ describe("Blocking SimulationQueue Tests", () => {
     assert.ok(wasBlocked);
     // Should progress now.
     assert.deepEqual(await promise, []);
+  });
+
+  it("applies the reducer before selecting a batch", async () => {
+    queue.stop();
+    queue = new BlockingQueue("testq", sharder, (values) => values.delete(B));
+    sharder.heldValues = [A, B, C];
+
+    assert.deepEqual(await fetch(queue, 2), [A, C]);
+  });
+
+  it("filters shards that are no longer held", async () => {
+    sharder.heldValues = [A, B, C];
+    queue.push(B);
+    sharder.heldValues = [A, C];
+
+    assert.deepEqual(await fetch(queue, 2), [A, C]);
+  });
+
+  it("reports high-priority and delayed work as pending", () => {
+    sharder.heldValues = [A, B];
+    queue.push(A);
+    queue.defer(B, 10_000);
+
+    assert.deepEqual(new Set(queue.pending()), new Set([A, B]));
+  });
+
+  it("detaches from the sharder when stopped", () => {
+    assert.equal(sharder.listenerCount(), 1);
+    queue.stop();
+    assert.equal(sharder.listenerCount(), 0);
   });
 });

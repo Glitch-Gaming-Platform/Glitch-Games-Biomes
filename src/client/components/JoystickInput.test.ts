@@ -1,8 +1,14 @@
 /// <reference types="mocha" />
 
 import {
+  MOBILE_JOYSTICK_DOUBLE_TAP_WINDOW_MS,
+  MOBILE_JOYSTICK_HARD_TAP_MAX_DURATION_MS,
   MOBILE_JOYSTICK_RUN_ENGAGE_THRESHOLD,
   MOBILE_JOYSTICK_RUN_RELEASE_THRESHOLD,
+  mobileJoystickCrouchRequestedForTest,
+  mobileJoystickDoubleTapDirectionForTest,
+  mobileJoystickHardTapForTest,
+  mobileJoystickMovementActionForDirectionForTest,
   mobileJoystickRunMotionValueForTest,
   mobileJoystickShouldRunForTest,
 } from "@/client/game/util/mobile_joystick";
@@ -53,5 +59,103 @@ describe("mobile joystick walk/run threshold", () => {
     assert.equal(mobileJoystickRunMotionValueForTest(0, 0), 0);
     assert.equal(mobileJoystickRunMotionValueForTest(0, 0.4), -1);
     assert.equal(mobileJoystickRunMotionValueForTest(0, 1), 1);
+  });
+
+  it("recognizes only a quick outer-ring release as a hard tap", () => {
+    assert.deepEqual(
+      mobileJoystickHardTapForTest({
+        startedAtMs: 100,
+        releasedAtMs: 220,
+        peakX: 0.9,
+        peakY: 0,
+      }),
+      { releasedAtMs: 220, direction: [1, 0] }
+    );
+    assert.equal(
+      mobileJoystickHardTapForTest({
+        startedAtMs: 100,
+        releasedAtMs: 180,
+        peakX: 0.4,
+        peakY: 0,
+      }),
+      undefined
+    );
+    assert.equal(
+      mobileJoystickHardTapForTest({
+        startedAtMs: 100,
+        releasedAtMs: 100 + MOBILE_JOYSTICK_HARD_TAP_MAX_DURATION_MS + 1,
+        peakX: 1,
+        peakY: 0,
+      }),
+      undefined
+    );
+  });
+
+  it("requires two quick hard taps in roughly the same direction", () => {
+    const first = mobileJoystickHardTapForTest({
+      startedAtMs: 0,
+      releasedAtMs: 100,
+      peakX: 1,
+      peakY: 0,
+    });
+    const sameDirection = mobileJoystickHardTapForTest({
+      startedAtMs: 180,
+      releasedAtMs: 250,
+      peakX: 0.9,
+      peakY: 0.2,
+    });
+    const oppositeDirection = mobileJoystickHardTapForTest({
+      startedAtMs: 180,
+      releasedAtMs: 250,
+      peakX: -1,
+      peakY: 0,
+    });
+    assert.ok(first && sameDirection && oppositeDirection);
+    assert.ok(
+      mobileJoystickDoubleTapDirectionForTest(first, sameDirection),
+      "same-direction double tap should evade"
+    );
+    assert.equal(
+      mobileJoystickDoubleTapDirectionForTest(first, oppositeDirection),
+      undefined
+    );
+    assert.equal(
+      mobileJoystickDoubleTapDirectionForTest(first, {
+        ...sameDirection,
+        releasedAtMs:
+          first.releasedAtMs + MOBILE_JOYSTICK_DOUBLE_TAP_WINDOW_MS + 1,
+      }),
+      undefined
+    );
+  });
+
+  it("uses dodge for cardinal taps and evade for diagonal taps", () => {
+    assert.deepEqual(mobileJoystickMovementActionForDirectionForTest([1, 0]), {
+      action: "dodge",
+      lateral: 1,
+      forward: 0,
+    });
+    assert.deepEqual(
+      mobileJoystickMovementActionForDirectionForTest([0.1, -0.99]),
+      {
+        action: "dodge",
+        lateral: 0,
+        forward: -1,
+      }
+    );
+    assert.deepEqual(
+      mobileJoystickMovementActionForDirectionForTest([0.7, 0.7]),
+      {
+        action: "evade",
+        lateral: 1,
+        forward: 1,
+      }
+    );
+  });
+
+  it("keeps the mobile crouch hold independent from keyboard toggle input", () => {
+    assert.equal(mobileJoystickCrouchRequestedForTest(false, false), false);
+    assert.equal(mobileJoystickCrouchRequestedForTest(true, false), true);
+    assert.equal(mobileJoystickCrouchRequestedForTest(false, true), true);
   });
 });

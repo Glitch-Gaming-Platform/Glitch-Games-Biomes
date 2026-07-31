@@ -24,6 +24,8 @@ import {
   writeHarthmereNativeVitals,
 } from "@/shared/harthmere/harthmere_native_vitals";
 import { generateTestId } from "@/shared/test_helpers";
+import { harthmereRespawnPositionForDeath } from "@/shared/harthmere/harthmere_respawn_anchors";
+import { HARTHMERE_ADDITIVE_TOWN_OFFSET_X } from "@/shared/harthmere/world_extension";
 import { ch1ElsewhenSlot } from "@/shared/harthmere/ch1_elsewhen_region";
 import { readCh1NativeRunAdmission } from "@/shared/harthmere/ch1_native_run";
 import {
@@ -79,6 +81,54 @@ describe("Harthmere native ECS respawn", () => {
     assert.equal(vitals.mana, 90);
     assert.equal(vitals.stamina, 110);
     assert.equal(vitals.breath, HARTHMERE_NATIVE_MAX_BREATH_SECONDS);
+  });
+
+  // HARTHMERE_RESPAWN_ANCHORS (2026-07-30): a death in Harthmere used to send
+  // the player to the Grove, ~1,600 blocks west, and make them walk the whole
+  // connector road back. The test above still passes unchanged because it kills
+  // the player at [0,0,0] — outside every settlement — which is exactly the
+  // "everywhere else" case that must keep the Grove behaviour.
+  it("returns a player who died in Harthmere to Harthmere", async () => {
+    const logic = new TestLogicApi(voxeloo);
+    const deathPosition: [number, number, number] = [
+      486 + HARTHMERE_ADDITIVE_TOWN_OFFSET_X,
+      53,
+      -209,
+    ];
+    const playerId = (
+      await addGameUser(logic.world, generateTestId(), {
+        position: deathPosition,
+      })
+    ).id;
+    editEntity(logic.world, playerId, (player) => {
+      const health = player.mutableHealth();
+      health.hp = 0;
+      health.maxHp = 120;
+    });
+
+    await logic.publish(
+      new GameEvent(
+        playerId,
+        new WarpHomeEvent({
+          id: playerId,
+          position: [999, 999, 999],
+          orientation: [0, 0],
+          reason: "respawn",
+        })
+      )
+    );
+
+    const player = logic.world.table.get(playerId)!;
+    const expected = harthmereRespawnPositionForDeath(deathPosition);
+    assert.equal(expected.region, "harthmere_extension");
+    assert.deepEqual(player.position?.v, expected.position);
+    assert.notDeepEqual(
+      player.position?.v,
+      HARTHMERE_GROVE_RESPAWN_POSITION,
+      "a Harthmere death is still being sent to the Grove"
+    );
+    // Health still restores in the same transaction.
+    assert.equal(player.health?.hp, 120);
   });
 
   it("keeps an admitted Chapter 1 death inside the portal-only dungeon", async () => {

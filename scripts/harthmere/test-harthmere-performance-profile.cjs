@@ -13,6 +13,8 @@ check("prototype concurrency is reduced", Number((contract.match(/prototypeLoadC
 check("LOD distances are tightened", Number((contract.match(/districtLodDistanceMeters:\s*(\d+)/) || [])[1]) <= 96 && Number((contract.match(/tinyLodDistanceMeters:\s*(\d+)/) || [])[1]) <= 18);
 check("renderer has optimized/full runtime profile switch", assets.includes("harthmereRuntimePerformanceProfile") && assets.includes("biomes.localDev.harthmere.performanceProfile") && assets.includes("shouldKeepHarthmerePlacementForPerformance"));
 check("renderer drops non-core far runtime clutter before load", assets.includes("removedForPerformance") && assets.includes("maxWildsRuntimePlacementsOptimized"));
+check("renderer enforces the total placement cap inside the core", assets.includes("keepWithinTotalBudget") && assets.includes("including core shells and repeated decor"));
+check("district names cannot bypass the optimized cap", /isAlwaysImportant[\s\S]*?\.test\(\s*identityLabel\s*\)/.test(assets));
 check("shim exposes full and optimized terrain bounds", shim.includes("HARTHMERE_FULL_WILDS_SHARD_X0") && shim.includes("HARTHMERE_OPTIMIZED_WILDS_SHARD_X0") && shim.includes("BIOMES_HARTHMERE_PERF_PROFILE"));
 check("optimized terrain shard budget is under 500", shardBudgetMatch && Number(shardBudgetMatch[1]) <= 500);
 check("fast harvestable blocks are clipped to active terrain", shim.includes("isHarthmereLocalDevTerrainShardEnabledForWorld") && shim.includes("if (!isHarthmereLocalDevTerrainShardEnabledForWorld(x, z))"));

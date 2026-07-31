@@ -187,8 +187,8 @@ NEXT_TELEMETRY_DISABLED=1 \
 
 NODE_ENV=production \
 NODE_OPTIONS='--openssl-legacy-provider' \
-node -r ts-node/register ./node_modules/webpack-cli/bin/cli.js \
-  --config server.webpack.config.ts \
+./node_modules/.bin/webpack \
+  --config server.webpack.config.cjs \
   --mode production
 
 node scripts/glitch/assert-glitch-build-artifacts-current.cjs .
@@ -310,8 +310,8 @@ NEXT_TELEMETRY_DISABLED=1 \
 
 NODE_ENV=production \
 NODE_OPTIONS='--openssl-legacy-provider' \
-node -r ts-node/register ./node_modules/webpack-cli/bin/cli.js \
-  --config server.webpack.config.ts \
+./node_modules/.bin/webpack \
+  --config server.webpack.config.cjs \
   --mode production
 
 node scripts/glitch/assert-glitch-build-artifacts-current.cjs .

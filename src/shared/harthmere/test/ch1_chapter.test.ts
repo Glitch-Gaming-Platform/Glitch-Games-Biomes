@@ -72,7 +72,11 @@ import {
   CH1_NEW_CAST,
   ch1TestimoniesComplete,
 } from "../ch1_cast";
-import { CH1_ITEMS, ch1ItemDescription, ch1ItemDisplayName } from "../ch1_items";
+import {
+  CH1_ITEMS,
+  ch1ItemDescription,
+  ch1ItemDisplayName,
+} from "../ch1_items";
 import {
   CH1_ACT_COUNT,
   CH1_ENDING_DEFS,
@@ -130,7 +134,11 @@ describe("ch1 - fragment ledger", () => {
     let ledger = ch1EmptyLedger();
     ledger = ch1RecoverFragment(ledger, "frag_a1_echo_get_back", 100);
     ledger = ch1RecoverFragment(ledger, "frag_a2_echo_lamps_out", 300);
-    ledger = ch1RecoverFragment(ledger, "frag_a2_play_the_ninth_signature", 200);
+    ledger = ch1RecoverFragment(
+      ledger,
+      "frag_a2_play_the_ninth_signature",
+      200
+    );
     const order = ch1LedgerDisplayOrder(ledger).map((e) => e.fragmentId);
     assert.deepEqual(order, [
       "frag_a2_echo_lamps_out",
@@ -270,9 +278,7 @@ describe("ch1 - latent skills", () => {
     state = ch1UnlockLatentSkill(state, "ls_gate_timing");
     assert.equal(state.unlocked.length, 1);
     assert.ok(ch1HasLatentSkill(state, "ls_gate_timing"));
-    assert.throws(() =>
-      ch1UnlockLatentSkill(state, "ls_not_real" as never)
-    );
+    assert.throws(() => ch1UnlockLatentSkill(state, "ls_not_real" as never));
   });
 });
 
@@ -304,7 +310,10 @@ describe("ch1 - fracture gates", () => {
   });
 
   it("gates only exist once their story flag is set", () => {
-    assert.deepEqual(ch1ActiveGates([]).map((g) => g.id), []);
+    assert.deepEqual(
+      ch1ActiveGates([]).map((g) => g.id),
+      []
+    );
     const early = ch1ActiveGates([CH1_FLAGS.started]).map((g) => g.id);
     assert.deepEqual(early, ["ch1_gate_fence_sighting"]);
     const late = ch1ActiveGates([
@@ -428,11 +437,15 @@ describe("ch1 - Elsewhen region (warp-only dungeon band)", () => {
   it("is separated from the reachable world by an empty void gap", () => {
     assert.equal(isInsideCh1VoidGap([2560, 64, 0] as never), true);
     assert.equal(isInsideCh1VoidGap([2600, 64, 0] as never), true);
-    assert.equal(isInsideCh1VoidGap([CH1_ELSEWHEN_BAND_START_X, 64, 0] as never), false);
+    assert.equal(
+      isInsideCh1VoidGap([CH1_ELSEWHEN_BAND_START_X, 64, 0] as never),
+      false
+    );
     // No shard may straddle or fill the gap.
     for (let shardX = 78; shardX <= 84; shardX++) {
       const minBlockX = shardX * 32;
-      const inGap = minBlockX + 32 > 2560 && minBlockX < CH1_ELSEWHEN_BAND_START_X;
+      const inGap =
+        minBlockX + 32 > 2560 && minBlockX < CH1_ELSEWHEN_BAND_START_X;
       assert.equal(
         ch1ShardMayGenerate(shardX),
         !inGap,
@@ -532,7 +545,11 @@ describe("ch1 - quests and acts", () => {
     assert.equal(ch1CurrentAct(start), 1);
     assert.equal(ch1CurrentAct([]), 0);
     assert.equal(
-      ch1CurrentAct([CH1_FLAGS.started, CH1_FLAGS.act1Complete, CH1_FLAGS.act2Complete]),
+      ch1CurrentAct([
+        CH1_FLAGS.started,
+        CH1_FLAGS.act1Complete,
+        CH1_FLAGS.act2Complete,
+      ]),
       3
     );
   });
@@ -721,7 +738,11 @@ describe("ch1 - chapter progression", () => {
       activeDungeonRunId: "ch1_dungeon_desert",
       activeRunStartedMs: 0,
     };
-    const short = ch1ExitGate({ state, carriedOut: ["item_first_grain"], nowMs: 1000 });
+    const short = ch1ExitGate({
+      state,
+      carriedOut: ["item_first_grain"],
+      nowMs: 1000,
+    });
     assert.equal(short.ok, false);
 
     const full = ch1ExitGate({

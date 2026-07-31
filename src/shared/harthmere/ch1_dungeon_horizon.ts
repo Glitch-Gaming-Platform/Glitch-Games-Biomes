@@ -57,8 +57,7 @@ import {
   harthmereUpwardBiasedNoise,
 } from "@/shared/harthmere/harthmere_horizon_noise";
 
-export const CH1_DUNGEON_HORIZON_VERSION =
-  "ch1-dungeon-horizon-v1" as const;
+export const CH1_DUNGEON_HORIZON_VERSION = "ch1-dungeon-horizon-v1" as const;
 
 // ---------------------------------------------------------------------------
 // Noise
@@ -88,6 +87,15 @@ export interface Ch1HorizonBox {
 
 /** Breathing room between the last authored wall and the boundary. */
 export const CH1_HORIZON_PLAYABLE_MARGIN = 6;
+/**
+ * Floor under the backdrop's reach past the boundary, in voxels.
+ *
+ * Must comfortably exceed `CH1_HORIZON_FADE_DISTANCE` (40): the boundary wall
+ * becomes visible at 40 and opaque at ~4, so if the land stopped inside that
+ * radius the player would watch the world end through a translucent wall. At
+ * 120 the ground still fills the view when the wall is at its most solid.
+ */
+export const CH1_HORIZON_MIN_REACH = 120;
 /** Headroom above the tallest room so the sky is not a lid on your head. */
 export const CH1_HORIZON_CEILING_MARGIN = 24;
 
@@ -98,7 +106,9 @@ export const CH1_HORIZON_CEILING_MARGIN = 24;
  * ch1_dungeon_terrain.ts, the boundary follows it automatically and the
  * backdrop keeps its distance. That is the whole reason this is a function.
  */
-export function ch1PlayableBounds(terrain: Ch1DungeonTerrainDef): Ch1HorizonBox {
+export function ch1PlayableBounds(
+  terrain: Ch1DungeonTerrainDef
+): Ch1HorizonBox {
   let x0 = Infinity;
   let x1 = -Infinity;
   let y0 = Infinity;
@@ -152,7 +162,12 @@ export function ch1DistanceBeyondBoundary(
   const dz = Math.max(bounds.z0 - z, 0, z - bounds.z1);
   if (dx === 0 && dz === 0) {
     // Inside: negative distance to the nearest wall.
-    return -Math.min(x - bounds.x0, bounds.x1 - x, z - bounds.z0, bounds.z1 - z);
+    return -Math.min(
+      x - bounds.x0,
+      bounds.x1 - x,
+      z - bounds.z0,
+      bounds.z1 - z
+    );
   }
   return Math.hypot(dx, dz);
 }
@@ -452,6 +467,205 @@ export const CH1_HORIZON_BUILDINGS: readonly Ch1HorizonBuilding[] =
       tiers: 2,
       note: "Grave cairns on the headland. Nobody has needed them for nine years.",
     },
+
+    // -----------------------------------------------------------------------
+    // CH1_HORIZON_SECOND_PASS (2026-07-30)
+    //
+    // The first pass proved the mechanism with a handful of silhouettes, but
+    // each dungeon still read as a strip with a few things behind it: the
+    // skyline was thin on three sides and empty on the fourth. These fill the
+    // south and the far flanks so the settlement wraps the player, and every
+    // one of them is a place the lore already names — a backdrop that invents
+    // buildings is scenery, a backdrop that shows you the city you have been
+    // reading about is a place.
+    //
+    // Same rules as above, all enforced by `ch1ValidateHorizon`: wholly beyond
+    // the derived playable boundary, inside the dungeon's own Elsewhen slot,
+    // positive height. Nothing here touches an authored room.
+    // -----------------------------------------------------------------------
+
+    // --- Nerash-Utu: the City that Weighs ---------------------------------
+    {
+      name: "hall_of_weights_annexe",
+      dungeonId: "ch1_dungeon_desert",
+      x0: 196,
+      x1: 244,
+      z0: -262,
+      z1: -238,
+      height: 18,
+      wall: "limestoneBrick",
+      roof: "stonePolished",
+      tiers: 2,
+      note: "The calibration halls. Every reference mass in six kingdoms was weighed here against the Sleeping Weight.",
+    },
+    {
+      name: "cistern_towers",
+      dungeonId: "ch1_dungeon_desert",
+      x0: 380,
+      x1: 428,
+      z0: -226,
+      z1: -196,
+      height: 24,
+      wall: "cobblestoneBrick",
+      roof: "limestoneBrick",
+      tiers: 4,
+      note: "The cisterns — the city's engineering masterpiece, dropping a hand-span a year through forty years of drought.",
+    },
+    {
+      name: "west_caravan_road_gate",
+      dungeonId: "ch1_dungeon_desert",
+      x0: 8,
+      x1: 26,
+      z0: -150,
+      z1: -96,
+      height: 20,
+      wall: "limestoneBrick",
+      roof: "sand",
+      tiers: 2,
+      note: "The west gate. The whole population walked out through it in a single organised column, six weeks ago.",
+    },
+    {
+      name: "east_trade_gate",
+      dungeonId: "ch1_dungeon_desert",
+      x0: 486,
+      x1: 504,
+      z0: -152,
+      z1: -100,
+      height: 20,
+      wall: "limestoneBrick",
+      roof: "sand",
+      tiers: 2,
+      note: "The second of the three trade roads. Its weights were accepted three hundred miles out without argument.",
+    },
+    {
+      name: "south_potters_field",
+      dungeonId: "ch1_dungeon_desert",
+      x0: 300,
+      x1: 372,
+      z0: 26,
+      z1: 62,
+      height: 7,
+      wall: "sand",
+      roof: "cobblestoneBrick",
+      note: "Kiln yards and drying floors south of the foundries.",
+    },
+    {
+      name: "river_revetment",
+      dungeonId: "ch1_dungeon_desert",
+      x0: 40,
+      x1: 470,
+      z0: 96,
+      z1: 106,
+      height: 9,
+      wall: "cobblestoneBrick",
+      roof: "gravel",
+      note: "The revetted bank of a river that has shrunk to a channel. It closes the southern horizon the way the far wall closes the north.",
+    },
+    {
+      name: "east_necropolis",
+      dungeonId: "ch1_dungeon_desert",
+      x0: 452,
+      x1: 502,
+      z0: 20,
+      z1: 76,
+      height: 12,
+      wall: "limestoneBrick",
+      roof: "coal",
+      tiers: 3,
+      note: "Tomb terraces east of the kilns. A city that weighed honestly buried carefully.",
+    },
+
+    // --- Hrafnsfjördr: Raven's Firth --------------------------------------
+    {
+      name: "hanged_wood_treeline",
+      dungeonId: "ch1_dungeon_winter",
+      x0: 60,
+      x1: 300,
+      z0: -252,
+      z1: -232,
+      height: 17,
+      wall: "oakLog",
+      roof: "blackWool",
+      note: "The black pine wood on the north face, where the old rites were done before Hallr banned them. The aperture opened under it.",
+    },
+    {
+      name: "barley_strip_terraces",
+      dungeonId: "ch1_dungeon_winter",
+      x0: 330,
+      x1: 424,
+      z0: -180,
+      z1: -146,
+      height: 5,
+      wall: "cobblestone",
+      roof: "hay",
+      tiers: 2,
+      note: "The barley strip. One thin harvest in three, and it has been the same harvest for nine years.",
+    },
+    {
+      name: "far_shore_longhouses",
+      dungeonId: "ch1_dungeon_winter",
+      x0: 190,
+      x1: 300,
+      z0: 26,
+      z1: 60,
+      height: 10,
+      wall: "oakLog",
+      roof: "thatch",
+      note: "The far shore's houses. Sixty souls, and nobody eats alone — that was Hallr's one law.",
+    },
+    {
+      name: "whale_road_jetty",
+      dungeonId: "ch1_dungeon_winter",
+      x0: 40,
+      x1: 176,
+      z0: 76,
+      z1: 96,
+      height: 6,
+      wall: "oakLumber",
+      roof: "oakLumber",
+      note: "The jetty out onto the whale road. Three ships came in on it and never left.",
+    },
+    {
+      name: "seal_hunters_racks",
+      dungeonId: "ch1_dungeon_winter",
+      x0: 300,
+      x1: 372,
+      z0: 96,
+      z1: 118,
+      height: 7,
+      wall: "oakLumber",
+      roof: "blackWool",
+      note: "Drying racks. The catch on them has been curing for nine years and is not ready.",
+    },
+    {
+      name: "north_face_scree",
+      dungeonId: "ch1_dungeon_winter",
+      // Stops at x=16, two voxels clear of the playable box's west face at
+      // x=18. The validator caught this at x=30 — a wall the player could have
+      // walked into — which is exactly the check earning its keep.
+      x0: 2,
+      x1: 16,
+      z0: -220,
+      z1: -60,
+      height: 34,
+      wall: "stone",
+      roof: "whiteWool",
+      tiers: 3,
+      note: "The fjord's west wall, climbing out of sight. The vertical that makes the settlement look small.",
+    },
+    {
+      name: "jarl_beacon_cairn",
+      dungeonId: "ch1_dungeon_winter",
+      x0: 452,
+      x1: 486,
+      z0: -230,
+      z1: -200,
+      height: 22,
+      wall: "cobblestone",
+      roof: "redWool",
+      tiers: 4,
+      note: "The beacon on the headland. Hallr keeps it laid but unlit; there is nobody left to signal.",
+    },
   ]);
 
 export function ch1HorizonBuildingsFor(
@@ -465,7 +679,11 @@ export function ch1HorizonBuildingsFor(
 // ---------------------------------------------------------------------------
 
 /** Ground surface height of the backdrop at an authored XZ, in authored Y. */
-export function ch1HorizonSurfaceY(dungeonId: string, x: number, z: number): number {
+export function ch1HorizonSurfaceY(
+  dungeonId: string,
+  x: number,
+  z: number
+): number {
   const era = ERA_BY_DUNGEON.get(dungeonId);
   const terrain = ch1DungeonTerrain(dungeonId);
   if (!era || !terrain) {
@@ -642,9 +860,9 @@ export function ch1SeederBlockAt(
  * walking the whole 512-wide slot. Returns authored XZ ranges only; Y comes
  * from `ch1HorizonSurfaceY`.
  */
-export function ch1HorizonAuthoredExtent(dungeonId: string):
-  | { x0: number; x1: number; z0: number; z1: number }
-  | undefined {
+export function ch1HorizonAuthoredExtent(
+  dungeonId: string
+): { x0: number; x1: number; z0: number; z1: number } | undefined {
   const terrain = ch1DungeonTerrain(dungeonId);
   const era = ERA_BY_DUNGEON.get(dungeonId);
   if (!terrain || !era) {
@@ -653,7 +871,14 @@ export function ch1HorizonAuthoredExtent(dungeonId: string):
   const bounds = ch1PlayableBounds(terrain);
   // Reach far enough that the feathered rise completes and the skyline sits
   // inside it, but no further — empty shards cost streaming for nothing.
-  const reach = era.featherRadius * 3;
+  //
+  // CH1_HORIZON_SECOND_PASS: `featherRadius * 3` alone left the winter dungeon
+  // (feather 28) with only 84 voxels of land past the boundary, so the ground
+  // visibly ran out well before the fade distance and the backdrop read as a
+  // ring of props on a shelf. CH1_HORIZON_MIN_REACH puts a floor under that
+  // which is independent of the feather, so a tightly-feathered era still gets
+  // a horizon. Buildings extend it further on their own side, below.
+  const reach = Math.max(era.featherRadius * 3, CH1_HORIZON_MIN_REACH);
   let x0 = bounds.x0 - reach;
   let x1 = bounds.x1 + reach;
   let z0 = bounds.z0 - reach;

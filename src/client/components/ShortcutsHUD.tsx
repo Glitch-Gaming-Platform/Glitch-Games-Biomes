@@ -18,7 +18,7 @@ export function inInputElement(event: KeyboardEvent) {
 const HARTHMERE_RESERVED_KEY_CODES = new Set([
   "KeyM", // Harthmere map
   "KeyJ", // Harthmere quest journal
-  "KeyX", // Draw / sheathe weapon
+  "Quote", // Draw / sheathe weapon
   "Tab", // Combat target cycle
   "KeyB", // Basic attack
   "KeyH", // Heavy attack
@@ -95,7 +95,7 @@ export const ShortcutsHUD: React.FunctionComponent<{
               case "KeyV":
                 toggleInboxModal();
                 break;
-              case "KeyC":
+              case "BracketRight":
                 toggleCollectionsModal();
                 break;
               case "KeyU":

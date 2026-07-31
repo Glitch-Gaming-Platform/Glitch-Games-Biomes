@@ -33,6 +33,7 @@ import type { AssetPath } from "@/galois/interface/asset_paths";
 import { BikkieIds } from "@/shared/bikkie/ids";
 import { makeDisposable } from "@/shared/disposable";
 import { anItem } from "@/shared/game/item";
+import { HARTHMERE_CAMPFIRE_AMBIENCE_RADIUS_METERS } from "@/shared/harthmere/sound_effect_manifest";
 import type { BiomesId } from "@/shared/ids";
 import { log } from "@/shared/logging";
 import type { RegistryLoader } from "@/shared/registry";
@@ -48,8 +49,16 @@ async function genPlaceableAudio(deps: ClientResourceDeps, id: BiomesId) {
   const placeableComponent = deps.get("/ecs/c/placeable_component", id);
   ok(placeableComponent);
 
-  const makeAudio = (assetPath: AssetPath, assetType: AudioAssetType) => {
-    const buffer = audioManager.getBuffer(assetPath);
+  const makeAudio = async (
+    assetPath: AssetPath,
+    assetType: AudioAssetType,
+    options: {
+      autoplay?: boolean;
+      maxDistance?: number;
+      volumeSetting?: "settings.volume.effects" | "settings.volume.media";
+    } = {}
+  ) => {
+    const buffer = await deps.get("/audio/buffer", assetPath);
     if (!buffer) {
       return;
     }
@@ -58,9 +67,17 @@ async function genPlaceableAudio(deps: ClientResourceDeps, id: BiomesId) {
     audio.setDistanceModel("exponential");
     audio.setRolloffFactor(2);
     audio.setRefDistance(5);
+    audio.setMaxDistance(options.maxDistance ?? 64);
     audio.setLoop(true);
-    audio.play();
-    audio.setVolume(audioManager.getVolume("settings.volume.media", assetType));
+    if (options.autoplay ?? true) {
+      audio.play();
+    }
+    audio.setVolume(
+      audioManager.getVolume(
+        options.volumeSetting ?? "settings.volume.media",
+        assetType
+      )
+    );
     return makeDisposable(audio, () => {
       audio.stop();
     });
@@ -70,6 +87,12 @@ async function genPlaceableAudio(deps: ClientResourceDeps, id: BiomesId) {
     return makeAudio("audio/disco", "disco");
   } else if (placeableComponent.item_id === BikkieIds.arcadeMachine) {
     return makeAudio("audio/arcade", "arcade");
+  } else if (placeableComponent.item_id === BikkieIds.campfire) {
+    return makeAudio("audio/campfire", "campfire", {
+      autoplay: false,
+      maxDistance: HARTHMERE_CAMPFIRE_AMBIENCE_RADIUS_METERS,
+      volumeSetting: "settings.volume.effects",
+    });
   }
 }
 
@@ -86,31 +109,31 @@ async function makePlaceableMesh(
     const placeableItem = anItem(placeableComponent.item_id);
 
     if (placeableItem.isFrame) {
-      return makePlaceableFrameMesh(context, deps, id);
+      return await makePlaceableFrameMesh(context, deps, id);
     }
 
     if (placeableItem.isShopContainer) {
-      return makePlaceableShopContainerMesh(context, deps, id);
+      return await makePlaceableShopContainerMesh(context, deps, id);
     }
 
     if (placeableItem.id === BikkieIds.campfire) {
-      return makeCampfirePlaceableMesh(context, deps, id);
+      return await makeCampfirePlaceableMesh(context, deps, id);
     }
 
     if (placeableItem.id === BikkieIds.muckBusterRedux) {
-      return makeMuckBusterReduxMesh(context, deps, id);
+      return await makeMuckBusterReduxMesh(context, deps, id);
     }
 
     if (placeableItem.isPlayerLikeAppearance) {
       const mesh = await makePlayerLikeAppearanceMesh(deps, id);
-      return makeBasicAnimatedPlaceableMesh(deps, id, [], {
+      return await makeBasicAnimatedPlaceableMesh(deps, id, [], {
         gltf: mesh,
         noBreakableMaterial: true,
         meshUrl: makeECSWearablesUrl(deps, id),
       });
     }
 
-    return makeBasicPlaceableMesh(context, deps, id);
+    return await makeBasicPlaceableMesh(context, deps, id);
   } catch (error) {
     return makeFallbackPlaceableMesh(deps, id, error);
   }

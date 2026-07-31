@@ -3,6 +3,7 @@ import assert from "assert";
 import {
   npcForwardSpeedForLocomotion,
   npcGroundWalkingForceCoefficient,
+  npcShouldStartCombatEvade,
   selectNpcLocomotion,
   type NpcLocomotionInputs,
 } from "@/shared/npc/logic";
@@ -12,6 +13,7 @@ import { HARTHMERE_NPC_CHASE_SPEED_MULTIPLIER } from "@/shared/npc/behavior/chas
 
 // Every flag off: the NPC has nothing to do.
 const base: NpcLocomotionInputs = {
+  hasActiveEvade: false,
   swim: false,
   fly: false,
   hasFleeOutput: false,
@@ -24,11 +26,57 @@ const base: NpcLocomotionInputs = {
 };
 
 describe("NPC locomotion priority selection", () => {
+  it("starts an evade only for an incoming attack telegraph or a fresh hit", () => {
+    assert.equal(
+      npcShouldStartCombatEvade({
+        nowSeconds: 10,
+        targetEmoteType: "attack1",
+        targetEmoteStartTime: 9.6,
+      }),
+      true
+    );
+    assert.equal(
+      npcShouldStartCombatEvade({
+        nowSeconds: 10,
+        targetEmoteType: "wave",
+        targetEmoteStartTime: 9.9,
+        lastDamageTime: 9.85,
+      }),
+      true
+    );
+    assert.equal(
+      npcShouldStartCombatEvade({
+        nowSeconds: 10,
+        targetEmoteType: "attack2",
+        targetEmoteStartTime: 9,
+        lastDamageTime: 9,
+      }),
+      false
+    );
+    assert.equal(npcShouldStartCombatEvade({ nowSeconds: 10 }), false);
+  });
+
   it("idles when no behavior applies", () => {
     assert.equal(selectNpcLocomotion(base), "idle");
   });
 
-  it("swims/flies above every other behavior", () => {
+  it("gives an active evade the highest movement priority", () => {
+    assert.equal(
+      selectNpcLocomotion({
+        ...base,
+        hasActiveEvade: true,
+        swim: true,
+        fly: true,
+        hasFleeOutput: true,
+        hasChaseAttack: true,
+        hasAttackTarget: true,
+        hasActiveSchedule: true,
+      }),
+      "evade"
+    );
+  });
+
+  it("swims/flies above every regular behavior", () => {
     assert.equal(
       selectNpcLocomotion({
         ...base,

@@ -64,7 +64,15 @@ describe("cutscene client integration contract", () => {
     const npcRenderer = read("src/client/game/renderers/npcs.ts");
     const playerMesh = read("src/client/game/resources/player_mesh.ts");
     assert.match(bridge, /nativeNpcRenderer/);
+    assert.match(bridge, /nativeNpcRenderer: true/);
     assert.match(assets, /!record\.nativeNpcRenderer/);
+    assert.match(assets, /makeSnapshotCutscenePlayerMesh/);
+    assert.match(assets, /HARTHMERE_NATIVE_CUTSCENE_ACTOR_REQUIRED/);
+    assert.match(assets, /addHarthmereProceduralLifePlacement\(_placement/);
+    assert.match(
+      assets,
+      /rounded-box Three\.js avatar fallback[\s\S]*return false/
+    );
     assert.match(npcs, /readRenderablePuppetOverrides\(\)/);
     assert.match(npcs, /cutsceneHeldItemAttachment/);
     assert.match(npcs, /cutsceneNpcAnimationAction/);
@@ -72,6 +80,24 @@ describe("cutscene client integration contract", () => {
     assert.match(
       playerMesh,
       /return equippedAttach \?\? exactArmAttach \?\? fuzzyHandAttach \?\? root/
+    );
+    assert.match(playerMesh, /snapshot-cutscene-player-mesh-v1/);
+    assert.match(playerMesh, /applySnapshotCutscenePlayerAnimation/);
+    assert.doesNotMatch(
+      npcs,
+      /HARTHMERE_NPC_GALOIS_VISIBLE_FALLBACK[\s\S]*makeLocalDevVoxelNpcGltf/
+    );
+  });
+
+  it("preserves authored cutscene NPC yaw before talk-facing fallback", () => {
+    const npcs = read("src/client/game/resources/npcs.ts");
+    assert.match(
+      npcs,
+      /motionOverrides\?\.orientation\s*\?\?\s*\(\s*localPlayer\.talkingToNpc === entity\.id && npcPosition\s*\?/
+    );
+    assert.doesNotMatch(
+      npcs,
+      /motionOverrides\?\.orientation\s*\?\?\s*\(localPlayer\.talkingToNpc === entity\.id && npcPosition\)\s*\?/
     );
   });
 

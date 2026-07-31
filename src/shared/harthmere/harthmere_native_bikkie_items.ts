@@ -49,6 +49,12 @@ import {
   harthmereBibleRewardItemDefinition,
 } from "@/shared/harthmere/bible_quest_live_authority";
 import { SNAPSHOT_STRUCTURED_REWARDS } from "@/shared/harthmere/snapshot_complete_port";
+import {
+  HARTHMERE_PREMIUM_WEAPONS,
+  getHarthmerePremiumWeapon,
+  type HarthmerePremiumWeaponDefinition,
+} from "@/shared/harthmere/premium_weapon_catalog";
+import { harthmereGeneratedInventoryIconUrl } from "@/shared/harthmere/generated/harthmere_inventory_icon_manifest";
 
 /**
  * Existing snapshot biscuits may donate presentation data to an exact
@@ -57,9 +63,32 @@ import { SNAPSHOT_STRUCTURED_REWARDS } from "@/shared/harthmere/snapshot_complet
  * collect triggers, and quests while still letting exact tools and clothing
  * render with the best authored asset currently available.
  */
+function premiumWeaponPresentationSource(
+  weapon: HarthmerePremiumWeaponDefinition
+) {
+  if (weapon.profile === "shield") return BikkieIds.woodenFencer;
+  if (weapon.family === "axe") return BikkieIds.axe;
+  if (weapon.family === "crossbow" || weapon.family === "bow") {
+    return BikkieIds.muckBuster;
+  }
+  if (weapon.family === "hammer") return BikkieIds.axe;
+  if (weapon.family === "dagger" || weapon.family.includes("sword")) {
+    return BikkieIds.muckBuster;
+  }
+  return BikkieIds.muckBuster;
+}
+
+const HARTHMERE_PREMIUM_WEAPON_PRESENTATION_SOURCE_IDS = Object.fromEntries(
+  HARTHMERE_PREMIUM_WEAPONS.map((weapon) => [
+    weapon.id,
+    premiumWeaponPresentationSource(weapon),
+  ])
+) as Readonly<Record<string, BiomesId>>;
+
 const HARTHMERE_NATIVE_PRESENTATION_SOURCE_IDS: Readonly<
   Record<string, BiomesId>
 > = {
+  ...HARTHMERE_PREMIUM_WEAPON_PRESENTATION_SOURCE_IDS,
   baker_apron: BikkieIds.grassyTop,
   field_trousers: BikkieIds.bellBottoms,
   patched_cloak: BikkieIds.poncho,
@@ -575,6 +604,19 @@ function harthmereBorrowedPresentation(
   ) as Partial<Biscuit>;
 }
 
+function generatedInventoryIconPresentation(itemId: string) {
+  const galoisIcon = harthmereGeneratedInventoryIconUrl(itemId);
+  return galoisIcon
+    ? {
+        // Native icon attributes are checked before galoisIcon. Clear any
+        // donor/snapshot icon so the exact Blender render wins everywhere.
+        icon: undefined,
+        iconSettings: undefined,
+        galoisIcon,
+      }
+    : {};
+}
+
 export function harthmereBiscuitForItemDefinition(
   definition: HarthmereItemDefinition,
   presentationSource?: Biscuit
@@ -592,6 +634,12 @@ export function harthmereBiscuitForItemDefinition(
     combatProfile
   );
   const category = definition.category?.trim() || "Harthmere";
+  const premiumWeapon = getHarthmerePremiumWeapon(definition.itemId);
+  const generatedInventoryIcon = harthmereGeneratedInventoryIconUrl(
+    definition.itemId
+  );
+  const inventoryIcon =
+    premiumWeapon?.inventoryIconUrl ?? generatedInventoryIcon;
   const placeableSize = definition.objectMetadata?.sizeVoxels;
   const nativePlaceable = Boolean(
     placeableSize &&
@@ -612,6 +660,12 @@ export function harthmereBiscuitForItemDefinition(
     : undefined;
   const presentation = Object.fromEntries(
     HARTHMERE_NATIVE_PRESENTATION_ATTRIBUTES.flatMap((attribute) => {
+      if (
+        inventoryIcon &&
+        (attribute === "icon" || attribute === "iconSettings")
+      ) {
+        return [];
+      }
       const value = presentationSource?.[attribute];
       return value === undefined ? [] : [[attribute, value]];
     })
@@ -622,6 +676,7 @@ export function harthmereBiscuitForItemDefinition(
     name: harthmereBiscuitNameForItemId(definition.itemId),
     displayName: definition.displayName,
     displayDescription: definition.description,
+    ...(inventoryIcon ? { galoisIcon: inventoryIcon } : {}),
     craftingCategory: category,
     stackable: BigInt(Math.max(1, Math.trunc(definition.maxStackSize))),
     ...(definition.binding === "none" && !definition.isQuestItem
@@ -768,6 +823,7 @@ export function withHarthmereNativeBikkieItems(
               donorId === undefined ? undefined : contents.get(donorId)
             ),
             ...harthmereStorableBiscuitIdentity(existing, definition),
+            ...generatedInventoryIconPresentation(definition.itemId),
             isTool: true,
             ...farmingToolAttributes,
           });
@@ -789,6 +845,7 @@ export function withHarthmereNativeBikkieItems(
           contents.set(id, {
             ...existing,
             ...harthmereStorableBiscuitIdentity(existing, definition),
+            ...generatedInventoryIconPresentation(definition.itemId),
             isConsumable: true,
             ...(existing.action === undefined
               ? { action: profile.action }
@@ -803,12 +860,12 @@ export function withHarthmereNativeBikkieItems(
         // Nothing else about this snapshot biscuit needs changing, but it still
         // has to be physically storable. A `stackable`-less record is a
         // gold-eating black hole in every vendor/loot/quest grant.
-        const storableIdentity = harthmereStorableBiscuitIdentity(
-          existing,
-          definition
-        );
-        if (Object.keys(storableIdentity).length > 0) {
-          contents.set(id, { ...existing, ...storableIdentity });
+        const nativePresentationOverlay = {
+          ...harthmereStorableBiscuitIdentity(existing, definition),
+          ...generatedInventoryIconPresentation(definition.itemId),
+        };
+        if (Object.keys(nativePresentationOverlay).length > 0) {
+          contents.set(id, { ...existing, ...nativePresentationOverlay });
           hashes.set(id, overlayHash);
         }
         continue;

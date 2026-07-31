@@ -47,6 +47,57 @@ export function harthmereSnapshotGroveNpcSeedIds() {
   );
 }
 
+export interface SnapshotGroveNamedNpcIdentityCandidate {
+  id: BiomesId;
+  label?: string;
+  hasNpcMetadata: boolean;
+  hasPlayerStatus?: boolean;
+  hasRemoteConnection?: boolean;
+}
+
+function normalizedNpcIdentityLabel(label: string | undefined) {
+  return label?.trim().toLocaleLowerCase();
+}
+
+export function harthmereSnapshotGroveCanonicalNpcIdsByLabel() {
+  return new Map(
+    SNAPSHOT_GROVE_NPCS.filter((npc) => npc.seedServerNpc).map((npc) => [
+      normalizedNpcIdentityLabel(npc.displayName)!,
+      snapshotGroveNpcEntityId(npc),
+    ])
+  );
+}
+
+/**
+ * Finds obsolete raw-snapshot selves without ever selecting a real player.
+ * Exact named identity is deliberate: deleting every NPC of a shared type
+ * would remove unrelated residents, while label-only cleanup could delete a
+ * player who chose the same display name.
+ */
+export function harthmereObsoleteSnapshotGroveNpcIds(
+  candidates: readonly SnapshotGroveNamedNpcIdentityCandidate[]
+): BiomesId[] {
+  const canonical = harthmereSnapshotGroveCanonicalNpcIdsByLabel();
+  return [
+    ...new Set(
+      candidates
+        .filter(
+          (candidate) =>
+            candidate.hasNpcMetadata &&
+            !candidate.hasPlayerStatus &&
+            !candidate.hasRemoteConnection
+        )
+        .filter((candidate) => {
+          const canonicalId = canonical.get(
+            normalizedNpcIdentityLabel(candidate.label) ?? ""
+          );
+          return canonicalId !== undefined && canonicalId !== candidate.id;
+        })
+        .map((candidate) => candidate.id)
+    ),
+  ];
+}
+
 export function buildHarthmereSnapshotGroveNpcSeedChanges(input: {
   tick: number;
   nowSeconds?: number;

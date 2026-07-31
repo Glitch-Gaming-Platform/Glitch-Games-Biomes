@@ -5,6 +5,7 @@
 // See docs/cutscenes.md and CUTSCENE_GENERATOR_DESIGN.md.
 
 import { zEmoteType } from "@/shared/ecs/gen/types";
+import { PLAYER_MOVEMENT_ACTION_ANIMATION_NAMES } from "@/shared/game/movement_actions";
 import { z } from "zod";
 
 export const MAX_CUTSCENE_SECONDS = 15 * 60;
@@ -191,6 +192,7 @@ export const HARTHMERE_NPC_RUNTIME_ANIMATIONS = [
 export const zCutsceneAnimation = z.union([
   zEmoteType,
   z.enum(HARTHMERE_NPC_RUNTIME_ANIMATIONS),
+  z.enum(PLAYER_MOVEMENT_ACTION_ANIMATION_NAMES),
 ]);
 
 export const zCutsceneAction = z.discriminatedUnion("kind", [

@@ -1,3 +1,4 @@
+import { isTouchDevice } from "@/client/components/contexts/PointerLockContext";
 import { useCallback, useEffect, useState } from "react";
 import Particles from "react-tsparticles";
 import { loadFull } from "tsparticles";
@@ -149,6 +150,7 @@ export const WakeupMuckParticles: React.FunctionComponent<{}> = ({}) => {
   const particlesInit = useCallback(async (engine: Engine) => {
     await loadFull(engine);
   }, []);
+  const touchDevice = isTouchDevice();
 
   if (!hydrated) {
     return null;
@@ -158,13 +160,14 @@ export const WakeupMuckParticles: React.FunctionComponent<{}> = ({}) => {
     <Particles
       init={particlesInit}
       options={{
+        ...(touchDevice ? { fpsLimit: 30 } : {}),
         fullScreen: {
           zIndex: 0,
         },
 
         particles: {
           number: {
-            value: 40,
+            value: touchDevice ? 16 : 40,
             density: {
               enable: true,
               value_area: 800,
@@ -248,7 +251,7 @@ export const WakeupMuckParticles: React.FunctionComponent<{}> = ({}) => {
             },
           },
         },
-        retina_detect: true,
+        retina_detect: !touchDevice,
       }}
     />
   );

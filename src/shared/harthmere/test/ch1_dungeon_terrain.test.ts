@@ -163,12 +163,14 @@ describe("ch1 dungeon terrain - structure", () => {
           case "tree":
             assert.ok(known.has(feature.trunkMaterial));
             assert.ok(known.has(feature.leafMaterial));
-            if (feature.snowMaterial) assert.ok(known.has(feature.snowMaterial));
+            if (feature.snowMaterial)
+              assert.ok(known.has(feature.snowMaterial));
             break;
           case "building":
             assert.ok(known.has(feature.wallMaterial));
             assert.ok(known.has(feature.roofMaterial));
-            if (feature.snowMaterial) assert.ok(known.has(feature.snowMaterial));
+            if (feature.snowMaterial)
+              assert.ok(known.has(feature.snowMaterial));
             break;
           case "wall":
           case "column":
@@ -428,10 +430,7 @@ describe("ch1 dungeon terrain - voxel queries", () => {
       ch1DungeonBlockAt("ch1_dungeon_winter", 35, 11, -103),
       "thatch"
     );
-    assert.equal(
-      ch1DungeonBlockAt("ch1_dungeon_winter", 35, 12, -103),
-      "snow"
-    );
+    assert.equal(ch1DungeonBlockAt("ch1_dungeon_winter", 35, 12, -103), "snow");
   });
 
   it("punches doorways clean through the shell", () => {
@@ -550,7 +549,9 @@ describe("ch1 dungeon decor - the layer rule", () => {
   it("converts the legacy decor Z index exactly once into terrain space", () => {
     for (const prop of CH1_DUNGEON_DECOR) {
       const terrain = ch1DungeonTerrain(prop.dungeonId)!;
-      const volume = terrain.volumes.find((entry) => entry.name === prop.volume)!;
+      const volume = terrain.volumes.find(
+        (entry) => entry.name === prop.volume
+      )!;
       const authored = ch1DecorPositionToTerrainAuthored(prop.at);
       assert.equal(
         authored.z,

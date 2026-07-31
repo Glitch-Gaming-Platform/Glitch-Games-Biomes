@@ -13,6 +13,7 @@ import {
 } from "../harthmereBusinessMapMarkers";
 import {
   buildBiomesUIMapAdapterForTest,
+  chapter1WorldMapLandmarksForBiomesUI,
   normalizeMapMarkerIdForTest,
 } from "../mapLiveAdapter";
 import { HARTHMERE_BUSINESS_OUTPOSTS } from "@/shared/harthmere/business_customer_simulator";
@@ -521,6 +522,30 @@ describe("biomes_ui map adapter (V141)", () => {
       );
       assert.equal(/[A-Z0-9]+_[A-Z0-9]+/i.test(marker?.label ?? ""), false);
     }
+  });
+
+  it("injects every Chapter 1 story location into the unified map feed", () => {
+    const landmarks = chapter1WorldMapLandmarksForBiomesUI();
+    assert.equal(landmarks.length, 11);
+    const adapter = buildBiomesUIMapAdapterForTest(1);
+    const markers = adapter.getMarkers();
+    for (const landmark of landmarks) {
+      const marker = markers.find((entry) => entry.id === landmark.id);
+      assert.ok(marker, `${landmark.label} should be visible on the map`);
+      assert.equal(marker?.label, landmark.label);
+      assert.deepEqual(marker?.worldPosition, landmark.position);
+    }
+    assert.equal(
+      markers.find((entry) => entry.id === "chapter1_landmark:grove_roadhouse")
+        ?.kind,
+      "store"
+    );
+    assert.equal(
+      markers.find(
+        (entry) => entry.id === "chapter1_landmark:grove_watch_house"
+      )?.kind,
+      "store"
+    );
   });
 
   it("injects owned property markers from building state into the BiomesUI world map", () => {
@@ -1256,6 +1281,80 @@ describe("biomes_ui map adapter (V141)", () => {
       adapter
         .getTrackableQuests()
         .some((quest: any) => quest.questId === "farming:buy-a-hoe")
+    );
+  });
+
+  // HARTHMERE_ADDITIVE_TOWN_MAP_MARKERS:
+  // The additive town used to be absent from this feed entirely — the Grove and
+  // the business trail were the whole map. These lock in that its people,
+  // buildings, and district locations are present, correctly bucketed into the
+  // People/Places/World tabs, and usable as an active destination pin.
+  it("puts the additive Harthmere town's people, buildings, and locations on the map", () => {
+    const markers = buildBiomesUIMapAdapterForTest(1).getMarkers();
+    const byId = (id: string) =>
+      markers.find((marker: any) => marker.id === id);
+
+    const person = byId("harthmere_town_npc_sergeant_bram_holt");
+    assert.ok(person, "town NPCs must appear on the map");
+    assert.equal(person!.kind, "vendor");
+    assert.equal(person!.label, "Sergeant Bramwell Holt");
+    assert.equal(person!.worldPosition![0], 2082.1);
+
+    const building = byId("harthmere_town_building_north_gate_toll_booth");
+    assert.ok(building, "authored town buildings must appear on the map");
+    assert.equal(building!.kind, "store");
+    assert.equal(building!.label, "North Gate Toll Booth");
+
+    const district = byId("harthmere_town_district_market_square");
+    assert.ok(district, "district locations must appear on the map");
+    assert.equal(district!.kind, "town");
+
+    const districtLandmark = byId("harthmere_north_gate_stone");
+    assert.ok(districtLandmark, "named town landmarks must appear on the map");
+    assert.equal(districtLandmark!.kind, "store");
+
+    // No roaming hostile/wildlife anchors: they would promise a body that has
+    // already wandered off.
+    assert.equal(
+      markers.find((marker: any) =>
+        String(marker.id).startsWith("harthmere_town_npc_muck")
+      ),
+      undefined
+    );
+  });
+
+  it("keeps town marker ids verbatim so they can be set as an active destination", () => {
+    const adapter = buildBiomesUIMapAdapterForTest(1);
+    const marker = adapter
+      .getMarkers()
+      .find(
+        (candidate: any) =>
+          candidate.id === "harthmere_town_building_north_gate_toll_booth"
+      );
+    assert.ok(marker);
+    adapter.setActiveMapPin(marker);
+    const pin = adapter.getActiveMapPin();
+    assert.ok(pin, "a town destination must survive the staleness check");
+    assert.equal(pin!.markerId, marker!.id);
+    assert.equal(pin!.label, "North Gate Toll Booth");
+    adapter.clearActiveMapPin();
+  });
+
+  it("expands map bounds east so the town is inside the drawn map", () => {
+    const bounds = buildBiomesUIMapAdapterForTest(1).getMapBounds()!;
+    assert.ok(
+      bounds.maxX > 2300,
+      `bounds must reach the additive town (got ${bounds.maxX})`
+    );
+    const townMarker = buildBiomesUIMapAdapterForTest(1)
+      .getMarkers()
+      .find(
+        (marker: any) => marker.id === "harthmere_town_district_north_gate"
+      );
+    assert.ok(townMarker);
+    assert.ok(
+      townMarker!.x > 0 && townMarker!.x < 1,
+      `town marker must project inside the map (got ${townMarker!.x})`
     );
   });
 });

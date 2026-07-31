@@ -65,6 +65,7 @@ import {
 } from "@/client/components/challenges/harthmereEvents";
 import { harthmereLiveServerAuthoritative } from "@/client/components/challenges/harthmereLiveAuthoritySignal";
 import { nativeBiomesEcsAuthorityEnabled } from "@/shared/harthmere/native_road_ahead_contract";
+import { HARTHMERE_HOTBAR_HELD_ITEM_EVENT } from "@/shared/harthmere/premium_weapon_catalog";
 import { readHarthmereNativeVitals } from "@/shared/harthmere/harthmere_native_vitals";
 import type { BiomesId } from "@/shared/ids";
 import { NpcMetadataSelector } from "@/shared/ecs/gen/selectors";
@@ -738,6 +739,9 @@ function emitHarthmerePlayerSwordVisual(detail: {
 function useHarthmerePlayerSwordVisualBridge() {
   const inventory = useHarthmereInventoryState();
   const multiplayer = useHarthmereMultiplayerCombatState();
+  const [hotbarHeldItemId, setHotbarHeldItemId] = useState<
+    string | undefined
+  >();
   const [liveEquipmentRevision, setLiveEquipmentRevision] = useState(0);
   useEffect(() => {
     const refresh = () => setLiveEquipmentRevision((value) => value + 1);
@@ -745,16 +749,30 @@ function useHarthmerePlayerSwordVisualBridge() {
     return () =>
       window.removeEventListener(HARTHMERE_LIVE_EQUIPMENT_EVENT, refresh);
   }, []);
+  useEffect(() => {
+    const onHotbarHeldItem = (event: Event) => {
+      const itemId = (event as CustomEvent<{ itemId?: string }>).detail?.itemId;
+      setHotbarHeldItemId(itemId || undefined);
+    };
+    window.addEventListener(HARTHMERE_HOTBAR_HELD_ITEM_EVENT, onHotbarHeldItem);
+    return () =>
+      window.removeEventListener(
+        HARTHMERE_HOTBAR_HELD_ITEM_EVENT,
+        onHotbarHeldItem
+      );
+  }, []);
   void liveEquipmentRevision;
   const liveEquipment = readHarthmereLiveEquipmentSnapshot().equipment;
   // This bridge drives the procedural visible longsword. Keep it mapped to
   // the Harthmere sword id instead of raw inventory/equipment ids such as
   // training_dagger, which do not have this visual attached yet.
-  const itemId = harthmereLiveServerAuthoritative()
-    ? liveEquipment.main_hand ?? liveEquipment.off_hand ?? "fists"
-    : inventory.equipment.main_hand?.itemId ??
-      inventory.equipment.off_hand?.itemId ??
-      "iron_longsword";
+  const itemId =
+    hotbarHeldItemId ??
+    (harthmereLiveServerAuthoritative()
+      ? liveEquipment.main_hand ?? liveEquipment.off_hand ?? "fists"
+      : inventory.equipment.main_hand?.itemId ??
+        inventory.equipment.off_hand?.itemId ??
+        "iron_longsword");
 
   useEffect(() => {
     // Give old local-dev saves a sword exactly once. The inventory helper is

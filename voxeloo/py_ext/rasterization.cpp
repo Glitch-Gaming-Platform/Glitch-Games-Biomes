@@ -19,6 +19,7 @@ using DynamicAttrs = Eigen::VectorXd;
 
 auto py_to_triangles(py::array_t<double> vertices, py::array_t<int> triangles) {
   CHECK_ARGUMENT(triangles.ndim() == 2);
+  CHECK_ARGUMENT(triangles.shape(1) == 3);
   CHECK_ARGUMENT(vertices.ndim() == 2);
   CHECK_ARGUMENT(vertices.shape(1) > 3);
   auto m = triangles.shape(0);
@@ -31,9 +32,11 @@ auto py_to_triangles(py::array_t<double> vertices, py::array_t<int> triangles) {
   auto t_acc = triangles.template unchecked<2>();
   ret.indices.reserve(3 * m);
   for (int i = 0; i < m; i += 1) {
-    ret.indices.emplace_back(t_acc(i, 0));
-    ret.indices.emplace_back(t_acc(i, 1));
-    ret.indices.emplace_back(t_acc(i, 2));
+    for (int j = 0; j < 3; j += 1) {
+      auto index = t_acc(i, j);
+      CHECK_ARGUMENT(index >= 0 && index < n);
+      ret.indices.emplace_back(index);
+    }
   }
 
   // Populate the vertex data.

@@ -11,6 +11,10 @@ export async function readWorldChanges(
   worldApi: WorldApi,
   signal: AbortSignal
 ): Promise<(LazyCreate | LazyUpdate)[]> {
+  if (signal.aborted) {
+    return [];
+  }
+
   const controller = new BackgroundTaskController();
   chain(controller, signal);
 

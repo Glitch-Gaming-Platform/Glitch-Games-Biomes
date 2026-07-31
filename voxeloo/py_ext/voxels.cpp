@@ -139,12 +139,12 @@ void bind(py::module& m) {
           [](const Box& self) {
             auto ret = py::array_t<int>({2, 3});
             auto acc = ret.mutable_unchecked<2>();
-            acc(0, 1) = self.v0.x;
-            acc(0, 2) = self.v0.y;
-            acc(0, 3) = self.v0.z;
-            acc(1, 1) = self.v1.x;
-            acc(1, 2) = self.v1.y;
-            acc(1, 3) = self.v1.z;
+            acc(0, 0) = self.v0.x;
+            acc(0, 1) = self.v0.y;
+            acc(0, 2) = self.v0.z;
+            acc(1, 0) = self.v1.x;
+            acc(1, 1) = self.v1.y;
+            acc(1, 2) = self.v1.z;
             return ret;
           })
       .def("__repr__", [](const Box& self) {

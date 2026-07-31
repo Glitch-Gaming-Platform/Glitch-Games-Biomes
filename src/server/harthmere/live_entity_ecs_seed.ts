@@ -109,9 +109,7 @@ export function harthmereLiveCreatureDisplayName(
   seed: HarthmereLiveEntityProductionSeed
 ) {
   if (!seed.bountyTier) return seed.displayName;
-  return `${seed.bountyTier === "boss" ? "Boss" : "Elite"} ${
-    seed.displayName
-  }`;
+  return `${seed.bountyTier === "boss" ? "Boss" : "Elite"} ${seed.displayName}`;
 }
 
 export function buildHarthmereLiveCreatureEntity(
@@ -321,7 +319,10 @@ export function buildHarthmereNativeThaedrynEntity(nowSeconds: number) {
       hp: combatProfile.maxHp,
       maxHp: combatProfile.maxHp,
     }),
-    size: Size.create({ v: [7, 5, 10] }),
+    // Keep the native collision/render dimensions on the same lore-sized
+    // contract as the bespoke boss mesh. Thaedryn is roughly two hundred feet
+    // long; the former 7x5x10 placeholder silently shrank the rebuilt dragon.
+    size: Size.create({ v: harthmereLiveEntitySizeForSeed(seed) }),
     entity_description: EntityDescription.create({ text: seed.description }),
     quest_giver: QuestGiver.create({ concurrent_quests: 1 }),
   };

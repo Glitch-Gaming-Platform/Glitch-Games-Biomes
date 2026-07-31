@@ -40,7 +40,10 @@ describe("Bible engine contracts — native ECS", () => {
   });
 
   it("has no quest without objectives", () => {
-    assert.deepEqual(bibleQuestsMissingSteps().map((quest) => quest.id), []);
+    assert.deepEqual(
+      bibleQuestsMissingSteps().map((quest) => quest.id),
+      []
+    );
   });
 
   it("keeps every objective server-authoritative and idempotent", () => {
@@ -48,8 +51,16 @@ describe("Bible engine contracts — native ECS", () => {
     // non-idempotent step silently loses progress on a retry.
     for (const quest of BIBLE_QUEST_CATALOG) {
       for (const step of quest.steps) {
-        assert.equal(step.validation.serverAuthority, true, `${quest.id}/${step.id}`);
-        assert.equal(step.validation.idempotent, true, `${quest.id}/${step.id}`);
+        assert.equal(
+          step.validation.serverAuthority,
+          true,
+          `${quest.id}/${step.id}`
+        );
+        assert.equal(
+          step.validation.idempotent,
+          true,
+          `${quest.id}/${step.id}`
+        );
       }
     }
   });
@@ -98,7 +109,10 @@ describe("Bible engine contracts — Gaia", () => {
       // Ignore comment lines: the rule is discussed in several headers.
       const code = text
         .split("\n")
-        .filter((line) => !line.trim().startsWith("*") && !line.trim().startsWith("//"))
+        .filter(
+          (line) =>
+            !line.trim().startsWith("*") && !line.trim().startsWith("//")
+        )
         .join("\n");
       if (code.includes("authoredWaypoint")) {
         readers.push(`src/shared/harthmere/bible/${file}`);

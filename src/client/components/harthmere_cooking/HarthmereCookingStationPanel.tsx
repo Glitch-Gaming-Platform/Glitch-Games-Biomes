@@ -26,6 +26,8 @@ import {
 import { defaultHarthmereLiveFetch } from "@/client/components/harthmere_live_fetch";
 import { RovingGrid } from "@/client/components/biomes_ui/nav/RovingGrid";
 import { installBiomesUITheme } from "@/client/components/biomes_ui/theme/biomesUITheme";
+import { HARTHMERE_COOKING_RECIPES } from "@/shared/harthmere/mmo_farming_food_stamina";
+import { emitHarthmereSoundEffect } from "@/shared/harthmere/sound_effect_manifest";
 import * as React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -112,6 +114,21 @@ async function submitCookingAction(
     warnings,
     farmingFoodState: body?.farmingFoodState,
   };
+}
+
+function cookingActionSoundId(
+  operation: "cook_enqueue" | "cook_collect" | "cook_cancel",
+  payload: Record<string, unknown>
+) {
+  if (operation === "cook_collect") return "cooking_collect";
+  if (operation === "cook_cancel") return "cooking_cancel";
+  const recipe = HARTHMERE_COOKING_RECIPES[String(payload.recipeId ?? "")];
+  const recipeText = `${recipe?.recipeId ?? ""} ${
+    recipe?.displayName ?? ""
+  }`.toLowerCase();
+  if (/minced|sashimi|chop|slice/.test(recipeText)) return "food_chop";
+  if (/fertilizer|ground|grind|milled/.test(recipeText)) return "food_grind";
+  return "cooking_start";
 }
 
 const panelTitleStyle: React.CSSProperties = {
@@ -997,6 +1014,11 @@ export const HarthmereCookingStationPanel: React.FunctionComponent = () => {
               if (result.farmingFoodState) {
                 setSnapshot(toCookSnapshot(result.farmingFoodState));
               }
+              if (result.ok) {
+                emitHarthmereSoundEffect(
+                  cookingActionSoundId(operation, payload)
+                );
+              }
               return { ok: result.ok, warnings: result.warnings };
             },
           })
@@ -1006,6 +1028,17 @@ export const HarthmereCookingStationPanel: React.FunctionComponent = () => {
 
   const recipes = useMemo(() => adapter?.getRecipes() ?? [], [adapter]);
   const jobs = useMemo(() => adapter?.getJobs() ?? [], [adapter]);
+  const hasActiveCookingJob = jobs.some(
+    (job) => job.status === "pending" || job.status === "cooking"
+  );
+  useEffect(() => {
+    if (!request || !hasActiveCookingJob) return;
+    if (request.stationKind === "cookpot") {
+      emitHarthmereSoundEffect("cookpot_loop", { idempotent: true });
+    } else if (request.stationKind === "oven") {
+      emitHarthmereSoundEffect("oven_loop", { idempotent: true });
+    }
+  }, [request, hasActiveCookingJob, snapshot?.updatedAtMs]);
   const detail = useMemo(
     () =>
       adapter && selectedRecipeId

@@ -110,13 +110,39 @@ export class AudioManager {
   private backgroundMusicAttenuation = 0;
   private prefetched = false;
   private muted = false;
+  private underwaterEnvironmentActive = false;
+  private underwaterListenerFilter: BiquadFilterNode | undefined;
+  private underwaterAmbience: THREE.Audio | undefined;
+  private underwaterAmbiencePath: AudioPath | undefined;
+  private underwaterAmbienceLoadingPath: AudioPath | undefined;
+  private readonly proximityLoops = new Map<
+    string,
+    { path: AudioPath; audio: THREE.PositionalAudio }
+  >();
+  private readonly proximityLoopLoadingPaths = new Map<string, AudioPath>();
 
   private activeRegistry: Map<THREE.PositionalAudio, number> = new Map();
   private activeAssets: MultiMap<AudioAssetType, THREE.Audio> = new MultiMap();
+  private activePaths: MultiMap<AudioPath, THREE.Audio> = new MultiMap();
+  private loadingPaths = new Set<AudioPath>();
 
   constructor(private resources: ClientResources) {}
 
   stop() {
+    this.stopUnderwaterAmbience();
+    for (const key of [...this.proximityLoops.keys()]) {
+      this.stopProximityLoop(key);
+    }
+    this.proximityLoopLoadingPaths.clear();
+    if (
+      this.audioListener &&
+      this.underwaterListenerFilter &&
+      this.audioListener.getFilter() === this.underwaterListenerFilter
+    ) {
+      this.audioListener.removeFilter();
+    }
+    this.underwaterListenerFilter = undefined;
+    this.underwaterEnvironmentActive = false;
     for (const [audio] of this.activeRegistry.entries()) {
       audio.stop();
       this.activeRegistry.delete(audio);
@@ -136,6 +162,8 @@ export class AudioManager {
   hotHandoff(old: AudioManager) {
     this.activeRegistry = old.activeRegistry;
     this.activeAssets = old.activeAssets;
+    this.activePaths = old.activePaths;
+    this.loadingPaths = old.loadingPaths;
     old.stop();
   }
 
@@ -347,6 +375,175 @@ export class AudioManager {
     }
   }
 
+  private stopUnderwaterAmbience() {
+    this.underwaterAmbienceLoadingPath = undefined;
+    if (this.underwaterAmbience) {
+      if (this.underwaterAmbience.isPlaying) {
+        this.underwaterAmbience.stop();
+      }
+      this.underwaterAmbience.disconnect();
+    }
+    this.underwaterAmbience = undefined;
+    this.underwaterAmbiencePath = undefined;
+  }
+
+  private startUnderwaterAmbience(assetPath: AudioPath) {
+    if (
+      (this.underwaterAmbiencePath === assetPath &&
+        this.underwaterAmbience?.isPlaying) ||
+      this.underwaterAmbienceLoadingPath === assetPath
+    ) {
+      return;
+    }
+    this.stopUnderwaterAmbience();
+    const listener = this.audioListener;
+    if (!listener) {
+      return;
+    }
+    this.underwaterAmbienceLoadingPath = assetPath;
+    fireAndForget(
+      (async () => {
+        const buffer = await this.resources.get("/audio/buffer", assetPath);
+        if (this.underwaterAmbienceLoadingPath !== assetPath) {
+          return;
+        }
+        this.underwaterAmbienceLoadingPath = undefined;
+        if (
+          !buffer ||
+          !this.underwaterEnvironmentActive ||
+          this.audioListener !== listener
+        ) {
+          return;
+        }
+        const sound = new THREE.Audio(listener);
+        sound.setBuffer(buffer);
+        sound.setLoop(true);
+        sound.setVolume(this.getVolume("settings.volume.effects") * 0.35);
+        sound.play();
+        this.underwaterAmbience = sound;
+        this.underwaterAmbiencePath = assetPath;
+      })()
+    );
+  }
+
+  /**
+   * Applies the submerged listener mix to every game sound and owns the quiet
+   * looping water bed. Camera immersion is used because it matches the actual
+   * player's auditory perspective in both first- and third-person views.
+   */
+  setUnderwaterEnvironment(active: boolean, ambiencePath?: AudioPath) {
+    this.underwaterEnvironmentActive = active;
+    const listener = this.audioListener;
+    if (!listener) {
+      return;
+    }
+    if (!active && !this.underwaterListenerFilter) {
+      this.stopUnderwaterAmbience();
+      return;
+    }
+    const context = listener.context;
+    if (!this.underwaterListenerFilter) {
+      const lowpass = context.createBiquadFilter();
+      lowpass.type = "lowpass";
+      lowpass.Q.value = 0.7;
+      lowpass.frequency.value = 0.5 * context.sampleRate;
+      listener.setFilter(lowpass);
+      this.underwaterListenerFilter = lowpass;
+    }
+    this.underwaterListenerFilter.frequency.setTargetAtTime(
+      active ? 1_100 : 0.5 * context.sampleRate,
+      context.currentTime,
+      0.12
+    );
+
+    if (active && ambiencePath) {
+      this.startUnderwaterAmbience(ambiencePath);
+      this.underwaterAmbience?.setVolume(
+        this.getVolume("settings.volume.effects") * 0.35
+      );
+    } else {
+      this.stopUnderwaterAmbience();
+    }
+  }
+
+  setProximityLoop(
+    key: string,
+    assetPath: AudioPath,
+    position: readonly number[],
+    options: {
+      volumeMultiplier?: number;
+      refDistance?: number;
+      maxDistance?: number;
+      rolloffFactor?: number;
+    } = {}
+  ) {
+    if (!this.audioListener || position.length < 3) {
+      return;
+    }
+    const existing = this.proximityLoops.get(key);
+    if (existing?.path === assetPath) {
+      existing.audio.position.set(position[0], position[1], position[2]);
+      existing.audio.setVolume(
+        this.getVolume("settings.volume.effects") *
+          (options.volumeMultiplier ?? 1)
+      );
+      existing.audio.updateMatrixWorld(true);
+      if (!existing.audio.isPlaying) {
+        existing.audio.play();
+      }
+      return;
+    }
+    if (existing) {
+      this.stopProximityLoop(key);
+    }
+    if (this.proximityLoopLoadingPaths.get(key) === assetPath) {
+      return;
+    }
+    this.proximityLoopLoadingPaths.set(key, assetPath);
+    const listener = this.audioListener;
+    const requestedPosition = [position[0], position[1], position[2]] as const;
+    fireAndForget(
+      (async () => {
+        const buffer = await this.resources.get("/audio/buffer", assetPath);
+        if (this.proximityLoopLoadingPaths.get(key) !== assetPath) {
+          return;
+        }
+        this.proximityLoopLoadingPaths.delete(key);
+        if (!buffer || this.audioListener !== listener) {
+          return;
+        }
+        const audio = new THREE.PositionalAudio(listener);
+        audio.setBuffer(buffer);
+        audio.setLoop(true);
+        audio.setDistanceModel("exponential");
+        audio.setRefDistance(options.refDistance ?? 3);
+        audio.setMaxDistance(options.maxDistance ?? 32);
+        audio.setRolloffFactor(options.rolloffFactor ?? 1.6);
+        audio.setVolume(
+          this.getVolume("settings.volume.effects") *
+            (options.volumeMultiplier ?? 1)
+        );
+        audio.position.set(...requestedPosition);
+        audio.updateMatrixWorld(true);
+        audio.play();
+        this.proximityLoops.set(key, { path: assetPath, audio });
+      })()
+    );
+  }
+
+  stopProximityLoop(key: string) {
+    this.proximityLoopLoadingPaths.delete(key);
+    const loop = this.proximityLoops.get(key);
+    if (!loop) {
+      return;
+    }
+    if (loop.audio.isPlaying) {
+      loop.audio.stop();
+    }
+    loop.audio.disconnect();
+    this.proximityLoops.delete(key);
+  }
+
   getBuffer(assetPath: AudioPath) {
     return this.resources.cached("/audio/buffer", assetPath);
   }
@@ -369,7 +566,13 @@ export class AudioManager {
           return;
         }
 
-        const assetPath = sample(getAudioAssetPaths(assetType))!;
+        const assetPath = sample(getAudioAssetPaths(assetType));
+        // Cutscene story cues are best-effort labels. An unknown cue must no-op
+        // like playSoundAt instead of requesting /audio/buffer with undefined
+        // and turning an otherwise valid scene into a browser error.
+        if (!assetPath) {
+          return;
+        }
         const volume = this.getVolume("settings.volume.effects", assetType);
         if (volume === 0) {
           return;
@@ -401,6 +604,75 @@ export class AudioManager {
           return;
         }
         const volume = this.getVolume("settings.volume.effects", assetType);
+        if (volume === 0) {
+          return;
+        }
+        const buffer = await this.resources.get("/audio/buffer", assetPath);
+        if (!buffer) {
+          return;
+        }
+        const sound = new THREE.PositionalAudio(this.audioListener);
+        sound.setBuffer(buffer);
+        sound.setVolume(volume);
+        sound.position.set(position[0], position[1], position[2]);
+        sound.setDistanceModel("exponential");
+        sound.setRefDistance(2);
+        sound.setMaxDistance(64);
+        sound.updateMatrixWorld(true);
+        sound.onEnded = () => sound.disconnect();
+        sound.play();
+      })()
+    );
+  }
+
+  playPath(
+    assetPath: AudioPath,
+    options: {
+      idempotent?: boolean;
+    } = {}
+  ) {
+    if (
+      options.idempotent &&
+      (this.activePaths.hasAny(assetPath) || this.loadingPaths.has(assetPath))
+    ) {
+      return;
+    }
+    fireAndForget(
+      (async () => {
+        if (!this.audioListener) {
+          return;
+        }
+        const volume = this.getVolume("settings.volume.effects");
+        if (volume === 0) {
+          return;
+        }
+        if (options.idempotent) this.loadingPaths.add(assetPath);
+        const buffer = await this.resources
+          .get("/audio/buffer", assetPath)
+          .finally(() => this.loadingPaths.delete(assetPath));
+        if (!buffer) {
+          return;
+        }
+        const sound = new THREE.Audio(this.audioListener);
+        this.activePaths.add(assetPath, sound);
+        sound.setBuffer(buffer);
+        sound.setVolume(volume);
+        sound.onEnded = () => {
+          sound.disconnect();
+          this.activePaths.delete(assetPath, sound);
+        };
+        sound.play();
+      })()
+    );
+  }
+
+  playPathAt(assetPath: AudioPath, position: readonly number[]) {
+    fireAndForget(
+      (async () => {
+        if (!this.audioListener || position.length < 3) {
+          return;
+        }
+        const volume = this.getVolume("settings.volume.effects");
         if (volume === 0) {
           return;
         }

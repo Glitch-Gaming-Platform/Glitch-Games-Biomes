@@ -59,7 +59,7 @@ if [ "$SKIP_REBUILD" = "0" ]; then
   NODE_ENV=production \
   NODE_OPTIONS="--openssl-legacy-provider" \
   ./node_modules/.bin/webpack \
-    --config server.webpack.config.ts \
+    --config server.webpack.config.cjs \
     --mode production
 
   ls -lh .next/BUILD_ID dist/shim.js dist/oob.js dist/sync.js dist/logic.js dist/web.js

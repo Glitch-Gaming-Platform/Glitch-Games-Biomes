@@ -10,6 +10,7 @@ const {
   connectToRedisWithLua,
 } = require("../../src/server/shared/redis/connection");
 const { RedisWorld } = require("../../src/server/shared/world/redis");
+const { HfcWorldApi } = require("../../src/server/shared/world/hfc/hfc");
 const {
   buildHarthmereGroveRaceMinigameSeedProposedChanges,
   harthmereGroveRaceMinigameSeedIds,
@@ -20,6 +21,7 @@ const {
 } = require("../../src/server/harthmere/live_entity_ecs_seed");
 const {
   buildHarthmereSnapshotGroveNpcSeedProposedChanges,
+  harthmereObsoleteSnapshotGroveNpcIds,
   harthmereSnapshotGroveNpcSeedIds,
 } = require("../../src/server/harthmere/snapshot_grove_npc_ecs_seed");
 const {
@@ -58,6 +60,9 @@ const {
 const {
   SNAPSHOT_GROVE_LOCAL_DEV_NPC_BASE,
 } = require("../../src/shared/harthmere/snapshot_grove_content");
+const {
+  SNAPSHOT_GROVE_LEGACY_NPC_ENTITY_IDS,
+} = require("../../src/shared/harthmere/snapshot_grove_ids");
 const {
   Position,
   NpcMetadata,
@@ -265,6 +270,100 @@ async function reconcileSharedLiveModeState(nowMs) {
     "shared live-mode building state is present"
   );
   await redis.quit("production world sync complete");
+}
+
+async function snapshotGroveNamedNpcIdentityCandidates() {
+  const host =
+    process.env.REDIS_HOST ||
+    process.env.GLITCH_REDIS_HOST ||
+    process.env.LOCAL_REDIS_HOST ||
+    "127.0.0.1";
+  const port = Number(
+    process.env.REDIS_PORT || process.env.GLITCH_REDIS_PORT || "6379"
+  );
+  const redis = new Redis({ host, port, lazyConnect: true });
+  const candidates = [];
+  const legacyIds = Object.values(SNAPSHOT_GROVE_LEGACY_NPC_ENTITY_IDS);
+  try {
+    await redis.connect();
+    const keys = legacyIds.map((id) => `b:${Number(id)}`);
+    const raws = await redis.mgetBuffer(...keys);
+    for (const [index, id] of legacyIds.entries()) {
+      const raw = raws[index];
+      if (!raw) continue;
+      let entity;
+      try {
+        [, entity] = deserializeRedisEntityState(id, raw);
+      } catch {
+        continue;
+      }
+      const label = entity?.hasLabel?.() ? entity.label()?.text : undefined;
+      if (!label) continue;
+      candidates.push({
+        id,
+        label,
+        hasNpcMetadata: Boolean(entity.hasNpcMetadata?.()),
+        hasPlayerStatus: Boolean(entity.hasPlayerStatus?.()),
+        hasRemoteConnection: Boolean(entity.hasRemoteConnection?.()),
+      });
+    }
+  } finally {
+    redis.disconnect();
+  }
+  return { candidates, checked: legacyIds.length };
+}
+
+async function reconcileSnapshotGroveNamedNpcDuplicates(world) {
+  const { candidates, checked } =
+    await snapshotGroveNamedNpcIdentityCandidates();
+  const obsoleteIds = harthmereObsoleteSnapshotGroveNpcIds(candidates);
+  console.log(
+    JSON.stringify({
+      phase: "snapshot_grove_named_npc_identity_audit",
+      checked,
+      obsoleteIds: obsoleteIds.map(String),
+      apply: APPLY,
+    })
+  );
+  check(
+    obsoleteIds.length === 0 || APPLY,
+    "every migrated Grove NPC has one canonical ECS identity",
+    obsoleteIds.length
+      ? `obsolete=${obsoleteIds.map(String).join(",")}`
+      : undefined
+  );
+  if (!APPLY || obsoleteIds.length === 0) return;
+
+  const deletes = obsoleteIds.map((id) => ({ kind: "delete", id }));
+  for (const batch of chunk(deletes, Math.max(1, BATCH_SIZE))) {
+    await world.apply({ changes: batch });
+  }
+
+  // Production uses HybridWorldApi: primary deletion alone can leave the old
+  // simulated position/npc_state in the HFC store until the periodic sink
+  // catches up. Delete both halves now so the obsolete body cannot reappear.
+  const hfc = new HfcWorldApi(await connectToRedis("ecs-hfc"));
+  try {
+    for (const batch of chunk(deletes, Math.max(1, BATCH_SIZE))) {
+      await hfc.apply({ changes: batch });
+    }
+    const [primaryPresent, hfcPresent] = await Promise.all([
+      world.has(obsoleteIds),
+      hfc.has(obsoleteIds),
+    ]);
+    check(
+      primaryPresent.length === 0 && hfcPresent.length === 0,
+      "obsolete Grove NPC selves are absent from primary and HFC ECS",
+      primaryPresent.length || hfcPresent.length
+        ? JSON.stringify({
+            primaryPresent: primaryPresent.map(String),
+            hfcPresent: hfcPresent.map(String),
+          })
+        : undefined
+    );
+  } finally {
+    await hfc.stop();
+  }
 }
 
 // HARTHMERE_LIVE_ENTITY_POSITION_REPAIR
@@ -495,6 +594,7 @@ async function main() {
   try {
     await world.waitForHealthy();
     await reconcileEcsSeeds(world, nowSeconds);
+    await reconcileSnapshotGroveNamedNpcDuplicates(world);
     await repairLiveEntityPositions(world);
     await reconcileSharedLiveModeState(nowMs);
   } finally {

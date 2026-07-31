@@ -19,6 +19,12 @@ export interface TabShortcut {
   tab: TabKey;
 }
 
+export const RESERVED_GAMEPLAY_SHORTCUT_KEYS = new Set(["z", "x", "c"]);
+
+export function isReservedGameplayShortcutKey(key: string): boolean {
+  return RESERVED_GAMEPLAY_SHORTCUT_KEYS.has(key.trim().toLowerCase());
+}
+
 /** Default keybindings — overridable per-user in OptionsTab. */
 export const DEFAULT_TAB_SHORTCUTS: TabShortcut[] = [
   { key: "i", label: "I", tab: "inventory" },
@@ -31,8 +37,8 @@ export const DEFAULT_TAB_SHORTCUTS: TabShortcut[] = [
   { key: "g", label: "G", tab: "guilds" },
   { key: "q", label: "Q", tab: "banking" },
   { key: "m", label: "M", tab: "map" },
-  { key: "z", label: "Z", tab: "recovered" },
-  { key: "c", label: "C", tab: "collections" },
+  { key: "[", label: "[", tab: "recovered" },
+  { key: "]", label: "]", tab: "collections" },
   { key: "v", label: "V", tab: "inbox" },
   { key: ",", label: ",", tab: "options" },
 ];
@@ -56,6 +62,7 @@ export function installTabShortcuts(
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     if (isTypingInInput()) return;
     const key = e.key.toLowerCase();
+    if (isReservedGameplayShortcutKey(key)) return;
     const match = shortcuts.find((s) => s.key === key);
     if (!match) return;
     const keyCode =

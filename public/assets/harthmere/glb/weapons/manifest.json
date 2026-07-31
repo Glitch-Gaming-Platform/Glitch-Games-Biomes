@@ -1,0 +1,1182 @@
+{
+  "version": "harthmere-premium-voxel-weapons-v1",
+  "blenderVersion": "5.2.0 LTS",
+  "count": 47,
+  "weapons": [
+    {
+      "id": "one_handed_axe",
+      "label": "One-Handed Axe",
+      "builder": "axe",
+      "profile": "melee",
+      "targetLength": 1.18,
+      "idleClip": "IdleDrawn_24",
+      "assetUrl": "/assets/harthmere/glb/weapons/one_handed_axe.glb",
+      "previewUrl": "/assets/harthmere/weapon_previews/one_handed_axe.png",
+      "inventoryIconUrl": "/assets/harthmere/weapon_icons/one_handed_axe.png",
+      "triangleCount": 2794,
+      "bounds": {
+        "min": [
+          -0.36680930852890015,
+          -0.1699145883321762,
+          -0.6629667282104492
+        ],
+        "max": [
+          0.6357783079147339,
+          0.1690181940793991,
+          0.912215530872345
+        ]
+      },
+      "bytes": 55464
+    },
+    {
+      "id": "two_handed_axe",
+      "label": "Two-Handed Axe",
+      "builder": "axe",
+      "profile": "melee",
+      "targetLength": 1.62,
+      "idleClip": "IdleDrawn_24",
+      "assetUrl": "/assets/harthmere/glb/weapons/two_handed_axe.glb",
+      "previewUrl": "/assets/harthmere/weapon_previews/two_handed_axe.png",
+      "inventoryIconUrl": "/assets/harthmere/weapon_icons/two_handed_axe.png",
+      "triangleCount": 3010,
+      "bounds": {
+        "min": [
+          -0.36315375566482544,
+          -0.17000913619995117,
+          -0.7853257656097412
+        ],
+        "max": [
+          0.7612417340278625,
+          0.16892364621162415,
+          1.0944018363952637
+        ]
+      },
+      "bytes": 58552
+    },
+    {
+      "id": "double_axe",
+      "label": "Double Axe",
+      "builder": "axe",
+      "profile": "melee",
+      "targetLength": 1.55,
+      "idleClip": "IdleDrawn_24",
+      "assetUrl": "/assets/harthmere/glb/weapons/double_axe.glb",
+      "previewUrl": "/assets/harthmere/weapon_previews/double_axe.png",
+      "inventoryIconUrl": "/assets/harthmere/weapon_icons/double_axe.png",
+      "triangleCount": 3156,
+      "bounds": {
+        "min": [
+          -0.6485422849655151,
+          -0.17000913619995117,
+          -0.7853257656097412
+        ],
+        "max": [
+          0.7612417340278625,
+          0.16892364621162415,
+          1.096160888671875
+        ]
+      },
+      "bytes": 59700
+    },
+    {
+      "id": "golden_double_axe",
+      "label": "Golden Double Axe",
+      "builder": "axe",
+      "profile": "melee",
+      "targetLength": 1.58,
+      "idleClip": "IdleDrawn_24",
+      "assetUrl": "/assets/harthmere/glb/weapons/golden_double_axe.glb",
+      "previewUrl": "/assets/harthmere/weapon_previews/golden_double_axe.png",
+      "inventoryIconUrl": "/assets/harthmere/weapon_icons/golden_double_axe.png",
+      "triangleCount": 3156,
+      "bounds": {
+        "min": [
+          -0.6485422849655151,
+          -0.17000913619995117,
+          -0.7853257656097412
+        ],
+        "max": [
+          0.7612417340278625,
+          0.16892364621162415,
+          1.096160888671875
+        ]
+      },
+      "bytes": 59464
+    },
+    {
+      "id": "small_axe",
+      "label": "Small Axe",
+      "builder": "axe",
+      "profile": "melee",
+      "targetLength": 0.92,
+      "idleClip": "IdleDrawn_24",
+      "assetUrl": "/assets/harthmere/glb/weapons/small_axe.glb",
+      "previewUrl": "/assets/harthmere/weapon_previews/small_axe.png",
+      "inventoryIconUrl": "/assets/harthmere/weapon_icons/small_axe.png",
+      "triangleCount": 2794,
+      "bounds": {
+        "min": [
+          -0.3095192313194275,
+          -0.16983404755592346,
+          -0.5587348937988281
+        ],
+        "max": [
+          0.5108564496040344,
+          0.16909873485565186,
+          0.7506644129753113
+        ]
+      },
+      "bytes": 55548
+    },
+    {
+      "id": "golden_small_axe",
+      "label": "Golden Small Axe",
+      "builder": "axe",
+      "profile": "melee",
+      "targetLength": 0.95,
+      "idleClip": "IdleDrawn_24",
+      "assetUrl": "/assets/harthmere/glb/weapons/golden_small_axe.glb",
+      "previewUrl": "/assets/harthmere/weapon_previews/golden_small_axe.png",
+      "inventoryIconUrl": "/assets/harthmere/weapon_icons/golden_small_axe.png",
+      "triangleCount": 2794,
+      "bounds": {
+        "min": [
+          -0.3095192313194275,
+          -0.16983404755592346,
+          -0.5587348937988281
+        ],
+        "max": [
+          0.5108564496040344,
+          0.16909873485565186,
+          0.7506644129753113
+        ]
+      },
+      "bytes": 55304
+    },
+    {
+      "id": "steel_dagger",
+      "label": "Dagger",
+      "builder": "dagger",
+      "profile": "melee",
+      "targetLength": 0.78,
+      "idleClip": "IdleDrawn_24",
+      "assetUrl": "/assets/harthmere/glb/weapons/steel_dagger.glb",
+      "previewUrl": "/assets/harthmere/weapon_previews/steel_dagger.png",
+      "inventoryIconUrl": "/assets/harthmere/weapon_icons/steel_dagger.png",
+      "triangleCount": 2594,
+      "bounds": {
+        "min": [
+          -0.29063549637794495,
+          -0.12472299486398697,
+          -0.6290969252586365
+        ],
+        "max": [
+          0.28881293535232544,
+          0.12477012723684311,
+          0.8445587754249573
+        ]
+      },
+      "bytes": 49928
+    },
+    {
+      "id": "golden_dagger",
+      "label": "Golden Dagger",
+      "builder": "dagger",
+      "profile": "melee",
+      "targetLength": 0.8,
+      "idleClip": "IdleDrawn_24",
+      "assetUrl": "/assets/harthmere/glb/weapons/golden_dagger.glb",
+      "previewUrl": "/assets/harthmere/weapon_previews/golden_dagger.png",
+      "inventoryIconUrl": "/assets/harthmere/weapon_icons/golden_dagger.png",
+      "triangleCount": 2594,
+      "bounds": {
+        "min": [
+          -0.29063549637794495,
+          -0.12472299486398697,
+          -0.6290969252586365
+        ],
+        "max": [
+          0.28881293535232544,
+          0.12477012723684311,
+          0.8445587754249573
+        ]
+      },
+      "bytes": 50528
+    },
+    {
+      "id": "double_headed_hammer",
+      "label": "Double-Headed Hammer",
+      "builder": "hammer",
+      "profile": "melee",
+      "targetLength": 1.48,
+      "idleClip": "IdleDrawn_24",
+      "assetUrl": "/assets/harthmere/glb/weapons/double_headed_hammer.glb",
+      "previewUrl": "/assets/harthmere/weapon_previews/double_headed_hammer.png",
+      "inventoryIconUrl": "/assets/harthmere/weapon_icons/double_headed_hammer.png",
+      "triangleCount": 3864,
+      "bounds": {
+        "min": [
+          -0.7484570145606995,
+          -0.37773048877716064,
+          -0.768222987651825
+        ],
+        "max": [
+          0.7807424664497375,
+          0.2910841703414917,
+          0.9358381032943726
+        ]
+      },
+      "bytes": 79496
+    },
+    {
+      "id": "golden_double_headed_hammer",
+      "label": "Golden Double-Headed Hammer",
+      "builder": "hammer",
+      "profile": "melee",
+      "targetLength": 1.5,
+      "idleClip": "IdleDrawn_24",
+      "assetUrl": "/assets/harthmere/glb/weapons/golden_double_headed_hammer.glb",
+      "previewUrl": "/assets/harthmere/weapon_previews/golden_double_headed_hammer.png",
+      "inventoryIconUrl": "/assets/harthmere/weapon_icons/golden_double_headed_hammer.png",
+      "triangleCount": 3864,
+      "bounds": {
+        "min": [
+          -0.7484570145606995,
+          -0.37773048877716064,
+          -0.768222987651825
+        ],
+        "max": [
+          0.7807424664497375,
+          0.2910841703414917,
+          0.9358381032943726
+        ]
+      },
+      "bytes": 79500
+    },
+    {
+      "id": "iron_longsword",
+      "label": "One-Handed Sword",
+      "builder": "sword",
+      "profile": "melee",
+      "targetLength": 1.18,
+      "idleClip": "IdleDrawn_24",
+      "assetUrl": "/assets/harthmere/glb/weapons/iron_longsword.glb",
+      "previewUrl": "/assets/harthmere/weapon_previews/iron_longsword.png",
+      "inventoryIconUrl": "/assets/harthmere/weapon_icons/iron_longsword.png",
+      "triangleCount": 3030,
+      "bounds": {
+        "min": [
+          -0.3868556022644043,
+          -0.11219290643930435,
+          -0.558601975440979
+        ],
+        "max": [
+          0.3858141601085663,
+          0.11088462918996811,
+          1.0877511501312256
+        ]
+      },
+      "bytes": 55404
+    },
+    {
+      "id": "two_handed_sword",
+      "label": "Two-Handed Sword",
+      "builder": "sword",
+      "profile": "melee",
+      "targetLength": 1.62,
+      "idleClip": "IdleDrawn_24",
+      "assetUrl": "/assets/harthmere/glb/weapons/two_handed_sword.glb",
+      "previewUrl": "/assets/harthmere/weapon_previews/two_handed_sword.png",
+      "inventoryIconUrl": "/assets/harthmere/weapon_icons/two_handed_sword.png",
+      "triangleCount": 3750,
+      "bounds": {
+        "min": [
+          -0.4875290095806122,
+          -0.14393167197704315,
+          -0.7201992273330688
+        ],
+        "max": [
+          0.48648756742477417,
+          0.14220751821994781,
+          1.4309998750686646
+        ]
+      },
+      "bytes": 72996
+    },
+    {
+      "id": "colored_two_handed_sword",
+      "label": "Colored Two-Handed Sword",
+      "builder": "sword",
+      "profile": "melee",
+      "targetLength": 1.63,
+      "idleClip": "IdleDrawn_24",
+      "assetUrl": "/assets/harthmere/glb/weapons/colored_two_handed_sword.glb",
+      "previewUrl": "/assets/harthmere/weapon_previews/colored_two_handed_sword.png",
+      "inventoryIconUrl": "/assets/harthmere/weapon_icons/colored_two_handed_sword.png",
+      "triangleCount": 3750,
+      "bounds": {
+        "min": [
+          -0.4875290095806122,
+          -0.14393167197704315,
+          -0.7201992273330688
+        ],
+        "max": [
+          0.48648756742477417,
+          0.14220751821994781,
+          1.4309998750686646
+        ]
+      },
+      "bytes": 73080
+    },
+    {
+      "id": "standard_sword",
+      "label": "Standard Sword",
+      "builder": "sword",
+      "profile": "melee",
+      "targetLength": 1.24,
+      "idleClip": "IdleDrawn_24",
+      "assetUrl": "/assets/harthmere/glb/weapons/standard_sword.glb",
+      "previewUrl": "/assets/harthmere/weapon_previews/standard_sword.png",
+      "inventoryIconUrl": "/assets/harthmere/weapon_icons/standard_sword.png",
+      "triangleCount": 3030,
+      "bounds": {
+        "min": [
+          -0.3868556022644043,
+          -0.11219290643930435,
+          -0.558601975440979
+        ],
+        "max": [
+          0.3858141601085663,
+          0.11088462918996811,
+          1.0877511501312256
+        ]
+      },
+      "bytes": 55436
+    },
+    {
+      "id": "golden_sword",
+      "label": "Golden Sword",
+      "builder": "sword",
+      "profile": "melee",
+      "targetLength": 1.26,
+      "idleClip": "IdleDrawn_24",
+      "assetUrl": "/assets/harthmere/glb/weapons/golden_sword.glb",
+      "previewUrl": "/assets/harthmere/weapon_previews/golden_sword.png",
+      "inventoryIconUrl": "/assets/harthmere/weapon_icons/golden_sword.png",
+      "triangleCount": 3030,
+      "bounds": {
+        "min": [
+          -0.3867415189743042,
+          -0.11219290643930435,
+          -0.558601975440979
+        ],
+        "max": [
+          0.3857000768184662,
+          0.11088462918996811,
+          1.0877511501312256
+        ]
+      },
+      "bytes": 55780
+    },
+    {
+      "id": "great_sword",
+      "label": "Great Sword",
+      "builder": "sword",
+      "profile": "melee",
+      "targetLength": 1.88,
+      "idleClip": "IdleDrawn_24",
+      "assetUrl": "/assets/harthmere/glb/weapons/great_sword.glb",
+      "previewUrl": "/assets/harthmere/weapon_previews/great_sword.png",
+      "inventoryIconUrl": "/assets/harthmere/weapon_icons/great_sword.png",
+      "triangleCount": 3966,
+      "bounds": {
+        "min": [
+          -0.6284717917442322,
+          -0.19455981254577637,
+          -0.861189067363739
+        ],
+        "max": [
+          0.6274303197860718,
+          0.1924779713153839,
+          1.7501024007797241
+        ]
+      },
+      "bytes": 76108
+    },
+    {
+      "id": "golden_great_sword",
+      "label": "Golden Great Sword",
+      "builder": "sword",
+      "profile": "melee",
+      "targetLength": 1.9,
+      "idleClip": "IdleDrawn_24",
+      "assetUrl": "/assets/harthmere/glb/weapons/golden_great_sword.glb",
+      "previewUrl": "/assets/harthmere/weapon_previews/golden_great_sword.png",
+      "inventoryIconUrl": "/assets/harthmere/weapon_icons/golden_great_sword.png",
+      "triangleCount": 3966,
+      "bounds": {
+        "min": [
+          -0.6283681392669678,
+          -0.19455981254577637,
+          -0.861189067363739
+        ],
+        "max": [
+          0.6273266673088074,
+          0.1924779713153839,
+          1.7501024007797241
+        ]
+      },
+      "bytes": 76468
+    },
+    {
+      "id": "hunter_bow",
+      "label": "Wooden Bow",
+      "builder": "bow",
+      "profile": "ranged",
+      "targetLength": 1.38,
+      "idleClip": "IdleAim_24",
+      "assetUrl": "/assets/harthmere/glb/weapons/hunter_bow.glb",
+      "previewUrl": "/assets/harthmere/weapon_previews/hunter_bow.png",
+      "inventoryIconUrl": "/assets/harthmere/weapon_icons/hunter_bow.png",
+      "triangleCount": 4020,
+      "bounds": {
+        "min": [
+          -0.4023907780647278,
+          -0.1293182373046875,
+          -0.6467238664627075
+        ],
+        "max": [
+          0.40297359228134155,
+          0.12591256201267242,
+          0.7678385376930237
+        ]
+      },
+      "bytes": 66124
+    },
+    {
+      "id": "golden_bow",
+      "label": "Golden Bow",
+      "builder": "bow",
+      "profile": "ranged",
+      "targetLength": 1.4,
+      "idleClip": "IdleAim_24",
+      "assetUrl": "/assets/harthmere/glb/weapons/golden_bow.glb",
+      "previewUrl": "/assets/harthmere/weapon_previews/golden_bow.png",
+      "inventoryIconUrl": "/assets/harthmere/weapon_icons/golden_bow.png",
+      "triangleCount": 4020,
+      "bounds": {
+        "min": [
+          -0.4023907780647278,
+          -0.1293182373046875,
+          -0.6467238664627075
+        ],
+        "max": [
+          0.40297359228134155,
+          0.12591256201267242,
+          0.7678385376930237
+        ]
+      },
+      "bytes": 65684
+    },
+    {
+      "id": "strung_bow",
+      "label": "Strung Bow",
+      "builder": "bow",
+      "profile": "ranged",
+      "targetLength": 1.36,
+      "idleClip": "IdleAim_24",
+      "assetUrl": "/assets/harthmere/glb/weapons/strung_bow.glb",
+      "previewUrl": "/assets/harthmere/weapon_previews/strung_bow.png",
+      "inventoryIconUrl": "/assets/harthmere/weapon_icons/strung_bow.png",
+      "triangleCount": 4020,
+      "bounds": {
+        "min": [
+          -0.4023907780647278,
+          -0.1293182373046875,
+          -0.6451955437660217
+        ],
+        "max": [
+          0.40297359228134155,
+          0.12591256201267242,
+          0.7664768695831299
+        ]
+      },
+      "bytes": 66460
+    },
+    {
+      "id": "one_handed_crossbow",
+      "label": "One-Handed Crossbow",
+      "builder": "crossbow",
+      "profile": "ranged",
+      "targetLength": 1.0,
+      "idleClip": "IdleAim_24",
+      "assetUrl": "/assets/harthmere/glb/weapons/one_handed_crossbow.glb",
+      "previewUrl": "/assets/harthmere/weapon_previews/one_handed_crossbow.png",
+      "inventoryIconUrl": "/assets/harthmere/weapon_icons/one_handed_crossbow.png",
+      "triangleCount": 1672,
+      "bounds": {
+        "min": [
+          -0.5129420757293701,
+          -0.14706088602542877,
+          -0.6052027940750122
+        ],
+        "max": [
+          0.5264002680778503,
+          0.1828363835811615,
+          0.6262186765670776
+        ]
+      },
+      "bytes": 33136
+    },
+    {
+      "id": "two_handed_crossbow",
+      "label": "Two-Handed Crossbow",
+      "builder": "crossbow",
+      "profile": "ranged",
+      "targetLength": 1.45,
+      "idleClip": "IdleAim_24",
+      "assetUrl": "/assets/harthmere/glb/weapons/two_handed_crossbow.glb",
+      "previewUrl": "/assets/harthmere/weapon_previews/two_handed_crossbow.png",
+      "inventoryIconUrl": "/assets/harthmere/weapon_icons/two_handed_crossbow.png",
+      "triangleCount": 2224,
+      "bounds": {
+        "min": [
+          -0.7325782775878906,
+          -0.14706088602542877,
+          -0.6169176697731018
+        ],
+        "max": [
+          0.7465721964836121,
+          0.1828363835811615,
+          0.8978187441825867
+        ]
+      },
+      "bytes": 39024
+    },
+    {
+      "id": "steel_dart",
+      "label": "Dart",
+      "builder": "dart",
+      "profile": "thrown",
+      "targetLength": 0.62,
+      "idleClip": "Ready_24",
+      "assetUrl": "/assets/harthmere/glb/weapons/steel_dart.glb",
+      "previewUrl": "/assets/harthmere/weapon_previews/steel_dart.png",
+      "inventoryIconUrl": "/assets/harthmere/weapon_icons/steel_dart.png",
+      "triangleCount": 942,
+      "bounds": {
+        "min": [
+          -0.20010167360305786,
+          -0.20010167360305786,
+          -0.49020519852638245
+        ],
+        "max": [
+          0.20010167360305786,
+          0.20010167360305786,
+          0.5368077754974365
+        ]
+      },
+      "bytes": 15756
+    },
+    {
+      "id": "golden_dart",
+      "label": "Golden Dart",
+      "builder": "dart",
+      "profile": "thrown",
+      "targetLength": 0.64,
+      "idleClip": "Ready_24",
+      "assetUrl": "/assets/harthmere/glb/weapons/golden_dart.glb",
+      "previewUrl": "/assets/harthmere/weapon_previews/golden_dart.png",
+      "inventoryIconUrl": "/assets/harthmere/weapon_icons/golden_dart.png",
+      "triangleCount": 942,
+      "bounds": {
+        "min": [
+          -0.20010167360305786,
+          -0.20010167360305786,
+          -0.49020519852638245
+        ],
+        "max": [
+          0.20010167360305786,
+          0.20010167360305786,
+          0.5368077754974365
+        ]
+      },
+      "bytes": 14980
+    },
+    {
+      "id": "arcane_staff",
+      "label": "Staff",
+      "builder": "staff",
+      "profile": "magic",
+      "targetLength": 1.72,
+      "idleClip": "Channel_24",
+      "assetUrl": "/assets/harthmere/glb/weapons/arcane_staff.glb",
+      "previewUrl": "/assets/harthmere/weapon_previews/arcane_staff.png",
+      "inventoryIconUrl": "/assets/harthmere/weapon_icons/arcane_staff.png",
+      "triangleCount": 4180,
+      "bounds": {
+        "min": [
+          -0.49208322167396545,
+          -0.3656029999256134,
+          -0.8085235953330994
+        ],
+        "max": [
+          0.39528441429138184,
+          0.3618467450141907,
+          1.372361421585083
+        ]
+      },
+      "bytes": 83328
+    },
+    {
+      "id": "arcane_wand",
+      "label": "Wand",
+      "builder": "wand",
+      "profile": "magic",
+      "targetLength": 0.86,
+      "idleClip": "Channel_24",
+      "assetUrl": "/assets/harthmere/glb/weapons/arcane_wand.glb",
+      "previewUrl": "/assets/harthmere/weapon_previews/arcane_wand.png",
+      "inventoryIconUrl": "/assets/harthmere/weapon_icons/arcane_wand.png",
+      "triangleCount": 2656,
+      "bounds": {
+        "min": [
+          -0.27638208866119385,
+          -0.1532888412475586,
+          -0.39885708689689636
+        ],
+        "max": [
+          0.2069394588470459,
+          0.15104326605796814,
+          0.9047319293022156
+        ]
+      },
+      "bytes": 52744
+    },
+    {
+      "id": "arcane_spellbook_closed",
+      "label": "Spellbook \u2014 Closed",
+      "builder": "book",
+      "profile": "magicBook",
+      "targetLength": 0.76,
+      "idleClip": "OpenRead_24",
+      "assetUrl": "/assets/harthmere/glb/weapons/arcane_spellbook_closed.glb",
+      "previewUrl": "/assets/harthmere/weapon_previews/arcane_spellbook_closed.png",
+      "inventoryIconUrl": "/assets/harthmere/weapon_icons/arcane_spellbook_closed.png",
+      "triangleCount": 1516,
+      "bounds": {
+        "min": [
+          -0.49823006987571716,
+          -0.32048535346984863,
+          -0.6561504602432251
+        ],
+        "max": [
+          0.48050230741500854,
+          0.19405360519886017,
+          0.5387560725212097
+        ]
+      },
+      "bytes": 24948
+    },
+    {
+      "id": "arcane_spellbook_open",
+      "label": "Spellbook \u2014 Open",
+      "builder": "book",
+      "profile": "magicBook",
+      "targetLength": 0.9,
+      "idleClip": "OpenRead_24",
+      "assetUrl": "/assets/harthmere/glb/weapons/arcane_spellbook_open.glb",
+      "previewUrl": "/assets/harthmere/weapon_previews/arcane_spellbook_open.png",
+      "inventoryIconUrl": "/assets/harthmere/weapon_icons/arcane_spellbook_open.png",
+      "triangleCount": 1948,
+      "bounds": {
+        "min": [
+          -0.5698955655097961,
+          -0.11261887848377228,
+          -0.6561504602432251
+        ],
+        "max": [
+          0.5343934297561646,
+          0.14953115582466125,
+          0.4245343804359436
+        ]
+      },
+      "bytes": 31476
+    },
+    {
+      "id": "sealed_scroll",
+      "label": "Scroll",
+      "builder": "scroll",
+      "profile": "magicBook",
+      "targetLength": 0.72,
+      "idleClip": "OpenRead_24",
+      "assetUrl": "/assets/harthmere/glb/weapons/sealed_scroll.glb",
+      "previewUrl": "/assets/harthmere/weapon_previews/sealed_scroll.png",
+      "inventoryIconUrl": "/assets/harthmere/weapon_icons/sealed_scroll.png",
+      "triangleCount": 2192,
+      "bounds": {
+        "min": [
+          -0.39787372946739197,
+          -0.13499005138874054,
+          -0.5726889967918396
+        ],
+        "max": [
+          0.39787372946739197,
+          0.10120394080877304,
+          0.5726889967918396
+        ]
+      },
+      "bytes": 31200
+    },
+    {
+      "id": "crystal_focus",
+      "label": "Crystal Focus",
+      "builder": "focus",
+      "profile": "magic",
+      "targetLength": 0.7,
+      "idleClip": "Channel_24",
+      "assetUrl": "/assets/harthmere/glb/weapons/crystal_focus.glb",
+      "previewUrl": "/assets/harthmere/weapon_previews/crystal_focus.png",
+      "inventoryIconUrl": "/assets/harthmere/weapon_icons/crystal_focus.png",
+      "triangleCount": 1728,
+      "bounds": {
+        "min": [
+          -0.4964302182197571,
+          -0.4415648281574249,
+          -0.4746195077896118
+        ],
+        "max": [
+          0.4943258762359619,
+          0.4517208933830261,
+          0.520283043384552
+        ]
+      },
+      "bytes": 32328
+    },
+    {
+      "id": "star_focus",
+      "label": "Star Focus",
+      "builder": "focus",
+      "profile": "magic",
+      "targetLength": 0.72,
+      "idleClip": "Channel_24",
+      "assetUrl": "/assets/harthmere/glb/weapons/star_focus.glb",
+      "previewUrl": "/assets/harthmere/weapon_previews/star_focus.png",
+      "inventoryIconUrl": "/assets/harthmere/weapon_icons/star_focus.png",
+      "triangleCount": 1204,
+      "bounds": {
+        "min": [
+          -0.6130211353302002,
+          -0.37123262882232666,
+          -0.6268397569656372
+        ],
+        "max": [
+          0.6130211353302002,
+          0.48140808939933777,
+          0.6268397569656372
+        ]
+      },
+      "bytes": 26628
+    },
+    {
+      "id": "snowflake_focus",
+      "label": "Snowflake Focus",
+      "builder": "focus",
+      "profile": "magic",
+      "targetLength": 0.76,
+      "idleClip": "Channel_24",
+      "assetUrl": "/assets/harthmere/glb/weapons/snowflake_focus.glb",
+      "previewUrl": "/assets/harthmere/weapon_previews/snowflake_focus.png",
+      "inventoryIconUrl": "/assets/harthmere/weapon_icons/snowflake_focus.png",
+      "triangleCount": 2204,
+      "bounds": {
+        "min": [
+          -0.5109521746635437,
+          -0.4699438810348511,
+          -0.17314624786376953
+        ],
+        "max": [
+          0.5109521746635437,
+          0.4699885845184326,
+          0.17314624786376953
+        ]
+      },
+      "bytes": 34212
+    },
+    {
+      "id": "smoke_bomb",
+      "label": "Smoke Bomb",
+      "builder": "smoke",
+      "profile": "thrown",
+      "targetLength": 0.58,
+      "idleClip": "Ready_24",
+      "assetUrl": "/assets/harthmere/glb/weapons/smoke_bomb.glb",
+      "previewUrl": "/assets/harthmere/weapon_previews/smoke_bomb.png",
+      "inventoryIconUrl": "/assets/harthmere/weapon_icons/smoke_bomb.png",
+      "triangleCount": 3040,
+      "bounds": {
+        "min": [
+          -0.3678576946258545,
+          -0.3531719744205475,
+          -0.45494344830513
+        ],
+        "max": [
+          0.3678577244281769,
+          0.3531719744205475,
+          0.6408610343933105
+        ]
+      },
+      "bytes": 68020
+    },
+    {
+      "id": "photon_sidearm",
+      "label": "Photon Sidearm",
+      "builder": "energy_weapon",
+      "profile": "ranged",
+      "targetLength": 0.82,
+      "idleClip": "IdleAim_24",
+      "assetUrl": "/assets/harthmere/glb/weapons/photon_sidearm.glb",
+      "previewUrl": "/assets/harthmere/weapon_previews/photon_sidearm.png",
+      "inventoryIconUrl": "/assets/harthmere/weapon_icons/photon_sidearm.png",
+      "triangleCount": 2680,
+      "bounds": {
+        "min": [
+          -0.19583678245544434,
+          -0.25287026166915894,
+          -0.5439627766609192
+        ],
+        "max": [
+          0.20260632038116455,
+          0.13522645831108093,
+          0.7616002559661865
+        ]
+      },
+      "bytes": 44904
+    },
+    {
+      "id": "pulse_carbine",
+      "label": "Pulse Carbine",
+      "builder": "energy_weapon",
+      "profile": "ranged",
+      "targetLength": 1.18,
+      "idleClip": "IdleAim_24",
+      "assetUrl": "/assets/harthmere/glb/weapons/pulse_carbine.glb",
+      "previewUrl": "/assets/harthmere/weapon_previews/pulse_carbine.png",
+      "inventoryIconUrl": "/assets/harthmere/weapon_icons/pulse_carbine.png",
+      "triangleCount": 4592,
+      "bounds": {
+        "min": [
+          -0.29515668749809265,
+          -0.26099491119384766,
+          -0.8262321352958679
+        ],
+        "max": [
+          0.301923930644989,
+          0.21750134229660034,
+          1.0561013221740723
+        ]
+      },
+      "bytes": 65476
+    },
+    {
+      "id": "helix_projector",
+      "label": "Helix Projector",
+      "builder": "energy_weapon",
+      "profile": "ranged",
+      "targetLength": 1.45,
+      "idleClip": "IdleAim_24",
+      "assetUrl": "/assets/harthmere/glb/weapons/helix_projector.glb",
+      "previewUrl": "/assets/harthmere/weapon_previews/helix_projector.png",
+      "inventoryIconUrl": "/assets/harthmere/weapon_icons/helix_projector.png",
+      "triangleCount": 6156,
+      "bounds": {
+        "min": [
+          -0.31984779238700867,
+          -0.2609477937221527,
+          -0.9015019536018372
+        ],
+        "max": [
+          0.3151589035987854,
+          0.24163688719272614,
+          1.172530174255371
+        ]
+      },
+      "bytes": 101976
+    },
+    {
+      "id": "nova_cannon",
+      "label": "Nova Cannon",
+      "builder": "energy_weapon",
+      "profile": "ranged",
+      "targetLength": 1.68,
+      "idleClip": "IdleAim_24",
+      "assetUrl": "/assets/harthmere/glb/weapons/nova_cannon.glb",
+      "previewUrl": "/assets/harthmere/weapon_previews/nova_cannon.png",
+      "inventoryIconUrl": "/assets/harthmere/weapon_icons/nova_cannon.png",
+      "triangleCount": 4788,
+      "bounds": {
+        "min": [
+          -0.37554478645324707,
+          -0.333010733127594,
+          -1.120887041091919
+        ],
+        "max": [
+          0.4320017397403717,
+          0.33238446712493896,
+          1.3458809852600098
+        ]
+      },
+      "bytes": 83224
+    },
+    {
+      "id": "singularity_lance",
+      "label": "Singularity Lance",
+      "builder": "energy_weapon",
+      "profile": "ranged",
+      "targetLength": 1.92,
+      "idleClip": "IdleAim_24",
+      "assetUrl": "/assets/harthmere/glb/weapons/singularity_lance.glb",
+      "previewUrl": "/assets/harthmere/weapon_previews/singularity_lance.png",
+      "inventoryIconUrl": "/assets/harthmere/weapon_icons/singularity_lance.png",
+      "triangleCount": 6428,
+      "bounds": {
+        "min": [
+          -0.3561994731426239,
+          -0.38372713327407837,
+          -1.1739319562911987
+        ],
+        "max": [
+          0.37807026505470276,
+          0.3831614851951599,
+          1.5283708572387695
+        ]
+      },
+      "bytes": 114620
+    },
+    {
+      "id": "round_shield",
+      "label": "Round Shield",
+      "builder": "shield",
+      "profile": "shield",
+      "targetLength": 1.08,
+      "idleClip": "IdleGuard_24",
+      "assetUrl": "/assets/harthmere/glb/weapons/round_shield.glb",
+      "previewUrl": "/assets/harthmere/weapon_previews/round_shield.png",
+      "inventoryIconUrl": "/assets/harthmere/weapon_icons/round_shield.png",
+      "triangleCount": 2920,
+      "bounds": {
+        "min": [
+          -0.59605473279953,
+          -0.2115555703639984,
+          -0.59605473279953
+        ],
+        "max": [
+          0.59605473279953,
+          0.30450934171676636,
+          0.59605473279953
+        ]
+      },
+      "bytes": 54940
+    },
+    {
+      "id": "barbarian_round_shield",
+      "label": "Barbarian Round Shield",
+      "builder": "shield",
+      "profile": "shield",
+      "targetLength": 1.08,
+      "idleClip": "IdleGuard_24",
+      "assetUrl": "/assets/harthmere/glb/weapons/barbarian_round_shield.glb",
+      "previewUrl": "/assets/harthmere/weapon_previews/barbarian_round_shield.png",
+      "inventoryIconUrl": "/assets/harthmere/weapon_icons/barbarian_round_shield.png",
+      "triangleCount": 3560,
+      "bounds": {
+        "min": [
+          -0.59605473279953,
+          -0.2115555703639984,
+          -0.59605473279953
+        ],
+        "max": [
+          0.59605473279953,
+          0.30450934171676636,
+          0.59605473279953
+        ]
+      },
+      "bytes": 69292
+    },
+    {
+      "id": "spiked_shield",
+      "label": "Spiked Shield",
+      "builder": "shield",
+      "profile": "shield",
+      "targetLength": 1.08,
+      "idleClip": "IdleGuard_24",
+      "assetUrl": "/assets/harthmere/glb/weapons/spiked_shield.glb",
+      "previewUrl": "/assets/harthmere/weapon_previews/spiked_shield.png",
+      "inventoryIconUrl": "/assets/harthmere/weapon_icons/spiked_shield.png",
+      "triangleCount": 3624,
+      "bounds": {
+        "min": [
+          -0.59605473279953,
+          -0.40296298265457153,
+          -0.59605473279953
+        ],
+        "max": [
+          0.59605473279953,
+          0.30450934171676636,
+          0.59605473279953
+        ]
+      },
+      "bytes": 66764
+    },
+    {
+      "id": "square_shield",
+      "label": "Square Shield",
+      "builder": "shield",
+      "profile": "shield",
+      "targetLength": 1.08,
+      "idleClip": "IdleGuard_24",
+      "assetUrl": "/assets/harthmere/glb/weapons/square_shield.glb",
+      "previewUrl": "/assets/harthmere/weapon_previews/square_shield.png",
+      "inventoryIconUrl": "/assets/harthmere/weapon_icons/square_shield.png",
+      "triangleCount": 2744,
+      "bounds": {
+        "min": [
+          -0.5310144424438477,
+          -0.2115555703639984,
+          -0.6568008065223694
+        ],
+        "max": [
+          0.5310144424438477,
+          0.30450934171676636,
+          0.6568008065223694
+        ]
+      },
+      "bytes": 45148
+    },
+    {
+      "id": "badge_shield",
+      "label": "Badge Shield",
+      "builder": "shield",
+      "profile": "shield",
+      "targetLength": 1.08,
+      "idleClip": "IdleGuard_24",
+      "assetUrl": "/assets/harthmere/glb/weapons/badge_shield.glb",
+      "previewUrl": "/assets/harthmere/weapon_previews/badge_shield.png",
+      "inventoryIconUrl": "/assets/harthmere/weapon_icons/badge_shield.png",
+      "triangleCount": 3080,
+      "bounds": {
+        "min": [
+          -0.59605473279953,
+          -0.29337912797927856,
+          -0.59605473279953
+        ],
+        "max": [
+          0.59605473279953,
+          0.30450934171676636,
+          0.59605473279953
+        ]
+      },
+      "bytes": 57744
+    },
+    {
+      "id": "colored_round_shield",
+      "label": "Colored Round Shield",
+      "builder": "shield",
+      "profile": "shield",
+      "targetLength": 1.08,
+      "idleClip": "IdleGuard_24",
+      "assetUrl": "/assets/harthmere/glb/weapons/colored_round_shield.glb",
+      "previewUrl": "/assets/harthmere/weapon_previews/colored_round_shield.png",
+      "inventoryIconUrl": "/assets/harthmere/weapon_icons/colored_round_shield.png",
+      "triangleCount": 2920,
+      "bounds": {
+        "min": [
+          -0.59605473279953,
+          -0.2115555703639984,
+          -0.59605473279953
+        ],
+        "max": [
+          0.59605473279953,
+          0.30450934171676636,
+          0.59605473279953
+        ]
+      },
+      "bytes": 54744
+    },
+    {
+      "id": "colored_spiked_shield",
+      "label": "Colored Spiked Shield",
+      "builder": "shield",
+      "profile": "shield",
+      "targetLength": 1.08,
+      "idleClip": "IdleGuard_24",
+      "assetUrl": "/assets/harthmere/glb/weapons/colored_spiked_shield.glb",
+      "previewUrl": "/assets/harthmere/weapon_previews/colored_spiked_shield.png",
+      "inventoryIconUrl": "/assets/harthmere/weapon_icons/colored_spiked_shield.png",
+      "triangleCount": 3624,
+      "bounds": {
+        "min": [
+          -0.59605473279953,
+          -0.40296298265457153,
+          -0.59605473279953
+        ],
+        "max": [
+          0.59605473279953,
+          0.30450934171676636,
+          0.59605473279953
+        ]
+      },
+      "bytes": 66872
+    },
+    {
+      "id": "colored_square_shield",
+      "label": "Colored Square Shield",
+      "builder": "shield",
+      "profile": "shield",
+      "targetLength": 1.08,
+      "idleClip": "IdleGuard_24",
+      "assetUrl": "/assets/harthmere/glb/weapons/colored_square_shield.glb",
+      "previewUrl": "/assets/harthmere/weapon_previews/colored_square_shield.png",
+      "inventoryIconUrl": "/assets/harthmere/weapon_icons/colored_square_shield.png",
+      "triangleCount": 2744,
+      "bounds": {
+        "min": [
+          -0.5310144424438477,
+          -0.2115555703639984,
+          -0.6568008065223694
+        ],
+        "max": [
+          0.5310144424438477,
+          0.30450934171676636,
+          0.6568008065223694
+        ]
+      },
+      "bytes": 44928
+    },
+    {
+      "id": "colored_badge_shield",
+      "label": "Colored Badge Shield",
+      "builder": "shield",
+      "profile": "shield",
+      "targetLength": 1.08,
+      "idleClip": "IdleGuard_24",
+      "assetUrl": "/assets/harthmere/glb/weapons/colored_badge_shield.glb",
+      "previewUrl": "/assets/harthmere/weapon_previews/colored_badge_shield.png",
+      "inventoryIconUrl": "/assets/harthmere/weapon_icons/colored_badge_shield.png",
+      "triangleCount": 3080,
+      "bounds": {
+        "min": [
+          -0.59605473279953,
+          -0.29337912797927856,
+          -0.59605473279953
+        ],
+        "max": [
+          0.59605473279953,
+          0.30450934171676636,
+          0.59605473279953
+        ]
+      },
+      "bytes": 57528
+    }
+  ]
+}

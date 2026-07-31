@@ -50,7 +50,10 @@ describe("harthmere_hud_key_bindings", () => {
   it("maps every configured keyboard code back to the correct action", () => {
     for (const binding of HARTHMERE_HUD_KEY_BINDINGS) {
       assert.deepStrictEqual(harthmereHudBindingForCode(binding.code), binding);
-      assert.deepStrictEqual(harthmereHudBindingForAction(binding.action), binding);
+      assert.deepStrictEqual(
+        harthmereHudBindingForAction(binding.action),
+        binding
+      );
     }
   });
 
@@ -76,24 +79,49 @@ describe("harthmere_hud_key_bindings", () => {
 
   it("opens the correct panel or tab for every HUD action", () => {
     const expectedTransitions = [
-      ["inventory", { panel: undefined, systemsTab: "inventory", focusAction: "inventory" }],
-      ["crafting", { panel: undefined, systemsTab: "world", focusAction: "crafting" }],
+      [
+        "inventory",
+        { panel: undefined, systemsTab: "inventory", focusAction: "inventory" },
+      ],
+      [
+        "crafting",
+        { panel: undefined, systemsTab: "world", focusAction: "crafting" },
+      ],
       ["map", { panel: "map", systemsTab: undefined, focusAction: undefined }],
-      ["quests", { panel: "quests", systemsTab: undefined, focusAction: undefined }],
-      ["tasks", { panel: undefined, systemsTab: "journal", focusAction: "tasks" }],
+      [
+        "quests",
+        { panel: "quests", systemsTab: undefined, focusAction: undefined },
+      ],
+      [
+        "tasks",
+        { panel: undefined, systemsTab: "journal", focusAction: "tasks" },
+      ],
       ["mail", { panel: undefined, systemsTab: "world", focusAction: "mail" }],
-      ["notifications", { panel: undefined, systemsTab: "journal", focusAction: "notifications" }],
-      ["codex", { panel: undefined, systemsTab: "dialogue", focusAction: "codex" }],
-      ["settings", { panel: undefined, systemsTab: "world", focusAction: "settings" }],
+      [
+        "notifications",
+        {
+          panel: undefined,
+          systemsTab: "journal",
+          focusAction: "notifications",
+        },
+      ],
+      [
+        "codex",
+        { panel: undefined, systemsTab: "dialogue", focusAction: "codex" },
+      ],
+      [
+        "settings",
+        { panel: undefined, systemsTab: "world", focusAction: "settings" },
+      ],
     ] as const;
 
     for (const [action, expected] of expectedTransitions) {
       assert.deepStrictEqual(
         reduceHarthmereHudStateForAction(
           { panel: undefined, systemsTab: undefined, focusAction: undefined },
-          action,
+          action
         ),
-        expected,
+        expected
       );
     }
   });
@@ -101,7 +129,7 @@ describe("harthmere_hud_key_bindings", () => {
   it("toggles repeated actions closed but preserves distinct actions that share a tab", () => {
     const openedByTasks = reduceHarthmereHudStateForAction(
       { panel: undefined, systemsTab: undefined, focusAction: undefined },
-      "tasks",
+      "tasks"
     );
     assert.deepStrictEqual(openedByTasks, {
       panel: undefined,
@@ -111,7 +139,7 @@ describe("harthmere_hud_key_bindings", () => {
 
     const retargetedToNotifications = reduceHarthmereHudStateForAction(
       openedByTasks,
-      "notifications",
+      "notifications"
     );
     assert.deepStrictEqual(retargetedToNotifications, {
       panel: undefined,
@@ -121,7 +149,7 @@ describe("harthmere_hud_key_bindings", () => {
 
     const closedByRepeatingNotifications = reduceHarthmereHudStateForAction(
       retargetedToNotifications,
-      "notifications",
+      "notifications"
     );
     assert.deepStrictEqual(closedByRepeatingNotifications, {
       panel: undefined,

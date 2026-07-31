@@ -1,6 +1,10 @@
 /// <reference types="mocha" />
 
-import { Bindings, Input } from "@/client/game/context_managers/input";
+import {
+  Bindings,
+  Input,
+  defaultBindings,
+} from "@/client/game/context_managers/input";
 import assert from "assert";
 
 class FakeEventTarget {
@@ -38,6 +42,7 @@ function fakeKeyboardEvent(
     repeat: options.repeat ?? false,
     ctrlKey: false,
     altKey: false,
+    metaKey: false,
     shiftKey: false,
   };
 }
@@ -64,7 +69,85 @@ function fakeInputSetup() {
   return { canvasTarget, documentTarget, input, windowTarget };
 }
 
+function fakeDefaultInputSetup() {
+  const documentTarget = new FakeEventTarget() as FakeEventTarget & {
+    defaultView: FakeEventTarget;
+  };
+  const windowTarget = new FakeEventTarget();
+  const canvasTarget = new FakeEventTarget() as FakeEventTarget & {
+    ownerDocument: FakeEventTarget & { defaultView: FakeEventTarget };
+  };
+  documentTarget.defaultView = windowTarget;
+  canvasTarget.ownerDocument = documentTarget;
+  const input = new Input(defaultBindings({}));
+  input.attach(canvasTarget as unknown as HTMLElement);
+  return { canvasTarget, documentTarget, input, windowTarget };
+}
+
 describe("Input", () => {
+  it("binds Z to crouch, X to dodge, and C to evade", () => {
+    const { documentTarget, input } = fakeDefaultInputSetup();
+
+    documentTarget.emit("keydown", fakeKeyboardEvent("KeyZ"));
+    assert.equal(input.motion("crouch"), 1);
+    documentTarget.emit("keyup", fakeKeyboardEvent("KeyZ"));
+    assert.equal(input.motion("crouch"), 0);
+
+    documentTarget.emit("keydown", fakeKeyboardEvent("KeyX"));
+    assert.equal(input.action("dodge"), true);
+    assert.equal(input.action("evade"), false);
+    documentTarget.emit("keyup", fakeKeyboardEvent("KeyX"));
+    assert.equal(input.action("dodge"), false);
+
+    documentTarget.emit("keydown", fakeKeyboardEvent("KeyC"));
+    assert.equal(input.action("evade"), true);
+    assert.equal(input.action("dodge"), false);
+    documentTarget.emit("keyup", fakeKeyboardEvent("KeyC"));
+    assert.equal(input.action("evade"), false);
+  });
+
+  it("does not repeat dodge or evade while their key remains held", () => {
+    const { documentTarget, input } = fakeDefaultInputSetup();
+    let dodges = 0;
+    let evades = 0;
+    input.emitter.on("dodge", () => (dodges += 1));
+    input.emitter.on("evade", () => (evades += 1));
+
+    documentTarget.emit("keydown", fakeKeyboardEvent("KeyX"));
+    documentTarget.emit(
+      "keydown",
+      fakeKeyboardEvent("KeyX", undefined, { repeat: true })
+    );
+    documentTarget.emit("keydown", fakeKeyboardEvent("KeyC"));
+    documentTarget.emit(
+      "keydown",
+      fakeKeyboardEvent("KeyC", undefined, { repeat: true })
+    );
+    assert.equal(dodges, 1);
+    assert.equal(evades, 1);
+  });
+
+  it("does not steal modified Z, X, or C browser shortcuts", () => {
+    const { documentTarget, input } = fakeDefaultInputSetup();
+
+    documentTarget.emit("keydown", {
+      ...fakeKeyboardEvent("KeyZ"),
+      metaKey: true,
+    });
+    documentTarget.emit("keydown", {
+      ...fakeKeyboardEvent("KeyX"),
+      ctrlKey: true,
+    });
+    documentTarget.emit("keydown", {
+      ...fakeKeyboardEvent("KeyC"),
+      altKey: true,
+    });
+
+    assert.equal(input.motion("crouch"), 0);
+    assert.equal(input.action("dodge"), false);
+    assert.equal(input.action("evade"), false);
+  });
+
   it("translates the mobile movement joystick into forward motion", () => {
     const { input } = fakeInputSetup();
 
@@ -111,6 +194,39 @@ describe("Input", () => {
     assert.equal(input.motion("forward"), 0);
   });
 
+  it("combines independent synthetic action sources without releasing physical input", () => {
+    const { documentTarget, input } = fakeDefaultInputSetup();
+    let emitted = 0;
+    input.emitter.on("evade", () => (emitted += 1));
+
+    input.setSyntheticAction("evade", "mobile-a", true);
+    input.setSyntheticAction("evade", "mobile-a", true);
+    input.setSyntheticAction("evade", "mobile-b", true);
+    assert.equal(input.action("evade"), true);
+    assert.equal(emitted, 1);
+
+    input.setSyntheticAction("evade", "mobile-a", false);
+    assert.equal(input.action("evade"), true);
+    input.setSyntheticAction("evade", "mobile-b", false);
+    assert.equal(input.action("evade"), false);
+
+    documentTarget.emit("keydown", fakeKeyboardEvent("KeyC"));
+    input.setSyntheticAction("evade", "mobile-a", true);
+    input.setSyntheticAction("evade", "mobile-a", false);
+    assert.equal(input.action("evade"), true);
+    documentTarget.emit("keyup", fakeKeyboardEvent("KeyC"));
+    assert.equal(input.action("evade"), false);
+  });
+
+  it("pulses a synthetic action and releases it after the requested duration", async () => {
+    const { input } = fakeDefaultInputSetup();
+
+    const pulse = input.pulseAction("evade", 1, "mobile-joystick");
+    assert.equal(input.action("evade"), true);
+    await pulse;
+    assert.equal(input.action("evade"), false);
+  });
+
   it("clears synthetic motion when input state is detached", () => {
     const { input } = fakeInputSetup();
 
@@ -118,6 +234,15 @@ describe("Input", () => {
     input.detach();
 
     assert.equal(input.motion("forward"), 0);
+  });
+
+  it("clears synthetic actions when input state is detached", () => {
+    const { input } = fakeDefaultInputSetup();
+
+    input.setSyntheticAction("evade", "mobile-joystick", true);
+    input.detach();
+
+    assert.equal(input.action("evade"), false);
   });
 
   it("captures keyboard motion from the owner document while attached to a canvas", () => {

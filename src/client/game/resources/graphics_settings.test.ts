@@ -2,10 +2,16 @@
 import {
   applyDrawDistanceFloors,
   applyMinimumDrawDistance,
+  defaultDynamicDrawDistance,
 } from "@/client/game/resources/graphics_settings";
 import assert from "assert";
 
 describe("graphics settings draw distance floors", () => {
+  it("starts low-memory/mobile clients at 64m without changing desktop's 96m default", () => {
+    assert.equal(defaultDynamicDrawDistance(true), 64);
+    assert.equal(defaultDynamicDrawDistance(false), 96);
+  });
+
   it("keeps dynamic draw distance at or above the configured minimum", () => {
     assert.equal(applyMinimumDrawDistance(64, 128), 128);
     assert.equal(applyMinimumDrawDistance(160, 128), 160);
@@ -19,21 +25,21 @@ describe("graphics settings draw distance floors", () => {
   it("applies the Harthmere dynamic baseline only to dynamic draw distance", () => {
     assert.equal(
       applyDrawDistanceFloors(64, {
-        dynamicMinDrawDistance: 128,
+        dynamicMinDrawDistance: 192,
         isDynamicDrawDistance: true,
       }),
-      128
+      192
     );
     assert.equal(
       applyDrawDistanceFloors(256, {
-        dynamicMinDrawDistance: 128,
+        dynamicMinDrawDistance: 192,
         isDynamicDrawDistance: true,
       }),
       256
     );
     assert.equal(
       applyDrawDistanceFloors(96, {
-        dynamicMinDrawDistance: 128,
+        dynamicMinDrawDistance: 192,
         isDynamicDrawDistance: false,
       }),
       96

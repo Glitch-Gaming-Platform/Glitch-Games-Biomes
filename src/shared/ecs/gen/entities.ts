@@ -1,5 +1,5 @@
 // GENERATED: This file is generated from entities.ts.j2. Do not modify directly.
-// Content Hash: 5365bb86607100c06bac21f29346ffe5
+// Content Hash: c27efc64d47b3c50a9382094dc20395a
 
 import * as c from "@/shared/ecs/gen/components";
 import { Delta } from "@/shared/ecs/gen/delta";
@@ -121,6 +121,7 @@ export interface Entity {
   harthmere_ecs_transaction_ledger?: c.HarthmereEcsTransactionLedger;
   harthmere_material_storage?: c.HarthmereMaterialStorage;
   npc_combat_state?: c.NpcCombatState;
+  movement_state?: c.MovementState;
 }
 
 export interface ReadonlyEntity {
@@ -233,11 +234,10 @@ export interface ReadonlyEntity {
   readonly harthmere_ecs_transaction_ledger?: c.ReadonlyHarthmereEcsTransactionLedger;
   readonly harthmere_material_storage?: c.ReadonlyHarthmereMaterialStorage;
   readonly npc_combat_state?: c.ReadonlyNpcCombatState;
+  readonly movement_state?: c.ReadonlyMovementState;
 }
 
-export type AsDelta<T> = { -readonly [P in keyof T]: T[P] | null } & {
-  readonly id: BiomesId;
-};
+export type AsDelta<T> = { -readonly [P in keyof T]: T[P] | null } & { readonly id: BiomesId };
 
 export type ComponentName = Exclude<keyof Entity, "id"> & string;
 
@@ -353,6 +353,7 @@ export interface SuperEntity {
   harthmere_ecs_transaction_ledger: c.HarthmereEcsTransactionLedger;
   harthmere_material_storage: c.HarthmereMaterialStorage;
   npc_combat_state: c.NpcCombatState;
+  movement_state: c.MovementState;
 }
 
 export interface ReadonlySuperEntity {
@@ -465,15 +466,13 @@ export interface ReadonlySuperEntity {
   readonly harthmere_ecs_transaction_ledger: c.ReadonlyHarthmereEcsTransactionLedger;
   readonly harthmere_material_storage: c.ReadonlyHarthmereMaterialStorage;
   readonly npc_combat_state: c.ReadonlyNpcCombatState;
+  readonly movement_state: c.ReadonlyMovementState;
 }
 
 export type EntityWith<C extends keyof Entity> = Pick<SuperEntity, C | "id"> &
   Omit<Entity, C | "id">;
 
-export type ReadonlyEntityWith<C extends keyof ReadonlyEntity> = Pick<
-  ReadonlySuperEntity,
-  C | "id"
-> &
+export type ReadonlyEntityWith<C extends keyof ReadonlyEntity> = Pick<ReadonlySuperEntity, C | "id"> &
   Omit<ReadonlyEntity, C | "id">;
 
 export class Entity {
@@ -499,7 +498,7 @@ export class Entity {
     }
     return true;
   }
-}
+};
 
 export interface Player extends Entity {
   readonly label: c.Label;
@@ -525,8 +524,7 @@ export interface Player extends Entity {
 
 export class Player {
   static from(entity?: ReadonlyEntity): Player | undefined {
-    return Entity.has(
-      entity,
+    return Entity.has(entity,
       "label",
       "appearance_component",
       "position",
@@ -545,10 +543,8 @@ export class Player {
       "health",
       "buffs_component",
       "harthmere_ecs_transaction_ledger",
-      "harthmere_material_storage"
-    )
-      ? (entity as Player)
-      : undefined;
+      "harthmere_material_storage",
+    ) ? entity as Player : undefined;
   }
 }
 export interface Npc extends Entity {
@@ -563,21 +559,19 @@ export interface Npc extends Entity {
 
 export class Npc {
   static from(entity?: ReadonlyEntity): Npc | undefined {
-    return Entity.has(
-      entity,
+    return Entity.has(entity,
       "npc_metadata",
       "npc_state",
       "orientation",
       "position",
       "rigid_body",
       "size",
-      "health"
-    )
-      ? (entity as Npc)
-      : undefined;
+      "health",
+    ) ? entity as Npc : undefined;
   }
 }
-export interface NpcSpawnEvent extends Entity {}
+export interface NpcSpawnEvent extends Entity {
+}
 
 export class NpcSpawnEvent {
   static from(entity?: ReadonlyEntity): NpcSpawnEvent | undefined {
@@ -593,15 +587,12 @@ export interface Placeable extends Entity {
 
 export class Placeable {
   static from(entity?: ReadonlyEntity): Placeable | undefined {
-    return Entity.has(
-      entity,
+    return Entity.has(entity,
       "position",
       "orientation",
       "placeable_component",
-      "picture_frame_contents"
-    )
-      ? (entity as Placeable)
-      : undefined;
+      "picture_frame_contents",
+    ) ? entity as Placeable : undefined;
   }
 }
 export interface Container extends Entity {
@@ -613,15 +604,12 @@ export interface Container extends Entity {
 
 export class Container {
   static from(entity?: ReadonlyEntity): Container | undefined {
-    return Entity.has(
-      entity,
+    return Entity.has(entity,
       "position",
       "orientation",
       "placeable_component",
-      "container_inventory"
-    )
-      ? (entity as Container)
-      : undefined;
+      "container_inventory",
+    ) ? entity as Container : undefined;
   }
 }
 export interface PricedContainer extends Entity {
@@ -633,15 +621,12 @@ export interface PricedContainer extends Entity {
 
 export class PricedContainer {
   static from(entity?: ReadonlyEntity): PricedContainer | undefined {
-    return Entity.has(
-      entity,
+    return Entity.has(entity,
       "position",
       "orientation",
       "placeable_component",
-      "priced_container_inventory"
-    )
-      ? (entity as PricedContainer)
-      : undefined;
+      "priced_container_inventory",
+    ) ? entity as PricedContainer : undefined;
   }
 }
 export interface TerrainShard extends Entity {
@@ -663,8 +648,7 @@ export interface TerrainShard extends Entity {
 
 export class TerrainShard {
   static from(entity?: ReadonlyEntity): TerrainShard | undefined {
-    return Entity.has(
-      entity,
+    return Entity.has(entity,
       "box",
       "shard_seed",
       "shard_diff",
@@ -678,10 +662,8 @@ export class TerrainShard {
       "shard_growth",
       "shard_dye",
       "shard_moisture",
-      "shard_muck"
-    )
-      ? (entity as TerrainShard)
-      : undefined;
+      "shard_muck",
+    ) ? entity as TerrainShard : undefined;
   }
 }
 export interface EnvironmentGroup extends Entity {
@@ -693,9 +675,12 @@ export interface EnvironmentGroup extends Entity {
 
 export class EnvironmentGroup {
   static from(entity?: ReadonlyEntity): EnvironmentGroup | undefined {
-    return Entity.has(entity, "box", "group_component", "label", "warpable")
-      ? (entity as EnvironmentGroup)
-      : undefined;
+    return Entity.has(entity,
+      "box",
+      "group_component",
+      "label",
+      "warpable",
+    ) ? entity as EnvironmentGroup : undefined;
   }
 }
 export interface Blueprint extends Entity {
@@ -706,9 +691,11 @@ export interface Blueprint extends Entity {
 
 export class Blueprint {
   static from(entity?: ReadonlyEntity): Blueprint | undefined {
-    return Entity.has(entity, "position", "orientation", "blueprint_component")
-      ? (entity as Blueprint)
-      : undefined;
+    return Entity.has(entity,
+      "position",
+      "orientation",
+      "blueprint_component",
+    ) ? entity as Blueprint : undefined;
   }
 }
 export interface CraftingStation extends Entity {
@@ -720,15 +707,12 @@ export interface CraftingStation extends Entity {
 
 export class CraftingStation {
   static from(entity?: ReadonlyEntity): CraftingStation | undefined {
-    return Entity.has(
-      entity,
+    return Entity.has(entity,
       "position",
       "orientation",
       "placeable_component",
-      "crafting_station_component"
-    )
-      ? (entity as CraftingStation)
-      : undefined;
+      "crafting_station_component",
+    ) ? entity as CraftingStation : undefined;
   }
 }
 export interface Portal extends Entity {
@@ -737,7 +721,9 @@ export interface Portal extends Entity {
 
 export class Portal {
   static from(entity?: ReadonlyEntity): Portal | undefined {
-    return Entity.has(entity, "warpable") ? (entity as Portal) : undefined;
+    return Entity.has(entity,
+      "warpable",
+    ) ? entity as Portal : undefined;
   }
 }
 export interface GroupPreview extends Entity {
@@ -749,15 +735,12 @@ export interface GroupPreview extends Entity {
 
 export class GroupPreview {
   static from(entity?: ReadonlyEntity): GroupPreview | undefined {
-    return Entity.has(
-      entity,
+    return Entity.has(entity,
       "box",
       "group_component",
       "expires",
-      "group_preview_component"
-    )
-      ? (entity as GroupPreview)
-      : undefined;
+      "group_preview_component",
+    ) ? entity as GroupPreview : undefined;
   }
 }
 export interface Deed extends Entity {
@@ -769,9 +752,12 @@ export interface Deed extends Entity {
 
 export class Deed {
   static from(entity?: ReadonlyEntity): Deed | undefined {
-    return Entity.has(entity, "label", "box", "acl_component", "deed_component")
-      ? (entity as Deed)
-      : undefined;
+    return Entity.has(entity,
+      "label",
+      "box",
+      "acl_component",
+      "deed_component",
+    ) ? entity as Deed : undefined;
   }
 }
 export interface FarmingPlant extends Entity {
@@ -781,9 +767,10 @@ export interface FarmingPlant extends Entity {
 
 export class FarmingPlant {
   static from(entity?: ReadonlyEntity): FarmingPlant | undefined {
-    return Entity.has(entity, "position", "farming_plant_component")
-      ? (entity as FarmingPlant)
-      : undefined;
+    return Entity.has(entity,
+      "position",
+      "farming_plant_component",
+    ) ? entity as FarmingPlant : undefined;
   }
 }
 export interface Robot extends Entity {
@@ -792,9 +779,9 @@ export interface Robot extends Entity {
 
 export class Robot {
   static from(entity?: ReadonlyEntity): Robot | undefined {
-    return Entity.has(entity, "robot_component")
-      ? (entity as Robot)
-      : undefined;
+    return Entity.has(entity,
+      "robot_component",
+    ) ? entity as Robot : undefined;
   }
 }
 
@@ -911,16 +898,15 @@ export const RESOURCE_PATH_TO_ENTITY_PROP = new Map<
   ["/ecs/c/idle", "idle"],
   ["/ecs/c/voice", "voice"],
   ["/ecs/c/gift_giver", "gift_giver"],
-  [
-    "/ecs/c/harthmere_ecs_transaction_ledger",
-    "harthmere_ecs_transaction_ledger",
-  ],
+  ["/ecs/c/harthmere_ecs_transaction_ledger", "harthmere_ecs_transaction_ledger"],
   ["/ecs/c/harthmere_material_storage", "harthmere_material_storage"],
   ["/ecs/c/npc_combat_state", "npc_combat_state"],
+  ["/ecs/c/movement_state", "movement_state"],
 ]);
 
 export const ENTITY_PROP_TO_RESOURCE_PATH: {
-  [key in keyof Entity]: keyof (c.ComponentResourcePaths & EntityResourcePaths);
+  [key in keyof Entity]: keyof (c.ComponentResourcePaths &
+    EntityResourcePaths);
 } = {
   id: "/ecs/entity",
   iced: "/ecs/c/iced",
@@ -1031,6 +1017,7 @@ export const ENTITY_PROP_TO_RESOURCE_PATH: {
   harthmere_ecs_transaction_ledger: "/ecs/c/harthmere_ecs_transaction_ledger",
   harthmere_material_storage: "/ecs/c/harthmere_material_storage",
   npc_combat_state: "/ecs/c/npc_combat_state",
+  movement_state: "/ecs/c/movement_state",
 };
 
 export const COMPONENT_PROP_NAME_TO_ID = new Map<ComponentName, number>([
@@ -1142,6 +1129,7 @@ export const COMPONENT_PROP_NAME_TO_ID = new Map<ComponentName, number>([
   ["harthmere_ecs_transaction_ledger", 154],
   ["harthmere_material_storage", 155],
   ["npc_combat_state", 156],
+  ["movement_state", 157],
 ]);
 
 export const COMPONENT_ID_TO_PROP_NAME: ComponentName[] = [];
@@ -1253,3 +1241,4 @@ COMPONENT_ID_TO_PROP_NAME[153] = "gift_giver";
 COMPONENT_ID_TO_PROP_NAME[154] = "harthmere_ecs_transaction_ledger";
 COMPONENT_ID_TO_PROP_NAME[155] = "harthmere_material_storage";
 COMPONENT_ID_TO_PROP_NAME[156] = "npc_combat_state";
+COMPONENT_ID_TO_PROP_NAME[157] = "movement_state";

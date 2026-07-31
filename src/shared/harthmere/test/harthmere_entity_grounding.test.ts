@@ -42,12 +42,21 @@ describe("harthmere entity grounding: findGroundFeetY", () => {
   it("EDGE: a muck mucker stamped at the wrong Grove Y=70 still lands on wilds ground (54)", () => {
     // The exact regression: muckers were stamped at Grove height but live in the
     // wilds. Probing real terrain bridges the ~16m seam without any constant.
-    assert.equal(findHarthmereGroundFeetY(FLAT_WILDS, 512, -152, { hintY: 70 }), 54);
+    assert.equal(
+      findHarthmereGroundFeetY(FLAT_WILDS, 512, -152, { hintY: 70 }),
+      54
+    );
   });
 
   it("EDGE: a Grove NPC at Harthmere height lands on the raised courtyard (70)", () => {
-    assert.equal(findHarthmereGroundFeetY(FLAT_GROVE, 486, -209, { hintY: 54 }), 70);
-    assert.equal(findHarthmereGroundFeetY(FLAT_GROVE, 486, -209, { hintY: 70 }), 70);
+    assert.equal(
+      findHarthmereGroundFeetY(FLAT_GROVE, 486, -209, { hintY: 54 }),
+      70
+    );
+    assert.equal(
+      findHarthmereGroundFeetY(FLAT_GROVE, 486, -209, { hintY: 70 }),
+      70
+    );
   });
 
   it("HILLY: feet track the real surface across a steep slope (flat Y would float/bury)", () => {
@@ -84,7 +93,10 @@ describe("harthmere entity grounding: findGroundFeetY", () => {
 
   it("returns undefined for an ungenerated/empty column", () => {
     const empty: HarthmereSolidSampler = () => false;
-    assert.equal(findHarthmereGroundFeetY(empty, 0, 0, { hintY: 60 }), undefined);
+    assert.equal(
+      findHarthmereGroundFeetY(empty, 0, 0, { hintY: 60 }),
+      undefined
+    );
   });
 
   it("respects the default upward budget at the seam (Grove hint over wilds)", () => {
@@ -117,12 +129,18 @@ describe("harthmere entity grounding: CAVES", () => {
   it("REGRESSION: requireOpenSky lands on the surface, never the cave floor", () => {
     // Hint inside the cave pocket.
     assert.equal(
-      findHarthmereGroundFeetY(caveColumn, 0, 0, { hintY: 42, requireOpenSky: true }),
+      findHarthmereGroundFeetY(caveColumn, 0, 0, {
+        hintY: 42,
+        requireOpenSky: true,
+      }),
       70
     );
     // Hint right at the cave floor.
     assert.equal(
-      findHarthmereGroundFeetY(caveColumn, 0, 0, { hintY: 40, requireOpenSky: true }),
+      findHarthmereGroundFeetY(caveColumn, 0, 0, {
+        hintY: 40,
+        requireOpenSky: true,
+      }),
       70
     );
   });
@@ -130,7 +148,10 @@ describe("harthmere entity grounding: CAVES", () => {
   it("shows the bug requireOpenSky fixes: nearest-mode would pick the cave floor", () => {
     // Cave floor: feet 40 (solid 39, air 40/41). Demonstrates why open-sky matters.
     assert.equal(
-      findHarthmereGroundFeetY(caveColumn, 0, 0, { hintY: 42, requireOpenSky: false }),
+      findHarthmereGroundFeetY(caveColumn, 0, 0, {
+        hintY: 42,
+        requireOpenSky: false,
+      }),
       40
     );
   });
@@ -140,7 +161,10 @@ describe("harthmere entity grounding: CAVES", () => {
     // far below and never reached.
     assert.equal(findHarthmereGroundFeetY(caveColumn, 0, 0, { hintY: 80 }), 70);
     assert.equal(
-      findHarthmereGroundFeetY(caveColumn, 0, 0, { hintY: 80, requireOpenSky: true }),
+      findHarthmereGroundFeetY(caveColumn, 0, 0, {
+        hintY: 80,
+        requireOpenSky: true,
+      }),
       70
     );
   });
@@ -158,7 +182,10 @@ describe("harthmere entity grounding: BUILDINGS (indoor floors)", () => {
   it("nearest-mode keeps an owner on the building FLOOR (not the roof)", () => {
     // Floor feet = 54 (solid 53, air 54/55). This is why owners use requireOpenSky=false.
     assert.equal(
-      findHarthmereGroundFeetY(buildingColumn, 0, 0, { hintY: 54, requireOpenSky: false }),
+      findHarthmereGroundFeetY(buildingColumn, 0, 0, {
+        hintY: 54,
+        requireOpenSky: false,
+      }),
       54
     );
   });
@@ -167,7 +194,10 @@ describe("harthmere entity grounding: BUILDINGS (indoor floors)", () => {
     // The floor has a roof within clearance (not open sky); the roof-top is open
     // sky. So outdoor cave-safe mode is wrong for roofed interiors -> owners opt out.
     assert.equal(
-      findHarthmereGroundFeetY(buildingColumn, 0, 0, { hintY: 54, requireOpenSky: true }),
+      findHarthmereGroundFeetY(buildingColumn, 0, 0, {
+        hintY: 54,
+        requireOpenSky: true,
+      }),
       61
     );
   });

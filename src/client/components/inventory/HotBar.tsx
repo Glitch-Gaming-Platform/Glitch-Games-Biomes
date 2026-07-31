@@ -289,7 +289,7 @@ export const HotBar: React.FunctionComponent<{}> = ({}) => {
       }
 
       switch (lk) {
-        case "KeyX":
+        case "Delete":
           if (selection.kind === "camera") {
             exitCameraMode(clientContext);
           } else {

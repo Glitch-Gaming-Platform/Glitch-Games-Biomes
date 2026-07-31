@@ -10,6 +10,15 @@ import { containsAABB, growAABB } from "@/shared/math/linear";
 import type { AABB, ReadonlyAABB } from "@/shared/math/types";
 
 export const PLAYER_SHARD_RECOVERY_DELAY_MS = 8_000;
+export type PlayerShardMeshLoadScope = "local" | "nearby";
+
+export function playerShardMeshLoadScope(lowMemory: boolean) {
+  return lowMemory ? "local" : "nearby";
+}
+
+function playerShardMeshGrow(scope: PlayerShardMeshLoadScope) {
+  return scope === "nearby" ? SHARD_DIM : undefined;
+}
 
 export function shouldRequestPlayerShardRecovery(input: {
   missingSince?: number;
@@ -111,7 +120,10 @@ export function allPlayerShardsLoaded(resources: ClientResources) {
   return numShards > 0;
 }
 
-export function allPlayerShardsMeshed(resources: ClientResources) {
+export function allPlayerShardsMeshed(
+  resources: ClientResources,
+  scope: PlayerShardMeshLoadScope = "nearby"
+) {
   const player = resources.get("/scene/local_player");
   const [x, y, z] = player.player.position;
   const supportingShard = voxelShard(x, y - 1, z);
@@ -120,7 +132,10 @@ export function allPlayerShardsMeshed(resources: ClientResources) {
   }
 
   let numShards = 0;
-  for (const shard of nearbyPlayerShards(resources, SHARD_DIM)) {
+  for (const shard of nearbyPlayerShards(
+    resources,
+    playerShardMeshGrow(scope)
+  )) {
     // Do not block startup on absent neighboring shards. This is especially
     // important above the flat Harthmere extension, where the old all-shards
     // gate waited forever for an intentionally empty vertical shard.
@@ -138,9 +153,12 @@ export function allPlayerShardsMeshed(resources: ClientResources) {
   return numShards > 0;
 }
 
-export async function triggerPlayerShardsMesh(resources: ClientResources) {
+export async function triggerPlayerShardsMesh(
+  resources: ClientResources,
+  scope: PlayerShardMeshLoadScope = "nearby"
+) {
   await Promise.all(
-    nearbyPlayerShards(resources, SHARD_DIM)
+    nearbyPlayerShards(resources, playerShardMeshGrow(scope))
       .filter((shard) => resources.get("/ecs/terrain", shard) !== undefined)
       .map((shard) => resources.get("/terrain/combined_mesh", shard))
   );

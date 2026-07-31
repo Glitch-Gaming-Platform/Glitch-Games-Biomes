@@ -178,7 +178,7 @@ describe("live entity helper quest marker browser flow", () => {
       );
       assert.equal(
         await page.locator("body").getAttribute("data-position"),
-        "1844,53,-506"
+        "232,32,-506"
       );
 
       await page.getByRole("button", { name: "Accept Boss Quest" }).click();

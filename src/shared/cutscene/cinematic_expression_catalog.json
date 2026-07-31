@@ -1,0 +1,641 @@
+{
+  "sadness": {
+    "clip": "CinematicSad",
+    "motion": "sadness",
+    "face": "sad",
+    "playback": "once",
+    "durationSeconds": 2.4,
+    "interaction": "solo",
+    "fallbacks": ["Sick", "Idle"]
+  },
+  "depression": {
+    "clip": "CinematicDepressed",
+    "motion": "depression",
+    "face": "sad",
+    "playback": "loop",
+    "durationSeconds": 3.2,
+    "interaction": "solo",
+    "fallbacks": ["Sit", "Idle"]
+  },
+  "crying": {
+    "clip": "CinematicCry",
+    "motion": "crying",
+    "face": "crying",
+    "playback": "loop",
+    "durationSeconds": 3.0,
+    "interaction": "solo",
+    "fallbacks": ["Sick", "Idle"]
+  },
+  "shame": {
+    "clip": "CinematicAshamed",
+    "motion": "shame",
+    "face": "ashamed",
+    "playback": "hold",
+    "durationSeconds": 2.5,
+    "interaction": "solo",
+    "fallbacks": ["Sick", "Idle"]
+  },
+  "fear": {
+    "clip": "CinematicFear",
+    "motion": "fear",
+    "face": "afraid",
+    "playback": "once",
+    "durationSeconds": 1.8,
+    "interaction": "solo",
+    "fallbacks": ["HitReact", "Idle"]
+  },
+  "terror": {
+    "clip": "CinematicTerror",
+    "motion": "terror",
+    "face": "terrified",
+    "playback": "loop",
+    "durationSeconds": 2.4,
+    "interaction": "solo",
+    "fallbacks": ["HitReact", "Idle"]
+  },
+  "cowering": {
+    "clip": "CinematicCower",
+    "motion": "cowering",
+    "face": "terrified",
+    "playback": "hold",
+    "durationSeconds": 3.0,
+    "interaction": "solo",
+    "fallbacks": ["CrouchIdle", "Idle"]
+  },
+  "nervousness": {
+    "clip": "CinematicNervous",
+    "motion": "nervousness",
+    "face": "afraid",
+    "playback": "loop",
+    "durationSeconds": 2.4,
+    "interaction": "solo",
+    "fallbacks": ["Idle"]
+  },
+  "surprise": {
+    "clip": "CinematicSurprise",
+    "motion": "surprise",
+    "face": "surprised",
+    "playback": "once",
+    "durationSeconds": 1.4,
+    "interaction": "solo",
+    "fallbacks": ["HitReact", "Idle"]
+  },
+  "shock": {
+    "clip": "CinematicShock",
+    "motion": "shock",
+    "face": "surprised",
+    "playback": "once",
+    "durationSeconds": 1.6,
+    "interaction": "solo",
+    "fallbacks": ["HitReact", "Idle"]
+  },
+  "recoil": {
+    "clip": "CinematicRecoil",
+    "motion": "recoil",
+    "face": "afraid",
+    "playback": "once",
+    "durationSeconds": 1.2,
+    "interaction": "targeted",
+    "fallbacks": ["HitReact", "Stagger", "Idle"]
+  },
+  "curiosity": {
+    "clip": "CinematicCurious",
+    "motion": "curiosity",
+    "face": "thinking",
+    "playback": "once",
+    "durationSeconds": 2.0,
+    "interaction": "targeted",
+    "fallbacks": ["Point", "Idle"]
+  },
+  "thinking": {
+    "clip": "CinematicThink",
+    "motion": "thinking",
+    "face": "thinking",
+    "playback": "loop",
+    "durationSeconds": 2.8,
+    "interaction": "solo",
+    "fallbacks": ["Idle"]
+  },
+  "confusion": {
+    "clip": "CinematicConfused",
+    "motion": "confusion",
+    "face": "confused",
+    "playback": "once",
+    "durationSeconds": 2.0,
+    "interaction": "solo",
+    "fallbacks": ["Idle"]
+  },
+  "uncertainty": {
+    "clip": "CinematicUnsure",
+    "motion": "uncertainty",
+    "face": "suspicious",
+    "playback": "loop",
+    "durationSeconds": 2.5,
+    "interaction": "solo",
+    "fallbacks": ["Idle"]
+  },
+  "embarrassment": {
+    "clip": "CinematicEmbarrassed",
+    "motion": "embarrassment",
+    "face": "embarrassed",
+    "playback": "once",
+    "durationSeconds": 2.2,
+    "interaction": "solo",
+    "fallbacks": ["Idle"]
+  },
+  "shyness": {
+    "clip": "CinematicShy",
+    "motion": "shyness",
+    "face": "embarrassed",
+    "playback": "loop",
+    "durationSeconds": 2.6,
+    "interaction": "solo",
+    "fallbacks": ["Idle"]
+  },
+  "boredom": {
+    "clip": "CinematicBored",
+    "motion": "boredom",
+    "face": "bored",
+    "playback": "loop",
+    "durationSeconds": 3.0,
+    "interaction": "solo",
+    "fallbacks": ["Idle"]
+  },
+  "impatience": {
+    "clip": "CinematicImpatient",
+    "motion": "impatience",
+    "face": "annoyed",
+    "playback": "loop",
+    "durationSeconds": 2.4,
+    "interaction": "solo",
+    "fallbacks": ["Idle"]
+  },
+  "annoyance": {
+    "clip": "CinematicAnnoyed",
+    "motion": "annoyance",
+    "face": "annoyed",
+    "playback": "loop",
+    "durationSeconds": 2.2,
+    "interaction": "solo",
+    "fallbacks": ["Idle"]
+  },
+  "frustration": {
+    "clip": "CinematicFrustrated",
+    "motion": "frustration",
+    "face": "angry",
+    "playback": "once",
+    "durationSeconds": 1.8,
+    "interaction": "solo",
+    "fallbacks": ["Attack", "Idle"]
+  },
+  "facepalm": {
+    "clip": "CinematicFacepalm",
+    "motion": "facepalm",
+    "face": "annoyed",
+    "playback": "hold",
+    "durationSeconds": 2.2,
+    "interaction": "solo",
+    "fallbacks": ["Idle"]
+  },
+  "anger": {
+    "clip": "CinematicAngry",
+    "motion": "anger",
+    "face": "angry",
+    "playback": "loop",
+    "durationSeconds": 2.2,
+    "interaction": "solo",
+    "fallbacks": ["Attack", "Idle"]
+  },
+  "fury": {
+    "clip": "CinematicFurious",
+    "motion": "fury",
+    "face": "furious",
+    "playback": "once",
+    "durationSeconds": 2.0,
+    "interaction": "solo",
+    "fallbacks": ["HeavyAttack", "Attack", "Idle"]
+  },
+  "threatening": {
+    "clip": "CinematicThreaten",
+    "motion": "threatening",
+    "face": "angry",
+    "playback": "hold",
+    "durationSeconds": 2.6,
+    "interaction": "targeted",
+    "fallbacks": ["Point", "Attack", "Idle"]
+  },
+  "determined": {
+    "clip": "CinematicDetermined",
+    "motion": "determined",
+    "face": "determined",
+    "playback": "hold",
+    "durationSeconds": 2.5,
+    "interaction": "solo",
+    "fallbacks": ["Idle"]
+  },
+  "ready": {
+    "clip": "CinematicReady",
+    "motion": "ready",
+    "face": "determined",
+    "playback": "loop",
+    "durationSeconds": 2.5,
+    "interaction": "stance",
+    "fallbacks": ["GuardPatrolIdle", "Idle"]
+  },
+  "tiredness": {
+    "clip": "CinematicTired",
+    "motion": "tiredness",
+    "face": "tired",
+    "playback": "loop",
+    "durationSeconds": 2.8,
+    "interaction": "solo",
+    "fallbacks": ["Sick", "Idle"]
+  },
+  "exhaustion": {
+    "clip": "CinematicExhausted",
+    "motion": "exhaustion",
+    "face": "tired",
+    "playback": "hold",
+    "durationSeconds": 3.0,
+    "interaction": "solo",
+    "fallbacks": ["Sick", "Idle"]
+  },
+  "yawning": {
+    "clip": "CinematicYawn",
+    "motion": "yawning",
+    "face": "tired",
+    "playback": "once",
+    "durationSeconds": 2.0,
+    "interaction": "solo",
+    "fallbacks": ["Idle"]
+  },
+  "stretching": {
+    "clip": "CinematicStretch",
+    "motion": "stretching",
+    "face": "neutral",
+    "playback": "once",
+    "durationSeconds": 2.2,
+    "interaction": "solo",
+    "fallbacks": ["Idle"]
+  },
+  "injury": {
+    "clip": "CinematicInjured",
+    "motion": "injury",
+    "face": "hurt",
+    "playback": "hold",
+    "durationSeconds": 2.8,
+    "interaction": "solo",
+    "fallbacks": ["HitReact", "Sick", "Idle"]
+  },
+  "limping": {
+    "clip": "CinematicLimp",
+    "motion": "limping",
+    "face": "hurt",
+    "playback": "loop",
+    "durationSeconds": 2.0,
+    "interaction": "locomotion",
+    "fallbacks": ["Walking", "Walk", "Idle"]
+  },
+  "dizziness": {
+    "clip": "CinematicDizzy",
+    "motion": "dizziness",
+    "face": "dizzy",
+    "playback": "loop",
+    "durationSeconds": 2.2,
+    "interaction": "solo",
+    "fallbacks": ["Sick", "Idle"]
+  },
+  "shivering": {
+    "clip": "CinematicShiver",
+    "motion": "shivering",
+    "face": "cold",
+    "playback": "loop",
+    "durationSeconds": 2.0,
+    "interaction": "solo",
+    "fallbacks": ["Idle"]
+  },
+  "relief": {
+    "clip": "CinematicRelieved",
+    "motion": "relief",
+    "face": "relieved",
+    "playback": "once",
+    "durationSeconds": 2.0,
+    "interaction": "solo",
+    "fallbacks": ["Idle"]
+  },
+  "disgust": {
+    "clip": "CinematicDisgust",
+    "motion": "disgust",
+    "face": "disgusted",
+    "playback": "once",
+    "durationSeconds": 1.8,
+    "interaction": "targeted",
+    "fallbacks": ["Sick", "Idle"]
+  },
+  "love": {
+    "clip": "CinematicLove",
+    "motion": "love",
+    "face": "loving",
+    "playback": "hold",
+    "durationSeconds": 2.4,
+    "interaction": "targeted",
+    "fallbacks": ["Idle"]
+  },
+  "flirting": {
+    "clip": "CinematicFlirt",
+    "motion": "flirting",
+    "face": "loving",
+    "playback": "once",
+    "durationSeconds": 2.0,
+    "interaction": "targeted",
+    "fallbacks": ["Waving", "Idle"]
+  },
+  "gratitude": {
+    "clip": "CinematicGratitude",
+    "motion": "gratitude",
+    "face": "friendly",
+    "playback": "once",
+    "durationSeconds": 1.8,
+    "interaction": "targeted",
+    "fallbacks": ["Waving", "Idle"]
+  },
+  "apology": {
+    "clip": "CinematicApology",
+    "motion": "apology",
+    "face": "ashamed",
+    "playback": "once",
+    "durationSeconds": 2.0,
+    "interaction": "targeted",
+    "fallbacks": ["Idle"]
+  },
+  "bow": {
+    "clip": "CinematicBow",
+    "motion": "bow",
+    "face": "friendly",
+    "playback": "once",
+    "durationSeconds": 1.8,
+    "interaction": "targeted",
+    "fallbacks": ["Idle"]
+  },
+  "salute": {
+    "clip": "CinematicSalute",
+    "motion": "salute",
+    "face": "determined",
+    "playback": "hold",
+    "durationSeconds": 1.8,
+    "interaction": "targeted",
+    "fallbacks": ["Waving", "Idle"]
+  },
+  "kneel": {
+    "clip": "CinematicKneel",
+    "motion": "kneel",
+    "face": "neutral",
+    "playback": "hold",
+    "durationSeconds": 2.8,
+    "interaction": "stance",
+    "fallbacks": ["Sit", "Idle"]
+  },
+  "pray": {
+    "clip": "CinematicPray",
+    "motion": "pray",
+    "face": "neutral",
+    "playback": "loop",
+    "durationSeconds": 3.0,
+    "interaction": "stance",
+    "fallbacks": ["Idle"]
+  },
+  "meditate": {
+    "clip": "CinematicMeditate",
+    "motion": "meditate",
+    "face": "neutral",
+    "playback": "loop",
+    "durationSeconds": 3.2,
+    "interaction": "stance",
+    "fallbacks": ["Sit", "Idle"]
+  },
+  "surrender": {
+    "clip": "CinematicSurrender",
+    "motion": "surrender",
+    "face": "afraid",
+    "playback": "hold",
+    "durationSeconds": 3.0,
+    "interaction": "targeted",
+    "fallbacks": ["Idle"]
+  },
+  "beckon": {
+    "clip": "CinematicBeckon",
+    "motion": "beckon",
+    "face": "friendly",
+    "playback": "once",
+    "durationSeconds": 1.6,
+    "interaction": "targeted",
+    "fallbacks": ["Waving", "Point", "Idle"]
+  },
+  "stop": {
+    "clip": "CinematicStop",
+    "motion": "stop",
+    "face": "determined",
+    "playback": "hold",
+    "durationSeconds": 1.6,
+    "interaction": "targeted",
+    "fallbacks": ["Point", "Idle"]
+  },
+  "comeHere": {
+    "clip": "CinematicBeckon",
+    "motion": "beckon",
+    "face": "friendly",
+    "playback": "once",
+    "durationSeconds": 1.6,
+    "interaction": "targeted",
+    "fallbacks": ["Waving", "Point", "Idle"]
+  },
+  "hug": {
+    "clip": "CinematicHug",
+    "motion": "hug",
+    "face": "loving",
+    "playback": "hold",
+    "durationSeconds": 2.4,
+    "interaction": "paired",
+    "fallbacks": ["Waving", "Idle"]
+  },
+  "handshake": {
+    "clip": "CinematicHandshake",
+    "motion": "handshake",
+    "face": "friendly",
+    "playback": "loop",
+    "durationSeconds": 2.0,
+    "interaction": "paired",
+    "fallbacks": ["Waving", "Idle"]
+  },
+  "highFive": {
+    "clip": "CinematicHighFive",
+    "motion": "highFive",
+    "face": "happy",
+    "playback": "once",
+    "durationSeconds": 1.6,
+    "interaction": "paired",
+    "fallbacks": ["Waving", "Idle"]
+  },
+  "thumbsUp": {
+    "clip": "CinematicThumbsUp",
+    "motion": "thumbsUp",
+    "face": "happy",
+    "playback": "hold",
+    "durationSeconds": 1.5,
+    "interaction": "targeted",
+    "fallbacks": ["Waving", "Idle"]
+  },
+  "thumbsDown": {
+    "clip": "CinematicThumbsDown",
+    "motion": "thumbsDown",
+    "face": "disgusted",
+    "playback": "hold",
+    "durationSeconds": 1.5,
+    "interaction": "targeted",
+    "fallbacks": ["Point", "Idle"]
+  },
+  "guard": {
+    "clip": "CinematicGuard",
+    "motion": "guard",
+    "face": "determined",
+    "playback": "loop",
+    "durationSeconds": 2.6,
+    "interaction": "stance",
+    "fallbacks": ["GuardPatrolIdle", "Idle"]
+  },
+  "block": {
+    "clip": "CinematicBlock",
+    "motion": "block",
+    "face": "determined",
+    "playback": "hold",
+    "durationSeconds": 1.4,
+    "interaction": "targeted",
+    "fallbacks": ["Block", "HitReact", "Idle"]
+  },
+  "taunt": {
+    "clip": "CinematicTaunt",
+    "motion": "taunt",
+    "face": "angry",
+    "playback": "once",
+    "durationSeconds": 2.0,
+    "interaction": "targeted",
+    "fallbacks": ["Flex", "Attack", "Idle"]
+  },
+  "stagger": {
+    "clip": "CinematicStagger",
+    "motion": "stagger",
+    "face": "hurt",
+    "playback": "once",
+    "durationSeconds": 1.2,
+    "interaction": "solo",
+    "fallbacks": ["Stagger", "HitReact", "Sick", "Idle"]
+  },
+  "knockdown": {
+    "clip": "CinematicKnockdown",
+    "motion": "knockdown",
+    "face": "hurt",
+    "playback": "hold",
+    "durationSeconds": 2.4,
+    "interaction": "solo",
+    "fallbacks": ["Knockdown", "Fall", "Death", "Idle"]
+  },
+  "getUp": {
+    "clip": "CinematicGetUp",
+    "motion": "getUp",
+    "face": "determined",
+    "playback": "once",
+    "durationSeconds": 1.8,
+    "interaction": "solo",
+    "fallbacks": ["GetUp", "Jump", "Idle"]
+  },
+  "retreat": {
+    "clip": "CinematicRetreat",
+    "motion": "retreat",
+    "face": "afraid",
+    "playback": "loop",
+    "durationSeconds": 1.8,
+    "interaction": "locomotion",
+    "fallbacks": ["RunningBackward", "Walk", "Idle"]
+  },
+  "rally": {
+    "clip": "CinematicRally",
+    "motion": "rally",
+    "face": "determined",
+    "playback": "once",
+    "durationSeconds": 2.0,
+    "interaction": "targeted",
+    "fallbacks": ["Point", "Waving", "Idle"]
+  },
+  "victory": {
+    "clip": "CinematicVictory",
+    "motion": "victory",
+    "face": "happy",
+    "playback": "once",
+    "durationSeconds": 2.2,
+    "interaction": "solo",
+    "fallbacks": ["Applause", "Flex", "Idle"]
+  },
+  "defeat": {
+    "clip": "CinematicDefeat",
+    "motion": "defeat",
+    "face": "sad",
+    "playback": "hold",
+    "durationSeconds": 2.6,
+    "interaction": "solo",
+    "fallbacks": ["Sit", "Sick", "Idle"]
+  },
+  "footTapping": {
+    "clip": "CinematicFootTap",
+    "motion": "footTapping",
+    "face": "annoyed",
+    "playback": "loop",
+    "durationSeconds": 2.0,
+    "interaction": "idle",
+    "fallbacks": ["Idle"]
+  },
+  "scratchingHead": {
+    "clip": "CinematicScratchHead",
+    "motion": "scratchingHead",
+    "face": "confused",
+    "playback": "once",
+    "durationSeconds": 2.0,
+    "interaction": "idle",
+    "fallbacks": ["Idle"]
+  },
+  "checkingEquipment": {
+    "clip": "CinematicCheckEquipment",
+    "motion": "checkingEquipment",
+    "face": "thinking",
+    "playback": "loop",
+    "durationSeconds": 2.4,
+    "interaction": "idle",
+    "fallbacks": ["ItemPutBack", "Idle"]
+  },
+  "pacing": {
+    "clip": "CinematicPace",
+    "motion": "pacing",
+    "face": "thinking",
+    "playback": "loop",
+    "durationSeconds": 2.0,
+    "interaction": "locomotion",
+    "fallbacks": ["Walking", "Walk", "Idle"]
+  },
+  "sighing": {
+    "clip": "CinematicSigh",
+    "motion": "sighing",
+    "face": "tired",
+    "playback": "once",
+    "durationSeconds": 1.8,
+    "interaction": "idle",
+    "fallbacks": ["Idle"]
+  },
+  "cleaningWeapon": {
+    "clip": "CinematicCleanWeapon",
+    "motion": "cleaningWeapon",
+    "face": "thinking",
+    "playback": "loop",
+    "durationSeconds": 2.6,
+    "interaction": "idle",
+    "fallbacks": ["ItemPutBack", "Idle"]
+  }
+}

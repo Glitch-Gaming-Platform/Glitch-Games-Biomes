@@ -22,7 +22,10 @@ import {
   groveNativeStepId,
   groveQuestIdForNativeId,
 } from "../grove/grove_quest_ids";
-import { GROVE_QUEST_ID_PINS, GROVE_STEP_ID_PINS } from "../grove/grove_quest_id_pins";
+import {
+  GROVE_QUEST_ID_PINS,
+  GROVE_STEP_ID_PINS,
+} from "../grove/grove_quest_id_pins";
 import {
   groveQuestGate,
   groveQuestGateReasons,

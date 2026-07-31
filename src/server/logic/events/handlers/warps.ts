@@ -16,10 +16,8 @@ import {
   isInsideCh1PortalOnlyRegion,
 } from "@/shared/harthmere/ch1_elsewhen_region";
 import { readCh1NativeRunAdmission } from "@/shared/harthmere/ch1_native_run";
-import {
-  HARTHMERE_GROVE_RESPAWN_POSITION,
-  restoreHarthmereNativeVitalsForRespawn,
-} from "@/shared/harthmere/harthmere_native_vitals";
+import { restoreHarthmereNativeVitalsForRespawn } from "@/shared/harthmere/harthmere_native_vitals";
+import { harthmereRespawnPositionForDeath } from "@/shared/harthmere/harthmere_respawn_anchors";
 
 export const warpEventHandler = makeEventHandler("warpEvent", {
   mergeKey: (event) => event.id,
@@ -85,9 +83,7 @@ export const warpHomeEventHandler = makeEventHandler("warpHomeEvent", {
     if (
       isInsideCh1PortalOnlyRegion(position) ||
       (reason !== "respawn" &&
-        (isInsideCh1PortalOnlyRegion(
-          player.position()?.v ?? [0, 0, 0]
-        ) ||
+        (isInsideCh1PortalOnlyRegion(player.position()?.v ?? [0, 0, 0]) ||
           currentChapter1Run))
     ) {
       throw new RollbackError(
@@ -101,12 +97,22 @@ export const warpHomeEventHandler = makeEventHandler("warpHomeEvent", {
       reason === "respawn" && chapter1Run
         ? ch1ElsewhenSlot(chapter1Run.dungeonId)?.arrival
         : undefined;
+    // HARTHMERE_RESPAWN_ANCHORS: this used to send every native respawn to the
+    // single Grove point regardless of where the player fell, so dying in
+    // Harthmere meant walking the whole connector road back. Resolve against
+    // the position the player died at — read BEFORE forcePlayerWarp moves them
+    // — and keep the Grove for deaths outside the town. Chapter 1 still wins:
+    // a dungeon is in neither Harthmere frame and would otherwise fall through.
+    const deathPosition = player.position()?.v;
+    const nativeRespawn = nativeHarthmereRespawn
+      ? harthmereRespawnPositionForDeath(deathPosition)
+      : undefined;
     forcePlayerWarp(
       player,
       chapter1Respawn
         ? [...chapter1Respawn]
-        : nativeHarthmereRespawn
-        ? [...HARTHMERE_GROVE_RESPAWN_POSITION]
+        : nativeRespawn
+        ? [...nativeRespawn.position]
         : position,
       orientation
     );

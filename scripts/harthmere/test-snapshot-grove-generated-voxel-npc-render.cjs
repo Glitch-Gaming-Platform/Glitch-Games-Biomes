@@ -22,10 +22,9 @@ function ok(condition, message) {
 }
 
 const assetMap = new Map(
-  [...routing.matchAll(/\b([a-zA-Z0-9_]+):\s*"npcs\/([^"]+)"/g)].map((match) => [
-    match[1],
-    match[2],
-  ])
+  [...routing.matchAll(/\b([a-zA-Z0-9_]+):\s*"npcs\/([^"]+)"/g)].map(
+    (match) => [match[1], match[2]]
+  )
 );
 
 const assetBackedGroveNpcIds = [
@@ -61,8 +60,14 @@ ok(
   "seeded Grove ids resolve before label fallback"
 );
 ok(
-  !/makeLocalDevVoxelNpcGltf\(deps, id\)[\s\S]{0,220}snapshotGroveGeneratedVoxelNpcVersion/.test(npcs),
+  !/makeLocalDevVoxelNpcGltf\(deps, id\)[\s\S]{0,220}snapshotGroveGeneratedVoxelNpcVersion/.test(
+    npcs
+  ),
   "Grove player-like path does not return the Harthmere voxel body"
+);
+ok(
+  (npcs.match(/makeLocalDevVoxelNpcGltf\(/g) ?? []).length === 1,
+  "the legacy procedural NPC constructor is dormant and has no runtime call sites"
 );
 
 for (const id of assetBackedGroveNpcIds) {
@@ -93,7 +98,10 @@ for (const id of [
   "rin_the_forager",
   "carlo_the_cook",
 ]) {
-  ok(economy.includes(`id: "${id}"`), `${id} is in the economy starter NPC table`);
+  ok(
+    economy.includes(`id: "${id}"`),
+    `${id} is in the economy starter NPC table`
+  );
 }
 
 for (const [label, expected] of [
@@ -111,11 +119,16 @@ for (const [label, expected] of [
   ["Rin the Forager", "rin_the_forager"],
   ["Carlo the Cook", "carlo_the_cook"],
 ]) {
-  ok(!routing.includes(`return "${expected}";`), `${label} is not diverted to a generated voxel id fallback`);
+  ok(
+    !routing.includes(`return "${expected}";`),
+    `${label} is not diverted to a generated voxel id fallback`
+  );
 }
 
 if (failures) {
-  console.error(`\n${failures} Grove NPC player-avatar routing check(s) failed.`);
+  console.error(
+    `\n${failures} Grove NPC player-avatar routing check(s) failed.`
+  );
   process.exit(1);
 }
 console.log("\nAll Grove NPC player-avatar renderer checks passed.");

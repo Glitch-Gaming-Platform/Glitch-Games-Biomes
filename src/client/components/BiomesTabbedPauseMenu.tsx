@@ -235,8 +235,8 @@ export const BiomesTabbedPauseModal: React.FunctionComponent<{
           <BiomesPauseMenuTabSelectorItem
             tabKey={"collections"}
             title="Collections"
-            shortcut="C"
-            keyCode="KeyC"
+            shortcut="]"
+            keyCode="BracketRight"
             img={collectionsIcon.src}
             setGameMenuString={setMenuTitle}
           />

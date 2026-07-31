@@ -13,7 +13,9 @@ import {
 
 const NOW = 1_700_000_000_000;
 
-function combatant(overrides: Partial<HarthmereCombatStats> = {}): HarthmereCombatStats {
+function combatant(
+  overrides: Partial<HarthmereCombatStats> = {}
+): HarthmereCombatStats {
   return {
     id: "actor",
     name: "Actor",
@@ -44,7 +46,9 @@ function combatant(overrides: Partial<HarthmereCombatStats> = {}): HarthmereComb
   };
 }
 
-function lethalStrike(overrides: Partial<HarthmereCombatAbility> = {}): HarthmereCombatAbility {
+function lethalStrike(
+  overrides: Partial<HarthmereCombatAbility> = {}
+): HarthmereCombatAbility {
   return {
     id: "lethal_strike",
     name: "Lethal Strike",
@@ -68,9 +72,16 @@ function lethalStrike(overrides: Partial<HarthmereCombatAbility> = {}): Harthmer
   };
 }
 
-function request(overrides: Partial<HarthmereCombatRequest> = {}): HarthmereCombatRequest {
+function request(
+  overrides: Partial<HarthmereCombatRequest> = {}
+): HarthmereCombatRequest {
   const attacker = combatant({ id: "attacker", name: "Attacker" });
-  const target = combatant({ id: "victim", name: "Victim", hp: 75, maxHp: 100 });
+  const target = combatant({
+    id: "victim",
+    name: "Victim",
+    hp: 75,
+    maxHp: 100,
+  });
   return {
     requestId: "req_1",
     idempotencyKey: "idem_1",
@@ -90,7 +101,9 @@ function request(overrides: Partial<HarthmereCombatRequest> = {}): HarthmereComb
   };
 }
 
-function respawnPoint(overrides: Partial<HarthmereRespawnPoint> = {}): HarthmereRespawnPoint {
+function respawnPoint(
+  overrides: Partial<HarthmereRespawnPoint> = {}
+): HarthmereRespawnPoint {
   return {
     id: "temple_green",
     label: "Temple Green",
@@ -116,8 +129,18 @@ describe("combat_system rule oversight fixes", () => {
   it("keeps the base PvE attack path working", () => {
     const result = resolveHarthmereCombatAction(
       request({
-        attacker: combatant({ id: "hero", entityKind: "player", faction: "player", pvpFlag: "unflagged" }),
-        target: combatant({ id: "bandit", entityKind: "npc", faction: "bandit", hp: 75 }),
+        attacker: combatant({
+          id: "hero",
+          entityKind: "player",
+          faction: "player",
+          pvpFlag: "unflagged",
+        }),
+        target: combatant({
+          id: "bandit",
+          entityKind: "npc",
+          faction: "bandit",
+          hp: 75,
+        }),
       }),
       () => 0.5
     );
@@ -135,7 +158,9 @@ describe("combat_system rule oversight fixes", () => {
     );
     assert.equal(fromSafeZone.ok, false);
     assert.ok(fromSafeZone.reasons.includes("safe_zone_blocks_hostile_action"));
-    assert.ok(fromSafeZone.reasons.includes("attacker_safe_zone_blocks_hostile_action"));
+    assert.ok(
+      fromSafeZone.reasons.includes("attacker_safe_zone_blocks_hostile_action")
+    );
 
     const safeZoneDuel = validateHarthmereCombatRequest(
       request({
@@ -180,7 +205,9 @@ describe("combat_system rule oversight fixes", () => {
     assert.equal(result.target.combatState, "downed");
     assert.equal(result.rewards.lootEligible, false);
     assert.equal(result.rewards.inventoryDropPolicy, "none");
-    assert.ok(result.death?.penalties.includes("normal_pvp_death_no_inventory_destroy"));
+    assert.ok(
+      result.death?.penalties.includes("normal_pvp_death_no_inventory_destroy")
+    );
   });
 
   it("marks hardcore PvP deaths as loot-policy eligible while preserving protected item rules", () => {
@@ -189,8 +216,15 @@ describe("combat_system rule oversight fixes", () => {
         pvpZone: true,
         hardcoreZone: true,
         relationship: "war_target",
-        target: combatant({ id: "victim", hp: 40, pvpFlag: "hardcore_pvp_flagged" }),
-        attacker: combatant({ id: "attacker", pvpFlag: "hardcore_pvp_flagged" }),
+        target: combatant({
+          id: "victim",
+          hp: 40,
+          pvpFlag: "hardcore_pvp_flagged",
+        }),
+        attacker: combatant({
+          id: "attacker",
+          pvpFlag: "hardcore_pvp_flagged",
+        }),
       }),
       () => 0.5
     );
@@ -198,8 +232,15 @@ describe("combat_system rule oversight fixes", () => {
     assert.equal(result.ok, true);
     assert.equal(result.target.combatState, "dead");
     assert.equal(result.rewards.lootEligible, true);
-    assert.equal(result.rewards.inventoryDropPolicy, "drop_only_unbound_trade_goods_and_gathered_resources");
-    assert.ok(result.death?.penalties.includes("bound_quest_spellbook_mount_pet_cosmetic_keyring_protected"));
+    assert.equal(
+      result.rewards.inventoryDropPolicy,
+      "drop_only_unbound_trade_goods_and_gathered_resources"
+    );
+    assert.ok(
+      result.death?.penalties.includes(
+        "bound_quest_spellbook_mount_pet_cosmetic_keyring_protected"
+      )
+    );
   });
 
   it("ends duels at 1 HP without death, loot, or PvP rewards", () => {
@@ -266,7 +307,12 @@ describe("combat_system — friendly fire + support abilities (audit hardening)"
     const healed = calculateHarthmereDamage({
       attacker: combatant({ id: "healer", attackPoints: 300 }),
       defender: combatant({ id: "ally", hp: 40, maxHp: 100 }),
-      ability: lethalStrike({ id: "mend", name: "Mend", type: "heal", abilityMultiplier: 1 }),
+      ability: lethalStrike({
+        id: "mend",
+        name: "Mend",
+        type: "heal",
+        abilityMultiplier: 1,
+      }),
       hitResult: "normal_hit",
     });
     assert.equal(healed.finalDamage, 0);
@@ -274,14 +320,19 @@ describe("combat_system — friendly fire + support abilities (audit hardening)"
   });
 
   it("blocks a hostile ability aimed at an allied relationship", () => {
-    const result = validateHarthmereCombatRequest(request({ relationship: "party_member" }));
+    const result = validateHarthmereCombatRequest(
+      request({ relationship: "party_member" })
+    );
     assert.ok(result.reasons.includes("friendly_fire_blocked"));
     assert.equal(result.ok, false);
   });
 
   it("allows a supportive ability on an ally without a friendly-fire block", () => {
     const result = validateHarthmereCombatRequest(
-      request({ relationship: "party_member", ability: lethalStrike({ id: "mend", name: "Mend", type: "heal" }) })
+      request({
+        relationship: "party_member",
+        ability: lethalStrike({ id: "mend", name: "Mend", type: "heal" }),
+      })
     );
     assert.ok(!result.reasons.includes("friendly_fire_blocked"));
   });

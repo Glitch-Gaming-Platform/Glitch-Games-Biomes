@@ -118,7 +118,8 @@ inline void bind_block_list(py::module& m, const char* name) {
       .def_readonly("scale", &BL::scale)
       .def(
           "__getitem__",
-          [](const BL& bl, int x, int y, int z) {
+          [](const BL& bl, const std::array<int, 3>& pos) {
+            auto [x, y, z] = pos;
             return BlockReader<Val>(bl).get(x, y, z);
           })
       .def(

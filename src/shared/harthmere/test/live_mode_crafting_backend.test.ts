@@ -56,7 +56,7 @@ function freshState(): HarthmereLiveModeBackendState {
     [HARTHMERE_CRAFTING_TOOLS.simpleAxe]: 1,
   };
   state.banking.materialStorage = {
-    wood_log: 4,
+    softwood_log: 4,
   };
   return state;
 }
@@ -116,7 +116,7 @@ describe("Harthmere live-mode crafting backend", () => {
       start.summary.touchedModels.includes("crafting_job"),
       JSON.stringify(start.summary)
     );
-    assert.strictEqual(start.state.banking.materialStorage.wood_log, 2);
+    assert.strictEqual(start.state.banking.materialStorage.softwood_log, 2);
     const jobId = Object.keys(start.state.crafting.activeJobs)[0];
     assert.ok(jobId, JSON.stringify(start.state.crafting));
     assert.notStrictEqual(jobId, "job_planks_1");
@@ -161,7 +161,7 @@ describe("Harthmere live-mode crafting backend", () => {
       jobAction: "cancel",
       craftingJobId: jobId,
     });
-    assert.strictEqual(cancelled.state.banking.materialStorage.wood_log, 4);
+    assert.strictEqual(cancelled.state.banking.materialStorage.softwood_log, 4);
     assert.strictEqual(cancelled.state.crafting.activeJobs[jobId], undefined);
     assert.strictEqual(
       cancelled.state.crafting.history.at(-1)?.status,
@@ -188,7 +188,7 @@ describe("Harthmere live-mode crafting backend", () => {
         "crafting_rejected:job_cancelled_by_death"
       )
     );
-    assert.strictEqual(result.state.banking.materialStorage.wood_log, 4);
+    assert.strictEqual(result.state.banking.materialStorage.softwood_log, 4);
     assert.strictEqual(result.state.crafting.activeJobs[jobId], undefined);
   });
 
@@ -317,7 +317,7 @@ describe("Harthmere live-mode crafting backend", () => {
       HARTHMERE_CRAFTING_STATIONS.workbench
     );
     assert.strictEqual(snapshot.stationName, "Workbench");
-    assert.strictEqual(snapshot.materialStorage.wood_log, 4);
+    assert.strictEqual(snapshot.materialStorage.softwood_log, 4);
     assert.ok(snapshot.knownRecipes.includes("harthmere_carpentry_wood_plank"));
   });
 

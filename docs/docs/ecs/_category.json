@@ -1,0 +1,8 @@
+{
+  "label": "Native ECS",
+  "position": 5,
+  "link": {
+    "type": "generated-index",
+    "description": "Native ECS schemas, transactions, storage, replication, upgrades, and tests."
+  }
+}

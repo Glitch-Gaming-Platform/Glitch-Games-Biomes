@@ -62,4 +62,20 @@ describe("player-like NPC cosmetic variants", () => {
     assert.ok(variant.hat >= 0 && variant.hat < 4);
     assert.ok(variant.outerwear >= 0 && variant.outerwear < 2);
   });
+
+  it("assigns complete deterministic variants to negative cutscene ghost ids", () => {
+    for (const id of [-1, -1_000_001, -9_999_999]) {
+      const variant = harthmerePlayerLikeNpcVariant(id);
+      const fields = Object.values(variant);
+      assert.ok(fields.every((value) => Number.isInteger(value) && value >= 0));
+      assert.equal(
+        harthmerePlayerLikeNpcVariantSignature(id),
+        harthmerePlayerLikeNpcVariantSignature(id)
+      );
+    }
+    assert.notEqual(
+      harthmerePlayerLikeNpcVariantSignature(-1_000_001),
+      harthmerePlayerLikeNpcVariantSignature(-1_000_002)
+    );
+  });
 });

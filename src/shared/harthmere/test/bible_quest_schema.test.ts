@@ -66,8 +66,14 @@ describe("Bible quest catalog — shape", () => {
 
   it("keeps every enum closed", () => {
     for (const quest of BIBLE_QUEST_CATALOG) {
-      assert(CATEGORIES.includes(quest.category), `${quest.id}: ${quest.category}`);
-      assert(["once", "daily", "weekly"].includes(quest.repeatability), quest.id);
+      assert(
+        CATEGORIES.includes(quest.category),
+        `${quest.id}: ${quest.category}`
+      );
+      assert(
+        ["once", "daily", "weekly"].includes(quest.repeatability),
+        quest.id
+      );
       for (const value of quest.gate.timeOfDay) {
         assert(TIMES.includes(value), `${quest.id}: ${value}`);
       }
@@ -94,7 +100,10 @@ describe("Bible quest catalog — shape", () => {
       assert(quest.steps.length > 0, `${quest.id} has no objectives`);
       assert(quest.title.length > 0, `${quest.id} has no title`);
       assert(quest.premise.length > 0, `${quest.id} has no premise`);
-      assert(quest.rewards.previewText.length > 0, `${quest.id} reward preview`);
+      assert(
+        quest.rewards.previewText.length > 0,
+        `${quest.id} reward preview`
+      );
       for (const state of ["offer", "active", "ready", "complete"] as const) {
         assert(
           quest.dialogue[state].length > 0,
@@ -123,7 +132,11 @@ describe("Bible quest catalog — start kinds", () => {
     const counts = { giver: 0, after: 0, world_trigger: 0 };
     for (const quest of BIBLE_QUEST_CATALOG) counts[quest.start.kind] += 1;
     assert.equal(counts.after, 13, "13 quests carry a prerequisite");
-    assert.equal(counts.world_trigger, 3, "3 side_hidden quests are discovered");
+    assert.equal(
+      counts.world_trigger,
+      3,
+      "3 side_hidden quests are discovered"
+    );
     assert.equal(counts.giver, 69);
   });
 
@@ -136,15 +149,12 @@ describe("Bible quest catalog — start kinds", () => {
     // These are orthogonal, which the retired `activeRules` shape obscured.
     assert.equal(offered.length, 9);
     assert.equal(auto.length, 4);
-    assert.deepEqual(
-      auto.map((quest) => quest.id).sort(),
-      [
-        "bellbound_q08_voices_in_stone",
-        "bellbound_q09_veins_of_wyrm",
-        "bellbound_q10_bellbinders_tomb",
-        "bellbound_q12_thaedryn_bellbound",
-      ]
-    );
+    assert.deepEqual(auto.map((quest) => quest.id).sort(), [
+      "bellbound_q08_voices_in_stone",
+      "bellbound_q09_veins_of_wyrm",
+      "bellbound_q10_bellbinders_tomb",
+      "bellbound_q12_thaedryn_bellbound",
+    ]);
   });
 
   it("points every prerequisite at a quest that exists", () => {

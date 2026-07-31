@@ -46,8 +46,16 @@ The good news: **~70% of a cutscene system already exists** in the codebase as d
 
 ### 1.4 Animation
 
-- Player/NPC **emotes**: `zEmoteType` — attack1/2, dance, wave, sit, eat, drink, point, laugh, applause, flex, rock, sick, splash, warp, fishing set, digging, watering, equip/unequip. Triggered instantly client-side via `eagerEmote` (server short-circuits `emoteEvent`, so it's cheap).
+- Player/NPC **emotes**: `zEmoteType` includes the legacy gameplay actions and
+  the 71 first-class Harthmere body-language expressions. A canonical catalog
+  supplies the Blender clip, face, playback mode, duration, interaction type,
+  and fallback clips. The same id is usable from `/emote`, replicated Native
+  ECS state, NPC rendering, or a cutscene `emote` action.
 - **Harthmere NPC runtime set** (`animation_runtime_contracts.ts`): vendorIdle, talkGesture, questGesture, sit, eat, drink, sleep, workLoop, crowdEmote — plus locomotion (idle/walk/run/attack) auto-selected from velocity in `resources/npcs.ts`. Moving an NPC automatically animates it correctly. **This means a "walk to X" cutscene action needs no animation work at all.**
+- `cutsceneExpressionSequence` compiles any number of actor reactions into the
+  existing `face` + `emote` action model. `pairedCutsceneExpressionActions`
+  adds synchronized two-actor staging for hug, handshake, and high-five. No
+  new director action kind or Chapter 1-specific branch is required.
 - `timeline_matcher.ts` exists for syncing animation timelines.
 
 ### 1.5 Dialogue
@@ -135,6 +143,10 @@ src/shared/cutscene/library.ts           registry, bounded queue, preemption
 src/shared/cutscene/binding.ts           ECS/player/ghost/anchor cast resolution
 src/shared/cutscene/director_core.ts     pure timeline and effect state machine
 src/shared/cutscene/puppets.ts           renderer-bridge override merge
+src/shared/cutscene/cinematic_expression_catalog.json canonical expression data
+src/shared/cutscene/cinematic_expressions.ts types, parsing, playback, clips
+src/shared/cutscene/expression_actions.ts multi-actor and paired action adapters
+src/shared/cutscene/expression_showcase.ts generated in-engine acceptance scene
 src/client/game/scripts/cutscene_director.ts client engine effect executor
 src/client/game/cutscene/cutscene_service.ts registration, requests, hooks
 src/client/game/cutscene/capture_service.ts deterministic promo still API
@@ -234,9 +246,16 @@ server NPC movement handler/Anima state merge.
    postprocessed game-frame capture through a reliable 2D staging canvas,
    lifecycle-aware failure reporting, best-effort game audio, WebM output, and
    full-timeline H.264/yuv420p MP4 retiming with faststart.
-7. **Verification:** focused unit/contract tests cover schema, binding, camera
+7. **Expression library:** 71 gameplay/cutscene ids backed by 70 Blender clips
+   across the player and 23 NPC animation sets, synchronized voxel-face states,
+   multi-actor sequence helpers, paired social gestures, safe legacy fallbacks,
+   and a generated non-mutating engine showcase. Expression clips contain no
+   horizontal root motion and do not change HP, physics, attack timing, Anima,
+   Gaia, or story state.
+8. **Verification:** focused unit/contract tests cover schema, binding, camera
    math, runtime exits, templates, queues, puppets, capture sanitization,
-   ECS/Anima/Gaia authorization, input, fades, and renderer wiring.
+   ECS/Anima/Gaia authorization, input, fades, renderer wiring, expression
+   ordering, paired staging, catalog/ECS alignment, and full showcase playback.
 
 The first production reference shot binds the canonical Ashline refinery owner
 as a real ECS entity, renders the generated native avatar rather than a

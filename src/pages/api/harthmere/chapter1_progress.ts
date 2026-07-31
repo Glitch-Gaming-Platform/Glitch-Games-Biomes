@@ -11,6 +11,7 @@ import {
 } from "@/server/harthmere/ch1_dialogue";
 import { GameEvent } from "@/server/shared/api/game_event";
 import { connectToRedis } from "@/server/shared/redis/connection";
+import { readHarthmerePlayerAndSharedStateStrings } from "@/server/harthmere/live_mode_state_read_helpers";
 import { editWorldWithRetry } from "@/server/shared/world/edit_retry";
 import { isTriggerFired } from "@/server/logic/events/handlers/quest_step_validation";
 import { biomesApiHandler } from "@/server/web/util/api_middleware";
@@ -33,8 +34,11 @@ import {
   isCh1NativeQuestId,
 } from "@/shared/harthmere/ch1_native_quests";
 import { ch1ObjectiveTarget } from "@/shared/harthmere/ch1_objective_targets";
+import { ch1ObjectiveRequirementState } from "@/shared/harthmere/ch1_objective_requirements";
+import { ch1ItemDisplayName } from "@/shared/harthmere/ch1_items";
 import { CH1_IGNITION, CH1_QUESTS } from "@/shared/harthmere/ch1_quests";
 import {
+  Ch1ObjectiveIncomplete,
   ch1ApplyLiveObjectiveEffects,
   ch1ObjectiveChoiceSpec,
 } from "@/shared/harthmere/ch1_live_story";
@@ -44,7 +48,10 @@ import {
 } from "@/shared/harthmere/ch1_live_gate";
 import {
   harthmereLiveModePlayerStateKey,
+  harthmereLiveModeSharedWorldStateKey,
+  mergeHarthmereLiveModeSharedWorldStateIntoBackend,
   parseHarthmereLiveModeBackendState,
+  parseHarthmereLiveModeSharedWorldState,
   stringifyHarthmereLiveModePlayerPersistenceState,
 } from "@/shared/harthmere/live_mode_backend";
 import { harthmereInventoryCarryWeight } from "@/shared/harthmere/mmo_carry_weight";
@@ -136,6 +143,17 @@ const zResponse = z.object({
       ),
     })
     .optional(),
+  requirement: z
+    .object({
+      ready: z.boolean(),
+      current: z.number(),
+      total: z.number(),
+      reason: z.string().optional(),
+      blocksChapterInteraction: z.boolean(),
+      autoCompleteWhenReady: z.boolean(),
+    })
+    .optional(),
+  showNavigationAid: z.boolean().optional(),
   preparedChoice: z.string().optional(),
   survival: z
     .object({
@@ -234,15 +252,53 @@ export function activeChapter1ObjectiveForTest(input: {
   }
 }
 
-function stateForPlayer(player: {
-  challenges(): { in_progress: ReadonlySet<BiomesId> } | undefined;
-  triggerState():
+function completedGroveJobCount(
+  jobsBoard: ReturnType<typeof parseHarthmereLiveModeBackendState>["jobsBoard"],
+  actorId: string,
+  startedAtMs: number
+) {
+  return Object.values(jobsBoard.postings).filter(
+    (job) =>
+      job.acceptedByActorId === actorId &&
+      job.townId === "harthmere_grove" &&
+      job.status === "completed" &&
+      Number(job.completedAtMs ?? 0) >= startedAtMs
+  ).length;
+}
+
+function groveJobObjectiveStartedAtMs(player: {
+  challenges():
     | {
-        by_root: ReadonlyMap<BiomesId, ReadonlyMap<BiomesId, string | number>>;
+        started_at: ReadonlyMap<BiomesId, number>;
       }
     | undefined;
-  position(): { v: readonly [number, number, number] } | undefined;
-}): Chapter1ProgressState {
+}) {
+  const challengeId = ch1NativeQuestId("ch1_a2_q02_work_the_board");
+  return challengeId
+    ? Number(player.challenges()?.started_at.get(challengeId) ?? 0) * 1_000
+    : 0;
+}
+
+function stateForPlayer(
+  player: {
+    challenges(): { in_progress: ReadonlySet<BiomesId> } | undefined;
+    triggerState():
+      | {
+          by_root: ReadonlyMap<
+            BiomesId,
+            ReadonlyMap<BiomesId, string | number>
+          >;
+        }
+      | undefined;
+    position(): { v: readonly [number, number, number] } | undefined;
+  },
+  context: {
+    runtime: ReturnType<typeof parseHarthmereLiveModeBackendState>["chapter1"];
+    inventory: Readonly<Record<string, number>>;
+    completedGroveJobs: number;
+    vendorTransactions: Readonly<Record<string, number>>;
+  }
+): Chapter1ProgressState {
   const challenges = player.challenges();
   const triggerState = player.triggerState();
   const position = player.position()?.v;
@@ -261,7 +317,17 @@ function stateForPlayer(player: {
   if (!active) {
     return { ok: true, status: "idle" };
   }
-  const target = ch1ObjectiveTarget(active.quest.id, active.stepIndex)!;
+  const target = ch1ObjectiveTarget(active.quest.id, active.stepIndex, {
+    runtime: context.runtime,
+    vendorTransactions: context.vendorTransactions,
+  })!;
+  const requirement = ch1ObjectiveRequirementState({
+    step: active.step,
+    runtime: context.runtime,
+    inventory: context.inventory,
+    completedGroveJobs: context.completedGroveJobs,
+    vendorTransactions: context.vendorTransactions,
+  });
   const distance = distance3(position, target.position);
   return {
     ok: true,
@@ -279,9 +345,16 @@ function stateForPlayer(player: {
     interactionRadius: target.interactionRadius,
     distance,
     withinRange: distance <= target.interactionRadius,
+    requirement,
+    showNavigationAid: target.source !== "dungeon",
     introCutsceneId:
       active.step.id === "wake_up" ? CH1_IGNITION.cutsceneId : undefined,
-    dialogue: ch1CloneDialogue(ch1ObjectiveDialogue(active.step.id)),
+    dialogue: ch1CloneDialogue(
+      ch1ObjectiveDialogue(active.step.id, {
+        questId: active.quest.id,
+        runtime: context.runtime,
+      })
+    ),
     choice: (() => {
       const choice = ch1ObjectiveChoiceSpec(active.step);
       return choice ? { ...choice, options: [...choice.options] } : undefined;
@@ -482,8 +555,45 @@ export default biomesApiHandler(
         reason: "Native player entity is unavailable.",
       };
     }
-    let state = stateForPlayer(player);
+    const redis = await chapter1ProgressRedis();
+    const actorId = await resolveHarthmereLiveModeActorId(
+      redis,
+      { auth, unsafeRequest },
+      `authenticated:chapter1-progress:${auth.userId}`
+    );
+    const stateKey = harthmereLiveModePlayerStateKey(actorId);
+    const sharedStateKey = harthmereLiveModeSharedWorldStateKey();
+    const nowMs = Date.now();
+    const { rawState, rawSharedState } =
+      await readHarthmerePlayerAndSharedStateStrings(
+        redis.primary,
+        stateKey,
+        sharedStateKey
+      );
+    const projectedLiveState = parseHarthmereLiveModeBackendState(
+      rawState,
+      actorId,
+      nowMs
+    );
+    mergeHarthmereLiveModeSharedWorldStateIntoBackend(
+      projectedLiveState,
+      parseHarthmereLiveModeSharedWorldState(rawSharedState, nowMs),
+      nowMs
+    );
+    const nativeInventoryCounts = readCh1NativeInventoryCounts(player);
+    const jobsStartedAtMs = groveJobObjectiveStartedAtMs(player);
+    let state = stateForPlayer(player, {
+      runtime: projectedLiveState.chapter1,
+      inventory: nativeInventoryCounts,
+      completedGroveJobs: completedGroveJobCount(
+        projectedLiveState.jobsBoard,
+        actorId,
+        jobsStartedAtMs
+      ),
+      vendorTransactions: projectedLiveState.economy.vendorTransactions,
+    });
     state = await addChapter1Experience(state, player, worldApi, Date.now());
+
     if (body.action === "state" || state.status !== "active") {
       return state;
     }
@@ -500,7 +610,20 @@ export default biomesApiHandler(
           "The requested objective is no longer the active Chapter 1 step.",
       };
     }
-    if (!state.withinRange) {
+    if (state.requirement && !state.requirement.ready) {
+      return {
+        ...state,
+        ok: false,
+        status: "rejected" as const,
+        reason:
+          state.requirement.reason ??
+          "Complete the objective requirements before continuing.",
+      };
+    }
+    if (
+      !state.withinRange &&
+      !(state.requirement?.ready && state.requirement.autoCompleteWhenReady)
+    ) {
       return {
         ...state,
         ok: false,
@@ -642,14 +765,6 @@ export default biomesApiHandler(
         };
       }
     }
-    const nativeInventoryCounts = readCh1NativeInventoryCounts(player);
-    const redis = await chapter1ProgressRedis();
-    const actorId = await resolveHarthmereLiveModeActorId(
-      redis,
-      { auth, unsafeRequest },
-      `authenticated:chapter1-progress:${auth.userId}`
-    );
-    const stateKey = harthmereLiveModePlayerStateKey(actorId);
     const lock = await acquireHarthmereActorStateLock(redis.primary, actorId, {
       waitMs: 10_000,
     });
@@ -662,9 +777,48 @@ export default biomesApiHandler(
       };
     }
     try {
-      const nowMs = Date.now();
-      const raw = await redis.primary.get(stateKey);
-      const liveState = parseHarthmereLiveModeBackendState(raw, actorId, nowMs);
+      const lockedNowMs = Date.now();
+      const lockedRead = await readHarthmerePlayerAndSharedStateStrings(
+        redis.primary,
+        stateKey,
+        sharedStateKey
+      );
+      const raw = lockedRead.rawState;
+      const liveState = parseHarthmereLiveModeBackendState(
+        raw,
+        actorId,
+        lockedNowMs
+      );
+      mergeHarthmereLiveModeSharedWorldStateIntoBackend(
+        liveState,
+        parseHarthmereLiveModeSharedWorldState(
+          lockedRead.rawSharedState,
+          lockedNowMs
+        ),
+        lockedNowMs
+      );
+      const lockedRequirement = ch1ObjectiveRequirementState({
+        step: active.step,
+        runtime: liveState.chapter1,
+        inventory: nativeInventoryCounts,
+        completedGroveJobs: completedGroveJobCount(
+          liveState.jobsBoard,
+          actorId,
+          jobsStartedAtMs
+        ),
+        vendorTransactions: liveState.economy.vendorTransactions,
+      });
+      if (lockedRequirement && !lockedRequirement.ready) {
+        return {
+          ...state,
+          ok: false,
+          status: "rejected" as const,
+          requirement: lockedRequirement,
+          reason:
+            lockedRequirement.reason ??
+            "Complete the objective requirements before continuing.",
+        };
+      }
       let dungeonMechanicEffect: Ch1DungeonMechanicEffect | undefined;
       let effects: ReturnType<typeof ch1ApplyLiveObjectiveEffects>;
       try {
@@ -674,7 +828,7 @@ export default biomesApiHandler(
           step: active.step,
           stepIndex: active.stepIndex,
           choice: requestedChoice,
-          nowMs,
+          nowMs: lockedNowMs,
         });
         const mechanic = ch1DungeonMechanicForObjective(active.step.id);
         const survival = liveState.chapter1.dungeonSurvival;
@@ -722,6 +876,23 @@ export default biomesApiHandler(
           dungeonMechanicEffect = mechanicResult.effect;
         }
       } catch (error) {
+        // A step can make durable progress without finishing — collecting the
+        // ninth of twelve accounts, for instance. Persist what was earned, then
+        // refuse the trigger so the objective stays open.
+        if (error instanceof Ch1ObjectiveIncomplete) {
+          liveState.chapter1 = error.runtime;
+          liveState.updatedAtMs = lockedNowMs;
+          await redis.primary.set(
+            stateKey,
+            stringifyHarthmereLiveModePlayerPersistenceState(liveState)
+          );
+          return {
+            ...state,
+            ok: false,
+            status: "rejected" as const,
+            reason: error.message,
+          };
+        }
         return {
           ...state,
           ok: false,
@@ -730,13 +901,27 @@ export default biomesApiHandler(
         };
       }
 
+      const requiredItemCounts = new Map<string, number>();
       for (const itemId of effects.itemConsumes) {
-        if ((nativeInventoryCounts[itemId] ?? 0) < 1) {
+        requiredItemCounts.set(
+          itemId,
+          (requiredItemCounts.get(itemId) ?? 0) + 1
+        );
+      }
+      for (const [itemId, requiredCount] of requiredItemCounts) {
+        if ((nativeInventoryCounts[itemId] ?? 0) < requiredCount) {
           return {
             ...state,
             ok: false,
             status: "rejected" as const,
-            reason: `You need ${itemId} before completing this objective.`,
+            // Display name, not the internal id. This used to read
+            // "You need item_sorrel_field_ledger before completing this
+            // objective." to the player. The flag set is passed so the two
+            // compounds keep their pre-Act-6 cover names (journal §0: no
+            // client-visible string may leak the twist early).
+            reason: `You need ${requiredCount} × ${
+              ch1ItemDisplayName(itemId, liveState.chapter1.flags) ?? "an item"
+            } before completing this objective.`,
           };
         }
       }
@@ -780,11 +965,11 @@ export default biomesApiHandler(
         }
       }
       liveState.chapter1 = effects.runtime;
-      liveState.updatedAtMs = nowMs;
+      liveState.updatedAtMs = lockedNowMs;
       const previousSerialized =
         raw ??
         stringifyHarthmereLiveModePlayerPersistenceState(
-          parseHarthmereLiveModeBackendState(undefined, actorId, nowMs)
+          parseHarthmereLiveModeBackendState(undefined, actorId, lockedNowMs)
         );
       await redis.primary.set(
         stateKey,

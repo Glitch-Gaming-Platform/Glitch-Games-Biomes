@@ -156,6 +156,16 @@ check(
     releaseGate.includes("test-harthmere-native-ecs-all-jobs-e2e-contract.cjs"),
   "native ECS release gate includes all-jobs frontend and physical-target contracts"
 );
+check(
+  runner.includes("const urlLessResource429 =") &&
+    runner.includes("if (urlLessResource429)") &&
+    runner.includes("report.browser.transients.push(text)") &&
+    runner.includes(
+      "response.url().startsWith(baseUrl) && response.status() >= 400"
+    ) &&
+    runner.includes("report.browser.failures.push(diagnostic)"),
+  "URL-less third-party 429 console noise is transient while exact same-origin HTTP failures remain fatal"
+);
 
 if (failures) {
   console.error(

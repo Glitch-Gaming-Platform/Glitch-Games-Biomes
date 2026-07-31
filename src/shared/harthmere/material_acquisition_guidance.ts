@@ -13,6 +13,7 @@ import {
 import {
   HARTHMERE_CRAFTING_STATIONS,
   ensureHarthmereProductionCraftingCatalogue,
+  harthmereProductionCraftingRecipeIds,
 } from "./mmo_crafting_catalogue";
 import {
   getHarthmereCraftingStation,
@@ -293,13 +294,24 @@ function craftRoutes(
   quantity: number
 ): HarthmereMaterialAcquisitionRoute[] {
   const name = itemName(targetItemId);
-  const recipes = listHarthmereCraftingRecipes()
-    .filter(
+  const matchingRecipes = listHarthmereCraftingRecipes().filter(
       (recipe) =>
         recipe.outputItemId === targetItemId &&
         recipe.workflowKind !== "salvage" &&
         (recipe.inputs.length > 0 || (recipe.fuelInputs?.length ?? 0) > 0)
-    )
+    );
+  // Runtime/test recipes share the registry but are not guaranteed player
+  // acquisition routes. Prefer the production catalogue whenever it owns a
+  // recipe for this item; only fall back to extensions when no canonical route
+  // exists.
+  const productionRecipeIds = new Set(harthmereProductionCraftingRecipeIds());
+  const productionRecipes = matchingRecipes.filter((recipe) =>
+    productionRecipeIds.has(recipe.recipeId)
+  );
+  const recipes = (productionRecipes.length
+    ? productionRecipes
+    : matchingRecipes
+  )
     .sort(
       (left, right) =>
         (left.recipeTier ?? 1) - (right.recipeTier ?? 1) ||
@@ -390,7 +402,10 @@ export function harthmereMaterialAcquisitionPlan(input: {
     .filter((route) => route.kind === "gather")
     .flatMap((route) =>
       (route.requiredToolItemIds ?? []).flatMap((toolItemId) =>
-        buyRoutes(toolItemId, 1, `Needed to gather ${route.itemName}`)
+        // The item-definition registry is extensible and tests/mods may
+        // replace display metadata. The acquisition relationship itself is
+        // semantic, so keep the prerequisite explanation stable.
+        buyRoutes(toolItemId, 1, `Needed to gather ${words(route.itemId)}`)
       )
     );
   return {

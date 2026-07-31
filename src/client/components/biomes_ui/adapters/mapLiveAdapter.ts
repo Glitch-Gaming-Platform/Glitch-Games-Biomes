@@ -22,6 +22,15 @@ import {
   writeBiomesUIMainQuestSelection,
 } from "./mainQuestSelection";
 import { appendHarthmereBusinessOutpostMapLandmarks } from "./harthmereBusinessMapMarkers";
+// HARTHMERE_ADDITIVE_TOWN_MAP_MARKERS: people, buildings, and district
+// locations of the +1600 east extension. Previously the town existed only in
+// the renderer and server shim, so the map showed the Grove and the business
+// trail but nothing of Harthmere itself.
+import {
+  HARTHMERE_TOWN_MARKER_SOURCE,
+  appendHarthmereTownMapLandmarks,
+  harthmereTownMapMarkerUiKind,
+} from "./harthmereTownMapMarkers";
 import {
   activeJobsBoardMissionStepsForBiomesUI,
   firstActiveJobsBoardQuestTitleForBiomesUI,
@@ -76,6 +85,33 @@ import {
 } from "@/client/components/biomes_ui/adapters/farmingMapQuest";
 import type { NativeFarmingInterfaceModel } from "@/client/components/biomes_ui/adapters/nativeFarmingInterfaceAdapter";
 import { snapshotGroveObjectiveMarkerIdForProgress } from "@/shared/harthmere/snapshot_grove_trigger_contract";
+import { CH1_MAP_LANDMARKS } from "@/shared/harthmere/ch1_map_landmarks";
+
+export const CH1_BIOMES_UI_MAP_MARKER_SOURCE =
+  "chapter_1_world_landmark" as const;
+
+export function chapter1WorldMapLandmarksForBiomesUI() {
+  return CH1_MAP_LANDMARKS.map((landmark) => ({
+    id: `chapter1_landmark:${landmark.slug}`,
+    mapMarkerId: `chapter1_landmark:${landmark.slug}`,
+    label: landmark.label,
+    description: landmark.label,
+    position: [...landmark.position] as [number, number, number],
+    importance: landmark.importance,
+    kind:
+      landmark.slug === "old_wood_copse"
+        ? "resource"
+        : landmark.slug === "old_bridge" ||
+          landmark.slug === "fence_line_seam" ||
+          landmark.slug === "old_wood_aperture" ||
+          landmark.slug === "cold_gate"
+        ? "connector"
+        : "interactable",
+    source: CH1_BIOMES_UI_MAP_MARKER_SOURCE,
+    visibleOnWorldMap: true,
+    visibleOnHudMap: true,
+  }));
+}
 
 function readSnapshotGroveApi(): any | undefined {
   if (typeof window === "undefined") return undefined;
@@ -317,6 +353,12 @@ export function buildBiomesUIMapAdapter(
     const label = readableMapMarkerLabelForTest(landmark).toLowerCase();
     const kind = String(landmark?.kind ?? "").toLowerCase();
     const area = String(landmark?.area ?? "").toLowerCase();
+    // Additive-town markers carry an authored kind. Resolve it directly instead
+    // of falling through the label/id heuristics below, which would bucket a
+    // guard named "Merl" as a bank and a chapel-adjacent resident as a store.
+    if (landmark?.source === HARTHMERE_TOWN_MARKER_SOURCE) {
+      return harthmereTownMapMarkerUiKind(landmark.townMarkerKind);
+    }
     if (
       kind === "crop" ||
       landmark?.source === HARTHMERE_NATIVE_CROP_MARKER_SOURCE
@@ -379,9 +421,14 @@ export function buildBiomesUIMapAdapter(
     const kind = String(landmark?.kind ?? "").toLowerCase();
     return kind === "business" ||
       kind === "property" ||
+      // Town marker ids must survive verbatim: the active-pin staleness check
+      // compares the stored pin against RAW landmark ids, so any renaming here
+      // would make every town destination look stale and clear itself.
+      landmark?.source === HARTHMERE_TOWN_MARKER_SOURCE ||
       landmark?.source === HARTHMERE_PROPERTY_MARKER_SOURCE ||
       landmark?.source === HARTHMERE_NATIVE_CROP_MARKER_SOURCE ||
       landmark?.source === HARTHMERE_HOE_QUEST_MARKER_SOURCE ||
+      landmark?.source === CH1_BIOMES_UI_MAP_MARKER_SOURCE ||
       landmark?.source === BIOMES_UI_LIVE_ENTITY_HELPER_MARKER_SOURCE ||
       landmark?.source === BIOMES_UI_SHARED_QUEST_MARKER_SOURCE
       ? id
@@ -394,23 +441,29 @@ export function buildBiomesUIMapAdapter(
       liveQuestState
     );
     const toolOwned = harthmereJobToolOwnedState();
-    return appendHarthmereBusinessOutpostMapLandmarks([
-      ...(Array.isArray(api?.landmarks) ? api.landmarks : []),
-      ...jobsBoardAcceptedJobLandmarksForBiomesUI(jobsBoardState),
-      ...jobsBoardItemSourceLandmarksForBiomesUI(jobsBoardState),
-      ...jobsBoardToolSourceLandmarksForBiomesUI(jobsBoardState, toolOwned),
-      ...liveEntityHelperAcceptedQuestLandmarksForBiomesUI(
-        liveEntityHelperState,
-        { isReadyToTurnIn: liveEntityHelperQuestRecordReadyToTurnIn }
-      ),
-      ...sharedQuestAcceptedLandmarksForBiomesUI(liveQuestState),
-      ...harthmereNativeCropMapLandmarks(farming?.getModel()),
-      ...harthmereHoeQuestMapLandmarks(farming?.hoeQuestState ?? "loading"),
-      ...harthmerePropertyMapLandmarksFromBuildingState(buildingState),
-      // Show unowned plots as "for sale" pins so players can find/preview a plot
-      // (location, district, price) before buying.
-      ...harthmerePurchasablePlotMapLandmarksFromBuildingState(buildingState),
-    ]);
+    // The additive town is appended LAST and never overwrites an existing id, so
+    // quest/job/property landmarks keep their wiring while the town fills in
+    // everything the player can otherwise only find by walking into it.
+    return appendHarthmereTownMapLandmarks(
+      appendHarthmereBusinessOutpostMapLandmarks([
+        ...(Array.isArray(api?.landmarks) ? api.landmarks : []),
+        ...jobsBoardAcceptedJobLandmarksForBiomesUI(jobsBoardState),
+        ...jobsBoardItemSourceLandmarksForBiomesUI(jobsBoardState),
+        ...jobsBoardToolSourceLandmarksForBiomesUI(jobsBoardState, toolOwned),
+        ...liveEntityHelperAcceptedQuestLandmarksForBiomesUI(
+          liveEntityHelperState,
+          { isReadyToTurnIn: liveEntityHelperQuestRecordReadyToTurnIn }
+        ),
+        ...sharedQuestAcceptedLandmarksForBiomesUI(liveQuestState),
+        ...harthmereNativeCropMapLandmarks(farming?.getModel()),
+        ...harthmereHoeQuestMapLandmarks(farming?.hoeQuestState ?? "loading"),
+        ...harthmerePropertyMapLandmarksFromBuildingState(buildingState),
+        ...chapter1WorldMapLandmarksForBiomesUI(),
+        // Show unowned plots as "for sale" pins so players can find/preview a
+        // plot (location, district, price) before buying.
+        ...harthmerePurchasablePlotMapLandmarksFromBuildingState(buildingState),
+      ])
+    );
   };
   return {
     getMapBounds: () => {

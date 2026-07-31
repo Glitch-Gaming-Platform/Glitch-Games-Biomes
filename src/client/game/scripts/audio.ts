@@ -3,6 +3,7 @@ import type {
   AudioTrackType,
 } from "@/client/game/context_managers/audio_manager";
 import type { ClientTable } from "@/client/game/game";
+import type { AudioPath } from "@/client/game/resources/audio";
 import type { ClientResources } from "@/client/game/resources/types";
 import type { Script } from "@/client/game/scripts/script_controller";
 import {
@@ -14,6 +15,10 @@ import type { ReadonlyEntity } from "@/shared/ecs/gen/entities";
 import { anItem } from "@/shared/game/item";
 import { ch1ElsewhenSlotAt } from "@/shared/harthmere/ch1_elsewhen_region";
 import { isHarthmereBossMusicEncounter } from "@/shared/harthmere/boss_music";
+import {
+  getHarthmereSoundEffect,
+  HARTHMERE_UNDERWATER_AMBIENCE_SOUND_ID,
+} from "@/shared/harthmere/sound_effect_manifest";
 import { HARTHMERE_EXTENSION_WORLD_BOUNDS } from "@/shared/harthmere/world_extension";
 import type { BiomesId } from "@/shared/ids";
 import { dist } from "@/shared/math/linear";
@@ -233,5 +238,12 @@ export class AudioScript implements Script {
     } else {
       this.audioManager.setBackgroundMusicEffect("none");
     }
+    const underwaterAmbience = getHarthmereSoundEffect(
+      HARTHMERE_UNDERWATER_AMBIENCE_SOUND_ID
+    );
+    this.audioManager.setUnderwaterEnvironment(
+      inWater,
+      underwaterAmbience?.path as AudioPath | undefined
+    );
   }
 }

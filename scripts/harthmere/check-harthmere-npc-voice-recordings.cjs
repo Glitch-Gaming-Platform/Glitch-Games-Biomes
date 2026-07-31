@@ -21,6 +21,9 @@ const {
   CH1_OBJECTIVE_DIALOGUE,
   CH1_COMPLETION_DIALOGUE,
 } = require("../../src/server/harthmere/ch1_dialogue");
+const {
+  SNAPSHOT_GROVE_JACKIE_ENTITY_ID,
+} = require("../../src/shared/harthmere/snapshot_grove_ids");
 
 const root = path.resolve(process.argv[2] || path.join(__dirname, "../.."));
 const publicRoot = path.join(root, "public");
@@ -190,7 +193,7 @@ function main() {
   // to committed audio rather than a replica-local runtime filename.
   const jackieVoice = harthmereVoiceProfileForActor({
     source: "runtime_entity",
-    entityId: 8997551883502307,
+    entityId: SNAPSHOT_GROVE_JACKIE_ENTITY_ID,
     displayName: "Jackie",
   }).voiceParameterId;
   const harText =

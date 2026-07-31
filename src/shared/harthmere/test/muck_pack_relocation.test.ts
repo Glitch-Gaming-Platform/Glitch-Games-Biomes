@@ -273,7 +273,9 @@ describe("HARTHMERE_MUCK_PACK_RELOCATION: the relocated packs are legally placed
         seed.areaId === HARTHMERE_RELOCATED_GUARDED_WILDLIFE_AREA_ID ||
         seed.areaId === HARTHMERE_RELOCATED_WATCHTOWER_LIVESTOCK_AREA_ID
     );
-    assert.equal(relocated.length, 64);
+    // Includes the six production-scanned Cobbled Mucklings added for the
+    // otherwise-unfinishable In Storage tooth objective.
+    assert.equal(relocated.length, 70);
     for (const seed of relocated) {
       assert.ok(
         harthmereOpenWildsGroundingPositionIsValidForSeed(seed, seed.position),
@@ -289,7 +291,7 @@ describe("HARTHMERE_MUCK_PACK_RELOCATION: the relocated packs are legally placed
         seed.areaId === HARTHMERE_RELOCATED_GUARDED_WILDLIFE_AREA_ID ||
         seed.areaId === HARTHMERE_RELOCATED_WATCHTOWER_LIVESTOCK_AREA_ID
     );
-    assert.equal(relocated.length, 64);
+    assert.equal(relocated.length, 70);
     for (const seed of relocated) {
       const point = { x: seed.position[0], z: seed.position[2] };
       assert.ok(

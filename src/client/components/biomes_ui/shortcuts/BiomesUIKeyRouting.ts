@@ -19,9 +19,9 @@ const BIOMES_UI_KEY_TO_TAB: Readonly<Record<string, TabKey>> = {
   KeyQ: "banking",
   KeyM: "map",
   KeyU: "map",
-  KeyZ: "recovered",
+  BracketLeft: "recovered",
   [BIOMES_UI_QUESTS_KEY_CODE]: "quests",
-  KeyC: "collections",
+  BracketRight: "collections",
   KeyV: "inbox",
   Comma: "options",
 };

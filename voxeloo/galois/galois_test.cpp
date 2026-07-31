@@ -127,6 +127,21 @@ TEST_CASE("Test sbo", "[all]") {
   REQUIRE(sbo.data[2] == 3);
   REQUIRE(sbo.data[3] == 4);
   REQUIRE(sbo.data[4] == 5);
+
+  auto empty = sbo::to_sbo(std::vector<uint32_t>{});
+  REQUIRE(empty.shape == vec2(0u, 0u));
+  REQUIRE(empty.bytes() == 0);
+  REQUIRE(empty.data.empty());
+}
+
+TEST_CASE("Test block index builder validation", "[all]") {
+  using namespace blocks;  // NOLINT
+
+  REQUIRE_THROWS(IndexBuilder(0, 1));
+
+  IndexBuilder missing_error_samples(1, 0);
+  missing_error_samples.add_block(1, {{{"white", 0, "none", "zero"}, 1}});
+  REQUIRE_THROWS(missing_error_samples.build());
 }
 
 TEST_CASE("Test block sampling", "[all]") {

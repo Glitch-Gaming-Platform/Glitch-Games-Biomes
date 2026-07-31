@@ -24,7 +24,7 @@ const quests = read("src/client/components/challenges/LocalDevHarthmereQuests.ts
 
 const expected = [
   ["inventory", "KeyI", "inventory"],
-  ["crafting", "KeyC", "world"],
+  ["crafting", "Semicolon", "world"],
   ["map", "KeyM", "map"],
   ["quests", "KeyJ", "quests"],
   ["tasks", "KeyK", "journal"],

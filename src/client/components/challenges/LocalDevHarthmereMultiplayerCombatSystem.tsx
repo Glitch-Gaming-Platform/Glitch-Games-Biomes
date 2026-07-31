@@ -114,7 +114,7 @@ function emitHarthmereFullAnimationRequest(detail: {
 
 // harthmere-hard-router-bhl-safety
 export const HARTHMERE_COMBAT_KEY_BINDINGS = {
-  draw: "KeyX",
+  draw: "Quote",
   target: "Tab",
   basic: "KeyB",
   heavy: "KeyH",
@@ -1610,7 +1610,7 @@ export function useHarthmereCombatHotkeys() {
         return;
       }
       const code = event.code;
-      if (["KeyX", "Tab", "KeyB", "KeyH", "KeyL", "KeyN"].includes(code)) {
+      if (["Quote", "Tab", "KeyB", "KeyH", "KeyL", "KeyN"].includes(code)) {
         debugHarthmereKeyCombat("keyed.hotkey", { code });
       }
       if (code === HARTHMERE_COMBAT_KEY_BINDINGS.draw) {

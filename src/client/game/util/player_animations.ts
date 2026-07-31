@@ -1,4 +1,8 @@
-import { HARTHMERE_ATTACK_VARIATION_POLISH_VERSION, getHarthmereAttackFamilyForAction, pickHarthmereAttackVariation } from "@/shared/harthmere/attack_variation_polish";
+import {
+  HARTHMERE_ATTACK_VARIATION_POLISH_VERSION,
+  getHarthmereAttackFamilyForAction,
+  pickHarthmereAttackVariation,
+} from "@/shared/harthmere/attack_variation_polish";
 import type { Player } from "@/client/game/resources/players";
 import { EMOTE_PROPERTIES } from "@/client/game/resources/players";
 import type { ClientResources } from "@/client/game/resources/types";
@@ -13,6 +17,7 @@ import { getVelocityBasedWeights } from "@/client/game/util/animations";
 import { gltfToThree } from "@/client/game/util/gltf_helpers";
 import { TimelineMatcher } from "@/client/game/util/timeline_matcher";
 import type { CharacterAnimationTiming } from "@/server/shared/minigames/ruleset/tweaks";
+import { HARTHMERE_CINEMATIC_ANIMATION_DEFINITIONS } from "@/shared/cutscene/cinematic_expressions";
 import * as THREE from "three";
 import type { GLTF } from "three/examples/jsm/loaders/GLTFLoader";
 
@@ -23,7 +28,8 @@ const RUN_SPEED = 8;
 // follow the same contract instead of fighting locomotion or restarting clips
 // from tiny velocity noise. These constants intentionally live next to the
 // player AnimationSystem because this is where weight/layer decisions happen.
-export const HARTHMERE_BODY_ANIMATION_SYNC_VERSION = "harthmere-body-animation-weapon-sync";
+export const HARTHMERE_BODY_ANIMATION_SYNC_VERSION =
+  "harthmere-body-animation-weapon-sync";
 
 export const HARTHMERE_BODY_WEAPON_TIMING_PROFILES = {
   basic: { windupMs: 150, impactMs: 220, recoveryMs: 340, bodyDurationS: 0.71 },
@@ -38,7 +44,8 @@ const HARTHMERE_BODY_ATTACK_TIME_SCALE = {
   attack2: 1.0,
 } as const;
 
-const HARTHMERE_BODY_UPPER_BODY_RE = /(.*(upperarm|forearm|arm|hand|tool|shoulder|clavicle|finger|weapon).*)/i;
+const HARTHMERE_BODY_UPPER_BODY_RE =
+  /(.*(upperarm|forearm|arm|hand|tool|shoulder|clavicle|finger|weapon).*)/i;
 const HARTHMERE_BODY_LOCOMOTION_DEADZONE_SPEED = 0.08;
 const HARTHMERE_BODY_MAX_BLEND_DT = 1 / 24;
 
@@ -56,11 +63,13 @@ type HarthmereAttackVariationEmoteType =
   | "attack2Var2"
   | "attack2Var3"
   | "attack2Var4";
-let harthmereCachedAttackVariationEmote: HarthmereAttackVariationEmoteType | undefined;
+let harthmereCachedAttackVariationEmote:
+  | HarthmereAttackVariationEmoteType
+  | undefined;
 
 function getHarthmereAttackVariationEmoteType(
   emoteType: "attack1" | "attack2",
-  emoteStartTime: number,
+  emoteStartTime: number
 ): HarthmereAttackVariationEmoteType {
   if (
     harthmereCachedAttackVariationStartTime === emoteStartTime &&
@@ -75,12 +84,12 @@ function getHarthmereAttackVariationEmoteType(
   }
   harthmereLastAttackVariationIndex =
     (harthmereLastAttackVariationIndex % 4) + 1;
-  const selected = `${emoteType}Var${harthmereLastAttackVariationIndex}` as HarthmereAttackVariationEmoteType;
+  const selected =
+    `${emoteType}Var${harthmereLastAttackVariationIndex}` as HarthmereAttackVariationEmoteType;
   harthmereCachedAttackVariationStartTime = emoteStartTime;
   harthmereCachedAttackVariationEmote = selected;
   return selected;
 }
-
 
 // harthmere-body-weapon-visual-cohesion
 // Screenshot regression: player sword attacks must not twist the full torso,
@@ -117,7 +126,6 @@ export const SNAPSHOT_PLAYER_ANIMATION_COMPAT_VERSION =
 // harthmere-creature-social-death-handtracking
 export const HARTHMERE_CREATURE_SOCIAL_DEATH_HANDTRACKING_VERSION =
   "harthmere-creature-social-death-handtracking";
-
 
 export const HARTHMERE_BODY_WEAPON_VISUAL_COHESION_VERSION =
   "harthmere-body-weapon-visual-cohesion";
@@ -161,60 +169,281 @@ export const HARTHMERE_FULL_BODY_POSE_LAYER_RULES = {
   itemUse: { arms: "apply", notArms: "noApply" },
 } as const;
 
-
 const armsRe = HARTHMERE_BODY_UPPER_BODY_RE;
 
 export const playerSystem = new AnimationSystem(
   {
-    attack1Var1: { fileAnimationName: "HarthmereBodyWeaponBasic_Variation1_24", backupFileAnimationNames: ["HarthmereBodyWeaponBasic_Aligned_30", "Attack", "SideSwing"], timeScale: HARTHMERE_BODY_ATTACK_TIME_SCALE.attack1 },
-    attack1Var2: { fileAnimationName: "HarthmereBodyWeaponBasic_Variation2_24", backupFileAnimationNames: ["HarthmereBodyWeaponBasic_Aligned_30", "Attack", "SideSwing"], timeScale: HARTHMERE_BODY_ATTACK_TIME_SCALE.attack1 },
-    attack1Var3: { fileAnimationName: "HarthmereBodyWeaponBasic_Variation3_24", backupFileAnimationNames: ["HarthmereBodyWeaponBasic_Aligned_30", "Attack", "SideSwing"], timeScale: HARTHMERE_BODY_ATTACK_TIME_SCALE.attack1 },
-    attack1Var4: { fileAnimationName: "HarthmereBodyWeaponBasic_Variation4_24", backupFileAnimationNames: ["HarthmereBodyWeaponBasic_Aligned_30", "Attack", "SideSwing"], timeScale: HARTHMERE_BODY_ATTACK_TIME_SCALE.attack1 },
-    attack2Var1: { fileAnimationName: "HarthmereBodyWeaponHeavy_Variation1_24", backupFileAnimationNames: ["HarthmereBodyWeaponHeavy_Aligned_30", "HeavyAttack", "Attack2", "Attack"], timeScale: HARTHMERE_BODY_ATTACK_TIME_SCALE.attack2 },
-    attack2Var2: { fileAnimationName: "HarthmereBodyWeaponHeavy_Variation2_24", backupFileAnimationNames: ["HarthmereBodyWeaponHeavy_Aligned_30", "HeavyAttack", "Attack2", "Attack"], timeScale: HARTHMERE_BODY_ATTACK_TIME_SCALE.attack2 },
-    attack2Var3: { fileAnimationName: "HarthmereBodyWeaponHeavy_Variation3_24", backupFileAnimationNames: ["HarthmereBodyWeaponHeavy_Aligned_30", "HeavyAttack", "Attack2", "Attack"], timeScale: HARTHMERE_BODY_ATTACK_TIME_SCALE.attack2 },
-    attack2Var4: { fileAnimationName: "HarthmereBodyWeaponHeavy_Variation4_24", backupFileAnimationNames: ["HarthmereBodyWeaponHeavy_Aligned_30", "HeavyAttack", "Attack2", "Attack"], timeScale: HARTHMERE_BODY_ATTACK_TIME_SCALE.attack2 },
-    attack1: { fileAnimationName: "HarthmereBodyWeaponBasic_Aligned_30", backupFileAnimationNames: ["Attack", "SideSwing"], timeScale: HARTHMERE_BODY_ATTACK_TIME_SCALE.attack1 },
+    attack1Var1: {
+      fileAnimationName: "HarthmereBodyWeaponBasic_Variation1_24",
+      backupFileAnimationNames: [
+        "HarthmereBodyWeaponBasic_Aligned_30",
+        "Attack",
+        "SideSwing",
+      ],
+      timeScale: HARTHMERE_BODY_ATTACK_TIME_SCALE.attack1,
+    },
+    attack1Var2: {
+      fileAnimationName: "HarthmereBodyWeaponBasic_Variation2_24",
+      backupFileAnimationNames: [
+        "HarthmereBodyWeaponBasic_Aligned_30",
+        "Attack",
+        "SideSwing",
+      ],
+      timeScale: HARTHMERE_BODY_ATTACK_TIME_SCALE.attack1,
+    },
+    attack1Var3: {
+      fileAnimationName: "HarthmereBodyWeaponBasic_Variation3_24",
+      backupFileAnimationNames: [
+        "HarthmereBodyWeaponBasic_Aligned_30",
+        "Attack",
+        "SideSwing",
+      ],
+      timeScale: HARTHMERE_BODY_ATTACK_TIME_SCALE.attack1,
+    },
+    attack1Var4: {
+      fileAnimationName: "HarthmereBodyWeaponBasic_Variation4_24",
+      backupFileAnimationNames: [
+        "HarthmereBodyWeaponBasic_Aligned_30",
+        "Attack",
+        "SideSwing",
+      ],
+      timeScale: HARTHMERE_BODY_ATTACK_TIME_SCALE.attack1,
+    },
+    attack2Var1: {
+      fileAnimationName: "HarthmereBodyWeaponHeavy_Variation1_24",
+      backupFileAnimationNames: [
+        "HarthmereBodyWeaponHeavy_Aligned_30",
+        "HeavyAttack",
+        "Attack2",
+        "Attack",
+      ],
+      timeScale: HARTHMERE_BODY_ATTACK_TIME_SCALE.attack2,
+    },
+    attack2Var2: {
+      fileAnimationName: "HarthmereBodyWeaponHeavy_Variation2_24",
+      backupFileAnimationNames: [
+        "HarthmereBodyWeaponHeavy_Aligned_30",
+        "HeavyAttack",
+        "Attack2",
+        "Attack",
+      ],
+      timeScale: HARTHMERE_BODY_ATTACK_TIME_SCALE.attack2,
+    },
+    attack2Var3: {
+      fileAnimationName: "HarthmereBodyWeaponHeavy_Variation3_24",
+      backupFileAnimationNames: [
+        "HarthmereBodyWeaponHeavy_Aligned_30",
+        "HeavyAttack",
+        "Attack2",
+        "Attack",
+      ],
+      timeScale: HARTHMERE_BODY_ATTACK_TIME_SCALE.attack2,
+    },
+    attack2Var4: {
+      fileAnimationName: "HarthmereBodyWeaponHeavy_Variation4_24",
+      backupFileAnimationNames: [
+        "HarthmereBodyWeaponHeavy_Aligned_30",
+        "HeavyAttack",
+        "Attack2",
+        "Attack",
+      ],
+      timeScale: HARTHMERE_BODY_ATTACK_TIME_SCALE.attack2,
+    },
+    attack1: {
+      fileAnimationName: "HarthmereBodyWeaponBasic_Aligned_30",
+      backupFileAnimationNames: ["Attack", "SideSwing"],
+      timeScale: HARTHMERE_BODY_ATTACK_TIME_SCALE.attack1,
+    },
     // Harthmere heavy attacks have a real HeavyAttack clip.
     // Fall back to Attack2 for the original Biomes player assets.
-    attack2: { fileAnimationName: "HarthmereBodyWeaponHeavy_Aligned_30", backupFileAnimationNames: ["HeavyAttack", "Attack2", "Attack"], timeScale: HARTHMERE_BODY_ATTACK_TIME_SCALE.attack2 },
-
+    attack2: {
+      fileAnimationName: "HarthmereBodyWeaponHeavy_Aligned_30",
+      backupFileAnimationNames: ["HeavyAttack", "Attack2", "Attack"],
+      timeScale: HARTHMERE_BODY_ATTACK_TIME_SCALE.attack2,
+    },
 
     // harthmere-full-animation-runtime
-    rangedAim: { fileAnimationName: "HarthmereBodyRangedDraw_Aligned_30", backupFileAnimationNames: ["BowDraw", "BowShooting", "BowShoot", "Attack", "Idle"] },
-    rangedRelease: { fileAnimationName: "HarthmereBodyRangedRelease_Aligned_30", backupFileAnimationNames: ["BowRelease", "BowShoot", "BowShooting", "HeavyAttack", "Attack"] },
-    rangedReload: { fileAnimationName: "HarthmereBodyRangedReload_Aligned_30", backupFileAnimationNames: ["CrossbowReload", "ItemPutBack", "Attack"] },
-    magicCast: { fileAnimationName: "HarthmereBodyMagicCast_Aligned_30", backupFileAnimationNames: ["BasicMagic", "HeavyMagic", "Attack"] },
-    magicChannel: { fileAnimationName: "HarthmereBodyMagicChannel_Aligned_30", backupFileAnimationNames: ["ChannelMagic", "BasicMagic", "Idle"] },
-    shieldBlock: { fileAnimationName: "HarthmereBodyWeaponBlock_Aligned_30", backupFileAnimationNames: ["ShieldBlock", "Block", "HitReact", "Idle"] },
-    shieldBash: { fileAnimationName: "HarthmereBodyShieldBash_Aligned_30", backupFileAnimationNames: ["ShieldBash", "Attack", "HeavyAttack"] },
-    dodge: { fileAnimationName: "Dodge", backupFileAnimationNames: ["Running", "Jump"] },
-    evade: { fileAnimationName: "Evade", backupFileAnimationNames: ["Running", "Jump"] },
-    stagger: { fileAnimationName: "Stagger", backupFileAnimationNames: ["HitReact", "Sick", "Fall"] },
-    knockdown: { fileAnimationName: "Knockdown", backupFileAnimationNames: ["Fall", "Death"] },
-    getUp: { fileAnimationName: "GetUp", backupFileAnimationNames: ["Idle", "Jump"] },
+    rangedAim: {
+      fileAnimationName: "HarthmereBodyRangedDraw_Aligned_30",
+      backupFileAnimationNames: [
+        "BowDraw",
+        "BowShooting",
+        "BowShoot",
+        "Attack",
+        "Idle",
+      ],
+    },
+    rangedRelease: {
+      fileAnimationName: "HarthmereBodyRangedRelease_Aligned_30",
+      backupFileAnimationNames: [
+        "BowRelease",
+        "BowShoot",
+        "BowShooting",
+        "HeavyAttack",
+        "Attack",
+      ],
+    },
+    rangedReload: {
+      fileAnimationName: "HarthmereBodyRangedReload_Aligned_30",
+      backupFileAnimationNames: ["CrossbowReload", "ItemPutBack", "Attack"],
+    },
+    magicCast: {
+      fileAnimationName: "HarthmereBodyMagicCast_Aligned_30",
+      backupFileAnimationNames: ["BasicMagic", "HeavyMagic", "Attack"],
+    },
+    magicChannel: {
+      fileAnimationName: "HarthmereBodyMagicChannel_Aligned_30",
+      backupFileAnimationNames: ["ChannelMagic", "BasicMagic", "Idle"],
+    },
+    shieldBlock: {
+      fileAnimationName: "HarthmereBodyWeaponBlock_Aligned_30",
+      backupFileAnimationNames: ["ShieldBlock", "Block", "HitReact", "Idle"],
+    },
+    shieldBash: {
+      fileAnimationName: "HarthmereBodyShieldBash_Aligned_30",
+      backupFileAnimationNames: ["ShieldBash", "Attack", "HeavyAttack"],
+    },
+    dodge: {
+      fileAnimationName: "DodgeRight",
+      backupFileAnimationNames: ["Dodging", "SidestepRight", "Running", "Jump"],
+    },
+    dodgeLeft: {
+      fileAnimationName: "DodgeLeft",
+      backupFileAnimationNames: ["SidestepLeft", "Dodging", "Running", "Jump"],
+    },
+    dodgeRight: {
+      fileAnimationName: "DodgeRight",
+      backupFileAnimationNames: ["SidestepRight", "Dodging", "Running", "Jump"],
+    },
+    dodgeForward: {
+      fileAnimationName: "DodgeForward",
+      backupFileAnimationNames: ["Dodging", "Sidestep", "Running", "Jump"],
+    },
+    dodgeBack: {
+      fileAnimationName: "DodgeBack",
+      backupFileAnimationNames: [
+        "Dodging",
+        "Sidestep",
+        "RunningBackward",
+        "Jump",
+      ],
+    },
+    evade: {
+      fileAnimationName: "EvadeRoll",
+      backupFileAnimationNames: [
+        "Rolling",
+        "Evade",
+        "Dodging",
+        "Running",
+        "Jump",
+      ],
+    },
     death: { fileAnimationName: "Death", backupFileAnimationNames: ["Fall"] },
-    deathCinematic: { fileAnimationName: "Death", backupFileAnimationNames: ["Fall"], timeScale: 0.82 },
-    respawnCinematic: { fileAnimationName: "Respawn", backupFileAnimationNames: ["Idle", "Waving"], timeScale: 0.9 },
-    respawn: { fileAnimationName: "Respawn", backupFileAnimationNames: ["Idle", "Waving"] },
-    land: { fileAnimationName: "Land", backupFileAnimationNames: ["Fall", "Idle"] },
-    hardLand: { fileAnimationName: "HardLand", backupFileAnimationNames: ["Fall", "HitReact", "Idle"] },
-    mountRideIdle: { fileAnimationName: "RiderIdle", backupFileAnimationNames: ["Sit", "Idle"] },
-    mountRideWalk: { fileAnimationName: "RiderWalk", backupFileAnimationNames: ["Sit", "Walking"] },
-    mountRideRun: { fileAnimationName: "RiderRun", backupFileAnimationNames: ["Sit", "Running"] },
-    mountDismount: { fileAnimationName: "Dismount", backupFileAnimationNames: ["Jump", "Sit"] },
-    mineImpact: { fileAnimationName: "HarthmereBodyToolUse_Aligned_30", backupFileAnimationNames: ["Mining", "DiggingTool", "Attack"] },
-    woodcutImpact: { fileAnimationName: "HarthmereBodyToolHeavyUse_Aligned_30", backupFileAnimationNames: ["Woodcutting", "Chopping", "DiggingTool", "Attack"] },
-    foragePickup: { fileAnimationName: "HarthmereBodyItemUse_Aligned_30", backupFileAnimationNames: ["ForagePickup", "Gathering", "DiggingHand", "ItemPutBack"] },
-    craftStationUse: { fileAnimationName: "HarthmereBodyToolUse_Aligned_30", backupFileAnimationNames: ["CraftStationUse", "DiggingTool", "ItemPutBack"] },
-    repairImpact: { fileAnimationName: "HarthmereBodyToolUse_Aligned_30", backupFileAnimationNames: ["Repair", "DiggingTool", "Attack"] },
-    buildPlace: { fileAnimationName: "HarthmereBodyToolUse_Aligned_30", backupFileAnimationNames: ["BuildPlace", "ItemPutBack", "DiggingTool"] },
-    socialTalk: { fileAnimationName: "TalkGesture", backupFileAnimationNames: ["Waving", "Point", "Idle"] },
-    vendorWork: { fileAnimationName: "VendorWork", backupFileAnimationNames: ["ItemPutBack", "Idle"] },
-    questGesture: { fileAnimationName: "QuestGesture", backupFileAnimationNames: ["Point", "Waving"] },
-    sleep: { fileAnimationName: "Sleep", backupFileAnimationNames: ["Sit", "Idle"] },
-    bossTelegraph: { fileAnimationName: "BossTelegraph", backupFileAnimationNames: ["HeavyAttack", "Attack"] },
-    bossPhaseTransition: { fileAnimationName: "BossPhaseTransition", backupFileAnimationNames: ["HeavyAttack", "HitReact"] },
+    deathCinematic: {
+      fileAnimationName: "Death",
+      backupFileAnimationNames: ["Fall"],
+      timeScale: 0.82,
+    },
+    respawnCinematic: {
+      fileAnimationName: "Respawn",
+      backupFileAnimationNames: ["Idle", "Waving"],
+      timeScale: 0.9,
+    },
+    respawn: {
+      fileAnimationName: "Respawn",
+      backupFileAnimationNames: ["Idle", "Waving"],
+    },
+    land: {
+      fileAnimationName: "Land",
+      backupFileAnimationNames: ["Fall", "Idle"],
+    },
+    hardLand: {
+      fileAnimationName: "HardLand",
+      backupFileAnimationNames: ["Fall", "HitReact", "Idle"],
+    },
+    mountRideIdle: {
+      fileAnimationName: "RiderIdle",
+      backupFileAnimationNames: ["Sit", "Idle"],
+    },
+    mountRideWalk: {
+      fileAnimationName: "RiderWalk",
+      backupFileAnimationNames: ["Sit", "Walking"],
+    },
+    mountRideRun: {
+      fileAnimationName: "RiderRun",
+      backupFileAnimationNames: ["Sit", "Running"],
+    },
+    mountDismount: {
+      fileAnimationName: "Dismount",
+      backupFileAnimationNames: ["Jump", "Sit"],
+    },
+    mineImpact: {
+      fileAnimationName: "HarthmereBodyToolUse_Aligned_30",
+      backupFileAnimationNames: ["Mining", "DiggingTool", "Attack"],
+    },
+    woodcutImpact: {
+      fileAnimationName: "HarthmereBodyToolHeavyUse_Aligned_30",
+      backupFileAnimationNames: [
+        "Woodcutting",
+        "Chopping",
+        "DiggingTool",
+        "Attack",
+      ],
+    },
+    foragePickup: {
+      fileAnimationName: "HarthmereBodyItemUse_Aligned_30",
+      backupFileAnimationNames: [
+        "ForagePickup",
+        "Gathering",
+        "DiggingHand",
+        "ItemPutBack",
+      ],
+    },
+    craftStationUse: {
+      fileAnimationName: "HarthmereBodyToolUse_Aligned_30",
+      backupFileAnimationNames: [
+        "CraftStationUse",
+        "DiggingTool",
+        "ItemPutBack",
+      ],
+    },
+    repairImpact: {
+      fileAnimationName: "HarthmereBodyToolUse_Aligned_30",
+      backupFileAnimationNames: ["Repair", "DiggingTool", "Attack"],
+    },
+    buildPlace: {
+      fileAnimationName: "HarthmereBodyToolUse_Aligned_30",
+      backupFileAnimationNames: ["BuildPlace", "ItemPutBack", "DiggingTool"],
+    },
+    socialTalk: {
+      fileAnimationName: "TalkGesture",
+      backupFileAnimationNames: ["Waving", "Point", "Idle"],
+    },
+    vendorWork: {
+      fileAnimationName: "VendorWork",
+      backupFileAnimationNames: ["ItemPutBack", "Idle"],
+    },
+    questGesture: {
+      fileAnimationName: "QuestGesture",
+      backupFileAnimationNames: ["Point", "Waving"],
+    },
+    sleep: {
+      fileAnimationName: "Sleep",
+      backupFileAnimationNames: ["Sit", "Idle"],
+    },
+    bossTelegraph: {
+      fileAnimationName: "BossTelegraph",
+      backupFileAnimationNames: ["HeavyAttack", "Attack"],
+    },
+    bossPhaseTransition: {
+      fileAnimationName: "BossPhaseTransition",
+      backupFileAnimationNames: ["HeavyAttack", "HitReact"],
+    },
+
+    // First-class gameplay/cutscene expression library. Every public emote id
+    // resolves to its authored Blender clip and degrades to a safe legacy clip
+    // on older character assets.
+    ...HARTHMERE_CINEMATIC_ANIMATION_DEFINITIONS,
 
     destroy: { fileAnimationName: "DiggingTool" },
     place: { fileAnimationName: "DiggingTool" },
@@ -251,8 +480,14 @@ export const playerSystem = new AnimationSystem(
     flex: { fileAnimationName: "Flex" },
     applause: { fileAnimationName: "Applause" },
     point: { fileAnimationName: "Point" },
-    drink: { fileAnimationName: "HarthmereBodyItemUse_Aligned_30", backupFileAnimationNames: ["Drink", "ItemPutBack"] },
-    eat: { fileAnimationName: "HarthmereBodyItemUse_Aligned_30", backupFileAnimationNames: ["Eat", "ItemPutBack"] },
+    drink: {
+      fileAnimationName: "HarthmereBodyItemUse_Aligned_30",
+      backupFileAnimationNames: ["Drink", "ItemPutBack"],
+    },
+    eat: {
+      fileAnimationName: "HarthmereBodyItemUse_Aligned_30",
+      backupFileAnimationNames: ["Eat", "ItemPutBack"],
+    },
 
     fishingCastPull: { fileAnimationName: "FishingCastPull" },
     fishingCastRelease: { fileAnimationName: "FishingCastRelease" },
@@ -319,7 +554,10 @@ export function loadPlayerAnimatedMesh(
     // preview, or world entry. Attach the weapon group to the mesh as a safe
     // fallback; later equipment-specific polish can improve the visual anchor.
     console.warn("HARTHMERE_PLAYER_MESH_MISSING_WEAPON_PARENT_NONFATAL", {
-      childNames: meshScene.children.map((child) => child.name).filter(Boolean).slice(0, 20),
+      childNames: meshScene.children
+        .map((child) => child.name)
+        .filter(Boolean)
+        .slice(0, 20),
     });
     weaponParentBone = mesh;
   }
@@ -391,14 +629,14 @@ function getFallWeights(player: Player): PlayerAnimationAction | undefined {
 }
 
 function isHarthmereWeaponSyncedBodyEmote(
-  emoteType: string,
+  emoteType: string
 ): emoteType is "attack1" | "attack2" {
   return emoteType === "attack1" || emoteType === "attack2";
 }
 
 function getResolvedPlayerAnimationClipName(
   animationState: AnimationSystemState<typeof playerSystem>,
-  animationName: AnimationName<typeof playerSystem>,
+  animationName: AnimationName<typeof playerSystem>
 ): string | undefined {
   const actionsByLayer = animationState.actions as unknown as Record<
     string,
@@ -416,19 +654,21 @@ function getResolvedPlayerAnimationClipName(
 
 function hasResolvedHarthmereWeaponBodyClip(
   animationState: AnimationSystemState<typeof playerSystem>,
-  animationName: AnimationName<typeof playerSystem>,
+  animationName: AnimationName<typeof playerSystem>
 ): boolean {
   const clipName = getResolvedPlayerAnimationClipName(
     animationState,
-    animationName,
+    animationName
   );
-  return !!clipName && /^HarthmereBodyWeapon.*_(Variation|Aligned)_/.test(clipName);
+  return (
+    !!clipName && /^HarthmereBodyWeapon.*_(Variation|Aligned)_/.test(clipName)
+  );
 }
 
 function getHarthmereWeaponSyncedEmoteWeights(
   animationState: AnimationSystemState<typeof playerSystem>,
   player: Player,
-  toAnimationTime: ToAnimationTimeFunction,
+  toAnimationTime: ToAnimationTimeFunction
 ): PlayerAnimationAction | undefined {
   if (!player.emoteInfo) {
     return;
@@ -439,12 +679,14 @@ function getHarthmereWeaponSyncedEmoteWeights(
     return;
   }
 
-  const harthmereVariationEmoteType =
-    getHarthmereAttackVariationEmoteType(emoteType, emoteStartTime);
+  const harthmereVariationEmoteType = getHarthmereAttackVariationEmoteType(
+    emoteType,
+    emoteStartTime
+  );
 
   const hasHarthmereWeaponClip = hasResolvedHarthmereWeaponBodyClip(
     animationState,
-    harthmereVariationEmoteType as AnimationName<typeof playerSystem>,
+    harthmereVariationEmoteType as AnimationName<typeof playerSystem>
   );
 
   if (!hasHarthmereWeaponClip) {
@@ -485,7 +727,7 @@ function getHarthmereWeaponSyncedEmoteWeights(
 }
 
 function getHarthmereStableAnimationVelocity(
-  velocity: Player["velocity"],
+  velocity: Player["velocity"]
 ): Player["velocity"] {
   const horizontalSpeed = Math.hypot(velocity[0] ?? 0, velocity[2] ?? 0);
   if (horizontalSpeed < HARTHMERE_BODY_LOCOMOTION_DEADZONE_SPEED) {
@@ -506,7 +748,7 @@ function getEmoteBasedWeights(
   const weaponSyncedWeights = getHarthmereWeaponSyncedEmoteWeights(
     animationState,
     player,
-    toAnimationTime,
+    toAnimationTime
   );
   if (weaponSyncedWeights) {
     return weaponSyncedWeights;
@@ -531,6 +773,54 @@ function getEmoteBasedWeights(
       },
     };
   }
+}
+
+function getMovementActionWeights(
+  player: Player,
+  toAnimationTime: ToAnimationTimeFunction
+): PlayerAnimationAction | undefined {
+  const info = player.movementActionInfo;
+  if (!info) {
+    return;
+  }
+
+  let animation:
+    | "dodgeLeft"
+    | "dodgeRight"
+    | "dodgeForward"
+    | "dodgeBack"
+    | "evade" = "evade";
+  if (info.action === "dodge") {
+    const direction = new THREE.Vector2(info.direction[0], -info.direction[2]);
+    const forward = new THREE.Vector2(0, 1).rotateAround(
+      new THREE.Vector2(0, 0),
+      player.orientation[1]
+    );
+    const side = new THREE.Vector2(1, 0).rotateAround(
+      new THREE.Vector2(0, 0),
+      player.orientation[1]
+    );
+    const forwardAmount = direction.dot(forward);
+    const sideAmount = direction.dot(side);
+    animation =
+      Math.abs(sideAmount) >= Math.abs(forwardAmount)
+        ? sideAmount >= 0
+          ? "dodgeRight"
+          : "dodgeLeft"
+        : forwardAmount >= 0
+        ? "dodgeForward"
+        : "dodgeBack";
+  }
+
+  return {
+    weights: playerSystem.singleAnimationWeight(animation, 1),
+    state: {
+      repeat: { kind: "once" },
+      startTime: toAnimationTime("movementAction", info.startTime),
+      easeInTime: 0.04,
+    },
+    layers: { arms: "apply", notArms: "apply" },
+  };
 }
 
 function getCameraModeWeights(
@@ -582,6 +872,10 @@ export function syncAnimationsToPlayerState(
   }
 
   playerSystem.accumulateAction(
+    getMovementActionWeights(player, toAnimationTime),
+    accum
+  );
+  playerSystem.accumulateAction(
     getEmoteBasedWeights(animationState, player, toAnimationTime),
     accum
   );
@@ -607,16 +901,17 @@ export function syncAnimationsToPlayerState(
 
   const animationBlendDt = Math.min(
     Math.max(dt, 0),
-    HARTHMERE_BODY_MAX_BLEND_DT,
+    HARTHMERE_BODY_MAX_BLEND_DT
   );
   playerSystem.applyAccumulatedActionsToState(
     accum,
     animationState,
-    animationBlendDt,
+    animationBlendDt
   );
 }
 
-export const HARTHMERE_ATTACK_VARIATION_VERSION_RUNTIME = HARTHMERE_ATTACK_VARIATION_POLISH_VERSION;
+export const HARTHMERE_ATTACK_VARIATION_VERSION_RUNTIME =
+  HARTHMERE_ATTACK_VARIATION_POLISH_VERSION;
 
 // pickHarthmereAttackVariation("basic", __harthmereAttackVariationHistory)
 
@@ -624,8 +919,8 @@ export const HARTHMERE_ATTACK_VARIATION_VERSION_RUNTIME = HARTHMERE_ATTACK_VARIA
 
 // pickHarthmereAttackVariation("magic", __harthmereAttackVariationHistory)
 
-
-export const HARTHMERE_ATTACK_VARIATION_POLISH_RUNTIME = HARTHMERE_ATTACK_VARIATION_POLISH_VERSION;
+export const HARTHMERE_ATTACK_VARIATION_POLISH_RUNTIME =
+  HARTHMERE_ATTACK_VARIATION_POLISH_VERSION;
 export function getHarthmereAttackVariationForAction(actionType: string) {
   const family = getHarthmereAttackFamilyForAction(actionType);
   const variation = pickHarthmereAttackVariation(family);
@@ -641,4 +936,5 @@ export function getHarthmereAttackVariationForAction(actionType: string) {
 }
 // v17 variation markers: attack1Var1 attack1Var2 attack1Var3 attack1Var4 attack2Var1 attack2Var2 attack2Var3 attack2Var4
 
-export const HARTHMERE_REAL_ATTACK_VARIATION_CLIPS_VERSION = "harthmere-real-attack-variation-clips";
+export const HARTHMERE_REAL_ATTACK_VARIATION_CLIPS_VERSION =
+  "harthmere-real-attack-variation-clips";

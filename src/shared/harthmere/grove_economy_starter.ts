@@ -267,7 +267,7 @@ export const GROVE_ECONOMY_STARTER_LANDMARKS: SnapshotGroveLandmark[] = [
     kind: "resource",
     area: "the_grove",
     questIds: ["econ_gus_fresh_loaves_to_fountain"],
-    visibleOnWorldMap: false,
+    visibleOnWorldMap: true,
     activeQuestOnly: true,
   },
   {

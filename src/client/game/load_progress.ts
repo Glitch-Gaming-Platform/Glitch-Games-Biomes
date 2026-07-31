@@ -2,11 +2,14 @@ import type { InitConfigOptions } from "@/client/game/client_config";
 import { clearPartialTerrainRecoveryMarker } from "@/client/components/system/load_progress_recovery";
 import type { ClientContext, EarlyClientContext } from "@/client/game/context";
 import {
+  allPlayerShardsLoaded,
   allPlayerShardsMeshed,
+  playerShardMeshLoadScope,
   triggerPlayerShardsMesh,
 } from "@/client/game/helpers/player_shards";
 import { initializeClient } from "@/client/game/init";
 import { progressSummary } from "@/client/game/load_progress_summary";
+import { terrainReadyForStartup } from "@/client/game/mobile_startup_terrain";
 import { BackgroundTaskController } from "@/shared/abort";
 import type { BiomesId } from "@/shared/ids";
 import type { RegistryLoader } from "@/shared/registry";
@@ -114,8 +117,11 @@ export class ClientLoader {
               const summary = progressSummary(latestProgress);
               if (summary === "terrain_meshing") {
                 if (this.userId) {
+                  const scope = playerShardMeshLoadScope(
+                    this.context!.clientConfig.lowMemory
+                  );
                   fireAndForget(
-                    triggerPlayerShardsMesh(this.context!.resources)
+                    triggerPlayerShardsMesh(this.context!.resources, scope)
                   );
                 }
               } else if (summary === "scene_rendered") {
@@ -208,6 +214,22 @@ export function extractLoadProgress(
         const sparseGlitchRuntimeSnapshot =
           isSparseGlitchRuntimeSnapshot(context);
         const localDevStarterTerrainLoaded = hasLocalDevStarterTerrain(context);
+        const shardMeshScope = playerShardMeshLoadScope(
+          context.clientConfig.lowMemory
+        );
+        // Combined terrain meshes are deliberately evictable. On low-memory
+        // mobile Safari they can be rebuilt and evicted continuously even
+        // while the renderer, player mesh, terrain entities, and collision
+        // boxes are all ready. Requiring that cache entry keeps a fully
+        // playable world hidden behind the loading screen forever. Mobile only
+        // needs the local terrain and collision data to enter; desktop keeps
+        // the stronger nearby combined-mesh startup gate.
+        const playerShardsLoaded = context.clientConfig.lowMemory
+          ? allPlayerShardsLoaded(context.resources)
+          : false;
+        const playerShardsMeshed = context.clientConfig.lowMemory
+          ? false
+          : allPlayerShardsMeshed(context.resources, shardMeshScope);
 
         return {
           entitiesLoaded: context.table.recordSize,
@@ -220,7 +242,11 @@ export function extractLoadProgress(
             sparseLocalDevSnapshot ||
             sparseGlitchRuntimeSnapshot ||
             localDevStarterTerrainLoaded ||
-            allPlayerShardsMeshed(context.resources),
+            terrainReadyForStartup({
+              lowMemory: context.clientConfig.lowMemory,
+              playerShardsLoaded,
+              playerShardsMeshed,
+            }),
           sceneRendered: context.rendererController.renderedFrames,
         };
       })();

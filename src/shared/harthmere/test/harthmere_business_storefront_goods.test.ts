@@ -77,10 +77,14 @@ describe("Harthmere business storefront goods", () => {
   it("registers repeat-buy goods, but not one-time recipe books, as unlimited vendor entries", () => {
     for (const businessType of harthmereBusinessStorefrontTypes()) {
       const listings = harthmereBusinessStorefrontListingsForType(businessType);
+      const restrictedWeaponCount =
+        businessType === "security_defense_contractor" ? 5 : 0;
       assert.equal(
         listings.length,
-        10 + harthmereBusinessJobMaterialListings(businessType).length,
-        `${businessType} should sell its 10 themed goods plus real material stock`
+        10 +
+          restrictedWeaponCount +
+          harthmereBusinessJobMaterialListings(businessType).length,
+        `${businessType} should sell its themed goods, security exclusives, and real material stock`
       );
       assert.equal(
         listings.filter((listing) => listing.kind === "recipe_book").length,

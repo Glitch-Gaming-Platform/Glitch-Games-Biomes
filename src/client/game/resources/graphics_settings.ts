@@ -325,6 +325,13 @@ const DRAW_DISTANCES: {
   high: 256,
 };
 
+export function defaultDynamicDrawDistance(lowMemory: boolean) {
+  // Low-memory mode is selected automatically for phones/tablets. Start at the
+  // emergency target instead of waiting for 110 already-slow frames before the
+  // dynamic updater is allowed to reduce terrain work.
+  return lowMemory ? DRAW_DISTANCES.veryLow : DRAW_DISTANCES.low;
+}
+
 function computeDrawDistance(
   { clientConfig }: ClientContext,
   resolved: ResolvedGraphicsSettings
@@ -381,12 +388,16 @@ function genGraphicsSettingsDynamic(
   const isDynamicDrawDistance = computedSettings.drawDistance === "dynamic";
   const dynamicDrawDistance = isDynamicDrawDistance
     ? (() => {
-        const value = deps.get("/settings/graphics/dynamic_draw_distance").value;
-        return typeof value === "number" ? value : DRAW_DISTANCES.low;
+        const value = deps.get(
+          "/settings/graphics/dynamic_draw_distance"
+        ).value;
+        return typeof value === "number"
+          ? value
+          : defaultDynamicDrawDistance(context.clientConfig.lowMemory);
       })()
     : typeof computedSettings.drawDistance === "number"
-      ? computedSettings.drawDistance
-      : DRAW_DISTANCES.low;
+    ? computedSettings.drawDistance
+    : DRAW_DISTANCES.low;
   const drawDistance = applyDrawDistanceFloors(dynamicDrawDistance, {
     hardMinDrawDistance: context.clientConfig.minDrawDistance,
     dynamicMinDrawDistance: context.clientConfig.dynamicMinDrawDistance,

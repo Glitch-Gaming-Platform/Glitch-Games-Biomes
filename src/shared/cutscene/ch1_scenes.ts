@@ -29,15 +29,22 @@
 
 import {
   conversationCutscene,
-  revealCutscene,
+  type ConversationLine,
 } from "@/shared/cutscene/templates";
 import {
   validateCutsceneDef,
   type CutsceneDef,
+  type CutsceneRoleBindingInput,
   type CutsceneVec3,
 } from "@/shared/cutscene/schema";
+import { lookAtOrientation } from "@/shared/cutscene/math";
+import {
+  cutsceneExpressionSequence,
+  type CutsceneExpressionCue,
+} from "@/shared/cutscene/expression_actions";
 import { SNAPSHOT_GROVE_JACKIE_ENTITY_ID } from "@/shared/harthmere/snapshot_grove_ids";
 import { CH1_ANCHORS, CH1_NPC_ENTITY_IDS } from "@/shared/harthmere/ch1_ids";
+import { ch1DungeonAuthoredToWorld } from "@/shared/harthmere/ch1_dungeon_terrain";
 import {
   CH1_CONSOLIDATION_ENTRY_SECONDS,
   CH1_CONSOLIDATION_ORDER,
@@ -68,24 +75,497 @@ export const CH1_SCENE_IDS = {
 
 export type Ch1SceneId = (typeof CH1_SCENE_IDS)[keyof typeof CH1_SCENE_IDS];
 
-function mustValidate(def: unknown): CutsceneDef {
+export interface Ch1SceneActingCue extends CutsceneExpressionCue {
+  shotId: string;
+}
+
+/**
+ * Revision-one performance plan for the complete Chapter 1 catalog.
+ *
+ * These are deliberately authored as emotional beats rather than one emote
+ * per subtitle. The player should be able to read what changed in a scene
+ * without the cast looking like it is cycling an animation showcase. The two
+ * Corridor renderings use the same cue list to preserve the revision promise.
+ */
+export const CH1_SCENE_ACTING_CUES = Object.freeze({
+  [CH1_SCENE_IDS.ignition]: [
+    { shotId: "it-stands-up", role: "augur9", expression: "getUp", at: 0.15 },
+    {
+      shotId: "it-looks-at-you",
+      role: "augur9",
+      expression: "curiosity",
+      at: 0.1,
+      faceTowardsRole: "player",
+    },
+    {
+      shotId: "your-own-voice",
+      role: "augur9",
+      expression: "confusion",
+      at: 0.15,
+      faceTowardsRole: "player",
+    },
+  ],
+  [CH1_SCENE_IDS.firstGate]: [
+    {
+      shotId: "the-card-goes-hot",
+      role: "player",
+      expression: "recoil",
+      at: 0.35,
+      faceTowardsRole: "seam",
+    },
+    {
+      shotId: "the-card-goes-hot",
+      role: "jackie",
+      expression: "nervousness",
+      at: 0.6,
+      faceTowardsRole: "seam",
+    },
+    {
+      shotId: "youve-seen-one-before",
+      role: "jackie",
+      expression: "uncertainty",
+      at: 0.15,
+      faceTowardsRole: "player",
+    },
+    {
+      shotId: "not-this-small",
+      role: "player",
+      expression: "shock",
+      at: 0.1,
+      faceTowardsRole: "seam",
+    },
+  ],
+  [CH1_SCENE_IDS.persistentGate]: [
+    {
+      shotId: "reveal",
+      role: "rook",
+      expression: "guard",
+      at: 0.15,
+      faceTowardsRole: "revealTarget",
+    },
+    {
+      shotId: "rook-says-it",
+      role: "rook",
+      expression: "determined",
+      at: 0.1,
+      faceTowardsRole: "player",
+    },
+  ],
+  [CH1_SCENE_IDS.overlayIveGotYou]: [
+    {
+      shotId: "corridor",
+      role: "player",
+      expression: "fear",
+      at: 0.2,
+      faceTowardsRole: "hand",
+    },
+    {
+      shotId: "corridor",
+      role: "hand",
+      expression: "determined",
+      at: 0.3,
+      faceTowardsRole: "player",
+    },
+    {
+      shotId: "the-hand",
+      role: "hand",
+      expression: "comeHere",
+      at: 0.15,
+      faceTowardsRole: "player",
+    },
+  ],
+  [CH1_SCENE_IDS.reconArrival]: [
+    {
+      shotId: "rain-on-the-road",
+      role: "carrier",
+      expression: "determined",
+      at: 0.2,
+      faceTowardsRole: "roadhouse",
+    },
+    {
+      shotId: "rain-on-the-road",
+      role: "player",
+      expression: "injury",
+      at: 0.15,
+    },
+    {
+      shotId: "she-does-not-stop",
+      role: "carrier",
+      expression: "exhaustion",
+      at: 0.2,
+      faceTowardsRole: "roadhouse",
+    },
+  ],
+  [CH1_SCENE_IDS.reconCorridor]: [
+    {
+      shotId: "smoke-on-the-ceiling",
+      role: "player",
+      expression: "fear",
+      at: 0.2,
+      faceTowardsRole: "woman",
+    },
+    {
+      shotId: "smoke-on-the-ceiling",
+      role: "woman",
+      expression: "terror",
+      at: 0.25,
+      faceTowardsRole: "player",
+    },
+    {
+      shotId: "she-is-running",
+      role: "woman",
+      expression: "determined",
+      at: 0.1,
+      faceTowardsRole: "player",
+    },
+    {
+      shotId: "dont-look-at-her",
+      role: "man",
+      expression: "comeHere",
+      at: 0.15,
+      faceTowardsRole: "player",
+    },
+    {
+      shotId: "dont-look-at-her",
+      role: "player",
+      expression: "stagger",
+      at: 0.6,
+      faceTowardsRole: "door",
+    },
+  ],
+  [`${CH1_SCENE_IDS.reconCorridor}-revised`]: [
+    {
+      shotId: "smoke-on-the-ceiling",
+      role: "player",
+      expression: "fear",
+      at: 0.2,
+      faceTowardsRole: "woman",
+    },
+    {
+      shotId: "smoke-on-the-ceiling",
+      role: "woman",
+      expression: "terror",
+      at: 0.25,
+      faceTowardsRole: "player",
+    },
+    {
+      shotId: "she-is-running",
+      role: "woman",
+      expression: "determined",
+      at: 0.1,
+      faceTowardsRole: "player",
+    },
+    {
+      shotId: "dont-look-at-her",
+      role: "man",
+      expression: "comeHere",
+      at: 0.15,
+      faceTowardsRole: "player",
+    },
+    {
+      shotId: "dont-look-at-her",
+      role: "player",
+      expression: "stagger",
+      at: 0.6,
+      faceTowardsRole: "door",
+    },
+  ],
+  [CH1_SCENE_IDS.overlayContainment]: [
+    {
+      shotId: "reveal",
+      role: "player",
+      expression: "exhaustion",
+      at: 0.5,
+      faceTowardsRole: "calla",
+    },
+    {
+      shotId: "calla-sees-it",
+      role: "calla",
+      expression: "shock",
+      at: 0.1,
+      faceTowardsRole: "player",
+    },
+    {
+      shotId: "calla-sees-it",
+      role: "player",
+      expression: "relief",
+      at: 0.3,
+      faceTowardsRole: "calla",
+    },
+  ],
+  [CH1_SCENE_IDS.theFlinch]: [
+    {
+      shotId: "establishing",
+      role: "a",
+      expression: "shock",
+      at: 0.2,
+      faceTowardsRole: "b",
+    },
+    {
+      shotId: "establishing",
+      role: "b",
+      expression: "recoil",
+      at: 0.4,
+      faceTowardsRole: "a",
+    },
+    { shotId: "line-0", role: "a", expression: "nervousness", at: 0.1 },
+    { shotId: "line-1", role: "a", expression: "frustration", at: 0.1 },
+    { shotId: "line-2", role: "a", expression: "sighing", at: 0.1 },
+  ],
+  [CH1_SCENE_IDS.confrontation]: [
+    {
+      shotId: "establishing",
+      role: "a",
+      expression: "shame",
+      at: 0.2,
+      faceTowardsRole: "b",
+    },
+    {
+      shotId: "establishing",
+      role: "b",
+      expression: "anger",
+      at: 0.3,
+      faceTowardsRole: "a",
+    },
+    { shotId: "line-0", role: "a", expression: "uncertainty", at: 0.1 },
+    { shotId: "line-2", role: "b", expression: "disgust", at: 0.1 },
+    { shotId: "line-3", role: "a", expression: "shame", at: 0.1 },
+    { shotId: "line-4", role: "a", expression: "determined", at: 0.1 },
+  ],
+  [CH1_SCENE_IDS.sorrelDoor]: [
+    {
+      shotId: "establishing",
+      role: "a",
+      expression: "annoyance",
+      at: 0.2,
+      faceTowardsRole: "b",
+    },
+    {
+      shotId: "establishing",
+      role: "b",
+      expression: "uncertainty",
+      at: 0.3,
+      faceTowardsRole: "a",
+    },
+    { shotId: "line-1", role: "a", expression: "surprise", at: 0.1 },
+    { shotId: "line-3", role: "a", expression: "sadness", at: 0.1 },
+    { shotId: "line-4", role: "a", expression: "shock", at: 0.1 },
+    { shotId: "line-5", role: "a", expression: "sighing", at: 0.1 },
+    { shotId: "line-6", role: "a", expression: "determined", at: 0.1 },
+  ],
+  [CH1_SCENE_IDS.theCase]: [
+    {
+      shotId: "establishing",
+      role: "a",
+      expression: "determined",
+      at: 0.2,
+      faceTowardsRole: "b",
+    },
+    {
+      shotId: "establishing",
+      role: "b",
+      expression: "uncertainty",
+      at: 0.3,
+      faceTowardsRole: "a",
+    },
+    { shotId: "line-0", role: "a", expression: "apology", at: 0.1 },
+    { shotId: "line-1", role: "a", expression: "uncertainty", at: 0.1 },
+    { shotId: "line-3", role: "a", expression: "frustration", at: 0.1 },
+    { shotId: "line-4", role: "a", expression: "sadness", at: 0.1 },
+    { shotId: "line-6", role: "a", expression: "determined", at: 0.1 },
+  ],
+  [CH1_SCENE_IDS.consolidationRevision]: [
+    {
+      shotId: "the-word",
+      role: "lou",
+      expression: "relief",
+      at: 0.1,
+      faceTowardsRole: "player",
+    },
+    {
+      shotId: "the-word",
+      role: "player",
+      expression: "recoil",
+      at: 1.7,
+      faceTowardsRole: "lou",
+    },
+    {
+      shotId: "the-word",
+      role: "lou",
+      expression: "shame",
+      at: 1.8,
+      faceTowardsRole: "player",
+    },
+  ],
+  [CH1_SCENE_IDS.reconIntake]: [
+    {
+      shotId: "the-room",
+      role: "player",
+      expression: "anger",
+      at: 0.3,
+      faceTowardsRole: "lou",
+    },
+    {
+      shotId: "the-room",
+      role: "lou",
+      expression: "shame",
+      at: 0.2,
+      faceTowardsRole: "player",
+    },
+    {
+      shotId: "the-argument",
+      role: "lou",
+      expression: "uncertainty",
+      at: 0.1,
+      faceTowardsRole: "player",
+    },
+    {
+      shotId: "the-kind-version",
+      role: "lou",
+      expression: "apology",
+      at: 0.1,
+      faceTowardsRole: "player",
+    },
+  ],
+  [CH1_SCENE_IDS.tooLate]: [
+    {
+      shotId: "establishing",
+      role: "a",
+      expression: "exhaustion",
+      at: 0.2,
+      faceTowardsRole: "b",
+    },
+    {
+      shotId: "establishing",
+      role: "b",
+      expression: "anger",
+      at: 0.3,
+      faceTowardsRole: "a",
+    },
+    { shotId: "line-0", role: "a", expression: "shame", at: 0.1 },
+    { shotId: "line-1", role: "a", expression: "determined", at: 0.1 },
+    { shotId: "line-3", role: "a", expression: "frustration", at: 0.1 },
+    { shotId: "line-4", role: "a", expression: "defeat", at: 0.1 },
+  ],
+  [CH1_SCENE_IDS.theWatchHouse]: [
+    {
+      shotId: "establishing",
+      role: "a",
+      expression: "exhaustion",
+      at: 0.2,
+      faceTowardsRole: "b",
+    },
+    {
+      shotId: "establishing",
+      role: "b",
+      expression: "uncertainty",
+      at: 0.3,
+      faceTowardsRole: "a",
+    },
+    { shotId: "line-0", role: "a", expression: "sighing", at: 0.1 },
+    { shotId: "line-1", role: "a", expression: "shame", at: 0.1 },
+    { shotId: "line-3", role: "a", expression: "apology", at: 0.1 },
+    { shotId: "line-4", role: "a", expression: "shame", at: 0.1 },
+    { shotId: "line-5", role: "a", expression: "determined", at: 0.1 },
+    { shotId: "line-6", role: "a", expression: "ready", at: 0.1 },
+  ],
+}) satisfies Readonly<Record<string, readonly Ch1SceneActingCue[]>>;
+
+/**
+ * The Act 6 consolidation objective is one production cinematic sequence.
+ * The ledger revision unlocks the fair-play re-render of the corridor and then
+ * the previously omitted fourteen-hour intake memory. Keeping the ids here
+ * makes browser playback and coverage tests share one order.
+ */
+export const CH1_CONSOLIDATION_PLAYBACK_SEQUENCE = Object.freeze([
+  CH1_SCENE_IDS.consolidationRevision,
+  `${CH1_SCENE_IDS.reconCorridor}-revised`,
+  CH1_SCENE_IDS.reconIntake,
+]);
+
+function validateCh1Scene(def: unknown, phase: string): CutsceneDef {
   const result = validateCutsceneDef(def);
   if (!result.ok) {
     throw new Error(
-      `invalid Chapter 1 cutscene: ${result.issues
+      `invalid Chapter 1 cutscene (${phase}): ${result.issues
         .map((i) => `${i.path}: ${i.message}`)
         .join("; ")}`
     );
   }
-  // Attach provider-neutral voice descriptors after structural validation;
-  // the client library validates the enriched scene again when registering.
-  return withCh1DialogueVoices(result.def);
+  return result.def;
 }
 
-// Flashback staging. Memories are played in a neutral pocket above the Grove
-// so ghost actors never intersect live terrain or seeded NPCs. Ghosts are
-// client-only meshes; nothing here touches the world.
-export const CH1_MEMORY_STAGE: CutsceneVec3 = [496, 140, -126];
+function withCh1SafeCoverage(def: CutsceneDef): CutsceneDef {
+  return {
+    ...def,
+    shots: def.shots.map((shot) => ({
+      ...shot,
+      camera:
+        shot.camera.kind === "overShoulder" && shot.camera.pullout < 2.2
+          ? { ...shot.camera, pullout: 2.2 }
+          : shot.camera,
+    })),
+  };
+}
+
+function withCh1Acting(def: CutsceneDef): CutsceneDef {
+  const cues = (
+    CH1_SCENE_ACTING_CUES as Readonly<
+      Record<string, readonly Ch1SceneActingCue[]>
+    >
+  )[def.id];
+  if (!cues?.length) {
+    throw new Error(`${def.id}: missing Chapter 1 acting plan`);
+  }
+
+  const castRoles = new Set(def.cast.map((member) => member.role));
+  const shotIds = new Set(def.shots.map((shot) => shot.id));
+  const cuesByShot = new Map<string, CutsceneExpressionCue[]>();
+  for (const { shotId, ...cue } of cues) {
+    if (!shotIds.has(shotId)) {
+      throw new Error(
+        `${def.id}: acting cue references missing shot ${shotId}`
+      );
+    }
+    if (!castRoles.has(cue.role)) {
+      throw new Error(`${def.id}/${shotId}: unknown acting role ${cue.role}`);
+    }
+    if (cue.faceTowardsRole && !castRoles.has(cue.faceTowardsRole)) {
+      throw new Error(
+        `${def.id}/${shotId}: unknown facing role ${cue.faceTowardsRole}`
+      );
+    }
+    const shotCues = cuesByShot.get(shotId) ?? [];
+    shotCues.push(cue);
+    cuesByShot.set(shotId, shotCues);
+  }
+
+  return {
+    ...def,
+    shots: def.shots.map((shot) => ({
+      ...shot,
+      actions: [
+        ...shot.actions,
+        ...cutsceneExpressionSequence(cuesByShot.get(shot.id) ?? []),
+      ],
+    })),
+  };
+}
+
+function mustValidate(def: unknown): CutsceneDef {
+  const structured = validateCh1Scene(def, "authored");
+  const performed = withCh1Acting(withCh1SafeCoverage(structured));
+  const voiced = withCh1DialogueVoices(performed);
+  return validateCh1Scene(voiced, "performed");
+}
+
+// Flashback staging. The Greenlamp marker proved to be its outdoor frontage,
+// complete with vendor interface boards, not the clinic corridor. Use the
+// measured enclosed road-house aisle as the reconstruction set: it keeps the
+// client-puppet grounded and every -4m..+9m corridor role inside real voxels.
+export const CH1_MEMORY_STAGE: CutsceneVec3 = [
+  ...CH1_ANCHORS.memory_corridor_stage,
+];
 
 function stageOffset(dx: number, dy: number, dz: number): CutsceneVec3 {
   return [
@@ -93,6 +573,96 @@ function stageOffset(dx: number, dy: number, dz: number): CutsceneVec3 {
     CH1_MEMORY_STAGE[1] + dy,
     CH1_MEMORY_STAGE[2] + dz,
   ];
+}
+
+function worldOffset(
+  origin: readonly [number, number, number],
+  dx: number,
+  dy: number,
+  dz: number
+): CutsceneVec3 {
+  return [origin[0] + dx, origin[1] + dy, origin[2] + dz];
+}
+
+interface Ch1ConversationStage {
+  actor: CutsceneVec3;
+  player: CutsceneVec3;
+  label: string;
+}
+
+/**
+ * Present-day dialogue must remain visible even when a catalog audit or a
+ * temporarily absent ECS actor cannot use the normal story projection. The
+ * exact entity is still the primary binding; the renderer-valid ghost is only
+ * a client-puppet fallback, and both paths are staged at the authored hilly
+ * world coordinate before the first camera samples them.
+ */
+function stagedCh1ConversationCutscene(args: {
+  id: Ch1SceneId;
+  name: string;
+  actor: CutsceneRoleBindingInput;
+  ghostAsset: string;
+  stage: Ch1ConversationStage;
+  lines: readonly ConversationLine[];
+  settings?: Record<string, unknown>;
+}): CutsceneDef {
+  const base = conversationCutscene({
+    id: args.id,
+    name: args.name,
+    a: args.actor,
+    b: { kind: "player" },
+    lines: [...args.lines],
+    settings: args.settings,
+  });
+  return {
+    ...base,
+    cast: [
+      ...base.cast.map((member) =>
+        member.role === "a"
+          ? {
+              ...member,
+              required: true,
+              fallback: "ghost" as const,
+              ghostAsset: args.ghostAsset,
+            }
+          : member
+      ),
+      {
+        role: "conversation-stage",
+        binding: {
+          kind: "anchor",
+          position: args.stage.actor,
+          height: 1.8,
+          label: args.stage.label,
+        },
+        // These are the schema defaults. Keep them explicit so the helper's
+        // already-validated cast output and this anchor share one TS shape.
+        required: true,
+        fallback: "skipActions",
+      },
+    ],
+    shots: base.shots.map((shot, index) => ({
+      ...shot,
+      actions:
+        index === 0
+          ? [
+              {
+                kind: "teleport" as const,
+                at: 0,
+                role: "a",
+                to: args.stage.actor,
+              },
+              {
+                kind: "teleport" as const,
+                at: 0,
+                role: "b",
+                to: args.stage.player,
+              },
+              ...shot.actions,
+            ]
+          : shot.actions,
+    })),
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -125,9 +695,8 @@ export function ch1IgnitionCutscene(): CutsceneDef {
       {
         role: "augur9",
         binding: {
-          kind: "nearestNpc",
-          labelMatch: "Mucked Robot|AUGUR-9",
-          within: 24,
+          kind: "entity",
+          entityId: Number(CH1_NPC_ENTITY_IDS.augur9),
         },
         required: true,
         fallback: "ghost",
@@ -148,7 +717,6 @@ export function ch1IgnitionCutscene(): CutsceneDef {
         },
         transitionIn: "fade",
         actions: [
-          { kind: "emote", at: 0.2, role: "augur9", emote: "workLoop" },
           {
             kind: "sfx",
             at: 0.1,
@@ -165,7 +733,10 @@ export function ch1IgnitionCutscene(): CutsceneDef {
           kind: "overShoulder",
           from: "player",
           to: "augur9",
-          pullout: 1.6,
+          // The player and repaired robot start at interaction distance. The
+          // old 1.6 framing put the camera inside the player's head on the
+          // production model instead of reading as a reaction two-shot.
+          pullout: 2.4,
         },
         transitionIn: "blend",
         blendSeconds: 0.5,
@@ -183,7 +754,13 @@ export function ch1IgnitionCutscene(): CutsceneDef {
       {
         id: "your-own-voice",
         duration: 4.0,
-        camera: { kind: "pov", role: "player", lookAtRole: "augur9" },
+        camera: {
+          kind: "overShoulder",
+          from: "player",
+          to: "augur9",
+          side: "right",
+          pullout: 3,
+        },
         transitionIn: "cut",
         actions: [
           { kind: "music", at: 0.0, track: null },
@@ -224,11 +801,35 @@ export function ch1IgnitionCutscene(): CutsceneDef {
 // ---------------------------------------------------------------------------
 
 export function ch1FirstGateCutscene(): CutsceneDef {
+  const seam = CH1_ANCHORS.gate_fence_sighting;
+  // These are separately measured feet positions on the sloped shelf. Keep
+  // their distinct Y values instead of flattening the conversation to seam Y.
+  const jackieStage: CutsceneVec3 = [539, 70, -215];
+  const playerStage: CutsceneVec3 = [536, 69, -218];
+  const seamFocus: CutsceneVec3 = [seam[0], seam[1] + 1.7, seam[2]];
+  const jackieFocus: CutsceneVec3 = [
+    jackieStage[0],
+    jackieStage[1] + 1.5,
+    jackieStage[2],
+  ];
+  const playerFocus: CutsceneVec3 = [
+    playerStage[0],
+    playerStage[1] + 1.5,
+    playerStage[2],
+  ];
+  // The eastern approach is occupied by the building that blocked revision 1.
+  // Cover the shelf from the open western side and keep the aperture behind
+  // the actors instead of shooting through the wall.
+  const openingCamera: CutsceneVec3 = [550, 74, -230];
+  const openingFocus: CutsceneVec3 = [539.5, 70.8, -217.5];
+  const seamFarCamera: CutsceneVec3 = [554, 75, -232];
+  const seamNearCamera: CutsceneVec3 = [550, 73, -228];
+  const playerCamera: CutsceneVec3 = [548, 72.5, -227];
   return mustValidate({
     id: CH1_SCENE_IDS.firstGate,
     name: "The Fence Line Seam",
     priority: 15,
-    settings: { letterbox: true, timeOfDay: 0.78 },
+    settings: { letterbox: true, timeOfDay: 0.64 },
     cast: [
       { role: "player", binding: { kind: "player" } },
       {
@@ -237,8 +838,9 @@ export function ch1FirstGateCutscene(): CutsceneDef {
           kind: "entity",
           entityId: Number(SNAPSHOT_GROVE_JACKIE_ENTITY_ID),
         },
-        required: false,
-        fallback: "skipActions",
+        required: true,
+        fallback: "ghost",
+        ghostAsset: "townsperson_market",
       },
       {
         role: "seam",
@@ -255,13 +857,17 @@ export function ch1FirstGateCutscene(): CutsceneDef {
         id: "the-card-goes-hot",
         duration: 2.4,
         camera: {
-          kind: "overShoulder",
-          from: "player",
-          to: "seam",
-          pullout: 2.2,
+          kind: "static",
+          position: openingCamera,
+          // Open on the people reacting to the seam, not a wall-sized close-up
+          // of the seam itself. The next shot owns the aperture reveal.
+          orientation: lookAtOrientation(openingCamera, openingFocus),
         },
         transitionIn: "cut",
         actions: [
+          { kind: "teleport", at: 0, role: "player", to: playerStage },
+          { kind: "teleport", at: 0, role: "jackie", to: jackieStage },
+          { kind: "face", at: 0, role: "jackie", towards: { role: "seam" } },
           { kind: "sfx", at: 0.0, name: "snapshot.card.warm" },
           { kind: "fov", at: 0.4, fov: 62 },
         ],
@@ -272,11 +878,16 @@ export function ch1FirstGateCutscene(): CutsceneDef {
         camera: {
           kind: "dolly",
           waypoints: [
-            { position: [514, 73, -198] },
-            { position: [518, 72.5, -203] },
+            {
+              position: seamFarCamera,
+              orientation: lookAtOrientation(seamFarCamera, seamFocus),
+            },
+            {
+              position: seamNearCamera,
+              orientation: lookAtOrientation(seamNearCamera, seamFocus),
+            },
           ],
           easing: "easeInOut",
-          lookAtRole: "seam",
         },
         transitionIn: "blend",
         blendSeconds: 0.6,
@@ -296,10 +907,9 @@ export function ch1FirstGateCutscene(): CutsceneDef {
         duration: 4.5,
         until: { kind: "dialogueDone", maxDuration: 9 },
         camera: {
-          kind: "overShoulder",
-          from: "seam",
-          to: "jackie",
-          pullout: 2.0,
+          kind: "static",
+          position: seamNearCamera,
+          orientation: lookAtOrientation(seamNearCamera, jackieFocus),
         },
         transitionIn: "blend",
         actions: [
@@ -318,10 +928,9 @@ export function ch1FirstGateCutscene(): CutsceneDef {
         duration: 3.6,
         until: { kind: "dialogueDone", maxDuration: 7 },
         camera: {
-          kind: "overShoulder",
-          from: "jackie",
-          to: "player",
-          pullout: 1.7,
+          kind: "static",
+          position: playerCamera,
+          orientation: lookAtOrientation(playerCamera, playerFocus),
         },
         transitionIn: "blend",
         actions: [
@@ -329,6 +938,7 @@ export function ch1FirstGateCutscene(): CutsceneDef {
             kind: "dialogue",
             at: 0.2,
             role: "player",
+            speaker: "You",
             text: "Not this small.",
           },
           { kind: "sfx", at: 1.6, name: "snapshot.memory.echo" },
@@ -347,23 +957,95 @@ export function ch1FirstGateCutscene(): CutsceneDef {
 }
 
 export function ch1PersistentGateCutscene(): CutsceneDef {
-  return withCh1DialogueVoices(
-    revealCutscene({
-      id: CH1_SCENE_IDS.persistentGate,
-      name: "It Did Not Close",
-      target: CH1_ANCHORS.gate_desert as unknown as CutsceneVec3,
-      from: [
-        CH1_ANCHORS.gate_desert[0] - 9,
-        CH1_ANCHORS.gate_desert[1] + 4,
-        CH1_ANCHORS.gate_desert[2] - 9,
-      ],
-      line: {
-        speaker: "Halden Rook",
-        text: "Two years I have watched these open on your side of the river and never once on mine.",
+  const target = CH1_ANCHORS.gate_desert as unknown as CutsceneVec3;
+  const targetFocus: CutsceneVec3 = [target[0], target[1] + 1.7, target[2]];
+  const revealCamera: CutsceneVec3 = [658, 62, -472];
+  const rookStage: CutsceneVec3 = [644, 54, -458];
+  const playerStage: CutsceneVec3 = [648, 54, -454];
+  const dialogueCamera: CutsceneVec3 = [654, 60, -450];
+  const dialogueFocus: CutsceneVec3 = [
+    rookStage[0],
+    rookStage[1] + 1.5,
+    rookStage[2],
+  ];
+  return mustValidate({
+    id: CH1_SCENE_IDS.persistentGate,
+    name: "It Did Not Close",
+    settings: {
+      letterbox: true,
+      hideHud: true,
+      invulnerablePlayer: true,
+      timeOfDay: 0.64,
+    },
+    cast: [
+      { role: "player", binding: { kind: "player" } },
+      {
+        role: "rook",
+        binding: {
+          kind: "entity",
+          entityId: Number(CH1_NPC_ENTITY_IDS.halden_rook),
+        },
+        required: true,
+        fallback: "ghost",
+        ghostAsset: "townsperson_guard",
       },
-      sfx: "snapshot.gate.hum",
-    })
-  );
+      {
+        role: "revealTarget",
+        binding: {
+          kind: "anchor",
+          position: target,
+          height: 2,
+          label: "The Persistent Gate",
+        },
+      },
+    ],
+    shots: [
+      {
+        id: "reveal",
+        duration: 3.2,
+        camera: {
+          kind: "static",
+          position: revealCamera,
+          orientation: lookAtOrientation(revealCamera, targetFocus),
+        },
+        transitionIn: "fade",
+        blendSeconds: 0.5,
+        actions: [
+          { kind: "teleport", at: 0, role: "rook", to: rookStage },
+          { kind: "teleport", at: 0, role: "player", to: playerStage },
+          {
+            kind: "face",
+            at: 0,
+            role: "rook",
+            towards: { role: "revealTarget" },
+          },
+          { kind: "sfx", at: 0.4, name: "snapshot.gate.hum" },
+        ],
+      },
+      {
+        id: "rook-says-it",
+        duration: 5.2,
+        until: { kind: "dialogueDone", maxDuration: 10 },
+        camera: {
+          kind: "static",
+          position: dialogueCamera,
+          orientation: lookAtOrientation(dialogueCamera, dialogueFocus),
+        },
+        transitionIn: "blend",
+        blendSeconds: 0.5,
+        actions: [
+          { kind: "face", at: 0, role: "rook", towards: { role: "player" } },
+          {
+            kind: "dialogue",
+            at: 0.25,
+            role: "rook",
+            speaker: "Halden Rook",
+            text: "Two years I have watched these open on your side of the river and never once on mine.",
+          },
+        ],
+      },
+    ],
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -379,6 +1061,10 @@ export function ch1PersistentGateCutscene(): CutsceneDef {
  * whose hand it was, which they were never actually shown.
  */
 export function ch1OverlayIveGotYouCutscene(): CutsceneDef {
+  const wideCamera = stageOffset(2.4, 1.7, -3);
+  const wideFocus = stageOffset(0.4, 1.35, 1.1);
+  const handCamera = stageOffset(2.4, 1.8, 0.2);
+  const handFocus = stageOffset(0.8, 1.4, 2.6);
   return mustValidate({
     id: CH1_SCENE_IDS.overlayIveGotYou,
     name: "I've Got You",
@@ -408,7 +1094,11 @@ export function ch1OverlayIveGotYouCutscene(): CutsceneDef {
       {
         id: "corridor",
         duration: 3.0,
-        camera: { kind: "pov", role: "player", eyeHeight: 1.55 },
+        camera: {
+          kind: "static",
+          position: wideCamera,
+          orientation: lookAtOrientation(wideCamera, wideFocus),
+        },
         transitionIn: "fade",
         actions: [
           // Flashback cameras sample the client-puppet position, so stage the
@@ -431,13 +1121,18 @@ export function ch1OverlayIveGotYouCutscene(): CutsceneDef {
         id: "the-hand",
         duration: 5.0,
         until: { kind: "dialogueDone", maxDuration: 9 },
-        camera: { kind: "pov", role: "player", eyeHeight: 1.5 },
+        camera: {
+          kind: "static",
+          position: handCamera,
+          orientation: lookAtOrientation(handCamera, handFocus),
+        },
         transitionIn: "blend",
         blendSeconds: 0.4,
         actions: [
           {
             kind: "dialogue",
             at: 0.4,
+            role: "hand",
             speaker: "A voice behind you",
             text: "I've got you. Walk.",
           },
@@ -495,6 +1190,14 @@ export function ch1CorridorCutscene(opts: Ch1CorridorOptions): CutsceneDef {
     : "There is something in her hand.";
 
   const behindSpeaker = revised ? "Dr. Lucien Ardan" : "A voice behind you";
+  const openingCamera = stageOffset(2.4, 1.8, -2.5);
+  const openingFocus = stageOffset(0, 2.1, 3.2);
+  const runningCamera = stageOffset(2.2, 1.7, 1.5);
+  const runningFocus = stageOffset(0, 1.45, 3.4);
+  const escapeCamera = stageOffset(2.4, 1.7, -1.8);
+  const escapeFocus = stageOffset(0.2, 1.35, 0.3);
+  const doorCamera = stageOffset(2.4, 1.7, -3);
+  const doorFocus = stageOffset(0, 1.4, 2.8);
 
   return mustValidate({
     id: revised
@@ -518,7 +1221,9 @@ export function ch1CorridorCutscene(opts: Ch1CorridorOptions): CutsceneDef {
           kind: "ghost",
           asset: womanAsset,
           family: "human",
-          spawnAt: stageOffset(0, 0, 9),
+          // Keep her inside the visible aisle. The former +9m mark landed on
+          // the road-house shell edge, so both renderings showed an empty room.
+          spawnAt: stageOffset(0, 0, 4),
         },
       },
       {
@@ -527,7 +1232,7 @@ export function ch1CorridorCutscene(opts: Ch1CorridorOptions): CutsceneDef {
           kind: "ghost",
           asset: "townsperson_clergy",
           family: "human",
-          spawnAt: stageOffset(0, 0, -1.6),
+          spawnAt: stageOffset(0.8, 0, -1.6),
         },
       },
       {
@@ -544,7 +1249,11 @@ export function ch1CorridorCutscene(opts: Ch1CorridorOptions): CutsceneDef {
       {
         id: "smoke-on-the-ceiling",
         duration: 3.0,
-        camera: { kind: "pov", role: "player", eyeHeight: 1.55 },
+        camera: {
+          kind: "static",
+          position: openingCamera,
+          orientation: lookAtOrientation(openingCamera, openingFocus),
+        },
         transitionIn: "fade",
         actions: [
           { kind: "teleport", at: 0, role: "player", to: CH1_MEMORY_STAGE },
@@ -565,10 +1274,9 @@ export function ch1CorridorCutscene(opts: Ch1CorridorOptions): CutsceneDef {
         duration: 4.2,
         until: { kind: "dialogueDone", maxDuration: 8 },
         camera: {
-          kind: "pov",
-          role: "player",
-          eyeHeight: 1.5,
-          lookAtRole: "woman",
+          kind: "static",
+          position: runningCamera,
+          orientation: lookAtOrientation(runningCamera, runningFocus),
         },
         transitionIn: "cut",
         actions: [
@@ -578,8 +1286,8 @@ export function ch1CorridorCutscene(opts: Ch1CorridorOptions): CutsceneDef {
             at: 0.1,
             role: "woman",
             to: { role: "player" },
-            speed: 4.2,
-            arriveWithin: 2.0,
+            speed: 1.2,
+            arriveWithin: 2.2,
             timeoutSeconds: 6,
             timeoutFallback: "skip",
           },
@@ -596,10 +1304,9 @@ export function ch1CorridorCutscene(opts: Ch1CorridorOptions): CutsceneDef {
         duration: 4.6,
         until: { kind: "dialogueDone", maxDuration: 9 },
         camera: {
-          kind: "pov",
-          role: "player",
-          eyeHeight: 1.45,
-          lookAtRole: "woman",
+          kind: "static",
+          position: escapeCamera,
+          orientation: lookAtOrientation(escapeCamera, escapeFocus),
         },
         transitionIn: "cut",
         actions: [
@@ -633,8 +1340,8 @@ export function ch1CorridorCutscene(opts: Ch1CorridorOptions): CutsceneDef {
         duration: 2.8,
         camera: {
           kind: "static",
-          position: stageOffset(2.4, 1.7, -3.0),
-          lookAtRole: "woman",
+          position: doorCamera,
+          orientation: lookAtOrientation(doorCamera, doorFocus),
         },
         transitionIn: "blend",
         blendSeconds: 0.4,
@@ -667,6 +1374,20 @@ export const ch1ReconCorridorRevisedCutscene = () =>
 // ---------------------------------------------------------------------------
 
 export function ch1ReconArrivalCutscene(): CutsceneDef {
+  const arrivalStart: CutsceneVec3 = [472.8, 70, -146];
+  const carriedPlayerStart: CutsceneVec3 = [473.8, 70, -145.2];
+  const arrivalStop: CutsceneVec3 = [473, 70, -140.5];
+  const carriedPlayerStop: CutsceneVec3 = [474.2, 70, -139.8];
+  const carrierFocus: CutsceneVec3 = [
+    arrivalStop[0],
+    arrivalStop[1] + 1.25,
+    arrivalStop[2],
+  ];
+  const openingCamera: CutsceneVec3 = [481, 71.5, -145];
+  const openingFocus: CutsceneVec3 = [473.4, 70.9, -143.5];
+  const alvaCamera: CutsceneVec3 = [480, 71.8, -144];
+  const helsaCamera: CutsceneVec3 = [468, 71.8, -144];
+  const allixCamera: CutsceneVec3 = [474, 73, -148];
   return mustValidate({
     id: CH1_SCENE_IDS.reconArrival,
     name: "The Night You Came",
@@ -674,7 +1395,7 @@ export function ch1ReconArrivalCutscene(): CutsceneDef {
     settings: {
       letterbox: true,
       lockPlayer: true,
-      timeOfDay: 0.95,
+      timeOfDay: 0.72,
       skipAfterSeconds: 5,
     },
     cast: [
@@ -685,16 +1406,25 @@ export function ch1ReconArrivalCutscene(): CutsceneDef {
           kind: "ghost",
           asset: "townsperson_market",
           family: "human",
-          spawnAt: stageOffset(0, 0, 12),
+          spawnAt: arrivalStart,
         },
       },
       {
         role: "roadhouse",
         binding: {
           kind: "anchor",
-          position: stageOffset(0, 0, -6),
+          position: arrivalStop,
           height: 4,
-          label: "The road-house",
+          label: "The road-house door",
+        },
+      },
+      {
+        role: "carriedStop",
+        binding: {
+          kind: "anchor",
+          position: carriedPlayerStop,
+          height: 1.4,
+          label: "The carried player's arrival mark",
         },
       },
     ],
@@ -703,17 +1433,19 @@ export function ch1ReconArrivalCutscene(): CutsceneDef {
         id: "rain-on-the-road",
         duration: 3.4,
         camera: {
-          kind: "dolly",
-          waypoints: [
-            { position: stageOffset(6, 3.2, 14) },
-            { position: stageOffset(3.5, 2.4, 6) },
-          ],
-          easing: "easeInOut",
-          lookAtRole: "carrier",
+          kind: "static",
+          position: openingCamera,
+          orientation: lookAtOrientation(openingCamera, openingFocus),
         },
         transitionIn: "fade",
         actions: [
           { kind: "sfx", at: 0, name: "snapshot.rain.heavy" },
+          {
+            kind: "teleport",
+            at: 0,
+            role: "player",
+            to: carriedPlayerStart,
+          },
           {
             kind: "moveTo",
             at: 0.2,
@@ -723,12 +1455,26 @@ export function ch1ReconArrivalCutscene(): CutsceneDef {
             timeoutSeconds: 12,
             timeoutFallback: "skip",
           },
+          {
+            kind: "moveTo",
+            at: 0.2,
+            role: "player",
+            to: { role: "carriedStop" },
+            speed: 1.9,
+            arriveWithin: 1.2,
+            timeoutSeconds: 12,
+            timeoutFallback: "skip",
+          },
         ],
       },
       {
         id: "she-does-not-stop",
         duration: 4.0,
-        camera: { kind: "trackRole", role: "carrier", offset: [2.6, 1.9, 3.4] },
+        camera: {
+          kind: "static",
+          position: alvaCamera,
+          orientation: lookAtOrientation(alvaCamera, carrierFocus),
+        },
         transitionIn: "blend",
         blendSeconds: 0.5,
         actions: [
@@ -744,9 +1490,9 @@ export function ch1ReconArrivalCutscene(): CutsceneDef {
         id: "put-the-lamps-out",
         duration: 3.8,
         camera: {
-          kind: "trackRole",
-          role: "carrier",
-          offset: [-2.4, 2.1, 3.0],
+          kind: "static",
+          position: helsaCamera,
+          orientation: lookAtOrientation(helsaCamera, carrierFocus),
         },
         transitionIn: "blend",
         blendSeconds: 0.4,
@@ -763,12 +1509,9 @@ export function ch1ReconArrivalCutscene(): CutsceneDef {
         id: "the-way-with-no-windows",
         duration: 4.2,
         camera: {
-          kind: "orbit",
-          role: "carrier",
-          radius: 4.2,
-          height: 2.6,
-          startAngle: 0.2,
-          endAngle: 1.9,
+          kind: "static",
+          position: allixCamera,
+          orientation: lookAtOrientation(allixCamera, carrierFocus),
         },
         transitionIn: "blend",
         blendSeconds: 0.4,
@@ -799,23 +1542,94 @@ export function ch1ReconArrivalCutscene(): CutsceneDef {
 // ---------------------------------------------------------------------------
 
 export function ch1OverlayContainmentCutscene(): CutsceneDef {
-  return withCh1DialogueVoices(
-    revealCutscene({
-      id: CH1_SCENE_IDS.overlayContainment,
-      name: "Thirty-One Seconds",
-      target: CH1_ANCHORS.ashline_refinery_intake as unknown as CutsceneVec3,
-      from: [
-        CH1_ANCHORS.ashline_refinery_intake[0] - 6,
-        CH1_ANCHORS.ashline_refinery_intake[1] + 3.5,
-        CH1_ANCHORS.ashline_refinery_intake[2] - 6,
-      ],
-      line: {
-        speaker: "Foreman Calla Ashe",
-        text: "How did you do that?",
+  const target = CH1_ANCHORS.ashline_refinery_intake as unknown as CutsceneVec3;
+  const focus: CutsceneVec3 = [target[0], target[1] + 1.7, target[2]];
+  const revealCamera: CutsceneVec3 = [
+    target[0] - 8,
+    target[1] + 3,
+    target[2] - 8,
+  ];
+  const callaStage =
+    CH1_ANCHORS.ashline_foreman_post as unknown as CutsceneVec3;
+  const playerStage: CutsceneVec3 = [675, 67, -51];
+  const dialogueCamera: CutsceneVec3 = [678, 69, -49];
+  const callaFocus: CutsceneVec3 = [
+    callaStage[0],
+    callaStage[1] + 1.5,
+    callaStage[2],
+  ];
+  return mustValidate({
+    id: CH1_SCENE_IDS.overlayContainment,
+    name: "Thirty-One Seconds",
+    settings: {
+      letterbox: true,
+      hideHud: true,
+      invulnerablePlayer: true,
+      timeOfDay: 0.68,
+    },
+    cast: [
+      { role: "player", binding: { kind: "player" } },
+      {
+        role: "calla",
+        binding: {
+          kind: "entity",
+          entityId: Number(CH1_NPC_ENTITY_IDS.calla_ashe),
+        },
+        required: true,
+        fallback: "ghost",
+        ghostAsset: "townsperson_market",
       },
-      sfx: "snapshot.containment.settle",
-    })
-  );
+      {
+        role: "revealTarget",
+        binding: {
+          kind: "anchor",
+          position: target,
+          height: 2,
+          label: "Ashline refinery intake",
+        },
+      },
+    ],
+    shots: [
+      {
+        id: "reveal",
+        duration: 3.2,
+        camera: {
+          kind: "static",
+          position: revealCamera,
+          orientation: lookAtOrientation(revealCamera, focus),
+        },
+        transitionIn: "fade",
+        actions: [
+          { kind: "teleport", at: 0, role: "calla", to: callaStage },
+          { kind: "teleport", at: 0, role: "player", to: playerStage },
+          { kind: "face", at: 0, role: "calla", towards: { role: "player" } },
+          { kind: "sfx", at: 0.4, name: "snapshot.containment.settle" },
+        ],
+      },
+      {
+        id: "calla-sees-it",
+        duration: 4.0,
+        until: { kind: "dialogueDone", maxDuration: 8 },
+        camera: {
+          kind: "static",
+          position: dialogueCamera,
+          orientation: lookAtOrientation(dialogueCamera, callaFocus),
+        },
+        transitionIn: "blend",
+        blendSeconds: 0.45,
+        actions: [
+          { kind: "face", at: 0, role: "calla", towards: { role: "player" } },
+          {
+            kind: "dialogue",
+            at: 0.25,
+            role: "calla",
+            speaker: "Foreman Calla Ashe",
+            text: "How did you do that?",
+          },
+        ],
+      },
+    ],
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -823,18 +1637,22 @@ export function ch1OverlayContainmentCutscene(): CutsceneDef {
 // ---------------------------------------------------------------------------
 
 export function ch1TheFlinchCutscene(): CutsceneDef {
-  return withCh1DialogueVoices(
-    conversationCutscene({
+  return mustValidate(
+    stagedCh1ConversationCutscene({
       id: CH1_SCENE_IDS.theFlinch,
       name: "Three Days",
-      a: { kind: "entity", entityId: Number(SNAPSHOT_GROVE_JACKIE_ENTITY_ID) },
-      b: { kind: "player" },
+      actor: {
+        kind: "entity",
+        entityId: Number(SNAPSHOT_GROVE_JACKIE_ENTITY_ID),
+      },
+      ghostAsset: "townsperson_market",
+      stage: {
+        actor: worldOffset(CH1_ANCHORS.gate_desert, -4, 0, 4),
+        player: worldOffset(CH1_ANCHORS.gate_desert, 0, 0, 8),
+        label: "Three Days gate conversation",
+      },
       lines: [
-        {
-          speaker: "a",
-          text: "You were gone three days.",
-          emote: "talkGesture",
-        },
+        { speaker: "a", text: "You were gone three days." },
         { speaker: "a", text: "Three. Days." },
         { speaker: "a", text: "Right. Okay." },
       ],
@@ -844,18 +1662,25 @@ export function ch1TheFlinchCutscene(): CutsceneDef {
 }
 
 export function ch1ConfrontationCutscene(): CutsceneDef {
-  return withCh1DialogueVoices(
-    conversationCutscene({
+  return mustValidate(
+    stagedCh1ConversationCutscene({
       id: CH1_SCENE_IDS.confrontation,
       name: "Ask Me In a Month",
-      a: { kind: "entity", entityId: Number(SNAPSHOT_GROVE_JACKIE_ENTITY_ID) },
-      b: { kind: "player" },
+      actor: {
+        kind: "entity",
+        entityId: Number(SNAPSHOT_GROVE_JACKIE_ENTITY_ID),
+      },
+      ghostAsset: "townsperson_market",
+      stage: {
+        actor: [...CH1_ANCHORS.roadhouse_table],
+        player: worldOffset(CH1_ANCHORS.roadhouse_table, 2.5, 0, 2.5),
+        label: "Road-House confrontation",
+      },
       lines: [
-        { speaker: "b", text: "What have you been putting in the tea?" },
-        { speaker: "a", text: "It's medicine.", emote: "talkGesture" },
-        { speaker: "b", text: "Medicine for what?" },
+        { speaker: "a", text: "It's medicine." },
         { speaker: "a", text: "You need to keep taking it." },
-        { speaker: "b", text: "That is not an answer." },
+        { speaker: "b", text: "Why should I trust you?" },
+        { speaker: "a", text: "You shouldn't. Not yet." },
         { speaker: "a", text: "Ask me again in a month." },
       ],
       settings: { letterbox: true },
@@ -864,12 +1689,25 @@ export function ch1ConfrontationCutscene(): CutsceneDef {
 }
 
 export function ch1SorrelDoorCutscene(): CutsceneDef {
-  return withCh1DialogueVoices(
-    conversationCutscene({
+  const actor = ch1DungeonAuthoredToWorld("ch1_dungeon_winter", {
+    x: 308,
+    y: 1,
+    z: -88,
+  });
+  return mustValidate(
+    stagedCh1ConversationCutscene({
       id: CH1_SCENE_IDS.sorrelDoor,
       name: "The Bar-Slot",
-      a: { kind: "entity", entityId: Number(CH1_NPC_ENTITY_IDS.nadia_sorrel) },
-      b: { kind: "player" },
+      actor: {
+        kind: "entity",
+        entityId: Number(CH1_NPC_ENTITY_IDS.nadia_sorrel),
+      },
+      ghostAsset: "townsperson_farmer",
+      stage: {
+        actor: [...actor],
+        player: worldOffset(actor, 2.5, 0, 2.5),
+        label: "Sorrel's barred camp door",
+      },
       lines: [
         {
           speaker: "a",
@@ -891,17 +1729,24 @@ export function ch1SorrelDoorCutscene(): CutsceneDef {
 }
 
 export function ch1TheCaseCutscene(): CutsceneDef {
-  return withCh1DialogueVoices(
-    conversationCutscene({
+  return mustValidate(
+    stagedCh1ConversationCutscene({
       id: CH1_SCENE_IDS.theCase,
       name: "The Case",
-      a: { kind: "entity", entityId: Number(CH1_NPC_ENTITY_IDS.lou_ardan) },
-      b: { kind: "player" },
+      actor: {
+        kind: "entity",
+        entityId: Number(CH1_NPC_ENTITY_IDS.lou_ardan),
+      },
+      ghostAsset: "townsperson_clergy",
+      stage: {
+        actor: [...CH1_ANCHORS.returnstone_pad_office],
+        player: worldOffset(CH1_ANCHORS.returnstone_pad_office, 2.5, 0, 2.5),
+        label: "Returnstone case handover",
+      },
       lines: [
         {
           speaker: "a",
           text: "They know who you are. I want you to hear that from me and not from a form.",
-          emote: "talkGesture",
         },
         {
           speaker: "a",
@@ -928,18 +1773,30 @@ export function ch1TheCaseCutscene(): CutsceneDef {
           text: "You've been right for eleven years. I'm asking you to be useful for one afternoon.",
         },
       ],
-      settings: { letterbox: true, skipAfterSeconds: 8 },
+      settings: {
+        letterbox: true,
+        skipAfterSeconds: 8,
+        timeOfDay: 0.62,
+      },
     })
   );
 }
 
 export function ch1TooLateCutscene(): CutsceneDef {
-  return withCh1DialogueVoices(
-    conversationCutscene({
+  return mustValidate(
+    stagedCh1ConversationCutscene({
       id: CH1_SCENE_IDS.tooLate,
       name: "Too Late",
-      a: { kind: "entity", entityId: Number(CH1_NPC_ENTITY_IDS.lou_ardan) },
-      b: { kind: "player" },
+      actor: {
+        kind: "entity",
+        entityId: Number(CH1_NPC_ENTITY_IDS.lou_ardan),
+      },
+      ghostAsset: "townsperson_clergy",
+      stage: {
+        actor: [...CH1_ANCHORS.returnstone_pad_office],
+        player: worldOffset(CH1_ANCHORS.returnstone_pad_office, 2.5, 0, 2.5),
+        label: "Returnstone departure",
+      },
       lines: [
         {
           speaker: "a",
@@ -959,49 +1816,78 @@ export function ch1TooLateCutscene(): CutsceneDef {
           text: "You could not answer eleven years ago either. I really did wait for it.",
         },
       ],
-      settings: { letterbox: true, skipAfterSeconds: 8 },
+      settings: {
+        letterbox: true,
+        skipAfterSeconds: 8,
+        timeOfDay: 0.62,
+      },
     })
   );
 }
 
 export function ch1WatchHouseCutscene(): CutsceneDef {
-  return withCh1DialogueVoices(
-    conversationCutscene({
-      id: CH1_SCENE_IDS.theWatchHouse,
-      name: "The Watch House",
-      a: { kind: "entity", entityId: Number(SNAPSHOT_GROVE_JACKIE_ENTITY_ID) },
-      b: { kind: "player" },
-      lines: [
-        { speaker: "a", text: "Did he take it?" },
-        { speaker: "a", text: "Okay." },
-        {
-          speaker: "a",
-          text: "I could have told you on day one. You'd have believed me for about a week.",
-        },
-        {
-          speaker: "a",
-          text: "Then it would have made me a liar in your own head. You would have walked to him anyway, except angrier and alone.",
-        },
-        {
-          speaker: "a",
-          text: "So I fed you the cure and I let you hate me on your own schedule.",
-        },
-        {
-          speaker: "a",
-          text: "That was the whole plan. It was not a good one.",
-        },
-        {
-          speaker: "a",
-          text: "I'm not owed an apology. I'd have done the same in your shoes with the same memories, and I'd have done it faster.",
-        },
-        {
-          speaker: "a",
-          text: "But I'd like to get out of this room. They've got a two-day head start and I know where that transport goes.",
-        },
-      ],
-      settings: { letterbox: true, timeOfDay: 0.1, skipAfterSeconds: 10 },
-    })
-  );
+  const actorStage: CutsceneVec3 = [472, 70, -149.5];
+  const playerStage: CutsceneVec3 = [474, 70, -147];
+  const roomCamera: CutsceneVec3 = [470.5, 71.8, -146.2];
+  const roomFocus: CutsceneVec3 = [473, 71.3, -148.2];
+  const speakerCamera: CutsceneVec3 = [475.3, 71.7, -146.2];
+  const speakerFocus: CutsceneVec3 = [472, 71.4, -149.5];
+  const scene = stagedCh1ConversationCutscene({
+    id: CH1_SCENE_IDS.theWatchHouse,
+    name: "The Watch House",
+    actor: {
+      kind: "entity",
+      entityId: Number(SNAPSHOT_GROVE_JACKIE_ENTITY_ID),
+    },
+    ghostAsset: "townsperson_market",
+    stage: {
+      actor: actorStage,
+      player: playerStage,
+      label: "Grove Watch House conversation",
+    },
+    lines: [
+      { speaker: "a", text: "Okay." },
+      {
+        speaker: "a",
+        text: "I could have told you on day one. You'd have believed me for about a week.",
+      },
+      {
+        speaker: "a",
+        text: "Then it would have made me a liar in your own head. You would have walked to him anyway, except angrier and alone.",
+      },
+      {
+        speaker: "a",
+        text: "So I fed you the cure and I let you hate me on your own schedule.",
+      },
+      {
+        speaker: "a",
+        text: "That was the whole plan. It was not a good one.",
+      },
+      {
+        speaker: "a",
+        text: "I'm not owed an apology. I'd have done the same in your shoes with the same memories, and I'd have done it faster.",
+      },
+      {
+        speaker: "a",
+        text: "But I'd like to get out of this room. They've got a two-day head start and I know where that transport goes.",
+      },
+    ],
+    settings: { letterbox: true, timeOfDay: 0.55, skipAfterSeconds: 10 },
+  });
+  return mustValidate({
+    ...scene,
+    shots: scene.shots.map((shot, index) => ({
+      ...shot,
+      camera: {
+        kind: "static" as const,
+        position: index === 0 ? roomCamera : speakerCamera,
+        orientation: lookAtOrientation(
+          index === 0 ? roomCamera : speakerCamera,
+          index === 0 ? roomFocus : speakerFocus
+        ),
+      },
+    })),
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -1012,13 +1898,22 @@ export function ch1WatchHouseCutscene(): CutsceneDef {
 // ---------------------------------------------------------------------------
 
 export function ch1ConsolidationRevisionCutscene(): CutsceneDef {
+  const louStage: CutsceneVec3 = [...CH1_ANCHORS.returnstone_pad_office];
+  const playerStage = worldOffset(
+    CH1_ANCHORS.returnstone_pad_office,
+    2.5,
+    0,
+    2.5
+  );
   const shots = CH1_CONSOLIDATION_ORDER.map((fragmentId, index) => ({
     id: `revision-${index}-${fragmentId}`,
     duration: CH1_CONSOLIDATION_ENTRY_SECONDS,
     camera: {
-      kind: "pov" as const,
-      role: "player",
-      eyeHeight: 1.6,
+      kind: "overShoulder" as const,
+      from: "player",
+      to: "lou",
+      side: index % 2 === 0 ? ("left" as const) : ("right" as const),
+      pullout: 2.8,
     },
     transitionIn: index === 0 ? ("fade" as const) : ("blend" as const),
     blendSeconds: 0.35,
@@ -1062,18 +1957,51 @@ export function ch1ConsolidationRevisionCutscene(): CutsceneDef {
       invulnerablePlayer: true,
       commitOn: ["completed", "skipped"],
       maxSceneDurationSeconds: 90,
+      timeOfDay: 0.62,
     },
-    cast: [{ role: "player", binding: { kind: "player" } }],
+    cast: [
+      { role: "player", binding: { kind: "player" } },
+      {
+        role: "lou",
+        binding: {
+          kind: "entity",
+          entityId: Number(CH1_NPC_ENTITY_IDS.lou_ardan),
+        },
+        required: true,
+        fallback: "ghost",
+        ghostAsset: "townsperson_clergy",
+      },
+      {
+        role: "consolidation-stage",
+        binding: {
+          kind: "anchor",
+          position: louStage,
+          height: 1.8,
+          label: "Returnstone consolidation stage",
+        },
+      },
+    ],
     shots: [
       {
         id: "the-word",
         duration: 3.0,
-        camera: { kind: "pov", role: "player", eyeHeight: 1.6 },
+        camera: {
+          kind: "overShoulder",
+          from: "player",
+          to: "lou",
+          side: "left",
+          pullout: 2.4,
+        },
         transitionIn: "cut",
         actions: [
+          { kind: "teleport", at: 0, role: "lou", to: louStage },
+          { kind: "teleport", at: 0, role: "player", to: playerStage },
+          { kind: "face", at: 0, role: "lou", towards: { role: "player" } },
+          { kind: "face", at: 0, role: "player", towards: { role: "lou" } },
           {
             kind: "dialogue",
             at: 0.2,
+            role: "lou",
             speaker: "Dr. Lucien Ardan",
             text: "Thank you. You've done the right thing here, Seven.",
           },
@@ -1085,7 +2013,13 @@ export function ch1ConsolidationRevisionCutscene(): CutsceneDef {
       {
         id: "the-card",
         duration: 4.0,
-        camera: { kind: "pov", role: "player", eyeHeight: 1.6 },
+        camera: {
+          kind: "overShoulder",
+          from: "player",
+          to: "lou",
+          side: "right",
+          pullout: 3,
+        },
         transitionIn: "blend",
         blendSeconds: 0.5,
         actions: [
@@ -1114,6 +2048,8 @@ export function ch1ConsolidationRevisionCutscene(): CutsceneDef {
 
 /** The intake window: the fourteen hours that were never in his case notes. */
 export function ch1ReconIntakeCutscene(): CutsceneDef {
+  const roomCamera = stageOffset(2.4, 1.7, -3);
+  const roomFocus = stageOffset(0, 1.35, 1.1);
   return mustValidate({
     id: CH1_SCENE_IDS.reconIntake,
     name: "Fourteen Hours",
@@ -1142,7 +2078,11 @@ export function ch1ReconIntakeCutscene(): CutsceneDef {
       {
         id: "the-room",
         duration: 4.0,
-        camera: { kind: "pov", role: "player", eyeHeight: 1.2 },
+        camera: {
+          kind: "static",
+          position: roomCamera,
+          orientation: lookAtOrientation(roomCamera, roomFocus),
+        },
         transitionIn: "fade",
         actions: [
           { kind: "teleport", at: 0, role: "player", to: CH1_MEMORY_STAGE },
@@ -1151,6 +2091,7 @@ export function ch1ReconIntakeCutscene(): CutsceneDef {
           {
             kind: "dialogue",
             at: 0.5,
+            role: "player",
             speaker: "You",
             text: "I didn't sign that.",
           },
@@ -1185,9 +2126,9 @@ export function ch1ReconIntakeCutscene(): CutsceneDef {
         until: { kind: "dialogueDone", maxDuration: 9 },
         camera: {
           kind: "overShoulder",
-          from: "lou",
-          to: "player",
-          pullout: 1.4,
+          from: "player",
+          to: "lou",
+          pullout: 2.4,
         },
         transitionIn: "cut",
         actions: [

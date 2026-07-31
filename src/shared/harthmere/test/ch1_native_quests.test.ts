@@ -63,11 +63,18 @@ describe("Chapter 1 native Bikkie quests", () => {
     }
   });
 
-  it("auto-starts Teak instead of requiring an absent legacy Holt entity", () => {
-    const teak = allCh1NativeQuestBiscuits().find(
-      (quest) => quest.name === "harthmere_ch1_quest_ch1_a4_q06_teak"
-    );
-    assert(teak?.isQuest);
-    assert.equal(teak.questGiver, undefined);
+  it("auto-starts the whole linear chain instead of binding staged actors to old ECS spawns", () => {
+    for (const quest of allCh1NativeQuestBiscuits()) {
+      assert.equal(quest.questGiver, undefined, quest.displayName);
+      if (quest.trigger?.kind === "seq") {
+        for (const step of quest.trigger.triggers) {
+          assert.equal(
+            step.navigationAid,
+            undefined,
+            "dynamic Chapter 1 targets are published by the authenticated objective bridge"
+          );
+        }
+      }
+    }
   });
 });

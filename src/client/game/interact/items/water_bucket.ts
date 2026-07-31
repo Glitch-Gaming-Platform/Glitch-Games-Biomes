@@ -8,6 +8,7 @@ import type { AttackDestroyDelegateSpec } from "@/client/game/interact/item_type
 import type { ClickableItemInfo } from "@/client/game/interact/item_types/clickable_item_script";
 import type { InteractContext } from "@/client/game/interact/types";
 import { hitExistingTerrain } from "@/shared/game/spatial";
+import { emitHarthmereSoundEffect } from "@/shared/harthmere/sound_effect_manifest";
 
 export class WaterBucketItemSpec implements AttackDestroyDelegateSpec {
   constructor(
@@ -42,11 +43,15 @@ export class WaterBucketItemSpec implements AttackDestroyDelegateSpec {
     }
 
     if (hit.distance <= changeRadius(this.deps.resources)) {
-      if (!scoopWater(this.deps, hit.distance)) {
+      const scooped = scoopWater(this.deps, hit.distance);
+      if (!scooped) {
         dumpWater(this.deps, hit.pos, hit.face);
       }
       const player = this.deps.resources.get("/scene/local_player").player;
       player.eagerEmote(this.deps.events, this.deps.resources, "place");
+      emitHarthmereSoundEffect(scooped ? "bucket_scoop" : "bucket_dump", {
+        position: hit.pos,
+      });
       return true;
     }
 

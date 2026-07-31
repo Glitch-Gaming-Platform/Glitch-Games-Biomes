@@ -1066,7 +1066,9 @@ export const SnapshotLiveDiagnosticsRuntimeController: React.FunctionComponent<{
       const tick = (now: number) => {
         if (lastFrameRef.current !== undefined) {
           framesRef.current.push(now - lastFrameRef.current);
-          framesRef.current = framesRef.current.slice(-120);
+          if (framesRef.current.length > 120) {
+            framesRef.current.splice(0, framesRef.current.length - 120);
+          }
         }
         lastFrameRef.current = now;
         rafRef.current = requestAnimationFrame(tick);

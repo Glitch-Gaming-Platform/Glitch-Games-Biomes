@@ -87,6 +87,37 @@ describe("world interaction dispatcher", () => {
     assert.equal(selectedWorldInteractionIdForKey("KeyF"), "jobs-board");
   });
 
+  it("lets an active Chapter 1 conversation outrank its overlapping fracture gate", () => {
+    registerWorldInteractionCandidate({
+      id: "fracture-gate",
+      priority: WORLD_INTERACTION_PRIORITY.chapter1Gate,
+      onInteract: () => undefined,
+    });
+    registerWorldInteractionCandidate({
+      id: "chapter1-halden-conversation",
+      priority: WORLD_INTERACTION_PRIORITY.chapter1Story,
+      onInteract: () => undefined,
+    });
+    assert.equal(
+      selectedWorldInteractionIdForKey("KeyF"),
+      "chapter1-halden-conversation"
+    );
+  });
+
+  it("keeps fracture-gate entry above ordinary tools and world objects", () => {
+    registerWorldInteractionCandidate({
+      id: "active-tool",
+      priority: WORLD_INTERACTION_PRIORITY.activeTool,
+      onInteract: () => undefined,
+    });
+    registerWorldInteractionCandidate({
+      id: "fracture-gate",
+      priority: WORLD_INTERACTION_PRIORITY.chapter1Gate,
+      onInteract: () => undefined,
+    });
+    assert.equal(selectedWorldInteractionIdForKey("KeyF"), "fracture-gate");
+  });
+
   it("ignores candidates whose current target guard is false", () => {
     registerWorldInteractionCandidate({
       id: "stale-nearest-board",

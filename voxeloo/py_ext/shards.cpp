@@ -12,9 +12,10 @@ namespace voxeloo::shards::ext {
 void bind(py::module& vox_module) {
   auto m = vox_module.def_submodule("shards");
   m.def("shard_encode", [](uint8_t lvl, int x, int y, int z) {
-    return shards::shard_encode<std::string>({lvl, {x, y, z}});
+    return py::bytes(shards::shard_encode<std::string>({lvl, {x, y, z}}));
   });
-  m.def("shard_decode", [](const std::string& code) {
+  m.def("shard_decode", [](const py::bytes& encoded) {
+    const std::string code = encoded;
     auto [level, pos] = shards::shard_decode(code);
     return std::tuple(level, pos.x, pos.y, pos.z);
   });

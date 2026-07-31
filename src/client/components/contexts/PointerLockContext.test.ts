@@ -11,18 +11,20 @@ function withDocument<T>(
   },
   fn: () => T
 ): T {
-  const previous = (globalThis as any).document;
+  const previous = Object.getOwnPropertyDescriptor(globalThis, "document");
   Object.defineProperty(globalThis, "document", {
     configurable: true,
+    writable: true,
     value: documentValue,
   });
   try {
     return fn();
   } finally {
-    Object.defineProperty(globalThis, "document", {
-      configurable: true,
-      value: previous,
-    });
+    if (previous) {
+      Object.defineProperty(globalThis, "document", previous);
+    } else {
+      delete (globalThis as any).document;
+    }
   }
 }
 
@@ -40,27 +42,34 @@ function withWindowAndNavigator<T>(
   navigatorValue: unknown,
   fn: () => T
 ): T {
-  const previousWindow = (globalThis as any).window;
-  const previousNavigator = (globalThis as any).navigator;
+  const previousWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
+  const previousNavigator = Object.getOwnPropertyDescriptor(
+    globalThis,
+    "navigator"
+  );
   Object.defineProperty(globalThis, "window", {
     configurable: true,
+    writable: true,
     value: windowValue,
   });
   Object.defineProperty(globalThis, "navigator", {
     configurable: true,
+    writable: true,
     value: navigatorValue,
   });
   try {
     return fn();
   } finally {
-    Object.defineProperty(globalThis, "window", {
-      configurable: true,
-      value: previousWindow,
-    });
-    Object.defineProperty(globalThis, "navigator", {
-      configurable: true,
-      value: previousNavigator,
-    });
+    if (previousWindow) {
+      Object.defineProperty(globalThis, "window", previousWindow);
+    } else {
+      delete (globalThis as any).window;
+    }
+    if (previousNavigator) {
+      Object.defineProperty(globalThis, "navigator", previousNavigator);
+    } else {
+      delete (globalThis as any).navigator;
+    }
   }
 }
 

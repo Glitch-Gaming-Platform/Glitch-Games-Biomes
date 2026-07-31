@@ -75,6 +75,7 @@ import {
 } from "@/shared/harthmere/harthmere_wilds_forest";
 import { harthmereTownFlattenAuthoredBounds } from "@/shared/harthmere/town_flatten_terraform";
 import { HARTHMERE_EXOTIC_MATTER_CAVES } from "@/shared/harthmere/exotic_matter_caves";
+import { isHarthmereBuildingVegetationExclusion } from "@/shared/harthmere/harthmere_building_exclusion";
 
 export const HARTHMERE_EXTENSION_SURFACE_REPAIR_VERSION =
   "harthmere-extension-surface-repair-v1" as const;
@@ -273,6 +274,14 @@ export function isHarthmereSurfaceRepairForestColumn(
   if (authoredX > HARTHMERE_TOWN_BACK_BOUNDARY_X) {
     return false;
   }
+  // HARTHMERE_BUILDING_EXCLUSION: the town envelope below covers the 34
+  // buildings inside it, but the Residential row and every Wilds structure sit
+  // outside it. Without this, each deploy's repair pass would replant a wood
+  // inside the watermill and the Deep Old Wood lodge — the exact bug the
+  // seeder gate fixes for a fresh reseed.
+  if (isHarthmereBuildingVegetationExclusion(authoredX, authoredZ)) {
+    return false;
+  }
   const town = harthmereTownFlattenAuthoredBounds();
   const pad = HARTHMERE_SURFACE_REPAIR_TOWN_PAD;
   if (
@@ -359,7 +368,11 @@ export function harthmereSurfaceRepairColumnEdits(
   const edits: HarthmereSurfaceRepairEdit[] = [];
   const from = Math.max(surfaceY + 1, HARTHMERE_SURFACE_REPAIR_MIN_FILL_Y);
   for (let y = from; y < targetY; y += 1) {
-    edits.push({ position: [worldX, y, worldZ], material: fillMaterial(y), label: "fill" });
+    edits.push({
+      position: [worldX, y, worldZ],
+      material: fillMaterial(y),
+      label: "fill",
+    });
   }
   edits.push({
     position: [worldX, targetY, worldZ],
@@ -367,7 +380,9 @@ export function harthmereSurfaceRepairColumnEdits(
     label: "cap",
   });
 
-  const dress = options?.dressAsForest ?? isHarthmereSurfaceRepairForestColumn(worldX, worldZ);
+  const dress =
+    options?.dressAsForest ??
+    isHarthmereSurfaceRepairForestColumn(worldX, worldZ);
   if (dress) {
     // The wilds generator is authored-space and relative-height, exactly as the
     // seeder calls it, so a repaired column grows the same tree the original

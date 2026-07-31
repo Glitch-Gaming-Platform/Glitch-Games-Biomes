@@ -58,7 +58,7 @@ async function main() {
     ["KeyG", "tab.guilds"],
     ["KeyP", "tab.banking"],
     ["KeyM", "tab.map"],
-    ["KeyC", "tab.collections"],
+    ["BracketRight", "tab.collections"],
     ["KeyV", "tab.inbox"],
     ["Comma", "tab.options"],
   ];

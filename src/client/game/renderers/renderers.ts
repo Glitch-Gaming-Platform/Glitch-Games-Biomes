@@ -105,7 +105,7 @@ export async function buildRenderers(loader: RegistryLoader<ClientContext>) {
     makeDropsRenderer(table, resources, audioManager),
     makeNpcsRenderer(clientConfig, table, resources),
     makePlaceablesRenderer(clientConfig, audioManager, table, resources),
-    makeHarthmereRuntimeAssetsRenderer(),
+    makeHarthmereRuntimeAssetsRenderer(resources),
     makeHarthmereBusinessOutpostBuildingsRenderer(),
     makeHarthmereBusinessBoardMarkerRenderer(),
     // HARTHMERE_JOBS_BOARD_PROCEDURAL_MARKER: bulletproof procedural
@@ -130,7 +130,9 @@ export async function buildRenderers(loader: RegistryLoader<ClientContext>) {
     // projected by the client — a gate is never an ECS entity, never moves an
     // NPC, and never edits terrain. Entry is a server-validated warp into the
     // unreachable Elsewhen band (src/shared/harthmere/ch1_elsewhen_region.ts).
-    makeCh1FractureGateRenderer(resources, () => ch1ActiveGateIdsForRender()),
+    makeCh1FractureGateRenderer(resources, audioManager, () =>
+      ch1ActiveGateIdsForRender()
+    ),
     makeCh1WorldPhaseRenderer(resources),
     // CHAPTER_1_DUNGEON_HORIZON: the wall at the edge of a dungeon. Drawn only
     // while inside a run and only near a face; disposed the moment the player

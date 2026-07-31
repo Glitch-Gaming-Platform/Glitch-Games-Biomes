@@ -1,7 +1,19 @@
+import json
 from collections import OrderedDict
+from pathlib import Path
 
 from ecs_ast import (ComponentVisibility, FieldDef, Generator, IndexType,
                      TypeGenerator)
+
+
+_CINEMATIC_EXPRESSION_CATALOG = Path(__file__).resolve().parents[1] / (
+    "src/shared/cutscene/cinematic_expression_catalog.json"
+)
+
+
+def cinematic_expression_types():
+    with _CINEMATIC_EXPRESSION_CATALOG.open("r", encoding="utf-8") as handle:
+        return list(json.load(handle).keys())
 
 
 def define_types(g: TypeGenerator):
@@ -254,8 +266,23 @@ def define_types(g: TypeGenerator):
                 "watering",
                 "equip",
                 "unequip",
+                *cinematic_expression_types(),
             ]
         ),
+    )
+
+    g.add_type(
+        "MovementActionType",
+        t.Enum(
+            [
+                "dodge",
+                "evade",
+            ]
+        ),
+    )
+    g.add_type(
+        "OptionalMovementActionType",
+        t.Optional(t.MovementActionType()),
     )
 
     # Fishing Emote Stuff
@@ -2040,6 +2067,23 @@ def define_components(g: Generator):
         },
     )
 
+    g.add_component(
+        id=157,
+        name="MovementState",
+        visibility=ComponentVisibility.EVERYONE,
+        fields={
+            1: FieldDef(name="crouching", kind=s.Bool),
+            2: FieldDef(name="action", kind=s.OptionalMovementActionType),
+            3: FieldDef(name="action_start_time", kind=s.F64),
+            4: FieldDef(name="action_expiry_time", kind=s.F64),
+            5: FieldDef(name="invulnerability_expiry_time", kind=s.F64),
+            6: FieldDef(name="cooldown_expiry_time", kind=s.F64),
+            7: FieldDef(name="direction", kind=s.Vec3f),
+            8: FieldDef(name="action_nonce", kind=s.OptionalF64),
+        },
+        hfc=True,
+    )
+
 
 def define_entities(g: Generator):
     s = g.symbols
@@ -2220,6 +2264,24 @@ def define_events(g: Generator):
             position=s.OptionalVec3f,
             velocity=s.OptionalVec3f,
             orientation=s.OptionalVec2f,
+        ),
+    )
+
+    g.add_event(
+        "SetCrouching",
+        OrderedDict(
+            id=s.BiomesId,
+            crouching=s.Bool,
+        ),
+    )
+
+    g.add_event(
+        "MovementAction",
+        OrderedDict(
+            id=s.BiomesId,
+            action=s.MovementActionType,
+            direction=s.Vec3f,
+            nonce=s.OptionalF64,
         ),
     )
 
@@ -2975,6 +3037,9 @@ def define_events(g: Generator):
             hpDelta=s.OptionalI32,
             maxHp=s.OptionalI32,
             damageSource=s.OptionalDamageSource,
+            attackAbilityId=s.OptionalString,
+            attackTime=s.OptionalF64,
+            impactPoint=s.OptionalVec3f,
         ),
     )
 

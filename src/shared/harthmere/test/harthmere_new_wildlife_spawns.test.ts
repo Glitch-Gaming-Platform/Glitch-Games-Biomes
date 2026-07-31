@@ -239,14 +239,21 @@ describe("harthmere forest wildlife", () => {
 
 describe("harthmere scattered mixed encounter groups", () => {
   it("creates six groups of one Hex, five Muckers and six animals", () => {
-    assert.equal(HARTHMERE_LIVE_ENTITY_SCATTERED_MIXED_GROUP_LOCATIONS.length, 6);
-    assert.equal(HARTHMERE_LIVE_ENTITY_SCATTERED_MIXED_MONSTER_SEEDS.length, 36);
+    assert.equal(
+      HARTHMERE_LIVE_ENTITY_SCATTERED_MIXED_GROUP_LOCATIONS.length,
+      6
+    );
+    assert.equal(
+      HARTHMERE_LIVE_ENTITY_SCATTERED_MIXED_MONSTER_SEEDS.length,
+      36
+    );
     assert.equal(HARTHMERE_LIVE_ENTITY_SCATTERED_MIXED_ANIMAL_SEEDS.length, 36);
 
     for (const location of HARTHMERE_LIVE_ENTITY_SCATTERED_MIXED_GROUP_LOCATIONS) {
-      const monsters = HARTHMERE_LIVE_ENTITY_SCATTERED_MIXED_MONSTER_SEEDS.filter(
-        (seed) => seed.areaId === location.areaId
-      );
+      const monsters =
+        HARTHMERE_LIVE_ENTITY_SCATTERED_MIXED_MONSTER_SEEDS.filter(
+          (seed) => seed.areaId === location.areaId
+        );
       const hexes = monsters.filter((seed) => seed.combatKind === "hex");
       assert.equal(hexes.length, 1, `${location.areaId}: expected one Hex`);
       assert.equal(
@@ -308,7 +315,9 @@ describe("harthmere scattered mixed encounter groups", () => {
       assert.ok(nearest, `${seed.displayName} has no surface evidence at all`);
       assert.ok(
         nearest.distance <= 45,
-        `${seed.displayName} is ${nearest.distance.toFixed(0)} blocks from the ` +
+        `${seed.displayName} is ${nearest.distance.toFixed(
+          0
+        )} blocks from the ` +
           `nearest measured column — too far to claim its height is known`
       );
       const delta = Math.abs(nearest.sample.y - seed.position[1]);
@@ -316,7 +325,13 @@ describe("harthmere scattered mixed encounter groups", () => {
         delta <= 2,
         `${seed.displayName} sits at Y ${seed.position[1]} but the nearest ` +
           `measured surface is ${nearest.sample.y} — it would be ` +
-          `${delta > 0 ? (nearest.sample.y > seed.position[1] ? "buried" : "floating") : "fine"}`
+          `${
+            delta > 0
+              ? nearest.sample.y > seed.position[1]
+                ? "buried"
+                : "floating"
+              : "fine"
+          }`
       );
     }
   });

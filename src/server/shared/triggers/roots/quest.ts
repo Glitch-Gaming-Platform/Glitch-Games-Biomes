@@ -28,11 +28,21 @@ import {
 } from "@/shared/harthmere/native_road_ahead_contract";
 import { awardHarthmereNativeQuestCompletionXp } from "@/shared/harthmere/harthmere_native_quest_xp_award";
 import { log } from "@/shared/logging";
+import { forcePlayerWarp } from "@/server/logic/utils/players";
+import { ch1ChapterOpeningPosition } from "@/shared/harthmere/ch1_prop_seed";
 
 const POST_MUCK_VS_MACHINE_PARALLEL_QUEST_IDS = [
   NATIVE_GIMME_SHELTER_QUEST_ID,
   NATIVE_CH1_FIRST_QUEST_ID,
 ] as const;
+
+function stageChapter1Opening(entity: Delta) {
+  forcePlayerWarp(
+    entity,
+    ch1ChapterOpeningPosition(),
+    entity.orientation()?.v ?? [0, 0]
+  );
+}
 
 /**
  * Muck vs. Machine fans out into two independent playable paths:
@@ -47,6 +57,7 @@ function startPostMuckVsMachineParallelQuests(context: {
 }) {
   const challenges = context.entity.mutableChallenges();
   if (!challenges.complete.has(NATIVE_MUCK_VS_MACHINE_QUEST_ID)) return;
+  let startedChapter1 = false;
   for (const questId of POST_MUCK_VS_MACHINE_PARALLEL_QUEST_IDS) {
     if (
       challenges.complete.has(questId) ||
@@ -58,12 +69,14 @@ function startPostMuckVsMachineParallelQuests(context: {
     challenges.in_progress.add(questId);
     challenges.started_at.set(questId, secondsSinceEpoch());
     challenges.finished_at.delete(questId);
+    if (questId === NATIVE_CH1_FIRST_QUEST_ID) startedChapter1 = true;
     context.publish({
       kind: "challengeUnlocked",
       entityId: context.entity.id,
       challenge: questId,
     });
   }
+  if (startedChapter1) stageChapter1Opening(context.entity);
 }
 
 export class QuestExecutor extends RootExecutor {
@@ -154,6 +167,11 @@ export class QuestExecutor extends RootExecutor {
     state: ChallengeState
   ): void {
     const mutChallenges = context.entity.mutableChallenges();
+    const startingChapter1 =
+      state === "in_progress" &&
+      isNativeCh1PrologueHandoffQuestId(this.id) &&
+      !mutChallenges.complete.has(this.id) &&
+      !mutChallenges.in_progress.has(this.id);
     if (state === "available") {
       context.entity.mutableTriggerState().by_root.delete(this.id);
       mutChallenges.available.add(this.id);
@@ -172,6 +190,7 @@ export class QuestExecutor extends RootExecutor {
         entityId: context.entity.id,
         challenge: this.id,
       });
+      if (startingChapter1) stageChapter1Opening(context.entity);
     } else {
       mutChallenges.in_progress.delete(this.id);
     }

@@ -1,12 +1,16 @@
 /// <reference types="mocha" />
 
 import assert from "assert";
-import { buildHarthmereSnapshotGroveNpcSeedProposedChanges } from "../snapshot_grove_npc_ecs_seed";
+import {
+  buildHarthmereSnapshotGroveNpcSeedProposedChanges,
+  harthmereObsoleteSnapshotGroveNpcIds,
+} from "../snapshot_grove_npc_ecs_seed";
 import {
   SNAPSHOT_GROVE_NPCS,
   snapshotGroveNpcEntityId,
 } from "@/shared/harthmere/snapshot_grove_content";
 import { LOCAL_DEV_HUMAN_NPC_TYPE_ID } from "@/shared/npc/bikkie";
+import { SNAPSHOT_GROVE_LEGACY_NPC_ENTITY_IDS } from "@/shared/harthmere/snapshot_grove_ids";
 
 describe("snapshot Grove NPC ECS seed cosmetics", () => {
   it("drops uniform defaults for no-asset Grove humans so the player avatar renderer supplies distinct cosmetics", () => {
@@ -62,5 +66,38 @@ describe("snapshot Grove NPC ECS seed cosmetics", () => {
     assert.ok(update && update.kind === "update");
     assert.equal(update.entity.appearance_component, null);
     assert.equal(update.entity.wearing, null);
+  });
+
+  it("removes obsolete named NPC selves while protecting the canonical entity and real players", () => {
+    const jackie = SNAPSHOT_GROVE_NPCS.find((npc) => npc.id === "jackie");
+    assert.ok(jackie);
+    const canonicalJackie = snapshotGroveNpcEntityId(jackie!);
+    assert.deepEqual(
+      harthmereObsoleteSnapshotGroveNpcIds([
+        {
+          id: canonicalJackie,
+          label: "Jackie",
+          hasNpcMetadata: true,
+        },
+        {
+          id: SNAPSHOT_GROVE_LEGACY_NPC_ENTITY_IDS.jackie,
+          label: "Jackie",
+          hasNpcMetadata: true,
+        },
+        {
+          id: 7001 as any,
+          label: "Jackie",
+          hasNpcMetadata: false,
+          hasPlayerStatus: true,
+          hasRemoteConnection: true,
+        },
+        {
+          id: 7002 as any,
+          label: "Unrelated Jackie Fan",
+          hasNpcMetadata: true,
+        },
+      ]),
+      [SNAPSHOT_GROVE_LEGACY_NPC_ENTITY_IDS.jackie]
+    );
   });
 });

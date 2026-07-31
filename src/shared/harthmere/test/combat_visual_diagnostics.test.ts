@@ -71,13 +71,16 @@ describe("combat_visual_diagnostics", () => {
     });
 
     assert.equal(result.passed, false);
-    assert.deepEqual(result.failures.sort(), [
-      "body_attack_animation_missing",
-      "contact_range_too_far",
-      "hud_delta_missing",
-      "loading_overlay_active",
-      "safe_zone_damage",
-    ].sort());
+    assert.deepEqual(
+      result.failures.sort(),
+      [
+        "body_attack_animation_missing",
+        "contact_range_too_far",
+        "hud_delta_missing",
+        "loading_overlay_active",
+        "safe_zone_damage",
+      ].sort()
+    );
   });
 
   it("keeps empty-handed body attacks in contact range instead of old sword sweep range", () => {
@@ -145,8 +148,12 @@ describe("combat_visual_diagnostics", () => {
     });
 
     assert.equal(missingProjectileVisual.mode, "projectile");
-    assert.ok(missingProjectileVisual.failures.includes("projectile_visual_missing"));
-    assert.ok(tooCloseProjectile.failures.includes("projectile_range_too_close"));
+    assert.ok(
+      missingProjectileVisual.failures.includes("projectile_visual_missing")
+    );
+    assert.ok(
+      tooCloseProjectile.failures.includes("projectile_range_too_close")
+    );
   });
 
   it("proves the Bikkie hunter bow has a projectile item and animated arrow asset", () => {

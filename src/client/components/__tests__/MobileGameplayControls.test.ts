@@ -37,6 +37,41 @@ describe("mobile gameplay control wiring", () => {
     assert.ok(hud.includes("z-index: 1095"));
   });
 
+  it("adds directional double-tap evade and a contained hold-to-crouch control", () => {
+    const joystick = read("src/client/components/JoystickInput.tsx");
+    const input = read("src/client/game/context_managers/input.ts");
+    const player = read("src/client/game/scripts/player.ts");
+    const hud = read("src/client/styles/hud.css");
+
+    assert.ok(joystick.includes("if (!clientConfig.showVirtualJoystick)"));
+    assert.ok(joystick.includes("return <JoystickInput />"));
+    assert.ok(joystick.includes('data-biomes-mobile-double-tap-dodge="true"'));
+    assert.ok(joystick.includes("pulseAction(command.action"));
+    assert.ok(joystick.includes('data-biomes-mobile-crouch="true"'));
+    assert.ok(joystick.includes('aria-label="Hold C to crouch"'));
+    assert.ok(joystick.includes("containMobileControlEvent"));
+    assert.ok(input.includes("setSyntheticAction"));
+    assert.ok(player.includes("MOBILE_JOYSTICK_CROUCH_SOURCE"));
+    assert.ok(player.includes("motionWithoutSyntheticSource"));
+    assert.ok(hud.includes(".mobile-crouch-button"));
+    assert.ok(hud.includes("touch-action: none"));
+  });
+
+  it("keeps mobile loading and character previews within the WebGL budget", () => {
+    const particles = read("src/client/components/Particles.tsx");
+    const wakeup = read("src/client/components/WakeUpScreen.tsx");
+    const preview = read(
+      "src/client/components/object_preview_render_scale.ts"
+    );
+
+    assert.ok(particles.includes("retina_detect: !touchDevice"));
+    assert.ok(particles.includes("value: touchDevice ? 16 : 40"));
+    assert.ok(
+      wakeup.includes('clientConfig.lowMemory ? "static-icon" : "live-webgl"')
+    );
+    assert.ok(preview.includes("lowMemory ? Math.min(1, devicePixelRatio)"));
+  });
+
   it("keeps joystick walk/run independent from the keyboard run toggle", () => {
     const player = read("src/client/game/scripts/player.ts");
     assert.ok(player.includes("motionWithoutSyntheticSource"));
@@ -55,9 +90,15 @@ describe("mobile gameplay control wiring", () => {
       ui.includes("zIndex: clientConfig.showVirtualJoystick ? 5 : undefined")
     );
     assert.ok(prompt.includes('data-biomes-mobile-menu="true"'));
-    assert.ok(prompt.includes(">\n          Menu\n"));
+    assert.ok(prompt.includes('data-biomes-mobile-action="menu"'));
+    assert.ok(prompt.includes('data-biomes-mobile-action="recipes"'));
     assert.ok(prompt.includes('aria-label="Open Recipes"'));
     assert.ok(ui.includes('onActiveTabChange("inventory")'));
+    assert.ok(
+      ui.includes(
+        "hudVisibility.helpButtons || clientConfig.showVirtualJoystick"
+      )
+    );
     assert.ok(
       prompt.includes("BIOMES_UI_QUESTS_SHORTCUT"),
       "desktop keeps its existing R/J prompt"
@@ -81,12 +122,37 @@ describe("mobile gameplay control wiring", () => {
       "src/client/components/biomes_ui/theme/biomesUITheme.ts"
     );
     assert.ok(vitals.includes('tone === "health" ? "♥"'));
+    assert.ok(vitals.includes('law: "⚖"'));
+    assert.ok(vitals.includes('notoriety: "◉"'));
+    assert.ok(vitals.includes("biomes-ui-vitals-chip__icon--gold"));
+    assert.ok(vitals.includes("biomes-ui-vitals-chip__icon--level"));
     assert.ok(vitals.includes("biomes-ui-vitals-panel--mobile"));
     assert.ok(
       theme.includes(
         ".biomes-ui-vitals-panel--mobile .biomes-ui-vitals-bar__label-text"
       )
     );
-    assert.ok(theme.includes("width: min(18rem, calc(100vw - 1rem));"));
+    assert.ok(theme.includes("width: min(54vw, 320px);"));
+  });
+
+  it("keeps the raised, scrollable hotbar scoped to virtual-joystick mode", () => {
+    const ui = read("src/client/components/biomes_ui/BiomesUI.tsx");
+    const hotbar = read(
+      "src/client/components/biomes_ui/hotbar/BiomesHotbar.tsx"
+    );
+    const theme = read(
+      "src/client/components/biomes_ui/theme/biomesUITheme.ts"
+    );
+
+    assert.ok(ui.includes("biomes-ui-hotbar-hud--mobile"));
+    assert.ok(ui.includes("data-biomes-mobile-hotbar"));
+    assert.ok(hotbar.includes('mobile ? "pan-x" : undefined'));
+    assert.ok(theme.includes(".biomes-ui-hotbar-hud--mobile"));
+    assert.ok(
+      theme.includes(
+        "bottom: max(28px, calc(env(safe-area-inset-bottom) + 16px));"
+      )
+    );
+    assert.ok(theme.includes(".biomes-ui-current-objective-hud--mobile"));
   });
 });

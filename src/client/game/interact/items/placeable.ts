@@ -12,6 +12,7 @@ import type { InteractContext } from "@/client/game/interact/types";
 import { isAclAction } from "@/shared/acl_types";
 import { hitExistingTerrain, setPosition } from "@/shared/game/spatial";
 import { Dir } from "@/shared/wasm/types/common";
+import { emitHarthmereSoundEffect } from "@/shared/harthmere/sound_effect_manifest";
 
 export class PlaceableItemSpec implements AttackDestroyDelegateSpec {
   constructor(
@@ -68,6 +69,9 @@ export class PlaceableItemSpec implements AttackDestroyDelegateSpec {
         handlePlacePlaceableInteraction(this.deps, prep);
         const player = this.deps.resources.get("/scene/local_player").player;
         player.eagerEmote(this.deps.events, this.deps.resources, "place");
+        emitHarthmereSoundEffect("place_block", {
+          position: placement.position,
+        });
         return true;
       }
     }

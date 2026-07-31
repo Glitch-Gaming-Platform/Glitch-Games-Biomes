@@ -95,6 +95,10 @@ function audioHarness() {
   const tracks: AudioTrackType[] = [];
   const attenuations: number[] = [];
   const effects: string[] = [];
+  const underwaterEnvironments: Array<{
+    active: boolean;
+    ambiencePath: string | undefined;
+  }> = [];
 
   const resources = {
     get(path: string) {
@@ -147,6 +151,9 @@ function audioHarness() {
     setBackgroundMusicEffect(effect: string) {
       effects.push(effect);
     },
+    setUnderwaterEnvironment(active: boolean, ambiencePath?: string) {
+      underwaterEnvironments.push({ active, ambiencePath });
+    },
   };
   const script = new AudioScript(
     PLAYER_ID,
@@ -160,6 +167,7 @@ function audioHarness() {
     tracks,
     attenuations,
     effects,
+    underwaterEnvironments,
     setMuckyness(value: number) {
       muckyness = value;
     },
@@ -616,5 +624,22 @@ describe("combat background music", () => {
 
     assert.equal(harness.tracks.at(-1), "battle_music");
     assert.equal(harness.effects.at(-1), "water");
+    assert.deepEqual(harness.underwaterEnvironments.at(-1), {
+      active: true,
+      ambiencePath: "/assets/harthmere/audio/sfx/underwater_ambience.webm",
+    });
+  });
+
+  it("stops the underwater ambience and restores the listener mix on surfacing", () => {
+    const harness = audioHarness();
+    harness.setInWater(true);
+    harness.script.tick(0);
+    harness.setInWater(false);
+    harness.script.tick(0);
+
+    assert.deepEqual(harness.underwaterEnvironments.at(-1), {
+      active: false,
+      ambiencePath: "/assets/harthmere/audio/sfx/underwater_ambience.webm",
+    });
   });
 });

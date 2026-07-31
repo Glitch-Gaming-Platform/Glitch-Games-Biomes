@@ -24,8 +24,11 @@ export const HarthmereMaterialAcquisitionGuide: React.FunctionComponent<{
     <details
       className="harthmere-material-guide"
       data-material-guide-item-id={plan.itemId}
+      data-material-guide-layout="stacked"
       style={{
         width: "100%",
+        minWidth: 0,
+        flex: "0 0 100%",
         marginTop: compact ? 5 : 8,
         padding: compact ? "5px 7px" : "7px 9px",
         boxSizing: "border-box",
@@ -34,9 +37,16 @@ export const HarthmereMaterialAcquisitionGuide: React.FunctionComponent<{
         background: "rgba(12, 26, 44, 0.72)",
         color: "rgba(235, 245, 255, 0.94)",
         fontSize: compact ? 10 : 11,
+        lineHeight: 1.35,
       }}
     >
-      <summary style={{ cursor: "pointer", fontWeight: 800 }}>
+      <summary
+        style={{
+          cursor: "pointer",
+          fontWeight: 800,
+          overflowWrap: "break-word",
+        }}
+      >
         How to get {plan.quantity} {plan.itemName}
       </summary>
       <div
@@ -51,11 +61,13 @@ export const HarthmereMaterialAcquisitionGuide: React.FunctionComponent<{
             key={route.id}
             data-material-route-kind={route.kind}
             data-material-route-id={route.id}
+            data-material-route-layout="readable"
             style={{
               display: "grid",
-              gridTemplateColumns: "auto minmax(0, 1fr) auto",
+              gridTemplateColumns: "max-content minmax(0, 1fr)",
               alignItems: "start",
               gap: 7,
+              minWidth: 0,
               padding: compact ? 5 : 7,
               borderRadius: 5,
               background: "rgba(255, 255, 255, 0.045)",
@@ -64,8 +76,16 @@ export const HarthmereMaterialAcquisitionGuide: React.FunctionComponent<{
             <strong style={{ color: "#9cd8ff" }}>
               {KIND_LABEL[route.kind]}
             </strong>
-            <span style={{ minWidth: 0 }}>
-              <span style={{ display: "block", fontWeight: 700 }}>
+            <span
+              style={{
+                minWidth: 0,
+                overflowWrap: "break-word",
+                wordBreak: "normal",
+              }}
+            >
+              <span
+                style={{ display: "block", fontWeight: 700, lineHeight: 1.25 }}
+              >
                 {route.title}
               </span>
               <span
@@ -97,7 +117,14 @@ export const HarthmereMaterialAcquisitionGuide: React.FunctionComponent<{
                     setAtMs: Date.now(),
                   })
                 }
-                style={{ whiteSpace: "nowrap", fontSize: compact ? 9 : 10 }}
+                style={{
+                  gridColumn: "1 / -1",
+                  width: "100%",
+                  minWidth: 0,
+                  whiteSpace: "normal",
+                  fontSize: compact ? 9 : 10,
+                  lineHeight: 1.2,
+                }}
               >
                 Show on map
               </button>

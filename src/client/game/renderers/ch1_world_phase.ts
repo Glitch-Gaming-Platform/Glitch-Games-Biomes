@@ -117,6 +117,17 @@ export function makeCh1WorldPhaseRenderer(
     draw(scenes: Scenes) {
       const player = resources.get("/scene/local_player");
       const position = player.position;
+      // Warp/respawn transitions briefly retain the local-player resource while
+      // clearing its simulation position. This renderer is decorative and must
+      // skip that frame instead of taking the entire game loop down by indexing
+      // an undefined tuple.
+      if (
+        !position ||
+        position.length < 3 ||
+        position.some((coordinate) => !Number.isFinite(coordinate))
+      ) {
+        return;
+      }
       if (activeEffectIds.has("collective_transport_parked")) {
         const distance = Math.hypot(
           position[0] - transport.position.x,

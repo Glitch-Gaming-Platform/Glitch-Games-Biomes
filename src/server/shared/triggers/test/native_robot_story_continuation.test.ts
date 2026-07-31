@@ -7,6 +7,7 @@ import { EntityBackedDelta } from "@/shared/ecs/gen/delta";
 import type { Entity } from "@/shared/ecs/gen/entities";
 import type { FirehoseEvent } from "@/shared/firehose/events";
 import { NATIVE_CH1_FIRST_QUEST_ID } from "@/shared/harthmere/ch1_native_quests";
+import { ch1ChapterOpeningPosition } from "@/shared/harthmere/ch1_prop_seed";
 import {
   NATIVE_HOEDOWN_QUEST_ID,
   NATIVE_PARCEL_PURSUIT_QUEST_ID,
@@ -20,9 +21,10 @@ import {
 } from "@/shared/harthmere/native_road_ahead_contract";
 import type { BiomesId } from "@/shared/ids";
 import type { MetaState } from "@/shared/triggers/base_schema";
+import { SNAPSHOT_GROVE_JACKIE_ENTITY_ID } from "@/shared/harthmere/snapshot_grove_ids";
 import assert from "assert";
 
-const JACKIE_ID = 8997551883502307 as BiomesId;
+const JACKIE_ID = SNAPSHOT_GROVE_JACKIE_ENTITY_ID;
 const SOPHIA_ID = 7976997825186729 as BiomesId;
 const unrelatedQuestId = 7000000000000001 as BiomesId;
 
@@ -206,6 +208,13 @@ describe("native robot story automatic continuation", () => {
       "Chapter 1 starts in the same completion transaction"
     );
     assert.deepEqual(
+      player.position()?.v,
+      ch1ChapterOpeningPosition(),
+      "the same transaction stages the player beside the upstairs cot"
+    );
+    assert.deepEqual(player.rigidBody()?.velocity, [0, 0, 0]);
+    assert.deepEqual(player.warpingTo()?.position, ch1ChapterOpeningPosition());
+    assert.deepEqual(
       published
         .filter((event) => event.kind === "challengeUnlocked")
         .map((event) => event.challenge)
@@ -249,6 +258,7 @@ describe("native robot story automatic continuation", () => {
       true,
       "the next trigger pass repairs the missing Chapter 1 handoff"
     );
+    assert.deepEqual(player.position()?.v, ch1ChapterOpeningPosition());
     assert.equal(
       player.challenges()?.in_progress.has(NATIVE_GIMME_SHELTER_QUEST_ID),
       true,

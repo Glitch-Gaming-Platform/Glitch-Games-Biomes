@@ -44,6 +44,10 @@ import {
 } from "@/shared/api/assets";
 import { isPaletteOption } from "@/shared/asset_defs/color_palettes";
 import {
+  harthmereCinematicExpressionRepeat,
+  isHarthmereCinematicExpression,
+} from "@/shared/cutscene/cinematic_expressions";
+import {
   HARTHMERE_DEFAULT_HUMAN_ANCHORS,
   HARTHMERE_FACIAL_EXPRESSION_EVENT,
   dispatchHarthmereFacialExpressionEvent,
@@ -78,6 +82,7 @@ import type {
   ReadonlyItemAssignment,
 } from "@/shared/ecs/gen/types";
 import { anItem } from "@/shared/game/item";
+import { PLAYER_MOVEMENT_ACTION_ANIMATION_NAMES } from "@/shared/game/movement_actions";
 import type { BiomesId } from "@/shared/ids";
 import { log } from "@/shared/logging";
 import type { RegistryLoader } from "@/shared/registry";
@@ -1749,6 +1754,8 @@ function applyHarthmerePlayerFacialExpressionToFaceRoot(
       rotateHarthmereExpressionPart(rightMouth, -0.28 * intensity);
       break;
     case "sad":
+    case "crying":
+    case "ashamed":
       scaleHarthmereExpressionPart(leftEye, [0.92, 0.82, 1]);
       scaleHarthmereExpressionPart(rightEye, [0.92, 0.82, 1]);
       moveHarthmereExpressionPart(leftBrow, 0, -0.015 * intensity, 0);
@@ -1758,9 +1765,17 @@ function applyHarthmerePlayerFacialExpressionToFaceRoot(
       moveHarthmereExpressionPart(mouth, 0, -0.018 * intensity, 0);
       rotateHarthmereExpressionPart(leftMouth, -0.28 * intensity);
       rotateHarthmereExpressionPart(rightMouth, 0.28 * intensity);
+      if (state.expression === "crying") {
+        scaleHarthmereExpressionPart(leftEye, [0.85, 0.7, 1]);
+        scaleHarthmereExpressionPart(rightEye, [0.85, 0.7, 1]);
+      } else if (state.expression === "ashamed") {
+        moveHarthmereExpressionPart(leftEye, 0, -0.012 * intensity, 0);
+        moveHarthmereExpressionPart(rightEye, 0, -0.012 * intensity, 0);
+      }
       break;
     case "angry":
     case "determined":
+    case "furious":
       scaleHarthmereExpressionPart(leftEye, [1.05, 0.68, 1]);
       scaleHarthmereExpressionPart(rightEye, [1.05, 0.68, 1]);
       moveHarthmereExpressionPart(leftBrow, 0, -0.01 * intensity, 0);
@@ -1768,6 +1783,11 @@ function applyHarthmerePlayerFacialExpressionToFaceRoot(
       rotateHarthmereExpressionPart(leftBrow, -0.34 * intensity);
       rotateHarthmereExpressionPart(rightBrow, 0.34 * intensity);
       scaleHarthmereExpressionPart(mouth, [0.9, 0.78, 1]);
+      if (state.expression === "furious") {
+        scaleHarthmereExpressionPart(leftEye, [1.08, 0.72, 1]);
+        scaleHarthmereExpressionPart(rightEye, [1.08, 0.72, 1]);
+        if (teeth) teeth.visible = true;
+      }
       break;
     case "surprised":
       scaleHarthmereExpressionPart(leftEye, [1.2, 1.24, 1]);
@@ -1778,6 +1798,7 @@ function applyHarthmerePlayerFacialExpressionToFaceRoot(
       if (teeth) teeth.visible = true;
       break;
     case "afraid":
+    case "terrified":
       scaleHarthmereExpressionPart(leftEye, [1.12, 1.12, 1]);
       scaleHarthmereExpressionPart(rightEye, [1.12, 1.12, 1]);
       moveHarthmereExpressionPart(leftBrow, 0, 0.026 * intensity, 0);
@@ -1785,6 +1806,11 @@ function applyHarthmerePlayerFacialExpressionToFaceRoot(
       rotateHarthmereExpressionPart(leftBrow, 0.18 * intensity);
       rotateHarthmereExpressionPart(rightBrow, -0.18 * intensity);
       scaleHarthmereExpressionPart(mouth, [0.9, 1.45, 1]);
+      if (state.expression === "terrified") {
+        scaleHarthmereExpressionPart(leftEye, [1.15, 1.18, 1]);
+        scaleHarthmereExpressionPart(rightEye, [1.15, 1.18, 1]);
+        scaleHarthmereExpressionPart(mouth, [0.82, 1.35, 1]);
+      }
       break;
     case "hurt":
       scaleHarthmereExpressionPart(leftEye, [0.62, 0.55, 1]);
@@ -1808,22 +1834,87 @@ function applyHarthmerePlayerFacialExpressionToFaceRoot(
       break;
     case "thinking":
     case "suspicious":
+    case "confused":
+    case "bored":
+    case "annoyed":
       scaleHarthmereExpressionPart(leftEye, [0.92, 0.72, 1]);
       scaleHarthmereExpressionPart(rightEye, [1.08, 0.88, 1]);
       rotateHarthmereExpressionPart(
         leftBrow,
-        state.expression === "suspicious" ? -0.22 : 0.18
+        state.expression === "suspicious" || state.expression === "annoyed"
+          ? -0.22
+          : 0.18
       );
       rotateHarthmereExpressionPart(
         rightBrow,
-        state.expression === "suspicious" ? 0.08 : -0.08
+        state.expression === "suspicious" || state.expression === "annoyed"
+          ? 0.08
+          : -0.08
       );
       moveHarthmereExpressionPart(
         mouth,
-        state.expression === "suspicious" ? 0.014 : 0,
+        state.expression === "suspicious" || state.expression === "annoyed"
+          ? 0.014
+          : 0,
         0,
         0
       );
+      if (state.expression === "confused") {
+        rotateHarthmereExpressionPart(leftBrow, 0.28 * intensity);
+        rotateHarthmereExpressionPart(rightBrow, -0.28 * intensity);
+        rotateHarthmereExpressionPart(mouth, -0.12 * intensity);
+      } else if (state.expression === "bored") {
+        scaleHarthmereExpressionPart(leftEye, [1, 0.62, 1]);
+        scaleHarthmereExpressionPart(rightEye, [1, 0.62, 1]);
+        moveHarthmereExpressionPart(mouth, 0, -0.012 * intensity, 0);
+      }
+      break;
+    case "embarrassed":
+      scaleHarthmereExpressionPart(leftEye, [1.02, 0.75, 1]);
+      scaleHarthmereExpressionPart(rightEye, [0.9, 0.7, 1]);
+      moveHarthmereExpressionPart(leftBrow, 0, 0.012 * intensity, 0);
+      rotateHarthmereExpressionPart(leftMouth, 0.16 * intensity);
+      rotateHarthmereExpressionPart(rightMouth, -0.08 * intensity);
+      break;
+    case "tired":
+      scaleHarthmereExpressionPart(leftEye, [1.05, 0.45, 1]);
+      scaleHarthmereExpressionPart(rightEye, [1.05, 0.45, 1]);
+      moveHarthmereExpressionPart(leftBrow, 0, -0.018 * intensity, 0);
+      moveHarthmereExpressionPart(rightBrow, 0, -0.018 * intensity, 0);
+      scaleHarthmereExpressionPart(mouth, [0.78, 0.72, 1]);
+      break;
+    case "dizzy":
+      rotateHarthmereExpressionPart(leftEye, 0.48 * intensity);
+      rotateHarthmereExpressionPart(rightEye, -0.48 * intensity);
+      rotateHarthmereExpressionPart(mouth, 0.18 * intensity);
+      break;
+    case "cold":
+      scaleHarthmereExpressionPart(leftEye, [0.92, 0.68, 1]);
+      scaleHarthmereExpressionPart(rightEye, [0.92, 0.68, 1]);
+      scaleHarthmereExpressionPart(mouth, [0.72, 0.6, 1]);
+      moveHarthmereExpressionPart(mouth, 0, -0.01 * intensity, 0);
+      break;
+    case "relieved":
+      scaleHarthmereExpressionPart(leftEye, [1.08, 0.58, 1]);
+      scaleHarthmereExpressionPart(rightEye, [1.08, 0.58, 1]);
+      rotateHarthmereExpressionPart(leftMouth, 0.2 * intensity);
+      rotateHarthmereExpressionPart(rightMouth, -0.2 * intensity);
+      break;
+    case "disgusted":
+      scaleHarthmereExpressionPart(leftEye, [0.96, 0.62, 1]);
+      scaleHarthmereExpressionPart(rightEye, [1.04, 0.72, 1]);
+      rotateHarthmereExpressionPart(leftBrow, -0.24 * intensity);
+      rotateHarthmereExpressionPart(rightBrow, 0.08 * intensity);
+      rotateHarthmereExpressionPart(mouth, -0.24 * intensity);
+      moveHarthmereExpressionPart(mouth, 0.012 * intensity, 0, 0);
+      break;
+    case "loving":
+      scaleHarthmereExpressionPart(leftEye, [1.1, 0.66, 1]);
+      scaleHarthmereExpressionPart(rightEye, [1.1, 0.66, 1]);
+      moveHarthmereExpressionPart(leftBrow, 0, 0.018 * intensity, 0);
+      moveHarthmereExpressionPart(rightBrow, 0, 0.018 * intensity, 0);
+      rotateHarthmereExpressionPart(leftMouth, 0.34 * intensity);
+      rotateHarthmereExpressionPart(rightMouth, -0.34 * intensity);
       break;
     case "neutral":
     default:
@@ -5806,6 +5897,94 @@ export async function makeSnapshotPlayerLikeAppearanceMesh(
   // to player avatars.
   coerceHarthmerePlayerObjectMaterialsToBasePass(mesh.scene);
   return mesh;
+}
+
+/**
+ * Native synthetic actor used only when a cutscene deliberately has no ECS
+ * body (flashbacks and the expression showcase). It uses the exact snapshot
+ * player-mesh generator and the same Blender-extended player animation rig as
+ * gameplay players; no procedural body, face, or clothing geometry is added.
+ */
+export async function makeSnapshotCutscenePlayerMesh(
+  deps: ClientResourceDeps,
+  id: BiomesId
+): Promise<Disposable<LoadedPlayerMesh>> {
+  const cosmetics = harthmereLiveHumanMeshCosmetics(id);
+  const mesh = await makeAnimatedMesh(
+    deps,
+    false,
+    cosmetics.wearables,
+    cosmetics.appearance,
+    id
+  );
+  mesh.three.userData.snapshotCutscenePlayerMesh = {
+    version: "snapshot-cutscene-player-mesh-v1",
+    source: "/api/assets/player_mesh.glb",
+    blenderExpressions: true,
+  };
+  return mesh;
+}
+
+const SNAPSHOT_CUTSCENE_PLAYER_ANIMATION_ALIASES: Readonly<
+  Record<string, PlayerAnimationName>
+> = {
+  idle: "idle",
+  walk: "walk",
+  run: "run",
+  attack: "attack1",
+  attack1: "attack1",
+  attack2: "attack2",
+  wave: "wave",
+  talkGesture: "socialTalk",
+  point: "point",
+  questGesture: "questGesture",
+  applause: "applause",
+  crowdEmote: "applause",
+  hitReact: "hardLand",
+  death: "death",
+  dodgeLeft: "dodgeLeft",
+  dodgeRight: "dodgeRight",
+  dodgeForward: "dodgeForward",
+  dodgeBack: "dodgeBack",
+  evade: "evade",
+};
+
+export function applySnapshotCutscenePlayerAnimation(
+  mesh: LoadedPlayerMesh,
+  animation: string | undefined,
+  animationTime = 0
+): void {
+  const resolved = isHarthmereCinematicExpression(animation)
+    ? animation
+    : animation
+    ? SNAPSHOT_CUTSCENE_PLAYER_ANIMATION_ALIASES[animation]
+    : "idle";
+  if (!resolved || !mesh.animationSystem.hasAnimation(resolved)) {
+    return;
+  }
+  const isMovementAction = PLAYER_MOVEMENT_ACTION_ANIMATION_NAMES.includes(
+    resolved as (typeof PLAYER_MOVEMENT_ACTION_ANIMATION_NAMES)[number]
+  );
+  mesh.animationSystem.applySingleActionToState(
+    {
+      layers: { arms: "apply", notArms: "apply" },
+      state: {
+        repeat: isHarthmereCinematicExpression(resolved)
+          ? harthmereCinematicExpressionRepeat(resolved)
+          : resolved === "death"
+          ? { kind: "once", clampWhenFinished: true }
+          : resolved === "hardLand"
+          ? { kind: "once" }
+          : isMovementAction
+          ? { kind: "once", clampWhenFinished: true }
+          : { kind: "repeat" },
+        startTime:
+          mesh.animationMixer.time - Math.max(0, Number(animationTime) || 0),
+      },
+      weights: mesh.animationSystem.singleAnimationWeight(resolved, 1),
+    },
+    mesh.animationSystemState
+  );
 }
 
 export async function addPlayerMeshResources(

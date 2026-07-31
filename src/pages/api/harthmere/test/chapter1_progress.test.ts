@@ -82,4 +82,27 @@ describe("Chapter 1 native progress API", () => {
       ],
     });
   });
+
+  it("aggregates repeated authored inventory requirements", () => {
+    const plan = chapter1NativeInventoryPlanForTest({
+      itemConsumes: [
+        "scrap_metal",
+        "scrap_metal",
+        "scrap_metal",
+        "scrap_metal",
+        "iron_ingot",
+        "iron_ingot",
+        "tree_resin",
+      ],
+      itemGrants: ["item_augur9_core_cell"],
+    });
+    assert.deepEqual(
+      plan.take.map(({ itemId, count }) => ({ itemId, count })),
+      [
+        { itemId: "scrap_metal", count: 4 },
+        { itemId: "iron_ingot", count: 2 },
+        { itemId: "tree_resin", count: 1 },
+      ]
+    );
+  });
 });

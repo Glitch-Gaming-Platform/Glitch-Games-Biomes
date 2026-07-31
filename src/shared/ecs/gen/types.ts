@@ -1,5 +1,5 @@
 // GENERATED: This file is generated from types.ts.j2. Do not modify directly.
-// Content Hash: daae0b008746bc353aad6aee07cbbf9f
+// Content Hash: d2847c364de93ccbed7031dcca544ed1
 
 export type { Item, ReadonlyItem } from "@/shared/ecs/extern";
 export {
@@ -127,7 +127,79 @@ export const zEmoteType = z.enum([
   "watering",
   "equip",
   "unequip",
+  "sadness",
+  "depression",
+  "crying",
+  "shame",
+  "fear",
+  "terror",
+  "cowering",
+  "nervousness",
+  "surprise",
+  "shock",
+  "recoil",
+  "curiosity",
+  "thinking",
+  "confusion",
+  "uncertainty",
+  "embarrassment",
+  "shyness",
+  "boredom",
+  "impatience",
+  "annoyance",
+  "frustration",
+  "facepalm",
+  "anger",
+  "fury",
+  "threatening",
+  "determined",
+  "ready",
+  "tiredness",
+  "exhaustion",
+  "yawning",
+  "stretching",
+  "injury",
+  "limping",
+  "dizziness",
+  "shivering",
+  "relief",
+  "disgust",
+  "love",
+  "flirting",
+  "gratitude",
+  "apology",
+  "bow",
+  "salute",
+  "kneel",
+  "pray",
+  "meditate",
+  "surrender",
+  "beckon",
+  "stop",
+  "comeHere",
+  "hug",
+  "handshake",
+  "highFive",
+  "thumbsUp",
+  "thumbsDown",
+  "guard",
+  "block",
+  "taunt",
+  "stagger",
+  "knockdown",
+  "getUp",
+  "retreat",
+  "rally",
+  "victory",
+  "defeat",
+  "footTapping",
+  "scratchingHead",
+  "checkingEquipment",
+  "pacing",
+  "sighing",
+  "cleaningWeapon",
 ]);
+export const zMovementActionType = z.enum(["dodge", "evade"]);
 export const zWarpHomeReason = z.enum(["respawn", "homestone", "admin"]);
 export const zCameraMode = z.enum([
   "normal",
@@ -181,24 +253,24 @@ export const zUserRole = z.enum([
   "oobNoCors",
   "noClip",
 ]);
-const zT107 = z.enum(["aabb"]);
-const zT109 = z.enum(["point"]);
-const zT111 = z.enum(["points"]);
-const zT114 = z.enum(["dayNight"]);
-const zT116 = z.enum(["farFromHome"]);
-const zT118 = z.enum(["adminKill"]);
-const zT120 = z.enum(["outOfWorldBounds"]);
-const zT123 = z.enum(["suicide"]);
-const zT125 = z.enum(["despawnWand"]);
-const zT127 = z.enum(["block"]);
-const zT129 = z.enum(["fall"]);
-const zT131 = z.enum(["attack"]);
-const zT133 = z.enum(["drown"]);
-const zT135 = z.enum(["fire"]);
-const zT137 = z.enum(["fireDamage"]);
-const zT139 = z.enum(["fireHeal"]);
-const zT141 = z.enum(["heal"]);
-const zT143 = z.enum(["npc"]);
+const zT109 = z.enum(["aabb"]);
+const zT111 = z.enum(["point"]);
+const zT113 = z.enum(["points"]);
+const zT116 = z.enum(["dayNight"]);
+const zT118 = z.enum(["farFromHome"]);
+const zT120 = z.enum(["adminKill"]);
+const zT122 = z.enum(["outOfWorldBounds"]);
+const zT125 = z.enum(["suicide"]);
+const zT127 = z.enum(["despawnWand"]);
+const zT129 = z.enum(["block"]);
+const zT131 = z.enum(["fall"]);
+const zT133 = z.enum(["attack"]);
+const zT135 = z.enum(["drown"]);
+const zT137 = z.enum(["fire"]);
+const zT139 = z.enum(["fireDamage"]);
+const zT141 = z.enum(["fireHeal"]);
+const zT143 = z.enum(["heal"]);
+const zT145 = z.enum(["npc"]);
 export const zPlaceableAnimationType = z.enum(["open", "close", "play"]);
 export const zAnimationRepeatKind = z.enum(["once", "repeat"]);
 export const zChallengeState = z.enum([
@@ -226,16 +298,16 @@ export const zPlantStatus = z.enum([
   "halted_water",
 ]);
 export const zMinigameType = z.enum(["simple_race", "deathmatch", "spleef"]);
-const zT172 = z.object({});
-const zT188 = z.enum(["waiting", "racing"]);
-const zT198 = z.enum(["water"]);
-const zT200 = z.enum(["fertilize"]);
-const zT202 = z.enum(["harvest"]);
-const zT204 = z.enum(["adminDestroy"]);
-const zT206 = z.enum(["poke"]);
-const zT212 = z.enum(["biomes-social"]);
-const zT226 = z.enum(["box"]);
-const zT228 = z.enum(["sphere"]);
+const zT174 = z.object({});
+const zT190 = z.enum(["waiting", "racing"]);
+const zT200 = z.enum(["water"]);
+const zT202 = z.enum(["fertilize"]);
+const zT204 = z.enum(["harvest"]);
+const zT206 = z.enum(["adminDestroy"]);
+const zT208 = z.enum(["poke"]);
+const zT214 = z.enum(["biomes-social"]);
+const zT228 = z.enum(["box"]);
+const zT230 = z.enum(["sphere"]);
 export const zEntityRestoreToState = z.enum(["created", "deleted"]);
 export const zStrings = zString.array().default([]);
 export const zBiomesIdList = zBiomesId.array().default([]);
@@ -292,21 +364,19 @@ export const zItemContainerReference = z.object({
 export const zItemBagReference = z.object({
   key: zString,
 });
+export const zOptionalMovementActionType = zMovementActionType.optional();
 export const zOptionalEmoteType = zEmoteType.optional();
 export const zOptionalShardId = zShardId.optional();
 export const zOptionalString = zString.optional();
 export const zOptionalBuffer = zBuffer.optional();
-const zT90 = z.set(zBiomesId);
-const zT91 = zF64.optional();
+const zT92 = z.set(zBiomesId);
+const zT93 = zF64.optional();
 export const zNUXStatus = z.object({
   complete: zBool,
   state_id: zString,
 });
 export const zUserRoleSet = z.set(zUserRole);
-const zT99 = z.set(zAclAction);
-const zT115 = z.object({
-  kind: zT114,
-});
+const zT101 = z.set(zAclAction);
 const zT117 = z.object({
   kind: zT116,
 });
@@ -316,22 +386,22 @@ const zT119 = z.object({
 const zT121 = z.object({
   kind: zT120,
 });
-const zT124 = z.object({
-  kind: zT123,
+const zT123 = z.object({
+  kind: zT122,
 });
 const zT126 = z.object({
   kind: zT125,
 });
 const zT128 = z.object({
   kind: zT127,
-  biscuitId: zBiomesId,
 });
 const zT130 = z.object({
   kind: zT129,
-  distance: zF64,
+  biscuitId: zBiomesId,
 });
-const zT134 = z.object({
-  kind: zT133,
+const zT132 = z.object({
+  kind: zT131,
+  distance: zF64,
 });
 const zT136 = z.object({
   kind: zT135,
@@ -345,6 +415,9 @@ const zT140 = z.object({
 const zT142 = z.object({
   kind: zT141,
 });
+const zT144 = z.object({
+  kind: zT143,
+});
 export const zOptionalAnimationRepeatKind = zAnimationRepeatKind.optional();
 export const zChallengeStateMap = z.map(zBiomesId, zChallengeState);
 export const zTriggerTrees = z.map(zBiomesId, zTriggerStateMap);
@@ -352,39 +425,35 @@ export const zChallengeTime = z.map(zBiomesId, zF64);
 export const zTagRoundState = z.object({
   it_player: zBiomesId,
 });
-const zT173 = z.object({
+const zT175 = z.object({
   round_start: zF64,
 });
-const zT174 = z.object({
+const zT176 = z.object({
   round_end: zF64,
 });
-const zT175 = z.object({
+const zT177 = z.object({
   timestamp: zF64,
 });
 export const zSpleefPlayerStats = z.object({
   playerId: zBiomesId,
   rounds_won: zI32,
 });
-const zT186 = z.object({
+const zT188 = z.object({
   time: zF64,
 });
 export const zGiveMinigameKitData = z.discriminatedUnion("kind", [
-  zT172.extend({ kind: z.literal("simple_race") }),
-  zT172.extend({ kind: z.literal("deathmatch") }),
-  zT172.extend({ kind: z.literal("spleef") }),
+  zT174.extend({ kind: z.literal("simple_race") }),
+  zT174.extend({ kind: z.literal("deathmatch") }),
+  zT174.extend({ kind: z.literal("spleef") }),
 ]);
-const zT199 = z.object({
-  kind: zT198,
-  amount: zF32,
-  timestamp: zF64,
-});
 const zT201 = z.object({
   kind: zT200,
-  fertilizer: zItem,
+  amount: zF32,
   timestamp: zF64,
 });
 const zT203 = z.object({
   kind: zT202,
+  fertilizer: zItem,
   timestamp: zF64,
 });
 const zT205 = z.object({
@@ -393,6 +462,10 @@ const zT205 = z.object({
 });
 const zT207 = z.object({
   kind: zT206,
+  timestamp: zF64,
+});
+const zT209 = z.object({
+  kind: zT208,
   timestamp: zF64,
 });
 export const zTeamMemberMetadata = z.object({
@@ -407,8 +480,8 @@ export const zTeamJoinRequest = z.object({
   entity_id: zBiomesId,
   created_at: zF64,
 });
-const zT229 = z.object({
-  kind: zT228,
+const zT231 = z.object({
+  kind: zT230,
   radius: zF64,
 });
 export const zTradeSpec = z.object({
@@ -452,23 +525,23 @@ export const zWarpTarget = z.object({
   orientation: zVec2f,
 });
 export const zEntitiesAndExpiry = z.object({
-  entity_ids: zT90,
-  expiry: zT91,
+  entity_ids: zT92,
+  expiry: zT93,
 });
 export const zAllNUXStatus = z.map(zI32, zNUXStatus);
-const zT100 = z.tuple([zBiomesId, zT99]);
-const zT102 = z.map(zUserRole, zT99);
-const zT103 = z.map(zBiomesId, zT99);
+const zT102 = z.tuple([zBiomesId, zT101]);
+const zT104 = z.map(zUserRole, zT101);
+const zT105 = z.map(zBiomesId, zT101);
 export const zAabb = z.tuple([zVec3f, zVec3f]);
-const zT110 = z.object({
-  kind: zT109,
+const zT112 = z.object({
+  kind: zT111,
   point: zVec3f,
 });
 export const zNpcDamageSource = z.discriminatedUnion("kind", [
-  zT115.extend({ kind: z.literal("dayNight") }),
-  zT117.extend({ kind: z.literal("farFromHome") }),
-  zT119.extend({ kind: z.literal("adminKill") }),
-  zT121.extend({ kind: z.literal("outOfWorldBounds") }),
+  zT117.extend({ kind: z.literal("dayNight") }),
+  zT119.extend({ kind: z.literal("farFromHome") }),
+  zT121.extend({ kind: z.literal("adminKill") }),
+  zT123.extend({ kind: z.literal("outOfWorldBounds") }),
 ]);
 export const zPlaceableAnimation = z.object({
   type: zPlaceableAnimationType,
@@ -483,20 +556,20 @@ export const zPlaceEventInfo = z.object({
 });
 export const zBuff = z.object({
   item_id: zBiomesId,
-  start_time: zT91,
+  start_time: zT93,
   from_id: zOptionalBiomesId,
   is_disabled: zOptionalBool,
 });
 export const zOptionalTagRoundState = zTagRoundState.optional();
-const zT167 = z.object({
+const zT169 = z.object({
   checkpoint_ids: zBiomesIdSet,
   start_ids: zBiomesIdSet,
   end_ids: zBiomesIdSet,
 });
-const zT168 = z.object({
+const zT170 = z.object({
   start_ids: zBiomesIdSet,
 });
-const zT169 = z.object({
+const zT171 = z.object({
   start_ids: zBiomesIdSet,
   arena_marker_ids: zBiomesIdSet,
 });
@@ -507,26 +580,26 @@ export const zDeathMatchPlayerState = z.object({
   last_kill: zOptionalF64,
   last_death: zOptionalF64,
 });
-const zT176 = z.discriminatedUnion("kind", [
-  zT172.extend({ kind: z.literal("waiting_for_players") }),
-  zT173.extend({ kind: z.literal("play_countdown") }),
-  zT174.extend({ kind: z.literal("playing") }),
-  zT175.extend({ kind: z.literal("finished") }),
+const zT178 = z.discriminatedUnion("kind", [
+  zT174.extend({ kind: z.literal("waiting_for_players") }),
+  zT175.extend({ kind: z.literal("play_countdown") }),
+  zT176.extend({ kind: z.literal("playing") }),
+  zT177.extend({ kind: z.literal("finished") }),
 ]);
-const zT181 = z.object({
+const zT183 = z.object({
   round_start: zF64,
   last_winner_id: zOptionalBiomesId,
 });
-const zT184 = z.map(zBiomesId, zSpleefPlayerStats);
-export const zReachedCheckpoints = z.map(zBiomesId, zT186);
+const zT186 = z.map(zBiomesId, zSpleefPlayerStats);
+export const zReachedCheckpoints = z.map(zBiomesId, zT188);
 export const zFarmingPlayerAction = z.discriminatedUnion("kind", [
-  zT199.extend({ kind: z.literal("water") }),
-  zT201.extend({ kind: z.literal("fertilize") }),
-  zT203.extend({ kind: z.literal("harvest") }),
-  zT205.extend({ kind: z.literal("adminDestroy") }),
-  zT207.extend({ kind: z.literal("poke") }),
+  zT201.extend({ kind: z.literal("water") }),
+  zT203.extend({ kind: z.literal("fertilize") }),
+  zT205.extend({ kind: z.literal("harvest") }),
+  zT207.extend({ kind: z.literal("adminDestroy") }),
+  zT209.extend({ kind: z.literal("poke") }),
 ]);
-const zT210 = z.object({
+const zT212 = z.object({
   type_ids: zBiomesIdList,
 });
 export const zBucketedImageCloudBundle = z.object({
@@ -535,7 +608,7 @@ export const zBucketedImageCloudBundle = z.object({
   webp_1280w: zOptionalString,
   png_1280w: zOptionalString,
   webp_original: zOptionalString,
-  bucket: zT212,
+  bucket: zT214,
 });
 export const zTerrainRestorationEntry = z.object({
   position_index: zU16,
@@ -549,8 +622,8 @@ export const zTerrainRestorationEntry = z.object({
 export const zTeamPendingInvites = z.map(zBiomesId, zTeamInvite);
 export const zTeamPendingRequests = zTeamJoinRequest.array().default([]);
 export const zTeamMembers = z.map(zBiomesId, zTeamMemberMetadata);
-const zT227 = z.object({
-  kind: zT226,
+const zT229 = z.object({
+  kind: zT228,
   box: zVec3f,
 });
 export const zTradeSpecList = zTradeSpec.array().default([]);
@@ -573,42 +646,42 @@ export const zGrabBagFilter = z.discriminatedUnion("kind", [
   zEntitiesAndExpiry.extend({ kind: z.literal("block") }),
   zEntitiesAndExpiry.extend({ kind: z.literal("only") }),
 ]);
-export const zTargetedAcl = zT100.optional();
+export const zTargetedAcl = zT102.optional();
 export const zOptionalAabb = zAabb.optional();
-const zT108 = z.object({
-  kind: zT107,
+const zT110 = z.object({
+  kind: zT109,
   aabb: zAabb,
 });
-const zT112 = z.object({
-  kind: zT111,
+const zT114 = z.object({
+  kind: zT113,
   points: zVec3fList,
 });
-const zT132 = z.object({
-  kind: zT131,
+const zT134 = z.object({
+  kind: zT133,
   attacker: zBiomesId,
   dir: zOptionalVec3f,
 });
-const zT144 = z.object({
-  kind: zT143,
+const zT146 = z.object({
+  kind: zT145,
   type: zNpcDamageSource,
 });
 export const zOptionalPlaceableAnimation = zPlaceableAnimation.optional();
 export const zOptionalPlaceEventInfo = zPlaceEventInfo.optional();
 export const zBuffsList = zBuff.array().default([]);
 export const zMinigameMetadata = z.discriminatedUnion("kind", [
-  zT167.extend({ kind: z.literal("simple_race") }),
-  zT168.extend({ kind: z.literal("deathmatch") }),
-  zT169.extend({ kind: z.literal("spleef") }),
+  zT169.extend({ kind: z.literal("simple_race") }),
+  zT170.extend({ kind: z.literal("deathmatch") }),
+  zT171.extend({ kind: z.literal("spleef") }),
 ]);
-const zT177 = zT176.optional();
-const zT178 = z.map(zBiomesId, zDeathMatchPlayerState);
-const zT182 = z.object({
+const zT179 = zT178.optional();
+const zT180 = z.map(zBiomesId, zDeathMatchPlayerState);
+const zT184 = z.object({
   round_expires: zF64,
   alive_round_players: zBiomesIdSet,
   tag_round_state: zOptionalTagRoundState,
 });
 export const zSimpleRaceInstanceState = z.object({
-  player_state: zT188,
+  player_state: zT190,
   started_at: zF64,
   deaths: zI32,
   reached_checkpoints: zReachedCheckpoints,
@@ -620,85 +693,85 @@ export const zMinigameInstanceActivePlayerInfo = z.object({
   entry_warped_to: zOptionalVec3f,
   entry_time: zF64,
 });
-const zT194 = z.object({
+const zT196 = z.object({
   box: zBox2,
   clipboard_entity_id: zBiomesId,
 });
 export const zFarmingPlayerActionList = zFarmingPlayerAction
   .array()
   .default([]);
-export const zItemBuyerSpec = zT210.extend({
+export const zItemBuyerSpec = zT212.extend({
   kind: z.literal("item_types"),
 });
 export const zTerrainRestorationEntryList = zTerrainRestorationEntry
   .array()
   .default([]);
 export const zVolume = z.discriminatedUnion("kind", [
-  zT227.extend({ kind: z.literal("box") }),
-  zT229.extend({ kind: z.literal("sphere") }),
+  zT229.extend({ kind: z.literal("box") }),
+  zT231.extend({ kind: z.literal("sphere") }),
 ]);
 export const zInventoryAssignmentPattern = zT64.array().default([]);
 const zT66 = zT64.array().default([]);
-const zT74 = zEmoteFishingLineEndPosition.optional();
-const zT78 = zEmoteThrowInfo.optional();
+const zT76 = zEmoteFishingLineEndPosition.optional();
+const zT80 = zEmoteThrowInfo.optional();
 export const zAcl = z.object({
-  everyone: zT99,
-  roles: zT102,
-  entities: zT103,
-  teams: zT103,
+  everyone: zT101,
+  roles: zT104,
+  entities: zT105,
+  teams: zT105,
   creator: zTargetedAcl,
   creatorTeam: zTargetedAcl,
 });
 export const zAclDomain = z.discriminatedUnion("kind", [
-  zT108.extend({ kind: z.literal("aabb") }),
-  zT110.extend({ kind: z.literal("point") }),
-  zT112.extend({ kind: z.literal("points") }),
+  zT110.extend({ kind: z.literal("aabb") }),
+  zT112.extend({ kind: z.literal("point") }),
+  zT114.extend({ kind: z.literal("points") }),
 ]);
 export const zDamageSource = z.discriminatedUnion("kind", [
-  zT124.extend({ kind: z.literal("suicide") }),
-  zT126.extend({ kind: z.literal("despawnWand") }),
-  zT128.extend({ kind: z.literal("block") }),
-  zT130.extend({ kind: z.literal("fall") }),
-  zT132.extend({ kind: z.literal("attack") }),
-  zT134.extend({ kind: z.literal("drown") }),
-  zT136.extend({ kind: z.literal("fire") }),
-  zT138.extend({ kind: z.literal("fireDamage") }),
-  zT140.extend({ kind: z.literal("fireHeal") }),
-  zT142.extend({ kind: z.literal("heal") }),
-  zT144.extend({ kind: z.literal("npc") }),
+  zT126.extend({ kind: z.literal("suicide") }),
+  zT128.extend({ kind: z.literal("despawnWand") }),
+  zT130.extend({ kind: z.literal("block") }),
+  zT132.extend({ kind: z.literal("fall") }),
+  zT134.extend({ kind: z.literal("attack") }),
+  zT136.extend({ kind: z.literal("drown") }),
+  zT138.extend({ kind: z.literal("fire") }),
+  zT140.extend({ kind: z.literal("fireDamage") }),
+  zT142.extend({ kind: z.literal("fireHeal") }),
+  zT144.extend({ kind: z.literal("heal") }),
+  zT146.extend({ kind: z.literal("npc") }),
 ]);
 export const zDeathmatchInstanceState = z.object({
-  instance_state: zT177,
-  player_states: zT178,
+  instance_state: zT179,
+  player_states: zT180,
 });
-const zT183 = z.discriminatedUnion("kind", [
-  zT172.extend({ kind: z.literal("waiting_for_players") }),
-  zT181.extend({ kind: z.literal("round_countdown") }),
-  zT182.extend({ kind: z.literal("playing_round") }),
+const zT185 = z.discriminatedUnion("kind", [
+  zT174.extend({ kind: z.literal("waiting_for_players") }),
+  zT183.extend({ kind: z.literal("round_countdown") }),
+  zT184.extend({ kind: z.literal("playing_round") }),
 ]);
 export const zMinigameInstanceActivePlayerMap = z.map(
   zBiomesId,
   zMinigameInstanceActivePlayerInfo
 );
-const zT195 = zT194.extend({
+const zT197 = zT196.extend({
   kind: z.literal("aabb"),
 });
 export const zOptionalVolume = zVolume.optional();
 export const zOptionalInventoryAssignmentPattern = zT66.optional();
 export const zEmoteFishingInfo = z.object({
-  line_end_position: zT74,
+  line_end_position: zT76,
   line_end_item: zOptionalItem,
 });
-export const zOptionalEmoteThrowInfo = zT78.optional();
+export const zOptionalEmoteThrowInfo = zT80.optional();
 export const zOptionalDamageSource = zDamageSource.optional();
 export const zSpleefInstanceState = z.object({
-  instance_state: zT183,
+  instance_state: zT185,
   observer_spawn_points: zVec3fList,
-  player_stats: zT184,
+  player_stats: zT186,
   round_number: zI32,
 });
 export const zMinigameInstanceSpaceClipboardInfo = z.object({
-  region: zT195,
+  region: zT197,
 });
 export const zProtectionParams = z.object({
   acl: zAcl,
@@ -776,7 +849,79 @@ export type EmoteType =
   | "diggingTool"
   | "watering"
   | "equip"
-  | "unequip";
+  | "unequip"
+  | "sadness"
+  | "depression"
+  | "crying"
+  | "shame"
+  | "fear"
+  | "terror"
+  | "cowering"
+  | "nervousness"
+  | "surprise"
+  | "shock"
+  | "recoil"
+  | "curiosity"
+  | "thinking"
+  | "confusion"
+  | "uncertainty"
+  | "embarrassment"
+  | "shyness"
+  | "boredom"
+  | "impatience"
+  | "annoyance"
+  | "frustration"
+  | "facepalm"
+  | "anger"
+  | "fury"
+  | "threatening"
+  | "determined"
+  | "ready"
+  | "tiredness"
+  | "exhaustion"
+  | "yawning"
+  | "stretching"
+  | "injury"
+  | "limping"
+  | "dizziness"
+  | "shivering"
+  | "relief"
+  | "disgust"
+  | "love"
+  | "flirting"
+  | "gratitude"
+  | "apology"
+  | "bow"
+  | "salute"
+  | "kneel"
+  | "pray"
+  | "meditate"
+  | "surrender"
+  | "beckon"
+  | "stop"
+  | "comeHere"
+  | "hug"
+  | "handshake"
+  | "highFive"
+  | "thumbsUp"
+  | "thumbsDown"
+  | "guard"
+  | "block"
+  | "taunt"
+  | "stagger"
+  | "knockdown"
+  | "getUp"
+  | "retreat"
+  | "rally"
+  | "victory"
+  | "defeat"
+  | "footTapping"
+  | "scratchingHead"
+  | "checkingEquipment"
+  | "pacing"
+  | "sighing"
+  | "cleaningWeapon";
+export type MovementActionType = "dodge" | "evade";
 export type WarpHomeReason = "respawn" | "homestone" | "admin";
 export type CameraMode =
   | "normal"
@@ -827,24 +972,24 @@ export type UserRole =
   | "farmingAdmin"
   | "oobNoCors"
   | "noClip";
-type T107 = "aabb";
-type T109 = "point";
-type T111 = "points";
-type T114 = "dayNight";
-type T116 = "farFromHome";
-type T118 = "adminKill";
-type T120 = "outOfWorldBounds";
-type T123 = "suicide";
-type T125 = "despawnWand";
-type T127 = "block";
-type T129 = "fall";
-type T131 = "attack";
-type T133 = "drown";
-type T135 = "fire";
-type T137 = "fireDamage";
-type T139 = "fireHeal";
-type T141 = "heal";
-type T143 = "npc";
+type T109 = "aabb";
+type T111 = "point";
+type T113 = "points";
+type T116 = "dayNight";
+type T118 = "farFromHome";
+type T120 = "adminKill";
+type T122 = "outOfWorldBounds";
+type T125 = "suicide";
+type T127 = "despawnWand";
+type T129 = "block";
+type T131 = "fall";
+type T133 = "attack";
+type T135 = "drown";
+type T137 = "fire";
+type T139 = "fireDamage";
+type T141 = "fireHeal";
+type T143 = "heal";
+type T145 = "npc";
 export type PlaceableAnimationType = "open" | "close" | "play";
 export type AnimationRepeatKind = "once" | "repeat";
 export type ChallengeState =
@@ -869,16 +1014,16 @@ export type PlantStatus =
   | "halted_shade"
   | "halted_water";
 export type MinigameType = "simple_race" | "deathmatch" | "spleef";
-type T172 = {};
-type T188 = "waiting" | "racing";
-type T198 = "water";
-type T200 = "fertilize";
-type T202 = "harvest";
-type T204 = "adminDestroy";
-type T206 = "poke";
-type T212 = "biomes-social";
-type T226 = "box";
-type T228 = "sphere";
+type T174 = {};
+type T190 = "waiting" | "racing";
+type T200 = "water";
+type T202 = "fertilize";
+type T204 = "harvest";
+type T206 = "adminDestroy";
+type T208 = "poke";
+type T214 = "biomes-social";
+type T228 = "box";
+type T230 = "sphere";
 export type EntityRestoreToState = "created" | "deleted";
 export type Strings = string[];
 export type BiomesIdList = BiomesId[];
@@ -925,6 +1070,7 @@ export type ItemAssignment = Map<BiomesId, Item>;
 export type ItemAssignmentReference = { key: BiomesId };
 export type ItemContainerReference = { idx: number };
 export type ItemBagReference = { key: string };
+export type OptionalMovementActionType = ("dodge" | "evade") | undefined;
 export type OptionalEmoteType =
   | (
       | "attack1"
@@ -955,13 +1101,84 @@ export type OptionalEmoteType =
       | "watering"
       | "equip"
       | "unequip"
+      | "sadness"
+      | "depression"
+      | "crying"
+      | "shame"
+      | "fear"
+      | "terror"
+      | "cowering"
+      | "nervousness"
+      | "surprise"
+      | "shock"
+      | "recoil"
+      | "curiosity"
+      | "thinking"
+      | "confusion"
+      | "uncertainty"
+      | "embarrassment"
+      | "shyness"
+      | "boredom"
+      | "impatience"
+      | "annoyance"
+      | "frustration"
+      | "facepalm"
+      | "anger"
+      | "fury"
+      | "threatening"
+      | "determined"
+      | "ready"
+      | "tiredness"
+      | "exhaustion"
+      | "yawning"
+      | "stretching"
+      | "injury"
+      | "limping"
+      | "dizziness"
+      | "shivering"
+      | "relief"
+      | "disgust"
+      | "love"
+      | "flirting"
+      | "gratitude"
+      | "apology"
+      | "bow"
+      | "salute"
+      | "kneel"
+      | "pray"
+      | "meditate"
+      | "surrender"
+      | "beckon"
+      | "stop"
+      | "comeHere"
+      | "hug"
+      | "handshake"
+      | "highFive"
+      | "thumbsUp"
+      | "thumbsDown"
+      | "guard"
+      | "block"
+      | "taunt"
+      | "stagger"
+      | "knockdown"
+      | "getUp"
+      | "retreat"
+      | "rally"
+      | "victory"
+      | "defeat"
+      | "footTapping"
+      | "scratchingHead"
+      | "checkingEquipment"
+      | "pacing"
+      | "sighing"
+      | "cleaningWeapon"
     )
   | undefined;
 export type OptionalShardId = ShardId | undefined;
 export type OptionalString = string | undefined;
 export type OptionalBuffer = Uint8Array | undefined;
-type T90 = Set<BiomesId>;
-type T91 = number | undefined;
+type T92 = Set<BiomesId>;
+type T93 = number | undefined;
 export type NUXStatus = { complete: boolean; state_id: string };
 export type UserRoleSet = Set<
   | "employee"
@@ -987,7 +1204,7 @@ export type UserRoleSet = Set<
   | "oobNoCors"
   | "noClip"
 >;
-type T99 = Set<
+type T101 = Set<
   | "shape"
   | "place"
   | "destroy"
@@ -1005,19 +1222,19 @@ type T99 = Set<
   | "placeEphemeral"
   | "demuckerWand"
 >;
-type T115 = { kind: "dayNight" };
-type T117 = { kind: "farFromHome" };
-type T119 = { kind: "adminKill" };
-type T121 = { kind: "outOfWorldBounds" };
-type T124 = { kind: "suicide" };
-type T126 = { kind: "despawnWand" };
-type T128 = { kind: "block"; biscuitId: BiomesId };
-type T130 = { kind: "fall"; distance: number };
-type T134 = { kind: "drown" };
-type T136 = { kind: "fire" };
-type T138 = { kind: "fireDamage" };
-type T140 = { kind: "fireHeal" };
-type T142 = { kind: "heal" };
+type T117 = { kind: "dayNight" };
+type T119 = { kind: "farFromHome" };
+type T121 = { kind: "adminKill" };
+type T123 = { kind: "outOfWorldBounds" };
+type T126 = { kind: "suicide" };
+type T128 = { kind: "despawnWand" };
+type T130 = { kind: "block"; biscuitId: BiomesId };
+type T132 = { kind: "fall"; distance: number };
+type T136 = { kind: "drown" };
+type T138 = { kind: "fire" };
+type T140 = { kind: "fireDamage" };
+type T142 = { kind: "fireHeal" };
+type T144 = { kind: "heal" };
 export type OptionalAnimationRepeatKind = ("once" | "repeat") | undefined;
 export type ChallengeStateMap = Map<
   BiomesId,
@@ -1026,20 +1243,20 @@ export type ChallengeStateMap = Map<
 export type TriggerTrees = Map<BiomesId, TriggerStateMap>;
 export type ChallengeTime = Map<BiomesId, number>;
 export type TagRoundState = { it_player: BiomesId };
-type T173 = { round_start: number };
-type T174 = { round_end: number };
-type T175 = { timestamp: number };
+type T175 = { round_start: number };
+type T176 = { round_end: number };
+type T177 = { timestamp: number };
 export type SpleefPlayerStats = { playerId: BiomesId; rounds_won: number };
-type T186 = { time: number };
+type T188 = { time: number };
 export type GiveMinigameKitData =
   | ({} & { kind: "simple_race" })
   | ({} & { kind: "deathmatch" })
   | ({} & { kind: "spleef" });
-type T199 = { kind: "water"; amount: number; timestamp: number };
-type T201 = { kind: "fertilize"; fertilizer: Item; timestamp: number };
-type T203 = { kind: "harvest"; timestamp: number };
-type T205 = { kind: "adminDestroy"; timestamp: number };
-type T207 = { kind: "poke"; timestamp: number };
+type T201 = { kind: "water"; amount: number; timestamp: number };
+type T203 = { kind: "fertilize"; fertilizer: Item; timestamp: number };
+type T205 = { kind: "harvest"; timestamp: number };
+type T207 = { kind: "adminDestroy"; timestamp: number };
+type T209 = { kind: "poke"; timestamp: number };
 export type TeamMemberMetadata = { joined_at: number };
 export type TeamInvite = {
   inviter_id: BiomesId;
@@ -1047,7 +1264,7 @@ export type TeamInvite = {
   created_at: number;
 };
 export type TeamJoinRequest = { entity_id: BiomesId; created_at: number };
-type T229 = { kind: "sphere"; radius: number };
+type T231 = { kind: "sphere"; radius: number };
 export type TradeSpec = { trade_id: BiomesId; id1: BiomesId; id2: BiomesId };
 export type OptionalMat3f =
   | [number, number, number, number, number, number, number, number, number]
@@ -1090,7 +1307,7 @@ export type EntitiesAndExpiry = {
   expiry: number | undefined;
 };
 export type AllNUXStatus = Map<number, { complete: boolean; state_id: string }>;
-type T100 = [
+type T102 = [
   BiomesId,
   Set<
     | "shape"
@@ -1111,7 +1328,7 @@ type T100 = [
     | "demuckerWand"
   >
 ];
-type T102 = Map<
+type T104 = Map<
   | "employee"
   | "admin"
   | "advancedOptions"
@@ -1153,7 +1370,7 @@ type T102 = Map<
     | "demuckerWand"
   >
 >;
-type T103 = Map<
+type T105 = Map<
   BiomesId,
   Set<
     | "shape"
@@ -1175,7 +1392,7 @@ type T103 = Map<
   >
 >;
 export type Aabb = [[number, number, number], [number, number, number]];
-type T110 = { kind: "point"; point: [number, number, number] };
+type T112 = { kind: "point"; point: [number, number, number] };
 export type NpcDamageSource =
   | ({ kind: "dayNight" } & { kind: "dayNight" })
   | ({ kind: "farFromHome" } & { kind: "farFromHome" })
@@ -1208,13 +1425,13 @@ export type Buff = {
   is_disabled: boolean | undefined;
 };
 export type OptionalTagRoundState = { it_player: BiomesId } | undefined;
-type T167 = {
+type T169 = {
   checkpoint_ids: Set<BiomesId>;
   start_ids: Set<BiomesId>;
   end_ids: Set<BiomesId>;
 };
-type T168 = { start_ids: Set<BiomesId> };
-type T169 = { start_ids: Set<BiomesId>; arena_marker_ids: Set<BiomesId> };
+type T170 = { start_ids: Set<BiomesId> };
+type T171 = { start_ids: Set<BiomesId>; arena_marker_ids: Set<BiomesId> };
 export type DeathMatchPlayerState = {
   playerId: BiomesId;
   kills: number;
@@ -1222,13 +1439,13 @@ export type DeathMatchPlayerState = {
   last_kill: number | undefined;
   last_death: number | undefined;
 };
-type T176 =
+type T178 =
   | ({} & { kind: "waiting_for_players" })
   | ({ round_start: number } & { kind: "play_countdown" })
   | ({ round_end: number } & { kind: "playing" })
   | ({ timestamp: number } & { kind: "finished" });
-type T181 = { round_start: number; last_winner_id: BiomesId | undefined };
-type T184 = Map<BiomesId, { playerId: BiomesId; rounds_won: number }>;
+type T183 = { round_start: number; last_winner_id: BiomesId | undefined };
+type T186 = Map<BiomesId, { playerId: BiomesId; rounds_won: number }>;
 export type ReachedCheckpoints = Map<BiomesId, { time: number }>;
 export type FarmingPlayerAction =
   | ({ kind: "water"; amount: number; timestamp: number } & { kind: "water" })
@@ -1238,7 +1455,7 @@ export type FarmingPlayerAction =
   | ({ kind: "harvest"; timestamp: number } & { kind: "harvest" })
   | ({ kind: "adminDestroy"; timestamp: number } & { kind: "adminDestroy" })
   | ({ kind: "poke"; timestamp: number } & { kind: "poke" });
-type T210 = { type_ids: BiomesId[] };
+type T212 = { type_ids: BiomesId[] };
 export type BucketedImageCloudBundle = {
   webp_320w: string | undefined;
   webp_640w: string | undefined;
@@ -1262,7 +1479,7 @@ export type TeamPendingInvites = Map<
 >;
 export type TeamPendingRequests = { entity_id: BiomesId; created_at: number }[];
 export type TeamMembers = Map<BiomesId, { joined_at: number }>;
-type T227 = { kind: "box"; box: [number, number, number] };
+type T229 = { kind: "box"; box: [number, number, number] };
 export type TradeSpecList = {
   trade_id: BiomesId;
   id1: BiomesId;
@@ -1350,17 +1567,17 @@ export type TargetedAcl =
 export type OptionalAabb =
   | [[number, number, number], [number, number, number]]
   | undefined;
-type T108 = {
+type T110 = {
   kind: "aabb";
   aabb: [[number, number, number], [number, number, number]];
 };
-type T112 = { kind: "points"; points: [number, number, number][] };
-type T132 = {
+type T114 = { kind: "points"; points: [number, number, number][] };
+type T134 = {
   kind: "attack";
   attacker: BiomesId;
   dir: [number, number, number] | undefined;
 };
-type T144 = {
+type T146 = {
   kind: "npc";
   type:
     | ({ kind: "dayNight" } & { kind: "dayNight" })
@@ -1394,7 +1611,7 @@ export type MinigameMetadata =
   | ({ start_ids: Set<BiomesId>; arena_marker_ids: Set<BiomesId> } & {
       kind: "spleef";
     });
-type T177 =
+type T179 =
   | (
       | ({} & { kind: "waiting_for_players" })
       | ({ round_start: number } & { kind: "play_countdown" })
@@ -1402,7 +1619,7 @@ type T177 =
       | ({ timestamp: number } & { kind: "finished" })
     )
   | undefined;
-type T178 = Map<
+type T180 = Map<
   BiomesId,
   {
     playerId: BiomesId;
@@ -1412,7 +1629,7 @@ type T178 = Map<
     last_death: number | undefined;
   }
 >;
-type T182 = {
+type T184 = {
   round_expires: number;
   alive_round_players: Set<BiomesId>;
   tag_round_state: { it_player: BiomesId } | undefined;
@@ -1430,7 +1647,7 @@ export type MinigameInstanceActivePlayerInfo = {
   entry_warped_to: [number, number, number] | undefined;
   entry_time: number;
 };
-type T194 = {
+type T196 = {
   box: { v0: [number, number, number]; v1: [number, number, number] };
   clipboard_entity_id: BiomesId;
 };
@@ -1474,7 +1691,7 @@ type T66 = [
   ),
   ItemAndCount
 ][];
-type T74 =
+type T76 =
   | (
       | ({
           velocity: [number, number, number];
@@ -1487,7 +1704,7 @@ type T74 =
       | ({ pos: [number, number, number] } & { kind: "fixed" })
     )
   | undefined;
-type T78 =
+type T80 =
   | {
       physics: {
         velocity: [number, number, number];
@@ -1699,7 +1916,7 @@ export type DeathmatchInstanceState = {
     }
   >;
 };
-type T183 =
+type T185 =
   | ({} & { kind: "waiting_for_players" })
   | ({ round_start: number; last_winner_id: BiomesId | undefined } & {
       kind: "round_countdown";
@@ -1718,7 +1935,7 @@ export type MinigameInstanceActivePlayerMap = Map<
     entry_time: number;
   }
 >;
-type T195 = {
+type T197 = {
   box: { v0: [number, number, number]; v1: [number, number, number] };
   clipboard_entity_id: BiomesId;
 } & { kind: "aabb" };
@@ -2625,7 +2842,79 @@ export type ReadonlyEmoteType =
   | "diggingTool"
   | "watering"
   | "equip"
-  | "unequip";
+  | "unequip"
+  | "sadness"
+  | "depression"
+  | "crying"
+  | "shame"
+  | "fear"
+  | "terror"
+  | "cowering"
+  | "nervousness"
+  | "surprise"
+  | "shock"
+  | "recoil"
+  | "curiosity"
+  | "thinking"
+  | "confusion"
+  | "uncertainty"
+  | "embarrassment"
+  | "shyness"
+  | "boredom"
+  | "impatience"
+  | "annoyance"
+  | "frustration"
+  | "facepalm"
+  | "anger"
+  | "fury"
+  | "threatening"
+  | "determined"
+  | "ready"
+  | "tiredness"
+  | "exhaustion"
+  | "yawning"
+  | "stretching"
+  | "injury"
+  | "limping"
+  | "dizziness"
+  | "shivering"
+  | "relief"
+  | "disgust"
+  | "love"
+  | "flirting"
+  | "gratitude"
+  | "apology"
+  | "bow"
+  | "salute"
+  | "kneel"
+  | "pray"
+  | "meditate"
+  | "surrender"
+  | "beckon"
+  | "stop"
+  | "comeHere"
+  | "hug"
+  | "handshake"
+  | "highFive"
+  | "thumbsUp"
+  | "thumbsDown"
+  | "guard"
+  | "block"
+  | "taunt"
+  | "stagger"
+  | "knockdown"
+  | "getUp"
+  | "retreat"
+  | "rally"
+  | "victory"
+  | "defeat"
+  | "footTapping"
+  | "scratchingHead"
+  | "checkingEquipment"
+  | "pacing"
+  | "sighing"
+  | "cleaningWeapon";
+export type ReadonlyMovementActionType = "dodge" | "evade";
 export type ReadonlyWarpHomeReason = "respawn" | "homestone" | "admin";
 export type ReadonlyCameraMode =
   | "normal"
@@ -2676,24 +2965,24 @@ export type ReadonlyUserRole =
   | "farmingAdmin"
   | "oobNoCors"
   | "noClip";
-type ReadonlyT107 = "aabb";
-type ReadonlyT109 = "point";
-type ReadonlyT111 = "points";
-type ReadonlyT114 = "dayNight";
-type ReadonlyT116 = "farFromHome";
-type ReadonlyT118 = "adminKill";
-type ReadonlyT120 = "outOfWorldBounds";
-type ReadonlyT123 = "suicide";
-type ReadonlyT125 = "despawnWand";
-type ReadonlyT127 = "block";
-type ReadonlyT129 = "fall";
-type ReadonlyT131 = "attack";
-type ReadonlyT133 = "drown";
-type ReadonlyT135 = "fire";
-type ReadonlyT137 = "fireDamage";
-type ReadonlyT139 = "fireHeal";
-type ReadonlyT141 = "heal";
-type ReadonlyT143 = "npc";
+type ReadonlyT109 = "aabb";
+type ReadonlyT111 = "point";
+type ReadonlyT113 = "points";
+type ReadonlyT116 = "dayNight";
+type ReadonlyT118 = "farFromHome";
+type ReadonlyT120 = "adminKill";
+type ReadonlyT122 = "outOfWorldBounds";
+type ReadonlyT125 = "suicide";
+type ReadonlyT127 = "despawnWand";
+type ReadonlyT129 = "block";
+type ReadonlyT131 = "fall";
+type ReadonlyT133 = "attack";
+type ReadonlyT135 = "drown";
+type ReadonlyT137 = "fire";
+type ReadonlyT139 = "fireDamage";
+type ReadonlyT141 = "fireHeal";
+type ReadonlyT143 = "heal";
+type ReadonlyT145 = "npc";
 export type ReadonlyPlaceableAnimationType = "open" | "close" | "play";
 export type ReadonlyAnimationRepeatKind = "once" | "repeat";
 export type ReadonlyChallengeState =
@@ -2718,16 +3007,16 @@ export type ReadonlyPlantStatus =
   | "halted_shade"
   | "halted_water";
 export type ReadonlyMinigameType = "simple_race" | "deathmatch" | "spleef";
-type ReadonlyT172 = {};
-type ReadonlyT188 = "waiting" | "racing";
-type ReadonlyT198 = "water";
-type ReadonlyT200 = "fertilize";
-type ReadonlyT202 = "harvest";
-type ReadonlyT204 = "adminDestroy";
-type ReadonlyT206 = "poke";
-type ReadonlyT212 = "biomes-social";
-type ReadonlyT226 = "box";
-type ReadonlyT228 = "sphere";
+type ReadonlyT174 = {};
+type ReadonlyT190 = "waiting" | "racing";
+type ReadonlyT200 = "water";
+type ReadonlyT202 = "fertilize";
+type ReadonlyT204 = "harvest";
+type ReadonlyT206 = "adminDestroy";
+type ReadonlyT208 = "poke";
+type ReadonlyT214 = "biomes-social";
+type ReadonlyT228 = "box";
+type ReadonlyT230 = "sphere";
 export type ReadonlyEntityRestoreToState = "created" | "deleted";
 export type ReadonlyStrings = ReadonlyArray<string>;
 export type ReadonlyBiomesIdList = ReadonlyArray<ReadonlyBiomesId>;
@@ -2783,6 +3072,9 @@ export type ReadonlyItemAssignmentReference = {
 };
 export type ReadonlyItemContainerReference = { readonly idx: number };
 export type ReadonlyItemBagReference = { readonly key: string };
+export type ReadonlyOptionalMovementActionType =
+  | ("dodge" | "evade")
+  | undefined;
 export type ReadonlyOptionalEmoteType =
   | (
       | "attack1"
@@ -2813,13 +3105,84 @@ export type ReadonlyOptionalEmoteType =
       | "watering"
       | "equip"
       | "unequip"
+      | "sadness"
+      | "depression"
+      | "crying"
+      | "shame"
+      | "fear"
+      | "terror"
+      | "cowering"
+      | "nervousness"
+      | "surprise"
+      | "shock"
+      | "recoil"
+      | "curiosity"
+      | "thinking"
+      | "confusion"
+      | "uncertainty"
+      | "embarrassment"
+      | "shyness"
+      | "boredom"
+      | "impatience"
+      | "annoyance"
+      | "frustration"
+      | "facepalm"
+      | "anger"
+      | "fury"
+      | "threatening"
+      | "determined"
+      | "ready"
+      | "tiredness"
+      | "exhaustion"
+      | "yawning"
+      | "stretching"
+      | "injury"
+      | "limping"
+      | "dizziness"
+      | "shivering"
+      | "relief"
+      | "disgust"
+      | "love"
+      | "flirting"
+      | "gratitude"
+      | "apology"
+      | "bow"
+      | "salute"
+      | "kneel"
+      | "pray"
+      | "meditate"
+      | "surrender"
+      | "beckon"
+      | "stop"
+      | "comeHere"
+      | "hug"
+      | "handshake"
+      | "highFive"
+      | "thumbsUp"
+      | "thumbsDown"
+      | "guard"
+      | "block"
+      | "taunt"
+      | "stagger"
+      | "knockdown"
+      | "getUp"
+      | "retreat"
+      | "rally"
+      | "victory"
+      | "defeat"
+      | "footTapping"
+      | "scratchingHead"
+      | "checkingEquipment"
+      | "pacing"
+      | "sighing"
+      | "cleaningWeapon"
     )
   | undefined;
 export type ReadonlyOptionalShardId = ReadonlyShardId | undefined;
 export type ReadonlyOptionalString = string | undefined;
 export type ReadonlyOptionalBuffer = Uint8Array | undefined;
-type ReadonlyT90 = ReadonlySet<ReadonlyBiomesId>;
-type ReadonlyT91 = number | undefined;
+type ReadonlyT92 = ReadonlySet<ReadonlyBiomesId>;
+type ReadonlyT93 = number | undefined;
 export type ReadonlyNUXStatus = {
   readonly complete: boolean;
   readonly state_id: string;
@@ -2848,7 +3211,7 @@ export type ReadonlyUserRoleSet = ReadonlySet<
   | "oobNoCors"
   | "noClip"
 >;
-type ReadonlyT99 = ReadonlySet<
+type ReadonlyT101 = ReadonlySet<
   | "shape"
   | "place"
   | "destroy"
@@ -2866,22 +3229,22 @@ type ReadonlyT99 = ReadonlySet<
   | "placeEphemeral"
   | "demuckerWand"
 >;
-type ReadonlyT115 = { readonly kind: "dayNight" };
-type ReadonlyT117 = { readonly kind: "farFromHome" };
-type ReadonlyT119 = { readonly kind: "adminKill" };
-type ReadonlyT121 = { readonly kind: "outOfWorldBounds" };
-type ReadonlyT124 = { readonly kind: "suicide" };
-type ReadonlyT126 = { readonly kind: "despawnWand" };
-type ReadonlyT128 = {
+type ReadonlyT117 = { readonly kind: "dayNight" };
+type ReadonlyT119 = { readonly kind: "farFromHome" };
+type ReadonlyT121 = { readonly kind: "adminKill" };
+type ReadonlyT123 = { readonly kind: "outOfWorldBounds" };
+type ReadonlyT126 = { readonly kind: "suicide" };
+type ReadonlyT128 = { readonly kind: "despawnWand" };
+type ReadonlyT130 = {
   readonly kind: "block";
   readonly biscuitId: ReadonlyBiomesId;
 };
-type ReadonlyT130 = { readonly kind: "fall"; readonly distance: number };
-type ReadonlyT134 = { readonly kind: "drown" };
-type ReadonlyT136 = { readonly kind: "fire" };
-type ReadonlyT138 = { readonly kind: "fireDamage" };
-type ReadonlyT140 = { readonly kind: "fireHeal" };
-type ReadonlyT142 = { readonly kind: "heal" };
+type ReadonlyT132 = { readonly kind: "fall"; readonly distance: number };
+type ReadonlyT136 = { readonly kind: "drown" };
+type ReadonlyT138 = { readonly kind: "fire" };
+type ReadonlyT140 = { readonly kind: "fireDamage" };
+type ReadonlyT142 = { readonly kind: "fireHeal" };
+type ReadonlyT144 = { readonly kind: "heal" };
 export type ReadonlyOptionalAnimationRepeatKind =
   | ("once" | "repeat")
   | undefined;
@@ -2895,34 +3258,34 @@ export type ReadonlyTriggerTrees = ReadonlyMap<
 >;
 export type ReadonlyChallengeTime = ReadonlyMap<ReadonlyBiomesId, number>;
 export type ReadonlyTagRoundState = { readonly it_player: ReadonlyBiomesId };
-type ReadonlyT173 = { readonly round_start: number };
-type ReadonlyT174 = { readonly round_end: number };
-type ReadonlyT175 = { readonly timestamp: number };
+type ReadonlyT175 = { readonly round_start: number };
+type ReadonlyT176 = { readonly round_end: number };
+type ReadonlyT177 = { readonly timestamp: number };
 export type ReadonlySpleefPlayerStats = {
   readonly playerId: ReadonlyBiomesId;
   readonly rounds_won: number;
 };
-type ReadonlyT186 = { readonly time: number };
+type ReadonlyT188 = { readonly time: number };
 export type ReadonlyGiveMinigameKitData =
   | ({} & { kind: "simple_race" })
   | ({} & { kind: "deathmatch" })
   | ({} & { kind: "spleef" });
-type ReadonlyT199 = {
+type ReadonlyT201 = {
   readonly kind: "water";
   readonly amount: number;
   readonly timestamp: number;
 };
-type ReadonlyT201 = {
+type ReadonlyT203 = {
   readonly kind: "fertilize";
   readonly fertilizer: ReadonlyItem;
   readonly timestamp: number;
 };
-type ReadonlyT203 = { readonly kind: "harvest"; readonly timestamp: number };
-type ReadonlyT205 = {
+type ReadonlyT205 = { readonly kind: "harvest"; readonly timestamp: number };
+type ReadonlyT207 = {
   readonly kind: "adminDestroy";
   readonly timestamp: number;
 };
-type ReadonlyT207 = { readonly kind: "poke"; readonly timestamp: number };
+type ReadonlyT209 = { readonly kind: "poke"; readonly timestamp: number };
 export type ReadonlyTeamMemberMetadata = { readonly joined_at: number };
 export type ReadonlyTeamInvite = {
   readonly inviter_id: ReadonlyBiomesId;
@@ -2933,7 +3296,7 @@ export type ReadonlyTeamJoinRequest = {
   readonly entity_id: ReadonlyBiomesId;
   readonly created_at: number;
 };
-type ReadonlyT229 = { readonly kind: "sphere"; readonly radius: number };
+type ReadonlyT231 = { readonly kind: "sphere"; readonly radius: number };
 export type ReadonlyTradeSpec = {
   readonly trade_id: ReadonlyBiomesId;
   readonly id1: ReadonlyBiomesId;
@@ -3012,7 +3375,7 @@ export type ReadonlyAllNUXStatus = ReadonlyMap<
   number,
   { readonly complete: boolean; readonly state_id: string }
 >;
-type ReadonlyT100 = readonly [
+type ReadonlyT102 = readonly [
   ReadonlyBiomesId,
   ReadonlySet<
     | "shape"
@@ -3033,7 +3396,7 @@ type ReadonlyT100 = readonly [
     | "demuckerWand"
   >
 ];
-type ReadonlyT102 = ReadonlyMap<
+type ReadonlyT104 = ReadonlyMap<
   | "employee"
   | "admin"
   | "advancedOptions"
@@ -3075,7 +3438,7 @@ type ReadonlyT102 = ReadonlyMap<
     | "demuckerWand"
   >
 >;
-type ReadonlyT103 = ReadonlyMap<
+type ReadonlyT105 = ReadonlyMap<
   ReadonlyBiomesId,
   ReadonlySet<
     | "shape"
@@ -3100,7 +3463,7 @@ export type ReadonlyAabb = readonly [
   readonly [number, number, number],
   readonly [number, number, number]
 ];
-type ReadonlyT110 = {
+type ReadonlyT112 = {
   readonly kind: "point";
   readonly point: readonly [number, number, number];
 };
@@ -3141,13 +3504,13 @@ export type ReadonlyBuff = {
 export type ReadonlyOptionalTagRoundState =
   | { readonly it_player: ReadonlyBiomesId }
   | undefined;
-type ReadonlyT167 = {
+type ReadonlyT169 = {
   readonly checkpoint_ids: ReadonlySet<ReadonlyBiomesId>;
   readonly start_ids: ReadonlySet<ReadonlyBiomesId>;
   readonly end_ids: ReadonlySet<ReadonlyBiomesId>;
 };
-type ReadonlyT168 = { readonly start_ids: ReadonlySet<ReadonlyBiomesId> };
-type ReadonlyT169 = {
+type ReadonlyT170 = { readonly start_ids: ReadonlySet<ReadonlyBiomesId> };
+type ReadonlyT171 = {
   readonly start_ids: ReadonlySet<ReadonlyBiomesId>;
   readonly arena_marker_ids: ReadonlySet<ReadonlyBiomesId>;
 };
@@ -3158,16 +3521,16 @@ export type ReadonlyDeathMatchPlayerState = {
   readonly last_kill: number | undefined;
   readonly last_death: number | undefined;
 };
-type ReadonlyT176 =
+type ReadonlyT178 =
   | ({} & { kind: "waiting_for_players" })
   | ({ readonly round_start: number } & { kind: "play_countdown" })
   | ({ readonly round_end: number } & { kind: "playing" })
   | ({ readonly timestamp: number } & { kind: "finished" });
-type ReadonlyT181 = {
+type ReadonlyT183 = {
   readonly round_start: number;
   readonly last_winner_id: ReadonlyBiomesId | undefined;
 };
-type ReadonlyT184 = ReadonlyMap<
+type ReadonlyT186 = ReadonlyMap<
   ReadonlyBiomesId,
   { readonly playerId: ReadonlyBiomesId; readonly rounds_won: number }
 >;
@@ -3193,7 +3556,7 @@ export type ReadonlyFarmingPlayerAction =
       kind: "adminDestroy";
     })
   | ({ readonly kind: "poke"; readonly timestamp: number } & { kind: "poke" });
-type ReadonlyT210 = { readonly type_ids: ReadonlyArray<ReadonlyBiomesId> };
+type ReadonlyT212 = { readonly type_ids: ReadonlyArray<ReadonlyBiomesId> };
 export type ReadonlyBucketedImageCloudBundle = {
   readonly webp_320w: string | undefined;
   readonly webp_640w: string | undefined;
@@ -3227,7 +3590,7 @@ export type ReadonlyTeamMembers = ReadonlyMap<
   ReadonlyBiomesId,
   { readonly joined_at: number }
 >;
-type ReadonlyT227 = {
+type ReadonlyT229 = {
   readonly kind: "box";
   readonly box: readonly [number, number, number];
 };
@@ -3333,23 +3696,23 @@ export type ReadonlyOptionalAabb =
       readonly [number, number, number]
     ]
   | undefined;
-type ReadonlyT108 = {
+type ReadonlyT110 = {
   readonly kind: "aabb";
   readonly aabb: readonly [
     readonly [number, number, number],
     readonly [number, number, number]
   ];
 };
-type ReadonlyT112 = {
+type ReadonlyT114 = {
   readonly kind: "points";
   readonly points: ReadonlyArray<readonly [number, number, number]>;
 };
-type ReadonlyT132 = {
+type ReadonlyT134 = {
   readonly kind: "attack";
   readonly attacker: ReadonlyBiomesId;
   readonly dir: readonly [number, number, number] | undefined;
 };
-type ReadonlyT144 = {
+type ReadonlyT146 = {
   readonly kind: "npc";
   readonly type:
     | ({ readonly kind: "dayNight" } & { kind: "dayNight" })
@@ -3389,7 +3752,7 @@ export type ReadonlyMinigameMetadata =
       readonly start_ids: ReadonlySet<ReadonlyBiomesId>;
       readonly arena_marker_ids: ReadonlySet<ReadonlyBiomesId>;
     } & { kind: "spleef" });
-type ReadonlyT177 =
+type ReadonlyT179 =
   | (
       | ({} & { kind: "waiting_for_players" })
       | ({ readonly round_start: number } & { kind: "play_countdown" })
@@ -3397,7 +3760,7 @@ type ReadonlyT177 =
       | ({ readonly timestamp: number } & { kind: "finished" })
     )
   | undefined;
-type ReadonlyT178 = ReadonlyMap<
+type ReadonlyT180 = ReadonlyMap<
   ReadonlyBiomesId,
   {
     readonly playerId: ReadonlyBiomesId;
@@ -3407,7 +3770,7 @@ type ReadonlyT178 = ReadonlyMap<
     readonly last_death: number | undefined;
   }
 >;
-type ReadonlyT182 = {
+type ReadonlyT184 = {
   readonly round_expires: number;
   readonly alive_round_players: ReadonlySet<ReadonlyBiomesId>;
   readonly tag_round_state:
@@ -3430,7 +3793,7 @@ export type ReadonlyMinigameInstanceActivePlayerInfo = {
   readonly entry_warped_to: readonly [number, number, number] | undefined;
   readonly entry_time: number;
 };
-type ReadonlyT194 = {
+type ReadonlyT196 = {
   readonly box: {
     readonly v0: readonly [number, number, number];
     readonly v1: readonly [number, number, number];
@@ -3496,7 +3859,7 @@ type ReadonlyT66 = ReadonlyArray<
     ReadonlyItemAndCount
   ]
 >;
-type ReadonlyT74 =
+type ReadonlyT76 =
   | (
       | ({
           readonly velocity: readonly [number, number, number];
@@ -3512,7 +3875,7 @@ type ReadonlyT74 =
         })
     )
   | undefined;
-type ReadonlyT78 =
+type ReadonlyT80 =
   | {
       readonly physics: {
         readonly velocity: readonly [number, number, number];
@@ -3735,7 +4098,7 @@ export type ReadonlyDeathmatchInstanceState = {
     }
   >;
 };
-type ReadonlyT183 =
+type ReadonlyT185 =
   | ({} & { kind: "waiting_for_players" })
   | ({
       readonly round_start: number;
@@ -3757,7 +4120,7 @@ export type ReadonlyMinigameInstanceActivePlayerMap = ReadonlyMap<
     readonly entry_time: number;
   }
 >;
-type ReadonlyT195 = {
+type ReadonlyT197 = {
   readonly box: {
     readonly v0: readonly [number, number, number];
     readonly v1: readonly [number, number, number];
@@ -4698,44 +5061,45 @@ export const defaultF64 = 0;
 export const defaultTensorBlob = "";
 export const defaultConsumptionAction = "drink";
 export const defaultEmoteType = "attack1";
+export const defaultMovementActionType = "dodge";
 export const defaultWarpHomeReason = "respawn";
 export const defaultCameraMode = "normal";
 export const defaultAclAction = "shape";
 export const defaultUserRole = "employee";
-export const defaultT107 = "aabb";
-export const defaultT109 = "point";
-export const defaultT111 = "points";
-export const defaultT114 = "dayNight";
-export const defaultT116 = "farFromHome";
-export const defaultT118 = "adminKill";
-export const defaultT120 = "outOfWorldBounds";
-export const defaultT123 = "suicide";
-export const defaultT125 = "despawnWand";
-export const defaultT127 = "block";
-export const defaultT129 = "fall";
-export const defaultT131 = "attack";
-export const defaultT133 = "drown";
-export const defaultT135 = "fire";
-export const defaultT137 = "fireDamage";
-export const defaultT139 = "fireHeal";
-export const defaultT141 = "heal";
-export const defaultT143 = "npc";
+export const defaultT109 = "aabb";
+export const defaultT111 = "point";
+export const defaultT113 = "points";
+export const defaultT116 = "dayNight";
+export const defaultT118 = "farFromHome";
+export const defaultT120 = "adminKill";
+export const defaultT122 = "outOfWorldBounds";
+export const defaultT125 = "suicide";
+export const defaultT127 = "despawnWand";
+export const defaultT129 = "block";
+export const defaultT131 = "fall";
+export const defaultT133 = "attack";
+export const defaultT135 = "drown";
+export const defaultT137 = "fire";
+export const defaultT139 = "fireDamage";
+export const defaultT141 = "fireHeal";
+export const defaultT143 = "heal";
+export const defaultT145 = "npc";
 export const defaultPlaceableAnimationType = "open";
 export const defaultAnimationRepeatKind = "once";
 export const defaultChallengeState = "available";
 export const defaultLifetimeStatsType = "collected";
 export const defaultPlantStatus = "planted";
 export const defaultMinigameType = "simple_race";
-export const defaultT172 = () => ({} as T172);
-export const defaultT188 = "waiting";
-export const defaultT198 = "water";
-export const defaultT200 = "fertilize";
-export const defaultT202 = "harvest";
-export const defaultT204 = "adminDestroy";
-export const defaultT206 = "poke";
-export const defaultT212 = "biomes-social";
-export const defaultT226 = "box";
-export const defaultT228 = "sphere";
+export const defaultT174 = () => ({} as T174);
+export const defaultT190 = "waiting";
+export const defaultT200 = "water";
+export const defaultT202 = "fertilize";
+export const defaultT204 = "harvest";
+export const defaultT206 = "adminDestroy";
+export const defaultT208 = "poke";
+export const defaultT214 = "biomes-social";
+export const defaultT228 = "box";
+export const defaultT230 = "sphere";
 export const defaultEntityRestoreToState = "created";
 export const defaultStrings = () => [];
 export const defaultBiomesIdList = () => [];
@@ -4800,23 +5164,20 @@ export const defaultItemBagReference = () =>
   ({
     key: defaultString,
   } as ItemBagReference);
+export const defaultOptionalMovementActionType = undefined;
 export const defaultOptionalEmoteType = undefined;
 export const defaultOptionalShardId = undefined;
 export const defaultOptionalString = undefined;
 export const defaultOptionalBuffer = undefined;
-export const defaultT90 = () => new Set() as T90;
-export const defaultT91 = undefined;
+export const defaultT92 = () => new Set() as T92;
+export const defaultT93 = undefined;
 export const defaultNUXStatus = () =>
   ({
     complete: defaultBool,
     state_id: defaultString,
   } as NUXStatus);
 export const defaultUserRoleSet = () => new Set() as UserRoleSet;
-export const defaultT99 = () => new Set() as T99;
-export const defaultT115 = () =>
-  ({
-    kind: defaultT114,
-  } as T115);
+export const defaultT101 = () => new Set() as T101;
 export const defaultT117 = () =>
   ({
     kind: defaultT116,
@@ -4829,10 +5190,10 @@ export const defaultT121 = () =>
   ({
     kind: defaultT120,
   } as T121);
-export const defaultT124 = () =>
+export const defaultT123 = () =>
   ({
-    kind: defaultT123,
-  } as T124);
+    kind: defaultT122,
+  } as T123);
 export const defaultT126 = () =>
   ({
     kind: defaultT125,
@@ -4840,17 +5201,17 @@ export const defaultT126 = () =>
 export const defaultT128 = () =>
   ({
     kind: defaultT127,
-    biscuitId: defaultBiomesId,
   } as T128);
 export const defaultT130 = () =>
   ({
     kind: defaultT129,
-    distance: defaultF64,
+    biscuitId: defaultBiomesId,
   } as T130);
-export const defaultT134 = () =>
+export const defaultT132 = () =>
   ({
-    kind: defaultT133,
-  } as T134);
+    kind: defaultT131,
+    distance: defaultF64,
+  } as T132);
 export const defaultT136 = () =>
   ({
     kind: defaultT135,
@@ -4867,6 +5228,10 @@ export const defaultT142 = () =>
   ({
     kind: defaultT141,
   } as T142);
+export const defaultT144 = () =>
+  ({
+    kind: defaultT143,
+  } as T144);
 export const defaultOptionalAnimationRepeatKind = undefined;
 export const defaultChallengeStateMap = () => new Map() as ChallengeStateMap;
 export const defaultTriggerTrees = () => new Map() as TriggerTrees;
@@ -4875,47 +5240,42 @@ export const defaultTagRoundState = () =>
   ({
     it_player: defaultBiomesId,
   } as TagRoundState);
-export const defaultT173 = () =>
-  ({
-    round_start: defaultF64,
-  } as T173);
-export const defaultT174 = () =>
-  ({
-    round_end: defaultF64,
-  } as T174);
 export const defaultT175 = () =>
   ({
-    timestamp: defaultF64,
+    round_start: defaultF64,
   } as T175);
+export const defaultT176 = () =>
+  ({
+    round_end: defaultF64,
+  } as T176);
+export const defaultT177 = () =>
+  ({
+    timestamp: defaultF64,
+  } as T177);
 export const defaultSpleefPlayerStats = () =>
   ({
     playerId: defaultBiomesId,
     rounds_won: defaultI32,
   } as SpleefPlayerStats);
-export const defaultT186 = () =>
+export const defaultT188 = () =>
   ({
     time: defaultF64,
-  } as T186);
+  } as T188);
 export const defaultGiveMinigameKitData = () =>
   ({
-    ...defaultT172(),
+    ...defaultT174(),
     kind: "simple_race",
   } as GiveMinigameKitData);
-export const defaultT199 = () =>
-  ({
-    kind: defaultT198,
-    amount: defaultF32,
-    timestamp: defaultF64,
-  } as T199);
 export const defaultT201 = () =>
   ({
     kind: defaultT200,
-    fertilizer: defaultItem(),
+    amount: defaultF32,
     timestamp: defaultF64,
   } as T201);
 export const defaultT203 = () =>
   ({
     kind: defaultT202,
+    fertilizer: defaultItem(),
     timestamp: defaultF64,
   } as T203);
 export const defaultT205 = () =>
@@ -4928,6 +5288,11 @@ export const defaultT207 = () =>
     kind: defaultT206,
     timestamp: defaultF64,
   } as T207);
+export const defaultT209 = () =>
+  ({
+    kind: defaultT208,
+    timestamp: defaultF64,
+  } as T209);
 export const defaultTeamMemberMetadata = () =>
   ({
     joined_at: defaultF64,
@@ -4943,11 +5308,11 @@ export const defaultTeamJoinRequest = () =>
     entity_id: defaultBiomesId,
     created_at: defaultF64,
   } as TeamJoinRequest);
-export const defaultT229 = () =>
+export const defaultT231 = () =>
   ({
-    kind: defaultT228,
+    kind: defaultT230,
     radius: defaultF64,
-  } as T229);
+  } as T231);
 export const defaultTradeSpec = () =>
   ({
     trade_id: defaultBiomesId,
@@ -4996,22 +5361,22 @@ export const defaultWarpTarget = () =>
   } as WarpTarget);
 export const defaultEntitiesAndExpiry = () =>
   ({
-    entity_ids: defaultT90(),
-    expiry: defaultT91,
+    entity_ids: defaultT92(),
+    expiry: defaultT93,
   } as EntitiesAndExpiry);
 export const defaultAllNUXStatus = () => new Map() as AllNUXStatus;
-export const defaultT100 = () => [defaultBiomesId, defaultT99()] as T100;
-export const defaultT102 = () => new Map() as T102;
-export const defaultT103 = () => new Map() as T103;
+export const defaultT102 = () => [defaultBiomesId, defaultT101()] as T102;
+export const defaultT104 = () => new Map() as T104;
+export const defaultT105 = () => new Map() as T105;
 export const defaultAabb = () => [defaultVec3f(), defaultVec3f()] as Aabb;
-export const defaultT110 = () =>
+export const defaultT112 = () =>
   ({
-    kind: defaultT109,
+    kind: defaultT111,
     point: defaultVec3f(),
-  } as T110);
+  } as T112);
 export const defaultNpcDamageSource = () =>
   ({
-    ...defaultT115(),
+    ...defaultT117(),
     kind: "dayNight",
   } as NpcDamageSource);
 export const defaultPlaceableAnimation = () =>
@@ -5030,26 +5395,26 @@ export const defaultPlaceEventInfo = () =>
 export const defaultBuff = () =>
   ({
     item_id: defaultBiomesId,
-    start_time: defaultT91,
+    start_time: defaultT93,
     from_id: defaultOptionalBiomesId,
     is_disabled: defaultOptionalBool,
   } as Buff);
 export const defaultOptionalTagRoundState = undefined;
-export const defaultT167 = () =>
+export const defaultT169 = () =>
   ({
     checkpoint_ids: defaultBiomesIdSet(),
     start_ids: defaultBiomesIdSet(),
     end_ids: defaultBiomesIdSet(),
-  } as T167);
-export const defaultT168 = () =>
+  } as T169);
+export const defaultT170 = () =>
   ({
     start_ids: defaultBiomesIdSet(),
-  } as T168);
-export const defaultT169 = () =>
+  } as T170);
+export const defaultT171 = () =>
   ({
     start_ids: defaultBiomesIdSet(),
     arena_marker_ids: defaultBiomesIdSet(),
-  } as T169);
+  } as T171);
 export const defaultDeathMatchPlayerState = () =>
   ({
     playerId: defaultBiomesId,
@@ -5058,27 +5423,27 @@ export const defaultDeathMatchPlayerState = () =>
     last_kill: defaultOptionalF64,
     last_death: defaultOptionalF64,
   } as DeathMatchPlayerState);
-export const defaultT176 = () =>
+export const defaultT178 = () =>
   ({
-    ...defaultT172(),
+    ...defaultT174(),
     kind: "waiting_for_players",
-  } as T176);
-export const defaultT181 = () =>
+  } as T178);
+export const defaultT183 = () =>
   ({
     round_start: defaultF64,
     last_winner_id: defaultOptionalBiomesId,
-  } as T181);
-export const defaultT184 = () => new Map() as T184;
+  } as T183);
+export const defaultT186 = () => new Map() as T186;
 export const defaultReachedCheckpoints = () => new Map() as ReachedCheckpoints;
 export const defaultFarmingPlayerAction = () =>
   ({
-    ...defaultT199(),
+    ...defaultT201(),
     kind: "water",
   } as FarmingPlayerAction);
-export const defaultT210 = () =>
+export const defaultT212 = () =>
   ({
     type_ids: defaultBiomesIdList(),
-  } as T210);
+  } as T212);
 export const defaultBucketedImageCloudBundle = () =>
   ({
     webp_320w: defaultOptionalString,
@@ -5086,7 +5451,7 @@ export const defaultBucketedImageCloudBundle = () =>
     webp_1280w: defaultOptionalString,
     png_1280w: defaultOptionalString,
     webp_original: defaultOptionalString,
-    bucket: defaultT212,
+    bucket: defaultT214,
   } as BucketedImageCloudBundle);
 export const defaultTerrainRestorationEntry = () =>
   ({
@@ -5101,11 +5466,11 @@ export const defaultTerrainRestorationEntry = () =>
 export const defaultTeamPendingInvites = () => new Map() as TeamPendingInvites;
 export const defaultTeamPendingRequests = () => [];
 export const defaultTeamMembers = () => new Map() as TeamMembers;
-export const defaultT227 = () =>
+export const defaultT229 = () =>
   ({
-    kind: defaultT226,
+    kind: defaultT228,
     box: defaultVec3f(),
-  } as T227);
+  } as T229);
 export const defaultTradeSpecList = () => [];
 export const defaultTerrainUpdateList = () => [];
 export const defaultPricedItemContainer = () => [];
@@ -5131,46 +5496,46 @@ export const defaultGrabBagFilter = () =>
   } as GrabBagFilter);
 export const defaultTargetedAcl = undefined;
 export const defaultOptionalAabb = undefined;
-export const defaultT108 = () =>
+export const defaultT110 = () =>
   ({
-    kind: defaultT107,
+    kind: defaultT109,
     aabb: defaultAabb(),
-  } as T108);
-export const defaultT112 = () =>
+  } as T110);
+export const defaultT114 = () =>
   ({
-    kind: defaultT111,
+    kind: defaultT113,
     points: defaultVec3fList(),
-  } as T112);
-export const defaultT132 = () =>
+  } as T114);
+export const defaultT134 = () =>
   ({
-    kind: defaultT131,
+    kind: defaultT133,
     attacker: defaultBiomesId,
     dir: defaultOptionalVec3f,
-  } as T132);
-export const defaultT144 = () =>
+  } as T134);
+export const defaultT146 = () =>
   ({
-    kind: defaultT143,
+    kind: defaultT145,
     type: defaultNpcDamageSource(),
-  } as T144);
+  } as T146);
 export const defaultOptionalPlaceableAnimation = undefined;
 export const defaultOptionalPlaceEventInfo = undefined;
 export const defaultBuffsList = () => [];
 export const defaultMinigameMetadata = () =>
   ({
-    ...defaultT167(),
+    ...defaultT169(),
     kind: "simple_race",
   } as MinigameMetadata);
-export const defaultT177 = undefined;
-export const defaultT178 = () => new Map() as T178;
-export const defaultT182 = () =>
+export const defaultT179 = undefined;
+export const defaultT180 = () => new Map() as T180;
+export const defaultT184 = () =>
   ({
     round_expires: defaultF64,
     alive_round_players: defaultBiomesIdSet(),
     tag_round_state: defaultOptionalTagRoundState,
-  } as T182);
+  } as T184);
 export const defaultSimpleRaceInstanceState = () =>
   ({
-    player_state: defaultT188,
+    player_state: defaultT190,
     started_at: defaultF64,
     deaths: defaultI32,
     reached_checkpoints: defaultReachedCheckpoints(),
@@ -5183,82 +5548,82 @@ export const defaultMinigameInstanceActivePlayerInfo = () =>
     entry_warped_to: defaultOptionalVec3f,
     entry_time: defaultF64,
   } as MinigameInstanceActivePlayerInfo);
-export const defaultT194 = () =>
+export const defaultT196 = () =>
   ({
     box: defaultBox2(),
     clipboard_entity_id: defaultBiomesId,
-  } as T194);
+  } as T196);
 export const defaultFarmingPlayerActionList = () => [];
 export const defaultItemBuyerSpec = () =>
   ({
-    ...defaultT210(),
+    ...defaultT212(),
     kind: "item_types",
   } as ItemBuyerSpec);
 export const defaultTerrainRestorationEntryList = () => [];
 export const defaultVolume = () =>
   ({
-    ...defaultT227(),
+    ...defaultT229(),
     kind: "box",
   } as Volume);
 export const defaultInventoryAssignmentPattern = () => [];
 export const defaultT66 = () => [];
-export const defaultT74 = undefined;
-export const defaultT78 = undefined;
+export const defaultT76 = undefined;
+export const defaultT80 = undefined;
 export const defaultAcl = () =>
   ({
-    everyone: defaultT99(),
-    roles: defaultT102(),
-    entities: defaultT103(),
-    teams: defaultT103(),
+    everyone: defaultT101(),
+    roles: defaultT104(),
+    entities: defaultT105(),
+    teams: defaultT105(),
     creator: defaultTargetedAcl,
     creatorTeam: defaultTargetedAcl,
   } as Acl);
 export const defaultAclDomain = () =>
   ({
-    ...defaultT108(),
+    ...defaultT110(),
     kind: "aabb",
   } as AclDomain);
 export const defaultDamageSource = () =>
   ({
-    ...defaultT124(),
+    ...defaultT126(),
     kind: "suicide",
   } as DamageSource);
 export const defaultDeathmatchInstanceState = () =>
   ({
-    instance_state: defaultT177,
-    player_states: defaultT178(),
+    instance_state: defaultT179,
+    player_states: defaultT180(),
   } as DeathmatchInstanceState);
-export const defaultT183 = () =>
+export const defaultT185 = () =>
   ({
-    ...defaultT172(),
+    ...defaultT174(),
     kind: "waiting_for_players",
-  } as T183);
+  } as T185);
 export const defaultMinigameInstanceActivePlayerMap = () =>
   new Map() as MinigameInstanceActivePlayerMap;
-export const defaultT195 = () =>
+export const defaultT197 = () =>
   ({
-    ...defaultT194(),
+    ...defaultT196(),
     kind: "aabb",
-  } as T195);
+  } as T197);
 export const defaultOptionalVolume = undefined;
 export const defaultOptionalInventoryAssignmentPattern = undefined;
 export const defaultEmoteFishingInfo = () =>
   ({
-    line_end_position: defaultT74,
+    line_end_position: defaultT76,
     line_end_item: defaultOptionalItem,
   } as EmoteFishingInfo);
 export const defaultOptionalEmoteThrowInfo = undefined;
 export const defaultOptionalDamageSource = undefined;
 export const defaultSpleefInstanceState = () =>
   ({
-    instance_state: defaultT183(),
+    instance_state: defaultT185(),
     observer_spawn_points: defaultVec3fList(),
-    player_stats: defaultT184(),
+    player_stats: defaultT186(),
     round_number: defaultI32,
   } as SpleefInstanceState);
 export const defaultMinigameInstanceSpaceClipboardInfo = () =>
   ({
-    region: defaultT195(),
+    region: defaultT197(),
   } as MinigameInstanceSpaceClipboardInfo);
 export const defaultProtectionParams = () =>
   ({
@@ -5378,6 +5743,12 @@ export function deserializeEmoteType(data: unknown): EmoteType {
   return zEmoteType.parse(data);
 }
 
+export function deserializeMovementActionType(
+  data: unknown
+): MovementActionType {
+  return zMovementActionType.parse(data);
+}
+
 export function deserializeWarpHomeReason(data: unknown): WarpHomeReason {
   return zWarpHomeReason.parse(data);
 }
@@ -5394,10 +5765,6 @@ export function deserializeUserRole(data: unknown): UserRole {
   return zUserRole.parse(data);
 }
 
-export function deserializeT107(data: unknown): T107 {
-  return zT107.parse(data);
-}
-
 export function deserializeT109(data: unknown): T109 {
   return zT109.parse(data);
 }
@@ -5406,8 +5773,8 @@ export function deserializeT111(data: unknown): T111 {
   return zT111.parse(data);
 }
 
-export function deserializeT114(data: unknown): T114 {
-  return zT114.parse(data);
+export function deserializeT113(data: unknown): T113 {
+  return zT113.parse(data);
 }
 
 export function deserializeT116(data: unknown): T116 {
@@ -5422,8 +5789,8 @@ export function deserializeT120(data: unknown): T120 {
   return zT120.parse(data);
 }
 
-export function deserializeT123(data: unknown): T123 {
-  return zT123.parse(data);
+export function deserializeT122(data: unknown): T122 {
+  return zT122.parse(data);
 }
 
 export function deserializeT125(data: unknown): T125 {
@@ -5466,6 +5833,10 @@ export function deserializeT143(data: unknown): T143 {
   return zT143.parse(data);
 }
 
+export function deserializeT145(data: unknown): T145 {
+  return zT145.parse(data);
+}
+
 export function deserializePlaceableAnimationType(
   data: unknown
 ): PlaceableAnimationType {
@@ -5494,19 +5865,15 @@ export function deserializeMinigameType(data: unknown): MinigameType {
   return zMinigameType.parse(data);
 }
 
-const zRawT172 = z.object({});
+const zRawT174 = z.object({});
 
-export function deserializeT172(data: unknown): T172 {
-  const obj = zRawT172.parse(data);
+export function deserializeT174(data: unknown): T174 {
+  const obj = zRawT174.parse(data);
   return {};
 }
 
-export function deserializeT188(data: unknown): T188 {
-  return zT188.parse(data);
-}
-
-export function deserializeT198(data: unknown): T198 {
-  return zT198.parse(data);
+export function deserializeT190(data: unknown): T190 {
+  return zT190.parse(data);
 }
 
 export function deserializeT200(data: unknown): T200 {
@@ -5525,16 +5892,20 @@ export function deserializeT206(data: unknown): T206 {
   return zT206.parse(data);
 }
 
-export function deserializeT212(data: unknown): T212 {
-  return zT212.parse(data);
+export function deserializeT208(data: unknown): T208 {
+  return zT208.parse(data);
 }
 
-export function deserializeT226(data: unknown): T226 {
-  return zT226.parse(data);
+export function deserializeT214(data: unknown): T214 {
+  return zT214.parse(data);
 }
 
 export function deserializeT228(data: unknown): T228 {
   return zT228.parse(data);
+}
+
+export function deserializeT230(data: unknown): T230 {
+  return zT230.parse(data);
 }
 
 export function deserializeEntityRestoreToState(
@@ -5852,6 +6223,14 @@ export function deserializeItemBagReference(data: unknown): ItemBagReference {
   };
 }
 
+export function deserializeOptionalMovementActionType(
+  data: unknown
+): OptionalMovementActionType {
+  return data === null || data === undefined
+    ? undefined
+    : deserializeMovementActionType(data);
+}
+
 export function deserializeOptionalEmoteType(data: unknown): OptionalEmoteType {
   return data === null || data === undefined
     ? undefined
@@ -5880,16 +6259,16 @@ export function deserializeOptionalBuffer(data: unknown): OptionalBuffer {
     ? undefined
     : deserializeBuffer(data);
 }
-export function serializeT90(value: ReadonlyT90) {
+export function serializeT92(value: ReadonlyT92) {
   return Array.from(value, (v) => serializeBiomesId(v));
 }
 
-export function deserializeT90(data: unknown): T90 {
+export function deserializeT92(data: unknown): T92 {
   const arr = zGenericArray.parse(data);
   return new Set(arr.map((v: any) => deserializeBiomesId(v)));
 }
 
-export function deserializeT91(data: unknown): T91 {
+export function deserializeT93(data: unknown): T93 {
   return data === null || data === undefined ? undefined : deserializeF64(data);
 }
 
@@ -5913,24 +6292,13 @@ export function deserializeUserRoleSet(data: unknown): UserRoleSet {
   const arr = zGenericArray.parse(data);
   return new Set(arr.map((v: any) => deserializeUserRole(v)));
 }
-export function serializeT99(value: ReadonlyT99) {
+export function serializeT101(value: ReadonlyT101) {
   return Array.from(value, (v) => v);
 }
 
-export function deserializeT99(data: unknown): T99 {
+export function deserializeT101(data: unknown): T101 {
   const arr = zGenericArray.parse(data);
   return new Set(arr.map((v: any) => deserializeAclAction(v)));
-}
-
-const zRawT115 = z.object({
-  kind: z.unknown(),
-});
-
-export function deserializeT115(data: unknown): T115 {
-  const obj = zRawT115.parse(data);
-  return {
-    kind: deserializeT114(obj.kind),
-  };
 }
 
 const zRawT117 = z.object({
@@ -5966,14 +6334,14 @@ export function deserializeT121(data: unknown): T121 {
   };
 }
 
-const zRawT124 = z.object({
+const zRawT123 = z.object({
   kind: z.unknown(),
 });
 
-export function deserializeT124(data: unknown): T124 {
-  const obj = zRawT124.parse(data);
+export function deserializeT123(data: unknown): T123 {
+  const obj = zRawT123.parse(data);
   return {
-    kind: deserializeT123(obj.kind),
+    kind: deserializeT122(obj.kind),
   };
 }
 
@@ -5987,47 +6355,47 @@ export function deserializeT126(data: unknown): T126 {
     kind: deserializeT125(obj.kind),
   };
 }
-export function serializeT128(value: ReadonlyT128) {
-  return {
-    kind: value.kind,
-    biscuitId: serializeBiomesId(value.biscuitId),
-  };
-}
 
 const zRawT128 = z.object({
   kind: z.unknown(),
-  biscuitId: z.unknown(),
 });
 
 export function deserializeT128(data: unknown): T128 {
   const obj = zRawT128.parse(data);
   return {
     kind: deserializeT127(obj.kind),
-    biscuitId: deserializeBiomesId(obj.biscuitId),
+  };
+}
+export function serializeT130(value: ReadonlyT130) {
+  return {
+    kind: value.kind,
+    biscuitId: serializeBiomesId(value.biscuitId),
   };
 }
 
 const zRawT130 = z.object({
   kind: z.unknown(),
-  distance: z.unknown(),
+  biscuitId: z.unknown(),
 });
 
 export function deserializeT130(data: unknown): T130 {
   const obj = zRawT130.parse(data);
   return {
     kind: deserializeT129(obj.kind),
-    distance: deserializeF64(obj.distance),
+    biscuitId: deserializeBiomesId(obj.biscuitId),
   };
 }
 
-const zRawT134 = z.object({
+const zRawT132 = z.object({
   kind: z.unknown(),
+  distance: z.unknown(),
 });
 
-export function deserializeT134(data: unknown): T134 {
-  const obj = zRawT134.parse(data);
+export function deserializeT132(data: unknown): T132 {
+  const obj = zRawT132.parse(data);
   return {
-    kind: deserializeT133(obj.kind),
+    kind: deserializeT131(obj.kind),
+    distance: deserializeF64(obj.distance),
   };
 }
 
@@ -6072,6 +6440,17 @@ export function deserializeT142(data: unknown): T142 {
   const obj = zRawT142.parse(data);
   return {
     kind: deserializeT141(obj.kind),
+  };
+}
+
+const zRawT144 = z.object({
+  kind: z.unknown(),
+});
+
+export function deserializeT144(data: unknown): T144 {
+  const obj = zRawT144.parse(data);
+  return {
+    kind: deserializeT143(obj.kind),
   };
 }
 
@@ -6138,34 +6517,34 @@ export function deserializeTagRoundState(data: unknown): TagRoundState {
   };
 }
 
-const zRawT173 = z.object({
+const zRawT175 = z.object({
   round_start: z.unknown(),
 });
 
-export function deserializeT173(data: unknown): T173 {
-  const obj = zRawT173.parse(data);
+export function deserializeT175(data: unknown): T175 {
+  const obj = zRawT175.parse(data);
   return {
     round_start: deserializeF64(obj.round_start),
   };
 }
 
-const zRawT174 = z.object({
+const zRawT176 = z.object({
   round_end: z.unknown(),
 });
 
-export function deserializeT174(data: unknown): T174 {
-  const obj = zRawT174.parse(data);
+export function deserializeT176(data: unknown): T176 {
+  const obj = zRawT176.parse(data);
   return {
     round_end: deserializeF64(obj.round_end),
   };
 }
 
-const zRawT175 = z.object({
+const zRawT177 = z.object({
   timestamp: z.unknown(),
 });
 
-export function deserializeT175(data: unknown): T175 {
-  const obj = zRawT175.parse(data);
+export function deserializeT177(data: unknown): T177 {
+  const obj = zRawT177.parse(data);
   return {
     timestamp: deserializeF64(obj.timestamp),
   };
@@ -6190,12 +6569,12 @@ export function deserializeSpleefPlayerStats(data: unknown): SpleefPlayerStats {
   };
 }
 
-const zRawT186 = z.object({
+const zRawT188 = z.object({
   time: z.unknown(),
 });
 
-export function deserializeT186(data: unknown): T186 {
-  const obj = zRawT186.parse(data);
+export function deserializeT188(data: unknown): T188 {
+  const obj = zRawT188.parse(data);
   return {
     time: deserializeF64(obj.time),
   };
@@ -6229,17 +6608,17 @@ export function deserializeGiveMinigameKitData(
   switch (obj.kind) {
     case "simple_race":
       return {
-        ...deserializeT172(obj),
+        ...deserializeT174(obj),
         kind: "simple_race",
       };
     case "deathmatch":
       return {
-        ...deserializeT172(obj),
+        ...deserializeT174(obj),
         kind: "deathmatch",
       };
     case "spleef":
       return {
-        ...deserializeT172(obj),
+        ...deserializeT174(obj),
         kind: "spleef",
       };
     default:
@@ -6247,31 +6626,9 @@ export function deserializeGiveMinigameKitData(
   }
 }
 
-const zRawT199 = z.object({
-  kind: z.unknown(),
-  amount: z.unknown(),
-  timestamp: z.unknown(),
-});
-
-export function deserializeT199(data: unknown): T199 {
-  const obj = zRawT199.parse(data);
-  return {
-    kind: deserializeT198(obj.kind),
-    amount: deserializeF32(obj.amount),
-    timestamp: deserializeF64(obj.timestamp),
-  };
-}
-export function serializeT201(value: ReadonlyT201) {
-  return {
-    kind: value.kind,
-    fertilizer: serializeItem(value.fertilizer),
-    timestamp: value.timestamp,
-  };
-}
-
 const zRawT201 = z.object({
   kind: z.unknown(),
-  fertilizer: z.unknown(),
+  amount: z.unknown(),
   timestamp: z.unknown(),
 });
 
@@ -6279,13 +6636,21 @@ export function deserializeT201(data: unknown): T201 {
   const obj = zRawT201.parse(data);
   return {
     kind: deserializeT200(obj.kind),
-    fertilizer: deserializeItem(obj.fertilizer),
+    amount: deserializeF32(obj.amount),
     timestamp: deserializeF64(obj.timestamp),
+  };
+}
+export function serializeT203(value: ReadonlyT203) {
+  return {
+    kind: value.kind,
+    fertilizer: serializeItem(value.fertilizer),
+    timestamp: value.timestamp,
   };
 }
 
 const zRawT203 = z.object({
   kind: z.unknown(),
+  fertilizer: z.unknown(),
   timestamp: z.unknown(),
 });
 
@@ -6293,6 +6658,7 @@ export function deserializeT203(data: unknown): T203 {
   const obj = zRawT203.parse(data);
   return {
     kind: deserializeT202(obj.kind),
+    fertilizer: deserializeItem(obj.fertilizer),
     timestamp: deserializeF64(obj.timestamp),
   };
 }
@@ -6319,6 +6685,19 @@ export function deserializeT207(data: unknown): T207 {
   const obj = zRawT207.parse(data);
   return {
     kind: deserializeT206(obj.kind),
+    timestamp: deserializeF64(obj.timestamp),
+  };
+}
+
+const zRawT209 = z.object({
+  kind: z.unknown(),
+  timestamp: z.unknown(),
+});
+
+export function deserializeT209(data: unknown): T209 {
+  const obj = zRawT209.parse(data);
+  return {
+    kind: deserializeT208(obj.kind),
     timestamp: deserializeF64(obj.timestamp),
   };
 }
@@ -6377,15 +6756,15 @@ export function deserializeTeamJoinRequest(data: unknown): TeamJoinRequest {
   };
 }
 
-const zRawT229 = z.object({
+const zRawT231 = z.object({
   kind: z.unknown(),
   radius: z.unknown(),
 });
 
-export function deserializeT229(data: unknown): T229 {
-  const obj = zRawT229.parse(data);
+export function deserializeT231(data: unknown): T231 {
+  const obj = zRawT231.parse(data);
   return {
-    kind: deserializeT228(obj.kind),
+    kind: deserializeT230(obj.kind),
     radius: deserializeF64(obj.radius),
   };
 }
@@ -6599,7 +6978,7 @@ export function deserializeWarpTarget(data: unknown): WarpTarget {
 }
 export function serializeEntitiesAndExpiry(value: ReadonlyEntitiesAndExpiry) {
   return {
-    entity_ids: serializeT90(value.entity_ids),
+    entity_ids: serializeT92(value.entity_ids),
     expiry: value.expiry,
   };
 }
@@ -6612,8 +6991,8 @@ const zRawEntitiesAndExpiry = z.object({
 export function deserializeEntitiesAndExpiry(data: unknown): EntitiesAndExpiry {
   const obj = zRawEntitiesAndExpiry.parse(data);
   return {
-    entity_ids: deserializeT90(obj.entity_ids),
-    expiry: deserializeT91(obj.expiry),
+    entity_ids: deserializeT92(obj.entity_ids),
+    expiry: deserializeT93(obj.expiry),
   };
 }
 export function serializeAllNUXStatus(value: ReadonlyAllNUXStatus) {
@@ -6626,32 +7005,35 @@ export function deserializeAllNUXStatus(data: unknown): AllNUXStatus {
     arr.map(([k, v]: any) => [deserializeI32(k), deserializeNUXStatus(v)])
   );
 }
-export function serializeT100(value: ReadonlyT100) {
-  return [serializeBiomesId(value[0]), serializeT99(value[1])];
-}
-
-export function deserializeT100(data: unknown): T100 {
-  const arr = zGenericArray.parse(data);
-  return [deserializeBiomesId(arr[0]), deserializeT99(arr[1])];
-}
 export function serializeT102(value: ReadonlyT102) {
-  return Array.from(value, ([k, v]) => [k, serializeT99(v)]);
+  return [serializeBiomesId(value[0]), serializeT101(value[1])];
 }
 
 export function deserializeT102(data: unknown): T102 {
-  const arr = zGenericMapArray.parse(data);
-  return new Map(
-    arr.map(([k, v]: any) => [deserializeUserRole(k), deserializeT99(v)])
-  );
+  const arr = zGenericArray.parse(data);
+  return [deserializeBiomesId(arr[0]), deserializeT101(arr[1])];
 }
-export function serializeT103(value: ReadonlyT103) {
-  return Array.from(value, ([k, v]) => [serializeBiomesId(k), serializeT99(v)]);
+export function serializeT104(value: ReadonlyT104) {
+  return Array.from(value, ([k, v]) => [k, serializeT101(v)]);
 }
 
-export function deserializeT103(data: unknown): T103 {
+export function deserializeT104(data: unknown): T104 {
   const arr = zGenericMapArray.parse(data);
   return new Map(
-    arr.map(([k, v]: any) => [deserializeBiomesId(k), deserializeT99(v)])
+    arr.map(([k, v]: any) => [deserializeUserRole(k), deserializeT101(v)])
+  );
+}
+export function serializeT105(value: ReadonlyT105) {
+  return Array.from(value, ([k, v]) => [
+    serializeBiomesId(k),
+    serializeT101(v),
+  ]);
+}
+
+export function deserializeT105(data: unknown): T105 {
+  const arr = zGenericMapArray.parse(data);
+  return new Map(
+    arr.map(([k, v]: any) => [deserializeBiomesId(k), deserializeT101(v)])
   );
 }
 
@@ -6660,15 +7042,15 @@ export function deserializeAabb(data: unknown): Aabb {
   return [deserializeVec3f(arr[0]), deserializeVec3f(arr[1])];
 }
 
-const zRawT110 = z.object({
+const zRawT112 = z.object({
   kind: z.unknown(),
   point: z.unknown(),
 });
 
-export function deserializeT110(data: unknown): T110 {
-  const obj = zRawT110.parse(data);
+export function deserializeT112(data: unknown): T112 {
+  const obj = zRawT112.parse(data);
   return {
-    kind: deserializeT109(obj.kind),
+    kind: deserializeT111(obj.kind),
     point: deserializeVec3f(obj.point),
   };
 }
@@ -6702,22 +7084,22 @@ export function deserializeNpcDamageSource(data: unknown): NpcDamageSource {
   switch (obj.kind) {
     case "dayNight":
       return {
-        ...deserializeT115(obj),
+        ...deserializeT117(obj),
         kind: "dayNight",
       };
     case "farFromHome":
       return {
-        ...deserializeT117(obj),
+        ...deserializeT119(obj),
         kind: "farFromHome",
       };
     case "adminKill":
       return {
-        ...deserializeT119(obj),
+        ...deserializeT121(obj),
         kind: "adminKill",
       };
     case "outOfWorldBounds":
       return {
-        ...deserializeT121(obj),
+        ...deserializeT123(obj),
         kind: "outOfWorldBounds",
       };
     default:
@@ -6797,7 +7179,7 @@ export function deserializeBuff(data: unknown): Buff {
   const obj = zRawBuff.parse(data);
   return {
     item_id: deserializeBiomesId(obj.item_id),
-    start_time: deserializeT91(obj.start_time),
+    start_time: deserializeT93(obj.start_time),
     from_id: deserializeOptionalBiomesId(obj.from_id),
     is_disabled: deserializeOptionalBool(obj.is_disabled),
   };
@@ -6817,7 +7199,7 @@ export function deserializeOptionalTagRoundState(
     ? undefined
     : deserializeTagRoundState(data);
 }
-export function serializeT167(value: ReadonlyT167) {
+export function serializeT169(value: ReadonlyT169) {
   return {
     checkpoint_ids: serializeBiomesIdSet(value.checkpoint_ids),
     start_ids: serializeBiomesIdSet(value.start_ids),
@@ -6825,50 +7207,50 @@ export function serializeT167(value: ReadonlyT167) {
   };
 }
 
-const zRawT167 = z.object({
+const zRawT169 = z.object({
   checkpoint_ids: z.unknown(),
   start_ids: z.unknown(),
   end_ids: z.unknown(),
 });
 
-export function deserializeT167(data: unknown): T167 {
-  const obj = zRawT167.parse(data);
+export function deserializeT169(data: unknown): T169 {
+  const obj = zRawT169.parse(data);
   return {
     checkpoint_ids: deserializeBiomesIdSet(obj.checkpoint_ids),
     start_ids: deserializeBiomesIdSet(obj.start_ids),
     end_ids: deserializeBiomesIdSet(obj.end_ids),
   };
 }
-export function serializeT168(value: ReadonlyT168) {
+export function serializeT170(value: ReadonlyT170) {
   return {
     start_ids: serializeBiomesIdSet(value.start_ids),
   };
 }
 
-const zRawT168 = z.object({
+const zRawT170 = z.object({
   start_ids: z.unknown(),
 });
 
-export function deserializeT168(data: unknown): T168 {
-  const obj = zRawT168.parse(data);
+export function deserializeT170(data: unknown): T170 {
+  const obj = zRawT170.parse(data);
   return {
     start_ids: deserializeBiomesIdSet(obj.start_ids),
   };
 }
-export function serializeT169(value: ReadonlyT169) {
+export function serializeT171(value: ReadonlyT171) {
   return {
     start_ids: serializeBiomesIdSet(value.start_ids),
     arena_marker_ids: serializeBiomesIdSet(value.arena_marker_ids),
   };
 }
 
-const zRawT169 = z.object({
+const zRawT171 = z.object({
   start_ids: z.unknown(),
   arena_marker_ids: z.unknown(),
 });
 
-export function deserializeT169(data: unknown): T169 {
-  const obj = zRawT169.parse(data);
+export function deserializeT171(data: unknown): T171 {
+  const obj = zRawT171.parse(data);
   return {
     start_ids: deserializeBiomesIdSet(obj.start_ids),
     arena_marker_ids: deserializeBiomesIdSet(obj.arena_marker_ids),
@@ -6906,7 +7288,7 @@ export function deserializeDeathMatchPlayerState(
     last_death: deserializeOptionalF64(obj.last_death),
   };
 }
-export function serializeT176(value: ReadonlyT176) {
+export function serializeT178(value: ReadonlyT178) {
   switch (value.kind) {
     case "waiting_for_players":
       return {
@@ -6931,60 +7313,60 @@ export function serializeT176(value: ReadonlyT176) {
   }
 }
 
-export function deserializeT176(data: unknown): T176 {
+export function deserializeT178(data: unknown): T178 {
   const obj = zDiscriminatedObject.parse(data);
   switch (obj.kind) {
     case "waiting_for_players":
       return {
-        ...deserializeT172(obj),
+        ...deserializeT174(obj),
         kind: "waiting_for_players",
       };
     case "play_countdown":
       return {
-        ...deserializeT173(obj),
+        ...deserializeT175(obj),
         kind: "play_countdown",
       };
     case "playing":
       return {
-        ...deserializeT174(obj),
+        ...deserializeT176(obj),
         kind: "playing",
       };
     case "finished":
       return {
-        ...deserializeT175(obj),
+        ...deserializeT177(obj),
         kind: "finished",
       };
     default:
       throw new Error(`Unknown OneOf variant: ${obj.kind}`);
   }
 }
-export function serializeT181(value: ReadonlyT181) {
+export function serializeT183(value: ReadonlyT183) {
   return {
     round_start: value.round_start,
     last_winner_id: serializeOptionalBiomesId(value.last_winner_id),
   };
 }
 
-const zRawT181 = z.object({
+const zRawT183 = z.object({
   round_start: z.unknown(),
   last_winner_id: z.unknown(),
 });
 
-export function deserializeT181(data: unknown): T181 {
-  const obj = zRawT181.parse(data);
+export function deserializeT183(data: unknown): T183 {
+  const obj = zRawT183.parse(data);
   return {
     round_start: deserializeF64(obj.round_start),
     last_winner_id: deserializeOptionalBiomesId(obj.last_winner_id),
   };
 }
-export function serializeT184(value: ReadonlyT184) {
+export function serializeT186(value: ReadonlyT186) {
   return Array.from(value, ([k, v]) => [
     serializeBiomesId(k),
     serializeSpleefPlayerStats(v),
   ]);
 }
 
-export function deserializeT184(data: unknown): T184 {
+export function deserializeT186(data: unknown): T186 {
   const arr = zGenericMapArray.parse(data);
   return new Map(
     arr.map(([k, v]: any) => [
@@ -7002,7 +7384,7 @@ export function deserializeReachedCheckpoints(
 ): ReachedCheckpoints {
   const arr = zGenericMapArray.parse(data);
   return new Map(
-    arr.map(([k, v]: any) => [deserializeBiomesId(k), deserializeT186(v)])
+    arr.map(([k, v]: any) => [deserializeBiomesId(k), deserializeT188(v)])
   );
 }
 export function serializeFarmingPlayerAction(
@@ -7016,7 +7398,7 @@ export function serializeFarmingPlayerAction(
       };
     case "fertilize":
       return {
-        ...serializeT201(value),
+        ...serializeT203(value),
         kind: "fertilize",
       };
     case "harvest":
@@ -7044,45 +7426,45 @@ export function deserializeFarmingPlayerAction(
   switch (obj.kind) {
     case "water":
       return {
-        ...deserializeT199(obj),
+        ...deserializeT201(obj),
         kind: "water",
       };
     case "fertilize":
       return {
-        ...deserializeT201(obj),
+        ...deserializeT203(obj),
         kind: "fertilize",
       };
     case "harvest":
       return {
-        ...deserializeT203(obj),
+        ...deserializeT205(obj),
         kind: "harvest",
       };
     case "adminDestroy":
       return {
-        ...deserializeT205(obj),
+        ...deserializeT207(obj),
         kind: "adminDestroy",
       };
     case "poke":
       return {
-        ...deserializeT207(obj),
+        ...deserializeT209(obj),
         kind: "poke",
       };
     default:
       throw new Error(`Unknown OneOf variant: ${obj.kind}`);
   }
 }
-export function serializeT210(value: ReadonlyT210) {
+export function serializeT212(value: ReadonlyT212) {
   return {
     type_ids: serializeBiomesIdList(value.type_ids),
   };
 }
 
-const zRawT210 = z.object({
+const zRawT212 = z.object({
   type_ids: z.unknown(),
 });
 
-export function deserializeT210(data: unknown): T210 {
-  const obj = zRawT210.parse(data);
+export function deserializeT212(data: unknown): T212 {
+  const obj = zRawT212.parse(data);
   return {
     type_ids: deserializeBiomesIdList(obj.type_ids),
   };
@@ -7107,7 +7489,7 @@ export function deserializeBucketedImageCloudBundle(
     webp_1280w: deserializeOptionalString(obj.webp_1280w),
     png_1280w: deserializeOptionalString(obj.png_1280w),
     webp_original: deserializeOptionalString(obj.webp_original),
-    bucket: deserializeT212(obj.bucket),
+    bucket: deserializeT214(obj.bucket),
   };
 }
 
@@ -7176,15 +7558,15 @@ export function deserializeTeamMembers(data: unknown): TeamMembers {
   );
 }
 
-const zRawT227 = z.object({
+const zRawT229 = z.object({
   kind: z.unknown(),
   box: z.unknown(),
 });
 
-export function deserializeT227(data: unknown): T227 {
-  const obj = zRawT227.parse(data);
+export function deserializeT229(data: unknown): T229 {
+  const obj = zRawT229.parse(data);
   return {
-    kind: deserializeT226(obj.kind),
+    kind: deserializeT228(obj.kind),
     box: deserializeVec3f(obj.box),
   };
 }
@@ -7356,13 +7738,13 @@ export function deserializeGrabBagFilter(data: unknown): GrabBagFilter {
 export function serializeTargetedAcl(value: ReadonlyTargetedAcl) {
   return value === undefined || value === null
     ? undefined
-    : serializeT100(value);
+    : serializeT102(value);
 }
 
 export function deserializeTargetedAcl(data: unknown): TargetedAcl {
   return data === null || data === undefined
     ? undefined
-    : deserializeT100(data);
+    : deserializeT102(data);
 }
 
 export function deserializeOptionalAabb(data: unknown): OptionalAabb {
@@ -7371,32 +7753,32 @@ export function deserializeOptionalAabb(data: unknown): OptionalAabb {
     : deserializeAabb(data);
 }
 
-const zRawT108 = z.object({
+const zRawT110 = z.object({
   kind: z.unknown(),
   aabb: z.unknown(),
 });
 
-export function deserializeT108(data: unknown): T108 {
-  const obj = zRawT108.parse(data);
+export function deserializeT110(data: unknown): T110 {
+  const obj = zRawT110.parse(data);
   return {
-    kind: deserializeT107(obj.kind),
+    kind: deserializeT109(obj.kind),
     aabb: deserializeAabb(obj.aabb),
   };
 }
 
-const zRawT112 = z.object({
+const zRawT114 = z.object({
   kind: z.unknown(),
   points: z.unknown(),
 });
 
-export function deserializeT112(data: unknown): T112 {
-  const obj = zRawT112.parse(data);
+export function deserializeT114(data: unknown): T114 {
+  const obj = zRawT114.parse(data);
   return {
-    kind: deserializeT111(obj.kind),
+    kind: deserializeT113(obj.kind),
     points: deserializeVec3fList(obj.points),
   };
 }
-export function serializeT132(value: ReadonlyT132) {
+export function serializeT134(value: ReadonlyT134) {
   return {
     kind: value.kind,
     attacker: serializeBiomesId(value.attacker),
@@ -7404,36 +7786,36 @@ export function serializeT132(value: ReadonlyT132) {
   };
 }
 
-const zRawT132 = z.object({
+const zRawT134 = z.object({
   kind: z.unknown(),
   attacker: z.unknown(),
   dir: z.unknown(),
 });
 
-export function deserializeT132(data: unknown): T132 {
-  const obj = zRawT132.parse(data);
+export function deserializeT134(data: unknown): T134 {
+  const obj = zRawT134.parse(data);
   return {
-    kind: deserializeT131(obj.kind),
+    kind: deserializeT133(obj.kind),
     attacker: deserializeBiomesId(obj.attacker),
     dir: deserializeOptionalVec3f(obj.dir),
   };
 }
-export function serializeT144(value: ReadonlyT144) {
+export function serializeT146(value: ReadonlyT146) {
   return {
     kind: value.kind,
     type: serializeNpcDamageSource(value.type),
   };
 }
 
-const zRawT144 = z.object({
+const zRawT146 = z.object({
   kind: z.unknown(),
   type: z.unknown(),
 });
 
-export function deserializeT144(data: unknown): T144 {
-  const obj = zRawT144.parse(data);
+export function deserializeT146(data: unknown): T146 {
+  const obj = zRawT146.parse(data);
   return {
-    kind: deserializeT143(obj.kind),
+    kind: deserializeT145(obj.kind),
     type: deserializeNpcDamageSource(obj.type),
   };
 }
@@ -7465,17 +7847,17 @@ export function serializeMinigameMetadata(value: ReadonlyMinigameMetadata) {
   switch (value.kind) {
     case "simple_race":
       return {
-        ...serializeT167(value),
+        ...serializeT169(value),
         kind: "simple_race",
       };
     case "deathmatch":
       return {
-        ...serializeT168(value),
+        ...serializeT170(value),
         kind: "deathmatch",
       };
     case "spleef":
       return {
-        ...serializeT169(value),
+        ...serializeT171(value),
         kind: "spleef",
       };
   }
@@ -7486,42 +7868,42 @@ export function deserializeMinigameMetadata(data: unknown): MinigameMetadata {
   switch (obj.kind) {
     case "simple_race":
       return {
-        ...deserializeT167(obj),
+        ...deserializeT169(obj),
         kind: "simple_race",
       };
     case "deathmatch":
       return {
-        ...deserializeT168(obj),
+        ...deserializeT170(obj),
         kind: "deathmatch",
       };
     case "spleef":
       return {
-        ...deserializeT169(obj),
+        ...deserializeT171(obj),
         kind: "spleef",
       };
     default:
       throw new Error(`Unknown OneOf variant: ${obj.kind}`);
   }
 }
-export function serializeT177(value: ReadonlyT177) {
+export function serializeT179(value: ReadonlyT179) {
   return value === undefined || value === null
     ? undefined
-    : serializeT176(value);
+    : serializeT178(value);
 }
 
-export function deserializeT177(data: unknown): T177 {
+export function deserializeT179(data: unknown): T179 {
   return data === null || data === undefined
     ? undefined
-    : deserializeT176(data);
+    : deserializeT178(data);
 }
-export function serializeT178(value: ReadonlyT178) {
+export function serializeT180(value: ReadonlyT180) {
   return Array.from(value, ([k, v]) => [
     serializeBiomesId(k),
     serializeDeathMatchPlayerState(v),
   ]);
 }
 
-export function deserializeT178(data: unknown): T178 {
+export function deserializeT180(data: unknown): T180 {
   const arr = zGenericMapArray.parse(data);
   return new Map(
     arr.map(([k, v]: any) => [
@@ -7530,7 +7912,7 @@ export function deserializeT178(data: unknown): T178 {
     ])
   );
 }
-export function serializeT182(value: ReadonlyT182) {
+export function serializeT184(value: ReadonlyT184) {
   return {
     round_expires: value.round_expires,
     alive_round_players: serializeBiomesIdSet(value.alive_round_players),
@@ -7538,14 +7920,14 @@ export function serializeT182(value: ReadonlyT182) {
   };
 }
 
-const zRawT182 = z.object({
+const zRawT184 = z.object({
   round_expires: z.unknown(),
   alive_round_players: z.unknown(),
   tag_round_state: z.unknown(),
 });
 
-export function deserializeT182(data: unknown): T182 {
-  const obj = zRawT182.parse(data);
+export function deserializeT184(data: unknown): T184 {
+  const obj = zRawT184.parse(data);
   return {
     round_expires: deserializeF64(obj.round_expires),
     alive_round_players: deserializeBiomesIdSet(obj.alive_round_players),
@@ -7577,7 +7959,7 @@ export function deserializeSimpleRaceInstanceState(
 ): SimpleRaceInstanceState {
   const obj = zRawSimpleRaceInstanceState.parse(data);
   return {
-    player_state: deserializeT188(obj.player_state),
+    player_state: deserializeT190(obj.player_state),
     started_at: deserializeF64(obj.started_at),
     deaths: deserializeI32(obj.deaths),
     reached_checkpoints: deserializeReachedCheckpoints(obj.reached_checkpoints),
@@ -7613,20 +7995,20 @@ export function deserializeMinigameInstanceActivePlayerInfo(
     entry_time: deserializeF64(obj.entry_time),
   };
 }
-export function serializeT194(value: ReadonlyT194) {
+export function serializeT196(value: ReadonlyT196) {
   return {
     box: value.box,
     clipboard_entity_id: serializeBiomesId(value.clipboard_entity_id),
   };
 }
 
-const zRawT194 = z.object({
+const zRawT196 = z.object({
   box: z.unknown(),
   clipboard_entity_id: z.unknown(),
 });
 
-export function deserializeT194(data: unknown): T194 {
-  const obj = zRawT194.parse(data);
+export function deserializeT196(data: unknown): T196 {
+  const obj = zRawT196.parse(data);
   return {
     box: deserializeBox2(obj.box),
     clipboard_entity_id: deserializeBiomesId(obj.clipboard_entity_id),
@@ -7648,7 +8030,7 @@ export function serializeItemBuyerSpec(value: ReadonlyItemBuyerSpec) {
   switch (value.kind) {
     case "item_types":
       return {
-        ...serializeT210(value),
+        ...serializeT212(value),
         kind: "item_types",
       };
   }
@@ -7659,7 +8041,7 @@ export function deserializeItemBuyerSpec(data: unknown): ItemBuyerSpec {
   switch (obj.kind) {
     case "item_types":
       return {
-        ...deserializeT210(obj),
+        ...deserializeT212(obj),
         kind: "item_types",
       };
     default:
@@ -7693,12 +8075,12 @@ export function deserializeVolume(data: unknown): Volume {
   switch (obj.kind) {
     case "box":
       return {
-        ...deserializeT227(obj),
+        ...deserializeT229(obj),
         kind: "box",
       };
     case "sphere":
       return {
-        ...deserializeT229(obj),
+        ...deserializeT231(obj),
         kind: "sphere",
       };
     default:
@@ -7725,29 +8107,29 @@ export function deserializeT66(data: unknown): T66 {
   const arr = zGenericArray.parse(data);
   return arr.map((x: any) => deserializeT64(x));
 }
-export function serializeT74(value: ReadonlyT74) {
+export function serializeT76(value: ReadonlyT76) {
   return value === undefined || value === null
     ? undefined
     : serializeEmoteFishingLineEndPosition(value);
 }
 
-export function deserializeT74(data: unknown): T74 {
+export function deserializeT76(data: unknown): T76 {
   return data === null || data === undefined
     ? undefined
     : deserializeEmoteFishingLineEndPosition(data);
 }
 
-export function deserializeT78(data: unknown): T78 {
+export function deserializeT80(data: unknown): T80 {
   return data === null || data === undefined
     ? undefined
     : deserializeEmoteThrowInfo(data);
 }
 export function serializeAcl(value: ReadonlyAcl) {
   return {
-    everyone: serializeT99(value.everyone),
-    roles: serializeT102(value.roles),
-    entities: serializeT103(value.entities),
-    teams: serializeT103(value.teams),
+    everyone: serializeT101(value.everyone),
+    roles: serializeT104(value.roles),
+    entities: serializeT105(value.entities),
+    teams: serializeT105(value.teams),
     creator: serializeTargetedAcl(value.creator),
     creatorTeam: serializeTargetedAcl(value.creatorTeam),
   };
@@ -7765,10 +8147,10 @@ const zRawAcl = z.object({
 export function deserializeAcl(data: unknown): Acl {
   const obj = zRawAcl.parse(data);
   return {
-    everyone: deserializeT99(obj.everyone),
-    roles: deserializeT102(obj.roles),
-    entities: deserializeT103(obj.entities),
-    teams: deserializeT103(obj.teams),
+    everyone: deserializeT101(obj.everyone),
+    roles: deserializeT104(obj.roles),
+    entities: deserializeT105(obj.entities),
+    teams: deserializeT105(obj.teams),
     creator: deserializeTargetedAcl(obj.creator),
     creatorTeam: deserializeTargetedAcl(obj.creatorTeam),
   };
@@ -7798,17 +8180,17 @@ export function deserializeAclDomain(data: unknown): AclDomain {
   switch (obj.kind) {
     case "aabb":
       return {
-        ...deserializeT108(obj),
+        ...deserializeT110(obj),
         kind: "aabb",
       };
     case "point":
       return {
-        ...deserializeT110(obj),
+        ...deserializeT112(obj),
         kind: "point",
       };
     case "points":
       return {
-        ...deserializeT112(obj),
+        ...deserializeT114(obj),
         kind: "points",
       };
     default:
@@ -7829,7 +8211,7 @@ export function serializeDamageSource(value: ReadonlyDamageSource) {
       };
     case "block":
       return {
-        ...serializeT128(value),
+        ...serializeT130(value),
         kind: "block",
       };
     case "fall":
@@ -7839,7 +8221,7 @@ export function serializeDamageSource(value: ReadonlyDamageSource) {
       };
     case "attack":
       return {
-        ...serializeT132(value),
+        ...serializeT134(value),
         kind: "attack",
       };
     case "drown":
@@ -7869,7 +8251,7 @@ export function serializeDamageSource(value: ReadonlyDamageSource) {
       };
     case "npc":
       return {
-        ...serializeT144(value),
+        ...serializeT146(value),
         kind: "npc",
       };
   }
@@ -7880,57 +8262,57 @@ export function deserializeDamageSource(data: unknown): DamageSource {
   switch (obj.kind) {
     case "suicide":
       return {
-        ...deserializeT124(obj),
+        ...deserializeT126(obj),
         kind: "suicide",
       };
     case "despawnWand":
       return {
-        ...deserializeT126(obj),
+        ...deserializeT128(obj),
         kind: "despawnWand",
       };
     case "block":
       return {
-        ...deserializeT128(obj),
+        ...deserializeT130(obj),
         kind: "block",
       };
     case "fall":
       return {
-        ...deserializeT130(obj),
+        ...deserializeT132(obj),
         kind: "fall",
       };
     case "attack":
       return {
-        ...deserializeT132(obj),
+        ...deserializeT134(obj),
         kind: "attack",
       };
     case "drown":
       return {
-        ...deserializeT134(obj),
+        ...deserializeT136(obj),
         kind: "drown",
       };
     case "fire":
       return {
-        ...deserializeT136(obj),
+        ...deserializeT138(obj),
         kind: "fire",
       };
     case "fireDamage":
       return {
-        ...deserializeT138(obj),
+        ...deserializeT140(obj),
         kind: "fireDamage",
       };
     case "fireHeal":
       return {
-        ...deserializeT140(obj),
+        ...deserializeT142(obj),
         kind: "fireHeal",
       };
     case "heal":
       return {
-        ...deserializeT142(obj),
+        ...deserializeT144(obj),
         kind: "heal",
       };
     case "npc":
       return {
-        ...deserializeT144(obj),
+        ...deserializeT146(obj),
         kind: "npc",
       };
     default:
@@ -7941,8 +8323,8 @@ export function serializeDeathmatchInstanceState(
   value: ReadonlyDeathmatchInstanceState
 ) {
   return {
-    instance_state: serializeT177(value.instance_state),
-    player_states: serializeT178(value.player_states),
+    instance_state: serializeT179(value.instance_state),
+    player_states: serializeT180(value.player_states),
   };
 }
 
@@ -7956,11 +8338,11 @@ export function deserializeDeathmatchInstanceState(
 ): DeathmatchInstanceState {
   const obj = zRawDeathmatchInstanceState.parse(data);
   return {
-    instance_state: deserializeT177(obj.instance_state),
-    player_states: deserializeT178(obj.player_states),
+    instance_state: deserializeT179(obj.instance_state),
+    player_states: deserializeT180(obj.player_states),
   };
 }
-export function serializeT183(value: ReadonlyT183) {
+export function serializeT185(value: ReadonlyT185) {
   switch (value.kind) {
     case "waiting_for_players":
       return {
@@ -7969,33 +8351,33 @@ export function serializeT183(value: ReadonlyT183) {
       };
     case "round_countdown":
       return {
-        ...serializeT181(value),
+        ...serializeT183(value),
         kind: "round_countdown",
       };
     case "playing_round":
       return {
-        ...serializeT182(value),
+        ...serializeT184(value),
         kind: "playing_round",
       };
   }
 }
 
-export function deserializeT183(data: unknown): T183 {
+export function deserializeT185(data: unknown): T185 {
   const obj = zDiscriminatedObject.parse(data);
   switch (obj.kind) {
     case "waiting_for_players":
       return {
-        ...deserializeT172(obj),
+        ...deserializeT174(obj),
         kind: "waiting_for_players",
       };
     case "round_countdown":
       return {
-        ...deserializeT181(obj),
+        ...deserializeT183(obj),
         kind: "round_countdown",
       };
     case "playing_round":
       return {
-        ...deserializeT182(obj),
+        ...deserializeT184(obj),
         kind: "playing_round",
       };
     default:
@@ -8022,22 +8404,22 @@ export function deserializeMinigameInstanceActivePlayerMap(
     ])
   );
 }
-export function serializeT195(value: ReadonlyT195) {
+export function serializeT197(value: ReadonlyT197) {
   switch (value.kind) {
     case "aabb":
       return {
-        ...serializeT194(value),
+        ...serializeT196(value),
         kind: "aabb",
       };
   }
 }
 
-export function deserializeT195(data: unknown): T195 {
+export function deserializeT197(data: unknown): T197 {
   const obj = zDiscriminatedObject.parse(data);
   switch (obj.kind) {
     case "aabb":
       return {
-        ...deserializeT194(obj),
+        ...deserializeT196(obj),
         kind: "aabb",
       };
     default:
@@ -8070,7 +8452,7 @@ export function deserializeOptionalInventoryAssignmentPattern(
 }
 export function serializeEmoteFishingInfo(value: ReadonlyEmoteFishingInfo) {
   return {
-    line_end_position: serializeT74(value.line_end_position),
+    line_end_position: serializeT76(value.line_end_position),
     line_end_item: serializeOptionalItem(value.line_end_item),
   };
 }
@@ -8083,7 +8465,7 @@ const zRawEmoteFishingInfo = z.object({
 export function deserializeEmoteFishingInfo(data: unknown): EmoteFishingInfo {
   const obj = zRawEmoteFishingInfo.parse(data);
   return {
-    line_end_position: deserializeT74(obj.line_end_position),
+    line_end_position: deserializeT76(obj.line_end_position),
     line_end_item: deserializeOptionalItem(obj.line_end_item),
   };
 }
@@ -8091,7 +8473,7 @@ export function deserializeEmoteFishingInfo(data: unknown): EmoteFishingInfo {
 export function deserializeOptionalEmoteThrowInfo(
   data: unknown
 ): OptionalEmoteThrowInfo {
-  return data === null || data === undefined ? undefined : deserializeT78(data);
+  return data === null || data === undefined ? undefined : deserializeT80(data);
 }
 export function serializeOptionalDamageSource(
   value: ReadonlyOptionalDamageSource
@@ -8112,9 +8494,9 @@ export function serializeSpleefInstanceState(
   value: ReadonlySpleefInstanceState
 ) {
   return {
-    instance_state: serializeT183(value.instance_state),
+    instance_state: serializeT185(value.instance_state),
     observer_spawn_points: value.observer_spawn_points,
-    player_stats: serializeT184(value.player_stats),
+    player_stats: serializeT186(value.player_stats),
     round_number: value.round_number,
   };
 }
@@ -8131,9 +8513,9 @@ export function deserializeSpleefInstanceState(
 ): SpleefInstanceState {
   const obj = zRawSpleefInstanceState.parse(data);
   return {
-    instance_state: deserializeT183(obj.instance_state),
+    instance_state: deserializeT185(obj.instance_state),
     observer_spawn_points: deserializeVec3fList(obj.observer_spawn_points),
-    player_stats: deserializeT184(obj.player_stats),
+    player_stats: deserializeT186(obj.player_stats),
     round_number: deserializeI32(obj.round_number),
   };
 }
@@ -8141,7 +8523,7 @@ export function serializeMinigameInstanceSpaceClipboardInfo(
   value: ReadonlyMinigameInstanceSpaceClipboardInfo
 ) {
   return {
-    region: serializeT195(value.region),
+    region: serializeT197(value.region),
   };
 }
 
@@ -8154,7 +8536,7 @@ export function deserializeMinigameInstanceSpaceClipboardInfo(
 ): MinigameInstanceSpaceClipboardInfo {
   const obj = zRawMinigameInstanceSpaceClipboardInfo.parse(data);
   return {
-    region: deserializeT195(obj.region),
+    region: deserializeT197(obj.region),
   };
 }
 export function serializeProtectionParams(value: ReadonlyProtectionParams) {

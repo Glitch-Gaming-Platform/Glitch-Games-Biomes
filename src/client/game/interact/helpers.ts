@@ -49,6 +49,7 @@ import { terrainIdToBlock } from "@/shared/bikkie/terrain";
 import { EAGER_EXPIRATION_MS } from "@/shared/constants";
 import { using } from "@/shared/deletable";
 import type { ReadonlyEntity } from "@/shared/ecs/gen/entities";
+import { NpcMetadataSelector } from "@/shared/ecs/gen/selectors";
 import {
   DestroyBlueprintEvent,
   DestroyGroupEvent,
@@ -88,6 +89,15 @@ import { blockPos, voxelShard } from "@/shared/game/shard";
 import { getCameraDirection, setPosition } from "@/shared/game/spatial";
 import { blockIsEmpty } from "@/shared/game/terrain_helper";
 import { invalidateHarthmereGroundedColumnsNear } from "@/client/game/util/harthmere_entity_grounding";
+import { harthmereNativeItemIdForBiomesId } from "@/shared/harthmere/harthmere_native_item_ids";
+import {
+  HARTHMERE_PROJECTILE_VISUAL_EVENT,
+  getHarthmereProjectileVisual,
+} from "@/shared/harthmere/projectile_visual_manifest";
+import {
+  getHarthmereEnergyWeapon,
+  harthmereEnergyWeaponSecondaryRadius,
+} from "@/shared/harthmere/energy_weapon_catalog";
 import type { BiomesId } from "@/shared/ids";
 import {
   aabbIterator,
@@ -188,6 +198,15 @@ function emitHarthmereNativeNpcAttackContact({
       return {
         id,
         label,
+        position:
+          Array.isArray((record.position as { v?: unknown } | undefined)?.v) &&
+          (record.position as { v: unknown[] }).v.length >= 3
+            ? [
+                Number((record.position as { v: unknown[] }).v[0]),
+                Number((record.position as { v: unknown[] }).v[1]),
+                Number((record.position as { v: unknown[] }).v[2]),
+              ]
+            : undefined,
         hpBefore:
           typeof (record.health as { hp?: unknown } | undefined)?.hp ===
           "number"
@@ -206,6 +225,7 @@ function emitHarthmereNativeNpcAttackContact({
         hpBefore: number | undefined;
         hasNpcMetadata: boolean;
         hasPosition: true;
+        position: number[] | undefined;
       } => Boolean(hit)
     );
 
@@ -214,15 +234,24 @@ function emitHarthmereNativeNpcAttackContact({
   }
 
   const toolRecord = (tool ?? {}) as Record<string, unknown>;
+  const rawToolId =
+    typeof toolRecord.id === "string" || typeof toolRecord.id === "number"
+      ? toolRecord.id
+      : undefined;
+  const semanticToolId =
+    rawToolId === undefined
+      ? undefined
+      : harthmereNativeItemIdForBiomesId(Number(rawToolId)) ??
+        String(rawToolId);
+  const projectileVisual = getHarthmereProjectileVisual(semanticToolId);
   const detail = {
     version: HARTHMERE_NATIVE_NPC_ATTACK_DAMAGE_BRIDGE,
     source: "client.game.interact.helpers.handleAttackInteraction",
     attack: "basic",
     at: Date.now(),
-    toolId:
-      typeof toolRecord.id === "string" || typeof toolRecord.id === "number"
-        ? toolRecord.id
-        : undefined,
+    toolId: rawToolId,
+    itemId: semanticToolId,
+    projectileVisualId: projectileVisual?.id,
     hits,
   };
 
@@ -231,6 +260,24 @@ function emitHarthmereNativeNpcAttackContact({
       detail,
     })
   );
+  if (projectileVisual && hits[0]?.position) {
+    window.dispatchEvent(
+      new CustomEvent(HARTHMERE_PROJECTILE_VISUAL_EVENT, {
+        detail: {
+          source: "native_ecs_attack_contact",
+          projectileVisualId: projectileVisual.id,
+          itemId: semanticToolId,
+          attack: "basic",
+          nativeTargetEntityId: hits[0].id,
+          targetPoint: [
+            hits[0].position[0],
+            hits[0].position[1] + 0.9,
+            hits[0].position[2],
+          ],
+        },
+      })
+    );
+  }
 
   const win = window as typeof window & {
     __harthmereNativeNpcAttackContactDebug?: unknown[];
@@ -341,6 +388,7 @@ function emitHarthmereNativeTerrainBlockPlaced(input: {
 
 export function handleAttackInteraction(
   deps: {
+    table: ClientTable;
     resources: ClientResources;
     events: Events;
     audioManager: AudioManager;
@@ -364,6 +412,79 @@ export function handleAttackInteraction(
 
   const playerDamageBuff =
     deps.resources.get("/player/modifiers").attackDamage.increase;
+
+  const toolRecord = (tool ?? {}) as Record<string, unknown>;
+  const rawToolId =
+    typeof toolRecord.id === "string" || typeof toolRecord.id === "number"
+      ? toolRecord.id
+      : undefined;
+  const semanticToolId =
+    rawToolId === undefined
+      ? undefined
+      : harthmereNativeItemIdForBiomesId(Number(rawToolId)) ??
+        String(rawToolId);
+  const energyWeapon = getHarthmereEnergyWeapon(semanticToolId);
+  const primaryEnergyTarget = energyWeapon
+    ? attackedEntities.find(
+        (entity) => entity.npc_metadata && entity.position && entity.health
+      )
+    : undefined;
+  const energySecondaryTargets: ReadonlyEntity[] = [];
+  if (energyWeapon && primaryEnergyTarget?.position) {
+    const radius = harthmereEnergyWeaponSecondaryRadius(energyWeapon);
+    if (radius > 0) {
+      for (const candidate of deps.table.scan(
+        NpcMetadataSelector.query.spatial.inSphere({
+          center: primaryEnergyTarget.position.v,
+          radius,
+        })
+      )) {
+        if (
+          candidate.id === primaryEnergyTarget.id ||
+          !candidate.position ||
+          !candidate.health ||
+          candidate.health.hp <= 0
+        ) {
+          continue;
+        }
+        energySecondaryTargets.push(candidate);
+        if (energySecondaryTargets.length >= 12) break;
+      }
+    }
+  }
+
+  if (energyWeapon && primaryEnergyTarget?.position) {
+    const attackDir = normalizev(
+      sub(primaryEnergyTarget.position.v, player.player.position)
+    );
+    const damageSource: DamageSource = {
+      kind: "attack",
+      attacker: player.id,
+      dir: attackDir,
+    };
+    const clientDamage =
+      damagePerEntityAttack(tool, primaryEnergyTarget) + playerDamageBuff;
+    fireAndForget(
+      (async () => {
+        await deps.events.publish(
+          new UpdateNpcHealthEvent({
+            id: primaryEnergyTarget.id,
+            hp: -clientDamage,
+            damageSource,
+          })
+        );
+        for (const candidate of energySecondaryTargets) {
+          await deps.events.publish(
+            new UpdateNpcHealthEvent({
+              id: candidate.id,
+              hp: -1,
+              damageSource,
+            })
+          );
+        }
+      })()
+    );
+  }
 
   for (const entity of attackedEntities) {
     // Cursor attack candidates can briefly contain entities that are not valid
@@ -394,7 +515,7 @@ export function handleAttackInteraction(
           })
         )
       );
-    } else {
+    } else if (!energyWeapon || !primaryEnergyTarget) {
       // Send every NPC hit through the native health handler. Harthmere seeded
       // NPCs are real ECS entities; excluding them created a private Redis HP
       // authority and prevented native death, loot, and npcKilled triggers.

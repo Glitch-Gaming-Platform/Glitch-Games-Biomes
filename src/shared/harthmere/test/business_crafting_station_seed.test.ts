@@ -91,14 +91,21 @@ describe("business crafting station seeds", () => {
       )!;
       const centerX = (site.footprint.xMin + site.footprint.xMax) / 2;
       const centerZ = (site.footprint.zMin + site.footprint.zMax) / 2;
-      const dist = Math.hypot(seed.position[0] - centerX, seed.position[2] - centerZ);
+      const dist = Math.hypot(
+        seed.position[0] - centerX,
+        seed.position[2] - centerZ
+      );
       assert.ok(dist > 0.5, `${seed.outpostId} station overlaps the owner`);
     }
   });
 
   it("uses a unique id band clear of owners and customers", () => {
     const stationIds = harthmereBusinessCraftingStationSeedIds().map(Number);
-    assert.equal(new Set(stationIds).size, stationIds.length, "ids must be unique");
+    assert.equal(
+      new Set(stationIds).size,
+      stationIds.length,
+      "ids must be unique"
+    );
 
     const ownerIds = new Set(harthmereBusinessOwnerNpcSeedIds().map(Number));
     const customerIds = new Set(

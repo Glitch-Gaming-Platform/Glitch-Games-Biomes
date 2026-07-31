@@ -82,7 +82,10 @@ describe("dialogue quality fixes (D-1/D-2/D-3/D-4/D-5)", () => {
         name: "Grave-Caked Walker",
         description: "an undead risen thing in Gravewood",
       });
-      assert.ok(!/\bI am\b/.test(line), `monster should not say 'I am': ${line}`);
+      assert.ok(
+        !/\bI am\b/.test(line),
+        `monster should not say 'I am': ${line}`
+      );
       assert.ok(
         !/production bark|encounter readability/i.test(line),
         `monster line must be in-world: ${line}`

@@ -169,7 +169,9 @@ export class PlayersRenderer implements Renderer {
           "warp",
           "player_warp"
         );
-      } else if (player.isEmoting(clock.time, "splash")) {
+      } else if (player.isEmoting(clock.time, "splash") && !player.isLocal) {
+        // Local splash audio is dispatched directly at water entry so it can
+        // load asynchronously. Keep emote-driven playback for remote players.
         player.setSound(this.resources, this.audioManager, "splash", "splash");
       } else if (player.isEmoting(clock.time, "applause")) {
         player.setSound(
@@ -820,11 +822,11 @@ function addFloatingSelfieCamMesh(
       table,
       resources,
       player.id,
-      playerFirstPersonCamPosition(player.position, player.aabb()),
+      playerFirstPersonCamPosition(player.position, player.collisionAabb()),
       thirdPersonCamPosition(
         player.orientation,
         camOffsetVector(selfieTweaks),
-        playerFirstPersonCamPosition(player.position, player.aabb())
+        playerFirstPersonCamPosition(player.position, player.collisionAabb())
       )
     );
     const orientation = getCamOrientation(

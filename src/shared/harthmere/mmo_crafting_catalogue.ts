@@ -21,6 +21,8 @@ import {
   SNAPSHOT_GROVE_TUTORIAL_ITEM_IDS,
   SNAPSHOT_GROVE_TUTORIAL_RECIPE_IDS,
 } from "./snapshot_grove_trigger_contract";
+import { HARTHMERE_PREMIUM_WEAPONS } from "@/shared/harthmere/premium_weapon_catalog";
+import { getHarthmereEnergyWeapon } from "@/shared/harthmere/energy_weapon_catalog";
 
 export const HARTHMERE_CRAFTING_STATIONS = {
   anglersTable: "65464304897922",
@@ -2945,6 +2947,60 @@ export function ensureHarthmereProductionCraftingCatalogue() {
         durabilityMax: 60,
         equipmentSlots: ["main_hand"],
         description: tool.description,
+      })
+    );
+  }
+  for (const weapon of HARTHMERE_PREMIUM_WEAPONS) {
+    const energyWeapon = getHarthmereEnergyWeapon(weapon.id);
+    registerHarthmereItemDefinition(
+      item(weapon.id, weapon.label, {
+        maxStackSize: 1,
+        baseValue: weapon.baseValue,
+        binding: "on_equip",
+        isCraftingMaterial: false,
+        category: "weapon",
+        durabilityMax: weapon.durabilityMax,
+        repairable: weapon.durabilityMax > 0,
+        levelRequirement: weapon.requiredLevel,
+        equipmentSlots: [weapon.slot],
+        twoHanded: weapon.twoHanded,
+        qualityFloor:
+          weapon.quality === "legendary"
+            ? 95
+            : weapon.quality === "epic"
+            ? 85
+            : weapon.quality === "rare"
+            ? 70
+            : weapon.quality === "uncommon"
+            ? 45
+            : 20,
+        stats: {
+          ...(weapon.attackPoints !== undefined
+            ? { attackPoints: weapon.attackPoints }
+            : {}),
+          ...(weapon.accuracy !== undefined
+            ? { accuracy: weapon.accuracy }
+            : {}),
+          ...(weapon.criticalChance !== undefined
+            ? { criticalChance: weapon.criticalChance }
+            : {}),
+          ...(weapon.defense !== undefined ? { defense: weapon.defense } : {}),
+          ...(weapon.armor !== undefined ? { armor: weapon.armor } : {}),
+          ...(weapon.magicResistance !== undefined
+            ? { magicResistance: weapon.magicResistance }
+            : {}),
+          ...(energyWeapon
+            ? {
+                rangedAttack: energyWeapon.baseDamage,
+                energyWeaponTier: energyWeapon.tier,
+                energyWeaponCooldownMs: energyWeapon.cooldownMs,
+                energyWeaponEffectiveRange: energyWeapon.effectiveRange,
+                energyWeaponHardMaxRange: energyWeapon.hardMaxRange,
+                energyWeaponArmorPenetration: energyWeapon.armorPenetration,
+              }
+            : {}),
+        },
+        description: weapon.description,
       })
     );
   }

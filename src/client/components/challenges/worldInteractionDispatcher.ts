@@ -6,6 +6,11 @@ export const WORLD_INTERACTION_PRIORITY = {
   // incidental overlapping players/NPCs; otherwise F can open an unrelated
   // modal while the authored quest action remains stuck.
   chapter1Story: 30_000,
+  // Gates are Chapter 1 world interactions, but an active conversation staged
+  // at the same aperture (Halden/Jackie/Rook beats) must own F first. When no
+  // story candidate is registered, the gate still outranks tools and every
+  // ordinary world object.
+  chapter1Gate: 29_000,
   // A deliberately active tool mode (camera/fishing/wand) owns its controls
   // before any object behind the reticle. The player selected that mode and
   // its HUD is the visible contract for F.

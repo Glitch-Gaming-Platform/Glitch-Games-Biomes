@@ -110,6 +110,13 @@ const harthmereProductionReconciliation = fs.readFileSync(
   path.join(root, "scripts/glitch/run-harthmere-production-reconciliation.sh"),
   "utf8"
 );
+const harthmereInteriorVegetationClear = fs.readFileSync(
+  path.join(
+    root,
+    "scripts/harthmere/clear-harthmere-building-interior-vegetation.cjs"
+  ),
+  "utf8"
+);
 const runBuildChecks = script.slice(script.indexOf("run_build_checks()"));
 const pushAndDeploy = script.slice(
   script.indexOf("push_and_deploy()"),
@@ -1077,20 +1084,38 @@ ok(
 ok(
   harthmereProductionReconciliation.includes(
     [
-      "audit_extension_terrain",
+      "report_extension_terrain",
+      "repair_extension_surface",
+      "clear_building_interior_vegetation",
       "materialize_business_outposts",
       'run_node "Harthmere ECS and shared-state reconciliation" \\',
       "  scripts/harthmere/reconcile-production-world-sync.cjs",
+      "materialize_chapter1_world_buildings",
       "materialize_connector_route",
     ].join("\n")
   ) &&
+    harthmereProductionReconciliation.includes(
+      "scripts/harthmere/materialize-chapter1-world-buildings-redis.cjs"
+    ) &&
     harthmereProductionReconciliation.includes(
       "probe-production-terrain-grounding.cjs"
     ) &&
     harthmereProductionReconciliation.includes(
       "reconcile-production-live-creature-grounding.cjs"
     ),
-  "in-VNet reconciliation audits terrain, applies map/ECS migration, writes the connector last, and verifies grounding"
+  "in-VNet reconciliation repairs terrain, applies map/ECS and Chapter 1 building migration, writes the connector last, and verifies grounding"
+);
+ok(
+  harthmereInteriorVegetationClear.includes("await activeWorld?.stop?.()") &&
+    harthmereInteriorVegetationClear.includes("activeRedis?.disconnect?.()") &&
+    harthmereInteriorVegetationClear.includes(".then(closeResources)") &&
+    harthmereProductionReconciliation.includes(
+      '"${HARTHMERE_INTERIOR_CLEAR_TIMEOUT_SECONDS:-300}"'
+    ) &&
+    harthmereProductionReconciliation.includes(
+      "timeout --signal=TERM --kill-after=30s"
+    ),
+  "interior vegetation maintenance closes Redis world resources and has a bounded deployment timeout"
 );
 ok(
   productionGroundingProbe.includes(
@@ -1126,9 +1151,15 @@ ok(
     script.includes(
       'HARTHMERE_TERRAIN_SEED_MODE="${HARTHMERE_TERRAIN_SEED_MODE:-additive}"'
     ) &&
+    script.includes(
+      'BIOMES_MIGRATE_HARTHMERE_AUTHORED_WATER="${BIOMES_MIGRATE_HARTHMERE_AUTHORED_WATER:-1}"'
+    ) &&
     script.includes("BIOMES_FORCE_LOCAL_DEV_TOWN_RESEED=0") &&
     script.includes(
       'BIOMES_TERRAIN_SEED_MODE="$HARTHMERE_TERRAIN_SEED_MODE"'
+    ) &&
+    script.includes(
+      'BIOMES_MIGRATE_HARTHMERE_AUTHORED_WATER="$BIOMES_MIGRATE_HARTHMERE_AUTHORED_WATER"'
     ) &&
     script.includes("--migrate-existing-terrain") &&
     script.includes("--min-replicas 1") &&

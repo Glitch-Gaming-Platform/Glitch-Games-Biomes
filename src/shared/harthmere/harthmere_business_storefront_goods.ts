@@ -38,6 +38,10 @@ import {
 import { HARTHMERE_BUSINESS_OUTPOSTS } from "@/shared/harthmere/business_customer_simulator";
 import { ensureHarthmereProductionVendorCatalog } from "@/shared/harthmere/harthmere_vendor_catalog";
 import type { HarthmereEconomyBusinessTypeId } from "@/shared/harthmere/mmo_economy_authority";
+import {
+  HARTHMERE_ENERGY_WEAPONS,
+  HARTHMERE_ENERGY_WEAPON_VENDOR_ID,
+} from "@/shared/harthmere/energy_weapon_catalog";
 
 export const HARTHMERE_BUSINESS_STOREFRONT_GOODS_VERSION =
   "harthmere-business-storefront-goods" as const;
@@ -317,7 +321,7 @@ export function harthmereBusinessTypeSellingJobMaterial(
 export interface HarthmereBusinessStorefrontListing {
   businessType: HarthmereEconomyBusinessTypeId;
   itemId: string;
-  kind: "block" | "interior" | "material" | "recipe_book";
+  kind: "block" | "interior" | "material" | "recipe_book" | "weapon";
   buyPrice: number;
   recipeIds?: readonly string[];
 }
@@ -382,6 +386,16 @@ export function harthmereBusinessStorefrontListingsForType(
         ),
       })
     ),
+    ...(type === HARTHMERE_ENERGY_WEAPON_VENDOR_ID
+      ? HARTHMERE_ENERGY_WEAPONS.map(
+          (weapon): HarthmereBusinessStorefrontListing => ({
+            businessType: type,
+            itemId: weapon.id,
+            kind: "weapon",
+            buyPrice: weapon.priceGold,
+          })
+        )
+      : []),
     ...(recipeBook
       ? [
           {

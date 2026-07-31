@@ -85,6 +85,7 @@ export type GlobalKeyCode = Extract<
   | "KeyY"
   | "KeyC"
   | "KeyO"
+  | "BracketRight"
   | "Period"
   | "Escape"
   | "Comma"
@@ -102,6 +103,8 @@ export const MovementKeys = [
   "ShiftRight",
   "KeyT",
   "KeyZ",
+  "KeyX",
+  "KeyC",
 ];
 
 export type LocalKeyCode = Exclude<KeyCode, GlobalKeyCode>;

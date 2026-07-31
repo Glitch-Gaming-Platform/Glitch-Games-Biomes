@@ -72,7 +72,8 @@ describe("Harthmere placeable crafting-station F fallback", () => {
       source,
       /harthmereWorldObjectCandidateIsVisibleForInteraction/
     );
-    assert.match(source, /activeHarthmereStaticWorldObjectMarkerId/);
+    assert.match(source, /activeHarthmereQuestMarkerIds/);
+    assert.match(source, /activeMarkerIds\.has\(candidate\.id\)/);
     assert.match(source, /readActiveBiomesUIMapPin/);
     assert.match(
       source,

@@ -1,5 +1,6 @@
 // @refresh reset
 
+import { objectPreviewRenderScale } from "@/client/components/object_preview_render_scale";
 import type { ClientConfig } from "@/client/game/client_config";
 import { BasePassMaterial } from "@/client/game/renderers/base_pass_material";
 import { ColorCorrectionPass } from "@/client/game/renderers/passes/color_correction";
@@ -158,7 +159,11 @@ export class ThreeObjectPreview extends React.Component<
     ]);
 
     this.passRenderer.setPixelRatio(
-      this.props.renderScale ?? window.devicePixelRatio
+      objectPreviewRenderScale({
+        renderScale: this.props.renderScale,
+        devicePixelRatio: window.devicePixelRatio,
+        lowMemory: this.props.clientConfig?.lowMemory ?? false,
+      })
     );
     this.threeMountRef.current.appendChild(this.passRenderer.canvas);
     this.passRenderer.canvas.style.width = "100%";

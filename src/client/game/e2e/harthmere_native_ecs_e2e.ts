@@ -260,6 +260,18 @@ export interface HarthmereNativeEcsE2EBridge {
   chapter1CutsceneCatalog(): Promise<
     Array<{ id: string; shots: number; authoredSeconds: number }>
   >;
+  /** Install the same per-player cast/gate projection as the scene's story beat. */
+  chapter1PrepareCutsceneAudit(id: string): Promise<{
+    activeGateIds: string[];
+    staging: Array<{
+      entityId: number;
+      displayName: string;
+      present: boolean;
+      useSeededBody: boolean;
+      position?: [number, number, number];
+      activity: string;
+    }>;
+  }>;
   /** Request a real registered cutscene through the production director queue. */
   chapter1StartCutscene(id: string): Promise<{ accepted: boolean }>;
   chapter1StopCutscene(): void;
@@ -752,6 +764,95 @@ export function installHarthmereNativeEcsE2E(
         ),
       }));
     },
+    chapter1PrepareCutsceneAudit: async (id) => {
+      const [scenes, ids, stagingModule, projectionModule, puppets, gates] =
+        await Promise.all([
+          import("@/shared/cutscene/ch1_scenes"),
+          import("@/shared/harthmere/ch1_ids"),
+          import("@/shared/harthmere/ch1_staging"),
+          import(
+            "@/client/components/challenges/Chapter1WorldProjectionController"
+          ),
+          import("@/shared/cutscene/puppets"),
+          import("@/client/game/renderers/ch1_fracture_gate"),
+        ]);
+      const { CH1_SCENE_IDS } = scenes;
+      const { CH1_FLAGS } = ids;
+      const storyBeatByScene = new Map<
+        string,
+        Parameters<typeof stagingModule.ch1StageDirections>[0]
+      >([
+        [
+          CH1_SCENE_IDS.firstGate,
+          { flags: [CH1_FLAGS.started], activeStepId: "the_seam" },
+        ],
+        [
+          CH1_SCENE_IDS.theFlinch,
+          {
+            flags: [CH1_FLAGS.started, CH1_FLAGS.gatePersistentOpen],
+            activeStepId: "the_flinch",
+          },
+        ],
+        [
+          CH1_SCENE_IDS.confrontation,
+          { flags: [CH1_FLAGS.started], activeStepId: "confront" },
+        ],
+        [
+          CH1_SCENE_IDS.sorrelDoor,
+          {
+            flags: [CH1_FLAGS.act4Complete],
+            activeStepId: "d2_sorrels_camp",
+          },
+        ],
+        [
+          CH1_SCENE_IDS.theCase,
+          { flags: [CH1_FLAGS.act5Complete], activeStepId: "hear_him_out" },
+        ],
+        [
+          CH1_SCENE_IDS.consolidationRevision,
+          { flags: [CH1_FLAGS.act5Complete], activeStepId: "the_word" },
+        ],
+        [
+          CH1_SCENE_IDS.tooLate,
+          { flags: [CH1_FLAGS.act5Complete], activeStepId: "watch_him_go" },
+        ],
+        [
+          CH1_SCENE_IDS.theWatchHouse,
+          {
+            flags: [CH1_FLAGS.act5Complete, CH1_FLAGS.jackieReported],
+            activeStepId: "the_whole_plan",
+          },
+        ],
+      ]);
+      const staging = stagingModule.ch1StageDirections(
+        storyBeatByScene.get(id) ?? { flags: [CH1_FLAGS.started] }
+      );
+      const projection = {
+        staging: staging.map((row) => ({
+          ...row,
+          position: row.position
+            ? ([...row.position] as [number, number, number])
+            : undefined,
+        })),
+        worldPhase: [],
+        isolateCutsceneCast: true,
+      };
+      window.__chapter1E2ECutsceneProjection = projection;
+      puppets.publishChapter1PuppetOverrides(
+        projectionModule.chapter1ProjectionPuppetOverrides(projection)
+      );
+      const activeGateIds =
+        id === CH1_SCENE_IDS.firstGate
+          ? ["ch1_gate_fence_sighting"]
+          : id === CH1_SCENE_IDS.persistentGate
+          ? ["ch1_gate_desert"]
+          : [];
+      gates.setCh1ActiveGateIds(activeGateIds);
+      return {
+        activeGateIds,
+        staging: projection.staging,
+      };
+    },
     chapter1StartCutscene: async (id) => {
       const cutsceneService = await import(
         "@/client/game/cutscene/cutscene_service"
@@ -798,6 +899,15 @@ export function installHarthmereNativeEcsE2E(
       context.resources.update("/scene/cutscene", (state) => {
         state.skipRequested = true;
       });
+      delete window.__chapter1E2ECutsceneProjection;
+      void Promise.all([
+        import("@/shared/cutscene/puppets").then((module) =>
+          module.clearChapter1PuppetOverrides()
+        ),
+        import("@/client/game/renderers/ch1_fracture_gate").then((module) =>
+          module.setCh1ActiveGateIds(undefined)
+        ),
+      ]);
     },
     chapter1CaptureCutsceneVideo: async (input) => {
       const [{ requestCutsceneVideoById }, cutsceneService] = await Promise.all(

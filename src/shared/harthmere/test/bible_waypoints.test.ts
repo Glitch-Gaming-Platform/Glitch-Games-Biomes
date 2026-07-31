@@ -37,7 +37,9 @@ describe("Bible waypoints — grounding", () => {
 
   it("never resolves a shipped waypoint to Y=0", () => {
     for (const quest of BIBLE_QUEST_CATALOG) {
-      for (const [index, position] of bibleQuestWorldWaypoints(quest).entries()) {
+      for (const [index, position] of bibleQuestWorldWaypoints(
+        quest
+      ).entries()) {
         const label = index === 0 ? "marker" : quest.steps[index - 1].id;
         assert.notEqual(position[1], 0, `${quest.id}/${label}`);
         assert(
@@ -65,7 +67,8 @@ describe("Bible waypoints — grounding", () => {
     // The overwhelming majority of the catalog is above ground. Underground
     // arcs are the deliberate exception, asserted separately below.
     const surface = BIBLE_QUEST_CATALOG.filter(
-      (quest) => bibleQuestWorldWaypoint(quest)[1] === HARTHMERE_EXTENSION_FEET_Y
+      (quest) =>
+        bibleQuestWorldWaypoint(quest)[1] === HARTHMERE_EXTENSION_FEET_Y
     );
     assert(
       surface.length > BIBLE_QUEST_CATALOG.length * 0.9,
@@ -83,7 +86,8 @@ describe("Bible waypoints — grounding", () => {
       "bellbound_q07_bellward_halls",
       "bellbound_q08_voices_in_stone",
     ].map((questId) => bibleQuestWorldWaypoint(bibleQuest(questId)!)[1]);
-    for (const depth of depths) assert(depth < 0, `expected underground: ${depth}`);
+    for (const depth of depths)
+      assert(depth < 0, `expected underground: ${depth}`);
     for (let index = 1; index < depths.length; index += 1) {
       assert(
         depths[index] < depths[index - 1],

@@ -18,7 +18,7 @@ import {
 const NOW = 1_700_400_000_000;
 
 function baseState(
-  inventory: Record<string, number>,
+  inventory: Record<string, number>
 ): HarthmereFoodStaminaState {
   return {
     ...defaultHarthmereFoodStaminaState("player_cook", NOW),
@@ -29,7 +29,7 @@ function baseState(
 
 const GRILLED_DURATION = scaleHarthmereCookDurationMs(
   HARTHMERE_COOKING_RECIPES.grilled_meat.cookTimeMs,
-  1,
+  1
 );
 
 describe("harthmere cooking — duration scaler", () => {
@@ -39,43 +39,43 @@ describe("harthmere cooking — duration scaler", () => {
       assert.ok(
         ms >= HARTHMERE_COOK_DURATION_MIN_MS &&
           ms <= HARTHMERE_COOK_DURATION_MAX_MS,
-        `${recipe.recipeId} -> ${ms}ms out of band`,
+        `${recipe.recipeId} -> ${ms}ms out of band`
       );
     }
   });
 
   it("maps the corpus min to 20s and max to 120s, and clamps beyond", () => {
     const times = Object.values(HARTHMERE_COOKING_RECIPES).map(
-      (r) => r.cookTimeMs,
+      (r) => r.cookTimeMs
     );
     const min = Math.min(...times);
     const max = Math.max(...times);
     assert.equal(
       scaleHarthmereCookDurationMs(min, 1),
-      HARTHMERE_COOK_DURATION_MIN_MS,
+      HARTHMERE_COOK_DURATION_MIN_MS
     );
     assert.equal(
       scaleHarthmereCookDurationMs(max, 1),
-      HARTHMERE_COOK_DURATION_MAX_MS,
+      HARTHMERE_COOK_DURATION_MAX_MS
     );
     assert.equal(
       scaleHarthmereCookDurationMs(min - 9999, 1),
-      HARTHMERE_COOK_DURATION_MIN_MS,
+      HARTHMERE_COOK_DURATION_MIN_MS
     );
     assert.equal(
       scaleHarthmereCookDurationMs(max + 9999, 1),
-      HARTHMERE_COOK_DURATION_MAX_MS,
+      HARTHMERE_COOK_DURATION_MAX_MS
     );
   });
 
   it("multiplies by batch count and is monotonic in cook time", () => {
     assert.equal(
       scaleHarthmereCookDurationMs(60_000, 3),
-      scaleHarthmereCookDurationMs(60_000, 1) * 3,
+      scaleHarthmereCookDurationMs(60_000, 1) * 3
     );
     assert.ok(
       scaleHarthmereCookDurationMs(30_000, 1) <=
-        scaleHarthmereCookDurationMs(90_000, 1),
+        scaleHarthmereCookDurationMs(90_000, 1)
     );
   });
 });
@@ -115,7 +115,7 @@ describe("harthmere cooking — enqueue", () => {
       nowMs: NOW,
     });
     assert.ok(
-      noVeg.warnings.includes("cooking_rejected:missing_input:loaf_bread"),
+      noVeg.warnings.includes("cooking_rejected:missing_input:loaf_bread")
     );
 
     // Only one raw_meat: first job reserves it, second has nothing left.
@@ -148,12 +148,10 @@ describe("harthmere cooking — enqueue", () => {
         stationKind: "campfire",
         recipeId: "worker_meal",
         nowMs: NOW,
-      },
+      }
     );
     assert.ok(
-      wrongStation.warnings.includes(
-        "cooking_rejected:missing_station:cookpot",
-      ),
+      wrongStation.warnings.includes("cooking_rejected:missing_station:cookpot")
     );
   });
 
@@ -191,10 +189,7 @@ describe("harthmere cooking — enqueue", () => {
       assert.deepEqual(r.warnings, [], `enqueue ${i} should succeed`);
       state = r.state;
     }
-    assert.equal(
-      state.cooking.s1.jobs.length,
-      HARTHMERE_COOK_STATION_JOBS_MAX,
-    );
+    assert.equal(state.cooking.s1.jobs.length, HARTHMERE_COOK_STATION_JOBS_MAX);
     const overflow = enqueueHarthmereCook(state, {
       stationId: "s1",
       recipeId: "grilled_meat",
@@ -247,7 +242,7 @@ describe("harthmere cooking — tick", () => {
     const reloaded = JSON.parse(JSON.stringify(enqueued));
     const afterReload = tickHarthmereCooking(
       reloaded,
-      NOW + GRILLED_DURATION + 1,
+      NOW + GRILLED_DURATION + 1
     );
     assert.deepEqual(afterReload.s1.jobs, midway.s1.jobs);
   });
@@ -263,7 +258,7 @@ describe("harthmere cooking — tick", () => {
     // Just before the spoil window elapses: still collectable.
     const fresh = tickHarthmereCooking(
       cooking,
-      readyAt + HARTHMERE_COOK_SPOIL_MS - 1,
+      readyAt + HARTHMERE_COOK_SPOIL_MS - 1
     );
     assert.ok(fresh.s1);
     assert.equal(fresh.s1.jobs[0].status, "ready");
@@ -271,7 +266,7 @@ describe("harthmere cooking — tick", () => {
     // Past the spoil window: the dish disappears and the station is pruned.
     const spoiled = tickHarthmereCooking(
       cooking,
-      readyAt + HARTHMERE_COOK_SPOIL_MS + 1,
+      readyAt + HARTHMERE_COOK_SPOIL_MS + 1
     );
     assert.equal(spoiled.s1, undefined);
   });
@@ -294,7 +289,7 @@ describe("harthmere cooking — tick", () => {
     // Second dish is ready at ~NOW + 2*duration; give it a full spoil window.
     const wayLater = tickHarthmereCooking(
       state.cooking,
-      NOW + 2 * GRILLED_DURATION + HARTHMERE_COOK_SPOIL_MS + 1,
+      NOW + 2 * GRILLED_DURATION + HARTHMERE_COOK_SPOIL_MS + 1
     );
     assert.equal(wayLater.s1, undefined);
   });
@@ -332,7 +327,7 @@ describe("harthmere cooking — collect", () => {
     assert.equal(collected.state.inventory.grilled_meat, 1);
     assert.equal(
       collected.cookingXpDelta,
-      HARTHMERE_COOKING_RECIPES.grilled_meat.xp,
+      HARTHMERE_COOKING_RECIPES.grilled_meat.xp
     );
     assert.equal(collected.state.cooking.s1, undefined);
   });
@@ -343,7 +338,7 @@ describe("harthmere cooking — collect", () => {
     // resulting carried weight is above the threshold.
     const enq = enqueueHarthmereCook(
       baseState({ steel_sword: 5, raw_meat: 1 }),
-      { stationId: "s1", recipeId: "grilled_meat", nowMs: NOW },
+      { stationId: "s1", recipeId: "grilled_meat", nowMs: NOW }
     );
     const jobId = enq.state.cooking.s1.jobs[0].jobId;
     const collected = collectHarthmereCook(enq.state, {

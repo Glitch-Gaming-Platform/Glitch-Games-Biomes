@@ -1,0 +1,21 @@
+{
+  "version": "harthmere-sound-effects-elevenlabs-v4-proximity-ambience",
+  "generatedAt": "2026-07-31T14:55:30.082Z",
+  "selected": 1,
+  "generated": 1,
+  "newlyGenerated": 1,
+  "failed": 0,
+  "records": [
+    {
+      "id": "ch1_portal_ambience",
+      "path": "/assets/harthmere/audio/sfx/ch1_portal_ambience.webm",
+      "promptHash": "a80a087e96fdcc887a436a1df27e2c8388d951d59824a6c00426751e0dc9bdf5",
+      "requestedDurationSeconds": 8,
+      "actualDurationSeconds": 8.008,
+      "bytes": 98648,
+      "loop": true,
+      "generatedAt": "2026-07-31T14:55:30.054Z"
+    }
+  ],
+  "failures": []
+}

@@ -89,11 +89,11 @@ struct GeometryBuffer {
   std::vector<uint32_t> indices;
 
   auto vertices_view() const {
-    return reinterpret_cast<const uint8_t*>(&vertices[0]);
+    return reinterpret_cast<const uint8_t*>(vertices.data());
   }
 
   auto indices_view() const {
-    return reinterpret_cast<const uint8_t*>(&indices[0]);
+    return reinterpret_cast<const uint8_t*>(indices.data());
   }
 
   auto vertices_bytes() const {

@@ -33,4 +33,12 @@ describe("BiomesUIMount world-object interaction surfaces", () => {
       );
     }
   });
+
+  it("closes native Recipes before opening a locate-on-map request", () => {
+    assert.match(source, /useClientContext/);
+    assert.match(
+      source,
+      /reactResources\.set\("\/game_modal",\s*\{\s*kind: "empty",\s*returnPointerLock: false,?\s*\}\);[\s\S]*setActiveTab\("map"\)/
+    );
+  });
 });

@@ -18,7 +18,8 @@ export function registerCh1LiveItemDefinitions(): void {
     const consumable =
       item.id === "item_augur9_core_cell" ||
       item.id === "item_bulls_core" ||
-      item.id === "item_ch1_compound_b";
+      item.id === "item_ch1_compound_b" ||
+      item.id === "item_ch1_breakfast_tea";
     registerHarthmereItemDefinition({
       itemId: item.id,
       displayName: item.name,

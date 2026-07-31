@@ -1,0 +1,247 @@
+import { GardenHose } from "@/client/events/api";
+import type { AudioManager } from "@/client/game/context_managers/audio_manager";
+import { HarthmereSoundEffectsScript } from "@/client/game/scripts/harthmere_sound_effects";
+import { HARTHMERE_SOUND_EFFECT_EVENT } from "@/shared/harthmere/sound_effect_manifest";
+import { serializeNpcCustomState } from "@/shared/npc/serde";
+import assert from "assert";
+
+class TestCustomEvent<T> extends Event {
+  constructor(type: string, readonly detail: T) {
+    super(type);
+  }
+}
+
+function emptyTable() {
+  return {
+    contents: () => [],
+    get: () => undefined,
+    events: { on() {}, off() {} },
+  } as any;
+}
+
+describe("HarthmereSoundEffectsScript", () => {
+  const originalWindow = (globalThis as any).window;
+  const originalCustomEvent = (globalThis as any).CustomEvent;
+
+  afterEach(() => {
+    (globalThis as any).window = originalWindow;
+    (globalThis as any).CustomEvent = originalCustomEvent;
+  });
+
+  it("routes direct, positional, object, and equipment sounds", () => {
+    const windowTarget = new EventTarget();
+    (globalThis as any).window = windowTarget;
+    (globalThis as any).CustomEvent = TestCustomEvent;
+
+    const played: Array<{
+      path: string;
+      position?: readonly number[];
+      idempotent?: boolean;
+    }> = [];
+    const audioManager = {
+      playPath(path: string, options?: { idempotent?: boolean }) {
+        played.push({ path, idempotent: options?.idempotent });
+      },
+      playPathAt(path: string, position: readonly number[]) {
+        played.push({ path, position });
+      },
+    } as unknown as AudioManager;
+    const gardenHose = new GardenHose();
+    const script = new HarthmereSoundEffectsScript(
+      audioManager,
+      gardenHose,
+      emptyTable()
+    );
+
+    windowTarget.dispatchEvent(
+      new TestCustomEvent(HARTHMERE_SOUND_EFFECT_EVENT, {
+        id: "shield_bash",
+        position: [1, 2, 3],
+      })
+    );
+    windowTarget.dispatchEvent(
+      new TestCustomEvent(HARTHMERE_SOUND_EFFECT_EVENT, {
+        id: "splash",
+        idempotent: true,
+      })
+    );
+    windowTarget.dispatchEvent(
+      new TestCustomEvent("biomes:harthmere-world-object-interaction", {
+        kind: "open_container",
+        label: "Iron Strongbox",
+      })
+    );
+    gardenHose.publish({
+      kind: "equip",
+      operation: "unequip",
+      itemId: "iron_longsword",
+      slot: "main_hand",
+    });
+    gardenHose.publish({
+      kind: "equip",
+      operation: "equip",
+      itemId: "iron_helmet",
+      slot: "head",
+    });
+
+    assert.deepEqual(played[0], {
+      path: "/assets/harthmere/audio/sfx/shield_bash.webm",
+      position: [1, 2, 3],
+    });
+    assert.deepEqual(played[1], {
+      path: "audio/splash-1",
+      idempotent: true,
+    });
+    assert.equal(
+      played[2].path,
+      "/assets/harthmere/audio/sfx/open_container_metal.webm"
+    );
+    assert.equal(
+      played[3].path,
+      "/assets/harthmere/audio/sfx/weapon_unequip.webm"
+    );
+    assert.equal(played.length, 4);
+
+    script.clear();
+  });
+
+  it("uses authoritative player status transitions for down, death, and revive", () => {
+    const windowTarget = new EventTarget();
+    (globalThis as any).window = windowTarget;
+    (globalThis as any).CustomEvent = TestCustomEvent;
+
+    const played: string[] = [];
+    const audioManager = {
+      playPath(path: string) {
+        played.push(path);
+      },
+      playPathAt() {},
+    } as unknown as AudioManager;
+    const script = new HarthmereSoundEffectsScript(
+      audioManager,
+      new GardenHose(),
+      emptyTable()
+    );
+    const status = (deathState: string) =>
+      windowTarget.dispatchEvent(
+        new TestCustomEvent("biomes:live-mode-player-status-updated", {
+          combat: { deathState },
+        })
+      );
+
+    status("ready");
+    status("downed");
+    status("dead");
+    status("respawning");
+    status("ready");
+
+    assert.deepEqual(
+      played.map((path) => path.split("/").pop()),
+      ["player_downed.webm", "player_death.webm", "player_revive.webm"]
+    );
+    script.clear();
+  });
+
+  it("plays crop state sounds only after Gaia-backed ECS transitions", () => {
+    const windowTarget = new EventTarget();
+    (globalThis as any).window = windowTarget;
+    (globalThis as any).CustomEvent = TestCustomEvent;
+    const played: Array<{ path: string; position: readonly number[] }> = [];
+    const audioManager = {
+      playPath() {},
+      playPathAt(path: string, position: readonly number[]) {
+        played.push({ path, position });
+      },
+    } as unknown as AudioManager;
+    const entity = {
+      id: 101,
+      position: { v: [4, 5, 6] },
+      farming_plant_component: { status: "growing" },
+    };
+    let postApply: ((changes: any[]) => void) | undefined;
+    const table = {
+      contents: () => [entity],
+      get: () => entity,
+      events: {
+        on(_name: string, listener: (changes: any[]) => void) {
+          postApply = listener;
+        },
+        off() {},
+      },
+    } as any;
+    const script = new HarthmereSoundEffectsScript(
+      audioManager,
+      new GardenHose(),
+      table
+    );
+
+    entity.farming_plant_component.status = "fully_grown";
+    postApply?.([{ kind: "update", tick: 1, entity: { id: 101 } }]);
+    entity.farming_plant_component.status = "dead";
+    postApply?.([{ kind: "update", tick: 2, entity: { id: 101 } }]);
+
+    assert.deepEqual(
+      played.map((entry) => [entry.path.split("/").pop(), entry.position]),
+      [
+        ["crop_ready.webm", [4, 5, 6]],
+        ["crop_failed.webm", [4, 5, 6]],
+      ]
+    );
+    script.clear();
+  });
+
+  it("plays Native ECS energy specials from replicated NPC state exactly once", () => {
+    const windowTarget = new EventTarget();
+    (globalThis as any).window = windowTarget;
+    (globalThis as any).CustomEvent = TestCustomEvent;
+    const played: Array<{ path: string; position: readonly number[] }> = [];
+    const audioManager = {
+      playPath() {},
+      playPathAt(path: string, position: readonly number[]) {
+        played.push({ path, position });
+      },
+    } as unknown as AudioManager;
+    const entity: any = {
+      id: 202,
+      position: { v: [7, 8, 9] },
+      npc_state: { data: serializeNpcCustomState({}) },
+    };
+    let postApply: ((changes: any[]) => void) | undefined;
+    const table = {
+      contents: () => [entity],
+      get: () => entity,
+      events: {
+        on(_name: string, listener: (changes: any[]) => void) {
+          postApply = listener;
+        },
+        off() {},
+      },
+    } as any;
+    const script = new HarthmereSoundEffectsScript(
+      audioManager,
+      new GardenHose(),
+      table
+    );
+
+    entity.npc_state.data = serializeNpcCustomState({
+      energyWeapon: {
+        lastEffect: {
+          id: "singularity_gravity_collapse",
+          source: 1 as any,
+          atMs: Date.now(),
+        },
+      },
+    });
+    const change = [{ kind: "update", tick: 1, entity: { id: 202 } }];
+    postApply?.(change);
+    postApply?.(change);
+
+    assert.deepEqual(played, [
+      {
+        path: "/assets/harthmere/audio/sfx/singularity_gravity_collapse.webm",
+        position: [7, 8, 9],
+      },
+    ]);
+    script.clear();
+  });
+});

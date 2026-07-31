@@ -160,6 +160,7 @@ void bind_florae(py::module m) {
   using florae::IndexBuilder;
   using florae::Quads;
   using florae::QuadVertex;
+  using florae::Samples;
   using florae::Tensor;
 
   py::class_<QuadVertex>(m, "QuadVertex")
@@ -193,6 +194,10 @@ void bind_florae(py::module m) {
       .def_readonly("vertices", &Quads::vertices)
       .def_readonly("indices", &Quads::indices);
 
+  py::class_<Samples>(m, "Samples")
+      .def_readonly("count", &Samples::count)
+      .def_readonly("ids", &Samples::ids);
+
   py::class_<GeometryBuffer>(m, "GeometryBuffer")
       .def(py::init<>())
       .def_readonly("vertices", &GeometryBuffer::vertices)
@@ -209,7 +214,16 @@ void bind_florae(py::module m) {
       });
 
   py::class_<Index>(m, "Index")
-      .def_readonly("samples", &Index::samples)
+      .def_property_readonly(
+          "samples",
+          [](const Index& index) {
+            std::vector<Samples> ret;
+            ret.reserve(index.samples.size());
+            for (uint32_t i = 0; i < index.samples.size(); i += 1) {
+              ret.push_back(index.samples.get(i));
+            }
+            return ret;
+          })
       .def_readonly("quads", &Index::quads)
       .def("dumps", &Index::save)
       .def("loads", &Index::load);
@@ -367,6 +381,7 @@ void bind_shapes(py::module m) {
   using shapes::Quad;
   using shapes::Quads;
   using shapes::QuadsBuilder;
+  using shapes::QuadVertex;
   using shapes::Tensor;
   using shapes::WireframeMesh;
   using shapes::WireframeMeshBuilder;
@@ -415,7 +430,19 @@ void bind_shapes(py::module m) {
       .def_property_readonly("v1", [](const Edge& edge) {
         return edge.v1.array();
       });
-  ;
+
+  py::class_<QuadVertex>(m, "QuadVertex")
+      .def_property_readonly(
+          "pos",
+          [](const QuadVertex& vertex) {
+            return vertex.pos.array();
+          })
+      .def_property_readonly(
+          "uv",
+          [](const QuadVertex& vertex) {
+            return vertex.uv.array();
+          })
+      .def_readonly("dir", &QuadVertex::dir);
 
   py::class_<WireframeMesh>(m, "WireframeMesh")
       .def(
@@ -498,10 +525,29 @@ void bind_terrain(py::module m) {
 
 void bind_water(py::module m) {
   using water::GeometryBuffer;
+  using water::QuadVertex;
   using water::Tensor;
+
+  py::class_<QuadVertex>(m, "QuadVertex")
+      .def_property_readonly(
+          "pos",
+          [](const QuadVertex& vertex) {
+            return vertex.pos.array();
+          })
+      .def_property_readonly(
+          "uv",
+          [](const QuadVertex& vertex) {
+            return vertex.uv.array();
+          })
+      .def_readonly("dir", &QuadVertex::dir);
 
   py::class_<GeometryBuffer>(m, "GeometryBuffer")
       .def(py::init<>())
+      .def_property_readonly(
+          "origin",
+          [](const GeometryBuffer& buffer) {
+            return buffer.origin.array();
+          })
       .def_readonly("vertices", &GeometryBuffer::vertices)
       .def_readonly("indices", &GeometryBuffer::indices)
       .def(

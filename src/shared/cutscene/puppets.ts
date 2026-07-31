@@ -2,9 +2,11 @@
 //
 // Visual puppet layer for cutscenes, built on the live-creature ECS bridge:
 // while a scene runs, the director registers per-entity overrides (position,
-// yaw, animation) and ghost records (negative ids, no ECS entity). The bridge
-// script merges them into its published records, so puppets render through
-// the exact same mesh path as gameplay creatures — zero new render code.
+// yaw, animation) and fallback records (negative cutscene ghosts, or positive
+// staged story actors whose ECS body is outside this client's subscription).
+// The bridge script merges them into its published records, so puppets render
+// through the exact same mesh path as gameplay creatures — zero new render
+// code.
 //
 // Anima interplay (clientPuppet mode): the server entity never moves; we only
 // override what the renderer draws. When the scene releases an entity, the
@@ -32,13 +34,20 @@ export interface CutscenePuppetOverride {
   motionTime?: number;
   /** Native Bikkie item rendered in the actor's right hand. */
   itemId?: number;
-  /** Only used for ghosts (records created from scratch). */
+  /**
+   * Render fallback used when a record must be created from scratch. Negative
+   * ids are transient cutscene ghosts; positive ids are canonical story actors
+   * staged outside their shared ECS body's subscription range.
+   */
   ghost?: {
     asset: string;
     family: string;
     label: string;
   };
 }
+
+export const SNAPSHOT_CUTSCENE_PLAYER_MESH_ASSET =
+  "snapshot/player_mesh" as const;
 
 export function isGhostPuppetId(id: number): boolean {
   return id < 0;
@@ -47,7 +56,8 @@ export function isGhostPuppetId(id: number): boolean {
 /**
  * Merge cutscene overrides into the bridge records:
  *  - overrides for real entities replace that record's position/yaw;
- *  - ghost overrides append synthetic records;
+ *  - overrides with a render fallback append synthetic records when their ECS
+ *    body is not currently subscribed;
  *  - everything else passes through untouched.
  * Ghosts never carry hp so they can never be targeted as combatants.
  */
@@ -86,19 +96,23 @@ export function mergeCutscenePuppetOverrides(
     ];
   });
   for (const override of byId.values()) {
-    if (!isGhostPuppetId(override.id) || !override.ghost || !override.at) {
+    if (override.hidden || !override.ghost || !override.at) {
       // Override for an entity that isn't currently rendered (despawned or
-      // out of range): nothing to draw — drop it rather than invent a record
-      // with a guessed asset.
+      // out of range): only a caller-provided render fallback may bridge it.
+      // Never invent an asset here.
       continue;
     }
+    const usesSnapshotPlayerMesh =
+      override.ghost.asset.startsWith("townsperson_");
     merged.push({
       id: override.id,
       at: [...override.at],
       yaw: override.yaw,
       family: override.ghost
         .family as HarthmereLiveCreatureBridgeRecord["family"],
-      asset: override.ghost.asset,
+      asset: usesSnapshotPlayerMesh
+        ? SNAPSHOT_CUTSCENE_PLAYER_MESH_ASSET
+        : override.ghost.asset,
       scale: 1,
       label: override.ghost.label,
       animation: override.animation,
@@ -106,6 +120,7 @@ export function mergeCutscenePuppetOverrides(
       moving: override.moving,
       motionTime: override.motionTime,
       cinematic: true,
+      nativeSnapshotAvatar: usesSnapshotPlayerMesh,
     });
   }
   return merged;

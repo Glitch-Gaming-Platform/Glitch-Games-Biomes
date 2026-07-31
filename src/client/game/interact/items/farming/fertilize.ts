@@ -6,6 +6,7 @@ import type { ClickableItemInfo } from "@/client/game/interact/item_types/clicka
 import type { InteractContext } from "@/client/game/interact/types";
 import type { BlueprintHit, TerrainHit } from "@/shared/game/spatial";
 import { hitExistingTerrain } from "@/shared/game/spatial";
+import { emitHarthmereSoundEffect } from "@/shared/harthmere/sound_effect_manifest";
 
 export class FertilizeItemSpec implements AttackDestroyDelegateSpec {
   constructor(
@@ -41,5 +42,6 @@ export class FertilizeItemSpec implements AttackDestroyDelegateSpec {
     const player = this.deps.resources.get("/scene/local_player").player;
     player.eagerEmote(this.deps.events, this.deps.resources, "watering");
     fertilizePlant(this.deps, pos, itemInfo.itemRef);
+    emitHarthmereSoundEffect("fertilize_plant", { position: pos });
   }
 }

@@ -31,6 +31,17 @@ export interface Ch1ItemDef {
 
 export const CH1_ITEMS: readonly Ch1ItemDef[] = Object.freeze([
   {
+    id: "item_ch1_breakfast_tea",
+    name: "Jackie's Breakfast Tea",
+    description:
+      "Bread, stewed fruit, and a tin cup of strong tea. It is still warm.",
+    act: 1,
+    droppable: false,
+    sellable: false,
+    writerNote:
+      "The ordinary-looking first dose. Consumed by The Morning After so breakfast is an inventory-backed action, not an empty proximity press.",
+  },
+  {
     id: "item_grey_card",
     name: "Grey Card",
     revealedName: "Custodian Key 7",
@@ -163,7 +174,8 @@ export const CH1_ITEMS: readonly Ch1ItemDef[] = Object.freeze([
   {
     id: "item_marrow_collar",
     name: "Marrow's Collar",
-    description: "Worn leather. Somebody made this by hand for a dog they loved.",
+    description:
+      "Worn leather. Somebody made this by hand for a dog they loved.",
     act: 3,
     droppable: false,
     sellable: false,

@@ -9,9 +9,7 @@
 
 import type { Biscuit } from "@/shared/bikkie/schema/attributes";
 import { NATIVE_MUCK_VS_MACHINE_QUEST_ID } from "@/shared/harthmere/native_road_ahead_contract";
-import { CH1_NEW_CAST } from "@/shared/harthmere/ch1_cast";
 import { CH1_QUESTS, type Ch1QuestDef } from "@/shared/harthmere/ch1_quests";
-import { HARTHMERE_NATIVE_QUEST_GIVER_MANIFEST } from "@/shared/harthmere/harthmere_native_quest_manifest";
 import type { BiomesId } from "@/shared/ids";
 import type { Matcher } from "@/shared/triggers/matcher_schema";
 import type { StoredTriggerDefinition } from "@/shared/triggers/schema";
@@ -125,40 +123,6 @@ function unlockTrigger(index: number): StoredTriggerDefinition {
   };
 }
 
-function questGiverId(quest: Ch1QuestDef): BiomesId | undefined {
-  if (quest.id === CH1_QUESTS[0].id) {
-    // Muck vs. Machine's ignition beat is the Chapter 1 acceptance. The first
-    // objective is literally to wake up, so parking it as an available Jackie
-    // offer leaves the player with no active chapter objective or marker after
-    // the prologue completes. A giver-less first biscuit auto-starts from the
-    // existing challengeComplete unlock; Jackie remains the authored narrative
-    // giver and the later Kit Check target.
-    return undefined;
-  }
-  if (quest.id === "ch1_a4_q06_teak") {
-    // The narrative referral comes from Sergeant Bram Holt, but the imported
-    // production snapshot does not guarantee the old local-dev Holt entity
-    // (`8810000000010027`) exists. Giving that absent id to the native quest
-    // leaves the linear chapter permanently available but impossible to
-    // accept. Auto-start the investigation after Lou's preceding challenge;
-    // its objective still routes to the guaranteed Chapter 1 Teak ECS entity.
-    return undefined;
-  }
-  const chapterMember = CH1_NEW_CAST.find(
-    (member) => member.displayName === quest.giver
-  );
-  if (chapterMember) {
-    return chapterMember.entityId;
-  }
-  const existing = Object.values(HARTHMERE_NATIVE_QUEST_GIVER_MANIFEST).find(
-    (giver) =>
-      giver.displayName === quest.giver ||
-      giver.displayName.startsWith(`${quest.giver},`) ||
-      giver.displayName.startsWith(`${quest.giver} `)
-  );
-  return existing?.entityId;
-}
-
 function chapter1QuestBiscuit(quest: Ch1QuestDef, index: number): Biscuit {
   return {
     id: ch1NativeQuestId(quest.id)!,
@@ -166,7 +130,15 @@ function chapter1QuestBiscuit(quest: Ch1QuestDef, index: number): Biscuit {
     displayName: quest.title,
     displayDescription: quest.summary,
     isQuest: true,
-    questGiver: questGiverId(quest),
+    // Chapter 1 is a strictly linear continuation. A shared ECS quest-giver
+    // body cannot follow a per-player staged character: Lou's body is seeded at
+    // Greenlamp while the Act 6 handover is at Returnstone, Rook moves between
+    // three gates, and Jackie ends in the watch-house. Making those bodies own
+    // acceptance strands the quest as "available" at an invisible old spawn.
+    // Giver-less native biscuits auto-start from challengeComplete; the
+    // authored giver still owns the first objective and dialogue at the staged
+    // location.
+    questGiver: undefined,
     questAcceptText: quest.summary,
     repeatableCadence: "never",
     unlock: unlockTrigger(index),

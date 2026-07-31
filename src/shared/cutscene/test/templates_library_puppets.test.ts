@@ -382,7 +382,8 @@ describe("cutscene puppet overrides", () => {
     ]);
     assert.strictEqual(merged.length, 3);
     const ghost = merged.find((r) => r.id === -1000001)!;
-    assert.strictEqual(ghost.asset, "townsperson_clergy");
+    assert.strictEqual(ghost.asset, "snapshot/player_mesh");
+    assert.strictEqual(ghost.nativeSnapshotAvatar, true);
     assert.strictEqual(ghost.hp, undefined);
     assert.strictEqual(ghost.cinematic, true);
     assert.ok(isGhostPuppetId(ghost.id));
@@ -393,6 +394,49 @@ describe("cutscene puppet overrides", () => {
       { id: 999, at: [1, 1, 1], yaw: 0 }, // despawned entity, no ghost info
     ]);
     assert.strictEqual(merged.length, 2, "no invented records");
+  });
+
+  it("bridges a positive staged actor when its ECS body is out of range", () => {
+    const merged = mergeCutscenePuppetOverrides(base, [
+      {
+        id: 999,
+        at: [12, 34, 56],
+        yaw: 1.25,
+        label: "Dr. Lucien Ardan",
+        ghost: {
+          asset: "townsperson_market",
+          family: "live_entity",
+          label: "Dr. Lucien Ardan",
+        },
+      },
+    ]);
+    const staged = merged.find((record) => record.id === 999)!;
+    assert.deepStrictEqual(staged.at, [12, 34, 56]);
+    assert.strictEqual(staged.yaw, 1.25);
+    assert.strictEqual(staged.asset, "snapshot/player_mesh");
+    assert.strictEqual(staged.nativeSnapshotAvatar, true);
+    assert.strictEqual(staged.family, "live_entity");
+    assert.strictEqual(staged.hp, undefined, "fallback stays noncombatant");
+    assert.strictEqual(staged.cinematic, true);
+    assert.ok(!isGhostPuppetId(staged.id), "canonical story id is preserved");
+  });
+
+  it("does not synthesize a hidden staged actor", () => {
+    const merged = mergeCutscenePuppetOverrides(base, [
+      {
+        id: 999,
+        at: [12, 34, 56],
+        yaw: 0,
+        hidden: true,
+        ghost: {
+          asset: "townsperson_market",
+          family: "live_entity",
+          label: "Hidden Actor",
+        },
+      },
+    ]);
+    assert.strictEqual(merged.length, 2);
+    assert.ok(!merged.some((record) => record.id === 999));
   });
 
   it("no overrides = identity copy", () => {

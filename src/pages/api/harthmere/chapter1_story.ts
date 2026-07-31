@@ -11,6 +11,7 @@ import { readCh1NativeInventoryCounts } from "@/server/harthmere/ch1_native_inve
 import { authorizeHarthmereInventoryTransaction } from "@/server/harthmere/native_inventory_transaction_token";
 import { ch1ProjectFragmentForClient } from "@/server/harthmere/ch1_fragment_authority";
 import { GameEvent } from "@/server/shared/api/game_event";
+import { isTriggerFired } from "@/server/logic/events/handlers/quest_step_validation";
 import { connectToRedis } from "@/server/shared/redis/connection";
 import type { WorldApi } from "@/server/shared/world/api";
 import { biomesApiHandler } from "@/server/web/util/api_middleware";
@@ -44,6 +45,12 @@ import { HarthmereInventoryTransactionEvent } from "@/shared/ecs/gen/events";
 import { countOf, createBag } from "@/shared/game/items";
 import { harthmereNativeBiomesIdForItemId } from "@/shared/harthmere/harthmere_native_item_ids";
 import { randomUUID } from "node:crypto";
+import {
+  ch1NativeQuestId,
+  ch1NativeQuestStepId,
+} from "@/shared/harthmere/ch1_native_quests";
+import { CH1_QUESTS } from "@/shared/harthmere/ch1_quests";
+import { CH1_FLAGS } from "@/shared/harthmere/ch1_ids";
 import {
   harthmereLiveModePlayerStateKey,
   parseHarthmereLiveModeBackendState,
@@ -159,12 +166,51 @@ function storyRedis() {
     connectToRedis("firehose"));
 }
 
-function project(state: ReturnType<typeof parseHarthmereLiveModeBackendState>) {
+function activeCh1StagingObjective(
+  player:
+    | {
+        challenges(): { in_progress: ReadonlySet<BiomesId> } | undefined;
+        triggerState():
+          | {
+              by_root: ReadonlyMap<
+                BiomesId,
+                ReadonlyMap<BiomesId, string | number>
+              >;
+            }
+          | undefined;
+      }
+    | undefined
+) {
+  const challenges = player?.challenges();
+  const triggerState = player?.triggerState();
+  if (!challenges || !triggerState) return undefined;
+  for (const quest of CH1_QUESTS) {
+    const challengeId = ch1NativeQuestId(quest.id)!;
+    if (!challenges.in_progress.has(challengeId)) continue;
+    for (const [stepIndex, step] of quest.steps.entries()) {
+      const stepId = ch1NativeQuestStepId(quest.id, stepIndex)!;
+      if (!isTriggerFired(triggerState.by_root.get(challengeId), stepId)) {
+        return { questId: quest.id, stepId: step.id };
+      }
+    }
+  }
+  return undefined;
+}
+
+function project(
+  state: ReturnType<typeof parseHarthmereLiveModeBackendState>,
+  activeObjective?: { questId: string; stepId: string }
+) {
   const runtime = state.chapter1;
+  const presentationFlags = activeObjective
+    ? [...new Set([...runtime.flags, CH1_FLAGS.started])]
+    : runtime.flags;
   const stagingInput = {
-    flags: runtime.flags,
+    flags: presentationFlags,
     ending: runtime.ending,
     hallrChoice: runtime.hallrChoice,
+    activeQuestId: activeObjective?.questId,
+    activeStepId: activeObjective?.stepId,
   };
   const staging = ch1StageDirections(stagingInput);
   const entries = [...runtime.ledger.entries]
@@ -205,7 +251,7 @@ function project(state: ReturnType<typeof parseHarthmereLiveModeBackendState>) {
   });
   return {
     ok: true,
-    unlocked: runtime.flags.includes("ch1_started"),
+    unlocked: presentationFlags.includes(CH1_FLAGS.started),
     cardName:
       ch1ItemDisplayName("item_grey_card", runtime.flags) ?? "Grey Card",
     ledger: {
@@ -330,10 +376,13 @@ export default biomesApiHandler(
       `authenticated:chapter1-story:${auth.userId}`
     );
     const stateKey = harthmereLiveModePlayerStateKey(actorId);
+    const nativePlayer = await worldApi.get(auth.userId);
+    const activeObjective = activeCh1StagingObjective(nativePlayer);
     if (body.action === "state" || body.action === "sync") {
       const raw = await redis.primary.get(stateKey);
       return project(
-        parseHarthmereLiveModeBackendState(raw, actorId, Date.now())
+        parseHarthmereLiveModeBackendState(raw, actorId, Date.now()),
+        activeObjective
       );
     }
 
@@ -344,7 +393,8 @@ export default biomesApiHandler(
       const raw = await redis.primary.get(stateKey);
       return {
         ...project(
-          parseHarthmereLiveModeBackendState(raw, actorId, Date.now())
+          parseHarthmereLiveModeBackendState(raw, actorId, Date.now()),
+          activeObjective
         ),
         ok: false,
         reason: "Chapter 1 state is busy; try again.",
@@ -354,7 +404,6 @@ export default biomesApiHandler(
       const nowMs = Date.now();
       const raw = await redis.primary.get(stateKey);
       const state = parseHarthmereLiveModeBackendState(raw, actorId, nowMs);
-      const nativePlayer = await worldApi.get(auth.userId);
       const nativeItems = readCh1NativeInventoryCounts(nativePlayer);
       const result =
         body.action === "play_log"
@@ -375,13 +424,17 @@ export default biomesApiHandler(
             })
           : ch1LinkLiveFragments(state.chapter1, body.fragmentIds, nowMs);
       if (!result.ok) {
-        return { ...project(state), ok: false, reason: result.reason };
+        return {
+          ...project(state, activeObjective),
+          ok: false,
+          reason: result.reason,
+        };
       }
       if (result.consumedItemId) {
         const count = nativeItems[result.consumedItemId] ?? 0;
         if (count < 1) {
           return {
-            ...project(state),
+            ...project(state, activeObjective),
             ok: false,
             reason: `You do not have ${result.consumedItemId}.`,
           };
@@ -458,7 +511,7 @@ export default biomesApiHandler(
         await redis.primary.set(stateKey, previousSerialized);
         throw error;
       }
-      return project(state);
+      return project(state, activeObjective);
     } finally {
       await lock.release();
     }

@@ -7,11 +7,12 @@ import {
 import { harthmereResolveBikkieVisual } from "@/shared/harthmere/bikkie_visual_resolver";
 import type { HarthmereBikkieItemMetadata } from "@/shared/harthmere/mmo_bikkie_farming_food_catalog";
 import { resolveAssetUrlUntyped } from "@/galois/interface/asset_paths";
-import type { AnyBinaryAttribute } from "@/shared/bikkie/schema/binary";
 import { staticUrlForAttribute } from "@/shared/bikkie/schema/binary";
 import { anItem } from "@/shared/game/item";
 import { safeParseBiomesId } from "@/shared/ids";
 import { resolveBinaryAttribute } from "@/shared/util/dye_helpers";
+import { getHarthmerePremiumWeapon } from "@/shared/harthmere/premium_weapon_catalog";
+import { harthmereGeneratedInventoryIconUrl } from "@/shared/harthmere/generated/harthmere_inventory_icon_manifest";
 
 export function humanizeBiomesInventoryItemId(
   itemId: string,
@@ -32,58 +33,56 @@ export function humanizeBiomesInventoryItemId(
   return readable || fallback;
 }
 
-const LOCAL_BIKKIE_VISUAL_ALIASES: Record<
-  string,
-  HarthmereBikkieItemMetadata
-> = {
-  seed_carrot: {
-    bikkieId: "4537020877769703",
-    displayName: "Carrot Seed",
-    category: "Seed",
-    action: "plant",
-    galoisPath: "items/seed_carrot",
-    visualAsset: "items/seed_carrot",
-  },
-  seed_wheat: {
-    bikkieId: "1534621126189364",
-    displayName: "Wheat Seed",
-    category: "Seed",
-    action: "plant",
-    galoisPath: "items/seed_wheat",
-    visualAsset: "items/seed_wheat",
-  },
-  fresh_carrot: {
-    bikkieId: "4938764980403185",
-    displayName: "Fresh Carrot",
-    category: "Vegetable",
-    action: "eat",
-    galoisPath: "items/carrot",
-    visualAsset: "items/carrot",
-  },
-  loaf_bread: {
-    bikkieId: "2071428426278062",
-    displayName: "Loaf Bread",
-    category: "Food",
-    action: "eat",
-    galoisPath: "items/bread",
-    visualAsset: "items/bread",
-  },
-  grilled_meat: {
-    bikkieId: "7539420629350042",
-    displayName: "Grilled Meat",
-    category: "Food",
-    action: "eat",
-    galoisPath: "items/mucker_meat_1",
-    visualAsset: "items/mucker_meat_1",
-  },
-  river_trout: {
-    bikkieId: "7539420629350036",
-    displayName: "River Trout",
-    category: "Fish",
-    galoisPath: "npcs/fish",
-    visualAsset: "npcs/fish",
-  },
-};
+const LOCAL_BIKKIE_VISUAL_ALIASES: Record<string, HarthmereBikkieItemMetadata> =
+  {
+    seed_carrot: {
+      bikkieId: "4537020877769703",
+      displayName: "Carrot Seed",
+      category: "Seed",
+      action: "plant",
+      galoisPath: "items/seed_carrot",
+      visualAsset: "items/seed_carrot",
+    },
+    seed_wheat: {
+      bikkieId: "1534621126189364",
+      displayName: "Wheat Seed",
+      category: "Seed",
+      action: "plant",
+      galoisPath: "items/seed_wheat",
+      visualAsset: "items/seed_wheat",
+    },
+    fresh_carrot: {
+      bikkieId: "4938764980403185",
+      displayName: "Fresh Carrot",
+      category: "Vegetable",
+      action: "eat",
+      galoisPath: "items/carrot",
+      visualAsset: "items/carrot",
+    },
+    loaf_bread: {
+      bikkieId: "2071428426278062",
+      displayName: "Loaf Bread",
+      category: "Food",
+      action: "eat",
+      galoisPath: "items/bread",
+      visualAsset: "items/bread",
+    },
+    grilled_meat: {
+      bikkieId: "7539420629350042",
+      displayName: "Grilled Meat",
+      category: "Food",
+      action: "eat",
+      galoisPath: "items/mucker_meat_1",
+      visualAsset: "items/mucker_meat_1",
+    },
+    river_trout: {
+      bikkieId: "7539420629350036",
+      displayName: "River Trout",
+      category: "Fish",
+      galoisPath: "npcs/fish",
+      visualAsset: "npcs/fish",
+    },
+  };
 
 function bikkieInventoryMetadataForItem(itemId: string) {
   return (
@@ -99,12 +98,12 @@ function biomesBikkieItemIcon(itemId: string): string | undefined {
   if (!item) return undefined;
   try {
     if (item.icon) {
-      return staticUrlForAttribute(
-        resolveBinaryAttribute(item.icon as AnyBinaryAttribute, item)
-      );
+      return staticUrlForAttribute(resolveBinaryAttribute(item.icon, item));
     }
     if (item.galoisIcon) {
-      return resolveAssetUrlUntyped(`icons/${item.galoisIcon}`);
+      return /^(?:https?:\/\/|data:image\/|blob:|\/)/i.test(item.galoisIcon)
+        ? item.galoisIcon
+        : resolveAssetUrlUntyped(`icons/${item.galoisIcon}`);
     }
     if (item.galoisPath) {
       return resolveAssetUrlUntyped(`icons/${item.galoisPath}`);
@@ -138,6 +137,10 @@ export function biomesInventoryItemVisual(itemId: string) {
 }
 
 export function biomesInventoryItemIcon(itemId: string): string {
+  const premiumWeapon = getHarthmerePremiumWeapon(itemId);
+  if (premiumWeapon) return premiumWeapon.inventoryIconUrl;
+  const generatedIcon = harthmereGeneratedInventoryIconUrl(itemId);
+  if (generatedIcon) return generatedIcon;
   const bikkieIcon = biomesBikkieItemIcon(itemId);
   if (bikkieIcon) return bikkieIcon;
   const visual = biomesInventoryItemVisual(itemId);

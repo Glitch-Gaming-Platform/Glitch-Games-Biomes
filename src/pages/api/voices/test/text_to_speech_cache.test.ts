@@ -1,6 +1,7 @@
 import { resolveChatVoiceRequest } from "@/pages/api/voices/text_to_speech";
 import { clearNpcVoiceAudioManifestCacheForTest } from "@/server/shared/npc_voice_audio_cache";
 import { harthmereVoiceProfileForActor } from "@/shared/harthmere/npc_voice_profiles";
+import { SNAPSHOT_GROVE_JACKIE_ENTITY_ID } from "@/shared/harthmere/snapshot_grove_ids";
 import assert from "assert";
 
 describe("text-to-speech committed audio integration", () => {
@@ -30,7 +31,7 @@ describe("text-to-speech committed audio integration", () => {
   it("resolves the attached production HAR Jackie line to a shipped MP3", async () => {
     const voice = harthmereVoiceProfileForActor({
       source: "runtime_entity",
-      entityId: 8997551883502307,
+      entityId: SNAPSHOT_GROVE_JACKIE_ENTITY_ID,
       displayName: "Jackie",
     }).voiceParameterId;
     const response = await resolveChatVoiceRequest({

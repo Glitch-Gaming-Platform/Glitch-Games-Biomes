@@ -83,6 +83,21 @@ this repo that means the `full` preset, not the scoped ones.
 **`sourceMap: false`** — measured at noise level (3.44 s vs 3.40 s check time).
 `noEmit` already means no maps are written. Not worth touching.
 
+**Do not run the Chapter 1 dungeon traversal beside two TypeScript projects.**
+The two memoized flood fills normally fit the five-second test ceiling, but a
+July 31 batch ran them while `tsconfig.ch1check.json` and the full client graph
+were both compiling. Both traversal assertions timed out even though the same
+deterministic paths passed serially. Run one scoped compiler at a time, after
+the Mocha batch; parallelizing three CPU-heavy checks makes every lane slower
+and creates false timeout failures.
+
+**Zod output defaults are required in parsed cutscene types.** A helper that
+spreads a validated `CutsceneDef.cast` and appends a new raw anchor must write
+the anchor's `required` and `fallback` schema defaults explicitly. Otherwise
+TypeScript combines an output shape (defaults required) with an input shape
+(defaults optional) and reports two unrelated-looking cast types. This is a
+type-shape fix, not another scene revision.
+
 ---
 
 ## 3. Choosing a lane
@@ -139,6 +154,21 @@ as an operational checklist, not background history:
 - **Do not use obsolete Mocha bootstrap paths.** The supported single-file
   command is `scripts/harthmere/t.sh file <path>`. Do not invent a direct
   `mocha --require src/server/test/register.ts` command.
+- **`./b test <file>` still expands the repository-wide default glob.** It
+  launches `src/**{/test/*.ts,/*.test.ts}` plus the requested file, so it is not
+  a focused inner-loop command. Use
+  `node_modules/.bin/mocha --config .mocharc.fast.json <file>` (equivalently,
+  `scripts/harthmere/t.sh file <file>`) for a bootstrap-free single-file run.
+- **Ad-hoc esbuild UI harnesses need explicit JSX and exact-import aliases.**
+  The CLI `--alias` option rejects subpath names such as `next/dynamic` and
+  `@/client/...`; use an `onResolve` plugin for those exact imports. Also point
+  the harness build at a tiny tsconfig with `jsx: react-jsx`, or the repository
+  `jsx: preserve` setting can leave raw `<...>` syntax in the browser bundle.
+- **Focused compiler-API checks must model Next static image imports.** A
+  virtual `/public/*` declaration typed as `string` makes every downstream
+  `.src` access fail. Use the `StaticImageData` shape (`src`, `height`, and
+  `width`) when a narrow client-root typecheck does not load Next's asset
+  declarations itself.
 - **Do not use a bare `next dev` or `next start` process as the game browser
   harness.** The `/at` route and `/api/harthmere/visual_test_auth` require the
   initialized Biomes web context; a standalone Next process leaves
@@ -210,6 +240,254 @@ July 29 robot-story follow-up added four more concrete traps:
   restart the container while entity counts are still increasing. Wait until
   `e2e-jump.cjs ready` reports web, Sync, Redis, and every required lifecycle
   service as `UP`; subsequent browser batches should reuse that warm stack.
+
+- **Chapter 1 marker Y is not always player feet-Y.** Outdoor objectives use
+  the production marker convention (one block above scanned feet), while live
+  collision settles the player to feet-Y; the July 30 exact-image run reached
+  Jackie's correct X/Z at Y=69.875 for marker Y=71 and an exact 3-D warp gate
+  timed out. Chapter 1 E2E now keeps X/Z strict and permits only 3.25m of
+  vertical settlement, which is still below the Road-House's four-block floor
+  separation. Do not flatten hilly-world targets or increase every objective
+  radius to compensate for a synchronization assertion.
+
+- **Use the Chapter 1-specific no-video variable.** The runner reads
+  `HARTHMERE_E2E_CHAPTER_1_SKIP_VIDEO=1`; the shorter
+  `HARTHMERE_E2E_SKIP_VIDEO=1` is ignored. A fast quest-only rerun that uses the
+  wrong name silently pays for cutscene video work and invalidates timing
+  comparisons.
+
+- **Do not treat the Chapter 1 completion-response listener as a latency
+  benchmark.** On the July 30 exact image, `kit_check` sent the correct signed
+  challenge/step request and the server returned HTTP 200 at the old 24-second
+  listener boundary while mesh generation and background reads were active.
+  The focused runner allows 40 seconds for that response, then still requires
+  the exact signed native progress and story consequences. Preserve those
+  authority assertions instead of shortening the transport wait or replaying
+  a completion that already committed.
+
+- **A complete Chapter 1 browser walk must provision external objective
+  inputs, but never replace chapter-authored grants.** `Gather Parts` correctly
+  rejects a fresh actor without 4 scrap metal, 2 iron ingots, and 1 tree resin;
+  those materials come from gathering/crafting outside the linear chapter and
+  the fixture must supply their canonical native identities. Tea and the
+  AUGUR-9 core cell are different: prior Chapter 1 objectives grant them, so
+  the browser gate must require those real grants instead of silently seeding
+  replacements. Compute the prior authored grant/consume balance for every
+  inventory objective and provision only the externally sourced remainder.
+  The resume/checkpoint replay must use the same rule before applying retained
+  objectives; otherwise any checkpoint after `gather_parts` fails before the
+  browser starts because it cannot reconstruct the materials already consumed.
+
+- **Provisioning objectives derive their inventory from the gate contract,
+  not `step.inventoryRequirements`.** `provision` and `provision_winter` use
+  `ch1ProvisioningFor(...)`, so a generic inventory fixture otherwise sees zero
+  requirements and presses `F` against an empty seven/eight-category pack.
+  Install canonical economy identities in both native ECS and semantic Redis:
+  for example `road_ration`, `worker_meal`, `road_repair_kit`, `field_medkit`,
+  and `travel_cloak`. The production classifier must recognize those exact
+  outputs too; aliases such as `bread` and `winter_coat` are not proof that the
+  items sold or crafted by the live economy can pass the authored checklist.
+  Reuse the same gate-derived requirements during resume replay so a checkpoint
+  after the pack check retains the supplies required for real gate admission.
+
+- **Do not make Chapter 1 steal `F` from the system that owns the evidence.**
+  `take_jobs` must show the normal Jobs Board prompt while three post-acceptance
+  Grove completions are still missing, and `meet_the_suppliers` must leave each
+  vendor interaction in control while its transaction is missing. Their
+  Chapter 1 requirements deliberately set `blocksChapterInteraction` and
+  `autoCompleteWhenReady`; the browser gate should install production-shaped
+  external evidence, verify every routed supplier target, and wait for signed
+  auto-completion. Waiting for a second Chapter 1 prompt recreates the duplicate
+  HUD/control bug the integration was designed to remove. The board can render
+  through either its dedicated world prompt or the production Unified HUD's
+  `Read Jobs Board` button; require a visible built-in control, not one renderer's
+  private test id. Close any interactive game renderer before this headless
+  campaign: if the focused player enters `icing` or loses challenge components,
+  treat that as session/resource contention and prove the external requirement
+  reached `ready` before diagnosing Chapter 1 auto-completion.
+
+- **Normalize Chapter 1 actors before page navigation, not after the quest
+  checkpoint.** The July 30 reused snapshot allocated a fresh test username to
+  an actor at `[3504.82, 65, -360.62]`; Sync correctly detected it outside the
+  production bounds and reset it after `take_jobs` had already completed,
+  replacing the checkpoint with a default `Local Biomes Player`. Apply the
+  canonical safe start, display label, player status, health, and removal of
+  NPC-only components before opening `/at`; then require both authoritative and
+  local readback before any Chapter 1 fixture. The client can still publish its
+  one default create-player row after the preflight, so reassert the same
+  normalization once the browser bridge is live and require that second version
+  locally. Include Chapter 1 in the focused client-stability/tweaks path so
+  ordinary movement publication cannot undo deterministic cross-world warps.
+
+- **Client-context readiness can precede the delayed player-mesh createPlayer
+  row.** On the July 30 exact image, the bridge was ready and the actor had been
+  normalized twice while the full-screen loader was still waiting on
+  `player_mesh`; the eventual bootstrap row restored `Local Biomes Player`,
+  changed the route, and aborted a read-only `chapter1_story` state poll even
+  though Web returned HTTP 200. Before installing a Chapter 1 checkpoint, wait
+  for the loading wrapper to clear and reassert the normalized actor once more.
+  Treat only aborted `action: "state"` Chapter 1 polls as transient; an aborted
+  objective/completion mutation remains fatal evidence.
+
+- **A reused snapshot actor can still have one queued Anima write after its NPC
+  components are removed.** The clean Chapter 1 run allocated an id whose old
+  body was wandering near `x=3291`; after the pre-navigation update, Anima
+  restored its `npc_state`, remote position, 100 HP, and void-recovery `icing`.
+  Once the bridge is live, do not wait for that stale row to become correct on
+  its own. Clear `npc_metadata`, `npc_state`, `icing`, and NPC preview state,
+  then reapply the complete normalized player row until authoritative and local
+  state agree. This remains a test-actor cleanup, never a production NPC move.
+
+- **Clear pending native warp state too.** A reused player can have local state
+  at the safe start while its authoritative row still carries `warping_to` for
+  an older Grove-fountain recovery. Every normalization write then appears to
+  succeed locally and is superseded at authority. Remove `warping_to` with the
+  NPC/icing cleanup and continue requiring both authoritative and local
+  agreement before installing the checkpoint.
+
+- **An unavailable third-party HLS embed is not a Chapter 1 media failure.** An
+  offline Twitch channel near the player reports `Player stopping playback`,
+  `MasterPlaylist`, and `ErrorNotAvailable code 404` without including its URL
+  in the console line. The request log still identifies the external
+  `usher.ttvnw.net` playlist. Treat only that exact embedded-playlist signature
+  as transient. Same-origin media HTTP errors, Chapter 1 voice failures, and
+  other playback exceptions remain fatal.
+
+- **Temporarily lock deterministic escort fixtures, then restore them.** On a
+  fully loaded Anima stack, Iris's queued roaming tick overwrote the E2E move to
+  the desert return aperture before the HFC-backed 22-meter escort check read
+  it. Writing position alone is therefore a race. Apply native
+  `LockedInPlace` with the deterministic escort position, require the same
+  authoritative readback used by completion, and restore the actor's prior
+  lock state immediately after the signed objective response. Do not increase
+  the escort radius or bypass the server requirement.
+
+- **A committed escort lock can trail one queued move.** The focused Breaking
+  Year checkpoint wrote Nadia's target position and `LockedInPlace` together,
+  but HFC then observed one already-queued Anima movement at her prior camp
+  position while retaining the new lock. A deterministic escort fixture must
+  reassert the same locked position at a bounded cadence until authority sees
+  both fields together, then restore the original lock state after the signed
+  completion. A lock bit by itself is not proof that the target position won
+  the final write race.
+
+- **A failed focused dungeon run can retain its slot for three minutes.** Gate
+  claims intentionally survive short disconnects and refresh every 750 ms, so
+  an aborted browser immediately followed by another winter run may receive
+  “Another party is inside.” Confirm the prior actor disconnected and wait for
+  the exact `harthmere:ch1:slot:<dungeon>` TTL to expire (or release only that
+  actor's claim through the normal helper). Do not treat an occupied lease as a
+  quest, terrain, or provisioning regression.
+
+- **Close a same-user capture page before opening its replacement.** Local-user
+  Sync sessions are exclusive. The July 30 cutscene recorder opened the next
+  isolated page first, so the prior page received the stale-session modal,
+  shut down renderer/audio, and forced nearly every scene through a poisoned
+  retry. Mark the old page as intentional, close it completely, then open and
+  load the replacement. For branded software-WebGL stills, register one
+  `waitForFunction` on the output element; do not subject the compositor's
+  long main-thread frame to the ordinary 30-second gameplay probe timeout.
+
+- **A projected dialogue is mandatory, not a 1.5-second optional probe.** The
+  `tell_sil_why` objective correctly rendered its two-page “An Answer Without
+  Words” sequence after a loaded-stack delay, but the runner had already
+  returned “no dialogue” and was waiting for the choice behind page 1. When the
+  state response contains objective dialogue pages, wait the full bounded UI
+  budget and fail explicitly if they do not render. Keep the short optional
+  probe only for objectives whose server projection contains no dialogue.
+
+- **Budget chained cutscenes as one uninterrupted sequence.** Act 6's `the_word`
+  launches consolidation, the revised corridor, and the fourteen-hour intake
+  through one playback coordinator, with the next scene requested immediately
+  on the prior `finished` event. Waiting for `/scene/cutscene.active === false`
+  therefore cannot budget only the scene active when the wait begins. Sum the
+  remaining authored shot ceilings from the current sequence member, then add
+  the bounded renderer allowance. A visible subtitle inside the next member is
+  progress, not a hung director.
+
+- **Thin-ice objectives require an explicit load decision.** The complete July
+  30 campaign correctly reached `d2_whale_road`, but the E2E fixture still
+  carried every external provisioning item from the Grove. The production
+  scheduler therefore applied the authored 15-damage ice failure and recovered
+  the player to `[3309.5, 66, -343.5]`; the runner misreported that intentional
+  recovery as a synchronized-warp timeout. Before Whale Road (55 lb) and the
+  stricter Breaking Year return (45 lb), require the state projection to show
+  `cracking`, leave nonessential native Harthmere stacks behind while preserving
+  story items and remaining coal, then require the same projection to show
+  `holding`. A serialized browser diagnostic prints native `Map` components as
+  `{}` and the reused snapshot username may legitimately be `Local Biomes
+Player`; neither is evidence that the player entity or quest state was reset.
+
+- **Incremental Chapter 1 leaves are supposed to reject before their final
+  visit.** `collect_testimonies` records one of twelve accounts per real
+  conversation, and `the_three_answers` records one of three routed speakers.
+  A `rejected` response with `N of total` is durable partial progress, not a
+  failed objective. The browser gate must follow the server-projected next
+  target, prove its prompt/dialogue and exact coordinate, require the native
+  leaf to remain unfired on every partial visit, and accept `completed` only on
+  the twelfth/third visit.
+
+- **Resume replay must reconstruct every durable partial visit.** A retained
+  checkpoint after `collect_testimonies` or `the_three_answers` cannot call the
+  live-story reducer once and expect a completed objective: the reducer
+  correctly throws `Ch1ObjectiveIncomplete` while banking visits 1–11 or 1–2.
+  Replay the full authored route, carry `error.runtime` into the next visit,
+  reject an early completion, and require final effects only on the last stop.
+  Otherwise a valid late-chapter resume fails before Chromium can exercise the
+  product behavior under test.
+
+- **Story conversations staged at a Fracture Gate must outrank gate entry.**
+  `say_the_sentence`, `the_three_answers`, `call_the_collapse`, and
+  `rooks_rope` deliberately put Halden at an active aperture. Giving the gate
+  and story candidates the same dispatcher priority makes registration order
+  choose `F — Enter` and hides the conversation. Keep `chapter1Story` above a
+  distinct `chapter1Gate` priority; the gate still outranks active tools and
+  ordinary ECS objects when no story candidate is present.
+
+- **Build server bundles through `server.webpack.config.cjs`.** The former
+  `node -r ts-node/register ... --config server.webpack.config.ts` command now
+  crosses the repository's ESM boundary and fails with `exports is not
+defined`. Use `NODE_ENV=production NODE_OPTIONS=--openssl-legacy-provider
+./node_modules/.bin/webpack --config server.webpack.config.cjs --mode
+production`. Keep deployment docs and local full-flow runners on that exact
+  command so a copied release recipe cannot fail after the expensive Next
+  build.
+
+- **Static runner validators must not assume related source tokens share one
+  line.** A deploy-flow validator used `ERR_ABORTED.*api/auth/check`, but the
+  browser listener formats that narrow exception across several lines, so the
+  validator rejected behavior that was still present. Check the structural
+  tokens independently (or use an explicitly multiline pattern) and let the
+  executable browser test prove runtime behavior.
+
+- **Custom Chapter 1 interfaces own completion until their interaction
+  finishes.** Pressing `F` on `the_procedure` opens the real four-stage
+  Containment Triage dialog; it does not immediately send
+  `chapter1_progress:complete`. A browser runner that arms the response and
+  simply waits will time out while the healthy product waits for player input.
+  Require all four authored controls, advance only the active stage, then await
+  the signed completion emitted by the final control. Apply the same rule to
+  future objective-specific overlays instead of bypassing them through the API.
+
+- **Decorative renderers must tolerate the positionless warp frame.** After the
+  winter dungeon exit, `/scene/local_player` remained allocated for one render
+  frame while its `position` was undefined. `chapter1WorldPhase` indexed
+  `position[0]`, fatally stopped the main loop, disconnected Sync, and made the
+  next Act 6 warp report `version: 0` for two minutes. Check for a complete,
+  finite position before distance culling; a world-phase prop or anchor marker
+  must skip the transition frame rather than crash gameplay.
+
+- **Per-player staged cast must bridge both rendering and cutscene binding
+  when the shared ECS body is outside subscription.** Act 6 correctly staged
+  Dr. Ardan at Returnstone while his canonical body remained in Greenlamp, but
+  the live-creature bridge dropped positive-id overrides with no subscribed
+  base record and the cutscene binder consulted only `/ecs/entity`. The scene
+  then cancelled its required role and a transient invalid camera ray reached
+  voxel shard encoding. Chapter projection overrides now carry an explicit
+  render fallback, the binder applies the same staged position (including
+  hidden-state and nearby-role lookup), and the cursor rejects non-finite rays
+  before terrain marching. Preserve the canonical positive entity id: this is
+  a per-player presentation bridge, not a duplicate NPC or shared-world move.
 
 - **Focused robot-story fixtures can cancel background Chapter 1 polling while
   replacing the actor state.** Chromium reports the canceled
@@ -608,6 +886,164 @@ The failed reports that established these rules are retained as:
 The release report must distinguish product failures from environment failures
 and must list the exact report path, image tag/digest, and slot-cleanup state.
 
+#### Cutscene visual-audit incident log — July 30, 2026
+
+- **Three live attempts maximum per scene.** Camera iteration must not turn into
+  another catalog sweep. Make the best source/test correction first, run at
+  most three focused live captures for that scene, record any remaining visual
+  defect, and continue to the next scene. Runtime injection disables the
+  runner's automatic replacement-page retry, so each command is one visible
+  attempt and the source can be corrected between attempts. Do not replay
+  quests for a third try.
+
+- **Direct cutscene-catalog playback must install the scene's story projection.**
+  Positive-ID cast members are normally moved per player by the active Chapter
+  1 step. Playing `ch1-the-watch-house`, `ch1-the-case`, or consolidation from
+  a catalog page without that projection leaves the actor at its seeded or
+  current-save position; the resulting over-shoulder camera can land inside the
+  player model or point at an empty room. The E2E bridge now installs the same
+  `ch1StageDirections` input for each story beat and holds it against the normal
+  one-second projection poll until capture ends.
+- **A flashback stage still needs a grounded coordinate.** The old memory stage
+  at `[496, 140, -126]` made the client-puppet player fall through the whole
+  scene while already-streamed Grove NPCs and terrain fragments appeared to
+  float around the camera. Memories now use the measured Greenlamp clinic
+  interior floor. Do not replace this with a flat-world Y constant: use a
+  canonical grounded/interior anchor from the hilly Harthmere coordinate map.
+- **Stream the authored scene, not the seeded NPC.** For a gate reveal or a
+  staged conversation, focus priority is story-staged cast, authored
+  anchors/ghosts, then authored camera positions; only an unstaged live cast
+  falls back to its authoritative ECS position. The opposite order made the
+  Fence Line scene stream Jackie's fountain body while its camera was hundreds
+  of metres away at the seam.
+- **Terrain readiness precedes MediaRecorder.** After the focused player warp,
+  require the corresponding terrain shard/seed through
+  `chapter1TerrainSnapshot`, then allow one renderer frame. A fixed sleep is not
+  readiness evidence and produced empty Ashline and gate captures on software
+  WebGL.
+- **Recapture only the affected scene IDs.** Use
+  `HARTHMERE_E2E_CHAPTER_1_CAPTURE_IDS`; do not replay the Chapter 1 quest
+  campaign to verify camera, subtitle, stage, or gate-render changes.
+- **Use live frame sequences for iterative cutscene composition.** A July 31
+  no-build audit proved that the older production MediaRecorder path can leave
+  its promise pending long after the director has reached the scene. Runtime
+  injection therefore defaults to `HARTHMERE_E2E_CHAPTER_1_CAPTURE_FORMAT=frames`:
+  play the registered definition through the real director, poll
+  `/scene/cutscene` cheaply, screenshot only the opening and each new authored
+  subtitle, enforce an authored-time watchdog, and build a contact sheet.
+  Frequent software-WebGL screenshots stall the renderer and make a 20-second
+  scene take minutes. Reserve
+  `CAPTURE_FORMAT=video` for the one final exact-source packaging check; do not
+  pay video encoding/upload cost for every camera adjustment.
+- **Movement animations require a game-rendered cutscene gate.** Blender 5.2
+  can report distinct keyed armature poses while the standalone
+  `render_native_movement_action.py` still renders Running, Attack, crouch,
+  dodge, and roll as the same neutral mesh. A GLTF channel-count pass therefore
+  proves asset structure, not visible deformation. Use this fast order:
+  `scripts/harthmere/t.sh file src/shared/game/test/movement_actions.test.ts`,
+  `scripts/harthmere/t.sh file src/shared/cutscene/test/movement_action_showcase.test.ts`,
+  then `node scripts/harthmere/test-native-movement-action-assets.cjs`. The
+  asset audit must inspect the hash-addressed GLB selected by
+  `asset_versions.json`, require neutral lead-in/recovery timing, and preserve
+  `Attack`/`Attack2`. For visual acceptance, run the generated
+  `harthmere-movement-action-showcase` through the real cutscene director in
+  `clientPuppet` mode with empty commits/placements, capture only its five
+  labeled frames, and inspect lateral direction, forward/back pitch, the full
+  roll, limb clipping, and return to neutral. Runtime injection is valid only
+  when the warm page already contains the movement-action cutscene aliases and
+  current animation asset hash; otherwise build the completed batch once and
+  use that exact source. Do not accept Blender stills, source GLTF names, or an
+  older reachable game image as the final visual gate.
+- **Compare captured cutscene dialogue by authored text, not internal role
+  labels.** The director can legitimately project the source role `b` as the
+  runtime speaker `You`, and entity-backed roles can use their rendered display
+  name. The July 31 sixteen-scene batch rendered the confrontation line but the
+  harness rejected it because it compared `b\n<text>` with `You\n<text>`.
+  Dialogue completeness now keys on the immutable authored text while the
+  manifest still records the visible runtime speaker for visual review.
+- **Split software-WebGL cutscene audits into small scene groups.** One browser
+  campaign that captured all sixteen scenes eventually caused two non-OOM app
+  restarts during cold terrain and renderer pressure. The already-produced
+  scene evidence remained useful, but the shared runtime had to recover before
+  any final recapture. Keep one browser process per small affected-scene group,
+  check lifecycle readiness and restart count between groups, and never turn a
+  camera audit into another full quest replay.
+- **Capture-only actor setup is not a quest checkpoint.** Keep the clean
+  pre-navigation player write, wait for the loading wrapper, reapply once, and
+  require the local ECS subscription to match before the scene warp. The full
+  Chapter 1 quest lane still requires repeated authoritative-plus-local
+  convergence, but making every camera recapture perform those saturated HTTP
+  reads caused two consecutive 30-second setup failures before any scene ran.
+- **Do not cancel a build into a bind-mounted `.next`.** The July 31 warm
+  container mounted the host `.next`; cancelling `next build` removed or
+  replaced chunks before the new output was complete, leaving the app with
+  static-chunk 500s and no `404.html`. Keep one intact frozen exact-image app
+  running, inject pure scene definitions for visual iteration, and perform one
+  atomic final build only after all scenes are accepted.
+- **A build log pipeline must use `pipefail`.** A July 31 movement-action build
+  used `next build 2>&1 | tee ...`; the compiler stopped before writing
+  `.next/BUILD_ID`, but `tee` returned zero and made the invocation look green.
+  Run the compiler directly, or enable `set -o pipefail` before piping. Always
+  require a fresh `BUILD_ID` plus the expected source/asset literals in
+  `.next/static` or `.next/server` before starting a runtime. Preserve an
+  incomplete directory for diagnosis and rebuild atomically; never launch a
+  cutscene or browser gate from a partial `.next` tree.
+- **Deployment order guards must include every intentional authored writer.**
+  The July 31 exact-current-source build stopped before compilation because
+  `test-production-deploy-local-redis-smoke.cjs` still expected ECS
+  reconciliation to be immediately followed by connector materialization.
+  Chapter 1 Road-House and Watch House materialization had correctly been
+  inserted between them, with the connector still last, so the test was stale
+  while production ordering was right. When adding an authored world writer,
+  update the order guard in the same batch to assert the complete sequence;
+  do not remove the writer or bypass the guard merely to make a build start.
+- **Static source guards must inspect the behavior they claim to protect.**
+  The same build then stopped because the retaliation guard rejected any
+  `npc.label` or `displayName` reference anywhere in `npc/logic.ts`. New boss
+  profile and evade selection legitimately read those descriptors before the
+  generic attacked-NPC fallback, while the fallback itself remained free of a
+  name whitelist. Scope textual guards to the target function or branch
+  markers; otherwise unrelated additive logic turns a useful invariant into a
+  build blocker and invites removal of correct behavior.
+- **Formatter-sensitive source contracts must tolerate line wrapping.** A
+  Chapter 1 materializer guard initially required one contiguous error string;
+  Prettier wrapped that string without changing behavior and the contract
+  failed. Prefer a semantic helper assertion. When a textual guard is the only
+  practical option, match the stable tokens with whitespace or `[^]` between
+  them rather than pinning formatter output.
+- **A first green readiness result is not enough after a disposable Redis cold
+  load.** The July 31 isolated exact-source stack reported web, Sync, Redis,
+  and all lifecycle services up, then its no-persistence Redis container
+  restarted once and lost the snapshot hash/world keys. Host Redis still
+  answered `PONG`, but subsequent browser setup failed with fixture errors,
+  missing terrain, and connection resets. Before beginning a multi-scene
+  batch, verify app/Redis/proxy restart counts are zero, require the snapshot
+  hash and representative world keys, then repeat the full readiness contract
+  after a short stability window. Any capture after a Redis restart is invalid
+  environment evidence, not a scene attempt.
+- **Do not persist a snapshot merely because the importer printed its final
+  change count.** A Redis restart during import can let the producer eventually
+  report all 335,656 submitted changes while leaving an incomplete database;
+  Gaia correctly rejected the resulting RDB with 220,158 missing shard
+  coordinates. For this large local snapshot, import into uncapped protected
+  Redis, stop the app immediately after `shim now running` proves the import
+  phase completed and before Anima/Gaia inflate memory, then force `SAVE`.
+  Recreate Redis from that RDB to reset restart count and require Gaia readiness
+  plus two stable release-gate checks. An importer progress total is not a
+  durable-world completeness assertion.
+- **Frozen story projection can overwrite audit gates.** The older client
+  republishes saved active gates once per second. A focused first-gate audit
+  briefly showed the relocated fence gate but then reverted to desert/winter.
+  Hold only the requested gate IDs in the disposable browser page for the
+  capture duration, then release the interval. Never change shared story state
+  merely to make a catalog scene visible.
+- **Old test NPCs are not cutscene extras.** The July 31 first-gate sheet showed
+  `Admin Robot` and `Grover III`, both abandoned local test entities within the
+  shot, even after Chapter 1 projection was isolated. A focused visual page now
+  publishes hidden client-only overrides for nearby NPC/robot rows, then lets
+  the director's active cast overrides win. Do not delete shared ECS entities
+  or mistake test-world residue for Chapter 1 lore.
+
 ### 4.0 Do not confuse contract coverage with live experience coverage
 
 Chapter 1 dungeon data can describe a battle, escort, puzzle, attrition rule,
@@ -961,7 +1397,7 @@ Desert batch:
 ```sh
 HARTHMERE_E2E_CHAPTER_1_ONLY=1 \
 HARTHMERE_E2E_CHAPTER_1_FEATURES=quests \
-HARTHMERE_E2E_SKIP_VIDEO=1 \
+HARTHMERE_E2E_CHAPTER_1_SKIP_VIDEO=1 \
 HARTHMERE_E2E_CHAPTER_1_RESUME_AFTER=ch1_a3_q02_pack_for_it/the_pack_check \
 HARTHMERE_E2E_CHAPTER_1_STOP_AFTER=ch1_a3_d1_the_sand_that_remembers/d1_the_long_walk \
   node scripts/harthmere/test-harthmere-native-ecs-roundtrip-e2e.cjs
@@ -972,7 +1408,7 @@ Winter batch:
 ```sh
 HARTHMERE_E2E_CHAPTER_1_ONLY=1 \
 HARTHMERE_E2E_CHAPTER_1_FEATURES=quests \
-HARTHMERE_E2E_SKIP_VIDEO=1 \
+HARTHMERE_E2E_CHAPTER_1_SKIP_VIDEO=1 \
 HARTHMERE_E2E_CHAPTER_1_RESUME_AFTER=ch1_a5_q03_pack_for_the_cold/rooks_rope \
 HARTHMERE_E2E_CHAPTER_1_STOP_AFTER=ch1_a5_d2_the_long_winter_mouth/d2_the_breaking_year \
   node scripts/harthmere/test-harthmere-native-ecs-roundtrip-e2e.cjs
@@ -1005,7 +1441,7 @@ completed objective and can resume after the last retained pass:
 ```sh
 HARTHMERE_E2E_CHAPTER_1_ONLY=1 \
 HARTHMERE_E2E_CHAPTER_1_FEATURES=quests \
-HARTHMERE_E2E_SKIP_VIDEO=1 \
+HARTHMERE_E2E_CHAPTER_1_SKIP_VIDEO=1 \
 HARTHMERE_E2E_CHAPTER_1_RESUME_AFTER=ch1_a4_q05_the_man_who_didnt_accuse/show_him \
   node scripts/harthmere/test-harthmere-native-ecs-roundtrip-e2e.cjs
 ```
@@ -1578,6 +2014,227 @@ its second marker is checked without emitting kills or completing the leaf.
 The marker-only assertion does not require the routed quest to replace Road
 Ahead as the selected main quest: it requires the quest to be in progress and
 its map marker to remain available, which is the switching-quests contract.
+
+### 4.16 Apply-and-verify materializers must gate the post-commit state
+
+A terrain materializer may count differences before it commits them. Do not
+reuse that pre-commit count as the `REQUIRE_CURRENT=1` failure condition when
+`APPLY=1` is active. The July 31 Chapter 1 building run successfully committed
+1,232 voxel edits and acknowledged both structures, then exited nonzero because
+it reported the historical pre-commit count as still pending.
+
+Report both values instead: `pendingEditCount` records the work found, and
+`remainingPendingEditCount` is the actual gate. In apply mode the latter is
+`pendingEditCount - appliedEditCount`; a failed commit throws before the shared
+state acknowledgement. Keep a separate no-apply `REQUIRE_CURRENT=1` readback in
+the release evidence when the world mutation is high-risk, but do not make a
+successful combined invocation look like a failed deployment.
+
+### 4.17 Exact-image gate captures must hold the audit gate and renderer focus
+
+Direct cutscene playback does not stop the production Fracture Gate prompt from
+polling. That prompt republishes the saved player's authoritative active-gate
+set every 750 ms. A one-time E2E setter can therefore be correct, then be
+replaced while the runner is warping the player or waiting for terrain. The
+renderer snapshot will show the saved desert/winter gates instead of the gate
+the selected scene actually needs.
+
+For a focused gate cutscene, keep both pieces of client-only audit state pinned
+until capture ends:
+
+- republish the scene's exact gate set on a bounded 250 ms interval;
+- keep `/scene/local_player` and `/sim/player` at a point inside that gate's
+  draw distance so collision recovery or an old player simulation cannot make
+  a correctly active aperture look invisible.
+
+Release the hold in `finally`; never change server quest state to make a visual
+audit pass. `ch1-first-gate` uses `ch1_gate_fence_sighting`.
+`ch1-persistent-gate` is the Act 2 Dry Mouth and uses `ch1_gate_desert`, not the
+Act 6 `ch1_gate_prime`. Apply this hold to exact-image playback as well as
+no-build runtime injection. The July 31 failure occurred because the runner
+only held gates in the runtime-injection branch.
+
+### 4.18 Fast seeded robot-story runs must wait out the real player bootstrap
+
+A fresh authenticated username can receive a local synchronized placeholder
+before Sync's authoritative `createPlayer` commit finishes. A focused robot
+chapter can seed and complete in seconds, so it can outrun that normal player
+bootstrap. When the delayed default row finally commits, the player appears at
+the right Chapter 1 staging warp but every challenge and trigger receipt is
+empty. A later handoff then times out even though Muck vs. Machine and the dual
+Gimme/Chapter 1 unlock were already observed passing.
+
+For focused robot-story browser lanes, delete the disposable visual-test entity
+before navigation so any colliding snapshot NPC simulation loses authority and
+the normal `createPlayer` bootstrap creates a fresh row/version. Then wait for
+the loading wrapper to clear and reassert the normalized authoritative/local
+actor before installing any challenge fixture. Repeatedly updating an active
+NPC-shaped row is not enough: Anima can keep restoring `npc_state` and its old
+remote position. This is a test-speed race; do not weaken the Gimme transition,
+replay the whole robot campaign, or add sleeps after individual quest actions.
+
+That eviction also removes the token-gated temporary `admin` role from the
+world entity. After `createPlayer` finishes, call `visual_test_auth` again with
+`e2eAdmin=1` and the control-token header before any later
+`/api/admin/apply_ecs_changes` fixture. A still-valid login cookie is not enough:
+admin middleware reads the recreated player's current world roles, and otherwise
+the first post-loader fixture fails 401 before the focused scene or quest begins.
+The successful auth JSON can precede that role becoming visible to admin
+middleware on a production-shaped `HybridWorldApi`. Poll the protected
+`/api/admin/ecs/get_with_version` read until it succeeds before applying the
+normalization fixture; retrying the fixture three times in a few hundred
+milliseconds is still too early and only repeats the same 401.
+Do not retain an older bridge-live normalization write between eviction and
+that post-bootstrap auth restore. The evicted row has no admin role by design;
+normalization belongs once, after the loading wrapper clears and the protected
+read proves authorization.
+
+After Muck vs. Machine itself has passed, verify only the remaining Sophia
+transition without replaying that chapter:
+
+```sh
+HARTHMERE_E2E_ROBOT_STORY_EXHAUSTIVE=1 \
+HARTHMERE_E2E_ROBOT_STORY_CHAPTER_ID=5739496793885069 \
+HARTHMERE_E2E_GIMME_SOPHIA_HANDOFF_ONLY=1 \
+  node scripts/harthmere/test-harthmere-native-ecs-roundtrip-e2e.cjs
+```
+
+This checkpoint seeds the retained post-Muck boundary, publishes only Gimme
+Shelter's `TALK_TO_SOPHIA` event, proves the placement objective and marker,
+then stops. A renderer message that an unmarked mixed-material root is
+`Defaulting to three` is the production-safe stock-material pass, not the
+procedural Three.js NPC fallback. Preserve it as a diagnostic transient. The
+native player contract is independently locked by the snapshot PlayerMesh
+provenance and base-pass coercion tests.
+
+### 4.19 A rendered body is not proof that the correct avatar pipeline ran
+
+The May 16 snapshot has two native character routes: players and player-like
+humans use `/api/assets/player_mesh.glb`, while creatures and robots use their
+authored Galois/GLTF rigs. A rounded-box Three.js fallback can make an actor
+visible while still replacing their identity, clothing, face, skeleton, and
+Blender animation compatibility. Cutscene screenshots exposed this as blocky
+townsperson stand-ins even though every camera and dialogue assertion passed.
+
+Native-avatar tests must therefore assert provenance as well as visibility:
+
+- real ECS NPC records are transform-only bridge data and always remain in
+  `NpcRenderState`;
+- human flashback/ghost cast uses the generated snapshot player mesh, never a
+  `townsperson_*` procedural constructor;
+- animals, Muck creatures, robots, and bosses use `npcs/*` or authored GLB
+  assets with their Blender-extended clips;
+- a missing or empty native mesh fails the release gate instead of silently
+  substituting a different procedural body;
+- static runtime life placements cannot create a second person or animal over
+  the authoritative ECS actor.
+
+Do not repair an invisible NPC by adding another fallback renderer. Fix the
+native Bikkie presentation donor, generated player-mesh request, asset load, or
+base-pass routing that made the authoritative body invisible.
+
+Cutscene ghost ids are deliberately negative and cannot be fed through a raw
+signed `%` when selecting deterministic PlayerMesh appearance variants. In
+JavaScript and BigInt, a negative dividend produces a negative remainder. That
+turns mixed-radix wearable indices into `undefined` item ids and the generated
+player-mesh query crashes before rendering. Normalize the remainder into
+`0..variantCount-1` and keep a direct negative-id regression. Do not “fix” this
+by assigning a procedural ghost body or by making the asset request ignore an
+invalid wearable.
+
+### 4.20 Mobile startup gates and HUD taps need orientation-aware real input
+
+Mobile Safari can have a running renderer behind a loading overlay. The July
+31 iPhone trace reached authenticated sync, loaded 2,426 entities, built the
+client contexts, and rendered scene frames, but the startup gate still waited
+for neighboring combined terrain meshes that low-memory cache churn kept
+evicting. For low-memory clients, gate first gameplay on supporting/local
+terrain plus collision boxes and let dynamic graphics begin at its 64m
+emergency distance. Keep the wider nearby combined-mesh gate and 96m starting
+distance on desktop.
+
+Do not treat removal of `.loading-wrapper` alone as proof that mobile gameplay
+is ready. Character onboarding or wake-up screens can still cover the joystick
+and accept the touch instead. Wait for the mobile gameplay controls themselves
+(`data-biomes-mobile-menu`, hotbar, and joystick) and reject any visible
+non-gameplay screen before exercising movement.
+
+If the world, HUD, and render frames advance behind a loading overlay, log the
+supporting shard's terrain entity, physics boxes, and combined-mesh cache state.
+Combined terrain meshes are evictable on low-memory Safari and can disappear
+while the world is otherwise playable. Mobile startup should require local
+terrain plus collision readiness; desktop should retain the stronger nearby
+combined-mesh gate.
+
+`react-joystick-component` binds `pointerdown` to the inner stick button, then
+tracks pointer movement on `window`. Dispatching a touch at the outer joystick
+group can hit a fullscreen overlay or another child and produce only stray
+`pointermove` events. Target the inner `[data-testid="joystick-base"] button`,
+pause briefly after `touchStart`, move in several steps, assert nonzero shared
+input, and assert release after `touchEnd`. A mouse click is not equivalent.
+
+Run the mobile smoke in both orientations because the minimap controls,
+objective card, hotbar, and joystick change their available geometry:
+
+```sh
+HARTHMERE_MOBILE_WIDTH=390 HARTHMERE_MOBILE_HEIGHT=844 \
+  node scripts/harthmere/test-harthmere-mobile-gameplay-smoke.cjs "$URL"
+
+HARTHMERE_MOBILE_WIDTH=844 HARTHMERE_MOBILE_HEIGHT=390 \
+  node scripts/harthmere/test-harthmere-mobile-gameplay-smoke.cjs "$URL"
+```
+
+Each pass must require startup completion, advancing render frames, a real
+joystick drag, a hotbar tap, Menu and Recipes taps, and bounding-box checks that
+the hotbar does not overlap the joystick or objective. For rem-based HUD sizes,
+compare computed pixels with the live root font size and viewport cap; fixed
+desktop pixel expectations are invalid on the game's scaled phone root.
+
+The July 31 portrait run measured the game root at **5.46px**. That turned an
+apparently reasonable `6rem` Menu/Recipes column into a 33px target, placed a
+`7.4rem` top offset inside the 94px minimap, and reduced a `19rem` vitals panel
+to 104px. For critical mobile geometry, do not merely adjust the rem number:
+use viewport percentages with a pixel cap for panels, and pixel/safe-area
+offsets for touch targets and collision boundaries. The browser gate must log
+the computed rectangles so this failure cannot hide behind source-level CSS
+review again.
+
+### 4.21 Chapter 1 world identity and dialogue migrations need compatibility gates
+
+The July 31 live review found three production-shaped defects that static quest
+topology did not expose: the Road-House sign occupied the exact doorway anchor,
+raw snapshot NPCs remained beside their canonical seeded replacements, and
+Chapter 1 regular dialogue used a second centered dark modal instead of the
+game's original in-world NPC dialogue presentation.
+
+Keep these rules with any future world/content migration:
+
+- A façade sign, prop, or marker must never share a walkable doorway anchor.
+  Unit-test horizontal clearance from the door; a correct label attached to an
+  impassable entrance is still a broken location.
+- Migrated named NPCs have one canonical ECS identity. Reconciliation should
+  inspect only the known legacy IDs, require exact canonical labels and NPC
+  metadata, protect player/remote rows, delete the obsolete entity from both
+  primary and HFC stores, and verify both deletions. Do not scan and decode the
+  entire 300k-entity world to remove five audited IDs.
+- Immutable snapshot quest leaves and committed voice recordings can still
+  contain a legacy entity ID. Gameplay, maps and new authored quest targets use
+  the canonical ID, while claim matching treats the known legacy/canonical pair
+  as equivalent and publishes the authored identity expected by the immutable
+  trigger. Runtime voice casting keeps the historical actor key so reviewed
+  MP3s remain cache hits; never regenerate existing lines merely because the
+  ECS entity was migrated.
+- Regular Chapter 1 speech must use `TalkDialogModal` and
+  `GenericTalkDialogModalStep`, including the original NPC name, subtitle and
+  click-to-continue presentation. Choice entry, text input and system warnings
+  may remain modal because they are decisions, not ordinary spoken dialogue.
+
+The focused release batch is the Road-House clearance test, named-NPC cleanup
+test, server and client legacy-ID claim tests, Chapter 1 dialogue presentation
+contract, voice-profile/cache tests, scoped TypeScript, and one exact-current
+browser pass. The browser pass must count one Jackie, enter the Road-House
+through the doorway, inspect the original dialogue presentation, and then run
+the Sophia-only checkpoint. It must not replay the completed quest catalog.
 
 ---
 

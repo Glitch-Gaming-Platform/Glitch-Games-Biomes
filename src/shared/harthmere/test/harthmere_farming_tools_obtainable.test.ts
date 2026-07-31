@@ -20,9 +20,21 @@ const FARM_VENDOR = "orchard_produce_stand";
 
 // The farming tools that must be obtainable (craft + buy), and their recipe ids.
 const FARMING_TOOLS = [
-  { name: "Hoe", itemId: HARTHMERE_CRAFTING_TOOLS.hoe, recipeId: "harthmere_tool_hoe_recipe" },
-  { name: "Watering Can", itemId: HARTHMERE_CRAFTING_TOOLS.wateringCan, recipeId: "harthmere_tool_watering_can_recipe" },
-  { name: "Bucket", itemId: HARTHMERE_CRAFTING_TOOLS.bucket, recipeId: "harthmere_tool_bucket_recipe" },
+  {
+    name: "Hoe",
+    itemId: HARTHMERE_CRAFTING_TOOLS.hoe,
+    recipeId: "harthmere_tool_hoe_recipe",
+  },
+  {
+    name: "Watering Can",
+    itemId: HARTHMERE_CRAFTING_TOOLS.wateringCan,
+    recipeId: "harthmere_tool_watering_can_recipe",
+  },
+  {
+    name: "Bucket",
+    itemId: HARTHMERE_CRAFTING_TOOLS.bucket,
+    recipeId: "harthmere_tool_bucket_recipe",
+  },
 ];
 
 function snapshot(
@@ -49,7 +61,13 @@ function mutate(
   playerSkills: Record<string, { level: number }> = {}
 ) {
   return reduceHarthmereInventoryMutation(
-    { requestId: `tool-test-${kind}`, actorId: ACTOR, kind, nowMs: NOW_MS, ...overrides } as HarthmereInventoryMutationRequest,
+    {
+      requestId: `tool-test-${kind}`,
+      actorId: ACTOR,
+      kind,
+      nowMs: NOW_MS,
+      ...overrides,
+    } as HarthmereInventoryMutationRequest,
     { snapshot: base, playerLevel: 10, playerSkills, reputation: {} }
   );
 }
@@ -69,7 +87,10 @@ describe("Harthmere farming tools are obtainable", () => {
       const recipe = getHarthmereCraftingRecipe(tool.recipeId);
       assert.ok(recipe, `${tool.name} has no craft recipe`);
       assert.strictEqual(recipe!.outputItemId, tool.itemId);
-      assert.ok(recipe!.requiredStationId, `${tool.name} recipe has no station`);
+      assert.ok(
+        recipe!.requiredStationId,
+        `${tool.name} recipe has no station`
+      );
     }
   });
 
@@ -90,7 +111,11 @@ describe("Harthmere farming tools are obtainable", () => {
     const result = mutate(
       "craft_item",
       base,
-      { recipeId: recipe.recipeId, stationId: recipe.requiredStationId, count: 1 },
+      {
+        recipeId: recipe.recipeId,
+        stationId: recipe.requiredStationId,
+        count: 1,
+      },
       { carpentry: { level: 1 } }
     );
     assert.ok(result.ok, `craft failed: ${result.errors.join(",")}`);

@@ -12,6 +12,12 @@ import type {
   Ch1DialoguePage,
   Ch1DialogueSequence,
 } from "@/shared/harthmere/ch1_dialogue_types";
+import { CH1_TESTIMONIES } from "@/shared/harthmere/ch1_cast";
+import type { Ch1LiveGateRuntimeState } from "@/shared/harthmere/ch1_live_gate";
+import {
+  CH1_THREE_ANSWER_ROUTE,
+  ch1NextRouteStop,
+} from "@/shared/harthmere/ch1_objective_routes";
 
 type CompletionDialogueByChoice = Readonly<Record<string, Ch1DialogueSequence>>;
 
@@ -694,8 +700,47 @@ export const CH1_COMPLETION_DIALOGUE: Readonly<
 });
 
 export function ch1ObjectiveDialogue(
-  stepId: string
+  stepId: string,
+  context?: {
+    questId?: string;
+    runtime?: Ch1LiveGateRuntimeState;
+  }
 ): Ch1DialogueSequence | undefined {
+  if (stepId === "collect_testimonies" && context?.runtime) {
+    const heard = new Set(context.runtime.testimonies);
+    const next = CH1_TESTIMONIES.find((entry) => !heard.has(entry.id));
+    if (next) {
+      return sequence(`The Night You Came — ${next.npc}`, [
+        { speaker: next.npc, text: next.line },
+      ]);
+    }
+  }
+  if (stepId === "the_three_answers" && context?.runtime) {
+    const effectKey = `${
+      context.questId ?? "ch1_a3_q01_a_button_in_the_sand"
+    }/${stepId}`;
+    const next = ch1NextRouteStop(
+      CH1_THREE_ANSWER_ROUTE,
+      context.runtime.objectiveRouteProgress[effectKey] ?? []
+    );
+    if (next) {
+      const pageByStop: Readonly<Record<string, Ch1DialoguePage>> = {
+        ranger_jane: {
+          speaker: "Ranger Jane",
+          text: "Rope it off and watch it. The Muck gathers around damage like a body closing a wound.",
+        },
+        cressa_vane: {
+          speaker: "Arbiter Cressa Vane",
+          text: "Study it before fear destroys the evidence. Jurisdiction can be argued after the child is found.",
+        },
+        halden_rook: {
+          speaker: "Halden Rook",
+          text: "Collapse it before it learns the shape of your town. I do not pretend to know how.",
+        },
+      };
+      return sequence("A Button in the Sand", [pageByStop[next.id]]);
+    }
+  }
   return CH1_OBJECTIVE_DIALOGUE[stepId];
 }
 

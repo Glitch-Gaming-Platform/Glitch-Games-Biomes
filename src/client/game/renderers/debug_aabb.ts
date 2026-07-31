@@ -73,7 +73,7 @@ function collectVisibleBoxesAndPositions(
       if (!player) {
         continue;
       }
-      boxes.push({ box: player.aabb(), position: player.position });
+      boxes.push({ box: player.collisionAabb(), position: player.position });
     } else {
       pushBox(entity);
     }

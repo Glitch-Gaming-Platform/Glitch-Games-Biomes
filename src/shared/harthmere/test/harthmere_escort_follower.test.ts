@@ -17,7 +17,10 @@ describe("resolveHarthmereEscortFollowStep — escort follower AI", () => {
     });
     assert.equal(out.phase, "following");
     // moved ~0.5m toward the player along +x
-    assert.ok(out.position[0] > 0.4 && out.position[0] < 0.6, `${out.position[0]}`);
+    assert.ok(
+      out.position[0] > 0.4 && out.position[0] < 0.6,
+      `${out.position[0]}`
+    );
     assert.equal(out.arrived, false);
   });
 

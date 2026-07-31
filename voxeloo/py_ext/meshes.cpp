@@ -36,8 +36,10 @@ Mesh py_to_mesh(py::object py_obj) {
   Mesh ret;
 
   auto mesh = py::cast<MeshPy>(py_obj);
-  CHECK_STATE(mesh.vertices.ndim() == 2);
-  CHECK_STATE(mesh.triangles.ndim() == 2);
+  CHECK_ARGUMENT(mesh.vertices.ndim() == 2);
+  CHECK_ARGUMENT(mesh.vertices.shape(1) == 6);
+  CHECK_ARGUMENT(mesh.triangles.ndim() == 2);
+  CHECK_ARGUMENT(mesh.triangles.shape(1) == 3);
 
   // Copy over the vertices
   auto n_ver = mesh.vertices.shape(0);
@@ -55,9 +57,11 @@ Mesh py_to_mesh(py::object py_obj) {
   auto t_acc = mesh.triangles.unchecked<2>();
   ret.indices.reserve(3 * n_tri);
   for (int i = 0; i < n_tri; i += 1) {
-    ret.indices.push_back(t_acc(i, 0));
-    ret.indices.push_back(t_acc(i, 1));
-    ret.indices.push_back(t_acc(i, 2));
+    for (int j = 0; j < 3; j += 1) {
+      auto index = t_acc(i, j);
+      CHECK_ARGUMENT(index >= 0 && index < n_ver);
+      ret.indices.push_back(index);
+    }
   }
 
   return ret;

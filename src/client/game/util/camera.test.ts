@@ -1,6 +1,7 @@
 import {
   camOffsetVector,
   isIntendedFirstPersonCamera,
+  playerFirstPersonCamPositionAtHeight,
   shouldRenderPlayerAvatar,
   thirdPersonCamPosition,
 } from "@/client/game/util/camera";
@@ -20,6 +21,13 @@ function desiredCameraPosition(tweak: TrackingCamTweaks) {
 }
 
 describe("camera view avatar visibility", () => {
+  it("places a stance-smoothed camera at an explicit eye height", () => {
+    assert.deepEqual(
+      playerFirstPersonCamPositionAtHeight([4, 10, -2], 1.1),
+      [4, 11.1, -2]
+    );
+  });
+
   it("hides the local avatar for the intentional first-person camera", () => {
     const desiredThird = desiredCameraPosition(
       defaultTweakableConfigValues.firstPersonCam

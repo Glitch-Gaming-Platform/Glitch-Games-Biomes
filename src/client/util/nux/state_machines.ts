@@ -13,6 +13,7 @@ import { matchingItemRefs } from "@/shared/game/inventory";
 import type { BiomesId } from "@/shared/ids";
 import { dist } from "@/shared/math/linear";
 import type { Vec2 } from "@/shared/math/types";
+import { SNAPSHOT_GROVE_JACKIE_ENTITY_ID } from "@/shared/harthmere/snapshot_grove_ids";
 
 export enum NUXES {
   MOVEMENT = 1,
@@ -37,7 +38,7 @@ export enum NUX_PAIRED_STEPS {
   BUSTED_MUCK_BUSTERS = 6113676978673631,
 }
 
-export const JACKIE_ID = 8997551883502307 as BiomesId;
+export const JACKIE_ID = SNAPSHOT_GROVE_JACKIE_ENTITY_ID;
 
 export const GENESIS_CROSSROADS_LOCATION: Vec2 = [425, -96];
 export const LOVELY_LOCKS_LOCATION: Vec2 = [778, 200];

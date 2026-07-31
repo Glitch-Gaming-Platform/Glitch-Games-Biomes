@@ -18,7 +18,7 @@ try {
   await page.goto(url, { waitUntil: "networkidle2", timeout: 60000 });
   await page.waitForFunction(() => !!window.__harthmereRendererDebug?.weaponHandTracking, { timeout: 30000 });
   const before = await page.evaluate(() => window.__harthmereRendererDebug.weaponHandTracking());
-  await page.keyboard.press("KeyX");
+  await page.keyboard.press("Quote");
   await page.waitForTimeout(350);
   const drawn = await page.evaluate(() => window.__harthmereRendererDebug.weaponHandTracking());
   await page.keyboard.press("KeyB");

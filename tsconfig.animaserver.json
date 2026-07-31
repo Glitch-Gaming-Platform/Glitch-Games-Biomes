@@ -31,7 +31,9 @@
     "src/server/harthmere/ch1_escort_scheduler.ts",
     "src/server/harthmere/escort_companion_npc_ecs.ts",
     "src/server/harthmere/live_mode_escort_scheduler.ts",
+    "src/server/logic/events/handlers/player_status.ts",
     "src/server/logic/events/handlers/npc.ts",
+    "src/server/logic/test/harthmere_npc_hit.test.ts",
     "src/server/harthmere/test/escort_system.test.ts",
     "modules.d.ts"
   ]

@@ -23,7 +23,7 @@ struct StorageBuffer {
   }
 
   auto view() const {
-    return reinterpret_cast<const uint8_t*>(&data[0]);
+    return reinterpret_cast<const uint8_t*>(data.data());
   }
 };
 
@@ -40,11 +40,11 @@ inline auto to_sbo(const uint32_t* data, uint32_t size) {
 }
 
 inline auto to_sbo(const std::vector<uint32_t>& data) {
-  return to_sbo(&data[0], data.size());
+  return to_sbo(data.data(), data.size());
 }
 
 inline auto to_sbo(tensors::Buffer<uint32_t> data) {
-  return to_sbo(&data[0], data.size());
+  return to_sbo(data.data(), data.size());
 }
 
 inline auto to_sbo(std::span<const std::byte> data) {

@@ -17,6 +17,14 @@ import {
   JACKIE_VS_MUCKERS_CUTSCENE_ID,
   jackieVsMuckersCutscene,
 } from "@/shared/cutscene/harthmere_scenes";
+import {
+  HARTHMERE_EXPRESSION_SHOWCASE_ID,
+  harthmereExpressionShowcaseCutscene,
+} from "@/shared/cutscene/expression_showcase";
+import {
+  HARTHMERE_MOVEMENT_ACTION_SHOWCASE_ID,
+  harthmereMovementActionShowcaseCutscene,
+} from "@/shared/cutscene/movement_action_showcase";
 import { CH1_SCENE_FACTORIES } from "@/shared/cutscene/ch1_scenes";
 import { log } from "@/shared/logging";
 import { sleep } from "@/shared/util/async";
@@ -24,6 +32,11 @@ import { useEffect, useRef } from "react";
 
 const HARTHMERE_SCENE_FACTORIES = new Map<string, () => unknown>([
   [JACKIE_VS_MUCKERS_CUTSCENE_ID, jackieVsMuckersCutscene],
+  [HARTHMERE_EXPRESSION_SHOWCASE_ID, harthmereExpressionShowcaseCutscene],
+  [
+    HARTHMERE_MOVEMENT_ACTION_SHOWCASE_ID,
+    harthmereMovementActionShowcaseCutscene,
+  ],
   // Chapter 1 ("Identity"). Every flashback, overlay, reconstruction, and the
   // Act 6 consolidation revision sequence. Preview any of them with
   // ?cutscenePreview=<id>, e.g. cutscenePreview=ch1-recon-corridor.

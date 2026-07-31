@@ -19,6 +19,10 @@ import {
   parseHarthmereAzureVoiceId,
 } from "@/shared/harthmere/npc_voice_profiles";
 import { SNAPSHOT_GROVE_NPCS } from "@/shared/harthmere/snapshot_grove_content";
+import {
+  SNAPSHOT_GROVE_JACKIE_ENTITY_ID,
+  SNAPSHOT_GROVE_LEGACY_NPC_ENTITY_IDS,
+} from "@/shared/harthmere/snapshot_grove_ids";
 import { SNAPSHOT_LIVE_NPC_LORE } from "@/shared/harthmere/snapshot_live_npc_bible";
 
 describe("Harthmere Azure NPC voice profiles", () => {
@@ -213,6 +217,21 @@ describe("Harthmere Azure NPC voice profiles", () => {
     const parsed = parseHarthmereAzureVoiceId(huck.voiceParameterId);
     assert.equal(parsed?.deliveryStyle, "country");
     assert.equal(parsed?.gender, "male");
+  });
+
+  it("keeps migrated Grove runtime voice identities stable for committed recordings", () => {
+    const canonical = harthmereVoiceProfileForActor({
+      source: "runtime_entity",
+      entityId: SNAPSHOT_GROVE_JACKIE_ENTITY_ID,
+      displayName: "Jackie",
+    });
+    const legacy = harthmereVoiceProfileForActor({
+      source: "runtime_entity",
+      entityId: SNAPSHOT_GROVE_LEGACY_NPC_ENTITY_IDS.jackie,
+      displayName: "Jackie",
+    });
+    assert.equal(canonical.actorKey, legacy.actorKey);
+    assert.equal(canonical.voiceParameterId, legacy.voiceParameterId);
   });
 
   it("builds escaped SSML using the assigned Azure voice", () => {

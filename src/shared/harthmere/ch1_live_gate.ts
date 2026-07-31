@@ -66,6 +66,8 @@ export interface Ch1LiveGateRuntimeState {
     result: string;
   };
   testimonies: string[];
+  /** Partial progress for ordered multi-person objectives. */
+  objectiveRouteProgress: Record<string, string[]>;
   augur9: Ch1Augur9State;
   /** Playback logs discovered by story beats but not yet bought with charge. */
   availablePlaybackIds: string[];
@@ -86,6 +88,7 @@ export function defaultCh1LiveGateRuntimeState(): Ch1LiveGateRuntimeState {
     latentSkills: ch1EmptyLatentSkills(),
     latentSkillLastUsedAtMs: {},
     testimonies: [],
+    objectiveRouteProgress: {},
     augur9: ch1Augur9Initial(),
     availablePlaybackIds: [],
     appliedObjectiveEffects: [],
@@ -234,6 +237,17 @@ export function normalizeCh1LiveGateRuntimeState(
   );
   const activeDungeonPartyId = stringOrUndefined(value.activeDungeonPartyId);
   const chosenName = stringOrUndefined(value.chosenName);
+  const rawRouteProgress =
+    value.objectiveRouteProgress &&
+    typeof value.objectiveRouteProgress === "object"
+      ? (value.objectiveRouteProgress as Record<string, unknown>)
+      : {};
+  const objectiveRouteProgress = Object.fromEntries(
+    Object.entries(rawRouteProgress).map(([key, routeValue]) => [
+      key,
+      uniqueStrings(routeValue),
+    ])
+  );
   return {
     activeDungeonRunId: stringOrUndefined(value.activeDungeonRunId),
     ...(activeDungeonInstanceId ? { activeDungeonInstanceId } : {}),
@@ -265,6 +279,7 @@ export function normalizeCh1LiveGateRuntimeState(
         }
       : {}),
     testimonies: uniqueStrings(value.testimonies),
+    objectiveRouteProgress,
     augur9: {
       charge: Number.isFinite(charge)
         ? Math.max(0, Math.min(100, charge))
@@ -332,7 +347,15 @@ const PROVISIONING_ITEM_MATCHERS: Readonly<
   Record<ProvisioningKey, readonly RegExp[]>
 > = {
   water: [/^water$/, /clean_water/, /water_flask/, /canteen/],
-  food: [/keeping_bread/, /^bread$/, /trail_ration/, /dried_/, /food_stock/],
+  food: [
+    /keeping_bread/,
+    /^bread$/,
+    /loaf_bread/,
+    /road_ration/,
+    /trail_ration/,
+    /dried_/,
+    /food_stock/,
+  ],
   cooked: [
     /worker_meal/,
     /cooked/,
@@ -347,7 +370,14 @@ const PROVISIONING_ITEM_MATCHERS: Readonly<
   repair_kit: [/^repair_kit$/, /road_repair_kit/, /field_repair_kit/],
   bandage: [/^bandage$/, /field_medkit/, /field_medicine/, /medical_kit/],
   fuel: [/^fuel$/, /^coal$/, /charcoal/, /firewood/, /lamp_oil/],
-  cold_gear: [/cold_gear/, /cold_weather/, /winter_/, /insulated_/, /fur_coat/],
+  cold_gear: [
+    /cold_gear/,
+    /cold_weather/,
+    /winter_/,
+    /insulated_/,
+    /fur_coat/,
+    /travel_cloak/,
+  ],
   rope: [/^rope$/, /_rope$/, /rope_coil/],
   iron: [/^iron$/, /iron_ingot/, /iron_ore/, /iron_stock/, /cold_iron_scrap/],
 };

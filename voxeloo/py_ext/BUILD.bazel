@@ -1,4 +1,6 @@
 load("@pybind11_bazel//:build_defs.bzl", "pybind_extension")
+load("@pip_deps//:requirements.bzl", "requirement")
+load("@rules_python//python:defs.bzl", "py_test")
 
 pybind_extension(
     name = "py_ext",
@@ -37,5 +39,44 @@ pybind_extension(
         "//voxeloo/galois:transforms",
         "//voxeloo/galois:water",
         "//voxeloo/mapping",
+    ],
+)
+
+py_test(
+    name = "core_bindings_test",
+    srcs = [
+        "core_bindings_test.py",
+        "test_support.py",
+    ],
+    data = [":py_ext.so"],
+    deps = [requirement("numpy")],
+)
+
+py_test(
+    name = "algorithm_bindings_test",
+    srcs = [
+        "algorithm_bindings_test.py",
+        "test_support.py",
+    ],
+    data = [":py_ext.so"],
+    deps = [requirement("numpy")],
+)
+
+py_test(
+    name = "galois_bindings_test",
+    srcs = [
+        "galois_bindings_test.py",
+        "test_support.py",
+    ],
+    data = [":py_ext.so"],
+    deps = [requirement("numpy")],
+)
+
+test_suite(
+    name = "bindings_test",
+    tests = [
+        ":algorithm_bindings_test",
+        ":core_bindings_test",
+        ":galois_bindings_test",
     ],
 )

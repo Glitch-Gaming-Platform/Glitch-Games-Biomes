@@ -17,6 +17,7 @@ import {
   snapshotGroveNpcEntityId,
   type SnapshotGroveQuest,
 } from "@/shared/harthmere/snapshot_grove_content";
+import { SNAPSHOT_GROVE_JACKIE_ENTITY_ID } from "@/shared/harthmere/snapshot_grove_ids";
 
 export const SNAPSHOT_COMPLETE_PORT_VERSION = "snapshot-complete-port";
 export const SNAPSHOT_CANONICAL_CHALLENGE_EXTRACTION_VERSION =
@@ -179,7 +180,7 @@ export const SNAPSHOT_ROAD_AHEAD_MISSION = {
   id: SNAPSHOT_ROAD_AHEAD_MISSION_ID,
   title: SNAPSHOT_ROAD_AHEAD_MISSION_TITLE,
   source: "snapshot_nux_challenge_bridge",
-  giverEntityId: 8997551883502307 as BiomesId,
+  giverEntityId: SNAPSHOT_GROVE_JACKIE_ENTITY_ID,
   district: "The Grove",
   summary:
     "Follow Jackie's road out of The Grove and complete the first survival lessons from the snapshot tutorial chain.",
@@ -865,9 +866,7 @@ export function snapshotGroveFootClearanceAudit(
     return {
       npcId: npc.id,
       displayName: npc.displayName,
-      entityId: npc.seedServerNpc
-        ? snapshotGroveNpcEntityId(npc)
-        : (8997551883502307 as BiomesId),
+      entityId: snapshotGroveNpcEntityId(npc),
       expectedFeetY: SNAPSHOT_GROVE_EXPECTED_FEET_Y,
       authoredFeetY: feetY,
       authoredClearance: Number(clearance.toFixed(3)),

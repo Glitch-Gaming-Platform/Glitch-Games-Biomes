@@ -1458,7 +1458,7 @@ export const SNAPSHOT_GROVE_LANDMARKS: SnapshotGroveLandmark[] = [
     kind: "resource",
     area: "harthmere",
     questIds: ["toll_ledger_problem"],
-    visibleOnWorldMap: false,
+    visibleOnWorldMap: true,
     activeQuestOnly: true,
   },
   {

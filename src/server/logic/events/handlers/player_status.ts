@@ -8,14 +8,18 @@ import {
   setPlayerMaxHealth,
 } from "@/server/logic/utils/players";
 import { BikkieIds } from "@/shared/bikkie/ids";
+import { secondsSinceEpoch } from "@/shared/ecs/config";
 import { getAabbForEntity } from "@/shared/game/entity_sizes";
 import { attackIntervalSeconds } from "@/shared/game/damage";
-import { distSqToAABB } from "@/shared/math/linear";
+import { movementActionIsInvulnerable } from "@/shared/game/movement_actions";
+import { degToRad, diffAngle } from "@/shared/math/angles";
+import { distSqToAABB, sub, yaw } from "@/shared/math/linear";
 import {
   bodyVerticalGap,
   horizontalDistance,
   withinAttackReach,
 } from "@/shared/npc/behavior/combat_geometry";
+import { rangedAttackShape } from "@/shared/npc/behavior/chase_attack";
 import {
   readCreatureProgression,
   scaleCreatureCombatStats,
@@ -30,7 +34,7 @@ import {
   readHarthmereNativeCombatProgression,
   writeHarthmereNativeCombatProgression,
 } from "@/shared/harthmere/harthmere_native_combat";
-import { harthmereNativeNpcCombatProfileForTypeId } from "@/shared/harthmere/harthmere_native_combat_catalog";
+import { harthmereNativeNpcCombatProfileForEntity } from "@/shared/harthmere/harthmere_native_combat_catalog";
 import { harthmereNativeLevelStats } from "@/shared/harthmere/harthmere_native_level_stats";
 import { log } from "@/shared/logging";
 import {
@@ -42,6 +46,23 @@ import {
   harthmereNativeCombatSkillAwards,
   harthmereNativeShieldSkillAwards,
 } from "@/shared/harthmere/harthmere_skill_progression";
+
+const HARTHMERE_NPC_RANGED_REPLAY_LEDGER_LIMIT = 160;
+
+function sameImpactPoint(
+  a: readonly number[] | undefined,
+  b: readonly number[] | undefined
+) {
+  return Boolean(
+    a &&
+      b &&
+      a.length >= 3 &&
+      b.length >= 3 &&
+      Math.abs(a[0] - b[0]) <= 0.001 &&
+      Math.abs(a[1] - b[1]) <= 0.001 &&
+      Math.abs(a[2] - b[2]) <= 0.001
+  );
+}
 
 export const playerInitEventHandler = makeEventHandler("playerInitEvent", {
   mergeKey: (event) => event.id,
@@ -105,6 +126,14 @@ export const updatePlayerHealthEventHandler = makeEventHandler(
       let authoritativeHp = event.hp;
       let authoritativeHpDelta = event.hpDelta;
       if (event.damageSource?.kind === "attack") {
+        if (
+          movementActionIsInvulnerable(
+            player.movementState(),
+            secondsSinceEpoch()
+          )
+        ) {
+          return;
+        }
         const health = attacker?.health();
         if (health !== undefined && health.hp <= 0) {
           // You cannot attack if you're dead.
@@ -113,7 +142,11 @@ export const updatePlayerHealthEventHandler = makeEventHandler(
 
         const npcTypeId = attacker?.npcMetadata()?.type_id;
         const nativeProfile = npcTypeId
-          ? harthmereNativeNpcCombatProfileForTypeId(npcTypeId)
+          ? harthmereNativeNpcCombatProfileForEntity({
+              typeId: npcTypeId,
+              displayName: attacker?.label()?.text,
+              maxHp: attacker?.health()?.maxHp,
+            })
           : undefined;
         if (nativeProfile) {
           if (nativeProfile.attackDamage <= 0) return;
@@ -124,7 +157,102 @@ export const updatePlayerHealthEventHandler = makeEventHandler(
           const playerHeight = playerAabb
             ? playerAabb[1][1] - playerAabb[0][1]
             : 1.8;
-          if (
+          const rangedAttack = event.attackAbilityId
+            ? nativeProfile.rangedAttacks?.find(
+                ({ abilityId }) => abilityId === event.attackAbilityId
+              )
+            : undefined;
+          if (event.attackAbilityId) {
+            const serializedNpcState = attacker?.npcState()?.data;
+            const rangedState = serializedNpcState?.length
+              ? deserializeNpcCustomState(serializedNpcState).chaseAttack
+                  ?.rangedAttack
+              : undefined;
+            const now = secondsSinceEpoch();
+            const shape = rangedAttack
+              ? rangedAttackShape(rangedAttack)
+              : undefined;
+            const attackOrigin = rangedState?.originPoint ?? attackerPosition;
+            const recordedHit = Boolean(
+              rangedState?.hitTargetIds?.includes(player.id) ??
+                ((shape === "projectile" || shape === "beam") &&
+                  rangedState?.targetId === player.id)
+            );
+            const playerInsideAttack = (() => {
+              if (
+                !rangedAttack ||
+                !rangedState ||
+                !playerAabb ||
+                !attackOrigin
+              ) {
+                return false;
+              }
+              if (shape === "self_aoe") {
+                return (
+                  distSqToAABB(attackOrigin, playerAabb) <=
+                  rangedAttack.hitRadius * rangedAttack.hitRadius
+                );
+              }
+              if (shape === "cone") {
+                if (!playerPosition) return false;
+                const direction = yaw(sub(playerPosition, attackOrigin));
+                return (
+                  horizontalDistance(attackOrigin, playerPosition) <=
+                    rangedAttack.attackDistance + rangedAttack.hitRadius &&
+                  Math.abs(
+                    diffAngle(direction, rangedState.castYaw ?? direction)
+                  ) <= degToRad((rangedAttack.coneAngleDeg ?? 60) / 2)
+                );
+              }
+              return (
+                distSqToAABB(rangedState.aimPoint, playerAabb) <=
+                rangedAttack.hitRadius * rangedAttack.hitRadius
+              );
+            })();
+            if (
+              !rangedAttack ||
+              !attackerPosition ||
+              !playerAabb ||
+              event.attackTime === undefined ||
+              !event.impactPoint ||
+              !rangedState ||
+              rangedState.abilityId !== event.attackAbilityId ||
+              ((shape === "projectile" || shape === "beam") &&
+                rangedState.targetId !== player.id) ||
+              Math.abs(rangedState.castTime - event.attackTime) > 0.001 ||
+              !sameImpactPoint(rangedState.aimPoint, event.impactPoint) ||
+              rangedState.result !== "hit" ||
+              !recordedHit ||
+              now + 0.1 < rangedState.impactTime ||
+              now - event.attackTime > rangedAttack.castTimeSecs + 3 ||
+              horizontalDistance(attackerPosition, event.impactPoint) >
+                rangedAttack.attackDistance + rangedAttack.hitRadius ||
+              !playerInsideAttack
+            ) {
+              log.debug("Rejected invalid native NPC ranged damage", {
+                attackerId: attacker?.id,
+                playerId: player.id,
+                attackAbilityId: event.attackAbilityId,
+              });
+              return;
+            }
+            const replayKey = `npc-ranged:${attacker.id}:${event.attackAbilityId}:${event.attackTime}`;
+            const ledger = player.mutableHarthmereEcsTransactionLedger();
+            if (ledger.transaction_ids.includes(replayKey)) {
+              return;
+            }
+            ledger.transaction_ids.push(replayKey);
+            if (
+              ledger.transaction_ids.length >
+              HARTHMERE_NPC_RANGED_REPLAY_LEDGER_LIMIT
+            ) {
+              ledger.transaction_ids.splice(
+                0,
+                ledger.transaction_ids.length -
+                  HARTHMERE_NPC_RANGED_REPLAY_LEDGER_LIMIT
+              );
+            }
+          } else if (
             !attackerPosition ||
             !playerPosition ||
             !playerAabb ||
@@ -164,7 +292,8 @@ export const updatePlayerHealthEventHandler = makeEventHandler(
           const scaledNpcStats = scaleCreatureCombatStats(
             {
               maxHp: nativeProfile.maxHp,
-              attackDamage: nativeProfile.attackDamage,
+              attackDamage:
+                rangedAttack?.attackDamage ?? nativeProfile.attackDamage,
               attackIntervalSecs: nativeProfile.attackIntervalSecs,
               walkSpeed: nativeProfile.walkSpeed,
               runSpeed: nativeProfile.runSpeed,
@@ -178,6 +307,11 @@ export const updatePlayerHealthEventHandler = makeEventHandler(
             rawDamage: scaledNpcStats.attackDamage,
             armor: armor.armor + defenderStats.armor,
             defense: armor.defense + defenderStats.defense,
+            magicResistance:
+              armor.defense +
+              defenderStats.defense * 0.75 +
+              defenderStats.intelligence,
+            damageType: rangedAttack?.damageType,
             evasion: armor.evasion + defenderStats.evasion,
             accuracy: attackerStats.accuracy,
             attackerLevel: nativeProfile.level,

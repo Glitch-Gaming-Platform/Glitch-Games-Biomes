@@ -223,6 +223,15 @@ export function playerFirstPersonCamPosition(
   return ret;
 }
 
+export function playerFirstPersonCamPositionAtHeight(
+  position: ReadonlyVec3,
+  eyeHeight: number
+) {
+  const ret: Vec3 = [...position];
+  ret[1] += eyeHeight;
+  return ret;
+}
+
 export function camOffsetVector(cam: TrackingCamTweaks): Vec3f {
   return [cam.offsetRight, cam.offsetUp, cam.offsetBack];
 }

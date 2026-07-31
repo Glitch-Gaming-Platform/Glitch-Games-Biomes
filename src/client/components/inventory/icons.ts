@@ -52,7 +52,15 @@ export const ATTRIBUTE_TO_ICON: [
     "triggerIcon",
     (value, { seen }) => getTriggerIconUrl(value as TriggerIcon, seen),
   ],
-  ["galoisIcon", (value) => resolveAssetUrlUntyped(`icons/${value}`)],
+  [
+    "galoisIcon",
+    (value) => {
+      const icon = String(value);
+      return /^(?:https?:\/\/|data:image\/|blob:|\/)/i.test(icon)
+        ? icon
+        : resolveAssetUrlUntyped(`icons/${icon}`);
+    },
+  ],
   ["galoisPath", (value) => resolveAssetUrlUntyped(`icons/${value}`)],
   ["isQuest", () => challengesIcon.src],
 ];

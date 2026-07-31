@@ -431,6 +431,7 @@ import {
   harthmereBusinessOutpostBusinessId,
   isPointInsideHarthmereBusinessSafeSite,
 } from "./business_customer_simulator";
+import { CH1_WORLD_BUILDING_PLANS } from "./ch1_world_buildings";
 
 // Chapter 1 quest rewards use the normal MMO inventory authority. Register
 // their binding/trade rules before any actor state is parsed so reconnects do
@@ -1712,8 +1713,7 @@ function isHarthmereActorJobMarkerId(markerId: string) {
 
 function isHarthmereActorPrivateMarkerId(markerId: string) {
   return (
-    isHarthmereActorJobMarkerId(markerId) ||
-    markerId.startsWith("bible_quest:")
+    isHarthmereActorJobMarkerId(markerId) || markerId.startsWith("bible_quest:")
   );
 }
 
@@ -6878,10 +6878,13 @@ function defaultHarthmereBusinessOutpostBuildingState(nowMs: number) {
     {};
   const materializationPlans: HarthmereLiveModeBackendState["building"]["materializationPlans"] =
     {};
-  for (const record of Object.values(
-    HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS
-  )) {
-    const plan = record.materializationPlan;
+  const canonicalPlans = [
+    ...Object.values(HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS).map(
+      (record) => record.materializationPlan
+    ),
+    ...CH1_WORLD_BUILDING_PLANS,
+  ];
+  for (const plan of canonicalPlans) {
     materializationPlans[plan.requestId] = plan;
     placedStructures[plan.requestId] = {
       structureTypeId: plan.structureTypeId,
@@ -10964,10 +10967,7 @@ export function reduceHarthmereLiveModeBackendState(
       // This explicit exchange is later folded into the one signed native
       // inventory transaction. Exclude its matching Redis projection delta
       // from generic reconciliation or the hand-in item is consumed twice.
-      recordNativeHandledItemDelta(
-        requirement.itemId,
-        -requirement.count
-      );
+      recordNativeHandledItemDelta(requirement.itemId, -requirement.count);
       nativeEcsMaterializationPlans.push({
         kind: "inventory_exchange",
         materializationKey: `snapshot_grove_turn_in:${envelope.actorId}:${quest.id}:${objectiveIndex}`,
@@ -14289,7 +14289,9 @@ export function reduceHarthmereLiveModeBackendState(
             ) {
               nativeEcsMaterializationPlans.push({
                 kind: "inventory_exchange",
-                materializationKey: `bible_objective_item:${envelope.actorId}:${requestedQuestId}:${payloadString(
+                materializationKey: `bible_objective_item:${
+                  envelope.actorId
+                }:${requestedQuestId}:${payloadString(
                   envelope,
                   "objectiveId"
                 )}:${envelope.requestId}`,
@@ -14378,8 +14380,7 @@ export function reduceHarthmereLiveModeBackendState(
             }
             if (
               envelope.serverActorPosition &&
-              (result.rewards.goldDelta > 0 ||
-                result.rewards.items.length > 0)
+              (result.rewards.goldDelta > 0 || result.rewards.items.length > 0)
             ) {
               nativeEcsMaterializationPlans.push({
                 kind: "inventory_exchange",

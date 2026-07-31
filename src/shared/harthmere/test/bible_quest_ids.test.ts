@@ -114,7 +114,9 @@ describe("Bible native ids — pins", () => {
 
 describe("Bible native ids — bands and derivation", () => {
   it("keeps derived bands disjoint from Chapter 1", () => {
-    const ch1Ids = CH1_QUESTS.map((quest) => Number(ch1NativeQuestId(quest.id)));
+    const ch1Ids = CH1_QUESTS.map((quest) =>
+      Number(ch1NativeQuestId(quest.id))
+    );
     const min = Math.min(...ch1Ids);
     const max = Math.max(...ch1Ids);
     assert(
@@ -134,7 +136,8 @@ describe("Bible native ids — bands and derivation", () => {
     // only input, so the derived block must not reach into its neighbour.
     const index = BIBLE_QUEST_CATALOG.length; // one past the end
     const questBase = BIBLE_DERIVED_QUEST_ID_BASE + index;
-    const stepBase = BIBLE_DERIVED_STEP_ID_BASE + index * BIBLE_STEP_IDS_PER_QUEST;
+    const stepBase =
+      BIBLE_DERIVED_STEP_ID_BASE + index * BIBLE_STEP_IDS_PER_QUEST;
     const nextStepBase =
       BIBLE_DERIVED_STEP_ID_BASE + (index + 1) * BIBLE_STEP_IDS_PER_QUEST;
     assert(stepBase + BIBLE_STEP_IDS_PER_QUEST === nextStepBase);

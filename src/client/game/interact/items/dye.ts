@@ -12,6 +12,7 @@ import { hitExistingTerrain } from "@/shared/game/spatial";
 import type { ReadonlyVec3 } from "@/shared/math/types";
 import { fireAndForget } from "@/shared/util/async";
 import type { Dir } from "@/shared/wasm/types/common";
+import { emitHarthmereSoundEffect } from "@/shared/harthmere/sound_effect_manifest";
 
 function dyeBlock(
   deps: InteractContext<
@@ -88,6 +89,7 @@ export class DyeItemSpec implements AttackDestroyDelegateSpec {
       dyeBlock(this.deps, hit.pos, hit.face, dyeID);
       const player = this.deps.resources.get("/scene/local_player").player;
       player.eagerEmote(this.deps.events, this.deps.resources, "place");
+      emitHarthmereSoundEffect("dye_object", { position: hit.pos });
       return true;
     }
 

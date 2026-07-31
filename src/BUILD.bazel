@@ -14,6 +14,15 @@ filegroup(
     ],
 )
 
+filegroup(
+    name = "ecs_generated_sources",
+    srcs = glob([
+        "server/shared/ecs/gen/*.ts",
+        "shared/ecs/gen/*.ts",
+    ]),
+    visibility = ["//ecs:__pkg__"],
+)
+
 # Script that will place symlinks of all the typeScript generated file
 # dependencies into a folder specified as an argument.
 sh_binary(

@@ -25,7 +25,20 @@ import {
   serializeNpcCustomState,
 } from "@/shared/npc/serde";
 
-const ACTIONS = new Set(["enter", "exit", "evict", "recover"]);
+/**
+ * `stage` is the Grove-side counterpart of `enter`.
+ *
+ * Chapter 1 opens on the player waking up in the spare room above the Grove
+ * road-house. It used to open wherever the player happened to be standing when
+ * Muck vs. Machine completed — in the reported case, mid-combat in the Rat
+ * Crowns drain — and then instruct them to get out of bed. A staging warp makes
+ * the chapter's first sentence true.
+ *
+ * It is deliberately the most restricted action: it must land OUTSIDE the
+ * Elsewhen band and it must clear no admission, so it can never be used to
+ * reach a dungeon or to escape one.
+ */
+const ACTIONS = new Set(["enter", "exit", "evict", "recover", "stage"]);
 
 export const harthmereChapter1WarpEventHandler = makeEventHandler(
   "harthmereChapter1WarpEvent",
@@ -138,6 +151,17 @@ export const harthmereChapter1WarpEventHandler = makeEventHandler(
           destinationSlot?.dungeonId !== event.dungeon_id
         ) {
           throw new RollbackError("Invalid Chapter 1 recovery destination");
+        }
+      } else if (event.action === "stage") {
+        // Grove-side only, and never while the player holds a run admission —
+        // staging out of a dungeon would be an exit without its retrieval check.
+        if (isInsideCh1ElsewhenBand(event.position)) {
+          throw new RollbackError("Chapter 1 staging must stay outside Elsewhen");
+        }
+        if (readCh1NativeRunAdmission(triggerState)) {
+          throw new RollbackError(
+            "Chapter 1 staging is not available inside a gate"
+          );
         }
       } else {
         if (isInsideCh1ElsewhenBand(event.position)) {

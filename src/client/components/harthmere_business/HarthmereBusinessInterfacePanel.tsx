@@ -93,6 +93,7 @@ declare global {
 
 type ShopfrontMerchKind =
   | "tool"
+  | "weapon"
   | "block"
   | "material"
   | "interior"
@@ -2615,6 +2616,9 @@ const ShopfrontPane: React.FunctionComponent<{
   const recipeBooks = storefrontGoods.filter(
     (good) => good.kind === "recipe_book"
   );
+  const securityWeapons = storefrontGoods.filter(
+    (good) => good.kind === "weapon"
+  );
   const renderStorefrontGood = (
     good: (typeof storefrontGoods)[number],
     merchKind: ShopfrontMerchKind
@@ -2822,6 +2826,19 @@ const ShopfrontPane: React.FunctionComponent<{
           data-testid="biomes-business-storefront-goods"
           style={shopfrontSectionStackStyle}
         >
+          {securityWeapons.length ? (
+            <ShopfrontMerchSection
+              kind="weapon"
+              title="Energy Weapons"
+              countLabel={`${securityWeapons.length} restricted systems`}
+            >
+              <div style={shopfrontGoodsGridStyle}>
+                {securityWeapons.map((good) =>
+                  renderStorefrontGood(good, "weapon")
+                )}
+              </div>
+            </ShopfrontMerchSection>
+          ) : null}
           {buildingMaterials.length ? (
             <ShopfrontMerchSection
               kind="block"
@@ -4785,6 +4802,16 @@ const shopfrontMerchTones: Record<
     surfaceBottom: "rgba(20, 18, 30, 0.98)",
     badgeBg: "rgba(255, 209, 102, 0.2)",
     badgeText: "#ffe7a6",
+  },
+  weapon: {
+    label: "Restricted Weapon",
+    accent: "#9f8cff",
+    border: "rgba(159, 140, 255, 0.82)",
+    glow: "rgba(103, 77, 255, 0.3)",
+    surfaceTop: "rgba(48, 38, 99, 0.88)",
+    surfaceBottom: "rgba(10, 12, 30, 0.99)",
+    badgeBg: "rgba(159, 140, 255, 0.2)",
+    badgeText: "#e4deff",
   },
   block: {
     label: "Building Material",

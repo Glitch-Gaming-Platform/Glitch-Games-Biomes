@@ -6,6 +6,9 @@ const GAMEPLAY_MOVEMENT_FOCUS_KEY_CODES = new Set([
   "Space",
   "ShiftLeft",
   "ShiftRight",
+  "KeyZ",
+  "KeyX",
+  "KeyC",
 ]);
 
 export function shouldFocusAndLockForGameplayMovementKey(input: {

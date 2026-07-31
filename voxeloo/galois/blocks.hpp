@@ -123,6 +123,7 @@ class IndexBuilder {
   using Criteria = std::tuple<std::string, uint8_t, std::string, std::string>;
 
   explicit IndexBuilder(uint32_t max_block_id, uint32_t error) {
+    CHECK_ARGUMENT(error <= max_block_id);
     index_.samplers.resize(max_block_id + 1);
     index_.error = error;
   }
@@ -181,7 +182,9 @@ class IndexBuilder {
   }
 
   auto build() {
-    CHECK_ARGUMENT(index_.get_error_sampler().get(0).count > 0);
+    const auto& error_sampler = index_.get_error_sampler();
+    CHECK_ARGUMENT(error_sampler.data.size() > 0);
+    CHECK_ARGUMENT(error_sampler.get(0).count > 0);
     return index_;
   }
 

@@ -73,6 +73,11 @@ import {
   harthmereBusinessCraftingStationSeedEntityIds,
 } from "@/server/harthmere/business_crafting_station_ecs_seed";
 import {
+  buildChapter1PropSeedChanges,
+  chapter1PropSeedIds,
+} from "@/server/harthmere/ch1_prop_ecs_seed";
+import { CH1_PROP_SEED_VERSION } from "@/shared/harthmere/ch1_prop_seed";
+import {
   HARTHMERE_PLAYER_LIKE_NPC_COSMETIC_RESET_VERSION,
   prepareHarthmerePlayerLikeNpcForUniqueAppearance,
 } from "@/server/harthmere/player_like_npc_cosmetics";
@@ -116,6 +121,7 @@ import {
   EntityDescription,
   Health,
   QuestGiver,
+  Size,
   ShardDiff,
   ShardMuck,
   ShardSeed,
@@ -227,6 +233,7 @@ import {
   harthmereRiverWaterLevelAt,
 } from "@/shared/harthmere/harthmere_river";
 import { HARTHMERE_TOWN_BACK_BOUNDARY_X } from "@/shared/harthmere/harthmere_town_horizon";
+import { isHarthmereBuildingVegetationExclusion } from "@/shared/harthmere/harthmere_building_exclusion";
 import { HARTHMERE_ICED_BOARD_ENTITY_IDS } from "@/shared/harthmere/native_request_boards";
 import {
   HARTHMERE_ADDITIVE_TOWN_OFFSET_X,
@@ -4103,6 +4110,14 @@ function harthmereWideWildsSurfaceMaterial(
 // which both live east of the town's back boundary.
 function harthmereWildsForestAllowed(authoredX: number, authoredZ: number) {
   if (isInsideAuthoredHarthmereTown(authoredX, authoredZ, 22)) return false;
+  // HARTHMERE_BUILDING_EXCLUSION: a building only writes its SOLID voxels, so
+  // the room it encloses comes back to this generator as open air and used to
+  // grow a tree in it. The town rectangle above hid that for the 34 buildings
+  // inside it; the 23 outside — every Residential row house and every Wilds
+  // structure — were full of trunks, leaf blocks and wild grass. Derived from
+  // the building table, so a new building is excluded without touching this.
+  if (isHarthmereBuildingVegetationExclusion(authoredX, authoredZ))
+    return false;
   // HARTHMERE_RIVER: nothing grows in the channel or close enough to lean over
   // it. A trunk in the water has no soil beneath it and Gaia's tree_growth
   // would decay the whole tree two minutes after load; a canopy overhanging the
@@ -5036,7 +5051,11 @@ function harthmereWideWildsBlockAt(
     relY === 1 &&
     !isHarthmereWideWildsRoad(worldX, worldZ, 9) &&
     !harthmereRiverContains(worldX, worldZ) &&
-    !harthmereStillWaterContains(worldX, worldZ)
+    !harthmereStillWaterContains(worldX, worldZ) &&
+    // Same reason as the forest gate above: this scatter runs in the air
+    // volume a building encloses, which is how crates and roses ended up on
+    // the floor of the watermill and the Deep Old Wood lodge.
+    !isHarthmereBuildingVegetationExclusion(worldX, worldZ)
   ) {
     const hash = localDevWildsHash(worldX, worldZ, 47);
     if (hash % 863 === 0) {
@@ -7309,6 +7328,9 @@ function makeLocalDevChapter1NpcChanges(
             hp: encounter.maxHp,
             maxHp: encounter.maxHp,
           }),
+          ...(encounter.size
+            ? { size: Size.create({ v: encounter.size }) }
+            : {}),
           entity_description: EntityDescription.create({
             text: `${CH1_DUNGEON_TERRAIN_VERSION} CH1_ENCOUNTER ${encounter.dungeonId} ${encounter.encounterId} ${encounter.objectiveId}`,
           }),
@@ -7710,9 +7732,11 @@ function makeLocalDevSeedFingerprint(input: {
   businessOwnerNpcIds: BiomesId[];
   businessCustomerNpcIds: BiomesId[];
   businessCraftingStationIds: BiomesId[];
+  chapter1PropIds: BiomesId[];
 }) {
   return JSON.stringify({
     version: HARTHMERE_LOCAL_DEV_SEED_FINGERPRINT_VERSION,
+    chapter1PropSeedVersion: CH1_PROP_SEED_VERSION,
     businessOwnerNpcSeedVersion: HARTHMERE_BUSINESS_OWNER_NPC_SEED_VERSION,
     businessCustomerNpcSeedVersion:
       HARTHMERE_BUSINESS_CUSTOMER_NPC_SEED_VERSION,
@@ -8168,9 +8192,19 @@ function makeLocalDevMiniWorldChanges(
       nowSeconds: secondsSinceEpoch(),
       existingIds,
     });
+  // CHAPTER_1_PROPS: the road-house, its hearth, cot and stores, Coretta's
+  // ledger and the watch-house post. Act 1 was written around objects that were
+  // never modelled; these are create-only so a container's contents survive a
+  // re-seed.
+  const chapter1PropChanges = buildChapter1PropSeedChanges({
+    tick,
+    nowSeconds: secondsSinceEpoch(),
+    existingIds,
+  });
   changes.push(
     ...npcChanges,
     ...chapter1NpcChanges,
+    ...chapter1PropChanges,
     ...groveNpcChanges,
     ...combatNpcChanges,
     ...liveEntitySeedChanges,
@@ -8187,6 +8221,7 @@ function makeLocalDevMiniWorldChanges(
     chapter1TerrainShards: includeTerrain ? chapter1Specs.length : 0,
     npcs: npcChanges.length,
     chapter1Npcs: chapter1NpcChanges.length,
+    chapter1Props: chapter1PropChanges.length,
     snapshotGroveNpcs: groveNpcChanges.length,
     snapshotCombatNpcs: combatNpcChanges.length,
     liveEntityProductionSeeds: liveEntitySeedChanges.length,
@@ -8831,6 +8866,7 @@ async function seedLocalDevTerrainIfMissing(
   const businessOwnerNpcIds = localDevBusinessOwnerNpcIds();
   const businessCustomerNpcIds = localDevBusinessCustomerNpcIds();
   const businessCraftingStationIds = localDevBusinessCraftingStationIds();
+  const chapter1PropIds = chapter1PropSeedIds();
   const legacyTerrainIds = localDevLegacyTerrainShardIds();
   const activeTerrainIds = new Set(terrainIds);
   const expectedSeedIds = [
@@ -8838,6 +8874,7 @@ async function seedLocalDevTerrainIfMissing(
     ...chapter1TerrainIds,
     ...npcIds,
     ...chapter1NpcIds,
+    ...chapter1PropIds,
     ...snapshotGroveNpcIds,
     ...snapshotCombatNpcIds,
     ...liveEntityProductionSeedIds,
@@ -8851,6 +8888,7 @@ async function seedLocalDevTerrainIfMissing(
     chapter1TerrainIds,
     npcIds,
     chapter1NpcIds,
+    chapter1PropIds,
     snapshotGroveNpcIds,
     snapshotCombatNpcIds,
     liveEntityProductionSeedIds,

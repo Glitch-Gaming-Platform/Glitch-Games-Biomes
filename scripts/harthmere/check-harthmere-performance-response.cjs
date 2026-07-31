@@ -15,9 +15,10 @@ function ok(cond, msg) {
 ok(polish.includes("harthmere-production-building-polish-and-optimization"), "production polish version is current");
 ok(polish.includes("harthmere-runtime-performance-profile"), "runtime performance profile is current");
 ok(polish.includes("prototypeLoadConcurrency: 2"), "prototype loading is capped lower for local-dev");
-ok(polish.includes("maxAnimatedLifeOptimized: 72"), "animated life budget is tightened");
+ok(polish.includes("maxAnimatedLifeOptimized: 24"), "animated life budget is tightened");
 ok(assets.includes("HARTHMERE_SURVEY_PERFORMANCE_RESPONSE_VERSION"), "renderer exposes current survey response version");
 ok(assets.includes("Core placement is no longer") || assets.includes("core radius bypass"), "core placements no longer bypass animated/tiny/wilds budgets");
+ok(assets.includes("keepWithinTotalBudget"), "core static placements share the optimized total cap");
 ok(assets.includes("NEAR_ANIM_DIST_SQ") && assets.includes("MID_ANIM_DIST_SQ"), "far animation throttling is installed");
 ok(assets.includes("this.harthmerePlacementLodUpdateIn = 0.5"), "LOD refresh is throttled to twice per second");
 if (process.exitCode) process.exit(process.exitCode);

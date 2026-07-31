@@ -1,4 +1,5 @@
 import {
+  isMobileDeviceDescription,
   resolveGlitchLocalSyncBaseUrl,
   shouldShowVirtualJoystick,
 } from "@/client/game/client_config";
@@ -45,6 +46,21 @@ describe("Glitch runtime sync URL resolution", () => {
 });
 
 describe("mobile control selection", () => {
+  it("recognizes mobile operating systems even when UA device classification is missing", () => {
+    assert.equal(
+      isMobileDeviceDescription({ deviceType: undefined, osName: "iOS" }),
+      true
+    );
+    assert.equal(
+      isMobileDeviceDescription({ deviceType: undefined, osName: "Android" }),
+      true
+    );
+    assert.equal(
+      isMobileDeviceDescription({ deviceType: undefined, osName: "macOS" }),
+      false
+    );
+  });
+
   it("uses the virtual joystick on touch devices even when Pointer Lock exists", () => {
     assert.equal(
       shouldShowVirtualJoystick({

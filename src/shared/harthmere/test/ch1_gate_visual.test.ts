@@ -56,7 +56,10 @@ describe("ch1 gate visual - open curve", () => {
   it("is monotonic while closing so a gate never flickers back open", () => {
     let previous = Infinity;
     for (let t = 88.5; t <= 90; t += 0.02) {
-      const v = ch1GateOpenAmount({ elapsedSeconds: t, closesAfterSeconds: 90 });
+      const v = ch1GateOpenAmount({
+        elapsedSeconds: t,
+        closesAfterSeconds: 90,
+      });
       assert.ok(v <= previous + 1e-9, `open went back up at t=${t}`);
       previous = v;
     }
@@ -65,7 +68,10 @@ describe("ch1 gate visual - open curve", () => {
 
 describe("ch1 gate visual - per-gate seed", () => {
   it("is deterministic", () => {
-    assert.equal(ch1GateSeed("ch1_gate_desert"), ch1GateSeed("ch1_gate_desert"));
+    assert.equal(
+      ch1GateSeed("ch1_gate_desert"),
+      ch1GateSeed("ch1_gate_desert")
+    );
   });
 
   it("is in range and distinct per gate", () => {

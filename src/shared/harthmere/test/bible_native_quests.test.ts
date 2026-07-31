@@ -20,7 +20,10 @@ import {
   allBibleNativeQuestBiscuits,
   bibleQuestBiscuit,
 } from "../bible/bible_native_quests";
-import { BIBLE_DRAGON_QUEST_ID, BIBLE_THAEDRYN_ENTITY_ID } from "../bible/bible_thaedryn";
+import {
+  BIBLE_DRAGON_QUEST_ID,
+  BIBLE_THAEDRYN_ENTITY_ID,
+} from "../bible/bible_thaedryn";
 import { bibleQuestAutoStarts } from "../bible/bible_quest_schema";
 
 const BISCUITS = allBibleNativeQuestBiscuits();
@@ -43,7 +46,11 @@ describe("Bible native projection — trigger trees", () => {
       assert.equal(biscuit.trigger?.kind, "seq", quest.id);
       if (biscuit.trigger?.kind !== "seq") continue;
       assert.equal(biscuit.trigger.id, bibleNativeQuestRootId(quest.id));
-      assert.equal(biscuit.trigger.triggers.length, quest.steps.length, quest.id);
+      assert.equal(
+        biscuit.trigger.triggers.length,
+        quest.steps.length,
+        quest.id
+      );
       for (const [stepIndex, leaf] of biscuit.trigger.triggers.entries()) {
         const step = quest.steps[stepIndex];
         assert.equal(
@@ -178,7 +185,10 @@ describe("Bible native projection — givers and cadence", () => {
 
   it("carries the authored offer text as the accept text", () => {
     for (const quest of BIBLE_QUEST_CATALOG) {
-      assert.equal(bibleQuestBiscuit(quest).questAcceptText, quest.dialogue.offer);
+      assert.equal(
+        bibleQuestBiscuit(quest).questAcceptText,
+        quest.dialogue.offer
+      );
     }
   });
 });

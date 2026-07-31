@@ -90,7 +90,7 @@ function makeMapManager(state: GroveSimState): GroveSimMapManager {
 function syncMarkers(
   state: GroveSimState,
   quest: SnapshotGroveQuest,
-  activeIdx: number,
+  activeIdx: number
 ) {
   // Clear all step pins (and the legacy nav aid), then re-pin remaining.
   state.pinnedMarkers.delete(LEGACY_NAV_AID);
@@ -135,7 +135,7 @@ function acceptGroveQuest(state: GroveSimState, quest: SnapshotGroveQuest) {
 function advanceGroveQuest(
   state: GroveSimState,
   quest: SnapshotGroveQuest,
-  reason: string,
+  reason: string
 ) {
   if (state.completedQuestIds.includes(quest.id) || !quest.objectives.length) {
     return;
@@ -145,9 +145,7 @@ function advanceGroveQuest(
   const objectiveId = `${quest.id}:${safeIdx}:${reason}`;
   const nextIdx = safeIdx + 1;
   const finished = nextIdx >= quest.objectives.length;
-  state.acceptedQuestIds = [
-    ...new Set([...state.acceptedQuestIds, quest.id]),
-  ];
+  state.acceptedQuestIds = [...new Set([...state.acceptedQuestIds, quest.id])];
   state.activeQuestId = finished ? undefined : quest.id;
   state.activeObjectiveIndex = finished ? 0 : nextIdx;
   state.completedObjectiveIds = [
@@ -232,7 +230,7 @@ export interface GroveQuestPerStateReport {
 }
 
 export function analyzeGroveQuestPerState(
-  quest: SnapshotGroveQuest,
+  quest: SnapshotGroveQuest
 ): GroveQuestPerStateReport {
   const parallelArraysAligned =
     quest.objectives.length === quest.triggers.length &&
@@ -249,20 +247,18 @@ export function analyzeGroveQuestPerState(
     ? trace[0]?.activeIdx === expectedInitialIdx
     : true;
   const recordsGiverTalkAsCompletedObjective = startsByTalkingToGiver
-    ? state.completedObjectiveIds.some((id) =>
-        id.startsWith(`${quest.id}:0:`),
-      )
+    ? state.completedObjectiveIds.some((id) => id.startsWith(`${quest.id}:0:`))
     : true;
 
   // Accept idempotency
   const acceptOnly = emptyGroveState();
   acceptGroveQuest(acceptOnly, quest);
   const acceptCount1 = acceptOnly.acceptedQuestIds.filter(
-    (q) => q === quest.id,
+    (q) => q === quest.id
   ).length;
   acceptGroveQuest(acceptOnly, quest);
   const acceptCount2 = acceptOnly.acceptedQuestIds.filter(
-    (q) => q === quest.id,
+    (q) => q === quest.id
   ).length;
   const acceptIsIdempotent = acceptCount1 === 1 && acceptCount2 === 1;
 
@@ -289,10 +285,10 @@ export function analyzeGroveQuestPerState(
   // Completion expectations
   const completionClearsActiveQuestId = state.activeQuestId === undefined;
   const completionAddsToCompletedQuestIds = state.completedQuestIds.includes(
-    quest.id,
+    quest.id
   );
   const completionRecordsReward = state.rewards.some((r) =>
-    r.startsWith(`${quest.title}: `),
+    r.startsWith(`${quest.title}: `)
   );
   const completionIncrementsLikeability =
     (state.likeability[quest.giverNpcId] ?? 0) === 1;
@@ -396,7 +392,7 @@ if (
       assert.deepStrictEqual(
         report.failingQuests,
         [],
-        `Failing quests: ${JSON.stringify(report.failingQuests, null, 2)}`,
+        `Failing quests: ${JSON.stringify(report.failingQuests, null, 2)}`
       );
     });
 
@@ -421,7 +417,7 @@ if (
           .filter((r) => !r.activeObjectiveIndexAdvancesMonotonically)
           .map((r) => r.questId);
         assert.deepStrictEqual(broken, []);
-      },
+      }
     );
 
     (it as any)(
@@ -430,12 +426,11 @@ if (
         const broken = report.reports
           .filter(
             (r) =>
-              !r.completionClearsActiveQuestId ||
-              !r.completionClearsAllMarkers,
+              !r.completionClearsActiveQuestId || !r.completionClearsAllMarkers
           )
           .map((r) => r.questId);
         assert.deepStrictEqual(broken, []);
-      },
+      }
     );
 
     (it as any)(
@@ -447,11 +442,11 @@ if (
               !r.completionRecordsReward ||
               !r.completionIncrementsLikeability ||
               !r.reCompleteDoesNotDuplicateReward ||
-              !r.reCompleteDoesNotDoubleLikeability,
+              !r.reCompleteDoesNotDoubleLikeability
           )
           .map((r) => r.questId);
         assert.deepStrictEqual(broken, []);
-      },
+      }
     );
 
     (it as any)(
@@ -461,9 +456,9 @@ if (
         // graduation 1 + neighbor 3). >=30 leaves a small buffer.
         assert.ok(
           report.totalQuests >= 30,
-          `expected >=30 Grove quests, got ${report.totalQuests}`,
+          `expected >=30 Grove quests, got ${report.totalQuests}`
         );
-      },
+      }
     );
   });
 }

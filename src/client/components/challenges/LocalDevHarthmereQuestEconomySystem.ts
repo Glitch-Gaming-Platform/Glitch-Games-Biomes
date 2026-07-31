@@ -228,14 +228,8 @@ export const HARTHMERE_QUEST_ECONOMY_CONTRACTS: Record<
     grantsItems: true,
     protectedQuestItems: ["bell_fragment"],
     temporaryQuestItems: ["bell_fragment", "old_bronze_rubbing"],
-    vendorUnlocks: [
-      {
-        vendorOffset: 9,
-        itemId: "field_revival_scroll",
-        reason:
-          "Magic shop opens emergency scroll stock after the Underways clue.",
-      },
-    ],
+    // Chapter 1 quest completion must not open magic-shop stock. Chapter 2
+    // will provide the first vendor unlock when its progression is authored.
     reputationImpact: { likeability: 18, legal: 8, notoriety: 30 },
     townEconomyImpact: { security: 3, wealth: 2 },
   }),

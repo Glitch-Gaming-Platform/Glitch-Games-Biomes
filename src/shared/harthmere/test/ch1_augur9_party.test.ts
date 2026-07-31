@@ -54,14 +54,21 @@ describe("ch1 AUGUR-9 - the cost of remembering", () => {
       const replay = ch1Augur9PlayLog(first.state, "frag_a1_play_run_it_again");
       assert.ok(replay.ok);
       if (replay.ok) {
-        assert.equal(replay.chargeSpent, 0, "replays are free — the recording is already in the ledger");
+        assert.equal(
+          replay.chargeSpent,
+          0,
+          "replays are free — the recording is already in the ledger"
+        );
         assert.equal(replay.state.charge, first.state.charge);
       }
     }
   });
 
   it("refuses to play a reconstruction — only logs live in the robot", () => {
-    const result = ch1Augur9PlayLog(ch1Augur9Initial(), "frag_a3_recon_corridor");
+    const result = ch1Augur9PlayLog(
+      ch1Augur9Initial(),
+      "frag_a3_recon_corridor"
+    );
     assert.equal(result.ok, false);
   });
 
@@ -92,19 +99,34 @@ describe("ch1 AUGUR-9 - the cost of remembering", () => {
       const dead = { ...played.state, charge: 0, shutDown: true };
       const lost = ch1Augur9LostLogs(dead);
       assert.ok(lost.length > 0, "shutdown must cost something");
-      assert.ok(!lost.includes("frag_a1_play_run_it_again"), "played logs are kept");
+      assert.ok(
+        !lost.includes("frag_a1_play_run_it_again"),
+        "played logs are kept"
+      );
       assert.ok(lost.includes("frag_a4_play_twenty_two"));
     }
   });
 
   it("drains 3x in the desert heat and half-speed in the cold", () => {
     const start = ch1Augur9Initial();
-    const grove = ch1Augur9EnvironmentalDrain(start, { hours: 4, environment: "grove" });
-    const desert = ch1Augur9EnvironmentalDrain(start, { hours: 4, environment: "desert" });
-    const winter = ch1Augur9EnvironmentalDrain(start, { hours: 4, environment: "winter" });
+    const grove = ch1Augur9EnvironmentalDrain(start, {
+      hours: 4,
+      environment: "grove",
+    });
+    const desert = ch1Augur9EnvironmentalDrain(start, {
+      hours: 4,
+      environment: "desert",
+    });
+    const winter = ch1Augur9EnvironmentalDrain(start, {
+      hours: 4,
+      environment: "winter",
+    });
     assert.ok(desert.charge < grove.charge, "heat is punishing");
     assert.ok(winter.charge > grove.charge, "cold is the fjord's one mercy");
-    assert.equal(start.charge - desert.charge, (start.charge - grove.charge) * 3);
+    assert.equal(
+      start.charge - desert.charge,
+      (start.charge - grove.charge) * 3
+    );
   });
 
   it("recharges from a cell and from the Bull's core, capped at max", () => {
@@ -190,7 +212,10 @@ describe("ch1 party - MMO dungeon runs", () => {
     assert.equal(result.ok, false);
     if (!result.ok) {
       const blocked = new Set(result.blockers.map((b) => b.playerId));
-      assert.ok(blocked.has("unready"), "story-gating must protect the friend being carried");
+      assert.ok(
+        blocked.has("unready"),
+        "story-gating must protect the friend being carried"
+      );
       assert.ok(blocked.has("busy"));
       assert.ok(!blocked.has("ready"));
       // The unready member is blocked for story AND provisioning.

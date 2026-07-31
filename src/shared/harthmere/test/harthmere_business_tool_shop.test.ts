@@ -61,9 +61,7 @@ describe("harthmere business tool shop (current)", () => {
 
   it("resolves every tool vendor marker to a real on-map position", () => {
     for (const listing of harthmereBusinessToolListings()) {
-      const markerId = harthmereBusinessToolVendorMarkerId(
-        listing.toolItemId
-      );
+      const markerId = harthmereBusinessToolVendorMarkerId(listing.toolItemId);
       assert.ok(markerId, `no vendor marker for ${listing.toolItemId}`);
       assert.ok(
         harthmereJobsBoardQuestMarkerPositionForId(markerId),
@@ -73,9 +71,7 @@ describe("harthmere business tool shop (current)", () => {
   });
 
   it("registers each newly-introduced tool exactly once", () => {
-    const ids = HARTHMERE_BUSINESS_TOOL_SHOP_NEW_TOOL_DEFS.map(
-      (d) => d.itemId
-    );
+    const ids = HARTHMERE_BUSINESS_TOOL_SHOP_NEW_TOOL_DEFS.map((d) => d.itemId);
     assert.equal(new Set(ids).size, ids.length);
     for (const def of HARTHMERE_BUSINESS_TOOL_SHOP_NEW_TOOL_DEFS) {
       assert.ok(def.name.trim() && def.description.trim() && def.baseValue > 0);

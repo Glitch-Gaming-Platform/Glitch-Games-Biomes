@@ -63,6 +63,7 @@ import {
 } from "./road_to_harthmere_groups";
 import { isPointInsideHarthmereBusinessSafeSite } from "./business_customer_simulator";
 import { BUILDING_SYSTEM_PLOTS } from "./building_system";
+import { harthmereBossVisualForEntity } from "./boss_visual_assets";
 
 export const HARTHMERE_LIVE_ENTITY_PRODUCTION_SEED_VERSION =
   "harthmere-live-entity-production-seed" as const;
@@ -339,6 +340,13 @@ export function harthmereCombatAttackDamageForLiveEntitySeed(
 export function harthmereLiveEntitySizeForSeed(
   seed: HarthmereLiveEntityProductionSeed
 ): Vec3 {
+  const bossSize = harthmereBossVisualForEntity(
+    seed.displayName,
+    Number(seed.entityId)
+  )?.worldSize;
+  if (bossSize) {
+    return [...bossSize];
+  }
   const text = `${seed.displayName} ${seed.species ?? ""}`.toLowerCase();
   if (
     seed.kind === "ambient_livestock" ||

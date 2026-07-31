@@ -161,6 +161,131 @@ runtime clips like `talkGesture`/`workLoop` — validated at author time),
 (spatial with `atRole`), `music`, `shake`, `fov`, `fade`, `timeOfDay`, `custom`
 (named hook + optional payload), and `capture`.
 
+### First-class expressions and multi-actor emotion
+
+Harthmere's body-language library is part of the normal `emote` action, not a
+cutscene-only pose system. The same 71 public expression ids can be selected by
+player chat (`/emote <name>`), replicated ECS `Emote` state, NPC renderer state,
+or a cutscene. Each id maps to an authored Blender clip, a facial expression,
+playback policy (`once`, `loop`, or `hold`), duration, interaction type, and
+legacy fallback clips in
+`src/shared/cutscene/cinematic_expression_catalog.json`.
+
+Use `cutsceneExpressionSequence` when a shot has several reactions or when one
+actor changes expression over time. It emits ordinary validated `face` and
+`emote` actions, so generated scenes keep the existing director/runtime
+contract:
+
+```ts
+import { cutsceneExpressionSequence } from "@/shared/cutscene/expression_actions";
+
+actions: [
+  ...cutsceneExpressionSequence([
+    { role: "guard", expression: "alert", at: 0.2, faceTowardsRole: "hexer" },
+    {
+      role: "villager",
+      expression: "terror",
+      at: 0.2,
+      faceTowardsRole: "hexer",
+    },
+    {
+      role: "hexer",
+      expression: "threatening",
+      at: 0.4,
+      faceTowardsRole: "guard",
+    },
+    {
+      role: "guard",
+      expression: "determined",
+      at: 1.8,
+      faceTowardsRole: "hexer",
+    },
+    {
+      role: "villager",
+      expression: "relief",
+      at: 3.2,
+      faceTowardsRole: "guard",
+    },
+  ]),
+];
+```
+
+Different actors may emote at the same timestamp. Two expressions for the same
+actor at the same timestamp are rejected because the winner would otherwise
+depend on array order. A later cue replaces the earlier body and face state.
+One-shot faces reset after their authored duration; loop and hold faces remain
+until another expression, locomotion/combat ownership, or scene cleanup takes
+over.
+
+For `hug`, `handshake`, and `highFive`, use the paired helper. It faces both
+actors and starts the two clips on the same director tick. Optional approach
+moves only one actor, which avoids two actors continuously chasing each other:
+
+```ts
+import { pairedCutsceneExpressionActions } from "@/shared/cutscene/expression_actions";
+
+actions: [
+  ...pairedCutsceneExpressionActions({
+    firstRole: "player",
+    secondRole: "elder",
+    expression: "handshake",
+    at: 1.5,
+    approach: true,
+    arriveWithin: 1.05,
+  }),
+];
+```
+
+Authoring rules:
+
+- Keep actor translation in `moveTo`/`teleport`; expression clips contain no
+  horizontal root motion, so they cannot fight physics, Anima, or puppet
+  placement.
+- Stage paired actors roughly 0.9–1.2 metres apart and use front or
+  three-quarter camera coverage so hand contact remains visible.
+- Do not use `hug`, `handshake`, or `highFive` as a solo reaction. The schema
+  accepts the emote, but only the paired helper supplies the required facing
+  and synchronized partner action.
+- `stagger`, `knockdown`, and `getUp` are presentation actions. They do not
+  apply damage, change HP, or stand an authoritative physics body up. Gameplay
+  systems must own those state transitions.
+- The expression library does not replace `attack1`/`attack2` or alter attack
+  timing. Combat attacks retain their existing clips and mechanics.
+- Every exported player/NPC animation asset contains the same expression clip
+  names. Rigs with fewer humanoid bones map the intent onto the available
+  body, head, limb, wing, or fin controls; procedural ghosts use the matching
+  runtime pose fallback.
+
+The generated `harthmere-expression-showcase` scene is the visual acceptance
+fixture. It exercises all public expressions, then the three paired gestures,
+with `clientPuppet`, `commitOn: []`, and no end placements. It can be previewed
+or recorded through the same game-engine cutscene path as a production scene:
+
+```text
+?cutscenePreview=harthmere-expression-showcase&previewRun=1
+?cutsceneVideo=harthmere-expression-showcase&videoFps=30&videoRun=1
+```
+
+Directional dodge and roll clips have their own compact game-rendered fixture:
+
+```text
+?cutscenePreview=harthmere-movement-action-showcase&previewRun=1
+?cutsceneVideo=harthmere-movement-action-showcase&videoFps=30&videoRun=1
+```
+
+It renders `dodgeLeft`, `dodgeRight`, `dodgeForward`, `dodgeBack`, and `evade`
+through the same snapshot player mesh and animation mixer used by cutscene
+ghosts. Keep its `clientPuppet` mode, empty commits/placements, camera-facing
+anchor, and labeled shots: the fixture is a repeatable visual audit and must
+never consume stamina, move an authoritative entity, or change combat state.
+Standalone Blender stills are not final evidence for this rig; follow the
+movement-animation gate in `docs/harthmere/TESTING_FASTER.md`.
+
+Follow `docs/harthmere/TESTING_FASTER.md`: run the fast deterministic lanes
+first, batch fixes, and build the exact current source only once for the final
+engine capture. Never accept a capture from an older image merely because its
+server is still reachable.
+
 ### Settings
 
 ```ts
@@ -366,8 +491,8 @@ and `promo_scenes.test.ts` asserts the ones that are checkable:
   group. A raw observer URL may render while anonymous; `Login to Play` means
   there is no valid distant streaming observer.
 - **Renderer-ready is necessary, not sufficient.** A valid promotional frame
-  requires the renderer-ready signal *and* the route-appropriate authoritative
-  streaming hook *and* a confirmed interest-set move to the scene. Gameplay
+  requires the renderer-ready signal _and_ the route-appropriate authoritative
+  streaming hook _and_ a confirmed interest-set move to the scene. Gameplay
   routes use the live-player teleport hook; `/at/` observer routes use
   `ClientIo.swapSyncTarget` through `__biomesObserverStreamingDebug`. The
   cinematic camera does not move the terrain/ECS interest set by itself.
@@ -690,6 +815,22 @@ Skip spam / finish-after-skip → the commit token makes end-state application
 idempotent.
 
 ## Testing
+
+For the fast cutscene-generator lane, run:
+
+```sh
+scripts/harthmere/t.sh types
+scripts/harthmere/t.sh cutscene
+node scripts/harthmere/test-harthmere-cinematic-expression-assets.cjs
+```
+
+The expression asset audit checks all 24 player/NPC animation sets, all 70
+unique authored clips behind the 71 public ids, valid named-node channels, and
+the unchanged channel counts of the production attack clips. Then use one
+exact-current-source engine run of `harthmere-expression-showcase`, inspect a
+contact sheet spanning its full duration, and reject blank starts, missing
+actors, clipped limbs, bad paired spacing, stuck faces, or poses that do not
+read from the selected camera.
 
 `./b test -p 'src/shared/cutscene/test/*.test.ts'` covers the schema,
 camera math, binding fallbacks, the full runtime state machine (playthrough,

@@ -46,6 +46,12 @@ function notorietyPercent(value: number): number {
   return clamp((value / 10_000) * 100, 0, 100);
 }
 
+const STANDING_ICONS = {
+  like: "♥",
+  law: "⚖",
+  notoriety: "◉",
+} as const;
+
 function formatStateLabel(value: string | undefined): string {
   return String(value ?? "ready").replaceAll("_", " ");
 }
@@ -173,7 +179,15 @@ function StandingChip({
       data-ui-id={uiId}
       data-ui-blinking={highlight.blinking ? "true" : undefined}
     >
-      <span className="biomes-ui-vitals-chip__label">{label}</span>
+      <span className="biomes-ui-vitals-chip__label">
+        <span className="biomes-ui-vitals-chip__label-text">{label}</span>
+        <span
+          className={`biomes-ui-vitals-chip__icon biomes-ui-vitals-chip__icon--${tone}`}
+          aria-hidden
+        >
+          {STANDING_ICONS[tone]}
+        </span>
+      </span>
       <span className="biomes-ui-vitals-chip__value">{value}</span>
       <span className="biomes-ui-vitals-chip__track">
         <span
@@ -510,9 +524,20 @@ export const BiomesUIVitalsPanel: React.FunctionComponent<{}> = () => {
           data-ui-blinking={goldHighlight.blinking ? "true" : undefined}
           aria-label={`Gold ${gold}`}
         >
-          <span className="biomes-ui-vitals-chip__label">Gold</span>
-          <span className="biomes-ui-vitals-chip__value">
+          <span className="biomes-ui-vitals-chip__label">
+            <span className="biomes-ui-vitals-chip__label-text">Gold</span>
+            <span
+              className="biomes-ui-vitals-chip__icon biomes-ui-vitals-chip__icon--gold"
+              aria-hidden
+            >
+              ●
+            </span>
+          </span>
+          <span className="biomes-ui-vitals-chip__value biomes-ui-vitals-chip__value--desktop">
             {formatBiomesGoldForVitalsForTest(gold)}
+          </span>
+          <span className="biomes-ui-vitals-chip__value biomes-ui-vitals-chip__value--mobile">
+            {Math.max(0, Math.floor(gold))}
           </span>
         </div>
         <div
@@ -521,9 +546,20 @@ export const BiomesUIVitalsPanel: React.FunctionComponent<{}> = () => {
           aria-label={formatBiomesLevelForVitalsForTest(playerLevel)}
           title={levelProgress}
         >
-          <span className="biomes-ui-vitals-chip__label">Level</span>
-          <span className="biomes-ui-vitals-chip__value">
+          <span className="biomes-ui-vitals-chip__label">
+            <span className="biomes-ui-vitals-chip__label-text">Level</span>
+            <span
+              className="biomes-ui-vitals-chip__icon biomes-ui-vitals-chip__icon--level"
+              aria-hidden
+            >
+              ▲
+            </span>
+          </span>
+          <span className="biomes-ui-vitals-chip__value biomes-ui-vitals-chip__value--desktop">
             {formatBiomesLevelForVitalsForTest(playerLevel)}
+          </span>
+          <span className="biomes-ui-vitals-chip__value biomes-ui-vitals-chip__value--mobile">
+            {playerLevel}
           </span>
         </div>
       </div>

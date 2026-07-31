@@ -162,6 +162,33 @@ describe("Harthmere business storefront purchase (buy_storefront_good)", () => {
     assert.equal(r.inventoryItemDeltas.iron_ingot, 2);
   });
 
+  it("sells each restricted energy weapon at its fixed Security & Defense price", () => {
+    const { state, businessId } = openBusiness("security_defense_contractor");
+    const listings = harthmereBusinessStorefrontListingsForType(
+      "security_defense_contractor"
+    ).filter((entry) => entry.kind === "weapon");
+    assert.deepEqual(
+      listings.map(({ buyPrice }) => buyPrice),
+      [5_000, 12_500, 30_000, 75_000, 180_000]
+    );
+    for (const listing of listings) {
+      const r = run(
+        state,
+        "buy_storefront_good",
+        { businessId, itemId: listing.itemId, count: 1 },
+        ctx({ actorGold: 250_000 })
+      );
+      assert.deepStrictEqual(
+        r.warnings.filter((warning: string) =>
+          warning.startsWith("economy_rejected")
+        ),
+        []
+      );
+      assert.equal(r.inventoryItemDeltas[listing.itemId], 1);
+      assert.equal(r.inventoryGoldDelta, -listing.buyPrice);
+    }
+  });
+
   it("sells a recipe book once, teaches its recipes, and does not add inventory stock", () => {
     const book = HARTHMERE_RECIPE_BOOKS.find(
       (entry) => entry.businessType === "weapons_tools"

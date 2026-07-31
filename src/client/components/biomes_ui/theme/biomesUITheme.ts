@@ -1538,14 +1538,14 @@ button.biomes-ui-card:disabled {
 
 .biomes-ui-mobile-menu {
   position: fixed;
-  right: max(0.8rem, env(safe-area-inset-right));
-  top: calc(max(0.8rem, env(safe-area-inset-top)) + 6.5rem);
+  right: max(8px, env(safe-area-inset-right));
+  top: calc(max(8px, env(safe-area-inset-top)) + 116px);
   z-index: 1094;
-  width: 6rem;
+  width: 96px;
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 0.4rem;
+  gap: 6px;
   pointer-events: auto;
   touch-action: manipulation;
   user-select: none;
@@ -1553,13 +1553,13 @@ button.biomes-ui-card:disabled {
 }
 
 .biomes-ui-mobile-menu__button {
-  min-height: 2.35rem;
+  min-height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.4rem;
+  gap: 6px;
   border: 1px solid rgba(105, 231, 255, 0.5);
-  border-radius: 0.55rem;
+  border-radius: 9px;
   background:
     radial-gradient(circle at 18% 18%, rgba(105, 231, 255, 0.2), transparent 42%),
     linear-gradient(135deg, rgba(6, 12, 28, 0.94), rgba(18, 23, 45, 0.9));
@@ -1568,7 +1568,7 @@ button.biomes-ui-card:disabled {
     inset 0 0 12px rgba(105, 231, 255, 0.06);
   color: rgba(238, 250, 255, 0.98);
   font: inherit;
-  font-size: 0.72rem;
+  font-size: 11px;
   font-weight: 850;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -1588,16 +1588,16 @@ button.biomes-ui-card:disabled {
 }
 
 .biomes-ui-mobile-menu__key {
-  width: 1.45rem;
-  height: 1.45rem;
+  width: 22px;
+  height: 22px;
   display: inline-grid;
   flex: 0 0 auto;
   place-items: center;
   border: 1px solid rgba(255, 221, 130, 0.62);
-  border-radius: 0.38rem;
+  border-radius: 6px;
   background: rgba(255, 221, 130, 0.12);
   color: #ffe28a;
-  font-size: 0.78rem;
+  font-size: 12px;
   font-weight: 900;
 }
 
@@ -1933,7 +1933,7 @@ button.biomes-ui-card:disabled {
 .biomes-ui-vitals-bar__icon--stamina { color: #d7ef68; }
 
 .biomes-ui-vitals-panel--mobile {
-  width: min(18rem, calc(100vw - 1rem));
+  width: min(54vw, 320px);
 }
 
 .biomes-ui-vitals-panel--mobile .biomes-ui-vitals-bar__label-text {
@@ -1942,6 +1942,9 @@ button.biomes-ui-card:disabled {
 
 .biomes-ui-vitals-panel--mobile .biomes-ui-vitals-bar__icon {
   display: inline-grid;
+  width: 18px;
+  height: 18px;
+  font-size: 14px;
 }
 
 .biomes-ui-vitals-panel--mobile .biomes-ui-vitals-bar__meta {
@@ -2067,11 +2070,52 @@ button.biomes-ui-card:disabled {
 }
 
 .biomes-ui-vitals-chip__label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   font-size: 8px;
   font-weight: 800;
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: rgba(232, 244, 255, 0.52);
+}
+
+.biomes-ui-vitals-chip__icon {
+  display: none;
+  width: 1.2rem;
+  height: 1.2rem;
+  place-items: center;
+  border-radius: 999px;
+  font-size: 0.88rem;
+  line-height: 1;
+  letter-spacing: 0;
+  text-shadow: 0 0 8px currentColor;
+}
+
+.biomes-ui-vitals-chip__icon--like { color: #7bffad; }
+.biomes-ui-vitals-chip__icon--law { color: #8bc7ff; }
+.biomes-ui-vitals-chip__icon--notoriety { color: #ff88d0; }
+.biomes-ui-vitals-chip__icon--gold { color: #ffd56b; }
+.biomes-ui-vitals-chip__icon--level { color: #d8b7ff; }
+
+.biomes-ui-vitals-chip__value--mobile {
+  display: none;
+}
+
+.biomes-ui-vitals-panel--mobile .biomes-ui-vitals-chip__label-text,
+.biomes-ui-vitals-panel--mobile .biomes-ui-vitals-chip__value--desktop {
+  display: none;
+}
+
+.biomes-ui-vitals-panel--mobile .biomes-ui-vitals-chip__icon {
+  display: inline-grid;
+  width: 20px;
+  height: 20px;
+  font-size: 14px;
+}
+
+.biomes-ui-vitals-panel--mobile .biomes-ui-vitals-chip__value--mobile {
+  display: inline;
 }
 
 .biomes-ui-vitals-chip__value {
@@ -2788,7 +2832,11 @@ button.biomes-ui-card:disabled {
     padding: 8px 9px 9px;
   }
   .biomes-ui-vitals-panel--mobile {
-    width: min(18rem, calc(100vw - 1rem));
+    width: min(54vw, 320px);
+  }
+  .biomes-ui-vitals-panel--mobile .biomes-ui-vitals-panel__game,
+  .biomes-ui-vitals-panel--mobile .biomes-ui-vitals-panel__title {
+    max-width: 160px;
   }
   .biomes-ui-vitals-panel__game { font-size: 11px; }
   .biomes-ui-vitals-panel__title { font-size: 9px; }
@@ -2799,13 +2847,57 @@ button.biomes-ui-card:disabled {
 
 @media (max-height: 500px) and (orientation: landscape) {
   .biomes-ui-mobile-menu {
-    top: calc(max(0.5rem, env(safe-area-inset-top)) + 6.2rem);
-    gap: 0.25rem;
+    top: calc(max(6px, env(safe-area-inset-top)) + 108px);
+    gap: 4px;
   }
   .biomes-ui-mobile-menu__button {
-    min-height: 1.9rem;
-    font-size: 0.64rem;
+    min-height: 30px;
+    font-size: 10px;
   }
+  .biomes-ui-current-objective-hud--mobile {
+    right: calc(max(8px, env(safe-area-inset-right)) + 108px);
+    bottom: max(108px, calc(env(safe-area-inset-bottom) + 96px));
+    width: min(300px, calc(100vw - 260px));
+  }
+}
+
+.biomes-ui-hotbar-hud {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 16px;
+  z-index: 1090;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.biomes-ui-hotbar-hud__content {
+  pointer-events: auto;
+}
+
+.biomes-ui-hotbar-hud--mobile {
+  left: calc(env(safe-area-inset-left) + min(8.5rem, 34vw));
+  right: max(0.65rem, env(safe-area-inset-right));
+  bottom: max(28px, calc(env(safe-area-inset-bottom) + 16px));
+  z-index: 1093;
+  align-items: stretch;
+}
+
+.biomes-ui-hotbar-hud--mobile .biomes-ui-hotbar-hud__content {
+  min-width: 0;
+  width: 100%;
+}
+
+.biomes-ui-hotbar--mobile .biomes-ui-hotbar__slots {
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.biomes-ui-hotbar--mobile .biomes-ui-hotbar__slots::-webkit-scrollbar {
+  display: none;
 }
 /* Production inventory layout */
 .biomes-ui-inventory {

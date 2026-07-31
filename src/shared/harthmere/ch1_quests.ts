@@ -45,6 +45,14 @@ export interface Ch1QuestStep {
   cutsceneId?: string;
   /** Items granted. */
   grants?: readonly string[];
+  /** Native inventory evidence required before the objective can complete. */
+  inventoryRequirements?: readonly {
+    itemId: string;
+    count: number;
+    label: string;
+  }[];
+  /** Consume the inventory requirements in the same exactly-once transaction. */
+  consumeInventoryRequirements?: boolean;
   /** Flags set. */
   setsFlags?: readonly string[];
   /** Writer-facing note. Never shipped. */
@@ -121,6 +129,7 @@ const ACT_1: readonly Ch1QuestDef[] = [
         objective: "Get out of bed.",
         trigger: "sleep",
         targetLabel: "Bed",
+        grants: ["item_ch1_breakfast_tea"],
       },
       {
         id: "the_tea",
@@ -128,6 +137,14 @@ const ACT_1: readonly Ch1QuestDef[] = [
         objective: "Eat what Jackie put in front of you and drink the tea.",
         trigger: "use_item",
         targetLabel: "Tea",
+        inventoryRequirements: [
+          {
+            itemId: "item_ch1_breakfast_tea",
+            count: 1,
+            label: "Jackie's breakfast tea",
+          },
+        ],
+        consumeInventoryRequirements: true,
         note: "THE CURE. Played entirely straight, as domestic warmth, for three acts.",
       },
       {
@@ -181,6 +198,13 @@ const ACT_1: readonly Ch1QuestDef[] = [
         objective: "Bring Luis what the chassis needs.",
         trigger: "collect",
         targetLabel: "Luis's Repair Cart",
+        inventoryRequirements: [
+          { itemId: "scrap_metal", count: 4, label: "scrap metal" },
+          { itemId: "iron_ingot", count: 2, label: "iron ingots" },
+          { itemId: "tree_resin", count: 1, label: "tree resin" },
+        ],
+        consumeInventoryRequirements: true,
+        grants: ["item_augur9_core_cell"],
       },
       {
         id: "seat_the_core",
@@ -188,7 +212,14 @@ const ACT_1: readonly Ch1QuestDef[] = [
         objective: "Fit a core cell and bring the unit up.",
         trigger: "interact",
         targetLabel: "AUGUR-9",
-        grants: ["item_augur9_core_cell"],
+        inventoryRequirements: [
+          {
+            itemId: "item_augur9_core_cell",
+            count: 1,
+            label: "core cell",
+          },
+        ],
+        consumeInventoryRequirements: true,
         note: "Luis states the charge cost out loud, once, so the player understands that remembering costs the robot life.",
       },
       {
@@ -236,7 +267,7 @@ const ACT_1: readonly Ch1QuestDef[] = [
     summary: "Walk the fence line at dusk. Do not go past it.",
     actClose: true,
     setsFlags: [CH1_FLAGS.act1Complete, CH1_FLAGS.seenFirstGate],
-    note: "The card goes hot enough to hurt. Fifty metres past the broken fence there is a vertical seam of light, two metres tall, humming, and it closes on its own after ninety seconds. Jackie sees the player's face and says the first thing in the chapter that doesn't fit: '…You've seen one before.' The player has not. The answer that comes out of their mouth without permission is: 'Not this small.'",
+    note: "The card goes hot enough to hurt. At the open boundary stones beyond the broken fence there is a vertical seam of light, two metres tall, humming, and it closes on its own after ninety seconds. Jackie sees the player's face and says the first thing in the chapter that doesn't fit: '…You've seen one before.' The player has not. The answer that comes out of their mouth without permission is: 'Not this small.'",
     steps: [
       {
         id: "walk_with_jackie",
@@ -1214,6 +1245,43 @@ export function ch1QuestsForAct(act: number): readonly Ch1QuestDef[] {
 
 export function ch1ActCloseQuest(act: number): Ch1QuestDef | undefined {
   return CH1_QUESTS.find((q) => q.act === act && q.actClose);
+}
+
+/**
+ * The quest that IS the run inside a given dungeon.
+ *
+ * Used by the gate to refuse entry before the expedition has begun. Gate
+ * visibility is derived from the highest act reached, which opens the Mouth
+ * several objectives before the dungeon quest starts; entering in that window
+ * used to be an unrecoverable soft-lock.
+ */
+export const CH1_DUNGEON_QUEST_IDS: Readonly<Record<string, string>> =
+  Object.freeze({
+    ch1_dungeon_desert: "ch1_a3_d1_the_sand_that_remembers",
+    ch1_dungeon_winter: "ch1_a5_d2_the_long_winter_mouth",
+  });
+
+export function ch1DungeonQuestForDungeonId(
+  dungeonId: string
+): Ch1QuestDef | undefined {
+  const questId = CH1_DUNGEON_QUEST_IDS[dungeonId];
+  return questId ? ch1Quest(questId) : undefined;
+}
+
+/**
+ * The authored step whose completion means the run inside this dungeon is done.
+ *
+ * The winter dungeon's three REQUIRED retrievals — Sorrel, the field ledger and
+ * Custodian Key 3 — are all obtained at `d2_the_oath`, step six of nine. So the
+ * retrieval check alone let a player legally walk out before the Ash Hall boss,
+ * Hallr's choice and the escort out, leaving three objectives that can only be
+ * completed inside a band they now had to re-provision to re-enter. The desert
+ * does not have this problem because its exit needs `ch1_iris_rescued`, which
+ * only its final step sets.
+ */
+export function ch1DungeonFinalStepId(dungeonId: string): string | undefined {
+  const quest = ch1DungeonQuestForDungeonId(dungeonId);
+  return quest?.steps[quest.steps.length - 1]?.id;
 }
 
 export const CH1_ACT_TITLES: Readonly<Record<number, string>> = Object.freeze({

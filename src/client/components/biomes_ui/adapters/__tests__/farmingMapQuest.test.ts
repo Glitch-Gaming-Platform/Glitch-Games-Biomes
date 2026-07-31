@@ -12,21 +12,58 @@ import {
   reconcileHarthmereHoeQuestState,
 } from "@/client/components/biomes_ui/adapters/farmingMapQuest";
 
-const globalAny = global as any;
-const values = new Map<string, string>();
-globalAny.window ??= globalAny;
-globalAny.window.localStorage ??= {
-  getItem: (key: string) => values.get(key) ?? null,
-  setItem: (key: string, value: string) => values.set(key, String(value)),
-  removeItem: (key: string) => values.delete(key),
-  clear: () => values.clear(),
-};
-globalAny.window.dispatchEvent ??= () => true;
-globalAny.CustomEvent ??= class CustomEvent {
-  constructor(public type: string, public init?: unknown) {}
-};
-
 describe("farming map and hoe quest projection", () => {
+  let previousWindow: PropertyDescriptor | undefined;
+  let previousCustomEvent: PropertyDescriptor | undefined;
+  let values: Map<string, string>;
+
+  beforeEach(() => {
+    previousWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
+    previousCustomEvent = Object.getOwnPropertyDescriptor(
+      globalThis,
+      "CustomEvent"
+    );
+    values = new Map<string, string>();
+    Object.defineProperty(globalThis, "window", {
+      configurable: true,
+      writable: true,
+      value: {
+        localStorage: {
+          getItem: (key: string) => values.get(key) ?? null,
+          setItem: (key: string, value: string) =>
+            values.set(key, String(value)),
+          removeItem: (key: string) => values.delete(key),
+          clear: () => values.clear(),
+        },
+        dispatchEvent: () => true,
+      },
+    });
+    Object.defineProperty(globalThis, "CustomEvent", {
+      configurable: true,
+      writable: true,
+      value: class TestCustomEvent<T = unknown> {
+        readonly detail: T | undefined;
+
+        constructor(public type: string, init?: CustomEventInit<T>) {
+          this.detail = init?.detail;
+        }
+      },
+    });
+  });
+
+  afterEach(() => {
+    if (previousWindow) {
+      Object.defineProperty(globalThis, "window", previousWindow);
+    } else {
+      delete (globalThis as any).window;
+    }
+    if (previousCustomEvent) {
+      Object.defineProperty(globalThis, "CustomEvent", previousCustomEvent);
+    } else {
+      delete (globalThis as any).CustomEvent;
+    }
+  });
+
   it("persists the guide once and permanently completes it after a hoe is owned", () => {
     const userId = generateTestId();
     assert.equal(readHarthmereHoeQuestState(userId), "available");

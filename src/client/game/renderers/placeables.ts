@@ -18,6 +18,10 @@ import { BikkieIds } from "@/shared/bikkie/ids";
 import type { PlaceableComponent } from "@/shared/ecs/gen/components";
 import { PlaceableSelector } from "@/shared/ecs/gen/selectors";
 import { anItem } from "@/shared/game/item";
+import {
+  HARTHMERE_CAMPFIRE_AMBIENCE_RADIUS_METERS,
+  harthmereProximityAmbienceIsAudible,
+} from "@/shared/harthmere/sound_effect_manifest";
 import { Cval } from "@/shared/util/cvals";
 import { clamp } from "lodash";
 
@@ -122,6 +126,7 @@ export const makePlaceablesRenderer = (
         if (audio) {
           if (!resources.get("/ecs/c/video_component", entity.id)?.video_url) {
             audio.position.fromArray(entity.position.v);
+            let audible = true;
             if (entity.placeable_component.item_id === BikkieIds.boombox) {
               const volume = entity.video_component?.muted
                 ? 0
@@ -133,9 +138,29 @@ export const makePlaceablesRenderer = (
               audio.setVolume(
                 audioManager.getVolume("settings.volume.media", "arcade")
               );
+            } else if (
+              entity.placeable_component.item_id === BikkieIds.campfire
+            ) {
+              audible = harthmereProximityAmbienceIsAudible(
+                Math.hypot(
+                  entity.position.v[0] - player.player.position[0],
+                  entity.position.v[2] - player.player.position[2]
+                ),
+                HARTHMERE_CAMPFIRE_AMBIENCE_RADIUS_METERS
+              );
+              audio.setVolume(
+                audioManager.getVolume("settings.volume.effects", "campfire")
+              );
+              if (audible && !audio.isPlaying) {
+                audio.play();
+              } else if (!audible && audio.isPlaying) {
+                audio.stop();
+              }
             }
-            addToScenes(scenes, audio);
-            audioManager.setActive(audio, clock.time);
+            if (audible) {
+              addToScenes(scenes, audio);
+              audioManager.setActive(audio, clock.time);
+            }
           }
         }
 

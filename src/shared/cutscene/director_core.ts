@@ -710,8 +710,11 @@ class CutsceneRuntimeImpl implements CutsceneRuntime {
         break;
       }
       case "dialogue": {
+        const actor = action.role ? this.actors.get(action.role) : undefined;
         this.dialogues.push({
-          speaker: action.speaker ?? action.role,
+          speaker:
+            action.speaker ??
+            (actor?.kind === "player" ? "You" : action.role),
           text: action.text,
           voice: action.voice,
           endsAt: this.shotClock + dialogueDurationSeconds(action),
@@ -957,15 +960,20 @@ export function sampleCameraSpec(
       if (spec.orientation) {
         return { position: spec.position, orientation: spec.orientation };
       }
-      const target = spec.lookAtRole
+      const targetPosition = spec.lookAtRole
         ? world.positionOf(spec.lookAtRole)
         : undefined;
-      if (spec.lookAtRole && !target) {
+      if (spec.lookAtRole && !targetPosition) {
         return undefined;
       }
-      if (!target) {
+      if (!targetPosition) {
         return { position: spec.position, orientation: [0, 0] };
       }
+      const target: CutsceneVec3 = [
+        targetPosition[0],
+        targetPosition[1] + world.heightOf(spec.lookAtRole!) * 0.85,
+        targetPosition[2],
+      ];
       return {
         position: spec.position,
         orientation: lookAtOrientation(spec.position, target),
@@ -981,12 +989,20 @@ export function sampleCameraSpec(
       const from = spec.waypoints[sample.segment];
       const to =
         spec.waypoints[Math.min(sample.segment + 1, spec.waypoints.length - 1)];
-      const lookTarget = spec.lookAtRole
+      const lookTargetPosition = spec.lookAtRole
         ? world.positionOf(spec.lookAtRole)
         : undefined;
-      if (spec.lookAtRole && !lookTarget) {
+      if (spec.lookAtRole && !lookTargetPosition) {
         return undefined;
       }
+      const lookTarget =
+        lookTargetPosition && spec.lookAtRole
+          ? ([
+              lookTargetPosition[0],
+              lookTargetPosition[1] + world.heightOf(spec.lookAtRole) * 0.85,
+              lookTargetPosition[2],
+            ] as CutsceneVec3)
+          : undefined;
       const fallbackFrom = lookTarget
         ? lookAtOrientation(from.position, lookTarget)
         : lookAtOrientation(from.position, to.position);

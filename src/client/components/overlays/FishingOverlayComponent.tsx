@@ -56,6 +56,7 @@ import { fishingBagTransform } from "@/shared/game/items";
 import { fireAndForget } from "@/shared/util/async";
 import { anyMapValue, onlyMapValue } from "@/shared/util/collections";
 import { assertNever } from "@/shared/util/type_helpers";
+import { emitHarthmereSoundEffect } from "@/shared/harthmere/sound_effect_manifest";
 import {
   AnimatePresence,
   motion,
@@ -123,9 +124,12 @@ const FishingReadyToCastOverlayComponent: React.FunctionComponent<{
               worldInteractionCandidateId="active-tool:fishing-bait"
               worldInteractionPriority={WORLD_INTERACTION_PRIORITY.activeTool}
               onKeyDown={() => {
-                setBaitIndex(
-                  baitIndex === baits.length - 1 ? -1 : baitIndex + 1
-                );
+                const nextIndex =
+                  baitIndex === baits.length - 1 ? -1 : baitIndex + 1;
+                setBaitIndex(nextIndex);
+                if (nextIndex >= 0) {
+                  emitHarthmereSoundEffect("fishing_bait_attach");
+                }
               }}
             >
               <div className="flex flex-col">
@@ -222,10 +226,12 @@ const BiteComponent: React.FunctionComponent<{
   const { resources, events, userId } = useClientContext();
 
   useEffect(() => {
+    emitHarthmereSoundEffect("fishing_bite");
     return () => {
       const ownedItems = getOwnedItems(resources, userId);
       const bait = maybeGetSlotByRef(ownedItems, biteInfo.baitItemRef);
       if (bait) {
+        emitHarthmereSoundEffect("fishing_bait_consumed");
         fireAndForget(
           events.publish(
             new FishingConsumeBaitEvent({
@@ -279,6 +285,23 @@ const CatchGameComponent: React.FunctionComponent<{
     useClientContext();
   const player = reactResources.use("/scene/local_player");
 
+  const inZone =
+    catchingInfo.fishPosition >=
+      catchingInfo.catchBarPosition - catchingInfo.catchBarSize / 2 &&
+    catchingInfo.fishPosition <=
+      catchingInfo.catchBarPosition + catchingInfo.catchBarSize / 2;
+
+  useEffect(() => {
+    emitHarthmereSoundEffect("fishing_hook_set");
+  }, []);
+
+  useEffect(() => {
+    emitHarthmereSoundEffect("fishing_struggle", { idempotent: true });
+    if (!inZone) {
+      emitHarthmereSoundEffect("fishing_line_tension", { idempotent: true });
+    }
+  }, [catchingInfo.lastTick, inZone]);
+
   if (input.motion("primary_hold")) {
     audioManager.playSound("fish_reel", {
       idempotent: true,
@@ -298,12 +321,6 @@ const CatchGameComponent: React.FunctionComponent<{
       },
     });
   }
-
-  const inZone =
-    catchingInfo.fishPosition >=
-      catchingInfo.catchBarPosition - catchingInfo.catchBarSize / 2 &&
-    catchingInfo.fishPosition <=
-      catchingInfo.catchBarPosition + catchingInfo.catchBarSize / 2;
 
   const catchMeterProgress = useMotionValue(0);
 
@@ -393,6 +410,11 @@ const CaughtReelingInComponent: React.FunctionComponent<{
   const heroItem = anyMapValue(reelingInInfo.contents);
 
   useEffect(() => {
+    emitHarthmereSoundEffect(
+      reelingInInfo.catchType === "treasure"
+        ? "fishing_treasure"
+        : "fishing_catch"
+    );
     if (player.player.emoteInfo?.emoteType !== "fishingCastPull") {
       const ownedItems = getOwnedItems(resources, userId);
       const bait = maybeGetSlotByRef(ownedItems, reelingInInfo.baitItemRef);
@@ -481,6 +503,7 @@ const CaughtComponent: React.FunctionComponent<{
   });
 
   useEffect(() => {
+    emitHarthmereSoundEffect("fishing_show");
     socialManager.eagerInvalidateLeaderboard(userId, {
       kind: "fished_length",
       id: heroItem.item.id,
@@ -618,6 +641,13 @@ const FailedComponent: React.FunctionComponent<{
   const player = reactResources.use("/scene/local_player");
 
   useEffect(() => {
+    emitHarthmereSoundEffect(
+      failedInfo.failureReason === "land_impact"
+        ? "fishing_land_impact"
+        : failedInfo.failureReason === "line_break"
+        ? "fishing_line_break"
+        : "fishing_escape"
+    );
     fireAndForget(
       events.publish(
         new FishingFailedEvent({

@@ -54,7 +54,10 @@ describe("Chapter 1 live story authority", () => {
       "wake_up"
     );
     assert.ok(first.runtime.flags.includes(CH1_FLAGS.started));
-    assert.deepEqual(first.itemGrants, ["item_grey_card"]);
+    assert.deepEqual(first.itemGrants, [
+      "item_ch1_breakfast_tea",
+      "item_grey_card",
+    ]);
 
     const repeated = apply(
       first.runtime,

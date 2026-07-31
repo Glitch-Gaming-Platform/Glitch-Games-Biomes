@@ -173,6 +173,20 @@ export const HARTHMERE_FACIAL_EXPRESSIONS = [
   "thinking",
   "suspicious",
   "determined",
+  "crying",
+  "ashamed",
+  "terrified",
+  "confused",
+  "embarrassed",
+  "bored",
+  "annoyed",
+  "furious",
+  "tired",
+  "dizzy",
+  "cold",
+  "relieved",
+  "disgusted",
+  "loving",
 ] as const;
 export type HarthmereFacialExpression =
   (typeof HARTHMERE_FACIAL_EXPRESSIONS)[number];
@@ -975,13 +989,27 @@ export function harthmereFacialExpressionFromMood(
   if (!normalized) return undefined;
   if (/happy|joy|pleased|delighted|laugh|grin/.test(normalized)) return "happy";
   if (/friend|warm|kind|welcome|trust/.test(normalized)) return "friendly";
-  if (/sad|grief|sorry|down|upset/.test(normalized)) return "sad";
-  if (/angry|mad|rage|furious|hostile/.test(normalized)) return "angry";
+  if (/cry|weeping|tears/.test(normalized)) return "crying";
+  if (/shame|ashamed|apolog|guilt/.test(normalized)) return "ashamed";
+  if (/sad|grief|sorry|down|upset|depress/.test(normalized)) return "sad";
+  if (/furious|fury|rage|enraged/.test(normalized)) return "furious";
+  if (/angry|mad|hostile|threat/.test(normalized)) return "angry";
   if (/surprise|shock|amaze|startle/.test(normalized)) return "surprised";
-  if (/afraid|fear|scared|panic|terrified/.test(normalized)) return "afraid";
+  if (/terror|terrified|panic|cower/.test(normalized)) return "terrified";
+  if (/afraid|fear|scared|nervous/.test(normalized)) return "afraid";
   if (/hurt|pain|hit|wound|damage/.test(normalized)) return "hurt";
   if (/dead|death|corpse/.test(normalized)) return "dead";
-  if (/think|ponder|curious|confused/.test(normalized)) return "thinking";
+  if (/confus|uncertain|unsure/.test(normalized)) return "confused";
+  if (/think|ponder|curious/.test(normalized)) return "thinking";
+  if (/embarrass|shy|bashful/.test(normalized)) return "embarrassed";
+  if (/bored|listless/.test(normalized)) return "bored";
+  if (/annoy|impatient|frustrat|facepalm/.test(normalized)) return "annoyed";
+  if (/tired|exhaust|yawn|weary/.test(normalized)) return "tired";
+  if (/dizzy|vertigo|wobbl/.test(normalized)) return "dizzy";
+  if (/cold|shiver|frozen/.test(normalized)) return "cold";
+  if (/relief|relieved/.test(normalized)) return "relieved";
+  if (/disgust|revolted|nausea/.test(normalized)) return "disgusted";
+  if (/love|loving|flirt|affection/.test(normalized)) return "loving";
   if (/suspicious|doubt|skeptic|untrust/.test(normalized)) return "suspicious";
   if (/determined|focus|ready|brave|resolve/.test(normalized))
     return "determined";
@@ -2026,10 +2054,7 @@ type HarthmereStoryBibleAppearanceProfile = {
   profileId: string;
 };
 
-function harthmereStoryBibleText(input: {
-  name?: string;
-  roleHint?: string;
-}) {
+function harthmereStoryBibleText(input: { name?: string; roleHint?: string }) {
   return `${input.name ?? ""} ${input.roleHint ?? ""}`.toLowerCase();
 }
 
@@ -4880,9 +4905,7 @@ export function makeHarthmereNpcAppearanceConfig(input: {
     roleHint: input.roleHint,
     appearance: normalized,
   });
-  if (
-    groveUnique.source?.includes(HARTHMERE_GROVE_UNIQUE_NPC_POLISH_VERSION)
-  ) {
+  if (groveUnique.source?.includes(HARTHMERE_GROVE_UNIQUE_NPC_POLISH_VERSION)) {
     return groveUnique;
   }
 

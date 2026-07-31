@@ -7,7 +7,9 @@ import {
 
 const NOW = 1_700_000_000_000;
 
-function state(overrides: Partial<HarthmerePlayerProgressionState> = {}): HarthmerePlayerProgressionState {
+function state(
+  overrides: Partial<HarthmerePlayerProgressionState> = {}
+): HarthmerePlayerProgressionState {
   return {
     playerId: "p1",
     classId: "warrior",
@@ -59,7 +61,9 @@ describe("complete_combat_progression rule oversight fixes", () => {
         classId: "mage",
         level: 10,
         knownAbilities: [],
-        skills: { fire_magic: { level: 25, xpCurrent: 0, xpRequiredNext: 100 } },
+        skills: {
+          fire_magic: { level: 25, xpCurrent: 0, xpRequiredNext: 100 },
+        },
       }),
       abilityId: "fireball",
       targetType: "enemy",
@@ -75,7 +79,12 @@ describe("complete_combat_progression rule oversight fixes", () => {
   });
 
   it("blocks dead, downed, respawning, and teleporting actors from casting", () => {
-    for (const combatState of ["dead", "downed", "respawning", "teleporting"] as const) {
+    for (const combatState of [
+      "dead",
+      "downed",
+      "respawning",
+      "teleporting",
+    ] as const) {
       const result = validateHarthmereAbilityUse({
         state: state({ combatState }),
         abilityId: "basic_strike",
@@ -88,7 +97,10 @@ describe("complete_combat_progression rule oversight fixes", () => {
       });
 
       assert.equal(result.ok, false, combatState);
-      assert.equal(result.reason, "dead_downed_or_transitioning_player_cannot_use_ability");
+      assert.equal(
+        result.reason,
+        "dead_downed_or_transitioning_player_cannot_use_ability"
+      );
     }
   });
 
@@ -112,7 +124,12 @@ describe("complete_combat_progression rule oversight fixes", () => {
     const result = selectHarthmereDeathDropItems({
       mode: "pvp",
       candidates: [
-        { itemId: "iron_ore", count: 5, category: "gathered_resource", binding: "none" },
+        {
+          itemId: "iron_ore",
+          count: 5,
+          category: "gathered_resource",
+          binding: "none",
+        },
       ],
     });
 
@@ -125,19 +142,61 @@ describe("complete_combat_progression rule oversight fixes", () => {
     const result = selectHarthmereDeathDropItems({
       mode: "hardcore_pvp",
       candidates: [
-        { itemId: "iron_ore", count: 5, category: "gathered_resource", binding: "none" },
-        { itemId: "silk_bundle", count: 2, category: "trade_good", binding: "none" },
-        { itemId: "bound_sword", count: 1, category: "weapon", binding: "on_pickup", boundToActorId: "p1" },
-        { itemId: "story_key", count: 1, category: "keyring", binding: "quest", questItem: true },
-        { itemId: "festival_hat", count: 1, category: "cosmetic", binding: "none" },
-        { itemId: "account_coin", count: 100, category: "currency", binding: "none" },
+        {
+          itemId: "iron_ore",
+          count: 5,
+          category: "gathered_resource",
+          binding: "none",
+        },
+        {
+          itemId: "silk_bundle",
+          count: 2,
+          category: "trade_good",
+          binding: "none",
+        },
+        {
+          itemId: "bound_sword",
+          count: 1,
+          category: "weapon",
+          binding: "on_pickup",
+          boundToActorId: "p1",
+        },
+        {
+          itemId: "story_key",
+          count: 1,
+          category: "keyring",
+          binding: "quest",
+          questItem: true,
+        },
+        {
+          itemId: "festival_hat",
+          count: 1,
+          category: "cosmetic",
+          binding: "none",
+        },
+        {
+          itemId: "account_coin",
+          count: 100,
+          category: "currency",
+          binding: "none",
+        },
       ],
     });
 
     assert.deepEqual(result.stacks, { iron_ore: 5, silk_bundle: 2 });
     assert.deepEqual(result.itemIds.sort(), ["iron_ore", "silk_bundle"]);
-    assert.ok(result.reasons.includes("drop_only_unbound_trade_goods_and_gathered_resources"));
-    assert.ok(result.reasons.includes("bound_quest_spellbook_mount_pet_cosmetic_keyring_protected"));
-    assert.ok(result.reasons.includes("non_trade_resource_death_drop_suppressed"));
+    assert.ok(
+      result.reasons.includes(
+        "drop_only_unbound_trade_goods_and_gathered_resources"
+      )
+    );
+    assert.ok(
+      result.reasons.includes(
+        "bound_quest_spellbook_mount_pet_cosmetic_keyring_protected"
+      )
+    );
+    assert.ok(
+      result.reasons.includes("non_trade_resource_death_drop_suppressed")
+    );
   });
 });

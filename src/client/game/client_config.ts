@@ -256,6 +256,7 @@ export function doBrowserOverrides(ret: ClientConfig) {
   const uaParser = new UAParser(window.navigator.userAgent);
   const deviceType = uaParser.getDevice().type?.toLowerCase();
   const osName = uaParser.getOS().name?.toLowerCase() ?? "";
+  const mobileDevice = isMobileDeviceDescription({ deviceType, osName });
 
   ret.showVirtualJoystick = shouldShowVirtualJoystick({
     pointerLockSupported: supportsPointerLock(),
@@ -264,9 +265,22 @@ export function doBrowserOverrides(ret: ClientConfig) {
     osName,
   });
 
-  if (deviceType === "mobile" || deviceType === "tablet") {
+  if (mobileDevice) {
     log.info("Mobile device detected, forcing low memory config.");
     ret.lowMemory = true;
+
+    // The 128m Harthmere landmark floor is useful on desktop, but it prevents
+    // dynamic graphics from reaching its 64m emergency target on iOS/Android.
+    // Mobile Safari can otherwise spend startup continuously building and
+    // evicting distant terrain meshes while the loading screen remains up.
+    // URL overrides are applied after this, so an explicit diagnostic value
+    // still wins when a test intentionally requests one.
+    if (ret.dynamicMinDrawDistance !== undefined) {
+      log.info(
+        "Mobile device detected, allowing dynamic draw distance below the desktop Harthmere floor."
+      );
+      ret.dynamicMinDrawDistance = undefined;
+    }
   }
 
   if (ret.showVirtualJoystick) {
@@ -286,6 +300,25 @@ export function doBrowserOverrides(ret: ClientConfig) {
   }
 }
 
+export function isMobileDeviceDescription({
+  deviceType,
+  osName,
+}: {
+  deviceType?: string;
+  osName?: string;
+}) {
+  const normalizedDeviceType = deviceType?.toLowerCase();
+  const normalizedOsName = osName?.toLowerCase() ?? "";
+  return (
+    normalizedDeviceType === "mobile" ||
+    normalizedDeviceType === "tablet" ||
+    normalizedOsName.includes("android") ||
+    normalizedOsName.includes("ios") ||
+    normalizedOsName.includes("ipad") ||
+    normalizedOsName.includes("iphone")
+  );
+}
+
 export function shouldShowVirtualJoystick({
   pointerLockSupported,
   touchDevice,
@@ -302,12 +335,10 @@ export function shouldShowVirtualJoystick({
   return (
     !pointerLockSupported ||
     touchDevice ||
-    normalizedDeviceType === "mobile" ||
-    normalizedDeviceType === "tablet" ||
-    normalizedOsName.includes("android") ||
-    normalizedOsName.includes("ios") ||
-    normalizedOsName.includes("ipad") ||
-    normalizedOsName.includes("iphone")
+    isMobileDeviceDescription({
+      deviceType: normalizedDeviceType,
+      osName: normalizedOsName,
+    })
   );
 }
 
@@ -534,7 +565,7 @@ export async function initializeClientConfig(
     // from collapsing to the 64m "short headlight" view seen in production logs.
     // Explicit low/safe user choices can still stay low; minDrawDistance remains
     // available as the hard URL/config override when that is wanted.
-    ret.dynamicMinDrawDistance = 128;
+    ret.dynamicMinDrawDistance = 192;
 
     const resolved = resolveGlitchLocalSyncBaseUrl({
       installIdInUrl,

@@ -2,8 +2,11 @@
 import {
   harthmereLiveCreatureAssetFor,
   harthmereLiveCreatureBridgeRecord,
+  harthmereLiveCreatureEvadeVisual,
   harthmereLiveCreatureStaticFallbackTargetIds,
   isHarthmereLiveCreatureEntity,
+  publishHarthmereLiveCreatureBridge,
+  readHarthmereLiveCreatureBridgeSnapshot,
   reconcileHarthmereLiveCreatureBridge,
   type HarthmereLiveCreatureBridgeRecord,
   type HarthmereLiveCreatureEntityView,
@@ -12,6 +15,45 @@ import assert from "assert";
 import { harthmereServerMuckCombatTargetIdForSeed } from "@/shared/harthmere/visible_combat_target";
 import { harthmereGroundedMuckMonsterSeedsInTerritory } from "@/shared/harthmere/live_entity_production_seed";
 import { LOCAL_DEV_HUMAN_NPC_TYPE_ID } from "@/shared/npc/bikkie";
+
+describe("Harthmere live-creature bridge snapshot", () => {
+  it("keeps one publication marker and emits one stale-empty marker", () => {
+    const globalWithWindow = globalThis as any;
+    const originalWindow = globalWithWindow.window;
+    globalWithWindow.window = globalThis;
+    try {
+      const records = [
+        {
+          id: 1,
+          at: [1, 2, 3],
+          yaw: 0,
+          family: "mucker",
+          asset: "npcs/mossy_mucker",
+          scale: 1,
+          label: "Mucker",
+        },
+      ] satisfies HarthmereLiveCreatureBridgeRecord[];
+      publishHarthmereLiveCreatureBridge(records);
+      const first = readHarthmereLiveCreatureBridgeSnapshot();
+      const unchanged = readHarthmereLiveCreatureBridgeSnapshot();
+      assert.equal(first.at, unchanged.at);
+      assert.equal(first.records, records);
+
+      const bridge = globalWithWindow.__harthmereLiveCreatureEcsBridge!;
+      bridge.at = Date.now() - 5_001;
+      const stale = readHarthmereLiveCreatureBridgeSnapshot();
+      assert.equal(stale.at, -Math.abs(bridge.at));
+      assert.deepEqual(stale.records, []);
+    } finally {
+      if (originalWindow === undefined) {
+        delete globalWithWindow.window;
+      } else {
+        globalWithWindow.window = originalWindow;
+      }
+      delete globalWithWindow.__harthmereLiveCreatureEcsBridge;
+    }
+  });
+});
 
 function mucker(
   over: Partial<HarthmereLiveCreatureEntityView> & { id: number }
@@ -108,15 +150,30 @@ describe("harthmereLiveCreatureAssetFor", () => {
   it("maps animals by species then label", () => {
     assert.equal(
       harthmereLiveCreatureAssetFor("animal", "cow", undefined),
-      "animal_cow"
+      "npcs/cow"
     );
     assert.equal(
       harthmereLiveCreatureAssetFor("animal", undefined, "Grey Wolf"),
-      "animal_wolf"
+      "npcs/dog_1"
     );
     assert.equal(
       harthmereLiveCreatureAssetFor("animal", undefined, "mystery"),
-      "animal_boar"
+      "npcs/cow"
+    );
+    assert.equal(
+      harthmereLiveCreatureAssetFor("animal", "fish", "River Fish"),
+      "npcs/fish"
+    );
+    assert.equal(
+      harthmereLiveCreatureAssetFor("animal", undefined, "Old Pond Turtle"),
+      "npcs/turtle"
+    );
+  });
+
+  it("routes NPC robots to the authored helping-robot renderer", () => {
+    assert.equal(
+      harthmereLiveCreatureAssetFor("robot", undefined, "Restoro Bot"),
+      "npcs/helping_robot"
     );
   });
 
@@ -135,25 +192,54 @@ describe("harthmereLiveCreatureAssetFor", () => {
     );
   });
 
-  it("keeps the procedural creature mesh as an unlabeled compatibility fallback", () => {
+  it("routes live bosses to their custom animated voxel GLBs before generic families", () => {
     assert.equal(
-      harthmereLiveCreatureAssetFor("mucker", undefined, undefined),
-      "townsperson_undead"
+      harthmereLiveCreatureAssetFor("mucker", undefined, "Muck-Scarred Helix"),
+      "/assets/harthmere/glb/bosses/muck_scarred_helix.glb"
     );
     assert.equal(
-      harthmereLiveCreatureAssetFor("hex", undefined, undefined),
-      "townsperson_undead"
+      harthmereLiveCreatureAssetFor("hex", undefined, "Thaedryn the Bellbound"),
+      "/assets/harthmere/glb/bosses/thaedryn_bellbound.glb"
     );
     assert.equal(
-      harthmereLiveCreatureAssetFor("quest_creature", undefined, undefined),
-      "townsperson_undead"
+      harthmereLiveCreatureAssetFor(
+        "hex",
+        undefined,
+        "Gravewood Pale Hexer 7",
+        8_810_000_000_019_543
+      ),
+      "/assets/harthmere/glb/bosses/hex_wraith.glb"
+    );
+    assert.equal(
+      harthmereLiveCreatureAssetFor(
+        "mucker",
+        undefined,
+        "Old Wood Mucker 1",
+        8_810_000_000_019_509
+      ),
+      "/assets/harthmere/glb/bosses/alpha_mucker.glb"
     );
   });
 
-  it("maps town humans to a believable body variant from their name", () => {
+  it("keeps an original animated creature mesh as the unlabeled fallback", () => {
+    assert.equal(
+      harthmereLiveCreatureAssetFor("mucker", undefined, undefined),
+      "npcs/mossy_mucker"
+    );
+    assert.equal(
+      harthmereLiveCreatureAssetFor("hex", undefined, undefined),
+      "npcs/mossy_mucker"
+    );
+    assert.equal(
+      harthmereLiveCreatureAssetFor("quest_creature", undefined, undefined),
+      "npcs/mossy_mucker"
+    );
+  });
+
+  it("maps every town human to the snapshot player mesh pipeline", () => {
     assert.equal(
       harthmereLiveCreatureAssetFor("live_entity", undefined, "Town Guard"),
-      "townsperson_guard"
+      "snapshot/player_mesh"
     );
     assert.equal(
       harthmereLiveCreatureAssetFor(
@@ -161,11 +247,11 @@ describe("harthmereLiveCreatureAssetFor", () => {
         undefined,
         "Brother Aldous, Chapel Clergy"
       ),
-      "townsperson_clergy"
+      "snapshot/player_mesh"
     );
     assert.equal(
       harthmereLiveCreatureAssetFor("live_entity", undefined, "Doc Harrow"),
-      "townsperson_market"
+      "snapshot/player_mesh"
     );
   });
 });
@@ -182,6 +268,67 @@ describe("harthmereLiveCreatureBridgeRecord", () => {
     assert.equal(record?.hp, 200);
     assert.equal(record?.maxHp, 240);
     assert.equal(record?.nativeNpcRenderer, true);
+  });
+
+  it("serializes movement while keeping animals on the native NPC renderer", () => {
+    const record = harthmereLiveCreatureBridgeRecord(
+      mucker({
+        id: 45,
+        label: { text: "Forest Wolf" },
+        harthmere_creature_species: "wolf",
+        movement_state: {
+          action: "evade",
+          action_start_time: 100,
+          action_expiry_time: 100.52,
+          direction: [1, 0, 0],
+          action_nonce: 4,
+        },
+      })
+    );
+    assert.deepEqual(record?.movementAction, {
+      action: "evade",
+      startTime: 100,
+      expiryTime: 100.52,
+      direction: [1, 0, 0],
+      nonce: 4,
+    });
+    assert.equal(record?.asset, "npcs/dog_1");
+    assert.equal(record?.nativeNpcRenderer, true);
+  });
+
+  it("selects family-specific live-overlay evade clips", () => {
+    const visual = (
+      asset: string,
+      label: string,
+      direction: [number, number, number] = [1, 0, 0]
+    ) =>
+      harthmereLiveCreatureEvadeVisual({
+        asset,
+        label,
+        movementAction: {
+          action: "evade",
+          startTime: 1,
+          expiryTime: 2,
+          direction,
+        },
+      });
+
+    assert.deepEqual(visual("animal_wolf", "Forest Wolf"), {
+      family: "sideLeap",
+      preferredClipNames: [
+        "SideLeap",
+        "SidestepRight",
+        "SidestepLeft",
+        "Sidestep",
+        "Jump",
+      ],
+    });
+    assert.equal(visual("animal_bear", "Black Bear").family, "heavy");
+    assert.equal(visual("animal_bunny", "Rabbit").family, "rabbit");
+    assert.equal(visual("animal_crow", "Crow").family, "bird");
+    assert.equal(visual("npcs/fish", "River Fish").family, "swim");
+    assert.equal(visual("npcs/helping_robot", "Restoro Bot").family, "robot");
+    assert.equal(visual("npcs/purple_hexer", "Hexer").family, "hexer");
   });
 
   it("returns undefined for non-creatures", () => {
@@ -202,6 +349,36 @@ describe("harthmereLiveCreatureBridgeRecord", () => {
     assert.ok(record);
     assert.equal(record.nativeNpcRenderer, true);
   });
+
+  it("marks custom boss GLBs as native-NPC-rendered actors", () => {
+    const record = harthmereLiveCreatureBridgeRecord(
+      mucker({ id: 44, label: { text: "Muck-Scarred Helix" } })
+    );
+    assert.ok(record);
+    assert.equal(
+      record.asset,
+      "/assets/harthmere/glb/bosses/muck_scarred_helix.glb"
+    );
+    assert.equal(record.nativeNpcRenderer, true);
+  });
+
+  it("routes fish, turtles, and NPC robots through native animated meshes", () => {
+    for (const [id, label, species, asset] of [
+      [46, "River Fish", "fish", "npcs/fish"],
+      [47, "Old Pond Turtle", "turtle", "npcs/turtle"],
+      [48, "Restoro Bot", undefined, "npcs/helping_robot"],
+    ] as const) {
+      const record = harthmereLiveCreatureBridgeRecord(
+        mucker({
+          id,
+          label: { text: label },
+          harthmere_creature_species: species,
+        })
+      );
+      assert.equal(record?.asset, asset, label);
+      assert.equal(record?.nativeNpcRenderer, true, label);
+    }
+  });
 });
 
 describe("reconcileHarthmereLiveCreatureBridge", () => {
@@ -210,7 +387,7 @@ describe("reconcileHarthmereLiveCreatureBridge", () => {
     at: [0, 54, 0],
     yaw: 0,
     family: "mucker",
-    asset: "townsperson_undead",
+    asset: "npcs/mossy_mucker",
     scale: 1,
     label: `m${id}`,
   });

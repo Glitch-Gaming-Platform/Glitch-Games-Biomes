@@ -3,6 +3,7 @@ import { Emote } from "@/shared/ecs/gen/components";
 import type { ReadonlyEntity } from "@/shared/ecs/gen/entities";
 import { Entity } from "@/shared/ecs/gen/entities";
 import { CollisionHelper } from "@/shared/game/collision";
+import { getAabbForEntity } from "@/shared/game/entity_sizes";
 import {
   getPlayerBuffs,
   getPlayerModifiersFromBuffs,
@@ -15,6 +16,7 @@ import {
   add,
   centerAndSideLengthToAABB,
   distSq,
+  distSqToAABB,
   length,
   scale,
   sub,
@@ -70,7 +72,10 @@ import {
 } from "@/shared/npc/creature_level";
 import { getNpcRunSpeed } from "@/shared/npc/bikkie";
 import type { Environment } from "@/shared/npc/environment";
-import type { BehaviorChaseAttackParams } from "@/shared/npc/npc_types";
+import type {
+  BehaviorChaseAttackParams,
+  BehaviorRangedAttackParams,
+} from "@/shared/npc/npc_types";
 import type { SimulatedNpc } from "@/shared/npc/simulated";
 import {
   decayThreat,
@@ -654,9 +659,7 @@ export function hasTerrainLineOfSightToBody(
   for (const sample of lineOfSightTargetSamples(to, toBodyHeight)) {
     // `hasTerrainLineOfSight` adds its own eye offset to `to`; pass the already
     // offset sample with a zero-height offset so the sample point is exact.
-    if (
-      hasTerrainLineOfSight(env, from, sample, fromEyeHeight, 0)
-    ) {
+    if (hasTerrainLineOfSight(env, from, sample, fromEyeHeight, 0)) {
       return true;
     }
   }
@@ -696,6 +699,25 @@ export const zChaseAttackComponent = z.object({
       // When did the player's attack last strike? (If this is *before* the attack
       // time, then the strike hasn't occurred yet),
       strikeTime: z.number().optional(),
+      rangedAttack: z
+        .object({
+          abilityId: z.string(),
+          projectileVisualId: z.string(),
+          targetId: zBiomesId,
+          castTime: z.number(),
+          impactTime: z.number(),
+          cooldownUntil: z.number(),
+          originPoint: zVec3f.optional(),
+          aimPoint: zVec3f,
+          castYaw: z.number().optional(),
+          hitTargetIds: z.array(zBiomesId).optional(),
+          result: z.enum(["hit", "miss"]).optional(),
+          resolvedAt: z.number().optional(),
+        })
+        .optional(),
+      rangedCooldowns: z.record(z.number()).optional(),
+      rangedGlobalCooldownUntil: z.number().optional(),
+      rangedSelectionCursor: z.number().int().nonnegative().optional(),
       // Pathfinding behavior for chasing around walls/obstacles.
       pathfinding: zPathfindingComponent.optional(),
       // Briefly use direct pursuit after a path makes no progress. This lets
@@ -720,6 +742,285 @@ export const zChaseAttackComponent = z.object({
 });
 export type ChaseAttackComponent = z.infer<typeof zChaseAttackComponent>;
 
+export type RangedAttackTickPhase =
+  | "none"
+  | "cooldown"
+  | "fired"
+  | "in_flight"
+  | "hit"
+  | "miss";
+
+export interface RangedAttackTickResult {
+  handled: boolean;
+  phase: RangedAttackTickPhase;
+}
+
+function rangedAttackAimPoint(target: ReadonlyEntity): Vec3 | undefined {
+  if (!target.position) return;
+  return [
+    target.position.v[0],
+    target.position.v[1] + (target.size?.v[1] ?? 1.8) * 0.55,
+    target.position.v[2],
+  ];
+}
+
+export function rangedAttackAimHitsTarget(input: {
+  aimPoint: ReadonlyVec3;
+  target: ReadonlyEntity | undefined;
+  hitRadius: number;
+}) {
+  if (!input.target?.position || (input.target.health?.hp ?? 0) <= 0) {
+    return false;
+  }
+  const targetAabb = getAabbForEntity(input.target);
+  return Boolean(
+    targetAabb &&
+      distSqToAABB(input.aimPoint, targetAabb) <=
+        input.hitRadius * input.hitRadius
+  );
+}
+
+export function rangedAttackShape(
+  params: BehaviorRangedAttackParams
+): NonNullable<BehaviorRangedAttackParams["attackShape"]> {
+  return params.attackShape ?? "projectile";
+}
+
+export function rangedAttackHealthRatioEligible(input: {
+  hp: number;
+  maxHp: number;
+  params: BehaviorRangedAttackParams;
+}) {
+  const ratio =
+    input.maxHp > 0 ? Math.max(0, Math.min(1, input.hp / input.maxHp)) : 1;
+  return (
+    ratio >= (input.params.minimumHealthRatio ?? 0) &&
+    ratio <= (input.params.maximumHealthRatio ?? 1)
+  );
+}
+
+function rangedAttackHitTargets(input: {
+  env: Environment;
+  npc: SimulatedNpc;
+  primaryTarget: ReadonlyEntity | undefined;
+  params: BehaviorRangedAttackParams;
+  originPoint: ReadonlyVec3;
+  aimPoint: ReadonlyVec3;
+  castYaw: number;
+}): BiomesId[] {
+  const shape = rangedAttackShape(input.params);
+  if (shape === "projectile" || shape === "beam") {
+    return input.primaryTarget &&
+      hasLineOfSightToPlayer(input.env, input.npc, input.primaryTarget) &&
+      rangedAttackAimHitsTarget({
+        aimPoint: input.aimPoint,
+        target: input.primaryTarget,
+        hitRadius: input.params.hitRadius,
+      })
+      ? [input.primaryTarget.id]
+      : [];
+  }
+
+  const center = shape === "ground_aoe" ? input.aimPoint : input.originPoint;
+  const scanRadius =
+    shape === "cone" ? input.params.attackDistance : input.params.hitRadius;
+  const hits: BiomesId[] = [];
+  for (const playerId of input.env.ecsMetaIndex.player_selector.scanSphere({
+    center,
+    radius: scanRadius,
+  })) {
+    const player = input.env.resources.get("/ecs/entity", playerId);
+    if (!Entity.has(player, "health", "position") || player.health.hp <= 0) {
+      continue;
+    }
+    if (!hasLineOfSightToPlayer(input.env, input.npc, player)) {
+      continue;
+    }
+    if (shape === "cone") {
+      const distance = horizontalDistance(input.originPoint, player.position.v);
+      const direction = yaw(sub(player.position.v, input.originPoint));
+      if (
+        distance < input.params.minimumDistance ||
+        distance > input.params.attackDistance ||
+        Math.abs(diffAngle(direction, input.castYaw)) >
+          degToRad((input.params.coneAngleDeg ?? 60) / 2)
+      ) {
+        continue;
+      }
+    } else if (
+      !rangedAttackAimHitsTarget({
+        aimPoint: center,
+        target: player,
+        hitRadius: input.params.hitRadius,
+      })
+    ) {
+      continue;
+    }
+    hits.push(player.id);
+  }
+  return hits;
+}
+
+/**
+ * Advances an optional ranged cast owned by Anima. Returning `handled: true`
+ * means the cast is firing or resolving and normal melee/chase logic should
+ * pause for this tick. Cooldown and close-range decisions return false so the
+ * existing melee attack remains available between fireballs.
+ */
+export function rangedAttackTargetTick(
+  env: Environment,
+  npc: SimulatedNpc,
+  target: ReadonlyEntity | undefined,
+  params: readonly BehaviorRangedAttackParams[],
+  now = secondsSinceEpoch()
+): RangedAttackTickResult {
+  const chaseState = npc.state.chaseAttack;
+  if (!chaseState) return { handled: false, phase: "none" };
+
+  const active = chaseState.rangedAttack;
+  if (active && active.result === undefined) {
+    if (now < active.impactTime) {
+      return { handled: true, phase: "in_flight" };
+    }
+    const castTarget =
+      target?.id === active.targetId
+        ? target
+        : env.resources.get("/ecs/entity", active.targetId);
+    const activeParams = params.find(
+      ({ abilityId }) => abilityId === active.abilityId
+    );
+    if (!activeParams) {
+      const mutable = npc.mutableState().chaseAttack!.rangedAttack!;
+      mutable.result = "miss";
+      mutable.resolvedAt = now;
+      return { handled: true, phase: "miss" };
+    }
+    const hitTargetIds = rangedAttackHitTargets({
+      env,
+      npc,
+      primaryTarget: castTarget,
+      params: activeParams,
+      originPoint: active.originPoint ?? npc.position,
+      aimPoint: active.aimPoint,
+      castYaw:
+        active.castYaw ??
+        yaw(sub(active.aimPoint, active.originPoint ?? npc.position)),
+    });
+    const mutable = npc.mutableState().chaseAttack!.rangedAttack!;
+    mutable.hitTargetIds = hitTargetIds;
+    mutable.result = hitTargetIds.length ? "hit" : "miss";
+    mutable.resolvedAt = now;
+    for (const hitTargetId of hitTargetIds) {
+      npc.attack(hitTargetId, activeParams.attackDamage, {
+        attackAbilityId: active.abilityId,
+        attackTime: active.castTime,
+        impactPoint: active.aimPoint,
+      });
+    }
+    return {
+      handled: true,
+      phase: hitTargetIds.length ? "hit" : "miss",
+    };
+  }
+
+  if (
+    !target?.position ||
+    !target.health ||
+    target.health.hp <= 0 ||
+    chaseState.targetVisible === false
+  ) {
+    return { handled: false, phase: "none" };
+  }
+
+  const distance = horizontalDistance(npc.position, target.position.v);
+  const cooldowns = chaseState.rangedCooldowns ?? {};
+  if (now < (chaseState.rangedGlobalCooldownUntil ?? 0)) {
+    return { handled: false, phase: "cooldown" };
+  }
+  const ready = params.filter(
+    (candidate) =>
+      distance >= candidate.minimumDistance &&
+      distance <= candidate.attackDistance &&
+      rangedAttackHealthRatioEligible({
+        hp: npc.hp,
+        maxHp: npc.health.maxHp,
+        params: candidate,
+      }) &&
+      now >= (cooldowns[candidate.abilityId] ?? 0)
+  );
+  if (ready.length === 0) {
+    const hasRangedOption = params.some(
+      (candidate) =>
+        distance >= candidate.minimumDistance &&
+        distance <= candidate.attackDistance &&
+        rangedAttackHealthRatioEligible({
+          hp: npc.hp,
+          maxHp: npc.health.maxHp,
+          params: candidate,
+        })
+    );
+    if (hasRangedOption) {
+      return { handled: false, phase: "cooldown" };
+    }
+    return { handled: false, phase: "none" };
+  }
+  const startIndex = (chaseState.rangedSelectionCursor ?? 0) % params.length;
+  let selectedIndex = startIndex;
+  let selected: BehaviorRangedAttackParams | undefined;
+  for (let offset = 0; offset < params.length; offset += 1) {
+    const index = (startIndex + offset) % params.length;
+    const candidate = params[index];
+    if (ready.includes(candidate)) {
+      selected = candidate;
+      selectedIndex = index;
+      break;
+    }
+  }
+  selected ??= ready[0];
+  selectedIndex = Math.max(0, params.indexOf(selected));
+  const aimPoint = rangedAttackAimPoint(target);
+  if (!aimPoint) return { handled: false, phase: "none" };
+
+  const castTime = now;
+  const mutableChaseState = npc.mutableState().chaseAttack!;
+  // A ranged cast is a separate attack cycle. Clear any completed/pending
+  // melee timing so returning to close range cannot land a stale swing.
+  mutableChaseState.attackTime = undefined;
+  mutableChaseState.strikeTime = undefined;
+  mutableChaseState.rangedSelectionCursor =
+    (selectedIndex + 1) % Math.max(1, params.length);
+  const originPoint = [...npc.position] as Vec3;
+  const castYaw = yaw(sub(aimPoint, originPoint));
+  const shapedAimPoint =
+    rangedAttackShape(selected) === "self_aoe" ? originPoint : aimPoint;
+  mutableChaseState.rangedAttack = {
+    abilityId: selected.abilityId,
+    projectileVisualId: selected.projectileVisualId,
+    targetId: target.id,
+    castTime,
+    impactTime: castTime + selected.castTimeSecs,
+    cooldownUntil: castTime + selected.cooldownSecs,
+    originPoint,
+    aimPoint: shapedAimPoint,
+    castYaw,
+  };
+  mutableChaseState.rangedCooldowns = {
+    ...cooldowns,
+    [selected.abilityId]: castTime + selected.cooldownSecs,
+  };
+  mutableChaseState.rangedGlobalCooldownUntil =
+    castTime + selected.sharedCooldownSecs;
+  npc.mutableState().rotateTarget = castYaw;
+  npc.setEmote(
+    Emote.create({
+      emote_type: "attack1",
+      emote_start_time: castTime,
+      emote_expiry_time: castTime + selected.castTimeSecs + 0.1,
+    })
+  );
+  return { handled: true, phase: "fired" };
+}
+
 export function chaseAttackTargetTick(
   env: Environment,
   npc: SimulatedNpc,
@@ -737,6 +1038,17 @@ export function chaseAttackTargetTick(
     "/ecs/entity",
     npc.state.chaseAttack.attackTarget
   );
+  if (params.rangedAttacks?.length) {
+    const ranged = rangedAttackTargetTick(
+      env,
+      npc,
+      target,
+      params.rangedAttacks
+    );
+    if (ranged.handled) {
+      return out;
+    }
+  }
   if (!target?.health || !target.position) {
     if (npc.state.chaseAttack.attackTarget !== undefined) {
       npc.mutableState().chaseAttack!.attackTarget = undefined;
@@ -1032,7 +1344,8 @@ export function canAttackTarget(input: {
       attackRadius: input.attackRadius,
       hitboxCushion: TARGET_HITBOX_ATTACK_RANGE_CUSHION_METERS,
       verticalReach: input.verticalReach ?? ATTACK_VERTICAL_REACH_METERS,
-    }) && Math.abs(input.targetOrientationDiff) <= degToRad(input.attackFovDeg / 2)
+    }) &&
+    Math.abs(input.targetOrientationDiff) <= degToRad(input.attackFovDeg / 2)
   );
 }
 

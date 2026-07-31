@@ -52,9 +52,7 @@ class TypeNode:
                         f"Type '{self.kind}' has invalid child: {key}. Missing parentheses around '{name}'?"
                     )
                 else:
-                    raise ValueError(
-                        f"Type '{self.kind}' has invalid child: {key}"
-                    )
+                    raise ValueError(f"Type '{self.kind}' has invalid child: {key}")
         for sub in self.subs.values():
             sub.validate()
 
@@ -105,14 +103,13 @@ def helper(fn):
     return staticmethod(type_guard)
 
 
-EXTERNALLY_DEFINED_TYPES = {
-    "BiomesId",
-    "BiomesId",
-    "ShardId",
+EXTERNALLY_DEFINED_TYPES = (
     "Item",
+    "BiomesId",
     "ItemAndCount",
     "TriggerStateMap",
-}
+    "ShardId",
+)
 
 
 # Convenience routines for create type nodes.
@@ -215,7 +212,10 @@ class TypeGenerator:
 
     def __init__(self, ast_config: AstConfig):
         self.ast_config = ast_config
-        self.types = TypeHelpers
+        # Definitions add named helper constructors dynamically. Keep those
+        # additions local to this generator so a second generation in the same
+        # Python process starts from a clean namespace.
+        self.types = type("TypeHelpersNamespace", (TypeHelpers,), {})
         self.nodes = {
             "Buffer": TypeHelpers.Buffer(),
             "String": TypeHelpers.String(),
@@ -391,9 +391,7 @@ class Generator:
         return symbol
 
     def add_event(self, name: str, fields):
-        event = self.ast_config.make(
-            Event, f"{name}Event", list(fields.items())
-        )
+        event = self.ast_config.make(Event, f"{name}Event", list(fields.items()))
         self.defs.events.append(self.define(event))
 
     def mark_deprecated_component(self, id: int):

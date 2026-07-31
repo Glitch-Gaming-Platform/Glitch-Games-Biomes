@@ -592,9 +592,7 @@ const LegacySnapshotCompletePortRuntimeController: React.FunctionComponent<{}> =
         runFootAudit: () => {
           const positions: Record<string, Vec3 | undefined> = {};
           for (const npc of SNAPSHOT_GROVE_NPCS) {
-            const id = npc.seedServerNpc
-              ? snapshotGroveNpcEntityId(npc)
-              : (8997551883502307 as BiomesId);
+            const id = snapshotGroveNpcEntityId(npc);
             const position = reactResources.get?.(
               "/ecs/c/position",
               id as BiomesId
@@ -721,9 +719,7 @@ export const SnapshotGroundingAuditPanel: React.FunctionComponent<{}> = () => {
     const refresh = () => {
       const positions: Record<string, Vec3 | undefined> = {};
       for (const npc of SNAPSHOT_GROVE_NPCS) {
-        const id = npc.seedServerNpc
-          ? snapshotGroveNpcEntityId(npc)
-          : (8997551883502307 as BiomesId);
+        const id = snapshotGroveNpcEntityId(npc);
         const position = reactResources.get?.(
           "/ecs/c/position",
           id as BiomesId

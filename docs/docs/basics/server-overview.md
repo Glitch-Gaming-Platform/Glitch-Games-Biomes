@@ -14,6 +14,8 @@ Biomes server functions are divided across multiple microservices, to be able to
 - Interactions are relayed to players primarily through ECS updates, which are synced to the client with the `sync` server
 - Other servers are not directly player driven, but changes are made to ECS components that are synced similarly through the `sync` server. An example is the `newton` moving dropped items independently from any player interactions. `trigger`, `task`, `newton`, `anima`, and `gaia` all fall into the pattern.
 
+The [native ECS architecture guide](./native-ecs.md) explains the shared schema, transaction, Redis, subscription, and replica path used by these services.
+
 When running locally, you can specify a subset of servers that you're interested in running by specifying the server names, i.e. `./b web trigger`. Servers will automatically start any servers they depend upon to run correctly.
 
 # [Servers](https://github.com/ill-inc/biomes-game/tree/main/src/server)
@@ -76,9 +78,10 @@ If you are intending to modify or add player-facing game interactions or logic, 
 
 - Handles drops, their physics and when they get picked up
 
-## [Anima](https://github.com/ill-inc/biomes-game/tree/main/src/server/anima)
+## [Anima](./anima.md)
 
 - Handles the AI for NPCs in the world, is sharded so each server only handles a subset
+- See the [Anima architecture and integration guide](./anima.md) for its tick, behavior, sharding, and Voxeloo boundaries.
 
 ## [Map](https://github.com/ill-inc/biomes-game/tree/main/src/server/map)
 
@@ -90,7 +93,7 @@ If you are intending to modify or add player-facing game interactions or logic, 
 - Maintains a copy of the world, subscribes directly to the World
 - Supports the subscription part of the current Game API
 
-## [Gaia](https://github.com/ill-inc/biomes-game/tree/main/src/server/gaia)
+## [Gaia](./gaia.md)
 
 Gaia authoritively controls all "natural" game simulation in game:
 
@@ -98,6 +101,12 @@ Gaia authoritively controls all "natural" game simulation in game:
 - Muck Creep
 - Plant growth and regrowth
 - Farming
+
+See the [Gaia architecture and integration guide](./gaia.md) for its terrain-map, sharding, simulation pipeline, and write path.
+
+## [Voxeloo](./voxeloo.md)
+
+Voxeloo is the shared C++ voxel and tensor library compiled to WebAssembly for TypeScript consumers. It supplies native simulation and spatial primitives to Gaia, Anima, rendering, mapping, and asset tooling.
 
 ## [Redis / Redis Bridge](https://github.com/ill-inc/biomes-game/tree/main/src/redis)
 

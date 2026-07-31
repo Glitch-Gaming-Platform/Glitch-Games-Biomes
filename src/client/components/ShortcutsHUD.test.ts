@@ -26,6 +26,9 @@ describe("ShortcutsHUD gameplay movement focus recovery", () => {
       "Space",
       "ShiftLeft",
       "ShiftRight",
+      "KeyZ",
+      "KeyX",
+      "KeyC",
     ]) {
       assert.equal(
         shortcutsHUDHandlesKeyForModeForTest(code, true),
@@ -33,7 +36,7 @@ describe("ShortcutsHUD gameplay movement focus recovery", () => {
         `${code} must still reach the pointer-lock recovery path`
       );
     }
-    for (const code of ["KeyE", "KeyI", "KeyM", "KeyC", "KeyV", "KeyO"]) {
+    for (const code of ["KeyE", "KeyI", "KeyM", "KeyV", "KeyO"]) {
       assert.equal(shortcutsHUDHandlesKeyForModeForTest(code, true), false);
     }
     assert.equal(shortcutsHUDHandlesKeyForModeForTest("KeyE", false), true);
@@ -69,6 +72,25 @@ describe("ShortcutsHUD gameplay movement focus recovery", () => {
       }),
       true
     );
+  });
+
+  it("relocks gameplay for crouch, dodge, and evade", () => {
+    for (const code of ["KeyZ", "KeyX", "KeyC"]) {
+      assert.equal(
+        shouldFocusAndLockForGameplayMovementKey({
+          code,
+          modalKind: "empty",
+          inInputElement: false,
+          repeat: false,
+          altKey: false,
+          ctrlKey: false,
+          metaKey: false,
+          pointerLocked: false,
+        }),
+        true,
+        `${code} must recover gameplay focus before activating movement`
+      );
+    }
   });
 
   it("does not steal focus from dialogue, other modals, inputs, modifiers, or repeats", () => {

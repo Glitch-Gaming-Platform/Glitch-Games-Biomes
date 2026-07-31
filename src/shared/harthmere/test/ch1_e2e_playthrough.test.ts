@@ -221,7 +221,10 @@ class Playthrough {
       carriedOut,
       nowMs: this.clockMs,
     });
-    assert.ok(exit.ok, `could not exit ${gateId}: ${exit.ok ? "" : exit.reason}`);
+    assert.ok(
+      exit.ok,
+      `could not exit ${gateId}: ${exit.ok ? "" : exit.reason}`
+    );
     if (exit.ok) {
       this.log.groveTimeMs += exit.groveElapsedMs;
       for (const flag of exit.completionFlags) {
@@ -257,7 +260,9 @@ function fullPlaythrough(): Playthrough {
   // Act 3 quests come first, then the dungeon is entered from the open gate,
   // then the act closes on coming back out.
   const act3 = ch1QuestsForAct(3);
-  for (const quest of act3.filter((q) => !q.actClose && !q.id.includes("_d1_"))) {
+  for (const quest of act3.filter(
+    (q) => !q.actClose && !q.id.includes("_d1_")
+  )) {
     run.completeQuest(quest.id);
   }
   run.runDungeon("ch1_gate_desert");
@@ -271,7 +276,9 @@ function fullPlaythrough(): Playthrough {
   run.playAct(4);
 
   const act5 = ch1QuestsForAct(5);
-  for (const quest of act5.filter((q) => !q.actClose && !q.id.includes("_d2_"))) {
+  for (const quest of act5.filter(
+    (q) => !q.actClose && !q.id.includes("_d2_")
+  )) {
     run.completeQuest(quest.id);
   }
   run.runDungeon("ch1_gate_winter");
@@ -367,7 +374,9 @@ describe("ch1 E2E - the full playthrough", () => {
     const groveDays = run.log.groveTimeMs / (24 * 60 * 60 * 1000);
     assert.ok(
       groveDays > 1,
-      `the Grove only lost ${groveDays.toFixed(2)} days; the time cost is the point`
+      `the Grove only lost ${groveDays.toFixed(
+        2
+      )} days; the time cost is the point`
     );
   });
 

@@ -23,6 +23,12 @@ const {
   harthmereExtensionFoundationShardSpecs,
   harthmereExtensionTerrainEntityIdForShard,
 } = require("../../src/shared/harthmere/world_extension");
+const {
+  harthmereRiverContains,
+} = require("../../src/shared/harthmere/harthmere_river");
+const {
+  harthmereStillWaterLevelAt,
+} = require("../../src/shared/harthmere/harthmere_still_water");
 
 const REDIS_HOST =
   process.env.REDIS_HOST ||
@@ -38,6 +44,8 @@ const BATCH_SIZE = Math.max(
   Number.parseInt(process.env.HARTHMERE_TERRAIN_AUDIT_BATCH_SIZE || "250", 10)
 );
 const AUDIT_MODE = process.env.HARTHMERE_TERRAIN_AUDIT_MODE || "full";
+/** Report the damage and exit 0. See the HARTHMERE_DEPLOY_TERRAIN_GATE note. */
+const NON_FATAL = process.env.HARTHMERE_TERRAIN_AUDIT_NON_FATAL === "1";
 const SHARD_DIM = 32;
 const FORBIDDEN_HARTHMERE_MUCK_TERRAIN_IDS = new Set(
   ["muckwad", "DEPRECATED_muckwad", "splintered_muck", "mucky_brambles"]
@@ -50,7 +58,10 @@ function isIntentionalSurfaceOpening(worldX, worldZ) {
   const [authoredX, , centerZ] =
     HARTHMERE_BELLBINDER_DESCENT.surfaceOpeningCenter;
   const centerX = authoredX + HARTHMERE_ADDITIVE_TOWN_OFFSET_X;
+  const waterAuthoredX = worldX - HARTHMERE_ADDITIVE_TOWN_OFFSET_X;
   return (
+    harthmereRiverContains(waterAuthoredX, worldZ) ||
+    harthmereStillWaterLevelAt(waterAuthoredX, 0, worldZ) > 0 ||
     worldX >= centerX - 1 &&
     worldX <= centerX + 1 &&
     worldZ >= centerZ - 2 &&
@@ -301,6 +312,20 @@ async function main() {
         forbiddenMuckBlocks.length ||
         retiredTerrainIds.length;
   if (failed) {
+    // HARTHMERE_DEPLOY_TERRAIN_GATE:
+    // The deploy runs this twice. The first pass is a REPORT taken before the
+    // repair has had a chance to run, so failing there just meant no deploy
+    // ever reached the repair — which is exactly how the sunken pits survived
+    // release after release. NON_FATAL lets that first pass describe the damage
+    // and return 0; the verification pass after the repair leaves it unset and
+    // is the one that can still stop a bad deploy.
+    if (NON_FATAL) {
+      console.log(
+        "REPORT-ONLY Harthmere extension terrain audit found damage; the " +
+          "repair phase runs next and the post-repair audit is authoritative."
+      );
+      return;
+    }
     throw new Error("Harthmere extension terrain audit failed");
   }
   if (AUDIT_MODE === "muck-only") {

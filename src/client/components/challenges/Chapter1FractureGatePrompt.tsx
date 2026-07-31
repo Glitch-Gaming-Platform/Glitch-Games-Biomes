@@ -210,12 +210,23 @@ export const Chapter1FractureGatePrompt: React.FunctionComponent = () => {
     [applyState, refresh]
   );
 
+  // CHAPTER_1_GATE_STORY_PREEMPTION (client half)
+  //
+  // The server decides this: while a story objective is staged at a Mouth, the
+  // gate reports `interaction: "none"` and this component offers nothing.
+  //
+  // The F-priority table already ranks `chapter1Story` above `chapter1Gate`, but
+  // the two prompts poll independently, so there is a window where the gate has
+  // refreshed and the story objective has not — and in that window the gate wins
+  // F and paints its banner over the conversation. Live testing hit exactly that
+  // at `say_the_sentence`; four more instances were queued in Acts 3-5. Deciding
+  // it server-side removes the race instead of re-running it every poll.
   const candidate = useMemo(
     () =>
       state?.withinRange && state.interaction !== "none" && !cutscene.active
         ? {
             id: `chapter1-fracture-gate:${state.interaction}:${state.gateId}`,
-            priority: WORLD_INTERACTION_PRIORITY.chapter1Story,
+            priority: WORLD_INTERACTION_PRIORITY.chapter1Gate,
             disabled: busy,
             onInteract: () => void interact(),
           }

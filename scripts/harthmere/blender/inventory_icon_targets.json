@@ -1,0 +1,3733 @@
+{
+  "version": 1,
+  "sourceAudit": "2026-07-30 player-visible inventory audit",
+  "count": 526,
+  "protectedIds": [
+    "arcane_spellbook_closed",
+    "arcane_spellbook_open",
+    "arcane_staff",
+    "arcane_wand",
+    "badge_shield",
+    "barbarian_round_shield",
+    "colored_badge_shield",
+    "colored_round_shield",
+    "colored_spiked_shield",
+    "colored_square_shield",
+    "colored_two_handed_sword",
+    "crystal_focus",
+    "double_axe",
+    "double_headed_hammer",
+    "golden_bow",
+    "golden_dagger",
+    "golden_dart",
+    "golden_double_axe",
+    "golden_double_headed_hammer",
+    "golden_great_sword",
+    "golden_small_axe",
+    "golden_sword",
+    "great_sword",
+    "hunter_bow",
+    "iron_longsword",
+    "one_handed_axe",
+    "one_handed_crossbow",
+    "round_shield",
+    "sealed_scroll",
+    "small_axe",
+    "smoke_bomb",
+    "snowflake_focus",
+    "spiked_shield",
+    "square_shield",
+    "standard_sword",
+    "star_focus",
+    "steel_dagger",
+    "steel_dart",
+    "strung_bow",
+    "two_handed_axe",
+    "two_handed_crossbow",
+    "two_handed_sword"
+  ],
+  "targets": [
+    {
+      "id": "leather_armor",
+      "name": "Leather Armor",
+      "category": "armor",
+      "status": "generic",
+      "file": "leather_armor_09b378d75b.png"
+    },
+    {
+      "id": "patched_cloak",
+      "name": "Patched Mudden Cloak",
+      "category": "armor",
+      "status": "generic",
+      "file": "patched_cloak_803c5e2ff3.png"
+    },
+    {
+      "id": "travel_cloak",
+      "name": "Travel Cloak",
+      "category": "armor",
+      "status": "generic",
+      "file": "travel_cloak_3566a9d397.png"
+    },
+    {
+      "id": "antidote",
+      "name": "Antidote",
+      "category": "consumable",
+      "status": "generic",
+      "file": "antidote_34da5b5716.png"
+    },
+    {
+      "id": "7697913156978978",
+      "name": "Baked Fish",
+      "category": "consumable",
+      "status": "generic",
+      "file": "7697913156978978_e96b178116.png"
+    },
+    {
+      "id": "8091388084258471",
+      "name": "Banana",
+      "category": "consumable",
+      "status": "generic",
+      "file": "8091388084258471_0d87cfcf2d.png"
+    },
+    {
+      "id": "1534621126189382",
+      "name": "Bizzy Cola",
+      "category": "consumable",
+      "status": "wrong",
+      "file": "1534621126189382_db6af23250.png"
+    },
+    {
+      "id": "7539420629350039",
+      "name": "Black Coffee",
+      "category": "consumable",
+      "status": "wrong",
+      "file": "7539420629350039_bdd0c10d77.png"
+    },
+    {
+      "id": "2071428426278062",
+      "name": "Bread",
+      "category": "consumable",
+      "status": "wrong",
+      "file": "2071428426278062_0e05eda937.png"
+    },
+    {
+      "id": "4938764980403185",
+      "name": "Carrot",
+      "category": "consumable",
+      "status": "wrong",
+      "file": "4938764980403185_98d7b86f7a.png"
+    },
+    {
+      "id": "8634397265856843",
+      "name": "Carrot Soup",
+      "category": "consumable",
+      "status": "wrong",
+      "file": "8634397265856843_9487e91162.png"
+    },
+    {
+      "id": "chapel_candle",
+      "name": "Chapel Road Candle",
+      "category": "consumable",
+      "status": "generic",
+      "file": "chapel_candle_72bdb3a8cf.png"
+    },
+    {
+      "id": "item_augur9_core_cell",
+      "name": "Core Cell",
+      "category": "consumable",
+      "status": "generic",
+      "file": "item_augur9_core_cell_400033f320.png"
+    },
+    {
+      "id": "2185129587402304",
+      "name": "Corn",
+      "category": "consumable",
+      "status": "generic",
+      "file": "2185129587402304_f10e8e4716.png"
+    },
+    {
+      "id": "2383589795907514",
+      "name": "Fish Sandwich",
+      "category": "consumable",
+      "status": "generic",
+      "file": "2383589795907514_5614a3989b.png"
+    },
+    {
+      "id": "fresh_milk",
+      "name": "Fresh Milk",
+      "category": "consumable",
+      "status": "generic",
+      "file": "fresh_milk_294d9e61fa.png"
+    },
+    {
+      "id": "1301706020415207",
+      "name": "Fruit Smoothie",
+      "category": "consumable",
+      "status": "generic",
+      "file": "1301706020415207_2295266cab.png"
+    },
+    {
+      "id": "5721580247335569",
+      "name": "Fruit Smoothie",
+      "category": "consumable",
+      "status": "generic",
+      "file": "5721580247335569_cceb494e4d.png"
+    },
+    {
+      "id": "6797951239279598",
+      "name": "Golden Turnip",
+      "category": "consumable",
+      "status": "generic",
+      "file": "6797951239279598_154f685529.png"
+    },
+    {
+      "id": "8085875300689262",
+      "name": "Grape",
+      "category": "consumable",
+      "status": "generic",
+      "file": "8085875300689262_cb96d288be.png"
+    },
+    {
+      "id": "health_potion",
+      "name": "Health Potion",
+      "category": "consumable",
+      "status": "generic",
+      "file": "health_potion_7420ee1c04.png"
+    },
+    {
+      "id": "hearty_stew",
+      "name": "Hearty Stew",
+      "category": "consumable",
+      "status": "generic",
+      "file": "hearty_stew_4f16736a27.png"
+    },
+    {
+      "id": "mana_draught",
+      "name": "Mana Draught",
+      "category": "consumable",
+      "status": "generic",
+      "file": "mana_draught_c50bec8b49.png"
+    },
+    {
+      "id": "1534621126189376",
+      "name": "Minced Mucker Meat",
+      "category": "consumable",
+      "status": "wrong",
+      "file": "1534621126189376_06e168ba27.png"
+    },
+    {
+      "id": "minor_healing_salve",
+      "name": "Minor Healing Salve",
+      "category": "consumable",
+      "status": "generic",
+      "file": "minor_healing_salve_83840a838f.png"
+    },
+    {
+      "id": "5754656948700981",
+      "name": "Mucker Burger",
+      "category": "consumable",
+      "status": "wrong",
+      "file": "5754656948700981_d55f1c7769.png"
+    },
+    {
+      "id": "8289848292759112",
+      "name": "Mucker Patty",
+      "category": "consumable",
+      "status": "wrong",
+      "file": "8289848292759112_8d62a28b87.png"
+    },
+    {
+      "id": "6127458937593352",
+      "name": "Muckshroom",
+      "category": "consumable",
+      "status": "wrong",
+      "file": "6127458937593352_2be3c2bc10.png"
+    },
+    {
+      "id": "5510716275751533",
+      "name": "Onion",
+      "category": "consumable",
+      "status": "generic",
+      "file": "5510716275751533_dd8f7e1b42.png"
+    },
+    {
+      "id": "6179830381508309",
+      "name": "Popcorn",
+      "category": "consumable",
+      "status": "generic",
+      "file": "6179830381508309_8e039f27b8.png"
+    },
+    {
+      "id": "2373253326716704",
+      "name": "Radish",
+      "category": "consumable",
+      "status": "generic",
+      "file": "2373253326716704_6623006fc7.png"
+    },
+    {
+      "id": "4732724694489497",
+      "name": "Raspberry",
+      "category": "consumable",
+      "status": "wrong",
+      "file": "4732724694489497_145064fed1.png"
+    },
+    {
+      "id": "1534621126189838",
+      "name": "Red Mushroom",
+      "category": "consumable",
+      "status": "wrong",
+      "file": "1534621126189838_ea5092da6d.png"
+    },
+    {
+      "id": "1902599429459579",
+      "name": "Roasted Carrot",
+      "category": "consumable",
+      "status": "wrong",
+      "file": "1902599429459579_d91fbff785.png"
+    },
+    {
+      "id": "2573780829056209",
+      "name": "Roasted Carrot Soup",
+      "category": "consumable",
+      "status": "wrong",
+      "file": "2573780829056209_877de0b359.png"
+    },
+    {
+      "id": "2817032404062192",
+      "name": "Roasted Coffee Bean",
+      "category": "consumable",
+      "status": "wrong",
+      "file": "2817032404062192_369f5b8cd1.png"
+    },
+    {
+      "id": "3925790999496475",
+      "name": "Roasted Mushrooms",
+      "category": "consumable",
+      "status": "wrong",
+      "file": "3925790999496475_45603c93af.png"
+    },
+    {
+      "id": "3724574399207457",
+      "name": "Roasted Potatoes",
+      "category": "consumable",
+      "status": "generic",
+      "file": "3724574399207457_74d796b690.png"
+    },
+    {
+      "id": "8241611436528618",
+      "name": "Roasted Pumpkin",
+      "category": "consumable",
+      "status": "generic",
+      "file": "8241611436528618_11cbb3c969.png"
+    },
+    {
+      "id": "8659204791920139",
+      "name": "Sashimi",
+      "category": "consumable",
+      "status": "wrong",
+      "file": "8659204791920139_e044d7ad72.png"
+    },
+    {
+      "id": "4734791988327185",
+      "name": "Shroom Tea",
+      "category": "consumable",
+      "status": "wrong",
+      "file": "4734791988327185_908e3e99b9.png"
+    },
+    {
+      "id": "2779132017025472",
+      "name": "Strawberry",
+      "category": "consumable",
+      "status": "generic",
+      "file": "2779132017025472_ea4483103c.png"
+    },
+    {
+      "id": "1708273808636291",
+      "name": "Sweet Corn",
+      "category": "consumable",
+      "status": "generic",
+      "file": "1708273808636291_04c53cd6af.png"
+    },
+    {
+      "id": "item_bulls_core",
+      "name": "The Bull's Core",
+      "category": "consumable",
+      "status": "generic",
+      "file": "item_bulls_core_bc9faa0dfe.png"
+    },
+    {
+      "id": "1302395118326380",
+      "name": "Tomato",
+      "category": "consumable",
+      "status": "generic",
+      "file": "1302395118326380_88523e0383.png"
+    },
+    {
+      "id": "5126199621773466",
+      "name": "Turnip",
+      "category": "consumable",
+      "status": "generic",
+      "file": "5126199621773466_82d368b11d.png"
+    },
+    {
+      "id": "item_ch1_compound_b",
+      "name": "Unmarked Vial",
+      "category": "consumable",
+      "status": "generic",
+      "file": "item_ch1_compound_b_12e8c62c69.png"
+    },
+    {
+      "id": "berry_tart",
+      "name": "Wild Berry Tart",
+      "category": "consumable",
+      "status": "generic",
+      "file": "berry_tart_81b9e94840.png"
+    },
+    {
+      "id": "worker_meal",
+      "name": "Worker Meal",
+      "category": "consumable",
+      "status": "generic",
+      "file": "worker_meal_4df047f1a5.png"
+    },
+    {
+      "id": "alcubierre_drive_core",
+      "name": "Alcubierre Drive Core",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "alcubierre_drive_core_e8b79aff1a.png"
+    },
+    {
+      "id": "antiboron_block",
+      "name": "Antiboron Block",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "antiboron_block_c17ac943f8.png"
+    },
+    {
+      "id": "antihelium_block",
+      "name": "Antihelium Block",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "antihelium_block_7d5b4df327.png"
+    },
+    {
+      "id": "antihydrogen_block",
+      "name": "Antihydrogen Block",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "antihydrogen_block_ff537c2ea6.png"
+    },
+    {
+      "id": "asphalt",
+      "name": "Asphalt",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "asphalt_484ed0b86c.png"
+    },
+    {
+      "id": "1534621126189370",
+      "name": "Azalea Seed",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "1534621126189370_da5af3da7a.png"
+    },
+    {
+      "id": "1534621126189361",
+      "name": "Banana Seed",
+      "category": "crafting_material",
+      "status": "wrong",
+      "file": "1534621126189361_0fa66b2eb9.png"
+    },
+    {
+      "id": "basalt",
+      "name": "Basalt",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "basalt_faadde15d0.png"
+    },
+    {
+      "id": "basalt_brick",
+      "name": "Basalt Brick",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "basalt_brick_193e12c635.png"
+    },
+    {
+      "id": "basalt_carved",
+      "name": "Basalt Carved",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "basalt_carved_4750e00f5e.png"
+    },
+    {
+      "id": "basalt_polished",
+      "name": "Basalt Polished",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "basalt_polished_fa316ccc78.png"
+    },
+    {
+      "id": "basalt_shingles",
+      "name": "Basalt Shingles",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "basalt_shingles_99542b69fb.png"
+    },
+    {
+      "id": "bear_fat",
+      "name": "Bear Fat",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "bear_fat_5d5bcdda63.png"
+    },
+    {
+      "id": "bear_hide",
+      "name": "Bear Hide",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "bear_hide_611e03476f.png"
+    },
+    {
+      "id": "beeswax",
+      "name": "Beeswax",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "beeswax_6d2f87a0f6.png"
+    },
+    {
+      "id": "bell_gold_flake",
+      "name": "Bell Gold Flake",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "bell_gold_flake_dfb17669ad.png"
+    },
+    {
+      "id": "bell_bronze_ingot",
+      "name": "Bell-Bronze Ingot",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "bell_bronze_ingot_466f6cc428.png"
+    },
+    {
+      "id": "bell_woken_ash",
+      "name": "Bell-Woken Ash",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "bell_woken_ash_3a637a9c01.png"
+    },
+    {
+      "id": "7539420629350027",
+      "name": "Bellflower Seed",
+      "category": "crafting_material",
+      "status": "wrong",
+      "file": "7539420629350027_fdb8a62f84.png"
+    },
+    {
+      "id": "berry_leaf",
+      "name": "Berry Leaf",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "berry_leaf_780a476112.png"
+    },
+    {
+      "id": "birch_bark",
+      "name": "Birch Bark",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "birch_bark_d798ce5987.png"
+    },
+    {
+      "id": "birch_log",
+      "name": "Birch Log",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "birch_log_8b7b6e1f1f.png"
+    },
+    {
+      "id": "birch_lumber",
+      "name": "Birch Lumber",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "birch_lumber_54b024b14b.png"
+    },
+    {
+      "id": "birch_reinforced",
+      "name": "Birch Reinforced",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "birch_reinforced_a2b8890612.png"
+    },
+    {
+      "id": "1534621126189373",
+      "name": "Birch Seed",
+      "category": "crafting_material",
+      "status": "wrong",
+      "file": "1534621126189373_502fd7fe31.png"
+    },
+    {
+      "id": "birch_stripped",
+      "name": "Birch Stripped",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "birch_stripped_339d1a924b.png"
+    },
+    {
+      "id": "black_bear_claw",
+      "name": "Black Bear Claw",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "black_bear_claw_87309f7530.png"
+    },
+    {
+      "id": "black_iron_shard",
+      "name": "Black Iron Shard",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "black_iron_shard_26ed3696b0.png"
+    },
+    {
+      "id": "blackwater_clay",
+      "name": "Blackwater Clay",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "blackwater_clay_980a748d10.png"
+    },
+    {
+      "id": "blue_glass_shard",
+      "name": "Blue Glass Shard",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "blue_glass_shard_2ea765f1ea.png"
+    },
+    {
+      "id": "7251377687845092",
+      "name": "Blue Mushroom",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "7251377687845092_dec5d82bd5.png"
+    },
+    {
+      "id": "2339487527352552",
+      "name": "Blue Mushroom Spores",
+      "category": "crafting_material",
+      "status": "wrong",
+      "file": "2339487527352552_362f1d622a.png"
+    },
+    {
+      "id": "boar_hide",
+      "name": "Boar Hide",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "boar_hide_1fadae3f26.png"
+    },
+    {
+      "id": "boar_tusk",
+      "name": "Boar Tusk",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "boar_tusk_18205ced61.png"
+    },
+    {
+      "id": "boiled_leather",
+      "name": "Boiled Leather",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "boiled_leather_e3a4abc16c.png"
+    },
+    {
+      "id": "bone_fragment",
+      "name": "Bone Fragment",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "bone_fragment_db027864ba.png"
+    },
+    {
+      "id": "bright_silver_nugget",
+      "name": "Bright Silver Nugget",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "bright_silver_nugget_e4700de3fe.png"
+    },
+    {
+      "id": "4847114953563630",
+      "name": "Cabbage Seed",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "4847114953563630_364e2bdc0d.png"
+    },
+    {
+      "id": "4537020877769703",
+      "name": "Carrot Seed",
+      "category": "crafting_material",
+      "status": "wrong",
+      "file": "4537020877769703_cf0944e086.png"
+    },
+    {
+      "id": "seed_carrot",
+      "name": "Carrot Seed",
+      "category": "crafting_material",
+      "status": "wrong",
+      "file": "seed_carrot_331bd0480e.png"
+    },
+    {
+      "id": "certified_portal_fuel",
+      "name": "Certified Portal Fuel Cell",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "certified_portal_fuel_17ea3e6464.png"
+    },
+    {
+      "id": "clay",
+      "name": "Clay",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "clay_de6b29cb18.png"
+    },
+    {
+      "id": "clay_brick",
+      "name": "Clay Brick",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "clay_brick_1a64def552.png"
+    },
+    {
+      "id": "clay_carved",
+      "name": "Clay Carved",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "clay_carved_fb92ea06c1.png"
+    },
+    {
+      "id": "clay_polished",
+      "name": "Clay Polished",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "clay_polished_759e5e6c0d.png"
+    },
+    {
+      "id": "clay_shingles",
+      "name": "Clay Shingles",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "clay_shingles_7879649b84.png"
+    },
+    {
+      "id": "clean_antler",
+      "name": "Clean Antler",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "clean_antler_072bc82438.png"
+    },
+    {
+      "id": "clean_birch_strip",
+      "name": "Clean Birch Strip",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "clean_birch_strip_620229afe8.png"
+    },
+    {
+      "id": "clean_flax_bundle",
+      "name": "Clean Flax Bundle",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "clean_flax_bundle_3a69af77b4.png"
+    },
+    {
+      "id": "clean_water",
+      "name": "Clean Water",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "clean_water_75aee3b153.png"
+    },
+    {
+      "id": "cloth_scrap",
+      "name": "Cloth Scrap",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "cloth_scrap_9a50f1f763.png"
+    },
+    {
+      "id": "coal",
+      "name": "Coal",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "coal_4a31e8e82e.png"
+    },
+    {
+      "id": "cobblestone",
+      "name": "Cobblestone",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "cobblestone_e6f3985a03.png"
+    },
+    {
+      "id": "cobblestone_brick",
+      "name": "Cobblestone Brick",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "cobblestone_brick_56c4a49984.png"
+    },
+    {
+      "id": "cobblestone_carved",
+      "name": "Cobblestone Carved",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "cobblestone_carved_27da37b1d2.png"
+    },
+    {
+      "id": "cobblestone_polished",
+      "name": "Cobblestone Polished",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "cobblestone_polished_329fa49875.png"
+    },
+    {
+      "id": "cobblestone_shingles",
+      "name": "Cobblestone Shingles",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "cobblestone_shingles_66eb36baa1.png"
+    },
+    {
+      "id": "7539420629350021",
+      "name": "Coffee Seeds",
+      "category": "crafting_material",
+      "status": "wrong",
+      "file": "7539420629350021_6548a5ccb2.png"
+    },
+    {
+      "id": "copper",
+      "name": "Copper Block",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "copper_9c5c72058d.png"
+    },
+    {
+      "id": "copper_ingot",
+      "name": "Copper Ingot",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "copper_ingot_30aedb702c.png"
+    },
+    {
+      "id": "copper_ore",
+      "name": "Copper Ore",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "copper_ore_9f1d042eeb.png"
+    },
+    {
+      "id": "7329245755763306",
+      "name": "Corn Seeds",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "7329245755763306_0915a345f0.png"
+    },
+    {
+      "id": "8864555979891520",
+      "name": "Cosmos Seed",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "8864555979891520_5d56c1e46a.png"
+    },
+    {
+      "id": "7539420629350315",
+      "name": "Cotton",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "7539420629350315_81402560c0.png"
+    },
+    {
+      "id": "cotton_fabric",
+      "name": "Cotton Fabric",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "cotton_fabric_b54f71e2d1.png"
+    },
+    {
+      "id": "1760645252542797",
+      "name": "Cotton Seed",
+      "category": "crafting_material",
+      "status": "wrong",
+      "file": "1760645252542797_71fbe44b3d.png"
+    },
+    {
+      "id": "crop_bundle",
+      "name": "Crop Bundle",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "crop_bundle_79fed2d298.png"
+    },
+    {
+      "id": "damp_moss",
+      "name": "Damp Moss",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "damp_moss_29502d8627.png"
+    },
+    {
+      "id": "4537020877769697",
+      "name": "Dandelion Seed",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "4537020877769697_1d6c8c292a.png"
+    },
+    {
+      "id": "1534621126189367",
+      "name": "Daylily Seed",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "1534621126189367_28de2670a9.png"
+    },
+    {
+      "id": "deer_hide",
+      "name": "Deer Hide",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "deer_hide_b0823fba8b.png"
+    },
+    {
+      "id": "dense_coal_lump",
+      "name": "Dense Coal Lump",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "dense_coal_lump_bb4d6be644.png"
+    },
+    {
+      "id": "destination_crystal",
+      "name": "Destination Crystal",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "destination_crystal_99356fc8ce.png"
+    },
+    {
+      "id": "diamond",
+      "name": "Diamond Block",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "diamond_f872caad17.png"
+    },
+    {
+      "id": "diamond_ore",
+      "name": "Diamond Ore",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "diamond_ore_9ef48a1d1f.png"
+    },
+    {
+      "id": "diamond_shard",
+      "name": "Diamond Shard",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "diamond_shard_c2710ccece.png"
+    },
+    {
+      "id": "emberstone",
+      "name": "Emberstone",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "emberstone_e51b22d4dd.png"
+    },
+    {
+      "id": "exotic_matter_power_cell",
+      "name": "Exotic Matter Power Cell",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "exotic_matter_power_cell_b9f3fb9843.png"
+    },
+    {
+      "id": "field_wheat",
+      "name": "Field Wheat",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "field_wheat_c1742ba236.png"
+    },
+    {
+      "id": "fine_peacebloom",
+      "name": "Fine Peacebloom",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "fine_peacebloom_d6c96b48a8.png"
+    },
+    {
+      "id": "6706990310348612",
+      "name": "Fire Flower",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "6706990310348612_0d3690f12d.png"
+    },
+    {
+      "id": "1987358476844909",
+      "name": "Fire Flower Seed",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "1987358476844909_3ee2500591.png"
+    },
+    {
+      "id": "2780510212918918",
+      "name": "Flax Seed",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "2780510212918918_771ff378bb.png"
+    },
+    {
+      "id": "flax_stalk",
+      "name": "Flax Stalk",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "flax_stalk_745bea5a6f.png"
+    },
+    {
+      "id": "flexible_willow",
+      "name": "Flexible Willow",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "flexible_willow_0c6232d080.png"
+    },
+    {
+      "id": "flood_lotus",
+      "name": "Flood Lotus",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "flood_lotus_14bd853959.png"
+    },
+    {
+      "id": "flood_willow_sap",
+      "name": "Flood Willow Sap",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "flood_willow_sap_fe7c409f5f.png"
+    },
+    {
+      "id": "forest_mushroom",
+      "name": "Forest Mushroom",
+      "category": "crafting_material",
+      "status": "wrong",
+      "file": "forest_mushroom_d1782e0ca8.png"
+    },
+    {
+      "id": "fresh_egg",
+      "name": "Fresh Chicken Egg",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "fresh_egg_7b9f8b7a43.png"
+    },
+    {
+      "id": "ghost_ash",
+      "name": "Ghost Ash",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "ghost_ash_848e8b3dd0.png"
+    },
+    {
+      "id": "ghost_pearl",
+      "name": "Ghost Pearl",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "ghost_pearl_186bf16e1c.png"
+    },
+    {
+      "id": "gold",
+      "name": "Gold Block",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "gold_09feb137fd.png"
+    },
+    {
+      "id": "gold_ingot",
+      "name": "Gold Ingot",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "gold_ingot_f3c768bb6e.png"
+    },
+    {
+      "id": "1108069497496786",
+      "name": "Gold Mushroom Spores",
+      "category": "crafting_material",
+      "status": "wrong",
+      "file": "1108069497496786_892df8ee10.png"
+    },
+    {
+      "id": "gold_ore",
+      "name": "Gold Ore",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "gold_ore_b7d278ac7e.png"
+    },
+    {
+      "id": "golden_carrot",
+      "name": "Golden Carrot",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "golden_carrot_e24ae963af.png"
+    },
+    {
+      "id": "2294696160906826",
+      "name": "Golden Turnip Seed",
+      "category": "crafting_material",
+      "status": "wrong",
+      "file": "2294696160906826_d4031f924c.png"
+    },
+    {
+      "id": "grain_flour",
+      "name": "Grain Flour",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "grain_flour_3adcf1f25c.png"
+    },
+    {
+      "id": "granite",
+      "name": "Granite",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "granite_c85d83c5e2.png"
+    },
+    {
+      "id": "granite_brick",
+      "name": "Granite Brick",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "granite_brick_70d05e0184.png"
+    },
+    {
+      "id": "granite_carved",
+      "name": "Granite Carved",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "granite_carved_0c01172524.png"
+    },
+    {
+      "id": "granite_polished",
+      "name": "Granite Polished",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "granite_polished_dc4e1ee488.png"
+    },
+    {
+      "id": "granite_shingles",
+      "name": "Granite Shingles",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "granite_shingles_a5ac7fd2ec.png"
+    },
+    {
+      "id": "7539420629350018",
+      "name": "Grape Seed",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "7539420629350018_bdceeaf45a.png"
+    },
+    {
+      "id": "grave_dust",
+      "name": "Grave Dust",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "grave_dust_a67ce569b9.png"
+    },
+    {
+      "id": "grave_moss",
+      "name": "Grave Moss",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "grave_moss_c452aefe45.png"
+    },
+    {
+      "id": "grave_stone_chip",
+      "name": "Grave Stone Chip",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "grave_stone_chip_9034a9ef66.png"
+    },
+    {
+      "id": "gravel",
+      "name": "Gravel",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "gravel_4a0e932d1b.png"
+    },
+    {
+      "id": "heavy_boar_bristle",
+      "name": "Heavy Boar Bristle",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "heavy_boar_bristle_48f9132f14.png"
+    },
+    {
+      "id": "4913268356398047",
+      "name": "Hemp Seed",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "4913268356398047_4da74d5386.png"
+    },
+    {
+      "id": "herb_bundle",
+      "name": "Herb Bundle",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "herb_bundle_6749282e5a.png"
+    },
+    {
+      "id": "herbal_extract",
+      "name": "Herbal Extract",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "herbal_extract_93631d1b15.png"
+    },
+    {
+      "id": "honeycomb",
+      "name": "Honeycomb",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "honeycomb_a2254d8f2c.png"
+    },
+    {
+      "id": "ice",
+      "name": "Ice Block",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "ice_d53b257ba8.png"
+    },
+    {
+      "id": "iron_ingot",
+      "name": "Iron Ingot",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "iron_ingot_4e7b005d11.png"
+    },
+    {
+      "id": "iron_ore",
+      "name": "Iron Ore",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "iron_ore_ee4f45ab05.png"
+    },
+    {
+      "id": "led",
+      "name": "LED Block",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "led_6a9a37af6c.png"
+    },
+    {
+      "id": "lightwood_log",
+      "name": "Lightwood Log",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "lightwood_log_bba54147ab.png"
+    },
+    {
+      "id": "7539420629350024",
+      "name": "Lilac Seed",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "7539420629350024_2f6251f52f.png"
+    },
+    {
+      "id": "limestone",
+      "name": "Limestone",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "limestone_3604bb12c3.png"
+    },
+    {
+      "id": "limestone_brick",
+      "name": "Limestone Brick",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "limestone_brick_d1d622e4b5.png"
+    },
+    {
+      "id": "limestone_carved",
+      "name": "Limestone Carved",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "limestone_carved_1ba190dc2f.png"
+    },
+    {
+      "id": "limestone_polished",
+      "name": "Limestone Polished",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "limestone_polished_d519b0f617.png"
+    },
+    {
+      "id": "limestone_shingles",
+      "name": "Limestone Shingles",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "limestone_shingles_57da87e9e3.png"
+    },
+    {
+      "id": "linen_bundle",
+      "name": "Linen Bundle",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "linen_bundle_d88df73d5b.png"
+    },
+    {
+      "id": "linen_cloth",
+      "name": "Linen Cloth",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "linen_cloth_9a2d8af615.png"
+    },
+    {
+      "id": "mana_crystal_shard",
+      "name": "Mana Crystal Shard",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "mana_crystal_shard_959f093e09.png"
+    },
+    {
+      "id": "mana_essence",
+      "name": "Mana Essence",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "mana_essence_02c126aacb.png"
+    },
+    {
+      "id": "7088750572541545",
+      "name": "Marigold Seed",
+      "category": "crafting_material",
+      "status": "wrong",
+      "file": "7088750572541545_d90c71488d.png"
+    },
+    {
+      "id": "1239687205221489",
+      "name": "Mixed Tree Seed",
+      "category": "crafting_material",
+      "status": "wrong",
+      "file": "1239687205221489_c97847cc23.png"
+    },
+    {
+      "id": "mixed_waste",
+      "name": "Mixed Waste",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "mixed_waste_036555c3fe.png"
+    },
+    {
+      "id": "mooncap_mushroom",
+      "name": "Mooncap Mushroom",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "mooncap_mushroom_5411cdb590.png"
+    },
+    {
+      "id": "moonstone",
+      "name": "Moonstone",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "moonstone_d7994c601b.png"
+    },
+    {
+      "id": "3774189451333713",
+      "name": "Morning Glory Seed",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "3774189451333713_c562eef779.png"
+    },
+    {
+      "id": "922013052023689",
+      "name": "Muck-me-not Seed",
+      "category": "crafting_material",
+      "status": "wrong",
+      "file": "922013052023689_6205d1dfbc.png"
+    },
+    {
+      "id": "seed_muckroot",
+      "name": "Muckroot Seed",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "seed_muckroot_27c3d47535.png"
+    },
+    {
+      "id": "3170539650465345",
+      "name": "Muckshroom Spores",
+      "category": "crafting_material",
+      "status": "wrong",
+      "file": "3170539650465345_72d944e059.png"
+    },
+    {
+      "id": "muckwad",
+      "name": "Muckwad",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "muckwad_9d5bed9ec5.png"
+    },
+    {
+      "id": "mudroot",
+      "name": "Mudroot",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "mudroot_d6123f474b.png"
+    },
+    {
+      "id": "mushroom_leather",
+      "name": "Mushroom Leather",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "mushroom_leather_012e671134.png"
+    },
+    {
+      "id": "7565606351305683",
+      "name": "Mystery Seed",
+      "category": "crafting_material",
+      "status": "wrong",
+      "file": "7565606351305683_192616f8a8.png"
+    },
+    {
+      "id": "neptunium",
+      "name": "Neptunium Block",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "neptunium_39d584bfd2.png"
+    },
+    {
+      "id": "neptunium_ore",
+      "name": "Neptunium Ore",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "neptunium_ore_961a85447e.png"
+    },
+    {
+      "id": "neptunium_shard",
+      "name": "Neptunium Shard",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "neptunium_shard_d5afb9d425.png"
+    },
+    {
+      "id": "4417117835137161",
+      "name": "Nettle Seed",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "4417117835137161_f4c048ca99.png"
+    },
+    {
+      "id": "nightshade",
+      "name": "Nightshade",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "nightshade_4f2fb3c001.png"
+    },
+    {
+      "id": "oak_branch",
+      "name": "Oak Branch",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "oak_branch_28feb8bef4.png"
+    },
+    {
+      "id": "oak_log",
+      "name": "Oak Log",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "oak_log_8c45c02cc9.png"
+    },
+    {
+      "id": "oak_lumber",
+      "name": "Oak Lumber",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "oak_lumber_d859ce7eca.png"
+    },
+    {
+      "id": "oak_reinforced",
+      "name": "Oak Reinforced",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "oak_reinforced_9c65950b3e.png"
+    },
+    {
+      "id": "7539420629350030",
+      "name": "Oak Seed",
+      "category": "crafting_material",
+      "status": "wrong",
+      "file": "7539420629350030_3d1267ac7f.png"
+    },
+    {
+      "id": "oak_stripped",
+      "name": "Oak Stripped",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "oak_stripped_b6781f82e5.png"
+    },
+    {
+      "id": "7539420629350015",
+      "name": "Onion Seed",
+      "category": "crafting_material",
+      "status": "wrong",
+      "file": "7539420629350015_0935b5e8e6.png"
+    },
+    {
+      "id": "5960008136671390",
+      "name": "Orchid Seed",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "5960008136671390_d68dd1c566.png"
+    },
+    {
+      "id": "4425387010491444",
+      "name": "Peace Lily",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "4425387010491444_abc03300bd.png"
+    },
+    {
+      "id": "peacebloom",
+      "name": "Peacebloom",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "peacebloom_f445ab0977.png"
+    },
+    {
+      "id": "1376817696514171",
+      "name": "Peony Seed",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "1376817696514171_2ae420e4bb.png"
+    },
+    {
+      "id": "pine_log",
+      "name": "Pine Log",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "pine_log_ece94e9f4f.png"
+    },
+    {
+      "id": "pine_pitch",
+      "name": "Pine Pitch",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "pine_pitch_249fe2c6a8.png"
+    },
+    {
+      "id": "plant_fiber",
+      "name": "Plant Fiber",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "plant_fiber_4cc9d78222.png"
+    },
+    {
+      "id": "1070858208404281",
+      "name": "Plumeria Seed",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "1070858208404281_82eb45fb82.png"
+    },
+    {
+      "id": "anchor_core",
+      "name": "Portal Anchor Core",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "anchor_core_24c4c69867.png"
+    },
+    {
+      "id": "portal_fuel",
+      "name": "Portal Fuel Cell",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "portal_fuel_141bb2b7fa.png"
+    },
+    {
+      "id": "8772905953047597",
+      "name": "Potato Seeds",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "8772905953047597_baa44a0c50.png"
+    },
+    {
+      "id": "4537020877769718",
+      "name": "Pumpkin Seed",
+      "category": "crafting_material",
+      "status": "wrong",
+      "file": "4537020877769718_f460c209eb.png"
+    },
+    {
+      "id": "quartzite",
+      "name": "Quartzite",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "quartzite_9d00a10ccf.png"
+    },
+    {
+      "id": "quartzite_brick",
+      "name": "Quartzite Brick",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "quartzite_brick_497884fe18.png"
+    },
+    {
+      "id": "quartzite_carved",
+      "name": "Quartzite Carved",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "quartzite_carved_6eaecd0f3c.png"
+    },
+    {
+      "id": "quartzite_polished",
+      "name": "Quartzite Polished",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "quartzite_polished_376f82cbff.png"
+    },
+    {
+      "id": "quartzite_shingles",
+      "name": "Quartzite Shingles",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "quartzite_shingles_ac7df26236.png"
+    },
+    {
+      "id": "queen_honey",
+      "name": "Queen Honey",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "queen_honey_f7b2565af0.png"
+    },
+    {
+      "id": "4670705879337584",
+      "name": "Radish Seed",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "4670705879337584_ca160fea76.png"
+    },
+    {
+      "id": "2130001751708984",
+      "name": "Ramie Seed",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "2130001751708984_da69037a24.png"
+    },
+    {
+      "id": "7539420629350033",
+      "name": "Raspberry Seed",
+      "category": "crafting_material",
+      "status": "wrong",
+      "file": "7539420629350033_ac6d4f35a0.png"
+    },
+    {
+      "id": "2790846682107025",
+      "name": "Raw Coffee Bean",
+      "category": "crafting_material",
+      "status": "wrong",
+      "file": "2790846682107025_830fdd2b3b.png"
+    },
+    {
+      "id": "raw_exotic_matter",
+      "name": "Raw Exotic Matter",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "raw_exotic_matter_fd118e0775.png"
+    },
+    {
+      "id": "raw_meat",
+      "name": "Raw Meat",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "raw_meat_d857d2343a.png"
+    },
+    {
+      "id": "1534621126189658",
+      "name": "Red Mushroom Spores",
+      "category": "crafting_material",
+      "status": "wrong",
+      "file": "1534621126189658_873079360a.png"
+    },
+    {
+      "id": "reed_bundle",
+      "name": "Reed Bundle",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "reed_bundle_f97f172db6.png"
+    },
+    {
+      "id": "relic_fragment",
+      "name": "Relic Fragment",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "relic_fragment_5b98f611b8.png"
+    },
+    {
+      "id": "river_clay",
+      "name": "River Clay",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "river_clay_67d444f3b6.png"
+    },
+    {
+      "id": "river_pearl",
+      "name": "River Pearl",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "river_pearl_225a333f4f.png"
+    },
+    {
+      "id": "rope",
+      "name": "Rope",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "rope_0397692092.png"
+    },
+    {
+      "id": "4537020877769694",
+      "name": "Rose Seed",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "4537020877769694_7b77388ac1.png"
+    },
+    {
+      "id": "rough_garnet",
+      "name": "Rough Garnet",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "rough_garnet_7efd63fb92.png"
+    },
+    {
+      "id": "rough_stone",
+      "name": "Rough Stone",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "rough_stone_90cc352e31.png"
+    },
+    {
+      "id": "rubber_log",
+      "name": "Rubber Log",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "rubber_log_e8dc76b4e7.png"
+    },
+    {
+      "id": "rubber_lumber",
+      "name": "Rubber Lumber",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "rubber_lumber_7a666e91af.png"
+    },
+    {
+      "id": "rubber_reinforced",
+      "name": "Rubber Reinforced",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "rubber_reinforced_016fa57e8b.png"
+    },
+    {
+      "id": "4537020877769700",
+      "name": "Rubber Seed",
+      "category": "crafting_material",
+      "status": "wrong",
+      "file": "4537020877769700_372f191e57.png"
+    },
+    {
+      "id": "rubber_stripped",
+      "name": "Rubber Stripped",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "rubber_stripped_8d3397e3eb.png"
+    },
+    {
+      "id": "sakura_log",
+      "name": "Sakura Log",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "sakura_log_968eb52b58.png"
+    },
+    {
+      "id": "sakura_lumber",
+      "name": "Sakura Lumber",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "sakura_lumber_2237703b1c.png"
+    },
+    {
+      "id": "614675368016114",
+      "name": "Sakura Seed",
+      "category": "crafting_material",
+      "status": "wrong",
+      "file": "614675368016114_6d3e33e2ba.png"
+    },
+    {
+      "id": "sand",
+      "name": "Sand",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "sand_42625bfece.png"
+    },
+    {
+      "id": "sand_lump",
+      "name": "Sand Lump",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "sand_lump_dddebdece3.png"
+    },
+    {
+      "id": "scrap_metal",
+      "name": "Scrap Metal",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "scrap_metal_c26fb38651.png"
+    },
+    {
+      "id": "sealed_package",
+      "name": "Sealed Package",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "sealed_package_b55e4f1216.png"
+    },
+    {
+      "id": "silver",
+      "name": "Silver Block",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "silver_f8248e1272.png"
+    },
+    {
+      "id": "silver_ingot",
+      "name": "Silver Ingot",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "silver_ingot_3e6ce5f7c5.png"
+    },
+    {
+      "id": "silver_ore",
+      "name": "Silver Ore",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "silver_ore_c20124cff4.png"
+    },
+    {
+      "id": "simple_glass",
+      "name": "Simple Glass",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "simple_glass_4635ba78df.png"
+    },
+    {
+      "id": "snow",
+      "name": "Snow",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "snow_b94e9f3d7e.png"
+    },
+    {
+      "id": "softwood_log",
+      "name": "Softwood Log",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "softwood_log_762a919d33.png"
+    },
+    {
+      "id": "stabilized_exotic_matter",
+      "name": "Stabilized Exotic Matter",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "stabilized_exotic_matter_ec653e0519.png"
+    },
+    {
+      "id": "stone",
+      "name": "Stone",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "stone_e30bfd0c38.png"
+    },
+    {
+      "id": "stone_brick",
+      "name": "Stone Brick",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "stone_brick_6524f67c61.png"
+    },
+    {
+      "id": "stone_carved",
+      "name": "Stone Carved",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "stone_carved_0ea422b248.png"
+    },
+    {
+      "id": "stone_polished",
+      "name": "Stone Polished",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "stone_polished_9e904d68c3.png"
+    },
+    {
+      "id": "stone_shingles",
+      "name": "Stone Shingles",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "stone_shingles_ea215e80dc.png"
+    },
+    {
+      "id": "straight_pine_heartwood",
+      "name": "Straight Pine Heartwood",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "straight_pine_heartwood_476b8597d9.png"
+    },
+    {
+      "id": "4537020877769691",
+      "name": "Strawberry Seed",
+      "category": "crafting_material",
+      "status": "wrong",
+      "file": "4537020877769691_9476027fbf.png"
+    },
+    {
+      "id": "1890195666431615",
+      "name": "Sunflower Seed",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "1890195666431615_8c26a7b73e.png"
+    },
+    {
+      "id": "sunstone",
+      "name": "Sunstone",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "sunstone_cd8eb19aca.png"
+    },
+    {
+      "id": "4851938639186947",
+      "name": "Sweet Corn Seeds",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "4851938639186947_d80e6a26bd.png"
+    },
+    {
+      "id": "sweet_greenmere_berry",
+      "name": "Sweet Greenmere Berry",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "sweet_greenmere_berry_1765ab43b2.png"
+    },
+    {
+      "id": "teleport_fuel",
+      "name": "Teleport Fuel Cell",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "teleport_fuel_efee848973.png"
+    },
+    {
+      "id": "thatch",
+      "name": "Thatch",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "thatch_37fbeae683.png"
+    },
+    {
+      "id": "1534621126189358",
+      "name": "Tomato Seed",
+      "category": "crafting_material",
+      "status": "wrong",
+      "file": "1534621126189358_ee37f3c0ea.png"
+    },
+    {
+      "id": "tree_resin",
+      "name": "Tree Resin",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "tree_resin_8f7decc799.png"
+    },
+    {
+      "id": "8369783654522769",
+      "name": "Turnip Seed",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "8369783654522769_5da2668e0d.png"
+    },
+    {
+      "id": "6905450518852631",
+      "name": "Ultra Violet Seed",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "6905450518852631_6ba4e3d097.png"
+    },
+    {
+      "id": "utility_core",
+      "name": "Utility Core",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "utility_core_972eba86ad.png"
+    },
+    {
+      "id": "venison",
+      "name": "Venison",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "venison_a9cf14c0ca.png"
+    },
+    {
+      "id": "4647276549161506",
+      "name": "Wheat",
+      "category": "crafting_material",
+      "status": "wrong",
+      "file": "4647276549161506_3bf54d069d.png"
+    },
+    {
+      "id": "1534621126189364",
+      "name": "Wheat Seed",
+      "category": "crafting_material",
+      "status": "wrong",
+      "file": "1534621126189364_5e31b84be3.png"
+    },
+    {
+      "id": "seed_wheat",
+      "name": "Wheat Seed",
+      "category": "crafting_material",
+      "status": "wrong",
+      "file": "seed_wheat_00181381a3.png"
+    },
+    {
+      "id": "wild_meat",
+      "name": "Wild Meat",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "wild_meat_8dc076dc10.png"
+    },
+    {
+      "id": "willow_bark",
+      "name": "Willow Bark",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "willow_bark_455b6f58dd.png"
+    },
+    {
+      "id": "wolf_fang",
+      "name": "Wolf Fang",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "wolf_fang_09beede218.png"
+    },
+    {
+      "id": "wolf_hide",
+      "name": "Wolf Hide",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "wolf_hide_edeb0ad93f.png"
+    },
+    {
+      "id": "7046026499878262",
+      "name": "Wood Ear Spores",
+      "category": "crafting_material",
+      "status": "wrong",
+      "file": "7046026499878262_c3bf5f0d36.png"
+    },
+    {
+      "id": "wood_plank",
+      "name": "Wood Plank",
+      "category": "crafting_material",
+      "status": "generic",
+      "file": "wood_plank_d2008154dd.png"
+    },
+    {
+      "id": "copper_kettle_token",
+      "name": "Copper Kettle Tavern Token",
+      "category": "event_item",
+      "status": "generic",
+      "file": "copper_kettle_token_5605b61b65.png"
+    },
+    {
+      "id": "1534621126189775",
+      "name": "Azalea",
+      "category": "food",
+      "status": "wrong",
+      "file": "1534621126189775_dcc9aea89d.png"
+    },
+    {
+      "id": "8612346131579137",
+      "name": "Basic Plant",
+      "category": "food",
+      "status": "generic",
+      "file": "8612346131579137_da38985215.png"
+    },
+    {
+      "id": "7539420629350432",
+      "name": "Bellflower",
+      "category": "food",
+      "status": "wrong",
+      "file": "7539420629350432_fb585812ec.png"
+    },
+    {
+      "id": "1534621126189694",
+      "name": "Birch",
+      "category": "food",
+      "status": "generic",
+      "file": "1534621126189694_a0a75187d3.png"
+    },
+    {
+      "id": "4089107212747129",
+      "name": "Cabbage",
+      "category": "food",
+      "status": "wrong",
+      "file": "4089107212747129_702182fd06.png"
+    },
+    {
+      "id": "grove_festival_skewer",
+      "name": "Carlo's Festival Skewer",
+      "category": "food",
+      "status": "generic",
+      "file": "grove_festival_skewer_26a0a3c29d.png"
+    },
+    {
+      "id": "5289515835017799",
+      "name": "Clearwater Fish",
+      "category": "food",
+      "status": "wrong",
+      "file": "5289515835017799_f045f27147.png"
+    },
+    {
+      "id": "8691592395396758",
+      "name": "Cosmos",
+      "category": "food",
+      "status": "generic",
+      "file": "8691592395396758_095115967c.png"
+    },
+    {
+      "id": "4537020877770102",
+      "name": "Dandelion",
+      "category": "food",
+      "status": "generic",
+      "file": "4537020877770102_567c3b6009.png"
+    },
+    {
+      "id": "7539420629350429",
+      "name": "Daylily",
+      "category": "food",
+      "status": "wrong",
+      "file": "7539420629350429_e53b9635dd.png"
+    },
+    {
+      "id": "7539420629350036",
+      "name": "Fish",
+      "category": "food",
+      "status": "wrong",
+      "file": "7539420629350036_deeca3ad83.png"
+    },
+    {
+      "id": "6511975591573036",
+      "name": "Fish Goop Fertilizer",
+      "category": "food",
+      "status": "wrong",
+      "file": "6511975591573036_cbc4633dab.png"
+    },
+    {
+      "id": "768344210024754",
+      "name": "Flax",
+      "category": "food",
+      "status": "generic",
+      "file": "768344210024754_0360af5838.png"
+    },
+    {
+      "id": "fresh_carrot",
+      "name": "Fresh Carrot",
+      "category": "food",
+      "status": "wrong",
+      "file": "fresh_carrot_f1ca90ab2e.png"
+    },
+    {
+      "id": "2122421674296498",
+      "name": "Golden Mushroom",
+      "category": "food",
+      "status": "wrong",
+      "file": "2122421674296498_3ff385f8ac.png"
+    },
+    {
+      "id": "grilled_meat",
+      "name": "Grilled Meat",
+      "category": "food",
+      "status": "wrong",
+      "file": "grilled_meat_0ac9e55fff.png"
+    },
+    {
+      "id": "7539420629350288",
+      "name": "Hemp",
+      "category": "food",
+      "status": "generic",
+      "file": "7539420629350288_6b6ecbd65f.png"
+    },
+    {
+      "id": "4537020877770099",
+      "name": "Lilac",
+      "category": "food",
+      "status": "generic",
+      "file": "4537020877770099_67201f09d5.png"
+    },
+    {
+      "id": "loaf_bread",
+      "name": "Loaf Bread",
+      "category": "food",
+      "status": "wrong",
+      "file": "loaf_bread_860d6482a2.png"
+    },
+    {
+      "id": "3942329350205395",
+      "name": "Marigold",
+      "category": "food",
+      "status": "generic",
+      "file": "3942329350205395_8d083f0971.png"
+    },
+    {
+      "id": "4392310309073055",
+      "name": "Morning Glory",
+      "category": "food",
+      "status": "generic",
+      "file": "4392310309073055_215dc721eb.png"
+    },
+    {
+      "id": "2323638274590274",
+      "name": "Nettle",
+      "category": "food",
+      "status": "wrong",
+      "file": "2323638274590274_111c1e44f7.png"
+    },
+    {
+      "id": "4537020877770174",
+      "name": "Oak Log",
+      "category": "food",
+      "status": "wrong",
+      "file": "4537020877770174_5571d293de.png"
+    },
+    {
+      "id": "7629003362360831",
+      "name": "Orchid",
+      "category": "food",
+      "status": "generic",
+      "file": "7629003362360831_f556f65041.png"
+    },
+    {
+      "id": "1641431307854275",
+      "name": "Peace Lily",
+      "category": "food",
+      "status": "wrong",
+      "file": "1641431307854275_abad01cf5d.png"
+    },
+    {
+      "id": "6828271548880156",
+      "name": "Peace Lily",
+      "category": "food",
+      "status": "wrong",
+      "file": "6828271548880156_23d695820f.png"
+    },
+    {
+      "id": "7653810888422906",
+      "name": "Peony",
+      "category": "food",
+      "status": "wrong",
+      "file": "7653810888422906_f7f530d62f.png"
+    },
+    {
+      "id": "5039373280552545",
+      "name": "Plumeria",
+      "category": "food",
+      "status": "wrong",
+      "file": "5039373280552545_5b2d89dec7.png"
+    },
+    {
+      "id": "6064751024492850",
+      "name": "Potato",
+      "category": "food",
+      "status": "generic",
+      "file": "6064751024492850_3b0e5b85f3.png"
+    },
+    {
+      "id": "7539420629350498",
+      "name": "Pumpkin",
+      "category": "food",
+      "status": "wrong",
+      "file": "7539420629350498_31c3b29e5b.png"
+    },
+    {
+      "id": "1391288753385781",
+      "name": "Ramie",
+      "category": "food",
+      "status": "wrong",
+      "file": "1391288753385781_beebd9924a.png"
+    },
+    {
+      "id": "7539420629350042",
+      "name": "Raw Mucker Meat",
+      "category": "food",
+      "status": "wrong",
+      "file": "7539420629350042_e1eef02f56.png"
+    },
+    {
+      "id": "5232320705487607",
+      "name": "Red Mushroom",
+      "category": "food",
+      "status": "wrong",
+      "file": "5232320705487607_30049270be.png"
+    },
+    {
+      "id": "river_trout",
+      "name": "River Trout",
+      "category": "food",
+      "status": "wrong",
+      "file": "river_trout_972dc1459e.png"
+    },
+    {
+      "id": "road_ration",
+      "name": "Road Ration",
+      "category": "food",
+      "status": "generic",
+      "file": "road_ration_981e9623fa.png"
+    },
+    {
+      "id": "1534621126189769",
+      "name": "Rose",
+      "category": "food",
+      "status": "wrong",
+      "file": "1534621126189769_3f9822ae0a.png"
+    },
+    {
+      "id": "4537020877770003",
+      "name": "Rubber",
+      "category": "food",
+      "status": "generic",
+      "file": "4537020877770003_d46cd1ccb4.png"
+    },
+    {
+      "id": "7060497556742786",
+      "name": "Sakura",
+      "category": "food",
+      "status": "generic",
+      "file": "7060497556742786_1e624686f7.png"
+    },
+    {
+      "id": "1307218803948215",
+      "name": "Sunflower",
+      "category": "food",
+      "status": "wrong",
+      "file": "1307218803948215_ebd4cf45f5.png"
+    },
+    {
+      "id": "8305697545525485",
+      "name": "Ultra Violet",
+      "category": "food",
+      "status": "generic",
+      "file": "8305697545525485_10c0c26197.png"
+    },
+    {
+      "id": "apple_tart",
+      "name": "Warm Apple Tart",
+      "category": "food",
+      "status": "generic",
+      "file": "apple_tart_a5daa35af1.png"
+    },
+    {
+      "id": "wild_berries",
+      "name": "Wild Berries",
+      "category": "food",
+      "status": "generic",
+      "file": "wild_berries_c8fa1aa19f.png"
+    },
+    {
+      "id": "river_knot_marker",
+      "name": "Blue River Knot Marker",
+      "category": "key",
+      "status": "generic",
+      "file": "river_knot_marker_a3ceccd2cf.png"
+    },
+    {
+      "id": "iron_key_blank",
+      "name": "Iron Key Blank",
+      "category": "key",
+      "status": "generic",
+      "file": "iron_key_blank_b94c02bc3f.png"
+    },
+    {
+      "id": "item_iris_button",
+      "name": "A Coat Button",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "item_iris_button_38637c367e.png"
+    },
+    {
+      "id": "amber_bead_case_token",
+      "name": "Amber Bead Case Token",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "amber_bead_case_token_990221aa57.png"
+    },
+    {
+      "id": "anti_muck_poultice",
+      "name": "Anti Muck Poultice",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "anti_muck_poultice_8ac66c3563.png"
+    },
+    {
+      "id": "antidote_recipe_note",
+      "name": "Antidote Recipe Note",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "antidote_recipe_note_b6b2114e8c.png"
+    },
+    {
+      "id": "basic_salves",
+      "name": "Basic Salves",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "basic_salves_a035d3272a.png"
+    },
+    {
+      "id": "bell_fragment_quest_item",
+      "name": "Bell Fragment Quest Item",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "bell_fragment_quest_item_d23bed36b6.png"
+    },
+    {
+      "id": "item_rook_bell_iron_token",
+      "name": "Bell-Iron Token",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "item_rook_bell_iron_token_8abf4e054e.png"
+    },
+    {
+      "id": "bellbinder_robe_cosmetic",
+      "name": "Bellbinder Robe Cosmetic",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "bellbinder_robe_cosmetic_6aa8ebace3.png"
+    },
+    {
+      "id": "bellbinders_voice",
+      "name": "Bellbinder's Voice",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "bellbinders_voice_67cedb7996.png"
+    },
+    {
+      "id": "bellbinders_antechamber_lore",
+      "name": "Bellbinders Antechamber Lore",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "bellbinders_antechamber_lore_8bbb51ad64.png"
+    },
+    {
+      "id": "bellbinders_voice_handbell",
+      "name": "Bellbinders Voice Handbell",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "bellbinders_voice_handbell_689544ebdd.png"
+    },
+    {
+      "id": "bellward_robe_cosmetic",
+      "name": "Bellward Robe Cosmetic",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "bellward_robe_cosmetic_cd7ecc369f.png"
+    },
+    {
+      "id": "black_anvil_marked_strip",
+      "name": "Black Anvil Marked Strip",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "black_anvil_marked_strip_ded0b2a431.png"
+    },
+    {
+      "id": "bolt_crates",
+      "name": "Bolt Crates",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "bolt_crates_3eed125652.png"
+    },
+    {
+      "id": "bounty_chit",
+      "name": "Bounty Chit",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "bounty_chit_0539501d9b.png"
+    },
+    {
+      "id": "brams_stamped_pass",
+      "name": "Brams Stamped Pass",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "brams_stamped_pass_104100f5d9.png"
+    },
+    {
+      "id": "brams_token",
+      "name": "Brams Token",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "brams_token_a40c169b56.png"
+    },
+    {
+      "id": "bridge_day_ribbon",
+      "name": "Bridge Day Ribbon",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "bridge_day_ribbon_179528a74a.png"
+    },
+    {
+      "id": "buddy_memory_fragment",
+      "name": "Buddy Memory Fragment",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "buddy_memory_fragment_b60a9ff55e.png"
+    },
+    {
+      "id": "buried_bell_fragment",
+      "name": "Buried Bell Fragment",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "buried_bell_fragment_b17ae8fe4c.png"
+    },
+    {
+      "id": "caldus_debt_note_or_favor",
+      "name": "Caldus Debt Note Or Favor",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "caldus_debt_note_or_favor_899212f60e.png"
+    },
+    {
+      "id": "item_lou_case_notes",
+      "name": "Case Notes",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "item_lou_case_notes_cacdb6da48.png"
+    },
+    {
+      "id": "cellar_dust_cloak_cosmetic",
+      "name": "Cellar Dust Cloak Cosmetic",
+      "category": "quest_item",
+      "status": "wrong",
+      "file": "cellar_dust_cloak_cosmetic_8d884706ff.png"
+    },
+    {
+      "id": "chapel_bell_notice_copy",
+      "name": "Chapel Bell Notice Copy",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "chapel_bell_notice_copy_f064af45a2.png"
+    },
+    {
+      "id": "chapel_lore_note",
+      "name": "Chapel Lore Note",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "chapel_lore_note_26626cced5.png"
+    },
+    {
+      "id": "chapel_receipt",
+      "name": "Chapel Receipt",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "chapel_receipt_1898025c7f.png"
+    },
+    {
+      "id": "charcoal_supply_contract",
+      "name": "Charcoal Supply Contract",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "charcoal_supply_contract_301166cd38.png"
+    },
+    {
+      "id": "quest_objective_item:repeatable_watch_bounty_board:repeatable_watch_bounty_board_obj_04",
+      "name": "Claim bounty once",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "quest_objective_item_repeatable_watch_bounty_board_repeatable_watch_boun_a9ea6f94ef.png"
+    },
+    {
+      "id": "quest_objective_item:bellbound_q05_beneath_the_stones:bellbound_q05_beneath_the_stones_obj_04",
+      "name": "Claim the Bellbinder’s Voice",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "quest_objective_item_bellbound_q05_beneath_the_stones_bellbound_q05_bene_1c590db87d.png"
+    },
+    {
+      "id": "quest_objective_item:bellbound_q10_bellbinders_tomb:bellbound_q10_bellbinders_tomb_obj_04",
+      "name": "Claim the Founder’s Seal",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "quest_objective_item_bellbound_q10_bellbinders_tomb_bellbound_q10_bellbi_1b10643edd.png"
+    },
+    {
+      "id": "item_ch1_compound_a",
+      "name": "Clear Ampoule",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "item_ch1_compound_a_1bf4528d90.png"
+    },
+    {
+      "id": "coded_river_note",
+      "name": "Coded River Note",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "coded_river_note_334a2c17a2.png"
+    },
+    {
+      "id": "quest_objective_item:harthmere_sq_016_candles_for_the_forgotten:harthmere_sq_016_candles_for_the_forgotten_obj_01",
+      "name": "Collect chapel candles",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "quest_objective_item_harthmere_sq_016_candles_for_the_forgotten_harthmer_d89d05365b.png"
+    },
+    {
+      "id": "quest_objective_item:starter_apples_for_dawnloaf:starter_apples_for_dawnloaf_obj_02",
+      "name": "Collect legal apples",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "quest_objective_item_starter_apples_for_dawnloaf_starter_apples_for_dawn_28649f4e68.png"
+    },
+    {
+      "id": "quest_objective_item:bellbound_q10_bellbinders_tomb:bellbound_q10_bellbinders_tomb_obj_02",
+      "name": "Collect six Bellbinder regalia pieces",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "quest_objective_item_bellbound_q10_bellbinders_tomb_bellbound_q10_bellbi_82c999544a.png"
+    },
+    {
+      "id": "quest_objective_item:weekly_watch_town_defense_drill:weekly_watch_town_defense_drill_obj_04",
+      "name": "Collect weekly reward",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "quest_objective_item_weekly_watch_town_defense_drill_weekly_watch_town_d_c2da7a0f5c.png"
+    },
+    {
+      "id": "copper_kettle_songbook_page",
+      "name": "Copper Kettle Songbook Page",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "copper_kettle_songbook_page_348a28aa8e.png"
+    },
+    {
+      "id": "cosmetic_marker_decal",
+      "name": "Cosmetic Marker Decal",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "cosmetic_marker_decal_66459ccb7d.png"
+    },
+    {
+      "id": "cove_photo_frame",
+      "name": "Cove Photo Frame",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "cove_photo_frame_eecde8df0d.png"
+    },
+    {
+      "id": "crate_rune_splinter",
+      "name": "Crate Rune Splinter",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "crate_rune_splinter_59b9658546.png"
+    },
+    {
+      "id": "crones_veil_or_gray_hood",
+      "name": "Crones Veil Or Gray Hood",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "crones_veil_or_gray_hood_f406076e5e.png"
+    },
+    {
+      "id": "item_custodian_key_3",
+      "name": "Custodian Key 3",
+      "category": "quest_item",
+      "status": "wrong",
+      "file": "item_custodian_key_3_c2e3c2eb0e.png"
+    },
+    {
+      "id": "defense_drill_badge",
+      "name": "Defense Drill Badge",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "defense_drill_badge_b518b599d1.png"
+    },
+    {
+      "id": "dock_manifest_copy",
+      "name": "Dock Manifest Copy",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "dock_manifest_copy_325469eff7.png"
+    },
+    {
+      "id": "dreams_of_the_bell_codex",
+      "name": "Dreams Of The Bell Codex",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "dreams_of_the_bell_codex_09d9f7e183.png"
+    },
+    {
+      "id": "quest_objective_item:harthmere_sq_013_the_apprentices_burn:harthmere_sq_013_the_apprentices_burn_obj_02",
+      "name": "Fetch salve or chapel aid",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "quest_objective_item_harthmere_sq_013_the_apprentices_burn_harthmere_sq__5719956349.png"
+    },
+    {
+      "id": "item_sorrel_field_ledger",
+      "name": "Field Ledger",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "item_sorrel_field_ledger_1ebb5c2e9d.png"
+    },
+    {
+      "id": "forge_apprentice_brand_cosmetic",
+      "name": "Forge Apprentice Brand Cosmetic",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "forge_apprentice_brand_cosmetic_93912676ad.png"
+    },
+    {
+      "id": "founders_seal",
+      "name": "Founders Seal",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "founders_seal_df0f677ed5.png"
+    },
+    {
+      "id": "fresh_egg_bundle",
+      "name": "Fresh Egg Bundle",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "fresh_egg_bundle_a99f2b8b4d.png"
+    },
+    {
+      "id": "gate_ledger",
+      "name": "Gate Ledger",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "gate_ledger_181af618db.png"
+    },
+    {
+      "id": "quest_objective_item:weekly_chapel_river_blessing_prep:weekly_chapel_river_blessing_prep_obj_01",
+      "name": "Gather candles and blue ribbons",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "quest_objective_item_weekly_chapel_river_blessing_prep_weekly_chapel_riv_1fa76f1407.png"
+    },
+    {
+      "id": "quest_objective_item:harthmere_sq_022_the_wrong_antidote:harthmere_sq_022_the_wrong_antidote_obj_02",
+      "name": "Gather correct reagent",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "quest_objective_item_harthmere_sq_022_the_wrong_antidote_harthmere_sq_02_f646cc1e59.png"
+    },
+    {
+      "id": "quest_objective_item:harthmere_sq_006_tessens_choice:harthmere_sq_006_tessens_choice_obj_02",
+      "name": "Gather evidence for fair treatment",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "quest_objective_item_harthmere_sq_006_tessens_choice_harthmere_sq_006_te_6c7f61992a.png"
+    },
+    {
+      "id": "quest_objective_item:starter_fever_tea:starter_fever_tea_obj_01",
+      "name": "Gather feverfew and mint",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "quest_objective_item_starter_fever_tea_starter_fever_tea_obj_01_4f0fca7f21.png"
+    },
+    {
+      "id": "quest_objective_item:harthmere_sq_015_the_masters_mark:harthmere_sq_015_the_masters_mark_obj_01",
+      "name": "Gather proper materials",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "quest_objective_item_harthmere_sq_015_the_masters_mark_harthmere_sq_015__2a4412af9e.png"
+    },
+    {
+      "id": "quest_objective_item:repeatable_wilds_resource_route:repeatable_wilds_resource_route_obj_02",
+      "name": "Gather valid nodes",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "quest_objective_item_repeatable_wilds_resource_route_repeatable_wilds_re_7cfc4fabfe.png"
+    },
+    {
+      "id": "glade_herb_satchel",
+      "name": "Glade Herb Satchel",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "glade_herb_satchel_4b32b12f6b.png"
+    },
+    {
+      "id": "grave_moss_sample",
+      "name": "Grave Moss Sample",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "grave_moss_sample_4ed221a3e3.png"
+    },
+    {
+      "id": "item_grey_card",
+      "name": "Grey Card",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "item_grey_card_9285871a7b.png"
+    },
+    {
+      "id": "grove_travel_bottoms",
+      "name": "Grove Travel Bottoms",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "grove_travel_bottoms_66f3e97761.png"
+    },
+    {
+      "id": "grove_travel_top",
+      "name": "Grove Travel Top",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "grove_travel_top_b3ca79ba1f.png"
+    },
+    {
+      "id": "halene_letters_codex",
+      "name": "Halene Letters Codex",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "halene_letters_codex_cad4e6c0cd.png"
+    },
+    {
+      "id": "harthmere_arrival_note",
+      "name": "Harthmere Arrival Note",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "harthmere_arrival_note_8417a54b4a.png"
+    },
+    {
+      "id": "harths_memory_pin",
+      "name": "Harths Memory Pin",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "harths_memory_pin_843833b4cf.png"
+    },
+    {
+      "id": "heatproof_work_gloves",
+      "name": "Heatproof Work Gloves",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "heatproof_work_gloves_776f811f74.png"
+    },
+    {
+      "id": "heist_share",
+      "name": "Heist Share",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "heist_share_4305c139ca.png"
+    },
+    {
+      "id": "item_ch1_breakfast_tea",
+      "name": "Jackie's Breakfast Tea",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "item_ch1_breakfast_tea_452b5c2617.png"
+    },
+    {
+      "id": "lilas_confidence_token",
+      "name": "Lilas Confidence Token",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "lilas_confidence_token_07f0365265.png"
+    },
+    {
+      "id": "lina_river_ribbon",
+      "name": "Lina River Ribbon",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "lina_river_ribbon_504df178ea.png"
+    },
+    {
+      "id": "loose_sign_nail",
+      "name": "Loose Sign Nail",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "loose_sign_nail_de8ae00c41.png"
+    },
+    {
+      "id": "bolt_order",
+      "name": "Luis's Bolt Order",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "bolt_order_c5086f06fa.png"
+    },
+    {
+      "id": "item_marrow_collar",
+      "name": "Marrow's Collar",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "item_marrow_collar_222dafd0cb.png"
+    },
+    {
+      "id": "masters_mark_stamp",
+      "name": "Masters Mark Stamp",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "masters_mark_stamp_ba62ddb0d5.png"
+    },
+    {
+      "id": "mosslawn_songline_recording",
+      "name": "Mosslawn Songline Recording",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "mosslawn_songline_recording_2ef1c062aa.png"
+    },
+    {
+      "id": "old_route_clue",
+      "name": "Old Route Clue",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "old_route_clue_8d1bdc0215.png"
+    },
+    {
+      "id": "pilgrims_mark",
+      "name": "Pilgrims Mark",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "pilgrims_mark_73c3ab9031.png"
+    },
+    {
+      "id": "ranger_token",
+      "name": "Ranger Token",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "ranger_token_a4321d1a0a.png"
+    },
+    {
+      "id": "rare_cooking_recipe",
+      "name": "Rare Cooking Recipe",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "rare_cooking_recipe_fc73af6348.png"
+    },
+    {
+      "id": "rat_crown_cosmetic",
+      "name": "Rat Crown Cosmetic",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "rat_crown_cosmetic_1ed10dc2e2.png"
+    },
+    {
+      "id": "rat_girls_token",
+      "name": "Rat Girls Token",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "rat_girls_token_514325cb92.png"
+    },
+    {
+      "id": "rat_tail_bundle",
+      "name": "Rat Tail Bundle",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "rat_tail_bundle_0f66fbdfe3.png"
+    },
+    {
+      "id": "rebels_blade_pattern",
+      "name": "Rebels Blade Pattern",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "rebels_blade_pattern_15047241d8.png"
+    },
+    {
+      "id": "quest_objective_item:starter_missing_lockbox:starter_missing_lockbox_obj_03",
+      "name": "Recover it from wrong counter",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "quest_objective_item_starter_missing_lockbox_starter_missing_lockbox_obj_94ca71f0ef.png"
+    },
+    {
+      "id": "resource_route_receipt",
+      "name": "Resource Route Receipt",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "resource_route_receipt_8c3d0b57b8.png"
+    },
+    {
+      "id": "river_blessing_candle",
+      "name": "River Blessing Candle",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "river_blessing_candle_890f01ec7e.png"
+    },
+    {
+      "id": "road_ahead_map_layer",
+      "name": "Road Ahead Map Layer",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "road_ahead_map_layer_7c7268e681.png"
+    },
+    {
+      "id": "road_blocks_x5",
+      "name": "Road Blocks X5",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "road_blocks_x5_94d9595472.png"
+    },
+    {
+      "id": "road_snacks",
+      "name": "Road Snacks",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "road_snacks_b1a047454b.png"
+    },
+    {
+      "id": "sealed_muck_sample",
+      "name": "Sealed Muck Sample",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "sealed_muck_sample_767662d3bf.png"
+    },
+    {
+      "id": "six_bellbinder_regalia",
+      "name": "Six Bellbinder Regalia",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "six_bellbinder_regalia_c7e70dc0bd.png"
+    },
+    {
+      "id": "small_verena_charm",
+      "name": "Small Verena Charm",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "small_verena_charm_56a7ca1e4f.png"
+    },
+    {
+      "id": "smuggler_token",
+      "name": "Smuggler Token",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "smuggler_token_6ec8402443.png"
+    },
+    {
+      "id": "storage_voucher_small",
+      "name": "Storage Voucher Small",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "storage_voucher_small_3e9c0601e7.png"
+    },
+    {
+      "id": "tams_bell_clue",
+      "name": "Tams Bell Clue",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "tams_bell_clue_6c55a79050.png"
+    },
+    {
+      "id": "item_first_grain",
+      "name": "The First Grain",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "item_first_grain_afa98b92b6.png"
+    },
+    {
+      "id": "trapper_mentor_token",
+      "name": "Trapper Mentor Token",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "trapper_mentor_token_9c554b18e3.png"
+    },
+    {
+      "id": "travel_boots",
+      "name": "Travel Boots",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "travel_boots_77f24a29c5.png"
+    },
+    {
+      "id": "vein_keepers_scale",
+      "name": "Vein Keepers Scale",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "vein_keepers_scale_10b15f424d.png"
+    },
+    {
+      "id": "vera_harth_journal_lore",
+      "name": "Vera Harth Journal Lore",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "vera_harth_journal_lore_43ca80e36f.png"
+    },
+    {
+      "id": "veskas_last_letter",
+      "name": "Veskas Last Letter",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "veskas_last_letter_980bd229de.png"
+    },
+    {
+      "id": "ward_fair_token",
+      "name": "Ward Fair Token",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "ward_fair_token_625452d563.png"
+    },
+    {
+      "id": "warm_apple_roll",
+      "name": "Warm Apple Roll",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "warm_apple_roll_feb817ea59.png"
+    },
+    {
+      "id": "watch_patrol_mark",
+      "name": "Watch Patrol Mark",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "watch_patrol_mark_cf4bddf781.png"
+    },
+    {
+      "id": "watch_ranger_report",
+      "name": "Watch Ranger Report",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "watch_ranger_report_530ec5d78e.png"
+    },
+    {
+      "id": "watch_tabard_pin_or_merchant_favor_token",
+      "name": "Watch Tabard Pin Or Merchant Favor Token",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "watch_tabard_pin_or_merchant_favor_token_d6bfacf49c.png"
+    },
+    {
+      "id": "b:7077725005403292",
+      "name": "Water-logged Muck Buster",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "b_7077725005403292_81462de8e6.png"
+    },
+    {
+      "id": "whispering_crate_splinter",
+      "name": "Whispering Crate Splinter",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "whispering_crate_splinter_205dfae465.png"
+    },
+    {
+      "id": "witchlight_sample",
+      "name": "Witchlight Sample",
+      "category": "quest_item",
+      "status": "generic",
+      "file": "witchlight_sample_c0072a3c20.png"
+    },
+    {
+      "id": "arcane_extractor",
+      "name": "Arcane Extractor",
+      "category": "tool",
+      "status": "generic",
+      "file": "arcane_extractor_e4b56e2ff8.png"
+    },
+    {
+      "id": "clay_shovel",
+      "name": "Clay Shovel",
+      "category": "tool",
+      "status": "generic",
+      "file": "clay_shovel_5bb70546fe.png"
+    },
+    {
+      "id": "grove_road_torch",
+      "name": "Grove Road Torch",
+      "category": "tool",
+      "status": "generic",
+      "file": "grove_road_torch_de7ace607c.png"
+    },
+    {
+      "id": "herbalist_sickle",
+      "name": "Herbalist Sickle",
+      "category": "tool",
+      "status": "generic",
+      "file": "herbalist_sickle_a817e519ee.png"
+    },
+    {
+      "id": "7539420629350046",
+      "name": "Hoe",
+      "category": "tool",
+      "status": "generic",
+      "file": "7539420629350046_c586f372ea.png"
+    },
+    {
+      "id": "7539420629350603",
+      "name": "Master Restoration Tool",
+      "category": "tool",
+      "status": "generic",
+      "file": "7539420629350603_c04d18582d.png"
+    },
+    {
+      "id": "5354980139910506",
+      "name": "Muck Buster",
+      "category": "tool",
+      "status": "generic",
+      "file": "5354980139910506_87a2b8511c.png"
+    },
+    {
+      "id": "7539420629350611",
+      "name": "Muck Rake",
+      "category": "tool",
+      "status": "generic",
+      "file": "7539420629350611_0b9b91ffbb.png"
+    },
+    {
+      "id": "portal_calibrator",
+      "name": "Portal Calibrator",
+      "category": "tool",
+      "status": "generic",
+      "file": "portal_calibrator_12640693b5.png"
+    },
+    {
+      "id": "7539420629350612",
+      "name": "Reclaimer Spade",
+      "category": "tool",
+      "status": "generic",
+      "file": "7539420629350612_c781a9d6b9.png"
+    },
+    {
+      "id": "scavenger_hook",
+      "name": "Scavenger Hook",
+      "category": "tool",
+      "status": "generic",
+      "file": "scavenger_hook_ff383aa8db.png"
+    },
+    {
+      "id": "7539420629350489",
+      "name": "Slabber",
+      "category": "tool",
+      "status": "generic",
+      "file": "7539420629350489_6043c4cd80.png"
+    },
+    {
+      "id": "woodcutters_axe",
+      "name": "Woodcutter's Axe",
+      "category": "tool",
+      "status": "wrong",
+      "file": "woodcutters_axe_d190dc7f57.png"
+    },
+    {
+      "id": "7539420629350252",
+      "name": "Wooden Fencer",
+      "category": "tool",
+      "status": "generic",
+      "file": "7539420629350252_de29096fc1.png"
+    },
+    {
+      "id": "item_hnefatafl_piece",
+      "name": "A Missing Piece",
+      "category": "trade_good",
+      "status": "generic",
+      "file": "item_hnefatafl_piece_93e3bfdf33.png"
+    },
+    {
+      "id": "recipe_book_advanced_station_schematics",
+      "name": "Advanced Station Schematics",
+      "category": "trade_good",
+      "status": "generic",
+      "file": "recipe_book_advanced_station_schematics_cae74e9b98.png"
+    },
+    {
+      "id": "harthmere_station_alchemy_bench",
+      "name": "Alchemy Bench",
+      "category": "trade_good",
+      "status": "generic",
+      "file": "harthmere_station_alchemy_bench_a4d4dcbef8.png"
+    },
+    {
+      "id": "65464304897922",
+      "name": "Angler's Table",
+      "category": "trade_good",
+      "status": "generic",
+      "file": "65464304897922_ca0a027c30.png"
+    },
+    {
+      "id": "recipe_book_apprentice_workshop_manual",
+      "name": "Apprentice Workshop Manual",
+      "category": "trade_good",
+      "status": "generic",
+      "file": "recipe_book_apprentice_workshop_manual_5005e918d0.png"
+    },
+    {
+      "id": "4537020877769721",
+      "name": "Arcade Machine",
+      "category": "trade_good",
+      "status": "generic",
+      "file": "4537020877769721_35af2da9ce.png"
+    },
+    {
+      "id": "recipe_book_bellfounders_lost_pages",
+      "name": "Bellfounder's Lost Pages",
+      "category": "trade_good",
+      "status": "generic",
+      "file": "recipe_book_bellfounders_lost_pages_06880c05a5.png"
+    },
+    {
+      "id": "bench",
+      "name": "Bench",
+      "category": "trade_good",
+      "status": "generic",
+      "file": "bench_e5c89c529d.png"
+    },
+    {
+      "id": "repair_voucher",
+      "name": "Black Anvil Repair Voucher",
+      "category": "trade_good",
+      "status": "generic",
+      "file": "repair_voucher_d42052ee1d.png"
+    },
+    {
+      "id": "boombox",
+      "name": "Boombox",
+      "category": "trade_good",
+      "status": "generic",
+      "file": "boombox_14fd3e3356.png"
+    },
+    {
+      "id": "cargo_crate",
+      "name": "Cargo Crate",
+      "category": "trade_good",
+      "status": "generic",
+      "file": "cargo_crate_9956f4f5b5.png"
+    },
+    {
+      "id": "recipe_book_carpenters_block_book",
+      "name": "Carpenter's Block Book",
+      "category": "trade_good",
+      "status": "wrong",
+      "file": "recipe_book_carpenters_block_book_d83910cd54.png"
+    },
+    {
+      "id": "recipe_book_ceramic_glass_kiln_guide",
+      "name": "Ceramic and Glass Kiln Guide",
+      "category": "trade_good",
+      "status": "generic",
+      "file": "recipe_book_ceramic_glass_kiln_guide_cd3164b095.png"
+    },
+    {
+      "id": "3814157132212639",
+      "name": "Composter",
+      "category": "trade_good",
+      "status": "generic",
+      "file": "3814157132212639_8ea58ff4ca.png"
+    },
+    {
+      "id": "item_jackies_tin",
+      "name": "Dented Tea Tin",
+      "category": "trade_good",
+      "status": "generic",
+      "file": "item_jackies_tin_8e5607e101.png"
+    },
+    {
+      "id": "display_shelf",
+      "name": "Display Shelf",
+      "category": "trade_good",
+      "status": "generic",
+      "file": "display_shelf_fb8813619b.png"
+    },
+    {
+      "id": "8287780998923911",
+      "name": "Dye-O-Matic",
+      "category": "trade_good",
+      "status": "generic",
+      "file": "8287780998923911_196b6dd7eb.png"
+    },
+    {
+      "id": "recipe_book_exotic_matter_treatise_i",
+      "name": "Exotic Matter Treatise I",
+      "category": "trade_good",
+      "status": "generic",
+      "file": "recipe_book_exotic_matter_treatise_i_d0aa29d0bb.png"
+    },
+    {
+      "id": "recipe_book_exotic_matter_treatise_ii",
+      "name": "Exotic Matter Treatise II",
+      "category": "trade_good",
+      "status": "generic",
+      "file": "recipe_book_exotic_matter_treatise_ii_54f6a7a0cc.png"
+    },
+    {
+      "id": "recipe_book_exotic_matter_treatise_iii",
+      "name": "Exotic Matter Treatise III",
+      "category": "trade_good",
+      "status": "generic",
+      "file": "recipe_book_exotic_matter_treatise_iii_0ca7124128.png"
+    },
+    {
+      "id": "fancy_bed",
+      "name": "Fancy Bed",
+      "category": "trade_good",
+      "status": "generic",
+      "file": "fancy_bed_9fe1f44c89.png"
+    },
+    {
+      "id": "recipe_book_field_alchemists_notebook",
+      "name": "Field Alchemist's Notebook",
+      "category": "trade_good",
+      "status": "generic",
+      "file": "recipe_book_field_alchemists_notebook_ed52215a40.png"
+    },
+    {
+      "id": "fish_wall_mount",
+      "name": "Fish Wall Mount",
+      "category": "trade_good",
+      "status": "generic",
+      "file": "fish_wall_mount_66337faeb3.png"
+    },
+    {
+      "id": "harthmere_station_forge",
+      "name": "Forge",
+      "category": "trade_good",
+      "status": "generic",
+      "file": "harthmere_station_forge_e3cd0f192b.png"
+    },
+    {
+      "id": "garden_planter_box",
+      "name": "Garden Planter Box",
+      "category": "trade_good",
+      "status": "generic",
+      "file": "garden_planter_box_44d7dd8c82.png"
+    },
+    {
+      "id": "gold_frame",
+      "name": "Gold Frame",
+      "category": "trade_good",
+      "status": "generic",
+      "file": "gold_frame_dc0329e41a.png"
+    },
+    {
+      "id": "hearth_lamp",
+      "name": "Hearth Lamp",
+      "category": "trade_good",
+      "status": "generic",
+      "file": "hearth_lamp_7a3f3f6cc0.png"
+    },
+    {
+      "id": "recipe_book_home_decor_catalogue",
+      "name": "Home Decor Catalogue",
+      "category": "trade_good",
+      "status": "generic",
+      "file": "recipe_book_home_decor_catalogue_ac6716bd7c.png"
+    },
+    {
+      "id": "recipe_book_hunters_bow_pattern",
+      "name": "Hunter's Bow Pattern",
+      "category": "trade_good",
+      "status": "wrong",
+      "file": "recipe_book_hunters_bow_pattern_db3c604792.png"
+    },
+    {
+      "id": "harthmere_station_kiln",
+      "name": "Kiln",
+      "category": "trade_good",
+      "status": "generic",
+      "file": "harthmere_station_kiln_490978c329.png"
+    },
+    {
+      "id": "1485695172010242",
+      "name": "Kitchen",
+      "category": "trade_good",
+      "status": "generic",
+      "file": "1485695172010242_9ed7323ef9.png"
+    },
+    {
+      "id": "large_oak_frame",
+      "name": "Large Oak Frame",
+      "category": "trade_good",
+      "status": "generic",
+      "file": "large_oak_frame_ce42e1bcad.png"
+    },
+    {
+      "id": "led_panel",
+      "name": "LED Panel",
+      "category": "trade_good",
+      "status": "generic",
+      "file": "led_panel_f7b299bf4a.png"
+    },
+    {
+      "id": "lockbox",
+      "name": "Lockbox",
+      "category": "trade_good",
+      "status": "generic",
+      "file": "lockbox_89d0b3f235.png"
+    },
+    {
+      "id": "harthmere_station_loom",
+      "name": "Loom",
+      "category": "trade_good",
+      "status": "generic",
+      "file": "harthmere_station_loom_b049d4ba14.png"
+    },
+    {
+      "id": "mailbox",
+      "name": "Mailbox",
+      "category": "trade_good",
+      "status": "generic",
+      "file": "mailbox_37e902f738.png"
+    },
+    {
+      "id": "recipe_book_masons_pattern_book",
+      "name": "Mason's Pattern Book",
+      "category": "trade_good",
+      "status": "wrong",
+      "file": "recipe_book_masons_pattern_book_1449591319.png"
+    },
+    {
+      "id": "medium_oak_frame",
+      "name": "Medium Oak Frame",
+      "category": "trade_good",
+      "status": "generic",
+      "file": "medium_oak_frame_0b6d90556d.png"
+    },
+    {
+      "id": "recipe_book_metal_block_foundry_guide",
+      "name": "Metal Block Foundry Guide",
+      "category": "trade_good",
+      "status": "generic",
+      "file": "recipe_book_metal_block_foundry_guide_e395b1a123.png"
+    },
+    {
+      "id": "recipe_book_millers_kitchen_slip",
+      "name": "Miller's Kitchen Slip",
+      "category": "trade_good",
+      "status": "generic",
+      "file": "recipe_book_millers_kitchen_slip_3d5e8990f2.png"
+    },
+    {
+      "id": "oak_tray",
+      "name": "Oak Tray",
+      "category": "trade_good",
+      "status": "generic",
+      "file": "oak_tray_9332754570.png"
+    },
+    {
+      "id": "old_bone_button",
+      "name": "Old Bone Button",
+      "category": "trade_good",
+      "status": "generic",
+      "file": "old_bone_button_ca8fce6be2.png"
+    },
+    {
+      "id": "old_coin",
+      "name": "Old Coin",
+      "category": "trade_good",
+      "status": "generic",
+      "file": "old_coin_5031c4df12.png"
+    },
+    {
+      "id": "padded_chair",
+      "name": "Padded Chair",
+      "category": "trade_good",
+      "status": "generic",
+      "file": "padded_chair_08ee7012ab.png"
+    },
+    {
+      "id": "record_player",
+      "name": "Record Player",
+      "category": "trade_good",
+      "status": "generic",
+      "file": "record_player_30c941a530.png"
+    },
+    {
+      "id": "recipe_book_refiners_ledger",
+      "name": "Refiner's Ledger",
+      "category": "trade_good",
+      "status": "generic",
+      "file": "recipe_book_refiners_ledger_10db188462.png"
+    },
+    {
+      "id": "runic_stone_light",
+      "name": "Runic Stone Light",
+      "category": "trade_good",
+      "status": "generic",
+      "file": "runic_stone_light_a0836d012c.png"
+    },
+    {
+      "id": "saint_coin",
+      "name": "Saint Coin",
+      "category": "trade_good",
+      "status": "generic",
+      "file": "saint_coin_feb28d196c.png"
+    },
+    {
+      "id": "1403692516415707",
+      "name": "Seed Mill",
+      "category": "trade_good",
+      "status": "generic",
+      "file": "1403692516415707_1583e59427.png"
+    },
+    {
+      "id": "business_service_counter",
+      "name": "Service Counter",
+      "category": "trade_good",
+      "status": "generic",
+      "file": "business_service_counter_4fd83a06eb.png"
+    },
+    {
+      "id": "shelf",
+      "name": "Shelf",
+      "category": "trade_good",
+      "status": "generic",
+      "file": "shelf_7347b90808.png"
+    },
+    {
+      "id": "silver_frame",
+      "name": "Silver Frame",
+      "category": "trade_good",
+      "status": "generic",
+      "file": "silver_frame_f59b8ba0e2.png"
+    },
+    {
+      "id": "small_bed",
+      "name": "Small Bed",
+      "category": "trade_good",
+      "status": "generic",
+      "file": "small_bed_8bde997b96.png"
+    },
+    {
+      "id": "small_oak_frame",
+      "name": "Small Oak Frame",
+      "category": "trade_good",
+      "status": "generic",
+      "file": "small_oak_frame_1a5395e189.png"
+    },
+    {
+      "id": "small_oak_sign",
+      "name": "Small Oak Sign",
+      "category": "trade_good",
+      "status": "generic",
+      "file": "small_oak_sign_bcb539c36f.png"
+    },
+    {
+      "id": "recipe_book_smiths_primer",
+      "name": "Smith's Primer",
+      "category": "trade_good",
+      "status": "generic",
+      "file": "recipe_book_smiths_primer_73d69ec1a6.png"
+    },
+    {
+      "id": "harthmere_station_stonecutter",
+      "name": "Stonecutter",
+      "category": "trade_good",
+      "status": "generic",
+      "file": "harthmere_station_stonecutter_10fc29eacb.png"
+    },
+    {
+      "id": "home_storage_cabinet",
+      "name": "Storage Cabinet",
+      "category": "trade_good",
+      "status": "generic",
+      "file": "home_storage_cabinet_f0e569d06b.png"
+    },
+    {
+      "id": "t_table",
+      "name": "T-Table",
+      "category": "trade_good",
+      "status": "generic",
+      "file": "t_table_0b23b2f10c.png"
+    },
+    {
+      "id": "table",
+      "name": "Table",
+      "category": "trade_good",
+      "status": "generic",
+      "file": "table_c3ee137d4f.png"
+    },
+    {
+      "id": "recipe_book_tailor_leatherworker_folio",
+      "name": "Tailor and Leatherworker's Folio",
+      "category": "trade_good",
+      "status": "wrong",
+      "file": "recipe_book_tailor_leatherworker_folio_3ddcb27d61.png"
+    },
+    {
+      "id": "7539420629350105",
+      "name": "Tailoring Booth",
+      "category": "trade_good",
+      "status": "generic",
+      "file": "7539420629350105_83a34d3404.png"
+    },
+    {
+      "id": "4537020877769775",
+      "name": "Thermoblaster",
+      "category": "trade_good",
+      "status": "generic",
+      "file": "4537020877769775_ef47888968.png"
+    },
+    {
+      "id": "2443541317223860",
+      "name": "Thermolite",
+      "category": "trade_good",
+      "status": "generic",
+      "file": "2443541317223860_98af02db75.png"
+    },
+    {
+      "id": "treasure_chest",
+      "name": "Treasure Chest",
+      "category": "trade_good",
+      "status": "generic",
+      "file": "treasure_chest_f6e017be5d.png"
+    },
+    {
+      "id": "wall_lantern",
+      "name": "Wall Lantern",
+      "category": "trade_good",
+      "status": "generic",
+      "file": "wall_lantern_68e0b38610.png"
+    },
+    {
+      "id": "wardrobe_storage",
+      "name": "Wardrobe",
+      "category": "trade_good",
+      "status": "generic",
+      "file": "wardrobe_storage_b1c672857f.png"
+    },
+    {
+      "id": "recipe_book_weavers_material_sampler",
+      "name": "Weaver's Material Sampler",
+      "category": "trade_good",
+      "status": "generic",
+      "file": "recipe_book_weavers_material_sampler_070305362d.png"
+    },
+    {
+      "id": "wood_container",
+      "name": "Wood Container",
+      "category": "trade_good",
+      "status": "generic",
+      "file": "wood_container_2845076e3e.png"
+    },
+    {
+      "id": "wooden_chair",
+      "name": "Wooden Chair",
+      "category": "trade_good",
+      "status": "generic",
+      "file": "wooden_chair_7c0015df21.png"
+    },
+    {
+      "id": "1534621126189448",
+      "name": "Workbench",
+      "category": "trade_good",
+      "status": "generic",
+      "file": "1534621126189448_701e53ac96.png"
+    },
+    {
+      "id": "muck_boss_trophy",
+      "name": "Muck Boss Trophy",
+      "category": "trophy",
+      "status": "generic",
+      "file": "muck_boss_trophy_3c46b50fb1.png"
+    },
+    {
+      "id": "iron_sword",
+      "name": "Iron Sword",
+      "category": "weapon",
+      "status": "generic",
+      "file": "iron_sword_adc77c17a9.png"
+    },
+    {
+      "id": "iron_sword_reinforced",
+      "name": "Reinforced Iron Sword",
+      "category": "weapon",
+      "status": "generic",
+      "file": "iron_sword_reinforced_f673288396.png"
+    },
+    {
+      "id": "training_dagger",
+      "name": "Training Dagger",
+      "category": "weapon",
+      "status": "generic",
+      "file": "training_dagger_162d615fde.png"
+    },
+    {
+      "id": "warded_iron_sword",
+      "name": "Warded Iron Sword",
+      "category": "weapon",
+      "status": "generic",
+      "file": "warded_iron_sword_6ce1cb5a0a.png"
+    }
+  ]
+}

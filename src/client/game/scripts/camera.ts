@@ -15,6 +15,7 @@ import {
   getPlayerCameraParameters,
   isIntendedFirstPersonCamera,
   playerFirstPersonCamPosition,
+  playerFirstPersonCamPositionAtHeight,
   slerpOrientations,
   thirdPersonCamPosition,
 } from "@/client/game/util/camera";
@@ -25,6 +26,7 @@ import type {
 import {
   BezierTransition,
   Vec3TransitionBuilder,
+  fixedDurationScalarTransition,
   smoothConstantScalarTransition,
   smoothConstantVec3Transition,
 } from "@/client/game/util/transitions";
@@ -103,6 +105,7 @@ export class CameraScript implements Script {
     0,
     CameraScript.CAMERA_OFFSET_MOMENTUM
   );
+  private smoothPlayerEyeHeight = fixedDurationScalarTransition(1.6, 0.18);
   private lastPlayerOrientation: Vec2f = [0, 0];
   private lastCamTweaks!: CamTweaks;
   private lastTrackedObject: CameraTargetObject;
@@ -520,7 +523,7 @@ export class CameraScript implements Script {
     if (localPlayer.fishingInfo) {
       const playerCamPos = playerFirstPersonCamPosition(
         localPlayer.player.position,
-        localPlayer.player.aabb()
+        localPlayer.player.collisionAabb()
       );
       switch (localPlayer.fishingInfo.state) {
         case "charging_cast":
@@ -631,9 +634,9 @@ export class CameraScript implements Script {
       (performance.now() - this.selfieTransitionStartTime) /
       CameraScript.SELFIE_TRANSITION_TIME;
     const s = Math.min(easeInOut(delta), 1.0);
-    const track = playerFirstPersonCamPosition(
+    const track = playerFirstPersonCamPositionAtHeight(
       scenePlayer.position,
-      scenePlayer.aabb()
+      this.smoothPlayerEyeHeight.get()
     );
     if (delta >= 1.0) {
       this.selfieTransitionStartTime = undefined;
@@ -753,9 +756,9 @@ export class CameraScript implements Script {
         break;
 
       case "player":
-        const track = playerFirstPersonCamPosition(
+        const track = playerFirstPersonCamPositionAtHeight(
           scenePlayer.position,
-          scenePlayer.aabb()
+          this.smoothPlayerEyeHeight.get()
         );
 
         if (this.lastTrackedObject.kind !== "player") {
@@ -861,6 +864,13 @@ export class CameraScript implements Script {
     // Get the player resource.
     const player = this.resources.get("/scene/local_player");
     const scenePlayer = this.resources.get("/scene/player", player.id);
+    const targetEyePosition = playerFirstPersonCamPosition(
+      player.player.position,
+      player.player.collisionAabb()
+    );
+    this.smoothPlayerEyeHeight
+      .target(targetEyePosition[1] - player.player.position[1])
+      .tick(dt);
 
     if (!approxEquals2(player.player.orientation, this.lastPlayerOrientation)) {
       this.orientation = player.player.orientation;

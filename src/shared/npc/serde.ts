@@ -39,6 +39,38 @@ const zNpcStateBase: any = z.object({
       routeChoice: z.string().min(1).max(80).optional(),
     })
     .optional(),
+  energyWeapon: z
+    .object({
+      shieldOverheat: z
+        .object({
+          source: z.number(),
+          untilMs: z.number().finite(),
+        })
+        .optional(),
+      burn: z
+        .object({
+          source: z.number(),
+          weaponId: z.literal("helix_projector"),
+          tickDamage: z.number().int().positive(),
+          ticksRemaining: z.number().int().nonnegative(),
+          nextTickAtMs: z.number().finite(),
+        })
+        .optional(),
+      lastEffect: z
+        .object({
+          id: z.enum([
+            "photon_shield_overheat",
+            "pulse_carbine_overcharge",
+            "helix_energy_burn",
+            "nova_cannon_mini_nova",
+            "singularity_gravity_collapse",
+          ]),
+          source: z.number(),
+          atMs: z.number().finite(),
+        })
+        .optional(),
+    })
+    .optional(),
 });
 
 export const zDeserializedNpcState = zNpcStateBase
@@ -90,6 +122,30 @@ export type DeserializedNpcState = {
     hearthFed?: boolean;
     routeChoice?: string;
   };
+  /** Native ECS combat statuses authored by the five security energy weapons. */
+  energyWeapon?: {
+    shieldOverheat?: {
+      source: BiomesId;
+      untilMs: number;
+    };
+    burn?: {
+      source: BiomesId;
+      weaponId: "helix_projector";
+      tickDamage: number;
+      ticksRemaining: number;
+      nextTickAtMs: number;
+    };
+    lastEffect?: {
+      id:
+        | "photon_shield_overheat"
+        | "pulse_carbine_overcharge"
+        | "helix_energy_burn"
+        | "nova_cannon_mini_nova"
+        | "singularity_gravity_collapse";
+      source: BiomesId;
+      atMs: number;
+    };
+  };
   rotateTarget?: number;
   drown?: {
     submergedSinceSeconds: number;
@@ -107,6 +163,23 @@ export type DeserializedNpcState = {
     attackTime?: number;
     attackTarget?: BiomesId;
     strikeTime?: number;
+    rangedAttack?: {
+      abilityId: string;
+      projectileVisualId: string;
+      targetId: BiomesId;
+      castTime: number;
+      impactTime: number;
+      cooldownUntil: number;
+      originPoint?: [number, number, number];
+      aimPoint: [number, number, number];
+      castYaw?: number;
+      hitTargetIds?: BiomesId[];
+      result?: "hit" | "miss";
+      resolvedAt?: number;
+    };
+    rangedCooldowns?: Record<string, number>;
+    rangedGlobalCooldownUntil?: number;
+    rangedSelectionCursor?: number;
     pathfinding?: PathfindingComponent;
     pathfindingRetryTime?: number;
     /**

@@ -1,7 +1,12 @@
 import { applyProposedChange } from "@/shared/ecs/change";
 import { secondsSinceEpoch } from "@/shared/ecs/config";
-import type { Emote, Health } from "@/shared/ecs/gen/components";
+import type {
+  Emote,
+  Health,
+  ReadonlyMovementState,
+} from "@/shared/ecs/gen/components";
 import {
+  MovementState,
   NpcCombatState,
   NpcMetadata,
   NpcState,
@@ -58,6 +63,9 @@ export class SimulatedNpc {
           : undefined,
         rigid_body: external.rigid_body
           ? RigidBody.clone(external.rigid_body)
+          : undefined,
+        movement_state: external.movement_state
+          ? MovementState.clone(external.movement_state)
           : undefined,
         npc_state: external.npc_state
           ? NpcState.clone(external.npc_state)
@@ -118,6 +126,10 @@ export class SimulatedNpc {
     return this.entity.npcMetadata();
   }
 
+  get movementState(): ReadonlyMovementState | undefined {
+    return this.patchableEntity.movementState();
+  }
+
   get label(): string {
     return this.entity.label().text;
   }
@@ -134,6 +146,10 @@ export class SimulatedNpc {
   // Mutators.
   setEmote(emote: Emote) {
     this.entity.setEmote(emote);
+  }
+
+  setMovementState(state: MovementState) {
+    this.patchableEntity.setMovementState(state);
   }
 
   setPosition(position: Vec3) {
@@ -169,7 +185,15 @@ export class SimulatedNpc {
     );
   }
 
-  attack(target: BiomesId, damage: number) {
+  attack(
+    target: BiomesId,
+    damage: number,
+    ranged?: {
+      attackAbilityId: string;
+      attackTime: number;
+      impactPoint: Readonly<Vec3>;
+    }
+  ) {
     log.debug(`NPC ${this.id} attacks ${target} for ${damage} damage.`);
     this.events.push(
       new UpdatePlayerHealthEvent({
@@ -180,6 +204,9 @@ export class SimulatedNpc {
           attacker: this.id,
           dir: undefined,
         },
+        attackAbilityId: ranged?.attackAbilityId,
+        attackTime: ranged?.attackTime,
+        impactPoint: ranged?.impactPoint,
       })
     );
   }

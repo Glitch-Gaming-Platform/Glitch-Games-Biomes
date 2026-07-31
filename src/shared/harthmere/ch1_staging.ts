@@ -53,6 +53,8 @@ export interface Ch1StageDirection {
   whenEnding?: Ch1Ending;
   /** Restrict to one Hallr outcome. */
   whenHallrChoice?: "let_run" | "hold_stall";
+  /** Restrict to one of the currently active authored objective ids. */
+  whenActiveStepIds?: readonly string[];
   place: Ch1StagePlace;
   /**
    * Player-facing name at this point in the story. Used so AUGUR-9 can be the
@@ -95,6 +97,11 @@ export const CH1_STAGE_DIRECTIONS: Readonly<
       note: "Lou is not in the Grove until the clinic invites a visiting specialist.",
     },
     {
+      whenActiveStepIds: ["the_examination"],
+      place: { kind: "anchor", anchor: "greenlamp_clinic" },
+      activity: "Preparing the clean room for an examination.",
+    },
+    {
       whenAllFlags: [CH1_FLAGS.metLou],
       place: { kind: "anchor", anchor: "greenlamp_clinic" },
       activity: "Consulting on the Grove's memory-sickness cases.",
@@ -111,6 +118,17 @@ export const CH1_STAGE_DIRECTIONS: Readonly<
       activity: "—",
       note: "He leaves. Nobody runs. There is no chase in this chapter.",
     },
+    {
+      whenActiveStepIds: [
+        "give_the_ledger",
+        "give_her_location",
+        "the_word",
+        "watch_him_go",
+      ],
+      place: { kind: "anchor", anchor: "returnstone_pad_office" },
+      activity:
+        "Standing beside the Collective transport, waiting without hurry.",
+    },
   ],
 
   cressa_vane: [
@@ -121,7 +139,8 @@ export const CH1_STAGE_DIRECTIONS: Readonly<
     {
       whenAllFlags: [CH1_FLAGS.gatePersistentOpen],
       place: { kind: "anchor", anchor: "returnstone_pad_office" },
-      activity: "Presenting the cost of every option, in numbers, without threatening anyone.",
+      activity:
+        "Presenting the cost of every option, in numbers, without threatening anyone.",
     },
     {
       whenAllFlags: [CH1_FLAGS.ledgerSurrendered],
@@ -132,7 +151,8 @@ export const CH1_STAGE_DIRECTIONS: Readonly<
     {
       whenEnding: "bargain",
       place: { kind: "anchor", anchor: "returnstone_pad_office" },
-      activity: "Holding a credential, a lab assignment, and a seat at the table.",
+      activity:
+        "Holding a credential, a lab assignment, and a seat at the table.",
     },
   ],
 
@@ -141,22 +161,85 @@ export const CH1_STAGE_DIRECTIONS: Readonly<
       place: { kind: "anchor", anchor: "harthmere_bridge_center" },
       activity: "Holding a bridge that does not open in this chapter.",
     },
+    // ROOK RETURNS TO THE BRIDGE BETWEEN HIS BEATS.
+    //
+    // These two directions used to have no end condition, so once
+    // `gatePersistentOpen` was set at the close of Act 2 Rook stood at the Old
+    // Wood aperture for the WHOLE of Acts 3 and 4, and once `act4Complete` was
+    // set he stood at the Cold Gate for the whole of Acts 5 and 6 — including
+    // the Grove finale. A staging sweep found him parked on a Mouth for 55 of
+    // the chapter's 80 objectives.
+    //
+    // That is wrong on its own (he is a Harthmere gate-warden, not a fixture),
+    // and it is also what made the gate/story prompt collision so pervasive:
+    // any objective that took the player near either aperture found Rook there
+    // with an enterable Mouth underneath him.
     {
       whenAllFlags: [CH1_FLAGS.gatePersistentOpen],
+      whenNoFlags: [CH1_FLAGS.act3Complete],
       place: { kind: "anchor", anchor: "gate_desert" },
-      activity: "Standing at the treeline looking at footprints, waiting for someone to say the obvious sentence.",
+      activity:
+        "Standing at the treeline looking at footprints, waiting for someone to say the obvious sentence.",
       note: "He crossed a bridge he is not supposed to cross. That is the measure of how bad the footprints are.",
     },
     {
+      whenAllFlags: [CH1_FLAGS.act3Complete],
+      whenNoFlags: [CH1_FLAGS.act4Complete],
+      place: { kind: "anchor", anchor: "harthmere_bridge_center" },
+      activity:
+        "Back at the bridge, and noticeably less certain about which side of it is the dangerous one.",
+    },
+    {
       whenAllFlags: [CH1_FLAGS.act4Complete],
+      whenNoFlags: [CH1_FLAGS.act5Complete],
       place: { kind: "anchor", anchor: "gate_winter" },
-      activity: "Holding the near side with a coil of Harthmere rope and no explanation.",
+      activity:
+        "Holding the near side with a coil of Harthmere rope and no explanation.",
       note: "He will not go in. A Mouth with nobody watching it is how towns end.",
+    },
+    {
+      whenAllFlags: [CH1_FLAGS.act5Complete],
+      place: { kind: "anchor", anchor: "harthmere_bridge_center" },
+      activity: "Back at the bridge, having held a Mouth for two days.",
+    },
+    // Per-beat directions come last so they win over the act-level placements
+    // above. These are the moments the scene genuinely happens at an aperture.
+    {
+      whenActiveStepIds: ["the_footprints", "say_the_sentence"],
+      place: { kind: "anchor", anchor: "gate_desert" },
+      activity:
+        "Holding the treeline and waiting for the answer nobody wants to say aloud.",
+    },
+    {
+      whenActiveStepIds: ["the_three_answers"],
+      place: { kind: "anchor", anchor: "gate_desert" },
+      activity: "Arguing, calmly, that the thing should be collapsed.",
+    },
+    {
+      // "You do it to the second, in front of him" only works at a Mouth he can
+      // watch close. Act 4 otherwise has him back at the bridge.
+      whenActiveStepIds: ["call_the_collapse", "take_the_token"],
+      place: { kind: "anchor", anchor: "gate_desert" },
+      activity:
+        "Watching an aperture he has failed to predict for two years, and timing it against you.",
+    },
+    {
+      whenActiveStepIds: ["rooks_rope"],
+      place: { kind: "anchor", anchor: "gate_winter" },
+      activity: "Holding the near side with a coil of Harthmere rope.",
+    },
+    {
+      // Act 5 closes in the Grove: Rook has come across to see Sorrel out.
+      whenActiveStepIds: ["come_out"],
+      place: { kind: "anchor", anchor: "grove_watch_house" },
+      activity:
+        "In the Grove, looking at a woman in a coat he recognises from before.",
     },
     {
       whenAllFlags: [CH1_FLAGS.complete],
       place: { kind: "anchor", anchor: "harthmere_bridge_center" },
-      activity: "Back at the bridge. Proved right, and enjoying it less than he expected.",
+      activity:
+        "Back at the bridge. Proved right, and enjoying it less than he expected.",
     },
     {
       whenEnding: "confess",
@@ -169,7 +252,8 @@ export const CH1_STAGE_DIRECTIONS: Readonly<
   nadia_sorrel: [
     {
       place: { kind: "seeded" },
-      activity: "Behind a barred door in a fjord that has had the same winter nine times.",
+      activity:
+        "Behind a barred door in a fjord that has had the same winter nine times.",
     },
     {
       whenAllFlags: [CH1_FLAGS.act5Complete],
@@ -188,12 +272,14 @@ export const CH1_STAGE_DIRECTIONS: Readonly<
   iris_fen: [
     {
       place: { kind: "seeded" },
-      activity: "Living in a granary that has decided a child is worth preserving.",
+      activity:
+        "Living in a granary that has decided a child is worth preserving.",
     },
     {
       whenAllFlags: [CH1_FLAGS.irisRescued],
       place: { kind: "anchor", anchor: "lovely_locks_mirror" },
-      activity: "A Grove resident now. Entirely calm, which is still the disturbing part.",
+      activity:
+        "A Grove resident now. Entirely calm, which is still the disturbing part.",
     },
   ],
 
@@ -212,12 +298,14 @@ export const CH1_STAGE_DIRECTIONS: Readonly<
   teak_morrow: [
     {
       place: { kind: "anchor", anchor: "rat_crowns_den" },
-      activity: "Running messages for an organisation he thinks is being stupid about this.",
+      activity:
+        "Running messages for an organisation he thinks is being stupid about this.",
     },
     {
       whenAllFlags: [CH1_FLAGS.teakDetained],
       place: { kind: "anchor", anchor: "grove_watch_house" },
-      activity: "Detained with Take Terra materials on him, refusing to confirm the only thing that would help.",
+      activity:
+        "Detained with Take Terra materials on him, refusing to confirm the only thing that would help.",
     },
     {
       whenEnding: "contain",
@@ -239,6 +327,27 @@ export const CH1_STAGE_DIRECTIONS: Readonly<
     },
   ],
 
+  coretta: [
+    {
+      place: { kind: "seeded" },
+      activity: "At the day-book, writing the morning in before it gets away.",
+    },
+  ],
+
+  calla_ashe: [
+    {
+      place: { kind: "seeded" },
+      activity: "Walking the containment floor between shift changes.",
+    },
+    {
+      whenAllFlags: [CH1_FLAGS.collectiveConfirmedIdentity],
+      place: { kind: "seeded" },
+      activity:
+        "Back on shift, and still filing the report she was required to file.",
+      note: "She never learns what her incident report set in motion. Do not let her apologise for it.",
+    },
+  ],
+
   hallr_ironmouth: [
     {
       place: { kind: "seeded" },
@@ -253,7 +362,56 @@ export const CH1_STAGE_DIRECTIONS: Readonly<
     {
       whenHallrChoice: "hold_stall",
       place: { kind: "seeded" },
-      activity: "Still keeping them alive. Still in the same winter. Still tired.",
+      activity:
+        "Still keeping them alive. Still in the same winter. Still tired.",
+    },
+  ],
+
+  jackie: [
+    {
+      place: { kind: "anchor", anchor: "roadhouse_table" },
+      activity: "Keeping the road-house running and watching the stairs.",
+    },
+    {
+      whenActiveStepIds: ["walk_with_jackie"],
+      place: { kind: "anchor", anchor: "broken_safe_zone_fence" },
+      activity: "Walking the broken fence line with you at dusk.",
+    },
+    {
+      whenActiveStepIds: ["the_seam", "not_this_small"],
+      place: { kind: "anchor", anchor: "gate_fence_sighting" },
+      activity: "Standing beside the seam, watching your face instead of it.",
+    },
+    {
+      whenActiveStepIds: ["the_flinch"],
+      place: { kind: "anchor", anchor: "gate_desert" },
+      activity: "Waiting at the return aperture after three sleepless days.",
+    },
+    {
+      whenAllFlags: [CH1_FLAGS.jackieReported],
+      place: { kind: "anchor", anchor: "grove_watch_house" },
+      activity: "Sitting in the watch-house without offering a defence.",
+    },
+    {
+      whenActiveStepIds: [
+        "did_he_take_it",
+        "the_whole_plan",
+        "the_final_choice",
+      ],
+      place: { kind: "anchor", anchor: "grove_watch_house" },
+      activity: "Waiting in the watch-house, practical even now.",
+    },
+    {
+      whenEnding: "contain",
+      place: { kind: "absent" },
+      activity: "—",
+      note: "Contain gets Jackie out quietly before the Grove is told.",
+    },
+    {
+      whenEnding: "confess",
+      place: { kind: "anchor", anchor: "roadhouse_table" },
+      activity:
+        "Back at the road-house while the Grove decides what to do with the truth.",
     },
   ],
 });
@@ -266,6 +424,8 @@ export interface Ch1StagingInput {
   flags: readonly string[];
   ending?: Ch1Ending;
   hallrChoice?: "let_run" | "hold_stall";
+  activeQuestId?: string;
+  activeStepId?: string;
 }
 
 export interface Ch1StagedNpc {
@@ -292,6 +452,13 @@ function directionApplies(
   if (
     direction.whenHallrChoice &&
     direction.whenHallrChoice !== input.hallrChoice
+  ) {
+    return false;
+  }
+  if (
+    direction.whenActiveStepIds?.length &&
+    (!input.activeStepId ||
+      !direction.whenActiveStepIds.includes(input.activeStepId))
   ) {
     return false;
   }
@@ -384,7 +551,10 @@ export function ch1WorldPhaseEffects(
     );
   }
   if (flags.has(CH1_FLAGS.jackieReported) && !input.ending) {
-    add("watch_house_occupied", "Jackie is in the Grove watch-house and has not spoken.");
+    add(
+      "watch_house_occupied",
+      "Jackie is in the Grove watch-house and has not spoken."
+    );
   }
   if (flags.has(CH1_FLAGS.complete)) {
     add(
@@ -476,7 +646,8 @@ export function ch1ValidateStaging(): string[] {
       base.whenAllFlags?.length ||
       base.whenNoFlags?.length ||
       base.whenEnding ||
-      base.whenHallrChoice
+      base.whenHallrChoice ||
+      base.whenActiveStepIds?.length
     ) {
       errors.push(
         `${member.key}: the first stage direction must be unconditional so ` +
@@ -484,7 +655,10 @@ export function ch1ValidateStaging(): string[] {
       );
     }
     for (const direction of directions) {
-      if (direction.place.kind === "anchor" && !(direction.place.anchor in CH1_ANCHORS)) {
+      if (
+        direction.place.kind === "anchor" &&
+        !(direction.place.anchor in CH1_ANCHORS)
+      ) {
         errors.push(`${member.key}: unknown anchor ${direction.place.anchor}`);
       }
       if (direction.activity.trim().length === 0) {

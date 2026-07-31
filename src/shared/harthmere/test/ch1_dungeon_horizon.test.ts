@@ -92,7 +92,14 @@ describe("ch1 horizon - never touches the finished dungeon", () => {
           }
         }
       }
-      assert.ok(ch1PointInsidePlayable(bounds, terrain.arrival.x, terrain.arrival.y, terrain.arrival.z));
+      assert.ok(
+        ch1PointInsidePlayable(
+          bounds,
+          terrain.arrival.x,
+          terrain.arrival.y,
+          terrain.arrival.z
+        )
+      );
     }
   });
 
@@ -265,8 +272,9 @@ describe("ch1 horizon - backdrop terrain", () => {
       );
       assert.ok(
         Math.abs(atEdge - era.baseY) <= 3,
-        `${terrain.dungeonId}: the land is ${atEdge - era.baseY} high right at ` +
-          `the boundary — that is a wall, not a horizon`
+        `${terrain.dungeonId}: the land is ${
+          atEdge - era.baseY
+        } high right at ` + `the boundary — that is a wall, not a horizon`
       );
       assert.ok(
         wellBeyond > atEdge + 4,
@@ -328,7 +336,12 @@ describe("ch1 horizon - backdrop terrain", () => {
     let previous: string | undefined;
     for (let z = -240; z < -140; z += 2) {
       const surface = ch1HorizonSurfaceY("ch1_dungeon_desert", 260, z);
-      const material = ch1HorizonBlockAt("ch1_dungeon_desert", 260, surface - 3, z);
+      const material = ch1HorizonBlockAt(
+        "ch1_dungeon_desert",
+        260,
+        surface - 3,
+        z
+      );
       if (previous !== undefined && material !== previous) {
         changes++;
       }
@@ -443,7 +456,10 @@ describe("ch1 horizon - noise", () => {
     const box = { x0: 0, x1: 100, y0: 0, y1: 10, z0: 0, z1: 100 };
     assert.ok(ch1DistanceBeyondBoundary(box, 50, 50) < 0, "inside is negative");
     assert.equal(ch1DistanceBeyondBoundary(box, 110, 50), 10);
-    assert.ok(ch1DistanceBeyondBoundary(box, 110, 110) > 14, "corners are diagonal");
+    assert.ok(
+      ch1DistanceBeyondBoundary(box, 110, 110) > 14,
+      "corners are diagonal"
+    );
   });
 });
 
@@ -489,7 +505,13 @@ describe("ch1 horizon - seeder composition", () => {
     );
     assert.ok(dungeonBlock, "precondition: the dungeon owns this voxel");
     assert.equal(
-      ch1SeederBlockAt("ch1_dungeon_desert", x, volume.y0, volume.z0 + 4, dungeonBlock),
+      ch1SeederBlockAt(
+        "ch1_dungeon_desert",
+        x,
+        volume.y0,
+        volume.z0 + 4,
+        dungeonBlock
+      ),
       dungeonBlock,
       "the horizon must never override a dungeon voxel"
     );
@@ -507,7 +529,8 @@ describe("ch1 horizon - seeder composition", () => {
       "precondition: the dungeon owns nothing out here"
     );
     assert.ok(
-      ch1SeederBlockAt("ch1_dungeon_desert", x, surface, z, undefined) !== undefined,
+      ch1SeederBlockAt("ch1_dungeon_desert", x, surface, z, undefined) !==
+        undefined,
       "the backdrop should fill the horizon"
     );
   });

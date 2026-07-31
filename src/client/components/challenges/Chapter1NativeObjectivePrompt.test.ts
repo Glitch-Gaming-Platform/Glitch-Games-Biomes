@@ -24,6 +24,15 @@ describe("Chapter1NativeObjectivePrompt input ownership", () => {
     assert.match(source, /state\.withinRange/);
     assert.match(source, /state\.trigger !== "near_location"/);
     assert.match(source, /disabled: busy/);
+    assert.match(source, /blocksChapterInteraction/);
+  });
+
+  it("publishes the authenticated dynamic target through the standard map manager", () => {
+    assert.match(source, /mapManager\.addNavigationAid/);
+    assert.match(source, /kind: "quest"/);
+    assert.match(source, /challengeId: state\.challengeId/);
+    assert.match(source, /triggerId: state\.stepId/);
+    assert.match(source, /position: \[\.\.\.state\.targetPosition\]/);
   });
 
   it("coalesces state polls and synchronously excludes completion races", () => {
@@ -42,8 +51,12 @@ describe("Chapter1NativeObjectivePrompt input ownership", () => {
   it("paginates active dialogue before choices or completion", () => {
     assert.match(source, /data-chapter1-dialogue-objective=/);
     assert.match(source, /data-chapter1-dialogue-page=/);
-    assert.match(source, /data-chapter1-dialogue-next/);
     assert.match(source, /data-chapter1-dialogue-final=/);
+    assert.match(source, /<TalkDialogModal entityId=/);
+    assert.match(source, /<GenericTalkDialogModalStep/);
+    assert.match(source, /onClose=\{advanceDialogue\}/);
+    assert.doesNotMatch(source, /data-chapter1-dialogue-next/);
+    assert.doesNotMatch(source, /aria-label=\{dialogue\.sequence\.title\}/);
     assert.match(source, /state\.dialogue/);
     assert.match(source, /dialogue\.mode === "objective"/);
   });
@@ -62,8 +75,14 @@ describe("Chapter1NativeObjectivePrompt input ownership", () => {
   });
 
   it("launches authored cinematics from normal objective completion", () => {
-    assert.match(source, /requestCutsceneById\(next\.cutsceneId/);
+    assert.match(source, /requestChapter1CutsceneById\(next\.cutsceneId/);
     assert.match(source, /state\?\.introCutsceneId/);
     assert.match(source, /biomes\.chapter1\.cutscene/);
+  });
+
+  it("treats sleeping as a visible transition instead of an instant F receipt", () => {
+    assert.match(source, /beginSleepTransition/);
+    assert.match(source, /data-chapter1-sleep-transition="active"/);
+    assert.match(source, /The road-house goes quiet/);
   });
 });

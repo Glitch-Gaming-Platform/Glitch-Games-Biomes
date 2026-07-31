@@ -48,7 +48,9 @@ describe("Bible quest gate — level band", () => {
   it("blocks a player below the minimum", () => {
     const result = bibleQuestGate(Q1, context({ playerLevel: 1 }));
     assert.equal(result.ok, false);
-    assert(bibleQuestGateReasons(result).includes("player_level_below_minimum"));
+    assert(
+      bibleQuestGateReasons(result).includes("player_level_below_minimum")
+    );
   });
 
   it("allows a player inside the band", () => {
@@ -57,7 +59,10 @@ describe("Bible quest gate — level band", () => {
 
   it("allows the ten-level soft-maximum headroom, then blocks past it", () => {
     const max = Q1.gate.levelBand.max;
-    assert.equal(bibleQuestGate(Q1, context({ playerLevel: max + 10 })).ok, true);
+    assert.equal(
+      bibleQuestGate(Q1, context({ playerLevel: max + 10 })).ok,
+      true
+    );
     const over = bibleQuestGate(Q1, context({ playerLevel: max + 11 }));
     assert.equal(over.ok, false);
     assert(
@@ -186,7 +191,13 @@ describe("Bible quest gate — time, hour, weather", () => {
     assert.equal(Q1.gate.timeOfDay.length, 0);
     assert.equal(Q1.gate.weather.length, 0);
     for (const timeOfDay of ["dawn", "day", "dusk", "night"] as const) {
-      for (const weather of ["clear", "rain", "storm", "fog", "snow"] as const) {
+      for (const weather of [
+        "clear",
+        "rain",
+        "storm",
+        "fog",
+        "snow",
+      ] as const) {
         assert.equal(
           bibleQuestGate(
             Q1,
@@ -299,7 +310,10 @@ describe("Bible quest gate — completion and cadence", () => {
 
   it("treats a never-completed repeatable as available", () => {
     const daily = bibleQuestsByCategory("repeatable")[0];
-    assert.equal(bibleCadenceOnCooldown(daily, undefined, MONDAY_NOON_UTC), false);
+    assert.equal(
+      bibleCadenceOnCooldown(daily, undefined, MONDAY_NOON_UTC),
+      false
+    );
   });
 
   it("keeps daily periods aligned to UTC midnight", () => {

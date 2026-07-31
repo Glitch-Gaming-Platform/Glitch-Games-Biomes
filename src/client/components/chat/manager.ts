@@ -39,6 +39,7 @@ import type {
   EmoteMessageEmoteType,
 } from "@/shared/chat/messages";
 import { zEmoteMessageEmoteType } from "@/shared/chat/messages";
+import { parseHarthmereCinematicExpression } from "@/shared/cutscene/cinematic_expressions";
 import {
   GiveMinigameKitEvent,
   UpdatePlayerHealthEvent,
@@ -736,9 +737,11 @@ export class ChatManager {
     const localPlayer = this.deps.reactResources.get("/scene/local_player");
     const dieMatch = input.match(/^\/die/i);
     const hurtMatch = input.match(/^\/hurt/i);
-    const emoteMatch = input.match(
+    const legacyEmoteMatch = input.match(
       /^\/(applause|clap|dance|flex|laugh|point|rock|sit|wave)/i
     );
+    const namedEmoteMatch = input.match(/^\/emote\s+([a-z][a-z0-9_-]*)\s*$/i);
+    const emoteMatch = legacyEmoteMatch ?? namedEmoteMatch;
     const yellMatch = input.match(/^\/(yell|shout) (.*)/i);
     const whoMatch = input.match(/^\/who\s*$/i);
     const teamMatch = input.match(/^\/(?:team|t)\s+(.*)\s*/i);
@@ -765,12 +768,18 @@ export class ChatManager {
       void this.handleHurt(localPlayer.id, amount);
     } else if (emoteMatch) {
       const emoteType = emoteStringToEmoteType(emoteMatch[1].toLowerCase());
+      if (!emoteType) {
+        this.deps.mailman.showChatError(
+          `Unknown emote '${emoteMatch[1]}'. Use /emote followed by a registered expression name.`
+        );
+        return;
+      }
       localPlayer.player.eagerEmote(
         this.deps.events,
         this.deps.reactResources,
         emoteType
       );
-      if (includes(zEmoteMessageEmoteType.Values, emoteType)) {
+      if (zEmoteMessageEmoteType.safeParse(emoteType).success) {
         void this.deps.chatIo.sendMessage(
           "chat",
           {
@@ -947,11 +956,14 @@ export class ChatManager {
   }
 }
 
-function emoteStringToEmoteType(emoteString: string): EmoteType {
+function emoteStringToEmoteType(emoteString: string): EmoteType | undefined {
   switch (emoteString) {
     case "clap":
       return "applause";
     default:
-      return zEmoteType.parse(emoteString);
+      return (
+        parseHarthmereCinematicExpression(emoteString) ??
+        zEmoteType.safeParse(emoteString).data
+      );
   }
 }

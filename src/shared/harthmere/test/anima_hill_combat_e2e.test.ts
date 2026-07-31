@@ -330,7 +330,8 @@ describe("hill combat E2E: group assistance across a hill", () => {
       membershipFor(0).groupId
     );
     const alert = evaluateGroupAlert({
-      recipientId: HARTHMERE_ROAD_GROUP_MONSTER_SEEDS[groupTwoSeedIndex].entityId,
+      recipientId:
+        HARTHMERE_ROAD_GROUP_MONSTER_SEEDS[groupTwoSeedIndex].entityId,
       recipientPosition: [349, 35, -404],
       recipientMembership: membershipFor(groupTwoSeedIndex),
       candidates: [damagedMate(1, [350, 35, -404])],

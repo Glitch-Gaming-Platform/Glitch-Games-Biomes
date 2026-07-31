@@ -1,0 +1,728 @@
+{
+  "version": 2,
+  "generator": "scripts/harthmere/generate_boss_voxel_assets.py",
+  "normalizedNpcBox": [
+    0.6,
+    1.8,
+    0.6
+  ],
+  "bosses": [
+    {
+      "id": "muck_scarred_helix",
+      "displayName": "Muck-Scarred Helix",
+      "assetUrl": "/assets/harthmere/glb/bosses/muck_scarred_helix.glb",
+      "staticAssetUrl": "/assets/harthmere/glb/bosses/muck_scarred_helix_world.glb",
+      "voxSource": "src/galois/data/npcs/harthmere_bosses/muck_scarred_helix.vox",
+      "worldSize": [
+        6.8,
+        4.8,
+        8.4
+      ],
+      "voxelCount": 20312,
+      "surfaceVertexCount": 83664,
+      "surfaceTriangleCount": 41832,
+      "materialCount": 33,
+      "clips": [
+        "AreaAttack",
+        "Attack",
+        "BreachCollapse",
+        "BreachStalk",
+        "Burrow",
+        "Death",
+        "Enrage",
+        "Fly",
+        "HeavyAttack",
+        "HelixPulse",
+        "HitReact",
+        "Idle",
+        "Jump",
+        "MaulCrush",
+        "PhaseTransition",
+        "RangedAttack",
+        "Roar",
+        "Run",
+        "Rupture",
+        "SiphonVolley",
+        "SporeCast",
+        "Sprint",
+        "Stunned",
+        "Summon",
+        "Walk",
+        "WipeReset"
+      ],
+      "specialClips": [
+        "BreachStalk",
+        "MaulCrush",
+        "SiphonVolley",
+        "HelixPulse",
+        "SporeCast",
+        "Burrow",
+        "Rupture",
+        "BreachCollapse"
+      ],
+      "rawVoxelBounds": {
+        "min": [
+          -32.5,
+          -32.5,
+          -0.5
+        ],
+        "max": [
+          32.5,
+          51.5,
+          48.5
+        ]
+      },
+      "fileBytes": 4384604
+    },
+    {
+      "id": "gilded_bull",
+      "displayName": "The Gilded Bull",
+      "assetUrl": "/assets/harthmere/glb/bosses/gilded_bull.glb",
+      "staticAssetUrl": "/assets/harthmere/glb/bosses/gilded_bull_world.glb",
+      "voxSource": "src/galois/data/npcs/harthmere_bosses/gilded_bull.vox",
+      "worldSize": [
+        3.9,
+        2.7,
+        5.6
+      ],
+      "voxelCount": 14863,
+      "surfaceVertexCount": 64016,
+      "surfaceTriangleCount": 32008,
+      "materialCount": 33,
+      "clips": [
+        "AreaAttack",
+        "Attack",
+        "Charge",
+        "CoreRupture",
+        "Death",
+        "Enrage",
+        "Fly",
+        "HeavyAttack",
+        "HitReact",
+        "HoofQuake",
+        "HornBreak",
+        "Idle",
+        "Jump",
+        "PatrolScan",
+        "PhaseTransition",
+        "PillarCrash",
+        "RangedAttack",
+        "Roar",
+        "Run",
+        "Sprint",
+        "Stunned",
+        "Summon",
+        "SunCoreBeam",
+        "Unbalanced",
+        "Walk",
+        "WipeReset"
+      ],
+      "specialClips": [
+        "PatrolScan",
+        "Charge",
+        "PillarCrash",
+        "HornBreak",
+        "SunCoreBeam",
+        "HoofQuake",
+        "Unbalanced",
+        "CoreRupture"
+      ],
+      "rawVoxelBounds": {
+        "min": [
+          -25.5,
+          -33.5,
+          -0.5
+        ],
+        "max": [
+          23.5,
+          36.5,
+          33.5
+        ]
+      },
+      "fileBytes": 3616180
+    },
+    {
+      "id": "ninth_winter",
+      "displayName": "The Ninth Winter",
+      "assetUrl": "/assets/harthmere/glb/bosses/ninth_winter.glb",
+      "staticAssetUrl": "/assets/harthmere/glb/bosses/ninth_winter_world.glb",
+      "voxSource": "src/galois/data/npcs/harthmere_bosses/ninth_winter.vox",
+      "worldSize": [
+        14.0,
+        13.0,
+        8.0
+      ],
+      "voxelCount": 36250,
+      "surfaceVertexCount": 116144,
+      "surfaceTriangleCount": 58072,
+      "materialCount": 30,
+      "clips": [
+        "AreaAttack",
+        "Attack",
+        "Blizzard",
+        "Death",
+        "Enrage",
+        "Fly",
+        "HearthFails",
+        "HeavyAttack",
+        "HitReact",
+        "Idle",
+        "Jump",
+        "MeltDeath",
+        "PhaseTransition",
+        "Rainfall",
+        "RangedAttack",
+        "Roar",
+        "RoofbeamSweep",
+        "Run",
+        "Shatter",
+        "Sprint",
+        "Stunned",
+        "Summon",
+        "TimeLoop",
+        "Walk",
+        "WipeReset",
+        "YearBreaks"
+      ],
+      "specialClips": [
+        "HearthFails",
+        "Blizzard",
+        "TimeLoop",
+        "RoofbeamSweep",
+        "YearBreaks",
+        "Shatter",
+        "Rainfall",
+        "MeltDeath"
+      ],
+      "rawVoxelBounds": {
+        "min": [
+          -41.5,
+          -22.5,
+          -0.5
+        ],
+        "max": [
+          42.5,
+          20.5,
+          75.5
+        ]
+      },
+      "fileBytes": 6000340
+    },
+    {
+      "id": "failed_apprentice",
+      "displayName": "The Failed Apprentice",
+      "assetUrl": "/assets/harthmere/glb/bosses/failed_apprentice.glb",
+      "staticAssetUrl": "/assets/harthmere/glb/bosses/failed_apprentice_world.glb",
+      "voxSource": "src/galois/data/npcs/harthmere_bosses/failed_apprentice.vox",
+      "worldSize": [
+        4.8,
+        5.6,
+        3.8
+      ],
+      "voxelCount": 11564,
+      "surfaceVertexCount": 53368,
+      "surfaceTriangleCount": 26684,
+      "materialCount": 20,
+      "clips": [
+        "AreaAttack",
+        "Attack",
+        "BellCollapse",
+        "BellCrack",
+        "BellFist",
+        "BindingTear",
+        "ChainLurch",
+        "Death",
+        "Enrage",
+        "FailedWard",
+        "Fly",
+        "HeavyAttack",
+        "HitReact",
+        "Idle",
+        "Jump",
+        "LastLesson",
+        "PhaseTransition",
+        "RangedAttack",
+        "Roar",
+        "Run",
+        "ShardCast",
+        "Sprint",
+        "Stunned",
+        "Summon",
+        "Walk",
+        "WipeReset",
+        "WrongNote"
+      ],
+      "specialClips": [
+        "ChainLurch",
+        "BellFist",
+        "ShardCast",
+        "FailedWard",
+        "WrongNote",
+        "BellCrack",
+        "BindingTear",
+        "LastLesson",
+        "BellCollapse"
+      ],
+      "rawVoxelBounds": {
+        "min": [
+          -25.5,
+          -20.5,
+          -0.5
+        ],
+        "max": [
+          28.5,
+          10.5,
+          58.5
+        ]
+      },
+      "fileBytes": 2770332
+    },
+    {
+      "id": "first_choir",
+      "displayName": "The First Choir",
+      "assetUrl": "/assets/harthmere/glb/bosses/first_choir.glb",
+      "staticAssetUrl": "/assets/harthmere/glb/bosses/first_choir_world.glb",
+      "voxSource": "src/galois/data/npcs/harthmere_bosses/first_choir.vox",
+      "worldSize": [
+        4.2,
+        2.7,
+        4.2
+      ],
+      "voxelCount": 1843,
+      "surfaceVertexCount": 14112,
+      "surfaceTriangleCount": 7056,
+      "materialCount": 33,
+      "clips": [
+        "AreaAttack",
+        "Attack",
+        "Chant",
+        "Death",
+        "Enrage",
+        "Fly",
+        "HarmonyBreak",
+        "HeavyAttack",
+        "HitReact",
+        "Idle",
+        "Jump",
+        "PhaseTransition",
+        "RangedAttack",
+        "Roar",
+        "Run",
+        "Sprint",
+        "Stunned",
+        "Summon",
+        "Walk",
+        "WipeReset"
+      ],
+      "specialClips": [
+        "Chant",
+        "HarmonyBreak"
+      ],
+      "rawVoxelBounds": {
+        "min": [
+          -15.5,
+          -14.5,
+          -1.5
+        ],
+        "max": [
+          19.5,
+          5.5,
+          26.5
+        ]
+      },
+      "fileBytes": 909528
+    },
+    {
+      "id": "echo_singer",
+      "displayName": "The Echo-Singer",
+      "assetUrl": "/assets/harthmere/glb/bosses/echo_singer.glb",
+      "staticAssetUrl": "/assets/harthmere/glb/bosses/echo_singer_world.glb",
+      "voxSource": "src/galois/data/npcs/harthmere_bosses/echo_singer.vox",
+      "worldSize": [
+        6.2,
+        5.6,
+        5.8
+      ],
+      "voxelCount": 14243,
+      "surfaceVertexCount": 60936,
+      "surfaceTriangleCount": 30468,
+      "materialCount": 10,
+      "clips": [
+        "AreaAttack",
+        "Attack",
+        "CopyGuard",
+        "CopyMelee",
+        "CopyRanged",
+        "Death",
+        "EchoDelay",
+        "Enrage",
+        "EssenceDive",
+        "Fly",
+        "HeavyAttack",
+        "HitReact",
+        "Idle",
+        "Jump",
+        "Listen",
+        "MirrorStep",
+        "PhaseTransition",
+        "RangedAttack",
+        "ResonanceOverload",
+        "Roar",
+        "Run",
+        "Silence",
+        "Sprint",
+        "Stunned",
+        "Summon",
+        "Walk",
+        "WipeReset"
+      ],
+      "specialClips": [
+        "Listen",
+        "CopyMelee",
+        "CopyRanged",
+        "CopyGuard",
+        "EchoDelay",
+        "EssenceDive",
+        "MirrorStep",
+        "ResonanceOverload",
+        "Silence"
+      ],
+      "rawVoxelBounds": {
+        "min": [
+          -42.5,
+          -22.5,
+          -1.5
+        ],
+        "max": [
+          43.5,
+          24.5,
+          52.5
+        ]
+      },
+      "fileBytes": 3064400
+    },
+    {
+      "id": "vyrahel_vein_keeper",
+      "displayName": "Vyrahel, the Vein-Keeper",
+      "assetUrl": "/assets/harthmere/glb/bosses/vyrahel_vein_keeper.glb",
+      "staticAssetUrl": "/assets/harthmere/glb/bosses/vyrahel_vein_keeper_world.glb",
+      "voxSource": "src/galois/data/npcs/harthmere_bosses/vyrahel_vein_keeper.vox",
+      "worldSize": [
+        3.8,
+        2.6,
+        6.4
+      ],
+      "voxelCount": 24899,
+      "surfaceVertexCount": 94072,
+      "surfaceTriangleCount": 47036,
+      "materialCount": 17,
+      "clips": [
+        "AreaAttack",
+        "Attack",
+        "BurrowRush",
+        "CrystalGuard",
+        "Death",
+        "Enrage",
+        "Fly",
+        "HeavyAttack",
+        "HitReact",
+        "Idle",
+        "Jump",
+        "MercyWindow",
+        "PhaseTransition",
+        "RangedAttack",
+        "Roar",
+        "Run",
+        "Sprint",
+        "Stunned",
+        "Summon",
+        "TailFeint",
+        "VeinBreath",
+        "VeinFade",
+        "VeinProwl",
+        "Walk",
+        "WingBurst",
+        "WipeReset",
+        "Yield"
+      ],
+      "specialClips": [
+        "VeinProwl",
+        "CrystalGuard",
+        "VeinBreath",
+        "BurrowRush",
+        "TailFeint",
+        "WingBurst",
+        "MercyWindow",
+        "Yield",
+        "VeinFade"
+      ],
+      "rawVoxelBounds": {
+        "min": [
+          -29.5,
+          -52.5,
+          -0.5
+        ],
+        "max": [
+          29.5,
+          75.5,
+          42.5
+        ]
+      },
+      "fileBytes": 4819872
+    },
+    {
+      "id": "thaedryn_bellbound",
+      "displayName": "Thaedryn the Bellbound",
+      "assetUrl": "/assets/harthmere/glb/bosses/thaedryn_bellbound.glb",
+      "staticAssetUrl": "/assets/harthmere/glb/bosses/thaedryn_bellbound_world.glb",
+      "voxSource": "src/galois/data/npcs/harthmere_bosses/thaedryn_bellbound.vox",
+      "worldSize": [
+        20.0,
+        14.0,
+        58.0
+      ],
+      "voxelCount": 73210,
+      "surfaceVertexCount": 238592,
+      "surfaceTriangleCount": 119296,
+      "materialCount": 33,
+      "clips": [
+        "AreaAttack",
+        "Attack",
+        "BellboundRise",
+        "ChainBreak",
+        "Death",
+        "Enrage",
+        "Fly",
+        "Greeting",
+        "HalfWake",
+        "HeavyAttack",
+        "HitReact",
+        "Idle",
+        "Jump",
+        "PhaseTransition",
+        "RangedAttack",
+        "Rebind",
+        "RiverBreath",
+        "Roar",
+        "Run",
+        "Slay",
+        "SleeperSweep",
+        "SoundCloud",
+        "Sprint",
+        "Stunned",
+        "Summon",
+        "VeinSummon",
+        "Wake",
+        "Walk",
+        "WingGust",
+        "WipeReset"
+      ],
+      "specialClips": [
+        "SleeperSweep",
+        "SoundCloud",
+        "RiverBreath",
+        "ChainBreak",
+        "HalfWake",
+        "WingGust",
+        "VeinSummon",
+        "BellboundRise",
+        "Greeting",
+        "Rebind",
+        "Slay",
+        "Wake"
+      ],
+      "rawVoxelBounds": {
+        "min": [
+          -39.5,
+          -74.5,
+          -1.5
+        ],
+        "max": [
+          39.5,
+          159.5,
+          53.5
+        ]
+      },
+      "fileBytes": 12323232
+    },
+    {
+      "id": "hex_wraith",
+      "displayName": "Hex Wraith",
+      "assetUrl": "/assets/harthmere/glb/bosses/hex_wraith.glb",
+      "staticAssetUrl": "/assets/harthmere/glb/bosses/hex_wraith_world.glb",
+      "voxSource": "src/galois/data/npcs/harthmere_bosses/hex_wraith.vox",
+      "worldSize": [
+        2.5,
+        3.8,
+        2.5
+      ],
+      "voxelCount": 3912,
+      "surfaceVertexCount": 15288,
+      "surfaceTriangleCount": 7644,
+      "materialCount": 11,
+      "clips": [
+        "AreaAttack",
+        "Attack",
+        "Death",
+        "Enrage",
+        "Fly",
+        "HeavyAttack",
+        "HexVolley",
+        "HitReact",
+        "Idle",
+        "Jump",
+        "PhaseTransition",
+        "RangedAttack",
+        "Roar",
+        "Run",
+        "Sprint",
+        "Stunned",
+        "Summon",
+        "Teleport",
+        "Walk",
+        "WipeReset"
+      ],
+      "specialClips": [
+        "Teleport",
+        "HexVolley"
+      ],
+      "rawVoxelBounds": {
+        "min": [
+          -16.5,
+          -7.5,
+          0.5
+        ],
+        "max": [
+          16.5,
+          8.5,
+          35.5
+        ]
+      },
+      "fileBytes": 841100
+    },
+    {
+      "id": "alpha_mucker",
+      "displayName": "Alpha Mucker",
+      "assetUrl": "/assets/harthmere/glb/bosses/alpha_mucker.glb",
+      "staticAssetUrl": "/assets/harthmere/glb/bosses/alpha_mucker_world.glb",
+      "voxSource": "src/galois/data/npcs/harthmere_bosses/alpha_mucker.vox",
+      "worldSize": [
+        12.0,
+        14.0,
+        11.0
+      ],
+      "voxelCount": 121862,
+      "surfaceVertexCount": 230256,
+      "surfaceTriangleCount": 115128,
+      "materialCount": 21,
+      "clips": [
+        "AreaAttack",
+        "Attack",
+        "BranchSlam",
+        "CanopyRage",
+        "Death",
+        "Enrage",
+        "Fly",
+        "HeartExposed",
+        "HeavyAttack",
+        "HitReact",
+        "Idle",
+        "Jump",
+        "MuckheartPulse",
+        "PhaseTransition",
+        "RangedAttack",
+        "RoadUproot",
+        "Roar",
+        "RootCage",
+        "RootMarch",
+        "Run",
+        "SeedBarrage",
+        "Sprint",
+        "Stunned",
+        "Summon",
+        "Timberfall",
+        "Walk",
+        "WipeReset"
+      ],
+      "specialClips": [
+        "RootMarch",
+        "BranchSlam",
+        "RoadUproot",
+        "SeedBarrage",
+        "RootCage",
+        "MuckheartPulse",
+        "CanopyRage",
+        "HeartExposed",
+        "Timberfall"
+      ],
+      "rawVoxelBounds": {
+        "min": [
+          -53.5,
+          -29.5,
+          -2.5
+        ],
+        "max": [
+          57.5,
+          60.5,
+          102.5
+        ]
+      },
+      "fileBytes": 11139204
+    },
+    {
+      "id": "root_crowned_dead",
+      "displayName": "The Root-Crowned Dead",
+      "assetUrl": "/assets/harthmere/glb/bosses/root_crowned_dead.glb",
+      "staticAssetUrl": "/assets/harthmere/glb/bosses/root_crowned_dead_world.glb",
+      "voxSource": "src/galois/data/npcs/harthmere_bosses/root_crowned_dead.vox",
+      "worldSize": [
+        4.5,
+        5.5,
+        4.5
+      ],
+      "voxelCount": 9436,
+      "surfaceVertexCount": 39184,
+      "surfaceTriangleCount": 19592,
+      "materialCount": 22,
+      "clips": [
+        "AreaAttack",
+        "Attack",
+        "Death",
+        "Enrage",
+        "Fly",
+        "HeavyAttack",
+        "HitReact",
+        "Idle",
+        "Jump",
+        "PhaseTransition",
+        "RangedAttack",
+        "Roar",
+        "RootEruption",
+        "Run",
+        "SpawnRootlings",
+        "Sprint",
+        "Stunned",
+        "Summon",
+        "Walk",
+        "WipeReset"
+      ],
+      "specialClips": [
+        "RootEruption",
+        "SpawnRootlings"
+      ],
+      "rawVoxelBounds": {
+        "min": [
+          -31.5,
+          -10.5,
+          -0.5
+        ],
+        "max": [
+          31.5,
+          17.5,
+          55.5
+        ]
+      },
+      "fileBytes": 2007640
+    }
+  ]
+}

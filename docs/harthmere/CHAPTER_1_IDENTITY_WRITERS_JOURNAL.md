@@ -474,7 +474,7 @@ This is the first thread of the real plot, delivered by a side character, in a s
 
 #### The Act 1 close
 
-At dusk the player walks the fence line with Jackie. The Card goes hot enough to hurt. Fifty metres past the **Broken Safe-Zone Fence** `[514, 71, -198]`, the air is wrong — a vertical seam of light, two metres tall, humming.
+At dusk the player walks the fence line with Jackie. The Card goes hot enough to hurt. At the open boundary stones beyond the **Broken Safe-Zone Fence**, the air is wrong — a vertical seam of light, two metres tall, humming.
 
 It is a Fracture Gate, and it is *small*, and it closes on its own after ninety seconds.
 
@@ -499,7 +499,7 @@ fragments:
   frag_a1_echo_get_back  (echo, truth=true, confidence 90, trigger=stress)
   frag_a1_play_run_it_again (playback, truth=true, trigger=object/auggie)
 flags_set: ch1_act1_complete, ch1_seen_first_gate
-anchors: fence gate spawn approx [520, 71, -205]  # 50m past Broken Safe-Zone Fence
+anchors: fence gate spawn [543, 69, -221]  # measured open shelf east of the wall
 ```
 
 ---
@@ -1466,4 +1466,3 @@ unprompted.
 ---
 
 *End of Chapter 1 writer's journal, draft 1.*
-

@@ -48,8 +48,8 @@ export const HARTHMERE_HUD_KEY_BINDINGS: readonly HarthmereHudKeyBinding[] = [
   },
   {
     action: "crafting",
-    key: "C",
-    code: "KeyC",
+    key: ";",
+    code: "Semicolon",
     label: "Craft",
     eventName: "biomes:harthmere-toggle-crafting",
     targetPanel: "systems",

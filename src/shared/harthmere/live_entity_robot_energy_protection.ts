@@ -1,16 +1,10 @@
 import type { BuildingSystemInWorldMarker } from "./building_system";
-import { shiftHarthmereAuthoredPositionToWorld } from "./coordinate_transform";
 import {
   LIVE_ENTITY_HELPER_GROVE_EXCLUSION_BOUNDS,
   LIVE_ENTITY_HELPER_HARTHMERE_EXCLUSION_BOUNDS,
   isPositionInsideLiveEntityHelperBounds,
   type LiveEntityHelperBounds,
 } from "./live_entity_helper_quests";
-import {
-  HARTHMERE_EXTENSION_FEET_Y,
-  HARTHMERE_EXTENSION_WORLD_BOUNDS,
-  normalizeHarthmereExtensionOutdoorFeetPosition,
-} from "./world_extension";
 
 export const LIVE_ENTITY_ROBOT_ENERGY_PROTECTION_VERSION =
   "live-entity-robot-energy-protection" as const;
@@ -119,8 +113,8 @@ const AUTHORED_LIVE_ENTITY_ROBOT_PROTECTION_AREAS: readonly LiveEntityRobotProte
       areaId: "west_muck_breach",
       label: "West Muck Breach",
       bounds: { minX: 180, maxX: 292, minZ: -560, maxZ: -460 },
-      anchor: [232, 54, -506],
-      groundY: 54,
+      anchor: [232, 32, -506],
+      groundY: 32,
       protectedMarkerId: "robot_shield_west_muck_breach",
       muckMarkerId: "robot_muck_west_muck_breach",
       protectedLabel: "West Breach Shield",
@@ -132,8 +126,8 @@ const AUTHORED_LIVE_ENTITY_ROBOT_PROTECTION_AREAS: readonly LiveEntityRobotProte
       areaId: "watchtower_muck_clearing",
       label: "Watchtower Muck Clearing",
       bounds: { minX: 316, maxX: 348, minZ: -406, maxZ: -374 },
-      anchor: [332, 54, -390],
-      groundY: 54,
+      anchor: [332, 38, -390],
+      groundY: 38,
       protectedMarkerId: "robot_shield_watchtower_clearing",
       muckMarkerId: "robot_muck_watchtower_clearing",
       protectedLabel: "Watchtower Shield",
@@ -145,8 +139,8 @@ const AUTHORED_LIVE_ENTITY_ROBOT_PROTECTION_AREAS: readonly LiveEntityRobotProte
       areaId: "old_wood_mucker_copse",
       label: "Old Wood Mucker Copse",
       bounds: { minX: 600, maxX: 688, minZ: -495, maxZ: -415 },
-      anchor: [640, 54, -455],
-      groundY: 54,
+      anchor: [640, 57, -455],
+      groundY: 57,
       protectedMarkerId: "robot_shield_old_wood_copse",
       muckMarkerId: "robot_muck_old_wood_copse",
       protectedLabel: "Old Wood Shield",
@@ -158,8 +152,8 @@ const AUTHORED_LIVE_ENTITY_ROBOT_PROTECTION_AREAS: readonly LiveEntityRobotProte
       areaId: "gravewood_pale_muck",
       label: "Gravewood Pale Muck",
       bounds: { minX: 598, maxX: 682, minZ: 78, maxZ: 162 },
-      anchor: [640, 54, 120],
-      groundY: 54,
+      anchor: [640, 46, 120],
+      groundY: 46,
       protectedMarkerId: "robot_shield_gravewood",
       muckMarkerId: "robot_muck_gravewood",
       protectedLabel: "Gravewood Shield",
@@ -169,48 +163,13 @@ const AUTHORED_LIVE_ENTITY_ROBOT_PROTECTION_AREAS: readonly LiveEntityRobotProte
     },
   ];
 
-// ADDITIVE_HARTHMERE_ROBOT_AREAS:
-// Protection policy used to remain in authored/+512 coordinates after the
-// physical town moved east. Export world-space bounds and anchors so the robot
-// ECS bodies, recharge checks, safe-zone markers, and Mucker AI all agree with
-// the terrain the player can actually reach.
+// HILLY_WORLD_ROBOT_AREAS:
+// These danger areas belong to the original scanned wilderness, not the flat
+// additive Harthmere town. Keep their original X/Z and each sentinel's measured
+// surface Y so the ECS body, recharge prompt, safe-zone marker, and Mucker AI
+// all refer to the same reachable terrain column.
 export const LIVE_ENTITY_ROBOT_PROTECTION_AREAS: readonly LiveEntityRobotProtectionArea[] =
-  AUTHORED_LIVE_ENTITY_ROBOT_PROTECTION_AREAS.map((area) => {
-    const worldMin = shiftHarthmereAuthoredPositionToWorld([
-      area.bounds.minX,
-      0,
-      area.bounds.minZ,
-    ]);
-    const worldMax = shiftHarthmereAuthoredPositionToWorld([
-      area.bounds.maxX,
-      0,
-      area.bounds.maxZ,
-    ]);
-    return {
-      ...area,
-      bounds: {
-        minX: Math.max(HARTHMERE_EXTENSION_WORLD_BOUNDS.minX, worldMin[0]),
-        maxX: Math.min(
-          HARTHMERE_EXTENSION_WORLD_BOUNDS.maxX - 0.001,
-          worldMax[0]
-        ),
-        minZ: Math.max(HARTHMERE_EXTENSION_WORLD_BOUNDS.minZ, worldMin[2]),
-        maxZ: Math.min(
-          HARTHMERE_EXTENSION_WORLD_BOUNDS.maxZ - 0.001,
-          worldMax[2]
-        ),
-      },
-      anchor: normalizeHarthmereExtensionOutdoorFeetPosition(
-        shiftHarthmereAuthoredPositionToWorld([
-          area.anchor[0],
-          HARTHMERE_EXTENSION_FEET_Y,
-          area.anchor[2],
-        ]),
-        1.5
-      ),
-      groundY: HARTHMERE_EXTENSION_FEET_Y,
-    };
-  });
+  AUTHORED_LIVE_ENTITY_ROBOT_PROTECTION_AREAS;
 
 function areaById(areaId: string | undefined) {
   return LIVE_ENTITY_ROBOT_PROTECTION_AREAS.find(

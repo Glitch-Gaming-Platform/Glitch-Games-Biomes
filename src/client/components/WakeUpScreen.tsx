@@ -1293,6 +1293,7 @@ const HarthmereVoxelHeadShapeRow: React.FunctionComponent<{
   previewAppearance: ReadonlyAppearance;
   onSelect: (id: BiomesId) => void;
 }> = ({ selectedId, previewAppearance, onSelect }) => {
+  const { clientConfig } = useClientContext();
   const headIds = useMemo(
     () => getBiscuits(bikkie.schema.head).map(({ id }) => id),
     []
@@ -1327,21 +1328,37 @@ const HarthmereVoxelHeadShapeRow: React.FunctionComponent<{
               }`}
               onClick={() => onSelect(id)}
             >
-              <CharacterPreview
-                previewSlot={makePreviewSlot("bikkie", id)}
-                appearanceOverride={{
-                  ...previewAppearance,
-                  head_id: id,
-                }}
-                wearableOverrides={new Map()}
-                controls={false}
-                animate={false}
-                cameraPos={new Vector3(6, 4.33, -13.33)}
-                controlTarget={new Vector3(0, 1.4, 0)}
-                cameraFOV={3}
-                disableLoadingBlur={true}
-                extraClassName="absolute inset-0 h-full w-full"
-              />
+              <div
+                className="absolute inset-0"
+                data-harthmere-builder-head-preview={
+                  clientConfig.lowMemory ? "static-icon" : "live-webgl"
+                }
+              >
+                {clientConfig.lowMemory ? (
+                  <img
+                    src={iconUrl(anItem(id))}
+                    alt=""
+                    loading="lazy"
+                    className="h-full w-full object-contain p-1"
+                  />
+                ) : (
+                  <CharacterPreview
+                    previewSlot={makePreviewSlot("bikkie", id)}
+                    appearanceOverride={{
+                      ...previewAppearance,
+                      head_id: id,
+                    }}
+                    wearableOverrides={new Map()}
+                    controls={false}
+                    animate={false}
+                    cameraPos={new Vector3(6, 4.33, -13.33)}
+                    controlTarget={new Vector3(0, 1.4, 0)}
+                    cameraFOV={3}
+                    disableLoadingBlur={true}
+                    extraClassName="absolute inset-0 h-full w-full"
+                  />
+                )}
+              </div>
             </button>
           );
         })}

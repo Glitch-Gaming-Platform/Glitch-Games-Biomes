@@ -1,9 +1,10 @@
 import type { PermissionsManager } from "@/client/game/context_managers/permissions_manager";
 import type { ClientTable } from "@/client/game/game";
 import { traceBlueprints } from "@/client/game/helpers/blueprint";
+import { isUsableCursorRay } from "@/client/game/helpers/cursor_ray";
 import { MarchHelper } from "@/client/game/helpers/march";
 import { occupancyAt } from "@/client/game/helpers/occupancy";
-import type { Cursor } from "@/client/game/resources/cursor";
+import { makeInitialCursor, type Cursor } from "@/client/game/resources/cursor";
 import {
   attackableEntitiesInAttackRegion,
   canAttackFilter,
@@ -44,6 +45,13 @@ export class CursorScript implements Script {
     const ray = MarchHelper.getPlayerRay(this.resources, MAX_CURSOR_DISTANCE);
     const source = ray.source.toArray();
     const direction = ray.direction.toArray();
+    if (!isUsableCursorRay(source, direction)) {
+      // Camera/cutscene teardown can expose one transitional frame before the
+      // next finite transform is published. Never pass NaN/Infinity into
+      // voxel shard encoding; one frame without a cursor hit is recoverable,
+      // while terrain marching on an invalid ray fatally stops the client.
+      return makeInitialCursor();
+    }
     const maxDistance = MAX_CURSOR_DISTANCE;
     // Check entities hit by the ray.
 

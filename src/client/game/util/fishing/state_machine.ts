@@ -143,6 +143,11 @@ export type FailedFishingInfo = {
   rodItemRef: OwnedItemReference | undefined;
   baitItemRef: OwnedItemReference | undefined;
   retryDelay?: number | undefined;
+  failureReason?:
+    | "land_impact"
+    | "missed_bite"
+    | "line_break"
+    | "invalid_catch";
 };
 
 export type FishingInfo =
@@ -340,6 +345,7 @@ export function handleFishAction(
             catchTime: secondsSinceEpoch - fishingInfo.start,
             rodItemRef: fishingInfo.rodItemRef,
             baitItemRef: fishingInfo.baitItemRef,
+            failureReason: "land_impact",
           };
         }
 
@@ -423,6 +429,7 @@ export function handleFishAction(
           rodItemRef: fishingInfo.rodItemRef,
           baitItemRef: fishingInfo.baitItemRef,
           retryDelay: MISSED_BITE_RETRY_DELAY,
+          failureReason: "missed_bite",
         };
       }
       if (isClicking) {
@@ -482,6 +489,7 @@ export function handleFishAction(
           catchTime: secondsSinceEpoch - fishingInfo.start,
           rodItemRef: fishingInfo.rodItemRef,
           baitItemRef: fishingInfo.baitItemRef,
+          failureReason: "line_break",
         };
       }
 
@@ -519,6 +527,7 @@ export function handleFishAction(
           catchTime: secondsSinceEpoch - fishingInfo.start,
           rodItemRef: fishingInfo.rodItemRef,
           baitItemRef: fishingInfo.baitItemRef,
+          failureReason: "invalid_catch",
         };
       }
 

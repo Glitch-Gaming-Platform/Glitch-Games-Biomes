@@ -77,6 +77,22 @@ export interface Ch1CastMember {
 
 export const CH1_NEW_CAST: readonly Ch1CastMember[] = Object.freeze([
   {
+    key: "jackie",
+    entityId: ch1NpcEntityId("jackie"),
+    displayName: "Jackie",
+    role: "Grove wayfinder and road-house keeper",
+    faction: "take_terra",
+    placement: CH1_ANCHORS.roadhouse_table,
+    introducedAct: 1,
+    voice:
+      "Practical warmth, clipped when frightened, never theatrical. She does the next useful thing before explaining herself.",
+    sampleLine: "Food first. Questions when your hands stop shaking.",
+    writerNote:
+      "Promotes the canonical Snapshot Grove Jackie. Chapter 1 moves only her per-player puppet; never seed a duplicate or move the shared ECS body.",
+    combatant: false,
+    promotesExistingEntity: true,
+  },
+  {
     key: "lou_ardan",
     entityId: ch1NpcEntityId("lou_ardan"),
     displayName: "Dr. Lucien Ardan",
@@ -157,7 +173,7 @@ export const CH1_NEW_CAST: readonly Ch1CastMember[] = Object.freeze([
   {
     key: "teak_morrow",
     entityId: ch1NpcEntityId("teak_morrow"),
-    displayName: "Teague \"Teak\" Morrow",
+    displayName: 'Teague "Teak" Morrow',
     role: "Take Terra cell runner",
     faction: "take_terra",
     placement: CH1_ANCHORS.rat_crowns_den,
@@ -194,7 +210,8 @@ export const CH1_NEW_CAST: readonly Ch1CastMember[] = Object.freeze([
     faction: "collective_civil",
     placement: CH1_ANCHORS.ashline_containment_works,
     introducedAct: 4,
-    voice: "Tired, careful, loves her sister and disapproves of everything about her.",
+    voice:
+      "Tired, careful, loves her sister and disapproves of everything about her.",
     sampleLine:
       "She's not a liar. That's the thing people get wrong about her. She just decides what you get to have, and then she's very honest inside that.",
     writerNote:
@@ -227,6 +244,37 @@ export const CH1_NEW_CAST: readonly Ch1CastMember[] = Object.freeze([
       "You are offering to let my people die on schedule. I want you to hear that sentence the way I hear it before I answer you.",
     writerNote:
       "The only person in the fjord who has worked out that the winter is not weather. His choice at the end of Dungeon 2 must not be scored, and he must not be judged for either answer.",
+    combatant: false,
+  },
+  {
+    key: "coretta",
+    entityId: ch1NpcEntityId("coretta"),
+    displayName: "Coretta",
+    role: "Keeper of the Grove's day-book",
+    faction: "grove",
+    placement: CH1_ANCHORS.coretta_ledger_desk,
+    introducedAct: 2,
+    voice:
+      "Brisk, precise, faintly offended by imprecision. Writes everything down the same day, which is the whole point of Coretta.",
+    sampleLine:
+      "She didn't write you in for nine days. I write everything in the same day. That's the whole point of me.",
+    writerNote:
+      "Gives 'The Night You Came' and holds the ledger Act 5 checks the dates against. She was a quest giver and a named testimony source with NO ENTITY ANYWHERE — the quest auto-started by accident and her twelve accounts were collected from an empty patch of plaza.",
+    combatant: false,
+  },
+  {
+    key: "calla_ashe",
+    entityId: ch1NpcEntityId("calla_ashe"),
+    displayName: "Foreman Calla Ashe",
+    role: "Shift foreman, Ashline Containment Works",
+    faction: "unaffiliated",
+    placement: CH1_ANCHORS.ashline_foreman_post,
+    introducedAct: 4,
+    voice:
+      "Clipped, competent, running on procedure. Forty seconds of training for a four-minute problem and no time to be frightened until afterwards.",
+    sampleLine: "How did you do that?",
+    writerNote:
+      "Gives 'Thirty-One Seconds' and asks the question the whole act turns on. She had no entity, so the closing dialogue-choice objective resolved through the DISTRICT FALLBACK to a bare anchor with nobody standing at it. HIDDEN: her incident report is what confirms the player's identity to the Collective.",
     combatant: false,
   },
 ]);

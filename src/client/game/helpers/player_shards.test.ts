@@ -5,6 +5,7 @@ import {
   allPlayerShardsLoaded,
   allPlayerShardsMeshed,
   playerShardLoadWorldAabb,
+  playerShardMeshLoadScope,
   shouldRequestPlayerShardRecovery,
   triggerPlayerShardsMesh,
 } from "@/client/game/helpers/player_shards";
@@ -13,6 +14,11 @@ import { ch1ElsewhenSlot } from "@/shared/harthmere/ch1_elsewhen_region";
 import type { ReadonlyAABB } from "@/shared/math/types";
 
 describe("player shard recovery", () => {
+  it("uses a narrow startup mesh scope only for low-memory clients", () => {
+    assert.equal(playerShardMeshLoadScope(true), "local");
+    assert.equal(playerShardMeshLoadScope(false), "nearby");
+  });
+
   it("waits for a sustained missing-shard window before recovery", () => {
     assert.equal(
       shouldRequestPlayerShardRecovery({
@@ -209,6 +215,55 @@ describe("player shard recovery", () => {
     assert.equal(allPlayerShardsMeshed(resources as never), false);
     neighborMeshLoaded = true;
     assert.equal(allPlayerShardsMeshed(resources as never), true);
+  });
+
+  it("lets low-memory startup proceed once local supporting shards are ready", () => {
+    const position: [number, number, number] = [2024, 54, -52];
+    const supportingShard = voxelShard(
+      position[0],
+      position[1] - 1,
+      position[2]
+    );
+    const distantNeighbor = voxelShard(
+      position[0] + 32,
+      position[1],
+      position[2]
+    );
+    const resources = {
+      get(path: string, shard?: string) {
+        if (path === "/ecs/metadata") {
+          return { aabb: { v0: [-2048, -256, -2048], v1: [2560, 512, 2048] } };
+        }
+        if (path === "/scene/local_player") {
+          return {
+            player: {
+              position,
+              aabb: () => [
+                [position[0] - 0.5, position[1], position[2] - 0.5],
+                [position[0] + 0.5, position[1] + 2, position[2] + 0.5],
+              ],
+            },
+          };
+        }
+        if (path === "/ecs/terrain") {
+          return shard === supportingShard || shard === distantNeighbor
+            ? { id: 1 }
+            : undefined;
+        }
+        if (path === "/physics/boxes") {
+          return shard === supportingShard ? {} : undefined;
+        }
+        return undefined;
+      },
+      cached(path: string, shard: string) {
+        return path === "/terrain/combined_mesh" && shard === supportingShard
+          ? {}
+          : undefined;
+      },
+    };
+
+    assert.equal(allPlayerShardsMeshed(resources as never, "local"), true);
+    assert.equal(allPlayerShardsMeshed(resources as never, "nearby"), false);
   });
 
   it("includes supporting terrain below an exact vertical shard boundary", () => {

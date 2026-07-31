@@ -236,11 +236,15 @@ describe("Chapter 1 dungeon survival mechanics", () => {
       "b:8660732475922643": 12, // clean_water
       "b:8680649876498765": 18, // coal
       "b:8656273202062989": 10, // wall_lantern
+      "b:8655485053367986": 20, // road_ration
+      "b:8663861342816389": 1, // travel_cloak
     };
     const carried = ch1ProvisioningCarriedFromInventory(items);
     assert.equal(carried.water, 12);
+    assert.equal(carried.food, 20);
     assert.equal(carried.fuel, 18);
     assert.equal(carried.light, 10);
+    assert.equal(carried.cold_gear, 1);
 
     const consumed = ch1ConsumeProvisioningResourceFromInventory(
       items,

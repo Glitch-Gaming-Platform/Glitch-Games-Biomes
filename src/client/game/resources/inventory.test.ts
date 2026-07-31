@@ -16,9 +16,9 @@ function slot(id: number, action: string): ItemAndCount {
 }
 
 describe("camera hotbar exit selection", () => {
-  it("recognizes X as a camera exit independently of pointer-lock state", () => {
+  it("recognizes Delete as a camera exit without stealing the dodge key", () => {
     assert.equal(
-      isCameraExitKey("KeyX", {
+      isCameraExitKey("Delete", {
         kind: "camera",
         ref: { kind: "hotbar", idx: 0 },
         mode: { kind: "selfie", label: "Selfie", modeType: "selfie" },
@@ -33,7 +33,15 @@ describe("camera hotbar exit selection", () => {
       }),
       false
     );
-    assert.equal(isCameraExitKey("KeyX", { kind: "hotbar", idx: 0 }), false);
+    assert.equal(
+      isCameraExitKey("KeyX", {
+        kind: "camera",
+        ref: { kind: "hotbar", idx: 0 },
+        mode: { kind: "selfie", label: "Selfie", modeType: "selfie" },
+      }),
+      false
+    );
+    assert.equal(isCameraExitKey("Delete", { kind: "hotbar", idx: 0 }), false);
   });
 
   it("returns to the nearest preceding non-camera tool", () => {

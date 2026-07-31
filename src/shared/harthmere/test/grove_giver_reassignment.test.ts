@@ -22,7 +22,10 @@ import {
   groveQuest,
   groveQuestIdsForGiver,
 } from "../grove/grove_quest_catalog";
-import { groveNativeQuestId, groveNativeStepId } from "../grove/grove_quest_ids";
+import {
+  groveNativeQuestId,
+  groveNativeStepId,
+} from "../grove/grove_quest_ids";
 import {
   GROVE_PROTECTED_NATIVE_QUEST_IDS,
   groveValidateProtectedChainUntouched,
@@ -58,9 +61,9 @@ describe("Grove giver reassignment — the four fountain lessons", () => {
       );
     }
     assert.deepEqual(
-      groveQuestIdsForGiver(NEW_GIVER).filter((id) =>
-        (REASSIGNED as readonly string[]).includes(id)
-      ).sort(),
+      groveQuestIdsForGiver(NEW_GIVER)
+        .filter((id) => (REASSIGNED as readonly string[]).includes(id))
+        .sort(),
       [...REASSIGNED].sort()
     );
   });
@@ -216,9 +219,7 @@ describe("Jackie's original-snapshot chain is untouched", () => {
         ),
       ])
     );
-    for (const [name, id] of Object.entries(
-      GROVE_PROTECTED_NATIVE_QUEST_IDS
-    )) {
+    for (const [name, id] of Object.entries(GROVE_PROTECTED_NATIVE_QUEST_IDS)) {
       assert(!groveIds.has(id), `Grove claims ${name} (${id})`);
     }
   });

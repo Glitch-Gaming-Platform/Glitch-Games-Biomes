@@ -13,10 +13,14 @@ import {
   readHarthmereReputationState,
 } from "@/client/components/challenges/LocalDevHarthmereReputation";
 import type { TalkDialogStepAction } from "@/client/components/challenges/TalkDialogModalStep";
+import { HARTHMERE_PROJECTILE_VISUAL_EVENT } from "@/shared/harthmere/projectile_visual_manifest";
+import {
+  emitHarthmereSoundEffect,
+  HARTHMERE_ABILITY_SOUND_MAP,
+} from "@/shared/harthmere/sound_effect_manifest";
 import { useEffect, useMemo, useState } from "react";
 
-const HARTHMERE_CLASS_STATE_KEY =
-  "biomes.localDev.harthmere.classSkillState";
+const HARTHMERE_CLASS_STATE_KEY = "biomes.localDev.harthmere.classSkillState";
 const HARTHMERE_CLASS_EVENT = "biomes:harthmere-class-skill-changed";
 
 const SKILL_TITLES = [
@@ -1145,7 +1149,9 @@ function resourceMaxForClass(classId: HarthmereClassId) {
   return 100;
 }
 
-function skillSeedsForClass(classId: HarthmereClassId): Record<string, HarthmereSkillState> {
+function skillSeedsForClass(
+  classId: HarthmereClassId
+): Record<string, HarthmereSkillState> {
   const common = {
     melee_combat: defaultSkillState(1),
     persuasion: defaultSkillState(1),
@@ -1404,19 +1410,25 @@ function abilityRequirementFailure(
     ability.classRequirements &&
     !ability.classRequirements.includes(state.classId)
   ) {
-    return `Requires class: ${ability.classRequirements.map((id) => CLASS_DEFINITIONS[id].name).join(", ")}.`;
+    return `Requires class: ${ability.classRequirements
+      .map((id) => CLASS_DEFINITIONS[id].name)
+      .join(", ")}.`;
   }
   for (const [skillId, level] of Object.entries(
     ability.skillRequirements ?? {}
   )) {
     if ((state.skills[skillId]?.level ?? 0) < level) {
-      return `Requires ${SKILL_DEFINITIONS[skillId]?.name ?? skillId} ${level}.`;
+      return `Requires ${
+        SKILL_DEFINITIONS[skillId]?.name ?? skillId
+      } ${level}.`;
     }
   }
   const now = Date.now();
   const cooldownEnds = state.cooldowns[ability.id] ?? 0;
   if (cooldownEnds > now) {
-    return `${ability.name} is on cooldown for ${Math.ceil((cooldownEnds - now) / 1000)}s.`;
+    return `${ability.name} is on cooldown for ${Math.ceil(
+      (cooldownEnds - now) / 1000
+    )}s.`;
   }
   if (
     ability.resourceType &&
@@ -1455,7 +1467,9 @@ function unlockAbilityMilestones(
         next = pushLog(
           next,
           "Ability unlocked",
-          `${ABILITY_DEFINITIONS[milestone.unlockAbility].name} unlocked from ${skillDef.name}.`
+          `${ABILITY_DEFINITIONS[milestone.unlockAbility].name} unlocked from ${
+            skillDef.name
+          }.`
         );
       }
     }
@@ -1497,7 +1511,9 @@ export function grantHarthmereSkillXp(
   state = pushLog(
     state,
     label,
-    `${detail} ${skillDef.name} ${skillTitle(level)} ${level} (${Math.round(state.skills[skillId]?.xpCurrent ?? 0)}/${xpRequiredForSkill(level)}).`
+    `${detail} ${skillDef.name} ${skillTitle(level)} ${level} (${Math.round(
+      state.skills[skillId]?.xpCurrent ?? 0
+    )}/${xpRequiredForSkill(level)}).`
   );
   state = {
     ...state,
@@ -1543,6 +1559,27 @@ function skillForAbility(ability: HarthmereAbilityDefinition) {
     return "persuasion";
   }
   return "melee_combat";
+}
+
+function emitHarthmereClassProjectileVisual(
+  ability: HarthmereAbilityDefinition,
+  targetOffset: number
+) {
+  if (!isBrowser()) {
+    return;
+  }
+  window.dispatchEvent(
+    new CustomEvent(HARTHMERE_PROJECTILE_VISUAL_EVENT, {
+      detail: {
+        projectileVisualId: ability.id,
+        abilityId: ability.id,
+        ability: ability.name,
+        attacker: "You",
+        targetOffset,
+        result: "applied",
+      },
+    })
+  );
 }
 
 export function useHarthmereClassAbility(abilityId: string) {
@@ -1601,10 +1638,16 @@ export function useHarthmereClassAbility(abilityId: string) {
     case "curse_of_weakness":
     case "mocking_verse":
     case "entangling_roots":
-      performHarthmereCombatAttack(currentTargetOffset(), "spark");
+      performHarthmereCombatAttack(currentTargetOffset(), "spark", {
+        projectileVisualId: ability.id,
+        projectileAbilityName: ability.name,
+      });
       if (ability.id === "life_drain") {
         healHarthmerePlayer(12, "Life Drain");
       }
+      break;
+    case "hunters_mark":
+      emitHarthmereClassProjectileVisual(ability, currentTargetOffset());
       break;
     case "minor_heal":
     case "rejuvenation":
@@ -1617,6 +1660,11 @@ export function useHarthmereClassAbility(abilityId: string) {
       break;
     default:
       break;
+  }
+
+  const soundEffectId = HARTHMERE_ABILITY_SOUND_MAP[ability.id];
+  if (soundEffectId) {
+    emitHarthmereSoundEffect(soundEffectId);
   }
 
   grantHarthmereSkillXp(
@@ -1951,8 +1999,8 @@ export const HarthmereClassSkillHUD: React.FunctionComponent<{}> = () => {
   return (
     <>
       <ClassHotkeys />
-      <div className="w-[22rem] rounded-lg bg-black/70 p-2 text-xs text-white shadow-lg">
-        <div className="font-semibold text-amber-200">Class & Abilities</div>
+      <div className="rounded-lg w-[22rem] bg-black/70 p-2 text-xs text-white shadow-lg">
+        <div className="text-amber-200 font-semibold">Class & Abilities</div>
         <div className="mt-1 flex justify-between gap-2">
           <span>
             {classDef.name}
@@ -1973,7 +2021,7 @@ export const HarthmereClassSkillHUD: React.FunctionComponent<{}> = () => {
           stance/basic/heavy/Spark from the fighting layer.
         </div>
         {latest && (
-          <div className="mt-1 text-amber-100">
+          <div className="text-amber-100 mt-1">
             {latest.label}: {latest.detail}
           </div>
         )}
@@ -2000,7 +2048,9 @@ function AbilityButton({
     <button
       className="rounded border border-white/20 bg-white/10 px-2 py-1 text-left text-xs hover:bg-white/20"
       onClick={() => useHarthmereClassAbility(abilityId)}
-      title={`${ability.effect} Cost: ${ability.resourceCost ?? 0} ${ability.resourceType ?? "none"}. Cooldown: ${ability.cooldownSeconds}s.`}
+      title={`${ability.effect} Cost: ${ability.resourceCost ?? 0} ${
+        ability.resourceType ?? "none"
+      }. Cooldown: ${ability.cooldownSeconds}s.`}
     >
       <span className="font-semibold">{label}</span>: {ability.name}
     </button>
@@ -2022,10 +2072,10 @@ export const HarthmereClassSkillMenuPanel: React.FunctionComponent<{}> = () => {
     (ability) => !state.knownAbilities.includes(ability.id)
   );
   return (
-    <div className="mb-2 max-h-[32rem] w-[34rem] overflow-y-auto rounded-lg bg-black/80 p-3 text-xs text-white shadow-xl">
+    <div className="rounded-lg mb-2 max-h-[32rem] w-[34rem] overflow-y-auto bg-black/80 p-3 text-xs text-white shadow-xl">
       <div className="flex items-center justify-between gap-2">
         <div>
-          <div className="text-sm font-semibold text-amber-200">
+          <div className="text-amber-200 text-sm font-semibold">
             Harthmere Class / Skill / Ability
           </div>
           <div className="text-white/70">
@@ -2044,7 +2094,11 @@ export const HarthmereClassSkillMenuPanel: React.FunctionComponent<{}> = () => {
         {(["class", "abilities", "skills", "guide"] as const).map((nextTab) => (
           <button
             key={nextTab}
-            className={`rounded px-2 py-1 ${tab === nextTab ? "bg-amber-300 text-black" : "bg-white/10 hover:bg-white/20"}`}
+            className={`rounded px-2 py-1 ${
+              tab === nextTab
+                ? "bg-amber-300 text-black"
+                : "bg-white/10 hover:bg-white/20"
+            }`}
             onClick={() => setTab(nextTab)}
           >
             {nextTab}
@@ -2055,7 +2109,7 @@ export const HarthmereClassSkillMenuPanel: React.FunctionComponent<{}> = () => {
       {tab === "class" && (
         <div className="mt-3 space-y-3">
           <div className="rounded border border-white/10 bg-white/5 p-2">
-            <div className="font-semibold text-amber-100">{classDef.name}</div>
+            <div className="text-amber-100 font-semibold">{classDef.name}</div>
             <div className="mt-1 text-white/80">{classDef.summary}</div>
             <div className="mt-2 grid grid-cols-2 gap-2 text-white/75">
               <div>
@@ -2097,7 +2151,11 @@ export const HarthmereClassSkillMenuPanel: React.FunctionComponent<{}> = () => {
               (classId) => (
                 <button
                   key={classId}
-                  className={`rounded border border-white/10 px-2 py-1 text-left ${state.classId === classId ? "bg-amber-300 text-black" : "bg-white/10 hover:bg-white/20"}`}
+                  className={`rounded border border-white/10 px-2 py-1 text-left ${
+                    state.classId === classId
+                      ? "bg-amber-300 text-black"
+                      : "bg-white/10 hover:bg-white/20"
+                  }`}
                   onClick={() => chooseHarthmereClass(classId)}
                   title={CLASS_DEFINITIONS[classId].summary}
                 >
@@ -2107,12 +2165,16 @@ export const HarthmereClassSkillMenuPanel: React.FunctionComponent<{}> = () => {
             )}
           </div>
           <div>
-            <div className="font-semibold text-amber-100">Specializations</div>
+            <div className="text-amber-100 font-semibold">Specializations</div>
             <div className="mt-1 flex flex-wrap gap-1">
               {classDef.specializations.map((spec) => (
                 <button
                   key={spec}
-                  className={`rounded px-2 py-1 ${state.specialization === spec ? "bg-amber-300 text-black" : "bg-white/10 hover:bg-white/20"}`}
+                  className={`rounded px-2 py-1 ${
+                    state.specialization === spec
+                      ? "bg-amber-300 text-black"
+                      : "bg-white/10 hover:bg-white/20"
+                  }`}
                   onClick={() => chooseHarthmereSpecialization(spec)}
                 >
                   {spec}
@@ -2121,7 +2183,7 @@ export const HarthmereClassSkillMenuPanel: React.FunctionComponent<{}> = () => {
             </div>
           </div>
           <div className="rounded border border-white/10 bg-white/5 p-2 text-white/75">
-            <div className="font-semibold text-amber-100">
+            <div className="text-amber-100 font-semibold">
               Derived stat context
             </div>
             HP {derived.maxHp}, Mana {derived.maxMana}, Stamina{" "}
@@ -2162,7 +2224,7 @@ export const HarthmereClassSkillMenuPanel: React.FunctionComponent<{}> = () => {
             />
           </div>
           <div>
-            <div className="font-semibold text-amber-100">Known abilities</div>
+            <div className="text-amber-100 font-semibold">Known abilities</div>
             <div className="mt-1 space-y-1">
               {knownAbilities.map((ability) => (
                 <div
@@ -2190,7 +2252,7 @@ export const HarthmereClassSkillMenuPanel: React.FunctionComponent<{}> = () => {
                     ].map((slot) => (
                       <button
                         key={slot}
-                        className="rounded bg-white/10 px-1.5 py-0.5 hover:bg-white/20"
+                        className="rounded px-1.5 py-0.5 bg-white/10 hover:bg-white/20"
                         onClick={() => equipHarthmereAbility(slot, ability.id)}
                       >
                         equip {slot.replace("slot_", "")}
@@ -2202,10 +2264,10 @@ export const HarthmereClassSkillMenuPanel: React.FunctionComponent<{}> = () => {
             </div>
           </div>
           <div>
-            <div className="font-semibold text-amber-100">
+            <div className="text-amber-100 font-semibold">
               Locked / future abilities
             </div>
-            <div className="mt-1 max-h-[10rem] overflow-y-auto space-y-1">
+            <div className="mt-1 max-h-[10rem] space-y-1 overflow-y-auto">
               {lockedAbilities.slice(0, 16).map((ability) => (
                 <div
                   key={ability.id}
@@ -2231,7 +2293,7 @@ export const HarthmereClassSkillMenuPanel: React.FunctionComponent<{}> = () => {
               >
                 <div className="flex items-center justify-between gap-2">
                   <div>
-                    <span className="font-semibold text-amber-100">
+                    <span className="text-amber-100 font-semibold">
                       {skillDef.name}
                     </span>
                     <span className="ml-2 text-white/60">
@@ -2242,15 +2304,19 @@ export const HarthmereClassSkillMenuPanel: React.FunctionComponent<{}> = () => {
                     {skillTitle(skill.level)} {skill.level}
                   </div>
                 </div>
-                <div className="mt-1 h-1.5 overflow-hidden rounded bg-white/10">
+                <div className="h-1.5 rounded mt-1 overflow-hidden bg-white/10">
                   <div
-                    className="h-full bg-amber-300"
+                    className="bg-amber-300 h-full"
                     style={{
-                      width: `${Math.min(100, (skill.xpCurrent / Math.max(1, skill.xpRequiredNext)) * 100)}%`,
+                      width: `${Math.min(
+                        100,
+                        (skill.xpCurrent / Math.max(1, skill.xpRequiredNext)) *
+                          100
+                      )}%`,
                     }}
                   />
                 </div>
-                <div className="mt-1 text-white/65">
+                <div className="text-white/65 mt-1">
                   Improve by: {skillDef.improvesBy.join("; ")}
                 </div>
                 <div className="text-white/50">
@@ -2260,7 +2326,11 @@ export const HarthmereClassSkillMenuPanel: React.FunctionComponent<{}> = () => {
                   {skillDef.milestones.map((milestone) => (
                     <span
                       key={`${skillId}-${milestone.level}`}
-                      className={`rounded px-1.5 py-0.5 ${skill.level >= milestone.level ? "bg-green-500/20 text-green-100" : "bg-white/10 text-white/50"}`}
+                      className={`rounded px-1.5 py-0.5 ${
+                        skill.level >= milestone.level
+                          ? "bg-green-500/20 text-green-100"
+                          : "bg-white/10 text-white/50"
+                      }`}
                     >
                       {milestone.level}: {milestone.label}
                     </span>
@@ -2275,7 +2345,7 @@ export const HarthmereClassSkillMenuPanel: React.FunctionComponent<{}> = () => {
       {tab === "guide" && (
         <div className="mt-3 space-y-2 text-white/75">
           <div className="rounded border border-white/10 bg-white/5 p-2">
-            <div className="font-semibold text-amber-100">
+            <div className="text-amber-100 font-semibold">
               Rules implemented
             </div>
             <p>
@@ -2286,7 +2356,7 @@ export const HarthmereClassSkillMenuPanel: React.FunctionComponent<{}> = () => {
             </p>
           </div>
           <div className="rounded border border-white/10 bg-white/5 p-2">
-            <div className="font-semibold text-amber-100">Hotkeys</div>
+            <div className="text-amber-100 font-semibold">Hotkeys</div>
             <p>
               1-4 use equipped class abilities. 5 uses utility. 6 uses ultimate
               if known. X/F/R/Q remain the fighting-layer keys for draw/sheathe,
@@ -2294,7 +2364,7 @@ export const HarthmereClassSkillMenuPanel: React.FunctionComponent<{}> = () => {
             </p>
           </div>
           <div className="rounded border border-white/10 bg-white/5 p-2">
-            <div className="font-semibold text-amber-100">Production rule</div>
+            <div className="text-amber-100 font-semibold">Production rule</div>
             <p>
               The browser simulates this for Harthmere local-dev. Production
               must validate class, known ability, equipped ability, resource
@@ -2303,7 +2373,7 @@ export const HarthmereClassSkillMenuPanel: React.FunctionComponent<{}> = () => {
             </p>
           </div>
           <button
-            className="rounded bg-red-900/60 px-2 py-1 hover:bg-red-800"
+            className="rounded bg-red-900/60 hover:bg-red-800 px-2 py-1"
             onClick={() => resetHarthmereClassSkillState()}
           >
             Reset local-dev class/skill state
@@ -2312,8 +2382,8 @@ export const HarthmereClassSkillMenuPanel: React.FunctionComponent<{}> = () => {
       )}
 
       {!!state.recent.length && (
-        <div className="mt-3 rounded border border-white/10 bg-white/5 p-2">
-          <div className="font-semibold text-amber-100">
+        <div className="rounded mt-3 border border-white/10 bg-white/5 p-2">
+          <div className="text-amber-100 font-semibold">
             Recent class/skill log
           </div>
           <div className="mt-1 space-y-1">

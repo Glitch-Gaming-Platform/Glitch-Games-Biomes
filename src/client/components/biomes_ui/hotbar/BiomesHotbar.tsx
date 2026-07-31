@@ -42,6 +42,8 @@ interface BiomesHotbarProps {
   onRemove?: (index: number) => void;
   /** Whether the hotbar is currently focusable (closed when chat is open, etc) */
   enabled?: boolean;
+  /** Applies touch-safe sizing and scrolling without changing desktop layout. */
+  mobile?: boolean;
 }
 
 const QUALITY_COLOR: Record<string, string> = {
@@ -61,6 +63,7 @@ export const BiomesHotbar: React.FunctionComponent<BiomesHotbarProps> = ({
   onDrop,
   onRemove,
   enabled = true,
+  mobile = false,
 }) => {
   const [pendingAction, setPendingAction] = useState<"use" | "drop">();
   const [actionError, setActionError] = useState<string>();
@@ -137,22 +140,37 @@ export const BiomesHotbar: React.FunctionComponent<BiomesHotbarProps> = ({
 
   return (
     <div
+      className={`biomes-ui-hotbar ${
+        mobile ? "biomes-ui-hotbar--mobile" : ""
+      }`.trim()}
       style={{
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
         gap: 6,
+        position: "relative",
+        width: mobile ? "100%" : undefined,
       }}
     >
       {(selectedItem && (onUse || onDrop)) || actionError ? (
         <div
-          className="biomes-ui-panel"
+          className="biomes-ui-panel biomes-ui-hotbar__actions"
           aria-live="polite"
           style={{
             display: "flex",
             alignItems: "center",
             gap: 6,
             padding: "5px 8px",
+            ...(mobile
+              ? {
+                  position: "absolute",
+                  right: 0,
+                  bottom: "calc(100% + 6px)",
+                  maxWidth: "min(72vw, 300px)",
+                  boxSizing: "border-box",
+                  overflow: "hidden",
+                }
+              : {}),
           }}
         >
           <span
@@ -207,13 +225,21 @@ export const BiomesHotbar: React.FunctionComponent<BiomesHotbarProps> = ({
       <div
         role="toolbar"
         aria-label="Action hotbar"
-        className="biomes-ui-panel"
+        className="biomes-ui-panel biomes-ui-hotbar__slots"
         style={{
           display: "flex",
           gap: 6,
           padding: 8,
           margin: "0 auto",
-          width: "fit-content",
+          width: mobile ? "100%" : "fit-content",
+          maxWidth: mobile ? "100%" : undefined,
+          boxSizing: mobile ? "border-box" : undefined,
+          justifyContent: mobile ? "flex-start" : undefined,
+          overflowX: mobile ? "auto" : undefined,
+          overflowY: mobile ? "hidden" : undefined,
+          overscrollBehaviorX: mobile ? "contain" : undefined,
+          touchAction: mobile ? "pan-x" : undefined,
+          WebkitOverflowScrolling: mobile ? "touch" : undefined,
         }}
       >
         {slots.map((slot, i) => {
@@ -228,7 +254,14 @@ export const BiomesHotbar: React.FunctionComponent<BiomesHotbarProps> = ({
               uniqueId={UI_IDS.HOTBAR_SLOT(i + 1)}
               showCaption
             >
-              <div style={{ position: "relative", display: "inline-flex" }}>
+              <div
+                className="biomes-ui-hotbar__slot-wrap"
+                style={{
+                  position: "relative",
+                  display: "inline-flex",
+                  flex: mobile ? "0 0 auto" : undefined,
+                }}
+              >
                 <button
                   type="button"
                   role="button"

@@ -644,6 +644,40 @@ describe("cutscene director core", () => {
     assert.ok(h.runtime.elapsed < 5, `elapsed ${h.runtime.elapsed}`);
   });
 
+  it("presents player dialogue as You instead of an internal cast role", () => {
+    const h = makeRuntime(
+      flyoverDef({
+        shots: [
+          {
+            id: "player-line",
+            duration: 1,
+            camera: {
+              kind: "static",
+              position: [0, 2, 4],
+              orientation: [0, 0],
+            },
+            actions: [
+              {
+                kind: "dialogue",
+                at: 0,
+                role: "player",
+                text: "Not this small.",
+              },
+            ],
+          },
+        ],
+      })
+    );
+    h.run(3);
+    assert.ok(
+      h.ofKind("subtitle").some(
+        (subtitle) =>
+          subtitle.value?.speaker === "You" &&
+          subtitle.value.text === "Not this small."
+      )
+    );
+  });
+
   it("until.maxDuration is a hard ceiling even if the condition never fires", () => {
     const h = makeRuntime(
       flyoverDef({
@@ -1057,6 +1091,9 @@ describe("cutscene camera sampling", () => {
     assert.ok(pose.orientation.every((v) => Number.isFinite(v)));
     // Looking toward -z: yaw near 0 in engine convention.
     assert.ok(Math.abs(pose.orientation[1]) < 0.1);
+    // The camera is near the actor's eye line, so framing the role's body
+    // height should be almost level rather than pitched down at its feet.
+    assert.ok(Math.abs(pose.orientation[0]) < 0.05);
   });
 
   it("pov looks along facing when no lookAt is given", () => {

@@ -32,7 +32,7 @@ struct Texture {
   std::vector<RGBA> data;
 
   auto ptr() const {
-    return reinterpret_cast<const uint8_t*>(&data[0]);
+    return reinterpret_cast<const uint8_t*>(data.data());
   }
 
   auto bytes() const {
@@ -46,11 +46,11 @@ struct Mesh {
   Texture texture;
 
   auto vertices_view() const {
-    return reinterpret_cast<const uint8_t*>(&vertices[0]);
+    return reinterpret_cast<const uint8_t*>(vertices.data());
   }
 
   auto indices_view() const {
-    return reinterpret_cast<const uint8_t*>(&indices[0]);
+    return reinterpret_cast<const uint8_t*>(indices.data());
   }
 
   auto vertices_bytes() const {

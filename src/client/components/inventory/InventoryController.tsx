@@ -47,7 +47,7 @@ import type { PropsWithChildren } from "react";
 import React, { useCallback, useState } from "react";
 
 export const INVENTORY_COLS = 8;
-const EJECT_ITEM_KEY = "x";
+const EJECT_ITEM_KEY = "Delete";
 
 export const InventoryController: React.FunctionComponent<
   PropsWithChildren<{}>

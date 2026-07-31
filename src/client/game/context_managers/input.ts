@@ -9,8 +9,13 @@ import {
   getTypedStorageItem,
   removeTypedStorageChangeListener,
 } from "@/client/util/typed_local_storage";
+import { RESERVED_MOVEMENT_KEY_CODES } from "@/shared/game/movement_actions";
 import type { RegistryLoader } from "@/shared/registry";
 import EventEmitter from "events";
+
+const RESERVED_MOVEMENT_KEY_CODE_SET = new Set<string>(
+  RESERVED_MOVEMENT_KEY_CODES
+);
 
 // TODO: Consider supporting left/right modifiers separately.
 export enum Modifiers {
@@ -180,6 +185,7 @@ export class Bindings<ActionsAndMotions extends string> {
 export class Input<ActionsAndMotions extends string> {
   private bindings: Bindings<ActionsAndMotions>;
   private actions: Map<string, boolean>;
+  private synthetic_actions: Map<string, Set<string>>;
   private motions: Map<
     string,
     { fixed: number; delta: number; phase: MotionPhase }
@@ -201,6 +207,7 @@ export class Input<ActionsAndMotions extends string> {
   constructor(bindings: Bindings<ActionsAndMotions>) {
     this.bindings = bindings;
     this.actions = new Map();
+    this.synthetic_actions = new Map();
     this.motions = new Map();
     this.active_triggers = new Set();
     this.synthetic_motions = new Map();
@@ -282,7 +289,50 @@ export class Input<ActionsAndMotions extends string> {
   }
 
   action(name: ActionsAndMotions) {
-    return this.actions.get(name)!;
+    return (
+      this.actions.get(name) === true ||
+      (this.synthetic_actions.get(name)?.size ?? 0) > 0
+    );
+  }
+
+  /**
+   * Set or clear a named synthetic action source. Independent sources prevent
+   * one touch control from releasing a physical key or another accessibility
+   * control that is still active.
+   */
+  setSyntheticAction(name: ActionsAndMotions, source: string, active: boolean) {
+    if (!this.actions.has(name)) {
+      return;
+    }
+    const wasActive = this.action(name);
+    const sources = this.synthetic_actions.get(name) ?? new Set<string>();
+    if (active) {
+      sources.add(source);
+    } else {
+      sources.delete(source);
+    }
+    if (sources.size === 0) {
+      this.synthetic_actions.delete(name);
+    } else {
+      this.synthetic_actions.set(name, sources);
+    }
+    if (!wasActive && this.action(name)) {
+      this.emitter.emit(name);
+    }
+  }
+
+  /** Hold a synthetic action long enough for a script tick to see both edges. */
+  async pulseAction(
+    name: ActionsAndMotions,
+    durationMs: number,
+    source = "programmatic"
+  ) {
+    const pulseSource = `${source}:${Date.now()}:${Math.random()}`;
+    this.setSyntheticAction(name, pulseSource, true);
+    await new Promise<void>((resolve) => {
+      setTimeout(resolve, Math.max(0, durationMs));
+    });
+    this.setSyntheticAction(name, pulseSource, false);
   }
 
   motion(name: ActionsAndMotions) {
@@ -353,6 +403,7 @@ export class Input<ActionsAndMotions extends string> {
   private resetState() {
     this.active_mods = Modifiers.None;
     this.active_triggers.clear();
+    this.synthetic_actions.clear();
     this.synthetic_motions.clear();
     for (const action of this.actions.keys()) {
       this.actions.set(action, false);
@@ -386,6 +437,12 @@ export class Input<ActionsAndMotions extends string> {
     };
     listen(keyboardTarget, "keydown", (e: KeyboardEvent) => {
       if (isTextInputTarget(e.target)) {
+        return;
+      }
+      if (
+        RESERVED_MOVEMENT_KEY_CODE_SET.has(e.code) &&
+        (e.metaKey || e.ctrlKey || e.altKey)
+      ) {
         return;
       }
       if (!downKeys.has(e.code) || !e.repeat) {
@@ -472,6 +529,8 @@ export type BiomesActions =
   | "lateral"
   | "run"
   | "crouch"
+  | "dodge"
+  | "evade"
   | "flip"
   | "mirror"
   | "first_person_toggle"
@@ -513,6 +572,8 @@ export function defaultBindings({
   bindings.bindKey("ShiftRight").toMotion("run");
 
   bindings.bindKey("KeyZ").toMotion("crouch");
+  bindings.bindKey("KeyX").toAction("dodge");
+  bindings.bindKey("KeyC").toAction("evade");
 
   bindings.bindKey("KeyF").toAction("flip");
   bindings.bindKey("KeyG").toAction("mirror");

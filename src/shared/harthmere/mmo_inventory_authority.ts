@@ -21,6 +21,7 @@
  */
 
 import { PLAYER_INVENTORY_SLOTS } from "@/shared/game/inventory";
+import { isHarthmereVendorPurchaseAvailable } from "@/shared/harthmere/harthmere_vendor_chapter_gates";
 
 export const MMO_INVENTORY_AUTHORITY_VERSION = "mmo-inventory-authority";
 
@@ -872,6 +873,11 @@ function validateVendorBuy(
     return resultFail(requestId, kind, actorId, ["missing_vendor_id"]);
   if (count === undefined)
     return resultFail(requestId, kind, actorId, ["invalid_count"]);
+  if (!isHarthmereVendorPurchaseAvailable(vendorId)) {
+    return resultFail(requestId, kind, actorId, [
+      "vendor_closed_until_chapter_2",
+    ]);
+  }
 
   const def = getHarthmereItemDefinition(itemId);
   if (!def) return resultFail(requestId, kind, actorId, ["unknown_item_id"]);

@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import {
   ch1SlotClaimKey,
   type Ch1SlotClaim,
@@ -422,6 +423,59 @@ export async function runChapter1EncounterSchedulerTick(input: {
   return { changed: true, looped };
 }
 
+/**
+ * CHAPTER_1_ENCOUNTER_SCHEDULER_SINGLE_WRITER
+ *
+ * This scheduler runs inside the WEB process and mutates shared encounter state:
+ * the Ninth Winter's loop counter and cycle timestamp, the Gilded Bull's broken
+ * parts, hazard damage and downed-player recovery warps. In `Multiple` replica
+ * mode every web replica would tick it, so a ninety-second arena loop could be
+ * advanced two or three times per second of wall clock and a hazard could bill a
+ * player once per replica.
+ *
+ * The escort scheduler is naturally safe (`ch1EscortAssignmentIsCurrent`
+ * short-circuits an unchanged tick into zero writes). This one is not, so it
+ * takes an explicit lease and only the holder ticks.
+ */
+export const CH1_ENCOUNTER_SCHEDULER_LEASE_KEY =
+  "harthmere:ch1:encounter-scheduler:leader";
+export const CH1_ENCOUNTER_SCHEDULER_LEASE_MS = 5_000;
+
+async function holdsEncounterSchedulerLease(
+  redis: { primary: { set(...args: any[]): Promise<unknown> } },
+  ownerId: string
+): Promise<boolean> {
+  // SET NX PX: first writer wins for the lease window, and the holder refreshes
+  // by writing the same value. A dropped replica's lease simply expires.
+  const acquired = await redis.primary.set(
+    CH1_ENCOUNTER_SCHEDULER_LEASE_KEY,
+    ownerId,
+    "PX",
+    CH1_ENCOUNTER_SCHEDULER_LEASE_MS,
+    "NX"
+  );
+  if (acquired) return true;
+  const refreshed = await redis.primary.set(
+    CH1_ENCOUNTER_SCHEDULER_LEASE_KEY,
+    ownerId,
+    "PX",
+    CH1_ENCOUNTER_SCHEDULER_LEASE_MS,
+    "XX"
+  );
+  // `XX` succeeds for any existing key, so confirm we are the owner.
+  return Boolean(refreshed) && (await isEncounterSchedulerOwner(redis, ownerId));
+}
+
+async function isEncounterSchedulerOwner(
+  redis: { primary: { get?(key: string): Promise<string | null> } },
+  ownerId: string
+): Promise<boolean> {
+  const current = await redis.primary.get?.(
+    CH1_ENCOUNTER_SCHEDULER_LEASE_KEY
+  );
+  return current === undefined || current === null || current === ownerId;
+}
+
 export function startChapter1EncounterScheduler(input: {
   worldApi: WorldApi;
   logicApi: LogicApi;
@@ -436,15 +490,19 @@ export function startChapter1EncounterScheduler(input: {
   let redisPromise: ReturnType<typeof connectToRedis> | undefined;
   if (!enabled) return { enabled: false, stop: () => void (stopped = true) };
   const redis = () => (redisPromise ??= connectToRedis("firehose"));
+  const ownerId = `${process.env.HOSTNAME ?? "web"}:${process.pid}:${randomUUID()}`;
   const run = async () => {
     if (stopped) return;
     try {
-      await runChapter1EncounterSchedulerTick({
-        redis: await redis(),
-        worldApi: input.worldApi,
-        logicApi: input.logicApi,
-        nowMs: Date.now(),
-      });
+      const client = await redis();
+      if (await holdsEncounterSchedulerLease(client, ownerId)) {
+        await runChapter1EncounterSchedulerTick({
+          redis: client,
+          worldApi: input.worldApi,
+          logicApi: input.logicApi,
+          nowMs: Date.now(),
+        });
+      }
     } catch (error) {
       log.error("Chapter 1 encounter scheduler tick failed", { error });
     } finally {

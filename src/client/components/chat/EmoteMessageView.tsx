@@ -1,6 +1,10 @@
 import { AvatarView, LinkableUsername } from "@/client/components/chat/Links";
 import type { EmoteMessage } from "@/shared/chat/messages";
 import type { Envelope } from "@/shared/chat/types";
+import {
+  harthmereCinematicExpressionDisplayName,
+  isHarthmereCinematicExpression,
+} from "@/shared/cutscene/cinematic_expressions";
 import type { EmoteType } from "@/shared/ecs/gen/types";
 
 const emoteLookup = {
@@ -24,7 +28,13 @@ export const EmoteMessageView: React.FunctionComponent<{
     // Don't support server-side emotes yet
     return <></>;
   }
-  const emoteDesc = emoteLookup[message.emote_type] || message.emote_type;
+  const emoteDesc =
+    emoteLookup[message.emote_type] ||
+    (isHarthmereCinematicExpression(message.emote_type)
+      ? `performs ${harthmereCinematicExpressionDisplayName(
+          message.emote_type
+        ).toLowerCase()}`
+      : message.emote_type);
   return (
     <div className="message emote center">
       <AvatarView userId={envelope.from} />

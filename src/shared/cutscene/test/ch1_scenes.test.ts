@@ -3,6 +3,8 @@
 import assert from "assert";
 import {
   CH1_MEMORY_STAGE,
+  CH1_CONSOLIDATION_PLAYBACK_SEQUENCE,
+  CH1_SCENE_ACTING_CUES,
   CH1_SCENE_FACTORIES,
   CH1_SCENE_IDS,
   ch1AllScenes,
@@ -15,6 +17,9 @@ import {
   CH1_CONSOLIDATION_ENTRY_SECONDS,
   CH1_CONSOLIDATION_ORDER,
 } from "@/shared/harthmere/ch1_fragment_ledger";
+import { ch1QuestCutsceneIds } from "@/shared/harthmere/ch1_quests";
+import { CH1_ANCHORS, CH1_NPC_ENTITY_IDS } from "@/shared/harthmere/ch1_ids";
+import { isHarthmereCinematicExpression } from "../cinematic_expressions";
 
 describe("ch1 cutscenes - validity", () => {
   it("every authored scene validates", () => {
@@ -44,6 +49,44 @@ describe("ch1 cutscenes - validity", () => {
     assert.equal(new Set(ids).size, ids.length);
   });
 
+  it("gives every scene a deliberate cinematic acting plan", () => {
+    assert.deepStrictEqual(
+      Object.keys(CH1_SCENE_ACTING_CUES).sort(),
+      [...CH1_SCENE_FACTORIES.keys()].sort()
+    );
+    for (const scene of ch1AllScenes()) {
+      const expressions = scene.shots
+        .flatMap((shot) => shot.actions)
+        .filter(
+          (action) =>
+            action.kind === "emote" &&
+            isHarthmereCinematicExpression(action.emote)
+        );
+      assert.ok(expressions.length > 0, `${scene.id}: no cinematic acting`);
+    }
+  });
+
+  it("keeps every expression cue on an existing actor and inside its shot", () => {
+    for (const scene of ch1AllScenes()) {
+      const roles = new Set(scene.cast.map((member) => member.role));
+      for (const shot of scene.shots) {
+        for (const action of shot.actions) {
+          if (
+            action.kind !== "emote" ||
+            !isHarthmereCinematicExpression(action.emote)
+          ) {
+            continue;
+          }
+          assert.ok(roles.has(action.role), `${scene.id}: ${action.role}`);
+          assert.ok(
+            action.at < shot.duration,
+            `${scene.id}/${shot.id}: ${action.emote} starts after the shot`
+          );
+        }
+      }
+    }
+  });
+
   it("no scene can hang: every shot is finitely bounded", () => {
     for (const scene of ch1AllScenes()) {
       for (const shot of scene.shots) {
@@ -67,7 +110,7 @@ describe("ch1 cutscenes - validity", () => {
     }
   });
 
-  it("stages every player-POV flashback before sampling its first camera", () => {
+  it("stages every reconstructed flashback before sampling its first camera", () => {
     for (const id of [
       CH1_SCENE_IDS.overlayIveGotYou,
       CH1_SCENE_IDS.reconCorridor,
@@ -82,6 +125,369 @@ describe("ch1 cutscenes - validity", () => {
       assert.ok(teleport?.kind === "teleport", `${id}: player is not staged`);
       assert.deepStrictEqual(teleport.to, CH1_MEMORY_STAGE, id);
     }
+  });
+
+  it("grounds the shared memory stage inside the measured road-house aisle", () => {
+    assert.deepStrictEqual(CH1_MEMORY_STAGE, CH1_ANCHORS.memory_corridor_stage);
+    assert.deepStrictEqual(CH1_MEMORY_STAGE, [474, 70, -133]);
+    assert.ok(
+      CH1_MEMORY_STAGE[1] < 100,
+      "a flashback stage must not leave the client-puppet player falling in the sky"
+    );
+  });
+
+  it("keeps the ignition reaction camera outside the player model", () => {
+    const scene = ch1IgnitionCutscene();
+    const augur = scene.cast.find((member) => member.role === "augur9");
+    assert.equal(augur?.binding.kind, "entity");
+    if (augur?.binding.kind === "entity") {
+      assert.equal(augur.binding.entityId, CH1_NPC_ENTITY_IDS.augur9);
+    }
+    const reaction = scene.shots.find((shot) => shot.id === "it-looks-at-you");
+    assert.equal(reaction?.camera.kind, "overShoulder");
+    if (reaction?.camera.kind === "overShoulder") {
+      assert.ok(reaction.camera.pullout >= 2.4);
+    }
+    const recording = scene.shots.find((shot) => shot.id === "your-own-voice");
+    assert.equal(recording?.camera.kind, "overShoulder");
+    if (recording?.camera.kind === "overShoulder") {
+      assert.ok(recording.camera.pullout >= 3);
+    }
+  });
+
+  it("makes every registered scene reachable from production objective playback", () => {
+    const reachable = new Set([
+      ...ch1QuestCutsceneIds(),
+      ...CH1_CONSOLIDATION_PLAYBACK_SEQUENCE,
+    ]);
+    assert.deepEqual(
+      [...CH1_SCENE_FACTORIES.keys()].filter((id) => !reachable.has(id)),
+      []
+    );
+  });
+
+  it("keeps the fence-line camera above the hilly ridge and stages Jackie beside the seam", () => {
+    const scene = CH1_SCENE_FACTORIES.get(CH1_SCENE_IDS.firstGate)!();
+    assert.deepStrictEqual(CH1_ANCHORS.gate_fence_sighting, [543, 69, -221]);
+    const dolly = scene.shots.find((shot) => shot.id === "the-seam")?.camera;
+    assert.equal(dolly?.kind, "dolly");
+    if (dolly?.kind === "dolly") {
+      for (const waypoint of dolly.waypoints) {
+        assert.ok(
+          waypoint.position[1] >= CH1_ANCHORS.gate_fence_sighting[1] + 2,
+          `camera ${waypoint.position.join("/")} is inside the fence ridge`
+        );
+      }
+    }
+    const cameraPositions = scene.shots.flatMap((shot) =>
+      shot.camera.kind === "static"
+        ? [shot.camera.position]
+        : shot.camera.kind === "dolly"
+        ? shot.camera.waypoints.map((waypoint) => waypoint.position)
+        : []
+    );
+    assert.deepStrictEqual(cameraPositions, [
+      [550, 74, -230],
+      [554, 75, -232],
+      [550, 73, -228],
+      [550, 73, -228],
+      [548, 72.5, -227],
+    ]);
+    const stage = scene.shots[0].actions.find(
+      (action) => action.kind === "teleport" && action.role === "jackie"
+    );
+    assert.ok(stage?.kind === "teleport");
+    if (stage?.kind === "teleport" && Array.isArray(stage.to)) {
+      assert.ok(
+        Math.hypot(
+          stage.to[0] - CH1_ANCHORS.gate_fence_sighting[0],
+          stage.to[2] - CH1_ANCHORS.gate_fence_sighting[2]
+        ) < 8
+      );
+    }
+    assert.deepStrictEqual(
+      stage?.kind === "teleport" ? stage.to : undefined,
+      [539, 70, -215]
+    );
+    const playerStage = scene.shots[0].actions.find(
+      (action) => action.kind === "teleport" && action.role === "player"
+    );
+    assert.deepStrictEqual(
+      playerStage?.kind === "teleport" ? playerStage.to : undefined,
+      [536, 69, -218]
+    );
+  });
+
+  it("aims the persistent-gate reveal at the two-metre aperture", () => {
+    const scene = CH1_SCENE_FACTORIES.get(CH1_SCENE_IDS.persistentGate)!();
+    const target = scene.cast.find((member) => member.role === "revealTarget");
+    assert.equal(target?.binding.kind, "anchor");
+    if (target?.binding.kind === "anchor") {
+      assert.deepStrictEqual(target.binding.position, CH1_ANCHORS.gate_desert);
+      assert.equal(target.binding.height, 2);
+    }
+    const camera = scene.shots[0].camera;
+    assert.equal(camera.kind, "static");
+    if (camera.kind === "static") {
+      assert.deepStrictEqual(camera.position, [658, 62, -472]);
+      assert.ok(camera.orientation);
+    }
+    const dialogue = scene.shots.find((shot) => shot.id === "rook-says-it");
+    assert.equal(dialogue?.camera.kind, "static");
+    if (dialogue?.camera.kind === "static") {
+      assert.deepStrictEqual(dialogue.camera.position, [654, 60, -450]);
+      assert.ok(dialogue.camera.orientation);
+    }
+    assert.ok(
+      scene.shots[0].actions.some(
+        (action) => action.kind === "teleport" && action.role === "rook"
+      )
+    );
+  });
+
+  it("aims the Ashline containment reveal above the intake floor", () => {
+    const scene = CH1_SCENE_FACTORIES.get(CH1_SCENE_IDS.overlayContainment)!();
+    const camera = scene.shots[0].camera;
+    assert.equal(camera.kind, "static");
+    if (camera.kind === "static") {
+      assert.deepStrictEqual(camera.position, [666, 70, -60]);
+      assert.ok(camera.orientation);
+    }
+    assert.ok(
+      scene.shots[0].actions.some(
+        (action) => action.kind === "teleport" && action.role === "calla"
+      )
+    );
+  });
+
+  it("shows the carried player in the arrival reconstruction", () => {
+    const scene = CH1_SCENE_FACTORIES.get(CH1_SCENE_IDS.reconArrival)!();
+    const actions = scene.shots[0].actions;
+    assert.ok(
+      actions.some(
+        (action) => action.kind === "teleport" && action.role === "player"
+      )
+    );
+    assert.ok(
+      actions.some(
+        (action) =>
+          action.kind === "emote" &&
+          action.role === "player" &&
+          action.emote === "injury"
+      )
+    );
+    assert.ok(
+      actions.some(
+        (action) => action.kind === "moveTo" && action.role === "player"
+      )
+    );
+    const carrier = scene.cast.find((member) => member.role === "carrier");
+    assert.equal(carrier?.binding.kind, "ghost");
+    if (carrier?.binding.kind === "ghost") {
+      assert.deepStrictEqual(carrier.binding.spawnAt, [472.8, 70, -146]);
+    }
+    assert.ok(
+      scene.shots.every(
+        (shot) =>
+          shot.camera.kind !== "static" || Boolean(shot.camera.orientation)
+      )
+    );
+    const opening = scene.shots[0].camera;
+    assert.equal(opening.kind, "static");
+    if (opening.kind === "static") {
+      assert.deepStrictEqual(opening.position, [481, 71.5, -145]);
+      assert.ok(opening.orientation);
+    }
+    const carriedStop = scene.cast.find(
+      (member) => member.role === "carriedStop"
+    );
+    assert.equal(carriedStop?.binding.kind, "anchor");
+    if (carriedStop?.binding.kind === "anchor") {
+      assert.deepStrictEqual(carriedStop.binding.position, [474.2, 70, -139.8]);
+    }
+    const playerMove = actions.find(
+      (action) => action.kind === "moveTo" && action.role === "player"
+    );
+    assert.deepStrictEqual(
+      playerMove?.kind === "moveTo" ? playerMove.to : undefined,
+      { role: "carriedStop" }
+    );
+  });
+
+  it("keeps both corridor memory actors inside the visible aisle", () => {
+    for (const revised of [false, true]) {
+      const scene = ch1CorridorCutscene({ revised });
+      const woman = scene.cast.find((member) => member.role === "woman");
+      const man = scene.cast.find((member) => member.role === "man");
+      assert.equal(woman?.binding.kind, "ghost");
+      assert.equal(man?.binding.kind, "ghost");
+      if (woman?.binding.kind === "ghost") {
+        assert.deepStrictEqual(woman.binding.spawnAt, [474, 70, -129]);
+      }
+      if (man?.binding.kind === "ghost") {
+        assert.deepStrictEqual(man.binding.spawnAt, [474.8, 70, -134.6]);
+      }
+      const womanMove = scene.shots
+        .flatMap((shot) => shot.actions)
+        .find((action) => action.kind === "moveTo" && action.role === "woman");
+      assert.equal(
+        womanMove?.kind === "moveTo" ? womanMove.speed : undefined,
+        1.2
+      );
+    }
+  });
+
+  it("frames Lou for the word that triggers consolidation", () => {
+    const scene = ch1ConsolidationRevisionCutscene();
+    const first = scene.shots[0];
+    assert.equal(first.camera.kind, "overShoulder");
+    if (first.camera.kind === "overShoulder") {
+      assert.equal(first.camera.from, "player");
+      assert.equal(first.camera.to, "lou");
+      assert.ok(first.camera.pullout >= 2.4);
+    }
+    assert.ok(scene.cast.some((member) => member.role === "lou"));
+    const stage = scene.cast.find(
+      (member) => member.role === "consolidation-stage"
+    );
+    assert.equal(stage?.binding.kind, "anchor");
+    if (stage?.binding.kind === "anchor") {
+      assert.deepStrictEqual(
+        stage.binding.position,
+        CH1_ANCHORS.returnstone_pad_office
+      );
+    }
+    assert.equal(scene.settings.timeOfDay, 0.62);
+    assert.ok(
+      scene.shots[0].actions.some(
+        (action) => action.kind === "teleport" && action.role === "lou"
+      )
+    );
+    assert.ok(
+      scene.shots.every((shot) => shot.camera.kind !== "pov"),
+      "consolidation must not put the camera inside the player model"
+    );
+  });
+
+  it("keeps every Watch House camera and actor inside the authored room", () => {
+    const scene = CH1_SCENE_FACTORIES.get(CH1_SCENE_IDS.theWatchHouse)!();
+    const stage = scene.cast.find(
+      (member) => member.role === "conversation-stage"
+    );
+    assert.equal(stage?.binding.kind, "anchor");
+    if (stage?.binding.kind === "anchor") {
+      assert.deepStrictEqual(stage.binding.position, [472, 70, -149.5]);
+    }
+    assert.equal(scene.settings.timeOfDay, 0.55);
+    for (const shot of scene.shots) {
+      assert.equal(shot.camera.kind, "static");
+      if (shot.camera.kind !== "static") continue;
+      const [x, y, z] = shot.camera.position;
+      assert.ok(x >= 469 && x <= 476, `${shot.id}: camera left the room`);
+      assert.ok(y >= 70 && y <= 73, `${shot.id}: camera left the room`);
+      assert.ok(z >= -152 && z <= -145, `${shot.id}: camera left the room`);
+      assert.ok(shot.camera.orientation);
+    }
+  });
+
+  it("stages every present-day conversation and gives its exact actor a ghost fallback", () => {
+    for (const id of [
+      CH1_SCENE_IDS.theFlinch,
+      CH1_SCENE_IDS.confrontation,
+      CH1_SCENE_IDS.sorrelDoor,
+      CH1_SCENE_IDS.theCase,
+      CH1_SCENE_IDS.tooLate,
+      CH1_SCENE_IDS.theWatchHouse,
+    ]) {
+      const scene = CH1_SCENE_FACTORIES.get(id)!();
+      const actor = scene.cast.find((member) => member.role === "a");
+      assert.equal(actor?.binding.kind, "entity", id);
+      assert.equal(actor?.fallback, "ghost", id);
+      assert.ok(actor?.ghostAsset, `${id}: missing renderer fallback`);
+      assert.ok(
+        scene.cast.some(
+          (member) =>
+            member.role === "conversation-stage" &&
+            member.binding.kind === "anchor"
+        ),
+        `${id}: missing authored world-stage focus`
+      );
+      for (const role of ["a", "b"]) {
+        assert.ok(
+          scene.shots[0].actions.some(
+            (action) => action.kind === "teleport" && action.role === role
+          ),
+          `${id}: ${role} is not staged before the first camera`
+        );
+      }
+    }
+    const sorrel = CH1_SCENE_FACTORIES.get(CH1_SCENE_IDS.sorrelDoor)!();
+    const stage = sorrel.cast.find(
+      (member) => member.role === "conversation-stage"
+    );
+    assert.equal(stage?.binding.kind, "anchor");
+    if (stage?.binding.kind === "anchor") {
+      assert.deepStrictEqual(stage.binding.position, [3444, 65, -344]);
+    }
+  });
+
+  it("puts Rook and Calla on screen for their own dialogue", () => {
+    for (const [sceneId, role, expectedEntityId] of [
+      [CH1_SCENE_IDS.persistentGate, "rook", CH1_NPC_ENTITY_IDS.halden_rook],
+      [
+        CH1_SCENE_IDS.overlayContainment,
+        "calla",
+        CH1_NPC_ENTITY_IDS.calla_ashe,
+      ],
+    ] as const) {
+      const scene = CH1_SCENE_FACTORIES.get(sceneId)!();
+      const actor = scene.cast.find((member) => member.role === role);
+      assert.equal(actor?.binding.kind, "entity");
+      if (actor?.binding.kind === "entity") {
+        assert.equal(actor.binding.entityId, expectedEntityId);
+      }
+      const spoken = scene.shots
+        .flatMap((shot) => shot.actions)
+        .find((action) => action.kind === "dialogue");
+      assert.equal(spoken?.kind === "dialogue" ? spoken.role : undefined, role);
+    }
+  });
+
+  it("uses external coverage for memory actors that vanished in POV captures", () => {
+    for (const id of [
+      CH1_SCENE_IDS.overlayIveGotYou,
+      CH1_SCENE_IDS.reconCorridor,
+      `${CH1_SCENE_IDS.reconCorridor}-revised`,
+      CH1_SCENE_IDS.reconIntake,
+    ]) {
+      const scene = CH1_SCENE_FACTORIES.get(id)!();
+      assert.notEqual(
+        scene.shots[0].camera.kind,
+        "pov",
+        `${id}: first shot repeated the empty-ghost POV failure`
+      );
+    }
+  });
+
+  it("does not repeat dialogue already completed by the preceding choice", () => {
+    const watch = CH1_SCENE_FACTORIES.get(CH1_SCENE_IDS.theWatchHouse)!();
+    const watchText = watch.shots
+      .flatMap((shot) => shot.actions)
+      .filter((action) => action.kind === "dialogue")
+      .map((action) => action.text)
+      .join(" ");
+    assert.ok(!watchText.includes("Did he take it?"));
+
+    const confrontation = CH1_SCENE_FACTORIES.get(
+      CH1_SCENE_IDS.confrontation
+    )!();
+    const confrontationText = confrontation.shots
+      .flatMap((shot) => shot.actions)
+      .filter((action) => action.kind === "dialogue")
+      .map((action) => action.text)
+      .join(" ");
+    assert.ok(!confrontationText.includes("What have you been putting"));
+    assert.ok(confrontationText.includes("Ask me again in a month."));
   });
 });
 

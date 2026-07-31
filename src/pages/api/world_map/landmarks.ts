@@ -6,6 +6,12 @@ import { SNAPSHOT_GROVE_LANDMARKS } from "@/shared/harthmere/snapshot_grove_cont
 import { shiftHarthmereAuthoredPositionToWorld } from "@/shared/harthmere/coordinate_transform";
 import { HARTHMERE_BIBLE_DISTRICTS } from "@/shared/harthmere/harthmere_district_bible_layout";
 import { HARTHMERE_EXTENSION_ROAD } from "@/shared/harthmere/world_extension";
+import { CH1_MAP_LANDMARKS } from "@/shared/harthmere/ch1_map_landmarks";
+import { SNAPSHOT_GROVE_JACKIE_ENTITY_ID } from "@/shared/harthmere/snapshot_grove_ids";
+import {
+  HARTHMERE_TOWN_BUILDING_MAP_MARKERS,
+  HARTHMERE_TOWN_PEOPLE_MAP_MARKERS,
+} from "@/shared/harthmere/harthmere_town_map_markers";
 
 export const zLandmark = z.object({
   id: zBiomesId,
@@ -63,10 +69,10 @@ const SNAPSHOT_MISSION_WORLD_MAP_LANDMARKS: Landmark[] = [
     position: [560, 54, -182],
   },
   {
-    id: 8997551883502307 as BiomesId,
+    id: SNAPSHOT_GROVE_JACKIE_ENTITY_ID,
     importance: 0,
     name: "The Grove - Jackie",
-    position: [425, 54, -96],
+    position: [496, 70, -126],
   },
   {
     id: 8997551883502308 as BiomesId,
@@ -194,6 +200,35 @@ export const HARTHMERE_BIBLE_WORLD_MAP_LANDMARKS: Landmark[] =
     return [districtAnchor, ...buildings];
   });
 
+// HARTHMERE_ADDITIVE_TOWN_WORLD_MAP_LANDMARKS:
+// The bible districts above pinned the town's *shape*, but none of its people
+// and none of its 57 authored buildings, so the additive town read as an empty
+// outline on the world map. Both tables already ship world-shifted positions
+// (see harthmere_town_map_markers.ts). Ids come from the frozen table order:
+// appending to those tables is safe, reordering is not.
+export const HARTHMERE_TOWN_WORLD_MAP_LANDMARKS_VERSION =
+  "harthmere-additive-town-people-and-buildings-world-map-landmarks-v1";
+
+export const HARTHMERE_TOWN_BUILDING_WORLD_MAP_LANDMARKS: Landmark[] =
+  HARTHMERE_TOWN_BUILDING_MAP_MARKERS.map(
+    (marker, index): Landmark => ({
+      id: (8997551883603000 + index) as BiomesId,
+      importance: 1,
+      name: `Harthmere — ${marker.label}`,
+      position: [...marker.position],
+    })
+  );
+
+export const HARTHMERE_TOWN_NPC_WORLD_MAP_LANDMARKS: Landmark[] =
+  HARTHMERE_TOWN_PEOPLE_MAP_MARKERS.map(
+    (marker, index): Landmark => ({
+      id: (8997551883604000 + index) as BiomesId,
+      importance: 0,
+      name: marker.label,
+      position: [...marker.position],
+    })
+  );
+
 export function appendHarthmereExtensionWorldMapLandmarks(
   items: Landmark[]
 ): Landmark[] {
@@ -202,7 +237,36 @@ export function appendHarthmereExtensionWorldMapLandmarks(
   for (const item of [
     ...HARTHMERE_EXTENSION_WORLD_MAP_LANDMARKS,
     ...HARTHMERE_BIBLE_WORLD_MAP_LANDMARKS,
+    ...HARTHMERE_TOWN_BUILDING_WORLD_MAP_LANDMARKS,
+    ...HARTHMERE_TOWN_NPC_WORLD_MAP_LANDMARKS,
   ]) {
+    if (seen.has(item.name)) continue;
+    seen.add(item.name);
+    appended.push(item);
+  }
+  return appended;
+}
+
+// CHAPTER_1_WORLD_MAP_LANDMARKS_VERSION:
+// Chapter 1 sends the player to nine locations and pinned none of them. Ids are
+// derived from the frozen slug order so a pin keeps its identity across deploys;
+// appending is safe, reordering is not.
+export const CH1_WORLD_MAP_LANDMARKS_VERSION =
+  "harthmere-chapter1-world-map-landmarks-v1";
+
+export const CH1_WORLD_MAP_LANDMARKS: Landmark[] = CH1_MAP_LANDMARKS.map(
+  (landmark, index): Landmark => ({
+    id: (8997551883602000 + index) as BiomesId,
+    importance: landmark.importance,
+    name: landmark.label,
+    position: [...landmark.position],
+  })
+);
+
+export function appendChapter1WorldMapLandmarks(items: Landmark[]): Landmark[] {
+  const seen = new Set(items.map((item) => item.name));
+  const appended = [...items];
+  for (const item of CH1_WORLD_MAP_LANDMARKS) {
     if (seen.has(item.name)) continue;
     seen.add(item.name);
     appended.push(item);
@@ -275,9 +339,11 @@ export default biomesApiHandler(
         },
       ];
     });
-    return appendSnapshotMissionLandmarks(
-      appendHarthmereExtensionWorldMapLandmarks(
-        appendHarthmereConnectorWorldMapLandmarks(scanned)
+    return appendChapter1WorldMapLandmarks(
+      appendSnapshotMissionLandmarks(
+        appendHarthmereExtensionWorldMapLandmarks(
+          appendHarthmereConnectorWorldMapLandmarks(scanned)
+        )
       )
     );
   }

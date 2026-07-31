@@ -123,6 +123,8 @@ export const BiomesUIOpenPrompt: React.FunctionComponent<{
         <button
           type="button"
           className="biomes-ui-mobile-menu__button biomes-ui-mobile-menu__button--menu"
+          data-biomes-mobile-action="menu"
+          aria-label="Open Biomes menu"
           onPointerDown={(event) => {
             containMobileControlEvent(event);
             openMenu();
@@ -132,11 +134,15 @@ export const BiomesUIOpenPrompt: React.FunctionComponent<{
             if (event.detail === 0) openMenu();
           }}
         >
-          Menu
+          <span className="biomes-ui-mobile-menu__key" aria-hidden>
+            ☰
+          </span>
+          <span>Menu</span>
         </button>
         <button
           type="button"
           className="biomes-ui-mobile-menu__button biomes-ui-mobile-menu__button--recipes"
+          data-biomes-mobile-action="recipes"
           aria-label="Open Recipes"
           onPointerDown={(event) => {
             containMobileControlEvent(event);

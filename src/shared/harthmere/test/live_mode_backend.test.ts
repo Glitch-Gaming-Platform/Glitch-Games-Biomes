@@ -57,6 +57,7 @@ import {
   HARTHMERE_BUSINESS_OUTPOST_REBUILD_REVISION,
   harthmereBusinessOutpostBusinessId,
 } from "../business_customer_simulator";
+import { CH1_WORLD_BUILDING_PLANS } from "../ch1_world_buildings";
 import {
   registerHarthmereAbility,
   registerHarthmereClassDefinition,
@@ -8544,7 +8545,8 @@ describe("reduceHarthmereLiveModeBackendState — building mutation", function (
 
     assert.strictEqual(
       Object.keys(state.building.placedStructures).length,
-      Object.keys(HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS).length
+      Object.keys(HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS).length +
+        CH1_WORLD_BUILDING_PLANS.length
     );
     assert.ok(
       summary.warnings.includes("building_rejected:plot_not_owned_by_actor")
@@ -9221,7 +9223,8 @@ describe("reduceHarthmereLiveModeBackendState — building mutation", function (
 
     assert.strictEqual(
       Object.keys(state.building.placedStructures).length,
-      Object.keys(HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS).length
+      Object.keys(HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS).length +
+        CH1_WORLD_BUILDING_PLANS.length
     );
     assert.ok(
       summary.warnings.includes("building_rejected:legal_standing_too_low")
@@ -9265,7 +9268,8 @@ describe("reduceHarthmereLiveModeBackendState — building mutation", function (
 
   it("auto-materializes business outpost voxel buildings on read_state when revision is missing or stale", function () {
     // A fresh state has no outpostBuildRevision — read_state should detect the
-    // mismatch and queue the full 19-outpost cleanup + rebuild automatically.
+    // mismatch and queue all business cleanup/rebuild plans plus the canonical
+    // Chapter 1 story buildings automatically.
     const fresh = freshState();
     assert.equal(fresh.building.outpostBuildRevision, undefined);
 
@@ -9285,8 +9289,9 @@ describe("reduceHarthmereLiveModeBackendState — building mutation", function (
     );
     assert.equal(
       summary.buildingMaterializationPlans?.length,
-      Object.keys(HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS).length * 2,
-      "read_state must produce one cleanup + one rebuild plan per outpost"
+      Object.keys(HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS).length * 2 +
+        CH1_WORLD_BUILDING_PLANS.length,
+      "read_state must produce each outpost cleanup/rebuild plus Chapter 1 buildings"
     );
     assert.ok(
       summary.buildingMaterializationPlans?.[0]?.edits.every(
@@ -9310,7 +9315,8 @@ describe("reduceHarthmereLiveModeBackendState — building mutation", function (
     );
     assert.equal(
       second.buildingMaterializationPlans?.length ?? 0,
-      Object.keys(HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS).length,
+      Object.keys(HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS).length +
+        CH1_WORLD_BUILDING_PLANS.length,
       "read_state must retry each still-unacknowledged ECS building plan"
     );
     assert.equal(
@@ -10138,6 +10144,7 @@ describe("reduceHarthmereLiveModeBackendState — physical jobs board and live t
         {
           itemId: "sealed_package",
           count: 1,
+          targetId: "clinic_lockbox",
           mapMarkerId: "clinic_lockbox_marker",
           targetName: "Clinic lockbox",
         },
@@ -10153,6 +10160,7 @@ describe("reduceHarthmereLiveModeBackendState — physical jobs board and live t
       failurePenaltyGold: 0,
       requiresFieldWork: true,
       mapMarkerId: "clinic_lockbox_marker",
+      targetId: "clinic_lockbox",
       abuseFlags: [],
       logs: [],
     } as any;
@@ -10177,6 +10185,18 @@ describe("reduceHarthmereLiveModeBackendState — physical jobs board and live t
     ));
     const todo = Object.values(s.jobsBoard.todos)[0];
     assert.ok(todo, "accepting the delivery should create a todo");
+    const clinicLockbox =
+      harthmereJobsBoardQuestMarkerRuntimePositionForId(
+        "clinic_lockbox_marker"
+      )!;
+    s.careLoops.worldInteractions.clinic_lockbox = {
+      objectId: "clinic_lockbox",
+      kind: "use",
+      label: "Clinic Delivery Lockbox",
+      count: 1,
+      lastAtMs: NOW_MS,
+      lastRequestId: "test_clinic_lockbox_receipt",
+    };
 
     const result = applyOne(
       s,
@@ -10186,7 +10206,7 @@ describe("reduceHarthmereLiveModeBackendState — physical jobs board and live t
         boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
         jobId: "job_delivery_dropoff",
         questTodoId: todo.todoId,
-        completedTargetId: "clinic_lockbox_marker",
+        completedTargetId: "clinic_lockbox",
         completionNote: "delivered at lockbox",
       },
       {
@@ -10194,9 +10214,9 @@ describe("reduceHarthmereLiveModeBackendState — physical jobs board and live t
         targetId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
         serverActorItemCounts: { sealed_package: 1 },
         serverActorPosition: {
-          x: 751,
-          y: 53,
-          z: -562,
+          x: clinicLockbox.position[0],
+          y: clinicLockbox.position[1],
+          z: clinicLockbox.position[2],
         },
       }
     );
@@ -10209,7 +10229,11 @@ describe("reduceHarthmereLiveModeBackendState — physical jobs board and live t
     const exchange = result.summary.nativeEcsMaterializationPlans?.[0] as any;
     assert.equal(exchange?.kind, "inventory_exchange");
     assert.equal(exchange?.actorId, ACTOR);
-    assert.deepEqual(exchange?.position, { x: 751, y: 53, z: -562 });
+    assert.deepEqual(exchange?.position, {
+      x: clinicLockbox.position[0],
+      y: clinicLockbox.position[1],
+      z: clinicLockbox.position[2],
+    });
     assert.deepEqual(exchange?.consumeItemStacks, { sealed_package: 1 });
     assert.deepEqual(exchange?.rewardItemStacks, {});
     assert.deepEqual(s.quests.active[`jobs_board:${todo.todoId}`], {
@@ -10242,7 +10266,7 @@ describe("reduceHarthmereLiveModeBackendState — physical jobs board and live t
         {
           itemId: "herb_bundle",
           count: 2,
-          targetId: "clinic_supply_marker",
+          targetId: "clinic_supply_shelf",
           targetName: "Clinic supply shelf",
           mapMarkerId: "clinic_supply_marker",
         },
@@ -10258,7 +10282,7 @@ describe("reduceHarthmereLiveModeBackendState — physical jobs board and live t
       failurePenaltyGold: 0,
       requiresFieldWork: true,
       mapMarkerId: "clinic_supply_marker",
-      targetId: "clinic_supply_marker",
+      targetId: "clinic_supply_shelf",
       abuseFlags: [],
       logs: [],
     } as any;
@@ -10283,6 +10307,18 @@ describe("reduceHarthmereLiveModeBackendState — physical jobs board and live t
     ));
     const todo = Object.values(s.jobsBoard.todos)[0];
     assert.ok(todo, "accepting the delivery should create a todo");
+    const clinicSupply =
+      harthmereJobsBoardQuestMarkerRuntimePositionForId(
+        "clinic_supply_marker"
+      )!;
+    s.careLoops.worldInteractions.clinic_supply_shelf = {
+      objectId: "clinic_supply_shelf",
+      kind: "use",
+      label: "Clinic Supply Shelf",
+      count: 1,
+      lastAtMs: NOW_MS,
+      lastRequestId: "test_clinic_supply_receipt",
+    };
 
     const result = applyOne(
       s,
@@ -10292,11 +10328,17 @@ describe("reduceHarthmereLiveModeBackendState — physical jobs board and live t
         boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
         jobId: "job_storage_material_dropoff",
         questTodoId: todo.todoId,
-        completedTargetId: "clinic_supply_marker",
+        completedTargetId: "clinic_supply_shelf",
       },
       {
         subsystem: "jobs",
         targetId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
+        serverActorItemCounts: { herb_bundle: 2 },
+        serverActorPosition: {
+          x: clinicSupply.position[0],
+          y: clinicSupply.position[1],
+          z: clinicSupply.position[2],
+        },
       }
     );
 

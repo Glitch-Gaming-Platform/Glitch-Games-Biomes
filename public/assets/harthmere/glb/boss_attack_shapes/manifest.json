@@ -1,0 +1,99 @@
+{
+  "version": "harthmere-boss-attack-shapes-v1",
+  "blenderVersion": "5.2.0 LTS",
+  "count": 4,
+  "shapes": [
+    {
+      "shape": "beam",
+      "label": "Boss Beam",
+      "baseRadius": 0.22,
+      "baseLength": 1.0,
+      "animationClip": "PulseLoop_24",
+      "assetUrl": "/assets/harthmere/glb/boss_attack_shapes/beam.glb",
+      "previewUrl": "/assets/harthmere/boss_attack_shape_previews/beam.png",
+      "triangleCount": 2974,
+      "bounds": {
+        "min": [
+          -0.19714322686195374,
+          -0.1922004371881485,
+          0.0
+        ],
+        "max": [
+          0.19714322686195374,
+          0.1922004520893097,
+          1.104362964630127
+        ]
+      },
+      "bytes": 59104
+    },
+    {
+      "shape": "cone",
+      "label": "Boss Cone",
+      "baseRadius": 0.62,
+      "baseLength": 1.0,
+      "animationClip": "PulseLoop_24",
+      "assetUrl": "/assets/harthmere/glb/boss_attack_shapes/cone.glb",
+      "previewUrl": "/assets/harthmere/boss_attack_shape_previews/cone.png",
+      "triangleCount": 3264,
+      "bounds": {
+        "min": [
+          -0.5875241160392761,
+          -0.5883349776268005,
+          0.0
+        ],
+        "max": [
+          0.5875241160392761,
+          0.5883349776268005,
+          0.9697265028953552
+        ]
+      },
+      "bytes": 62272
+    },
+    {
+      "shape": "ground_aoe",
+      "label": "Boss Ground Area",
+      "baseRadius": 1.0,
+      "baseLength": 1.0,
+      "animationClip": "PulseLoop_24",
+      "assetUrl": "/assets/harthmere/glb/boss_attack_shapes/ground_aoe.glb",
+      "previewUrl": "/assets/harthmere/boss_attack_shape_previews/ground_aoe.png",
+      "triangleCount": 5172,
+      "bounds": {
+        "min": [
+          -0.9604854583740234,
+          -0.9604854583740234,
+          -0.03163318336009979
+        ],
+        "max": [
+          0.9604854583740234,
+          0.9604854583740234,
+          0.16603317856788635
+        ]
+      },
+      "bytes": 94520
+    },
+    {
+      "shape": "self_aoe",
+      "label": "Boss Radial Area",
+      "baseRadius": 1.0,
+      "baseLength": 1.0,
+      "animationClip": "PulseLoop_24",
+      "assetUrl": "/assets/harthmere/glb/boss_attack_shapes/self_aoe.glb",
+      "previewUrl": "/assets/harthmere/boss_attack_shape_previews/self_aoe.png",
+      "triangleCount": 4820,
+      "bounds": {
+        "min": [
+          -0.9605404734611511,
+          -0.9421056509017944,
+          0.009199187159538269
+        ],
+        "max": [
+          0.9605404734611511,
+          0.9421056509017944,
+          0.3364008367061615
+        ]
+      },
+      "bytes": 82884
+    }
+  ]
+}

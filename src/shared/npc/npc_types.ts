@@ -183,6 +183,68 @@ export type BehaviorHideNameOverlayParams = z.infer<
   typeof zBehaviorHideNameOverlayParams
 >;
 
+const zBehaviorRangedAttackParams = z
+  .object({
+    abilityId: z.string().min(1),
+    displayName: z.string().min(1).optional(),
+    projectileVisualId: z.string().min(1),
+    attackShape: z
+      .enum(["projectile", "beam", "ground_aoe", "self_aoe", "cone"])
+      .optional(),
+    damageType: z
+      .enum([
+        "physical",
+        "slashing",
+        "piercing",
+        "blunt",
+        "fire",
+        "ice",
+        "lightning",
+        "holy",
+        "dark",
+        "arcane",
+        "nature",
+        "sonic",
+        "gravity",
+      ])
+      .optional(),
+    animationClip: z
+      .enum([
+        "Attack",
+        "HeavyAttack",
+        "RangedAttack",
+        "AreaAttack",
+        "Jump",
+        "Summon",
+      ])
+      .optional(),
+    specialAnimationClip: z.string().min(1).optional(),
+    minimumDistance: z.number().gte(0),
+    attackDistance: z.number().gt(0),
+    attackDamage: z.number().gt(0),
+    castTimeSecs: z.number().gt(0),
+    cooldownSecs: z.number().gt(0),
+    sharedCooldownSecs: z.number().gt(0),
+    hitRadius: z.number().gt(0),
+    coneAngleDeg: z.number().gt(0).lte(360).optional(),
+    minimumHealthRatio: z.number().gte(0).lte(1).optional(),
+    maximumHealthRatio: z.number().gte(0).lte(1).optional(),
+  })
+  .refine(
+    (value) => value.minimumDistance < value.attackDistance,
+    "Ranged attack minimum distance must be below its maximum distance."
+  )
+  .refine(
+    (value) =>
+      value.minimumHealthRatio === undefined ||
+      value.maximumHealthRatio === undefined ||
+      value.minimumHealthRatio <= value.maximumHealthRatio,
+    "Ranged attack minimum health ratio must not exceed its maximum health ratio."
+  );
+export type BehaviorRangedAttackParams = z.infer<
+  typeof zBehaviorRangedAttackParams
+>;
+
 const zBehaviorChaseAttackParams = z
   .object({
     aggroTrigger: z
@@ -241,6 +303,12 @@ const zBehaviorChaseAttackParams = z
       .number()
       .describe(
         "The number of hitpoints that will be removed from the target per attack."
+      ),
+    rangedAttacks: z
+      .array(zBehaviorRangedAttackParams)
+      .optional()
+      .describe(
+        "Optional cooldown-gated ranged attacks used in addition to the normal close-range strike."
       ),
   })
   .refine(

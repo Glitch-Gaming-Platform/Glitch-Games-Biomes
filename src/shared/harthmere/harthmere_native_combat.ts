@@ -15,10 +15,30 @@ import {
   harthmereNativeBiomesIdForNpcType,
 } from "@/shared/harthmere/harthmere_native_item_ids";
 import type { BiomesId } from "@/shared/ids";
-import type { Behavior } from "@/shared/npc/npc_types";
+import {
+  getHarthmereProjectileVisual,
+  harthmereNativeNpcProjectileVisualId,
+} from "@/shared/harthmere/projectile_visual_manifest";
+import type {
+  Behavior,
+  BehaviorRangedAttackParams,
+} from "@/shared/npc/npc_types";
+import {
+  getHarthmereEnergyWeapon,
+  type HarthmereEnergyWeaponId,
+} from "@/shared/harthmere/energy_weapon_catalog";
+import { harthmereBossAttacksForLabel } from "@/shared/harthmere/boss_attack_catalog";
+import { harthmereMuckCreatureAssetKeyForLabel } from "@/shared/harthmere/muck_creature_assets";
 
 export const HARTHMERE_NATIVE_COMBAT_VERSION =
   "harthmere-native-combat-v1" as const;
+
+export const HARTHMERE_HEX_FIREBALL_COOLDOWN_SECS = 20;
+export const HARTHMERE_HEX_FIREBALL_RANGE = 12;
+export const HARTHMERE_HEX_FIREBALL_MINIMUM_RANGE = 4.25;
+export const HARTHMERE_HEX_FIREBALL_CAST_TIME_SECS = 0.65;
+export const HARTHMERE_HEX_BOSS_SECONDARY_COOLDOWN_SECS = 5.5;
+export const HARTHMERE_HEX_BOSS_RANGED_RANGE = 18;
 
 export interface HarthmereNativeCombatSeedLike {
   seedId: string;
@@ -84,9 +104,65 @@ export interface HarthmereNativeNpcCombatProfile {
   behaviorKind: "hostile" | "retaliate" | "sentinel" | "prisoner";
   dropItems: ReadonlyArray<{ itemId: string; count: number }>;
   /** See `questDropBikkieItems` on the seed; carried through verbatim. */
-  questDropBikkieItems: ReadonlyArray<{ bikkieItemId: BiomesId; count: number }>;
+  questDropBikkieItems: ReadonlyArray<{
+    bikkieItemId: BiomesId;
+    count: number;
+  }>;
   killXp: number;
   isBoss: boolean;
+  /** Original snapshot renderer route for this native NPC type. */
+  galoisPath?: string;
+  /** Human NPCs use the same generated wearable mesh as real players. */
+  isPlayerLikeAppearance?: true;
+  projectileVisualId?: string;
+  rangedAttacks?: readonly BehaviorRangedAttackParams[];
+}
+
+export function harthmereNativeNpcProjectilePresentation(input: {
+  profile: HarthmereNativeNpcCombatProfile | undefined;
+  attackTime: number | undefined;
+  rangedState:
+    | {
+        abilityId: string;
+        projectileVisualId: string;
+        castTime: number;
+        aimPoint: readonly [number, number, number];
+        result?: "hit" | "miss";
+      }
+    | undefined;
+}) {
+  const { profile, attackTime, rangedState } = input;
+  const rangedAttack = profile?.rangedAttacks?.find(
+    ({ abilityId, projectileVisualId }) =>
+      rangedState?.abilityId === abilityId &&
+      rangedState.projectileVisualId === projectileVisualId
+  );
+  if (
+    rangedAttack &&
+    rangedState &&
+    attackTime !== undefined &&
+    Math.abs(rangedState.castTime - attackTime) <= 0.001
+  ) {
+    return {
+      projectileVisualId: rangedState.projectileVisualId,
+      abilityId: rangedState.abilityId,
+      displayName: rangedAttack.displayName,
+      attackShape: rangedAttack.attackShape,
+      damageType: rangedAttack.damageType,
+      animationClip: rangedAttack.animationClip,
+      specialAnimationClip: rangedAttack.specialAnimationClip,
+      attackDistance: rangedAttack.attackDistance,
+      hitRadius: rangedAttack.hitRadius,
+      coneAngleDeg: rangedAttack.coneAngleDeg,
+      windupSecs: rangedAttack.castTimeSecs,
+      aimPoint: rangedState.aimPoint,
+      result: rangedState.result,
+    };
+  }
+  if (profile?.rangedAttacks?.length || !profile?.projectileVisualId) {
+    return undefined;
+  }
+  return { projectileVisualId: profile.projectileVisualId };
 }
 
 function slug(value: string) {
@@ -148,6 +224,66 @@ export function harthmereNativeNpcCombatProfileForSeed(
   const tutorialRetaliationOnly = seed.areaId === "road_muckwad_patch";
   const hex = seed.combatKind === "hex" || /hex/i.test(seed.displayName);
   const thaedryn = key === "boss_thaedryn_bellbound";
+  const isPlayerLikeAppearance = bandit ? true : undefined;
+  const galoisPath = sentinel
+    ? "npcs/helping_robot"
+    : livestock
+    ? harthmereMuckCreatureAssetKeyForLabel(
+        `${seed.species ?? ""} ${seed.displayName}`
+      )
+    : bandit
+    ? undefined
+    : harthmereMuckCreatureAssetKeyForLabel(seed.displayName) ??
+      (hex ? "npcs/brown_hexer" : "npcs/mossy_mucker");
+  const attackDamage = sentinel
+    ? 0
+    : boss
+    ? Math.max(120, monsterDamage(seed))
+    : monsterDamage(seed);
+  const fireballVisual = getHarthmereProjectileVisual("fireball");
+  const secondaryVisual = getHarthmereProjectileVisual(
+    thaedryn ? "thaedryn_resonance" : "hex_bolt"
+  );
+  const fireballAttack: BehaviorRangedAttackParams | undefined =
+    hex && fireballVisual?.id === "fireball"
+      ? {
+          abilityId: "fireball",
+          projectileVisualId: fireballVisual.id,
+          minimumDistance: boss ? 5 : HARTHMERE_HEX_FIREBALL_MINIMUM_RANGE,
+          attackDistance: boss
+            ? HARTHMERE_HEX_BOSS_RANGED_RANGE
+            : HARTHMERE_HEX_FIREBALL_RANGE,
+          attackDamage: Math.max(30, Math.round(attackDamage * 0.7)),
+          castTimeSecs: HARTHMERE_HEX_FIREBALL_CAST_TIME_SECS,
+          cooldownSecs: HARTHMERE_HEX_FIREBALL_COOLDOWN_SECS,
+          sharedCooldownSecs: boss
+            ? 2.75
+            : HARTHMERE_HEX_FIREBALL_COOLDOWN_SECS,
+          hitRadius: boss ? 1.05 : 0.8,
+        }
+      : undefined;
+  const bossSecondaryAttack: BehaviorRangedAttackParams | undefined =
+    hex && boss && secondaryVisual
+      ? {
+          abilityId: thaedryn ? "thaedryn_resonance" : "hex_bolt",
+          projectileVisualId: secondaryVisual.id,
+          minimumDistance: 4,
+          attackDistance: HARTHMERE_HEX_BOSS_RANGED_RANGE,
+          attackDamage: Math.max(40, Math.round(attackDamage * 0.82)),
+          castTimeSecs: thaedryn ? 0.8 : 0.55,
+          cooldownSecs: HARTHMERE_HEX_BOSS_SECONDARY_COOLDOWN_SECS,
+          sharedCooldownSecs: 2.75,
+          hitRadius: thaedryn ? 1.25 : 0.9,
+        }
+      : undefined;
+  const authoredBossAttacks = boss
+    ? harthmereBossAttacksForLabel(seed.displayName)
+    : undefined;
+  const rangedAttacks = authoredBossAttacks
+    ? [...authoredBossAttacks]
+    : [fireballAttack, bossSecondaryAttack].filter(
+        (attack): attack is BehaviorRangedAttackParams => Boolean(attack)
+      );
   return {
     key,
     id: harthmereNativeBiomesIdForNpcType(key)!,
@@ -163,11 +299,7 @@ export function harthmereNativeNpcCombatProfileForSeed(
           : seed.combatHp ?? (sentinel ? 1 : 40)
       )
     ),
-    attackDamage: sentinel
-      ? 0
-      : boss
-      ? Math.max(120, monsterDamage(seed))
-      : monsterDamage(seed),
+    attackDamage,
     attackDistance: thaedryn
       ? 8
       : boss
@@ -282,6 +414,15 @@ export function harthmereNativeNpcCombatProfileForSeed(
       Math.trunc(seed.killXp ?? (boss ? 500 : 20 + level * 15))
     ),
     isBoss: boss,
+    galoisPath,
+    isPlayerLikeAppearance,
+    projectileVisualId: harthmereNativeNpcProjectileVisualId({
+      key,
+      displayName: seed.displayName,
+      combatKind: seed.combatKind,
+      banditRole,
+    }),
+    rangedAttacks: rangedAttacks.length ? rangedAttacks : undefined,
   };
 }
 
@@ -308,6 +449,9 @@ export function harthmereNativeNpcChaseAttackParams(
     attackIntervalSecs: profile.attackIntervalSecs,
     attackFovDeg: profile.attackFovDeg,
     attackDamage: profile.attackDamage,
+    rangedAttacks: profile.rangedAttacks
+      ? [...profile.rangedAttacks]
+      : undefined,
   };
 }
 
@@ -323,7 +467,14 @@ export function harthmereNativeNpcBiscuit(
     rotateSpeed: profile.rotateSpeed,
     walkSpeed: profile.walkSpeed,
     runSpeed: profile.runSpeed,
-    galoisPath: presentation?.galoisPath,
+    // Preserve the May 2026 renderer split: humans use the generated
+    // player/wearables mesh; creatures and robots use their authored Galois
+    // rigs. Never borrow dMucker's body merely because it donates behavior
+    // presentation metadata.
+    galoisPath: profile.galoisPath ?? presentation?.galoisPath,
+    ...(profile.isPlayerLikeAppearance
+      ? { isPlayerLikeAppearance: true as const }
+      : {}),
     effectsProfile: presentation?.effectsProfile,
     // Native death/respawn remains ECS-owned. Fixed Harthmere seed ids are
     // revived by the logic respawn service so process restarts cannot reset a
@@ -374,6 +525,7 @@ export function harthmereNativeNpcBiscuit(
 
 export interface HarthmereNativeItemCombatProfile {
   itemId?: string;
+  energyWeaponId?: HarthmereEnergyWeaponId;
   kind: "unarmed" | "melee" | "heavy" | "ranged" | "spell";
   damagePerHit: number;
   dps: number;
@@ -416,6 +568,25 @@ export function harthmereNativeItemCombatProfile(
   }
   const definition = harthmereNativeItemDefinitionForBiomesId(item.id);
   if (!definition) return undefined;
+  const energyWeapon = getHarthmereEnergyWeapon(definition.itemId);
+  if (energyWeapon) {
+    return {
+      itemId: definition.itemId,
+      energyWeaponId: energyWeapon.id,
+      kind: "ranged",
+      damagePerHit: energyWeapon.baseDamage,
+      dps: energyWeapon.baseDamage / (energyWeapon.cooldownMs / 1000),
+      intervalSecs: energyWeapon.cooldownMs / 1000,
+      reach: energyWeapon.hardMaxRange,
+      levelRequirement: energyWeapon.requiredLevel,
+      durabilityCostMs: 0,
+      armor: 0,
+      defense: 0,
+      evasion: 0,
+      manaCost: 0,
+      slots: harthmereAllowedEquipmentSlots(definition),
+    };
+  }
   const stats = definition.stats ?? {};
   const damagePerHit = Math.max(
     0,
@@ -673,13 +844,23 @@ export function mitigateHarthmereNativeIncomingDamage(input: {
   rawDamage: number;
   armor: number;
   defense: number;
+  magicResistance?: number;
+  damageType?: BehaviorRangedAttackParams["damageType"];
   evasion?: number;
   accuracy?: number;
   attackerLevel: number;
   defenderLevel: number;
 }) {
   if (!Number.isFinite(input.rawDamage) || input.rawDamage <= 0) return 0;
-  const effectiveArmor = Math.max(0, input.armor + input.defense * 0.6);
+  const physicalDamage =
+    input.damageType === undefined ||
+    ["physical", "slashing", "piercing", "blunt"].includes(input.damageType);
+  const effectiveArmor = Math.max(
+    0,
+    physicalDamage
+      ? input.armor + input.defense * 0.6
+      : input.magicResistance ?? input.defense * 0.8
+  );
   const reduction =
     effectiveArmor /
     (effectiveArmor + 100 + 8 * Math.max(1, input.attackerLevel));

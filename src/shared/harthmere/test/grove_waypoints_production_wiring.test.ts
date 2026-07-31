@@ -39,9 +39,13 @@ function sourceFilesUnder(dir: string): string[] {
     for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
       const full = path.join(current, entry.name);
       if (entry.isDirectory()) {
-        if (entry.name === "node_modules" || entry.name === "__tests__") continue;
+        if (entry.name === "node_modules" || entry.name === "__tests__")
+          continue;
         walk(full);
-      } else if (/\.tsx?$/.test(entry.name) && !/\.test\.tsx?$/.test(entry.name)) {
+      } else if (
+        /\.tsx?$/.test(entry.name) &&
+        !/\.test\.tsx?$/.test(entry.name)
+      ) {
         out.push(full);
       }
     }

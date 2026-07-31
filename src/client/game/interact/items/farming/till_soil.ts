@@ -17,6 +17,7 @@ import { hitExistingTerrain } from "@/shared/game/spatial";
 import { TerrainHelper } from "@/shared/game/terrain_helper";
 import { equals } from "@/shared/math/linear";
 import { compactMap } from "@/shared/util/collections";
+import { emitHarthmereSoundEffect } from "@/shared/harthmere/sound_effect_manifest";
 
 const TILL_TIME_MS = 1000;
 
@@ -206,5 +207,6 @@ export class TillSoilItemSpec implements AttackDestroyDelegateSpec {
     }
 
     tillSoil(this.deps, pos, allowedPos, itemInfo.itemRef);
+    emitHarthmereSoundEffect("till_soil", { position: pos });
   }
 }

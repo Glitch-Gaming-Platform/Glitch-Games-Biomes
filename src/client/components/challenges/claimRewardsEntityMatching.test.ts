@@ -1,5 +1,9 @@
 import { claimRewardsStepMatchesEntity } from "@/client/components/challenges/helpers";
 import type { BiomesId } from "@/shared/ids";
+import {
+  SNAPSHOT_GROVE_JACKIE_ENTITY_ID,
+  SNAPSHOT_GROVE_LEGACY_NPC_ENTITY_IDS,
+} from "@/shared/harthmere/snapshot_grove_ids";
 import assert from "assert";
 
 describe("native claim-rewards entity matching", () => {
@@ -35,6 +39,22 @@ describe("native claim-rewards entity matching", () => {
     assert.equal(
       claimRewardsStepMatchesEntity(resources, entityId, 4004 as BiomesId),
       false
+    );
+  });
+
+  it("matches a canonical Grove NPC against an immutable legacy target id", () => {
+    const canonicalResources = {
+      get() {
+        return undefined;
+      },
+    } as any;
+    assert.equal(
+      claimRewardsStepMatchesEntity(
+        canonicalResources,
+        SNAPSHOT_GROVE_JACKIE_ENTITY_ID,
+        SNAPSHOT_GROVE_LEGACY_NPC_ENTITY_IDS.jackie
+      ),
+      true
     );
   });
 });

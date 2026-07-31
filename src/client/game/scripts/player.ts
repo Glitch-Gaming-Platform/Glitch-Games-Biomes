@@ -26,7 +26,11 @@ import {
   submitHarthmereDrowningDamageLiveMode,
   submitHarthmereFallDamageLiveMode,
 } from "@/client/game/util/harthmere_live_environment_damage";
-import { MOBILE_JOYSTICK_RUN_SOURCE } from "@/client/game/util/mobile_joystick";
+import {
+  MOBILE_JOYSTICK_CROUCH_SOURCE,
+  MOBILE_JOYSTICK_RUN_SOURCE,
+  mobileJoystickCrouchRequestedForTest,
+} from "@/client/game/util/mobile_joystick";
 import { fixedConstantScalarTransition } from "@/client/game/util/transitions";
 import { respawn } from "@/client/game/util/warping";
 import { reportClientError } from "@/client/util/request_helpers";
@@ -39,12 +43,18 @@ import { PICKUP_ATTEMPT_DELAY_MS } from "@/shared/constants";
 import {
   AckWarpEvent,
   EnterRobotFieldEvent,
+  MovementActionEvent,
   MoveEvent,
   PickUpEvent,
+  SetCrouchingEvent,
   UpdatePlayerHealthEvent,
 } from "@/shared/ecs/gen/events";
 import { DropSelector, PlaceableSelector } from "@/shared/ecs/gen/selectors";
-import type { EmoteType, OptionalDamageSource } from "@/shared/ecs/gen/types";
+import type {
+  EmoteType,
+  MovementActionType,
+  OptionalDamageSource,
+} from "@/shared/ecs/gen/types";
 import type { CollisionCallback } from "@/shared/game/collision";
 import { CollisionHelper } from "@/shared/game/collision";
 import {
@@ -52,7 +62,21 @@ import {
   type FallTrackerState,
 } from "@/shared/game/fall_damage";
 import { anItem } from "@/shared/game/item";
-import { getPlayerBuffs } from "@/shared/game/players";
+import {
+  MOVEMENT_ACTION_STAMINA_COST,
+  PLAYER_MOVEMENT_ACTION_TIMING,
+  movementActionEnvironmentForTick,
+  movementActionVelocityForTick,
+  movementActionIsOnCooldown,
+  movementActionPressedOnEdge,
+  normalizeMovementActionDirection,
+} from "@/shared/game/movement_actions";
+import {
+  canStartStandingMovementAction,
+  getPlayerBuffs,
+  resolvePlayerEffectiveCrouching,
+  updateCrouchCollisionTransition,
+} from "@/shared/game/players";
 import { friendlyShardId, shardsForAABB } from "@/shared/game/shard";
 import { blockIsEmpty } from "@/shared/game/terrain_helper";
 import type { BiomesId } from "@/shared/ids";
@@ -60,6 +84,11 @@ import { ch1HorizonBoundarySlabs } from "@/shared/harthmere/ch1_dungeon_horizon"
 import { ch1ElsewhenSlotAt } from "@/shared/harthmere/ch1_elsewhen_region";
 import { readHarthmereNativeCombatProgression } from "@/shared/harthmere/harthmere_native_combat";
 import { harthmereNativeLevelStats } from "@/shared/harthmere/harthmere_native_level_stats";
+import { readHarthmereNativeVitals } from "@/shared/harthmere/harthmere_native_vitals";
+import {
+  emitHarthmereSoundEffect,
+  shouldPlayHarthmereWaterEntrySplash,
+} from "@/shared/harthmere/sound_effect_manifest";
 import { harthmereTownBackBoundarySlabs } from "@/shared/harthmere/harthmere_town_horizon";
 import {
   nativeBiomesEcsAuthorityEnabled,
@@ -72,6 +101,7 @@ import {
   dist,
   length,
   lengthSq,
+  scale,
 } from "@/shared/math/linear";
 import type {
   AABB,
@@ -104,7 +134,11 @@ import {
   moveBodyWithClimbing,
 } from "@/shared/physics/movement";
 import type { Constraint, Force } from "@/shared/physics/types";
-import { canClimbBlock, toGroundedIndex } from "@/shared/physics/utils";
+import {
+  canClimbBlock,
+  toGroundedIndex,
+  yawVector,
+} from "@/shared/physics/utils";
 import { fireAndForget } from "@/shared/util/async";
 import { setDiff } from "@/shared/util/collections";
 import { getNowMs } from "@/shared/util/helpers";
@@ -1628,6 +1662,13 @@ export class PlayerScript implements Script {
   private runToggleDebouncing: boolean = false;
   private crouchToggle: boolean = false;
   private crouchToggleDebouncing: boolean = false;
+  private lastPublishedCrouching: boolean | undefined;
+  private crouchCollisionReadyAt: number | undefined;
+  private localMovementActionCooldownUntil = 0;
+  private readonly movementActionKeyDown = {
+    dodge: false,
+    evade: false,
+  };
   lastHp: number | undefined;
 
   // Jump state
@@ -1973,6 +2014,14 @@ export class PlayerScript implements Script {
       ...(win.__harthmereLivePlayerDebug ?? {}),
       version: "harthmere-dungeon-teleport-live-player-hook",
       getPosition: readCurrentPosition,
+      getStanceBounds: () => ({
+        crouching: player.crouching,
+        collisionCrouching: player.collisionCrouching,
+        visualAabb: player.visualAabb(),
+        collisionAabb: player.collisionAabb(),
+        standingHeadroomAabb: player.standingHeadroomAabb(),
+        movementAction: player.movementActionInfo?.action,
+      }),
       teleportTo,
       consumeStoredTeleportTarget,
     };
@@ -2282,6 +2331,20 @@ export class PlayerScript implements Script {
   }
 
   private performDeathActions() {
+    const localPlayer = this.resources.get("/scene/local_player");
+    const firstDeathReset = localPlayer.playerStatus !== "dead";
+    this.crouchToggle = false;
+    this.crouchToggleDebouncing = false;
+    this.movementActionKeyDown.dodge = this.input.action("dodge");
+    this.movementActionKeyDown.evade = this.input.action("evade");
+    this.resources.update("/sim/player", this.userId, (player) => {
+      player.crouching = false;
+      player.collisionCrouching = false;
+      player.cancelMovementAction();
+    });
+    this.crouchCollisionReadyAt = undefined;
+    this.localMovementActionCooldownUntil = 0;
+    this.publishCrouching(false, firstDeathReset);
     const ruleset = this.resources.get("/ruleset/current");
     switch (ruleset.death.type) {
       case "autospawn":
@@ -2340,6 +2403,102 @@ export class PlayerScript implements Script {
     });
   }
 
+  private publishCrouching(crouching: boolean, force = false) {
+    if (!force && this.lastPublishedCrouching === crouching) {
+      return;
+    }
+    this.lastPublishedCrouching = crouching;
+    fireAndForget(
+      this.events.publish(new SetCrouchingEvent({ id: this.userId, crouching }))
+    );
+  }
+
+  private standingHeadroomClear(player: Player): boolean {
+    let clear = true;
+    this.intersect(player.standingHeadroomAabb(), () => {
+      clear = false;
+      return true;
+    });
+    return clear;
+  }
+
+  private tryStartMovementAction({
+    player,
+    action,
+    forward,
+    lateral,
+  }: {
+    player: Player;
+    action: MovementActionType;
+    forward: -1 | 0 | 1;
+    lateral: -1 | 0 | 1;
+  }): boolean {
+    const now = this.resources.get("/clock").time;
+    const health = this.resources.get("/ecs/c/health", this.userId);
+    const replicatedMovementState = this.resources.get(
+      "/ecs/c/movement_state",
+      this.userId
+    );
+    if (
+      (health?.hp ?? 0) <= 0 ||
+      player.isMovementActionActive(now) ||
+      now < this.localMovementActionCooldownUntil ||
+      movementActionIsOnCooldown(replicatedMovementState, now) ||
+      !canStartStandingMovementAction({
+        crouching: player.crouching,
+        standingHeadroomClear:
+          !player.crouching || this.standingHeadroomClear(player),
+      }) ||
+      readHarthmereNativeVitals(
+        this.resources.get("/ecs/c/trigger_state", this.userId)
+      ).stamina < MOVEMENT_ACTION_STAMINA_COST
+    ) {
+      return false;
+    }
+
+    const forwardDirection = yawVector(player.orientation[1]);
+    const sideDirection = yawVector(player.orientation[1] - 0.5 * Math.PI);
+    const requestedDirection =
+      action === "dodge"
+        ? lateral
+          ? scale(lateral, sideDirection)
+          : forward
+          ? scale(forward, forwardDirection)
+          : sideDirection
+        : forward || lateral
+        ? add(scale(forward, forwardDirection), scale(lateral, sideDirection))
+        : forwardDirection;
+    const direction = normalizeMovementActionDirection(requestedDirection);
+    const timing = PLAYER_MOVEMENT_ACTION_TIMING[action];
+    const nonce = Math.random();
+
+    this.localMovementActionCooldownUntil = now + timing.cooldownSeconds;
+    player.beginMovementAction(
+      action,
+      now,
+      now + timing.durationSeconds,
+      direction,
+      nonce
+    );
+    player.velocity = [
+      direction[0] * timing.speedMetersPerSecond,
+      player.velocity[1],
+      direction[2] * timing.speedMetersPerSecond,
+    ];
+    fireAndForget(
+      this.events.publish(
+        new MovementActionEvent({
+          id: this.userId,
+          action,
+          direction,
+          nonce,
+        })
+      )
+    );
+    emitHarthmereSoundEffect("dodge_roll");
+    return true;
+  }
+
   private getMovementType({ forward }: { forward: number }) {
     const flying = this.resources
       .get("/ruleset/current")
@@ -2352,8 +2511,15 @@ export class PlayerScript implements Script {
     const nonMobileRunPressed = Boolean(
       this.input.motionWithoutSyntheticSource("run", MOBILE_JOYSTICK_RUN_SOURCE)
     );
+    const mobileCrouchHeld =
+      this.input.syntheticMotion("crouch", MOBILE_JOYSTICK_CROUCH_SOURCE) > 0;
     let running = nonMobileRunPressed;
-    let crouching = !!this.input.motion("crouch");
+    let crouching = Boolean(
+      this.input.motionWithoutSyntheticSource(
+        "crouch",
+        MOBILE_JOYSTICK_CROUCH_SOURCE
+      )
+    );
 
     // Handle when toggle to run/swim.
     if (getTypedStorageItem("settings.keyboard.toggleRunSwimBool")) {
@@ -2396,6 +2562,11 @@ export class PlayerScript implements Script {
       }
     }
 
+    crouching = mobileJoystickCrouchRequestedForTest(
+      crouching,
+      mobileCrouchHeld
+    );
+
     return { running, crouching, flying };
   }
 
@@ -2434,9 +2605,84 @@ export class PlayerScript implements Script {
       this.userId
     );
 
-    const { crouching, flying, running } = this.getMovementType({
-      forward,
+    const {
+      crouching: requestedCrouching,
+      flying,
+      running,
+    } = this.getMovementType({ forward });
+
+    const dodgePressed = this.input.action("dodge");
+    const evadePressed = this.input.action("evade");
+    if (shouldApplyMotion) {
+      if (
+        movementActionPressedOnEdge(
+          dodgePressed,
+          this.movementActionKeyDown.dodge
+        )
+      ) {
+        this.tryStartMovementAction({
+          player,
+          action: "dodge",
+          forward,
+          lateral,
+        });
+      } else if (
+        movementActionPressedOnEdge(
+          evadePressed,
+          this.movementActionKeyDown.evade
+        )
+      ) {
+        this.tryStartMovementAction({
+          player,
+          action: "evade",
+          forward,
+          lateral,
+        });
+      }
+    }
+    this.movementActionKeyDown.dodge = dodgePressed;
+    this.movementActionKeyDown.evade = evadePressed;
+    const movementActionActive = player.isMovementActionActive(
+      this.resources.get("/clock").time
+    );
+    const movementActionVelocity = player.movementActionInfo
+      ? movementActionVelocityForTick({
+          action: player.movementActionInfo.action,
+          direction: player.movementActionInfo.direction,
+          startTimeSeconds: player.movementActionInfo.startTime,
+          expiryTimeSeconds: player.movementActionInfo.expiryTime,
+          nowSeconds: this.resources.get("/clock").time,
+          dtSeconds: dt,
+        })
+      : undefined;
+    if (movementActionActive && movementActionVelocity) {
+      player.velocity = [
+        movementActionVelocity[0],
+        player.velocity[1],
+        movementActionVelocity[2],
+      ];
+    }
+    const crouching = resolvePlayerEffectiveCrouching({
+      requestedCrouching,
+      wasCrouching: player.crouching,
+      standingHeadroomClear:
+        !player.crouching ||
+        requestedCrouching ||
+        this.standingHeadroomClear(player),
+      movementActionActive,
+      flying,
+      swimming: canSwim,
     });
+    this.publishCrouching(crouching);
+
+    const crouchCollision = updateCrouchCollisionTransition({
+      effectiveCrouching: crouching,
+      wasEffectiveCrouching: player.crouching,
+      nowSeconds: this.resources.get("/clock").time,
+      readyAtSeconds: this.crouchCollisionReadyAt,
+    });
+    this.crouchCollisionReadyAt = crouchCollision.readyAtSeconds;
+    player.collisionCrouching = crouchCollision.collisionCrouching;
 
     player.previousPosition = [...player.position];
 
@@ -2484,6 +2730,7 @@ export class PlayerScript implements Script {
 
     // Assemble the list of input forces.
     let forces: Force[] = [];
+    const collisionAabb = player.collisionAabb();
     if (flying) {
       forces.push(flyingForce(speed, pitch, yaw, forward, lateral));
     } else if (swimming) {
@@ -2499,7 +2746,7 @@ export class PlayerScript implements Script {
           this.tweaks.playerPhysics.swimmingSpeed
         )
       );
-    } else if (forward || lateral) {
+    } else if (!movementActionActive && (forward || lateral)) {
       forces.push(walkingForce(speed, yaw, forward, lateral));
       this.gardenHose.publish({
         kind: "move",
@@ -2529,7 +2776,11 @@ export class PlayerScript implements Script {
       this.activeJumps = 1;
     }
 
-    if (this.input.action("jump") && shouldApplyMotion) {
+    if (
+      this.input.action("jump") &&
+      shouldApplyMotion &&
+      !movementActionActive
+    ) {
       let upwardsForceMagnitude = 0;
       if (flying) {
         upwardsForceMagnitude = this.tweaks.playerPhysics.flyingJump;
@@ -2544,6 +2795,7 @@ export class PlayerScript implements Script {
           this.tweaks.playerPhysics.groundJump * buffJumpMultiplier;
       } else if (canClimb) {
         upwardsForceMagnitude = this.tweaks.playerPhysics.climbingRise;
+        emitHarthmereSoundEffect("climb", { idempotent: true });
       } else if (swimming && waterDepth < 0.5) {
         player.velocity[1] = 0;
         upwardsForceMagnitude = this.tweaks.playerPhysics.waterEscape;
@@ -2563,10 +2815,10 @@ export class PlayerScript implements Script {
       }
     });
 
-    if (crouching && flying) {
+    if (requestedCrouching && flying) {
       forces.push(verticalForce(this.tweaks.playerPhysics.flyingDescend));
     }
-    if (crouching && swimming) {
+    if (requestedCrouching && swimming) {
       forces.push(verticalForce(this.tweaks.playerPhysics.swimmingDescend));
     }
 
@@ -2585,11 +2837,14 @@ export class PlayerScript implements Script {
     }
 
     // Vary the environment params depending on the player being in water and player climbing.
-    const environment = this.getPlayerEnvironment({
-      canClimb,
-      waterDepth,
-      standingOnBlock,
-    });
+    const environment = movementActionEnvironmentForTick(
+      this.getPlayerEnvironment({
+        canClimb,
+        waterDepth,
+        standingOnBlock,
+      }),
+      movementActionActive
+    );
     environment.gravity /= buffJumpMultiplier;
 
     if (standingOnBlock?.surfaceSlip && onGround) {
@@ -2611,7 +2866,7 @@ export class PlayerScript implements Script {
       if (flying) {
         return moveBodyFlying(
           dt,
-          { aabb: player.aabb(), velocity: [...player.velocity] },
+          { aabb: collisionAabb, velocity: [...player.velocity] },
           environment,
           (...args) => this.intersect(...args),
           forces
@@ -2619,7 +2874,7 @@ export class PlayerScript implements Script {
       } else if (swimming) {
         return moveBodyFluid(
           dt,
-          { aabb: player.aabb(), velocity: [...player.velocity] },
+          { aabb: collisionAabb, velocity: [...player.velocity] },
           (...args) => this.intersect(...args),
           forces,
           PLAYER_SWIMMING_ENVIRONMENT_PARAMS
@@ -2627,7 +2882,7 @@ export class PlayerScript implements Script {
       } else {
         return moveBodyWithClimbing(
           dt,
-          { aabb: player.aabb(), velocity: [...player.velocity] },
+          { aabb: collisionAabb, velocity: [...player.velocity] },
           environment,
           (...args) => this.intersect(...args),
           (...args) => this.climbable(...args) || canClimb,
@@ -2690,9 +2945,22 @@ export class PlayerScript implements Script {
     }
 
     // Play a sound if we hit the ground hard enough.
-    if (swimming && !player.swimming && !flying && result.velocity[1] < -7.0) {
+    if (
+      shouldPlayHarthmereWaterEntrySplash({
+        swimming,
+        wasSwimming: player.swimming,
+        flying,
+      })
+    ) {
       player.eagerEmote(this.events, this.resources, "splash");
+      // The emote preserves the splash animation for local and remote players.
+      // Direct manifest playback guarantees the local one-shot is fetched on a
+      // cold cache instead of expiring before PlayerRenderer can load it.
+      emitHarthmereSoundEffect("splash", { idempotent: true });
     } else if (!swimming && !flying && groundImpact > FALL_SOUND_MIN_IMPACT) {
+      // Keep ordinary and hard landings on the original neutral footstep cue.
+      // The generated landing effects include armor/gear transients that sound
+      // like repeated metal clanking during routine run-jumps.
       player.setSound(
         this.resources,
         this.audioManager,
@@ -2711,6 +2979,7 @@ export class PlayerScript implements Script {
       // Initiate a jump animation if the player left the ground.
       if (onGround && result.velocity[1] > 0.1) {
         player.lastJumpTime = time;
+        emitHarthmereSoundEffect("jump");
       }
     }
 
@@ -2721,7 +2990,7 @@ export class PlayerScript implements Script {
       maybeResolveLocalDevHarthmereHorizontalTownPosition(
         player.position,
         edgeSafePosition,
-        player.aabb()
+        collisionAabb
       );
     const hitLocalDevTown = !approxEquals(townSafePosition, edgeSafePosition);
     player.position = townSafePosition;
@@ -3079,6 +3348,14 @@ export class PlayerScript implements Script {
     if (pos && this.ackWarpThrottle.testAndSet()) {
       const localPlayer = this.resources.get("/scene/local_player");
       localPlayer.playerStatus = "alive";
+      this.crouchToggle = false;
+      this.crouchToggleDebouncing = false;
+      player.crouching = false;
+      player.collisionCrouching = false;
+      player.cancelMovementAction();
+      this.crouchCollisionReadyAt = undefined;
+      this.localMovementActionCooldownUntil = 0;
+      this.publishCrouching(false, true);
       if (!approxEquals(player.position, pos.position)) {
         beginOrUpdateWarpEffect(this.resources, () => {
           player.position = [...pos.position];

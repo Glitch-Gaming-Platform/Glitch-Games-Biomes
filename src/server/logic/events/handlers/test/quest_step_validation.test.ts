@@ -23,6 +23,10 @@ import type {
 } from "@/server/logic/events/handlers/quest_step_validation";
 import type { BiomesId } from "@/shared/ids";
 import { INVALID_BIOMES_ID } from "@/shared/ids";
+import {
+  SNAPSHOT_GROVE_JACKIE_ENTITY_ID,
+  SNAPSHOT_GROVE_LEGACY_NPC_ENTITY_IDS,
+} from "@/shared/harthmere/snapshot_grove_ids";
 import type { StoredTriggerDefinition } from "@/shared/triggers/schema";
 import assert from "assert";
 
@@ -329,6 +333,40 @@ describe("validateClaimStep — quest step server-authoritative validation", () 
         },
       });
       assert.equal(result.ok, true);
+    });
+
+    it("accepts the canonical Grove NPC when an immutable snapshot leaf still names the legacy entity", () => {
+      const trigger: StoredTriggerDefinition = {
+        kind: "seq",
+        id: SEQ_ROOT,
+        triggers: [
+          {
+            kind: "challengeClaimRewards",
+            id: TALK_START,
+            returnNpcTypeId: SNAPSHOT_GROVE_LEGACY_NPC_ENTITY_IDS.jackie,
+            allowDefaultNavigationAid: true,
+          } as StoredTriggerDefinition,
+        ],
+      };
+      const result = validateClaimStep({
+        challengeId: QUEST_ID,
+        stepId: TALK_START,
+        questTrigger: trigger,
+        challenges: challengesWith({ inProgress: [QUEST_ID] }),
+        triggerStateForChallenge: firedState(),
+        claimEntity: {
+          entityId: SNAPSHOT_GROVE_JACKIE_ENTITY_ID,
+          isMyRobot: false,
+        },
+      });
+      assert.equal(result.ok, true);
+      if (result.ok) {
+        assert.equal(
+          canonicalClaimFromEntityId(result, SNAPSHOT_GROVE_JACKIE_ENTITY_ID),
+          SNAPSHOT_GROVE_LEGACY_NPC_ENTITY_IDS.jackie,
+          "firehose identity must retain the immutable authored leaf id"
+        );
+      }
     });
 
     it("accepts a placeable (a painting) as the matching entity", () => {

@@ -271,7 +271,7 @@ export async function registerAnimaServer<C extends AnimaServerContext>(
   return new AnimaServer(voxeloo, replica, logicApi, worldApi);
 }
 
-function changesToSharderUpdates(changes: ReadonlyChanges) {
+export function changesToSharderUpdates(changes: ReadonlyChanges) {
   const sharderUpdates: NpcSharderUpdate[] = [];
   for (const change of changes) {
     if (change.kind === "delete") {

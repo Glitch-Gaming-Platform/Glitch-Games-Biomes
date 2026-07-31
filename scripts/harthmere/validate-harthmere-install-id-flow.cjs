@@ -95,7 +95,8 @@ ok(/HARTHMERE_INSTALL_ID_FOUND/.test(e2eCjs) &&
    "E2E test tracks every current checkpoint marker");
 ok(/ws-host-mismatch/.test(e2eCjs),
    "E2E test detects WebSocket host mismatch (stale build env)");
-ok(/ERR_ABORTED.*api\/auth\/check|api\/auth\/check.*ERR_ABORTED/.test(e2eCjs),
+ok(/failure === "net::ERR_ABORTED"/.test(e2eCjs) &&
+   /\\\/api\\\/auth\\\/check/.test(e2eCjs),
    "E2E test ignores expected ERR_ABORTED on /api/auth/check during planned reload");
 ok(/renderedFrames/.test(e2eCjs) && /minRenderedFrames/.test(e2eCjs),
    "E2E test waits for rendered frames");
@@ -117,6 +118,9 @@ ok(/docker logs --since/.test(e2eSh) && /known blocker found/.test(e2eSh),
 // Runner
 ok(/next build/.test(runSh) && /webpack/.test(runSh) && /docker buildx build/.test(runSh),
    "runner rebuilds production image");
+ok(/--config server\.webpack\.config\.cjs/.test(runSh) &&
+   !/--config server\.webpack\.config\.ts/.test(runSh),
+   "runner uses the CommonJS webpack config supported by the current CLI boundary");
 ok(/rm -rf[^\n]*\.next[^\n]*(\s|$)/.test(runSh) &&
    !/rm -rf[^\n]*\.next\/cache[^\n]*(\s|$)/.test(runSh.split("\n").filter(l => /rm -rf.*\.next/.test(l)).join("\n").replace(/rm -rf[^\n]*\.next(\s|[^\/])/g, "")),
    "runner removes the entire .next/ directory (not just .next/cache)");

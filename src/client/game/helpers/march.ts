@@ -67,7 +67,7 @@ export class MarchHelper {
      * {source} inside the player from which we shoot the player ray.
      */
     const headPos = new THREE.Vector3(
-      ...playerFirstPersonCamPosition(player.position, player.aabb())
+      ...playerFirstPersonCamPosition(player.position, player.collisionAabb())
     );
     const cameraToPlayer = headPos.clone().sub(cameraPosition.clone());
 

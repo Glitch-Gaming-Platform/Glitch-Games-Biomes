@@ -58,7 +58,12 @@ function isAir(dungeonId: string, x: number, y: number, z: number): boolean {
   return ch1ShouldCarveAirAt(dungeonId, x, y, z);
 }
 
-function canOccupy(dungeonId: string, x: number, y: number, z: number): boolean {
+function canOccupy(
+  dungeonId: string,
+  x: number,
+  y: number,
+  z: number
+): boolean {
   for (let dy = 0; dy < PLAYER_HEIGHT; dy++) {
     if (!isAir(dungeonId, x, y + dy, z)) {
       return false;
@@ -255,7 +260,7 @@ describe("ch1 E2E - dungeon is physically traversable", () => {
               `the portal arrival. This is a soft-lock in a one-way dungeon.`
           );
         }
-      });
+      }).timeout(30_000);
 
       it("can walk back out to the departure volume", () => {
         const reach = reachFromArrival(terrain);

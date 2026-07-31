@@ -7,6 +7,7 @@ import {
 } from "@/client/components/biomes_ui/hudVisibilitySettings";
 import {
   DEFAULT_TAB_SHORTCUTS,
+  isReservedGameplayShortcutKey,
   type TabShortcut,
 } from "@/client/components/biomes_ui/shortcuts/BiomesShortcuts";
 import { OptionsControlsSurfaceForTest } from "@/client/components/biomes_ui/tabs/OptionsControlsSurface";
@@ -135,6 +136,10 @@ export const OptionsTab: React.FunctionComponent<{
     const tabBeingRecorded = recordingFor;
     function onKey(e: KeyboardEvent) {
       e.preventDefault();
+      if (isReservedGameplayShortcutKey(e.key)) {
+        setRecordingFor(null);
+        return;
+      }
       const next = shortcuts.map((s) =>
         s.tab === tabBeingRecorded
           ? { ...s, key: e.key.toLowerCase(), label: e.key.toUpperCase() }

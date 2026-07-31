@@ -40,6 +40,10 @@ import {
   type Ch1LatentSkillId,
 } from "@/shared/harthmere/ch1_latent_skills";
 import type { Ch1LiveGateRuntimeState } from "@/shared/harthmere/ch1_live_gate";
+import {
+  CH1_THREE_ANSWER_ROUTE,
+  ch1NextRouteStop,
+} from "@/shared/harthmere/ch1_objective_routes";
 import type { Ch1QuestDef, Ch1QuestStep } from "@/shared/harthmere/ch1_quests";
 
 export interface Ch1ObjectiveChoiceOption {
@@ -611,6 +615,29 @@ export interface Ch1ObjectiveEffectsResult {
   itemConsumes: string[];
 }
 
+/** Accounts of the night the player arrived that have not been heard yet. */
+export function ch1TestimoniesRemaining(collected: readonly string[]): number {
+  const heard = new Set(collected);
+  return CH1_TESTIMONIES.filter((entry) => !heard.has(entry.id)).length;
+}
+
+/**
+ * A step that made real, durable progress but is not finished.
+ *
+ * The progress endpoint already treats a throw from
+ * `ch1ApplyLiveObjectiveEffects` as a refusal and reports `error.message` to the
+ * player. This subclass adds the partially advanced runtime so the caller can
+ * PERSIST the progress while still refusing to fire the native trigger — which
+ * is what "you have nine of twelve accounts" needs: the nine are banked, the
+ * objective stays open.
+ */
+export class Ch1ObjectiveIncomplete extends Error {
+  constructor(message: string, readonly runtime: Ch1LiveGateRuntimeState) {
+    super(message);
+    this.name = "Ch1ObjectiveIncomplete";
+  }
+}
+
 function acceptedChoice(step: Ch1QuestStep, choice: string | undefined) {
   const spec = ch1ObjectiveChoiceSpec(step);
   if (!spec) return true;
@@ -669,10 +696,55 @@ export function ch1ApplyLiveObjectiveEffects(args: {
   }
 
   if (args.step.id === "collect_testimonies") {
-    player = {
-      ...player,
-      testimonies: CH1_TESTIMONIES.map((entry) => entry.id),
+    // CHAPTER_1_TESTIMONY_COLLECTION
+    //
+    // This used to assign all twelve accounts in one call, so the objective
+    // "Collect all twelve accounts of the night you arrived" was satisfied by a
+    // single button press and twelve authored one-sentence testimonies shipped in
+    // the bundle and were never read by anyone. The quest's own writer note is
+    // explicit that the point is a reconstruction "the player assembles
+    // themselves — nobody lies to them, they do it".
+    //
+    // Collection is now incremental and idempotent: each completion of this leaf
+    // adds the next unheard account, and the leaf only reports done when all
+    // twelve are in. `ch1TestimoniesRemaining` is what the objective text and the
+    // completion dialogue read for the running count.
+    const heard = new Set(player.testimonies);
+    const next = CH1_TESTIMONIES.find((entry) => !heard.has(entry.id));
+    if (next) {
+      player = { ...player, testimonies: [...player.testimonies, next.id] };
+    }
+    if (ch1TestimoniesRemaining(player.testimonies) > 0) {
+      // Not finished. Record the account, do not fire the objective — the caller
+      // treats a thrown effect as a refusal with a player-facing reason.
+      throw new Ch1ObjectiveIncomplete(
+        `${player.testimonies.length} of ${CH1_TESTIMONIES.length} accounts. ` +
+          `Keep asking around the Grove.`,
+        runtimeWithPlayerState(runtime, player)
+      );
+    }
+  }
+  if (args.step.id === "the_three_answers") {
+    const completed = runtime.objectiveRouteProgress[effectKey] ?? [];
+    const next = ch1NextRouteStop(CH1_THREE_ANSWER_ROUTE, completed);
+    const nextCompleted = next
+      ? [...new Set([...completed, next.id])]
+      : [...completed];
+    runtime = {
+      ...runtime,
+      objectiveRouteProgress: {
+        ...runtime.objectiveRouteProgress,
+        [effectKey]: nextCompleted,
+      },
     };
+    const remaining = ch1NextRouteStop(CH1_THREE_ANSWER_ROUTE, nextCompleted);
+    if (remaining) {
+      throw new Ch1ObjectiveIncomplete(
+        `${nextCompleted.length} of ${CH1_THREE_ANSWER_ROUTE.length} answers heard. ` +
+          `Speak with ${remaining.label}.`,
+        runtimeWithPlayerState(runtime, player)
+      );
+    }
   }
   if (args.step.id === "choose_a_name") {
     const chosenName = normalizedChosenName(args.choice);
@@ -733,6 +805,36 @@ export function ch1ApplyLiveObjectiveEffects(args: {
   }
   if (args.step.id === "d1_the_long_walk") {
     itemGrants.push("item_marrow_collar");
+  }
+
+  if (args.step.consumeInventoryRequirements) {
+    for (const requirement of args.step.inventoryRequirements ?? []) {
+      for (let count = 0; count < requirement.count; count += 1) {
+        itemConsumes.push(requirement.itemId);
+      }
+    }
+  }
+
+  // CHAPTER_1_STEP_REQUIREMENTS
+  //
+  // 48 of 80 steps completed on "walk within nine metres and press F". Most of
+  // those are conversations and that is correct. Two were not: "Take a vial to
+  // Doc" and "Give the vial to Dr. Ardan" are both about handing over a specific
+  // object the chapter has already given you, and neither checked that you had
+  // it. You could analyse a compound you had never found.
+  //
+  // Both are POSSESSION checks, not consumption: `itemConsumes` gates on the
+  // native inventory before anything commits, and the matching grant hands the
+  // vial straight back. That is also what the scenes say happens — Doc runs a
+  // sample and gives it back, and Lou explicitly declines to keep it ("I'd want
+  // to run it properly before I said anything about anyone").
+  //
+  // Consuming it outright would have created a NEW soft-lock: `search_the_stores`
+  // grants one vial and Act 5's `resume_dosing` consumes one, so a vial spent in
+  // Act 4 is a vial Act 5 cannot find.
+  if (args.step.id === "have_it_analysed" || args.step.id === "show_him") {
+    itemConsumes.push("item_ch1_compound_b");
+    itemGrants.push("item_ch1_compound_b");
   }
 
   for (const flag of args.step.setsFlags ?? []) {
@@ -804,6 +906,9 @@ export function ch1ApplyLiveObjectiveEffects(args: {
   return {
     runtime,
     itemGrants: [...new Set(itemGrants)],
-    itemConsumes: [...new Set(itemConsumes)],
+    // Counts are encoded as repeated semantic ids and aggregated by the native
+    // inventory plan. Deduplicating here let a 4× scrap + 2× iron turn-in pay
+    // only one of each.
+    itemConsumes,
   };
 }

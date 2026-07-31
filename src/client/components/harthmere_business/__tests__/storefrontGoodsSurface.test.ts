@@ -11,6 +11,10 @@ import {
   harthmereBusinessJobMaterialListings,
   harthmereBusinessStorefrontTypes,
 } from "@/shared/harthmere/harthmere_business_storefront_goods";
+import {
+  HARTHMERE_ENERGY_WEAPONS,
+  HARTHMERE_ENERGY_WEAPON_VENDOR_ID,
+} from "@/shared/harthmere/energy_weapon_catalog";
 import { HARTHMERE_RECIPE_BOOKS } from "@/shared/harthmere/harthmere_recipe_books";
 
 function openBusiness(id: string, typeId: string) {
@@ -91,10 +95,16 @@ describe("business shopfront surfaces blocks, furnishings, and recipe books", ()
         "customer"
       );
       const goods = shop.storefrontGoods ?? [];
+      const restrictedWeaponCount =
+        businessType === HARTHMERE_ENERGY_WEAPON_VENDOR_ID
+          ? HARTHMERE_ENERGY_WEAPONS.length
+          : 0;
       assert.equal(
         goods.length,
-        10 + harthmereBusinessJobMaterialListings(businessType).length,
-        `${businessType} should sell themed goods plus its material stock`
+        10 +
+          restrictedWeaponCount +
+          harthmereBusinessJobMaterialListings(businessType).length,
+        `${businessType} should sell themed goods, security exclusives, and material stock`
       );
       for (const good of goods) {
         assert.ok(good.displayName, `${businessType}:${good.itemId} label`);

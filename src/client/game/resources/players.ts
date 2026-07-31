@@ -39,13 +39,24 @@ import {
 } from "@/shared/asset_defs/shapes";
 import { BikkieIds } from "@/shared/bikkie/ids";
 import type { Biscuit } from "@/shared/bikkie/schema/attributes";
-import type { ReadonlyEmote } from "@/shared/ecs/gen/components";
+import type {
+  ReadonlyEmote,
+  ReadonlyMovementState,
+} from "@/shared/ecs/gen/components";
 import type { ReadonlyEntity } from "@/shared/ecs/gen/entities";
 import { EmoteEvent } from "@/shared/ecs/gen/events";
+import {
+  HARTHMERE_CINEMATIC_EXPRESSIONS,
+  harthmereCinematicExpressionDurationMs,
+  harthmereCinematicExpressionRepeat,
+  harthmereCinematicExpressionSpec,
+  isHarthmereCinematicExpression,
+} from "@/shared/cutscene/cinematic_expressions";
 import type {
   CameraMode,
   EmoteType,
   Item,
+  MovementActionType,
   RichEmoteComponents,
   ShardId,
 } from "@/shared/ecs/gen/types";
@@ -55,6 +66,9 @@ import {
   getBlockBelowPlayer,
   getPlayerModifiersFromBuffs,
   playerAABB,
+  playerCollisionAABB,
+  playerStandingHeadroomAABB,
+  playerVisualAABB,
 } from "@/shared/game/players";
 import { TerrainHelper } from "@/shared/game/terrain_helper";
 import type { BiomesId } from "@/shared/ids";
@@ -72,6 +86,7 @@ import { findWaterDepth } from "@/shared/physics/environments";
 import type { Force, HitFn } from "@/shared/physics/types";
 import { grounded, yawVector } from "@/shared/physics/utils";
 import type { RegistryLoader } from "@/shared/registry";
+import { dispatchHarthmereFacialExpressionEvent } from "@/shared/harthmere/voxel_faces";
 import { fireAndForget } from "@/shared/util/async";
 import { makeCvalHook } from "@/shared/util/cvals";
 import type { Optional } from "@/shared/util/type_helpers";
@@ -94,7 +109,20 @@ export type EmoteProperties = {
     };
   };
 };
-export const EMOTE_PROPERTIES: EmoteProperties = {
+const HARTHMERE_CINEMATIC_EMOTE_PROPERTIES = Object.fromEntries(
+  HARTHMERE_CINEMATIC_EXPRESSIONS.map((expression) => [
+    expression,
+    {
+      repeatType: harthmereCinematicExpressionRepeat(expression),
+      easeInTime: 0.08,
+      cancelOnMove:
+        harthmereCinematicExpressionSpec(expression).interaction !==
+        "locomotion",
+    },
+  ])
+) as Partial<EmoteProperties>;
+
+export const EMOTE_PROPERTIES = {
   attack1: {
     repeatType: { kind: "once" },
     easeInTime: 0.01,
@@ -192,7 +220,8 @@ export const EMOTE_PROPERTIES: EmoteProperties = {
     cancelOnMove: false,
     itemOverrideSpan: { end: 0.5 },
   },
-};
+  ...HARTHMERE_CINEMATIC_EMOTE_PROPERTIES,
+} as EmoteProperties;
 
 function playsUntilInterrupted(repeatType: RepeatType) {
   if (repeatType.kind === "repeat") {
@@ -255,10 +284,20 @@ export class Player {
         richEmoteComponents?: ReadonlyEmote["rich_emote_components"];
       }
     | undefined;
+  movementActionInfo:
+    | {
+        action: MovementActionType;
+        startTime: number;
+        expiryTime: number;
+        direction: ReadonlyVec3;
+        nonce?: number;
+      }
+    | undefined;
   private lastEmoteTime: number | undefined;
   private lastEmoteNonce: number | undefined;
   private serverEmote: ReadonlyEmote | undefined;
   private serverEmoteUpdateTime: number | undefined;
+  private lastMovementActionNonce: number | undefined;
   scale = 1.0;
   cameraMode?: CameraMode;
   lastJumpTime?: number;
@@ -275,6 +314,7 @@ export class Player {
 
   // For animation purposes, we need to know these state variables.
   crouching = false;
+  collisionCrouching = false;
   running = false;
   onGround = false;
   swimming = false;
@@ -441,6 +481,14 @@ export class Player {
     emoteType: EmoteType,
     richEmoteComponents?: ReadonlyEmote["rich_emote_components"]
   ) {
+    const priorExpression = this.emoteInfo?.emoteType;
+    if (
+      priorExpression &&
+      isHarthmereCinematicExpression(priorExpression) &&
+      !isHarthmereCinematicExpression(emoteType)
+    ) {
+      this.publishNeutralFacialExpression("cinematic-emote-replaced");
+    }
     this.emoteInfo = {
       emoteStartTime: startTime,
       emoteEndTime: startTime + emoteDuration(emoteType, animationSystemState),
@@ -448,6 +496,19 @@ export class Player {
       emoteType,
       richEmoteComponents,
     };
+    if (isHarthmereCinematicExpression(emoteType)) {
+      const spec = harthmereCinematicExpressionSpec(emoteType);
+      dispatchHarthmereFacialExpressionEvent({
+        actorId: String(this.id),
+        expression: spec.face,
+        source: "script",
+        reason: `gameplay-emote:${emoteType}`,
+        durationMs:
+          spec.playback === "once"
+            ? harthmereCinematicExpressionDurationMs(emoteType)
+            : undefined,
+      });
+    }
   }
 
   isEmoting(time: number, emoteType?: EmoteType) {
@@ -461,6 +522,59 @@ export class Player {
     }
 
     return true;
+  }
+
+  beginMovementAction(
+    action: MovementActionType,
+    startTime: number,
+    expiryTime: number,
+    direction: ReadonlyVec3,
+    nonce?: number
+  ) {
+    this.movementActionInfo = {
+      action,
+      startTime,
+      expiryTime,
+      direction: [...direction],
+      nonce,
+    };
+    this.lastMovementActionNonce = nonce;
+  }
+
+  isMovementActionActive(time: number) {
+    return Boolean(
+      this.movementActionInfo && time < this.movementActionInfo.expiryTime
+    );
+  }
+
+  cancelMovementAction() {
+    this.movementActionInfo = undefined;
+  }
+
+  private updateMovementActionState(
+    state: ReadonlyMovementState | undefined,
+    now: number
+  ) {
+    if (!this.isLocal) {
+      this.crouching = state?.crouching ?? false;
+    }
+    if (this.movementActionInfo && now >= this.movementActionInfo.expiryTime) {
+      this.movementActionInfo = undefined;
+    }
+    if (
+      !state?.action ||
+      now >= state.action_expiry_time ||
+      state.action_nonce === this.lastMovementActionNonce
+    ) {
+      return;
+    }
+    this.beginMovementAction(
+      state.action,
+      state.action_start_time,
+      state.action_expiry_time,
+      state.direction,
+      state.action_nonce
+    );
   }
 
   shouldCancelEmoteOnMove() {
@@ -477,11 +591,40 @@ export class Player {
   }
 
   private cancelEmote() {
+    if (
+      this.emoteInfo &&
+      isHarthmereCinematicExpression(this.emoteInfo.emoteType)
+    ) {
+      this.publishNeutralFacialExpression("cinematic-emote-cancelled");
+    }
     this.emoteInfo = undefined;
   }
 
+  private publishNeutralFacialExpression(reason: string) {
+    dispatchHarthmereFacialExpressionEvent({
+      actorId: String(this.id),
+      expression: "neutral",
+      source: "script",
+      reason,
+    });
+  }
+
   aabb(): AABB {
-    return playerAABB(this.position, this.scale);
+    return this.visualAabb();
+  }
+
+  visualAabb(): AABB {
+    return playerVisualAABB(this.position, this.scale);
+  }
+
+  collisionAabb(
+    crouching = this.collisionCrouching && !this.flying && !this.swimming
+  ): AABB {
+    return playerCollisionAABB(this.position, crouching, this.scale);
+  }
+
+  standingHeadroomAabb(): AABB {
+    return playerStandingHeadroomAABB(this.position, this.scale);
   }
 
   centerPos(): Vec3 {
@@ -565,6 +708,10 @@ export class Player {
       this.serverEmoteUpdateTime = clock.time;
       this.serverEmote = player.emote;
     }
+    this.updateMovementActionState(
+      player.movement_state,
+      deps.get("/clock").time
+    );
   }
 
   updateEmoteState(
@@ -762,7 +909,7 @@ function genPlayerEnvironment(
   previous?: PlayerEnvironment
 ): PlayerEnvironment {
   const player = deps.get("/sim/player", id);
-  const aabb = player.aabb();
+  const collisionAabb = player.collisionAabb();
   const metadata = deps.get("/ecs/metadata");
 
   const boxesIndex = (id: ShardId) => deps.get("/physics/boxes", id);
@@ -782,7 +929,7 @@ function genPlayerEnvironment(
           }
         }
       ),
-    aabb
+    collisionAabb
   );
 
   const lastOnGround = previous?.lastOnGround ?? new Timer(TimerNeverSet);
@@ -799,7 +946,14 @@ function genPlayerEnvironment(
   const standingOnBlock = depth === 0 ? blockUnderPlayer : undefined;
 
   const epsilon = [0.1, 0.1, 0.1] as Vec3;
-  const expandedAabb = [sub(aabb[0], epsilon), add(aabb[1], epsilon)] as AABB;
+  // Keep contact/interaction discovery on the normal player silhouette. Only
+  // physical movement and grounding should shrink while crouched; otherwise
+  // crouching could make nearby pickups, triggers, and entities disappear.
+  const visualAabb = player.visualAabb();
+  const expandedAabb = [
+    sub(visualAabb[0], epsilon),
+    add(visualAabb[1], epsilon),
+  ] as AABB;
   const collidingEntities = new Set<ReadonlyEntity>();
   CollisionHelper.intersectEntities(table, expandedAabb, (hit, entity) => {
     if (entity) {

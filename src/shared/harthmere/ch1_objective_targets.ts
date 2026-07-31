@@ -21,8 +21,21 @@ import {
   type Ch1QuestStep,
   type Ch1StepTrigger,
 } from "@/shared/harthmere/ch1_quests";
-import { SNAPSHOT_GROVE_LANDMARKS } from "@/shared/harthmere/snapshot_grove_content";
+import {
+  SNAPSHOT_GROVE_LANDMARKS,
+  type SnapshotGroveLandmark,
+} from "@/shared/harthmere/snapshot_grove_content";
 import { groveLandmarkWorldPosition } from "@/shared/harthmere/grove/grove_waypoints";
+import { resolveHarthmereProductionMarkerPosition } from "@/shared/harthmere/production_terrain_placement_map";
+import type { Ch1LiveGateRuntimeState } from "@/shared/harthmere/ch1_live_gate";
+import {
+  CH1_GROVE_SUPPLIER_ROUTE,
+  CH1_TESTIMONY_ROUTE,
+  CH1_THREE_ANSWER_ROUTE,
+  ch1NextRouteStop,
+  ch1NextSupplierRouteStop,
+  ch1RouteStopPosition,
+} from "@/shared/harthmere/ch1_objective_routes";
 import type { BiomesId } from "@/shared/ids";
 
 export interface Ch1ObjectiveTarget {
@@ -38,10 +51,68 @@ export interface Ch1ObjectiveTarget {
 }
 
 function normalized(value: string | undefined): string {
-  return String(value ?? "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim();
+  return (
+    String(value ?? "")
+      .toLowerCase()
+      // Possessives first. "Coretta's ledger" and "Jackie's kettle" used to
+      // normalize to "coretta s ledger" / "jackie s kettle", which matched no
+      // alias key and silently fell through to the district fallback.
+      .replace(/['’]s\b/g, "s")
+      .replace(/['’]/g, "")
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim()
+  );
+}
+
+function tokens(value: string): string[] {
+  return normalized(value).split(" ").filter(Boolean);
+}
+
+/**
+ * Whole-token containment.
+ *
+ * The previous cast match was a bare `String.includes` in both directions,
+ * which made any short target label a substring of any cast name. "Tea" is
+ * inside "Teague Teak Morrow", so Act 1's breakfast objective resolved to Teak
+ * Morrow's spawn 137m away in the Rat Crowns drain instead of Jackie's post —
+ * the second objective in the chapter. Matching on token sequences instead of
+ * raw characters keeps "Dr. Lucien Ardan" ~ "Lucien Ardan" working while
+ * refusing "tea" ~ "teague".
+ */
+function containsTokenRun(haystack: string, needle: string): boolean {
+  const a = tokens(haystack);
+  const b = tokens(needle);
+  if (b.length === 0 || b.length > a.length) return false;
+  for (let i = 0; i + b.length <= a.length; i += 1) {
+    let hit = true;
+    for (let j = 0; j < b.length; j += 1) {
+      if (a[i + j] !== b[j]) {
+        hit = false;
+        break;
+      }
+    }
+    if (hit) return true;
+  }
+  return false;
+}
+
+/**
+ * A cast member matches a target label only on a shared whole-token run, and
+ * never on a single generic token. Requiring two tokens (or one distinctive
+ * surname-length token) is what stops "Tea", "Doc" or "Kit" from binding to a
+ * cast display name that merely spells them.
+ */
+function castMatchesTarget(displayName: string, target: string): boolean {
+  const name = normalized(displayName);
+  const want = normalized(target);
+  if (!name || !want) return false;
+  if (name === want) return true;
+  const wantTokens = tokens(want);
+  // Single-token targets must match a whole token of the name, not a prefix.
+  if (wantTokens.length === 1) {
+    return tokens(name).includes(wantTokens[0]) && wantTokens[0].length >= 4;
+  }
+  return containsTokenRun(name, want) || containsTokenRun(want, name);
 }
 
 function vec3(value: readonly [number, number, number]): Ch1Vec3 {
@@ -80,17 +151,66 @@ function ch1CastPosition(key: string): Ch1Vec3 | undefined {
   }
 }
 
+/**
+ * GROUNDED, not just un-stranded.
+ *
+ * `groveLandmarkWorldPosition` lifts a landmark out of the retired Y=54 datum,
+ * but it lifts it onto ONE FLAT PLANE (SNAPSHOT_GROVE_LIVE_MARKER_Y = 71). That
+ * is correct for the fountain plaza and wrong everywhere else, because the Grove
+ * is hilly: 48 at Mosslawn, 64 at Luis's cart, 73 at Shutter Cove, 80 at the
+ * broken fence. Chapter 1 objectives at those landmarks pointed 21 blocks into
+ * the air (Mosslawn Song Stones, Ranger Jane's provisioning post) or 9 blocks
+ * underground (the fence line).
+ *
+ * docs/harthmere/HARTHMERE_PRODUCTION_TERRAIN_PLACEMENT_MAP.md is explicit about
+ * the rule and the remedy: "do not trust authored y=0, screenshots, or one-off
+ * constants", and "prefer these helpers instead of reading the generated object
+ * directly". `resolveHarthmereProductionMarkerPosition` is the documented path
+ * for "jobs-board markers, business markers, helper landmarks, and other shared
+ * marker ids", which is exactly what a Grove landmark is. It returns the scanned
+ * feet-Y, so marker height is that plus one, matching CH1_ANCHORS.
+ */
+function groundedLandmarkPosition(landmark: SnapshotGroveLandmark): Ch1Vec3 {
+  const fallback = groveLandmarkWorldPosition(landmark);
+  const resolved = resolveHarthmereProductionMarkerPosition({
+    markerId: landmark.id,
+    fallback,
+  });
+  // Unresolved ids come back as the fallback untouched; do not add a marker
+  // offset to a value that never went through the scan.
+  const grounded = resolved === fallback ? fallback : resolved;
+  const markerY =
+    resolved === fallback ? grounded[1] : grounded[1] + CH1_MARKER_OFFSET_Y;
+  return [grounded[0], markerY, grounded[2]];
+}
+
+/** Grove markers sit one block above the scanned surface feet-Y. */
+const CH1_MARKER_OFFSET_Y = 1;
+
 const LANDMARKS = SNAPSHOT_GROVE_LANDMARKS.map((landmark) => ({
   label: landmark.label,
   normalized: normalized(landmark.label),
-  // RESOLVED, not raw: a Chapter 1 objective that resolves to a Grove landmark
-  // must not inherit the retired Y=54 datum.
-  position: vec3(groveLandmarkWorldPosition(landmark)),
+  position: groundedLandmarkPosition(landmark),
 }));
 
+/**
+ * Authored label -> world anchor.
+ *
+ * Keys are `normalized()` output, so possessives are spelled without the
+ * apostrophe ("jackies kettle", "corettas ledger", "luiss repair cart").
+ * ch1_objective_targets.test.ts asserts every key here is reachable, which is
+ * how the two dead keys in the previous table were found.
+ */
 const TARGET_ALIASES = new Map<string, Ch1Vec3>([
-  ["bed", CH1_ANCHORS.jackie_post],
-  ["tea", CH1_ANCHORS.jackie_post],
+  // The road-house. These were all `jackie_post` (the fountain centre), which
+  // is why breakfast happened in a public square with no kettle.
+  ["bed", CH1_ANCHORS.roadhouse_bed],
+  ["tea", CH1_ANCHORS.roadhouse_table],
+  ["jackies kettle", CH1_ANCHORS.roadhouse_hearth],
+  ["dented tea tin", CH1_ANCHORS.roadhouse_stores],
+  ["grove road house", CH1_ANCHORS.roadhouse_door],
+  ["the grove road house", CH1_ANCHORS.roadhouse_door],
+
   ["journal", CH1_ANCHORS.fountain_lesson_board],
   ["grove residents", CH1_ANCHORS.jackie_post],
   ["grove suppliers", CH1_ANCHORS.fountain_lesson_board],
@@ -100,9 +220,8 @@ const TARGET_ALIASES = new Map<string, Ch1Vec3>([
   ["greenlamp walk in clinic", CH1_ANCHORS.greenlamp_clinic],
   ["ashline containment works", CH1_ANCHORS.ashline_containment_works],
   ["containment lattice", CH1_ANCHORS.ashline_refinery_intake],
-  ["jackies kettle", CH1_ANCHORS.jackie_post],
-  ["dented tea tin", CH1_ANCHORS.jackie_post],
-  ["corettas ledger", CH1_ANCHORS.fountain_lesson_board],
+  ["corettas ledger", CH1_ANCHORS.coretta_ledger_desk],
+  ["coretta", CH1_ANCHORS.coretta_ledger_desk],
   ["a letter addressed to no one", CH1_ANCHORS.grove_watch_house],
   ["grove watch house", CH1_ANCHORS.grove_watch_house],
   ["bell iron token", CH1_ANCHORS.harthmere_bridge_center],
@@ -110,8 +229,40 @@ const TARGET_ALIASES = new Map<string, Ch1Vec3>([
   ["sergeant bram holt", CH1_ANCHORS.grove_watch_house],
   ["return aperture", CH1_ANCHORS.gate_prime],
   ["the grove", CH1_ANCHORS.jackie_post],
+  ["mosslawn song stones", CH1_ANCHORS.mosslawn_song_stones],
+  ["temple balance beam", CH1_ANCHORS.gate_desert],
   ["—", CH1_ANCHORS.grove_watch_house],
 ]);
+
+/**
+ * Steps whose authored label cannot be resolved by name.
+ *
+ * `ch1_a6_q03_consolidation` is written with `targetLabel: "—"` because the beat
+ * is "he puts a hand on your shoulder" — there is no object to name. It sits
+ * between `give_her_location` and `watch_him_go`, both of which are at Lou, so
+ * it belongs at Lou.
+ */
+const STEP_TARGET_OVERRIDES: Readonly<
+  Record<string, { anchor: keyof typeof CH1_ANCHORS; castKey?: string }>
+> = {
+  the_examination: { anchor: "greenlamp_clinic", castKey: "lou_ardan" },
+  not_this_small: { anchor: "gate_fence_sighting", castKey: "jackie" },
+  the_flinch: { anchor: "gate_desert", castKey: "jackie" },
+  say_the_sentence: { anchor: "gate_desert", castKey: "halden_rook" },
+  call_the_collapse: { anchor: "gate_desert", castKey: "halden_rook" },
+  rooks_rope: { anchor: "gate_winter", castKey: "halden_rook" },
+  hear_him_out: { anchor: "returnstone_pad_office", castKey: "lou_ardan" },
+  give_the_ledger: { anchor: "returnstone_pad_office", castKey: "lou_ardan" },
+  give_her_location: {
+    anchor: "returnstone_pad_office",
+    castKey: "lou_ardan",
+  },
+  the_word: { anchor: "returnstone_pad_office", castKey: "lou_ardan" },
+  watch_him_go: { anchor: "returnstone_pad_office", castKey: "lou_ardan" },
+  did_he_take_it: { anchor: "grove_watch_house", castKey: "jackie" },
+  the_whole_plan: { anchor: "grove_watch_house", castKey: "jackie" },
+  the_final_choice: { anchor: "grove_watch_house", castKey: "jackie" },
+};
 
 const DISTRICT_FALLBACKS: Readonly<Record<string, Ch1Vec3>> = {
   "the grove": CH1_ANCHORS.jackie_post,
@@ -257,6 +408,13 @@ function radiusFor(
 ): number {
   if (source === "dungeon") return 24;
   if (step.trigger === "near_location" || step.trigger === "escort") return 18;
+  if (
+    step.id === "collect_testimonies" ||
+    step.id === "the_three_answers" ||
+    step.id === "meet_the_suppliers"
+  ) {
+    return 9;
+  }
   if (/residents|suppliers/i.test(step.targetLabel ?? "")) return 20;
   return 9;
 }
@@ -264,16 +422,103 @@ function radiusFor(
 function targetPosition(
   quest: Ch1QuestDef,
   step: Ch1QuestStep,
-  stepIndex: number
-): Pick<Ch1ObjectiveTarget, "position" | "source" | "entityId"> {
+  stepIndex: number,
+  context?: Ch1ObjectiveTargetContext
+): Pick<Ch1ObjectiveTarget, "position" | "source" | "entityId"> & {
+  label?: string;
+} {
   const dungeon = dungeonTarget(quest, stepIndex);
   if (dungeon) return { position: dungeon, source: "dungeon" };
 
+  if (step.id === "collect_testimonies") {
+    const next =
+      ch1NextRouteStop(
+        CH1_TESTIMONY_ROUTE,
+        context?.runtime?.testimonies ?? []
+      ) ?? CH1_TESTIMONY_ROUTE[CH1_TESTIMONY_ROUTE.length - 1];
+    return {
+      position: ch1RouteStopPosition(next),
+      source: "landmark",
+      label: next.label,
+    };
+  }
+  if (step.id === "the_three_answers") {
+    const effectKey = `${quest.id}/${step.id}`;
+    const next =
+      ch1NextRouteStop(
+        CH1_THREE_ANSWER_ROUTE,
+        context?.runtime?.objectiveRouteProgress[effectKey] ?? []
+      ) ?? CH1_THREE_ANSWER_ROUTE[CH1_THREE_ANSWER_ROUTE.length - 1];
+    return {
+      position: ch1RouteStopPosition(next),
+      source: "npc",
+      label: next.label,
+    };
+  }
+  if (step.id === "meet_the_suppliers") {
+    const next =
+      ch1NextSupplierRouteStop(context?.vendorTransactions ?? {}) ??
+      CH1_GROVE_SUPPLIER_ROUTE[CH1_GROVE_SUPPLIER_ROUTE.length - 1];
+    if (next) {
+      return {
+        position: ch1RouteStopPosition(next),
+        source: "npc",
+        label: next.label,
+      };
+    }
+  }
+
   const target = normalized(step.targetLabel);
-  const cast = CH1_NEW_CAST.find((member) => {
-    const name = normalized(member.displayName);
-    return target === name || target.includes(name) || name.includes(target);
-  });
+
+  // Steps whose authored targetLabel is "—" (an em-dash placeholder for a beat
+  // with no named object). `normalized("—")` is the empty string, so the
+  // TARGET_ALIASES entry for it was unreachable and these fell through to the
+  // district fallback — which put Act 6's consolidation scene at the town
+  // fountain instead of with Lou, between two other objectives that are both
+  // at Lou.
+  const explicit = STEP_TARGET_OVERRIDES[step.id];
+  if (explicit) {
+    const member = explicit.castKey
+      ? CH1_NEW_CAST.find((candidate) => candidate.key === explicit.castKey)
+      : undefined;
+    return {
+      position: CH1_ANCHORS[explicit.anchor],
+      source: member ? "npc" : "alias",
+      ...(member ? { entityId: member.entityId } : {}),
+    };
+  }
+
+  // RESOLUTION ORDER. Authored intent first, inference last.
+  //
+  // Cast lookup used to run before the alias table, which meant a hand-written
+  // alias could never win. `["tea", jackie_post]` was present and unreachable
+  // because the cast scan matched "Tea" against "Teague Teak Morrow" first.
+  // Exact landmark and alias are both authored statements about where a label
+  // lives, so they now precede the inferred cast/fuzzy matches.
+  const exactLandmark = LANDMARKS.find(
+    (landmark) => landmark.normalized === target
+  );
+  if (exactLandmark) {
+    return { position: exactLandmark.position, source: "landmark" };
+  }
+
+  const alias = TARGET_ALIASES.get(target);
+  if (alias) {
+    // An alias may name a real cast member's post (Jackie, Doc). Carry the
+    // entity id when it does so the prompt and marker can bind the body.
+    const aliasEntity = CH1_NEW_CAST.find((member) =>
+      castMatchesTarget(member.displayName, target)
+    );
+    return {
+      position: vec3(alias),
+      source: "alias",
+      ...(aliasEntity ? { entityId: aliasEntity.entityId } : {}),
+    };
+  }
+
+  const cast = CH1_NEW_CAST.find((member) =>
+    castMatchesTarget(member.displayName, target)
+  );
   if (cast) {
     const position = ch1CastPosition(cast.key);
     if (position) {
@@ -281,20 +526,11 @@ function targetPosition(
     }
   }
 
-  const exactLandmark = LANDMARKS.find(
-    (landmark) => landmark.normalized === target
-  );
-  if (exactLandmark) {
-    return { position: exactLandmark.position, source: "landmark" };
-  }
-  const alias = TARGET_ALIASES.get(target);
-  if (alias) return { position: vec3(alias), source: "alias" };
-
   const fuzzyLandmark = LANDMARKS.find(
     (landmark) =>
       target.length >= 4 &&
-      (landmark.normalized.includes(target) ||
-        target.includes(landmark.normalized))
+      (containsTokenRun(landmark.normalized, target) ||
+        containsTokenRun(target, landmark.normalized))
   );
   if (fuzzyLandmark) {
     return { position: fuzzyLandmark.position, source: "landmark" };
@@ -310,7 +546,8 @@ function targetPosition(
 
 export function ch1ObjectiveTarget(
   questId: string,
-  stepIdOrIndex: string | number
+  stepIdOrIndex: string | number,
+  context?: Ch1ObjectiveTargetContext
 ): Ch1ObjectiveTarget | undefined {
   const quest = CH1_QUESTS.find((candidate) => candidate.id === questId);
   if (!quest) return undefined;
@@ -320,11 +557,11 @@ export function ch1ObjectiveTarget(
       : quest.steps.findIndex((step) => step.id === stepIdOrIndex);
   const step = quest.steps[stepIndex];
   if (!step) return undefined;
-  const resolved = targetPosition(quest, step, stepIndex);
+  const resolved = targetPosition(quest, step, stepIndex, context);
   return {
     questId: quest.id,
     stepId: step.id,
-    label: step.targetLabel || step.title,
+    label: resolved.label ?? step.targetLabel ?? step.title,
     position: resolved.position,
     interactionRadius: radiusFor(step, resolved.source),
     trigger: step.trigger,
@@ -332,6 +569,11 @@ export function ch1ObjectiveTarget(
     entityId: resolved.entityId,
     source: resolved.source,
   };
+}
+
+export interface Ch1ObjectiveTargetContext {
+  runtime?: Ch1LiveGateRuntimeState;
+  vendorTransactions?: Readonly<Record<string, number>>;
 }
 
 export function allCh1ObjectiveTargets(): Ch1ObjectiveTarget[] {

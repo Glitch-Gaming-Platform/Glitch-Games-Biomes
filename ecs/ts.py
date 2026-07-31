@@ -1,5 +1,6 @@
 from functools import cached_property
 from hashlib import md5
+from pathlib import Path
 from typing import Optional
 
 from ecs_ast import (
@@ -161,9 +162,7 @@ class TsTypeDef(TypeDef):
         elif self.kind == "Dict":
             return (
                 "{"
-                + ",".join(
-                    f"{key}: {sub.ts_type}" for key, sub in self.subs.items()
-                )
+                + ",".join(f"{key}: {sub.ts_type}" for key, sub in self.subs.items())
                 + "}"
             )
         else:
@@ -208,13 +207,18 @@ class TsComponent(Component):
 AST_CONFIG = AstConfig({TypeDef: TsTypeDef, Component: TsComponent})
 
 
-def gen_ts(gen_types, gen_defs, path):
+def gen_ts(
+    gen_types,
+    gen_defs,
+    path,
+    server_path="src/server/shared/ecs/gen",
+):
     types = gen_types(AST_CONFIG)
     defs = gen_defs(AST_CONFIG, types)
 
     # Create the Jinja environment
     env = Environment(
-        loader=FileSystemLoader("ecs/templates"),
+        loader=FileSystemLoader(Path(__file__).resolve().parent / "templates"),
         trim_blocks=True,
         lstrip_blocks=True,
     )
@@ -231,6 +235,7 @@ def gen_ts(gen_types, gen_defs, path):
         # Replace OUTPUT_MD5 with the md5 of the output
         tmpl_out = tmpl_out.replace("$$OUTPUT_HASH$$", hash)
 
+        Path(out).parent.mkdir(parents=True, exist_ok=True)
         with open(out, "w") as f:
             f.write(tmpl_out)
         print(f"Generated '{out}'")
@@ -240,7 +245,7 @@ def gen_ts(gen_types, gen_defs, path):
     render_template("components.ts.j2", f"{path}/components.ts")
     render_template("entities.ts.j2", f"{path}/entities.ts")
     render_template("delta.ts.j2", f"{path}/delta.ts")
-    render_template("lazy.ts.j2", f"src/server/shared/ecs/gen/lazy.ts")
+    render_template("lazy.ts.j2", f"{server_path}/lazy.ts")
     render_template("events.ts.j2", f"{path}/events.ts")
     render_template("json_serde.ts.j2", f"{path}/json_serde.ts")
     render_template("selectors.ts.j2", f"{path}/selectors.ts")

@@ -70,6 +70,14 @@ describe("harthmereLiveCreatureRenderFamily", () => {
       "animal"
     );
     assert.equal(
+      harthmereLiveCreatureRenderFamily({ label: "River Fish" }),
+      "animal"
+    );
+    assert.equal(
+      harthmereLiveCreatureRenderFamily({ label: "Old Pond Turtle" }),
+      "animal"
+    );
+    assert.equal(
       harthmereLiveCreatureRenderFamily({ label: "Something Else" }),
       "live_entity"
     );

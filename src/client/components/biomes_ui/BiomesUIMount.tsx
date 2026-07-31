@@ -20,6 +20,8 @@ import { HarthmerePropertyForSaleWorldInteraction } from "@/client/components/ha
 import { HarthmereGatheringNodeWorldInteraction } from "@/client/components/challenges/HarthmereGatheringNodeWorldInteraction";
 import { HarthmereObjectContainerPanel } from "@/client/components/challenges/HarthmereObjectContainerPanel";
 import { HarthmereCookingStationPanel } from "@/client/components/harthmere_cooking/HarthmereCookingStationPanel";
+import { HarthmereProjectileVisualAuditPanel } from "@/client/components/challenges/HarthmereProjectileVisualAuditPanel";
+import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
 import { BIOMES_UI_LOCATE_ON_MAP_EVENT } from "./adapters/mapPinnedDestination";
 import { useBiomesHUDVisibilitySnapshot } from "./hudVisibilitySettings";
 import type { TabKey } from "./BiomesUITypes";
@@ -64,6 +66,7 @@ function isEnabled(): boolean {
 export const BiomesUIMount: React.FunctionComponent<{
   forceEnabled?: boolean;
 }> = ({ forceEnabled = false }) => {
+  const { reactResources } = useClientContext();
   const replaceLegacy = useBiomesUIReplaceLegacyFlag();
   const replacementMode = forceEnabled || replaceLegacy;
   const [enabled, setEnabled] = useState<boolean>(() => false);
@@ -87,12 +90,22 @@ export const BiomesUIMount: React.FunctionComponent<{
       return;
     }
     function onLocate() {
+      // The Recipes screen intentionally remains a native game modal. Close it
+      // before opening the replacement Map tab; otherwise the live-adapter
+      // modal reconciliation sees Recipes still active and immediately closes
+      // the requested Map tab again. Keep pointer lock released for the map.
+      if (reactResources.get("/game_modal").kind !== "empty") {
+        reactResources.set("/game_modal", {
+          kind: "empty",
+          returnPointerLock: false,
+        });
+      }
       setActiveTab("map");
     }
     window.addEventListener(BIOMES_UI_LOCATE_ON_MAP_EVENT, onLocate);
     return () =>
       window.removeEventListener(BIOMES_UI_LOCATE_ON_MAP_EVENT, onLocate);
-  }, []);
+  }, [reactResources]);
 
   // Allow toggling at runtime via key combo: Shift+Alt+B.
   useEffect(() => {
@@ -116,10 +129,13 @@ export const BiomesUIMount: React.FunctionComponent<{
     return () => document.removeEventListener("keydown", onKey);
   }, []);
 
-  if (!forceEnabled && !enabled) return null;
+  const projectileVisualAudit = <HarthmereProjectileVisualAuditPanel />;
+
+  if (!forceEnabled && !enabled) return projectileVisualAudit;
 
   return (
     <>
+      {projectileVisualAudit}
       {hudVisibility.vitals && <BiomesUIVitalsPanel />}
       <HarthmereLevelUpCelebration />
       <BiomesUI

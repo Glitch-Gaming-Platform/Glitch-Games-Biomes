@@ -7,6 +7,7 @@ import {
   nativePostGimmeProjectedTriggerName,
 } from "@/shared/harthmere/native_post_gimme_contract";
 import { harthmereBoardProjectedTriggerName } from "@/shared/harthmere/native_request_boards";
+import { SNAPSHOT_GROVE_JACKIE_ENTITY_ID } from "@/shared/harthmere/snapshot_grove_ids";
 
 export { NATIVE_ROBOT_SETUP_MUCK_PLACEMENT_POSITION };
 
@@ -408,7 +409,7 @@ export const NATIVE_ROBOT_STORY_FINAL_HANDOFFS = Object.freeze({
   roadAhead: {
     questId: NATIVE_ROAD_AHEAD_QUEST_ID,
     finalStepId: NATIVE_ROAD_AHEAD_STEP_IDS.RETURN_ROBOT_SHELL_TO_JACKIE,
-    targetId: 8997551883502307 as BiomesId,
+    targetId: SNAPSHOT_GROVE_JACKIE_ENTITY_ID,
     prerequisiteTriggerIds: [
       NATIVE_ROAD_AHEAD_STEP_IDS.TALK_TO_JACKIE,
       NATIVE_ROAD_AHEAD_STEP_IDS.MEET_BILLY,
@@ -432,7 +433,7 @@ export const NATIVE_ROBOT_STORY_FINAL_HANDOFFS = Object.freeze({
   busted: {
     questId: NATIVE_BUSTED_QUEST_ID,
     finalStepId: 2564822555755950 as BiomesId,
-    targetId: 8997551883502307 as BiomesId,
+    targetId: SNAPSHOT_GROVE_JACKIE_ENTITY_ID,
     prerequisiteTriggerIds: [
       310783173745175, 859994236864492, 3346948724689018, 6798640337192760,
       3106453541468841, 1250712772360777, 275639178491846, 6436863915440094,

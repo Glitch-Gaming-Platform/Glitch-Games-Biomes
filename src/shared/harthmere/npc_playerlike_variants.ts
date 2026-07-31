@@ -35,10 +35,15 @@ function npcVariantIndex(id: BiomesId | number) {
   const stableId = Number.isSafeInteger(numericId)
     ? BigInt(numericId)
     : BigInt(Math.trunc(numericId || 0));
-  return (
+  const permuted =
     (stableId * VARIANT_PERMUTATION_MULTIPLIER + VARIANT_PERMUTATION_OFFSET) %
-    VARIANT_COUNT
-  );
+    VARIANT_COUNT;
+  // Cutscene ghosts use reserved negative ids. BigInt remainder preserves the
+  // dividend's sign, so feeding that value into mixed-radix array indexes made
+  // every selected wearable undefined and crashed player-mesh URL generation.
+  // Normalize to the canonical positive residue without changing any existing
+  // non-negative NPC variant.
+  return permuted < 0n ? permuted + VARIANT_COUNT : permuted;
 }
 
 export function harthmerePlayerLikeNpcVariant(

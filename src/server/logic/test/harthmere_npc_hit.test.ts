@@ -7,8 +7,11 @@ import {
   TestLogicApi,
 } from "@/server/test/test_helpers";
 import { BikkieRuntime } from "@/shared/bikkie/active";
+import { BikkieIds } from "@/shared/bikkie/ids";
 import {
   Health,
+  Label,
+  MovementState,
   NpcMetadata,
   NpcState,
   Position,
@@ -17,6 +20,7 @@ import {
   Size,
   Wearing,
 } from "@/shared/ecs/gen/components";
+import { secondsSinceEpoch } from "@/shared/ecs/config";
 import {
   UpdateNpcHealthEvent,
   UpdatePlayerHealthEvent,
@@ -50,9 +54,17 @@ import { addToBag, bagContains, countOf, createBag } from "@/shared/game/items";
 import { anItem } from "@/shared/game/item";
 import { findItemEquippableSlot } from "@/shared/game/wearables";
 import { buildCreatureProgression } from "@/shared/npc/creature_level";
-import { serializeNpcCustomState } from "@/shared/npc/serde";
+import {
+  deserializeNpcCustomState,
+  serializeNpcCustomState,
+} from "@/shared/npc/serde";
 import { readHarthmereJobsBoardNativeKillLedger } from "@/shared/harthmere/jobs_board_native_kill_ledger";
 import { readHarthmereNativeSkillTotalXp } from "@/shared/harthmere/harthmere_skill_progression";
+import {
+  readHarthmereEnergySecondaryAuthorization,
+  readHarthmerePulseCarbineShotCount,
+} from "@/shared/harthmere/energy_weapon_native_state";
+import { harthmereBossAttacksForLabel } from "@/shared/harthmere/boss_attack_catalog";
 
 // Native NPC health is the one combat authority for Harthmere seeds. The handler
 // also verifies melee reach so a voxel interaction or forged client event cannot
@@ -66,6 +78,11 @@ describe("Harthmere mucker hit (updateNpcHealthEvent)", () => {
     for (const itemId of [
       "iron_longsword",
       "hunter_bow",
+      "photon_sidearm",
+      "pulse_carbine",
+      "helix_projector",
+      "nova_cannon",
+      "singularity_lance",
       "leather_armor",
       "wooden_shield",
     ]) {
@@ -73,8 +90,10 @@ describe("Harthmere mucker hit (updateNpcHealthEvent)", () => {
       const biscuit = harthmereBiscuitForItemDefinition(definition);
       fixtures.set(biscuit.id, biscuit);
     }
+    const monsterSeeds = harthmereGroundedMuckMonsterSeedsInTerritory();
     for (const seed of [
-      harthmereGroundedMuckMonsterSeedsInTerritory()[0],
+      monsterSeeds[0],
+      monsterSeeds.find(({ combatKind }) => combatKind === "hex")!,
       HARTHMERE_NATIVE_MUCK_SCARRED_HELIX_SEED,
     ]) {
       const profile = harthmereNativeNpcCombatProfileForSeed(seed);
@@ -197,6 +216,61 @@ describe("Harthmere mucker hit (updateNpcHealthEvent)", () => {
 
     const [, mucker] = logic.world.table.getWithVersion(muckerId);
     assert.equal(mucker?.health?.hp, 91);
+  });
+
+  it("ignores attack damage during an NPC evade iframe", async () => {
+    const attacker = (
+      await addGameUser(logic.world, generateTestId(), {
+        position: [0, 0, 0],
+      })
+    ).id;
+    const muckerId = spawnMucker([2, 0, 0]);
+    const now = secondsSinceEpoch();
+    editEntity(logic.world, muckerId, (npc) => {
+      npc.setMovementState(
+        MovementState.create({
+          action: "evade",
+          action_start_time: now,
+          action_expiry_time: now + 0.5,
+          invulnerability_expiry_time: now + 0.3,
+          cooldown_expiry_time: now + 3,
+          direction: [1, 0, 0],
+        })
+      );
+    });
+
+    await logic.publish(
+      new GameEvent(
+        attacker,
+        new UpdateNpcHealthEvent({
+          id: muckerId,
+          hp: -10,
+          damageSource: { kind: "attack", attacker, dir: [1, 0, 0] },
+        })
+      )
+    );
+    assert.equal(logic.world.table.get(muckerId)?.health?.hp, 100);
+
+    editEntity(logic.world, muckerId, (npc) => {
+      npc.setMovementState(
+        MovementState.create({
+          ...MovementState.clone(npc.movementState()),
+          action_expiry_time: now - 1,
+          invulnerability_expiry_time: now - 1,
+        })
+      );
+    });
+    await logic.publish(
+      new GameEvent(
+        attacker,
+        new UpdateNpcHealthEvent({
+          id: muckerId,
+          hp: -10,
+          damageSource: { kind: "attack", attacker, dir: [1, 0, 0] },
+        })
+      )
+    );
+    assert.equal(logic.world.table.get(muckerId)?.health?.hp, 90);
   });
 
   it("applies native attack damage to Harthmere seeded NPCs", async () => {
@@ -521,6 +595,205 @@ describe("Harthmere mucker hit (updateNpcHealthEvent)", () => {
     assert.ok(readHarthmereNativeSkillTotalXp(attackerState, "archery") > 0);
   });
 
+  it("enforces energy falloff, increasing cooldown authority, and infinite durability", async () => {
+    const attacker = (
+      await addGameUser(logic.world, generateTestId(), {
+        position: [0, 0, 0],
+      })
+    ).id;
+    equipNativeItem(attacker, "photon_sidearm", 1);
+    const target = spawnNativeNpc(
+      harthmereGroundedMuckMonsterSeedsInTerritory()[0],
+      [14, 0, 0],
+      100
+    );
+    const event = new UpdateNpcHealthEvent({
+      id: target.id,
+      hp: -999,
+      damageSource: { kind: "attack", attacker, dir: [1, 0, 0] },
+    });
+
+    await logic.publish(new GameEvent(attacker, event));
+    const afterFirst = logic.world.table.get(target.id)?.health?.hp ?? 100;
+    assert.ok(afterFirst < 100 && afterFirst > 88);
+    await logic.publish(new GameEvent(attacker, event));
+    assert.equal(logic.world.table.get(target.id)?.health?.hp, afterFirst);
+    assert.equal(
+      logic.world.table.get(attacker)?.inventory?.hotbar[0]?.item
+        .lifetimeDurabilityMs,
+      undefined
+    );
+  });
+
+  it("authorizes the Helix penetration target once and persists Anima Energy Burn", async () => {
+    const attacker = (
+      await addGameUser(logic.world, generateTestId(), {
+        position: [0, 0, 0],
+      })
+    ).id;
+    equipNativeItem(attacker, "helix_projector", 18);
+    const seed = harthmereGroundedMuckMonsterSeedsInTerritory()[0];
+    const primary = spawnNativeNpc(seed, [10, 0, 0], 150);
+    const penetrated = spawnNativeNpc(seed, [12, 0, 0], 150);
+    const attack = (id: BiomesId) =>
+      logic.publish(
+        new GameEvent(
+          attacker,
+          new UpdateNpcHealthEvent({
+            id,
+            hp: -999,
+            damageSource: { kind: "attack", attacker, dir: [1, 0, 0] },
+          })
+        )
+      );
+
+    await attack(primary.id);
+    const primaryState = deserializeNpcCustomState(
+      logic.world.table.get(primary.id)?.npc_state?.data
+    );
+    assert.equal(primaryState.energyWeapon?.burn?.ticksRemaining, 4);
+    assert.equal(
+      readHarthmereEnergySecondaryAuthorization(
+        logic.world.table.get(attacker)?.trigger_state
+      )?.mode,
+      "penetration"
+    );
+    await attack(penetrated.id);
+    const afterPenetration =
+      logic.world.table.get(penetrated.id)?.health?.hp ?? 150;
+    assert.ok(afterPenetration < 150);
+    await attack(penetrated.id);
+    assert.equal(
+      logic.world.table.get(penetrated.id)?.health?.hp,
+      afterPenetration
+    );
+  });
+
+  it("applies Nova death splash and Singularity pull through validated secondary targets", async () => {
+    const seed = harthmereGroundedMuckMonsterSeedsInTerritory()[0];
+    const novaAttacker = (
+      await addGameUser(logic.world, generateTestId(), {
+        position: [0, 0, 0],
+      })
+    ).id;
+    equipNativeItem(novaAttacker, "nova_cannon", 30);
+    const novaPrimary = spawnNativeNpc(seed, [10, 0, 0], 1);
+    const novaSecondary = spawnNativeNpc(seed, [12, 0, 0], 200);
+    const novaSource = {
+      kind: "attack" as const,
+      attacker: novaAttacker,
+      dir: [1, 0, 0] as [number, number, number],
+    };
+    await logic.publish(
+      new GameEvent(
+        novaAttacker,
+        new UpdateNpcHealthEvent({
+          id: novaPrimary.id,
+          hp: -999,
+          damageSource: novaSource,
+        })
+      )
+    );
+    await logic.publish(
+      new GameEvent(
+        novaAttacker,
+        new UpdateNpcHealthEvent({
+          id: novaSecondary.id,
+          hp: -1,
+          damageSource: novaSource,
+        })
+      )
+    );
+    assert.equal(logic.world.table.get(novaPrimary.id)?.health?.hp, 0);
+    assert.ok(
+      (logic.world.table.get(novaSecondary.id)?.health?.hp ?? 200) < 170
+    );
+    assert.equal(
+      deserializeNpcCustomState(
+        logic.world.table.get(novaPrimary.id)?.npc_state?.data
+      ).energyWeapon?.lastEffect?.id,
+      "nova_cannon_mini_nova"
+    );
+
+    const lanceAttacker = (
+      await addGameUser(logic.world, generateTestId(), {
+        position: [0, 0, 0],
+      })
+    ).id;
+    equipNativeItem(lanceAttacker, "singularity_lance", 45);
+    const lancePrimary = spawnNativeNpc(seed, [10, 0, 0], 500);
+    const lanceSecondary = spawnNativeNpc(seed, [13, 0, 0], 500);
+    const lanceSource = {
+      kind: "attack" as const,
+      attacker: lanceAttacker,
+      dir: [1, 0, 0] as [number, number, number],
+    };
+    await logic.publish(
+      new GameEvent(
+        lanceAttacker,
+        new UpdateNpcHealthEvent({
+          id: lancePrimary.id,
+          hp: -999,
+          damageSource: lanceSource,
+        })
+      )
+    );
+    await logic.publish(
+      new GameEvent(
+        lanceAttacker,
+        new UpdateNpcHealthEvent({
+          id: lanceSecondary.id,
+          hp: -1,
+          damageSource: lanceSource,
+        })
+      )
+    );
+    assert.ok(
+      (logic.world.table.get(lanceSecondary.id)?.health?.hp ?? 500) < 500
+    );
+    assert.ok(
+      (logic.world.table.get(lanceSecondary.id)?.rigid_body?.velocity[0] ?? 0) <
+        0
+    );
+  });
+
+  it("counts only accepted Pulse Carbine shots and overcharges the tenth", async () => {
+    const attacker = (
+      await addGameUser(logic.world, generateTestId(), {
+        position: [0, 0, 0],
+      })
+    ).id;
+    equipNativeItem(attacker, "pulse_carbine", 8);
+    const seed = harthmereGroundedMuckMonsterSeedsInTerritory()[0];
+    const damages: number[] = [];
+    for (let shot = 1; shot <= 10; shot += 1) {
+      editEntity(logic.world, attacker, (player) => {
+        writeHarthmereNativeCombatProgression(player.mutableTriggerState(), {
+          lastAttackMs: 0,
+        });
+      });
+      const target = spawnNativeNpc(seed, [8, 0, 0], 200);
+      await logic.publish(
+        new GameEvent(
+          attacker,
+          new UpdateNpcHealthEvent({
+            id: target.id,
+            hp: -999,
+            damageSource: { kind: "attack", attacker, dir: [1, 0, 0] },
+          })
+        )
+      );
+      damages.push(200 - (logic.world.table.get(target.id)?.health?.hp ?? 200));
+    }
+    assert.equal(
+      readHarthmerePulseCarbineShotCount(
+        logic.world.table.get(attacker)?.trigger_state
+      ),
+      10
+    );
+    assert.ok(damages[9] > damages[8]);
+  });
+
   it("awards native XP and boss credit in the same death transaction", async () => {
     const attacker = (
       await addGameUser(logic.world, generateTestId(), {
@@ -696,6 +969,208 @@ describe("Harthmere mucker hit (updateNpcHealthEvent)", () => {
     // unhittable through the floor/ledge.
     await attack();
     assert.equal(logic.world.table.get(player)?.health?.hp, 100);
+  });
+
+  it("accepts one authoritative Hex Fireball hit and rejects its replay", async () => {
+    const player = (
+      await addGameUser(logic.world, generateTestId(), {
+        position: [8, 0, 0],
+      })
+    ).id;
+    const hexSeed = harthmereGroundedMuckMonsterSeedsInTerritory().find(
+      ({ combatKind }) => combatKind === "hex"
+    )!;
+    const attacker = spawnNativeNpc(hexSeed, [0, 0, 0]);
+    const fireball = attacker.profile.rangedAttacks?.find(
+      ({ abilityId }) => abilityId === "fireball"
+    );
+    assert.ok(fireball);
+    const now = secondsSinceEpoch();
+    const attackTime = now - fireball.castTimeSecs;
+    const impactPoint: [number, number, number] = [8, 1, 0];
+    editEntity(logic.world, attacker.id, (entity) => {
+      entity.setNpcState(
+        NpcState.create({
+          data: serializeNpcCustomState({
+            chaseAttack: {
+              attackTarget: player,
+              rangedAttack: {
+                abilityId: "fireball",
+                projectileVisualId: "fireball",
+                targetId: player,
+                castTime: attackTime,
+                impactTime: now - 0.01,
+                cooldownUntil: attackTime + fireball.cooldownSecs,
+                aimPoint: impactPoint,
+                result: "hit",
+                resolvedAt: now,
+              },
+            },
+          }),
+        })
+      );
+    });
+    const event = new UpdatePlayerHealthEvent({
+      id: player,
+      hpDelta: -999,
+      damageSource: {
+        kind: "attack",
+        attacker: attacker.id,
+        dir: [1, 0, 0],
+      },
+      attackAbilityId: "fireball",
+      attackTime,
+      impactPoint,
+    });
+
+    await logic.publish(new GameEvent(player, event));
+    const hpAfterHit = logic.world.table.get(player)?.health?.hp ?? 100;
+    assert.ok(hpAfterHit < 100);
+
+    await logic.publish(new GameEvent(player, event));
+    assert.equal(logic.world.table.get(player)?.health?.hp, hpAfterHit);
+  });
+
+  it("rejects a Hex Fireball whose fixed aim point misses the target", async () => {
+    const player = (
+      await addGameUser(logic.world, generateTestId(), {
+        position: [8, 0, 0],
+      })
+    ).id;
+    const hexSeed = harthmereGroundedMuckMonsterSeedsInTerritory().find(
+      ({ combatKind }) => combatKind === "hex"
+    )!;
+    const attacker = spawnNativeNpc(hexSeed, [0, 0, 0]);
+    const fireball = attacker.profile.rangedAttacks?.find(
+      ({ abilityId }) => abilityId === "fireball"
+    );
+    assert.ok(fireball);
+    const now = secondsSinceEpoch();
+    const attackTime = now - fireball.castTimeSecs;
+    const missedPoint: [number, number, number] = [8, 1, 3];
+    editEntity(logic.world, attacker.id, (entity) => {
+      entity.setNpcState(
+        NpcState.create({
+          data: serializeNpcCustomState({
+            chaseAttack: {
+              attackTarget: player,
+              rangedAttack: {
+                abilityId: "fireball",
+                projectileVisualId: "fireball",
+                targetId: player,
+                castTime: attackTime,
+                impactTime: now - 0.01,
+                cooldownUntil: attackTime + fireball.cooldownSecs,
+                aimPoint: missedPoint,
+                result: "miss",
+                resolvedAt: now,
+              },
+            },
+          }),
+        })
+      );
+    });
+
+    await logic.publish(
+      new GameEvent(
+        player,
+        new UpdatePlayerHealthEvent({
+          id: player,
+          hpDelta: -999,
+          damageSource: {
+            kind: "attack",
+            attacker: attacker.id,
+            dir: [1, 0, 0],
+          },
+          attackAbilityId: "fireball",
+          attackTime,
+          impactPoint: missedPoint,
+        })
+      )
+    );
+    assert.equal(logic.world.table.get(player)?.health?.hp, 100);
+  });
+
+  it("validates a label-routed boss ground spell once for every recorded ECS target", async () => {
+    const firstPlayer = (
+      await addGameUser(logic.world, generateTestId(), {
+        position: [4, 0, 0],
+      })
+    ).id;
+    const secondPlayer = (
+      await addGameUser(logic.world, generateTestId(), {
+        position: [5, 0, 0],
+      })
+    ).id;
+    const bossId = generateTestId();
+    const attack = harthmereBossAttacksForLabel("The Gilded Bull")?.find(
+      ({ abilityId }) => abilityId === "bull_pillar_crash"
+    );
+    assert.ok(attack);
+    const now = secondsSinceEpoch();
+    const attackTime = now - attack.castTimeSecs;
+    const impactPoint: [number, number, number] = [4.5, 1, 0];
+    logic.world.writeableTable.apply([
+      {
+        kind: "create",
+        tick: logic.world.table.tick,
+        entity: {
+          id: bossId,
+          label: Label.create({ text: "The Gilded Bull" }),
+          position: Position.create({ v: [0, 0, 0] }),
+          rigid_body: RigidBody.create({ velocity: [0, 0, 0] }),
+          size: Size.create({ v: [3.9, 2.7, 5.6] }),
+          health: Health.create({ hp: 420, maxHp: 420 }),
+          npc_metadata: NpcMetadata.create({
+            type_id: BikkieIds.dMucker,
+            created_time: 0,
+            spawn_position: [0, 0, 0],
+            spawn_orientation: [0, 0],
+          }),
+          npc_state: NpcState.create({
+            data: serializeNpcCustomState({
+              chaseAttack: {
+                attackTarget: firstPlayer,
+                rangedAttack: {
+                  abilityId: attack.abilityId,
+                  projectileVisualId: attack.projectileVisualId,
+                  targetId: firstPlayer,
+                  castTime: attackTime,
+                  impactTime: now - 0.01,
+                  cooldownUntil: attackTime + attack.cooldownSecs,
+                  originPoint: [0, 0, 0],
+                  aimPoint: impactPoint,
+                  hitTargetIds: [firstPlayer, secondPlayer],
+                  result: "hit",
+                  resolvedAt: now,
+                },
+              },
+            }),
+          }),
+        },
+      },
+    ]);
+
+    for (const playerId of [firstPlayer, secondPlayer]) {
+      await logic.publish(
+        new GameEvent(
+          playerId,
+          new UpdatePlayerHealthEvent({
+            id: playerId,
+            hpDelta: -999,
+            damageSource: {
+              kind: "attack",
+              attacker: bossId,
+              dir: [1, 0, 0],
+            },
+            attackAbilityId: attack.abilityId,
+            attackTime,
+            impactPoint,
+          })
+        )
+      );
+      assert.ok((logic.world.table.get(playerId)?.health?.hp ?? 100) < 100);
+    }
   });
 
   it("applies per-entity creature level to authoritative outgoing NPC damage", async () => {
