@@ -1,6 +1,7 @@
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
 import {
   supportsPointerLock,
+  usePointerLockDisabledStatus,
   usePointerLockEnteringStatus,
   usePointerLockStatus,
 } from "@/client/components/contexts/PointerLockContext";
@@ -23,6 +24,7 @@ export const EscGameMenu: React.FunctionComponent<{}> = React.memo(({}) => {
   const tweaks = reactResources.use("/tweaks");
   const [isEntering] = usePointerLockEnteringStatus();
   const [isLocked, setIsLocked] = usePointerLockStatus();
+  const pointerLockDisabled = usePointerLockDisabledStatus();
   const [isCreatingReport, setIsCreatingReport] = useState(false);
   const [wasEverLocked, setWasEverLocked] = useState(false);
   const harthmereDeath = useHarthmereDeathState();
@@ -62,6 +64,7 @@ export const EscGameMenu: React.FunctionComponent<{}> = React.memo(({}) => {
   if (
     clientConfig.showVirtualJoystick ||
     !supportsPointerLock() ||
+    pointerLockDisabled ||
     hideChrome
   ) {
     return <></>;

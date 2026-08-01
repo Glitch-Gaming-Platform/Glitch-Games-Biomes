@@ -1,0 +1,8 @@
+{
+  "label": "Galois",
+  "position": 7,
+  "link": {
+    "type": "generated-index",
+    "description": "Galois asset architecture, build runtime, publication, tests, and upgrade procedures."
+  }
+}

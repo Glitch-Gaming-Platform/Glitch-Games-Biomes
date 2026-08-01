@@ -65,6 +65,8 @@ import {
   readHarthmerePulseCarbineShotCount,
 } from "@/shared/harthmere/energy_weapon_native_state";
 import { harthmereBossAttacksForLabel } from "@/shared/harthmere/boss_attack_catalog";
+import { HARTHMERE_BOSS_VISUAL_ASSETS } from "@/shared/harthmere/boss_visual_assets";
+import { harthmereMagicChargeDurationSecs } from "@/shared/harthmere/magic_charge";
 
 // Native NPC health is the one combat authority for Harthmere seeds. The handler
 // also verifies melee reach so a voxel interaction or forged client event cannot
@@ -78,6 +80,9 @@ describe("Harthmere mucker hit (updateNpcHealthEvent)", () => {
     for (const itemId of [
       "iron_longsword",
       "hunter_bow",
+      "steel_dart",
+      "crystal_focus",
+      "smoke_bomb",
       "photon_sidearm",
       "pulse_carbine",
       "helix_projector",
@@ -595,6 +600,49 @@ describe("Harthmere mucker hit (updateNpcHealthEvent)", () => {
     assert.ok(readHarthmereNativeSkillTotalXp(attackerState, "archery") > 0);
   });
 
+  it("uses authored thrown and magic profiles for native range, damage, and skills", async () => {
+    for (const [itemId, level, skillId] of [
+      ["steel_dart", 1, "ranged_combat"],
+      ["smoke_bomb", 1, "ranged_combat"],
+      ["crystal_focus", 5, "fire_magic"],
+    ] as const) {
+      const attacker = (
+        await addGameUser(logic.world, generateTestId(), {
+          position: [0, 0, 0],
+        })
+      ).id;
+      equipNativeItem(attacker, itemId, level);
+      const target = spawnNativeNpc(
+        harthmereGroundedMuckMonsterSeedsInTerritory()[0],
+        [15, 0, 0],
+        100
+      );
+
+      await logic.publish(
+        new GameEvent(
+          attacker,
+          new UpdateNpcHealthEvent({
+            id: target.id,
+            hp: -999,
+            damageSource: { kind: "attack", attacker, dir: [1, 0, 0] },
+          })
+        )
+      );
+
+      assert.ok(
+        (logic.world.table.get(target.id)?.health?.hp ?? 100) < 100,
+        itemId
+      );
+      assert.ok(
+        readHarthmereNativeSkillTotalXp(
+          logic.world.table.get(attacker)?.trigger_state,
+          skillId
+        ) > 0,
+        `${itemId}:${skillId}`
+      );
+    }
+  });
+
   it("enforces energy falloff, increasing cooldown authority, and infinite durability", async () => {
     const attacker = (
       await addGameUser(logic.world, generateTestId(), {
@@ -986,7 +1034,15 @@ describe("Harthmere mucker hit (updateNpcHealthEvent)", () => {
     );
     assert.ok(fireball);
     const now = secondsSinceEpoch();
-    const attackTime = now - fireball.castTimeSecs;
+    const chargeTimeSecs = harthmereMagicChargeDurationSecs({
+      damageType: fireball.damageType,
+      projectileVisualId: fireball.projectileVisualId,
+      attackDamage: fireball.attackDamage,
+      cooldownSecs: fireball.cooldownSecs,
+      attackShape: fireball.attackShape,
+    });
+    const releaseTime = now - fireball.castTimeSecs;
+    const castTime = releaseTime - chargeTimeSecs;
     const impactPoint: [number, number, number] = [8, 1, 0];
     editEntity(logic.world, attacker.id, (entity) => {
       entity.setNpcState(
@@ -998,9 +1054,11 @@ describe("Harthmere mucker hit (updateNpcHealthEvent)", () => {
                 abilityId: "fireball",
                 projectileVisualId: "fireball",
                 targetId: player,
-                castTime: attackTime,
+                castTime,
+                chargeTimeSecs,
+                releaseTime,
                 impactTime: now - 0.01,
-                cooldownUntil: attackTime + fireball.cooldownSecs,
+                cooldownUntil: releaseTime + fireball.cooldownSecs,
                 aimPoint: impactPoint,
                 result: "hit",
                 resolvedAt: now,
@@ -1019,9 +1077,20 @@ describe("Harthmere mucker hit (updateNpcHealthEvent)", () => {
         dir: [1, 0, 0],
       },
       attackAbilityId: "fireball",
-      attackTime,
+      attackTime: releaseTime,
       impactPoint,
     });
+
+    await logic.publish(
+      new GameEvent(
+        player,
+        new UpdatePlayerHealthEvent({
+          ...event,
+          attackTime: castTime,
+        })
+      )
+    );
+    assert.equal(logic.world.table.get(player)?.health?.hp, 100);
 
     await logic.publish(new GameEvent(player, event));
     const hpAfterHit = logic.world.table.get(player)?.health?.hp ?? 100;
@@ -1046,7 +1115,15 @@ describe("Harthmere mucker hit (updateNpcHealthEvent)", () => {
     );
     assert.ok(fireball);
     const now = secondsSinceEpoch();
-    const attackTime = now - fireball.castTimeSecs;
+    const chargeTimeSecs = harthmereMagicChargeDurationSecs({
+      damageType: fireball.damageType,
+      projectileVisualId: fireball.projectileVisualId,
+      attackDamage: fireball.attackDamage,
+      cooldownSecs: fireball.cooldownSecs,
+      attackShape: fireball.attackShape,
+    });
+    const releaseTime = now - fireball.castTimeSecs;
+    const castTime = releaseTime - chargeTimeSecs;
     const missedPoint: [number, number, number] = [8, 1, 3];
     editEntity(logic.world, attacker.id, (entity) => {
       entity.setNpcState(
@@ -1058,9 +1135,11 @@ describe("Harthmere mucker hit (updateNpcHealthEvent)", () => {
                 abilityId: "fireball",
                 projectileVisualId: "fireball",
                 targetId: player,
-                castTime: attackTime,
+                castTime,
+                chargeTimeSecs,
+                releaseTime,
                 impactTime: now - 0.01,
-                cooldownUntil: attackTime + fireball.cooldownSecs,
+                cooldownUntil: releaseTime + fireball.cooldownSecs,
                 aimPoint: missedPoint,
                 result: "miss",
                 resolvedAt: now,
@@ -1083,7 +1162,7 @@ describe("Harthmere mucker hit (updateNpcHealthEvent)", () => {
             dir: [1, 0, 0],
           },
           attackAbilityId: "fireball",
-          attackTime,
+          attackTime: releaseTime,
           impactPoint: missedPoint,
         })
       )
@@ -1108,7 +1187,15 @@ describe("Harthmere mucker hit (updateNpcHealthEvent)", () => {
     );
     assert.ok(attack);
     const now = secondsSinceEpoch();
-    const attackTime = now - attack.castTimeSecs;
+    const chargeTimeSecs = harthmereMagicChargeDurationSecs({
+      damageType: attack.damageType,
+      projectileVisualId: attack.projectileVisualId,
+      attackDamage: attack.attackDamage,
+      cooldownSecs: attack.cooldownSecs,
+      attackShape: attack.attackShape,
+    });
+    const releaseTime = now - attack.castTimeSecs;
+    const castTime = releaseTime - chargeTimeSecs;
     const impactPoint: [number, number, number] = [4.5, 1, 0];
     logic.world.writeableTable.apply([
       {
@@ -1135,9 +1222,11 @@ describe("Harthmere mucker hit (updateNpcHealthEvent)", () => {
                   abilityId: attack.abilityId,
                   projectileVisualId: attack.projectileVisualId,
                   targetId: firstPlayer,
-                  castTime: attackTime,
+                  castTime,
+                  chargeTimeSecs,
+                  releaseTime,
                   impactTime: now - 0.01,
-                  cooldownUntil: attackTime + attack.cooldownSecs,
+                  cooldownUntil: releaseTime + attack.cooldownSecs,
                   originPoint: [0, 0, 0],
                   aimPoint: impactPoint,
                   hitTargetIds: [firstPlayer, secondPlayer],
@@ -1164,13 +1253,138 @@ describe("Harthmere mucker hit (updateNpcHealthEvent)", () => {
               dir: [1, 0, 0],
             },
             attackAbilityId: attack.abilityId,
-            attackTime,
+            attackTime: releaseTime,
             impactPoint,
           })
         )
       );
       assert.ok((logic.world.table.get(playerId)?.health?.hp ?? 100) < 100);
     }
+  });
+
+  it("accepts authoritative player damage receipts for all 55 live boss attacks", async () => {
+    const player = (
+      await addGameUser(logic.world, generateTestId(), {
+        position: [4, 0, 0],
+      })
+    ).id;
+    let acceptedAttacks = 0;
+
+    for (const visual of HARTHMERE_BOSS_VISUAL_ASSETS) {
+      const attacks = harthmereBossAttacksForLabel(visual.displayName);
+      assert.ok(attacks, visual.displayName);
+      assert.equal(attacks.length, 5, visual.displayName);
+      const bossId = (visual.entityIds?.[0] ?? generateTestId()) as BiomesId;
+      const label =
+        visual.id === "alpha_mucker"
+          ? "Old Wood Mucker 1"
+          : visual.id === "hex_wraith"
+          ? "Gravewood Pale Hexer 7"
+          : visual.displayName;
+      logic.world.writeableTable.apply([
+        {
+          kind: "create",
+          tick: logic.world.table.tick,
+          entity: {
+            id: bossId,
+            label: Label.create({ text: label }),
+            position: Position.create({ v: [0, 0, 0] }),
+            rigid_body: RigidBody.create({ velocity: [0, 0, 0] }),
+            size: Size.create({ v: [...visual.worldSize] }),
+            health: Health.create({ hp: 10_000, maxHp: 10_000 }),
+            npc_metadata: NpcMetadata.create({
+              type_id: BikkieIds.dMucker,
+              created_time: 0,
+              spawn_position: [0, 0, 0],
+              spawn_orientation: [0, 0],
+            }),
+            npc_state: NpcState.create(),
+          },
+        },
+      ]);
+
+      for (const attack of attacks) {
+        acceptedAttacks += 1;
+        const shape = attack.attackShape ?? "projectile";
+        const maximumHitDistance =
+          shape === "self_aoe"
+            ? Math.min(attack.attackDistance, attack.hitRadius * 0.7)
+            : attack.attackDistance;
+        const targetDistance = Math.max(
+          attack.minimumDistance + 0.2,
+          Math.min(maximumHitDistance - 0.2, 6)
+        );
+        const playerPosition: [number, number, number] = [targetDistance, 0, 0];
+        const impactPoint: [number, number, number] =
+          shape === "self_aoe" ? [0, 0, 0] : [targetDistance, 1, 0];
+        editEntity(logic.world, player, (entity) => {
+          entity.setPosition(Position.create({ v: playerPosition }));
+          entity.setHealth(Health.create({ hp: 100, maxHp: 100 }));
+        });
+        const now = secondsSinceEpoch();
+        const chargeTimeSecs = harthmereMagicChargeDurationSecs({
+          damageType: attack.damageType,
+          projectileVisualId: attack.projectileVisualId,
+          attackDamage: attack.attackDamage,
+          cooldownSecs: attack.cooldownSecs,
+          attackShape: attack.attackShape,
+        });
+        const releaseTime = now - attack.castTimeSecs;
+        const castTime = releaseTime - chargeTimeSecs;
+        editEntity(logic.world, bossId, (entity) => {
+          entity.setNpcState(
+            NpcState.create({
+              data: serializeNpcCustomState({
+                chaseAttack: {
+                  attackTarget: player,
+                  rangedAttack: {
+                    abilityId: attack.abilityId,
+                    projectileVisualId: attack.projectileVisualId,
+                    targetId: player,
+                    castTime,
+                    chargeTimeSecs,
+                    releaseTime,
+                    impactTime: now - 0.01,
+                    cooldownUntil: releaseTime + attack.cooldownSecs,
+                    originPoint: [0, 0, 0],
+                    aimPoint: impactPoint,
+                    hitTargetIds: [player],
+                    result: "hit",
+                    resolvedAt: now,
+                  },
+                },
+              }),
+            })
+          );
+        });
+        const event = new UpdatePlayerHealthEvent({
+          id: player,
+          hpDelta: -999,
+          damageSource: {
+            kind: "attack",
+            attacker: bossId,
+            dir: [1, 0, 0],
+          },
+          attackAbilityId: attack.abilityId,
+          attackTime: releaseTime,
+          impactPoint,
+        });
+
+        await logic.publish(new GameEvent(player, event));
+        const hpAfterHit = logic.world.table.get(player)?.health?.hp ?? 100;
+        assert.ok(
+          hpAfterHit < 100,
+          `${visual.displayName}: ${attack.displayName} did not damage player health`
+        );
+        await logic.publish(new GameEvent(player, event));
+        assert.equal(
+          logic.world.table.get(player)?.health?.hp,
+          hpAfterHit,
+          `${visual.displayName}: ${attack.displayName} replay was accepted`
+        );
+      }
+    }
+    assert.equal(acceptedAttacks, 55);
   });
 
   it("applies per-entity creature level to authoritative outgoing NPC damage", async () => {

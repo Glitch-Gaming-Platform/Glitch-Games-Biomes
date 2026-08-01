@@ -30,6 +30,11 @@ import {
   harthmereAzureVoiceIdOrFallback,
   harthmereVoiceProfileForActor,
 } from "@/shared/harthmere/npc_voice_profiles";
+import { harthmereDialogueExpressionForText } from "@/shared/harthmere/npc_dialogue_expression_catalog";
+import {
+  clearHarthmereNpcDialogueExpression,
+  publishHarthmereNpcDialogueExpression,
+} from "@/shared/harthmere/npc_dialogue_expressions";
 import type { BiomesId } from "@/shared/ids";
 import { chapter1PresentedNpcLabel } from "@/shared/cutscene/puppets";
 import { log } from "@/shared/logging";
@@ -204,6 +209,28 @@ export const GenericTalkDialogModalStep: React.FunctionComponent<
 
   const currentDialog =
     actionFollowUp ?? (dialog[dialogIndex] as TalkDialogInfo | undefined);
+  const activeDialogueExpression = harthmereDialogueExpressionForText(
+    currentDialog?.text,
+    { entityId: Number(entityId), title }
+  );
+  const activeDialogueExpressionNonce = activeDialogueExpression
+    ? `talk:${entityId}:${dialogIndex}:${
+        actionFollowUp ? "followup" : "dialog"
+      }:${activeDialogueExpression.textKey}`
+    : undefined;
+
+  useEffect(() => {
+    if (!activeDialogueExpression || !activeDialogueExpressionNonce) {
+      return;
+    }
+    publishHarthmereNpcDialogueExpression({
+      actorId: Number(entityId),
+      expression: activeDialogueExpression.expression,
+      nonce: activeDialogueExpressionNonce,
+    });
+    return () =>
+      clearHarthmereNpcDialogueExpression(activeDialogueExpressionNonce);
+  }, [activeDialogueExpression, activeDialogueExpressionNonce, entityId]);
 
   useEffect(() => {
     const localDevNpcOffset = Number(entityId) - 8_810_000_000_010_000;
@@ -375,6 +402,15 @@ export const GenericTalkDialogModalStep: React.FunctionComponent<
         <motion.div
           key={`${id}-${dialogIndex}-${actionFollowUp?.text ?? ""}`}
           className="npc-quest-dialog-container"
+          data-harthmere-dialogue-expression={
+            activeDialogueExpression?.expression
+          }
+          data-harthmere-dialogue-expression-actor={
+            activeDialogueExpression?.actorKey
+          }
+          data-harthmere-dialogue-expression-source={
+            activeDialogueExpression?.source
+          }
           layout
         >
           <motion.div layout className="npc-quest-dialog select-none">

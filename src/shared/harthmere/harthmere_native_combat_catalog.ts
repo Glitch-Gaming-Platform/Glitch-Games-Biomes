@@ -2,6 +2,7 @@ import {
   HARTHMERE_LIVE_ENTITY_ROBOT_SENTINEL_SEEDS,
   HARTHMERE_NATIVE_MUCK_SCARRED_HELIX_SEED,
   HARTHMERE_NATIVE_THAEDRYN_SEED,
+  harthmereGroundedCavernMonsterSeeds,
   harthmereGroundedLivestockSeedsInTerritory,
   harthmereGroundedMuckMonsterSeedsInTerritory,
 } from "@/shared/harthmere/live_entity_production_seed";
@@ -9,7 +10,7 @@ import {
   harthmereNativeNpcCombatProfileForSeed,
   type HarthmereNativeNpcCombatProfile,
 } from "@/shared/harthmere/harthmere_native_combat";
-import { harthmereBossNativeCombatTuningForLabel } from "@/shared/harthmere/boss_attack_catalog";
+import { harthmereBossNativeCombatTuningForEntity } from "@/shared/harthmere/boss_attack_catalog";
 import type { BiomesId } from "@/shared/ids";
 import { HARTHMERE_NATIVE_BANDIT_SEEDS } from "@/shared/harthmere/bandit_production_seed";
 
@@ -17,6 +18,7 @@ export function allHarthmereNativeNpcCombatProfiles() {
   const profiles = [
     ...HARTHMERE_LIVE_ENTITY_ROBOT_SENTINEL_SEEDS,
     ...harthmereGroundedMuckMonsterSeedsInTerritory(),
+    ...harthmereGroundedCavernMonsterSeeds(),
     ...harthmereGroundedLivestockSeedsInTerritory(),
     ...HARTHMERE_NATIVE_BANDIT_SEEDS,
     HARTHMERE_NATIVE_MUCK_SCARRED_HELIX_SEED,
@@ -48,13 +50,18 @@ export function harthmereNativeNpcCombatProfileForTypeId(id: BiomesId) {
  * server-owned profile without requiring encounter code to fork Anima.
  */
 export function harthmereNativeNpcCombatProfileForEntity(input: {
+  entityId?: BiomesId;
   typeId: BiomesId;
   displayName?: string;
   maxHp?: number;
 }): HarthmereNativeNpcCombatProfile | undefined {
   const base = harthmereNativeNpcCombatProfileForTypeId(input.typeId);
-  const tuning = harthmereBossNativeCombatTuningForLabel(input.displayName);
+  const tuning = harthmereBossNativeCombatTuningForEntity(
+    input.displayName,
+    input.entityId === undefined ? undefined : Number(input.entityId)
+  );
   if (!tuning) return base;
+  const apex = base?.key.endsWith("_apex") === true;
   const maxHp = Number.isFinite(input.maxHp)
     ? Math.max(1, Math.trunc(input.maxHp!))
     : base?.maxHp ?? tuning.maxHp;
@@ -64,21 +71,54 @@ export function harthmereNativeNpcCombatProfileForEntity(input: {
     displayName: String(
       input.displayName || base?.displayName || tuning.bossId
     ),
-    level: tuning.level,
+    level: apex ? Math.max(base?.level ?? 1, tuning.level) : tuning.level,
     maxHp,
-    attackDamage: tuning.attackDamage,
-    attackDistance: tuning.attackDistance,
-    attackIntervalSecs: tuning.attackIntervalSecs,
-    attackStrikeMomentSecs: tuning.attackStrikeMomentSecs,
-    attackFovDeg: tuning.attackFovDeg,
-    aggroTrigger:
-      tuning.aggroTrigger === "onlyIfAttacked"
-        ? { kind: "onlyIfAttacked" }
-        : { kind: "proximity", distance: tuning.aggroDistance },
-    disengageDistance: tuning.disengageDistance,
-    walkSpeed: tuning.walkSpeed,
-    runSpeed: tuning.runSpeed,
-    rotateSpeed: tuning.rotateSpeed,
+    attackDamage: apex
+      ? Math.max(base?.attackDamage ?? 0, tuning.attackDamage)
+      : tuning.attackDamage,
+    attackDistance: apex
+      ? Math.max(base?.attackDistance ?? 0, tuning.attackDistance)
+      : tuning.attackDistance,
+    attackIntervalSecs: apex
+      ? Math.min(
+          base?.attackIntervalSecs ?? tuning.attackIntervalSecs,
+          tuning.attackIntervalSecs
+        )
+      : tuning.attackIntervalSecs,
+    attackStrikeMomentSecs: apex
+      ? Math.min(
+          base?.attackStrikeMomentSecs ?? tuning.attackStrikeMomentSecs,
+          tuning.attackStrikeMomentSecs
+        )
+      : tuning.attackStrikeMomentSecs,
+    attackFovDeg: apex
+      ? Math.max(base?.attackFovDeg ?? 0, tuning.attackFovDeg)
+      : tuning.attackFovDeg,
+    aggroTrigger: apex
+      ? {
+          kind: "proximity",
+          distance: Math.max(
+            base?.aggroTrigger.kind === "proximity"
+              ? base.aggroTrigger.distance
+              : 0,
+            tuning.aggroTrigger === "proximity" ? tuning.aggroDistance : 0
+          ),
+        }
+      : tuning.aggroTrigger === "onlyIfAttacked"
+      ? { kind: "onlyIfAttacked" }
+      : { kind: "proximity", distance: tuning.aggroDistance },
+    disengageDistance: apex
+      ? Math.max(base?.disengageDistance ?? 0, tuning.disengageDistance)
+      : tuning.disengageDistance,
+    walkSpeed: apex
+      ? Math.max(base?.walkSpeed ?? 0, tuning.walkSpeed)
+      : tuning.walkSpeed,
+    runSpeed: apex
+      ? Math.max(base?.runSpeed ?? 0, tuning.runSpeed)
+      : tuning.runSpeed,
+    rotateSpeed: apex
+      ? Math.max(base?.rotateSpeed ?? 0, tuning.rotateSpeed)
+      : tuning.rotateSpeed,
     behaviorKind: "hostile",
     dropItems: base?.dropItems ?? [],
     questDropBikkieItems: base?.questDropBikkieItems ?? [],

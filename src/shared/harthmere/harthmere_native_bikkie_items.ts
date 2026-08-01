@@ -14,6 +14,10 @@ import {
 } from "@/shared/harthmere/mmo_farming_food_stamina";
 import { HARTHMERE_MEDICAL_ITEM_DEFINITIONS } from "@/shared/harthmere/mmo_medical_health";
 import { HARTHMERE_JOBS_BOARD_EXECUTABLE_ITEM_IDS } from "@/shared/harthmere/jobs_board_business_templates";
+import {
+  HARTHMERE_SIMPLE_FISHING_ROD_ITEM_ID,
+  SNAPSHOT_FISHING_RODS,
+} from "@/shared/harthmere/fishing_rods";
 import { ensureHarthmereProductionCraftingCatalogue } from "@/shared/harthmere/mmo_crafting_catalogue";
 import {
   getHarthmereItemDefinition,
@@ -100,7 +104,7 @@ const HARTHMERE_NATIVE_PRESENTATION_SOURCE_IDS: Readonly<
   muck_rake: BikkieIds.muckBuster,
   repair_mallet: BikkieIds.axe,
   herbalist_sickle: BikkieIds.axe,
-  simple_fishing_rod: BikkieIds.muckBuster,
+  simple_fishing_rod: SNAPSHOT_FISHING_RODS[1].id,
   skinning_knife: BikkieIds.axe,
   scavenger_hook: BikkieIds.muckBuster,
   clay_shovel: BikkieIds.pickaxe,
@@ -536,6 +540,58 @@ function nativeFarmingToolAttributes(definition: HarthmereItemDefinition) {
   return undefined;
 }
 
+function nativeFishingToolAttributes(definition: HarthmereItemDefinition) {
+  if (definition.itemId !== HARTHMERE_SIMPLE_FISHING_ROD_ITEM_ID) {
+    return undefined;
+  }
+  return {
+    action: "fish" as const,
+    hardnessClass: 2,
+    acceptsBait: true as const,
+    catchBarSize: 0.25,
+    // Match the snapshot Training Rod's ten-minute lifetime. The local
+    // catalogue's durabilityMax is expressed in uses, while native fishing
+    // spends milliseconds; without this override the generated rod broke
+    // after only a couple of ordinary catches.
+    lifetimeDurabilityMs: 600_000,
+  };
+}
+
+function nativeFishAttributes(definition: HarthmereItemDefinition) {
+  if (definition.itemId !== "river_trout") {
+    return undefined;
+  }
+  return {
+    isFish: true as const,
+    fishLengthDistribution: {
+      mean: 0.45,
+      min: 0.15,
+    },
+    // The additive river intentionally has a five-voxel normal-depth channel
+    // and shallow shelving banks under open sky. Publishing both conditions
+    // makes its authored trout reachable through the same native fishing table
+    // used by every original-world ShardWater body.
+    fishConditions: [
+      {
+        predicates: [
+          { kind: "notMuck" as const },
+          { kind: "isNormalDepthWater" as const },
+          { kind: "inOpen" as const },
+        ],
+        probability: "common" as const,
+      },
+      {
+        predicates: [
+          { kind: "notMuck" as const },
+          { kind: "isShallowWater" as const },
+          { kind: "inOpen" as const },
+        ],
+        probability: "uncommon" as const,
+      },
+    ],
+  };
+}
+
 // ---------------------------------------------------------------------------
 // HARTHMERE_NATIVE_STORABLE_IDENTITY (2026-07-26)
 //
@@ -651,6 +707,8 @@ export function harthmereBiscuitForItemDefinition(
     (seed) => seed.seedItemId === definition.itemId
   );
   const farmingToolAttributes = nativeFarmingToolAttributes(definition);
+  const fishingToolAttributes = nativeFishingToolAttributes(definition);
+  const fishAttributes = nativeFishAttributes(definition);
   const cropBlockId = seedDefinition
     ? safeParseBiomesId(seedDefinition.cropItemId) ??
       HARTHMERE_LOCAL_CROP_BLOCK_IDS[seedDefinition.cropItemId]
@@ -747,6 +805,8 @@ export function harthmereBiscuitForItemDefinition(
     // the normal Biomes hotbar/interact script and keeps the OwnedItemReference
     // that reaches logic authoritative.
     ...farmingToolAttributes,
+    ...fishingToolAttributes,
+    ...fishAttributes,
     ...wearableAttributes(definition),
   } as Biscuit;
 }

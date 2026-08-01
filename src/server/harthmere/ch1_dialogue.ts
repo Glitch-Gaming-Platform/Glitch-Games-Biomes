@@ -12,12 +12,19 @@ import type {
   Ch1DialoguePage,
   Ch1DialogueSequence,
 } from "@/shared/harthmere/ch1_dialogue_types";
+import type { HarthmereCinematicExpression } from "@/shared/cutscene/cinematic_expressions";
 import { CH1_TESTIMONIES } from "@/shared/harthmere/ch1_cast";
 import type { Ch1LiveGateRuntimeState } from "@/shared/harthmere/ch1_live_gate";
 import {
+  ch1ObjectiveTarget,
+  type Ch1ObjectiveTargetContext,
+} from "@/shared/harthmere/ch1_objective_targets";
+import {
+  CH1_TESTIMONY_ROUTE,
   CH1_THREE_ANSWER_ROUTE,
   ch1NextRouteStop,
 } from "@/shared/harthmere/ch1_objective_routes";
+import { CH1_QUESTS } from "@/shared/harthmere/ch1_quests";
 
 type CompletionDialogueByChoice = Readonly<Record<string, Ch1DialogueSequence>>;
 
@@ -27,7 +34,7 @@ const sequence = (
   completionLabel?: string
 ): Ch1DialogueSequence => ({ title, pages, completionLabel });
 
-export const CH1_OBJECTIVE_DIALOGUE: Readonly<
+const CH1_OBJECTIVE_DIALOGUE_BASE: Readonly<
   Record<string, Ch1DialogueSequence>
 > = Object.freeze({
   wake_up: sequence("The Morning After", [
@@ -584,7 +591,149 @@ export const CH1_OBJECTIVE_DIALOGUE: Readonly<
   ]),
 });
 
-export const CH1_COMPLETION_DIALOGUE: Readonly<
+type DialogueExpressionPlan = Readonly<
+  Record<string, readonly (HarthmereCinematicExpression | undefined)[]>
+>;
+
+function applySequenceExpressions(
+  scope: string,
+  dialogue: Ch1DialogueSequence,
+  expressions: readonly (HarthmereCinematicExpression | undefined)[]
+): Ch1DialogueSequence {
+  if (dialogue.pages.length !== expressions.length) {
+    throw new Error(
+      `${scope}: ${dialogue.pages.length} dialogue pages but ${expressions.length} expression entries`
+    );
+  }
+  return {
+    ...dialogue,
+    pages: dialogue.pages.map((page, index) =>
+      expressions[index] ? { ...page, expression: expressions[index] } : page
+    ),
+  };
+}
+
+function applyDialogueExpressionPlan(
+  scope: string,
+  dialogue: Readonly<Record<string, Ch1DialogueSequence>>,
+  plan: DialogueExpressionPlan
+): Readonly<Record<string, Ch1DialogueSequence>> {
+  const missing = Object.keys(dialogue).filter((key) => !(key in plan));
+  const unknown = Object.keys(plan).filter((key) => !(key in dialogue));
+  if (missing.length || unknown.length) {
+    throw new Error(
+      `${scope}: expression plan mismatch; missing=${missing.join(
+        ","
+      )}; unknown=${unknown.join(",")}`
+    );
+  }
+  return Object.freeze(
+    Object.fromEntries(
+      Object.entries(dialogue).map(([key, sequence]) => [
+        key,
+        applySequenceExpressions(`${scope}/${key}`, sequence, plan[key]),
+      ])
+    )
+  );
+}
+
+const CH1_OBJECTIVE_DIALOGUE_EXPRESSION_PLAN = Object.freeze({
+  wake_up: ["relief", "determined"],
+  the_tea: ["thumbsUp", "determined"],
+  kit_check: ["checkingEquipment", "curiosity"],
+  choose_a_name: ["thinking", "curiosity"],
+  see_it_painted: ["thumbsUp", "relief"],
+  seat_the_core: ["checkingEquipment", "sadness"],
+  // AUGUR-9 and its recording are not human performers.
+  first_log: [undefined, undefined, undefined],
+  sort_the_finds: ["curiosity", "thinking"],
+  not_this_small: ["uncertainty", undefined],
+  sit_for_doc: ["curiosity", "thinking", "stop", "determined"],
+  open_the_tab: ["determined", "uncertainty"],
+  collect_testimonies: [
+    "sadness",
+    "fear",
+    "nervousness",
+    "confusion",
+    "annoyance",
+    "nervousness",
+    "nervousness",
+    "confusion",
+    "surprise",
+    "thinking",
+    "shock",
+    "thinking",
+    "uncertainty",
+  ],
+  go_to_greenlamp: ["determined", "frustration"],
+  kit_delivers: ["curiosity", "sighing"],
+  say_the_sentence: ["determined", "impatience"],
+  the_three_answers: ["stop", "determined", "determined", "stop"],
+  lous_gift: [
+    "uncertainty",
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    "apology",
+  ],
+  the_pack_check: ["checkingEquipment", "determined"],
+  d1_find_iris: ["curiosity", "confusion", "relief"],
+  hear_it: ["surprise", "uncertainty"],
+  tell_sil_why: [undefined, "relief"],
+  walk_in: ["annoyance", "ready"],
+  how_did_you_do_that: ["shock", "uncertainty"],
+  call_the_collapse: ["surprise", "uncertainty"],
+  notice: [undefined, "nervousness"],
+  // The player observation and AUGUR-9 are both non-human performers.
+  search_the_stores: [undefined, undefined],
+  have_it_analysed: ["thinking", "curiosity"],
+  show_him: ["thinking", "determined"],
+  interrogate: ["determined", "frustration", "stop"],
+  report_or_not: ["thinking", "determined"],
+  check_corettas_ledger: ["thinking", "determined"],
+  // AUGUR-9 does not use human facial/body expressions.
+  ask_auggie: [undefined, undefined],
+  resume_dosing: [undefined, undefined],
+  unlock_linking: [undefined, undefined],
+  read_the_letter: [undefined, undefined, undefined, undefined, undefined],
+  rooks_rope: ["checkingEquipment", "determined", "guard"],
+  d2_the_oath: ["guard", "uncertainty"],
+  d2_hallrs_choice: ["sadness", "determined"],
+  come_out: ["curiosity", "sadness"],
+  hear_vane: ["sighing", "determined", "determined"],
+  give_the_ledger: ["thinking", "determined"],
+  give_her_location: ["sadness", "stop"],
+  did_he_take_it: ["nervousness"],
+  the_final_choice: ["ready", "determined"],
+} satisfies DialogueExpressionPlan);
+
+const CH1_TESTIMONY_EXPRESSION_BY_SPEAKER: Readonly<
+  Record<string, HarthmereCinematicExpression>
+> = Object.freeze({
+  Alva: "fear",
+  Helsa: "nervousness",
+  Grover: "confusion",
+  Coretta: "annoyance",
+  Emily: "nervousness",
+  Patsy: "nervousness",
+  Richard: "confusion",
+  Runna: "surprise",
+  Drona: "thinking",
+  Gizela: "shock",
+  Davi: "thinking",
+  Allix: "uncertainty",
+});
+
+export const CH1_OBJECTIVE_DIALOGUE = applyDialogueExpressionPlan(
+  "objective",
+  CH1_OBJECTIVE_DIALOGUE_BASE,
+  CH1_OBJECTIVE_DIALOGUE_EXPRESSION_PLAN
+);
+
+const CH1_COMPLETION_DIALOGUE_BASE: Readonly<
   Record<string, CompletionDialogueByChoice>
 > = Object.freeze({
   report_or_not: {
@@ -699,6 +848,64 @@ export const CH1_COMPLETION_DIALOGUE: Readonly<
   },
 });
 
+const CH1_COMPLETION_DIALOGUE_EXPRESSION_PLAN = Object.freeze({
+  report_or_not: {
+    report: ["determined", "sadness"],
+    stop_tea: ["determined", "shame"],
+    both: ["determined", "sighing"],
+  },
+  d2_hallrs_choice: {
+    let_run: ["relief", undefined],
+    hold_stall: ["defeat", undefined],
+  },
+  the_final_choice: {
+    confess: [undefined, "relief", undefined],
+    contain: [undefined, "ready", undefined],
+    bargain: ["determined", undefined, undefined],
+  },
+} satisfies Readonly<Record<string, Readonly<Record<string, readonly (HarthmereCinematicExpression | undefined)[]>>>>);
+
+export const CH1_COMPLETION_DIALOGUE: Readonly<
+  Record<string, CompletionDialogueByChoice>
+> = Object.freeze(
+  Object.fromEntries(
+    Object.entries(CH1_COMPLETION_DIALOGUE_BASE).map(([stepId, byChoice]) => {
+      const choicePlan = CH1_COMPLETION_DIALOGUE_EXPRESSION_PLAN[stepId];
+      if (!choicePlan) {
+        throw new Error(`${stepId}: missing completion expression plan`);
+      }
+      const unknown = Object.keys(choicePlan).filter(
+        (choice) => !(choice in byChoice)
+      );
+      const missing = Object.keys(byChoice).filter(
+        (choice) => !(choice in choicePlan)
+      );
+      if (unknown.length || missing.length) {
+        throw new Error(
+          `${stepId}: completion expression plan mismatch; missing=${missing.join(
+            ","
+          )}; unknown=${unknown.join(",")}`
+        );
+      }
+      return [
+        stepId,
+        Object.freeze(
+          Object.fromEntries(
+            Object.entries(byChoice).map(([choice, dialogue]) => [
+              choice,
+              applySequenceExpressions(
+                `completion/${stepId}/${choice}`,
+                dialogue,
+                choicePlan[choice]
+              ),
+            ])
+          )
+        ),
+      ];
+    })
+  )
+);
+
 export function ch1ObjectiveDialogue(
   stepId: string,
   context?: {
@@ -711,7 +918,11 @@ export function ch1ObjectiveDialogue(
     const next = CH1_TESTIMONIES.find((entry) => !heard.has(entry.id));
     if (next) {
       return sequence(`The Night You Came — ${next.npc}`, [
-        { speaker: next.npc, text: next.line },
+        {
+          speaker: next.npc,
+          text: next.line,
+          expression: CH1_TESTIMONY_EXPRESSION_BY_SPEAKER[next.npc],
+        },
       ]);
     }
   }
@@ -728,14 +939,17 @@ export function ch1ObjectiveDialogue(
         ranger_jane: {
           speaker: "Ranger Jane",
           text: "Rope it off and watch it. The Muck gathers around damage like a body closing a wound.",
+          expression: "stop",
         },
         cressa_vane: {
           speaker: "Arbiter Cressa Vane",
           text: "Study it before fear destroys the evidence. Jurisdiction can be argued after the child is found.",
+          expression: "determined",
         },
         halden_rook: {
           speaker: "Halden Rook",
           text: "Collapse it before it learns the shape of your town. I do not pretend to know how.",
+          expression: "determined",
         },
       };
       return sequence("A Button in the Sand", [pageByStop[next.id]]);
@@ -761,6 +975,94 @@ export function ch1CloneDialogue(
         pages: dialogue.pages.map((page) => ({ ...page })),
       }
     : undefined;
+}
+
+function nextCatalogObjective(questId: string, stepId: string) {
+  const objectives = CH1_QUESTS.flatMap((quest) =>
+    quest.steps.map((step, stepIndex) => ({ quest, step, stepIndex }))
+  );
+  const index = objectives.findIndex(
+    ({ quest, step }) => quest.id === questId && step.id === stepId
+  );
+  return index >= 0 ? objectives[index + 1] : undefined;
+}
+
+function nextRouteStopAfterCurrent(
+  route: typeof CH1_TESTIMONY_ROUTE,
+  completed: readonly string[]
+) {
+  const current = ch1NextRouteStop(route, completed);
+  if (!current) return undefined;
+  return route[route.findIndex((stop) => stop.id === current.id) + 1];
+}
+
+/**
+ * Player-facing handoff shown before every Chapter 1 conversation closes.
+ * It deliberately names both the next task and its destination; the map then
+ * supplies the route. Multi-person objectives point to their next live stop
+ * instead of incorrectly skipping to the following catalog step.
+ */
+export function ch1ObjectiveExitGuidanceForTest(input: {
+  questId: string;
+  stepId: string;
+  context?: Ch1ObjectiveTargetContext;
+}): string {
+  if (input.stepId === "collect_testimonies") {
+    const next = nextRouteStopAfterCurrent(
+      CH1_TESTIMONY_ROUTE,
+      input.context?.runtime?.testimonies ?? []
+    );
+    if (next) {
+      return `Next task: hear the next account. Go to ${next.label}; your map will mark the way.`;
+    }
+  }
+  if (input.stepId === "the_three_answers") {
+    const effectKey = `${input.questId}/${input.stepId}`;
+    const next = nextRouteStopAfterCurrent(
+      CH1_THREE_ANSWER_ROUTE,
+      input.context?.runtime?.objectiveRouteProgress[effectKey] ?? []
+    );
+    if (next) {
+      return `Next task: hear the next answer. Go to ${next.label}; your map will mark the way.`;
+    }
+  }
+  const next = nextCatalogObjective(input.questId, input.stepId);
+  if (!next) {
+    return "Chapter 1 is complete. Open Quests to choose your next journey.";
+  }
+  const target = ch1ObjectiveTarget(
+    next.quest.id,
+    next.stepIndex,
+    input.context
+  );
+  return `Next task: ${next.step.title}. Go to ${
+    target?.label ?? next.step.targetLabel ?? next.quest.district
+  }; your map will mark the way.`;
+}
+
+export function ch1DialogueWithExitGuidanceForTest(
+  dialogue: Ch1DialogueSequence | undefined,
+  exitGuidance: string,
+  choiceFollows = false
+): Ch1DialogueSequence | undefined {
+  if (!dialogue) return undefined;
+  const speaker = dialogue.pages.at(-1)?.speaker ?? "Guide";
+  return {
+    ...dialogue,
+    completionLabel: choiceFollows
+      ? "Continue to your choice"
+      : dialogue.completionLabel ?? "Continue to the next task",
+    pages: [
+      ...dialogue.pages.map((page) => ({ ...page })),
+      {
+        speaker,
+        text: choiceFollows
+          ? `Make your choice here. ${exitGuidance}`
+          : exitGuidance,
+        expression: dialogue.pages.at(-1)?.expression,
+      },
+    ],
+  };
 }
 
 export function ch1DialogueSentenceCount(text: string): number {

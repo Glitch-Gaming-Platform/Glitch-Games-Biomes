@@ -4,6 +4,7 @@ import { mkdtemp, readFile, rm, writeFile } from "fs/promises";
 import { tmpdir } from "os";
 import path from "path";
 import { chromium } from "playwright";
+import { SNAPSHOT_GROVE_AMBIENT_DIALOGUE } from "@/shared/harthmere/snapshot_grove_ambient_dialogue";
 
 declare global {
   interface Window {
@@ -22,6 +23,7 @@ declare global {
 describe("TalkDialogModalStep rendered voice conversation flow", () => {
   it("checks every rendered voice scene for one-shot audio and clickability", async function () {
     this.timeout(45_000);
+    const mappedFirstLine = SNAPSHOT_GROVE_AMBIENT_DIALOGUE.jackie[0];
 
     const tempDir = await mkdtemp(path.join(tmpdir(), "biomes-talk-flow-"));
     const entryPath = path.join(tempDir, "entry.tsx");
@@ -75,7 +77,7 @@ describe("TalkDialogModalStep rendered voice conversation flow", () => {
         function Harness() {
           const [rerenderCount, setRerenderCount] = React.useState(0);
           const [dialog, setDialog] = React.useState([
-            { text: "<text>First line.</text>" },
+            { text: ${JSON.stringify(`<text>${mappedFirstLine}</text>`)} },
             { text: "<text>Second line.</text>" },
             {
               text: "<text>Third line.</text>",
@@ -387,14 +389,38 @@ describe("TalkDialogModalStep rendered voice conversation flow", () => {
       `);
       await page.addScriptTag({ content: await readFile(bundlePath, "utf8") });
 
-      await page.locator("[data-dialog-text='First line.']").waitFor({
+      await page.getByText(mappedFirstLine, { exact: true }).waitFor({
         timeout: 10_000,
       });
+      const expressionDialog = page.locator(
+        ".npc-quest-dialog-container[data-harthmere-dialogue-expression]"
+      );
+      assert.equal(
+        await expressionDialog.getAttribute(
+          "data-harthmere-dialogue-expression"
+        ),
+        "thinking"
+      );
+      assert.equal(
+        await expressionDialog.getAttribute(
+          "data-harthmere-dialogue-expression-actor"
+        ),
+        "jackie"
+      );
+      assert.deepEqual(
+        await page.evaluate(() => {
+          const cue = (window as any).__harthmereNpcDialogueExpression;
+          return cue
+            ? { actorId: cue.actorId, expression: cue.expression }
+            : undefined;
+        }),
+        { actorId: 8810000000010001, expression: "thinking" }
+      );
       await page.waitForFunction(() => window.__ttsRequests.length === 1);
       await page.waitForTimeout(120);
       assert.deepEqual(
         await page.evaluate(() => window.__ttsRequests.map((r) => r.text)),
-        ["First line."]
+        [mappedFirstLine]
       );
       assert.equal(
         await page.evaluate(() => window.__ttsRequests[0]?.provider),
@@ -423,10 +449,20 @@ describe("TalkDialogModalStep rendered voice conversation flow", () => {
       await page.locator("[data-dialog-text='Second line.']").waitFor({
         timeout: 10_000,
       });
+      await page.waitForFunction(
+        () => !(window as any).__harthmereNpcDialogueExpression
+      );
+      assert.equal(
+        await page
+          .locator(".npc-quest-dialog-container")
+          .getAttribute("data-harthmere-dialogue-expression"),
+        null,
+        "an NPC expression must end as soon as its authored line leaves the screen"
+      );
       await page.waitForFunction(() => window.__ttsRequests.length === 2);
       assert.deepEqual(
         await page.evaluate(() => window.__ttsRequests.map((r) => r.text)),
-        ["First line.", "Second line."]
+        [mappedFirstLine, "Second line."]
       );
       assert.equal(
         await page.locator("[data-npc-speech-input-button]").count(),
@@ -441,7 +477,7 @@ describe("TalkDialogModalStep rendered voice conversation flow", () => {
       await page.waitForFunction(() => window.__ttsRequests.length === 3);
       assert.deepEqual(
         await page.evaluate(() => window.__ttsRequests.map((r) => r.text)),
-        ["First line.", "Second line.", "Third line."]
+        [mappedFirstLine, "Second line.", "Third line."]
       );
 
       assert.equal(
@@ -522,7 +558,7 @@ describe("TalkDialogModalStep rendered voice conversation flow", () => {
       assert.deepEqual(
         await page.evaluate(() => window.__ttsRequests.map((r) => r.text)),
         [
-          "First line.",
+          mappedFirstLine,
           "Second line.",
           "Third line.",
           "[listens closely...]",

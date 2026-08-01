@@ -1,5 +1,8 @@
 import type { PermissionsManager } from "@/client/game/context_managers/permissions_manager";
-import { AttackDestroyDelegateItemSpec } from "@/client/game/interact/item_types/attack_destroy_delegate_item_spec";
+import {
+  AttackDestroyDelegateItemSpec,
+  harthmereMagicWeaponCharge,
+} from "@/client/game/interact/item_types/attack_destroy_delegate_item_spec";
 import type {
   StubbedClientContext,
   StubbedClientResources,
@@ -15,19 +18,37 @@ import {
 } from "@/client/game/interact/item_types/test_helpers";
 import type { WithActionThottler } from "@/client/game/interact/types";
 import type { LocalPlayer } from "@/client/game/resources/local_player";
+import type { Player } from "@/client/game/resources/players";
 import { loadVoxeloo } from "@/server/shared/voxeloo";
+import { anItem } from "@/shared/game/item";
 import { hitExistingTerrain } from "@/shared/game/spatial";
+import { harthmereNativeBiomesIdForItemId } from "@/shared/harthmere/harthmere_native_item_ids";
+import { HARTHMERE_MAGIC_CHARGE_MIN_SECS } from "@/shared/harthmere/magic_charge";
 import type { BiomesId } from "@/shared/ids";
 import assert from "assert";
 import type { StubbedInstance } from "ts-sinon";
 
 describe("Attack and Destroy Spec", () => {
+  it("charges native magic weapons while leaving physical weapons immediate", () => {
+    const staffId = harthmereNativeBiomesIdForItemId("arcane_staff");
+    const swordId = harthmereNativeBiomesIdForItemId("iron_longsword");
+    assert.ok(staffId);
+    assert.ok(swordId);
+
+    const staffCharge = harthmereMagicWeaponCharge(anItem(staffId));
+    assert.ok(staffCharge);
+    assert.equal(staffCharge.projectileVisualId, "spark");
+    assert.ok(staffCharge.chargeTimeSecs >= HARTHMERE_MAGIC_CHARGE_MIN_SECS);
+    assert.equal(harthmereMagicWeaponCharge(anItem(swordId)), undefined);
+  });
+
   before(async () => {
     await loadVoxeloo();
   });
 
   let deps!: WithActionThottler<StubbedClientContext>;
   let localPlayer: StubbedInstance<LocalPlayer>;
+  let player: StubbedInstance<Player>;
   let resources!: StubbedClientResources;
   let itemSpec!: AttackDestroyDelegateItemSpec;
   let permissionsManager!: StubbedInstance<PermissionsManager>;
@@ -43,6 +64,7 @@ describe("Attack and Destroy Spec", () => {
     localPlayer = deps.resources.get(
       "/scene/local_player"
     ) as unknown as StubbedInstance<LocalPlayer>;
+    player = localPlayer.player as unknown as StubbedInstance<Player>;
     resources = deps.resources as StubbedClientResources;
     permissionsManager =
       deps.permissionsManager as StubbedInstance<PermissionsManager>;
@@ -51,6 +73,56 @@ describe("Attack and Destroy Spec", () => {
 
   it("attacks on primary if cursor empty", async () => {
     assert.ok(!localPlayer.startAttack.calledOnce);
+  });
+
+  it("preserves the evade's strong pose before accepting an attack", () => {
+    player.movementActionInfo = {
+      action: "evade",
+      startTime: 10,
+      expiryTime: 10.75,
+      direction: [0, 0, -1],
+    };
+
+    advanceClock(0.2);
+    itemSpec.onPrimaryDown(hotbarItemInfo());
+
+    assert.equal(localPlayer.startAttack.callCount, 0);
+    assert.equal(player.cancelMovementAction.callCount, 0);
+  });
+
+  it("buffers a late-evade attack and starts it at the recovery window", () => {
+    player.movementActionInfo = {
+      action: "evade",
+      startTime: 10,
+      expiryTime: 10.75,
+      direction: [0, 0, -1],
+    };
+
+    advanceClock(0.52);
+    itemSpec.onPrimaryDown(hotbarItemInfo());
+    itemSpec.onPrimaryUp(hotbarItemInfo());
+    assert.equal(localPlayer.startAttack.callCount, 0);
+
+    advanceClock(0.1);
+    itemSpec.onTick(hotbarItemInfo());
+
+    assert.equal(player.cancelMovementAction.callCount, 1);
+    assert.equal(localPlayer.startAttack.callCount, 1);
+  });
+
+  it("attacks immediately from the evade recovery window", () => {
+    player.movementActionInfo = {
+      action: "evade",
+      startTime: 10,
+      expiryTime: 10.75,
+      direction: [0, 0, -1],
+    };
+
+    advanceClock(0.63);
+    itemSpec.onPrimaryDown(hotbarItemInfo());
+
+    assert.equal(player.cancelMovementAction.callCount, 1);
+    assert.equal(localPlayer.startAttack.callCount, 1);
   });
 
   it("destroys on primary when nothing is selected and cursor hits", async () => {

@@ -1,7 +1,7 @@
 import { npcEntity } from "@/server/spawn/spawn_npc";
 import { BikkieIds } from "@/shared/bikkie/ids";
 import { MovementState } from "@/shared/ecs/gen/components";
-import { Npc } from "@/shared/ecs/gen/entities";
+import { Npc, type ReadonlyEntity } from "@/shared/ecs/gen/entities";
 import type { BiomesId } from "@/shared/ids";
 import { SimulatedNpc } from "@/shared/npc/simulated";
 import assert from "assert";
@@ -94,5 +94,79 @@ describe("SimulatedNpc public combat state", () => {
     assert.equal(event.attackTime, 100);
     assert.deepEqual(event.impactPoint, [8, 1, 0]);
     assert.equal(event.hpDelta, -42);
+  });
+
+  it("projects only the active ranged cast into public combat state", () => {
+    const entity = Npc.from(
+      npcEntity(
+        {
+          id: NPC_ID,
+          typeId: BikkieIds.dMucker,
+          position: [0, 0, 0],
+        },
+        100
+      )
+    );
+    assert.ok(entity);
+    const npc = new SimulatedNpc(entity);
+    npc.mutableState().chaseAttack = {
+      attackTarget: PLAYER_ID,
+      rangedAttack: {
+        abilityId: "fireball",
+        projectileVisualId: "fireball",
+        targetId: PLAYER_ID,
+        castTime: 100,
+        chargeTimeSecs: 3.5,
+        releaseTime: 103.5,
+        impactTime: 104.5,
+        cooldownUntil: 123.5,
+        aimPoint: [8, 1, 0],
+      },
+    };
+    npc.setPublicCombatTarget(PLAYER_ID);
+
+    const firedUpdates = npc.finish();
+    const firedState = firedUpdates?.state[0];
+    const fired = firedState?.npc_combat_state;
+    assert.deepEqual(fired, {
+      attack_target: PLAYER_ID,
+      ranged_attack_ability_id: "fireball",
+      ranged_attack_projectile_visual_id: "fireball",
+      ranged_attack_cast_time: 100,
+      ranged_attack_charge_time_secs: 3.5,
+      ranged_attack_release_time: 103.5,
+      ranged_attack_aim_point: [8, 1, 0],
+      ranged_attack_result: undefined,
+    });
+
+    npc.updateFromExternal({
+      ...entity,
+      npc_combat_state: fired,
+      npc_state: firedState?.npc_state ?? entity.npc_state,
+    } as ReadonlyEntity);
+    npc.setPublicCombatTarget(PLAYER_ID);
+    assert.equal(
+      npc.finish(),
+      undefined,
+      "an unchanged synchronized cast must not republish public combat state"
+    );
+
+    npc.mutableState().chaseAttack!.rangedAttack!.result = "hit";
+    assert.equal(
+      npc.finish()?.state[0]?.npc_combat_state?.ranged_attack_result,
+      "hit"
+    );
+
+    npc.mutableState().chaseAttack!.rangedAttack = undefined;
+    assert.deepEqual(npc.finish()?.state[0]?.npc_combat_state, {
+      attack_target: PLAYER_ID,
+      ranged_attack_ability_id: undefined,
+      ranged_attack_projectile_visual_id: undefined,
+      ranged_attack_cast_time: undefined,
+      ranged_attack_charge_time_secs: undefined,
+      ranged_attack_release_time: undefined,
+      ranged_attack_aim_point: undefined,
+      ranged_attack_result: undefined,
+    });
   });
 });

@@ -3,14 +3,11 @@ import {
   type CutsceneDef,
 } from "@/shared/cutscene/schema";
 import { PLAYER_MOVEMENT_ACTION_ANIMATION_NAMES } from "@/shared/game/movement_actions";
-import { SNAPSHOT_GROVE_LIVE_NPC_FEET_Y } from "@/shared/harthmere/snapshot_grove_ids";
 
 export const HARTHMERE_MOVEMENT_ACTION_SHOWCASE_ID =
   "harthmere-movement-action-showcase";
 
-const CENTER = [500, SNAPSHOT_GROVE_LIVE_NPC_FEET_Y, -140] as const;
 const SUBJECT_ROLE = "movement-action-subject";
-const CAMERA_MARK_ROLE = "movement-action-camera-mark";
 
 const DISPLAY_NAMES: Record<
   (typeof PLAYER_MOVEMENT_ACTION_ANIMATION_NAMES)[number],
@@ -21,18 +18,47 @@ const DISPLAY_NAMES: Record<
   dodgeForward: "Dodge forward",
   dodgeBack: "Dodge back",
   evade: "Evade roll",
+  doubleJump: "Double jump",
 };
 
 /**
- * Game-rendered visual gate for the desktop X/C movement actions. The scene is
+ * Game-rendered visual gate for dodge, evade, and double jump. The scene is
  * client-puppet-only and has no commits, so repeated screenshots cannot change
  * player, quest, Anima, Gaia, or combat state.
  */
 export function harthmereMovementActionShowcaseCutscene(): CutsceneDef {
-  const [x, y, z] = CENTER;
+  const actionShots = PLAYER_MOVEMENT_ACTION_ANIMATION_NAMES.map(
+    (animation, index) => ({
+      id: `movement-action-${animation}`,
+      duration: 2.1,
+      transitionIn: index === 0 ? ("fade" as const) : ("cut" as const),
+      camera: {
+        // Follow the authenticated player's already-streamed mesh. This keeps
+        // the actions readable without loading a second world-space stage.
+        kind: "trackRole" as const,
+        role: SUBJECT_ROLE,
+        offset: [3.5, 1.85, 6.5] as [number, number, number],
+      },
+      actions: [
+        {
+          kind: "dialogue" as const,
+          at: 0,
+          speaker: "Movement action",
+          text: DISPLAY_NAMES[animation],
+          duration: 1.6,
+        },
+        {
+          kind: "emote" as const,
+          at: 0.3,
+          role: SUBJECT_ROLE,
+          emote: animation,
+        },
+      ],
+    })
+  );
   const raw = {
     id: HARTHMERE_MOVEMENT_ACTION_SHOWCASE_ID,
-    name: "Harthmere Dodge and Evade Showcase",
+    name: "Harthmere Movement Action Showcase",
     version: 1,
     settings: {
       mode: "clientPuppet" as const,
@@ -51,62 +77,49 @@ export function harthmereMovementActionShowcaseCutscene(): CutsceneDef {
       {
         role: SUBJECT_ROLE,
         binding: {
-          kind: "ghost" as const,
-          asset: "townsperson_guard",
-          family: "human" as const,
-          spawnAt: [x, y, z] as [number, number, number],
-          height: 1.8,
-        },
-      },
-      {
-        role: CAMERA_MARK_ROLE,
-        binding: {
-          kind: "anchor" as const,
-          position: [x + 3.5, y, z + 6.5] as [number, number, number],
-          height: 1.7,
-          label: "Movement action camera mark",
+          // Use the authenticated player's already-loaded mesh. Snapshot
+          // townsperson ghosts can resolve to tiny fallback props when their
+          // archived appearance is unavailable, which makes the visual gate
+          // look successful while hiding the actual movement animation.
+          // Client-puppet mode plus empty commits keeps this render-only.
+          kind: "player" as const,
         },
       },
     ],
-    shots: PLAYER_MOVEMENT_ACTION_ANIMATION_NAMES.map((animation, index) => ({
-      id: `movement-action-${animation}`,
-      duration: 2.1,
-      transitionIn: index === 0 ? ("fade" as const) : ("cut" as const),
-      camera: {
-        kind: "static" as const,
-        // A stable three-quarter side view makes both lateral direction and
-        // forward/back body pitch readable in one compact capture sequence.
-        position: [x + 3.5, y + 1.85, z + 6.5] as [number, number, number],
-        lookAtRole: SUBJECT_ROLE,
+    shots: [
+      ...actionShots,
+      {
+        id: "movement-action-evade-attack",
+        duration: 2.1,
+        transitionIn: "cut" as const,
+        camera: {
+          kind: "trackRole" as const,
+          role: SUBJECT_ROLE,
+          offset: [3.5, 1.85, 6.5] as [number, number, number],
+        },
+        actions: [
+          {
+            kind: "dialogue" as const,
+            at: 0,
+            speaker: "Movement action",
+            text: "Evade into attack",
+            duration: 1.6,
+          },
+          {
+            kind: "emote" as const,
+            at: 0.3,
+            role: SUBJECT_ROLE,
+            emote: "evade",
+          },
+          {
+            kind: "emote" as const,
+            at: 0.9,
+            role: SUBJECT_ROLE,
+            emote: "attack1",
+          },
+        ],
       },
-      actions: [
-        {
-          kind: "teleport" as const,
-          at: 0,
-          role: SUBJECT_ROLE,
-          to: [x, y, z] as [number, number, number],
-        },
-        {
-          kind: "face" as const,
-          at: 0.02,
-          role: SUBJECT_ROLE,
-          towards: { role: CAMERA_MARK_ROLE },
-        },
-        {
-          kind: "dialogue" as const,
-          at: 0,
-          speaker: "Movement action",
-          text: DISPLAY_NAMES[animation],
-          duration: 1.6,
-        },
-        {
-          kind: "emote" as const,
-          at: 0.3,
-          role: SUBJECT_ROLE,
-          emote: animation,
-        },
-      ],
-    })),
+    ],
     onEnd: { placements: [], commits: [] },
   };
 

@@ -2,6 +2,10 @@ import { resolveChatVoiceRequest } from "@/pages/api/voices/text_to_speech";
 import { clearNpcVoiceAudioManifestCacheForTest } from "@/server/shared/npc_voice_audio_cache";
 import { harthmereVoiceProfileForActor } from "@/shared/harthmere/npc_voice_profiles";
 import { SNAPSHOT_GROVE_JACKIE_ENTITY_ID } from "@/shared/harthmere/snapshot_grove_ids";
+import {
+  harthmereAdditiveTownNpcDialogueForOffset,
+  harthmereAdditiveTownNpcVoiceProfile,
+} from "@/shared/harthmere/additive_town_npc_dialogue";
 import assert from "assert";
 
 describe("text-to-speech committed audio integration", () => {
@@ -46,5 +50,28 @@ describe("text-to-speech committed audio integration", () => {
       /^\/harthmere\/voices\/generated\/current\/native-robot-story\/the-road-ahead-/
     );
     assert.ok(!response.url.includes("/runtime/"));
+  });
+
+  it("resolves every additive-town conversation tier to shipped MP3s", async () => {
+    const mira = harthmereAdditiveTownNpcDialogueForOffset(1)!;
+    const voice = harthmereAdditiveTownNpcVoiceProfile(mira).voiceParameterId;
+    for (const [text, lineId] of [
+      [mira.intro, "line-01"],
+      [mira.story, "line-02"],
+      [mira.location, "line-03"],
+    ] as const) {
+      const response = await resolveChatVoiceRequest({
+        text,
+        voice,
+        language: "en-US",
+        provider: "elevenlabs",
+      });
+
+      assert.equal(
+        response.url,
+        `/harthmere/voices/generated/current/harthmere-additive-town-additive-town-1-mira-town-guide/${lineId}.mp3`
+      );
+      assert.ok(!response.url.includes("/runtime/"));
+    }
   });
 });

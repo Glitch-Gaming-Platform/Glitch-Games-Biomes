@@ -34,8 +34,10 @@ const {
 const {
   HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS,
   HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_PRODUCTION_COUNT,
+  HARTHMERE_LIVE_ENTITY_CAVERN_MONSTER_PRODUCTION_COUNT,
   HARTHMERE_LIVE_ENTITY_PRODUCTION_SEEDS,
   HARTHMERE_LIVE_ENTITY_ROBOT_SENTINEL_SEEDS,
+  harthmereGroundedCavernMonsterSeeds,
   validateHarthmereLiveEntityProductionSeeds,
 } = require("../../src/shared/harthmere/live_entity_production_seed");
 const {
@@ -143,8 +145,14 @@ async function main() {
   );
   check(
     serverCombatHostileEntries.length ===
-      HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS.length,
-    "live-mode server combat snapshot seeds every production Muck/Hex hostile"
+      HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS.length +
+        HARTHMERE_LIVE_ENTITY_CAVERN_MONSTER_PRODUCTION_COUNT,
+    "live-mode server combat snapshot seeds every production Muck/Hex/cavern hostile"
+  );
+  check(
+    harthmereGroundedCavernMonsterSeeds().length ===
+      HARTHMERE_LIVE_ENTITY_CAVERN_MONSTER_PRODUCTION_COUNT,
+    "production includes every authored massive-cavern Indisworm"
   );
   check(
     serverCombatEntries.some(([, snapshot]) => snapshot.entityKind === "mux") &&

@@ -209,9 +209,12 @@ export class BloomGaussianPass extends ShaderPass {
       const downsampleBuffer = this.downsampleBuffer();
       this.inputs.set("color", [pass, downsampleBuffer]);
       const inputs = this.renderInputs(deltaTime);
+      const colorImage = inputs.get("color")?.image as
+        | { width?: number; height?: number }
+        | undefined;
       const colorSize = [
-        inputs.get("color")?.image.width,
-        inputs.get("color")?.image.height,
+        colorImage?.width,
+        colorImage?.height,
       ];
       this.uniforms.colorSize = { value: colorSize };
     }

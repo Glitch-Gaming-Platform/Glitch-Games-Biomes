@@ -42,6 +42,10 @@ import {
   SNAPSHOT_GROVE_TUTORIAL_ITEM_IDS,
   SNAPSHOT_GROVE_TUTORIAL_RECIPE_IDS,
 } from "@/shared/harthmere/snapshot_grove_trigger_contract";
+import {
+  HARTHMERE_SIMPLE_FISHING_ROD_BIOMES_ID,
+  SNAPSHOT_FISHING_RODS,
+} from "@/shared/harthmere/fishing_rods";
 
 function tray(contents: ReadonlyMap<number, Biscuit> = new Map()) {
   return {
@@ -58,6 +62,59 @@ describe("Harthmere exact native Bikkie overlay", function () {
   // ~2s alone. Keep a bounded catalog-sized timeout instead of weakening any
   // identity or wire-decoding assertion.
   this.timeout(15_000);
+  it("publishes the Simple Fishing Rod through the full native fishing action", () => {
+    const donor = {
+      id: SNAPSHOT_FISHING_RODS[1].id,
+      name: "Fishing Rod",
+      displayName: "Fishing Rod",
+      action: "fish",
+      isTool: true,
+      stackable: 1n,
+      meshGaloisPath: "item_meshes/items/fishing_rod",
+    } as Biscuit;
+    const augmented = withHarthmereNativeBikkieItems(
+      tray(new Map([[donor.id, donor]]))
+    );
+    const rod = augmented.contents.get(HARTHMERE_SIMPLE_FISHING_ROD_BIOMES_ID);
+    assert.ok(rod);
+    assert.equal(rod.action, "fish");
+    assert.equal(rod.isTool, true);
+    assert.equal(rod.hardnessClass, 2);
+    assert.equal(rod.acceptsBait, true);
+    assert.equal(rod.catchBarSize, 0.25);
+    assert.equal(rod.lifetimeDurabilityMs, 600_000);
+    assert.equal(rod.meshGaloisPath, donor.meshGaloisPath);
+  });
+  it("publishes River Trout into the native open-water fishing table", () => {
+    const augmented = withHarthmereNativeBikkieItems(tray());
+    const troutId = harthmereNativeBiomesIdForItemId("river_trout");
+    assert.ok(troutId);
+    const trout = augmented.contents.get(troutId);
+    assert.ok(trout);
+    assert.equal(trout.isFish, true);
+    assert.deepEqual(trout.fishLengthDistribution, {
+      mean: 0.45,
+      min: 0.15,
+    });
+    assert.deepEqual(trout.fishConditions, [
+      {
+        predicates: [
+          { kind: "notMuck" },
+          { kind: "isNormalDepthWater" },
+          { kind: "inOpen" },
+        ],
+        probability: "common",
+      },
+      {
+        predicates: [
+          { kind: "notMuck" },
+          { kind: "isShallowWater" },
+          { kind: "inOpen" },
+        ],
+        probability: "uncommon",
+      },
+    ]);
+  });
   it("requires every authored item and NPC identity to be checked in", () => {
     const definitions = new Map(
       ensureHarthmereNativeItemCatalogue().map((definition) => [
@@ -570,6 +627,7 @@ describe("Harthmere exact native Bikkie overlay", function () {
       BikkieIds.pickaxe,
       BikkieIds.muckBuster,
       BikkieIds.camera,
+      SNAPSHOT_FISHING_RODS[1].id,
     ]) {
       presentationDonors.set(id, {
         id,

@@ -1,6 +1,7 @@
 import type { RenderPassName } from "@/client/game/renderers/passes/composer";
 import { ShaderPass } from "@/client/game/renderers/passes/shader_pass";
-import { CopyShader } from "three/examples/jsm/shaders/CopyShader";
+import * as THREE from "three";
+import { CopyShader } from "three/examples/jsm/shaders/CopyShader.js";
 
 export class TexturePass extends ShaderPass {
   texture: THREE.Texture;

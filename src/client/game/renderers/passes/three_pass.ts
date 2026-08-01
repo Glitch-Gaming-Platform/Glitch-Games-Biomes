@@ -4,9 +4,8 @@ import type {
 } from "@/client/game/renderers/passes/composer";
 import { PostprocessingPass } from "@/client/game/renderers/passes/pass";
 import * as THREE from "three";
-import type { Pass } from "three/examples/jsm/postprocessing/Pass";
-import { SMAAPass } from "three/examples/jsm/postprocessing/SMAAPass";
-import type { WebGLRenderer } from "three/src/renderers/WebGLRenderer";
+import type { Pass } from "three/examples/jsm/postprocessing/Pass.js";
+import { SMAAPass } from "three/examples/jsm/postprocessing/SMAAPass.js";
 
 export class ThreePostprocessPass<T extends Pass> extends PostprocessingPass {
   threePass: T;
@@ -89,7 +88,7 @@ export class ThreePostprocessPass<T extends Pass> extends PostprocessingPass {
     }
     this.threePass.renderToScreen = toScreen;
     this.threePass.render(
-      this.composer!.renderer as WebGLRenderer,
+      this.composer!.renderer,
       this.target!,
       this.readTarget!,
       deltaTime,
@@ -105,8 +104,7 @@ export class ThreePostprocessPass<T extends Pass> extends PostprocessingPass {
 const DUMMY_BUFFER_SIZE = new THREE.Vector2(1, 1);
 
 export function makeThreeSmaaPass() {
-  return new ThreePostprocessPass(
-    "threeSmaa",
-    new SMAAPass(DUMMY_BUFFER_SIZE.x, DUMMY_BUFFER_SIZE.y)
-  );
+  const pass = new SMAAPass();
+  pass.setSize(DUMMY_BUFFER_SIZE.x, DUMMY_BUFFER_SIZE.y);
+  return new ThreePostprocessPass("threeSmaa", pass);
 }

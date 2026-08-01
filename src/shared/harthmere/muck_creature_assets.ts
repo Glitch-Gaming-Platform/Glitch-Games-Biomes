@@ -4,7 +4,9 @@ export const HARTHMERE_MUCK_CREATURE_NPC_ASSET_VERSION =
 export function harthmereMuckCreatureAssetKeyForLabel(
   label: string | undefined
 ): string | undefined {
-  const normalized = String(label ?? "").trim().toLowerCase();
+  const normalized = String(label ?? "")
+    .trim()
+    .toLowerCase();
   if (!normalized) {
     return undefined;
   }
@@ -14,6 +16,9 @@ export function harthmereMuckCreatureAssetKeyForLabel(
     )
   ) {
     return undefined;
+  }
+  if (/indisworm/.test(normalized)) {
+    return "npcs/indisworm";
   }
   if (/hex|hexer|wraith/.test(normalized)) {
     return /pale|greater|wraith|boss/.test(normalized)

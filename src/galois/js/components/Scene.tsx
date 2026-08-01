@@ -3,7 +3,7 @@ import "antd/dist/antd.css";
 import type { PropsWithChildren } from "react";
 import React, { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
-import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
 export type SceneFactory = (dt: number, camera: THREE.Camera) => THREE.Scene;
 

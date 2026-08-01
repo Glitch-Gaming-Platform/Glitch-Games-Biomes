@@ -3,7 +3,10 @@ import { Scene } from "@/galois/components/Scene";
 import { Select } from "antd";
 import React, { useEffect, useState } from "react";
 import * as THREE from "three";
-import { GLTFLoader, type GLTF } from "three/examples/jsm/loaders/GLTFLoader";
+import {
+  GLTFLoader,
+  type GLTF,
+} from "three/examples/jsm/loaders/GLTFLoader.js";
 
 const { Option } = Select;
 

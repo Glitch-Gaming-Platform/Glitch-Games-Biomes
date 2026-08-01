@@ -18,6 +18,12 @@ import {
 } from "../mapLiveAdapter";
 import { HARTHMERE_BUSINESS_OUTPOSTS } from "@/shared/harthmere/business_customer_simulator";
 import { NUX_PAIRED_STEPS } from "@/client/util/nux/state_machines";
+import {
+  ch1NativeQuestId,
+  ch1NativeQuestStepId,
+} from "@/shared/harthmere/ch1_native_quests";
+import { CH1_QUESTS } from "@/shared/harthmere/ch1_quests";
+import { BIOMES_UI_MAIN_QUEST_STORAGE_KEY } from "../mainQuestSelection";
 
 // This suite exercises the retired synthetic bridge explicitly. Production
 // leaves this unset and reads the native ECS Road Ahead quest instead.
@@ -760,6 +766,70 @@ describe("biomes_ui map adapter (V141)", () => {
       .find((entry) => entry.questId === "6193612340426932");
     assert.equal(quest?.status, "active");
     assert.equal(quest?.objective, "Meet Billy");
+  });
+
+  it("keeps the tracked Chapter 1 title and steps from the same quest", () => {
+    installFixture({ acceptedQuestIds: [], completedQuestIds: [] });
+    const makeChapter1Bundle = (questIndex: number) => {
+      const authored = CH1_QUESTS[questIndex];
+      const challengeId = ch1NativeQuestId(authored.id)!;
+      const stepId = ch1NativeQuestStepId(authored.id, 0)!;
+      return {
+        challengeDeps: [],
+        biscuit: {
+          id: challengeId,
+          displayName: authored.title,
+          displayDescription: authored.summary,
+          questCategory: "main",
+          isQuest: true,
+        },
+        state: "in_progress",
+        progress: {
+          id: challengeId,
+          payload: { kind: "seq" },
+          progressString: "",
+          progressPercentage: 0,
+          children: [
+            {
+              id: stepId,
+              payload: { kind: "event" },
+              progressString: authored.steps[0].title,
+              progressPercentage: 0,
+              navigationAid: { kind: "position", pos: [490, 65, -206] },
+            },
+          ],
+        },
+      } as any;
+    };
+    const nameForBoard = makeChapter1Bundle(1);
+    const standHimUp = makeChapter1Bundle(2);
+    globalAny.window.localStorage.setItem(
+      BIOMES_UI_MAIN_QUEST_STORAGE_KEY,
+      JSON.stringify({
+        questId: String(standHimUp.biscuit.id),
+        title: "Stand Him Up",
+        setAtMs: 1,
+      })
+    );
+
+    const adapter = buildBiomesUIMapAdapterForTest(
+      1,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      [nameForBoard, standHimUp]
+    );
+    assert.equal(adapter.getMissionTitle(), "Stand Him Up");
+    assert.deepEqual(
+      adapter.getMissionSteps().map((step) => step.objective),
+      [CH1_QUESTS[2].steps[0].objective]
+    );
+    assert.doesNotMatch(
+      adapter.getMissionSteps()[0].objective,
+      /Tell Taye what to paint/
+    );
   });
 
   it("projects the Road Ahead bridge mission into the real BiomesUI quest list", () => {

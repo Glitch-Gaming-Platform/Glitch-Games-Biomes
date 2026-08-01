@@ -67,6 +67,9 @@ export class SimulatedNpc {
         movement_state: external.movement_state
           ? MovementState.clone(external.movement_state)
           : undefined,
+        npc_combat_state: external.npc_combat_state
+          ? NpcCombatState.clone(external.npc_combat_state)
+          : undefined,
         npc_state: external.npc_state
           ? NpcState.clone(external.npc_state)
           : undefined,
@@ -185,6 +188,50 @@ export class SimulatedNpc {
     );
   }
 
+  private syncPublicRangedAttackPresentation() {
+    const current = this.patchableEntity.npcCombatState();
+    const attackTarget = current?.attack_target;
+    if (attackTarget === undefined) {
+      return;
+    }
+    const privateRangedAttack = this.state.chaseAttack?.rangedAttack;
+    const rangedAttack =
+      privateRangedAttack?.targetId === attackTarget
+        ? privateRangedAttack
+        : undefined;
+    const aimPoint = rangedAttack?.aimPoint;
+    const unchanged =
+      current?.ranged_attack_ability_id === rangedAttack?.abilityId &&
+      current?.ranged_attack_projectile_visual_id ===
+        rangedAttack?.projectileVisualId &&
+      current?.ranged_attack_cast_time === rangedAttack?.castTime &&
+      current?.ranged_attack_charge_time_secs ===
+        rangedAttack?.chargeTimeSecs &&
+      current?.ranged_attack_release_time === rangedAttack?.releaseTime &&
+      current?.ranged_attack_result === rangedAttack?.result &&
+      (current?.ranged_attack_aim_point === undefined
+        ? aimPoint === undefined
+        : aimPoint !== undefined &&
+          current.ranged_attack_aim_point[0] === aimPoint[0] &&
+          current.ranged_attack_aim_point[1] === aimPoint[1] &&
+          current.ranged_attack_aim_point[2] === aimPoint[2]);
+    if (unchanged) {
+      return;
+    }
+    this.patchableEntity.setNpcCombatState(
+      NpcCombatState.create({
+        attack_target: attackTarget,
+        ranged_attack_ability_id: rangedAttack?.abilityId,
+        ranged_attack_projectile_visual_id: rangedAttack?.projectileVisualId,
+        ranged_attack_cast_time: rangedAttack?.castTime,
+        ranged_attack_charge_time_secs: rangedAttack?.chargeTimeSecs,
+        ranged_attack_release_time: rangedAttack?.releaseTime,
+        ranged_attack_aim_point: aimPoint ? [...aimPoint] : undefined,
+        ranged_attack_result: rangedAttack?.result,
+      })
+    );
+  }
+
   attack(
     target: BiomesId,
     damage: number,
@@ -234,6 +281,7 @@ export class SimulatedNpc {
         this.patchableEntity.setNpcState(NpcState.create({ data: serialized }));
       }
     }
+    this.syncPublicRangedAttackPresentation();
     const delta = this.patchableEntity.finish() as AsDelta<Npc>;
     if (!delta && this.events.length === 0) {
       return;

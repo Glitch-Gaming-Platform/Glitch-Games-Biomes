@@ -1,7 +1,7 @@
 {
   "version": "harthmere-premium-projectiles-v2",
   "blenderVersion": "5.2.0 LTS",
-  "count": 29,
+  "count": 30,
   "projectiles": [
     {
       "id": "hunter_bow_shot",
@@ -386,6 +386,30 @@
         ]
       },
       "bytes": 44656
+    },
+    {
+      "id": "indisworm_poison_spit",
+      "label": "Indisworm Poison Spit",
+      "family": "nature",
+      "builder": "poison_spit",
+      "targetSize": 0.92,
+      "flightClip": "FlightLoop_24",
+      "assetUrl": "/assets/harthmere/glb/projectiles/indisworm_poison_spit.glb",
+      "previewUrl": "/assets/harthmere/projectile_previews/indisworm_poison_spit.png",
+      "triangleCount": 5572,
+      "bounds": {
+        "min": [
+          -0.5364783406257629,
+          -0.409087598323822,
+          -0.6509079933166504
+        ],
+        "max": [
+          0.5364783406257629,
+          0.41539016366004944,
+          0.451210081577301
+        ]
+      },
+      "bytes": 77296
     },
     {
       "id": "mocking_verse",

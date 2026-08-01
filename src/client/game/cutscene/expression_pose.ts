@@ -4,19 +4,164 @@ import {
 } from "@/shared/cutscene/cinematic_expressions";
 import * as THREE from "three";
 
+const SNAPSHOT_ARM_TARGET_KEY = "harthmereExpressionArmTarget";
+const SNAPSHOT_ARM_OUTWARD_KEY = "harthmereExpressionArmOutward";
+const EXPRESSION_ROOT_POSE_KEY = "harthmereExpressionRootPoseApplied";
+
+type SnapshotArmTarget = { x: number; y: number; z: number };
+
+function isSnapshotArmBone(node: THREE.Object3D): node is THREE.Bone {
+  return (
+    node instanceof THREE.Bone &&
+    ["L_Arm", "R_Arm", "LeftArm", "RightArm"].includes(node.name)
+  );
+}
+
 function setRotation(
   node: THREE.Object3D | undefined,
   x: number,
   y = 0,
   z = 0
 ) {
-  node?.rotation.set(x, y, z);
+  if (!node) {
+    return;
+  }
+  if (isSnapshotArmBone(node)) {
+    // Player-avatar bones carry non-trivial bind quaternions. Replacing them
+    // with an absolute Euler rotation destroys that bind pose and produces the
+    // rigid horizontal-arm silhouette. Save the semantic target and solve it
+    // in actor space after the expression's root lean has been selected.
+    node.userData[SNAPSHOT_ARM_TARGET_KEY] = {
+      x,
+      y,
+      z,
+    } satisfies SnapshotArmTarget;
+    return;
+  }
+  if (node instanceof THREE.Bone) {
+    // Preserve authored bind/mixer output for other snapshot bones. Dialogue
+    // safety posing only needs to guarantee that the upper arms leave T-pose.
+    return;
+  }
+  node.rotation.set(x, y, z);
+}
+
+function findRigNode(
+  object: THREE.Object3D,
+  ...names: readonly string[]
+): THREE.Object3D | undefined {
+  for (const name of names) {
+    const node = object.getObjectByName(name);
+    if (node) return node;
+  }
+  return undefined;
+}
+
+function snapshotArmChild(node: THREE.Bone): THREE.Object3D | undefined {
+  return node.children.find((child) => child.position.lengthSq() > 1e-8);
+}
+
+function applySnapshotArmTarget(
+  object: THREE.Object3D,
+  node: THREE.Object3D | undefined,
+  side: -1 | 1
+) {
+  if (!node || !isSnapshotArmBone(node)) {
+    return;
+  }
+  const child = snapshotArmChild(node);
+  if (!child) {
+    return;
+  }
+  object.updateWorldMatrix(true, true);
+
+  const shoulder = node.getWorldPosition(new THREE.Vector3());
+  const elbow = child.getWorldPosition(new THREE.Vector3());
+  const currentWorldDirection = elbow.sub(shoulder).normalize();
+  if (currentWorldDirection.lengthSq() < 1e-8) {
+    return;
+  }
+
+  const objectWorldQuaternion = object.getWorldQuaternion(
+    new THREE.Quaternion()
+  );
+  let outwardLocal = node.userData[SNAPSHOT_ARM_OUTWARD_KEY] as
+    | [number, number, number]
+    | undefined;
+  if (!outwardLocal) {
+    const parentWorldPosition = node.parent?.getWorldPosition(
+      new THREE.Vector3()
+    );
+    const actorLocalDirection = (
+      parentWorldPosition
+        ? shoulder.clone().sub(parentWorldPosition)
+        : currentWorldDirection.clone()
+    ).applyQuaternion(objectWorldQuaternion.clone().invert());
+    actorLocalDirection.y = 0;
+    if (actorLocalDirection.lengthSq() < 1e-6) {
+      actorLocalDirection
+        .copy(currentWorldDirection)
+        .applyQuaternion(objectWorldQuaternion.clone().invert());
+      actorLocalDirection.y = 0;
+    }
+    if (actorLocalDirection.lengthSq() < 1e-6) {
+      actorLocalDirection.set(0, 0, side);
+    } else {
+      actorLocalDirection.normalize();
+    }
+    outwardLocal = actorLocalDirection.toArray();
+    node.userData[SNAPSHOT_ARM_OUTWARD_KEY] = outwardLocal;
+  }
+
+  const outward = new THREE.Vector3().fromArray(outwardLocal).normalize();
+  const up = new THREE.Vector3(0, 1, 0);
+  const forward = up.clone().cross(outward).multiplyScalar(side).normalize();
+  const target = (node.userData[SNAPSHOT_ARM_TARGET_KEY] as
+    | SnapshotArmTarget
+    | undefined) ?? { x: 0.12, y: 0, z: side * 0.08 };
+
+  // The block-actor expression catalog describes an arm raise with increasingly
+  // negative X values. Convert that same intent to a direction for the avatar
+  // skeleton: relaxed poses hang down, conversational poses come forward, and
+  // surrender/victory poses rise overhead without ever becoming a T-pose.
+  const raise = THREE.MathUtils.clamp((-target.x - 0.15) / 2.05, 0, 1);
+  const vertical = THREE.MathUtils.lerp(-0.94, 0.82, raise);
+  const forwardAmount = 0.12 + Math.sin(raise * Math.PI) * 0.86;
+  const lateral = THREE.MathUtils.clamp(
+    0.16 + Math.abs(target.z) * 0.32,
+    0.16,
+    0.5
+  );
+  const desiredWorldDirection = outward
+    .multiplyScalar(lateral)
+    .addScaledVector(forward, forwardAmount)
+    .addScaledVector(up, vertical)
+    .normalize()
+    .applyQuaternion(objectWorldQuaternion);
+
+  const currentWorldQuaternion = node.getWorldQuaternion(
+    new THREE.Quaternion()
+  );
+  const desiredWorldQuaternion = new THREE.Quaternion()
+    .setFromUnitVectors(currentWorldDirection, desiredWorldDirection)
+    .multiply(currentWorldQuaternion);
+  const parentWorldQuaternion = node.parent?.getWorldQuaternion(
+    new THREE.Quaternion()
+  );
+  node.quaternion.copy(
+    parentWorldQuaternion
+      ? parentWorldQuaternion.invert().multiply(desiredWorldQuaternion)
+      : desiredWorldQuaternion
+  );
+  node.quaternion.normalize();
+  node.updateWorldMatrix(false, true);
 }
 
 /**
- * Procedural fallback for Harthmere block actors. Native player/NPC rigs use
- * the Blender clips with the same catalog motion name; this keeps ghosts and
- * compatibility bodies readable instead of silently dropping the gesture.
+ * Procedural fallback for Harthmere block actors and snapshot-player cutscene
+ * meshes whose generated skeleton rejected an authored Blender clip. Native
+ * rigs normally use the catalog clip; this fallback keeps a missing binding
+ * from leaving the speaking human in the generated mesh's T-pose.
  */
 export function applyHarthmereCinematicExpressionPose(
   object: THREE.Object3D,
@@ -27,13 +172,41 @@ export function applyHarthmereCinematicExpressionPose(
     return false;
   }
   const motion = harthmereCinematicExpressionSpec(animation).motion;
-  const leftArm = object.getObjectByName("townsperson-left-arm");
-  const rightArm = object.getObjectByName("townsperson-right-arm");
-  const leftLeg = object.getObjectByName("townsperson-left-leg");
-  const rightLeg = object.getObjectByName("townsperson-right-leg");
+  const leftArm = findRigNode(
+    object,
+    "townsperson-left-arm",
+    "L_Arm",
+    "LeftArm"
+  );
+  const rightArm = findRigNode(
+    object,
+    "townsperson-right-arm",
+    "R_Arm",
+    "RightArm"
+  );
+  const leftLeg = findRigNode(
+    object,
+    "townsperson-left-leg",
+    "L_Thigh",
+    "LeftUpLeg"
+  );
+  const rightLeg = findRigNode(
+    object,
+    "townsperson-right-leg",
+    "R_Thigh",
+    "RightUpLeg"
+  );
   const slow = Math.sin(time * 3.2);
   const medium = Math.sin(time * 6);
   const fast = Math.sin(time * 12);
+
+  object.rotation.x = 0;
+  object.rotation.z = 0;
+  for (const arm of [leftArm, rightArm]) {
+    if (arm && isSnapshotArmBone(arm)) {
+      delete arm.userData[SNAPSHOT_ARM_TARGET_KEY];
+    }
+  }
 
   switch (motion) {
     case "sadness":
@@ -342,5 +515,28 @@ export function applyHarthmereCinematicExpressionPose(
     default:
       return false;
   }
+  object.userData[EXPRESSION_ROOT_POSE_KEY] = true;
+  applySnapshotArmTarget(object, leftArm, -1);
+  applySnapshotArmTarget(object, rightArm, 1);
   return true;
+}
+
+export function clearHarthmereCinematicExpressionPose(object: THREE.Object3D) {
+  if (object.userData[EXPRESSION_ROOT_POSE_KEY] !== true) {
+    return;
+  }
+  object.rotation.x = 0;
+  object.rotation.z = 0;
+  delete object.userData[EXPRESSION_ROOT_POSE_KEY];
+}
+
+export function shouldApplyHarthmereSnapshotExpressionPose(
+  animation: string | undefined
+): boolean {
+  // Snapshot player meshes can expose a partially-bound action (for example,
+  // head/chest tracks bind while arm tracks do not). Treat every cinematic
+  // expression as needing the post-Mixer safety pose; writing the same target
+  // rotations is harmless when the Blender clip bound completely and prevents
+  // partial bindings from leaving the actor's arms in a T-pose.
+  return isHarthmereCinematicExpression(animation);
 }

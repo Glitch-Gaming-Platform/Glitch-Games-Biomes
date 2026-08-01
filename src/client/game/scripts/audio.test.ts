@@ -19,8 +19,10 @@ import { emptyCutsceneUiState } from "@/client/game/resources/cutscene";
 import {
   AudioScript,
   COMBAT_MUSIC_DAMAGE_GRACE_SECONDS,
+  MOUNTAIN_WIND_AUDIO_PATH,
   healthIndicatesRecentCombatDamage,
   selectBackgroundMusicTrack,
+  shouldPlayMountainWind,
 } from "@/client/game/scripts/audio";
 import { ch1ElsewhenSlot } from "@/shared/harthmere/ch1_elsewhen_region";
 import {
@@ -89,6 +91,7 @@ function audioHarness() {
   let nowSeconds = 100;
   let playerHealth = health(100);
   let mediaVolume = 1;
+  let activeMinigame = false;
   let playerPos: [number, number, number] = [0, 0, 0];
   let npcs: ReturnType<typeof npc>[] = [];
   let audioSources: TestAudioSource[] = [];
@@ -98,6 +101,12 @@ function audioHarness() {
   const underwaterEnvironments: Array<{
     active: boolean;
     ambiencePath: string | undefined;
+  }> = [];
+  const environmentLoops: Array<{
+    key: string;
+    active: boolean;
+    path: string | undefined;
+    volumeMultiplier: number | undefined;
   }> = [];
 
   const resources = {
@@ -116,6 +125,11 @@ function audioHarness() {
       }
       if (path === "/scene/cutscene") {
         return emptyCutsceneUiState();
+      }
+      if (path === "/ecs/c/playing_minigame") {
+        return activeMinigame
+          ? { minigame_id: 1, minigame_instance_id: 2 }
+          : undefined;
       }
       throw new Error(`Unexpected resource ${path}`);
     },
@@ -154,6 +168,19 @@ function audioHarness() {
     setUnderwaterEnvironment(active: boolean, ambiencePath?: string) {
       underwaterEnvironments.push({ active, ambiencePath });
     },
+    setEnvironmentLoop(
+      key: string,
+      active: boolean,
+      path?: string,
+      options?: { volumeMultiplier?: number }
+    ) {
+      environmentLoops.push({
+        key,
+        active,
+        path,
+        volumeMultiplier: options?.volumeMultiplier,
+      });
+    },
   };
   const script = new AudioScript(
     PLAYER_ID,
@@ -168,6 +195,7 @@ function audioHarness() {
     attenuations,
     effects,
     underwaterEnvironments,
+    environmentLoops,
     setMuckyness(value: number) {
       muckyness = value;
     },
@@ -185,6 +213,9 @@ function audioHarness() {
     },
     setMediaVolume(value: number) {
       mediaVolume = value;
+    },
+    setActiveMinigame(value: boolean) {
+      activeMinigame = value;
     },
     setPlayerPos(value: [number, number, number]) {
       playerPos = value;
@@ -239,6 +270,90 @@ describe("combat background music", () => {
     );
     assert.equal(selectBackgroundMusicTrack(1, false, harthmere), "muck_music");
     assert.equal(selectBackgroundMusicTrack(0, true, sand), "battle_music");
+    assert.equal(
+      selectBackgroundMusicTrack(0, false, [689.481, 47, -89.532], false, true),
+      "cave_music"
+    );
+    assert.equal(
+      selectBackgroundMusicTrack(
+        0,
+        false,
+        [689.481, 47, -89.532],
+        false,
+        true,
+        true
+      ),
+      "music"
+    );
+    assert.equal(
+      selectBackgroundMusicTrack(1, false, harthmere, false, true),
+      "muck_music"
+    );
+    assert.equal(
+      selectBackgroundMusicTrack(0, true, harthmere, false, true),
+      "battle_music"
+    );
+    assert.equal(
+      selectBackgroundMusicTrack(0, false, sand, false, true),
+      "ch1_sand_music"
+    );
+  });
+
+  it("uses cave music for authored caves and restores it after combat", () => {
+    const harness = audioHarness();
+    harness.setPlayerPos([689.481, 47, -89.532]);
+
+    harness.script.tick(0);
+    harness.setNpcs([npc(PLAYER_ID)]);
+    harness.script.tick(0);
+    harness.setNpcs([]);
+    harness.script.tick(0);
+
+    assert.deepEqual(harness.tracks, [
+      "cave_music",
+      "battle_music",
+      "cave_music",
+    ]);
+  });
+
+  it("suppresses cave replacement while a minigame owns the play session", () => {
+    const harness = audioHarness();
+    harness.setPlayerPos([689.481, 47, -89.532]);
+
+    harness.script.tick(0);
+    harness.setActiveMinigame(true);
+    harness.script.tick(0);
+    harness.setActiveMinigame(false);
+    harness.script.tick(0);
+
+    assert.deepEqual(harness.tracks, ["cave_music", "music", "cave_music"]);
+  });
+
+  it("plays summit wind only during unobstructed ordinary exploration", () => {
+    const base = {
+      onMountainTop: true,
+      inCave: false,
+      inWater: false,
+      activeCombat: false,
+      activeBossCombat: false,
+      muckyness: 0,
+      activeMinigame: false,
+      cutsceneActive: false,
+    };
+    assert.equal(shouldPlayMountainWind(base), true);
+    for (const override of [
+      { inCave: true },
+      { inWater: true },
+      { activeCombat: true },
+      { activeBossCombat: true },
+      { muckyness: 1 },
+      { activeMinigame: true },
+      { cutsceneActive: true },
+      { onMountainTop: false },
+    ]) {
+      assert.equal(shouldPlayMountainWind({ ...base, ...override }), false);
+    }
+    assert.equal(MOUNTAIN_WIND_AUDIO_PATH?.includes("mountain-wind-loop"), true);
   });
 
   it("selects the additive Harthmere woods and each Elsewhen dungeon cue", () => {

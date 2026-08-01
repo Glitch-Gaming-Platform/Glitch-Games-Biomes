@@ -45,6 +45,7 @@ const INTERIOR_Y: Readonly<Record<string, number>> = {
   lanternrest_road_inn: 48,
   roadhouse_door: 70,
   roadhouse_table: 70,
+  roadhouse_jackie_post: 70,
   roadhouse_hearth: 70,
   roadhouse_bed: 74,
   roadhouse_opening_spawn: 74,

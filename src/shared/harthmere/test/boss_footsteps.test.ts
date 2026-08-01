@@ -1,0 +1,88 @@
+import {
+  advanceHarthmereBossStomp,
+  createHarthmereBossStompState,
+  harthmereBossStompProfileForEntity,
+} from "@/shared/harthmere/boss_footsteps";
+import assert from "assert";
+
+describe("Harthmere giant boss footsteps", () => {
+  it("stomps from grounded Alpha Mucker travel, not from idle animation time", () => {
+    const profile = harthmereBossStompProfileForEntity(
+      "Old Wood Mucker 1",
+      8_810_000_000_019_509
+    );
+    assert.ok(profile);
+    const state = createHarthmereBossStompState();
+    assert.equal(
+      advanceHarthmereBossStomp(state, {
+        profile,
+        position: [0, 0, 0],
+        moving: true,
+        alive: true,
+        nowSeconds: 0,
+      }),
+      false
+    );
+    assert.equal(
+      advanceHarthmereBossStomp(state, {
+        profile,
+        position: [profile.strideMeters - 0.1, 0, 0],
+        moving: true,
+        alive: true,
+        nowSeconds: 1,
+      }),
+      false
+    );
+    assert.equal(
+      advanceHarthmereBossStomp(state, {
+        profile,
+        position: [profile.strideMeters + 0.1, 0, 0],
+        moving: true,
+        alive: true,
+        nowSeconds: 1.1,
+      }),
+      true
+    );
+    assert.equal(
+      advanceHarthmereBossStomp(state, {
+        profile,
+        position: [profile.strideMeters + 0.1, 0, 0],
+        moving: false,
+        alive: true,
+        nowSeconds: 2,
+      }),
+      false
+    );
+  });
+
+  it("does not stomp for hovering bosses and rejects teleport jumps", () => {
+    assert.equal(
+      harthmereBossStompProfileForEntity(
+        "Gravewood Pale Hexer 7",
+        8_810_000_000_019_543
+      ),
+      undefined
+    );
+    const profile = harthmereBossStompProfileForEntity("Alpha Mucker", 1);
+    assert.ok(profile);
+    const state = createHarthmereBossStompState();
+    advanceHarthmereBossStomp(state, {
+      profile,
+      position: [0, 0, 0],
+      moving: true,
+      alive: true,
+      nowSeconds: 0,
+    });
+    assert.equal(
+      advanceHarthmereBossStomp(state, {
+        profile,
+        position: [profile.teleportResetMeters + 1, 0, 0],
+        moving: true,
+        alive: true,
+        nowSeconds: 1,
+      }),
+      false
+    );
+    assert.equal(state.distanceSinceStomp, 0);
+  });
+});

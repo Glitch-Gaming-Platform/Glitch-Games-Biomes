@@ -268,15 +268,10 @@ export class RendererController {
           });
 
           timeCode("react emitter invalidate", () => {
-            // Update react state based on all resource changes.
-            const emitter = this.reactResources.emitter;
-            if (emitter) {
-              emitter.eventNames().forEach((path) => {
-                if (path !== "hot") {
-                  emitter.emit(path);
-                }
-              });
-            }
+            // Resource versions are the source of truth. Only wake listeners
+            // whose observed resource actually changed instead of invoking
+            // every mounted React resource listener on every rendered frame.
+            this.reactResources.flush();
           });
           this.emitter.emit("render");
           if (this.renderedFrames >= 2 && typeof window !== "undefined") {

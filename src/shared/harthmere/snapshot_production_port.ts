@@ -484,7 +484,7 @@ export const SNAPSHOT_AUDIO_FILE_BINDINGS: readonly SnapshotAudioFileBinding[] =
   {
     cueId: SNAPSHOT_AUDIO_CUES.muckClear,
     assetKey: "muck_music",
-    staticPath: "/assets/asset_data/audio/muck-music-1.cd39f05d603332e894ecebba0d0c988c.webm",
+    staticPath: "/assets/asset_data/audio/muck-music-1.ac0aaf830b35cc75267182900c3e3683.webm",
     fallbackCueId: SNAPSHOT_AUDIO_CUES.muckBreak,
     purpose: "Clear a persistent muck objective.",
   },

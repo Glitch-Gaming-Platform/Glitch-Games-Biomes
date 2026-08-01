@@ -1,8 +1,6 @@
 /// <reference types="mocha" />
 
-import {
-  harthmereMuckCreatureAssetKeyForLabel,
-} from "@/shared/harthmere/muck_creature_assets";
+import { harthmereMuckCreatureAssetKeyForLabel } from "@/shared/harthmere/muck_creature_assets";
 import assetVersions from "@/galois/interface/gen/asset_versions.json";
 import { HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS } from "@/shared/harthmere/live_entity_production_seed";
 import assert from "assert";
@@ -24,6 +22,10 @@ describe("harthmere muck creature npc assets", () => {
     assert.equal(
       harthmereMuckCreatureAssetKeyForLabel("Watchtower Lesser Hexer 7"),
       "npcs/brown_hexer"
+    );
+    assert.equal(
+      harthmereMuckCreatureAssetKeyForLabel("Indisworm 1"),
+      "npcs/indisworm"
     );
   });
 
@@ -52,9 +54,7 @@ describe("harthmere muck creature npc assets", () => {
 
   it("has an existing asset URL for every production Muck monster seed", () => {
     for (const seed of HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS) {
-      const assetKey = harthmereMuckCreatureAssetKeyForLabel(
-        seed.displayName
-      );
+      const assetKey = harthmereMuckCreatureAssetKeyForLabel(seed.displayName);
       assert.ok(assetKey, `${seed.displayName} should resolve to an asset`);
       assert.ok(
         (assetVersions.paths as Record<string, string | undefined>)[assetKey],

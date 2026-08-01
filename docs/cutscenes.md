@@ -111,7 +111,7 @@ Each role names an actor and how to bind it:
 { role: "player", binding: { kind: "player" } }
 { role: "boss",   binding: { kind: "entity", entityId: 777 } }
 { role: "guard",  binding: { kind: "nearestNpc", labelMatch: "guard", npcTypeId: 123, within: 40 } }
-{ role: "spirit", binding: { kind: "ghost", asset: "townsperson_clergy", spawnAt: [640, 64, -268] } }
+{ role: "spirit", binding: { kind: "ghost", asset: "snapshot/player_mesh", appearanceSourceEntityId: 8810000000020501, spawnAt: [640, 64, -268] } }
 { role: "gate", binding: { kind: "anchor", position: [640, 64, -268], height: 8 } }
 ```
 
@@ -120,6 +120,12 @@ Each role names an actor and how to bind it:
 - `ghost` is a client-only renderer mesh with **no ECS entity** — for
   flashbacks, crowds, stand-ins. Ghosts get negative ids, never carry HP, and
   can never be attacked or persisted.
+- Human ghosts must use `snapshot/player_mesh`. Set
+  `appearanceSourceEntityId` when the memory represents a known person so the
+  generated PlayerMesh keeps that actor's skin, hair, face, and clothing.
+  Never author a `townsperson_*` human asset: those labels belong to the retired
+  procedural Three.js body path. The binder canonicalizes stale aliases only as
+  a last-resort compatibility guard; new scenes must be explicit.
 - Binding failure handling per role: `required: true` (default) cancels the
   scene gracefully; cancelled scenes do not commit unless `commitOn` opts in;
   `fallback: "ghost"` + `ghostAsset` substitutes a stand-in;
@@ -682,6 +688,250 @@ Expected reference properties are 15.000 seconds, 1280×720, 30 fps, H.264,
 duration and visually verify the opening cast, action beats, impact VFX, and
 final pose—not merely the first frame.
 
+### Hex Fireball dodge sequence
+
+The reusable Hex fight reel is authored in
+`src/shared/cutscene/hex_fireball_dodge_showcase.ts` and registered as
+`harthmere-hex-fireball-dodge-showcase`. It is a 15-second, five-shot sequence:
+
+1. A wide standoff establishes the hero and the authored Hex Wraith beast.
+2. The Hex casts Fireball and the hero performs `dodgeRight` while moving clear
+   of the projectile's fixed impact point.
+3. The hero closes distance, counterattacks, and triggers `combatImpact` on the
+   Hex.
+4. A reverse angle shows a second Fireball and `dodgeLeft`.
+5. A close third Fireball forces `dodgeBack`; the hero then rushes forward for
+   a finishing `attack2` and a larger impact beat.
+
+The projectile action uses the named custom hook
+`harthmere.cutscene.projectile`. The client hook validates its world-space
+origin and target and dispatches the normal
+`biomes:harthmere-projectile-visual` event with `projectileVisualId: fireball`.
+This keeps the cinematic on the same premium GLB, trail, launch effect, flight
+timing, miss effect, lighting, and sound path as gameplay Fireball. Each target
+is the hero's pre-dodge position, so the rendered projectile visibly misses
+after the movement action starts.
+
+The hero binds the local player while the enemy is a client-only
+`/assets/harthmere/glb/bosses/hex_wraith.glb` cinematic puppet. This is the
+production Hex Wraith graphic: a tall hollow revenant with a torn cowl,
+lantern ribs, orbiting hex tablets, and no visible feet. Do not substitute the
+small `npcs/purple_hexer` NPC. `clientPuppet` mode changes only the
+local presentation: neither role writes an ECS position, HP, Anima decision,
+inventory, quest, or Gaia state. The scene also declares `commitOn: []` and
+empty end placements/commits, so previews and video retries are mutation-free.
+The stage uses the visually validated Old Grove Road combat clearing at
+`[500, 70, -140]`; the nearby `-150` position is terrain-occluded.
+
+The cast role is deliberately named `hex-wraith` and points directly to the
+boss GLB. The 15-second authored timeline also uses an 18-second
+`maxSceneDurationSeconds` safety ceiling. The director checks that ceiling
+before natural completion, so setting both values to 15 can report
+`finishReason: aborted` on a slow software-WebGL frame after every authored
+shot has otherwise played.
+
+#### Verified capture recipe for this scene
+
+Use the newest atomic image/build, but inspect its creation time and internal
+`.next`/`dist` timestamps before starting. Do not assume a previously named
+`final` tag is newer. Keep the exact selected image mounted unchanged for the
+final visual proof.
+
+This scene binds the real local player, so enter through
+`/dev/harthmere-visual-auth` and redirect directly to `/at` without a coordinate
+slug. Do not redirect through `/`: the splash redirect drops focused-E2E query
+parameters and can silently reconnect to remote Sync. The final `/at` URL must
+retain all of these parameters:
+
+```text
+hideChrome=1
+allowSoftwareWebGL=1
+glitch_auto_play=1
+harthmere_native_ecs_e2e=1
+e2e_run=<unique-run-id>
+syncBaseUrl=http://127.0.0.1:<local-sync-port>
+```
+
+After visual auth redirects the iframe, reacquire `iframe.contentWindow` or
+start only from the redirected iframe `load` event. Never retain the initial
+`about:blank` Window object; it will never acquire the game bridge and creates
+a misleading three-minute readiness timeout.
+
+The capture preconditions are signals, not sleeps:
+
+1. Wait for `__harthmereNativeEcsE2E.version === "native-ecs-e2e-v1"` and the
+   authoritative `__harthmereLivePlayerDebug.teleportTo` hook.
+2. Move that real player/streaming authority to `[500, 70, -140]`. A cutscene
+   actor teleport or camera move does not move the terrain/ECS interest set.
+3. Poll `chapter1TerrainSnapshot` at stage ground `[500, 69, -140]`, hero
+   ground `[503, 69, -140]`, and Hex ground `[497, 69, -140]`. All three must
+   report a synchronized terrain entity/shard before capture.
+4. Wait for `__harthmereProjectileVisuals.loadedIds` to contain `fireball` and
+   reject any `failedIds` entry for it. Starting while the rebuilt Harthmere
+   renderer is still loading records the custom events but can omit the actual
+   projectile mesh and trail.
+5. Capture through `chapter1CaptureCutsceneVideo`, which saves through the
+   local `/api/dev/cutscene_video` sink. Do not move a multi-megabyte data URI
+   through browser automation.
+6. Accept only `finishReason: completed`, three
+   `biomes:harthmere-projectile-visual` events, a puppet sample whose label is
+   `hex-wraith` and asset is
+   `/assets/harthmere/glb/bosses/hex_wraith.glb`, and a full-duration contact
+   sheet that visibly shows both actors, the dodge displacement, and Fireball
+   travel/impact light.
+
+The reusable local harness implementing these checks is
+`artifacts/cutscenes/hex-fireball-dodge-capture.html`, served same-origin by
+`artifacts/cutscenes/hex-fireball-dodge-capture-proxy.cjs`. It is a test/capture
+harness only; the authored scene and production hook remain in source.
+
+For a quick manual preview after those streaming preconditions are already
+satisfied:
+
+```text
+/at/500/78/-140/-0.15/0.1?hideChrome=1&allowSoftwareWebGL=1&cutscenePreview=harthmere-hex-fireball-dodge-showcase&previewRun=1
+```
+
+The raw query recorder remains useful for a warm, already-staged page, but it
+is not the cold-start acceptance path:
+
+```text
+/at/500/78/-140/-0.15/0.1?hideChrome=1&allowSoftwareWebGL=1&cutsceneVideo=harthmere-hex-fireball-dodge-showcase&videoFps=30&videoRun=1
+```
+
+On localhost the browser writes the result to
+`artifacts/cutscenes/harthmere-hex-fireball-dodge-showcase.webm`. Convert it to
+the reusable MP4 deliverable with:
+
+```sh
+scripts/cutscenes/encode-cutscene-mp4.sh \
+  artifacts/cutscenes/harthmere-hex-fireball-dodge-showcase.webm \
+  artifacts/cutscenes/harthmere-hex-fireball-dodge-showcase.mp4 \
+  15
+```
+
+Before conversion, create and inspect the contact sheet. After conversion,
+`ffprobe` must report H.264, 1280×720, 30 fps, `yuv420p`, 450 frames, and
+15.000 seconds. A valid container is not acceptance if the opening is blank,
+the actors are missing, the Hex is the wrong variant, or no Fireball is visible.
+
+### Boss bodies and magic attacks
+
+Cutscenes and gameplay must use the same authored boss identity and attack
+catalogue. Do not create an oversized generic NPC, hand-place a substitute
+spell mesh, or reproduce combat timing in the cutscene director.
+
+#### Generate and register the boss body
+
+1. Add the boss to `src/shared/harthmere/boss_visual_assets.ts`. The
+   `worldSize` entry is the authoritative collision/render contract in metres;
+   it is not decorative metadata. Include the shared `Idle`, `Walk`, `Run`,
+   `RangedAttack`, `AreaAttack`, hit, phase, and death clips plus every bespoke
+   attack clip referenced by the combat catalogue.
+2. Author or update the VOX/GLB with
+   `scripts/harthmere/generate_boss_voxel_assets.py`. Keep recognizable cast
+   organs, mouths, bells, claws, cores, or hands near the outside of the
+   silhouette. The renderer can place VFX on the body surface, but it cannot
+   make a completely occluded casting feature readable.
+3. Register exactly five attacks in
+   `src/shared/harthmere/boss_attack_catalog.ts`. Each entry needs a stable
+   `abilityId`, authored body clip, projectile visual id, attack shape, damage
+   type, damage, range, hit radius, telegraph/travel time, and cooldown.
+4. Use `projectile` only for a graphic that travels from boss to player.
+   Beams and cones use the authored attack-shape GLBs; `ground_aoe` belongs at
+   the aimed ground point and `self_aoe` belongs around the caster. Generate
+   shared shape assets with
+   `scripts/harthmere/generate_boss_attack_shape_effects.py` when a new shape
+   is genuinely required.
+
+Magic classification follows the attack's authoritative `damageType`, not
+only the reused projectile mesh family. This matters when a magical attack
+intentionally uses a physical or energy-looking mesh—for example a nature seed
+barrage or an arcane projector beam. Such attacks must still receive universal
+charge and hit-explosion presentation.
+
+#### Preserve the full magic lifecycle
+
+A boss magic attack has four separate authoritative times:
+
+1. `castTime` starts Native ECS/Anima's cast and the visual charge;
+2. `releaseTime` ends the charge and releases the projectile/shape;
+3. `impactTime` resolves the aimed hit or miss after the authored travel or
+   telegraph duration;
+4. `cooldownUntil` controls when Anima may select the ability again.
+
+Do not collapse charge and travel into one delay. The public
+`npc_combat_state` projection carries only the sanitized cast fields the
+client needs. Private paths, schedules, threat, and the complete `npc_state`
+remain server-only.
+
+During charge, the body loops `HarthmereBodyMagicChannel_Aligned_30` (falling
+back through `ChannelMagic`, `BasicMagic`, `RangedAttack`, and `Idle`) while the
+production projectile runtime creates gathering light, contracting rings, an
+authored spell core, and inward-moving voxel particles. At release the body
+switches to the attack's catalogued clip and the normal projectile/shape event
+is emitted. A successful magic hit then uses the universal flash, expanding
+core, shockwave, directional debris, sparks, mist, dust, point light, and
+camera-feedback path. Miss, dodge, evade, and out-of-range results must not
+create that explosion.
+
+#### Massive-boss edge cases
+
+Never use the bottom-center ECS position directly as the visible cast origin
+for a large boss. Thaedryn is `20 × 14 × 58` metres, Ninth Winter is
+`14 × 13 × 8`, and Alpha Mucker is `12 × 14 × 11`; a center-origin charge can
+be completely buried inside those meshes. Resolve the presentation with
+`harthmereBossMagicPresentation()`:
+
+- it intersects the target-facing direction with the boss's horizontal
+  elliptical footprint and places charge/projectile VFX just beyond that body
+  surface;
+- it constrains the origin before a close target, so the spell never begins
+  beyond the player;
+- it uses volume-based charge scaling capped at `7.5x` and a smaller projectile
+  scaling capped at `2.75x`, avoiding both tiny raid-boss spells and
+  screen-filling effects;
+- self-AOEs use the selected player's direction for the visible charge even
+  though their authoritative aim point remains the caster;
+- the telegraph may extend to maximum range, but a successful cone's explosion
+  is placed at the authoritative aimed player rather than the far edge of the
+  cone;
+- hit explosions use the attack's authored `hitRadius`, not the projectile
+  mesh's generic preview radius. The universal impact profile still applies
+  its hard radius, particle, light, and concurrency ceilings.
+
+For a cinematic boss attack, bind the real ECS boss when gameplay authority is
+required. A mutation-free showcase may use the authored boss GLB as a
+`clientPuppet`, but it must dispatch the same
+`biomes:harthmere-magic-charge` and
+`biomes:harthmere-projectile-visual` contracts and use the same calculated
+origin, attack shape, damage type, hit radius, and target point. Do not animate
+a second decorative projectile alongside the production runtime.
+
+#### Boss attack visual acceptance gate
+
+Run the focused source/authority checks first, then the browser lifecycle
+audit:
+
+```sh
+scripts/harthmere/t.sh file src/shared/harthmere/test/boss_magic_presentation.test.ts
+scripts/harthmere/t.sh file src/shared/npc/behavior/test/harthmere_hex_ranged_attack.test.ts
+scripts/harthmere/t.sh file src/server/logic/test/harthmere_npc_hit.test.ts
+node scripts/harthmere/test-harthmere-premium-projectile-assets.cjs
+node scripts/harthmere/test-harthmere-boss-attack-shape-assets.cjs
+node scripts/harthmere/serve-boss-magic-lifecycle-visual-audit.cjs
+```
+
+The browser gate must cover all eleven live bosses and all forty magic attacks.
+For every attack it captures three frames beside the correctly scaled body:
+active visual charge, projectile travel or attack-shape telegraph, and the
+successful-hit explosion. It also requires a real loaded asset, motion toward
+the player for true projectiles, an active shape for beam/cone/AOE attacks,
+exactly one magic-explosion counter increment, and nonzero changed-pixel scores
+for all three phases. Keep one full-page lifecycle sheet per boss and preserve
+the machine result JSON in
+`artifacts/harthmere-boss-magic-lifecycle-audit/`.
+
 ### Capture troubleshooting
 
 #### Fast operator path
@@ -798,6 +1048,176 @@ Existing Chapter 1 MP4s and approved stills remain in
 `artifacts/cutscenes/`. Further screenshot and cutscene rendering was stopped
 at the user's request after those outputs were saved; do not regenerate the
 remaining scenes merely to refresh timestamps.
+
+## Chapter 1 fast authoring and review playbook
+
+Chapter 1 is the reference implementation for story cinematics. Its sixteen
+registered scenes combine present-day ECS actors, snapshot PlayerMesh
+stand-ins, robots, memory stages, hilly world coordinates, dungeon gates,
+expressions, voice/subtitle delivery, and outcome-gated story commits. The
+detailed visual history lives in
+`docs/harthmere/HARTHMERE_CH1_CUTSCENE_AUDIT_2026-07-30.md`; this section is the
+repeatable workflow distilled from that audit.
+
+### 1. Establish the story and world contract first
+
+Before writing a camera:
+
+1. Identify the exact quest objective and the authoritative state that must be
+   true before the scene starts.
+2. Select a real shared anchor from `src/shared/harthmere/ch1_ids.ts`. Harthmere
+   is hilly outside the additive town, so never copy a flat Y assumption from a
+   different location.
+3. Decide which cast members are real ECS entities and which are memory-only
+   ghosts. Use canonical entity ids; do not seed or render a second copy of a
+   known NPC.
+4. Commit story progress before or through the scene's idempotent `onEnd`
+   contract. A cinematic is presentation, not the sole owner of quest truth.
+
+For memory interiors, stage the actors and camera inside the measured room
+footprint. For gates and exterior reveals, inspect the full camera segment—not
+only the final waypoint—against terrain and architecture.
+
+### 2. Bind actors through the native avatar pipeline
+
+Use the real ECS entity whenever it exists:
+
+```ts
+{
+  role: "jackie",
+  binding: {
+    kind: "entity",
+    entityId: Number(SNAPSHOT_GROVE_JACKIE_ENTITY_ID),
+  },
+  fallback: "ghost",
+  ghostAsset: SNAPSHOT_CUTSCENE_PLAYER_MESH_ASSET,
+}
+```
+
+For a known person who exists only as a memory projection:
+
+```ts
+{
+  role: "lou-memory",
+  binding: {
+    kind: "ghost",
+    asset: SNAPSHOT_CUTSCENE_PLAYER_MESH_ASSET,
+    family: "human",
+    appearanceSourceEntityId: Number(CH1_NPC_ENTITY_IDS.lou_ardan),
+    spawnAt: [...CH1_ANCHORS.memory_corridor_stage],
+  },
+}
+```
+
+The rule is application-wide: humans use the original snapshot/generated
+PlayerMesh; animals, robots, Muck creatures, and bosses use their original
+native GLTF/Galois rigs. Blender expressions animate those native bodies. A
+rounded-box or wardrobe-archetype body is a failed scene even when the camera,
+dialogue, and expression are otherwise correct.
+
+### 3. Stage, face, act, then speak
+
+- Put every actor at an explicit mark before a close shot samples them.
+- Face the speaking actor at shot start. `moveTo` owns yaw while moving, so add
+  another `face` after arrival or at the next shot.
+- Start dialogue or an expression about 0.2–0.3 seconds after staging/facing so
+  the first readable frame is not a neutral back-of-head pose.
+- Use the shared cinematic-expression catalog through normal `emote` actions.
+  Choose reactions that support the line; do not use a human emotion clip on a
+  robot or a sentimental paired gesture when the blocking says the actors are
+  separating.
+- Over-shoulder pullout should normally be at least 2.2 metres. Do not use POV
+  for a synthetic human ghost unless a deliberate body-free POV is required.
+
+### 4. Keep every scene finite and player-readable
+
+Every shot and the full scene need hard ceilings. Chapter 1 dialogue shots use
+`until: { kind: "dialogueDone", maxDuration: ... }` rather than unbounded
+waiting. All Chapter 1 cinematics hide the gameplay HUD, preserve letterbox and
+subtitle contrast, and restore camera/input/HUD state on completion, skip,
+abort, death, or teardown.
+
+Voice is additive to readable subtitles. Missing audio must never remove or
+delay text. Subtitle speaker names must match the actor the camera is showing.
+
+### 5. Test in the fastest safe order
+
+Run one fix batch, then one test batch:
+
+```sh
+node_modules/.bin/prettier --check \
+  src/shared/cutscene/ch1_scenes.ts \
+  src/shared/cutscene/puppets.ts \
+  src/shared/cutscene/binding.ts
+
+node_modules/.bin/mocha --config .mocharc.fast.json \
+  src/shared/cutscene/test/ch1_scenes.test.ts \
+  src/shared/cutscene/test/binding.test.ts \
+  src/shared/cutscene/test/client_integration_contract.test.ts
+
+scripts/harthmere/t.sh cutscene
+scripts/harthmere/t.sh types:stack
+git diff --check
+```
+
+If an expression or animation asset changed, also run:
+
+```sh
+node scripts/harthmere/test-harthmere-cinematic-expression-assets.cjs
+```
+
+Then capture only the affected scene ids. Do not replay Chapter 1:
+
+```sh
+HARTHMERE_E2E_CHAPTER_1_CAPTURE_ONLY=1 \
+HARTHMERE_E2E_CHAPTER_1_FEATURES=videos \
+HARTHMERE_E2E_CHAPTER_1_CAPTURE_IDS=ch1-confrontation,ch1-recon-corridor \
+HARTHMERE_E2E_CHAPTER_1_RUNTIME_INJECT=1 \
+HARTHMERE_E2E_CHAPTER_1_CAPTURE_FORMAT=frames \
+HARTHMERE_E2E_BASE_URL=http://127.0.0.1:<web-port> \
+HARTHMERE_E2E_SYNC_BASE_URL=http://127.0.0.1:<sync-port> \
+HARTHMERE_E2E_REDIS_PORT=<redis-port> \
+HARTHMERE_E2E_STACK_CONTAINER=<container> \
+HARTHMERE_E2E_CONTROL_TOKEN=<control-token> \
+node scripts/harthmere/test-harthmere-native-ecs-roundtrip-e2e.cjs
+```
+
+Runtime injection is for camera, staging, dialogue, and expression iteration.
+If renderer, binding, PlayerMesh, animation, or asset code changed, the final
+visual proof must use one exact-current-source build. Reconciliation is not
+needed for that build when terrain did not change.
+
+The scene attempt budget is three source revisions maximum. A failed startup,
+missing terrain service, or capture precondition is infrastructure evidence,
+not permission to make an unmeasured camera change. Preserve the report and
+fix the precondition before the next visible take.
+
+### Chapter 1 scene review checklist
+
+| Scene                        | Required visual/story proof                                                                          | Current source review                                                                                      |
+| ---------------------------- | ---------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `ch1-ignition`               | Native AUGUR-9 stands, studies the player, and reacts to the recording; no human robot stand-in.     | Native robot binding, finite shots, expression cues, voice/subtitle and hidden HUD verified.               |
+| `ch1-first-gate`             | Jackie and player are readable before the real desert aperture; camera stays above the sloped shelf. | Canonical Jackie with snapshot fallback; gate anchor/cameras and hidden HUD verified.                      |
+| `ch1-persistent-gate`        | Rook visibly guards the Mouth and speaks beside the persistent aperture.                             | Entity-backed Rook, native human fallback, terrain-safe static coverage and hidden HUD verified.           |
+| `ch1-overlay-ive-got-you`    | External memory coverage shows the rescuer and injured player in the road-house aisle.               | Lou appearance source, grounded memory stage, native PlayerMesh and hidden HUD verified.                   |
+| `ch1-recon-arrival`          | Carrier and injured player occupy separate readable marks during the road-house arrival.             | Jackie appearance source, separate movement paths, grounded opening and hidden HUD verified.               |
+| `ch1-recon-corridor`         | Woman, player, and man remain in the aisle while the original memory facts play.                     | All human ghosts use snapshot PlayerMesh; Lou identity retained; shared corridor timing verified.          |
+| `ch1-recon-corridor-revised` | Identical camera/timing to the original corridor; only identity and interpretation change.           | Same geometry/timing contract; Jackie and Lou appearance sources verified.                                 |
+| `ch1-overlay-containment`    | Calla and the exhausted player are both visible when containment is revealed.                        | Entity-backed Calla, native fallback, reaction coverage and hidden HUD verified.                           |
+| `ch1-the-flinch`             | Player flinch and Jackie's changing reaction are readable at the desert gate.                        | Canonical Jackie, explicit stage/facing, expression sequence and hidden HUD verified.                      |
+| `ch1-confrontation`          | Road-house argument alternates readable Jackie/player coverage without clipping either head.         | Canonical Jackie, snapshot fallback, safe pullout, native-avatar prior acceptance and hidden HUD verified. |
+| `ch1-sorrel-door`            | Sorrel is visible at the winter door through recognition, grief, shock, and resolve.                 | Canonical Sorrel, snapshot fallback, grounded winter anchor and hidden HUD verified.                       |
+| `ch1-the-case`               | Lou's Returnstone argument and handover remain readable in daylight.                                 | Canonical Lou, snapshot fallback, Returnstone stage and hidden HUD verified.                               |
+| `ch1-consolidation-revision` | Lou—not the board—owns the opening; all six revisions and “Seven” remain readable.                   | Canonical Lou, snapshot fallback, explicit stage anchor, HUD now hidden.                                   |
+| `ch1-recon-intake`           | Grounded clinic two-shot shows Lou facing the player through the confession.                         | Lou appearance source, grounded road-house memory stage and hidden HUD verified.                           |
+| `ch1-too-late`               | Lou's exhausted arrival, argument, and departure remain readable at Returnstone.                     | Canonical Lou, snapshot fallback, daylight stage and hidden HUD verified.                                  |
+| `ch1-the-watch-house`        | Jackie is framed inside the measured room, owns the plan, and ends ready to act.                     | Canonical Jackie, snapshot fallback, measured interior cameras and hidden HUD verified.                    |
+
+Before accepting any scene, inspect a contact sheet across its full duration and
+confirm: correct native bodies, visible faces, no body/terrain clipping, all
+dialogue present, expressions readable, no gameplay HUD/hotbar, no void or sky
+opening, neutral recovery, and correct next-state commit. A stale contact sheet
+from an older renderer is historical evidence, not current acceptance.
 
 ## Edge cases you get for free
 

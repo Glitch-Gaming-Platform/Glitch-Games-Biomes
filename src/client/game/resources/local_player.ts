@@ -36,6 +36,12 @@ export class LocalPlayer {
   lastWarp?: number;
 
   talkingToNpc?: BiomesId = undefined;
+  /**
+   * Ordinary one-NPC conversations use the tracking camera. Story dialogue can
+   * contain several remote speakers while the player remains at one world
+   * object; tracking those ECS bodies would throw the camera across the map.
+   */
+  talkingToNpcCameraDisabled = false;
 
   playerStatus: PlayerStatus = "alive";
   pressAndHoldItemInfo?: PressAndHoldInfo;

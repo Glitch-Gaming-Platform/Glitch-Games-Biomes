@@ -10,6 +10,7 @@ scripts/harthmere/t.sh bible      # 105 tests, 2.9 s   — Bellbound Dragon cata
 scripts/harthmere/t.sh bible:e2e  # all 85 quests / 340 steps, ~10 ms
 scripts/harthmere/t.sh quests     # focused quest/container contracts
 scripts/harthmere/t.sh ui         #   9 tests, 1.1 s
+scripts/harthmere/t.sh icons      # inventory assets, native aliases, UI, types
 scripts/harthmere/t.sh gate       # quest + UI + client config + contract + types
 scripts/harthmere/t.sh watch ch1  # re-runs on save
 scripts/harthmere/t.sh types      # scoped typecheck, ~3 s
@@ -91,6 +92,13 @@ deterministic paths passed serially. Run one scoped compiler at a time, after
 the Mocha batch; parallelizing three CPU-heavy checks makes every lane slower
 and creates false timeout failures.
 
+**Do not use the repository-wide `tsc --noEmit` as a Chapter 1 smoke check.**
+On July 31 it exhausted a 4 GiB Node heap after nearly a minute while the
+documented scoped projects were available. Run `scripts/harthmere/t.sh types`
+for shared Chapter 1 code and `scripts/harthmere/t.sh types:client` when client
+rendering/UI files changed; each command already supplies the required 8 GiB
+heap and avoids paying for unrelated graphs.
+
 **Zod output defaults are required in parsed cutscene types.** A helper that
 spreads a validated `CutsceneDef.cast` and appends a new raw anchor must write
 the anchor's `required` and `fallback` schema defaults explicitly. Otherwise
@@ -107,6 +115,7 @@ type-shape fix, not another scene revision.
 | Chapter 1 data/logic                       | `t.sh ch1`                 | 4.6 s                             |
 | Quest containers, F prompts, world objects | `t.sh quests`              | 0.8 s                             |
 | A BiomesUI tab                             | `t.sh ui`                  | 1.1 s                             |
+| Inventory icons or item presentation       | `t.sh icons`               | one focused serial release lane   |
 | Quest/container/UI handoff                 | `t.sh gate`                | one Mocha startup + one typecheck |
 | Cutscene defs or the generator             | `t.sh cutscene`            | 2.9 s                             |
 | One file, tight loop                       | `t.sh watch ch1`           | ~1 s per save                     |
@@ -120,6 +129,16 @@ type-shape fix, not another scene revision.
 `transpileOnly: true` and `swc: true`. Green tests say nothing about type
 correctness. Run `t.sh types` too — it is 3 seconds.
 
+**Inventory item identity has three player-visible spellings.** Generated icon
+catalogues are normally keyed by semantic ids such as `item_grey_card` and
+`raw_meat`, but native ECS inventory can project the same stacks as a decimal
+Bikkie id or `b:<id>`. An icon test that exercises only the semantic key can be
+green while the live inventory falls back to initials. Use `t.sh icons`; its
+exhaustive assertion resolves every generated entry through all three forms,
+checks every PNG, exercises InventoryTab image rendering, runs the static
+startup contract, and then performs the scoped typecheck. Preserve native art
+before the initials fallback for items outside the replacement catalogue.
+
 ### When the fast preset is not enough
 
 If a suite passes under `full` but fails under fast, it needs the bootstrap —
@@ -130,6 +149,17 @@ to the header comment in `t.sh` so the next person doesn't rediscover it.
 ---
 
 ## 4. Browser testing
+
+### Reconcile only when persisted world data changed
+
+A routine application Docker build does **not** require terrain or broad world
+reconciliation. Skip those jobs when the release changes only client/server
+code, UI, dialogue, quests, tests, or immutable assets. Run reconciliation only
+when the release intentionally changes terrain or another persisted authored
+world record, such as seeded buildings, roads, NPC identities/positions, or a
+reviewed data migration. Reusing reconciliation as a generic image-readiness
+step wastes substantial time and resources and can introduce unrelated world
+failures into an otherwise application-only release.
 
 The runbook's serial full-chain walk is the right **release gate** and the
 wrong **inner loop**. The slow parts are not the browser:
@@ -148,6 +178,10 @@ as an operational checklist, not background history:
   image tag and digest before starting E2E. Rebuild once after the complete
   fix batch, replace the local smoke container once, then run all affected
   checkpoints against that exact image.
+- **Read dialogue paging state from the element that owns it.** The Chapter 1
+  stock-dialogue portal carries `data-chapter1-dialogue-page` on its root; it
+  is not a child marker. A descendant lookup made a visible Wake Up dialogue
+  wait for two minutes and fail before sending its valid completion request.
 - **Do not start duplicate scoped typechecks.** `t.sh gate` already includes
   `tsconfig.ch1check.json`. Run either `t.sh gate`, or an explicit parallel
   batch that omits the separate `t.sh types`; never both at once.
@@ -241,6 +275,35 @@ July 29 robot-story follow-up added four more concrete traps:
   `e2e-jump.cjs ready` reports web, Sync, Redis, and every required lifecycle
   service as `UP`; subsequent browser batches should reuse that warm stack.
 
+- **Quiesce browser pages that survived a stack restart before launching a new
+  E2E context.** A live `/at` page can reconnect the moment Sync becomes ready
+  and immediately resume its Harthmere polling loops. On August 1 that stale
+  client saturated the freshly warmed web process while the new E2E page spent
+  its entire 120-second navigation budget waiting for `DOMContentLoaded`.
+  Navigate old observer/game pages to `about:blank` (or close them), wait for
+  their requests to stop, then launch the focused runner. This is separate from
+  the lifecycle gate: every service can correctly report `UP` while a surviving
+  browser client is still making the test lane non-quiescent.
+
+- **Classify aborted background state reads by payload, not HTTP method.** The
+  Chapter 1 gate/progress/story clients use `POST` for read-only state polling.
+  A navigation or component teardown can therefore produce `net::ERR_ABORTED`
+  on those background requests after every authoritative scenario has passed.
+  Treat only `chapter1_progress`/`chapter1_story` requests whose body has
+  `action: "state"` (plus the read-only `chapter1_gate` endpoint) as transient.
+  Never blanket-allow aborted POSTs: actual progression mutations must remain
+  browser-gate failures.
+
+- **Do not waive SwiftShader shader failures when the captured world is
+  black.** The focused runner defaults to `--use-angle=swiftshader` for a
+  deterministic software lane, but the current macOS Chromium/Three renderer
+  can report `Shader Error error:1282 validateStatus:false` and render only the
+  HUD. Preserve that failure and screenshot. On a Mac with a usable graphics
+  backend, rerun the same unchanged batch with
+  `HARTHMERE_E2E_ANGLE=metal`; the launcher omits the unsafe-SwiftShader flag in
+  that mode. A successful Metal batch plus the final in-app-browser pass is the
+  visual gate. Do not add the shader error to the console allowlist.
+
 - **Chapter 1 marker Y is not always player feet-Y.** Outdoor objectives use
   the production marker convention (one block above scanned feet), while live
   collision settles the player to feet-Y; the July 30 exact-image run reached
@@ -265,26 +328,58 @@ July 29 robot-story follow-up added four more concrete traps:
   authority assertions instead of shortening the transport wait or replaying
   a completion that already committed.
 
-- **A complete Chapter 1 browser walk must provision external objective
-  inputs, but never replace chapter-authored grants.** `Gather Parts` correctly
-  rejects a fresh actor without 4 scrap metal, 2 iron ingots, and 1 tree resin;
-  those materials come from gathering/crafting outside the linear chapter and
-  the fixture must supply their canonical native identities. Tea and the
+- **A complete Chapter 1 browser walk must acquire external objective
+  inputs through real vendor transactions, but never replace chapter-authored grants.**
+  `Gather Parts` correctly rejects a fresh actor without 4 scrap metal, 2 iron
+  ingots, and 1 tree resin; the browser must open the real material guide,
+  select a normal map/minimap/HUD destination, and buy those canonical items
+  through the shipped vendor mutation. A direct inventory or Redis fixture
+  masks the exact player-facing failure this gate exists to catch. Tea and the
   AUGUR-9 core cell are different: prior Chapter 1 objectives grant them, so
   the browser gate must require those real grants instead of silently seeding
   replacements. Compute the prior authored grant/consume balance for every
-  inventory objective and provision only the externally sourced remainder.
+  inventory objective and acquire only the externally sourced remainder.
   The resume/checkpoint replay must use the same rule before applying retained
   objectives; otherwise any checkpoint after `gather_parts` fails before the
   browser starts because it cannot reconstruct the materials already consumed.
+  Vendor-bought crafting materials are intentionally deposited into native
+  Materials storage. Chapter 1 requirement checks, turn-ins, and the browser
+  gate must count and consume both the backpack/hotbar and that storage;
+  checking only `inventory.items` recreates the reported “I bought it but the
+  quest says it is missing” deadlock.
+  Because this focused lane deliberately does not replay the prerequisite robot
+  story, it also reconstructs the retained 75-gold starter wallet and the paid
+  Work the Board job rewards. That is prerequisite/economy state, not an item
+  fixture: every supply still comes from a real vendor transaction and remains
+  rejectable for a wrong vendor, bundle, price, or insufficient balance.
+  Restore that checkpoint gold in both the live-mode persistence record and
+  the native ECS currency bag. Vendor authority reads the native wallet;
+  restoring only the legacy record creates a false
+  `vendor_rejected:insufficient_gold` failure on a fresh snapshot actor.
+  A material-source map pin is scoped to the quest and objective that opened
+  it. When that objective completes, require the normal main-story marker to
+  replace the vendor/gathering pin; otherwise the HUD can advance while the
+  minimap continues pointing at an obsolete supplier.
+  For objectives whose evidence belongs to another system (Jobs Board or a
+  vendor), Chapter 1 must not register its own world-interaction candidate
+  while `blocksChapterInteraction` is true. The owning board/vendor keeps `F`;
+  Chapter 1 polls the resulting evidence and auto-completes only when ready.
+  When resuming after those already-proven steps, reconstruct their paid-job
+  wallet/ledger and supplier transaction evidence as well as the native trigger
+  leaves. A trigger-only checkpoint silently removes the money later supply
+  objectives legitimately depend on.
+  Testimony expressions must resolve to one canonical native ECS actor. Preserve
+  the reviewed snapshot appearance/wearing components for witnesses already in
+  the May snapshot, seed player-like NPCs only for missing labels, never borrow
+  a real player entity, and delete only Chapter 1's known temporary duplicate.
 
 - **Provisioning objectives derive their inventory from the gate contract,
   not `step.inventoryRequirements`.** `provision` and `provision_winter` use
   `ch1ProvisioningFor(...)`, so a generic inventory fixture otherwise sees zero
   requirements and presses `F` against an empty seven/eight-category pack.
-  Install canonical economy identities in both native ECS and semantic Redis:
-  for example `road_ration`, `worker_meal`, `road_repair_kit`, `field_medkit`,
-  and `travel_cloak`. The production classifier must recognize those exact
+  Buy canonical economy identities through their actual suppliers: for example
+  `road_ration`, `hearty_stew`, `road_repair_kit`, `field_medkit`, and
+  `patched_cloak`. The production classifier must recognize those exact
   outputs too; aliases such as `bread` and `winter_coat` are not proof that the
   items sold or crafted by the live economy can pass the authored checklist.
   Reuse the same gate-derived requirements during resume replay so a checkpoint
@@ -459,6 +554,47 @@ production`. Keep deployment docs and local full-flow runners on that exact
   validator rejected behavior that was still present. Check the structural
   tokens independently (or use an explicitly multiline pattern) and let the
   executable browser test prove runtime behavior.
+
+- **A mounted quest detail pane is not proof that the newly clicked quest is
+  selected.** The Quests tab keeps one detail section mounted while React
+  swaps its contents. Waiting only for `biomes-ui-quest-detail` or the shared
+  material-section test id can read the previous quest for one frame and
+  falsely report a missing item guide (the July 31 Rope failure). Wait for the
+  exact `Quest detail: <title>` aria label first, then wait for the specific
+  material row before counting its gather/buy/craft choices.
+
+- **A checkpoint write can lead the synchronized quest list by a few frames.**
+  After installing a focused native Chapter 1 checkpoint, the Quests tab may
+  still show the onboarding rows while the ECS projection catches up. Wait for
+  the exact authored quest button before asserting uniqueness or clicking it;
+  an immediate count is a sync race, not proof that the quest is missing.
+
+- **Material rows must be selected by their exact data identity, not descendant
+  text.** A Rope requirement can appear inside another row's craft inputs, so a
+  Playwright `hasText: "Rope"` filter legitimately matches multiple material
+  rows even though the dedicated `4 × Rope` row is present. Match the exact
+  `data-material-requirement` attribute before opening and auditing its routes.
+
+- **Thin-ice tests must converge the state projection with the native bag
+  before comparing weight.** Reading Chapter 1 state can repair a missing plot
+  item, while a direct Redis/HFC fixture read may still show the preceding ECS
+  version for a frame. Poll both authorities until their bag-only weights agree
+  within a small numeric tolerance, then test the cracking/holding decision.
+  Do not hide a persistent mismatch; the bounded wait reports both last values.
+
+- **Standalone carry-weight checks must initialize the production item
+  catalogue.** The web process registers canonical metadata during normal
+  startup, but a focused Node runner otherwise gives Rope and Field Medkits the
+  generic 1 lb fallback instead of their authored 0.5 lb weights. Initialize
+  the production crafting catalogue before comparing native and projected load;
+  do not copy a second weight table into the test.
+
+- **Focused Chapter 1 resets must clear external evidence before replaying
+  retained steps.** Supplier transactions from an earlier run can make “Meet
+  the Suppliers” ready before the browser reaches it, bypassing the vendor-owned
+  `F` state and producing a false wait for the hidden Chapter 1 prompt. Clear
+  the Chapter 1 supplier transaction keys first, then reconstruct them only for
+  objectives included in `RESUME_AFTER`.
 
 - **Custom Chapter 1 interfaces own completion until their interaction
   finishes.** Pressing `F` on `the_procedure` opens the real four-stage
@@ -935,6 +1071,15 @@ and must list the exact report path, image tag/digest, and slot-cleanup state.
   scene take minutes. Reserve
   `CAPTURE_FORMAT=video` for the one final exact-source packaging check; do not
   pay video encoding/upload cost for every camera adjustment.
+- **Diagnose snapshot-human black silhouettes without rebuilding first.** The
+  local player and a synthetic negative-id ghost use the same generated avatar
+  shader but different render owners. Inspect the current player's uniforms and
+  the runtime renderer's `nativeCutsceneActors` separately. If only the ghost is
+  black, update the already-loaded actor's `spatialLighting` and `light`
+  uniforms in a temporary browser probe and capture the corrected frame before
+  paying for another Next build. Keep that probe opt-in and out of release
+  assertions: the durable fix belongs in the synthetic actor update path, and
+  one later coordinated artifact build should prove the source correction.
 - **Movement animations require a game-rendered cutscene gate.** Blender 5.2
   can report distinct keyed armature poses while the standalone
   `render_native_movement_action.py` still renders Running, Attack, crouch,
@@ -947,13 +1092,107 @@ and must list the exact report path, image tag/digest, and slot-cleanup state.
   `asset_versions.json`, require neutral lead-in/recovery timing, and preserve
   `Attack`/`Attack2`. For visual acceptance, run the generated
   `harthmere-movement-action-showcase` through the real cutscene director in
-  `clientPuppet` mode with empty commits/placements, capture only its five
-  labeled frames, and inspect lateral direction, forward/back pitch, the full
-  roll, limb clipping, and return to neutral. Runtime injection is valid only
+  `clientPuppet` mode with empty commits/placements, capture its six individual
+  action frames plus the evade-to-attack transition, and inspect lateral
+  direction, forward/back pitch, the full roll, the double-jump burst, limb
+  clipping, and return to neutral. Runtime injection is valid only
   when the warm page already contains the movement-action cutscene aliases and
   current animation asset hash; otherwise build the completed batch once and
   use that exact source. Do not accept Blender stills, source GLTF names, or an
   older reachable game image as the final visual gate.
+- **One-shot movement input must be latched across low-FPS script ticks.** The
+  July 31 production log ran at roughly 8–14 FPS, so a quick desktop X/C tap or
+  short joystick pulse could complete its down/up cycle between physics ticks.
+  Crouch appeared healthy because it is held, while dodge/evade were silently
+  missed. Keep the input-manager press latch and consume it once per player
+  tick; consume-and-drop it while motion is locked so modal/cutscene taps never
+  replay after control returns. The fast regression belongs in
+  `src/client/game/context_managers/input.test.ts`; do not use longer artificial
+  key holds to hide the race.
+- **Stage movement showcases inside the current observer interest set.** A
+  fixed Grove coordinate passed route-distance tests but the exact-image client
+  streamed it as floating terrain and sky. For a mutation-free synthetic
+  snapshot-avatar, omit the ghost `spawnAt` so binding uses the live player's
+  already-loaded position, and use a `trackRole` camera. Preserve the short
+  neutral lead-in before each movement emote, then capture only the five
+  labeled action frames. `idle` is not a valid cutscene animation token, so do
+  not add a fake reset action; the authored clip's neutral endpoint provides
+  recovery. This keeps no-build runtime injection useful without mistaking a
+  distant camera failure for an animation failure.
+- **Load the user avatar before judging a no-build cutscene injection.** The
+  fast working order is: open the isolated web origin through
+  `/dev/harthmere-visual-auth?username=<unique>&next=<injector>`, let the
+  injector's game iframe load `/at?harthmere_native_ecs_e2e=1&syncBaseUrl=<the
+isolated sync origin>`, wait for the local-player HUD/name and the observer
+  interest set, then register and capture the runtime definition. Before
+  accepting frames, require the console line `HARTHMERE_SYNC_URL_RESOLVED` to
+  report `trusted_runtime_e2e_override` and the intended local sync port. A
+  proxy iframe without that query connected to production sync, while a raw
+  `install_id` route without a created local player fell into observer mode;
+  both produced valid-looking subtitles over sky with no usable avatar. Do not
+  revise animation clips in response to either harness failure.
+- **Movement cutscenes need a movement-specific player bridge.** `dodgeLeft`,
+  `dodgeRight`, `dodgeForward`, `dodgeBack`, `evade`, and `doubleJump` are
+  intentionally not `zEmoteType` values. Sending them through the ordinary
+  player-emote path silently drops the action. The cutscene director must start
+  the client-only movement-animation state, and actor release must cancel it;
+  do not publish a gameplay movement event, spend stamina, or move
+  authoritative ECS while rendering a mutation-free showcase.
+- **Double jump and evade-cancel tests cross the Native ECS/client boundary.**
+  Keep `doubleJump` in the existing `MovementActionEvent` contract so the
+  server atomically replicates it and deducts exactly four stamina; it must
+  have zero horizontal action distance and no i-frames. Test the shared timing
+  with `t.sh file`, but run the handler and interaction rows directly with
+  `node_modules/.bin/mocha --config .mocharc.json src/client/game/interact/item_types/attack_destroy_delegate_item_spec.test.ts src/server/logic/test/movement_actions.test.ts`
+  because they import ECS/server bootstrap state. The evade attack buffer opens
+  only during landing/recovery and must call the existing attack path; never
+  create a parallel attack event or alter `Attack`/`Attack2` to make the test
+  pass.
+- **Player evade is a 5.25-metre lateral roll.** It must never inherit forward
+  input and become a dash. Current left/right input selects the side first; a
+  just-released key may retain the visible lateral velocity/lean; otherwise the
+  previous side is reused deterministically. Keep the replicated movement
+  direction on that strict lateral axis and assert the exact `5.25` metre
+  integrated distance at both normal and low frame rates.
+- **Pose the rendered avatar shell, then inspect a close time sequence.** The
+  Blender clip can animate the skinned body beneath a generated/voxel avatar
+  shell that does not inherit every rig joint, leaving a labeled wide shot
+  visibly neutral. Apply the shared root roll/pitch/lift and restrained scale
+  pose to both gameplay and cutscene movement states, while retaining the
+  Blender limb animation.
+  Validate close frames from the middle of each action plus its neutral
+  recovery; a wide contact sheet, clip-name audit, or subtitle alone is not
+  visual proof.
+- **An arms-only attack can be real but invisible on a generated avatar shell.**
+  The Harthmere gameplay attack layer deliberately leaves the lower body under
+  locomotion control. For a mutation-free cutscene transition gate, keep the
+  real `Attack`/`Attack2` emote underneath, select its full-body layer only for
+  the cutscene actor, and add a restrained neutral-ended root wind-up/strike
+  fallback. Do not rewrite the production attack path or regenerate its clips
+  just to make an unequipped showcase avatar readable.
+- **Recheck builders immediately before moving `.next`.** A prior status check
+  is not enough in this shared checkout: another task can start `next build`
+  while focused tests are running. Run
+  `pgrep -fl 'node_modules/.bin/next build'` at the exact mutation boundary,
+  coordinate ownership, and reject any artifact whose output directory moved
+  during compilation. Keep only the content-addressed cache when restarting a
+  quarantined build.
+- **A visible `BUILD_ID` does not prove the checkout is quiescent.** On August
+  1, one shared build wrote a valid ID and complete static tree, then a second
+  unowned `next build` started immediately and removed them again. Check for
+  both `next build` and webpack processes before _and after_ reading the ID,
+  pause briefly, then require the same ID plus `.next/server` and
+  `.next/static` a second time. Never restart a bind-mounted app during that
+  interval. If another compiler appears, wait for its owner or completion;
+  do not launch a competing build or kill an unowned one.
+- **Do not rerecord a completed WebM because browser automation cannot expose
+  the page's main-world sink.** First require the
+  `biomes-cutscene-video-output` status to be `complete`. Prefer the native E2E
+  bridge/local sink; if an isolated browser world hides both `fetch` and that
+  bridge, read the completed JSON in bounded chunks below the automation output
+  cap and materialize the base64 offline. Never print the whole payload into a
+  tool response, and do not spend another scene attempt on an upload-only
+  harness limitation.
 - **Compare captured cutscene dialogue by authored text, not internal role
   labels.** The director can legitimately project the source role `b` as the
   runtime speaker `You`, and entity-backed roles can use their rendered display
@@ -988,6 +1227,21 @@ and must list the exact report path, image tag/digest, and slot-cleanup state.
   `.next/static` or `.next/server` before starting a runtime. Preserve an
   incomplete directory for diagnosis and rebuild atomically; never launch a
   cutscene or browser gate from a partial `.next` tree.
+- **Preflight the capture port and keep the exact-source web process alive.**
+  Before opening the browser, run `lsof -nP -iTCP:<port> -sTCP:LISTEN` and
+  verify the owner is the intended container or proxy. A stale movement proxy
+  on July 31 served an older page chunk even while the new container was
+  healthy. Also verify the warm backend still owns live Shim/Logic/Ask/OOB
+  listeners before starting a web-only sidecar; a container can remain `Up`
+  after those child services have exited. Build and mount `.next` plus
+  `dist/web.js` as one atomic pair, then do not restart that web process between
+  the accepted frame audit and the one final video capture.
+- **Use the existing cutscene lane before any browser boot.** Run
+  `scripts/harthmere/t.sh cutscene` for shared definitions and
+  `scripts/harthmere/t.sh types` once after the source batch. Iterate camera
+  placement with the frame/contact-sheet path, and reserve MediaRecorder plus
+  MP4 encoding for the accepted take. This catches schema/choreography defects
+  in seconds and avoids paying a production-stack restart for source errors.
 - **Deployment order guards must include every intentional authored writer.**
   The July 31 exact-current-source build stopped before compilation because
   `test-production-deploy-local-redis-smoke.cjs` still expected ECS
@@ -1203,6 +1457,36 @@ means the mirror was not installed; do not wait longer or reload it repeatedly.
 The bridge now receives the newly created session id from the already-gated
 visual-test endpoint and writes the mirror before `/at` mounts.
 
+#### Player-bound Hex cutscene capture adds two more readiness gates
+
+`harthmere-hex-fireball-dodge-showcase` binds the real local player, so its
+acceptance harness redirects visual auth to `/at` **without a coordinate slug**.
+Coordinate `/at/x/y/z/...` routes are observer captures and can leave the hero
+unbound. Keep `syncBaseUrl`, `harthmere_native_ecs_e2e=1`, and the unique
+`e2e_run` on that direct `/at` URL; never enter through `/`.
+
+An iframe capture page must not retain `contentWindow` while it is still the
+initial `about:blank` document. Start the game work from the redirected iframe
+load whose URL contains the focused-E2E flag (or reacquire the redirected
+window after that signal). An overall timeout is still required, but waiting
+three minutes on the original blank Window is a harness bug, not game startup.
+
+After moving `__harthmereLivePlayerDebug` to `[500, 70, -140]`, require all
+three terrain samples documented in `docs/cutscenes.md`. Then wait for
+`__harthmereProjectileVisuals.loadedIds` to contain `fireball`. The general
+renderer and cutscene bridge can be ready before the rebuilt Harthmere asset
+renderer has loaded its projectile prototype; capturing at that point records
+three correct custom events but no visible Fireball.
+
+For this scene also assert `finishReason: completed`, exactly three projectile
+events, and the
+`hex-wraith`/`/assets/harthmere/glb/bosses/hex_wraith.glb` puppet identity.
+The small `npcs/purple_hexer` NPC is not an acceptable substitute for the Hex
+beast graphic. Keep the
+director ceiling above the authored duration (currently 18 seconds versus a
+15-second timeline); an equal ceiling races the natural-completion tick on
+software WebGL and reports `aborted` after the final authored shot.
+
 When a density pass changes structures, run the camera-to-terrain contract in
 the fast visual batch before opening the browser. Test the complete dolly, not
 only its endpoints. Resume with a group containing only unfinished scenes (for
@@ -1271,6 +1555,47 @@ WorldMetadata must end at the ordinary Harthmere edge (X=2560); the detached
 Elsewhen shards beyond it are reachable only through signed fracture-gate
 warps. An open web port is not evidence that either dungeon's terrain or its
 authoritative sync bounds are present.
+
+#### Additive Harthmere water preflight
+
+A warm Redis snapshot can predate the additive Harthmere terrain even when the
+current source and full deployment seeder are correct. The symptom is a loaded
+player, rod, HUD and river-facing camera with no terrain mesh; do not debug the
+fishing state machine until the terrain authority is proven. Run the read-only
+extension audit first:
+
+```sh
+REDIS_HOST=127.0.0.1 REDIS_PORT=6392 \
+  node scripts/harthmere/audit-production-extension-terrain.cjs
+```
+
+For a narrow live fishing proof on an old local snapshot, pause Gaia before
+writing water and seed only the canonical quay neighborhood through the native
+admin ECS API:
+
+```sh
+HARTHMERE_E2E_CONTROL_TOKEN="$(docker exec <app> printenv HARTHMERE_E2E_CONTROL_TOKEN)" \
+HARTHMERE_E2E_BASE_URL=http://127.0.0.1:3047 \
+REDIS_HOST=127.0.0.1 REDIS_PORT=6392 \
+  node scripts/harthmere/seed-harthmere-fishing-live-fixture.cjs
+```
+
+Require the helper's solid-bank readback and `riverWaterLevel: 15`, reload the
+browser, and require a terrain mesh before casting. This 3x3 fixture is only a
+focused browser aid; production acceptance still requires the complete
+extension seeder and audit. Do not start the full Shim terrain reconciliation
+for one browser screenshot on a runtime that injects `node --no-opt`: building
+thousands of shards there can take hours and competes with Logic/Sync. Resume
+Gaia only after the authored `ShardWater` readback, then verify source water
+survives its simulation. Use the helper's read-only mode for that post-Gaia
+check so the test cannot hide a simulation regression by reseeding the shard
+it is trying to inspect:
+
+```sh
+HARTHMERE_FISHING_FIXTURE_VERIFY_ONLY=1 \
+REDIS_HOST=127.0.0.1 REDIS_PORT=6392 \
+  node scripts/harthmere/seed-harthmere-fishing-live-fixture.cjs
+```
 
 When a production-shaped container is recreated manually, the browser runner
 does not inherit its control token or Redis port automatically. Export
@@ -1385,6 +1710,20 @@ the entire `dist/` and `.next/` trees. The old checker could exceed V8's string
 limit, catch the resulting error as if one file were unreadable, and then
 falsely report a marker missing from `dist/web.js`. The checker now scans each
 bounded file independently and retains only the set of matched needles.
+
+When the warm stack uses non-default names or ports, pass every readiness
+override explicitly. `e2e-jump.cjs` intentionally defaults to the standard
+3000/3100/6379 topology and `biomes-prod-smoke-app`; setting only the page URL
+can therefore report a healthy custom stack as down. A complete custom check
+looks like:
+
+```sh
+HARTHMERE_E2E_URL=http://127.0.0.1:3047 \
+HARTHMERE_E2E_SYNC_BASE_URL=http://127.0.0.1:4937 \
+HARTHMERE_E2E_REDIS_PORT=6392 \
+HARTHMERE_E2E_STACK_CONTAINER=biomes-expression-verified-app \
+  node scripts/harthmere/e2e-jump.cjs ready
+```
 
 ### 4.5 Run one dungeon as one batch, then stop
 
@@ -1536,6 +1875,18 @@ HARTHMERE_E2E_ROAD_AHEAD_SELFIE_ONWARD=1 \
   node scripts/harthmere/test-harthmere-native-ecs-roundtrip-e2e.cjs
 ```
 
+Do not confuse “Pointer Lock is unavailable” with “gameplay input is
+attached.” An in-app browser can render terrain, animate the held tool, and
+expose HUD action buttons while the native input manager remains detached. On
+the pointerless path, require `canvas.biomes-canvas` to be focused, the Enter
+Game wash to be absent, and one native action to enter its real product state
+(for fishing, `.cast-overlay`, `.fishing-casting`, or the later fishing
+states). A HUD click with no state transition is a product/input regression,
+not a successful browser test. The canvas now attaches input whenever Pointer
+Lock is unsupported, not only when the virtual joystick flag is true; keep the
+focused `MobileGameplayControls.test.ts` assertion with that behavior. Do not
+hide the overlay or mutate page globals to manufacture a pass.
+
 Focused headless mode deliberately removes Pointer Lock. The camera HUD only
 registers its top-priority `F` world-interaction candidate while Pointer Lock is
 held, so a nearby NPC candidate can consume `F` before HotBar's bubble listener
@@ -1607,6 +1958,35 @@ wrong quest state. A numeric ID binds the HTTP cookie and sync-session mirror
 to the exact authoritative actor. The browser gate must compare the visible
 quest/state to the seed before making assertions; do not clear caches or replay
 the test until that identity check passes.
+
+Reused visual-test usernames have a second failure mode: more than one local
+database identity can share the label, and the friendly `/at/<username>` route
+can resolve a different entity than the authenticated session. The page still
+shows a signed-in HUD and a held item, but it is an observer client;
+`InteractScript` is intentionally not installed and every native item control
+appears inert. Prefer the exact numeric ID in `harthmere-visual-auth`, and make
+the focused E2E diagnostics prove `syncTargetKind: "localUser"` before clicking
+an item action. A username, avatar, or “entered the world” toast is not that
+proof.
+
+Fishing readiness must also be owned by the native interaction script, not by
+a React overlay side effect. The legacy `SelectionHints` fishing overlay writes
+the current `rodItemRef`, but replacement HUDs do not necessarily mount that
+component. If `ready_to_cast` starts with an undefined rod ref, the native
+script resets itself every frame and both a real canvas hold and the HUD Fish
+pulse remain inert. Keep the focused `FishingItemSpec rod ownership` test and
+require the interaction script to initialize/repair `rodItemRef` directly from
+its `ClickableItemInfo.itemRef`.
+
+Do not validate a short HUD action pulse at one fixed delay. The live Fish
+control first waits for the selected hotbar item to render, and a low-frame-rate
+browser can begin the native 350 ms hold more than 100 ms after the click. A
+single 140 ms or 220 ms snapshot can therefore miss a correct
+`.fishing-casting` transition. Start the real click, poll the product state
+every 25-50 ms while that click promise is active, require at least one positive
+sample, and capture the first positive frame. This proves the transition
+without lengthening the product hold or replaying the already-passed catch/XP
+scenario.
 
 ### 4.8 Cloud Save rollout gate (one browser batch)
 
@@ -2129,6 +2509,15 @@ Native-avatar tests must therefore assert provenance as well as visibility:
 - static runtime life placements cannot create a second person or animal over
   the authoritative ECS actor.
 
+Snapshot-backed browser stacks can also retain focused-run player entities.
+Several prior `NativeECS-A-*` users may be parked at the same authored player
+stage, which makes a correct two-person cutscene look duplicated or vertically
+stacked. Exact-image Chapter 1 capture must hide nearby remote player meshes
+for the duration of each scene, preserve the current authenticated player, and
+restore the hidden meshes afterward. Do not delete or move the retained ECS
+players merely to clean a screenshot, and do not diagnose the extra body as an
+NPC fallback until a read-only nearby-player scan rules this contamination out.
+
 Do not repair an invisible NPC by adding another fallback renderer. Fix the
 native Bikkie presentation donor, generated player-mesh request, asset load, or
 base-pass routing that made the authoritative body invisible.
@@ -2236,6 +2625,434 @@ browser pass. The browser pass must count one Jackie, enter the Road-House
 through the doorway, inspect the original dialogue presentation, and then run
 the Sophia-only checkpoint. It must not replay the completed quest catalog.
 
+The July 31 `projectile-audit-portal-20260731` runtime exposed a packaging-only
+failure after its original validation: `/at` HTML and lifecycle readiness stayed
+green while most `/_next/static/*` chunks, the admin fixture pages, and the 404
+page were absent. A listening web port is therefore not sufficient for a fresh
+browser pass. Before Chromium, request the build manifest, the `/at` page chunk,
+and one admin ECS page used by the harness. If the admin page alone is absent,
+`HARTHMERE_E2E_DIRECT_WORLD_FIXTURES=1` may use the same Redis/HybridWorld for
+test setup and authoritative reads without rebuilding the app. If the client
+chunks are absent, stop: no fresh page can install `clientContext`, and that is
+an invalid runtime rather than a Chapter 1 product failure.
+
+The restored Chapter 1 dialogue presentation also changed the browser action
+contract. The focused runner must wait for
+`.npc-quest-view .npc-quest-dialog-container` and the original animated
+click-to-continue prompt, then click the in-world dialogue surface. Never
+reintroduce or wait for the removed `[data-chapter1-dialogue-next]` button.
+
+### 4.22 Audit projectile visuals through one query-gated in-game batch panel
+
+Do not test a projectile catalog by trying to construct `CustomEvent` objects
+from the browser-control evaluator. That evaluator is intentionally read-only
+and does not expose DOM event constructors. It can make a correct renderer look
+untestable even though the production event path is healthy. It is also wrong
+to drive only the player hotbar: several NPC, boss, control, and energy
+projectiles are not selectable player actions.
+
+Use the localhost-only native-ECS audit surface instead:
+
+```text
+?harthmere_native_ecs_e2e=1&harthmere_projectile_visual_audit=1
+```
+
+The panel is mounted only on `localhost`, `127.0.0.1`, or `::1`, dispatches the
+real `biomes:harthmere-projectile-visual` event from a real React button, and
+divides the current manifest into groups of at most six. Run the complete
+catalog in those groups, not one browser invocation per projectile. Keep one
+authenticated page, one renderer, and one exact build for the whole campaign.
+
+Before pressing any batch button, require all of the following in the visible
+panel:
+
+- the expected manifest version and count;
+- `Loaded N/N`, not merely `loadedOrLoading: N`;
+- `Failed 0`;
+- `Fallbacks: none`.
+
+An HTTP 200 for a GLB, a promise retained in the prototype map, or a visible
+loading silhouette is not proof that the authored projectile rendered. The
+projectile runtime publishes resolved loaded ids, failed ids, and
+`usingFallback` on each active flight specifically so the browser gate can
+separate the authored Blender model from the emergency silhouette.
+
+For each group, click once, capture one screenshot while the group is being
+repeated briefly, then wait for `Active: none`. Require the spawned counter to
+increase by the group size (or a positive multiple of it when the repeat timer
+fires) and require the impact counter to catch up before advancing. Very short
+effects such as Consecrate can finish before a software-WebGL screenshot is
+returned; their loaded-model assertion plus the exact group spawn/impact delta
+is the authoritative proof. Do not slow production flight timing merely to
+make a test screenshot easier.
+
+Render the audit UI through a portal attached to `document.body`. A fixed panel
+inside the ordinary HUD tree can exist in the DOM while remaining visually
+behind the game canvas because of an ancestor stacking context. DOM visibility
+alone did not catch that defect. Preserve one ready-state screenshot that shows
+the panel over the canvas before spending time on the five catalog groups.
+
+Do not repeatedly attempt Pointer Lock or first-person toggles in the software
+browser. Headless Chromium can reject Pointer Lock and emit one warning per
+retry while leaving projectile behavior completely healthy. Use the panel's
+explicit world-space origins/targets and a naturally open camera composition.
+Treat pointer-lock warnings, the existing mixed-scene-material diagnostic, and
+unrelated legacy FBX n-gon warnings as separate environment/content noise;
+`renderer.projectile.asset_failed`, a nonzero failed count, or any active
+fallback remains fatal.
+
+The first fresh-player page can also expose the reused-snapshot bootstrap race
+as `AssertionError: Should never delete local player!`. Preserve the screenshot,
+use the product's **Clear Cache and Refresh** recovery once, re-enter through
+`/dev/harthmere-visual-auth`, and continue on the same ready stack. Do not
+restart Redis, rebuild, or keep clicking Enter Game against the stopped loop.
+
+Finally, require `.next/BUILD_ID`, `.next/server`, `.next/static`, the exact
+audit marker in the built `/at` chunk, two stable `e2e-jump.cjs ready` results,
+and zero container restarts before Chromium. A Next command that exits zero
+after PWA compilation but leaves only `.next/cache` is a failed build. Stop the
+duplicate heavy app stack, quarantine that cache, produce one complete build,
+and reuse it for every batch and any follow-up task. Never rebuild between
+projectile groups.
+
+### 4.23 Audit attack authority and attack presentation as separate lanes
+
+A health delta does not prove an attack graphic rendered, and a synthetic
+projectile flight does not prove Native ECS or Anima accepted the attack. The
+July 31 combat audit found both failure modes at once: production evidence
+showed NPC damage without a projectile request, while several authored thrown
+and magic weapons were being classified by name heuristics as melee.
+
+Run one batched source/integration lane before the browser:
+
+- classify every premium weapon from its authored `profile`, not a display-name
+  regex; thrown items must use ranged reach and magic books/focuses must use the
+  spell path;
+- require every damaging ranged or spell item to resolve a projectile visual;
+- test ranged player contact and zero-contact misses separately, because a miss
+  has no attacked entity but must still launch a visible projectile;
+- exercise Anima projectile hit, miss, 20-second cooldown, ground area, cone,
+  and self-area geometry, then serialize the cast through `npc_state`;
+- run the full-bootstrap native health handler tests so forged damage, range,
+  cooldown, mana, mitigation, and replay rejection are checked by the actual
+  server authority.
+
+The final browser lane must then do two things in the same exact build. First,
+run every visual-manifest batch through the query-gated projectile panel and
+require loaded authored models with zero fallbacks. Second, exercise at least
+one real melee exchange and one real Anima ranged cast, recording the visual
+spawn/impact counters and the authoritative health result. Do not infer the
+second lane from the first, and do not infer a rendered fireball from an NPC
+damage record alone.
+
+Treat the full-screen loading wrapper as a stable interaction boundary, not a
+single DOM sample. During the July 31 focused chase run, `.loading-wrapper`
+disappeared for one render while the visible `Enter Game` button mounted, then
+returned and intercepted the click for the entire Playwright timeout. Require
+at least one continuous second with no loading wrapper before clicking the
+pause overlay. Do not use a forced click: it can dismiss the overlay before the
+player/Sync bootstrap is ready and turn a harness race into misleading combat
+failures.
+
+Do not abort an authoritative combat wait because Chromium canceled the hashed
+`/_next/static/media/avatar-placeholder.*.png` request during a player-card
+rerender. Record that GET `net::ERR_ABORTED` as a browser transient in every
+focused lane, not only quest/catalog modes. Continue treating failed chunks,
+APIs, Sync requests, projectile assets, and non-aborted image failures as
+fatal.
+
+For Anima ranged presentation, publish the active cast through the sanitized
+client-visible fields on `npc_combat_state` and choose its `castTime` before any
+legacy retaliation or generic attack-emote timestamp. A real Hex can resolve
+damage without either legacy marker. Gating the presentation on a melee attack
+time produces server health damage with no Fireball on screen.
+
+Do not assume the NPC renderer's selector projection contains every combat
+component. `NpcMetadataSelector` deliberately admits legacy NPCs that do not
+have `npc_state`, but reading `/ecs/c/npc_state` directly is not sufficient:
+generated component ID 67 is serialized as `server`, and the Sync serializer
+omits server-only components for client targets. In the hardware live-Hex run,
+the exact disposable NPC, its label/position/health, and briefly
+`npc_combat_state.attack_target` were present in the browser while
+`/ecs/c/npc_state` remained absent through the authoritative cast and hit.
+The accepted fix projects only the active cast's ability ID, projectile ID,
+cast time, aim point, and optional result through `npc_combat_state`. Keep
+impact/cooldown selection, paths, threat, schedules, and the rest of
+`npc_state` private. Maintain both the renderer contract and the Sync
+serialization test proving the public projection crosses to a non-self client
+while `npc_state` remains omitted. A client resource lookup alone does not prove
+that.
+
+When an Anima simulation is refreshed from the synchronized entity, retain the
+public `npc_combat_state` in `SimulatedNpc.updateFromExternal()`. Dropping it
+makes every later finish compare against `undefined`, so the same unchanged
+cast is republished repeatedly even though `castTime` never changed. The
+focused regression must project one cast, feed the synchronized entity back
+through `updateFromExternal()`, and require the next `finish()` to return no
+update.
+
+The final browser proof must start from known counters, require one new spawn,
+observe `Active: <projectile id>`, wait for exactly one matching impact, and
+capture multiple frames during travel. The July 31 Fireball gate changed
+`Spawned 2 / Impacts 2` to `Spawned 3 / Impacts 3`, observed
+`Active: fireball`, and captured three frames about 180 ms apart. A disposable
+fixture pinned every 75 ms can race HFC and produce two near-identical pending
+casts. The final coordinated pass used a 2,000 ms pin interval and required the
+pending and resolved records to share one cast time, one browser spawn, one
+impact, and one accepted authority hit.
+
+Pass the isolated Sync origin explicitly on every exact-stack browser URL:
+`syncBaseUrl=http://127.0.0.1:<port>`. Before interpreting a zero projectile
+counter, prove that the browser has a synchronized local player and the
+disposable attacker. A probe with `/sync/createPlayer UNKNOWN`, a failed WebGL
+context, or an `UNKNOWN` subscription is an invalid fixture; it cannot prove a
+renderer regression or that an NPC was absent from a healthy production client.
+Record those failures separately and continue with the hardware-backed browser
+session instead of rebuilding the application.
+
+An atomic Next build can replace the `.next` directory while a Docker bind
+mount remains attached to the deleted old inode. If the host artifact guard is
+green but `/app/.next` is empty or stale, do not rebuild and do not repeatedly
+restart the same container. Recreate only the application container with the
+same environment, ports, and read-only mounts so it binds the completed host
+directory. Leave Redis and the completed artifact trees untouched.
+
+### 4.24 Test universal magic charging as three separate clocks
+
+Magic charging adds a clock before the existing projectile/shape clock. Keep
+the four timestamps explicit in every Native ECS/Anima fixture:
+
+- `castTime` starts the charge;
+- `releaseTime = castTime + chargeTimeSecs` releases the spell;
+- `impactTime = releaseTime + castTimeSecs` resolves projectile/shape contact;
+- `cooldownUntil = releaseTime + cooldownSecs` ends cooldown.
+
+Do not reuse `castTime` as the authoritative damage receipt timestamp after
+adding charge. The server must reject that pre-release receipt and accept
+`releaseTime` once. For ordinary Hex Fireball, require the shared 2–10 second
+charge bounds, the existing one-second flight, and the existing 20-second
+cooldown as independent assertions.
+
+The client-visible projection must include sanitized
+`ranged_attack_charge_time_secs` and `ranged_attack_release_time` fields on
+`npc_combat_state`; keep private pathing, schedules, impact lists, and the full
+`npc_state` server-only. A browser charge counter without a matching Anima cast
+is only a visual test, and an Anima damage record without a browser charge
+start/release is only an authority test.
+
+For browser checks, use the query-gated projectile panel's stable test IDs:
+
+- `harthmere-magic-charge-audit-min` for the exact two-second floor;
+- `harthmere-magic-charge-audit-max` for the exact ten-second ceiling;
+- `harthmere-magic-charge-audit-runtime` for active/started/released counts;
+- the existing projectile runtime fields for loaded/failed/spawn/impact and
+  fallback status.
+
+Capture monsters and bosses during the active interval, not only at release.
+Their production effect is body-scaled gathering light, rings, authored spell
+core, and orbiting voxel particles. If a disposable live cast is paused before
+activation, record its exact unpause timestamp and schedule the browser frame
+inside the known charge window; polling after release proves only the counters.
+
+Treat delayed fixture resolution honestly. If Anima writes `result: hit` more
+than the server receipt grace after the planned impact, server authority may
+correctly reject the stale damage. Preserve that run as timing/fixture evidence
+and use a timely run for the accepted health result; never relax freshness just
+to make an overloaded fixture green.
+
+Finally, coordinate `.next` ownership between tasks before a production build.
+Checking for a builder only at process start is not enough if another task can
+rename the directory later. The build owner must announce the lock, and other
+tasks must explicitly wait for release before moving, cleaning, rebuilding, or
+restarting. If `.next` was moved during compilation, reject the output even
+when Next exits zero: quarantine completed manifests/chunks, retain only the
+content-addressed cache if desired, and perform one exclusive replacement
+build. Never bless mixed output with the artifact assertion.
+
+### 4.25 Prove magic impacts with separate hit, miss, and framing gates
+
+Do not infer a successful explosion from the ordinary projectile impact
+counter. The renderer intentionally counts both misses and hits as resolved
+projectile endpoints. A magic-impact browser gate must start from known values
+and assert both counters:
+
+- a successful magic batch increments `impactCount` and
+  `magicExplosionCount`;
+- a miss batch increments `impactCount` while `magicExplosionCount` remains
+  unchanged;
+- `activeMagicExplosions` rises during the captured flash/core, shockwave, or
+  mist frame and returns to zero after the bounded lifetime;
+- loaded assets remain complete, failed assets stay zero, and no active flight
+  uses a fallback.
+
+Run spell schools in batches, but distinguish a counter proof from useful
+visual framing. A projectile endpoint can be valid and offscreen. Capture the
+batch once for catalogue/counter coverage, then use one deterministic close
+target or a pinned camera/player fixture for the beauty sequence. Do not keep
+rebuilding because a correct endpoint was poorly framed.
+
+For a real disposable Hex, stop the fixture shortly after the magic receipt
+and impact animation—about 2.2 seconds after impact is enough for the longest
+v1 mist tail. Leaving the NPC alive for 10–15 seconds can permit a later melee
+strike, player death, and unrelated death-page noise. Preserve an over-held run
+as evidence, but use a short clean run for final browser acceptance.
+
+Pointer Lock rejection in in-app Chromium is not an explosion failure. Record
+the overlay limitation and rely on the WebGL frame, active spell IDs, exact
+impact/explosion deltas, and matching authority receipt. If a close shot is
+required, choose a browser environment that can lock the pointer or use the
+dedicated camera fixture; do not force-click the overlay or hide it with page
+mutation.
+
+### 4.26 Audit boss magic as one 40-attack lifecycle matrix
+
+The eleven live bosses own 55 attacks, of which 40 are magical. Do not test
+only one spell per boss or assume the projectile asset family determines
+magic. Several valid boss spells reuse physical/energy-looking meshes: Helix
+Pulse uses the energy projector and the Choir/Alpha/Root-Crowned seed attacks
+use `multi_shot`. Classify charge and hit explosions from the authoritative
+attack `damageType`, then use the projectile family only for visual palette and
+motion tuning.
+
+Run one pure catalog test before opening a browser. It should assert the exact
+shape matrix—7 projectiles, 8 beams, 14 ground AOEs, 8 self-AOEs, and 3 cones—
+and prove every row has a bounded 2–10 second charge, a real projectile/shape
+asset, and a successful-hit magic-impact profile. Run the existing all-55
+Anima and server receipt tests in the same batch; do not create 40 isolated
+test invocations.
+
+Giant bosses need a presentation-origin assertion, not merely a larger scale.
+Thaedryn (`20 × 14 × 58` m), Ninth Winter (`14 × 13 × 8` m), and Alpha Mucker
+(`12 × 14 × 11` m) can hide center-origin VFX inside their meshes. Calculate a
+target-facing point on the horizontal elliptical footprint, add a bounded
+surface margin, and constrain it before a close target. Use volume-based charge
+and projectile scaling with caps; scaling only from the longest axis makes
+Thaedryn's 58 m length fill the screen.
+
+For the browser gate, render three production-runtime frames per magic attack:
+
+1. active charge beside the correctly scaled boss body;
+2. projectile moving toward the player, or the correct beam/cone/AOE shape;
+3. exactly one successful-hit explosion.
+
+Require nonzero changed-pixel scores, no asset failures, real loaded projectile
+assets rather than loading silhouettes, approach toward the player for true
+projectiles, and one magic-explosion counter increment. Keep the full
+11-boss/40-attack result JSON and all eleven sheets; validate them in one pass
+with `scripts/harthmere/validate-boss-magic-lifecycle-audit.cjs`.
+
+Do not weaken visibility thresholds when a giant endpoint is offscreen. Use a
+wide player-facing camera for charge/path, a target-focused camera for
+ground-AOE telegraphs and hit explosions, and a caster-focused camera for
+self-AOEs. A cone telegraph may extend to maximum dodge range, but the hit
+explosion belongs at the authoritative target, not the far edge of the cone.
+This separation fixed the false-zero captures for Ninth Winter and Alpha
+Mucker and exposed Vyrahel's genuine cone endpoint bug without another build.
+
+### 4.27 Run the focused Indisworm live matrix once, after the stack is ready
+
+Use `scripts/harthmere/test-harthmere-indisworm-live-browser.cjs` for the final
+massive-cavern creature gate. It authenticates a disposable player, creates one
+typed Indisworm in Far Hollow, captures all seven phases in one browser, checks
+the real poison-spit GLB, verifies server-authoritative damage, audits WebGL2,
+and deletes only its own NPC fixture.
+
+Do not launch it merely because ports 3047 and 4937 are listening. First require
+`e2e-jump.cjs ready` to report web, logic, Sync, trigger, shim, and Bikkie UP,
+and coordinate `.next` ownership with every task sharing the app. A restart or
+atomic `.next` replacement during navigation appears as dozens of aborted CSS
+and JavaScript chunks, broad HTTP 500s, and a missing client bridge. Classify
+that attempt as invalid infrastructure evidence; do not call it an Indisworm or
+Three regression, and do not create a fixture until the bridge exists.
+
+The focused verification stack deliberately reports `anima=0`. Keep authority
+and presentation explicit instead of pretending it is an autonomous chase
+server:
+
+- source/behavior tests prove Anima target selection, movement, melee, ranged
+  cooldown, hit/miss, and poison-spit state generation;
+- the browser gate writes the same synchronized `npc_state` and public
+  `npc_combat_state` shape Anima publishes;
+- authoritative ECS velocity/position must select the actual `Walk` and `Run`
+  clips and move the entity;
+- real logic `UpdateNpcHealthEvent` and `UpdatePlayerHealthEvent` handlers must
+  accept the in-range hit, poison receipt, and melee receipt before any phase is
+  called green.
+
+Run the static contracts first, then the browser once:
+
+```bash
+npx mocha --require ts-node/register/transpile-only \
+  --require tsconfig-paths/register \
+  src/shared/harthmere/test/indisworm_spawns.test.ts \
+  src/shared/harthmere/test/harthmere_native_combat.test.ts \
+  src/shared/harthmere/test/premium_projectile_wiring.test.ts
+
+npx mocha --require ts-node/register/transpile-only \
+  --require tsconfig-paths/register \
+  src/client/game/util/test/three_asset_contract.test.ts
+
+node scripts/harthmere/test-indisworm-assets.cjs
+
+HARTHMERE_E2E_CONTROL_TOKEN="$(docker exec \
+  biomes-expression-verified-app printenv HARTHMERE_E2E_CONTROL_TOKEN)" \
+HARTHMERE_E2E_BASE_URL=http://127.0.0.1:3047 \
+HARTHMERE_E2E_URL='http://127.0.0.1:3047/at?syncBaseUrl=http%3A%2F%2F127.0.0.1%3A4937&glitch_auto_play=1&harthmere_native_ecs_e2e=1&lowMemory=1&resourceCapacityScale=0.25&forceDrawDistance=16&forceRenderScale=0.25&forceGraphicsQuality=low' \
+HARTHMERE_E2E_REDIS_PORT=6392 \
+HARTHMERE_E2E_BUILD_ID="$(cat .next/BUILD_ID)" \
+HARTHMERE_E2E_USERNAME="Indisworm-Live-$(date +%s)" \
+HARTHMERE_E2E_TIMEOUT_MS=180000 \
+HARTHMERE_E2E_ANGLE=metal \
+node scripts/harthmere/test-harthmere-indisworm-live-browser.cjs
+```
+
+The runner intentionally upgrades visual capture to 32 m draw distance and
+resource scale 0.5 while keeping the exact frozen build and low graphics. At
+16 m/0.25 the GLB can load successfully while the 12–14 m NPC root is culled,
+which is not an animation failure.
+
+Preserve these fixture rules:
+
+- use the confirmed Far Hollow anchors near player `[972.126, 13, -673.99]`
+  and NPC `[984.126, 13, -673.99]`, a fresh username, and a fresh entity ID;
+- retain the production seed `displayName` while assigning a separate fixture
+  label; changing the seed name before profile resolution can produce type ID
+  zero instead of `monster_indisworm`;
+- initialize player health, position, and `player_status` before `page.goto`,
+  and clear stale `death_info`/icing. Healing after React mounts can briefly
+  open the death modal and stop the game loop on reused local identities;
+- wait for the typed NPC to reach local ECS before requesting its renderer
+  resource, and keep the missing-shard recovery guard while cave terrain loads;
+- stop reissuing teleports after authoritative, sim, and scene positions
+  converge. Cave collision can settle the frontend within roughly one block of
+  the exact ECS point; use a bounded visual tolerance, but keep the server
+  attacker at the exact range-valid position;
+- face velocity correctly. Westbound velocity with eastbound yaw selects
+  `runBackwards` and the `Walk` clip even though speed classification says run;
+  require an enabled action whose actual clip is `Run`;
+- for close hit/melee phases, avoid overlapping the two human-sized colliders.
+  Use a range-valid center distance and allow the bounded frontend collision
+  offset without weakening the authoritative server range check;
+- first projectile hydration may take over 20 seconds while all 31 prototypes
+  resolve. Preserve that real-flight screenshot, then create a fresh resolved
+  poison cast for the authority receipt; reusing the old visual cast correctly
+  fails the server freshness/replay window;
+- require `indisworm_poison_spit` in loaded IDs, `usingFallback: false`, no
+  failed projectile IDs, authoritative player HP loss, and the authored
+  `RangedAttack` clip;
+- require `Idle`, `Walk`, `Run`, `Attack`, `RangedAttack`, `HitReact`, and
+  `Death`, plus a visible corpse pose with locomotion stopped and attacks
+  cancelled;
+- require WebGL2, `glError: 0`, no shader/ANGLE/invalid-program signatures, no
+  relevant asset request failures, seven screenshots, a passing JSON report,
+  and a final read proving the fresh NPC ID no longer exists.
+
+Do not use the canonical fishing player, quay, or river shard neighborhood for
+this gate. Do not restart the app, Redis, or proxy from the creature runner.
+The report under `artifacts/harthmere-indisworm-live-browser/<run>/report.json`
+is the handoff artifact; failed attempts should remain available as evidence of
+the specific readiness or fixture edge case they caught.
+
 ---
 
 ## 5. Suggested loop
@@ -2269,3 +3086,89 @@ cost a full stack boot plus a manual walk to discover.
 | `tsconfig.ch1renderer.json`                            | Client-graph typecheck (slow, incremental)           |
 | `NATIVE_ECS_BROWSER_E2E_RUNBOOK.md`                    | The release gate (unchanged)                         |
 | `CHAPTER_1_E2E_RUNBOOK.md`                             | Chapter 1 browser checklist                          |
+
+### Deleted snapshot NPCs and native quest markers
+
+Deleting a legacy snapshot NPC from ECS is only half of the identity migration.
+Native quest trigger data can still carry that historical entity id in a
+navigation aid. Canonicalize `entity` quest-marker targets before handing them
+to `MapManager`; otherwise the quest itself can pass while the browser logs
+`No entity found for navigation aid` and silently loses the objective marker.
+The focused regression is:
+
+```bash
+scripts/harthmere/t.sh file src/shared/harthmere/test/snapshot_grove_quest_navigation_contract.test.ts
+```
+
+### Chapter 1 item grants and regular dialogue
+
+A green native trigger is not proof that its paired plot-item grant remains in
+usable inventory. Compare the durable Chapter 1 inventory mirror with native
+items/hotbar on the state route, move matching overflow stacks back first, and
+repair only the remaining deficit with an exactly-once transaction. Chapter 1
+objective and repair grants must fail on a full usable inventory instead of
+silently entering overflow, because later objectives cannot consume overflow.
+
+Regular Chapter 1 speech remains on `TalkDialogModal` and
+`GenericTalkDialogModalStep`. Render it through a portal so the stock talking
+state can hide the normal HUD, and disable only the NPC tracking camera for
+multi-speaker story pages; otherwise a remote speaker can pull the camera tens
+of metres away. A missing requirement must keep the highest-priority Chapter 1
+interaction registered and actionable. Let the authenticated completion route
+return the precise missing-item reason; disabling the winning candidate makes F
+look broken, while removing it lets F fall through to a campfire or station.
+
+Do not treat the durable Chapter 1 inventory mirror as sufficient evidence for
+plot-item repair. An older save can have a fired native predecessor leaf (for
+example, Wake Up) while the durable objective-effect ledger and mirror never
+recorded its tea grant. Derive the minimum currently blocking plot item from the
+native fired path, compare it with usable inventory plus overflow, and repair
+only the deficit. The focused progress test must cover every Chapter 1 blocking
+plot requirement and prove an earlier authored grant exists.
+
+At every linear story boundary, test two authorities together: native ECS must
+activate the successor, and the Biomes UI must persist that successor as the
+main quest. Merely resolving the successor during render leaves localStorage,
+the journal star, HUD and `MapManager.trackingQuestId` on the completed quest.
+The boundary table test should iterate every adjacent Chapter 1 quest pair, and
+the browser gate should assert the journal, HUD and marker all change after the
+same completion.
+
+Every Chapter 1 conversation must end with a short, player-facing handoff that
+names both the next task and where to go. Generate this from the authoritative
+quest catalog/route state rather than hand-copying dozens of lines; ordered
+witness/advisor conversations must name their next live person instead of
+skipping to the following catalog step. Dialogue and choice surfaces require an
+opaque high-contrast panel and pixel/vw-clamped type. A blurred world plus tiny
+white text is not a readable modal even when DOM visibility passes.
+
+Named NPCs sharing an interior need distinct interaction zones. Keep Jackie and
+Coretta at least six metres apart, pin route targets to those same posts, and
+test that the canonical Snapshot NPC body—not a second Three.js/story body—is
+the one being staged. A visual duplicate or two overlapping F prompts is a
+failed Chapter 1 gate.
+
+The repository-wide `t.sh full` process can saturate a development machine
+after thousands of tests and make unrelated Redis/business tests hit their
+5-second defaults. Do not treat a timeout-only cluster as a product regression
+or start editing those systems. Collect the failed files and rerun them once in
+one fresh full-bootstrap Mocha process with a larger timeout. On July 31, the
+full run reached 5,552 passing with 30 timeout-only failures; the single fresh
+rerun of those files passed 468/468 in one minute. Record both results.
+
+### Cutscene capture needs terrain availability, not automatic reconciliation
+
+When a Chapter 1 runtime-injection capture reports `hasShardSeed:false` for
+every focused camera/cast coordinate, stop the batch. That result means the
+selected warm runtime is not serving the required terrain shards to the
+capture client; it does not mean sixteen unrelated scene cameras are wrong.
+Preserve the report, verify the web/sync pairing and terrain-bearing snapshot,
+then rerun only the affected scene ids.
+
+Do not run production reconciliation merely because a cutscene capture cannot
+see terrain. If terrain source, shard ids, water, buildings, and overlays did
+not change, reconciliation is unnecessary and can consume substantial time and
+memory while interrupting the application. Reuse an exact recent image whose
+Redis snapshot already contains the terrain, or start a small isolated
+terrain-bearing runtime. Reconciliation belongs only to an actual terrain or
+world-content migration.

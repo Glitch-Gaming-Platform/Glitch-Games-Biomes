@@ -9,6 +9,7 @@ const {
   elevenLabsDeliveryTextForTest,
   elevenLabsKnownVoiceGenderForTest,
   elevenLabsNaturalVoiceSettingsForTest,
+  pinnedElevenLabsVoiceIdForActor,
 } = require("../../src/server/shared/elevenlabs");
 const {
   HARTHMERE_NPC_VOICE_CATALOG,
@@ -37,6 +38,13 @@ function displayNameFromActorKey(actorKey) {
   );
 }
 
+function normalizedLogicalActorName(displayName) {
+  return String(displayName || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ");
+}
+
 function robotIdentityText(recording, displayName) {
   // actorId may say "native-robot-story" for human quest speakers. Audit the
   // actor's own identity and static path components instead of that quest tag.
@@ -63,6 +71,7 @@ function main() {
     ])
   );
   const actors = new Map();
+  const voiceIdsByLogicalActor = new Map();
   for (const recording of manifest.recordings || []) {
     const actorKey = recording.actorKey || recording.actorId;
     const parsed = parseHarthmereAzureVoiceId(recording.voice);
@@ -90,6 +99,19 @@ function main() {
     actor.recordings += 1;
     if (recording.voiceId) {
       actor.voiceIds.add(recording.voiceId);
+      const logicalActorName = normalizedLogicalActorName(displayName);
+      const logicalVoiceIds =
+        voiceIdsByLogicalActor.get(logicalActorName) ?? new Set();
+      logicalVoiceIds.add(recording.voiceId);
+      voiceIdsByLogicalActor.set(logicalActorName, logicalVoiceIds);
+    }
+
+    const pinnedVoiceId = pinnedElevenLabsVoiceIdForActor(recording.voice);
+    if (pinnedVoiceId && recording.voiceId !== pinnedVoiceId) {
+      fail(
+        `${displayName} uses ${recording.voiceId || "no ElevenLabs voice"} ` +
+          `instead of pinned voice ${pinnedVoiceId}`
+      );
     }
 
     const expectedGender =
@@ -125,6 +147,23 @@ function main() {
     if (robotNamed && parsed.actorKind !== "robot") {
       fail(
         `${displayName} looks like a robot identity but uses ${parsed.actorKind}`
+      );
+    }
+  }
+
+  for (const actor of actors.values()) {
+    if (actor.voiceIds.size > 1) {
+      fail(
+        `Actor ${actor.actorKey} changes ElevenLabs voice across recordings: ` +
+          [...actor.voiceIds].join(", ")
+      );
+    }
+  }
+  for (const [logicalActorName, voiceIds] of voiceIdsByLogicalActor) {
+    if (voiceIds.size > 1) {
+      fail(
+        `Logical NPC ${logicalActorName} changes ElevenLabs voice across aliases: ` +
+          [...voiceIds].join(", ")
       );
     }
   }
@@ -169,6 +208,7 @@ function main() {
       (recording) =>
         elevenLabsKnownVoiceGenderForTest(recording.voiceId) !== undefined
     ).length,
+    logicalNpcIdentities: voiceIdsByLogicalActor.size,
   };
   console.log(`PASS NPC voice casting audit: ${JSON.stringify(summary)}`);
 }

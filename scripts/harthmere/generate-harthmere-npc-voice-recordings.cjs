@@ -37,6 +37,7 @@ const {
 } = require("../../src/server/shared/azure_speech");
 const {
   elevenLabsConfigFromEnv,
+  pinnedElevenLabsVoiceIdForActor,
   elevenLabsSpokenTextForTest,
   elevenLabsSynthesisCacheIdentity,
   synthesizeElevenLabsSpeech,
@@ -62,6 +63,9 @@ const limit = valueArg("limit") ? Number(valueArg("limit")) : Infinity;
 const actorFilter = valueArg("actor");
 const nativeRobotStoryOnly = args.has("--native-robot-story-only");
 const chapter1ObjectiveOnly = args.has("--chapter1-objective-only");
+const additiveTownOnly = args.has("--additive-town-only");
+const voiceConsistencyOnly = args.has("--voice-consistency-only");
+const replaceSelected = args.has("--replace-selected") || voiceConsistencyOnly;
 const concurrency = valueArg("concurrency")
   ? Number(valueArg("concurrency"))
   : 4;
@@ -69,6 +73,7 @@ const requestedProvider = (valueArg("provider") || "elevenlabs").toLowerCase();
 const provider = ["openai", "azure", "azure-speech"].includes(requestedProvider)
   ? "openai"
   : requestedProvider;
+let currentPlannedRecordingPaths = new Set();
 
 function usage() {
   console.log(`Usage:
@@ -89,6 +94,12 @@ Options:
                      Generate only Road Ahead through Muck vs. Machine.
   --chapter1-objective-only
                      Generate only voiced Chapter 1 objective dialogue.
+  --additive-town-only
+                     Generate only the 68 additive-town NPC intro/lore clips.
+  --voice-consistency-only
+                     Replace only clips whose logical NPC alias uses the wrong
+                     pinned ElevenLabs voice, preserving every other recording.
+  --replace-selected Replace selected paths even when their cache key matches.
   --force            Replace recordings for the current synthesis policy.
 `);
 }
@@ -100,6 +111,20 @@ if (args.has("--help") || args.has("-h")) {
 if (!["elevenlabs", "openai"].includes(provider)) {
   console.error(`Unsupported provider: ${requestedProvider}`);
   usage();
+  process.exit(1);
+}
+if (
+  voiceConsistencyOnly &&
+  (provider !== "elevenlabs" ||
+    force ||
+    nativeRobotStoryOnly ||
+    chapter1ObjectiveOnly ||
+    additiveTownOnly)
+) {
+  console.error(
+    "--voice-consistency-only requires the complete ElevenLabs catalog and " +
+      "cannot be combined with --force or source-only filters."
+  );
   process.exit(1);
 }
 if (!Number.isInteger(concurrency) || concurrency < 1 || concurrency > 12) {
@@ -326,19 +351,49 @@ async function plannedRecordings() {
       }
     }
   }
-  if (!nativeRobotStoryOnly) {
+  if (!nativeRobotStoryOnly && !additiveTownOnly) {
     rows.push(...chapter1ObjectiveRecordings());
   }
-  if (!chapter1ObjectiveOnly) {
+  if (!chapter1ObjectiveOnly && !additiveTownOnly) {
     rows.push(...(await nativeRobotStoryRecordings()));
   }
-  const filtered = rows.filter(({ entry }) => {
+  currentPlannedRecordingPaths = new Set(
+    rows.map(({ line }) => line.recordingPath)
+  );
+  let existingVoiceIdByPath = new Map();
+  if (voiceConsistencyOnly) {
+    try {
+      const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+      existingVoiceIdByPath = new Map(
+        (manifest.recordings || []).map((recording) => [
+          recording.path,
+          recording.voiceId,
+        ])
+      );
+    } catch {
+      // A missing or invalid manifest means every pinned recording needs a
+      // fresh pass; the normal writer will create a valid manifest below.
+    }
+  }
+  const filtered = rows.filter(({ entry, line }) => {
+    if (additiveTownOnly && !entry.id.startsWith("additive-town-")) {
+      return false;
+    }
     if (
       actorFilter &&
       entry.id !== actorFilter &&
       entry.profile.actorKey !== actorFilter
     ) {
       return false;
+    }
+    if (voiceConsistencyOnly) {
+      const pinnedVoiceId = pinnedElevenLabsVoiceIdForActor(
+        entry.profile.voiceParameterId
+      );
+      if (!pinnedVoiceId) {
+        return false;
+      }
+      return existingVoiceIdByPath.get(line.recordingPath) !== pinnedVoiceId;
     }
     return true;
   });
@@ -460,6 +515,18 @@ async function main() {
       )
       .map((recording) => [recording.path, recording])
   );
+  let pruned = 0;
+  if (voiceConsistencyOnly) {
+    for (const [recordingPath] of recordsByPath) {
+      if (currentPlannedRecordingPaths.has(recordingPath)) {
+        continue;
+      }
+      recordsByPath.delete(recordingPath);
+      fs.rmSync(path.join(publicRoot, recordingPath), { force: true });
+      pruned += 1;
+      console.log(`PRUNED stale recording ${recordingPath}`);
+    }
+  }
   const reusablePathByCacheKey = new Map();
   for (const recording of recordsByPath.values()) {
     for (const cacheKey of [
@@ -532,6 +599,7 @@ async function main() {
     const existingRecord = recordsByPath.get(row.line.recordingPath);
     if (
       !force &&
+      !replaceSelected &&
       existingRecord &&
       cacheKeys.includes(existingRecord.cacheKey) &&
       fs.existsSync(outPath)
@@ -551,7 +619,7 @@ async function main() {
 
     try {
       let generation = generationByCacheKey.get(cacheKey);
-      const reusablePath = !force
+      const reusablePath = !force && !replaceSelected
         ? reusablePathByCacheKey.get(cacheKey)
         : undefined;
       if (!generation) {
@@ -635,7 +703,8 @@ async function main() {
 
   writeManifest();
   console.log(
-    `Done. written=${written} reused=${reused} skipped=${skipped} failed=${failed}`
+    `Done. written=${written} reused=${reused} skipped=${skipped} ` +
+      `pruned=${pruned} failed=${failed}`
   );
   if (failed > 0) {
     process.exitCode = 1;

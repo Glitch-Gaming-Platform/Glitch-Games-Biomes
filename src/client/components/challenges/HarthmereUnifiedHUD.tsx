@@ -70,6 +70,10 @@ import { readHarthmereNativeVitals } from "@/shared/harthmere/harthmere_native_v
 import type { BiomesId } from "@/shared/ids";
 import { NpcMetadataSelector } from "@/shared/ecs/gen/selectors";
 import { harthmereNativeNpcCombatProfileForTypeId } from "@/shared/harthmere/harthmere_native_combat_catalog";
+import {
+  HARTHMERE_MAGIC_CHARGE_EVENT,
+  type HarthmereMagicChargeEventDetail,
+} from "@/shared/harthmere/magic_charge";
 import { HarthmereLevelingMenuPanel } from "@/client/components/challenges/LocalDevHarthmereLevelingSystem";
 import { HarthmereMissionJournalPanel } from "@/client/components/challenges/LocalDevHarthmereMissionSystem";
 import {
@@ -700,9 +704,68 @@ function useHarthmereLocalPlayerAttackGestureBridge() {
       }
     };
 
+    const magicChargeHandler = (event: Event) => {
+      const detail = (event as CustomEvent<HarthmereMagicChargeEventDetail>)
+        .detail;
+      if (!detail || detail.casterKind !== "player") {
+        return;
+      }
+      try {
+        const localPlayer = reactResources.get("/scene/local_player");
+        const clock = resources.get("/clock");
+        if (detail.phase === "start") {
+          const duration = Math.max(0.1, Number(detail.chargeTimeSecs ?? 0));
+          localPlayer.attackInfo = { start: clock.time, duration };
+          localPlayer.player.eagerEmote(events, resources, "magicChannel");
+          recordHarthmereBodyAnimationSyncDebug({
+            attack: "magic",
+            phase: "charge",
+            emoteType: "magicChannel",
+            desiredFileAnimationName: "HarthmereBodyMagicChannel_Aligned_30",
+            duration,
+            abilityId: detail.abilityId,
+            projectileVisualId: detail.projectileVisualId,
+            chargeId: detail.chargeId,
+            source: detail.source,
+          });
+        } else if (detail.phase === "release") {
+          localPlayer.attackInfo = { start: clock.time, duration: 0.9 };
+          localPlayer.player.eagerEmote(events, resources, "magicCast");
+          recordHarthmereBodyAnimationSyncDebug({
+            attack: "magic",
+            phase: "release",
+            emoteType: "magicCast",
+            desiredFileAnimationName: "HarthmereBodyMagicCast_Aligned_30",
+            duration: 0.9,
+            abilityId: detail.abilityId,
+            projectileVisualId: detail.projectileVisualId,
+            chargeId: detail.chargeId,
+            source: detail.source,
+          });
+        } else {
+          localPlayer.player.eagerCancelEmote(events);
+          recordHarthmereBodyAnimationSyncDebug({
+            attack: "magic",
+            phase: "cancel",
+            chargeId: detail.chargeId,
+            abilityId: detail.abilityId,
+            source: detail.source,
+          });
+        }
+      } catch (error) {
+        console.warn("Failed to play Harthmere magic charge gesture", error);
+      }
+    };
+
     window.addEventListener(HARTHMERE_ATTACK_ANIMATION_EVENT, handler);
-    return () =>
+    window.addEventListener(HARTHMERE_MAGIC_CHARGE_EVENT, magicChargeHandler);
+    return () => {
       window.removeEventListener(HARTHMERE_ATTACK_ANIMATION_EVENT, handler);
+      window.removeEventListener(
+        HARTHMERE_MAGIC_CHARGE_EVENT,
+        magicChargeHandler
+      );
+    };
   }, [reactResources, resources, events, audioManager]);
 }
 

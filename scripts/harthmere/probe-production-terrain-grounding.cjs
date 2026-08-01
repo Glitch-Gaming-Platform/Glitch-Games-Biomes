@@ -216,12 +216,19 @@ async function productionProbeItems() {
   return [
     ...townNpcs,
     ...HARTHMERE_LIVE_ENTITY_ROBOT_SENTINEL_SEEDS.map((seed) =>
-      extensionItem(
-        "additive_robot_sentinels",
-        seed.seedId,
-        seed.entityId,
-        seed.position
-      )
+      isHarthmereExtensionWorldPosition(seed.position)
+        ? extensionItem(
+            "additive_robot_sentinels",
+            seed.seedId,
+            seed.entityId,
+            seed.position
+          )
+        : originalOutdoorItem(
+            "original_robot_sentinels",
+            seed.seedId,
+            seed.entityId,
+            seed.position
+          )
     ),
     ...harthmereGroundedMuckMonsterSeedsInTerritory().map((seed) =>
       originalOutdoorItem(
@@ -710,11 +717,7 @@ async function main() {
   // now contains authored buildings, interiors, roads, river banks, and wilds
   // terrain. Fail only when terrain cannot be resolved or the real floor could
   // not be persisted by the repair pass.
-  if (
-    noTerrainData.length ||
-    noSurface.length ||
-    uncorrectedOffGround.length
-  ) {
+  if (noTerrainData.length || noSurface.length || uncorrectedOffGround.length) {
     console.error(
       "FAIL: deterministic Harthmere/Grove actors or objects are floating, buried, outside loaded terrain, or not persisted at the resolved floor."
     );

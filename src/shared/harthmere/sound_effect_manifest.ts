@@ -5,7 +5,7 @@ import {
 } from "@/shared/harthmere/creature_sound_profiles";
 
 export const HARTHMERE_SOUND_EFFECT_MANIFEST_VERSION =
-  "harthmere-sound-effects-elevenlabs-v4-proximity-ambience" as const;
+  "harthmere-sound-effects-elevenlabs-v6-indisworm" as const;
 
 export const HARTHMERE_SOUND_EFFECT_EVENT =
   "biomes:harthmere-sound-effect" as const;
@@ -16,6 +16,7 @@ export const HARTHMERE_CAMPFIRE_AMBIENCE_SOUND_ID =
   "campfire_ambience" as const;
 export const HARTHMERE_CH1_PORTAL_AMBIENCE_SOUND_ID =
   "ch1_portal_ambience" as const;
+export const HARTHMERE_GIANT_BOSS_STOMP_SOUND_ID = "giant_boss_stomp" as const;
 
 export const HARTHMERE_CAMPFIRE_AMBIENCE_RADIUS_METERS = 22;
 export const HARTHMERE_CH1_PORTAL_AMBIENCE_RADIUS_METERS = 28;
@@ -2055,6 +2056,16 @@ const GENERATED_ROWS: readonly GeneratedRow[] = [
     1.8,
     "Major fantasy boss defeat, huge body collapse, armor and debris impact, dark power dissipating into silence, no speech, no music.",
   ],
+  [
+    HARTHMERE_GIANT_BOSS_STOMP_SOUND_ID,
+    "Giant Boss Stomp",
+    "movement",
+    "A massive grounded boss foot or root column plants with enough weight to shake loose earth and debris.",
+    ["client_presentation", "anima"],
+    "A grounded giant boss advances far enough to complete its next authored stride.",
+    1.0,
+    "Colossal fantasy monster footstep, one enormous root-and-stone foot plants into damp earth, deep controlled sub-bass thud, bark and rock debris, short ground shock, game-ready, no roar, no voice, no music.",
+  ],
 
   [
     "jump",
@@ -2136,6 +2147,11 @@ const PROJECTILE_ROWS = [
     "Entangling Roots",
     "Nature seed projectile and erupting roots.",
   ],
+  [
+    "indisworm_poison_spit",
+    "Indisworm Poison Spit",
+    "Pressurized corrosive venom launched by a cavern Indisworm.",
+  ],
   ["mocking_verse", "Mocking Verse", "Bardic sonic projectile."],
   [
     "curse_of_weakness",
@@ -2195,6 +2211,8 @@ function projectilePrompt(
     life_drain:
       "dark red-purple siphoning energy and reversed breath-like flow",
     entangling_roots: "thorny seed magic, dirt rupture and twisting roots",
+    indisworm_poison_spit:
+      "pressurized wet venom, acidic bubbles, sticky membrane flutter and a sharp toxic hiss",
     mocking_verse: "magical musical-note energy and oscillating sonic waves",
     curse_of_weakness:
       "broken violet curse rune, shadow flutter and decaying energy",
@@ -2231,7 +2249,8 @@ const PROJECTILE_SOUNDS: readonly HarthmereSoundEffectDefinition[] =
         id.includes("carbine") ||
         id.includes("projector") ||
         id.includes("cannon") ||
-        id.includes("lance")
+        id.includes("lance") ||
+        id === "indisworm_poison_spit"
           ? "ranged"
           : "magic",
       description: `${description} Launch and cast-release layer.`,
@@ -2247,7 +2266,7 @@ const PROJECTILE_SOUNDS: readonly HarthmereSoundEffectDefinition[] =
     generated({
       id: `${id}_impact`,
       label: `${label} Impact`,
-      category: "magic",
+      category: id === "indisworm_poison_spit" ? "ranged" : "magic",
       description: `${description} Target or ground impact layer.`,
       authority:
         id === "hex_bolt" || id === "thaedryn_resonance"
@@ -2385,6 +2404,7 @@ export const HARTHMERE_PROJECTILE_SOUND_MAP: Readonly<
   multi_shot: { launch: "bow_release_multi", impact: "arrow_impact_flesh" },
   bandit_archer_shot: { launch: "bow_release", impact: "arrow_impact_flesh" },
   ranged_shot: { launch: "crossbow_release", impact: "bolt_impact" },
+  smoke_bomb_throw: { launch: "dart_throw", impact: "dart_impact" },
   hunters_mark: { launch: "hunters_mark", impact: "hunters_mark" },
   hunter_mark: { launch: "hunters_mark", impact: "hunters_mark" },
   ...Object.fromEntries(

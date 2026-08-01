@@ -3,23 +3,64 @@ import { HARTHMERE_PROJECTILE_VISUALS } from "@/shared/harthmere/projectile_visu
 export const HARTHMERE_PROJECTILE_VISUAL_AUDIT_BATCHES = [
   {
     label: "Physical shots",
-    ids: HARTHMERE_PROJECTILE_VISUALS.slice(0, 6).map(({ id }) => id),
+    ids: [
+      "hunter_bow_shot",
+      "quick_shot",
+      "aimed_shot",
+      "multi_shot",
+      "bandit_archer_shot",
+      "ranged_shot",
+    ],
   },
   {
-    label: "Arcane and energy",
-    ids: HARTHMERE_PROJECTILE_VISUALS.slice(6, 12).map(({ id }) => id),
+    label: "Thrown, arcane, and light energy",
+    ids: [
+      "smoke_bomb_throw",
+      "spark",
+      "photon_sidearm_pulse",
+      "pulse_carbine_burst",
+      "helix_projector_beam",
+      "nova_cannon_bolt",
+    ],
   },
   {
-    label: "Fire, lightning, and holy",
-    ids: HARTHMERE_PROJECTILE_VISUALS.slice(12, 18).map(({ id }) => id),
+    label: "Gravity, fire, lightning, and holy",
+    ids: [
+      "singularity_lance_beam",
+      "fireball",
+      "meteor",
+      "lightning_bolt",
+      "holy_light",
+      "smite",
+    ],
   },
   {
-    label: "Judgment, dark, and nature",
-    ids: HARTHMERE_PROJECTILE_VISUALS.slice(18, 24).map(({ id }) => id),
+    label: "Holy, dark, nature, creature, and sonic",
+    ids: [
+      "judgment",
+      "consecrate",
+      "life_drain",
+      "entangling_roots",
+      "indisworm_poison_spit",
+      "mocking_verse",
+    ],
   },
   {
-    label: "Control, hex, and boss",
-    ids: HARTHMERE_PROJECTILE_VISUALS.slice(24).map(({ id }) => id),
+    label: "Dark, marks, control, and hex",
+    ids: [
+      "curse_of_weakness",
+      "hunters_mark",
+      "polymorph",
+      "fear",
+      "charm",
+      "hex_bolt",
+    ],
+  },
+  {
+    label: "Boss projectiles",
+    ids: [
+      "thaedryn_resonance",
+    ],
   },
 ] as const;
 

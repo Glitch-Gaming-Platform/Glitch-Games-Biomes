@@ -114,7 +114,10 @@ const HideWhenChromelessModalShowing: React.FunctionComponent<
   PropsWithChildren<{}>
 > = React.memo(({ children }) => {
   const { reactResources } = useClientContext();
-  const gameModal = reactResources.use("/game_modal");
+  const [gameModal, localPlayer] = reactResources.useAll(
+    ["/game_modal"],
+    ["/scene/local_player"]
+  );
   const allowedKinds: GameModal["kind"][] = [
     "death",
     "talk_to_npc",
@@ -122,7 +125,9 @@ const HideWhenChromelessModalShowing: React.FunctionComponent<
     "staleSession",
     "talk_to_robot",
   ];
-  const hide = allowedKinds.includes(gameModal.kind);
+  const hide =
+    allowedKinds.includes(gameModal.kind) ||
+    localPlayer.talkingToNpc !== undefined;
   return <div className={hide ? "hidden" : ""}>{children}</div>;
 });
 
@@ -141,9 +146,10 @@ const ObserverModeOnly: React.FunctionComponent<PropsWithChildren<{}>> =
 const HideWhenModalShowing: React.FunctionComponent<PropsWithChildren<{}>> =
   React.memo(({ children }) => {
     const { reactResources } = useClientContext();
-    const [gameModal, activeTab] = reactResources.useAll(
+    const [gameModal, activeTab, localPlayer] = reactResources.useAll(
       ["/game_modal"],
-      ["/game_modal/active_tab"]
+      ["/game_modal/active_tab"],
+      ["/scene/local_player"]
     );
 
     let hide = false;
@@ -154,6 +160,7 @@ const HideWhenModalShowing: React.FunctionComponent<PropsWithChildren<{}>> =
       hide = gameModal.kind !== "empty";
     }
 
+    hide ||= localPlayer.talkingToNpc !== undefined;
     return <div className={hide ? "hidden" : ""}>{children}</div>;
   });
 

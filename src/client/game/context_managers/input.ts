@@ -185,6 +185,10 @@ export class Bindings<ActionsAndMotions extends string> {
 export class Input<ActionsAndMotions extends string> {
   private bindings: Bindings<ActionsAndMotions>;
   private actions: Map<string, boolean>;
+  // One-shot actions must survive a complete down/up transition between two
+  // script ticks. This matters on slow frames and for short touch pulses:
+  // polling only `action()` can otherwise miss dodge/evade entirely.
+  private pending_action_presses: Set<string>;
   private synthetic_actions: Map<string, Set<string>>;
   private motions: Map<
     string,
@@ -207,6 +211,7 @@ export class Input<ActionsAndMotions extends string> {
   constructor(bindings: Bindings<ActionsAndMotions>) {
     this.bindings = bindings;
     this.actions = new Map();
+    this.pending_action_presses = new Set();
     this.synthetic_actions = new Map();
     this.motions = new Map();
     this.active_triggers = new Set();
@@ -228,6 +233,7 @@ export class Input<ActionsAndMotions extends string> {
   private updateInputMaps() {
     // Initialize actions map.
     this.actions.clear();
+    this.pending_action_presses.clear();
     for (const binding of this.bindings.actions.values()) {
       binding.forEach((action) => this.actions.set(action.name, false));
     }
@@ -248,7 +254,11 @@ export class Input<ActionsAndMotions extends string> {
   private setAction(trigger: string, mods: number, active: boolean) {
     for (const binding of this.bindings.actions.get(trigger) || []) {
       if (binding.mods == (binding.mods & mods)) {
+        const wasActive = this.actionActive(binding.name);
         this.actions.set(binding.name, active);
+        if (!wasActive && this.actionActive(binding.name)) {
+          this.pending_action_presses.add(binding.name);
+        }
         if (active) {
           this.emitter.emit(binding.name);
         }
@@ -288,11 +298,24 @@ export class Input<ActionsAndMotions extends string> {
     this.updateInputMaps();
   }
 
-  action(name: ActionsAndMotions) {
+  private actionActive(name: string) {
     return (
       this.actions.get(name) === true ||
       (this.synthetic_actions.get(name)?.size ?? 0) > 0
     );
+  }
+
+  action(name: ActionsAndMotions) {
+    return this.actionActive(name);
+  }
+
+  /**
+   * Consume a fresh down edge even when the matching up edge occurred before
+   * the next script tick. Multiple reads cannot replay the same press.
+   */
+  consumeActionPress(name: ActionsAndMotions) {
+    const pending = this.pending_action_presses.delete(name);
+    return pending;
   }
 
   /**
@@ -317,6 +340,7 @@ export class Input<ActionsAndMotions extends string> {
       this.synthetic_actions.set(name, sources);
     }
     if (!wasActive && this.action(name)) {
+      this.pending_action_presses.add(name);
       this.emitter.emit(name);
     }
   }
@@ -403,6 +427,7 @@ export class Input<ActionsAndMotions extends string> {
   private resetState() {
     this.active_mods = Modifiers.None;
     this.active_triggers.clear();
+    this.pending_action_presses.clear();
     this.synthetic_actions.clear();
     this.synthetic_motions.clear();
     for (const action of this.actions.keys()) {

@@ -6,7 +6,7 @@ import { loadPlaceableTypeMesh } from "@/client/game/resources/placeables/helper
 import type { Disposable } from "@/shared/disposable";
 import { anItem } from "@/shared/game/item";
 import { useEffect, useState } from "react";
-import type { GLTF } from "three/examples/jsm/loaders/GLTFLoader";
+import type { GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
 
 export function BiscuitModelPreview() {
   const { selected } = useBikkieEditorContext();

@@ -4,6 +4,7 @@ import {
   ch1VoiceActorForSpeaker,
 } from "@/shared/harthmere/ch1_voice";
 import { HARTHMERE_NPC_VOICE_CATALOG } from "@/shared/harthmere/npc_voice_catalog";
+import { CH1_SERGEANT_HOLT } from "@/shared/harthmere/ch1_returning_npcs";
 import assert from "assert";
 
 describe("Chapter 1 NPC voices", () => {
@@ -91,6 +92,16 @@ describe("Chapter 1 NPC voices", () => {
     assert.strictEqual(
       jackie.profile.voiceParameterId,
       existingJackie.profile.voiceParameterId
+    );
+  });
+
+  it("binds Sergeant Holt's dialogue and expressions to his one native ECS body", () => {
+    const holt = ch1VoiceActorForSpeaker("Sergeant Bram Holt");
+    assert.ok(holt);
+    assert.equal(holt.entityId, Number(CH1_SERGEANT_HOLT.entityId));
+    assert.equal(
+      ch1VoiceActorForSpeaker("Sergeant Bramwell Holt")?.entityId,
+      Number(CH1_SERGEANT_HOLT.entityId)
     );
   });
 

@@ -1,6 +1,6 @@
 import * as THREE from "three";
-import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
-import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader";
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader.js";
 import { MEDIEVAL_FINAL_ASSETS, MedievalAssetDefinition, resolveMedievalAssetUrl } from "./medievalFinalAssets";
 
 const gltfLoader = new GLTFLoader();

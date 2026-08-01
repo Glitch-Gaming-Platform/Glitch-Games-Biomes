@@ -28,6 +28,9 @@ export const HARTHMERE_GATHERING_NODE_WORLD_INTERACTION_VERSION =
 const GATHER_FEEDBACK_VISIBLE_MS = 4500;
 
 function requirementLabel(prompt: HarthmereGatheringNodePrompt): string {
+  if (prompt.profession === "fishing") {
+    return `Equip any fishing rod · fishing ${prompt.requiredSkill}`;
+  }
   const tool = prompt.requiredTool
     ? prompt.requiredTool.replaceAll("_", " ")
     : "no tool";

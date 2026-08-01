@@ -151,7 +151,10 @@ export const harthmereInventoryTransactionEventHandler = makeEventHandler(
       // Rolling back keeps the wallet honest and surfaces `inventory_full` to
       // the store UI. Unpaid grants (loot, quest rewards) still overflow so a
       // reward is never destroyed by a full backpack.
-      if (event.gold_delta < 0n) {
+      const mustRemainInUsableInventory =
+        event.transaction_id.startsWith("chapter1:objective:") ||
+        event.transaction_id.startsWith("chapter1:inventory-reconcile:");
+      if (event.gold_delta < 0n || mustRemainInUsableInventory) {
         player.inventory.giveOrThrow(event.give);
       } else {
         player.inventory.giveWithInventoryOverflow(event.give);

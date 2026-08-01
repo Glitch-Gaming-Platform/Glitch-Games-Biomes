@@ -1,6 +1,7 @@
 import assert from "assert";
 import { BikkieIds } from "@/shared/bikkie/ids";
 import {
+  HARTHMERE_BOSS_MINIMUM_TELEGRAPH_SECS,
   harthmereBossAttackForAbility,
   harthmereBossAttacksForLabel,
   validateHarthmereBossAttackCatalog,
@@ -9,6 +10,7 @@ import { getHarthmereBossAttackShapeVisual } from "@/shared/harthmere/boss_attac
 import { harthmereBossVisualForLabel } from "@/shared/harthmere/boss_visual_assets";
 import { harthmereNativeNpcCombatProfileForEntity } from "@/shared/harthmere/harthmere_native_combat_catalog";
 import { getHarthmereProjectileVisual } from "@/shared/harthmere/projectile_visual_manifest";
+import type { BiomesId } from "@/shared/ids";
 import fs from "fs";
 import path from "path";
 
@@ -21,6 +23,8 @@ const BOSSES = [
   "The Echo-Singer",
   "Vyrahel, the Vein-Keeper",
   "Thaedryn the Bellbound",
+  "Hex Wraith",
+  "Alpha Mucker",
   "The Root-Crowned Dead",
 ] as const;
 
@@ -66,6 +70,11 @@ describe("Harthmere boss attack catalog", () => {
           harthmereBossAttackForAbility(boss, attack.abilityId),
           attack
         );
+        assert.ok(
+          attack.castTimeSecs >=
+            HARTHMERE_BOSS_MINIMUM_TELEGRAPH_SECS[attack.attackShape],
+          `${boss} ${attack.displayName} needs a readable dodge window`
+        );
       }
     }
     assert.equal(allAbilityIds.size, BOSSES.length * 5);
@@ -75,7 +84,7 @@ describe("Harthmere boss attack catalog", () => {
     });
   });
 
-  it("gives all 45 attacks an exported body clip and shape-correct graphic", () => {
+  it("gives all 55 attacks an exported body clip and shape-correct graphic", () => {
     let attackCount = 0;
     let bespokeBodyClipCount = 0;
     for (const boss of BOSSES) {
@@ -116,8 +125,8 @@ describe("Harthmere boss attack catalog", () => {
         }
       }
     }
-    assert.equal(attackCount, 45);
-    assert.equal(bespokeBodyClipCount, 39);
+    assert.equal(attackCount, 55);
+    assert.equal(bespokeBodyClipCount, 46);
   });
 
   it("projects label-only legacy boss entities into authoritative native profiles", () => {
@@ -136,6 +145,32 @@ describe("Harthmere boss attack catalog", () => {
         harthmereBossAttacksForLabel(boss)?.map(({ abilityId }) => abilityId),
         boss
       );
+    }
+  });
+
+  it("uses stable entity ids when production boss labels are generic", () => {
+    const fixedIdBosses = [
+      {
+        entityId: 8_810_000_000_019_509 as BiomesId,
+        displayName: "Old Wood Mucker 1",
+        key: "boss_alpha_mucker",
+      },
+      {
+        entityId: 8_810_000_000_019_543 as BiomesId,
+        displayName: "Gravewood Pale Hexer 7",
+        key: "boss_hex_wraith",
+      },
+    ] as const;
+    for (const expected of fixedIdBosses) {
+      const profile = harthmereNativeNpcCombatProfileForEntity({
+        entityId: expected.entityId,
+        typeId: BikkieIds.dMucker,
+        displayName: expected.displayName,
+      });
+      assert.ok(profile, expected.displayName);
+      assert.equal(profile.key, expected.key);
+      assert.equal(profile.isBoss, true);
+      assert.equal(profile.rangedAttacks?.length, 5);
     }
   });
 

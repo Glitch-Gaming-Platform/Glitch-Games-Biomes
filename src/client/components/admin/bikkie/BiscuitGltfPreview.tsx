@@ -3,7 +3,7 @@ import { DialogButton } from "@/client/components/system/DialogButton";
 import type { Disposable } from "@/shared/disposable";
 import { useRef, useState } from "react";
 import * as THREE from "three";
-import type { GLTF } from "three/examples/jsm/loaders/GLTFLoader";
+import type { GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
 
 interface BiscuitGltfPreviewProps {
   gltf: Disposable<GLTF>;

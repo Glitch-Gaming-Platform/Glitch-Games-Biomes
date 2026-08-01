@@ -19,6 +19,8 @@ import {
   harthmereGroundedLivestockSeedsInTerritory,
   harthmereGroundedMuckMonsterSeedsInTerritory,
 } from "@/shared/harthmere/live_entity_production_seed";
+import { HARTHMERE_PREMIUM_WEAPONS } from "@/shared/harthmere/premium_weapon_catalog";
+import { getHarthmereProjectileVisual } from "@/shared/harthmere/projectile_visual_manifest";
 
 describe("Harthmere native ECS combat rules", () => {
   before(() => ensureHarthmereNativeItemCatalogue());
@@ -50,6 +52,34 @@ describe("Harthmere native ECS combat rules", () => {
     assert.equal(muckwad?.damagePerHit, 0);
     assert.equal(spellScroll?.kind, "spell");
     assert.equal(spellScroll?.damagePerHit, 0);
+  });
+
+  it("classifies every premium weapon from its authored profile and gives every damaging ranged or magic attack a visual", () => {
+    for (const weapon of HARTHMERE_PREMIUM_WEAPONS) {
+      const nativeId = harthmereNativeBiomesIdForItemId(weapon.id);
+      assert.ok(nativeId, weapon.id);
+      const profile = harthmereNativeItemCombatProfile(anItem(nativeId));
+      assert.ok(profile, weapon.id);
+
+      const expectedKind =
+        weapon.profile === "ranged" || weapon.profile === "thrown"
+          ? "ranged"
+          : weapon.profile === "magic" || weapon.profile === "magicBook"
+          ? "spell"
+          : weapon.profile === "shield"
+          ? "melee"
+          : weapon.twoHanded
+          ? "heavy"
+          : "melee";
+      assert.equal(profile.kind, expectedKind, weapon.id);
+
+      if (
+        profile.damagePerHit > 0 &&
+        (profile.kind === "ranged" || profile.kind === "spell")
+      ) {
+        assert.ok(getHarthmereProjectileVisual(weapon.id), weapon.id);
+      }
+    }
   });
 
   it("stores combat level, cooldown, boss credit, and XP in TriggerState", () => {
@@ -252,5 +282,35 @@ describe("Harthmere native ECS combat rules", () => {
       harthmereNativeNpcBiscuit(mucker).galoisPath,
       "npcs/tree_mucker"
     );
+  });
+
+  it("gives the Indisworm human-scale melee and biological poison-spit combat", () => {
+    const profile = harthmereNativeNpcCombatProfileForSeed({
+      seedId: "test-indisworm",
+      displayName: "Indisworm 1",
+      kind: "ambient_muck_monster",
+      combatKind: "mux",
+      combatLevel: 3,
+      combatHp: 92,
+      attackDamage: 34,
+      killXp: 55,
+    });
+    const biscuit = harthmereNativeNpcBiscuit(profile);
+    const poisonSpit = profile.rangedAttacks?.find(
+      (attack) => attack.abilityId === "indisworm_poison_spit"
+    );
+
+    assert.equal(profile.key, "monster_indisworm");
+    assert.equal(profile.galoisPath, "npcs/indisworm");
+    assert.equal(profile.attackDamage, 34);
+    assert.equal(profile.attackDistance, 2.35);
+    assert.equal(profile.attackStrikeMomentSecs, 0.72);
+    assert.deepEqual(biscuit.boxSize, [1.05, 1.9, 1.05]);
+    assert.ok(poisonSpit);
+    assert.equal(poisonSpit.projectileVisualId, "indisworm_poison_spit");
+    assert.equal(poisonSpit.damageType, "nature");
+    assert.equal(poisonSpit.magic, false);
+    assert.equal(poisonSpit.animationClip, "RangedAttack");
+    assert.ok(poisonSpit.minimumDistance > profile.attackDistance);
   });
 });

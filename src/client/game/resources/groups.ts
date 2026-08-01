@@ -70,8 +70,8 @@ import { ok } from "assert";
 import { isEqual } from "lodash";
 import type { MeshBasicMaterialParameters } from "three";
 import * as THREE from "three";
-import { GLTFExporter } from "three/examples/jsm/exporters/GLTFExporter";
-import * as SkeletonUtils from "three/examples/jsm/utils/SkeletonUtils";
+import { GLTFExporter } from "three/examples/jsm/exporters/GLTFExporter.js";
+import * as SkeletonUtils from "three/examples/jsm/utils/SkeletonUtils.js";
 
 export type GroupMesh = {
   three: THREE.Object3D;

@@ -11,11 +11,13 @@ import {
 import { HARTHMERE_BUSINESS_OWNER_NPC_SEEDS } from "@/shared/harthmere/business_owner_npc_seed";
 import { CH1_NPC_ENTITY_IDS, type Ch1NpcKey } from "@/shared/harthmere/ch1_ids";
 import { HARTHMERE_NAMED_NPCS } from "@/shared/harthmere/npc_compendium";
+import { CH1_SERGEANT_HOLT } from "@/shared/harthmere/ch1_returning_npcs";
 import {
   SNAPSHOT_GROVE_NPCS,
   snapshotGroveNpcEntityId,
 } from "@/shared/harthmere/snapshot_grove_content";
 import { SNAPSHOT_LIVE_NPC_LORE } from "@/shared/harthmere/snapshot_live_npc_bible";
+import { CH1_TESTIMONY_NPC_BY_NAME } from "@/shared/harthmere/ch1_testimony_npcs";
 import {
   harthmereVoiceProfileForActor,
   type HarthmereNpcVoiceProfile,
@@ -30,6 +32,7 @@ export interface Ch1VoiceActorDefinition {
   id: string;
   source: "chapter_1_identity";
   entityId?: number;
+  kind: "human" | "robot";
   displayName: string;
   role?: string;
   background?: string;
@@ -143,6 +146,7 @@ function chapterActor(input: {
     id: input.id,
     source: "chapter_1_identity" as const,
     entityId: input.entityId,
+    kind: input.profileInput.kind === "robot" ? "robot" : "human",
     displayName: input.displayName,
     role: input.role,
     background: input.background,
@@ -228,6 +232,7 @@ const TESTIMONY_VOICE_ACTORS = SNAPSHOT_LIVE_NPC_LORE.filter((npc) =>
 ).map((npc) =>
   chapterActor({
     id: `testimony_${npc.id}`,
+    entityId: Number(CH1_TESTIMONY_NPC_BY_NAME.get(npc.displayName)!.entityId),
     displayName: npc.displayName,
     role: npc.role,
     background: npc.background,
@@ -280,11 +285,12 @@ const RETURNING_NAMED_VOICE_ACTORS = HARTHMERE_NAMED_NPCS.filter((npc) =>
 ).map((npc) =>
   chapterActor({
     id: `returning_${npc.id}`,
+    entityId: Number(CH1_SERGEANT_HOLT.entityId),
     displayName: npc.name,
     role: npc.role,
     background: npc.bibleBackstory,
     voiceStyle: npc.voiceStyle,
-    aliases: ["Sergeant Bram Holt"],
+    aliases: [CH1_SERGEANT_HOLT.displayName],
     profileInput: {
       source: "harthmere_named",
       id: npc.id,

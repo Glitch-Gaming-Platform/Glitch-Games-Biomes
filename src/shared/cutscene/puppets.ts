@@ -43,11 +43,24 @@ export interface CutscenePuppetOverride {
     asset: string;
     family: string;
     label: string;
+    /** Canonical human id used to retain the intended skin, hair, and clothing. */
+    appearanceSourceEntityId?: number;
   };
 }
 
 export const SNAPSHOT_CUTSCENE_PLAYER_MESH_ASSET =
   "snapshot/player_mesh" as const;
+
+/**
+ * Legacy `townsperson_*` labels describe wardrobe archetypes, not a permitted
+ * cutscene renderer. Canonicalize them before they can reach any client path
+ * so a stale caller cannot resurrect the procedural Three.js NPC body.
+ */
+export function canonicalCutsceneGhostAsset(asset: string): string {
+  return asset.startsWith("townsperson_")
+    ? SNAPSHOT_CUTSCENE_PLAYER_MESH_ASSET
+    : asset;
+}
 
 export function isGhostPuppetId(id: number): boolean {
   return id < 0;
@@ -102,17 +115,16 @@ export function mergeCutscenePuppetOverrides(
       // Never invent an asset here.
       continue;
     }
+    const canonicalAsset = canonicalCutsceneGhostAsset(override.ghost.asset);
     const usesSnapshotPlayerMesh =
-      override.ghost.asset.startsWith("townsperson_");
+      canonicalAsset === SNAPSHOT_CUTSCENE_PLAYER_MESH_ASSET;
     merged.push({
       id: override.id,
       at: [...override.at],
       yaw: override.yaw,
       family: override.ghost
         .family as HarthmereLiveCreatureBridgeRecord["family"],
-      asset: usesSnapshotPlayerMesh
-        ? SNAPSHOT_CUTSCENE_PLAYER_MESH_ASSET
-        : override.ghost.asset,
+      asset: canonicalAsset,
       scale: 1,
       label: override.ghost.label,
       animation: override.animation,
@@ -121,6 +133,7 @@ export function mergeCutscenePuppetOverrides(
       motionTime: override.motionTime,
       cinematic: true,
       nativeSnapshotAvatar: usesSnapshotPlayerMesh,
+      appearanceSourceEntityId: override.ghost.appearanceSourceEntityId,
     });
   }
   return merged;

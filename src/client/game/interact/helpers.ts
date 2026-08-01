@@ -159,11 +159,11 @@ const HARTHMERE_NATIVE_TERRAIN_BLOCK_DESTROYED_EVENT =
 const HARTHMERE_NATIVE_TERRAIN_BLOCK_PLACED_EVENT =
   "biomes:harthmere-native-terrain-block-placed";
 
-function emitHarthmereNativeNpcAttackContact({
+export function emitHarthmereNativeNpcAttackContact({
   attackedEntities,
   tool,
 }: Pick<AttackInteraction, "attackedEntities" | "tool">) {
-  if (typeof window === "undefined" || attackedEntities.length === 0) {
+  if (typeof window === "undefined") {
     return;
   }
 
@@ -229,10 +229,6 @@ function emitHarthmereNativeNpcAttackContact({
       } => Boolean(hit)
     );
 
-  if (hits.length === 0) {
-    return;
-  }
-
   const toolRecord = (tool ?? {}) as Record<string, unknown>;
   const rawToolId =
     typeof toolRecord.id === "string" || typeof toolRecord.id === "number"
@@ -244,39 +240,55 @@ function emitHarthmereNativeNpcAttackContact({
       : harthmereNativeItemIdForBiomesId(Number(rawToolId)) ??
         String(rawToolId);
   const projectileVisual = getHarthmereProjectileVisual(semanticToolId);
-  const detail = {
-    version: HARTHMERE_NATIVE_NPC_ATTACK_DAMAGE_BRIDGE,
-    source: "client.game.interact.helpers.handleAttackInteraction",
-    attack: "basic",
-    at: Date.now(),
-    toolId: rawToolId,
-    itemId: semanticToolId,
-    projectileVisualId: projectileVisual?.id,
-    hits,
-  };
+  const at = Date.now();
+  const detail =
+    hits.length > 0
+      ? {
+          version: HARTHMERE_NATIVE_NPC_ATTACK_DAMAGE_BRIDGE,
+          source: "client.game.interact.helpers.handleAttackInteraction",
+          attack: "basic",
+          at,
+          toolId: rawToolId,
+          itemId: semanticToolId,
+          projectileVisualId: projectileVisual?.id,
+          hits,
+        }
+      : undefined;
 
-  window.dispatchEvent(
-    new CustomEvent(HARTHMERE_NATIVE_NPC_ATTACK_CONTACT_EVENT, {
-      detail,
-    })
-  );
-  if (projectileVisual && hits[0]?.position) {
+  if (detail) {
+    window.dispatchEvent(
+      new CustomEvent(HARTHMERE_NATIVE_NPC_ATTACK_CONTACT_EVENT, {
+        detail,
+      })
+    );
+  }
+  if (projectileVisual) {
     window.dispatchEvent(
       new CustomEvent(HARTHMERE_PROJECTILE_VISUAL_EVENT, {
         detail: {
-          source: "native_ecs_attack_contact",
+          source:
+            hits.length > 0
+              ? "native_ecs_attack_contact"
+              : "native_ecs_attack_miss",
           projectileVisualId: projectileVisual.id,
           itemId: semanticToolId,
           attack: "basic",
-          nativeTargetEntityId: hits[0].id,
-          targetPoint: [
-            hits[0].position[0],
-            hits[0].position[1] + 0.9,
-            hits[0].position[2],
-          ],
+          result: hits.length > 0 ? "hit" : "miss",
+          nativeTargetEntityId: hits[0]?.id,
+          targetPoint: hits[0]?.position
+            ? [
+                hits[0].position[0],
+                hits[0].position[1] + 0.9,
+                hits[0].position[2],
+              ]
+            : undefined,
         },
       })
     );
+  }
+
+  if (!detail) {
+    return;
   }
 
   const win = window as typeof window & {
@@ -284,7 +296,7 @@ function emitHarthmereNativeNpcAttackContact({
     __harthmereNativeNpcAttackContactLastAt?: number;
     __harthmereNativeNpcAttackContactLastHits?: typeof hits;
   };
-  win.__harthmereNativeNpcAttackContactLastAt = detail.at;
+  win.__harthmereNativeNpcAttackContactLastAt = at;
   win.__harthmereNativeNpcAttackContactLastHits = hits;
   win.__harthmereNativeNpcAttackContactDebug = [
     detail,

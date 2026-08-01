@@ -1,6 +1,5 @@
 import type { Renderer } from "@/client/game/renderers/renderer_controller";
 import type { Scenes } from "@/client/game/renderers/scenes";
-import { addToScenes } from "@/client/game/renderers/scenes";
 import {
   harthmereBusinessOutpostRuntimeOffsetForTest,
 } from "@/client/game/renderers/local_dev/harthmere_business_outpost_buildings";
@@ -205,10 +204,16 @@ export class HarthmereBusinessBoardMarkerRenderer implements Renderer {
       const marker = createHarthmereBusinessBoardMarkerMesh(location);
       this.root.add(marker);
     }
+    this.publishDebugBridge();
   }
 
   draw(scenes: Scenes, _dt: number): void {
-    addToScenes(scenes, this.root);
+    // Procedural board materials are all stock Three.js materials. Direct
+    // routing avoids two full hierarchy traversals in addToScenes().
+    scenes.three.add(this.root);
+  }
+
+  private publishDebugBridge(): void {
     if (typeof window !== "undefined") {
       (window as any).__harthmereBusinessBoardMarkerDebug = {
         version: HARTHMERE_BUSINESS_BOARD_PROCEDURAL_MARKER_VERSION,

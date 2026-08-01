@@ -82,7 +82,7 @@ export const CH1_NEW_CAST: readonly Ch1CastMember[] = Object.freeze([
     displayName: "Jackie",
     role: "Grove wayfinder and road-house keeper",
     faction: "take_terra",
-    placement: CH1_ANCHORS.roadhouse_table,
+    placement: CH1_ANCHORS.roadhouse_jackie_post,
     introducedAct: 1,
     voice:
       "Practical warmth, clipped when frightened, never theatrical. She does the next useful thing before explaining herself.",
@@ -259,8 +259,9 @@ export const CH1_NEW_CAST: readonly Ch1CastMember[] = Object.freeze([
     sampleLine:
       "She didn't write you in for nine days. I write everything in the same day. That's the whole point of me.",
     writerNote:
-      "Gives 'The Night You Came' and holds the ledger Act 5 checks the dates against. She was a quest giver and a named testimony source with NO ENTITY ANYWHERE — the quest auto-started by accident and her twelve accounts were collected from an empty patch of plaza.",
+      "Gives 'The Night You Came' and holds the ledger Act 5 checks the dates against. Promotes the reviewed snapshot player-like Coretta; never seed the temporary duplicate body.",
     combatant: false,
+    promotesExistingEntity: true,
   },
   {
     key: "calla_ashe",

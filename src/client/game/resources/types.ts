@@ -176,8 +176,9 @@ import type {
   GroupIndex,
   ShapeIndex,
 } from "@/shared/wasm/types/galois";
+import type * as THREE from "three";
 import type { Object3D, Texture } from "three";
-import type { GLTF } from "three/examples/jsm/loaders/GLTFLoader";
+import type { GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
 
 export type WrappedResourcePrimitive<T> = {
   value: T;

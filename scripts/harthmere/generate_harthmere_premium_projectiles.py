@@ -52,6 +52,7 @@ PROJECTILES: Tuple[ProjectileSpec, ...] = (
     ProjectileSpec("consecrate", "Consecrate", "holy", "consecrate", 1.22),
     ProjectileSpec("life_drain", "Life Drain", "dark", "life_drain", 1.05),
     ProjectileSpec("entangling_roots", "Entangling Roots", "nature", "roots", 1.08),
+    ProjectileSpec("indisworm_poison_spit", "Indisworm Poison Spit", "nature", "poison_spit", 0.92),
     ProjectileSpec("mocking_verse", "Mocking Verse", "sonic", "verse", 1.0),
     ProjectileSpec("curse_of_weakness", "Curse of Weakness", "dark", "curse", 1.0),
     ProjectileSpec("hunters_mark", "Hunter's Mark", "mark", "mark", 0.92),
@@ -465,6 +466,21 @@ def build_roots(spec, collection, root):
     torus(collection, root, "NatureRune", (0, 0, 0.12), 0.32, 0.02, MATERIALS["green_bright"], rotation=(0.3, 0.2, 0), segments=12)
 
 
+def build_poison_spit(spec, collection, root):
+    ico(collection, root, "PoisonCore", (0, 0, 0.12), (0.24, 0.22, 0.34), MATERIALS["green_bright"], 2)
+    for index in range(9):
+        angle = math.tau * index / 9
+        radius = 0.2 + (index % 3) * 0.035
+        ico(collection, root, f"VenomLobe_{index}", (math.cos(angle) * radius, math.sin(angle) * radius, 0.08 + (index % 2) * 0.12), (0.13, 0.12, 0.17), MATERIALS["green"] if index % 2 else MATERIALS["teal"], 1)
+    for index, (x, y, z, scale) in enumerate(((0.14, 0.02, -0.28, 0.13), (-0.12, 0.1, -0.38, 0.11), (0.04, -0.14, -0.48, 0.09), (-0.05, -0.04, -0.58, 0.065))):
+        ico(collection, root, f"VenomDroplet_{index}", (x, y, z), (scale, scale, scale * 1.35), MATERIALS["green_bright"] if index < 2 else MATERIALS["green"], 1)
+    for index, rotation in enumerate(((0.25, 0.1, 0), (0.75, -0.2, 0.35))):
+        torus(collection, root, f"VenomMembrane_{index}", (0, 0, 0.08 - index * 0.08), 0.34 + index * 0.06, 0.018, MATERIALS["green_bright"] if index == 0 else MATERIALS["teal"], rotation=rotation, segments=14)
+    for index in range(5):
+        angle = math.tau * index / 5 + 0.3
+        ico(collection, root, f"ToxicBubble_{index}", (math.cos(angle) * 0.38, math.sin(angle) * 0.38, -0.08 + index * 0.07), (0.045, 0.045, 0.055), MATERIALS["white"] if index == 0 else MATERIALS["green_bright"], 1)
+
+
 def build_verse(spec, collection, root):
     torus(collection, root, "NoteHead", (0.1, 0, -0.12), 0.2, 0.065, MATERIALS["pink"], rotation=(math.pi / 2, 0, 0), segments=12)
     cylinder(collection, root, "NoteStem", (0.22, 0, 0.24), 0.04, 0.68, MATERIALS["gold"], 8)
@@ -620,6 +636,7 @@ BUILDERS: Dict[str, Callable] = {
     "consecrate": build_consecrate,
     "life_drain": build_life_drain,
     "roots": build_roots,
+    "poison_spit": build_poison_spit,
     "verse": build_verse,
     "curse": build_curse,
     "mark": build_mark,
@@ -871,8 +888,19 @@ def main():
         "count": len(generated),
         "projectiles": generated,
     }
-    (output / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
-    bpy.ops.wm.save_as_mainfile(filepath=str(blend_path))
+    manifest_path = output / "manifest.json"
+    if args.only and manifest_path.exists():
+        existing = json.loads(manifest_path.read_text())
+        merged = {entry["id"]: entry for entry in existing.get("projectiles", [])}
+        merged.update({entry["id"]: entry for entry in generated})
+        ordered_ids = [entry.id for entry in PROJECTILES]
+        manifest["projectiles"] = [merged[entry_id] for entry_id in ordered_ids if entry_id in merged]
+        manifest["count"] = len(manifest["projectiles"])
+    manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
+    # A focused --only generation must not replace the complete Blender master
+    # with a one-projectile scene. Full catalog generation still refreshes it.
+    if not args.only:
+        bpy.ops.wm.save_as_mainfile(filepath=str(blend_path))
     print(json.dumps(manifest, indent=2))
     return 0
 

@@ -70,6 +70,34 @@ describe("MapQuestsTab main quest controls", () => {
     assert.ok(html.includes("biomes-map-quest-center-muck_breach_boss"));
     assert.ok(html.includes("Main Quest"));
     assert.ok(html.includes("West Muck Breach"));
+    assert.ok(html.includes('data-testid="biomes-map-active-quest"'));
+    assert.ok(html.includes("Active quest"));
+  });
+
+  it("uses the tracked active quest for the black map summary panel", () => {
+    const quest: MapTrackableQuest = {
+      questId: "gimme_shelter",
+      title: "Gimme Shelter",
+      area: "Biomes",
+      status: "active",
+      objective: "Build a Workbench using its blueprint.",
+      objectives: [
+        "Talk to Sophia.",
+        "Build a Workbench using its blueprint.",
+        "Craft 64 Lumber at your Workbench.",
+      ],
+    };
+    const html = renderToStaticMarkup(
+      <MapQuestsTab
+        adapter={{ getTrackableQuests: () => [quest] }}
+        contextualQuestPanel={<div>Wrong contextual quest</div>}
+      />
+    );
+
+    assert.ok(html.includes('aria-label="Active quest: Gimme Shelter"'));
+    assert.ok(html.includes("Build a Workbench using its blueprint."));
+    assert.ok(html.includes("1/3 objectives complete"));
+    assert.equal(html.includes("Wrong contextual quest"), false);
   });
 
   it("shows time limits for timed quests without adding one to untimed quests", () => {

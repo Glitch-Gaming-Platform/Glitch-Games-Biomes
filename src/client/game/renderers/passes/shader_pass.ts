@@ -9,17 +9,23 @@ import {
   applyClearState,
 } from "@/client/game/renderers/passes/pass";
 import * as THREE from "three";
-import { FullScreenQuad } from "three/examples/jsm/postprocessing/Pass";
-import type { WebGLRenderer } from "three/src/renderers/WebGLRenderer";
+import { FullScreenQuad } from "three/examples/jsm/postprocessing/Pass.js";
+
+type ShaderDefinition = {
+  uniforms: Record<string, THREE.IUniform>;
+  vertexShader: string;
+  fragmentShader: string;
+  defines?: Record<string, unknown>;
+};
 
 export class ShaderPass extends PostprocessingPass {
-  uniforms: THREE.Shader["uniforms"];
+  uniforms: Record<string, THREE.IUniform>;
   material: THREE.ShaderMaterial;
   fsQuad: FullScreenQuad;
   colorInputNameOverride: string | undefined;
   shaderInputChannels: RenderPassChannel[];
   shaderOutputChannels: RenderPassChannel[];
-  rawShader: THREE.ShaderMaterial | (THREE.Shader & { defines?: any });
+  rawShader: THREE.ShaderMaterial | ShaderDefinition;
   shaderParameters: THREE.ShaderMaterialParameters;
   primaryInputChannel?: RenderPassChannel;
   sharedTarget?: SharedTargetName;
@@ -28,7 +34,7 @@ export class ShaderPass extends PostprocessingPass {
 
   constructor(
     name: RenderPassName,
-    shader: THREE.ShaderMaterial | (THREE.Shader & { defines?: any }),
+    shader: THREE.ShaderMaterial | ShaderDefinition,
     options?: {
       inputs?: RenderPassChannel[];
       outputs?: RenderPassChannel[];
@@ -192,7 +198,7 @@ export class ShaderPass extends PostprocessingPass {
       }
     }
     applyClearState(this.composer!, this.clearState);
-    this.fsQuad.render(this.composer!.renderer as WebGLRenderer);
+    this.fsQuad.render(this.composer!.renderer);
     return inputs;
   }
 }

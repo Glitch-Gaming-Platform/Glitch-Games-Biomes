@@ -110,6 +110,80 @@ const FALLBACK_ELEVENLABS_VOICES: ElevenLabsVoice[] = [
   },
 ];
 
+// Some authored NPCs enter the voice pipeline through more than one content
+// source (for example, Jackie's Grove identity and her legacy Road Ahead quest
+// entity). Keep those aliases on the already-reviewed ElevenLabs speaker used
+// by the live, entity-backed version of the character. Without this pin, the
+// actor-key hash can cast the same person as two different voices.
+const PINNED_ELEVENLABS_VOICE_BY_ACTOR_NAME = new Map<string, string>([
+  ["jackie", "AZnzlk1XvdvUeBnXmlld"],
+  ["mara thistle", "21m00Tcm4TlvDq8ikWAM"],
+  ["master osric vale", "VR6AewLTigWG4xSOukaG"],
+  ["reeve caldus merrow", "pNInz6obpgDQGcFmaJgB"],
+  ["nessa crowe", "AZnzlk1XvdvUeBnXmlld"],
+  ["mudden child lio", "ErXwobaYiN019PkySvjV"],
+  ["banker merl voss", "JBFqnCBsd6RMkjVDRZzb"],
+  ["bandit false beggar", "MF3mGyEYCl7XYWbV9V6O"],
+  ["former guard captain", "yoZ06aMxZJJ28mfd3POQ"],
+  ["bandit hedge archer", "VR6AewLTigWG4xSOukaG"],
+  ["bandit knife thief", "EXAVITQu4vr4xnSDxMaL"],
+  ["outlaw brute", "TxGEqnHWrfWFTfGW9XjX"],
+  ["bandit quartermaster", "TxGEqnHWrfWFTfGW9XjX"],
+  ["bandit road scout", "ErXwobaYiN019PkySvjV"],
+  ["smuggler-bandit liaison", "TxGEqnHWrfWFTfGW9XjX"],
+  ["bandit snare setter", "ErXwobaYiN019PkySvjV"],
+  ["bandit wagon raider", "AZnzlk1XvdvUeBnXmlld"],
+  ["muckmeadow cow 7", "pNInz6obpgDQGcFmaJgB"],
+  ["muckmeadow cow 8", "pNInz6obpgDQGcFmaJgB"],
+  ["muckmeadow rabbit 12", "ErXwobaYiN019PkySvjV"],
+  ["muckmeadow sheep 9", "VR6AewLTigWG4xSOukaG"],
+  ["muckmeadow sheep 10", "pNInz6obpgDQGcFmaJgB"],
+  ["watchtower clearing mucker 15", "EXAVITQu4vr4xnSDxMaL"],
+  ["watchtower clearing mucker 16", "ErXwobaYiN019PkySvjV"],
+  ["watchtower clearing mucker 17", "MF3mGyEYCl7XYWbV9V6O"],
+  ["watchtower clearing hexer 18", "EXAVITQu4vr4xnSDxMaL"],
+  ["muckmeadow cow guarded herd 6", "VR6AewLTigWG4xSOukaG"],
+  ["muckmeadow rabbit guarded herd 9", "TxGEqnHWrfWFTfGW9XjX"],
+  ["muckmeadow rabbit guarded herd 10", "MF3mGyEYCl7XYWbV9V6O"],
+  ["muckmeadow sheep guarded herd 7", "pNInz6obpgDQGcFmaJgB"],
+  ["muckmeadow sheep guarded herd 8", "pNInz6obpgDQGcFmaJgB"],
+  ["rosalyn", "MF3mGyEYCl7XYWbV9V6O"],
+]);
+
+function normalizedActorNameFromVoiceProfileId(voiceProfileId: string) {
+  const actorKey = parseHarthmereAzureVoiceId(voiceProfileId)?.actorKey;
+  const actorSource = actorKey?.split(":", 1)[0];
+  if (
+    !actorSource ||
+    ![
+      "snapshot_grove",
+      "snapshot_live_lore",
+      "runtime_entity",
+      "harthmere_named",
+      "harthmere_remaining",
+      "live_entity_seed",
+    ].includes(actorSource)
+  ) {
+    return undefined;
+  }
+  return actorKey
+    ?.split(":")
+    .at(-1)
+    ?.trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ");
+}
+
+/** Returns a reviewed fixed cast for identities authored through aliases. */
+export function pinnedElevenLabsVoiceIdForActor(
+  voiceProfileId: string
+): string | undefined {
+  const actorName = normalizedActorNameFromVoiceProfileId(voiceProfileId);
+  return actorName
+    ? PINNED_ELEVENLABS_VOICE_BY_ACTOR_NAME.get(actorName)
+    : undefined;
+}
+
 function parseVoiceIds(...values: (string | undefined)[]) {
   // Accept comma- or whitespace-separated deployment values and deduplicate
   // them so secret-store formatting does not change the cast.
@@ -365,6 +439,18 @@ export function selectElevenLabsVoiceForActor(input: {
     input.voices.filter((voice) => voice.voice_id?.trim()),
     input.modelId ?? ELEVENLABS_DEFAULT_MODEL_ID
   );
+  const pinnedVoiceId = pinnedElevenLabsVoiceIdForActor(input.voiceProfileId);
+  if (pinnedVoiceId) {
+    return (
+      sorted.find((voice) => voice.voice_id === pinnedVoiceId) ??
+      FALLBACK_ELEVENLABS_VOICES.find(
+        (voice) => voice.voice_id === pinnedVoiceId
+      ) ?? {
+        voice_id: pinnedVoiceId,
+        category: "pinned",
+      }
+    );
+  }
   if (sorted.length === 0) {
     return undefined;
   }
@@ -372,6 +458,34 @@ export function selectElevenLabsVoiceForActor(input: {
     ? sorted.filter((voice) => normalizedVoiceGender(voice) === desiredGender)
     : [];
   const genderPool = matchingGender.length > 0 ? matchingGender : sorted;
+  const archetypeVoiceNames = (() => {
+    switch (parsed?.deliveryStyle) {
+      case "child":
+        return desiredGender === "female" ? ["Elli"] : ["Antoni"];
+      case "youthful":
+        return desiredGender === "female"
+          ? ["Elli", "Bella"]
+          : ["Antoni", "Josh"];
+      case "mature":
+        return desiredGender === "female" ? ["Rachel"] : ["George"];
+      case "authoritative":
+        return desiredGender === "female" ? ["Domi"] : ["Adam"];
+      case "precise":
+        return desiredGender === "female"
+          ? ["Rachel", "Bella"]
+          : ["George", "Josh"];
+      default:
+        return [];
+    }
+  })();
+  for (const voiceName of archetypeVoiceNames) {
+    const reviewedVoice = genderPool.find(
+      (voice) => voice.name?.trim() === voiceName
+    );
+    if (reviewedVoice) {
+      return reviewedVoice;
+    }
+  }
   // Do not let a single premium voice collapse the whole town into one speaker;
   // include voices close to the best quality score, then hash by actor identity.
   const bestScore = voiceQualityScore(

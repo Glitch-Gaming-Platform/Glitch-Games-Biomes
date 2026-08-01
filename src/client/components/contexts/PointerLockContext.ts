@@ -153,6 +153,7 @@ export type PointerLockManagerEvents = {
   onAttach: () => unknown;
   onDetach: () => unknown;
   isEnteringChange: () => unknown;
+  pointerLockDisabledChange: () => unknown;
 };
 
 export class PointerLockManager {
@@ -192,15 +193,27 @@ export class PointerLockManager {
     options: { disablePointerLock?: boolean } = {}
   ) {
     this.lockElementRef = elementRef;
-    this.pointerLockDisabled = options.disablePointerLock === true;
+    this.setPointerLockDisabled(options.disablePointerLock === true);
     this.emitter.emit("onAttach");
   }
 
   detach() {
     this.stopLockRetry();
     this.lockElementRef = undefined;
-    this.pointerLockDisabled = false;
+    this.setPointerLockDisabled(false);
     this.emitter.emit("onDetach");
+  }
+
+  private setPointerLockDisabled(disabled: boolean) {
+    if (this.pointerLockDisabled === disabled) {
+      return;
+    }
+    this.pointerLockDisabled = disabled;
+    this.emitter.emit("pointerLockDisabledChange");
+  }
+
+  isPointerLockDisabled() {
+    return this.pointerLockDisabled;
   }
 
   unlock() {
@@ -262,11 +275,18 @@ export class PointerLockManager {
 
       const start = performance.now();
       this.lockInterval = setInterval(() => {
+        const timedOut = performance.now() - start > 5000;
         if (
           this.isLocked() ||
-          performance.now() - start > 5000 ||
+          timedOut ||
           !this.lockElementRef?.current
         ) {
+          if (timedOut && !this.isLocked() && this.lockElementRef?.current) {
+            // Some embedded/restricted browsers expose Pointer Lock but reject
+            // every request. Do not leave gameplay permanently detached after
+            // the bounded retry window: fall back to focused pointerless input.
+            this.setPointerLockDisabled(true);
+          }
           this.stopLockRetry();
           this.lockElementRef?.current?.focus();
         } else {
@@ -343,3 +363,20 @@ export const PointerLockManagerContext = createContext(
 
 export const usePointerLockManager = () =>
   useContext(PointerLockManagerContext);
+
+export function usePointerLockDisabledStatus() {
+  const manager = usePointerLockManager();
+  const [disabled, setDisabled] = useState(
+    manager.isPointerLockDisabled()
+  );
+  useEffect(
+    () =>
+      cleanEmitterCallback(manager.emitter, {
+        pointerLockDisabledChange: () => {
+          setDisabled(manager.isPointerLockDisabled());
+        },
+      }),
+    [manager]
+  );
+  return disabled;
+}

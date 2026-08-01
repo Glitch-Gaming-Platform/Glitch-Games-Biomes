@@ -86,6 +86,7 @@ import {
 import { ok } from "assert";
 import { z } from "zod";
 import { ch1NinthWinterPhase } from "@/shared/harthmere/ch1_dungeon_encounters";
+import { harthmereMagicChargeDurationSecs } from "@/shared/harthmere/magic_charge";
 
 // If the chase target drifts more than this far (meters) from the destination
 // of the cached A* path, the path is stale and must be rebuilt instead of
@@ -705,6 +706,8 @@ export const zChaseAttackComponent = z.object({
           projectileVisualId: z.string(),
           targetId: zBiomesId,
           castTime: z.number(),
+          chargeTimeSecs: z.number().nonnegative().optional(),
+          releaseTime: z.number().optional(),
           impactTime: z.number(),
           cooldownUntil: z.number(),
           originPoint: zVec3f.optional(),
@@ -746,6 +749,7 @@ export type RangedAttackTickPhase =
   | "none"
   | "cooldown"
   | "fired"
+  | "charging"
   | "in_flight"
   | "hit"
   | "miss";
@@ -879,6 +883,10 @@ export function rangedAttackTargetTick(
 
   const active = chaseState.rangedAttack;
   if (active && active.result === undefined) {
+    const releaseTime = active.releaseTime ?? active.castTime;
+    if (now < releaseTime) {
+      return { handled: true, phase: "charging" };
+    }
     if (now < active.impactTime) {
       return { handled: true, phase: "in_flight" };
     }
@@ -913,7 +921,7 @@ export function rangedAttackTargetTick(
     for (const hitTargetId of hitTargetIds) {
       npc.attack(hitTargetId, activeParams.attackDamage, {
         attackAbilityId: active.abilityId,
-        attackTime: active.castTime,
+        attackTime: releaseTime,
         impactPoint: active.aimPoint,
       });
     }
@@ -982,6 +990,15 @@ export function rangedAttackTargetTick(
   if (!aimPoint) return { handled: false, phase: "none" };
 
   const castTime = now;
+  const chargeTimeSecs = harthmereMagicChargeDurationSecs({
+    damageType: selected.damageType,
+    projectileVisualId: selected.projectileVisualId,
+    attackDamage: selected.attackDamage,
+    cooldownSecs: selected.cooldownSecs,
+    attackShape: selected.attackShape,
+  });
+  const releaseTime = castTime + chargeTimeSecs;
+  const impactTime = releaseTime + selected.castTimeSecs;
   const mutableChaseState = npc.mutableState().chaseAttack!;
   // A ranged cast is a separate attack cycle. Clear any completed/pending
   // melee timing so returning to close range cannot land a stale swing.
@@ -998,24 +1015,26 @@ export function rangedAttackTargetTick(
     projectileVisualId: selected.projectileVisualId,
     targetId: target.id,
     castTime,
-    impactTime: castTime + selected.castTimeSecs,
-    cooldownUntil: castTime + selected.cooldownSecs,
+    chargeTimeSecs,
+    releaseTime,
+    impactTime,
+    cooldownUntil: releaseTime + selected.cooldownSecs,
     originPoint,
     aimPoint: shapedAimPoint,
     castYaw,
   };
   mutableChaseState.rangedCooldowns = {
     ...cooldowns,
-    [selected.abilityId]: castTime + selected.cooldownSecs,
+    [selected.abilityId]: releaseTime + selected.cooldownSecs,
   };
   mutableChaseState.rangedGlobalCooldownUntil =
-    castTime + selected.sharedCooldownSecs;
+    releaseTime + selected.sharedCooldownSecs;
   npc.mutableState().rotateTarget = castYaw;
   npc.setEmote(
     Emote.create({
       emote_type: "attack1",
       emote_start_time: castTime,
-      emote_expiry_time: castTime + selected.castTimeSecs + 0.1,
+      emote_expiry_time: impactTime + 0.1,
     })
   );
   return { handled: true, phase: "fired" };

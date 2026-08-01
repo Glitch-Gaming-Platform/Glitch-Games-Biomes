@@ -28,8 +28,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import { first } from "lodash";
 import { useEffect, useRef, useState } from "react";
 import { Mesh, Spherical, Vector3 } from "three";
-import type { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
-import * as SkeletonUtils from "three/examples/jsm/utils/SkeletonUtils";
+import type { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import * as SkeletonUtils from "three/examples/jsm/utils/SkeletonUtils.js";
 
 function getOrbitControlsSpherical(orbitControls: OrbitControls) {
   const spherical = new Spherical();

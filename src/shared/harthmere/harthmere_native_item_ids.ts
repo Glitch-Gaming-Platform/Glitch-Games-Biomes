@@ -7,7 +7,7 @@ import {
 } from "@/shared/harthmere/harthmere_native_id_manifest";
 
 export const HARTHMERE_NATIVE_BIKKIE_OVERLAY_VERSION =
-  "harthmere-native-bikkie-identity-manifest-v3" as const;
+  "harthmere-native-bikkie-identity-manifest-v4-fishing" as const;
 
 const HARTHMERE_ITEM_ID_BY_NATIVE_BIOMES_ID = new Map<BiomesId, string>();
 for (const [itemId, nativeId] of Object.entries(

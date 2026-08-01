@@ -1,5 +1,5 @@
 // GENERATED: This file is generated from types.ts.j2. Do not modify directly.
-// Content Hash: d2847c364de93ccbed7031dcca544ed1
+// Content Hash: a5ad4e76308c31dbbb6c128ef25a8a8b
 
 export type { Item, ReadonlyItem } from "@/shared/ecs/extern";
 export {
@@ -101,6 +101,8 @@ export const zConsumptionAction = z.enum(["drink", "eat"]);
 export const zEmoteType = z.enum([
   "attack1",
   "attack2",
+  "magicChannel",
+  "magicCast",
   "destroy",
   "place",
   "applause",
@@ -199,7 +201,7 @@ export const zEmoteType = z.enum([
   "sighing",
   "cleaningWeapon",
 ]);
-export const zMovementActionType = z.enum(["dodge", "evade"]);
+export const zMovementActionType = z.enum(["dodge", "evade", "doubleJump"]);
 export const zWarpHomeReason = z.enum(["respawn", "homestone", "admin"]);
 export const zCameraMode = z.enum([
   "normal",
@@ -824,6 +826,8 @@ export type ConsumptionAction = "drink" | "eat";
 export type EmoteType =
   | "attack1"
   | "attack2"
+  | "magicChannel"
+  | "magicCast"
   | "destroy"
   | "place"
   | "applause"
@@ -921,7 +925,7 @@ export type EmoteType =
   | "pacing"
   | "sighing"
   | "cleaningWeapon";
-export type MovementActionType = "dodge" | "evade";
+export type MovementActionType = "dodge" | "evade" | "doubleJump";
 export type WarpHomeReason = "respawn" | "homestone" | "admin";
 export type CameraMode =
   | "normal"
@@ -1070,11 +1074,15 @@ export type ItemAssignment = Map<BiomesId, Item>;
 export type ItemAssignmentReference = { key: BiomesId };
 export type ItemContainerReference = { idx: number };
 export type ItemBagReference = { key: string };
-export type OptionalMovementActionType = ("dodge" | "evade") | undefined;
+export type OptionalMovementActionType =
+  | ("dodge" | "evade" | "doubleJump")
+  | undefined;
 export type OptionalEmoteType =
   | (
       | "attack1"
       | "attack2"
+      | "magicChannel"
+      | "magicCast"
       | "destroy"
       | "place"
       | "applause"
@@ -2817,6 +2825,8 @@ export type ReadonlyConsumptionAction = "drink" | "eat";
 export type ReadonlyEmoteType =
   | "attack1"
   | "attack2"
+  | "magicChannel"
+  | "magicCast"
   | "destroy"
   | "place"
   | "applause"
@@ -2914,7 +2924,7 @@ export type ReadonlyEmoteType =
   | "pacing"
   | "sighing"
   | "cleaningWeapon";
-export type ReadonlyMovementActionType = "dodge" | "evade";
+export type ReadonlyMovementActionType = "dodge" | "evade" | "doubleJump";
 export type ReadonlyWarpHomeReason = "respawn" | "homestone" | "admin";
 export type ReadonlyCameraMode =
   | "normal"
@@ -3073,12 +3083,14 @@ export type ReadonlyItemAssignmentReference = {
 export type ReadonlyItemContainerReference = { readonly idx: number };
 export type ReadonlyItemBagReference = { readonly key: string };
 export type ReadonlyOptionalMovementActionType =
-  | ("dodge" | "evade")
+  | ("dodge" | "evade" | "doubleJump")
   | undefined;
 export type ReadonlyOptionalEmoteType =
   | (
       | "attack1"
       | "attack2"
+      | "magicChannel"
+      | "magicCast"
       | "destroy"
       | "place"
       | "applause"

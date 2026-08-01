@@ -644,7 +644,8 @@ const FailedComponent: React.FunctionComponent<{
     emitHarthmereSoundEffect(
       failedInfo.failureReason === "land_impact"
         ? "fishing_land_impact"
-        : failedInfo.failureReason === "line_break"
+        : failedInfo.failureReason === "line_break" ||
+          failedInfo.failureReason === "cast_timeout"
         ? "fishing_line_break"
         : "fishing_escape"
     );
@@ -660,6 +661,18 @@ const FailedComponent: React.FunctionComponent<{
     // Pull the rod out of the water.
     player.player.eagerCancelEmote(events);
   }, []);
+  const message =
+    failedInfo.failureReason === "land_impact"
+      ? "The hook landed on dry ground."
+      : failedInfo.failureReason === "cast_timeout"
+      ? "The cast did not reach fishable water."
+      : failedInfo.failureReason === "water_lost"
+      ? "The water moved away from the hook."
+      : failedInfo.failureReason === "line_break"
+      ? "The line snapped."
+      : failedInfo.failureReason === "invalid_catch"
+      ? "Nothing was hooked."
+      : "It got away!";
   return (
     <div className="inspect-overlay click-message">
       <motion.div
@@ -667,7 +680,7 @@ const FailedComponent: React.FunctionComponent<{
         transition={{ duration: 2 }}
         className="inspect"
       >
-        It got away!
+        {message}
       </motion.div>
     </div>
   );

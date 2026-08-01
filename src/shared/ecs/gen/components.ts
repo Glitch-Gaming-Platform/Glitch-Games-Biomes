@@ -1,5 +1,5 @@
 // GENERATED: This file is generated from components.ts.j2. Do not modify directly.
-// Content Hash: a03c86564f6c971ac0e293a0ece899c1
+// Content Hash: 2b610eb4f17e59d8963182b3fb6da384
 
 import * as t from "@/shared/ecs/gen/types";
 import { cloneDeepWithItems } from "@/shared/game/item";
@@ -11,29 +11,11 @@ import { PathDef } from "@/shared/resources/path_map";
 // =====================
 
 export const DEPRECATED_COMPONENT_IDS: Set<number> = new Set([
-  96,
-  36,
-  69,
-  73,
-  42,
-  44,
-  81,
-  114,
-  116,
-  85,
-  94,
-  89,
-  90,
-  62,
+  96, 36, 69, 73, 42, 44, 81, 114, 116, 85, 94, 89, 90, 62,
 ]);
 
 export const HFC_COMPONENT_IDS: Set<number> = new Set([
-  54,
-  55,
-  32,
-  43,
-  67,
-  157,
+  54, 55, 32, 43, 67, 157,
 ]);
 
 export type HfcComponentName =
@@ -42,8 +24,7 @@ export type HfcComponentName =
   | "rigid_body"
   | "emote"
   | "npc_state"
-  | "movement_state"
-  ;
+  | "movement_state";
 
 export const COMPONENT_SERIALIZATION_MODE: Record<number, "server" | "self"> = {
   [41]: "self",
@@ -70,11 +51,9 @@ export const COMPONENT_SERIALIZATION_MODE: Record<number, "server" | "self"> = {
   [155]: "self",
 };
 
-export interface Iced {
-}
+export interface Iced {}
 
-export interface ReadonlyIced {
-}
+export interface ReadonlyIced {}
 
 export class Iced {
   static ID = 57;
@@ -87,11 +66,9 @@ export class Iced {
     return {};
   }
 }
-export interface RemoteConnection {
-}
+export interface RemoteConnection {}
 
-export interface ReadonlyRemoteConnection {
-}
+export interface ReadonlyRemoteConnection {}
 
 export class RemoteConnection {
   static ID = 31;
@@ -115,8 +92,7 @@ export interface ReadonlyPosition {
 export class Position {
   static ID = 54;
 
-  static create(
-    fields: Partial<Position> = {}): Position {
+  static create(fields: Partial<Position> = {}): Position {
     if (fields.v === undefined) {
       fields.v = t.defaultVec3f();
     }
@@ -124,8 +100,9 @@ export class Position {
   }
 
   static clone(value?: ReadonlyPosition): Position {
-    return value === undefined ? Position.create() :
-      cloneDeepWithItems(value) as unknown as Position;
+    return value === undefined
+      ? Position.create()
+      : (cloneDeepWithItems(value) as unknown as Position);
   }
 }
 export interface Orientation {
@@ -139,8 +116,7 @@ export interface ReadonlyOrientation {
 export class Orientation {
   static ID = 55;
 
-  static create(
-    fields: Partial<Orientation> = {}): Orientation {
+  static create(fields: Partial<Orientation> = {}): Orientation {
     if (fields.v === undefined) {
       fields.v = t.defaultVec2f();
     }
@@ -148,8 +124,9 @@ export class Orientation {
   }
 
   static clone(value?: ReadonlyOrientation): Orientation {
-    return value === undefined ? Orientation.create() :
-      cloneDeepWithItems(value) as unknown as Orientation;
+    return value === undefined
+      ? Orientation.create()
+      : (cloneDeepWithItems(value) as unknown as Orientation);
   }
 }
 export interface RigidBody {
@@ -163,8 +140,7 @@ export interface ReadonlyRigidBody {
 export class RigidBody {
   static ID = 32;
 
-  static create(
-    fields: Partial<RigidBody> = {}): RigidBody {
+  static create(fields: Partial<RigidBody> = {}): RigidBody {
     if (fields.velocity === undefined) {
       fields.velocity = t.defaultVec3f();
     }
@@ -172,8 +148,9 @@ export class RigidBody {
   }
 
   static clone(value?: ReadonlyRigidBody): RigidBody {
-    return value === undefined ? RigidBody.create() :
-      cloneDeepWithItems(value) as unknown as RigidBody;
+    return value === undefined
+      ? RigidBody.create()
+      : (cloneDeepWithItems(value) as unknown as RigidBody);
   }
 }
 export interface Size {
@@ -187,8 +164,7 @@ export interface ReadonlySize {
 export class Size {
   static ID = 110;
 
-  static create(
-    fields: Partial<Size> = {}): Size {
+  static create(fields: Partial<Size> = {}): Size {
     if (fields.v === undefined) {
       fields.v = t.defaultVec3f();
     }
@@ -196,8 +172,9 @@ export class Size {
   }
 
   static clone(value?: ReadonlySize): Size {
-    return value === undefined ? Size.create() :
-      cloneDeepWithItems(value) as unknown as Size;
+    return value === undefined
+      ? Size.create()
+      : (cloneDeepWithItems(value) as unknown as Size);
   }
 }
 export interface Box {
@@ -213,8 +190,7 @@ export interface ReadonlyBox {
 export class Box {
   static ID = 33;
 
-  static create(
-    fields: Partial<Box> = {}): Box {
+  static create(fields: Partial<Box> = {}): Box {
     if (fields.v0 === undefined) {
       fields.v0 = t.defaultVec3i();
     }
@@ -225,8 +201,9 @@ export class Box {
   }
 
   static clone(value?: ReadonlyBox): Box {
-    return value === undefined ? Box.create() :
-      cloneDeepWithItems(value) as unknown as Box;
+    return value === undefined
+      ? Box.create()
+      : (cloneDeepWithItems(value) as unknown as Box);
   }
 }
 export interface ShardSeed {
@@ -240,8 +217,7 @@ export interface ReadonlyShardSeed {
 export class ShardSeed {
   static ID = 34;
 
-  static create(
-    fields: Partial<ShardSeed> = {}): ShardSeed {
+  static create(fields: Partial<ShardSeed> = {}): ShardSeed {
     if (fields.buffer === undefined) {
       fields.buffer = t.defaultBuffer();
     }
@@ -249,8 +225,9 @@ export class ShardSeed {
   }
 
   static clone(value?: ReadonlyShardSeed): ShardSeed {
-    return value === undefined ? ShardSeed.create() :
-      cloneDeepWithItems(value) as unknown as ShardSeed;
+    return value === undefined
+      ? ShardSeed.create()
+      : (cloneDeepWithItems(value) as unknown as ShardSeed);
   }
 }
 export interface ShardDiff {
@@ -264,8 +241,7 @@ export interface ReadonlyShardDiff {
 export class ShardDiff {
   static ID = 35;
 
-  static create(
-    fields: Partial<ShardDiff> = {}): ShardDiff {
+  static create(fields: Partial<ShardDiff> = {}): ShardDiff {
     if (fields.buffer === undefined) {
       fields.buffer = t.defaultBuffer();
     }
@@ -273,8 +249,9 @@ export class ShardDiff {
   }
 
   static clone(value?: ReadonlyShardDiff): ShardDiff {
-    return value === undefined ? ShardDiff.create() :
-      cloneDeepWithItems(value) as unknown as ShardDiff;
+    return value === undefined
+      ? ShardDiff.create()
+      : (cloneDeepWithItems(value) as unknown as ShardDiff);
   }
 }
 export interface ShardShapes {
@@ -288,8 +265,7 @@ export interface ReadonlyShardShapes {
 export class ShardShapes {
   static ID = 60;
 
-  static create(
-    fields: Partial<ShardShapes> = {}): ShardShapes {
+  static create(fields: Partial<ShardShapes> = {}): ShardShapes {
     if (fields.buffer === undefined) {
       fields.buffer = t.defaultBuffer();
     }
@@ -297,8 +273,9 @@ export class ShardShapes {
   }
 
   static clone(value?: ReadonlyShardShapes): ShardShapes {
-    return value === undefined ? ShardShapes.create() :
-      cloneDeepWithItems(value) as unknown as ShardShapes;
+    return value === undefined
+      ? ShardShapes.create()
+      : (cloneDeepWithItems(value) as unknown as ShardShapes);
   }
 }
 export interface ShardSkyOcclusion {
@@ -312,8 +289,7 @@ export interface ReadonlyShardSkyOcclusion {
 export class ShardSkyOcclusion {
   static ID = 76;
 
-  static create(
-    fields: Partial<ShardSkyOcclusion> = {}): ShardSkyOcclusion {
+  static create(fields: Partial<ShardSkyOcclusion> = {}): ShardSkyOcclusion {
     if (fields.buffer === undefined) {
       fields.buffer = t.defaultBuffer();
     }
@@ -321,8 +297,9 @@ export class ShardSkyOcclusion {
   }
 
   static clone(value?: ReadonlyShardSkyOcclusion): ShardSkyOcclusion {
-    return value === undefined ? ShardSkyOcclusion.create() :
-      cloneDeepWithItems(value) as unknown as ShardSkyOcclusion;
+    return value === undefined
+      ? ShardSkyOcclusion.create()
+      : (cloneDeepWithItems(value) as unknown as ShardSkyOcclusion);
   }
 }
 export interface ShardIrradiance {
@@ -336,8 +313,7 @@ export interface ReadonlyShardIrradiance {
 export class ShardIrradiance {
   static ID = 80;
 
-  static create(
-    fields: Partial<ShardIrradiance> = {}): ShardIrradiance {
+  static create(fields: Partial<ShardIrradiance> = {}): ShardIrradiance {
     if (fields.buffer === undefined) {
       fields.buffer = t.defaultBuffer();
     }
@@ -345,8 +321,9 @@ export class ShardIrradiance {
   }
 
   static clone(value?: ReadonlyShardIrradiance): ShardIrradiance {
-    return value === undefined ? ShardIrradiance.create() :
-      cloneDeepWithItems(value) as unknown as ShardIrradiance;
+    return value === undefined
+      ? ShardIrradiance.create()
+      : (cloneDeepWithItems(value) as unknown as ShardIrradiance);
   }
 }
 export interface ShardWater {
@@ -360,8 +337,7 @@ export interface ReadonlyShardWater {
 export class ShardWater {
   static ID = 82;
 
-  static create(
-    fields: Partial<ShardWater> = {}): ShardWater {
+  static create(fields: Partial<ShardWater> = {}): ShardWater {
     if (fields.buffer === undefined) {
       fields.buffer = t.defaultBuffer();
     }
@@ -369,8 +345,9 @@ export class ShardWater {
   }
 
   static clone(value?: ReadonlyShardWater): ShardWater {
-    return value === undefined ? ShardWater.create() :
-      cloneDeepWithItems(value) as unknown as ShardWater;
+    return value === undefined
+      ? ShardWater.create()
+      : (cloneDeepWithItems(value) as unknown as ShardWater);
   }
 }
 export interface ShardOccupancy {
@@ -384,8 +361,7 @@ export interface ReadonlyShardOccupancy {
 export class ShardOccupancy {
   static ID = 93;
 
-  static create(
-    fields: Partial<ShardOccupancy> = {}): ShardOccupancy {
+  static create(fields: Partial<ShardOccupancy> = {}): ShardOccupancy {
     if (fields.buffer === undefined) {
       fields.buffer = t.defaultBuffer();
     }
@@ -393,8 +369,9 @@ export class ShardOccupancy {
   }
 
   static clone(value?: ReadonlyShardOccupancy): ShardOccupancy {
-    return value === undefined ? ShardOccupancy.create() :
-      cloneDeepWithItems(value) as unknown as ShardOccupancy;
+    return value === undefined
+      ? ShardOccupancy.create()
+      : (cloneDeepWithItems(value) as unknown as ShardOccupancy);
   }
 }
 export interface ShardDye {
@@ -408,8 +385,7 @@ export interface ReadonlyShardDye {
 export class ShardDye {
   static ID = 111;
 
-  static create(
-    fields: Partial<ShardDye> = {}): ShardDye {
+  static create(fields: Partial<ShardDye> = {}): ShardDye {
     if (fields.buffer === undefined) {
       fields.buffer = t.defaultBuffer();
     }
@@ -417,8 +393,9 @@ export class ShardDye {
   }
 
   static clone(value?: ReadonlyShardDye): ShardDye {
-    return value === undefined ? ShardDye.create() :
-      cloneDeepWithItems(value) as unknown as ShardDye;
+    return value === undefined
+      ? ShardDye.create()
+      : (cloneDeepWithItems(value) as unknown as ShardDye);
   }
 }
 export interface ShardMoisture {
@@ -432,8 +409,7 @@ export interface ReadonlyShardMoisture {
 export class ShardMoisture {
   static ID = 112;
 
-  static create(
-    fields: Partial<ShardMoisture> = {}): ShardMoisture {
+  static create(fields: Partial<ShardMoisture> = {}): ShardMoisture {
     if (fields.buffer === undefined) {
       fields.buffer = t.defaultBuffer();
     }
@@ -441,8 +417,9 @@ export class ShardMoisture {
   }
 
   static clone(value?: ReadonlyShardMoisture): ShardMoisture {
-    return value === undefined ? ShardMoisture.create() :
-      cloneDeepWithItems(value) as unknown as ShardMoisture;
+    return value === undefined
+      ? ShardMoisture.create()
+      : (cloneDeepWithItems(value) as unknown as ShardMoisture);
   }
 }
 export interface ShardGrowth {
@@ -456,8 +433,7 @@ export interface ReadonlyShardGrowth {
 export class ShardGrowth {
   static ID = 113;
 
-  static create(
-    fields: Partial<ShardGrowth> = {}): ShardGrowth {
+  static create(fields: Partial<ShardGrowth> = {}): ShardGrowth {
     if (fields.buffer === undefined) {
       fields.buffer = t.defaultBuffer();
     }
@@ -465,8 +441,9 @@ export class ShardGrowth {
   }
 
   static clone(value?: ReadonlyShardGrowth): ShardGrowth {
-    return value === undefined ? ShardGrowth.create() :
-      cloneDeepWithItems(value) as unknown as ShardGrowth;
+    return value === undefined
+      ? ShardGrowth.create()
+      : (cloneDeepWithItems(value) as unknown as ShardGrowth);
   }
 }
 export interface ShardPlacer {
@@ -480,8 +457,7 @@ export interface ReadonlyShardPlacer {
 export class ShardPlacer {
   static ID = 120;
 
-  static create(
-    fields: Partial<ShardPlacer> = {}): ShardPlacer {
+  static create(fields: Partial<ShardPlacer> = {}): ShardPlacer {
     if (fields.buffer === undefined) {
       fields.buffer = t.defaultBuffer();
     }
@@ -489,8 +465,9 @@ export class ShardPlacer {
   }
 
   static clone(value?: ReadonlyShardPlacer): ShardPlacer {
-    return value === undefined ? ShardPlacer.create() :
-      cloneDeepWithItems(value) as unknown as ShardPlacer;
+    return value === undefined
+      ? ShardPlacer.create()
+      : (cloneDeepWithItems(value) as unknown as ShardPlacer);
   }
 }
 export interface ShardMuck {
@@ -504,8 +481,7 @@ export interface ReadonlyShardMuck {
 export class ShardMuck {
   static ID = 124;
 
-  static create(
-    fields: Partial<ShardMuck> = {}): ShardMuck {
+  static create(fields: Partial<ShardMuck> = {}): ShardMuck {
     if (fields.buffer === undefined) {
       fields.buffer = t.defaultBuffer();
     }
@@ -513,8 +489,9 @@ export class ShardMuck {
   }
 
   static clone(value?: ReadonlyShardMuck): ShardMuck {
-    return value === undefined ? ShardMuck.create() :
-      cloneDeepWithItems(value) as unknown as ShardMuck;
+    return value === undefined
+      ? ShardMuck.create()
+      : (cloneDeepWithItems(value) as unknown as ShardMuck);
   }
 }
 export interface Label {
@@ -528,8 +505,7 @@ export interface ReadonlyLabel {
 export class Label {
   static ID = 37;
 
-  static create(
-    fields: Partial<Label> = {}): Label {
+  static create(fields: Partial<Label> = {}): Label {
     if (fields.text === undefined) {
       fields.text = t.defaultString;
     }
@@ -537,8 +513,9 @@ export class Label {
   }
 
   static clone(value?: ReadonlyLabel): Label {
-    return value === undefined ? Label.create() :
-      cloneDeepWithItems(value) as unknown as Label;
+    return value === undefined
+      ? Label.create()
+      : (cloneDeepWithItems(value) as unknown as Label);
   }
 }
 export interface GrabBag {
@@ -556,8 +533,7 @@ export interface ReadonlyGrabBag {
 export class GrabBag {
   static ID = 51;
 
-  static create(
-    fields: Partial<GrabBag> = {}): GrabBag {
+  static create(fields: Partial<GrabBag> = {}): GrabBag {
     if (fields.slots === undefined) {
       fields.slots = t.defaultItemBag();
     }
@@ -571,8 +547,9 @@ export class GrabBag {
   }
 
   static clone(value?: ReadonlyGrabBag): GrabBag {
-    return value === undefined ? GrabBag.create() :
-      cloneDeepWithItems(value) as unknown as GrabBag;
+    return value === undefined
+      ? GrabBag.create()
+      : (cloneDeepWithItems(value) as unknown as GrabBag);
   }
 }
 export interface Acquisition {
@@ -588,8 +565,7 @@ export interface ReadonlyAcquisition {
 export class Acquisition {
   static ID = 52;
 
-  static create(
-    fields: Partial<Acquisition> = {}): Acquisition {
+  static create(fields: Partial<Acquisition> = {}): Acquisition {
     if (fields.acquired_by === undefined) {
       fields.acquired_by = t.defaultBiomesId;
     }
@@ -600,8 +576,9 @@ export class Acquisition {
   }
 
   static clone(value?: ReadonlyAcquisition): Acquisition {
-    return value === undefined ? Acquisition.create() :
-      cloneDeepWithItems(value) as unknown as Acquisition;
+    return value === undefined
+      ? Acquisition.create()
+      : (cloneDeepWithItems(value) as unknown as Acquisition);
   }
 }
 export interface LooseItem {
@@ -615,8 +592,7 @@ export interface ReadonlyLooseItem {
 export class LooseItem {
   static ID = 53;
 
-  static create(
-    fields: Partial<LooseItem> = {}): LooseItem {
+  static create(fields: Partial<LooseItem> = {}): LooseItem {
     if (fields.item === undefined) {
       fields.item = t.defaultItem();
     }
@@ -624,8 +600,9 @@ export class LooseItem {
   }
 
   static clone(value?: ReadonlyLooseItem): LooseItem {
-    return value === undefined ? LooseItem.create() :
-      cloneDeepWithItems(value) as unknown as LooseItem;
+    return value === undefined
+      ? LooseItem.create()
+      : (cloneDeepWithItems(value) as unknown as LooseItem);
   }
 }
 export interface Inventory {
@@ -647,8 +624,7 @@ export interface ReadonlyInventory {
 export class Inventory {
   static ID = 41;
 
-  static create(
-    fields: Partial<Inventory> = {}): Inventory {
+  static create(fields: Partial<Inventory> = {}): Inventory {
     if (fields.items === undefined) {
       fields.items = t.defaultItemContainer();
     }
@@ -668,8 +644,9 @@ export class Inventory {
   }
 
   static clone(value?: ReadonlyInventory): Inventory {
-    return value === undefined ? Inventory.create() :
-      cloneDeepWithItems(value) as unknown as Inventory;
+    return value === undefined
+      ? Inventory.create()
+      : (cloneDeepWithItems(value) as unknown as Inventory);
   }
 }
 export interface ContainerInventory {
@@ -683,8 +660,7 @@ export interface ReadonlyContainerInventory {
 export class ContainerInventory {
   static ID = 79;
 
-  static create(
-    fields: Partial<ContainerInventory> = {}): ContainerInventory {
+  static create(fields: Partial<ContainerInventory> = {}): ContainerInventory {
     if (fields.items === undefined) {
       fields.items = t.defaultItemContainer();
     }
@@ -692,8 +668,9 @@ export class ContainerInventory {
   }
 
   static clone(value?: ReadonlyContainerInventory): ContainerInventory {
-    return value === undefined ? ContainerInventory.create() :
-      cloneDeepWithItems(value) as unknown as ContainerInventory;
+    return value === undefined
+      ? ContainerInventory.create()
+      : (cloneDeepWithItems(value) as unknown as ContainerInventory);
   }
 }
 export interface PricedContainerInventory {
@@ -710,7 +687,8 @@ export class PricedContainerInventory {
   static ID = 86;
 
   static create(
-    fields: Partial<PricedContainerInventory> = {}): PricedContainerInventory {
+    fields: Partial<PricedContainerInventory> = {}
+  ): PricedContainerInventory {
     if (fields.items === undefined) {
       fields.items = t.defaultPricedItemContainer();
     }
@@ -720,9 +698,12 @@ export class PricedContainerInventory {
     return fields as PricedContainerInventory;
   }
 
-  static clone(value?: ReadonlyPricedContainerInventory): PricedContainerInventory {
-    return value === undefined ? PricedContainerInventory.create() :
-      cloneDeepWithItems(value) as unknown as PricedContainerInventory;
+  static clone(
+    value?: ReadonlyPricedContainerInventory
+  ): PricedContainerInventory {
+    return value === undefined
+      ? PricedContainerInventory.create()
+      : (cloneDeepWithItems(value) as unknown as PricedContainerInventory);
   }
 }
 export interface SelectedItem {
@@ -736,8 +717,7 @@ export interface ReadonlySelectedItem {
 export class SelectedItem {
   static ID = 59;
 
-  static create(
-    fields: Partial<SelectedItem> = {}): SelectedItem {
+  static create(fields: Partial<SelectedItem> = {}): SelectedItem {
     if (fields.item === undefined) {
       fields.item = t.defaultItemSlot;
     }
@@ -745,8 +725,9 @@ export class SelectedItem {
   }
 
   static clone(value?: ReadonlySelectedItem): SelectedItem {
-    return value === undefined ? SelectedItem.create() :
-      cloneDeepWithItems(value) as unknown as SelectedItem;
+    return value === undefined
+      ? SelectedItem.create()
+      : (cloneDeepWithItems(value) as unknown as SelectedItem);
   }
 }
 export interface Wearing {
@@ -760,8 +741,7 @@ export interface ReadonlyWearing {
 export class Wearing {
   static ID = 49;
 
-  static create(
-    fields: Partial<Wearing> = {}): Wearing {
+  static create(fields: Partial<Wearing> = {}): Wearing {
     if (fields.items === undefined) {
       fields.items = t.defaultItemAssignment();
     }
@@ -769,8 +749,9 @@ export class Wearing {
   }
 
   static clone(value?: ReadonlyWearing): Wearing {
-    return value === undefined ? Wearing.create() :
-      cloneDeepWithItems(value) as unknown as Wearing;
+    return value === undefined
+      ? Wearing.create()
+      : (cloneDeepWithItems(value) as unknown as Wearing);
   }
 }
 export interface Emote {
@@ -792,8 +773,7 @@ export interface ReadonlyEmote {
 export class Emote {
   static ID = 43;
 
-  static create(
-    fields: Partial<Emote> = {}): Emote {
+  static create(fields: Partial<Emote> = {}): Emote {
     if (fields.emote_type === undefined) {
       fields.emote_type = t.defaultOptionalEmoteType;
     }
@@ -813,8 +793,9 @@ export class Emote {
   }
 
   static clone(value?: ReadonlyEmote): Emote {
-    return value === undefined ? Emote.create() :
-      cloneDeepWithItems(value) as unknown as Emote;
+    return value === undefined
+      ? Emote.create()
+      : (cloneDeepWithItems(value) as unknown as Emote);
   }
 }
 export interface AppearanceComponent {
@@ -829,7 +810,8 @@ export class AppearanceComponent {
   static ID = 56;
 
   static create(
-    fields: Partial<AppearanceComponent> = {}): AppearanceComponent {
+    fields: Partial<AppearanceComponent> = {}
+  ): AppearanceComponent {
     if (fields.appearance === undefined) {
       fields.appearance = t.defaultAppearance();
     }
@@ -837,8 +819,9 @@ export class AppearanceComponent {
   }
 
   static clone(value?: ReadonlyAppearanceComponent): AppearanceComponent {
-    return value === undefined ? AppearanceComponent.create() :
-      cloneDeepWithItems(value) as unknown as AppearanceComponent;
+    return value === undefined
+      ? AppearanceComponent.create()
+      : (cloneDeepWithItems(value) as unknown as AppearanceComponent);
   }
 }
 export interface GroupComponent {
@@ -852,8 +835,7 @@ export interface ReadonlyGroupComponent {
 export class GroupComponent {
   static ID = 45;
 
-  static create(
-    fields: Partial<GroupComponent> = {}): GroupComponent {
+  static create(fields: Partial<GroupComponent> = {}): GroupComponent {
     if (fields.tensor === undefined) {
       fields.tensor = t.defaultTensorBlob;
     }
@@ -861,8 +843,9 @@ export class GroupComponent {
   }
 
   static clone(value?: ReadonlyGroupComponent): GroupComponent {
-    return value === undefined ? GroupComponent.create() :
-      cloneDeepWithItems(value) as unknown as GroupComponent;
+    return value === undefined
+      ? GroupComponent.create()
+      : (cloneDeepWithItems(value) as unknown as GroupComponent);
   }
 }
 export interface Challenges {
@@ -884,8 +867,7 @@ export interface ReadonlyChallenges {
 export class Challenges {
   static ID = 46;
 
-  static create(
-    fields: Partial<Challenges> = {}): Challenges {
+  static create(fields: Partial<Challenges> = {}): Challenges {
     if (fields.in_progress === undefined) {
       fields.in_progress = t.defaultBiomesIdSet();
     }
@@ -905,8 +887,9 @@ export class Challenges {
   }
 
   static clone(value?: ReadonlyChallenges): Challenges {
-    return value === undefined ? Challenges.create() :
-      cloneDeepWithItems(value) as unknown as Challenges;
+    return value === undefined
+      ? Challenges.create()
+      : (cloneDeepWithItems(value) as unknown as Challenges);
   }
 }
 export interface RecipeBook {
@@ -920,8 +903,7 @@ export interface ReadonlyRecipeBook {
 export class RecipeBook {
   static ID = 48;
 
-  static create(
-    fields: Partial<RecipeBook> = {}): RecipeBook {
+  static create(fields: Partial<RecipeBook> = {}): RecipeBook {
     if (fields.recipes === undefined) {
       fields.recipes = t.defaultItemSet();
     }
@@ -929,8 +911,9 @@ export class RecipeBook {
   }
 
   static clone(value?: ReadonlyRecipeBook): RecipeBook {
-    return value === undefined ? RecipeBook.create() :
-      cloneDeepWithItems(value) as unknown as RecipeBook;
+    return value === undefined
+      ? RecipeBook.create()
+      : (cloneDeepWithItems(value) as unknown as RecipeBook);
   }
 }
 export interface Expires {
@@ -944,8 +927,7 @@ export interface ReadonlyExpires {
 export class Expires {
   static ID = 50;
 
-  static create(
-    fields: Partial<Expires> = {}): Expires {
+  static create(fields: Partial<Expires> = {}): Expires {
     if (fields.trigger_at === undefined) {
       fields.trigger_at = t.defaultF64;
     }
@@ -953,8 +935,9 @@ export class Expires {
   }
 
   static clone(value?: ReadonlyExpires): Expires {
-    return value === undefined ? Expires.create() :
-      cloneDeepWithItems(value) as unknown as Expires;
+    return value === undefined
+      ? Expires.create()
+      : (cloneDeepWithItems(value) as unknown as Expires);
   }
 }
 export interface Icing {
@@ -968,8 +951,7 @@ export interface ReadonlyIcing {
 export class Icing {
   static ID = 58;
 
-  static create(
-    fields: Partial<Icing> = {}): Icing {
+  static create(fields: Partial<Icing> = {}): Icing {
     if (fields.trigger_at === undefined) {
       fields.trigger_at = t.defaultF64;
     }
@@ -977,8 +959,9 @@ export class Icing {
   }
 
   static clone(value?: ReadonlyIcing): Icing {
-    return value === undefined ? Icing.create() :
-      cloneDeepWithItems(value) as unknown as Icing;
+    return value === undefined
+      ? Icing.create()
+      : (cloneDeepWithItems(value) as unknown as Icing);
   }
 }
 export interface Warpable {
@@ -998,8 +981,7 @@ export interface ReadonlyWarpable {
 export class Warpable {
   static ID = 61;
 
-  static create(
-    fields: Partial<Warpable> = {}): Warpable {
+  static create(fields: Partial<Warpable> = {}): Warpable {
     if (fields.trigger_at === undefined) {
       fields.trigger_at = t.defaultF64;
     }
@@ -1016,8 +998,9 @@ export class Warpable {
   }
 
   static clone(value?: ReadonlyWarpable): Warpable {
-    return value === undefined ? Warpable.create() :
-      cloneDeepWithItems(value) as unknown as Warpable;
+    return value === undefined
+      ? Warpable.create()
+      : (cloneDeepWithItems(value) as unknown as Warpable);
   }
 }
 export interface PlayerStatus {
@@ -1033,8 +1016,7 @@ export interface ReadonlyPlayerStatus {
 export class PlayerStatus {
   static ID = 63;
 
-  static create(
-    fields: Partial<PlayerStatus> = {}): PlayerStatus {
+  static create(fields: Partial<PlayerStatus> = {}): PlayerStatus {
     if (fields.init === undefined) {
       fields.init = t.defaultBool;
     }
@@ -1045,8 +1027,9 @@ export class PlayerStatus {
   }
 
   static clone(value?: ReadonlyPlayerStatus): PlayerStatus {
-    return value === undefined ? PlayerStatus.create() :
-      cloneDeepWithItems(value) as unknown as PlayerStatus;
+    return value === undefined
+      ? PlayerStatus.create()
+      : (cloneDeepWithItems(value) as unknown as PlayerStatus);
   }
 }
 export interface PlayerBehavior {
@@ -1062,8 +1045,7 @@ export interface ReadonlyPlayerBehavior {
 export class PlayerBehavior {
   static ID = 64;
 
-  static create(
-    fields: Partial<PlayerBehavior> = {}): PlayerBehavior {
+  static create(fields: Partial<PlayerBehavior> = {}): PlayerBehavior {
     if (fields.camera_mode === undefined) {
       fields.camera_mode = t.defaultCameraMode;
     }
@@ -1074,8 +1056,9 @@ export class PlayerBehavior {
   }
 
   static clone(value?: ReadonlyPlayerBehavior): PlayerBehavior {
-    return value === undefined ? PlayerBehavior.create() :
-      cloneDeepWithItems(value) as unknown as PlayerBehavior;
+    return value === undefined
+      ? PlayerBehavior.create()
+      : (cloneDeepWithItems(value) as unknown as PlayerBehavior);
   }
 }
 export interface WorldMetadata {
@@ -1089,8 +1072,7 @@ export interface ReadonlyWorldMetadata {
 export class WorldMetadata {
   static ID = 65;
 
-  static create(
-    fields: Partial<WorldMetadata> = {}): WorldMetadata {
+  static create(fields: Partial<WorldMetadata> = {}): WorldMetadata {
     if (fields.aabb === undefined) {
       fields.aabb = t.defaultBox2();
     }
@@ -1098,8 +1080,9 @@ export class WorldMetadata {
   }
 
   static clone(value?: ReadonlyWorldMetadata): WorldMetadata {
-    return value === undefined ? WorldMetadata.create() :
-      cloneDeepWithItems(value) as unknown as WorldMetadata;
+    return value === undefined
+      ? WorldMetadata.create()
+      : (cloneDeepWithItems(value) as unknown as WorldMetadata);
   }
 }
 export interface NpcMetadata {
@@ -1123,8 +1106,7 @@ export interface ReadonlyNpcMetadata {
 export class NpcMetadata {
   static ID = 66;
 
-  static create(
-    fields: Partial<NpcMetadata> = {}): NpcMetadata {
+  static create(fields: Partial<NpcMetadata> = {}): NpcMetadata {
     if (fields.type_id === undefined) {
       fields.type_id = t.defaultBiomesId;
     }
@@ -1147,8 +1129,9 @@ export class NpcMetadata {
   }
 
   static clone(value?: ReadonlyNpcMetadata): NpcMetadata {
-    return value === undefined ? NpcMetadata.create() :
-      cloneDeepWithItems(value) as unknown as NpcMetadata;
+    return value === undefined
+      ? NpcMetadata.create()
+      : (cloneDeepWithItems(value) as unknown as NpcMetadata);
   }
 }
 export interface NpcState {
@@ -1162,8 +1145,7 @@ export interface ReadonlyNpcState {
 export class NpcState {
   static ID = 67;
 
-  static create(
-    fields: Partial<NpcState> = {}): NpcState {
+  static create(fields: Partial<NpcState> = {}): NpcState {
     if (fields.data === undefined) {
       fields.data = t.defaultBuffer();
     }
@@ -1171,8 +1153,9 @@ export class NpcState {
   }
 
   static clone(value?: ReadonlyNpcState): NpcState {
-    return value === undefined ? NpcState.create() :
-      cloneDeepWithItems(value) as unknown as NpcState;
+    return value === undefined
+      ? NpcState.create()
+      : (cloneDeepWithItems(value) as unknown as NpcState);
   }
 }
 export interface GroupPreviewReference {
@@ -1187,7 +1170,8 @@ export class GroupPreviewReference {
   static ID = 68;
 
   static create(
-    fields: Partial<GroupPreviewReference> = {}): GroupPreviewReference {
+    fields: Partial<GroupPreviewReference> = {}
+  ): GroupPreviewReference {
     if (fields.ref === undefined) {
       fields.ref = t.defaultOptionalBiomesId;
     }
@@ -1195,8 +1179,9 @@ export class GroupPreviewReference {
   }
 
   static clone(value?: ReadonlyGroupPreviewReference): GroupPreviewReference {
-    return value === undefined ? GroupPreviewReference.create() :
-      cloneDeepWithItems(value) as unknown as GroupPreviewReference;
+    return value === undefined
+      ? GroupPreviewReference.create()
+      : (cloneDeepWithItems(value) as unknown as GroupPreviewReference);
   }
 }
 export interface AclComponent {
@@ -1210,8 +1195,7 @@ export interface ReadonlyAclComponent {
 export class AclComponent {
   static ID = 70;
 
-  static create(
-    fields: Partial<AclComponent> = {}): AclComponent {
+  static create(fields: Partial<AclComponent> = {}): AclComponent {
     if (fields.acl === undefined) {
       fields.acl = t.defaultAcl();
     }
@@ -1219,8 +1203,9 @@ export class AclComponent {
   }
 
   static clone(value?: ReadonlyAclComponent): AclComponent {
-    return value === undefined ? AclComponent.create() :
-      cloneDeepWithItems(value) as unknown as AclComponent;
+    return value === undefined
+      ? AclComponent.create()
+      : (cloneDeepWithItems(value) as unknown as AclComponent);
   }
 }
 export interface DeedComponent {
@@ -1242,8 +1227,7 @@ export interface ReadonlyDeedComponent {
 export class DeedComponent {
   static ID = 71;
 
-  static create(
-    fields: Partial<DeedComponent> = {}): DeedComponent {
+  static create(fields: Partial<DeedComponent> = {}): DeedComponent {
     if (fields.owner === undefined) {
       fields.owner = t.defaultBiomesId;
     }
@@ -1263,8 +1247,9 @@ export class DeedComponent {
   }
 
   static clone(value?: ReadonlyDeedComponent): DeedComponent {
-    return value === undefined ? DeedComponent.create() :
-      cloneDeepWithItems(value) as unknown as DeedComponent;
+    return value === undefined
+      ? DeedComponent.create()
+      : (cloneDeepWithItems(value) as unknown as DeedComponent);
   }
 }
 export interface GroupPreviewComponent {
@@ -1281,7 +1266,8 @@ export class GroupPreviewComponent {
   static ID = 72;
 
   static create(
-    fields: Partial<GroupPreviewComponent> = {}): GroupPreviewComponent {
+    fields: Partial<GroupPreviewComponent> = {}
+  ): GroupPreviewComponent {
     if (fields.owner_id === undefined) {
       fields.owner_id = t.defaultBiomesId;
     }
@@ -1292,8 +1278,9 @@ export class GroupPreviewComponent {
   }
 
   static clone(value?: ReadonlyGroupPreviewComponent): GroupPreviewComponent {
-    return value === undefined ? GroupPreviewComponent.create() :
-      cloneDeepWithItems(value) as unknown as GroupPreviewComponent;
+    return value === undefined
+      ? GroupPreviewComponent.create()
+      : (cloneDeepWithItems(value) as unknown as GroupPreviewComponent);
   }
 }
 export interface BlueprintComponent {
@@ -1309,8 +1296,7 @@ export interface ReadonlyBlueprintComponent {
 export class BlueprintComponent {
   static ID = 87;
 
-  static create(
-    fields: Partial<BlueprintComponent> = {}): BlueprintComponent {
+  static create(fields: Partial<BlueprintComponent> = {}): BlueprintComponent {
     if (fields.owner_id === undefined) {
       fields.owner_id = t.defaultBiomesId;
     }
@@ -1321,15 +1307,14 @@ export class BlueprintComponent {
   }
 
   static clone(value?: ReadonlyBlueprintComponent): BlueprintComponent {
-    return value === undefined ? BlueprintComponent.create() :
-      cloneDeepWithItems(value) as unknown as BlueprintComponent;
+    return value === undefined
+      ? BlueprintComponent.create()
+      : (cloneDeepWithItems(value) as unknown as BlueprintComponent);
   }
 }
-export interface CraftingStationComponent {
-}
+export interface CraftingStationComponent {}
 
-export interface ReadonlyCraftingStationComponent {
-}
+export interface ReadonlyCraftingStationComponent {}
 
 export class CraftingStationComponent {
   static ID = 74;
@@ -1363,8 +1348,7 @@ export interface ReadonlyHealth {
 export class Health {
   static ID = 75;
 
-  static create(
-    fields: Partial<Health> = {}): Health {
+  static create(fields: Partial<Health> = {}): Health {
     if (fields.hp === undefined) {
       fields.hp = t.defaultI32;
     }
@@ -1387,8 +1371,9 @@ export class Health {
   }
 
   static clone(value?: ReadonlyHealth): Health {
-    return value === undefined ? Health.create() :
-      cloneDeepWithItems(value) as unknown as Health;
+    return value === undefined
+      ? Health.create()
+      : (cloneDeepWithItems(value) as unknown as Health);
   }
 }
 export interface BuffsComponent {
@@ -1404,8 +1389,7 @@ export interface ReadonlyBuffsComponent {
 export class BuffsComponent {
   static ID = 101;
 
-  static create(
-    fields: Partial<BuffsComponent> = {}): BuffsComponent {
+  static create(fields: Partial<BuffsComponent> = {}): BuffsComponent {
     if (fields.buffs === undefined) {
       fields.buffs = t.defaultBuffsList();
     }
@@ -1416,15 +1400,14 @@ export class BuffsComponent {
   }
 
   static clone(value?: ReadonlyBuffsComponent): BuffsComponent {
-    return value === undefined ? BuffsComponent.create() :
-      cloneDeepWithItems(value) as unknown as BuffsComponent;
+    return value === undefined
+      ? BuffsComponent.create()
+      : (cloneDeepWithItems(value) as unknown as BuffsComponent);
   }
 }
-export interface Gremlin {
-}
+export interface Gremlin {}
 
-export interface ReadonlyGremlin {
-}
+export interface ReadonlyGremlin {}
 
 export class Gremlin {
   static ID = 77;
@@ -1450,8 +1433,7 @@ export interface ReadonlyPlaceableComponent {
 export class PlaceableComponent {
   static ID = 78;
 
-  static create(
-    fields: Partial<PlaceableComponent> = {}): PlaceableComponent {
+  static create(fields: Partial<PlaceableComponent> = {}): PlaceableComponent {
     if (fields.item_id === undefined) {
       fields.item_id = t.defaultBiomesId;
     }
@@ -1462,8 +1444,9 @@ export class PlaceableComponent {
   }
 
   static clone(value?: ReadonlyPlaceableComponent): PlaceableComponent {
-    return value === undefined ? PlaceableComponent.create() :
-      cloneDeepWithItems(value) as unknown as PlaceableComponent;
+    return value === undefined
+      ? PlaceableComponent.create()
+      : (cloneDeepWithItems(value) as unknown as PlaceableComponent);
   }
 }
 export interface GroupedEntities {
@@ -1477,8 +1460,7 @@ export interface ReadonlyGroupedEntities {
 export class GroupedEntities {
   static ID = 83;
 
-  static create(
-    fields: Partial<GroupedEntities> = {}): GroupedEntities {
+  static create(fields: Partial<GroupedEntities> = {}): GroupedEntities {
     if (fields.ids === undefined) {
       fields.ids = t.defaultBiomesIdList();
     }
@@ -1486,8 +1468,9 @@ export class GroupedEntities {
   }
 
   static clone(value?: ReadonlyGroupedEntities): GroupedEntities {
-    return value === undefined ? GroupedEntities.create() :
-      cloneDeepWithItems(value) as unknown as GroupedEntities;
+    return value === undefined
+      ? GroupedEntities.create()
+      : (cloneDeepWithItems(value) as unknown as GroupedEntities);
   }
 }
 export interface InGroup {
@@ -1501,8 +1484,7 @@ export interface ReadonlyInGroup {
 export class InGroup {
   static ID = 95;
 
-  static create(
-    fields: Partial<InGroup> = {}): InGroup {
+  static create(fields: Partial<InGroup> = {}): InGroup {
     if (fields.id === undefined) {
       fields.id = t.defaultBiomesId;
     }
@@ -1510,8 +1492,9 @@ export class InGroup {
   }
 
   static clone(value?: ReadonlyInGroup): InGroup {
-    return value === undefined ? InGroup.create() :
-      cloneDeepWithItems(value) as unknown as InGroup;
+    return value === undefined
+      ? InGroup.create()
+      : (cloneDeepWithItems(value) as unknown as InGroup);
   }
 }
 export interface PictureFrameContents {
@@ -1530,7 +1513,8 @@ export class PictureFrameContents {
   static ID = 84;
 
   static create(
-    fields: Partial<PictureFrameContents> = {}): PictureFrameContents {
+    fields: Partial<PictureFrameContents> = {}
+  ): PictureFrameContents {
     if (fields.placer_id === undefined) {
       fields.placer_id = t.defaultBiomesId;
     }
@@ -1544,8 +1528,9 @@ export class PictureFrameContents {
   }
 
   static clone(value?: ReadonlyPictureFrameContents): PictureFrameContents {
-    return value === undefined ? PictureFrameContents.create() :
-      cloneDeepWithItems(value) as unknown as PictureFrameContents;
+    return value === undefined
+      ? PictureFrameContents.create()
+      : (cloneDeepWithItems(value) as unknown as PictureFrameContents);
   }
 }
 export interface TriggerState {
@@ -1559,8 +1544,7 @@ export interface ReadonlyTriggerState {
 export class TriggerState {
   static ID = 88;
 
-  static create(
-    fields: Partial<TriggerState> = {}): TriggerState {
+  static create(fields: Partial<TriggerState> = {}): TriggerState {
     if (fields.by_root === undefined) {
       fields.by_root = t.defaultTriggerTrees();
     }
@@ -1568,8 +1552,9 @@ export class TriggerState {
   }
 
   static clone(value?: ReadonlyTriggerState): TriggerState {
-    return value === undefined ? TriggerState.create() :
-      cloneDeepWithItems(value) as unknown as TriggerState;
+    return value === undefined
+      ? TriggerState.create()
+      : (cloneDeepWithItems(value) as unknown as TriggerState);
   }
 }
 export interface LifetimeStats {
@@ -1583,8 +1568,7 @@ export interface ReadonlyLifetimeStats {
 export class LifetimeStats {
   static ID = 91;
 
-  static create(
-    fields: Partial<LifetimeStats> = {}): LifetimeStats {
+  static create(fields: Partial<LifetimeStats> = {}): LifetimeStats {
     if (fields.stats === undefined) {
       fields.stats = t.defaultLifetimeStatsMap();
     }
@@ -1592,8 +1576,9 @@ export class LifetimeStats {
   }
 
   static clone(value?: ReadonlyLifetimeStats): LifetimeStats {
-    return value === undefined ? LifetimeStats.create() :
-      cloneDeepWithItems(value) as unknown as LifetimeStats;
+    return value === undefined
+      ? LifetimeStats.create()
+      : (cloneDeepWithItems(value) as unknown as LifetimeStats);
   }
 }
 export interface OccupancyComponent {
@@ -1607,8 +1592,7 @@ export interface ReadonlyOccupancyComponent {
 export class OccupancyComponent {
   static ID = 97;
 
-  static create(
-    fields: Partial<OccupancyComponent> = {}): OccupancyComponent {
+  static create(fields: Partial<OccupancyComponent> = {}): OccupancyComponent {
     if (fields.buffer === undefined) {
       fields.buffer = t.defaultOptionalBuffer;
     }
@@ -1616,8 +1600,9 @@ export class OccupancyComponent {
   }
 
   static clone(value?: ReadonlyOccupancyComponent): OccupancyComponent {
-    return value === undefined ? OccupancyComponent.create() :
-      cloneDeepWithItems(value) as unknown as OccupancyComponent;
+    return value === undefined
+      ? OccupancyComponent.create()
+      : (cloneDeepWithItems(value) as unknown as OccupancyComponent);
   }
 }
 export interface VideoComponent {
@@ -1635,8 +1620,7 @@ export interface ReadonlyVideoComponent {
 export class VideoComponent {
   static ID = 92;
 
-  static create(
-    fields: Partial<VideoComponent> = {}): VideoComponent {
+  static create(fields: Partial<VideoComponent> = {}): VideoComponent {
     if (fields.video_url === undefined) {
       fields.video_url = t.defaultOptionalString;
     }
@@ -1650,8 +1634,9 @@ export class VideoComponent {
   }
 
   static clone(value?: ReadonlyVideoComponent): VideoComponent {
-    return value === undefined ? VideoComponent.create() :
-      cloneDeepWithItems(value) as unknown as VideoComponent;
+    return value === undefined
+      ? VideoComponent.create()
+      : (cloneDeepWithItems(value) as unknown as VideoComponent);
   }
 }
 export interface PlayerSession {
@@ -1665,8 +1650,7 @@ export interface ReadonlyPlayerSession {
 export class PlayerSession {
   static ID = 98;
 
-  static create(
-    fields: Partial<PlayerSession> = {}): PlayerSession {
+  static create(fields: Partial<PlayerSession> = {}): PlayerSession {
     if (fields.id === undefined) {
       fields.id = t.defaultString;
     }
@@ -1674,8 +1658,9 @@ export class PlayerSession {
   }
 
   static clone(value?: ReadonlyPlayerSession): PlayerSession {
-    return value === undefined ? PlayerSession.create() :
-      cloneDeepWithItems(value) as unknown as PlayerSession;
+    return value === undefined
+      ? PlayerSession.create()
+      : (cloneDeepWithItems(value) as unknown as PlayerSession);
   }
 }
 export interface PresetApplied {
@@ -1693,8 +1678,7 @@ export interface ReadonlyPresetApplied {
 export class PresetApplied {
   static ID = 99;
 
-  static create(
-    fields: Partial<PresetApplied> = {}): PresetApplied {
+  static create(fields: Partial<PresetApplied> = {}): PresetApplied {
     if (fields.preset_id === undefined) {
       fields.preset_id = t.defaultBiomesId;
     }
@@ -1708,8 +1692,9 @@ export class PresetApplied {
   }
 
   static clone(value?: ReadonlyPresetApplied): PresetApplied {
-    return value === undefined ? PresetApplied.create() :
-      cloneDeepWithItems(value) as unknown as PresetApplied;
+    return value === undefined
+      ? PresetApplied.create()
+      : (cloneDeepWithItems(value) as unknown as PresetApplied);
   }
 }
 export interface PresetPrototype {
@@ -1725,8 +1710,7 @@ export interface ReadonlyPresetPrototype {
 export class PresetPrototype {
   static ID = 100;
 
-  static create(
-    fields: Partial<PresetPrototype> = {}): PresetPrototype {
+  static create(fields: Partial<PresetPrototype> = {}): PresetPrototype {
     if (fields.last_updated === undefined) {
       fields.last_updated = t.defaultF64;
     }
@@ -1737,8 +1721,9 @@ export class PresetPrototype {
   }
 
   static clone(value?: ReadonlyPresetPrototype): PresetPrototype {
-    return value === undefined ? PresetPrototype.create() :
-      cloneDeepWithItems(value) as unknown as PresetPrototype;
+    return value === undefined
+      ? PresetPrototype.create()
+      : (cloneDeepWithItems(value) as unknown as PresetPrototype);
   }
 }
 export interface FarmingPlantComponent {
@@ -1783,7 +1768,8 @@ export class FarmingPlantComponent {
   static ID = 102;
 
   static create(
-    fields: Partial<FarmingPlantComponent> = {}): FarmingPlantComponent {
+    fields: Partial<FarmingPlantComponent> = {}
+  ): FarmingPlantComponent {
     if (fields.planter === undefined) {
       fields.planter = t.defaultBiomesId;
     }
@@ -1836,8 +1822,9 @@ export class FarmingPlantComponent {
   }
 
   static clone(value?: ReadonlyFarmingPlantComponent): FarmingPlantComponent {
-    return value === undefined ? FarmingPlantComponent.create() :
-      cloneDeepWithItems(value) as unknown as FarmingPlantComponent;
+    return value === undefined
+      ? FarmingPlantComponent.create()
+      : (cloneDeepWithItems(value) as unknown as FarmingPlantComponent);
   }
 }
 export interface ShardFarming {
@@ -1851,8 +1838,7 @@ export interface ReadonlyShardFarming {
 export class ShardFarming {
   static ID = 103;
 
-  static create(
-    fields: Partial<ShardFarming> = {}): ShardFarming {
+  static create(fields: Partial<ShardFarming> = {}): ShardFarming {
     if (fields.buffer === undefined) {
       fields.buffer = t.defaultBuffer();
     }
@@ -1860,8 +1846,9 @@ export class ShardFarming {
   }
 
   static clone(value?: ReadonlyShardFarming): ShardFarming {
-    return value === undefined ? ShardFarming.create() :
-      cloneDeepWithItems(value) as unknown as ShardFarming;
+    return value === undefined
+      ? ShardFarming.create()
+      : (cloneDeepWithItems(value) as unknown as ShardFarming);
   }
 }
 export interface CreatedBy {
@@ -1877,8 +1864,7 @@ export interface ReadonlyCreatedBy {
 export class CreatedBy {
   static ID = 104;
 
-  static create(
-    fields: Partial<CreatedBy> = {}): CreatedBy {
+  static create(fields: Partial<CreatedBy> = {}): CreatedBy {
     if (fields.id === undefined) {
       fields.id = t.defaultBiomesId;
     }
@@ -1889,8 +1875,9 @@ export class CreatedBy {
   }
 
   static clone(value?: ReadonlyCreatedBy): CreatedBy {
-    return value === undefined ? CreatedBy.create() :
-      cloneDeepWithItems(value) as unknown as CreatedBy;
+    return value === undefined
+      ? CreatedBy.create()
+      : (cloneDeepWithItems(value) as unknown as CreatedBy);
   }
 }
 export interface MinigameComponent {
@@ -1920,8 +1907,7 @@ export interface ReadonlyMinigameComponent {
 export class MinigameComponent {
   static ID = 105;
 
-  static create(
-    fields: Partial<MinigameComponent> = {}): MinigameComponent {
+  static create(fields: Partial<MinigameComponent> = {}): MinigameComponent {
     if (fields.metadata === undefined) {
       fields.metadata = t.defaultMinigameMetadata();
     }
@@ -1953,8 +1939,9 @@ export class MinigameComponent {
   }
 
   static clone(value?: ReadonlyMinigameComponent): MinigameComponent {
-    return value === undefined ? MinigameComponent.create() :
-      cloneDeepWithItems(value) as unknown as MinigameComponent;
+    return value === undefined
+      ? MinigameComponent.create()
+      : (cloneDeepWithItems(value) as unknown as MinigameComponent);
   }
 }
 export interface MinigameInstance {
@@ -1978,8 +1965,7 @@ export interface ReadonlyMinigameInstance {
 export class MinigameInstance {
   static ID = 106;
 
-  static create(
-    fields: Partial<MinigameInstance> = {}): MinigameInstance {
+  static create(fields: Partial<MinigameInstance> = {}): MinigameInstance {
     if (fields.state === undefined) {
       fields.state = t.defaultMinigameInstanceState();
     }
@@ -1993,7 +1979,8 @@ export class MinigameInstance {
       fields.active_players = t.defaultMinigameInstanceActivePlayerMap();
     }
     if (fields.space_clipboard === undefined) {
-      fields.space_clipboard = t.defaultOptionalMinigameInstanceSpaceClipboardInfo;
+      fields.space_clipboard =
+        t.defaultOptionalMinigameInstanceSpaceClipboardInfo;
     }
     if (fields.instance_element_ids === undefined) {
       fields.instance_element_ids = t.defaultBiomesIdSet();
@@ -2002,8 +1989,9 @@ export class MinigameInstance {
   }
 
   static clone(value?: ReadonlyMinigameInstance): MinigameInstance {
-    return value === undefined ? MinigameInstance.create() :
-      cloneDeepWithItems(value) as unknown as MinigameInstance;
+    return value === undefined
+      ? MinigameInstance.create()
+      : (cloneDeepWithItems(value) as unknown as MinigameInstance);
   }
 }
 export interface PlayingMinigame {
@@ -2021,8 +2009,7 @@ export interface ReadonlyPlayingMinigame {
 export class PlayingMinigame {
   static ID = 107;
 
-  static create(
-    fields: Partial<PlayingMinigame> = {}): PlayingMinigame {
+  static create(fields: Partial<PlayingMinigame> = {}): PlayingMinigame {
     if (fields.minigame_id === undefined) {
       fields.minigame_id = t.defaultBiomesId;
     }
@@ -2036,8 +2023,9 @@ export class PlayingMinigame {
   }
 
   static clone(value?: ReadonlyPlayingMinigame): PlayingMinigame {
-    return value === undefined ? PlayingMinigame.create() :
-      cloneDeepWithItems(value) as unknown as PlayingMinigame;
+    return value === undefined
+      ? PlayingMinigame.create()
+      : (cloneDeepWithItems(value) as unknown as PlayingMinigame);
   }
 }
 export interface MinigameElement {
@@ -2051,8 +2039,7 @@ export interface ReadonlyMinigameElement {
 export class MinigameElement {
   static ID = 108;
 
-  static create(
-    fields: Partial<MinigameElement> = {}): MinigameElement {
+  static create(fields: Partial<MinigameElement> = {}): MinigameElement {
     if (fields.minigame_id === undefined) {
       fields.minigame_id = t.defaultBiomesId;
     }
@@ -2060,8 +2047,9 @@ export class MinigameElement {
   }
 
   static clone(value?: ReadonlyMinigameElement): MinigameElement {
-    return value === undefined ? MinigameElement.create() :
-      cloneDeepWithItems(value) as unknown as MinigameElement;
+    return value === undefined
+      ? MinigameElement.create()
+      : (cloneDeepWithItems(value) as unknown as MinigameElement);
   }
 }
 export interface ActiveTray {
@@ -2075,8 +2063,7 @@ export interface ReadonlyActiveTray {
 export class ActiveTray {
   static ID = 109;
 
-  static create(
-    fields: Partial<ActiveTray> = {}): ActiveTray {
+  static create(fields: Partial<ActiveTray> = {}): ActiveTray {
     if (fields.id === undefined) {
       fields.id = t.defaultBiomesId;
     }
@@ -2084,8 +2071,9 @@ export class ActiveTray {
   }
 
   static clone(value?: ReadonlyActiveTray): ActiveTray {
-    return value === undefined ? ActiveTray.create() :
-      cloneDeepWithItems(value) as unknown as ActiveTray;
+    return value === undefined
+      ? ActiveTray.create()
+      : (cloneDeepWithItems(value) as unknown as ActiveTray);
   }
 }
 export interface Stashed {
@@ -2103,8 +2091,7 @@ export interface ReadonlyStashed {
 export class Stashed {
   static ID = 115;
 
-  static create(
-    fields: Partial<Stashed> = {}): Stashed {
+  static create(fields: Partial<Stashed> = {}): Stashed {
     if (fields.stashed_at === undefined) {
       fields.stashed_at = t.defaultF64;
     }
@@ -2118,8 +2105,9 @@ export class Stashed {
   }
 
   static clone(value?: ReadonlyStashed): Stashed {
-    return value === undefined ? Stashed.create() :
-      cloneDeepWithItems(value) as unknown as Stashed;
+    return value === undefined
+      ? Stashed.create()
+      : (cloneDeepWithItems(value) as unknown as Stashed);
   }
 }
 export interface MinigameInstanceTickInfo {
@@ -2136,7 +2124,8 @@ export class MinigameInstanceTickInfo {
   static ID = 117;
 
   static create(
-    fields: Partial<MinigameInstanceTickInfo> = {}): MinigameInstanceTickInfo {
+    fields: Partial<MinigameInstanceTickInfo> = {}
+  ): MinigameInstanceTickInfo {
     if (fields.last_tick === undefined) {
       fields.last_tick = t.defaultF64;
     }
@@ -2146,9 +2135,12 @@ export class MinigameInstanceTickInfo {
     return fields as MinigameInstanceTickInfo;
   }
 
-  static clone(value?: ReadonlyMinigameInstanceTickInfo): MinigameInstanceTickInfo {
-    return value === undefined ? MinigameInstanceTickInfo.create() :
-      cloneDeepWithItems(value) as unknown as MinigameInstanceTickInfo;
+  static clone(
+    value?: ReadonlyMinigameInstanceTickInfo
+  ): MinigameInstanceTickInfo {
+    return value === undefined
+      ? MinigameInstanceTickInfo.create()
+      : (cloneDeepWithItems(value) as unknown as MinigameInstanceTickInfo);
   }
 }
 export interface WarpingTo {
@@ -2166,8 +2158,7 @@ export interface ReadonlyWarpingTo {
 export class WarpingTo {
   static ID = 118;
 
-  static create(
-    fields: Partial<WarpingTo> = {}): WarpingTo {
+  static create(fields: Partial<WarpingTo> = {}): WarpingTo {
     if (fields.position === undefined) {
       fields.position = t.defaultVec3f();
     }
@@ -2181,8 +2172,9 @@ export class WarpingTo {
   }
 
   static clone(value?: ReadonlyWarpingTo): WarpingTo {
-    return value === undefined ? WarpingTo.create() :
-      cloneDeepWithItems(value) as unknown as WarpingTo;
+    return value === undefined
+      ? WarpingTo.create()
+      : (cloneDeepWithItems(value) as unknown as WarpingTo);
   }
 }
 export interface MinigameInstanceExpire {
@@ -2197,7 +2189,8 @@ export class MinigameInstanceExpire {
   static ID = 119;
 
   static create(
-    fields: Partial<MinigameInstanceExpire> = {}): MinigameInstanceExpire {
+    fields: Partial<MinigameInstanceExpire> = {}
+  ): MinigameInstanceExpire {
     if (fields.trigger_at === undefined) {
       fields.trigger_at = t.defaultF64;
     }
@@ -2205,8 +2198,9 @@ export class MinigameInstanceExpire {
   }
 
   static clone(value?: ReadonlyMinigameInstanceExpire): MinigameInstanceExpire {
-    return value === undefined ? MinigameInstanceExpire.create() :
-      cloneDeepWithItems(value) as unknown as MinigameInstanceExpire;
+    return value === undefined
+      ? MinigameInstanceExpire.create()
+      : (cloneDeepWithItems(value) as unknown as MinigameInstanceExpire);
   }
 }
 export interface PlacerComponent {
@@ -2220,8 +2214,7 @@ export interface ReadonlyPlacerComponent {
 export class PlacerComponent {
   static ID = 121;
 
-  static create(
-    fields: Partial<PlacerComponent> = {}): PlacerComponent {
+  static create(fields: Partial<PlacerComponent> = {}): PlacerComponent {
     if (fields.buffer === undefined) {
       fields.buffer = t.defaultOptionalBuffer;
     }
@@ -2229,8 +2222,9 @@ export class PlacerComponent {
   }
 
   static clone(value?: ReadonlyPlacerComponent): PlacerComponent {
-    return value === undefined ? PlacerComponent.create() :
-      cloneDeepWithItems(value) as unknown as PlacerComponent;
+    return value === undefined
+      ? PlacerComponent.create()
+      : (cloneDeepWithItems(value) as unknown as PlacerComponent);
   }
 }
 export interface QuestGiver {
@@ -2246,8 +2240,7 @@ export interface ReadonlyQuestGiver {
 export class QuestGiver {
   static ID = 122;
 
-  static create(
-    fields: Partial<QuestGiver> = {}): QuestGiver {
+  static create(fields: Partial<QuestGiver> = {}): QuestGiver {
     if (fields.concurrent_quests === undefined) {
       fields.concurrent_quests = t.defaultOptionalI32;
     }
@@ -2258,8 +2251,9 @@ export class QuestGiver {
   }
 
   static clone(value?: ReadonlyQuestGiver): QuestGiver {
-    return value === undefined ? QuestGiver.create() :
-      cloneDeepWithItems(value) as unknown as QuestGiver;
+    return value === undefined
+      ? QuestGiver.create()
+      : (cloneDeepWithItems(value) as unknown as QuestGiver);
   }
 }
 export interface DefaultDialog {
@@ -2277,8 +2271,7 @@ export interface ReadonlyDefaultDialog {
 export class DefaultDialog {
   static ID = 123;
 
-  static create(
-    fields: Partial<DefaultDialog> = {}): DefaultDialog {
+  static create(fields: Partial<DefaultDialog> = {}): DefaultDialog {
     if (fields.text === undefined) {
       fields.text = t.defaultString;
     }
@@ -2292,8 +2285,9 @@ export class DefaultDialog {
   }
 
   static clone(value?: ReadonlyDefaultDialog): DefaultDialog {
-    return value === undefined ? DefaultDialog.create() :
-      cloneDeepWithItems(value) as unknown as DefaultDialog;
+    return value === undefined
+      ? DefaultDialog.create()
+      : (cloneDeepWithItems(value) as unknown as DefaultDialog);
   }
 }
 export interface Unmuck {
@@ -2309,8 +2303,7 @@ export interface ReadonlyUnmuck {
 export class Unmuck {
   static ID = 125;
 
-  static create(
-    fields: Partial<Unmuck> = {}): Unmuck {
+  static create(fields: Partial<Unmuck> = {}): Unmuck {
     if (fields.volume === undefined) {
       fields.volume = t.defaultVolume();
     }
@@ -2321,8 +2314,9 @@ export class Unmuck {
   }
 
   static clone(value?: ReadonlyUnmuck): Unmuck {
-    return value === undefined ? Unmuck.create() :
-      cloneDeepWithItems(value) as unknown as Unmuck;
+    return value === undefined
+      ? Unmuck.create()
+      : (cloneDeepWithItems(value) as unknown as Unmuck);
   }
 }
 export interface RobotComponent {
@@ -2342,8 +2336,7 @@ export interface ReadonlyRobotComponent {
 export class RobotComponent {
   static ID = 126;
 
-  static create(
-    fields: Partial<RobotComponent> = {}): RobotComponent {
+  static create(fields: Partial<RobotComponent> = {}): RobotComponent {
     if (fields.trigger_at === undefined) {
       fields.trigger_at = t.defaultOptionalF64;
     }
@@ -2360,15 +2353,14 @@ export class RobotComponent {
   }
 
   static clone(value?: ReadonlyRobotComponent): RobotComponent {
-    return value === undefined ? RobotComponent.create() :
-      cloneDeepWithItems(value) as unknown as RobotComponent;
+    return value === undefined
+      ? RobotComponent.create()
+      : (cloneDeepWithItems(value) as unknown as RobotComponent);
   }
 }
-export interface AdminEntity {
-}
+export interface AdminEntity {}
 
-export interface ReadonlyAdminEntity {
-}
+export interface ReadonlyAdminEntity {}
 
 export class AdminEntity {
   static ID = 140;
@@ -2392,8 +2384,7 @@ export interface ReadonlyProtection {
 export class Protection {
   static ID = 127;
 
-  static create(
-    fields: Partial<Protection> = {}): Protection {
+  static create(fields: Partial<Protection> = {}): Protection {
     if (fields.timestamp === undefined) {
       fields.timestamp = t.defaultOptionalF64;
     }
@@ -2401,8 +2392,9 @@ export class Protection {
   }
 
   static clone(value?: ReadonlyProtection): Protection {
-    return value === undefined ? Protection.create() :
-      cloneDeepWithItems(value) as unknown as Protection;
+    return value === undefined
+      ? Protection.create()
+      : (cloneDeepWithItems(value) as unknown as Protection);
   }
 }
 export interface ProjectsProtection {
@@ -2428,8 +2420,7 @@ export interface ReadonlyProjectsProtection {
 export class ProjectsProtection {
   static ID = 128;
 
-  static create(
-    fields: Partial<ProjectsProtection> = {}): ProjectsProtection {
+  static create(fields: Partial<ProjectsProtection> = {}): ProjectsProtection {
     if (fields.protectionChildId === undefined) {
       fields.protectionChildId = t.defaultOptionalBiomesId;
     }
@@ -2455,8 +2446,9 @@ export class ProjectsProtection {
   }
 
   static clone(value?: ReadonlyProjectsProtection): ProjectsProtection {
-    return value === undefined ? ProjectsProtection.create() :
-      cloneDeepWithItems(value) as unknown as ProjectsProtection;
+    return value === undefined
+      ? ProjectsProtection.create()
+      : (cloneDeepWithItems(value) as unknown as ProjectsProtection);
   }
 }
 export interface DeletesWith {
@@ -2470,8 +2462,7 @@ export interface ReadonlyDeletesWith {
 export class DeletesWith {
   static ID = 129;
 
-  static create(
-    fields: Partial<DeletesWith> = {}): DeletesWith {
+  static create(fields: Partial<DeletesWith> = {}): DeletesWith {
     if (fields.id === undefined) {
       fields.id = t.defaultBiomesId;
     }
@@ -2479,8 +2470,9 @@ export class DeletesWith {
   }
 
   static clone(value?: ReadonlyDeletesWith): DeletesWith {
-    return value === undefined ? DeletesWith.create() :
-      cloneDeepWithItems(value) as unknown as DeletesWith;
+    return value === undefined
+      ? DeletesWith.create()
+      : (cloneDeepWithItems(value) as unknown as DeletesWith);
   }
 }
 export interface ItemBuyer {
@@ -2496,8 +2488,7 @@ export interface ReadonlyItemBuyer {
 export class ItemBuyer {
   static ID = 130;
 
-  static create(
-    fields: Partial<ItemBuyer> = {}): ItemBuyer {
+  static create(fields: Partial<ItemBuyer> = {}): ItemBuyer {
     if (fields.attribute_ids === undefined) {
       fields.attribute_ids = t.defaultBiomesIdList();
     }
@@ -2508,8 +2499,9 @@ export class ItemBuyer {
   }
 
   static clone(value?: ReadonlyItemBuyer): ItemBuyer {
-    return value === undefined ? ItemBuyer.create() :
-      cloneDeepWithItems(value) as unknown as ItemBuyer;
+    return value === undefined
+      ? ItemBuyer.create()
+      : (cloneDeepWithItems(value) as unknown as ItemBuyer);
   }
 }
 export interface InspectionTweaks {
@@ -2523,8 +2515,7 @@ export interface ReadonlyInspectionTweaks {
 export class InspectionTweaks {
   static ID = 131;
 
-  static create(
-    fields: Partial<InspectionTweaks> = {}): InspectionTweaks {
+  static create(fields: Partial<InspectionTweaks> = {}): InspectionTweaks {
     if (fields.hidden === undefined) {
       fields.hidden = t.defaultOptionalBool;
     }
@@ -2532,8 +2523,9 @@ export class InspectionTweaks {
   }
 
   static clone(value?: ReadonlyInspectionTweaks): InspectionTweaks {
-    return value === undefined ? InspectionTweaks.create() :
-      cloneDeepWithItems(value) as unknown as InspectionTweaks;
+    return value === undefined
+      ? InspectionTweaks.create()
+      : (cloneDeepWithItems(value) as unknown as InspectionTweaks);
   }
 }
 export interface ProfilePic {
@@ -2549,8 +2541,7 @@ export interface ReadonlyProfilePic {
 export class ProfilePic {
   static ID = 132;
 
-  static create(
-    fields: Partial<ProfilePic> = {}): ProfilePic {
+  static create(fields: Partial<ProfilePic> = {}): ProfilePic {
     if (fields.cloud_bundle === undefined) {
       fields.cloud_bundle = t.defaultBucketedImageCloudBundle();
     }
@@ -2561,8 +2552,9 @@ export class ProfilePic {
   }
 
   static clone(value?: ReadonlyProfilePic): ProfilePic {
-    return value === undefined ? ProfilePic.create() :
-      cloneDeepWithItems(value) as unknown as ProfilePic;
+    return value === undefined
+      ? ProfilePic.create()
+      : (cloneDeepWithItems(value) as unknown as ProfilePic);
   }
 }
 export interface EntityDescription {
@@ -2576,8 +2568,7 @@ export interface ReadonlyEntityDescription {
 export class EntityDescription {
   static ID = 133;
 
-  static create(
-    fields: Partial<EntityDescription> = {}): EntityDescription {
+  static create(fields: Partial<EntityDescription> = {}): EntityDescription {
     if (fields.text === undefined) {
       fields.text = t.defaultString;
     }
@@ -2585,8 +2576,9 @@ export class EntityDescription {
   }
 
   static clone(value?: ReadonlyEntityDescription): EntityDescription {
-    return value === undefined ? EntityDescription.create() :
-      cloneDeepWithItems(value) as unknown as EntityDescription;
+    return value === undefined
+      ? EntityDescription.create()
+      : (cloneDeepWithItems(value) as unknown as EntityDescription);
   }
 }
 export interface Landmark {
@@ -2602,8 +2594,7 @@ export interface ReadonlyLandmark {
 export class Landmark {
   static ID = 134;
 
-  static create(
-    fields: Partial<Landmark> = {}): Landmark {
+  static create(fields: Partial<Landmark> = {}): Landmark {
     if (fields.override_name === undefined) {
       fields.override_name = t.defaultOptionalString;
     }
@@ -2614,15 +2605,14 @@ export class Landmark {
   }
 
   static clone(value?: ReadonlyLandmark): Landmark {
-    return value === undefined ? Landmark.create() :
-      cloneDeepWithItems(value) as unknown as Landmark;
+    return value === undefined
+      ? Landmark.create()
+      : (cloneDeepWithItems(value) as unknown as Landmark);
   }
 }
-export interface Collideable {
-}
+export interface Collideable {}
 
-export interface ReadonlyCollideable {
-}
+export interface ReadonlyCollideable {}
 
 export class Collideable {
   static ID = 135;
@@ -2648,8 +2638,7 @@ export interface ReadonlyRestoration {
 export class Restoration {
   static ID = 136;
 
-  static create(
-    fields: Partial<Restoration> = {}): Restoration {
+  static create(fields: Partial<Restoration> = {}): Restoration {
     if (fields.timestamp === undefined) {
       fields.timestamp = t.defaultOptionalF64;
     }
@@ -2660,8 +2649,9 @@ export class Restoration {
   }
 
   static clone(value?: ReadonlyRestoration): Restoration {
-    return value === undefined ? Restoration.create() :
-      cloneDeepWithItems(value) as unknown as Restoration;
+    return value === undefined
+      ? Restoration.create()
+      : (cloneDeepWithItems(value) as unknown as Restoration);
   }
 }
 export interface TerrainRestorationDiff {
@@ -2676,7 +2666,8 @@ export class TerrainRestorationDiff {
   static ID = 137;
 
   static create(
-    fields: Partial<TerrainRestorationDiff> = {}): TerrainRestorationDiff {
+    fields: Partial<TerrainRestorationDiff> = {}
+  ): TerrainRestorationDiff {
     if (fields.restores === undefined) {
       fields.restores = t.defaultTerrainRestorationEntryList();
     }
@@ -2684,8 +2675,9 @@ export class TerrainRestorationDiff {
   }
 
   static clone(value?: ReadonlyTerrainRestorationDiff): TerrainRestorationDiff {
-    return value === undefined ? TerrainRestorationDiff.create() :
-      cloneDeepWithItems(value) as unknown as TerrainRestorationDiff;
+    return value === undefined
+      ? TerrainRestorationDiff.create()
+      : (cloneDeepWithItems(value) as unknown as TerrainRestorationDiff);
   }
 }
 export interface Team {
@@ -2709,8 +2701,7 @@ export interface ReadonlyTeam {
 export class Team {
   static ID = 138;
 
-  static create(
-    fields: Partial<Team> = {}): Team {
+  static create(fields: Partial<Team> = {}): Team {
     if (fields.members === undefined) {
       fields.members = t.defaultTeamMembers();
     }
@@ -2733,8 +2724,9 @@ export class Team {
   }
 
   static clone(value?: ReadonlyTeam): Team {
-    return value === undefined ? Team.create() :
-      cloneDeepWithItems(value) as unknown as Team;
+    return value === undefined
+      ? Team.create()
+      : (cloneDeepWithItems(value) as unknown as Team);
   }
 }
 export interface PlayerCurrentTeam {
@@ -2748,8 +2740,7 @@ export interface ReadonlyPlayerCurrentTeam {
 export class PlayerCurrentTeam {
   static ID = 139;
 
-  static create(
-    fields: Partial<PlayerCurrentTeam> = {}): PlayerCurrentTeam {
+  static create(fields: Partial<PlayerCurrentTeam> = {}): PlayerCurrentTeam {
     if (fields.team_id === undefined) {
       fields.team_id = t.defaultBiomesId;
     }
@@ -2757,8 +2748,9 @@ export class PlayerCurrentTeam {
   }
 
   static clone(value?: ReadonlyPlayerCurrentTeam): PlayerCurrentTeam {
-    return value === undefined ? PlayerCurrentTeam.create() :
-      cloneDeepWithItems(value) as unknown as PlayerCurrentTeam;
+    return value === undefined
+      ? PlayerCurrentTeam.create()
+      : (cloneDeepWithItems(value) as unknown as PlayerCurrentTeam);
   }
 }
 export interface UserRoles {
@@ -2772,8 +2764,7 @@ export interface ReadonlyUserRoles {
 export class UserRoles {
   static ID = 141;
 
-  static create(
-    fields: Partial<UserRoles> = {}): UserRoles {
+  static create(fields: Partial<UserRoles> = {}): UserRoles {
     if (fields.roles === undefined) {
       fields.roles = t.defaultUserRoleSet();
     }
@@ -2781,8 +2772,9 @@ export class UserRoles {
   }
 
   static clone(value?: ReadonlyUserRoles): UserRoles {
-    return value === undefined ? UserRoles.create() :
-      cloneDeepWithItems(value) as unknown as UserRoles;
+    return value === undefined
+      ? UserRoles.create()
+      : (cloneDeepWithItems(value) as unknown as UserRoles);
   }
 }
 export interface RestoresTo {
@@ -2800,8 +2792,7 @@ export interface ReadonlyRestoresTo {
 export class RestoresTo {
   static ID = 142;
 
-  static create(
-    fields: Partial<RestoresTo> = {}): RestoresTo {
+  static create(fields: Partial<RestoresTo> = {}): RestoresTo {
     if (fields.trigger_at === undefined) {
       fields.trigger_at = t.defaultF64;
     }
@@ -2815,8 +2806,9 @@ export class RestoresTo {
   }
 
   static clone(value?: ReadonlyRestoresTo): RestoresTo {
-    return value === undefined ? RestoresTo.create() :
-      cloneDeepWithItems(value) as unknown as RestoresTo;
+    return value === undefined
+      ? RestoresTo.create()
+      : (cloneDeepWithItems(value) as unknown as RestoresTo);
   }
 }
 export interface Trade {
@@ -2834,8 +2826,7 @@ export interface ReadonlyTrade {
 export class Trade {
   static ID = 143;
 
-  static create(
-    fields: Partial<Trade> = {}): Trade {
+  static create(fields: Partial<Trade> = {}): Trade {
     if (fields.trader1 === undefined) {
       fields.trader1 = t.defaultTrader();
     }
@@ -2849,8 +2840,9 @@ export class Trade {
   }
 
   static clone(value?: ReadonlyTrade): Trade {
-    return value === undefined ? Trade.create() :
-      cloneDeepWithItems(value) as unknown as Trade;
+    return value === undefined
+      ? Trade.create()
+      : (cloneDeepWithItems(value) as unknown as Trade);
   }
 }
 export interface ActiveTrades {
@@ -2864,8 +2856,7 @@ export interface ReadonlyActiveTrades {
 export class ActiveTrades {
   static ID = 144;
 
-  static create(
-    fields: Partial<ActiveTrades> = {}): ActiveTrades {
+  static create(fields: Partial<ActiveTrades> = {}): ActiveTrades {
     if (fields.trades === undefined) {
       fields.trades = t.defaultTradeSpecList();
     }
@@ -2873,8 +2864,9 @@ export class ActiveTrades {
   }
 
   static clone(value?: ReadonlyActiveTrades): ActiveTrades {
-    return value === undefined ? ActiveTrades.create() :
-      cloneDeepWithItems(value) as unknown as ActiveTrades;
+    return value === undefined
+      ? ActiveTrades.create()
+      : (cloneDeepWithItems(value) as unknown as ActiveTrades);
   }
 }
 export interface PlacedBy {
@@ -2890,8 +2882,7 @@ export interface ReadonlyPlacedBy {
 export class PlacedBy {
   static ID = 145;
 
-  static create(
-    fields: Partial<PlacedBy> = {}): PlacedBy {
+  static create(fields: Partial<PlacedBy> = {}): PlacedBy {
     if (fields.id === undefined) {
       fields.id = t.defaultBiomesId;
     }
@@ -2902,8 +2893,9 @@ export class PlacedBy {
   }
 
   static clone(value?: ReadonlyPlacedBy): PlacedBy {
-    return value === undefined ? PlacedBy.create() :
-      cloneDeepWithItems(value) as unknown as PlacedBy;
+    return value === undefined
+      ? PlacedBy.create()
+      : (cloneDeepWithItems(value) as unknown as PlacedBy);
   }
 }
 export interface TextSign {
@@ -2917,8 +2909,7 @@ export interface ReadonlyTextSign {
 export class TextSign {
   static ID = 146;
 
-  static create(
-    fields: Partial<TextSign> = {}): TextSign {
+  static create(fields: Partial<TextSign> = {}): TextSign {
     if (fields.text === undefined) {
       fields.text = t.defaultStrings();
     }
@@ -2926,8 +2917,9 @@ export class TextSign {
   }
 
   static clone(value?: ReadonlyTextSign): TextSign {
-    return value === undefined ? TextSign.create() :
-      cloneDeepWithItems(value) as unknown as TextSign;
+    return value === undefined
+      ? TextSign.create()
+      : (cloneDeepWithItems(value) as unknown as TextSign);
   }
 }
 export interface Irradiance {
@@ -2943,8 +2935,7 @@ export interface ReadonlyIrradiance {
 export class Irradiance {
   static ID = 147;
 
-  static create(
-    fields: Partial<Irradiance> = {}): Irradiance {
+  static create(fields: Partial<Irradiance> = {}): Irradiance {
     if (fields.intensity === undefined) {
       fields.intensity = t.defaultU8;
     }
@@ -2955,15 +2946,14 @@ export class Irradiance {
   }
 
   static clone(value?: ReadonlyIrradiance): Irradiance {
-    return value === undefined ? Irradiance.create() :
-      cloneDeepWithItems(value) as unknown as Irradiance;
+    return value === undefined
+      ? Irradiance.create()
+      : (cloneDeepWithItems(value) as unknown as Irradiance);
   }
 }
-export interface LockedInPlace {
-}
+export interface LockedInPlace {}
 
-export interface ReadonlyLockedInPlace {
-}
+export interface ReadonlyLockedInPlace {}
 
 export class LockedInPlace {
   static ID = 148;
@@ -2989,8 +2979,7 @@ export interface ReadonlyDeathInfo {
 export class DeathInfo {
   static ID = 149;
 
-  static create(
-    fields: Partial<DeathInfo> = {}): DeathInfo {
+  static create(fields: Partial<DeathInfo> = {}): DeathInfo {
     if (fields.last_death_pos === undefined) {
       fields.last_death_pos = t.defaultOptionalVec3f;
     }
@@ -3001,8 +2990,9 @@ export class DeathInfo {
   }
 
   static clone(value?: ReadonlyDeathInfo): DeathInfo {
-    return value === undefined ? DeathInfo.create() :
-      cloneDeepWithItems(value) as unknown as DeathInfo;
+    return value === undefined
+      ? DeathInfo.create()
+      : (cloneDeepWithItems(value) as unknown as DeathInfo);
   }
 }
 export interface SyntheticStats {
@@ -3016,8 +3006,7 @@ export interface ReadonlySyntheticStats {
 export class SyntheticStats {
   static ID = 150;
 
-  static create(
-    fields: Partial<SyntheticStats> = {}): SyntheticStats {
+  static create(fields: Partial<SyntheticStats> = {}): SyntheticStats {
     if (fields.online_players === undefined) {
       fields.online_players = t.defaultU32;
     }
@@ -3025,15 +3014,14 @@ export class SyntheticStats {
   }
 
   static clone(value?: ReadonlySyntheticStats): SyntheticStats {
-    return value === undefined ? SyntheticStats.create() :
-      cloneDeepWithItems(value) as unknown as SyntheticStats;
+    return value === undefined
+      ? SyntheticStats.create()
+      : (cloneDeepWithItems(value) as unknown as SyntheticStats);
   }
 }
-export interface Idle {
-}
+export interface Idle {}
 
-export interface ReadonlyIdle {
-}
+export interface ReadonlyIdle {}
 
 export class Idle {
   static ID = 151;
@@ -3057,8 +3045,7 @@ export interface ReadonlyVoice {
 export class Voice {
   static ID = 152;
 
-  static create(
-    fields: Partial<Voice> = {}): Voice {
+  static create(fields: Partial<Voice> = {}): Voice {
     if (fields.voice === undefined) {
       fields.voice = t.defaultString;
     }
@@ -3066,8 +3053,9 @@ export class Voice {
   }
 
   static clone(value?: ReadonlyVoice): Voice {
-    return value === undefined ? Voice.create() :
-      cloneDeepWithItems(value) as unknown as Voice;
+    return value === undefined
+      ? Voice.create()
+      : (cloneDeepWithItems(value) as unknown as Voice);
   }
 }
 export interface GiftGiver {
@@ -3083,8 +3071,7 @@ export interface ReadonlyGiftGiver {
 export class GiftGiver {
   static ID = 153;
 
-  static create(
-    fields: Partial<GiftGiver> = {}): GiftGiver {
+  static create(fields: Partial<GiftGiver> = {}): GiftGiver {
     if (fields.last_gift_time === undefined) {
       fields.last_gift_time = t.defaultOptionalF64;
     }
@@ -3095,8 +3082,9 @@ export class GiftGiver {
   }
 
   static clone(value?: ReadonlyGiftGiver): GiftGiver {
-    return value === undefined ? GiftGiver.create() :
-      cloneDeepWithItems(value) as unknown as GiftGiver;
+    return value === undefined
+      ? GiftGiver.create()
+      : (cloneDeepWithItems(value) as unknown as GiftGiver);
   }
 }
 export interface HarthmereEcsTransactionLedger {
@@ -3111,16 +3099,20 @@ export class HarthmereEcsTransactionLedger {
   static ID = 154;
 
   static create(
-    fields: Partial<HarthmereEcsTransactionLedger> = {}): HarthmereEcsTransactionLedger {
+    fields: Partial<HarthmereEcsTransactionLedger> = {}
+  ): HarthmereEcsTransactionLedger {
     if (fields.transaction_ids === undefined) {
       fields.transaction_ids = t.defaultStrings();
     }
     return fields as HarthmereEcsTransactionLedger;
   }
 
-  static clone(value?: ReadonlyHarthmereEcsTransactionLedger): HarthmereEcsTransactionLedger {
-    return value === undefined ? HarthmereEcsTransactionLedger.create() :
-      cloneDeepWithItems(value) as unknown as HarthmereEcsTransactionLedger;
+  static clone(
+    value?: ReadonlyHarthmereEcsTransactionLedger
+  ): HarthmereEcsTransactionLedger {
+    return value === undefined
+      ? HarthmereEcsTransactionLedger.create()
+      : (cloneDeepWithItems(value) as unknown as HarthmereEcsTransactionLedger);
   }
 }
 export interface HarthmereMaterialStorage {
@@ -3145,7 +3137,8 @@ export class HarthmereMaterialStorage {
   static ID = 155;
 
   static create(
-    fields: Partial<HarthmereMaterialStorage> = {}): HarthmereMaterialStorage {
+    fields: Partial<HarthmereMaterialStorage> = {}
+  ): HarthmereMaterialStorage {
     if (fields.items === undefined) {
       fields.items = t.defaultItemBag();
     }
@@ -3167,33 +3160,71 @@ export class HarthmereMaterialStorage {
     return fields as HarthmereMaterialStorage;
   }
 
-  static clone(value?: ReadonlyHarthmereMaterialStorage): HarthmereMaterialStorage {
-    return value === undefined ? HarthmereMaterialStorage.create() :
-      cloneDeepWithItems(value) as unknown as HarthmereMaterialStorage;
+  static clone(
+    value?: ReadonlyHarthmereMaterialStorage
+  ): HarthmereMaterialStorage {
+    return value === undefined
+      ? HarthmereMaterialStorage.create()
+      : (cloneDeepWithItems(value) as unknown as HarthmereMaterialStorage);
   }
 }
 export interface NpcCombatState {
   attack_target: t.OptionalBiomesId;
+  ranged_attack_ability_id: t.OptionalString;
+  ranged_attack_projectile_visual_id: t.OptionalString;
+  ranged_attack_cast_time: t.OptionalF64;
+  ranged_attack_aim_point: t.OptionalVec3f;
+  ranged_attack_result: t.OptionalString;
+  ranged_attack_charge_time_secs: t.OptionalF64;
+  ranged_attack_release_time: t.OptionalF64;
 }
 
 export interface ReadonlyNpcCombatState {
   readonly attack_target: t.ReadonlyOptionalBiomesId;
+  readonly ranged_attack_ability_id: t.ReadonlyOptionalString;
+  readonly ranged_attack_projectile_visual_id: t.ReadonlyOptionalString;
+  readonly ranged_attack_cast_time: t.ReadonlyOptionalF64;
+  readonly ranged_attack_aim_point: t.ReadonlyOptionalVec3f;
+  readonly ranged_attack_result: t.ReadonlyOptionalString;
+  readonly ranged_attack_charge_time_secs: t.ReadonlyOptionalF64;
+  readonly ranged_attack_release_time: t.ReadonlyOptionalF64;
 }
 
 export class NpcCombatState {
   static ID = 156;
 
-  static create(
-    fields: Partial<NpcCombatState> = {}): NpcCombatState {
+  static create(fields: Partial<NpcCombatState> = {}): NpcCombatState {
     if (fields.attack_target === undefined) {
       fields.attack_target = t.defaultOptionalBiomesId;
+    }
+    if (fields.ranged_attack_ability_id === undefined) {
+      fields.ranged_attack_ability_id = t.defaultOptionalString;
+    }
+    if (fields.ranged_attack_projectile_visual_id === undefined) {
+      fields.ranged_attack_projectile_visual_id = t.defaultOptionalString;
+    }
+    if (fields.ranged_attack_cast_time === undefined) {
+      fields.ranged_attack_cast_time = t.defaultOptionalF64;
+    }
+    if (fields.ranged_attack_aim_point === undefined) {
+      fields.ranged_attack_aim_point = t.defaultOptionalVec3f;
+    }
+    if (fields.ranged_attack_result === undefined) {
+      fields.ranged_attack_result = t.defaultOptionalString;
+    }
+    if (fields.ranged_attack_charge_time_secs === undefined) {
+      fields.ranged_attack_charge_time_secs = t.defaultOptionalF64;
+    }
+    if (fields.ranged_attack_release_time === undefined) {
+      fields.ranged_attack_release_time = t.defaultOptionalF64;
     }
     return fields as NpcCombatState;
   }
 
   static clone(value?: ReadonlyNpcCombatState): NpcCombatState {
-    return value === undefined ? NpcCombatState.create() :
-      cloneDeepWithItems(value) as unknown as NpcCombatState;
+    return value === undefined
+      ? NpcCombatState.create()
+      : (cloneDeepWithItems(value) as unknown as NpcCombatState);
   }
 }
 export interface MovementState {
@@ -3221,8 +3252,7 @@ export interface ReadonlyMovementState {
 export class MovementState {
   static ID = 157;
 
-  static create(
-    fields: Partial<MovementState> = {}): MovementState {
+  static create(fields: Partial<MovementState> = {}): MovementState {
     if (fields.crouching === undefined) {
       fields.crouching = t.defaultBool;
     }
@@ -3251,13 +3281,17 @@ export class MovementState {
   }
 
   static clone(value?: ReadonlyMovementState): MovementState {
-    return value === undefined ? MovementState.create() :
-      cloneDeepWithItems(value) as unknown as MovementState;
+    return value === undefined
+      ? MovementState.create()
+      : (cloneDeepWithItems(value) as unknown as MovementState);
   }
 }
 export interface ComponentResourcePaths {
   "/ecs/c/iced": PathDef<[BiomesId], ReadonlyIced | undefined>;
-  "/ecs/c/remote_connection": PathDef<[BiomesId], ReadonlyRemoteConnection | undefined>;
+  "/ecs/c/remote_connection": PathDef<
+    [BiomesId],
+    ReadonlyRemoteConnection | undefined
+  >;
   "/ecs/c/position": PathDef<[BiomesId], ReadonlyPosition | undefined>;
   "/ecs/c/orientation": PathDef<[BiomesId], ReadonlyOrientation | undefined>;
   "/ecs/c/rigid_body": PathDef<[BiomesId], ReadonlyRigidBody | undefined>;
@@ -3266,12 +3300,24 @@ export interface ComponentResourcePaths {
   "/ecs/c/shard_seed": PathDef<[BiomesId], ReadonlyShardSeed | undefined>;
   "/ecs/c/shard_diff": PathDef<[BiomesId], ReadonlyShardDiff | undefined>;
   "/ecs/c/shard_shapes": PathDef<[BiomesId], ReadonlyShardShapes | undefined>;
-  "/ecs/c/shard_sky_occlusion": PathDef<[BiomesId], ReadonlyShardSkyOcclusion | undefined>;
-  "/ecs/c/shard_irradiance": PathDef<[BiomesId], ReadonlyShardIrradiance | undefined>;
+  "/ecs/c/shard_sky_occlusion": PathDef<
+    [BiomesId],
+    ReadonlyShardSkyOcclusion | undefined
+  >;
+  "/ecs/c/shard_irradiance": PathDef<
+    [BiomesId],
+    ReadonlyShardIrradiance | undefined
+  >;
   "/ecs/c/shard_water": PathDef<[BiomesId], ReadonlyShardWater | undefined>;
-  "/ecs/c/shard_occupancy": PathDef<[BiomesId], ReadonlyShardOccupancy | undefined>;
+  "/ecs/c/shard_occupancy": PathDef<
+    [BiomesId],
+    ReadonlyShardOccupancy | undefined
+  >;
   "/ecs/c/shard_dye": PathDef<[BiomesId], ReadonlyShardDye | undefined>;
-  "/ecs/c/shard_moisture": PathDef<[BiomesId], ReadonlyShardMoisture | undefined>;
+  "/ecs/c/shard_moisture": PathDef<
+    [BiomesId],
+    ReadonlyShardMoisture | undefined
+  >;
   "/ecs/c/shard_growth": PathDef<[BiomesId], ReadonlyShardGrowth | undefined>;
   "/ecs/c/shard_placer": PathDef<[BiomesId], ReadonlyShardPlacer | undefined>;
   "/ecs/c/shard_muck": PathDef<[BiomesId], ReadonlyShardMuck | undefined>;
@@ -3280,74 +3326,182 @@ export interface ComponentResourcePaths {
   "/ecs/c/acquisition": PathDef<[BiomesId], ReadonlyAcquisition | undefined>;
   "/ecs/c/loose_item": PathDef<[BiomesId], ReadonlyLooseItem | undefined>;
   "/ecs/c/inventory": PathDef<[BiomesId], ReadonlyInventory | undefined>;
-  "/ecs/c/container_inventory": PathDef<[BiomesId], ReadonlyContainerInventory | undefined>;
-  "/ecs/c/priced_container_inventory": PathDef<[BiomesId], ReadonlyPricedContainerInventory | undefined>;
+  "/ecs/c/container_inventory": PathDef<
+    [BiomesId],
+    ReadonlyContainerInventory | undefined
+  >;
+  "/ecs/c/priced_container_inventory": PathDef<
+    [BiomesId],
+    ReadonlyPricedContainerInventory | undefined
+  >;
   "/ecs/c/selected_item": PathDef<[BiomesId], ReadonlySelectedItem | undefined>;
   "/ecs/c/wearing": PathDef<[BiomesId], ReadonlyWearing | undefined>;
   "/ecs/c/emote": PathDef<[BiomesId], ReadonlyEmote | undefined>;
-  "/ecs/c/appearance_component": PathDef<[BiomesId], ReadonlyAppearanceComponent | undefined>;
-  "/ecs/c/group_component": PathDef<[BiomesId], ReadonlyGroupComponent | undefined>;
+  "/ecs/c/appearance_component": PathDef<
+    [BiomesId],
+    ReadonlyAppearanceComponent | undefined
+  >;
+  "/ecs/c/group_component": PathDef<
+    [BiomesId],
+    ReadonlyGroupComponent | undefined
+  >;
   "/ecs/c/challenges": PathDef<[BiomesId], ReadonlyChallenges | undefined>;
   "/ecs/c/recipe_book": PathDef<[BiomesId], ReadonlyRecipeBook | undefined>;
   "/ecs/c/expires": PathDef<[BiomesId], ReadonlyExpires | undefined>;
   "/ecs/c/icing": PathDef<[BiomesId], ReadonlyIcing | undefined>;
   "/ecs/c/warpable": PathDef<[BiomesId], ReadonlyWarpable | undefined>;
   "/ecs/c/player_status": PathDef<[BiomesId], ReadonlyPlayerStatus | undefined>;
-  "/ecs/c/player_behavior": PathDef<[BiomesId], ReadonlyPlayerBehavior | undefined>;
-  "/ecs/c/world_metadata": PathDef<[BiomesId], ReadonlyWorldMetadata | undefined>;
+  "/ecs/c/player_behavior": PathDef<
+    [BiomesId],
+    ReadonlyPlayerBehavior | undefined
+  >;
+  "/ecs/c/world_metadata": PathDef<
+    [BiomesId],
+    ReadonlyWorldMetadata | undefined
+  >;
   "/ecs/c/npc_metadata": PathDef<[BiomesId], ReadonlyNpcMetadata | undefined>;
   "/ecs/c/npc_state": PathDef<[BiomesId], ReadonlyNpcState | undefined>;
-  "/ecs/c/group_preview_reference": PathDef<[BiomesId], ReadonlyGroupPreviewReference | undefined>;
+  "/ecs/c/group_preview_reference": PathDef<
+    [BiomesId],
+    ReadonlyGroupPreviewReference | undefined
+  >;
   "/ecs/c/acl_component": PathDef<[BiomesId], ReadonlyAclComponent | undefined>;
-  "/ecs/c/deed_component": PathDef<[BiomesId], ReadonlyDeedComponent | undefined>;
-  "/ecs/c/group_preview_component": PathDef<[BiomesId], ReadonlyGroupPreviewComponent | undefined>;
-  "/ecs/c/blueprint_component": PathDef<[BiomesId], ReadonlyBlueprintComponent | undefined>;
-  "/ecs/c/crafting_station_component": PathDef<[BiomesId], ReadonlyCraftingStationComponent | undefined>;
+  "/ecs/c/deed_component": PathDef<
+    [BiomesId],
+    ReadonlyDeedComponent | undefined
+  >;
+  "/ecs/c/group_preview_component": PathDef<
+    [BiomesId],
+    ReadonlyGroupPreviewComponent | undefined
+  >;
+  "/ecs/c/blueprint_component": PathDef<
+    [BiomesId],
+    ReadonlyBlueprintComponent | undefined
+  >;
+  "/ecs/c/crafting_station_component": PathDef<
+    [BiomesId],
+    ReadonlyCraftingStationComponent | undefined
+  >;
   "/ecs/c/health": PathDef<[BiomesId], ReadonlyHealth | undefined>;
-  "/ecs/c/buffs_component": PathDef<[BiomesId], ReadonlyBuffsComponent | undefined>;
+  "/ecs/c/buffs_component": PathDef<
+    [BiomesId],
+    ReadonlyBuffsComponent | undefined
+  >;
   "/ecs/c/gremlin": PathDef<[BiomesId], ReadonlyGremlin | undefined>;
-  "/ecs/c/placeable_component": PathDef<[BiomesId], ReadonlyPlaceableComponent | undefined>;
-  "/ecs/c/grouped_entities": PathDef<[BiomesId], ReadonlyGroupedEntities | undefined>;
+  "/ecs/c/placeable_component": PathDef<
+    [BiomesId],
+    ReadonlyPlaceableComponent | undefined
+  >;
+  "/ecs/c/grouped_entities": PathDef<
+    [BiomesId],
+    ReadonlyGroupedEntities | undefined
+  >;
   "/ecs/c/in_group": PathDef<[BiomesId], ReadonlyInGroup | undefined>;
-  "/ecs/c/picture_frame_contents": PathDef<[BiomesId], ReadonlyPictureFrameContents | undefined>;
+  "/ecs/c/picture_frame_contents": PathDef<
+    [BiomesId],
+    ReadonlyPictureFrameContents | undefined
+  >;
   "/ecs/c/trigger_state": PathDef<[BiomesId], ReadonlyTriggerState | undefined>;
-  "/ecs/c/lifetime_stats": PathDef<[BiomesId], ReadonlyLifetimeStats | undefined>;
-  "/ecs/c/occupancy_component": PathDef<[BiomesId], ReadonlyOccupancyComponent | undefined>;
-  "/ecs/c/video_component": PathDef<[BiomesId], ReadonlyVideoComponent | undefined>;
-  "/ecs/c/player_session": PathDef<[BiomesId], ReadonlyPlayerSession | undefined>;
-  "/ecs/c/preset_applied": PathDef<[BiomesId], ReadonlyPresetApplied | undefined>;
-  "/ecs/c/preset_prototype": PathDef<[BiomesId], ReadonlyPresetPrototype | undefined>;
-  "/ecs/c/farming_plant_component": PathDef<[BiomesId], ReadonlyFarmingPlantComponent | undefined>;
+  "/ecs/c/lifetime_stats": PathDef<
+    [BiomesId],
+    ReadonlyLifetimeStats | undefined
+  >;
+  "/ecs/c/occupancy_component": PathDef<
+    [BiomesId],
+    ReadonlyOccupancyComponent | undefined
+  >;
+  "/ecs/c/video_component": PathDef<
+    [BiomesId],
+    ReadonlyVideoComponent | undefined
+  >;
+  "/ecs/c/player_session": PathDef<
+    [BiomesId],
+    ReadonlyPlayerSession | undefined
+  >;
+  "/ecs/c/preset_applied": PathDef<
+    [BiomesId],
+    ReadonlyPresetApplied | undefined
+  >;
+  "/ecs/c/preset_prototype": PathDef<
+    [BiomesId],
+    ReadonlyPresetPrototype | undefined
+  >;
+  "/ecs/c/farming_plant_component": PathDef<
+    [BiomesId],
+    ReadonlyFarmingPlantComponent | undefined
+  >;
   "/ecs/c/shard_farming": PathDef<[BiomesId], ReadonlyShardFarming | undefined>;
   "/ecs/c/created_by": PathDef<[BiomesId], ReadonlyCreatedBy | undefined>;
-  "/ecs/c/minigame_component": PathDef<[BiomesId], ReadonlyMinigameComponent | undefined>;
-  "/ecs/c/minigame_instance": PathDef<[BiomesId], ReadonlyMinigameInstance | undefined>;
-  "/ecs/c/playing_minigame": PathDef<[BiomesId], ReadonlyPlayingMinigame | undefined>;
-  "/ecs/c/minigame_element": PathDef<[BiomesId], ReadonlyMinigameElement | undefined>;
+  "/ecs/c/minigame_component": PathDef<
+    [BiomesId],
+    ReadonlyMinigameComponent | undefined
+  >;
+  "/ecs/c/minigame_instance": PathDef<
+    [BiomesId],
+    ReadonlyMinigameInstance | undefined
+  >;
+  "/ecs/c/playing_minigame": PathDef<
+    [BiomesId],
+    ReadonlyPlayingMinigame | undefined
+  >;
+  "/ecs/c/minigame_element": PathDef<
+    [BiomesId],
+    ReadonlyMinigameElement | undefined
+  >;
   "/ecs/c/active_tray": PathDef<[BiomesId], ReadonlyActiveTray | undefined>;
   "/ecs/c/stashed": PathDef<[BiomesId], ReadonlyStashed | undefined>;
-  "/ecs/c/minigame_instance_tick_info": PathDef<[BiomesId], ReadonlyMinigameInstanceTickInfo | undefined>;
+  "/ecs/c/minigame_instance_tick_info": PathDef<
+    [BiomesId],
+    ReadonlyMinigameInstanceTickInfo | undefined
+  >;
   "/ecs/c/warping_to": PathDef<[BiomesId], ReadonlyWarpingTo | undefined>;
-  "/ecs/c/minigame_instance_expire": PathDef<[BiomesId], ReadonlyMinigameInstanceExpire | undefined>;
-  "/ecs/c/placer_component": PathDef<[BiomesId], ReadonlyPlacerComponent | undefined>;
+  "/ecs/c/minigame_instance_expire": PathDef<
+    [BiomesId],
+    ReadonlyMinigameInstanceExpire | undefined
+  >;
+  "/ecs/c/placer_component": PathDef<
+    [BiomesId],
+    ReadonlyPlacerComponent | undefined
+  >;
   "/ecs/c/quest_giver": PathDef<[BiomesId], ReadonlyQuestGiver | undefined>;
-  "/ecs/c/default_dialog": PathDef<[BiomesId], ReadonlyDefaultDialog | undefined>;
+  "/ecs/c/default_dialog": PathDef<
+    [BiomesId],
+    ReadonlyDefaultDialog | undefined
+  >;
   "/ecs/c/unmuck": PathDef<[BiomesId], ReadonlyUnmuck | undefined>;
-  "/ecs/c/robot_component": PathDef<[BiomesId], ReadonlyRobotComponent | undefined>;
+  "/ecs/c/robot_component": PathDef<
+    [BiomesId],
+    ReadonlyRobotComponent | undefined
+  >;
   "/ecs/c/admin_entity": PathDef<[BiomesId], ReadonlyAdminEntity | undefined>;
   "/ecs/c/protection": PathDef<[BiomesId], ReadonlyProtection | undefined>;
-  "/ecs/c/projects_protection": PathDef<[BiomesId], ReadonlyProjectsProtection | undefined>;
+  "/ecs/c/projects_protection": PathDef<
+    [BiomesId],
+    ReadonlyProjectsProtection | undefined
+  >;
   "/ecs/c/deletes_with": PathDef<[BiomesId], ReadonlyDeletesWith | undefined>;
   "/ecs/c/item_buyer": PathDef<[BiomesId], ReadonlyItemBuyer | undefined>;
-  "/ecs/c/inspection_tweaks": PathDef<[BiomesId], ReadonlyInspectionTweaks | undefined>;
+  "/ecs/c/inspection_tweaks": PathDef<
+    [BiomesId],
+    ReadonlyInspectionTweaks | undefined
+  >;
   "/ecs/c/profile_pic": PathDef<[BiomesId], ReadonlyProfilePic | undefined>;
-  "/ecs/c/entity_description": PathDef<[BiomesId], ReadonlyEntityDescription | undefined>;
+  "/ecs/c/entity_description": PathDef<
+    [BiomesId],
+    ReadonlyEntityDescription | undefined
+  >;
   "/ecs/c/landmark": PathDef<[BiomesId], ReadonlyLandmark | undefined>;
   "/ecs/c/collideable": PathDef<[BiomesId], ReadonlyCollideable | undefined>;
   "/ecs/c/restoration": PathDef<[BiomesId], ReadonlyRestoration | undefined>;
-  "/ecs/c/terrain_restoration_diff": PathDef<[BiomesId], ReadonlyTerrainRestorationDiff | undefined>;
+  "/ecs/c/terrain_restoration_diff": PathDef<
+    [BiomesId],
+    ReadonlyTerrainRestorationDiff | undefined
+  >;
   "/ecs/c/team": PathDef<[BiomesId], ReadonlyTeam | undefined>;
-  "/ecs/c/player_current_team": PathDef<[BiomesId], ReadonlyPlayerCurrentTeam | undefined>;
+  "/ecs/c/player_current_team": PathDef<
+    [BiomesId],
+    ReadonlyPlayerCurrentTeam | undefined
+  >;
   "/ecs/c/user_roles": PathDef<[BiomesId], ReadonlyUserRoles | undefined>;
   "/ecs/c/restores_to": PathDef<[BiomesId], ReadonlyRestoresTo | undefined>;
   "/ecs/c/trade": PathDef<[BiomesId], ReadonlyTrade | undefined>;
@@ -3355,14 +3509,32 @@ export interface ComponentResourcePaths {
   "/ecs/c/placed_by": PathDef<[BiomesId], ReadonlyPlacedBy | undefined>;
   "/ecs/c/text_sign": PathDef<[BiomesId], ReadonlyTextSign | undefined>;
   "/ecs/c/irradiance": PathDef<[BiomesId], ReadonlyIrradiance | undefined>;
-  "/ecs/c/locked_in_place": PathDef<[BiomesId], ReadonlyLockedInPlace | undefined>;
+  "/ecs/c/locked_in_place": PathDef<
+    [BiomesId],
+    ReadonlyLockedInPlace | undefined
+  >;
   "/ecs/c/death_info": PathDef<[BiomesId], ReadonlyDeathInfo | undefined>;
-  "/ecs/c/synthetic_stats": PathDef<[BiomesId], ReadonlySyntheticStats | undefined>;
+  "/ecs/c/synthetic_stats": PathDef<
+    [BiomesId],
+    ReadonlySyntheticStats | undefined
+  >;
   "/ecs/c/idle": PathDef<[BiomesId], ReadonlyIdle | undefined>;
   "/ecs/c/voice": PathDef<[BiomesId], ReadonlyVoice | undefined>;
   "/ecs/c/gift_giver": PathDef<[BiomesId], ReadonlyGiftGiver | undefined>;
-  "/ecs/c/harthmere_ecs_transaction_ledger": PathDef<[BiomesId], ReadonlyHarthmereEcsTransactionLedger | undefined>;
-  "/ecs/c/harthmere_material_storage": PathDef<[BiomesId], ReadonlyHarthmereMaterialStorage | undefined>;
-  "/ecs/c/npc_combat_state": PathDef<[BiomesId], ReadonlyNpcCombatState | undefined>;
-  "/ecs/c/movement_state": PathDef<[BiomesId], ReadonlyMovementState | undefined>;
-};
+  "/ecs/c/harthmere_ecs_transaction_ledger": PathDef<
+    [BiomesId],
+    ReadonlyHarthmereEcsTransactionLedger | undefined
+  >;
+  "/ecs/c/harthmere_material_storage": PathDef<
+    [BiomesId],
+    ReadonlyHarthmereMaterialStorage | undefined
+  >;
+  "/ecs/c/npc_combat_state": PathDef<
+    [BiomesId],
+    ReadonlyNpcCombatState | undefined
+  >;
+  "/ecs/c/movement_state": PathDef<
+    [BiomesId],
+    ReadonlyMovementState | undefined
+  >;
+}

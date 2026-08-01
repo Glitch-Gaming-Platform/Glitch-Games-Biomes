@@ -26,7 +26,7 @@ import type { GetServerSidePropsResult } from "next";
 import type { ReactChild } from "react";
 import React, { useEffect, useState } from "react";
 import type { Object3D } from "three";
-import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 
 type EnvironmentGroupPageProps = {
   environmentGroup: GroupDetailBundle;

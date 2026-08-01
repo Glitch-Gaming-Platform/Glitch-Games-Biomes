@@ -1,5 +1,6 @@
 import {
   cameraExitHotbarIndex,
+  hotbarItemSelection,
   isCameraExitKey,
 } from "@/client/game/resources/inventory";
 import { Inventory } from "@/shared/ecs/gen/components";
@@ -16,6 +17,28 @@ function slot(id: number, action: string): ItemAndCount {
 }
 
 describe("camera hotbar exit selection", () => {
+  it("derives the native action reference from the same local hotbar index", () => {
+    const fishingRod = slot(4, "fish");
+    const inventory = Inventory.create({
+      hotbar: [fishingRod],
+      // Simulate visual-auth/player bootstrap leaving the persisted selection
+      // absent or pointed at another container while the local hotbar already
+      // renders slot zero as selected.
+      selected: { kind: "item", idx: 7 },
+    });
+
+    assert.deepEqual(hotbarItemSelection(inventory, 0), {
+      kind: "hotbar",
+      idx: 0,
+      item: fishingRod.item,
+    });
+    assert.deepEqual(hotbarItemSelection(undefined, 0), {
+      kind: "hotbar",
+      idx: 0,
+      item: undefined,
+    });
+  });
+
   it("recognizes Delete as a camera exit without stealing the dodge key", () => {
     assert.equal(
       isCameraExitKey("Delete", {

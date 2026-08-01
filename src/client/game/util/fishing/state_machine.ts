@@ -23,6 +23,11 @@ import type {
 import type { OwnedItems } from "@/shared/game/inventory";
 import { maybeGetSlotByRef } from "@/shared/game/inventory";
 import { createBag } from "@/shared/game/items";
+import {
+  boundedFishingTickDelta,
+  fishingCastExpired,
+  normalizeFishingCatchBarSize,
+} from "@/shared/game/fishing";
 import { inCave } from "@/shared/game/players";
 import { TerrainHelper } from "@/shared/game/terrain_helper";
 import { add, normalizev, scale } from "@/shared/math/linear";
@@ -145,6 +150,8 @@ export type FailedFishingInfo = {
   retryDelay?: number | undefined;
   failureReason?:
     | "land_impact"
+    | "cast_timeout"
+    | "water_lost"
     | "missed_bite"
     | "line_break"
     | "invalid_catch";
@@ -349,6 +356,17 @@ export function handleFishAction(
           };
         }
 
+        if (fishingCastExpired(dt)) {
+          return {
+            state: "failed",
+            start: secondsSinceEpoch,
+            catchTime: dt,
+            rodItemRef: fishingInfo.rodItemRef,
+            baitItemRef: fishingInfo.baitItemRef,
+            failureReason: "cast_timeout",
+          };
+        }
+
         return {
           state: "casting",
           start: fishingInfo.start,
@@ -363,6 +381,16 @@ export function handleFishAction(
       break;
 
     case "waiting_for_bite": {
+      if (!isWaterAtPosition(resources, fishingInfo.surfacePosition)) {
+        return {
+          state: "failed",
+          start: secondsSinceEpoch,
+          catchTime: secondsSinceEpoch - fishingInfo.start,
+          rodItemRef: fishingInfo.rodItemRef,
+          baitItemRef: fishingInfo.baitItemRef,
+          failureReason: "water_lost",
+        };
+      }
       if (
         fishingInfo.timeToBite >= 0 &&
         secondsSinceEpoch - fishingInfo.start >= fishingInfo.timeToBite
@@ -421,6 +449,16 @@ export function handleFishAction(
     }
 
     case "bite": {
+      if (!isWaterAtPosition(resources, fishingInfo.surfacePosition)) {
+        return {
+          state: "failed",
+          start: secondsSinceEpoch,
+          catchTime: secondsSinceEpoch - fishingInfo.start,
+          rodItemRef: fishingInfo.rodItemRef,
+          baitItemRef: fishingInfo.baitItemRef,
+          failureReason: "water_lost",
+        };
+      }
       if (secondsSinceEpoch - fishingInfo.start > fishingInfo.biteDuration) {
         return {
           state: "failed",
@@ -433,13 +471,14 @@ export function handleFishAction(
         };
       }
       if (isClicking) {
-        const catchBarSize =
+        const catchBarSize = normalizeFishingCatchBarSize(
           (rod?.catchBarSize ?? 0.1) +
-          getFishingParameterAdjustments(
-            "barSizeOffset",
-            getOwnedItems(resources, userId),
-            fishingInfo
-          );
+            getFishingParameterAdjustments(
+              "barSizeOffset",
+              getOwnedItems(resources, userId),
+              fishingInfo
+            )
+        );
         const inMuck = terrainHelper.isMucky(fishingInfo.surfacePosition);
         const skyOcclusion = terrainHelper.getSkyOcclusion(
           fishingInfo.surfacePosition
@@ -459,7 +498,7 @@ export function handleFishAction(
 
           lastTick: secondsSinceEpoch,
           catchMeterPercentage: catchMinigameParams.fillBarStart,
-          catchBarPosition: 0.2 / 2,
+          catchBarPosition: catchBarSize / 2,
           catchBarSize,
           catchBarVelocity: 0,
           inMuck,
@@ -480,7 +519,19 @@ export function handleFishAction(
     }
 
     case "catching": {
-      const dt = secondsSinceEpoch - fishingInfo.lastTick;
+      if (!isWaterAtPosition(resources, fishingInfo.surfacePosition)) {
+        return {
+          state: "failed",
+          start: secondsSinceEpoch,
+          catchTime: secondsSinceEpoch - fishingInfo.start,
+          rodItemRef: fishingInfo.rodItemRef,
+          baitItemRef: fishingInfo.baitItemRef,
+          failureReason: "water_lost",
+        };
+      }
+      const dt = boundedFishingTickDelta(
+        secondsSinceEpoch - fishingInfo.lastTick
+      );
       // It got away
       if (fishingInfo.catchMeterPercentage < 0.0) {
         return {
@@ -538,7 +589,7 @@ export function handleFishAction(
       const fishRandomWalk = Math.random() > 0.5 ? 1.0 : -1.0;
       const fishTickMovement =
         catchMinigameParams.fishRandomWalkVelocityPerSecondIntercept +
-        catchMinigameParams.fishRandomWalkVelocityPerSecondIntercept *
+        catchMinigameParams.fishRandomWalkVelocityPerSecondFishLengthScaling *
           fishLength +
         getFishingParameterAdjustments(
           "velocityOffset",

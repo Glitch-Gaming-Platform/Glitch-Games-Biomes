@@ -297,3 +297,75 @@ Live acceptance for this follow-up is deliberately deferred until one
 exact-current source build is available. It consists only of Road-House entry,
 canonical NPC uniqueness, original dialogue presentation and the retained
 Sophia-only checkpoint—never another full Chapter 1 quest replay.
+
+## August 1 complete catalog source review and authoring handoff
+
+All sixteen registered Chapter 1 scenes were reviewed again while the reusable
+authoring guide in `docs/cutscenes.md` was expanded. This was a source,
+contract, and retained-evidence review—not another Chapter 1 quest replay and
+not a fourth camera/acting revision.
+
+The review found two application-level regressions shared by the catalog:
+
+1. Human ghosts and entity fallbacks could still be authored with legacy
+   `townsperson_*` wardrobe aliases. Those aliases could reach the retired
+   procedural Three.js body before a later bridge converted them.
+2. `ch1-consolidation-revision` still opted out of normal cinematic HUD
+   hiding, leaving the hotbar and gameplay chrome visible under story text.
+
+The correction now makes `snapshot/player_mesh` the direct human fallback for
+every Chapter 1 scene and the generated expression showcase. Known memories
+also carry `appearanceSourceEntityId` for Jackie or Lou so the synthetic body
+uses the intended snapshot skin, face, hair, and clothing. The binding and
+puppet layers canonicalize any stale `townsperson_*` caller as a final safety
+net, and all Chapter 1 scenes now require `hideHud: true`. No camera, line,
+timing, story action, or expression was changed.
+
+The scene-by-scene review and the fast source/capture recipe are retained in
+`docs/cutscenes.md` under “Chapter 1 fast authoring and review playbook.” The
+table explicitly covers all sixteen definitions and distinguishes current
+source verification from older contact-sheet evidence.
+
+### August 1 focused evidence
+
+- Focused cutscene, binding, native-avatar, expression-showcase, and water-
+  placement batch: 95 passing.
+- Chapter 1 human definitions contain no authored `townsperson_*` ghost or
+  fallback.
+- The expression showcase now authors only `snapshot/player_mesh` human
+  performers.
+- Coretta remains the canonical entity at the Chapter 1 ledger/testimony post
+  `[470,70,-129]`; the retired duplicate id remains deleted.
+- Rhiamon keeps original entity id `5522430940859636`, but both her position
+  and NPC spawn move to the measured dry Grove post `[492,70,-141]` instead of
+  applying another Y-only correction inside migrated water.
+
+A fresh all-scene runtime-injection capture was attempted against the retained
+3097/4997 warm runtime and preserved at
+`artifacts/harthmere-native-ecs-e2e/1785591844158-29665-report.json`. The run
+failed before scene playback because every focused coordinate returned no
+terrain shard seed. This is a runtime terrain-availability failure, not visual
+acceptance and not a scene attempt. No camera change was made in response. The
+next visual pass should use an exact terrain-bearing runtime and capture only
+the affected native-avatar/HUD scenes; production reconciliation is not needed
+because this batch changed no terrain.
+
+That focused follow-up was completed on the existing terrain-bearing
+3047/4937/6392 snapshot stack without a rebuild or reconciliation:
+
+- report:
+  `artifacts/harthmere-native-ecs-e2e/1785596500354-71182-report.json`;
+- Recon Corridor contact sheet:
+  `artifacts/harthmere-native-ecs-e2e/cutscenes/ch1-recon-corridor-1785596500354-71182-contact-sheet.png`;
+- Confrontation contact sheet:
+  `artifacts/harthmere-native-ecs-e2e/cutscenes/ch1-confrontation-1785596500354-71182-contact-sheet.png`;
+- Consolidation contact sheet:
+  `artifacts/harthmere-native-ecs-e2e/cutscenes/ch1-consolidation-revision-1785596500354-71182-contact-sheet.png`.
+
+The browser gate passed all three selected scenes. Manifests prove complete
+subtitle coverage and snapshot puppet appearance sources for Jackie and Lou;
+the contact sheets show native voxel PlayerMesh bodies and no gameplay
+hotbar/HUD. The retained 3047 image predates the latest materialized
+Road-House/Returnstone terrain, so these sheets are avatar, subtitle, and HUD
+evidence only. They are not used to reopen the already-final camera/location
+revisions, and no scene definition was changed in response.

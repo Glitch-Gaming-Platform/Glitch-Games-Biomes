@@ -340,6 +340,7 @@ import {
   HARTHMERE_LIVE_ENTITY_ROBOT_SENTINEL_SEEDS,
   harthmereCombatAttackDamageForLiveEntitySeed,
   harthmereCombatHpForLiveEntitySeed,
+  harthmereGroundedCavernMonsterSeeds,
   harthmereGroundedLivestockSeedsInTerritory,
   harthmereGroundedMuckMonsterSeedsInTerritory,
   harthmereLiveEntityIsOpenWildsMixedGroup,
@@ -696,57 +697,69 @@ export function createHarthmereServerMuckCombatEntitySnapshots(
   // Use the SAME grounded/redistributed positions as the seeded ECS entities so
   // the combat AI never tracks a hostile somewhere a player won't see one (and
   // never inside the Grove safe zone).
-  const monsterEntries = harthmereGroundedMuckMonsterSeedsInTerritory().flatMap(
-    (seed) => {
-      const territory = muckMonsterAreaForPosition(seed.position, 1.5);
-      const isOpenWildsGroup = harthmereLiveEntityIsOpenWildsMixedGroup(seed);
-      if (!territory && !isOpenWildsGroup) {
-        return [];
-      }
-      const entityKind = seed.combatKind ?? "mux";
-      const hp = harthmereCombatHpForLiveEntitySeed(seed);
-      const position = positionObjectFromVec3(
-        resolveLiveEntityProductionSeedPosition(seed, "live_muck_monster")
-      );
-      return [
-        [
-          `server-muck-combat:${seed.seedId}:${seed.idOffset}`,
-          {
-            hp,
-            maxHp: hp,
-            position,
-            homePosition: position,
-            isHostile: true,
-            isAlive: true,
-            isAttackable: true,
-            level: Math.max(1, Math.trunc(seed.combatLevel ?? 2)),
-            entityKind,
-            movementSpeed: entityKind === "hex" ? 3.4 : 3.1,
-            bodyRadius: entityKind === "hex" ? 0.75 : 0.9,
-            patrolRadius: 8,
-            aggroRange: entityKind === "hex" ? 12 : 10.5,
-            leashRange: 34,
-            requiresLineOfSight: true,
-            aiEnabled: true,
-            retaliatesWhenAttacked: true,
-            outsideMuckEncounter: isOpenWildsGroup,
-            combatTerritoryId: isOpenWildsGroup ? seed.areaId : territory?.id,
-            combatTerritoryLabel: isOpenWildsGroup
+  const monsterEntries = [
+    ...harthmereGroundedMuckMonsterSeedsInTerritory(),
+    ...harthmereGroundedCavernMonsterSeeds(),
+  ].flatMap((seed) => {
+    const territory = muckMonsterAreaForPosition(seed.position, 1.5);
+    const isOpenWildsGroup = harthmereLiveEntityIsOpenWildsMixedGroup(seed);
+    const isCavernMonster = seed.caveId !== undefined;
+    if (!territory && !isOpenWildsGroup && !isCavernMonster) {
+      return [];
+    }
+    const entityKind = seed.combatKind ?? "mux";
+    const hp = harthmereCombatHpForLiveEntitySeed(seed);
+    const position = positionObjectFromVec3(
+      resolveLiveEntityProductionSeedPosition(seed, "live_muck_monster")
+    );
+    return [
+      [
+        `server-muck-combat:${seed.seedId}:${seed.idOffset}`,
+        {
+          hp,
+          maxHp: hp,
+          position,
+          homePosition: position,
+          isHostile: true,
+          isAlive: true,
+          isAttackable: true,
+          level: Math.max(1, Math.trunc(seed.combatLevel ?? 2)),
+          entityKind,
+          movementSpeed: isCavernMonster
+            ? 3.8
+            : entityKind === "hex"
+            ? 3.4
+            : 3.1,
+          bodyRadius: isCavernMonster ? 0.7 : entityKind === "hex" ? 0.75 : 0.9,
+          patrolRadius: 8,
+          aggroRange: entityKind === "hex" ? 12 : 10.5,
+          leashRange: 34,
+          requiresLineOfSight: true,
+          aiEnabled: true,
+          retaliatesWhenAttacked: true,
+          outsideMuckEncounter: isOpenWildsGroup || isCavernMonster,
+          combatTerritoryId:
+            isOpenWildsGroup || isCavernMonster ? seed.areaId : territory?.id,
+          combatTerritoryLabel:
+            isOpenWildsGroup || isCavernMonster
               ? seed.areaLabel
               : territory?.label,
-            animationState: "idle",
-            animationStartedAtMs: nowMs,
-            animationMoving: false,
-            facingYaw: Number(seed.orientation[1] ?? 0),
-            resources: entityKind === "hex" ? { mana: 60 } : undefined,
-            maxResources: entityKind === "hex" ? { mana: 60 } : undefined,
-            attackRange: entityKind === "hex" ? 6.5 : 2.4,
-            attackDamage: harthmereCombatAttackDamageForLiveEntitySeed(seed),
-          } satisfies HarthmereLiveCombatEntitySnapshot,
-        ],
-      ];
-    }
-  );
+          animationState: "idle",
+          animationStartedAtMs: nowMs,
+          animationMoving: false,
+          facingYaw: Number(seed.orientation[1] ?? 0),
+          resources: entityKind === "hex" ? { mana: 60 } : undefined,
+          maxResources: entityKind === "hex" ? { mana: 60 } : undefined,
+          attackRange: isCavernMonster
+            ? 12.5
+            : entityKind === "hex"
+            ? 6.5
+            : 2.4,
+          attackDamage: harthmereCombatAttackDamageForLiveEntitySeed(seed),
+        } satisfies HarthmereLiveCombatEntitySnapshot,
+      ],
+    ];
+  });
 
   // Wildlife (cows, sheep, rabbits): passive but attackable. Not hostile (no
   // unprovoked aggression — see the idle-patrol gate below), but

@@ -25,7 +25,6 @@
 
 import type { Renderer } from "@/client/game/renderers/renderer_controller";
 import type { Scenes } from "@/client/game/renderers/scenes";
-import { addToScenes } from "@/client/game/renderers/scenes";
 import {
   HARTHMERE_BUSINESS_OUTPOSTS,
   harthmereBusinessOutpostJobsBoardPosition,
@@ -551,17 +550,23 @@ export class HarthmereJobsBoardMarkerRenderer implements Renderer {
         }
       });
     }
+    this.publishDebugBridge();
   }
 
   draw(scenes: Scenes, dt: number): void {
     // RendererController recreates Scenes on canvas attach/reconnect. Always
     // re-add this tiny root so a surviving renderer cannot leave the board
     // attached to an old scene and appear invisible after reload.
-    addToScenes(scenes, this.root);
+    // Procedural board materials are all stock Three.js materials. Direct
+    // routing avoids two full hierarchy traversals in addToScenes().
+    scenes.three.add(this.root);
     this.elapsed += dt;
     for (const banner of this.banners) {
       banner.rotation.y = Math.sin(this.elapsed * 1.4) * 0.18;
     }
+  }
+
+  private publishDebugBridge(): void {
     if (typeof window !== "undefined") {
       (window as any).__harthmereJobsBoardMarkerDebug = {
         version: HARTHMERE_JOBS_BOARD_PROCEDURAL_MARKER_VERSION,

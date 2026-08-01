@@ -240,6 +240,8 @@ def define_types(g: TypeGenerator):
             [
                 "attack1",
                 "attack2",
+                "magicChannel",
+                "magicCast",
                 "destroy",
                 "place",
                 "applause",
@@ -277,6 +279,7 @@ def define_types(g: TypeGenerator):
             [
                 "dodge",
                 "evade",
+                "doubleJump",
             ]
         ),
     )
@@ -2060,10 +2063,23 @@ def define_components(g: Generator):
         name="NpcCombatState",
         visibility=ComponentVisibility.EVERYONE,
         fields={
-            # Deliberately expose only the active target. NpcState remains
-            # server-only because it also contains paths, threat, schedules,
-            # and other high-frequency AI internals.
+            # Deliberately expose only the active target and the sanitized
+            # presentation record for the current ranged cast. NpcState
+            # remains server-only because it also contains paths, threat,
+            # schedules, cooldown selection, and other high-frequency AI
+            # internals. These cast fields let clients render the same attack
+            # that Anima authorized without replicating the private state blob.
             1: FieldDef(name="attack_target", kind=s.OptionalBiomesId),
+            2: FieldDef(name="ranged_attack_ability_id", kind=s.OptionalString),
+            3: FieldDef(
+                name="ranged_attack_projectile_visual_id",
+                kind=s.OptionalString,
+            ),
+            4: FieldDef(name="ranged_attack_cast_time", kind=s.OptionalF64),
+            5: FieldDef(name="ranged_attack_aim_point", kind=s.OptionalVec3f),
+            6: FieldDef(name="ranged_attack_result", kind=s.OptionalString),
+            7: FieldDef(name="ranged_attack_charge_time_secs", kind=s.OptionalF64),
+            8: FieldDef(name="ranged_attack_release_time", kind=s.OptionalF64),
         },
     )
 

@@ -25,7 +25,14 @@ import {
   HARTHMERE_MOVEMENT_ACTION_SHOWCASE_ID,
   harthmereMovementActionShowcaseCutscene,
 } from "@/shared/cutscene/movement_action_showcase";
+import {
+  HARTHMERE_CUTSCENE_PROJECTILE_HOOK,
+  HARTHMERE_HEX_FIREBALL_DODGE_SHOWCASE_ID,
+  harthmereHexFireballDodgeShowcaseCutscene,
+  type HarthmereCutsceneProjectilePayload,
+} from "@/shared/cutscene/hex_fireball_dodge_showcase";
 import { CH1_SCENE_FACTORIES } from "@/shared/cutscene/ch1_scenes";
+import { HARTHMERE_PROJECTILE_VISUAL_EVENT } from "@/shared/harthmere/projectile_visual_manifest";
 import { log } from "@/shared/logging";
 import { sleep } from "@/shared/util/async";
 import { useEffect, useRef } from "react";
@@ -33,6 +40,10 @@ import { useEffect, useRef } from "react";
 const HARTHMERE_SCENE_FACTORIES = new Map<string, () => unknown>([
   [JACKIE_VS_MUCKERS_CUTSCENE_ID, jackieVsMuckersCutscene],
   [HARTHMERE_EXPRESSION_SHOWCASE_ID, harthmereExpressionShowcaseCutscene],
+  [
+    HARTHMERE_HEX_FIREBALL_DODGE_SHOWCASE_ID,
+    harthmereHexFireballDodgeShowcaseCutscene,
+  ],
   [
     HARTHMERE_MOVEMENT_ACTION_SHOWCASE_ID,
     harthmereMovementActionShowcaseCutscene,
@@ -44,6 +55,44 @@ const HARTHMERE_SCENE_FACTORIES = new Map<string, () => unknown>([
 ]);
 
 let chapter1HooksRegistered = false;
+let harthmereCinematicHooksRegistered = false;
+
+function cutsceneVec3(value: unknown): [number, number, number] | undefined {
+  if (!Array.isArray(value) || value.length !== 3) return undefined;
+  const vector = value.map(Number);
+  return vector.every(Number.isFinite)
+    ? (vector as [number, number, number])
+    : undefined;
+}
+
+function registerHarthmereCinematicHooks(): void {
+  if (harthmereCinematicHooksRegistered) return;
+  harthmereCinematicHooksRegistered = true;
+  registerCutsceneHook(HARTHMERE_CUTSCENE_PROJECTILE_HOOK, (raw) => {
+    const payload = raw as Partial<HarthmereCutsceneProjectilePayload>;
+    const origin = cutsceneVec3(payload?.origin);
+    const targetPoint = cutsceneVec3(payload?.target);
+    if (!origin || !targetPoint || typeof payload?.projectileId !== "string") {
+      throw new Error("invalid cinematic projectile payload");
+    }
+    window.dispatchEvent(
+      new CustomEvent(HARTHMERE_PROJECTILE_VISUAL_EVENT, {
+        detail: {
+          projectileVisualId: payload.projectileId,
+          abilityId: payload.projectileId,
+          attack: payload.projectileId,
+          origin,
+          targetPoint,
+          target: "player",
+          result: payload.result ?? "dodge",
+          finalDamage: 0,
+          windupSecs: payload.windupSecs ?? 0.48,
+          visualScale: payload.visualScale ?? 2.25,
+        },
+      })
+    );
+  });
+}
 
 async function syncChapter1StoryState(): Promise<void> {
   const response = await defaultHarthmereLiveFetch(
@@ -242,6 +291,7 @@ export function useHarthmereCutsceneLibrary(
       return;
     }
     registerChapter1CutsceneHooks();
+    registerHarthmereCinematicHooks();
     for (const factory of HARTHMERE_SCENE_FACTORIES.values()) {
       registerCutscene(factory());
     }

@@ -39,6 +39,7 @@ import type {
 } from "@/server/shared/minigames/ruleset/tweaks";
 import type { ReadonlyVec3f, Vec2f, Vec3f } from "@/shared/ecs/gen/types";
 import { getAabbForEntity, getSizeForEntity } from "@/shared/game/entity_sizes";
+import { movementActionCameraEffects } from "@/shared/game/movement_actions";
 import { playerAABB } from "@/shared/game/players";
 import type { BiomesId } from "@/shared/ids";
 import { normalizeAngle, normalizeOrientation } from "@/shared/math/angles";
@@ -462,7 +463,7 @@ export class CameraScript implements Script {
       }
     }
 
-    if (localPlayer.talkingToNpc) {
+    if (localPlayer.talkingToNpc && !localPlayer.talkingToNpcCameraDisabled) {
       const npcPos = this.resources.get(
         "/ecs/c/position",
         localPlayer.talkingToNpc
@@ -765,7 +766,15 @@ export class CameraScript implements Script {
           this.orientation = [...player.player.orientation];
         }
 
-        const fovBoost = player.player.running;
+        const movementActionCamera = player.player.movementActionInfo
+          ? movementActionCameraEffects({
+              action: player.player.movementActionInfo.action,
+              startTimeSeconds: player.player.movementActionInfo.startTime,
+              expiryTimeSeconds: player.player.movementActionInfo.expiryTime,
+              nowSeconds: this.resources.get("/clock").time,
+            })
+          : { fovBoostDegrees: 0, pullbackMeters: 0 };
+        const runFovBoost = player.player.running;
         if (
           camTweaks.kind === "tracking_selfie" &&
           this.lastCamTweaks.kind !== "tracking_selfie"
@@ -806,10 +815,12 @@ export class CameraScript implements Script {
               ...camTweaks,
               offsetBack:
                 camTweaks.offsetBack +
-                ((fovBoost ? camTweaks.runOffsetBackIncrease : 0) ?? 0),
+                ((runFovBoost ? camTweaks.runOffsetBackIncrease : 0) ?? 0) +
+                movementActionCamera.pullbackMeters,
               fov:
                 camTweaks.fov +
-                ((fovBoost ? camTweaks.runFovIncrease : 0) ?? 0),
+                ((runFovBoost ? camTweaks.runFovIncrease : 0) ?? 0) +
+                movementActionCamera.fovBoostDegrees,
             }
           );
           this.lastTrackedPosition = track;

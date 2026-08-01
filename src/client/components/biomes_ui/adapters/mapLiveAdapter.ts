@@ -292,6 +292,16 @@ export function buildBiomesUIMapAdapter(
   const resolveNativeQuestNavAidPosition =
     nativeQuestBridge?.resolveNavAidPosition;
   const includeSyntheticRoadAhead = legacySyntheticRoadAheadEnabled();
+  const selectedNativeQuest = () => {
+    const selectedQuestId = readBiomesUIMainQuestSelection()?.questId;
+    return (
+      nativeQuestBundles?.find(
+        (quest) =>
+          quest.state === "in_progress" &&
+          String(quest.biscuit.id) === selectedQuestId
+      ) ?? activeNativeQuest(nativeQuestBundles)
+    );
+  };
   const NormalizeWorldXZ = (
     worldX: number,
     worldZ: number,
@@ -727,7 +737,7 @@ export function buildBiomesUIMapAdapter(
       return result;
     },
     getMissionTitle: () => {
-      const nativeQuest = activeNativeQuest(nativeQuestBundles);
+      const nativeQuest = selectedNativeQuest();
       const api = readSnapshotGroveApi();
       const state = api?.readState?.();
       const quests = Array.isArray(api?.quests) ? api.quests : [];
@@ -762,9 +772,12 @@ export function buildBiomesUIMapAdapter(
       );
     },
     getMissionSteps: () => {
-      const nativeSteps = nativeQuestMissionSteps(
-        activeNativeQuest(nativeQuestBundles)
-      );
+      const nativeQuest = selectedNativeQuest();
+      const nativeSteps = nativeQuestMissionSteps(nativeQuest);
+      // A tracked native quest is one self-contained mission. Concatenating
+      // every other active quest family underneath it produced the reported
+      // Stand Him Up title with Gimme Shelter steps.
+      if (nativeQuest) return nativeSteps;
       const api = readSnapshotGroveApi();
       const state = api?.readState?.();
       const quests = Array.isArray(api?.quests) ? api.quests : [];

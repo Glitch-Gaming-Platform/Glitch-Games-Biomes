@@ -26,6 +26,7 @@ import {
   liveEntityRobotDefaultRobotIdForArea,
 } from "@/shared/harthmere/live_entity_robot_energy_protection";
 import {
+  HARTHMERE_LIVE_ENTITY_CAVERN_MONSTER_SEEDS,
   HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS,
   HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_PRODUCTION_COUNT,
   HARTHMERE_LIVE_ENTITY_PRODUCTION_SEEDS,
@@ -142,10 +143,12 @@ describe("Harthmere live entity production seeds", () => {
       ([, snapshot]) => snapshot.entityKind === "animal"
     );
 
-    // Every authored Muck monster is present, plus the wildlife herd.
+    // Every authored surface Muck monster and cavern Indisworm is present,
+    // plus the wildlife herd.
     assert.equal(
       muckEntries.length,
-      HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS.length
+      HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS.length +
+        HARTHMERE_LIVE_ENTITY_CAVERN_MONSTER_SEEDS.length
     );
     assert.ok(animalEntries.length >= 16, "expected the wildlife herd");
     assert.equal(entries.length, muckEntries.length + animalEntries.length);

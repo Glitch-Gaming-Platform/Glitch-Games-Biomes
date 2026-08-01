@@ -2949,6 +2949,98 @@ ul.bullet-points {
   font-size: var(--font-size-marge);
 }
 
+/* Chapter 1 regular speech uses the stock talk renderer, but it can contain
+   multiple speakers. Keep the stock lower-third treatment readable without
+   turning it back into the removed centered modal. */
+.chapter1-story-dialogue .npc-quest-dialog-container {
+  bottom: max(5vmin, 2.25rem);
+  width: min(70rem, 88vw);
+  min-height: 0;
+  padding: clamp(14px, 1.5vw, 24px) clamp(18px, 2.5vw, 38px);
+  border: 2px solid rgb(255 225 138 / 75%);
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgb(7 13 27 / 97%), rgb(3 7 18 / 98%));
+  box-shadow: 0 18px 55px rgb(0 0 0 / 75%), inset 0 1px 0 rgb(255 255 255 / 12%);
+  color: white;
+  text-shadow: 0 2px 0 rgb(0 0 0 / 100%), 2px 0 0 rgb(0 0 0 / 100%),
+    -2px 0 0 rgb(0 0 0 / 100%), 0 -2px 0 rgb(0 0 0 / 100%),
+    0 4px 10px rgb(0 0 0 / 95%);
+}
+
+.chapter1-story-dialogue .npc-quest-dialog-container .npc-name {
+  color: #ffe18a;
+  font-size: clamp(15px, 1.2vw, 20px);
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.chapter1-story-dialogue .npc-quest-dialog-container .npc-quest-dialog {
+  font-size: clamp(20px, 2vw, 32px);
+  line-height: 1.35;
+}
+
+.chapter1-choice-dialog {
+  width: min(760px, 92vw) !important;
+  max-width: none !important;
+  padding: clamp(20px, 3vw, 34px) !important;
+  border: 2px solid rgb(255 225 138 / 78%) !important;
+  background: linear-gradient(
+    180deg,
+    rgb(8 15 31 / 98%),
+    rgb(2 7 18 / 99%)
+  ) !important;
+  box-shadow: 0 24px 80px rgb(0 0 0 / 85%), inset 0 1px 0 rgb(255 255 255 / 12%) !important;
+  color: white !important;
+  font-size: clamp(16px, 1.4vw, 21px);
+  line-height: 1.45;
+}
+
+.chapter1-choice-next {
+  display: grid;
+  gap: 6px;
+  margin-top: 18px;
+  padding: 14px 16px;
+  border-left: 4px solid #ffe18a;
+  border-radius: 8px;
+  background: rgb(255 225 138 / 10%);
+  color: rgb(255 255 255 / 95%);
+}
+
+.chapter1-choice-next strong {
+  color: #ffe18a;
+  font-size: 13px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.chapter1-choice-dialog > div:first-child,
+.chapter1-choice-dialog label {
+  font-size: clamp(13px, 1vw, 16px) !important;
+}
+
+.chapter1-choice-dialog > p {
+  font-size: clamp(18px, 1.6vw, 24px) !important;
+  line-height: 1.5 !important;
+}
+
+.chapter1-choice-dialog button,
+.chapter1-choice-dialog input {
+  min-height: 48px;
+  font-size: clamp(16px, 1.25vw, 20px) !important;
+}
+
+.chapter1-choice-dialog button {
+  background: rgb(255 255 255 / 6%);
+}
+
+.chapter1-choice-dialog button:hover,
+.chapter1-choice-dialog button:focus-visible {
+  background: rgb(255 225 138 / 16%);
+  outline: 2px solid #ffe18a;
+  outline-offset: 2px;
+}
+
 .joysticks {
   display: flex;
   width: 100%;

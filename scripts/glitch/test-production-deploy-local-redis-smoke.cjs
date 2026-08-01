@@ -1127,6 +1127,16 @@ ok(
   "production grounding accepts authored extension elevation while still requiring a persisted real floor"
 );
 ok(
+  productionGroundingProbe.includes(
+    "...HARTHMERE_LIVE_ENTITY_ROBOT_SENTINEL_SEEDS.map((seed) =>"
+  ) &&
+    productionGroundingProbe.includes(
+      "isHarthmereExtensionWorldPosition(seed.position)"
+    ) &&
+    productionGroundingProbe.includes('"original_robot_sentinels"'),
+  "production grounding classifies robot sentinels by their actual original-map or additive-extension position"
+);
+ok(
   dockerfile.includes("ts-node@10.9.1") &&
     dockerfile.includes("tsconfig-paths@3.12.0") &&
     dockerfile.includes("typescript@5.9.3") &&
@@ -1186,6 +1196,9 @@ ok(
 ok(
   script.includes("run_azure_terrain_seed_job") &&
     script.includes("HARTHMERE_TERRAIN_MAINTENANCE_READY") &&
+    script.includes(
+      'output.includes("local dev starter town seed; fingerprint already current.")'
+    ) &&
     script.includes("audit-production-extension-terrain.cjs") &&
     script.includes("no web startup probe"),
   "in-VNet terrain maintenance uses a completion-audited job instead of a probe-limited web revision"

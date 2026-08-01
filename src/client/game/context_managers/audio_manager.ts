@@ -53,6 +53,7 @@ function fixVolume(volume: number) {
 export type AudioTrackType =
   | "music"
   | "muck_music"
+  | "cave_music"
   | "battle_music"
   | "boss_battle_music"
   | "harthmere_music"
@@ -115,6 +116,11 @@ export class AudioManager {
   private underwaterAmbience: THREE.Audio | undefined;
   private underwaterAmbiencePath: AudioPath | undefined;
   private underwaterAmbienceLoadingPath: AudioPath | undefined;
+  private readonly environmentLoops = new Map<
+    string,
+    { path: AudioPath; audio: THREE.Audio; volumeMultiplier: number }
+  >();
+  private readonly environmentLoopLoadingPaths = new Map<string, AudioPath>();
   private readonly proximityLoops = new Map<
     string,
     { path: AudioPath; audio: THREE.PositionalAudio }
@@ -130,6 +136,10 @@ export class AudioManager {
 
   stop() {
     this.stopUnderwaterAmbience();
+    for (const key of [...this.environmentLoops.keys()]) {
+      this.stopEnvironmentLoop(key);
+    }
+    this.environmentLoopLoadingPaths.clear();
     for (const key of [...this.proximityLoops.keys()]) {
       this.stopProximityLoop(key);
     }
@@ -270,6 +280,7 @@ export class AudioManager {
     await Promise.allSettled([
       loadTrack("music", sample(getAudioAssetPaths("music"))!),
       loadTrack("muck_music", sample(getAudioAssetPaths("muck_music"))!),
+      loadTrack("cave_music", sample(getAudioAssetPaths("cave_music"))!),
       loadTrack("battle_music", HARTHMERE_BATTLE_MUSIC_PATH),
       loadTrack("boss_battle_music", HARTHMERE_BOSS_BATTLE_MUSIC_PATH),
       loadTrack("harthmere_music", HARTHMERE_EXPLORATION_MUSIC_PATH),
@@ -464,6 +475,84 @@ export class AudioManager {
     } else {
       this.stopUnderwaterAmbience();
     }
+  }
+
+  /**
+   * Owns a non-positional environmental ambience loop. Callers update this
+   * every tick; matching active loops are reused, while deactivation cancels
+   * both loaded and in-flight audio. Music remains on the music volume channel
+   * and these beds follow the effects volume channel.
+   */
+  setEnvironmentLoop(
+    key: string,
+    active: boolean,
+    assetPath?: AudioPath,
+    options: { volumeMultiplier?: number } = {}
+  ) {
+    if (!active || !assetPath) {
+      this.stopEnvironmentLoop(key);
+      return;
+    }
+    const volumeMultiplier = options.volumeMultiplier ?? 1;
+    const existing = this.environmentLoops.get(key);
+    if (existing?.path === assetPath) {
+      existing.volumeMultiplier = volumeMultiplier;
+      existing.audio.setVolume(
+        this.getVolume("settings.volume.effects") * volumeMultiplier
+      );
+      if (!existing.audio.isPlaying) {
+        existing.audio.play();
+      }
+      return;
+    }
+    if (existing) {
+      this.stopEnvironmentLoop(key);
+    }
+    if (this.environmentLoopLoadingPaths.get(key) === assetPath) {
+      return;
+    }
+    const listener = this.audioListener;
+    if (!listener) {
+      return;
+    }
+    this.environmentLoopLoadingPaths.set(key, assetPath);
+    fireAndForget(
+      (async () => {
+        const buffer = await this.resources.get("/audio/buffer", assetPath);
+        if (this.environmentLoopLoadingPaths.get(key) !== assetPath) {
+          return;
+        }
+        this.environmentLoopLoadingPaths.delete(key);
+        if (!buffer || this.audioListener !== listener) {
+          return;
+        }
+        const audio = new THREE.Audio(listener);
+        audio.setBuffer(buffer);
+        audio.setLoop(true);
+        audio.setVolume(
+          this.getVolume("settings.volume.effects") * volumeMultiplier
+        );
+        audio.play();
+        this.environmentLoops.set(key, {
+          path: assetPath,
+          audio,
+          volumeMultiplier,
+        });
+      })()
+    );
+  }
+
+  stopEnvironmentLoop(key: string) {
+    this.environmentLoopLoadingPaths.delete(key);
+    const loop = this.environmentLoops.get(key);
+    if (!loop) {
+      return;
+    }
+    if (loop.audio.isPlaying) {
+      loop.audio.stop();
+    }
+    loop.audio.disconnect();
+    this.environmentLoops.delete(key);
   }
 
   setProximityLoop(

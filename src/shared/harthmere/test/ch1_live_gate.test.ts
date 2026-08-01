@@ -62,13 +62,13 @@ describe("Chapter 1 live gate projection", () => {
     const carried = ch1ProvisioningCarriedFromInventory({
       clean_water: 12,
       road_ration: 20,
-      worker_meal: 12,
+      hearty_stew: 12,
       herb_bundle: 8,
       wall_lantern: 10,
       road_repair_kit: 3,
       field_medkit: 10,
       coal: 18,
-      travel_cloak: 1,
+      patched_cloak: 1,
       rope: 4,
       iron_ingot: 6,
     });

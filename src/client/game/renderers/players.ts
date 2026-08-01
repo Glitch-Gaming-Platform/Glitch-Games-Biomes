@@ -1,4 +1,5 @@
 import type { ClientConfig } from "@/client/game/client_config";
+import { cutscenePlayerAttackVisualPose } from "@/client/game/cutscene/player_attack_visual";
 import type { AudioManager } from "@/client/game/context_managers/audio_manager";
 import type { AuthManager } from "@/client/game/context_managers/auth_manager";
 import type { PermissionsManager } from "@/client/game/context_managers/permissions_manager";
@@ -7,8 +8,10 @@ import { BasePassMaterial } from "@/client/game/renderers/base_pass_material";
 import type { Renderable } from "@/client/game/renderers/cull_entities";
 import { cullEntities } from "@/client/game/renderers/cull_entities";
 import type { Renderer } from "@/client/game/renderers/renderer_controller";
+import { safePlayerLightDirection } from "@/client/game/renderers/player_lighting";
 import type { Scenes } from "@/client/game/renderers/scenes";
 import { addToScenes } from "@/client/game/renderers/scenes";
+import { computeNonDarkSpatialLighting } from "@/client/game/renderers/util";
 import type { Camera } from "@/client/game/resources/camera";
 import { drawLimitValueWithTweak } from "@/client/game/resources/graphics_settings";
 import { ItemMeshKey } from "@/client/game/resources/item_mesh";
@@ -43,6 +46,11 @@ import type {
 } from "@/shared/ecs/gen/types";
 import { isFloraId } from "@/shared/game/ids";
 import { anItem } from "@/shared/game/item";
+import {
+  movementActionYaw,
+  playerMovementActionAnimationName,
+  playerMovementActionVisualPose,
+} from "@/shared/game/movement_actions";
 import { getPlayerBuffs, playerAABB } from "@/shared/game/players";
 import type { BiomesId } from "@/shared/ids";
 import { growAABB, interp, lengthSq, sub } from "@/shared/math/linear";
@@ -103,37 +111,113 @@ export class PlayersRenderer implements Renderer {
     player.smoothedSpatialLighting.tick(dt);
     player.smoothedEyeAdaptationSpatialLighting.tick(dt);
     const sky = this.resources.get("/scene/sky_params");
+    const playerLightDirection = safePlayerLightDirection(
+      sky.sunDirection.toArray()
+    );
+    const cutsceneSpatialLighting =
+      localPlayer && this.resources.get("/scene/cutscene").active
+        ? computeNonDarkSpatialLighting(
+            this.resources,
+            scenePlayer.position[0],
+            scenePlayer.position[1] + 1,
+            scenePlayer.position[2],
+            [1, 1.5, 1]
+          )
+        : undefined;
     three.traverse((child) => {
       if (
         child instanceof THREE.Mesh &&
         child.material instanceof BasePassMaterial
       ) {
         updatePlayerSkinnedMaterial(child.material, {
-          spatialLighting: player.getSpatialLighting(),
-          light: sky.sunDirection.toArray(),
+          // Cutscenes puppet the local scene position without moving its
+          // authoritative ECS body. Sample the staged position so an actor
+          // moved into a lit shot cannot inherit darkness from the old cell.
+          spatialLighting:
+            cutsceneSpatialLighting ?? player.getSpatialLighting(),
+          light: playerLightDirection,
         });
       }
     });
 
-    three.rotation.y = scenePlayer.orientation[1];
+    // EvadeRoll is authored as one high-quality forward roll. Rotate the
+    // rendered root into the requested travel direction while leaving camera
+    // facing and authoritative orientation untouched.
+    three.rotation.y =
+      player.movementActionInfo?.action === "evade"
+        ? movementActionYaw(
+            player.movementActionInfo.direction,
+            scenePlayer.orientation[1]
+          )
+        : scenePlayer.orientation[1];
 
     const isGremlin = this.resources.get("/ecs/c/gremlin", player.id);
     const playerHealth = this.resources.get("/ecs/c/health", player.id);
 
     // TODO (tdimson): Make a proper death animation
     // Lie on your back if you are dead
-    if (
+    const playerDead =
       !isGremlin &&
       playerHealth &&
       (playerHealth.hp <= 0 ||
         (player.id === localPlayer?.id &&
           (localPlayer?.playerStatus === "dead" ||
             (localPlayer?.playerStatus === "respawning" &&
-              playerHealth.hp <= 0))))
-    ) {
+              playerHealth.hp <= 0))));
+    three.rotation.z = 0;
+    if (playerDead) {
       three.rotation.x = Math.PI / 2;
     } else {
       three.rotation.x = 0;
+      const movementAction = player.movementActionInfo;
+      const cutsceneMovement = player.cutsceneMovementAnimationInfo;
+      const cutsceneAttack = player.cutsceneAttackAnimationInfo;
+      let pose;
+      if (movementAction) {
+        const duration = movementAction.expiryTime - movementAction.startTime;
+        const progress =
+          duration > 0 ? (clock.time - movementAction.startTime) / duration : 0;
+        pose = playerMovementActionVisualPose(
+          playerMovementActionAnimationName({
+            action: movementAction.action,
+            direction: movementAction.direction,
+            facingYaw: scenePlayer.orientation[1],
+          }),
+          progress
+        );
+      } else if (cutsceneMovement) {
+        const duration =
+          cutsceneMovement.expiryTime - cutsceneMovement.startTime;
+        const progress =
+          duration > 0
+            ? (clock.time - cutsceneMovement.startTime) / duration
+            : 0;
+        pose = playerMovementActionVisualPose(
+          cutsceneMovement.animation,
+          progress
+        );
+      }
+      if (pose) {
+        three.rotation.x = pose.pitchRadians;
+        three.rotation.z = pose.rollRadians;
+        three.position.y += pose.liftMeters;
+        three.scale.y *= pose.scaleY;
+      }
+      if (cutsceneAttack) {
+        const duration = cutsceneAttack.expiryTime - cutsceneAttack.startTime;
+        const progress =
+          duration > 0 ? (clock.time - cutsceneAttack.startTime) / duration : 0;
+        const attackPose = cutscenePlayerAttackVisualPose(
+          cutsceneAttack.animation,
+          progress
+        );
+        if (attackPose) {
+          three.rotation.x = attackPose.pitchRadians;
+          three.rotation.y += attackPose.yawRadians;
+          three.rotation.z = attackPose.rollRadians;
+          three.position.y += attackPose.liftMeters;
+        }
+      }
     }
 
     // Audio

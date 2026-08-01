@@ -1,11 +1,14 @@
 import assert from "assert";
 import {
+  automaticMainQuestSelectionForTest,
   biomesUIMainQuestClearedSelectionForTest,
   biomesUIMainQuestSelectionFromQuestForTest,
   defaultMainQuestFromTrackableQuestsForTest,
   mainQuestFromTrackableQuestsForTest,
 } from "../mainQuestSelection";
 import type { MapTrackableQuest } from "../../tabs/MapQuestsTab";
+import { ch1NativeQuestId } from "@/shared/harthmere/ch1_native_quests";
+import { CH1_QUESTS } from "@/shared/harthmere/ch1_quests";
 
 describe("Biomes UI main quest selection", () => {
   it("captures the actionable objective and map marker for a selected quest", () => {
@@ -145,7 +148,72 @@ describe("Biomes UI main quest selection", () => {
     );
   });
 
-  it("continues Muck vs. Machine through robot setup before Chapter 1", () => {
+  it("persists every Chapter 1 quest boundary as the new main quest", () => {
+    for (let index = 0; index < CH1_QUESTS.length - 1; index += 1) {
+      const current = CH1_QUESTS[index];
+      const next = CH1_QUESTS[index + 1];
+      const currentQuest: MapTrackableQuest = {
+        questId: String(ch1NativeQuestId(current.id)),
+        title: current.title,
+        area: current.district,
+        status: "completed",
+        kindLabel: "Story Quest",
+      };
+      const nextQuest: MapTrackableQuest = {
+        questId: String(ch1NativeQuestId(next.id)),
+        title: next.title,
+        area: next.district,
+        status: "active",
+        kindLabel: "Story Quest",
+        objective: next.steps[0].objective,
+      };
+      const selection = automaticMainQuestSelectionForTest(
+        [currentQuest, nextQuest],
+        biomesUIMainQuestSelectionFromQuestForTest(currentQuest, 1000),
+        2000
+      );
+      assert.equal(
+        selection?.questId,
+        nextQuest.questId,
+        `${current.title} did not hand tracking to ${next.title}`
+      );
+      assert.equal(selection?.objective, next.steps[0].objective);
+    }
+  });
+
+  it("never overrides an explicit clear or a completed side-quest choice", () => {
+    const chapter1: MapTrackableQuest = {
+      questId: String(ch1NativeQuestId(CH1_QUESTS[0].id)),
+      title: CH1_QUESTS[0].title,
+      area: CH1_QUESTS[0].district,
+      status: "active",
+      kindLabel: "Story Quest",
+    };
+    assert.equal(
+      automaticMainQuestSelectionForTest(
+        [chapter1],
+        biomesUIMainQuestClearedSelectionForTest(1000),
+        2000
+      ),
+      undefined
+    );
+    const side: MapTrackableQuest = {
+      questId: "side-complete",
+      title: "A Finished Errand",
+      area: "The Grove",
+      status: "completed",
+    };
+    assert.equal(
+      automaticMainQuestSelectionForTest(
+        [side, chapter1],
+        biomesUIMainQuestSelectionFromQuestForTest(side, 1000),
+        2000
+      ),
+      undefined
+    );
+  });
+
+  it("moves stale earlier-story tracking to an active Chapter 1 quest", () => {
     const completedMuckVsMachine: MapTrackableQuest = {
       questId: "5739496793885069",
       title: "Muck vs. Machine",
@@ -178,7 +246,7 @@ describe("Biomes UI main quest selection", () => {
         [completedMuckVsMachine, chapter1, gimmeShelter],
         selection
       )?.questId,
-      gimmeShelter.questId
+      chapter1.questId
     );
     assert.equal(
       defaultMainQuestFromTrackableQuestsForTest([
@@ -186,7 +254,7 @@ describe("Biomes UI main quest selection", () => {
         chapter1,
         gimmeShelter,
       ])?.questId,
-      gimmeShelter.questId
+      chapter1.questId
     );
     assert.equal(
       mainQuestFromTrackableQuestsForTest(

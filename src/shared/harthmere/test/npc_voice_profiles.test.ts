@@ -107,6 +107,7 @@ describe("Harthmere Azure NPC voice profiles", () => {
     const entriesWithLines = HARTHMERE_NPC_VOICE_CATALOG.filter(
       (entry) => entry.staticLines.length > 0
     );
+    const recordingPaths = new Set<string>();
     assert.ok(entriesWithLines.length > 100);
 
     for (const entry of entriesWithLines) {
@@ -117,6 +118,11 @@ describe("Harthmere Azure NPC voice profiles", () => {
           line.recordingPath.endsWith(".mp3"),
           `${entry.id} line does not target mp3`
         );
+        assert.ok(
+          !recordingPaths.has(line.recordingPath),
+          `${entry.id} reuses voice path ${line.recordingPath}`
+        );
+        recordingPaths.add(line.recordingPath);
       }
     }
   });

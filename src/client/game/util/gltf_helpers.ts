@@ -1,7 +1,7 @@
 import type * as THREE from "three";
 import { Mesh } from "three";
-import type { GLTF } from "three/examples/jsm/loaders/GLTFLoader";
-import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
+import type { GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import {
   coalescedPlayerMeshGltfArrayBufferFetch,
   shouldCoalescePlayerMeshGltfFetch,

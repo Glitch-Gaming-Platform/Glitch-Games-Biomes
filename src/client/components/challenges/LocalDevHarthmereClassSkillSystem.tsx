@@ -15,6 +15,15 @@ import {
 import type { TalkDialogStepAction } from "@/client/components/challenges/TalkDialogModalStep";
 import { HARTHMERE_PROJECTILE_VISUAL_EVENT } from "@/shared/harthmere/projectile_visual_manifest";
 import {
+  HARTHMERE_MAGIC_CHARGE_MAX_SECS,
+  HARTHMERE_MAGIC_CHARGE_MIN_SECS,
+  harthmereMagicChargeDurationSecs,
+} from "@/shared/harthmere/magic_charge";
+import {
+  dispatchHarthmereMagicCharge,
+  harthmereMagicChargeId,
+} from "@/client/game/util/harthmere_magic_charge";
+import {
   emitHarthmereSoundEffect,
   HARTHMERE_ABILITY_SOUND_MAP,
 } from "@/shared/harthmere/sound_effect_manifest";
@@ -22,6 +31,25 @@ import { useEffect, useMemo, useState } from "react";
 
 const HARTHMERE_CLASS_STATE_KEY = "biomes.localDev.harthmere.classSkillState";
 const HARTHMERE_CLASS_EVENT = "biomes:harthmere-class-skill-changed";
+
+const HARTHMERE_OFFENSIVE_MAGIC_ABILITIES = new Set([
+  "spark",
+  "fireball",
+  "meteor",
+  "smite",
+  "life_drain",
+  "curse_of_weakness",
+  "mocking_verse",
+  "entangling_roots",
+]);
+
+let pendingHarthmereMagicAbilityCharge:
+  | {
+      abilityId: string;
+      chargeId: string;
+      timeout: number;
+    }
+  | undefined;
 
 const SKILL_TITLES = [
   { min: 125, title: "Legendary" },
@@ -1582,43 +1610,21 @@ function emitHarthmereClassProjectileVisual(
   );
 }
 
-export function useHarthmereClassAbility(abilityId: string) {
+export function harthmereClassAbilityMagicChargeSeconds(abilityId: string) {
   const ability = ABILITY_DEFINITIONS[abilityId];
-  if (!ability) {
-    return;
+  if (!ability || !HARTHMERE_OFFENSIVE_MAGIC_ABILITIES.has(abilityId)) {
+    return 0;
   }
-  let state = readHarthmereClassSkillState();
-  if (!state.knownAbilities.includes(abilityId)) {
-    writeHarthmereClassSkillState(
-      pushLog(
-        state,
-        "Ability unavailable",
-        `${ability.name} is not known yet. ${ability.unlockHint}`
-      )
-    );
-    return;
-  }
-  const failure = abilityRequirementFailure(state, ability);
-  if (failure) {
-    writeHarthmereClassSkillState(
-      pushLog(state, "Ability blocked", `${ability.name}: ${failure}`)
-    );
-    return;
-  }
+  return harthmereMagicChargeDurationSecs({
+    explicitMagic: true,
+    projectileVisualId: ability.id,
+    resourceCost: ability.resourceCost,
+    cooldownSecs: ability.cooldownSeconds,
+    ultimate: ability.type === "ultimate",
+  });
+}
 
-  if (ability.illegalInTown) {
-    applyHarthmereReputationChange({
-      label: "Restricted ability used",
-      detail: `Used restricted ability: ${ability.name}`,
-      scope: "harthmere",
-      harthmere: { legal: -8, likeability: -3, notoriety: 2 },
-    });
-  }
-
-  state = spendResourceAndStartCooldown(state, ability);
-  state = pushLog(state, "Ability used", `${ability.name}: ${ability.effect}`);
-  writeHarthmereClassSkillState(state);
-
+function releaseHarthmereClassAbility(ability: HarthmereAbilityDefinition) {
   switch (ability.id) {
     case "basic_strike":
     case "riposte":
@@ -1641,6 +1647,7 @@ export function useHarthmereClassAbility(abilityId: string) {
       performHarthmereCombatAttack(currentTargetOffset(), "spark", {
         projectileVisualId: ability.id,
         projectileAbilityName: ability.name,
+        magicChargeCompleted: true,
       });
       if (ability.id === "life_drain") {
         healHarthmerePlayer(12, "Life Drain");
@@ -1673,6 +1680,119 @@ export function useHarthmereClassAbility(abilityId: string) {
     "Skill practice",
     `${ability.name} was used successfully.`
   );
+}
+
+export function useHarthmereClassAbility(abilityId: string) {
+  const ability = ABILITY_DEFINITIONS[abilityId];
+  if (!ability) {
+    return;
+  }
+  let state = readHarthmereClassSkillState();
+  if (!state.knownAbilities.includes(abilityId)) {
+    writeHarthmereClassSkillState(
+      pushLog(
+        state,
+        "Ability unavailable",
+        `${ability.name} is not known yet. ${ability.unlockHint}`
+      )
+    );
+    return;
+  }
+  const failure = abilityRequirementFailure(state, ability);
+  if (failure) {
+    writeHarthmereClassSkillState(
+      pushLog(state, "Ability blocked", `${ability.name}: ${failure}`)
+    );
+    return;
+  }
+
+  const magicChargeTimeSecs =
+    harthmereClassAbilityMagicChargeSeconds(abilityId);
+  if (magicChargeTimeSecs > 0 && pendingHarthmereMagicAbilityCharge) {
+    writeHarthmereClassSkillState(
+      pushLog(
+        state,
+        "Ability blocked",
+        `${ability.name}: already charging ${
+          ABILITY_DEFINITIONS[pendingHarthmereMagicAbilityCharge.abilityId]
+            ?.name ?? "another spell"
+        }.`
+      )
+    );
+    return;
+  }
+
+  if (ability.illegalInTown) {
+    applyHarthmereReputationChange({
+      label: "Restricted ability used",
+      detail: `Used restricted ability: ${ability.name}`,
+      scope: "harthmere",
+      harthmere: { legal: -8, likeability: -3, notoriety: 2 },
+    });
+  }
+
+  state = spendResourceAndStartCooldown(state, ability);
+  state = pushLog(
+    state,
+    magicChargeTimeSecs > 0 ? "Ability charging" : "Ability used",
+    magicChargeTimeSecs > 0
+      ? `${ability.name} is gathering power for ${magicChargeTimeSecs.toFixed(
+          2
+        )} seconds.`
+      : `${ability.name}: ${ability.effect}`
+  );
+  writeHarthmereClassSkillState(state);
+
+  if (magicChargeTimeSecs <= 0 || !isBrowser()) {
+    releaseHarthmereClassAbility(ability);
+    return;
+  }
+  const castTime = Date.now() / 1000;
+  const chargeId = harthmereMagicChargeId({
+    casterKind: "player",
+    abilityId: ability.id,
+    castTime,
+  });
+  const power = Math.max(
+    0,
+    Math.min(
+      1,
+      (magicChargeTimeSecs - HARTHMERE_MAGIC_CHARGE_MIN_SECS) /
+        (HARTHMERE_MAGIC_CHARGE_MAX_SECS - HARTHMERE_MAGIC_CHARGE_MIN_SECS)
+    )
+  );
+  dispatchHarthmereMagicCharge({
+    phase: "start",
+    chargeId,
+    abilityId: ability.id,
+    projectileVisualId: ability.id,
+    casterKind: "player",
+    chargeStartedAt: castTime,
+    chargeTimeSecs: magicChargeTimeSecs,
+    releaseTime: castTime + magicChargeTimeSecs,
+    power,
+    source: "class_ability_magic_charge",
+  });
+  const timeout = window.setTimeout(() => {
+    if (pendingHarthmereMagicAbilityCharge?.chargeId !== chargeId) {
+      return;
+    }
+    pendingHarthmereMagicAbilityCharge = undefined;
+    dispatchHarthmereMagicCharge({
+      phase: "release",
+      chargeId,
+      abilityId: ability.id,
+      projectileVisualId: ability.id,
+      casterKind: "player",
+      chargeStartedAt: castTime,
+      chargeTimeSecs: magicChargeTimeSecs,
+      releaseTime: castTime + magicChargeTimeSecs,
+      power,
+      source: "class_ability_magic_release",
+    });
+    releaseHarthmereClassAbility(ability);
+  }, magicChargeTimeSecs * 1000);
+  pendingHarthmereMagicAbilityCharge = { abilityId, chargeId, timeout };
 }
 
 export function equipHarthmereAbility(slot: string, abilityId: string) {

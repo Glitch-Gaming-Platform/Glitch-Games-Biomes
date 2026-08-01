@@ -208,6 +208,8 @@ const zBehaviorRangedAttackParams = z
         "gravity",
       ])
       .optional(),
+    /** Biological/technological attacks may use an elemental damage type without spell charging. */
+    magic: z.boolean().optional(),
     animationClip: z
       .enum([
         "Attack",

@@ -36,6 +36,7 @@ import {
   ch1NextSupplierRouteStop,
   ch1RouteStopPosition,
 } from "@/shared/harthmere/ch1_objective_routes";
+import { CH1_SERGEANT_HOLT } from "@/shared/harthmere/ch1_returning_npcs";
 import type { BiomesId } from "@/shared/ids";
 
 export interface Ch1ObjectiveTarget {
@@ -372,8 +373,10 @@ function dungeonTarget(
     : undefined;
 }
 
-function actionLabel(trigger: Ch1StepTrigger): string {
-  switch (trigger) {
+function actionLabel(step: Ch1QuestStep): string {
+  if (step.id === "the_tea") return "Drink Jackie's breakfast tea";
+  if (step.id === "kit_check") return "Let Jackie check your kit";
+  switch (step.trigger) {
     case "talk_npc":
       return "Talk";
     case "near_location":
@@ -438,8 +441,9 @@ function targetPosition(
       ) ?? CH1_TESTIMONY_ROUTE[CH1_TESTIMONY_ROUTE.length - 1];
     return {
       position: ch1RouteStopPosition(next),
-      source: "landmark",
+      source: "npc",
       label: next.label,
+      entityId: next.entityId,
     };
   }
   if (step.id === "the_three_answers") {
@@ -466,6 +470,14 @@ function targetPosition(
         label: next.label,
       };
     }
+  }
+  if (step.id === "report_or_not") {
+    return {
+      position: vec3(CH1_SERGEANT_HOLT.position),
+      source: "npc",
+      label: "Grove Watch House",
+      entityId: CH1_SERGEANT_HOLT.entityId,
+    };
   }
 
   const target = normalized(step.targetLabel);
@@ -565,7 +577,7 @@ export function ch1ObjectiveTarget(
     position: resolved.position,
     interactionRadius: radiusFor(step, resolved.source),
     trigger: step.trigger,
-    actionLabel: actionLabel(step.trigger),
+    actionLabel: actionLabel(step),
     entityId: resolved.entityId,
     source: resolved.source,
   };

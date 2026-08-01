@@ -1,6 +1,5 @@
 import type { Renderer } from "@/client/game/renderers/renderer_controller";
 import type { Scenes } from "@/client/game/renderers/scenes";
-import { addToScenes } from "@/client/game/renderers/scenes";
 import {
   HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS,
   type HarthmereBusinessOutpostProceduralBuildingRecord,
@@ -968,10 +967,16 @@ export class HarthmereBusinessOutpostBuildingsRenderer implements Renderer {
       mesh.visible = false;
       this.root.add(mesh);
     }
+    this.publishDebugBridge();
   }
 
   draw(scenes: Scenes, _dt: number): void {
-    addToScenes(scenes, this.root);
+    // This guide hierarchy is made entirely from stock Three.js materials.
+    // Avoid recursively classifying its invisible audit geometry every frame.
+    scenes.three.add(this.root);
+  }
+
+  private publishDebugBridge(): void {
     if (typeof window !== "undefined") {
       (window as any).__harthmereBusinessOutpostBuildings = {
         version: HARTHMERE_BUSINESS_OUTPOST_BUILDING_RENDER_VERSION,

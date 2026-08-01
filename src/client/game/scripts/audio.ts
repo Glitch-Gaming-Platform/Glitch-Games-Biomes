@@ -7,6 +7,11 @@ import type { AudioPath } from "@/client/game/resources/audio";
 import type { ClientResources } from "@/client/game/resources/types";
 import type { Script } from "@/client/game/scripts/script_controller";
 import {
+  isCaveAudioEnvironment,
+  isMountainTopAudioEnvironment,
+} from "@/client/game/util/environment_audio";
+import { getAudioAssetPaths } from "@/galois/assets/audio";
+import {
   AudioSourceSelector,
   NpcMetadataSelector,
 } from "@/shared/ecs/gen/selectors";
@@ -22,7 +27,7 @@ import {
 import { HARTHMERE_EXTENSION_WORLD_BOUNDS } from "@/shared/harthmere/world_extension";
 import type { BiomesId } from "@/shared/ids";
 import { dist } from "@/shared/math/linear";
-import { clamp } from "lodash";
+import { clamp, sample } from "lodash";
 
 export const SOUND_REF = 4; // distance around the source where the volume is max
 export const SOUND_DISTANCE = 20; // distance from ref to 0 volume
@@ -30,6 +35,13 @@ export const SOUND_DEADZONE = 32; // distance beyond that where the youtube play
 export const ACTIVE_COMBAT_NPC_SCAN_RADIUS = 64;
 export const COMBAT_MUSIC_DAMAGE_GRACE_SECONDS = 8;
 const COMBAT_MUSIC_CLOCK_SKEW_SECONDS = 2;
+export const ENVIRONMENT_AUDIO_PROBE_INTERVAL_SECONDS = 0.5;
+export const ENVIRONMENT_AUDIO_EXIT_GRACE_SECONDS = 1.5;
+export const MOUNTAIN_WIND_ENVIRONMENT_LOOP_KEY = "mountain_top_wind";
+export const MOUNTAIN_WIND_VOLUME_MULTIPLIER = 0.18;
+export const MOUNTAIN_WIND_AUDIO_PATH = sample(
+  getAudioAssetPaths("mountain_wind")
+) as AudioPath | undefined;
 
 type CombatHealth = Pick<
   ReadonlyHealth,
@@ -64,7 +76,9 @@ export function selectBackgroundMusicTrack(
   muckyness: number,
   activeCombat: boolean,
   position?: { readonly [0]: number; readonly [2]: number },
-  activeBossCombat = false
+  activeBossCombat = false,
+  inCave = false,
+  activeMinigame = false
 ): AudioTrackType {
   // Regional cues replace only ordinary exploration music. Combat and Muck
   // preserve their existing priority and restore the current region on exit.
@@ -89,6 +103,13 @@ export function selectBackgroundMusicTrack(
     return "ch1_winter_music";
   }
 
+  // A minigame may own its own media/music surface. Until minigames expose a
+  // dedicated AudioTrackType, preserve the normal regional bed and suppress
+  // environmental replacements such as cave music.
+  if (!activeMinigame && inCave) {
+    return "cave_music";
+  }
+
   const x = position[0];
   const z = position[2];
   if (
@@ -103,8 +124,35 @@ export function selectBackgroundMusicTrack(
   return "music";
 }
 
+export function shouldPlayMountainWind(input: {
+  onMountainTop: boolean;
+  inCave: boolean;
+  inWater: boolean;
+  activeCombat: boolean;
+  activeBossCombat: boolean;
+  muckyness: number;
+  activeMinigame: boolean;
+  cutsceneActive: boolean;
+}) {
+  return (
+    input.onMountainTop &&
+    !input.inCave &&
+    !input.inWater &&
+    !input.activeCombat &&
+    !input.activeBossCombat &&
+    input.muckyness <= 0 &&
+    !input.activeMinigame &&
+    !input.cutsceneActive
+  );
+}
+
 export class AudioScript implements Script {
   readonly name = "audio";
+  private lastEnvironmentProbeAt = -Infinity;
+  private lastEnvironmentProbeCell = "";
+  private caveExitGraceUntil = -Infinity;
+  private mountainExitGraceUntil = -Infinity;
+  private environmentState = { inCave: false, onMountainTop: false };
 
   constructor(
     private readonly userId: BiomesId,
@@ -166,6 +214,58 @@ export class AudioScript implements Script {
     return { activeCombat, activeBossCombat };
   }
 
+  private activeMinigame() {
+    try {
+      return Boolean(
+        this.resources.get("/ecs/c/playing_minigame", this.userId)
+      );
+    } catch {
+      return false;
+    }
+  }
+
+  private environmentAudioState(
+    position: readonly [number, number, number],
+    nowSeconds: number
+  ) {
+    const cell = `${Math.floor(position[0])}|${Math.floor(
+      position[1]
+    )}|${Math.floor(position[2])}`;
+    if (
+      cell === this.lastEnvironmentProbeCell &&
+      nowSeconds - this.lastEnvironmentProbeAt <
+        ENVIRONMENT_AUDIO_PROBE_INTERVAL_SECONDS
+    ) {
+      return this.environmentState;
+    }
+    this.lastEnvironmentProbeAt = nowSeconds;
+    this.lastEnvironmentProbeCell = cell;
+
+    const detectedCave = isCaveAudioEnvironment(this.resources, position);
+    const detectedMountainTop = isMountainTopAudioEnvironment(
+      this.resources,
+      position,
+      detectedCave
+    );
+    if (detectedCave) {
+      this.caveExitGraceUntil =
+        nowSeconds + ENVIRONMENT_AUDIO_EXIT_GRACE_SECONDS;
+    }
+    if (detectedMountainTop) {
+      this.mountainExitGraceUntil =
+        nowSeconds + ENVIRONMENT_AUDIO_EXIT_GRACE_SECONDS;
+    }
+    const inCave =
+      detectedCave || nowSeconds < this.caveExitGraceUntil;
+    this.environmentState = {
+      inCave,
+      onMountainTop:
+        !inCave &&
+        (detectedMountainTop || nowSeconds < this.mountainExitGraceUntil),
+    };
+    return this.environmentState;
+  }
+
   tick(_dt: number) {
     const cameraPos = this.resources.get("/scene/camera").pos();
     const nowSeconds = this.resources.get("/clock").time;
@@ -213,15 +313,39 @@ export class AudioScript implements Script {
       [...playerPos],
       nowSeconds
     );
+    const activeMinigame = this.activeMinigame();
+    const environment = this.environmentAudioState(
+      [...playerPos],
+      nowSeconds
+    );
+    const currentMuckyness = muckyness.get();
     this.audioManager.setBackgroundMusicTrack(
       cutscene.active && cutscene.musicOverride
         ? (cutscene.musicOverride as AudioTrackType)
         : selectBackgroundMusicTrack(
-            muckyness.get(),
+            currentMuckyness,
             combatMusicState.activeCombat,
             playerPos,
-            combatMusicState.activeBossCombat
+            combatMusicState.activeBossCombat,
+            environment.inCave,
+            activeMinigame
           )
+    );
+
+    this.audioManager.setEnvironmentLoop(
+      MOUNTAIN_WIND_ENVIRONMENT_LOOP_KEY,
+      shouldPlayMountainWind({
+        onMountainTop: environment.onMountainTop,
+        inCave: environment.inCave,
+        inWater,
+        activeCombat: combatMusicState.activeCombat,
+        activeBossCombat: combatMusicState.activeBossCombat,
+        muckyness: currentMuckyness,
+        activeMinigame,
+        cutsceneActive: cutscene.active,
+      }),
+      MOUNTAIN_WIND_AUDIO_PATH,
+      { volumeMultiplier: MOUNTAIN_WIND_VOLUME_MULTIPLIER }
     );
 
     if (closestSource) {

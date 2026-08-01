@@ -55,6 +55,27 @@ describe("Chapter 1 native browser-runner contracts", () => {
     );
   });
 
+  it("isolates cutscene evidence from stale focused-run player avatars", () => {
+    assert.match(runner, /const extraHiddenPlayerIds = new Set\(\)/);
+    assert.match(runner, /entity\?\.player_status/);
+    assert.match(runner, /id !== Number\(userId\)/);
+    assert.match(runner, /resources\?\.cached\("\/scene\/player\/mesh", id\)/);
+    assert.match(runner, /mesh\.three\.visible = false/);
+    assert.match(runner, /const playerIsolationTimer = setInterval/);
+    assert.match(runner, /clearInterval\(playerIsolationTimer\)/);
+    assert.match(
+      runner,
+      /await isolateChapter1CatalogProjection\(first, focus\.focus\);\s*auditProjectionHold = true;/
+    );
+    assert.match(runner, /async function chapter1HumanRenderDiagnostics/);
+    assert.match(runner, /uniforms\.spatialLighting\?\.value/);
+    assert.match(runner, /uniforms\.light\?\.value/);
+    assert.match(
+      runner,
+      /renderDiagnostics: await chapter1HumanRenderDiagnostics\(first\)/
+    );
+  });
+
   it("accepts collision-grounded marker warps without flattening hilly coordinates", () => {
     assert.match(runner, /CHAPTER1_E2E_WARP_VERTICAL_TOLERANCE_METERS = 3\.25/);
     assert.match(runner, /distanceXZ\(actual, target\)/);
@@ -93,7 +114,7 @@ describe("Chapter 1 native browser-runner contracts", () => {
     );
   });
 
-  it("provisions external materials without hiding prior Chapter 1 grants", () => {
+  it("acquires external materials without fixtures or hidden Chapter 1 grants", () => {
     assert.match(runner, /chapter1PriorAuthoredInventoryBalance/);
     assert.match(runner, /chapter1ExternallySourcedInventoryRequirements/);
     assert.match(runner, /step\.consumeInventoryRequirements/);
@@ -103,11 +124,27 @@ describe("Chapter 1 native browser-runner contracts", () => {
       /ensureChapter1ExternalInventoryRequirements\(first, quest, step\)/
     );
     assert.match(runner, /harthmereNativeBiomesIdForItemId/);
-    assert.match(runner, /Chapter 1 external inventory fixture installed/);
+    assert.match(runner, /proveChapter1MaterialGuidance/);
+    assert.match(runner, /bridgeCall\(first\.page, "vendorPurchase"/);
+    assert.match(runner, /chapter1UsableItemCount/);
+    assert.match(runner, /harthmere_material_storage\?\.items/);
+    assert.match(runner, /CH1_E2E_RETAINED_PREREQUISITE_GOLD = 75/);
+    assert.match(runner, /CH1_E2E_GROVE_JOB_REWARD_GOLD = 25/);
+    assert.match(runner, /kind: "jobs_board_reward"/);
+    assert.match(runner, /replaceChapter1FixtureNativeGold/);
+    assert.match(runner, /paid job rewards reach the native wallet/);
+    assert.match(runner, /if \(step\.id === "take_jobs"\)/);
+    assert.match(runner, /if \(step\.id === "meet_the_suppliers"\)/);
+    assert.match(runner, /state\.economy\.vendorTransactions/);
+    assert.match(runner, /nativeGold\(entity\) === BigInt\(checkpoint\.gold\)/);
+    assert.doesNotMatch(
+      runner,
+      /Chapter 1 external inventory fixture installed/
+    );
     assert.match(runner, /chapter1ProvisioningObjectiveInventoryRequirements/);
     assert.match(runner, /ch1ProvisioningFor/);
     assert.match(runner, /food: "road_ration"/);
-    assert.match(runner, /cold_gear: "travel_cloak"/);
+    assert.match(runner, /cold_gear: "patched_cloak"/);
     assert.ok(
       (runner.match(/chapter1ExternallySourcedInventoryRequirements\(/g) ?? [])
         .length >= 3,
@@ -115,11 +152,15 @@ describe("Chapter 1 native browser-runner contracts", () => {
     );
     assert.match(
       fastGuide,
-      /provision external objective\s+inputs, but never replace chapter-authored grants/
+      /acquire external objective\s+inputs through real vendor transactions, but never replace chapter-authored grants/
     );
     assert.match(
       fastGuide,
       /Provisioning objectives derive their inventory from the gate contract/
+    );
+    assert.match(
+      fastGuide,
+      /reconstructs the retained 75-gold starter wallet and the paid\s+Work the Board job rewards/
     );
   });
 
@@ -162,6 +203,19 @@ describe("Chapter 1 native browser-runner contracts", () => {
     assert.match(runner, /api\/admin\/ecs\/get_with_version/);
     assert.match(runner, /post-bootstrap-e2e-admin-restored/);
     assert.match(runner, /label: Label\.create\(\{ text: username \}\)/);
+    assert.match(runner, /entity\?\.player_status\?\.init === true/);
+    assert.match(runner, /appearance_component: AppearanceComponent\.create/);
+    assert.match(runner, /skin_color_id: "skin_color_4"/);
+    assert.match(runner, /BikkieIds\.muckyTop/);
+    assert.match(runner, /BikkieIds\.muckySkirt/);
+    assert.match(
+      runner,
+      /await reassertNormalizedChapter1Actor\(page, userId, username, label\)/
+    );
+    assert.match(
+      runner,
+      /resources\.invalidate\("\/scene\/player\/mesh", id\)/
+    );
     assert.match(runner, /npc_metadata: null/);
     assert.match(runner, /icing: null/);
     assert.match(runner, /group_preview_reference: null/);
@@ -176,6 +230,13 @@ describe("Chapter 1 native browser-runner contracts", () => {
     assert.match(runner, /Date\.now\(\) - lastApplyAt >= 2_000/);
     assert.match(runner, /post-load Chapter 1 actor remains normalized/);
     assert.match(runner, /post-load robot-story actor is stable/);
+    assert.match(runner, /reloaded-after-stale-wakeup-bootstrap-race/);
+    assert.match(runner, /stale Wake Up recovery changed actor identity/);
+    assert.match(runner, /page\.goto\(gameUrl\(\)/);
+    assert.match(runner, /staleWakeUpScreen\.waitFor/);
+    assert.match(runner, /isolatedChapter1LegacyRobotStoryNavigationTarget/);
+    assert.match(runner, /entityId:8997551883502307/);
+    assert.match(runner, /entityId:7976997825186729/);
     assert.match(runner, /HARTHMERE_E2E_GIMME_SOPHIA_HANDOFF_ONLY/);
     assert.match(runner, /Sophia-only post-Muck fixture synchronizes/);
     assert.match(
@@ -247,10 +308,33 @@ describe("Chapter 1 native browser-runner contracts", () => {
       /server projected \$\{mode\} dialogue but it did not render/
     );
     assert.match(runner, /required: dialoguePages > 0/);
+    assert.match(runner, /\.npc-quest-view \.npc-quest-dialog-container/);
+    assert.match(runner, /\.text-shadow-bordered\.fixed\.bottom-2/);
+    assert.match(
+      runner,
+      /dialog\.getAttribute\("data-chapter1-dialogue-page"\)/
+    );
+    assert.match(
+      runner,
+      /root\.getAttribute\("data-chapter1-dialogue-page"\) !== before/
+    );
+    assert.doesNotMatch(
+      runner,
+      /querySelector\("\[data-chapter1-dialogue-page\]"\)/
+    );
+    assert.match(runner, /await originalTalkSurface\.click\(\)/);
+    assert.doesNotMatch(runner, /data-chapter1-dialogue-next/);
     assert.match(
       fastGuide,
       /A projected dialogue is mandatory, not a 1\.5-second optional probe/
     );
+  });
+
+  it("can use direct HybridWorld fixtures when a packaged admin page is absent", () => {
+    assert.match(runner, /HARTHMERE_E2E_DIRECT_WORLD_FIXTURES/);
+    assert.match(runner, /new HybridWorldApi/);
+    assert.match(runner, /applyDirectFixtureChanges/);
+    assert.match(runner, /directFixtureWorld\?\.stop/);
   });
 
   it("budgets the complete remaining Act 6 consolidation sequence", () => {

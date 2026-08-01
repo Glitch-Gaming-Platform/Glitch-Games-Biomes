@@ -1,5 +1,6 @@
 import assert from "assert";
 import { getHarthmereItemDisplay } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
+import { biomesInventoryItemIcon } from "@/client/components/biomes_ui/adapters/inventoryItemPresentation";
 import { HARTHMERE_VENDOR_CATALOG } from "@/shared/harthmere/harthmere_vendor_catalog";
 import {
   HARTHMERE_CRAFTING_TOOLS,
@@ -28,6 +29,45 @@ describe("Harthmere native item presentation", () => {
       const display = getHarthmereItemDisplay(itemId);
       assert.ok(display, itemId);
       assert.equal(display.icon, expected, itemId);
+    }
+  });
+
+  it("resolves generated icons through semantic, numeric, and b:-prefixed native identities", () => {
+    for (const [itemId, expectedIcon] of Object.entries(
+      HARTHMERE_GENERATED_INVENTORY_ICON_URLS
+    )) {
+      const nativeId = harthmereNativeBiomesIdForItemId(itemId);
+      assert.ok(nativeId, `missing native identity for ${itemId}`);
+      assert.equal(harthmereGeneratedInventoryIconUrl(itemId), expectedIcon);
+      assert.equal(
+        harthmereGeneratedInventoryIconUrl(String(nativeId)),
+        expectedIcon,
+        `${itemId}: numeric identity`
+      );
+      assert.equal(
+        harthmereGeneratedInventoryIconUrl(`b:${nativeId}`),
+        expectedIcon,
+        `${itemId}: b:-prefixed identity`
+      );
+    }
+  });
+
+  it("shows generated art for Grey Card and Raw Meat when projected from native ECS stacks", () => {
+    for (const itemId of ["item_grey_card", "raw_meat"]) {
+      const nativeId = harthmereNativeBiomesIdForItemId(itemId);
+      assert.ok(nativeId, itemId);
+      const expectedIcon = harthmereGeneratedInventoryIconUrl(itemId);
+      assert.ok(expectedIcon, itemId);
+      for (const runtimeItemId of [String(nativeId), `b:${nativeId}`]) {
+        const display = getHarthmereItemDisplay(runtimeItemId);
+        assert.ok(display, runtimeItemId);
+        assert.equal(display.icon, expectedIcon, runtimeItemId);
+        assert.equal(
+          biomesInventoryItemIcon(runtimeItemId),
+          expectedIcon,
+          `${runtimeItemId}: direct inventory icon resolver`
+        );
+      }
     }
   });
 

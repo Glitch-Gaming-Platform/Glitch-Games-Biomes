@@ -27,6 +27,7 @@ const expectedIds = [
   "consecrate",
   "life_drain",
   "entangling_roots",
+  "indisworm_poison_spit",
   "mocking_verse",
   "curse_of_weakness",
   "hunters_mark",
@@ -135,9 +136,36 @@ for (const id of expectedIds) {
 const runtimeSource = read(
   "src/client/game/renderers/local_dev/harthmere_projectiles.ts"
 );
-assert.match(runtimeSource, /premium-clean-room-v3-boss-shapes/);
+assert.match(runtimeSource, /premium-clean-room-v4-aaa-magic-impacts/);
 assert.match(runtimeSource, /FlightLoop_24/);
 assert.match(runtimeSource, /makePremiumImpact/);
+assert.match(runtimeSource, /makeAaaMagicImpact/);
+assert.match(runtimeSource, /kind: "debris"/);
+assert.match(runtimeSource, /kind: "sparks"/);
+assert.match(runtimeSource, /kind: "mist"/);
+assert.match(runtimeSource, /kind: "dust"/);
+assert.match(runtimeSource, /renderer\.magic_impact\.explosion/);
+assert.match(runtimeSource, /magicExplosionCount/);
+assert.match(runtimeSource, /impactPosition\.copy\(effect\.target\)/);
+assert.match(runtimeSource, /projectile\.visualScale/);
+assert.match(runtimeSource, /impactRadius: effect\.impactRadius/);
+
+const bossMagicPresentationSource = read(
+  "src/shared/harthmere/boss_magic_presentation.ts"
+);
+assert.match(
+  bossMagicPresentationSource,
+  /harthmere-boss-magic-presentation-v1/
+);
+assert.match(bossMagicPresentationSource, /horizontalBodySurfaceDistance/);
+assert.match(bossMagicPresentationSource, /chargeVisualScale/);
+assert.match(bossMagicPresentationSource, /projectileVisualScale/);
+
+const magicImpactSource = read("src/shared/harthmere/magic_impact.ts");
+assert.match(magicImpactSource, /harthmere-aaa-magic-impact-v1/);
+assert.match(magicImpactSource, /HARTHMERE_MAGIC_IMPACT_MAX_DEBRIS/);
+assert.match(magicImpactSource, /HARTHMERE_MAGIC_IMPACT_MAX_SPARKS/);
+assert.match(magicImpactSource, /isHarthmereSuccessfulImpactResult/);
 
 const nativeCombatSource = read(
   "src/shared/harthmere/harthmere_native_combat.ts"
@@ -148,11 +176,22 @@ assert.match(nativeCombatSource, /harthmereNativeNpcProjectileVisualId/);
 const animaClientSource = read("src/client/game/resources/npcs.ts");
 assert.match(animaClientSource, /anima_native_attack_emote/);
 assert.match(animaClientSource, /HARTHMERE_PROJECTILE_VISUAL_EVENT/);
+assert.match(animaClientSource, /Socket_Mouth/);
+assert.match(
+  animaClientSource,
+  /resources\.get\(\s*"\/ecs\/c\/npc_combat_state"/,
+  "Anima projectile presentation must read the client-visible public combat projection"
+);
+assert.match(
+  animaClientSource,
+  /ranged_attack_projectile_visual_id/,
+  "Anima projectile presentation must consume the sanitized ranged-cast projection rather than requiring server-only npc_state"
+);
 
 const nativeContactSource = read("src/client/game/interact/helpers.ts");
 assert.match(nativeContactSource, /native_ecs_attack_contact/);
 assert.match(nativeContactSource, /getHarthmereProjectileVisual/);
 
 console.log(
-  `Validated ${expectedIds.length} clean-room premium projectile GLBs, previews, animations, native ECS contact wiring, and Anima attack presentation.`
+  `Validated ${expectedIds.length} clean-room premium projectile GLBs, previews, animations, universal AAA magic impacts, native ECS contact wiring, and Anima attack presentation.`
 );

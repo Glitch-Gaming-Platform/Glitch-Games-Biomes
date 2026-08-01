@@ -976,6 +976,8 @@ function compactHarthmereNpcActions(actions: TalkDialogStepAction[]) {
   take((action) => action.name.startsWith("Complete:"), 2);
   take((action) => action.name.startsWith("Accept:"), 2);
   take((action) => action.type === "primary", 1);
+  take((action) => action.name === "Tell me about yourself.", 1);
+  take((action) => action.name === "What should I know about this place?", 1);
   take((action) => action.name === "What needs doing here?", 1);
   take((action) => action.name === "How do I read the notices?", 1);
   take((action) => action.name === "Remind me where to go.", 1);

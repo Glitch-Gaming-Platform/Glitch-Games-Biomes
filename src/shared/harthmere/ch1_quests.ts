@@ -126,7 +126,8 @@ const ACT_1: readonly Ch1QuestDef[] = [
       {
         id: "wake_up",
         title: "Wake Up",
-        objective: "Get out of bed.",
+        objective:
+          "Stand up from the road-house bed, then go downstairs for breakfast with Jackie.",
         trigger: "sleep",
         targetLabel: "Bed",
         grants: ["item_ch1_breakfast_tea"],
@@ -195,7 +196,8 @@ const ACT_1: readonly Ch1QuestDef[] = [
       {
         id: "gather_parts",
         title: "Gather Parts",
-        objective: "Bring Luis what the chassis needs.",
+        objective:
+          "Get 4 Scrap Metal, 2 Iron Ingots, and 1 Tree Resin by gathering, buying, or crafting them. Open Quests to choose and track a source, then bring the materials to Luis's Repair Cart.",
         trigger: "collect",
         targetLabel: "Luis's Repair Cart",
         inventoryRequirements: [
@@ -288,7 +290,8 @@ const ACT_1: readonly Ch1QuestDef[] = [
       {
         id: "not_this_small",
         title: '"Not This Small"',
-        objective: "Answer Jackie.",
+        objective:
+          "Tell Jackie whether the seam is smaller than the fracture that brought you here.",
         trigger: "dialogue_choice",
         targetLabel: "Jackie",
         note: "All dialogue options produce the same line. The player does not choose this.",
@@ -452,7 +455,8 @@ const ACT_2: readonly Ch1QuestDef[] = [
       {
         id: "say_the_sentence",
         title: "Say the Obvious Sentence",
-        objective: "Answer Halden Rook.",
+        objective:
+          "Tell Halden Rook that the footprints stop where something appeared.",
         trigger: "dialogue_choice",
         targetLabel: "Halden Rook",
       },
@@ -479,7 +483,7 @@ const ACT_3: readonly Ch1QuestDef[] = [
       {
         id: "examine_the_button",
         title: "Examine the Button",
-        objective: "Look at what Rin found.",
+        objective: "Pick up the coat button Rin found at Shutter Cove.",
         trigger: "collect",
         targetLabel: "A Coat Button",
         grants: ["item_iris_button"],
@@ -507,7 +511,7 @@ const ACT_3: readonly Ch1QuestDef[] = [
         id: "provision",
         title: "Provision",
         objective:
-          "Gather water, food, cooked rations, forage, torches, repair kits, and field medicine.",
+          "Pack water, food, cooked rations, forage, light, repair kits, and field medicine. Open Quests to choose and track a gather, buy, or craft source for every missing supply.",
         trigger: "collect",
         targetLabel: "Provisioning checklist",
       },
@@ -553,7 +557,8 @@ const ACT_3: readonly Ch1QuestDef[] = [
       {
         id: "d1_salt_market",
         title: "The Salt Market",
-        objective: "Get through the bazaar.",
+        objective:
+          "Defeat the Salt-Cured Muckers blocking the route through the bazaar.",
         trigger: "defeat",
         targetLabel: "Salt-Cured Muckers",
       },
@@ -579,7 +584,7 @@ const ACT_3: readonly Ch1QuestDef[] = [
       {
         id: "d1_sun_court",
         title: "The Sun Court",
-        objective: "Get past the guardian.",
+        objective: "Defeat the Gilded Bull guarding the Sun Court exit.",
         trigger: "defeat",
         targetLabel: "The Gilded Bull",
         grants: ["item_bulls_core"],
@@ -631,14 +636,15 @@ const ACT_3: readonly Ch1QuestDef[] = [
       {
         id: "come_back_out",
         title: "Come Back Out",
-        objective: "Return to the Grove.",
+        objective:
+          "Leave the Dry Mouth through the return aperture and meet Jackie outside in the Grove.",
         trigger: "near_location",
         targetLabel: "The Grove",
       },
       {
         id: "the_flinch",
         title: "The Flinch",
-        objective: "Let Jackie reach you.",
+        objective: "Talk to Jackie at the Dry Mouth gate after you return.",
         trigger: "talk_npc",
         targetLabel: "Jackie",
         cutsceneId: "ch1-the-flinch",
@@ -703,7 +709,8 @@ const ACT_4: readonly Ch1QuestDef[] = [
       {
         id: "the_procedure",
         title: "The Procedure",
-        objective: "Stabilise the core.",
+        objective:
+          "Use the containment controls in order to stabilise the core before time runs out.",
         trigger: "minigame",
         targetLabel: "Containment lattice",
         latentSkillId: "ls_containment_triage",
@@ -713,7 +720,8 @@ const ACT_4: readonly Ch1QuestDef[] = [
       {
         id: "how_did_you_do_that",
         title: '"How Did You Do That?"',
-        objective: "Answer Calla Ashe.",
+        objective:
+          "Tell Calla Ashe how you knew which containment controls to use.",
         trigger: "dialogue_choice",
         targetLabel: "Foreman Calla Ashe",
         note: "Four options. All four are 'I don't know', phrased differently. That's the scene.",
@@ -769,7 +777,8 @@ const ACT_4: readonly Ch1QuestDef[] = [
       {
         id: "search_the_stores",
         title: "Search the Stores",
-        objective: "Find what she is using.",
+        objective:
+          "Search the dented tea tin in the road-house stores and take a vial of the compound.",
         trigger: "collect",
         targetLabel: "Dented Tea Tin",
         grants: ["item_jackies_tin", "item_ch1_compound_b"],
@@ -777,9 +786,17 @@ const ACT_4: readonly Ch1QuestDef[] = [
       {
         id: "have_it_analysed",
         title: "Have It Analysed",
-        objective: "Take a vial to Doc.",
+        objective:
+          "Bring the vial from Jackie's tea tin to Doc's field table for analysis.",
         trigger: "give_item",
         targetLabel: "Doc",
+        inventoryRequirements: [
+          {
+            itemId: "item_ch1_compound_b",
+            count: 1,
+            label: "the vial from Jackie's tea tin",
+          },
+        ],
         fragmentId: "frag_a4_play_twenty_two",
       },
     ],
@@ -800,6 +817,13 @@ const ACT_4: readonly Ch1QuestDef[] = [
         objective: "Give the vial to Dr. Ardan.",
         trigger: "give_item",
         targetLabel: "Dr. Lucien Ardan",
+        inventoryRequirements: [
+          {
+            itemId: "item_ch1_compound_b",
+            count: 1,
+            label: "the analysed tea vial",
+          },
+        ],
       },
     ],
   },
@@ -817,7 +841,8 @@ const ACT_4: readonly Ch1QuestDef[] = [
       {
         id: "interrogate",
         title: "Ask Him",
-        objective: "Question Teak Morrow.",
+        objective:
+          "Talk to Teak Morrow in Rat Crowns about who supplied the compound.",
         trigger: "talk_npc",
         targetLabel: 'Teague "Teak" Morrow',
       },
@@ -903,6 +928,13 @@ const ACT_5: readonly Ch1QuestDef[] = [
         objective: "Take the remaining vials.",
         trigger: "collect",
         targetLabel: "Dented Tea Tin",
+        inventoryRequirements: [
+          {
+            itemId: "item_ch1_compound_b",
+            count: 1,
+            label: "the remaining tea compound",
+          },
+        ],
       },
       {
         id: "unlock_linking",
@@ -949,7 +981,7 @@ const ACT_5: readonly Ch1QuestDef[] = [
         id: "provision_winter",
         title: "Provision",
         objective:
-          "Gather fuel, food, cooked rations, cold-weather gear, rope, iron, repair kits, and field medicine.",
+          "Pack fuel, food, cooked rations, cold-weather gear, rope, iron, repair kits, and field medicine. Open Quests to choose and track a gather, buy, or craft source for every missing supply.",
         trigger: "collect",
         targetLabel: "Provisioning checklist",
       },
@@ -1072,7 +1104,8 @@ const ACT_5: readonly Ch1QuestDef[] = [
       {
         id: "come_out",
         title: "Come Out",
-        objective: "Bring Sorrel through.",
+        objective:
+          "Escort Sorrel through the return aperture and reach the Grove together.",
         trigger: "escort",
         targetLabel: "The Grove",
       },
@@ -1129,12 +1162,19 @@ const ACT_6: readonly Ch1QuestDef[] = [
         objective: "Hand the field ledger to Dr. Ardan.",
         trigger: "give_item",
         targetLabel: "Dr. Lucien Ardan",
+        inventoryRequirements: [
+          {
+            itemId: "item_sorrel_field_ledger",
+            count: 1,
+            label: "Sorrel's field ledger",
+          },
+        ],
       },
       {
         id: "give_her_location",
         title: "Tell Him Where She Is",
         objective:
-          "Sorrel needs a doctor and has spent four months eating fish.",
+          "Tell Dr. Ardan where Sorrel is and that she needs medical help.",
         trigger: "dialogue_choice",
         targetLabel: "Dr. Lucien Ardan",
       },
@@ -1154,9 +1194,10 @@ const ACT_6: readonly Ch1QuestDef[] = [
       {
         id: "the_word",
         title: "The Word",
-        objective: "—",
+        objective:
+          "Stay with Dr. Ardan at Returnstone and listen when he addresses you by the designation you never told him.",
         trigger: "interact",
-        targetLabel: "—",
+        targetLabel: "Dr. Lucien Ardan",
         cutsceneId: "ch1-consolidation-revision",
         fragmentId: "frag_a6_the_intake_window",
       },
@@ -1174,7 +1215,7 @@ const ACT_6: readonly Ch1QuestDef[] = [
       {
         id: "watch_him_go",
         title: "Watch Him Go",
-        objective: "—",
+        objective: "Answer Dr. Ardan at the Returnstone exit before he leaves.",
         trigger: "dialogue_choice",
         targetLabel: "Dr. Lucien Ardan",
         cutsceneId: "ch1-too-late",
@@ -1196,14 +1237,15 @@ const ACT_6: readonly Ch1QuestDef[] = [
       {
         id: "did_he_take_it",
         title: '"Did He Take It?"',
-        objective: "Answer her.",
+        objective: "Tell Jackie whether Dr. Ardan took Sorrel's ledger.",
         trigger: "dialogue_choice",
         targetLabel: "Jackie",
       },
       {
         id: "the_whole_plan",
         title: "The Whole Plan",
-        objective: "Let her explain.",
+        objective:
+          "Stay with Jackie in the watch house and hear the full containment plan.",
         trigger: "talk_npc",
         targetLabel: "Jackie",
         cutsceneId: "ch1-the-watch-house",

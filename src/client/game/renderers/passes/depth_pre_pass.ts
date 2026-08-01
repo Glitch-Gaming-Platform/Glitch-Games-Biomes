@@ -51,9 +51,9 @@ export class DepthPrePass extends ScenePass {
     this.target = target;
 
     this.outputs.clear();
-    this.outputs.set("depth", this.target.depthTexture);
+    this.outputs.set("depth", depthTexture);
     for (const output of this.options.additionalOutputs ?? []) {
-      this.outputs.set(output, this.target.depthTexture);
+      this.outputs.set(output, depthTexture);
     }
   }
 

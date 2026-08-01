@@ -51,6 +51,7 @@ import {
 } from "@/shared/harthmere/snapshot_grove_content";
 import { isHarthmereContainerObjectLabel } from "@/shared/harthmere/object_interaction_semantics";
 import * as THREE from "three";
+import { publishChapter1ObjectiveWorldProjection } from "@/client/components/challenges/Chapter1ObjectiveWorldState";
 
 describe("harthmereResolveWorldQuestBeaconMarkerId (cross-system eclipse)", () => {
   it("shows the helper/grove beacon when there is no active pin", () => {
@@ -470,6 +471,39 @@ describe("Harthmere quest object procedural markers current", () => {
         `${markerId} must have real geometry instead of a beacon-only anchor`
       );
     }
+  });
+
+  it("draws the active Chapter 1 repair cart as a visible interaction target", () => {
+    publishChapter1ObjectiveWorldProjection({
+      key: "stand-him-up:gather-parts",
+      label: "Luis's Repair Cart",
+      position: [490, 65, -206],
+      trigger: "collect",
+    });
+    const renderer = makeHarthmereQuestObjectMarkersRenderer();
+    const scenes = createNewScenes();
+    renderer.draw(scenes, 0.3);
+    const root = findRendererRoot(scenes)!;
+    const markerId = "chapter1_objective:stand-him-up:gather-parts";
+    const cart = findMarkerGroup(root, markerId);
+    assert.ok(
+      cart,
+      "the active repair cart should be projected into the world"
+    );
+    assert.equal(cart!.visible, true);
+    assert.equal(findActiveBeacon(cart!)?.visible, true);
+    assert.ok(
+      cart!.children.filter((child) => child instanceof THREE.Mesh).length >= 7,
+      "the target should look like a cart with cargo, not a generic cube"
+    );
+
+    publishChapter1ObjectiveWorldProjection(undefined);
+    renderer.draw(scenes, 0.3);
+    assert.equal(
+      findMarkerGroup(root, markerId),
+      undefined,
+      "the prop should disappear as soon as the objective advances"
+    );
   });
 
   it("keeps Billy's real post visible but hides the quest toolbag until active", () => {

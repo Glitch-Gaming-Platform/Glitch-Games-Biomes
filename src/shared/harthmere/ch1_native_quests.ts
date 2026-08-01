@@ -43,6 +43,16 @@ export function ch1NativeQuestId(questId: string): BiomesId | undefined {
   return index < 0 ? undefined : id(CH1_NATIVE_QUEST_ID_BASE + index);
 }
 
+export function ch1QuestForNativeQuestId(
+  value: unknown
+): Ch1QuestDef | undefined {
+  const numeric = Number(value);
+  if (!Number.isSafeInteger(numeric)) return undefined;
+  return CH1_QUESTS.find(
+    (quest) => Number(ch1NativeQuestId(quest.id)) === numeric
+  );
+}
+
 export function ch1NativeQuestStepId(
   questId: string,
   stepIdOrIndex: string | number
@@ -65,6 +75,23 @@ export function ch1NativeQuestStepId(
       stepIndex +
       1
   );
+}
+
+export function ch1StepForNativeStepId(
+  questId: string,
+  value: unknown
+):
+  | { quest: Ch1QuestDef; step: Ch1QuestDef["steps"][number]; index: number }
+  | undefined {
+  const quest = CH1_QUESTS.find((candidate) => candidate.id === questId);
+  const numeric = Number(value);
+  if (!quest || !Number.isSafeInteger(numeric)) return undefined;
+  const index = quest.steps.findIndex(
+    (_, stepIndex) =>
+      Number(ch1NativeQuestStepId(quest.id, stepIndex)) === numeric
+  );
+  const step = quest.steps[index];
+  return step ? { quest, step, index } : undefined;
 }
 
 export function ch1NativeQuestRootId(questId: string): BiomesId | undefined {

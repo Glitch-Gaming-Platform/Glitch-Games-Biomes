@@ -29,10 +29,18 @@ function collectJavaScriptFiles(directory, files = []) {
   return files;
 }
 
+function isDesktopOnlyBundle(absolute) {
+  const relative = path.relative(root, absolute).split(path.sep).join("/");
+  return (
+    relative.startsWith("dist/galois/editor/webpack/") ||
+    relative.startsWith("dist/galois/viewer/webpack/")
+  );
+}
+
 const serverFiles = [
   ...collectJavaScriptFiles(dist),
   ...collectJavaScriptFiles(path.join(root, ".next/server")),
-];
+].filter((absolute) => !isDesktopOnlyBundle(absolute));
 
 for (const absolute of serverFiles) {
   const file = path.relative(root, absolute).split(path.sep).join("/");

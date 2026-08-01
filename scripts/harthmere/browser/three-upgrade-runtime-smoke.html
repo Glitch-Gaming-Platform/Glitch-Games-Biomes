@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Three.js upgrade runtime smoke</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 24px;
+        color: #e5e7eb;
+        background: #030712;
+        font: 14px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+      #canvas-host canvas {
+        width: 640px;
+        max-width: 100%;
+        height: auto;
+        border: 1px solid #334155;
+      }
+      #smoke-root {
+        margin-top: 16px;
+        padding: 16px;
+        white-space: pre-wrap;
+        border: 1px solid #334155;
+        border-radius: 8px;
+      }
+      #smoke-root[data-status="pass"] { border-color: #22c55e; }
+      #smoke-root[data-status="fail"] { border-color: #ef4444; }
+    </style>
+  </head>
+  <body>
+    <h1>Three.js upgrade runtime smoke</h1>
+    <div id="canvas-host"></div>
+    <pre id="smoke-root" data-status="running">RUNNING</pre>
+    <script type="module" src="./three-upgrade-runtime-smoke.js"></script>
+  </body>
+</html>

@@ -4,6 +4,7 @@ import assert from "assert";
 
 import {
   equippedHarthmereRepairToolItemId,
+  harthmereOwnsFishingRod,
   isHarthmereCleanupToolEquipped,
   isHarthmereCleanupToolItemId,
   isHarthmereRepairToolEquipped,
@@ -127,5 +128,25 @@ describe("HARTHMERE_REPAIR_TOOL_EQUIP — equipped repair tool detection", () =>
       false,
       "an authoritative unequip must not fall back to stale local equipment"
     );
+  });
+
+  it("recognizes the HAR Training Rod in the authoritative live inventory", () => {
+    markHarthmereLiveSnapshotSeen();
+    recordHarthmereLiveInventoryItemsSnapshot({
+      inventoryLootState: {
+        actor: {
+          items: { "b:5920729553733598": 1 },
+          equipment: {},
+        },
+      },
+    });
+    assert.equal(harthmereOwnsFishingRod(stateWithMainHand(undefined)), true);
+
+    recordHarthmereLiveInventoryItemsSnapshot({
+      inventoryLootState: {
+        actor: { items: { rusty_pickaxe: 1 }, equipment: {} },
+      },
+    });
+    assert.equal(harthmereOwnsFishingRod(stateWithMainHand(undefined)), false);
   });
 });

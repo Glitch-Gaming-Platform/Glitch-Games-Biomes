@@ -82,7 +82,9 @@ export class ScenePass extends RenderPass {
     this.outputs.clear();
     if (!renderToScreen && this.target) {
       this.outputs.set(this.options.outputChannel, this.target.texture);
-      this.outputs.set("depth", this.target.depthTexture);
+      if (this.target.depthTexture) {
+        this.outputs.set("depth", this.target.depthTexture);
+      }
     }
   }
 

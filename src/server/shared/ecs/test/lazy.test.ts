@@ -6,7 +6,12 @@ import {
 } from "@/server/shared/ecs/lazy";
 import { poisonedComponent } from "@/server/shared/ecs/lazy_base";
 import { serializeRedisEntity } from "@/server/shared/world/lua/serde";
-import { AppearanceComponent, Position } from "@/shared/ecs/gen/components";
+import {
+  AppearanceComponent,
+  NpcCombatState,
+  NpcState,
+  Position,
+} from "@/shared/ecs/gen/components";
 import type { Entity } from "@/shared/ecs/gen/entities";
 import { SerializeForServer } from "@/shared/ecs/gen/json_serde";
 import { zChange } from "@/shared/ecs/zod";
@@ -325,5 +330,43 @@ describe("Lazy Entity Tests", () => {
         entity: TEST_ENTITY,
       }
     );
+  });
+
+  it("sends sanitized ranged presentation to clients without private npc_state", () => {
+    const entity: Entity = {
+      id: TEST_ID,
+      npc_state: NpcState.create({ data: new Uint8Array([1, 2, 3]) }),
+      npc_combat_state: NpcCombatState.create({
+        attack_target: 2 as BiomesId,
+        ranged_attack_ability_id: "fireball",
+        ranged_attack_projectile_visual_id: "fireball",
+        ranged_attack_cast_time: 100,
+        ranged_attack_charge_time_secs: 3.5,
+        ranged_attack_release_time: 103.5,
+        ranged_attack_aim_point: [8, 1, 0],
+      }),
+    };
+    const serialized = lazyChangeToSerialized(
+      { whoFor: "client", id: 3 as BiomesId },
+      {
+        kind: "create",
+        tick: 1,
+        entity: LazyEntity.forEncoded(TEST_ID, serializeRedisEntity(entity)),
+      }
+    );
+    const clientEntity = zChange.parse(serialized).change;
+    assert.equal(clientEntity.kind, "create");
+    if (clientEntity.kind !== "create") return;
+    assert.equal(clientEntity.entity.npc_state, undefined);
+    assert.deepEqual(clientEntity.entity.npc_combat_state, {
+      attack_target: 2,
+      ranged_attack_ability_id: "fireball",
+      ranged_attack_projectile_visual_id: "fireball",
+      ranged_attack_cast_time: 100,
+      ranged_attack_charge_time_secs: 3.5,
+      ranged_attack_release_time: 103.5,
+      ranged_attack_aim_point: [8, 1, 0],
+      ranged_attack_result: undefined,
+    });
   });
 });

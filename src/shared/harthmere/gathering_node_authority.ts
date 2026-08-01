@@ -16,6 +16,7 @@ import {
 } from "@/shared/harthmere/gathering_node_terrain_positions";
 import { normalizeHarthmereExtensionOutdoorFeetPosition } from "@/shared/harthmere/world_extension";
 import type { BiomesId } from "@/shared/ids";
+import { hasFishingRodIdentity } from "@/shared/harthmere/fishing_rods";
 
 export const HARTHMERE_GATHERING_NODE_AUTHORITY_VERSION =
   "harthmere-gathering-node-authority-2026-07-23" as const;
@@ -1109,10 +1110,15 @@ export function resolveHarthmereGatheringAuthorityAttempt(input: {
   }
   const hasRequiredTool =
     !node.requiredTool ||
-    input.equippedItemIds.includes(node.requiredTool) ||
-    input.equippedBiomesItemIds?.includes(
-      harthmereNativeBiomesIdForItemId(node.requiredTool)!
-    );
+    (node.profession === "fishing"
+      ? hasFishingRodIdentity({
+          itemIds: input.equippedItemIds,
+          biomesItemIds: input.equippedBiomesItemIds,
+        })
+      : input.equippedItemIds.includes(node.requiredTool) ||
+        input.equippedBiomesItemIds?.includes(
+          harthmereNativeBiomesIdForItemId(node.requiredTool)!
+        ));
   if (!hasRequiredTool) {
     return { ok: false, reason: "required_tool_missing:" + node.requiredTool };
   }

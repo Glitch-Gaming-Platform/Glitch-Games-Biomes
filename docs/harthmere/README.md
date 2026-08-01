@@ -22,6 +22,9 @@ Keep source folders for runtime code and tests; put gameplay/reference documents
   materialization authority repairs, migration rules, and deployment checks.
 - `HARTHMERE_NATIVE_ECS_COMBAT.md` - one-authority native combat, exact NPC and
   item identity, server validation, migration, and verification matrix.
+- `HARTHMERE_BOSS_COMBAT_AND_ANIMATION.md` - the eleven-boss roster, five-attack
+  contract, entity-aware combat routing, GLB animation binding, giant positional
+  footsteps, and focused/live verification.
 - `HARTHMERE_NATIVE_ECS_VITALS.md` - native health, mana, stamina, breath,
   social standing, gold, consumables, drowning, and Grove respawn authority.
 - `HARTHMERE_F_INTERACTION_AUTHORITY.md` - capability-first `F` routing,

@@ -105,7 +105,11 @@ class QueryIndex:
 
     def dump(self):
         db = []
-        for key, srcs in sorted(self.changes.items(), key=lambda kv: kv[0]):
+        # Keep entries that were loaded but not rebuilt in this process. Without
+        # this merge, an incremental cache hit would remove its own persisted
+        # entry on context exit, forcing the next invocation to rebuild it.
+        merged = {**self.db, **self.changes}
+        for key, srcs in sorted(merged.items(), key=lambda kv: kv[0]):
             db.append([key, srcs.hash, srcs.srcs, srcs.version])
         save_db(self.path, db)
 

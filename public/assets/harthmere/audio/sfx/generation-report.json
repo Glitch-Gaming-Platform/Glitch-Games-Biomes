@@ -1,20 +1,70 @@
 {
-  "version": "harthmere-sound-effects-elevenlabs-v4-proximity-ambience",
-  "generatedAt": "2026-07-31T14:55:30.082Z",
-  "selected": 1,
-  "generated": 1,
-  "newlyGenerated": 1,
+  "version": "harthmere-sound-effects-elevenlabs-v6-indisworm",
+  "generatedAt": "2026-08-01T16:44:17.415Z",
+  "selected": 6,
+  "generated": 6,
+  "newlyGenerated": 6,
   "failed": 0,
   "records": [
     {
-      "id": "ch1_portal_ambience",
-      "path": "/assets/harthmere/audio/sfx/ch1_portal_ambience.webm",
-      "promptHash": "a80a087e96fdcc887a436a1df27e2c8388d951d59824a6c00426751e0dc9bdf5",
-      "requestedDurationSeconds": 8,
-      "actualDurationSeconds": 8.008,
-      "bytes": 98648,
-      "loop": true,
-      "generatedAt": "2026-07-31T14:55:30.054Z"
+      "id": "creature_indisworm_attack",
+      "path": "/assets/harthmere/audio/sfx/creature_indisworm_attack.webm",
+      "promptHash": "bfdf59fb1eb04a75aecc3e9919f7072694f083f0d39f91699b6e4228e683d343",
+      "requestedDurationSeconds": 0.95,
+      "actualDurationSeconds": 0.928,
+      "bytes": 12461,
+      "loop": false,
+      "generatedAt": "2026-08-01T16:44:14.931Z"
+    },
+    {
+      "id": "creature_indisworm_death",
+      "path": "/assets/harthmere/audio/sfx/creature_indisworm_death.webm",
+      "promptHash": "de6ca98afeaafd6ecbca73a890df82b8e05791153d08c8a7326fa10356eaa2bb",
+      "requestedDurationSeconds": 1.4,
+      "actualDurationSeconds": 1.368,
+      "bytes": 20545,
+      "loop": false,
+      "generatedAt": "2026-08-01T16:44:17.218Z"
+    },
+    {
+      "id": "creature_indisworm_hit",
+      "path": "/assets/harthmere/audio/sfx/creature_indisworm_hit.webm",
+      "promptHash": "ba344c115f5bb4f223d722469d1070b948902539ea0d449a482f81e033baf5d2",
+      "requestedDurationSeconds": 0.8,
+      "actualDurationSeconds": 0.808,
+      "bytes": 10794,
+      "loop": false,
+      "generatedAt": "2026-08-01T16:44:14.923Z"
+    },
+    {
+      "id": "creature_indisworm_idle",
+      "path": "/assets/harthmere/audio/sfx/creature_indisworm_idle.webm",
+      "promptHash": "c8cbd6e9b3186dad2c21776cdaa7f382f697361c710f5107a682e73ee50b29ad",
+      "requestedDurationSeconds": 1.2,
+      "actualDurationSeconds": 1.208,
+      "bytes": 18713,
+      "loop": false,
+      "generatedAt": "2026-08-01T16:44:14.940Z"
+    },
+    {
+      "id": "indisworm_poison_spit_impact",
+      "path": "/assets/harthmere/audio/sfx/indisworm_poison_spit_impact.webm",
+      "promptHash": "82a2ec58aa2ae54058d701f3c8ba05fcb9a196b528237b2fbcd51c8dc4db1088",
+      "requestedDurationSeconds": 1,
+      "actualDurationSeconds": 1.008,
+      "bytes": 11536,
+      "loop": false,
+      "generatedAt": "2026-08-01T16:44:16.885Z"
+    },
+    {
+      "id": "indisworm_poison_spit_launch",
+      "path": "/assets/harthmere/audio/sfx/indisworm_poison_spit_launch.webm",
+      "promptHash": "20e77854bda6fe5fdb183b2959bac7961e460d2319148ea617cea54052b24206",
+      "requestedDurationSeconds": 0.85,
+      "actualDurationSeconds": 0.848,
+      "bytes": 9828,
+      "loop": false,
+      "generatedAt": "2026-08-01T16:44:16.859Z"
     }
   ],
   "failures": []

@@ -17,6 +17,7 @@ import {
   HARTHMERE_NATIVE_MUCK_SCARRED_HELIX_SEED,
   HARTHMERE_NATIVE_THAEDRYN_SEED,
   harthmereActiveLiveEntityProductionSeedIds,
+  harthmereGroundedCavernMonsterSeeds,
   harthmereGroundedLivestockSeedsInTerritory,
   harthmereGroundedMuckMonsterSeedsInTerritory,
   harthmereLiveEntitySizeForSeed,
@@ -228,6 +229,21 @@ export function buildHarthmereLiveEntityProductionSeedChanges(input: {
     }
     changes.push({
       kind: muckerKind,
+      tick: input.tick,
+      entity,
+    });
+  }
+
+  // Massive-cavern Indisworms retain their underground authored feet positions.
+  // They deliberately bypass the outdoor Muck/open-sky placement map.
+  for (const seed of harthmereGroundedCavernMonsterSeeds()) {
+    const entity = buildHarthmereLiveCreatureEntity(seed, input.nowSeconds);
+    const cavernKind = changeKindForSeed(seed, existingIds);
+    if (cavernKind === "create" && isRespawnSuppressed(seed.entityId)) {
+      continue;
+    }
+    changes.push({
+      kind: cavernKind,
       tick: input.tick,
       entity,
     });

@@ -40,22 +40,30 @@ const talkToItemDisplayCellClasses = "bg-tooltip-bg w-10 h-10";
 export const TalkDialogModal: React.FunctionComponent<
   PropsWithChildren<{
     entityId: BiomesId;
+    focusCamera?: boolean;
+    extraClassNames?: string;
   }>
-> = ({ entityId, children }) => {
+> = ({ entityId, focusCamera = true, extraClassNames, children }) => {
   const { resources } = useClientContext();
   useEffect(() => {
     resources.update("/scene/local_player", (localPlayer) => {
       localPlayer.talkingToNpc = entityId;
+      localPlayer.talkingToNpcCameraDisabled = !focusCamera;
     });
     return () => {
       resources.update("/scene/local_player", (localPlayer) => {
-        localPlayer.talkingToNpc = undefined;
+        if (localPlayer.talkingToNpc === entityId) {
+          localPlayer.talkingToNpc = undefined;
+          localPlayer.talkingToNpcCameraDisabled = false;
+        }
       });
     };
-  }, []);
+  }, [entityId, focusCamera, resources]);
 
   return (
-    <ChromelessModal extraClassNames="npc-quest-view">
+    <ChromelessModal
+      extraClassNames={`npc-quest-view ${extraClassNames ?? ""}`.trim()}
+    >
       <div
         style={{
           cursor: "pointer",

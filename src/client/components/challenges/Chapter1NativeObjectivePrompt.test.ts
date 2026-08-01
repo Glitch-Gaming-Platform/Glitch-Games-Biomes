@@ -12,6 +12,10 @@ describe("Chapter1NativeObjectivePrompt input ownership", () => {
     ),
     "utf8"
   );
+  const npcRendererSource = fs.readFileSync(
+    path.join(process.cwd(), "src/client/game/resources/npcs.ts"),
+    "utf8"
+  );
 
   it("registers one highest-priority story action with the central dispatcher", () => {
     assert.match(source, /useWorldInteractionCandidate\(worldCandidate\)/);
@@ -23,7 +27,8 @@ describe("Chapter1NativeObjectivePrompt input ownership", () => {
     assert.match(source, /state\?\.status === "active"/);
     assert.match(source, /state\.withinRange/);
     assert.match(source, /state\.trigger !== "near_location"/);
-    assert.match(source, /disabled: busy/);
+    assert.match(source, /!state\.requirement\?\.blocksChapterInteraction/);
+    assert.match(source, /disabled:\s*busy/);
     assert.match(source, /blocksChapterInteraction/);
   });
 
@@ -32,7 +37,11 @@ describe("Chapter1NativeObjectivePrompt input ownership", () => {
     assert.match(source, /kind: "quest"/);
     assert.match(source, /challengeId: state\.challengeId/);
     assert.match(source, /triggerId: state\.stepId/);
+    assert.match(source, /kind: "entity"/);
+    assert.match(source, /id: state\.targetEntityId as BiomesId/);
     assert.match(source, /position: \[\.\.\.state\.targetPosition\]/);
+    assert.match(source, /publishChapter1ObjectiveWorldProjection/);
+    assert.match(source, /label: state\.targetLabel \|\| state\.objective/);
   });
 
   it("coalesces state polls and synchronously excludes completion races", () => {
@@ -52,13 +61,45 @@ describe("Chapter1NativeObjectivePrompt input ownership", () => {
     assert.match(source, /data-chapter1-dialogue-objective=/);
     assert.match(source, /data-chapter1-dialogue-page=/);
     assert.match(source, /data-chapter1-dialogue-final=/);
-    assert.match(source, /<TalkDialogModal entityId=/);
+    assert.match(source, /<TalkDialogModal/);
     assert.match(source, /<GenericTalkDialogModalStep/);
     assert.match(source, /onClose=\{advanceDialogue\}/);
     assert.doesNotMatch(source, /data-chapter1-dialogue-next/);
     assert.doesNotMatch(source, /aria-label=\{dialogue\.sequence\.title\}/);
     assert.match(source, /state\.dialogue/);
     assert.match(source, /dialogue\.mode === "objective"/);
+    assert.match(source, /createPortal\(/);
+    assert.match(source, /focusCamera=\{false\}/);
+    assert.match(source, /extraClassNames="chapter1-story-dialogue"/);
+    assert.match(source, /chapter1-choice-dialog/);
+    assert.match(source, /data-chapter1-choice-next/);
+  });
+
+  it("publishes each authored human expression to the exact speaking NPC", () => {
+    assert.match(source, /expression\?: HarthmereCinematicExpression/);
+    assert.match(source, /activeDialogueVoice\.kind !== "human"/);
+    assert.match(source, /resolveHarthmereNpcDialogueActor/);
+    assert.match(source, /NpcMetadataSelector\.query\.all\(\)/);
+    assert.match(source, /preferredActorId: activeDialogueVoice\.entityId/);
+    assert.match(source, /publishHarthmereNpcDialogueExpression/);
+    assert.match(source, /clearHarthmereNpcDialogueExpression/);
+    assert.match(source, /data-chapter1-dialogue-expression/);
+    assert.match(source, /data-chapter1-dialogue-actor-id/);
+
+    assert.match(npcRendererSource, /readHarthmereNpcDialogueExpression/);
+    assert.match(npcRendererSource, /dialogueExpressionCue\.expression/);
+    assert.match(npcRendererSource, /source: "dialogue"|"dialogue" : "script"/);
+    assert.match(npcRendererSource, /cutsceneNpcAnimationAction/);
+  });
+
+  it("keeps a blocked story interaction from falling through to nearby stations", () => {
+    assert.match(source, /disabled:\s*busy \|\| sleepTransition/);
+    assert.doesNotMatch(
+      source,
+      /disabled:[^\n]*Boolean\(state\.requirement && !state\.requirement\.ready\)/
+    );
+    assert.match(source, /Required item missing/);
+    assert.match(source, /setError\(next\.ok \? undefined : next\.reason\)/);
   });
 
   it("pauses background state polling while story modals are open", () => {

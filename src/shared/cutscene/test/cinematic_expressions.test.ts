@@ -191,6 +191,11 @@ describe("Harthmere cinematic gameplay expressions", () => {
           harthmereCinematicExpressionSpec(expression).interaction !== "paired"
       ).length
     );
+    for (const member of def.cast) {
+      if (member.binding.kind === "ghost") {
+        assert.strictEqual(member.binding.asset, "snapshot/player_mesh");
+      }
+    }
 
     const actors = new Map<string, ResolvedActor>();
     def.cast.forEach((member, index) => {

@@ -12,6 +12,7 @@ import { useClientContext } from "@/client/components/contexts/ClientContextReac
 import { defaultHarthmereLiveFetch } from "@/client/components/harthmere_live_fetch";
 import { usePointerLockManager } from "@/client/components/contexts/PointerLockContext";
 import { Chapter1ContainmentTriage } from "@/client/components/challenges/Chapter1ContainmentTriage";
+import { publishChapter1ObjectiveWorldProjection } from "@/client/components/challenges/Chapter1ObjectiveWorldState";
 import { TalkDialogModal } from "@/client/components/challenges/TalkDialogModal";
 import { GenericTalkDialogModalStep } from "@/client/components/challenges/TalkDialogModalStep";
 import {
@@ -26,7 +27,14 @@ import {
 import { requestChapter1CutsceneById } from "@/client/game/cutscene/ch1_playback";
 import { ch1AmbientTriggersOfKind } from "@/shared/harthmere/ch1_fragment_triggers";
 import { ch1VoiceActorForSpeaker } from "@/shared/harthmere/ch1_voice";
+import {
+  clearHarthmereNpcDialogueExpression,
+  publishHarthmereNpcDialogueExpression,
+  resolveHarthmereNpcDialogueActor,
+} from "@/shared/harthmere/npc_dialogue_expressions";
 import { nativeBiomesEcsAuthorityEnabled } from "@/shared/harthmere/native_road_ahead_contract";
+import type { HarthmereCinematicExpression } from "@/shared/cutscene/cinematic_expressions";
+import { NpcMetadataSelector } from "@/shared/ecs/gen/selectors";
 import type { BiomesId } from "@/shared/ids";
 import React, {
   useCallback,
@@ -35,6 +43,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { createPortal } from "react-dom";
 
 interface Chapter1ObjectiveState {
   ok: boolean;
@@ -48,6 +57,7 @@ interface Chapter1ObjectiveState {
   objective?: string;
   targetLabel?: string;
   targetPosition?: [number, number, number];
+  targetEntityId?: number;
   trigger?: string;
   actionLabel?: string;
   interactionRadius?: number;
@@ -66,6 +76,7 @@ interface Chapter1ObjectiveState {
   cutsceneId?: string;
   dialogue?: Chapter1DialogueSequence;
   completionDialogue?: Chapter1DialogueSequence;
+  exitGuidance?: string;
   choice?: {
     title: string;
     prompt: string;
@@ -97,7 +108,11 @@ interface Chapter1ObjectiveState {
 interface Chapter1DialogueSequence {
   title: string;
   completionLabel?: string;
-  pages: Array<{ speaker: string; text: string }>;
+  pages: Array<{
+    speaker: string;
+    text: string;
+    expression?: HarthmereCinematicExpression;
+  }>;
 }
 
 interface OpenChapter1Dialogue {
@@ -171,7 +186,7 @@ async function reportChapter1SleepTriggers() {
 }
 
 export const Chapter1NativeObjectivePrompt: React.FunctionComponent = () => {
-  const { reactResources, mapManager } = useClientContext();
+  const { reactResources, mapManager, table } = useClientContext();
   const pointerLockManager = usePointerLockManager();
   const cutscene = reactResources.use("/scene/cutscene");
   const [state, setState] = useState<Chapter1ObjectiveState>();
@@ -313,9 +328,13 @@ export const Chapter1NativeObjectivePrompt: React.FunctionComponent = () => {
   const beginSleepTransition = useCallback(async () => {
     if (sleepTransition || busyRef.current) return;
     setSleepTransition(true);
-    await new Promise<void>((resolve) => window.setTimeout(resolve, 900));
+    await new Promise<void>((resolve) => {
+      window.setTimeout(resolve, 900);
+    });
     await complete();
-    await new Promise<void>((resolve) => window.setTimeout(resolve, 350));
+    await new Promise<void>((resolve) => {
+      window.setTimeout(resolve, 350);
+    });
     setSleepTransition(false);
   }, [complete, sleepTransition]);
 
@@ -370,10 +389,15 @@ export const Chapter1NativeObjectivePrompt: React.FunctionComponent = () => {
         autoremoveWhenNear: false,
         challengeId: state.challengeId as BiomesId,
         triggerId: state.stepId as BiomesId,
-        target: {
-          kind: "position",
-          position: [...state.targetPosition],
-        },
+        target: state.targetEntityId
+          ? {
+              kind: "entity",
+              id: state.targetEntityId as BiomesId,
+            }
+          : {
+              kind: "position",
+              position: [...state.targetPosition],
+            },
       },
       state.stepId
     );
@@ -386,7 +410,39 @@ export const Chapter1NativeObjectivePrompt: React.FunctionComponent = () => {
     state?.targetPosition?.[0],
     state?.targetPosition?.[1],
     state?.targetPosition?.[2],
+    state?.targetEntityId,
     state?.status,
+  ]);
+
+  useEffect(() => {
+    if (
+      state?.status !== "active" ||
+      !state.targetPosition ||
+      !state.authoredStepId
+    ) {
+      publishChapter1ObjectiveWorldProjection(undefined);
+      return;
+    }
+    publishChapter1ObjectiveWorldProjection({
+      key: objectiveKey(state),
+      label: state.targetLabel || state.objective || "Chapter 1 objective",
+      position: [...state.targetPosition],
+      trigger: state.trigger || "interact",
+      targetEntityId: state.targetEntityId,
+    });
+    return () => publishChapter1ObjectiveWorldProjection(undefined);
+  }, [
+    state?.authoredStepId,
+    state?.challengeId,
+    state?.objective,
+    state?.status,
+    state?.stepId,
+    state?.targetEntityId,
+    state?.targetLabel,
+    state?.targetPosition?.[0],
+    state?.targetPosition?.[1],
+    state?.targetPosition?.[2],
+    state?.trigger,
   ]);
 
   useEffect(() => {
@@ -450,9 +506,7 @@ export const Chapter1NativeObjectivePrompt: React.FunctionComponent = () => {
       state?.status === "active" &&
       state.withinRange &&
       state.trigger !== "near_location" &&
-      !(
-        state.requirement?.blocksChapterInteraction && !state.requirement.ready
-      ) &&
+      !state.requirement?.blocksChapterInteraction &&
       !(state.preparedChoice && (state.experience?.aliveEnemies ?? 0) > 0) &&
       !choiceOpen &&
       !containmentOpen &&
@@ -497,6 +551,68 @@ export const Chapter1NativeObjectivePrompt: React.FunctionComponent = () => {
   );
   const ownsInteraction = useWorldInteractionCandidate(worldCandidate);
 
+  const activeDialoguePage = dialogue?.sequence.pages[dialoguePageIndex];
+  const activeDialogueVoice = ch1VoiceActorForSpeaker(
+    activeDialoguePage?.speaker
+  );
+  const activeDialogueActorId = useMemo(() => {
+    if (
+      !activeDialoguePage?.expression ||
+      !activeDialogueVoice ||
+      activeDialogueVoice.kind !== "human"
+    ) {
+      return undefined;
+    }
+    return resolveHarthmereNpcDialogueActor({
+      speaker: activeDialoguePage.speaker,
+      aliases: activeDialogueVoice.aliases,
+      preferredActorId: activeDialogueVoice.entityId,
+      targetPosition: state?.targetPosition,
+      candidates: [...table.scan(NpcMetadataSelector.query.all())].map(
+        (entity) => ({
+          id: Number(entity.id),
+          label: entity.label?.text,
+          position: entity.position?.v,
+        })
+      ),
+    });
+  }, [
+    activeDialoguePage?.expression,
+    activeDialoguePage?.speaker,
+    activeDialogueVoice,
+    state?.targetPosition,
+    table,
+  ]);
+  const activeDialogueExpressionNonce =
+    activeDialogueActorId !== undefined && activeDialoguePage?.expression
+      ? `${state?.authoredStepId ?? "chapter1"}:${dialogue?.mode ?? "closed"}:${
+          dialoguePageIndex + 1
+        }:${activeDialogueActorId}:${activeDialoguePage.expression}`
+      : undefined;
+
+  useEffect(() => {
+    if (
+      cutscene.active ||
+      activeDialogueActorId === undefined ||
+      !activeDialoguePage?.expression ||
+      !activeDialogueExpressionNonce
+    ) {
+      return;
+    }
+    publishHarthmereNpcDialogueExpression({
+      actorId: activeDialogueActorId,
+      expression: activeDialoguePage.expression,
+      nonce: activeDialogueExpressionNonce,
+    });
+    return () =>
+      clearHarthmereNpcDialogueExpression(activeDialogueExpressionNonce);
+  }, [
+    activeDialogueActorId,
+    activeDialogueExpressionNonce,
+    activeDialoguePage?.expression,
+    cutscene.active,
+  ]);
+
   if (
     !nativeBiomesEcsAuthorityEnabled() ||
     cutscene.active ||
@@ -507,11 +623,9 @@ export const Chapter1NativeObjectivePrompt: React.FunctionComponent = () => {
     return null;
   }
 
-  const activeDialoguePage = dialogue?.sequence.pages[dialoguePageIndex];
-  const activeDialogueVoice = ch1VoiceActorForSpeaker(
-    activeDialoguePage?.speaker
-  );
-  const activeDialogueEntityId = (activeDialogueVoice?.entityId ??
+  const activeDialogueEntityId = (activeDialogueActorId ??
+    activeDialogueVoice?.entityId ??
+    state.targetEntityId ??
     state.challengeId ??
     state.stepId) as BiomesId;
   const advanceDialogue = () => {
@@ -650,7 +764,11 @@ export const Chapter1NativeObjectivePrompt: React.FunctionComponent = () => {
             data-chapter1-native-objective={state.authoredStepId}
           >
             <div className="text-amber-100 text-sm font-bold">
-              {busy ? "Confirming…" : `F — ${state.actionLabel ?? "Continue"}`}
+              {busy
+                ? "Confirming…"
+                : state.requirement && !state.requirement.ready
+                ? "Required item missing"
+                : `F — ${state.actionLabel ?? "Continue"}`}
             </div>
             <div className="mt-0.5 text-xs text-white/70">
               {state.targetLabel}
@@ -673,33 +791,46 @@ export const Chapter1NativeObjectivePrompt: React.FunctionComponent = () => {
           {error ?? state.reason}
         </div>
       )}
-      {dialogue && activeDialoguePage && (
-        <div
-          data-chapter1-dialogue-objective={state.authoredStepId}
-          data-chapter1-dialogue-mode={dialogue.mode}
-          data-chapter1-dialogue-page={dialoguePageIndex + 1}
-          data-chapter1-dialogue-final={
-            dialoguePageIndex >= dialogue.sequence.pages.length - 1
-              ? "true"
-              : "false"
-          }
-        >
-          <TalkDialogModal entityId={activeDialogueEntityId}>
-            <GenericTalkDialogModalStep
-              id={`${state.authoredStepId}:${dialogue.mode}:${dialoguePageIndex}`}
+      {dialogue &&
+        activeDialoguePage &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div
+            className="chapter1-dialogue-portal fixed inset-0 z-[1200]"
+            data-chapter1-dialogue-objective={state.authoredStepId}
+            data-chapter1-dialogue-mode={dialogue.mode}
+            data-chapter1-dialogue-page={dialoguePageIndex + 1}
+            data-chapter1-dialogue-expression={
+              activeDialoguePage.expression ?? "none"
+            }
+            data-chapter1-dialogue-actor-id={activeDialogueActorId ?? "none"}
+            data-chapter1-dialogue-final={
+              dialoguePageIndex >= dialogue.sequence.pages.length - 1
+                ? "true"
+                : "false"
+            }
+          >
+            <TalkDialogModal
               entityId={activeDialogueEntityId}
-              title={activeDialoguePage.speaker}
-              dialog={[{ text: activeDialoguePage.text }]}
-              onClose={advanceDialogue}
-              voiceOverride={
-                activeDialogueVoice
-                  ? { voice: activeDialogueVoice.profile.voiceParameterId }
-                  : undefined
-              }
-            />
-          </TalkDialogModal>
-        </div>
-      )}
+              focusCamera={false}
+              extraClassNames="chapter1-story-dialogue"
+            >
+              <GenericTalkDialogModalStep
+                id={`${state.authoredStepId}:${dialogue.mode}:${dialoguePageIndex}`}
+                entityId={activeDialogueEntityId}
+                title={activeDialoguePage.speaker}
+                dialog={[{ text: activeDialoguePage.text }]}
+                onClose={advanceDialogue}
+                voiceOverride={
+                  activeDialogueVoice
+                    ? { voice: activeDialogueVoice.profile.voiceParameterId }
+                    : undefined
+                }
+              />
+            </TalkDialogModal>
+          </div>,
+          document.body
+        )}
       {choiceOpen && state.choice && (
         <div
           className="fixed inset-0 z-[1200] flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm"
@@ -716,13 +847,19 @@ export const Chapter1NativeObjectivePrompt: React.FunctionComponent = () => {
             }
           }}
         >
-          <div className="border-amber-200/40 rounded-xl bg-slate-950/95 w-full max-w-xl border p-5 text-white shadow-2xl">
+          <div className="chapter1-choice-dialog border-amber-200/40 rounded-xl bg-slate-950/95 w-full max-w-xl border p-5 text-white shadow-2xl">
             <div className="text-amber-200 text-xs font-bold uppercase tracking-[0.18em]">
               {state.choice.title}
             </div>
             <p className="text-base mt-3 leading-relaxed text-white/90">
               {state.choice.prompt}
             </p>
+            {state.exitGuidance && (
+              <div className="chapter1-choice-next" data-chapter1-choice-next>
+                <strong>After this</strong>
+                <span>{state.exitGuidance}</span>
+              </div>
+            )}
             <div className="mt-5 grid gap-2">
               {state.choice.options.map((option) => (
                 <button

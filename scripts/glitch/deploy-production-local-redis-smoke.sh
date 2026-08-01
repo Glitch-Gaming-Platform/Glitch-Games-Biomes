@@ -2179,7 +2179,10 @@ const readLog = () => {
       throw new Error(`Harthmere terrain shim exited before completion (status ${shim.exitCode}).`);
     }
     const output = readLog();
-    if (output.includes("Seeded local dev starter town")) {
+    if (
+      output.includes("Seeded local dev starter town") ||
+      output.includes("local dev starter town seed; fingerprint already current.")
+    ) {
       process.stdout.write(output);
       const nodePath = "/opt/harthmere-maintenance/node_modules" +
         (process.env.NODE_PATH ? `:${process.env.NODE_PATH}` : "");

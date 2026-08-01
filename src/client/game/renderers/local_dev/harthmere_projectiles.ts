@@ -9,14 +9,21 @@ import {
   HARTHMERE_PROJECTILE_VISUALS,
   HARTHMERE_PROJECTILE_VISUAL_VERSION,
   getHarthmereProjectileVisual,
+  harthmereProjectileFlightDurationSecs,
   type HarthmereProjectileVisualDefinition,
 } from "@/shared/harthmere/projectile_visual_manifest";
 import {
   emitHarthmereSoundEffect,
   HARTHMERE_PROJECTILE_SOUND_MAP,
 } from "@/shared/harthmere/sound_effect_manifest";
+import type { HarthmereMagicChargePhase } from "@/shared/harthmere/magic_charge";
+import {
+  HARTHMERE_MAGIC_IMPACT_VERSION,
+  harthmereMagicImpactProfile,
+  type HarthmereMagicImpactProfile,
+} from "@/shared/harthmere/magic_impact";
 import * as THREE from "three";
-import type { GLTF, GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
+import type { GLTF, GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 
 type ProjectilePrototype = {
   scene: THREE.Object3D;
@@ -55,7 +62,12 @@ type ActiveProjectile = {
   lastPosition: THREE.Vector3;
   elapsed: number;
   duration: number;
+  visualScale: number;
+  damageType?: string;
+  impactRadius: number;
   result?: string;
+  targetGround?: THREE.Vector3;
+  finalDamage?: number;
   mixer?: THREE.AnimationMixer;
   light?: THREE.PointLight;
 };
@@ -74,7 +86,11 @@ type ActiveAttackShapeEffect = {
   radialScale: number;
   elapsed: number;
   duration: number;
+  damageType?: string;
+  impactRadius: number;
   result?: string;
+  targetGround?: THREE.Vector3;
+  finalDamage?: number;
   mixer?: THREE.AnimationMixer;
   light?: THREE.PointLight;
 };
@@ -85,7 +101,8 @@ type ImpactPart = {
   spin: THREE.Vector3;
 };
 
-type PremiumImpact = {
+type BasicImpact = {
+  kind: "basic";
   group: THREE.Group;
   materials: THREE.MeshBasicMaterial[];
   parts: ImpactPart[];
@@ -93,6 +110,87 @@ type PremiumImpact = {
   elapsed: number;
   duration: number;
   radius: number;
+};
+
+type MagicImpactLayer = {
+  object: THREE.Object3D;
+  material: THREE.MeshBasicMaterial;
+  start: number;
+  end: number;
+  startScale: number;
+  endScale: number;
+  initialOpacity: number;
+  fadePower: number;
+  rotationSpeed: THREE.Vector3;
+  rise: number;
+};
+
+type MagicImpactParticle = {
+  initialPosition: THREE.Vector3;
+  velocity: THREE.Vector3;
+  initialQuaternion: THREE.Quaternion;
+  spin: THREE.Vector3;
+  baseScale: THREE.Vector3;
+  delay: number;
+  lifetime: number;
+  gravity: number;
+  drag: number;
+};
+
+type MagicImpactParticleBatch = {
+  kind: "debris" | "sparks" | "mist" | "dust";
+  mesh: THREE.InstancedMesh;
+  material: THREE.MeshBasicMaterial;
+  particles: MagicImpactParticle[];
+  initialOpacity: number;
+};
+
+type MagicImpact = {
+  kind: "magic_explosion";
+  projectileId: string;
+  family: HarthmereProjectileVisualDefinition["family"];
+  group: THREE.Group;
+  layers: MagicImpactLayer[];
+  batches: MagicImpactParticleBatch[];
+  light?: THREE.PointLight;
+  initialLightIntensity: number;
+  elapsed: number;
+  duration: number;
+  radius: number;
+  profile: HarthmereMagicImpactProfile;
+};
+
+type PremiumImpact = BasicImpact | MagicImpact;
+
+export type HarthmereMagicImpactFeedback = {
+  version: typeof HARTHMERE_MAGIC_IMPACT_VERSION;
+  projectileId: string;
+  family: HarthmereProjectileVisualDefinition["family"];
+  position: [number, number, number];
+  radius: number;
+  duration: number;
+  cameraStrength: number;
+  finalDamage?: number;
+};
+
+type ActiveMagicCharge = {
+  sequence: number;
+  key: string;
+  definition: HarthmereProjectileVisualDefinition;
+  group: THREE.Group;
+  modelHost: THREE.Group;
+  core: THREE.Mesh;
+  shell: THREE.Mesh;
+  rings: THREE.Mesh[];
+  particles: THREE.InstancedMesh;
+  elapsed: number;
+  duration: number;
+  power: number;
+  visualScale: number;
+  origin: THREE.Vector3;
+  modelAttached: boolean;
+  mixer?: THREE.AnimationMixer;
+  light?: THREE.PointLight;
 };
 
 export type HarthmereProjectileSpawnRequest = {
@@ -108,6 +206,17 @@ export type HarthmereProjectileSpawnRequest = {
   hitRadius?: number;
   coneAngleDeg?: number;
   windupSecs?: number;
+  visualScale?: number;
+  damageType?: string;
+};
+
+export type HarthmereMagicChargeSpawnRequest = {
+  key: string;
+  projectileId: string;
+  origin: THREE.Vector3;
+  duration: number;
+  power?: number;
+  visualScale?: number;
 };
 
 const FORWARD = new THREE.Vector3(0, 0, 1);
@@ -115,8 +224,20 @@ const UP = new THREE.Vector3(0, 1, 0);
 const MAX_ACTIVE_PROJECTILES = 40;
 const MAX_ACTIVE_ATTACK_SHAPES = 24;
 const MAX_ACTIVE_IMPACTS = 28;
+const MAX_ACTIVE_MAGIC_EXPLOSIONS = 12;
+const MAX_ACTIVE_MAGIC_CHARGES = 16;
 const MAX_PROJECTILE_LIGHTS = 10;
 const MAX_IMPACT_LIGHTS = 8;
+const MAGIC_CHARGE_PARTICLE_COUNT = 24;
+const MAGIC_CHARGE_MATRIX = new THREE.Matrix4();
+const MAGIC_CHARGE_POSITION = new THREE.Vector3();
+const MAGIC_CHARGE_SCALE = new THREE.Vector3();
+const MAGIC_CHARGE_QUATERNION = new THREE.Quaternion();
+const MAGIC_IMPACT_MATRIX = new THREE.Matrix4();
+const MAGIC_IMPACT_POSITION = new THREE.Vector3();
+const MAGIC_IMPACT_SCALE = new THREE.Vector3();
+const MAGIC_IMPACT_QUATERNION = new THREE.Quaternion();
+const MAGIC_IMPACT_SPIN_QUATERNION = new THREE.Quaternion();
 
 function effectMaterial(
   color: number,
@@ -390,7 +511,8 @@ function updateTrail(
   position: THREE.Vector3,
   direction: THREE.Vector3,
   dt: number,
-  elapsed: number
+  elapsed: number,
+  visualScale = 1
 ) {
   trail.accumulator += dt;
   while (trail.accumulator >= trail.interval) {
@@ -417,8 +539,8 @@ function updateTrail(
       .clone()
       .add(trailDrift(definition, sample));
     rotation.setFromUnitVectors(FORWARD, sample.direction);
-    const width = trail.width * fade;
-    scale.set(width, width, trail.length * fade);
+    const width = trail.width * fade * visualScale;
+    scale.set(width, width, trail.length * fade * visualScale);
     matrix.compose(samplePosition, rotation, scale);
     trail.mesh.setMatrixAt(index, matrix);
   }
@@ -581,6 +703,7 @@ function makePremiumImpact(
       ? 0.82
       : THREE.MathUtils.clamp(0.3 + radius * 0.08, 0.34, 0.62);
   return {
+    kind: "basic",
     group,
     materials,
     parts,
@@ -588,7 +711,616 @@ function makePremiumImpact(
     elapsed: 0,
     duration: missed ? Math.min(duration, 0.24) : duration,
     radius,
-  } satisfies PremiumImpact;
+  } satisfies BasicImpact;
+}
+
+function impactNoise(seed: number, index: number, salt: number) {
+  const value = Math.sin(
+    (seed + 1) * 12.9898 + (index + 1) * 78.233 + salt * 37.719
+  );
+  return value - Math.floor(value);
+}
+
+function impactDirection(seed: number, index: number, salt: number) {
+  const azimuth = impactNoise(seed, index, salt) * Math.PI * 2;
+  const y = impactNoise(seed, index, salt + 1) * 1.45 - 0.35;
+  const horizontal = Math.sqrt(Math.max(0.05, 1 - Math.min(0.95, y * y)));
+  return new THREE.Vector3(
+    Math.cos(azimuth) * horizontal,
+    y,
+    Math.sin(azimuth) * horizontal
+  ).normalize();
+}
+
+function magicMistColor(definition: HarthmereProjectileVisualDefinition) {
+  const primary = new THREE.Color(definition.primaryColor);
+  switch (definition.family) {
+    case "fire":
+      return primary.lerp(new THREE.Color(0x24120f), 0.72).getHex();
+    case "lightning":
+      return primary.lerp(new THREE.Color(0xd8f7ff), 0.55).getHex();
+    case "holy":
+      return primary.lerp(new THREE.Color(0xfff4c2), 0.5).getHex();
+    case "nature":
+      return primary.lerp(new THREE.Color(0x17351f), 0.55).getHex();
+    case "dark":
+    case "hex":
+    case "gravity":
+    case "boss":
+      return primary.lerp(new THREE.Color(0x100c1d), 0.62).getHex();
+    default:
+      return primary.lerp(new THREE.Color(0x251a38), 0.38).getHex();
+  }
+}
+
+function addMagicImpactLayer(
+  group: THREE.Group,
+  object: THREE.Object3D,
+  material: THREE.MeshBasicMaterial,
+  input: Omit<MagicImpactLayer, "object" | "material">
+) {
+  object.visible = false;
+  object.scale.setScalar(0.001);
+  object.renderOrder = 31;
+  group.add(object);
+  return { object, material, ...input } satisfies MagicImpactLayer;
+}
+
+function makeMagicImpactBatch(input: {
+  group: THREE.Group;
+  kind: MagicImpactParticleBatch["kind"];
+  geometry: THREE.BufferGeometry;
+  particles: MagicImpactParticle[];
+  colors: number[];
+  opacity: number;
+  blending?: THREE.Blending;
+}) {
+  const material = effectMaterial(
+    0xffffff,
+    input.opacity,
+    input.blending ?? THREE.AdditiveBlending
+  );
+  material.depthWrite = false;
+  const mesh = new THREE.InstancedMesh(
+    input.geometry,
+    material,
+    input.particles.length
+  );
+  mesh.name = `magic-impact-${input.kind}`;
+  mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  mesh.frustumCulled = false;
+  mesh.renderOrder = input.kind === "mist" || input.kind === "dust" ? 29 : 32;
+  for (let index = 0; index < input.particles.length; index += 1) {
+    mesh.setColorAt(
+      index,
+      new THREE.Color(input.colors[index % input.colors.length])
+    );
+    MAGIC_IMPACT_MATRIX.compose(
+      input.particles[index].initialPosition,
+      input.particles[index].initialQuaternion,
+      MAGIC_IMPACT_SCALE.setScalar(0.001)
+    );
+    mesh.setMatrixAt(index, MAGIC_IMPACT_MATRIX);
+  }
+  if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+  mesh.instanceMatrix.needsUpdate = true;
+  input.group.add(mesh);
+  return {
+    kind: input.kind,
+    mesh,
+    material,
+    particles: input.particles,
+    initialOpacity: input.opacity,
+  } satisfies MagicImpactParticleBatch;
+}
+
+function debrisParticles(input: {
+  profile: HarthmereMagicImpactProfile;
+  direction: THREE.Vector3;
+  seed: number;
+}) {
+  const particles: MagicImpactParticle[] = [];
+  for (let index = 0; index < input.profile.debrisCount; index += 1) {
+    const radial = impactDirection(input.seed, index, 11);
+    radial.y += input.profile.upwardBias;
+    radial.addScaledVector(input.direction, input.profile.directionalBias);
+    radial.normalize();
+    const speed =
+      input.profile.debrisSpeed *
+      (0.62 + impactNoise(input.seed, index, 12) * 0.68);
+    const size = THREE.MathUtils.clamp(
+      input.profile.radius *
+        (0.038 + impactNoise(input.seed, index, 13) * 0.035),
+      0.045,
+      0.32
+    );
+    particles.push({
+      initialPosition: radial
+        .clone()
+        .multiplyScalar(input.profile.radius * 0.08),
+      velocity: radial.multiplyScalar(speed),
+      initialQuaternion: new THREE.Quaternion().setFromEuler(
+        new THREE.Euler(
+          impactNoise(input.seed, index, 14) * Math.PI,
+          impactNoise(input.seed, index, 15) * Math.PI,
+          impactNoise(input.seed, index, 16) * Math.PI
+        )
+      ),
+      spin: new THREE.Vector3(
+        3 + impactNoise(input.seed, index, 17) * 6,
+        2 + impactNoise(input.seed, index, 18) * 7,
+        3 + impactNoise(input.seed, index, 19) * 5
+      ),
+      baseScale: new THREE.Vector3(
+        size * (0.65 + impactNoise(input.seed, index, 20) * 0.7),
+        size * (0.65 + impactNoise(input.seed, index, 21) * 0.7),
+        size * (1 + impactNoise(input.seed, index, 22) * 1.4)
+      ),
+      delay: impactNoise(input.seed, index, 23) * 0.055,
+      lifetime:
+        input.profile.durationSecs *
+        (0.46 + impactNoise(input.seed, index, 24) * 0.3),
+      gravity: input.profile.gravity,
+      drag: 0.55 + impactNoise(input.seed, index, 25) * 0.45,
+    });
+  }
+  return particles;
+}
+
+function sparkParticles(input: {
+  profile: HarthmereMagicImpactProfile;
+  direction: THREE.Vector3;
+  seed: number;
+}) {
+  const particles: MagicImpactParticle[] = [];
+  for (let index = 0; index < input.profile.sparkCount; index += 1) {
+    const radial = impactDirection(input.seed, index, 31);
+    if (input.profile.family === "holy") radial.y = Math.abs(radial.y) + 0.25;
+    radial.addScaledVector(
+      input.direction,
+      input.profile.directionalBias * 0.72
+    );
+    radial.normalize();
+    const speed =
+      input.profile.sparkSpeed *
+      (0.68 + impactNoise(input.seed, index, 32) * 0.62);
+    const width = THREE.MathUtils.clamp(
+      input.profile.radius * 0.012,
+      0.018,
+      0.075
+    );
+    const length = THREE.MathUtils.clamp(
+      input.profile.radius * (0.13 + impactNoise(input.seed, index, 33) * 0.13),
+      0.18,
+      1.25
+    );
+    particles.push({
+      initialPosition: radial
+        .clone()
+        .multiplyScalar(input.profile.radius * 0.05),
+      velocity: radial.clone().multiplyScalar(speed),
+      initialQuaternion: new THREE.Quaternion().setFromUnitVectors(
+        FORWARD,
+        radial
+      ),
+      spin: new THREE.Vector3(
+        impactNoise(input.seed, index, 34) * 2,
+        impactNoise(input.seed, index, 35) * 2,
+        4 + impactNoise(input.seed, index, 36) * 8
+      ),
+      baseScale: new THREE.Vector3(width, width, length),
+      delay: impactNoise(input.seed, index, 37) * 0.075,
+      lifetime: 0.28 + impactNoise(input.seed, index, 38) * 0.3,
+      gravity:
+        input.profile.family === "lightning"
+          ? 0.2
+          : input.profile.gravity * 0.2,
+      drag: 0.35 + impactNoise(input.seed, index, 39) * 0.35,
+    });
+  }
+  return particles;
+}
+
+function mistParticles(input: {
+  profile: HarthmereMagicImpactProfile;
+  seed: number;
+}) {
+  const particles: MagicImpactParticle[] = [];
+  for (let index = 0; index < input.profile.mistCount; index += 1) {
+    const radial = impactDirection(input.seed, index, 51);
+    radial.y = Math.abs(radial.y) * 0.35;
+    const size = THREE.MathUtils.clamp(
+      input.profile.radius * (0.1 + impactNoise(input.seed, index, 52) * 0.08),
+      0.16,
+      0.85
+    );
+    particles.push({
+      initialPosition: radial
+        .clone()
+        .multiplyScalar(input.profile.radius * 0.18),
+      velocity: new THREE.Vector3(
+        radial.x * (0.35 + impactNoise(input.seed, index, 53) * 0.45),
+        0.35 + impactNoise(input.seed, index, 54) * 0.7,
+        radial.z * (0.35 + impactNoise(input.seed, index, 55) * 0.45)
+      ),
+      initialQuaternion: new THREE.Quaternion().setFromEuler(
+        new THREE.Euler(0, impactNoise(input.seed, index, 56) * Math.PI, 0)
+      ),
+      spin: new THREE.Vector3(
+        0.2,
+        (impactNoise(input.seed, index, 57) - 0.5) * 1.4,
+        0.15
+      ),
+      baseScale: new THREE.Vector3(
+        size * (0.8 + impactNoise(input.seed, index, 58) * 0.6),
+        size * (0.7 + impactNoise(input.seed, index, 59) * 0.6),
+        size * (0.8 + impactNoise(input.seed, index, 60) * 0.6)
+      ),
+      delay: 0.1 + impactNoise(input.seed, index, 61) * 0.18,
+      lifetime:
+        input.profile.durationSecs *
+        (0.64 + impactNoise(input.seed, index, 62) * 0.28),
+      gravity: -0.28,
+      drag: 0.9,
+    });
+  }
+  return particles;
+}
+
+function dustParticles(input: {
+  profile: HarthmereMagicImpactProfile;
+  seed: number;
+  groundOffsetY: number;
+}) {
+  const particles: MagicImpactParticle[] = [];
+  for (let index = 0; index < input.profile.dustCount; index += 1) {
+    const angle =
+      (index / input.profile.dustCount) * Math.PI * 2 +
+      impactNoise(input.seed, index, 71) * 0.55;
+    const radial = new THREE.Vector3(Math.cos(angle), 0, Math.sin(angle));
+    const size = THREE.MathUtils.clamp(
+      input.profile.radius *
+        (0.07 + impactNoise(input.seed, index, 72) * 0.055),
+      0.12,
+      0.62
+    );
+    particles.push({
+      initialPosition: radial
+        .clone()
+        .multiplyScalar(input.profile.radius * 0.12)
+        .setY(input.groundOffsetY),
+      velocity: new THREE.Vector3(
+        radial.x * (0.8 + impactNoise(input.seed, index, 73) * 1.2),
+        0.12 + impactNoise(input.seed, index, 74) * 0.32,
+        radial.z * (0.8 + impactNoise(input.seed, index, 75) * 1.2)
+      ),
+      initialQuaternion: new THREE.Quaternion().setFromEuler(
+        new THREE.Euler(0, angle, 0)
+      ),
+      spin: new THREE.Vector3(0, (index % 2 ? -1 : 1) * 0.7, 0),
+      baseScale: new THREE.Vector3(size * 1.65, size * 0.42, size),
+      delay: 0.035 + impactNoise(input.seed, index, 76) * 0.12,
+      lifetime: 0.58 + impactNoise(input.seed, index, 77) * 0.42,
+      gravity: 0.65,
+      drag: 1.15,
+    });
+  }
+  return particles;
+}
+
+function makeAaaMagicImpact(input: {
+  definition: HarthmereProjectileVisualDefinition;
+  position: THREE.Vector3;
+  direction: THREE.Vector3;
+  targetGround?: THREE.Vector3;
+  result?: string;
+  finalDamage?: number;
+  damageType?: string;
+  impactRadius?: number;
+  seed: number;
+  addLight: boolean;
+}) {
+  const profile = harthmereMagicImpactProfile({
+    projectileVisualId: input.definition.id,
+    family: input.definition.family,
+    damageType: input.damageType,
+    result: input.result,
+    impactRadius: input.impactRadius ?? input.definition.impactRadius,
+    lightIntensity: input.definition.lightIntensity,
+    finalDamage: input.finalDamage,
+  });
+  if (!profile) return undefined;
+
+  const group = new THREE.Group();
+  group.name = `harthmere-aaa-magic-impact-${input.definition.id}`;
+  group.position.copy(input.position);
+  const direction = input.direction.clone();
+  if (direction.lengthSq() < 0.0001) direction.copy(UP);
+  direction.normalize();
+  const groundOffsetY = input.targetGround
+    ? input.targetGround.y - input.position.y + 0.04
+    : -Math.min(0.55, profile.radius * 0.28);
+  const layers: MagicImpactLayer[] = [];
+
+  const flashMaterial = effectMaterial(0xffffff, 1);
+  layers.push(
+    addMagicImpactLayer(
+      group,
+      new THREE.Mesh(new THREE.OctahedronGeometry(0.3, 1), flashMaterial),
+      flashMaterial,
+      {
+        start: 0,
+        end: profile.flashDurationSecs,
+        startScale: 0.12,
+        endScale: profile.radius * 4.4,
+        initialOpacity: 1,
+        fadePower: 1.8,
+        rotationSpeed: new THREE.Vector3(8, 11, 5),
+        rise: 0,
+      }
+    )
+  );
+
+  const coreMaterial = effectMaterial(
+    new THREE.Color(input.definition.primaryColor)
+      .lerp(new THREE.Color(0xffffff), 0.34)
+      .getHex(),
+    0.96
+  );
+  layers.push(
+    addMagicImpactLayer(
+      group,
+      new THREE.Mesh(new THREE.IcosahedronGeometry(0.34, 1), coreMaterial),
+      coreMaterial,
+      {
+        start: 0.012,
+        end: Math.min(0.58, profile.durationSecs * 0.4),
+        startScale: 0.2,
+        endScale: profile.radius * 2.55,
+        initialOpacity: 0.96,
+        fadePower: 1.15,
+        rotationSpeed: new THREE.Vector3(3.2, 5.4, -2.2),
+        rise: profile.family === "fire" ? profile.radius * 0.16 : 0,
+      }
+    )
+  );
+
+  const shellMaterial = effectMaterial(input.definition.secondaryColor, 0.62);
+  shellMaterial.wireframe = true;
+  layers.push(
+    addMagicImpactLayer(
+      group,
+      new THREE.Mesh(new THREE.IcosahedronGeometry(0.42, 1), shellMaterial),
+      shellMaterial,
+      {
+        start: 0.025,
+        end: Math.min(0.72, profile.durationSecs * 0.48),
+        startScale: 0.3,
+        endScale: profile.radius * 3.1,
+        initialOpacity: 0.62,
+        fadePower: 2.15,
+        rotationSpeed: new THREE.Vector3(-2.4, 3.8, 1.8),
+        rise: 0,
+      }
+    )
+  );
+
+  for (let index = 0; index < profile.ringCount; index += 1) {
+    const material = effectMaterial(
+      index % 2
+        ? input.definition.primaryColor
+        : input.definition.secondaryColor,
+      0.82 - index * 0.08
+    );
+    const ring = new THREE.Mesh(
+      new THREE.TorusGeometry(0.42, 0.025 + index * 0.006, 5, 32),
+      material
+    );
+    if (index === 0) {
+      ring.rotation.x = Math.PI / 2;
+      ring.position.y = groundOffsetY + 0.04;
+    } else if (index === 1) {
+      ring.quaternion.setFromUnitVectors(FORWARD, direction);
+    } else {
+      ring.rotation.set(
+        Math.PI / (2.4 + index * 0.2),
+        index * 0.72,
+        index * 0.48
+      );
+    }
+    layers.push(
+      addMagicImpactLayer(group, ring, material, {
+        start: 0.028 + index * 0.026,
+        end: Math.min(0.82, 0.46 + index * 0.09 + profile.power * 0.12),
+        startScale: 0.2,
+        endScale: profile.radius * (2.5 + index * 0.48),
+        initialOpacity: 0.82 - index * 0.08,
+        fadePower: 1.65,
+        rotationSpeed: new THREE.Vector3(
+          index === 0 ? 0 : 0.45,
+          index % 2 ? -1.3 : 1.1,
+          index === 0 ? 0.4 : -0.7
+        ),
+        rise: index === 0 ? 0 : profile.radius * 0.03 * index,
+      })
+    );
+  }
+
+  const debris = makeMagicImpactBatch({
+    group,
+    kind: "debris",
+    geometry: new THREE.BoxGeometry(1, 1, 1),
+    particles: debrisParticles({ profile, direction, seed: input.seed }),
+    colors: [
+      input.definition.primaryColor,
+      input.definition.secondaryColor,
+      new THREE.Color(input.definition.primaryColor)
+        .lerp(new THREE.Color(0xffffff), 0.3)
+        .getHex(),
+    ],
+    opacity: 0.94,
+  });
+  const sparks = makeMagicImpactBatch({
+    group,
+    kind: "sparks",
+    geometry: new THREE.BoxGeometry(1, 1, 1),
+    particles: sparkParticles({ profile, direction, seed: input.seed + 101 }),
+    colors: [
+      0xffffff,
+      input.definition.secondaryColor,
+      input.definition.primaryColor,
+    ],
+    opacity: 0.96,
+  });
+  const mist = makeMagicImpactBatch({
+    group,
+    kind: "mist",
+    geometry: new THREE.BoxGeometry(1, 1, 1),
+    particles: mistParticles({ profile, seed: input.seed + 211 }),
+    colors: [
+      magicMistColor(input.definition),
+      new THREE.Color(input.definition.secondaryColor)
+        .multiplyScalar(0.42)
+        .getHex(),
+    ],
+    opacity: profile.family === "lightning" ? 0.32 : 0.5,
+    blending:
+      profile.family === "lightning"
+        ? THREE.AdditiveBlending
+        : THREE.NormalBlending,
+  });
+  const dust = makeMagicImpactBatch({
+    group,
+    kind: "dust",
+    geometry: new THREE.BoxGeometry(1, 1, 1),
+    particles: dustParticles({
+      profile,
+      seed: input.seed + 307,
+      groundOffsetY,
+    }),
+    colors: [
+      new THREE.Color(input.definition.primaryColor)
+        .multiplyScalar(0.32)
+        .getHex(),
+      new THREE.Color(input.definition.secondaryColor)
+        .multiplyScalar(0.28)
+        .getHex(),
+    ],
+    opacity: 0.46,
+    blending: THREE.NormalBlending,
+  });
+
+  const light = input.addLight
+    ? new THREE.PointLight(
+        input.definition.primaryColor,
+        profile.lightIntensity,
+        Math.max(5, profile.radius * 5.5),
+        2
+      )
+    : undefined;
+  if (light) {
+    light.position.y = profile.radius * 0.12;
+    group.add(light);
+  }
+
+  return {
+    kind: "magic_explosion",
+    projectileId: input.definition.id,
+    family: input.definition.family,
+    group,
+    layers,
+    batches: [debris, sparks, mist, dust],
+    light,
+    initialLightIntensity: profile.lightIntensity,
+    elapsed: 0,
+    duration: profile.durationSecs,
+    radius: profile.radius,
+    profile,
+  } satisfies MagicImpact;
+}
+
+function updateMagicImpactLayer(
+  layer: MagicImpactLayer,
+  elapsed: number,
+  dt: number
+) {
+  if (elapsed < layer.start || elapsed > layer.end) {
+    layer.object.visible = false;
+    return;
+  }
+  layer.object.visible = true;
+  const progress = THREE.MathUtils.clamp(
+    (elapsed - layer.start) / Math.max(0.001, layer.end - layer.start),
+    0,
+    1
+  );
+  const easeOut = 1 - Math.pow(1 - progress, 3);
+  layer.object.scale.setScalar(
+    THREE.MathUtils.lerp(layer.startScale, layer.endScale, easeOut)
+  );
+  layer.object.position.y += layer.rise * dt;
+  layer.object.rotation.x += layer.rotationSpeed.x * dt;
+  layer.object.rotation.y += layer.rotationSpeed.y * dt;
+  layer.object.rotation.z += layer.rotationSpeed.z * dt;
+  layer.material.opacity =
+    layer.initialOpacity * Math.pow(Math.max(0, 1 - progress), layer.fadePower);
+}
+
+function updateMagicImpactBatch(
+  batch: MagicImpactParticleBatch,
+  elapsed: number
+) {
+  let maximumOpacity = 0;
+  for (let index = 0; index < batch.particles.length; index += 1) {
+    const particle = batch.particles[index];
+    const age = elapsed - particle.delay;
+    if (age < 0 || age > particle.lifetime) {
+      MAGIC_IMPACT_MATRIX.compose(
+        particle.initialPosition,
+        particle.initialQuaternion,
+        MAGIC_IMPACT_SCALE.setScalar(0.001)
+      );
+      batch.mesh.setMatrixAt(index, MAGIC_IMPACT_MATRIX);
+      continue;
+    }
+    const progress = THREE.MathUtils.clamp(age / particle.lifetime, 0, 1);
+    const travel =
+      particle.drag > 0.001
+        ? (1 - Math.exp(-particle.drag * age)) / particle.drag
+        : age;
+    MAGIC_IMPACT_POSITION.copy(particle.initialPosition).addScaledVector(
+      particle.velocity,
+      travel
+    );
+    MAGIC_IMPACT_POSITION.y -= 0.5 * particle.gravity * age * age;
+    MAGIC_IMPACT_SPIN_QUATERNION.setFromEuler(
+      new THREE.Euler(
+        particle.spin.x * age,
+        particle.spin.y * age,
+        particle.spin.z * age
+      )
+    );
+    MAGIC_IMPACT_QUATERNION.copy(particle.initialQuaternion).multiply(
+      MAGIC_IMPACT_SPIN_QUATERNION
+    );
+    const appear = THREE.MathUtils.smoothstep(progress, 0, 0.08);
+    const disappear = 1 - THREE.MathUtils.smoothstep(progress, 0.58, 1);
+    const expansion =
+      batch.kind === "mist" || batch.kind === "dust"
+        ? 1 + progress * (batch.kind === "mist" ? 1.15 : 0.48)
+        : 1 - progress * (batch.kind === "sparks" ? 0.42 : 0.18);
+    const scale = Math.max(0.001, appear * disappear * expansion);
+    MAGIC_IMPACT_SCALE.copy(particle.baseScale).multiplyScalar(scale);
+    MAGIC_IMPACT_MATRIX.compose(
+      MAGIC_IMPACT_POSITION,
+      MAGIC_IMPACT_QUATERNION,
+      MAGIC_IMPACT_SCALE
+    );
+    batch.mesh.setMatrixAt(index, MAGIC_IMPACT_MATRIX);
+    maximumOpacity = Math.max(maximumOpacity, disappear);
+  }
+  batch.material.opacity = batch.initialOpacity * maximumOpacity;
+  batch.mesh.instanceMatrix.needsUpdate = true;
 }
 
 export class HarthmereProjectileVisualRuntime {
@@ -601,10 +1333,15 @@ export class HarthmereProjectileVisualRuntime {
   >();
   private readonly active: ActiveProjectile[] = [];
   private readonly activeShapes: ActiveAttackShapeEffect[] = [];
+  private readonly activeMagicCharges: ActiveMagicCharge[] = [];
   private readonly impacts: PremiumImpact[] = [];
   private nextSequence = 1;
   private spawnedCount = 0;
   private impactCount = 0;
+  private magicChargeStartedCount = 0;
+  private magicChargeReleasedCount = 0;
+  private magicChargeCancelledCount = 0;
+  private magicExplosionCount = 0;
 
   constructor(
     private readonly root: THREE.Object3D,
@@ -612,6 +1349,9 @@ export class HarthmereProjectileVisualRuntime {
     private readonly debug?: (
       event: string,
       payload: Record<string, unknown>
+    ) => void,
+    private readonly magicImpactFeedback?: (
+      feedback: HarthmereMagicImpactFeedback
     ) => void
   ) {}
 
@@ -676,6 +1416,165 @@ export class HarthmereProjectileVisualRuntime {
     return pending;
   }
 
+  spawnMagicCharge(request: HarthmereMagicChargeSpawnRequest) {
+    const definition = getHarthmereProjectileVisual(request.projectileId);
+    if (
+      !definition ||
+      !Number.isFinite(request.duration) ||
+      request.duration <= 0
+    ) {
+      return false;
+    }
+    if (this.activeMagicCharges.some(({ key }) => key === request.key)) {
+      return true;
+    }
+    while (this.activeMagicCharges.length >= MAX_ACTIVE_MAGIC_CHARGES) {
+      this.removeMagicCharge(this.activeMagicCharges.shift()!);
+    }
+
+    const group = new THREE.Group();
+    group.name = `harthmere-magic-charge-${definition.id}-${this.nextSequence}`;
+    group.position.copy(request.origin);
+
+    const modelHost = new THREE.Group();
+    modelHost.name = "authored-projectile-core";
+    group.add(modelHost);
+
+    const coreMaterial = effectMaterial(definition.primaryColor, 0.92);
+    const core = new THREE.Mesh(
+      new THREE.OctahedronGeometry(0.24, 2),
+      coreMaterial
+    );
+    core.name = "magic-charge-core";
+    group.add(core);
+
+    const shellMaterial = effectMaterial(definition.secondaryColor, 0.38);
+    shellMaterial.wireframe = true;
+    const shell = new THREE.Mesh(
+      new THREE.IcosahedronGeometry(0.5, 1),
+      shellMaterial
+    );
+    shell.name = "magic-charge-shell";
+    group.add(shell);
+
+    const rings: THREE.Mesh[] = [];
+    for (let index = 0; index < 3; index += 1) {
+      const material = effectMaterial(
+        index % 2 === 0 ? definition.primaryColor : definition.secondaryColor,
+        0.58
+      );
+      const ring = new THREE.Mesh(
+        new THREE.TorusGeometry(0.68 + index * 0.16, 0.022, 6, 32),
+        material
+      );
+      ring.name = `magic-charge-ring-${index + 1}`;
+      ring.rotation.set(
+        index === 0 ? Math.PI / 2 : Math.PI / 3,
+        index === 1 ? Math.PI / 2 : index * 0.55,
+        index * 0.7
+      );
+      rings.push(ring);
+      group.add(ring);
+    }
+
+    const particleMaterial = effectMaterial(definition.secondaryColor, 0.82);
+    const particles = new THREE.InstancedMesh(
+      new THREE.BoxGeometry(0.075, 0.075, 0.075),
+      particleMaterial,
+      MAGIC_CHARGE_PARTICLE_COUNT
+    );
+    particles.name = "magic-charge-voxel-particles";
+    particles.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    particles.frustumCulled = false;
+    group.add(particles);
+
+    const light = new THREE.PointLight(definition.primaryColor, 0.8, 4.5, 2);
+    group.add(light);
+    this.root.add(group);
+
+    const charge: ActiveMagicCharge = {
+      sequence: this.nextSequence++,
+      key: request.key,
+      definition,
+      group,
+      modelHost,
+      core,
+      shell,
+      rings,
+      particles,
+      elapsed: 0,
+      duration: request.duration,
+      power: THREE.MathUtils.clamp(Number(request.power ?? 0), 0, 1),
+      visualScale: THREE.MathUtils.clamp(
+        Number(request.visualScale ?? 1),
+        0.65,
+        4
+      ),
+      origin: request.origin.clone(),
+      modelAttached: false,
+      light,
+    };
+    this.activeMagicCharges.push(charge);
+    this.magicChargeStartedCount += 1;
+    this.updateMagicChargeTransform(charge, 0);
+
+    void this.load(definition)
+      .then((prototype) => {
+        if (!this.activeMagicCharges.includes(charge)) return;
+        const scene = clonePremiumModel(prototype);
+        scene.scale.setScalar(definition.scale * 0.34);
+        charge.modelHost.add(scene);
+        charge.modelAttached = true;
+        const clip =
+          prototype.animations.find(({ name }) => name === "FlightLoop_24") ??
+          prototype.animations[0];
+        if (clip) {
+          charge.mixer = new THREE.AnimationMixer(scene);
+          charge.mixer.clipAction(clip).play();
+        }
+      })
+      .catch(() => {
+        // The charge effect remains fully readable through its core, rings,
+        // particles, and light even if a projectile asset is unavailable.
+      });
+
+    this.debug?.("renderer.magic_charge.start", {
+      key: request.key,
+      projectileId: definition.id,
+      duration: request.duration,
+      power: charge.power,
+      visualScale: charge.visualScale,
+      origin: request.origin.toArray(),
+    });
+    return true;
+  }
+
+  endMagicCharge(
+    key: string,
+    phase: Exclude<HarthmereMagicChargePhase, "start">
+  ) {
+    const index = this.activeMagicCharges.findIndex(
+      (charge) => charge.key === key
+    );
+    if (index < 0) {
+      return false;
+    }
+    const [charge] = this.activeMagicCharges.splice(index, 1);
+    if (phase === "release") {
+      this.magicChargeReleasedCount += 1;
+    } else {
+      this.magicChargeCancelledCount += 1;
+    }
+    this.removeMagicCharge(charge);
+    this.debug?.(`renderer.magic_charge.${phase}`, {
+      key,
+      projectileId: charge.definition.id,
+      elapsed: charge.elapsed,
+      duration: charge.duration,
+    });
+    return true;
+  }
+
   spawn(request: HarthmereProjectileSpawnRequest) {
     const definition = getHarthmereProjectileVisual(request.projectileId);
     if (!definition) {
@@ -696,6 +1595,11 @@ export class HarthmereProjectileVisualRuntime {
 
     const start = request.origin.clone();
     const target = request.target.clone();
+    const visualScale = THREE.MathUtils.clamp(
+      Number(request.visualScale ?? 1),
+      0.75,
+      2.75
+    );
     if (["meteor", "consecrate", "entangling_roots"].includes(definition.id)) {
       target.y -= 0.65;
     }
@@ -707,6 +1611,7 @@ export class HarthmereProjectileVisualRuntime {
 
     const mount = new THREE.Group();
     mount.name = `harthmere-premium-projectile-${definition.id}-${this.nextSequence}`;
+    mount.scale.setScalar(visualScale);
     const modelHost = new THREE.Group();
     const fallback = makeLoadingSilhouette(definition);
     modelHost.add(fallback);
@@ -720,8 +1625,8 @@ export class HarthmereProjectileVisualRuntime {
         MAX_PROJECTILE_LIGHTS && definition.lightIntensity > 1.25
         ? new THREE.PointLight(
             definition.primaryColor,
-            definition.lightIntensity,
-            Math.max(2.5, definition.impactRadius * 4),
+            definition.lightIntensity * (0.9 + (visualScale - 1) * 0.3),
+            Math.max(2.5, definition.impactRadius * 4) * Math.sqrt(visualScale),
             2
           )
         : undefined;
@@ -738,12 +1643,20 @@ export class HarthmereProjectileVisualRuntime {
       target,
       lastPosition: start.clone(),
       elapsed: 0,
-      duration: THREE.MathUtils.clamp(
-        start.distanceTo(target) / definition.speed,
-        0.16,
-        1.12
-      ),
+      duration: harthmereProjectileFlightDurationSecs({
+        distanceMeters: start.distanceTo(target),
+        speedMetersPerSecond: definition.speed,
+        authoritativeImpactSecs: request.windupSecs,
+      }),
+      visualScale,
+      damageType: request.damageType,
+      impactRadius:
+        Number.isFinite(request.hitRadius) && (request.hitRadius ?? 0) > 0
+          ? request.hitRadius!
+          : definition.impactRadius,
       result: request.result,
+      targetGround: request.targetGround?.clone(),
+      finalDamage: request.finalDamage,
       light,
     };
     this.active.push(projectile);
@@ -793,8 +1706,11 @@ export class HarthmereProjectileVisualRuntime {
       visualStart: start.toArray(),
       target: target.toArray(),
       duration: projectile.duration,
+      visualScale: projectile.visualScale,
       result: request.result,
       finalDamage: request.finalDamage,
+      damageType: request.damageType,
+      impactRadius: projectile.impactRadius,
     });
     return true;
   }
@@ -883,12 +1799,20 @@ export class HarthmereProjectileVisualRuntime {
       distance,
       radialScale,
       elapsed: 0,
+      // Area/beam telegraphs resolve when Anima resolves damage. The previous
+      // extra 0.36 seconds let the graphic linger past the authoritative hit.
       duration: THREE.MathUtils.clamp(
-        Math.max(0.35, request.windupSecs ?? 0.7) + 0.36,
+        request.windupSecs && request.windupSecs > 0
+          ? request.windupSecs
+          : Math.max(0.7, distance / projectileDefinition.speed),
         0.62,
         2.15
       ),
+      damageType: request.damageType,
+      impactRadius: hitRadius,
       result: request.result,
+      targetGround: request.targetGround?.clone(),
+      finalDamage: request.finalDamage,
       light,
     };
     this.activeShapes.push(effect);
@@ -953,13 +1877,81 @@ export class HarthmereProjectileVisualRuntime {
   }
 
   private addImpact(impact: PremiumImpact) {
+    if (impact.kind === "magic_explosion") {
+      while (
+        this.impacts.filter(({ kind }) => kind === "magic_explosion").length >=
+        MAX_ACTIVE_MAGIC_EXPLOSIONS
+      ) {
+        const staleIndex = this.impacts.findIndex(
+          ({ kind }) => kind === "magic_explosion"
+        );
+        if (staleIndex < 0) break;
+        const [stale] = this.impacts.splice(staleIndex, 1);
+        this.removeImpact(stale);
+      }
+    }
     while (this.impacts.length >= MAX_ACTIVE_IMPACTS) {
       const stale = this.impacts.shift()!;
-      this.root.remove(stale.group);
-      disposeEffectObject(stale.group, true);
+      this.removeImpact(stale);
     }
     this.impacts.push(impact);
     this.root.add(impact.group);
+  }
+
+  private removeImpact(impact: PremiumImpact) {
+    this.root.remove(impact.group);
+    disposeEffectObject(impact.group, true);
+  }
+
+  private addResolvedImpact(input: {
+    definition: HarthmereProjectileVisualDefinition;
+    position: THREE.Vector3;
+    direction: THREE.Vector3;
+    targetGround?: THREE.Vector3;
+    result?: string;
+    finalDamage?: number;
+    damageType?: string;
+    impactRadius?: number;
+    seed: number;
+  }) {
+    const addLight =
+      this.impacts.filter((entry) => entry.light).length < MAX_IMPACT_LIGHTS;
+    const impact =
+      makeAaaMagicImpact({
+        ...input,
+        addLight,
+      }) ??
+      makePremiumImpact(
+        input.definition,
+        input.position,
+        "impact",
+        input.result,
+        addLight
+      );
+    this.addImpact(impact);
+    if (impact.kind !== "magic_explosion") return impact;
+
+    this.magicExplosionCount += 1;
+    const feedback: HarthmereMagicImpactFeedback = {
+      version: HARTHMERE_MAGIC_IMPACT_VERSION,
+      projectileId: impact.projectileId,
+      family: impact.family,
+      position: input.position.toArray() as [number, number, number],
+      radius: impact.radius,
+      duration: impact.duration,
+      cameraStrength: impact.profile.cameraStrength,
+      finalDamage: input.finalDamage,
+    };
+    this.magicImpactFeedback?.(feedback);
+    this.debug?.("renderer.magic_impact.explosion", {
+      ...feedback,
+      ringCount: impact.profile.ringCount,
+      debrisCount: impact.profile.debrisCount,
+      sparkCount: impact.profile.sparkCount,
+      mistCount: impact.profile.mistCount,
+      dustCount: impact.profile.dustCount,
+    });
+    return impact;
   }
 
   private updateTransform(projectile: ActiveProjectile, progress: number) {
@@ -1056,8 +2048,94 @@ export class HarthmereProjectileVisualRuntime {
     }
   }
 
+  private updateMagicChargeTransform(
+    charge: ActiveMagicCharge,
+    progress: number
+  ) {
+    const gathered = THREE.MathUtils.smoothstep(progress, 0, 0.72);
+    const maximum = THREE.MathUtils.smoothstep(progress, 0.7, 1);
+    const pulse = 1 + Math.sin(charge.elapsed * (5 + charge.power * 4)) * 0.08;
+    const scale = (0.42 + gathered * (0.78 + charge.power * 0.34)) * pulse;
+    charge.group.position.copy(charge.origin);
+    charge.group.scale.setScalar(charge.visualScale);
+    charge.core.scale.setScalar(scale);
+    charge.core.rotation.x += 0.018 + charge.power * 0.012;
+    charge.core.rotation.y += 0.026 + charge.power * 0.018;
+    charge.shell.scale.setScalar(scale * (1.35 + maximum * 0.18));
+    charge.shell.rotation.x -= 0.012;
+    charge.shell.rotation.y += 0.02;
+
+    for (let index = 0; index < charge.rings.length; index += 1) {
+      const ring = charge.rings[index];
+      const direction = index % 2 === 0 ? 1 : -1;
+      ring.rotation.z += direction * (0.012 + index * 0.005);
+      ring.rotation.y += direction * 0.009;
+      const inward = 1.45 - gathered * 0.48 + maximum * 0.1;
+      ring.scale.setScalar(inward * pulse);
+      const material = ring.material as THREE.MeshBasicMaterial;
+      material.opacity = 0.24 + gathered * 0.5;
+    }
+
+    const orbitRadius = 1.48 - gathered * 0.72;
+    for (let index = 0; index < MAGIC_CHARGE_PARTICLE_COUNT; index += 1) {
+      const normalized = index / MAGIC_CHARGE_PARTICLE_COUNT;
+      const layer = index % 3;
+      const angle =
+        normalized * Math.PI * 2 +
+        charge.elapsed * (1.2 + layer * 0.24) * (layer === 1 ? -1 : 1);
+      const radius = orbitRadius * (0.72 + layer * 0.15);
+      MAGIC_CHARGE_POSITION.set(
+        Math.cos(angle) * radius,
+        Math.sin(angle * 2 + layer) * (0.35 + gathered * 0.24),
+        Math.sin(angle) * radius
+      );
+      const particleScale =
+        (0.58 + gathered * 0.85 + maximum * 0.35) * (0.8 + (index % 5) * 0.07);
+      MAGIC_CHARGE_SCALE.setScalar(particleScale);
+      MAGIC_CHARGE_QUATERNION.setFromEuler(
+        new THREE.Euler(angle * 0.5, angle, -angle * 0.3)
+      );
+      MAGIC_CHARGE_MATRIX.compose(
+        MAGIC_CHARGE_POSITION,
+        MAGIC_CHARGE_QUATERNION,
+        MAGIC_CHARGE_SCALE
+      );
+      charge.particles.setMatrixAt(index, MAGIC_CHARGE_MATRIX);
+    }
+    charge.particles.instanceMatrix.needsUpdate = true;
+    const particleMaterial = charge.particles
+      .material as THREE.MeshBasicMaterial;
+    particleMaterial.opacity = 0.35 + gathered * 0.58;
+
+    charge.modelHost.rotation.y += 0.02 + charge.power * 0.025;
+    charge.modelHost.rotation.z -= 0.012;
+    charge.modelHost.scale.setScalar(0.68 + gathered * 0.5);
+    if (charge.light) {
+      charge.light.intensity =
+        0.8 +
+        gathered * charge.definition.lightIntensity * (0.65 + charge.power);
+      charge.light.distance = 4.5 + gathered * (3 + charge.power * 4);
+    }
+  }
+
   update(dt: number) {
     const safeDt = THREE.MathUtils.clamp(dt, 0, 0.05);
+    for (
+      let index = this.activeMagicCharges.length - 1;
+      index >= 0;
+      index -= 1
+    ) {
+      const charge = this.activeMagicCharges[index];
+      charge.elapsed += safeDt;
+      charge.mixer?.update(safeDt);
+      const progress = Math.min(1, charge.elapsed / charge.duration);
+      this.updateMagicChargeTransform(charge, progress);
+      if (progress >= 1) {
+        this.activeMagicCharges.splice(index, 1);
+        this.magicChargeReleasedCount += 1;
+        this.removeMagicCharge(charge);
+      }
+    }
     for (let index = this.active.length - 1; index >= 0; index -= 1) {
       const projectile = this.active[index];
       projectile.elapsed += safeDt;
@@ -1074,7 +2152,8 @@ export class HarthmereProjectileVisualRuntime {
         projectile.mount.position,
         direction,
         safeDt,
-        projectile.elapsed
+        projectile.elapsed,
+        projectile.visualScale
       );
       if (progress >= 1) {
         this.active.splice(index, 1);
@@ -1098,31 +2177,47 @@ export class HarthmereProjectileVisualRuntime {
       const impact = this.impacts[index];
       impact.elapsed += safeDt;
       const progress = Math.min(1, impact.elapsed / impact.duration);
-      const bloom = Math.sin(progress * Math.PI);
-      impact.group.scale.setScalar(
-        0.18 + impact.radius * (0.42 + bloom * 0.68)
-      );
-      impact.group.rotation.y += safeDt * 5.5;
-      impact.group.rotation.z -= safeDt * 3.2;
-      for (const part of impact.parts) {
-        part.object.position.addScaledVector(
-          part.velocity,
-          safeDt * (1 - progress * 0.55)
+      if (impact.kind === "magic_explosion") {
+        for (const layer of impact.layers) {
+          updateMagicImpactLayer(layer, impact.elapsed, safeDt);
+        }
+        for (const batch of impact.batches) {
+          updateMagicImpactBatch(batch, impact.elapsed);
+        }
+        if (impact.light) {
+          const flashBoost =
+            impact.elapsed <= impact.profile.flashDurationSecs ? 1.35 : 1;
+          impact.light.intensity =
+            impact.initialLightIntensity *
+            flashBoost *
+            Math.pow(Math.max(0, 1 - progress), 2.4);
+        }
+      } else {
+        const bloom = Math.sin(progress * Math.PI);
+        impact.group.scale.setScalar(
+          0.18 + impact.radius * (0.42 + bloom * 0.68)
         );
-        part.object.rotation.x += part.spin.x * safeDt;
-        part.object.rotation.y += part.spin.y * safeDt;
-        part.object.rotation.z += part.spin.z * safeDt;
-      }
-      for (const material of impact.materials) {
-        material.opacity = Math.max(0, 1 - progress);
-      }
-      if (impact.light) {
-        impact.light.intensity *= Math.pow(0.02, safeDt / impact.duration);
+        impact.group.rotation.y += safeDt * 5.5;
+        impact.group.rotation.z -= safeDt * 3.2;
+        for (const part of impact.parts) {
+          part.object.position.addScaledVector(
+            part.velocity,
+            safeDt * (1 - progress * 0.55)
+          );
+          part.object.rotation.x += part.spin.x * safeDt;
+          part.object.rotation.y += part.spin.y * safeDt;
+          part.object.rotation.z += part.spin.z * safeDt;
+        }
+        for (const material of impact.materials) {
+          material.opacity = Math.max(0, 1 - progress);
+        }
+        if (impact.light) {
+          impact.light.intensity *= Math.pow(0.02, safeDt / impact.duration);
+        }
       }
       if (progress >= 1) {
         this.impacts.splice(index, 1);
-        this.root.remove(impact.group);
-        disposeEffectObject(impact.group, true);
+        this.removeImpact(impact);
       }
     }
     this.publishDebugSnapshot();
@@ -1130,25 +2225,30 @@ export class HarthmereProjectileVisualRuntime {
 
   private finishAttackShape(effect: ActiveAttackShapeEffect) {
     const impactPosition = effect.group.position.clone();
-    if (
-      effect.shapeDefinition.shape === "beam" ||
-      effect.shapeDefinition.shape === "cone"
-    ) {
+    if (effect.shapeDefinition.shape === "cone") {
+      // The cone telegraph intentionally extends to its maximum dodge range,
+      // but the hit explosion belongs on the authoritative aimed player. A
+      // closer target otherwise sees the explosion several metres behind
+      // them, which is especially obvious on long boss breath attacks.
+      impactPosition.copy(effect.target);
+    } else if (effect.shapeDefinition.shape === "beam") {
       impactPosition.add(
         new THREE.Vector3(0, 0, effect.distance).applyQuaternion(
           effect.group.quaternion
         )
       );
     }
-    this.addImpact(
-      makePremiumImpact(
-        effect.projectileDefinition,
-        impactPosition,
-        "impact",
-        effect.result,
-        this.impacts.filter((entry) => entry.light).length < MAX_IMPACT_LIGHTS
-      )
-    );
+    this.addResolvedImpact({
+      definition: effect.projectileDefinition,
+      position: impactPosition,
+      direction: impactPosition.clone().sub(effect.origin),
+      targetGround: effect.targetGround,
+      result: effect.result,
+      finalDamage: effect.finalDamage,
+      damageType: effect.damageType,
+      impactRadius: effect.impactRadius,
+      seed: effect.sequence,
+    });
     this.impactCount += 1;
     const impactSound =
       HARTHMERE_PROJECTILE_SOUND_MAP[effect.projectileDefinition.id]?.impact;
@@ -1167,15 +2267,17 @@ export class HarthmereProjectileVisualRuntime {
   }
 
   private finishProjectile(projectile: ActiveProjectile) {
-    this.addImpact(
-      makePremiumImpact(
-        projectile.definition,
-        projectile.target,
-        "impact",
-        projectile.result,
-        this.impacts.filter((entry) => entry.light).length < MAX_IMPACT_LIGHTS
-      )
-    );
+    this.addResolvedImpact({
+      definition: projectile.definition,
+      position: projectile.target,
+      direction: projectile.target.clone().sub(projectile.start),
+      targetGround: projectile.targetGround,
+      result: projectile.result,
+      finalDamage: projectile.finalDamage,
+      damageType: projectile.damageType,
+      impactRadius: projectile.impactRadius,
+      seed: projectile.sequence,
+    });
     this.impactCount += 1;
     const mappedSounds =
       HARTHMERE_PROJECTILE_SOUND_MAP[projectile.definition.id];
@@ -1228,6 +2330,12 @@ export class HarthmereProjectileVisualRuntime {
     projectile.trail.material.dispose();
   }
 
+  private removeMagicCharge(charge: ActiveMagicCharge) {
+    this.root.remove(charge.group);
+    charge.mixer?.stopAllAction();
+    disposeEffectObject(charge.group, true);
+  }
+
   private removeAttackShape(effect: ActiveAttackShapeEffect) {
     this.root.remove(effect.group);
     effect.mixer?.stopAllAction();
@@ -1254,7 +2362,8 @@ export class HarthmereProjectileVisualRuntime {
       }
     ).__harthmereProjectileVisuals = {
       version: HARTHMERE_PROJECTILE_VISUAL_VERSION,
-      runtime: "premium-clean-room-v3-boss-shapes",
+      runtime: "premium-clean-room-v4-aaa-magic-impacts",
+      magicImpactVersion: HARTHMERE_MAGIC_IMPACT_VERSION,
       manifestCount: HARTHMERE_PROJECTILE_VISUALS.length,
       loadedOrLoading: this.prototypes.size,
       loadedCount: this.loadedPrototypeIds.size,
@@ -1267,7 +2376,23 @@ export class HarthmereProjectileVisualRuntime {
         progress: Math.min(1, entry.elapsed / entry.duration),
         position: entry.mount.position.toArray(),
         usingFallback: entry.fallback.parent === entry.modelHost,
+        visualScale: entry.visualScale,
       })),
+      activeMagicCharges: this.activeMagicCharges.map((entry) => ({
+        sequence: entry.sequence,
+        key: entry.key,
+        projectileId: entry.definition.id,
+        progress: Math.min(1, entry.elapsed / entry.duration),
+        elapsed: entry.elapsed,
+        duration: entry.duration,
+        power: entry.power,
+        visualScale: entry.visualScale,
+        position: entry.group.position.toArray(),
+        modelAttached: entry.modelAttached,
+      })),
+      magicChargeStartedCount: this.magicChargeStartedCount,
+      magicChargeReleasedCount: this.magicChargeReleasedCount,
+      magicChargeCancelledCount: this.magicChargeCancelledCount,
       activeShapes: this.activeShapes.map((entry) => ({
         sequence: entry.sequence,
         projectileId: entry.projectileDefinition.id,
@@ -1275,6 +2400,23 @@ export class HarthmereProjectileVisualRuntime {
         progress: Math.min(1, entry.elapsed / entry.duration),
         position: entry.group.position.toArray(),
       })),
+      activeMagicExplosions: this.impacts
+        .filter(
+          (entry): entry is MagicImpact => entry.kind === "magic_explosion"
+        )
+        .map((entry) => ({
+          projectileId: entry.projectileId,
+          family: entry.family,
+          progress: Math.min(1, entry.elapsed / entry.duration),
+          position: entry.group.position.toArray(),
+          radius: entry.radius,
+          ringCount: entry.profile.ringCount,
+          debrisCount: entry.profile.debrisCount,
+          sparkCount: entry.profile.sparkCount,
+          mistCount: entry.profile.mistCount,
+          dustCount: entry.profile.dustCount,
+        })),
+      magicExplosionCount: this.magicExplosionCount,
       impacts: this.impacts.length,
       spawnedCount: this.spawnedCount,
       impactCount: this.impactCount,

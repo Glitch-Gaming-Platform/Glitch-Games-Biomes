@@ -127,6 +127,38 @@ describe("Input", () => {
     assert.equal(evades, 1);
   });
 
+  it("latches a quick desktop dodge or evade tap until the script consumes it", () => {
+    const { documentTarget, input } = fakeDefaultInputSetup();
+
+    documentTarget.emit("keydown", fakeKeyboardEvent("KeyX"));
+    documentTarget.emit("keyup", fakeKeyboardEvent("KeyX"));
+    assert.equal(input.action("dodge"), false);
+    assert.equal(input.consumeActionPress("dodge"), true);
+    assert.equal(input.consumeActionPress("dodge"), false);
+
+    documentTarget.emit("keydown", fakeKeyboardEvent("KeyC"));
+    documentTarget.emit("keyup", fakeKeyboardEvent("KeyC"));
+    assert.equal(input.action("evade"), false);
+    assert.equal(input.consumeActionPress("evade"), true);
+    assert.equal(input.consumeActionPress("evade"), false);
+  });
+
+  it("does not queue another one-shot action while its key remains held", () => {
+    const { documentTarget, input } = fakeDefaultInputSetup();
+
+    documentTarget.emit("keydown", fakeKeyboardEvent("KeyX"));
+    assert.equal(input.consumeActionPress("dodge"), true);
+    documentTarget.emit(
+      "keydown",
+      fakeKeyboardEvent("KeyX", undefined, { repeat: true })
+    );
+    assert.equal(input.consumeActionPress("dodge"), false);
+
+    documentTarget.emit("keyup", fakeKeyboardEvent("KeyX"));
+    documentTarget.emit("keydown", fakeKeyboardEvent("KeyX"));
+    assert.equal(input.consumeActionPress("dodge"), true);
+  });
+
   it("does not steal modified Z, X, or C browser shortcuts", () => {
     const { documentTarget, input } = fakeDefaultInputSetup();
 
@@ -225,6 +257,8 @@ describe("Input", () => {
     assert.equal(input.action("evade"), true);
     await pulse;
     assert.equal(input.action("evade"), false);
+    assert.equal(input.consumeActionPress("evade"), true);
+    assert.equal(input.consumeActionPress("evade"), false);
   });
 
   it("clears synthetic motion when input state is detached", () => {
@@ -243,6 +277,7 @@ describe("Input", () => {
     input.detach();
 
     assert.equal(input.action("evade"), false);
+    assert.equal(input.consumeActionPress("evade"), false);
   });
 
   it("captures keyboard motion from the owner document while attached to a canvas", () => {

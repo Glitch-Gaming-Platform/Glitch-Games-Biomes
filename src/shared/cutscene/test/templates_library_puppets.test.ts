@@ -377,6 +377,7 @@ describe("cutscene puppet overrides", () => {
           asset: "townsperson_clergy",
           family: "town_human",
           label: "Spirit",
+          appearanceSourceEntityId: 8810000000020501,
         },
       },
     ]);
@@ -384,6 +385,7 @@ describe("cutscene puppet overrides", () => {
     const ghost = merged.find((r) => r.id === -1000001)!;
     assert.strictEqual(ghost.asset, "snapshot/player_mesh");
     assert.strictEqual(ghost.nativeSnapshotAvatar, true);
+    assert.strictEqual(ghost.appearanceSourceEntityId, 8810000000020501);
     assert.strictEqual(ghost.hp, undefined);
     assert.strictEqual(ghost.cinematic, true);
     assert.ok(isGhostPuppetId(ghost.id));

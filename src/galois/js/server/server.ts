@@ -56,9 +56,14 @@ function errorFromUnknown(error: unknown): Error {
   return error instanceof Error ? error : new Error(String(error));
 }
 
-function assetServerExitError(code: number | null, signal: NodeJS.Signals | null) {
+function assetServerExitError(
+  code: number | null,
+  signal: NodeJS.Signals | null
+) {
   return new Error(
-    `Galois asset server exited before returning a result (code=${code ?? "null"}, signal=${signal ?? "null"})`
+    `Galois asset server exited before returning a result (code=${
+      code ?? "null"
+    }, signal=${signal ?? "null"})`
   );
 }
 
@@ -87,16 +92,25 @@ function localVenvPythonCandidates(): string[] {
   const candidates = [
     process.env.BIOMES_ASSET_PYTHON,
     process.env.VIRTUAL_ENV
-      ? join(process.env.VIRTUAL_ENV, process.platform === "win32" ? "Scripts/python.exe" : "bin/python")
+      ? join(
+          process.env.VIRTUAL_ENV,
+          process.platform === "win32" ? "Scripts/python.exe" : "bin/python"
+        )
       : undefined,
-    join(cwd, ".venv", process.platform === "win32" ? "Scripts/python.exe" : "bin/python"),
+    join(
+      cwd,
+      ".venv",
+      process.platform === "win32" ? "Scripts/python.exe" : "bin/python"
+    ),
   ];
   return candidates.filter((candidate): candidate is string => !!candidate);
 }
 
 function resolveAssetPythonBuildCommand(execDir: string): string {
   if (process.env.BIOMES_ASSET_PYTHON) {
-    return `${shellQuotePath(process.env.BIOMES_ASSET_PYTHON)} py/assets/build.py`;
+    return `${shellQuotePath(
+      process.env.BIOMES_ASSET_PYTHON
+    )} py/assets/build.py`;
   }
 
   for (const candidate of localVenvPythonCandidates()) {
@@ -248,8 +262,10 @@ export class BatchAssetServer implements AssetServer {
         };
         const handleError = (error: unknown) =>
           rejectOnce(errorFromUnknown(error));
-        const handleExit = (code: number | null, signal: NodeJS.Signals | null) =>
-          rejectOnce(assetServerExitError(code, signal));
+        const handleExit = (
+          code: number | null,
+          signal: NodeJS.Signals | null
+        ) => rejectOnce(assetServerExitError(code, signal));
         const handleClose = () =>
           rejectOnce(
             this.exitedError ??

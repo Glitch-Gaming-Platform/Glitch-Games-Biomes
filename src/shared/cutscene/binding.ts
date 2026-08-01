@@ -14,6 +14,7 @@ import type {
   CutsceneVec3,
 } from "@/shared/cutscene/schema";
 import { v3dist } from "@/shared/cutscene/math";
+import { canonicalCutsceneGhostAsset } from "@/shared/cutscene/puppets";
 
 /** Structural entity view (subset of ECS components the binder needs). */
 export interface CutsceneEntityView {
@@ -58,6 +59,8 @@ export type ResolvedActor =
       ghostId: number;
       asset: string;
       family: string;
+      /** Canonical human whose deterministic avatar appearance this stand-in uses. */
+      appearanceSourceEntityId?: number;
       spawnAt: CutsceneVec3;
       height: number;
     }
@@ -167,8 +170,9 @@ function resolveOne(
         kind: "ghost",
         role: member.role,
         ghostId: nextGhostId(),
-        asset: binding.asset,
+        asset: canonicalCutsceneGhostAsset(binding.asset),
         family: binding.family === "human" ? "live_entity" : binding.family,
+        appearanceSourceEntityId: binding.appearanceSourceEntityId,
         spawnAt: binding.spawnAt ?? world.playerPosition,
         height: binding.height,
       };
@@ -228,8 +232,11 @@ export function resolveCast(
         kind: "ghost",
         role: member.role,
         ghostId: nextGhostId(),
-        asset: member.ghostAsset,
+        asset: canonicalCutsceneGhostAsset(member.ghostAsset),
         family: "live_entity",
+        ...(member.binding.kind === "entity"
+          ? { appearanceSourceEntityId: member.binding.entityId }
+          : {}),
         spawnAt: world.playerPosition,
         height: DEFAULT_ACTOR_HEIGHT,
       };

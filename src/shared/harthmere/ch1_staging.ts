@@ -369,7 +369,7 @@ export const CH1_STAGE_DIRECTIONS: Readonly<
 
   jackie: [
     {
-      place: { kind: "anchor", anchor: "roadhouse_table" },
+      place: { kind: "anchor", anchor: "roadhouse_jackie_post" },
       activity: "Keeping the road-house running and watching the stairs.",
     },
     {
@@ -409,7 +409,7 @@ export const CH1_STAGE_DIRECTIONS: Readonly<
     },
     {
       whenEnding: "confess",
-      place: { kind: "anchor", anchor: "roadhouse_table" },
+      place: { kind: "anchor", anchor: "roadhouse_jackie_post" },
       activity:
         "Back at the road-house while the Grove decides what to do with the truth.",
     },

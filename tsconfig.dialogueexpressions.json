@@ -1,0 +1,14 @@
+// Scoped typecheck for the authored NPC dialogue-expression plan, generator,
+// generated hash catalog, and pure contracts. The client integration itself is
+// covered by `scripts/harthmere/t.sh types:client`.
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "noEmit": true, "incremental": false },
+  "include": [
+    "src/shared/harthmere/npc_dialogue_expression_*.ts",
+    "src/shared/harthmere/generated/npc_dialogue_expression_catalog.ts",
+    "src/shared/harthmere/test/npc_dialogue_expression_catalog.test.ts",
+    "src/shared/harthmere/test/npc_dialogue_expressions.test.ts",
+    "modules.d.ts"
+  ]
+}

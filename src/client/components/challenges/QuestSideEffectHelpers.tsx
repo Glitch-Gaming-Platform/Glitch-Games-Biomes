@@ -9,6 +9,7 @@ import type {
   TriggerProgress,
 } from "@/client/game/resources/challenges";
 import { usePlayerCreatedRobots } from "@/client/components/map/hooks";
+import { canonicalSnapshotGroveNpcEntityId } from "@/shared/harthmere/snapshot_grove_ids";
 import type { BiomesId } from "@/shared/ids";
 import { INVALID_BIOMES_ID } from "@/shared/ids";
 import { xzUnproject } from "@/shared/math/linear";
@@ -94,7 +95,7 @@ const NavigationAidSideEffects: React.FunctionComponent<{
     case "entity":
       clientAidTarget = {
         kind: "entity",
-        id: progress.navigationAid.id,
+        id: canonicalSnapshotGroveNpcEntityId(progress.navigationAid.id),
       };
       break;
     case "group":

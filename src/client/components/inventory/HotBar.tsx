@@ -66,7 +66,7 @@ export function switchCameraModes(
   mode: CameraItemMode
 ) {
   const newMode = mode;
-  const localPlayer = reactResources.get("/scene/local_player");
+  const localPlayer = reactResources.use("/scene/local_player");
   reactResources.set("/hotbar/camera_mode", {
     value: mode,
   });
@@ -358,7 +358,13 @@ export const HotBar: React.FunctionComponent<{}> = ({}) => {
       className="hot-bar select-none"
       transition={{ type: "spring", ...HOTBAR_SPRING }}
       initial={{ x: "-50%" }}
-      animate={{ x: "-50%", y: gameModal.kind !== "empty" ? "3%" : "-100%" }}
+      animate={{
+        x: "-50%",
+        y:
+          gameModal.kind !== "empty" || localPlayer.talkingToNpc !== undefined
+            ? "3%"
+            : "-100%",
+      }}
     >
       <SelectionNameOverlay />
       <HealthBarHUD

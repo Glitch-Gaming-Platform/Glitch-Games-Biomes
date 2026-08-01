@@ -663,6 +663,7 @@ export const HARTHMERE_VENDOR_CATALOG: Record<number, HarthmereVendorProfile> =
         { itemId: "wall_lantern", quantity: 12, price: 12 },
         { itemId: "repair_mallet", quantity: 4, price: 24 },
         { itemId: "rope", quantity: 16, price: 5 },
+        { itemId: "coal", quantity: 24, price: 4 },
         { itemId: "scrap_metal", quantity: 16, price: 5 },
       ],
       buys: ["tool", "crafting_material", "trade_good", "junk"],
@@ -710,6 +711,24 @@ export const HARTHMERE_VENDOR_CATALOG: Record<number, HarthmereVendorProfile> =
       restockHours: 6,
       buysStolenGoods: false,
     }),
+    9309: vendor({
+      offset: 9309,
+      vendorId: "grove_doc_medicine",
+      vendorName: "Doc",
+      name: "Doc's Field Table",
+      vendorType: "medical_vendor",
+      region: "the_grove",
+      stocks: [
+        { itemId: "field_medkit", quantity: 12, price: 10 },
+        { itemId: "minor_healing_salve", quantity: 8, price: 8 },
+      ],
+      buys: ["consumable", "crafting_material", "trade_good"],
+      baseSellModifier: 1,
+      baseBuyModifier: 0.5,
+      goldSupply: 300,
+      restockHours: 6,
+      buysStolenGoods: false,
+    }),
   };
 
 const HARTHMERE_VENDOR_ITEM_DEFINITIONS: Record<
@@ -732,6 +751,22 @@ const HARTHMERE_VENDOR_ITEM_DEFINITIONS: Record<
     isConsumable: true,
     description:
       "Hard bread, dried fruit, and enough salt to survive a wet road.",
+  },
+  hearty_stew: {
+    displayName: "Hearty Stew",
+    category: "food",
+    maxStackSize: 50,
+    baseValue: 6,
+    isConsumable: true,
+    description: "A hot cooked ration prepared at Carlo's cookpot.",
+  },
+  field_medkit: {
+    displayName: "Field Medkit",
+    category: "consumable",
+    maxStackSize: 20,
+    baseValue: 8,
+    isConsumable: true,
+    description: "Field medicine stocked by Doc for long trips.",
   },
   fresh_egg: {
     displayName: "Fresh Chicken Egg",

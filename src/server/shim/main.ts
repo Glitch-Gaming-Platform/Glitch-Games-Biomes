@@ -104,6 +104,11 @@ import {
   terrainSeedMigrationMode,
   terrainSeedModeRewritesExistingShards,
 } from "@/server/shim/terrain_seed_migration";
+import {
+  snapshotNpcGroundingRepairSatisfied,
+  snapshotNpcGroundingRepairTarget,
+  type SnapshotNpcGroundingRepair,
+} from "@/server/shim/snapshot_npc_grounding_repair";
 import type { ZrpcServer } from "@/server/shared/zrpc/server";
 import { registerRpcServer } from "@/server/shared/zrpc/server";
 import {
@@ -120,6 +125,7 @@ import {
   Box,
   EntityDescription,
   Health,
+  NpcMetadata,
   QuestGiver,
   Size,
   ShardDiff,
@@ -127,6 +133,7 @@ import {
   ShardSeed,
   ShardShapes,
   ShardWater,
+  Voice,
   WorldMetadata,
   type ReadonlyWorldMetadata,
 } from "@/shared/ecs/gen/components";
@@ -137,6 +144,10 @@ import {
   HARTHMERE_EXTENSION_SURFACE_REPAIR_VERSION,
   harthmereSurfaceRepairShardSpecs,
 } from "@/shared/harthmere/extension_surface_repair";
+import {
+  harthmereAdditiveTownNpcDialogueForOffset,
+  harthmereAdditiveTownNpcVoiceProfile,
+} from "@/shared/harthmere/additive_town_npc_dialogue";
 import {
   SHARD_DIM,
   shardDecode,
@@ -179,10 +190,23 @@ import {
   snapshotGroveGroundedPosition,
   snapshotGroveNpcEntityId,
 } from "@/shared/harthmere/snapshot_grove_content";
+import {
+  SNAPSHOT_GROVE_RHIAMON_DRY_POSITION,
+  SNAPSHOT_GROVE_RHIAMON_ENTITY_ID,
+} from "@/shared/harthmere/snapshot_grove_ids";
 import { harthmereExoticMatterDepositAtBlock } from "@/shared/harthmere/exotic_matter_caves";
 import { createHarthmereBusinessOutpostRebuildMaterializationPlans } from "@/shared/harthmere/business_customer_simulator";
 import { HARTHMERE_NATIVE_QUEST_GIVER_MANIFEST } from "@/shared/harthmere/harthmere_native_quest_manifest";
 import { CH1_NEW_CAST, CH1_SEEDED_CAST } from "@/shared/harthmere/ch1_cast";
+import {
+  CH1_RETIRED_DUPLICATE_TESTIMONY_NPC_IDS,
+  CH1_TESTIMONY_NPC_SEEDS,
+  CH1_TESTIMONY_NPC_SEED_VERSION,
+} from "@/shared/harthmere/ch1_testimony_npcs";
+import {
+  CH1_RETURNING_NPC_SEED_VERSION,
+  CH1_SERGEANT_HOLT,
+} from "@/shared/harthmere/ch1_returning_npcs";
 import { CH1_DUNGEON_ENCOUNTER_NPCS } from "@/shared/harthmere/ch1_dungeon_encounters";
 import {
   CH1_DUNGEON_TERRAIN_VERSION,
@@ -307,11 +331,16 @@ const LOCAL_DEV_TERRAIN_ID_BASE =
 const LOCAL_DEV_NPC_ID_BASE = 8_810_000_000_010_000 as BiomesId;
 const LOCAL_DEV_TERRAIN_ID_LIMIT = HARTHMERE_EXTENSION_TERRAIN_ENTITY_ID_LIMIT;
 const LOCAL_DEV_NPC_ID_LIMIT = 8_810_000_000_020_000;
-const LOCAL_DEV_SEED_MARKER_ID = 8_810_000_000_020_000 as BiomesId;
-const LOCAL_DEV_RUNTIME_CONTENT_MARKER_ID = 8_810_000_000_020_001 as BiomesId;
-const LOCAL_DEV_NPC_COSMETIC_MARKER_ID = 8_810_000_000_020_002 as BiomesId;
+// Keep seed markers outside both the local NPC entity band and the synthetic
+// Bikkie NPC-type ids. The previous 020_001/020_002 values were exactly the
+// local_dev_human/local_dev_walker type ids; in an imported world, 020_001 was
+// also a real Muckmeadow cow, so the runtime-content fingerprint could never
+// safely own that row.
+const LOCAL_DEV_SEED_MARKER_ID = 8_810_000_000_029_000 as BiomesId;
+const LOCAL_DEV_RUNTIME_CONTENT_MARKER_ID = 8_810_000_000_029_001 as BiomesId;
+const LOCAL_DEV_NPC_COSMETIC_MARKER_ID = 8_810_000_000_029_002 as BiomesId;
 const HARTHMERE_ADDITIVE_RUNTIME_CONTENT_VERSION =
-  "harthmere-additive-runtime-content-unique-npc-cosmetics-v3" as const;
+  "harthmere-additive-runtime-content-ch1-returning-npcs-v4" as const;
 
 const STARTER_TOWN_GROUND_Y = 52;
 const STARTER_TOWN_SPAWN: Vec3 = [486, STARTER_TOWN_GROUND_Y + 1, -209];
@@ -438,9 +467,12 @@ function snapshotCombatRuntimeGroundedPosition(position: Vec3): Vec3 {
 }
 
 const GLITCH_SNAPSHOT_NPC_GROUNDING_REPAIR_VERSION =
-  "glitch-snapshot-npc-grounding-repair";
+  "glitch-snapshot-npc-grounding-repair-v2";
 
-const GLITCH_SNAPSHOT_NPC_GROUNDING_REPAIRS = new Map<BiomesId, number>([
+const GLITCH_SNAPSHOT_NPC_GROUNDING_REPAIRS = new Map<
+  BiomesId,
+  SnapshotNpcGroundingRepair
+>([
   [3442733339259323 as BiomesId, 67],
   [5565155013544756 as BiomesId, 58],
   [2562755261964429 as BiomesId, 65],
@@ -457,7 +489,9 @@ const GLITCH_SNAPSHOT_NPC_GROUNDING_REPAIRS = new Map<BiomesId, number>([
   [8810000000019311 as BiomesId, 64],
   [1079816481736910 as BiomesId, 77],
   [1544957595432977 as BiomesId, 70],
-  [5522430940859636 as BiomesId, 71],
+  // A Y-only correction left Rhiamon inside the migrated Grove water. Repair
+  // X/Z and NPC spawn as one identity-preserving move to the measured dry post.
+  [SNAPSHOT_GROVE_RHIAMON_ENTITY_ID, SNAPSHOT_GROVE_RHIAMON_DRY_POSITION],
   [4082216233317240 as BiomesId, 82],
   [3592267593576780 as BiomesId, 70],
   [5578936972474260 as BiomesId, 57],
@@ -508,18 +542,35 @@ async function repairKnownSnapshotNpcGrounding(worldApi: WorldApi) {
     if (!entity || !position) {
       continue;
     }
-    const targetFeetY = GLITCH_SNAPSHOT_NPC_GROUNDING_REPAIRS.get(entity.id);
+    const repair = GLITCH_SNAPSHOT_NPC_GROUNDING_REPAIRS.get(entity.id);
+    if (repair === undefined) {
+      continue;
+    }
+    const targetPosition = snapshotNpcGroundingRepairTarget(position, repair);
+    const spawnPosition = entity.npc_metadata?.spawn_position;
     if (
-      targetFeetY === undefined ||
-      Math.abs(position[1] - targetFeetY) <= 0.25
+      snapshotNpcGroundingRepairSatisfied({
+        currentPosition: position,
+        spawnPosition,
+        repair,
+      })
     ) {
       continue;
     }
+    const npcMetadata = entity.npc_metadata;
     changes.push({
       kind: "update",
       entity: {
         id: entity.id,
-        position: { v: [position[0], targetFeetY, position[2]] },
+        position: { v: targetPosition },
+        ...(typeof repair !== "number" && npcMetadata
+          ? {
+              npc_metadata: NpcMetadata.create({
+                ...npcMetadata,
+                spawn_position: targetPosition,
+              }),
+            }
+          : {}),
       },
     });
   }
@@ -987,6 +1038,13 @@ function harthmereGroundedNpcWorldPositionWithClaim(
   npc: StarterNpc,
   claimed: HarthmereNpcClaimSet
 ): Vec3 {
+  if (npc.id === CH1_SERGEANT_HOLT.entityId) {
+    // Holt is one returning character, not a second Grove-only clone. During
+    // Chapter 1 he takes the player's statement in the Grove watch house, so
+    // stage his established native identity there instead of leaving the only
+    // body 1.6km away at the additive Harthmere gate.
+    return [...CH1_SERGEANT_HOLT.position];
+  }
   // Anchored NPCs use their stable X/Z and skip safe-relocation entirely —
   // that's what was collapsing multiple NPCs onto the same first available
   // clearance column. Their measured legacy Y survives only in standalone
@@ -6126,6 +6184,7 @@ function starterNpc(
   description = "A local-dev Harthmere resident.",
   velocity?: Vec3
 ): StarterNpc {
+  const curatedDialogue = harthmereAdditiveTownNpcDialogueForOffset(offset);
   return {
     id: (LOCAL_DEV_NPC_ID_BASE + offset) as BiomesId,
     preferredTypes: ["local_dev_human"],
@@ -6134,7 +6193,7 @@ function starterNpc(
     position,
     orientation,
     velocity,
-    dialog,
+    dialog: curatedDialogue ? npcDialog(curatedDialogue.intro) : dialog,
     description,
     face: makeHarthmereNpcFaceConfig({
       id: (LOCAL_DEV_NPC_ID_BASE + offset) as BiomesId,
@@ -7338,12 +7397,65 @@ function makeLocalDevChapter1NpcChanges(
       };
     }
   );
-  return [...castChanges, ...encounterChanges];
+  return [
+    ...castChanges,
+    ...makeLocalDevChapter1TestimonyNpcChanges(tick, existingIds),
+    ...encounterChanges,
+  ];
+}
+
+function makeLocalDevChapter1TestimonyNpcChanges(
+  tick: number,
+  existingIds: Set<BiomesId>
+): Change[] {
+  const now = secondsSinceEpoch();
+  const testimonyChanges = CH1_TESTIMONY_NPC_SEEDS.map((seed): Change => {
+    const kind = existingIds.has(seed.entityId) ? "update" : "create";
+    let base = npcEntity(
+      {
+        id: seed.entityId,
+        typeId: LOCAL_DEV_HUMAN_NPC_TYPE_ID,
+        position: [...seed.position],
+        orientation: [0, Math.PI],
+        velocity: [0, 0, 0],
+        displayName: seed.displayName,
+        defaultDialog: npcDialog(seed.line),
+      },
+      now
+    );
+    if (!seed.preserveSnapshotAppearance) {
+      base = prepareHarthmerePlayerLikeNpcForUniqueAppearance(base, kind);
+    }
+    return {
+      kind,
+      tick,
+      entity: {
+        ...base,
+        entity_description: EntityDescription.create({
+          text: `${CH1_TESTIMONY_NPC_SEED_VERSION} grove witness ${seed.role}`,
+        }),
+        ...(seed.questGiver
+          ? {
+              quest_giver: QuestGiver.create({
+                concurrent_quests: 1,
+                concurrent_quest_dialog: npcDialog(seed.line),
+              }),
+            }
+          : {}),
+      },
+    };
+  });
+  const duplicateDeletes: Change[] =
+    CH1_RETIRED_DUPLICATE_TESTIMONY_NPC_IDS.filter((id) =>
+      existingIds.has(id)
+    ).map((id) => ({ kind: "delete", tick, id }));
+  return [...duplicateDeletes, ...testimonyChanges];
 }
 
 function localDevChapter1NpcIds() {
   return [
     ...CH1_SEEDED_CAST.map((member) => member.entityId),
+    ...CH1_TESTIMONY_NPC_SEEDS.map((seed) => seed.entityId),
     ...CH1_DUNGEON_ENCOUNTER_NPCS.map((encounter) => encounter.entityId),
   ];
 }
@@ -7393,7 +7505,7 @@ function localDevPlayerLikeNpcCosmeticRepairIds() {
       ...localDevBusinessOwnerNpcIds(),
       ...localDevBusinessCustomerNpcIds(),
       ...CH1_NEW_CAST.filter(
-        (member) => member.key !== "augur9" && member.key !== "marrow"
+        (member) => !member.promotesExistingEntity && member.key !== "marrow"
       ).map((member) => member.entityId),
     ]),
   ];
@@ -7473,8 +7585,20 @@ function makeLocalDevNpcChanges(tick: number, existingIds: Set<BiomesId>) {
       ),
       kind
     );
+    const additiveTownProfile = harthmereAdditiveTownNpcDialogueForOffset(
+      Number(npc.id) - Number(LOCAL_DEV_NPC_ID_BASE)
+    );
     const entity = {
       ...base,
+      ...(additiveTownProfile
+        ? {
+            voice: Voice.create({
+              voice:
+                harthmereAdditiveTownNpcVoiceProfile(additiveTownProfile)
+                  .voiceParameterId,
+            }),
+          }
+        : {}),
       entity_description: EntityDescription.create({
         text: withHarthmereAppearanceMarker(
           withHarthmereBodyAndFaceMarkers(
@@ -7737,6 +7861,8 @@ function makeLocalDevSeedFingerprint(input: {
   return JSON.stringify({
     version: HARTHMERE_LOCAL_DEV_SEED_FINGERPRINT_VERSION,
     chapter1PropSeedVersion: CH1_PROP_SEED_VERSION,
+    chapter1TestimonyNpcSeedVersion: CH1_TESTIMONY_NPC_SEED_VERSION,
+    chapter1ReturningNpcSeedVersion: CH1_RETURNING_NPC_SEED_VERSION,
     businessOwnerNpcSeedVersion: HARTHMERE_BUSINESS_OWNER_NPC_SEED_VERSION,
     businessCustomerNpcSeedVersion:
       HARTHMERE_BUSINESS_CUSTOMER_NPC_SEED_VERSION,
@@ -7828,6 +7954,8 @@ function makeLocalDevSeedMarkerChange(
 function makeLocalDevRuntimeContentFingerprint() {
   return JSON.stringify({
     version: HARTHMERE_ADDITIVE_RUNTIME_CONTENT_VERSION,
+    chapter1TestimonyNpcSeedVersion: CH1_TESTIMONY_NPC_SEED_VERSION,
+    chapter1ReturningNpcSeedVersion: CH1_RETURNING_NPC_SEED_VERSION,
     playerLikeNpcCosmeticResetVersion:
       HARTHMERE_PLAYER_LIKE_NPC_COSMETIC_RESET_VERSION,
     playerLikeNpcVariantVersion: HARTHMERE_PLAYER_LIKE_NPC_VARIANT_VERSION,
@@ -8658,6 +8786,20 @@ async function seedMissingLocalDevContentIntoExistingWorld(
     (change) => change.kind === "create" && !present.has(change.entity.id)
   );
 
+  const testimonyCandidateIds = [
+    ...CH1_TESTIMONY_NPC_SEEDS.map((seed) => seed.entityId),
+    ...CH1_RETIRED_DUPLICATE_TESTIMONY_NPC_IDS,
+  ];
+  const presentTestimonyIds = await existingLocalDevIds(
+    testimonyCandidateIds,
+    service,
+    worldApi
+  );
+  const testimonyReconciliations = makeLocalDevChapter1TestimonyNpcChanges(
+    tick,
+    presentTestimonyIds
+  ).filter((change) => change.kind === "update" || change.kind === "delete");
+
   // Also remove authored content that should no longer exist — currently the
   // muck monsters that now resolve inside a safe zone (e.g. the road_muckwad
   // muckers sitting inside the Grove). These were created by an earlier seed and
@@ -8696,7 +8838,12 @@ async function seedMissingLocalDevContentIntoExistingWorld(
       entity: { id, iced: null },
     })) as Change[];
 
-  const toApply: Change[] = [...missing, ...obsoleteDeletes, ...boardThaws];
+  const toApply: Change[] = [
+    ...missing,
+    ...testimonyReconciliations,
+    ...obsoleteDeletes,
+    ...boardThaws,
+  ];
   if (toApply.length === 0) {
     log.info(
       "PRODUCTION_CONTENT_SYNC: all authored content already present; nothing to seed."
@@ -8707,6 +8854,7 @@ async function seedMissingLocalDevContentIntoExistingWorld(
     "PRODUCTION_CONTENT_SYNC: reconciling authored content in existing world",
     {
       created: missing.length,
+      reconciledChapter1TestimonyNpcs: testimonyReconciliations.length,
       deletedObsoleteMuck: obsoleteDeletes.length,
       thawedRequestBoards: boardThaws.length,
       ...firstAndLastLocalDevSeedIds(missing),
@@ -8811,6 +8959,11 @@ async function seedLocalDevTerrainIfMissing(
       }
       await seedMissingLocalDevContentIntoExistingWorld(service, worldApi);
       await seedMissingChapter1TerrainIntoExistingWorld(service, worldApi);
+      // Terrain is intentionally untouched in this branch, but existing
+      // authored NPCs still need versioned coordinate/identity updates. This
+      // is what moves the single canonical Sergeant Holt body to the Grove
+      // watch house and prevents a stale remote expression target.
+      await reconcileLocalDevRuntimeContent(service, worldApi);
       await reconcileLocalDevPlayerLikeNpcCosmetics(service, worldApi);
     }
     return;

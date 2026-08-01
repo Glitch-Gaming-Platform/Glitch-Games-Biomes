@@ -29,6 +29,11 @@ import {
 } from "@/shared/harthmere/energy_weapon_catalog";
 import { harthmereBossAttacksForLabel } from "@/shared/harthmere/boss_attack_catalog";
 import { harthmereMuckCreatureAssetKeyForLabel } from "@/shared/harthmere/muck_creature_assets";
+import { getHarthmerePremiumWeapon } from "@/shared/harthmere/premium_weapon_catalog";
+import {
+  harthmereMagicChargeDurationSecs,
+  isHarthmereMagicAttack,
+} from "@/shared/harthmere/magic_charge";
 
 export const HARTHMERE_NATIVE_COMBAT_VERSION =
   "harthmere-native-combat-v1" as const;
@@ -36,9 +41,12 @@ export const HARTHMERE_NATIVE_COMBAT_VERSION =
 export const HARTHMERE_HEX_FIREBALL_COOLDOWN_SECS = 20;
 export const HARTHMERE_HEX_FIREBALL_RANGE = 12;
 export const HARTHMERE_HEX_FIREBALL_MINIMUM_RANGE = 4.25;
-export const HARTHMERE_HEX_FIREBALL_CAST_TIME_SECS = 0.65;
+export const HARTHMERE_HEX_FIREBALL_CAST_TIME_SECS = 1;
 export const HARTHMERE_HEX_BOSS_SECONDARY_COOLDOWN_SECS = 5.5;
 export const HARTHMERE_HEX_BOSS_RANGED_RANGE = 18;
+export const HARTHMERE_INDISWORM_POISON_SPIT_RANGE = 12.5;
+export const HARTHMERE_INDISWORM_POISON_SPIT_MINIMUM_RANGE = 3.25;
+export const HARTHMERE_INDISWORM_POISON_SPIT_COOLDOWN_SECS = 8.5;
 
 export interface HarthmereNativeCombatSeedLike {
   seedId: string;
@@ -126,6 +134,8 @@ export function harthmereNativeNpcProjectilePresentation(input: {
         abilityId: string;
         projectileVisualId: string;
         castTime: number;
+        chargeTimeSecs?: number;
+        releaseTime?: number;
         aimPoint: readonly [number, number, number];
         result?: "hit" | "miss";
       }
@@ -137,11 +147,34 @@ export function harthmereNativeNpcProjectilePresentation(input: {
       rangedState?.abilityId === abilityId &&
       rangedState.projectileVisualId === projectileVisualId
   );
+  const magic = Boolean(
+    rangedAttack &&
+      isHarthmereMagicAttack({
+        damageType: rangedAttack.damageType,
+        projectileVisualId: rangedAttack.projectileVisualId,
+        explicitMagic: rangedAttack.magic,
+      })
+  );
+  const chargeTimeSecs = rangedAttack
+    ? rangedState?.chargeTimeSecs ??
+      harthmereMagicChargeDurationSecs({
+        damageType: rangedAttack.damageType,
+        projectileVisualId: rangedAttack.projectileVisualId,
+        explicitMagic: rangedAttack.magic,
+        attackDamage: rangedAttack.attackDamage,
+        cooldownSecs: rangedAttack.cooldownSecs,
+        attackShape: rangedAttack.attackShape,
+      })
+    : 0;
+  const releaseTime = rangedState
+    ? rangedState.releaseTime ?? rangedState.castTime + chargeTimeSecs
+    : undefined;
   if (
     rangedAttack &&
     rangedState &&
     attackTime !== undefined &&
-    Math.abs(rangedState.castTime - attackTime) <= 0.001
+    releaseTime !== undefined &&
+    Math.abs(releaseTime - attackTime) <= 0.001
   ) {
     return {
       projectileVisualId: rangedState.projectileVisualId,
@@ -155,6 +188,10 @@ export function harthmereNativeNpcProjectilePresentation(input: {
       hitRadius: rangedAttack.hitRadius,
       coneAngleDeg: rangedAttack.coneAngleDeg,
       windupSecs: rangedAttack.castTimeSecs,
+      magic,
+      chargeTimeSecs,
+      chargeStartedAt: rangedState.castTime,
+      releaseTime,
       aimPoint: rangedState.aimPoint,
       result: rangedState.result,
     };
@@ -162,7 +199,41 @@ export function harthmereNativeNpcProjectilePresentation(input: {
   if (profile?.rangedAttacks?.length || !profile?.projectileVisualId) {
     return undefined;
   }
-  return { projectileVisualId: profile.projectileVisualId };
+  return {
+    projectileVisualId: profile.projectileVisualId,
+    windupSecs: profile.attackStrikeMomentSecs,
+  };
+}
+
+export function harthmereNativeNpcProjectileAttackTime(input: {
+  isDead: boolean;
+  activeEvade: boolean;
+  emoteAttackTime?: number;
+  retaliationAttackTime?: number;
+  rangedCastTime?: number;
+  rangedReleaseTime?: number;
+}): number | undefined {
+  if (input.isDead) {
+    return undefined;
+  }
+  // A serialized Anima ranged cast is the authoritative projectile identity
+  // and timeline. A nearby retaliation marker or a separately synchronized
+  // attack emote can legitimately carry a different timestamp; selecting one
+  // of those first makes harthmereNativeNpcProjectilePresentation reject the
+  // ranged state and produces server damage with no projectile on screen.
+  if (Number.isFinite(input.rangedReleaseTime)) {
+    return input.rangedReleaseTime;
+  }
+  if (Number.isFinite(input.rangedCastTime)) {
+    return input.rangedCastTime;
+  }
+  if (!input.activeEvade && Number.isFinite(input.emoteAttackTime)) {
+    return input.emoteAttackTime;
+  }
+  if (Number.isFinite(input.retaliationAttackTime)) {
+    return input.retaliationAttackTime;
+  }
+  return undefined;
 }
 
 function slug(value: string) {
@@ -176,8 +247,14 @@ function slug(value: string) {
 export function harthmereNativeNpcTypeKeyForSeed(
   seed: HarthmereNativeCombatSeedLike
 ) {
+  const remoteCornerApex = seed.areaId?.startsWith("remote_corner_apex_");
   if (/muck[- ]scarred helix/i.test(seed.displayName)) {
-    return "boss_muck_scarred_helix";
+    return remoteCornerApex
+      ? "boss_muck_scarred_helix_apex"
+      : "boss_muck_scarred_helix";
+  }
+  if (/alpha mucker/i.test(seed.displayName)) {
+    return "boss_alpha_mucker_apex";
   }
   if (/thaedryn/i.test(seed.displayName)) {
     return "boss_thaedryn_bellbound";
@@ -213,7 +290,10 @@ export function harthmereNativeNpcCombatProfileForSeed(
 ): HarthmereNativeNpcCombatProfile {
   const key = harthmereNativeNpcTypeKeyForSeed(seed);
   const level = Math.max(1, Math.trunc(seed.combatLevel ?? 1));
-  const boss = /boss|muck[- ]scarred helix/i.test(`${key} ${seed.displayName}`);
+  const boss = /boss|muck[- ]scarred helix|alpha mucker/i.test(
+    `${key} ${seed.displayName}`
+  );
+  const remoteCornerApex = seed.areaId?.startsWith("remote_corner_apex_");
   const livestock = seed.kind === "ambient_livestock";
   const sentinel = seed.kind === "robot_sentinel";
   const bandit = seed.kind === "ambient_bandit";
@@ -223,6 +303,7 @@ export function harthmereNativeNpcCombatProfileForSeed(
     livestock && (seed.species === "cow" || seed.species === "sheep");
   const tutorialRetaliationOnly = seed.areaId === "road_muckwad_patch";
   const hex = seed.combatKind === "hex" || /hex/i.test(seed.displayName);
+  const indisworm = /indisworm/i.test(seed.displayName);
   const thaedryn = key === "boss_thaedryn_bellbound";
   const isPlayerLikeAppearance = bandit ? true : undefined;
   const galoisPath = sentinel
@@ -244,6 +325,28 @@ export function harthmereNativeNpcCombatProfileForSeed(
   const secondaryVisual = getHarthmereProjectileVisual(
     thaedryn ? "thaedryn_resonance" : "hex_bolt"
   );
+  const poisonSpitVisual = getHarthmereProjectileVisual(
+    "indisworm_poison_spit"
+  );
+  const poisonSpitAttack: BehaviorRangedAttackParams | undefined =
+    indisworm && poisonSpitVisual
+      ? {
+          abilityId: "indisworm_poison_spit",
+          displayName: "Poison Spit",
+          projectileVisualId: poisonSpitVisual.id,
+          attackShape: "projectile",
+          damageType: "nature",
+          magic: false,
+          animationClip: "RangedAttack",
+          minimumDistance: HARTHMERE_INDISWORM_POISON_SPIT_MINIMUM_RANGE,
+          attackDistance: HARTHMERE_INDISWORM_POISON_SPIT_RANGE,
+          attackDamage: 28,
+          castTimeSecs: 0.78,
+          cooldownSecs: HARTHMERE_INDISWORM_POISON_SPIT_COOLDOWN_SECS,
+          sharedCooldownSecs: 3.25,
+          hitRadius: 0.72,
+        }
+      : undefined;
   const fireballAttack: BehaviorRangedAttackParams | undefined =
     hex && fireballVisual?.id === "fireball"
       ? {
@@ -270,7 +373,7 @@ export function harthmereNativeNpcCombatProfileForSeed(
           minimumDistance: 4,
           attackDistance: HARTHMERE_HEX_BOSS_RANGED_RANGE,
           attackDamage: Math.max(40, Math.round(attackDamage * 0.82)),
-          castTimeSecs: thaedryn ? 0.8 : 0.55,
+          castTimeSecs: thaedryn ? 1.15 : 1,
           cooldownSecs: HARTHMERE_HEX_BOSS_SECONDARY_COOLDOWN_SECS,
           sharedCooldownSecs: 2.75,
           hitRadius: thaedryn ? 1.25 : 0.9,
@@ -281,7 +384,7 @@ export function harthmereNativeNpcCombatProfileForSeed(
     : undefined;
   const rangedAttacks = authoredBossAttacks
     ? [...authoredBossAttacks]
-    : [fireballAttack, bossSecondaryAttack].filter(
+    : [poisonSpitAttack, fireballAttack, bossSecondaryAttack].filter(
         (attack): attack is BehaviorRangedAttackParams => Boolean(attack)
       );
   return {
@@ -300,10 +403,16 @@ export function harthmereNativeNpcCombatProfileForSeed(
       )
     ),
     attackDamage,
-    attackDistance: thaedryn
+    attackDistance: remoteCornerApex
+      ? seed.combatKind === "hex"
+        ? 5.5
+        : 9
+      : thaedryn
       ? 8
       : boss
       ? 3.2
+      : indisworm
+      ? 2.35
       : banditRole === "archer"
       ? 12
       : hex
@@ -311,8 +420,12 @@ export function harthmereNativeNpcCombatProfileForSeed(
       : livestock
       ? 2
       : 2.4,
-    attackIntervalSecs: boss
+    attackIntervalSecs: remoteCornerApex
+      ? 1.35
+      : boss
       ? 1.6
+      : indisworm
+      ? 2.05
       : banditRole === "skirmisher"
       ? 1.35
       : banditRole === "captain"
@@ -328,16 +441,35 @@ export function harthmereNativeNpcCombatProfileForSeed(
         ? 1.8
         : 2.4
       : 1.9,
-    attackStrikeMomentSecs: boss ? 0.42 : 0.5,
-    attackFovDeg: boss || banditRole === "captain" ? 170 : bandit ? 145 : 125,
+    attackStrikeMomentSecs:
+      banditRole === "archer" ? 0.85 : indisworm ? 0.72 : boss ? 0.42 : 0.5,
+    attackFovDeg: remoteCornerApex
+      ? 240
+      : boss || banditRole === "captain"
+      ? 170
+      : bandit || indisworm
+      ? 145
+      : 125,
     aggroTrigger:
       sentinel || livestock || tutorialRetaliationOnly || thaedryn || prisoner
         ? { kind: "onlyIfAttacked" }
         : {
             kind: "proximity",
-            distance: boss ? 18 : bandit ? 14 : hex ? 12 : 10.5,
+            distance: remoteCornerApex
+              ? 48
+              : boss
+              ? 18
+              : bandit
+              ? 14
+              : hex
+              ? 12
+              : indisworm
+              ? 11.5
+              : 10.5,
           },
-    disengageDistance: boss
+    disengageDistance: remoteCornerApex
+      ? 96
+      : boss
       ? 42
       : prisoner
       ? 8
@@ -345,46 +477,64 @@ export function harthmereNativeNpcCombatProfileForSeed(
       ? 16
       : bandit
       ? 32
+      : indisworm
+      ? 28
       : 34,
-    walkSpeed:
-      sentinel || thaedryn || prisoner
-        ? 0
-        : bandit
-        ? banditRole === "brute"
-          ? 1.8
-          : banditRole === "captain"
-          ? 2.4
-          : 2.7
-        : livestock
-        ? seed.sizeTier === "small"
-          ? 2.4
-          : quickerLargeLivestock
-          ? 1.65
-          : 1.4
-        : hex
-        ? 2.5
-        : 2.2,
-    runSpeed:
-      sentinel || thaedryn || prisoner
-        ? 0
-        : bandit
-        ? banditRole === "brute"
-          ? 4.2
-          : banditRole === "captain"
-          ? 5.2
-          : banditRole === "skirmisher"
-          ? 5.8
-          : 5.1
-        : livestock
-        ? seed.sizeTier === "small"
-          ? 4.4
-          : quickerLargeLivestock
-          ? 3.5
-          : 3.1
-        : hex
-        ? 4.8
-        : 4.4,
-    rotateSpeed: sentinel || prisoner ? 0 : boss ? 260 : bandit ? 250 : 220,
+    walkSpeed: remoteCornerApex
+      ? 2.7
+      : sentinel || thaedryn || prisoner
+      ? 0
+      : bandit
+      ? banditRole === "brute"
+        ? 1.8
+        : banditRole === "captain"
+        ? 2.4
+        : 2.7
+      : livestock
+      ? seed.sizeTier === "small"
+        ? 2.4
+        : quickerLargeLivestock
+        ? 1.65
+        : 1.4
+      : indisworm
+      ? 1.75
+      : hex
+      ? 2.5
+      : 2.2,
+    runSpeed: remoteCornerApex
+      ? 5.5
+      : sentinel || thaedryn || prisoner
+      ? 0
+      : bandit
+      ? banditRole === "brute"
+        ? 4.2
+        : banditRole === "captain"
+        ? 5.2
+        : banditRole === "skirmisher"
+        ? 5.8
+        : 5.1
+      : livestock
+      ? seed.sizeTier === "small"
+        ? 4.4
+        : quickerLargeLivestock
+        ? 3.5
+        : 3.1
+      : indisworm
+      ? 3.8
+      : hex
+      ? 4.8
+      : 4.4,
+    rotateSpeed: remoteCornerApex
+      ? 300
+      : sentinel || prisoner
+      ? 0
+      : boss
+      ? 260
+      : bandit
+      ? 250
+      : indisworm
+      ? 190
+      : 220,
     behaviorKind: sentinel
       ? "sentinel"
       : prisoner
@@ -463,7 +613,9 @@ export function harthmereNativeNpcBiscuit(
     id: profile.id,
     name: `harthmere_npc_${profile.key}`,
     displayName: profile.displayName,
-    boxSize: presentation?.boxSize ?? [1, 1.2, 1],
+    boxSize:
+      presentation?.boxSize ??
+      (profile.key === "monster_indisworm" ? [1.05, 1.9, 1.05] : [1, 1.2, 1]),
     rotateSpeed: profile.rotateSpeed,
     walkSpeed: profile.walkSpeed,
     runSpeed: profile.runSpeed,
@@ -588,6 +740,7 @@ export function harthmereNativeItemCombatProfile(
     };
   }
   const stats = definition.stats ?? {};
+  const premiumWeapon = getHarthmerePremiumWeapon(definition.itemId);
   const damagePerHit = Math.max(
     0,
     Number(
@@ -600,10 +753,17 @@ export function harthmereNativeItemCombatProfile(
   );
   const text = `${definition.itemId} ${definition.displayName}`.toLowerCase();
   const ranged =
-    /bow|crossbow/.test(text) || Number(stats.rangedAttack ?? 0) > 0;
+    premiumWeapon?.profile === "ranged" ||
+    premiumWeapon?.profile === "thrown" ||
+    /bow|crossbow|dart|throwing/.test(text) ||
+    Number(stats.rangedAttack ?? 0) > 0;
   const spell =
+    premiumWeapon?.profile === "magic" ||
+    premiumWeapon?.profile === "magicBook" ||
     definition.isSpellTome ||
-    /staff|wand|tome|spell/.test(`${text} ${definition.category ?? ""}`);
+    /staff|wand|tome|spell|scroll|focus/.test(
+      `${text} ${definition.category ?? ""}`
+    );
   const heavy =
     definition.twoHanded === true || /two.?hand|greatsword|maul/.test(text);
   const intervalSecs = ranged

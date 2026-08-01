@@ -10,6 +10,11 @@ on:
       - "requirements.txt"
       - "scripts/b/**"
       - "src/server/web/published_asset_data.ts"
+      - "src/server/web/main.ts"
+      - "src/pages/api/assets/player_mesh.glb.ts"
+      - "src/shared/wasm/types/galois.ts"
+      - "docs/docs/basics/galois.md"
+      - "docs/docs/galois/**"
 
 permissions:
   id-token: write # Needed for gcloud auth.
@@ -36,6 +41,8 @@ jobs:
       - run: ./b galois lint
       - run: ./b galois build
       - run: ./b test --path 'src/galois/**/test/*.ts'
+      - run: yarn --cwd docs install --frozen-lockfile --non-interactive
+      - run: yarn --cwd docs build
 
   # Make sure we can export assets, which tests both js and python components.
   export-ci:
@@ -54,6 +61,7 @@ jobs:
       - name: pip install
         uses: ./.github/actions/cached-pip-install
       - run: ./b ts-deps build
+      - run: bash src/galois/scripts/test_py.sh
       - run: ./b galois --no-pip-install-voxeloo assets publish -r '(moss|fishing|tuna|camera)' --dryRun
 
   # Makes sure that the assets specified in asset_versions.json are uploaded

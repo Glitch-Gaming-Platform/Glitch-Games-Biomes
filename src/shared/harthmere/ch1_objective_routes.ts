@@ -4,40 +4,28 @@
 // target, map aid, dialogue page and durable progress all consume these rows so
 // the player can never be sent to one witness while hearing another.
 
-import { CH1_TESTIMONIES } from "@/shared/harthmere/ch1_cast";
 import {
   CH1_ANCHORS,
   type Ch1AnchorKey,
   type Ch1Vec3,
 } from "@/shared/harthmere/ch1_ids";
+import { CH1_TESTIMONY_NPC_SEEDS } from "@/shared/harthmere/ch1_testimony_npcs";
+import type { BiomesId } from "@/shared/ids";
 
 export interface Ch1ObjectiveRouteStop {
   id: string;
   label: string;
   anchor: Ch1AnchorKey;
+  entityId?: BiomesId;
 }
-
-const TESTIMONY_ANCHORS: Readonly<Record<string, Ch1AnchorKey>> = {
-  testimony_alva: "testimony_alva",
-  testimony_helsa: "testimony_helsa",
-  testimony_grover: "testimony_grover",
-  testimony_coretta: "testimony_coretta",
-  testimony_emily: "testimony_emily",
-  testimony_patsy: "testimony_patsy",
-  testimony_richard: "testimony_richard",
-  testimony_runna: "testimony_runna",
-  testimony_drona: "testimony_drona",
-  testimony_gizela: "testimony_gizela",
-  testimony_davi: "testimony_davi",
-  testimony_allix: "testimony_allix",
-};
 
 export const CH1_TESTIMONY_ROUTE: readonly Ch1ObjectiveRouteStop[] =
   Object.freeze(
-    CH1_TESTIMONIES.map((testimony) => ({
-      id: testimony.id,
-      label: testimony.npc,
-      anchor: TESTIMONY_ANCHORS[testimony.id],
+    CH1_TESTIMONY_NPC_SEEDS.map((testimony) => ({
+      id: testimony.testimonyId,
+      label: testimony.displayName,
+      anchor: testimony.anchor,
+      entityId: testimony.entityId,
     }))
   );
 

@@ -32,11 +32,13 @@ const mucklingJointOrdering: string[] = ["Body", "Head", "L_Leg", "R_Leg"];
 export const mucklingSkeleton = l.toSkeleton(mucklingSkeletonData);
 
 export function voxForNpc(x: NpcEntry) {
-  if (x.assembly.kind !== "skeleton") {
-    throw new Error("Expected to receive a skeleton assembly.");
+  if (x.assembly.kind === "player") {
+    throw new Error("Player assemblies do not have a VOX source.");
   }
   return l.LoadVox(
-    x.assembly.animationTemplate.voxFile ?? voxPathFromNpcName(x.name)
+    x.assembly.kind === "gltf"
+      ? x.assembly.voxFile
+      : x.assembly.animationTemplate.voxFile ?? voxPathFromNpcName(x.name)
   );
 }
 
@@ -107,6 +109,11 @@ export interface NpcEntry {
     | {
         kind: "player";
         wearableParams: WearableParams;
+      }
+    | {
+        kind: "gltf";
+        gltfFile: string;
+        voxFile: string;
       };
 }
 
@@ -1155,6 +1162,14 @@ export const npcsList: NpcEntry[] = [
       animationTemplate: helpingRobotAnimationTemplate,
     },
   },
+  {
+    name: "indisworm",
+    assembly: {
+      kind: "gltf",
+      gltfFile: "npcs/indisworm.gltf",
+      voxFile: "npcs/indisworm_mesh.vox",
+    },
+  },
 ];
 
 function voxPathFromNpcName(name: string) {
@@ -1173,11 +1188,13 @@ function animatedGltfFromNpcEntry(x: NpcEntry): l.GeneralNode<"GLTF" | "GLB"> {
       break;
     case "player":
       return animatedcharacterMeshFromWearables(x.assembly.wearableParams);
+    case "gltf":
+      return l.LoadGLTF(x.assembly.gltfFile);
   }
 }
 
 function npcToItemMesh(x: NpcEntry): l.GeneralNode<"GLTFItemMesh"> | undefined {
-  if (x.assembly.kind !== "skeleton") {
+  if (x.assembly.kind === "player") {
     return undefined;
   }
 

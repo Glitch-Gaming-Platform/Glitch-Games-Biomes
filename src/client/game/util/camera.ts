@@ -362,10 +362,8 @@ export function getCamOrientation(orientation: ReadonlyVec2, flipAmount = 0.0) {
 }
 
 export function getOrientationFromQuat(quat: Quaternion): Vec2 {
-  return new THREE.Euler().setFromQuaternion(quat, "YXZ").toArray() as [
-    number,
-    number
-  ];
+  const orientation = new THREE.Euler().setFromQuaternion(quat, "YXZ");
+  return [orientation.x, orientation.y];
 }
 
 export function slerpOrientations(

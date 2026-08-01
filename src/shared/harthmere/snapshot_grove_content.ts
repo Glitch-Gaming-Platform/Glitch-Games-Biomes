@@ -505,7 +505,10 @@ export const SNAPSHOT_GROVE_NPCS: SnapshotGroveNpc[] = [
     seedServerNpc: true,
     homeArea: "the_grove",
     role: "Wayfinder, greeter, and emergency road warden",
-    authoredPosition: snapshotGroveFountainPosition(0, 0),
+    // Jackie has one canonical body. Her original Snapshot Grove entity now
+    // lives at the road-house post used by Chapter 1 instead of leaving an old
+    // copy at the fountain while a per-player story projection stands indoors.
+    authoredPosition: [476, SNAPSHOT_GROVE_NPC_FEET_Y, -129],
     orientation: [0, 3.15],
     shortDescription:
       "The Grove wayfinder who holds the starter road together.",

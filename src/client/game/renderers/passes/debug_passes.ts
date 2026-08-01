@@ -2,7 +2,7 @@ import { DepthVisualizePass } from "@/client/game/renderers/passes/depth_visuali
 import { ShaderPass } from "@/client/game/renderers/passes/shader_pass";
 import { TexturePass } from "@/client/game/renderers/passes/texture_pass";
 import * as THREE from "three";
-import { CopyShader } from "three/examples/jsm/shaders/CopyShader";
+import { CopyShader } from "three/examples/jsm/shaders/CopyShader.js";
 
 export function makeVisualizeNormalsPass() {
   return new ShaderPass("normal", CopyShader, {

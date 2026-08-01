@@ -64,6 +64,12 @@ import {
 import { isPointInsideHarthmereBusinessSafeSite } from "./business_customer_simulator";
 import { BUILDING_SYSTEM_PLOTS } from "./building_system";
 import { harthmereBossVisualForEntity } from "./boss_visual_assets";
+import type { HarthmereExoticMatterCaveId } from "./exotic_matter_caves";
+import {
+  HARTHMERE_INDISWORM_PRODUCTION_COUNT,
+  HARTHMERE_INDISWORM_SPAWNS,
+  isPositionInsideHarthmereIndiswormCave,
+} from "./indisworm_spawns";
 
 export const HARTHMERE_LIVE_ENTITY_PRODUCTION_SEED_VERSION =
   "harthmere-live-entity-production-seed" as const;
@@ -83,6 +89,8 @@ export interface HarthmereLiveEntityProductionSeed {
   displayName: string;
   areaId: string;
   areaLabel: string;
+  /** Underground cavern identity. These seeds keep their authored cave floor. */
+  caveId?: HarthmereExoticMatterCaveId;
   position: Vec3;
   orientation: Vec2;
   dialog: string;
@@ -130,6 +138,12 @@ export interface HarthmereLiveEntityProductionSeed {
    * `harthmereOpenWildsMixedGroupPositionIsValid` gates them.
    */
   wildsRelocatedPack?: boolean;
+  /**
+   * A deliberately isolated original-map encounter that uses the same outdoor
+   * terrain-grounding and exclusion contract as the relocated Wilds packs,
+   * without implying that the actor belongs to a mixed creature group.
+   */
+  openWildsEncounter?: boolean;
   /**
    * HARTHMERE_AUTHORED_MUCK_PACK: keep the authored position verbatim while
    * REMAINING inside a Muck territory. Used by the one pack left in the
@@ -188,6 +202,16 @@ function productionOutdoorMarkerPosition(
     : fallback;
 }
 
+function productionOutdoorSpawnPointPosition(
+  spawnPointId: string,
+  fallback: Vec3
+): Vec3 {
+  const point = HARTHMERE_PRODUCTION_PLACEMENT_MAP.outdoorSpawnPoints.find(
+    (candidate) => candidate.id === spawnPointId
+  );
+  return finiteVec3(point?.position) ?? fallback;
+}
+
 /** Quest-gated native boss; materialized only after accepting the contract. */
 export const HARTHMERE_NATIVE_MUCK_SCARRED_HELIX_SEED = {
   seedId: "live-helper-muck-scarred-helix",
@@ -235,6 +259,93 @@ export const HARTHMERE_NATIVE_THAEDRYN_SEED = {
   attackDamage: 160,
   killXp: 0,
 } satisfies HarthmereLiveEntityProductionSeed;
+
+// HARTHMERE_REMOTE_CORNER_BOSSES (2026-08-01)
+//
+// Four solitary apex encounters on measured original-map outdoor columns. The
+// sites sit in separate corner quadrants, west of the additive Harthmere
+// extension, outside every safe/Muck/robot/business/building exclusion, and at
+// least 110 horizontal metres from the nearest existing surface Mucker/Hex
+// group. Production grounding still probes each boss's complete authored body
+// footprint before persisting the final position and respawn anchor.
+export const HARTHMERE_REMOTE_CORNER_BOSS_FIRST_OFFSET = 10_971;
+export const HARTHMERE_REMOTE_CORNER_BOSS_PROGRESSION_LEVEL = 30;
+export const HARTHMERE_REMOTE_CORNER_BOSS_AREA_PREFIX =
+  "remote_corner_apex_" as const;
+
+export const HARTHMERE_REMOTE_CORNER_BOSS_LOCATIONS = [
+  {
+    corner: "northwest",
+    areaId: `${HARTHMERE_REMOTE_CORNER_BOSS_AREA_PREFIX}northwest_ridge`,
+    areaLabel: "Far Northwest Ridge",
+    outdoorSpawnPointId: "outdoor_59_-841",
+    fallbackPosition: [59, 21, -841] as Vec3,
+    displayName: "Alpha Mucker",
+    combatKind: "mux" as const,
+    combatHp: 3_600,
+    attackDamage: 135,
+  },
+  {
+    corner: "northeast",
+    areaId: `${HARTHMERE_REMOTE_CORNER_BOSS_AREA_PREFIX}northeast_headland`,
+    areaLabel: "Far Northeast Headland",
+    outdoorSpawnPointId: "outdoor_1747_-737",
+    fallbackPosition: [1747, 34, -737] as Vec3,
+    displayName: "Muck-Scarred Helix",
+    combatKind: "hex" as const,
+    combatHp: 2_800,
+    attackDamage: 175,
+  },
+  {
+    corner: "southwest",
+    areaId: `${HARTHMERE_REMOTE_CORNER_BOSS_AREA_PREFIX}southwest_height`,
+    areaLabel: "Far Southwest Height",
+    outdoorSpawnPointId: "outdoor_99_351",
+    fallbackPosition: [99, 106, 351] as Vec3,
+    displayName: "Muck-Scarred Helix",
+    combatKind: "hex" as const,
+    combatHp: 2_800,
+    attackDamage: 175,
+  },
+  {
+    corner: "southeast",
+    areaId: `${HARTHMERE_REMOTE_CORNER_BOSS_AREA_PREFIX}southeast_lowland`,
+    areaLabel: "Far Southeast Lowland",
+    outdoorSpawnPointId: "outdoor_1739_255",
+    fallbackPosition: [1739, 41, 255] as Vec3,
+    displayName: "Alpha Mucker",
+    combatKind: "mux" as const,
+    combatHp: 3_600,
+    attackDamage: 135,
+  },
+] as const;
+
+export const HARTHMERE_REMOTE_CORNER_BOSS_SEEDS: readonly HarthmereLiveEntityProductionSeed[] =
+  HARTHMERE_REMOTE_CORNER_BOSS_LOCATIONS.map((location, index) => ({
+    seedId: `remote-corner-boss-${location.corner}-${index + 1}`,
+    kind: "ambient_muck_monster" as const,
+    entityId: entityIdFromOffset(
+      HARTHMERE_REMOTE_CORNER_BOSS_FIRST_OFFSET + index
+    ),
+    idOffset: HARTHMERE_REMOTE_CORNER_BOSS_FIRST_OFFSET + index,
+    displayName: location.displayName,
+    areaId: location.areaId,
+    areaLabel: location.areaLabel,
+    position: productionOutdoorSpawnPointPosition(
+      location.outdoorSpawnPointId,
+      location.fallbackPosition
+    ),
+    orientation: [0, 0] as Vec2,
+    dialog: "",
+    description: `${location.displayName} claims the isolated ${location.areaLabel} as an apex hunting ground.`,
+    combatKind: location.combatKind,
+    combatLevel: HARTHMERE_REMOTE_CORNER_BOSS_PROGRESSION_LEVEL,
+    combatHp: location.combatHp,
+    attackDamage: location.attackDamage,
+    killXp: 2_500,
+    progressionLevel: HARTHMERE_REMOTE_CORNER_BOSS_PROGRESSION_LEVEL,
+    openWildsEncounter: true,
+  }));
 
 // Each sentinel reads a different landscape and failure mode. Area-keyed copy
 // prevents repeated recharge boilerplate and gives useful local warnings.
@@ -363,6 +474,9 @@ export function harthmereLiveEntitySizeForSeed(
   if (seed.kind === "ambient_bandit") {
     return [0.72, 1.8, 0.72];
   }
+  if (/indisworm/.test(text)) {
+    return [1.05, 1.9, 1.05];
+  }
   if (seed.bountyTier === "boss") {
     return seed.combatKind === "hex" ? [1.45, 2.5, 1.45] : [1.9, 2.25, 1.9];
   }
@@ -402,14 +516,15 @@ export const HARTHMERE_LIVE_ENTITY_ROBOT_SENTINEL_SEEDS =
 // (five Muckers and one Hex each); +24 on 2026-07-27 for the four Road to
 // Harthmere groups (two Hexes and four Mucklings each); +6 on 2026-07-28 for the
 // named Mossy Muckling hunt pack; +6 on 2026-07-29 for the Cobbled Muckling
-// tooth-drop pack. This is a checked-in bookkeeping figure that
+// tooth-drop pack; +4 on 2026-08-01 for the four isolated corner apex bosses.
+// This is a checked-in bookkeeping figure that
 // several tests assert against, so it has to move whenever a monster layout is
 // added or removed.
 //
 // The 2026-07-28 Muck pack relocation deliberately does NOT change this figure:
 // the three re-homed families keep their exact counts, ids and names and are
 // only split across more anchors.
-export const HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_PRODUCTION_COUNT = 212;
+export const HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_PRODUCTION_COUNT = 216;
 
 export interface HarthmereGuardedWildlifeLocation {
   areaId: string;
@@ -1228,6 +1343,7 @@ export const HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS: HarthmereLiveEntityProduc
         ...combat,
       } satisfies HarthmereLiveEntityProductionSeed;
     }),
+    ...HARTHMERE_REMOTE_CORNER_BOSS_SEEDS,
     // HARTHMERE_ROAD_TO_HARTHMERE_GROUPS: the monster half of the four road
     // packs. Joining this array (rather than the layout table) is what puts them
     // through the normal grounding, respawn, reconciliation, and validation
@@ -1235,6 +1351,41 @@ export const HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS: HarthmereLiveEntityProduc
     // redistribution so a pack can never be scattered away from its animals.
     ...HARTHMERE_ROAD_GROUP_MONSTER_SEEDS,
   ];
+
+export const HARTHMERE_LIVE_ENTITY_CAVERN_MONSTER_PRODUCTION_COUNT =
+  HARTHMERE_INDISWORM_PRODUCTION_COUNT;
+
+export const HARTHMERE_LIVE_ENTITY_CAVERN_MONSTER_SEEDS: HarthmereLiveEntityProductionSeed[] =
+  HARTHMERE_INDISWORM_SPAWNS.map((spawn, index) => ({
+    seedId: spawn.seedId,
+    kind: "ambient_muck_monster",
+    entityId: spawn.entityId,
+    idOffset: spawn.idOffset,
+    displayName: `Indisworm ${index + 1}`,
+    areaId: spawn.caveId,
+    areaLabel: spawn.caveLabel,
+    caveId: spawn.caveId,
+    position: [...spawn.position],
+    orientation: [...spawn.orientation],
+    groupId: spawn.groupId,
+    dialog: "",
+    description: `A human-sized armored cave worm hunting in ${spawn.caveLabel}. Its radial jaws tear at close range and its swollen acid gland launches poison spit.`,
+    combatKind: "mux",
+    combatLevel: 3,
+    combatHp: 92,
+    attackDamage: 34,
+    killXp: 55,
+    progressionLevel: spawn.progressionLevel,
+  }));
+
+/** Cavern positions are authored underground and must never use open-sky grounding. */
+export function harthmereGroundedCavernMonsterSeeds(): HarthmereLiveEntityProductionSeed[] {
+  return HARTHMERE_LIVE_ENTITY_CAVERN_MONSTER_SEEDS.map((seed) => ({
+    ...seed,
+    position: [...seed.position],
+    orientation: [...seed.orientation],
+  }));
+}
 
 // Huntable, passive-but-retaliating wildlife spread across the muck areas.
 // Cows, sheep, and rabbits graze the muck edge, ignore travelers until attacked,
@@ -1822,6 +1973,7 @@ export function harthmereLiveEntityIsOpenWildsMixedGroup(
     // because their areaIds are still shared with livestock that legitimately
     // stays on the Muck edge (and with the tutorial combat profile).
     seed.wildsRelocatedPack === true ||
+    seed.openWildsEncounter === true ||
     // The relocated guarded pocket moves its monsters AND its herd together, so
     // both sides have to leave the Muck-territory gate behind. Its areaId is
     // unique to that pocket, which is why an areaId test is safe here.
@@ -2275,6 +2427,7 @@ export function harthmereActiveLiveEntityProductionSeedIds(): BiomesId[] {
     ...harthmereGroundedMuckMonsterSeedsInTerritory().map(
       (seed) => seed.entityId
     ),
+    ...harthmereGroundedCavernMonsterSeeds().map((seed) => seed.entityId),
     ...harthmereGroundedLivestockSeedsInTerritory().map(
       (seed) => seed.entityId
     ),
@@ -2289,6 +2442,7 @@ export function harthmereRespawningLiveCreatureSeedIds(): BiomesId[] {
 export function harthmereRespawningLiveCreatureSeeds(): HarthmereLiveEntityProductionSeed[] {
   return [
     ...harthmereGroundedMuckMonsterSeedsInTerritory().map((seed) => seed),
+    ...harthmereGroundedCavernMonsterSeeds(),
     ...harthmereGroundedLivestockSeedsInTerritory().map((seed) => seed),
     ...HARTHMERE_NATIVE_BANDIT_SEEDS,
   ];
@@ -2305,6 +2459,7 @@ export function harthmereRespawningLiveCreatureSeedForId(
 export const HARTHMERE_LIVE_ENTITY_PRODUCTION_SEEDS = [
   ...HARTHMERE_LIVE_ENTITY_ROBOT_SENTINEL_SEEDS,
   ...HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS,
+  ...HARTHMERE_LIVE_ENTITY_CAVERN_MONSTER_SEEDS,
   ...HARTHMERE_LIVE_ENTITY_LIVESTOCK_SEEDS,
   ...HARTHMERE_NATIVE_BANDIT_SEEDS,
 ] as const;
@@ -2350,12 +2505,21 @@ export function validateHarthmereLiveEntityProductionSeeds() {
       seed.kind === "ambient_muck_monster"
         ? muckMonsterAreaForPosition(seed.position, 1.5)
         : undefined;
+    const caveId = "caveId" in seed ? seed.caveId : undefined;
+    const isCavernMonster = caveId !== undefined;
+    if (
+      isCavernMonster &&
+      !isPositionInsideHarthmereIndiswormCave(caveId, seed.position)
+    ) {
+      errors.push(`${seed.seedId}:outside_cavern_bounds`);
+    }
     const isOpenWildsGroup = harthmereLiveEntityIsOpenWildsMixedGroup(seed);
     if (
       isLiveEntityHelperQuestExcludedPosition(seed.position) &&
       !muckTerritory &&
       !harthmereLiveEntityIsTownLivestock(seed) &&
       !isOpenWildsGroup &&
+      !isCavernMonster &&
       !(seed.kind === "ambient_bandit" && seed.lockedInPlace)
     ) {
       errors.push(`${seed.seedId}:inside_excluded_settlement`);
@@ -2384,7 +2548,8 @@ export function validateHarthmereLiveEntityProductionSeeds() {
     if (
       seed.kind === "ambient_muck_monster" &&
       !muckTerritory &&
-      !isOpenWildsGroup
+      !isOpenWildsGroup &&
+      !isCavernMonster
     ) {
       errors.push(`${seed.seedId}:monster_outside_muck_territory`);
     }

@@ -17,7 +17,7 @@ import type { PropsWithChildren } from "react";
 import React from "react";
 import * as THREE from "three";
 import { Mesh, SkinnedMesh } from "three";
-import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
 interface ThreeObjectPreviewProps {
   object: THREE.Object3D | THREE.Mesh;

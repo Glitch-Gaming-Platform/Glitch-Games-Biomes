@@ -5,6 +5,7 @@ import {
   harthmereGatheringAuthorityNode,
   resolveHarthmereGatheringAuthorityAttempt,
 } from "../gathering_node_authority";
+import { SNAPSHOT_FISHING_RODS } from "../fishing_rods";
 
 describe("Harthmere gathering node authority", () => {
   const node = harthmereGatheringAuthorityNode("harthmere_north_iron_vein")!;
@@ -120,5 +121,48 @@ describe("Harthmere gathering node authority", () => {
     assert.ok(first.itemDeltas.iron_ore <= 4);
     assert.ok(first.respawnAtMs > input.nowMs);
     assert.ok(first.respawnAtMs <= input.nowMs + 420_000);
+  });
+
+  it("accepts every native fishing rod at the Harthmere river pool", () => {
+    const fishing = harthmereGatheringAuthorityNode(
+      "harthmere_river_fishing_pool"
+    )!;
+    const base = {
+      nodeId: fishing.id,
+      actorPosition: {
+        x: fishing.position[0],
+        y: fishing.position[1],
+        z: fishing.position[2],
+      },
+      equippedItemIds: [] as string[],
+      professionLevel: fishing.requiredSkill,
+      nowMs: 1_700_000_000_000,
+      randomSeed: "fishing-rods",
+    };
+
+    for (const rod of SNAPSHOT_FISHING_RODS) {
+      assert.equal(
+        resolveHarthmereGatheringAuthorityAttempt({
+          ...base,
+          equippedBiomesItemIds: [rod.id],
+        }).ok,
+        true,
+        rod.displayName
+      );
+    }
+    assert.equal(
+      resolveHarthmereGatheringAuthorityAttempt({
+        ...base,
+        equippedItemIds: ["simple_fishing_rod"],
+      }).ok,
+      true
+    );
+    assert.deepEqual(
+      resolveHarthmereGatheringAuthorityAttempt({
+        ...base,
+        equippedItemIds: ["rusty_pickaxe"],
+      }),
+      { ok: false, reason: "required_tool_missing:simple_fishing_rod" }
+    );
   });
 });

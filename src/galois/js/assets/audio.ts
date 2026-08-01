@@ -93,6 +93,8 @@ export const audioAssets = {
 
   music: ["audio/music-1"],
   muck_music: ["audio/muck-music-1"],
+  cave_music: ["audio/harthmere-environment/cave-music-loop"],
+  mountain_wind: ["audio/harthmere-environment/mountain-wind-loop"],
 
   npc_muckling_on_death: ["audio/npc-muckling-on-death-1"],
   npc_muckling_on_hit: [

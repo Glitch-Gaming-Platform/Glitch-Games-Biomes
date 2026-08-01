@@ -105,7 +105,42 @@ export function mainQuestFromTrackableQuestsForTest(
     }
     return undefined;
   }
+  const selectedStoryOrder = linearMainStoryProgressOrderForTest(
+    quest.questId,
+    quest.title
+  );
+  if (selectedStoryOrder >= 0) {
+    const currentStory = defaultMainQuestFromTrackableQuestsForTest(quests);
+    const currentStoryOrder = currentStory
+      ? linearMainStoryProgressOrderForTest(
+          currentStory.questId,
+          currentStory.title
+        )
+      : -1;
+    if (currentStory && currentStoryOrder > selectedStoryOrder) {
+      return currentStory;
+    }
+  }
   return quest;
+}
+
+/**
+ * Return the selection that should be persisted when the linear main story
+ * advances. Resolving the next quest only in render code made the map appear
+ * correct in some surfaces while localStorage, the journal star, HUD and
+ * MapManager continued tracking the completed quest. A missing selection is
+ * the first-run case and may adopt the story default; the explicit cleared
+ * sentinel and unrelated side-quest choices are never overridden.
+ */
+export function automaticMainQuestSelectionForTest(
+  quests: MapTrackableQuest[],
+  selection: BiomesUIMainQuestSelection | undefined,
+  nowMs = Date.now()
+): BiomesUIMainQuestSelection | undefined {
+  if (isBiomesUIMainQuestClearedSelection(selection)) return undefined;
+  const resolved = mainQuestFromTrackableQuestsForTest(quests, selection);
+  if (!resolved || resolved.questId === selection?.questId) return undefined;
+  return biomesUIMainQuestSelectionFromQuestForTest(resolved, nowMs);
 }
 
 function normalizedQuestTitle(value: string): string {
@@ -178,34 +213,33 @@ function isMainStoryIdentity(questId: string, title: string): boolean {
   );
 }
 
-function mainStoryOrder(quest: MapTrackableQuest) {
-  if (
-    quest.questId === "snapshot_road_ahead_full_chain" ||
-    quest.kind === "snapshot_nux_challenge_bridge"
-  ) {
-    return 0;
-  }
-  const nativeOrder = nativeRobotStoryQuestOrder(quest.questId);
+const NATIVE_ROBOT_STORY_QUEST_IDS_LENGTH = ROBOT_STORY_TITLES.length;
+
+/**
+ * Stable progress order for the single linear story handoff. Battery Not
+ * Included is intentionally excluded: it runs alongside Chapter 1 and must
+ * remain an explicit player choice rather than stealing the HUD automatically.
+ */
+export function linearMainStoryProgressOrderForTest(
+  questId: string,
+  title = ""
+): number {
+  if (questId === "snapshot_road_ahead_full_chain") return 0;
+  const nativeOrder = nativeRobotStoryQuestOrder(questId);
   if (nativeOrder >= 0) return nativeOrder;
+  const titleOrder = robotStoryTitleOrder(title);
+  if (titleOrder >= 0) return titleOrder;
   if (
-    Number(quest.questId) === Number(NATIVE_GIMME_SHELTER_QUEST_ID) ||
-    normalizedQuestTitle(quest.title) === GIMME_SHELTER_TITLE
+    Number(questId) === Number(NATIVE_GIMME_SHELTER_QUEST_ID) ||
+    normalizedQuestTitle(title) === GIMME_SHELTER_TITLE
   ) {
     return NATIVE_ROBOT_STORY_QUEST_IDS_LENGTH;
   }
-  const titleOrder = robotStoryTitleOrder(quest.title);
-  if (titleOrder >= 0) return titleOrder;
-  const chapter1Order = chapter1QuestOrder(quest.questId, quest.title);
-  if (chapter1Order >= 0) {
-    return NATIVE_ROBOT_STORY_QUEST_IDS_LENGTH + 1 + chapter1Order;
-  }
-  // Strictly after every Chapter 1 entry — see isBatteryNotIncludedIdentity.
-  return isBatteryNotIncludedIdentity(quest.questId, quest.title)
-    ? NATIVE_ROBOT_STORY_QUEST_IDS_LENGTH + 1 + CH1_QUESTS.length
+  const chapter1Order = chapter1QuestOrder(questId, title);
+  return chapter1Order >= 0
+    ? NATIVE_ROBOT_STORY_QUEST_IDS_LENGTH + 1 + chapter1Order
     : -1;
 }
-
-const NATIVE_ROBOT_STORY_QUEST_IDS_LENGTH = ROBOT_STORY_TITLES.length;
 
 /**
  * The onboarding/robot story remains the default main quest until its final
@@ -214,12 +248,38 @@ const NATIVE_ROBOT_STORY_QUEST_IDS_LENGTH = ROBOT_STORY_TITLES.length;
 export function defaultMainQuestFromTrackableQuestsForTest(
   quests: MapTrackableQuest[]
 ): MapTrackableQuest | undefined {
-  const story = quests
-    .filter((quest) => mainStoryOrder(quest) >= 0)
-    .sort((a, b) => mainStoryOrder(a) - mainStoryOrder(b));
-  return (
-    story.find((quest) => quest.status === "active") ??
-    story.find((quest) => quest.status === "available")
+  const linearStory = quests
+    .filter(
+      (quest) =>
+        linearMainStoryProgressOrderForTest(quest.questId, quest.title) >= 0
+    )
+    .sort(
+      (a, b) =>
+        linearMainStoryProgressOrderForTest(b.questId, b.title) -
+        linearMainStoryProgressOrderForTest(a.questId, a.title)
+    );
+  const activeLinearStory = linearStory.find(
+    (quest) => quest.status === "active"
+  );
+  if (activeLinearStory) return activeLinearStory;
+
+  const activeBattery = quests.find(
+    (quest) =>
+      isBatteryNotIncludedIdentity(quest.questId, quest.title) &&
+      quest.status === "active"
+  );
+  if (activeBattery) return activeBattery;
+
+  const availableLinearStory = linearStory
+    .slice()
+    .reverse()
+    .find((quest) => quest.status === "available");
+  if (availableLinearStory) return availableLinearStory;
+
+  return quests.find(
+    (quest) =>
+      isBatteryNotIncludedIdentity(quest.questId, quest.title) &&
+      quest.status === "available"
   );
 }
 

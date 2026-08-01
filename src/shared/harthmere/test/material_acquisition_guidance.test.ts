@@ -5,6 +5,8 @@ import {
   normalizeHarthmereMaterialItemId,
 } from "../material_acquisition_guidance";
 import { harthmereNativeBiomesIdForItemId } from "../harthmere_native_item_ids";
+import { CH1_QUESTS } from "../ch1_quests";
+import { ch1ObjectiveMaterialRequirements } from "../ch1_material_objectives";
 
 describe("Harthmere material acquisition guidance", () => {
   it("explains every real way to obtain Workbench iron", () => {
@@ -143,5 +145,54 @@ describe("Harthmere material acquisition guidance", () => {
         );
       }
     }
+  });
+
+  it("gives every Chapter 1 material requirement a real player-selected route", () => {
+    const materialSteps = CH1_QUESTS.flatMap((quest) =>
+      quest.steps.flatMap((step) => {
+        const requirements = ch1ObjectiveMaterialRequirements(step);
+        return requirements.length ? [{ quest, step, requirements }] : [];
+      })
+    );
+    assert.deepEqual(
+      materialSteps.map(({ step }) => step.id),
+      ["gather_parts", "provision", "provision_winter"]
+    );
+
+    for (const { quest, step, requirements } of materialSteps) {
+      for (const requirement of requirements) {
+        assert.ok(requirement.options.length > 0);
+        for (const option of requirement.options) {
+          const plan = harthmereMaterialAcquisitionPlan({
+            itemId: option.itemId,
+            itemName: option.itemName,
+            count: requirement.count,
+          });
+          assert.ok(
+            plan?.routes.length,
+            `${quest.title}/${step.title}/${option.itemId} needs a real acquisition route`
+          );
+          assert.ok(
+            plan!.routes.some((route) => route.markerPosition),
+            `${quest.title}/${step.title}/${option.itemId} needs a map-trackable route`
+          );
+        }
+      }
+    }
+
+    const gatherParts = materialSteps.find(
+      ({ step }) => step.id === "gather_parts"
+    )!;
+    assert.deepEqual(
+      gatherParts.requirements.map(({ count, options }) => [
+        options[0].itemId,
+        count,
+      ]),
+      [
+        ["scrap_metal", 4],
+        ["iron_ingot", 2],
+        ["tree_resin", 1],
+      ]
+    );
   });
 });

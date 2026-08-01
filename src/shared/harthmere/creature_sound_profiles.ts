@@ -25,6 +25,7 @@ export type HarthmereCreatureSoundGroup =
   | "animal"
   | "undead"
   | "forest_monster"
+  | "cavern_monster"
   | "dungeon_creature";
 
 export interface HarthmereCreatureSoundProfile {
@@ -344,6 +345,18 @@ const FOREST_MONSTER_SEEDS = names("forest_monster", [
   "Mossback Bear",
 ]);
 
+const CAVERN_MONSTER_SEEDS: readonly ProfileSeed[] = [
+  {
+    displayName: "Indisworm",
+    group: "cavern_monster",
+    aliases: ["Indis Worm"],
+    size: "large",
+    lore: "A human-sized segmented cavern predator with an armored back, pale underbody, radial mouth, crystal growths, and venom sacs that launch corrosive poison.",
+    signature:
+      "deep segmented chitin flex, wet radial-mouth rasp, crystal clicks, stone grit, venom-sac pressure, and a low subterranean throat pulse",
+  },
+];
+
 const DUNGEON_CREATURE_SEEDS = names("dungeon_creature", [
   "Unfinished Stalker",
 ]);
@@ -392,6 +405,7 @@ function inferredSize(seed: ProfileSeed): HarthmereCreatureSoundSize {
     if (/treant/.test(text)) return "huge";
     return "medium";
   }
+  if (seed.group === "cavern_monster") return "large";
   if (seed.group === "dungeon_creature") return "large";
   if (/rabbit|mouse|rat|squirrel|songbird|frog|crow|chicken/.test(text)) {
     return "tiny";
@@ -560,6 +574,9 @@ function inferredSignature(seed: ProfileSeed) {
     if (/bear/.test(text))
       return "large mossback bear growls, bark-crusted hide, heavy paws, and deep forest breath";
   }
+  if (seed.group === "cavern_monster") {
+    return "deep segmented chitin flex, wet radial-mouth rasp, crystal clicks, stone grit, venom-sac pressure, and a low subterranean throat pulse";
+  }
   if (seed.group === "dungeon_creature") {
     return "large unfinished humanoid-predator breath, half-formed wood and ice joints, dragging steps, and an incomplete resonant cry";
   }
@@ -584,6 +601,8 @@ function inferredLore(seed: ProfileSeed) {
     return `${seed.displayName} is tied to Harthmere graves, bells, drowned places, disturbed relics, and night behavior.`;
   if (seed.group === "forest_monster")
     return `${seed.displayName} protects or haunts corrupted Old Wood groves, rare resources, storms, and overharvested territory.`;
+  if (seed.group === "cavern_monster")
+    return `${seed.displayName} is a deep-cavern predator built for armored close combat and pressurized venom attacks.`;
   return `${seed.displayName} is a hostile Chapter 1 dungeon creature with an authored material and movement identity.`;
 }
 
@@ -641,6 +660,7 @@ export const HARTHMERE_CREATURE_SOUND_PROFILES: readonly HarthmereCreatureSoundP
       ...ANIMAL_SEEDS,
       ...UNDEAD_SEEDS,
       ...FOREST_MONSTER_SEEDS,
+      ...CAVERN_MONSTER_SEEDS,
       ...DUNGEON_CREATURE_SEEDS,
     ].map(profile)
   );

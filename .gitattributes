@@ -68,3 +68,11 @@ public/assets/harthmere/weapon_previews/** -text -filter -merge -diff
 src/galois/data/animations/character-animations.gltf -text -filter -merge -diff
 src/galois/data/npcs/*_animations.gltf -text -filter -merge -diff
 src/galois/data/npcs/harthmere_bosses/** -text -filter -merge -diff
+
+# Keep the current Harthmere music and Indisworm source assets in regular Git
+# while the repository's Git LFS quota is exhausted. These files are all well
+# below GitHub's per-file size limit.
+src/galois/data/audio/muck-music-1.webm -text -filter -merge -diff
+src/galois/data/audio/harthmere-environment/** -text -filter -merge -diff
+src/galois/data/audio/muck-music-alternates/** -text -filter -merge -diff
+src/galois/data/npcs/indisworm* -text -filter -merge -diff

@@ -19,9 +19,7 @@ export abstract class ReadonlyDelta {
   abstract hasComponent<C extends keyof Entity>(component: C): boolean;
   abstract staleOk(): ReadonlyDelta;
 
-  has<C extends keyof Entity>(
-    ...components: C[]
-  ): this is DeltaWith<C> {
+  has<C extends keyof Entity>(...components: C[]): this is DeltaWith<C> {
     for (const component of components) {
       if (!this.hasComponent(component)) {
         return false;
@@ -714,7 +712,9 @@ export abstract class ReadonlyDelta {
   abstract looseItem(): c.ReadonlyLooseItem | undefined;
   abstract inventory(): c.ReadonlyInventory | undefined;
   abstract containerInventory(): c.ReadonlyContainerInventory | undefined;
-  abstract pricedContainerInventory(): c.ReadonlyPricedContainerInventory | undefined;
+  abstract pricedContainerInventory():
+    | c.ReadonlyPricedContainerInventory
+    | undefined;
   abstract selectedItem(): c.ReadonlySelectedItem | undefined;
   abstract wearing(): c.ReadonlyWearing | undefined;
   abstract emote(): c.ReadonlyEmote | undefined;
@@ -735,7 +735,9 @@ export abstract class ReadonlyDelta {
   abstract deedComponent(): c.ReadonlyDeedComponent | undefined;
   abstract groupPreviewComponent(): c.ReadonlyGroupPreviewComponent | undefined;
   abstract blueprintComponent(): c.ReadonlyBlueprintComponent | undefined;
-  abstract craftingStationComponent(): c.ReadonlyCraftingStationComponent | undefined;
+  abstract craftingStationComponent():
+    | c.ReadonlyCraftingStationComponent
+    | undefined;
   abstract health(): c.ReadonlyHealth | undefined;
   abstract buffsComponent(): c.ReadonlyBuffsComponent | undefined;
   abstract gremlin(): c.ReadonlyGremlin | undefined;
@@ -759,9 +761,13 @@ export abstract class ReadonlyDelta {
   abstract minigameElement(): c.ReadonlyMinigameElement | undefined;
   abstract activeTray(): c.ReadonlyActiveTray | undefined;
   abstract stashed(): c.ReadonlyStashed | undefined;
-  abstract minigameInstanceTickInfo(): c.ReadonlyMinigameInstanceTickInfo | undefined;
+  abstract minigameInstanceTickInfo():
+    | c.ReadonlyMinigameInstanceTickInfo
+    | undefined;
   abstract warpingTo(): c.ReadonlyWarpingTo | undefined;
-  abstract minigameInstanceExpire(): c.ReadonlyMinigameInstanceExpire | undefined;
+  abstract minigameInstanceExpire():
+    | c.ReadonlyMinigameInstanceExpire
+    | undefined;
   abstract placerComponent(): c.ReadonlyPlacerComponent | undefined;
   abstract questGiver(): c.ReadonlyQuestGiver | undefined;
   abstract defaultDialog(): c.ReadonlyDefaultDialog | undefined;
@@ -778,7 +784,9 @@ export abstract class ReadonlyDelta {
   abstract landmark(): c.ReadonlyLandmark | undefined;
   abstract collideable(): c.ReadonlyCollideable | undefined;
   abstract restoration(): c.ReadonlyRestoration | undefined;
-  abstract terrainRestorationDiff(): c.ReadonlyTerrainRestorationDiff | undefined;
+  abstract terrainRestorationDiff():
+    | c.ReadonlyTerrainRestorationDiff
+    | undefined;
   abstract team(): c.ReadonlyTeam | undefined;
   abstract playerCurrentTeam(): c.ReadonlyPlayerCurrentTeam | undefined;
   abstract userRoles(): c.ReadonlyUserRoles | undefined;
@@ -794,8 +802,12 @@ export abstract class ReadonlyDelta {
   abstract idle(): c.ReadonlyIdle | undefined;
   abstract voice(): c.ReadonlyVoice | undefined;
   abstract giftGiver(): c.ReadonlyGiftGiver | undefined;
-  abstract harthmereEcsTransactionLedger(): c.ReadonlyHarthmereEcsTransactionLedger | undefined;
-  abstract harthmereMaterialStorage(): c.ReadonlyHarthmereMaterialStorage | undefined;
+  abstract harthmereEcsTransactionLedger():
+    | c.ReadonlyHarthmereEcsTransactionLedger
+    | undefined;
+  abstract harthmereMaterialStorage():
+    | c.ReadonlyHarthmereMaterialStorage
+    | undefined;
   abstract npcCombatState(): c.ReadonlyNpcCombatState | undefined;
   abstract movementState(): c.ReadonlyMovementState | undefined;
 }
@@ -817,9 +829,7 @@ export abstract class Delta extends ReadonlyDelta {
     }
   }
 
-  has<C extends keyof Entity>(
-    ...components: C[]
-  ): this is DeltaWith<C> {
+  has<C extends keyof Entity>(...components: C[]): this is DeltaWith<C> {
     for (const component of components) {
       if (!this.hasComponent(component)) {
         return false;
@@ -838,7 +848,9 @@ export abstract class Delta extends ReadonlyDelta {
       this.delta.iced = c.Iced.clone(other.iced);
     }
     if (other.remote_connection !== undefined) {
-      this.delta.remote_connection = c.RemoteConnection.clone(other.remote_connection);
+      this.delta.remote_connection = c.RemoteConnection.clone(
+        other.remote_connection
+      );
     }
     if (other.position !== undefined) {
       this.delta.position = c.Position.clone(other.position);
@@ -865,16 +877,22 @@ export abstract class Delta extends ReadonlyDelta {
       this.delta.shard_shapes = c.ShardShapes.clone(other.shard_shapes);
     }
     if (other.shard_sky_occlusion !== undefined) {
-      this.delta.shard_sky_occlusion = c.ShardSkyOcclusion.clone(other.shard_sky_occlusion);
+      this.delta.shard_sky_occlusion = c.ShardSkyOcclusion.clone(
+        other.shard_sky_occlusion
+      );
     }
     if (other.shard_irradiance !== undefined) {
-      this.delta.shard_irradiance = c.ShardIrradiance.clone(other.shard_irradiance);
+      this.delta.shard_irradiance = c.ShardIrradiance.clone(
+        other.shard_irradiance
+      );
     }
     if (other.shard_water !== undefined) {
       this.delta.shard_water = c.ShardWater.clone(other.shard_water);
     }
     if (other.shard_occupancy !== undefined) {
-      this.delta.shard_occupancy = c.ShardOccupancy.clone(other.shard_occupancy);
+      this.delta.shard_occupancy = c.ShardOccupancy.clone(
+        other.shard_occupancy
+      );
     }
     if (other.shard_dye !== undefined) {
       this.delta.shard_dye = c.ShardDye.clone(other.shard_dye);
@@ -907,10 +925,14 @@ export abstract class Delta extends ReadonlyDelta {
       this.delta.inventory = c.Inventory.clone(other.inventory);
     }
     if (other.container_inventory !== undefined) {
-      this.delta.container_inventory = c.ContainerInventory.clone(other.container_inventory);
+      this.delta.container_inventory = c.ContainerInventory.clone(
+        other.container_inventory
+      );
     }
     if (other.priced_container_inventory !== undefined) {
-      this.delta.priced_container_inventory = c.PricedContainerInventory.clone(other.priced_container_inventory);
+      this.delta.priced_container_inventory = c.PricedContainerInventory.clone(
+        other.priced_container_inventory
+      );
     }
     if (other.selected_item !== undefined) {
       this.delta.selected_item = c.SelectedItem.clone(other.selected_item);
@@ -922,10 +944,14 @@ export abstract class Delta extends ReadonlyDelta {
       this.delta.emote = c.Emote.clone(other.emote);
     }
     if (other.appearance_component !== undefined) {
-      this.delta.appearance_component = c.AppearanceComponent.clone(other.appearance_component);
+      this.delta.appearance_component = c.AppearanceComponent.clone(
+        other.appearance_component
+      );
     }
     if (other.group_component !== undefined) {
-      this.delta.group_component = c.GroupComponent.clone(other.group_component);
+      this.delta.group_component = c.GroupComponent.clone(
+        other.group_component
+      );
     }
     if (other.challenges !== undefined) {
       this.delta.challenges = c.Challenges.clone(other.challenges);
@@ -946,7 +972,9 @@ export abstract class Delta extends ReadonlyDelta {
       this.delta.player_status = c.PlayerStatus.clone(other.player_status);
     }
     if (other.player_behavior !== undefined) {
-      this.delta.player_behavior = c.PlayerBehavior.clone(other.player_behavior);
+      this.delta.player_behavior = c.PlayerBehavior.clone(
+        other.player_behavior
+      );
     }
     if (other.world_metadata !== undefined) {
       this.delta.world_metadata = c.WorldMetadata.clone(other.world_metadata);
@@ -958,7 +986,9 @@ export abstract class Delta extends ReadonlyDelta {
       this.delta.npc_state = c.NpcState.clone(other.npc_state);
     }
     if (other.group_preview_reference !== undefined) {
-      this.delta.group_preview_reference = c.GroupPreviewReference.clone(other.group_preview_reference);
+      this.delta.group_preview_reference = c.GroupPreviewReference.clone(
+        other.group_preview_reference
+      );
     }
     if (other.acl_component !== undefined) {
       this.delta.acl_component = c.AclComponent.clone(other.acl_component);
@@ -967,34 +997,48 @@ export abstract class Delta extends ReadonlyDelta {
       this.delta.deed_component = c.DeedComponent.clone(other.deed_component);
     }
     if (other.group_preview_component !== undefined) {
-      this.delta.group_preview_component = c.GroupPreviewComponent.clone(other.group_preview_component);
+      this.delta.group_preview_component = c.GroupPreviewComponent.clone(
+        other.group_preview_component
+      );
     }
     if (other.blueprint_component !== undefined) {
-      this.delta.blueprint_component = c.BlueprintComponent.clone(other.blueprint_component);
+      this.delta.blueprint_component = c.BlueprintComponent.clone(
+        other.blueprint_component
+      );
     }
     if (other.crafting_station_component !== undefined) {
-      this.delta.crafting_station_component = c.CraftingStationComponent.clone(other.crafting_station_component);
+      this.delta.crafting_station_component = c.CraftingStationComponent.clone(
+        other.crafting_station_component
+      );
     }
     if (other.health !== undefined) {
       this.delta.health = c.Health.clone(other.health);
     }
     if (other.buffs_component !== undefined) {
-      this.delta.buffs_component = c.BuffsComponent.clone(other.buffs_component);
+      this.delta.buffs_component = c.BuffsComponent.clone(
+        other.buffs_component
+      );
     }
     if (other.gremlin !== undefined) {
       this.delta.gremlin = c.Gremlin.clone(other.gremlin);
     }
     if (other.placeable_component !== undefined) {
-      this.delta.placeable_component = c.PlaceableComponent.clone(other.placeable_component);
+      this.delta.placeable_component = c.PlaceableComponent.clone(
+        other.placeable_component
+      );
     }
     if (other.grouped_entities !== undefined) {
-      this.delta.grouped_entities = c.GroupedEntities.clone(other.grouped_entities);
+      this.delta.grouped_entities = c.GroupedEntities.clone(
+        other.grouped_entities
+      );
     }
     if (other.in_group !== undefined) {
       this.delta.in_group = c.InGroup.clone(other.in_group);
     }
     if (other.picture_frame_contents !== undefined) {
-      this.delta.picture_frame_contents = c.PictureFrameContents.clone(other.picture_frame_contents);
+      this.delta.picture_frame_contents = c.PictureFrameContents.clone(
+        other.picture_frame_contents
+      );
     }
     if (other.trigger_state !== undefined) {
       this.delta.trigger_state = c.TriggerState.clone(other.trigger_state);
@@ -1003,10 +1047,14 @@ export abstract class Delta extends ReadonlyDelta {
       this.delta.lifetime_stats = c.LifetimeStats.clone(other.lifetime_stats);
     }
     if (other.occupancy_component !== undefined) {
-      this.delta.occupancy_component = c.OccupancyComponent.clone(other.occupancy_component);
+      this.delta.occupancy_component = c.OccupancyComponent.clone(
+        other.occupancy_component
+      );
     }
     if (other.video_component !== undefined) {
-      this.delta.video_component = c.VideoComponent.clone(other.video_component);
+      this.delta.video_component = c.VideoComponent.clone(
+        other.video_component
+      );
     }
     if (other.player_session !== undefined) {
       this.delta.player_session = c.PlayerSession.clone(other.player_session);
@@ -1015,10 +1063,14 @@ export abstract class Delta extends ReadonlyDelta {
       this.delta.preset_applied = c.PresetApplied.clone(other.preset_applied);
     }
     if (other.preset_prototype !== undefined) {
-      this.delta.preset_prototype = c.PresetPrototype.clone(other.preset_prototype);
+      this.delta.preset_prototype = c.PresetPrototype.clone(
+        other.preset_prototype
+      );
     }
     if (other.farming_plant_component !== undefined) {
-      this.delta.farming_plant_component = c.FarmingPlantComponent.clone(other.farming_plant_component);
+      this.delta.farming_plant_component = c.FarmingPlantComponent.clone(
+        other.farming_plant_component
+      );
     }
     if (other.shard_farming !== undefined) {
       this.delta.shard_farming = c.ShardFarming.clone(other.shard_farming);
@@ -1027,16 +1079,24 @@ export abstract class Delta extends ReadonlyDelta {
       this.delta.created_by = c.CreatedBy.clone(other.created_by);
     }
     if (other.minigame_component !== undefined) {
-      this.delta.minigame_component = c.MinigameComponent.clone(other.minigame_component);
+      this.delta.minigame_component = c.MinigameComponent.clone(
+        other.minigame_component
+      );
     }
     if (other.minigame_instance !== undefined) {
-      this.delta.minigame_instance = c.MinigameInstance.clone(other.minigame_instance);
+      this.delta.minigame_instance = c.MinigameInstance.clone(
+        other.minigame_instance
+      );
     }
     if (other.playing_minigame !== undefined) {
-      this.delta.playing_minigame = c.PlayingMinigame.clone(other.playing_minigame);
+      this.delta.playing_minigame = c.PlayingMinigame.clone(
+        other.playing_minigame
+      );
     }
     if (other.minigame_element !== undefined) {
-      this.delta.minigame_element = c.MinigameElement.clone(other.minigame_element);
+      this.delta.minigame_element = c.MinigameElement.clone(
+        other.minigame_element
+      );
     }
     if (other.active_tray !== undefined) {
       this.delta.active_tray = c.ActiveTray.clone(other.active_tray);
@@ -1045,16 +1105,22 @@ export abstract class Delta extends ReadonlyDelta {
       this.delta.stashed = c.Stashed.clone(other.stashed);
     }
     if (other.minigame_instance_tick_info !== undefined) {
-      this.delta.minigame_instance_tick_info = c.MinigameInstanceTickInfo.clone(other.minigame_instance_tick_info);
+      this.delta.minigame_instance_tick_info = c.MinigameInstanceTickInfo.clone(
+        other.minigame_instance_tick_info
+      );
     }
     if (other.warping_to !== undefined) {
       this.delta.warping_to = c.WarpingTo.clone(other.warping_to);
     }
     if (other.minigame_instance_expire !== undefined) {
-      this.delta.minigame_instance_expire = c.MinigameInstanceExpire.clone(other.minigame_instance_expire);
+      this.delta.minigame_instance_expire = c.MinigameInstanceExpire.clone(
+        other.minigame_instance_expire
+      );
     }
     if (other.placer_component !== undefined) {
-      this.delta.placer_component = c.PlacerComponent.clone(other.placer_component);
+      this.delta.placer_component = c.PlacerComponent.clone(
+        other.placer_component
+      );
     }
     if (other.quest_giver !== undefined) {
       this.delta.quest_giver = c.QuestGiver.clone(other.quest_giver);
@@ -1066,7 +1132,9 @@ export abstract class Delta extends ReadonlyDelta {
       this.delta.unmuck = c.Unmuck.clone(other.unmuck);
     }
     if (other.robot_component !== undefined) {
-      this.delta.robot_component = c.RobotComponent.clone(other.robot_component);
+      this.delta.robot_component = c.RobotComponent.clone(
+        other.robot_component
+      );
     }
     if (other.admin_entity !== undefined) {
       this.delta.admin_entity = c.AdminEntity.clone(other.admin_entity);
@@ -1075,7 +1143,9 @@ export abstract class Delta extends ReadonlyDelta {
       this.delta.protection = c.Protection.clone(other.protection);
     }
     if (other.projects_protection !== undefined) {
-      this.delta.projects_protection = c.ProjectsProtection.clone(other.projects_protection);
+      this.delta.projects_protection = c.ProjectsProtection.clone(
+        other.projects_protection
+      );
     }
     if (other.deletes_with !== undefined) {
       this.delta.deletes_with = c.DeletesWith.clone(other.deletes_with);
@@ -1084,13 +1154,17 @@ export abstract class Delta extends ReadonlyDelta {
       this.delta.item_buyer = c.ItemBuyer.clone(other.item_buyer);
     }
     if (other.inspection_tweaks !== undefined) {
-      this.delta.inspection_tweaks = c.InspectionTweaks.clone(other.inspection_tweaks);
+      this.delta.inspection_tweaks = c.InspectionTweaks.clone(
+        other.inspection_tweaks
+      );
     }
     if (other.profile_pic !== undefined) {
       this.delta.profile_pic = c.ProfilePic.clone(other.profile_pic);
     }
     if (other.entity_description !== undefined) {
-      this.delta.entity_description = c.EntityDescription.clone(other.entity_description);
+      this.delta.entity_description = c.EntityDescription.clone(
+        other.entity_description
+      );
     }
     if (other.landmark !== undefined) {
       this.delta.landmark = c.Landmark.clone(other.landmark);
@@ -1102,13 +1176,17 @@ export abstract class Delta extends ReadonlyDelta {
       this.delta.restoration = c.Restoration.clone(other.restoration);
     }
     if (other.terrain_restoration_diff !== undefined) {
-      this.delta.terrain_restoration_diff = c.TerrainRestorationDiff.clone(other.terrain_restoration_diff);
+      this.delta.terrain_restoration_diff = c.TerrainRestorationDiff.clone(
+        other.terrain_restoration_diff
+      );
     }
     if (other.team !== undefined) {
       this.delta.team = c.Team.clone(other.team);
     }
     if (other.player_current_team !== undefined) {
-      this.delta.player_current_team = c.PlayerCurrentTeam.clone(other.player_current_team);
+      this.delta.player_current_team = c.PlayerCurrentTeam.clone(
+        other.player_current_team
+      );
     }
     if (other.user_roles !== undefined) {
       this.delta.user_roles = c.UserRoles.clone(other.user_roles);
@@ -1138,7 +1216,9 @@ export abstract class Delta extends ReadonlyDelta {
       this.delta.death_info = c.DeathInfo.clone(other.death_info);
     }
     if (other.synthetic_stats !== undefined) {
-      this.delta.synthetic_stats = c.SyntheticStats.clone(other.synthetic_stats);
+      this.delta.synthetic_stats = c.SyntheticStats.clone(
+        other.synthetic_stats
+      );
     }
     if (other.idle !== undefined) {
       this.delta.idle = c.Idle.clone(other.idle);
@@ -1150,13 +1230,20 @@ export abstract class Delta extends ReadonlyDelta {
       this.delta.gift_giver = c.GiftGiver.clone(other.gift_giver);
     }
     if (other.harthmere_ecs_transaction_ledger !== undefined) {
-      this.delta.harthmere_ecs_transaction_ledger = c.HarthmereEcsTransactionLedger.clone(other.harthmere_ecs_transaction_ledger);
+      this.delta.harthmere_ecs_transaction_ledger =
+        c.HarthmereEcsTransactionLedger.clone(
+          other.harthmere_ecs_transaction_ledger
+        );
     }
     if (other.harthmere_material_storage !== undefined) {
-      this.delta.harthmere_material_storage = c.HarthmereMaterialStorage.clone(other.harthmere_material_storage);
+      this.delta.harthmere_material_storage = c.HarthmereMaterialStorage.clone(
+        other.harthmere_material_storage
+      );
     }
     if (other.npc_combat_state !== undefined) {
-      this.delta.npc_combat_state = c.NpcCombatState.clone(other.npc_combat_state);
+      this.delta.npc_combat_state = c.NpcCombatState.clone(
+        other.npc_combat_state
+      );
     }
     if (other.movement_state !== undefined) {
       this.delta.movement_state = c.MovementState.clone(other.movement_state);
@@ -1279,7 +1366,9 @@ export abstract class Delta extends ReadonlyDelta {
   mutableShardSkyOcclusion(): c.ShardSkyOcclusion {
     this.delta ??= {};
     if (this.delta.shard_sky_occlusion === undefined) {
-      this.delta.shard_sky_occlusion = c.ShardSkyOcclusion.clone(this.shardSkyOcclusion());
+      this.delta.shard_sky_occlusion = c.ShardSkyOcclusion.clone(
+        this.shardSkyOcclusion()
+      );
     }
     return this.delta.shard_sky_occlusion!;
   }
@@ -1294,7 +1383,9 @@ export abstract class Delta extends ReadonlyDelta {
   mutableShardIrradiance(): c.ShardIrradiance {
     this.delta ??= {};
     if (this.delta.shard_irradiance === undefined) {
-      this.delta.shard_irradiance = c.ShardIrradiance.clone(this.shardIrradiance());
+      this.delta.shard_irradiance = c.ShardIrradiance.clone(
+        this.shardIrradiance()
+      );
     }
     return this.delta.shard_irradiance!;
   }
@@ -1324,7 +1415,9 @@ export abstract class Delta extends ReadonlyDelta {
   mutableShardOccupancy(): c.ShardOccupancy {
     this.delta ??= {};
     if (this.delta.shard_occupancy === undefined) {
-      this.delta.shard_occupancy = c.ShardOccupancy.clone(this.shardOccupancy());
+      this.delta.shard_occupancy = c.ShardOccupancy.clone(
+        this.shardOccupancy()
+      );
     }
     return this.delta.shard_occupancy!;
   }
@@ -1489,7 +1582,9 @@ export abstract class Delta extends ReadonlyDelta {
   mutableContainerInventory(): c.ContainerInventory {
     this.delta ??= {};
     if (this.delta.container_inventory === undefined) {
-      this.delta.container_inventory = c.ContainerInventory.clone(this.containerInventory());
+      this.delta.container_inventory = c.ContainerInventory.clone(
+        this.containerInventory()
+      );
     }
     return this.delta.container_inventory!;
   }
@@ -1504,7 +1599,9 @@ export abstract class Delta extends ReadonlyDelta {
   mutablePricedContainerInventory(): c.PricedContainerInventory {
     this.delta ??= {};
     if (this.delta.priced_container_inventory === undefined) {
-      this.delta.priced_container_inventory = c.PricedContainerInventory.clone(this.pricedContainerInventory());
+      this.delta.priced_container_inventory = c.PricedContainerInventory.clone(
+        this.pricedContainerInventory()
+      );
     }
     return this.delta.priced_container_inventory!;
   }
@@ -1557,7 +1654,9 @@ export abstract class Delta extends ReadonlyDelta {
   mutableAppearanceComponent(): c.AppearanceComponent {
     this.delta ??= {};
     if (this.delta.appearance_component === undefined) {
-      this.delta.appearance_component = c.AppearanceComponent.clone(this.appearanceComponent());
+      this.delta.appearance_component = c.AppearanceComponent.clone(
+        this.appearanceComponent()
+      );
     }
     return this.delta.appearance_component!;
   }
@@ -1572,7 +1671,9 @@ export abstract class Delta extends ReadonlyDelta {
   mutableGroupComponent(): c.GroupComponent {
     this.delta ??= {};
     if (this.delta.group_component === undefined) {
-      this.delta.group_component = c.GroupComponent.clone(this.groupComponent());
+      this.delta.group_component = c.GroupComponent.clone(
+        this.groupComponent()
+      );
     }
     return this.delta.group_component!;
   }
@@ -1677,7 +1778,9 @@ export abstract class Delta extends ReadonlyDelta {
   mutablePlayerBehavior(): c.PlayerBehavior {
     this.delta ??= {};
     if (this.delta.player_behavior === undefined) {
-      this.delta.player_behavior = c.PlayerBehavior.clone(this.playerBehavior());
+      this.delta.player_behavior = c.PlayerBehavior.clone(
+        this.playerBehavior()
+      );
     }
     return this.delta.player_behavior!;
   }
@@ -1730,7 +1833,9 @@ export abstract class Delta extends ReadonlyDelta {
   mutableGroupPreviewReference(): c.GroupPreviewReference {
     this.delta ??= {};
     if (this.delta.group_preview_reference === undefined) {
-      this.delta.group_preview_reference = c.GroupPreviewReference.clone(this.groupPreviewReference());
+      this.delta.group_preview_reference = c.GroupPreviewReference.clone(
+        this.groupPreviewReference()
+      );
     }
     return this.delta.group_preview_reference!;
   }
@@ -1775,7 +1880,9 @@ export abstract class Delta extends ReadonlyDelta {
   mutableGroupPreviewComponent(): c.GroupPreviewComponent {
     this.delta ??= {};
     if (this.delta.group_preview_component === undefined) {
-      this.delta.group_preview_component = c.GroupPreviewComponent.clone(this.groupPreviewComponent());
+      this.delta.group_preview_component = c.GroupPreviewComponent.clone(
+        this.groupPreviewComponent()
+      );
     }
     return this.delta.group_preview_component!;
   }
@@ -1790,7 +1897,9 @@ export abstract class Delta extends ReadonlyDelta {
   mutableBlueprintComponent(): c.BlueprintComponent {
     this.delta ??= {};
     if (this.delta.blueprint_component === undefined) {
-      this.delta.blueprint_component = c.BlueprintComponent.clone(this.blueprintComponent());
+      this.delta.blueprint_component = c.BlueprintComponent.clone(
+        this.blueprintComponent()
+      );
     }
     return this.delta.blueprint_component!;
   }
@@ -1803,7 +1912,8 @@ export abstract class Delta extends ReadonlyDelta {
     (this.delta ??= {}).blueprint_component = null;
   }
   setCraftingStationComponent() {
-    (this.delta ??= {}).crafting_station_component = c.CraftingStationComponent.create();
+    (this.delta ??= {}).crafting_station_component =
+      c.CraftingStationComponent.create();
   }
 
   clearCraftingStationComponent() {
@@ -1827,7 +1937,9 @@ export abstract class Delta extends ReadonlyDelta {
   mutableBuffsComponent(): c.BuffsComponent {
     this.delta ??= {};
     if (this.delta.buffs_component === undefined) {
-      this.delta.buffs_component = c.BuffsComponent.clone(this.buffsComponent());
+      this.delta.buffs_component = c.BuffsComponent.clone(
+        this.buffsComponent()
+      );
     }
     return this.delta.buffs_component!;
   }
@@ -1849,7 +1961,9 @@ export abstract class Delta extends ReadonlyDelta {
   mutablePlaceableComponent(): c.PlaceableComponent {
     this.delta ??= {};
     if (this.delta.placeable_component === undefined) {
-      this.delta.placeable_component = c.PlaceableComponent.clone(this.placeableComponent());
+      this.delta.placeable_component = c.PlaceableComponent.clone(
+        this.placeableComponent()
+      );
     }
     return this.delta.placeable_component!;
   }
@@ -1864,7 +1978,9 @@ export abstract class Delta extends ReadonlyDelta {
   mutableGroupedEntities(): c.GroupedEntities {
     this.delta ??= {};
     if (this.delta.grouped_entities === undefined) {
-      this.delta.grouped_entities = c.GroupedEntities.clone(this.groupedEntities());
+      this.delta.grouped_entities = c.GroupedEntities.clone(
+        this.groupedEntities()
+      );
     }
     return this.delta.grouped_entities!;
   }
@@ -1894,7 +2010,9 @@ export abstract class Delta extends ReadonlyDelta {
   mutablePictureFrameContents(): c.PictureFrameContents {
     this.delta ??= {};
     if (this.delta.picture_frame_contents === undefined) {
-      this.delta.picture_frame_contents = c.PictureFrameContents.clone(this.pictureFrameContents());
+      this.delta.picture_frame_contents = c.PictureFrameContents.clone(
+        this.pictureFrameContents()
+      );
     }
     return this.delta.picture_frame_contents!;
   }
@@ -1939,7 +2057,9 @@ export abstract class Delta extends ReadonlyDelta {
   mutableOccupancyComponent(): c.OccupancyComponent {
     this.delta ??= {};
     if (this.delta.occupancy_component === undefined) {
-      this.delta.occupancy_component = c.OccupancyComponent.clone(this.occupancyComponent());
+      this.delta.occupancy_component = c.OccupancyComponent.clone(
+        this.occupancyComponent()
+      );
     }
     return this.delta.occupancy_component!;
   }
@@ -1954,7 +2074,9 @@ export abstract class Delta extends ReadonlyDelta {
   mutableVideoComponent(): c.VideoComponent {
     this.delta ??= {};
     if (this.delta.video_component === undefined) {
-      this.delta.video_component = c.VideoComponent.clone(this.videoComponent());
+      this.delta.video_component = c.VideoComponent.clone(
+        this.videoComponent()
+      );
     }
     return this.delta.video_component!;
   }
@@ -1999,7 +2121,9 @@ export abstract class Delta extends ReadonlyDelta {
   mutablePresetPrototype(): c.PresetPrototype {
     this.delta ??= {};
     if (this.delta.preset_prototype === undefined) {
-      this.delta.preset_prototype = c.PresetPrototype.clone(this.presetPrototype());
+      this.delta.preset_prototype = c.PresetPrototype.clone(
+        this.presetPrototype()
+      );
     }
     return this.delta.preset_prototype!;
   }
@@ -2014,7 +2138,9 @@ export abstract class Delta extends ReadonlyDelta {
   mutableFarmingPlantComponent(): c.FarmingPlantComponent {
     this.delta ??= {};
     if (this.delta.farming_plant_component === undefined) {
-      this.delta.farming_plant_component = c.FarmingPlantComponent.clone(this.farmingPlantComponent());
+      this.delta.farming_plant_component = c.FarmingPlantComponent.clone(
+        this.farmingPlantComponent()
+      );
     }
     return this.delta.farming_plant_component!;
   }
@@ -2059,7 +2185,9 @@ export abstract class Delta extends ReadonlyDelta {
   mutableMinigameComponent(): c.MinigameComponent {
     this.delta ??= {};
     if (this.delta.minigame_component === undefined) {
-      this.delta.minigame_component = c.MinigameComponent.clone(this.minigameComponent());
+      this.delta.minigame_component = c.MinigameComponent.clone(
+        this.minigameComponent()
+      );
     }
     return this.delta.minigame_component!;
   }
@@ -2074,7 +2202,9 @@ export abstract class Delta extends ReadonlyDelta {
   mutableMinigameInstance(): c.MinigameInstance {
     this.delta ??= {};
     if (this.delta.minigame_instance === undefined) {
-      this.delta.minigame_instance = c.MinigameInstance.clone(this.minigameInstance());
+      this.delta.minigame_instance = c.MinigameInstance.clone(
+        this.minigameInstance()
+      );
     }
     return this.delta.minigame_instance!;
   }
@@ -2089,7 +2219,9 @@ export abstract class Delta extends ReadonlyDelta {
   mutablePlayingMinigame(): c.PlayingMinigame {
     this.delta ??= {};
     if (this.delta.playing_minigame === undefined) {
-      this.delta.playing_minigame = c.PlayingMinigame.clone(this.playingMinigame());
+      this.delta.playing_minigame = c.PlayingMinigame.clone(
+        this.playingMinigame()
+      );
     }
     return this.delta.playing_minigame!;
   }
@@ -2104,7 +2236,9 @@ export abstract class Delta extends ReadonlyDelta {
   mutableMinigameElement(): c.MinigameElement {
     this.delta ??= {};
     if (this.delta.minigame_element === undefined) {
-      this.delta.minigame_element = c.MinigameElement.clone(this.minigameElement());
+      this.delta.minigame_element = c.MinigameElement.clone(
+        this.minigameElement()
+      );
     }
     return this.delta.minigame_element!;
   }
@@ -2149,7 +2283,9 @@ export abstract class Delta extends ReadonlyDelta {
   mutableMinigameInstanceTickInfo(): c.MinigameInstanceTickInfo {
     this.delta ??= {};
     if (this.delta.minigame_instance_tick_info === undefined) {
-      this.delta.minigame_instance_tick_info = c.MinigameInstanceTickInfo.clone(this.minigameInstanceTickInfo());
+      this.delta.minigame_instance_tick_info = c.MinigameInstanceTickInfo.clone(
+        this.minigameInstanceTickInfo()
+      );
     }
     return this.delta.minigame_instance_tick_info!;
   }
@@ -2179,7 +2315,9 @@ export abstract class Delta extends ReadonlyDelta {
   mutableMinigameInstanceExpire(): c.MinigameInstanceExpire {
     this.delta ??= {};
     if (this.delta.minigame_instance_expire === undefined) {
-      this.delta.minigame_instance_expire = c.MinigameInstanceExpire.clone(this.minigameInstanceExpire());
+      this.delta.minigame_instance_expire = c.MinigameInstanceExpire.clone(
+        this.minigameInstanceExpire()
+      );
     }
     return this.delta.minigame_instance_expire!;
   }
@@ -2194,7 +2332,9 @@ export abstract class Delta extends ReadonlyDelta {
   mutablePlacerComponent(): c.PlacerComponent {
     this.delta ??= {};
     if (this.delta.placer_component === undefined) {
-      this.delta.placer_component = c.PlacerComponent.clone(this.placerComponent());
+      this.delta.placer_component = c.PlacerComponent.clone(
+        this.placerComponent()
+      );
     }
     return this.delta.placer_component!;
   }
@@ -2254,7 +2394,9 @@ export abstract class Delta extends ReadonlyDelta {
   mutableRobotComponent(): c.RobotComponent {
     this.delta ??= {};
     if (this.delta.robot_component === undefined) {
-      this.delta.robot_component = c.RobotComponent.clone(this.robotComponent());
+      this.delta.robot_component = c.RobotComponent.clone(
+        this.robotComponent()
+      );
     }
     return this.delta.robot_component!;
   }
@@ -2291,7 +2433,9 @@ export abstract class Delta extends ReadonlyDelta {
   mutableProjectsProtection(): c.ProjectsProtection {
     this.delta ??= {};
     if (this.delta.projects_protection === undefined) {
-      this.delta.projects_protection = c.ProjectsProtection.clone(this.projectsProtection());
+      this.delta.projects_protection = c.ProjectsProtection.clone(
+        this.projectsProtection()
+      );
     }
     return this.delta.projects_protection!;
   }
@@ -2336,7 +2480,9 @@ export abstract class Delta extends ReadonlyDelta {
   mutableInspectionTweaks(): c.InspectionTweaks {
     this.delta ??= {};
     if (this.delta.inspection_tweaks === undefined) {
-      this.delta.inspection_tweaks = c.InspectionTweaks.clone(this.inspectionTweaks());
+      this.delta.inspection_tweaks = c.InspectionTweaks.clone(
+        this.inspectionTweaks()
+      );
     }
     return this.delta.inspection_tweaks!;
   }
@@ -2366,7 +2512,9 @@ export abstract class Delta extends ReadonlyDelta {
   mutableEntityDescription(): c.EntityDescription {
     this.delta ??= {};
     if (this.delta.entity_description === undefined) {
-      this.delta.entity_description = c.EntityDescription.clone(this.entityDescription());
+      this.delta.entity_description = c.EntityDescription.clone(
+        this.entityDescription()
+      );
     }
     return this.delta.entity_description!;
   }
@@ -2418,7 +2566,9 @@ export abstract class Delta extends ReadonlyDelta {
   mutableTerrainRestorationDiff(): c.TerrainRestorationDiff {
     this.delta ??= {};
     if (this.delta.terrain_restoration_diff === undefined) {
-      this.delta.terrain_restoration_diff = c.TerrainRestorationDiff.clone(this.terrainRestorationDiff());
+      this.delta.terrain_restoration_diff = c.TerrainRestorationDiff.clone(
+        this.terrainRestorationDiff()
+      );
     }
     return this.delta.terrain_restoration_diff!;
   }
@@ -2448,7 +2598,9 @@ export abstract class Delta extends ReadonlyDelta {
   mutablePlayerCurrentTeam(): c.PlayerCurrentTeam {
     this.delta ??= {};
     if (this.delta.player_current_team === undefined) {
-      this.delta.player_current_team = c.PlayerCurrentTeam.clone(this.playerCurrentTeam());
+      this.delta.player_current_team = c.PlayerCurrentTeam.clone(
+        this.playerCurrentTeam()
+      );
     }
     return this.delta.player_current_team!;
   }
@@ -2590,7 +2742,9 @@ export abstract class Delta extends ReadonlyDelta {
   mutableSyntheticStats(): c.SyntheticStats {
     this.delta ??= {};
     if (this.delta.synthetic_stats === undefined) {
-      this.delta.synthetic_stats = c.SyntheticStats.clone(this.syntheticStats());
+      this.delta.synthetic_stats = c.SyntheticStats.clone(
+        this.syntheticStats()
+      );
     }
     return this.delta.synthetic_stats!;
   }
@@ -2642,7 +2796,10 @@ export abstract class Delta extends ReadonlyDelta {
   mutableHarthmereEcsTransactionLedger(): c.HarthmereEcsTransactionLedger {
     this.delta ??= {};
     if (this.delta.harthmere_ecs_transaction_ledger === undefined) {
-      this.delta.harthmere_ecs_transaction_ledger = c.HarthmereEcsTransactionLedger.clone(this.harthmereEcsTransactionLedger());
+      this.delta.harthmere_ecs_transaction_ledger =
+        c.HarthmereEcsTransactionLedger.clone(
+          this.harthmereEcsTransactionLedger()
+        );
     }
     return this.delta.harthmere_ecs_transaction_ledger!;
   }
@@ -2657,7 +2814,9 @@ export abstract class Delta extends ReadonlyDelta {
   mutableHarthmereMaterialStorage(): c.HarthmereMaterialStorage {
     this.delta ??= {};
     if (this.delta.harthmere_material_storage === undefined) {
-      this.delta.harthmere_material_storage = c.HarthmereMaterialStorage.clone(this.harthmereMaterialStorage());
+      this.delta.harthmere_material_storage = c.HarthmereMaterialStorage.clone(
+        this.harthmereMaterialStorage()
+      );
     }
     return this.delta.harthmere_material_storage!;
   }
@@ -2672,7 +2831,9 @@ export abstract class Delta extends ReadonlyDelta {
   mutableNpcCombatState(): c.NpcCombatState {
     this.delta ??= {};
     if (this.delta.npc_combat_state === undefined) {
-      this.delta.npc_combat_state = c.NpcCombatState.clone(this.npcCombatState());
+      this.delta.npc_combat_state = c.NpcCombatState.clone(
+        this.npcCombatState()
+      );
     }
     return this.delta.npc_combat_state!;
   }
@@ -2705,10 +2866,9 @@ export abstract class Delta extends ReadonlyDelta {
   }
 }
 
-type SnakeToCamelCase<S extends string> =
-  S extends `${infer T}_${infer U}` ?
-  `${T}${Capitalize<SnakeToCamelCase<U>>}` :
-  S;
+type SnakeToCamelCase<S extends string> = S extends `${infer T}_${infer U}`
+  ? `${T}${Capitalize<SnakeToCamelCase<U>>}`
+  : S;
 
 export interface SuperReadonlyDelta extends ReadonlyDelta {
   readonly id: BiomesId;
@@ -2826,9 +2986,10 @@ export interface SuperReadonlyDelta extends ReadonlyDelta {
 export type ReadonlyDeltaWith<C extends keyof ReadonlyEntity> = (Pick<
   SuperDelta,
   SnakeToCamelCase<C> & keyof SuperDelta
-> &
-  { staleOk(): ReadonlyDeltaWith<C> } &
-  Omit<ReadonlyDelta, SnakeToCamelCase<C>>) &
+> & { staleOk(): ReadonlyDeltaWith<C> } & Omit<
+    ReadonlyDelta,
+    SnakeToCamelCase<C>
+  >) &
   ReadonlyDelta;
 
 export interface SuperDelta extends Delta {
@@ -2947,9 +3108,7 @@ export interface SuperDelta extends Delta {
 export type DeltaWith<C extends keyof ReadonlyEntity> = (Pick<
   SuperDelta,
   SnakeToCamelCase<C> & keyof SuperDelta
-> &
-  { staleOk(): ReadonlyDeltaWith<C> } &
-  Omit<Delta, SnakeToCamelCase<C>>) &
+> & { staleOk(): ReadonlyDeltaWith<C> } & Omit<Delta, SnakeToCamelCase<C>>) &
   Delta;
 
 export class EntityBackedDelta extends Delta {
@@ -3611,7 +3770,9 @@ export class EntityBackedDelta extends Delta {
     }
     return this.entity.gift_giver;
   }
-  harthmereEcsTransactionLedger(): c.ReadonlyHarthmereEcsTransactionLedger | undefined {
+  harthmereEcsTransactionLedger():
+    | c.ReadonlyHarthmereEcsTransactionLedger
+    | undefined {
     if (this.delta?.harthmere_ecs_transaction_ledger !== undefined) {
       return this.delta.harthmere_ecs_transaction_ledger ?? undefined;
     }
@@ -3641,14 +3802,15 @@ export class PatchableEntity extends Delta {
   public readonly readComponentIds = new Set<number>();
   private staleVariant?: ReadonlyDelta;
 
-  constructor(
-    private readonly entity: ReadonlyEntity
-  ) {
+  constructor(private readonly entity: ReadonlyEntity) {
     super();
   }
 
   staleOk(): ReadonlyDelta {
-    return (this.staleVariant ??= new EntityBackedDelta(this.entity, this.delta));
+    return (this.staleVariant ??= new EntityBackedDelta(
+      this.entity,
+      this.delta
+    ));
   }
 
   hasComponent<C extends keyof Entity>(component: C): boolean {
@@ -4410,7 +4572,9 @@ export class PatchableEntity extends Delta {
     this.readComponentIds.add(153);
     return this.entity.gift_giver;
   }
-  harthmereEcsTransactionLedger(): c.ReadonlyHarthmereEcsTransactionLedger | undefined {
+  harthmereEcsTransactionLedger():
+    | c.ReadonlyHarthmereEcsTransactionLedger
+    | undefined {
     if (this.delta?.harthmere_ecs_transaction_ledger !== undefined) {
       return this.delta.harthmere_ecs_transaction_ledger ?? undefined;
     }
@@ -5131,7 +5295,9 @@ export class DeltaPatch extends Delta {
     }
     return this.parent.giftGiver();
   }
-  harthmereEcsTransactionLedger(): c.ReadonlyHarthmereEcsTransactionLedger | undefined {
+  harthmereEcsTransactionLedger():
+    | c.ReadonlyHarthmereEcsTransactionLedger
+    | undefined {
     if (this.delta?.harthmere_ecs_transaction_ledger !== undefined) {
       return this.delta.harthmere_ecs_transaction_ledger ?? undefined;
     }

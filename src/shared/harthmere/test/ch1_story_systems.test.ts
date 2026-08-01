@@ -423,13 +423,13 @@ describe("Chapter 1 cast identity", () => {
     );
     assert.deepEqual(
       CH1_PROMOTED_CAST.map((member) => member.key),
-      ["jackie", "augur9"]
+      ["jackie", "augur9", "coretta"]
     );
     assert.ok(
       !CH1_SEEDED_CAST.some((member) => member.key === "augur9"),
       "seeding AUGUR-9 would recreate the duplicate robot"
     );
-    assert.equal(CH1_SEEDED_CAST.length, CH1_NEW_CAST.length - 2);
+    assert.equal(CH1_SEEDED_CAST.length, CH1_NEW_CAST.length - 3);
     assert.deepEqual(
       CH1_RECLAIMED_CAST.map((member) => member.key),
       ["lou_ardan", "cressa_vane", "halden_rook", "nadia_sorrel", "iris_fen"]

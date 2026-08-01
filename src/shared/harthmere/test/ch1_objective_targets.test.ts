@@ -5,6 +5,7 @@ import {
   allCh1ObjectiveTargets,
   ch1ObjectiveTarget,
 } from "@/shared/harthmere/ch1_objective_targets";
+import { CH1_SERGEANT_HOLT } from "@/shared/harthmere/ch1_returning_npcs";
 import {
   ch1DungeonBlockAt,
   ch1DungeonWorldToAuthored,
@@ -13,6 +14,24 @@ import { CH1_QUESTS } from "@/shared/harthmere/ch1_quests";
 import { CH1_ANCHORS } from "@/shared/harthmere/ch1_ids";
 
 describe("Chapter 1 objective targets", () => {
+  it("gives all 80 objectives a player-facing instruction and named target", () => {
+    const problems: string[] = [];
+    for (const quest of CH1_QUESTS) {
+      for (const step of quest.steps) {
+        const scope = `${quest.id}/${step.id}`;
+        const objective = step.objective.trim();
+        const target = step.targetLabel?.trim() ?? "";
+        if (objective.length < 18 || objective === "—") {
+          problems.push(`${scope}: unclear instruction '${objective}'`);
+        }
+        if (!target || target === "—") {
+          problems.push(`${scope}: unnamed target`);
+        }
+      }
+    }
+    assert.deepEqual(problems, []);
+  });
+
   it("resolves every authored objective to a finite production target", () => {
     const targets = allCh1ObjectiveTargets();
     assert.equal(
@@ -74,6 +93,19 @@ describe("Chapter 1 objective targets", () => {
     )!;
     assert.equal(statement.label, "Grove Watch House");
     assert.deepEqual(statement.position, CH1_ANCHORS.grove_watch_house);
+    assert.equal(statement.source, "npc");
+    assert.equal(statement.entityId, CH1_SERGEANT_HOLT.entityId);
     assert.ok(statement.position[0] < 1792);
+  });
+
+  it("tells the player exactly how to complete the breakfast handoff", () => {
+    assert.equal(
+      ch1ObjectiveTarget("ch1_a1_q01_morning_after", "the_tea")?.actionLabel,
+      "Drink Jackie's breakfast tea"
+    );
+    assert.equal(
+      ch1ObjectiveTarget("ch1_a1_q01_morning_after", "kit_check")?.actionLabel,
+      "Let Jackie check your kit"
+    );
   });
 });

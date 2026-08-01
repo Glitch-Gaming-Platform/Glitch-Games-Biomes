@@ -11,6 +11,7 @@
 #   scripts/harthmere/t.sh grove:catalog  # pure-data 51-quest walk (topology only)
 #   scripts/harthmere/t.sh grove:live     # all 51 Grove live authority rows
 #   scripts/harthmere/t.sh ui             # BiomesUI tabs        (~2 s)
+#   scripts/harthmere/t.sh icons          # inventory icon assets + aliases + UI
 #   scripts/harthmere/t.sh gate           # quest + UI + types in one batch
 #   scripts/harthmere/t.sh cutscene       # cutscene generator   (~2 s)
 #   scripts/harthmere/t.sh promo          # promo still registry (~1 s)
@@ -112,6 +113,12 @@ GROVE_FOUNTAIN=(
   'src/shared/harthmere/test/grove_giver_reassignment.test.ts'
 )
 UI=('src/client/components/biomes_ui/__tests__/QuestsTab*.ts*')
+ICONS=(
+  'src/client/components/challenges/harthmereNativeItemPresentation.test.ts'
+  'src/client/components/biomes_ui/__tests__/InventoryTab.fullStack.test.tsx'
+  'src/client/components/biomes_ui/__tests__/InventoryTab.dragDrop.test.tsx'
+  'src/client/components/biomes_ui/__tests__/InventoryTab.actions.browser.test.tsx'
+)
 CLIENT_CONFIG=('src/client/game/client_config.test.ts')
 CUTSCENE=('src/shared/cutscene/test/*.test.ts')
 # Promo stills validate without a browser/stack/GPU; the capture needs all three.
@@ -157,6 +164,17 @@ case "$cmd" in
       src/shared/harthmere/test/snapshot_grove_live_mode_backend.test.ts
     ;;
   ui)       "${FAST[@]}" "${UI[@]}" ;;
+  icons)
+    # Inventory icons cross three identity spellings: semantic ids, native
+    # numeric Bikkie ids, and `b:<id>`. Keep the executable asset validator,
+    # live presentation tests, and image/glyph DOM rendering in one serial
+    # lane so a green semantic-only unit test cannot hide a live ECS alias bug.
+    node scripts/harthmere/blender/generate_inventory_icon_manifest.cjs
+    node scripts/harthmere/validate-inventory-icons.cjs
+    "${FAST[@]}" "${ICONS[@]}"
+    node scripts/harthmere/test-biomes-ui-inventory-icon-shim-startup.cjs
+    run_scoped_types
+    ;;
   gate)
     # One Mocha process means one ts-node startup for the whole changed
     # quest/container/UI surface. Keep the static browser contract and scoped
@@ -188,6 +206,7 @@ case "$cmd" in
       grove:fountain) set -- "${GROVE_FOUNTAIN[@]}" ;;
       bible:main) set -- "${BIBLE_MAIN[@]}" ;;
       ui)       set -- "${UI[@]}" ;;
+      icons)    set -- "${ICONS[@]}" ;;
       cutscene) set -- "${CUTSCENE[@]}" ;;
       *)        ;;
     esac

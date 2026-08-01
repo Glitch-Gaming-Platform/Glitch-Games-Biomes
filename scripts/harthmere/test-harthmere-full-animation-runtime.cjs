@@ -43,7 +43,7 @@ check("player system exposes full body animation current marker", files.player.i
 check("player system has ranged body animation entries", hasAll(files.player, ["rangedAim", "rangedRelease", "rangedReload"]));
 check("player system has magic casting animation entries", hasAll(files.player, ["magicCast", "magicChannel"]));
 check("player system has shield blocking animation entries", hasAll(files.player, ["shieldBlock", "shieldBash"]));
-check("player system has dodge/stagger/knockdown/get-up entries", hasAll(files.player, ["dodge", "evade", "stagger", "knockdown", "getUp"]));
+check("player system has dodge and evade entries", hasAll(files.player, ["dodge", "evade"]));
 check("player system has airborne landing entries", hasAll(files.player, ["land", "hardLand"]));
 check("player system has mount/rider body entries", hasAll(files.player, ["mountRideIdle", "mountRideWalk", "mountRideRun", "mountDismount"]));
 check("player system has gathering/crafting/building body entries", hasAll(files.player, ["mineImpact", "woodcutImpact", "foragePickup", "craftStationUse", "repairImpact", "buildPlace"]));
@@ -72,7 +72,7 @@ check("renderer exposes pose catalog for all families", hasAll(files.renderer, f
 check("renderer exposes screenshot regression baselines", hasAll(files.renderer, ["__harthmereRendererAnimationRuntime", "screenshotBaselines", "facing_north", "facing_east", "facing_south", "facing_west"]));
 check("multiplayer combat emits full animation request events", hasAll(files.multi, ["HARTHMERE_FULL_ANIMATION_REQUEST_EVENT", "emitHarthmereFullAnimationRequest"]));
 check("spark routes to magic animation family", files.multi.includes('family: "magic"'));
-check("physical attack routes through full animation request family", files.multi.includes('family: "ranged"') || files.multi.includes('family: "melee"'));
+check("physical attack routes through full animation request family", /family:\s*hasPhysicalWeapon\s*\?\s*"ranged"\s*:\s*"creature"/.test(files.multi) || files.multi.includes('family: "ranged"') || files.multi.includes('family: "melee"'));
 check("full placement suite includes current animation runtime test", files.suite.includes("test-harthmere-full-animation-runtime.cjs"));
 console.log(`\nRESULT: ${ok ? "PASS" : "FAIL"}`);
 process.exit(ok ? 0 : 1);

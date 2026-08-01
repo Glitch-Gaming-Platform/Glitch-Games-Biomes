@@ -93,9 +93,68 @@ for (const [clip, expectedEndSeconds] of [
   ["DodgeRight", 15 / 24],
   ["DodgeForward", 15 / 24],
   ["DodgeBack", 15 / 24],
-  ["EvadeRoll", 16 / 24],
+  ["EvadeRoll", 18 / 24],
+  ["DoubleJump", 12 / 24],
 ]) {
   auditAnimation(playerPath, clip, 40, false, expectedEndSeconds);
+}
+
+const playerAnimations = readGltf(playerPath);
+const rollAnimation = (playerAnimations.animations || []).find(
+  (candidate) => candidate.name === "EvadeRoll"
+);
+const rollExtras = rollAnimation?.extras;
+check(
+  rollExtras?.profile === "harthmere-phased-roll-v2",
+  `${playerPath} EvadeRoll identifies the phased roll profile`
+);
+check(
+  JSON.stringify((rollExtras?.phases || []).map(({ name }) => name)) ===
+    JSON.stringify([
+      "anticipation",
+      "launch",
+      "tuck",
+      "rotation",
+      "landing",
+      "recovery",
+    ]),
+  `${playerPath} EvadeRoll exports all six authored phases`
+);
+check(
+  JSON.stringify(
+    (rollExtras?.events || []).map(({ name, time }) => [name, time])
+  ) ===
+    JSON.stringify([
+      ["DODGE_START", 0],
+      ["DODGE_ACTIVE", 0.1],
+      ["DODGE_IFRAME_START", 0.15],
+      ["DODGE_IFRAME_END", 0.4],
+      ["DODGE_LANDING", 0.55],
+      ["DODGE_RECOVERY", 0.6],
+      ["DODGE_END", 0.75],
+    ]),
+  `${playerPath} EvadeRoll exports gameplay synchronization markers`
+);
+
+if (rollAnimation) {
+  const rollChannels = rollAnimation.channels.map((channel) => ({
+    node: playerAnimations.nodes[channel.target.node]?.name,
+    path: channel.target.path,
+  }));
+  for (const root of ["Chest", "Waist"]) {
+    check(
+      rollChannels.some(
+        (channel) => channel.node === root && channel.path === "translation"
+      ),
+      `${playerPath} EvadeRoll gives ${root} a vertical root trajectory`
+    );
+    check(
+      rollChannels.some(
+        (channel) => channel.node === root && channel.path === "scale"
+      ),
+      `${playerPath} EvadeRoll gives ${root} restrained squash and stretch`
+    );
+  }
 }
 
 // The production attack clips are intentionally not regenerated or renamed by
@@ -131,6 +190,7 @@ if (publishedPlayerAnimations) {
     "DodgeForward",
     "DodgeBack",
     "EvadeRoll",
+    "DoubleJump",
   ]) {
     check(
       publishedClips.get(clip)?.channels?.length === 48,
@@ -142,7 +202,8 @@ if (publishedPlayerAnimations) {
     ["DodgeRight", 15 / 24],
     ["DodgeForward", 15 / 24],
     ["DodgeBack", 15 / 24],
-    ["EvadeRoll", 16 / 24],
+    ["EvadeRoll", 18 / 24],
+    ["DoubleJump", 12 / 24],
   ]) {
     const animation = publishedClips.get(clip);
     const timeAccessors = animation?.samplers?.map(
@@ -159,6 +220,13 @@ if (publishedPlayerAnimations) {
       `${publishedPlayerAnimationsPath} ships ${clip} neutral lead-in and recovery timing`
     );
   }
+  const publishedRollExtras = publishedClips.get("EvadeRoll")?.extras;
+  check(
+    publishedRollExtras?.profile === "harthmere-phased-roll-v2" &&
+      publishedRollExtras?.events?.at(-1)?.name === "DODGE_END" &&
+      publishedRollExtras?.events?.at(-1)?.time === 0.75,
+    `${publishedPlayerAnimationsPath} ships the phased roll metadata`
+  );
   for (const clip of ["Attack", "Attack2"]) {
     check(
       publishedClips.get(clip)?.channels?.length === 48,
@@ -177,6 +245,7 @@ for (const animation of [
   "dodgeForward",
   "dodgeBack",
   "evade",
+  "doubleJump",
 ]) {
   check(
     playerMeshRuntime.includes(`${animation}: "${animation}"`),
@@ -186,6 +255,52 @@ for (const animation of [
 check(
   playerMeshRuntime.includes("PLAYER_MOVEMENT_ACTION_ANIMATION_NAMES.includes"),
   "cutscene player mesh plays movement actions as finite one-shots"
+);
+const playerAnimationsRuntime = fs.readFileSync(
+  path.join(root, "src/client/game/util/player_animations.ts"),
+  "utf8"
+);
+check(
+  playerAnimationsRuntime.includes('fileAnimationName: "DoubleJump"') &&
+    playerAnimationsRuntime.includes('backupFileAnimationNames: ["Jump"]'),
+  "double jump uses its authored clip with a legacy Jump fallback"
+);
+
+const playerRendererRuntime = fs.readFileSync(
+  path.join(root, "src/client/game/renderers/players.ts"),
+  "utf8"
+);
+check(
+  playerRendererRuntime.includes("playerMovementActionVisualPose(") &&
+    playerRendererRuntime.includes("player.movementActionInfo") &&
+    playerRendererRuntime.includes("player.cutsceneMovementAnimationInfo") &&
+    playerRendererRuntime.includes("three.scale.y *= pose.scaleY"),
+  "player renderer applies movement poses to gameplay actions and cutscene emotes"
+);
+const playerScriptRuntime = fs.readFileSync(
+  path.join(root, "src/client/game/scripts/player.ts"),
+  "utf8"
+);
+check(
+  playerScriptRuntime.includes("playerJumpCount(") &&
+    playerScriptRuntime.includes("tryStartDoubleJump(") &&
+    playerScriptRuntime.includes('action = "doubleJump" as const'),
+  "player physics grants one base airborne jump through the Native ECS movement path"
+);
+check(
+  playerScriptRuntime.includes("movementActionStaminaCost(action)") &&
+    playerScriptRuntime.includes("new MovementActionEvent({"),
+  "client prediction checks the same action-specific stamina contract it publishes"
+);
+const cutsceneDirectorRuntime = fs.readFileSync(
+  path.join(root, "src/client/game/scripts/cutscene_director.ts"),
+  "utf8"
+);
+check(
+  cutsceneDirectorRuntime.includes("beginCutsceneMovementAnimation(") &&
+    cutsceneDirectorRuntime.includes("cancelCutsceneMovementAnimation()") &&
+    cutsceneDirectorRuntime.includes('parsed.data === "attack1"'),
+  "cutscene director drives player movement visuals without publishing movement physics"
 );
 
 const cutsceneLibraryRuntime = fs.readFileSync(

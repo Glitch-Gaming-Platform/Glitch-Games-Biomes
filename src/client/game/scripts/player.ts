@@ -52,7 +52,6 @@ import {
 import { DropSelector, PlaceableSelector } from "@/shared/ecs/gen/selectors";
 import type {
   EmoteType,
-  MovementActionType,
   OptionalDamageSource,
 } from "@/shared/ecs/gen/types";
 import type { CollisionCallback } from "@/shared/game/collision";
@@ -63,13 +62,17 @@ import {
 } from "@/shared/game/fall_damage";
 import { anItem } from "@/shared/game/item";
 import {
-  MOVEMENT_ACTION_STAMINA_COST,
   PLAYER_MOVEMENT_ACTION_TIMING,
+  movementActionDrivesMotion,
   movementActionEnvironmentForTick,
-  movementActionVelocityForTick,
   movementActionIsOnCooldown,
-  movementActionPressedOnEdge,
+  movementActionLocksControl,
+  movementActionStaminaCost,
+  movementActionVelocityForTick,
   normalizeMovementActionDirection,
+  isDoubleJumpAttempt,
+  playerEvadeLateralDirection,
+  playerJumpCount,
 } from "@/shared/game/movement_actions";
 import {
   canStartStandingMovementAction,
@@ -1665,10 +1668,7 @@ export class PlayerScript implements Script {
   private lastPublishedCrouching: boolean | undefined;
   private crouchCollisionReadyAt: number | undefined;
   private localMovementActionCooldownUntil = 0;
-  private readonly movementActionKeyDown = {
-    dodge: false,
-    evade: false,
-  };
+  private lastEvadeLateralSide: -1 | 1 = 1;
   lastHp: number | undefined;
 
   // Jump state
@@ -2335,8 +2335,6 @@ export class PlayerScript implements Script {
     const firstDeathReset = localPlayer.playerStatus !== "dead";
     this.crouchToggle = false;
     this.crouchToggleDebouncing = false;
-    this.movementActionKeyDown.dodge = this.input.action("dodge");
-    this.movementActionKeyDown.evade = this.input.action("evade");
     this.resources.update("/sim/player", this.userId, (player) => {
       player.crouching = false;
       player.collisionCrouching = false;
@@ -2429,7 +2427,7 @@ export class PlayerScript implements Script {
     lateral,
   }: {
     player: Player;
-    action: MovementActionType;
+    action: "dodge" | "evade";
     forward: -1 | 0 | 1;
     lateral: -1 | 0 | 1;
   }): boolean {
@@ -2451,23 +2449,35 @@ export class PlayerScript implements Script {
       }) ||
       readHarthmereNativeVitals(
         this.resources.get("/ecs/c/trigger_state", this.userId)
-      ).stamina < MOVEMENT_ACTION_STAMINA_COST
+      ).stamina < movementActionStaminaCost(action)
     ) {
       return false;
     }
 
     const forwardDirection = yawVector(player.orientation[1]);
     const sideDirection = yawVector(player.orientation[1] - 0.5 * Math.PI);
+    const evadeDirection =
+      action === "evade"
+        ? playerEvadeLateralDirection({
+            rightDirection: sideDirection,
+            lateralInput: lateral,
+            lateralVelocity:
+              player.velocity[0] * sideDirection[0] +
+              player.velocity[2] * sideDirection[2],
+            fallbackSide: this.lastEvadeLateralSide,
+          })
+        : undefined;
+    if (evadeDirection) {
+      this.lastEvadeLateralSide = evadeDirection.side;
+    }
     const requestedDirection =
-      action === "dodge"
-        ? lateral
-          ? scale(lateral, sideDirection)
-          : forward
-          ? scale(forward, forwardDirection)
-          : sideDirection
-        : forward || lateral
-        ? add(scale(forward, forwardDirection), scale(lateral, sideDirection))
-        : forwardDirection;
+      action === "evade"
+        ? evadeDirection!.direction
+        : lateral
+        ? scale(lateral, sideDirection)
+        : forward
+        ? scale(forward, forwardDirection)
+        : sideDirection;
     const direction = normalizeMovementActionDirection(requestedDirection);
     const timing = PLAYER_MOVEMENT_ACTION_TIMING[action];
     const nonce = Math.random();
@@ -2480,11 +2490,10 @@ export class PlayerScript implements Script {
       direction,
       nonce
     );
-    player.velocity = [
-      direction[0] * timing.speedMetersPerSecond,
-      player.velocity[1],
-      direction[2] * timing.speedMetersPerSecond,
-    ];
+    // Anticipation is a real gameplay phase. Stop horizontal drift now and let
+    // the integrated movement curve launch after the authored load-up instead
+    // of producing one constant-speed frame before the animation catches up.
+    player.velocity = [0, player.velocity[1], 0];
     fireAndForget(
       this.events.publish(
         new MovementActionEvent({
@@ -2496,6 +2505,52 @@ export class PlayerScript implements Script {
       )
     );
     emitHarthmereSoundEffect("dodge_roll");
+    return true;
+  }
+
+  private tryStartDoubleJump(player: Player): boolean {
+    const now = this.resources.get("/clock").time;
+    const health = this.resources.get("/ecs/c/health", this.userId);
+    const replicatedMovementState = this.resources.get(
+      "/ecs/c/movement_state",
+      this.userId
+    );
+    const action = "doubleJump" as const;
+    if (
+      (health?.hp ?? 0) <= 0 ||
+      player.isMovementActionActive(now) ||
+      now < this.localMovementActionCooldownUntil ||
+      movementActionIsOnCooldown(replicatedMovementState, now) ||
+      readHarthmereNativeVitals(
+        this.resources.get("/ecs/c/trigger_state", this.userId)
+      ).stamina < movementActionStaminaCost(action)
+    ) {
+      return false;
+    }
+
+    const timing = PLAYER_MOVEMENT_ACTION_TIMING[action];
+    const nonce = Math.random();
+    const direction = normalizeMovementActionDirection(
+      yawVector(player.orientation[1])
+    );
+    this.localMovementActionCooldownUntil = now + timing.cooldownSeconds;
+    player.beginMovementAction(
+      action,
+      now,
+      now + timing.durationSeconds,
+      direction,
+      nonce
+    );
+    fireAndForget(
+      this.events.publish(
+        new MovementActionEvent({
+          id: this.userId,
+          action,
+          direction,
+          nonce,
+        })
+      )
+    );
     return true;
   }
 
@@ -2611,27 +2666,20 @@ export class PlayerScript implements Script {
       running,
     } = this.getMovementType({ forward });
 
-    const dodgePressed = this.input.action("dodge");
-    const evadePressed = this.input.action("evade");
+    // Consume both edges every tick, including while motion is locked. This
+    // prevents a tap made in a modal/cutscene from being replayed later, while
+    // still preserving taps that begin and end between low-FPS physics ticks.
+    const dodgePressed = this.input.consumeActionPress("dodge");
+    const evadePressed = this.input.consumeActionPress("evade");
     if (shouldApplyMotion) {
-      if (
-        movementActionPressedOnEdge(
-          dodgePressed,
-          this.movementActionKeyDown.dodge
-        )
-      ) {
+      if (dodgePressed) {
         this.tryStartMovementAction({
           player,
           action: "dodge",
           forward,
           lateral,
         });
-      } else if (
-        movementActionPressedOnEdge(
-          evadePressed,
-          this.movementActionKeyDown.evade
-        )
-      ) {
+      } else if (evadePressed) {
         this.tryStartMovementAction({
           player,
           action: "evade",
@@ -2640,22 +2688,35 @@ export class PlayerScript implements Script {
         });
       }
     }
-    this.movementActionKeyDown.dodge = dodgePressed;
-    this.movementActionKeyDown.evade = evadePressed;
-    const movementActionActive = player.isMovementActionActive(
-      this.resources.get("/clock").time
-    );
+    const nowSeconds = this.resources.get("/clock").time;
+    const movementActionPlaying = player.isMovementActionActive(nowSeconds);
+    const movementActionControlLocked = player.movementActionInfo
+      ? movementActionLocksControl({
+          action: player.movementActionInfo.action,
+          startTimeSeconds: player.movementActionInfo.startTime,
+          expiryTimeSeconds: player.movementActionInfo.expiryTime,
+          nowSeconds,
+        })
+      : false;
+    const movementActionDrivingMotion = player.movementActionInfo
+      ? movementActionDrivesMotion({
+          action: player.movementActionInfo.action,
+          startTimeSeconds: player.movementActionInfo.startTime,
+          expiryTimeSeconds: player.movementActionInfo.expiryTime,
+          nowSeconds,
+        })
+      : false;
     const movementActionVelocity = player.movementActionInfo
       ? movementActionVelocityForTick({
           action: player.movementActionInfo.action,
           direction: player.movementActionInfo.direction,
           startTimeSeconds: player.movementActionInfo.startTime,
           expiryTimeSeconds: player.movementActionInfo.expiryTime,
-          nowSeconds: this.resources.get("/clock").time,
+          nowSeconds,
           dtSeconds: dt,
         })
       : undefined;
-    if (movementActionActive && movementActionVelocity) {
+    if (movementActionControlLocked && movementActionVelocity) {
       player.velocity = [
         movementActionVelocity[0],
         player.velocity[1],
@@ -2669,7 +2730,7 @@ export class PlayerScript implements Script {
         !player.crouching ||
         requestedCrouching ||
         this.standingHeadroomClear(player),
-      movementActionActive,
+      movementActionActive: movementActionPlaying,
       flying,
       swimming: canSwim,
     });
@@ -2693,7 +2754,7 @@ export class PlayerScript implements Script {
       1 + playerModifiers.jumpAdd.increase,
       0
     );
-    const jumpsAllowed = Math.max(1 + playerModifiers.jumpCount.increase, 0);
+    const jumpsAllowed = playerJumpCount(playerModifiers.jumpCount.increase);
     this.smoothedSpeedModifier.target(
       clamp(
         1 + (swimming ? playerModifiers.swimmingSpeedAdd.increase : 0),
@@ -2746,7 +2807,7 @@ export class PlayerScript implements Script {
           this.tweaks.playerPhysics.swimmingSpeed
         )
       );
-    } else if (!movementActionActive && (forward || lateral)) {
+    } else if (!movementActionControlLocked && (forward || lateral)) {
       forces.push(walkingForce(speed, yaw, forward, lateral));
       this.gardenHose.publish({
         kind: "move",
@@ -2779,7 +2840,7 @@ export class PlayerScript implements Script {
     if (
       this.input.action("jump") &&
       shouldApplyMotion &&
-      !movementActionActive
+      !movementActionControlLocked
     ) {
       let upwardsForceMagnitude = 0;
       if (flying) {
@@ -2788,11 +2849,16 @@ export class PlayerScript implements Script {
         onGround ||
         (!this.wasJumping && this.activeJumps < jumpsAllowed)
       ) {
-        ++this.activeJumps;
-        this.gardenHose.publish({ kind: "jump", running });
-        player.velocity[1] = 0;
-        upwardsForceMagnitude =
-          this.tweaks.playerPhysics.groundJump * buffJumpMultiplier;
+        // A coyote-time jump can occur just after leaving a ledge while no
+        // jump has been consumed. Charge only genuinely additional launches.
+        const isDoubleJump = isDoubleJumpAttempt(this.activeJumps);
+        if (!isDoubleJump || this.tryStartDoubleJump(player)) {
+          ++this.activeJumps;
+          this.gardenHose.publish({ kind: "jump", running });
+          player.velocity[1] = 0;
+          upwardsForceMagnitude =
+            this.tweaks.playerPhysics.groundJump * buffJumpMultiplier;
+        }
       } else if (canClimb) {
         upwardsForceMagnitude = this.tweaks.playerPhysics.climbingRise;
         emitHarthmereSoundEffect("climb", { idempotent: true });
@@ -2843,7 +2909,7 @@ export class PlayerScript implements Script {
         waterDepth,
         standingOnBlock,
       }),
-      movementActionActive
+      movementActionDrivingMotion
     );
     environment.gravity /= buffJumpMultiplier;
 
@@ -2979,7 +3045,6 @@ export class PlayerScript implements Script {
       // Initiate a jump animation if the player left the ground.
       if (onGround && result.velocity[1] > 0.1) {
         player.lastJumpTime = time;
-        emitHarthmereSoundEffect("jump");
       }
     }
 

@@ -46,6 +46,24 @@ import {
   groupHardnessClass,
 } from "@/shared/game/damage";
 import { anItem } from "@/shared/game/item";
+import { harthmereNativeItemIdForBiomesId } from "@/shared/harthmere/harthmere_native_item_ids";
+import {
+  getHarthmerePremiumWeapon,
+  type HarthmerePremiumWeaponDefinition,
+} from "@/shared/harthmere/premium_weapon_catalog";
+import { getHarthmereProjectileVisual } from "@/shared/harthmere/projectile_visual_manifest";
+import {
+  harthmereMagicChargeDurationSecs,
+  harthmereMagicChargePower,
+} from "@/shared/harthmere/magic_charge";
+import {
+  dispatchHarthmereMagicCharge,
+  harthmereMagicChargeId,
+} from "@/client/game/util/harthmere_magic_charge";
+import {
+  PLAYER_EVADE_ATTACK_TRANSITION,
+  movementActionAttackTransition,
+} from "@/shared/game/movement_actions";
 import { allowPlaceableDestruction } from "@/shared/game/placeables";
 import { hitExistingTerrain } from "@/shared/game/spatial";
 import type { BiomesId } from "@/shared/ids";
@@ -85,12 +103,54 @@ export type AttackDestroyDelegateDeps = ClientContextSubset<
   actionThrottler: TimeWindow<ActionType>;
 };
 
+export function harthmereMagicWeaponCharge(input: Item | undefined):
+  | {
+      definition: HarthmerePremiumWeaponDefinition;
+      projectileVisualId: string;
+      chargeTimeSecs: number;
+      power: number;
+    }
+  | undefined {
+  if (!input) {
+    return undefined;
+  }
+  const semanticItemId =
+    harthmereNativeItemIdForBiomesId(Number(input.id)) ?? String(input.id);
+  const definition = getHarthmerePremiumWeapon(semanticItemId);
+  if (
+    !definition ||
+    (definition.profile !== "magic" && definition.profile !== "magicBook")
+  ) {
+    return undefined;
+  }
+  const projectileVisualId =
+    getHarthmereProjectileVisual(semanticItemId)?.id ?? "spark";
+  const power = harthmereMagicChargePower({
+    attackDamage: definition.attackPoints,
+  });
+  return {
+    definition,
+    projectileVisualId,
+    power,
+    chargeTimeSecs: harthmereMagicChargeDurationSecs({
+      explicitMagic: true,
+      projectileVisualId,
+      attackDamage: definition.attackPoints,
+    }),
+  };
+}
+
 export class AttackDestroyDelegateItemSpec implements ClickableItemSpec {
   responsibleForPrimary: boolean = false;
   responsibleForSecondary: boolean = false;
+  private queuedPrimaryAttack?: { expiresAt: number };
 
   // This allows us to keep the wacking animation if you are holding and destroying multiple things
   private cancelWackTimeout?: ReturnType<typeof setTimeout>;
+  private pendingMagicAttack?: {
+    chargeId: string;
+    timeout: ReturnType<typeof setTimeout>;
+  };
 
   constructor(
     readonly deps: AttackDestroyDelegateDeps,
@@ -98,6 +158,8 @@ export class AttackDestroyDelegateItemSpec implements ClickableItemSpec {
   ) {}
 
   onUnselected(itemInfo: ClickableItemInfo) {
+    this.queuedPrimaryAttack = undefined;
+    this.cancelPendingMagicAttack("weapon_unselected");
     this.guardInteractionError(() => {
       this.attackDestroySpec.onUnselected?.(itemInfo);
     });
@@ -111,8 +173,79 @@ export class AttackDestroyDelegateItemSpec implements ClickableItemSpec {
 
   onTick(itemInfo: ClickableItemInfo) {
     this.guardInteractionError(() => {
+      this.flushQueuedPrimaryAttack(itemInfo);
       this.attackDestroySpec.onTick?.(itemInfo);
     });
+  }
+
+  private deferPrimaryAttackForEvadeRecovery(nowSeconds: number): boolean {
+    const player = this.deps.resources.get("/scene/local_player").player;
+    const movement = player.movementActionInfo;
+    if (!movement) {
+      return false;
+    }
+    switch (
+      movementActionAttackTransition({
+        action: movement.action,
+        startTimeSeconds: movement.startTime,
+        expiryTimeSeconds: movement.expiryTime,
+        nowSeconds,
+      })
+    ) {
+      case "blocked":
+        return true;
+      case "queue":
+        this.queuedPrimaryAttack = {
+          expiresAt:
+            movement.expiryTime +
+            PLAYER_EVADE_ATTACK_TRANSITION.inputGraceSeconds,
+        };
+        return true;
+      case "open":
+        player.cancelMovementAction();
+        return false;
+      case "none":
+        return false;
+    }
+  }
+
+  private flushQueuedPrimaryAttack(itemInfo: ClickableItemInfo) {
+    const queued = this.queuedPrimaryAttack;
+    if (!queued) {
+      return;
+    }
+    const nowSeconds = this.deps.resources.get("/clock").time;
+    if (nowSeconds > queued.expiresAt) {
+      this.queuedPrimaryAttack = undefined;
+      return;
+    }
+
+    const localPlayer = this.deps.resources.get("/scene/local_player");
+    const movement = localPlayer.player.movementActionInfo;
+    const transition = movement
+      ? movementActionAttackTransition({
+          action: movement.action,
+          startTimeSeconds: movement.startTime,
+          expiryTimeSeconds: movement.expiryTime,
+          nowSeconds,
+        })
+      : "none";
+    const recoveryReached =
+      transition === "open" ||
+      !movement ||
+      (transition === "none" && nowSeconds >= movement.expiryTime);
+    if (!recoveryReached) {
+      return;
+    }
+
+    this.queuedPrimaryAttack = undefined;
+    localPlayer.player.cancelMovementAction();
+    if (isAttacking(this.attackInfo, nowSeconds)) {
+      return;
+    }
+    if (!this.tryAttack(itemInfo)) {
+      this.doDummyAttack(itemInfo);
+    }
   }
 
   onPrimaryDown(itemInfo: ClickableItemInfo) {
@@ -122,6 +255,11 @@ export class AttackDestroyDelegateItemSpec implements ClickableItemSpec {
         this.attackDestroySpec.allowsPrimaryDelegation?.(itemInfo) ?? true;
       if (allowsDelegate) {
         if (isAttacking(this.attackInfo, secondsSinceEpoch)) {
+          this.responsibleForPrimary = true;
+          return;
+        }
+
+        if (this.deferPrimaryAttackForEvadeRecovery(secondsSinceEpoch)) {
           this.responsibleForPrimary = true;
           return;
         }
@@ -345,6 +483,62 @@ export class AttackDestroyDelegateItemSpec implements ClickableItemSpec {
     itemInfo: ClickableItemInfo
   ) {
     const secondsSinceEpoch = this.deps.resources.get("/clock").time;
+    const magicCharge = harthmereMagicWeaponCharge(itemInfo.item);
+    if (magicCharge) {
+      if (this.pendingMagicAttack) {
+        return;
+      }
+      const chargeId = harthmereMagicChargeId({
+        casterKind: "player",
+        abilityId: magicCharge.projectileVisualId,
+        castTime: secondsSinceEpoch,
+      });
+      dispatchHarthmereMagicCharge({
+        phase: "start",
+        chargeId,
+        abilityId: magicCharge.projectileVisualId,
+        projectileVisualId: magicCharge.projectileVisualId,
+        casterKind: "player",
+        chargeStartedAt: secondsSinceEpoch,
+        chargeTimeSecs: magicCharge.chargeTimeSecs,
+        releaseTime: secondsSinceEpoch + magicCharge.chargeTimeSecs,
+        power: magicCharge.power,
+        source: "native_magic_weapon_attack",
+      });
+      const timeout = setTimeout(() => {
+        if (this.pendingMagicAttack?.chargeId !== chargeId) {
+          return;
+        }
+        this.pendingMagicAttack = undefined;
+        dispatchHarthmereMagicCharge({
+          phase: "release",
+          chargeId,
+          abilityId: magicCharge.projectileVisualId,
+          projectileVisualId: magicCharge.projectileVisualId,
+          casterKind: "player",
+          chargeStartedAt: secondsSinceEpoch,
+          chargeTimeSecs: magicCharge.chargeTimeSecs,
+          releaseTime: secondsSinceEpoch + magicCharge.chargeTimeSecs,
+          power: magicCharge.power,
+          source: "native_magic_weapon_release",
+        });
+        const refreshedEntities = attackedEntities.map(
+          (entity) =>
+            this.deps.resources.get("/ecs/entity", entity.id) ?? entity
+        );
+        const releasedAt = this.deps.resources.get("/clock").time;
+        handleAttackInteraction(this.deps, {
+          attackedEntities: refreshedEntities,
+          tool: itemInfo.item,
+          attackInfo: {
+            start: releasedAt,
+            duration: attackIntervalSeconds(itemInfo.item),
+          },
+        });
+      }, magicCharge.chargeTimeSecs * 1000);
+      this.pendingMagicAttack = { chargeId, timeout };
+      return;
+    }
     handleAttackInteraction(this.deps, {
       attackedEntities,
       tool: itemInfo.item,
@@ -353,6 +547,20 @@ export class AttackDestroyDelegateItemSpec implements ClickableItemSpec {
         duration: attackIntervalSeconds(itemInfo.item),
       },
     });
+  }
+
+  private cancelPendingMagicAttack(source: string) {
+    if (!this.pendingMagicAttack) {
+      return;
+    }
+    clearTimeout(this.pendingMagicAttack.timeout);
+    dispatchHarthmereMagicCharge({
+      phase: "cancel",
+      chargeId: this.pendingMagicAttack.chargeId,
+      casterKind: "player",
+      source,
+    });
+    this.pendingMagicAttack = undefined;
   }
 
   guardInteractionError<T>(code: () => T): T | undefined {

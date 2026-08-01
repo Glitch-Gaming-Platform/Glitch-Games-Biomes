@@ -143,6 +143,7 @@ export const updatePlayerHealthEventHandler = makeEventHandler(
         const npcTypeId = attacker?.npcMetadata()?.type_id;
         const nativeProfile = npcTypeId
           ? harthmereNativeNpcCombatProfileForEntity({
+              entityId: attacker?.id,
               typeId: npcTypeId,
               displayName: attacker?.label()?.text,
               maxHp: attacker?.health()?.maxHp,
@@ -169,6 +170,10 @@ export const updatePlayerHealthEventHandler = makeEventHandler(
                   ?.rangedAttack
               : undefined;
             const now = secondsSinceEpoch();
+            const rangedReleaseTime = rangedState
+              ? rangedState.releaseTime ??
+                rangedState.castTime + (rangedState.chargeTimeSecs ?? 0)
+              : undefined;
             const shape = rangedAttack
               ? rangedAttackShape(rangedAttack)
               : undefined;
@@ -219,12 +224,14 @@ export const updatePlayerHealthEventHandler = makeEventHandler(
               rangedState.abilityId !== event.attackAbilityId ||
               ((shape === "projectile" || shape === "beam") &&
                 rangedState.targetId !== player.id) ||
-              Math.abs(rangedState.castTime - event.attackTime) > 0.001 ||
+              rangedReleaseTime === undefined ||
+              Math.abs(rangedReleaseTime - event.attackTime) > 0.001 ||
               !sameImpactPoint(rangedState.aimPoint, event.impactPoint) ||
               rangedState.result !== "hit" ||
               !recordedHit ||
+              now + 0.1 < rangedReleaseTime ||
               now + 0.1 < rangedState.impactTime ||
-              now - event.attackTime > rangedAttack.castTimeSecs + 3 ||
+              now - rangedReleaseTime > rangedAttack.castTimeSecs + 3 ||
               horizontalDistance(attackerPosition, event.impactPoint) >
                 rangedAttack.attackDistance + rangedAttack.hitRadius ||
               !playerInsideAttack

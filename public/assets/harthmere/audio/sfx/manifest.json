@@ -1,5 +1,5 @@
 {
-  "version": "harthmere-sound-effects-elevenlabs-v4-proximity-ambience",
+  "version": "harthmere-sound-effects-elevenlabs-v6-indisworm",
   "effects": [
     {
       "id": "melee_swing",
@@ -3152,6 +3152,23 @@
       "prompt": "Major fantasy boss defeat, huge body collapse, armor and debris impact, dark power dissipating into silence, no speech, no music.",
       "loop": false,
       "path": "/assets/harthmere/audio/sfx/boss_defeat.webm",
+      "source": "elevenlabs",
+      "promptInfluence": 0.72
+    },
+    {
+      "id": "giant_boss_stomp",
+      "label": "Giant Boss Stomp",
+      "category": "movement",
+      "description": "A massive grounded boss foot or root column plants with enough weight to shake loose earth and debris.",
+      "authority": [
+        "client_presentation",
+        "anima"
+      ],
+      "trigger": "A grounded giant boss advances far enough to complete its next authored stride.",
+      "durationSeconds": 1,
+      "prompt": "Colossal fantasy monster footstep, one enormous root-and-stone foot plants into damp earth, deep controlled sub-bass thud, bark and rock debris, short ground shock, game-ready, no roar, no voice, no music.",
+      "loop": false,
+      "path": "/assets/harthmere/audio/sfx/giant_boss_stomp.webm",
       "source": "elevenlabs",
       "promptInfluence": 0.72
     },
@@ -13983,6 +14000,78 @@
       "source": "elevenlabs"
     },
     {
+      "id": "creature_indisworm_idle",
+      "label": "Indisworm Idle",
+      "category": "creature",
+      "description": "Indisworm makes an occasional non-combat idle sound.",
+      "authority": [
+        "native_ecs",
+        "anima",
+        "client_presentation"
+      ],
+      "trigger": "While Indisworm remains outside attack mode, play at deterministic 22-45 second intervals.",
+      "durationSeconds": 1.2,
+      "prompt": "Indisworm. large-bodied, low, weighty, forceful cavern monster. Lore-derived sound identity: deep segmented chitin flex, wet radial-mouth rasp, crystal clicks, stone grit, venom-sac pressure, and a low subterranean throat pulse. One isolated occasional idle vocalization with subtle body movement. Calm or watchful; no ambience, music, attack, or intelligible speech.",
+      "loop": false,
+      "promptInfluence": 0.78,
+      "path": "/assets/harthmere/audio/sfx/creature_indisworm_idle.webm",
+      "source": "elevenlabs"
+    },
+    {
+      "id": "creature_indisworm_attack",
+      "label": "Indisworm Attack",
+      "category": "creature",
+      "description": "Indisworm makes a battle vocalization on only some attacks.",
+      "authority": [
+        "native_ecs",
+        "anima",
+        "client_presentation"
+      ],
+      "trigger": "On the first attack and then every deterministic 3-6 attacks while Anima reports combat.",
+      "durationSeconds": 0.95,
+      "prompt": "Indisworm. large-bodied, low, weighty, forceful cavern monster. Lore-derived sound identity: deep segmented chitin flex, wet radial-mouth rasp, crystal clicks, stone grit, venom-sac pressure, and a low subterranean throat pulse. One isolated battle vocalization or body-powered threat. No weapon or projectile impact, victim, ambience, music, or intelligible speech.",
+      "loop": false,
+      "promptInfluence": 0.78,
+      "path": "/assets/harthmere/audio/sfx/creature_indisworm_attack.webm",
+      "source": "elevenlabs"
+    },
+    {
+      "id": "creature_indisworm_hit",
+      "label": "Indisworm Hit",
+      "category": "creature",
+      "description": "Indisworm reacts audibly to authoritative damage.",
+      "authority": [
+        "native_ecs",
+        "anima",
+        "client_presentation"
+      ],
+      "trigger": "When authoritative ECS health records a nonlethal hit.",
+      "durationSeconds": 0.8,
+      "prompt": "Indisworm. large-bodied, low, weighty, forceful cavern monster. Lore-derived sound identity: deep segmented chitin flex, wet radial-mouth rasp, crystal clicks, stone grit, venom-sac pressure, and a low subterranean throat pulse. One isolated brief hit reaction from the creature: pain, recoil, material stress, and breath. No attacker weapon, gore, music, or intelligible speech.",
+      "loop": false,
+      "promptInfluence": 0.78,
+      "path": "/assets/harthmere/audio/sfx/creature_indisworm_hit.webm",
+      "source": "elevenlabs"
+    },
+    {
+      "id": "creature_indisworm_death",
+      "label": "Indisworm Death",
+      "category": "creature",
+      "description": "Indisworm makes its unique final sound and collapses.",
+      "authority": [
+        "native_ecs",
+        "anima",
+        "client_presentation"
+      ],
+      "trigger": "Once when authoritative ECS health reaches zero.",
+      "durationSeconds": 1.4,
+      "prompt": "Indisworm. large-bodied, low, weighty, forceful cavern monster. Lore-derived sound identity: deep segmented chitin flex, wet radial-mouth rasp, crystal clicks, stone grit, venom-sac pressure, and a low subterranean throat pulse. One isolated final reaction and body collapse appropriate to its material and mass. Restrained, non-gory, no music or intelligible speech.",
+      "loop": false,
+      "promptInfluence": 0.78,
+      "path": "/assets/harthmere/audio/sfx/creature_indisworm_death.webm",
+      "source": "elevenlabs"
+    },
+    {
       "id": "creature_unfinished_stalker_idle",
       "label": "Unfinished Stalker Idle",
       "category": "creature",
@@ -14390,6 +14479,40 @@
       "durationSeconds": 1,
       "prompt": "Entangling Roots fantasy game projectile impact, thorny seed magic, dirt rupture and twisting roots, decisive contact and short dissipating tail, no launch, no music, no intelligible speech.",
       "path": "/assets/harthmere/audio/sfx/entangling_roots_impact.webm",
+      "source": "elevenlabs",
+      "loop": false,
+      "promptInfluence": 0.72
+    },
+    {
+      "id": "indisworm_poison_spit_launch",
+      "label": "Indisworm Poison Spit Launch",
+      "category": "ranged",
+      "description": "Pressurized corrosive venom launched by a cavern Indisworm. Launch and cast-release layer.",
+      "authority": [
+        "native_ecs",
+        "anima"
+      ],
+      "trigger": "Authoritative ability presentation launches its projectile.",
+      "durationSeconds": 0.85,
+      "prompt": "Indisworm Poison Spit fantasy game projectile launch, pressurized wet venom, acidic bubbles, sticky membrane flutter and a sharp toxic hiss, compact cast charge and clear release, no impact, no music, no intelligible speech.",
+      "path": "/assets/harthmere/audio/sfx/indisworm_poison_spit_launch.webm",
+      "source": "elevenlabs",
+      "loop": false,
+      "promptInfluence": 0.72
+    },
+    {
+      "id": "indisworm_poison_spit_impact",
+      "label": "Indisworm Poison Spit Impact",
+      "category": "ranged",
+      "description": "Pressurized corrosive venom launched by a cavern Indisworm. Target or ground impact layer.",
+      "authority": [
+        "native_ecs",
+        "anima"
+      ],
+      "trigger": "Projectile renderer reaches the authoritative visual target.",
+      "durationSeconds": 1,
+      "prompt": "Indisworm Poison Spit fantasy game projectile impact, pressurized wet venom, acidic bubbles, sticky membrane flutter and a sharp toxic hiss, decisive contact and short dissipating tail, no launch, no music, no intelligible speech.",
+      "path": "/assets/harthmere/audio/sfx/indisworm_poison_spit_impact.webm",
       "source": "elevenlabs",
       "loop": false,
       "promptInfluence": 0.72

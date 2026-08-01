@@ -14,18 +14,30 @@ describe("mobile gameplay control wiring", () => {
     assert.ok(!mount.includes("BiomesUITutorialCueBar"));
   });
 
-  it("attaches input and gameplay focus without Pointer Lock in joystick mode", () => {
+  it("attaches input and gameplay focus on every pointerless control path", () => {
     const view = read("src/client/components/BiomesView.tsx");
+    const pointerLock = read(
+      "src/client/components/contexts/PointerLockContext.ts"
+    );
     assert.ok(
-      view.includes("disablePointerLock: clientConfig.showVirtualJoystick")
+      view.includes(
+        "clientConfig.showVirtualJoystick || !supportsPointerLock()"
+      )
+    );
+    assert.ok(
+      view.includes("disablePointerLock: initialPointerlessGameplay")
     );
     assert.ok(view.includes("input.attach(canvas)"));
-    assert.ok(view.includes("locked || clientConfig.showVirtualJoystick"));
+    assert.ok(view.includes("locked || pointerlessGameplay"));
+    assert.ok(view.includes("pointerLockManager.isPointerLockDisabled()"));
+    assert.ok(pointerLock.includes("pointerLockDisabledChange"));
+    assert.ok(pointerLock.includes("this.setPointerLockDisabled(true)"));
   });
 
   it("suppresses the Enter Game pointer-lock overlay in joystick mode", () => {
     const menu = read("src/client/components/EscGameMenu.tsx");
     assert.ok(menu.includes("clientConfig.showVirtualJoystick"));
+    assert.ok(menu.includes("pointerLockDisabled"));
   });
 
   it("keeps the movement joystick above the mobile HUD and touch-enabled", () => {

@@ -6,6 +6,7 @@ import { resolveCast } from "@/shared/cutscene/binding";
 import { validateCutsceneDef } from "@/shared/cutscene/schema";
 import type { CutsceneDef } from "@/shared/cutscene/schema";
 import assert from "assert";
+import { SNAPSHOT_CUTSCENE_PLAYER_MESH_ASSET } from "@/shared/cutscene/puppets";
 
 function makeWorld(entities: CutsceneEntityView[]): CutsceneWorldIndex {
   return {
@@ -100,7 +101,7 @@ describe("cutscene cast binding", () => {
     assert.ok(res.ok);
     const actor = res.actors.get("elder");
     assert.ok(actor?.kind === "ghost");
-    assert.strictEqual(actor.asset, "townsperson_clergy");
+    assert.strictEqual(actor.asset, SNAPSHOT_CUTSCENE_PLAYER_MESH_ASSET);
     assert.ok(actor.ghostId < 0, "ghost ids must be negative");
   });
 
@@ -179,10 +180,50 @@ describe("cutscene cast binding", () => {
     const a = res.actors.get("spirit1");
     const b = res.actors.get("spirit2");
     assert.ok(a?.kind === "ghost" && b?.kind === "ghost");
+    assert.strictEqual(a.asset, SNAPSHOT_CUTSCENE_PLAYER_MESH_ASSET);
+    assert.strictEqual(b.asset, SNAPSHOT_CUTSCENE_PLAYER_MESH_ASSET);
     assert.notStrictEqual(a.ghostId, b.ghostId);
     assert.deepStrictEqual(a.spawnAt, [1, 2, 3]);
     // No spawnAt -> spawns near the player.
     assert.deepStrictEqual(b.spawnAt, [0, 0, 0]);
+  });
+
+  it("retains a known human appearance source on an explicit ghost", () => {
+    const res = resolveCast(
+      def([
+        {
+          role: "jackie-memory",
+          binding: {
+            kind: "ghost",
+            asset: "snapshot/player_mesh",
+            family: "human",
+            appearanceSourceEntityId: 8810000000020501,
+          },
+        },
+      ]),
+      makeWorld([])
+    );
+    const actor = res.actors.get("jackie-memory");
+    assert.ok(actor?.kind === "ghost");
+    assert.strictEqual(actor.appearanceSourceEntityId, 8810000000020501);
+  });
+
+  it("keeps a missing entity's canonical appearance id on its ghost fallback", () => {
+    const res = resolveCast(
+      def([
+        {
+          role: "lou",
+          binding: { kind: "entity", entityId: 8810000000020501 },
+          fallback: "ghost",
+          ghostAsset: "townsperson_clergy",
+        },
+      ]),
+      makeWorld([])
+    );
+    assert.ok(res.ok);
+    const actor = res.actors.get("lou");
+    assert.ok(actor?.kind === "ghost");
+    assert.strictEqual(actor.appearanceSourceEntityId, 8810000000020501);
   });
 
   it("resolves world anchors without requiring an ECS entity", () => {

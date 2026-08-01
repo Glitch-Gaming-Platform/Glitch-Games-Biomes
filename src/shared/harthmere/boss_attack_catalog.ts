@@ -1,4 +1,5 @@
 import {
+  harthmereBossVisualForEntity,
   harthmereBossVisualForLabel,
   type HarthmereBossVisualId,
 } from "@/shared/harthmere/boss_visual_assets";
@@ -7,6 +8,14 @@ import type { BehaviorRangedAttackParams } from "@/shared/npc/npc_types";
 
 export const HARTHMERE_BOSS_ATTACK_CATALOG_VERSION =
   "harthmere-boss-attack-catalog-v1" as const;
+
+export const HARTHMERE_BOSS_MINIMUM_TELEGRAPH_SECS = Object.freeze({
+  projectile: 0.9,
+  beam: 0.85,
+  ground_aoe: 1.1,
+  self_aoe: 0.9,
+  cone: 0.9,
+} satisfies Record<NonNullable<BehaviorRangedAttackParams["attackShape"]>, number>);
 
 export interface HarthmereBossAttackDefinition
   extends BehaviorRangedAttackParams {
@@ -43,22 +52,18 @@ function attack(input: AttackInput): HarthmereBossAttackDefinition {
   const projectileVisualId =
     getHarthmereProjectileVisual(input.projectileVisualId)?.id ??
     input.projectileVisualId;
-  return Object.freeze({ ...input, projectileVisualId });
+  return Object.freeze({
+    ...input,
+    projectileVisualId,
+    castTimeSecs: Math.max(
+      input.castTimeSecs,
+      HARTHMERE_BOSS_MINIMUM_TELEGRAPH_SECS[input.attackShape]
+    ),
+  });
 }
 
 const catalogs: Readonly<
-  Record<
-    | "muck_scarred_helix"
-    | "gilded_bull"
-    | "ninth_winter"
-    | "failed_apprentice"
-    | "first_choir"
-    | "echo_singer"
-    | "vyrahel_vein_keeper"
-    | "thaedryn_bellbound"
-    | "root_crowned_dead",
-    HarthmereBossNativeCombatTuning
-  >
+  Record<HarthmereBossVisualId, HarthmereBossNativeCombatTuning>
 > = Object.freeze({
   muck_scarred_helix: {
     bossId: "muck_scarred_helix",
@@ -899,6 +904,213 @@ const catalogs: Readonly<
       }),
     ],
   },
+  hex_wraith: {
+    bossId: "hex_wraith",
+    level: 18,
+    maxHp: 1250,
+    attackDamage: 52,
+    attackDistance: 4.5,
+    attackIntervalSecs: 1.75,
+    attackStrikeMomentSecs: 0.5,
+    attackFovDeg: 220,
+    aggroTrigger: "proximity",
+    aggroDistance: 27,
+    disengageDistance: 52,
+    walkSpeed: 2.2,
+    runSpeed: 5,
+    rotateSpeed: 250,
+    attacks: [
+      attack({
+        abilityId: "hex_wraith_hex_volley",
+        displayName: "Hex Volley",
+        lore: "The orbiting tablets align and loose a grave-violet sequence of hunting sigils.",
+        projectileVisualId: "hex_bolt",
+        attackShape: "projectile",
+        damageType: "dark",
+        animationClip: "RangedAttack",
+        specialAnimationClip: "HexVolley",
+        minimumDistance: 3,
+        attackDistance: 25,
+        attackDamage: 49,
+        castTimeSecs: 0.72,
+        cooldownSecs: 7.5,
+        sharedCooldownSecs: 1.65,
+        hitRadius: 1.25,
+      }),
+      attack({
+        abilityId: "hex_wraith_grave_violet_beam",
+        displayName: "Grave-Violet Beam",
+        lore: "Its lantern ribs focus a line of death-song through the nearest living voice.",
+        projectileVisualId: "life_drain",
+        attackShape: "beam",
+        damageType: "dark",
+        animationClip: "RangedAttack",
+        minimumDistance: 2,
+        attackDistance: 23,
+        attackDamage: 58,
+        castTimeSecs: 0.9,
+        cooldownSecs: 9,
+        sharedCooldownSecs: 1.7,
+        hitRadius: 1.2,
+      }),
+      attack({
+        abilityId: "hex_wraith_lantern_rib_pulse",
+        displayName: "Lantern-Rib Pulse",
+        lore: "The hollow ribs toll without bells and push a ring of corpse-cold sound outward.",
+        projectileVisualId: "mocking_verse",
+        attackShape: "self_aoe",
+        damageType: "sonic",
+        animationClip: "AreaAttack",
+        minimumDistance: 0,
+        attackDistance: 8,
+        attackDamage: 46,
+        castTimeSecs: 0.9,
+        cooldownSecs: 9.5,
+        sharedCooldownSecs: 1.75,
+        hitRadius: 7.2,
+      }),
+      attack({
+        abilityId: "hex_wraith_tablet_prison",
+        displayName: "Tablet Prison",
+        lore: "Four funeral tablets nail a marked patch of ground beneath a closing sigil.",
+        projectileVisualId: "curse_of_weakness",
+        attackShape: "ground_aoe",
+        damageType: "arcane",
+        animationClip: "Summon",
+        minimumDistance: 2,
+        attackDistance: 22,
+        attackDamage: 54,
+        castTimeSecs: 1.1,
+        cooldownSecs: 11,
+        sharedCooldownSecs: 1.85,
+        hitRadius: 3.5,
+      }),
+      attack({
+        abilityId: "hex_wraith_phase_scythe",
+        displayName: "Phase Scythe",
+        lore: "The footless revenant vanishes through its target and leaves a crescent of severed song behind.",
+        projectileVisualId: "judgment",
+        attackShape: "cone",
+        damageType: "dark",
+        animationClip: "RangedAttack",
+        specialAnimationClip: "Teleport",
+        minimumDistance: 0,
+        attackDistance: 9,
+        attackDamage: 66,
+        castTimeSecs: 0.9,
+        cooldownSecs: 12,
+        sharedCooldownSecs: 1.9,
+        hitRadius: 1,
+        coneAngleDeg: 88,
+        maximumHealthRatio: 0.62,
+      }),
+    ],
+  },
+  alpha_mucker: {
+    bossId: "alpha_mucker",
+    level: 24,
+    maxHp: 3200,
+    attackDamage: 92,
+    attackDistance: 9,
+    attackIntervalSecs: 2.15,
+    attackStrikeMomentSecs: 0.72,
+    attackFovDeg: 210,
+    aggroTrigger: "proximity",
+    aggroDistance: 32,
+    disengageDistance: 64,
+    walkSpeed: 1.8,
+    runSpeed: 3.6,
+    rotateSpeed: 115,
+    attacks: [
+      attack({
+        abilityId: "alpha_mucker_branch_slam",
+        displayName: "Branch Slam",
+        lore: "The Alpha drops both grasping boughs across the road in a crushing fan.",
+        projectileVisualId: "nova_cannon_bolt",
+        attackShape: "cone",
+        damageType: "blunt",
+        animationClip: "HeavyAttack",
+        specialAnimationClip: "BranchSlam",
+        minimumDistance: 0,
+        attackDistance: 13,
+        attackDamage: 105,
+        castTimeSecs: 1.05,
+        cooldownSecs: 8,
+        sharedCooldownSecs: 2.05,
+        hitRadius: 1,
+        coneAngleDeg: 104,
+      }),
+      attack({
+        abilityId: "alpha_mucker_seed_barrage",
+        displayName: "Seed Barrage",
+        lore: "The storm canopy shakes loose hardened Muck-seeds that hunt distant prey.",
+        projectileVisualId: "multi_shot",
+        attackShape: "projectile",
+        damageType: "nature",
+        animationClip: "RangedAttack",
+        specialAnimationClip: "SeedBarrage",
+        minimumDistance: 6,
+        attackDistance: 30,
+        attackDamage: 76,
+        castTimeSecs: 0.9,
+        cooldownSecs: 8.5,
+        sharedCooldownSecs: 2.05,
+        hitRadius: 1.8,
+      }),
+      attack({
+        abilityId: "alpha_mucker_road_uproot",
+        displayName: "Road Uproot",
+        lore: "Root columns lever stolen road stone upward beneath the marked ground.",
+        projectileVisualId: "meteor",
+        attackShape: "ground_aoe",
+        damageType: "physical",
+        animationClip: "AreaAttack",
+        specialAnimationClip: "RoadUproot",
+        minimumDistance: 2,
+        attackDistance: 27,
+        attackDamage: 94,
+        castTimeSecs: 1.25,
+        cooldownSecs: 10,
+        sharedCooldownSecs: 2.1,
+        hitRadius: 4.8,
+      }),
+      attack({
+        abilityId: "alpha_mucker_root_cage",
+        displayName: "Root Cage",
+        lore: "Taproots race beneath the soil and close around a chosen escape route.",
+        projectileVisualId: "entangling_roots",
+        attackShape: "ground_aoe",
+        damageType: "nature",
+        animationClip: "Summon",
+        specialAnimationClip: "RootCage",
+        minimumDistance: 3,
+        attackDistance: 28,
+        attackDamage: 82,
+        castTimeSecs: 1.35,
+        cooldownSecs: 12,
+        sharedCooldownSecs: 2.15,
+        hitRadius: 5.2,
+      }),
+      attack({
+        abilityId: "alpha_mucker_muckheart_pulse",
+        displayName: "Muckheart Pulse",
+        lore: "The exposed crimson heart drives a black-sap shockwave through every root in reach.",
+        projectileVisualId: "life_drain",
+        attackShape: "self_aoe",
+        damageType: "dark",
+        animationClip: "AreaAttack",
+        specialAnimationClip: "MuckheartPulse",
+        minimumDistance: 0,
+        attackDistance: 14,
+        attackDamage: 128,
+        castTimeSecs: 1.4,
+        cooldownSecs: 15,
+        sharedCooldownSecs: 2.3,
+        hitRadius: 13.5,
+        maximumHealthRatio: 0.52,
+      }),
+    ],
+  },
   root_crowned_dead: {
     bossId: "root_crowned_dead",
     level: 26,
@@ -1011,9 +1223,22 @@ export function harthmereBossNativeCombatTuningForLabel(
   label: string | undefined
 ): HarthmereBossNativeCombatTuning | undefined {
   const bossId = harthmereBossVisualForLabel(label)?.id;
-  return bossId && bossId in catalogs
-    ? catalogs[bossId as keyof typeof catalogs]
-    : undefined;
+  return bossId ? catalogs[bossId] : undefined;
+}
+
+export function harthmereBossNativeCombatTuningForBossId(
+  bossId: HarthmereBossVisualId | undefined
+): HarthmereBossNativeCombatTuning | undefined {
+  return bossId ? catalogs[bossId] : undefined;
+}
+
+export function harthmereBossNativeCombatTuningForEntity(
+  label: string | undefined,
+  entityId: number | undefined
+): HarthmereBossNativeCombatTuning | undefined {
+  return harthmereBossNativeCombatTuningForBossId(
+    harthmereBossVisualForEntity(label, entityId)?.id
+  );
 }
 
 export function harthmereBossAttacksForLabel(label: string | undefined) {

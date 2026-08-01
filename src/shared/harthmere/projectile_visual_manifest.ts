@@ -4,6 +4,34 @@ export const HARTHMERE_PROJECTILE_VISUAL_VERSION =
 export const HARTHMERE_PROJECTILE_VISUAL_EVENT =
   "biomes:harthmere-projectile-visual" as const;
 
+// Projectiles need enough screen time to communicate direction and give a
+// moving target a readable reaction cue. Native hostile attacks can provide an
+// authoritative impact time; player/test shots fall back to distance / speed.
+export const HARTHMERE_PROJECTILE_MIN_FLIGHT_SECS = 0.4;
+export const HARTHMERE_PROJECTILE_MAX_FLIGHT_SECS = 1.8;
+
+export function harthmereProjectileFlightDurationSecs(input: {
+  distanceMeters: number;
+  speedMetersPerSecond: number;
+  authoritativeImpactSecs?: number;
+}) {
+  const distance = Number.isFinite(input.distanceMeters)
+    ? Math.max(0, input.distanceMeters)
+    : 0;
+  const speed = Number.isFinite(input.speedMetersPerSecond)
+    ? Math.max(0.01, input.speedMetersPerSecond)
+    : 0.01;
+  const authoritativeImpactSecs = Number(input.authoritativeImpactSecs);
+  const rawDuration =
+    Number.isFinite(authoritativeImpactSecs) && authoritativeImpactSecs > 0
+      ? authoritativeImpactSecs
+      : distance / speed;
+  return Math.min(
+    HARTHMERE_PROJECTILE_MAX_FLIGHT_SECS,
+    Math.max(HARTHMERE_PROJECTILE_MIN_FLIGHT_SECS, rawDuration)
+  );
+}
+
 export type HarthmereProjectileFamily =
   | "physical"
   | "arcane"
@@ -52,7 +80,7 @@ export const HARTHMERE_PROJECTILE_VISUALS = [
     id: "hunter_bow_shot",
     label: "Hunter Bow Shot",
     family: "physical",
-    speed: 34,
+    speed: 26,
     scale: 0.95,
     arcHeight: 0.12,
     spinRadiansPerSecond: 1,
@@ -73,7 +101,7 @@ export const HARTHMERE_PROJECTILE_VISUALS = [
     id: "quick_shot",
     label: "Quick Shot",
     family: "physical",
-    speed: 42,
+    speed: 32,
     scale: 0.82,
     arcHeight: 0.05,
     spinRadiansPerSecond: 1.5,
@@ -87,7 +115,7 @@ export const HARTHMERE_PROJECTILE_VISUALS = [
     id: "aimed_shot",
     label: "Aimed Shot",
     family: "physical",
-    speed: 48,
+    speed: 36,
     scale: 1.12,
     arcHeight: 0.02,
     spinRadiansPerSecond: 0.4,
@@ -101,7 +129,7 @@ export const HARTHMERE_PROJECTILE_VISUALS = [
     id: "multi_shot",
     label: "Multi-Shot",
     family: "physical",
-    speed: 36,
+    speed: 27,
     scale: 0.9,
     arcHeight: 0.16,
     spinRadiansPerSecond: 1.2,
@@ -115,7 +143,7 @@ export const HARTHMERE_PROJECTILE_VISUALS = [
     id: "bandit_archer_shot",
     label: "Bandit Hedge Archer Shot",
     family: "physical",
-    speed: 30,
+    speed: 22,
     scale: 0.9,
     arcHeight: 0.2,
     spinRadiansPerSecond: 2.2,
@@ -129,7 +157,7 @@ export const HARTHMERE_PROJECTILE_VISUALS = [
     id: "ranged_shot",
     label: "Ranged Shot",
     family: "physical",
-    speed: 35,
+    speed: 26,
     scale: 0.9,
     arcHeight: 0.12,
     spinRadiansPerSecond: 1.5,
@@ -146,11 +174,27 @@ export const HARTHMERE_PROJECTILE_VISUALS = [
       "crossbow_2handed",
     ],
   }),
+  {
+    id: "smoke_bomb_throw",
+    label: "Smoke Bomb Throw",
+    family: "dark",
+    assetUrl: "/assets/harthmere/glb/weapons/smoke_bomb.glb",
+    previewUrl: "/assets/harthmere/weapon_previews/smoke_bomb.png",
+    speed: 16,
+    scale: 0.62,
+    arcHeight: 0.82,
+    spinRadiansPerSecond: 5.5,
+    impactRadius: 1.8,
+    primaryColor: 0xffc76b,
+    secondaryColor: 0x4b5362,
+    lightIntensity: 1.15,
+    aliases: ["smoke_bomb", "smokebomb"],
+  },
   projectile({
     id: "spark",
     label: "Spark",
     family: "arcane",
-    speed: 30,
+    speed: 22,
     scale: 0.88,
     arcHeight: 0.15,
     spinRadiansPerSecond: 7.5,
@@ -158,13 +202,23 @@ export const HARTHMERE_PROJECTILE_VISUALS = [
     primaryColor: 0xd9f7ff,
     secondaryColor: 0x7e68ff,
     lightIntensity: 3.2,
-    aliases: ["spark_rank_1"],
+    aliases: [
+      "spark_rank_1",
+      "arcane_staff",
+      "arcane_wand",
+      "arcane_spellbook_closed",
+      "arcane_spellbook_open",
+      "sealed_scroll",
+      "crystal_focus",
+      "star_focus",
+      "snowflake_focus",
+    ],
   }),
   projectile({
     id: "photon_sidearm_pulse",
     label: "Photon Sidearm Pulse",
     family: "energy",
-    speed: 72,
+    speed: 50,
     scale: 0.72,
     arcHeight: 0,
     spinRadiansPerSecond: 0,
@@ -178,7 +232,7 @@ export const HARTHMERE_PROJECTILE_VISUALS = [
     id: "pulse_carbine_burst",
     label: "Pulse Carbine Burst",
     family: "energy",
-    speed: 68,
+    speed: 48,
     scale: 0.84,
     arcHeight: 0.02,
     spinRadiansPerSecond: 2.5,
@@ -192,7 +246,7 @@ export const HARTHMERE_PROJECTILE_VISUALS = [
     id: "helix_projector_beam",
     label: "Helix Projector Beam",
     family: "energy",
-    speed: 62,
+    speed: 44,
     scale: 1.05,
     arcHeight: 0,
     spinRadiansPerSecond: 10,
@@ -206,7 +260,7 @@ export const HARTHMERE_PROJECTILE_VISUALS = [
     id: "nova_cannon_bolt",
     label: "Nova Cannon Bolt",
     family: "energy",
-    speed: 38,
+    speed: 28,
     scale: 1.52,
     arcHeight: 0.12,
     spinRadiansPerSecond: 4,
@@ -220,7 +274,7 @@ export const HARTHMERE_PROJECTILE_VISUALS = [
     id: "singularity_lance_beam",
     label: "Singularity Lance Beam",
     family: "gravity",
-    speed: 88,
+    speed: 58,
     scale: 1.72,
     arcHeight: 0,
     spinRadiansPerSecond: 7,
@@ -234,7 +288,7 @@ export const HARTHMERE_PROJECTILE_VISUALS = [
     id: "fireball",
     label: "Fireball",
     family: "fire",
-    speed: 23,
+    speed: 17,
     scale: 1.18,
     arcHeight: 0.34,
     spinRadiansPerSecond: 4.4,
@@ -248,7 +302,7 @@ export const HARTHMERE_PROJECTILE_VISUALS = [
     id: "meteor",
     label: "Meteor",
     family: "fire",
-    speed: 27,
+    speed: 20,
     scale: 1.65,
     arcHeight: 3.8,
     spinRadiansPerSecond: 2.2,
@@ -262,7 +316,7 @@ export const HARTHMERE_PROJECTILE_VISUALS = [
     id: "lightning_bolt",
     label: "Lightning Bolt",
     family: "lightning",
-    speed: 58,
+    speed: 40,
     scale: 1,
     arcHeight: 0,
     spinRadiansPerSecond: 9,
@@ -276,7 +330,7 @@ export const HARTHMERE_PROJECTILE_VISUALS = [
     id: "holy_light",
     label: "Holy Light",
     family: "holy",
-    speed: 38,
+    speed: 28,
     scale: 1.06,
     arcHeight: 0.1,
     spinRadiansPerSecond: 3,
@@ -290,7 +344,7 @@ export const HARTHMERE_PROJECTILE_VISUALS = [
     id: "smite",
     label: "Smite",
     family: "holy",
-    speed: 41,
+    speed: 30,
     scale: 1,
     arcHeight: 0.2,
     spinRadiansPerSecond: 5,
@@ -304,7 +358,7 @@ export const HARTHMERE_PROJECTILE_VISUALS = [
     id: "judgment",
     label: "Judgment",
     family: "holy",
-    speed: 34,
+    speed: 25,
     scale: 1.15,
     arcHeight: 0.35,
     spinRadiansPerSecond: 4,
@@ -318,7 +372,7 @@ export const HARTHMERE_PROJECTILE_VISUALS = [
     id: "consecrate",
     label: "Consecrate",
     family: "holy",
-    speed: 26,
+    speed: 19,
     scale: 1.4,
     arcHeight: 0.5,
     spinRadiansPerSecond: 5,
@@ -332,7 +386,7 @@ export const HARTHMERE_PROJECTILE_VISUALS = [
     id: "life_drain",
     label: "Life Drain",
     family: "dark",
-    speed: 21,
+    speed: 16,
     scale: 1.08,
     arcHeight: 0.18,
     spinRadiansPerSecond: 6.5,
@@ -346,7 +400,7 @@ export const HARTHMERE_PROJECTILE_VISUALS = [
     id: "entangling_roots",
     label: "Entangling Roots",
     family: "nature",
-    speed: 24,
+    speed: 18,
     scale: 1.14,
     arcHeight: 0.12,
     spinRadiansPerSecond: 3.5,
@@ -357,10 +411,24 @@ export const HARTHMERE_PROJECTILE_VISUALS = [
     aliases: ["root", "npc_root"],
   }),
   projectile({
+    id: "indisworm_poison_spit",
+    label: "Indisworm Poison Spit",
+    family: "nature",
+    speed: 15,
+    scale: 1,
+    arcHeight: 0.55,
+    spinRadiansPerSecond: 5.2,
+    impactRadius: 0.95,
+    primaryColor: 0xdfff72,
+    secondaryColor: 0x42c982,
+    lightIntensity: 3.2,
+    aliases: ["indisworm", "poison_spit", "acid_spit", "venom_spit"],
+  }),
+  projectile({
     id: "mocking_verse",
     label: "Mocking Verse",
     family: "sonic",
-    speed: 29,
+    speed: 21,
     scale: 1,
     arcHeight: 0.28,
     spinRadiansPerSecond: 5,
@@ -374,7 +442,7 @@ export const HARTHMERE_PROJECTILE_VISUALS = [
     id: "curse_of_weakness",
     label: "Curse of Weakness",
     family: "dark",
-    speed: 25,
+    speed: 18,
     scale: 1,
     arcHeight: 0.22,
     spinRadiansPerSecond: 5.5,
@@ -388,7 +456,7 @@ export const HARTHMERE_PROJECTILE_VISUALS = [
     id: "hunters_mark",
     label: "Hunter's Mark",
     family: "mark",
-    speed: 45,
+    speed: 32,
     scale: 0.92,
     arcHeight: 0,
     spinRadiansPerSecond: 3,
@@ -402,7 +470,7 @@ export const HARTHMERE_PROJECTILE_VISUALS = [
     id: "polymorph",
     label: "Polymorph",
     family: "arcane",
-    speed: 27,
+    speed: 20,
     scale: 1.08,
     arcHeight: 0.32,
     spinRadiansPerSecond: 6,
@@ -416,7 +484,7 @@ export const HARTHMERE_PROJECTILE_VISUALS = [
     id: "fear",
     label: "Fear",
     family: "dark",
-    speed: 24,
+    speed: 18,
     scale: 1.12,
     arcHeight: 0.42,
     spinRadiansPerSecond: 4.4,
@@ -430,7 +498,7 @@ export const HARTHMERE_PROJECTILE_VISUALS = [
     id: "charm",
     label: "Charm",
     family: "arcane",
-    speed: 26,
+    speed: 19,
     scale: 1.08,
     arcHeight: 0.45,
     spinRadiansPerSecond: 4.8,
@@ -444,7 +512,7 @@ export const HARTHMERE_PROJECTILE_VISUALS = [
     id: "hex_bolt",
     label: "Hex Caster Bolt",
     family: "hex",
-    speed: 25,
+    speed: 18,
     scale: 1.08,
     arcHeight: 0.28,
     spinRadiansPerSecond: 7,
@@ -458,7 +526,7 @@ export const HARTHMERE_PROJECTILE_VISUALS = [
     id: "thaedryn_resonance",
     label: "Thaedryn Resonance Shard",
     family: "boss",
-    speed: 22,
+    speed: 16,
     scale: 1.55,
     arcHeight: 0.7,
     spinRadiansPerSecond: 5.5,
@@ -522,6 +590,8 @@ export function resolveHarthmereProjectileVisual(input: {
   if (/thaedryn/.test(text)) return getHarthmereProjectileVisual("thaedryn");
   if (/bandit.*archer|hedge_archer/.test(text))
     return getHarthmereProjectileVisual("bandit_archer_shot");
+  if (/indisworm|poison_spit|acid_spit|venom_spit/.test(text))
+    return getHarthmereProjectileVisual("indisworm_poison_spit");
   if (/hex|hexer/.test(text)) return getHarthmereProjectileVisual("hex_bolt");
   if (/fireball/.test(text)) return getHarthmereProjectileVisual("fireball");
   if (/entangling.*root|\broot\b/.test(text))
@@ -550,6 +620,7 @@ export function harthmereNativeNpcProjectileVisualId(input: {
   if (/bandit.*archer|archer.*bandit/.test(text)) {
     return "bandit_archer_shot";
   }
+  if (/indisworm/.test(text)) return "indisworm_poison_spit";
   if (/hex|hexer/.test(text)) return "hex_bolt";
   return undefined;
 }
@@ -559,6 +630,7 @@ export const HARTHMERE_DIRECT_RANGED_ATTACK_VISUAL_IDS = [
   "quick_shot",
   "aimed_shot",
   "multi_shot",
+  "smoke_bomb_throw",
   "spark",
   "photon_sidearm_pulse",
   "pulse_carbine_burst",
@@ -574,6 +646,7 @@ export const HARTHMERE_DIRECT_RANGED_ATTACK_VISUAL_IDS = [
   "consecrate",
   "life_drain",
   "entangling_roots",
+  "indisworm_poison_spit",
   "mocking_verse",
   "curse_of_weakness",
 ] as const;

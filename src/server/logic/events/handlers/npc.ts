@@ -45,7 +45,7 @@ import {
   readHarthmereNativeCombatProgression,
   writeHarthmereNativeCombatProgression,
 } from "@/shared/harthmere/harthmere_native_combat";
-import { harthmereNativeNpcCombatProfileForTypeId } from "@/shared/harthmere/harthmere_native_combat_catalog";
+import { harthmereNativeNpcCombatProfileForEntity } from "@/shared/harthmere/harthmere_native_combat_catalog";
 import { ch1EscortIsUnkillable } from "@/shared/harthmere/ch1_dungeon_encounters";
 import {
   harthmereNativeLevelStats,
@@ -220,7 +220,12 @@ const updateNpcHealthEventHandler = makeEventHandler("updateNpcHealthEvent", {
     }
 
     const npcTypeId = npc.npcMetadata().type_id;
-    const nativeProfile = harthmereNativeNpcCombatProfileForTypeId(npcTypeId);
+    const nativeProfile = harthmereNativeNpcCombatProfileForEntity({
+      entityId: npc.id,
+      typeId: npcTypeId,
+      displayName: npc.label()?.text,
+      maxHp: npc.health().maxHp,
+    });
     const serializedNpcState = npc.npcState()?.data;
     const deserializedNpcState = serializedNpcState?.length
       ? deserializeNpcCustomState(serializedNpcState)

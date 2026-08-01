@@ -2,8 +2,8 @@ import type {
   NavigationAidKind,
   NavigationAidSpec,
 } from "@/client/game/helpers/navigation_aids";
-import { nativeRobotStoryQuestOrder } from "@/shared/harthmere/native_road_ahead_contract";
 import { resolveHarthmereProductionMarkerPosition } from "@/shared/harthmere/production_terrain_placement_map";
+import { linearMainStoryProgressOrderForTest } from "./mainQuestSelection";
 
 export const BIOMES_UI_ACTIVE_MAP_PIN_STORAGE_KEY = "biomes_ui_active_map_pin";
 export const BIOMES_UI_ACTIVE_MAP_PIN_EVENT = "biomes-ui-active-map-pin";
@@ -24,6 +24,8 @@ export interface BiomesUIActiveMapPin {
   kind: string;
   worldPosition: [number, number, number];
   description?: string;
+  ownerQuestId?: string;
+  ownerStepId?: string;
   setAtMs: number;
 }
 
@@ -33,12 +35,15 @@ export interface BiomesUIMapPinSourceMarker {
   kind: string;
   worldPosition?: [number, number, number];
   description?: string;
+  ownerQuestId?: string;
+  ownerStepId?: string;
 }
 
 export interface BiomesUIAutoDestinationQuest {
   questId: string;
   status: string;
   firstMarkerId?: string;
+  currentStepId?: string;
 }
 
 /**
@@ -48,7 +53,10 @@ export interface BiomesUIAutoDestinationQuest {
  * what makes it appear on the HUD minimap and directional overlay.
  */
 export function automaticQuestDestinationMarkerForTest(input: {
-  existingPin?: Pick<BiomesUIActiveMapPin, "markerId">;
+  existingPin?: Pick<
+    BiomesUIActiveMapPin,
+    "markerId" | "ownerQuestId" | "ownerStepId"
+  >;
   quest?: BiomesUIAutoDestinationQuest;
   markers: readonly BiomesUIMapPinSourceMarker[];
 }): BiomesUIMapPinSourceMarker | undefined {
@@ -68,21 +76,53 @@ export function automaticQuestDestinationMarkerForTest(input: {
     return marker;
   }
 
+  // A material-source pin selected from a quest is manual only for that
+  // objective. Once the objective or quest advances it must yield to the next
+  // authored story marker; otherwise a vendor/store can remain on the
+  // minimap forever while the HUD correctly names the next Chapter 1 step.
+  const existingBelongsToPriorQuestObjective = Boolean(
+    input.existingPin?.ownerQuestId &&
+      (input.existingPin.ownerQuestId !== input.quest.questId ||
+        (input.existingPin.ownerStepId &&
+          input.quest.currentStepId &&
+          input.existingPin.ownerStepId !== input.quest.currentStepId))
+  );
+
   const existingIsEarlierStepOfQuest = existingMarkerId.startsWith(
     `native_quest:${input.quest.questId}:`
   );
   const existingQuestId = /^native_quest:([^:]+):/.exec(existingMarkerId)?.[1];
   const existingStoryOrder = existingQuestId
-    ? nativeRobotStoryQuestOrder(existingQuestId)
+    ? linearMainStoryProgressOrderForTest(existingQuestId)
     : -1;
-  const nextStoryOrder = nativeRobotStoryQuestOrder(input.quest.questId);
+  const nextStoryOrder = linearMainStoryProgressOrderForTest(
+    input.quest.questId
+  );
   const existingIsPreviousStoryChapter =
     existingStoryOrder >= 0 &&
     nextStoryOrder >= 0 &&
     existingStoryOrder < nextStoryOrder;
-  return existingIsEarlierStepOfQuest || existingIsPreviousStoryChapter
+  return existingBelongsToPriorQuestObjective ||
+    existingIsEarlierStepOfQuest ||
+    existingIsPreviousStoryChapter
     ? marker
     : undefined;
+}
+
+export function shouldClearOwnedQuestMapPinForTest(input: {
+  pin: Pick<BiomesUIActiveMapPin, "ownerQuestId" | "ownerStepId"> | undefined;
+  quests: readonly BiomesUIAutoDestinationQuest[];
+}): boolean {
+  const ownerQuestId = String(input.pin?.ownerQuestId ?? "").trim();
+  if (!ownerQuestId) return false;
+  const owner = input.quests.find(
+    (quest) => quest.questId === ownerQuestId && quest.status === "active"
+  );
+  if (!owner) return true;
+  const ownerStepId = String(input.pin?.ownerStepId ?? "").trim();
+  return Boolean(
+    ownerStepId && owner.currentStepId && ownerStepId !== owner.currentStepId
+  );
 }
 
 function finiteWorldPosition(
@@ -150,6 +190,14 @@ export function activeBiomesUIMapPinFromMarkerForTest(
       typeof marker.description === "string" && marker.description.trim()
         ? marker.description.trim()
         : undefined,
+    ownerQuestId:
+      typeof marker.ownerQuestId === "string" && marker.ownerQuestId.trim()
+        ? marker.ownerQuestId.trim()
+        : undefined,
+    ownerStepId:
+      typeof marker.ownerStepId === "string" && marker.ownerStepId.trim()
+        ? marker.ownerStepId.trim()
+        : undefined,
     setAtMs: nowMs,
   };
 }
@@ -187,6 +235,8 @@ function parseActiveBiomesUIMapPin(
         kind: parsed.kind,
         worldPosition: parsed.worldPosition,
         description: parsed.description,
+        ownerQuestId: parsed.ownerQuestId,
+        ownerStepId: parsed.ownerStepId,
       },
       Number(parsed.setAtMs) || Date.now()
     );

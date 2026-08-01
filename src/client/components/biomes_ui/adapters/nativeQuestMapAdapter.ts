@@ -17,6 +17,11 @@ import {
 } from "@/shared/harthmere/native_road_ahead_contract";
 import { nativeLegacyCombatQuestNavigationPosition } from "@/shared/harthmere/native_combat_quest_routing";
 import { nativePostGimmeProjectedNavigationAid } from "@/shared/harthmere/native_post_gimme_contract";
+import {
+  ch1QuestForNativeQuestId,
+  ch1StepForNativeStepId,
+} from "@/shared/harthmere/ch1_native_quests";
+import { ch1ObjectiveMaterialRequirements } from "@/shared/harthmere/ch1_material_objectives";
 
 /**
  * A native challenge is complete only after the server-authored trigger tree
@@ -320,16 +325,23 @@ export function nativeQuestMissionSteps(
   const activeIds = new Set(
     activeNativeQuestTriggerLeaves(quest.progress).map((leaf) => leaf.id)
   );
+  const authoredQuest = ch1QuestForNativeQuestId(quest.biscuit.id);
   return leaves.map((leaf, index) => {
     const done = nativeTriggerComplete(leaf);
+    const authoredStep = authoredQuest
+      ? ch1StepForNativeStepId(authoredQuest.id, leaf.id)?.step
+      : undefined;
     return {
       id: `${quest.biscuit.id}:${leaf.id}`,
-      title: done
-        ? `Completed step ${index + 1}`
-        : activeIds.has(leaf.id)
-        ? `Current step ${index + 1}`
-        : `Upcoming step ${index + 1}`,
+      title:
+        authoredStep?.title ??
+        (done
+          ? `Completed step ${index + 1}`
+          : activeIds.has(leaf.id)
+          ? `Current step ${index + 1}`
+          : `Upcoming step ${index + 1}`),
       objective:
+        authoredStep?.objective ||
         leaf.progressString ||
         leaf.name ||
         leaf.description ||
@@ -469,22 +481,41 @@ export function nativeQuestTrackableQuests(
         const steps = nativeQuestMissionSteps(quest);
         const current = steps.find((step) => !step.done);
         const category = quest.biscuit.questCategory ?? "discover";
+        const authoredQuest = ch1QuestForNativeQuestId(quest.biscuit.id);
+        const activeLeaf = activeNativeQuestTriggerLeaves(quest.progress)[0];
+        const authoredStep =
+          authoredQuest && activeLeaf
+            ? ch1StepForNativeStepId(authoredQuest.id, activeLeaf.id)?.step
+            : undefined;
+        const materialRequirements = authoredStep
+          ? ch1ObjectiveMaterialRequirements(authoredStep).map(
+              (requirement) => ({
+                ...requirement,
+                options: [...requirement.options],
+              })
+            )
+          : [];
         return {
           questId: String(quest.biscuit.id),
           title: quest.biscuit.displayName ?? `Quest ${quest.biscuit.id}`,
-          area: "Biomes",
+          area: authoredQuest?.district ?? "Biomes",
           status: nativeQuestStatus(quest.state),
           firstMarkerId: markersByQuest.get(String(quest.biscuit.id)),
-          kind: `native_ecs_${category}`,
+          currentStepId: activeLeaf ? String(activeLeaf.id) : undefined,
+          kind: authoredQuest ? "chapter_1_story" : `native_${category}`,
           kindLabel:
             category === "main"
               ? "Story Quest"
               : `${category.charAt(0).toUpperCase()}${category.slice(1)} Quest`,
           objective: current?.objective ?? steps.at(-1)?.objective,
           objectives: steps.map((step) => step.objective),
+          materialRequirements:
+            materialRequirements.length > 0 ? materialRequirements : undefined,
           description:
+            authoredQuest?.summary ||
+            quest.biscuit.displayDescription ||
             quest.biscuit.description ||
-            "Server-authored Biomes quest. Progress is read from the native ECS trigger tree.",
+            "Follow the current objective in order. Your map and HUD will point to the next stop as the quest advances.",
         } satisfies MapTrackableQuest;
       })
   );

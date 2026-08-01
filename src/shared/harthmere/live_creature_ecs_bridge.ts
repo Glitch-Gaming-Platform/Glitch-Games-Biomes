@@ -61,6 +61,8 @@ export type HarthmereLiveCreatureBridgeRecord = {
   nativeNpcRenderer?: boolean;
   /** Synthetic cutscene actor rendered with the snapshot player mesh pipeline. */
   nativeSnapshotAvatar?: boolean;
+  /** Canonical human id used for a synthetic actor's deterministic appearance. */
+  appearanceSourceEntityId?: number;
 };
 
 // Minimal structural view of an ECS entity so this stays decoupled from the

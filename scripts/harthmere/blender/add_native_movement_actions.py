@@ -28,7 +28,31 @@ CHARACTER_ACTIONS = (
     "DodgeForward",
     "DodgeBack",
     "EvadeRoll",
+    "DoubleJump",
 )
+
+ROLL_DODGE_METADATA = {
+    "profile": "harthmere-phased-roll-v2",
+    "events": [
+        {"name": "DODGE_START", "time": 0.0},
+        {"name": "DODGE_ACTIVE", "time": 0.1},
+        {"name": "DODGE_IFRAME_START", "time": 0.15},
+        {"name": "DODGE_IFRAME_END", "time": 0.4},
+        {"name": "DODGE_LANDING", "time": 0.55},
+        {"name": "DODGE_RECOVERY", "time": 0.6},
+        {"name": "DODGE_END", "time": 0.75},
+    ],
+    "phases": [
+        {"name": "anticipation", "start": 0.0, "end": 0.1},
+        {"name": "launch", "start": 0.1, "end": 0.2},
+        {"name": "tuck", "start": 0.2, "end": 0.34},
+        {"name": "rotation", "start": 0.34, "end": 0.52},
+        {"name": "landing", "start": 0.52, "end": 0.62},
+        {"name": "recovery", "start": 0.62, "end": 0.75},
+    ],
+    "worldTranslation": "gameplay-physics",
+    "direction": "runtime-root-yaw",
+}
 
 NPC_ACTION_BY_FILE = {
     "big_mucker_animations.blend": "MuckerEvade",
@@ -83,7 +107,7 @@ def neutral_rotations(rig):
     return {bone.name: (0.0, 0.0, 0.0) for bone in rig.pose.bones}
 
 
-def key_pose(rig, frame, rotations, locations=None):
+def key_pose(rig, frame, rotations, locations=None, scales=None):
     for bone_name, euler in rotations.items():
         bone = rig.pose.bones.get(bone_name)
         if bone is None:
@@ -97,6 +121,12 @@ def key_pose(rig, frame, rotations, locations=None):
             continue
         bone.location = Vector(location)
         bone.keyframe_insert(data_path="location", frame=frame)
+    for bone_name, scale in (scales or {}).items():
+        bone = rig.pose.bones.get(bone_name)
+        if bone is None:
+            continue
+        bone.scale = Vector(scale)
+        bone.keyframe_insert(data_path="scale", frame=frame)
 
 
 def create_action(rig, name, frames):
@@ -110,7 +140,8 @@ def create_action(rig, name, frames):
     for entry in frames:
         frame, rotations = entry[:2]
         locations = entry[2] if len(entry) > 2 else None
-        key_pose(rig, frame, rotations, locations)
+        scales = entry[3] if len(entry) > 3 else None
+        key_pose(rig, frame, rotations, locations, scales)
     rig.animation_data.action = action
     return action
 
@@ -298,42 +329,204 @@ def create_character_actions(rig):
         rig,
         "EvadeRoll",
         [
-            (0, neutral),
+            (
+                0,
+                neutral,
+                neutral_locations,
+                {"Chest": (1, 1, 1), "Waist": (1, 1, 1)},
+            ),
             (
                 3,
                 {
-                    "Waist": (0.65, 0, 0),
-                    "Chest": (0.45, 0, 0),
-                    "L_Thigh": (-0.9, 0, 0),
-                    "R_Thigh": (-0.9, 0, 0),
-                    "L_Leg": (1.1, 0, 0),
-                    "R_Leg": (1.1, 0, 0),
+                    # Anticipation: hips lead, both legs load, arms tighten,
+                    # and the head stays aimed into travel instead of flipping.
+                    "Waist": (0.3, 0, 0),
+                    "Chest": (0.42, 0, 0),
+                    "Head": (-0.08, 0, 0),
+                    "L_Arm": (-0.5, 0.08, -0.28),
+                    "R_Arm": (-0.5, -0.08, 0.28),
+                    "L_Thigh": (-1.0, 0, -0.08),
+                    "R_Thigh": (-1.0, 0, 0.08),
+                    "L_Leg": (1.28, 0, 0),
+                    "R_Leg": (1.28, 0, 0),
+                    "L_Foot": (-0.28, 0, 0),
+                    "R_Foot": (-0.28, 0, 0),
                 },
+                {"Chest": (0, -1.25, 0), "Waist": (0, 0.8, 0)},
+                {"Chest": (1.04, 0.88, 1.04), "Waist": (1.04, 0.88, 1.04)},
+            ),
+            (
+                5,
+                {
+                    # Launch: asymmetric push-off and a small stretch make the
+                    # horizontal burst feel explosive without becoming a jump.
+                    "Waist": (0.72, 0, 0),
+                    "Chest": (0.58, 0, 0),
+                    "Head": (-0.16, 0, 0),
+                    "L_Arm": (-0.95, 0.08, -0.38),
+                    "R_Arm": (-0.72, -0.08, 0.32),
+                    "L_Thigh": (-0.35, 0, -0.12),
+                    "R_Thigh": (-1.12, 0, 0.1),
+                    "L_Leg": (0.55, 0, 0),
+                    "R_Leg": (1.38, 0, 0),
+                },
+                {"Chest": (0, -0.45, 0), "Waist": (0, 0.28, 0)},
+                {"Chest": (1.02, 1.06, 1.02), "Waist": (1.02, 1.06, 1.02)},
+            ),
+            (
+                8,
+                {
+                    # Tuck: knees and arms fold around the center of mass while
+                    # one elbow and foot remain offset for a readable silhouette.
+                    "Waist": (1.42, 0, 0),
+                    "Chest": (1.02, 0, 0),
+                    "Head": (-0.34, 0, 0),
+                    "L_Arm": (-1.28, 0.12, -0.52),
+                    "R_Arm": (-1.12, -0.08, 0.34),
+                    "L_Thigh": (-1.38, 0, -0.12),
+                    "R_Thigh": (-1.16, 0, 0.18),
+                    "L_Leg": (1.58, 0, 0),
+                    "R_Leg": (1.38, 0, 0),
+                    "L_Foot": (-0.38, 0, -0.08),
+                    "R_Foot": (-0.24, 0, 0.12),
+                },
+                {"Chest": (0, -0.25, 0), "Waist": (0, 0.16, 0)},
+                {"Chest": (1.03, 1.02, 1.03), "Waist": (1.03, 1.02, 1.03)},
+            ),
+            (
+                12,
+                {
+                    # Rotation travels hips -> chest -> head. The character is
+                    # never a single rigid object spinning at constant speed.
+                    "Waist": (2.72, 0, 0),
+                    "Chest": (2.02, 0, 0),
+                    "Head": (-0.68, 0, 0),
+                    "L_Arm": (-1.48, 0.08, -0.58),
+                    "R_Arm": (-1.3, -0.1, 0.42),
+                    "L_Thigh": (-1.48, 0, -0.16),
+                    "R_Thigh": (-1.22, 0, 0.2),
+                    "L_Leg": (1.68, 0, 0),
+                    "R_Leg": (1.42, 0, 0),
+                    "L_Foot": (-0.42, 0, -0.1),
+                    "R_Foot": (-0.28, 0, 0.16),
+                },
+                {"Chest": (0, 0.3, 0), "Waist": (0, -0.2, 0)},
+                {"Chest": (1.04, 1.05, 1.04), "Waist": (1.04, 1.05, 1.04)},
+            ),
+            (
+                15,
+                {
+                    # Landing: one hand leads contact, the feet separate, and
+                    # both roots compress before the final rise.
+                    "Waist": (0.78, 0, 0),
+                    "Chest": (0.62, 0, 0),
+                    "Head": (-0.16, 0, 0),
+                    "L_Arm": (-1.22, 0.06, -0.62),
+                    "R_Arm": (-0.58, -0.05, 0.38),
+                    "L_Thigh": (-0.92, 0, -0.12),
+                    "R_Thigh": (-1.18, 0, 0.18),
+                    "L_Leg": (1.28, 0, 0),
+                    "R_Leg": (1.48, 0, 0),
+                    "L_Foot": (-0.34, 0, -0.08),
+                    "R_Foot": (-0.42, 0, 0.12),
+                },
+                {"Chest": (0, -1.55, 0), "Waist": (0, 1.0, 0)},
+                {"Chest": (1.06, 0.82, 1.06), "Waist": (1.06, 0.82, 1.06)},
+            ),
+            (
+                18,
+                neutral,
+                neutral_locations,
+                {"Chest": (1, 1, 1), "Waist": (1, 1, 1)},
+            ),
+        ],
+    )
+    create_action(
+        rig,
+        "DoubleJump",
+        [
+            (
+                0,
+                neutral,
+                neutral_locations,
+                {"Chest": (1, 1, 1), "Waist": (1, 1, 1)},
+            ),
+            (
+                2,
+                {
+                    # Airborne anticipation: pull the knees and elbows toward
+                    # the center without pretending the character can crouch
+                    # against the ground.
+                    "Waist": (0.34, 0, 0),
+                    "Chest": (0.3, 0, 0),
+                    "Head": (-0.12, 0, 0),
+                    "L_Arm": (-0.62, 0.08, -0.28),
+                    "R_Arm": (-0.62, -0.08, 0.28),
+                    "L_Thigh": (-1.05, 0, -0.08),
+                    "R_Thigh": (-1.05, 0, 0.08),
+                    "L_Leg": (1.35, 0, 0),
+                    "R_Leg": (1.35, 0, 0),
+                },
+                {"Chest": (0, -0.48, 0), "Waist": (0, 0.3, 0)},
+                {"Chest": (1.04, 0.9, 1.04), "Waist": (1.04, 0.9, 1.04)},
+            ),
+            (
+                4,
+                {
+                    # Second launch: hips lead, chest opens, and the limbs
+                    # explode outward into a silhouette distinct from Jump.
+                    "Waist": (-0.12, 0, 0),
+                    "Chest": (-0.2, 0, 0),
+                    "Head": (0.08, 0, 0),
+                    "L_Arm": (0.28, 0.06, -0.86),
+                    "R_Arm": (0.28, -0.06, 0.86),
+                    "L_Thigh": (-0.18, 0, -0.38),
+                    "R_Thigh": (-0.18, 0, 0.38),
+                    "L_Leg": (0.32, 0, 0),
+                    "R_Leg": (0.32, 0, 0),
+                },
+                {"Chest": (0, 0.5, 0), "Waist": (0, -0.32, 0)},
+                {"Chest": (0.98, 1.08, 0.98), "Waist": (0.98, 1.08, 0.98)},
             ),
             (
                 7,
                 {
-                    "Waist": (2.45, 0, 0),
-                    "Chest": (1.25, 0, 0),
-                    "Head": (-0.45, 0, 0),
-                    "L_Arm": (-1.0, 0, -0.35),
-                    "R_Arm": (-1.0, 0, 0.35),
-                    "L_Thigh": (-1.25, 0, 0),
-                    "R_Thigh": (-1.25, 0, 0),
-                    "L_Leg": (1.45, 0, 0),
-                    "R_Leg": (1.45, 0, 0),
+                    # Overlap: the torso settles before the hands and feet so
+                    # the launch does not freeze at its strongest pose.
+                    "Waist": (-0.08, 0, 0.08),
+                    "Chest": (-0.12, 0, -0.06),
+                    "Head": (0.04, 0, 0.03),
+                    "L_Arm": (0.08, 0.04, -0.55),
+                    "R_Arm": (0.16, -0.04, 0.68),
+                    "L_Thigh": (-0.28, 0, -0.24),
+                    "R_Thigh": (-0.12, 0, 0.28),
+                    "L_Leg": (0.45, 0, 0),
+                    "R_Leg": (0.25, 0, 0),
                 },
+                {"Chest": (0, 0.25, 0), "Waist": (0, -0.16, 0)},
+                {"Chest": (1, 1.03, 1), "Waist": (1, 1.03, 1)},
             ),
             (
-                11,
+                10,
                 {
-                    "Waist": (0.9, 0, 0),
-                    "Chest": (0.55, 0, 0),
-                    "L_Thigh": (-0.5, 0, 0),
-                    "R_Thigh": (-0.5, 0, 0),
+                    "Waist": (0.05, 0, 0),
+                    "Chest": (0.04, 0, 0),
+                    "L_Arm": (-0.08, 0, -0.18),
+                    "R_Arm": (-0.04, 0, 0.22),
+                    "L_Thigh": (-0.18, 0, -0.08),
+                    "R_Thigh": (-0.12, 0, 0.08),
+                    "L_Leg": (0.24, 0, 0),
+                    "R_Leg": (0.18, 0, 0),
                 },
+                {"Chest": (0, 0.08, 0), "Waist": (0, -0.05, 0)},
+                {"Chest": (1, 1, 1), "Waist": (1, 1, 1)},
             ),
-            (16, neutral),
+            (
+                12,
+                neutral,
+                neutral_locations,
+                {"Chest": (1, 1, 1), "Waist": (1, 1, 1)},
+            ),
         ],
     )
 
@@ -424,7 +617,9 @@ def encode_data_uri(mime_type, payload):
     return f"data:{mime_type};base64,{base64.b64encode(payload).decode('ascii')}"
 
 
-def merge_animations(existing_path, exported_path, animation_names):
+def merge_animations(
+    existing_path, exported_path, animation_names, animation_metadata=None
+):
     with open(existing_path, "r", encoding="utf-8") as handle:
         existing = json.load(handle)
     with open(exported_path, "r", encoding="utf-8") as handle:
@@ -514,6 +709,9 @@ def merge_animations(existing_path, exported_path, animation_names):
 
     for source_animation in selected:
         animation = copy.deepcopy(source_animation)
+        metadata = (animation_metadata or {}).get(animation.get("name"))
+        if metadata:
+            animation.setdefault("extras", {}).update(copy.deepcopy(metadata))
         for sampler in animation.get("samplers", []):
             sampler["input"] = copy_accessor(sampler["input"])
             sampler["output"] = copy_accessor(sampler["output"])
@@ -541,7 +739,7 @@ def merge_animations(existing_path, exported_path, animation_names):
         handle.write("\n")
 
 
-def export_and_merge(gltf_path, animation_names):
+def export_and_merge(gltf_path, animation_names, animation_metadata=None):
     temp_dir = tempfile.mkdtemp(prefix="biomes-movement-actions-")
     nla_states = []
     try:
@@ -560,7 +758,12 @@ def export_and_merge(gltf_path, animation_names):
             export_cameras=False,
             export_lights=False,
         )
-        merge_animations(gltf_path, exported_path, animation_names)
+        merge_animations(
+            gltf_path,
+            exported_path,
+            animation_names,
+            animation_metadata=animation_metadata,
+        )
     finally:
         for animation_data, use_nla in nla_states:
             animation_data.use_nla = use_nla
@@ -576,17 +779,21 @@ def main():
     if basename == "character-animations.blend":
         create_character_actions(rig)
         action_names = CHARACTER_ACTIONS
+        animation_metadata = {"EvadeRoll": ROLL_DODGE_METADATA}
     else:
         action_name = NPC_ACTION_BY_FILE.get(basename)
         if not action_name:
             raise RuntimeError(f"No movement-action profile for {basename}")
         create_npc_action(rig, action_name)
         action_names = (action_name,)
+        animation_metadata = None
 
     bpy.context.scene.render.fps = 24
     bpy.ops.wm.save_as_mainfile(filepath=blend_path)
     gltf_path = os.path.splitext(blend_path)[0] + ".gltf"
-    export_and_merge(gltf_path, action_names)
+    export_and_merge(
+        gltf_path, action_names, animation_metadata=animation_metadata
+    )
     print(f"MOVEMENT_ACTIONS_UPDATED {basename}: {', '.join(action_names)}")
 
 

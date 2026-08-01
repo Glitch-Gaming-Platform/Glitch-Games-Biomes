@@ -377,6 +377,7 @@ const PROVISIONING_ITEM_MATCHERS: Readonly<
     /insulated_/,
     /fur_coat/,
     /travel_cloak/,
+    /patched_cloak/,
   ],
   rope: [/^rope$/, /_rope$/, /rope_coil/],
   iron: [/^iron$/, /iron_ingot/, /iron_ore/, /iron_stock/, /cold_iron_scrap/],

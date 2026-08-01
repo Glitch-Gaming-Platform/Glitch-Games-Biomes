@@ -76,6 +76,7 @@ import { harthmereLiveServerAuthoritative } from "@/client/components/challenges
 import { resolveAssetUrlUntyped } from "@/galois/interface/asset_paths";
 import { safeGetTerrainName } from "@/shared/asset_defs/terrain";
 import { harthmereGeneratedInventoryIconUrl } from "@/shared/harthmere/generated/harthmere_inventory_icon_manifest";
+import { isFishingRodItemId } from "@/shared/harthmere/fishing_rods";
 import { BikkieIds } from "@/shared/bikkie/ids";
 import { terrainIdToBlock } from "@/shared/bikkie/terrain";
 import type { AnyBinaryAttribute } from "@/shared/bikkie/schema/binary";
@@ -2504,6 +2505,25 @@ export function readHarthmereLiveEquipmentSnapshot() {
     equipment: { ...lastKnownHarthmereLiveEquipment },
     equipmentInstances: { ...lastKnownHarthmereLiveEquipmentInstances },
   };
+}
+
+export function harthmereOwnsFishingRod(
+  state: HarthmereInventoryState = readHarthmereInventoryState()
+): boolean {
+  const itemIds = harthmereLiveServerAuthoritative()
+    ? [
+        ...Object.keys(lastKnownHarthmereLiveInventoryItems),
+        ...Object.values(lastKnownHarthmereLiveEquipment),
+      ]
+    : [
+        ...state.backpack.items.map((item) => item.itemId),
+        ...state.bank.items.map((item) => item.itemId),
+        ...Object.values(state.equipment).flatMap((item) =>
+          item?.itemId ? [item.itemId] : []
+        ),
+        ...state.keyring,
+      ];
+  return itemIds.some(isFishingRodItemId);
 }
 
 // Test-only reset so unit tests can isolate snapshots.

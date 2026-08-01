@@ -60,6 +60,8 @@ export const zCutsceneRoleBinding = z.discriminatedUnion("kind", [
   z.object({
     kind: z.literal("ghost"),
     asset: zAssetName,
+    // Known flashback identities retain their snapshot skin, hair and clothes.
+    appearanceSourceEntityId: zBiomesIdNumber.optional(),
     family: z
       .enum([
         "human",

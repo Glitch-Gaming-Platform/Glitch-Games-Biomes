@@ -22,7 +22,6 @@ import {
 } from "@/client/components/challenges/harthmereLootDropWorldState";
 import type { Renderer } from "@/client/game/renderers/renderer_controller";
 import type { Scenes } from "@/client/game/renderers/scenes";
-import { addToScenes } from "@/client/game/renderers/scenes";
 import type { ClientResources } from "@/client/game/resources/types";
 import { harthmereGroundedFeetYWithMemory } from "@/client/game/util/harthmere_entity_grounding";
 import type { HarthmereInventoryLootDrop } from "@/shared/harthmere/mmo_inventory_loot_authority";
@@ -108,7 +107,9 @@ export class HarthmereLootDropMarkerRenderer implements Renderer {
   }
 
   draw(scenes: Scenes, dt: number): void {
-    addToScenes(scenes, this.root);
+    // Loot markers are stock Three.js primitives. Avoid reclassifying and
+    // traversing their hierarchy on every frame.
+    scenes.three.add(this.root);
     this.elapsed += Math.min(dt, 0.05);
     this.reconcileDrops();
     this.groundAndAnimateDrops();

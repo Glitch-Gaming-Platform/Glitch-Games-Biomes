@@ -9,6 +9,7 @@ import {
   elevenLabsSpokenTextForTest,
   elevenLabsSynthesisCacheIdentity,
   listElevenLabsVoices,
+  pinnedElevenLabsVoiceIdForActor,
   selectElevenLabsVoiceForActor,
   synthesizeElevenLabsSpeech,
   type ElevenLabsConfig,
@@ -101,6 +102,77 @@ describe("ElevenLabs NPC speech", () => {
       "male"
     );
     assert.equal(elevenLabsKnownVoiceGenderForTest("unknown"), undefined);
+  });
+
+  it("uses an age-matched reviewed voice for authored child roles", () => {
+    const voiceProfileId = buildHarthmereAzureVoiceParameterId({
+      voiceName: "en-US-LunaNeural",
+      gender: "female",
+      actorKind: "humanoid",
+      deliveryStyle: "child",
+      rate: "+0%",
+      pitch: "+0%",
+      actorKey: "npc:choir-child",
+    });
+    const voice = selectElevenLabsVoiceForActor({
+      voices: [
+        {
+          voice_id: "adult-female",
+          name: "Rachel",
+          labels: { gender: "female" },
+          category: "premade",
+        },
+        {
+          voice_id: "child-female",
+          name: "Elli",
+          labels: { gender: "female" },
+          category: "premade",
+        },
+      ],
+      voiceProfileId,
+    });
+    assert.equal(voice?.voice_id, "child-female");
+  });
+
+  it("pins aliased NPC identities to one reviewed ElevenLabs voice", () => {
+    const groveJackie = buildHarthmereAzureVoiceParameterId({
+      voiceName: "en-US-LunaNeural",
+      gender: "female",
+      actorKind: "humanoid",
+      rate: "+0%",
+      pitch: "+0%",
+      actorKey: "snapshot_grove:jackie:8810000000019301:jackie:jackie",
+    });
+    const legacyJackie = buildHarthmereAzureVoiceParameterId({
+      voiceName: "en-US-AriaNeural",
+      gender: "female",
+      actorKind: "humanoid",
+      rate: "+2%",
+      pitch: "-1%",
+      actorKey: "runtime_entity:8997551883502307:jackie",
+    });
+    assert.equal(
+      pinnedElevenLabsVoiceIdForActor(groveJackie),
+      "AZnzlk1XvdvUeBnXmlld"
+    );
+    assert.equal(
+      pinnedElevenLabsVoiceIdForActor(legacyJackie),
+      "AZnzlk1XvdvUeBnXmlld"
+    );
+    assert.equal(
+      selectElevenLabsVoiceForActor({
+        voices: [],
+        voiceProfileId: groveJackie,
+      })?.voice_id,
+      "AZnzlk1XvdvUeBnXmlld"
+    );
+    assert.equal(
+      selectElevenLabsVoiceForActor({
+        voices: [],
+        voiceProfileId: legacyJackie,
+      })?.voice_id,
+      "AZnzlk1XvdvUeBnXmlld"
+    );
   });
 
   it("prepares written dialogue for natural spoken pacing", () => {

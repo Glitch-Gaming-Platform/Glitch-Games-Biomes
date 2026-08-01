@@ -11,6 +11,7 @@ import {
 } from "@/client/components/challenges/LocalDevHarthmereNpcBehaviorSystem";
 import React, { useEffect, useMemo, useState } from "react";
 import { snapshotHarthmereBibleLines } from "@/shared/harthmere/snapshot_complete_port";
+import { harthmereAdditiveTownNpcDialogueForOffset } from "@/shared/harthmere/additive_town_npc_dialogue";
 
 const HARTHMERE_DIALOGUE_MEMORY_KEY =
   "biomes.localDev.harthmere.dialogueMemory";
@@ -170,9 +171,7 @@ const RUMORS: Record<number, string[]> = {
   30: [
     "I say the Missing Bell story is old enough that people call it nonsense when they are afraid it is true.",
   ],
-  31: [
-    "I say no bell was stolen. That is the part people keep getting wrong.",
-  ],
+  31: ["I say no bell was stolen. That is the part people keep getting wrong."],
   33: [
     "I say the drains remember every coin dropped in panic.",
     "Mudden Ward rumor: when the river rises, old doors below town breathe cold air.",
@@ -181,13 +180,16 @@ const RUMORS: Record<number, string[]> = {
   41: [
     "Newest board rumor: farms need hands, docks need eyes, and the chapel needs someone brave enough to ask about the bell.",
   ],
-  62: [
-    "I heard bronze under stone. I did not hear it with my ears alone.",
-  ],
+  62: ["I heard bronze under stone. I did not hear it with my ears alone."],
   70: [
     "I repeat only one useful thing: the bell was buried to keep something from answering.",
   ],
 };
+
+const DEFAULT_LOCAL_RUMORS = [
+  "I say the quickest way to understand Harthmere is to notice what people run out of first.",
+  "I say a quiet street, a closed shutter, or animals facing the same direction can tell you more than a loud rumor.",
+];
 
 const GUARD_OFFSETS = new Set([27, 39, 44, 45, 56, 69]);
 const MERCHANT_OFFSETS = new Set([
@@ -236,7 +238,7 @@ function writeHarthmereDialogueMemory(state: HarthmereDialogueMemoryState) {
   }
   harthmereLocalStorage.setItem(
     HARTHMERE_DIALOGUE_MEMORY_KEY,
-    JSON.stringify(state),
+    JSON.stringify(state)
   );
   dispatchDialogueEvent();
 }
@@ -286,7 +288,11 @@ function recordDialogueChoice(input: {
 }
 
 function firstRumor(offset: number) {
-  const pool = RUMORS[offset] ?? RUMORS[41];
+  const pool =
+    RUMORS[offset] ??
+    (offset === 41 || offset === HARTHMERE_JOBS_BOARD_TARGET_OFFSET
+      ? RUMORS[41]
+      : DEFAULT_LOCAL_RUMORS);
   const memory = readHarthmereDialogueMemory();
   const count = memory.greeted[offset] ?? 0;
   return pool[count % pool.length];
@@ -294,7 +300,7 @@ function firstRumor(offset: number) {
 
 function hasAttribute(
   name: keyof ReturnType<typeof readHarthmereLevelingState>["attributes"],
-  value: number,
+  value: number
 ) {
   try {
     return readHarthmereLevelingState().attributes[name] >= value;
@@ -324,9 +330,12 @@ function neutralRoleTone(offset: number) {
 
 function relationTone(
   offset: number,
-  reputationState: HarthmereReputationState,
+  reputationState: HarthmereReputationState
 ) {
-  const behaviorResponse = getHarthmereNpcSocialResponse(offset, reputationState);
+  const behaviorResponse = getHarthmereNpcSocialResponse(
+    offset,
+    reputationState
+  );
   if (behaviorResponse.reason !== "neutral_role_response") {
     return behaviorResponse.dialogueLine;
   }
@@ -352,8 +361,18 @@ function relationTone(
 }
 
 export function buildHarthmereDialogueLines(
-  context: HarthmereDialogueContext,
+  context: HarthmereDialogueContext
 ): string[] {
+  const additiveTownProfile = harthmereAdditiveTownNpcDialogueForOffset(
+    context.offset
+  );
+  // Additive-town first contact is intentionally one compact, character-led
+  // greeting. Biography, district lore, route commentary, reputation state,
+  // and quest details live behind explicit choices or in the HUD/journal.
+  if (additiveTownProfile && !context.isBoard) {
+    return [additiveTownProfile.intro];
+  }
+
   const memory = readHarthmereDialogueMemory();
   const greetedCount = memory.greeted[context.offset] ?? 0;
   const lines: string[] = [];
@@ -364,12 +383,10 @@ export function buildHarthmereDialogueLines(
   if (context.isBoard) {
     lines.push("Harthmere Market Board");
     lines.push(
-      "Fresh ink marks urgent work first: guard trouble, market needs, missing goods, and road warnings.",
+      "Fresh ink marks urgent work first: guard trouble, market needs, missing goods, and road warnings."
     );
   } else if (greetedCount > 1) {
-    lines.push(
-      "I remember you. Let's return to the matter at hand.",
-    );
+    lines.push("I remember you. Let's return to the matter at hand.");
   } else {
     lines.push(context.defaultDialog);
   }
@@ -390,13 +407,15 @@ export function buildHarthmereDialogueLines(
 
   if (context.matchingQuestTitle && context.matchingQuestObjective) {
     lines.push(
-      `I can point you toward ${context.matchingQuestTitle}: ${context.matchingQuestObjective}`,
+      `I can point you toward ${context.matchingQuestTitle}: ${context.matchingQuestObjective}`
     );
   } else if (context.activeObjective) {
     lines.push(`The lead I know is this: ${context.activeObjective}`);
   } else if (context.availableQuestTitles.length) {
     lines.push(
-      `I know of work nearby: ${context.availableQuestTitles.slice(0, 3).join(", ")}.`,
+      `I know of work nearby: ${context.availableQuestTitles
+        .slice(0, 3)
+        .join(", ")}.`
     );
   } else if (context.isBoard && context.activeObjectiveLines.length) {
     lines.push(...context.activeObjectiveLines.slice(0, 3));
@@ -404,7 +423,9 @@ export function buildHarthmereDialogueLines(
 
   if (context.completedQuestTitles.length && greetedCount > 0) {
     lines.push(
-      `I remember what you already handled: ${context.completedQuestTitles.slice(0, 3).join(", ")}.`,
+      `I remember what you already handled: ${context.completedQuestTitles
+        .slice(0, 3)
+        .join(", ")}.`
     );
   }
 
@@ -424,11 +445,47 @@ export function dialogueActionsForHarthmereNpc(
     matchingQuestObjective?: string;
     completedQuestTitles: string[];
     onRefresh?: () => void;
-  },
+  }
 ): TalkDialogStepAction[] {
   const actions: TalkDialogStepAction[] = [];
   const name = npcName(offset);
   const direction = DISTRICT_DIRECTIONS[offset] ?? DISTRICT_DIRECTIONS[41];
+  const additiveTownProfile = harthmereAdditiveTownNpcDialogueForOffset(offset);
+  const relevantActiveObjective = additiveTownProfile
+    ? context.matchingQuestObjective
+    : context.activeObjective;
+
+  if (additiveTownProfile) {
+    actions.push({
+      name: "Tell me about yourself.",
+      tooltip: "Ask for this person's longer background story.",
+      followUpText: additiveTownProfile.story,
+      onPerformed: () => {
+        updateGreeted(offset);
+        recordDialogueChoice({
+          npcOffset: offset,
+          kind: "ask",
+          label: "Asked about their story",
+          summary: additiveTownProfile.story,
+        });
+      },
+    });
+
+    actions.push({
+      name: "What should I know about this place?",
+      tooltip: "Ask for local knowledge grounded in this district.",
+      followUpText: additiveTownProfile.location,
+      onPerformed: () => {
+        updateGreeted(offset);
+        recordDialogueChoice({
+          npcOffset: offset,
+          kind: "guide",
+          label: "Asked about the district",
+          summary: additiveTownProfile.location,
+        });
+      },
+    });
+  }
 
   actions.push({
     name: "What needs doing here?",
@@ -437,11 +494,13 @@ export function dialogueActionsForHarthmereNpc(
     followUpText:
       context.matchingQuestTitle && context.matchingQuestObjective
         ? `I can point you to ${context.matchingQuestTitle}: ${context.matchingQuestObjective}`
-        : context.activeObjective
-          ? `I can point you back to the active lead: ${context.activeObjective}`
-          : context.availableQuestTitles.length
-            ? `The useful work here is ${context.availableQuestTitles.slice(0, 3).join(", ")}.`
-            : "I do not have an urgent job here. The Market Board can point you to active work.",
+        : relevantActiveObjective
+        ? `I can point you back to the active lead: ${relevantActiveObjective}`
+        : context.availableQuestTitles.length
+        ? `The useful work here is ${context.availableQuestTitles
+            .slice(0, 3)
+            .join(", ")}.`
+        : "I do not have urgent work for you. Ask me about this place if you want something useful before you go.",
     onPerformed: () => {
       updateGreeted(offset);
       recordDialogueChoice({
@@ -455,10 +514,13 @@ export function dialogueActionsForHarthmereNpc(
 
   actions.push({
     name: "Remind me where to go.",
-    tooltip: "Ask for a useful direction without making them retell the whole story.",
+    tooltip:
+      "Ask for a useful direction without making them retell the whole story.",
     followUpText:
-      (context.activeObjective ?? direction)
-        ? `Here is a direction you can use: ${context.activeObjective ?? direction}`
+      relevantActiveObjective ?? direction
+        ? `Here is a direction you can use: ${
+            relevantActiveObjective ?? direction
+          }`
         : "I would start back at the market square if you are lost.",
     onPerformed: () => {
       updateGreeted(offset);
@@ -528,8 +590,7 @@ export function dialogueActionsForHarthmereNpc(
         npcOffset: offset,
         kind: "rude",
         label: "Rushed NPC",
-        summary:
-          "Chose a curt response. The answer came colder than before.",
+        summary: "Chose a curt response. The answer came colder than before.",
         consequence: "Minor personal relationship loss.",
       });
       context.onRefresh?.();
@@ -743,25 +804,29 @@ export function dialogueActionsForHarthmereNpc(
 
     actions.push({
       name: "Clear remembered talks",
-      tooltip: "Clears recent Harthmere conversation notes stored in this browser.",
+      tooltip:
+        "Clears recent Harthmere conversation notes stored in this browser.",
       onPerformed: () => {
         resetHarthmereDialogueMemory();
       },
-      followUpText:
-        "Your recent conversation notes have been cleared.",
+      followUpText: "Your recent conversation notes have been cleared.",
     });
   }
 
   const limited: TalkDialogStepAction[] = [];
   const take = (predicate: (action: TalkDialogStepAction) => boolean) => {
     const found = actions.find(
-      (action) => predicate(action) && !limited.some((entry) => entry.name === action.name),
+      (action) =>
+        predicate(action) &&
+        !limited.some((entry) => entry.name === action.name)
     );
     if (found) {
       limited.push(found);
     }
   };
 
+  take((action) => action.name === "Tell me about yourself.");
+  take((action) => action.name === "What should I know about this place?");
   take((action) => action.name === "What needs doing here?");
   take((action) => action.name === "Remind me where to go.");
   if (GUARD_OFFSETS.has(offset)) {
@@ -770,7 +835,10 @@ export function dialogueActionsForHarthmereNpc(
   } else if (MERCHANT_OFFSETS.has(offset)) {
     take((action) => action.name === "What do people need most here?");
   } else if (TEMPLE_OFFSETS.has(offset)) {
-    take((action) => action.name === "What does mercy cost here?" && !action.disabled);
+    take(
+      (action) =>
+        action.name === "What does mercy cost here?" && !action.disabled
+    );
   } else if (CRIMINAL_OFFSETS.has(offset)) {
     take((action) => action.name === "The Watch is not watching.");
   } else if (offset === 41 || offset === HARTHMERE_JOBS_BOARD_TARGET_OFFSET) {
@@ -797,7 +865,7 @@ function formatWhen(at: number) {
 
 export const HarthmereDialogueMenuPanel: React.FunctionComponent<{}> = () => {
   const [memory, setMemory] = useState<HarthmereDialogueMemoryState>(() =>
-    readHarthmereDialogueMemory(),
+    readHarthmereDialogueMemory()
   );
 
   useEffect(() => {
@@ -815,10 +883,10 @@ export const HarthmereDialogueMenuPanel: React.FunctionComponent<{}> = () => {
   const recent = useMemo(() => memory.choices.slice(0, 8), [memory.choices]);
 
   return (
-    <div className="mb-2 w-[30rem] rounded-lg border border-white/15 bg-black/75 p-3 text-white shadow-lg">
+    <div className="rounded-lg border-white/15 mb-2 w-[30rem] border bg-black/75 p-3 text-white shadow-lg">
       <div className="mb-2 flex items-start justify-between gap-3">
         <div>
-          <div className="text-sm font-semibold uppercase tracking-wide text-sky-200">
+          <div className="text-sky-200 text-sm font-semibold uppercase tracking-wide">
             Harthmere Conversations
           </div>
           <div className="text-xs text-white/70">
@@ -837,15 +905,15 @@ export const HarthmereDialogueMenuPanel: React.FunctionComponent<{}> = () => {
         <div className="rounded border border-white/10 bg-white/5 p-2">
           <div className="font-semibold text-white">Town Talk</div>
           <div className="mt-1 text-white/70">
-            People answer from their work, their worries, and the place
-            they belong in town.
+            People answer from their work, their worries, and the place they
+            belong in town.
           </div>
         </div>
         <div className="rounded border border-white/10 bg-white/5 p-2">
           <div className="font-semibold text-white">Tone</div>
           <div className="mt-1 text-white/70">
-            Respect, impatience, threats, reports, and shady lines can
-            change how people treat you.
+            Respect, impatience, threats, reports, and shady lines can change
+            how people treat you.
           </div>
         </div>
       </div>
@@ -853,7 +921,7 @@ export const HarthmereDialogueMenuPanel: React.FunctionComponent<{}> = () => {
       <div className="mt-3 text-xs font-semibold text-white/90">
         Recent Conversation Notes
       </div>
-      <div className="mt-1 max-h-56 overflow-auto rounded border border-white/10 bg-black/30">
+      <div className="rounded mt-1 max-h-56 overflow-auto border border-white/10 bg-black/30">
         {recent.length ? (
           recent.map((entry) => (
             <div
@@ -862,13 +930,13 @@ export const HarthmereDialogueMenuPanel: React.FunctionComponent<{}> = () => {
             >
               <div className="flex items-center justify-between gap-2">
                 <div className="font-semibold text-white">{entry.npcName}</div>
-                <div className="text-[0.65rem] uppercase tracking-wide text-white/45">
+                <div className="text-white/45 text-[0.65rem] uppercase tracking-wide">
                   {entry.kind} · {formatWhen(entry.at)}
                 </div>
               </div>
               <div className="text-white/75">{entry.summary}</div>
               {entry.consequence && (
-                <div className="mt-1 text-amber-200/80">
+                <div className="text-amber-200/80 mt-1">
                   Consequence: {entry.consequence}
                 </div>
               )}
@@ -876,7 +944,8 @@ export const HarthmereDialogueMenuPanel: React.FunctionComponent<{}> = () => {
           ))
         ) : (
           <div className="p-3 text-white/60">
-            No conversation notes yet. Speak with Harthmere locals to build history.
+            No conversation notes yet. Speak with Harthmere locals to build
+            history.
           </div>
         )}
       </div>

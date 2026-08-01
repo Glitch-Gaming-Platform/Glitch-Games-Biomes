@@ -48,6 +48,7 @@ const {
 } = require("../../src/shared/harthmere/live_mode_backend");
 const {
   HARTHMERE_LIVE_ENTITY_ROBOT_SENTINEL_SEEDS,
+  harthmereGroundedCavernMonsterSeeds,
   harthmereGroundedMuckMonsterSeedsInTerritory,
   harthmereGroundedLivestockSeedsInTerritory,
   harthmereMuckMonsterPositionIsInSafeZone,
@@ -396,6 +397,12 @@ async function repairLiveEntityPositions(world) {
       id: Number(seed.entityId),
       // The seed has already resolved to its canonical original-map terrain
       // sample, including the local hill elevation. Do not flatten its Y value.
+      position: seed.position,
+      isMonster: true,
+    })),
+    ...harthmereGroundedCavernMonsterSeeds().map((seed) => ({
+      id: Number(seed.entityId),
+      // Underground authored floor; never top-down/open-sky ground this seed.
       position: seed.position,
       isMonster: true,
     })),

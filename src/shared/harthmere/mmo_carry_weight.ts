@@ -2,6 +2,14 @@ import {
   getHarthmereItemDefinition,
   type HarthmereItemDefinition,
 } from "./mmo_inventory_authority";
+import { CH1_ITEMS } from "./ch1_items";
+
+const CH1_ITEM_WEIGHT = new Map(
+  CH1_ITEMS.map((item) => [
+    item.id,
+    item.id === "item_sorrel_field_ledger" ? 2 : 0.1,
+  ])
+);
 
 /** Soft inventory-weight threshold (in pounds) before a player is encumbered.
  *  Carrying at or below this threshold incurs no stamina penalty. */
@@ -75,8 +83,7 @@ function fallbackHarthmereItemUnitWeight(
   if (/raw .*meat|meat|fish|sashimi|patty/.test(text)) return 0.75;
   if (/cloth|fiber|hide|hemp|cotton|flax|ramie/.test(text)) return 0.25;
   if (/key|coin|old coin|token/.test(text)) return 0.05;
-  if (/shirt|apron|trouser|pants|boots|hat|helmet|glove/.test(text))
-    return 1;
+  if (/shirt|apron|trouser|pants|boots|hat|helmet|glove/.test(text)) return 1;
   if (/block|voxel|muckwad|stone|clay|sand|wood|log/.test(text)) return 1;
   if (/ore|ingot|coal|crystal|shard|matter/.test(text)) return 1.5;
   if (/sword|axe|pickaxe|hammer|bow|staff|wand|shield|armor|tool/.test(text))
@@ -91,6 +98,13 @@ export function harthmereItemUnitWeight(
   itemId: string,
   hint?: { category?: string; displayName?: string }
 ) {
+  // Chapter 1 plot objects have authored physical weight independent of which
+  // subsystem happened to initialize the mutable item-definition registry
+  // first. Without this stable semantic, a standalone E2E process treated the
+  // same Grey Card as a generic 1 lb object while the web process treated it
+  // as a 0.1 lb quest item, changing thin-ice outcomes by eleven pounds.
+  const chapter1Weight = CH1_ITEM_WEIGHT.get(itemId);
+  if (chapter1Weight !== undefined) return chapter1Weight;
   const def = getHarthmereItemDefinition(itemId);
   const explicit = Number(
     (def as any)?.weight ??

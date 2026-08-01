@@ -1,11 +1,20 @@
 import { authorizeHarthmereQuestProgress } from "@/server/harthmere/native_quest_progress_token";
 import { authorizeHarthmereInventoryTransaction } from "@/server/harthmere/native_inventory_transaction_token";
 import { acquireHarthmereActorStateLock } from "@/server/harthmere/live_mode_actor_state_authority";
-import { readCh1NativeInventoryCounts } from "@/server/harthmere/ch1_native_inventory";
+import {
+  chapter1NativeInventoryTakeSourcesForTest,
+  chapter1NativeInventoryRepairPlanForTest,
+  chapter1ProgressExpectedPlotInventoryForTest,
+  combineCh1NativeItemCounts,
+  readCh1NativeInventoryCounts,
+  readCh1NativeMaterialStorageCounts,
+  readCh1NativeOverflowCounts,
+} from "@/server/harthmere/ch1_native_inventory";
 import { resolveHarthmereLiveModeActorId } from "@/server/harthmere/live_mode_actor_resolution";
 import { disableHarthmereLiveModeHttpCaching } from "@/server/harthmere/live_mode_http_cache";
 import {
-  ch1CloneDialogue,
+  ch1DialogueWithExitGuidanceForTest,
+  ch1ObjectiveExitGuidanceForTest,
   ch1ObjectiveCompletionDialogue,
   ch1ObjectiveDialogue,
 } from "@/server/harthmere/ch1_dialogue";
@@ -20,6 +29,7 @@ import { NpcState, type ReadonlyInventory } from "@/shared/ecs/gen/components";
 import {
   HarthmereInventoryTransactionEvent,
   HarthmereQuestProgressEvent,
+  OverflowMoveToInventoryEvent,
 } from "@/shared/ecs/gen/events";
 import { countOf, createBag } from "@/shared/game/items";
 import {
@@ -112,6 +122,7 @@ const zResponse = z.object({
   objective: z.string().optional(),
   targetLabel: z.string().optional(),
   targetPosition: z.tuple([z.number(), z.number(), z.number()]).optional(),
+  targetEntityId: zBiomesId.optional(),
   trigger: z.string().optional(),
   actionLabel: z.string().optional(),
   interactionRadius: z.number().optional(),
@@ -121,6 +132,7 @@ const zResponse = z.object({
   cutsceneId: z.string().optional(),
   dialogue: zDialogue.optional(),
   completionDialogue: zDialogue.optional(),
+  exitGuidance: z.string().optional(),
   choice: z
     .object({
       title: z.string(),
@@ -213,6 +225,34 @@ export function chapter1NativeInventoryPlanForTest(args: {
   return { take: rows(takeCounts), give: rows(giveCounts) };
 }
 
+function consumeChapter1DurableItem(
+  state: ReturnType<typeof parseHarthmereLiveModeBackendState>,
+  itemId: string,
+  count: number
+) {
+  let remaining = Math.max(0, Math.trunc(count));
+  const carried = Math.max(0, Math.trunc(state.inventory.items[itemId] ?? 0));
+  const fromInventory = Math.min(remaining, carried);
+  if (fromInventory > 0) {
+    const next = carried - fromInventory;
+    if (next > 0) state.inventory.items[itemId] = next;
+    else delete state.inventory.items[itemId];
+    remaining -= fromInventory;
+  }
+  const stored = Math.max(
+    0,
+    Math.trunc(state.banking.materialStorage[itemId] ?? 0)
+  );
+  const fromStorage = Math.min(remaining, stored);
+  if (fromStorage > 0) {
+    const next = stored - fromStorage;
+    if (next > 0) state.banking.materialStorage[itemId] = next;
+    else delete state.banking.materialStorage[itemId];
+    remaining -= fromStorage;
+  }
+  return remaining;
+}
+
 type Chapter1ProgressState = z.infer<typeof zResponse>;
 
 const globalForChapter1Progress = globalThis as typeof globalThis & {
@@ -295,6 +335,8 @@ function stateForPlayer(
   context: {
     runtime: ReturnType<typeof parseHarthmereLiveModeBackendState>["chapter1"];
     inventory: Readonly<Record<string, number>>;
+    overflowInventory?: Readonly<Record<string, number>>;
+    inventoryRepairReason?: string;
     completedGroveJobs: number;
     vendorTransactions: Readonly<Record<string, number>>;
   }
@@ -328,7 +370,29 @@ function stateForPlayer(
     completedGroveJobs: context.completedGroveJobs,
     vendorTransactions: context.vendorTransactions,
   });
+  if (!requirement?.ready) {
+    const overflowRequirement = active.step.inventoryRequirements?.find(
+      (candidate) => (context.overflowInventory?.[candidate.itemId] ?? 0) > 0
+    );
+    if (overflowRequirement) {
+      requirement.reason = `${overflowRequirement.label} is waiting in inventory overflow. Clear a bag slot so it can be moved into your usable inventory.`;
+    } else if (context.inventoryRepairReason) {
+      requirement.reason = context.inventoryRepairReason;
+    }
+  }
   const distance = distance3(position, target.position);
+  const choice = (() => {
+    const spec = ch1ObjectiveChoiceSpec(active.step);
+    return spec ? { ...spec, options: [...spec.options] } : undefined;
+  })();
+  const exitGuidance = ch1ObjectiveExitGuidanceForTest({
+    questId: active.quest.id,
+    stepId: active.step.id,
+    context: {
+      runtime: context.runtime,
+      vendorTransactions: context.vendorTransactions,
+    },
+  });
   return {
     ok: true,
     status: "active",
@@ -340,6 +404,7 @@ function stateForPlayer(
     objective: active.step.objective,
     targetLabel: target.label,
     targetPosition: [...target.position],
+    targetEntityId: target.entityId,
     trigger: target.trigger,
     actionLabel: target.actionLabel,
     interactionRadius: target.interactionRadius,
@@ -349,16 +414,16 @@ function stateForPlayer(
     showNavigationAid: target.source !== "dungeon",
     introCutsceneId:
       active.step.id === "wake_up" ? CH1_IGNITION.cutsceneId : undefined,
-    dialogue: ch1CloneDialogue(
+    dialogue: ch1DialogueWithExitGuidanceForTest(
       ch1ObjectiveDialogue(active.step.id, {
         questId: active.quest.id,
         runtime: context.runtime,
-      })
+      }),
+      exitGuidance,
+      Boolean(choice)
     ),
-    choice: (() => {
-      const choice = ch1ObjectiveChoiceSpec(active.step);
-      return choice ? { ...choice, options: [...choice.options] } : undefined;
-    })(),
+    choice,
+    exitGuidance,
   };
 }
 
@@ -529,6 +594,27 @@ async function addChapter1Experience(
   return state;
 }
 
+async function resolveChapter1EntityTarget(
+  state: Chapter1ProgressState,
+  player: { position(): { v: readonly [number, number, number] } | undefined },
+  worldApi: WorldApi
+): Promise<Chapter1ProgressState> {
+  if (state.status !== "active" || state.targetEntityId === undefined) {
+    return state;
+  }
+  const target = await worldApi.get(state.targetEntityId);
+  const targetPosition = target?.position()?.v;
+  const playerPosition = player.position()?.v;
+  if (!targetPosition || !playerPosition) return state;
+  const distance = distance3(playerPosition, targetPosition);
+  return {
+    ...state,
+    targetPosition: [...targetPosition],
+    distance,
+    withinRange: distance <= (state.interactionRadius ?? 0),
+  };
+}
+
 export default biomesApiHandler(
   {
     auth: "required",
@@ -547,7 +633,7 @@ export default biomesApiHandler(
     if (!nativeBiomesEcsAuthorityEnabled()) {
       return { ok: false, status: "disabled" as const };
     }
-    const player = await worldApi.get(auth.userId);
+    let player = await worldApi.get(auth.userId);
     if (!player) {
       return {
         ok: false,
@@ -580,11 +666,135 @@ export default biomesApiHandler(
       parseHarthmereLiveModeSharedWorldState(rawSharedState, nowMs),
       nowMs
     );
-    const nativeInventoryCounts = readCh1NativeInventoryCounts(player);
+    let nativeInventoryCounts = readCh1NativeInventoryCounts(player);
+    let nativeMaterialStorageCounts =
+      readCh1NativeMaterialStorageCounts(player);
+    let nativeUsableItemCounts = combineCh1NativeItemCounts(
+      nativeInventoryCounts,
+      nativeMaterialStorageCounts
+    );
+    let nativeOverflowCounts = readCh1NativeOverflowCounts(player);
+    const activeForInventoryRepair =
+      player.challenges() && player.triggerState()
+        ? activeChapter1ObjectiveForTest({
+            inProgress: player.challenges()!.in_progress,
+            fired: (challengeId, stepId) =>
+              isTriggerFired(
+                player.triggerState()!.by_root.get(challengeId),
+                stepId
+              ),
+          })
+        : undefined;
+    const expectedInventory = chapter1ProgressExpectedPlotInventoryForTest({
+      durable: projectedLiveState.inventory.items,
+      activeQuestId: activeForInventoryRepair?.quest.id,
+      activeStepId: activeForInventoryRepair?.step.id,
+      fired: (questId, stepIndex) => {
+        const challengeId = ch1NativeQuestId(questId);
+        const stepId = ch1NativeQuestStepId(questId, stepIndex);
+        return Boolean(
+          challengeId !== undefined &&
+            stepId !== undefined &&
+            isTriggerFired(
+              player.triggerState()?.by_root.get(challengeId),
+              stepId
+            )
+        );
+      },
+    });
+    const repairPlan = chapter1NativeInventoryRepairPlanForTest({
+      expected: expectedInventory,
+      available: nativeUsableItemCounts,
+      overflow: nativeOverflowCounts,
+    });
+    let inventoryRepairReason: string | undefined;
+    if (repairPlan.moveFromOverflow.length > 0 || repairPlan.grant.length > 0) {
+      const repairEvents: GameEvent[] = [];
+      for (const repair of repairPlan.moveFromOverflow) {
+        const nativeId = harthmereNativeBiomesIdForItemId(repair.itemId);
+        if (nativeId === undefined) continue;
+        repairEvents.push(
+          new GameEvent(
+            auth.userId,
+            new OverflowMoveToInventoryEvent({
+              id: auth.userId,
+              payload: createBag(countOf(nativeId, BigInt(repair.count))),
+            })
+          )
+        );
+      }
+      for (const repair of repairPlan.grant) {
+        const nativeId = harthmereNativeBiomesIdForItemId(repair.itemId);
+        if (nativeId === undefined) continue;
+        const storage = player.harthmereMaterialStorage();
+        const transactionInput = {
+          id: auth.userId,
+          transaction_id: `chapter1:inventory-reconcile:v3:${
+            activeForInventoryRepair?.quest.id ?? "durable"
+          }:${activeForInventoryRepair?.step.id ?? "state"}:${repair.itemId}:${
+            repair.count
+          }`,
+          take: createBag(),
+          give: createBag(countOf(nativeId, BigInt(repair.count))),
+          storage_take: createBag(),
+          storage_give: createBag(),
+          storage_max_slots: Math.max(1, storage?.max_slots ?? 32),
+          personal_bank_take: createBag(),
+          personal_bank_give: createBag(),
+          personal_bank_max_slots: Math.max(
+            1,
+            storage?.personal_max_slots ?? 24
+          ),
+          account_bank_take: createBag(),
+          account_bank_give: createBag(),
+          account_bank_max_slots: Math.max(1, storage?.account_max_slots ?? 40),
+          gold_delta: 0n,
+          publish_craft: false,
+          station_entity_id: undefined,
+          robot_entity_id: undefined,
+          robot_energy_delta: 0,
+          write_standing: false,
+          standing_scope: "",
+          standing_likeability: 0,
+          standing_legal: 0,
+          standing_notoriety: 0,
+          standing_notoriety_floor: 0,
+        } as const;
+        repairEvents.push(
+          new GameEvent(
+            auth.userId,
+            new HarthmereInventoryTransactionEvent({
+              ...transactionInput,
+              authorization:
+                authorizeHarthmereInventoryTransaction(transactionInput),
+            })
+          )
+        );
+      }
+      if (repairEvents.length > 0) {
+        try {
+          await logicApi.publish(...repairEvents);
+          player = (await worldApi.get(auth.userId)) ?? player;
+          nativeInventoryCounts = readCh1NativeInventoryCounts(player);
+          nativeMaterialStorageCounts =
+            readCh1NativeMaterialStorageCounts(player);
+          nativeUsableItemCounts = combineCh1NativeItemCounts(
+            nativeInventoryCounts,
+            nativeMaterialStorageCounts
+          );
+          nativeOverflowCounts = readCh1NativeOverflowCounts(player);
+        } catch {
+          inventoryRepairReason =
+            "A Chapter 1 quest item could not fit in usable inventory. Clear at least one bag slot, then return to this objective.";
+        }
+      }
+    }
     const jobsStartedAtMs = groveJobObjectiveStartedAtMs(player);
     let state = stateForPlayer(player, {
       runtime: projectedLiveState.chapter1,
-      inventory: nativeInventoryCounts,
+      inventory: nativeUsableItemCounts,
+      overflowInventory: nativeOverflowCounts,
+      inventoryRepairReason,
       completedGroveJobs: completedGroveJobCount(
         projectedLiveState.jobsBoard,
         actorId,
@@ -592,6 +802,7 @@ export default biomesApiHandler(
       ),
       vendorTransactions: projectedLiveState.economy.vendorTransactions,
     });
+    state = await resolveChapter1EntityTarget(state, player, worldApi);
     state = await addChapter1Experience(state, player, worldApi, Date.now());
 
     if (body.action === "state" || state.status !== "active") {
@@ -800,7 +1011,7 @@ export default biomesApiHandler(
       const lockedRequirement = ch1ObjectiveRequirementState({
         step: active.step,
         runtime: liveState.chapter1,
-        inventory: nativeInventoryCounts,
+        inventory: nativeUsableItemCounts,
         completedGroveJobs: completedGroveJobCount(
           liveState.jobsBoard,
           actorId,
@@ -836,6 +1047,10 @@ export default biomesApiHandler(
           // Reconcile the reserved counters with the actual pack before every
           // consequence. Dropping fuel on the Whale Road is meaningful; it
           // cannot remain available merely because it existed at gate entry.
+          // Material storage can satisfy a town hand-in, but it is not on the
+          // player's back. Dungeon fuel/light use and thin-ice weight must use
+          // only bag + hotbar counts; otherwise banked vendor purchases make
+          // the ice crack and can be consumed from hundreds of metres away.
           const carried = ch1ProvisioningCarriedFromInventory(
             nativeInventoryCounts
           );
@@ -909,7 +1124,7 @@ export default biomesApiHandler(
         );
       }
       for (const [itemId, requiredCount] of requiredItemCounts) {
-        if ((nativeInventoryCounts[itemId] ?? 0) < requiredCount) {
+        if ((nativeUsableItemCounts[itemId] ?? 0) < requiredCount) {
           return {
             ...state,
             ok: false,
@@ -926,15 +1141,16 @@ export default biomesApiHandler(
         }
       }
       for (const itemId of effects.itemConsumes) {
-        const count = liveState.inventory.items[itemId] ?? 0;
-        if (count <= 1) delete liveState.inventory.items[itemId];
-        else liveState.inventory.items[itemId] = count - 1;
+        consumeChapter1DurableItem(liveState, itemId, 1);
       }
       for (const itemId of effects.itemGrants) {
         liveState.inventory.items[itemId] =
           (liveState.inventory.items[itemId] ?? 0) + 1;
       }
       const consumedDungeonResources: Record<string, number> = {};
+      // Survival resources must be physically carried through the dungeon.
+      // Plot-item hand-ins below may still use material storage, but storage
+      // is deliberately excluded from this resource-consumption plan.
       const nativeResourceCounts = { ...nativeInventoryCounts };
       for (const [resourceKey, count] of Object.entries(
         dungeonMechanicEffect?.resourceConsumes ?? {}
@@ -952,14 +1168,10 @@ export default biomesApiHandler(
             reason: `Your native inventory is missing ${nativeConsumed.missingCount} ${resourceKey}.`,
           };
         }
-        ch1ConsumeProvisioningResourceFromInventory(
-          liveState.inventory.items,
-          resourceKey as "water" | "fuel" | "light",
-          count
-        );
         for (const [itemId, consumedCount] of Object.entries(
           nativeConsumed.consumed
         )) {
+          consumeChapter1DurableItem(liveState, itemId, consumedCount);
           consumedDungeonResources[itemId] =
             (consumedDungeonResources[itemId] ?? 0) + consumedCount;
         }
@@ -998,7 +1210,7 @@ export default biomesApiHandler(
               const applied = applyCh1DungeonNativeEffectForTest({
                 triggerState: nativePlayer.mutableTriggerState(),
                 health: mutableHealth,
-                effect: dungeonMechanicEffect!,
+                effect: dungeonMechanicEffect,
               });
               if (applied.applied && mutableHealth.hp !== beforeHp) {
                 mutableHealth.lastDamageSource = { kind: "suicide" };
@@ -1019,13 +1231,30 @@ export default biomesApiHandler(
           itemGrants: effects.itemGrants,
           resourceConsumes: consumedDungeonResources,
         });
+        const nativeTakeSources = chapter1NativeInventoryTakeSourcesForTest({
+          required: nativeInventoryPlan.take,
+          inventory: nativeInventoryCounts,
+          materialStorage: nativeMaterialStorageCounts,
+        });
+        if (nativeTakeSources.missing.length > 0) {
+          throw new Error(
+            `Chapter 1 inventory changed before commit: ${nativeTakeSources.missing
+              .map(({ itemId, count }) => `${count} × ${itemId}`)
+              .join(", ")}`
+          );
+        }
         if (
           nativeInventoryPlan.take.length > 0 ||
           nativeInventoryPlan.give.length > 0
         ) {
           const storage = player.harthmereMaterialStorage();
           const take = createBag(
-            ...nativeInventoryPlan.take.map(({ nativeId, count }) =>
+            ...nativeTakeSources.inventory.map(({ nativeId, count }) =>
+              countOf(nativeId, BigInt(count))
+            )
+          );
+          const storageTake = createBag(
+            ...nativeTakeSources.materialStorage.map(({ nativeId, count }) =>
               countOf(nativeId, BigInt(count))
             )
           );
@@ -1041,7 +1270,7 @@ export default biomesApiHandler(
             transaction_id: `chapter1:objective:${body.challengeId}:${body.stepId}:inventory:v1`,
             take,
             give,
-            storage_take: createBag(),
+            storage_take: storageTake,
             storage_give: createBag(),
             storage_max_slots: Math.max(1, storage?.max_slots ?? 32),
             personal_bank_take: createBag(),
@@ -1108,8 +1337,16 @@ export default biomesApiHandler(
         ok: true,
         status: "completed" as const,
         cutsceneId: active.step.cutsceneId,
-        completionDialogue: ch1CloneDialogue(
-          ch1ObjectiveCompletionDialogue(active.step.id, requestedChoice)
+        completionDialogue: ch1DialogueWithExitGuidanceForTest(
+          ch1ObjectiveCompletionDialogue(active.step.id, requestedChoice),
+          ch1ObjectiveExitGuidanceForTest({
+            questId: active.quest.id,
+            stepId: active.step.id,
+            context: {
+              runtime: effects.runtime,
+              vendorTransactions: liveState.economy.vendorTransactions,
+            },
+          })
         ),
         ...(survival
           ? {

@@ -44,6 +44,28 @@ export function getSelectedItem(
     : undefined;
 }
 
+/**
+ * Resolve the active hotbar item and its reference from the same local index.
+ *
+ * The server-persisted `inventory.selected` value can briefly be missing or
+ * stale while a player is bootstrapping or while an InventoryChangeSelection
+ * event is in flight. Mixing that reference with the item at `/hotbar/index`
+ * can produce a selection that has a Fish item but no `kind: "hotbar"`, so the
+ * native InteractScript never creates the item's action script. The local
+ * hotbar index is already the client authority for the selected item, so its
+ * reference must be derived atomically from that same index.
+ */
+export function hotbarItemSelection(
+  inventory: ReadonlyInventory | undefined,
+  selectedIdx: number
+): ItemSelection {
+  return {
+    kind: "hotbar",
+    idx: selectedIdx,
+    item: getSelectedItem(inventory, selectedIdx)?.item,
+  };
+}
+
 export function cameraExitHotbarIndex(
   inventory: ReadonlyInventory | undefined,
   currentIndex: number
@@ -88,11 +110,7 @@ function genHotBarSelection(
   const playerBehavior = deps.get("/ecs/c/player_behavior", userId);
   const selectedItem = getSelectedItem(inventory, selectedIdx);
   const cameraMode = deps.get("/hotbar/camera_mode").value;
-
-  const ret = {
-    ...inventory?.selected,
-    item: selectedItem?.item,
-  } as ItemSelection;
+  const ret = hotbarItemSelection(inventory, selectedIdx);
 
   if (selectedItem && ret.item?.action === "photo" && playerBehavior) {
     return {
@@ -101,7 +119,7 @@ function genHotBarSelection(
       mode: compatibleCameraModes(ret.item).find((m) => isEqual(m, cameraMode))
         ? cameraMode
         : first(compatibleCameraModes(ret.item)) ?? "normal",
-      ref: inventory?.selected,
+      ref: ret,
     } as CameraSelection;
   } else {
     return ret;

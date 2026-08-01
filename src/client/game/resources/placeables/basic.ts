@@ -29,8 +29,8 @@ import type { BiomesId } from "@/shared/ids";
 import { ok } from "assert";
 import type { Object3D } from "three";
 import { BoxGeometry, Group, Mesh } from "three";
-import type { GLTF } from "three/examples/jsm/loaders/GLTFLoader";
-import * as SkeletonUtils from "three/examples/jsm/utils/SkeletonUtils";
+import type { GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
+import * as SkeletonUtils from "three/examples/jsm/utils/SkeletonUtils.js";
 
 export interface MakeOptions {
   noBreakableMaterial?: boolean;

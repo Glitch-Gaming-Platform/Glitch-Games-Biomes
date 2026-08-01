@@ -635,6 +635,8 @@ describe("ch1 dungeon decor - the layer rule", () => {
     assert.match(focusedSeeder, /CH1_SEED_CAST_ONLY/);
     assert.match(focusedSeeder, /CH1_SEED_TERRAIN_ONLY/);
     assert.match(focusedSeeder, /CH1_SEEDED_CAST/);
+    assert.match(focusedSeeder, /CH1_TESTIMONY_NPC_SEEDS/);
+    assert.match(focusedSeeder, /CH1_RETIRED_DUPLICATE_TESTIMONY_NPC_IDS/);
     assert.match(focusedSeeder, /CH1_RECLAIMED_CAST/);
     assert.doesNotMatch(
       focusedSeeder,

@@ -8,6 +8,7 @@ import {
   harthmereInventoryEncumbranceStaminaMultiplier,
   harthmereItemUnitWeight,
 } from "../mmo_carry_weight";
+import { CH1_ITEMS } from "../ch1_items";
 
 const EPS = 1e-9;
 
@@ -15,10 +16,7 @@ describe("mmo_carry_weight encumbrance", () => {
   it("computes pounds carried over the limit (0 at or under the limit)", () => {
     assert.equal(harthmereCarryWeightOverage(0), 0);
     assert.equal(harthmereCarryWeightOverage(10), 0);
-    assert.equal(
-      harthmereCarryWeightOverage(HARTHMERE_CARRY_WEIGHT_LIMIT),
-      0
-    );
+    assert.equal(harthmereCarryWeightOverage(HARTHMERE_CARRY_WEIGHT_LIMIT), 0);
     assert.equal(
       harthmereCarryWeightOverage(HARTHMERE_CARRY_WEIGHT_LIMIT + 7),
       7
@@ -53,11 +51,7 @@ describe("mmo_carry_weight encumbrance", () => {
         Math.abs(
           harthmereEncumbranceStaminaMultiplier(
             HARTHMERE_CARRY_WEIGHT_LIMIT + over
-          ) -
-            Math.pow(
-              HARTHMERE_ENCUMBRANCE_STAMINA_DRAIN_FACTOR_PER_LB,
-              over
-            )
+          ) - Math.pow(HARTHMERE_ENCUMBRANCE_STAMINA_DRAIN_FACTOR_PER_LB, over)
         ) < EPS,
         `multiplier mismatch at ${over} lb over`
       );
@@ -69,8 +63,7 @@ describe("mmo_carry_weight encumbrance", () => {
       Math.abs(
         harthmereEncumbranceStaminaMultiplier(
           HARTHMERE_CARRY_WEIGHT_LIMIT + 0.5
-        ) -
-          Math.pow(HARTHMERE_ENCUMBRANCE_STAMINA_DRAIN_FACTOR_PER_LB, 0.5)
+        ) - Math.pow(HARTHMERE_ENCUMBRANCE_STAMINA_DRAIN_FACTOR_PER_LB, 0.5)
       ) < EPS
     );
   });
@@ -122,5 +115,15 @@ describe("mmo_carry_weight encumbrance", () => {
     );
     assert.equal(harthmereItemUnitWeight("baker_apron"), 1);
     assert.equal(harthmereItemUnitWeight("b:12345", { category: "block" }), 1);
+  });
+
+  it("keeps Chapter 1 plot-item weight stable before any registry initialization", () => {
+    for (const item of CH1_ITEMS) {
+      assert.equal(
+        harthmereItemUnitWeight(item.id),
+        item.id === "item_sorrel_field_ledger" ? 2 : 0.1,
+        item.id
+      );
+    }
   });
 });

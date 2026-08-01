@@ -3,9 +3,9 @@ import { q } from "@/server/logic/events/query";
 import { secondsSinceEpoch } from "@/shared/ecs/config";
 import { MovementState } from "@/shared/ecs/gen/components";
 import {
-  MOVEMENT_ACTION_STAMINA_COST,
   PLAYER_MOVEMENT_ACTION_TIMING,
   createMovementActionState,
+  movementActionStaminaCost,
   movementActionIsOnCooldown,
   normalizeMovementActionDirection,
 } from "@/shared/game/movement_actions";
@@ -54,7 +54,8 @@ export const movementActionEventHandler = makeEventHandler(
       }
 
       const vitals = readHarthmereNativeVitals(delta.triggerState());
-      if (vitals.stamina < MOVEMENT_ACTION_STAMINA_COST) {
+      const staminaCost = movementActionStaminaCost(event.action);
+      if (vitals.stamina < staminaCost) {
         return;
       }
 
@@ -70,11 +71,13 @@ export const movementActionEventHandler = makeEventHandler(
           ),
           nonce: event.nonce,
           nowSeconds,
-          ...timing,
+          durationSeconds: timing.durationSeconds,
+          invulnerabilitySeconds: timing.invulnerabilityEndSeconds,
+          cooldownSeconds: timing.cooldownSeconds,
         })
       );
       writeHarthmereNativeVitals(delta.mutableTriggerState(), {
-        stamina: vitals.stamina - MOVEMENT_ACTION_STAMINA_COST,
+        stamina: vitals.stamina - staminaCost,
       });
     },
   }

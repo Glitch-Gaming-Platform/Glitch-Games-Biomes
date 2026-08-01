@@ -97,6 +97,7 @@ function npcIcon(npcEntry: NpcEntry) {
   const voxMap = (() => {
     switch (npcEntry.assembly.kind) {
       case "skeleton":
+      case "gltf":
         return l.ToVoxMap(voxForNpc(npcEntry));
       case "player":
         return l.FlattenPosedVoxJointMap(

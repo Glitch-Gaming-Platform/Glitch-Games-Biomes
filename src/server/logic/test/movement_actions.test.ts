@@ -12,7 +12,10 @@ import {
   SetCrouchingEvent,
   UpdatePlayerHealthEvent,
 } from "@/shared/ecs/gen/events";
-import { MOVEMENT_ACTION_STAMINA_COST } from "@/shared/game/movement_actions";
+import {
+  DOUBLE_JUMP_STAMINA_COST,
+  MOVEMENT_ACTION_STAMINA_COST,
+} from "@/shared/game/movement_actions";
 import {
   readHarthmereNativeVitals,
   writeHarthmereNativeVitals,
@@ -126,6 +129,69 @@ describe("native ECS movement actions", () => {
     assert.equal(readHarthmereNativeVitals(player.trigger_state).stamina, 7);
   });
 
+  it("replicates a double jump and deducts exactly four stamina", async () => {
+    const playerId = (await addGameUser(logic.world, generateTestId(), {})).id;
+    editEntity(logic.world, playerId, (player) => {
+      writeHarthmereNativeVitals(player.mutableTriggerState(), {
+        stamina: 10,
+        maxStamina: 100,
+      });
+    });
+
+    await logic.publish(
+      new GameEvent(
+        playerId,
+        new MovementActionEvent({
+          id: playerId,
+          action: "doubleJump",
+          direction: [0, 0, -1],
+          nonce: 17,
+        })
+      )
+    );
+
+    const player = logic.world.table.get(playerId)!;
+    assert.equal(player.movement_state?.action, "doubleJump");
+    assert.equal(player.movement_state?.action_nonce, 17);
+    assert.equal(
+      player.movement_state?.invulnerability_expiry_time,
+      player.movement_state?.action_start_time,
+      "double jump must not grant dodge invulnerability"
+    );
+    assert.equal(
+      readHarthmereNativeVitals(player.trigger_state).stamina,
+      10 - DOUBLE_JUMP_STAMINA_COST
+    );
+  });
+
+  it("rejects a double jump when fewer than four stamina remain", async () => {
+    const playerId = (await addGameUser(logic.world, generateTestId(), {})).id;
+    editEntity(logic.world, playerId, (player) => {
+      writeHarthmereNativeVitals(player.mutableTriggerState(), {
+        stamina: DOUBLE_JUMP_STAMINA_COST - 1,
+      });
+    });
+
+    await logic.publish(
+      new GameEvent(
+        playerId,
+        new MovementActionEvent({
+          id: playerId,
+          action: "doubleJump",
+          direction: [0, 0, -1],
+          nonce: 19,
+        })
+      )
+    );
+
+    const player = logic.world.table.get(playerId)!;
+    assert.equal(player.movement_state?.action, undefined);
+    assert.equal(
+      readHarthmereNativeVitals(player.trigger_state).stamina,
+      DOUBLE_JUMP_STAMINA_COST - 1
+    );
+  });
+
   it("rejects an action when fewer than three stamina remain", async () => {
     const playerId = (await addGameUser(logic.world, generateTestId(), {})).id;
     editEntity(logic.world, playerId, (player) => {
@@ -178,7 +244,7 @@ describe("native ECS movement actions", () => {
     assert.equal(readHarthmereNativeVitals(player.trigger_state).stamina, 10);
   });
 
-  it("ignores attack damage during the iframe and accepts it afterward", async () => {
+  it("takes damage during anticipation, ignores it in the iframe, and accepts it afterward", async () => {
     const targetId = (
       await addGameUser(logic.world, generateTestId(), { position: [0, 0, 0] })
     ).id;
@@ -197,6 +263,38 @@ describe("native ECS movement actions", () => {
         })
       )
     );
+    await logic.publish(
+      new GameEvent(
+        attackerId,
+        new UpdatePlayerHealthEvent({
+          id: targetId,
+          hpDelta: -10,
+          damageSource: {
+            kind: "attack",
+            attacker: attackerId,
+            dir: [1, 0, 0],
+          },
+        })
+      )
+    );
+    assert.equal(
+      logic.world.table.get(targetId)?.health?.hp,
+      90,
+      "the anticipation pose must remain vulnerable"
+    );
+
+    editEntity(logic.world, targetId, (player) => {
+      const now = secondsSinceEpoch();
+      player.mutableHealth().hp = 100;
+      player.setMovementState(
+        MovementState.create({
+          ...MovementState.clone(player.movementState()),
+          action_start_time: now - 0.2,
+          action_expiry_time: now + 0.55,
+          invulnerability_expiry_time: now + 0.2,
+        })
+      );
+    });
     await logic.publish(
       new GameEvent(
         attackerId,

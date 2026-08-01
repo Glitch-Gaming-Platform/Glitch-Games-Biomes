@@ -3,7 +3,13 @@ import {
   HARTHMERE_PROJECTILE_VISUAL_EVENT,
   HARTHMERE_PROJECTILE_VISUALS,
 } from "@/shared/harthmere/projectile_visual_manifest";
+import {
+  HARTHMERE_MAGIC_CHARGE_MAX_SECS,
+  HARTHMERE_MAGIC_CHARGE_MIN_SECS,
+} from "@/shared/harthmere/magic_charge";
+import { dispatchHarthmereMagicCharge } from "@/client/game/util/harthmere_magic_charge";
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   HARTHMERE_PROJECTILE_VISUAL_AUDIT_BATCHES,
   shouldShowHarthmereProjectileVisualAudit,
@@ -11,6 +17,7 @@ import {
 
 type ProjectileRuntimeSnapshot = {
   version?: string;
+  magicImpactVersion?: string;
   manifestCount?: number;
   loadedOrLoading?: number;
   loadedCount?: number;
@@ -21,6 +28,27 @@ type ProjectileRuntimeSnapshot = {
   }>;
   spawnedCount?: number;
   impactCount?: number;
+  activeMagicCharges?: Array<{
+    key?: string;
+    projectileId?: string;
+    progress?: number;
+    visualScale?: number;
+  }>;
+  magicChargeStartedCount?: number;
+  magicChargeReleasedCount?: number;
+  magicChargeCancelledCount?: number;
+  activeMagicExplosions?: Array<{
+    projectileId?: string;
+    family?: string;
+    progress?: number;
+    radius?: number;
+    ringCount?: number;
+    debrisCount?: number;
+    sparkCount?: number;
+    mistCount?: number;
+    dustCount?: number;
+  }>;
+  magicExplosionCount?: number;
 };
 
 function readProjectileRuntimeSnapshot():
@@ -75,6 +103,8 @@ export const HarthmereProjectileVisualAuditPanel: React.FunctionComponent =
     const [status, setStatus] = useState("Waiting for projectile renderer");
     const firingInterval = useRef<number>();
     const stopTimer = useRef<number>();
+    const chargeTimer = useRef<number>();
+    const activeChargeId = useRef<string>();
     const visible = useMemo(
       () =>
         typeof window !== "undefined" &&
@@ -102,6 +132,17 @@ export const HarthmereProjectileVisualAuditPanel: React.FunctionComponent =
         }
         if (stopTimer.current !== undefined) {
           window.clearTimeout(stopTimer.current);
+        }
+        if (chargeTimer.current !== undefined) {
+          window.clearTimeout(chargeTimer.current);
+        }
+        if (activeChargeId.current) {
+          dispatchHarthmereMagicCharge({
+            phase: "cancel",
+            chargeId: activeChargeId.current,
+            casterKind: "player",
+            source: "harthmere_magic_charge_browser_audit_unmount",
+          });
         }
       },
       []
@@ -172,6 +213,92 @@ export const HarthmereProjectileVisualAuditPanel: React.FunctionComponent =
       setStatus(`Firing batch ${batchIndex + 1} · ${result}`);
     };
 
+    const fireMagicCharge = (
+      projectileVisualId: "spark" | "meteor",
+      chargeTimeSecs: number
+    ) => {
+      const pose = playerPose(localPlayer);
+      if (!pose.position) {
+        setStatus("Waiting for a finite local-player position");
+        return;
+      }
+      if (chargeTimer.current !== undefined) {
+        window.clearTimeout(chargeTimer.current);
+      }
+      if (activeChargeId.current) {
+        dispatchHarthmereMagicCharge({
+          phase: "cancel",
+          chargeId: activeChargeId.current,
+          casterKind: "player",
+          source: "harthmere_magic_charge_browser_audit",
+        });
+      }
+      const [px, py, pz] = pose.position;
+      const [fx, fz] = pose.forward;
+      const origin: [number, number, number] = [
+        px + fx * 5.5,
+        py + 2.15,
+        pz + fz * 5.5,
+      ];
+      const targetPoint: [number, number, number] = [
+        origin[0] + fx * 34,
+        origin[1] + 0.4,
+        origin[2] + fz * 34,
+      ];
+      const startedAt = Date.now() / 1000;
+      const chargeId = `browser-audit:${projectileVisualId}:${startedAt}`;
+      activeChargeId.current = chargeId;
+      dispatchHarthmereMagicCharge({
+        phase: "start",
+        chargeId,
+        abilityId: projectileVisualId,
+        projectileVisualId,
+        casterKind: "player",
+        chargeStartedAt: startedAt,
+        chargeTimeSecs,
+        releaseTime: startedAt + chargeTimeSecs,
+        origin,
+        targetPoint,
+        power:
+          (chargeTimeSecs - HARTHMERE_MAGIC_CHARGE_MIN_SECS) /
+          (HARTHMERE_MAGIC_CHARGE_MAX_SECS - HARTHMERE_MAGIC_CHARGE_MIN_SECS),
+        visualScale: projectileVisualId === "meteor" ? 2.4 : 1.35,
+        source: "harthmere_magic_charge_browser_audit",
+      });
+      setStatus(
+        `Charging ${projectileVisualId} · ${chargeTimeSecs.toFixed(2)}s`
+      );
+      chargeTimer.current = window.setTimeout(() => {
+        dispatchHarthmereMagicCharge({
+          phase: "release",
+          chargeId,
+          abilityId: projectileVisualId,
+          projectileVisualId,
+          casterKind: "player",
+          chargeStartedAt: startedAt,
+          chargeTimeSecs,
+          releaseTime: startedAt + chargeTimeSecs,
+          origin,
+          targetPoint,
+          source: "harthmere_magic_charge_browser_audit",
+        });
+        window.dispatchEvent(
+          new CustomEvent(HARTHMERE_PROJECTILE_VISUAL_EVENT, {
+            detail: {
+              projectileVisualId,
+              origin,
+              targetPoint,
+              result: "hit",
+              source: "harthmere_magic_charge_browser_audit_release",
+            },
+          })
+        );
+        activeChargeId.current = undefined;
+        chargeTimer.current = undefined;
+        setStatus(`${projectileVisualId} released after ${chargeTimeSecs}s`);
+      }, chargeTimeSecs * 1000);
+    };
+
     const loadedCount = Number(runtime?.loadedCount ?? 0);
     const expectedCount = HARTHMERE_PROJECTILE_VISUALS.length;
     const ready =
@@ -192,7 +319,7 @@ export const HarthmereProjectileVisualAuditPanel: React.FunctionComponent =
       ),
     ];
 
-    return (
+    return createPortal(
       <aside
         aria-label="Harthmere projectile visual audit"
         data-testid="harthmere-projectile-visual-audit"
@@ -225,6 +352,17 @@ export const HarthmereProjectileVisualAuditPanel: React.FunctionComponent =
           {expectedCount} · Failed {runtime?.failedIds?.length ?? 0} · Spawned{" "}
           {runtime?.spawnedCount ?? 0} · Impacts {runtime?.impactCount ?? 0}
         </div>
+        <div data-testid="harthmere-magic-charge-audit-runtime">
+          Charges {runtime?.activeMagicCharges?.length ?? 0} active · Started{" "}
+          {runtime?.magicChargeStartedCount ?? 0} · Released{" "}
+          {runtime?.magicChargeReleasedCount ?? 0} · Cancelled{" "}
+          {runtime?.magicChargeCancelledCount ?? 0}
+        </div>
+        <div data-testid="harthmere-magic-impact-audit-runtime">
+          AAA magic impacts {runtime?.magicExplosionCount ?? 0} total ·{" "}
+          {runtime?.activeMagicExplosions?.length ?? 0} active ·{" "}
+          {runtime?.magicImpactVersion ?? "impact runtime pending"}
+        </div>
         <div data-testid="harthmere-projectile-audit-status">{status}</div>
         <div data-testid="harthmere-projectile-audit-active">
           Active: {activeIds.join(", ") || "none"}
@@ -236,6 +374,26 @@ export const HarthmereProjectileVisualAuditPanel: React.FunctionComponent =
           Fallbacks: {fallbackIds.join(", ") || "none"}
         </div>
         <div style={{ display: "grid", gap: 7, marginTop: 10 }}>
+          <button
+            type="button"
+            data-testid="harthmere-magic-charge-audit-min"
+            disabled={!ready}
+            onClick={() =>
+              fireMagicCharge("spark", HARTHMERE_MAGIC_CHARGE_MIN_SECS)
+            }
+          >
+            Minimum magic charge · Spark · {HARTHMERE_MAGIC_CHARGE_MIN_SECS}s
+          </button>
+          <button
+            type="button"
+            data-testid="harthmere-magic-charge-audit-max"
+            disabled={!ready}
+            onClick={() =>
+              fireMagicCharge("meteor", HARTHMERE_MAGIC_CHARGE_MAX_SECS)
+            }
+          >
+            Maximum magic charge · Meteor · {HARTHMERE_MAGIC_CHARGE_MAX_SECS}s
+          </button>
           {HARTHMERE_PROJECTILE_VISUAL_AUDIT_BATCHES.map((batch, index) => (
             <button
               key={batch.label}
@@ -266,6 +424,7 @@ export const HarthmereProjectileVisualAuditPanel: React.FunctionComponent =
             Stop firing
           </button>
         </div>
-      </aside>
+      </aside>,
+      document.body
     );
   };

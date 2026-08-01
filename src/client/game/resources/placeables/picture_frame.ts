@@ -38,8 +38,8 @@ import {
   Mesh,
   Object3D,
   PlaneGeometry,
+  SRGBColorSpace,
   Texture,
-  sRGBEncoding,
 } from "three";
 
 function pictureSizeForBox(box: ReadonlyVec3): ImageSizes {
@@ -68,7 +68,7 @@ async function setPictureFrameUrl(
     return false;
   }
   const texture = new CanvasTexture(pictureFrameInfo.imageBitmap);
-  texture.encoding = sRGBEncoding;
+  texture.colorSpace = SRGBColorSpace;
   pictureFrameInfo.pictureMaterial.uniforms.map?.value.dispose();
   updateBasicMaterial(pictureFrameInfo.pictureMaterial, {
     map: texture,

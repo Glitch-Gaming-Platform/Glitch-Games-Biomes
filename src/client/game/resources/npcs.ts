@@ -11,6 +11,10 @@ const HARTHMERE_DEATH_MAX_SINK_METERS = 0.04;
 import type { ClientContext } from "@/client/game/context";
 import type { AudioManager } from "@/client/game/context_managers/audio_manager";
 import type { AudioPath } from "@/client/game/resources/audio";
+import {
+  applyHarthmereCinematicExpressionPose,
+  clearHarthmereCinematicExpressionPose,
+} from "@/client/game/cutscene/expression_pose";
 import { BasePassMaterial } from "@/client/game/renderers/base_pass_material";
 import type { Scenes } from "@/client/game/renderers/scenes";
 import { addToScenes } from "@/client/game/renderers/scenes";
@@ -45,7 +49,6 @@ import {
   isHarthmereCinematicExpression,
   type HarthmereCinematicExpression,
 } from "@/shared/cutscene/cinematic_expressions";
-import type { SkyParams } from "@/client/game/resources/sky";
 import type {
   ClientResourceDeps,
   ClientResources,
@@ -118,13 +121,32 @@ import {
 import { isHarthmereBusinessOwnerNpcEntityId } from "@/shared/harthmere/business_owner_npc_seed";
 import { isHarthmereBusinessCustomerNpcEntityId } from "@/shared/harthmere/business_customer_npc_seed";
 import { nativeBiomesEcsAuthorityEnabled } from "@/shared/harthmere/native_road_ahead_contract";
+import { readHarthmereNpcDialogueExpression } from "@/shared/harthmere/npc_dialogue_expressions";
 import { harthmereNativeNpcCombatProfileForEntity } from "@/shared/harthmere/harthmere_native_combat_catalog";
-import { harthmereNativeNpcProjectilePresentation } from "@/shared/harthmere/harthmere_native_combat";
+import {
+  harthmereNativeNpcProjectileAttackTime,
+  harthmereNativeNpcProjectilePresentation,
+} from "@/shared/harthmere/harthmere_native_combat";
 import { HARTHMERE_PROJECTILE_VISUAL_EVENT } from "@/shared/harthmere/projectile_visual_manifest";
 import {
+  HARTHMERE_MAGIC_CHARGE_MAX_SECS,
+  HARTHMERE_MAGIC_CHARGE_MIN_SECS,
+} from "@/shared/harthmere/magic_charge";
+import { harthmereBossMagicPresentation } from "@/shared/harthmere/boss_magic_presentation";
+import {
+  dispatchHarthmereMagicCharge,
+  harthmereMagicChargeId,
+} from "@/client/game/util/harthmere_magic_charge";
+import {
   getHarthmereSoundEffect,
+  HARTHMERE_GIANT_BOSS_STOMP_SOUND_ID,
   harthmereNpcSoundIdForIdentity,
 } from "@/shared/harthmere/sound_effect_manifest";
+import {
+  advanceHarthmereBossStomp,
+  createHarthmereBossStompState,
+  harthmereBossStompProfileForEntity,
+} from "@/shared/harthmere/boss_footsteps";
 import {
   harthmereCreatureAttackEventKey,
   harthmereCreatureIdleDelayMs,
@@ -200,9 +222,9 @@ import type { RegistryLoader } from "@/shared/registry";
 import { ok } from "assert";
 import _, { sample } from "lodash";
 import * as THREE from "three";
-import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry";
-import type { GLTF } from "three/examples/jsm/loaders/GLTFLoader";
-import * as SkeletonUtils from "three/examples/jsm/utils/SkeletonUtils";
+import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
+import type { GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
+import * as SkeletonUtils from "three/examples/jsm/utils/SkeletonUtils.js";
 
 export {
   HARTHMERE_NPC_RENDER_COMPONENT_COMPAT_VERSION,
@@ -411,6 +433,15 @@ export const npcSystem = new AnimationSystem(
       fileAnimationName: "RangedAttack",
       backupFileAnimationNames: ["Attack", "BasicMagic"],
     },
+    magicCharge: {
+      fileAnimationName: "HarthmereBodyMagicChannel_Aligned_30",
+      backupFileAnimationNames: [
+        "ChannelMagic",
+        "BasicMagic",
+        "RangedAttack",
+        "Idle",
+      ],
+    },
     bossAreaAttack: {
       fileAnimationName: "AreaAttack",
       backupFileAnimationNames: ["HeavyAttack", "Attack"],
@@ -562,6 +593,17 @@ function getHarthmereStoppedNpcAnimationVelocity(): ReadonlyVec3 {
   return [0, 0, 0];
 }
 
+function harthmereNpcProjectileOrigin(
+  root: THREE.Object3D,
+  fallback: readonly [number, number, number]
+): [number, number, number] {
+  const socket = root.getObjectByName("Socket_Mouth");
+  if (!socket) return [...fallback];
+  root.updateWorldMatrix(true, true);
+  const world = socket.getWorldPosition(new THREE.Vector3());
+  return [world.x, world.y, world.z];
+}
+
 function getAttackAnimationAction(
   attackTime: number | undefined,
   timelineMatcher: TimelineMatcher,
@@ -596,6 +638,35 @@ function getAttackAnimationAction(
       },
     };
   }
+}
+
+function getMagicChargeAnimationAction(
+  chargeStartedAt: number | undefined,
+  releaseTime: number | undefined,
+  timelineMatcher: TimelineMatcher,
+  secondsSinceEpoch: number
+): NpcAnimationAction | undefined {
+  if (
+    chargeStartedAt === undefined ||
+    releaseTime === undefined ||
+    secondsSinceEpoch < chargeStartedAt ||
+    secondsSinceEpoch >= releaseTime
+  ) {
+    return undefined;
+  }
+  return {
+    weights: npcSystem.singleAnimationWeight("magicCharge", 1),
+    state: {
+      repeat: { kind: "repeat" },
+      startTime: timelineMatcher.match(
+        "magicCharge",
+        chargeStartedAt,
+        secondsSinceEpoch
+      ),
+      easeInTime: 0.08,
+    },
+    layers: { all: "apply" },
+  };
 }
 
 function getNpcEvadeAnimationAction(
@@ -689,14 +760,15 @@ function getOneShotNpcAnimationAction(
 function applyHarthmereBossDamagePose(
   entity: RenderNpcEntity,
   root: THREE.Object3D,
-  secondsSinceEpoch: number
+  secondsSinceEpoch: number,
+  synchronizedNpcStateData?: Uint8Array
 ) {
   const bossId = root.userData.harthmereBossVisualId;
   if (!bossId) {
     return;
   }
   const customState = deserializeNpcCustomState(
-    (entity as ReadonlyEntity).npc_state?.data
+    synchronizedNpcStateData ?? (entity as ReadonlyEntity).npc_state?.data
   );
   const healthRatio =
     entity.health.maxHp > 0 ? entity.health.hp / entity.health.maxHp : 0;
@@ -1191,7 +1263,8 @@ function publishHarthmereVoxelNpcUniversalCombatAnimationAudit(
   attackTime: number | undefined,
   secondsSinceEpoch: number,
   motion: { mode: HarthmereVoxelNpcMotionMode; reason: string } | undefined,
-  navigationResult: HarthmereNpcNavigationResult | undefined
+  navigationResult: HarthmereNpcNavigationResult | undefined,
+  logStateChange: boolean
 ): void {
   if (typeof window === "undefined") {
     return;
@@ -1249,20 +1322,14 @@ function publishHarthmereVoxelNpcUniversalCombatAnimationAudit(
     navigationResolution: navigationResult?.resolution ?? "none",
     navigationAnimationMoving: navigationResult?.animationMoving,
   };
-  win.__harthmereVoxelNpcAnimationAudit = {
-    ...(win.__harthmereVoxelNpcAnimationAudit ?? {}),
-    [String(entity.id)]: entry,
-  };
-  if (
-    attackActive ||
-    motion ||
-    navigationResult?.blocked ||
-    navigationResult?.stuck
-  ) {
-    win.__harthmereVoxelNpcAnimationAuditLog = [
-      entry,
-      ...(win.__harthmereVoxelNpcAnimationAuditLog ?? []),
-    ].slice(0, 240);
+  const audit = (win.__harthmereVoxelNpcAnimationAudit ??= {});
+  audit[String(entity.id)] = entry;
+  if (logStateChange) {
+    const auditLog = (win.__harthmereVoxelNpcAnimationAuditLog ??= []);
+    auditLog.unshift(entry);
+    if (auditLog.length > 240) {
+      auditLog.length = 240;
+    }
   }
 }
 
@@ -1770,10 +1837,10 @@ function harthmereNavigationModeForMotion(
 }
 
 function cutsceneNpcAnimationAction(
-  override: CutscenePuppetOverride | undefined,
+  presentation: { animation?: string; animationTime?: number } | undefined,
   mixerTime: number
 ): NpcAnimationAction | undefined {
-  if (!override?.animation) {
+  if (!presentation?.animation) {
     return undefined;
   }
   const aliases: Readonly<Record<string, string>> = {
@@ -1785,7 +1852,7 @@ function cutsceneNpcAnimationAction(
     hitReact: "creatureHit",
     death: "creatureDeath",
   };
-  const animation = aliases[override.animation] ?? override.animation;
+  const animation = aliases[presentation.animation] ?? presentation.animation;
   if (!npcSystem.hasAnimation(animation)) {
     return undefined;
   }
@@ -1795,14 +1862,14 @@ function cutsceneNpcAnimationAction(
       // Death holds its final authored frame; hit reactions play once and then
       // yield to the next cutscene beat. Loops remain appropriate for work,
       // social, and repeated attack poses.
-      repeat: isHarthmereCinematicExpression(override.animation)
-        ? harthmereCinematicExpressionRepeat(override.animation)
-        : override.animation === "death"
+      repeat: isHarthmereCinematicExpression(presentation.animation)
+        ? harthmereCinematicExpressionRepeat(presentation.animation)
+        : presentation.animation === "death"
         ? { kind: "once", clampWhenFinished: true }
-        : override.animation === "hitReact"
+        : presentation.animation === "hitReact"
         ? { kind: "once" }
         : { kind: "repeat" },
-      startTime: mixerTime - Math.max(0, override.animationTime ?? 0),
+      startTime: mixerTime - Math.max(0, presentation.animationTime ?? 0),
     },
     layers: { all: "apply" },
   };
@@ -1859,7 +1926,18 @@ export class NpcRenderState {
   private readonly cutsceneHeldItemNode = new THREE.Group();
   private readonly cutsceneHeldItemAttachment: ItemAttachment;
   private lastHarthmereProjectileAttackTime: number | undefined;
+  private lastHarthmereMagicChargeAttackTime: number | undefined;
+  private lastHarthmereMagicChargeReleaseTime: number | undefined;
+  private readonly harthmereBossStompState = createHarthmereBossStompState();
   private lastCinematicExpressionKey: string | undefined;
+  private nextHarthmereAnimationAuditAtMs = 0;
+  private hasHarthmereAnimationAuditState = false;
+  private lastHarthmereAnimationAuditAttackTime: number | undefined;
+  private lastHarthmereAnimationAuditMotionMode: string | undefined;
+  private lastHarthmereAnimationAuditNavigationResolution: string | undefined;
+  private lastHarthmereAnimationAuditNavigationBlocked = false;
+  private lastHarthmereAnimationAuditNavigationStuck = false;
+  private lastHarthmereAnimationAuditSpeedBucket: number | undefined;
   private activeHarthmereBossSpecialAttack:
     | {
         attackTime: number;
@@ -1933,7 +2011,8 @@ export class NpcRenderState {
 
   private syncCinematicFacialExpression(
     expression: HarthmereCinematicExpression | undefined,
-    eventKey: string
+    eventKey: string,
+    source: "script" | "dialogue" = "script"
   ) {
     const entityId = this.entity?.id;
     if (entityId === undefined) {
@@ -1948,7 +2027,7 @@ export class NpcRenderState {
       dispatchHarthmereFacialExpressionEvent({
         actorId: String(entityId),
         expression: "neutral",
-        source: "script",
+        source,
         reason: "npc-expression-ended",
       });
       return;
@@ -1957,8 +2036,8 @@ export class NpcRenderState {
     dispatchHarthmereFacialExpressionEvent({
       actorId: String(entityId),
       expression: spec.face,
-      source: "script",
-      reason: `npc-expression:${expression}`,
+      source,
+      reason: `${source}-npc-expression:${expression}`,
       durationMs:
         spec.playback === "once"
           ? harthmereCinematicExpressionDurationMs(expression)
@@ -2046,17 +2125,21 @@ export class NpcRenderState {
     dt: number,
     frameNumber: number,
     secondsSinceEpoch: number,
-    skyParams: SkyParams,
+    sunDirection: Vec3,
     tweaks: Tweaks,
-    resources: ClientResources
+    resources: ClientResources,
+    renderablePuppetOverride?: CutscenePuppetOverride | null
   ) {
     // Turn the NPC to face the player when the player is talking to the NPC.
     // Must do this on the client and not modify the entity on the server so
     // that only this player sees the NPC turn and nobody else.
     const becomeNPC = resources.get("/scene/npc/become_npc");
-    const cutsceneOverride = readRenderablePuppetOverrides().find(
-      (override) => override.id === Number(entity.id)
-    );
+    const cutsceneOverride =
+      renderablePuppetOverride === undefined
+        ? readRenderablePuppetOverrides().find(
+            (override) => override.id === Number(entity.id)
+          )
+        : renderablePuppetOverride ?? undefined;
     const cutsceneMotionOverrides = cutsceneOverride?.at
       ? {
           position: [...cutsceneOverride.at] as Vec3,
@@ -2308,7 +2391,7 @@ export class NpcRenderState {
         ? anItem(cutsceneOverride.itemId as BiomesId)
         : undefined,
       spatialLighting,
-      skyParams.sunDirection.toArray() as Vec3
+      sunDirection
     );
 
     // If the NPC was hit recently, we want them to flash red.
@@ -2329,20 +2412,21 @@ export class NpcRenderState {
       redFlashProgress = 0;
     }
 
-    // Shader material update.
-    this.mixedMesh.three.traverse((child) => {
-      if (
-        child instanceof THREE.Mesh &&
-        child.material instanceof BasePassMaterial
-      ) {
-        updatePlayerSkinnedMaterial(child.material, {
-          light: skyParams.sunDirection.toArray(),
+    // Lighting changes slowly, while hit flashes need immediate feedback.
+    // Cache materials at mesh creation and spread ambient updates across four
+    // frames instead of traversing every NPC hierarchy every rendered frame.
+    const updateSkinMaterials =
+      redFlashProgress < 1 || (frameNumber + Number(this.entity.id)) % 4 === 0;
+    if (updateSkinMaterials) {
+      for (const material of this.mixedMesh.basePassMaterials) {
+        updatePlayerSkinnedMaterial(material, {
+          light: sunDirection,
           spatialLighting,
           baseColor: [1, redFlashProgress, redFlashProgress],
           emissiveAdd: 0.1 * Math.max(0, 1 - 2 * redFlashProgress),
         });
       }
-    });
+    }
 
     const animAccum = npcSystem.newAccumulatedActions(
       this.mixedMesh.animationMixer.time,
@@ -2363,21 +2447,39 @@ export class NpcRenderState {
     )
       ? cutsceneOverride.animation
       : undefined;
+    const dialogueExpressionCue =
+      !harthmereIsDead && !cutsceneExpression
+        ? readHarthmereNpcDialogueExpression(Number(this.entity.id))
+        : undefined;
+    const dialogueExpression = dialogueExpressionCue?.expression;
     const gameplayExpression =
       !harthmereIsDead &&
       !cutsceneExpression &&
+      !dialogueExpression &&
       emote &&
       secondsSinceEpoch < emote.emote_expiry_time &&
       isHarthmereCinematicExpression(emote.emote_type)
         ? emote.emote_type
         : undefined;
+    const cinematicExpression =
+      cutsceneExpression ?? dialogueExpression ?? gameplayExpression;
+    const cinematicExpressionTime = cutsceneExpression
+      ? Math.max(0, cutsceneOverride?.animationTime ?? 0)
+      : dialogueExpressionCue
+      ? Math.max(0, (Date.now() - dialogueExpressionCue.startedAtMs) / 1000)
+      : gameplayExpression
+      ? Math.max(0, secondsSinceEpoch - (emote?.emote_start_time ?? 0))
+      : 0;
     this.syncCinematicFacialExpression(
-      cutsceneExpression ?? gameplayExpression,
+      cinematicExpression,
       cutsceneExpression
         ? `cutscene:${cutsceneOverride?.animation ?? cutsceneExpression}`
+        : dialogueExpression
+        ? `dialogue:${dialogueExpressionCue?.nonce ?? dialogueExpression}`
         : gameplayExpression
         ? `gameplay:${emote?.emote_start_time ?? 0}`
-        : "none"
+        : "none",
+      dialogueExpression ? "dialogue" : "script"
     );
 
     const harthmereVoxelRetaliationAttackTime =
@@ -2385,28 +2487,196 @@ export class NpcRenderState {
         this.entity.id,
         secondsSinceEpoch
       );
-    const attackTime =
-      !harthmereIsDead && !activeEvade && emote?.emote_type === "attack1"
-        ? emote?.emote_start_time
-        : !harthmereIsDead
-        ? harthmereVoxelRetaliationAttackTime
-        : undefined;
     const nativeCombatProfile = harthmereNativeNpcCombatProfileForEntity({
+      entityId: entity.id,
       typeId: entity.npc_metadata.type_id,
       displayName: entity.label?.text,
       maxHp: entity.health.maxHp,
     });
-    const nativeRangedAttack =
-      attackTime !== undefined && nativeCombatProfile?.rangedAttacks?.length
-        ? deserializeNpcCustomState((entity as ReadonlyEntity).npc_state?.data)
-            .chaseAttack?.rangedAttack
+    // The renderer intentionally scans NpcMetadataSelector so legacy NPCs that
+    // are missing optional combat components still render. Anima's full
+    // npc_state is server-only, so real clients receive only the sanitized
+    // ranged-cast projection on the public npc_combat_state component.
+    const publicCombatState = resources.get(
+      "/ecs/c/npc_combat_state",
+      this.entity.id
+    );
+    const publicRangedAttack:
+      | {
+          abilityId: string;
+          projectileVisualId: string;
+          castTime: number;
+          chargeTimeSecs?: number;
+          releaseTime?: number;
+          aimPoint: [number, number, number];
+          result?: "hit" | "miss";
+        }
+      | undefined =
+      publicCombatState?.ranged_attack_ability_id !== undefined &&
+      publicCombatState.ranged_attack_projectile_visual_id !== undefined &&
+      publicCombatState.ranged_attack_cast_time !== undefined &&
+      publicCombatState.ranged_attack_aim_point !== undefined
+        ? {
+            abilityId: publicCombatState.ranged_attack_ability_id,
+            projectileVisualId:
+              publicCombatState.ranged_attack_projectile_visual_id,
+            castTime: publicCombatState.ranged_attack_cast_time,
+            chargeTimeSecs: publicCombatState.ranged_attack_charge_time_secs,
+            releaseTime: publicCombatState.ranged_attack_release_time,
+            aimPoint: [...publicCombatState.ranged_attack_aim_point] as [
+              number,
+              number,
+              number
+            ],
+            result:
+              publicCombatState.ranged_attack_result === "hit" ||
+              publicCombatState.ranged_attack_result === "miss"
+                ? publicCombatState.ranged_attack_result
+                : undefined,
+          }
         : undefined;
+    const synchronizedNpcState = resources.get(
+      "/ecs/c/npc_state",
+      this.entity.id
+    );
+    const nativeRangedAttack = nativeCombatProfile?.rangedAttacks?.length
+      ? publicRangedAttack ??
+        deserializeNpcCustomState(
+          synchronizedNpcState?.data ??
+            (entity as ReadonlyEntity).npc_state?.data
+        ).chaseAttack?.rangedAttack
+      : undefined;
+    const rangedReleaseTime = nativeRangedAttack
+      ? nativeRangedAttack.releaseTime ??
+        nativeRangedAttack.castTime +
+          Number(nativeRangedAttack.chargeTimeSecs ?? 0)
+      : undefined;
+    const presentationAttackTime = harthmereNativeNpcProjectileAttackTime({
+      isDead: harthmereIsDead,
+      activeEvade,
+      emoteAttackTime:
+        emote?.emote_type === "attack1" ? emote.emote_start_time : undefined,
+      retaliationAttackTime: harthmereVoxelRetaliationAttackTime,
+      // Anima owns ranged casts in npc_state. They do not need a separate
+      // retaliation contact event or generic attack emote to become visible.
+      rangedReleaseTime,
+      rangedCastTime:
+        rangedReleaseTime === undefined
+          ? nativeRangedAttack?.castTime
+          : undefined,
+    });
     const projectilePresentation = harthmereNativeNpcProjectilePresentation({
       profile: nativeCombatProfile,
-      attackTime,
+      attackTime: presentationAttackTime,
       rangedState: nativeRangedAttack,
     });
+    const magicChargeTimeSecs = projectilePresentation?.chargeTimeSecs ?? 0;
+    const chargingMagic = Boolean(
+      projectilePresentation?.magic &&
+        magicChargeTimeSecs > 0 &&
+        projectilePresentation.releaseTime !== undefined &&
+        secondsSinceEpoch < projectilePresentation.releaseTime
+    );
+    const attackTime = chargingMagic ? undefined : presentationAttackTime;
     const projectileVisualId = projectilePresentation?.projectileVisualId;
+    const targetId =
+      publicCombatState?.attack_target ??
+      (entity as ReadonlyEntity).npc_combat_state?.attack_target;
+    const targetGroundPosition =
+      (targetId ? resources.get("/ecs/c/position", targetId)?.v : undefined) ??
+      localPlayer.player.position;
+    const targetPosition = projectilePresentation?.aimPoint
+      ? projectilePresentation.aimPoint
+      : targetGroundPosition;
+    const bossMagicPresentation = projectilePresentation?.magic
+      ? harthmereBossMagicPresentation({
+          position: entity.position.v,
+          size: entity.size.v,
+          // A self-AOE's authoritative aim point is the caster. Use the
+          // selected player position for presentation so a giant boss still
+          // gathers magic on the side the player can see.
+          targetPoint: targetGroundPosition,
+        })
+      : undefined;
+    const defaultProjectileOrigin = [
+      entity.position.v[0],
+      entity.position.v[1] + entity.size.v[1] * 0.58,
+      entity.position.v[2],
+    ] as [number, number, number];
+    const magicPresentationOrigin =
+      bossMagicPresentation?.origin ??
+      harthmereNpcProjectileOrigin(
+        this.mixedMesh.three,
+        defaultProjectileOrigin
+      );
+    const magicChargeId =
+      projectilePresentation?.magic && nativeRangedAttack
+        ? harthmereMagicChargeId({
+            casterKind: "npc",
+            casterEntityId: Number(entity.id),
+            abilityId: projectilePresentation.abilityId,
+            castTime: nativeRangedAttack.castTime,
+          })
+        : undefined;
+    if (
+      nativeEcsAuthority &&
+      chargingMagic &&
+      nativeRangedAttack &&
+      magicChargeId &&
+      nativeRangedAttack.castTime !== this.lastHarthmereMagicChargeAttackTime
+    ) {
+      this.lastHarthmereMagicChargeAttackTime = nativeRangedAttack.castTime;
+      dispatchHarthmereMagicCharge({
+        phase: "start",
+        chargeId: magicChargeId,
+        abilityId: projectilePresentation?.abilityId,
+        projectileVisualId,
+        casterKind: "npc",
+        casterEntityId: Number(entity.id),
+        chargeStartedAt: nativeRangedAttack.castTime,
+        chargeTimeSecs: magicChargeTimeSecs,
+        releaseTime: projectilePresentation?.releaseTime,
+        origin: magicPresentationOrigin,
+        targetPoint: targetPosition,
+        power: Math.max(
+          0,
+          Math.min(
+            1,
+            (magicChargeTimeSecs - HARTHMERE_MAGIC_CHARGE_MIN_SECS) /
+              (HARTHMERE_MAGIC_CHARGE_MAX_SECS -
+                HARTHMERE_MAGIC_CHARGE_MIN_SECS)
+          )
+        ),
+        visualScale: bossMagicPresentation?.chargeVisualScale ?? 1,
+        source: "anima_native_magic_charge",
+      });
+    }
+    if (
+      nativeEcsAuthority &&
+      projectilePresentation?.magic &&
+      projectilePresentation.releaseTime !== undefined &&
+      secondsSinceEpoch >= projectilePresentation.releaseTime &&
+      magicChargeId &&
+      projectilePresentation.releaseTime !==
+        this.lastHarthmereMagicChargeReleaseTime
+    ) {
+      this.lastHarthmereMagicChargeReleaseTime =
+        projectilePresentation.releaseTime;
+      dispatchHarthmereMagicCharge({
+        phase: "release",
+        chargeId: magicChargeId,
+        abilityId: projectilePresentation.abilityId,
+        projectileVisualId,
+        casterKind: "npc",
+        casterEntityId: Number(entity.id),
+        chargeStartedAt: nativeRangedAttack?.castTime,
+        chargeTimeSecs: projectilePresentation.chargeTimeSecs,
+        releaseTime: projectilePresentation.releaseTime,
+        origin: magicPresentationOrigin,
+        targetPoint: targetPosition,
+        source: "anima_native_magic_release",
+      });
+    }
     if (
       nativeEcsAuthority &&
       attackTime !== undefined &&
@@ -2414,15 +2684,6 @@ export class NpcRenderState {
       projectileVisualId &&
       typeof window !== "undefined"
     ) {
-      const targetId = (entity as ReadonlyEntity).npc_combat_state
-        ?.attack_target;
-      const targetGroundPosition =
-        (targetId
-          ? resources.get("/ecs/c/position", targetId)?.v
-          : undefined) ?? localPlayer.player.position;
-      const targetPosition = projectilePresentation?.aimPoint
-        ? projectilePresentation.aimPoint
-        : targetGroundPosition;
       if (targetPosition) {
         this.lastHarthmereProjectileAttackTime = attackTime;
         window.dispatchEvent(
@@ -2447,11 +2708,8 @@ export class NpcRenderState {
               nativeNpcEntityId: Number(entity.id),
               nativeNpcTypeId: Number(entity.npc_metadata.type_id),
               attackTime,
-              origin: [
-                entity.position.v[0],
-                entity.position.v[1] + entity.size.v[1] * 0.58,
-                entity.position.v[2],
-              ],
+              origin: magicPresentationOrigin,
+              visualScale: bossMagicPresentation?.projectileVisualScale ?? 1,
               originGroundPoint: [...entity.position.v],
               targetPoint: [
                 targetPosition[0],
@@ -2468,13 +2726,23 @@ export class NpcRenderState {
 
     this.mixedMesh.animationSystem.accumulateAction(
       cutsceneNpcAnimationAction(
-        cutsceneOverride,
+        cutsceneOverride?.animation
+          ? cutsceneOverride
+          : dialogueExpressionCue
+          ? {
+              animation: dialogueExpressionCue.expression,
+              animationTime: Math.max(
+                0,
+                (Date.now() - dialogueExpressionCue.startedAtMs) / 1000
+              ),
+            }
+          : undefined,
         this.mixedMesh.animationMixer.time
       ),
       animAccum
     );
     this.mixedMesh.animationSystem.accumulateAction(
-      harthmereIsDead || cutsceneOverride
+      harthmereIsDead || cutsceneOverride || dialogueExpressionCue
         ? undefined
         : gameplayNpcExpressionAnimationAction(
             emote,
@@ -2494,6 +2762,17 @@ export class NpcRenderState {
             npcType.name,
             npcType.displayName,
             getMovementTypeByNpcType(npcType)
+          ),
+      animAccum
+    );
+    this.mixedMesh.animationSystem.accumulateAction(
+      harthmereIsDead || cutsceneOverride || !chargingMagic
+        ? undefined
+        : getMagicChargeAnimationAction(
+            projectilePresentation?.chargeStartedAt,
+            projectilePresentation?.releaseTime,
+            this.mixedMesh.timelineMatcher,
+            secondsSinceEpoch
           ),
       animAccum
     );
@@ -2565,25 +2844,72 @@ export class NpcRenderState {
       clipName: projectilePresentation?.specialAnimationClip,
       secondsSinceEpoch,
     });
-    recordHarthmereNpcAnimationExecutionCheck(
-      this.mixedMesh.three,
-      harthmereDeathAwareNpcAnimationVelocity,
-      getRunSpeedByNpcType(npcType),
-      this.mixedMesh.animationMixer.time,
-      attackTime,
-      secondsSinceEpoch
+    // These window bridges exist for diagnostics and browser E2E; gameplay
+    // never reads them during the render tick. Previously every visible NPC
+    // cloned the full audit map every frame. Refresh at 2 Hz and immediately
+    // on meaningful animation/navigation state changes instead.
+    const animationAuditMotionMode =
+      harthmereMotionForAnimation?.mode ?? "static";
+    const animationAuditNavigationResolution =
+      harthmereNavigationResult?.resolution ?? "none";
+    const animationAuditNavigationBlocked =
+      harthmereNavigationResult?.blocked ?? false;
+    const animationAuditNavigationStuck =
+      harthmereNavigationResult?.stuck ?? false;
+    const animationAuditSpeedBucket = Math.round(
+      Math.hypot(
+        harthmereDeathAwareNpcAnimationVelocity[0] ?? 0,
+        harthmereDeathAwareNpcAnimationVelocity[2] ?? 0
+      ) * 10
     );
-    publishHarthmereVoxelNpcUniversalCombatAnimationAudit(
-      this.entity,
-      this.mixedMesh.three,
-      position,
-      orientation,
-      harthmereDeathAwareNpcAnimationVelocity,
-      attackTime,
-      secondsSinceEpoch,
-      harthmereMotionForAnimation,
-      harthmereNavigationResult
-    );
+    const animationAuditNowMs = secondsSinceEpoch * 1000;
+    const animationAuditStateChanged =
+      !this.hasHarthmereAnimationAuditState ||
+      attackTime !== this.lastHarthmereAnimationAuditAttackTime ||
+      animationAuditMotionMode !== this.lastHarthmereAnimationAuditMotionMode ||
+      animationAuditNavigationResolution !==
+        this.lastHarthmereAnimationAuditNavigationResolution ||
+      animationAuditNavigationBlocked !==
+        this.lastHarthmereAnimationAuditNavigationBlocked ||
+      animationAuditNavigationStuck !==
+        this.lastHarthmereAnimationAuditNavigationStuck ||
+      animationAuditSpeedBucket !== this.lastHarthmereAnimationAuditSpeedBucket;
+    if (
+      animationAuditStateChanged ||
+      animationAuditNowMs >= this.nextHarthmereAnimationAuditAtMs
+    ) {
+      this.hasHarthmereAnimationAuditState = true;
+      this.lastHarthmereAnimationAuditAttackTime = attackTime;
+      this.lastHarthmereAnimationAuditMotionMode = animationAuditMotionMode;
+      this.lastHarthmereAnimationAuditNavigationResolution =
+        animationAuditNavigationResolution;
+      this.lastHarthmereAnimationAuditNavigationBlocked =
+        animationAuditNavigationBlocked;
+      this.lastHarthmereAnimationAuditNavigationStuck =
+        animationAuditNavigationStuck;
+      this.lastHarthmereAnimationAuditSpeedBucket = animationAuditSpeedBucket;
+      this.nextHarthmereAnimationAuditAtMs = animationAuditNowMs + 500;
+      recordHarthmereNpcAnimationExecutionCheck(
+        this.mixedMesh.three,
+        harthmereDeathAwareNpcAnimationVelocity,
+        getRunSpeedByNpcType(npcType),
+        this.mixedMesh.animationMixer.time,
+        attackTime,
+        secondsSinceEpoch
+      );
+      publishHarthmereVoxelNpcUniversalCombatAnimationAudit(
+        this.entity,
+        this.mixedMesh.three,
+        position,
+        orientation,
+        harthmereDeathAwareNpcAnimationVelocity,
+        attackTime,
+        secondsSinceEpoch,
+        harthmereMotionForAnimation,
+        harthmereNavigationResult,
+        animationAuditStateChanged
+      );
+    }
 
     const aabb = getAabbForEntity(this.entity, {
       motionOverrides,
@@ -2615,22 +2941,30 @@ export class NpcRenderState {
       secondsSinceEpoch,
       aabb,
       centerPosition,
-      skyParams.sunDirection.toArray()
+      sunDirection
     );
 
     // Update threejs animations.
     this.mixedMesh.animationMixer.update(dt);
+    if (npcType.isPlayerLikeAppearance && cinematicExpression) {
+      applyHarthmereCinematicExpressionPose(
+        this.mixedMesh.three,
+        cinematicExpression,
+        cinematicExpressionTime
+      );
+    } else {
+      clearHarthmereCinematicExpressionPose(this.mixedMesh.three);
+    }
     applyHarthmereBossDamagePose(
       this.entity,
       this.mixedMesh.three,
-      secondsSinceEpoch
+      secondsSinceEpoch,
+      resources.get("/ecs/c/npc_state", this.entity.id)?.data
     );
 
-    this.mixedMesh.three.traverse((child) => {
-      if (child instanceof THREE.SkinnedMesh) {
-        child.matrixWorldNeedsUpdate = true;
-      }
-    });
+    for (const child of this.mixedMesh.skinnedMeshes) {
+      child.matrixWorldNeedsUpdate = true;
+    }
   }
 
   private tickEffects(
@@ -2647,6 +2981,7 @@ export class NpcRenderState {
       sunDirection
     );
     this.tickOnAttackEffects(attackTime, secondsSinceEpoch, centerPosition);
+    this.tickHarthmereBossFootsteps(secondsSinceEpoch, aabb, centerPosition);
 
     const isIdle =
       this.mixedMesh.animationSystemState.layerWeights.all.idle >
@@ -2698,6 +3033,38 @@ export class NpcRenderState {
         }
       }
     }
+  }
+
+  private tickHarthmereBossFootsteps(
+    secondsSinceEpoch: number,
+    aabb: AABB,
+    centerPosition: Vec3
+  ) {
+    if (!this.entity) return;
+    const weights = this.mixedMesh.animationSystemState.layerWeights.all;
+    const moving = Math.max(weights.walk, weights.run) > 0.3;
+    const profile = harthmereBossStompProfileForEntity(
+      this.entity.label?.text,
+      Number(this.entity.id)
+    );
+    if (
+      !advanceHarthmereBossStomp(this.harthmereBossStompState, {
+        profile,
+        position: centerPosition,
+        moving,
+        alive: this.entity.health.hp > 0,
+        nowSeconds: secondsSinceEpoch,
+      })
+    ) {
+      return;
+    }
+    const sound = getHarthmereSoundEffect(HARTHMERE_GIANT_BOSS_STOMP_SOUND_ID);
+    if (!sound) return;
+    this.playSound("npcVoice", sound.path as AudioPath, [
+      centerPosition[0],
+      aabb[0][1] + 0.15,
+      centerPosition[2],
+    ]);
   }
 
   private tickOnAttackEffects(
@@ -3042,12 +3409,27 @@ export class NpcRenderState {
 
 interface MixedNpcMeshImpl extends MixedMesh<typeof npcSystem> {
   harthmereAnimationClips: ReadonlyMap<string, THREE.AnimationClip>;
+  basePassMaterials: ReadonlyArray<BasePassMaterial>;
+  skinnedMeshes: ReadonlyArray<THREE.SkinnedMesh>;
 }
 export type MixedNpcMesh = Disposable<MixedNpcMeshImpl>;
 
 export function makeMixedNpcMesh(gltf: GLTF, npcType: NpcType): MixedNpcMesh {
   const three = SkeletonUtils.clone(gltfToThree(gltf));
   const [materials, _oldMaterials] = cloneMaterials(three);
+  const basePassMaterials = new Set<BasePassMaterial>();
+  const skinnedMeshes: THREE.SkinnedMesh[] = [];
+  three.traverse((child) => {
+    if (
+      child instanceof THREE.Mesh &&
+      child.material instanceof BasePassMaterial
+    ) {
+      basePassMaterials.add(child.material);
+    }
+    if (child instanceof THREE.SkinnedMesh) {
+      skinnedMeshes.push(child);
+    }
+  });
   recordHarthmereNpcAnimationLoadCheck(three, gltf.animations ?? []);
 
   const state = npcSystem.newState(three, gltf.animations, {
@@ -3064,6 +3446,8 @@ export function makeMixedNpcMesh(gltf: GLTF, npcType: NpcType): MixedNpcMesh {
       harthmereAnimationClips: new Map(
         (gltf.animations ?? []).map((clip) => [clip.name, clip])
       ),
+      basePassMaterials: [...basePassMaterials],
+      skinnedMeshes,
     },
     () => {
       materials.forEach((mat) => mat.dispose());

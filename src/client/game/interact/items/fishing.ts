@@ -3,8 +3,8 @@ import type { AttackDestroyDelegateSpec } from "@/client/game/interact/item_type
 import type { ClickableItemInfo } from "@/client/game/interact/item_types/clickable_item_script";
 import type { FishingInfo } from "@/client/game/util/fishing/state_machine";
 import { handleFishAction } from "@/client/game/util/fishing/state_machine";
+import { fishingMovementRequiresReset } from "@/shared/game/fishing";
 import { OwnedItemReferencesEqual } from "@/shared/game/inventory";
-import { dist } from "@/shared/math/linear";
 import type { Vec3f } from "@/shared/wasm/types/common";
 
 export class FishingItemSpec implements AttackDestroyDelegateSpec {
@@ -34,18 +34,20 @@ export class FishingItemSpec implements AttackDestroyDelegateSpec {
   }
 
   onTick(itemInfo: ClickableItemInfo) {
-    if (
-      (this.lastFishingPosition &&
-        dist(this.localPlayer.player.position, this.lastFishingPosition) >
-          0.01) ||
-      (this.fishingInfo &&
-        (!this.fishingInfo?.rodItemRef ||
-          !OwnedItemReferencesEqual(
-            this.fishingInfo?.rodItemRef,
-            itemInfo.itemRef
-          )))
+    if (!this.fishingInfo) {
+      this.resetState(itemInfo.itemRef);
+    } else if (
+      fishingMovementRequiresReset(
+        this.lastFishingPosition,
+        this.localPlayer.player.position
+      ) ||
+      !this.fishingInfo.rodItemRef ||
+      !OwnedItemReferencesEqual(
+        this.fishingInfo.rodItemRef,
+        itemInfo.itemRef
+      )
     ) {
-      this.resetState();
+      this.resetState(itemInfo.itemRef);
     } else {
       this.fishingInfo = handleFishAction(
         this.deps,
@@ -57,11 +59,11 @@ export class FishingItemSpec implements AttackDestroyDelegateSpec {
     return true;
   }
 
-  private resetState() {
+  private resetState(rodItemRef: ClickableItemInfo["itemRef"]) {
     this.fishingInfo = {
       state: "ready_to_cast",
       baitItemRef: this.fishingInfo?.baitItemRef,
-      rodItemRef: this.fishingInfo?.rodItemRef,
+      rodItemRef,
       start: 0,
     };
   }
@@ -80,7 +82,7 @@ export class FishingItemSpec implements AttackDestroyDelegateSpec {
     });
     const localPlayer = this.localPlayer;
     if (newVal && newVal.state !== "ready_to_cast") {
-      this.lastFishingPosition = localPlayer.player.position;
+      this.lastFishingPosition = [...localPlayer.player.position];
     } else {
       this.lastFishingPosition = undefined;
     }

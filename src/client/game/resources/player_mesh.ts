@@ -92,9 +92,9 @@ import type { Optional } from "@/shared/util/type_helpers";
 import * as _ from "lodash";
 import type { Texture } from "three";
 import * as THREE from "three";
-import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry";
-import type { GLTF } from "three/examples/jsm/loaders/GLTFLoader";
-import * as SkeletonUtils from "three/examples/jsm/utils/SkeletonUtils";
+import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
+import type { GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
+import * as SkeletonUtils from "three/examples/jsm/utils/SkeletonUtils.js";
 
 export interface LoadedPlayerMesh extends AnimatedPlayerMesh {
   id: BiomesId;
@@ -5947,6 +5947,7 @@ const SNAPSHOT_CUTSCENE_PLAYER_ANIMATION_ALIASES: Readonly<
   dodgeForward: "dodgeForward",
   dodgeBack: "dodgeBack",
   evade: "evade",
+  doubleJump: "doubleJump",
 };
 
 export function applySnapshotCutscenePlayerAnimation(

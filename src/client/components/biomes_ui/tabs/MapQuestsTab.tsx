@@ -127,12 +127,19 @@ export interface MapTrackableQuestItemSource {
   missingCount: number;
 }
 
+export interface MapTrackableQuestMaterialRequirement {
+  label: string;
+  count: number;
+  options: Array<{ itemId: string; itemName: string }>;
+}
+
 export interface MapTrackableQuest {
   questId: string;
   title: string;
   area: string;
   status: "active" | "available" | "completed" | "failed";
   firstMarkerId?: string;
+  currentStepId?: string;
   reward?: string;
   // Countdown label for timed jobs (e.g. "3h 12m left" / "Expired"); empty for
   // untimed quests. Only jobs carry a timer for now.
@@ -145,6 +152,7 @@ export interface MapTrackableQuest {
   description?: string;
   toolSource?: MapTrackableQuestToolSource;
   itemSource?: MapTrackableQuestItemSource;
+  materialRequirements?: MapTrackableQuestMaterialRequirement[];
 }
 
 // Exported so the dedicated QuestsTab can consume the same live adapter
@@ -736,6 +744,34 @@ export function activeMapTrackableQuestsForTest(
   return quests.filter((quest) => quest.status === "active");
 }
 
+export interface QuestObjectiveRow {
+  objective: string;
+  done: boolean;
+  current: boolean;
+}
+
+/**
+ * Project the authored objective list into visible completion rows. Native ECS
+ * quests expose the first unfinished objective as `quest.objective`, so every
+ * authored objective before it is complete. Completed quests strike every row.
+ */
+export function questObjectiveRowsForTest(
+  quest: MapTrackableQuest
+): QuestObjectiveRow[] {
+  const objectives = questObjectivesForDetail(quest);
+  const currentObjective = quest.objective?.trim();
+  const currentIndex = currentObjective
+    ? objectives.findIndex((objective) => objective === currentObjective)
+    : -1;
+  return objectives.map((objective, index) => ({
+    objective,
+    done:
+      quest.status === "completed" ||
+      (quest.status === "active" && currentIndex > 0 && index < currentIndex),
+    current: quest.status === "active" && index === currentIndex,
+  }));
+}
+
 export function filterMapMarkersForTest(
   markers: MapMarker[],
   filter: string
@@ -934,10 +970,11 @@ export const MapQuestsTab: React.FunctionComponent<{
     [trackableQuests, mainQuestSelection]
   );
   const mainQuestId = mainQuest?.questId ?? mainQuestSelection?.questId;
+  const activePanelQuest = mainQuest ?? trackableQuests[0];
   // Keep the panel heading aligned with the exact quest selected by the
   // player. Adapter mission order may contain an older native/main quest first,
   // which previously made a correctly accepted jobs-board quest look wrong.
-  const title = mainQuest?.title ?? adapterMissionTitle;
+  const title = activePanelQuest?.title ?? adapterMissionTitle;
   const layerEnabled = React.useCallback(
     (tab: MapPanelTab) => enabledLayers.has(tab),
     [enabledLayers]
@@ -1784,7 +1821,11 @@ export const MapQuestsTab: React.FunctionComponent<{
         ) : null}
       </section>
       <section aria-label="Map panels" style={sidePanelStyle}>
-        {contextualQuestPanel}
+        {activePanelQuest ? (
+          <MapActiveQuestPanel quest={activePanelQuest} />
+        ) : (
+          contextualQuestPanel
+        )}
         {enabledLayers.size === 0 ? (
           <p style={mutedTextStyle}>
             No layers selected. Turn on a layer above (Quests, People,
@@ -1849,6 +1890,10 @@ export const MapQuestsTab: React.FunctionComponent<{
                         style={{
                           fontSize: 11,
                           color: "var(--biomes-fg-muted)",
+                          textDecoration: step.done
+                            ? "line-through"
+                            : undefined,
+                          opacity: step.done ? 0.65 : 1,
                         }}
                       >
                         {step.objective}
@@ -2090,6 +2135,72 @@ export const MapQuestsTab: React.FunctionComponent<{
 // player clicks a quest in the Quests panel — kind, objective, description,
 // reward, time, and (for a tool-requiring job the player can't yet do) a clear
 // "where to buy the tool" callout with a button that locates the shop on the map.
+function MapActiveQuestPanel({ quest }: { quest: MapTrackableQuest }) {
+  const objectives = questObjectiveRowsForTest(quest);
+  const completed = objectives.filter((objective) => objective.done).length;
+  const current =
+    objectives.find((objective) => objective.current) ??
+    objectives.find((objective) => !objective.done);
+  return (
+    <section
+      data-testid="biomes-map-active-quest"
+      aria-label={`Active quest: ${quest.title}`}
+      style={{
+        padding: 12,
+        background: "rgba(0, 0, 0, 0.82)",
+        border: "1px solid rgba(190, 242, 100, 0.28)",
+        borderRadius: 8,
+        color: "var(--biomes-fg)",
+        boxShadow: "0 10px 28px rgba(0, 0, 0, 0.28)",
+      }}
+    >
+      <div
+        style={{
+          fontSize: 10,
+          fontWeight: 800,
+          color: "#d9f99d",
+          letterSpacing: "0.16em",
+          textTransform: "uppercase",
+        }}
+      >
+        Active quest
+      </div>
+      <strong style={{ display: "block", marginTop: 3, fontSize: 14 }}>
+        {quest.title}
+      </strong>
+      <div style={{ ...eyebrowStyle, marginTop: 2 }}>
+        {quest.kindLabel ?? "Quest"} · {quest.area}
+      </div>
+      {current ? (
+        <div
+          style={{
+            marginTop: 9,
+            padding: 8,
+            background: "rgba(255, 255, 255, 0.06)",
+            border: "1px solid rgba(255, 255, 255, 0.08)",
+            borderRadius: 4,
+            fontSize: 11,
+            lineHeight: 1.4,
+          }}
+        >
+          {current.objective}
+        </div>
+      ) : null}
+      {objectives.length > 1 ? (
+        <div
+          style={{
+            marginTop: 7,
+            fontSize: 10,
+            color: "var(--biomes-fg-muted)",
+          }}
+        >
+          {completed}/{objectives.length} objectives complete
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
 function QuestDetailPanel({
   quest,
   onLocateToolShop,
@@ -2097,7 +2208,7 @@ function QuestDetailPanel({
   quest: MapTrackableQuest;
   onLocateToolShop: (markerIds: string[]) => void;
 }) {
-  const objectives = questObjectivesForDetail(quest);
+  const objectives = questObjectiveRowsForTest(quest);
   return (
     <div
       data-testid={`biomes-map-quest-detail-${quest.questId}`}
@@ -2138,9 +2249,17 @@ function QuestDetailPanel({
             {objectives.map((objective, index) => (
               <li
                 key={`${quest.questId}:objective:${index}`}
-                style={{ marginBottom: 3, lineHeight: 1.4 }}
+                style={{
+                  marginBottom: 3,
+                  lineHeight: 1.4,
+                  color: objective.done
+                    ? "var(--biomes-fg-muted)"
+                    : "var(--biomes-fg)",
+                  textDecoration: objective.done ? "line-through" : undefined,
+                  opacity: objective.done ? 0.7 : 1,
+                }}
               >
-                {objective}
+                {objective.objective}
               </li>
             ))}
           </ol>

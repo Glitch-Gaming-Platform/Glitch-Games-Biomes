@@ -73,7 +73,7 @@ BUILD_ID.bob
 /artifacts/
 /scratch/
 /harthmere-debug-dumps/
-/.codex-artifacts/
+**/.codex-artifacts/
 /tmp/
 scripts/harthmere/.artifacts/
 harthmere-auto-survey-*.json

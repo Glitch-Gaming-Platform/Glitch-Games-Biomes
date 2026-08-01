@@ -1,5 +1,10 @@
 import { HARTHMERE_BUSINESS_CUSTOMER_NPC_SEEDS } from "@/shared/harthmere/business_customer_npc_seed";
 import { HARTHMERE_BUSINESS_OWNER_NPC_SEEDS } from "@/shared/harthmere/business_owner_npc_seed";
+import {
+  HARTHMERE_ADDITIVE_TOWN_NPC_DIALOGUE,
+  harthmereAdditiveTownNpcEntityId,
+  harthmereAdditiveTownNpcVoiceProfile,
+} from "@/shared/harthmere/additive_town_npc_dialogue";
 import { ch1AllScenes } from "@/shared/cutscene/ch1_scenes";
 import { CH1_NEW_CAST, CH1_TESTIMONIES } from "@/shared/harthmere/ch1_cast";
 import {
@@ -21,6 +26,7 @@ import type {
 } from "@/shared/harthmere/npc_voice_profiles";
 import {
   harthmereVoiceProfileForActor,
+  stableHarthmereVoiceHash,
   stripHarthmereSpeechMarkup,
 } from "@/shared/harthmere/npc_voice_profiles";
 
@@ -157,6 +163,29 @@ export function buildHarthmereNpcVoiceCatalog(): HarthmereNpcVoiceCatalogEntry[]
         background: npc.bibleBackstory,
         voiceStyle: npc.voiceStyle,
         staticLines: dialogueLinesFromObject(npc.dialogue),
+      })
+    );
+  }
+
+  // The additive Harthmere town roster is seeded from server/shim/main.ts and
+  // historically bypassed the shared voice catalog. Register its exact
+  // runtime actor identities here so intros and opt-in lore conversations hit
+  // committed MP3s instead of paid runtime synthesis.
+  for (const npc of HARTHMERE_ADDITIVE_TOWN_NPC_DIALOGUE) {
+    entries.push(
+      catalogEntry({
+        source: "harthmere_additive_town",
+        id: `additive-town-${npc.offset}`,
+        entityId: harthmereAdditiveTownNpcEntityId(npc.offset),
+        displayName: npc.displayName,
+        name: npc.displayName,
+        role: npc.role,
+        kind: npc.kind,
+        background: `${npc.story} ${npc.location}`,
+        voiceStyle: npc.voiceStyle,
+        sex: npc.sex,
+        staticLines: [npc.intro, npc.story, npc.location],
+        profile: harthmereAdditiveTownNpcVoiceProfile(npc),
       })
     );
   }
@@ -326,7 +355,29 @@ export function buildHarthmereNpcVoiceCatalog(): HarthmereNpcVoiceCatalogEntry[]
       }
     }
   }
-  return [...merged.values()];
+  const recordingPaths = new Set<string>();
+  return [...merged.values()].map((entry) => ({
+    ...entry,
+    staticLines: entry.staticLines.map((line) => {
+      if (!recordingPaths.has(line.recordingPath)) {
+        recordingPaths.add(line.recordingPath);
+        return line;
+      }
+      // Long live-entity ids can differ only after the filename-safe slug's
+      // length cap. Preserve established paths unless there is an actual
+      // collision, then add a stable actor suffix before the line filename.
+      const separator = line.recordingPath.lastIndexOf("/");
+      const actorSuffix = stableHarthmereVoiceHash(entry.profile.actorKey)
+        .toString(16)
+        .padStart(8, "0");
+      const recordingPath = `${line.recordingPath.slice(
+        0,
+        separator
+      )}-${actorSuffix}${line.recordingPath.slice(separator)}`;
+      recordingPaths.add(recordingPath);
+      return { ...line, recordingPath };
+    }),
+  }));
 }
 
 export const HARTHMERE_NPC_VOICE_CATALOG = buildHarthmereNpcVoiceCatalog();

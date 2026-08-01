@@ -1,35 +1,83 @@
 import assert from "assert";
 import { allHarthmereNativeNpcCombatProfiles } from "@/shared/harthmere/harthmere_native_combat_catalog";
-import { harthmereNativeNpcProjectilePresentation } from "@/shared/harthmere/harthmere_native_combat";
+import {
+  HARTHMERE_HEX_FIREBALL_CAST_TIME_SECS,
+  harthmereNativeNpcProjectileAttackTime,
+  harthmereNativeNpcProjectilePresentation,
+} from "@/shared/harthmere/harthmere_native_combat";
 import {
   harthmereNativeBiomesIdForItemId,
   harthmereNativeItemIdForBiomesId,
 } from "@/shared/harthmere/harthmere_native_item_ids";
 import {
   HARTHMERE_DIRECT_RANGED_ATTACK_VISUAL_IDS,
+  HARTHMERE_PROJECTILE_MAX_FLIGHT_SECS,
+  HARTHMERE_PROJECTILE_MIN_FLIGHT_SECS,
   HARTHMERE_PROJECTILE_VISUALS,
   HARTHMERE_PROJECTILE_VISUAL_VERSION,
   HARTHMERE_TERRAIN_MUTATING_PROJECTILE_VISUAL_IDS,
   getHarthmereProjectileVisual,
+  harthmereProjectileFlightDurationSecs,
   harthmereNativeNpcProjectileVisualId,
   resolveHarthmereProjectileVisual,
 } from "@/shared/harthmere/projectile_visual_manifest";
-import { validateHarthmereBossAttackCatalog } from "@/shared/harthmere/boss_attack_catalog";
+import {
+  HARTHMERE_BOSS_MINIMUM_TELEGRAPH_SECS,
+  validateHarthmereBossAttackCatalog,
+} from "@/shared/harthmere/boss_attack_catalog";
+import {
+  HARTHMERE_MAGIC_CHARGE_MAX_SECS,
+  HARTHMERE_MAGIC_CHARGE_MIN_SECS,
+  harthmereMagicChargeDurationSecs,
+} from "@/shared/harthmere/magic_charge";
 
 describe("premium projectile native wiring", () => {
-  it("keeps a complete unique 29-projectile premium registry", () => {
+  it("keeps a complete unique 31-projectile premium registry", () => {
     assert.equal(
       HARTHMERE_PROJECTILE_VISUAL_VERSION,
       "harthmere-premium-projectiles-v2"
     );
-    assert.equal(HARTHMERE_PROJECTILE_VISUALS.length, 29);
+    assert.equal(HARTHMERE_PROJECTILE_VISUALS.length, 31);
     assert.equal(
       new Set(HARTHMERE_PROJECTILE_VISUALS.map(({ id }) => id)).size,
-      29
+      31
     );
     for (const id of HARTHMERE_DIRECT_RANGED_ATTACK_VISUAL_IDS) {
       assert.ok(getHarthmereProjectileVisual(id), id);
     }
+  });
+
+  it("keeps every projectile readable and aligns hostile visuals to the authoritative dodge window", () => {
+    const speeds = HARTHMERE_PROJECTILE_VISUALS.map(({ speed }) => speed);
+    assert.equal(Math.min(...speeds), 15);
+    assert.equal(Math.max(...speeds), 58);
+    assert.equal(HARTHMERE_PROJECTILE_MIN_FLIGHT_SECS, 0.4);
+    assert.equal(HARTHMERE_PROJECTILE_MAX_FLIGHT_SECS, 1.8);
+
+    const fireball = getHarthmereProjectileVisual("fireball");
+    assert.ok(fireball);
+    assert.equal(
+      harthmereProjectileFlightDurationSecs({
+        distanceMeters: 12,
+        speedMetersPerSecond: fireball.speed,
+      }),
+      12 / 17
+    );
+    assert.equal(
+      harthmereProjectileFlightDurationSecs({
+        distanceMeters: 2,
+        speedMetersPerSecond: 58,
+      }),
+      0.4
+    );
+    assert.equal(
+      harthmereProjectileFlightDurationSecs({
+        distanceMeters: 12,
+        speedMetersPerSecond: fireball.speed,
+        authoritativeImpactSecs: 1,
+      }),
+      1
+    );
   });
 
   it("resolves every premium ranged weapon to an authored projectile", () => {
@@ -41,6 +89,15 @@ describe("premium projectile native wiring", () => {
       "two_handed_crossbow",
       "steel_dart",
       "golden_dart",
+      "smoke_bomb",
+      "arcane_staff",
+      "arcane_wand",
+      "arcane_spellbook_closed",
+      "arcane_spellbook_open",
+      "sealed_scroll",
+      "crystal_focus",
+      "star_focus",
+      "snowflake_focus",
       "photon_sidearm",
       "pulse_carbine",
       "helix_projector",
@@ -60,6 +117,15 @@ describe("premium projectile native wiring", () => {
       "two_handed_crossbow",
       "steel_dart",
       "golden_dart",
+      "smoke_bomb",
+      "arcane_staff",
+      "arcane_wand",
+      "arcane_spellbook_closed",
+      "arcane_spellbook_open",
+      "sealed_scroll",
+      "crystal_focus",
+      "star_focus",
+      "snowflake_focus",
       "photon_sidearm",
       "pulse_carbine",
       "helix_projector",
@@ -108,6 +174,18 @@ describe("premium projectile native wiring", () => {
       /hex/i.test(`${key} ${displayName}`)
     );
     assert.equal(archer?.projectileVisualId, "bandit_archer_shot");
+    assert.equal(archer?.attackStrikeMomentSecs, 0.85);
+    assert.deepEqual(
+      harthmereNativeNpcProjectilePresentation({
+        profile: archer,
+        attackTime: 10,
+        rangedState: undefined,
+      }),
+      {
+        projectileVisualId: "bandit_archer_shot",
+        windupSecs: 0.85,
+      }
+    );
     assert.equal(thaedryn?.projectileVisualId, "thaedryn_resonance");
     assert.ok(hexers.length > 0);
     assert.ok(
@@ -126,12 +204,21 @@ describe("premium projectile native wiring", () => {
     const hexBosses = hexes.filter(({ isBoss }) => isBoss);
     assert.ok(standardHexes.length > 0);
     assert.ok(hexBosses.length >= 2);
+    assert.equal(HARTHMERE_HEX_FIREBALL_CAST_TIME_SECS, 1);
     assert.ok(
       standardHexes.every(
         ({ rangedAttacks }) =>
           rangedAttacks?.length === 1 &&
           rangedAttacks[0].abilityId === "fireball" &&
-          rangedAttacks[0].cooldownSecs === 20
+          rangedAttacks[0].cooldownSecs === 20 &&
+          rangedAttacks[0].castTimeSecs === 1 &&
+          harthmereMagicChargeDurationSecs({
+            damageType: rangedAttacks[0].damageType,
+            projectileVisualId: rangedAttacks[0].projectileVisualId,
+            attackDamage: rangedAttacks[0].attackDamage,
+            cooldownSecs: rangedAttacks[0].cooldownSecs,
+            attackShape: rangedAttacks[0].attackShape,
+          }) >= HARTHMERE_MAGIC_CHARGE_MIN_SECS
       )
     );
     for (const boss of hexBosses) {
@@ -158,6 +245,30 @@ describe("premium projectile native wiring", () => {
         ),
         boss.key
       );
+      assert.ok(
+        boss.rangedAttacks?.every(
+          ({ attackShape = "projectile", castTimeSecs }) =>
+            castTimeSecs >= HARTHMERE_BOSS_MINIMUM_TELEGRAPH_SECS[attackShape]
+        ),
+        `${boss.key} needs readable dodge telegraphs`
+      );
+      assert.ok(
+        boss.rangedAttacks?.every((attack) => {
+          const chargeTimeSecs = harthmereMagicChargeDurationSecs({
+            damageType: attack.damageType,
+            projectileVisualId: attack.projectileVisualId,
+            attackDamage: attack.attackDamage,
+            cooldownSecs: attack.cooldownSecs,
+            attackShape: attack.attackShape,
+          });
+          return (
+            chargeTimeSecs === 0 ||
+            (chargeTimeSecs >= HARTHMERE_MAGIC_CHARGE_MIN_SECS &&
+              chargeTimeSecs <= HARTHMERE_MAGIC_CHARGE_MAX_SECS)
+          );
+        }),
+        `${boss.key} magic charge is outside the shared bounds`
+      );
     }
     assert.deepEqual(validateHarthmereBossAttackCatalog(), {
       ok: true,
@@ -170,14 +281,26 @@ describe("premium projectile native wiring", () => {
       ({ rangedAttacks, isBoss }) => !isBoss && rangedAttacks?.length
     );
     assert.ok(profile);
+    const attack = profile.rangedAttacks?.[0];
+    assert.ok(attack);
+    const chargeTimeSecs = harthmereMagicChargeDurationSecs({
+      damageType: attack.damageType,
+      projectileVisualId: attack.projectileVisualId,
+      attackDamage: attack.attackDamage,
+      cooldownSecs: attack.cooldownSecs,
+      attackShape: attack.attackShape,
+    });
+    const releaseTime = 50 + chargeTimeSecs;
     assert.equal(
       harthmereNativeNpcProjectilePresentation({
         profile,
-        attackTime: 50,
+        attackTime: releaseTime,
         rangedState: {
           abilityId: "fireball",
           projectileVisualId: "fireball",
           castTime: 50,
+          chargeTimeSecs,
+          releaseTime,
           aimPoint: [8, 1, 0],
         },
       })?.projectileVisualId,
@@ -193,6 +316,62 @@ describe("premium projectile native wiring", () => {
     );
   });
 
+  it("uses Anima's ranged cast time ahead of unrelated melee presentation markers", () => {
+    const profile = allHarthmereNativeNpcCombatProfiles().find(
+      ({ rangedAttacks, isBoss }) => !isBoss && rangedAttacks?.length
+    );
+    assert.ok(profile);
+    const attack = profile.rangedAttacks?.[0];
+    assert.ok(attack);
+    const chargeTimeSecs = harthmereMagicChargeDurationSecs({
+      damageType: attack.damageType,
+      projectileVisualId: attack.projectileVisualId,
+      attackDamage: attack.attackDamage,
+      cooldownSecs: attack.cooldownSecs,
+      attackShape: attack.attackShape,
+    });
+    const rangedCastTime = harthmereNativeNpcProjectileAttackTime({
+      isDead: false,
+      activeEvade: false,
+      emoteAttackTime: 73,
+      retaliationAttackTime: 74,
+      rangedCastTime: 75,
+      rangedReleaseTime: 75 + chargeTimeSecs,
+    });
+    assert.equal(
+      harthmereNativeNpcProjectileAttackTime({
+        isDead: false,
+        activeEvade: false,
+        rangedCastTime: 75,
+      }),
+      75
+    );
+    assert.equal(rangedCastTime, 75 + chargeTimeSecs);
+    assert.equal(
+      harthmereNativeNpcProjectilePresentation({
+        profile,
+        attackTime: rangedCastTime,
+        rangedState: {
+          abilityId: "fireball",
+          projectileVisualId: "fireball",
+          castTime: 75,
+          chargeTimeSecs,
+          releaseTime: 75 + chargeTimeSecs,
+          aimPoint: [8, 1, 0],
+        },
+      })?.projectileVisualId,
+      "fireball"
+    );
+    assert.equal(
+      harthmereNativeNpcProjectileAttackTime({
+        isDead: true,
+        activeEvade: false,
+        rangedCastTime: 75,
+      }),
+      undefined
+    );
+  });
+
   it("carries attack geometry and bespoke body animation through native presentation", () => {
     const profile = allHarthmereNativeNpcCombatProfiles().find(
       ({ displayName }) => displayName === "Muck-Scarred Helix"
@@ -202,14 +381,24 @@ describe("premium projectile native wiring", () => {
       ({ abilityId }) => abilityId === "helix_resonance_pulse"
     );
     assert.ok(attack);
+    const chargeTimeSecs = harthmereMagicChargeDurationSecs({
+      damageType: attack.damageType,
+      projectileVisualId: attack.projectileVisualId,
+      attackDamage: attack.attackDamage,
+      cooldownSecs: attack.cooldownSecs,
+      attackShape: attack.attackShape,
+    });
+    const releaseTime = 50 + chargeTimeSecs;
     assert.deepEqual(
       harthmereNativeNpcProjectilePresentation({
         profile,
-        attackTime: 50,
+        attackTime: releaseTime,
         rangedState: {
           abilityId: attack.abilityId,
           projectileVisualId: attack.projectileVisualId,
           castTime: 50,
+          chargeTimeSecs,
+          releaseTime,
           aimPoint: [8, 1, 0],
         },
       }),
@@ -225,6 +414,10 @@ describe("premium projectile native wiring", () => {
         hitRadius: 1.1,
         coneAngleDeg: undefined,
         windupSecs: 0.95,
+        magic: true,
+        chargeTimeSecs,
+        chargeStartedAt: 50,
+        releaseTime,
         aimPoint: [8, 1, 0],
         result: undefined,
       }
@@ -243,6 +436,10 @@ describe("premium projectile native wiring", () => {
     assert.equal(
       resolveHarthmereProjectileVisual({ attacker: "Thaedryn" })?.id,
       "thaedryn_resonance"
+    );
+    assert.equal(
+      resolveHarthmereProjectileVisual({ attacker: "Indisworm" })?.id,
+      "indisworm_poison_spit"
     );
   });
 

@@ -24,6 +24,8 @@ import {
   type HarthmereCraftingRecipe,
 } from "./mmo_inventory_authority";
 import { harthmereJobsBoardQuestMarkerRuntimePositionForId } from "./jobs_board_quest_marker_positions";
+import { SNAPSHOT_GROVE_NPCS } from "./snapshot_grove_content";
+import { HARTHMERE_TOWN_BUILDING_MAP_MARKERS } from "./harthmere_town_map_markers";
 import type { Vec3 } from "../math/types";
 
 export type HarthmereMaterialAcquisitionKind = "buy" | "craft" | "gather";
@@ -105,6 +107,41 @@ function outpostPosition(
   return [outpost.position.x, outpost.position.y + 1, outpost.position.z];
 }
 
+function vendorDestination(profile: {
+  offset: number;
+  vendorId: string;
+  businessOutpostId?: string;
+}): { markerId: string; position: Vec3 } | undefined {
+  const outpost = profile.businessOutpostId
+    ? HARTHMERE_BUSINESS_OUTPOSTS.find(
+        (candidate) => candidate.outpostId === profile.businessOutpostId
+      )
+    : undefined;
+  if (outpost) {
+    return {
+      markerId: harthmereBusinessOutpostMapMarkerId(outpost.outpostId),
+      position: outpostPosition(outpost),
+    };
+  }
+
+  const groveNpc = SNAPSHOT_GROVE_NPCS.find(
+    (candidate) => candidate.idOffset === profile.offset
+  );
+  if (groveNpc) {
+    return {
+      markerId: groveNpc.id,
+      position: [...groveNpc.authoredPosition] as Vec3,
+    };
+  }
+
+  const building = HARTHMERE_TOWN_BUILDING_MAP_MARKERS.find(
+    (candidate) => candidate.buildingName === profile.vendorId
+  );
+  return building
+    ? { markerId: building.id, position: [...building.position] as Vec3 }
+    : undefined;
+}
+
 function buyRoutes(
   targetItemId: string,
   quantity: number,
@@ -140,12 +177,8 @@ function buyRoutes(
 
   for (const profile of Object.values(HARTHMERE_VENDOR_CATALOG)) {
     const stock = profile.stocks.find((line) => line.itemId === targetItemId);
-    const outpost = profile.businessOutpostId
-      ? HARTHMERE_BUSINESS_OUTPOSTS.find(
-          (candidate) => candidate.outpostId === profile.businessOutpostId
-        )
-      : undefined;
-    if (!stock || !outpost) continue;
+    const destination = vendorDestination(profile);
+    if (!stock || !destination) continue;
     const vendorEntry = getHarthmereVendorEntry(profile.vendorId, targetItemId);
     const saleDescription = vendorEntry?.bundleQuantity
       ? `Head to ${profile.vendorName}, then buy a bundle of ${
@@ -157,7 +190,7 @@ function buyRoutes(
           quantity === 1 ? "" : "s"
         } for ${vendorEntry?.buyPrice ?? stock.price} gold each.`;
     routes.push({
-      id: `buy:${targetItemId}:${outpost.outpostId}`,
+      id: `buy:${targetItemId}:${profile.vendorId}`,
       kind: "buy",
       itemId: targetItemId,
       itemName: name,
@@ -165,8 +198,8 @@ function buyRoutes(
       title: `Buy ${name} at ${profile.vendorName}`,
       description: saleDescription,
       sourceName: profile.vendorName,
-      markerId: harthmereBusinessOutpostMapMarkerId(outpost.outpostId),
-      markerPosition: outpostPosition(outpost),
+      markerId: destination.markerId,
+      markerPosition: destination.position,
       unitPriceGold: vendorEntry?.buyPrice ?? stock.price,
       purpose,
     });
@@ -295,11 +328,11 @@ function craftRoutes(
 ): HarthmereMaterialAcquisitionRoute[] {
   const name = itemName(targetItemId);
   const matchingRecipes = listHarthmereCraftingRecipes().filter(
-      (recipe) =>
-        recipe.outputItemId === targetItemId &&
-        recipe.workflowKind !== "salvage" &&
-        (recipe.inputs.length > 0 || (recipe.fuelInputs?.length ?? 0) > 0)
-    );
+    (recipe) =>
+      recipe.outputItemId === targetItemId &&
+      recipe.workflowKind !== "salvage" &&
+      (recipe.inputs.length > 0 || (recipe.fuelInputs?.length ?? 0) > 0)
+  );
   // Runtime/test recipes share the registry but are not guaranteed player
   // acquisition routes. Prefer the production catalogue whenever it owns a
   // recipe for this item; only fall back to extensions when no canonical route
@@ -308,15 +341,13 @@ function craftRoutes(
   const productionRecipes = matchingRecipes.filter((recipe) =>
     productionRecipeIds.has(recipe.recipeId)
   );
-  const recipes = (productionRecipes.length
-    ? productionRecipes
-    : matchingRecipes
-  )
-    .sort(
-      (left, right) =>
-        (left.recipeTier ?? 1) - (right.recipeTier ?? 1) ||
-        left.recipeId.localeCompare(right.recipeId)
-    );
+  const recipes = (
+    productionRecipes.length ? productionRecipes : matchingRecipes
+  ).sort(
+    (left, right) =>
+      (left.recipeTier ?? 1) - (right.recipeTier ?? 1) ||
+      left.recipeId.localeCompare(right.recipeId)
+  );
   const routes: HarthmereMaterialAcquisitionRoute[] = [];
   for (const recipe of recipes) {
     const inputs = recipeInputs(recipe, quantity);

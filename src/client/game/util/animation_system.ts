@@ -436,7 +436,6 @@ export class AnimationSystem<
   }
 }
 
-
 // HARTHMERE_STATIC_FALLBACK_ANIMATION_TARGET_PRUNING:
 // Production Glitch can intentionally serve a packaged/static player mesh
 // fallback when the local wearable mesh generator is disabled or unavailable.
@@ -447,14 +446,17 @@ export class AnimationSystem<
 // exist on the current mesh before creating the AnimationAction. If every track
 // in a clip is incompatible, skip that action for this mesh.
 function animationTrackTargetNodeName(trackName: string): string | undefined {
-  const dotIndex = trackName.indexOf(".");
-  if (dotIndex <= 0) {
+  try {
+    const parsed = THREE.PropertyBinding.parseTrackName(trackName);
+    if (parsed.objectName === "bones" && parsed.objectIndex) {
+      return parsed.objectIndex;
+    }
+    return parsed.nodeName || undefined;
+  } catch {
+    // Let Three.js report malformed tracks at binding time instead of pruning
+    // a track that this compatibility guard does not understand.
     return undefined;
   }
-
-  const target = trackName.slice(0, dotIndex);
-  const boneMatch = target.match(/(?:^|\.)bones\[([^\]]+)\]$/);
-  return boneMatch?.[1] ?? target;
 }
 
 function collectAnimationTargetNodeNames(root: THREE.Object3D): Set<string> {

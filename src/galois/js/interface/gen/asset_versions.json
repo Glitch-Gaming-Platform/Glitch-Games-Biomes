@@ -78,13 +78,15 @@
     "audio/footsteps-130-bpm": "asset_data/audio/footsteps-130-bpm.77d476ab854abb9f5104ffbe3b7229de.webm",
     "audio/footsteps-dirt": "asset_data/audio/footsteps-dirt.7626e302a6e810e63b6064df2e33ed47.webm",
     "audio/forbidden": "asset_data/audio/forbidden.e1d981203cd2eae1efe08dd25cb7a0a2.webm",
+    "audio/harthmere-environment/cave-music-loop": "asset_data/audio/harthmere-environment/cave-music-loop.8442e3d27928f1694587a2fa117c7390.webm",
+    "audio/harthmere-environment/mountain-wind-loop": "asset_data/audio/harthmere-environment/mountain-wind-loop.cbab8300636fcc28f4333a324d600e7b.webm",
     "audio/inventory-close": "asset_data/audio/inventory-close.a166f01de44b769f51d727801cf5379b.webm",
     "audio/inventory-open": "asset_data/audio/inventory-open.1d869ff87f44710b1fdcda9fffd1297d.webm",
     "audio/item-pickup": "asset_data/audio/item-pickup.034d97fee93ce0b98059425a85aa3bd3.webm",
     "audio/item-place": "asset_data/audio/item-place.c356e84e79f32007639c0fcb55d632b7.webm",
     "audio/item-select": "asset_data/audio/item-select.603095ae5627f2ffe7a2866052af8aa0.webm",
     "audio/jump-land": "asset_data/audio/jump-land.42eb226c99eff4fb1d4a5e67d5ab8601.webm",
-    "audio/muck-music-1": "asset_data/audio/muck-music-1.cd39f05d603332e894ecebba0d0c988c.webm",
+    "audio/muck-music-1": "asset_data/audio/muck-music-1.ac0aaf830b35cc75267182900c3e3683.webm",
     "audio/music-1": "asset_data/audio/music-1.862847abfd758428088e428e836de7a8.webm",
     "audio/notification-incoming": "asset_data/audio/notification-incoming.6d40cb456690b99a09e25b51de23d3f1.webm",
     "audio/npc-cow-idle-1": "asset_data/audio/npc-cow-idle-1.1022d7e0ffc19caf4fa2631e9f8e7731.webm",
@@ -561,6 +563,7 @@
     "icons/npcs/duck": "asset_data/icons/npcs/duck.313a520cabf3f3b57b244a1089b45056.png",
     "icons/npcs/fish": "asset_data/icons/npcs/fish.440e2acf4096fd3162ae38af6169789a.png",
     "icons/npcs/helping_robot": "asset_data/icons/npcs/helping_robot.a0f5331e769cda7d438049f6b1787649.png",
+    "icons/npcs/indisworm": "asset_data/icons/npcs/indisworm.6a98ffae7f9a883e3b3548afa2948ff6.png",
     "icons/npcs/jackie": "asset_data/icons/npcs/jackie.cbdf335bd2d6db3750723b9bbd33b9fe.png",
     "icons/npcs/jugger_mucker": "asset_data/icons/npcs/jugger_mucker.e820d1d86b7daad546fbc802ecbfb163.png",
     "icons/npcs/luis": "asset_data/icons/npcs/luis.0734287d73c2f50923abfdfb7c084517.png",
@@ -1324,6 +1327,7 @@
     "item_meshes/npcs/duck": "asset_data/item_meshes/npcs/duck.73bdf2951d2044594ea7b1342b4b167b.json",
     "item_meshes/npcs/fish": "asset_data/item_meshes/npcs/fish.ce05a85bff025f65762475fcee4d752d.json",
     "item_meshes/npcs/helping_robot": "asset_data/item_meshes/npcs/helping_robot.804d210c46688c807f3a681e0b5bd890.json",
+    "item_meshes/npcs/indisworm": "asset_data/item_meshes/npcs/indisworm.355194192fa99d750a8114329fd5c175.json",
     "item_meshes/npcs/jugger_mucker": "asset_data/item_meshes/npcs/jugger_mucker.0aecd011831fde02b03d0953ef240ab8.json",
     "item_meshes/npcs/mossy_mucker": "asset_data/item_meshes/npcs/mossy_mucker.0aecd011831fde02b03d0953ef240ab8.json",
     "item_meshes/npcs/mouse": "asset_data/item_meshes/npcs/mouse.feeb5d6da052bcc6e9a4f13ebf2dcd22.json",
@@ -1653,6 +1657,7 @@
     "npcs/duck": "asset_data/npcs/duck.c995446b170e07e27d44572d068225d4.gltf",
     "npcs/fish": "asset_data/npcs/fish.db3d2c6b154cad6ce619d9e919933170.gltf",
     "npcs/helping_robot": "asset_data/npcs/helping_robot.e3e223d7c1a85dddd78e1c0844ee92a2.gltf",
+    "npcs/indisworm": "asset_data/npcs/indisworm.d6266c08f12e2cc56bf1f7917e452fdb.gltf",
     "npcs/jackie": "asset_data/npcs/jackie.db2de25c1a8e8e8bf5afd846618c17b2.glb",
     "npcs/jugger_mucker": "asset_data/npcs/jugger_mucker.7707ea15474e726fd19921932bbfac1c.gltf",
     "npcs/luis": "asset_data/npcs/luis.4ba3043804f17aee072b28d40f90454b.glb",
@@ -2768,6 +2773,6 @@
     "textures/water_distortion": "asset_data/textures/water_distortion.54e0743b8e073a731fd809ce4f80ae13.png",
     "textures/water_normals": "asset_data/textures/water_normals.36e101ee902f4084b74bc3c78b785976.png",
     "textures/white": "asset_data/textures/white.e70c349975cf6de15d3b0e6685590451.png",
-    "wearables/animations": "asset_data/wearables/animations.9affa445ff8e1629be57dfc92e8bd5be.glb"
+    "wearables/animations": "asset_data/wearables/animations.f8fd4b3a78e98cd14b6711b68e1a14d2.glb"
   }
 }

@@ -75,7 +75,12 @@ ok(
   "already-seeded worlds reconcile persisted Harthmere runtime coordinates"
 );
 ok(
-  shim.indexOf("reconcileLocalDevRuntimeContent(service, worldApi)") >
+  shim.indexOf(
+    "reconcileLocalDevRuntimeContent(service, worldApi)",
+    shim.indexOf(
+      '"Skipping local dev starter town seed; fingerprint already current."'
+    )
+  ) >
     shim.indexOf(
       '"Skipping local dev starter town seed; fingerprint already current."'
     ),

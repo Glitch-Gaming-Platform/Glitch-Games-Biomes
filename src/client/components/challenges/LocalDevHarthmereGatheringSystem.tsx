@@ -6,6 +6,7 @@ import {
 } from "@/client/components/challenges/LocalDevHarthmereWorldAuthority";
 import {
   grantHarthmereItem,
+  harthmereOwnsFishingRod,
   readHarthmereInventoryState,
 } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
 import {
@@ -1147,6 +1148,9 @@ function nodeById(nodeId: string) {
 }
 
 function hasInventoryItem(itemId: string) {
+  if (itemId === "simple_fishing_rod") {
+    return harthmereOwnsFishingRod();
+  }
   const inventory = readHarthmereInventoryState();
   return (
     inventory.backpack.items.some((item) => item.itemId === itemId) ||

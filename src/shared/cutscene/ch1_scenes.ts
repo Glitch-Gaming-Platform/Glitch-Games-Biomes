@@ -50,6 +50,7 @@ import {
   CH1_CONSOLIDATION_ORDER,
 } from "@/shared/harthmere/ch1_fragment_ledger";
 import { withCh1DialogueVoices } from "@/shared/harthmere/ch1_voice";
+import { SNAPSHOT_CUTSCENE_PLAYER_MESH_ASSET } from "@/shared/cutscene/puppets";
 
 // ---------------------------------------------------------------------------
 // Ids
@@ -90,20 +91,6 @@ export interface Ch1SceneActingCue extends CutsceneExpressionCue {
 export const CH1_SCENE_ACTING_CUES = Object.freeze({
   [CH1_SCENE_IDS.ignition]: [
     { shotId: "it-stands-up", role: "augur9", expression: "getUp", at: 0.15 },
-    {
-      shotId: "it-looks-at-you",
-      role: "augur9",
-      expression: "curiosity",
-      at: 0.1,
-      faceTowardsRole: "player",
-    },
-    {
-      shotId: "your-own-voice",
-      role: "augur9",
-      expression: "confusion",
-      at: 0.15,
-      faceTowardsRole: "player",
-    },
   ],
   [CH1_SCENE_IDS.firstGate]: [
     {
@@ -328,7 +315,8 @@ export const CH1_SCENE_ACTING_CUES = Object.freeze({
       faceTowardsRole: "a",
     },
     { shotId: "line-0", role: "a", expression: "uncertainty", at: 0.1 },
-    { shotId: "line-2", role: "b", expression: "disgust", at: 0.1 },
+    { shotId: "line-1", role: "a", expression: "determined", at: 0.1 },
+    { shotId: "line-2", role: "b", expression: "anger", at: 0.1 },
     { shotId: "line-3", role: "a", expression: "shame", at: 0.1 },
     { shotId: "line-4", role: "a", expression: "determined", at: 0.1 },
   ],
@@ -347,7 +335,9 @@ export const CH1_SCENE_ACTING_CUES = Object.freeze({
       at: 0.3,
       faceTowardsRole: "a",
     },
+    { shotId: "line-0", role: "a", expression: "annoyance", at: 0.1 },
     { shotId: "line-1", role: "a", expression: "surprise", at: 0.1 },
+    { shotId: "line-2", role: "a", expression: "determined", at: 0.1 },
     { shotId: "line-3", role: "a", expression: "sadness", at: 0.1 },
     { shotId: "line-4", role: "a", expression: "shock", at: 0.1 },
     { shotId: "line-5", role: "a", expression: "sighing", at: 0.1 },
@@ -369,9 +359,11 @@ export const CH1_SCENE_ACTING_CUES = Object.freeze({
       faceTowardsRole: "a",
     },
     { shotId: "line-0", role: "a", expression: "apology", at: 0.1 },
-    { shotId: "line-1", role: "a", expression: "uncertainty", at: 0.1 },
+    { shotId: "line-1", role: "a", expression: "determined", at: 0.1 },
+    { shotId: "line-2", role: "a", expression: "determined", at: 0.1 },
     { shotId: "line-3", role: "a", expression: "frustration", at: 0.1 },
     { shotId: "line-4", role: "a", expression: "sadness", at: 0.1 },
+    { shotId: "line-5", role: "a", expression: "uncertainty", at: 0.1 },
     { shotId: "line-6", role: "a", expression: "determined", at: 0.1 },
   ],
   [CH1_SCENE_IDS.consolidationRevision]: [
@@ -444,6 +436,7 @@ export const CH1_SCENE_ACTING_CUES = Object.freeze({
     },
     { shotId: "line-0", role: "a", expression: "shame", at: 0.1 },
     { shotId: "line-1", role: "a", expression: "determined", at: 0.1 },
+    { shotId: "line-2", role: "a", expression: "determined", at: 0.1 },
     { shotId: "line-3", role: "a", expression: "frustration", at: 0.1 },
     { shotId: "line-4", role: "a", expression: "defeat", at: 0.1 },
   ],
@@ -464,6 +457,7 @@ export const CH1_SCENE_ACTING_CUES = Object.freeze({
     },
     { shotId: "line-0", role: "a", expression: "sighing", at: 0.1 },
     { shotId: "line-1", role: "a", expression: "shame", at: 0.1 },
+    { shotId: "line-2", role: "a", expression: "sadness", at: 0.1 },
     { shotId: "line-3", role: "a", expression: "apology", at: 0.1 },
     { shotId: "line-4", role: "a", expression: "shame", at: 0.1 },
     { shotId: "line-5", role: "a", expression: "determined", at: 0.1 },
@@ -601,7 +595,6 @@ function stagedCh1ConversationCutscene(args: {
   id: Ch1SceneId;
   name: string;
   actor: CutsceneRoleBindingInput;
-  ghostAsset: string;
   stage: Ch1ConversationStage;
   lines: readonly ConversationLine[];
   settings?: Record<string, unknown>;
@@ -623,7 +616,7 @@ function stagedCh1ConversationCutscene(args: {
               ...member,
               required: true,
               fallback: "ghost" as const,
-              ghostAsset: args.ghostAsset,
+              ghostAsset: SNAPSHOT_CUTSCENE_PLAYER_MESH_ASSET,
             }
           : member
       ),
@@ -840,7 +833,7 @@ export function ch1FirstGateCutscene(): CutsceneDef {
         },
         required: true,
         fallback: "ghost",
-        ghostAsset: "townsperson_market",
+        ghostAsset: SNAPSHOT_CUTSCENE_PLAYER_MESH_ASSET,
       },
       {
         role: "seam",
@@ -987,7 +980,7 @@ export function ch1PersistentGateCutscene(): CutsceneDef {
         },
         required: true,
         fallback: "ghost",
-        ghostAsset: "townsperson_guard",
+        ghostAsset: SNAPSHOT_CUTSCENE_PLAYER_MESH_ASSET,
       },
       {
         role: "revealTarget",
@@ -1081,8 +1074,9 @@ export function ch1OverlayIveGotYouCutscene(): CutsceneDef {
         role: "hand",
         binding: {
           kind: "ghost",
-          asset: "townsperson_clergy",
+          asset: SNAPSHOT_CUTSCENE_PLAYER_MESH_ASSET,
           family: "human",
+          appearanceSourceEntityId: Number(CH1_NPC_ENTITY_IDS.lou_ardan),
           // The renderer stand-in represents the arm/voice at the player's
           // shoulder. Keep enough distance for a readable POV silhouette;
           // the old 1.4m placement filled the entire frame with one face.
@@ -1177,10 +1171,12 @@ export function ch1CorridorCutscene(opts: Ch1CorridorOptions): CutsceneDef {
 
   // The woman: unresolved in Act 3, Jackie in Act 6. Same position, same
   // motion, same timing. Only the mesh and the label change.
-  // Ghost assets must be keys in the live-creature renderer catalogue. The
-  // earlier `townsperson_ranger` label was narrative shorthand, not a shipped
-  // asset key, so revised Jackie could disappear from real captures.
-  const womanAsset = revised ? "townsperson_market" : "townsperson_undead";
+  // Human memories always use the original snapshot/generated PlayerMesh
+  // pipeline. The prior townsperson aliases could be intercepted by the
+  // procedural Three.js NPC creator before the bridge canonicalized them.
+  const womanAppearanceSourceEntityId = revised
+    ? Number(SNAPSHOT_GROVE_JACKIE_ENTITY_ID)
+    : undefined;
   const womanSpeaker = revised ? "Jackie" : "A woman, running";
 
   // What is in her hand. Act 3 never names it. Act 6 names it and names
@@ -1219,8 +1215,9 @@ export function ch1CorridorCutscene(opts: Ch1CorridorOptions): CutsceneDef {
         role: "woman",
         binding: {
           kind: "ghost",
-          asset: womanAsset,
+          asset: SNAPSHOT_CUTSCENE_PLAYER_MESH_ASSET,
           family: "human",
+          appearanceSourceEntityId: womanAppearanceSourceEntityId,
           // Keep her inside the visible aisle. The former +9m mark landed on
           // the road-house shell edge, so both renderings showed an empty room.
           spawnAt: stageOffset(0, 0, 4),
@@ -1230,8 +1227,9 @@ export function ch1CorridorCutscene(opts: Ch1CorridorOptions): CutsceneDef {
         role: "man",
         binding: {
           kind: "ghost",
-          asset: "townsperson_clergy",
+          asset: SNAPSHOT_CUTSCENE_PLAYER_MESH_ASSET,
           family: "human",
+          appearanceSourceEntityId: Number(CH1_NPC_ENTITY_IDS.lou_ardan),
           spawnAt: stageOffset(0.8, 0, -1.6),
         },
       },
@@ -1404,8 +1402,9 @@ export function ch1ReconArrivalCutscene(): CutsceneDef {
         role: "carrier",
         binding: {
           kind: "ghost",
-          asset: "townsperson_market",
+          asset: SNAPSHOT_CUTSCENE_PLAYER_MESH_ASSET,
           family: "human",
+          appearanceSourceEntityId: Number(SNAPSHOT_GROVE_JACKIE_ENTITY_ID),
           spawnAt: arrivalStart,
         },
       },
@@ -1577,7 +1576,7 @@ export function ch1OverlayContainmentCutscene(): CutsceneDef {
         },
         required: true,
         fallback: "ghost",
-        ghostAsset: "townsperson_market",
+        ghostAsset: SNAPSHOT_CUTSCENE_PLAYER_MESH_ASSET,
       },
       {
         role: "revealTarget",
@@ -1645,7 +1644,6 @@ export function ch1TheFlinchCutscene(): CutsceneDef {
         kind: "entity",
         entityId: Number(SNAPSHOT_GROVE_JACKIE_ENTITY_ID),
       },
-      ghostAsset: "townsperson_market",
       stage: {
         actor: worldOffset(CH1_ANCHORS.gate_desert, -4, 0, 4),
         player: worldOffset(CH1_ANCHORS.gate_desert, 0, 0, 8),
@@ -1670,7 +1668,6 @@ export function ch1ConfrontationCutscene(): CutsceneDef {
         kind: "entity",
         entityId: Number(SNAPSHOT_GROVE_JACKIE_ENTITY_ID),
       },
-      ghostAsset: "townsperson_market",
       stage: {
         actor: [...CH1_ANCHORS.roadhouse_table],
         player: worldOffset(CH1_ANCHORS.roadhouse_table, 2.5, 0, 2.5),
@@ -1702,7 +1699,6 @@ export function ch1SorrelDoorCutscene(): CutsceneDef {
         kind: "entity",
         entityId: Number(CH1_NPC_ENTITY_IDS.nadia_sorrel),
       },
-      ghostAsset: "townsperson_farmer",
       stage: {
         actor: [...actor],
         player: worldOffset(actor, 2.5, 0, 2.5),
@@ -1737,7 +1733,6 @@ export function ch1TheCaseCutscene(): CutsceneDef {
         kind: "entity",
         entityId: Number(CH1_NPC_ENTITY_IDS.lou_ardan),
       },
-      ghostAsset: "townsperson_clergy",
       stage: {
         actor: [...CH1_ANCHORS.returnstone_pad_office],
         player: worldOffset(CH1_ANCHORS.returnstone_pad_office, 2.5, 0, 2.5),
@@ -1791,7 +1786,6 @@ export function ch1TooLateCutscene(): CutsceneDef {
         kind: "entity",
         entityId: Number(CH1_NPC_ENTITY_IDS.lou_ardan),
       },
-      ghostAsset: "townsperson_clergy",
       stage: {
         actor: [...CH1_ANCHORS.returnstone_pad_office],
         player: worldOffset(CH1_ANCHORS.returnstone_pad_office, 2.5, 0, 2.5),
@@ -1839,7 +1833,6 @@ export function ch1WatchHouseCutscene(): CutsceneDef {
       kind: "entity",
       entityId: Number(SNAPSHOT_GROVE_JACKIE_ENTITY_ID),
     },
-    ghostAsset: "townsperson_market",
     stage: {
       actor: actorStage,
       player: playerStage,
@@ -1952,7 +1945,7 @@ export function ch1ConsolidationRevisionCutscene(): CutsceneDef {
       skippable: false,
       skipAfterSeconds: 10,
       lockPlayer: true,
-      hideHud: false,
+      hideHud: true,
       letterbox: true,
       invulnerablePlayer: true,
       commitOn: ["completed", "skipped"],
@@ -1969,7 +1962,7 @@ export function ch1ConsolidationRevisionCutscene(): CutsceneDef {
         },
         required: true,
         fallback: "ghost",
-        ghostAsset: "townsperson_clergy",
+        ghostAsset: SNAPSHOT_CUTSCENE_PLAYER_MESH_ASSET,
       },
       {
         role: "consolidation-stage",
@@ -2068,8 +2061,9 @@ export function ch1ReconIntakeCutscene(): CutsceneDef {
         role: "lou",
         binding: {
           kind: "ghost",
-          asset: "townsperson_clergy",
+          asset: SNAPSHOT_CUTSCENE_PLAYER_MESH_ASSET,
           family: "human",
+          appearanceSourceEntityId: Number(CH1_NPC_ENTITY_IDS.lou_ardan),
           spawnAt: stageOffset(0, 0, 2.2),
         },
       },

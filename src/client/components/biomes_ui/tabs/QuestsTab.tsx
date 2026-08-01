@@ -17,8 +17,12 @@ import type {
   MapTrackableQuest,
   MissionStep,
 } from "./MapQuestsTab";
-import { questMapMarkerCandidatesForTest } from "./MapQuestsTab";
 import {
+  questMapMarkerCandidatesForTest,
+  questObjectiveRowsForTest,
+} from "./MapQuestsTab";
+import {
+  BIOMES_UI_MAIN_QUEST_EVENT,
   biomesUIMainQuestClearedSelectionForTest,
   readBiomesUIMainQuestSelection,
   setBiomesUIMainQuestFromTrackableQuest,
@@ -29,6 +33,7 @@ import {
   activeBiomesUIMapPinFromMarkerForTest,
   requestBiomesUILocateOnMap,
 } from "../adapters/mapPinnedDestination";
+import { HarthmereMaterialAcquisitionGuide } from "@/client/components/harthmere_materials/HarthmereMaterialAcquisitionGuide";
 
 export type QuestFilter =
   | "all"
@@ -97,6 +102,21 @@ export function questsTabStatusCountsForTest(
     counts[quest.status] += 1;
   }
   return counts;
+}
+
+export function questsTabObjectiveHeadingForTest(
+  status: MapTrackableQuest["status"]
+): string {
+  switch (status) {
+    case "completed":
+      return "Completed steps";
+    case "failed":
+      return "Quest outcome";
+    case "available":
+      return "What to do";
+    case "active":
+      return "What to do next";
+  }
 }
 
 /** Resolve the same current-objective/tool/item fallback chain as the map. */
@@ -179,6 +199,29 @@ export const QuestsTab: React.FunctionComponent<{
     return () => window.clearInterval(interval);
   }, [adapter]);
 
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    const onMainQuestChanged = (event: Event) => {
+      const selection = (
+        event as CustomEvent<BiomesUIMainQuestSelection | undefined>
+      ).detail;
+      setMainQuest(
+        selection ??
+          adapter?.getMainQuestSelection?.() ??
+          readBiomesUIMainQuestSelection()
+      );
+    };
+    window.addEventListener(BIOMES_UI_MAIN_QUEST_EVENT, onMainQuestChanged);
+    window.addEventListener("storage", onMainQuestChanged);
+    return () => {
+      window.removeEventListener(
+        BIOMES_UI_MAIN_QUEST_EVENT,
+        onMainQuestChanged
+      );
+      window.removeEventListener("storage", onMainQuestChanged);
+    };
+  }, [adapter]);
+
   const visible = React.useMemo(() => {
     return questsTabVisibleQuestsForTest({
       quests,
@@ -188,6 +231,9 @@ export const QuestsTab: React.FunctionComponent<{
   }, [quests, filter, mainQuest?.questId]);
 
   const selected = visible.find((q) => q.questId === selectedId);
+  const selectedObjectives = selected
+    ? questObjectiveRowsForTest(selected)
+    : [];
 
   const activate = React.useCallback(
     (quest: MapTrackableQuest) => {
@@ -410,16 +456,34 @@ export const QuestsTab: React.FunctionComponent<{
               </p>
             )}
 
-            <h4 style={quesHeadingStyle}>What must be done</h4>
+            <h4 style={quesHeadingStyle}>
+              {questsTabObjectiveHeadingForTest(selected.status)}
+            </h4>
             <ul style={{ margin: "4px 0 12px", paddingLeft: 18, fontSize: 13 }}>
-              {(selected.objectives?.length
-                ? selected.objectives
-                : selected.objective
-                ? [selected.objective]
-                : ["Objective details arrive once the quest is underway."]
+              {(selectedObjectives.length
+                ? selectedObjectives
+                : [
+                    {
+                      objective:
+                        "Objective details arrive once the quest is underway.",
+                      done: false,
+                      current: false,
+                    },
+                  ]
               ).map((objective, index) => (
-                <li key={index} style={{ marginBottom: 3 }}>
-                  {objective}
+                <li
+                  key={index}
+                  data-completed={objective.done || undefined}
+                  style={{
+                    marginBottom: 3,
+                    color: objective.done
+                      ? "var(--biomes-fg-muted)"
+                      : "var(--biomes-fg)",
+                    textDecoration: objective.done ? "line-through" : undefined,
+                    opacity: objective.done ? 0.7 : 1,
+                  }}
+                >
+                  {objective.objective}
                 </li>
               ))}
             </ul>
@@ -443,6 +507,61 @@ export const QuestsTab: React.FunctionComponent<{
                 </p>
               </>
             )}
+            {selected.materialRequirements?.length ? (
+              <section data-testid="chapter1-material-requirements">
+                <h4 style={quesHeadingStyle}>Where to get what you need</h4>
+                <p style={{ margin: "4px 0 8px", fontSize: 13 }}>
+                  Choose a source below. “Show on map” uses the same tracked
+                  destination as the minimap and HUD.
+                </p>
+                <p
+                  style={{
+                    margin: "0 0 8px",
+                    fontSize: 12,
+                    color: "var(--biomes-fg-muted)",
+                  }}
+                >
+                  Bought crafting materials may go straight to Materials storage
+                  instead of a hotbar slot. They still count for this objective
+                  and are used automatically when you turn it in.
+                </p>
+                <div style={{ display: "grid", gap: 8, marginBottom: 12 }}>
+                  {selected.materialRequirements.map((requirement) => (
+                    <div
+                      key={`${requirement.label}:${requirement.count}`}
+                      data-material-requirement={requirement.label}
+                      style={{ minWidth: 0 }}
+                    >
+                      <strong style={{ fontSize: 13 }}>
+                        {requirement.count} × {requirement.label}
+                      </strong>
+                      {requirement.options.length > 1 ? (
+                        <p
+                          style={{
+                            margin: "2px 0 0",
+                            fontSize: 11,
+                            color: "var(--biomes-fg-muted)",
+                          }}
+                        >
+                          Any one of these accepted item types will count.
+                        </p>
+                      ) : null}
+                      {requirement.options.map((option) => (
+                        <HarthmereMaterialAcquisitionGuide
+                          key={option.itemId}
+                          itemId={option.itemId}
+                          itemName={option.itemName}
+                          count={requirement.count}
+                          ownerQuestId={selected.questId}
+                          ownerStepId={selected.currentStepId}
+                          compact
+                        />
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              </section>
+            ) : null}
             {selected.toolSource && (
               <>
                 <h4 style={quesHeadingStyle}>Tool required</h4>
@@ -546,7 +665,12 @@ export const QuestsTab: React.FunctionComponent<{
                   >
                     <strong>{step.title}</strong>
                     <span
-                      style={{ display: "block", fontSize: 12, marginTop: 1 }}
+                      style={{
+                        display: "block",
+                        fontSize: 12,
+                        marginTop: 1,
+                        textDecoration: step.done ? "line-through" : undefined,
+                      }}
                     >
                       {step.objective}
                     </span>

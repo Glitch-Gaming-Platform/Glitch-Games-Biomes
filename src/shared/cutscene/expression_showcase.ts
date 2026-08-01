@@ -14,6 +14,7 @@ import {
   type CutsceneDef,
   type CutsceneVec3,
 } from "@/shared/cutscene/schema";
+import { SNAPSHOT_CUTSCENE_PLAYER_MESH_ASSET } from "@/shared/cutscene/puppets";
 import { SNAPSHOT_GROVE_LIVE_NPC_FEET_Y } from "@/shared/harthmere/snapshot_grove_ids";
 
 export const HARTHMERE_EXPRESSION_SHOWCASE_ID = "harthmere-expression-showcase";
@@ -159,12 +160,7 @@ export function harthmereExpressionShowcaseCutscene(): CutsceneDef {
         role,
         binding: {
           kind: "ghost" as const,
-          asset: [
-            "townsperson_clergy",
-            "townsperson_market",
-            "townsperson_guard",
-            "townsperson_farmer",
-          ][index],
+          asset: SNAPSHOT_CUTSCENE_PLAYER_MESH_ASSET,
           family: "human" as const,
           spawnAt: [centerX + (index - 1.5) * 1.45, centerY, centerZ],
           height: 1.8,
@@ -174,7 +170,7 @@ export function harthmereExpressionShowcaseCutscene(): CutsceneDef {
         role,
         binding: {
           kind: "ghost" as const,
-          asset: index === 0 ? "townsperson_guard" : "townsperson_clergy",
+          asset: SNAPSHOT_CUTSCENE_PLAYER_MESH_ASSET,
           family: "human" as const,
           spawnAt: [centerX + (index === 0 ? -0.55 : 0.55), centerY, centerZ],
           height: 1.8,

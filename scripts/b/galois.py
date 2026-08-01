@@ -57,8 +57,19 @@ def lint(ctx, args):
 @click.argument("args", nargs=-1)
 @click.pass_context
 def test(ctx, args):
-    """Run Galois tests."""
+    """Run Galois TypeScript tests."""
     ctx.invoke(b.test, path="src/galois/**/test/*.ts", args=args)
+
+
+@galois.command("test-python")
+def test_python():
+    """Run Galois Python unit tests using the active environment."""
+    repo_dir = Path(__file__).resolve().parents[2]
+    b.wait_or_die(
+        subprocess.Popen(
+            ["bash", "src/galois/scripts/test_py.sh"], cwd=repo_dir
+        )
+    )
 
 
 @galois.group()

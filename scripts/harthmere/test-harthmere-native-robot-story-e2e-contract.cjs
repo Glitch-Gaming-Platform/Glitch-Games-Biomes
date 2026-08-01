@@ -12,6 +12,10 @@ const path = require("path");
 require("ts-node/register/transpile-only");
 require("tsconfig-paths/register");
 const { iterBackupEntriesFromFile } = require("../../src/server/backup/serde");
+const { BikkieRuntime } = require("../../src/shared/bikkie/active");
+const {
+  deserializeTrigger,
+} = require("../../src/server/shared/triggers/serde");
 
 const root = path.resolve(process.argv[2] || process.cwd());
 const runner = fs.readFileSync(
@@ -139,6 +143,10 @@ async function main() {
       "missingLocalProfilePicture",
       "local profile-picture fallback classification",
     ],
+    [
+      "robot naming completes setup and advances Gimme Shelter",
+      "robot naming preserves the remaining Gimme Shelter objectives",
+    ],
   ]) {
     requireText(text, label);
   }
@@ -206,6 +214,90 @@ async function main() {
       process.stdout.write(
         `OK ${quest.displayName}: ${leaves.length} authored leaves have browser action families\n`
       );
+    }
+    const gimmeShelter = entry.baked.contents.get(3741112749915015);
+    if (!gimmeShelter?.trigger) {
+      throw new Error("Missing authored Gimme Shelter quest");
+    }
+    const workbenchSteps = triggerLeaves(gimmeShelter.trigger).filter(
+      (leaf) => leaf?.kind === "blueprintBuilt"
+    );
+    if (
+      workbenchSteps.length !== 1 ||
+      workbenchSteps[0].id !== 6556766958076032 ||
+      workbenchSteps[0].blueprint !== 7539420629350159
+    ) {
+      throw new Error(
+        `Gimme Shelter Workbench trigger drifted: ${JSON.stringify(workbenchSteps)}`
+      );
+    }
+    const workbenchBlueprint = entry.baked.contents.get(
+      workbenchSteps[0].blueprint
+    );
+    if (workbenchBlueprint?.turnsInto !== 1534621126189448) {
+      throw new Error(
+        `Gimme Shelter Workbench blueprint no longer builds Workbench: ${workbenchBlueprint?.turnsInto}`
+      );
+    }
+    process.stdout.write(
+      "OK Gimme Shelter: authored Workbench blueprint leaf still targets the shipped Workbench relation\n"
+    );
+
+    const previousRuntime = global.bikkieRuntime;
+    try {
+      const runtime = new BikkieRuntime();
+      runtime.registerBiscuits(entry.baked.contents);
+      global.bikkieRuntime = runtime;
+
+      const states = new Map([
+        [gimmeShelter.trigger.id, { payload: workbenchSteps[0].id }],
+      ]);
+      const trigger = deserializeTrigger(gimmeShelter.trigger);
+      const advanced = trigger.update({
+        entity: {},
+        events: [
+          {
+            kind: "blueprintBuilt",
+            entityId: 1,
+            // Exercise the observed compatibility boundary: the completed
+            // placeable identity rather than the consumed blueprint identity.
+            blueprint: workbenchBlueprint.turnsInto,
+            position: [0, 0, 0],
+          },
+        ],
+        rootId: gimmeShelter.id,
+        publish: () => undefined,
+        updateState: (id, _schema, update) => {
+          const next = update(states.get(id) ?? {});
+          states.set(id, next);
+          return next;
+        },
+        clearState: (id) => states.delete(id),
+      });
+      if (advanced !== false || !states.get(workbenchSteps[0].id)?.firedAt) {
+        throw new Error(
+          `Gimme Shelter Workbench leaf did not persist: ${JSON.stringify([
+            advanced,
+            states.get(workbenchSteps[0].id),
+          ])}`
+        );
+      }
+      if (states.get(gimmeShelter.trigger.id)?.payload !== 4268272678757220) {
+        throw new Error(
+          `Gimme Shelter did not advance to lumber/home objective: ${JSON.stringify(
+            states.get(gimmeShelter.trigger.id)
+          )}`
+        );
+      }
+      process.stdout.write(
+        "OK Gimme Shelter: real trigger engine advances Workbench completion to lumber/home\n"
+      );
+    } finally {
+      if (previousRuntime) {
+        global.bikkieRuntime = previousRuntime;
+      } else {
+        delete global.bikkieRuntime;
+      }
     }
     audited = true;
     break;

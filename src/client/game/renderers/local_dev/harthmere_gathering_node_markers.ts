@@ -7,7 +7,6 @@
 // marker renderer so nodes rest on the surface instead of floating/sinking.
 import type { Renderer } from "@/client/game/renderers/renderer_controller";
 import type { Scenes } from "@/client/game/renderers/scenes";
-import { addToScenes } from "@/client/game/renderers/scenes";
 import type { ClientResources } from "@/client/game/resources/types";
 import { harthmereGroundedFeetYWithMemory } from "@/client/game/util/harthmere_entity_grounding";
 import {
@@ -49,7 +48,9 @@ function box(
   const mesh = new THREE.Mesh(new THREE.BoxGeometry(...size), mat);
   mesh.name = name;
   mesh.position.set(...position);
-  mesh.frustumCulled = false;
+  // These nodes are spread across the world. Let Three.js reject meshes that
+  // are outside the camera frustum instead of submitting every node globally.
+  mesh.frustumCulled = true;
   group.add(mesh);
   return mesh;
 }
@@ -111,6 +112,7 @@ export class HarthmereGatheringNodeMarkerRenderer implements Renderer {
   // a node resting on the real surface instead of burying at the flat authored Y
   // when its terrain shard briefly unloads.
   private readonly groundedFeetYByColumn = new Map<string, number>();
+  private groundRefreshSeconds = 0;
 
   constructor(private readonly resources?: ClientResources) {
     this.root.name = `harthmere-gathering-node-markers root ${HARTHMERE_GATHERING_NODE_MARKER_VERSION}`;
@@ -121,9 +123,19 @@ export class HarthmereGatheringNodeMarkerRenderer implements Renderer {
     }
   }
 
-  draw(scenes: Scenes, _dt: number): void {
-    addToScenes(scenes, this.root);
-    this.groundNodes();
+  draw(scenes: Scenes, dt: number): void {
+    // Gathering nodes use only stock Three.js materials. Direct routing avoids
+    // recursively classifying every node hierarchy twice per rendered frame.
+    scenes.three.add(this.root);
+
+    // Nodes are static world objects. Terrain edits/streaming do not require a
+    // probe on every animation frame; 4 Hz keeps grounding responsive while
+    // removing dozens of repeated terrain/WASM lookups per second.
+    this.groundRefreshSeconds -= Math.min(dt, 0.25);
+    if (this.groundRefreshSeconds <= 0) {
+      this.groundRefreshSeconds = 0.25;
+      this.groundNodes();
+    }
   }
 
   // Rest each node on the real terrain surface (cave-safe + water-aware). If the
@@ -133,6 +145,11 @@ export class HarthmereGatheringNodeMarkerRenderer implements Renderer {
     if (!this.resources) {
       return;
     }
+    const camera = this.resources.get("/scene/camera").three.position;
+    const drawDistance = this.resources.get(
+      "/settings/graphics/dynamic"
+    ).drawDistance;
+    const maxDistanceSq = drawDistance * drawDistance;
     for (const mesh of this.meshes.values()) {
       const xz = mesh.userData.harthmereGatheringNodeWorldXZ as
         | [number, number]
@@ -141,6 +158,15 @@ export class HarthmereGatheringNodeMarkerRenderer implements Renderer {
         | number
         | undefined;
       if (!xz || hintY === undefined) {
+        continue;
+      }
+      const dx = xz[0] - camera.x;
+      const dz = xz[1] - camera.z;
+      if (dx * dx + dz * dz > maxDistanceSq) {
+        // Hiding the group also excludes its local PointLight from Three.js's
+        // global light collection. Terrain and landmarks can still render at
+        // the full draw distance; only interaction markers outside it are cut.
+        mesh.visible = false;
         continue;
       }
       // Use THE shared world-placement grounder muckers/animals/items use: one

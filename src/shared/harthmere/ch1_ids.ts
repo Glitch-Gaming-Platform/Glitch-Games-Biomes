@@ -72,6 +72,9 @@ export const CH1_PROMOTED_ENTITY_IDS: Partial<Record<Ch1NpcKey, BiomesId>> =
   Object.freeze({
     augur9: SNAPSHOT_GROVE_MUCKED_ROBOT_ENTITY_ID,
     jackie: SNAPSHOT_GROVE_JACKIE_ENTITY_ID,
+    // Preserve the reviewed snapshot player-mesh NPC instead of the temporary
+    // duplicate Chapter 1 body at offset 10511.
+    coretta: 6_785_547_476_266_196 as BiomesId,
   });
 
 export function ch1NpcEntityId(key: Ch1NpcKey): BiomesId {
@@ -194,11 +197,15 @@ export const CH1_ANCHORS = {
   // two-block-tall walkable entrance aperture.
   roadhouse_sign: [481, 70, -136],
   roadhouse_table: [474, 70, -129],
+  // Separate talk posts keep Jackie's and Coretta's F prompts from competing
+  // in the compact ground-floor room. Jackie stands to the player's right of
+  // the table; Coretta remains at the day-book on the left.
+  roadhouse_jackie_post: [476, 70, -129],
   roadhouse_hearth: [471, 70, -126],
   roadhouse_bed: [476, 74, -126],
   roadhouse_opening_spawn: [474, 74, -126],
   roadhouse_stores: [470, 70, -125],
-  coretta_ledger_desk: [478, 70, -129],
+  coretta_ledger_desk: [470, 70, -129],
   // Shared reconstruction set: the clear ground-floor aisle spans the full
   // road-house depth, so the authored -4m door and +9m running figure both
   // remain inside a real enclosed voxel interior. It is a memory set, not a
@@ -210,7 +217,7 @@ export const CH1_ANCHORS = {
   testimony_alva: [500, 70, -140],
   testimony_helsa: [483, 70, -133],
   testimony_grover: [486, 70, -143],
-  testimony_coretta: [478, 70, -129],
+  testimony_coretta: [470, 70, -129],
   testimony_emily: [407, 74, -126],
   testimony_patsy: [498, 64, -216],
   testimony_richard: [486, 64, -209],

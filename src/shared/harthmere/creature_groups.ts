@@ -18,6 +18,7 @@
 
 import {
   HARTHMERE_LIVE_ENTITY_GUARDED_WILDLIFE_LOCATIONS,
+  HARTHMERE_LIVE_ENTITY_CAVERN_MONSTER_SEEDS,
   HARTHMERE_LIVE_ENTITY_LIVESTOCK_SEEDS,
   HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS,
   HARTHMERE_LIVE_ENTITY_OPEN_WILDS_MIXED_GROUP_LOCATIONS,
@@ -101,6 +102,7 @@ export function creatureGroupRoleForSeed(
   if (seed.kind === "ambient_bandit") {
     return seed.banditRole === "archer" ? "ranged" : "skirmisher";
   }
+  if (/indisworm/i.test(seed.displayName)) return "skirmisher";
   return seed.combatKind === "hex" || /hex/i.test(seed.displayName)
     ? "ranged"
     : "melee";
@@ -153,6 +155,7 @@ function buildRegistry(): Map<BiomesId, CreatureGroupMembership> {
   // their own area so a road ambush coordinates without recruiting Muck.
   const ordered: HarthmereLiveEntityProductionSeed[] = [
     ...HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS,
+    ...HARTHMERE_LIVE_ENTITY_CAVERN_MONSTER_SEEDS,
     ...(HARTHMERE_NATIVE_BANDIT_SEEDS as unknown as HarthmereLiveEntityProductionSeed[]),
     ...HARTHMERE_LIVE_ENTITY_LIVESTOCK_SEEDS,
   ];
@@ -195,7 +198,9 @@ export function harthmereCreatureGroupForSeed(
 
 /** Every authored group id currently in the world. */
 export function harthmereCreatureGroupIds(): string[] {
-  return [...new Set([...registry().values()].map((entry) => entry.groupId))].sort();
+  return [
+    ...new Set([...registry().values()].map((entry) => entry.groupId)),
+  ].sort();
 }
 
 /** Every member of one group, in authored order. */

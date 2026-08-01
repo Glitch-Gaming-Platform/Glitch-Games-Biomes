@@ -151,6 +151,7 @@ function baseChaseAttackParams(
   behavior: ReturnType<typeof getNpcBehavior>
 ): BehaviorChaseAttackParams | undefined {
   const concreteProfile = harthmereNativeNpcCombatProfileForEntity({
+    entityId: npc.id,
     typeId: npc.metadata.type_id,
     displayName: [npc.label, npc.type.displayName, npc.type.name]
       .filter(Boolean)

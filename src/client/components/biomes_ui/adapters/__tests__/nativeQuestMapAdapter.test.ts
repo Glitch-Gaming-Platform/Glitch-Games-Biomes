@@ -8,6 +8,11 @@ import type {
 import type { BiomesId } from "@/shared/ids";
 import { bibleNativeQuestId } from "@/shared/harthmere/bible/bible_quest_ids";
 import {
+  ch1NativeQuestId,
+  ch1NativeQuestStepId,
+} from "@/shared/harthmere/ch1_native_quests";
+import { CH1_QUESTS } from "@/shared/harthmere/ch1_quests";
+import {
   activeNativeQuest,
   activeNativeQuestTriggerLeaves,
   nativeQuestMapMarkers,
@@ -149,6 +154,74 @@ describe("nativeQuestMapAdapter", () => {
     );
   });
 
+  it("uses player-facing fallback copy instead of engine terminology", () => {
+    const bundle = quest(
+      46,
+      "in_progress",
+      leaf(47, "Talk to Jackie", 0),
+      "main"
+    );
+    const blankDescriptionBundle: QuestBundle = {
+      ...bundle,
+      biscuit: { ...bundle.biscuit, description: "" },
+    };
+    const description = nativeQuestTrackableQuests([blankDescriptionBundle])[0]
+      .description;
+    assert.ok(description);
+    assert.doesNotMatch(
+      description,
+      /server|native|ecs|trigger tree|backend|authority/i
+    );
+    assert.match(description, /map|HUD/i);
+  });
+
+  it("projects Chapter 1 authored instructions and material choices", () => {
+    const authored = CH1_QUESTS.find(
+      (candidate) => candidate.id === "ch1_a1_q03_stand_him_up"
+    )!;
+    const challengeId = ch1NativeQuestId(authored.id)!;
+    const triggerId = ch1NativeQuestStepId(authored.id, "gather_parts")!;
+    const bundle = quest(
+      Number(challengeId),
+      "in_progress",
+      group(
+        Number(challengeId),
+        "seq",
+        [leaf(Number(triggerId), "0 / 1", 0, [490, 65, -206])],
+        0
+      ),
+      "main"
+    );
+
+    assert.deepEqual(nativeQuestMissionSteps(bundle), [
+      {
+        id: `${challengeId}:${triggerId}`,
+        title: "Gather Parts",
+        objective: authored.steps[0].objective,
+        done: false,
+      },
+    ]);
+    const projected = nativeQuestTrackableQuests([bundle])[0];
+    assert.equal(projected.area, "The Grove");
+    assert.equal(projected.kind, "chapter_1_story");
+    assert.equal(projected.description, authored.summary);
+    assert.deepEqual(
+      projected.materialRequirements?.map(({ count, options }) => [
+        options[0].itemId,
+        count,
+      ]),
+      [
+        ["scrap_metal", 4],
+        ["iron_ingot", 2],
+        ["tree_resin", 1],
+      ]
+    );
+    assert.doesNotMatch(
+      `${projected.description} ${projected.kindLabel}`,
+      /server-authored|native ecs|trigger tree/i
+    );
+  });
+
   it("does not preload available or locked quests into the journal", () => {
     const available = quest(50, "available", leaf(51, "Not accepted", 0));
     const locked = quest(52, "locked", leaf(53, "Not discovered", 0));
@@ -232,9 +305,7 @@ describe("nativeQuestMapAdapter", () => {
           count: 1,
           predicate: {
             kind: "object",
-            fields: [
-              ["challenge", { kind: "value", value: challengeId }],
-            ],
+            fields: [["challenge", { kind: "value", value: challengeId }]],
           },
         },
       },

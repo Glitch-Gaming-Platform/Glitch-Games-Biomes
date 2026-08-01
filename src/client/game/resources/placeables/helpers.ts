@@ -25,7 +25,7 @@ import type { ReadonlyVec2 } from "@/shared/math/types";
 import { ok } from "assert";
 import type { Material, Object3D } from "three";
 import { Group, Matrix4, Mesh } from "three";
-import type { GLTF } from "three/examples/jsm/loaders/GLTFLoader";
+import type { GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
 
 const BIKKIE_PLACEABLES_TRANSFORM = makeYRotate(Math.PI);
 

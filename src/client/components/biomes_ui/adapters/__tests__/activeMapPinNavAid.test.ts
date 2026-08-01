@@ -3,6 +3,7 @@ import assert from "assert";
 import {
   automaticQuestDestinationMarkerForTest,
   biomesUIActiveMapPinNavigationAidKindForTest,
+  shouldClearOwnedQuestMapPinForTest,
 } from "@/client/components/biomes_ui/adapters/mapPinnedDestination";
 import { biomesUIActiveMiniMapPinDistanceLabelForTest } from "@/client/components/map/markers/biomes_ui_active_minimap_pin";
 import {
@@ -75,6 +76,78 @@ describe("active map pin navigation aid", () => {
         ],
       }),
       undefined
+    );
+  });
+
+  it("advances a retained robot-story destination into Chapter 1", () => {
+    const chapter1Marker = {
+      id: "native_quest:8762000000000000:8762100000000001",
+      label: "Wake up and go downstairs for breakfast",
+      kind: "objective",
+      worldPosition: [488, 72, -144] as [number, number, number],
+    };
+    assert.deepEqual(
+      automaticQuestDestinationMarkerForTest({
+        existingPin: {
+          markerId: "native_quest:6193612340426932:3960245896803219",
+        },
+        quest: {
+          questId: "8762000000000000",
+          status: "active",
+          firstMarkerId: chapter1Marker.id,
+        },
+        markers: [chapter1Marker],
+      }),
+      chapter1Marker
+    );
+  });
+
+  it("replaces a material-source pin when its owning quest objective advances", () => {
+    assert.deepEqual(
+      automaticQuestDestinationMarkerForTest({
+        existingPin: {
+          markerId: "harthmere_business_outpost_tools_cinderlane",
+          ownerQuestId: "8762000000000002",
+          ownerStepId: "8762100000000201",
+        },
+        quest: {
+          questId: "8762000000000003",
+          status: "active",
+          currentStepId: "8762100000000301",
+          firstMarkerId: mossyMarker.id,
+        },
+        markers: [mossyMarker],
+      }),
+      mossyMarker
+    );
+    assert.equal(
+      shouldClearOwnedQuestMapPinForTest({
+        pin: {
+          ownerQuestId: "8762000000000002",
+          ownerStepId: "8762100000000201",
+        },
+        quests: [
+          {
+            questId: "8762000000000003",
+            status: "active",
+            currentStepId: "8762100000000301",
+          },
+        ],
+      }),
+      true
+    );
+  });
+
+  it("preserves a selected material route while its exact objective is active", () => {
+    assert.equal(
+      shouldClearOwnedQuestMapPinForTest({
+        pin: {
+          ownerQuestId: mossyQuest.questId,
+          ownerStepId: "current-step",
+        },
+        quests: [{ ...mossyQuest, currentStepId: "current-step" }],
+      }),
+      false
     );
   });
 

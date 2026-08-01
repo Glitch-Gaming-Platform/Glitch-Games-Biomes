@@ -147,6 +147,7 @@ import {
   activeBiomesUIMapPinFromMarkerForTest,
   automaticQuestDestinationMarkerForTest,
   readActiveBiomesUIMapPin,
+  shouldClearOwnedQuestMapPinForTest,
   writeActiveBiomesUIMapPin,
 } from "./mapPinnedDestination";
 import {
@@ -209,8 +210,10 @@ import {
   nativeQuestTrackableQuests,
 } from "./nativeQuestMapAdapter";
 import {
+  automaticMainQuestSelectionForTest,
   mainQuestFromTrackableQuestsForTest,
   readBiomesUIMainQuestSelection,
+  writeBiomesUIMainQuestSelection,
 } from "./mainQuestSelection";
 import type { QuestBundle } from "@/client/game/resources/challenges";
 import { getNpcBehavior, idToNpcType } from "@/shared/npc/bikkie";
@@ -2203,13 +2206,43 @@ export function useBiomesUILiveAdapters({
 
   React.useEffect(() => {
     if (typeof window === "undefined") return;
+    let existingPin = readActiveBiomesUIMapPin();
+    if (
+      shouldClearOwnedQuestMapPinForTest({
+        pin: existingPin,
+        quests: nativeTrackableQuestsForAutoDestination,
+      })
+    ) {
+      writeActiveBiomesUIMapPin(undefined);
+      existingPin = undefined;
+    }
+    const storedSelection = readBiomesUIMainQuestSelection();
     const quest = mainQuestFromTrackableQuestsForTest(
       nativeTrackableQuestsForAutoDestination,
-      readBiomesUIMainQuestSelection()
+      storedSelection
     );
+    const automaticSelection = automaticMainQuestSelectionForTest(
+      nativeTrackableQuestsForAutoDestination,
+      storedSelection
+    );
+    if (automaticSelection) {
+      // One authoritative handoff for every Chapter 1 boundary: journal star,
+      // HUD objective, minimap/world beam and persisted selection all move to
+      // the same newly active native quest.
+      writeBiomesUIMainQuestSelection(automaticSelection);
+      mapManager.trackingQuestId = safeParseBiomesId(
+        automaticSelection.questId
+      );
+    }
+    const destinationQuest = automaticSelection
+      ? mainQuestFromTrackableQuestsForTest(
+          nativeTrackableQuestsForAutoDestination,
+          automaticSelection
+        )
+      : quest;
     const marker = automaticQuestDestinationMarkerForTest({
-      existingPin: readActiveBiomesUIMapPin(),
-      quest,
+      existingPin,
+      quest: destinationQuest,
       markers: nativeQuestMarkersForAutoDestination,
     });
     if (!marker) return;
@@ -2220,6 +2253,7 @@ export function useBiomesUILiveAdapters({
   }, [
     nativeQuestMarkersForAutoDestination,
     nativeTrackableQuestsForAutoDestination,
+    mapManager,
   ]);
   const [snapshotRevision, setSnapshotRevision] = React.useState(0);
   const [hoeQuestState, setHoeQuestState] =

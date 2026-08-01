@@ -18,8 +18,9 @@ import { gltfToThree } from "@/client/game/util/gltf_helpers";
 import { TimelineMatcher } from "@/client/game/util/timeline_matcher";
 import type { CharacterAnimationTiming } from "@/server/shared/minigames/ruleset/tweaks";
 import { HARTHMERE_CINEMATIC_ANIMATION_DEFINITIONS } from "@/shared/cutscene/cinematic_expressions";
+import { playerMovementActionAnimationName } from "@/shared/game/movement_actions";
 import * as THREE from "three";
-import type { GLTF } from "three/examples/jsm/loaders/GLTFLoader";
+import type { GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
 
 const RUN_SPEED = 8;
 
@@ -461,6 +462,11 @@ export const playerSystem = new AnimationSystem(
     strafeRightFast: { fileAnimationName: "StrafeRightRunning" },
 
     jump: { fileAnimationName: "Jump" },
+    doubleJump: {
+      fileAnimationName: "DoubleJump",
+      backupFileAnimationNames: ["Jump"],
+      timeScale: 1.18,
+    },
     fall: { fileAnimationName: "Fall" },
 
     swimForwards: { fileAnimationName: "SwimmingForward" },
@@ -679,6 +685,21 @@ function getHarthmereWeaponSyncedEmoteWeights(
     return;
   }
 
+  if (player.cutsceneAttackAnimationInfo?.animation === emoteType) {
+    return {
+      weights: playerSystem.singleAnimationWeight(emoteType, 1),
+      state: {
+        repeat: { kind: "once" },
+        startTime: toAnimationTime("cutsceneFullBodyAttack", emoteStartTime),
+        easeInTime: HARTHMERE_BODY_WEAPON_ATTACK_EASE_IN,
+      },
+      layers: {
+        arms: "apply",
+        notArms: "apply",
+      },
+    };
+  }
+
   const harthmereVariationEmoteType = getHarthmereAttackVariationEmoteType(
     emoteType,
     emoteStartTime
@@ -780,43 +801,25 @@ function getMovementActionWeights(
   toAnimationTime: ToAnimationTimeFunction
 ): PlayerAnimationAction | undefined {
   const info = player.movementActionInfo;
-  if (!info) {
+  const cutsceneInfo = player.cutsceneMovementAnimationInfo;
+  if (!info && !cutsceneInfo) {
     return;
   }
 
-  let animation:
-    | "dodgeLeft"
-    | "dodgeRight"
-    | "dodgeForward"
-    | "dodgeBack"
-    | "evade" = "evade";
-  if (info.action === "dodge") {
-    const direction = new THREE.Vector2(info.direction[0], -info.direction[2]);
-    const forward = new THREE.Vector2(0, 1).rotateAround(
-      new THREE.Vector2(0, 0),
-      player.orientation[1]
-    );
-    const side = new THREE.Vector2(1, 0).rotateAround(
-      new THREE.Vector2(0, 0),
-      player.orientation[1]
-    );
-    const forwardAmount = direction.dot(forward);
-    const sideAmount = direction.dot(side);
-    animation =
-      Math.abs(sideAmount) >= Math.abs(forwardAmount)
-        ? sideAmount >= 0
-          ? "dodgeRight"
-          : "dodgeLeft"
-        : forwardAmount >= 0
-        ? "dodgeForward"
-        : "dodgeBack";
-  }
+  const animation = info
+    ? playerMovementActionAnimationName({
+        action: info.action,
+        direction: info.direction,
+        facingYaw: player.orientation[1],
+      })
+    : cutsceneInfo!.animation;
+  const startTime = info ? info.startTime : cutsceneInfo!.startTime;
 
   return {
     weights: playerSystem.singleAnimationWeight(animation, 1),
     state: {
       repeat: { kind: "once" },
-      startTime: toAnimationTime("movementAction", info.startTime),
+      startTime: toAnimationTime("movementAction", startTime),
       easeInTime: 0.04,
     },
     layers: { arms: "apply", notArms: "apply" },

@@ -15,6 +15,7 @@
 //    finish path).
 
 import type { Events } from "@/client/game/context_managers/events";
+import type { CutscenePlayerAttackAnimation } from "@/client/game/cutscene/player_attack_visual";
 import type { AudioManager } from "@/client/game/context_managers/audio_manager";
 import { allAabbShardsLoaded } from "@/client/game/helpers/player_shards";
 import {
@@ -63,6 +64,11 @@ import {
 import { buildCutsceneWorldIndex } from "@/client/game/cutscene/client_bindings";
 import { SetNPCPositionEvent } from "@/shared/ecs/gen/events";
 import { zEmoteType } from "@/shared/ecs/gen/types";
+import {
+  PLAYER_MOVEMENT_ACTION_ANIMATION_NAMES,
+  PLAYER_MOVEMENT_ACTION_TIMING,
+  type PlayerMovementActionAnimationName,
+} from "@/shared/game/movement_actions";
 import type { BiomesId } from "@/shared/ids";
 import { log } from "@/shared/logging";
 import { fireAndForget, sleep } from "@/shared/util/async";
@@ -891,6 +897,7 @@ export class CutsceneDirectorScript implements Script {
             asset: actor.asset,
             family: actor.family,
             label: actor.role,
+            appearanceSourceEntityId: actor.appearanceSourceEntityId,
           },
         });
         break;
@@ -932,9 +939,37 @@ export class CutsceneDirectorScript implements Script {
   ) {
     const { actor, animation } = effect;
     if (actor.kind === "player") {
+      if (
+        PLAYER_MOVEMENT_ACTION_ANIMATION_NAMES.includes(
+          animation as PlayerMovementActionAnimationName
+        )
+      ) {
+        const localPlayer = this.resources.get("/scene/local_player");
+        const startTime = this.resources.get("/clock").time;
+        const movementAnimation =
+          animation as PlayerMovementActionAnimationName;
+        const duration =
+          movementAnimation === "evade"
+            ? PLAYER_MOVEMENT_ACTION_TIMING.evade.durationSeconds
+            : movementAnimation === "doubleJump"
+            ? PLAYER_MOVEMENT_ACTION_TIMING.doubleJump.durationSeconds
+            : PLAYER_MOVEMENT_ACTION_TIMING.dodge.durationSeconds;
+        localPlayer.player.beginCutsceneMovementAnimation(
+          movementAnimation,
+          startTime,
+          startTime + duration
+        );
+        return;
+      }
       const parsed = zEmoteType.safeParse(animation);
       if (parsed.success) {
         const localPlayer = this.resources.get("/scene/local_player");
+        if (parsed.data === "attack1" || parsed.data === "attack2") {
+          localPlayer.player.beginCutsceneAttackAnimation(
+            parsed.data as CutscenePlayerAttackAnimation,
+            this.resources.get("/clock").time
+          );
+        }
         localPlayer.player.eagerEmote(this.events, this.resources, parsed.data);
       }
       return;
@@ -967,14 +1002,17 @@ export class CutsceneDirectorScript implements Script {
   }
 
   private releaseActor(actor: ResolvedActor) {
-    if (actor.kind === "entity") {
+    if (actor.kind === "player") {
+      const localPlayer = this.resources.get("/scene/local_player");
+      localPlayer.player.cancelCutsceneMovementAnimation();
+      localPlayer.player.cancelCutsceneAttackAnimation();
+    } else if (actor.kind === "entity") {
       this.overrides.delete(actor.entityId);
       this.actorItems.delete(actor.entityId);
     } else if (actor.kind === "ghost") {
       this.overrides.delete(actor.ghostId);
       this.actorItems.delete(actor.ghostId);
     }
-    // Player: nothing to release — physics resumes when lockInput lifts.
   }
 
   private captureFrame(effect: Extract<CutsceneEffect, { kind: "capture" }>) {

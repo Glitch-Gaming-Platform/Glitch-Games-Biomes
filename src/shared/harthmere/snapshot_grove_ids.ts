@@ -5,6 +5,7 @@
 // preview, capture, map probes) do not initialize terrain asset definitions.
 
 import type { BiomesId } from "@/shared/ids";
+import type { Vec3 } from "@/shared/math/types";
 
 export const SNAPSHOT_GROVE_LOCAL_DEV_NPC_BASE =
   8_810_000_000_010_000 as BiomesId;
@@ -86,6 +87,19 @@ export const SNAPSHOT_GROVE_MUCKED_ROBOT_ID_OFFSET = 9312;
 export const SNAPSHOT_GROVE_MUCKED_ROBOT_ENTITY_ID = (Number(
   SNAPSHOT_GROVE_LOCAL_DEV_NPC_BASE
 ) + SNAPSHOT_GROVE_MUCKED_ROBOT_ID_OFFSET) as BiomesId;
+
+/**
+ * Rhiamon is an original May-snapshot NPC, not a replacement Grove seed. The
+ * water-overlay migration exposed that her historical spawn sits in the
+ * flooded courtyard beside the road-house. Keep her original identity, but
+ * move both her live position and NPC spawn to this measured dry Grove post.
+ *
+ * The post is outside the Chapter 1 road-house interaction cluster, so it
+ * cannot compete with Jackie/Coretta prompts or change any Chapter 1 target.
+ */
+export const SNAPSHOT_GROVE_RHIAMON_ENTITY_ID =
+  5_522_430_940_859_636 as BiomesId;
+export const SNAPSHOT_GROVE_RHIAMON_DRY_POSITION: Vec3 = [492, 70, -141];
 
 export const SNAPSHOT_GROVE_LIVE_WORLD_GROUND_Y = 69;
 export const SNAPSHOT_GROVE_LIVE_NPC_FEET_Y =

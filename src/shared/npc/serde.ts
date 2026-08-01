@@ -168,6 +168,8 @@ export type DeserializedNpcState = {
       projectileVisualId: string;
       targetId: BiomesId;
       castTime: number;
+      chargeTimeSecs?: number;
+      releaseTime?: number;
       impactTime: number;
       cooldownUntil: number;
       originPoint?: [number, number, number];

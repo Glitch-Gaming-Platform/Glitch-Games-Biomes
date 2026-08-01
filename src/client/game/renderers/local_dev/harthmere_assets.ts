@@ -2,8 +2,12 @@
 // HARTHMERE_RENDERER_ANIMATION_SYNTAX_FIX_VERSION
 
 import type { Renderer } from "@/client/game/renderers/renderer_controller";
+import {
+  safePlayerLightDirection,
+  updateSnapshotPlayerMeshLighting,
+} from "@/client/game/renderers/player_lighting";
 import type { Scenes } from "@/client/game/renderers/scenes";
-import { addToScenes } from "@/client/game/renderers/scenes";
+import { computeNonDarkSpatialLighting } from "@/client/game/renderers/util";
 import {
   applySnapshotCutscenePlayerAnimation,
   makeSnapshotCutscenePlayerMesh,
@@ -17,7 +21,10 @@ import type {
 } from "@/client/game/resources/types";
 import { canLocalDevLiveEntityRobotMoveForArea } from "@/client/components/challenges/LocalDevLiveEntityRobotEnergyState";
 import { shouldRenderHarthmereRuntimeAssets } from "@/client/game/renderers/local_dev/harthmere_runtime_mode";
-import { HarthmereProjectileVisualRuntime } from "@/client/game/renderers/local_dev/harthmere_projectiles";
+import {
+  HarthmereProjectileVisualRuntime,
+  type HarthmereMagicImpactFeedback,
+} from "@/client/game/renderers/local_dev/harthmere_projectiles";
 import { emitHarthmereSoundEffect } from "@/shared/harthmere/sound_effect_manifest";
 import {
   harthmereCreatureIdleDelayMs,
@@ -36,6 +43,10 @@ import {
   resolveHarthmereNpcRegroundedFeetY,
 } from "@/client/game/util/harthmere_entity_grounding";
 import { log } from "@/shared/logging";
+import {
+  PLAYER_MOVEMENT_ACTION_TIMING,
+  playerMovementActionVisualPose,
+} from "@/shared/game/movement_actions";
 import { getHarthmereEquipmentAnimation } from "@/shared/game/medieval/harthmereEquipmentAnimationManifest.generated";
 import {
   HARTHMERE_ATTACK_ANIMATION_PROFILES,
@@ -71,7 +82,10 @@ import {
   type HarthmereVoxelBodyConfig,
   type HarthmereVoxelFaceConfig,
 } from "@/shared/harthmere/voxel_faces";
-import { applyHarthmereCinematicExpressionPose } from "@/client/game/cutscene/expression_pose";
+import {
+  applyHarthmereCinematicExpressionPose,
+  shouldApplyHarthmereSnapshotExpressionPose,
+} from "@/client/game/cutscene/expression_pose";
 import {
   harthmereCinematicExpressionDurationMs,
   harthmereCinematicExpressionPlaybackTransition,
@@ -141,6 +155,10 @@ import {
   resolveHarthmereProjectileVisual,
 } from "@/shared/harthmere/projectile_visual_manifest";
 import {
+  HARTHMERE_MAGIC_CHARGE_EVENT,
+  type HarthmereMagicChargeEventDetail,
+} from "@/shared/harthmere/magic_charge";
+import {
   HARTHMERE_PREMIUM_WEAPONS,
   getHarthmerePremiumWeapon,
 } from "@/shared/harthmere/premium_weapon_catalog";
@@ -153,12 +171,12 @@ import {
 } from "@/shared/harthmere/ch1_dungeon_decor";
 import { ch1DungeonAuthoredToWorld } from "@/shared/harthmere/ch1_dungeon_terrain";
 import * as THREE from "three";
-import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry";
-import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader";
-import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
-import { MTLLoader } from "three/examples/jsm/loaders/MTLLoader";
-import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader";
-import { clone as cloneSkeleton } from "three/examples/jsm/utils/SkeletonUtils";
+import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
+import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader.js";
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { MTLLoader } from "three/examples/jsm/loaders/MTLLoader.js";
+import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader.js";
+import { clone as cloneSkeleton } from "three/examples/jsm/utils/SkeletonUtils.js";
 import { loadGltf } from "@/client/game/util/gltf_helpers";
 import { resolveAssetUrlUntyped } from "@/galois/interface/asset_paths";
 import { HARTHMERE_MAIN_QUEST_SPACES } from "../../../../shared/harthmere/main_quest_spaces";
@@ -4845,9 +4863,7 @@ function shouldKeepHarthmerePlacementForPerformance(
     z - HARTHMERE_RUNTIME_CORE_ORIGIN[1]
   );
   const identityLabel = `${placement.asset} ${placement.name ?? ""}`;
-  const label = `${identityLabel} ${
-    placement.district ?? ""
-  }`;
+  const label = `${identityLabel} ${placement.district ?? ""}`;
   const isCore =
     distanceFromTownCore <=
     HARTHMERE_RUNTIME_PERFORMANCE_PROFILE.coreRadiusMeters;
@@ -4932,8 +4948,7 @@ function shouldKeepHarthmerePlacementForPerformance(
     counters.wilds += 1;
     return (
       counters.wilds <=
-        HARTHMERE_RUNTIME_PERFORMANCE_PROFILE
-          .maxWildsRuntimePlacementsOptimized &&
+        HARTHMERE_RUNTIME_PERFORMANCE_PROFILE.maxWildsRuntimePlacementsOptimized &&
       keepWithinTotalBudget()
     );
   }
@@ -28152,6 +28167,9 @@ interface NativeCutsceneActor {
   snapshotPlayerMesh?: Disposable<LoadedPlayerMesh>;
   activeAction?: THREE.AnimationAction;
   activeAnimation?: string;
+  snapshotExpression?: string;
+  snapshotExpressionTime?: number;
+  snapshotExpressionFallback?: boolean;
   dispose: () => void;
 }
 
@@ -28219,6 +28237,7 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
   private harthmereBlockContactFeedback?: THREE.Group;
   private harthmereBlockContactUntil = 0;
   private harthmereLastSwordImpactAt = 0;
+  private harthmereLastMagicImpactFeedbackAt = 0;
   private harthmereLastResourceHitTelegraph?: unknown;
   private readonly harthmereNpcWeaponVisuals = new Map<
     THREE.Object3D,
@@ -28235,7 +28254,8 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
     new HarthmereProjectileVisualRuntime(
       this.root,
       this.gltfLoader,
-      (event, payload) => debugHarthmereRenderer(event, payload)
+      (event, payload) => debugHarthmereRenderer(event, payload),
+      (feedback) => this.applyHarthmereMagicImpactFeedback(feedback)
     );
   private readonly townWalkDebugOverlay = new THREE.Group();
   private readonly animated: AnimatedInstance[] = [];
@@ -28259,12 +28279,41 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
   >();
   private lastHarthmereLiveCreatureBridgeAt: number | undefined;
   private harthmereCombatAuxiliaryUpdateIn = 0;
+  private harthmereCombatSnapshotUpdateIn = 0;
+  private harthmereLastNpcCollisionStatsAt = 0;
   private readonly harthmereCombatSnapshotHead = new THREE.Vector3();
   private readonly spawnedLifePositions: Array<[number, number]> = [];
   private readonly deadCombatObjects = new WeakSet<THREE.Object3D>();
   private harthmerePlacementLodUpdateIn = 0;
   private elapsed = 0;
   private ready = false;
+
+  private applyHarthmereMagicImpactFeedback(
+    feedback: HarthmereMagicImpactFeedback
+  ) {
+    const now = performance.now();
+    // Simultaneous multi-projectile hits share one restrained camera impulse;
+    // their individual flashes, lights, and particles still render in full.
+    if (now - this.harthmereLastMagicImpactFeedbackAt < 70) return;
+    const camera = this.resources.get("/scene/camera");
+    const impactPosition = new THREE.Vector3(...feedback.position);
+    const distance = camera.three.position.distanceTo(impactPosition);
+    const reach = Math.max(14, feedback.radius * 7);
+    const falloff = THREE.MathUtils.clamp(1 - distance / reach, 0, 1);
+    if (falloff <= 0.04) return;
+
+    this.harthmereLastMagicImpactFeedbackAt = now;
+    const strength = THREE.MathUtils.clamp(feedback.cameraStrength, 0.25, 1);
+    this.resources.update("/scene/camera_effects", (effectsHolder) => {
+      effectsHolder.effects.push({
+        kind: "shake",
+        dampedMagnitude: (0.004 + strength * 0.012) * falloff,
+        duration: 125 + strength * 105,
+        repeats: 2 + Math.round(strength * 3),
+        start: now,
+      });
+    });
+  }
 
   constructor(private readonly resources: ClientResources) {
     this.installHarthmerePlayerSwordVisuals();
@@ -28285,6 +28334,10 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
       window.addEventListener(
         HARTHMERE_PROJECTILE_VISUAL_EVENT,
         this.onProjectileVisualRequest
+      );
+      window.addEventListener(
+        HARTHMERE_MAGIC_CHARGE_EVENT,
+        this.onMagicChargeVisualRequest
       );
     }
     if (shouldRenderHarthmereRuntimeAssets()) {
@@ -28472,8 +28525,43 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
       }
     }
     this.reconcileHarthmereEcsLiveCreatures();
-    for (const actor of this.nativeCutsceneActors.values()) {
+    for (const [actorId, actor] of this.nativeCutsceneActors) {
       actor.mixer.update(dt);
+      if (actor.snapshotPlayerMesh) {
+        // Generated snapshot avatars can reject a newly-authored clip when its
+        // skeleton binding differs from the shared animation rig. Clear the
+        // prior root lean after Mixer evaluation, then apply the catalog's
+        // procedural equivalent only when no bound animation action exists.
+        actor.object.rotation.x = 0;
+        actor.object.rotation.z = 0;
+        const stagedRecord = this.latestSyntheticCutsceneRecords.get(actorId);
+        if (stagedRecord) {
+          actor.object.position.y = stagedRecord.at[1];
+        }
+        const movementPose = playerMovementActionVisualPose(
+          actor.snapshotExpression,
+          (actor.snapshotExpressionTime ?? 0) /
+            (actor.snapshotExpression === "evade"
+              ? PLAYER_MOVEMENT_ACTION_TIMING.evade.durationSeconds
+              : actor.snapshotExpression === "doubleJump"
+              ? PLAYER_MOVEMENT_ACTION_TIMING.doubleJump.durationSeconds
+              : PLAYER_MOVEMENT_ACTION_TIMING.dodge.durationSeconds)
+        );
+        if (movementPose) {
+          actor.object.rotation.x = movementPose.pitchRadians;
+          actor.object.rotation.z = movementPose.rollRadians;
+          actor.object.position.y += movementPose.liftMeters;
+        }
+        if (actor.snapshotExpressionFallback) {
+          actor.snapshotExpressionTime =
+            Math.max(0, actor.snapshotExpressionTime ?? 0) + dt;
+          applyHarthmereCinematicExpressionPose(
+            actor.object,
+            actor.snapshotExpression,
+            actor.snapshotExpressionTime
+          );
+        }
+      }
     }
     this.harthmereCombatAuxiliaryUpdateIn -= dt;
     const updateCombatAuxiliary = this.harthmereCombatAuxiliaryUpdateIn <= 0;
@@ -28494,8 +28582,20 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
       }
     }
     this.harthmereProjectileVisuals.update(dt);
-    this.publishCombatActorSnapshot(camera);
-    addToScenes(scenes, this.root);
+    this.harthmereCombatSnapshotUpdateIn -= dt;
+    if (this.harthmereCombatSnapshotUpdateIn <= 0) {
+      // HUD/crosshair consumers sample this bridge at roughly 8 Hz. Publishing
+      // at 10 Hz preserves responsive targeting while avoiding a full object
+      // graph allocation and camera projection for every actor every frame.
+      this.harthmereCombatSnapshotUpdateIn = 0.1;
+      this.publishCombatActorSnapshot(camera);
+    }
+    // Every runtime asset in this root uses stock Three.js materials. Routing
+    // it directly avoids addToScenes() walking the entire town hierarchy twice
+    // per frame for scene classification and RawShaderMaterial dependencies.
+    // The root can still gain/remove ECS creatures, cutscene actors, and VFX;
+    // those paths also use stock Three.js materials and remain in this pass.
+    scenes.three.add(this.root);
   }
 
   private resolveHarthmereRuntimePlacement(
@@ -28890,85 +28990,79 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
       const summary = (win.__harthmereNpcCollisionSummary ??= {});
       const key = `${actorName}|${obstacle.name}|${resolution}`;
       const existing = summary[key];
-      summary[key] = existing
-        ? {
-            ...existing,
-            count: existing.count + 1,
-            lastAt: now,
-          }
-        : {
-            actor: actorName,
-            asset: instance.asset,
-            obstacle: obstacle.name,
-            district: obstacle.district,
-            resolution,
-            count: 1,
-            firstAt: now,
-            lastAt: now,
-          };
+      if (existing) {
+        existing.count += 1;
+        existing.lastAt = now;
+      } else {
+        summary[key] = {
+          actor: actorName,
+          asset: instance.asset,
+          obstacle: obstacle.name,
+          district: obstacle.district,
+          resolution,
+          count: 1,
+          firstAt: now,
+          lastAt: now,
+        };
+      }
 
-      const topBlocked = Object.values(summary)
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 20);
-
-      win.__harthmerePlayerCollisionObstacles =
-        harthmereNpcCollisionObstacles() as unknown as Record<
-          string,
-          unknown
-        >[];
-      win.__harthmereTownCollisionObstacles =
-        harthmereAllCollisionObstacles() as unknown as Record<
-          string,
-          unknown
-        >[];
-      win.__harthmereNpcCollisionStats = {
-        version: HARTHMERE_NPC_WALL_COLLISION_VERSION,
-        runtimeFixesVersion: HARTHMERE_TOWN_DEBUG_RUNTIME_FIXES_VERSION,
-        navigationFixVersion: HARTHMERE_NPC_NAVIGATION_FIX_VERSION,
-        routeNavigationVersion: HARTHMERE_NPC_ROUTE_NAVIGATION_VERSION,
-        totalObstacles: harthmereNpcCollisionObstacles().length,
-        lastBlockedActor: actorName,
-        lastBlockedAsset: instance.asset,
-        lastObstacle: obstacle.name,
-        lastObstacleDistrict: obstacle.district,
-        lastResolution: resolution,
-        actorBlockCount: instance.collisionBlockCount,
-        uniqueBlockedPairs: Object.keys(summary).length,
-        topBlocked,
-        consoleLogging: Boolean(win.__harthmereNpcCollisionLogEnabled),
-        at: now,
-      };
-
-      win.__harthmereDumpNpcCollisionSummary = () =>
+      win.__harthmereDumpNpcCollisionSummary ??= () =>
         Object.values(win.__harthmereNpcCollisionSummary ?? {}).sort(
           (a, b) => b.count - a.count
         );
+
+      // Collision resolution can fire many times per rendered frame. Keep the
+      // lightweight counters current, but only rebuild/sort the debug snapshot
+      // once per second instead of on every blocked NPC step.
+      if (now - this.harthmereLastNpcCollisionStatsAt >= 1_000) {
+        this.harthmereLastNpcCollisionStatsAt = now;
+        const topBlocked = Object.values(summary)
+          .sort((a, b) => b.count - a.count)
+          .slice(0, 20);
+        win.__harthmereNpcCollisionStats = {
+          version: HARTHMERE_NPC_WALL_COLLISION_VERSION,
+          runtimeFixesVersion: HARTHMERE_TOWN_DEBUG_RUNTIME_FIXES_VERSION,
+          navigationFixVersion: HARTHMERE_NPC_NAVIGATION_FIX_VERSION,
+          routeNavigationVersion: HARTHMERE_NPC_ROUTE_NAVIGATION_VERSION,
+          totalObstacles: harthmereNpcCollisionObstacles().length,
+          lastBlockedActor: actorName,
+          lastBlockedAsset: instance.asset,
+          lastObstacle: obstacle.name,
+          lastObstacleDistrict: obstacle.district,
+          lastResolution: resolution,
+          actorBlockCount: instance.collisionBlockCount,
+          uniqueBlockedPairs: Object.keys(summary).length,
+          topBlocked,
+          consoleLogging: Boolean(win.__harthmereNpcCollisionLogEnabled),
+          at: now,
+        };
+      }
     }
 
-    const verboseCollisionLogs =
-      Boolean(win?.__harthmereNpcCollisionLogEnabled) ||
-      (typeof window !== "undefined" &&
-        window.localStorage?.getItem(
-          "biomes.localDev.harthmere.npcCollisionVerbose"
-        ) === "1");
-
     if (
-      verboseCollisionLogs &&
-      (instance.collisionBlockCount === 1 ||
-        instance.collisionBlockCount % 300 === 0)
+      instance.collisionBlockCount === 1 ||
+      instance.collisionBlockCount % 300 === 0
     ) {
-      debugHarthmereRenderer("renderer.npc_wall_collision.blocked", {
-        version: HARTHMERE_NPC_WALL_COLLISION_VERSION,
-        runtimeFixesVersion: HARTHMERE_TOWN_DEBUG_RUNTIME_FIXES_VERSION,
-        navigationFixVersion: HARTHMERE_NPC_NAVIGATION_FIX_VERSION,
-        routeNavigationVersion: HARTHMERE_NPC_ROUTE_NAVIGATION_VERSION,
-        actor: actorName,
-        asset: instance.asset,
-        obstacle: obstacle.name,
-        district: obstacle.district,
-        resolution,
-        count: instance.collisionBlockCount,
-      });
+      const verboseCollisionLogs =
+        Boolean(win?.__harthmereNpcCollisionLogEnabled) ||
+        (typeof window !== "undefined" &&
+          window.localStorage?.getItem(
+            "biomes.localDev.harthmere.npcCollisionVerbose"
+          ) === "1");
+      if (verboseCollisionLogs) {
+        debugHarthmereRenderer("renderer.npc_wall_collision.blocked", {
+          version: HARTHMERE_NPC_WALL_COLLISION_VERSION,
+          runtimeFixesVersion: HARTHMERE_TOWN_DEBUG_RUNTIME_FIXES_VERSION,
+          navigationFixVersion: HARTHMERE_NPC_NAVIGATION_FIX_VERSION,
+          routeNavigationVersion: HARTHMERE_NPC_ROUTE_NAVIGATION_VERSION,
+          actor: actorName,
+          asset: instance.asset,
+          obstacle: obstacle.name,
+          district: obstacle.district,
+          resolution,
+          count: instance.collisionBlockCount,
+        });
+      }
     }
   }
 
@@ -29048,7 +29142,10 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
     const now = Date.now();
     const positions: Record<string, unknown> = {};
     for (const actor of this.combatLifeInstances) {
-      if (actor.object.userData.harthmereEcsFallbackSuppressed === true) {
+      if (
+        !actor.object.visible ||
+        actor.object.userData.harthmereEcsFallbackSuppressed === true
+      ) {
         continue;
       }
       if (
@@ -31597,6 +31694,39 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
     );
   };
 
+  private readonly onMagicChargeVisualRequest = (event: Event) => {
+    const detail = (event as CustomEvent<HarthmereMagicChargeEventDetail>)
+      .detail;
+    if (!detail?.chargeId) {
+      return;
+    }
+    if (detail.phase === "release" || detail.phase === "cancel") {
+      this.harthmereProjectileVisuals.endMagicCharge(
+        detail.chargeId,
+        detail.phase
+      );
+      return;
+    }
+    const definition = resolveHarthmereProjectileVisual({
+      projectileVisualId: detail.projectileVisualId,
+      abilityId: detail.abilityId,
+    });
+    if (!definition) {
+      return;
+    }
+    const origin =
+      this.harthmereProjectileVector(detail.origin) ??
+      this.harthmereProjectilePlayerPoint().position;
+    this.harthmereProjectileVisuals.spawnMagicCharge({
+      key: detail.chargeId,
+      projectileId: definition.id,
+      origin,
+      duration: Math.max(0, Number(detail.chargeTimeSecs ?? 0)),
+      power: detail.power,
+      visualScale: detail.visualScale,
+    });
+  };
+
   private harthmereProjectilePlayerPoint() {
     const runtime = (
       window as typeof window & {
@@ -31714,6 +31844,8 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
       hitRadius: Number(detail.hitRadius ?? 0),
       coneAngleDeg: Number(detail.coneAngleDeg ?? 0),
       windupSecs: Number(detail.windupSecs ?? 0),
+      visualScale: Number(detail.visualScale ?? 1),
+      damageType: String(detail.damageType ?? ""),
     });
   }
 
@@ -33931,7 +34063,9 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
     const ecsEntityId = Number(actor.object.userData.harthmereEcsCreatureId);
     actor.soundProfile =
       harthmereCreatureSoundProfileForIdentity({
-        entityId: Number.isFinite(ecsEntityId) ? ecsEntityId : actor.combatOffset,
+        entityId: Number.isFinite(ecsEntityId)
+          ? ecsEntityId
+          : actor.combatOffset,
         text: `${actor.label} ${actor.asset} ${actor.district ?? ""} ${
           actor.appearance?.species ?? ""
         }`,
@@ -34273,13 +34407,39 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
     actor.object.name = record.label;
 
     if (actor.snapshotPlayerMesh) {
+      const sky = this.resources.get("/scene/sky_params");
+      updateSnapshotPlayerMeshLighting(
+        actor.object,
+        computeNonDarkSpatialLighting(
+          this.resources,
+          record.at[0],
+          record.at[1] + 1,
+          record.at[2],
+          [1, 1.5, 1]
+        ),
+        safePlayerLightDirection(sky.sunDirection.toArray())
+      );
       applySnapshotCutscenePlayerAnimation(
         actor.snapshotPlayerMesh,
         record.animation,
         record.animationTime ?? record.motionTime ?? 0
       );
+      actor.snapshotExpression = record.animation;
+      actor.snapshotExpressionTime =
+        record.animationTime ?? record.motionTime ?? 0;
+      actor.snapshotExpressionFallback =
+        shouldApplyHarthmereSnapshotExpressionPose(record.animation);
+      actor.object.userData.harthmereSnapshotExpressionPresentation = {
+        animation: record.animation,
+        animationTime: actor.snapshotExpressionTime,
+        proceduralFallback: actor.snapshotExpressionFallback,
+      };
+      this.syncHarthmereEcsCinematicExpressionFace(record, actor.object);
       return;
     }
+    actor.snapshotExpression = undefined;
+    actor.snapshotExpressionTime = undefined;
+    actor.snapshotExpressionFallback = false;
 
     const clip = this.nativeCutsceneClipNames(record.animation)
       .map((name) => actor.clips.get(name.toLowerCase()))
@@ -34314,6 +34474,7 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
         clip.duration
       );
     }
+    this.syncHarthmereEcsCinematicExpressionFace(record, actor.object);
   }
 
   private async loadNativeCutsceneActor(
@@ -34328,7 +34489,7 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
       ) {
         const mesh = await makeSnapshotCutscenePlayerMesh(
           this.resources as unknown as ClientResourceDeps,
-          record.id as BiomesId
+          (record.appearanceSourceEntityId ?? record.id) as BiomesId
         );
         actor = {
           object: mesh.three,

@@ -8,7 +8,11 @@ import { harthmereEnsureRenderableNpcEntity } from "@/client/game/resources/hart
 import type { ClientResources } from "@/client/game/resources/types";
 import { NpcMetadataSelector } from "@/shared/ecs/gen/selectors";
 import type { BiomesId } from "@/shared/ids";
-import { readRenderablePuppetOverrides } from "@/shared/cutscene/puppets";
+import {
+  readRenderablePuppetOverrides,
+  type CutscenePuppetOverride,
+} from "@/shared/cutscene/puppets";
+import type { Vec3 } from "@/shared/math/types";
 import { Cval } from "@/shared/util/cvals";
 
 const numNpcsCval = new Cval({
@@ -45,21 +49,27 @@ export const makeNpcsRenderer = (
 
       const becomeNpc = resources.get("/scene/npc/become_npc");
       const puppetOverrides = readRenderablePuppetOverrides();
-      const hiddenNpcIds = new Set(
-        puppetOverrides
-          .filter((override) => override.id > 0 && override.hidden)
-          .map((override) => override.id)
-      );
-      const cutsceneNpcIds = new Set<BiomesId>(
-        puppetOverrides
-          .filter((override) => override.id > 0 && !override.hidden)
-          .map((override) => override.id as BiomesId)
-      );
-      const mustKeepNpcIds = new Set(cutsceneNpcIds);
+      let puppetOverrideById: Map<BiomesId, CutscenePuppetOverride> | undefined;
+      let hiddenNpcIds: Set<number> | undefined;
+      let cutsceneNpcIds: Set<BiomesId> | undefined;
+      for (const override of puppetOverrides) {
+        if (override.id <= 0) {
+          continue;
+        }
+        const entityId = override.id as BiomesId;
+        (puppetOverrideById ??= new Map()).set(entityId, override);
+        if (override.hidden) {
+          (hiddenNpcIds ??= new Set()).add(override.id);
+        } else {
+          (cutsceneNpcIds ??= new Set()).add(entityId);
+        }
+      }
+      let mustKeepNpcIds = cutsceneNpcIds ? new Set(cutsceneNpcIds) : undefined;
       if (becomeNpc.kind === "active") {
-        mustKeepNpcIds.add(becomeNpc.entityId);
+        (mustKeepNpcIds ??= new Set()).add(becomeNpc.entityId);
       }
       const skyParams = resources.get("/scene/sky_params");
+      const sunDirection = skyParams.sunDirection.toArray() as Vec3;
 
       const entities = nearestKEntitiesInFrustum(
         camera,
@@ -70,11 +80,11 @@ export const makeNpcsRenderer = (
           tweaks.clientRendering.npcRenderLimit
         ),
         {
-          mustKeep: mustKeepNpcIds.size > 0 ? mustKeepNpcIds : undefined,
+          mustKeep: mustKeepNpcIds,
         }
       );
       for (let i = entities.length - 1; i >= 0; i -= 1) {
-        if (hiddenNpcIds.has(Number(entities[i].id))) entities.splice(i, 1);
+        if (hiddenNpcIds?.has(Number(entities[i].id))) entities.splice(i, 1);
       }
       if (
         becomeNpc.kind === "active" &&
@@ -88,7 +98,7 @@ export const makeNpcsRenderer = (
           entities.push(entity);
         }
       }
-      for (const entityId of cutsceneNpcIds) {
+      for (const entityId of cutsceneNpcIds ?? []) {
         if (entities.some((entity) => Number(entity.id) === entityId)) {
           continue;
         }
@@ -122,9 +132,10 @@ export const makeNpcsRenderer = (
           dt,
           frameNumber,
           clock.time,
-          skyParams,
+          sunDirection,
           tweaks,
-          resources
+          resources,
+          puppetOverrideById?.get(entity.id) ?? null
         );
         renderState.addToScene(scenes, clock.time);
       }

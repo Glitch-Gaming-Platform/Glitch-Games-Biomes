@@ -42,7 +42,7 @@ import { binaryFetch, jsonFetch } from "@/shared/util/fetch_helpers";
 import { ok } from "assert";
 import * as THREE from "three";
 import { DoubleSide, Mesh } from "three";
-import type { GLTF } from "three/examples/jsm/loaders/GLTFLoader";
+import type { GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
 
 interface ItemMeshInstanceImpl {
   three: THREE.Object3D;

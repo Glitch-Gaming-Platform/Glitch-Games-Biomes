@@ -42,6 +42,14 @@ import { isPlayer } from "@/shared/game/players";
 import { fallDamageForBlocks, FEET_PER_BLOCK } from "@/shared/game/fall_damage";
 import { HARTHMERE_VOXEL_INTERACTION_ATTACK_REACH_UNITS } from "@/shared/harthmere/combat_reach";
 import { getHarthmereProjectileVisual } from "@/shared/harthmere/projectile_visual_manifest";
+import {
+  harthmereMagicChargeDurationSecs,
+  harthmereMagicChargePower,
+} from "@/shared/harthmere/magic_charge";
+import {
+  dispatchHarthmereMagicCharge,
+  harthmereMagicChargeId,
+} from "@/client/game/util/harthmere_magic_charge";
 import { nativeBiomesEcsAuthorityEnabled } from "@/shared/harthmere/native_road_ahead_contract";
 import {
   HARTHMERE_BIOMES_ECS_HEALTH_UPDATED_EVENT,
@@ -3080,7 +3088,28 @@ type HarthmereRetaliationAttackOptions = {
   debugLabel?: string;
   projectileVisualId?: string;
   projectileAbilityName?: string;
+  magicChargeCompleted?: boolean;
 };
+
+let pendingHarthmereLocalMagicCharge:
+  | { chargeId: string; timeout: number }
+  | undefined;
+
+export function harthmereLocalCombatMagicChargeSeconds(input: {
+  ability: HarthmerePlayerAttackType;
+  projectileVisualId?: string;
+  attackDamage?: number;
+}) {
+  if (input.ability !== "spark") {
+    return 0;
+  }
+  return harthmereMagicChargeDurationSecs({
+    explicitMagic: true,
+    projectileVisualId: input.projectileVisualId ?? "spark",
+    attackDamage: input.attackDamage,
+    cooldownSecs: PLAYER_SPARK_ATTACK.cooldownSeconds,
+  });
+}
 
 function ambientThreatForPosition(position: readonly number[]) {
   const [x, , z] = position;
@@ -6066,6 +6095,72 @@ export function performHarthmereCombatAttack(
         "dead"
       )
     );
+    return;
+  }
+
+  const localMagicDamage = Math.max(
+    1,
+    Math.round(player.attackPoints * 0.72 + player.magicResistance * 0.18)
+  );
+  const localMagicChargeTimeSecs = harthmereLocalCombatMagicChargeSeconds({
+    ability,
+    projectileVisualId: retaliationOptions.projectileVisualId,
+    attackDamage: localMagicDamage,
+  });
+  if (
+    localMagicChargeTimeSecs > 0 &&
+    !retaliationOptions.magicChargeCompleted &&
+    isBrowser()
+  ) {
+    if (pendingHarthmereLocalMagicCharge) {
+      return;
+    }
+    const projectileVisualId = retaliationOptions.projectileVisualId ?? "spark";
+    const castTime = Date.now() / 1000;
+    const chargeId = harthmereMagicChargeId({
+      casterKind: "player",
+      abilityId: projectileVisualId,
+      castTime,
+    });
+    const power = harthmereMagicChargePower({
+      attackDamage: localMagicDamage,
+      cooldownSecs: PLAYER_SPARK_ATTACK.cooldownSeconds,
+    });
+    dispatchHarthmereMagicCharge({
+      phase: "start",
+      chargeId,
+      abilityId: projectileVisualId,
+      projectileVisualId,
+      casterKind: "player",
+      chargeStartedAt: castTime,
+      chargeTimeSecs: localMagicChargeTimeSecs,
+      releaseTime: castTime + localMagicChargeTimeSecs,
+      power,
+      source: "local_combat_magic_charge",
+    });
+    const timeout = window.setTimeout(() => {
+      if (pendingHarthmereLocalMagicCharge?.chargeId !== chargeId) {
+        return;
+      }
+      pendingHarthmereLocalMagicCharge = undefined;
+      dispatchHarthmereMagicCharge({
+        phase: "release",
+        chargeId,
+        abilityId: projectileVisualId,
+        projectileVisualId,
+        casterKind: "player",
+        chargeStartedAt: castTime,
+        chargeTimeSecs: localMagicChargeTimeSecs,
+        releaseTime: castTime + localMagicChargeTimeSecs,
+        power,
+        source: "local_combat_magic_release",
+      });
+      performHarthmereCombatAttack(targetOffset, ability, {
+        ...retaliationOptions,
+        magicChargeCompleted: true,
+      });
+    }, localMagicChargeTimeSecs * 1000);
+    pendingHarthmereLocalMagicCharge = { chargeId, timeout };
     return;
   }
 

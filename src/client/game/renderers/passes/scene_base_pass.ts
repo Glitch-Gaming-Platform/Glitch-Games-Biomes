@@ -1,10 +1,9 @@
 import type { RenderPassChannel } from "@/client/game/renderers/passes/composer";
 import { ScenePass } from "@/client/game/renderers/passes/scene_pass";
 import * as THREE from "three";
-import type { WebGLMultipleRenderTargets } from "three";
 
 export class SceneBasePass extends ScenePass {
-  multiTarget?: WebGLMultipleRenderTargets;
+  multiTarget?: THREE.WebGLRenderTarget;
 
   inputChannels() {
     return [...this.options.additionalInputs];
@@ -25,45 +24,46 @@ export class SceneBasePass extends ScenePass {
     const depthTexture = this.composer.getSharedBuffer(
       "depth"
     ) as THREE.DepthTexture;
-    const target = new THREE.WebGLMultipleRenderTargets(
+    const target = new THREE.WebGLRenderTarget(
       size.width * pixelRatio,
       size.height * pixelRatio,
-      3,
       {
+        count: 3,
         depthTexture,
       }
     );
+    const [color, normal, baseDepth] = target.textures;
 
     // RGB with Depth
-    target.texture[0].name = "Color";
-    target.texture[0].format = THREE.RGBAFormat;
-    target.texture[0].type = THREE.HalfFloatType;
-    target.texture[0].minFilter = THREE.NearestFilter;
-    target.texture[0].magFilter = THREE.NearestFilter;
-    target.texture[0].generateMipmaps = false;
+    color.name = "Color";
+    color.format = THREE.RGBAFormat;
+    color.type = THREE.HalfFloatType;
+    color.minFilter = THREE.NearestFilter;
+    color.magFilter = THREE.NearestFilter;
+    color.generateMipmaps = false;
 
-    target.texture[1].name = "Normal";
-    target.texture[1].format = THREE.RGBAFormat;
-    target.texture[1].type = THREE.HalfFloatType;
-    target.texture[1].minFilter = THREE.NearestFilter;
-    target.texture[1].magFilter = THREE.NearestFilter;
-    target.texture[1].generateMipmaps = false;
+    normal.name = "Normal";
+    normal.format = THREE.RGBAFormat;
+    normal.type = THREE.HalfFloatType;
+    normal.minFilter = THREE.NearestFilter;
+    normal.magFilter = THREE.NearestFilter;
+    normal.generateMipmaps = false;
 
     // TODO determine if this is faster as a copy rather than a MRT
-    target.texture[2].name = "BaseDepth";
-    target.texture[2].format = THREE.RedFormat;
-    target.texture[2].type = THREE.HalfFloatType;
-    target.texture[2].minFilter = THREE.NearestFilter;
-    target.texture[2].magFilter = THREE.NearestFilter;
-    target.texture[2].generateMipmaps = false;
+    baseDepth.name = "BaseDepth";
+    baseDepth.format = THREE.RedFormat;
+    baseDepth.type = THREE.HalfFloatType;
+    baseDepth.minFilter = THREE.NearestFilter;
+    baseDepth.magFilter = THREE.NearestFilter;
+    baseDepth.generateMipmaps = false;
 
     this.multiTarget = target;
     this.outputs.clear();
     if (!renderToScreen) {
-      this.outputs.set("color", target.texture[0]);
+      this.outputs.set("color", color);
       this.outputs.set("depth", depthTexture);
-      this.outputs.set("normal", target.texture[1]);
-      this.outputs.set("baseDepth", target.texture[2]);
+      this.outputs.set("normal", normal);
+      this.outputs.set("baseDepth", baseDepth);
     }
   }
 

@@ -654,6 +654,7 @@ export function installHarthmereNativeEcsE2E(
             title: quest.title,
             status: quest.status,
             objective: quest.objective,
+            materialRequirements: quest.materialRequirements,
             currentStepId: currentStep?.id.split(":").at(-1),
             steps: steps.map((step) => ({
               id: step.id.split(":").at(-1) ?? step.id,

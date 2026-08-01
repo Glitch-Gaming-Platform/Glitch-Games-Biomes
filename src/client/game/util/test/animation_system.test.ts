@@ -3,6 +3,7 @@ import {
   getSmoothedWeight,
 } from "@/client/game/util/animation_system";
 import assert from "assert";
+import * as THREE from "three";
 
 describe("Player Animations", () => {
   const ALL_DURATIONS = 1;
@@ -274,5 +275,49 @@ describe("Player Animations", () => {
     const s = getSmoothedWeight(e, d, 0.1, 0.5);
 
     assert.equal(s, 0.6);
+  });
+
+  it("keeps animation tracks for Blender dotted bone names", () => {
+    const bossSystem = new AnimationSystem(
+      {
+        idle: { fileAnimationName: "Idle" },
+        walk: { fileAnimationName: "RootMarch" },
+      },
+      { all: { re: /.*/ } }
+    );
+    const scene = new THREE.Group();
+    const branch = new THREE.Bone();
+    branch.name = "Branch.L";
+    const rootLeg = new THREE.Bone();
+    rootLeg.name = "RootLeg.L";
+    scene.add(branch, rootLeg);
+
+    const idle = new THREE.AnimationClip("Idle", 1, [
+      new THREE.QuaternionKeyframeTrack(
+        "Branch.L.quaternion",
+        [0, 1],
+        [0, 0, 0, 1, 0, 0, 0, 1]
+      ),
+    ]);
+    const rootMarch = new THREE.AnimationClip("RootMarch", 1, [
+      new THREE.QuaternionKeyframeTrack(
+        "Branch.L.quaternion",
+        [0, 1],
+        [0, 0, 0, 1, 0.1, 0, 0, 0.995]
+      ),
+      new THREE.VectorKeyframeTrack(
+        "RootLeg.L.position",
+        [0, 1],
+        [0, 0, 0, 0, 0.25, 0]
+      ),
+    ]);
+
+    const state = bossSystem.newState(scene, [idle, rootMarch]);
+    const walkAction = state.actions.all.walk;
+    assert.ok(walkAction, "RootMarch should bind to dotted boss bone names");
+    assert.deepEqual(
+      walkAction.getClip().tracks.map((track) => track.name),
+      ["Branch.L.quaternion", "RootLeg.L.position"]
+    );
   });
 });

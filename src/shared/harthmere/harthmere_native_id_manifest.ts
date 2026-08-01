@@ -1252,6 +1252,16 @@ export const HARTHMERE_NATIVE_NPC_ID_MANIFEST = {
   // pack is a Harthmere-native creature with Harthmere stats, respawn and
   // visuals, exactly like the restored Mossy Muckling pack.
   monster_cobbled_muckling: id(8722087466111638),
+  // Human-scale deep-cavern predator. All sixty authored pack members share
+  // one native type; their increasing cavern difficulty lives in per-entity
+  // creature progression rather than minting one type per cave.
+  monster_indisworm: id(8722087466111639),
+  // Four isolated level-30 corner encounters share one type per boss species.
+  // Their per-entity progression supplies the high-level scaling while these
+  // distinct type identities preserve the wider apex aggro/leash contract
+  // without changing the quest-gated Helix or the existing bounty Alpha.
+  boss_muck_scarred_helix_apex: id(8722087466111640),
+  boss_alpha_mucker_apex: id(8722087466111641),
 } as const satisfies Readonly<Record<string, BiomesId>>;
 
 /**

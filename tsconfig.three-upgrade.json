@@ -1,0 +1,16 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "incremental": true,
+    "tsBuildInfoFile": "tmp/three-upgrade.tsbuildinfo"
+  },
+  "include": [
+    "src/client/game/renderers/test/three_scene_contract.test.ts",
+    "src/client/game/renderers/test/three_render_target_contract.test.ts",
+    "src/client/game/util/test/three_asset_contract.test.ts",
+    "scripts/harthmere/browser/three-upgrade-runtime-smoke.ts",
+    "scripts/harthmere/browser/three-upgrade-process-shim.ts",
+    "modules.d.ts"
+  ]
+}

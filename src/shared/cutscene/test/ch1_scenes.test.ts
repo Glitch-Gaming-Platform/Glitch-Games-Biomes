@@ -20,6 +20,7 @@ import {
 import { ch1QuestCutsceneIds } from "@/shared/harthmere/ch1_quests";
 import { CH1_ANCHORS, CH1_NPC_ENTITY_IDS } from "@/shared/harthmere/ch1_ids";
 import { isHarthmereCinematicExpression } from "../cinematic_expressions";
+import { SNAPSHOT_CUTSCENE_PLAYER_MESH_ASSET } from "../puppets";
 
 describe("ch1 cutscenes - validity", () => {
   it("every authored scene validates", () => {
@@ -66,6 +67,33 @@ describe("ch1 cutscenes - validity", () => {
     }
   });
 
+  it("never authors a procedural Three.js human fallback", () => {
+    for (const scene of ch1AllScenes()) {
+      for (const member of scene.cast) {
+        if (
+          member.binding.kind === "ghost" &&
+          member.binding.family === "human"
+        ) {
+          assert.equal(
+            member.binding.asset,
+            SNAPSHOT_CUTSCENE_PLAYER_MESH_ASSET,
+            `${scene.id}/${member.role}: human ghost must use PlayerMesh`
+          );
+        }
+        assert.ok(
+          !member.ghostAsset?.startsWith("townsperson_"),
+          `${scene.id}/${member.role}: legacy townsperson fallback is forbidden`
+        );
+      }
+    }
+  });
+
+  it("hides the gameplay HUD and hotbar throughout Chapter 1 cinematics", () => {
+    for (const scene of ch1AllScenes()) {
+      assert.equal(scene.settings.hideHud, true, scene.id);
+    }
+  });
+
   it("keeps every expression cue on an existing actor and inside its shot", () => {
     for (const scene of ch1AllScenes()) {
       const roles = new Set(scene.cast.map((member) => member.role));
@@ -85,6 +113,48 @@ describe("ch1 cutscenes - validity", () => {
         }
       }
     }
+  });
+
+  it("does not assign emotional expressions to the Chapter 1 robot", () => {
+    assert.deepStrictEqual(
+      CH1_SCENE_ACTING_CUES[CH1_SCENE_IDS.ignition].map(
+        (cue) => cue.expression
+      ),
+      ["getUp"],
+      "AUGUR-9 may stand up mechanically but must not perform human emotions"
+    );
+  });
+
+  it("gives every revised human dialogue beat to its speaking actor", () => {
+    const expected = [
+      [CH1_SCENE_IDS.confrontation, "line-1", "a", "determined"],
+      [CH1_SCENE_IDS.sorrelDoor, "line-0", "a", "annoyance"],
+      [CH1_SCENE_IDS.sorrelDoor, "line-2", "a", "determined"],
+      [CH1_SCENE_IDS.theCase, "line-1", "a", "determined"],
+      [CH1_SCENE_IDS.theCase, "line-2", "a", "determined"],
+      [CH1_SCENE_IDS.theCase, "line-5", "a", "uncertainty"],
+      [CH1_SCENE_IDS.tooLate, "line-2", "a", "determined"],
+      [CH1_SCENE_IDS.theWatchHouse, "line-2", "a", "sadness"],
+    ] as const;
+    for (const [sceneId, shotId, role, expression] of expected) {
+      assert.ok(
+        CH1_SCENE_ACTING_CUES[sceneId].some(
+          (cue) =>
+            cue.shotId === shotId &&
+            cue.role === role &&
+            cue.expression === expression
+        ),
+        `${sceneId}/${shotId}: ${role} must perform ${expression}`
+      );
+    }
+    assert.ok(
+      CH1_SCENE_ACTING_CUES[CH1_SCENE_IDS.confrontation].some(
+        (cue) =>
+          cue.shotId === "line-2" &&
+          cue.role === "b" &&
+          cue.expression === "anger"
+      )
+    );
   });
 
   it("no scene can hang: every shot is finitely bounded", () => {

@@ -5,10 +5,10 @@
  *
  * The full local-dev terrain bootstrap owns thousands of unrelated Harthmere
  * shards and is intentionally too broad for the browser-test inner loop. This
- * maintenance entry point installs only the two Elsewhen dungeon shard sets and
- * the ten Chapter 1 cast members, in bounded batches, while the production
- * stack stays warm. It is safe to rerun after an interrupted seed: existing
- * rows are updated and missing rows are created.
+ * maintenance entry point installs only the two Elsewhen dungeon shard sets,
+ * the Chapter 1 cast, and the canonical testimony NPCs in bounded batches
+ * while the production stack stays warm. It is safe to rerun after an
+ * interrupted seed: existing rows are updated and missing rows are created.
  *
  * Elsewhen stays outside ordinary WorldMetadata. The only metadata mutation
  * this script may perform is repairing the retired X=3648 boundary back to the
@@ -69,6 +69,11 @@ const {
   CH1_RECLAIMED_CAST,
   CH1_SEEDED_CAST,
 } = require("../../src/shared/harthmere/ch1_cast");
+const {
+  CH1_RETIRED_DUPLICATE_TESTIMONY_NPC_IDS,
+  CH1_TESTIMONY_NPC_SEEDS,
+  CH1_TESTIMONY_NPC_SEED_VERSION,
+} = require("../../src/shared/harthmere/ch1_testimony_npcs");
 const {
   CH1_DUNGEON_TERRAIN_VERSION,
   ch1DungeonAuthoredToWorld,
@@ -362,6 +367,38 @@ function buildNpcEntity(member, kind, nowSeconds) {
   };
 }
 
+function buildTestimonyNpcEntity(seed, kind, nowSeconds) {
+  let base = npcEntity(
+    {
+      id: seed.entityId,
+      typeId: LOCAL_DEV_HUMAN_NPC_TYPE_ID,
+      position: [...seed.position],
+      orientation: [0, Math.PI],
+      velocity: [0, 0, 0],
+      displayName: seed.displayName,
+      defaultDialog: npcDialog(seed.line),
+    },
+    nowSeconds
+  );
+  if (!seed.preserveSnapshotAppearance) {
+    base = prepareHarthmerePlayerLikeNpcForUniqueAppearance(base, kind);
+  }
+  return {
+    ...base,
+    entity_description: EntityDescription.create({
+      text: `${CH1_TESTIMONY_NPC_SEED_VERSION} grove witness ${seed.role}`,
+    }),
+    ...(seed.questGiver
+      ? {
+          quest_giver: QuestGiver.create({
+            concurrent_quests: 1,
+            concurrent_quest_dialog: npcDialog(seed.line),
+          }),
+        }
+      : {}),
+  };
+}
+
 async function registerBakedBikkie() {
   const storage = new RedisBikkieStorage(await connectToRedis("bikkie"));
   try {
@@ -424,6 +461,10 @@ async function main() {
   const targetIds = [
     ...terrainPlan.map((spec) => spec.id),
     ...(TERRAIN_ONLY ? [] : CH1_SEEDED_CAST.map((member) => member.entityId)),
+    ...(TERRAIN_ONLY
+      ? []
+      : CH1_TESTIMONY_NPC_SEEDS.map((seed) => seed.entityId)),
+    ...(TERRAIN_ONLY ? [] : CH1_RETIRED_DUPLICATE_TESTIMONY_NPC_IDS),
   ];
   const world = new RedisWorld(await connectToRedisWithLua("ecs"));
   await world.waitForHealthy();
@@ -432,8 +473,12 @@ async function main() {
     const existingIds = new Set(await world.has(targetIds));
     const terrainByDungeon = Object.fromEntries(
       DUNGEON_IDS.map((dungeonId) => {
-        const specs = terrainPlan.filter((spec) => spec.dungeonId === dungeonId);
-        const existing = specs.filter((spec) => existingIds.has(spec.id)).length;
+        const specs = terrainPlan.filter(
+          (spec) => spec.dungeonId === dungeonId
+        );
+        const existing = specs.filter((spec) =>
+          existingIds.has(spec.id)
+        ).length;
         return [
           dungeonId,
           {
@@ -451,10 +496,10 @@ async function main() {
       castOnly: CAST_ONLY,
       terrainShards: terrainPlan.length,
       castMembers: TERRAIN_ONLY ? 0 : CH1_SEEDED_CAST.length,
+      testimonyNpcs: TERRAIN_ONLY ? 0 : CH1_TESTIMONY_NPC_SEEDS.length,
       worldBoundaryEast: boundary.currentEastEdge,
       effectiveWorldBoundaryEast: boundary.effectiveEastEdge,
-      expectedOrdinaryWorldBoundaryEast:
-        HARTHMERE_EXPANDED_WORLD_EAST_EDGE_X,
+      expectedOrdinaryWorldBoundaryEast: HARTHMERE_EXPANDED_WORLD_EAST_EDGE_X,
       elsewhenBandStart: CH1_ELSEWHEN_BAND_START_X,
       elsewhenBandEnd: CH1_ELSEWHEN_BAND_END_X,
       portalOnlyWorldBoundary:
@@ -511,6 +556,16 @@ async function main() {
           [...reclaimedExistingIds].map((id) => ({ kind: "delete", id }))
         );
       }
+      const retiredTestimonyDuplicates =
+        CH1_RETIRED_DUPLICATE_TESTIMONY_NPC_IDS.filter((id) =>
+          existingIds.has(id)
+        );
+      if (retiredTestimonyDuplicates.length > 0) {
+        await applyChanges(
+          world,
+          retiredTestimonyDuplicates.map((id) => ({ kind: "delete", id }))
+        );
+      }
       const npcChanges = CH1_SEEDED_CAST.map((member) => {
         const kind =
           existingIds.has(member.entityId) &&
@@ -523,6 +578,14 @@ async function main() {
         };
       });
       await applyChanges(world, npcChanges);
+      const testimonyChanges = CH1_TESTIMONY_NPC_SEEDS.map((seed) => {
+        const kind = existingIds.has(seed.entityId) ? "update" : "create";
+        return {
+          kind,
+          entity: buildTestimonyNpcEntity(seed, kind, nowSeconds),
+        };
+      });
+      await applyChanges(world, testimonyChanges);
     }
     console.log(
       `Chapter 1 native seed complete in ${(

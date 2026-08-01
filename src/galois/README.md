@@ -4,6 +4,16 @@
 
 Galois is a collection of tools for asset generation. Galois introduces a custom DSL for defining assets (e.g. meshes, textures, game objects, configuration files, maps, worlds), a build system for generating binary asset data, and tools for viewing and editing assets through a UI.
 
+The maintained system documentation covers the complete architecture, runtime
+boundary, tests, and upgrade process:
+
+- `docs/docs/basics/galois.md`
+- `docs/docs/galois/architecture.md`
+- `docs/docs/galois/asset-language-and-build-runtime.md`
+- `docs/docs/galois/publishing-and-serving.md`
+- `docs/docs/galois/testing.md`
+- `docs/docs/galois/migrations-and-upgrades.md`
+
 <img src="data/icons/axe.png">&nbsp;
 <img src="data/icons/camera.png">&nbsp;
 <img src="data/icons/oak-trunk.png">&nbsp;
@@ -16,10 +26,11 @@ Galois is a collection of tools for asset generation. Galois introduces a custom
 
 Galois is a combination of TypeScript, Python and C++. The TypeScript lives in
 the `src/galois/js` directory and runs in the same yarn environment as the
-host biomes. The C++ is coming from the dependency on [voxeloo](/voxeloo), and
-is accessed only by the Python, and therefore Voxeloo must be installed as part
-of the Python dependencies. The Galois Python code is in `src/galois/py`, and
-is unique to Galois, requiring its own environment setup, described next.
+host biomes. The asset builder accesses the C++ [Voxeloo](/voxeloo) routines
+through Python bindings, so Voxeloo must be installed as part of the Python
+environment. Runtime consumers can also use related Voxeloo routines through
+WebAssembly. The Galois Python code is in `src/galois/py` and requires the
+environment setup described next.
 
 ### Install Python dependencies
 
@@ -82,12 +93,17 @@ The basic workflows are:
 
 1. run: `./b galois assets publish`
 
-This will regenerate art assets and save them to the `/public` directory of
-biomes.
+This builds generated definitions, uploads content-addressed static assets, and
+updates the logical asset index. Use `--dryRun` to exercise the build without
+uploading or rewriting indexes.
 
-#### Run all Galois tests
+#### Run Galois tests
 
 1. run: `./b galois test`
+2. run: `./b galois test-python`
+
+Native and language-boundary changes also require the Voxeloo Galois and
+pybind test targets described in `docs/docs/galois/testing.md`.
 
 #### Run the editor tool
 
@@ -103,27 +119,26 @@ biomes.
 
 ## Working with assets
 
-#### Run all node.js packages
-
 #### Adding new defintions to the asset DSL
 
-1. edit: `py/assets/defs.py`
-2. run: `scripts/gen_all.sh`
+1. edit the relevant module under `py/assets/defs/`
+2. run: `./b ts-deps build`
 
 #### Define a new asset using the TypeScript API
 
-1. edit: `js/assets/src/{category}.ts`
-2. dump: `./b galois assets dump -n <name_of_asset>` (from `js/`)
+1. edit: `js/assets/{category}.ts`
+2. dump: `./b galois assets dump -n <name_of_asset>`
 
 #### Add implementation for a new asset DSL definition:
 
-1. add materialization: `py/assets/impl/materialization.py`
-2. add serialization: `py/assets/impl/serialization.py` (optional)
+1. add materialization: `py/assets/impl/materializers.py`
+2. add serialization: `py/assets/impl/serializers.py` when the value can be a final export
+3. run: `./b ts-deps build` to verify every generated signature has exactly one materializer
 
 #### Add React code to visualize new asset
 
-1. edit: `js/viewer/src/view/content.tsx`
-2. test: `./b galois viewer start` (from `js/`)
+1. edit the relevant component under `js/viewer/view/` or `js/components/`
+2. test: `./b galois viewer start`
 
 #### Hot reloading
 
@@ -143,9 +158,10 @@ Make sure to first configure your virtualenv.
 
 Make sure to install the extension `raczzalan.webgl-glsl-editor`, which provides really good syntax highlighting and inline errors for
 GLSL vertex and fragment shaders. The shaders are listed under the root `shaders/` directory. There is a code-generation step triggered
-by running `scripts/gen_all.sh` that builds TypeScript bindings for all shaders listed in the `shaders/all.json` directory.
+by the Bazel/TypeScript dependency build that generates TypeScript bindings for
+the Galois shaders.
 
 #### Adding new shaders and exposing to TypeScript API
 
 1. edit: `shaders/`
-2. run: `scripts/gen_all.sh`
+2. run: `./b ts-deps build`

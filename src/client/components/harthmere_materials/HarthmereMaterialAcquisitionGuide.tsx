@@ -16,7 +16,16 @@ export const HarthmereMaterialAcquisitionGuide: React.FunctionComponent<{
   itemName?: string;
   count?: number;
   compact?: boolean;
-}> = ({ itemId, itemName, count = 1, compact = false }) => {
+  ownerQuestId?: string;
+  ownerStepId?: string;
+}> = ({
+  itemId,
+  itemName,
+  count = 1,
+  compact = false,
+  ownerQuestId,
+  ownerStepId,
+}) => {
   const plan = harthmereMaterialAcquisitionPlan({ itemId, itemName, count });
   if (!plan || plan.routes.length === 0) return null;
 
@@ -25,6 +34,8 @@ export const HarthmereMaterialAcquisitionGuide: React.FunctionComponent<{
       className="harthmere-material-guide"
       data-material-guide-item-id={plan.itemId}
       data-material-guide-layout="stacked"
+      data-material-guide-owner-quest={ownerQuestId}
+      data-material-guide-owner-step={ownerStepId}
       style={{
         width: "100%",
         minWidth: 0,
@@ -114,6 +125,8 @@ export const HarthmereMaterialAcquisitionGuide: React.FunctionComponent<{
                     kind: route.kind === "buy" ? "store" : "resource",
                     worldPosition: [...route.markerPosition!],
                     description: route.description,
+                    ownerQuestId,
+                    ownerStepId,
                     setAtMs: Date.now(),
                   })
                 }

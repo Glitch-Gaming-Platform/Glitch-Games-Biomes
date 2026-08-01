@@ -9,7 +9,7 @@ import { PassRenderer } from "@/client/renderer/pass_renderer";
 import type { Vec3 } from "@/shared/math/types";
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
-import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
 function loopOnAnimationFrame(fn: () => void) {
   let id: number | undefined = undefined;

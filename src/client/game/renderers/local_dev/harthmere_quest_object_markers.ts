@@ -12,7 +12,6 @@
 
 import type { Renderer } from "@/client/game/renderers/renderer_controller";
 import type { Scenes } from "@/client/game/renderers/scenes";
-import { addToScenes } from "@/client/game/renderers/scenes";
 import type { ClientResources } from "@/client/game/resources/types";
 import { harthmereGroundedFeetYWithMemory } from "@/client/game/util/harthmere_entity_grounding";
 import {
@@ -37,6 +36,7 @@ import {
   type SnapshotGroveQuestState,
 } from "@/client/components/challenges/LocalDevSnapshotGroveBibleRuntime";
 import { readActiveBiomesUIMapPin } from "@/client/components/biomes_ui/adapters/mapPinnedDestination";
+import { readChapter1ObjectiveWorldProjection } from "@/client/components/challenges/Chapter1ObjectiveWorldState";
 import {
   SNAPSHOT_GROVE_LANDMARKS,
   SNAPSHOT_GROVE_QUESTS,
@@ -151,7 +151,7 @@ export interface HarthmereQuestObjectMarker {
   label: string;
   kind: SnapshotGroveLandmark["kind"] | "business";
   position: [number, number, number];
-  dynamic?: "live_entity_helper" | "jobs_board";
+  dynamic?: "live_entity_helper" | "jobs_board" | "chapter1";
 }
 
 export interface HarthmereQuestObjectMarkerState {
@@ -457,6 +457,18 @@ export function createHarthmereQuestObjectMarkerMesh(
     addBox(group, [0.12, 1.1, 0.12], [0.25, 0.58, 0.08], wood);
     addBox(group, [0.56, 0.32, 0.06], [0.04, 1.2, 0.04], accent);
     addBox(group, [0.44, 0.26, 0.06], [0.48, 0.95, 0.12], 0xff7a7a);
+  } else if (/cart|wagon/.test(text)) {
+    addBox(group, [1.35, 0.22, 0.82], [0, 0.58, 0], darkWood);
+    addBox(group, [1.18, 0.42, 0.12], [0, 0.8, -0.35], wood);
+    addBox(group, [1.18, 0.42, 0.12], [0, 0.8, 0.35], wood);
+    for (const x of [-0.46, 0.46]) {
+      const wheel = mesh(new THREE.TorusGeometry(0.3, 0.08, 8, 18), accent);
+      wheel.rotation.y = Math.PI / 2;
+      wheel.position.set(x, 0.34, 0.46);
+      group.add(wheel);
+    }
+    addBox(group, [0.38, 0.26, 0.3], [-0.26, 0.96, 0], accent);
+    addBox(group, [0.3, 0.2, 0.24], [0.2, 0.94, -0.06], parchment);
   } else if (/dummy|scratch|repair post/.test(text)) {
     addBox(group, [0.26, 1.35, 0.26], [0, 0.72, 0], wood);
     addBox(group, [1.0, 0.18, 0.18], [0, 1.18, 0], darkWood);
@@ -608,8 +620,11 @@ export class HarthmereQuestObjectMarkersRenderer implements Renderer {
   // via the one grounder. Keeps a marker resting on the real surface (never
   // buried at the flat authored Y) while its terrain shard streams in.
   private readonly groundedFeetYByColumn = new Map<string, number>();
+  private debugRefreshSeconds = 0;
   private activeMarkerId: string | undefined;
   private visibleSnapshotGroveMarkerIds = new Set<string>();
+  private chapter1ObjectiveMarkerId: string | undefined;
+  private chapter1ObjectiveProjectionSignature: string | undefined;
   private activeQuestStateRefreshSeconds = 0;
   private elapsedSeconds = 0;
 
@@ -739,6 +754,72 @@ export class HarthmereQuestObjectMarkersRenderer implements Renderer {
         activePinMarkerId: readActiveBiomesUIMapPin()?.markerId,
       })
     );
+    this.refreshChapter1ObjectiveWorldMarker();
+  }
+
+  private refreshChapter1ObjectiveWorldMarker(): void {
+    const projection = readChapter1ObjectiveWorldProjection();
+    const needsProp =
+      projection &&
+      ["collect", "interact", "use_item", "place", "sleep"].includes(
+        projection.trigger
+      );
+    const nextId =
+      projection && needsProp && projection.targetEntityId === undefined
+        ? `chapter1_objective:${projection.key}`
+        : undefined;
+    const nextSignature =
+      projection && nextId
+        ? JSON.stringify([
+            nextId,
+            projection.label,
+            ...projection.position,
+            projection.trigger,
+          ])
+        : undefined;
+    if (
+      this.chapter1ObjectiveMarkerId &&
+      (this.chapter1ObjectiveMarkerId !== nextId ||
+        this.chapter1ObjectiveProjectionSignature !== nextSignature)
+    ) {
+      const old = this.markerMeshes.get(this.chapter1ObjectiveMarkerId);
+      if (old) this.root.remove(old);
+      this.markerMeshes.delete(this.chapter1ObjectiveMarkerId);
+      this.activeBeacons.delete(this.chapter1ObjectiveMarkerId);
+      this.groundedFeetYByColumn.delete(this.chapter1ObjectiveMarkerId);
+      this.chapter1ObjectiveMarkerId = undefined;
+      this.chapter1ObjectiveProjectionSignature = undefined;
+    }
+    if (!projection || !nextId) return;
+
+    let markerMesh = this.markerMeshes.get(nextId);
+    if (!markerMesh) {
+      const marker: HarthmereQuestObjectMarker = {
+        id: nextId,
+        label: projection.label,
+        kind: "interactable",
+        position: [...projection.position],
+        dynamic: "chapter1",
+      };
+      markerMesh = createHarthmereQuestObjectMarkerMesh(marker);
+      markerMesh.userData.harthmereQuestObjectMarkerRenderPolicy =
+        HARTHMERE_ACTIVE_WORLD_OBJECT_MARKER_RENDER_POLICY;
+      markerMesh.userData.harthmereMarkerWorldXZ = [
+        projection.position[0],
+        projection.position[2],
+      ];
+      markerMesh.userData.harthmereMarkerHintY = projection.position[1];
+      const beacon = createHarthmereActiveQuestMarkerBeacon();
+      beacon.visible = true;
+      markerMesh.add(beacon);
+      this.markerMeshes.set(nextId, markerMesh);
+      this.activeBeacons.set(nextId, beacon);
+      this.root.add(markerMesh);
+    }
+    markerMesh.visible = true;
+    this.activeBeacons.get(nextId)!.visible = true;
+    this.chapter1ObjectiveMarkerId = nextId;
+    this.chapter1ObjectiveProjectionSignature = nextSignature;
   }
 
   private applyLiveEntityHelperMarkerVisibility(
@@ -766,6 +847,7 @@ export class HarthmereQuestObjectMarkersRenderer implements Renderer {
       const markerGroup = this.markerMeshes.get(id);
       if (markerGroup) {
         markerGroup.visible =
+          id === this.chapter1ObjectiveMarkerId ||
           active ||
           this.visibleSnapshotGroveMarkerIds.has(id) ||
           markerGroup.userData.harthmereQuestObjectMarkerAlwaysVisible === true;
@@ -807,6 +889,7 @@ export class HarthmereQuestObjectMarkersRenderer implements Renderer {
             (marker) => marker.id === id
           )?.dynamic,
           beaconVisible: this.activeBeacons.get(id)?.visible === true,
+          chapter1Objective: id === this.chapter1ObjectiveMarkerId,
         })),
     };
   }
@@ -814,7 +897,10 @@ export class HarthmereQuestObjectMarkersRenderer implements Renderer {
   draw(scenes: Scenes, dt: number): void {
     // Like the jobs-board renderer, reattach every frame so reconnects and
     // scene recreation do not strand the props in a stale scene.
-    addToScenes(scenes, this.root);
+    // Quest markers use only stock Three.js materials. Their hierarchy can be
+    // large, so bypass addToScenes()'s per-frame classification/dependency
+    // traversals and route the root directly to the stock-material pass.
+    scenes.three.add(this.root);
     this.activeQuestStateRefreshSeconds -= dt;
     if (this.activeQuestStateRefreshSeconds <= 0) {
       this.activeQuestStateRefreshSeconds = ACTIVE_QUEST_BEACON_REFRESH_SECONDS;
@@ -822,7 +908,11 @@ export class HarthmereQuestObjectMarkersRenderer implements Renderer {
     }
     this.animateActiveBeacons(dt);
     this.groundVisibleMarkers();
-    this.publishDebug();
+    this.debugRefreshSeconds -= Math.min(dt, 0.5);
+    if (this.debugRefreshSeconds <= 0) {
+      this.debugRefreshSeconds = 0.5;
+      this.publishDebug();
+    }
   }
 }
 

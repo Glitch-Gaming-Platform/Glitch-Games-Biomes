@@ -4,6 +4,12 @@ import type { Environment } from "@/shared/npc/environment";
 import type { BehaviorRangedAttackParams } from "@/shared/npc/npc_types";
 import { rangedAttackTargetTick } from "@/shared/npc/behavior/chase_attack";
 import type { SimulatedNpc } from "@/shared/npc/simulated";
+import { harthmereBossAttacksForLabel } from "@/shared/harthmere/boss_attack_catalog";
+import { HARTHMERE_BOSS_VISUAL_ASSETS } from "@/shared/harthmere/boss_visual_assets";
+import {
+  deserializeNpcCustomState,
+  serializeNpcCustomState,
+} from "@/shared/npc/serde";
 import assert from "assert";
 
 const NPC_ID = 91_001 as BiomesId;
@@ -15,7 +21,7 @@ const fireball: BehaviorRangedAttackParams = {
   minimumDistance: 4.25,
   attackDistance: 12,
   attackDamage: 63,
-  castTimeSecs: 0.65,
+  castTimeSecs: 1,
   cooldownSecs: 20,
   sharedCooldownSecs: 20,
   hitRadius: 0.8,
@@ -110,6 +116,20 @@ describe("Harthmere Hex ranged attacks", () => {
     assert.equal(test.state.chaseAttack.attackTime, undefined);
     assert.equal(test.state.chaseAttack.strikeTime, undefined);
     assert.equal(test.emotes[0].emote_type, "attack1");
+    const firstCast = test.state.chaseAttack.rangedAttack;
+    assert.ok(firstCast.chargeTimeSecs >= 2);
+    assert.ok(firstCast.chargeTimeSecs <= 10);
+    assert.equal(
+      firstCast.releaseTime,
+      firstCast.castTime + firstCast.chargeTimeSecs
+    );
+    assert.equal(firstCast.impactTime, firstCast.releaseTime + 1);
+    assert.deepEqual(
+      deserializeNpcCustomState(serializeNpcCustomState(test.state)).chaseAttack
+        ?.rangedAttack,
+      test.state.chaseAttack.rangedAttack,
+      "the Anima cast must survive the native ECS npc_state round trip"
+    );
 
     assert.deepEqual(
       rangedAttackTargetTick(
@@ -117,9 +137,9 @@ describe("Harthmere Hex ranged attacks", () => {
         test.npc,
         test.getTarget(),
         [fireball],
-        100.4
+        firstCast.releaseTime - 0.01
       ),
-      { handled: true, phase: "in_flight" }
+      { handled: true, phase: "charging" }
     );
     assert.equal(test.attacks.length, 0);
 
@@ -129,13 +149,10 @@ describe("Harthmere Hex ranged attacks", () => {
         test.npc,
         test.getTarget(),
         [fireball],
-        100.65
+        firstCast.releaseTime + 0.5
       ),
-      { handled: true, phase: "hit" }
+      { handled: true, phase: "in_flight" }
     );
-    assert.equal(test.attacks.length, 1);
-    assert.deepEqual(test.attacks[0].slice(0, 2), [PLAYER_ID, 63]);
-    assert.equal(test.attacks[0][2].attackAbilityId, "fireball");
 
     assert.deepEqual(
       rangedAttackTargetTick(
@@ -143,7 +160,22 @@ describe("Harthmere Hex ranged attacks", () => {
         test.npc,
         test.getTarget(),
         [fireball],
-        119.99
+        firstCast.impactTime
+      ),
+      { handled: true, phase: "hit" }
+    );
+    assert.equal(test.attacks.length, 1);
+    assert.deepEqual(test.attacks[0].slice(0, 2), [PLAYER_ID, 63]);
+    assert.equal(test.attacks[0][2].attackAbilityId, "fireball");
+    assert.equal(test.attacks[0][2].attackTime, firstCast.releaseTime);
+
+    assert.deepEqual(
+      rangedAttackTargetTick(
+        test.env,
+        test.npc,
+        test.getTarget(),
+        [fireball],
+        firstCast.cooldownUntil - 0.01
       ),
       { handled: false, phase: "cooldown" }
     );
@@ -153,7 +185,7 @@ describe("Harthmere Hex ranged attacks", () => {
         test.npc,
         test.getTarget(),
         [fireball],
-        120
+        firstCast.cooldownUntil
       ),
       { handled: true, phase: "fired" }
     );
@@ -168,6 +200,7 @@ describe("Harthmere Hex ranged attacks", () => {
       [fireball],
       200
     );
+    const active = test.state.chaseAttack.rangedAttack;
     test.setTarget(targetAt(11));
 
     assert.deepEqual(
@@ -176,7 +209,7 @@ describe("Harthmere Hex ranged attacks", () => {
         test.npc,
         test.getTarget(),
         [fireball],
-        200.65
+        active.impactTime
       ),
       { handled: true, phase: "miss" }
     );
@@ -209,12 +242,13 @@ describe("Harthmere Hex ranged attacks", () => {
       [bossFireball, resonance],
       400
     );
+    const firstCast = test.state.chaseAttack.rangedAttack;
     rangedAttackTargetTick(
       test.env,
       test.npc,
       test.getTarget(),
       [bossFireball, resonance],
-      400.65
+      firstCast.impactTime
     );
     assert.deepEqual(
       rangedAttackTargetTick(
@@ -222,7 +256,7 @@ describe("Harthmere Hex ranged attacks", () => {
         test.npc,
         test.getTarget(),
         [bossFireball, resonance],
-        402
+        firstCast.releaseTime + bossFireball.sharedCooldownSecs - 0.01
       ),
       { handled: false, phase: "cooldown" }
     );
@@ -232,7 +266,7 @@ describe("Harthmere Hex ranged attacks", () => {
         test.npc,
         test.getTarget(),
         [bossFireball, resonance],
-        402.75
+        firstCast.releaseTime + bossFireball.sharedCooldownSecs
       ),
       { handled: true, phase: "fired" }
     );
@@ -246,6 +280,7 @@ describe("Harthmere Hex ranged attacks", () => {
     const attacks = Array.from({ length: 5 }, (_, index) => ({
       ...fireball,
       abilityId: `boss_attack_${index + 1}`,
+      damageType: "physical" as const,
       castTimeSecs: 0.1,
       cooldownSecs: 100,
       sharedCooldownSecs: 0.2,
@@ -280,6 +315,67 @@ describe("Harthmere Hex ranged attacks", () => {
       selected,
       attacks.map(({ abilityId }) => abilityId)
     );
+  });
+
+  it("casts, serializes, and hits with all five attacks for every live boss", () => {
+    let attackCount = 0;
+    for (const boss of HARTHMERE_BOSS_VISUAL_ASSETS) {
+      const bossAttacks = harthmereBossAttacksForLabel(boss.displayName);
+      assert.ok(bossAttacks, boss.displayName);
+      assert.equal(bossAttacks.length, 5, boss.displayName);
+      for (const attack of bossAttacks) {
+        attackCount += 1;
+        const shape = attack.attackShape ?? "projectile";
+        const maximumHitDistance =
+          shape === "self_aoe"
+            ? Math.min(attack.attackDistance, attack.hitRadius * 0.75)
+            : attack.attackDistance;
+        const targetDistance = Math.max(
+          attack.minimumDistance + 0.25,
+          Math.min(maximumHitDistance - 0.25, 8)
+        );
+        const test = fixture(targetAt(targetDistance));
+        const minimumHealth = attack.minimumHealthRatio ?? 0;
+        const maximumHealth = attack.maximumHealthRatio ?? 1;
+        (test.npc as any).hp = ((minimumHealth + maximumHealth) / 2) * 100;
+        const castAt = 1_000 + attackCount * 10;
+
+        assert.equal(
+          rangedAttackTargetTick(
+            test.env,
+            test.npc,
+            test.getTarget(),
+            [attack],
+            castAt
+          ).phase,
+          "fired",
+          `${boss.displayName}: ${attack.displayName} did not fire`
+        );
+        assert.equal(
+          deserializeNpcCustomState(serializeNpcCustomState(test.state))
+            .chaseAttack?.rangedAttack?.abilityId,
+          attack.abilityId,
+          `${boss.displayName}: ${attack.displayName} did not survive npc_state`
+        );
+        assert.equal(
+          rangedAttackTargetTick(
+            test.env,
+            test.npc,
+            test.getTarget(),
+            [attack],
+            test.state.chaseAttack.rangedAttack.impactTime
+          ).phase,
+          "hit",
+          `${boss.displayName}: ${attack.displayName} did not hit`
+        );
+        assert.equal(
+          test.attacks[0]?.[2]?.attackAbilityId,
+          attack.abilityId,
+          `${boss.displayName}: ${attack.displayName} lost its receipt identity`
+        );
+      }
+    }
+    assert.equal(attackCount, 55);
   });
 
   it("resolves a native ground-area magic attack against every visible player in the radius", () => {
@@ -317,8 +413,13 @@ describe("Harthmere Hex ranged attacks", () => {
       "fired"
     );
     assert.equal(
-      rangedAttackTargetTick(test.env, test.npc, primary, [blizzard], 700.2)
-        .phase,
+      rangedAttackTargetTick(
+        test.env,
+        test.npc,
+        primary,
+        [blizzard],
+        test.state.chaseAttack.rangedAttack.impactTime
+      ).phase,
       "hit"
     );
     assert.deepEqual(
@@ -328,6 +429,124 @@ describe("Harthmere Hex ranged attacks", () => {
     assert.deepEqual(
       [...test.state.chaseAttack.rangedAttack.hitTargetIds].sort(),
       [PLAYER_ID, secondPlayerId].sort()
+    );
+  });
+
+  it("resolves cone geometry without hitting players behind or outside the telegraph", () => {
+    const insideId = 91_003 as BiomesId;
+    const outsideId = 91_004 as BiomesId;
+    const behindId = 91_005 as BiomesId;
+    const players = new Map<BiomesId, ReadonlyEntity>([
+      [PLAYER_ID, targetAt(8)],
+      [
+        insideId,
+        {
+          ...targetAt(7),
+          id: insideId,
+          position: { v: [7, 0, 1] },
+        } as ReadonlyEntity,
+      ],
+      [
+        outsideId,
+        {
+          ...targetAt(7),
+          id: outsideId,
+          position: { v: [0, 0, 7] },
+        } as ReadonlyEntity,
+      ],
+      [
+        behindId,
+        {
+          ...targetAt(5),
+          id: behindId,
+          position: { v: [-5, 0, 0] },
+        } as ReadonlyEntity,
+      ],
+    ]);
+    const test = fixture(players.get(PLAYER_ID));
+    (test.env as any).ecsMetaIndex.player_selector.scanSphere = () => [
+      ...players.keys(),
+    ];
+    (test.env as any).resources.get = (path: string, id: BiomesId) =>
+      path === "/ecs/entity" ? players.get(id) : undefined;
+    const cone = {
+      ...fireball,
+      abilityId: "test_cone",
+      attackShape: "cone" as const,
+      castTimeSecs: 0.2,
+      coneAngleDeg: 60,
+    };
+
+    assert.equal(
+      rangedAttackTargetTick(
+        test.env,
+        test.npc,
+        players.get(PLAYER_ID),
+        [cone],
+        800
+      ).phase,
+      "fired"
+    );
+    assert.equal(
+      rangedAttackTargetTick(
+        test.env,
+        test.npc,
+        players.get(PLAYER_ID),
+        [cone],
+        test.state.chaseAttack.rangedAttack.impactTime
+      ).phase,
+      "hit"
+    );
+    assert.deepEqual(
+      test.attacks.map(([targetId]) => targetId).sort(),
+      [PLAYER_ID, insideId].sort()
+    );
+  });
+
+  it("resolves self-area geometry around the caster instead of the original target", () => {
+    const nearbyId = 91_003 as BiomesId;
+    const players = new Map<BiomesId, ReadonlyEntity>([
+      [PLAYER_ID, targetAt(8)],
+      [nearbyId, { ...targetAt(1), id: nearbyId } as ReadonlyEntity],
+    ]);
+    const test = fixture(players.get(PLAYER_ID));
+    (test.env as any).ecsMetaIndex.player_selector.scanSphere = () => [
+      ...players.keys(),
+    ];
+    (test.env as any).resources.get = (path: string, id: BiomesId) =>
+      path === "/ecs/entity" ? players.get(id) : undefined;
+    const selfAoe = {
+      ...fireball,
+      abilityId: "test_self_aoe",
+      attackShape: "self_aoe" as const,
+      castTimeSecs: 0.2,
+      hitRadius: 3,
+    };
+
+    assert.equal(
+      rangedAttackTargetTick(
+        test.env,
+        test.npc,
+        players.get(PLAYER_ID),
+        [selfAoe],
+        900
+      ).phase,
+      "fired"
+    );
+    assert.deepEqual(test.state.chaseAttack.rangedAttack.aimPoint, [0, 0, 0]);
+    assert.equal(
+      rangedAttackTargetTick(
+        test.env,
+        test.npc,
+        players.get(PLAYER_ID),
+        [selfAoe],
+        test.state.chaseAttack.rangedAttack.impactTime
+      ).phase,
+      "hit"
+    );
+    assert.deepEqual(
+      test.attacks.map(([targetId]) => targetId),
+      [nearbyId]
     );
   });
 });

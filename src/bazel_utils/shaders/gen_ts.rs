@@ -220,6 +220,8 @@ fn generate_typescript(
 
 fn generate_shaders_src(name: &String, vs_info: &ShaderInfo, fs_info: &ShaderInfo) -> String {
     let uc_name = name.as_str().to_case(Case::UpperCamel);
+    let vertex_source = strip_glsl_version_directive(&vs_info.source);
+    let fragment_source = strip_glsl_version_directive(&fs_info.source);
     format!(
         r###"
 {GENERATED_FILE_PREAMBLE}
@@ -232,8 +234,27 @@ const {uc_name}Shaders = {{
 
 export {{ {uc_name}Shaders }};
     "###,
-        vs_info.source, fs_info.source
+        vertex_source, fragment_source
     )
+}
+
+// Three.js r185 prepends RawShaderMaterial defines before the supplied shader
+// source. Keep #version in the authored GLSL for standalone validation, but
+// remove it from the embedded source and let material.glslVersion make Three
+// emit the directive before its generated prefix.
+fn strip_glsl_version_directive(source: &str) -> String {
+    let mut removed = false;
+    source
+        .split_inclusive('\n')
+        .filter(|line| {
+            if !removed && line.trim_start().starts_with("#version ") {
+                removed = true;
+                false
+            } else {
+                true
+            }
+        })
+        .collect()
 }
 
 fn generate_bindings_src(
@@ -325,7 +346,11 @@ fn gen_make_material_def(
     let is_transparent = material.material_type == MaterialType::Translucent;
     let is_nodepth = material.material_type == MaterialType::NoDepth;
     let transparent = if is_transparent { "true" } else { "false" };
-    let depth_write = if is_transparent || is_nodepth { "false" } else { "true" };
+    let depth_write = if is_transparent || is_nodepth {
+        "false"
+    } else {
+        "true"
+    };
     let resolved_blending = match material.blending {
         None => is_transparent,
         Some(x) => x,
@@ -352,6 +377,7 @@ fn gen_make_material_def(
                 {uniform_new_assignments}
                 shaderVersion: {{ value: shaderVersion }},
             }},
+            glslVersion: THREE.GLSL3,
             vertexShader: {uc_name}Shaders.vertexShader,
             fragmentShader: {uc_name}Shaders.fragmentShader,
             transparent: {transparent},
@@ -556,5 +582,35 @@ fn to_ts_default_value(value: &VariableAndType) -> Result<Option<String>, String
         Ok(Some(format!(
             "Array.from(Array({array_dim}).keys(), () => {default_no_array})"
         )))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn strips_authored_glsl_version_but_preserves_the_shader_body() {
+        let source = "// shader\n#version 300 es\nprecision highp float;\nvoid main() {}\n";
+        assert_eq!(
+            strip_glsl_version_directive(source),
+            "// shader\nprecision highp float;\nvoid main() {}\n"
+        );
+    }
+
+    #[test]
+    fn generated_raw_materials_delegate_the_version_directive_to_three() {
+        let material = Material {
+            material_type: MaterialType::Raw,
+            fs: "example.fs".to_string(),
+            vs: "example.vs".to_string(),
+            defines: None,
+            blending: None,
+        };
+        let uniforms: SortedVarRefs<'_> = Vec::new();
+        let generated =
+            gen_make_material_def(&"Example".to_string(), &uniforms, &material).unwrap();
+
+        assert!(generated.contains("glslVersion: THREE.GLSL3"));
     }
 }

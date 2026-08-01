@@ -31,6 +31,7 @@ const ROADHOUSE_ANCHORS: Array<[string, Ch1Vec3]> = [
   ["roadhouse_door", CH1_ANCHORS.roadhouse_door],
   ["roadhouse_sign", CH1_ANCHORS.roadhouse_sign],
   ["roadhouse_table", CH1_ANCHORS.roadhouse_table],
+  ["roadhouse_jackie_post", CH1_ANCHORS.roadhouse_jackie_post],
   ["roadhouse_hearth", CH1_ANCHORS.roadhouse_hearth],
   ["roadhouse_bed", CH1_ANCHORS.roadhouse_bed],
   ["roadhouse_stores", CH1_ANCHORS.roadhouse_stores],
@@ -60,6 +61,16 @@ describe("chapter 1 road-house", () => {
         for (let dz = -1; dz <= 1; dz += 1) {
           const hit = taken.get(`${anchor[0] + dx}:${anchor[2] + dz}`);
           if (hit) {
+            if (
+              key === "roadhouse_jackie_post" &&
+              hit === "Jackie" &&
+              dx === 0 &&
+              dz === 0
+            ) {
+              // This is the one canonical Snapshot Grove Jackie body, now
+              // deliberately moved to the Chapter 1 road-house post.
+              continue;
+            }
             errors.push(`${key} is within one block of "${hit}"`);
           }
         }
@@ -131,6 +142,18 @@ describe("chapter 1 road-house", () => {
     assert.equal(sign.position[1], doorY);
   });
 
+  it("separates Jackie and Coretta so their F prompts cannot compete", () => {
+    const jackie = CH1_ANCHORS.roadhouse_jackie_post;
+    const coretta = CH1_ANCHORS.coretta_ledger_desk;
+    assert.ok(
+      Math.hypot(jackie[0] - coretta[0], jackie[2] - coretta[2]) >= 6,
+      "Jackie and Coretta need distinct interaction zones"
+    );
+    assert.ok(jackie[0] > CH1_ANCHORS.roadhouse_table[0]);
+    assert.ok(coretta[0] < CH1_ANCHORS.roadhouse_table[0]);
+    assert.deepEqual(CH1_ANCHORS.testimony_coretta, coretta);
+  });
+
   it("resolves the Act 1 interior beats into the road-house", () => {
     const cases: Array<[string, string, Ch1Vec3]> = [
       ["ch1_a1_q01_morning_after", "wake_up", CH1_ANCHORS.roadhouse_bed],
@@ -161,7 +184,7 @@ describe("chapter 1 road-house", () => {
       const target = ch1ObjectiveTarget(questId, stepId);
       assert.ok(target, `${questId}/${stepId} has no target`);
       assert.deepEqual(
-        [...target!.position],
+        [...target.position],
         [...expected],
         `${questId}/${stepId} should resolve into the road-house cluster`
       );

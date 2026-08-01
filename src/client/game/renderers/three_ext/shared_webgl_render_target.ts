@@ -34,17 +34,23 @@ export class SharedWebGLRenderTarget extends THREE.WebGLRenderTarget {
     this.depth = source.depth;
 
     this.viewport.copy(source.viewport);
+    this.scissor.copy(source.scissor);
+    this.scissorTest = source.scissorTest;
 
     this.texture = source.texture;
 
     this.depthBuffer = source.depthBuffer;
     this.stencilBuffer = source.stencilBuffer;
+    this.resolveDepthBuffer = source.resolveDepthBuffer;
+    this.resolveStencilBuffer = source.resolveStencilBuffer;
 
     if (source.depthTexture !== null) {
       this.depthTexture = source.depthTexture.clone();
     }
 
     this.samples = source.samples;
+    this.multiview = source.multiview;
+    this.useArrayDepthTexture = source.useArrayDepthTexture;
 
     return this;
   }

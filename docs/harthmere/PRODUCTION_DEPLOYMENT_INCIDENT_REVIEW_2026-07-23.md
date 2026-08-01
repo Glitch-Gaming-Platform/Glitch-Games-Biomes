@@ -263,3 +263,15 @@ success summary followed by no next-phase `START` line is a process-lifecycle
 failure, not evidence that the completed world mutation failed. These
 maintenance operations must remain idempotent so they can be rerun after a
 lifecycle defect is corrected.
+
+## July 31 robot-sentinel grounding validation incident
+
+The production grounding probe originally classified every robot sentinel as
+`extension_flat`, including four authored sentinels on the original map. The
+preflight then rejected their valid coordinates as outside the additive-town
+bounds after all preceding reconciliation writes had succeeded. Sentinel
+placement mode must be derived from `isHarthmereExtensionWorldPosition`: only
+sentinels actually inside the extension use the flat-extension contract; all
+others use original outdoor terrain grounding. The deployment contract test
+pins this classification so the known non-destructive validation failure does
+not block another healthy candidate.

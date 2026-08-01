@@ -1,4 +1,6 @@
 import type { ClientContext, ClientContextSubset } from "@/client/game/context";
+import type { CutscenePlayerAttackAnimation } from "@/client/game/cutscene/player_attack_visual";
+import { CUTSCENE_PLAYER_ATTACK_DURATION_SECONDS } from "@/client/game/cutscene/player_attack_visual";
 import type { AudioManager } from "@/client/game/context_managers/audio_manager";
 import type { Events } from "@/client/game/context_managers/events";
 import type { PlaceEffect } from "@/client/game/helpers/place_effect";
@@ -61,6 +63,7 @@ import type {
   ShardId,
 } from "@/shared/ecs/gen/types";
 import { CollisionHelper } from "@/shared/game/collision";
+import type { PlayerMovementActionAnimationName } from "@/shared/game/movement_actions";
 import {
   MAX_VOXELS_TO_CHECK_FOR_BUFF_BLOCKS,
   getBlockBelowPlayer,
@@ -133,6 +136,18 @@ export const EMOTE_PROPERTIES = {
     repeatType: { kind: "once" },
     easeInTime: 0.01,
     notArms: "ifIdle",
+    cancelOnMove: false,
+  },
+  magicChannel: {
+    repeatType: { kind: "repeat" },
+    easeInTime: 0.08,
+    notArms: "noApply",
+    cancelOnMove: false,
+  },
+  magicCast: {
+    repeatType: { kind: "once" },
+    easeInTime: 0.04,
+    notArms: "noApply",
     cancelOnMove: false,
   },
   destroy: {
@@ -291,6 +306,20 @@ export class Player {
         expiryTime: number;
         direction: ReadonlyVec3;
         nonce?: number;
+      }
+    | undefined;
+  cutsceneMovementAnimationInfo:
+    | {
+        animation: PlayerMovementActionAnimationName;
+        startTime: number;
+        expiryTime: number;
+      }
+    | undefined;
+  cutsceneAttackAnimationInfo:
+    | {
+        animation: CutscenePlayerAttackAnimation;
+        startTime: number;
+        expiryTime: number;
       }
     | undefined;
   private lastEmoteTime: number | undefined;
@@ -551,6 +580,39 @@ export class Player {
     this.movementActionInfo = undefined;
   }
 
+  beginCutsceneMovementAnimation(
+    animation: PlayerMovementActionAnimationName,
+    startTime: number,
+    expiryTime: number
+  ) {
+    this.cancelCutsceneAttackAnimation();
+    this.cutsceneMovementAnimationInfo = {
+      animation,
+      startTime,
+      expiryTime,
+    };
+  }
+
+  cancelCutsceneMovementAnimation() {
+    this.cutsceneMovementAnimationInfo = undefined;
+  }
+
+  beginCutsceneAttackAnimation(
+    animation: CutscenePlayerAttackAnimation,
+    startTime: number
+  ) {
+    this.cancelCutsceneMovementAnimation();
+    this.cutsceneAttackAnimationInfo = {
+      animation,
+      startTime,
+      expiryTime: startTime + CUTSCENE_PLAYER_ATTACK_DURATION_SECONDS,
+    };
+  }
+
+  cancelCutsceneAttackAnimation() {
+    this.cutsceneAttackAnimationInfo = undefined;
+  }
+
   private updateMovementActionState(
     state: ReadonlyMovementState | undefined,
     now: number
@@ -718,6 +780,18 @@ export class Player {
     animationSystemState: AnimationSystemState<typeof playerSystem>,
     now: number
   ) {
+    if (
+      this.cutsceneMovementAnimationInfo &&
+      now >= this.cutsceneMovementAnimationInfo.expiryTime
+    ) {
+      this.cancelCutsceneMovementAnimation();
+    }
+    if (
+      this.cutsceneAttackAnimationInfo &&
+      now >= this.cutsceneAttackAnimationInfo.expiryTime
+    ) {
+      this.cancelCutsceneAttackAnimation();
+    }
     if (
       this.lastEmoteTime &&
       (!this.serverEmoteUpdateTime ||

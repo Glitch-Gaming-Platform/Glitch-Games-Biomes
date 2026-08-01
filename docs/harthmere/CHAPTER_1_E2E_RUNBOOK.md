@@ -90,6 +90,104 @@ snapshot has no legacy Sergeant Holt entity. Its first objective still targets
 the guaranteed native Teak ECS record, so removing the absent giver fixes the
 orphan without weakening the actual interaction requirement.
 
+## Human dialogue expression gate
+
+Chapter 1 dialogue expressions are client presentation state. They must not be
+published as NPC emotes or otherwise written into Native ECS, Anima, or Gaia:
+doing so would turn one player's dialogue choice into shared world state for
+every nearby client. The active page instead resolves the exact local human NPC
+entity and publishes a short-lived browser-local cue. NPC rendering applies
+expression priority in this order:
+
+1. an active cutscene expression for that exact actor;
+2. the active Chapter 1 dialogue-page expression for that exact actor;
+3. an ordinary gameplay ECS emote.
+
+The authored catalog currently contains 102 human NPC pages, 5 AUGUR robot
+pages, and 28 narration, document, player, or environment pages. Every human
+page must have a valid expression. Robot and non-NPC pages must have none.
+Dynamic testimony/answer routes and generated exit guidance must preserve the
+same rule. AUGUR may retain mechanical cutscene actions such as `getUp`, but it
+must not receive emotional facial cues.
+
+Snapshot-player cutscene humans need an additional runtime guard. A generated
+avatar can report an active Blender action even when only part of the skeleton
+bound, leaving one or both arms in the source T-pose. After the mixer runs, the
+renderer therefore applies the cinematic expression's procedural safety pose
+to the snapshot rig aliases while preserving their Blender bind quaternions;
+absolute Euler replacement on `L_Arm` or `R_Arm` recreates the horizontal-arm
+silhouette. The same post-mixer fallback also keeps the facial expression
+synchronized. Treat this as a runtime rig-binding fallback: only revise the
+Blender source when the cinematic asset validator itself fails, not merely
+because a snapshot avatar rejected some tracks.
+
+Entity-bound ghost fallbacks must preserve the canonical positive entity id as
+their appearance source. The negative transient puppet id is only render
+authority; deriving snapshot cosmetics from it changes skin, hair, and clothing
+when the real NPC is outside subscription. Explicit fictional ghosts may still
+derive an appearance from their own transient id.
+
+The staged local player also remains a normal human, not a black silhouette.
+Cutscene staging samples spatial lighting at the client-puppeted scene position,
+and the player shader must never receive a zero sun vector: it normalizes the
+direction in GLSL, so `[0, 0, 0]` produces undefined lighting even when base
+color and sky visibility are correct. Use the renderer's non-zero fallback
+direction during that startup/sky-transition frame.
+
+Synthetic snapshot-player NPCs need the same material refresh independently of
+the ordinary player renderer. Their player-skinned materials are created with
+zero light uniforms, but the negative ghost is owned by the Harthmere runtime
+renderer and never passes through `PlayersRenderer`. Each synthetic actor
+record must therefore sample non-dark spatial lighting at its staged position
+and update every player-skinned material with that value plus the safe sun
+direction. A colored current player in the same frame does not prove the ghost
+is lit; inspect the negative actor's own material uniforms or its visible
+skin/hair/clothing.
+
+Exact-image capture also isolates the authored cast from retained browser-test
+users. A reused snapshot Redis can contain multiple old focused-run players at
+the same Chapter 1 stage; the runner hides those nearby remote meshes during
+the scene and restores them afterward without deleting or relocating ECS
+entities. A release frame must contain each authored human once, plus only the
+current player when the shot calls for them.
+
+The production prompt exposes the active cue as
+`data-chapter1-dialogue-expression` and the resolved actor as
+`data-chapter1-dialogue-actor-id`. The browser-local bridge is
+`window.__harthmereNpcDialogueExpression`. The Chapter 1 quest E2E runner
+checks all three values against each authored page before advancing dialogue,
+so a matching label with the wrong entity id is a failure.
+
+Focused local contract:
+
+```sh
+node_modules/.bin/mocha --config .mocharc.fast.json \
+  src/shared/harthmere/test/npc_dialogue_expressions.test.ts \
+  src/shared/harthmere/test/ch1_dialogue.test.ts \
+  src/client/components/challenges/Chapter1NativeObjectivePrompt.test.ts \
+  src/shared/cutscene/test/ch1_scenes.test.ts
+scripts/harthmere/t.sh types
+scripts/harthmere/t.sh ch1
+scripts/harthmere/t.sh cutscene
+scripts/harthmere/t.sh gate
+```
+
+The live production-browser check owns two samples in one warm stack:
+
+- open an ordinary human objective dialogue, confirm the DOM expression and
+  exact actor id match the local bridge, and visually confirm that NPC performs
+  the expression while the page is active;
+- play a human Chapter 1 cutscene beat, confirm the speaking actor performs the
+  authored cue without a T-pose, confirm every staged human retains visible
+  skin/hair/clothing rather than a black silhouette, confirm the synthetic
+  actor's own `spatialLighting` and `light` uniforms are non-zero, then confirm
+  the cue clears or yields when the beat ends.
+
+One sample from each path is sufficient for the visual smoke because the full
+catalog is covered by the data and E2E assertions. Do not count a robot as the
+ordinary-dialogue or cutscene sample, and do not open Chromium before the exact
+artifact stack passes `e2e-jump.cjs ready`.
+
 ## Layer 1 — headless E2E (runs today, no stack required)
 
 ```sh

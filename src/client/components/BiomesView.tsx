@@ -1,10 +1,16 @@
 import { BiomesChrome } from "@/client/components/BiomesChrome";
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
 import {
+  supportsPointerLock,
+  usePointerLockDisabledStatus,
   usePointerLockManager,
   usePointerLockStatus,
 } from "@/client/components/contexts/PointerLockContext";
-import { cleanListener, composeCleanups } from "@/client/util/helpers";
+import {
+  cleanEmitterCallback,
+  cleanListener,
+  composeCleanups,
+} from "@/client/util/helpers";
 import type { Vec2 } from "@/shared/math/types";
 import { ok } from "assert";
 import React, { useEffect, useRef } from "react";
@@ -21,15 +27,26 @@ function BiomesCanvas({}: {}) {
     const canvas = canvasRef.current;
     ok(canvas, "Canvas should exist.");
     canvas.focus();
+    const initialPointerlessGameplay =
+      clientConfig.showVirtualJoystick || !supportsPointerLock();
     pointerLockManager.attachToElementRef(canvasRef, {
-      disablePointerLock: clientConfig.showVirtualJoystick,
+      disablePointerLock: initialPointerlessGameplay,
     });
 
-    if (clientConfig.showVirtualJoystick) {
-      // Pointer-lock changes never fire on the touch control path, so attach
-      // input immediately. The virtual joystick writes into this same input
-      // manager and player physics can consume it without a mouse lock.
+    const pointerlessGameplay = () =>
+      initialPointerlessGameplay ||
+      pointerLockManager.isPointerLockDisabled();
+    const activatePointerlessGameplay = () => {
+      // Pointer-lock changes never fire on touch controls or browsers/embeds
+      // that cannot use Pointer Lock, so attach input immediately. HUD pulses
+      // and the virtual joystick write into this same input manager.
       input.attach(canvas);
+      canvas.focus();
+      void audioManager.resumeAudio();
+    };
+
+    if (pointerlessGameplay()) {
+      activatePointerlessGameplay();
     }
 
     const focusTouchGameplay = () => {
@@ -65,7 +82,7 @@ function BiomesCanvas({}: {}) {
           lastTouchPosRef.current = undefined;
         },
         click: (e) => {
-          if (clientConfig.showVirtualJoystick) {
+          if (pointerlessGameplay()) {
             focusTouchGameplay();
             return;
           }
@@ -75,9 +92,16 @@ function BiomesCanvas({}: {}) {
           }
         },
       }),
+      cleanEmitterCallback(pointerLockManager.emitter, {
+        pointerLockDisabledChange: () => {
+          if (pointerLockManager.isPointerLockDisabled()) {
+            activatePointerlessGameplay();
+          }
+        },
+      }),
       cleanListener(canvas.ownerDocument, {
         pointerlockchange: () => {
-          if (clientConfig.showVirtualJoystick) {
+          if (pointerlessGameplay()) {
             return;
           }
           if (pointerLockManager.isLocked()) {
@@ -110,14 +134,19 @@ const MemoCanvas = React.memo(BiomesCanvas);
 
 export function BiomesView({}: {}) {
   const [locked] = usePointerLockStatus();
+  const pointerLockDisabled = usePointerLockDisabledStatus();
   const { resources, clientConfig } = useClientContext();
+  const pointerlessGameplay =
+    clientConfig.showVirtualJoystick ||
+    !supportsPointerLock() ||
+    pointerLockDisabled;
 
   useEffect(() => {
     document.querySelector("body")?.classList.add("game");
     resources.update("/focus", (focus) => {
-      focus.focused = locked || clientConfig.showVirtualJoystick;
+      focus.focused = locked || pointerlessGameplay;
     });
-  }, [clientConfig.showVirtualJoystick, locked, resources]);
+  }, [locked, pointerlessGameplay, resources]);
 
   return (
     <div className={`biomes-root`}>

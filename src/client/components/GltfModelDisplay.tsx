@@ -2,7 +2,7 @@ import { ThreeBasicObjectPreview } from "@/client/components/ThreeBasicObjectPre
 import type { Disposable } from "@/shared/disposable";
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
-import type { GLTF } from "three/examples/jsm/loaders/GLTFLoader";
+import type { GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
 
 interface GltfModelDisplayProps {
   gltf: Disposable<GLTF>;

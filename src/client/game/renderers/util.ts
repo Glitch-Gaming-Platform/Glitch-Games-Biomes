@@ -8,7 +8,7 @@ import { makeBreakableMaterial } from "@/gen/client/game/shaders/breakable";
 import { blockPos, voxelShard } from "@/shared/game/shard";
 import type { Vec2, Vec3 } from "@/shared/math/types";
 import * as THREE from "three";
-import type { GLTF } from "three/examples/jsm/loaders/GLTFLoader";
+import type { GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
 
 export type SpatialLighting = Vec2;
 

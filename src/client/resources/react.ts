@@ -28,6 +28,11 @@ const reactEmitterListeners = new Cval({
 export class ReactResources<P extends PathMap<P>> {
   private resources: TypedResources<P>;
   emitter: EventEmitter = new EventEmitter();
+  private readonly observedBundles = new Map<
+    string,
+    { bundle: Bundle<P>; lastEmittedVersion: number | undefined }
+  >();
+  private flushesUntilObservedBundlePrune = 120;
 
   constructor(resources: TypedResources<P>) {
     this.resources = resources;
@@ -35,7 +40,51 @@ export class ReactResources<P extends PathMap<P>> {
   }
 
   key(bundle: Bundle<P>) {
-    return bundle.join(":");
+    const key = bundle.join(":");
+    if (!this.observedBundles.has(key)) {
+      this.observedBundles.set(key, {
+        bundle: [...bundle] as Bundle<P>,
+        lastEmittedVersion: undefined,
+      });
+    }
+    return key;
+  }
+
+  flush() {
+    for (const eventName of this.emitter.eventNames()) {
+      if (eventName === "hot") {
+        continue;
+      }
+      if (typeof eventName !== "string") {
+        this.emitter.emit(eventName);
+        continue;
+      }
+      const observed = this.observedBundles.get(eventName);
+      if (!observed) {
+        // Preserve compatibility with direct emitter users that did not create
+        // their event name through key().
+        this.emitter.emit(eventName);
+        continue;
+      }
+      const version = this.resources.version(...observed.bundle);
+      if (observed.lastEmittedVersion === undefined) {
+        observed.lastEmittedVersion = version;
+        this.emitter.emit(eventName);
+        continue;
+      }
+      if (version !== observed.lastEmittedVersion) {
+        observed.lastEmittedVersion = version;
+        this.emitter.emit(eventName);
+      }
+    }
+    if (--this.flushesUntilObservedBundlePrune <= 0) {
+      this.flushesUntilObservedBundlePrune = 120;
+      for (const key of this.observedBundles.keys()) {
+        if (this.emitter.listenerCount(key) === 0) {
+          this.observedBundles.delete(key);
+        }
+      }
+    }
   }
 
   // Note: in TS 4.6 this used to do the right inference without all the extra overloads
