@@ -439,10 +439,17 @@ cascades. The isolated browser smoke now compiles the actual generated base
 material so an equivalent hand-written shader cannot hide this integration
 failure again. Full details and gates live in `docs/THREEJS_UPGRADE_MAP.md`.
 
-The r185 API migration is complete, but the generator correction still needs a
-fresh exact-source build and browser acceptance before runtime sign-off.
-Preserve that corrected renderer as the A/B control for performance work. The
-next order is:
+A second production-only failure was silent: the r185 renderer stopped
+publishing the legacy `boneTextureSize` uniform used by the custom player
+vertex shader. Players and NPCs were counted as rendered and emitted no GL
+error, but zero-sized bone-texture math produced invalid vertex positions. The
+shader now queries `textureSize` and uses `texelFetch`, matching Three r185.
+The reusable browser gate renders the actual player-skinned material and
+requires visible pixels; entity counts and successful draw calls alone are not
+accepted as proof that avatars render.
+
+Preserve the corrected r185 renderer as the A/B control for performance work.
+The next order is:
 
 1. Capture calls, triangles, object counts, CPU render time, GPU render time,
    and frame interval at fixed production-town camera positions.

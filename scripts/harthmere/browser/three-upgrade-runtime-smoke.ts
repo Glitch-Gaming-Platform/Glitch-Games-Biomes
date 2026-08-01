@@ -1,5 +1,6 @@
 import { makeThreeSmaaPass } from "@/client/game/renderers/passes/three_pass";
 import { SharedWebGLRenderTarget } from "@/client/game/renderers/three_ext/shared_webgl_render_target";
+import { clonePlayerSkinnedMaterial } from "@/client/game/util/skinning";
 import { makeColorMapArray } from "@/client/game/util/textures";
 import { makeBasicMaterial } from "@/gen/client/game/shaders/basic";
 import * as THREE from "three";
@@ -14,6 +15,8 @@ type SmokeResult = {
   mrtTextures: string[];
   parsedGltfNode: string;
   clonedSkeletonBones: string[];
+  skinnedAvatarPixels: number;
+  skinnedBoneTextureSize: [number, number];
   smaaSize: [number, number];
   sharedTargetSize: [number, number];
   arrayTextureFormat: string | null;
@@ -136,6 +139,84 @@ async function run(): Promise<SmokeResult> {
   const clonedSkeletonRoot = cloneSkeleton(skeletonRoot);
   const clonedSkinnedMesh = clonedSkeletonRoot.children[0] as THREE.SkinnedMesh;
 
+  // Exercise the exact custom RawShaderMaterial skinning contract used by
+  // players and humanoid NPCs. Three r185 no longer publishes the legacy
+  // boneTextureSize uniform, so a successful draw here proves that the shader
+  // derives the dimensions from boneTexture and emits finite clip positions.
+  const avatarGeometry = new THREE.BufferGeometry();
+  avatarGeometry.setAttribute(
+    "position",
+    new THREE.Float32BufferAttribute(
+      [-0.7, -0.65, 0, 0.7, -0.65, 0, 0, 0.7, 0],
+      3
+    )
+  );
+  avatarGeometry.setAttribute(
+    "normal",
+    new THREE.Float32BufferAttribute([0, 0, 1, 0, 0, 1, 0, 0, 1], 3)
+  );
+  avatarGeometry.setAttribute(
+    "color",
+    new THREE.Float32BufferAttribute(
+      [1, 0.2, 0.8, 1, 1, 0.2, 0.8, 1, 1, 0.2, 0.8, 1],
+      4
+    )
+  );
+  avatarGeometry.setAttribute(
+    "direction",
+    new THREE.Float32BufferAttribute([0, 0, 0], 1)
+  );
+  avatarGeometry.setAttribute(
+    "texCoord",
+    new THREE.Float32BufferAttribute([0, 0, 1, 0, 0.5, 1], 2)
+  );
+  avatarGeometry.setAttribute(
+    "skinIndex",
+    new THREE.Uint16BufferAttribute([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 4)
+  );
+  avatarGeometry.setAttribute(
+    "skinWeight",
+    new THREE.Float32BufferAttribute([1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0], 4)
+  );
+  const avatarMaterial = clonePlayerSkinnedMaterial();
+  avatarMaterial.uniforms.light.value = [0, 0, 1];
+  avatarMaterial.uniforms.spatialLighting.value = [1, 0];
+  avatarMaterial.uniforms.emissiveAdd.value = 1;
+  avatarMaterial.side = THREE.DoubleSide;
+  const avatarBone = new THREE.Bone();
+  const avatarSkeleton = new THREE.Skeleton([avatarBone]);
+  const avatarMesh = new THREE.SkinnedMesh(avatarGeometry, avatarMaterial);
+  avatarMesh.add(avatarBone);
+  avatarMesh.bind(avatarSkeleton);
+  avatarMesh.frustumCulled = false;
+  const avatarScene = new THREE.Scene();
+  avatarScene.add(avatarMesh);
+  avatarScene.updateMatrixWorld(true);
+  avatarSkeleton.update();
+  const avatarTarget = new THREE.WebGLRenderTarget(64, 64, { count: 3 });
+  avatarTarget.textures[2].format = THREE.RedFormat;
+  renderer.setRenderTarget(avatarTarget);
+  renderer.setClearColor(0x000000, 0);
+  renderer.clear(true, true, true);
+  renderer.render(avatarScene, camera);
+  const avatarPixels = new Uint8Array(64 * 64 * 4);
+  renderer.readRenderTargetPixels(
+    avatarTarget,
+    0,
+    0,
+    64,
+    64,
+    avatarPixels,
+    undefined,
+    0
+  );
+  let skinnedAvatarPixels = 0;
+  for (let i = 3; i < avatarPixels.length; i += 4) {
+    if (avatarPixels[i] > 0) {
+      skinnedAvatarPixels += 1;
+    }
+  }
+
   renderer.setRenderTarget(null);
   renderer.render(visibleScene, camera);
   const gl = renderer.getContext();
@@ -150,6 +231,11 @@ async function run(): Promise<SmokeResult> {
     mrtTextures: baseTarget.textures.map((texture) => texture.name),
     parsedGltfNode: gltf.scene.children[0]?.name ?? "",
     clonedSkeletonBones: clonedSkinnedMesh.skeleton.bones.map((bone) => bone.name),
+    skinnedAvatarPixels,
+    skinnedBoneTextureSize: [
+      avatarSkeleton.boneTexture?.image.width ?? 0,
+      avatarSkeleton.boneTexture?.image.height ?? 0,
+    ],
     smaaSize: [runtimeSmaa._edgesRT.width, runtimeSmaa._edgesRT.height],
     sharedTargetSize: [sharedTarget.width, sharedTarget.height],
     arrayTextureFormat: arrayTexture.internalFormat,
@@ -167,6 +253,15 @@ async function run(): Promise<SmokeResult> {
   }
   if (result.clonedSkeletonBones.length !== 2) {
     throw new Error("SkeletonUtils did not clone both bones");
+  }
+  if (
+    result.skinnedAvatarPixels === 0 ||
+    result.skinnedBoneTextureSize[0] === 0 ||
+    result.skinnedBoneTextureSize[1] === 0
+  ) {
+    throw new Error(
+      `Player skinning did not produce visible pixels: pixels=${result.skinnedAvatarPixels} boneTexture=${result.skinnedBoneTextureSize.join("x")}`
+    );
   }
   if (result.smaaSize[0] !== 320 || result.smaaSize[1] !== 180) {
     throw new Error(`SMAA target size mismatch: ${result.smaaSize.join("x")}`);
@@ -191,6 +286,10 @@ async function run(): Promise<SmokeResult> {
   smaa.threePass.dispose();
   readTarget.dispose();
   writeTarget.dispose();
+  avatarTarget.dispose();
+  avatarGeometry.dispose();
+  avatarMaterial.dispose();
+  avatarSkeleton.dispose();
   baseMaterial.dispose();
   return result;
 }

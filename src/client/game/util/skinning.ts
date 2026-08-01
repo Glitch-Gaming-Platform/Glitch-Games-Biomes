@@ -14,7 +14,6 @@ const meshMaterial = makePlayerSkinnedMaterial({
 delete meshMaterial.uniforms.bindMatrix;
 delete meshMaterial.uniforms.bindMatrixInverse;
 delete meshMaterial.uniforms.boneTexture;
-delete meshMaterial.uniforms.boneTextureSize;
 
 export function clonePlayerSkinnedMaterial() {
   return meshMaterial.clone();

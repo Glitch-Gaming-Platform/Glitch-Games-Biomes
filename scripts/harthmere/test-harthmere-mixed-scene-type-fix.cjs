@@ -1,42 +1,25 @@
 #!/usr/bin/env node
 // HARTHMERE_MIXED_SCENE_TYPE_FIX
-// Verifies that the "Found mesh with mix of scene types: base,three.
-// Defaulting to three" bug cannot recur in the Harthmere/Biomes rendering
-// pipeline.
+// Verifies that mixed player-avatar roots cannot be routed into an incompatible
+// framebuffer while ordinary mixed Three.js roots remain forward-pass safe.
 //
 // Root cause (now fixed):
-//   The player mesh object contains two categories of child materials:
-//     • BasePassMaterial (skinned body) → sceneForMaterial returns "base"
-//     • MeshToonMaterial (voxel shell from localDevBoltHeadMaterial) → "three"
-//   addToScenes() in scenes.ts detected this mix and previously forced the
-//   entire object into scenes.three. BasePassMaterial then rendered inside
-//   the single-attachment forward framebuffer, while its fragment shader
-//   wrote to three MRT layout locations → GL_INVALID_OPERATION: glDrawElements:
-//   Mismatch between texture format and sampler type → completely broken
-//   player bodies in production.
+//   Player roots once mixed BasePassMaterial bodies with stock Three.js
+//   clothing/polish. Routing the root to either framebuffer broke one half:
+//   base-pass shaders need MRT, while stock shaders do not emit all MRT outputs.
 //
-// Fix is two-part:
-//   current-A  — localDevBoltHeadMaterial in player_mesh.ts is tagged with
-//            (material as any).sceneType = "base" so sceneForMaterial()
-//            classifies it as "base" and the mix never arises.
-//            Marker: HARTHMERE_VOXEL_SHELL_BASE_PASS_ROUTING
-//   current-B  — addToScenes in scenes.ts now defaults mixed objects to "base"
-//            (instead of "three") as a safety net.
-//            Marker: HARTHMERE_MIXED_SCENE_TYPE_BASE_FALLBACK
+// Current fix:
+//   A — every player-root mesh material is coerced to a generated base-pass
+//       material after clothing/polish is attached.
+//   B — only explicitly marked player roots may use the emergency base fallback;
+//       ordinary mixed roots stay in the Three.js forward pass.
 //
 // This test checks all structural invariants that keep the fix in place:
-//   1. player_mesh.ts contains the current-A marker
-//   2. (material as any).sceneType = "base" is present in localDevBoltHeadMaterial
-//   3. The sceneType assignment follows the material.name assignment (correct order)
-//   4. scenes.ts contains the current-B marker
-//   5. addToScenes fallback is "base", not "three"
-//   6. The error log message says "Defaulting to base" (not "Defaulting to three")
-//   7. BasePassMaterial extends THREE.RawShaderMaterial (unchanged — sanity check)
-//   8. sceneForMaterial in scenes.ts respects the .sceneType override property
-//   9. No MeshStandardMaterial / MeshPhongMaterial in player_mesh.ts that
-//      could also create a mixed scene type (only MeshToonMaterial is used,
-//      and it is now tagged)
-//  10. The sceneType tag is on the material return value, not a global leak
+//   1. player procedural materials are generated base-pass materials
+//   2. all skinned/non-skinned clothing materials are coerced under the root
+//   3. scenes.ts contains the player-only production-safe fallback
+//   4. marked player roots choose base; ordinary mixed roots choose three
+//   5. BasePassMaterial and explicit sceneType routing remain intact
 
 const fs = require("fs");
 const path = require("path");
@@ -67,17 +50,19 @@ const playerMesh = fs.readFileSync(playerMeshPath, "utf8");
 const scenes     = fs.readFileSync(scenesPath,     "utf8");
 const basePass   = fs.readFileSync(basePassPath,   "utf8");
 
-// ── 1. current-A marker is present in player_mesh.ts ───────────────────────────────
+// ── 1. Player procedural materials are base-pass compatible ─────────────────
 check(
-  playerMesh.includes("HARTHMERE_VOXEL_SHELL_BASE_PASS_ROUTING"),
-  "A marker HARTHMERE_VOXEL_SHELL_BASE_PASS_ROUTING present in player_mesh.ts"
+  playerMesh.includes("HARTHMERE_PLAYER_AVATAR_BASE_PASS_MATERIALS"),
+  "player base-pass coercion marker is present"
 );
 
-// ── 2. sceneType="base" tag is present inside localDevBoltHeadMaterial ────────
-// Extract the function body and verify the assignment is inside it.
-const boltHeadMatch = playerMesh.match(
-  /function localDevBoltHeadMaterial[\s\S]*?^}/m
-);
+// Extract the function body and verify it constructs the generated MRT material.
+const boltHeadStart = playerMesh.indexOf("function localDevBoltHeadMaterial");
+const boltHeadEnd = playerMesh.indexOf("function harthmereMaterialColor", boltHeadStart);
+const boltHeadMatch =
+  boltHeadStart >= 0 && boltHeadEnd > boltHeadStart
+    ? [playerMesh.slice(boltHeadStart, boltHeadEnd)]
+    : null;
 check(
   boltHeadMatch !== null,
   "localDevBoltHeadMaterial function body found in player_mesh.ts"
@@ -85,54 +70,36 @@ check(
 if (boltHeadMatch) {
   const fnBody = boltHeadMatch[0];
   check(
-    fnBody.includes('(material as any).sceneType = "base"') ||
-      fnBody.includes("(material as any).sceneType = 'base'"),
-    "current-A: localDevBoltHeadMaterial sets (material as any).sceneType = \"base\""
-  );
-  // ── 3. sceneType assignment follows material.name (correct order) ───────────
-  const nameIdx     = fnBody.indexOf("material.name");
-  const sceneIdx    = fnBody.indexOf("(material as any).sceneType");
-  check(
-    nameIdx !== -1 && sceneIdx !== -1 && sceneIdx > nameIdx,
-    "current-A: sceneType assignment follows material.name (not before construction)"
+    fnBody.includes("makeBasicMaterial({") &&
+      !fnBody.includes("new THREE.MeshToonMaterial") &&
+      fnBody.includes("harthmere-player-polished-base-pass-voxel-material"),
+    "localDevBoltHeadMaterial uses the generated base-pass material"
   );
 }
 
-// ── 4. current-B marker is present in scenes.ts ───────────────────────────────────
 check(
-  scenes.includes("HARTHMERE_MIXED_SCENE_TYPE_BASE_FALLBACK"),
-  "B marker HARTHMERE_MIXED_SCENE_TYPE_BASE_FALLBACK present in scenes.ts"
+  playerMesh.includes("function coerceHarthmerePlayerObjectMaterialsToBasePass") &&
+    playerMesh.includes("coerceHarthmerePlayerMaterialToBasePass(material, skinned)") &&
+    playerMesh.includes("Array.isArray(child.material)"),
+  "player material coercion covers every mesh and material array"
+);
+check(
+  playerMesh.includes("if (skinned)") &&
+    playerMesh.includes("clonePlayerSkinnedMaterial()") &&
+    playerMesh.includes("makeHarthmereNonSkinnedBasePassMaterialFromMaterial"),
+  "skinned bodies and non-skinned clothing use compatible base-pass materials"
 );
 
-// ── 5. addToScenes mixed fallback is "base" ───────────────────────────────────
-// Locate the addToScenes function and look for the explicit assignment.
-const addToScenesMatch = scenes.match(
-  /export const addToScenes[\s\S]*?^};/m
+// ── 2. Mixed-root routing is narrow and framebuffer safe ─────────────────────
+check(
+  scenes.includes("HARTHMERE_MIXED_SCENE_TYPE_PROD_SAFE_FALLBACK"),
+  "production-safe mixed scene fallback marker is present"
 );
 check(
-  addToScenesMatch !== null,
-  "addToScenes function body found in scenes.ts"
-);
-if (addToScenesMatch) {
-  const fn = addToScenesMatch[0];
-  // The multi-branch block must NOT have `sceneName = "three"` in the
-  // else-if path. We allow `let sceneName: SceneType = "three"` as the
-  // initial default but the else-if override must say "base".
-  const elseIfBlock = fn.match(/else if \(objScenes\.size > 1\)[\s\S]*?sceneName\s*=\s*"([^"]+)"/);
-  check(
-    elseIfBlock !== null && elseIfBlock[1] === "base",
-    "current-B: addToScenes mixed-type else-if block assigns sceneName = \"base\""
-  );
-  check(
-    !fn.match(/else if \(objScenes\.size > 1\)[\s\S]*?sceneName\s*=\s*"three"/),
-    "current-B: addToScenes mixed-type else-if block does NOT fall back to \"three\""
-  );
-}
-
-// ── 6. Error log message updated to "Defaulting to base" ─────────────────────
-check(
-  scenes.includes("Defaulting to base") && !scenes.includes("Defaulting to three"),
-  "scenes.ts log message says \"Defaulting to base\" (not \"to three\")"
+  scenes.includes('if (isBasePassCoercedPlayerRoot(object) && objScenes.has("base"))') &&
+    scenes.includes('return "base";') &&
+    scenes.includes('return "three";'),
+  "marked player roots fall back to base and ordinary mixed roots to three"
 );
 
 // ── 7. BasePassMaterial still extends RawShaderMaterial (sanity) ─────────────
@@ -150,30 +117,6 @@ check(
       scenes.includes("material.sceneType")),
   "sceneForMaterial in scenes.ts reads .sceneType override from material"
 );
-
-// ── 9. No untagged standard materials in player_mesh.ts ──────────────────────
-// MeshStandardMaterial and MeshPhongMaterial route to "three" and have no
-// sceneType override in this file — they would re-introduce the bug.
-check(
-  !playerMesh.includes("new THREE.MeshStandardMaterial"),
-  "player_mesh.ts does not create untagged MeshStandardMaterial"
-);
-check(
-  !playerMesh.includes("new THREE.MeshPhongMaterial"),
-  "player_mesh.ts does not create untagged MeshPhongMaterial"
-);
-
-// ── 10. sceneType tag is returned from localDevBoltHeadMaterial ───────────────
-// The return statement must come AFTER the sceneType assignment in the function.
-if (boltHeadMatch) {
-  const fnBody = boltHeadMatch[0];
-  const sceneIdx  = fnBody.indexOf("(material as any).sceneType");
-  const returnIdx = fnBody.lastIndexOf("return material");
-  check(
-    sceneIdx !== -1 && returnIdx !== -1 && returnIdx > sceneIdx,
-    "current-A: return material statement follows sceneType assignment (tag is live on returned value)"
-  );
-}
 
 if (process.exitCode) {
   console.error("\nRESULT: FAIL");

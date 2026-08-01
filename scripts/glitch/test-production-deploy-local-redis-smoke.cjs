@@ -28,6 +28,10 @@ const dockerfile = fs.readFileSync(
   path.join(root, "Dockerfile.biomes"),
   "utf8"
 );
+const runtimeDependencyAudit = fs.readFileSync(
+  path.join(root, "scripts/glitch/assert-production-runtime-dependencies.cjs"),
+  "utf8"
+);
 const productionGroundingProbe = fs.readFileSync(
   path.join(root, "scripts/harthmere/probe-production-terrain-grounding.cjs"),
   "utf8"
@@ -550,6 +554,15 @@ ok(
       "node scripts/glitch/assert-production-runtime-dependencies.cjs ."
     ),
   "production image resolves every external required by the built server bundles after npm prune"
+);
+ok(
+  runtimeDependencyAudit.includes(
+    'relative.startsWith("dist/galois/editor/webpack/")'
+  ) &&
+    runtimeDependencyAudit.includes(
+      'relative.startsWith("dist/galois/viewer/webpack/")'
+    ),
+  "production runtime dependency audit excludes only Galois desktop webpack bundles"
 );
 ok(
   serverWebpackConfig.includes('entryPoints["apply-mutable-hotfix"]') &&

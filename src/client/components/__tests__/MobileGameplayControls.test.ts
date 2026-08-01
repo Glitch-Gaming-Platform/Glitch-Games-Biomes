@@ -24,14 +24,35 @@ describe("mobile gameplay control wiring", () => {
         "clientConfig.showVirtualJoystick || !supportsPointerLock()"
       )
     );
-    assert.ok(
-      view.includes("disablePointerLock: initialPointerlessGameplay")
-    );
+    assert.ok(view.includes("disablePointerLock: initialPointerlessGameplay"));
     assert.ok(view.includes("input.attach(canvas)"));
     assert.ok(view.includes("locked || pointerlessGameplay"));
     assert.ok(view.includes("pointerLockManager.isPointerLockDisabled()"));
     assert.ok(pointerLock.includes("pointerLockDisabledChange"));
     assert.ok(pointerLock.includes("this.setPointerLockDisabled(true)"));
+  });
+
+  it("unlocks Web Audio from the canvas click before requesting pointer lock", () => {
+    const view = read("src/client/components/BiomesView.tsx");
+    const clickHandler = view.indexOf("click: (e) => {");
+    const audioResume = view.indexOf(
+      "void audioManager.resumeAudio();",
+      clickHandler
+    );
+    const pointerLockRequest = view.indexOf(
+      "pointerLockManager.focusAndLock();",
+      clickHandler
+    );
+
+    assert.ok(clickHandler >= 0, "canvas click handler is missing");
+    assert.ok(
+      audioResume > clickHandler,
+      "canvas click does not synchronously request Web Audio resume"
+    );
+    assert.ok(
+      pointerLockRequest > audioResume,
+      "Pointer Lock is requested before the Web Audio unlock"
+    );
   });
 
   it("suppresses the Enter Game pointer-lock overlay in joystick mode", () => {

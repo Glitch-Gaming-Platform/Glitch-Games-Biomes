@@ -28,7 +28,7 @@
 //   2. NPC system uses the same AnimationSystem.newState path
 //   3. skinning.ts deletes boneTexture from material uniforms so Three.js
 //      handles it automatically (the correct pattern for SkinnedMesh +
-//      RawShaderMaterial)
+//      RawShaderMaterial), while the shader queries the current texture size
 //   4. Player vertex shader declares sampler2D (float), not usampler2D (uint)
 //   5. Block fragment shader declares usampler2D for integer terrain textures
 //   6. makeBufferTexture produces R32UI (unsigned integer) textures — the
@@ -114,11 +114,11 @@ check(
   "npcSystem is an AnimationSystem instance (shares pruning code with player)"
 );
 
-// ── 3. skinning.ts deletes boneTexture so Three.js handles it automatically ──
+// ── 3. Three owns boneTexture; shader derives its size on r185 ───────────────
 check(
   skinning.includes('delete meshMaterial.uniforms.boneTexture') &&
-    skinning.includes('delete meshMaterial.uniforms.boneTextureSize'),
-  "skinning.ts deletes boneTexture/boneTextureSize so Three.js auto-uploads them for SkinnedMesh"
+    !skinning.includes('delete meshMaterial.uniforms.boneTextureSize'),
+  "skinning.ts lets Three.js auto-upload boneTexture without referencing the removed size uniform"
 );
 // Confirm the intention is documented in a comment.
 check(
@@ -132,6 +132,12 @@ check(
   playerVs.includes("uniform highp sampler2D boneTexture") ||
     playerVs.includes("uniform sampler2D boneTexture"),
   "player.vs declares boneTexture as float sampler2D (not usampler2D)"
+);
+check(
+  playerVs.includes("textureSize(boneTexture, 0).x") &&
+    playerVs.includes("texelFetch(boneTexture") &&
+    !playerVs.includes("uniform int boneTextureSize"),
+  "player.vs derives bone texture dimensions using the Three.js r185 contract"
 );
 // Confirm there are NO unsigned samplers in the player shader.
 check(

@@ -107,9 +107,9 @@ check(
 );
 check(
   playerMesh.indexOf("addHarthmerePlayerModularClothingRuntime") <
-    playerMesh.indexOf("coerceHarthmerePlayerObjectMaterialsToBasePass(playerAnimatedMesh.three)") &&
+    playerMesh.lastIndexOf("coerceHarthmerePlayerObjectMaterialsToBasePass(playerAnimatedMesh.three)") &&
     playerMesh.indexOf("addHarthmerePlayerAvatarFullPolishDetails") <
-      playerMesh.indexOf("coerceHarthmerePlayerObjectMaterialsToBasePass(playerAnimatedMesh.three)"),
+      playerMesh.lastIndexOf("coerceHarthmerePlayerObjectMaterialsToBasePass(playerAnimatedMesh.three)"),
   "coercion happens after modular clothing and avatar polish create their meshes"
 );
 check(
@@ -143,11 +143,11 @@ check(
   "basic.fs writes every SceneBasePass MRT output"
 );
 check(
-  sceneBasePass.includes("new THREE.WebGLMultipleRenderTargets") &&
-    sceneBasePass.includes("3,") &&
+  sceneBasePass.includes("new THREE.WebGLRenderTarget") &&
+    sceneBasePass.includes("count: 3") &&
     sceneBasePass.includes('this.outputs.set("normal"') &&
     sceneBasePass.includes('this.outputs.set("baseDepth"'),
-  "SceneBasePass uses 3 active draw buffers, matching the generated basic material outputs"
+  "SceneBasePass uses the r185 3-attachment render target, matching generated base-pass outputs"
 );
 check(
   !/MeshToonMaterial[\s\S]*?sceneType\s*=\s*["']base["']/.test(playerMesh),

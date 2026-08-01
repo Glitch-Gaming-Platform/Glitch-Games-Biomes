@@ -7,6 +7,7 @@ import type {
   TrackingCamTweaks,
 } from "@/server/shared/minigames/ruleset/tweaks";
 import { baseIsometric } from "@/server/shared/minigames/ruleset/tweaks";
+import type { SyncTarget } from "@/shared/api/sync";
 import { BikkieIds } from "@/shared/bikkie/ids";
 import type { CameraItemMode } from "@/shared/bikkie/schema/types";
 import type { ReadonlyEntity } from "@/shared/ecs/gen/entities";
@@ -256,6 +257,17 @@ export function shouldRenderPlayerAvatar(
   cameraIsFirstPerson: boolean
 ) {
   return !isLocalPlayer || !cameraIsFirstPerson;
+}
+
+export function defaultToFirstPersonForSyncTarget(syncTarget: SyncTarget) {
+  return syncTarget.kind === "position";
+}
+
+export function shouldResetToThirdPersonAfterSyncTargetChange(
+  previousKind: SyncTarget["kind"],
+  nextKind: SyncTarget["kind"]
+) {
+  return previousKind !== "localUser" && nextKind === "localUser";
 }
 
 export function clippedThirdPersonCamPositionWithCollision(

@@ -258,7 +258,10 @@ ok("ECS/local-dev NPC renderer handles back clothing", npcs.includes("back-pack"
 ok("ECS/local-dev NPC renderer handles weapon clothing", npcs.includes("hand-weapon") || npcs.includes("weapon"));
 ok("ECS/local-dev NPC renderer handles shield clothing", npcs.includes("shield"));
 ok("ECS/local-dev NPC renderer records clothing runtime metadata", npcs.includes("harthmereModularClothingRuntime"));
-ok("ECS/local-dev NPC appearance path passes appearance.clothing to renderer", npcs.includes("addLocalDevNpcModularClothingDetails(root, appearance.clothing"));
+ok(
+  "ECS/local-dev NPC appearance path passes appearance.clothing to renderer",
+  /addLocalDevNpcModularClothingDetails\(\s*root,\s*appearance\.clothing/.test(npcs)
+);
 
 ok("runtime/ambient NPC product clothing polish exists", assets.includes("HARTHMERE_RUNTIME_PRODUCT_MINECRAFT_POLISH_VERSION"));
 ok("runtime/ambient NPC path reads appearance.clothing", assets.includes("appearance.clothing"));

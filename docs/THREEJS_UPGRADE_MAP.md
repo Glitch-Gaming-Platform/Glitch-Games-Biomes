@@ -475,6 +475,36 @@ tests prevent the ordering regression. A clean exact-source browser run remains
 required after generation/build; an isolated synthetic shader pass alone is no
 longer sufficient evidence for a Three.js upgrade.
 
+## Production skinned-avatar incident — 2026-08-01
+
+The first shader correction restored terrain, water, props, and the HUD, but
+players and humanoid NPCs could still be invisible without a shader compiler or
+WebGL error. Production telemetry showed their GLB assets loading and the player
+and NPC renderers submitting the expected entities, which ruled out asset,
+culling, and scene-membership failures.
+
+The remaining incompatibility was in `player.vs`. The custom skinning shader
+still divided bone-texture coordinates by the legacy `boneTextureSize` uniform.
+Three r185 uploads `bindMatrix`, `bindMatrixInverse`, and `boneTexture` for a
+`SkinnedMesh`, but no longer uploads `boneTextureSize`; the unset integer was
+zero, so the shader produced invalid skinned positions while the draw itself
+appeared successful.
+
+The durable contract now matches Three r185's own skinning chunk:
+
+- derive the dimension with `textureSize(boneTexture, 0).x`;
+- fetch the four matrix texels with `texelFetch`;
+- let Three own the automatically uploaded skinning uniforms;
+- browser-test an actual `SkinnedMesh` with the generated production player
+  material inside a three-attachment MRT and require nonzero rendered pixels,
+  a populated bone texture, `glError=0`, and no console errors.
+
+The same material path is used by local/remote players, humanoid NPCs, skinned
+wearables, and humanoid placeables, so those paths must be tested together.
+Camera regression coverage also preserves fixed-position observer first person
+while resetting to third person when an observer/install bootstrap becomes the
+authenticated local player.
+
 ## r185 upgrade result — 2026-08-01
 
 - `three` upgraded from 0.152.2 to 0.185.1.
@@ -496,9 +526,8 @@ longer sufficient evidence for a Three.js upgrade.
   Harthmere/server/test errors; it reports no remaining Three.js migration
   error.
 - The Harthmere performance response guard and `git diff --check` passed.
-- No deployment or production restart was performed by this upgrade task. The
-  generated-shader correction requires a fresh exact-source build and browser
-  gate before it can be considered live.
+- Production acceptance must include the generated-shader ordering check and
+  the real skinned-player MRT pixel check; build success alone is insufficient.
 
 ## Upgrade sequence
 

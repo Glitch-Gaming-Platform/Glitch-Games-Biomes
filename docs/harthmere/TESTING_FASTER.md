@@ -1887,6 +1887,19 @@ Lock is unsupported, not only when the virtual joystick flag is true; keep the
 focused `MobileGameplayControls.test.ts` assertion with that behavior. Do not
 hide the overlay or mutate page globals to manufacture a pass.
 
+The same rule applies to Web Audio. An embed may expose Pointer Lock and reject
+every request, so `pointerlockchange` is not a reliable first audio gesture and
+the five-second pointerless fallback is too late to satisfy browser autoplay
+policy. The canvas click must call `audioManager.resumeAudio()` synchronously
+before requesting Pointer Lock. In a captured HAR, require at least the
+selected background-track request (or prove it was already decoded through
+`audioDiagnostics.loadedTracks`); creature-idle `.webm` requests alone do not
+prove background music started. For environmental priority, combat and authored
+dungeon music override cave music, a minigame may suppress the cave replacement,
+and cave music otherwise replaces the Muck exploration bed. Keep both the
+`audio.test.ts` Muck-cave assertion and the `MobileGameplayControls.test.ts`
+gesture-order assertion when changing this path.
+
 Focused headless mode deliberately removes Pointer Lock. The camera HUD only
 registers its top-priority `F` world-interaction candidate while Pointer Lock is
 held, so a nearby NPC candidate can consume `F` before HotBar's bubble listener

@@ -248,7 +248,7 @@ describe("combat background music", () => {
     }
   });
 
-  it("gives combat and Muck priority over regional exploration music", () => {
+  it("gives combat and dungeons priority while caves replace the Muck bed", () => {
     const harthmere: [number, number, number] = [
       HARTHMERE_EXTENSION_WORLD_BOUNDS.minX,
       53,
@@ -287,6 +287,10 @@ describe("combat background music", () => {
     );
     assert.equal(
       selectBackgroundMusicTrack(1, false, harthmere, false, true),
+      "cave_music"
+    );
+    assert.equal(
+      selectBackgroundMusicTrack(1, false, harthmere, false, true, true),
       "muck_music"
     );
     assert.equal(
@@ -302,6 +306,7 @@ describe("combat background music", () => {
   it("uses cave music for authored caves and restores it after combat", () => {
     const harness = audioHarness();
     harness.setPlayerPos([689.481, 47, -89.532]);
+    harness.setMuckyness(1);
 
     harness.script.tick(0);
     harness.setNpcs([npc(PLAYER_ID)]);
@@ -353,7 +358,10 @@ describe("combat background music", () => {
     ]) {
       assert.equal(shouldPlayMountainWind({ ...base, ...override }), false);
     }
-    assert.equal(MOUNTAIN_WIND_AUDIO_PATH?.includes("mountain-wind-loop"), true);
+    assert.equal(
+      MOUNTAIN_WIND_AUDIO_PATH?.includes("mountain-wind-loop"),
+      true
+    );
   });
 
   it("selects the additive Harthmere woods and each Elsewhen dungeon cue", () => {

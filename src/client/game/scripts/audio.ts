@@ -80,27 +80,23 @@ export function selectBackgroundMusicTrack(
   inCave = false,
   activeMinigame = false
 ): AudioTrackType {
-  // Regional cues replace only ordinary exploration music. Combat and Muck
-  // preserve their existing priority and restore the current region on exit.
+  // Combat and authored dungeon cues own the soundtrack while active. Cave
+  // music replaces ordinary regional exploration beds (including Muck), but
+  // not a minigame-owned session.
   if (activeBossCombat) {
     return "boss_battle_music";
   }
   if (activeCombat) {
     return "battle_music";
   }
-  if (muckyness > 0) {
-    return "muck_music";
-  }
-  if (!position) {
-    return "music";
-  }
-
-  const elsewhenSlot = ch1ElsewhenSlotAt(position);
-  if (elsewhenSlot?.dungeonId === "ch1_dungeon_desert") {
-    return "ch1_sand_music";
-  }
-  if (elsewhenSlot?.dungeonId === "ch1_dungeon_winter") {
-    return "ch1_winter_music";
+  if (position) {
+    const elsewhenSlot = ch1ElsewhenSlotAt(position);
+    if (elsewhenSlot?.dungeonId === "ch1_dungeon_desert") {
+      return "ch1_sand_music";
+    }
+    if (elsewhenSlot?.dungeonId === "ch1_dungeon_winter") {
+      return "ch1_winter_music";
+    }
   }
 
   // A minigame may own its own media/music surface. Until minigames expose a
@@ -108,6 +104,13 @@ export function selectBackgroundMusicTrack(
   // environmental replacements such as cave music.
   if (!activeMinigame && inCave) {
     return "cave_music";
+  }
+
+  if (muckyness > 0) {
+    return "muck_music";
+  }
+  if (!position) {
+    return "music";
   }
 
   const x = position[0];
@@ -255,8 +258,7 @@ export class AudioScript implements Script {
       this.mountainExitGraceUntil =
         nowSeconds + ENVIRONMENT_AUDIO_EXIT_GRACE_SECONDS;
     }
-    const inCave =
-      detectedCave || nowSeconds < this.caveExitGraceUntil;
+    const inCave = detectedCave || nowSeconds < this.caveExitGraceUntil;
     this.environmentState = {
       inCave,
       onMountainTop:
@@ -314,10 +316,7 @@ export class AudioScript implements Script {
       nowSeconds
     );
     const activeMinigame = this.activeMinigame();
-    const environment = this.environmentAudioState(
-      [...playerPos],
-      nowSeconds
-    );
+    const environment = this.environmentAudioState([...playerPos], nowSeconds);
     const currentMuckyness = muckyness.get();
     this.audioManager.setBackgroundMusicTrack(
       cutscene.active && cutscene.musicOverride

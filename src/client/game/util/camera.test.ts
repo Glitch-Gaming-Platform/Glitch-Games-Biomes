@@ -1,8 +1,10 @@
 import {
   camOffsetVector,
+  defaultToFirstPersonForSyncTarget,
   isIntendedFirstPersonCamera,
   playerFirstPersonCamPositionAtHeight,
   shouldRenderPlayerAvatar,
+  shouldResetToThirdPersonAfterSyncTargetChange,
   thirdPersonCamPosition,
 } from "@/client/game/util/camera";
 import {
@@ -21,6 +23,46 @@ function desiredCameraPosition(tweak: TrackingCamTweaks) {
 }
 
 describe("camera view avatar visibility", () => {
+  it("defaults signed-in and entity-target sessions to third person", () => {
+    assert.equal(
+      defaultToFirstPersonForSyncTarget({ kind: "localUser", userId: 123 }),
+      false
+    );
+    assert.equal(
+      defaultToFirstPersonForSyncTarget({ kind: "entity", entityId: 456 }),
+      false
+    );
+  });
+
+  it("keeps fixed-position observer sessions in first person", () => {
+    assert.equal(
+      defaultToFirstPersonForSyncTarget({
+        kind: "position",
+        position: [1, 2, 3],
+      }),
+      true
+    );
+  });
+
+  it("resets observer bootstrap state when the session becomes the local player", () => {
+    assert.equal(
+      shouldResetToThirdPersonAfterSyncTargetChange("position", "localUser"),
+      true
+    );
+    assert.equal(
+      shouldResetToThirdPersonAfterSyncTargetChange("entity", "localUser"),
+      true
+    );
+    assert.equal(
+      shouldResetToThirdPersonAfterSyncTargetChange("localUser", "localUser"),
+      false
+    );
+    assert.equal(
+      shouldResetToThirdPersonAfterSyncTargetChange("position", "position"),
+      false
+    );
+  });
+
   it("places a stance-smoothed camera at an explicit eye height", () => {
     assert.deepEqual(
       playerFirstPersonCamPositionAtHeight([4, 10, -2], 1.1),

@@ -10,6 +10,7 @@ import { bezierFunctionsScalar } from "@/client/game/util/bezier";
 import {
   camOffsetVector,
   clippedThirdPersonCamPositionWithCollision,
+  defaultToFirstPersonForSyncTarget,
   getCamOrientation,
   getOrientationFromQuat,
   getPlayerCameraParameters,
@@ -17,6 +18,7 @@ import {
   playerFirstPersonCamPosition,
   playerFirstPersonCamPositionAtHeight,
   slerpOrientations,
+  shouldResetToThirdPersonAfterSyncTargetChange,
   thirdPersonCamPosition,
 } from "@/client/game/util/camera";
 import type {
@@ -37,6 +39,7 @@ import type {
   PlayerFixedCameraTweaks,
   TrackingCamTweaks,
 } from "@/server/shared/minigames/ruleset/tweaks";
+import type { SyncTarget } from "@/shared/api/sync";
 import type { ReadonlyVec3f, Vec2f, Vec3f } from "@/shared/ecs/gen/types";
 import { getAabbForEntity, getSizeForEntity } from "@/shared/game/entity_sizes";
 import { movementActionCameraEffects } from "@/shared/game/movement_actions";
@@ -90,6 +93,7 @@ export class CameraScript implements Script {
   static FISH_CAUGHT_CAMERA_TRANSITION_TIME = 500;
 
   private defaultToFirstPerson: boolean;
+  private previousSyncTargetKind: SyncTarget["kind"];
   private smoothFOV = smoothConstantScalarTransition(0, 0.1);
   private smoothTrackDistance: ScalarTransition;
   private smoothTrackDistMomentum = 0.1;
@@ -147,8 +151,10 @@ export class CameraScript implements Script {
       0,
       this.smoothTrackDistMomentum
     );
+    const initialSyncTarget = this.resources.get("/server/sync_target");
+    this.previousSyncTargetKind = initialSyncTarget.kind;
     this.defaultToFirstPerson =
-      this.resources.get("/server/sync_target").kind === "position";
+      defaultToFirstPersonForSyncTarget(initialSyncTarget);
     this.cleanUps.push(
       cleanUntypedEmitterCallback(input.emitter, {
         first_person_toggle: () => {
@@ -361,6 +367,18 @@ export class CameraScript implements Script {
   private getTrackedObject(): CameraTargetObject {
     const tweaks = this.resources.get("/tweaks");
     const syncTarget = this.resources.get("/server/sync_target");
+    // Install-id and observer flows can bootstrap against a fixed position and
+    // then become an authenticated local player without reconstructing this
+    // script. Never carry the observer's first-person default into gameplay.
+    if (
+      shouldResetToThirdPersonAfterSyncTargetChange(
+        this.previousSyncTargetKind,
+        syncTarget.kind
+      )
+    ) {
+      this.defaultToFirstPerson = false;
+    }
+    this.previousSyncTargetKind = syncTarget.kind;
     if (syncTarget.kind === "entity") {
       const pos = getClientRenderPosition(this.resources, syncTarget.entityId);
 

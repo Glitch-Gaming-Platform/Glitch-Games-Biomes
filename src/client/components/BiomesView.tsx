@@ -34,8 +34,7 @@ function BiomesCanvas({}: {}) {
     });
 
     const pointerlessGameplay = () =>
-      initialPointerlessGameplay ||
-      pointerLockManager.isPointerLockDisabled();
+      initialPointerlessGameplay || pointerLockManager.isPointerLockDisabled();
     const activatePointerlessGameplay = () => {
       // Pointer-lock changes never fire on touch controls or browsers/embeds
       // that cannot use Pointer Lock, so attach input immediately. HUD pulses
@@ -82,8 +81,13 @@ function BiomesCanvas({}: {}) {
           lastTouchPosRef.current = undefined;
         },
         click: (e) => {
+          // Resume Web Audio synchronously from the user's click. Embedded
+          // browsers can expose Pointer Lock while rejecting every request;
+          // waiting for pointerlockchange or the timed pointerless fallback
+          // moves resume() outside the browser's trusted-gesture window.
+          void audioManager.resumeAudio();
           if (pointerlessGameplay()) {
-            focusTouchGameplay();
+            canvas.focus();
             return;
           }
           if (!pointerLockManager.isLocked()) {

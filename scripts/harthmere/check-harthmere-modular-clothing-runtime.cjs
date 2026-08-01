@@ -43,11 +43,11 @@ check('player falls back to procedural clothing proxies', player.includes('addHa
 check('player records hidden body zones', player.includes('harthmereHiddenBodyZones'));
 check('ECS NPC imports clothing types', npcs.includes('type HarthmereCharacterClothing') && npcs.includes('type HarthmereClothingSlot'));
 check('ECS NPC modular clothing helper exists', npcs.includes('addLocalDevNpcModularClothingDetails'));
-check('ECS NPC helper is called', npcs.includes('addLocalDevNpcModularClothingDetails(root, appearance.clothing, palette, body);'));
-check('ECS NPC adds current clothing meshes', npcs.includes('harthmere-npc-clothing-torso') && npcs.includes('harthmere-npc-clothing-left-boot'));
-check('runtime cosmetics bumped to current', assets.includes('harthmere-unique-npc-cosmetics-modular-clothing'));
+check('ECS NPC helper is called', /addLocalDevNpcModularClothingDetails\(\s*root,\s*appearance\.clothing,\s*palette,\s*body\s*\)/.test(npcs));
+check('ECS NPC adds current clothing meshes', npcs.includes('harthmere-npc-clothing-torso-front') && npcs.includes('harthmere-npc-outward-clothing-left-boot'));
+check('runtime cosmetics bumped to current', assets.includes('harthmere-unique-npc-cosmetics-body-fit-clothing'));
 check('runtime stores modular clothing metadata', assets.includes('harthmereModularClothingRuntime') && assets.includes('harthmereClothingSlots'));
-check('runtime adds current clothing overlays', assets.includes('townsperson-clothing-torso') && assets.includes('townsperson-clothing-left-boot'));
+check('runtime adds current clothing overlays', assets.includes('townsperson-clothing-torso-body-fit') && assets.includes('townsperson-clothing-left-boot'));
 if (failed) {
   console.log('\nRESULT: FAIL');
   process.exit(1);
