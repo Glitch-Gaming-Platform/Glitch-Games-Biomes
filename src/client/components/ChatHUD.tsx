@@ -594,8 +594,8 @@ export const ChatHUD: React.FunctionComponent<{}> = ({}) => {
 
   */
   const UP_SCROLL_SNAP_TIMEOUT_MS = 25 * 1000;
-  const scrolledUpAt = useRef<number | undefined>();
-  const scrollSnapTimeout = useRef<ReturnType<typeof setTimeout> | undefined>();
+  const scrolledUpAt = useRef<number | undefined>(undefined);
+  const scrollSnapTimeout = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const lastScrollTop = useRef<number>(0);
 
   const scrollToBottom = useCallback((forceScroll: boolean = false) => {
@@ -617,7 +617,7 @@ export const ChatHUD: React.FunctionComponent<{}> = ({}) => {
 
   const hideChrome = reactResources.use("/canvas_effects/hide_chrome");
 
-  const resizerRef = useRef<ReturnType<typeof setTimeout> | undefined>();
+  const resizerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   useEffect(() =>
     cleanListener(window, {

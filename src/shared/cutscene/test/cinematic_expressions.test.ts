@@ -184,6 +184,7 @@ describe("Harthmere cinematic gameplay expressions", () => {
         .filter(
           (action) =>
             action.kind === "face" &&
+            !Array.isArray(action.towards) &&
             action.towards.role === HARTHMERE_EXPRESSION_SHOWCASE_CAMERA_ROLE
         ).length,
       HARTHMERE_CINEMATIC_EXPRESSIONS.filter(

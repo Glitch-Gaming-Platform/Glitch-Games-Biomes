@@ -111,7 +111,7 @@ export const UserSelection: React.FunctionComponent<{
       value={selectedUser}
       onChange={(value) => {
         setChanged(true);
-        setSelectedUser(value);
+        setSelectedUser(value ?? undefined);
       }}
       disabled={loadingValue}
     >

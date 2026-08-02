@@ -232,8 +232,9 @@ Pure unit tests (frontend/backend, no browser):
 - `melee_attack_region.test.ts` — native cursor attackability and metadata ray
   fallback coverage
 
-Run a file: `node_modules/.bin/mocha --require ts-node/register --require
-tsconfig-paths/register --extension ts <path>` (use **Node 20** per `.nvmrc`).
+Run a file through `./b test -p '<path>'`; the launcher preserves the Node 24
+`ts-node`/`tsconfig-paths` contract and disables the competing native TypeScript
+stripper. Use **Node 24.18.1** per `.nvmrc`.
 
 ## Verification status
 

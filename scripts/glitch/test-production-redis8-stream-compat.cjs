@@ -24,7 +24,7 @@ const redisDiscovery = read("src/server/shared/discovery/redis.ts");
 const config = read("src/server/shared/config.ts");
 const deploy = read("scripts/glitch/deploy-production-local-redis-smoke.sh");
 
-console.log("== Production Redis 6 stream compatibility ==");
+console.log("== Production Redis 8.8.1 stream compatibility ==");
 ok(
   config.includes("redisMaxEcsStreamEntries"),
   "config bounds ECS stream by entry count"
@@ -43,11 +43,11 @@ ok(
 );
 ok(
   applyLua.includes("'MAXLEN', '~', request.firehoseMaxEntries"),
-  "world apply uses Redis 6-compatible XADD MAXLEN trimming"
+  "world apply uses bounded XADD MAXLEN trimming"
 );
 ok(
   !applyLua.includes("'MINID'"),
-  "world apply Lua avoids Redis 6-incompatible MINID"
+  "world apply preserves entry-count retention instead of changing to MINID"
 );
 ok(redisWorld.includes('"MAXLEN"'), "ECS periodic trim uses MAXLEN");
 ok(!redisWorld.includes('"MINID"'), "ECS periodic trim avoids MINID");
@@ -55,28 +55,25 @@ ok(firehose.includes('"MAXLEN"'), "direct Redis firehose publish uses MAXLEN");
 ok(!firehose.includes('"MINID"'), "direct Redis firehose publish avoids MINID");
 ok(
   firehose.includes("xautoclaimBuffer"),
-  "firehose keeps Redis 7+ XAUTOCLAIM fast path"
+  "firehose uses native XAUTOCLAIM recovery"
 );
-ok(
-  firehose.includes("xpendingBuffer"),
-  "firehose has Redis 6 XPENDING fallback"
-);
-ok(firehose.includes("xclaimBuffer"), "firehose has Redis 6 XCLAIM fallback");
+ok(firehose.includes("xpendingBuffer"), "firehose retains XPENDING recovery");
+ok(firehose.includes("xclaimBuffer"), "firehose retains XCLAIM recovery");
 ok(
   firehose.includes('unsupportedCommand(error, "xautoclaim")'),
   "firehose detects unsupported XAUTOCLAIM once"
 );
 ok(
   chatDistribution.includes("xautoclaimBuffer"),
-  "chat distributor keeps Redis 7+ XAUTOCLAIM fast path"
+  "chat distributor uses native XAUTOCLAIM recovery"
 );
 ok(
   chatDistribution.includes("xpendingBuffer"),
-  "chat distributor has Redis 6 XPENDING fallback"
+  "chat distributor retains XPENDING recovery"
 );
 ok(
   chatDistribution.includes("xclaimBuffer"),
-  "chat distributor has Redis 6 XCLAIM fallback"
+  "chat distributor retains XCLAIM recovery"
 );
 ok(
   chatDistribution.includes('unsupportedCommand(error, "xautoclaim")'),
@@ -84,28 +81,17 @@ ok(
 );
 ok(
   chatDistribution.includes("getMissedDeliveriesWithXPending"),
-  "chat distributor routes missed-delivery recovery through the Redis 6 fallback"
+  "chat distributor keeps bounded missed-delivery recovery"
 );
-
-// Keep this source-level deployment guard even though RedisServiceDiscovery has
-// unit coverage. The ordinary test harness intentionally runs a Redis 7 server,
-// where `EXPIRE ... GT` is valid; only the production Redis 6 image exposes the
-// transaction-aborting incompatibility. Matching the complete two-argument call
-// prevents a future formatting-only change from weakening the check, while the
-// separate negative assertion makes the operational constraint unmistakable.
 ok(
   /tx[.]expire[(]\s*this[.]redisKey,\s*CONFIG[.]serviceDiscoveryServiceExpirySeconds,?\s*[)]/.test(
     redisDiscovery
   ),
-  "service discovery refreshes its coarse key TTL with Redis 6-compatible EXPIRE"
+  "service discovery refreshes its coarse key TTL"
 );
 ok(
-  !/tx[.]expire[(][\s\S]{0,160}["']GT["']/.test(redisDiscovery),
-  "service discovery avoids Redis 7 conditional EXPIRE flags that abort MULTI on Redis 6"
-);
-ok(
-  deploy.includes("redis:6.0.16-alpine"),
-  "local production smoke matches production Redis 6.0"
+  deploy.includes("redis:8.8.1-alpine"),
+  "local production smoke matches production Redis 8.8.1"
 );
 
 if (failed) {

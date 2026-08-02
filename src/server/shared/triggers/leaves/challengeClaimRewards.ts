@@ -10,7 +10,7 @@ import { bagSpecToItemBag } from "@/shared/game/items_serde";
 import type { ItemBag } from "@/shared/game/types";
 import type { BiomesId } from "@/shared/ids";
 import type { BaseStoredTriggerDefinition } from "@/shared/triggers/base_schema";
-import type { StoredTriggerDefinition } from "@/shared/triggers/schema";
+import type { ChallengeClaimRewardsTriggerDefinition } from "@/shared/triggers/schema";
 import { zChallengeClaimRewardsTriggerDefinition } from "@/shared/triggers/schema";
 import { ok } from "assert";
 
@@ -92,7 +92,7 @@ export class ChallengeClaimRewardsTrigger extends BaseStatelessTrigger {
     });
   }
 
-  serialize(): StoredTriggerDefinition {
+  serialize(): ChallengeClaimRewardsTriggerDefinition {
     return {
       ...this.spec,
       kind: this.kind,

@@ -39,7 +39,7 @@ export function startLinkerdWatchman() {
     env: {
       ...process.env,
       // Override NODE_OPTIONS to eliminate any extra RAM settings.
-      NODE_OPTIONS: "--openssl-legacy-provider",
+      NODE_OPTIONS: "--enable-source-maps",
     },
   });
   watchman.on("exit", (code, signal) => {

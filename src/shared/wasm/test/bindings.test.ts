@@ -59,6 +59,18 @@ describe("Voxeloo generated binding contracts", () => {
     assert.equal(simd.do_leak_check(), 0);
   });
 
+  it("keeps browser loaders free of Node-only imports while accepting preloaded WASM", async () => {
+    for (const variant of ["normal", "simd"] as const) {
+      const loaderFile = path.resolve(
+        __dirname,
+        `../../../gen/shared/cpp_ext/voxeloo-${variant}/wasm.js`
+      );
+      const source = await readFile(loaderFile, "utf8");
+      assert.doesNotMatch(source, /node:(?:fs|crypto|path|url)/);
+      assert.match(source, /Module\["wasmBinary"\]/);
+    }
+  });
+
   it("exports the declared Anima, Gaia, mapping, memory, and shard APIs", () => {
     for (const module of [normal, simd]) {
       for (const functionName of [

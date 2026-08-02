@@ -1,4 +1,6 @@
 import {
+  KTX2_TRANSCODER_PATH,
+  createGltfLoader,
   gltfToThree,
   parseGltf,
 } from "@/client/game/util/gltf_helpers";
@@ -60,10 +62,7 @@ describe("Three.js asset and geometry contract", () => {
       "skinWeight",
       new THREE.Float32BufferAttribute([1, 0, 0, 0], 4)
     );
-    const mesh = new THREE.SkinnedMesh(
-      geometry,
-      new THREE.MeshBasicMaterial()
-    );
+    const mesh = new THREE.SkinnedMesh(geometry, new THREE.MeshBasicMaterial());
     mesh.name = "SkinnedBody";
     mesh.add(bone);
     mesh.bind(new THREE.Skeleton([bone, childBone]));
@@ -128,10 +127,15 @@ describe("Three.js asset and geometry contract", () => {
           .ProgressEvent;
       }
     }
-    assert.deepEqual(
-      creature.animations.map(({ name }) => name).sort(),
-      ["Attack", "Death", "HitReact", "Idle", "RangedAttack", "Run", "Walk"]
-    );
+    assert.deepEqual(creature.animations.map(({ name }) => name).sort(), [
+      "Attack",
+      "Death",
+      "HitReact",
+      "Idle",
+      "RangedAttack",
+      "Run",
+      "Walk",
+    ]);
 
     const socket = creature.scene.getObjectByName("Socket_Mouth");
     assert.ok((socket as THREE.Bone | undefined)?.isBone);
@@ -156,10 +160,7 @@ describe("Three.js asset and geometry contract", () => {
         const standardMaterial = material as THREE.MeshStandardMaterial;
         assert.ok(standardMaterial.isMeshStandardMaterial);
         if (standardMaterial.map) {
-          assert.equal(
-            standardMaterial.map.colorSpace,
-            THREE.SRGBColorSpace
-          );
+          assert.equal(standardMaterial.map.colorSpace, THREE.SRGBColorSpace);
         }
         if (standardMaterial.emissiveMap) {
           assert.equal(
@@ -210,10 +211,7 @@ describe("Three.js asset and geometry contract", () => {
         const standardMaterial = material as THREE.MeshStandardMaterial;
         assert.ok(standardMaterial.isMeshStandardMaterial);
         if (standardMaterial.map) {
-          assert.equal(
-            standardMaterial.map.colorSpace,
-            THREE.SRGBColorSpace
-          );
+          assert.equal(standardMaterial.map.colorSpace, THREE.SRGBColorSpace);
         }
       }
     });
@@ -222,10 +220,7 @@ describe("Three.js asset and geometry contract", () => {
 
   it("preserves interleaved voxel and group geometry layouts", () => {
     const block = makeBlockBufferGeometry(
-      new Float32Array([
-        0, 0, 0, 0, 0, 0,
-        1, 0, 0, 1, 0, 0,
-      ]),
+      new Float32Array([0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0]),
       new Uint32Array([0, 1, 0]),
       6
     );
@@ -240,10 +235,7 @@ describe("Three.js asset and geometry contract", () => {
     assert.equal(block.index?.count, 3);
 
     const group = makeGroupBufferGeometry(
-      new Float32Array([
-        0, 0, 0, 0, 1, 0, 0, 0,
-        1, 0, 0, 0, 1, 0, 1, 0,
-      ]),
+      new Float32Array([0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0]),
       new Uint32Array([0, 1, 0]),
       8
     );
@@ -259,10 +251,7 @@ describe("Three.js asset and geometry contract", () => {
   it("retains integer, array, and sRGB texture formats", () => {
     const color = makeColorMap(new Uint8Array([10, 20, 30]), 1, 1, 3);
     assert.ok(color.image.data);
-    assert.deepEqual(
-      Array.from(color.image.data!),
-      [10, 20, 30, 255]
-    );
+    assert.deepEqual(Array.from(color.image.data!), [10, 20, 30, 255]);
     assert.equal(color.format, THREE.RGBAFormat);
     assert.equal(color.internalFormat, "SRGB8_ALPHA8");
     assert.equal(color.type, THREE.UnsignedByteType);
@@ -335,5 +324,26 @@ describe("Three.js asset and geometry contract", () => {
     }
 
     assert.equal(THREE.SRGBColorSpace, "srgb");
+  });
+
+  it("enables Meshopt decoding and packages the matching Basis transcoder", async () => {
+    const loader = createGltfLoader();
+    assert.ok(loader.meshoptDecoder);
+    assert.equal(KTX2_TRANSCODER_PATH, "/three/basis/");
+
+    const [publicJs, publicWasm, packageJs, packageWasm] = await Promise.all([
+      readFile("public/three/basis/basis_transcoder.js"),
+      readFile("public/three/basis/basis_transcoder.wasm"),
+      readFile(
+        "node_modules/three/examples/jsm/libs/basis/basis_transcoder.js"
+      ),
+      readFile(
+        "node_modules/three/examples/jsm/libs/basis/basis_transcoder.wasm"
+      ),
+    ]);
+    assert.ok(publicJs.byteLength > 0);
+    assert.ok(publicWasm.byteLength > 0);
+    assert.deepEqual(publicJs, packageJs);
+    assert.deepEqual(publicWasm, packageWasm);
   });
 });

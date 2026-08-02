@@ -232,7 +232,7 @@ export class RedisFirehoseSubscription {
           ) {
             return [[], []];
           }
-          log.warn("Failed to get missed events with Redis 6 fallback", {
+          log.warn("Failed to get missed events with XPENDING/XCLAIM fallback", {
             error: fallbackError,
           });
           return [[], []];

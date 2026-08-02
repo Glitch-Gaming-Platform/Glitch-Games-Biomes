@@ -39,9 +39,9 @@ describe("camera hotbar exit selection", () => {
     });
   });
 
-  it("recognizes Delete as a camera exit without stealing the dodge key", () => {
+  it("recognizes X as a camera-only exit without stealing normal gameplay input", () => {
     assert.equal(
-      isCameraExitKey("Delete", {
+      isCameraExitKey("KeyX", {
         kind: "camera",
         ref: { kind: "hotbar", idx: 0 },
         mode: { kind: "selfie", label: "Selfie", modeType: "selfie" },
@@ -57,13 +57,14 @@ describe("camera hotbar exit selection", () => {
       false
     );
     assert.equal(
-      isCameraExitKey("KeyX", {
+      isCameraExitKey("Delete", {
         kind: "camera",
         ref: { kind: "hotbar", idx: 0 },
         mode: { kind: "selfie", label: "Selfie", modeType: "selfie" },
       }),
-      false
+      true
     );
+    assert.equal(isCameraExitKey("KeyX", { kind: "hotbar", idx: 0 }), false);
     assert.equal(isCameraExitKey("Delete", { kind: "hotbar", idx: 0 }), false);
   });
 

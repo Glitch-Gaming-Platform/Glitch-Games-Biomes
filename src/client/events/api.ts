@@ -36,6 +36,7 @@ export type GardenHoseEvent =
         | "photo_post"
         | "photo_post_error"
         | "inspect_frame"
+        | "open_jobs_board"
         | "wake_up_complete"
         | "warp_post"
         | "warp_group"

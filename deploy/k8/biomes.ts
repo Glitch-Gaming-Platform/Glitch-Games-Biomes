@@ -423,7 +423,7 @@ const workloadIdentityInitContainer = <k8s.V1Container>{
 };
 
 const redisReadyInitContainer = <k8s.V1Container>{
-  image: "redis:7.0.5-alpine",
+  image: "redis:8.8.1-alpine",
   name: "redis-ready-initcontainer",
   command: [
     "/bin/sh",
@@ -611,7 +611,7 @@ function biomesPodTemplate({
             },
             {
               name: "NODE_OPTIONS",
-              value: `--openssl-legacy-provider --max-old-space-size=${memory}`,
+              value: `--max-old-space-size=${memory}`,
             },
             {
               name: "GOOGLE_CLOUD_PROJECT",

@@ -45,8 +45,13 @@ import { WorldMetadataId } from "@/shared/ecs/ids";
 import {
   HARTHMERE_ADDITIVE_TOWN_OFFSET_X,
   HARTHMERE_ADDITIVE_TOWN_OFFSET_Z,
+  harthmereExtensionEdgeRescuePosition,
   shouldEnableHarthmereAdditiveWorldExtension,
 } from "@/shared/harthmere/world_extension";
+import {
+  HARTHMERE_TOWN_BACK_BOUNDARY_X,
+  harthmereTownAuthoredToWorldX,
+} from "@/shared/harthmere/harthmere_town_horizon";
 import { ch1NativeRunAdmitsPosition } from "@/shared/harthmere/ch1_native_run";
 import {
   PLAYER_HOTBAR_SLOTS,
@@ -303,17 +308,18 @@ function localDevWildsEdgeRescuePosition(
   if (!shouldUseLocalDevStarterTownSpawn()) {
     return;
   }
-  const offsetX = shouldOffsetLocalDevStarterTownSpawn()
-    ? HARTHMERE_EXTRA_TOWN_PLAYER_START_OFFSET_X
-    : 0;
-  const offsetZ = shouldOffsetLocalDevStarterTownSpawn()
-    ? HARTHMERE_EXTRA_TOWN_PLAYER_START_OFFSET_Z
-    : 0;
+  if (shouldOffsetLocalDevStarterTownSpawn()) {
+    return harthmereExtensionEdgeRescuePosition(
+      position,
+      LOCAL_DEV_WILDS_EDGE_RESCUE_BUFFER,
+      harthmereTownAuthoredToWorldX(HARTHMERE_TOWN_BACK_BOUNDARY_X)
+    );
+  }
   const { minY, maxY } = LOCAL_DEV_WILDS_EDGE_RESCUE_BOUNDS;
-  const minX = LOCAL_DEV_WILDS_EDGE_RESCUE_BOUNDS.minX + offsetX;
-  const maxX = LOCAL_DEV_WILDS_EDGE_RESCUE_BOUNDS.maxX + offsetX;
-  const minZ = LOCAL_DEV_WILDS_EDGE_RESCUE_BOUNDS.minZ + offsetZ;
-  const maxZ = LOCAL_DEV_WILDS_EDGE_RESCUE_BOUNDS.maxZ + offsetZ;
+  const minX = LOCAL_DEV_WILDS_EDGE_RESCUE_BOUNDS.minX;
+  const maxX = LOCAL_DEV_WILDS_EDGE_RESCUE_BOUNDS.maxX;
+  const minZ = LOCAL_DEV_WILDS_EDGE_RESCUE_BOUNDS.minZ;
+  const maxZ = LOCAL_DEV_WILDS_EDGE_RESCUE_BOUNDS.maxZ;
   if (position[1] < minY || position[1] > maxY) {
     return;
   }

@@ -79,7 +79,7 @@ const NameEphemeralOverlayComponent: React.FunctionComponent<{
   const { userId, reactResources } = useClientContext();
   const emote = reactResources.use("/ecs/c/emote", entityId);
   const [ephemeralNotif, setEphemeralNotif] = useState<undefined | string>();
-  const notifTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>();
+  const notifTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   useEffect(() => {
     if (
       userId !== entityId &&

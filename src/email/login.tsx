@@ -22,6 +22,7 @@ export const LoginEmail: React.FunctionComponent<{
     textDecoration: "none",
     textAlign: "center",
     boxSizing: "border-box",
+    padding: "12px 20px",
   };
 
   return (
@@ -30,7 +31,7 @@ export const LoginEmail: React.FunctionComponent<{
         <Img src={emailLogo.src} width="32" height="32" />
         <Text>Here is your magic login link (expires in 15 minutes):</Text>
         <Text>
-          <Button pX={20} pY={12} href={link} style={button}>
+          <Button href={link} style={button}>
             Login to Biomes
           </Button>
         </Text>

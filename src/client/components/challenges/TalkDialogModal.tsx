@@ -88,7 +88,7 @@ export const TalkToNpcQuestView: React.FunctionComponent<{
   const { userId, events, reactResources, resources } = useClientContext();
   const [voiceDialogText, setVoiceDialogText] = useState<string | undefined>();
   const [voiceQuerying, setVoiceQuerying] = useState(false);
-  const voiceMessageContext = useRef<string | undefined>();
+  const voiceMessageContext = useRef<string | undefined>(undefined);
 
   const questId = stepBundle.questBundle.biscuit.id;
   const stepId = stepBundle.step.id;

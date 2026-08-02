@@ -96,4 +96,16 @@ describe("mobile control selection", () => {
       false
     );
   });
+
+  it("keeps mobile-only controls off a pointerless desktop embed", () => {
+    assert.equal(
+      shouldShowVirtualJoystick({
+        pointerLockSupported: false,
+        touchDevice: false,
+        deviceType: undefined,
+        osName: "macOS",
+      }),
+      false
+    );
+  });
 });

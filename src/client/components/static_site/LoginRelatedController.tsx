@@ -43,7 +43,7 @@ export const LoginRelatedController: React.FunctionComponent<
   const [showLoginFlow, setShowLoginFlow] = useState(false);
   const [waitlistEmail, setWaitlistEmail] = useState("");
   const [isSignedUp, setIsSignedUp] = useState(false);
-  const loginFlowTypeRef = useRef<"create" | "login" | undefined>();
+  const loginFlowTypeRef = useRef<"create" | "login" | undefined>(undefined);
   const [error, setError] = useError();
   const inputRef = useRef<HTMLInputElement>(null);
   const [showCaptchaSignup, setShowCaptchaSignup] = useState(false);

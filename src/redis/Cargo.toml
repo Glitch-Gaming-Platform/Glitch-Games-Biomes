@@ -8,5 +8,4 @@ crate-type = ["cdylib"]
 name = "biomes"
 
 [dependencies]
-redis-module = "2.0.3"
-
+redis-module = "2.0.8"

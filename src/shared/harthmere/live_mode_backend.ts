@@ -9030,7 +9030,15 @@ export function reduceHarthmereLiveModeBackendState(
     const maxSlots =
       next.inventoryLoot.actors[next.actorId]?.maxInventorySlots ??
       HARTHMERE_DEFAULT_INVENTORY_SLOTS;
-    return countInventorySlots(projected) <= maxSlots;
+    const currentSlots = countInventorySlots(items);
+    const projectedSlots = countInventorySlots(projected);
+    // Native ECS projections can already contain more distinct item keys than
+    // the live-mode slot cap (legacy aliases and migrated saves are the common
+    // cases). Do not reject a debit or stack-only mutation merely because the
+    // starting snapshot is over the cap; only reject changes that make its slot
+    // pressure worse. This lets cooking reserve ingredients while preserving
+    // the capacity guard for collecting a new output stack.
+    return projectedSlots <= Math.max(maxSlots, currentSlots);
   }
 
   // ---------------------------------------------------------------------------

@@ -8,6 +8,7 @@ const content = read('src/shared/harthmere/snapshot_grove_content.ts');
 const runtime = read('src/client/components/challenges/LocalDevSnapshotGroveBibleRuntime.tsx');
 const dialog = read('src/client/components/challenges/TalkToNPCDefaultDialog.tsx');
 const shim = read('src/server/shim/main.ts');
+const staging = read('src/shared/harthmere/ch1_staging.ts');
 
 let failures = 0;
 function ok(condition, message) {
@@ -34,8 +35,9 @@ const rosalyn = blockFor('rosalyn');
 const taye = blockFor('taye');
 const nia = blockFor('guild_clerk_nia');
 
-ok(/seedServerNpc:\s*true/.test(jackie), 'Jackie is a server-seeded talkable Grove fountain NPC');
-ok(/authoredPosition:\s*snapshotGroveFountainPosition\(0,\s*0\)/.test(jackie), 'Jackie is placed back at the live Grove fountain center');
+ok(/seedServerNpc:\s*true/.test(jackie), 'Jackie is a server-seeded talkable Grove starter NPC');
+ok(jackie.includes('SNAPSHOT_GROVE_JACKIE_ORIGINAL_SPAWN_POSITION'), 'Jackie keeps the original May-snapshot Road Ahead home before Chapter 1');
+ok(/jackie:\s*\[[\s\S]*?place:\s*\{ kind: "seeded" \}[\s\S]*?whenAllFlags:\s*\[CH1_FLAGS\.started\][\s\S]*?anchor: "roadhouse_jackie_post"/.test(staging), 'Jackie changes from the shared starter post to the per-player road-house stage only when Chapter 1 starts');
 ok(/seedServerNpc:\s*true/.test(rosalyn), 'Rosalyn is promoted from decorative/lore-only into a server-seeded talkable fountain NPC');
 ok(/seedServerNpc:\s*true/.test(taye), 'Taye is a server-seeded talkable Grove fountain NPC');
 ok(/seedServerNpc:\s*true/.test(nia), 'Nia is a server-seeded talkable Grove fountain NPC');

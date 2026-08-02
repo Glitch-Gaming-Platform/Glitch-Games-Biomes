@@ -1,6 +1,7 @@
 import * as React from "react";
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
 import { defaultHarthmereLiveFetch } from "@/client/components/harthmere_live_fetch";
+import { harthmerePlayerCapacityMessage } from "@/client/components/harthmere_capacity_messages";
 import { harthmereJobsBoardPlayerPosition } from "@/client/components/harthmere_jobs_board/harthmereJobsBoardPosition";
 import {
   HARTHMERE_BUSINESS_INVENTORY_LOOT_UPDATED_EVENT,
@@ -148,6 +149,8 @@ function installHarthmereLootDropPromptStyles() {
 }
 
 function lootClaimErrorLabel(message: string) {
+  const capacityMessage = harthmerePlayerCapacityMessage(message);
+  if (capacityMessage) return capacityMessage;
   if (message.includes("invalid_pickup_token")) {
     return "That loot marker expired. Step away and back.";
   }
@@ -172,7 +175,7 @@ export function HarthmereLootDropWorldInteraction({
     { message: string; ok: boolean } | undefined
   >();
   const [claimingDropId, setClaimingDropId] = React.useState<string>();
-  const feedbackTimer = React.useRef<ReturnType<typeof setTimeout>>();
+  const feedbackTimer = React.useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const refreshDrops = React.useCallback(async () => {
     const nextDrops = await fetchAvailableLootDrops();

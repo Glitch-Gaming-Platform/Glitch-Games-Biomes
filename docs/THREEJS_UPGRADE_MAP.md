@@ -568,3 +568,19 @@ git diff --check
 The full client typecheck and production-like browser visual/performance matrix
 remain required for the actual dependency upgrade even when these focused
 checks pass.
+
+## Post-r185 asset and WebGPU boundary — 2026-08-01
+
+- GLTF loading is centralized on Meshopt 1.2.
+- Official native `gltfpack 1.2` emits `EXT_meshopt_compression` and
+  `KHR_texture_basisu`; the npm/WASM executable is mesh-only and is not valid
+  for production KTX2 generation.
+- The r185 Basis transcoder is packaged at `/three/basis/` and configured once
+  after WebGL2 validation. PNG/JPEG assets remain supported.
+- `game:capabilities:webgpu` records secure-context, adapter, feature, and probe
+  status. `?webgpuProbe=1` performs a real Three WebGPU stock-material render
+  and rejects Three's WebGL fallback.
+- The production game remains on WebGL2. WebGPU adoption requires a separate
+  port of raw shaders, MRT/depth sharing, postprocessing, GPU timers, and all
+  renderer visual gates; adapter availability alone is not authorization to
+  switch backends.

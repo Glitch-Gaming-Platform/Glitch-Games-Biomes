@@ -1,26 +1,26 @@
-FROM --platform=linux/amd64 docker.io/curlimages/curl:latest as linkerd
+FROM docker.io/curlimages/curl:8.21.0@sha256:7c12af72ceb38b7432ab85e1a265cff6ae58e06f95539d539b654f2cfa64bb13 AS linkerd
 ARG LINKERD_AWAIT_RELEASE=0.2.7
 RUN curl -sSLo /tmp/linkerd-await https://github.com/linkerd/linkerd-await/releases/download/release%2Fv${LINKERD_AWAIT_RELEASE}/linkerd-await-v${LINKERD_AWAIT_RELEASE}-amd64 && \
         chmod 755 /tmp/linkerd-await
 
-FROM --platform=linux/amd64 docker.io/curlimages/curl:latest as dcg
-ARG DOCKER_CREDENTIAL_GCR_RELEASE=2.1.6
-RUN curl -fsSL "https://github.com/GoogleCloudPlatform/docker-credential-gcr/releases/download/v${DOCKER_CREDENTIAL_GCR_RELEASE}/docker-credential-gcr_linux_amd64-${DOCKER_CREDENTIAL_GCR_RELEASE}.tar.gz" \
+FROM docker.io/curlimages/curl:8.21.0@sha256:7c12af72ceb38b7432ab85e1a265cff6ae58e06f95539d539b654f2cfa64bb13 AS dcg
+ARG GCR_HELPER_RELEASE=2.1.6
+RUN curl -fsSL "https://github.com/GoogleCloudPlatform/docker-credential-gcr/releases/download/v${GCR_HELPER_RELEASE}/docker-credential-gcr_linux_amd64-${GCR_HELPER_RELEASE}.tar.gz" \
         | tar xz docker-credential-gcr -C /tmp \
         && chmod +x /tmp/docker-credential-gcr
 
 
-FROM --platform=linux/amd64 ubuntu:22.04
+FROM ubuntu:24.04
 
 RUN groupadd --gid 1001 nextjs && useradd --uid 1001 --gid 1001 -m nextjs
 
 WORKDIR /app
 ENV WORKDIR=/app
-ENV NEXT_TELEMETRY_DISABLED 1
-ENV GOOGLE_CLOUD_PROJECT zones-cloud
-ENV CLOUDSDK_INSTALL_DIR /usr/local/gcloud/
-ENV NVM_DIR /usr/local/nvm
-ENV IS_SERVER true
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV GOOGLE_CLOUD_PROJECT=zones-cloud
+ENV CLOUDSDK_INSTALL_DIR=/usr/local/gcloud/
+ENV IS_SERVER=true
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 
 COPY --from=linkerd /tmp/linkerd-await /usr/bin/linkerd-await
 COPY --from=dcg /tmp/docker-credential-gcr /usr/bin/docker-credential-gcr
@@ -50,13 +50,13 @@ RUN apt-get update --fix-missing && apt-get -y install \
         python3-venv \
         python3-dev
 
-# Install Bazel.
-ARG BAZEL_RELEASE=6.0.0
-RUN curl -fsSL https://bazel.build/bazel-release.pub.gpg | gpg --dearmor > ${HOME}/bazel-archive-keyring.gpg && \
-        mv ${HOME}/bazel-archive-keyring.gpg /usr/share/keyrings && \
-        echo "deb [arch=amd64 signed-by=/usr/share/keyrings/bazel-archive-keyring.gpg] https://storage.googleapis.com/bazel-apt stable jdk1.8" | tee /etc/apt/sources.list.d/bazel.list && \
-        apt-get update && apt-get -y install bazel-${BAZEL_RELEASE} && \
-        ln -s $(which bazel-${BAZEL_RELEASE}) /usr/bin/bazel
+# Bazelisk reads the fork's .bazelversion so builders and local development use
+# the same Bazel 9 release instead of a separately pinned apt package.
+ARG BAZELISK_RELEASE=1.28.1
+RUN curl -fsSL -o /usr/local/bin/bazelisk \
+        https://github.com/bazelbuild/bazelisk/releases/download/v${BAZELISK_RELEASE}/bazelisk-linux-amd64 && \
+        chmod 755 /usr/local/bin/bazelisk && \
+        ln -sf /usr/local/bin/bazelisk /usr/local/bin/bazel
 
 RUN apt-get clean && apt-get purge && apt-get autoremove --purge -y
 
@@ -64,7 +64,7 @@ RUN ln -sf python3 /usr/bin/python
 
 RUN echo "en_US.UTF-8 UTF-8" > /etc/locale.gen
 RUN locale-gen en_US.UTF-8
-ENV LANG en_US.UTF-8
+ENV LANG=en_US.UTF-8
 
 RUN pip3 install --no-cache --upgrade pip \
         virtualenv \
@@ -81,20 +81,12 @@ RUN curl -sSL https://sdk.cloud.google.com | bash
 RUN pip3 uninstall crcmod && \
         pip3 install --no-cache-dir -U crcmod
 
-# Install nvm and node.
-RUN mkdir ${NVM_DIR}
-ENV NODE_VERSION 20.0.0
-ARG NVM_INSTALL_RELEASE=0.39.1
-RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v${NVM_INSTALL_RELEASE}/install.sh | bash \
-        && . "$NVM_DIR/nvm.sh"  \
-        && nvm install ${NODE_VERSION} \
-        && nvm alias default ${NODE_VERSION} \
-        && nvm use default
-
-ENV PATH ${NVM_DIR}/versions/node/v${NODE_VERSION}/bin:$PATH
-
-# Install yarn.
-RUN npm install -g yarn
+# Install the exact fork runtime without the extra NVM bootstrap/network layer.
+ARG NODE_VERSION=24.18.1
+ARG NODE_PACKAGE=node-v${NODE_VERSION}-linux-x64
+RUN curl -fsSL https://nodejs.org/dist/v${NODE_VERSION}/${NODE_PACKAGE}.tar.xz | tar -xvJC /usr/local
+ENV PATH=/usr/local/${NODE_PACKAGE}/bin:${PATH}
+RUN corepack enable && corepack prepare yarn@1.22.22 --activate
 
 # Very slowly changing, do this first.
 COPY public public/
@@ -103,15 +95,22 @@ COPY src/galois/data src/galois/data/
 COPY scripts/build_server.sh scripts/build_server.sh
 COPY scripts/tsconfig-replace-paths scripts/tsconfig-replace-paths
 # Copy the yarn environment and set it up.
-COPY .env \
-        yarn.lock \
+COPY yarn.lock \
         *.ts *.js *.json \
         ./
 RUN yarn install --frozen-lockfile
 
+RUN npm rebuild msgpackr-extract sharp segfault-raub --foreground-scripts \
+    && node - <<'NODE'
+for (const name of ["sharp", "segfault-raub"]) require(name);
+const msgpackr = require("msgpackr");
+if (!msgpackr.isNativeAccelerationEnabled) throw new Error("msgpackr native acceleration is unavailable");
+console.log("OK Bob Linux Node 24 native dependencies");
+NODE
+
 # Set some enviornment up (important is after yarn!)
-ENV NODE_ENV production
-ENV NODE_OPTIONS --openssl-legacy-provider
+ENV NODE_ENV=production
+ENV NODE_OPTIONS=--enable-source-maps
 
 # Source frequently changes, so do in order of likelihood to change.
 COPY src/galois/js src/galois/js

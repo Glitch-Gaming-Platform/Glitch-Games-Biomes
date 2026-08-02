@@ -104,6 +104,10 @@ const STEP_TEXT: Record<string, StepText> = {
     step_label: "Craft Completed",
     step_description: "The player completes a craft.",
   },
+  jobs_board: {
+    step_label: "Jobs Board",
+    step_description: "The player accepts, advances, or completes a board job.",
+  },
   equipment_change: {
     step_label: "Equipment Changed",
     step_description: "The player changes equipped gear.",

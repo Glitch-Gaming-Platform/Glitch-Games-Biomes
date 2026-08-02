@@ -124,7 +124,9 @@ const zBehaviorFlyParams = z
       .object({
         periodSeconds: z
           .number()
-          .describe("The period of one oscillation in seconds."),
+          .describe(
+            "The period of one oscillation in seconds; non-positive legacy values disable oscillation."
+          ),
         strength: z.number().describe("Strength of the oscillation force."),
       })
       .optional()

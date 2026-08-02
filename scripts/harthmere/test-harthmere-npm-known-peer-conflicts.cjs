@@ -8,8 +8,9 @@ function dep(name) { return (pkg.dependencies && pkg.dependencies[name]) || (pkg
 function check(label, condition) { if (condition) console.log(`OK ${label}`); else { console.log(`FAIL ${label}`); ok = false; } }
 console.log('== Harthmere known npm peer conflict tests current ==');
 console.log(`Root: ${root}\n`);
-check('old ReactGrid 4.0.x peer conflict is removed', !/^\^?4\.0\./.test(dep('@silevis/reactgrid')));
+check('unused ReactGrid peer conflict is removed', !dep('@silevis/reactgrid'));
 check('old emoji-mart current React 17 peer conflict is removed', !/^\^?3\./.test(dep('emoji-mart')));
+check('@emoji-mart/react React <=18 peer conflict is removed', !dep('@emoji-mart/react'));
 check('old @types/emoji-mart current/current mismatch is removed', !dep('@types/emoji-mart'));
 check('old react-json-view React 18 peer conflict is removed', !dep('react-json-view'));
 check('old stylelint-config-prettier Stylelint <15 peer conflict is removed', !dep('stylelint-config-prettier'));

@@ -15,9 +15,11 @@ using voxeloo::biomes::AABB;
 using voxeloo::biomes::BiomesVertex;
 using voxeloo::biomes::intersect_ray_aabb;
 using voxeloo::biomes::Material;
+using voxeloo::biomes::OcclusionMask;
 using voxeloo::biomes::SparseBlock;
 using voxeloo::biomes::SparseMap;
 using voxeloo::biomes::SparseTable;
+using voxeloo::biomes::to_occlusion_mask;
 using voxeloo::biomes::VolumeBlock;
 using voxeloo::biomes::VolumeMap;
 using voxeloo::transport::Blob;
@@ -276,4 +278,24 @@ TEST_CASE("Test intersect_ray_aabb()", "[all]") {
   AABB aabb = {{1.f, 0.f, 1.f}, {2.f, 1.f, 2.f}};
   REQUIRE(intersect_ray_aabb({0.f, 0.f, 0.f}, {1.f, 1.f, 1.f}, aabb));
   REQUIRE(!intersect_ray_aabb({0.f, 0.f, 0.f}, {-1.f, 1.f, 1.f}, aabb));
+};
+
+TEST_CASE(
+    "Occlusion masks preserve value semantics for language bindings", "[all]") {
+  VolumeBlock<Material> block;
+  block.set(0, 0, 0, 1);
+  const auto original = to_occlusion_mask(block, [](Material material) {
+    return material == 1;
+  });
+
+  const auto copied = original;
+  REQUIRE(copied.volume_occlusion_summary() == OcclusionMask::MIXED);
+  REQUIRE(copied.get(0));
+
+  auto assigned = to_occlusion_mask(block, [](Material material) {
+    return material == 0;
+  });
+  assigned = original;
+  REQUIRE(assigned.volume_occlusion_summary() == OcclusionMask::MIXED);
+  REQUIRE(assigned.get(0));
 };

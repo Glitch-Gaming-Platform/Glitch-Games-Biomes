@@ -3,6 +3,40 @@ set -euo pipefail
 
 cd "$(dirname "$0")/../.."
 
+# This helper runs Node-based asset and snapshot preparation directly. Keep it
+# on the same Node 24 runtime as Next, Webpack, and the final Linux image.
+node_major() {
+  local node_bin="$1"
+  "$node_bin" -p "process.versions.node.split('.')[0]" 2>/dev/null || true
+}
+
+prepend_node24_bin() {
+  local bin_dir="$1"
+  if [ -x "$bin_dir/node" ] && [ "$(node_major "$bin_dir/node")" = "24" ]; then
+    export PATH="$bin_dir:$PATH"
+    return 0
+  fi
+  return 1
+}
+
+if ! command -v node >/dev/null 2>&1 || [ "$(node_major "$(command -v node)")" != "24" ]; then
+  for node_bin_dir in \
+    "$HOME"/.nvm/versions/node/v24*/bin \
+    /opt/homebrew/opt/node@24/bin \
+    /usr/local/opt/node@24/bin \
+    "$HOME"/.fnm/node-versions/v24*/installation/bin \
+    "$HOME"/.volta/bin; do
+    if prepend_node24_bin "$node_bin_dir"; then
+      break
+    fi
+  done
+fi
+
+if ! command -v node >/dev/null 2>&1 || [ "$(node_major "$(command -v node)")" != "24" ]; then
+  echo "ERROR Node 24 is required; install the version pinned by .nvmrc before preparing the image." >&2
+  exit 1
+fi
+
 export NEXT_TELEMETRY_DISABLED="${NEXT_TELEMETRY_DISABLED:-1}"
 export SKIP_PROD_LOAD="${SKIP_PROD_LOAD:-true}"
 export SKIP_MISSING_ASSET_CHECK="${SKIP_MISSING_ASSET_CHECK:-true}"
@@ -37,6 +71,11 @@ PYTHON_BIN="$VENV_DIR/bin/python"
 if [ ! -x "$PYTHON_BIN" ]; then
   PYTHON_BIN="$VENV_DIR/bin/python3"
 fi
+
+# Keep the browser-side Basis transcoder exactly matched to the installed
+# Three.js KTX2Loader. These files are also tracked for direct local Next builds.
+"$PYTHON_BIN" scripts/assets/install_gltfpack.py
+node scripts/assets/sync-three-transcoders.cjs
 
 REQ_HASH="$(sha256sum requirements.txt | awk '{print $1}')"
 REQ_STAMP="$VENV_DIR/.glitch-requirements.sha256"

@@ -391,15 +391,28 @@ July 29 robot-story follow-up added four more concrete traps:
   vendor interaction in control while its transaction is missing. Their
   Chapter 1 requirements deliberately set `blocksChapterInteraction` and
   `autoCompleteWhenReady`; the browser gate should install production-shaped
-  external evidence, verify every routed supplier target, and wait for signed
-  auto-completion. Waiting for a second Chapter 1 prompt recreates the duplicate
-  HUD/control bug the integration was designed to remove. The board can render
-  through either its dedicated world prompt or the production Unified HUD's
-  `Read Jobs Board` button; require a visible built-in control, not one renderer's
-  private test id. Close any interactive game renderer before this headless
-  campaign: if the focused player enters `icing` or loses challenge components,
-  treat that as session/resource contention and prove the external requirement
-  reached `ready` before diagnosing Chapter 1 auto-completion.
+  external evidence, verify every still-missing routed supplier target, and wait
+  for signed auto-completion. The objective can legitimately begin with nonzero
+  supplier progress because purchases made by earlier Chapter 1 objectives are
+  real vendor transactions; follow the live `targetLabel` and require monotonic
+  progress instead of assuming Rin is always index zero. Waiting for a second
+  Chapter 1 prompt recreates the duplicate HUD/control bug the integration was
+  designed to remove. The board can render through either its dedicated world
+  prompt or the production Unified HUD's `Read Jobs Board` button; require a
+  visible built-in control, not one renderer's private test id. Close any
+  interactive game renderer before this headless campaign: if the focused player
+  enters `icing` or loses challenge components, treat that as session/resource
+  contention and prove the external requirement reached `ready` before
+  diagnosing Chapter 1 auto-completion.
+
+- **Promoted Chapter 1 cast members keep their canonical ECS identity.**
+  AUGUR-9 is the existing Mucked Robot, not a second seeded robot. Its
+  authoritative ECS label remains `Mucked Robot`; the Chapter 1 projection
+  presents `AUGUR-9` only after the chapter starts. Native-cast browser checks
+  must prove that canonical entity, position, and NPC metadata exist without
+  rewriting the shared label. Presentation tests separately prove the
+  per-player staged name. The focused cast seeder must continue to exclude all
+  promoted actors.
 
 - **Normalize Chapter 1 actors before page navigation, not after the quest
   checkpoint.** The July 30 reused snapshot allocated a fresh test username to
@@ -542,7 +555,7 @@ Player`; neither is evidence that the player entity or quest state was reset.
 - **Build server bundles through `server.webpack.config.cjs`.** The former
   `node -r ts-node/register ... --config server.webpack.config.ts` command now
   crosses the repository's ESM boundary and fails with `exports is not
-defined`. Use `NODE_ENV=production NODE_OPTIONS=--openssl-legacy-provider
+defined`. Use `NODE_ENV=production NODE_OPTIONS=
 ./node_modules/.bin/webpack --config server.webpack.config.cjs --mode
 production`. Keep deployment docs and local full-flow runners on that exact
   command so a copied release recipe cannot fail after the expensive Next
@@ -624,6 +637,19 @@ production`. Keep deployment docs and local full-flow runners on that exact
   hidden-state and nearby-role lookup), and the cursor rejects non-finite rays
   before terrain marching. Preserve the canonical positive entity id: this is
   a per-player presentation bridge, not a duplicate NPC or shared-world move.
+
+- **A promoted quest NPC's unconditional stage is its shared pre-quest home.**
+  On August 1, Jackie's canonical ECS seed was moved from the May snapshot's
+  Road Ahead post to the Chapter 1 road-house. The chapter projection then
+  returned that road-house position even with `unlocked: false`, so a new
+  player walking up the Grove stores could no longer find the native quest
+  giver. Recover historical homes from the installed `snapshot_backup.json`
+  entity (`npc_metadata.spawn_position`), not from a later story anchor. Keep
+  the first stage direction of every `promotesExistingEntity` cast member on
+  `kind: "seeded"`; add conditional per-player directions for chapter start,
+  active objective, flags, and endings. The focused gate is the Chapter 1
+  staging unit suite plus the owning NPC seed test. Do not pay for a browser
+  run while this data/phase contract is still changing.
 
 - **Focused robot-story fixtures can cancel background Chapter 1 polling while
   replacing the actor state.** Chromium reports the canceled
@@ -1289,8 +1315,10 @@ isolated sync origin>`, wait for the local-player HUD/name and the observer
   republishes saved active gates once per second. A focused first-gate audit
   briefly showed the relocated fence gate but then reverted to desert/winter.
   Hold only the requested gate IDs in the disposable browser page for the
-  capture duration, then release the interval. Never change shared story state
-  merely to make a catalog scene visible.
+  capture duration, then release the interval. Gate visibility begins before
+  the opening animation advances, so wait for both `visible` and a positive
+  aperture instead of sampling the first mesh frame. Never change shared story
+  state merely to make a catalog scene visible.
 - **Old test NPCs are not cutscene extras.** The July 31 first-gate sheet showed
   `Admin Robot` and `Grover III`, both abandoned local test entities within the
   shot, even after Chapter 1 projection was isolated. A focused visual page now
@@ -1359,8 +1387,15 @@ The helper uses the cheapest probe that is safe for each service:
 - web must answer HTTP with `200`, `401`, or `403`;
 - Redis must answer a real RESP `PING`; a TCP proxy can remain listening after
   its Redis upstream is removed, so connect-only produced a false green and a
-  three-minute browser bootstrap timeout. Sync remains TCP-only — never curl
-  the sync/WebSocket port;
+  three-minute browser bootstrap timeout. Docker Desktop does not route host
+  traffic directly to a Linux container's bridge IP; expose the Redis test
+  container on `127.0.0.1` or use the documented published-port `socat` sidecar,
+  then require `redis-cli ... PING` to return `PONG`. Never substitute a host
+  process that forwards to the transient container IP. Production does not use
+  this desktop bridge: the app reaches the private Redis VM through its VNet,
+  and the deployment gate must still pass the same RESP/write/persistence
+  health checks before image push and before a new revision. Sync remains
+  TCP-only — never curl the sync/WebSocket port;
 - after the external web check, the helper enters the current unified-app
   container once and checks the remaining required services' metrics `/ready`
   endpoints (logic, sync, trigger, shim, and Bikkie). Those endpoints turn
@@ -1374,6 +1409,35 @@ probes are bounded, belong to the current container generation automatically,
 and cannot combine stale lifecycle rows with newly opened sockets. A listening
 sync or HTTP port alone is still insufficient: the measured production stack
 accepts traffic well before every service registry is ready.
+
+- **Signed warp authorization must cover the transition, not camera float
+  representation.** The August 2 exact-image Chapter One gate returned HTTP 200,
+  but Logic rejected its signed warp with `Chapter 1 warp authorization failed`.
+  Redis, Web, Logic, and Sync were healthy. The signed Web input carried camera
+  orientation `[0.02, 3.15]`; the Logic-side event carried `[0, 3]`. Orientation
+  only controls the view after arrival, so token version 2 signs the player,
+  action, dungeon, run, party, encounter-reset flag, and exact destination while
+  deliberately excluding orientation. Regressions must prove that a transported
+  orientation still validates and that any destination or transition change is
+  rejected. A browser gate that expects a signed event must also scan Logic logs
+  for authorization rollback; an HTTP response alone is not commit evidence.
+
+- **Pointerless desktop is not mobile.** Headless Chromium intentionally runs
+  without a durable Pointer Lock during most catalog tests, but that capability
+  gap must not mount touch joysticks, the hold-to-crouch button, mobile action
+  prompts, or the mobile hotbar in a desktop viewport. Use
+  `HARTHMERE_E2E_DESKTOP_CONTROLS_ONLY=1` for desktop screenshot evidence; the
+  runner keeps Pointer Lock capability visible and asserts that both mobile HUD
+  markers are absent. The product's pointerless desktop fallback still attaches
+  mouse/keyboard input and suppresses the lock overlay independently. Only an
+  actual touch device or mobile/tablet UA enables the virtual joystick. If the
+  stale Wake Up bootstrap screen is still visible, let the documented
+  post-bootstrap normalization/reload clear it before clicking the desktop
+  `Enter Game` overlay; the two full-screen layers can coexist briefly, but the
+  onboarding layer correctly owns pointer events during that interval.
+  Desktop evidence uses the bounded 48 m / 0.5 render profile and returns the
+  player to the Grove center before capture; do not use the final diagnostic
+  position from a gate or dungeon test as the release screenshot.
 
 The bounds include host scheduling headroom: 10 seconds for the external web
 probe and 20 seconds for the one `docker exec` that checks all internal ready
@@ -1500,22 +1564,32 @@ once and keep it; use a fresh browser context (not a fresh stack) per case. The
 runbook's memory rules still apply: one Chromium context at a time, serial not
 parallel, `NODE_OPTIONS=--max-old-space-size=3072`.
 
-The local production launcher now gives Redis and the unified app an
+The local production launcher now gives Redis and the web app an
 `unless-stopped` restart policy, a real health check, and a 15-minute default
 idle window for native E2E. For focused native browser gates it waits only for
-`web logic sync trigger shim bikkie`; unrelated workers can finish warming in
-the background. Override that set with the space-delimited
+`web logic sync trigger shim bikkie`. Override that set with the space-delimited
 `LOCAL_STACK_READY_SERVICES` variable when a specialized gate needs more.
 
-On the next rebuilt stack, `HARTHMERE_NATIVE_ECS_E2E=1` also defaults
+Do not co-locate that browser stack with Anima and Gaia in a 16 GiB Docker VM.
+The August 2 platform candidate loaded all 262,253 terrain shards with zero
+holes, then the unified container was OOM-killed because Web/Sync and native
+simulation shared the same memory budget. Production already uses separate web
+and simulation Container Apps. The local smoke now mirrors that boundary in
+phases: it boots the web role and snapshots Redis, stops web, runs the **same
+immutable image ID** as a dedicated simulation role with a tiny same-image asset
+server, requires the aggregate `anima=1 gaia=1` readiness marker and zero
+restarts/OOM, then restores the web role without flushing Redis for browser
+tests. The simulation phase uses the production 900-attempt startup allowance;
+the full Gaia terrain map can take more than two minutes under AMD64 emulation.
+
+`HARTHMERE_NATIVE_ECS_E2E=1` also defaults
 `GLITCH_FOCUSED_NATIVE_E2E_STACK=1`. That topology embeds Ask's RPC/indexes in
 the already-required Logic replica and does not start separate Ask, Chat, OOB,
 Sidefx, or Notify processes. The current full stack measured 12.8 GiB in the
 app container; the omitted processes accounted for roughly 6 GiB of RSS
-(including ~2.5 GiB Ask and ~2.3 GiB Sidefx). The current warm stack is left
-untouched; measure the focused topology after the next image build rather than
-restarting just to adopt it. Set `GLITCH_FOCUSED_NATIVE_E2E_STACK=0` for a full
-local rehearsal or any gate that explicitly needs those services.
+(including ~2.5 GiB Ask and ~2.3 GiB Sidefx). Set
+`GLITCH_FOCUSED_NATIVE_E2E_STACK=0` only for a specialized web-role gate that
+explicitly needs those services; native simulation remains a separate phase.
 
 Focused stacks also start Trigger beside Sync. Both services independently
 hydrate the same 300k+ entity snapshot and neither requires the other's
@@ -3185,3 +3259,189 @@ memory while interrupting the application. Reuse an exact recent image whose
 Redis snapshot already contains the terrain, or start a small isolated
 terrain-bearing runtime. Reconciliation belongs only to an actual terrain or
 world-content migration.
+
+## Fork platform-upgrade fast lanes — 2026-08-01
+
+These lanes validate the production fork's Node 24/uWebSockets, TypeScript 6,
+Bazel 9, Emscripten 6, gltfpack/KTX2, WebGPU probe, and Redis 8.8.1 boundaries
+without starting the full browser catalog after every edit.
+
+### Node 24 test and zRPC boundary
+
+Use the repository launchers for TypeScript tests. On Node 22+ they pass
+`--no-experimental-strip-types`, keeping `ts-node`, `tsconfig-paths`, and the
+configured CommonJS transform authoritative instead of letting Node 24 consume
+test files before the `@/` alias hook runs. The fast launcher omits that unknown
+flag on a transitional Node 20 developer shell; the production build and final
+platform gate still use the repository's Node 24 pin.
+
+`uWebSockets.js` must remain on the pinned Node-24-capable release. Verify the
+native ABI and all three zRPC transports after changing Node or the addon:
+
+```bash
+node -e 'const u=require("uWebSockets.js"); console.log(process.versions.modules, typeof u.App)'
+./b test -p 'src/server/shared/zrpc/test/zrpc.test.ts' \
+  --grep 'Can handle a simple RPC'
+```
+
+### Redis 8.8.1 is the exact server target
+
+Production game-world Redis is the private `biomes-redis-prod` VM on Redis
+8.8.1. Local tests must use that exact patch; Homebrew Redis 7 or Ubuntu's
+default package is not an equivalent gate. The production VM remains RDB-only,
+12 GB/noeviction, and private to the application subnet. Local containers are
+disposable and intentionally do not copy those persistence/network settings.
+
+Start one isolated server and reuse it for both protocol passes:
+
+```bash
+docker run --rm -d --name biomes-redis88-upgrade-test \
+  -p 127.0.0.1:6388:6379 \
+  redis:8.8.1-alpine redis-server --save '' --appendonly no
+
+REDIS_TESTS=1 REDIS_TESTS_PORT=6388 \
+  ./b test -b -p \
+  'src/**/{world,firehose,chat,discovery,distributed_notifier,election,pubsub}/{/test/*.ts,/*.test.ts}' \
+  --timeout 15000
+
+BIOMES_REDIS_PROTOCOL=2 REDIS_TESTS=1 REDIS_TESTS_PORT=6388 \
+  ./b test -b -p \
+  'src/**/{world,firehose,chat,discovery,distributed_notifier,election,pubsub}/{/test/*.ts,/*.test.ts}' \
+  --timeout 15000
+```
+
+RESP3 is the normal ioredis 6 path. RESP2 is an incident rollback, not the
+default. A failure in either lane is an upgrade defect; do not weaken Lua,
+stream, HFC, or persistence assertions to make it green.
+
+The August 2 upgrade rehearsal exposed a persisted-data edge case that belongs
+in this lane. The legacy `Chirp` NPC biscuit encodes
+`oscillate: { periodSeconds: 0, strength: 0 }`; treating that as a normal period
+used to evaluate `sin(Infinity) * 0`, publish a `NaN` Y position through HFC,
+and terminate Sync, Web, Logic, Anima, and Gaia when current Zod decoded it.
+Zero/non-finite oscillator inputs now mean disabled, and HFC independently
+quarantines malformed components on writes, bootstrap reads, and live pub/sub
+from an older rolling-revision writer. Keep both focused gates:
+
+```bash
+scripts/harthmere/t.sh file src/shared/npc/behavior/test/fly.test.ts
+
+REDIS_TESTS=1 REDIS_TESTS_PORT=6388 \
+  ./b test -b -p 'src/server/shared/world/hfc/test/hfc.test.ts' \
+  --timeout 15000
+```
+
+The HFC test intentionally preserves valid sibling components when it drops a
+bad position. A green test must not be obtained by discarding the whole entity
+update or by allowing a decode exception to stop the subscription.
+
+Static deployment guards:
+
+```bash
+node scripts/glitch/test-production-redis8-stream-compat.cjs .
+node scripts/glitch/test-production-deploy-local-redis-smoke.cjs .
+```
+
+### WASM, ECS, Anima, and Gaia
+
+Run these in order so a generated-WASM failure is isolated before the larger
+server suites:
+
+```bash
+bazelisk build //src:all_ts_deps --ui_event_filters=-debug
+./b --no-check-ts-deps ts-deps build
+./b test -p 'src/shared/wasm/test/*.test.ts'
+bazelisk test //voxeloo/... //ecs:ecs_ast_test //ecs:ts_test \
+  --test_output=errors --ui_event_filters=-debug
+./b test -p '{src/server/gaia/**/*.test.ts,src/server/anima/**/*.test.ts}' \
+  --timeout 10000
+```
+
+ECS, Anima, and Gaia do not have a separate package version. Their upgrade gate
+is compatibility of generated component IDs, wire formats, regular/HFC writes,
+sharding, terrain buffers, `npc_state`, and persisted data.
+
+### gltfpack, KTX2, and Three assets
+
+```bash
+npm run assets:install-gltfpack
+npm run assets:sync-three-transcoders
+./b galois test-python
+./b test -b -p 'src/client/game/util/test/three_asset_contract.test.ts' \
+  --timeout 30000
+```
+
+The native gltfpack test must prove `EXT_meshopt_compression`,
+`KHR_texture_basisu`, and an embedded `image/ktx2`. The npm/WebAssembly
+gltfpack executable is not a valid KTX2 test because it is compiled without
+BasisU.
+
+### WebGPU without replacing WebGL2
+
+```bash
+./b test -b -p 'src/client/renderer/webgpu_probe.test.ts'
+```
+
+For a browser capability smoke, add `webgpuProbe=1` to the local game URL and
+inspect `game:capabilities:webgpu`. `smoke-passed` proves Three initialized an
+actual WebGPU backend and rendered a tiny stock-material scene. It does not
+prove the custom Biomes raw-GLSL/MRT pipeline is WebGPU-compatible; production
+game rendering must remain WebGL2 until that full port is separately tested.
+
+### Consolidated platform gate
+
+After focused lanes are green, run one TypeScript check and one set of builds:
+
+```bash
+NODE_OPTIONS=--max-old-space-size=6144 \
+  node_modules/.bin/tsc -p tsconfig.json --pretty false
+
+BIOMES_BUILD_ID=platform-upgrade-validation-YYYYMMDD \
+  NEXT_TELEMETRY_DISABLED=1 ./b build next
+BIOMES_BUILD_ID=platform-upgrade-validation-YYYYMMDD ./b build server
+
+scripts/harthmere/t.sh full
+```
+
+The concrete local build id keeps Next and server Webpack on the same artifact
+identity even when the workspace starts without `.next/BUILD_ID`. The full
+suite is the final non-browser gate; focused lanes do not replace it.
+
+### One immutable candidate for smoke and any later deployment
+
+The production smoke artifact and the eventual deploy artifact must be the
+same Docker image ID. Build once only after source, generated assets, `.next`,
+and `dist` are final:
+
+```bash
+TAG=platform-upgrade-validation-YYYYMMDD-r1
+scripts/glitch/deploy-production-local-redis-smoke.sh \
+  --local-smoke --keep-local --tag "$TAG"
+
+docker image inspect "biomes-node:local-$TAG" --format '{{.Id}}'
+docker image inspect "glitchgames.azurecr.io/biomes-node:$TAG" --format '{{.Id}}'
+docker inspect biomes-prod-smoke-app --format '{{.Image}}'
+```
+
+All three IDs must match. Run Chapter One and WebGL/WebGPU checks against the
+still-running `biomes-prod-smoke-app` container. If a test fails, the candidate
+is rejected: fix the source, create a new tag, rebuild once, and repeat. Never
+repair a failed image in place or reuse its immutable tag.
+
+If production deployment is later and separately authorized, reuse the tested
+local image without rebuilding:
+
+```bash
+scripts/glitch/deploy-production-local-redis-smoke.sh \
+  --skip-build --push --tag "$TAG"
+```
+
+Before that command, re-check that both local tags still resolve to the
+recorded image ID. A source rebuild between smoke and push invalidates the
+candidate even if the textual tag is unchanged. Running the local command
+without `--push` never creates an Azure revision or changes traffic.
+
+Do not rebuild Next, Webpack, Docker, or generated WASM concurrently. Reuse one
+warm lane, then run Chapter One browser tests serially. None of these local
+commands authorizes an Azure revision, Redis change, restart, image push, or
+production deployment.

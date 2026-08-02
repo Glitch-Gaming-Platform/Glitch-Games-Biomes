@@ -157,20 +157,35 @@ function getDistanceFromSpawn({ npc }: { npc: SimulatedNpc }): {
   };
 }
 
-function getOscillatingForce({
+export function getOscillatingForce({
   offset,
   periodSeconds,
   strength,
+  nowMs = Date.now(),
 }: {
   offset: number;
   periodSeconds: number;
   strength: number;
+  nowMs?: number;
 }): Vec3 {
+  // Some legacy NPC biscuits use zeroes to mean "oscillation disabled".
+  // Dividing by a zero period produces Infinity, and Math.sin(Infinity) is
+  // NaN; multiplying that by zero does not recover a finite value. Treat any
+  // unusable oscillator input as the intended no-op instead of poisoning the
+  // NPC's high-frequency position state.
+  if (
+    !Number.isFinite(offset) ||
+    !Number.isFinite(periodSeconds) ||
+    periodSeconds <= 0 ||
+    !Number.isFinite(strength) ||
+    strength === 0 ||
+    !Number.isFinite(nowMs)
+  ) {
+    return zeroVector;
+  }
   return [
     0,
-    Math.sin(
-      (Math.PI / (periodSeconds * 1000)) * new Date().getTime() + offset
-    ) * strength,
+    Math.sin((Math.PI / (periodSeconds * 1000)) * nowMs + offset) * strength,
     0,
   ];
 }

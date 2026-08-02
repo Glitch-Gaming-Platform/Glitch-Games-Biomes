@@ -65,7 +65,14 @@ export type RedisConnectionSpec =
   | TcpConnectionSpec
   | K8ConnectionSpec;
 
+// ioredis 6 defaults to RESP3. Keep that modern protocol explicit so future
+// client upgrades cannot silently change the production wire contract again,
+// while retaining a one-variable rollback for incident response.
+export const BIOMES_REDIS_PROTOCOL =
+  process.env.BIOMES_REDIS_PROTOCOL === "2" ? 2 : 3;
+
 export const BASE_REDIS_OPTIONS: RedisOptions = {
+  protocol: BIOMES_REDIS_PROTOCOL,
   keepAlive: 5000 as any,
   autoResubscribe: false,
   autoResendUnfulfilledCommands: true,

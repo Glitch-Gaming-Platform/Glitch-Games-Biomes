@@ -1,4 +1,4 @@
 import ArtTool from "@/client/components/art/ArtTool";
-import * as ReactDOM from "react-dom";
+import { createRoot } from "react-dom/client";
 
-ReactDOM.render(<ArtTool />, document.getElementById("app"));
+createRoot(document.getElementById("app")!).render(<ArtTool />);

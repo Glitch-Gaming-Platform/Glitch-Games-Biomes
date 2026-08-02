@@ -1,0 +1,128 @@
+module(
+    name = "biomes",
+    version = "1.0.0",
+)
+
+# Bazel 9 no longer reads WORKSPACE files. Keep all active fork build
+# dependencies here so local, CI, and container builds resolve the same graph.
+bazel_dep(name = "bazel_skylib", version = "1.9.0")
+bazel_dep(name = "platforms", version = "1.1.0")
+bazel_dep(name = "rules_cc", version = "0.2.17")
+bazel_dep(name = "rules_nodejs", version = "6.7.5")
+bazel_dep(name = "rules_python", version = "2.2.0")
+bazel_dep(name = "rules_rust", version = "0.73.0")
+bazel_dep(name = "rules_rust_wasm_bindgen", version = "0.73.0")
+bazel_dep(name = "rules_shell", version = "0.8.0")
+bazel_dep(name = "pybind11_bazel", version = "3.0.1")
+
+# Emscripten 6.0.5 is newer than the current BCR entry. The official SDK
+# supports selecting an exact tag with a git override while retaining its
+# bzlmod toolchain registration.
+bazel_dep(name = "emsdk", version = "6.0.5")
+git_override(
+    module_name = "emsdk",
+    remote = "https://github.com/emscripten-core/emsdk.git",
+    strip_prefix = "bazel",
+    tag = "6.0.5",
+)
+
+node = use_extension("@rules_nodejs//nodejs:extensions.bzl", "node")
+node.toolchain(node_version = "24.18.1")
+use_repo(node, "nodejs")
+
+python = use_extension("@rules_python//python/extensions:python.bzl", "python")
+python.defaults(python_version = "3.12")
+python.toolchain(python_version = "3.12")
+use_repo(python, "python_3_12")
+register_toolchains("@python_3_12//:all")
+
+pip = use_extension("@rules_python//python/extensions:pip.bzl", "pip")
+pip.parse(
+    hub_name = "pip_deps",
+    python_version = "3.12",
+    requirements_lock = "//:requirements.txt",
+)
+use_repo(pip, "pip_deps")
+
+rust = use_extension("@rules_rust//rust:extensions.bzl", "rust")
+rust.toolchain(
+    edition = "2021",
+    versions = ["1.97.1"],
+)
+use_repo(rust, "rust_toolchains")
+register_toolchains("@rust_toolchains//:all")
+
+rust_host_tools = use_extension(
+    "@rules_rust//rust:extensions.bzl",
+    "rust_host_tools",
+)
+use_repo(rust_host_tools, "rust_host_tools")
+
+crate = use_extension(
+    "@rules_rust//crate_universe:extensions.bzl",
+    "crate",
+)
+crate.spec(package = "bencher", version = "0.1.5")
+crate.spec(package = "byteorder", version = "1.4.3")
+crate.spec(package = "float-cmp", version = "0.9.0")
+crate.spec(package = "gltf", version = "1.1.0")
+crate.spec(package = "image", version = "0.24.5")
+crate.spec(package = "js-sys", version = "0.3.60")
+crate.spec(package = "rand", version = "0.8.5")
+crate.spec(
+    features = ["derive"],
+    package = "serde",
+    version = "1.0.152",
+)
+crate.spec(package = "serde_json", version = "1.0.93")
+crate.spec(package = "syn", version = "=2.0.117")
+crate.spec(package = "ultraviolet", version = "0.9.0")
+crate.spec(
+    package = "wasm-bindgen",
+    version = "=0.2.121",
+)
+crate.spec(
+    features = ["console"],
+    package = "web-sys",
+    version = "0.3.60",
+)
+crate.spec(package = "glsl", version = "6.0.1")
+crate.spec(
+    features = ["derive"],
+    package = "clap",
+    version = "4.1.6",
+)
+crate.spec(package = "convert_case", version = "0.6.0")
+crate.spec(package = "regex", version = "1.7.1")
+crate.spec(package = "redis-module", version = "2.0.8")
+crate.spec(package = "rmp-serde", version = "1.1.1")
+crate.from_specs(
+    cargo_lockfile = "//:Cargo.lock",
+    lockfile = "//:Cargo.Bazel.lock",
+    name = "crate_index",
+)
+use_repo(crate, "crate_index")
+
+emscripten_deps = use_extension(
+    "@emsdk//:emscripten_deps.bzl",
+    "emscripten_deps",
+)
+emscripten_deps.config(version = "6.0.5")
+
+legacy_repositories = use_extension(
+    "//bzlmod:legacy_repositories.bzl",
+    "legacy_repositories",
+)
+use_repo(
+    legacy_repositories,
+    "bazel_clang_tidy",
+    "catch2",
+    "cereal",
+    "com_github_jupp0r_prometheus_cpp",
+    "eigen",
+    "glslang",
+    "hedron_compile_commands",
+    "opensimplex",
+    "robin-hood-hashing",
+    "zstd",
+)

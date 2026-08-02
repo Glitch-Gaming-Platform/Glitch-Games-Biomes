@@ -20,12 +20,12 @@ fi
 echo
 if grep -q "ERESOLVE" "$LOG"; then
   echo "RESULT: FAIL npm reported ERESOLVE. Known fixes already applied by the current dependency set:"
-  echo "- ReactGrid 4.0.x -> 4.1.17+"
-  echo "- emoji-mart 3.x -> emoji-mart 5 + @emoji-mart/react + @emoji-mart/data"
+  echo "- unused ReactGrid removed instead of carrying a React <=18 peer"
+  echo "- emoji-mart uses its framework-neutral Picker instead of @emoji-mart/react"
   echo "- react-json-view -> react18-json-view"
   echo "- stylelint-config-prettier removed for Stylelint 15"
   echo "- utf-8-validate pinned to 5.0.10 for ws7/ws8 optional peer compatibility"
-  echo "- @kubernetes/client-node moved to 0.22.3 pre-1 Node20 line"
+  echo "- @kubernetes/client-node remains on the production-tested 0.22.3 line"
   echo
   echo "Paste the new ERESOLVE block if one remains after these fixes. Do not use peer-dependency bypass flags."
 else

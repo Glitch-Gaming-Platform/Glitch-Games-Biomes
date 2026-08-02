@@ -34,7 +34,7 @@ import {
   type Ch1Vec3,
 } from "@/shared/harthmere/ch1_ids";
 
-export const CH1_STAGING_VERSION = 1 as const;
+export const CH1_STAGING_VERSION = 2 as const;
 
 /** Somewhere a staged character can be, other than a Grove anchor. */
 export type Ch1StagePlace =
@@ -369,6 +369,13 @@ export const CH1_STAGE_DIRECTIONS: Readonly<
 
   jackie: [
     {
+      place: { kind: "seeded" },
+      activity:
+        "Greeting new arrivals at her original Grove stores approach and keeping the Road Ahead open.",
+      note: "Before Chapter 1, Jackie must remain at the shared May-snapshot home where the native Road Ahead quest begins.",
+    },
+    {
+      whenAllFlags: [CH1_FLAGS.started],
       place: { kind: "anchor", anchor: "roadhouse_jackie_post" },
       activity: "Keeping the road-house running and watching the stairs.",
     },
@@ -652,6 +659,13 @@ export function ch1ValidateStaging(): string[] {
       errors.push(
         `${member.key}: the first stage direction must be unconditional so ` +
           `every story state resolves to something`
+      );
+    }
+    if (member.promotesExistingEntity && base.place.kind !== "seeded") {
+      errors.push(
+        `${member.key}: promoted existing characters must preserve their ` +
+          `shared ECS home before Chapter 1; relocate only with a conditional ` +
+          `per-player stage direction`
       );
     }
     for (const direction of directions) {

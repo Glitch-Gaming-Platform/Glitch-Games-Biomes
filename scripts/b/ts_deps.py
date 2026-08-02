@@ -130,13 +130,11 @@ def _node_major(env=None):
 
 
 def _node_gyp_env():
-    """Return an environment that keeps node-gyp off Homebrew Python 3.14.
+    """Return an environment that keeps legacy node-gyp users off Homebrew Python 3.14.
 
-    v8-profiler-next falls back to node-gyp when a matching prebuilt binary is
-    unavailable. node-gyp@8 imports distutils, which is missing from Python 3.12+
-    and especially the Homebrew Python 3.14 shown in the failure log. Force
-    native addon builds to use the same project venv interpreter that is already
-    running ./b.
+    The benchmark profiler no longer requires a native addon, but a few optional
+    dependencies can still fall back to node-gyp. Force those builds to use the
+    same project venv interpreter that is already running ./b.
     """
     env = os.environ.copy()
     python = str(Path(sys.executable).resolve())
@@ -146,28 +144,26 @@ def _node_gyp_env():
     return env
 
 
-def _assert_compatible_node_for_native_deps(env) -> None:
+def _assert_supported_node(env) -> None:
     major = _node_major(env=env)
     if major is None:
         raise click.ClickException(
-            "Node is required but was not found on PATH. Install/use Node 20, "
-            "for example: `nvm install 20 && nvm use 20`, then rerun ./b."
+            "Node is required but was not found on PATH. Install/use the fork's "
+            "Node 24 LTS from .nvmrc, then rerun ./b."
         )
 
-    if major >= 23:
+    if major != 24:
         raise click.ClickException(
-            "The active Node runtime is too new for this repo's native deps "
-            f"(detected Node {major}). v8-profiler-next@1.9.0 does not ship "
-            "Node 24 prebuilt binaries, so Yarn falls back to node-gyp and fails. "
-            "Use Node 20 before rerunning ./b: `nvm install 20 && nvm use 20`. "
-            "If Node 20 is installed somewhere non-standard, set "
+            f"This fork builds and tests on Node 24 LTS (detected Node {major}). "
+            "Run `nvm install && nvm use` before rerunning ./b. If Node 24 is "
+            "installed somewhere non-standard, set "
             "BIOMES_NODE=/path/to/node or BIOMES_NODE_BIN_DIR=/path/to/bin."
         )
 
 
 def run_yarn_install(hide_output_for_seconds=0):
     env = _node_gyp_env()
-    _assert_compatible_node_for_native_deps(env)
+    _assert_supported_node(env)
 
     yarn_command = _resolve_yarn_command()
     command = [
@@ -319,7 +315,11 @@ def _bazel_up_to_date(build_config):
 
 
 def get_watch_sources():
-    workspace_sources = [f"{REPO_DIR}/WORKSPACE.bazel"]
+    workspace_sources = [
+        f"{REPO_DIR}/MODULE.bazel",
+        f"{REPO_DIR}/MODULE.bazel.lock",
+        f"{REPO_DIR}/bzlmod/legacy_repositories.bzl",
+    ]
 
     def bazel_path_to_file_path(x: str):
         return str(REPO_DIR / x[:].lstrip("/:").replace(":", "/"))

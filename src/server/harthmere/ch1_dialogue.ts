@@ -848,7 +848,14 @@ const CH1_COMPLETION_DIALOGUE_BASE: Readonly<
   },
 });
 
-const CH1_COMPLETION_DIALOGUE_EXPRESSION_PLAN = Object.freeze({
+const CH1_COMPLETION_DIALOGUE_EXPRESSION_PLAN: Readonly<
+  Record<
+    string,
+    Readonly<
+      Record<string, readonly (HarthmereCinematicExpression | undefined)[]>
+    >
+  >
+> = Object.freeze({
   report_or_not: {
     report: ["determined", "sadness"],
     stop_tea: ["determined", "shame"],
@@ -863,7 +870,7 @@ const CH1_COMPLETION_DIALOGUE_EXPRESSION_PLAN = Object.freeze({
     contain: [undefined, "ready", undefined],
     bargain: ["determined", undefined, undefined],
   },
-} satisfies Readonly<Record<string, Readonly<Record<string, readonly (HarthmereCinematicExpression | undefined)[]>>>>);
+});
 
 export const CH1_COMPLETION_DIALOGUE: Readonly<
   Record<string, CompletionDialogueByChoice>

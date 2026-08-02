@@ -27,7 +27,7 @@ export const SpatialMediaPlayer: React.FunctionComponent<{
 }> = React.memo(
   ({ entityId, volume, width, height, hidden, seekToTimeline }) => {
     const { reactResources, audioManager } = useClientContext();
-    const playerRef = useRef<ReactPlayer>(null);
+    const playerRef = useRef<HTMLVideoElement>(null);
     const [videoDuration, setVideoDuration] = useState<number | undefined>();
     const [videoComponent, modal] = reactResources.useAll(
       ["/ecs/c/video_component", entityId],
@@ -63,7 +63,7 @@ export const SpatialMediaPlayer: React.FunctionComponent<{
     useAnimation(() => {
       if (
         !audioManager.isRunning() ||
-        !playerRef.current?.getInternalPlayer()
+        !playerRef.current
       ) {
         return;
       }
@@ -87,7 +87,7 @@ export const SpatialMediaPlayer: React.FunctionComponent<{
 
     // Mute the player when we don't have an audio context yet.
     useEffect(() => {
-      if (playerRef.current?.getInternalPlayer()) {
+      if (playerRef.current) {
         setSpatialVolume(spatialVolume);
       }
       setMuted(!audioManager.isRunning());
@@ -102,7 +102,9 @@ export const SpatialMediaPlayer: React.FunctionComponent<{
         const clock = reactResources.get("/clock");
         const seekTo =
           (clock.time - videoComponent.video_start_time) % videoDuration;
-        playerRef.current?.seekTo(seekTo);
+        if (playerRef.current) {
+          playerRef.current.currentTime = seekTo;
+        }
       }
     }, [videoUrl, videoComponent?.video_start_time, videoDuration]);
 
@@ -114,7 +116,7 @@ export const SpatialMediaPlayer: React.FunctionComponent<{
       <>
         <ReactPlayer
           ref={playerRef}
-          url={videoUrl}
+          src={videoUrl}
           playing={true}
           loop={true}
           controls={false}
@@ -123,7 +125,8 @@ export const SpatialMediaPlayer: React.FunctionComponent<{
           height={height}
           muted={muted}
           volume={spatialVolume}
-          onDuration={(newDuration) => {
+          onDurationChange={(event) => {
+            const newDuration = event.currentTarget.duration;
             if (newDuration && newDuration !== videoDuration) {
               setVideoDuration(newDuration);
             }

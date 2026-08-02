@@ -6,6 +6,38 @@ from pathlib import Path
 import pygltflib
 
 
+GLTFPACK_VERSION = "1.2"
+REPOSITORY_ROOT = Path(__file__).resolve().parents[5]
+NATIVE_GLTFPACK_PATH = (
+    REPOSITORY_ROOT
+    / ".cache"
+    / "biomes-tools"
+    / "gltfpack"
+    / GLTFPACK_VERSION
+    / ("gltfpack.exe" if os.name == "nt" else "gltfpack")
+)
+
+
+def gltfpack_command(texture_mode: str) -> list[str]:
+    override = os.environ.get("BIOMES_GLTFPACK")
+    if override:
+        executable = Path(override)
+        if not executable.is_file():
+            raise RuntimeError(f"BIOMES_GLTFPACK does not exist: {executable}")
+        return [str(executable)]
+    if NATIVE_GLTFPACK_PATH.is_file():
+        return [str(NATIVE_GLTFPACK_PATH)]
+    if texture_mode == "legacy":
+        # The npm/WebAssembly build can still provide emergency mesh-only
+        # compression, but it is compiled without BasisU support.
+        return ["yarn", "gltfpack"]
+    raise RuntimeError(
+        "KTX2 compression requires the pinned native gltfpack build. Run "
+        "`npm run assets:install-gltfpack`, or set BIOMES_GLTFPACK to a "
+        "reviewed native gltfpack 1.2 executable."
+    )
+
+
 # TODO(top): The fact that we're shelling out here to a subprocess isn't
 #            excellent:
 #
@@ -38,16 +70,28 @@ def compress_gltf(gltf: pygltflib.GLTF2) -> bytes:
         # find yarn.
         useShell = os.name == "nt"
 
-        cmd = [
-            "yarn",
-            "gltfpack",
+        texture_mode = os.environ.get("BIOMES_GLTFPACK_TEXTURE_MODE", "ktx2")
+        cmd = gltfpack_command(texture_mode) + [
             "-i",
             str(GLTF_FILE_NAME),
             "-o",
             str(GLB_FILE_NAME),
             "-kn",  # Don't prune empty nodes, used as attachment points.
+            "-c",  # EXT_meshopt_compression; decoded by the shared GLTF loader.
         ]
-        subprocess.run(cmd, stdout=subprocess.DEVNULL, shell=useShell)
+        if texture_mode != "legacy":
+            # ETC1S gives color maps a strong size reduction. UASTC avoids the
+            # block artifacts that ETC1S can introduce in normal/data maps.
+            cmd.extend(["-tc", "color", "-tu", "normal,attrib", "-tq", "8"])
+        subprocess.run(
+            cmd,
+            check=True,
+            stdout=subprocess.DEVNULL,
+            shell=useShell,
+        )
+
+        if not GLB_FILE_NAME.is_file() or GLB_FILE_NAME.stat().st_size == 0:
+            raise RuntimeError("gltfpack completed without producing a non-empty GLB")
 
         with open(GLB_FILE_NAME, "rb") as glb_file:
             out_bytes = glb_file.read()

@@ -73,7 +73,7 @@ export const BiomesUIAvatarEditor: React.FunctionComponent<{}> = () => {
   const [saving, setSaving] = useState(false);
   const [justSaved, setJustSaved] = useState(false);
 
-  const profilePicPrep = useRef<[string, string] | undefined>();
+  const profilePicPrep = useRef<[string, string] | undefined>(undefined);
 
   // Seed the editor from the player's live appearance once it resolves. Only
   // happens once so the user's in-progress edits are never clobbered.

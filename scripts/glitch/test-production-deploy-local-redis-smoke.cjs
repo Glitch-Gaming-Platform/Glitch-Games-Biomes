@@ -8,6 +8,10 @@ const scriptPath = path.join(
   "scripts/glitch/deploy-production-local-redis-smoke.sh"
 );
 const script = fs.readFileSync(scriptPath, "utf8");
+const prepareImageScript = fs.readFileSync(
+  path.join(root, "scripts/glitch/prepare-glitch-image.sh"),
+  "utf8"
+);
 const stackRunner = fs.readFileSync(
   path.join(root, "scripts/glitch/run-glitch-local-game-stack.sh"),
   "utf8"
@@ -153,8 +157,14 @@ function ok(condition, message) {
 }
 
 ok(
-  script.includes("redis:6.0.16-alpine"),
-  "local smoke matches the production Redis 6 stream command surface"
+  script.includes("redis:8.8.1-alpine"),
+  "local smoke matches the production Redis 8.8.1 command surface"
+);
+ok(
+  dockerfile.includes(
+    'make -j"$(nproc)" -C /tmp/redis BUILD_TLS=yes ENABLE_LTO='
+  ),
+  "production image keeps the Redis 8.8.1 O3 build parallel while avoiding Docker jobserver failures in GCC LTO"
 );
 ok(
   script.includes('--save ""'),
@@ -169,15 +179,19 @@ ok(
   "local smoke Redis keeps accepting writes even if disposable persistence fails"
 );
 ok(
-  script.includes("GLITCH_POPULATE_SNAPSHOT_REDIS=1"),
+  script.includes('-e "GLITCH_POPULATE_SNAPSHOT_REDIS=$populate_snapshot"') &&
+    script.includes("start_local_web_container 1") &&
+    script.includes("start_local_web_container 0"),
   "local smoke explicitly bootstraps only the local Redis snapshot"
 );
 ok(
-  script.includes("GLITCH_SNAPSHOT_BOOTSTRAP_ROLE=1"),
+  script.includes('-e "GLITCH_SNAPSHOT_BOOTSTRAP_ROLE=$bootstrap_role"') &&
+    script.includes("bootstrap_role=1"),
   "local smoke uses the explicit bootstrap role"
 );
 ok(
-  script.includes("GLITCH_ALLOW_SNAPSHOT_REDIS_FLUSH=1"),
+  script.includes('-e "GLITCH_ALLOW_SNAPSHOT_REDIS_FLUSH=$allow_flush"') &&
+    script.includes("allow_flush=1"),
   "local smoke allows flush only for the local Redis container"
 );
 ok(
@@ -201,12 +215,28 @@ ok(
     ) &&
     script.includes("test-harthmere-install-player-ingame-e2e.cjs") &&
     script.includes("run-harthmere-production-reconciliation.sh") &&
-    script.includes('["Anima", 4101]') &&
-    script.includes('["Gaia", 4201]') &&
-    script.includes("OK ${name} local readiness") &&
+    script.includes("start_local_native_simulation_phase") &&
+    script.includes("GLITCH_SIMULATION_ROLE_READY anima=1 gaia=1") &&
+    script.includes("Dedicated local Anima/Gaia readiness passed") &&
     script.includes("OK ElevenLabs local production configuration") &&
     script.includes("KEEP_LOCAL_SMOKE=1"),
   "script exposes a complete local production rehearsal that remains running"
+);
+ok(
+  script.includes("LOCAL_SIMULATION_CONTAINER") &&
+    script.includes("LOCAL_ASSET_CONTAINER") &&
+    script.includes("GLITCH_STACK_ROLE=web") &&
+    script.includes("GLITCH_STACK_ROLE=simulation") &&
+    script.includes("verify_local_container_image_identity") &&
+    script.includes(
+      'actual="$(docker inspect "$container" --format \'{{.Image}}\')"'
+    ) &&
+    script.includes('"$LOCAL_IMAGE" >/dev/null') &&
+    script.includes("/opt/biomes-python/bin/python -m http.server") &&
+    script.includes(
+      '-e "GLITCH_STACK_HTTP_READY_WAIT_TRIES=${GLITCH_STACK_HTTP_READY_WAIT_TRIES:-900}"'
+    ),
+  "local smoke validates production-separated web and simulation roles from one immutable image ID"
 );
 ok(
   script.includes("STOP_BEFORE_DOCKER_BUILD=0"),
@@ -243,8 +273,30 @@ ok(
   "script rejects stale build artifacts before Docker packaging"
 );
 ok(
-  script.includes("test-production-redis6-stream-compat.cjs"),
-  "script guards Redis 6 stream command compatibility"
+  script.includes("ERROR Node 24 is required") &&
+    script.includes(".nvm/versions/node/v24") &&
+    prepareImageScript.includes("ERROR Node 24 is required") &&
+    prepareImageScript.includes(".nvm/versions/node/v24"),
+  "production artifact and image helpers force the pinned Node 24 runtime"
+);
+ok(
+  packageJson.dependencies?.["segfault-raub"] === "3.2.0" &&
+    !packageJson.dependencies?.["segfault-handler"] &&
+    dockerfile.includes("segfault-raub") &&
+    !dockerfile.includes(
+      "npm rebuild sharp bufferutil utf-8-validate segfault-handler"
+    ),
+  "production crash diagnostics use the prebuilt Node 24-compatible N-API addon"
+);
+ok(
+  dockerfile.includes("FROM ubuntu:24.04") &&
+    dockerfile.includes("ARG NODE_VERSION=24.18.1") &&
+    dockerfile.includes("uWebSockets.js"),
+  "production runtime provides the glibc baseline required by the Node 24 uWebSockets binary"
+);
+ok(
+  script.includes("test-production-redis8-stream-compat.cjs"),
+  "script guards Redis 8.8.1 stream command compatibility"
 );
 ok(
   script.includes("test-production-deploy-local-redis-smoke.cjs"),
@@ -365,7 +417,7 @@ ok(
 );
 ok(
   packageJson.dependencies["uWebSockets.js"] ===
-    "https://github.com/uNetworking/uWebSockets.js/archive/refs/tags/v20.31.0.tar.gz" &&
+    "https://github.com/uNetworking/uWebSockets.js/archive/refs/tags/v20.69.0.tar.gz" &&
     cachedYarnAction.includes("hashFiles('./yarn.lock', './package.json'") &&
     !fs
       .readFileSync(path.join(root, "yarn.lock"), "utf8")
@@ -519,10 +571,11 @@ ok(
   "production browser source maps are removed before image packaging"
 );
 ok(
-  dockerfile.includes("npm prune --omit=dev --ignore-scripts") &&
+  dockerfile.includes("npm ci --omit=dev --ignore-scripts") &&
+    !dockerfile.includes("COPY --chown=nextjs:nodejs node_modules/") &&
     !dockerfile.includes("google-chrome-stable") &&
     dockerfile.includes("apt-get purge -y --auto-remove"),
-  "production image excludes test browser, dev dependencies, and build toolchains"
+  "production image installs a clean Linux runtime closure and excludes test browser, dev dependencies, and build toolchains"
 );
 ok(
   packageJson.dependencies?.["stream-json"] &&
@@ -530,7 +583,7 @@ ok(
     packageJson.dependencies?.["spark-md5"] &&
     !packageJson.devDependencies?.["spark-md5"] &&
     dockerfile.includes("'stream-json/streamers/StreamArray', 'spark-md5'"),
-  "production image keeps and verifies snapshot runtime dependencies after npm prune"
+  "production image keeps and verifies snapshot runtime dependencies after the production-only install"
 );
 const bundledRuntimeExternals = [
   "@ant-design/icons",
@@ -553,7 +606,7 @@ ok(
     dockerfile.includes(
       "node scripts/glitch/assert-production-runtime-dependencies.cjs ."
     ),
-  "production image resolves every external required by the built server bundles after npm prune"
+  "production image resolves every external required by the built server bundles after the production-only install"
 );
 ok(
   runtimeDependencyAudit.includes(
@@ -1150,9 +1203,9 @@ ok(
   "production grounding classifies robot sentinels by their actual original-map or additive-extension position"
 );
 ok(
-  dockerfile.includes("ts-node@10.9.1") &&
-    dockerfile.includes("tsconfig-paths@3.12.0") &&
-    dockerfile.includes("typescript@5.9.3") &&
+  dockerfile.includes("ts-node@10.9.2") &&
+    dockerfile.includes("tsconfig-paths@4.2.0") &&
+    dockerfile.includes("typescript@6.0.3") &&
     dockerfile.includes("--prefix /opt/harthmere-maintenance") &&
     harthmereProductionReconciliation.includes(
       'NODE_PATH="/opt/harthmere-maintenance/node_modules'
@@ -1205,6 +1258,13 @@ ok(
     shimMain.includes("a player's deliberate hole") &&
     shimMain.includes("shard_diff must never turn into a request"),
   "Harthmere seed wiring updates authored terrain only and audits seed solidity without interpreting player diffs as corruption"
+);
+ok(
+  shimMain.includes("localDevTerrainShardHasAuthoredWater(") &&
+    shimMain.includes("const authoredWaterOnlyIds = new Set<BiomesId>()") &&
+    shimMain.includes("entity: { id, shard_water: shardWater }") &&
+    shimMain.includes("terrainIdsToBuild.size === 0"),
+  "ordinary terrain maintenance always reapplies authored Harthmere water with water-only existing-shard updates"
 );
 ok(
   script.includes("run_azure_terrain_seed_job") &&

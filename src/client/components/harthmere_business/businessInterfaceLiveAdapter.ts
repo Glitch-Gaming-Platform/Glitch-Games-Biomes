@@ -8,6 +8,7 @@
  * backend and all writes are posted through request_economy_mutation.
  */
 
+import { harthmerePlayerCapacityMessage } from "@/client/components/harthmere_capacity_messages";
 import { harthmereBusinessToolForType } from "@/shared/harthmere/harthmere_business_tool_shop";
 import { harthmereBusinessStorefrontListingsForType } from "@/shared/harthmere/harthmere_business_storefront_goods";
 import {
@@ -956,6 +957,8 @@ export function formatHarthmereBusinessPlayerWarning(
 ): string {
   const warning = String(rawWarning ?? "").trim();
   if (!warning) return "Something needs attention.";
+  const capacityMessage = harthmerePlayerCapacityMessage(warning);
+  if (capacityMessage) return capacityMessage;
   if (warning.includes("insufficient_customer_gold_for_sale")) {
     return "You do not have enough gold for that purchase.";
   }
@@ -992,9 +995,6 @@ export function formatHarthmereBusinessPlayerWarning(
   if (warning.includes("recipe_book_single_purchase_only")) {
     return "Recipe books are purchased one at a time.";
   }
-  if (warning.includes("inventory_full")) {
-    return "Your inventory is full. Free a slot and try again.";
-  }
   if (
     warning.includes("business_economy_mutation_http_") ||
     warning.includes("native_ecs_materialization") ||
@@ -1018,10 +1018,6 @@ export function formatHarthmereBusinessPlayerWarning(
     return "The business needs more funds before opening that branch.";
   if (warning.includes("business_branch_outpost_already_claimed"))
     return "That branch site is already claimed.";
-  if (warning.includes("branch_warehouse_full"))
-    return "The branch warehouse is full.";
-  if (warning.includes("branch_staff_slots_full"))
-    return "That branch has no more staff slots.";
   if (warning.includes("active_business_branch_required"))
     return "Choose an active branch first.";
   if (warning.includes("employee_morale"))

@@ -2690,7 +2690,7 @@ export async function materializeHarthmereEscortCompanionsToEcs(input: {
 async function pendingBuildingMaterializationPlansForReplay(input: {
   redisPrimary: any;
   response: LiveModeResponse;
-}) {
+}): Promise<BuildingSystemAnyMaterializationPlan[]> {
   const storedPlanRefs =
     input.response.backendMutation?.buildingMaterializationPlans;
   if (!storedPlanRefs?.length) {
@@ -2722,20 +2722,24 @@ async function pendingBuildingMaterializationPlansForReplay(input: {
       ]
     )
   );
-  return storedPlanRefs.flatMap((storedRef) => {
+  const pending: BuildingSystemAnyMaterializationPlan[] = [];
+  for (const storedRef of storedPlanRefs) {
     const plan =
       sharedPlans.get(storedRef.requestId) ??
       proceduralPlans.get(storedRef.requestId) ??
       (Array.isArray((storedRef as any).edits)
         ? (storedRef as BuildingSystemAnyMaterializationPlan)
         : undefined);
-    if (!plan) return [];
-    if (!plan.materializesSolidVoxelBuilding) return [plan];
-    return shared?.building.placedStructures[plan.projectId ?? plan.requestId]
-      ?.materializedInEcs === true
-      ? []
-      : [plan];
-  });
+    if (!plan) continue;
+    if (
+      !plan.materializesSolidVoxelBuilding ||
+      shared?.building.placedStructures[plan.projectId ?? plan.requestId]
+        ?.materializedInEcs !== true
+    ) {
+      pending.push(plan);
+    }
+  }
+  return pending;
 }
 
 async function materializeCommittedBuildingPlans(input: {

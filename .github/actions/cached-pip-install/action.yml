@@ -9,6 +9,11 @@ branding:
 runs:
   using: "composite"
   steps:
+    - name: Select Python 3.12
+      uses: actions/setup-python@v6
+      with:
+        python-version: "3.12"
+
     # We create and use a virtual environment so that we can just cache this
     # entire directory and re-use it if our Python environment doesn't change.
     - name: Create virtual environment.
@@ -30,19 +35,18 @@ runs:
         # the Python version that we're using.
         key: ${{ runner.os }}-pip-${{ hashFiles('.venv/pyvenv.cfg') }}-${{ hashFiles('./requirements.txt', './voxeloo/**') }}
 
-    - run: pip install wheel
+    - run: python -m pip install --upgrade pip setuptools wheel
       if: steps.pip-cache.outputs.cache-hit != 'true'
       shell: bash
 
-    - run: pip install -r requirements.txt
+    - run: python -m pip install -r requirements.txt
       if: steps.pip-cache.outputs.cache-hit != 'true'
       shell: bash
 
-    # We supply the `--no-native` option to avoid building a hyper-customized
-    # binary for the target CPU. GitHub Actions workers are not stable and
-    # what we build (and cache!) on one machine's CPU may not work on another.
-    # In particular, there was trouble in the past with avx-512 instructions.
-    - run: pip install ./voxeloo --install-option="--no-native" --install-option="--no-cache" -v
+    # The release Bazel config is portable and does not use --march=native.
+    # Modern pip no longer accepts per-install setup flags, so pass the cache
+    # choice through the setup.py environment contract instead.
+    - run: BIOMES_BAZEL_NO_CACHE=1 python -m pip install --no-build-isolation ./voxeloo -v
       if: steps.pip-cache.outputs.cache-hit != 'true'
       shell: bash
 

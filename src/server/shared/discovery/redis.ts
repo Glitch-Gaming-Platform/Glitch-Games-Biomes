@@ -49,20 +49,11 @@ class AdvertisedValue {
               } satisfies ValueRecord),
             });
             if (CONFIG.serviceDiscoveryServiceExpirySeconds > 0) {
-              // Production intentionally runs Redis 6.0. Redis added the
-              // conditional EXPIRE flags (including `GT`) in Redis 7, and a
-              // Redis 6 server rejects the extra argument. Because this call
-              // is inside MULTI, that one unsupported option aborts the whole
-              // transaction: the HSET above is discarded, no instance is
-              // advertised, and every distributed shard manager owns zero
-              // shards even though its process can otherwise report ready.
-              //
-              // A plain EXPIRE is correct here. The hash field contains its
-              // own precise logical expiry timestamp and readers remove stale
-              // fields. The key-level TTL is only coarse garbage collection
-              // for a service hash that has stopped receiving all keepalives,
-              // so refreshing it to the configured horizon on every active
-              // membership heartbeat is both safe and Redis 6 compatible.
+              // The hash field contains its own precise logical expiry and
+              // readers remove stale fields. This key-level TTL is coarse
+              // garbage collection for a service hash that has stopped
+              // receiving all keepalives, so refreshing it to the configured
+              // horizon on every active heartbeat is intentional.
               tx.expire(
                 this.redisKey,
                 CONFIG.serviceDiscoveryServiceExpirySeconds

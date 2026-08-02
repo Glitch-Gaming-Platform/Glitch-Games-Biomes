@@ -3,6 +3,10 @@ import {
   supportsPointerLock,
 } from "@/client/components/contexts/PointerLockContext";
 import type { ObserverMode } from "@/client/game/util/observer";
+import {
+  probeWebGpuSupport,
+  type WebGpuProbeResult,
+} from "@/client/renderer/webgpu_probe";
 import type { GraphicsQuality } from "@/client/util/typed_local_storage";
 import { zGraphicsQuality } from "@/client/util/typed_local_storage";
 import type { Vec2f } from "@/shared/ecs/gen/types";
@@ -11,6 +15,7 @@ import { log } from "@/shared/logging";
 import type { GaussianDistribution } from "@/shared/math/gaussian";
 import type { BiomesResourceCapacities } from "@/shared/resources/biomes";
 import { makeCvalHook } from "@/shared/util/cvals";
+import type { JSONable } from "@/shared/util/type_helpers";
 import type { Vec3f } from "@/shared/wasm/types/common";
 import { ok } from "assert";
 import { cloneDeep, includes } from "lodash";
@@ -82,6 +87,10 @@ const BASE_CLIENT_CONFIG = {
   useIdbForEcs: false,
   gpuTier: 0,
   gpuName: "Unknown",
+  webGpu: {
+    status: "unsupported",
+    available: false,
+  } as WebGpuProbeResult,
   forceDrawDistance: undefined as number | undefined,
   minDrawDistance: undefined as number | undefined,
   dynamicMinDrawDistance: undefined as number | undefined,
@@ -330,10 +339,15 @@ export function shouldShowVirtualJoystick({
   deviceType?: string;
   osName?: string;
 }) {
+  // Pointer Lock availability is an input-capture capability, not a device
+  // class. Desktop embeds and headless/managed browsers can lack Pointer Lock
+  // while still using mouse and keyboard. BiomesView already supports that
+  // pointerless desktop path; mounting the touch HUD here would also switch the
+  // hotbar, prompts, crouch button, and Menu/Recipes controls to mobile mode.
+  void pointerLockSupported;
   const normalizedDeviceType = deviceType?.toLowerCase();
   const normalizedOsName = osName?.toLowerCase() ?? "";
   return (
-    !pointerLockSupported ||
     touchDevice ||
     isMobileDeviceDescription({
       deviceType: normalizedDeviceType,
@@ -423,8 +437,8 @@ export function resolveGlitchLocalSyncBaseUrl(input: {
     input.port === "3017"
       ? "3018"
       : input.port === "3000"
-      ? "3002"
-      : input.port || "3000";
+        ? "3002"
+        : input.port || "3000";
   const fallback = publicHttpsInstallRuntime
     ? sameOriginBase
     : `${input.protocol}//${input.hostname}:${fallbackPort}`;
@@ -519,9 +533,21 @@ export function resolveGlitchLocalSyncBaseUrl(input: {
 export async function initializeClientConfig(
   options?: InitConfigOptions
 ): Promise<ClientConfig> {
-  const [gpuTier, simdSupported] = await Promise.all([genGPUTier(), simd()]);
+  const webGpuSmoke =
+    typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).get("webgpuProbe") === "1";
+  const [gpuTier, simdSupported, webGpu] = await Promise.all([
+    genGPUTier(),
+    simd(),
+    probeWebGpuSupport({ smokeRender: webGpuSmoke }),
+  ]);
   log.info(`GPU Tier Info is ${JSON.stringify(gpuTier)}`);
 
+  makeCvalHook({
+    path: ["game", "capabilities", "webgpu"],
+    help: "WebGPU availability and optional Three.js smoke result.",
+    collect: () => JSON.parse(JSON.stringify(webGpu)) as JSONable,
+  });
   makeCvalHook({
     path: ["game", "capabilities", "gpu"],
     help: "Information about the client's GPU capabilities.",
@@ -570,7 +596,7 @@ export async function initializeClientConfig(
     const resolved = resolveGlitchLocalSyncBaseUrl({
       installIdInUrl,
       runtimeOverride: nativeEcsE2E
-        ? runtimeQuery?.get("syncBaseUrl") ?? undefined
+        ? (runtimeQuery?.get("syncBaseUrl") ?? undefined)
         : undefined,
       explicit: process.env.NEXT_PUBLIC_GLITCH_SYNC_BASE_URL,
       protocol: window.location.protocol,
@@ -604,6 +630,7 @@ export async function initializeClientConfig(
 
   ret.gpuTier = gpuTier.tier;
   ret.gpuName = gpuTier.gpu || "Unknown";
+  ret.webGpu = webGpu;
   ret.wasmBinary.simd = simdSupported ? WasmSimd.Simd : WasmSimd.Normal;
   ret.sharedArrayBufferSupported = window.crossOriginIsolated;
 

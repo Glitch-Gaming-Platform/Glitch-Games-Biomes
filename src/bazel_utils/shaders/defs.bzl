@@ -37,7 +37,6 @@ shader_lib = rule(
 )
 
 def _shader_program_impl(ctx):
-    out_dir_file = ctx.actions.declare_directory(ctx.attr.out_dir)
     shader_name = ctx.attr.shader_name or ctx.label.name
 
     base_file = ctx.actions.declare_file(
@@ -56,7 +55,6 @@ def _shader_program_impl(ctx):
         outputs = [
             base_file,
             shader_file,
-            out_dir_file,
         ],
         inputs = inputs,
         tools = [ctx.executable._gen_tool, ctx.executable._glslang_validator],

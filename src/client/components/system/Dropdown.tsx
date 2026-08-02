@@ -66,7 +66,7 @@ export const Dropdown: React.FunctionComponent<PropsWithChildren<{}>> = ({
   children,
 }) => {
   const [showing, setShowing] = useState(false);
-  const closeTimeout = useRef<ReturnType<typeof setTimeout> | undefined>();
+  const closeTimeout = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   return (
     <DropdownContext.Provider

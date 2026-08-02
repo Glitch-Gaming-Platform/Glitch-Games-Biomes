@@ -83,11 +83,14 @@ scripts/glitch/deploy-production-local-redis-smoke.sh --local-smoke
 ```
 
 Before an expensive production rollout, run the complete local rehearsal. It
-boots the unified production image against disposable Redis, completes the same
+boots the production web role against disposable Redis, completes the same
 terrain/outpost/ECS/connector/grounding reconciliation used by the in-VNet job,
-checks Anima and Gaia after those writes, validates ElevenLabs configuration
-without printing its key, runs the install-to-player browser E2E plus the
-HTTP/browser smoke suite, and leaves the
+then stops web and runs the exact same image ID as the dedicated Anima/Gaia
+role. A tiny asset-only container from that image supplies Galois files while
+the public role is stopped. After aggregate simulation readiness, zero
+restarts, and no OOM, the helper restores web without flushing Redis, validates
+ElevenLabs configuration without printing its key, runs the install-to-player
+browser E2E plus the HTTP/browser smoke suite, and leaves the web and Redis
 containers running for inspection:
 
 ```bash
@@ -97,6 +100,29 @@ scripts/glitch/deploy-production-local-redis-smoke.sh --local-rehearsal
 
 Do not begin a production push until this rehearsal passes for the exact source
 revision being deployed.
+
+The rehearsal image is the deployment candidate; do not build a second image
+after it passes. Record and compare the local, ACR-tagged, and running-container
+IDs:
+
+```bash
+TAG=prod-candidate-YYYYMMDD-r1
+scripts/glitch/deploy-production-local-redis-smoke.sh \
+  --local-smoke --keep-local --tag "$TAG"
+
+docker image inspect "biomes-node:local-$TAG" --format '{{.Id}}'
+docker image inspect "glitchgames.azurecr.io/biomes-node:$TAG" --format '{{.Id}}'
+docker inspect biomes-prod-smoke-app --format '{{.Image}}'
+```
+
+All three values must be identical. If any source or generated artifact changes
+after this check, reject the candidate and build a new tag. The local helper
+also compares the temporary asset and simulation containers against this same
+image ID. Never accept a smoke where web and simulation used separately built
+images.
+A later authorized rollout must use `--skip-build --push --tag "$TAG"`; never
+rebuild an already-tested tag. Without `--push`, the script does not upload the
+image, create an Azure revision, or change traffic.
 
 `--local-rehearsal` enables `HARTHMERE_RUN_LOCAL_BROWSER_E2E=1` by default.
 Set `HARTHMERE_LOCAL_E2E_HEADLESS=0 HARTHMERE_LOCAL_E2E_STRICT_RENDER=1` when a
@@ -253,10 +279,12 @@ The title token lives only as the Azure Container App secret
 `glitch-title-token`; it is not stored in GitHub or source control.
 
 The workflow restores Git LFS assets through the shared LFS cache action, then
-restores `node_modules`, production data snapshot assets, Next.js compiler
-cache, server Webpack compiler cache, and Buildx layers. On exact `node_modules`
-cache hits, the workflow verifies the restored Linux dependency tree and skips
-`yarn install` entirely. This avoids spending paid runner time on Yarn's
+restores host-side `node_modules` for the Next/server build, production data
+snapshot assets, Next.js compiler cache, server Webpack compiler cache, and
+Buildx layers. That host dependency tree is never copied into the production
+image; Docker performs its own locked Linux production install. On exact
+`node_modules` cache hits, the workflow verifies the restored build dependency
+tree and skips `yarn install` entirely. This avoids spending paid runner time on Yarn's
 fetch/link/build phases when the lockfile and Node version have not changed. The
 Yarn tarball cache is intentionally not used here because it is very large in
 this repository and competes with the more valuable LFS, Docker, compiler,
@@ -579,15 +607,27 @@ The browser will connect to `wss://<web-origin>/ro-sync`; the web process proxie
 
 The production Dockerfile must do these things:
 
-1. Use the existing locally-built artifacts:
-   - `node_modules/`
-   - `.next/`
-   - `dist/`
-2. Rebuild native Node modules inside the Linux container so macOS/ARM native module issues do not break Linux/AMD64 runtime.
-3. Restore execute bits because ZIP/ACR upload paths can strip executable permissions.
-4. Expose the web ingress on `3000`; keep sync on internal `4900` and proxy it through same-origin `/ro-sync`.
-5. Start the full stack script under `tini`:
-6. Run `scripts/glitch/assert-glitch-build-artifacts-current.cjs` after copying `.next/` and `dist/`, so Docker packaging fails if stale build artifacts still contain old auth, world, or player-mesh code.
+1. Copy `package.json`, `package-lock.json`, and `yarn.lock`, then install the
+   authoritative production closure inside Linux with
+   `npm ci --omit=dev --ignore-scripts`. Do not copy host `node_modules`.
+2. Rebuild and load native Node modules inside Linux/AMD64 so macOS/ARM bindings
+   cannot enter the image. The fork uses Node 24.18.1 and pins
+   `uWebSockets.js` 20.69.0; packaging must retain the Linux x64 Node ABI 137
+   binary and verify SWC, esbuild, msgpackr, sharp, bufferutil,
+   utf-8-validate, segfault-raub, and uWebSockets.
+3. Package the Python 3.12 Galois/Voxeloo runtime and native gltfpack 1.2, then
+   remove compilers and Bazel caches from the final layer.
+4. Copy the existing exact-source `.next/` and `dist/` artifacts only after
+   runtime dependencies and reviewed assets are in place.
+5. Restore execute bits because ZIP/ACR upload paths can strip executable
+   permissions.
+6. Expose web ingress on `3000`; keep sync on internal `4900` and proxy it
+   through same-origin `/ro-sync`.
+7. Start the full stack script under `tini`.
+8. Run `scripts/glitch/assert-glitch-build-artifacts-current.cjs` and
+   `scripts/glitch/assert-production-runtime-dependencies.cjs` after copying
+   `.next/` and `dist/`, so packaging rejects stale bundles or an incomplete
+   production dependency closure.
 
 ```dockerfile
 ENTRYPOINT ["/usr/bin/tini", "--"]
@@ -667,15 +707,28 @@ to wait on dependencies and never become a healthy game runtime.
 
 ### Why rebuild native modules in Docker?
 
-The repo may have `node_modules` created on macOS/ARM, but the production image runs Linux/AMD64. Native modules like `sharp`, `bufferutil`, `utf-8-validate`, and `segfault-handler` need Linux/AMD64 bindings.
+The repo may have `node_modules` created on macOS/ARM, but the production image
+runs Linux/AMD64. The image therefore ignores the host tree, installs its
+production closure with `npm ci`, and runs the required native install scripts
+inside Linux. Native modules such as SWC, esbuild, msgpackr, `sharp`,
+`bufferutil`, and `utf-8-validate` must load under Node 24 before packaging can
+continue. Fatal-signal diagnostics use `segfault-raub`, whose N-API binary is
+also verified in that target environment.
+
+The final runtime stage uses Ubuntu 24.04 LTS. This is required by the pinned
+uWebSockets.js 20.69 Node 24 Linux binary, which needs `GLIBC_2.38` or newer;
+Ubuntu 24.04 provides glibc 2.39. Do not move the final stage back to Ubuntu
+22.04 without also providing a uWebSockets binary built against glibc 2.35.
 
 The Dockerfile runs:
 
 ```bash
-npm rebuild sharp bufferutil utf-8-validate segfault-handler --platform=linux --arch=x64 --foreground-scripts
+npm rebuild @swc/core esbuild msgpackr-extract sharp bufferutil utf-8-validate segfault-raub --foreground-scripts
+node scripts/glitch/test-node24-native-runtime.cjs
 ```
 
-This prevents native-module mismatch errors after deployment.
+Keep the command synchronized with the executable runtime audit rather than
+maintaining a shorter hand-written list.
 
 ### Why use `tini`?
 
@@ -685,7 +738,8 @@ The stack script launches multiple child services. `tini` handles signals correc
 
 ## 6. `.dockerignore` for this deployment path
 
-This Dockerfile expects `node_modules`, `.next`, and `dist` to be copied into the image. Do **not** exclude them.
+This Dockerfile installs `node_modules` inside Linux. Exclude the host tree, but
+keep `.next` (except its compiler cache) and `dist` in the build context.
 
 Use this `.dockerignore`:
 
@@ -699,6 +753,10 @@ tmp
 .venv
 biomes_venv
 .DS_Store
+node_modules
+node_modules/**
+node_modules/.cache
+.next/cache
 *.log
 *.tar
 *.tar.gz
@@ -708,12 +766,12 @@ biomes_venv
 Do not use a `.dockerignore` that excludes:
 
 ```text
-node_modules
 .next
 dist
 ```
 
-or the Docker build will be missing the prebuilt runtime artifacts.
+The host `node_modules` exclusion is required; `.next` and `dist` are the
+prebuilt runtime artifacts.
 
 ---
 
@@ -913,7 +971,7 @@ NEXT_PUBLIC_BIOMES_START_IN_HARTHMERE=0 \
 NEXT_PUBLIC_GLITCH_SYNC_BASE_URL="$NEXT_PUBLIC_GLITCH_SYNC_BASE_URL" \
 NODE_ENV=production \
 NEXT_TELEMETRY_DISABLED=1 \
-NODE_OPTIONS="--openssl-legacy-provider" \
+NODE_OPTIONS="" \
 ./node_modules/.bin/next build
 ```
 
@@ -930,7 +988,7 @@ Why this is done:
 cd /Users/devindixon/Development/biomes-game
 
 NODE_ENV=production \
-NODE_OPTIONS="--openssl-legacy-provider" \
+NODE_OPTIONS="" \
 ./node_modules/.bin/webpack \
   --config server.webpack.config.cjs \
   --mode production
@@ -987,108 +1045,75 @@ If `.next/BUILD_ID` or any `dist/*.js` file is missing, do not deploy. If the ar
 
 ### 9.1 Build local production image
 
+Use the guarded helper so artifact freshness, Docker packaging, immutable-image
+identity, Redis 8.8.1, and both service roles are checked together:
+
 ```bash
 cd /Users/devindixon/Development/biomes-game
 
-docker buildx build \
-  --platform linux/amd64 \
-  --progress=plain \
-  -f Dockerfile.biomes \
-  -t glitch-harthmere-biomes:production \
-  --load \
-  .
+TAG=platform-candidate-YYYYMMDD-r1
+export HARTHMERE_E2E_CONTROL_TOKEN="$(openssl rand -hex 32)"
+HARTHMERE_NATIVE_ECS_E2E=1 \
+HARTHMERE_SKIP_LIVE_ENTITY_BROWSER_SMOKE=1 \
+scripts/glitch/deploy-production-local-redis-smoke.sh \
+  --local-smoke --keep-local --tag "$TAG"
 ```
 
-Expected result:
+The command does not push unless `--push` is explicitly supplied. Expected
+terminal markers include:
 
 ```text
-naming to docker.io/library/glitch-harthmere-biomes:production done
+Immutable image identity verified: biomes-prod-smoke-app -> sha256:...
+Dedicated local Anima/Gaia readiness passed.
+Local production image smoke passed.
+Skipping production push.
 ```
 
-### 9.2 Run local Redis and local game container
+### 9.2 Production-shaped local service phases
 
-Use local Redis for local testing. Do not point local Docker at the private Azure Redis host.
+Use local Redis for local testing. Do not point local Docker at the private
+Azure Redis host. The helper deliberately runs three phases against one image
+ID and one Redis snapshot:
 
-```bash
-cd /Users/devindixon/Development/biomes-game
+1. `biomes-prod-smoke-app` runs `GLITCH_STACK_ROLE=web`, bootstraps disposable
+   Redis, and proves Web/Logic/Sync/Trigger/Shim/Bikkie plus Galois/Voxeloo.
+2. Web stops. `biomes-prod-smoke-assets` serves the packaged public assets and
+   `biomes-prod-smoke-simulation` runs `GLITCH_STACK_ROLE=simulation` with the
+   production Anima heap, Gaia WASM budget, and 900-attempt startup allowance.
+   The helper requires `GLITCH_SIMULATION_ROLE_READY anima=1 gaia=1`, zero
+   restarts, and no OOM.
+3. The temporary simulation/asset containers stop, and the web role is restored
+   without flushing Redis for browser testing on ports `3017` and `4907`.
 
-docker network create glitch-dev 2>/dev/null || true
-docker rm -f glitch-redis-local biomes-local 2>/dev/null || true
-
-docker run -d \
-  --name glitch-redis-local \
-  --network glitch-dev \
-  redis:6.0.16-alpine
-
-printf "GLITCH_TITLE_TOKEN: "
-stty -echo
-IFS= read -r GLITCH_TITLE_TOKEN
-stty echo
-printf "\n"
-
-HARTHMERE_E2E_CONTROL_TOKEN="$(openssl rand -hex 32)"
-
-docker run -d \
-  --name biomes-local \
-  --network glitch-dev \
-  -p 3000:3000 \
-  -p 4900:4900 \
-  -e GLITCH_TITLE_TOKEN="$GLITCH_TITLE_TOKEN" \
-  -e GLITCH_TITLE_ID="42de534c-600f-4228-af9e-b69faef94cce" \
-  -e GLITCH_API_BASE_URL="https://api.glitch.fun/api" \
-  -e REDIS_HOST="glitch-redis-local" \
-  -e GLITCH_REDIS_HOST="glitch-redis-local" \
-  -e REDIS_PORT="6379" \
-  -e GLITCH_REDIS_PORT="6379" \
-  -e HARTHMERE_VISUAL_TEST_AUTH="1" \
-  -e HARTHMERE_NATIVE_ECS_E2E="1" \
-  -e HARTHMERE_E2E_CONTROL_TOKEN="$HARTHMERE_E2E_CONTROL_TOKEN" \
-  -e GLITCH_ENABLE_ANIMA="1" \
-  -e GLITCH_ENABLE_GAIA="1" \
-  -e GLITCH_ENABLE_STREAM_WORKERS="1" \
-  -e NEXT_PUBLIC_GLITCH_SYNC_BASE_URL="http://127.0.0.1:4900" \
-  glitch-harthmere-biomes:production
-```
+Do not replace this with one unified 16 GiB container. The August 2 candidate
+loaded all 262,253 terrain shards with zero holes and was then OOM-killed only
+because Web/Sync and simulation shared the same Docker memory budget.
 
 ### 9.3 Watch local logs
 
 ```bash
-docker logs -f biomes-local
+docker logs -f biomes-prod-smoke-app
 ```
 
-Expected logs:
+During the dedicated phase, use:
 
-```text
-Redis preflight host=glitch-redis-local port=6379
-Redis is already populated with the installed snapshot data.
-Glitch local game stack
-START shim HOST=127.0.0.1 BASE_PORT=3100 RPC_PORT=3104 METRICS_PORT=3101 file=/app/dist/shim.js
-START bikkie HOST=127.0.0.1 BASE_PORT=3400 RPC_PORT=3404 METRICS_PORT=3401 file=/app/dist/bikkie.js
-START logic HOST=127.0.0.1 BASE_PORT=3500 RPC_PORT=3504 METRICS_PORT=3501 file=/app/dist/logic.js
-START oob HOST=127.0.0.1 BASE_PORT=4700 RPC_PORT=4704 METRICS_PORT=4701 file=/app/dist/oob.js
-START sidefx HOST=127.0.0.1 BASE_PORT=4600 RPC_PORT=4604 METRICS_PORT=4601 file=/app/dist/sidefx.js
-START sync HOST=0.0.0.0 BASE_PORT=4900 RPC_PORT=4904 METRICS_PORT=4901 file=/app/dist/sync.js
-START anima HOST=127.0.0.1 BASE_PORT=4100 RPC_PORT=4104 METRICS_PORT=4101 file=/app/dist/anima.js
-START gaia HOST=127.0.0.1 BASE_PORT=4200 RPC_PORT=4204 METRICS_PORT=4201 file=/app/dist/gaia.js
-START trigger HOST=127.0.0.1 BASE_PORT=3700 RPC_PORT=3704 METRICS_PORT=3701 file=/app/dist/trigger.js
-START notify HOST=127.0.0.1 BASE_PORT=3800 RPC_PORT=3804 METRICS_PORT=3801 file=/app/dist/notify.js
-shim now running
-bikkie now running
-oob now running
-logic now running
-sidefx now running
-WebSocket listening on port 4900
-sync now running
-web now running
+```bash
+docker logs -f biomes-prod-smoke-simulation
 ```
+
+The simulation container is removed after a successful phase. The helper's
+captured output is therefore the authoritative record for its final readiness
+marker; save that output in CI or a release artifact when permanent evidence is
+required.
 
 ### 9.4 Run the browser-to-native-ECS release gate
 
 Keep the control token in the same shell that launched the local container:
 
 ```bash
-HARTHMERE_E2E_BASE_URL=http://127.0.0.1:3000 \
-HARTHMERE_E2E_URL=http://127.0.0.1:3000/at \
+HARTHMERE_E2E_BASE_URL=http://127.0.0.1:3017 \
+HARTHMERE_E2E_SYNC_BASE_URL=http://127.0.0.1:4907 \
+HARTHMERE_E2E_URL=http://127.0.0.1:3017/at \
 HARTHMERE_E2E_CONTROL_TOKEN="$HARTHMERE_E2E_CONTROL_TOKEN" \
 yarn harthmere:test:native-ecs-e2e
 ```
@@ -1107,7 +1132,7 @@ curl -i \
   -X POST \
   -H 'Content-Type: application/json' \
   -d '{"op":"validate","install_id":"f7f602be-8d32-4fd6-9eba-2d3b7e6dafd7"}' \
-  http://127.0.0.1:3000/api/glitch/harthmere
+  http://127.0.0.1:3017/api/glitch/harthmere
 ```
 
 Expected result:
@@ -1198,7 +1223,7 @@ Checklist:
 4. Does the browser attempt `wss://<web-origin>/ro-sync` instead of `wss://<web-origin>:4900/ro-sync`?
 5. Is Glitch pointing to the VNet app URL?
 
-### Problem: Docker build fails because `.next`, `dist`, or `node_modules` are missing
+### Problem: Docker build fails because `.next` or `dist` is missing
 
 Cause:
 
@@ -1209,28 +1234,31 @@ Fix:
 Do not exclude:
 
 ```text
-node_modules
 .next
 dist
 ```
 
-for the packaged-build Dockerfile.
+for the packaged-build Dockerfile. Keep `node_modules` excluded; Docker creates
+the Linux production tree with `npm ci`.
 
-### Problem: Native module errors for `sharp`, `bufferutil`, `utf-8-validate`, or `segfault-handler`
+### Problem: Native module errors for `sharp`, `bufferutil`, `utf-8-validate`, or `segfault-raub`
 
 Cause:
 
-Mac `node_modules` copied into a Linux/AMD64 image.
+The Linux `npm ci`/native rebuild step did not produce a binding compatible
+with Node 24, Linux/AMD64, and the Ubuntu 24.04 glibc floor.
 
 Fix:
 
 The Dockerfile must run:
 
 ```bash
-npm rebuild sharp bufferutil utf-8-validate segfault-handler --platform=linux --arch=x64 --foreground-scripts
+npm rebuild @swc/core esbuild msgpackr-extract sharp bufferutil utf-8-validate segfault-raub --foreground-scripts
+node scripts/glitch/test-node24-native-runtime.cjs
 ```
 
-and include build tooling such as `build-essential`.
+and include build tooling such as `build-essential` until the rebuild and
+Voxeloo packaging steps finish. The final layer then removes that tooling.
 
 ### Problem: Docker Desktop local build errors with `input/output error`
 
@@ -1280,7 +1308,8 @@ Keep `.github/workflows/azure-production-deploy.yml` on the bounded-cache path:
 Before build:
 
 - [ ] `Dockerfile.biomes` starts `run-glitch-local-game-stack.sh`.
-- [ ] `.dockerignore` does not exclude `node_modules`, `.next`, or `dist`.
+- [ ] `Dockerfile.biomes.dockerignore` excludes host `node_modules` and `.next/cache`, but retains `.next` and `dist`.
+- [ ] Docker's Linux `npm ci --omit=dev` closure and Node 24 native-runtime audit pass.
 - [ ] `NEXT_PUBLIC_GLITCH_SYNC_BASE_URL` is set to the production web origin; no external `:4900`.
 - [ ] Build env includes `BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN=1`, `BIOMES_CREATE_LOCAL_DEV_TERRAIN=1`, server/client Harthmere X offsets of `1600`, `NEXT_PUBLIC_BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN=1`, `NEXT_PUBLIC_BIOMES_FORCE_LOCAL_DEV_TOWN=0`, `NEXT_PUBLIC_BIOMES_START_IN_HARTHMERE=0`, `NEXT_PUBLIC_BIOMES_SNAPSHOT_MERGE_MODE=1`, and `NEXT_PUBLIC_BIOMES_SNAPSHOT_RICH_NPC_APPEARANCE=1`.
 - [ ] `next build` completed with the production web-origin sync URL.

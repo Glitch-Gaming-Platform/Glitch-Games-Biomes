@@ -88,12 +88,8 @@ export async function redisInitForTests(port: number): Promise<BiomesRedis> {
   });
 
   const infoString = (await redis.primary.info("server")) ?? "";
-  // Redis 7.x preserves the command semantics this suite exercises. Pinning
-  // the patch/minor text to exactly 7.0 made the suite refuse Homebrew 7.2 even
-  // though the server was fully compatible, hiding real Lua regressions behind
-  // a harness-version assertion.
   assert.ok(
-    /^# Server\r\nredis_version:7\./.test(infoString),
+    /^# Server\r\nredis_version:8[.]8[.]1(?:\r\n|$)/.test(infoString),
     infoString.slice(0, 100)
   );
   await redis.primary.flushall();

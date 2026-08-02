@@ -141,4 +141,25 @@ OcclusionMask::OcclusionMask(
   }
 }
 
+OcclusionMask::OcclusionMask(const OcclusionMask& other)
+    : mask_(
+          other.mask_ ? std::make_unique<std::bitset<shards::kMaxBlockSize>>(
+                            *other.mask_)
+                      : nullptr),
+      face_occlusion_summary_(other.face_occlusion_summary_),
+      volume_occlusion_summary_(other.volume_occlusion_summary_) {}
+
+OcclusionMask& OcclusionMask::operator=(const OcclusionMask& other) {
+  if (this == &other) {
+    return *this;
+  }
+  mask_ =
+      other.mask_
+          ? std::make_unique<std::bitset<shards::kMaxBlockSize>>(*other.mask_)
+          : nullptr;
+  face_occlusion_summary_ = other.face_occlusion_summary_;
+  volume_occlusion_summary_ = other.volume_occlusion_summary_;
+  return *this;
+}
+
 }  // namespace voxeloo::biomes

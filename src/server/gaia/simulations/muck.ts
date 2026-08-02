@@ -97,7 +97,7 @@ export class MuckSimulation extends Simulation {
     // source, which otherwise recontaminates the extension immediately after
     // forced terrain maintenance. Keep every vertical shard in the extension
     // at zero regardless of the global Muck simulation.
-    if (suppressMuckInHarthmereExtension(shard.box.v0)) {
+    if (suppressMuckInHarthmereExtension([...shard.box.v0])) {
       return using(
         Tensor.make(this.voxeloo, SHARD_SHAPE, "U8"),
         (muck) =>

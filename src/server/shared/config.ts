@@ -386,9 +386,9 @@ const DEFAULT_CONFIG = deepFreeze({
   redisPeriodicTrimChance: 1.0,
   redisUseApproximateTrim: false,
   redisMaxEcsLogAgeMs: 1000 * 60 * 15, // 15 minutes.
-  // Redis 6.0 does not support stream MINID trimming. Keep the streams bounded
-  // with approximate MAXLEN trims so production Redis 6 and local Redis 7 both
-  // use the same command family.
+  // Bound streams by entries. Redis 8.8.1 optimizes approximate MAXLEN trims,
+  // and this preserves the existing load-based retention contract instead of
+  // changing gameplay catch-up behavior to time-based MINID retention.
   redisMaxEcsStreamEntries: 250_000,
   redisMaxFirehoseStreamEntries: 250_000,
   redisMinUpdateHz: 20,

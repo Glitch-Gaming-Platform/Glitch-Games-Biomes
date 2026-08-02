@@ -42,7 +42,9 @@ import {
   harthmereNativeBiomesIdForItemId,
 } from "@/shared/harthmere/harthmere_native_bikkie_items";
 import {
+  applyHarthmereNativeAttackStats,
   harthmereNativeNpcBiscuit,
+  harthmereNativeItemCombatProfile,
   mitigateHarthmereNativeIncomingDamage,
   nativeCombatArmorStats,
   harthmereNativeNpcCombatProfileForSeed,
@@ -430,10 +432,38 @@ describe("Harthmere mucker hit (updateNpcHealthEvent)", () => {
       })
     ).id;
     equipNativeItem(attacker, "iron_longsword", 2);
-    const target = spawnNativeNpc(
-      harthmereGroundedMuckMonsterSeedsInTerritory()[0],
-      [2, 0, 0],
-      100
+    const seed = harthmereGroundedMuckMonsterSeedsInTerritory()[0];
+    const target = spawnNativeNpc(seed, [2, 0, 0], 100);
+    const itemId = harthmereNativeBiomesIdForItemId("iron_longsword")!;
+    const itemProfile = harthmereNativeItemCombatProfile(anItem(itemId))!;
+    const attackerProgression = readHarthmereNativeCombatProgression(
+      logic.world.table.get(attacker)?.trigger_state
+    );
+    const targetProfile = harthmereNativeNpcCombatProfileForSeed(seed);
+    const attackerStats = harthmereNativeLevelStats(attackerProgression.level);
+    const targetStats = harthmereNativeLevelStats(targetProfile.level);
+    const statDamage = applyHarthmereNativeAttackStats({
+      baseDamage: itemProfile.damagePerHit,
+      kind: itemProfile.kind,
+      stats: attackerStats,
+      targetEvasion: targetStats.evasion,
+      criticalSeed: [
+        attacker,
+        target.id,
+        attackerProgression.lastAttackMs,
+        itemId,
+      ],
+    });
+    const levelFactor = Math.max(
+      0.65,
+      Math.min(
+        1.75,
+        1 + (attackerProgression.level - targetProfile.level) * 0.04
+      )
+    );
+    const expectedDamage = Math.max(
+      1,
+      Math.round(statDamage.damage * levelFactor)
     );
 
     await logic.publish(
@@ -447,7 +477,10 @@ describe("Harthmere mucker hit (updateNpcHealthEvent)", () => {
       )
     );
 
-    assert.equal(logic.world.table.get(target.id)?.health?.hp, 83);
+    assert.equal(
+      logic.world.table.get(target.id)?.health?.hp,
+      100 - expectedDamage
+    );
     const attackerState = logic.world.table.get(attacker)?.trigger_state;
     assert.ok(readHarthmereNativeSkillTotalXp(attackerState, "combat") > 0);
     assert.ok(

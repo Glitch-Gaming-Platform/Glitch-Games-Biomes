@@ -2,10 +2,16 @@ import type { LazyChange } from "@/server/shared/ecs/lazy";
 import { LazyChangeBuffer } from "@/server/shared/ecs/lazy";
 import type { ReadonlyFilterContext } from "@/server/shared/world/filter_context";
 import { HfcWorldApi } from "@/server/shared/world/hfc/hfc";
+import type { BiomesRedis } from "@/server/shared/redis/connection";
+import {
+  packForRedis,
+  serializeRedisComponentData,
+} from "@/server/shared/world/lua/serde";
 import {
   redisInitForTests,
   runRedis,
 } from "@/server/shared/world/test/test_helpers";
+import { biomesIdToRedisKey } from "@/server/shared/world/types";
 import { BackgroundTaskController } from "@/shared/abort";
 import type { BiomesId } from "@/shared/ids";
 import { Latch } from "@/shared/util/async";
@@ -33,8 +39,10 @@ describe("HFC World Tests", () => {
   });
 
   let world!: HfcWorldApi;
+  let redis!: BiomesRedis;
   beforeEach(async () => {
-    world = new HfcWorldApi(await redisInitForTests(port));
+    redis = await redisInitForTests(port);
+    world = new HfcWorldApi(redis);
   });
 
   afterEach(async () => {
@@ -63,6 +71,41 @@ describe("HFC World Tests", () => {
     const entity = await world.get(ID_A);
     assert.ok(entity);
     assert.deepEqual(entity?.position()?.v, [1, 2, 3]);
+  });
+
+  it("drops a non-finite component before publishing or storing it", async () => {
+    await world.apply({
+      changes: [
+        {
+          kind: "create",
+          entity: {
+            id: ID_A,
+            position: { v: [1, NaN, 3] },
+            orientation: { v: [0, Math.PI] },
+          },
+        },
+      ],
+    });
+
+    const entity = await world.get(ID_A);
+    assert.ok(entity);
+    assert.equal(entity.position(), undefined);
+    assert.deepEqual(entity.orientation()?.v, [0, Math.PI]);
+  });
+
+  it("quarantines a legacy non-finite component during bootstrap reads", async () => {
+    await redis.primary.hset(
+      biomesIdToRedisKey(ID_A),
+      "54",
+      serializeRedisComponentData([[1, NaN, 3]]) as string,
+      "55",
+      serializeRedisComponentData([[0, Math.PI]]) as string
+    );
+
+    const entity = await world.get(ID_A);
+    assert.ok(entity);
+    assert.equal(entity.position(), undefined);
+    assert.deepEqual(entity.orientation()?.v, [0, Math.PI]);
   });
 
   it("Supports subscription", async () => {
@@ -104,6 +147,58 @@ describe("HFC World Tests", () => {
       ok(change.kind === "create");
       assert.equal(change.entity.id, ID_A);
       assert.deepEqual(change.entity.position(), { v: [1, 2, 3] });
+    } finally {
+      controller.abort();
+    }
+  });
+
+  it("quarantines a non-finite component from an older live publisher", async () => {
+    const controller = new BackgroundTaskController();
+    const gotUpdate = new Latch();
+    const bootstrapped = new Latch();
+    const buffer = new LazyChangeBuffer();
+
+    controller.runInBackground("subscribe", async (signal) => {
+      for await (const update of world.subscribe({}, signal)) {
+        buffer.push(update.changes);
+        if (update.changes.length > 0) {
+          gotUpdate.signal();
+        }
+        if (update.bootstrapped) {
+          bootstrapped.signal();
+        }
+      }
+    });
+
+    try {
+      await bootstrapped.wait();
+      await redis.primary.publish(
+        "ecs",
+        packForRedis([
+          42,
+          [
+            [
+              1,
+              ID_A,
+              {
+                "54": serializeRedisComponentData([[1, NaN, 3]]),
+                "55": serializeRedisComponentData([[0, Math.PI]]),
+              },
+            ],
+          ],
+        ])
+      );
+      await gotUpdate.wait();
+
+      const changes = buffer.pop();
+      assert.equal(changes.length, 1);
+      const change = changes[0];
+      assert.equal(change.kind, "update");
+      if (change.kind !== "update") {
+        assert.fail("Expected a sanitized update");
+      }
+      assert.equal(change.entity.position(), undefined);
+      assert.deepEqual(change.entity.orientation()?.v, [0, Math.PI]);
     } finally {
       controller.abort();
     }

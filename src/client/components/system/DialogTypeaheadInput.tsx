@@ -52,7 +52,7 @@ export const DialogTypeaheadInput = <T, Specials extends string[] = []>({
 
   const [inputText, setInputText] = useState("");
 
-  const matchRef = useRef<ReturnType<typeof setTimeout> | undefined>();
+  const matchRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const suppressBlur = useRef<boolean>(false);
 
   const resetToValue = useCallback(

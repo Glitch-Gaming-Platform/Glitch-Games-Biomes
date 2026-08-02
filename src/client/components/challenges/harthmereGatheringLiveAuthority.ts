@@ -1,4 +1,5 @@
 import { defaultHarthmereLiveFetch } from "@/client/components/harthmere_live_fetch";
+import { harthmerePlayerCapacityMessage } from "@/client/components/harthmere_capacity_messages";
 import {
   HARTHMERE_INVENTORY_EVENT,
   HARTHMERE_LIVE_INVENTORY_SYNC_EVENT,
@@ -68,6 +69,8 @@ export function harthmereGatheringErrorMessage(
   nodeName: string
 ) {
   const message = error instanceof Error ? error.message : String(error);
+  const capacityMessage = harthmerePlayerCapacityMessage(message);
+  if (capacityMessage) return capacityMessage;
   if (message.includes("node_depleted")) {
     return `${nodeName} is depleted and will respawn.`;
   }

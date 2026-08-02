@@ -1,13 +1,59 @@
 import type * as THREE from "three";
 import { Mesh } from "three";
+import { MeshoptDecoder } from "meshoptimizer/decoder";
 import type { GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { KTX2Loader } from "three/examples/jsm/loaders/KTX2Loader.js";
 import {
   coalescedPlayerMeshGltfArrayBufferFetch,
   shouldCoalescePlayerMeshGltfFetch,
 } from "@/client/game/util/gltf_fetch_coalescing";
+import { log } from "@/shared/logging";
 
-const loader = new GLTFLoader();
+export const KTX2_TRANSCODER_PATH = "/three/basis/";
+
+const managedLoaders = new Set<GLTFLoader>();
+let ktx2Loader: KTX2Loader | undefined;
+
+export function createGltfLoader(manager?: THREE.LoadingManager) {
+  const loader = new GLTFLoader(manager).setMeshoptDecoder(MeshoptDecoder);
+  if (ktx2Loader) {
+    loader.setKTX2Loader(ktx2Loader);
+  }
+  managedLoaders.add(loader);
+  return loader;
+}
+
+// KTX2 support depends on renderer extension detection, so it cannot be
+// initialized at module load time. The game renderer calls this immediately
+// after its WebGL2 context is validated, before resource loading begins.
+// Ordinary PNG/JPEG glTF textures continue to work if initialization fails.
+export function configureGltfTextureTranscoding(renderer: THREE.WebGLRenderer) {
+  if (ktx2Loader) {
+    return true;
+  }
+
+  const candidate = new KTX2Loader()
+    .setTranscoderPath(KTX2_TRANSCODER_PATH)
+    .setWorkerLimit(2);
+  try {
+    candidate.detectSupport(renderer);
+    ktx2Loader = candidate;
+    for (const managedLoader of managedLoaders) {
+      managedLoader.setKTX2Loader(candidate);
+    }
+    return true;
+  } catch (error) {
+    candidate.dispose();
+    log.warn(
+      "KTX2/Basis texture transcoding is unavailable; retaining standard GLTF texture loading",
+      { error }
+    );
+    return false;
+  }
+}
+
+const loader = createGltfLoader();
 
 export function loadGltf(url: string) {
   return loader.loadAsync(url);

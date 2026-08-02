@@ -1,6 +1,6 @@
 import fs from "fs";
+import { Session } from "node:inspector";
 import path from "path";
-import * as v8pn from "v8-profiler-next";
 
 // Convert a string into a filename-safe string, by replacing invalid
 // filename characters with underscores.
@@ -33,6 +33,22 @@ const DETAILED_OUTPUT_DIR = "v8_profiler_benchmarks_results";
 // after hooks, and the test logic itself.
 interface V8ProfilerBenchmarkContext {
   profilingTitle: string;
+  profilingSession: Session;
+}
+
+function postInspectorCommand<T>(
+  session: Session,
+  method: string
+): Promise<T> {
+  return new Promise((resolve, reject) => {
+    session.post(method as any, (error, result) => {
+      if (error) {
+        reject(error);
+      } else {
+        resolve(result as T);
+      }
+    });
+  });
 }
 
 export const mochaHooks = {
@@ -44,7 +60,7 @@ export const mochaHooks = {
     }
   },
 
-  beforeEach() {
+  async beforeEach() {
     const mochaContext = this as unknown as Mocha.Context;
     const benchmarkContext = this as unknown as V8ProfilerBenchmarkContext;
 
@@ -64,28 +80,33 @@ export const mochaHooks = {
       process.exit();
     }
 
-    // Setting generateType to 1 to generate new format for cpuprofile that is
-    // compatible with cpuprofile parsing in vscode.
-    v8pn.setGenerateType(1);
-    v8pn.startProfiling(benchmarkContext.profilingTitle);
+    const profilingSession = new Session();
+    profilingSession.connect();
+    benchmarkContext.profilingSession = profilingSession;
+    await postInspectorCommand(profilingSession, "Profiler.enable");
+    await postInspectorCommand(profilingSession, "Profiler.start");
   },
 
-  afterEach() {
+  async afterEach() {
     const benchmarkContext = this as unknown as V8ProfilerBenchmarkContext;
-    const profile = v8pn.stopProfiling(benchmarkContext.profilingTitle);
+    const { profile } = await postInspectorCommand<{
+      profile: object;
+    }>(benchmarkContext.profilingSession, "Profiler.stop");
+    await postInspectorCommand(
+      benchmarkContext.profilingSession,
+      "Profiler.disable"
+    );
+    benchmarkContext.profilingSession.disconnect();
 
-    profile.export(function (error, result) {
-      // Save the detailed output to a file so that it can be inspected offline.
-      // It can be viewed in either VS Code directly, or in Chrome.
-      fs.writeFileSync(
-        path.join(
-          DETAILED_OUTPUT_DIR,
-          filenameSafeString(benchmarkContext.profilingTitle) + `.cpuprofile`
-        ),
-        result!
-      );
-      profile.delete();
-    });
+    // Save the detailed output to a file so that it can be inspected offline.
+    // The inspector profile is Chrome DevTools / VS Code cpuprofile JSON.
+    fs.writeFileSync(
+      path.join(
+        DETAILED_OUTPUT_DIR,
+        filenameSafeString(benchmarkContext.profilingTitle) + `.cpuprofile`
+      ),
+      JSON.stringify(profile)
+    );
   },
 
   afterAll() {

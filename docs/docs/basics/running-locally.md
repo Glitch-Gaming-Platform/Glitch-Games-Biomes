@@ -51,12 +51,14 @@ Note that this repo supports dev containers so a quick way to setup your environ
   source .venv/bin/activate
   ```
 - Run `pip install -r requirements.txt` to download python requirements.
-- Install [Redis 7.0.8](https://redis.io/)
+- Install Redis 8.8.1 to match production:
   ```bash
-  curl -s https://download.redis.io/releases/redis-7.0.8.tar.gz | tar xvz -C ${HOME} \
-    && make -j`nproc` -C ${HOME}/redis-7.0.8 \
-    && sudo make install -C ${HOME}/redis-7.0.8 \
-    && rm -rf ${HOME}/redis-7.0.8
+  curl -fsSL https://download.redis.io/releases/redis-8.8.1.tar.gz -o /tmp/redis-8.8.1.tar.gz \
+    && echo "1d1e423c9c808de3cb01dd3300d2b8d305b7691382e31a847ec17b66d3157477  /tmp/redis-8.8.1.tar.gz" | sha256sum -c - \
+    && tar xzf /tmp/redis-8.8.1.tar.gz -C ${HOME} \
+    && make -j`nproc` -C ${HOME}/redis-8.8.1 ENABLE_LTO= \
+    && sudo make install -C ${HOME}/redis-8.8.1 \
+    && rm -rf ${HOME}/redis-8.8.1 /tmp/redis-8.8.1.tar.gz
   ```
 
 ## Run Biomes

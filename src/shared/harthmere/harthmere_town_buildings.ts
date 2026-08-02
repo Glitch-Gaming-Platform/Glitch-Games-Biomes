@@ -68,8 +68,7 @@ export type HarthmereMat =
   | "ironOre"
   | "silverOre"
   | "goldOre"
-  | "diamondOre"
-  | "water";
+  | "diamondOre";
 
 export type HarthmereDoorSide = "north" | "south" | "east" | "west";
 export type HarthmereProfile =

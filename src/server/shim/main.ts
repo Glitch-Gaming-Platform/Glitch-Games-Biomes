@@ -145,6 +145,11 @@ import {
   harthmereSurfaceRepairShardSpecs,
 } from "@/shared/harthmere/extension_surface_repair";
 import {
+  harthmereExtensionEdgeHorizonBlockAt,
+  harthmereExtensionEdgeHorizonShardSpecs,
+  type HarthmereExtensionEdgeHorizonMaterial,
+} from "@/shared/harthmere/extension_edge_horizon";
+import {
   harthmereAdditiveTownNpcDialogueForOffset,
   harthmereAdditiveTownNpcVoiceProfile,
 } from "@/shared/harthmere/additive_town_npc_dialogue";
@@ -315,11 +320,11 @@ async function registerShimWorldService(
 // missing/invalid authored seeds; applying a changed baseline to existing
 // shards requires the explicit overlay-preserving terrain migration mode.
 const HARTHMERE_LOCAL_DEV_TERRAIN_BOUNDS_VERSION =
-  "harthmere-local-dev-terrain-complete-foundation-v3-surface-solidity";
+  "harthmere-local-dev-terrain-v4-unreachable-edge-horizon";
 const HARTHMERE_LOCAL_DEV_SEED_CONTENT_PASS =
   "harthmere-additive-east-extension-complete-foundation-flat-town";
 const HARTHMERE_LOCAL_DEV_SEED_FINGERPRINT_VERSION =
-  "harthmere-local-dev-seed-fingerprint-additive-east-extension-clean-muck-v5";
+  "harthmere-local-dev-seed-fingerprint-additive-edge-horizon-v6";
 
 // Use a new terrain id band for the additive extension. Reusing the legacy
 // band would move existing +512 town entities to +1600 and therefore remove
@@ -568,6 +573,10 @@ async function repairKnownSnapshotNpcGrounding(worldApi: WorldApi) {
               npc_metadata: NpcMetadata.create({
                 ...npcMetadata,
                 spawn_position: targetPosition,
+                spawn_orientation: [...npcMetadata.spawn_orientation] as [
+                  number,
+                  number,
+                ],
               }),
             }
           : {}),
@@ -2721,7 +2730,7 @@ function harthmereBellbinderDescentBlockAt(
 
 function harthmereMat(
   materials: ReturnType<typeof localDevMaterials>,
-  key: HarthmereMat
+  key: HarthmereMat | HarthmereExtensionEdgeHorizonMaterial
 ): TerrainID {
   return materials[key] as TerrainID;
 }
@@ -4210,12 +4219,7 @@ function isWideWildsTreeCenter(worldX: number, worldZ: number) {
 }
 
 type HarthmereHarvestableTreeKind =
-  | "oak"
-  | "orchard"
-  | "dead"
-  | "pine"
-  | "birch"
-  | "willow";
+  "oak" | "orchard" | "dead" | "pine" | "birch" | "willow";
 type HarthmereHarvestableForageKind =
   | "mushroom"
   | "berry"
@@ -4229,12 +4233,7 @@ type HarthmereHarvestableForageKind =
   | "wild_garlic"
   | "honey";
 type HarthmereHarvestableOreKind =
-  | "stone"
-  | "coal"
-  | "copper"
-  | "iron"
-  | "silver"
-  | "gold";
+  "stone" | "coal" | "copper" | "iron" | "silver" | "gold";
 
 // These are actual voxel/block resources, not GLB decoration. The dense forest
 // renderer makes the Wilds look alive, but the player can only harvest blocks
@@ -4493,14 +4492,14 @@ function buildHarthmereFastHarvestableBlockMap() {
       kind === "orchard"
         ? 4
         : kind === "dead"
-        ? 5
-        : kind === "pine"
-        ? 8
-        : kind === "birch"
-        ? 7
-        : kind === "willow"
-        ? 6
-        : 6;
+          ? 5
+          : kind === "pine"
+            ? 8
+            : kind === "birch"
+              ? 7
+              : kind === "willow"
+                ? 6
+                : 6;
 
     for (let relY = 1; relY <= trunkHeight; relY += 1) {
       setHarthmereFastBlock(
@@ -4578,14 +4577,14 @@ function buildHarthmereFastHarvestableBlockMap() {
       kind === "coal"
         ? "coal"
         : kind === "copper"
-        ? "copperOre"
-        : kind === "iron"
-        ? "ironOre"
-        : kind === "silver"
-        ? "silverOre"
-        : kind === "gold"
-        ? "goldOre"
-        : "stone";
+          ? "copperOre"
+          : kind === "iron"
+            ? "ironOre"
+            : kind === "silver"
+              ? "silverOre"
+              : kind === "gold"
+                ? "goldOre"
+                : "stone";
 
     for (let dx = -4; dx <= 4; dx += 1) {
       for (let dz = -4; dz <= 4; dz += 1) {
@@ -4817,14 +4816,14 @@ function harthmereHarvestableTreeBlockAt(
       kind === "orchard"
         ? 4
         : kind === "dead"
-        ? 5
-        : kind === "pine"
-        ? 8
-        : kind === "birch"
-        ? 7
-        : kind === "willow"
-        ? 6
-        : 6;
+          ? 5
+          : kind === "pine"
+            ? 8
+            : kind === "birch"
+              ? 7
+              : kind === "willow"
+                ? 6
+                : 6;
 
     if (adx === 0 && adz === 0 && inRange(relY, 1, trunkHeight)) {
       return kind === "birch" && relY % 2 === 0
@@ -5377,10 +5376,18 @@ function starterTownAboveGroundBlockAt(
   worldY: number,
   worldZ: number
 ): TerrainID | undefined {
-  return (
+  const authoredBlock =
     harthmereFullTownBlockAt(materials, worldX, worldY, worldZ) ??
-    harthmereWideWildsBlockAt(materials, worldX, worldY, worldZ)
+    harthmereWideWildsBlockAt(materials, worldX, worldY, worldZ);
+  if (authoredBlock) {
+    return authoredBlock;
+  }
+  const edgeHorizon = harthmereExtensionEdgeHorizonBlockAt(
+    worldX + harthmereExtraTownOffsetX(),
+    worldY,
+    worldZ + harthmereExtraTownOffsetZ()
   );
+  return edgeHorizon ? harthmereMat(materials, edgeHorizon) : undefined;
 }
 
 function starterTownDecorBlockAt(
@@ -5514,6 +5521,9 @@ function localDevTerrainShardSpecs() {
   // also stopped at the authored town edge, leaving the map's east padding as
   // a sheer void. These specs are already in runtime/world coordinates.
   for (const spec of harthmereExtensionFoundationShardSpecs()) {
+    pushRuntimeSpec(spec.shardX, spec.shardY, spec.shardZ);
+  }
+  for (const spec of harthmereExtensionEdgeHorizonShardSpecs()) {
     pushRuntimeSpec(spec.shardX, spec.shardY, spec.shardZ);
   }
 
@@ -5696,6 +5706,35 @@ function makeLocalDevStaleTerrainDeletes(
   return deletes;
 }
 
+function localDevTerrainShardHasAuthoredWater(
+  shardX: number,
+  shardY: number,
+  shardZ: number
+) {
+  const v0 = shardToVoxelPos(shardX, shardY, shardZ);
+  const v1 = [v0[0] + SHARD_DIM, v0[1] + SHARD_DIM, v0[2] + SHARD_DIM] as [
+    number,
+    number,
+    number,
+  ];
+  const authoredX0 = harthmereAuthoredWorldX(v0[0]);
+  const authoredX1 = harthmereAuthoredWorldX(v1[0] - 1);
+  const authoredZ0 = harthmereAuthoredWorldZ(v0[2]);
+  const authoredZ1 = harthmereAuthoredWorldZ(v1[2] - 1);
+  const spanX0 = Math.min(authoredX0, authoredX1);
+  const spanX1 = Math.max(authoredX0, authoredX1);
+  const spanZ0 = Math.min(authoredZ0, authoredZ1);
+  const spanZ1 = Math.max(authoredZ0, authoredZ1);
+  return (
+    (v0[1] <= STARTER_TOWN_GROUND_Y &&
+      v1[1] > STARTER_TOWN_GROUND_Y - HARTHMERE_RIVER_MAX_CARVE_DEPTH &&
+      harthmereRiverTouchesAuthoredSpan(spanX0, spanX1, spanZ0, spanZ1)) ||
+    (v0[1] <= STARTER_TOWN_GROUND_Y + HARTHMERE_STILL_WATER_MAX_REL_Y &&
+      v1[1] > STARTER_TOWN_GROUND_Y + HARTHMERE_STILL_WATER_MIN_REL_Y &&
+      harthmereStillWaterTouchesAuthoredSpan(spanX0, spanX1, spanZ0, spanZ1))
+  );
+}
+
 function makeLocalDevTerrainShard(
   voxeloo: VoxelooModule,
   kind: "create" | "update",
@@ -5703,13 +5742,14 @@ function makeLocalDevTerrainShard(
   shardX: number,
   shardY: number,
   shardZ: number,
-  tick: number
+  tick: number,
+  authoredWaterOnly = false
 ): Change {
   const v0 = shardToVoxelPos(shardX, shardY, shardZ);
   const v1 = [v0[0] + SHARD_DIM, v0[1] + SHARD_DIM, v0[2] + SHARD_DIM] as [
     number,
     number,
-    number
+    number,
   ];
 
   const materials = localDevMaterials();
@@ -5737,8 +5777,8 @@ function makeLocalDevTerrainShard(
               depth === 0
                 ? materials.grass
                 : depth > 6
-                ? materials.stone
-                : materials.dirt;
+                  ? materials.stone
+                  : materials.dirt;
 
             // HARTHMERE_RIVER: the Brell is cut out of the flat plane. The
             // authored bridge deck and the module's own plank crossings are
@@ -6011,6 +6051,17 @@ function makeLocalDevTerrainShard(
       ? { shard_water: shardWater }
       : {}),
   };
+  if (authoredWaterOnly) {
+    ok(
+      kind === "update",
+      "Authored-water-only migration requires an existing shard"
+    );
+    return {
+      kind,
+      tick,
+      entity: { id, shard_water: shardWater },
+    };
+  }
   const mutableDefaults = {
     shard_diff: ShardDiff.create(),
     shard_shapes: ShardShapes.create(),
@@ -6041,7 +6092,7 @@ function makeLocalDevChapter1TerrainShard(
   const v1 = [v0[0] + SHARD_DIM, v0[1] + SHARD_DIM, v0[2] + SHARD_DIM] as [
     number,
     number,
-    number
+    number,
   ];
   const materials = localDevMaterials() as unknown as Record<string, TerrainID>;
 
@@ -7231,6 +7282,9 @@ function makeLocalDevSnapshotGroveNpcChanges(
         velocity: [0, 0, 0],
         displayName: npc.displayName,
         defaultDialog: npcDialog(npc.line, ...npc.extraLines),
+        // Match the production Grove seeder: named quest NPC homes are exact,
+        // while per-player story movement belongs to the staging projection.
+        spawnPositionJitterRadius: 0,
       },
       now
     );
@@ -7318,8 +7372,8 @@ function makeLocalDevChapter1NpcChanges(
       member.key === "augur9"
         ? ["biomesRobot", "dRobot"]
         : member.key === "marrow"
-        ? ["dog", "wolf", "rabbit"]
-        : ["local_dev_human"];
+          ? ["dog", "wolf", "rabbit"]
+          : ["local_dev_human"];
     const fallbackTypes =
       member.key === "augur9" && isNpcTypeId(BikkieIds.biomesRobot)
         ? [BikkieIds.biomesRobot]
@@ -8189,7 +8243,8 @@ function makeLocalDevMiniWorldChanges(
   existingIds: Set<BiomesId>,
   seedFingerprint: string,
   includeTerrain = true,
-  terrainIdsToBuild?: ReadonlySet<BiomesId>
+  terrainIdsToBuild?: ReadonlySet<BiomesId>,
+  authoredWaterOnlyIds?: ReadonlySet<BiomesId>
 ) {
   const changes: Change[] = [];
   const specs = localDevTerrainShardSpecs();
@@ -8232,7 +8287,8 @@ function makeLocalDevMiniWorldChanges(
         spec.shardX,
         spec.shardY,
         spec.shardZ,
-        tick
+        tick,
+        authoredWaterOnlyIds?.has(spec.id) ?? false
       );
       changes.push(terrainChange);
 
@@ -8378,7 +8434,8 @@ async function buildAndApplyLocalDevTerrainSeedBatches(
   tick: number,
   existingIds: Set<BiomesId>,
   worldApi: WorldApi,
-  terrainIdsToBuild?: ReadonlySet<BiomesId>
+  terrainIdsToBuild?: ReadonlySet<BiomesId>,
+  authoredWaterOnlyIds?: ReadonlySet<BiomesId>
 ) {
   const specs = [
     ...localDevTerrainShardSpecs().map((spec) => ({
@@ -8423,7 +8480,8 @@ async function buildAndApplyLocalDevTerrainSeedBatches(
             spec.shardX,
             spec.shardY,
             spec.shardZ,
-            tick
+            tick,
+            authoredWaterOnlyIds?.has(spec.id) ?? false
           )
     );
 
@@ -8867,6 +8925,77 @@ async function seedMissingLocalDevContentIntoExistingWorld(
   }
 }
 
+// HARTHMERE_EDGE_HORIZON_PRODUCTION_TERRAIN_SYNC:
+// Production snapshots disable the broad generated-town terrain pass because
+// existing imported terrain must never be rebuilt in place. The edge horizon
+// occupies new stable shard ids outside the playable Z band, so it is safe to
+// create only those missing shards without updating or deleting any existing
+// terrain entity.
+async function seedMissingHarthmereEdgeHorizonTerrainIntoExistingWorld(
+  service: ShimWorldService | undefined,
+  worldApi: WorldApi
+) {
+  const specs = harthmereExtensionEdgeHorizonShardSpecs().map((spec) => {
+    const id = harthmereExtensionTerrainEntityIdForShard(
+      spec.shardX,
+      spec.shardY,
+      spec.shardZ
+    );
+    if (id === undefined) {
+      throw new Error(
+        `Harthmere edge horizon shard is outside the stable id grid: ` +
+          `${spec.shardX}:${spec.shardY}:${spec.shardZ}`
+      );
+    }
+    return { ...spec, id: id as BiomesId };
+  });
+  const present = await existingLocalDevIds(
+    specs.map((spec) => spec.id),
+    service,
+    worldApi
+  );
+  const missing = specs.filter((spec) => !present.has(spec.id));
+  if (missing.length === 0) {
+    log.info(
+      "HARTHMERE_EDGE_HORIZON_PRODUCTION_TERRAIN_SYNC: all visual edge terrain already present."
+    );
+    return;
+  }
+
+  const voxeloo = await loadVoxeloo();
+  const tick = service ? service.table.tick + 1 : 1;
+  const changes = missing.map((spec) =>
+    makeLocalDevTerrainShard(
+      voxeloo,
+      "create",
+      spec.id,
+      spec.shardX,
+      spec.shardY,
+      spec.shardZ,
+      tick
+    )
+  );
+  log.warn(
+    "HARTHMERE_EDGE_HORIZON_PRODUCTION_TERRAIN_SYNC: creating missing visual edge terrain",
+    {
+      created: changes.length,
+      totalAuthoredShards: specs.length,
+      ...firstAndLastLocalDevSeedIds(changes),
+    }
+  );
+
+  if (service) {
+    for (const batch of localDevSeedChangeBatches(
+      changes,
+      LOCAL_DEV_TERRAIN_BUILD_APPLY_BATCH_SIZE
+    )) {
+      service.writeableTable.apply(batch);
+    }
+  } else {
+    await applyLocalDevSeedChangesInDebugBatches(worldApi, changes);
+  }
+}
+
 // CHAPTER_1_PRODUCTION_TERRAIN_SYNC:
 // Existing production snapshots deliberately disable the broad local-dev town
 // terrain generator, but the two Elsewhen dungeons live in a new, reserved
@@ -8934,9 +9063,10 @@ async function seedLocalDevTerrainIfMissing(
       // while still requiring newly authored NPCs, quest givers, businesses,
       // and stations. Returning here used to skip that create-only content
       // reconciliation too, leaving exact quest target IDs permanently absent.
-      // Keep terrain untouched, but self-heal missing additive content on boot.
+      // Keep existing terrain untouched, but self-heal missing additive content
+      // and create-only horizon/dungeon terrain on boot.
       log.info(
-        "Harthmere town terrain generation is disabled; syncing missing authored content and additive Chapter 1 terrain."
+        "Harthmere town terrain generation is disabled; syncing missing authored content and create-only additive terrain."
       );
       const firstExtensionTerrainId = localDevTerrainShardSpecs()[0]?.id;
       const extensionTerrainAlreadyExists = firstExtensionTerrainId
@@ -8957,6 +9087,10 @@ async function seedLocalDevTerrainIfMissing(
       ) {
         return;
       }
+      await seedMissingHarthmereEdgeHorizonTerrainIntoExistingWorld(
+        service,
+        worldApi
+      );
       await seedMissingLocalDevContentIntoExistingWorld(service, worldApi);
       await seedMissingChapter1TerrainIntoExistingWorld(service, worldApi);
       // Terrain is intentionally untouched in this branch, but existing
@@ -9076,10 +9210,10 @@ async function seedLocalDevTerrainIfMissing(
     terrainMigrationMode === "additive"
       ? []
       : shouldUseHarthmereExtraTownOffset()
-      ? [...previousAdditiveTerrainIds]
-      : legacyTerrainIds.filter(
-          (id) => existingIds.has(id) && !activeTerrainIds.has(id)
-        );
+        ? [...previousAdditiveTerrainIds]
+        : legacyTerrainIds.filter(
+            (id) => existingIds.has(id) && !activeTerrainIds.has(id)
+          );
   const allExpectedSeedIdsExist = allExpectedLocalDevSeedIdsExist(
     expectedSeedIds,
     existingIds
@@ -9089,6 +9223,7 @@ async function seedLocalDevTerrainIfMissing(
     worldApi
   );
   const terrainIdsToBuild = new Set<BiomesId>();
+  const authoredWaterOnlyIds = new Set<BiomesId>();
   const addMissing = (ids: readonly BiomesId[]) => {
     for (const id of ids) {
       if (!existingIds.has(id)) {
@@ -9110,6 +9245,25 @@ async function seedLocalDevTerrainIfMissing(
   for (const id of unsolidSurfaceIds) {
     terrainIdsToBuild.add(id);
   }
+  if (
+    process.env.BIOMES_MIGRATE_HARTHMERE_AUTHORED_WATER === "1" &&
+    !shouldRewriteExistingTerrain
+  ) {
+    for (const spec of localDevTerrainShardSpecs()) {
+      if (
+        existingIds.has(spec.id) &&
+        localDevTerrainShardHasAuthoredWater(
+          spec.shardX,
+          spec.shardY,
+          spec.shardZ
+        ) &&
+        !terrainIdsToBuild.has(spec.id)
+      ) {
+        terrainIdsToBuild.add(spec.id);
+        authoredWaterOnlyIds.add(spec.id);
+      }
+    }
+  }
   if (shouldRewriteExistingTerrain) {
     for (const id of [...terrainIds, ...chapter1TerrainIds]) {
       terrainIdsToBuild.add(id);
@@ -9121,6 +9275,7 @@ async function seedLocalDevTerrainIfMissing(
     // A current fingerprint over holed terrain is exactly how the sunken-forest
     // pits survived every boot. Solid ground is now part of "already seeded".
     unsolidSurfaceIds.size === 0 &&
+    terrainIdsToBuild.size === 0 &&
     obsoleteLocalDevIds.length === 0 &&
     markerFingerprint === seedFingerprint
   ) {
@@ -9149,6 +9304,7 @@ async function seedLocalDevTerrainIfMissing(
     !shouldRewriteExistingTerrain &&
     allExpectedSeedIdsExist &&
     unsolidSurfaceIds.size === 0 &&
+    terrainIdsToBuild.size === 0 &&
     obsoleteLocalDevIds.length === 0 &&
     !markerFingerprint &&
     process.env.BIOMES_ENABLE_MARKERLESS_LOCAL_DEV_SEED_ADOPTION === "1"
@@ -9208,6 +9364,7 @@ async function seedLocalDevTerrainIfMissing(
     markerFingerprintPresent: Boolean(markerFingerprint),
     terrainMigrationMode,
     rewritesExistingTerrain: shouldRewriteExistingTerrain,
+    authoredWaterOnlyShards: authoredWaterOnlyIds.size,
     obsoleteLocalDevIds: obsoleteLocalDevIds.length,
     terrainShardSpecs: terrainIds.length,
     harvestableTreeCenters: HARTHMERE_HARVESTABLE_TREE_CENTERS.length,
@@ -9231,7 +9388,8 @@ async function seedLocalDevTerrainIfMissing(
       tick,
       existingIds,
       worldApi,
-      terrainIdsToBuild
+      terrainIdsToBuild,
+      authoredWaterOnlyIds
     );
     if (!applied) {
       return;
@@ -9244,7 +9402,8 @@ async function seedLocalDevTerrainIfMissing(
     existingIds,
     seedFingerprint,
     !terrainWasAppliedSeparately,
-    terrainIdsToBuild
+    terrainIdsToBuild,
+    authoredWaterOnlyIds
   );
   changes.push(
     ...makeLocalDevStaleTerrainDeletes(tick, new Set(terrainIds), existingIds)

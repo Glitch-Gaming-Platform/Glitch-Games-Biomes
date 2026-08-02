@@ -16,6 +16,7 @@ import {
   harthmereThaedrynEncounterModel,
   readHarthmereBibleQuestSnapshot,
   resetHarthmereBibleQuestReadCacheForTest,
+  type HarthmereBibleQuestClientSnapshot,
 } from "@/client/components/challenges/bibleQuestLiveAdapter";
 import {
   HARTHMERE_BIBLE_DRAGON_QUEST_ID,
@@ -36,7 +37,7 @@ import {
 import { bibleQuestGiverId } from "@/shared/harthmere/bible/bible_quest_schema";
 import { bibleStepWorldWaypoint } from "@/shared/harthmere/bible/bible_waypoints";
 
-function emptySnapshot() {
+function emptySnapshot(): HarthmereBibleQuestClientSnapshot {
   return {
     actorId: "player-test",
     playerLevel: 8,

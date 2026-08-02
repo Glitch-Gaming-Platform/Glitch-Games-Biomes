@@ -306,5 +306,12 @@ export function nativeRequestBoardSnapshot(input: {
     myTodos: [],
     audit: [],
     cooldown: { abuseScore: 0 },
+    safety: {
+      minRewardGold: 5,
+      maxRewardGold: 5000,
+      maxActivePostingsPerIssuer: 12,
+      maxActiveAcceptedPerSeeker: 6,
+      requiresPhysicalBoardInteraction: true,
+    },
   };
 }

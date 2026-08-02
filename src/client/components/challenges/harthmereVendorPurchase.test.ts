@@ -199,7 +199,7 @@ describe("Harthmere universal vendor purchase transaction", () => {
     markHarthmereLiveSnapshotSeen();
     const cases = [
       ["vendor_out_of_stock", /out of stock/i],
-      ["inventory_full", /inventory is full/i],
+      ["inventory_full", /backpack is full/i],
       [
         "insufficient_reputation_for_vendor_item",
         /reputation is not high enough/i,

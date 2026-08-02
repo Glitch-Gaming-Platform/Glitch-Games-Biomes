@@ -151,7 +151,7 @@ export const HotBar: React.FunctionComponent<{}> = ({}) => {
   const localInventory = reactResources.use("/ecs/c/inventory", userId);
   const gameModal = reactResources.use("/game_modal");
   const hotbarSelectedIdx = currentIndex.value;
-  const priorSelectedItemRef = useRef<Item | undefined>();
+  const priorSelectedItemRef = useRef<Item | undefined>(undefined);
   const pointerLockManager = usePointerLockManager();
 
   const setHotbarSelectedIdx = useCallback((idx: number) => {

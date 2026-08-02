@@ -25,7 +25,7 @@ export const PannableMapLabel: React.FunctionComponent<{
 
   return (
     <Marker
-      position={position as LatLngTuple}
+      position={[...position] as LatLngTuple}
       icon={icon}
       zIndexOffset={MarkerZIndexes.LABEL}
     />

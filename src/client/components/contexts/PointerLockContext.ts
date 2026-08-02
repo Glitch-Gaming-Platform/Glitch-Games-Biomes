@@ -88,7 +88,7 @@ async function requestPointerLockWithUnadjustedMovement(
     await (
       element.requestPointerLock as (options?: {
         unadjustedMovement?: boolean;
-      }) => Promise<null> | undefined
+      }) => Promise<void> | undefined
     )({
       unadjustedMovement: true,
     });
@@ -157,7 +157,7 @@ export type PointerLockManagerEvents = {
 };
 
 export class PointerLockManager {
-  lockElementRef?: React.RefObject<HTMLCanvasElement>;
+  lockElementRef?: React.RefObject<HTMLCanvasElement | null>;
   deadZone?: number;
   emitter = new EventEmitter() as TypedEventEmitter<PointerLockManagerEvents>;
 
@@ -189,7 +189,7 @@ export class PointerLockManager {
   }
 
   attachToElementRef(
-    elementRef: React.RefObject<HTMLCanvasElement>,
+    elementRef: React.RefObject<HTMLCanvasElement | null>,
     options: { disablePointerLock?: boolean } = {}
   ) {
     this.lockElementRef = elementRef;

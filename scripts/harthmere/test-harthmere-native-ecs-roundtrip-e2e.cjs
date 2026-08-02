@@ -37,6 +37,42 @@ const { chromium } = require("playwright");
 const { z } = require("zod");
 const { lookAtOrientation } = require("../../src/shared/cutscene/math");
 
+function assertRedisTransportReady() {
+  const host =
+    process.env.GLITCH_REDIS_HOST ??
+    process.env.LOCAL_REDIS_HOST ??
+    process.env.REDIS_HOST ??
+    "127.0.0.1";
+  const port =
+    process.env.GLITCH_REDIS_PORT ??
+    process.env.LOCAL_REDIS_PORT ??
+    process.env.REDIS_PORT ??
+    "6379";
+  const ping = spawnSync(
+    "redis-cli",
+    ["-h", host, "-p", String(port), "--raw", "PING"],
+    {
+      encoding: "utf8",
+      timeout: 10_000,
+    }
+  );
+  assert.equal(
+    ping.status,
+    0,
+    `Redis preflight failed for ${host}:${port}: ${
+      ping.error?.message || ping.stderr || ping.stdout || "no response"
+    }`
+  );
+  assert.equal(
+    ping.stdout.trim(),
+    "PONG",
+    `Redis preflight for ${host}:${port} did not complete a RESP round trip: ${
+      ping.stderr || ping.stdout || "empty response"
+    }`
+  );
+  console.log(`REDIS PREFLIGHT PONG host=${host} port=${port}`);
+}
+
 const {
   Acquisition,
   AppearanceComponent,
@@ -753,10 +789,10 @@ assert(
 const roadAheadResumeAfterStepId = roadAheadFinalHandoffOnly
   ? NATIVE_ROAD_AHEAD_STEP_IDS.TAKE_SELFIE_WITH_BILLY
   : roadAheadSelfieOnward
-  ? NATIVE_ROAD_AHEAD_STEP_IDS.RECEIVE_CAMERA
-  : roadAheadToolbagOnward
-  ? NATIVE_ROAD_AHEAD_STEP_IDS.RETURN_TO_BILLY_DRESSED
-  : undefined;
+    ? NATIVE_ROAD_AHEAD_STEP_IDS.RECEIVE_CAMERA
+    : roadAheadToolbagOnward
+      ? NATIVE_ROAD_AHEAD_STEP_IDS.RETURN_TO_BILLY_DRESSED
+      : undefined;
 if (roadAheadResumeAfterStepId) {
   assert.equal(
     focusedRobotStoryQuestId,
@@ -874,6 +910,8 @@ const chapter1CaptureOnly =
   process.env.HARTHMERE_E2E_CHAPTER_1_CAPTURE_ONLY === "1";
 const chapter1SkipVideo =
   process.env.HARTHMERE_E2E_CHAPTER_1_SKIP_VIDEO === "1";
+const desktopControlsOnly =
+  process.env.HARTHMERE_E2E_DESKTOP_CONTROLS_ONLY === "1";
 
 function selectedCatalogIds(envName) {
   const raw = String(process.env[envName] ?? "").trim();
@@ -993,10 +1031,10 @@ const originSyncGateMs = Number(
     (combatMusicOnly || chaseOnly || hillCombatOnly
       ? timeoutMs + 30_000
       : legacyCombatRoutesOnly
-      ? 20_000
-      : robotStoryOnly
-      ? 15_000
-      : 1000)
+        ? 20_000
+        : robotStoryOnly
+          ? 15_000
+          : 1000)
 );
 const secondClientSyncGateMs = Number(
   process.env.HARTHMERE_E2E_SECOND_SYNC_GATE_MS || 1500
@@ -1123,44 +1161,44 @@ const report = {
   mode: chaseOnly
     ? "chase-only"
     : hillCombatOnly
-    ? "hill-combat-only"
-    : hoePurchaseOnly
-    ? "hoe-purchase-only"
-    : skillsOnly
-    ? "skills-only"
-    : combatMusicOnly
-    ? "combat-music-only"
-    : snapshotGroveOnboardingOnly
-    ? "snapshot-grove-onboarding-only"
-    : robotStoryCrateDialogsOnly
-    ? "robot-story-crate-dialogs-only"
-    : robotSetupContinueOnly
-    ? "robot-setup-continue-only"
-    : exhaustiveRobotStory
-    ? "robot-story-exhaustive"
-    : robotStoryOnly
-    ? "robot-story-only"
-    : remainingJobsOnly
-    ? "remaining-business-jobs-only"
-    : remainingQuestsOnly
-    ? "remaining-grove-quests-only"
-    : remainingBibleOnly
-    ? "remaining-bible-quests-only"
-    : remainingClientQuestsOnly
-    ? "remaining-client-quests-only"
-    : legacyCombatMarkersOnly
-    ? "legacy-combat-markers-only"
-    : legacyCombatRoutesOnly
-    ? "legacy-combat-routes-only"
-    : questsUiOnly
-    ? "quests-ui-only"
-    : chapter1CaptureOnly
-    ? "chapter-1-capture-only"
-    : chapter1Only
-    ? "chapter-1-only"
-    : jobsOnly
-    ? "jobs-only"
-    : "full",
+      ? "hill-combat-only"
+      : hoePurchaseOnly
+        ? "hoe-purchase-only"
+        : skillsOnly
+          ? "skills-only"
+          : combatMusicOnly
+            ? "combat-music-only"
+            : snapshotGroveOnboardingOnly
+              ? "snapshot-grove-onboarding-only"
+              : robotStoryCrateDialogsOnly
+                ? "robot-story-crate-dialogs-only"
+                : robotSetupContinueOnly
+                  ? "robot-setup-continue-only"
+                  : exhaustiveRobotStory
+                    ? "robot-story-exhaustive"
+                    : robotStoryOnly
+                      ? "robot-story-only"
+                      : remainingJobsOnly
+                        ? "remaining-business-jobs-only"
+                        : remainingQuestsOnly
+                          ? "remaining-grove-quests-only"
+                          : remainingBibleOnly
+                            ? "remaining-bible-quests-only"
+                            : remainingClientQuestsOnly
+                              ? "remaining-client-quests-only"
+                              : legacyCombatMarkersOnly
+                                ? "legacy-combat-markers-only"
+                                : legacyCombatRoutesOnly
+                                  ? "legacy-combat-routes-only"
+                                  : questsUiOnly
+                                    ? "quests-ui-only"
+                                    : chapter1CaptureOnly
+                                      ? "chapter-1-capture-only"
+                                      : chapter1Only
+                                        ? "chapter-1-only"
+                                        : jobsOnly
+                                          ? "jobs-only"
+                                          : "full",
   gates: {
     performanceAssertionsEnabled,
     acceptanceGateMs,
@@ -1263,15 +1301,15 @@ function gameUrl() {
     // more renderer memory here without slowing the retained quest suites.
     url.searchParams.set(
       "resourceCapacityScale",
-      chapter1VideoCapture ? "0.5" : "0.25"
+      chapter1VideoCapture || desktopControlsOnly ? "0.5" : "0.25"
     );
     url.searchParams.set(
       "forceDrawDistance",
-      chapter1VideoCapture ? "48" : "16"
+      chapter1VideoCapture || desktopControlsOnly ? "48" : "16"
     );
     url.searchParams.set(
       "forceRenderScale",
-      chapter1VideoCapture ? "0.5" : "0.25"
+      chapter1VideoCapture || desktopControlsOnly ? "0.5" : "0.25"
     );
     url.searchParams.set("forceGraphicsQuality", "low");
   }
@@ -2611,14 +2649,16 @@ async function openUser(browser, username, label) {
     chapter1Only ||
     chapter1CaptureOnly
   ) {
-    await context.addInitScript(() => {
+    await context.addInitScript((desktopControlsOnly) => {
       // Headless Chromium exposes Pointer Lock but cannot retain it reliably.
       // Exercise the production no-pointer-lock/embed path instead: the escape
       // overlay stays hidden and a focused canvas still receives HUD keys.
-      Object.defineProperty(document, "exitPointerLock", {
-        configurable: true,
-        value: undefined,
-      });
+      if (!desktopControlsOnly) {
+        Object.defineProperty(document, "exitPointerLock", {
+          configurable: true,
+          value: undefined,
+        });
+      }
       // BiomesChrome normally hides native inspect overlays whenever pointer
       // lock is released. Real players retain the lock, but headless Chromium
       // does not; without this persisted product setting the DOM still contains
@@ -2648,7 +2688,7 @@ async function openUser(browser, username, label) {
         }
         return removeStorageItem.call(this, key);
       };
-    });
+    }, desktopControlsOnly);
   }
   const authUrl = new URL("/api/harthmere/visual_test_auth", baseUrl);
   authUrl.searchParams.set("usernameOrId", username);
@@ -2930,7 +2970,11 @@ async function openUser(browser, username, label) {
     name: "Enter Game",
     exact: true,
   });
-  if (await enterGame.isVisible().catch(() => false)) {
+  const wakeUpBeforeInput = page.locator(".wake-up-container");
+  if (
+    (await enterGame.isVisible().catch(() => false)) &&
+    !(await wakeUpBeforeInput.isVisible().catch(() => false))
+  ) {
     // The production bundle can expose the pause menu while its full-screen
     // loading wrapper is still receiving pointer events. The wrapper can also
     // disappear for one render and return while createPlayer finishes, so a
@@ -3121,6 +3165,18 @@ async function openUser(browser, username, label) {
     }
   }
   console.log(`E2E ${label}: client context and bridge ready`);
+  if (desktopControlsOnly) {
+    assert.equal(
+      await page.locator('[data-biomes-mobile-controls="true"]').count(),
+      0,
+      `${label}: desktop viewport mounted mobile joystick controls`
+    );
+    assert.equal(
+      await page.locator('[data-biomes-mobile-hotbar="true"]').count(),
+      0,
+      `${label}: desktop viewport mounted the mobile hotbar`
+    );
+  }
   return {
     context,
     page,
@@ -4938,10 +4994,11 @@ async function performRoadAheadPhotoStep({ first, position, questId, step }) {
   await first.page.screenshot({
     path: path.join(artifactsDir, `${runId}-road-ahead-selfie.png`),
   });
-  // The visible button is the supported no-pointer-lock recovery control. The
-  // X shortcut is separately product-wired, but a focused headless run can
-  // still have its key consumed by a capture listener after the photo flow.
-  await exitCamera.click();
+  // Exercise the player-facing shortcut shown by InGameCameraHUD. Clicking the
+  // visible button here previously allowed the shipped X-vs-Delete wiring
+  // mismatch to pass every Road Ahead browser run.
+  await gameCanvas.focus({ timeout: probeTimeoutMs });
+  await first.page.keyboard.press("KeyX");
   await exitCamera.waitFor({ state: "hidden", timeout: timeoutMs });
   await waitFor(
     `${label}: X exits selfie mode and restores camera direction state`,
@@ -7344,8 +7401,8 @@ async function proveNativeRobotStoryExhaustiveRoundTrip(
       seededTargetStepId: bustedChestOnly
         ? String(NATIVE_BUSTED_UNDERWATER_CONTAINER_SPEC.stepId)
         : getMuckOutInscriptionsOnly
-        ? String(NATIVE_GET_THE_MUCK_OUT_INSCRIPTION_SPECS.green.stepId)
-        : undefined,
+          ? String(NATIVE_GET_THE_MUCK_OUT_INSCRIPTION_SPECS.green.stepId)
+          : undefined,
       getMuckOutInscriptionSeedXp: getMuckOutInscriptionsOnly
         ? getMuckOutInscriptionSeedXp
         : undefined,
@@ -7494,8 +7551,8 @@ async function proveNativeRobotStoryExhaustiveRoundTrip(
         stopAfterStepId: getMuckOutRecipeHuntOnly
           ? GET_MUCK_OUT_MUCKLING_STEP_ID
           : getMuckOutInscriptionsOnly
-          ? GET_MUCK_OUT_LAST_INSCRIPTION_STEP_ID
-          : undefined,
+            ? GET_MUCK_OUT_LAST_INSCRIPTION_STEP_ID
+            : undefined,
       });
       if (getMuckOutRecipeHuntOnly) {
         const focused = await authoritativeEntity(first.page, first.userId);
@@ -12011,8 +12068,8 @@ function chapter1ProvisioningObjectiveInventoryRequirements(step) {
     step.id === "provision"
       ? "ch1_gate_desert"
       : step.id === "provision_winter"
-      ? "ch1_gate_winter"
-      : undefined;
+        ? "ch1_gate_winter"
+        : undefined;
   if (!gateId) return [];
   const provisioning = ch1ProvisioningFor(gateId);
   assert(provisioning, `${step.id}: missing ${gateId} provisioning contract`);
@@ -12527,28 +12584,42 @@ async function satisfyChapter1ExternalSystemRequirement(
       "meet_the_suppliers",
       `${quest.id}/${step.id}: unknown external-system requirement`
     );
-    for (const [index, supplier] of CH1_GROVE_SUPPLIER_ROUTE.entries()) {
-      const state = await waitFor(
-        `${quest.id}/${step.id}: routed supplier ${supplier.label}`,
-        () =>
-          pageJson(first.page, "/api/harthmere/chapter1_progress", {
-            method: "POST",
-            body: JSON.stringify({ action: "state" }),
-          }),
-        (response) =>
-          response.ok &&
-          response.body?.status === "active" &&
-          String(response.body.challengeId) === String(challengeId) &&
-          String(response.body.stepId) === String(stepId) &&
-          response.body.targetLabel === supplier.label &&
-          response.body.requirement?.current === index &&
-          response.body.requirement?.blocksChapterInteraction === true,
-        20_000,
-        40_000
+    const initialSupplierCount = Number(requirement?.current ?? 0);
+    const requiredSupplierCount = Number(
+      requirement?.total ?? CH1_GROVE_SUPPLIER_ROUTE.length
+    );
+    assert(
+      Number.isInteger(initialSupplierCount) &&
+        initialSupplierCount >= 0 &&
+        initialSupplierCount <= requiredSupplierCount,
+      `${quest.id}/${step.id}: invalid initial supplier progress ${initialSupplierCount}/${requiredSupplierCount}`
+    );
+    const visitedSupplierIds = new Set();
+    let state = initialState;
+    while (
+      Number(state.value.body.requirement?.current ?? requiredSupplierCount) <
+      requiredSupplierCount
+    ) {
+      const body = state.value.body;
+      assert.equal(body?.status, "active");
+      assert.equal(String(body.challengeId), String(challengeId));
+      assert.equal(String(body.stepId), String(stepId));
+      assert.equal(body.requirement?.blocksChapterInteraction, true);
+      const supplier = CH1_GROVE_SUPPLIER_ROUTE.find(
+        (candidate) => candidate.label === body.targetLabel
       );
+      assert(
+        supplier,
+        `${quest.id}/${step.id}: unknown routed supplier ${body.targetLabel}`
+      );
+      assert(
+        !visitedSupplierIds.has(supplier.vendorId),
+        `${quest.id}/${step.id}: supplier route repeated ${supplier.label}`
+      );
+      const previousCount = Number(body.requirement.current);
       await chapter1WarpAndWait(
         first,
-        state.value.body.targetPosition,
+        body.targetPosition,
         `${quest.id}/${step.id}: ${supplier.label}`
       );
       assert.equal(
@@ -12560,7 +12631,36 @@ async function satisfyChapter1ExternalSystemRequirement(
         first,
         supplier.vendorId
       );
+      visitedSupplierIds.add(supplier.vendorId);
+      const advanced = await waitFor(
+        `${quest.id}/${step.id}: supplier evidence advanced after ${supplier.label}`,
+        () =>
+          pageJson(first.page, "/api/harthmere/chapter1_progress", {
+            method: "POST",
+            body: JSON.stringify({ action: "state" }),
+          }),
+        (response) =>
+          response.ok &&
+          (String(response.body?.challengeId) !== String(challengeId) ||
+            String(response.body?.stepId) !== String(stepId) ||
+            Number(response.body?.requirement?.current ?? 0) > previousCount),
+        20_000,
+        40_000
+      );
+      if (
+        advanced.value.body?.status !== "active" ||
+        String(advanced.value.body?.challengeId) !== String(challengeId) ||
+        String(advanced.value.body?.stepId) !== String(stepId)
+      ) {
+        break;
+      }
+      state = advanced;
     }
+    assert.equal(
+      initialSupplierCount + visitedSupplierIds.size,
+      requiredSupplierCount,
+      `${quest.id}/${step.id}: browser did not account for every supplier transaction`
+    );
   }
 
   await waitFor(
@@ -12580,10 +12680,10 @@ async function satisfyChapter1ExternalSystemRequirement(
         state.body.requirement?.ready === true) ||
       Boolean(
         player.entity?.challenges?.complete.has(challengeId) ||
-          isTriggerFired(
-            player.entity?.trigger_state?.by_root.get(challengeId),
-            stepId
-          )
+        isTriggerFired(
+          player.entity?.trigger_state?.by_root.get(challengeId),
+          stepId
+        )
       ),
     20_000,
     40_000
@@ -13054,7 +13154,7 @@ async function resetChapter1NativeQuestChain(first) {
       return (
         Boolean(
           entity?.challenges?.available.has(challengeId) ||
-            entity?.challenges?.in_progress.has(challengeId)
+          entity?.challenges?.in_progress.has(challengeId)
         ) &&
         nativeChapter1ItemCounts.every(
           ({ nativeId, count }) =>
@@ -13076,7 +13176,7 @@ async function ensureChapter1QuestInProgress(first, quest, catalog) {
     ({ entity }) =>
       Boolean(
         entity?.challenges?.available.has(challengeId) ||
-          entity?.challenges?.in_progress.has(challengeId)
+        entity?.challenges?.in_progress.has(challengeId)
       ),
     60_000,
     90_000
@@ -13905,7 +14005,7 @@ async function proveAllChapter1NativeQuestsComplete(first) {
       );
       const externalSystemOwned = Boolean(
         state.value.body.requirement?.blocksChapterInteraction &&
-          state.value.body.requirement?.autoCompleteWhenReady
+        state.value.body.requirement?.autoCompleteWhenReady
       );
       if (externalSystemOwned) {
         await satisfyChapter1ExternalSystemRequirement(
@@ -13920,23 +14020,23 @@ async function proveAllChapter1NativeQuestsComplete(first) {
       const readyState = externalSystemOwned
         ? state
         : step.trigger === "near_location"
-        ? state
-        : await waitFor(
-            `${quest.title}/${step.title}: server-authoritative interaction range`,
-            () =>
-              pageJson(first.page, "/api/harthmere/chapter1_progress", {
-                method: "POST",
-                body: JSON.stringify({ action: "state" }),
-              }),
-            (response) =>
-              response.ok &&
-              response.body?.status === "active" &&
-              String(response.body.challengeId) === String(challengeId) &&
-              String(response.body.stepId) === String(stepId) &&
-              response.body.withinRange === true,
-            20_000,
-            40_000
-          );
+          ? state
+          : await waitFor(
+              `${quest.title}/${step.title}: server-authoritative interaction range`,
+              () =>
+                pageJson(first.page, "/api/harthmere/chapter1_progress", {
+                  method: "POST",
+                  body: JSON.stringify({ action: "state" }),
+                }),
+              (response) =>
+                response.ok &&
+                response.body?.status === "active" &&
+                String(response.body.challengeId) === String(challengeId) &&
+                String(response.body.stepId) === String(stepId) &&
+                response.body.withinRange === true,
+              20_000,
+              40_000
+            );
       let completionBody;
       const incrementalRoute = chapter1IncrementalObjectiveRoute(step.id);
       if (incrementalRoute) {
@@ -13992,10 +14092,10 @@ async function proveAllChapter1NativeQuestsComplete(first) {
         ({ entity }) =>
           Boolean(
             entity?.challenges?.complete.has(challengeId) ||
-              isTriggerFired(
-                entity?.trigger_state?.by_root.get(challengeId),
-                stepId
-              )
+            isTriggerFired(
+              entity?.trigger_state?.by_root.get(challengeId),
+              stepId
+            )
           ),
         20_000,
         40_000
@@ -14661,117 +14761,120 @@ async function registerHostChapter1Cutscene(first, definition) {
 }
 
 async function isolateChapter1CatalogProjection(first, focusPosition) {
-  const isolated = await first.page.evaluate(({ focus, userId }) => {
-    const win = globalThis;
-    const extraHiddenIds = new Set();
-    const extraHiddenPlayerIds = new Set();
-    if (Array.isArray(focus)) {
-      for (const entity of win.clientContext?.table?.contents?.() ?? []) {
-        const position = entity?.position?.v;
-        if (
-          !position ||
-          Math.hypot(
-            position[0] - focus[0],
-            position[1] - focus[1],
-            position[2] - focus[2]
-          ) > 24
-        ) {
-          continue;
-        }
-        const id = Number(entity.id);
-        if (entity?.player_status) {
-          if (id !== Number(userId)) extraHiddenPlayerIds.add(id);
-        } else if (entity?.npc_metadata || entity?.robot_component) {
-          extraHiddenIds.add(id);
+  const isolated = await first.page.evaluate(
+    ({ focus, userId }) => {
+      const win = globalThis;
+      const extraHiddenIds = new Set();
+      const extraHiddenPlayerIds = new Set();
+      if (Array.isArray(focus)) {
+        for (const entity of win.clientContext?.table?.contents?.() ?? []) {
+          const position = entity?.position?.v;
+          if (
+            !position ||
+            Math.hypot(
+              position[0] - focus[0],
+              position[1] - focus[1],
+              position[2] - focus[2]
+            ) > 24
+          ) {
+            continue;
+          }
+          const id = Number(entity.id);
+          if (entity?.player_status) {
+            if (id !== Number(userId)) extraHiddenPlayerIds.add(id);
+          } else if (entity?.npc_metadata || entity?.robot_component) {
+            extraHiddenIds.add(id);
+          }
         }
       }
-    }
-    const projection = globalThis.__chapter1E2ECutsceneProjection;
-    if (projection?.staging) {
-      projection.staging = projection.staging.map((row) => ({
-        ...row,
-        present: false,
-        position: undefined,
-      }));
-    }
-    const hideOverrides = (overrides) => {
-      const hidden = new Map();
-      for (const override of Array.isArray(overrides) ? overrides : []) {
-        hidden.set(Number(override.id), {
-          ...override,
-          hidden: true,
-          at: undefined,
-          ghost: undefined,
-        });
+      const projection = globalThis.__chapter1E2ECutsceneProjection;
+      if (projection?.staging) {
+        projection.staging = projection.staging.map((row) => ({
+          ...row,
+          present: false,
+          position: undefined,
+        }));
       }
-      for (const id of extraHiddenIds) {
-        if (!hidden.has(id)) hidden.set(id, { id, yaw: 0, hidden: true });
-      }
-      return [...hidden.values()];
-    };
-    if (!win.__chapter1E2EProjectionHold) {
-      const originalDescriptor = Object.getOwnPropertyDescriptor(
-        win,
-        "__harthmereChapter1Puppets"
-      );
-      const originalValue = win.__harthmereChapter1Puppets;
-      const originalPlayerVisibility = new Map();
-      const hideRemotePlayers = () => {
-        const resources = win.clientContext?.resources;
-        for (const id of extraHiddenPlayerIds) {
-          try {
-            const mesh = resources?.cached("/scene/player/mesh", id);
-            if (!mesh?.three) continue;
-            if (!originalPlayerVisibility.has(id)) {
-              originalPlayerVisibility.set(id, mesh.three.visible);
-            }
-            mesh.three.visible = false;
-          } catch {}
+      const hideOverrides = (overrides) => {
+        const hidden = new Map();
+        for (const override of Array.isArray(overrides) ? overrides : []) {
+          hidden.set(Number(override.id), {
+            ...override,
+            hidden: true,
+            at: undefined,
+            ghost: undefined,
+          });
         }
+        for (const id of extraHiddenIds) {
+          if (!hidden.has(id)) hidden.set(id, { id, yaw: 0, hidden: true });
+        }
+        return [...hidden.values()];
       };
-      let isolatedValue = hideOverrides(originalValue);
-      Object.defineProperty(win, "__harthmereChapter1Puppets", {
-        configurable: true,
-        enumerable: true,
-        get: () => isolatedValue,
-        set: (value) => {
-          // Filter every one-second projection-controller publication. Active
-          // director puppets use __harthmereCutscenePuppets and therefore still
-          // override the hidden row for actual cast members such as Jackie.
-          isolatedValue = hideOverrides(value);
-        },
-      });
-      hideRemotePlayers();
-      const playerIsolationTimer = setInterval(hideRemotePlayers, 100);
-      win.__chapter1E2EProjectionHold = {
-        release: () => {
-          clearInterval(playerIsolationTimer);
+      if (!win.__chapter1E2EProjectionHold) {
+        const originalDescriptor = Object.getOwnPropertyDescriptor(
+          win,
+          "__harthmereChapter1Puppets"
+        );
+        const originalValue = win.__harthmereChapter1Puppets;
+        const originalPlayerVisibility = new Map();
+        const hideRemotePlayers = () => {
           const resources = win.clientContext?.resources;
-          for (const [id, visible] of originalPlayerVisibility) {
+          for (const id of extraHiddenPlayerIds) {
             try {
               const mesh = resources?.cached("/scene/player/mesh", id);
-              if (mesh?.three) mesh.three.visible = visible;
+              if (!mesh?.three) continue;
+              if (!originalPlayerVisibility.has(id)) {
+                originalPlayerVisibility.set(id, mesh.three.visible);
+              }
+              mesh.three.visible = false;
             } catch {}
           }
-          delete win.__harthmereChapter1Puppets;
-          if (originalDescriptor) {
-            Object.defineProperty(
-              win,
-              "__harthmereChapter1Puppets",
-              originalDescriptor
-            );
-          } else if (originalValue !== undefined) {
-            win.__harthmereChapter1Puppets = originalValue;
-          }
-          delete win.__chapter1E2EProjectionHold;
-        },
+        };
+        let isolatedValue = hideOverrides(originalValue);
+        Object.defineProperty(win, "__harthmereChapter1Puppets", {
+          configurable: true,
+          enumerable: true,
+          get: () => isolatedValue,
+          set: (value) => {
+            // Filter every one-second projection-controller publication. Active
+            // director puppets use __harthmereCutscenePuppets and therefore still
+            // override the hidden row for actual cast members such as Jackie.
+            isolatedValue = hideOverrides(value);
+          },
+        });
+        hideRemotePlayers();
+        const playerIsolationTimer = setInterval(hideRemotePlayers, 100);
+        win.__chapter1E2EProjectionHold = {
+          release: () => {
+            clearInterval(playerIsolationTimer);
+            const resources = win.clientContext?.resources;
+            for (const [id, visible] of originalPlayerVisibility) {
+              try {
+                const mesh = resources?.cached("/scene/player/mesh", id);
+                if (mesh?.three) mesh.three.visible = visible;
+              } catch {}
+            }
+            delete win.__harthmereChapter1Puppets;
+            if (originalDescriptor) {
+              Object.defineProperty(
+                win,
+                "__harthmereChapter1Puppets",
+                originalDescriptor
+              );
+            } else if (originalValue !== undefined) {
+              win.__harthmereChapter1Puppets = originalValue;
+            }
+            delete win.__chapter1E2EProjectionHold;
+          },
+        };
+      }
+      return {
+        extraHiddenIds: [...extraHiddenIds],
+        extraHiddenPlayerIds: [...extraHiddenPlayerIds],
       };
-    }
-    return {
-      extraHiddenIds: [...extraHiddenIds],
-      extraHiddenPlayerIds: [...extraHiddenPlayerIds],
-    };
-  }, { focus: focusPosition, userId: first.userId });
+    },
+    { focus: focusPosition, userId: first.userId }
+  );
   // Wait through one production projection refresh. The property interceptor
   // proves that even a fresh controller publication remains hidden.
   await delay(1_100);
@@ -14963,8 +15066,7 @@ async function chapter1HumanRenderDiagnostics(first) {
           at: override.at,
           hidden: override.hidden,
           label: override.label ?? override.ghost?.label,
-          appearanceSourceEntityId:
-            override.ghost?.appearanceSourceEntityId,
+          appearanceSourceEntityId: override.ghost?.appearanceSourceEntityId,
         })
       ),
     };
@@ -15242,34 +15344,41 @@ async function captureChapter1FrameSequence(first, input, sourceDefinition) {
 }
 
 async function proveAllChapter1GatesRender(first) {
-  await bridgeCall(
-    first.page,
-    "chapter1SetActiveGates",
-    CH1_FRACTURE_GATES.map((gate) => gate.id)
-  );
+  const gateIds = CH1_FRACTURE_GATES.map((gate) => gate.id);
+  await holdChapter1AuditGates(first, gateIds);
   const rendered = [];
-  for (const gate of CH1_FRACTURE_GATES) {
-    const position = [
-      gate.position[0] - 6,
-      gate.position[1] + 1,
-      gate.position[2] + 7,
-    ];
-    await chapter1WarpAndWait(first, position, gate.id);
-    const snapshot = await waitFor(
-      `${gate.id}: live renderer visibility`,
-      () => bridgeCall(first.page, "chapter1GateRenderSnapshot"),
-      (value) =>
-        value?.gates?.some(
-          (candidate) => candidate.id === gate.id && candidate.visible
-        ),
-      10_000,
-      20_000
-    );
-    const diagnostic = snapshot.value.gates.find(
-      (candidate) => candidate.id === gate.id
-    );
-    assert(diagnostic.open > 0, `${gate.id}: rendered with a closed aperture`);
-    rendered.push(diagnostic);
+  try {
+    for (const gate of CH1_FRACTURE_GATES) {
+      const position = [
+        gate.position[0] - 6,
+        gate.position[1] + 1,
+        gate.position[2] + 7,
+      ];
+      await chapter1WarpAndWait(first, position, gate.id);
+      const snapshot = await waitFor(
+        `${gate.id}: live renderer visibility`,
+        () => bridgeCall(first.page, "chapter1GateRenderSnapshot"),
+        (value) =>
+          value?.gates?.some(
+            (candidate) =>
+              candidate.id === gate.id &&
+              candidate.visible &&
+              candidate.open > 0
+          ),
+        10_000,
+        20_000
+      );
+      const diagnostic = snapshot.value.gates.find(
+        (candidate) => candidate.id === gate.id
+      );
+      assert(
+        diagnostic.open > 0,
+        `${gate.id}: rendered with a closed aperture`
+      );
+      rendered.push(diagnostic);
+    }
+  } finally {
+    await releaseChapter1AuditGates(first).catch(() => undefined);
   }
   return { gateCount: rendered.length, gates: rendered };
 }
@@ -15381,7 +15490,11 @@ async function proveChapter1CastInNativeEcs(first) {
     "Chapter 1 cast is missing from authoritative ECS"
   );
   for (const { member, state } of authoritativeCast) {
-    assert.equal(state.entity.label?.text, member.displayName, member.key);
+    assert.equal(
+      state.entity.label?.text,
+      member.key === "augur9" ? "Mucked Robot" : member.displayName,
+      member.key
+    );
     assert(state.entity.position?.v, `${member.key}: missing native position`);
     assert(
       state.entity.npc_metadata,
@@ -16149,13 +16262,13 @@ const SNAPSHOT_GROVE_QUESTS = GROVE_QUEST_CATALOG.map((quest) => ({
     quest.start.kind === "after"
       ? { kind: "quest_completed", questId: quest.start.questId }
       : quest.start.kind === "after_accepted"
-      ? { kind: "quest_accepted", questId: quest.start.questId }
-      : quest.start.kind === "after_fountain_lessons"
-      ? {
-          kind: "fountain_completion_count",
-          minCompletedFountainLessons: quest.start.minCompleted,
-        }
-      : undefined,
+        ? { kind: "quest_accepted", questId: quest.start.questId }
+        : quest.start.kind === "after_fountain_lessons"
+          ? {
+              kind: "fountain_completion_count",
+              minCompletedFountainLessons: quest.start.minCompleted,
+            }
+          : undefined,
 }));
 const SNAPSHOT_GROVE_FOUNTAIN_TUTORIAL_QUEST_IDS = [
   ...GROVE_FOUNTAIN_LESSON_IDS,
@@ -17399,8 +17512,8 @@ async function completeSnapshotGroveInventoryStep(
     fixture.itemId === "baker_apron"
       ? "Dawn Loaf Apron"
       : fixture.itemId === "field_trousers"
-      ? "Grove Field Trousers"
-      : "B-01 Camera";
+        ? "Grove Field Trousers"
+        : "B-01 Camera";
   await first.page.keyboard.press("KeyI");
   const item = first.page.getByText(displayName, { exact: true });
   await item.first().waitFor({ state: "visible", timeout: timeoutMs });
@@ -18144,8 +18257,8 @@ async function resetRemainingSnapshotGroveActor(first, redis, quest) {
         }
         return Boolean(
           collection &&
-            typeof collection === "object" &&
-            (challengeId in collection || String(challengeId) in collection)
+          typeof collection === "object" &&
+          (challengeId in collection || String(challengeId) in collection)
         );
       };
       // Default/native orientation quests may immediately repopulate the
@@ -18921,7 +19034,7 @@ function fastBibleObjectiveProofItem(quest, objective) {
     itemId: `quest_objective_item:${quest.id}:${objective.id}`,
     count: numeric
       ? Math.max(1, Math.trunc(Number(numeric)))
-      : wordCount ?? Math.max(1, Math.trunc(Number(objective.count ?? 1))),
+      : (wordCount ?? Math.max(1, Math.trunc(Number(objective.count ?? 1)))),
   };
 }
 
@@ -18931,8 +19044,8 @@ async function submitFastQuestMutation(first, payload, label) {
     (payload.completed
       ? "grove_complete"
       : payload.objectiveIndex !== undefined
-      ? "grove_progress"
-      : "grove_accept");
+        ? "grove_progress"
+        : "grove_accept");
   const requestId = `quest_catalog:${runId}:${mutationKind}:${
     payload.questId ?? "thaedryn"
   }:${payload.objectiveId ?? payload.bossEventType ?? "none"}:${Math.random()
@@ -19776,8 +19889,8 @@ async function proveHarthmereClientQuestInBrowser(first, quest) {
     const giverOffset =
       quest.id === "welcome-to-harthmere"
         ? 1
-        : quest.giverOffsets.find((offset) => offset !== 41) ??
-          quest.giverOffsets[0];
+        : (quest.giverOffsets.find((offset) => offset !== 41) ??
+          quest.giverOffsets[0]);
     assert(giverOffset !== undefined, `${quest.title}: no giver offset`);
     await openHarthmereClientQuestTarget(
       first,
@@ -20287,14 +20400,14 @@ function finishFocusedSnapshotGroveOnboardingRun() {
 }
 
 async function run() {
+  assertRedisTransportReady();
   if (exhaustiveRobotStory || robotStoryCrateDialogsOnly) {
     await loadNativeRobotStoryBikkieTray();
   }
   if (legacyCombatRoutesOnly) {
     await loadNativeLegacyCombatBikkieTray();
   }
-  const angleBackend =
-    process.env.HARTHMERE_E2E_ANGLE?.trim() || "swiftshader";
+  const angleBackend = process.env.HARTHMERE_E2E_ANGLE?.trim() || "swiftshader";
   const browser = await chromium.launch({
     headless: process.env.HARTHMERE_E2E_HEADLESS !== "0",
     args: [
@@ -21296,7 +21409,7 @@ async function run() {
         ({ voxel, plant }) =>
           Boolean(
             voxel.farmingId &&
-              plant?.entity?.farming_plant_component?.planter === first.userId
+            plant?.entity?.farming_plant_component?.planter === first.userId
           ),
         originSyncGateMs,
         timeoutMs
@@ -21553,6 +21666,14 @@ async function run() {
     console.log(`PASS ${report.scenarios.length} native ECS browser scenarios`);
   } finally {
     if (first?.page) {
+      if (desktopControlsOnly && !first.page.isClosed()) {
+        await chapter1WarpAndWait(
+          first,
+          [500, 70, -145],
+          "desktop screenshot: Grove center"
+        ).catch(() => undefined);
+        await first.page.waitForTimeout(5_000).catch(() => undefined);
+      }
       await first.page
         .screenshot({
           path: path.join(artifactsDir, `${runId}-client-a.png`),

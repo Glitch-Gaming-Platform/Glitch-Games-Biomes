@@ -13,7 +13,7 @@ import type { BiomesId } from "@/shared/ids";
 import { assertNever } from "@/shared/util/type_helpers";
 import type { Variants } from "framer-motion";
 import { motion } from "framer-motion";
-import type { PropsWithChildren, ReactChild, ReactElement } from "react";
+import type { PropsWithChildren, ReactElement, ReactNode } from "react";
 import React, { useEffect } from "react";
 import mainQuestMarkAccepted from "/public/hud/quest-marker-main-accepted.png";
 
@@ -101,16 +101,16 @@ export const NUXItem: React.FunctionComponent<
     }
   }, [navigationAid]);
 
-  let leftContent: ReactChild | undefined;
-  const extraChildren: ReactChild[] = [];
+  let leftContent: ReactNode;
+  const extraChildren: ReactNode[] = [];
 
   React.Children.forEach(children, (child) => {
     switch ((child as ReactElement)?.type) {
       case NUXLeft:
-        leftContent = child as ReactChild;
+        leftContent = child;
         break;
       default:
-        extraChildren.push(child as ReactChild);
+        extraChildren.push(child);
         break;
     }
   });

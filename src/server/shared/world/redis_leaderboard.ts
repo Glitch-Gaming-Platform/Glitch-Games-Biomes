@@ -22,36 +22,6 @@ export function leaderboardKey(category: LeaderboardCategory, key: string) {
   return `leaderboard:${category}:${key}`;
 }
 
-// Redis added the ZADD LT/GT options in 6.2, but Biomes' production-shaped
-// local test stack may intentionally use an older compatible Redis image. Keep
-// conditional leaderboard writes atomic and portable by doing the comparison
-// inside Lua. This is the direct LeaderboardApi counterpart to the same helper
-// embedded in world/lua/scripts/apply.lua.
-export const REDIS_PORTABLE_LEADERBOARD_UPDATE_LUA = `
-local key = KEYS[1]
-local op = ARGV[1]
-local amount = tonumber(ARGV[2])
-local member = ARGV[3]
-
-if op == 'INCR' then
-  return redis.call('ZINCRBY', key, amount, member)
-end
-
-local current = redis.call('ZSCORE', key, member)
-if current == false then
-  return redis.call('ZADD', key, amount, member)
-end
-
-current = tonumber(current)
-if (op == 'LT' and amount < current) or (op == 'GT' and amount > current) then
-  return redis.call('ZADD', key, amount, member)
-end
-if op ~= 'LT' and op ~= 'GT' then
-  return redis.error_reply('Unknown leaderboard operation: ' .. tostring(op))
-end
-return current
-`;
-
 export function redisUpdateLeaderboardCounters(
   pipeline: ChainableCommander,
   category: LeaderboardCategory,
@@ -60,14 +30,15 @@ export function redisUpdateLeaderboardCounters(
   id: BiomesId
 ) {
   for (const key of keysForNow()) {
-    pipeline.eval(
-      REDIS_PORTABLE_LEADERBOARD_UPDATE_LUA,
-      1,
-      leaderboardKey(category, key),
-      op,
-      String(amount ?? 1),
-      biomesIdToRedisKey(id)
-    );
+    const redisKey = leaderboardKey(category, key);
+    const member = biomesIdToRedisKey(id);
+    if (op === "INCR") {
+      pipeline.zincrby(redisKey, amount, member);
+    } else {
+      // Redis 8.8.1 performs this conditional update atomically. This removes
+      // one Lua invocation and one ZSCORE per leaderboard/window update.
+      pipeline.zadd(redisKey, op, amount, member);
+    }
   }
 }
 
@@ -113,7 +84,12 @@ export class RedisLeaderboard implements LeaderboardApi {
 
     const results = await (order === "DESC"
       ? this.redis.replica.zrevrange(lk, 0, trueLimit, "WITHSCORES")
-      : this.redis.replica.zrange(lk, 0, trueLimit, "WITHSCORES"));
+      : this.redis.replica.zrange(
+          lk,
+          String(0),
+          String(trueLimit),
+          "WITHSCORES"
+        ));
     const output: LeaderboardPosition[] = [];
     for (let i = 0; i < results.length; i += 2) {
       output.push({
@@ -211,8 +187,8 @@ export class RedisLeaderboard implements LeaderboardApi {
         )
       : this.redis.replica.zrange(
           leaderboardKey(category, keyForWindow(window)),
-          start,
-          limit,
+          String(start),
+          String(limit),
           "WITHSCORES"
         ));
 

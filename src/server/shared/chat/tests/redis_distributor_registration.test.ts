@@ -100,7 +100,7 @@ describe("RedisChatDistributor registration", () => {
     assert.strictEqual(createArgs?.[2], "redis-chat-distributor");
   });
 
-  it("falls back to XPENDING/XCLAIM for missed deliveries on Redis 6", async () => {
+  it("falls back to XPENDING/XCLAIM when XAUTOCLAIM is unavailable", async () => {
     const delivery: Delivery = {
       channelName: "chat",
       mail: [

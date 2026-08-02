@@ -61,7 +61,9 @@ describe("Chapter 1 objective targets", () => {
       for (const step of quest.steps) {
         const target = ch1ObjectiveTarget(quest.id, step.id)!;
         assert.equal(target.source, "dungeon");
-        const local = ch1DungeonWorldToAuthored(dungeonId, target.position);
+        const local = ch1DungeonWorldToAuthored(dungeonId, [
+          ...target.position,
+        ]);
         const x = Math.floor(local.x);
         const y = Math.floor(local.y);
         const z = Math.floor(local.z);

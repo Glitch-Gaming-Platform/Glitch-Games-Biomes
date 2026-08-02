@@ -24,10 +24,10 @@ if (!exists("requirements.txt")) {
 }
 
 const requirements = fs.readFileSync(path.join(root, "requirements.txt"), "utf8");
-if (/^pygltflib==1\.14\.6/m.test(requirements)) {
-  ok("requirements.txt pins pygltflib==1.14.6");
+if (/^pygltflib==1\.16\.5/m.test(requirements)) {
+  ok("requirements.txt pins pygltflib==1.16.5");
 } else {
-  fail("requirements.txt pins pygltflib==1.14.6");
+  fail("requirements.txt pins pygltflib==1.16.5");
 }
 
 const candidates = [];

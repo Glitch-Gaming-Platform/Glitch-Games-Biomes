@@ -9,6 +9,15 @@ import click
 from pip_install_voxeloo import ensure_pip_install_voxeloo
 
 
+def ensure_native_gltfpack():
+    repo_dir = Path(__file__).resolve().parents[2]
+    b.wait_or_die(
+        subprocess.Popen(
+            [sys.executable, "scripts/assets/install_gltfpack.py"], cwd=repo_dir
+        )
+    )
+
+
 @click.group()
 @click.option(
     "--pip-install-voxeloo/--no-pip-install-voxeloo",
@@ -105,6 +114,7 @@ def dump(args):
 @click.argument("args", nargs=-1)
 def export(args):
     """Builds specific assets and puts the output on the local disk."""
+    ensure_native_gltfpack()
     b.wait_or_die(
         b.run_node("src/galois/js/assets/scripts/export.ts", args=list(args))
     )
@@ -122,6 +132,7 @@ def export(args):
 @click.argument("args", nargs=-1)
 def publish(args):
     """Publish all assets, uploading them to GCS."""
+    ensure_native_gltfpack()
     b.wait_or_die(
         b.run_node("src/galois/js/publish/scripts/publish.ts", args=list(args))
     )

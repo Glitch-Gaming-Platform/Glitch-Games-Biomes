@@ -21,7 +21,6 @@ import { createReadStream } from "fs";
 import { open, readdir, stat } from "fs/promises";
 import type { NextApiRequest } from "next";
 import next from "next";
-import type { NextServer } from "next/dist/server/next";
 import { extname, relative, resolve } from "path";
 import { list } from "recursive-readdir-async";
 import responseTime from "response-time";
@@ -586,7 +585,7 @@ export class ApiApp {
   public readonly http: HTTPServer;
   private context?: any;
 
-  constructor(app: NextServer, private staticSet: Set<string>) {
+  constructor(app: ReturnType<typeof next>, private staticSet: Set<string>) {
     const middlewareResponseTime = responseTime((req, res, time) => {
       const userAgent = (req.headers["user-agent"] || "").toLowerCase();
       if (

@@ -622,7 +622,7 @@ export function installHarthmereNativeEcsE2E(
         },
         activeQuestId: active ? String(active.biscuit.id) : undefined,
         mainQuestId: main?.questId,
-        activeMapPin: activeMapPin
+        activeMapPin: activeMapPin?.worldPosition
           ? {
               markerId: activeMapPin.markerId,
               label: activeMapPin.label,
@@ -633,15 +633,20 @@ export function installHarthmereNativeEcsE2E(
               ],
             }
           : undefined,
-        markers: markers.map((marker) => {
+        markers: markers.flatMap((marker) => {
+          if (!marker.worldPosition) return [];
           const [, questId = "", triggerId = ""] = marker.id.split(":");
-          return {
+          return [{
             id: marker.id,
             label: marker.label,
             questId,
             triggerId,
-            worldPosition: [...marker.worldPosition],
-          };
+            worldPosition: [...marker.worldPosition] as [
+              number,
+              number,
+              number
+            ],
+          }];
         }),
         quests: quests.map((quest) => {
           const bundle = bundles.find(

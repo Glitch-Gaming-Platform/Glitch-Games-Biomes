@@ -7,6 +7,41 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT"
 
+# This script invokes Node, Next, Webpack, Mocha, and asset helpers directly,
+# outside the repository's ./b launcher. Resolve the fork's pinned Node 24
+# runtime up front so a host with another Node major cannot produce a mixed artifact tree.
+node_major() {
+  local node_bin="$1"
+  "$node_bin" -p "process.versions.node.split('.')[0]" 2>/dev/null || true
+}
+
+prepend_node24_bin() {
+  local bin_dir="$1"
+  if [ -x "$bin_dir/node" ] && [ "$(node_major "$bin_dir/node")" = "24" ]; then
+    export PATH="$bin_dir:$PATH"
+    return 0
+  fi
+  return 1
+}
+
+if ! command -v node >/dev/null 2>&1 || [ "$(node_major "$(command -v node)")" != "24" ]; then
+  for node_bin_dir in \
+    "$HOME"/.nvm/versions/node/v24*/bin \
+    /opt/homebrew/opt/node@24/bin \
+    /usr/local/opt/node@24/bin \
+    "$HOME"/.fnm/node-versions/v24*/installation/bin \
+    "$HOME"/.volta/bin; do
+    if prepend_node24_bin "$node_bin_dir"; then
+      break
+    fi
+  done
+fi
+
+if ! command -v node >/dev/null 2>&1 || [ "$(node_major "$(command -v node)")" != "24" ]; then
+  echo "ERROR Node 24 is required; install the version pinned by .nvmrc before building." >&2
+  exit 1
+fi
+
 PUSH_PRODUCTION=0
 SKIP_BUILD=0
 STOP_BEFORE_DOCKER_BUILD=0
@@ -214,8 +249,10 @@ AZURE_SIMULATION_MAINTENANCE_PAUSED=0
 AZURE_PREVIOUS_SIMULATION_REVISIONS=""
 LOCAL_NETWORK="${LOCAL_NETWORK:-biomes-prod-smoke-net}"
 LOCAL_REDIS_CONTAINER="${LOCAL_REDIS_CONTAINER:-biomes-prod-smoke-redis}"
-LOCAL_REDIS_IMAGE="${LOCAL_REDIS_IMAGE:-redis:6.0.16-alpine}"
+LOCAL_REDIS_IMAGE="${LOCAL_REDIS_IMAGE:-redis:8.8.1-alpine}"
 LOCAL_APP_CONTAINER="${LOCAL_APP_CONTAINER:-biomes-prod-smoke-app}"
+LOCAL_SIMULATION_CONTAINER="${LOCAL_SIMULATION_CONTAINER:-biomes-prod-smoke-simulation}"
+LOCAL_ASSET_CONTAINER="${LOCAL_ASSET_CONTAINER:-biomes-prod-smoke-assets}"
 LOCAL_WEB_PORT="${LOCAL_WEB_PORT:-3017}"
 LOCAL_SYNC_PORT="${LOCAL_SYNC_PORT:-4907}"
 SMOKE_TIMEOUT_SECONDS="${SMOKE_TIMEOUT_SECONDS:-900}"
@@ -2080,7 +2117,7 @@ run_azure_terrain_audit_job() {
     --args scripts/harthmere/audit-production-extension-terrain.cjs \
     --env-vars \
       NODE_ENV=production \
-      NODE_OPTIONS="--openssl-legacy-provider --enable-source-maps --max-old-space-size=8192" \
+      NODE_OPTIONS="--enable-source-maps --max-old-space-size=8192" \
       NODE_PATH=/opt/harthmere-maintenance/node_modules \
       IS_SERVER=1 \
       REDIS_HOST="$PROD_REDIS_HOST" \
@@ -2234,7 +2271,7 @@ const readLog = () => {
     --args="$terrain_eval_arg" \
     --env-vars \
       NODE_ENV=production \
-      NODE_OPTIONS="--openssl-legacy-provider --enable-source-maps --max-old-space-size=8192" \
+      NODE_OPTIONS="--enable-source-maps --max-old-space-size=8192" \
       IS_SERVER=1 \
       REDIS_HOST="$PROD_REDIS_HOST" \
       GLITCH_REDIS_HOST="$PROD_REDIS_HOST" \
@@ -2346,7 +2383,7 @@ run_azure_world_sync_job() {
     --command ./scripts/glitch/run-harthmere-production-reconciliation.sh \
     --env-vars \
       NODE_ENV=production \
-      NODE_OPTIONS="--openssl-legacy-provider --enable-source-maps --max-old-space-size=8192" \
+      NODE_OPTIONS="--enable-source-maps --max-old-space-size=8192" \
       IS_SERVER=1 \
       APPLY=1 \
       REDIS_HOST="$PROD_REDIS_HOST" \
@@ -2607,7 +2644,11 @@ cleanup() {
     log "Keeping local smoke containers: $LOCAL_APP_CONTAINER, $LOCAL_REDIS_CONTAINER"
     return
   fi
-  docker rm -f "$LOCAL_APP_CONTAINER" "$LOCAL_REDIS_CONTAINER" >/dev/null 2>&1 || true
+  docker rm -f \
+    "$LOCAL_APP_CONTAINER" \
+    "$LOCAL_SIMULATION_CONTAINER" \
+    "$LOCAL_ASSET_CONTAINER" \
+    "$LOCAL_REDIS_CONTAINER" >/dev/null 2>&1 || true
 }
 trap cleanup EXIT
 
@@ -2765,7 +2806,7 @@ run_build_checks() {
   node scripts/harthmere/test-glitch-aegis-telemetry-mucker-clearance.cjs .
   node scripts/glitch/test-production-api-route-imports.cjs .
   node scripts/glitch/test-production-deploy-local-redis-smoke.cjs .
-  node scripts/glitch/test-production-redis6-stream-compat.cjs .
+  node scripts/glitch/test-production-redis8-stream-compat.cjs .
   node scripts/glitch/test-production-redis-shared-world.cjs .
   node scripts/harthmere/test-glitch-prod-bucket-asset-proxy.cjs .
   node scripts/harthmere/test-glitch-player-mesh-runtime.cjs .
@@ -2809,7 +2850,7 @@ build_artifacts() {
   build_id="$(git rev-parse HEAD)"
   # Bound both production compilers so a local release rehearsal cannot evict
   # Redis or the browser test it is about to run on memory-constrained Macs.
-  build_node_options="--openssl-legacy-provider --max-old-space-size=${BIOMES_BUILD_MAX_OLD_SPACE_MB:-6144}"
+  build_node_options="--max-old-space-size=${BIOMES_BUILD_MAX_OLD_SPACE_MB:-6144}"
   log "Building Next client for production origin: $PROD_ORIGIN"
   reset_build_outputs_preserving_caches
   GLITCH_RUNTIME=1 \
@@ -2836,7 +2877,7 @@ build_artifacts() {
   NODE_ENV=production \
   NEXT_TELEMETRY_DISABLED=1 \
   NODE_OPTIONS="$build_node_options" \
-  ./node_modules/.bin/next build
+  ./node_modules/.bin/next build --webpack
 
   log "Building server bundles with webpack."
   BIOMES_BUILD_ID="$build_id" \
@@ -2851,6 +2892,11 @@ build_artifacts() {
 
   node scripts/glitch/repair-next-pages-manifest.cjs .
   node scripts/glitch/assert-glitch-build-artifacts-current.cjs .
+  node scripts/glitch/assert-production-runtime-dependencies.cjs .
+  if rg -n "require\\([\"']segfault-handler[\"']\\)" dist; then
+    echo "ERROR server bundles still reference the removed NAN-based segfault-handler addon." >&2
+    exit 1
+  fi
 }
 
 compose_docker_build_args() {
@@ -2994,40 +3040,165 @@ wait_for_unified_stack_services() {
 
 wait_for_local_native_simulations() {
   local deadline=$((SECONDS + ${LOCAL_NATIVE_SIMULATION_READY_TIMEOUT_SECONDS:-1200}))
-  local require_anima="${GLITCH_ENABLE_ANIMA:-1}"
-  local require_gaia="${GLITCH_ENABLE_GAIA:-1}"
-  if [ "$require_anima" != "1" ] && [ "$require_gaia" != "1" ]; then
-    log "Native simulations are disabled for this frontend/logic/ECS-only browser gate."
-    return 0
-  fi
-  if [ "$require_anima" = "1" ] && [ "$require_gaia" = "1" ]; then
-    log "Waiting for local Anima and Gaia readiness before native-ECS browser testing."
-  elif [ "$require_anima" = "1" ]; then
-    log "Waiting for local Anima readiness; Gaia is disabled for this focused browser gate."
-  else
-    log "Waiting for local Gaia readiness; Anima is disabled for this focused browser gate."
-  fi
+  log "Waiting for production-shaped dedicated local Anima/Gaia readiness."
   while [ "$SECONDS" -lt "$deadline" ]; do
-    if [ "$(docker inspect -f '{{.State.Running}}' "$LOCAL_APP_CONTAINER" 2>/dev/null || true)" != "true" ]; then
-      echo "ERROR local production image exited before required native simulations became ready." >&2
-      docker logs --tail 240 "$LOCAL_APP_CONTAINER" >&2 || true
+    if [ "$(docker inspect -f '{{.State.Running}}' "$LOCAL_SIMULATION_CONTAINER" 2>/dev/null || true)" != "true" ]; then
+      echo "ERROR dedicated local simulation container exited before Anima/Gaia became ready." >&2
+      docker logs --tail 240 "$LOCAL_SIMULATION_CONTAINER" >&2 || true
       return 1
     fi
-    if docker exec \
-      -e "HARTHMERE_REQUIRE_ANIMA=$require_anima" \
-      -e "HARTHMERE_REQUIRE_GAIA=$require_gaia" \
-      "$LOCAL_APP_CONTAINER" /bin/sh -lc '
-        { [ "$HARTHMERE_REQUIRE_ANIMA" != "1" ] || curl -fsS http://127.0.0.1:4101/ready >/dev/null; } &&
-        { [ "$HARTHMERE_REQUIRE_GAIA" != "1" ] || curl -fsS http://127.0.0.1:4201/ready >/dev/null; }
-      ' >/dev/null 2>&1; then
-      log "Required local native simulation readiness passed."
+    if docker exec "$LOCAL_SIMULATION_CONTAINER" \
+      curl -fsS http://127.0.0.1:3000/ready >/dev/null 2>&1 &&
+      docker logs "$LOCAL_SIMULATION_CONTAINER" 2>&1 | grep -Fq \
+        "GLITCH_SIMULATION_ROLE_READY anima=1 gaia=1"; then
+      if [ "$(docker inspect -f '{{.RestartCount}}' "$LOCAL_SIMULATION_CONTAINER")" != "0" ]; then
+        echo "ERROR dedicated local simulation container restarted during startup." >&2
+        return 1
+      fi
+      if [ "$(docker inspect -f '{{.State.OOMKilled}}' "$LOCAL_SIMULATION_CONTAINER")" != "false" ]; then
+        echo "ERROR dedicated local simulation container was OOM-killed during startup." >&2
+        return 1
+      fi
+      log "Dedicated local Anima/Gaia readiness passed."
       return 0
     fi
     sleep 5
   done
-  echo "ERROR timed out waiting for required local native simulation readiness." >&2
-  docker logs --tail 240 "$LOCAL_APP_CONTAINER" >&2 || true
+  echo "ERROR timed out waiting for dedicated local Anima/Gaia readiness." >&2
+  docker logs --tail 240 "$LOCAL_SIMULATION_CONTAINER" >&2 || true
   return 1
+}
+
+verify_local_container_image_identity() {
+  local container="$1"
+  local expected actual
+  expected="$(docker image inspect "$LOCAL_IMAGE" --format '{{.Id}}')"
+  actual="$(docker inspect "$container" --format '{{.Image}}')"
+  if [ "$actual" != "$expected" ]; then
+    echo "ERROR local container $container uses $actual; expected immutable candidate $expected." >&2
+    return 1
+  fi
+  log "Immutable image identity verified: $container -> $actual"
+}
+
+start_local_web_container() {
+  local populate_snapshot="$1"
+  local bootstrap_role=0
+  local allow_flush=0
+  if [ "$populate_snapshot" = "1" ]; then
+    bootstrap_role=1
+    allow_flush=1
+  fi
+
+  docker rm -f "$LOCAL_APP_CONTAINER" >/dev/null 2>&1 || true
+  docker run -d \
+    --name "$LOCAL_APP_CONTAINER" \
+    --network "$LOCAL_NETWORK" \
+    --restart "$LOCAL_STACK_RESTART_POLICY" \
+    --stop-timeout 90 \
+    --health-cmd 'node scripts/glitch/healthcheck-glitch-web.cjs' \
+    --health-interval 30s \
+    --health-timeout 10s \
+    --health-start-period 300s \
+    --health-retries 3 \
+    -p "${LOCAL_WEB_PORT}:3000" \
+    -p "${LOCAL_SYNC_PORT}:4900" \
+    -e GLITCH_TITLE_TOKEN="$GLITCH_TITLE_TOKEN" \
+    -e GLITCH_TITLE_ID="$GLITCH_TITLE_ID" \
+    -e GLITCH_API_BASE_URL="$GLITCH_API_BASE_URL" \
+    -e GLITCH_REDIS_MODE=external \
+    -e REDIS_HOST="$LOCAL_REDIS_CONTAINER" \
+    -e GLITCH_REDIS_HOST="$LOCAL_REDIS_CONTAINER" \
+    -e LOCAL_REDIS_HOST="$LOCAL_REDIS_CONTAINER" \
+    -e REDIS_PORT=6379 \
+    -e GLITCH_REDIS_PORT=6379 \
+    -e "GLITCH_POPULATE_SNAPSHOT_REDIS=$populate_snapshot" \
+    -e "GLITCH_SNAPSHOT_BOOTSTRAP_ROLE=$bootstrap_role" \
+    -e "GLITCH_ALLOW_SNAPSHOT_REDIS_FLUSH=$allow_flush" \
+    -e GLITCH_REQUIRE_SNAPSHOT_REDIS=1 \
+    -e GLITCH_STACK_ROLE=web \
+    -e GLITCH_ENABLE_ANIMA=0 \
+    -e GLITCH_ENABLE_GAIA=0 \
+    -e "GLITCH_ENABLE_STREAM_WORKERS=${GLITCH_ENABLE_STREAM_WORKERS:-1}" \
+    -e BIOMES_CREATE_LOCAL_DEV_TERRAIN="${BIOMES_CREATE_LOCAL_DEV_TERRAIN:-0}" \
+    -e HARTHMERE_VISUAL_TEST_AUTH=1 \
+    -e GLITCH_IDLE_SESSION_MS="$LOCAL_IDLE_SESSION_MS" \
+    -e GLITCH_STACK_HTTP_READY_WAIT_TRIES="${GLITCH_STACK_HTTP_READY_WAIT_TRIES:-600}" \
+    -e GLITCH_STACK_TCP_WAIT_TRIES="${GLITCH_STACK_TCP_WAIT_TRIES:-1800}" \
+    -e NEXT_PUBLIC_GLITCH_SYNC_BASE_URL="http://127.0.0.1:${LOCAL_SYNC_PORT}" \
+    "${LOCAL_OPTIONAL_ENV_ARGS[@]}" \
+    "$LOCAL_IMAGE" >/dev/null
+
+  verify_local_container_image_identity "$LOCAL_APP_CONTAINER"
+  wait_for_http
+  wait_for_unified_stack_services
+  verify_galois_runtime_in_container
+}
+
+start_local_native_simulation_phase() {
+  log "Stopping the local web role before the dedicated Anima/Gaia memory gate."
+  docker rm -f "$LOCAL_APP_CONTAINER" >/dev/null 2>&1 || true
+  docker rm -f "$LOCAL_SIMULATION_CONTAINER" "$LOCAL_ASSET_CONTAINER" >/dev/null 2>&1 || true
+
+  docker run -d \
+    --name "$LOCAL_ASSET_CONTAINER" \
+    --network "$LOCAL_NETWORK" \
+    --restart no \
+    "$LOCAL_IMAGE" \
+    /opt/biomes-python/bin/python -m http.server 3000 \
+      --bind 0.0.0.0 --directory /app/public >/dev/null
+  verify_local_container_image_identity "$LOCAL_ASSET_CONTAINER"
+
+  docker run -d \
+    --name "$LOCAL_SIMULATION_CONTAINER" \
+    --network "$LOCAL_NETWORK" \
+    --restart no \
+    --stop-timeout 90 \
+    --health-cmd 'curl -fsS http://127.0.0.1:3000/ready >/dev/null' \
+    --health-interval 30s \
+    --health-timeout 10s \
+    --health-start-period 900s \
+    --health-retries 3 \
+    -e GLITCH_TITLE_ID="$GLITCH_TITLE_ID" \
+    -e GLITCH_API_BASE_URL="$GLITCH_API_BASE_URL" \
+    -e GLITCH_REDIS_MODE=external \
+    -e REDIS_HOST="$LOCAL_REDIS_CONTAINER" \
+    -e GLITCH_REDIS_HOST="$LOCAL_REDIS_CONTAINER" \
+    -e LOCAL_REDIS_HOST="$LOCAL_REDIS_CONTAINER" \
+    -e REDIS_PORT=6379 \
+    -e GLITCH_REDIS_PORT=6379 \
+    -e GLITCH_POPULATE_SNAPSHOT_REDIS=0 \
+    -e GLITCH_SNAPSHOT_BOOTSTRAP_ROLE=0 \
+    -e GLITCH_ALLOW_SNAPSHOT_REDIS_FLUSH=0 \
+    -e GLITCH_REQUIRE_SNAPSHOT_REDIS=1 \
+    -e GLITCH_STACK_ROLE=simulation \
+    -e GLITCH_ENABLE_ANIMA=1 \
+    -e GLITCH_ENABLE_GAIA=1 \
+    -e GLITCH_ENABLE_STREAM_WORKERS=0 \
+    -e GLITCH_ANIMA_STARTUP_CANDIDATES=1 \
+    -e "GLITCH_ANIMA_MAX_OLD_SPACE_MB=${GLITCH_ANIMA_MAX_OLD_SPACE_MB:-2048}" \
+    -e "GLITCH_GAIA_WASM_MEMORY_MB=${GLITCH_GAIA_WASM_MEMORY_MB:-4096}" \
+    -e GLITCH_SIMULATION_HEALTH_PORT=3000 \
+    -e "GLITCH_STACK_HTTP_READY_WAIT_TRIES=${GLITCH_STACK_HTTP_READY_WAIT_TRIES:-900}" \
+    -e "GLITCH_STACK_TCP_WAIT_TRIES=${GLITCH_STACK_TCP_WAIT_TRIES:-1800}" \
+    -e "GLITCH_PUBLIC_WEB_ORIGIN=http://${LOCAL_ASSET_CONTAINER}:3000" \
+    -e "GALOIS_STATIC_PREFIX=http://${LOCAL_ASSET_CONTAINER}:3000/buckets/biomes-static/" \
+    -e "GAIA_SHARD_DOMAIN=gaia-harthmere-local-smoke-${TAG}" \
+    -e BIOMES_CREATE_LOCAL_DEV_TERRAIN=0 \
+    "$LOCAL_IMAGE" >/dev/null
+  verify_local_container_image_identity "$LOCAL_SIMULATION_CONTAINER"
+  wait_for_local_native_simulations
+
+  if docker logs "$LOCAL_SIMULATION_CONTAINER" 2>&1 | grep -Eq \
+    'NaN|Replicated table failure|Uncaught exception|FATAL|ERROR process exited'; then
+    echo "ERROR dedicated local simulation logs contain a fatal runtime signature." >&2
+    docker logs --tail 240 "$LOCAL_SIMULATION_CONTAINER" >&2 || true
+    return 1
+  fi
+
+  log "Dedicated local simulation phase passed; restoring the web role for browser testing."
+  docker rm -f "$LOCAL_SIMULATION_CONTAINER" "$LOCAL_ASSET_CONTAINER" >/dev/null 2>&1 || true
+  start_local_web_container 0
 }
 
 verify_galois_runtime_in_container() {
@@ -3089,41 +3260,6 @@ run_local_full_deployment_rehearsal() {
   fi
   rm -f "$reconciliation_log"
 
-  # The unified local stack uses the same bounded Anima heap and Gaia WASM
-  # allowance as production. Probe both native workers after reconciliation so
-  # a map write cannot leave either required simulation unhealthy.
-  docker exec -i "$LOCAL_APP_CONTAINER" node - <<'NODE'
-const http = require("http");
-const probes = [
-  ["Anima", 4101],
-  ["Gaia", 4201],
-];
-Promise.all(
-  probes.map(
-    ([name, port]) =>
-      new Promise((resolve, reject) => {
-        const req = http.get(
-          { host: "127.0.0.1", port, path: "/ready", timeout: 2000 },
-          (res) => {
-            res.resume();
-            if (res.statusCode === 200) {
-              console.log(`OK ${name} local readiness`);
-              resolve();
-            } else {
-              reject(new Error(`${name} readiness returned ${res.statusCode}`));
-            }
-          }
-        );
-        req.on("timeout", () => req.destroy(new Error(`${name} readiness timed out`)));
-        req.on("error", reject);
-      })
-  )
-).catch((error) => {
-  console.error(error.message);
-  process.exit(1);
-});
-NODE
-
   if [ -n "${ELEVENLABS_API_KEY:-}" ]; then
     # Validate only presence and parser acceptance; never print the secret.
     docker exec "$LOCAL_APP_CONTAINER" /bin/sh -lc '
@@ -3144,32 +3280,30 @@ NODE
     echo "ERROR local production container restarted during the full rehearsal." >&2
     return 1
   fi
-  log "Complete local production rehearsal passed; the stack will remain running."
+  log "Local reconciliation and provider rehearsal passed; dedicated Anima/Gaia validation follows."
 }
 
 smoke_local_image() {
-  local optional_env_args=(
+  local LOCAL_OPTIONAL_ENV_ARGS=(
     -e "HARTHMERE_NATIVE_ECS_E2E=${HARTHMERE_NATIVE_ECS_E2E:-0}"
     -e "HARTHMERE_E2E_CONTROL_TOKEN=${HARTHMERE_E2E_CONTROL_TOKEN:-}"
     -e "HARTHMERE_E2E_BIBLE_NOW_MS=${HARTHMERE_E2E_BIBLE_NOW_MS:-}"
     -e "HARTHMERE_E2E_BIBLE_WEATHER=${HARTHMERE_E2E_BIBLE_WEATHER:-}"
   )
-  local idle_session_ms="${GLITCH_IDLE_SESSION_MS:-1000}"
+  local LOCAL_IDLE_SESSION_MS="${GLITCH_IDLE_SESSION_MS:-1000}"
   if [ "${HARTHMERE_NATIVE_ECS_E2E:-0}" = "1" ] && [ -z "${GLITCH_IDLE_SESSION_MS:-}" ]; then
     # A one-second idle timeout is useful for disposable smoke probes but can
     # tear down a production-bundle stack between chapters. Keep focused native
     # browser sessions alive for fifteen minutes unless the caller overrides it.
-    idle_session_ms=900000
+    LOCAL_IDLE_SESSION_MS=900000
   fi
   if [ "${HARTHMERE_NATIVE_ECS_E2E:-0}" = "1" ]; then
-    # Next stack boot uses the memory-bounded six-service topology. The current
-    # warm stack is never restarted just to adopt this optimization; it takes
-    # effect on the next local image run after the updated launcher is built.
-    optional_env_args+=(
+    # The browser-facing role uses the memory-bounded focused topology. Native
+    # simulations are validated separately below with the same immutable image,
+    # matching production's web/simulation Container App split.
+    LOCAL_OPTIONAL_ENV_ARGS+=(
       -e "GLITCH_FOCUSED_NATIVE_E2E_STACK=${GLITCH_FOCUSED_NATIVE_E2E_STACK:-1}"
       -e "GLITCH_ASSET_EXPORT_WORKERS=${GLITCH_ASSET_EXPORT_WORKERS:-1}"
-      -e "GLITCH_ANIMA_MAX_OLD_SPACE_MB=${GLITCH_ANIMA_MAX_OLD_SPACE_MB:-1536}"
-      -e "GLITCH_GAIA_WASM_MEMORY_MB=${GLITCH_GAIA_WASM_MEMORY_MB:-3072}"
       -e "GLITCH_WEB_MAX_OLD_SPACE_MB=${GLITCH_WEB_MAX_OLD_SPACE_MB:-4096}"
     )
   fi
@@ -3179,7 +3313,7 @@ smoke_local_image() {
   if [ -n "${ELEVENLABS_API_KEY:-}" ]; then
     # `docker run -e NAME` copies the host value without putting it in argv or
     # logs, which keeps the local rehearsal from exposing the provider key.
-    optional_env_args+=(
+    LOCAL_OPTIONAL_ENV_ARGS+=(
       -e ELEVENLABS_API_KEY
       -e "ELEVENLABS_MODEL_ID=${ELEVENLABS_MODEL_ID:-eleven_v3}"
     )
@@ -3187,7 +3321,11 @@ smoke_local_image() {
 
   log "Starting local Redis smoke database: $LOCAL_REDIS_IMAGE."
   docker network create "$LOCAL_NETWORK" >/dev/null 2>&1 || true
-  docker rm -f "$LOCAL_APP_CONTAINER" "$LOCAL_REDIS_CONTAINER" >/dev/null 2>&1 || true
+  docker rm -f \
+    "$LOCAL_APP_CONTAINER" \
+    "$LOCAL_SIMULATION_CONTAINER" \
+    "$LOCAL_ASSET_CONTAINER" \
+    "$LOCAL_REDIS_CONTAINER" >/dev/null 2>&1 || true
   docker run -d \
     --name "$LOCAL_REDIS_CONTAINER" \
     --network "$LOCAL_NETWORK" \
@@ -3202,56 +3340,16 @@ smoke_local_image() {
       --appendonly no \
       --stop-writes-on-bgsave-error no >/dev/null
 
-  log "Starting production image locally against local Redis."
-  docker run -d \
-    --name "$LOCAL_APP_CONTAINER" \
-    --network "$LOCAL_NETWORK" \
-    --restart "$LOCAL_STACK_RESTART_POLICY" \
-    --stop-timeout 90 \
-    --health-cmd 'node scripts/glitch/healthcheck-glitch-web.cjs' \
-    --health-interval 30s \
-    --health-timeout 10s \
-    --health-start-period 300s \
-    --health-retries 3 \
-    -p "${LOCAL_WEB_PORT}:3000" \
-    -p "${LOCAL_SYNC_PORT}:4900" \
-    -e GLITCH_TITLE_TOKEN="$GLITCH_TITLE_TOKEN" \
-    -e GLITCH_TITLE_ID="$GLITCH_TITLE_ID" \
-    -e GLITCH_API_BASE_URL="$GLITCH_API_BASE_URL" \
-    -e GLITCH_REDIS_MODE=external \
-    -e REDIS_HOST="$LOCAL_REDIS_CONTAINER" \
-    -e GLITCH_REDIS_HOST="$LOCAL_REDIS_CONTAINER" \
-    -e LOCAL_REDIS_HOST="$LOCAL_REDIS_CONTAINER" \
-    -e REDIS_PORT=6379 \
-    -e GLITCH_REDIS_PORT=6379 \
-    -e GLITCH_POPULATE_SNAPSHOT_REDIS=1 \
-    -e GLITCH_SNAPSHOT_BOOTSTRAP_ROLE=1 \
-    -e GLITCH_ALLOW_SNAPSHOT_REDIS_FLUSH=1 \
-    -e GLITCH_REQUIRE_SNAPSHOT_REDIS=1 \
-    -e GLITCH_STACK_ROLE=unified \
-    -e "GLITCH_ENABLE_ANIMA=${GLITCH_ENABLE_ANIMA:-1}" \
-    -e "GLITCH_ENABLE_GAIA=${GLITCH_ENABLE_GAIA:-1}" \
-    -e "GLITCH_ENABLE_STREAM_WORKERS=${GLITCH_ENABLE_STREAM_WORKERS:-1}" \
-    -e BIOMES_CREATE_LOCAL_DEV_TERRAIN="${BIOMES_CREATE_LOCAL_DEV_TERRAIN:-0}" \
-    -e HARTHMERE_VISUAL_TEST_AUTH=1 \
-    -e GLITCH_IDLE_SESSION_MS="$idle_session_ms" \
-    -e GLITCH_STACK_HTTP_READY_WAIT_TRIES="${GLITCH_STACK_HTTP_READY_WAIT_TRIES:-600}" \
-    -e GLITCH_STACK_TCP_WAIT_TRIES="${GLITCH_STACK_TCP_WAIT_TRIES:-1800}" \
-    -e NEXT_PUBLIC_GLITCH_SYNC_BASE_URL="http://127.0.0.1:${LOCAL_SYNC_PORT}" \
-    "${optional_env_args[@]}" \
-    "$LOCAL_IMAGE" >/dev/null
-
-  wait_for_http
-  wait_for_unified_stack_services
-
-  verify_galois_runtime_in_container
-
-  if [ "${HARTHMERE_NATIVE_ECS_E2E:-0}" = "1" ]; then
-    wait_for_local_native_simulations
-  fi
+  log "Starting the production-shaped web role from the immutable candidate image."
+  start_local_web_container 1
 
   if [ "$RUN_LOCAL_FULL_REHEARSAL" = "1" ]; then
     run_local_full_deployment_rehearsal
+  fi
+
+  if [ "${HARTHMERE_NATIVE_ECS_E2E:-0}" = "1" ] ||
+     [ "$RUN_LOCAL_FULL_REHEARSAL" = "1" ]; then
+    start_local_native_simulation_phase
   fi
 
   if [ "$HARTHMERE_RUN_LOCAL_BROWSER_E2E" = "1" ]; then

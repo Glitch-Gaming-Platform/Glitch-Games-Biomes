@@ -53,6 +53,15 @@
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 
+# Node 22+ can let its native TypeScript loader intercept Mocha's dynamic
+# import before ts-node and tsconfig-paths apply this repo's CommonJS/alias
+# contract. Node 20 does not recognize the opt-out flag, so keep the fast
+# launcher usable while developer shells move to the repository's Node 24 pin.
+NODE_MAJOR="$(node -p 'Number(process.versions.node.split(".")[0])')"
+if (( NODE_MAJOR >= 22 )); then
+  export NODE_OPTIONS="${NODE_OPTIONS:+$NODE_OPTIONS }--no-experimental-strip-types"
+fi
+
 FAST=(node_modules/.bin/mocha --config .mocharc.fast.json)
 
 CH1=(

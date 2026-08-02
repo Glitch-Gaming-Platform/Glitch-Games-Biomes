@@ -13,6 +13,7 @@ import {
 } from "@/server/shared/minigames/ruleset/tweaks";
 import type { Vec2f } from "@/shared/ecs/gen/types";
 import type { Vec3 } from "@/shared/math/types";
+import type { BiomesId } from "@/shared/ids";
 import assert from "assert";
 
 const firstPos: Vec3 = [10, 20, -5];
@@ -25,11 +26,17 @@ function desiredCameraPosition(tweak: TrackingCamTweaks) {
 describe("camera view avatar visibility", () => {
   it("defaults signed-in and entity-target sessions to third person", () => {
     assert.equal(
-      defaultToFirstPersonForSyncTarget({ kind: "localUser", userId: 123 }),
+      defaultToFirstPersonForSyncTarget({
+        kind: "localUser",
+        userId: 123 as BiomesId,
+      }),
       false
     );
     assert.equal(
-      defaultToFirstPersonForSyncTarget({ kind: "entity", entityId: 456 }),
+      defaultToFirstPersonForSyncTarget({
+        kind: "entity",
+        entityId: 456 as BiomesId,
+      }),
       false
     );
   });

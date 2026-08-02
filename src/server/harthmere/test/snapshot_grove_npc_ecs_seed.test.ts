@@ -10,9 +10,36 @@ import {
   snapshotGroveNpcEntityId,
 } from "@/shared/harthmere/snapshot_grove_content";
 import { LOCAL_DEV_HUMAN_NPC_TYPE_ID } from "@/shared/npc/bikkie";
-import { SNAPSHOT_GROVE_LEGACY_NPC_ENTITY_IDS } from "@/shared/harthmere/snapshot_grove_ids";
+import {
+  SNAPSHOT_GROVE_JACKIE_ORIGINAL_SPAWN_ORIENTATION,
+  SNAPSHOT_GROVE_JACKIE_ORIGINAL_SPAWN_POSITION,
+  SNAPSHOT_GROVE_LEGACY_NPC_ENTITY_IDS,
+} from "@/shared/harthmere/snapshot_grove_ids";
 
 describe("snapshot Grove NPC ECS seed cosmetics", () => {
+  it("keeps Jackie's shared ECS body at the original snapshot Road Ahead post", () => {
+    const changes = buildHarthmereSnapshotGroveNpcSeedProposedChanges({
+      nowSeconds: 1_800_000_000,
+    });
+    const jackie = changes.find(
+      (change) =>
+        change.kind === "create" && change.entity.label?.text === "Jackie"
+    );
+    assert.ok(jackie && jackie.kind === "create");
+    assert.deepEqual(
+      jackie.entity.position?.v,
+      SNAPSHOT_GROVE_JACKIE_ORIGINAL_SPAWN_POSITION
+    );
+    assert.deepEqual(
+      jackie.entity.npc_metadata?.spawn_position,
+      SNAPSHOT_GROVE_JACKIE_ORIGINAL_SPAWN_POSITION
+    );
+    assert.deepEqual(
+      jackie.entity.orientation?.v,
+      SNAPSHOT_GROVE_JACKIE_ORIGINAL_SPAWN_ORIENTATION
+    );
+  });
+
   it("drops uniform defaults for no-asset Grove humans so the player avatar renderer supplies distinct cosmetics", () => {
     const changes = buildHarthmereSnapshotGroveNpcSeedProposedChanges({
       nowSeconds: 1_800_000_000,

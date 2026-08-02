@@ -109,10 +109,11 @@ const EXTERNALLY_PROBED_STACK_SERVICES = new Set(["web"]);
 const CHECKPOINTS = {
   // --- prologue chain (the chain that gates everything else) ---------------
   grove_start: {
-    pos: [496, 71, -126],
-    look: [-0.15, 0.1],
-    what: "Jackie at the Grove road-house. Road Ahead step 1.",
-    source: "production_terrain_placement_map: jobs_board_marker:npc_jackie",
+    pos: [485.5432697798402, 71, -140.51973378625254],
+    look: [-0.15, 0.05],
+    what: "Jackie at her original Grove stores approach. Road Ahead step 1.",
+    source:
+      "May snapshot entity 8997551883502307 npc_metadata.spawn_position",
   },
   billy: {
     pos: [500, 71, -140],

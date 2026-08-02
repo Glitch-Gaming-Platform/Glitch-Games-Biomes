@@ -6,8 +6,28 @@ import type { BiomesId } from "@/shared/ids";
 export function isHarthmereNonLivingDialogueObjectLabel(input: {
   label?: string | null;
   entityDescription?: string | null;
+  hasNpcMetadata?: boolean;
 }) {
+  // ECS NPC identity is stronger evidence than prose. Snapshot NPC roles such
+  // as Helsa's "night lamp keeper" legitimately contain object nouns; treating
+  // that description as a lamp suppresses Talk and sends an invalid Inspect
+  // receipt for the NPC entity instead.
+  if (input.hasNpcMetadata) {
+    return false;
+  }
   return isHarthmereNonLivingObjectLabel(input);
+}
+
+export function shouldUseHarthmereCursorObjectSemantics(input: {
+  canTalk: boolean;
+  isNativeDialogueQuestObject: boolean;
+  canUseObjectSemantics: boolean;
+}) {
+  return (
+    !input.canTalk &&
+    !input.isNativeDialogueQuestObject &&
+    input.canUseObjectSemantics
+  );
 }
 
 // HARTHMERE_COMBAT_CREATURE_NOT_TALKABLE:

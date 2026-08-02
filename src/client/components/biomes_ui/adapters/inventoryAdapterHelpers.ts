@@ -42,6 +42,31 @@ function canonicalBiomesMirrorItemId(itemId: unknown) {
   return match ? match[1] : String(itemId ?? "");
 }
 
+export function mergeInventoryAndHotbarForBiomesBackpackForTest<
+  T extends { item: { id: unknown }; count?: number | bigint }
+>(backpackItems: readonly T[], hotbarItems: readonly T[]): T[] {
+  const merged = [...backpackItems];
+  const indexById = new Map(
+    merged.map((entry, index) => [
+      canonicalBiomesMirrorItemId(entry.item.id),
+      index,
+    ])
+  );
+  for (const entry of hotbarItems) {
+    const key = canonicalBiomesMirrorItemId(entry.item.id);
+    const existingIndex = indexById.get(key);
+    if (existingIndex === undefined) {
+      indexById.set(key, merged.length);
+      merged.push(entry);
+      continue;
+    }
+    if (Number(entry.count ?? 0) > Number(merged[existingIndex].count ?? 0)) {
+      merged[existingIndex] = entry;
+    }
+  }
+  return merged;
+}
+
 // ---------------------------------------------------------------------------
 // HARTHMERE_HOTBAR_OVERLAY_NO_CLOBBER (audit fix, 2026-07-13)
 //

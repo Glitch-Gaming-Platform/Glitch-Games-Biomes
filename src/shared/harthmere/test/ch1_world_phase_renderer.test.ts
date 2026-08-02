@@ -12,10 +12,10 @@ describe("Chapter 1 world-phase renderer", () => {
     setCh1WorldPhaseEffectIds(["collective_transport_parked"]);
     setCh1AnchorReadUntilMs(Date.now() + 10_000);
     const renderer = makeCh1WorldPhaseRenderer({
-      get: () => ({ position: undefined }),
+      get: () => ({ player: { position: undefined } }),
     } as any);
 
-    assert.doesNotThrow(() => renderer.draw({} as any));
+    assert.doesNotThrow(() => renderer.draw({} as any, 0));
 
     setCh1WorldPhaseEffectIds(undefined);
     setCh1AnchorReadUntilMs(0);

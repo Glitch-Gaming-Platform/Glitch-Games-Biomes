@@ -1,3 +1,10 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
+config_setting(
+    name = "wasm32",
+    constraint_values = ["@platforms//cpu:wasm32"],
+)
+
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
@@ -86,7 +93,7 @@ cc_library(
         "lib/decompress/zstd_decompress_internal.h",
         "lib/decompress/zstd_ddict.h",
     ],
-    hdrs = glob(["lib/decompress/*_impl.h"]),
+    hdrs = glob(["lib/decompress/*_impl.h"], allow_empty = True),
     copts = [
         "-DXXH_NAMESPACE=ZSTD_",
     ],
@@ -147,7 +154,13 @@ cc_library(
     srcs = ["lib/common/threading.c"],
     hdrs = ["lib/common/threading.h"],
     copts = ["-DZSTD_MULTITHREAD"],
-    linkopts = ["-pthread"],
+    # Emscripten 6 treats a transitive `-pthread` as an instruction to emit a
+    # shared-memory module. The browser build intentionally uses the serial
+    # zstd path, while native services keep their pthread linkage.
+    linkopts = select({
+        ":wasm32": [],
+        "//conditions:default": ["-pthread"],
+    }),
     deps = [":debug"],
 )
 

@@ -56,10 +56,10 @@ export const JoystickInput: React.FunctionComponent<{}> = ({}) => {
         peak: Vec2;
       }
     | undefined
-  >();
-  const lastHardTapRef = useRef<MobileJoystickHardTap>();
+  >(undefined);
+  const lastHardTapRef = useRef<MobileJoystickHardTap>(undefined);
   const movementActionPulseNonceRef = useRef(0);
-  const crouchPointerIdRef = useRef<number>();
+  const crouchPointerIdRef = useRef<number>(undefined);
 
   const nowMs = () =>
     typeof performance !== "undefined" ? performance.now() : Date.now();

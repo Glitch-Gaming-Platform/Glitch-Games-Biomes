@@ -101,10 +101,10 @@ export const HarthmereProjectileVisualAuditPanel: React.FunctionComponent =
     const localPlayer = reactResources.use("/scene/local_player") as unknown;
     const [runtime, setRuntime] = useState<ProjectileRuntimeSnapshot>();
     const [status, setStatus] = useState("Waiting for projectile renderer");
-    const firingInterval = useRef<number>();
-    const stopTimer = useRef<number>();
-    const chargeTimer = useRef<number>();
-    const activeChargeId = useRef<string>();
+    const firingInterval = useRef<number>(undefined);
+    const stopTimer = useRef<number>(undefined);
+    const chargeTimer = useRef<number>(undefined);
+    const activeChargeId = useRef<string>(undefined);
     const visible = useMemo(
       () =>
         typeof window !== "undefined" &&

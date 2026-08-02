@@ -147,6 +147,7 @@ export function useCanTalkToNpc(
     isHarthmereNonLivingDialogueObjectLabel({
       label: label?.text,
       entityDescription: entityDescription?.text,
+      hasNpcMetadata: Boolean(npcMetadata),
     })
   ) {
     return false;
@@ -208,6 +209,7 @@ export function canTalkToNpc(
     isHarthmereNonLivingDialogueObjectLabel({
       label: label?.text,
       entityDescription: entityDescription?.text,
+      hasNpcMetadata: Boolean(entity?.npc_metadata),
     })
   ) {
     return false;

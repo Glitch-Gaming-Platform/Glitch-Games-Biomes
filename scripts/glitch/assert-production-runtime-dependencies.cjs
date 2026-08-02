@@ -73,7 +73,7 @@ for (const [name, files] of [...requiredBy].sort(([a], [b]) =>
 }
 
 if (missing.length) {
-  console.error("Missing production runtime dependencies after npm prune:");
+  console.error("Missing production runtime dependencies after production install:");
   for (const detail of missing) {
     console.error(`- ${detail}`);
   }

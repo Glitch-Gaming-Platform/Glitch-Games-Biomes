@@ -4,7 +4,7 @@ import {
   useExistingScreenStackContext,
   useNewScreenStack,
 } from "@/client/components/system/mini_phone/ScreenStack";
-import type { ReactChild } from "react";
+import type { ReactNode } from "react";
 import React from "react";
 
 export type MiniPhoneContextType<T> = ScreenStack<T>;
@@ -29,7 +29,7 @@ export const MiniPhoneContext = React.createContext(
 );
 
 export type MiniPhoneProps<PayloadT> = {
-  renderPayload: (payload: PayloadT) => ReactChild;
+  renderPayload: (payload: PayloadT) => ReactNode;
   displayType: string;
   existingContext?: MiniPhoneContextType<PayloadT>;
   onClose: () => unknown;

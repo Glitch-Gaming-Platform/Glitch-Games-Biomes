@@ -1,13 +1,13 @@
 import { Img } from "@/client/components/system/Img";
-import type { ReactChild } from "react";
+import type { ReactNode } from "react";
 import React from "react";
 import spinnerIcon from "/public/hud/spinner.gif";
 import errorIcon from "/public/hud/status-failed.png";
 import successIcon from "/public/hud/status-success.png";
 
 export interface FillProps {
-  header?: ReactChild;
-  footer?: ReactChild;
+  header?: ReactNode;
+  footer?: ReactNode;
   type: "success" | "progress" | "error";
   style?: "full" | "keep-header";
 }

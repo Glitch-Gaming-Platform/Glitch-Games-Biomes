@@ -252,16 +252,7 @@ export const SplashPage: React.FunctionComponent<{
                       height={"fill"}
                       playing={playYoutubeTrailer}
                       onPlay={() => setPlayYoutubeTrailer(true)}
-                      url={`https://www.youtube.com/embed/${youtubeVideoId}`}
-                      config={{
-                        youtube: {
-                          playerVars: {
-                            controls: 1,
-                            rel: 0,
-                            modestbranding: 1,
-                          },
-                        },
-                      }}
+                      src={`https://www.youtube.com/watch?v=${youtubeVideoId}&controls=1&rel=0&modestbranding=1`}
                     />
                     {!playYoutubeTrailer && (
                       <>

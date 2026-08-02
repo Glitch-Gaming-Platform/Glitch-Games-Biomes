@@ -41,7 +41,7 @@ case "$GLITCH_STACK_ROLE" in
 esac
 
 export NODE_ENV="${NODE_ENV:-production}"
-export NODE_OPTIONS="${NODE_OPTIONS:- --openssl-legacy-provider}"
+export NODE_OPTIONS="${NODE_OPTIONS:---enable-source-maps}"
 export GLITCH_RUNTIME="${GLITCH_RUNTIME:-1}"
 export GLITCH_LOCAL_ASSETS="${GLITCH_LOCAL_ASSETS:-1}"
 export NEXT_PUBLIC_GLITCH_RUNTIME="${NEXT_PUBLIC_GLITCH_RUNTIME:-1}"
@@ -403,9 +403,9 @@ wait_anima_startup_barrier() {
 
   # Existing web/sync services can make a replica look healthy before its Anima
   # process starts. Publish a separate short lease only after this runner has
-  # reached the Anima launch point. Redis SET EX works on production Redis 6 and
-  # automatically removes a candidate when its node disappears without running
-  # cleanup. Database 6 is already reserved for service-discovery coordination.
+  # reached the Anima launch point. Redis SET EX remains a single atomic lease
+  # on production Redis 8.8.1 and automatically removes a candidate when its
+  # node disappears. Database 6 is reserved for service discovery.
   local candidate_id="${HOSTNAME:-$(hostname)}"
   local candidate_prefix="glitch:anima-hotfix:candidate:"
   local candidate_key="${candidate_prefix}${candidate_id}"

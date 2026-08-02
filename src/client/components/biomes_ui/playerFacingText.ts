@@ -1,3 +1,5 @@
+import { harthmerePlayerCapacityMessage } from "@/client/components/harthmere_capacity_messages";
+
 const EXACT_PLAYER_TEXT: Record<string, string> = {
   fetch_unavailable: "The connection is not ready yet",
   read_state: "Checking your land",
@@ -61,6 +63,8 @@ export function biomesPlayerTitle(value: unknown, fallback = "Unknown"): string 
 export function biomesPlayerSentence(value: unknown, fallback = "Nothing to show yet."): string {
   const raw = String(value ?? "").trim();
   if (!raw) return fallback;
+  const capacityMessage = harthmerePlayerCapacityMessage(raw);
+  if (capacityMessage) return capacityMessage;
   const exact = EXACT_PLAYER_TEXT[raw.toLowerCase()];
   if (exact) return exact;
   let clean = raw;

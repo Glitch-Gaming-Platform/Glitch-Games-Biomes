@@ -15,7 +15,12 @@ interface HighlightableProps {
   uniqueId: string;
   /** Render a caption above the element when highlighted */
   showCaption?: boolean;
-  children: React.ReactElement;
+  children: React.ReactElement<{
+    className?: string;
+    ref?: React.Ref<HTMLElement>;
+    "data-ui-id"?: string;
+    "data-ui-blinking"?: string;
+  }>;
   /** Extra class applied while blinking */
   blinkClassName?: string;
 }
@@ -64,7 +69,7 @@ export const Highlightable: React.FunctionComponent<HighlightableProps> = ({
     ref: (node: HTMLElement | null) => {
       ref.current = node;
       // forward to any existing ref on the child
-      const existing = (children as any).ref;
+      const existing = children.props.ref;
       if (typeof existing === "function") existing(node);
       else if (existing && typeof existing === "object") existing.current = node;
     },

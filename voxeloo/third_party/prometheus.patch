@@ -1,9 +1,14 @@
+diff --git a/core/BUILD.bazel b/core/BUILD.bazel
+index 8d5b2d8..ccae339 100644
 --- a/core/BUILD.bazel
 +++ b/core/BUILD.bazel
-@@ -15,5 +15,6 @@ cc_library(
-     hdrs = glob(
+@@ -1,1 +1,2 @@
+ load("//bazel:export_header.bzl", "generate_dummy_export_header")
++load("@rules_cc//cc:defs.bzl", "cc_library")
+@@ -16,5 +17,6 @@ cc_library(
          ["include/**/*.h"],
      ) + [":export_header"],
      strip_include_prefix = "include",
 +    features = ["exceptions"],
      visibility = ["//visibility:public"],
+ )

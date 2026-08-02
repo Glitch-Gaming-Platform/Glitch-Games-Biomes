@@ -40,7 +40,7 @@ export function chapter1ProjectionPuppetOverrides(
   const castByEntityId = new Map(
     CH1_NEW_CAST.map((member) => [member.entityId as number, member])
   );
-  return response.staging.flatMap((npc) => {
+  return response.staging.flatMap<CutscenePuppetOverride>((npc) => {
     if (response.isolateCutsceneCast) {
       return [
         { id: npc.entityId, yaw: 0, hidden: true, label: npc.displayName },

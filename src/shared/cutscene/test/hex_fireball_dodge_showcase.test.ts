@@ -47,10 +47,11 @@ describe("Harthmere Hex Fireball dodge cutscene", () => {
     }
 
     const actions = scene.shots.flatMap((shot) => shot.actions);
-    const projectiles = actions.filter(
-      (action) =>
-        action.kind === "custom" &&
-        action.hook === HARTHMERE_CUTSCENE_PROJECTILE_HOOK
+    const projectiles = actions.flatMap((action) =>
+      action.kind === "custom" &&
+      action.hook === HARTHMERE_CUTSCENE_PROJECTILE_HOOK
+        ? [action]
+        : []
     );
     assert.equal(projectiles.length, 3);
     for (const action of projectiles) {

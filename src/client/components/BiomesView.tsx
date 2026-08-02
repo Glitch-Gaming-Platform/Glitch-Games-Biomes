@@ -18,7 +18,7 @@ import React, { useEffect, useRef } from "react";
 function BiomesCanvas({}: {}) {
   const { input, audioManager, rendererController, clientConfig } =
     useClientContext();
-  const lastTouchPosRef = useRef<Vec2 | undefined>();
+  const lastTouchPosRef = useRef<Vec2 | undefined>(undefined);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const pointerLockManager = usePointerLockManager();
 

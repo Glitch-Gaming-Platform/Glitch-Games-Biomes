@@ -46,8 +46,8 @@ export const InventoryAndHotbarDisplay: React.FC<{
     handleInventorySlotKeyPress,
   } = useInventoryControllerContext();
   const [_error, setError] = useError(true);
-  const currentProfilePicHash = useRef<string | null | undefined>();
-  const profilePicPrep = useRef<[string, string] | undefined>();
+  const currentProfilePicHash = useRef<string | null | undefined>(undefined);
+  const profilePicPrep = useRef<[string, string] | undefined>(undefined);
   const { setAltClickUIForSlotRef: setShowSplitUIForSlotRef } =
     useInventoryAltClickContext();
 

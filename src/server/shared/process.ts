@@ -1,5 +1,7 @@
 import { log } from "@/shared/logging";
-import SegfaultHandler from "segfault-handler";
+// N-API crash diagnostics compatible with the fork's Node 24 runtime. Importing
+// the module installs its default fatal-signal handlers.
+import "segfault-raub";
 
 export function handleProcessIssues() {
   process.on("uncaughtException", (error: Error, origin: string) => {
@@ -22,6 +24,4 @@ export function handleProcessIssues() {
     // eslint-disable-next-line no-console
     console.log(`About to exit with code: ${code}`);
   });
-
-  SegfaultHandler.registerHandler();
 }

@@ -50,7 +50,7 @@ export async function loadVoxeloo(): Promise<VoxelooModule> {
     "dist/gen/shared/cpp_ext/voxeloo-simd/wasm.wasm"
   );
 
-  const module = await wasmLoader({
+  const module = (await wasmLoader({
     // Next's server bundle can execute from .next/server, making the original
     // relative path resolve to /app/.next/gen. The packaged Glitch image keeps
     // the generated wasm under /app/src/gen, while the standalone server build
@@ -64,13 +64,13 @@ export async function loadVoxeloo(): Promise<VoxelooModule> {
     printErr: (error: string) => {
       log.error(`ERROR[Voxeloo]: "${error}"`, { error });
     },
-  });
+  })) as VoxelooModule;
   setVoxelooForExceptionReporting(module);
 
   module.registerErrorLogger((error: string) => {
     log.error(`Error in voxeloo: "${error}"`);
   });
   log.info("Loaded WASM");
-  loadedVoxeloo = module as VoxelooModule;
-  return module as VoxelooModule;
+  loadedVoxeloo = module;
+  return module;
 }

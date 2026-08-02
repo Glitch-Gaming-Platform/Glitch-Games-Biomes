@@ -1,4 +1,4 @@
-import type { ReadonlyVec3, Vec3 } from "@/shared/math/types";
+import type { AABB, ReadonlyVec3, Vec3 } from "@/shared/math/types";
 
 // HARTHMERE_ADDITIVE_WORLD_EXTENSION
 //
@@ -8,7 +8,7 @@ import type { ReadonlyVec3, Vec3 } from "@/shared/math/types";
 // production shard. The extra 192 blocks before X=2560 leave room for roads,
 // walls, and future bible additions without another metadata migration.
 export const HARTHMERE_ADDITIVE_WORLD_EXTENSION_VERSION =
-  "harthmere-additive-world-extension-v3-portal-only-elsewhen" as const;
+  "harthmere-additive-world-extension-v4-hard-edge-horizon" as const;
 export const HARTHMERE_ORIGINAL_WORLD_EAST_EDGE_X = 1792;
 export const HARTHMERE_EXPANDED_WORLD_EAST_EDGE_X = 2560;
 export const HARTHMERE_ADDITIVE_TOWN_OFFSET_X = 1600;
@@ -50,6 +50,60 @@ export const HARTHMERE_EXTENSION_WORLD_BOUNDS = {
   minZ: -576,
   maxZ: 192,
 } as const;
+
+/**
+ * The imported world is a wide rectangle, but the additive Harthmere terrain is
+ * a narrower east-side rectangle. These two slabs fill the otherwise-empty
+ * north/south notches east of the old map edge so physics treats the visible
+ * terrain edge as a real wall instead of letting players walk into missing
+ * shards.
+ */
+export function harthmereExtensionVoidCollisionBoxes(far = 1_000_000): AABB[] {
+  return [
+    [
+      [HARTHMERE_EXTENSION_WORLD_BOUNDS.minX, -far, -far],
+      [far, far, HARTHMERE_EXTENSION_WORLD_BOUNDS.minZ],
+    ],
+    [
+      [
+        HARTHMERE_EXTENSION_WORLD_BOUNDS.minX,
+        -far,
+        HARTHMERE_EXTENSION_WORLD_BOUNDS.maxZ,
+      ],
+      [far, far, far],
+    ],
+  ];
+}
+
+/**
+ * Repairs a persisted player that already crossed an additive-world edge.
+ * Positions west of the extension belong to the original imported map and are
+ * deliberately left alone. Detached Chapter 1 worlds are screened by the
+ * caller before this helper runs.
+ */
+export function harthmereExtensionEdgeRescuePosition(
+  position: ReadonlyVec3,
+  edgeMargin = 36,
+  playableMaxX: number = HARTHMERE_EXTENSION_WORLD_BOUNDS.maxX
+): Vec3 | undefined {
+  const { minX, maxX, minZ, maxZ } = HARTHMERE_EXTENSION_WORLD_BOUNDS;
+  const safeMaxX = Number.isFinite(playableMaxX)
+    ? Math.min(maxX, Math.max(minX, playableMaxX))
+    : maxX;
+  if (position[0] < minX) {
+    return undefined;
+  }
+  const outsidePlayableExtension =
+    position[0] >= safeMaxX || position[2] < minZ || position[2] >= maxZ;
+  if (!outsidePlayableExtension) {
+    return undefined;
+  }
+  return normalizeHarthmereExtensionOutdoorFeetPositionWithinMaxX(
+    position,
+    edgeMargin,
+    safeMaxX
+  );
+}
 
 export function harthmereExtensionTerrainEntityIdForShard(
   shardX: number,
@@ -302,15 +356,25 @@ export function normalizeHarthmereExtensionOutdoorFeetPosition(
   position: ReadonlyVec3,
   edgeMargin = 0
 ): Vec3 {
+  return normalizeHarthmereExtensionOutdoorFeetPositionWithinMaxX(
+    position,
+    edgeMargin,
+    HARTHMERE_EXTENSION_WORLD_BOUNDS.maxX
+  );
+}
+
+function normalizeHarthmereExtensionOutdoorFeetPositionWithinMaxX(
+  position: ReadonlyVec3,
+  edgeMargin: number,
+  playableMaxX: number
+): Vec3 {
   const requestedMargin = Number.isFinite(edgeMargin)
     ? Math.max(0, edgeMargin)
     : 0;
   const maxMargin = Math.max(
     0,
     Math.min(
-      (HARTHMERE_EXTENSION_WORLD_BOUNDS.maxX -
-        HARTHMERE_EXTENSION_WORLD_BOUNDS.minX) /
-        2,
+      (playableMaxX - HARTHMERE_EXTENSION_WORLD_BOUNDS.minX) / 2,
       (HARTHMERE_EXTENSION_WORLD_BOUNDS.maxZ -
         HARTHMERE_EXTENSION_WORLD_BOUNDS.minZ) /
         2
@@ -318,7 +382,7 @@ export function normalizeHarthmereExtensionOutdoorFeetPosition(
   );
   const margin = Math.min(requestedMargin, maxMargin);
   const minX = HARTHMERE_EXTENSION_WORLD_BOUNDS.minX + margin;
-  const maxX = HARTHMERE_EXTENSION_WORLD_BOUNDS.maxX - margin - 0.001;
+  const maxX = playableMaxX - margin - 0.001;
   const minZ = HARTHMERE_EXTENSION_WORLD_BOUNDS.minZ + margin;
   const maxZ = HARTHMERE_EXTENSION_WORLD_BOUNDS.maxZ - margin - 0.001;
   return [

@@ -2,6 +2,7 @@
 // HARTHMERE_RENDERER_ANIMATION_SYNTAX_FIX_VERSION
 
 import type { Renderer } from "@/client/game/renderers/renderer_controller";
+import { createGltfLoader } from "@/client/game/util/gltf_helpers";
 import {
   safePlayerLightDirection,
   updateSnapshotPlayerMeshLighting,
@@ -173,7 +174,6 @@ import { ch1DungeonAuthoredToWorld } from "@/shared/harthmere/ch1_dungeon_terrai
 import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
 import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader.js";
-import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { MTLLoader } from "three/examples/jsm/loaders/MTLLoader.js";
 import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader.js";
 import { clone as cloneSkeleton } from "three/examples/jsm/utils/SkeletonUtils.js";
@@ -1633,8 +1633,7 @@ type HarthmereRendererDebugWindow = typeof window & {
 };
 
 function harthmereRendererDebugWindow():
-  | HarthmereRendererDebugWindow
-  | undefined {
+  HarthmereRendererDebugWindow | undefined {
   if (typeof window === "undefined") {
     return undefined;
   }
@@ -1814,10 +1813,10 @@ function harthmereCombatActorRadius(asset: string, scale: number) {
   const base = /bear|horse|cow/.test(text)
     ? 1.75
     : /boar|wolf|deer|sheep|pig|dog/.test(text)
-    ? 1.25
-    : /rat|snake|frog|cat|fox|crow|pigeon|chicken|bunny/.test(text)
-    ? 0.75
-    : 1.15;
+      ? 1.25
+      : /rat|snake|frog|cat|fox|crow|pigeon|chicken|bunny/.test(text)
+        ? 0.75
+        : 1.15;
   return Math.max(0.35, Math.min(3.75, base * Math.max(0.65, scale)));
 }
 
@@ -3557,8 +3556,7 @@ const HARTHMERE_NPC_COLLISION_RADIUS = 0.78;
 // procedural walk pose instead of sliding static actors across the plaza.
 const HARTHMERE_NPC_COLLISION_MIN_MOVE_SQ = 0.000025;
 let harthmereNpcCollisionObstacleCache:
-  | HarthmereNpcCollisionObstacle[]
-  | undefined;
+  HarthmereNpcCollisionObstacle[] | undefined;
 
 const HARTHMERE_PROCEDURAL_SOLID_ASSET_COLLISION =
   "harthmere-procedural-solid-asset-collision";
@@ -4358,14 +4356,11 @@ function harthmereNpcGroundedY(
 // rebuild the static cache.
 const HARTHMERE_OBSTACLE_GRID_CELL_METERS = 4.0;
 let harthmereNpcObstacleGridCache:
-  | Map<string, HarthmereNpcCollisionObstacle[]>
-  | undefined;
+  Map<string, HarthmereNpcCollisionObstacle[]> | undefined;
 let harthmereNpcObstacleGridStaticList:
-  | HarthmereNpcCollisionObstacle[]
-  | undefined;
+  HarthmereNpcCollisionObstacle[] | undefined;
 let harthmereNpcObstacleGridDynamicList:
-  | HarthmereNpcCollisionObstacle[]
-  | undefined;
+  HarthmereNpcCollisionObstacle[] | undefined;
 
 function harthmereObstacleGridKey(cx: number, cz: number): string {
   return cx + "|" + cz;
@@ -5831,7 +5826,7 @@ function harthmereServiceStoneTheme(
         : "arch_wall_window_stone",
     door: floor === 1 ? "arch_wall_door" : "arch_wall_stone",
     corner: "arch_wall_corner",
-    roof: isTop ? building.roof ?? defaultRoof : "arch_roof_flat",
+    roof: isTop ? (building.roof ?? defaultRoof) : "arch_roof_flat",
     chimney: isTop ? "arch_chimney" : undefined,
     stair: floor === 1 ? "arch_stairs_wide_stone" : undefined,
     banner: floor === 1 ? building.banner : undefined,
@@ -6401,7 +6396,7 @@ function createHarthmereBlockBuiltServiceBuilding(
       wallY: (floor - 1) * storyHeight,
       roofY:
         floor === floors
-          ? building.roofY ?? floor * storyHeight - 0.12
+          ? (building.roofY ?? floor * storyHeight - 0.12)
           : floor * storyHeight - 0.18,
       roofScale:
         building.roofScale ?? Math.max(0.76, (building.scale ?? 0.8) * 1.1),
@@ -7881,22 +7876,22 @@ function createHarthmereLivingQuarterVoxelShell(
         opening.face === "north"
           ? Math.PI
           : opening.face === "south"
-          ? 0
-          : opening.face === "west"
-          ? -Math.PI / 2
-          : Math.PI / 2;
+            ? 0
+            : opening.face === "west"
+              ? -Math.PI / 2
+              : Math.PI / 2;
       const dx =
         opening.face === "north" || opening.face === "south"
           ? opening.offset
           : opening.face === "west"
-          ? -hw - 0.04
-          : hw + 0.04;
+            ? -hw - 0.04
+            : hw + 0.04;
       const dz =
         opening.face === "east" || opening.face === "west"
           ? opening.offset
           : opening.face === "north"
-          ? -hd - 0.04
-          : hd + 0.04;
+            ? -hd - 0.04
+            : hd + 0.04;
       push(
         shell,
         asset,
@@ -9767,8 +9762,8 @@ function createHarthmereDenseForestPlacements(): RuntimePlacement[] {
       i % 3 === 0
         ? "tree_high_crooked"
         : i % 3 === 1
-        ? "forest_tree_3b"
-        : "tree_high_round";
+          ? "forest_tree_3b"
+          : "tree_high_round";
     placements.push(
       P(
         asset,
@@ -9799,8 +9794,8 @@ function createHarthmereDenseForestPlacements(): RuntimePlacement[] {
       i % 3 === 0
         ? "forest_tree_bare_2b"
         : i % 3 === 1
-        ? "forest_tree_2a"
-        : "tree_high_crooked";
+          ? "forest_tree_2a"
+          : "tree_high_crooked";
     placements.push(
       P(
         asset,
@@ -23456,7 +23451,7 @@ function installHarthmereLocomotion(
   );
   const start =
     idleAction ??
-    (canUseMovingClipAsDefault ? walkAction ?? runAction : undefined);
+    (canUseMovingClipAsDefault ? (walkAction ?? runAction) : undefined);
   if (start) {
     start.setEffectiveWeight(1);
   }
@@ -23467,10 +23462,10 @@ function installHarthmereLocomotion(
     current: idleAction
       ? "idle"
       : start === walkAction
-      ? "walk"
-      : start === runAction
-      ? "run"
-      : undefined,
+        ? "walk"
+        : start === runAction
+          ? "run"
+          : undefined,
     clips,
   };
 }
@@ -23484,20 +23479,20 @@ function setHarthmereLocomotionState(
   // Only cross-fade if the action exists; otherwise fall back gracefully.
   let target =
     next === "run"
-      ? loco.run ?? loco.walk ?? loco.idle
+      ? (loco.run ?? loco.walk ?? loco.idle)
       : next === "walk"
-      ? loco.walk ?? loco.run ?? loco.idle
-      : loco.idle ?? loco.walk;
+        ? (loco.walk ?? loco.run ?? loco.idle)
+        : (loco.idle ?? loco.walk);
   if (!target) return;
   if (loco.current === next) return;
   const previous =
     loco.current === "idle"
       ? loco.idle
       : loco.current === "walk"
-      ? loco.walk
-      : loco.current === "run"
-      ? loco.run
-      : undefined;
+        ? loco.walk
+        : loco.current === "run"
+          ? loco.run
+          : undefined;
   if (previous && previous !== target) {
     previous.crossFadeTo(target, 0.22, false);
   } else {
@@ -23573,22 +23568,29 @@ function bestCombatClip(
     kind === "death"
       ? ["Death", "Fall", "Falling", "Stunned"]
       : kind === "attack"
-      ? [
-          "Attack",
-          "HeavyAttack",
-          "Thrusting",
-          ...rotatedAttackNames.filter(
-            (name) =>
-              name !== "Attack" &&
-              name !== "HeavyAttack" &&
-              name !== "Thrusting"
-          ),
-        ]
-      : kind === "block"
-      ? ["ShieldBlock", "Block", "HitReact", "Stunned"]
-      : kind === "hit"
-      ? ["HitReact", "Block", "ShieldBlock", "Stunned"]
-      : ["Dodging", "Sidestep", "SidestepLeft", "SidestepRight", "Flee", "Run"];
+        ? [
+            "Attack",
+            "HeavyAttack",
+            "Thrusting",
+            ...rotatedAttackNames.filter(
+              (name) =>
+                name !== "Attack" &&
+                name !== "HeavyAttack" &&
+                name !== "Thrusting"
+            ),
+          ]
+        : kind === "block"
+          ? ["ShieldBlock", "Block", "HitReact", "Stunned"]
+          : kind === "hit"
+            ? ["HitReact", "Block", "ShieldBlock", "Stunned"]
+            : [
+                "Dodging",
+                "Sidestep",
+                "SidestepLeft",
+                "SidestepRight",
+                "Flee",
+                "Run",
+              ];
 
   const exactFallback = exactAnimationClip(clips, fallbackNames);
   if (exactFallback) {
@@ -23599,14 +23601,14 @@ function bestCombatClip(
     kind === "death"
       ? [/death|die|dead|fall|knock|defeat/i]
       : kind === "attack"
-      ? [
-          /attack|slash|swing|punch|bite|claw|cast|spell|magic|shoot|strike|charge|pounce|peck|scratch|kick|tail/i,
-        ]
-      : kind === "block"
-      ? [/shieldblock|shield|block|parry|guard|absorb|stun/i]
-      : kind === "hit"
-      ? [/hit|hurt|damage|impact|react|block|stun/i]
-      : [/dodge|sidestep|evade|flee|run/i];
+        ? [
+            /attack|slash|swing|punch|bite|claw|cast|spell|magic|shoot|strike|charge|pounce|peck|scratch|kick|tail/i,
+          ]
+        : kind === "block"
+          ? [/shieldblock|shield|block|parry|guard|absorb|stun/i]
+          : kind === "hit"
+            ? [/hit|hurt|damage|impact|react|block|stun/i]
+            : [/dodge|sidestep|evade|flee|run/i];
   return fuzzyAnimationClip(clips, patterns) ?? clips[0];
 }
 
@@ -24473,8 +24475,8 @@ function harthmereRuntimeAppearanceForPlacement(
       species === "undead"
         ? "undead"
         : species === "animal"
-        ? "animal"
-        : "human",
+          ? "animal"
+          : "human",
     role:
       role === "hostile" && /bandit|outlaw|thief/i.test(roleHint)
         ? "bandit"
@@ -24502,10 +24504,10 @@ function harthmereRuntimePaletteForAppearance(
       appearance.role === "guard"
         ? 0x222222
         : appearance.role === "clergy"
-        ? 0x637b9a
-        : appearance.role === "bandit" || appearance.role === "hostile"
-        ? 0x8c2f2a
-        : fallback.accent,
+          ? 0x637b9a
+          : appearance.role === "bandit" || appearance.role === "hostile"
+            ? 0x8c2f2a
+            : fallback.accent,
   };
 }
 
@@ -24647,22 +24649,22 @@ function harthmereRuntimeRootBodyScale(body: HarthmereVoxelBodyConfig) {
     body.bodyType === "slim"
       ? 0.94
       : body.bodyType === "broad"
-      ? 1.08
-      : body.bodyType === "stocky"
-      ? 1.1
-      : body.bodyType === "athletic"
-      ? 1.04
-      : body.bodyType === "soft"
-      ? 1.03
-      : 1;
+        ? 1.08
+        : body.bodyType === "stocky"
+          ? 1.1
+          : body.bodyType === "athletic"
+            ? 1.04
+            : body.bodyType === "soft"
+              ? 1.03
+              : 1;
   const height =
     body.bodyHeight === "very_tall"
       ? 1.08
       : body.bodyHeight === "tall"
-      ? 1.04
-      : body.bodyHeight === "short"
-      ? 0.96
-      : 1;
+        ? 1.04
+        : body.bodyHeight === "short"
+          ? 0.96
+          : 1;
   const depth =
     body.bodyType === "stocky" ? 1.06 : body.bodyType === "soft" ? 1.04 : 1;
   return { width, height, depth };
@@ -24675,16 +24677,16 @@ function harthmereRuntimeHeadSize(
     face.faceShape === "wide"
       ? 0.38
       : face.faceShape === "narrow"
-      ? 0.28
-      : face.faceShape === "soft"
-      ? 0.34
-      : 0.34,
+        ? 0.28
+        : face.faceShape === "soft"
+          ? 0.34
+          : 0.34,
     face.faceShape === "tall" ? 0.36 : face.faceShape === "soft" ? 0.31 : 0.32,
     face.faceShape === "wide"
       ? 0.29
       : face.faceShape === "narrow"
-      ? 0.25
-      : 0.27,
+        ? 0.25
+        : 0.27,
   ];
 }
 
@@ -24734,16 +24736,16 @@ function createHarthmereRuntimeVoxelHead(
     (face.eyeShape === "sleepy"
       ? 0.005
       : face.eyeShape === "sharp"
-      ? 0.03
-      : 0.02);
+        ? 0.03
+        : 0.02);
   const eyeHeight =
     face.eyeShape === "wide"
       ? 0.048
       : face.eyeShape === "small"
-      ? 0.028
-      : face.eyeShape === "sleepy"
-      ? 0.024
-      : 0.038;
+        ? 0.028
+        : face.eyeShape === "sleepy"
+          ? 0.024
+          : 0.038;
   const eyeWidth =
     face.eyeShape === "wide" ? 0.052 : face.eyeShape === "small" ? 0.032 : 0.04;
   const browTilt =
@@ -24752,27 +24754,27 @@ function createHarthmereRuntimeVoxelHead(
     face.noseStyle === "wide"
       ? [0.07, 0.05, 0.06]
       : face.noseStyle === "long"
-      ? [0.05, 0.075, 0.065]
-      : face.noseStyle === "button"
-      ? [0.055, 0.035, 0.055]
-      : face.noseStyle === "small"
-      ? [0.04, 0.04, 0.05]
-      : [0.05, 0.055, 0.055];
+        ? [0.05, 0.075, 0.065]
+        : face.noseStyle === "button"
+          ? [0.055, 0.035, 0.055]
+          : face.noseStyle === "small"
+            ? [0.04, 0.04, 0.05]
+            : [0.05, 0.055, 0.055];
   const mouthY =
     headY -
     (face.mouthStyle === "frown"
       ? 0.105
       : face.mouthStyle === "smile" || face.mouthStyle === "smirk"
-      ? 0.07
-      : 0.085);
+        ? 0.07
+        : 0.085);
   const mouthWidth =
     face.mouthStyle === "smirk"
       ? 0.13
       : face.mouthStyle === "stern"
-      ? 0.1
-      : face.mouthStyle === "open"
-      ? 0.09
-      : 0.115;
+        ? 0.1
+        : face.mouthStyle === "open"
+          ? 0.09
+          : 0.115;
   const add = (mesh: THREE.Object3D) => {
     group.add(mesh);
     return mesh;
@@ -25341,8 +25343,8 @@ function createHarthmereRuntimeVoxelHead(
       face.cheekStyle === "freckled"
         ? 0x6a3c28
         : face.cheekStyle === "strong"
-        ? 0x8a5844
-        : 0xd98a7c;
+          ? 0x8a5844
+          : 0xd98a7c;
     add(
       boxMesh(
         `${namePrefix}-left-cheek`,
@@ -26725,22 +26727,22 @@ function addHarthmereRuntimeAlwaysVisibleNpcClothing(
     role === "guard"
       ? 0x334f73
       : role === "merchant"
-      ? 0x5b3f78
-      : role === "farmer"
-      ? 0x6f5a36
-      : role === "clergy" || String(role) === "scholar"
-      ? 0x4b5272
-      : role === "bandit" || role === "hostile"
-      ? 0x4a3434
-      : appearance.species === "undead"
-      ? 0x5b5f50
-      : Number(palette.tunic ?? 0x3b82f6);
+        ? 0x5b3f78
+        : role === "farmer"
+          ? 0x6f5a36
+          : role === "clergy" || String(role) === "scholar"
+            ? 0x4b5272
+            : role === "bandit" || role === "hostile"
+              ? 0x4a3434
+              : appearance.species === "undead"
+                ? 0x5b5f50
+                : Number(palette.tunic ?? 0x3b82f6);
   const trim =
     role === "guard"
       ? 0xc9a85a
       : role === "bandit" || role === "hostile"
-      ? 0x9b2f2f
-      : Number(palette.accent ?? 0xd1a64e);
+        ? 0x9b2f2f
+        : Number(palette.accent ?? 0xd1a64e);
   const pants = Number(palette.legs ?? 0x273244);
   const leather = 0x3b2418;
   const dark = 0x111111;
@@ -26933,23 +26935,23 @@ function addHarthmereRuntimeNpcClothingMaterialRecolor(
     roleKey === "guard"
       ? 0x334f73
       : roleKey === "merchant"
-      ? 0x5b3f78
-      : roleKey === "farmer"
-      ? 0x6f5a36
-      : roleKey === "clergy" || roleKey === "scholar"
-      ? 0x4b5272
-      : roleKey === "bandit" || roleKey === "hostile"
-      ? 0x4a3434
-      : appearance.species === "undead"
-      ? 0x5b5f50
-      : Number(palette.tunic ?? 0x3b82f6);
+        ? 0x5b3f78
+        : roleKey === "farmer"
+          ? 0x6f5a36
+          : roleKey === "clergy" || roleKey === "scholar"
+            ? 0x4b5272
+            : roleKey === "bandit" || roleKey === "hostile"
+              ? 0x4a3434
+              : appearance.species === "undead"
+                ? 0x5b5f50
+                : Number(palette.tunic ?? 0x3b82f6);
   const pants = Number(palette.legs ?? 0x273244);
   const trim =
     roleKey === "guard"
       ? 0xc9a85a
       : roleKey === "bandit" || roleKey === "hostile"
-      ? 0x9b2f2f
-      : Number(palette.accent ?? 0xd1a64e);
+        ? 0x9b2f2f
+        : Number(palette.accent ?? 0xd1a64e);
   const leather = 0x3b2418;
   const dark = 0x111111;
 
@@ -27489,8 +27491,7 @@ function addProceduralLifeInstance(
   if (placement.wander || placement.bob) {
     const appearance =
       (object.userData.harthmereAppearance as
-        | HarthmereCharacterAppearance
-        | undefined) ?? placement.appearance;
+        HarthmereCharacterAppearance | undefined) ?? placement.appearance;
     animated.push({
       object,
       asset: placement.asset,
@@ -27751,8 +27752,7 @@ const CUTSCENE_LIMB_NAMES = [
 
 function resetHarthmereCutscenePose(object: THREE.Object3D) {
   const baseScale = object.userData.harthmereCutsceneBaseScale as
-    | [number, number, number]
-    | undefined;
+    [number, number, number] | undefined;
   if (!baseScale) {
     object.userData.harthmereCutsceneBaseScale = object.scale.toArray();
   } else {
@@ -28099,8 +28099,7 @@ function applyHarthmereNpcRouteDistribution(
   const distributed: RuntimePlacement[] = placements.map(
     (placement): RuntimePlacement => {
       const routeLabel = placement.wander?.routeLabel as
-        | keyof typeof HARTHMERE_NPC_ROUTE_ANCHORS
-        | undefined;
+        keyof typeof HARTHMERE_NPC_ROUTE_ANCHORS | undefined;
       if (
         placement.robotProtectionAreaId ||
         !routeLabel ||
@@ -28245,7 +28244,7 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
   >();
 
   readonly name = "harthmereRuntimeAssets";
-  private readonly gltfLoader = new GLTFLoader();
+  private readonly gltfLoader = createGltfLoader();
   private readonly fbxLoader = new FBXLoader();
   private readonly prototypes = new Map<string, RuntimePrototype>();
   private readonly failed = new Set<string>();
@@ -28544,8 +28543,8 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
             (actor.snapshotExpression === "evade"
               ? PLAYER_MOVEMENT_ACTION_TIMING.evade.durationSeconds
               : actor.snapshotExpression === "doubleJump"
-              ? PLAYER_MOVEMENT_ACTION_TIMING.doubleJump.durationSeconds
-              : PLAYER_MOVEMENT_ACTION_TIMING.dodge.durationSeconds)
+                ? PLAYER_MOVEMENT_ACTION_TIMING.doubleJump.durationSeconds
+                : PLAYER_MOVEMENT_ACTION_TIMING.dodge.durationSeconds)
         );
         if (movementPose) {
           actor.object.rotation.x = movementPose.pitchRadians;
@@ -28716,8 +28715,8 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
           reason: blocked
             ? "body_inside_collision"
             : needsGroundSnap
-            ? "ground_snap"
-            : "actor_overlap",
+              ? "ground_snap"
+              : "actor_overlap",
           obstacle: blocked?.name,
         });
         return placementWithHarthmereRuntimeAt(placement, [x, actorGroundY, z]);
@@ -28736,8 +28735,8 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
       reason: blocked
         ? "body_inside_collision_no_clear_fallback"
         : needsGroundSnap
-        ? "ground_snap_only"
-        : "actor_overlap_no_clear_fallback",
+          ? "ground_snap_only"
+          : "actor_overlap_no_clear_fallback",
       obstacle: blocked?.name,
     });
     return placementWithHarthmereRuntimeAt(placement, [
@@ -28878,11 +28877,11 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
         : instance.placement.at[2];
       const show = !origin
         ? true
-        : groupedShow ??
+        : (groupedShow ??
           shouldShowHarthmerePlacementAtDistanceSq(
             visibilityTier,
             distanceSq2d(origin[0], origin[1], lodX, lodZ)
-          );
+          ));
       instance.object.visible = show;
       if (show) {
         visible += 1;
@@ -29076,8 +29075,7 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
 
   private onFacialExpressionEvent = (event: Event) => {
     const detail = (event as CustomEvent).detail as
-      | HarthmereFacialExpressionState
-      | undefined;
+      HarthmereFacialExpressionState | undefined;
     if (!detail) return;
     const actor = this.findCombatLifeForFacialExpression(detail);
     if (!actor) return;
@@ -29097,8 +29095,7 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
     if (remaining > 0) {
       window.setTimeout(() => {
         const current = actor.object.userData.harthmereFacialExpression as
-          | HarthmereFacialExpressionState
-          | undefined;
+          HarthmereFacialExpressionState | undefined;
         if (current?.at !== state.at) return;
         applyHarthmereRuntimeFacialExpressionToObject(
           actor.object,
@@ -29162,8 +29159,7 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
         actor.object.position.z,
       ];
       let screen:
-        | { x: number; y: number; visible: boolean; depth: number }
-        | undefined;
+        { x: number; y: number; visible: boolean; depth: number } | undefined;
       if (camera) {
         const head = this.harthmereCombatSnapshotHead.set(
           actor.object.position.x,
@@ -29318,8 +29314,7 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
     box.getCenter(center);
     object.getWorldScale(worldScale);
     const meta = object.userData.harthmereTownWalkDebug as
-      | Record<string, unknown>
-      | undefined;
+      Record<string, unknown> | undefined;
     const asset = typeof meta?.asset === "string" ? meta.asset : undefined;
     const district =
       typeof meta?.district === "string" ? meta.district : undefined;
@@ -29475,8 +29470,8 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
       walkLog:
         typeof window === "undefined"
           ? []
-          : ((window as typeof window & Record<string, unknown>)
-              .__harthmereTownWalkAuditLog as unknown[] | undefined) ?? [],
+          : (((window as typeof window & Record<string, unknown>)
+              .__harthmereTownWalkAuditLog as unknown[] | undefined) ?? []),
     };
 
     if (options.includeOverlaps) {
@@ -29664,16 +29659,19 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
         if (watchTimer !== undefined) {
           window.clearInterval(watchTimer);
         }
-        watchTimer = window.setInterval(() => {
-          const logEntries = getLog();
-          logEntries.unshift(
-            this.harthmereTownWalkDebugSnapshot({
-              radius,
-              includeOverlaps: true,
-            })
-          );
-          logEntries.splice(80);
-        }, Math.max(250, Number(intervalMs) || 1000));
+        watchTimer = window.setInterval(
+          () => {
+            const logEntries = getLog();
+            logEntries.unshift(
+              this.harthmereTownWalkDebugSnapshot({
+                radius,
+                includeOverlaps: true,
+              })
+            );
+            logEntries.splice(80);
+          },
+          Math.max(250, Number(intervalMs) || 1000)
+        );
         return {
           watching: true,
           radius,
@@ -29774,22 +29772,18 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
     const cleanName = (value: unknown) => String(value ?? "").trim();
     const objectAsset = (object: THREE.Object3D) => {
       const debug = object.userData?.harthmereTownWalkDebug as
-        | Record<string, unknown>
-        | undefined;
+        Record<string, unknown> | undefined;
       const meta = object.userData?.harthmerePlacementMeta as
-        | Record<string, unknown>
-        | undefined;
+        Record<string, unknown> | undefined;
       return cleanName(
         debug?.asset ?? meta?.asset ?? object.userData?.asset ?? object.name
       );
     };
     const objectDistrict = (object: THREE.Object3D) => {
       const debug = object.userData?.harthmereTownWalkDebug as
-        | Record<string, unknown>
-        | undefined;
+        Record<string, unknown> | undefined;
       const meta = object.userData?.harthmerePlacementMeta as
-        | Record<string, unknown>
-        | undefined;
+        Record<string, unknown> | undefined;
       return cleanName(
         debug?.district ??
           meta?.districtId ??
@@ -29799,11 +29793,9 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
     };
     const objectPlacementName = (object: THREE.Object3D) => {
       const debug = object.userData?.harthmereTownWalkDebug as
-        | Record<string, unknown>
-        | undefined;
+        Record<string, unknown> | undefined;
       const meta = object.userData?.harthmerePlacementMeta as
-        | Record<string, unknown>
-        | undefined;
+        Record<string, unknown> | undefined;
       return cleanName(debug?.name ?? meta?.name ?? object.name);
     };
     const isProbablyActor = (object: THREE.Object3D) => {
@@ -29831,8 +29823,7 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
         }
       }
       const runtime = win.__harthmereForwardArcRuntime as
-        | Record<string, unknown>
-        | undefined;
+        Record<string, unknown> | undefined;
       const candidates = [
         runtime?.playerPosition,
         (runtime?.player as Record<string, unknown> | undefined)?.position,
@@ -29843,8 +29834,7 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
           ?.playerPosition,
         (
           (runtime?.snapshot as Record<string, unknown> | undefined)?.player as
-            | Record<string, unknown>
-            | undefined
+            Record<string, unknown> | undefined
         )?.position,
       ];
       for (const candidate of candidates) {
@@ -29882,8 +29872,7 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
       const collision = object.userData?.harthmereCollision;
       const placementMeta = object.userData?.harthmerePlacementMeta;
       const walkDebug = object.userData?.harthmereTownWalkDebug as
-        | Record<string, unknown>
-        | undefined;
+        Record<string, unknown> | undefined;
       const collisionMissing =
         !collision &&
         !walkDebug?.obstacle &&
@@ -30020,8 +30009,8 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
               aActor || bActor
                 ? "actor_overlap"
                 : volume > 5
-                ? "major_overlap"
-                : "minor_overlap",
+                  ? "major_overlap"
+                  : "minor_overlap",
             a: {
               name: a.name,
               asset: a.asset,
@@ -31100,8 +31089,7 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
       playerSword: () =>
         (
           win.__harthmereRendererDebug?.swordState as
-            | (() => unknown)
-            | undefined
+            (() => unknown) | undefined
         )?.(),
       combatAnimationPolish: () => ({
         version: HARTHMERE_COMBAT_ANIMATION_POLISH_RENDERER_VERSION,
@@ -31177,8 +31165,7 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
         this.updateHarthmerePlayerSwordVisual();
         return (
           win.__harthmereRendererDebug?.swordState as
-            | (() => unknown)
-            | undefined
+            (() => unknown) | undefined
         )?.();
       },
       swordVisualRegressionPose: (
@@ -31243,8 +31230,7 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
         this.updateHarthmerePlayerSwordVisual();
         return (
           win.__harthmereRendererDebug?.swordState as
-            | (() => unknown)
-            | undefined
+            (() => unknown) | undefined
         )?.();
       },
       weaponHandTrackingLegacy: () => ({
@@ -31482,13 +31468,13 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
     const targetKind: CombatPulseKind = shouldRouteDeathPulse
       ? "death"
       : shouldRouteBlockPulse
-      ? "block"
-      : animationKind === "evade" ||
-        result === "dodge" ||
-        result === "evade" ||
-        result === "out_of_range"
-      ? "evade"
-      : "hit";
+        ? "block"
+        : animationKind === "evade" ||
+            result === "dodge" ||
+            result === "evade" ||
+            result === "out_of_range"
+          ? "evade"
+          : "hit";
 
     const resolveCombatActor = (
       offset: number | undefined,
@@ -31550,8 +31536,8 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
         classifiedAs: isPhysicalCombat
           ? "physical"
           : explicitMagic
-          ? "magic"
-          : "neutral",
+            ? "magic"
+            : "neutral",
       });
       debugHarthmereRenderer("renderer.combat_event.effect_route", {
         attack:
@@ -31671,7 +31657,7 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
       const routedTargetClips =
         targetKind === "block"
           ? ["ShieldBlock", "Block", ...(detail.targetClipPriority ?? [])]
-          : detail.targetClipPriority ?? [];
+          : (detail.targetClipPriority ?? []);
       this.startCombatPulse(target, targetKind, routedTargetClips);
     }
   };
@@ -31822,8 +31808,8 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
       (target
         ? this.harthmereProjectileActorPoint(target)
         : targetIsPlayer
-        ? player.position
-        : origin.clone().addScaledVector(player.direction, 14));
+          ? player.position
+          : origin.clone().addScaledVector(player.direction, 14));
 
     return this.harthmereProjectileVisuals.spawn({
       projectileId: definition.id,
@@ -32180,14 +32166,12 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
     object.traverse((child) => {
       const mesh = child as THREE.Mesh;
       const materialValue = mesh.material as
-        | THREE.Material
-        | THREE.Material[]
-        | undefined;
+        THREE.Material | THREE.Material[] | undefined;
       const materials = Array.isArray(materialValue)
         ? materialValue
         : materialValue
-        ? [materialValue]
-        : [];
+          ? [materialValue]
+          : [];
 
       for (const material of materials) {
         const materialRecord = material as THREE.MeshStandardMaterial & {
@@ -32408,8 +32392,7 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
   }
 
   private getHarthmerePlayerSwordObjectForManualSwing():
-    | THREE.Object3D
-    | undefined {
+    THREE.Object3D | undefined {
     const candidates: unknown[] = [
       this.harthmerePlayerSword,
       (this as any).harthmerePlayerSwordGltfObject,
@@ -32463,8 +32446,8 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
           activeWeaponProfile === "magic" || activeWeaponProfile === "magicBook"
             ? "magic"
             : attack === "heavy"
-            ? "heavy"
-            : "basic",
+              ? "heavy"
+              : "basic",
         seed: randomSeed,
         lastShape: this.harthmereCombatPolishLastShape,
         requestedShape:
@@ -33003,10 +32986,10 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
     )
       ? "magic"
       : /guard|elite|boss|brute|hammer|axe/i.test(
-          `${actor.asset} ${actor.label}`
-        )
-      ? "heavy"
-      : "basic";
+            `${actor.asset} ${actor.label}`
+          )
+        ? "heavy"
+        : "basic";
     const previousNpcShape = String(
       visual.userData.harthmereCombatPolishLastShape ?? ""
     );
@@ -33256,8 +33239,7 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
         speciesRaw !== "humanoid" &&
         speciesRaw !== "undead");
     const equipment = actor.appearance?.equipment as
-      | Record<string, unknown>
-      | undefined;
+      Record<string, unknown> | undefined;
     if (isAnimal) {
       return;
     }
@@ -33729,12 +33711,12 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
     const swing = this.harthmerePlayerSwordUsingGltf
       ? 0
       : now < this.harthmerePlayerSwordSwingUntil
-      ? Math.sin(
-          ((this.harthmerePlayerSwordSwingUntil - now) /
-            (this.harthmerePlayerSwordState.attack === "heavy" ? 520 : 340)) *
-            Math.PI
-        ) * (this.harthmerePlayerSwordState.attack === "heavy" ? 0.95 : 0.58)
-      : 0;
+        ? Math.sin(
+            ((this.harthmerePlayerSwordSwingUntil - now) /
+              (this.harthmerePlayerSwordState.attack === "heavy" ? 520 : 340)) *
+              Math.PI
+          ) * (this.harthmerePlayerSwordState.attack === "heavy" ? 0.95 : 0.58)
+        : 0;
     if (swing !== 0) {
       sword.rotateY(swing);
     }
@@ -33766,8 +33748,8 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
   ) {
     const appearance =
       (object.userData.harthmereAppearance as
-        | HarthmereCharacterAppearance
-        | undefined) ?? harthmereRuntimeAppearanceForPlacement(placement);
+        HarthmereCharacterAppearance | undefined) ??
+      harthmereRuntimeAppearanceForPlacement(placement);
     const forwardAxis =
       appearance.forwardAxis ?? harthmereModelForwardAxis(placement.asset);
     const label = placement.name ?? placement.asset;
@@ -33998,10 +33980,10 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
         kind === "death"
           ? 1650
           : kind === "attack"
-          ? 760
-          : kind === "block"
-          ? 680
-          : 620,
+            ? 760
+            : kind === "block"
+              ? 680
+              : 620,
     };
     if (kind === "attack" || kind === "hit" || kind === "death") {
       this.playHarthmereCreatureSound(actor, kind);
@@ -34525,9 +34507,7 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
               const mesh = child as THREE.Mesh;
               mesh.geometry?.dispose?.();
               const material = mesh.material as
-                | THREE.Material
-                | THREE.Material[]
-                | undefined;
+                THREE.Material | THREE.Material[] | undefined;
               if (Array.isArray(material)) {
                 material.forEach((entry) => entry.dispose?.());
               } else {
@@ -34614,8 +34594,7 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
     object: THREE.Object3D
   ) {
     const prior = object.userData.harthmereCinematicExpressionPlayback as
-      | HarthmereCinematicExpressionPlaybackCursor
-      | undefined;
+      HarthmereCinematicExpressionPlaybackCursor | undefined;
     const transition = harthmereCinematicExpressionPlaybackTransition(
       prior,
       record.animation,
@@ -34759,9 +34738,7 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
       const mesh = child as THREE.Mesh;
       mesh.geometry?.dispose?.();
       const material = mesh.material as
-        | THREE.Material
-        | THREE.Material[]
-        | undefined;
+        THREE.Material | THREE.Material[] | undefined;
       if (Array.isArray(material)) {
         material.forEach((m) => m.dispose?.());
       } else {
@@ -34931,8 +34908,7 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
                 forwardAxis:
                   (
                     clone.userData.harthmereAppearance as
-                      | HarthmereCharacterAppearance
-                      | undefined
+                      HarthmereCharacterAppearance | undefined
                   )?.forwardAxis ??
                   placement.appearance?.forwardAxis ??
                   harthmereModelForwardAxis(placement.asset),
@@ -35572,12 +35548,12 @@ function auditHarthmereRuntimeClothingLayers(root: THREE.Object3D): void {
       shellObjects.length > 0 && detailObjects.length === 0
         ? "shell-rendered-but-no-outward-detail-layer"
         : shellObjects.length > 0 &&
-          hiddenDetails.length >=
-            Math.max(1, Math.floor(detailObjects.length * 0.6))
-        ? "details-mostly-inside-shell"
-        : shellObjects.length === 0 && detailObjects.length === 0
-        ? "no-shell-or-detail-rendered-on-this-path"
-        : "details-present",
+            hiddenDetails.length >=
+              Math.max(1, Math.floor(detailObjects.length * 0.6))
+          ? "details-mostly-inside-shell"
+          : shellObjects.length === 0 && detailObjects.length === 0
+            ? "no-shell-or-detail-rendered-on-this-path"
+            : "details-present",
   };
 
   root.userData.harthmereRuntimeClothingLayerAudit = audit;

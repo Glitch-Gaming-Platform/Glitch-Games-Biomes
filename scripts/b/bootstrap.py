@@ -16,8 +16,8 @@ THIS_FILE = Path(__file__).resolve()
 
 def check_version():
     version = sys.version_info
-    if version.major != 3 or version.minor < 9:
-        raise Exception("This script requires Python 3.9 or higher.")
+    if version.major != 3 or version.minor != 12:
+        raise Exception("This fork requires Python 3.12 exactly.")
 
 
 def running_inside_virtualenv():
@@ -46,7 +46,23 @@ def ensure_project_venv_and_reexec():
     if not project_venv_enabled() or running_inside_virtualenv():
         return False
 
-    if not PROJECT_VENV_PYTHON.exists():
+    if PROJECT_VENV_PYTHON.exists():
+        detected = subprocess.run(
+            [
+                str(PROJECT_VENV_PYTHON),
+                "-c",
+                "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')",
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+        if detected != "3.12":
+            raise RuntimeError(
+                f"Existing {PROJECT_VENV} uses Python {detected}; move it aside and "
+                "recreate it with `python3.12 -m venv .venv`."
+            )
+    else:
         print(f"Creating project Python virtualenv at {PROJECT_VENV}...")
         subprocess.run([sys.executable, "-m", "venv", str(PROJECT_VENV)], check=True)
 
@@ -95,7 +111,7 @@ def ensure_deps_are_available(deps):
             print(f"Package: {install_package_name}")
             print()
             print("Recommended fix:")
-            print("  python3.10 -m venv .venv")
+            print("  python3.12 -m venv .venv")
             print("  . .venv/bin/activate")
             print(
                 "  python -m pip install click click-default-group psutil python-dotenv requests watchfiles"

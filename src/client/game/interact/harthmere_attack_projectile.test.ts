@@ -97,7 +97,7 @@ describe("Harthmere native attack projectile dispatch", () => {
         health: { hp: 100, maxHp: 100 },
         npc_metadata: { type_id: 91_101 as BiomesId },
         label: { text: "Projectile Test Target" },
-      } as ReadonlyEntity;
+      } as unknown as ReadonlyEntity;
 
       emitHarthmereNativeNpcAttackContact({
         attackedEntities: [entity],

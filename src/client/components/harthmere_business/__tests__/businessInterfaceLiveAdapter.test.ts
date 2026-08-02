@@ -2124,6 +2124,10 @@ describe("Harthmere in-world business interface current screens", () => {
                 namespace: "business-panel-three-stub",
               })
             );
+            pluginBuild.onResolve({ filter: /^three$/ }, () => ({
+              path: "three",
+              namespace: "business-panel-three-stub",
+            }));
             pluginBuild.onResolve({ filter: /PointerLockContext$/ }, () => ({
               path: "pointer-lock-context",
               namespace: "business-panel-test",
@@ -2273,7 +2277,49 @@ describe("Harthmere in-world business interface current screens", () => {
               },
               () => ({
                 contents: [
-                  "export class GLTFLoader {}",
+                  "export class Vector3 {",
+                  "  constructor(x = 0, y = 0, z = 0) { this.x = x; this.y = y; this.z = z; }",
+                  "  set(x, y, z) { this.x = x; this.y = y; this.z = z; return this; }",
+                  "  copy(value) { return this.set(value.x, value.y, value.z); }",
+                  "  clone() { return new Vector3(this.x, this.y, this.z); }",
+                  "  setFromSpherical(value) {",
+                  "    const sinPhiRadius = Math.sin(value.phi) * value.radius;",
+                  "    return this.set(sinPhiRadius * Math.sin(value.theta), Math.cos(value.phi) * value.radius, sinPhiRadius * Math.cos(value.theta));",
+                  "  }",
+                  "}",
+                  "export class Matrix4 {}",
+                  "export class Quaternion {}",
+                  "export class Object3D {}",
+                  "export class OrthographicCamera extends Object3D {}",
+                  "export class PerspectiveCamera extends Object3D {}",
+                  "export class BufferGeometry {}",
+                  "export class Mesh extends Object3D {}",
+                  "export class SkinnedMesh extends Mesh {}",
+                  "export class DataTexture {}",
+                  "export class TextureLoader {}",
+                  "export class KTX2Loader {",
+                  "  setTranscoderPath() { return this; }",
+                  "  setWorkerLimit() { return this; }",
+                  "  detectSupport() { return this; }",
+                  "  dispose() {}",
+                  "}",
+                  "export class Spherical {",
+                  "  constructor(radius = 1, phi = 0, theta = 0) { this.radius = radius; this.phi = phi; this.theta = theta; }",
+                  "}",
+                  "export const DoubleSide = 2;",
+                  "export const LinearFilter = 1006;",
+                  "export const RGBAFormat = 1023;",
+                  "export const MathUtils = {",
+                  "  clamp: (value, min, max) => Math.min(max, Math.max(min, value)),",
+                  "  degToRad: (degrees) => degrees * Math.PI / 180,",
+                  "  radToDeg: (radians) => radians * 180 / Math.PI,",
+                  "};",
+                  "export class GLTFLoader {",
+                  "  setMeshoptDecoder() { return this; }",
+                  "  setKTX2Loader() { return this; }",
+                  "  loadAsync() { return Promise.resolve({ scene: new Object3D(), scenes: [] }); }",
+                  "  parseAsync() { return Promise.resolve({ scene: new Object3D(), scenes: [] }); }",
+                  "}",
                   "export class OrbitControls {}",
                   "export class RoundedBoxGeometry {}",
                   "export class SMAAPass {}",
@@ -2499,7 +2545,19 @@ describe("Harthmere in-world business interface current screens", () => {
       formatHarthmereBusinessPlayerWarning(
         "native_ecs_materialization_deferred:inventory_full"
       ),
-      "Your inventory is full. Free a slot and try again."
+      "Your backpack is full. Free a backpack slot and try again."
+    );
+    assert.equal(
+      formatHarthmereBusinessPlayerWarning(
+        "economy_rejected:business_storage_full_for_recipe_output"
+      ),
+      "The business needs storage space for the finished goods before production can start."
+    );
+    assert.equal(
+      formatHarthmereBusinessPlayerWarning(
+        "economy_rejected:business_branch_automation_slots_full"
+      ),
+      "This branch has no open automation slots. Remove an automation or unlock another slot."
     );
   });
 

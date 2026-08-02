@@ -32,6 +32,7 @@ import {
 } from "@/shared/harthmere/mmo_inventory_authority";
 import { ensureHarthmereProductionCraftingCatalogue } from "@/shared/harthmere/mmo_crafting_catalogue";
 import { fetchHarthmereLiveWithTimeout } from "@/client/components/harthmere_live_fetch";
+import { harthmerePlayerCapacityMessage } from "@/client/components/harthmere_capacity_messages";
 
 export interface HarthmereHomeConsoleClientSnapshot {
   actorId: string;
@@ -588,6 +589,8 @@ export async function fetchHarthmereHomeConsoleBuildingState(
 }
 
 function playerMessageFromHomeConsoleWarning(warning: string) {
+  const capacityMessage = harthmerePlayerCapacityMessage(warning);
+  if (capacityMessage) return capacityMessage;
   const code = warning
     .replace(/^home_decoration_rejected:/, "")
     .replace(/^home_console_rejected:/, "")
@@ -615,8 +618,6 @@ function playerMessageFromHomeConsoleWarning(warning: string) {
       return "That item cannot be placed in this home.";
     case "missing_decoration_item":
       return "You do not have that home item.";
-    case "decoration_limit_reached":
-      return "This home is at its decoration limit.";
     case "decoration_not_found":
       return "That home item is no longer placed.";
     case "invalid_decoration_position":

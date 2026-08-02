@@ -222,9 +222,9 @@ export class WebSocketZrpcServer implements WebSocketZrpcServerLike {
     // Glitch stack, one sync-process exception intentionally shuts down every
     // sibling service, so this harmless readiness request used to take the
     // entire long-running browser-test environment offline.
-    this.app = App().get("/", (res) =>
-      res.writeHeader("Content-Type", "text/plain; charset=utf-8").end("OK")
-    );
+    this.app = App().get("/", (res) => {
+      res.writeHeader("Content-Type", "text/plain; charset=utf-8").end("OK");
+    });
     for (const path of paths) {
       this.app.ws(path, behaviour);
     }

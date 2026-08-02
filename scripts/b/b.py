@@ -194,10 +194,7 @@ def wait_or_die(process):
 
 
 def default_node_options():
-    COMMON_NODE_OPTIONS = "--openssl-legacy-provider"
-
-    existing_node_options = os.environ.get("NODE_OPTIONS", "")
-    return f"{existing_node_options} {COMMON_NODE_OPTIONS}"
+    return os.environ.get("NODE_OPTIONS", "")
 
 
 def run_yarn_env(
@@ -1659,6 +1656,11 @@ def run_mocha(args, wtf=False):
             "TS_NODE_COMPILER_OPTIONS": '{"module": "commonjs" }',
             "MOCHA_TEST": "1",
         },
+        # Node 24 can consume .ts through its native type stripper before
+        # Mocha falls back to the repo's ts-node CommonJS hook. Disable that
+        # competing loader so path aliases and the configured compiler options
+        # remain authoritative for the existing test corpus.
+        node_options=["--no-experimental-strip-types"],
     )
 
 
@@ -1695,7 +1697,9 @@ def server():
 @build.command()
 def next():
     """Builds the nextjs app bundle."""
-    run_yarn_env(["next", "build"])
+    # Next 16 defaults to Turbopack, but this fork depends on reviewed custom
+    # Webpack rules for WASM, shaders, PWA output, and artifact guards.
+    run_yarn_env(["next", "build", "--webpack"])
 
 
 @cli.group()

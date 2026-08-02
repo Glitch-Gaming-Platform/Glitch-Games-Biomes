@@ -8,7 +8,7 @@ import { clientApi } from "@/galois/viewer/view/api";
 import { Nav } from "@/galois/viewer/view/nav";
 import "@/galois/viewer/view/styles.css";
 import React, { useState } from "react";
-import * as ReactDOM from "react-dom";
+import { createRoot } from "react-dom/client";
 
 const Index: React.FunctionComponent<{}> = ({}) => {
   const [asset, setAsset] = useState<Asset>();
@@ -28,4 +28,4 @@ const Index: React.FunctionComponent<{}> = ({}) => {
   );
 };
 
-ReactDOM.render(<Index />, document.getElementById("app"));
+createRoot(document.getElementById("app")!).render(<Index />);

@@ -88,7 +88,9 @@ const ACCEPTED_SCHEMA_VERSIONS = new Set([
   "harthmere-glitch-save-all-state-v153",
 ]);
 
-export function isAcceptedHarthmereCloudSavePayloadVersion(value: unknown) {
+export function isAcceptedHarthmereCloudSavePayloadVersion(
+  value: unknown
+): value is string {
   return (
     typeof value === "string" &&
     HARTHMERE_CLOUD_SAVE_PAYLOAD_VERSIONS.has(value)

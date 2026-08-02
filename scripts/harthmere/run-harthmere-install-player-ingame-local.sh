@@ -53,11 +53,11 @@ if [ "$SKIP_REBUILD" = "0" ]; then
   NEXT_PUBLIC_GLITCH_SYNC_BASE_URL="$NEXT_PUBLIC_GLITCH_SYNC_BASE_URL" \
   NODE_ENV=production \
   NEXT_TELEMETRY_DISABLED=1 \
-  NODE_OPTIONS="--openssl-legacy-provider" \
-  ./node_modules/.bin/next build
+  NODE_OPTIONS="" \
+  ./node_modules/.bin/next build --webpack
 
   NODE_ENV=production \
-  NODE_OPTIONS="--openssl-legacy-provider" \
+  NODE_OPTIONS="" \
   ./node_modules/.bin/webpack \
     --config server.webpack.config.cjs \
     --mode production
@@ -80,11 +80,11 @@ if [ "$SKIP_REBUILD" = "0" ]; then
   docker run -d \
     --name glitch-redis-local \
     --network glitch-dev \
-    redis:7-alpine
+    redis:8.8.1-alpine
 
   docker run --rm \
     --network glitch-dev \
-    redis:7-alpine \
+    redis:8.8.1-alpine \
     redis-cli -h glitch-redis-local ping
 
   docker run -d \

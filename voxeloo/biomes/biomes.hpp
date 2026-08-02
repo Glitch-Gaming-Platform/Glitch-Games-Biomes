@@ -1151,6 +1151,10 @@ class OcclusionMask {
 
   explicit OcclusionMask(
       std::unique_ptr<std::bitset<shards::kMaxBlockSize>> mask);
+  OcclusionMask(const OcclusionMask& other);
+  OcclusionMask& operator=(const OcclusionMask& other);
+  OcclusionMask(OcclusionMask&&) noexcept = default;
+  OcclusionMask& operator=(OcclusionMask&&) noexcept = default;
 
   bool get(uint32_t index) const {
     return volume_occlusion_summary_ == MIXED

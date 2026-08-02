@@ -80,7 +80,7 @@ spec:
                 fieldRef:
                   fieldPath: status.podIP
             - name: NODE_OPTIONS
-              value: "--openssl-legacy-provider --max-old-space-size=8192"
+              value: "--max-old-space-size=8192"
             - name: GOOGLE_CLOUD_PROJECT
               value: zones-cloud
             - name: IS_SERVER

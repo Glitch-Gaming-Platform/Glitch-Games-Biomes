@@ -5,7 +5,11 @@ import { anItem } from "@/shared/game/item";
 import * as Shards from "@/shared/game/shard";
 import type { SpatialTable } from "@/shared/game/spatial";
 import { ch1DetachedWorldBoundsAt } from "@/shared/harthmere/ch1_elsewhen_region";
-import { add, shiftAABB, sizeAABB, sub } from "@/shared/math/linear";
+import {
+  harthmereExtensionVoidCollisionBoxes,
+  shouldEnableHarthmereAdditiveWorldExtension,
+} from "@/shared/harthmere/world_extension";
+import { add, intersectsAABB, sub } from "@/shared/math/linear";
 import type { AABB, ReadonlyVec3, Vec3 } from "@/shared/math/types";
 
 export interface Boxes {
@@ -158,6 +162,20 @@ export class CollisionHelper {
     if (aabb[1][1] > v1[1]) fn(wallPosY);
     if (aabb[0][2] < v0[2]) fn(wallNegZ);
     if (aabb[1][2] > v1[2]) fn(wallPosZ);
+
+    // WorldMetadata is a single rectangle spanning the imported map plus the
+    // additive east band. Harthmere's band is narrower on Z, leaving empty
+    // north/south notches that are technically inside metadata. Fill those
+    // notches with collision slabs so the visible terrain edge is impassable.
+    // Detached Chapter 1 worlds have their own finite box and must not inherit
+    // mainland extension walls.
+    if (!detachedBounds && shouldEnableHarthmereAdditiveWorldExtension()) {
+      for (const barrier of harthmereExtensionVoidCollisionBoxes(FAR)) {
+        if (intersectsAABB(aabb, barrier)) {
+          fn(barrier);
+        }
+      }
+    }
   }
 
   // Does a general AABB intersection test against the terrain and entities.

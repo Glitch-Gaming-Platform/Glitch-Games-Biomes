@@ -10,8 +10,28 @@ import { fireAndForget } from "@/shared/util/async";
 import { ok } from "assert";
 import { getHarthmereEmojiNativeById } from "@/client/util/emoji_mart_compat";
 import emojiData from "@emoji-mart/data";
-import Picker from "@emoji-mart/react";
-import { useState } from "react";
+import { Picker as EmojiMartPicker } from "emoji-mart";
+import { useEffect, useRef, useState } from "react";
+
+const EmojiPicker: React.FunctionComponent<{
+  previewPosition?: "none";
+  onEmojiSelect: (emoji: any) => void;
+}> = ({ previewPosition, onEmojiSelect }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const picker = new EmojiMartPicker({
+      data: emojiData,
+      previewPosition,
+      onEmojiSelect,
+    });
+    const pickerNode = picker as unknown as HTMLElement;
+    containerRef.current?.replaceChildren(pickerNode);
+    return () => pickerNode.remove();
+  }, [onEmojiSelect, previewPosition]);
+
+  return <div ref={containerRef} />;
+};
 
 export const EditTeamSheet: React.FunctionComponent<{
   teamId: BiomesId;
@@ -95,7 +115,9 @@ export const EditTeamSheet: React.FunctionComponent<{
                 </div>
               </>
             ))}
-            <Picker data={emojiData} onEmojiSelect={(emoji: any) => setTeamIcon(emoji.native)} />
+            <EmojiPicker
+              onEmojiSelect={(emoji: any) => setTeamIcon(emoji.native)}
+            />
             <DialogButton
               onClick={() => {
                 setShowEmojiPicker(true);
@@ -135,8 +157,7 @@ export const EditTeamSheet: React.FunctionComponent<{
           setShowEmojiPicker(false);
         }}
       >
-        <Picker
-          data={emojiData}
+        <EmojiPicker
           previewPosition="none"
           onEmojiSelect={(e: any) => {
             setTeamIcon(e.native);

@@ -24,16 +24,43 @@ function read(rel) {
 
 const docker = read("Dockerfile.biomes");
 const setup = read("voxeloo/setup.py");
+const moduleBazel = read("MODULE.bazel");
+const requirements = read("requirements.txt");
 
 expect("root BUILD.bazel exists", fs.existsSync(p("BUILD.bazel")));
+expect("root MODULE.bazel exists", fs.existsSync(p("MODULE.bazel")));
+expect("Bazel module lock exists", fs.existsSync(p("MODULE.bazel.lock")));
 expect("Cargo.lock exists", fs.existsSync(p("Cargo.lock")));
 expect("Cargo.Bazel.lock exists", fs.existsSync(p("Cargo.Bazel.lock")));
 expect("src/bazel_utils/cpp/BUILD.bazel exists", fs.existsSync(p("src/bazel_utils/cpp/BUILD.bazel")));
 expect("voxeloo/setup.py expects bazel-bin output copy", setup.includes('os.path.join(run_dir, "bazel-bin", ext.output)'));
+expect(
+  "voxeloo packaging accepts the production Bzlmod workspace marker",
+  setup.includes('(\"MODULE.bazel\", \"WORKSPACE.bazel\")'),
+  "Bazel 9 production images use MODULE.bazel and do not need a legacy WORKSPACE.bazel copy."
+);
+expect(
+  "Bazel and the production venv use Python 3.12",
+  moduleBazel.includes('python.defaults(python_version = "3.12")') &&
+    moduleBazel.includes('python.toolchain(python_version = "3.12")') &&
+    moduleBazel.includes('python_version = "3.12"') &&
+    docker.includes("/opt/biomes-python/lib/python3.12/site-packages") &&
+    !docker.includes("python3.10/site-packages"),
+  "The Voxeloo extension must be built and loaded with the same CPython ABI."
+);
+expect(
+  "Python 3.12-compatible numerical and asset packages are pinned",
+  requirements.includes("numpy==2.4.6") &&
+    requirements.includes("Pillow==12.3.0") &&
+    requirements.includes("pygltflib==1.16.5") &&
+    requirements.includes("jsonschema==4.26.0"),
+  "Ubuntu 24.04 provides Python 3.12; the prior NumPy/Pillow pins had no compatible wheels."
+);
 
 expect(
   "Dockerfile copies complete Bazel workspace root inputs",
-  docker.includes("COPY --chown=nextjs:nodejs requirements.txt WORKSPACE.bazel BUILD.bazel Cargo.lock Cargo.Bazel.lock .bazelrc .bazelversion ./"),
+  docker.includes("COPY --chown=nextjs:nodejs requirements.txt MODULE.bazel MODULE.bazel.lock BUILD.bazel Cargo.lock Cargo.Bazel.lock .bazelrc .bazelversion ./") &&
+    docker.includes("COPY --chown=nextjs:nodejs bzlmod/ bzlmod/"),
   "Must include BUILD.bazel, Cargo.lock, and Cargo.Bazel.lock before pip install ./voxeloo."
 );
 expect(
@@ -63,7 +90,7 @@ expect(
 );
 expect(
   "Dockerfile verifies voxeloo import during image build",
-  /import docopt, numpy, PIL, pygltflib, jsonschema, stringcase, voxeloo/.test(docker),
+  /import docopt, numpy, PIL, pygltflib, jsonschema, voxeloo/.test(docker),
   "The image build must fail before upload if voxeloo cannot import."
 );
 

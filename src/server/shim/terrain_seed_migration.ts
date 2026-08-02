@@ -16,7 +16,8 @@ type TerrainSeedMigrationEnvironment = {
 };
 
 export function terrainSeedMigrationMode(
-  env: TerrainSeedMigrationEnvironment = process.env
+  env: TerrainSeedMigrationEnvironment =
+    process.env as TerrainSeedMigrationEnvironment
 ): TerrainSeedMigrationMode {
   const requested = env.BIOMES_TERRAIN_SEED_MODE;
   const legacyForceReseed = env.BIOMES_FORCE_LOCAL_DEV_TOWN_RESEED === "1";

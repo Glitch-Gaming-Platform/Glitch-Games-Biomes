@@ -138,7 +138,6 @@ describe("cookingStationLiveAdapter — recipe projection", () => {
     assert.equal(harthmereCookStationJobs(snapshot, "missing").length, 0);
   });
 });
-
 describe("cookingStationLiveAdapter — warnings", () => {
   it("maps cooking_rejected codes to player-facing messages", () => {
     assert.match(
@@ -152,6 +151,10 @@ describe("cookingStationLiveAdapter — warnings", () => {
     assert.match(
       playerMessageFromCookingWarning("cooking_rejected:collect_only"),
       /collect it/i,
+    );
+    assert.match(
+      playerMessageFromCookingWarning("cooking_rejected:inventory_full"),
+      /free a backpack slot before collecting/i,
     );
     assert.equal(
       formatHarthmereCookingPlayerError([

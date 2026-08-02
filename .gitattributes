@@ -76,3 +76,7 @@ src/galois/data/audio/muck-music-1.webm -text -filter -merge -diff
 src/galois/data/audio/harthmere-environment/** -text -filter -merge -diff
 src/galois/data/audio/muck-music-alternates/** -text -filter -merge -diff
 src/galois/data/npcs/indisworm* -text -filter -merge -diff
+
+# The Basis transcoder is a small runtime dependency and must remain available
+# while the repository's Git LFS quota is exhausted.
+public/three/basis/basis_transcoder.wasm -text -filter -merge -diff

@@ -4,11 +4,10 @@ import re
 import shutil
 import subprocess
 import sys
-from distutils.sysconfig import get_python_lib
+from sysconfig import get_config_var, get_path
 
 from setuptools import Extension, setup
 from setuptools.command.build_ext import build_ext
-from setuptools.command.install import install
 
 
 def win_path(path):
@@ -39,34 +38,6 @@ class BazelExtension(Extension):
         self.output = output
 
 
-# Command line flag (e.g. pip install ./voxeloo --install-option="--no-native")
-# that when set, disables the use of the `--march=native` compiler flag.
-no_native = False
-no_cache = False
-
-
-class InstallCommand(install):
-    user_options = install.user_options + [
-        ("no-native", None, None),
-        ("no-cache", None, None),
-    ]
-
-    def initialize_options(self):
-        install.initialize_options(self)
-        self.no_native = None
-        self.no_cache = None
-
-    def finalize_options(self):
-        install.finalize_options(self)
-
-    def run(self):
-        global no_native
-        no_native = self.no_native  # will be 1 or None
-        global no_cache
-        no_cache = self.no_cache
-        install.run(self)
-
-
 class BazelBuild(build_ext):
     """Build comand used to build extensions."""
 
@@ -95,7 +66,7 @@ class BazelBuild(build_ext):
         )
 
         if "PYTHON_LIB_PATH" not in env:
-            env["PYTHON_LIB_PATH"] = get_python_lib()
+            env["PYTHON_LIB_PATH"] = get_path("purelib")
 
         if "PYTHON_BIN_PATH" not in env:
             env["PYTHON_BIN_PATH"] = sys.executable
@@ -105,8 +76,21 @@ class BazelBuild(build_ext):
         # removing the temporary directory that we build within, on Windows
         # at least.
         bazel_build_command = ["bazel", "--batch", "build"]
-        if no_cache:
+        if os.environ.get("BIOMES_BAZEL_NO_CACHE") == "1":
             bazel_build_command += ["--config=no-remote-cache"]
+
+        # Bazel otherwise targets the host macOS SDK (for example macOS 26)
+        # instead of the minimum version supported by the selected CPython.
+        # That produces a loadable extension with an incompatible wheel tag,
+        # which modern pip correctly rejects during `pip check`.
+        if platform.system() == "Darwin":
+            deployment_target = get_config_var("MACOSX_DEPLOYMENT_TARGET")
+            if deployment_target:
+                env["MACOSX_DEPLOYMENT_TARGET"] = deployment_target
+                bazel_build_command += [
+                    f"--macos_minimum_os={deployment_target}",
+                    f"--host_macos_minimum_os={deployment_target}",
+                ]
 
         # Add platform specific arguments.
         bazel_build_command += platform_args(
@@ -123,9 +107,14 @@ class BazelBuild(build_ext):
             else win_path(os.environ["PWD"])
         )
         run_dir = os.path.abspath(run_dir)
-        if not os.path.exists(os.path.join(run_dir, "WORKSPACE.bazel")):
+        workspace_markers = ("MODULE.bazel", "WORKSPACE.bazel")
+        if not any(
+            os.path.exists(os.path.join(run_dir, marker))
+            for marker in workspace_markers
+        ):
             raise RuntimeError(
-                "Run 'pip install' from a folder with a Bazel WORKSPACE.bazel file."
+                "Run 'pip install' from a Bazel workspace containing "
+                "MODULE.bazel or WORKSPACE.bazel."
             )
 
         subprocess.check_call(
@@ -162,7 +151,7 @@ setup(
             "voxeloo/py_ext/py_ext.so",
         ),
     ],
-    cmdclass={"build_ext": BazelBuild, "install": InstallCommand},
+    cmdclass={"build_ext": BazelBuild},
     install_requires=[],
     zip_safe=False,
 )

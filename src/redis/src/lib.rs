@@ -40,6 +40,6 @@ redis_module! {
     allocator: (redis_module::alloc::RedisAlloc, redis_module::alloc::RedisAlloc),
     data_types: [],
     commands: [
-        ["biomes.hello", hello, "", 0, 0, 0],
+        ["biomes.hello", hello, "", 0, 0, 0, ""],
     ],
 }

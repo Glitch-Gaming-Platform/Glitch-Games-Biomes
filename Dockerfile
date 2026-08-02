@@ -1,10 +1,10 @@
 # syntax=docker/dockerfile:1.7
-FROM --platform=linux/amd64 docker.io/curlimages/curl:latest AS linkerd
+FROM docker.io/curlimages/curl:8.21.0@sha256:7c12af72ceb38b7432ab85e1a265cff6ae58e06f95539d539b654f2cfa64bb13 AS linkerd
 ARG LINKERD_AWAIT_RELEASE=0.2.7
 RUN curl -sSLo /tmp/linkerd-await https://github.com/linkerd/linkerd-await/releases/download/release%2Fv${LINKERD_AWAIT_RELEASE}/linkerd-await-v${LINKERD_AWAIT_RELEASE}-amd64 \
     && chmod 755 /tmp/linkerd-await
 
-FROM --platform=linux/amd64 ubuntu:22.04 AS jemalloc
+FROM ubuntu:22.04 AS jemalloc
 ARG DEBIAN_FRONTEND=noninteractive
 RUN --mount=type=cache,id=glitch-apt-cache-jammy,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,id=glitch-apt-lists-jammy,target=/var/lib/apt/lists,sharing=locked \
@@ -16,7 +16,20 @@ RUN --mount=type=cache,id=glitch-apt-cache-jammy,target=/var/cache/apt,sharing=l
     && make \
     && make install
 
-FROM --platform=linux/amd64 ubuntu:22.04 AS app
+FROM ubuntu:22.04 AS redis
+ARG DEBIAN_FRONTEND=noninteractive
+ARG REDIS_VERSION=8.8.1
+ARG REDIS_SHA256=1d1e423c9c808de3cb01dd3300d2b8d305b7691382e31a847ec17b66d3157477
+RUN apt-get update --fix-missing \
+    && apt-get -y install --no-install-recommends build-essential ca-certificates curl libssl-dev pkg-config \
+    && curl -fsSL "https://download.redis.io/releases/redis-${REDIS_VERSION}.tar.gz" -o /tmp/redis.tar.gz \
+    && echo "${REDIS_SHA256}  /tmp/redis.tar.gz" | sha256sum -c - \
+    && mkdir /tmp/redis \
+    && tar xzf /tmp/redis.tar.gz --strip-components=1 -C /tmp/redis \
+    && make -j"$(nproc)" -C /tmp/redis BUILD_TLS=yes ENABLE_LTO= \
+    && make -C /tmp/redis PREFIX=/opt/redis install
+
+FROM ubuntu:24.04 AS app
 
 RUN groupadd --gid 1001 nodejs && useradd --uid 1001 --gid 1001 -m nextjs
 WORKDIR /app
@@ -26,7 +39,7 @@ ENV WORKDIR=/app \
     GOOGLE_CLOUD_PROJECT=zones-cloud \
     IS_SERVER=true \
     NODE_ENV=production \
-    NODE_OPTIONS="--openssl-legacy-provider --enable-source-maps" \
+    NODE_OPTIONS="--enable-source-maps" \
     PORT=3000 \
     WEB_PORT=3000 \
     GLITCH_TITLE_ID=42de534c-600f-4228-af9e-b69faef94cce \
@@ -42,6 +55,7 @@ ENV WORKDIR=/app \
 
 COPY --from=linkerd /tmp/linkerd-await /usr/bin/linkerd-await
 COPY --from=jemalloc /usr/local/lib/libjemalloc.so.2 /usr/local/lib/
+COPY --from=redis /opt/redis/bin/ /usr/local/bin/
 
 ARG DEBIAN_FRONTEND=noninteractive
 RUN --mount=type=cache,id=glitch-apt-cache-jammy,target=/var/cache/apt,sharing=locked \
@@ -62,16 +76,15 @@ RUN --mount=type=cache,id=glitch-apt-cache-jammy,target=/var/cache/apt,sharing=l
       build-essential \
       pkg-config \
       rsync \
-      redis-server \
-      redis-tools \
       procps \
       tini \
       unzip \
       default-jre-headless \
     && ln -sf /usr/bin/python3 /usr/bin/python \
-    && git lfs install --system --skip-smudge
+    && git lfs install --system --skip-smudge \
+    && redis-server --version | grep 'v=8.8.1'
 
-ARG NODE_VERSION=20.0.0
+ARG NODE_VERSION=24.18.1
 ARG NODE_PACKAGE=node-v${NODE_VERSION}-linux-x64
 ARG NODE_INSTALL_DIR=/usr/local
 ARG NODE_HOME=${NODE_INSTALL_DIR}/${NODE_PACKAGE}
@@ -80,7 +93,7 @@ ENV PATH=${NODE_HOME}/bin:/opt/biomes-venv/bin:/app/node_modules/.bin:/usr/local
 
 RUN corepack enable \
     && corepack prepare yarn@1.22.22 --activate \
-    && npm install -g @bazel/bazelisk
+    && npm install -g @bazel/bazelisk@1.28.1
 
 RUN set -eux; \
     git config --system url."https://github.com/".insteadOf "ssh://git@github.com/"; \
@@ -141,8 +154,17 @@ RUN --mount=type=cache,id=glitch-yarn-cache,target=/usr/local/share/.cache/yarn,
     YARN_IGNORE_SCRIPTS=1 npm_config_ignore_scripts=true yarn install --ignore-scripts --frozen-lockfile --non-interactive --production=false; \
     yarn config delete ignore-scripts
 
+RUN npm rebuild @swc/core esbuild msgpackr-extract sharp bufferutil utf-8-validate segfault-raub --foreground-scripts \
+    && node - <<'NODE'
+const checks = ["@swc/core", "esbuild", "sharp", "uWebSockets.js", "bufferutil", "utf-8-validate", "segfault-raub"];
+for (const name of checks) require(name);
+const msgpackr = require("msgpackr");
+if (!msgpackr.isNativeAccelerationEnabled) throw new Error("msgpackr native acceleration is unavailable");
+console.log("OK Linux Node 24 native dependencies");
+NODE
+
 COPY requirements.txt ./
-RUN --mount=type=cache,id=glitch-pip-cache-py310,target=/root/.cache/pip,sharing=locked \
+RUN --mount=type=cache,id=glitch-pip-cache-py312,target=/root/.cache/pip,sharing=locked \
     set -eux; \
     rm -rf /opt/biomes-venv .venv; \
     python3 -m venv /opt/biomes-venv; \
@@ -192,7 +214,7 @@ fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
 NODE
 
 ARG GLITCH_PREPARE_AT_BUILD=1
-RUN --mount=type=cache,id=glitch-pip-cache-py310,target=/root/.cache/pip,sharing=locked \
+RUN --mount=type=cache,id=glitch-pip-cache-py312,target=/root/.cache/pip,sharing=locked \
     --mount=type=cache,id=glitch-bazel-cache,target=/root/.cache/bazel,sharing=locked \
     chmod +x scripts/glitch/prepare-glitch-image.sh scripts/glitch/run-glitch-web.sh scripts/glitch/healthcheck-glitch-web.cjs \
     && bash -n scripts/glitch/prepare-glitch-image.sh \

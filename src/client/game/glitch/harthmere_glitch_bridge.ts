@@ -2468,7 +2468,7 @@ export function useHarthmereGlitchBridge(
   gameReady: boolean,
   clientContext?: ClientContext | null
 ) {
-  const controllerRef = useRef<HarthmereGlitchBridgeController | undefined>();
+  const controllerRef = useRef<HarthmereGlitchBridgeController | undefined>(undefined);
 
   useEffect(() => {
     if (!gameReady || !isBrowser()) {

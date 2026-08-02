@@ -20,8 +20,9 @@ check('ChatHUD no longer imports emoji-mart current types/index directly', !/fro
 check('ChatHUD uses Harthmere emoji compat search', /searchHarthmereEmoji/.test(chat));
 check('ChatHUD handles async emoji search failure safely', /Failed to search emoji autocomplete/.test(chat));
 const team = read('src/client/components/teams/EditTeamActionSheet.tsx');
-check('EditTeamActionSheet imports @emoji-mart/react Picker', /from "@emoji-mart\/react"/.test(team));
+check('EditTeamActionSheet mounts the framework-neutral emoji-mart Picker', /Picker as EmojiMartPicker/.test(team) && /new EmojiMartPicker/.test(team));
 check('EditTeamActionSheet imports @emoji-mart/data', /from "@emoji-mart\/data"/.test(team));
+check('EditTeamActionSheet no longer imports the React-18-bound picker wrapper', !/from "@emoji-mart\/react"/.test(team));
 check('EditTeamActionSheet uses onEmojiSelect instead of old onSelect API', /onEmojiSelect/.test(team) && !/onSelect=\{\(emoji\)/.test(team));
 check('EditTeamActionSheet no longer imports emoji-mart/data/all.json', !/emoji-mart\/data\/all\.json/.test(team));
 check('EditTeamActionSheet no longer imports Emoji component from emoji-mart current', !/\bEmoji\b,\s*emojiIndex/.test(team));

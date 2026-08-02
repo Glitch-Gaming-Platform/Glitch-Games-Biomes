@@ -92,7 +92,7 @@ export const LoginFlowController: React.FunctionComponent<{
 }) => {
   const [error, setError] = useError();
   const [loggingIn, setLoggingIn] = useState(false);
-  const validatedInviteCodeRef = useRef<string | undefined>();
+  const validatedInviteCodeRef = useRef<string | undefined>(undefined);
   const loginRelated = useLoginRelatedControllerContext();
   const rootStage = useMemo((): LoginFlowStage => {
     if (devOnly) {

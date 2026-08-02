@@ -1,3 +1,5 @@
+load("@rules_shell//shell:sh_binary.bzl", "sh_binary")
+
 # List of all Bazel targets which generate data that our TypeScript code
 # depends on.
 filegroup(

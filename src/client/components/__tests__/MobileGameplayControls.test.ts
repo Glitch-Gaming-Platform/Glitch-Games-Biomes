@@ -32,6 +32,12 @@ describe("mobile gameplay control wiring", () => {
     assert.ok(pointerLock.includes("this.setPointerLockDisabled(true)"));
   });
 
+  it("does not classify a pointerless desktop browser as mobile", () => {
+    const config = read("src/client/game/client_config.ts");
+    assert.ok(config.includes("void pointerLockSupported"));
+    assert.ok(!config.includes("!pointerLockSupported ||\n    touchDevice"));
+  });
+
   it("unlocks Web Audio from the canvas click before requesting pointer lock", () => {
     const view = read("src/client/components/BiomesView.tsx");
     const clickHandler = view.indexOf("click: (e) => {");

@@ -242,6 +242,47 @@ describe("Harthmere live-mode cooking backend", () => {
     );
   });
 
+  it("allows ingredient reservation when a migrated native inventory already exceeds the slot cap", () => {
+    const overfullInventory = Object.fromEntries(
+      Array.from(
+        { length: HARTHMERE_DEFAULT_INVENTORY_SLOTS + 3 },
+        (_, index) => [`legacy_alias_${index}`, 1]
+      )
+    );
+    overfullInventory.raw_meat = 50;
+    const state = freshState();
+    state.inventory.items = { ...overfullInventory };
+
+    const enqueued = reduce(
+      state,
+      {
+        operation: "cook_enqueue",
+        stationId: "ecs:captured-campfire",
+        stationKind: "campfire",
+        label: "Campfire",
+        recipeId: "grilled_meat",
+        count: 1,
+      },
+      NOW,
+      overfullInventory
+    );
+
+    assert.deepEqual(
+      enqueued.summary.warnings.filter((warning) =>
+        warning.startsWith("cooking_rejected")
+      ),
+      []
+    );
+    const exchange = enqueued.summary.nativeEcsMaterializationPlans?.find(
+      (plan) => plan.kind === "inventory_exchange"
+    );
+    assert.equal(exchange?.kind, "inventory_exchange");
+    if (exchange?.kind === "inventory_exchange") {
+      assert.deepEqual(exchange.consumeItemStacks, { raw_meat: 1 });
+      assert.deepEqual(exchange.rewardItemStacks, {});
+    }
+  });
+
   it("cancels a job and refunds the reserved ingredients", () => {
     const enq = reduce(freshState(), {
       operation: "cook_enqueue",

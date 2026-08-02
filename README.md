@@ -81,17 +81,17 @@ Recommended development environment:
 - Homebrew
 - Git
 - Git LFS
-- Node.js 20
+- Node.js 24.18.1
 - nvm
 - Yarn
-- Python 3.10
+- Python 3.12
 - Redis
 - Google Cloud CLI only if testing old upstream GCP-authenticated paths
 
 Install the common tools:
 
 ~~~bash
-brew install git-lfs redis python@3.10 nvm
+brew install git-lfs redis python@3.12 nvm
 brew install --cask google-cloud-sdk
 git lfs install
 ~~~
@@ -145,7 +145,7 @@ The first command should show real files. The second command should not show a l
 
 ## Node setup
 
-This repo uses Node 20.
+This fork uses Node 24.18.1.
 
 Use nvm:
 
@@ -153,11 +153,11 @@ Use nvm:
 nvm use
 ~~~
 
-If Node 20 is not installed:
+If Node 24 is not installed:
 
 ~~~bash
-nvm install 20
-nvm use 20
+nvm install 24.18.1
+nvm use 24.18.1
 ~~~
 
 Verify:
@@ -174,7 +174,7 @@ yarn -v
 Create and activate a Python virtual environment:
 
 ~~~bash
-python3.10 -m venv .venv
+python3.12 -m venv .venv
 source .venv/bin/activate
 python --version
 ~~~
@@ -541,9 +541,9 @@ test -d src/gen && echo "src/gen exists"
 
 The Docker image includes:
 
-- Ubuntu 22.04
-- Bazel 6.0.0
-- Node 20
+- Ubuntu 24.04
+- Bazel 9.2.0
+- Node 24.18.1
 - Yarn
 - Python
 - Git LFS
@@ -577,9 +577,9 @@ cd ~/Development
 git clone git@github.com:Glitch-Gaming-Platform/Glitch-Games-Biomes.git
 cd Glitch-Games-Biomes
 git lfs pull
-nvm install 20
+nvm install 24.18.1
 nvm use
-python3.10 -m venv .venv
+python3.12 -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip setuptools wheel
 python -m pip install -r requirements.txt

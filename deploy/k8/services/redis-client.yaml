@@ -24,7 +24,7 @@ spec:
         type: DirectoryOrCreate
   containers:
     - name: redis
-      image: docker.io/bitnami/redis:7.0.5
+      image: docker.io/library/redis:8.8.1
       command: ["/bin/bash"]
       args: ["-c", "sleep infinity"]
       volumeMounts:

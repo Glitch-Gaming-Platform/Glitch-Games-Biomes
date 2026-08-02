@@ -65,7 +65,7 @@ describe("NPC target-speed ground movement", () => {
         []
       );
       aabb = shiftAABB(aabb, result.movement.impulse);
-      velocity = result.movement.velocity;
+      velocity = [...result.movement.velocity];
       maxHeight = Math.max(maxHeight, aabb[0][1]);
     }
 

@@ -16,6 +16,7 @@ import {
   type HarthmereCraftingRecipe,
 } from "@/shared/harthmere/mmo_inventory_authority";
 import { HARTHMERE_CRAFT_COMPLETED_EVENT } from "@/client/components/challenges/harthmereEvents";
+import { harthmerePlayerCapacityMessage } from "@/client/components/harthmere_capacity_messages";
 
 export interface HarthmereCraftingStationClientJob {
   jobId: string;
@@ -204,6 +205,8 @@ export function formatHarthmereCraftingRecipeName(recipeId: string) {
 }
 
 function playerMessageFromCraftingWarning(warning: string) {
+  const capacityMessage = harthmerePlayerCapacityMessage(warning);
+  if (capacityMessage) return capacityMessage;
   const code = warning.replace(/^crafting_rejected:/, "").split(":")[0];
   switch (code) {
     case "missing_recipe_id":
@@ -233,8 +236,6 @@ function playerMessageFromCraftingWarning(warning: string) {
       return "You need more materials.";
     case "insufficient_gold":
       return "You need more gold.";
-    case "inventory_full":
-    case "output_stack_size_exceeded":
     case "crafting_rejected":
       return "Make room in your inventory.";
     case "missing_or_invalid_target_item":

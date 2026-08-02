@@ -186,7 +186,7 @@ NEXT_TELEMETRY_DISABLED=1 \
 ./node_modules/.bin/next build
 
 NODE_ENV=production \
-NODE_OPTIONS='--openssl-legacy-provider' \
+NODE_OPTIONS='' \
 ./node_modules/.bin/webpack \
   --config server.webpack.config.cjs \
   --mode production
@@ -309,7 +309,7 @@ NEXT_TELEMETRY_DISABLED=1 \
 ./node_modules/.bin/next build
 
 NODE_ENV=production \
-NODE_OPTIONS='--openssl-legacy-provider' \
+NODE_OPTIONS='' \
 ./node_modules/.bin/webpack \
   --config server.webpack.config.cjs \
   --mode production
@@ -336,11 +336,11 @@ docker rm -f glitch-redis 2>/dev/null || true
 docker run -d \
   --name glitch-redis \
   --network glitch-dev \
-  redis:7-alpine
+  redis:8.8.1-alpine
 
 docker run --rm \
   --network glitch-dev \
-  redis:7-alpine \
+  redis:8.8.1-alpine \
   redis-cli -h glitch-redis ping
 ```
 

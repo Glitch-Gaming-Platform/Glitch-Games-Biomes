@@ -1,6 +1,6 @@
 // High frequency change world API, operates over an independent
 
-import { LazyEntity } from "@/server/shared/ecs/gen/lazy";
+import { LazyEntity, LazyEntityDelta } from "@/server/shared/ecs/gen/lazy";
 import { LazyChangeBuffer, type LazyChange } from "@/server/shared/ecs/lazy";
 import { type BiomesRedis } from "@/server/shared/redis/connection";
 import type {
@@ -15,6 +15,7 @@ import {
   proposedChangeToRedis,
 } from "@/server/shared/world/lua/apply";
 import {
+  deserializeRedisComponentData,
   deserializeRedisEcsUpdate,
   packForRedis,
 } from "@/server/shared/world/lua/serde";
@@ -24,6 +25,7 @@ import type { ApplyStatus, ChangeToApply } from "@/shared/api/transaction";
 import type { BiomesId } from "@/shared/ids";
 import { safeParseBiomesId } from "@/shared/ids";
 import { log } from "@/shared/logging";
+import { createCounter } from "@/shared/metrics/metrics";
 import { Timer } from "@/shared/metrics/timer";
 import { ConditionVariable, Delayed, sleep } from "@/shared/util/async";
 import { compact, isEmpty } from "lodash";
@@ -35,6 +37,76 @@ function notSupported(): never {
 export const ECS_PUBSUB_KEY = Buffer.from("ecs");
 
 const applyMetrics = new ApplyMetrics("hfc");
+
+const rejectedHfcComponents = createCounter({
+  name: "hfc_rejected_components",
+  help: "HFC components rejected before they could poison subscribers",
+  labelNames: ["reason", "component"],
+});
+
+function containsNonFiniteNumber(value: unknown): boolean {
+  if (typeof value === "number") {
+    return !Number.isFinite(value);
+  }
+  if (Array.isArray(value) || ArrayBuffer.isView(value)) {
+    return Array.from(value as ArrayLike<unknown>).some(
+      containsNonFiniteNumber
+    );
+  }
+  if (value instanceof Map || value instanceof Set) {
+    return Array.from(value.values()).some(containsNonFiniteNumber);
+  }
+  if (value && typeof value === "object") {
+    return Object.values(value).some(containsNonFiniteNumber);
+  }
+  return false;
+}
+
+function safeHfcComponents(
+  id: BiomesId,
+  encoded: Record<string, unknown>
+): Record<string, any> {
+  const safe: Record<string, any> = {};
+  for (const [component, value] of Object.entries(encoded)) {
+    try {
+      if (
+        containsNonFiniteNumber(deserializeRedisComponentData(value as any))
+      ) {
+        rejectedHfcComponents.inc({ reason: "non_finite", component });
+        log.error("Dropping non-finite HFC component", { id, component });
+        continue;
+      }
+      safe[component] = value;
+    } catch (error) {
+      rejectedHfcComponents.inc({ reason: "decode_error", component });
+      log.error("Dropping undecodable HFC component", {
+        id,
+        component,
+        error,
+      });
+    }
+  }
+  return safe;
+}
+
+function safeHfcChange(change: LazyChange): LazyChange | undefined {
+  if (change.kind === "delete") {
+    return change;
+  }
+  const encoded = safeHfcComponents(change.entity.id, change.entity.encoded);
+  if (Object.keys(encoded).length === 0) {
+    return;
+  }
+  return change.kind === "create"
+    ? {
+        ...change,
+        entity: LazyEntity.forEncoded(change.entity.id, encoded),
+      }
+    : {
+        ...change,
+        entity: LazyEntityDelta.forEncoded(change.entity.id, encoded),
+      };
+}
 
 export type HfcSubscriptionConfig = SubscriptionConfig & {
   externalFilterContext?: ReadonlyFilterContext;
@@ -142,7 +214,11 @@ export class HfcWorldApi extends WorldApi {
           sub.on("messageBuffer", (_channel, message) => {
             try {
               const shouldSignal = buffer.empty;
-              buffer.push(deserializeRedisEcsUpdate(message)[1]);
+              buffer.push(
+                compact(
+                  deserializeRedisEcsUpdate(message)[1].map(safeHfcChange)
+                )
+              );
               if (shouldSignal) {
                 cv.signal();
               }
@@ -228,10 +304,13 @@ export class HfcWorldApi extends WorldApi {
       if (error) throw error;
       return (result ?? {}) as Record<string, string>;
     });
-    return results.map((result, i) => [
-      this.now,
-      isEmpty(result) ? undefined : LazyEntity.forEncoded(ids[i], result),
-    ]);
+    return results.map((result, i) => {
+      const safe = safeHfcComponents(ids[i], result);
+      return [
+        this.now,
+        isEmpty(safe) ? undefined : LazyEntity.forEncoded(ids[i], safe),
+      ];
+    });
   }
 
   protected async _apply(
@@ -250,12 +329,18 @@ export class HfcWorldApi extends WorldApi {
       const pubsub: unknown[] = [];
       for (const change of cta.changes) {
         const encoded = proposedChangeToRedis(change);
-        pubsub.push(encoded);
         if (change.kind === "delete") {
+          pubsub.push(encoded);
           tx.del(biomesIdToRedisKey(change.id));
           continue;
         }
-        for (const [componentId, value] of Object.entries(encoded[2])) {
+        const components = safeHfcComponents(change.entity.id, encoded[2]);
+        if (Object.keys(components).length === 0) {
+          continue;
+        }
+        const safeEncoded = [encoded[0], encoded[1], components];
+        pubsub.push(safeEncoded);
+        for (const [componentId, value] of Object.entries(components)) {
           if (!value) {
             tx.hdel(biomesIdToRedisKey(change.entity.id), String(componentId));
           } else {

@@ -1,0 +1,5 @@
+exports_files([
+    "cereal-emscripten6-clang.patch",
+    "hedron-bazel9-python-rule.patch",
+    "legacy_repositories.bzl",
+])

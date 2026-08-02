@@ -1,10 +1,16 @@
 import assert from "assert";
 
+import { CollisionHelper } from "@/shared/game/collision";
+import type { AABB } from "@/shared/math/types";
 import {
   LIVE_ENTITY_HELPER_QUEST_TARGET_MARKERS,
   LIVE_ENTITY_HELPER_WEST_MUCK_BREACH_AREA,
 } from "@/shared/harthmere/live_entity_helper_quests";
 import { resolveHarthmereProductionMarkerPosition } from "@/shared/harthmere/production_terrain_placement_map";
+import {
+  HARTHMERE_TOWN_BACK_BOUNDARY_X,
+  harthmereTownAuthoredToWorldX,
+} from "@/shared/harthmere/harthmere_town_horizon";
 import {
   HARTHMERE_ADDITIVE_TOWN_OFFSET_X,
   HARTHMERE_BELLBINDER_DESCENT,
@@ -20,8 +26,10 @@ import {
   expandWorldAabbForHarthmere,
   harthmereBellbinderDescentFloorBlocks,
   harthmereBellbinderStairLoop,
+  harthmereExtensionEdgeRescuePosition,
   harthmereExtensionFoundationShardSpecs,
   harthmereExtensionTerrainEntityIdForShard,
+  harthmereExtensionVoidCollisionBoxes,
   initialHarthmereWorldAabb,
   isHarthmereExtensionWorldPosition,
   isHarthmereExtensionWorldShardX,
@@ -199,6 +207,222 @@ describe("Harthmere additive world extension", () => {
       isHarthmereExtensionWorldPosition([500, 70, -126]),
       false,
       "the original hilly Grove must never use flat Harthmere grounding"
+    );
+  });
+
+  it("blocks the empty north/south notches at the additive terrain edge", () => {
+    const [southVoid, northVoid] = harthmereExtensionVoidCollisionBoxes();
+    assert.deepEqual(southVoid[0], [
+      HARTHMERE_EXTENSION_WORLD_BOUNDS.minX,
+      -1_000_000,
+      -1_000_000,
+    ]);
+    assert.equal(southVoid[1][2], HARTHMERE_EXTENSION_WORLD_BOUNDS.minZ);
+    assert.equal(northVoid[0][2], HARTHMERE_EXTENSION_WORLD_BOUNDS.maxZ);
+
+    const metadata = {
+      aabb: {
+        v0: [-1792, -224, -1792],
+        v1: [HARTHMERE_EXPANDED_WORLD_EAST_EDGE_X, 288, 1792],
+      },
+    } as any;
+    const edgeHits: unknown[] = [];
+    CollisionHelper.intersectWorldBounds(
+      metadata,
+      [
+        [2048, 52, -576.2],
+        [2049, 54, -575.2],
+      ],
+      (hit) => {
+        edgeHits.push(hit);
+      }
+    );
+    assert.deepEqual(edgeHits, [southVoid]);
+
+    const originalMapHits: unknown[] = [];
+    CollisionHelper.intersectWorldBounds(
+      metadata,
+      [
+        [1700, 52, -600],
+        [1701, 54, -599],
+      ],
+      (hit) => {
+        originalMapHits.push(hit);
+      }
+    );
+    assert.deepEqual(
+      originalMapHits,
+      [],
+      "the original imported map remains open west of the extension handoff"
+    );
+
+    const capturedSeamCrossingHits: unknown[] = [];
+    CollisionHelper.intersectWorldBounds(
+      metadata,
+      [
+        [1791.7, 32, -724.6],
+        [1792.5, 34, -723.8],
+      ],
+      (hit) => {
+        capturedSeamCrossingHits.push(hit);
+      }
+    );
+    assert.deepEqual(
+      capturedSeamCrossingHits,
+      [southVoid],
+      "the production path from original terrain into the southeast notch is blocked"
+    );
+
+    const northSeamCrossingHits: unknown[] = [];
+    CollisionHelper.intersectWorldBounds(
+      metadata,
+      [
+        [1791.7, 52, 191.6],
+        [1792.5, 54, 192.4],
+      ],
+      (hit) => {
+        northSeamCrossingHits.push(hit);
+      }
+    );
+    assert.deepEqual(
+      northSeamCrossingHits,
+      [northVoid],
+      "the matching northeast seam crossing is blocked"
+    );
+
+    const longStepCases: Array<[string, AABB, AABB]> = [
+      [
+        "long south step",
+        [
+          [2300, 52, -900],
+          [2301, 54, -899],
+        ],
+        southVoid,
+      ],
+      [
+        "long north step",
+        [
+          [2300, 52, 500],
+          [2301, 54, 501],
+        ],
+        northVoid,
+      ],
+    ];
+    for (const [label, aabb, expected] of longStepCases) {
+      const hits: unknown[] = [];
+      CollisionHelper.intersectWorldBounds(metadata, aabb, (hit) => {
+        hits.push(hit);
+      });
+      assert.deepEqual(
+        hits,
+        [expected],
+        `${label} must still land inside a solid half-space`
+      );
+    }
+  });
+
+  it("keeps every ordinary outer-world perimeter solid after a long step", () => {
+    const far = 1_000_000;
+    const metadata = {
+      aabb: {
+        v0: [-1792, -224, -1792],
+        v1: [HARTHMERE_EXPANDED_WORLD_EAST_EDGE_X, 288, 1792],
+      },
+    } as any;
+    const cases: Array<[string, AABB, AABB]> = [
+      [
+        "west",
+        [
+          [-3001, 52, 0],
+          [-3000, 54, 1],
+        ],
+        [
+          [-far, -far, -far],
+          [-1792, far, far],
+        ],
+      ],
+      [
+        "east",
+        [
+          [2600, 52, 0],
+          [2601, 54, 1],
+        ],
+        [
+          [HARTHMERE_EXPANDED_WORLD_EAST_EDGE_X, -far, -far],
+          [far, far, far],
+        ],
+      ],
+      [
+        "south",
+        [
+          [0, 52, -3001],
+          [1, 54, -3000],
+        ],
+        [
+          [-far, -far, -far],
+          [far, far, -1792],
+        ],
+      ],
+      [
+        "north",
+        [
+          [0, 52, 3000],
+          [1, 54, 3001],
+        ],
+        [
+          [-far, -far, 1792],
+          [far, far, far],
+        ],
+      ],
+    ];
+    for (const [label, aabb, expected] of cases) {
+      const hits: unknown[] = [];
+      CollisionHelper.intersectWorldBounds(metadata, aabb, (hit) => {
+        hits.push(hit);
+      });
+      assert.deepEqual(
+        hits,
+        [expected],
+        `${label} outer edge must remain solid even when the final AABB is far beyond it`
+      );
+    }
+  });
+
+  it("rescues the captured persisted player position onto loaded terrain", () => {
+    const playableEastBoundary = harthmereTownAuthoredToWorldX(
+      HARTHMERE_TOWN_BACK_BOUNDARY_X
+    );
+    assert.deepEqual(
+      harthmereExtensionEdgeRescuePosition(
+        [2048.3907584325657, 22.964666666666666, -600.4049621545007],
+        36,
+        playableEastBoundary
+      ),
+      [2048.3907584325657, HARTHMERE_EXTENSION_FEET_Y, -540]
+    );
+    assert.equal(
+      harthmereExtensionEdgeRescuePosition([1700, 22, -600], 36),
+      undefined,
+      "positions on the original imported map are not clamped to Harthmere"
+    );
+
+    assert.deepEqual(
+      harthmereExtensionEdgeRescuePosition(
+        [playableEastBoundary + 40, 80, -200],
+        36,
+        playableEastBoundary
+      ),
+      [playableEastBoundary - 36.001, HARTHMERE_EXTENSION_FEET_Y, -200],
+      "a persisted player behind the east scenic wall returns to playable town"
+    );
+    assert.equal(
+      harthmereExtensionEdgeRescuePosition(
+        [playableEastBoundary - 1, HARTHMERE_EXTENSION_FEET_Y, -200],
+        36,
+        playableEastBoundary
+      ),
+      undefined,
+      "a player still west of the scenic wall is already safe"
     );
   });
 

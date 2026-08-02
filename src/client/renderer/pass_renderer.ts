@@ -1,4 +1,5 @@
 import { UnsupportedWebGLError } from "@/client/game/errors";
+import { configureGltfTextureTranscoding } from "@/client/game/util/gltf_helpers";
 import type {
   PostprocessingPipeline,
   RenderPassName,
@@ -68,6 +69,8 @@ export class PassRenderer {
     if (!(context instanceof WebGL2RenderingContext)) {
       throw new UnsupportedWebGLError("Biomes requires WebGL 2.0.");
     }
+
+    configureGltfTextureTranscoding(this.threeRenderer);
 
     // Tell threejs not to sort objects by depth, so that we can sort manually,
     // e.g. by material to improve performance.

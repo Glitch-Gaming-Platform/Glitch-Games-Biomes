@@ -97,7 +97,7 @@ export const Chapter1FractureGatePrompt: React.FunctionComponent = () => {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
   const [elapsed, setElapsed] = useState<string>();
-  const inFlight = useRef<Promise<void>>();
+  const inFlight = useRef<Promise<void>>(undefined);
   const busyRef = useRef(false);
   const evictingRef = useRef(false);
 

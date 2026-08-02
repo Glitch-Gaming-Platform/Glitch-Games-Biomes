@@ -45,7 +45,7 @@ const PannableMapScreen = dynamic(
 
 export function defaultMiniPhoneRender(
   payload: GenericMiniPhonePayload
-): React.ReactChild {
+): React.ReactNode {
   switch (payload.type) {
     case "map":
       return <PannableMapScreen />;
@@ -173,7 +173,7 @@ export function GenericMiniPhone<T extends GenericMiniPhonePayload>({
 }: React.PropsWithChildren<{
   onClose: () => unknown;
   rootPayload: T;
-  renderFunc?: (payload: T) => React.ReactChild;
+  renderFunc?: (payload: T) => React.ReactNode;
 }>) {
   const miniPhoneNavContext = useNewMiniPhoneContext<T>(onClose, [rootPayload]);
 

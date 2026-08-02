@@ -287,9 +287,12 @@ export class RedisChatDistributor {
             await this.getMissedDeliveriesWithXPending();
           return { deliveries, ack: this.makeAcker(ackIds) };
         } catch (fallbackError) {
-          log.warn("Failed to get missed deliveries with Redis 6 fallback", {
-            error: fallbackError,
-          });
+          log.warn(
+            "Failed to get missed deliveries with XPENDING/XCLAIM fallback",
+            {
+              error: fallbackError,
+            }
+          );
           return { deliveries: [], ack: this.makeAcker([]) };
         }
       }

@@ -45,7 +45,7 @@ export const ShortcutsHUD: React.FunctionComponent<{
   const { userId, reactResources, audioManager } = useClientContext();
 
   const pointerLockManager = usePointerLockManager();
-  const returnPointerLock = useRef<boolean>();
+  const returnPointerLock = useRef<boolean>(undefined);
   const lastInputKeydown = useRef(performance.now());
   const [gameModal] = reactResources.useAll(
     ["/game_modal"],

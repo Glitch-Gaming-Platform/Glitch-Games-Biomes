@@ -98,7 +98,7 @@ export function useStateWithTimeRevert<T>(
   onRevert?: () => any
 ) {
   const [ret, setRet] = useState<T | undefined>(value);
-  const reverterRef = useRef<ReturnType<typeof setTimeout>>();
+  const reverterRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const newSetRet = (newVal: T | undefined, revertCb?: () => any) => {
     setRet(newVal);
@@ -193,7 +193,7 @@ export function useWithUnseenEmptyTransition<V>(
   maxUnseenEmptyTimeMs = 3000
 ) {
   const [val, setVal] = useState(() => value);
-  const emptyTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const emptyTimeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   useEffect(() => {
     return () => {
@@ -259,7 +259,7 @@ export function useTimeout(
   ms: number,
   deps: DependencyList
 ) {
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>();
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   useEffect(() => {
     if (timeoutRef.current) {

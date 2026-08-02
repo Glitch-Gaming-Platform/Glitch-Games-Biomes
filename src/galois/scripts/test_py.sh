@@ -16,4 +16,5 @@ else
 fi
 
 cd "$SCRIPTPATH/../py/assets"
+"$PYTHON_BIN" "$REPOPATH/scripts/assets/install_gltfpack.py"
 "$PYTHON_BIN" -m unittest discover -s test -p '*_test.py'

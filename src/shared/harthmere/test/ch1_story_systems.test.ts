@@ -336,6 +336,50 @@ describe("Chapter 1 staging", () => {
     }
   });
 
+  it("keeps every promoted world NPC at its shared home before Chapter 1", () => {
+    const before = new Map(
+      ch1StageDirections({ flags: [] }).map((npc) => [npc.key, npc])
+    );
+    for (const member of CH1_PROMOTED_CAST) {
+      const staged = before.get(member.key);
+      assert.ok(staged, `${member.key}: missing pre-chapter stage direction`);
+      assert.equal(
+        staged.useSeededBody,
+        true,
+        `${member.key}: a promoted shared NPC was moved for players who have not started Chapter 1`
+      );
+      assert.equal(
+        staged.position,
+        undefined,
+        `${member.key}: pre-chapter projection must retain the ECS-authored home`
+      );
+    }
+  });
+
+  it("moves Jackie from her starter-world home only after Chapter 1 starts", () => {
+    const before = ch1StageDirections({ flags: [] }).find(
+      (npc) => npc.key === "jackie"
+    );
+    assert.equal(before?.useSeededBody, true);
+    assert.equal(before?.position, undefined);
+
+    const started = ch1StageDirections({ flags: [CH1_FLAGS.started] }).find(
+      (npc) => npc.key === "jackie"
+    );
+    assert.equal(started?.useSeededBody, false);
+    assert.deepEqual(started?.position, [
+      ...CH1_ANCHORS.roadhouse_jackie_post,
+    ]);
+
+    const fence = ch1StageDirections({
+      flags: [CH1_FLAGS.started],
+      activeStepId: "walk_with_jackie",
+    }).find((npc) => npc.key === "jackie");
+    assert.deepEqual(fence?.position, [
+      ...CH1_ANCHORS.broken_safe_zone_fence,
+    ]);
+  });
+
   it("moves Rook to the Mouth he is actually watching", () => {
     const bridge = ch1StageDirectionFor("halden_rook", {
       flags: [CH1_FLAGS.started],

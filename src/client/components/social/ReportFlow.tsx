@@ -12,7 +12,7 @@ import type { ReportFlowTarget } from "@/pages/api/upload/report";
 import type { ReportReasons } from "@/shared/asset_defs/reports";
 import { reportReasonDescription } from "@/shared/asset_defs/reports";
 import { assertNever } from "@/shared/util/type_helpers";
-import type { ReactChild } from "react";
+import type { ReactNode } from "react";
 import React, { useCallback, useState } from "react";
 
 export const ReportFlow: React.FunctionComponent<{
@@ -56,7 +56,7 @@ export const ReportFlow: React.FunctionComponent<{
     );
   };
 
-  let payload: ReactChild | undefined = undefined;
+  let payload: ReactNode;
   switch (target.kind) {
     case "profile":
       payload = (

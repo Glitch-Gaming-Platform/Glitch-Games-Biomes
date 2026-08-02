@@ -6,6 +6,8 @@
 import type { BiomesId } from "@/shared/ids";
 import type { Vec3 } from "@/shared/math/types";
 import {
+  SNAPSHOT_GROVE_JACKIE_ORIGINAL_SPAWN_ORIENTATION,
+  SNAPSHOT_GROVE_JACKIE_ORIGINAL_SPAWN_POSITION,
   SNAPSHOT_GROVE_LIVE_MARKER_Y,
   SNAPSHOT_GROVE_LIVE_NPC_FEET_Y,
   SNAPSHOT_GROVE_LIVE_WORLD_GROUND_Y,
@@ -505,11 +507,17 @@ export const SNAPSHOT_GROVE_NPCS: SnapshotGroveNpc[] = [
     seedServerNpc: true,
     homeArea: "the_grove",
     role: "Wayfinder, greeter, and emergency road warden",
-    // Jackie has one canonical body. Her original Snapshot Grove entity now
-    // lives at the road-house post used by Chapter 1 instead of leaving an old
-    // copy at the fountain while a per-player story projection stands indoors.
-    authoredPosition: [476, SNAPSHOT_GROVE_NPC_FEET_Y, -129],
-    orientation: [0, 3.15],
+    // The shared ECS body stays at Jackie's original May-snapshot home so a
+    // new player can find the Road Ahead giver while walking up to the Grove
+    // stores. Chapter 1 moves only the requesting player's rendered puppet to
+    // the road-house, fence, gates or watch-house; it never relocates this
+    // shared home for everyone.
+    authoredPosition: [
+      SNAPSHOT_GROVE_JACKIE_ORIGINAL_SPAWN_POSITION[0],
+      SNAPSHOT_GROVE_NPC_FEET_Y,
+      SNAPSHOT_GROVE_JACKIE_ORIGINAL_SPAWN_POSITION[2],
+    ],
+    orientation: [...SNAPSHOT_GROVE_JACKIE_ORIGINAL_SPAWN_ORIENTATION],
     shortDescription:
       "The Grove wayfinder who holds the starter road together.",
     background:

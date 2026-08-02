@@ -11,7 +11,10 @@ import {
   harthmereDialogueLiveModeUrl,
   submitHarthmereDialogueLiveModeChoice,
 } from "@/client/components/challenges/dialogueLiveModeReputation";
-import { isHarthmereNonLivingDialogueObjectLabel } from "@/client/components/challenges/dialogueObjectSemantics";
+import {
+  isHarthmereNonLivingDialogueObjectLabel,
+  shouldUseHarthmereCursorObjectSemantics,
+} from "@/client/components/challenges/dialogueObjectSemantics";
 import { harthmereContainerLootForLabel } from "@/client/components/challenges/harthmereObjectContainers";
 import { harthmereReadableObjectTextForLabel } from "@/client/components/challenges/harthmereObjectInteractions";
 import { contextForLiveEntityHelperQuest } from "@/client/components/challenges/LocalDevLiveEntityHelperQuests";
@@ -120,6 +123,33 @@ describe("live-entity helper dialog context", () => {
         entityDescription: "A living service robot with dialogue.",
       }),
       false
+    );
+    assert.equal(
+      isHarthmereNonLivingDialogueObjectLabel({
+        label: "Helsa",
+        entityDescription: "Night lamp keeper and late-watch greeter.",
+        hasNpcMetadata: true,
+      }),
+      false,
+      "an ECS NPC role containing an object noun must remain talkable"
+    );
+    assert.equal(
+      shouldUseHarthmereCursorObjectSemantics({
+        canTalk: true,
+        isNativeDialogueQuestObject: false,
+        canUseObjectSemantics: true,
+      }),
+      false,
+      "a talkable NPC must own F before inferred prop semantics"
+    );
+    assert.equal(
+      shouldUseHarthmereCursorObjectSemantics({
+        canTalk: false,
+        isNativeDialogueQuestObject: false,
+        canUseObjectSemantics: true,
+      }),
+      true,
+      "an ordinary non-dialogue object still uses object semantics"
     );
   });
 

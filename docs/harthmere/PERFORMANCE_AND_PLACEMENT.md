@@ -134,15 +134,15 @@ Two replicas exposed enough client telemetry for a stable comparison. A third
 interactive metrics request was rate-limited, so it was not included in the
 averages.
 
-| Metric | Previous production sample | 2026-08-01 build |
-|---|---:|---:|
-| Render interval | 82–85 ms | 63.8–70.8 ms |
-| Approximate aggregate FPS | 11.8–12.2 | 14.1–15.7 |
-| CPU render time | 57–60 ms | 47.0–47.7 ms |
-| GPU render time | about 8 ms | 5.3–8.0 ms |
-| Event-loop latency | 140–147 ms | 83.8–87.1 ms |
-| Render + postprocessing | not isolated | 19.8–20.2 ms |
-| Script controller | not isolated | 0.53–0.58 ms |
+| Metric                    | Previous production sample | 2026-08-01 build |
+| ------------------------- | -------------------------: | ---------------: |
+| Render interval           |                   82–85 ms |     63.8–70.8 ms |
+| Approximate aggregate FPS |                  11.8–12.2 |        14.1–15.7 |
+| CPU render time           |                   57–60 ms |     47.0–47.7 ms |
+| GPU render time           |                 about 8 ms |       5.3–8.0 ms |
+| Event-loop latency        |                 140–147 ms |     83.8–87.1 ms |
+| Render + postprocessing   |               not isolated |     19.8–20.2 ms |
+| Script controller         |               not isolated |     0.53–0.58 ms |
 
 The live browser's Aegis monitor still reported sustained values around
 9–13 FPS while standing in the production town. The difference from the
@@ -355,7 +355,9 @@ Current worker limitations:
 - Only block geometry generation (`toBlockGeometry`) is offloaded.
 - Occlusion, surface generation, material/light buffers, glass, flora, and
   water work still use the main path.
-- Voxeloo WebAssembly is built with pthreads disabled (`USE_PTHREADS=0`).
+- Voxeloo WebAssembly is built with the Emscripten Bazel rule's
+  `threads = "off"` transition. Do not reintroduce the removed
+  `USE_PTHREADS=0` setting.
 
 The next credible Voxeloo experiment is therefore not "use more GPU." It is a
 measured worker prototype that:
@@ -380,23 +382,28 @@ updates clocks and simulation, clears and rebuilds the render scenes, runs all
 renderer scripts, renders the multipass pipeline, emits React updates, and
 collects resources on every animation frame.
 
-The dependency snapshot reviewed for this audit was:
+The fork-only modernization completed for this audit is:
 
-| Area | Current checkout | 2026-08-01 candidate | Expected sustained-FPS value |
-|---|---:|---:|---|
-| Three.js | 0.185.1 / r185 | Current | Potentially material only when paired with batching or renderer restructuring |
-| gltfpack | 0.17.0 | 1.2.0 | Small or workload-dependent; primarily asset size, decode, and geometry quality |
-| React / React DOM | 18.2.0 | 19.2.8 | Low for the canvas; possible HUD/UI benefit |
-| Next.js | 13.3.2 | 16.2.12 | No expected steady-state game FPS benefit |
-| Emscripten | 3.1.41 | 6.0.5 | Low whole-frame value unless a measured Voxeloo operation is hot |
-| Node.js | 20.20.2 locally | 24.x LTS | Server throughput/build maintenance, not browser rendering |
-| Bazel | 6.3.1 | 9.2.0 | Build/test maintenance, not browser rendering |
-| TypeScript | 5.9.3 | 7.0.2 | Build/typecheck only |
-| Webpack | 5.81.0 | 5.109.2 | Mostly build and bundle generation, not frame execution |
+| Area                     |                 Fork baseline |                                   Upgraded fork | Expected sustained-FPS value                                                                                                  |
+| ------------------------ | ----------------------------: | ----------------------------------------------: | ----------------------------------------------------------------------------------------------------------------------------- |
+| Three.js                 |                0.185.1 / r185 |                                         Current | Potentially material only when paired with batching or renderer restructuring                                                 |
+| gltfpack / meshoptimizer |                        0.17.0 |                                           1.2.0 | Smaller geometry/texture payloads and less startup/memory pressure                                                            |
+| KTX2 / Basis             |                          none | Native BasisU compression plus Three KTX2Loader | Startup, upload, and GPU-memory improvement; not a direct CPU-frame fix                                                       |
+| React / React DOM        |                        18.2.0 |                                          19.2.8 | Low for the canvas; possible HUD/UI benefit                                                                                   |
+| Next.js                  |                        13.3.2 |                                         16.2.12 | Build/startup/supportability; no expected steady-state canvas benefit                                                         |
+| Emscripten               |                        3.1.41 |                                           6.0.5 | Native compiler/compatibility improvement; measured WASM behavior preserved                                                   |
+| Node.js                  |                          20.x |                                     24.18.1 LTS | Server throughput and build maintenance, not browser rendering                                                                |
+| Production Linux runtime |     Ubuntu 22.04 / glibc 2.35 |                   Ubuntu 24.04 LTS / glibc 2.39 | Meets the uWebSockets Node 24 native-binary floor and keeps the production container on a supported LTS base                  |
+| uWebSockets.js           |                       20.31.0 |                                         20.69.0 | Node 24 ABI support for the high-throughput zRPC WebSocket server                                                             |
+| Fatal-signal diagnostics |        segfault-handler 1.3.0 |                             segfault-raub 3.2.0 | Replaces the abandoned NAN/V8 addon with an N-API binary compatible with Node 24, removing a Linux image source-build failure |
+| Bazel                    |                         6.3.1 |                               9.2.0 with Bzlmod | Faster supported builds and dependency maintenance                                                                            |
+| TypeScript               |                         5.9.3 |                                           6.0.3 | Build/typecheck only; TypeScript 7 remains blocked by current lint peers                                                      |
+| Webpack                  |                        5.81.0 |                                         5.109.2 | Build and bundle generation, not frame execution                                                                              |
+| Redis / ioredis          | 6/7-era harnesses / ioredis 5 |                     Redis 8.8.1 / ioredis 6.0.0 | Server latency, stream recovery, and operations; not direct client FPS                                                        |
+| Redis Rust module        |                   2.0.3/2.0.4 |                                           2.0.8 | Redis 8 module API compatibility                                                                                              |
 
-Registry versions are a dated planning snapshot, not permission to update a
-lockfile. Three.js was upgraded and validated separately on 2026-08-01; re-check
-the remaining candidates at the start of any future upgrade branch.
+These versions apply only to this production fork. No upstream Biomes import or
+upgrade was performed.
 
 ### Three.js is upgraded; batching is the remaining FPS opportunity
 
@@ -411,7 +418,16 @@ The version bump alone should not be expected to improve FPS. Existing objects
 remain existing objects until the game explicitly batches, instances, merges,
 or removes them from the per-frame submission path. The first experiment
 should keep `WebGLRenderer` and convert only stock-material, static Harthmere
-roots. WebGPU must be a separate project.
+roots.
+
+WebGPU is now available as an explicit diagnostic boundary, not as a renderer
+replacement. Every client records adapter availability at
+`game:capabilities:webgpu`; `?webgpuProbe=1` additionally initializes Three's
+WebGPU renderer and renders a tiny stock-material scene. The probe fails if
+Three silently uses its WebGL fallback. The production game renderer remains
+WebGL2 because its raw GLSL, three-attachment MRT, shared depth, custom passes,
+SMAA, bloom, SSAO, water, and shader instrumentation need a deliberate TSL/WGSL
+port rather than a backend flag.
 
 A direct r152-to-r185 package-only update would not have been safe. The
 completed migration addressed the known compatibility boundaries:
@@ -462,51 +478,132 @@ The next order is:
 `BatchedMesh` is the next candidate for compatible static geometry. Measure
 both against the same fixed-camera production-town baseline.
 
-### Galois asset-pipeline upgrades are secondary
+### Galois, gltfpack, Meshopt, and KTX2 are upgraded
 
-Galois already runs `gltfpack -kn`, so GLTF/GLB geometry is not completely
-unoptimized. Upgrading gltfpack and comparing generated bytes, vertex/index
-counts, bounds, animation channels, and runtime draw calls is reasonable, but
-it is not a substitute for scene batching.
+Galois now invokes official native `gltfpack 1.2` with `-kn -c`. Color textures
+use Basis ETC1S and normal/attribute textures use UASTC in KTX2 containers. The
+native release archives are checksum-pinned because the npm/WebAssembly
+`gltfpack` build is compiled without BasisU and cannot produce KTX2.
 
-The runtime currently has no KTX2/Basis texture loading path. Adding one can
-reduce download size, decode work, and GPU memory, which is useful for startup,
-stutter, and memory pressure. Because production is CPU-render-bound rather
-than GPU-bound, compressed textures are not expected to recover the missing
-steady-state frame time on their own.
+The client centralizes GLTF loading with Meshopt 1.2 and configures one shared
+Three `KTX2Loader` after WebGL2 capability detection. The matching r185 Basis
+transcoder is copied to `public/three/basis`; existing PNG/JPEG GLTF assets
+remain the runtime fallback if transcoder initialization is unavailable.
 
-Do not enable mesh-compression extensions or new texture formats until the
-matching Three.js decoders, generated assets, publication index, cache version,
-and fallback behavior are tested as one compatibility unit.
+The executable compression test requires both `EXT_meshopt_compression` and
+`KHR_texture_basisu` and verifies an embedded `image/ktx2`. This reduces
+download, decode, upload, and GPU-memory pressure. It is useful for startup and
+stutter but is not presented as the fix for a CPU-bound 47 ms frame.
 
-### React and Next.js upgrades are not renderer fixes
+### React 19 and Next 16 are upgraded, but are not renderer fixes
 
 The React resource flush fix removed the most obvious per-frame UI wakeup. A
 small React Compiler trial on the Harthmere HUD may reduce avoidable component
 work, and it can be evaluated independently before a full framework migration.
 It will not reduce Three.js scene construction or WebGL submission cost.
 
-Next.js should eventually be brought to a supported, patched release for
-security and maintenance. That migration is unusually high-risk here because
-the application uses Pages Router, `next-pwa`, asynchronous WebAssembly, custom
-Webpack rules, a WebAssembly chunk workaround, and a pages-manifest repair
-plugin. Treat it as a platform upgrade with load/startup/bundle goals, not as
-an FPS task.
+Next.js 16 remains on Pages Router with explicit `--webpack`; the existing
+`next-pwa`, asynchronous WASM, custom Webpack rules, WebAssembly chunk handling,
+and production artifact guards remain compatibility gates. Treat this as a
+platform/build upgrade, not as an FPS claim.
 
-### Voxeloo and Emscripten upgrades require a measured native hot path
+Node 24's native TypeScript stripping can intercept Mocha before `ts-node` and
+`tsconfig-paths` apply this repository's CommonJS and `@/` alias contract. The
+test launchers therefore disable native stripping explicitly. The zRPC server's
+native `uWebSockets.js` dependency is pinned to 20.69.0, whose Node module ABI
+includes Node 24; the old 20.31.0 binary cannot load under ABI 137. Focused
+gRPC, MessagePort, and real WebSocket zRPC tests remain required after any Node
+or native-addon update.
 
-The normal gameplay build already selects SIMD when supported and the default
-`./b` dependency build uses the release configuration with `-O3`. A newer
-Emscripten/LLVM toolchain may improve individual native kernels, but Voxeloo is
-not the dominant measured frame cost. Upgrade it only with before/after native
-microbenchmarks and browser measurements for the exact operations in the frame
-profile.
+### Voxeloo is rebuilt with Emscripten 6; native behavior remains measured
+
+The normal gameplay build still selects SIMD when supported and the release
+build remains optimized. Emscripten 6.0.5 builds both normal and SIMD modules;
+the TypeScript parity suite verifies matching Anima, Gaia, terrain, flora,
+water, muck, tensor, shard, and serialization behavior. Emscripten's removed
+thread/exception settings were replaced at the Bazel rule boundary rather than
+turning the browser module into a shared-memory build accidentally.
+
+Emscripten 6 also changed the generated loader boundary: `wasmBinary` is no
+longer accepted by the default incoming module API, while the default target
+set eagerly emits `node:fs` and `node:crypto` imports. Voxeloo now targets
+`web,webview,worker`, explicitly accepts preloaded `wasmBinary`/`wasmMemory`,
+and contains no Node-only import in either normal or SIMD browser loader. Node
+services continue to load the same artifacts by supplying the bytes directly;
+the loader contract and 18 WASM tests prove both sides together.
 
 The higher-value native experiment remains worker offload: use the SIMD module
 in the worker, transfer rather than clone buffers, and move a complete terrain
 geometry preparation stage off the main thread. Enabling pthreads is not a
 version bump; it changes hosting headers, WebAssembly memory, worker behavior,
 and iframe compatibility.
+
+### Redis 8.8.1 and internal ECS/Anima/Gaia compatibility
+
+Production Redis is the private VM `biomes-redis-prod` at `10.0.0.12:6379` in
+`openai-resource-group`. It is Redis 8.8.1 from official Redis APT packages,
+pinned to the 8.8 line. Production remains RDB-only (`appendonly no`), uses a
+12 GB `maxmemory` with `noeviction`, and exposes port 6379 only to the
+`10.0.1.0/27` application subnet. The unrelated managed cache
+`glitch-redis-prod` is not this game-world Redis and must not be modified by
+Biomes maintenance.
+
+Local smoke, CI, development containers, and Kubernetes manifests use the exact
+Redis 8.8.1 patch for command compatibility, but they do not inherit the
+production VM's persistence, memory, network, or backup configuration. ioredis
+6 uses RESP3 by default; `BIOMES_REDIS_PROTOCOL=2` is the tested incident
+rollback. Leaderboard LT/GT updates now use native atomic Redis operations,
+removing an extra Lua call and `ZSCORE` per leaderboard window.
+
+ECS, Anima, and Gaia are internal fork systems rather than independent package
+versions. Their upgrade boundary is the generated ECS schema/wire contract,
+Voxeloo ABI, regular/HFC split, shard ownership/handoff, terrain buffers,
+`npc_state`, and existing persisted Redis data. Those contracts remain intact
+and are verified together; component IDs or persisted formats must not be
+renumbered as a dependency cleanup.
+
+The exact-image smoke found one legacy fly behavior with a zero-second
+oscillation period. `sin((pi / 0) * time) * 0` generated a `NaN` vertical force,
+which Anima wrote to HFC and current Zod correctly rejected. The fork now
+treats non-positive or non-finite oscillator inputs as disabled. HFC also
+validates component payloads at all three trust boundaries—write, bootstrap,
+and live pub/sub—drops only the malformed component, records a metric/error,
+and keeps valid sibling data flowing. This is primarily a service-availability
+fix: one corrupt NPC can no longer collapse Sync, Web, Logic, Anima, and Gaia.
+It does not claim a direct browser FPS gain.
+
+### Production image packaging is now Linux-native and cacheable
+
+`Dockerfile.biomes` no longer copies the developer machine's `node_modules`.
+The final Linux/amd64 image runs `npm ci --omit=dev --ignore-scripts` from the
+locked production closure, then intentionally rebuilds and loads every native
+Node 24 dependency inside Ubuntu 24.04. This removes mixed macOS/Linux hoists,
+makes the runtime dependency audit deterministic, and avoids sending the host
+dependency tree through BuildKit. `Dockerfile.biomes.dockerignore` excludes
+`node_modules` while retaining the exact `.next` and `dist` artifacts.
+
+In the August 2 local production build, this reduced the BuildKit context from
+approximately 9.11 GB to 5.94 GB (about 3.17 GB less) before layer caching. The
+image separately packages Python 3.12/Voxeloo, gltfpack 1.2, Redis 8.8.1 tools,
+and the reviewed runtime assets, then removes compilers and Bazel caches from
+the final layer. This improves repeatability, upload/cache behavior, and build
+failure isolation; it should be measured as build/scale-out work rather than a
+steady-state client FPS improvement.
+
+The local production smoke, Chapter One browser run, and any later authorized
+push must use one immutable image ID. Rebuilding between smoke and push throws
+away the evidence, even if the same textual tag is reused.
+
+The smoke must also preserve production's service boundary. A 16.56 GiB local
+Docker VM could run the web-only role at about 6.1 GiB, but the old unified
+web+Anima+Gaia topology reached about 11.6 GiB before Gaia completed and was
+OOM-killed immediately after loading 262,253 terrain shards. Running the same
+image ID as a dedicated simulation phase completed with zero holes, zero
+restarts, and no OOM; the simulation settled near 5.2 GiB after readiness. The
+guarded helper therefore validates web and simulation sequentially against the
+same Redis snapshot, then restores web for browser tests. This is a resource
+isolation improvement and a more accurate production rehearsal, not a client
+FPS optimization.
 
 ### Server-system upgrades do not increase client FPS directly
 
@@ -517,17 +614,51 @@ change how much data or how many visible entities the client receives. Any such
 change must preserve the 192 m render-distance contract and should use client
 LOD, aggregation, or lower update frequency rather than hiding the world.
 
-Current recommendation:
+Current recommendation after the completed platform upgrade:
 
-1. Do not perform a broad dependency upgrade for FPS.
-2. Use the validated r185 renderer as the control and prototype static batching
+1. Use the validated r185 renderer as the control and prototype static batching
    on one material-compatible district.
-3. Adopt `BatchedMesh` more broadly only if the call-count and CPU-frame-time
+2. Adopt `BatchedMesh` more broadly only if the call-count and CPU-frame-time
    benchmark is positive.
-4. Evaluate React Compiler and Galois/KTX2 separately for UI and memory/load
-   improvements.
-5. Schedule Next.js, Node, Bazel, TypeScript, and Emscripten upgrades for
-   supportability, security, or build health—not as claimed FPS fixes.
+3. Measure KTX2 startup, transfer, upload, and GPU-memory changes separately
+   from steady-state FPS.
+4. Keep WebGPU as an opt-in probe until the complete raw-GLSL/MRT pipeline has
+   an explicit port and visual parity suite.
+5. Measure server resource and compile-time changes independently; do not
+   attribute them to browser FPS.
+
+### Final exact-image browser findings — 2026-08-02
+
+The immutable local candidate
+`sha256:e5232ba400b6dd23a976a278c3754644ff2f7dbbc56f66c462dfb441f7924755`
+passed production-image startup, Redis 8.8.1 RESP/stream compatibility, generated
+player-mesh serving, the Chapter One gate renderer, and the canonical cast
+projection with Web/Logic/Sync/Trigger/Shim/Bikkie healthy and zero app/Redis
+restarts. Gaia and Anima remained disabled for the normal browser lane, matching
+the documented local resource policy.
+
+The browser campaign found and locally fixed one cross-process event-contract
+defect. Web signed the Chapter One transition with camera orientation
+`[0.02, 3.15]`, while the Logic-side event carried `[0, 3]`; exact comparison of
+that non-authoritative view value rejected an otherwise unchanged destination.
+Warp token version 2 continues to sign the player, action, dungeon, run, party,
+encounter-reset flag, and exact destination, but excludes camera orientation.
+Focused regressions prove orientation transport changes are accepted while
+destination and transition changes are rejected. This is an authorization and
+reliability fix, not an FPS optimization, and requires a future explicitly
+authorized image rebuild before the corrected dungeon warp can be re-proven
+against artifacts.
+
+Desktop screenshot review also found that the pointerless fallback had been
+conflated with mobile device detection. A desktop browser without Pointer Lock
+mounted touch joysticks, mobile crouch/actions, and the mobile hotbar, adding UI
+and input work that did not belong to that device class. Virtual-joystick mode
+now requires touch or a mobile/tablet UA; pointerless desktop retains its
+mouse/keyboard fallback without mounting mobile mechanics. The desktop browser
+gate explicitly asserts the mobile HUD markers are absent.
+
+The representative browser screenshot is
+`artifacts/harthmere-native-ecs-e2e/platform-upgrade-r3-chapter1-desktop-final-r3/1785649134403-20080-client-a.png`.
 
 ## Read-Only Production Diagnostics
 
@@ -637,24 +768,25 @@ Before shipping placement or performance changes:
 9. Restart the server only when the deployment procedure explicitly calls for
    it.
 10. In a controlled browser test, reset local survey and mission state when a
-   clean survey is required:
+    clean survey is required:
 
-   ```js
-   window.__harthmereAutoSurvey?.clear?.();
-   localStorage.removeItem("biomes.localDev.harthmere.questState");
-   localStorage.removeItem("biomes.localDev.harthmere.missionEvents");
-   localStorage.removeItem("biomes.localDev.harthmere.trackedMissions");
-   location.reload();
-   ```
+```js
+window.__harthmereAutoSurvey?.clear?.();
+localStorage.removeItem("biomes.localDev.harthmere.questState");
+localStorage.removeItem("biomes.localDev.harthmere.missionEvents");
+localStorage.removeItem("biomes.localDev.harthmere.trackedMissions");
+location.reload();
+```
 
 11. Run an auto-survey for several minutes, then download the JSON.
 12. Verify the JSON:
-   - `npcs.offGroundCount` is at or near zero.
-   - `npcs.offGroundWanderingCount` is interpreted separately from town
-     residents.
-   - No mission target has a large `targetFootDelta`.
-   - No two different NPCs share the same final `position`.
-   - Town and wilds frame rates stay within the expected local-dev ranges.
+
+- `npcs.offGroundCount` is at or near zero.
+- `npcs.offGroundWanderingCount` is interpreted separately from town
+  residents.
+- No mission target has a large `targetFootDelta`.
+- No two different NPCs share the same final `position`.
+- Town and wilds frame rates stay within the expected local-dev ranges.
 
 If a check fails, fix the shared placement source, cluster anchor, terrain
 resolver, or marker transform. Do not add a one-coordinate patch for the
@@ -662,24 +794,24 @@ individual offender.
 
 ## Ownership Map
 
-| File | Responsibility |
-|---|---|
-| `src/server/shim/main.ts` | NPC seed/spawn, stable anchors, claim set, dialogue |
-| `src/client/components/challenges/LocalDevHarthmereQuests.tsx` | Quest definitions, quest targets, target terrain labels |
-| `src/client/components/challenges/LocalDevHarthmereMissionSystem.tsx` | Tracked mission state, auto-untrack, marker-clear events |
-| `src/client/components/challenges/SnapshotLiveDiagnostics.tsx` | Auto-survey, wandering filter, auto-throttle, mission audit |
-| `src/client/game/client_config.ts` | Glitch/embed dynamic draw-distance floor and client feature flags |
-| `src/client/game/resources/graphics_settings.ts` | Draw-distance floors and dynamic graphics settings |
-| `src/client/game/resources/dynamic_settings_updater.ts` | CPU/GPU quality adaptation policy |
-| `src/client/game/renderers/renderer_controller.ts` | Frame orchestration and version-aware React flush |
-| `src/client/resources/react.ts` | Observed resource version tracking and listener pruning |
-| `src/client/game/renderers/npcs.ts` | Frame-level NPC selection, puppet projection, shared lighting input |
-| `src/client/game/resources/npcs.ts` | Cached NPC render nodes/materials and throttled diagnostics |
-| `src/client/game/renderers/local_dev/harthmere_assets.ts` | Runtime asset budgets, LOD, animation throttling, direct scene routing |
-| `src/client/game/renderers/local_dev/harthmere_gathering_node_markers.ts` | Marker distance/frustum culling and 4 Hz terrain grounding |
-| `src/client/game/renderers/local_dev/harthmere_quest_object_markers.ts` | Quest-marker visibility, grounding, and throttled diagnostics |
-| `src/client/game/webasm.ts` | Normal/SIMD Voxeloo selection and WASM memory cvals |
-| `src/client/game/worker/client.worker.ts` | Optional block-geometry worker boundary |
-| `src/shared/harthmere/town_production_polish.ts` | Render budgets, LOD distances, streaming pre-warm |
-| `scripts/harthmere/check-biomes-harthmere.cjs` | Static invariants for the current runtime contract |
-| `scripts/harthmere/check-harthmere-performance-response.cjs` | Regression guard for the installed performance fixes |
+| File                                                                      | Responsibility                                                         |
+| ------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `src/server/shim/main.ts`                                                 | NPC seed/spawn, stable anchors, claim set, dialogue                    |
+| `src/client/components/challenges/LocalDevHarthmereQuests.tsx`            | Quest definitions, quest targets, target terrain labels                |
+| `src/client/components/challenges/LocalDevHarthmereMissionSystem.tsx`     | Tracked mission state, auto-untrack, marker-clear events               |
+| `src/client/components/challenges/SnapshotLiveDiagnostics.tsx`            | Auto-survey, wandering filter, auto-throttle, mission audit            |
+| `src/client/game/client_config.ts`                                        | Glitch/embed dynamic draw-distance floor and client feature flags      |
+| `src/client/game/resources/graphics_settings.ts`                          | Draw-distance floors and dynamic graphics settings                     |
+| `src/client/game/resources/dynamic_settings_updater.ts`                   | CPU/GPU quality adaptation policy                                      |
+| `src/client/game/renderers/renderer_controller.ts`                        | Frame orchestration and version-aware React flush                      |
+| `src/client/resources/react.ts`                                           | Observed resource version tracking and listener pruning                |
+| `src/client/game/renderers/npcs.ts`                                       | Frame-level NPC selection, puppet projection, shared lighting input    |
+| `src/client/game/resources/npcs.ts`                                       | Cached NPC render nodes/materials and throttled diagnostics            |
+| `src/client/game/renderers/local_dev/harthmere_assets.ts`                 | Runtime asset budgets, LOD, animation throttling, direct scene routing |
+| `src/client/game/renderers/local_dev/harthmere_gathering_node_markers.ts` | Marker distance/frustum culling and 4 Hz terrain grounding             |
+| `src/client/game/renderers/local_dev/harthmere_quest_object_markers.ts`   | Quest-marker visibility, grounding, and throttled diagnostics          |
+| `src/client/game/webasm.ts`                                               | Normal/SIMD Voxeloo selection and WASM memory cvals                    |
+| `src/client/game/worker/client.worker.ts`                                 | Optional block-geometry worker boundary                                |
+| `src/shared/harthmere/town_production_polish.ts`                          | Render budgets, LOD distances, streaming pre-warm                      |
+| `scripts/harthmere/check-biomes-harthmere.cjs`                            | Static invariants for the current runtime contract                     |
+| `scripts/harthmere/check-harthmere-performance-response.cjs`              | Regression guard for the installed performance fixes                   |

@@ -1248,12 +1248,12 @@ async function authenticatedCloudSaveActor(
     userId: String(authResult.auth.userId),
     installId,
     linkedUserId: linkedBiomesUserId,
-    linkedGameUserId,
+    linkedGameUserId: linkedGameUserId ?? undefined,
     anonymousFallback: String(authResult.auth.userId),
   });
   const actorAdoption = await adoptHarthmereActorStateIfTargetEmpty({
     redis,
-    sourceActorId: linkedBiomesUserId,
+    sourceActorId: linkedBiomesUserId ?? undefined,
     targetActorId: actorPlan.actorId,
     nowMs: Date.now(),
   });

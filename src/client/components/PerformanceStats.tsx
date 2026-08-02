@@ -14,13 +14,13 @@ export const PerformanceStats: React.FunctionComponent<{
   extraClassNames?: string;
 }> = ({ defaultPanel, extraClassNames }) => {
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const statsRef = useRef<Stats>();
-  const lastTime = useRef<number>();
-  const networkPanel = useRef<Stats.Panel>();
-  const eventPanel = useRef<Stats.Panel>();
-  const updateLagPanel = useRef<Stats.Panel>();
-  const renderScalePanel = useRef<Stats.Panel>();
-  const gpuPanel = useRef<Stats.Panel>();
+  const statsRef = useRef<Stats>(undefined);
+  const lastTime = useRef<number>(undefined);
+  const networkPanel = useRef<Stats.Panel>(undefined);
+  const eventPanel = useRef<Stats.Panel>(undefined);
+  const updateLagPanel = useRef<Stats.Panel>(undefined);
+  const renderScalePanel = useRef<Stats.Panel>(undefined);
+  const gpuPanel = useRef<Stats.Panel>(undefined);
   const lastUpdateTime = useRef<number>(performance.now());
   const accumulatorContext = useMemo(() => new AccumulatorContext(), []);
   const { rendererController } = useClientContext();

@@ -24,10 +24,12 @@ const assets = read("src/client/game/renderers/local_dev/harthmere_assets.ts");
 const hud = read("src/client/components/challenges/HarthmereUnifiedHUD.tsx");
 const faces = read("src/shared/harthmere/voxel_faces.ts");
 const guide = read("docs/harthmere/bibles/README-SNAPSHOT-MAP-LANDSCAPE-GUIDE.md");
+const staging = read("src/shared/harthmere/ch1_staging.ts");
 
 ok(guide.includes("Do not fake the world with client-only meshes"), "snapshot map guide rule was checked");
 ok(grove.includes("SNAPSHOT_GROVE_FOUNTAIN_CENTER_X = 496") && grove.includes("SNAPSHOT_GROVE_FOUNTAIN_CENTER_Z = -126"), "Grove tutorial cast is anchored to the live fountain coordinate from the console output");
-ok(grove.includes("authoredPosition: snapshotGroveFountainPosition(0, 0)") && grove.includes("authoredPosition: snapshotGroveFountainPosition(3, -2)") && grove.includes("authoredPosition: snapshotGroveFountainPosition(-5, 2)") && grove.includes("authoredPosition: snapshotGroveFountainPosition(6, 3)"), "Jackie/Rosalyn/Taye/Nia are back around the fountain cluster");
+ok(grove.includes("SNAPSHOT_GROVE_JACKIE_ORIGINAL_SPAWN_POSITION") && grove.includes("authoredPosition: snapshotGroveFountainPosition(3, -2)") && grove.includes("authoredPosition: snapshotGroveFountainPosition(-5, 2)") && grove.includes("authoredPosition: snapshotGroveFountainPosition(6, 3)"), "Jackie keeps her original starter post while Rosalyn/Taye/Nia remain around the fountain cluster");
+ok(staging.includes('whenAllFlags: [CH1_FLAGS.started]') && staging.includes('anchor: "roadhouse_jackie_post"'), "Jackie moves to Chapter 1 locations through the per-player staging layer");
 ok(groveIds.includes("SNAPSHOT_GROVE_LIVE_WORLD_GROUND_Y = 69") && groveIds.includes("SNAPSHOT_GROVE_LIVE_NPC_FEET_Y"), "Grove live NPC feet stay on the y=70 installed-snapshot fountain band");
 ok(resolver.includes("SNAPSHOT_GROVE_LIVE_WORLD_GROUND_Y") && !resolver.includes('mode === "live" ? 69'), "resolver uses the shared live Grove Y constant instead of a duplicated hardcode");
 ok(npcs.includes("SNAPSHOT_GROVE_NPC_ASSET_KEY_VERSION") && npcMeshRouting.includes('jackie: "npcs/jackie"') && npcMeshRouting.includes('taye: "npcs/taye"'), "seeded Grove NPCs prefer their upstream snapshot GLB avatar assets");

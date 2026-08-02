@@ -32,7 +32,7 @@ export const InventoryAltClickUI: React.FunctionComponent<{
   const splitterContext = useInventoryAltClickContext();
   const dragContext = useInventoryDraggerContext();
   const [quantity, setQuantity] = useState<bigint | undefined>();
-  const rootRef = useRef<HTMLDivElement | null>();
+  const rootRef = useRef<HTMLDivElement | null>(null);
   const quantityField = useRef<HTMLInputElement>(null);
   const clientContext = useClientContext();
   const { authManager, resources, reactResources } = clientContext;

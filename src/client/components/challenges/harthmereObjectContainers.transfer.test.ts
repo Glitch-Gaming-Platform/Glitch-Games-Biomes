@@ -47,7 +47,7 @@ const windowMock = {
   },
   addEventListener: () => {},
   removeEventListener: () => {},
-  dispatchEvent: () => true,
+  dispatchEvent: (_event: Event) => true,
   setInterval: () => 0,
   clearInterval: () => {},
 };

@@ -115,6 +115,7 @@ export const HARTHMERE_GLITCH_GARDEN_HOSE_BEHAVIORS = {
   blueprint_complete: behavior("building", "blueprint_complete"),
   boost_placement: behavior("building", "boost_placement"),
   mail_received: behavior("mail_received", "complete"),
+  open_jobs_board: behavior("jobs_board", "open"),
   snapshot_grove_practice_action: behavior(
     "onboarding_practice",
     "practice_action"
@@ -364,7 +365,7 @@ export const HARTHMERE_GLITCH_LIVE_ACTION_BEHAVIORS = {
   ),
   request_jobs_board_mutation: liveAction(
     "jobs_board",
-    "Jobs Board Activity",
+    "Jobs Board",
     "The player accepts, advances, or completes a board job."
   ),
   request_law_reputation_mutation: liveAction(

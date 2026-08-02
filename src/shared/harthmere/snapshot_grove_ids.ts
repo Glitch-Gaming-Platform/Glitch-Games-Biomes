@@ -106,3 +106,23 @@ export const SNAPSHOT_GROVE_LIVE_NPC_FEET_Y =
   SNAPSHOT_GROVE_LIVE_WORLD_GROUND_Y + 1;
 export const SNAPSHOT_GROVE_LIVE_MARKER_Y =
   SNAPSHOT_GROVE_LIVE_WORLD_GROUND_Y + 2;
+
+/**
+ * Jackie's original May 16 snapshot home, taken from entity
+ * 8997551883502307's `npc_metadata.spawn_position` and
+ * `spawn_orientation` in `snapshot_backup.json`.
+ *
+ * This is the shared ECS body's home before Chapter 1. Chapter-specific
+ * locations are per-player puppet projections from `ch1_staging.ts`; moving
+ * the shared body to the road-house removes the Road Ahead giver for every
+ * player who has not started Chapter 1 yet.
+ */
+export const SNAPSHOT_GROVE_JACKIE_ORIGINAL_SPAWN_POSITION: Vec3 = [
+  485.5432697798402,
+  SNAPSHOT_GROVE_LIVE_NPC_FEET_Y,
+  -140.51973378625254,
+];
+export const SNAPSHOT_GROVE_JACKIE_ORIGINAL_SPAWN_ORIENTATION = [
+  -0.4580000000000001,
+  0.0656591685682444,
+] as const satisfies readonly [number, number];

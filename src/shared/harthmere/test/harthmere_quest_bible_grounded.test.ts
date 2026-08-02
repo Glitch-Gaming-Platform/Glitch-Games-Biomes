@@ -268,7 +268,7 @@ export function validateHarthmereQuestBibleGrounded(): HarthmereQuestBibleGround
 
   // Contract 1 + 2: dialogue lines.
   for (const quest of HARTHMERE_QUEST_CATALOG) {
-    const dialogue: Record<string, string> = quest.dialogue;
+    const dialogue = quest.dialogue;
     for (const field of ["offer", "active", "ready", "complete", "fail"] as const) {
       const text = dialogue[field];
       if (typeof text !== "string" || text.length === 0) {

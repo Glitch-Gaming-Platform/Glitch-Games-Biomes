@@ -2,5 +2,9 @@
   "extension": ["ts"],
   "timeout": 5000,
   "slow": 500,
-  "require": ["ts-node/register", "src/server/test/global_setup.ts"]
+  "require": [
+    "ts-node/register",
+    "tsconfig-paths/register",
+    "src/server/test/global_setup.ts"
+  ]
 }

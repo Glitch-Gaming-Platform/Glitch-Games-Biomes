@@ -5,11 +5,12 @@ import {
 } from "../inventoryAdapterHelpers";
 import { anItem } from "@/shared/game/item";
 import { NATIVE_ROAD_AHEAD_MUCKWAD_ITEM_ID } from "@/shared/harthmere/native_road_ahead_contract";
+import type { BiomesId } from "@/shared/ids";
 
 describe("native Road Ahead Muckwad inventory projection", () => {
   it("does not count a native hotbar stack as a 41st backpack slot", () => {
     const backpack = Array.from({ length: 40 }, (_, index) => ({
-      item: anItem(index + 1),
+      item: anItem((index + 1) as BiomesId),
       count: 1n,
     }));
     const hotbar = [

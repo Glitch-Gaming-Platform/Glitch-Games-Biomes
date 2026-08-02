@@ -115,8 +115,8 @@ export function makeCh1WorldPhaseRenderer(
   return {
     name: "chapter1WorldPhase",
     draw(scenes: Scenes) {
-      const player = resources.get("/scene/local_player");
-      const position = player.position;
+      const localPlayer = resources.get("/scene/local_player");
+      const position = localPlayer?.player?.position;
       // Warp/respawn transitions briefly retain the local-player resource while
       // clearing its simulation position. This renderer is decorative and must
       // skip that frame instead of taking the entire game loop down by indexing

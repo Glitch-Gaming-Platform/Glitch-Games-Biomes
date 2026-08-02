@@ -25,14 +25,19 @@ describe("admin ECS ID allocation", () => {
     const occupied = 3276660734166736 as BiomesId;
     const available = 3276660734166737 as BiomesId;
     const checked: BiomesId[][] = [];
+    async function has(id: BiomesId): Promise<BiomesId | undefined>;
+    async function has(ids: BiomesId[]): Promise<BiomesId[]>;
+    async function has(
+      idsOrId: BiomesId | BiomesId[]
+    ): Promise<BiomesId | undefined | BiomesId[]> {
+      const ids = Array.isArray(idsOrId) ? idsOrId : [idsOrId];
+      checked.push([...ids]);
+      const matches = ids.filter((id) => id === occupied);
+      return Array.isArray(idsOrId) ? matches : matches[0];
+    }
     const generator = ecsCollisionSafeIdGenerator(
       new SequenceIdGenerator([occupied, available]),
-      {
-        has: async (ids: BiomesId[]) => {
-          checked.push([...ids]);
-          return ids.filter((id) => id === occupied);
-        },
-      }
+      { has }
     );
 
     assert.equal(await generator.next(), available);

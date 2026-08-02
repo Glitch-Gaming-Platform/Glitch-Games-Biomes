@@ -8,7 +8,10 @@ import {
 } from "@/shared/harthmere/mmo_crafting_catalogue";
 import { HARTHMERE_NATIVE_ITEM_ID_MANIFEST } from "@/shared/harthmere/harthmere_native_id_manifest";
 import { harthmereNativeBiomesIdForItemId } from "@/shared/harthmere/harthmere_native_item_ids";
-import { HARTHMERE_ENERGY_WEAPONS } from "@/shared/harthmere/energy_weapon_catalog";
+import {
+  HARTHMERE_ENERGY_WEAPONS,
+  type HarthmereEnergyWeaponId,
+} from "@/shared/harthmere/energy_weapon_catalog";
 import {
   HARTHMERE_PREMIUM_WEAPONS,
   HARTHMERE_PREMIUM_WEAPON_VENDOR_STOCK,
@@ -172,7 +175,7 @@ describe("Harthmere native item presentation", () => {
       for (const stock of vendor.stocks) {
         if (
           generalVendorIds.has(stock.itemId) ||
-          securityExclusiveIds.has(stock.itemId)
+          securityExclusiveIds.has(stock.itemId as HarthmereEnergyWeaponId)
         ) {
           counts.set(stock.itemId, (counts.get(stock.itemId) ?? 0) + 1);
         }

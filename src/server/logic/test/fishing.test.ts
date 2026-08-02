@@ -36,7 +36,7 @@ describe("native fishing authority", () => {
             action: "fish",
             isTool: true,
             stackable: 1n,
-          } as Biscuit,
+          } as unknown as Biscuit,
         ],
         [
           BikkieIds.koi,
@@ -46,7 +46,7 @@ describe("native fishing authority", () => {
             displayName: "Koi",
             stackable: 99n,
             fishConditions: [{} as never],
-          } as Biscuit,
+          } as unknown as Biscuit,
         ],
       ])
     );

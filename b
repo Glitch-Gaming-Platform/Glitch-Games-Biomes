@@ -6,11 +6,9 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 
-# Prefer a repo-compatible Node runtime before any Python bootstrap work starts.
-# Homebrew's `node` may point at Node 24+, but this repo's native dependencies
-# such as v8-profiler-next are built for the LTS-era toolchain. If a Node 20
-# install exists through nvm, Homebrew, fnm, Volta, or an explicit override, put
-# it first on PATH so yarn/corepack/node-gyp all use the same compatible Node.
+# Prefer this fork's declared Node 24 LTS runtime before any Python bootstrap
+# work starts. Keeping yarn, corepack, node-gyp, tests, and build scripts on one
+# Node major avoids silently generating incompatible native/build artifacts.
 node_major() {
     local node_bin="$1"
     "$node_bin" -p "process.versions.node.split('.')[0]" 2>/dev/null || true
@@ -21,12 +19,10 @@ prepend_node_bin_if_compatible() {
     if [ -x "$bin_dir/node" ]; then
         local major
         major="$(node_major "$bin_dir/node")"
-        case "$major" in
-            18|20|21|22)
-                export PATH="$bin_dir:$PATH"
-                return 0
-                ;;
-        esac
+        if [ "$major" = "24" ]; then
+            export PATH="$bin_dir:$PATH"
+            return 0
+        fi
     fi
     return 1
 }
@@ -41,21 +37,15 @@ else
         CURRENT_NODE_MAJOR="$(node_major "$(command -v node)")"
     fi
 
-    # Only override PATH when there is no node or when the active one is too new
-    # for this repo's native dependency tree. Prefer Node 20, then 22, then 18.
-    if [ -z "$CURRENT_NODE_MAJOR" ] || [ "$CURRENT_NODE_MAJOR" -ge 23 ] 2>/dev/null; then
+    if [ "$CURRENT_NODE_MAJOR" != "24" ]; then
         for NODE_BIN_DIR in \
-            "$HOME"/.nvm/versions/node/v20*/bin \
-            /opt/homebrew/opt/node@20/bin \
-            /usr/local/opt/node@20/bin \
-            "$HOME"/.fnm/node-versions/v20*/installation/bin \
+            "$HOME"/.nvm/versions/node/v24*/bin \
+            /opt/homebrew/opt/node@24/bin \
+            /usr/local/opt/node@24/bin \
+            "$HOME"/.fnm/node-versions/v24*/installation/bin \
             "$HOME"/.volta/bin \
-            "$HOME"/.nvm/versions/node/v22*/bin \
-            /opt/homebrew/opt/node@22/bin \
-            /usr/local/opt/node@22/bin \
-            "$HOME"/.nvm/versions/node/v18*/bin \
-            /opt/homebrew/opt/node@18/bin \
-            /usr/local/opt/node@18/bin; do
+            /opt/homebrew/bin \
+            /usr/local/bin; do
             if prepend_node_bin_if_compatible "$NODE_BIN_DIR"; then
                 break
             fi
@@ -63,17 +53,29 @@ else
     fi
 fi
 
-# Prefer an explicit override, then the project virtualenv, then stable Python
-# versions known to work with the Biomes tooling. Homebrew's `python3` may point
-# at a newer externally-managed Python, which cannot accept project pip installs.
+python_minor() {
+    "$1" -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")' 2>/dev/null || true
+}
+
+python_is_312() {
+    [ -x "$1" ] && [ "$(python_minor "$1")" = "3.12" ]
+}
+
+# The active fork uses one Python ABI everywhere: local tooling, Bazel, CI, and
+# production images. Refuse to silently reuse an older .venv because native
+# Voxeloo wheels are not portable between Python minors.
 if [ -n "${BIOMES_PYTHON:-}" ]; then
+    if ! python_is_312 "$BIOMES_PYTHON"; then
+        echo "BIOMES_PYTHON must point to Python 3.12; got $(python_minor "$BIOMES_PYTHON")." >&2
+        exit 1
+    fi
     PYTHON="$BIOMES_PYTHON"
-elif [ -x "$SCRIPT_DIR/.venv/bin/python" ]; then
+elif python_is_312 "$SCRIPT_DIR/.venv/bin/python"; then
     PYTHON="$SCRIPT_DIR/.venv/bin/python"
 else
     PYTHON=""
-    for CANDIDATE in python3.10 python3.11 python3.12 python3.9 python3.13 python3 python; do
-        if command -v "$CANDIDATE" >/dev/null 2>&1; then
+    for CANDIDATE in python3.12 python3; do
+        if command -v "$CANDIDATE" >/dev/null 2>&1 && python_is_312 "$(command -v "$CANDIDATE")"; then
             PYTHON="$(command -v "$CANDIDATE")"
             break
         fi
@@ -81,7 +83,7 @@ else
 fi
 
 if [ -z "$PYTHON" ]; then
-    echo "Python is not installed or is not on PATH. Install Python 3.10+ and try again." >&2
+    echo "Python 3.12 is required and was not found. Install python@3.12 and recreate .venv." >&2
     exit 1
 fi
 

@@ -88,7 +88,9 @@ describe("Chapter 1 remaining implementation contracts", () => {
         [slot.arrival[0] - 0.5, slot.arrival[1], slot.arrival[2] - 0.5],
         [slot.arrival[0] + 0.5, slot.arrival[1] + 2, slot.arrival[2] + 0.5],
       ],
-      (hit) => safeHits.push(hit)
+      (hit) => {
+        safeHits.push(hit);
+      }
     );
     assert.equal(
       safeHits.length,
@@ -103,7 +105,9 @@ describe("Chapter 1 remaining implementation contracts", () => {
         [slot.maxX - 2, 64, -1],
         [slot.maxX + 1, 66, 1],
       ],
-      (hit) => slotEdgeHits.push(hit)
+      (hit) => {
+        slotEdgeHits.push(hit);
+      }
     );
     assert.ok(slotEdgeHits.length > 0, "the detached slot keeps its own wall");
 

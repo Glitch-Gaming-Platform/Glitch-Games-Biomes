@@ -11,6 +11,11 @@ build:debug --define build_config=debug -c dbg --copt=-g
 build:fastbuild --define build_config=fastbuild -c fastbuild
 build --define build_config=fastbuild -c fastbuild
 
+# Voxeloo/Cereal intentionally use C++ exceptions across both native and
+# Emscripten builds. Emscripten 6 defaults to -fno-exceptions unless this
+# toolchain feature is explicitly enabled.
+build --features=exceptions
+
 # Windows-specific reldebug config (useful for profiling on windows)
 build:windows_release -c opt  --copt="/O2" --copt="/Gy" --copt="/arch:AVX2" --copt="/DNDEBUG"
 build:windows_reldebug -c opt  --copt="/O2" --copt="/Gy" --copt="/arch:AVX2" --copt="/DNDEBUG" --copt="/Z7" --linkopt="/DEBUG:FULL"

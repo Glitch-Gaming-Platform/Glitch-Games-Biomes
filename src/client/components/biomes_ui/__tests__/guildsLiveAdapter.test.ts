@@ -4,6 +4,7 @@ import assert from "assert";
 import {
   createBiomesUIGuildsAdapter,
   fetchBiomesUIGuildState,
+  formatBiomesUIGuildPlayerError,
   normalizeBiomesUIGuildSnapshot,
   submitBiomesUIGuildMutation,
   type BiomesUIGuildClientSnapshot,
@@ -237,7 +238,32 @@ describe("BiomesUI guild live adapter", () => {
 
     await assert.rejects(
       () => submitBiomesUIGuildMutation("kick_member", { guildId: "guild_iron_1", targetActorId: "player_b" }, { fetchImpl, requestId: "fixed_request" }),
-      /missing_permission:manage_members/,
+      /guild rank does not allow/i,
+    );
+  });
+
+
+  it("turns guild capacity rejections into actionable player messages", async () => {
+    assert.equal(
+      formatBiomesUIGuildPlayerError("guild_rejected:guild_bank_full"),
+      "The guild bank has no room for that item. Remove an item or make room in its existing stack.",
+    );
+    assert.equal(
+      formatBiomesUIGuildPlayerError("guild_rejected:guild_bank_max_slots_reached"),
+      "The guild bank is fully upgraded. Remove or consolidate items before depositing more.",
+    );
+    assert.equal(
+      formatBiomesUIGuildPlayerError("guild_rejected:inventory_full"),
+      "Your backpack is full. Free a backpack slot and try again.",
+    );
+
+    const fetchImpl = (async () => ({
+      ok: true,
+      json: async () => ({ ok: true, backendMutation: { warnings: ["guild_rejected:guild_bank_full"] } }),
+    })) as any;
+    await assert.rejects(
+      () => submitBiomesUIGuildMutation("guild_bank_deposit", { guildId: "guild_iron_1", itemId: "stone", count: 1 }, { fetchImpl, requestId: "capacity_request" }),
+      /guild bank has no room/i,
     );
   });
 
@@ -351,11 +377,11 @@ describe("BiomesUI guild live adapter", () => {
 
     await assert.rejects(
       () => submitBiomesUIGuildMutation("collect_tax" as any, { guildId: "guild_iron_1", amountGold: 100 }, { fetchImpl }),
-      /server_only_operation:collect_tax/,
+      /not available to players/,
     );
     await assert.rejects(
       () => submitBiomesUIGuildMutation("add_xp" as any, { guildId: "guild_iron_1", xpDelta: 100 } as any, { fetchImpl }),
-      /server_only_operation:add_xp/,
+      /not available to players/,
     );
   });
 });

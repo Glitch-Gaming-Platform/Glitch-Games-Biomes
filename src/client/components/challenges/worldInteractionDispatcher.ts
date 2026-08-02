@@ -247,9 +247,9 @@ export function useWorldInteractionCandidate(
   candidate: WorldInteractionCandidate | undefined,
   primaryKeyCode = "KeyF"
 ) {
-  const registrationToken = useRef<symbol>();
+  const registrationToken = useRef<symbol>(undefined);
   const registration =
-    useRef<ReturnType<typeof registerWorldInteractionCandidate>>();
+    useRef<ReturnType<typeof registerWorldInteractionCandidate>>(undefined);
   const selectedToken = useSyncExternalStore(
     subscribe,
     () => selectedTokenForKey(primaryKeyCode),

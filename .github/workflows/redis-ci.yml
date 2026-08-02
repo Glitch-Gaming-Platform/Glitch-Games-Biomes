@@ -29,12 +29,16 @@ jobs:
           token: ${{ secrets.BIOMES_DEPENDENCY_GITHUB_TOKEN }}
       - name: bazel setup
         uses: ./.github/actions/bazel
+      - name: Select Python 3.12
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
       - name: Create/activate virtual environment.
         run: python3 -m venv .venv && echo "$(pwd)/.venv/bin" >> $GITHUB_PATH
       - name: Start Redis
         uses: supercharge/redis-github-action@1.4.0
         with:
-          redis-version: 7.0.8-alpine
+          redis-version: 8.8.1-alpine
       - run: ./b test -b -p "src/**/{world,firehose,chat,discovery,distributed_notifier,election}/{/test/*.ts,/*.test.ts}"
         env:
           REDIS_TESTS: 1

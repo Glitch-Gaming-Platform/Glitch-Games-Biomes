@@ -1,5 +1,8 @@
 import { materializeLazyChange } from "@/server/shared/ecs/lazy";
-import type { LeaderboardPosition } from "@/server/shared/world/api";
+import type {
+  LeaderboardCategory,
+  LeaderboardPosition,
+} from "@/server/shared/world/api";
 import type { RedisWorld } from "@/server/shared/world/redis";
 import type { RedisWorldTestHelper } from "@/server/shared/world/test/test_helpers";
 import {
@@ -561,7 +564,18 @@ describe("Redis Apply Tests", () => {
     );
   });
 
-  it("records portable LT leaderboards for simple-race quest completion", async () => {
+  it("encodes repeated nested leaderboard events on Node 24", async () => {
+    const events = Array.from({ length: 64 }, (_, index) => ({
+      kind: "place" as const,
+      entityId: (10_000 + index) as BiomesId,
+      item: anItem(BikkieIds.dirt),
+      position: [index, index % 7, -index] as [number, number, number],
+    }));
+
+    assert.equal((await world.apply({ events })).outcome, "success");
+  });
+
+  it("records native Redis LT leaderboards for simple-race quest completion", async () => {
     const RACER = 7788 as BiomesId;
     const MINIGAME = 9002 as BiomesId;
 
@@ -609,28 +623,30 @@ describe("Redis Apply Tests", () => {
     );
   });
 
-  it("records portable LT and GT values through the direct leaderboard API", async () => {
+  it("records native Redis LT and GT values through the direct leaderboard API", async () => {
     const id = 7799 as BiomesId;
     const leaderboard = world.leaderboard();
+    const lowCategory = "test:portable:low" as LeaderboardCategory;
+    const highCategory = "test:portable:high" as LeaderboardCategory;
 
-    await leaderboard.record("test:portable:low", "LT", id, 12);
-    await leaderboard.record("test:portable:low", "LT", id, 15);
-    await leaderboard.record("test:portable:low", "LT", id, 8);
-    await leaderboard.record("test:portable:high", "GT", id, 12);
-    await leaderboard.record("test:portable:high", "GT", id, 9);
-    await leaderboard.record("test:portable:high", "GT", id, 18);
+    await leaderboard.record(lowCategory, "LT", id, 12);
+    await leaderboard.record(lowCategory, "LT", id, 15);
+    await leaderboard.record(lowCategory, "LT", id, 8);
+    await leaderboard.record(highCategory, "GT", id, 12);
+    await leaderboard.record(highCategory, "GT", id, 9);
+    await leaderboard.record(highCategory, "GT", id, 18);
 
     assert.equal(
       (
         await leaderboard.getValues([
           {
-            category: "test:portable:low",
+            category: lowCategory,
             window: "alltime",
             order: "ASC",
             id,
           },
           {
-            category: "test:portable:high",
+            category: highCategory,
             window: "alltime",
             order: "DESC",
             id,
@@ -643,7 +659,7 @@ describe("Redis Apply Tests", () => {
       (
         await leaderboard.getValues([
           {
-            category: "test:portable:high",
+            category: highCategory,
             window: "alltime",
             order: "DESC",
             id,

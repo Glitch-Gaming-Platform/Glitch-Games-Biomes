@@ -39,7 +39,7 @@ export function overlayProjectionParams(
 }
 
 export function useAppliedOverlayPosition(
-  positionedDiv: React.RefObject<HTMLDivElement>,
+  positionedDiv: React.RefObject<HTMLDivElement | null>,
   key: string,
   forceFull?: boolean
 ) {

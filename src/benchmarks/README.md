@@ -33,4 +33,7 @@ If you open any `.cpuprofile` file in VS Code, it will automatically interpret i
 
 The ([Mocha](https://mochajs.org/)) tests are customized to be run under a profiler by setting up some [root hook plugins](https://mochajs.org/#root-hook-plugins), which can be found in the [root_hooks.ts] file.
 
-The V8 Profiler is comandeered via the [v8-profiler-next](https://www.npmjs.com/package/v8-profiler-next) node package.
+CPU profiles are captured through Node's built-in `node:inspector` Profiler
+domain. This produces Chrome DevTools / VS Code compatible `.cpuprofile` files
+without a native addon, so benchmark installs follow the same Node version as
+the rest of the fork.

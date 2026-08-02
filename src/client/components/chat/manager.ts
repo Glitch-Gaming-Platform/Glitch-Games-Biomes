@@ -960,10 +960,12 @@ function emoteStringToEmoteType(emoteString: string): EmoteType | undefined {
   switch (emoteString) {
     case "clap":
       return "applause";
-    default:
-      return (
-        parseHarthmereCinematicExpression(emoteString) ??
-        zEmoteType.safeParse(emoteString).data
-      );
+    default: {
+      const cinematicExpression =
+        parseHarthmereCinematicExpression(emoteString);
+      if (cinematicExpression) return cinematicExpression;
+      const parsed = zEmoteType.safeParse(emoteString);
+      return parsed.success ? parsed.data : undefined;
+    }
   }
 }

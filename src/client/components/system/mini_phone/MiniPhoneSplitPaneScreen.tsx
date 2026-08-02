@@ -2,7 +2,7 @@ import { Img } from "@/client/components/system/Img";
 import type { MoreMenuItem } from "@/client/components/system/MoreMenu";
 import { MoreMenu } from "@/client/components/system/MoreMenu";
 import { useExistingMiniPhoneContext } from "@/client/components/system/mini_phone/MiniPhoneContext";
-import type { PropsWithChildren, ReactChild, ReactElement } from "react";
+import type { PropsWithChildren, ReactElement, ReactNode } from "react";
 import React from "react";
 import arrowLeftIcon from "/public/hud/icon-16-chevron-left.png";
 import xIcon from "/public/hud/icon-16-x.png";
@@ -57,12 +57,12 @@ export const MiniPhoneSplitPaneScreen: React.FunctionComponent<
   PropsWithChildren<{}>
 > = ({ children }) => {
   const context = useExistingMiniPhoneContext();
-  let titleContent: ReactChild | undefined;
-  let leftBarContent: ReactChild | undefined;
-  let rightBarContent: ReactChild | undefined;
-  let leftPaneContent: ReactChild | undefined;
-  let rightPaneContent: ReactChild | undefined;
-  const extraChildren: ReactChild[] = [];
+  let titleContent: ReactNode;
+  let leftBarContent: ReactNode;
+  let rightBarContent: ReactNode;
+  let leftPaneContent: ReactNode;
+  let rightPaneContent: ReactNode;
+  const extraChildren: ReactNode[] = [];
 
   React.Children.forEach(children, (child) => {
     switch ((child as ReactElement)?.type) {
@@ -70,37 +70,37 @@ export const MiniPhoneSplitPaneScreen: React.FunctionComponent<
         if (leftBarContent !== undefined) {
           throw new Error("Duplicate left item in react miniphone");
         }
-        leftBarContent = child as ReactChild;
+        leftBarContent = child;
         break;
       case MiniPhoneSplitPaneScreenRightItem:
         if (rightBarContent !== undefined) {
           throw new Error("Duplicate right item in react miniphone");
         }
-        rightBarContent = child as ReactChild;
+        rightBarContent = child;
         break;
       case MiniPhoneSplitPaneScreenTitle:
         if (titleContent !== undefined) {
           throw new Error("Duplicate title item in react miniphone");
         }
-        titleContent = child as ReactChild;
+        titleContent = child;
         break;
 
       case MiniPhoneSplitPaneScreenLeftPane:
         if (leftPaneContent !== undefined) {
           throw new Error("Duplicate screen item in react miniphone");
         }
-        leftPaneContent = child as ReactChild;
+        leftPaneContent = child;
         break;
 
       case MiniPhoneSplitPaneScreenRightPane:
         if (rightPaneContent !== undefined) {
           throw new Error("Duplicate screen item in react miniphone");
         }
-        rightPaneContent = child as ReactChild;
+        rightPaneContent = child;
         break;
 
       default:
-        extraChildren.push(child as ReactChild);
+        extraChildren.push(child);
         break;
     }
   });

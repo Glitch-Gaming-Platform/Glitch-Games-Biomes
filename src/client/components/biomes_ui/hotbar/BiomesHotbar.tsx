@@ -11,6 +11,7 @@
 
 import * as React from "react";
 import { useCallback, useEffect, useState } from "react";
+import { harthmerePlayerCapacityMessage } from "@/client/components/harthmere_capacity_messages";
 import { Highlightable } from "../highlight/HighlightOverlay";
 import { UI_IDS } from "../uniqueIds";
 
@@ -78,9 +79,9 @@ export const BiomesHotbar: React.FunctionComponent<BiomesHotbarProps> = ({
         await action();
       } catch (error) {
         setActionError(
-          error instanceof Error
-            ? error.message
-            : "That action could not be completed."
+          harthmerePlayerCapacityMessage(
+            error instanceof Error ? error.message : error
+          ) ?? "That action could not be completed."
         );
       } finally {
         setPendingAction(undefined);

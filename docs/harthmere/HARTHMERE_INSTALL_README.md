@@ -11,7 +11,7 @@ It covers the systems added during the recent Test Driven Game Development pass:
 - mount and pet ownership systems
 - inventory UI guidance, item tooltips, and safe-to-sell warnings
 - dialogue cleanup, non-annoying dialogue rules, choice safety, and server-authoritative dialogue contracts
-- React 18 / Node 20 dependency cleanup needed for third-party NPC AI packages
+- React 19 / Node 24 dependency cleanup needed for third-party NPC AI packages
 
 The goal is not just to have features. The goal is to have features that are hard to exploit, testable, and safe to expand.
 
@@ -25,11 +25,11 @@ Primary project path used during this work:
 /Users/devindixon/Development/biomes-game
 ```
 
-Recommended Node/npm versions used during the dependency cleanup:
+Required Node version and the npm version currently bundled with it:
 
 ```bash
-node v20.20.2
-npm 10.8.2
+node v24.18.1
+npm 11.x
 ```
 
 Use the project root for all commands:
@@ -50,13 +50,15 @@ The third-party NPC AI pass added real packages for AI adapters:
 - `behavior3js`
 - `recast-navigation`
 
-The dependency cleanup also migrated several React 18 / Node 20 conflict packages:
+The dependency cleanup also migrated the React 19 / Node 24 conflict packages,
+including the Node-ABI-sensitive zRPC WebSocket runtime:
 
 - `@silevis/reactgrid` to the React 18 compatible line
 - `emoji-mart` to v5 split packages
 - `react-json-view` to `react18-json-view`
 - removed obsolete Stylelint Prettier config packages for Stylelint 15+
 - updated Kubernetes/ws-related compatibility targets
+- upgraded `uWebSockets.js` to the pinned Node 24-capable 20.69.0 release
 
 Use the guarded install script instead of raw guessing:
 

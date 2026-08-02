@@ -74,7 +74,7 @@ export const EditCharacterScreen: React.FunctionComponent<{
   const [usernameField, setUsernameField] = useState("");
   const [saving, setSaving] = useState(false);
   const [currentUsername, setCurrentUsername] = useState("");
-  const profilePicPrep = useRef<[string, string] | undefined>();
+  const profilePicPrep = useRef<[string, string] | undefined>(undefined);
   const miniPhone = useExistingMiniPhoneContext();
 
   const [badUsernameReason, setBadUsernameReason] = useState<

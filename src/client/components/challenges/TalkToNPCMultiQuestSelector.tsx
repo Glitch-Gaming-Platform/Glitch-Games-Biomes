@@ -30,7 +30,7 @@ export const TalkToNPCMultiQuestSelector: React.FunctionComponent<{
   const maxConcurrentQuests = questGiver?.concurrent_quests ?? 0;
   const [voiceDialogText, setVoiceDialogText] = useState<string | undefined>();
   const [voiceQuerying, setVoiceQuerying] = useState(false);
-  const voiceMessageContext = useRef<string | undefined>();
+  const voiceMessageContext = useRef<string | undefined>(undefined);
 
   useEffect(() => {
     voiceMessageContext.current = undefined;

@@ -136,6 +136,13 @@ describe("Chapter 1 native browser-runner contracts", () => {
     assert.match(runner, /if \(step\.id === "take_jobs"\)/);
     assert.match(runner, /if \(step\.id === "meet_the_suppliers"\)/);
     assert.match(runner, /state\.economy\.vendorTransactions/);
+    assert.match(runner, /initialSupplierCount/);
+    assert.match(runner, /visitedSupplierIds/);
+    assert.match(runner, /candidate\.label === body\.targetLabel/);
+    assert.doesNotMatch(
+      runner,
+      /response\.body\.requirement\?\.current === index/
+    );
     assert.match(runner, /nativeGold\(entity\) === BigInt\(checkpoint\.gold\)/);
     assert.doesNotMatch(
       runner,
@@ -164,6 +171,38 @@ describe("Chapter 1 native browser-runner contracts", () => {
     );
   });
 
+  it("fails fast on Redis transport and preserves promoted cast identity", () => {
+    assert.match(runner, /function assertRedisTransportReady\(\)/);
+    assert.match(
+      runner,
+      /\["-h", host, "-p", String\(port\), "--raw", "PING"\]/
+    );
+    assert.match(runner, /REDIS PREFLIGHT PONG/);
+    assert.match(
+      runner,
+      /member\.key === "augur9" \? "Mucked Robot" : member\.displayName/
+    );
+    assert.match(runner, /await holdChapter1AuditGates\(first, gateIds\)/);
+    assert.match(runner, /candidate\.visible &&\s+candidate\.open > 0/);
+    assert.match(
+      runner,
+      /finally \{\s+await releaseChapter1AuditGates\(first\)/
+    );
+    assert.match(fastGuide, /Docker Desktop does not route host\s+traffic/);
+    assert.match(fastGuide, /nonzero\s+supplier progress/);
+    assert.match(fastGuide, /authoritative ECS label remains `Mucked Robot`/);
+  });
+
+  it("can require a desktop-only HUD in a headless desktop viewport", () => {
+    assert.match(runner, /HARTHMERE_E2E_DESKTOP_CONTROLS_ONLY/);
+    assert.match(runner, /if \(!desktopControlsOnly\) \{/);
+    assert.match(runner, /data-biomes-mobile-controls/);
+    assert.match(runner, /data-biomes-mobile-hotbar/);
+    assert.match(runner, /wakeUpBeforeInput/);
+    assert.match(runner, /desktop screenshot: Grove center/);
+    assert.match(fastGuide, /pointerless desktop fallback/);
+  });
+
   it("leaves Jobs Board and vendor-owned interactions in control", () => {
     assert.match(runner, /satisfyChapter1ExternalSystemRequirement/);
     assert.match(runner, /requirement\?\.blocksChapterInteraction/);
@@ -171,7 +210,8 @@ describe("Chapter 1 native browser-runner contracts", () => {
     assert.match(runner, /harthmere-jobs-board-world-prompt/);
     assert.match(runner, /button\[aria-label="Read Jobs Board"\]/);
     assert.match(runner, /installChapter1CompletedGroveJobEvidence/);
-    assert.match(runner, /CH1_GROVE_SUPPLIER_ROUTE\.entries\(\)/);
+    assert.match(runner, /CH1_GROVE_SUPPLIER_ROUTE\.find\(/);
+    assert.match(runner, /supplier evidence advanced after/);
     assert.match(runner, /installChapter1SupplierTransactionEvidence/);
     assert.match(runner, /external evidence reaches Chapter 1/);
     assert.match(runner, /state\.body\.requirement\?\.ready === true/);
@@ -248,7 +288,7 @@ describe("Chapter 1 native browser-runner contracts", () => {
       runner,
       /delayed player-mesh\/bootstrap createPlayer row finishes/
     );
-    assert.match(runner, /recoveredChapter1ReadOnlyPollAbort/);
+    assert.match(runner, /abortedChapter1ReadOnlyPoll/);
     assert.match(runner, /chapter1ReadOnlyAction === "state"/);
     assert.match(
       fastGuide,

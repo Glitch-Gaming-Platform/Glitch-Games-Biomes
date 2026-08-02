@@ -34,11 +34,6 @@ check("installer does not use the npm force peer bypass flag", !/(^|\s)npm\s+ins
 check("installer does not use the npm legacy peer bypass flag", !/(^|\s)npm\s+install[^\n]*\s--legacy-peer-deps(\s|$)/.test(executableInstaller));
 
 check(
-  "installer can inspect @silevis/reactgrid peer metadata",
-  installer.includes("npm view @silevis/reactgrid@^4.1.17 peerDependencies --json") ||
-    /npm view\s+@silevis\/reactgrid[^\n]+peerDependencies/.test(installer)
-);
-check(
   "installer checks yuka package target",
   installer.includes("npm view yuka@^0.7.8 version --json") ||
     /npm view\s+yuka[^\n]+version/.test(installer)

@@ -198,11 +198,11 @@ export const Chapter1NativeObjectivePrompt: React.FunctionComponent = () => {
   const [dialoguePageIndex, setDialoguePageIndex] = useState(0);
   const [containmentOpen, setContainmentOpen] = useState(false);
   const [sleepTransition, setSleepTransition] = useState(false);
-  const autoCompletedKey = useRef<string>();
-  const introCutsceneRequested = useRef<string>();
+  const autoCompletedKey = useRef<string>(undefined);
+  const introCutsceneRequested = useRef<string>(undefined);
   const busyRef = useRef(false);
   const modalOpenRef = useRef(false);
-  const refreshInFlight = useRef<Promise<void>>();
+  const refreshInFlight = useRef<Promise<void>>(undefined);
   const shouldReturnPointerLock = useRef<PointerLockUnlockWhileOpenReturnRef>({
     current: false,
   });

@@ -54,9 +54,9 @@ export const NpcSpeechInputButton: React.FunctionComponent<{
   onStateChange,
   onTranscript,
 }) => {
-  const recorderRef = useRef<AzureSpeechWavRecorder | undefined>();
-  const recordingTimeoutRef = useRef<number | undefined>();
-  const recordingStartedAtRef = useRef<number | undefined>();
+  const recorderRef = useRef<AzureSpeechWavRecorder | undefined>(undefined);
+  const recordingTimeoutRef = useRef<number | undefined>(undefined);
+  const recordingStartedAtRef = useRef<number | undefined>(undefined);
   const stateRef = useRef<NpcSpeechButtonState>("idle");
   // Refs provide synchronous guards for document-level key events and async
   // microphone permission callbacks, where React state may still be stale.

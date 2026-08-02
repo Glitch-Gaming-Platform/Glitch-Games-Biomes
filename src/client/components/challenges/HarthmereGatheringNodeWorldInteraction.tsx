@@ -51,7 +51,7 @@ export function HarthmereGatheringNodeWorldInteraction({
     { message: string; ok: boolean } | undefined
   >();
   const [pending, setPending] = React.useState(false);
-  const feedbackTimer = React.useRef<ReturnType<typeof setTimeout>>();
+  const feedbackTimer = React.useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const playerPosition = harthmereJobsBoardPlayerPosition(localPlayer, camera);
   const prompt = React.useMemo(

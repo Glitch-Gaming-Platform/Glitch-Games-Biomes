@@ -72,6 +72,7 @@ describe("boss magic presentation", () => {
   it("moves giant-boss magic toward the target-facing body surface", () => {
     for (const boss of HARTHMERE_BOSS_VISUAL_ASSETS) {
       const tuning = harthmereBossNativeCombatTuningForBossId(boss.id);
+      if (!tuning) assert.fail(`missing native combat tuning for ${boss.id}`);
       const targetDistance = Math.max(
         ...tuning.attacks.map(({ attackDistance }) => attackDistance)
       );

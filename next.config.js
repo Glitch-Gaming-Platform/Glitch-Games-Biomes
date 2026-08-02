@@ -40,6 +40,7 @@ module.exports = withBundleAnalyzer(
     reactStrictMode: false,
     poweredByHeader: false,
     compress: !isProd,
+    outputFileTracingRoot: __dirname,
 
     async redirects() {
       return [
@@ -63,17 +64,6 @@ module.exports = withBundleAnalyzer(
             {
               key: "Cache-Control",
               value: "public, max-age=86400, must-revalidate",
-            },
-          ],
-        },
-        {
-          source: "/_next/static/media/:path*",
-          headers: [
-            // Next.js fingerprints these filenames already (hash in name),
-            // so immutable is safe.
-            {
-              key: "Cache-Control",
-              value: "public, max-age=31536000, immutable",
             },
           ],
         },
@@ -142,6 +132,10 @@ module.exports = withBundleAnalyzer(
       const experiments = config.experiments || {};
       config.experiments = { ...experiments, asyncWebAssembly: true };
       config.output.assetModuleFilename = `static/[hash][ext]`;
+      config.output.environment = {
+        ...config.output.environment,
+        asyncFunction: true,
+      };
       if (isServer && !dev) {
         // See comments around WasmChunksFixPlugin below, this works around
         // an issue in nextjs when building for prod.
@@ -216,17 +210,6 @@ module.exports = withBundleAnalyzer(
         zlib: false,
       };
       return config;
-    },
-
-    eslint: {
-      dirs: [
-        "src/client",
-        "src/pages",
-        "src/server",
-        "src/shared",
-        "src/galois/js",
-      ],
-      ignoreDuringBuilds: true,
     },
 
     typescript: {

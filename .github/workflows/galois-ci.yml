@@ -35,6 +35,10 @@ jobs:
           token: ${{ secrets.BIOMES_DEPENDENCY_GITHUB_TOKEN }}
       - name: bazel setup
         uses: ./.github/actions/bazel
+      - name: Select Python 3.12
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
       - name: Create/activate virtual environment.
         run: python3 -m venv .venv && echo "$(pwd)/.venv/bin" >> $GITHUB_PATH
       - run: ./b ts-deps build

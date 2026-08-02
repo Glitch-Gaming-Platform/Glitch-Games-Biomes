@@ -111,14 +111,16 @@ def _apply_prettier_impl(ctx):
         ctx.actions.run_shell(
             outputs = [out_file],
             inputs = [src],
-            tools = [ctx.executable._node] + ctx.files._prettier_files,
+            tools = [ctx.executable._node, ctx.file._prettier] + ctx.files._prettier_files,
             progress_message = "Prettier-ifying '%s'" % src_rel,
             arguments = [
                 ctx.executable._node.path,
+                ctx.file._prettier.path,
                 src.path,
                 out_file.path,
+                src_rel,
             ],
-            command = "$1 node_modules/prettier/bin-prettier.js $2 > $3",
+            command = "$1 $2 --stdin-filepath $5 < $3 > $4",
         )
         out_files.append(out_file)
 
@@ -149,6 +151,10 @@ apply_prettier = rule(
         "_prettier_files": attr.label(
             default = "//:prettier_files",
             allow_files = True,
+        ),
+        "_prettier": attr.label(
+            default = "//:node_modules/prettier/bin/prettier.cjs",
+            allow_single_file = True,
         ),
     },
 )

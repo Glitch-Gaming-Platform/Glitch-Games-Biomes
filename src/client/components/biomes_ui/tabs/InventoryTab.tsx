@@ -350,7 +350,7 @@ export const InventoryTab: React.FunctionComponent<{
     null
   );
   const [pendingAction, setPendingAction] = React.useState<string>();
-  const pendingTimeoutRef = React.useRef<number>();
+  const pendingTimeoutRef = React.useRef<number>(undefined);
 
   const backpack = adapter?.getBackpack?.() ?? {
     items: [],

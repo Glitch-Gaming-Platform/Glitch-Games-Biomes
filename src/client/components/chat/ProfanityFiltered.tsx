@@ -7,7 +7,7 @@ export const ProfanityFiltered: React.FunctionComponent<PropsWithChildren<{}>> =
     const processChildren = (children: ReactNode): ReactNode => {
       return React.Children.map(children, (child) => {
         // If the child is a valid React element, don't touch it
-        if (React.isValidElement(child)) {
+        if (React.isValidElement<{ children?: ReactNode }>(child)) {
           // Recursively process this child's children
           return React.cloneElement(
             child,

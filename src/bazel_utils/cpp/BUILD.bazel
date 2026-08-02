@@ -1,5 +1,6 @@
 load("@hedron_compile_commands//:refresh_compile_commands.bzl", "refresh_compile_commands")
-load("@pip_deps//:requirements.bzl", "entry_point")
+load("@pip_deps//:requirements.bzl", "requirement")
+load("@rules_python//python:defs.bzl", "py_binary")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -10,10 +11,9 @@ refresh_compile_commands(
     },
 )
 
-alias(
+py_binary(
     name = "clang_format",
-    actual = entry_point(
-        pkg = "clang-format",
-        script = "clang-format",
-    ),
+    srcs = ["clang_format.py"],
+    main = "clang_format.py",
+    deps = [requirement("clang-format")],
 )

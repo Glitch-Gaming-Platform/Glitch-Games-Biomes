@@ -52,7 +52,7 @@ spec:
       priorityClassName: redis-l1
       containers:
         - name: redis-l1
-          image: redis:7.0.8-alpine
+          image: redis:8.8.1-alpine
           command: ["redis-server"]
           args: ["/config/redis-l1.conf"]
           ports:
@@ -85,7 +85,7 @@ spec:
             - name: config
               mountPath: /config
         - name: redis-exporter
-          image: oliver006/redis_exporter:latest
+          image: oliver006/redis_exporter:v1.88.0
           securityContext:
             runAsUser: 59000
             runAsGroup: 59000

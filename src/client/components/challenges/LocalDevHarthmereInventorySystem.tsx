@@ -39,6 +39,7 @@ import {
   runHarthmereLiveMutationOnce,
   runHarthmereLiveMutationSerially,
 } from "@/client/components/harthmere_live_fetch";
+import { harthmerePlayerCapacityMessage } from "@/client/components/harthmere_capacity_messages";
 import {
   healHarthmerePlayer,
   reviveHarthmerePlayer,
@@ -5688,11 +5689,11 @@ function buyFitReason(
 
 function vendorPurchaseFailureMessage(error: unknown, itemName: string) {
   const message = error instanceof Error ? error.message : String(error ?? "");
+  const capacityMessage = harthmerePlayerCapacityMessage(message);
+  if (capacityMessage) return `${itemName}: ${capacityMessage}`;
   const knownFailures: Array<[string, string]> = [
     ["insufficient_gold", "You do not have enough gold."],
     ["vendor_out_of_stock", "The vendor is out of stock."],
-    ["inventory_full", "Your inventory is full."],
-    ["stack_size_exceeded", "That purchase would exceed the item stack limit."],
     [
       "insufficient_reputation_for_vendor_item",
       "Your reputation is not high enough for this item.",

@@ -4,7 +4,7 @@ import { useNewMiniPhoneContext } from "@/client/components/system/mini_phone/Mi
 import { MiniPhoneAsyncTaskRootScreen } from "@/client/components/system/tasks/MiniPhoneAsyncTaskRootScreen";
 import type { AsyncTask } from "@/client/util/tasks/types";
 import { assertNever } from "@/shared/util/type_helpers";
-import type { ReactChild } from "react";
+import type { ReactNode } from "react";
 import React, { useCallback } from "react";
 
 export type AsyncTaskMiniPhonePayload = {
@@ -15,7 +15,7 @@ export type AsyncTaskMiniPhonePayload = {
 export function renderAsyncTaskMiniPhone(
   payload: AsyncTaskMiniPhonePayload,
   onClose: () => any
-): ReactChild {
+): ReactNode {
   switch (payload.kind) {
     case "async_task":
       return (
@@ -42,7 +42,7 @@ export const MiniPhoneAsyncTaskController: React.FunctionComponent<{
   );
 
   const renderNav = useCallback(
-    (payload: AsyncTaskMiniPhonePayload): ReactChild => {
+    (payload: AsyncTaskMiniPhonePayload): ReactNode => {
       return renderAsyncTaskMiniPhone(payload, onClose);
     },
     [navContext]

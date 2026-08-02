@@ -9,6 +9,7 @@ import type {
   HarthmereGuildType,
 } from "../../../../shared/harthmere/mmo_guild_authority";
 import { fetchHarthmereLiveWithTimeout } from "@/client/components/harthmere_live_fetch";
+import { harthmerePlayerCapacityMessage } from "@/client/components/harthmere_capacity_messages";
 
 export interface BiomesUIGuildDirectoryEntry {
   guildId: string;
@@ -23,7 +24,6 @@ export interface BiomesUIGuildDirectoryEntry {
   taxRate: number;
   hasGuildHall: boolean;
 }
-
 export interface BiomesUIGuildClientSnapshot {
   actorId?: string;
   memberGuildId?: string;
@@ -177,14 +177,31 @@ function buildGuildRequestId(operation: string, options: BiomesUIGuildSubmitOpti
   return `biomes_ui_guild_${operation}_${now}_${suffix}`;
 }
 
-function responseErrorMessage(operation: string, body: BiomesUIGuildLiveModeResponse | undefined): string {
-  const validation = body?.validation?.errors;
-  if (Array.isArray(validation) && validation.length > 0) return validation.join(",");
-  const errors = body?.errors;
-  if (Array.isArray(errors) && errors.length > 0) return errors.join(",");
-  const warnings = body?.backendMutation?.warnings ?? body?.warnings;
-  if (Array.isArray(warnings) && warnings.length > 0) return warnings.join(",");
-  return `guild_request_failed:${operation}`;
+export function formatBiomesUIGuildPlayerError(value: unknown): string {
+  const raw = String(value ?? "").trim();
+  const capacityMessage = harthmerePlayerCapacityMessage(raw);
+  if (capacityMessage) return capacityMessage;
+  if (raw.includes("missing_permission")) return "Your guild rank does not allow that action.";
+  if (raw.includes("insufficient_treasury") || raw.includes("insufficient_gold")) return "The guild treasury does not have enough gold for that action.";
+  if (raw.includes("guild_not_found")) return "That guild is no longer available. Refresh the guild list and try again.";
+  if (raw.includes("already_in_guild")) return "You must leave your current guild before joining another.";
+  if (raw.includes("application") && raw.includes("already")) return "You already have a pending application for that guild.";
+  if (raw.includes("invite") && (raw.includes("expired") || raw.includes("not_found"))) return "That guild invitation is no longer available.";
+  if (raw.includes("invalid_name")) return "Enter a guild name that meets the displayed length rules.";
+  if (raw.includes("invalid_tag")) return "Enter a guild tag using the displayed number of letters.";
+  if (raw && !/[_:]/.test(raw) && !/\b(?:backend|mutation|payload|rejected|server)\b/i.test(raw)) {
+    return /[.!?]$/.test(raw) ? raw : `${raw}.`;
+  }
+  return "That guild action could not be completed. Please try again.";
+}
+
+function responseErrorMessage(_operation: string, body: BiomesUIGuildLiveModeResponse | undefined): string {
+  const messages = [
+    ...(body?.validation?.errors ?? []),
+    ...(body?.errors ?? []),
+    ...(body?.backendMutation?.warnings ?? body?.warnings ?? []),
+  ].map(formatBiomesUIGuildPlayerError).filter((message, index, all) => all.indexOf(message) === index);
+  return messages.join(" ") || "That guild action could not be completed. Please try again.";
 }
 
 const SERVER_ONLY_GUILD_OPERATIONS = new Set<string>(["collect_tax", "add_xp"]);
@@ -195,7 +212,7 @@ export async function submitBiomesUIGuildMutation(
   options: BiomesUIGuildSubmitOptions = {},
 ): Promise<BiomesUIGuildLiveModeResponse> {
   if (SERVER_ONLY_GUILD_OPERATIONS.has(String(operation))) {
-    throw new Error(`guild_request_rejected:server_only_operation:${operation}`);
+    throw new Error("That guild action is not available to players.");
   }
   const fetchImpl = options.fetchImpl ?? fetch;
   const requestId = buildGuildRequestId(operation, options);
@@ -227,7 +244,7 @@ export async function submitBiomesUIGuildMutation(
   }
   const reducerWarnings = body?.backendMutation?.warnings ?? [];
   const rejection = reducerWarnings.find((warning) => String(warning).startsWith("guild_rejected:"));
-  if (rejection) throw new Error(rejection);
+  if (rejection) throw new Error(formatBiomesUIGuildPlayerError(rejection));
   return body;
 }
 

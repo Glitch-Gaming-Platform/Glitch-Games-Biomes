@@ -1,4 +1,4 @@
-FROM docker.io/curlimages/curl:latest AS linkerd
+FROM docker.io/curlimages/curl:8.21.0@sha256:7c12af72ceb38b7432ab85e1a265cff6ae58e06f95539d539b654f2cfa64bb13 AS linkerd
 ARG LINKERD_AWAIT_RELEASE=0.2.7
 RUN curl -sSLo /tmp/linkerd-await https://github.com/linkerd/linkerd-await/releases/download/release%2Fv${LINKERD_AWAIT_RELEASE}/linkerd-await-v${LINKERD_AWAIT_RELEASE}-amd64 && \
         chmod 755 /tmp/linkerd-await
@@ -11,7 +11,27 @@ RUN wget -O - https://github.com/jemalloc/jemalloc/releases/download/5.3.0/jemal
         make && \
         make install
 
-FROM ubuntu:22.04
+FROM ubuntu:22.04 AS redis
+ARG DEBIAN_FRONTEND=noninteractive
+ARG REDIS_VERSION=8.8.1
+ARG REDIS_SHA256=1d1e423c9c808de3cb01dd3300d2b8d305b7691382e31a847ec17b66d3157477
+# Redis 8.8 enables GCC LTO automatically at -O3. GCC's lto-wrapper then
+# launches a nested make which can lose Docker BuildKit's jobserver file
+# descriptors. Keep the parallel O3 build, but disable only LTO so image
+# builds are deterministic and materially faster.
+RUN apt-get update --fix-missing \
+    && apt-get -y install --no-install-recommends build-essential ca-certificates curl libssl-dev pkg-config \
+    && curl -fsSL "https://download.redis.io/releases/redis-${REDIS_VERSION}.tar.gz" -o /tmp/redis.tar.gz \
+    && echo "${REDIS_SHA256}  /tmp/redis.tar.gz" | sha256sum -c - \
+    && mkdir /tmp/redis \
+    && tar xzf /tmp/redis.tar.gz --strip-components=1 -C /tmp/redis \
+    && make -j"$(nproc)" -C /tmp/redis BUILD_TLS=yes ENABLE_LTO= \
+    && make -C /tmp/redis PREFIX=/opt/redis install
+
+# uWebSockets.js 20.69's Node 24 Linux binary requires GLIBC_2.38 or newer.
+# Ubuntu 24.04 LTS supplies glibc 2.39 while retaining the Debian/Ubuntu
+# runtime contract used by the production image.
+FROM ubuntu:24.04
 RUN groupadd --gid 1001 nodejs && useradd --uid 1001 --gid 1001 -m nextjs
 
 WORKDIR /app
@@ -68,6 +88,7 @@ ENV GLITCH_ENABLE_SNAPSHOT_ASSET_SERVER=1
 # python, which lacks requirements.txt and the native voxeloo extension.
 ENV VIRTUAL_ENV=/opt/biomes-python
 ENV BIOMES_ASSET_PYTHON=/opt/biomes-python/bin/python
+ENV BIOMES_GLTFPACK=/usr/local/bin/gltfpack-native
 ENV PATH=/opt/biomes-python/bin:${PATH}
 ENV BIOMES_SNAPSHOT_RICH_NPC_APPEARANCE=1
 ENV NEXT_PUBLIC_BIOMES_SNAPSHOT_RICH_NPC_APPEARANCE=1
@@ -111,19 +132,18 @@ ENV OOB_SERVICE_PORT=4704
 
 
 ENV WORKDIR=/app
-ENV NEXT_TELEMETRY_DISABLED 1
-ENV GOOGLE_CLOUD_PROJECT zones-cloud
-ENV IS_SERVER true
-ENV NODE_ENV production
-ENV NODE_OPTIONS --openssl-legacy-provider --enable-source-maps
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV GOOGLE_CLOUD_PROJECT=zones-cloud
+ENV IS_SERVER=true
 
 COPY --from=linkerd /tmp/linkerd-await /usr/bin/linkerd-await
 COPY --from=jemalloc /usr/local/lib/libjemalloc.so.2 /usr/local/lib/
+COPY --from=redis /opt/redis/bin/ /usr/local/bin/
 
 ARG DEBIAN_FRONTEND=noninteractive
 # CHANGED: added tini (signal handling for the multi-service script) and
-# build-essential (bufferutil/segfault-handler fall back to source compile
-# when no prebuild matches the Node 20 ABI; make/g++ are required).
+# build-essential (bufferutil can fall back to source compilation when no
+# prebuild matches the active Node ABI; make/g++ are required).
 RUN apt-get update --fix-missing && apt-get -y install \
         bash \
         openssh-server \
@@ -141,9 +161,9 @@ RUN apt-get update --fix-missing && apt-get -y install \
         unzip \
         clang \
         tini \
-        redis-server \
-        redis-tools \
         build-essential
+
+RUN redis-server --version | grep 'v=8.8.1'
 
 # Browser smoke tests run on the deploy host before packaging. Shipping a full
 # Chrome install in the game-server image added hundreds of megabytes and
@@ -157,39 +177,42 @@ RUN ln -sf python3 /usr/bin/python
 # voxeloo/setup.py builds the Python extension through Bazel. The repository
 # pins the Bazel version in .bazelversion, so install Bazelisk and expose it as
 # bazel for pip install ./voxeloo.
-ARG BAZELISK_RELEASE=1.19.0
+ARG BAZELISK_RELEASE=1.28.1
 RUN curl -fsSL -o /usr/local/bin/bazelisk \
       https://github.com/bazelbuild/bazelisk/releases/download/v${BAZELISK_RELEASE}/bazelisk-linux-amd64 \
     && chmod 755 /usr/local/bin/bazelisk \
     && ln -sf /usr/local/bin/bazelisk /usr/local/bin/bazel \
     && bazel --version
 
-ARG NODE_VERSION=20.0.0
+ARG NODE_VERSION=24.18.1
 ARG NODE_PACKAGE=node-v${NODE_VERSION}-linux-x64
 ARG NODE_INSTALL_DIR=/usr/local
 ARG NODE_HOME=${NODE_INSTALL_DIR}/${NODE_PACKAGE}
 
 RUN curl -fsSL https://nodejs.org/dist/v${NODE_VERSION}/${NODE_PACKAGE}.tar.xz | tar -xvJC ${NODE_INSTALL_DIR}
-ENV PATH ${NODE_HOME}/bin:${PATH}
+ENV PATH=${NODE_HOME}/bin:${PATH}
 
-# First copy base files, these change slowly
+# Install the authoritative production dependency closure inside the Linux
+# image. Copying a host node_modules tree made the context multi-gigabyte,
+# mixed macOS/Linux native binaries, and let npm prune disagree with Yarn's
+# hoisting. package-lock.json is kept synchronized specifically for this
+# reproducible production install.
 COPY --chown=nextjs:nodejs package.json package-lock.json yarn.lock ./
-COPY --chown=nextjs:nodejs node_modules/ node_modules/
 
-# .next and dist are built on the deploy host. Keep only runtime dependencies;
+# .next and dist are built on the deploy host. Install only runtime dependencies;
 # build/test tooling and caches previously accounted for multiple gigabytes.
 # The three small TypeScript runtime packages are restored after pruning so a
 # temporary in-VNet maintenance job can execute the reviewed reconciliation
 # scripts against private production Redis without shipping all dev tooling.
-RUN npm prune --omit=dev --ignore-scripts --no-audit --no-fund \
+RUN npm ci --omit=dev --ignore-scripts --no-audit --no-fund \
     && npm install --prefix /opt/harthmere-maintenance --no-save --ignore-scripts --no-audit --no-fund \
-      ts-node@10.9.1 tsconfig-paths@3.12.0 typescript@5.9.3 \
+      ts-node@10.9.2 tsconfig-paths@4.2.0 typescript@6.0.3 \
     && node -e "for (const m of ['stream-json/streamers/StreamArray', 'spark-md5']) { require(m); console.log('OK production runtime dependency', m); }" \
     && NODE_PATH=/opt/harthmere-maintenance/node_modules node -e "for (const m of ['ts-node/register/transpile-only', 'tsconfig-paths/register', 'typescript']) { require(m); console.log('OK production maintenance dependency', m); }" \
     && rm -rf node_modules/.cache /root/.npm /home/nextjs/.npm
 
-# ACR can strip executable bits from uploaded node_modules.
-# Restore package bin permissions before npm rebuild runs node-gyp-build/prebuild helpers.
+# Normalize package bin permissions before npm rebuild runs
+# node-gyp-build/prebuild helpers.
 RUN set -eux; \
     if [ -d node_modules/.bin ]; then find node_modules/.bin -maxdepth 1 -mindepth 1 -exec chmod 755 {} \; || true; fi; \
     find node_modules -path '*/bin/*' -type f -exec chmod 755 {} \; || true; \
@@ -206,12 +229,21 @@ RUN set -eux; \
     ls -l node_modules/.bin/node-gyp-build node_modules/node-gyp-build/bin.js 2>/dev/null || true
 
 
-# Rebuild native Node modules for the container platform.
-# Dockerfile.biomes packages local node_modules, which may come from macOS/arm64.
-# The production image here is linux/amd64, so sharp, uWebSockets.js, and
-# websocket native helpers must have Linux x64 bindings.
-RUN npm rebuild sharp bufferutil utf-8-validate segfault-handler --platform=linux --arch=x64 --foreground-scripts \
-    && node -e "for (const m of ['sharp','uWebSockets.js','bufferutil','utf-8-validate','segfault-handler']) { require(m); console.log('OK native module', m, process.platform, process.arch); }"
+# Run the install scripts intentionally skipped by npm ci and verify every
+# native dependency against the Linux/amd64 Node 24 ABI.
+RUN npm rebuild @swc/core esbuild msgpackr-extract sharp bufferutil utf-8-validate segfault-raub --foreground-scripts \
+    && node - <<'NODE'
+const checks = ["@swc/core", "esbuild", "sharp", "uWebSockets.js", "bufferutil", "utf-8-validate", "segfault-raub"];
+for (const name of checks) {
+  require(name);
+  console.log("OK native module", name, process.platform, process.arch);
+}
+const msgpackr = require("msgpackr");
+if (!msgpackr.isNativeAccelerationEnabled) {
+  throw new Error("msgpackr native acceleration is unavailable");
+}
+console.log("OK native module msgpackr-extract", process.platform, process.arch);
+NODE
 
 # Generated local player meshes call src/galois/py/assets/build.py, which imports
 # requirements.txt packages and the native voxeloo Python extension. Production
@@ -220,7 +252,8 @@ RUN npm rebuild sharp bufferutil utf-8-validate segfault-handler --platform=linu
 # Important: voxeloo's Bazel/rules_python build refuses to run as root when
 # hermetic Python is enabled, so create the venv as root, hand ownership to
 # nextjs, then build/install requirements and voxeloo as nextjs.
-COPY --chown=nextjs:nodejs requirements.txt WORKSPACE.bazel BUILD.bazel Cargo.lock Cargo.Bazel.lock .bazelrc .bazelversion ./
+COPY --chown=nextjs:nodejs requirements.txt MODULE.bazel MODULE.bazel.lock BUILD.bazel Cargo.lock Cargo.Bazel.lock .bazelrc .bazelversion ./
+COPY --chown=nextjs:nodejs bzlmod/ bzlmod/
 # The voxeloo Bazel target also references //src/bazel_utils/cpp:clang_format.
 # Copy that small Bazel package before pip install ./voxeloo; the full src/
 # tree is copied again later for the runtime.
@@ -234,14 +267,14 @@ RUN set -eux; \
     rm -f /app/bazel-bin /app/bazel-out /app/bazel-testlogs /app/bazel-app; \
     chown nextjs:nodejs /app; \
     mkdir -p /home/nextjs/.cache/bazel /home/nextjs/.cache/bazelisk /home/nextjs/.cache/bazel-tmp; \
-    chown -R nextjs:nodejs /opt/biomes-python /home/nextjs/.cache /app/voxeloo /app/src/bazel_utils /app/requirements.txt /app/WORKSPACE.bazel /app/BUILD.bazel /app/Cargo.lock /app/Cargo.Bazel.lock /app/.bazelrc /app/.bazelversion
+    chown -R nextjs:nodejs /opt/biomes-python /home/nextjs/.cache /app/voxeloo /app/src/bazel_utils /app/bzlmod /app/requirements.txt /app/MODULE.bazel /app/MODULE.bazel.lock /app/BUILD.bazel /app/Cargo.lock /app/Cargo.Bazel.lock /app/.bazelrc /app/.bazelversion
 
 ENV HOME=/home/nextjs
 ENV BAZELISK_HOME=/home/nextjs/.cache/bazelisk
 ENV TEST_TMPDIR=/home/nextjs/.cache/bazel-tmp
 ENV BIOMES_ASSET_PYTHON=/opt/biomes-python/bin/python
 ENV PYTHON_BIN_PATH=/opt/biomes-python/bin/python
-ENV PYTHON_LIB_PATH=/opt/biomes-python/lib/python3.10/site-packages
+ENV PYTHON_LIB_PATH=/opt/biomes-python/lib/python3.12/site-packages
 ENV PATH=/opt/biomes-python/bin:${PATH}
 
 USER nextjs
@@ -252,7 +285,7 @@ RUN set -eux; \
     cd /app; \
     /opt/biomes-python/bin/python -m pip install --no-cache-dir --no-build-isolation ./voxeloo; \
     /opt/biomes-python/bin/python - <<'PY'
-import docopt, numpy, PIL, pygltflib, jsonschema, stringcase, voxeloo
+import docopt, numpy, PIL, pygltflib, jsonschema, voxeloo
 print("OK packaged Galois Python runtime", voxeloo.__file__)
 PY
 
@@ -289,6 +322,8 @@ COPY --chown=nextjs:nodejs src/ src/
 COPY --chown=nextjs:nodejs deploy/ deploy/
 COPY --chown=nextjs:nodejs scripts/ scripts/
 COPY --chown=nextjs:nodejs b ./b
+
+RUN python3 scripts/assets/install_gltfpack.py --output "$BIOMES_GLTFPACK"
 
 RUN set -eux; \
     chmod 755 ./b; \

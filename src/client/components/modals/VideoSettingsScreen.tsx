@@ -17,7 +17,7 @@ export const VideoSettingsScreen: React.FunctionComponent<{
   placeableId: BiomesId;
 }> = ({ placeableId }) => {
   const { events, reactResources, userId } = useClientContext();
-  const playerRef = useRef<ReactPlayer>(null);
+  const playerRef = useRef<HTMLVideoElement>(null);
   const [videoComponent, placeableComponent] = reactResources.useAll(
     ["/ecs/c/video_component", placeableId],
     ["/ecs/c/placeable_component", placeableId]
@@ -100,7 +100,7 @@ export const VideoSettingsScreen: React.FunctionComponent<{
         {videoUrl && (
           <ReactPlayer
             ref={playerRef}
-            url={videoUrl}
+            src={videoUrl}
             playing={true}
             loop={true}
             width="400px"

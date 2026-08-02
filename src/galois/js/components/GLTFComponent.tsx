@@ -1,12 +1,10 @@
 import type { SceneFactory } from "@/galois/components/Scene";
 import { Scene } from "@/galois/components/Scene";
+import { createGltfLoader } from "@/client/game/util/gltf_helpers";
 import { Select } from "antd";
 import React, { useEffect, useState } from "react";
 import * as THREE from "three";
-import {
-  GLTFLoader,
-  type GLTF,
-} from "three/examples/jsm/loaders/GLTFLoader.js";
+import type { GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
 
 const { Option } = Select;
 
@@ -22,7 +20,7 @@ interface AttachMesh {
 }
 
 function parseGltf(data: string | ArrayBuffer) {
-  const loader = new GLTFLoader();
+  const loader = createGltfLoader();
   return loader.parseAsync(data, "/");
 }
 

@@ -172,9 +172,9 @@ not an unbounded wait that prevents the rest of the batch from running.
 Only invoke a probe predicate after a fresh probe succeeds; otherwise a
 retryable ECS/network read can be misreported as a destructuring/type failure.
 
-The production-shaped Redis image is currently Redis 6.0.16. Leaderboard
-transactions must therefore be validated against Redis 6 as well as newer
-developer installations; do not rely on newer-only `ZADD GT/LT` flags.
+The production-shaped Redis image is Redis 8.8.1. Run Redis integration and
+browser gates against that exact patch version. Leaderboard writes intentionally
+use native atomic `ZADD GT/LT`; an older local Redis is not a valid substitute.
 
 ## Release discipline
 

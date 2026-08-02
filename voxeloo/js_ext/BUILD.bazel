@@ -16,16 +16,19 @@ DEFAULT_EMSCRIPTEN_LINKOPTS = [
     # Enable and disable features.
     "-s STACK_SIZE=5MB",
     "-s MODULARIZE=1",
+    # The same generated loader is bundled into the browser and invoked by
+    # Node services with an explicitly preloaded wasmBinary. Emscripten 6
+    # otherwise emits eager node:fs/node:crypto imports that Webpack cannot
+    # include in the client bundle, while no longer accepting wasmBinary by
+    # default.
+    "-s ENVIRONMENT=web,webview,worker",
+    "-s INCOMING_MODULE_JS_API=['ENVIRONMENT','arguments','canvas','dynamicLibraries','elementPointerLock','instantiateWasm','locateFile','monitorRunDependencies','noExitRuntime','noInitialRun','onAbort','onExit','onRuntimeInitialized','postRun','preInit','preRun','print','printErr','setStatus','statusMessage','stderr','stdin','stdout','thisProgram','wasm','wasmBinary','wasmMemory','websocket']",
     # EXPORT_NAME isn't that important, but if unspecified, Emscripten's
     # chosen default, "Module", conflicts with a variable name it later declares
     # after nextjs applies a transformation to it.
     "-s EXPORT_NAME=Voxeloo",
     "-s NO_DISABLE_EXCEPTION_CATCHING",
-    "-s USE_PTHREADS=0",
     "-s WASM_BIGINT=1",
-    "-s NODEJS_CATCH_REJECTION=0",
-    "-s NODEJS_CATCH_EXIT=0",
-    "-s EXPORT_EXCEPTION_HANDLING_HELPERS",
 ]
 
 cc_binary(
@@ -72,16 +75,14 @@ cc_binary(
 
 wasm_cc_binary(
     name = "wasm-normal",
-    backend = "llvm",
     cc_target = ":wasm",
-    simd = False,
+    simd = "off",
     threads = "off",
 )
 
 wasm_cc_binary(
     name = "wasm-simd",
-    backend = "llvm",
     cc_target = ":wasm",
-    simd = True,
+    simd = "simd128",
     threads = "off",
 )

@@ -1,5 +1,5 @@
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
-import type { PropsWithChildren, ReactChild, ReactElement } from "react";
+import type { PropsWithChildren, ReactElement, ReactNode } from "react";
 import React, { useEffect } from "react";
 
 export const DialogBoxTitle: React.FunctionComponent<PropsWithChildren<{}>> = ({
@@ -21,9 +21,9 @@ export const DialogBox: React.FunctionComponent<
   }>
 > = ({ children, extraClassName, showTitle }) => {
   const audioManager = useClientContext()?.audioManager;
-  let titleContent: ReactChild | undefined;
-  let screenContent: ReactChild | undefined;
-  const extraChildren: ReactChild[] = [];
+  let titleContent: ReactNode;
+  let screenContent: ReactNode;
+  const extraChildren: ReactNode[] = [];
 
   React.Children.forEach(children, (child) => {
     switch ((child as ReactElement)?.type) {
@@ -31,17 +31,17 @@ export const DialogBox: React.FunctionComponent<
         if (titleContent !== undefined) {
           throw new Error("Duplicate title item in react miniphone");
         }
-        titleContent = child as ReactChild;
+        titleContent = child;
         break;
 
       case DialogBoxContents:
         if (screenContent !== undefined) {
           throw new Error("Duplicate screen item in react miniphone");
         }
-        screenContent = child as ReactChild;
+        screenContent = child;
         break;
       default:
-        extraChildren.push(child as ReactChild);
+        extraChildren.push(child);
         break;
     }
   });

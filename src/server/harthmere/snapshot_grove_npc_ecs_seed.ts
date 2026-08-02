@@ -134,6 +134,10 @@ export function buildHarthmereSnapshotGroveNpcSeedChanges(input: {
         velocity: [0, 0, 0],
         displayName: npc.displayName,
         defaultDialog: npcDialog(npc.line, ...npc.extraLines),
+        // These are authored quest/interactions posts, not an ambient pack.
+        // Anima must return each NPC to the exact shared home that the map and
+        // quest phase table reference.
+        spawnPositionJitterRadius: 0,
       },
       nowSeconds
     );

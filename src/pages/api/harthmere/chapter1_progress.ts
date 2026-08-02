@@ -370,7 +370,7 @@ function stateForPlayer(
     completedGroveJobs: context.completedGroveJobs,
     vendorTransactions: context.vendorTransactions,
   });
-  if (!requirement?.ready) {
+  if (requirement && !requirement.ready) {
     const overflowRequirement = active.step.inventoryRequirements?.find(
       (candidate) => (context.overflowInventory?.[candidate.itemId] ?? 0) > 0
     );
@@ -633,14 +633,15 @@ export default biomesApiHandler(
     if (!nativeBiomesEcsAuthorityEnabled()) {
       return { ok: false, status: "disabled" as const };
     }
-    let player = await worldApi.get(auth.userId);
-    if (!player) {
+    const initialPlayer = await worldApi.get(auth.userId);
+    if (!initialPlayer) {
       return {
         ok: false,
         status: "idle" as const,
         reason: "Native player entity is unavailable.",
       };
     }
+    let player = initialPlayer;
     const redis = await chapter1ProgressRedis();
     const actorId = await resolveHarthmereLiveModeActorId(
       redis,
@@ -1250,17 +1251,17 @@ export default biomesApiHandler(
           const storage = player.harthmereMaterialStorage();
           const take = createBag(
             ...nativeTakeSources.inventory.map(({ nativeId, count }) =>
-              countOf(nativeId, BigInt(count))
+              countOf(nativeId as BiomesId, BigInt(count))
             )
           );
           const storageTake = createBag(
             ...nativeTakeSources.materialStorage.map(({ nativeId, count }) =>
-              countOf(nativeId, BigInt(count))
+              countOf(nativeId as BiomesId, BigInt(count))
             )
           );
           const give = createBag(
             ...nativeInventoryPlan.give.map(({ nativeId, count }) =>
-              countOf(nativeId, BigInt(count))
+              countOf(nativeId as BiomesId, BigInt(count))
             )
           );
           const inventoryTransactionInput = {

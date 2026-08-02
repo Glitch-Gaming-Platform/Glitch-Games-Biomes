@@ -26,7 +26,7 @@ export async function sendLoginEmail(email: string, link: string) {
     To: email,
     From: "Biomes Login <noreply@biomes.gg>",
     Subject: "Login to Biomes",
-    HtmlBody: render(<LoginEmail link={link} />, { pretty: true }),
+    HtmlBody: await render(<LoginEmail link={link} />, { pretty: true }),
     MessageStream: "outbound",
   });
 }

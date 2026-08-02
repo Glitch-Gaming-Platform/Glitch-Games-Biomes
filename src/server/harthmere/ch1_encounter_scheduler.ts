@@ -9,6 +9,7 @@ import { GameEvent } from "@/server/shared/api/game_event";
 import type { LogicApi } from "@/server/shared/api/logic";
 import { connectToRedis } from "@/server/shared/redis/connection";
 import type { WorldApi } from "@/server/shared/world/api";
+import type { LazyEntity } from "@/server/shared/ecs/gen/lazy";
 import type { ProposedChange } from "@/shared/ecs/change";
 import { NpcState, Position, RigidBody } from "@/shared/ecs/gen/components";
 import {
@@ -35,6 +36,7 @@ import {
   serializeNpcCustomState,
 } from "@/shared/npc/serde";
 import { ch1DownedRecoveryDelayMs } from "@/shared/harthmere/ch1_party";
+import type { BiomesId } from "@/shared/ids";
 
 export const CH1_ENCOUNTER_SCHEDULER_INTERVAL_MS = 1_000;
 export const CH1_NINTH_WINTER_ARENA_RADIUS = 72;
@@ -45,10 +47,12 @@ const NINTH_WINTER = CH1_DUNGEON_ENCOUNTER_NPCS.find(
 const GILDED_BULL = CH1_DUNGEON_ENCOUNTER_NPCS.find(
   (npc) => npc.displayName === "The Gilded Bull"
 )!;
+const NINTH_WINTER_ENTITY_ID = NINTH_WINTER.entityId as BiomesId;
+const GILDED_BULL_ENTITY_ID = GILDED_BULL.entityId as BiomesId;
 const HAZARD_SAMPLE_MS = 7_000;
 const HAZARD_DAMAGE_COOLDOWN_MS = 8_000;
 const hazardSamples = new Map<
-  number,
+  BiomesId,
   {
     position: readonly [number, number, number];
     sampledAtMs: number;
@@ -56,7 +60,7 @@ const hazardSamples = new Map<
   }
 >();
 const downedSamples = new Map<
-  number,
+  BiomesId,
   { downedAtMs: number; recoveryRequestedAtMs?: number }
 >();
 
@@ -77,9 +81,14 @@ function distance3(a: readonly number[], b: readonly number[]) {
 }
 
 function activeChapter1StepId(player: {
-  challenges(): { in_progress: ReadonlySet<number> } | undefined;
+  challenges(): { in_progress: ReadonlySet<BiomesId> } | undefined;
   triggerState():
-    | { by_root: ReadonlyMap<number, ReadonlyMap<number, string | number>> }
+    | {
+        by_root: ReadonlyMap<
+          BiomesId,
+          ReadonlyMap<BiomesId, string | number>
+        >;
+      }
     | undefined;
 }) {
   const challenges = player.challenges();
@@ -109,12 +118,13 @@ async function applyChapter1PartyHazards(input: {
   let iceRecoveries = 0;
   let downedRecoveries = 0;
   const members: Array<{
-    id: number;
-    player: Awaited<ReturnType<WorldApi["get"]>>;
+    id: BiomesId;
+    player: LazyEntity;
   }> = [];
   for (const actorId of input.claim.actorIds) {
-    const id = Number(actorId);
-    if (!Number.isSafeInteger(id)) continue;
+    const numericId = Number(actorId);
+    if (!Number.isSafeInteger(numericId)) continue;
+    const id = numericId as BiomesId;
     const player = await input.worldApi.get(id);
     if (player) members.push({ id, player });
   }
@@ -196,13 +206,13 @@ async function applyChapter1PartyHazards(input: {
       const previous = hazardSamples.get(id);
       if (!previous) {
         hazardSamples.set(id, {
-          position: [...position],
+          position: [...position] as [number, number, number],
           sampledAtMs: input.nowMs,
           damagedAtMs: 0,
         });
       } else if (distance3(position, previous.position) >= 2.25) {
         hazardSamples.set(id, {
-          position: [...position],
+          position: [...position] as [number, number, number],
           sampledAtMs: input.nowMs,
           damagedAtMs: previous.damagedAtMs,
         });
@@ -221,7 +231,7 @@ async function applyChapter1PartyHazards(input: {
           )
         );
         hazardSamples.set(id, {
-          position: [...position],
+          position: [...position] as [number, number, number],
           sampledAtMs: input.nowMs,
           damagedAtMs: input.nowMs,
         });
@@ -272,7 +282,7 @@ async function applyChapter1PartyHazards(input: {
         })
       )
     );
-    const recoveryPosition: [number, number, number] =
+    const carryRecoveryPosition: [number, number, number] =
       activeStepId === "d2_whale_road"
         ? [3309.5, 66, -343.5]
         : [3510.5, 66, -343.5];
@@ -283,7 +293,7 @@ async function applyChapter1PartyHazards(input: {
       run_id: admission.runId,
       party_id: admission.partyId,
       reset_encounters: false,
-      position: recoveryPosition,
+      position: carryRecoveryPosition,
       orientation: [...(player.orientation()?.v ?? [0, 0])] as [number, number],
     } as const;
     await input.logicApi.publish(
@@ -296,7 +306,7 @@ async function applyChapter1PartyHazards(input: {
       )
     );
     hazardSamples.set(id, {
-      position: recoveryPosition,
+      position: carryRecoveryPosition,
       sampledAtMs: input.nowMs,
       damagedAtMs: input.nowMs,
     });
@@ -306,7 +316,7 @@ async function applyChapter1PartyHazards(input: {
 }
 
 async function synchronizeGildedBullDamagePhase(worldApi: WorldApi) {
-  const bull = await worldApi.get(GILDED_BULL.entityId);
+  const bull = await worldApi.get(GILDED_BULL_ENTITY_ID);
   const health = bull?.health();
   if (!bull || !health || health.maxHp <= 0 || health.hp <= 0) return false;
   const decoded = deserializeNpcCustomState(bull.npcState()?.data);
@@ -325,7 +335,7 @@ async function synchronizeGildedBullDamagePhase(worldApi: WorldApi) {
       {
         kind: "update",
         entity: {
-          id: GILDED_BULL.entityId,
+          id: GILDED_BULL_ENTITY_ID,
           npc_state: NpcState.create({
             data: serializeNpcCustomState(decoded),
           }),
@@ -373,7 +383,9 @@ export async function runChapter1EncounterSchedulerTick(input: {
   for (const actorId of claim.actorIds) {
     const numericId = Number(actorId);
     if (!Number.isSafeInteger(numericId)) continue;
-    const position = (await input.worldApi.get(numericId))?.position()?.v;
+    const position = (
+      await input.worldApi.get(numericId as BiomesId)
+    )?.position()?.v;
     if (
       position &&
       distance3(position, NINTH_WINTER.position) <=
@@ -385,7 +397,7 @@ export async function runChapter1EncounterSchedulerTick(input: {
   }
   if (!partyInArena) return { changed: false, looped: false };
 
-  const boss = await input.worldApi.get(NINTH_WINTER.entityId);
+  const boss = await input.worldApi.get(NINTH_WINTER_ENTITY_ID);
   const health = boss?.health();
   if (!boss || !health || health.hp <= 0) {
     return { changed: false, looped: false };
@@ -409,7 +421,7 @@ export async function runChapter1EncounterSchedulerTick(input: {
   const entity: ProposedChange = {
     kind: "update",
     entity: {
-      id: NINTH_WINTER.entityId,
+      id: NINTH_WINTER_ENTITY_ID,
       npc_state: NpcState.create({ data: serializeNpcCustomState(decoded) }),
       ...(looped
         ? {
@@ -442,7 +454,12 @@ export const CH1_ENCOUNTER_SCHEDULER_LEASE_KEY =
 export const CH1_ENCOUNTER_SCHEDULER_LEASE_MS = 5_000;
 
 async function holdsEncounterSchedulerLease(
-  redis: { primary: { set(...args: any[]): Promise<unknown> } },
+  redis: {
+    primary: {
+      get?(key: string): Promise<string | null>;
+      set(...args: any[]): Promise<unknown>;
+    };
+  },
   ownerId: string
 ): Promise<boolean> {
   // SET NX PX: first writer wins for the lease window, and the holder refreshes

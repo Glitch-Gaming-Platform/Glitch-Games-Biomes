@@ -135,31 +135,18 @@ local function applyChanges(stateById, newTick, dirtyStates, proposedChanges)
     end
 end
 
--- Apply one leaderboard update without depending on Redis 6.2's ZADD LT/GT
--- options. The production-shaped local stack can run an older Redis build;
--- passing LT or GT directly to that build raises `ERR syntax error` and rolls
--- back the entire gameplay transaction (including simple-race quest steps).
--- ZSCORE + this Lua-side comparison is atomic because this whole script is a
--- single Redis command.
+-- Redis 8.8.1 performs LT/GT comparisons atomically inside ZADD. Using the
+-- native operation avoids a separate ZSCORE for every leaderboard/window
+-- update in this latency-sensitive world transaction.
 local function updateLeaderboard(key, op, amount, member)
     amount = tonumber(amount)
     if op == 'INCR' then
         return redis.call('ZINCRBY', key, amount, member)
     end
-
-    local current = redis.call('ZSCORE', key, member)
-    if current == false then
-        return redis.call('ZADD', key, amount, member)
+    if op == 'LT' or op == 'GT' then
+        return redis.call('ZADD', key, op, amount, member)
     end
-
-    current = tonumber(current)
-    if (op == 'LT' and amount < current) or (op == 'GT' and amount > current) then
-        return redis.call('ZADD', key, amount, member)
-    end
-    if op ~= 'LT' and op ~= 'GT' then
-        error('Unknown leaderboard operation: ' .. tostring(op))
-    end
-    return current
+    error('Unknown leaderboard operation: ' .. tostring(op))
 end
 
 -- Decode the request

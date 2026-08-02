@@ -3,7 +3,7 @@ import type { ReadonlyVec2f, ReadonlyVec3f } from "@/shared/ecs/gen/types";
 import type { BiomesId } from "@/shared/ids";
 import * as jwt from "jsonwebtoken";
 
-const TOKEN_VERSION = 1 as const;
+const TOKEN_VERSION = 2 as const;
 const TOKEN_MAX_AGE_SECONDS = 5 * 60;
 
 export interface Ch1WarpAuthorizationInput {
@@ -18,6 +18,9 @@ export interface Ch1WarpAuthorizationInput {
 }
 
 function payloadFor(input: Ch1WarpAuthorizationInput) {
+  // Camera orientation is presentation-only and may be normalized while the
+  // generated event crosses the Web-to-Logic transport. Keep the exact warp
+  // destination and every transition/admission field authoritative instead.
   return {
     v: TOKEN_VERSION,
     u: input.id,
@@ -27,7 +30,6 @@ function payloadFor(input: Ch1WarpAuthorizationInput) {
     party: input.party_id,
     reset: input.reset_encounters,
     position: [...input.position],
-    orientation: [...input.orientation],
   };
 }
 
@@ -59,9 +61,7 @@ export function validateCh1WarpAuthorization(
       decoded.run === expected.run &&
       decoded.party === expected.party &&
       decoded.reset === expected.reset &&
-      JSON.stringify(decoded.position) === JSON.stringify(expected.position) &&
-      JSON.stringify(decoded.orientation) ===
-        JSON.stringify(expected.orientation)
+      JSON.stringify(decoded.position) === JSON.stringify(expected.position)
     );
   } catch {
     return false;

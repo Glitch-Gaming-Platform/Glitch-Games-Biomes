@@ -1,4 +1,5 @@
 import { useCanTalkToNpc } from "@/client/components/challenges/TalkToNPCDefaultDialog";
+import { shouldUseHarthmereCursorObjectSemantics } from "@/client/components/challenges/dialogueObjectSemantics";
 import { openHarthmereObjectContainer } from "@/client/components/challenges/harthmereObjectContainers";
 import {
   completeHarthmereJobsBoardFieldObjectiveForObjectSoon,
@@ -108,17 +109,21 @@ export const CursorInspectionComponent: React.FunctionComponent<
     harthmereObjectLabel
   );
   const canUseObjectSemantics =
-    overlay?.kind !== "placeable" || allowPlaceableObjectInteraction;
+    overlay?.kind !== "placeable" || Boolean(allowPlaceableObjectInteraction);
+  const useHarthmereObjectSemantics =
+    shouldUseHarthmereCursorObjectSemantics({
+      canTalk,
+      isNativeDialogueQuestObject,
+      canUseObjectSemantics,
+    });
   const isHarthmereObjectContainer =
-    !isNativeDialogueQuestObject &&
-    canUseObjectSemantics &&
+    useHarthmereObjectSemantics &&
     isHarthmereContainerObjectLabel({
       label: harthmereObjectLabel,
       entityDescription: harthmereObjectDescription,
     });
   const isHarthmereWorldObject =
-    !isNativeDialogueQuestObject &&
-    canUseObjectSemantics &&
+    useHarthmereObjectSemantics &&
     isHarthmereNonLivingObjectLabel({
       label: harthmereObjectLabel,
       entityDescription: harthmereObjectDescription,

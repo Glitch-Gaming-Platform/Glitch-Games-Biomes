@@ -133,7 +133,7 @@ spec:
             - name: CPU_COUNT
               value: '1.5'
             - name: NODE_OPTIONS
-              value: '--openssl-legacy-provider --max-old-space-size=4096'
+              value: '--max-old-space-size=4096'
             - name: GOOGLE_CLOUD_PROJECT
               value: zones-cloud
             - name: IS_SERVER
@@ -304,7 +304,7 @@ spec:
                 - name: CPU_COUNT
                   value: '1'
                 - name: NODE_OPTIONS
-                  value: '--openssl-legacy-provider --max-old-space-size=4096'
+                  value: '--max-old-space-size=4096'
                 - name: GOOGLE_CLOUD_PROJECT
                   value: zones-cloud
                 - name: IS_SERVER
@@ -430,7 +430,7 @@ spec:
             - name: CPU_COUNT
               value: '0.5'
             - name: NODE_OPTIONS
-              value: '--openssl-legacy-provider --max-old-space-size=1024'
+              value: '--max-old-space-size=1024'
             - name: GOOGLE_CLOUD_PROJECT
               value: zones-cloud
             - name: IS_SERVER
@@ -578,7 +578,7 @@ spec:
             - name: CPU_COUNT
               value: '1'
             - name: NODE_OPTIONS
-              value: '--openssl-legacy-provider --max-old-space-size=2048'
+              value: '--max-old-space-size=2048'
             - name: GOOGLE_CLOUD_PROJECT
               value: zones-cloud
             - name: IS_SERVER
@@ -758,7 +758,7 @@ spec:
             - name: CPU_COUNT
               value: '1'
             - name: NODE_OPTIONS
-              value: '--openssl-legacy-provider --max-old-space-size=1024'
+              value: '--max-old-space-size=1024'
             - name: GOOGLE_CLOUD_PROJECT
               value: zones-cloud
             - name: IS_SERVER
@@ -938,7 +938,7 @@ spec:
             - name: CPU_COUNT
               value: '1'
             - name: NODE_OPTIONS
-              value: '--openssl-legacy-provider --max-old-space-size=4096'
+              value: '--max-old-space-size=4096'
             - name: GOOGLE_CLOUD_PROJECT
               value: zones-cloud
             - name: IS_SERVER
@@ -1086,7 +1086,7 @@ spec:
             - name: CPU_COUNT
               value: '1'
             - name: NODE_OPTIONS
-              value: '--openssl-legacy-provider --max-old-space-size=4096'
+              value: '--max-old-space-size=4096'
             - name: GOOGLE_CLOUD_PROJECT
               value: zones-cloud
             - name: IS_SERVER
@@ -1268,7 +1268,7 @@ spec:
             - name: CPU_COUNT
               value: '1.5'
             - name: NODE_OPTIONS
-              value: '--openssl-legacy-provider --max-old-space-size=4096'
+              value: '--max-old-space-size=4096'
             - name: GOOGLE_CLOUD_PROJECT
               value: zones-cloud
             - name: IS_SERVER
@@ -1450,7 +1450,7 @@ spec:
             - name: CPU_COUNT
               value: '0.5'
             - name: NODE_OPTIONS
-              value: '--openssl-legacy-provider --max-old-space-size=512'
+              value: '--max-old-space-size=512'
             - name: GOOGLE_CLOUD_PROJECT
               value: zones-cloud
             - name: IS_SERVER
@@ -1623,7 +1623,7 @@ spec:
             - name: CPU_COUNT
               value: '1.5'
             - name: NODE_OPTIONS
-              value: '--openssl-legacy-provider --max-old-space-size=6144'
+              value: '--max-old-space-size=6144'
             - name: GOOGLE_CLOUD_PROJECT
               value: zones-cloud
             - name: IS_SERVER
@@ -1797,7 +1797,7 @@ spec:
             - name: CPU_COUNT
               value: '1.5'
             - name: NODE_OPTIONS
-              value: '--openssl-legacy-provider --max-old-space-size=6144'
+              value: '--max-old-space-size=6144'
             - name: GOOGLE_CLOUD_PROJECT
               value: zones-cloud
             - name: IS_SERVER
@@ -1971,7 +1971,7 @@ spec:
             - name: CPU_COUNT
               value: '1.5'
             - name: NODE_OPTIONS
-              value: '--openssl-legacy-provider --max-old-space-size=6144'
+              value: '--max-old-space-size=6144'
             - name: GOOGLE_CLOUD_PROJECT
               value: zones-cloud
             - name: IS_SERVER
@@ -2146,7 +2146,7 @@ spec:
             - name: CPU_COUNT
               value: '1.5'
             - name: NODE_OPTIONS
-              value: '--openssl-legacy-provider --max-old-space-size=6144'
+              value: '--max-old-space-size=6144'
             - name: GOOGLE_CLOUD_PROJECT
               value: zones-cloud
             - name: IS_SERVER
@@ -2319,7 +2319,7 @@ spec:
             - name: CPU_COUNT
               value: '1.5'
             - name: NODE_OPTIONS
-              value: '--openssl-legacy-provider --max-old-space-size=6144'
+              value: '--max-old-space-size=6144'
             - name: GOOGLE_CLOUD_PROJECT
               value: zones-cloud
             - name: IS_SERVER
@@ -2473,7 +2473,7 @@ spec:
             - name: CPU_COUNT
               value: '1'
             - name: NODE_OPTIONS
-              value: '--openssl-legacy-provider --max-old-space-size=10240'
+              value: '--max-old-space-size=10240'
             - name: GOOGLE_CLOUD_PROJECT
               value: zones-cloud
             - name: IS_SERVER
@@ -2621,7 +2621,7 @@ spec:
             - name: CPU_COUNT
               value: '1'
             - name: NODE_OPTIONS
-              value: '--openssl-legacy-provider --max-old-space-size=4096'
+              value: '--max-old-space-size=4096'
             - name: GOOGLE_CLOUD_PROJECT
               value: zones-cloud
             - name: IS_SERVER
@@ -2771,7 +2771,7 @@ spec:
             - name: CPU_COUNT
               value: '1'
             - name: NODE_OPTIONS
-              value: '--openssl-legacy-provider --max-old-space-size=4096'
+              value: '--max-old-space-size=4096'
             - name: GOOGLE_CLOUD_PROJECT
               value: zones-cloud
             - name: IS_SERVER
@@ -2935,7 +2935,7 @@ spec:
             - name: CPU_COUNT
               value: '1'
             - name: NODE_OPTIONS
-              value: '--openssl-legacy-provider --max-old-space-size=4096'
+              value: '--max-old-space-size=4096'
             - name: GOOGLE_CLOUD_PROJECT
               value: zones-cloud
             - name: IS_SERVER
@@ -3126,7 +3126,7 @@ spec:
             - name: CPU_COUNT
               value: '0.5'
             - name: NODE_OPTIONS
-              value: '--openssl-legacy-provider --max-old-space-size=4096'
+              value: '--max-old-space-size=4096'
             - name: GOOGLE_CLOUD_PROJECT
               value: zones-cloud
             - name: IS_SERVER
@@ -3309,7 +3309,7 @@ spec:
             - name: CPU_COUNT
               value: '1'
             - name: NODE_OPTIONS
-              value: '--openssl-legacy-provider --max-old-space-size=1024'
+              value: '--max-old-space-size=1024'
             - name: GOOGLE_CLOUD_PROJECT
               value: zones-cloud
             - name: IS_SERVER
@@ -3523,7 +3523,7 @@ spec:
             - name: CPU_COUNT
               value: '2'
             - name: NODE_OPTIONS
-              value: '--openssl-legacy-provider --max-old-space-size=2048'
+              value: '--max-old-space-size=2048'
             - name: GOOGLE_CLOUD_PROJECT
               value: zones-cloud
             - name: IS_SERVER
@@ -3710,7 +3710,7 @@ spec:
             - name: CPU_COUNT
               value: '2'
             - name: NODE_OPTIONS
-              value: '--openssl-legacy-provider --max-old-space-size=2048'
+              value: '--max-old-space-size=2048'
             - name: GOOGLE_CLOUD_PROJECT
               value: zones-cloud
             - name: IS_SERVER
@@ -3899,7 +3899,7 @@ spec:
             - name: CPU_COUNT
               value: '1'
             - name: NODE_OPTIONS
-              value: '--openssl-legacy-provider --max-old-space-size=1500'
+              value: '--max-old-space-size=1500'
             - name: GOOGLE_CLOUD_PROJECT
               value: zones-cloud
             - name: IS_SERVER

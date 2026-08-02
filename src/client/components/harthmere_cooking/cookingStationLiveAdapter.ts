@@ -1,3 +1,4 @@
+import { harthmerePlayerCapacityMessage } from "@/client/components/harthmere_capacity_messages";
 import type { HarthmereCookStationKind } from "@/shared/harthmere/object_interaction_semantics";
 import {
   HARTHMERE_COOKING_RECIPES,
@@ -212,6 +213,8 @@ export function harthmereCookStationJobs(
 }
 
 export function playerMessageFromCookingWarning(warning: string): string {
+  const capacityMessage = harthmerePlayerCapacityMessage(warning);
+  if (capacityMessage) return capacityMessage;
   const code = warning.replace(/^cooking_rejected:/, "").split(":")[0];
   switch (code) {
     case "unknown_recipe":
@@ -223,8 +226,6 @@ export function playerMessageFromCookingWarning(warning: string): string {
     case "missing_station":
     case "missing_station_id":
       return "Use the right cooking station.";
-    case "queue_full":
-      return "This station's queue is full — collect or cancel a dish first.";
     case "missing_raw_food":
     case "missing_input":
       return "You don't have the ingredients for that.";

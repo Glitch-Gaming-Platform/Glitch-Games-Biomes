@@ -1,5 +1,6 @@
 import { Img } from "@/client/components/system/Img";
 import { ThreeObjectPreview } from "@/client/components/ThreeObjectPreview";
+import { loadGltf } from "@/client/game/util/gltf_helpers";
 import { sanitizeServerSideProps } from "@/client/util/next_helpers";
 import StaticPage from "@/pages/static-page";
 import type {
@@ -23,10 +24,9 @@ import { epochMsToDuration } from "@/shared/util/view_helpers";
 import { ok } from "assert";
 import { isArray, last } from "lodash";
 import type { GetServerSidePropsResult } from "next";
-import type { ReactChild } from "react";
+import type { ReactNode } from "react";
 import React, { useEffect, useState } from "react";
 import type { Object3D } from "three";
-import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 
 type EnvironmentGroupPageProps = {
   environmentGroup: GroupDetailBundle;
@@ -65,7 +65,7 @@ export const getServerSideProps = async (
 export const EnvironmentGroupPage: React.FunctionComponent<
   InferWebServerSidePropsType<typeof getServerSideProps>
 > = ({ environmentGroup }) => {
-  let ownerLink: ReactChild | undefined;
+  let ownerLink: ReactNode;
   if (environmentGroup?.ownerBiomesUser) {
     ownerLink = (
       <div className="post-author">
@@ -97,8 +97,7 @@ export const EnvironmentGroupPage: React.FunctionComponent<
   const [scene, setScene] = useState<Object3D>();
   useEffect(() => {
     if (environmentGroup.gltfURL) {
-      const loader = new GLTFLoader();
-      loader.load(environmentGroup.gltfURL, (gltf) => {
+      void loadGltf(environmentGroup.gltfURL).then((gltf) => {
         setScene(gltf.scene);
       });
     }
